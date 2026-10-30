@@ -59,7 +59,9 @@ const CALLS = new Set(['historyRecord', 'historyStep', 'historyState', 'gesture'
   'mapTexts',
   // plan sync (WebSync.kt – the app's com.onpath.app.sync)
   'syncPairNew', 'syncPairParse', 'syncKeys', 'syncNewId', 'syncNewDevice', 'syncList', 'syncDevices', 'syncState', 'syncSave',
-  'syncRename', 'syncDelete', 'syncHello', 'syncForget', 'syncApply', 'syncOutbox', 'syncAcked']);
+  'syncRename', 'syncDelete', 'syncHello', 'syncForget', 'syncApply', 'syncOutbox', 'syncAcked',
+  // A-017 folders (web-sync.md §5.1): JOIN, role, tracks, push only on Save
+  'syncOutboxOf', 'syncHelloAs', 'syncPeek', 'syncJoinBlob', 'syncHelloId', 'syncRebase', 'syncSaveTrack', 'syncTrackFit', 'syncTrackGpx']);
 
 declare const TeaVM: { wasmGC: { load(url: string): Promise<{ exports: WasmEngine }> } };
 

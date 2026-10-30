@@ -1,5 +1,5 @@
 // Screenshots of the page layout (header – not paired and paired –, toolbar, the sheet's three steps, place card, activity drop-down, Map content,
-// My routes, the Phone window in its three states + the unpair question, the ☰ dot on phones) at desktop (1440×900) and phone (390×844) width, for looking at – nothing is checked. Needs the cell store.
+// My routes, the Phone window in its three states, the ☰ dot on phones) at desktop (1440×900) and phone (390×844) width, for looking at – nothing is checked. Needs the cell store.
 // Usage: node test/ui-shots.mjs [segmentsDir] [mapStoreDir] [outDir]
 import path from 'node:path';
 import fs from 'node:fs';
@@ -30,8 +30,8 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
   await page.evaluate(() => { clearInterval(window.__sync.timer); window.__sync.syncNow = async () => {}; });
   await page.waitForTimeout(1500); // a sync already started ends
   const fake = (st) => page.evaluate((st) => { const s = window.__sync, now = Date.now();
-    s.status = st === 'none' ? { ...s.status, paired: false, devices: [], phoneSeen: null, lastSync: null, message: '' }
-      : { ...s.status, paired: true, devices: [{ name: 'Pixel 8', updatedAt: now }], lastSync: now, message: '', pending: 0,
+    s.status = st === 'none' ? { ...s.status, paired: false, devices: [], phone: null, phoneSeen: null, lastSync: null, message: '' }
+      : { ...s.status, paired: true, devices: [{ name: 'Pixel 8', updatedAt: now }], phone: 'Pixel 8', lastSync: now, message: '', pending: 0,
         phoneSeen: st === 'fresh' ? now - 2 * 60_000 : now - 3 * 86_400_000 };
     s.changed(); }, st);
   const clip = { x: 0, y: 0, width: vp.width, height: 56 };
@@ -44,12 +44,6 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
     await page.click('#syncBadge');
     await page.waitForSelector('dialog.phone[open]');
     await page.screenshot({ path: path.join(out, `${name}-phone-${st}.png`) });
-    if (st === 'stale' && name === 'desktop') {
-      await page.click('dialog.phone #unpair');
-      await page.waitForTimeout(200);
-      await page.screenshot({ path: path.join(out, `${name}-phone-unpair.png`) });
-      await page.keyboard.press('Escape');
-    }
     await page.click('#closePhone');
   }
   await fake('none');

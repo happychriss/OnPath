@@ -386,3 +386,17 @@ dialog.share .scanline { margin: 0 0 8px; font-weight: 600; }
 #menuBtn .menudot { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; background: var(--good); border: 2px solid var(--site-bg); }
 #menuBtn .menudot[hidden] { display: none; }
 .nav button.syncbadge:not(.paired) .ic { color: var(--muted); } /* not paired: the grey phone */
+/* A-017: the header's Save is bold / filled while anything is not on the phone yet, the quiet hint beside it */
+.nav button#menuSavePlan.unsaved { background: var(--green); color: #fff; font-weight: 700; }
+.nav button#menuSavePlan.unsaved .ic { color: #fff; }
+.nav button#menuSavePlan.unsaved:hover { background: var(--green); filter: brightness(1.1); }
+.savehint { align-self: center; font-size: 12px; color: var(--muted); white-space: nowrap; margin: 0 6px 0 2px; }
+.savehint.warning { color: var(--warn); white-space: normal; max-width: 260px; }
+@media (max-width: 1180px) and (min-width: 701px) { .savehint:not(.warning) { display: none; } }
+@media (max-width: 700px) { .nav.open .savehint { padding: 0 18px 8px 58px; white-space: normal; } }
+/* My routes: the phone's new / changed routes bold with a grey line until opened; the quiet folder lines */
+.planlist li.marked .name { font-weight: 700; }
+.planlist .name .ic { color: #8E24AA; vertical-align: -3px; margin-right: 4px; }
+.folderswitch, .removefolders { display: flex; flex-direction: column; align-items: flex-start; margin-top: 6px; }
+.textbtn.quiet { color: var(--muted); font-weight: 400; font-size: 13px; padding: 4px 6px; }
+.savedline #copyToPhone { margin-left: auto; padding: 2px 6px; }

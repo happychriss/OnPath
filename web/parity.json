@@ -155,7 +155,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "ca649f56b773c1884cda9706d9aac8aacce33ed2"
+      "blob": "496685596dc2e8a437774c8a5481b2b72b86042b"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -291,7 +291,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapScreen.kt",
       "why": "plan screen wiring, dialogs",
-      "blob": "7ef2f161f83167fe40095930a6d7be11c50bb37e"
+      "blob": "03cdded1da9e3b691a01c79bf1154aa9c892ac8b"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanGuidance.kt",
@@ -721,7 +721,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/sync/SyncItem.kt": {
-      "blob": "1ce2bd7b6df33ed2ca74686cbb8de9c45666bd63",
+      "blob": "cb220106c973ed60e5044aa7d41e9e6a66ea3cbf",
       "perf": [
         "const val ID_BYTES = 16",
         "const val DEVICE_BYTES = 8",
@@ -730,6 +730,7 @@
         "const val MAX_NAME = 60",
         "const val MAX_TRACK = 16_000",
         "const val MAX_BLOB = 24_000",
+        "const val MAX_PAIR_CODE = 200",
         "fun newId(random: ByteArray): String { require(random.size >= ID_BYTES); return B64.encode(random.copyOf(ID_BYTES)) }",
         "fun newDevice(random: ByteArray): String { require(random.size >= DEVICE_BYTES); return B64.encode(random.copyOf(DEVICE_BYTES)) }",
         "fun isId(s: String) = s.length == 22 && B64.decode(s)?.size == ID_BYTES",
@@ -741,19 +742,23 @@
         "item.plan?.filter(B64::isCodeChar)?.take(MAX_PLAN)?.takeIf { it.isNotEmpty() }?.let { out.field(TAG_PLAN, it.encodeToByteArray()) }",
         "clean(item.name, MAX_NAME)?.let { out.field(TAG_NAME, it.encodeToByteArray()) }",
         "item.track?.let(B64::decode)?.takeIf { it.isNotEmpty() && it.size <= MAX_TRACK }?.let { out.field(TAG_TRACK, it) }",
+        "item.pairCode?.takeIf { it.isNotEmpty() && it.length <= MAX_PAIR_CODE && it.all(B64::isCodeChar) }",
         "val id = B64.encode(r.take(ID_BYTES))",
         "val device = B64.encode(r.take(DEVICE_BYTES))",
         "TAG_TITLE.toLong() -> title = clean(raw.decodeToString(), MAX_TITLE)",
         "TAG_PLAN.toLong() -> plan = raw.decodeToString().takeIf { it.isNotEmpty() && it.length <= MAX_PLAN && it.all(B64::isCodeChar) }",
         "TAG_NAME.toLong() -> name = clean(raw.decodeToString(), MAX_NAME)",
         "TAG_TRACK.toLong() -> track = raw.takeIf { it.isNotEmpty() && it.size <= MAX_TRACK }?.let(B64::encode)",
+        ".takeIf { it.isNotEmpty() && it.length <= MAX_PAIR_CODE && it.all(B64::isCodeChar) }",
+        "?.takeIf { it in 1..Int.MAX_VALUE.toLong() }?.toInt()",
         "/** A title as an item keeps it (no control characters, trimmed, at most [MAX_TITLE]) – to compare with a local name. */",
         "fun cleanTitle(s: String?): String? = clean(s, MAX_TITLE)",
-        "byteArrayOf(BLOB_VERSION.toByte()) + keys.mailboxBytes + (B64.decode(itemId) ?: ByteArray(0))"
+        "byteArrayOf(BLOB_VERSION.toByte()) + keys.mailboxBytes + (B64.decode(itemId) ?: ByteArray(0))",
+        "val ID: String = B64.encode(Sha256.hash(\"OnPath join\".encodeToByteArray()).copyOf(SyncFormat.ID_BYTES))"
       ]
     },
     "app/src/main/java/com/onpath/app/sync/SyncMerge.kt": {
-      "blob": "0109a4420c2ea20a7ded4f2bbfdf8125e0448fdc",
+      "blob": "9b98d130660e15c2742f12cf2c6672b10fa11029",
       "perf": [
         "val seed = \"OnPath copy \".encodeToByteArray() + (B64.decode(loser.id) ?: ByteArray(0)) +",
         "val base = (loser.title ?: \"Plan\").take(SyncFormat.MAX_TITLE - COPY.length)",
@@ -761,8 +766,25 @@
       ]
     },
     "app/src/main/java/com/onpath/app/sync/SyncLedger.kt": {
-      "blob": "49cf39187063fd2fdeab1ec749da9e2a69a839ed",
+      "blob": "f77a8a3ef918cb8fe6518690cc29bd680fee19f8",
       "perf": []
+    },
+    "app/src/main/java/com/onpath/app/sync/TrackCode.kt": {
+      "blob": "f2629a51db75ecd15523bd3098464d9765d99c9d",
+      "perf": [
+        "const val MAX_POINTS = 200_000",
+        "const val MAX_SEGMENTS = 2_000",
+        "const val MAX_MARKS = 300",
+        "const val MAX_NAME = 100",
+        "val segs = t.segments.filter { it.isNotEmpty() }.take(MAX_SEGMENTS)",
+        "for (m in t.marks.take(MAX_MARKS)) {",
+        "fun fit(t: SyncTrack, maxBytes: Int = SyncFormat.MAX_TRACK): String? {",
+        "require(n in 0..MAX_SEGMENTS.toLong())",
+        "val counts = List(n.toInt()) { r.varint().also { require(it in 0..MAX_POINTS.toLong()) }.toInt() }",
+        "require(counts.sumOf { it.toLong() } <= MAX_POINTS)",
+        "if (tag == TAG_MARK.toLong() && marks.size < MAX_MARKS) {",
+        "private fun clean(s: String?): String? = s?.filter { it >= ' ' }?.trim()?.take(MAX_NAME)?.trim()?.takeIf { it.isNotEmpty() }"
+      ]
     },
     "app/src/main/java/com/onpath/app/routing/LongRoute.kt": {
       "blob": "609dd792a5a5d9328b100b38d26df5215cdce967",
@@ -840,7 +862,7 @@
       ]
     },
     "app/src/test/java/com/onpath/app/sync/PlanSyncTest.kt": {
-      "blob": "033e1a75c0fec410684aced9a9325684b93bcc80",
+      "blob": "103fa58b80b4154a70720beb9fb7e012b5d05051",
       "perf": [
         "private val phone = SyncFormat.newDevice(ByteArray(8) { 1 })",
         "private val web = SyncFormat.newDevice(ByteArray(8) { 2 })",
@@ -907,7 +929,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_routes.xml": {
-      "blob": "132ee5a1430a179030f3308f639614bd14d3977b",
+      "blob": "8a508f3ec8212b8e9385685732e93a7e29b70566",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_search.xml": {
@@ -923,7 +945,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_sync.xml": {
-      "blob": "c46da2f824f4505df342dd84fe66f2b05238bf7f",
+      "blob": "232bd5f93579d79795e0d64ffdc7afba3ed69cce",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_activity.xml": {
@@ -959,7 +981,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_routes.xml": {
-      "blob": "c6db788457f73c8aea36df341eee7c05889b85b4",
+      "blob": "e4bc2854cf8146f575fd955f1fa6bfc0719c521a",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_search.xml": {
@@ -975,7 +997,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_sync.xml": {
-      "blob": "a8f925cda4d577b486f850fe82f1d787f6161217",
+      "blob": "2772d178a8c59760a27fd28ab23f5e3ef7c0f60c",
       "perf": []
     },
     "app/libs/brouter-codec-1.7.11-beta.jar": {

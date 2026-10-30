@@ -23,7 +23,7 @@ val appFiles = listOf(
     "ui/PlanState.kt", "ui/MapGestures.kt", "poi/GoogleMapsLink.kt", "ui/RouteWarnings.kt",
     "gpx/GpxModel.kt", "gpx/GpxWriter.kt", "gpx/SportType.kt", "data/LastActivity.kt",
     // plan sync, phase 2 (docs/design/web-sync.md): pairing code, keys, crypto, item format, conflict rule, ledger
-    "sync/SyncCrypto.kt", "sync/PairCode.kt", "sync/SyncItem.kt", "sync/SyncMerge.kt", "sync/SyncLedger.kt",
+    "sync/SyncCrypto.kt", "sync/PairCode.kt", "sync/SyncItem.kt", "sync/SyncMerge.kt", "sync/SyncLedger.kt", "sync/TrackCode.kt",
     // long-route question (web-planner.md §15): the app's LongRoute rule and plan status texts
     "routing/LongRoute.kt", "ui/PlanStatus.kt", "ui/PlanGaps.kt",
     // GPX import (web-planner.md §15): the app's tolerant parser (SAX → onpathweb stand-ins in Wasm), track → plan, time

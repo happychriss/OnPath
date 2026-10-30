@@ -25,7 +25,7 @@ origin/main merged – web-spike carries main's app code again and merges main r
 | `app/src/test/java/com/onpath/app/sync/` | `SyncCryptoTest` (FIPS 180-4, RFC 4231, RFC 5869, FIPS 197, GCM spec vectors; byte-equal to javax.crypto on 200 random inputs), `PlanSyncTest` (formats, frozen v1 values, merge, ledger, two ledgers through a fake mailbox). Run by `./gradlew -p web/engine test`. |
 | `web/engine/.../WebSync.kt` | string calls for the page (`syncKeys`, `syncApply`, `syncOutbox`, …; exports in `WebApi.kt`) |
 | `web/host/src/sync.js`, `web/host/migrations/0001_sync.sql` | the mailbox (Worker route `/sync/v1/…`, D1) |
-| `web/app/src/sync.ts`, `plans.ts` | browser: IndexedDB store, sync loop, My routes, the Phone window (header entry: state dot, pairing, Sync now, Unpair), join dialog |
+| `web/app/src/sync.ts`, `plans.ts` | browser: IndexedDB store with one folder per phone (§14), sync loop (pull by itself, push on Save), My routes, the Phone window (header entry: state dot, pairing, Sync now, Unpair), join dialog |
 | Tests | `web/host/test/sync.test.js` (mailbox on Node's SQLite as fake D1), `web/app/test/sync-engine.mjs` (Wasm = JVM frozen bytes), `web/app/test/sync-smoke.mjs` (two browser contexts, end to end) – all in CI, none needs map data |
 
 ## 2. Threat model
@@ -176,11 +176,12 @@ A round (the same on phone and browser):
    404 = mailbox not claimed yet or expired → `POST` (claim, any key holder may) and read again.
 3. **Push:** for each dirty item `PUT /sync/v1/<mailbox>/<id>` with `x-onpath-base: <rev>` → `acked(item, rev)`.
    409 = someone wrote first → back to 1 (the merge keeps both). At most 4 passes per round.
-4. 410 / 403 = the pairing was ended → `forget()` (plans stay, marked to upload again on a new pairing), forget the
-   secret, tell the user. Network error → "Offline – your plans sync when the connection is back." (INFO).
+4. 410 / 403 = the pairing was ended → the phone: `forget()` (plans stay, marked to upload again on a new pairing);
+   the browser (A-017): the folder closes, nothing is marked to upload. Network error → "Offline – your plans sync
+   when the connection is back." (INFO).
 
-Triggers (browser): after every local change (0.4 s), every 30 s while the page is visible, on `online` and when the
-tab becomes visible; every 3 s while the pairing dialog waits for the phone.
+Triggers (browser, A-017 §14): **pull** at load, when the tab becomes visible, on `online`, every 60 s while visible,
+every 3 s while the pairing dialog waits for the phone; **push** only on Save (the own hello also without).
 
 ## 8. Mailbox API (`web/host/src/sync.js`)
 
@@ -224,24 +225,34 @@ Header `Authorization: Bearer <token>` on every call.
 
 ## 9. Browser (web/app)
 
-- ☰ → **My plans**: save the current plan (name field, "Save as a new plan" when the open plan is a saved one), list
-  newest first with date and "from the other device", open, rename, delete (asks once: "It is also deleted on the
-  paired phone."), sync status line, "Sync now" when paired. The plan sheet's ⋯ → "Save to My plans" opens the same.
-- Header phone entry → **Phone window** (since 2026-10-30; web-planner.md §13 row 29): the state (not paired / paired
-  and the phone synced within 24 h – green / the phone not for longer – amber, from `appSeen` below), How it works,
-  privacy; **Pair phone**: QR code of the pairing link, "Open OnPath on the phone → ☰ → Pair with browser → scan this
-  code", check digits, "Waiting for the phone…" → "Paired with Pixel 8"; paired: **Sync now**, **Unpair** (asks in place: "Routes stop syncing. They stay in this browser and on
-  the phone.").
-- A pairing link opened in a browser (e.g. the phone's camera opened the web page instead of the app): "Pairing code –
-  usually you scan it with the OnPath app; you can also pair this browser instead". The secret is removed from the
-  address bar at once.
-- Storage: IndexedDB `onpath` / `kv` (keys `pair`, `device`, `ledger`); blocked storage → memory only, with a warning.
-  Web Locks keep two tabs from writing the ledger at the same time.
-- Test: `web/app/test/sync-smoke.mjs` – context A "browser" (desktop), context B "phone" (Android UA): pair by link,
-  same check digits, "Paired with Chrome on Android", save → B, rename on B → A, B offline + rename, A renames later
-  → both show "Browser name" + "Phone name (copy)", open a synced plan, delete with the question → gone on B, reload
-  keeps plans + pairing, D1 holds no readable title / name / pairing code, unpair on B → A says "ended on the other
-  device", plans stay on both, mailbox empty. 21 checks.
+Since 2026-10-30 (owner order A-017) the browser keeps **folders** – one per phone, plus "Without phone" – and sends to
+the phone only with **Save** (§14). What the page shows:
+
+- Header: My routes · phone entry · **Save route** · Import GPX · Help (desktop inline, ☰ on phones). **Save** is bold /
+  filled while anything in the open phone folder is not on the phone yet, with the quiet "Not saved on the phone yet" /
+  "Noch nicht auf dem Handy gespeichert" beside it (hidden below 1180 px, then the tooltip says it); amber "Mailbox
+  full – …" instead after a 507. In "Without phone" it saves in this browser only, no hint. A click saves the shown
+  route into its folder (name proposal / Save or Save as new, as before) and then sends everything unsaved of the
+  folder (`sendAll`); nothing changed on the route → straight to the phone.
+- ☰ → **My routes**: heading "Your planned routes · Pixel 8" (or "· Without phone"), Save current route (into the
+  folder only – nothing is sent), routes and imported tracks newest first; the phone's new / changed routes **bold**
+  with the grey line "New from the phone" / "Changed on the phone" until opened; rename, delete (in place; in a phone
+  folder the question names the phone's recycle bin, in Without phone "Delete … from this browser?"). Paired: a quiet
+  "Without phone (2)" looks into the routes from before the pairing (and "Back to Pixel 8"); a route opened from there
+  shows **Copy to Pixel 8** beside "Saved as …". Closed folders of other phones: "Remove routes of ‹phone› from this
+  browser" (quiet, no question).
+- Header phone entry → **Phone window** (web-planner.md §13 rows 29, 32): the state (not paired / paired and the phone
+  synced within 24 h – green / the phone not for longer – amber, from `appSeen`), "Paired with Pixel 8", How it works,
+  privacy; **Pair phone** (always a new code): QR code, steps, check digits, "Waiting for the phone…" → "Paired with
+  Pixel 8"; paired: **Sync now** (a pull), **Pair another phone**, **Unpair** (no question); the closed folders'
+  "Remove routes of …" lines.
+- A pairing link opened in a browser: "Pairing code – usually you scan it with the OnPath app; you can also pair this
+  browser instead" → it waits for a phone's hello in that mailbox like a pairing it showed itself. The secret is
+  removed from the address bar at once.
+- Storage: IndexedDB `onpath` / `kv` – `device`, `pair` (the open folder's code), `pending` (a pairing waiting for the
+  phone), `folders` (the directory) and per folder `fach:<key>:ledger`, `:marks`, `:draft` (§14). Blocked storage →
+  memory only, with a warning. Web Locks keep two tabs from writing at the same time.
+- Test: `web/app/test/sync-smoke.mjs` (67 checks, §14.4).
 
 **Demo without deploying:** `cd web/app && npm run build && node test/sync-smoke.mjs` runs both sides headless. For a
 manual look: a few lines around `serve({ …, sync: (r) => handleSync(r, { SYNC: fakeD1() }) })` from that test, then
@@ -321,3 +332,73 @@ Merge `feat/plan-sync` (or main once it is in) – the shared code is ready and 
 3. **Tombstone clean-up and item limit** (1000 per mailbox): fine for phase 2; revisit with real numbers.
 4. **Production mailbox:** separate D1 database and Access-free host when the planner goes public; the same code.
 5. **Rate limit numbers** (120/min/IP) and idle expiry (12 months) – defaults, adjust after the test.
+
+## 14. Folders – one per phone, Save sends to the phone (owner order A-017, 2026-10-30)
+
+Owner: "So wenige Fragen wie möglich." Before, the browser had one list, every change went to the phone at once and a
+pairing uploaded everything that was in the browser – a friend's PC mixed its routes with yours.
+
+### 14.1 Model
+
+| Rule | Browser (web/app/src/sync.ts) |
+| --- | --- |
+| One folder per phone, key = the phone's device id (from its hello, role 1); plus "Without phone" (`none`) | directory `folders` = `{open, list:[{key, name, mailbox, pairedAt, seen}]}`; per folder `fach:<key>:ledger` (the shared `SyncLedger` text), `:marks` (`{id: new/changed}`), `:draft` (the open route: plan code, which saved route, which folder) |
+| Pairing opens that phone's folder, only its routes are seen | `openFolder` after the phone answered (below); the open route swaps to that folder's draft (an empty map for a new folder) |
+| Unpair closes the folder, no question, no DELETE | the code is forgotten, this browser's hello is written as deleted (one PUT, so the phone stops naming it), Without phone opens with its draft; the routes stay |
+| The same phone again → its folder comes back with unsaved changes and marks | the phone (paired) redirects with JOIN to its one mailbox → the folder with that device id; its ledger is read again from `since = 0` (`syncRebase`: same mailbox → everything kept; a new mailbox → only the unsaved changes kept, with base 0, the rest comes back from the phone) |
+| Phone → browser by itself | pull triggers §7 |
+| Browser → phone only with Save | `round(pair, all)`: without Save only the own hello is pushed (`syncOutboxOf` with one id); Save → `sendAll` pushes the folder's outbox. Rename, delete, GPX import, saving a route only make the ledger dirty |
+| Save bold + "Not saved on the phone yet" | `status.pending` = the folder's dirty plans / tracks / tombstones (`syncState.unsaved`) > 0, or the shown route changed (`saveState`) |
+| Planned before pairing stays in Without phone, never uploaded | no `forget()` / no "mark all dirty"; **Copy to ‹phone›** copies one route with a new id into the phone folder (unsaved) |
+| A friend's PC | Pair phone always makes a new code; another phone opens its folder, the open one closes untouched (no DELETE); the friend's phone redirects (JOIN) or pairs directly later and its folder is back |
+| Laptop + desktop | each pairs itself; the phone redirects the second (JOIN); each has its own copy of the folder |
+| Marks | an item new or changed by a pull (not changed last by this browser – the phone's own and another browser's saves) → "New from the phone" / "Changed on the phone" until opened; the first fill of a folder (since = 0) is not marked |
+| Conflict | `SyncMerge` as before: both stay, the older "… (copy)" – shown "… (Kopie)" in German (display only; a rename typed with "(Kopie)" stores " (copy)" again, like `SyncMerge.storedTitle`) |
+| Delete | browser + Save → the phone's recycle bin (app); phone → gone here |
+| Imported GPX | kept as a TRACK item (`TrackCode.fit`, the shared code) in the open folder, sent with Save; opened from My routes it shows like an imported file (`syncTrackGpx` → the app's GpxWriter → the import) |
+| 410 / 403 (Unpair on the phone) | the folder closes like Unpair, quiet line "The connection was ended on the phone." / "Die Verbindung wurde am Handy getrennt." |
+| 507 | amber "Mailbox full – too many saved routes. Delete some on the phone, then save again." beside Save; everything stays unsaved in the folder |
+| Two phones with the same name | "Pixel 8 · paired 30 Oct" / "Pixel 8 · verbunden 30. Okt." |
+
+### 14.2 Pairing in the browser
+
+1. **Pair phone** (also "Pair another phone" while paired): a new code B, its mailbox claimed (`POST`), kept as
+   `pending`; the open folder stays open meanwhile. The code shown before is deleted (never scanned).
+2. Every 3 s (and on every pull) the page reads B: its own hello goes in (role 2, the phone shows "Paired with Chrome on
+   Linux"); then
+   - a **JOIN** (§5.1, `SyncJoin.secretOf`) → adopt the phone's code P, `DELETE` B, open the folder of the JOIN's
+     device, read P from `since = 0`; the check digits stayed B's (both screens showed them);
+   - a **hello with role 1** (an unpaired phone scanned B; or, from an app before the role, a hello with no role that
+     is not ours) → B is the phone's mailbox; open the folder of that device.
+3. The folder's name comes from the phone's hello in its mailbox (role 1).
+
+A store from before the folders moves once (`migrate`): not paired → Without phone; paired → the folder of the newest
+other hello (or `mb:<mailbox>` until the phone says hello, then re-keyed).
+
+### 14.3 Engine calls (WebSync.kt, the shared com.onpath.app.sync)
+
+`syncHelloAs` (hello with role), `syncOutboxOf` (only some ids), `syncPeek` (a page's JOIN and hellos with roles),
+`syncJoinBlob` (the JOIN a phone writes – for tests and as the reference), `syncHelloId`, `syncRebase`,
+`syncSaveTrack`, `syncTrackFit`, `syncTrackGpx`; `syncList` gives `kind`, `track`, `device`; `syncDevices` the device
+id; `syncState` `unsaved`. The JOIN / role format is main's shared `SyncItem.pairCode` / `role` and `SyncJoin`
+(f94b5050) – the web has no copy of it. JVM test `web/engine/src/test/.../WebSyncJoinTest.kt` pins the bytes of §5.1.
+
+### 14.4 Tests
+
+`web/app/test/sync-smoke.mjs` – desktop A, laptop L and fake phones: the app's shared sync code in the Wasm engine of
+an idle page, driven from Node with the real crypto against the host's mailbox (hello role 1, routes, rename, delete,
+JOIN redirect, "Unpair?" = DELETE). 67 checks: Without phone → pairing opens the phone's folder, nothing uploaded;
+the Phone window (no unpair question, no Show code again, three states); unsaved edits survive a reload, a pull sends
+nothing, Save sends, the hint goes; "New from the phone" / "Changed on the phone" until opened; conflict "(copy)";
+delete both ways; GPX as TRACK with Save; Copy to Pixel 8; the laptop via JOIN (since 0, transitional mailbox 410); a
+friend's phone (two folders, same name + date, the first untouched); Unpair without a question + "Remove routes of …";
+the same phone again with its unsaved change; 507 amber + nothing lost; D1 holds nothing readable; Unpair on the
+phone → both browsers close the folder with the quiet line; the new-mailbox cap. `web/host/test/sync.test.js`
+unchanged.
+
+### 14.5 Open (owner)
+
+- **Phone reinstalled:** a new device id ⇒ a new folder; the old one stays closed, its unsaved changes reachable only
+  by removing it. Proposal: the device id into the Android backup (A-017 app point 6), or allow "Copy to ‹phone›" from
+  a closed folder too.
+- "Copy to ‹phone›" is offered for routes; an imported track from Without phone is not copied (import it again).

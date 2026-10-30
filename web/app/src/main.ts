@@ -23,7 +23,7 @@ import { icon, activityIcon, needle, logo, type IconName } from './icons';
 import { ActivityPicker, type ActivityRow, type PaceChoices } from './activity';
 import { holdMenu, type MenuItem } from './menus';
 import { Position } from './position';
-import { PlanSync } from './sync';
+import { PlanSync, NONE, shownTitle, type SavedPlan } from './sync';
 import { myPlansDialog, joinDialog, requestSave, phoneDialog, phoneState } from './plans';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
@@ -66,6 +66,8 @@ const state = {
   /** Its name and plan code as saved (the sheet says "Saved as …", and whether the plan changed since). */
   savedTitle: null as string | null,
   savedCode: null as string | null,
+  /** The folder the saved plan is in (A-017: one per phone + "none" = Without phone); null for a new route. */
+  savedFolder: null as string | null,
   activity: (localStorageGet('activity') as Activity) ?? 'HIKE',
   sac: Number(localStorageGet('sac') ?? 2),
   plan: null as PlanResult | null,
@@ -109,6 +111,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <button id="menuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_menu'))}" aria-haspopup="menu" aria-expanded="false">${icon('menu')}<i class="menudot" aria-hidden="true" hidden></i></button>
     <nav id="mainMenu" class="nav" aria-label="${escapeHtml(t('web_product'))}">
       ${NAV.map((n) => `<button id="${n.id}" role="menuitem" title="${escapeHtml(n.label)}">${icon(n.icon, 20)}<span>${escapeHtml(n.label)}</span></button>`
+        + (n.id === 'menuSavePlan' ? `<span id="saveHint" class="savehint" role="status" hidden></span>` : '')
         + (n.id === 'menuPlans' ? `<button id="syncBadge" class="syncbadge" role="menuitem" title="${escapeHtml(t('web_pair_phone'))}">${icon('phone', 20)}<i class="syncdot" aria-hidden="true" hidden></i><span class="lbl">${escapeHtml(t('web_pair_phone'))}</span></button>` : '')).join('')}
       ${siteLink('web_url_app', t('web_link_app'), 'navlink')}
     </nav>
@@ -171,6 +174,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const phoneWidth = () => matchMedia('(max-width: 700px)').matches;
+/** The sync once it exists (the header's Save is drawn before it). */
+let syncRef: PlanSync | null = null;
 saveEntry('empty'); // the header's Save: greyed until a route exists (renderSaved keeps it current)
 // the plan sheet's three steps (sheetstep.ts – the app's PlanSize): handle, chevron, a click on the summary; remembered
 const sheetSteps = setupSheetSteps($('sheet'), $('handle'), $<HTMLButtonElement>('sheetStep'), document.querySelector<HTMLElement>('.sheethead')!, () => {});
@@ -281,6 +286,7 @@ const paceReady: Promise<void> = ready.then(async (ok) => {
 ready.then(async (ok) => { if (ok) { await paceReady; openFromLink(); prefetchView(); } });
 // plan sync (docs/design/web-sync.md): My plans in this browser, paired with the phone through the mailbox
 const sync = new PlanSync(engine, params.get('syncApi') ?? base + 'sync/v1/');
+syncRef = sync;
 (window as unknown as { __sync: PlanSync }).__sync = sync; // for the browser tests
 syncBadge(); // the header entry with its full tooltip at once – sync.init waits for the engine (CI race in sync-smoke)
 const syncReady = ready.then(async (ok) => {
@@ -289,6 +295,9 @@ const syncReady = ready.then(async (ok) => {
   if (pairLink) joinDialog(sync, pairLink);
   syncBadge();
   sync.onChange(syncBadge);
+  sync.onChange(() => saveEntry(saveState)); // bold while anything is not on the phone yet (A-017 rule 6)
+  sync.onFolder((_from, to) => { openDraft(to); });
+  saveEntry(saveState);
   $('syncBadge').dataset.ready = '1'; // the sync runs (tests wait for this)
   return true;
 });
@@ -637,7 +646,7 @@ async function google(name: string, lat: number, lon: number, label: string) {
 let linkChecked = false; // until then the address may still hold a plan to open – do not overwrite it
 async function openFromLink() {
   linkChecked = true;
-  if (!/[#&?]p=/.test(location.href)) return;
+  if (!/[#&?]p=/.test(location.href)) { if (!draftsOn) restoreDraft(); return; }
   const shared = await engine.parse(location.href);
   if (!shared) { status(t('msg_plan_link_unreadable'), 'error'); return; }
   if (shared.points.map(key).join(';') === state.points.map(key).join(';') && shared.activity === state.activity && shared.sac === state.sac) return; // our own address update
@@ -646,6 +655,7 @@ async function openFromLink() {
   // there before the camera fits the plan beside the sheet)
   if (shared.points.length >= 2) appHint($('apphint'));
   await loadShared(shared);
+  if (!draftsOn) await restoreDraft(); // the page opened with its route in the address: which saved route it is
 }
 
 /** Shows [shared] as the plan (from a link or from My plans). */
@@ -689,9 +699,46 @@ function sharedPlan(): SharedPlan {
 async function rememberInAddress() {
   if (!linkChecked) return;
   const page = location.href.split('#')[0];
-  if (!state.points.length) { if (location.hash) history.replaceState(null, '', page); return; }
+  if (!state.points.length) { if (location.hash) history.replaceState(null, '', page); storeDraft(''); return; }
   if (!(await ready)) return;
-  history.replaceState(null, '', page + '#p=' + await engine.encode(sharedPlan()));
+  const code = await engine.encode(sharedPlan());
+  history.replaceState(null, '', page + '#p=' + code);
+  storeDraft(code);
+}
+
+// ---- the open route per folder (A-017 point 1): kept with its folder, back when the folder opens again ----
+let draftsOn = false; // only once the sync knows the open folder (and the page restored the saved route's state)
+let draftsDone: () => void = () => {};
+/** The reloaded page knows again which saved route it shows (the header's Save waits for it – never a duplicate). */
+const draftsRestored = new Promise<void>((r) => { draftsDone = r; });
+function storeDraft(code: string) {
+  if (!draftsOn || !syncRef) return;
+  syncRef.setDraft({ code, savedId: state.savedId, savedTitle: state.savedTitle, savedCode: state.savedCode, savedFolder: state.savedFolder })
+    .catch((e) => console.warn('[Problems] WARN sync: the open route was not kept for its folder', e));
+}
+/** Another folder opened (pairing, unpairing, the phone ended it): its own open route comes back, or an empty map. */
+async function openDraft(folder: string) {
+  draftsOn = false;
+  const d = await sync.draft(folder);
+  const shared = d?.code ? await engine.parse('p=' + d.code) : null;
+  forgetSaved();
+  if (shared) await loadShared(shared);
+  else if (state.points.length) { state.title = null; await commit([], []); }
+  if (shared && d) { state.savedId = d.savedId; state.savedTitle = d.savedTitle; state.savedCode = d.savedCode; state.savedFolder = d.savedFolder ?? null; }
+  draftsOn = true;
+  render();
+  rememberInAddress();
+}
+/** After a reload: the address holds the route; its saved state (which saved route, which folder) comes from the draft. */
+async function restoreDraft() {
+  if (!(await syncReady)) return;
+  const d = await sync.draft();
+  if (d?.code && state.points.length && d.code === await engine.encode(sharedPlan())) {
+    state.savedId = d.savedId; state.savedTitle = d.savedTitle; state.savedCode = d.savedCode; state.savedFolder = d.savedFolder ?? null;
+    render();
+  }
+  draftsOn = true;
+  draftsDone();
 }
 
 // ---- planning ----
@@ -877,8 +924,28 @@ async function renderSaved() {
   if (line.hidden) { saveEntry(state.points.length >= 2 ? 'save' : 'empty'); return; }
   // the name is in the code too, but naming it on Save (or a rename) is not a change of the route
   const changed = state.savedCode != null && (await ready) && (await untitled(sharedPlan())) !== (await savedUntitled(state.savedCode));
-  line.innerHTML = `${icon('check', 16)}<span>${t(changed ? 'web_saved_as_changed' : 'web_saved_as', `<b>${escapeHtml(state.savedTitle!)}</b>`)}</span>`;
+  line.innerHTML = `${icon('check', 16)}<span>${t(changed ? 'web_saved_as_changed' : 'web_saved_as', `<b>${escapeHtml(shownTitle(state.savedTitle, ''))}</b>`)}</span>`;
+  // A-017 point 6: a route from Without phone while a phone is paired – "Copy to ‹phone›", one action, no question
+  if (state.savedFolder === NONE && syncRef && syncRef.open !== NONE) {
+    const b = document.createElement('button');
+    b.id = 'copyToPhone';
+    b.className = 'textbtn';
+    b.textContent = t('web_copy_to_phone', syncRef.status.phone ?? '');
+    b.onclick = copyToPhone;
+    line.append(b);
+  }
   saveEntry(changed ? 'save' : 'saved');
+}
+/** "Copy to ‹phone›": the shown route from Without phone into the phone's folder (new id, not saved on the phone yet). */
+async function copyToPhone() {
+  const p = (await sync.list(NONE)).find((x) => x.id === state.savedId);
+  if (!p) return;
+  const c = await sync.copyToPhone(p);
+  if (!c) return;
+  state.savedId = c.id; state.savedTitle = c.title; state.savedCode = c.plan; state.savedFolder = sync.open;
+  render();
+  rememberInAddress();
+  status(t('web_copied_to_phone', sync.status.phone ?? ''));
 }
 /** For My routes → "Save current route" and the header's Save: greyed on an empty route, ✓ while saved and unchanged. */
 let saveState: 'empty' | 'save' | 'saved' = 'empty';
@@ -887,13 +954,36 @@ let saveState: 'empty' | 'save' | 'saved' = 'empty';
 function saveEntry(st: 'empty' | 'save' | 'saved') {
   saveState = st;
   const b = $<HTMLButtonElement>('menuSavePlan');
-  const label = st === 'saved' ? t('web_saved_short') : t('plan_save_route');
-  const tip = st === 'saved' ? t('web_saved_title', state.savedTitle ?? '') : st === 'empty' ? t('web_share_needs_two') : label;
-  b.disabled = st === 'empty';
-  b.dataset.state = st;
+  // A-017 rule 6: paired, Save is bold / filled while anything is not on the phone yet (the folder's outbox, or the
+  // shown route changed), the quiet "Not saved on the phone yet" beside it; Without phone it saves here only, no hint
+  const s = syncRef?.status;
+  const paired = !!s?.paired, waiting = paired && (s!.pending > 0 || st === 'save');
+  const shown = paired && s!.pending > 0 && st !== 'save' ? 'save' : st;
+  const label = shown === 'saved' ? t('web_saved_short') : t('plan_save_route');
+  const tip = waiting ? t('web_save_title_phone', s!.phone ?? '') : shown === 'saved' ? t('web_saved_title', state.savedTitle ?? '')
+    : shown === 'empty' ? t('web_share_needs_two') : paired ? label : t('web_save_title_local');
+  b.disabled = shown === 'empty';
+  b.dataset.state = shown;
+  b.classList.toggle('unsaved', waiting);
   b.title = tip;
   b.setAttribute('aria-label', tip);
-  b.innerHTML = `${icon(st === 'saved' ? 'check' : 'save', 20)}<span>${escapeHtml(label)}</span>`;
+  b.innerHTML = `${icon(shown === 'saved' ? 'check' : 'save', 20)}<span>${escapeHtml(label)}</span>`;
+  const hint = $('saveHint');
+  const full = paired && !!s?.full;
+  hint.hidden = !waiting && !full;
+  hint.classList.toggle('warning', full);
+  hint.textContent = full ? s!.message : waiting ? t('web_save_unsaved') : '';
+}
+/** The header's Save (A-017): the shown route into its folder (name proposal as before), then everything unsaved of
+ *  the folder to the phone; nothing changed on the route → straight to the phone. Without phone: saves here only. */
+async function headerSave() {
+  if (!(await syncReady)) return;
+  await draftsRestored;
+  await renderSaved();
+  const send = () => { if (sync.status.paired) sync.sendAll(); };
+  if (saveState === 'save') { requestSave(sync, plansHost, send); return; }
+  if (sync.status.paired && sync.status.pending > 0) { send(); return; }
+  requestSave(sync, plansHost); // saved and unchanged: Save again / Save as new (the app's saveMode)
 }
 
 // ---- activity (the app's picker as a drop-down at the chip: six activities, Hike with its T level) ----
@@ -1061,20 +1151,23 @@ $('reverse').onclick = () => applyEdit('reverse');
 $('roundTrip').onclick = () => applyEdit('roundTrip');
 $('clear').onclick = clearRoute;
 $('clearPoints').onclick = clearRoute;
-function forgetSaved() { state.savedId = null; state.savedTitle = null; state.savedCode = null; }
+function forgetSaved() { state.savedId = null; state.savedTitle = null; state.savedCode = null; state.savedFolder = null; }
 const plansHost = {
   current: async () => (state.points.length >= 2 && (await ready) ? { code: await engine.encode(sharedPlan()), title: state.title } : null),
   openId: () => state.savedId,
+  openFolder: () => (state.savedId && state.savedFolder) || sync.open,
   saveState: async () => { await renderSaved(); return { state: saveState, title: state.savedTitle }; },
-  open: async (p: { id: string; plan: string; title: string | null }) => {
+  open: async (p: SavedPlan, folder: string) => {
+    if (p.kind === 'track') { gpxImport.showGpx(await sync.trackGpx(p), shownTitle(p.title, t('plan_route_default_name'))); return; }
     const shared = await engine.parse('p=' + p.plan);
     if (!shared) { status(t('web_plan_unreadable'), 'error'); return; }
-    state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan;
-    if (state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';')) { state.title = p.title; render(); return; }
+    state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.savedFolder = folder;
+    if (state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';')) { state.title = p.title; render(); rememberInAddress(); return; }
     await loadShared({ ...shared, title: p.title });
+    rememberInAddress();
   },
-  saved: (p: { id: string; plan: string; title: string | null }) => {
-    state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.title = p.title;
+  saved: (p: SavedPlan, folder: string) => {
+    state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.title = p.title; state.savedFolder = folder;
     rememberInAddress();
     render();
     status(t('plan_saved_as', p.title ?? t('plan_route_default_name')));
@@ -1124,7 +1217,7 @@ $('syncBadge').onclick = async () => {
 };
 // Save, two ways as in the app: the sheet's ⋯ → Save route (PlanPanel's SheetMenuItems) and My routes → Save current route
 $('sheetSave').onclick = () => { closeMenus(); requestSave(sync, plansHost); };
-navItem('menuSavePlan').act = () => requestSave(sync, plansHost); // the header's Save (A-017)
+navItem('menuSavePlan').act = headerSave; // the header's Save (A-017: it sends to the phone)
 $('exportGpx').onclick = async () => {
   closeMenus();
   const r = JSON.parse(await engine.call('gpx', state.title ?? '', state.activity, state.sac));
@@ -1151,7 +1244,9 @@ const gpxImport = setupGpxImport({
   map, engine, status, fitPadding,
   activity: () => ({ activity: state.activity, sac: state.sac }),
   setActivity: (a, sac) => setActivity(a, sac, true),
-  plan: async (points, title) => { state.title = title; state.savedId = null; await commit(points); },
+  plan: async (points, title) => { state.title = title; forgetSaved(); await commit(points); },
+  // A-017 rule 14: an imported track is kept in the open folder and goes to the phone with Save
+  imported: (tr) => { syncReady.then((ok) => { if (ok) sync.saveTrack(tr.segments, tr.waypoints, tr.activity, tr.sac, tr.name); }); },
 });
 navItem('menuImportGpx').act = () => gpxImport.pick();
 (window as unknown as { __gpx: typeof gpxImport }).__gpx = gpxImport; // for the browser tests

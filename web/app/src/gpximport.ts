@@ -24,10 +24,12 @@ export interface GpxHost {
   /** The track's route points become the plan (one undo step). */
   plan(points: LatLon[], title: string): Promise<void>;
   status(msg: string, kind?: 'info' | 'error'): void;
+  /** A file was imported and shown (not a synced track opened again): the page keeps it in My routes. */
+  imported?(t: Track): void;
   fitPadding(): maplibregl.PaddingOptions;
 }
 
-interface Track {
+export interface Track {
   name: string; activity: Activity; sac: number; switch: boolean; note: string | null; skippedNote: string | null;
   distanceM: number; durationS: number;
   texts: { distance: string; duration: string; climb: string; plan: string; close: string };
@@ -81,7 +83,7 @@ export function setupGpxImport(h: GpxHost) {
   };
   ensureLayers();
 
-  async function importFile(f: File) {
+  async function importFile(f: File, keep = true) {
     h.status(t('web_gpx_importing', f.name));
     let track: Track;
     try {
@@ -96,7 +98,7 @@ export function setupGpxImport(h: GpxHost) {
     // like the app: the activity is chosen before the track is shown
     if (track.switch) h.setActivity(track.activity, track.sac);
     show(track);
-    h.status(t('web_gpx_imported', track.name));
+    if (keep) { h.status(t('web_gpx_imported', track.name)); h.imported?.(track); }
   }
 
   function show(t: Track) {
@@ -166,7 +168,9 @@ export function setupGpxImport(h: GpxHost) {
 
   /** ☰ → Import GPX (main.ts NAV entry): the file picker. */
   const pick = () => input.click();
-  return { importFile, pick, close, get shown() { return shown; } };
+  /** A synced track from My routes (GPX text from the engine), shown like an imported file – not kept again. */
+  const showGpx = (text: string, name: string) => importFile(new File([text], name + '.gpx'), false);
+  return { importFile, pick, close, showGpx, get shown() { return shown; } };
 }
 
 const empty = () => ({ type: 'FeatureCollection' as const, features: [] });

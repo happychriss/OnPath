@@ -541,6 +541,20 @@ class WebContext(private val dir: File) : android.content.Context() {
 @JSExport fun syncApply(ledger: String, pair: String, page: String, upTo: Double): String = WebSync.apply(ledger, pair, page, upTo)
 @JSExport fun syncOutbox(ledger: String, pair: String, random: String): String = WebSync.outbox(ledger, pair, random)
 @JSExport fun syncAcked(ledger: String, sent: String, rev: Double): String = WebSync.acked(ledger, sent, rev)
+// A-017 (web-sync.md §5.1, §14 folders): JOIN redirect, device role, tracks, push only on Save, read again from the start
+@JSExport fun syncOutboxOf(ledger: String, pair: String, random: String, only: String): String =
+    WebSync.outbox(ledger, pair, random, only)
+@JSExport fun syncHelloAs(ledger: String, device: String, name: String, now: Double, role: Int): String =
+    WebSync.hello(ledger, device, name, now, role)
+@JSExport fun syncPeek(pair: String, page: String): String = WebSync.peek(pair, page)
+@JSExport fun syncJoinBlob(pair: String, device: String, phoneCode: String, now: Double, nonce: String): String =
+    WebSync.joinBlob(pair, device, phoneCode, now, nonce)
+@JSExport fun syncHelloId(device: String): String = WebSync.helloId(device)
+@JSExport fun syncRebase(ledger: String, sameMailbox: Int): String = WebSync.rebase(ledger, sameMailbox != 0)
+@JSExport fun syncSaveTrack(ledger: String, id: String, track: String, title: String, now: Double, device: String): String =
+    WebSync.saveTrack(ledger, id, track, title, now, device)
+@JSExport fun syncTrackFit(segments: String, marks: String, activity: String, sac: Int): String = WebSync.trackFit(segments, marks, activity, sac)
+@JSExport fun syncTrackGpx(track: String, title: String): String = WebSync.trackGpx(track, title)
 
 // ---- web UI rules (WebUi.kt): route name proposal, POI kind filters ----
 @JSExport fun routeName(line: String, names: String): String = WebUi.routeName(line, names)
