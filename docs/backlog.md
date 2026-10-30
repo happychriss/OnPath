@@ -23,6 +23,14 @@ the git log.
   line for recommended items instead of the guide before a tour, if the guide feels like too much.
 - **Flaky under full local load:** `NoStaleDownloadsTest.pointNoLongerWantedIsNotDownloaded` failed once in a full local
   run, green alone and in CI – watch it.
+- **Web planner: mirror the app's automatic sync + pairing indicator (owner 2026-10-30, app 9f25b29)** – drop any
+  "Sync now"; sync after a change, on page load, on `visibilitychange` (visible) and when the network returns; while the
+  tab is visible and paired a pass about every 60 s, doubling on errors / offline up to 10 min, reset on success; never
+  in a hidden tab, never two passes at once. Sync view: "Paired with <phone>", relative "Last synced: just now / 5 min
+  ago" (then the time), error / offline lines, Unpair. Header: small phone icon with ✓ when paired (tooltip "Pixel 8 ↔
+  this browser · 1 min ago"), amber on the same problems as the phone (507 full, refused, local storage failure, last
+  online pass > 6 h after the last good one; never for plain offline); "ended from the phone" shown until the sync view
+  is opened. Not paired: neutral "Pair phone".
 - **Web planner – owner confirmed the five assumptions (2026-10-30):** dark mode green text #8ED6A8; pace menu shows
   only the current activity's group; the browser shows only built region packages (Germany is pre-built in TEST
   overnight, `tools/dev/publish_area.sh`); on the PC a click adds a point, points drag, undo / redo / eye always shown;
