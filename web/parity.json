@@ -214,6 +214,31 @@
         "web/engine/src/main/kotlin/com/onpath/strings/Txt.kt"
       ],
       "blob": "33c4441dac28b71a8243f388066822fad247c4ff"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/PaceSettings.kt",
+      "what": "PaceSection – Your pace: one level for hiking, one for cycling, five levels with their meaning (web: section of the activity drop-down)",
+      "web": [
+        "web/app/src/activity.ts",
+        "web/engine/src/main/kotlin/com/onpath/web/WebPace.kt"
+      ],
+      "blob": "d9c0ca5647f9bc590cc14db77f82d5cf559b9d7d"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/Theme.kt",
+      "what": "Activity.navName (\"Cycling · Trekking bike\")",
+      "web": [
+        "web/engine/src/main/kotlin/com/onpath/web/WebPace.kt"
+      ],
+      "blob": "418b987623c33be5ba4dc025407e25ad9311872e"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/data/Prefs.kt",
+      "what": "pace keys hikePaceLevel / bikePaceLevel, unknown → Pace.of (web: localStorage onpath.<key>)",
+      "web": [
+        "web/app/src/main.ts"
+      ],
+      "blob": "e96953d70a88dd981e6aad5a193a327ad1fa498a"
     }
   ],
   "watch": [

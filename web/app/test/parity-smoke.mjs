@@ -139,6 +139,30 @@ await planned();
 await page.click('#activityChip');
 await page.click('#activityMenu [data-sac="4"]');
 check(await page.isHidden('#activityMenu') && (await page.textContent('#activityChip')).replace(/\s+/g, ' ').includes('Hike · T4'), 'a T level picks Hike T4 and closes');
+
+// 6c. pace (the app's Settings → Pace) in the same list: a setting – the list stays open, the sheet's time follows
+// the sheet shows the engine's time for these points + Hike T4 (the plans of the two picks above may still arrive)
+const engineTime = () => page.evaluate(async () => { const s = window.__state; const t = await window.__engine.call('planTime', s.points.map(([a, o]) => a.toFixed(6) + ',' + o.toFixed(6)).join(';'), s.activity, s.sac); return t && t !== 'null' ? JSON.parse(t).time : null; });
+const settled = async () => { for (let i = 0; i < 240; i++) { const t = await engineTime(); if (t && t === await page.textContent('#summary .big').catch(() => '')) return t; await page.waitForTimeout(500); } return null; };
+await settled();
+const bigTime = () => page.textContent('#summary .big');
+const avgTime = await bigTime();
+await page.click('#activityChip');
+await page.waitForSelector('#paceRow [data-pace]', { timeout: 10_000 }).catch(() => {});
+const levels = await page.$$eval('#paceRow [data-pace]', (b) => b.map((x) => x.textContent.trim()));
+check(levels.join('|') === 'Relaxed|Easy|Average|Fit|Very fit' && (await page.textContent('#paceRow')).includes('Hiking') &&
+  await page.getAttribute('#paceRow [data-pace=AVERAGE]', 'aria-checked') === 'true', `pace section: the app's five levels, Hiking, Average chosen (${levels.join(', ')})`);
+check((await page.textContent('#paceMeaning')).includes('4 km/h · 300 m up per hour'), "pace: what Average means (the app's DIN line)");
+await page.click('#activityMenu [data-pace=VERY_FIT]');
+await page.waitForFunction((t) => document.querySelector('#summary .big')?.textContent !== t, avgTime, { timeout: 10_000 }).catch(() => {});
+const fitTime = await bigTime();
+check(await page.isVisible('#activityMenu') && fitTime === await engineTime() && fitTime !== avgTime &&
+  await page.evaluate(() => localStorage.getItem('onpath.hikePaceLevel')) === 'VERY_FIT',
+  `Very fit: list stays open, the time is the engine's (${avgTime} → ${fitTime}), remembered in this browser`);
+await page.click('#activityMenu [data-pace=AVERAGE]');
+await page.waitForFunction((t) => document.querySelector('#summary .big')?.textContent === t, avgTime, { timeout: 10_000 }).catch(() => {});
+check(await bigTime() === avgTime, 'back to Average: the first time again');
+await page.keyboard.press('Escape');
 await planned();
 
 // 6c. Map content: the app's POI kinds by group, applied live to the poi- layers (PoiFilter), remembered
@@ -222,6 +246,15 @@ await page.keyboard.press('Escape');
 check(await page.isHidden('#points'), 'phone: Points folded away');
 await page.click('#handle');
 check(await page.isVisible('#points'), 'phone: the handle shows the Points');
+
+// pace remembered across a reload (localStorage, like the app's Prefs hikePaceLevel)
+await page.evaluate(() => { localStorage.setItem('onpath.hikePaceLevel', 'FIT'); localStorage.setItem('onpath.bikePaceLevel', 'FIT'); });
+await page.reload();
+await page.waitForSelector('#activityChip');
+await page.click('#activityChip');
+await page.waitForSelector('#paceRow [data-pace]', { timeout: 20_000 }).catch(() => {});
+const afterReload = await page.evaluate(() => [localStorage.getItem('onpath.hikePaceLevel'), document.getElementById('paceRow')?.outerHTML.slice(0, 300), document.getElementById('status').textContent]);
+check(await page.getAttribute('#paceRow [data-pace=FIT]', 'aria-checked').catch(() => null) === 'true', 'pace remembered after a reload (Fit)' + (afterReload[1] ? '' : ' – no pace section'));
 
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));

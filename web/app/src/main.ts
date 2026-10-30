@@ -19,7 +19,7 @@ import { PACKED, usePacked, packedGlyphs } from './packed';
 import { Cells } from './cells';
 import { setupSearch, type PlaceRole } from './search';
 import { icon, activityIcon, needle, logo, type IconName } from './icons';
-import { ActivityPicker, type ActivityRow } from './activity';
+import { ActivityPicker, type ActivityRow, type PaceChoices } from './activity';
 import { holdMenu, type MenuItem } from './menus';
 import { Position } from './position';
 import { PlanSync } from './sync';
@@ -215,12 +215,22 @@ async function loadStyle(): Promise<StyleSpecification> {
 const engine = new EngineClient();
 const planGaps = new PlanGapsLayer(map, engine); // points the route does not reach (plangaps.ts)
 (window as unknown as { __engine: EngineClient }).__engine = engine; // for the browser tests (timings)
+(window as unknown as { __state: typeof state }).__state = state; // for the browser tests (pace: the plan the sheet shows)
 status('Loading the routing engine…');
 const ready = engine.configure(base, params.get('segments') ?? base + 'segments/', PACKED).then((r) => {
   status(r.ok ? `Routing engine ready (${Math.round(r.stats?.engineLoadMs ?? 0)} ms)` : `Engine failed: ${r.error}`, r.ok ? 'info' : 'error');
   return r.ok;
 });
-ready.then((ok) => { if (ok) { openFromLink(); prefetchView(); } });
+// the pace setting (the app's Settings → Pace, Prefs keys hikePaceLevel / bikePaceLevel) before the first plan
+const pace = { hike: localStorageGet('hikePaceLevel') ?? 'AVERAGE', bike: localStorageGet('bikePaceLevel') ?? 'AVERAGE' };
+const paceReady: Promise<void> = ready.then(async (ok) => {
+  if (!ok) return;
+  try {
+    const r = JSON.parse(await engine.call('paceSet', pace.hike, pace.bike));
+    pace.hike = r.hike; pace.bike = r.bike; // unknown names → the app's rule (Pace.of)
+  } catch (e) { console.warn('pace not set – the default (Average) is used', e); }
+});
+ready.then(async (ok) => { if (ok) { await paceReady; openFromLink(); prefetchView(); } });
 // plan sync (docs/design/web-sync.md): My plans in this browser, paired with the phone through the mailbox
 const sync = new PlanSync(engine, params.get('syncApi') ?? base + 'sync/v1/');
 (window as unknown as { __sync: PlanSync }).__sync = sync; // for the browser tests
@@ -632,7 +642,23 @@ async function renderSaved() {
 }
 
 // ---- activity (the app's picker as a drop-down at the chip: six activities, Hike with its T level) ----
-const picker = new ActivityPicker((a, sac) => setActivity(a, sac, true));
+const picker = new ActivityPicker((a, sac) => setActivity(a, sac, true), {
+  choices: async (a) => { await paceReady; return JSON.parse(await engine.call('paceChoices', a)) as PaceChoices; },
+  pick: setPace,
+});
+/** A pace level for hiking or cycling: remembered here, handed to the engine, the shown plan's time again (no new route). */
+async function setPace(group: 'hike' | 'bike', level: string) {
+  pace[group] = level;
+  localStorageSet(group === 'hike' ? 'hikePaceLevel' : 'bikePaceLevel', level);
+  await paceReady;
+  await engine.call('paceSet', pace.hike, pace.bike);
+  if (!state.plan || state.planning) return; // a plan under way takes the new pace when it finishes
+  const t = JSON.parse((await engine.call('planTime', enc(state.points), state.activity, state.sac)) || 'null') as { timeS: number; time: string } | null;
+  if (!state.plan || state.planning) return;
+  if (!t) { changed(); return; } // the engine's last plan is another one: plan again (same route, the new time)
+  state.plan.timeS = t.timeS; state.plan.texts.time = t.time;
+  render();
+}
 engine.call('activities').then((t) => { picker.setRows(JSON.parse(t) as ActivityRow[]); renderChip(); }).catch((e) => status(`Activity names not loaded: ${e}`, 'error'));
 function renderChip() {
   const row = picker.row(state.activity);

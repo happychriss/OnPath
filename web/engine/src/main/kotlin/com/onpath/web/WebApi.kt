@@ -156,6 +156,13 @@ object Engine {
     /** The last plan when it was made for exactly [wps] (WebPlanRules.gaps). */
     internal fun lastPlanFor(wps: List<GeoPoint>): PlannedRoute? = lastPlan?.takeIf { it.first == wps }?.second
 
+    /** Activity and SAC level the last plan was made for (WebPace.planTime). */
+    private var lastPlanAct: Pair<Activity, Int>? = null
+
+    /** The last plan's line when it was made for exactly [wps], [a] and [sac] (WebPace.planTime), else null. */
+    internal fun lastPlanPoints(wps: List<GeoPoint>, a: Activity, sac: Int): List<GeoPoint>? =
+        if (lastPlanAct == a to sac) lastPlanFor(wps)?.points else null
+
     /**
      * Plans like the phone's plan sheet: the app's [Planner] (leg by leg, a failed leg becomes a straight dashed
      * line with a plain message), times from [RouteTimes], difficulty from [RouteSummary].
@@ -167,10 +174,10 @@ object Engine {
             val act = Activity.valueOf(activity)
             val p = Planner(engine()).plan(wps, act, sac, parseIndices(pinned))
             lastPlan = wps to p
-            // the plan sheet's time like the app's (AppViewModel.withModelTime): the one time model with the pace setting –
-            // the app's default (Average; e-bikes capped on the flat) – rounded for display (TimeEstimate.round)
-            val times = if (p.points.size >= 2) com.onpath.app.time.TimeEstimate.planSeconds(p.points, act,
-                com.onpath.app.time.TimeEstimate.planFactors(act, com.onpath.app.data.AppSettings())) else 0.0
+            lastPlanAct = act to sac
+            // the plan sheet's time like the app's (AppViewModel.withModelTime): the one time model with the pace setting
+            // (WebPace – the page's choice, default Average; e-bikes capped on the flat) – rounded for display (TimeEstimate.round)
+            val times = if (p.points.size >= 2) com.onpath.app.time.TimeEstimate.planSeconds(p.points, act, WebPace.factors(act)) else 0.0
             buildString {
                 append("{\"distanceM\":").append(num(p.distanceM))
                 append(",\"ascentM\":").append(num(p.ascentM))
@@ -528,6 +535,10 @@ class WebContext(private val dir: File) : android.content.Context() {
 // ---- web UI rules (WebUi.kt): route name proposal, POI kind filters ----
 @JSExport fun routeName(line: String, names: String): String = WebUi.routeName(line, names)
 @JSExport fun poiKinds(): String = WebUi.poiKinds()
+// pace setting (WebPace.kt – the app's Settings → Pace)
+@JSExport fun paceSet(hike: String, bike: String): String = WebPace.set(hike, bike)
+@JSExport fun paceChoices(activity: String): String = WebPace.choices(activity)
+@JSExport fun planTime(points: String, activity: String, sac: Int): String = WebPace.planTime(points, activity, sac)
 @JSExport fun poiFilter(original: String, hidden: String): String = WebUi.poiFilter(original, hidden)
 
 fun main() {}

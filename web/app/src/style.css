@@ -171,6 +171,11 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 .sacrow { padding: 0 10px 8px 48px; }
 .sacrow .seg { margin: 4px 0 6px; }
 .sacrow .seg button { padding: 6px 0; }
+/* the pace section (the app's Settings → Pace) under the activities: a setting, the list stays open */
+.pacerow { border-top: 1px solid var(--line); margin-top: 4px; padding: 8px 10px 6px; display: flex; flex-direction: column; gap: 4px; }
+.pacerow .pacehead b { font-weight: 600; font-size: 14px; }
+.pacerow .seg { margin: 2px 0; }
+.pacerow .seg button { padding: 6px 2px; font-size: 12px; }
 
 /* ---- dialogs: share, credits ---- */
 dialog.share, dialog.picker { width: min(400px, calc(100vw - 32px)); border: none; border-radius: 22px; padding: 20px 22px;

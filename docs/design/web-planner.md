@@ -425,7 +425,13 @@ onpath.earth: page background `#fafaf6`, text `#243c31`, line `#dce1d6`, soft ba
 green `#526d57`, button green `#245f46`, logo green `#1F6E43` + path yellow `#FFC94D` – used for the header; the
 map, sheet and controls keep the app's `OnPathColors` (green `#1F6E43`, route blue, amber, red).
 
-Open: header entry "Plan" (the page itself) left out; Help is the credits dialog with four how-to lines (a real help
+Owner decisions 2026-10-29 (cloud, 2026-10-30):
+
+| # | Owner | Now |
+| --- | --- | --- |
+| 14 | Pace choice like the app's Settings → Pace | The activity drop-down ends with **Your pace**: the five levels of the current activity's group (Hiking, or "Cycling · <bike>" – the app keeps one level for hiking and one for cycling) with the app's labels and "about 4 km/h · 300 m up per hour" line and intro. A click sets it (the list stays open); the sheet's time is recomputed by the engine (`planTime`: the app's `TimeEstimate.planSeconds` with `planFactors` of the chosen level, no new routing); new plans and an imported track's model time use it too (`WebPace.kt`). Remembered in localStorage under the app's Prefs key names (`onpath.hikePaceLevel` / `onpath.bikePaceLevel`). The long-route question keeps Average, as in the app (`LongRoute`). Tests: browser-compare (every level, Hike / bike / e-bike, Wasm = JVM `JvmRun.paceRun` exactly), parity-smoke (section, time follows, stays open, remembered after reload). |
+
+ Help is the credits dialog with four how-to lines (a real help
 page could link onpath.earth/help).
 
 ## 14. App logic on the web – inventory and keeping it in sync (cloud, 2026-10-29)
@@ -444,7 +450,7 @@ resources, web-sync.md §0); every file below "shared" is compiled from `app/` a
 | Undo / redo, hold rules and menus, "Go here" blocked reasons | `ui/PlanState` (`PlanHistory`), `ui/MapGestures` | same | shared |
 | Difficulty badge, steepness, way types / surfaces | `routing/RouteSummary`, `BRouterWayStats` | same | shared |
 | Route warnings (ferry, pushing, steps, above T, ford, steep; MTB rules) | `ui/RouteWarnings` | same | shared |
-| Plan time (one time model, default pace, e-bike flat cap, rounding) | `time/PaceModel`, `RouteTimes`, `TimeEstimate.planSeconds` | same since 2026-10-29 (before: unrounded, no e-bike cap) | shared; pace setting = the app's default (no Settings on the web) |
+| Plan time (one time model, pace setting, e-bike flat cap, rounding) | `time/PaceModel`, `RouteTimes`, `TimeEstimate.planSeconds` / `planFactors` | same since 2026-10-29 | shared; the pace choice (Settings → Pace) in the activity drop-down (§13 #14, `WebPace.kt`; `PaceSettings.PaceSection`, `Theme.navName`, Prefs keys mirrored) |
 | Very long plan asked first (> 24 h estimate) and what Cancel does | `routing/LongRoute`, `ui/PlanStatus`, `AppViewModel.recalc / answerLongRoute / cancelRun` | same (§15) | shared rule + texts; dialog flow mirrored (`longroute.ts`, `main.ts`) |
 | Point the route does not reach (red line + Show, grey dashed piece) | `ui/PlanGaps`, `MapController.setPlanGaps`, `PlanPanel` | same since 2026-10-29 | shared rule + text; drawing mirrored (`plangaps.ts`); hollow grey point not drawn yet |
 | Plan link / QR | `routing/PlanCode` | same | shared |
@@ -460,7 +466,7 @@ resources, web-sync.md §0); every file below "shared" is compiled from `app/` a
 | Mirrored UI rules (Android / Compose files) | `Screens.SacScale`, `MapOverlays.stopLabel` + menus, `PlanStatus.noRouteLine` texts, `RouteRules.saveMode`, `MapFooter.gpsColor`, `MapController` arrows + layer order, `MAP_CREDITS`, `ElevationProfile` colours, `TourBar.longRouteText`, `Panels.TrackPanel`, `PointsSection`, `PlanPoints.dropIndex/shift` (per pointer move) | mirrored | listed with the app file's hash in `web/parity.json` |
 | Engine stand-ins for Android files | `debug/Problems`, `debug/UserText`, `data/DataFiles`, `recording/GpsStatus`, `Txt` / `XmlStrings` | mirrored | `web/engine/src/main/kotlin/com/onpath/app/…` |
 | Not on the web (on purpose) | navigation, recording, re-routing, activity check, rides, cells download / loading prompts, backups, Google share (`SharedPlace`), plan links into the app (`PlanLinks`), haptics, Points delete guard, Notices | – | phone only; `watch` in `web/parity.json` lists the plan-related ones |
-| Not on the web yet | pace setting (Settings → Pace), region packages z7–9, Route details screen, hollow grey unreachable point | – | open items (§14.3) |
+| Not on the web yet | region packages z7–9, Route details screen, hollow grey unreachable point | – | open items (§14.3) |
 
 ### 14.2 How the web stays in sync
 
@@ -482,8 +488,6 @@ resources, web-sync.md §0); every file below "shared" is compiled from `app/` a
 
 ### 14.3 Open items
 
-- Pace setting: the web uses the app's default pace (Average). A "Pace" choice in the activity drop-down would make
-  times match a user's phone (needs the owner's go).
 - Region packages (z7–9) on the web: served from the maps bucket like cells, `Overview.merge(packages = …)`.
 - `PlanStatus.noRouteLine` texts are still mirrored in `main.ts`; the engine now compiles `PlanStatus` – the page could
   ask it (UI agent's file).

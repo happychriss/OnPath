@@ -48,6 +48,20 @@ web.cases.forEach((w, i) => {
     fetchMs: Math.round(w.stats?.fetchMs ?? 0), fetchedKB: Math.round((w.stats?.bytesFetched ?? 0) / 1024), note });
 });
 console.table(rows);
+// pace setting: every level's plan time as on the JVM (JvmRun.paceRun), a new plan at Very fit = planTime's, and the
+// levels really change the time (Relaxed > Average > Very fit; an e-bike on the flat is capped, PaceModel)
+const jvmPaceFile = path.join(path.dirname(jvmFile), 'jvm-pace.json');
+if (!fs.existsSync(jvmPaceFile)) { console.log(`pace: FAIL – ${jvmPaceFile} missing (run ./gradlew -p web/engine runJvm)`); fails++; }
+else {
+  const jp = JSON.parse(fs.readFileSync(jvmPaceFile, 'utf8'));
+  const same = JSON.stringify(jp) === JSON.stringify(web.pace);
+  const order = web.pace.every((c) => c.levels.RELAXED.timeS > c.levels.AVERAGE.timeS && c.levels.AVERAGE.timeS >= c.levels.VERY_FIT.timeS && (c.activity === 'EBIKE' || c.levels.AVERAGE.timeS > c.levels.VERY_FIT.timeS) &&
+    c.planVeryFitS === c.levels.VERY_FIT.timeS);
+  console.log(`pace: ${web.pace.length} cases × 5 levels ${same ? 'same as the JVM' : 'DIFF'}${order ? '' : ', levels do not order the times'} – ` +
+    web.pace.map((c) => `${c.activity} ${c.levels.RELAXED.time} / ${c.levels.AVERAGE.time} / ${c.levels.VERY_FIT.time}`).join(' · '));
+  if (!same) console.log('JVM', JSON.stringify(jp), '\nweb', JSON.stringify(web.pace));
+  if (!same || !order || web.pace.length < 3) fails++;
+}
 const wasm = fs.statSync(path.join(dist, 'engine/onpath-web-engine.wasm')).size;
 console.log(`engine load ${Math.round(web.engineLoadMs)} ms, wasm ${(wasm / 1e6).toFixed(2)} MB, whole run ${wallMs} ms; ${web.cases.length - fails}/${web.cases.length} same`);
 fs.writeFileSync(path.join(here, '../../engine/build/compare-summary.json'), JSON.stringify({ rows, engineLoadMs: web.engineLoadMs, wasmBytes: wasm, wallMs }, null, 1));

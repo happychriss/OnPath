@@ -40,12 +40,17 @@ interface WasmEngine {
   planGaps(points: string, activity: string, names: string): string;
   gpxRead(data: Int8Array, fileName: string, activity: string, sac: number): string;
   planFromTrack(track: string, activity: string, sac: number): string;
+  paceSet(hike: string, bike: string): string;
+  paceChoices(activity: string): string;
+  planTime(points: string, activity: string, sac: number): string;
 }
 
 /** Small synchronous calls the page may make by name (the app's pure UI rules – see client.ts). */
 const CALLS = new Set(['historyRecord', 'historyStep', 'historyState', 'gesture', 'pointMenu', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
   // web UI rules (WebUi.kt): route name proposal (Save), POI kind filters (Map content)
   'routeName', 'poiKinds', 'poiFilter',
+  // the app's pace setting (WebPace.kt): set the two levels, the drop-down's pace section, the last plan's time again
+  'paceSet', 'paceChoices', 'planTime',
   // the app's plan rules before routing (WebPlanRules.kt): long-route question, what Cancel does
   'longRoute', 'planCancel', 'planGaps',
   // plan sync (WebSync.kt – the app's com.onpath.app.sync)

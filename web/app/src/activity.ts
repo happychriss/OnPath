@@ -6,6 +6,18 @@ import { activityIcon } from './icons';
 
 export interface ActivityRow { key: Activity; label: string; line: string; chip: string }
 
+/** The drop-down's pace section (engine call paceChoices – the app's Settings → Pace, ui/PaceSettings.kt PaceSection). */
+export interface PaceChoices {
+  title: string; group: 'hike' | 'bike'; groupLabel: string; intro: string; selected: string;
+  levels: { key: string; label: string; meaning: string }[];
+}
+
+/** Where the pace section gets its rows and where a pick goes (main.ts: engine + localStorage). */
+export interface PaceHost {
+  choices(a: Activity): Promise<PaceChoices>;
+  pick(group: 'hike' | 'bike', level: string): Promise<void>;
+}
+
 const SAC = [
   ['Hiking', 'Well-built path, flat or slightly steep. No fall risk. Trainers are enough.'],
   ['Mountain hiking', 'Continuous path, steep in places, fall risk not excluded. Some sure-footedness; hiking boots recommended.'],
@@ -25,7 +37,9 @@ export class ActivityPicker {
   private sac = 2;
   private anchor: HTMLElement | null = null;
 
-  constructor(private onPick: (a: Activity, sac: number) => void) {
+  private pace: PaceChoices | null = null;
+
+  constructor(private onPick: (a: Activity, sac: number) => void, private paceHost?: PaceHost) {
     this.box = document.createElement('div');
     this.box.className = 'actmenu';
     this.box.id = 'activityMenu';
@@ -34,6 +48,16 @@ export class ActivityPicker {
     this.box.addEventListener('click', (e) => {
       e.stopPropagation();
       const t = e.target as HTMLElement;
+      const pace = t.closest<HTMLElement>('[data-pace]')?.dataset.pace;
+      if (pace && this.pace && this.paceHost) {
+        // a setting, not a pick: the list stays open, the time in the sheet follows (main.ts)
+        const group = this.pace.group;
+        this.pace.selected = pace;
+        this.drawPace();
+        this.box.querySelector<HTMLElement>(`[data-pace="${pace}"]`)?.focus();
+        this.paceHost.pick(group, pace).catch((err) => console.warn('pace not set', err));
+        return;
+      }
       const s = t.closest<HTMLElement>('[data-sac]')?.dataset.sac;
       const a = t.closest<HTMLElement>('[data-act]')?.dataset.act as Activity | undefined;
       if (s) this.pick('HIKE', Number(s));
@@ -55,6 +79,7 @@ export class ActivityPicker {
     this.anchor = anchor;
     this.act = a; this.sac = sac;
     this.draw();
+    this.loadPace(a);
     document.body.append(this.box);
     this.box.hidden = false;
     // under the chip; on a phone (sheet at the bottom) above it when there is no room below
@@ -73,7 +98,30 @@ export class ActivityPicker {
 
   private pick(a: Activity, sac: number) { this.close(); this.onPick(a, sac); }
 
+  /** The pace section of the current activity's group (Hiking, or Cycling · <bike>), from the engine. */
+  private loadPace(a: Activity) {
+    if (!this.paceHost) return;
+    this.paceHost.choices(a).then((c) => {
+      if (this.act !== a || this.box.hidden) return;
+      this.pace = c;
+      this.drawPace();
+    }).catch((err) => console.warn('pace choices not loaded', err));
+  }
+
+  private drawPace() {
+    let sec = this.box.querySelector<HTMLDivElement>('#paceRow');
+    if (!this.pace) { sec?.remove(); return; }
+    if (!sec) { sec = document.createElement('div'); sec.id = 'paceRow'; sec.className = 'pacerow'; this.box.append(sec); }
+    const c = this.pace, on = c.levels.find((l) => l.key === c.selected) ?? c.levels[2];
+    sec.innerHTML = `<div class="pacehead"><b>${esc(c.title)}</b> <span class="muted small">${esc(c.groupLabel)}</span></div>
+      <div class="seg" role="group" aria-label="${esc(c.title + ' – ' + c.groupLabel)}">${c.levels.map((l) =>
+        `<button data-pace="${l.key}" role="menuitemradio" aria-checked="${l.key === on.key}" class="${l.key === on.key ? 'on' : ''}" title="${esc(l.label + ' – ' + l.meaning)}">${esc(l.label)}</button>`).join('')}</div>
+      <div class="muted small" id="paceMeaning">${esc(on.label)} · ${esc(on.meaning)}</div>
+      <div class="muted small">${esc(c.intro)}</div>`;
+  }
+
   private draw() {
+    this.pace = null;
     this.box.innerHTML = this.rows.map((r) => {
       const on = r.key === this.act;
       const row = `<button data-act="${r.key}" role="menuitemradio" aria-checked="${on}" class="${on ? 'on' : ''}">
@@ -90,3 +138,5 @@ export class ActivityPicker {
     }).join('');
   }
 }
+
+function esc(t: string) { return t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!); }
