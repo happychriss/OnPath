@@ -147,9 +147,10 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   await page.goto(url + 'index.html');
   await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 120_000 });
   check(await page.isHidden('#share') && !(await page.$('#sheet button.primary')), 'empty plan: no Share, no big button');
-  await page.waitForSelector("#summary .title", { timeout: 20_000 }).catch(() => {});
-  const title = await page.locator('#summary .title').boundingBox();
-  check(title && title.height < 40, `empty plan: "Plan a route" on one line (${Math.round(title?.height ?? 0)} px)`);
+  await page.waitForFunction(() => document.querySelector('#summary .title')?.getBoundingClientRect().height > 0, null, { timeout: 30_000 }).catch(() => {});
+  const title = await page.evaluate(() => { const e = document.querySelector('#summary .title');
+    return e ? { h: e.getBoundingClientRect().height, text: e.textContent } : { h: 0, text: document.querySelector('.sheethead').outerHTML.slice(0, 300) }; });
+  check(title.h > 0 && title.h < 40, `empty plan: "Plan a route" on one line (${Math.round(title.h)} px, ${JSON.stringify(title.text)})`);
   for (const [q, want] of [['', false], ['?debug', true]]) {
     await page.goto(url + 'index.html' + q + '#p=' + CODE);
     await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
