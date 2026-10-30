@@ -3508,7 +3508,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * Saved routes and imported tracks ⇄ the paired browser. Runs in the background (plansync/PlanSync): at start,
      * back in the app, after a change here, when the network is back, about every minute while the app stays open on
-     * Plan / My routes / Browser sync ([syncPoll]) – never during a recording (after the tour).
+     * My routes / Browser sync ([syncPoll]) and right away when one of them opens – never during a recording (after the tour).
      */
     val sync = com.onpath.app.plansync.PlanSync(app, com.onpath.app.plansync.DbTourStore(app, db) { a -> planFactors(a) },
         recording = { recState.value != null }, onReport = ::syncReport)
@@ -3529,10 +3529,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var was = recState.value != null
             recState.collect { s -> if (was && s == null) sync.request("tour ended"); was = s != null }
         }
-        // on screen, paired, no tour, Plan / My routes / Browser sync shown: a pass about every minute (SyncPoll)
+        // on screen, paired, no tour, My routes / Browser sync shown (not the Plan map): a pass about every minute (SyncPoll)
         viewModelScope.launch {
             val screen = androidx.compose.runtime.snapshotFlow {
-                appOnScreen to com.onpath.app.plansync.SyncPoll.routesScreen(mode == AppMode.PLAN, routesOpen, showSettings,
+                appOnScreen to com.onpath.app.plansync.SyncPoll.routesScreen(routesOpen, showSettings,
                     settingsPage == SettingsPage.SYNC)
             }
             combine(screen, recState, sync.state) { (visible, routesScreen), rec, st ->
@@ -3546,6 +3546,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         sync.poll("every minute") -> syncPoll.requested(android.os.SystemClock.elapsedRealtime())
                         else -> delay(com.onpath.app.plansync.SyncPoll.BUSY_RECHECK_MS) // a pass runs or waits
                     }
+                }
+            }
+        }
+        // My routes / its Planned tab / Settings → Browser sync opened: pull right away (owner 2026-10-30), debounced
+        viewModelScope.launch {
+            var before = com.onpath.app.plansync.SyncPoll.Shown.OTHER
+            androidx.compose.runtime.snapshotFlow {
+                com.onpath.app.plansync.SyncPoll.shown(appOnScreen, routesOpen, routesTab == RoutesTab.PLANNED, showSettings,
+                    settingsPage == SettingsPage.SYNC)
+            }.collect { now ->
+                val why = com.onpath.app.plansync.SyncPoll.opened(before, now)
+                before = now
+                val t = android.os.SystemClock.elapsedRealtime()
+                if (why != null && syncPoll.openDue(t, sync.state.value.paired, recording = recState.value != null, busy = sync.busy())) {
+                    syncPoll.requested(t)
+                    sync.request(why)
                 }
             }
         }
