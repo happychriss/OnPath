@@ -26,7 +26,7 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
   // the phone (owner 2026-10-30): header entry with no dot / green / amber dot, the Phone window in each state, the
   // unpair question; on phones the ☰ button with the dot. For the look only: the page's own sync is stopped and the
   // status set by hand (the window's "sync now" would reset it from the empty store)
-  await page.waitForSelector('#syncBadge[aria-label]', { state: 'attached', timeout: 60_000 });
+  await page.waitForSelector('#syncBadge[data-ready]', { state: 'attached', timeout: 60_000 });
   await page.evaluate(() => { clearInterval(window.__sync.timer); window.__sync.syncNow = async () => {}; });
   await page.waitForTimeout(1500); // a sync already started ends
   const fake = (st) => page.evaluate((st) => { const s = window.__sync, now = Date.now();

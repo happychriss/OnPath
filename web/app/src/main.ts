@@ -286,6 +286,7 @@ const syncReady = ready.then(async (ok) => {
   if (pairLink) joinDialog(sync, pairLink);
   syncBadge();
   sync.onChange(syncBadge);
+  $('syncBadge').dataset.ready = '1'; // the sync runs (tests wait for this)
   return true;
 });
 addEventListener('hashchange', () => openFromLink());
@@ -1096,6 +1097,7 @@ function syncBadge() {
   b.setAttribute('aria-label', b.title);
 }
 window.setInterval(() => syncBadge(), 30_000);
+syncBadge(); // at once: the tooltip says the state and why before the sync has started (it follows sync.onChange after)
 $('syncBadge').onclick = async () => {
   closeMenus();
   if (!(await syncReady)) return; // the engine did not start – the status line says so
