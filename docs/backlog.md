@@ -104,6 +104,10 @@ the git log.
       in the plan sheet's first line (icon only at a large font) and "Route speichern" on top of ☰ – only while the plan
       is new / changed, hidden once saved. Web already has Speichern in its header (A-017, bold when unsaved); differs
       only in that it stays visible when saved – fine as is unless the owner wants it alike.
+  - *Low prio:*
+    - No WebGL2 → blank page (owner 2026-10-30) · seen in a headless browser test; old browsers / hardware acceleration
+      off hit it too · instead of a blank map the browser shows: „Dein Browser kann die Karte nicht zeichnen (WebGL2
+      fehlt). Bitte einen aktuellen Chrome, Firefox oder Edge nutzen und die Hardwarebeschleunigung einschalten.“
   - *Open order A-016 (replaces A-005):* `/.well-known/assetlinks.json` built on web-spike (ad990c9, v0.13.1 key);
     plan.onpath.earth answers 404 today → deploy the host, let Cloudflare Access pass `/.well-known/*` without login,
     check `adb shell pm get-app-links com.onpath.app`. Until then Android opens `#p=` / `#pair=` links in the browser.
@@ -192,6 +196,15 @@ the git log.
 - **AGP 9.4.1 upgrade** – later, when the owner says so.
 
 ## Later
+- **(low prio) Online place search depends on photon.komoot.io (owner 2026-10-30)** – `search/OnlineSearch.kt`
+  (`PhotonProvider`, created in `AppViewModel`). Public use is allowed in reasonable volume, but no availability
+  guarantee and possible throttling – an operational risk with many testers / a public launch. Today the offline index
+  of loaded areas is searched first; Photon only adds places outside loaded maps (rough position ~1 km), so an outage
+  means "nothing found outside loaded areas", not a crash. Small step: check we use it gently (own User-Agent / app id
+  – `PhotonProvider.userAgent` exists, check it names the app; typing debounce, cache, back-off on errors), make the
+  endpoint configurable, a calm line when it fails. Later (with the public launch / map server access): an own
+  lightweight place index per country (towns, peaks, huts – not every address), built in the map pipeline and served by
+  the map server, offline too – then Photon can go.
 - **iPhone version** – direction and order in `docs/design/multiplatform.md`; core logic free of Android
   (`SharedCoreRuleTest`).
 - **Open source + self-hosted map servers (concept, not built):** app setting "Map server" (custom URL + key, also via
