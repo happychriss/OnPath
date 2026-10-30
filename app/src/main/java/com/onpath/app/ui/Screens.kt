@@ -27,7 +27,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -427,7 +426,7 @@ private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, on
             DropdownMenuItem(text = { Text(str(Res.string.common_export_gpx)) }, leadingIcon = { Icon(Icons.Filled.Share, null) },
                 onClick = run(onExport), modifier = Modifier.heightIn(min = 48.dp))
             if (onEditRides != null) DropdownMenuItem(text = { Text(str(Res.string.routes_edit_rides)) },
-                leadingIcon = { Icon(Icons.Filled.DirectionsBus, null) },
+                leadingIcon = { Icon(rideIcon(t.rides?.rides.orEmpty()), null) },
                 onClick = run(onEditRides), modifier = Modifier.heightIn(min = 48.dp))
             if (onDelete != null) DropdownMenuItem(text = { Text(str(Res.string.common_delete), color = OnPathColors.Bad) },
                 leadingIcon = { Icon(Icons.Filled.Delete, null, tint = OnPathColors.Bad) },
