@@ -28,17 +28,6 @@ the git log.
   Saved routes and imported GPX tracks sync both ways (a delete from the browser → recycle bin; never during a tour).
   Tested without a phone: `CorePlanSyncTest`, `SyncFilesTest`, `SyncTrackTest`, and against the real `sync.js` in Node
   (`tools/sync/e2e.sh`). Web planner: track items (kind 3, field 4 = `TrackCode`) to show / keep – see `sync/TrackCode.kt`.
-- **[desktop] Memory: the app must get far smaller (owner: "3.2 GB can kill smaller phones"; top priority, donald)** – Pixel 8:
-  PSS ~1.9 GB all day (native heap 1.34 GB), 3.18 GB / native 2.24 GB after the New York test (2 regions + search
-  index rebuilt, 167 k entries). Measure each suspect with `dumpsys meminfo` / `showmap` / the native profiler, before
-  and after: (1) the POIs as ONE GeoJSON source (`pois.geojson`, 23 MB for 19 regions, indexed in native memory) → a
-  vector-tile layer in the cell pipeline (tippecanoe, like `overlays.pmtiles`); (2) the offline search index in memory
-  → SQLite FTS on disk or a smaller form; (3) MapLibre's tile cache and the 254 layers; (4) old PMTiles generations
-  still open after a style reload. Goal: < 800 MB PSS in Plan with 20 regions. Add a memory number per part to the
-  health line. Baseline measured 2026-10-29 (POI GeoJSON 0.8 GB, join leaves 0.7 GB, tiles 0.1–0.5 GB, search 70–90 MB);
-  Done: POIs as vector tiles built on the phone (7afdc46, Plan 1.49 → 0.45 GB PSS), search index on disk (156c265, search
-  +67 → +13 MB Java heap) – goal met (Plan 0.36–0.58 GB). Still: branch `wip/memory-fix1` (reload release for the
-  GeoJSON stand-in, prefetch delta 1, onLowMemory, fuller health line) – run the tests, decide on prefetch, merge.
 - **Search: first letter is slow (340–930 ms)** – the address search takes 430–780 ms for a one-letter query (measured
   2026-10-30 on the Pixel 8, `~/onpath-cells-work/search-mem/`); the place index itself is 22 ms median per keystroke.
 - **Check on the phone (0.11.6 – 0.12.0, built without a phone):**
