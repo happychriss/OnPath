@@ -3,6 +3,7 @@ package com.onpath.app.navigation
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.TurnDetector
+import kotlin.math.abs
 import kotlin.math.min
 
 /** What Navigate shows about being off the route. Every state stays until answered or the situation is gone. */
@@ -36,6 +37,13 @@ sealed interface NavPrompt {
          * Keep original stays possible.
          */
         val via: Question? = null,
+        /**
+         * The rider kept moving while the question is open: the way from here is this much longer (> 0, moving away)
+         * or shorter than when [line] was computed. Only the shown numbers change ([NavText.question]); [line],
+         * [legM] and [id] stay, so "Take new route" takes exactly what was computed (A-015: the card said "+80 m"
+         * while the rider walked from 77 to 183 m away).
+         */
+        val movedM: Double = 0.0,
     ) : NavPrompt
 
     /** No way back (no data, nothing found, timeout): arrow + distance to the route. */
@@ -126,6 +134,12 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private var turnRoundAt: GeoPoint? = null
     /** The rider's latest positions, oldest first ([TurnRound]). */
     private val recent = ArrayDeque<GeoPoint>()
+    /** Where the running routing job was asked from. */
+    private var jobFrom: GeoPoint? = null
+    /** The open question's way back ([live]) and its cost from where it was computed. */
+    private var liveLine: NavLine? = null
+    private var liveWindowM = 0.0
+    private var liveBase = 0.0
 
     init {
         // new session or restart (R-07): NO_GPS, the first fixes match the whole line (earliest part: round trips)
@@ -186,6 +200,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (st.confirmedNow && enabled && navigating && prompt == null) return step + ask(f, vibrate = true)
         if (prompt != null && !switchAsked) {
             toRoute = hint(p)
+            live(p)
             step += followUp(f)
         }
         return step
@@ -218,7 +233,9 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (prompt == null) return Step() // back on route meanwhile
         return when (outcome) {
             is Rerouter.Found -> {
-                prompt = question(++questionId, outcome)
+                val q = question(++questionId, outcome)
+                prompt = q
+                startLive(q)
                 failures = 0
                 Step(vibrate = vib)
             }
@@ -324,7 +341,40 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private fun newJob(f: OffRouteDetector.Fix, refresh: Boolean, vibrateOnResult: Boolean): Job {
         val id = ++jobId
         runningJob = id; refreshing = refresh; this.vibrateOnResult = vibrateOnResult
+        jobFrom = f.point
         return Job(id, Rerouter.Request(f.point, original, leftAtM, session.stops, session.visited, session.activity, session.sac))
+    }
+
+    /** A new question: remember its way back and the cost from where it was asked; then catch up with the rider. */
+    private fun startLive(q: NavPrompt.Question) {
+        val from = jobFrom
+        val nl = NavLine(q.line)
+        liveWindowM = q.legM.coerceIn(0.0, nl.lengthM)
+        val base = from?.let { cost(nl, it) }
+        if (base == null) { liveLine = null; return }
+        liveLine = nl; liveBase = base
+        lastFix?.let { live(it.point) }
+    }
+
+    /**
+     * Keeps the open question's numbers true while the rider moves on (every fix, no routing): the change in
+     * "distance to the way back + what is left of it" since it was computed. Updated in steps of [LIVE_STEP_M], so GPS
+     * noise does not make the numbers flicker; same question (id, line), no vibration, no new notification sound.
+     */
+    private fun live(p: GeoPoint) {
+        val q = prompt as? NavPrompt.Question ?: return
+        if (q.switch != null) return
+        val nl = liveLine ?: return
+        val now = cost(nl, p) ?: return
+        val moved = now - liveBase
+        if (abs(moved - q.movedM) < LIVE_STEP_M) return
+        prompt = q.copy(movedM = moved, via = q.via?.copy(movedM = moved))
+    }
+
+    /** Distance to the way back plus what is left of it from the nearest point (relative: only differences count). */
+    private fun cost(nl: NavLine, p: GeoPoint): Double? {
+        val m = nl.match(p, 0.0, liveWindowM) ?: return null
+        return m.distanceM - m.alongM
     }
 
     private fun markAsked(f: OffRouteDetector.Fix) { askAt = f.point; askAtMs = f.timeMs }
@@ -396,5 +446,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         /** On a new route: this far into the untouched rest = back on the original. */
         const val REST_REACHED_M = 30.0
         const val HINT_AHEAD_M = 3_000.0
+        /** An open question's numbers follow the rider in steps of this much ([live]). */
+        const val LIVE_STEP_M = 20.0
     }
 }

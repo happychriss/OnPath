@@ -69,9 +69,10 @@ object NavText {
             // "Skip stop 3?": what leaving it out saves, then the new route without it
             val saved = round10(via.extraM - q.extraM)
             append(if (saved >= 10) Txt.s(Res.string.nav_skip_saves, Format.distance(saved)) else Txt.s(Res.string.nav_about_as_long))
-        } else append(extra(q.extraM))
-        if (q.rejoinInM.isNaN()) append(" · ").append(Txt.s(Res.string.nav_new_route_length, Format.distance(round10(q.legM))))   // fresh route (Rerouter.fresh)
-        else append(" · ").append(Txt.s(Res.string.nav_rejoins_in, Format.distance(round10(q.rejoinInM))))
+        } else append(extra(q.extraM + q.movedM))
+        // + movedM: the rider kept moving since the line was computed (Navigator.live)
+        if (q.rejoinInM.isNaN()) append(" · ").append(Txt.s(Res.string.nav_new_route_length, Format.distance(round10((q.legM + q.movedM).coerceAtLeast(0.0)))))   // fresh route (Rerouter.fresh)
+        else append(" · ").append(Txt.s(Res.string.nav_rejoins_in, Format.distance(round10((q.rejoinInM + q.movedM).coerceAtLeast(0.0)))))
         if (q.startOffM > FAR_START_M) append(" · ").append(Txt.s(Res.string.nav_nearest_way, Format.distance(round10(q.startOffM))))
         // left out without asking (an ordinary route point far aside): said, so the plan's marker is not a surprise
         if (via == null) stopLabel(q)?.let { append(" · ").append(Txt.s(Res.string.nav_without_stop, it)) }

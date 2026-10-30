@@ -151,6 +151,41 @@ class NavigatorTest {
         assertFalse(r.nav.session.rerouted)
     }
 
+    /**
+     * A-015: the card said "+80 m · new route 6.2 km" while the rider walked on from 77 to 183 m away. The numbers follow
+     * the rider – same question (id, line), no vibration, no routing job – and walking back makes them smaller again.
+     */
+    @Test fun openQuestionNumbersFollowTheRider() {
+        val r = Run(Navigator(session()))
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        r.nav.onResult(r.jobs.last().id, found(1150.0 to 0.0).copy(rejoinInM = Double.NaN))
+        val q1 = r.nav.prompt as NavPrompt.Question
+        r.steps.clear()
+        // 110 m further away (a re-computation may start meanwhile; its result is not delivered here)
+        r.feed(walk(1150.0 to 0.0, 1260.0 to 0.0, t0Ms = 900_000))
+        val q2 = r.nav.prompt as NavPrompt.Question
+        assertEquals(q1.id, q2.id)
+        assertEquals(q1.line, q2.line)
+        assertEquals(q1.legM, q2.legM, 0.0)
+        assertEquals(110.0, q2.movedM - q1.movedM, 20.0)
+        assertFalse(r.steps.any { it.vibrate })
+        val extra = { q: NavPrompt.Question -> Regex("^\\+(\\d+) m").find(NavText.question(q))!!.groupValues[1].toInt() }
+        assertEquals(110.0, (extra(q2) - extra(q1)).toDouble(), 20.0)
+        assertTrue(NavText.question(q2), NavText.question(q2).contains("new route"))
+        // GPS noise standing still: at most one catch-up, then the numbers do not flicker
+        val noise = { t0: Long -> (0 until 20).map { fix(1260.0 + (if (it % 2 == 0) 8.0 else -8.0), if (it % 3 == 0) 6.0 else -6.0, t0 + it * 1000) } }
+        r.feed(noise(1_000_000L))
+        val held = r.nav.prompt
+        r.feed(noise(1_020_000L))
+        assertTrue(held === r.nav.prompt)
+        // walking back: smaller again; "Take new route" still takes the computed line
+        r.feed(walk(1260.0 to 0.0, 1150.0 to 0.0, t0Ms = 1_100_000))
+        val q3 = r.nav.prompt as NavPrompt.Question
+        assertEquals(q1.movedM, q3.movedM, 20.0)
+        r.nav.take(q3.id)
+        assertEquals(q1.line, r.nav.session.active)
+    }
+
     @Test fun keepOriginalShowsTheArrowAndAsksAgainOnlyMuchLater() {
         val r = Run(Navigator(session()))
         r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
