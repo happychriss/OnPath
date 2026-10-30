@@ -108,6 +108,9 @@ the git log.
   7.2 km – expectation or gap?); zip import checks only sizes (cell downloads check sha256).
 
 ## Waiting for the owner
+- **`CF_START_TOKEN` (GitHub secret + the Cloudflare token behind it)** – only needed for the one-time Cloudflare setup
+  of plan.onpath.earth (A-008); owner 2026-10-30: keep for now, delete later (GitHub: `gh secret delete CF_START_TOKEN`;
+  Cloudflare dashboard → My Profile → API Tokens). The branch `marketing` is already gone.
 - **Map server access before the public launch** – today one shared app key + IP rate limit + build caps. Proposal in
   `docs/design/map-access.md` (anonymous per-phone quota of new areas, supporter code, production key with rotation).
   Owner decides limit, supporter platform, timing.
