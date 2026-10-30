@@ -80,6 +80,13 @@ the git log.
       compartment in local storage (owner 2026-10-30). web-spike 14938ba has marks (A-017 point 7) but only
       `font-weight: 700` – make it as clearly bold as the app (ExtraBold vs SemiBold) and check it is live.
   - *Should:*
+    - A stop on a way is always visited, a skipped stop is never moved (Bug 01, 2026-10-31) · 060f35e, 0ef8dd3,
+      d5a7db5 · matched points now come from `OnPathHints.matched` (no reflection) and the Planner's spur rule is
+      relative – both come along with the merge (shared files; `PlannedRoute.spurs` is now `skipped`, the web never
+      read it), so the browser re-routes to the stop by itself (check: TU Dortmund 51.48667, 7.41685 by Bike, the line
+      goes down the steps to stop 3 and back). Web to do: `WebPlanRules.gaps` passes the skipped stops,
+      `PlanGaps.of(wps, p.snapped, p.skipped)` – then a stop still skipped shows its grey gap and the red line "Route
+      misses point 3 by 50 m" (new string `plan_gap_skipped`, generated); the markers already stay where they were set.
     - Clearer add buttons · e7d4e5a · place card main button = `AddPreview.label` ("Set as destination", "Add as stop
       2", "Add as new destination"); `subtitle` is now only the reason ("fits best there · about +0.9 km"); small As
       start / As destination left out when the main button does the same; the POI hold menu says the label too.
