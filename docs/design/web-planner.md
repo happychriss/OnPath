@@ -617,3 +617,128 @@ Open decisions:
    towns there – more layers to draw).
 3. Every browser shares the planner's test key; when the doorman counts per app id (map-access.md) the web needs its own.
 
+
+**Changed 2026-10-30 (A-011, §18):** the map resting orders nothing any more – on a public page idle panning must not
+build map areas. Open decision 1 above is settled that way (assumption, owner may revert): only points, the route, a
+search result and the position ask; resting at zoom ≥ 10 without detailed map says "Overview only – set a point here
+to load the detailed map".
+
+## 18. Public planner – German first, the quiet path to the app, cost protection (cloud, 2026-10-30, A-011)
+
+Owner decision 2026-10-30: the planner goes public (no login), with a quiet path to the app. Done on `web-spike`;
+Cloudflare Access stays on until the owner switches it off (steps below).
+
+### 18.1 Languages
+- **One engine, every language.** `generateStrings` (web/engine) reads `strings/…/values/` (English) and every
+  `values-<lang>/` folder; each `Res.string` carries all of them, `Txt.setLanguage(lang)` picks one at run time (the
+  page sends it with the engine's config) and sets the locale, so `data/Format` writes "4,2 km" in German as in the
+  app (TeaVM keeps only `en_US, de_DE` number data – `java.util.Locale.available` in the build). Everything the engine
+  writes (plan sheet, difficulty, warnings, menus, activity names, map-area strip) follows.
+- **The page's texts** come from `src/gen/texts.ts`, generated at build time (`npm run strings`,
+  `scripts/gen-strings.mjs`): the app's own strings for every key the TypeScript names (`t('plan_reverse')` etc.) – so
+  the page says what the app says – plus the web's own texts in **`web/strings/values[-de]/strings_web.xml`** (same
+  Compose resource format, keys `web_…`; a new language = one folder there and in `strings/`). Placeholders `%1$s` /
+  `%1$d` as in the app. The build fails on a key that exists nowhere. Why at build time and not through the engine:
+  the header and sheet render before the Wasm engine has loaded (and still render if it cannot load).
+- **Language:** `?lang=de` (not remembered) → the header's switch (DE | EN, remembered as `onpath.lang`; the page
+  reloads, the plan stays in the address) → the browser's language (`de*` → German) → English. `<html lang>` follows.
+- **Checks:** `test/texts-check.mjs` (every web key in every language with the same placeholders; no user text left in
+  the TypeScript – markup, title / aria-label / placeholder, label / status / say values; logs and internal errors stay
+  English like the app's problem log), `test/lang-engine.mjs` (engine in German and back, decimal comma),
+  `test/lang-smoke.mjs` (German browser end to end, links, the app line, the switch).
+- Not translated on purpose: map labels (German / local names from OpenStreetMap, as the app), credits' proper names.
+
+### 18.2 Website links and the one moment for the app
+- Header: "Die App" / "The app" → `https://onpath.earth/de/` / `https://onpath.earth/` (a plain nav entry; the logo
+  links there too). Footer (beside "© OpenStreetMap") and Help & credits: Datenschutz / Privacy →
+  `/de/datenschutz/` / `/privacy/`, Impressum / Legal notice → `/de/impressum/` / `/legal/`. Checked on the live
+  site 2026-10-30 (`/en/…` paths do not exist).
+- **The app line** (`apphint.ts`): „Mit der App: offline unterwegs, Navigation, neue Route ohne Netz.“ + „App holen“
+  (EN "With the app: offline on the way, navigation, new route without signal." + "Get the app") →
+  `/de/ausprobieren/` / `/try/` – never a store link. Shown in the QR dialog after "Send to phone" and in the plan sheet
+  when a shared plan link is opened (the sheet is beside / under the fitted route, so it never covers it); once per
+  browser session (`sessionStorage`), ✕ closes it, never full screen, nothing counted.
+
+### 18.3 Cost protection (host)
+| What | Limit | Where |
+| --- | --- | --- |
+| Map files `/data/` | 600 requests / min per IP (a map view ≈ 100 tile ranges) | `DATA_RATE` (Workers rate limit) |
+| Routing data `/segments/` | 30 requests / min per IP (a plan needs a few 2–10 MB parts) | `SEGMENTS_RATE` |
+| Map-area calls `/maps/` | 20 / min per IP, 120 / min all (existing) | `MAPS_RATE`, `MAPS_RATE_ALL` |
+| **New map areas** | 15 per browser per day, 60 per month; 40 per IP per day; 200 per day for everyone | `maps.js` quotas, D1 table `map_quota` in the sync database (migration 0002) |
+| Sync mailbox | 120 requests / min per IP; 32 KB per plan, 1000 items and 4 MB per mailbox; idle 12 months → deleted | `sync.js` `LIMITS`, `SYNC_RATE` (existing) |
+
+- **New map areas:** the page sends a random browser id (`onpath.browserId`, 16 random bytes) as `X-OnPath-Browser`
+  with each build request. The host counts the cells the doorman answers as *queued / building* (new work; cells that
+  are already there cost nothing) per browser (day + month), per IP (day; the IP only as a SHA-256 of host secret +
+  day + IP, so it cannot be read back and changes daily) and for everyone (day). Stored: key, period, count – no cell
+  id, no position. Over a limit → 429 `{"quota": "browser" | "ip" | "global"}`, the strip says „Für heute genug neue
+  Kartengebiete in diesem Browser. Die OnPath-App lädt jedes Gebiet – oder versuch es morgen wieder.“ (global: "The
+  planner has prepared many new map areas today …"). Counters older than two days / the last month are deleted by the
+  daily job. A request may overshoot by one call (at most 12 cells): the check is before, the count after the
+  doorman's answer. Numbers in `wrangler.toml [vars]` (`MAPS_QUOTA_*`).
+- **Sync limits checked (report):** per-IP rate, item size, items and bytes per mailbox and the idle purge exist. Not
+  there: a cap on *new* mailboxes per IP (each costs one D1 row; mailbox ids are random) – fine for now, a per-IP
+  daily cap like the map quota is the follow-up if the table grows.
+- **Owner step – spending alert (Cloudflare, no token needed):** dash.cloudflare.com → the account → *Notifications*
+  (left menu, "Manage account" → Notifications) → *Add* → **Usage Based Billing** (alerts when a product's billable
+  usage passes a threshold you set – choose *Workers*, *R2* and *D1*, e.g. Workers 5 M requests / day) → email
+  neuhaus.info@gmail.com → Save. Add a second one: *Add* → **Workers – Weekly Summary** (optional, for the trend). Also
+  check *Billing → Billable usage* once a week for the first month after launch. (Cloud Run builds are billed in
+  Google Cloud: Billing → Budgets & alerts → a monthly budget for the maps project with alerts at 50 / 90 / 100 %.)
+
+### 18.4 Search engines
+Until launch every answer of the host carries `X-Robots-Tag: noindex, nofollow` and the page has
+`<meta name="robots" content="noindex, nofollow">`. **The one switch:** `INDEXING = "on"` in
+`web/host/wrangler.toml` `[env.test.vars]` – the header goes and the host removes the meta tag (HTMLRewriter).
+
+### 18.5 Owner steps to go public (in this order)
+1. Spending alert (18.3) – before anything else.
+2. Optional: `ONPATH_MAP_KEY_TEST` (§9 step 5) so map areas can be built from the web; without it the page shows the
+   overview where no detailed map exists.
+3. Switch off Cloudflare Access for the planner: Zero Trust → Access → Applications → the planner app
+   (`plan.onpath.earth`) → *Delete* (or Policies → change *Allow* to *Bypass – Everyone*). The `/sync/*` bypass app can
+   stay. Then open `https://plan.onpath.earth/` in a private window: the page opens without the e-mail code.
+4. The live smoke test's service token (§9 step 6) is no longer needed; delete it in Zero Trust → Access → Service
+   credentials when Access is gone.
+5. At the real launch: `INDEXING = "on"` (18.4) and push.
+
+### 18.6 What the planner does with data – input for the privacy policy (not legal text)
+**Stored in the browser (only there, never sent unless said below):**
+- `localStorage`: `onpath.activity`, `onpath.sac` (last activity and T level), `onpath.hikePaceLevel`,
+  `onpath.bikePaceLevel` (pace setting), `onpath.mapContent` (POI kinds hidden, contour lines / relief on), `onpath.lang`
+  (language chosen with the switch), `onpath.browserId` (random id for the map-area quota, see below).
+- `sessionStorage`: `onpath.appHintShown` (the app line was shown in this session).
+- IndexedDB `onpath` (store `kv`): saved plans (My plans) and their sync ledger, a random device id, and – once paired –
+  the pairing secret (the key for the end-to-end encryption; never leaves the browser except inside the pairing QR
+  code / link the user shows to their phone).
+- The current plan is in the page address after `#p=` (the fragment is never sent to a server); a shared link carries
+  it the same way.
+- No cookies, no analytics, no tracking, no ads, no third-party scripts (fonts and libraries are served by our host).
+
+**Requests and where they go:**
+- Page, scripts, fonts, map style, sprites, world overview files: our host `plan.onpath.earth` (Cloudflare Workers).
+- Map tiles of the detailed map: our host `/data/…` → our Cloudflare R2 bucket (same files the app uses).
+- Routing data: our host `/segments/…` → passed through from `brouter.de` (the request to brouter.de comes from
+  Cloudflare, with our user agent – brouter.de does not see the user's IP); cached by Cloudflare for a day.
+- Routing itself runs in the browser (no route, point or position is sent anywhere for planning).
+- Place search: typed text + the map centre rounded to 2 decimals (≈ 1 km) + `lang=de` go directly from the browser to
+  **Photon by komoot** (`photon.komoot.io`, OpenStreetMap data) after 3 letters; the offline index runs in the browser.
+- Google Maps: only a link the user clicks (opens google.com in a new tab with the place's name / coordinates); nothing
+  from Google is loaded or drawn.
+- Map areas on demand: when the user sets a point, searches, locates or plans where no detailed map exists, the page
+  asks our host `/maps/v1/…` to build that area: the zoom-10 cell ids (≈ 40 × 40 km squares) + the random browser id.
+  The host forwards the cell ids (with the user's IP for its per-IP limit) to our map server (the doorman Worker,
+  same Cloudflare account), which queues the build. The host stores only counts (browser id / hashed IP / "all",
+  day or month, number) – no cell id, no position; counters older than 2 days (day) / 1 month (month) are deleted daily.
+- Position: only when the user clicks Locate or "Go here"; it stays in the browser (the map area around it may be
+  requested as above).
+- Sync mailbox (only after pairing a phone): our host `/sync/v1/…` → Cloudflare D1 (EU). The server sees: a random
+  mailbox id, a token hash, encrypted blobs (AES-256-GCM, key only on the devices), their sizes, revision numbers and
+  times of use, and the IP for the per-IP rate limit (not stored). It cannot read plans, names or device names.
+  Retention: until unpaired (then deleted at once), or 12 months without use (deleted by the daily job).
+- Cloudflare: processes every request (IP, user agent, URL) to deliver and protect the site (rate limits, DDoS);
+  aggregate analytics in the dashboard. The planner host has no Workers Logs / Logpush enabled (only live tail while
+  someone watches). **Note:** the map server (doorman, `tools/cloud/worker`) has Workers Logs on (`[observability]`)
+  and keeps a per-minute rate-limit row per plain IP in its D1 (`ratelimit`, overwritten each minute, not purged) –
+  for the privacy text, or hash / purge it there (follow-up for the maps session).
