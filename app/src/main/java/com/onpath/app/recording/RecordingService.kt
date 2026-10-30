@@ -136,6 +136,7 @@ class RecordingService : Service() {
     private var navigator: Navigator? = null
     /** Vibration before junctions of the followed line + the next junction for the lock screen (owner). */
     private val junctions = com.onpath.app.navigation.JunctionCues()
+    private val junctionSpeeds = com.onpath.app.navigation.SpeedWindow()
     /** Line version whose junction count was traced (a missing junction vibration is explained in the trace). */
     private var junctionsTracedVersion = Int.MIN_VALUE
     private val sessionStore by lazy { NavSessionStore(File(filesDir, NavSession.FILE)) }
@@ -400,7 +401,7 @@ class RecordingService : Service() {
         try { checkOffRoute(p, loc.accuracy.toDouble(), nowEl) } catch (e: Exception) {
             Problems.error("navigation", "Off-route check failed on a GPS fix; the track is still recorded", e)
         }
-        try { junctionCue() } catch (e: Exception) {
+        try { junctionCue(loc, nowEl) } catch (e: Exception) {
             Problems.warn("navigation", "Junction check failed on a GPS fix; no junction vibration this time", e)
         }
         try { mapsAhead(p.toGeo()) } catch (e: Exception) {
@@ -608,21 +609,25 @@ class RecordingService : Service() {
         com.onpath.app.data.AppRouting.get(this).ensure(com.onpath.app.data.RoutingTiles.forPoints(listOf(g), T5_ROUTING_MARGIN_M))
     }
 
-    /** Before a junction of the followed line: 1 pulse = left, 2 = right ([JunctionCues]), per the 3-way setting. */
-    private fun junctionCue() {
+    /**
+     * Before a junction of the followed line: 1 pulse = left, 2 = right ([JunctionCues]), per the 3-way setting. On the
+     * bike only where one could go wrong, timed by the speed of [loc] ([com.onpath.app.navigation.SpeedWindow]).
+     */
+    private fun junctionCue(loc: Location, nowEl: Long) {
         val st = navigator?.state ?: return
-        junctions.skipSlight = navigator?.session?.activity != com.onpath.app.routing.Activity.HIKE
-        junctions.aheadM = if (navigator?.session?.activity == com.onpath.app.routing.Activity.HIKE)
-            com.onpath.app.navigation.JunctionCues.HIKE_AHEAD_M else com.onpath.app.navigation.JunctionCues.BIKE_AHEAD_M
+        junctionSpeeds.note(if (loc.hasSpeed()) loc.speed.toDouble() else null, nowEl)
+        junctions.bike = navigator?.session?.activity != com.onpath.app.routing.Activity.HIKE
         if (st.version != junctionsTracedVersion) {
             junctionsTracedVersion = st.version
             val n = com.onpath.app.navigation.JunctionCues.count(st.line)
             val rb = st.line.count { it.turn == com.onpath.app.routing.JunctionCue.ROUNDABOUT }
+            val worth = st.line.count { p -> p.turn?.let { com.onpath.app.navigation.CueRule.needed(it, p.shape) } == true }
             Problems.trace("navigation", "Followed line v${st.version}: $n junctions, $rb roundabouts" +
+                (if (junctions.bike) ", $worth worth a bike cue" else "") +
                 (if (n == 0) " (GPX track or straight line: no junction cues)" else ""))
         }
         val onRoute = st.prompt == null && st.shownAlongM != null
-        val cue = junctions.update(st.line, st.version, st.shownAlongM, onRoute) ?: return
+        val cue = junctions.update(st.line, st.version, st.shownAlongM, onRoute, junctionSpeeds.speed(nowEl)) ?: return
         val choice = (settings ?: Prefs(this).settings).junctionVibration
         val locked = screenLocked()
         if (choice.plays(locked)) {

@@ -85,6 +85,7 @@ class NavSessionStore(private val file: File) {
             .put("original", pts(s.original))
             .put("originalWays", ways(s.original) ?: JSONObject.NULL)
             .put("originalTurns", turns(s.original) ?: JSONObject.NULL)
+            .put("originalShapes", shapes(s.original) ?: JSONObject.NULL)
             .put("stops", JSONArray().apply {
                 s.stops.forEach { st ->
                     put(JSONObject().put("lat", st.point.lat).put("lon", st.point.lon).put("along", st.alongM)
@@ -94,12 +95,14 @@ class NavSessionStore(private val file: File) {
             .put("current", s.current?.let { pts(it) } ?: JSONObject.NULL)
             .put("currentWays", s.current?.let { ways(it) } ?: JSONObject.NULL)
             .put("currentTurns", s.current?.let { turns(it) } ?: JSONObject.NULL)
+            .put("currentShapes", s.current?.let { shapes(it) } ?: JSONObject.NULL)
             .put("spliceAt", s.spliceAtM).put("resumeAlong", s.resumeAlongM).put("leftAt", s.leftAtM)
             .put("visited", JSONArray().apply { s.visited.sorted().forEach { put(it) } })
             .put("version", s.version)
 
         fun fromJson(o: JSONObject): NavSession? {
-            val original = withTurns(withWays(readPts(o.getJSONArray("original")), o.optJSONArray("originalWays")), o.optJSONArray("originalTurns"))
+            val original = withShapes(withTurns(withWays(readPts(o.getJSONArray("original")), o.optJSONArray("originalWays")),
+                o.optJSONArray("originalTurns")), o.optJSONArray("originalShapes"))
             if (original.size < 2) return null
             val stops = o.optJSONArray("stops")?.let { a ->
                 (0 until a.length()).map { i ->
@@ -108,7 +111,10 @@ class NavSessionStore(private val file: File) {
                         if (s.isNull("name")) null else s.optString("name"), s.optBoolean("pinned"))
                 }
             }.orEmpty()
-            val current = if (o.isNull("current")) null else o.optJSONArray("current")?.let { withTurns(withWays(readPts(it), o.optJSONArray("currentWays")), o.optJSONArray("currentTurns")) }?.takeIf { it.size >= 2 }
+            val current = if (o.isNull("current")) null else o.optJSONArray("current")?.let {
+                withShapes(withTurns(withWays(readPts(it), o.optJSONArray("currentWays")), o.optJSONArray("currentTurns")),
+                    o.optJSONArray("currentShapes"))
+            }?.takeIf { it.size >= 2 }
             val visited = o.optJSONArray("visited")?.let { a -> (0 until a.length()).map { a.getInt(it) }.toSet() }.orEmpty()
             return NavSession(
                 // expected: missing / unknown enum names (older files) fall back to defaults
@@ -184,6 +190,35 @@ class NavSessionStore(private val file: File) {
             }
         } catch (e: Exception) {
             Problems.warn("navigation", "Junction instructions in navigation session unreadable; no junction vibration", e)
+            l
+        }
+
+        /**
+         * The ways at the junctions ([GeoPoint.shape], the bike's "could one go wrong" check) as pairs [index, text];
+         * null = none. Own key, so an older app reading the file keeps its junctions.
+         */
+        private fun shapes(l: List<GeoPoint>): JSONArray? {
+            if (l.none { it.shape != null }) return null
+            val a = JSONArray()
+            l.forEachIndexed { i, p -> p.shape?.let { a.put(i); a.put(it.encode()) } }
+            return a
+        }
+
+        /** Puts the pairs written by [shapes] back on junction points; anything odd = no shape (the cue falls back). */
+        private fun withShapes(l: List<GeoPoint>, a: JSONArray?): List<GeoPoint> = try {
+            if (a == null || a.length() < 2) l else {
+                val out = l.toMutableList()
+                var r = 0
+                while (r + 1 < a.length()) {
+                    val i = a.getInt(r)
+                    val shape = com.onpath.app.routing.JunctionShape.decode(a.optString(r + 1))
+                    if (shape != null && i in out.indices && out[i].turn != null) out[i] = out[i].copy(shape = shape)
+                    r += 2
+                }
+                out
+            }
+        } catch (e: Exception) {
+            Problems.warn("navigation", "Junction shapes in navigation session unreadable; bike cues at every junction but slight bends", e)
             l
         }
 

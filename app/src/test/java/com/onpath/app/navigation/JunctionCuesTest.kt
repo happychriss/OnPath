@@ -2,6 +2,7 @@ package com.onpath.app.navigation
 
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.JunctionCue
+import com.onpath.app.routing.JunctionShape
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -25,10 +26,72 @@ class JunctionCuesTest {
         assertTrue("right cue 40 m before: ${cues[1].first}", cues[1].first in 555..565)
     }
 
-    @Test fun bikesGetTheCueEarlier() {
-        val l = line(1000, mapOf(500 to JunctionCue.LEFT))
-        val cues = walk(JunctionCues(JunctionCues.BIKE_AHEAD_M), l)
-        assertTrue(cues.single().first in 415..425)
+    // ---- on foot: unchanged by the bike's rules (pinned 2026-10-30) ----
+
+    @Test fun hikeIgnoresSpeedAndJunctionShape() {
+        // a junction the bike would not vibrate for (straight on through a crossing) and a fast fix: on foot as before
+        val l = line(1000, mapOf(200 to JunctionCue.KEEP_LEFT, 230 to JunctionCue.RIGHT, 600 to JunctionCue.SLIGHT_RIGHT))
+            .map { if (it.turn == JunctionCue.KEEP_LEFT) it.copy(shape = crossingStraightOn) else it }
+        val c = JunctionCues()
+        val cues = (0..1000 step 5).mapNotNull { m -> c.update(l, 1, m.toDouble(), true, speedMps = 12.0)?.let { m to it } }
+        assertEquals(listOf(JunctionCue.KEEP_LEFT, JunctionCue.SLIGHT_RIGHT), cues.map { it.second })
+        assertTrue(cues[0].first in 155..165) // 40 m, whatever the speed
+        assertTrue(cues[1].first in 555..565)
+    }
+
+    // ---- on the bike (owner 2026-10-30) ----
+
+    private val crossingStraightOn = JunctionShape(3f, 6, 6, listOf(JunctionShape.Branch(-88f, 6), JunctionShape.Branch(92f, 6)))
+    private val tLeft = JunctionShape(-90f, 6, 6, listOf(JunctionShape.Branch(90f, 6)))
+    private val tRight = JunctionShape(90f, 6, 6, listOf(JunctionShape.Branch(-90f, 6)))
+
+    /** A line with bike junctions: left turns at [lefts], right turns at [rights] (T-junctions), quiet crossings at [quiet]. */
+    private fun bikeLine(lengthM: Int, lefts: List<Int> = emptyList(), rights: List<Int> = emptyList(), quiet: List<Int> = emptyList()) =
+        line(lengthM, lefts.associateWith { JunctionCue.LEFT } + rights.associateWith { JunctionCue.RIGHT } +
+            quiet.associateWith { JunctionCue.KEEP_LEFT }).mapIndexed { i, p ->
+            when (i * 10) { in lefts -> p.copy(shape = tLeft); in rights -> p.copy(shape = tRight); in quiet -> p.copy(shape = crossingStraightOn); else -> p }
+        }
+
+    private fun ride(c: JunctionCues, l: List<GeoPoint>, speed: Double?) =
+        (0..l.size * 10 step 5).mapNotNull { m -> c.update(l, 1, m.toDouble(), true, speed)?.let { m to it } }
+
+    @Test fun bikeCueComesEightSecondsBefore() {
+        val l = bikeLine(1000, lefts = listOf(500))
+        // 20 km/h = 5.56 m/s → 44 m before
+        assertTrue(ride(JunctionCues.bike(), l, 5.56).single().first in 450..460)
+        // 36 km/h → 80 m
+        assertTrue(ride(JunctionCues.bike(), l, 10.0).single().first in 415..425)
+        // fast downhill: at most 100 m
+        assertTrue(ride(JunctionCues.bike(), l, 16.0).single().first in 400..405)
+        // pushing the bike / standing at the lights: at least 30 m
+        assertTrue(ride(JunctionCues.bike(), l, 1.0).single().first in 470..475)
+        // no speed yet: about 22 km/h
+        assertTrue(ride(JunctionCues.bike(), l, null).single().first in 450..455)
+        assertEquals(44.0, JunctionCues.bikeLeadM(5.5), 0.01)
+    }
+
+    @Test fun bikeCloseTurnsAreOneCueBeforeTheFirst() {
+        // left at 300, right 60 m later: at 20 km/h that is 11 s – one cue, the first turn's pattern
+        val l = bikeLine(1000, lefts = listOf(300), rights = listOf(360, 700))
+        assertEquals(listOf(JunctionCue.LEFT, JunctionCue.RIGHT), ride(JunctionCues.bike(), l, 5.5).map { it.second })
+        // slowly (14 km/h) the two are 15 s apart: each gets its own cue
+        assertEquals(listOf(JunctionCue.LEFT, JunctionCue.RIGHT, JunctionCue.RIGHT), ride(JunctionCues.bike(), l, 3.9).map { it.second })
+        // the 50 m rule holds whatever the speed (a chain of hairpins)
+        val hairpins = bikeLine(1000, rights = listOf(300), lefts = listOf(340))
+        assertEquals(listOf(JunctionCue.RIGHT), ride(JunctionCues.bike(), hairpins, 1.0).map { it.second })
+        assertEquals(66.0, JunctionCues.bikeMergeM(5.5), 0.01)
+        assertEquals(JunctionCues.MERGE_M, JunctionCues.bikeMergeM(2.0), 0.01)
+    }
+
+    @Test fun bikeOnlyWhereOneCouldGoWrong() {
+        // straight on through two crossings, then a T-junction left: one cue
+        val l = bikeLine(1000, quiet = listOf(200, 400), lefts = listOf(700))
+        assertEquals(listOf(JunctionCue.LEFT), ride(JunctionCues.bike(), l, 5.5).map { it.second })
+        // a quiet crossing right before a turn does not swallow the turn's cue
+        val l2 = bikeLine(1000, quiet = listOf(470), lefts = listOf(500))
+        assertEquals(listOf(JunctionCue.LEFT), ride(JunctionCues.bike(), l2, 5.5).map { it.second })
+        // the lock screen still names the quiet junction
+        assertEquals("Keep left", JunctionCues.bike().nextAheadText(l, 1, 100.0)!!.first)
     }
 
     @Test fun switchbacksAreFeltAsOne() {
@@ -142,11 +205,23 @@ class JunctionCuesTest {
         assertNull("not on the route: plain notification", NavNotification.of("Recording", null, null, null, null, { "" }, { "" }, { "" }))
     }
 
-    /** On the bike a slight bend does not vibrate; a real turn and a fork do. */
-    @Test fun bikeSkipsSlightBends() {
+    /** A line without the junctions' ways (routed before, an old session): the bike skips slight bends as before. */
+    @Test fun bikeSkipsSlightBendsWithoutShape() {
         val l = line(800, mapOf(100 to JunctionCue.SLIGHT_LEFT, 300 to JunctionCue.LEFT, 500 to JunctionCue.KEEP_RIGHT, 700 to JunctionCue.SLIGHT_RIGHT))
         fun walk(c: JunctionCues) = (0..800 step 5).mapNotNull { m -> c.update(l, 1, m.toDouble(), true) }
-        assertEquals(listOf(JunctionCue.LEFT, JunctionCue.KEEP_RIGHT), walk(JunctionCues(80.0).apply { skipSlight = true }))
+        assertEquals(listOf(JunctionCue.LEFT, JunctionCue.KEEP_RIGHT), walk(JunctionCues.bike()))
         assertEquals("hiking: every junction", 4, walk(JunctionCues(40.0)).size)
+    }
+
+    @Test fun sessionFileKeepsTheJunctionShapes() {
+        val l = line(500, mapOf(100 to JunctionCue.LEFT, 400 to JunctionCue.KEEP_RIGHT))
+            .map { if (it.turn == JunctionCue.LEFT) it.copy(shape = tLeft) else it }
+        val s = NavSession(NavKind.PLAN, "Test", com.onpath.app.routing.Activity.BIKE_TOURING, 3, l, current = l.drop(5))
+        val back = NavSessionStore.fromJson(NavSessionStore.toJson(s))!!
+        assertEquals(l.map { it.shape }, back.original.map { it.shape })
+        assertEquals(l.drop(5).map { it.shape }, back.current!!.map { it.shape })
+        // a file of an older app (no shapes): junctions kept, no shape
+        val old = NavSessionStore.toJson(s).apply { remove("originalShapes"); remove("currentShapes") }
+        assertEquals(listOf(null, null), NavSessionStore.fromJson(old)!!.original.filter { it.turn != null }.map { it.shape })
     }
 }

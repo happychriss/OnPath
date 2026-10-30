@@ -109,29 +109,30 @@ class SmartScreenTest {
         assertFalse(g.rest(far(2000.0).copy(on = false), 1_000)) // not allowed (Always on, hike, no tour) → map
     }
 
-    @Test fun mapComesBackFiftySecondsBeforeTheTurnAtTheCurrentSpeed() {
+    // owner 2026-10-30: 20 s / at least 100 m before every turn (was 50 s / 150 m – in town the map never rested)
+    @Test fun mapComesBackTwentySecondsBeforeTheTurnAtTheCurrentSpeed() {
         val g = SmartScreen()
-        g.noteSpeed(8.0, 0) // 29 km/h → 400 m
-        assertEquals(400.0, g.leadM(0), 0.01)
-        assertTrue(g.rest(far(410.0), 0))
-        assertFalse(g.rest(far(399.0), 0))
+        g.noteSpeed(8.0, 0) // 29 km/h → 160 m
+        assertEquals(160.0, g.leadM(0), 0.01)
+        assertTrue(g.rest(far(170.0), 0))
+        assertFalse(g.rest(far(159.0), 0))
     }
 
-    @Test fun atLeast150MetresBefore() {
+    @Test fun atLeast100MetresBefore() {
         val g = SmartScreen()
-        g.noteSpeed(1.0, 0) // walking the bike: 50 m would be too late
-        assertEquals(150.0, g.leadM(0), 0.01)
-        assertTrue(g.rest(far(160.0), 0))
-        assertFalse(g.rest(far(149.0), 0))
+        g.noteSpeed(1.0, 0) // walking the bike: 20 m would be too late
+        assertEquals(100.0, g.leadM(0), 0.01)
+        assertTrue(g.rest(far(110.0), 0))
+        assertFalse(g.rest(far(99.0), 0))
     }
 
     @Test fun speedingUpCountsAtOnceSlowingDownAfterTenSeconds() {
         val g = SmartScreen()
         g.noteSpeed(10.0, 0)
-        g.noteSpeed(4.0, 5_000)
-        assertEquals(500.0, g.leadM(5_000), 0.01) // the highest of the last 10 s
-        g.noteSpeed(4.0, 12_000)
-        assertEquals(200.0, g.leadM(12_000), 0.01)
+        g.noteSpeed(6.0, 5_000)
+        assertEquals(200.0, g.leadM(5_000), 0.01) // the highest of the last 10 s
+        g.noteSpeed(6.0, 12_000)
+        assertEquals(120.0, g.leadM(12_000), 0.01)
     }
 
     @Test fun unknownSpeedUsesAboutTwentyKmh() {
@@ -141,9 +142,9 @@ class SmartScreenTest {
     @Test fun slowingDownForTheTurnKeepsTheMap() {
         val g = SmartScreen()
         g.noteSpeed(8.0, 0)
-        assertFalse(g.rest(far(380.0), 0)) // map: 400 m lead
-        g.noteSpeed(2.0, 20_000) // braking: lead now 150 m, the turn still 300 m away
-        assertFalse(g.rest(far(300.0), 20_000))
+        assertFalse(g.rest(far(150.0), 0)) // map: 160 m lead
+        g.noteSpeed(2.0, 20_000) // braking: lead now 100 m, the turn still 120 m away
+        assertFalse(g.rest(far(120.0), 20_000))
     }
 
     @Test fun mapStaysTenSecondsAfterTheTurn() {
@@ -161,9 +162,18 @@ class SmartScreenTest {
         val g = SmartScreen()
         g.noteSpeed(6.0, 0)
         assertFalse(g.rest(far(50.0), 0))
-        // passed, the next turn only 200 m on: within the lead → held for that one too
-        assertFalse(g.rest(far(200.0, k = key + 1), 5_000))
-        assertFalse(g.rest(far(150.0, k = key + 1), 20_000))
+        // passed, the next turn only 110 m on: within the lead (120 m) → held for that one too
+        assertFalse(g.rest(far(110.0, k = key + 1), 5_000))
+        assertFalse(g.rest(far(100.0, k = key + 1), 20_000))
+    }
+
+    @Test fun theMapWakesForEveryTurnEvenWhereTheBikeDoesNotVibrate() {
+        // straight on through a crossing: BRouter names it, the bike stays quiet (CueRule) – the map still comes back
+        val quiet = com.onpath.app.routing.JunctionShape(3f, 6, 6, listOf(com.onpath.app.routing.JunctionShape.Branch(-88f, 6),
+            com.onpath.app.routing.JunctionShape.Branch(92f, 6)))
+        val l = line(2000, mapOf(800 to JunctionCue.KEEP_LEFT)).map { if (it.turn != null) it.copy(shape = quiet) else it }
+        assertFalse(com.onpath.app.navigation.CueRule.needed(JunctionCue.KEEP_LEFT, quiet))
+        assertEquals(800.0, RestEvents.of(l, emptyList()).first().atM, 1.0)
     }
 
     @Test fun aTapShowsTheMapForThirtySeconds() {
@@ -215,12 +225,12 @@ class SmartScreenTest {
 
     @Test fun ridingAwayFromTheTurnLetsItGo() {
         val g = SmartScreen()
-        g.noteSpeed(4.0, 0) // 200 m lead
+        g.noteSpeed(10.0, 0) // 200 m lead
         assertFalse(g.rest(far(190.0), 0))
         // turned round before it (no off-route yet): 100 m beyond the largest lead → rest again, no "after" hold
-        g.noteSpeed(4.0, 30_000)
+        g.noteSpeed(10.0, 30_000)
         assertFalse(g.rest(far(290.0), 30_000))
-        g.noteSpeed(4.0, 31_000)
+        g.noteSpeed(10.0, 31_000)
         assertTrue(g.rest(far(301.0), 31_000))
     }
 

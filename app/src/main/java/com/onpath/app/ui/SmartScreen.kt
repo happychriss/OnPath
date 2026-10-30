@@ -3,6 +3,7 @@ package com.onpath.app.ui
 import com.onpath.app.data.AppSettings
 import com.onpath.app.data.BikeScreen
 import com.onpath.app.data.Geo
+import com.onpath.app.navigation.SpeedWindow
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.JunctionCue
@@ -53,9 +54,9 @@ data class RestTarget(val event: RestEvent, val distanceM: Double) {
 
 /**
  * The places the full map comes back for: every turn of the turn card ([com.onpath.app.routing.TurnDetector]), every
- * junction the bike vibrates for (BRouter's instructions without slight bends – [com.onpath.app.navigation.JunctionCues]
- * with skipSlight), every roundabout, and the destination. Events closer than [MERGE_M] are one place (the earlier
- * position, the clearer look: roundabout > drawn turn > junction cue).
+ * junction of BRouter's instructions except slight bends (the map wakes for every turn – owner 2026-10-30 – even where
+ * the bike does not vibrate, [com.onpath.app.navigation.CueRule]), every roundabout, and the destination. Events closer
+ * than [MERGE_M] are one place (the earlier position, the clearer look: roundabout > drawn turn > junction cue).
  */
 object RestEvents {
     const val MERGE_M = 30.0
@@ -120,13 +121,14 @@ object RestEvents {
  */
 class SmartScreen {
     companion object {
-        const val LEAD_S = 50.0
-        const val MIN_LEAD_M = 150.0
+        /** 20 s / at least 100 m before every turn event (owner 2026-10-30; was 50 s / 150 m – the map never rested in town). */
+        const val LEAD_S = 20.0
+        const val MIN_LEAD_M = 100.0
         const val AFTER_MS = 10_000L
         const val TAP_MS = 30_000L
-        const val SPEED_WINDOW_MS = 10_000L
+        const val SPEED_WINDOW_MS = SpeedWindow.WINDOW_MS
         /** Speed unknown (no fix with a speed yet): about 22 km/h. */
-        const val FALLBACK_SPEED_MPS = 6.0
+        const val FALLBACK_SPEED_MPS = SpeedWindow.FALLBACK_MPS
         /** Held for an event: let go only when it is this much farther than the largest lead it was held with. */
         const val RELEASE_SLACK_M = 100.0
 
@@ -151,17 +153,13 @@ class SmartScreen {
     private var afterUntil = Long.MIN_VALUE
     private var attentionUntil = Long.MIN_VALUE
     private var tapUntil = Long.MIN_VALUE
-    private val speeds = ArrayDeque<Pair<Long, Double>>()
+    private val speeds = SpeedWindow()
 
     /** Every fix: its speed (m/s; null = the fix has none). */
-    fun noteSpeed(mps: Double?, nowMs: Long) {
-        if (mps != null && mps.isFinite() && mps >= 0) speeds.addLast(nowMs to mps)
-        while (speeds.isNotEmpty() && speeds.first().first < nowMs - SPEED_WINDOW_MS) speeds.removeFirst()
-    }
+    fun noteSpeed(mps: Double?, nowMs: Long) = speeds.note(mps, nowMs)
 
     /** Speed the lead is computed with: the highest of the last [SPEED_WINDOW_MS] (speeding up counts at once). */
-    fun speed(nowMs: Long): Double =
-        speeds.filter { it.first >= nowMs - SPEED_WINDOW_MS }.maxOfOrNull { it.second } ?: FALLBACK_SPEED_MPS
+    fun speed(nowMs: Long): Double = speeds.speed(nowMs)
 
     /** How far before an event the map comes back now. */
     fun leadM(nowMs: Long): Double = maxOf(MIN_LEAD_M, speed(nowMs) * LEAD_S)

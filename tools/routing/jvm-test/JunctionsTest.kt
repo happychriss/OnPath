@@ -28,7 +28,7 @@ fun main() {
     for ((name, wps, act) in cases) {
         val r = eng.route(wps, act, 3)
         val turns = r.points.withIndex().filter { it.value.turn != null }
-        val cues = JunctionCues(if (act == Activity.HIKE) JunctionCues.HIKE_AHEAD_M else JunctionCues.BIKE_AHEAD_M)
+        val cues = if (act == Activity.HIKE) JunctionCues() else JunctionCues.bike()
         val len = r.distanceM
         val felt = (0..len.toInt() step 5).mapNotNull { m -> cues.update(r.points, 1, m.toDouble(), true) }
         val perKm = felt.size / (len / 1000)

@@ -11,41 +11,57 @@ import com.onpath.app.routing.JunctionCue
  * calls [update] on every GPS fix and plays the returned cue.
  *
  * - A junction = a route point with [GeoPoint.turn] (BRouter's turn instructions – real junctions only).
- * - Cue once, when the junction is [aheadM] or less ahead (hike 40 m, bike 80 m); never after it was passed.
+ * - Cue once, when the junction is [aheadM] or less ahead (hike 40 m); never after it was passed.
  * - Switchbacks: a junction within [MERGE_M] after the previous junction gets no cue of its own (a chain of hairpins
  *   is felt as one cue – at its first junction).
  * - Nothing while off the route ([update] with onRoute = false) – the off-route warning speaks then.
  * - A new line (re-route, edited plan: [version]) starts over; junctions behind the position are skipped.
+ *
+ * On the bike ([bike], owner 2026-10-30 – in a town the old rules vibrated ~40 times in 50 min):
+ * - only where one could go wrong ([CueRule]: clear turns, forks with a similar way, roundabouts – not where the route
+ *   simply goes on along the street or the clearly straightest way);
+ * - [LEAD_S] before the junction at the current speed, [MIN_LEAD_M]…[MAX_LEAD_M];
+ * - close turns are one cue: a junction within [MERGE_S] riding time (at least [MERGE_M]) after the previous junction
+ *   worth a cue gets none – a chain of close turns is felt once, before its first turn, with that turn's pattern (the
+ *   map still wakes for each of them, ui/SmartScreen).
+ * The lock screen still names every junction ([nextAheadText]).
  */
 class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
-    /**
-     * No vibration for a slight bend (SLIGHT_LEFT / SLIGHT_RIGHT) – on the bike (else ~40 cues in 50 min, many of them
-     * slight). Forks (keep left / right) and real turns still vibrate; the lock screen still names
-     * every junction.
-     */
-    var skipSlight: Boolean = false
+    /** The bike's rules (see the class comment); false = on foot, unchanged. */
+    var bike: Boolean = false
     private var version = Int.MIN_VALUE
     private var size = -1
     private var alongs = DoubleArray(0)
     private var cues = emptyList<JunctionCue>()
     private var exits = IntArray(0)
     private var angles = FloatArray(0)
+    /** Bike: worth a cue ([CueRule]); and where the previous junction worth a cue is (−∞ = none). */
+    private var needed = BooleanArray(0)
+    private var prevNeeded = DoubleArray(0)
     private var next = 0
 
-    /** The cue to play now, or null. [alongM] = progress on [line] (null = not matched). */
-    fun update(line: List<GeoPoint>, version: Int, alongM: Double?, onRoute: Boolean): JunctionCue? {
+    /**
+     * The cue to play now, or null. [alongM] = progress on [line] (null = not matched); [speedMps] = the speed to plan
+     * with on the bike ([SpeedWindow]; null = unknown, about 22 km/h).
+     */
+    fun update(line: List<GeoPoint>, version: Int, alongM: Double?, onRoute: Boolean, speedMps: Double? = null): JunctionCue? {
         load(line, version)
         if (alongM == null) return null
         // passed junctions never cue (also the ones passed while off route)
         while (next < alongs.size && alongs[next] < alongM - PASSED_M) next++
         if (!onRoute || next >= alongs.size) return null
+        val speed = speedMps?.takeIf { it.isFinite() && it >= 0 } ?: SpeedWindow.FALLBACK_MPS
         val d = alongs[next] - alongM
-        if (d > aheadM) return null
-        val at = alongs[next]; val cue = cues[next]
-        val prev = if (next > 0) alongs[next - 1] else Double.NEGATIVE_INFINITY
-        next++
-        if (skipSlight && (cue == JunctionCue.SLIGHT_LEFT || cue == JunctionCue.SLIGHT_RIGHT)) return null
-        return if (at - prev < MERGE_M) null else cue // switchback chain: felt once, at its first junction
+        if (d > (if (bike) bikeLeadM(speed) else aheadM)) return null
+        val i = next++
+        val at = alongs[i]; val cue = cues[i]
+        if (!bike) {
+            val prev = if (i > 0) alongs[i - 1] else Double.NEGATIVE_INFINITY
+            return if (at - prev < MERGE_M) null else cue // switchback chain: felt once, at its first junction
+        }
+        if (!needed[i]) return null
+        // close turns: felt once, before the first of them
+        return if (at - prevNeeded[i] < bikeMergeM(speed)) null else cue
     }
 
     /** Next junction ahead of [alongM] within [maxM] and its distance (lock screen "Left in 120 m"). */
@@ -104,14 +120,31 @@ class JunctionCues(var aheadM: Double = HIKE_AHEAD_M) {
         cues = idx.map { line[it].turn!! }
         exits = IntArray(idx.size) { line[idx[it]].exit }
         angles = FloatArray(idx.size) { line[idx[it]].turnAngle }
+        needed = BooleanArray(idx.size) { CueRule.needed(cues[it], line[idx[it]].shape) }
+        var prev = Double.NEGATIVE_INFINITY
+        prevNeeded = DoubleArray(idx.size) { k -> prev.also { if (needed[k]) prev = alongs[k] } }
         next = 0
     }
 
     companion object {
         const val HIKE_AHEAD_M = 40.0
-        const val BIKE_AHEAD_M = 80.0
         const val MERGE_M = 50.0
         const val PASSED_M = 5.0
+
+        /** Bike: the cue comes this many seconds before the junction at the current speed … */
+        const val LEAD_S = 8.0
+        /** … but at least this far before it (pushing the bike, a stop at the lights) … */
+        const val MIN_LEAD_M = 30.0
+        /** … and at most this far (fast downhill: not so early that the turn before it is mixed up). */
+        const val MAX_LEAD_M = 100.0
+        /** Bike: a junction this many seconds of riding after the previous one is part of its cue (close turns). */
+        const val MERGE_S = 12.0
+
+        fun bikeLeadM(speedMps: Double): Double = (speedMps * LEAD_S).coerceIn(MIN_LEAD_M, MAX_LEAD_M)
+        fun bikeMergeM(speedMps: Double): Double = maxOf(MERGE_M, speedMps * MERGE_S)
+
+        /** The bike's junction cues ([bike] rules). */
+        fun bike(): JunctionCues = JunctionCues().apply { bike = true }
 
         /** Junctions on [line] – traced once per followed line ("0" = a GPX track / straight line: nothing to cue). */
         fun count(line: List<GeoPoint>): Int = line.count { it.turn != null }

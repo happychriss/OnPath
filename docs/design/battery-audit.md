@@ -147,12 +147,14 @@ Requirement R-10 (battery saver mode) and the detection part of R-09 ("detect wh
   on demand). Everything is sent again the moment the map shows: the dot is placed at once (`PositionDot.jumps`), the
   map takes the current direction at once. Hiding the SurfaceView was not used: MapLibre may drop its renderer with the
   surface and redraw the tiles from scratch – not "instant".
-- **When the full map shows** (`ui/SmartScreen.kt`, pure, `SmartScreenTest`): 50 s before the next event at the current
-  speed (highest of the last 10 s; ≥ 150 m), until 10 s after it; 30 s after any touch (`MainActivity.dispatchTouchEvent`
+- **When the full map shows** (`ui/SmartScreen.kt`, pure, `SmartScreenTest`): 20 s before the next event at the current
+  speed (highest of the last 10 s; ≥ 100 m – owner 2026-10-30, was 50 s / 150 m: in town the map never rested), until
+  10 s after it; 30 s after any touch (`MainActivity.dispatchTouchEvent`
   → `ScreenTouch`); while off route / the re-route question / arrival question / GPS lost or waiting / paused / map moved
   by hand / any dialog, sheet or the error card, and 10 s after. Events = the turn card's turns (`TurnDetector`), every
-  junction the bike vibrates for (BRouter's turns without slight bends), roundabouts and the destination; one place
-  within 30 m = one event. No fps cap anywhere (owner: "never").
+  junction of BRouter's turns without slight bends – also where the bike does not vibrate (owner: "every turn"; the
+  vibration's filter is `navigation/CueRule`), roundabouts and the destination; one place within 30 m = one event. No
+  fps cap anywhere (owner: "never").
 - **Open:** measure on the Pixel 8 (display / CPU / GPU / GNSS rails, 10-min demo ride Always on vs Smart).
 
 ### B2. MapLibre location animation and map redraw have no frame cap — HIGH while the screen is on
