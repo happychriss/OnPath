@@ -130,7 +130,14 @@ class MapCells(
     private val freshMs: Long = FRESH_MS,
     /** Ask for region packages with the cells (map-cells.md §20); off in tests about the cells alone. */
     private val regionPackages: Boolean = true,
+    /**
+     * Hash of the routing profiles this app routes with ([com.onpath.app.routing.RouterClassHash]); installed cells
+     * whose router classes come from other profiles are reported and refreshed ([RouterClassCheck]). Null = no check.
+     */
+    routerClassHash: (() -> String?)? = null,
 ) : CellSource {
+    private val routerClasses = routerClassHash?.let { RouterClassCheck(it) }
+
     // ------------------------------------------------------------------------------------------- public state
 
     private val _states = MutableStateFlow<Map<CellId, CellState>>(emptyMap())
@@ -490,6 +497,7 @@ class MapCells(
         ensurePackages()
         worker = scope.launch {
             work.withLock { recover() }
+            checkRouterClasses()
             loop()
         }
     }
@@ -581,6 +589,22 @@ class MapCells(
 
     private fun publish(gen: CellStore.Generation) {
         refreshInstalled(gen.number)
+        checkRouterClasses()
+    }
+
+    /**
+     * Installed cells whose router classes come from other routing profiles than this app's ([RouterClassCheck]): asked
+     * for again quietly ([CellReason.REFRESH] – Wi-Fi rule, held during a tour, the map stays until a newer build is
+     * there). Never blocks the map or routing; a failure only goes to the problem log.
+     */
+    private fun checkRouterClasses() {
+        val check = routerClasses ?: return
+        try {
+            val ask = check.check(_installed.value, downloadsAvailable)
+            if (ask.isNotEmpty()) request(ask, CellReason.REFRESH, ownPoint = false)
+        } catch (e: Exception) {
+            Problems.warn("cells", "Router class check of the map regions failed; maps kept as they are", e)
+        }
     }
 
     private fun recover() {

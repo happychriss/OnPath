@@ -3,7 +3,9 @@ package com.onpath.app.cells
 import android.content.Context
 import com.onpath.app.BuildConfig
 import com.onpath.app.data.DataFiles
+import com.onpath.app.debug.Problems
 import com.onpath.app.data.MapServer
+import com.onpath.app.routing.RouterClassHash
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,9 +27,18 @@ object AppCells {
     private fun create(app: Context): MapCells {
         val net = AndroidNetworkStatus(app)
         val api = MapServer.appKey.takeIf { it.isNotBlank() }?.let { CellApi(MapServer.apiUrl, it, BuildConfig.VERSION_NAME) }
-        val cells = MapCells(CellStore(DataFiles(app).dir), api, net, CoroutineScope(SupervisorJob() + Dispatchers.IO), BuildConfig.VERSION_NAME)
+        val cells = MapCells(CellStore(DataFiles(app).dir), api, net, CoroutineScope(SupervisorJob() + Dispatchers.IO), BuildConfig.VERSION_NAME,
+            routerClassHash = { profileHash(app) })
         net.listen { cells.networkChanged() }
         cells.start()
         return cells
+    }
+
+    /** Hash of the routing profiles this app ships (assets/brouter, the files BRouterEngine installs); null when unreadable. */
+    private fun profileHash(app: Context): String? = try {
+        RouterClassHash.of { name -> app.assets.open("brouter/$name").use { it.readBytes() } }
+    } catch (e: Exception) {
+        Problems.warn("routing", "Routing profile hash unknown; map router classes not compared", e)
+        null
     }
 }

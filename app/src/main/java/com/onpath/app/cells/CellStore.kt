@@ -54,6 +54,8 @@ class CellStore(
         val bytes: Map<String, Long>,
         val addressBytes: Long,
         val installedAt: Long,
+        /** Profile hash of the cell's router classes (manifest "wayclass"); null = unknown (older store, no classes). */
+        val wayclass: String? = null,
     ) {
         val totalBytes: Long get() = bytes.values.sum() + addressBytes
     }
@@ -115,7 +117,8 @@ class CellStore(
                 val b = c.optJSONObject("bytes") ?: JSONObject()
                 InstalledCell(CellId.parse(c.getString("id")) ?: error("bad cell id"), c.getString("version"),
                     c.optString("built").ifBlank { null }, c.optInt("format", 2),
-                    b.keys().asSequence().associateWith { b.getLong(it) }, c.optLong("addressBytes"), c.optLong("installedAt"))
+                    b.keys().asSequence().associateWith { b.getLong(it) }, c.optLong("addressBytes"), c.optLong("installedAt"),
+                    c.optString("wayclass").ifBlank { null })
             },
             o.optJSONObject("region")?.let { r -> r.keys().asSequence().associateWith { r.getString(it) } }.orEmpty(),
             o.optJSONObject("files")?.let { r -> r.keys().asSequence().associateWith { r.getLong(it) } }.orEmpty(),
@@ -239,7 +242,7 @@ class CellStore(
             }
             val cells = kept + add.map { d ->
                 InstalledCell(d.manifest.cell, d.manifest.version, d.manifest.built, d.manifest.format,
-                    bytes[d.manifest.cell].orEmpty(), addressFileOf(d)?.length() ?: 0L, now)
+                    bytes[d.manifest.cell].orEmpty(), addressFileOf(d)?.length() ?: 0L, now, d.manifest.wayclass)
             }.sortedBy { it.id }
             val gen = Generation(number, final, cells.sortedBy { it.id }, region, files, now, poiTilesFailed)
             File(tmp, STORE_JSON).writeText(toJson(gen).toString(1))
@@ -414,6 +417,7 @@ class CellStore(
         .put("cells", JSONArray(g.cells.map { c ->
             JSONObject().put("id", c.id.id).put("version", c.version).put("built", c.built ?: "").put("format", c.format)
                 .put("bytes", JSONObject(c.bytes as Map<*, *>)).put("addressBytes", c.addressBytes).put("installedAt", c.installedAt)
+                .apply { c.wayclass?.let { put("wayclass", it) } }
         }))
 
     companion object {

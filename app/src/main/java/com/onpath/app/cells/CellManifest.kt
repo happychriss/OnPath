@@ -14,12 +14,19 @@ data class CellManifest(
     val files: List<File>,
     val totalSize: Long,
     val json: String,
+    /**
+     * Hash of the routing profiles the cell's router classes were made with ("wayclass", tools/cells/cells.py; the
+     * same as [com.onpath.app.routing.RouterClassHash]); null in cells built without classes or before the field.
+     */
+    val wayclass: String? = null,
 ) {
     data class File(val name: String, val size: Long, val sha256: String, val url: String)
 
     companion object {
         /** Names a cell file may have: plain names or "addresses/<cell>.sqlite"; nothing that leaves the folder. */
         private val SAFE_NAME = Regex("""^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)?$""")
+        /** A router class hash ("2-<hex>", older cells plain hex); anything else is treated as unknown. */
+        private val HASH = Regex("^[0-9a-f-]{8,64}$")
 
         /** Parses and checks a manifest; throws IllegalArgumentException with a plain reason when unusable. */
         fun parse(json: String): CellManifest {
@@ -43,7 +50,8 @@ data class CellManifest(
             }
             if (files.isEmpty()) throw IllegalArgumentException("manifest lists no files")
             return CellManifest(cell, o.optInt("format", 1), version, o.optString("built").ifBlank { null },
-                o.optString("min_app").ifBlank { null }, files, o.optLong("total_size", files.sumOf { it.size }), json)
+                o.optString("min_app").ifBlank { null }, files, o.optLong("total_size", files.sumOf { it.size }), json,
+                o.optString("wayclass").trim().takeIf { HASH.matches(it) })
         }
     }
 }

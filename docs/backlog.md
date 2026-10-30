@@ -125,8 +125,11 @@ the git log.
 - **Map: paths look interrupted at junctions (Hilden vs Komoot)** – drawn footways / sidewalks stop short at streets;
   routing is not affected. Leads: `extract_overlays.py` leaves sidewalk / crossing out of paths.geojson; crossings may
   hide under the road casing. Check with a headless render of a Hilden cell (z15–17) first.
-- **Router classes** – the app does not compare the cells' `wayclass` hash with its own profiles (a profile change
-  needs a rebuild of all cells); tertiary and bigger roads have no class (`docs/map-style-notes.md`).
+- **Router classes** – tertiary and bigger roads have no class (`docs/map-style-notes.md`). The app compares the cells'
+  `wayclass` hash (format 2, comments don't count) with its profiles and asks for a refresh (`cells/RouterClassCheck`),
+  but the doorman rebuilds only on a CELL_SCHEMA bump or OSM age – a profile change still needs that bump. Later
+  (captain): a doorman `WAYCLASS` value (wrangler.toml, = `wayclass.jar --hash` of the job image) so a published cell
+  with another hash counts as stale and is rebuilt when asked.
 - **Safety:** cliffs and fords on the map.
 - **CI follow-ups:** lint reports only (known findings in `app/lint-baseline.xml`) – work the baseline down, then let
   lint fail the run; `gradle/actions` stays on v5 (MIT): v6 moves its caching into a closed component under Gradle's
