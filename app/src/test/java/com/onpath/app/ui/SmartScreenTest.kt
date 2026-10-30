@@ -16,7 +16,7 @@ import org.junit.Test
 
 /**
  * Smart screen while cycling (owner 2026-10-30): when the rest view shows instead of the map, and that a hike never gets
- * it (pocket logic unchanged).
+ * it; who gets the pocket logic (proximity sensor) when.
  */
 class SmartScreenTest {
 
@@ -24,9 +24,9 @@ class SmartScreenTest {
 
     @Test fun hikeIsUnchangedWhateverTheCyclingChoice() {
         for (b in BikeScreen.entries) {
-            assertEquals(ScreenPolicy(keepOn = true, pocket = true, rest = false),
+            assertEquals(ScreenPolicy(keepOn = true, pocketAfterMs = 0L, rest = false),
                 ScreenPolicy.of(AppSettings(keepScreenOn = true, bikeScreen = b), Activity.HIKE))
-            assertEquals(ScreenPolicy(keepOn = false, pocket = true, rest = false),
+            assertEquals(ScreenPolicy(keepOn = false, pocketAfterMs = 0L, rest = false),
                 ScreenPolicy.of(AppSettings(keepScreenOn = false, bikeScreen = b), Activity.HIKE))
         }
     }
@@ -34,12 +34,15 @@ class SmartScreenTest {
     @Test fun everyBikeActivityFollowsTheCyclingChoice() {
         val bikes = Activity.entries - Activity.HIKE
         assertEquals(5, bikes.size)
+        val pocket = PocketLogic.BIKE_ARM_MS // owner 2026-10-30: the sensor counts after 5 s covered
+        assertEquals(5_000L, pocket)
         for (a in bikes) {
-            assertEquals(ScreenPolicy(true, false, true), ScreenPolicy.of(AppSettings(), a)) // Smart is the default
-            assertEquals(ScreenPolicy(true, false, false), ScreenPolicy.of(AppSettings(bikeScreen = BikeScreen.ALWAYS), a))
-            assertEquals(ScreenPolicy(false, false, false), ScreenPolicy.of(AppSettings(bikeScreen = BikeScreen.PHONE), a))
+            assertEquals(ScreenPolicy(true, pocket, true), ScreenPolicy.of(AppSettings(), a)) // Smart is the default
+            assertEquals(ScreenPolicy(true, pocket, false), ScreenPolicy.of(AppSettings(bikeScreen = BikeScreen.ALWAYS), a))
+            // like the phone: nothing kept on, no sensor
+            assertEquals(ScreenPolicy(false, null, false), ScreenPolicy.of(AppSettings(bikeScreen = BikeScreen.PHONE), a))
             // the hike switch does not change the bike
-            assertEquals(ScreenPolicy(true, false, true), ScreenPolicy.of(AppSettings(keepScreenOn = false), a))
+            assertEquals(ScreenPolicy(true, pocket, true), ScreenPolicy.of(AppSettings(keepScreenOn = false), a))
         }
     }
 

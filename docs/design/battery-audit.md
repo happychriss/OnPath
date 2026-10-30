@@ -134,8 +134,10 @@ Requirement R-10 (battery saver mode) and the detection part of R-09 ("detect wh
 ### Smart screen while cycling — Done (owner decisions 2026-10-30)
 - **What:** Bike, Gravel, E-bike, MTB, E-MTB; Settings → Navigation → "Screen while cycling: Always on / Smart / Like the
   phone", **Smart is the default** (an old "keep screen on" switched off becomes "Like the phone"; the switch itself now
-  applies to hikes only). The phone is on the handlebar, so no proximity sensor for bikes (a hand reaching for the
-  screen would turn it off); Hike is unchanged (`ScreenPolicy`, `SmartScreenTest.hikeIsUnchangedWhateverTheCyclingChoice`).
+  applies to hikes only). The phone is usually on the handlebar: the proximity sensor counts only after it was covered
+  5 s without a break (owner 2026-10-30 – a hand reaching for the screen is ignored, a phone in a jersey pocket / bag
+  goes dark; `ui/PocketLogic.kt`, `PocketLogicTest`); "Like the phone" keeps nothing on, no sensor. Hike unchanged
+  (sensor at once; `ScreenPolicy`, `SmartScreenTest`). Overview of all three mechanisms: `docs/design/navigation-cues.md`.
 - **Rest view** (`ui/RestView.kt`): far from the next turn Navigate shows a black screen (OLED: black pixels are off)
   with the turn card's sign large, the distance to it, direction, time left and arrival in dim grey (`OnPathColors.Rest*`:
   arrow / distance 10:1, the rest 6:1 on black – readable in the sun at the phone's own brightness; the window brightness

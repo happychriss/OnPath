@@ -131,9 +131,10 @@ fun MapScreen(
         // A newer version of an area the user has (checked after each route) is told by the background-download strip
         // only – one loading indicator is enough. No cell-state read here: download ticks must not recompose this screen.
         MapSync(vm, controller, rec, location, panelHeightPx)
-        // hike: keep-on + pocket logic; bike: Settings → "Screen while cycling" (ScreenPolicy, rest view in NavigateMode)
+        // hike: keep-on + pocket logic; bike: Settings → "Screen while cycling", pocket after 5 s covered (ScreenPolicy,
+        // rest view in NavigateMode)
         val screen = ScreenPolicy.of(vm.settings, rec?.nav?.session?.activity ?: vm.activity)
-        KeepScreenOn(screen.keepOn && rec != null && vm.followLine != null && vm.mode == AppMode.NAVIGATE, pocket = screen.pocket)
+        KeepScreenOn(screen.keepOn && rec != null && vm.followLine != null && vm.mode == AppMode.NAVIGATE, pocketAfterMs = screen.pocketAfterMs)
         // Quiet update check (once a day, only when online; F-OFF-06).
         LaunchedEffect(Unit) { vm.checkForUpdates(manual = false) }
 

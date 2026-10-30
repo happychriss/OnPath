@@ -12,22 +12,25 @@ import com.onpath.app.routing.TurnKind
 
 /**
  * What the screen does while following a route in Navigate (owner 2026-10-30). Pure, unit-tested (`SmartScreenTest`).
- * Hike: unchanged – "keep screen on" with the pocket logic (ui/PocketScreen.kt), never the rest view. Bike activities:
- * Settings → Navigation → "Screen while cycling" ([BikeScreen]); the handlebar has no pocket, so no proximity sensor
- * (a hand reaching for the screen would turn it off).
+ * Hike: "keep screen on" with the pocket logic (ui/PocketScreen.kt, sensor counts at once), never the rest view. Bike
+ * activities: Settings → Navigation → "Screen while cycling" ([BikeScreen]); the pocket logic too, but the sensor counts
+ * only after [PocketLogic.BIKE_ARM_MS] covered (owner 2026-10-30: a hand reaching for the handlebar phone must not turn
+ * it off; a phone in a jersey pocket / bag should). "Like the phone" keeps nothing on – no sensor.
+ * Overview: docs/design/navigation-cues.md.
  */
 data class ScreenPolicy(
     /** Keep the screen on while following a route. */
     val keepOn: Boolean,
-    /** Proximity sensor turns the screen off when covered (pocket). */
-    val pocket: Boolean,
+    /** The proximity sensor turns the screen off once covered this long (pocket); null = sensor not used. */
+    val pocketAfterMs: Long?,
     /** The rest view may replace the map far from the next turn (SmartScreen decides when). */
     val rest: Boolean,
 ) {
     companion object {
         fun of(s: AppSettings, activity: Activity): ScreenPolicy =
-            if (activity == Activity.HIKE) ScreenPolicy(keepOn = s.keepScreenOn, pocket = true, rest = false)
-            else ScreenPolicy(keepOn = s.bikeScreen.keepsOn, pocket = false, rest = s.bikeScreen == BikeScreen.SMART)
+            if (activity == Activity.HIKE) ScreenPolicy(keepOn = s.keepScreenOn, pocketAfterMs = 0L, rest = false)
+            else ScreenPolicy(keepOn = s.bikeScreen.keepsOn, pocketAfterMs = PocketLogic.BIKE_ARM_MS.takeIf { s.bikeScreen.keepsOn },
+                rest = s.bikeScreen == BikeScreen.SMART)
     }
 }
 
