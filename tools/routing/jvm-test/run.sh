@@ -6,6 +6,8 @@
 #      SnapTest.kt = plan points moved onto the way; TimeP4Test.kt = route times without / with way attributes; RerouterJvmTest.kt = re-routing while navigating, pass/fail;
 #      StopSkipJvmTest.kt = re-routing and the next stop (Hilden bike ride 2026-10-28, needs E5_N50.rd5): via / skip / ask, pass/fail);
 #      IslandTest.kt = a point on a way without a connection (Köln Dom, needs E5_N50.rd5) still gets a route, pass/fail;
+#      SpurStopJvmTest.kt = a stop on a path that BRouter's via correction cuts is still visited (TU Dortmund steps, bike,
+#      needs E5_N50.rd5; Planner + WaypointSnap.missesMatched + OnPathHints.matched), pass/fail;
 #      BikeCuesTest.kt = bike junction cues on town routes (Hilden, needs E5_N50.rd5): hints with their ways, cues before / after at 14 / 20 / 25 km/h (DUMP=1 lists every hint);
 #      ItterPathTest.kt = bike routes stay on a compacted foot / cycle path (Hilden Itter, needs E5_N50.rd5), pass/fail;
 #      FerryTest.kt = no route over a ferry that does not take bikes / people on foot (RAW_TAP=1, FERRY_CASES=<file>);

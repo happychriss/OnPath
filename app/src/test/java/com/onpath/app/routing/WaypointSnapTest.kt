@@ -80,4 +80,27 @@ class WaypointSnapTest {
         assertTrue(!h.canUndo)
         assertEquals(snapped, h.redo(undone))
     }
+
+    /** [m] metres south of the way at [lon] (0.00001° lat ≈ 1.11 m). */
+    private fun south(lon: Double, m: Double) = GeoPoint(46.68 - m / 111_195.0, lon)
+
+    /**
+     * The router matched a point on a way, but the line misses that spot: relative rule max(15 m, 3 × the point's
+     * distance to its way); only for points matched on a way (≤ 30 m). Field bug 2026-10-30: 4.5 m / 47 m.
+     */
+    @Test fun missesMatchedIsRelativeToTheTap() {
+        fun misses(onWayM: Double, missM: Double) =
+            WaypointSnap.missesMatched(south(11.105, missM + onWayM), south(11.105, missM), way)
+        assertTrue("4.5 m from its path, line 47 m from the spot", misses(4.5, 47.0))
+        assertTrue("on the path, line 16 m away", misses(0.0, 16.0))
+        assertTrue("20 m from its path, line 65 m away", misses(20.0, 65.0))
+        assertTrue("noise: line 12 m from the spot", !misses(4.5, 12.0))
+        assertTrue("tapped 20 m beside the path, line 47 m away: vague tap, smoothed", !misses(20.0, 47.0))
+        assertTrue("not on a way (35 m)", !misses(35.0, 200.0))
+        assertTrue("nothing matched", !WaypointSnap.missesMatched(south(11.105, 50.0), null, way))
+        // interior points only
+        val wps = listOf(south(11.10, 50.0), south(11.105, 51.5), south(11.11, 50.0))
+        val matched = listOf(south(11.10, 47.0), south(11.105, 47.0), south(11.11, 47.0))
+        assertEquals(setOf(1), WaypointSnap.skipped(wps, way, matched))
+    }
 }

@@ -18,6 +18,31 @@ object WaypointSnap {
     /** A matched crosspoint further than this from the drawn line is not on it (e.g. a cut spike). */
     private const val ON_LINE_M = 5.0
 
+    /** A point this close to the way BRouter matched it on counts as "on the way" (the user meant that way). */
+    const val ON_WAY_M = 30.0
+    /** The line passes the matched spot at least this far away = cut out, not snapping noise (a spike trimmed at a junction). */
+    const val MISSED_MIN_M = 15.0
+    /** … and farther than this many times the point's own distance to its way (a vague tap beside a way is smoothed). */
+    const val MISSED_FACTOR = 3.0
+
+    /**
+     * The router matched [point] on a way ([matched], ≤ [ON_WAY_M] from it) but the drawn [line] misses that spot by
+     * more than max([MISSED_MIN_M], [MISSED_FACTOR] × the point's distance to its way) – BRouter's via correction cut the
+     * there-and-back to it (field bug 2026-10-30: matched 4.5 m from the tap, line 47 m from the spot). Relative, because
+     * a tap right on a path means that path, while a tap 20 m beside two ways may mean either.
+     */
+    fun missesMatched(point: GeoPoint, matched: GeoPoint?, line: List<GeoPoint>): Boolean {
+        if (matched == null || line.size < 2) return false
+        val onWay = distM(point, matched)
+        return onWay <= ON_WAY_M && distToLine(matched, line) > maxOf(MISSED_MIN_M, MISSED_FACTOR * onWay)
+    }
+
+    /** Interior points of [waypoints] the [line] misses although the router matched them on a way ([missesMatched]). */
+    fun skipped(waypoints: List<GeoPoint>, line: List<GeoPoint>, matched: List<GeoPoint?>): Set<Int> {
+        if (waypoints.size < 3 || matched.size != waypoints.size) return emptySet()
+        return (1 until waypoints.lastIndex).filter { missesMatched(waypoints[it], matched[it], line) }.toSet()
+    }
+
     /**
      * Where each waypoint lies on the routed [line] (same size as [waypoints]); null = unknown.
      * Start = first line point, destination = last line point (that is where the line is drawn from/to).
