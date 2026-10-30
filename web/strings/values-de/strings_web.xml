@@ -107,11 +107,8 @@
 
     <string name="web_plan_dated">Route %1$s</string>
     <string name="web_plans_sync_now">Jetzt abgleichen</string>
-    <string name="web_plans_sync_title">Mit dem Handy verbinden</string>
-    <string name="web_sync_badge">Mit dem Handy verbunden</string>
     <string name="web_sync_paired">Verbunden</string>
     <string name="web_saved_title">Gespeichert als „%1$s“ – klicken, um erneut oder als neue Route zu speichern</string>
-    <string name="web_sync_badge_last">zuletzt abgeglichen %1$s</string>
     <string name="web_plans_heading">Deine geplanten Routen</string>
     <string name="web_plans_none">Noch keine gespeicherten Routen.</string>
     <string name="web_plans_open">Diese Route öffnen</string>
@@ -125,7 +122,7 @@
 
     <string name="web_pair_preparing">Wird vorbereitet…</string>
     <string name="web_pair_qr">QR-Code zum Verbinden</string>
-    <string name="web_pair_how">In der OnPath-App: %1$s, dann diesen Code scannen.</string>
+    <string name="web_pair_how">OnPath auf dem Handy öffnen → %1$s → diesen Code scannen.</string>
     <string name="web_pair_menu_path">☰ → Mit Browser verbinden</string>
     <string name="web_pair_check">Prüfe: %1$s – die App zeigt dieselben Ziffern.</string>
     <string name="web_pair_privacy">Deine Routen sind in diesem Browser und auf dem Handy verschlüsselt. Der Sync-Server reicht nur verschlossene Daten weiter – er kann deine Routen nicht lesen. Behalte den Code für dich: Wer ihn scannt, sieht deine gespeicherten Routen.</string>
@@ -133,7 +130,6 @@
     <string name="web_pair_waiting">Warte auf das Handy…</string>
     <string name="web_pair_done">Verbunden mit %1$s. Gespeicherte Routen werden in beide Richtungen abgeglichen, solange diese Seite offen ist.</string>
     <string name="web_pair_digits">Prüfziffern: %1$s</string>
-    <string name="web_pair_not_paired">Dieser Browser ist nicht verbunden.</string>
     <string name="web_unpair">Trennen</string>
     <string name="web_unpair_q">Die Routen werden nicht mehr abgeglichen. Sie bleiben in diesem Browser und auf dem Handy.</string>
     <string name="web_join_title">Verbindungscode</string>
@@ -151,7 +147,7 @@
     <string name="web_sync_pair_cap">Zu viele neue Verbindungen aus diesem Netz heute. Versuch es morgen noch einmal.</string>
     <string name="web_sync_pair_offline">Zum Verbinden braucht es Internet. Prüfe die Verbindung und versuch es noch einmal.</string>
     <string name="web_sync_not_a_code">Das ist kein Verbindungscode von OnPath.</string>
-    <string name="web_sync_already_paired">Dieser Browser ist schon verbunden. Trenne ihn zuerst (Meine Routen → Trennen).</string>
+    <string name="web_sync_already_paired">Dieser Browser ist schon verbunden. Trenne ihn zuerst (Verbunden → Trennen).</string>
     <string name="web_sync_unpair_failed">Trennen fehlgeschlagen (%1$d). Versuch es später noch einmal.</string>
     <string name="web_sync_unpair_offline">Zum Trennen braucht es Internet, damit auch das Handy aufhört. Prüfe die Verbindung und versuch es noch einmal.</string>
     <string name="web_sync_unpaired">Getrennt. Deine Routen bleiben in diesem Browser.</string>
@@ -171,8 +167,22 @@
     <string name="web_about_how_1">Klicke in die Karte für den Start, dann für Ziel und Zwischenpunkte; ein Klick auf einen Punkt öffnet sein Menü.</string>
     <string name="web_about_how_2">Suche einen Ort und füge ihn über seine Karte hinzu. Ziehe ≡ bei den Punkten, um die Reihenfolge zu ändern.</string>
     <string name="web_about_how_3">Rückgängig / Wiederholen, das Auge (halten: Route ausblenden) und Karteninhalt sind oben in der Werkzeugleiste.</string>
-    <string name="web_about_how_4">Teilen: ein QR-Code, den die OnPath-App scannt – oder verbinde das Handy einmal in Meine Routen und speichere Routen dort.</string>
+    <string name="web_about_how_4">Teilen: ein QR-Code, den die OnPath-App scannt – oder verbinde das Handy einmal (Handy verbinden, oben) und speichere Routen in Meine Routen.</string>
     <string name="web_credit_photon">Online-Suche: Photon von komoot (OpenStreetMap-Daten)</string>
     <string name="web_credit_maplibre">Kartendarstellung: MapLibre GL JS (BSD-Lizenz)</string>
     <string name="web_credit_font">Schrift: Manrope, © The Manrope Project Authors,</string>
+    <string name="web_phone_title">Handy</string>
+    <string name="web_phone_why">Deine geplanten Routen erscheinen auf dem Handy und hier.</string>
+    <string name="web_phone_fresh">Verbunden · abgeglichen %1$s</string>
+    <string name="web_phone_stale">Verbunden · Handy zuletzt %1$s</string>
+    <string name="web_phone_stale_why">Öffne OnPath auf dem Handy, dann werden die Routen abgeglichen. Änderungen von hier warten so lange.</string>
+    <string name="web_phone_browser_synced">Verbunden · dieser Browser abgeglichen %1$s</string>
+    <string name="web_ago_now">gerade eben</string>
+    <string name="web_phone_how_title">So funktioniert es</string>
+    <string name="web_phone_how_2">Abgeglichen wird, wenn OnPath auf dem Handy offen ist – und solange diese Seite offen ist.</string>
+    <string name="web_phone_how_3">Bei Konflikten gewinnt die neuere Änderung, die ältere bleibt als Kopie.</string>
+    <string name="web_phone_privacy">Ende-zu-Ende verschlüsselt, kein Konto – der Server sieht keine Inhalte.</string>
+    <string name="web_phone_more">Mehr dazu</string>
+    <string name="web_phone_code_again">Code noch einmal zeigen</string>
+    <string name="web_phone_code_again_title">Für ein weiteres Gerät: es kommt zur selben Verbindung dazu</string>
 </resources>

@@ -161,3 +161,21 @@ test("the cap defaults to LIMITS.newPerIpDay; its counters go with the daily pur
   await purgeQuota(env, Date.UTC(2026, 10, 2));
   assert.equal(env.SYNC.sqlite.prepare("SELECT COUNT(*) AS n FROM map_quota").get().n, 0);
 });
+
+test("appSeen: when the phone app last used the mailbox (to the minute); web planner requests do not count", async () => {
+  const env = fresh();
+  let t = Date.UTC(2026, 9, 30, 12, 0, 30);
+  const req = (method, path, headers, body) => handleSync(new Request(H + path, { method, body, headers: { authorization: "Bearer " + TOKEN, ...headers } }), env, t);
+  const web = { "x-onpath-client": "web", "user-agent": "Mozilla/5.0 (X11; Linux x86_64)" };
+  const app = { "user-agent": "Dalvik/2.1.0 (Linux; U; Android 14; Pixel 8)" };
+  assert.equal((await (await req("POST", BOX, web)).json()).appSeen, null, "claimed by the browser: no phone yet");
+  assert.equal((await (await req("GET", `${BOX}?since=0`, { "user-agent": "Mozilla/5.0 (Android 14)" })).json()).appSeen, null, "a browser without the header is the web too");
+  assert.equal((await (await req("GET", `${BOX}?since=0`, app)).json()).appSeen, Date.UTC(2026, 9, 30, 12, 0), "the app's GET, rounded to the minute");
+  t += 3 * 86_400_000;
+  assert.equal((await (await req("GET", `${BOX}?since=0`, web)).json()).appSeen, Date.UTC(2026, 9, 30, 12, 0), "3 days later the browser still sees the phone's last time");
+  const r = await req("PUT", `${BOX}/${ITEM}`, { ...app, "x-onpath-base": "0" }, blob());
+  assert.equal(r.status, 200);
+  assert.equal((await (await req("POST", BOX, web)).json()).appSeen, Date.UTC(2026, 10, 2, 12, 0), "an app write counts too");
+  assert.deepEqual(Object.keys(env.SYNC.sqlite.prepare("SELECT * FROM mailbox").get()).sort(),
+    ["app_seen", "created", "deleted", "id", "rev", "seen", "token_hash"], "no IP, no device column");
+});

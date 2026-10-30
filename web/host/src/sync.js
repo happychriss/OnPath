@@ -9,6 +9,11 @@
 //                                      → {rev}; 409 {rev} when someone wrote first (read, merge, try again)
 //   DELETE /sync/v1/<mailbox>          unpair: all items gone, the mailbox answers 410 from then on
 //
+// "Phone last synced" (owner 2026-10-30): POST / GET answers carry appSeen = when the phone app last used this
+// mailbox (ms, to the minute; null = not yet). The app needs no change: a request is the app's unless it comes from
+// the web planner (header x-onpath-client: web, or a browser user agent "Mozilla/…"). Stored as mailbox.app_seen,
+// written at most once a minute; no IP, no device id.
+//
 // Auth: "Authorization: Bearer <token>". Cloudflare Access must let /sync/* through (bypass policy) – the phone app
 // cannot pass Access; the token is the lock here. Storage: D1 (binding SYNC), blobs as Base64url text.
 //
@@ -32,6 +37,7 @@ export const NEW_MAILBOX_CAP = "new-mailbox-cap";
 const ID = /^[A-Za-z0-9_-]{22}$/;
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const DAY = 86_400_000;
+const MINUTE = 60_000;
 
 const json = (status, body, extra = {}) => new Response(JSON.stringify(body), {
   status, headers: { "content-type": "application/json", "cache-control": "no-store", ...extra },
@@ -69,7 +75,7 @@ export async function handleSync(request, env, now = Date.now()) {
   if (!TOKEN.test(token)) return fail(401, "missing token");
   const hash = await sha256(token);
   const db = env.SYNC;
-  const row = await db.prepare("SELECT token_hash, rev, deleted, seen FROM mailbox WHERE id = ?1").bind(box).first();
+  const row = await db.prepare("SELECT token_hash, rev, deleted, seen, app_seen FROM mailbox WHERE id = ?1").bind(box).first();
   if (row?.deleted) return fail(410, "this pairing was ended");
 
   if (request.method === "POST" && !item) {
@@ -88,13 +94,13 @@ export async function handleSync(request, env, now = Date.now()) {
         await db.prepare("INSERT INTO map_quota (k, period, n) VALUES (?1, ?2, 1) ON CONFLICT(k, period) DO UPDATE SET n = n + 1")
           .bind(k, day).run();
       }
-      const again = await db.prepare("SELECT token_hash, rev FROM mailbox WHERE id = ?1").bind(box).first();
+      const again = await db.prepare("SELECT token_hash, rev, app_seen FROM mailbox WHERE id = ?1").bind(box).first();
       if (!again || !sameText(again.token_hash, hash)) return fail(403, "wrong token");
-      return json(201, { rev: again.rev });
+      return json(201, { rev: again.rev, appSeen: await appSeen(db, box, now, again, request) });
     }
     if (!sameText(row.token_hash, hash)) return fail(403, "wrong token");
     await touch(db, box, now, row);
-    return json(200, { rev: row.rev });
+    return json(200, { rev: row.rev, appSeen: await appSeen(db, box, now, row, request) });
   }
   if (!row) return fail(404, "no such mailbox");
   if (!sameText(row.token_hash, hash)) return fail(403, "wrong token");
@@ -106,7 +112,7 @@ export async function handleSync(request, env, now = Date.now()) {
     const more = results.length > LIMITS.page;
     const items = results.slice(0, LIMITS.page);
     await touch(db, box, now, row);
-    return json(200, { rev: more ? items[items.length - 1].rev : row.rev, more, items });
+    return json(200, { rev: more ? items[items.length - 1].rev : row.rev, more, items, appSeen: await appSeen(db, box, now, row, request) });
   }
 
   if (request.method === "PUT" && item) {
@@ -115,6 +121,7 @@ export async function handleSync(request, env, now = Date.now()) {
     const base = Number(raw);
     const len = Number(request.headers.get("content-length") ?? 0);
     if (len > LIMITS.blobBytes) return fail(413, "item too large");
+    await appSeen(db, box, now, row, request);
     const body = new Uint8Array(await request.arrayBuffer());
     if (body.length > LIMITS.blobBytes) return fail(413, "item too large");
     if (body.length < 29) return fail(400, "not a sync item");
@@ -148,6 +155,20 @@ export async function handleSync(request, env, now = Date.now()) {
     return json(200, { deleted: true });
   }
   return fail(405, "method not allowed");
+}
+
+/** A request from the web planner (its header, or any browser) – everything else is the phone app. */
+export function fromWeb(request) {
+  return request.headers.get("x-onpath-client") === "web" || /^Mozilla\//.test(request.headers.get("user-agent") ?? "");
+}
+
+/** When the phone app last used the mailbox (to the minute, written at most once a minute); null = not yet. */
+async function appSeen(db, box, now, row, request) {
+  if (fromWeb(request)) return row.app_seen ?? null;
+  const minute = now - (now % MINUTE);
+  if (row.app_seen !== minute) await db.prepare("UPDATE mailbox SET app_seen = ?2 WHERE id = ?1").bind(box, minute).run();
+  row.app_seen = minute;
+  return minute;
 }
 
 /** Last use, at most once a day per mailbox (fewer writes). */

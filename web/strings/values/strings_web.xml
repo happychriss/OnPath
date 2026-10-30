@@ -120,11 +120,8 @@
     <!-- My plans -->
     <string name="web_plan_dated">Route %1$s</string>
     <string name="web_plans_sync_now">Sync now</string>
-    <string name="web_plans_sync_title">Pair with phone</string>
-    <string name="web_sync_badge">Paired with your phone</string>
     <string name="web_sync_paired">Paired</string>
     <string name="web_saved_title">Saved as “%1$s” – click to save again or as a new route</string>
-    <string name="web_sync_badge_last">last synced %1$s</string>
     <string name="web_plans_heading">Your planned routes</string>
     <string name="web_plans_none">No saved routes yet.</string>
     <string name="web_plans_open">Open this route</string>
@@ -139,7 +136,7 @@
     <!-- Pair phone, sync -->
     <string name="web_pair_preparing">Preparing…</string>
     <string name="web_pair_qr">QR code for pairing</string>
-    <string name="web_pair_how">In the OnPath app: %1$s, then scan this code.</string>
+    <string name="web_pair_how">Open OnPath on the phone → %1$s → scan this code.</string>
     <string name="web_pair_menu_path">☰ → Pair with browser</string>
     <string name="web_pair_check">Check: %1$s – the app shows the same digits.</string>
     <string name="web_pair_privacy">Your routes are encrypted on this browser and on the phone. The sync server only passes on locked data – it cannot read your routes. Keep this code to yourself: whoever scans it sees your saved routes.</string>
@@ -147,7 +144,6 @@
     <string name="web_pair_waiting">Waiting for the phone…</string>
     <string name="web_pair_done">Paired with %1$s. Saved routes sync both ways by themselves while this page is open.</string>
     <string name="web_pair_digits">Check digits: %1$s</string>
-    <string name="web_pair_not_paired">This browser is not paired.</string>
     <string name="web_unpair">Unpair</string>
     <string name="web_unpair_q">Routes stop syncing. They stay in this browser and on the phone.</string>
     <string name="web_join_title">Pairing code</string>
@@ -165,7 +161,7 @@
     <string name="web_sync_pair_cap">Too many new pairings from this network today. Try again tomorrow.</string>
     <string name="web_sync_pair_offline">Pairing needs the internet. Check the connection and try again.</string>
     <string name="web_sync_not_a_code">This is not a pairing code of OnPath.</string>
-    <string name="web_sync_already_paired">This browser is already paired. Unpair it first (My routes → Unpair).</string>
+    <string name="web_sync_already_paired">This browser is already paired. Unpair it first (Paired → Unpair).</string>
     <string name="web_sync_unpair_failed">Unpairing failed (%1$d). Try again later.</string>
     <string name="web_sync_unpair_offline">Unpairing needs the internet, so that the phone stops too. Check the connection and try again.</string>
     <string name="web_sync_unpaired">Unpaired. Your routes stay in this browser.</string>
@@ -186,8 +182,22 @@
     <string name="web_about_how_1">Click the map to set the start, then the destination and stops; click a point for its menu.</string>
     <string name="web_about_how_2">Search a place, then add it from its card. Drag ≡ in Points to change the order.</string>
     <string name="web_about_how_3">Undo / redo, the eye (hold: hide the route) and Map content are in the toolbar at the top.</string>
-    <string name="web_about_how_4">Share: a QR code the OnPath app scans – or pair the phone once in My routes and save routes there.</string>
+    <string name="web_about_how_4">Share: a QR code the OnPath app scans – or pair the phone once (Pair phone, at the top) and save routes in My routes.</string>
     <string name="web_credit_photon">Search online: Photon by komoot (OpenStreetMap data)</string>
     <string name="web_credit_maplibre">Map renderer: MapLibre GL JS (BSD licence)</string>
     <string name="web_credit_font">Typeface: Manrope, © The Manrope Project Authors,</string>
+    <string name="web_phone_title">Phone</string>
+    <string name="web_phone_why">Your planned routes appear on the phone and here.</string>
+    <string name="web_phone_fresh">Paired · synced %1$s</string>
+    <string name="web_phone_stale">Paired · phone last %1$s</string>
+    <string name="web_phone_stale_why">Open OnPath on the phone, then the routes sync. Changes from here wait until then.</string>
+    <string name="web_phone_browser_synced">Paired · this browser synced %1$s</string>
+    <string name="web_ago_now">just now</string>
+    <string name="web_phone_how_title">How it works</string>
+    <string name="web_phone_how_2">They sync while OnPath is open on the phone – and while this page is open.</string>
+    <string name="web_phone_how_3">On a conflict the newer change wins; the older one stays as a copy.</string>
+    <string name="web_phone_privacy">End-to-end encrypted, no account – the server sees no content.</string>
+    <string name="web_phone_more">More</string>
+    <string name="web_phone_code_again">Show code again</string>
+    <string name="web_phone_code_again_title">For another device: it joins the same pairing</string>
 </resources>

@@ -25,7 +25,7 @@ origin/main merged – web-spike carries main's app code again and merges main r
 | `app/src/test/java/com/onpath/app/sync/` | `SyncCryptoTest` (FIPS 180-4, RFC 4231, RFC 5869, FIPS 197, GCM spec vectors; byte-equal to javax.crypto on 200 random inputs), `PlanSyncTest` (formats, frozen v1 values, merge, ledger, two ledgers through a fake mailbox). Run by `./gradlew -p web/engine test`. |
 | `web/engine/.../WebSync.kt` | string calls for the page (`syncKeys`, `syncApply`, `syncOutbox`, …; exports in `WebApi.kt`) |
 | `web/host/src/sync.js`, `web/host/migrations/0001_sync.sql` | the mailbox (Worker route `/sync/v1/…`, D1) |
-| `web/app/src/sync.ts`, `plans.ts` | browser: IndexedDB store, sync loop, My routes with its "Pair with phone" section (header status while paired), join dialog |
+| `web/app/src/sync.ts`, `plans.ts` | browser: IndexedDB store, sync loop, My routes, the Phone window (header entry: state dot, pairing, Sync now, Unpair), join dialog |
 | Tests | `web/host/test/sync.test.js` (mailbox on Node's SQLite as fake D1), `web/app/test/sync-engine.mjs` (Wasm = JVM frozen bytes), `web/app/test/sync-smoke.mjs` (two browser contexts, end to end) – all in CI, none needs map data |
 
 ## 2. Threat model
@@ -156,6 +156,7 @@ Header `Authorization: Bearer <token>` on every call.
 | `PUT /sync/v1/<mb>/<id>` body = blob bytes, `x-onpath-base: B` | 200 `{rev}`; 409 `{rev}` when the item is not at B; 413 > 32 KiB; 507 limits |
 | `DELETE /sync/v1/<mb>` | 200 – all items deleted, the mailbox answers 410 from then on (cannot be claimed again) |
 | `POST` that would create a mailbox, over the daily cap | 429 `{"error": "…", "code": "new-mailbox-cap"}`, `retry-after` = seconds to the next UTC day |
+| `appSeen` in every `POST` / `GET` answer | when the **phone app** last used the mailbox (ms, to the minute; `null` = not yet) – see below |
 | others | 401 no/odd token, 404 unknown mailbox / path, 429 rate limit (plain `{"error"}`, no `code`), 503 no database bound |
 
 - **Compare-and-set in one D1 batch** (one transaction): `UPDATE mailbox SET rev = rev + 1 … WHERE` the item is
@@ -165,6 +166,12 @@ Header `Authorization: Bearer <token>` on every call.
   **rate limit** 120 requests / min / IP (Workers rate-limit binding `SYNC_RATE`; a round is 2–5 requests).
 - **Expiry:** a daily cron (`17 3 * * *`) deletes mailboxes not used for 365 days, and ended pairings after the same
   time. `seen` is written at most once a day per mailbox.
+- **Phone last synced (`appSeen`, 2026-10-30):** the browser shows "Paired · phone last 3 days ago". Phone and browser
+  share one token, so the host tells them apart by who asks: a request with `x-onpath-client: web` (the planner sends
+  it) or a browser user agent (`Mozilla/…`) is the web; anything else is the app (`HttpURLConnection`'s
+  `Dalvik/…`). **The app needs no change.** Stored in `mailbox.app_seen` (migration 0003): the minute of the app's
+  last `POST` / `GET` / `PUT`, written at most once a minute – no IP, no device id, no extra table. With two phones it
+  is the later of them. A browser on an old host gets no `appSeen` and shows only when it synced itself.
 - **Schema:** `migrations/0001_sync.sql` (`mailbox`: id, token_hash, rev, created, seen, deleted; `item`: mailbox,
   id, rev, blob). D1 database `onpath-sync-test`, EU jurisdiction.
 - **New mailboxes per IP per day:** at most `SYNC_NEW_PER_IP_DAY` (wrangler var, default 5). Only a `POST` that
@@ -182,9 +189,12 @@ Header `Authorization: Bearer <token>` on every call.
 - ☰ → **My plans**: save the current plan (name field, "Save as a new plan" when the open plan is a saved one), list
   newest first with date and "from the other device", open, rename, delete (asks once: "It is also deleted on the
   paired phone."), sync status line, "Sync now" when paired. The plan sheet's ⋯ → "Save to My plans" opens the same.
-- My routes → **Pair with phone** → Pair phone (since 2026-10-30; was ☰ → Pair phone): QR code of the pairing link, "In the OnPath app: ☰ → Pair with browser, then scan this code",
-  check digits, "Waiting for the phone…" → "Paired with Pixel 8"; then **Unpair** (asks: "Plans stop syncing; they
-  stay on this browser and on the phone").
+- Header phone entry → **Phone window** (since 2026-10-30; web-planner.md §13 row 29): the state (not paired / paired
+  and the phone synced within 24 h – green / the phone not for longer – amber, from `appSeen` below), How it works,
+  privacy; **Pair phone**: QR code of the pairing link, "Open OnPath on the phone → ☰ → Pair with browser → scan this
+  code", check digits, "Waiting for the phone…" → "Paired with Pixel 8"; paired: **Sync now**, **Show code again** (the
+  same code, for another device), **Unpair** (asks in place: "Routes stop syncing. They stay in this browser and on
+  the phone.").
 - A pairing link opened in a browser (e.g. the phone's camera opened the web page instead of the app): "Pairing code –
   usually you scan it with the OnPath app; you can also pair this browser instead". The secret is removed from the
   address bar at once.
@@ -260,7 +270,8 @@ Merge `feat/plan-sync` (or main once it is in) – the shared code is ready and 
 > **Plan sync with the web planner (only when you pair).** Your saved plans are encrypted on your phone and in your
 > browser before they leave the device. They pass through our sync server (Cloudflare, EU) as locked data: the server
 > cannot read them and never learns your name, e-mail or where you plan to go. It stores a random mailbox number, the
-> locked plans and when they last changed; against misuse it counts new pairings per network for one day (your
+> locked plans and when they last changed, and when the phone app last fetched them (to the minute, so the browser can
+> say "phone last synced 3 days ago"); against misuse it counts new pairings per network for one day (your
 > internet address only as a code that changes daily, deleted the next day). Unpairing deletes everything there at once; a mailbox nobody uses for 12
 > months is deleted automatically. Whoever has your pairing code can see your saved plans – do not share it.
 

@@ -46,26 +46,58 @@ export function syncLine(s: SyncStatus): { text: string; kind: SyncStatus['kind'
   return { text: t('web_sync_paired_with', who) + last + pending, kind: 'info' };
 }
 
+/** "3 days ago" / "vor 3 Tagen", "2 min. ago" / "vor 2 Min." (Intl, the page's language); under a minute "just now". */
+export function ago(ms: number, now = Date.now()): string {
+  const s = Math.max(0, now - ms) / 1000;
+  if (s < 60) return t('web_ago_now');
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'always', style: 'short' });
+  if (s < 3600) return rtf.format(-Math.floor(s / 60), 'minute');
+  if (s < 86400) return rtf.format(-Math.floor(s / 3600), 'hour');
+  return rtf.format(-Math.floor(s / 86400), 'day');
+}
+
 /**
- * My routes: the saved routes, and at the bottom "Pair with phone" (owner 2026-10-30 – pairing lives here, not in
- * the header): not paired → Pair phone (the QR code + check digits, [pair]); paired → "Paired with …", Sync now, Unpair.
+ * Green while the phone synced within this time, amber after it (owner 2026-10-30). 24 h: the app syncs when it starts,
+ * when it comes back and every minute while open – but never in the background (PlanSync.kt) – so a phone in use
+ * syncs many times a day, and a day without any access means OnPath was not opened on it today. Shorter (the app's own
+ * 6 h "not synced" warning) would turn amber every night in normal use; longer would hide that a route planned here
+ * yesterday is not on the phone yet.
  */
-export async function myPlansDialog(sync: PlanSync, host: PlanHost, pair: () => void, atSync = false) {
+export const PHONE_FRESH_MS = 24 * 3_600_000;
+
+export interface PhoneState { kind: 'none' | 'fresh' | 'stale'; head: string; why: string }
+/**
+ * The phone in three states (header dot + tooltip, top of the Phone window): not paired (grey), paired and the phone
+ * synced lately (green), paired but the phone has not synced for [PHONE_FRESH_MS] (amber). A host without appSeen (or
+ * a pairing of two browsers): green with when this browser synced – no amber without knowing the phone's time.
+ */
+export function phoneState(s: SyncStatus, now = Date.now()): PhoneState {
+  if (!s.paired) return { kind: 'none', head: t('web_pair_phone'), why: t('web_phone_why') };
+  const who = s.devices.map((d) => d.name).join(', ');
+  if (!who) return { kind: 'stale', head: t('web_sync_paired') + ' · ' + t('web_sync_no_phone_yet'), why: t('web_phone_stale_why') };
+  if (s.phoneSeen != null) {
+    return now - s.phoneSeen <= PHONE_FRESH_MS
+      ? { kind: 'fresh', head: t('web_phone_fresh', ago(s.phoneSeen, now)), why: t('web_sync_paired_with', who) }
+      : { kind: 'stale', head: t('web_phone_stale', ago(s.phoneSeen, now)), why: t('web_phone_stale_why') };
+  }
+  return { kind: 'fresh', head: s.lastSync ? t('web_phone_browser_synced', ago(s.lastSync, now)) : t('web_sync_paired'), why: t('web_sync_paired_with', who) };
+}
+
+/**
+ * My routes (owner 2026-10-30): only the planned routes – heading "Your planned routes" with the app's planned-route
+ * icon (only planned routes sync, no tracks), Save current route, the list, Close. The phone has its own window.
+ */
+export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
   const save = await host.saveState(); // before the dialog shows: its Save button is right from the start
   const d = dialog('plans', `
     <h2>${esc(t('routes_title'))}</h2>
     <h3 id="planHead" class="listhead">${icon('route', 20)}${esc(t('web_plans_heading'))}</h3>
     <button id="saveCurrent" class="outline">${icon('save', 18)}${esc(t('plan_save_current_route'))}</button>
     <ul id="planList" class="planlist" aria-labelledby="planHead"></ul>
-    <section class="syncsec" aria-labelledby="syncTitle">
-      <h3 id="syncTitle">${icon('sync', 20)}${esc(t('web_plans_sync_title'))}</h3>
-      <div id="plansStatus" class="status muted"></div>
-      <div class="row" id="syncRow"><button id="pairPhone" hidden>${esc(t('web_pair_phone'))}</button><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button><button id="unpair" class="danger" hidden>${esc(t('web_unpair'))}</button></div>
-    </section>
     <div class="row end"><button id="closePlans">${esc(t('common_close'))}</button></div>`);
   const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
-  // only planned routes sync (no tracks) – the heading says so. Save: greyed on an empty route, ✓ while saved and
-  // unchanged (a click still asks Save again / Save as new – the app's saveMode)
+  // Save: greyed on an empty route, ✓ while saved and unchanged (a click still asks Save again / Save as new – the
+  // app's saveMode)
   const sb = $<HTMLButtonElement>('saveCurrent');
   sb.disabled = save.state === 'empty';
   sb.dataset.state = save.state;
@@ -79,8 +111,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost, pair: () => 
   const render = async () => {
     const plans = await sync.list();
     const ul = $('planList');
-    if (!sync.status.paired) d.querySelector<AskBox>('.syncsec .confirm')?.cancel(); // ended meanwhile: nothing to ask
-    if (ul.querySelector('.confirm')) return syncRender(); // a delete question is open: keep the list as it is
+    if (ul.querySelector('.confirm')) return; // a delete question is open: keep the list as it is
     ul.innerHTML = plans.length ? '' : `<li class="muted">${esc(t('web_plans_none'))}</li>`;
     for (const p of plans) {
       const li = document.createElement('li');
@@ -101,37 +132,68 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost, pair: () => 
         t('common_delete'), () => li.querySelector('.del'), async () => { await sync.remove(p.id); await render(); $('saveCurrent').focus(); }, t('web_keep'));
       ul.append(li);
     }
-    syncRender();
-  };
-  const syncRender = () => {
-    const line = syncLine(sync.status);
-    const st = $('plansStatus');
-    st.textContent = line.text;
-    st.classList.toggle('error', line.kind === 'error');
-    st.classList.toggle('warning', line.kind === 'warning');
-    $('syncNow').hidden = !sync.status.paired;
-    $('unpair').hidden = !sync.status.paired;
-    $('pairPhone').hidden = sync.status.paired;
   };
   const off = sync.onChange(() => { if (d.open) render(); });
   d.addEventListener('close', () => off());
-  $('syncNow').onclick = () => sync.syncNow();
-  $('pairPhone').onclick = () => pair(); // the pairing dialog takes this one's place
-  // the question takes the place of "Sync now / Unpair" (owner 2026-10-30: one "Unpair" at a time, above Close)
-  $('unpair').onclick = () => askInPlace($('syncRow'), t('web_unpair_q'), t('web_unpair'), () => $('unpair'), async () => {
-    const err = await sync.unpair();
-    await render();
-    $('plansStatus').textContent = err ?? t('web_sync_unpaired');
-    $('plansStatus').classList.toggle('error', !!err);
-    d.querySelector<HTMLButtonElement>('.syncsec button:not([hidden])')?.focus();
-  });
   $('closePlans').onclick = () => d.close();
   await render();
-  if (atSync) { // from the header's paired status: straight to "Pair with phone"
-    const sec = d.querySelector<HTMLElement>('.syncsec')!;
-    sec.scrollIntoView({ block: 'nearest' });
-    sec.querySelector<HTMLButtonElement>('button:not([hidden])')?.focus();
-  }
+}
+
+/**
+ * The Phone window (owner 2026-10-30: the one place for pairing – header entry / ☰ entry, not in My routes): the state
+ * on top ([phoneState] – grey / green / amber, one line why), "How it works" in three lines, privacy in one (+ More →
+ * the privacy page), then Pair phone (→ the pairing dialog with the QR code and the steps) or Sync now · Show code
+ * again · Unpair (the question takes their place), Close at the bottom right. Follows the sync live; the "… ago"
+ * text moves on every 30 s.
+ */
+export function phoneDialog(sync: PlanSync, page: string) {
+  const d = dialog('phone', `
+    <h2>${esc(t('web_phone_title'))}</h2>
+    <div id="phoneState" class="phonestate">${icon('phone', 28)}<i class="pdot" aria-hidden="true"></i>
+      <div><b id="phoneHead"></b><p id="phoneWhy" class="muted small"></p></div></div>
+    <div id="phoneStatus" class="status" role="status"></div>
+    <h3 class="how">${esc(t('web_phone_how_title'))}</h3>
+    <ul class="how"><li id="how1">${esc(t('web_phone_why'))}</li><li>${esc(t('web_phone_how_2'))}</li><li>${esc(t('web_phone_how_3'))}</li></ul>
+    <p class="muted small privacy">${esc(t('web_phone_privacy'))} <a href="${esc(t('web_url_privacy'))}" target="_blank" rel="noopener">${esc(t('web_phone_more'))}</a></p>
+    <div class="row wrap" id="phoneRow"><button id="pairPhone" class="primary" hidden>${esc(t('web_pair_phone'))}</button><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button><button id="codeAgain" hidden title="${esc(t('web_phone_code_again_title'))}">${esc(t('web_phone_code_again'))}</button><button id="unpair" class="danger" hidden>${esc(t('web_unpair'))}</button></div>
+    <div class="row end"><button id="closePhone">${esc(t('common_close'))}</button></div>`);
+  const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
+  let said = ''; // a result of Unpair, shown until the next change of the sync
+  const render = () => {
+    const s = sync.status, st = phoneState(s);
+    $('phoneState').dataset.kind = st.kind;
+    $('phoneHead').textContent = st.head;
+    $('phoneWhy').textContent = st.why;
+    const line = said || (s.message ? s.message : s.paired && s.pending ? t('web_sync_to_send', s.pending) : '');
+    $('phoneStatus').textContent = line;
+    $('phoneStatus').classList.toggle('error', !said && s.kind === 'error' && !!s.message);
+    $('phoneStatus').classList.toggle('warning', !said && s.kind === 'warning' && !!s.message);
+    $('phoneStatus').classList.toggle('muted', !s.message || s.kind === 'info');
+    if (!s.paired) d.querySelector<AskBox>('.confirm')?.cancel(); // ended meanwhile: nothing to ask
+    $('syncNow').hidden = !s.paired;
+    $('codeAgain').hidden = !s.paired;
+    $('unpair').hidden = !s.paired;
+    $('pairPhone').hidden = s.paired;
+    $('how1').hidden = !s.paired; // not paired: the state line says it already
+  };
+  const off = sync.onChange(() => { said = ''; if (d.open) render(); });
+  const tick = window.setInterval(render, 30_000);
+  d.addEventListener('close', () => { off(); clearInterval(tick); });
+  $('pairPhone').onclick = () => pairDialog(sync, page); // the pairing dialog takes this one's place
+  $('syncNow').onclick = () => sync.syncNow();
+  $('codeAgain').onclick = () => pairDialog(sync, page, true); // a second device joins the same pairing (web-sync.md §13.2)
+  // the question takes the place of "Sync now / Unpair" (owner 2026-10-30: one "Unpair" at a time, above Close)
+  $('unpair').onclick = () => askInPlace($('phoneRow'), t('web_unpair_q'), t('web_unpair'), () => $('unpair'), async () => {
+    const err = await sync.unpair();
+    said = err ?? t('web_sync_unpaired');
+    render();
+    $('phoneStatus').classList.toggle('error', !!err);
+    d.querySelector<HTMLButtonElement>('#phoneRow button:not([hidden])')?.focus();
+  });
+  $('closePhone').onclick = () => d.close();
+  render();
+  d.querySelector<HTMLButtonElement>('#phoneRow button:not([hidden])')?.focus();
+  if (sync.status.paired) sync.syncNow(); // the phone's time fresh from the host
 }
 
 /**
@@ -183,8 +245,13 @@ function nameDialog(sync: PlanSync, host: PlanHost, cur: { code: string; title: 
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } });
 }
 
-export async function pairDialog(sync: PlanSync, page: string) {
-  const d = dialog('pair', `<h2>${esc(t('web_pair_phone'))}</h2><div id="pairBody"><p class="muted">${esc(t('web_pair_preparing'))}</p></div>
+/**
+ * Pair phone: the QR code, the steps in the app and the check digits; once the phone said hello, "Paired with …".
+ * [again] (Phone window → Show code again, paired): the same code for a second device – it stays on the code.
+ * Unpair lives in the Phone window only (owner 2026-10-30: not three "Unpair").
+ */
+export async function pairDialog(sync: PlanSync, page: string, again = false) {
+  const d = dialog('pair', `<h2>${esc(t(again ? 'web_phone_code_again' : 'web_pair_phone'))}</h2><div id="pairBody"><p class="muted">${esc(t('web_pair_preparing'))}</p></div>
     <div id="pairStatus" class="status muted"></div>
     <div class="row end" id="pairButtons"><button id="closePair">${esc(t('common_close'))}</button></div>`);
   const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
@@ -214,26 +281,15 @@ export async function pairDialog(sync: PlanSync, page: string) {
     const line = syncLine(s);
     $('pairStatus').textContent = s.paired && !s.devices.length && !s.message ? t('web_pair_waiting') : line.text;
     $('pairStatus').classList.toggle('error', line.kind === 'error');
-    if (s.paired && s.devices.length) {
+    if (s.paired && s.devices.length && !again) {
       clearInterval(poll);
       $('pairBody').innerHTML = `<p>${t('web_pair_done', `<b>${esc(s.devices.map((x) => x.name).join(', '))}</b>`)}</p>
         <p class="muted small">${esc(t('web_pair_digits', s.check ?? ''))}</p>`;
-      if (!$('pairButtons').querySelector('#unpair')) {
-        const b = document.createElement('button');
-        b.id = 'unpair'; b.className = 'danger'; b.textContent = t('web_unpair');
-        b.onclick = () => askInPlace($('pairButtons'), t('web_unpair_q'), t('web_unpair'), () => b, async () => {
-          const err = await sync.unpair();
-          $('pairStatus').textContent = err ?? t('web_sync_unpaired');
-          if (!err) { $('pairBody').innerHTML = `<p>${esc(t('web_pair_not_paired'))}</p>`; b.remove(); }
-          $('closePair').focus();
-        });
-        $('pairButtons').prepend(b);
-      }
     }
   };
   const off = sync.onChange(() => { if (d.open) render(); });
   d.addEventListener('close', () => off());
-  if (sync.status.paired && sync.status.devices.length) render(); else { await showCode(); render(); }
+  if (sync.status.paired && sync.status.devices.length && !again) render(); else { await showCode(); render(); }
 }
 
 type AskBox = HTMLElement & { cancel(): void };

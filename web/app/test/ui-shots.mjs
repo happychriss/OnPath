@@ -1,5 +1,5 @@
 // Screenshots of the page layout (header – not paired and paired –, toolbar, the sheet's three steps, place card, activity drop-down, Map content,
-// My routes – paired and the unpair question on desktop) at desktop (1440×900) and phone (390×844) width, for looking at – nothing is checked. Needs the cell store.
+// My routes, the Phone window in its three states + the unpair question, the ☰ dot on phones) at desktop (1440×900) and phone (390×844) width, for looking at – nothing is checked. Needs the cell store.
 // Usage: node test/ui-shots.mjs [segmentsDir] [mapStoreDir] [outDir]
 import path from 'node:path';
 import fs from 'node:fs';
@@ -23,20 +23,36 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
   await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
   await page.waitForTimeout(2500);
   await page.screenshot({ path: path.join(out, `${name}-plan.png`) });
-  // the header's phone entry (owner 2026-10-30): "Pair phone" while not paired, phone + green dot + "Paired" while paired
-  if (name === 'desktop') {
-    await page.waitForSelector('#syncBadge[aria-label]', { state: 'attached', timeout: 60_000 });
-    const clip = { x: 0, y: 0, width: vp.width, height: 56 };
-    await page.screenshot({ path: path.join(out, `${name}-header-unpaired.png`), clip });
-    // the paired status, for the look only: the page's own first sync (sync.init → syncSoon → refresh) may still set
-    // "not paired" from its store, so stop its timer and set the status until the entry shows it
-    await page.evaluate(() => clearInterval(window.__sync.timer));
-    await page.waitForTimeout(1500); // a sync already started ends
-    await page.waitForFunction(() => { const s = window.__sync; if (!s.status.paired) { s.status = { ...s.status, paired: true, lastSync: Date.now() }; s.changed(); }
-      return document.querySelector('#syncBadge .lbl')?.textContent === 'Paired'; }, null, { timeout: 10_000, polling: 200 }).catch(() => {});
-    await page.screenshot({ path: path.join(out, `${name}-header-paired.png`), clip });
-    await page.evaluate(() => { const s = window.__sync; s.status = { ...s.status, paired: false, lastSync: null }; s.changed(); });
+  // the phone (owner 2026-10-30): header entry with no dot / green / amber dot, the Phone window in each state, the
+  // unpair question; on phones the ☰ button with the dot. For the look only: the page's own sync is stopped and the
+  // status set by hand (the window's "sync now" would reset it from the empty store)
+  await page.waitForSelector('#syncBadge[aria-label]', { state: 'attached', timeout: 60_000 });
+  await page.evaluate(() => { clearInterval(window.__sync.timer); window.__sync.syncNow = async () => {}; });
+  await page.waitForTimeout(1500); // a sync already started ends
+  const fake = (st) => page.evaluate((st) => { const s = window.__sync, now = Date.now();
+    s.status = st === 'none' ? { ...s.status, paired: false, devices: [], phoneSeen: null, lastSync: null, message: '' }
+      : { ...s.status, paired: true, devices: [{ name: 'Pixel 8', updatedAt: now }], lastSync: now, message: '', pending: 0,
+        phoneSeen: st === 'fresh' ? now - 2 * 60_000 : now - 3 * 86_400_000 };
+    s.changed(); }, st);
+  const clip = { x: 0, y: 0, width: vp.width, height: 56 };
+  for (const st of ['none', 'fresh', 'stale']) {
+    await fake(st);
+    await page.waitForTimeout(150);
+    await page.screenshot({ path: path.join(out, `${name}-header-${st}.png`), clip });
+    if (name === 'phone' && st !== 'stale') continue;
+    if (name === 'phone') await page.click('#menuBtn');
+    await page.click('#syncBadge');
+    await page.waitForSelector('dialog.phone[open]');
+    await page.screenshot({ path: path.join(out, `${name}-phone-${st}.png`) });
+    if (st === 'stale' && name === 'desktop') {
+      await page.click('dialog.phone #unpair');
+      await page.waitForTimeout(200);
+      await page.screenshot({ path: path.join(out, `${name}-phone-unpair.png`) });
+      await page.keyboard.press('Escape');
+    }
+    await page.click('#closePhone');
   }
+  await fake('none');
   // the sheet's three steps (sheetstep.ts): the chevron goes one step more until Points, then back to small
   for (let i = 0; i < 3; i++) {
     await page.click('#sheetStep');
@@ -45,21 +61,9 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
   }
   if (name === 'phone') await page.click('#menuBtn');
   await page.click('#menuPlans');
-  await page.waitForSelector('dialog.plans[open] .syncsec');
+  await page.waitForSelector('dialog.plans[open] #planList');
   await page.screenshot({ path: path.join(out, `${name}-myroutes.png`) });
   await page.click('#closePlans');
-  if (name === 'desktop') { // paired (for the look only, as the header above): Sync now / Unpair, then the question in their place
-    await page.evaluate(() => { const s = window.__sync; s.status = { ...s.status, paired: true, lastSync: Date.now(), devices: [{ name: 'Pixel 8' }] }; s.changed(); });
-    await page.click('#menuPlans');
-    await page.waitForSelector('dialog.plans[open] #unpair:not([hidden])', { timeout: 10_000 }).catch(() => {});
-    await page.screenshot({ path: path.join(out, `${name}-myroutes-paired.png`) });
-    await page.click('dialog.plans #unpair').catch(() => {});
-    await page.waitForTimeout(200);
-    await page.screenshot({ path: path.join(out, `${name}-myroutes-unpair.png`) });
-    await page.keyboard.press('Escape');
-    await page.click('#closePlans');
-    await page.evaluate(() => { const s = window.__sync; s.status = { ...s.status, paired: false, lastSync: null, devices: [] }; s.changed(); });
-  }
   await page.click('#activityChip');
   await page.waitForTimeout(200);
   await page.screenshot({ path: path.join(out, `${name}-activity.png`) });

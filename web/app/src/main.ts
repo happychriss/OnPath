@@ -24,7 +24,7 @@ import { ActivityPicker, type ActivityRow, type PaceChoices } from './activity';
 import { holdMenu, type MenuItem } from './menus';
 import { Position } from './position';
 import { PlanSync } from './sync';
-import { myPlansDialog, pairDialog, joinDialog, requestSave } from './plans';
+import { myPlansDialog, joinDialog, requestSave, phoneDialog, phoneState } from './plans';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
 import { longRouteOk, allowLongRoute, notRoutedTexts } from './longroute';
@@ -104,7 +104,7 @@ document.title = t('web_page_title');
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <header id="header">
     <a class="brand" href="${t('web_url_app')}" target="_blank" rel="noopener" title="${escapeHtml(t('web_brand_title'))}">${logo(30)}<span class="wordmark">OnPath <span class="product">${escapeHtml(t('web_product'))}</span></span></a>
-    <button id="menuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_menu'))}" aria-haspopup="menu" aria-expanded="false">${icon('menu')}</button>
+    <button id="menuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_menu'))}" aria-haspopup="menu" aria-expanded="false">${icon('menu')}<i class="menudot" aria-hidden="true" hidden></i></button>
     <nav id="mainMenu" class="nav" aria-label="${escapeHtml(t('web_product'))}">
       ${NAV.map((n) => `<button id="${n.id}" role="menuitem" title="${escapeHtml(n.label)}">${icon(n.icon, 20)}<span>${escapeHtml(n.label)}</span></button>`
         + (n.id === 'menuPlans' ? `<button id="syncBadge" class="syncbadge" role="menuitem" title="${escapeHtml(t('web_pair_phone'))}">${icon('phone', 20)}<i class="syncdot" aria-hidden="true" hidden></i><span class="lbl">${escapeHtml(t('web_pair_phone'))}</span></button>` : '')).join('')}
@@ -1000,24 +1000,29 @@ async function suggestName(): Promise<string> {
     return '';
   }
 }
-const plansDialog = (atSync = false) => myPlansDialog(sync, plansHost, () => pairDialog(sync, location.href), atSync);
-navItem('menuPlans').act = () => plansDialog();
-/** The phone pairing entry in the header, always there (owner 2026-10-30, "the header manages, the floating sheet plans"):
- *  not paired → phone + "Pair phone", a click opens the pairing dialog (QR code + check digits) directly; paired → phone +
- *  green dot + "Paired", a click opens My routes at "Pair with phone" (Sync now, Unpair). Follows sync.onChange live. */
+navItem('menuPlans').act = () => myPlansDialog(sync, plansHost);
+/** The phone entry in the header (☰ on phones), the one place for pairing (owner 2026-10-30): phone + "Pair phone"
+ *  (no dot) / "Paired" with a green dot (the phone synced lately) or an amber one (it has not synced for a day) –
+ *  phoneState; the tooltip says the state and why. A click opens the Phone window. Follows sync.onChange live, and the
+ *  "… ago" moves on every 30 s. */
 function syncBadge() {
-  const b = $('syncBadge'), s = sync.status;
-  b.querySelector<HTMLElement>('.syncdot')!.hidden = !s.paired;
+  const b = $('syncBadge'), s = sync.status, st = phoneState(s);
+  const dot = b.querySelector<HTMLElement>('.syncdot')!;
+  dot.hidden = !s.paired;
+  dot.dataset.kind = st.kind;
+  const md = $('menuBtn').querySelector<HTMLElement>('.menudot')!; // phone width: the same dot on ☰, seen without opening it
+  md.hidden = !s.paired;
+  md.dataset.kind = st.kind;
   b.classList.toggle('paired', s.paired);
   b.querySelector('.lbl')!.textContent = t(s.paired ? 'web_sync_paired' : 'web_pair_phone');
-  const last = s.paired && s.lastSync ? ' · ' + t('web_sync_badge_last', new Date(s.lastSync).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })) : '';
-  b.title = s.paired ? t('web_sync_badge') + last : t('web_pair_phone');
+  b.title = st.head + ' – ' + (s.paired && s.message ? s.message : st.why);
   b.setAttribute('aria-label', b.title);
 }
+window.setInterval(() => syncBadge(), 30_000);
 $('syncBadge').onclick = async () => {
   closeMenus();
   if (!(await syncReady)) return; // the engine did not start – the status line says so
-  if (sync.status.paired) plansDialog(true); else pairDialog(sync, location.href);
+  phoneDialog(sync, location.href);
 };
 // Save, two ways as in the app: the sheet's ⋯ → Save route (PlanPanel's SheetMenuItems) and My routes → Save current route
 $('sheetSave').onclick = () => { closeMenus(); requestSave(sync, plansHost); };

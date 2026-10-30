@@ -9,6 +9,8 @@ export interface SavedPlan { id: string; title: string | null; plan: string; upd
 export interface Device { name: string; updatedAt: number }
 export interface SyncStatus {
   paired: boolean; check: string | null; devices: Device[]; pending: number; lastSync: number | null;
+  /** When the phone app last used the mailbox (the host's appSeen, to the minute); null = not known / not yet. */
+  phoneSeen: number | null;
   /** A plain-language line about the last sync (empty when all is well). */
   message: string; kind: 'info' | 'warning' | 'error';
 }
@@ -71,7 +73,7 @@ export class PlanSync {
   private timer = 0;
   private soon = 0;
   private listeners = new Set<() => void>();
-  status: SyncStatus = { paired: false, check: null, devices: [], pending: 0, lastSync: null, message: '', kind: 'info' };
+  status: SyncStatus = { paired: false, check: null, devices: [], pending: 0, lastSync: null, phoneSeen: null, message: '', kind: 'info' };
 
   constructor(private engine: EngineClient, private api: string) {}
 
@@ -211,7 +213,8 @@ export class PlanSync {
           r = await this.fetch(`${k.mailbox}?since=${since}`, {}, k.token);
         }
         if (!r.ok) await this.refused(r);
-        const body = await r.json() as { rev: number; more: boolean; items: { id: string; rev: number; blob: string }[] };
+        const body = await r.json() as { rev: number; more: boolean; items: { id: string; rev: number; blob: string }[]; appSeen?: number | null };
+        if (body.appSeen !== undefined) this.status.phoneSeen = body.appSeen; // an older host has no appSeen: keep what we know
         const out = await this.call('syncApply', await this.ledger(), pair, body.items.map((i) => `${i.id} ${i.rev} ${i.blob}`).join('\n'), body.rev);
         const cut = out.lastIndexOf('#bad ');
         await this.setLedger(out.slice(0, cut));
@@ -249,6 +252,7 @@ export class PlanSync {
   private async forget() {
     await this.setLedger(await this.call('syncForget', await this.ledger()));
     await this.store.set('pair', null);
+    this.status.phoneSeen = null;
   }
 
   private async refresh() {
@@ -284,7 +288,8 @@ export class PlanSync {
   private fetch(path: string, init: RequestInit, token: string) {
     return fetch(this.api + path, {
       ...init, cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT_MS),
-      headers: { ...(init.headers as Record<string, string> ?? {}), authorization: 'Bearer ' + token },
+      // x-onpath-client: the host tells the phone's requests from ours ("phone last synced", web-sync.md §8)
+      headers: { ...(init.headers as Record<string, string> ?? {}), authorization: 'Bearer ' + token, 'x-onpath-client': 'web' },
     });
   }
 

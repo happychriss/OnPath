@@ -289,7 +289,7 @@ dialog.plans .saveRow button { padding: 8px 16px; }
 dialog .confirm { margin-top: 12px; padding: 12px; border-radius: 12px; background: var(--surface2); }
 dialog .confirm p { margin: 0 0 8px; }
 /* a question in place of the buttons / the list line that asked (plans.ts askInPlace) */
-dialog .syncsec .confirm, dialog .row + .confirm { margin-top: 8px; }
+dialog .row + .confirm { margin-top: 12px; }
 .planlist li.confirm { display: block; border-top: none; margin: 4px 0; }
 .planlist li.confirm + li { border-top: none; }
 dialog.share .row button.danger { color: var(--error); }
@@ -340,12 +340,24 @@ dialog.pair .check b { letter-spacing: .08em; }
 }
 
 /* ---- My routes → "Pair with phone" (pairing lives here, owner 2026-10-30); Share → "Scan with the OnPath app" ---- */
-dialog.plans .syncsec { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 12px; }
-dialog.plans .syncsec h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 16px; }
-dialog.plans .syncsec h3 .ic { color: var(--green-fg); }
-dialog.plans .syncsec .row { margin-top: 8px; }
-dialog.plans .syncsec .danger { color: var(--error); }
-dialog.plans > .row.end { margin-top: 16px; } /* Close, alone at the bottom right */
+dialog.plans > .row.end, dialog.phone > .row.end { margin-top: 16px; } /* Close, alone at the bottom right */
+/* the Phone window (plans.ts phoneDialog): the state on top – grey phone (not paired), green / amber dot – then the buttons */
+dialog.phone .phonestate { position: relative; display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 12px; background: var(--surface2); }
+dialog.phone .phonestate > .ic { color: var(--muted); margin-top: 2px; }
+dialog.phone .phonestate:not([data-kind="none"]) > .ic { color: var(--fg); }
+dialog.phone .phonestate b { font-size: 16px; font-weight: 600; }
+dialog.phone .phonestate p { margin: 2px 0 0; }
+dialog.phone .pdot { display: none; position: absolute; top: 11px; left: 30px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--surface2); }
+dialog.phone .phonestate[data-kind="fresh"] .pdot { display: block; background: var(--good); }
+dialog.phone .phonestate[data-kind="stale"] .pdot { display: block; background: var(--weak); }
+dialog.phone #phoneStatus:not(:empty) { margin-top: 8px; }
+dialog.phone #phoneRow { margin-top: 12px; flex-wrap: wrap; }
+dialog.phone { max-height: calc(100dvh - 32px); overflow: auto; } /* phone width: scrolls */
+dialog.phone h3.how { margin: 14px 0 4px; font-size: 14px; font-weight: 600; }
+dialog.phone ul.how { margin: 0; padding-left: 18px; font-size: 14px; }
+dialog.phone ul.how li { margin: 2px 0; }
+dialog.phone .privacy { margin: 8px 0 0; }
+dialog.phone .privacy a { color: var(--green-fg); }
 /* "Your planned routes" with the app's planned-route icon (Icons.Filled.Route in OnPathColors.Route) – only planned
    routes sync, no tracks; Save current route below it, ✓ "Saved as …" while saved and unchanged */
 dialog.plans .listhead { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 16px; }
@@ -360,3 +372,8 @@ dialog.share .scanline { margin: 0 0 8px; font-weight: 600; }
 .syncbadge .syncdot[hidden] { display: none; }
 .syncbadge .syncdot { position: absolute; top: 7px; left: 23px; width: 9px; height: 9px; border-radius: 50%; background: var(--good); border: 2px solid var(--site-bg); }
 @media (max-width: 700px) { .nav.open .syncbadge .syncdot { top: 10px; left: 29px; } }
+.syncbadge .syncdot[data-kind="stale"], #menuBtn .menudot[data-kind="stale"] { background: var(--weak); } /* paired, the phone has not synced for a day */
+#menuBtn { position: relative; }
+#menuBtn .menudot { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; background: var(--good); border: 2px solid var(--site-bg); }
+#menuBtn .menudot[hidden] { display: none; }
+.nav button.syncbadge:not(.paired) .ic { color: var(--muted); } /* not paired: the grey phone */
