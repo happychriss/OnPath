@@ -5,6 +5,7 @@ import com.onpath.strings.*
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.JunctionCue
+import com.onpath.app.time.TimeEstimate
 
 /**
  * When to vibrate before a junction of the followed line. Pure, unit-tested; the recording service
@@ -180,10 +181,11 @@ object NavNotification {
 
     /**
      * [status]: "Recording" / "Paused" / "Off route" / "Searching GPS…" ("Recording" is not repeated);
-     * [junction] within [JUNCTION_TITLE_M] becomes the title; [clock] formats the arrival (epoch ms → "15:40").
+     * [junction] within [JUNCTION_TITLE_M] becomes the title; the arrival is written by [TimeEstimate.clock] – the
+     * same 5-minute rounding as in the app (owner: "10:20" on both, never "10:22" on the lock screen).
      */
     fun of(status: String, junction: Pair<String, Double>?, toGoM: Double?, toGoS: Double?, arrivalMs: Long?,
-           distance: (Double) -> String, duration: (Double) -> String, clock: (Long) -> String): Text? {
+           distance: (Double) -> String, duration: (Double) -> String): Text? {
         if (toGoM == null) return null
         // the plain status (same text as RecordingService.notifStatus, so it works in every language)
         val recording = status == Txt.s(Res.string.nav_status_recording)
@@ -196,7 +198,7 @@ object NavNotification {
         // The distance is said once: in the title ("8.2 km to go") or, when the title is a status / junction, here.
         val parts = buildList {
             if (toGoS != null) add(if (distanceInTitle) duration(toGoS) else Txt.s(Res.string.nav_notif_to_go, duration(toGoS)))
-            if (arrivalMs != null) add(Txt.s(Res.string.nav_notif_arrival, clock(arrivalMs)))
+            if (arrivalMs != null) add(Txt.s(Res.string.nav_notif_arrival, TimeEstimate.clock(arrivalMs)))
             if (!distanceInTitle) add(Txt.s(Res.string.nav_notif_left, distance(toGoM)))
         }
         return Text(title, parts.joinToString(" · "))

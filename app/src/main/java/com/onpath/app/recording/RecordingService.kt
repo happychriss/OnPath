@@ -960,8 +960,7 @@ class RecordingService : Service() {
             com.onpath.app.navigation.NavNotification.of(notifStatus(),
                 junctions.nextAheadText(st.line, st.version, along), toGo,
                 t?.toGoS?.takeIf { ok }, t?.arrivalMs?.takeIf { ok },
-                distance = { Format.distance(it) }, duration = { Format.duration(it) },
-                clock = { java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(it)) })
+                distance = { Format.distance(it) }, duration = { Format.duration(it) })
         }
     } catch (e: Exception) {
         Problems.warn("recording", "Lock-screen route info not built; plain recording notification", e)

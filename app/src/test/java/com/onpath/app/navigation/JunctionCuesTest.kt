@@ -3,6 +3,7 @@ package com.onpath.app.navigation
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.JunctionCue
 import com.onpath.app.routing.JunctionShape
+import com.onpath.app.time.TimeEstimate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -238,10 +239,17 @@ class JunctionCuesTest {
         assertEquals(l.drop(5).map { it.turn }, back.current!!.map { it.turn })
     }
 
+    /** Arrival at 15:41 local time today – shown as "15:40" (5-minute rounding, [TimeEstimate.clock]). */
+    private fun localMs(h: Int, m: Int) = java.util.Calendar.getInstance().apply {
+        set(java.util.Calendar.HOUR_OF_DAY, h); set(java.util.Calendar.MINUTE, m)
+        set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
     @Test fun lockScreenText() {
-        fun t(status: String, j: Pair<JunctionCue, Double>?) = NavNotification.of(status, j?.let { it.first.text to it.second }, 4230.0, 5100.0, 0L,
+        fun t(status: String, j: Pair<JunctionCue, Double>?) = NavNotification.of(status, j?.let { it.first.text to it.second }, 4230.0, 5100.0,
+            localMs(15, 41),
             distance = { if (it < 1000) "${it.toInt()} m" else "%.1f km".format(java.util.Locale.ROOT, it / 1000) },
-            duration = { "1:25 h" }, clock = { "15:40" })!!
+            duration = { "1:25 h" })!!
         assertEquals("Left in 120 m", t("Recording", JunctionCue.LEFT to 117.0).title)
         assertEquals("4.2 km to go", t("Recording", null).title)
         assertEquals("distance only once", "1:25 h · arrival 15:40", t("Recording", null).text)
@@ -249,7 +257,17 @@ class JunctionCuesTest {
         assertEquals("1:25 h to go · arrival 15:40 · 4.2 km left", t("Off route", null).text)
         assertEquals("4.2 km to go", t("Recording", JunctionCue.LEFT to 800.0).title)
         assertEquals("Off route", t("Off route", JunctionCue.LEFT to 50.0).title)
-        assertNull("not on the route: plain notification", NavNotification.of("Recording", null, null, null, null, { "" }, { "" }, { "" }))
+        assertNull("not on the route: plain notification", NavNotification.of("Recording", null, null, null, null, { "" }, { "" }))
+    }
+
+    /** Owner 2026-10-30: the lock screen showed "10:22" while the app said "10:20" – one rule (5 minutes) for both. */
+    @Test fun lockScreenArrivalSameAsApp() {
+        for ((h, m, shown) in listOf(Triple(10, 22, "10:20"), Triple(10, 23, "10:25"), Triple(9, 3, "9:05"), Triple(23, 58, "0:00"))) {
+            val ms = localMs(h, m)
+            assertEquals(shown, TimeEstimate.clock(ms))
+            val text = NavNotification.of("Recording", null, 4230.0, 5100.0, ms, { "4.2 km" }, { "1:25 h" })!!.text
+            assertEquals("lock screen = app ($h:$m)", "1:25 h · arrival ${TimeEstimate.clock(ms)}", text)
+        }
     }
 
     /** A line without the junctions' ways (routed before, an old session): slight bends skipped, on the bike and on foot. */
