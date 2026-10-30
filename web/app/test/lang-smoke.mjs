@@ -62,7 +62,13 @@ await p3.waitForFunction(() => document.getElementById('status')?.textContent?.i
 await p3.click('#map', { position: { x: 700, y: 400 } });
 await p3.waitForSelector('.holdpopup button', { timeout: 20_000 });
 await p3.click('.holdpopup button');
-await p3.click('#map', { position: { x: 900, y: 300 } });
+// the second click can land while the first point's popup is still closing (a click beside a popup only closes it):
+// click again until the plan has its second point (CI flake 2026-10-30)
+for (let i = 0; i < 4; i++) {
+  await p3.click('#map', { position: { x: 900, y: 300 } });
+  const two = await p3.waitForFunction(() => document.querySelectorAll('#points li').length >= 2, null, { timeout: 5_000 }).then(() => true, () => false);
+  if (two) break;
+}
 await p3.waitForFunction(() => !document.getElementById('share').disabled, null, { timeout: 60_000 });
 await p3.click('#share');
 await p3.waitForSelector('dialog.share[open] .qr svg');
