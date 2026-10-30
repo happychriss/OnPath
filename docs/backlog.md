@@ -109,7 +109,9 @@ the git log.
   Cloudflare dashboard → My Profile → API Tokens). The branch `marketing` is already gone.
 - **Map server access before the public launch** – today one shared app key + IP rate limit + build caps. Proposal in
   `docs/design/map-access.md` (anonymous per-phone quota of new areas, supporter code, production key with rotation).
-  Owner decides limit, supporter platform, timing.
+  Owner decides limit, supporter platform, timing. Production is not deployed yet (all released APKs use test); when it
+  is, it carries everything already on test (e.g. A-014 no plain IPs / no invocation logs, 2e851ef) – the first
+  production deploy is part of the launch together with Google Play.
 - **Google Play internal test track** – create the app, secret release key + `PLAY_SERVICE_ACCOUNT_JSON` in GitHub
   secrets, upload from `release.yml` (today: fixed test key). Removes Play Protect warnings.
 - **Footways without a bicycle tag (Hilden Itter path)** – Bike / Gravel profiles avoid them (push penalty). Option:
