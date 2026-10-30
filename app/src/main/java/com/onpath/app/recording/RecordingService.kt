@@ -90,6 +90,11 @@ data class RecState(
     val time: com.onpath.app.time.TripTime? = null,
     /** The last track point could not be written (storage full, database broken): the UI must say so. */
     val saveFailed: Boolean = false,
+    /**
+     * A usable GPS fix came since the service started (this tour or its continuation). False = started indoors: the app
+     * shows its Wi-Fi / fused fix as a provisional position until then ([com.onpath.app.navigation.Provisional]).
+     */
+    val hadGpsFix: Boolean = true,
 )
 
 /**
@@ -817,7 +822,7 @@ class RecordingService : Service() {
         _state.value = RecState(
             tourId, paused, distance, ascent, descent, elapsedS, gpsLost(),
             navigator?.state?.offM, navigator?.prompt != null, follow?.first, trackSnapshot,
-            navigator?.state, tripTime(), saveFailed,
+            navigator?.state, tripTime(), saveFailed, hadGpsFix = lastGoodFixElapsed > 0,
         )
         // Battery: the clock runs by itself in the notification (chronometer); re-post only when what it says
         // changes (status, shown distance), at most every 5 s, and once a minute to keep the clock in step.

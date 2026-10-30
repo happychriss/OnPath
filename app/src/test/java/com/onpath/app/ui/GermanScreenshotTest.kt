@@ -40,6 +40,7 @@ class GermanScreenshotTest {
     @Test fun planChipLongBikeTour() = shots.planChipLongBikeTour()
     @Test fun navigate() = shots.navigate()
     @Test fun navigateRerouteQuestion() = shots.navigateRerouteQuestion()
+    @Test fun navigateApproximatePosition() = shots.navigateApproximatePosition()
     @Test fun arrival() = shots.arrival()
     @Test fun tours() = shots.tours()
     @Test fun unfinishedTour() = shots.unfinishedTour()

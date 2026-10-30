@@ -365,6 +365,12 @@ class ScreenshotTest {
             pausedBecause = com.onpath.app.time.PauseReason.NO_GPS.text), arriveAt = "16:40", waitingGps = true, fixAgeS = 250))
     }
 
+    /** Tour started indoors: what is left counts from the Wi-Fi fix, the amber line says how rough it is (owner). */
+    @Test fun navigateApproximatePosition() = paparazzi.snapshot {
+        NavFrame(navUi.copy(recordedM = 0.0, elapsedS = 40, arriveAt = "16:40",
+            approx = approxLine(com.onpath.app.navigation.Provisional.Fix(com.onpath.app.navigation.Provisional.Source.WIFI, 80))))
+    }
+
     /** The question: stays until answered or back on the route; big buttons in thumb reach above the map controls. */
     @Test fun navigateRerouteQuestion() = paparazzi.snapshot {
         NavFrame(navUi.copy(offRoute = OffRouteUi(question, hint)))

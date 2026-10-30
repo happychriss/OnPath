@@ -37,6 +37,8 @@
     <string name="nav_breaks">Pausen %1$s</string>
     <string name="nav_no_gps">Kein GPS</string>
     <string name="nav_position_age">Position %1$d min alt</string>
+    <string name="nav_approx_wifi">Ungefähre Position (WLAN, ±%1$d m) – GPS kommt draußen</string>
+    <string name="nav_approx_weak_gps">Ungefähre Position (±%1$d m) – GPS noch schwach</string>
     <string name="nav_time_paused">Zeit pausiert</string>
     <string name="nav_off_route">Abseits der Route</string>
     <string name="nav_pace_faster">schneller als geplant</string>

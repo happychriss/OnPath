@@ -118,6 +118,11 @@ data class NavUi(
     val positionCopy: String? = null,
     /** Age of the last fix (s) – shown with "Waiting for GPS" so an old position is not taken for the current one. */
     val fixAgeS: Long? = null,
+    /**
+     * Tour started indoors, no GPS fix yet: "Approximate position (Wi-Fi, ±80 m) – GPS comes outside" – the amber line
+     * instead of "No GPS" while what is left counts from the Wi-Fi / fused fix ([com.onpath.app.navigation.Provisional]).
+     */
+    val approx: String? = null,
 )
 
 /** [roundabout]: non-null = the turn is a roundabout, with the exit to take (0 = unknown). */
@@ -324,7 +329,8 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                             style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                if (ui.recordedM != null && ui.waitingGps) {
+                // (the provisional-position line has its own full-width row under this one)
+                if (ui.recordedM != null && ui.waitingGps && ui.approx == null) {
                     // no fix: the arrow and the to-go are stale – a warning, not grey small text
                     Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Warn, modifier = Modifier.size(18.dp))
@@ -364,6 +370,15 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 Icon(if (profileOpen) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                     contentDescription = str(if (profileOpen) Res.string.nav_profile_hide else Res.string.nav_profile_show),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (ui.recordedM != null) ui.approx?.let {
+            // indoors at the start: what is left counts from a Wi-Fi fix – amber ⚠, the card's full width (owner)
+            Row(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Warn, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(it, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium,
+                    color = OnPathColors.Warn, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
         ui.routeNote?.let {
@@ -463,6 +478,11 @@ internal fun movingLine(ui: NavUi): String? {
 }
 
 /** "No GPS · position 4 min old" (the age once it is a minute or more). */
+/** "Approximate position (Wi-Fi, ±80 m) – GPS comes outside" / "… (±80 m) – GPS still weak". */
+internal fun approxLine(fix: com.onpath.app.navigation.Provisional.Fix): String = Txt.s(
+    if (fix.source == com.onpath.app.navigation.Provisional.Source.WIFI) Res.string.nav_approx_wifi else Res.string.nav_approx_weak_gps,
+    fix.accuracyM)
+
 internal fun noGpsLine(fixAgeS: Long?): String =
     Txt.s(Res.string.nav_no_gps) + (fixAgeS?.takeIf { it >= 60 }?.let { " · " + Txt.s(Res.string.nav_position_age, (it / 60).toInt()) } ?: "")
 
@@ -563,17 +583,28 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val times = remember(line, vm.activity) { line?.let { com.onpath.app.time.RouteTimes.of(it, vm.activity) } }
     val hint = remember(line) { intArrayOf(0) }
     val here = location?.let { GeoPoint(it.latitude, it.longitude) }
-    val remaining = remember(progress, location, nav?.shownAlongM, nav?.offM) {
+    // started indoors (owner): until the tour's first GPS fix the app's Wi-Fi / fused fix stands in – here only; the
+    // service never sees it (no track point, no off-route, no re-route) and the arrival question waits for GPS
+    val prov = location?.let { l ->
+        com.onpath.app.navigation.Provisional.of(rec != null, rec?.paused == true, rec?.hadGpsFix == true, l.provider,
+            l.hasAccuracy(), l.accuracy, (android.os.SystemClock.elapsedRealtimeNanos() - l.elapsedRealtimeNanos) / 1_000_000L)
+    }
+    val remaining = remember(progress, location, nav?.shownAlongM, nav?.offM, prov) {
         when {
             progress == null -> null
+            prov != null -> here?.let { progress.remaining(it, hint[0]) }?.also { hint[0] = it.index }
             nav != null -> nav.shownAlongM?.let { progress.at(it, nav.offM) }
             here == null -> null
             else -> progress.remaining(here, hint[0])?.also { hint[0] = it.index }
         }
     }
-    LaunchedEffect(location) { if (here != null) vm.checkArrival(here, remaining?.distanceM) }
-    val next = remember(turns, remaining, rec?.offRouteAlert) {
-        nextTurnHint(turns, total, remaining?.distanceM, remaining?.offM, rec?.offRouteAlert == true)
+    // a provisional position far from the line: "not on route" (calm), never a "to go" from the line's nearest point
+    val provOff = prov != null && remaining != null && !com.onpath.app.navigation.Provisional.onRoute(remaining.offM, prov)
+    LaunchedEffect(location) {
+        if (here != null && com.onpath.app.navigation.Provisional.arrivalCheck(prov)) vm.checkArrival(here, remaining?.distanceM)
+    }
+    val next = remember(turns, remaining, rec?.offRouteAlert, provOff) {
+        if (provOff) null else nextTurnHint(turns, total, remaining?.distanceM, remaining?.offM, rec?.offRouteAlert == true)
     }
     // a roundabout from the router's instructions wins over the drawn arrow when it comes first
     val cues = remember { com.onpath.app.navigation.JunctionCues() }
@@ -589,7 +620,8 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val shownTurn = next?.first?.takeIf { turnHint(next.first.kind to next.second, roundabout)?.roundabout == null }
     LaunchedEffect(shownTurn) { vm.navTurn = shownTurn }
     DisposableEffect(Unit) { onDispose { vm.navTurn = null } }
-    val tt = rec?.time
+    // provisional: the service knows no position yet – its time state ("no GPS") does not apply, the plain model counts
+    val tt = rec?.time?.takeIf { prov == null }
     // the service's calm, learned value while it knows the line; else the plain model from here
     val toGoS = remaining?.let { r -> tt?.toGoS ?: toGoSeconds(times, r.distanceM, vm.planFactors()) }
     val arrive = toGoS?.let { s ->
@@ -597,16 +629,18 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     }?.let { com.onpath.app.time.TimeEstimate.clock(it) }
     // the named last stop; an unnamed one is just "the destination" (no extra line: the card has no room to spare)
     val target = nav?.session?.stops?.lastOrNull()?.name
-    val notOnRoute = nav != null && (remaining == null || tt?.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE)
+    val notOnRoute = if (prov != null) line != null && (remaining == null || provOff)
+        else nav != null && (remaining == null || tt?.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE)
     val ui = NavUi(
-        toGo = if (notOnRoute) ToGo(0.0, 0.0, 0.0, nav?.offM, state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE, target = target)
+        toGo = if (notOnRoute) ToGo(0.0, 0.0, 0.0, if (prov != null) remaining?.offM else nav?.offM,
+            state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE, target = target)
         else remaining?.let { r ->
             ToGo(r.distanceM, r.ascentM, toGoS ?: 0.0, r.offM, r.descentM,
                 profile = line?.let { l -> l.subList(r.index.coerceIn(0, l.size - 1), l.size) } ?: emptyList(),
                 state = tt?.state ?: com.onpath.app.time.EstimateState.OK, pausedBecause = tt?.pausedBecause?.text, target = target)
         },
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,
-        waitingGps = rec?.gpsLost == true,
+        waitingGps = rec?.gpsLost == true && prov == null,
         offRoute = rec?.nav?.let { n ->
             n.prompt?.let { p -> OffRouteUi(p, n.toRoute, n.toRoute?.let { (it.bearingDeg - mapBearing).toFloat() }) }
         },
@@ -615,9 +649,9 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         },
         headingUp = vm.navHeadingUp,
         arriveAt = arrive,
-        movingS = tt?.movingS, breakS = tt?.breakS,
-        paceNote = tt?.learned?.let { paceNote(it) },
-        routeNote = tt?.lineNote?.text(),
+        movingS = rec?.time?.movingS, breakS = rec?.time?.breakS,
+        paceNote = rec?.time?.learned?.let { paceNote(it) },
+        routeNote = rec?.time?.lineNote?.text(),
         // what the service navigates is the truth; free recording: the app's activity
         activity = rec?.nav?.session?.activity ?: vm.activity,
         sac = rec?.nav?.session?.sac ?: vm.sac,
@@ -628,6 +662,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         },
         positionCopy = location?.let { NavText.positionCopy(it.latitude, it.longitude) },
         fixAgeS = location?.let { com.onpath.app.recording.LocationTracker.ageSeconds(it) },
+        approx = prov?.let { approxLine(it) },
     )
     // Back on the open sheet = "Keep" (nothing changes)
     androidx.activity.compose.BackHandler(enabled = vm.activityCheck != null) { vm.closeActivityCheck() }

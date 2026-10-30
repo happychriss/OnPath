@@ -4171,6 +4171,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { tracker.location.filterNotNull().collect { cellsForFix(it) } }
         // a tour runs (Navigate): newer map versions wait – the map never switches under the user's feet
         viewModelScope.launch { androidx.compose.runtime.snapshotFlow { mode }.collect { cells.holdUpdates = it == AppMode.NAVIGATE } }
+        // a tour started indoors (owner): the fused position until its first GPS fix – off with that fix, a pause, the end
+        viewModelScope.launch {
+            var asked = false
+            recState.collect { r ->
+                val ask = com.onpath.app.navigation.Provisional.asksPosition(r != null, r?.paused == true, r?.hadGpsFix == true)
+                if (ask != asked) {
+                    asked = ask
+                    try { tracker.setFusedWanted(ask) } catch (e: Exception) {
+                        Problems.warn("gps", "Provisional position request not ${if (ask) "started" else "stopped"}", e)
+                    }
+                }
+            }
+        }
     }
 
     override fun onCleared() {
