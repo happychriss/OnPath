@@ -62,6 +62,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+/**
+ * The fixes a tour records and navigates on: GPS only (owner, robust first – a clean track, and no "off route" from a
+ * ±100 m Wi-Fi fix). Network and fused fixes – the app's provisional indoor position included – never become a point.
+ * Pure.
+ */
+internal fun tracksFix(provider: String?): Boolean = provider == LocationManager.GPS_PROVIDER
+
 /** Live recording state for the UI. */
 data class RecState(
     val tourId: Long,
@@ -358,7 +365,8 @@ class RecordingService : Service() {
             return
         }
         if (tourId < 0) return
-        if (loc.provider != LocationManager.GPS_PROVIDER) return
+        // the track, off-route and the time model take GPS only: a Wi-Fi / fused fix (±100 m) never gets here
+        if (!tracksFix(loc.provider)) return
         val demoFix = DemoLocation.isDemo(loc)
         if (!demoMarked && demoFix) markDemoTour()
         if (!PointFilter.accuracyOk(loc.hasAccuracy(), loc.accuracy)) { gapWatch.onDropped(loc.hasAccuracy(), loc.accuracy); return }
