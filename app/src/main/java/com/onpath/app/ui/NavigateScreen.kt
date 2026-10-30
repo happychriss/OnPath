@@ -683,8 +683,11 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     }
     val restOn = ScreenPolicy.of(vm.settings, ui.activity ?: vm.activity).rest && rec != null && nav != null
     val restWanted = rememberRest(restOn,
-        attention = rec?.paused == true || rec?.gpsLost == true || rec?.offRouteAlert == true || nav?.prompt != null ||
-            notOnRoute || location == null || !vm.followMe || vm.restBlocked(),
+        // until the tour's first GPS fix (provisional Wi-Fi / fused position, amber line) always the full map
+        attention = SmartScreen.needsUser(paused = rec?.paused == true, gpsLost = rec?.gpsLost == true,
+            hadGpsFix = rec?.hadGpsFix == true, provisional = prov != null, offRouteAlert = rec?.offRouteAlert == true,
+            prompt = nav?.prompt != null, notOnRoute = notOnRoute, noFix = location == null, notFollowing = !vm.followMe,
+            dialog = vm.restBlocked()),
         target = restTarget, fix = location)
     val rest = restWanted && restTarget != null
     LaunchedEffect(rest) { vm.screenRest = rest }

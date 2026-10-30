@@ -129,6 +129,15 @@ class SmartScreen {
         const val FALLBACK_SPEED_MPS = 6.0
         /** Held for an event: let go only when it is this much farther than the largest lead it was held with. */
         const val RELEASE_SLACK_M = 100.0
+
+        /**
+         * Something needs the user: the full map, never the rest view. [hadGpsFix] = the tour's first GPS fix came
+         * (RecState.hadGpsFix): before it Navigate stands on a provisional Wi-Fi / fused position
+         * ([com.onpath.app.navigation.Provisional]) – the map and its amber "approximate" line stay visible until then.
+         */
+        fun needsUser(paused: Boolean, gpsLost: Boolean, hadGpsFix: Boolean, provisional: Boolean, offRouteAlert: Boolean,
+                      prompt: Boolean, notOnRoute: Boolean, noFix: Boolean, notFollowing: Boolean, dialog: Boolean): Boolean =
+            paused || gpsLost || !hadGpsFix || provisional || offRouteAlert || prompt || notOnRoute || noFix || notFollowing || dialog
     }
 
     /**

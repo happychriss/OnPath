@@ -188,6 +188,31 @@ class SmartScreenTest {
         assertTrue(g.rest(far(), 110_001))
     }
 
+    private fun needs(paused: Boolean = false, gpsLost: Boolean = false, hadGpsFix: Boolean = true, provisional: Boolean = false,
+                      offRoute: Boolean = false, prompt: Boolean = false, notOnRoute: Boolean = false, noFix: Boolean = false,
+                      notFollowing: Boolean = false, dialog: Boolean = false) =
+        SmartScreen.needsUser(paused, gpsLost, hadGpsFix, provisional, offRoute, prompt, notOnRoute, noFix, notFollowing, dialog)
+
+    /** Indoor start (navigation/Provisional): on a Wi-Fi / fused position the map + amber line stay until the first GPS fix. */
+    @Test fun neverRestsBeforeTheFirstGpsFixOfTheTour() {
+        assertFalse(needs()) // normal riding: the rest view may show
+        assertTrue(needs(hadGpsFix = false)) // no GPS fix yet in this tour, not even a provisional one
+        assertTrue(needs(hadGpsFix = false, provisional = true))
+        assertTrue(needs(provisional = true)) // a provisional fix shown for any reason
+        // and so the gate never rests then, however far the next turn
+        val g = SmartScreen()
+        assertFalse(g.rest(far(5_000.0, attention = needs(hadGpsFix = false, provisional = true)), 0))
+        assertFalse(g.rest(far(5_000.0, attention = needs(hadGpsFix = false, provisional = true)), 600_000))
+        // first GPS fix: rest again once the 10 s after it are over
+        assertFalse(g.rest(far(5_000.0, attention = needs()), 605_000))
+        assertTrue(g.rest(far(5_000.0, attention = needs()), 610_001))
+    }
+
+    @Test fun everyOtherReasonNeedsTheUserToo() {
+        listOf(needs(paused = true), needs(gpsLost = true), needs(offRoute = true), needs(prompt = true), needs(notOnRoute = true),
+            needs(noFix = true), needs(notFollowing = true), needs(dialog = true)).forEach { assertTrue(it) }
+    }
+
     @Test fun ridingAwayFromTheTurnLetsItGo() {
         val g = SmartScreen()
         g.noteSpeed(4.0, 0) // 200 m lead
