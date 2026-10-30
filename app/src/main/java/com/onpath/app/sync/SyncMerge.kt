@@ -22,7 +22,21 @@ data class RemoteItem(val item: SyncItem, val rev: Long)
  *   device saw this version before writing).
  */
 object SyncMerge {
+    /**
+     * The copy marker as stored in the item (the same on every side, whatever the language – the copy's id and title
+     * must be what every device derives). A device shows it in its language with [shownTitle] / [storedTitle].
+     */
     const val COPY = " (copy)"
+
+    /** A stored title as shown: a trailing [COPY] becomes [label] (e.g. " (Kopie)"); anything else stays as it is. */
+    fun shownTitle(title: String?, label: String): String? =
+        if (title != null && label != COPY && title.endsWith(COPY)) title.dropLast(COPY.length) + label else title
+
+    /** A shown name as stored: a trailing [label] goes back to [COPY] (so a copy is never renamed by the language). */
+    fun storedTitle(name: String?, label: String): String? {
+        val n = name?.trimEnd() ?: return null
+        return if (label != COPY && label.isNotBlank() && n.endsWith(label.trimEnd())) n.dropLast(label.trimEnd().length) + COPY else name
+    }
 
     data class Merged(val winner: SyncItem, val copy: SyncItem?)
 

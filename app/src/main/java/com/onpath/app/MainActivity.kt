@@ -294,7 +294,7 @@ class MainActivity : ComponentActivity() {
                                     backingUp = vm.busy == com.onpath.app.ui.Busy.BACKUP)
                             },
                             sync = com.onpath.app.ui.SyncUi.of(vm.sync.state.collectAsState().value,
-                                vm.pairAsk?.let { com.onpath.app.sync.SyncKeys(it).check }, vm.pairedNote),
+                                vm.pairAsk?.let { com.onpath.app.sync.SyncKeys(it).check }, vm.pairedNote, vm.pairJoining),
                             syncCb = com.onpath.app.ui.SyncCallbacks(
                                 onOpenCamera = ::openCameraForPairing,
                                 onPair = vm::confirmPair,

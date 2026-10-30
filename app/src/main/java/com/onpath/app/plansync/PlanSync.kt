@@ -14,6 +14,7 @@ import com.onpath.app.sync.SyncKeys
 import com.onpath.app.sync.SyncRound
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
+import com.onpath.strings.sync_copy
 import com.onpath.strings.sync_untitled_route
 import com.onpath.strings.sync_untitled_track
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,6 +40,24 @@ object JcaAead : Aead {
         cipher(javax.crypto.Cipher.DECRYPT_MODE, key, nonce, aad).doFinal(sealed)
     } catch (_: javax.crypto.AEADBadTagException) {
         null // expected: another key / a changed blob – the caller counts it as unreadable
+    }
+}
+
+/**
+ * What a scanned pairing code leads to (A-017): not paired → [PAIR]; the browser already paired → [ALREADY] (a grey
+ * line); another browser while paired → [JOIN] (the check digits and Pair as for a first pairing; Pair sends that
+ * browser into this phone's mailbox – never "unpair first").
+ */
+enum class PairStep {
+    PAIR, JOIN, ALREADY;
+
+    companion object {
+        /** [current] = the stored pairing's mailbox (null = not paired), [incoming] = the scanned code's mailbox. */
+        fun of(current: String?, incoming: String): PairStep = when (current) {
+            null -> PAIR
+            incoming -> ALREADY
+            else -> JOIN
+        }
     }
 }
 
@@ -108,8 +127,12 @@ class PlanSync(
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state
 
-    private fun pass() = PlanSyncPass(files, store, ::mailbox, ::randomBytes, System::currentTimeMillis, deviceName(),
-        { if (it == SyncItem.TRACK) Txt.s(Res.string.sync_untitled_track) else Txt.s(Res.string.sync_untitled_route) }, JcaAead)
+    /** This phone's name for the browser (its hello): the user's device name, else the model ([deviceName]). */
+    val deviceName: String by lazy { deviceName(app) }
+
+    private fun pass() = PlanSyncPass(files, store, ::mailbox, ::randomBytes, System::currentTimeMillis, deviceName,
+        { if (it == SyncItem.TRACK) Txt.s(Res.string.sync_untitled_track) else Txt.s(Res.string.sync_untitled_route) }, JcaAead,
+        copyLabel(Txt.s(Res.string.sync_copy)))
 
     private fun mailbox(keys: SyncKeys): Mailbox = HttpMailbox(server, keys)
     private fun randomBytes(n: Int) = ByteArray(n).also { rnd.nextBytes(it) }
@@ -199,6 +222,27 @@ class PlanSync(
         }
     }
 
+    /**
+     * Pair with another browser while paired (A-017): the scanned code's browser is sent into this phone's mailbox
+     * ([PlanSyncPass.join] – one JOIN item); the phone's own pairing stays. Main-thread callback with the outcome
+     * (null = not paired any more – the caller pairs the normal way). One small write, also during a tour (no sync).
+     */
+    fun join(browserSecret: ByteArray, done: (SyncRound.Outcome?) -> Unit) {
+        worker.execute {
+            val o = try { pass().join(browserSecret) } catch (e: Exception) {
+                Problems.error("sync", "The other browser could not be paired", e); SyncRound.Outcome.Refused(-2, null)
+            }
+            Problems.info("sync", "Pair another browser (check ${SyncKeys(browserSecret).check}): " + when (o) {
+                null -> "not paired here – pairing normally"
+                is SyncRound.Outcome.Done -> "it joins this phone's mailbox"
+                is SyncRound.Outcome.Offline -> "offline"
+                is SyncRound.Outcome.Ended -> "its code is no longer valid"
+                is SyncRound.Outcome.Refused -> "server refused (${o.status}${o.error?.let { ": $it" } ?: ""})"
+            })
+            main.post { done(o) }
+        }
+    }
+
     /** Settings → Unpair (asked first): the mailbox ends for every device, the pairing is forgotten here. */
     fun unpair(done: (status: Int) -> Unit) {
         worker.execute {
@@ -278,7 +322,27 @@ class PlanSync(
         const val SERVER = PlanLinks.BASE
         const val CHANGE_DELAY_MS = 1_500L
 
-        fun deviceName(): String = android.os.Build.MODEL?.trim()?.takeIf { it.isNotEmpty() } ?: "Android"
+        /** The phone's name: Settings → About phone → Device name (Settings.Global.DEVICE_NAME), else Build.MODEL. */
+        fun deviceName(context: Context): String = deviceName(
+            { android.provider.Settings.Global.getString(context.contentResolver, android.provider.Settings.Global.DEVICE_NAME) },
+            android.os.Build.MODEL)
+
+        /**
+         * The name the browser shows for this phone (A-017: two "Pixel 8" in one browser are told apart by the name the
+         * user gave): [userName] when it gives one, else [model], else "Android". Never fails – a fallback is noted (INFO).
+         */
+        fun deviceName(userName: () -> String?, model: String?): String {
+            val user = try { userName()?.trim()?.takeIf { it.isNotEmpty() } } catch (e: Exception) {
+                Problems.info("sync", "Device name not readable – the model is used for the browser", e); null
+            }
+            if (user != null) return user
+            val m = model?.trim()?.takeIf { it.isNotEmpty() }
+            Problems.info("sync", "No device name set – the browser sees " + (if (m != null) "the model" else "\"Android\""))
+            return m ?: "Android"
+        }
+
+        /** The copy suffix as shown on this phone (" (Kopie)") from the localized word ("Kopie"); the item keeps " (copy)". */
+        fun copyLabel(word: String): String = word.trim().takeIf { it.isNotEmpty() }?.let { " ($it)" } ?: com.onpath.app.sync.SyncMerge.COPY
 
         /** A pass that reached the server and moved nothing. */
         fun idle(r: PlanSyncPass.Result?): Boolean {

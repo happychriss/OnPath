@@ -87,14 +87,45 @@ class SyncRound(
         return Outcome.Done(pulled, pushed, bad, ledger.outbox().size)
     }
 
-    private fun failed(r: Mailbox.Reply): Outcome = when (r.status) {
-        Mailbox.Reply.OFFLINE -> Outcome.Offline
-        410, 403 -> Outcome.Ended
-        else -> Outcome.Refused(r.status, r.error)
-    }
+    private fun failed(r: Mailbox.Reply): Outcome = outcomeOf(r)
 
     companion object {
+        /** A failed answer as an [Outcome]: no answer → Offline, 410 / 403 → Ended, else Refused. */
+        fun outcomeOf(r: Mailbox.Reply): Outcome = when (r.status) {
+            Mailbox.Reply.OFFLINE -> Outcome.Offline
+            410, 403 -> Outcome.Ended
+            else -> Outcome.Refused(r.status, r.error)
+        }
+
         /** Pull + push, and once more after a 409 (owner order A-007: retry once). */
         const val MAX_PASSES = 2
+    }
+}
+
+/**
+ * The phone's side of [SyncJoin] (A-017, docs/design/web-sync.md §5.1): writes the JOIN [item] into another browser's
+ * mailbox [box] (opened with that browser's [keys]) – claims it when nobody has yet, PUTs the item, and after a 409 (a
+ * JOIN from an earlier scan is there) once more on the current revision. Reads nothing, writes nothing else. Pure like
+ * [SyncRound]; [SyncRound.Outcome.Done] = (0 read, 1 written).
+ */
+class JoinRound(
+    private val keys: SyncKeys,
+    private val box: Mailbox,
+    private val nonce: () -> ByteArray,
+    private val aead: Aead = AesGcm,
+) {
+    fun run(item: SyncItem): SyncRound.Outcome {
+        val c = box.claim()
+        if (c.status != 200 && c.status != 201) return SyncRound.outcomeOf(c)
+        var base = 0L
+        repeat(2) {
+            val w = box.write(item.id, base, SyncFormat.seal(keys, item, nonce(), aead))
+            when (w.status) {
+                200 -> return SyncRound.Outcome.Done(0, 1, 0)
+                409 -> base = w.rev
+                else -> return SyncRound.outcomeOf(w)
+            }
+        }
+        return SyncRound.Outcome.Refused(409, "conflict")
     }
 }

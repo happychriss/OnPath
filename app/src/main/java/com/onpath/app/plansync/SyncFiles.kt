@@ -67,9 +67,10 @@ data class Pairing(val code: String, val since: Long) {
 /**
  * The plan sync's own files in the app's private storage (`files/sync/`, docs/design/web-sync.md §11.2): the pairing,
  * this install's device id, the ledger, the links, the last good sync and the marks of routes from the browser ([marks]). Every file is written atomically (temp file,
- * flushed to disk, then renamed), so a crash leaves the old or the new file – never half of one. The folder is kept out
- * of Android's backup (res/xml/backup_rules.xml, data_extraction_rules.xml): a restored phone must not reuse an old
- * mailbox. Reading never throws.
+ * flushed to disk, then renamed), so a crash leaves the old or the new file – never half of one. Only device.txt goes into
+ * Android's backup and device transfer (res/xml/backup_rules.xml, data_extraction_rules.xml; A-017: a reinstalled phone
+ * keeps its device id, so the browser opens its old folder again); everything else stays out – a restored phone must
+ * not reuse an old mailbox. Reading never throws.
  */
 class SyncFiles(val dir: File) {
     private val pairFile = File(dir, "pair.txt")

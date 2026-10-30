@@ -42,7 +42,10 @@
     </plurals>
     <string name="sync_storage">Die Sync-Dateien konnten nicht geschrieben werden – der Speicher des Handys ist vielleicht voll.</string>
     <string name="sync_already_paired">Dieses Handy ist schon mit diesem Browser verbunden.</string>
-    <string name="sync_unpair_first">Dieses Handy ist mit einem anderen Browser verbunden. Trenne ihn zuerst und scanne den Code dann noch einmal.</string>
+    <string name="sync_join_offline">Der Browser war nicht erreichbar – prüfe die Verbindung und scanne den Code noch einmal.</string>
+    <string name="sync_join_used">Dieser Code gilt nicht mehr – lass dir im Browser einen neuen Code zeigen und scanne ihn.</string>
+    <string name="sync_join_failed">Verbinden mit diesem Browser hat nicht geklappt – lass dir im Browser einen neuen Code zeigen und scanne ihn noch einmal.</string>
+    <string name="sync_copy">Kopie</string>
     <string name="sync_link_broken">Dieser Verbindungscode lässt sich nicht lesen. Lass den Code im Browser noch einmal anzeigen und scanne ihn erneut.</string>
     <string name="sync_during_tour">Die Routen werden nach der Tour abgeglichen.</string>
     <string name="sync_untitled_route">Route</string>

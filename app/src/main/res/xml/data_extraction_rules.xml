@@ -3,8 +3,9 @@
   Android 12+: cloud backup and device-to-device transfer of the tours and settings only (no Google Play Services
   needed by the app; Android's own backup does it). Not included: map data / cells (external files, hundreds of MB),
   caches, the problem log, the backup folder link and its index (prefs "backup", backup-index.json – a folder
-  permission does not move to another phone), the plan sync's files/sync/ (pairing secret, ledger: a restored phone
-  must not reuse the old mailbox). Keep in step with backup_rules.xml.
+  permission does not move to another phone), and of the plan sync's files/sync/ everything but device.txt (the sync
+  device id, A-017: a reinstalled phone finds its folder in the browser again) – the pairing secret, ledger, links and
+  marks never move: a restored phone must not reuse the old mailbox. Keep in step with backup_rules.xml.
 -->
 <data-extraction-rules>
     <cloud-backup>
@@ -13,7 +14,7 @@
         <include domain="sharedpref" path="onpath.xml" />
         <include domain="file" path="tour-times.json" />
         <include domain="file" path="plan-times.json" />
-        <exclude domain="file" path="sync/" />
+        <include domain="file" path="sync/device.txt" />
     </cloud-backup>
     <device-transfer>
         <include domain="database" path="onpath.db" />
@@ -21,6 +22,6 @@
         <include domain="sharedpref" path="onpath.xml" />
         <include domain="file" path="tour-times.json" />
         <include domain="file" path="plan-times.json" />
-        <exclude domain="file" path="sync/" />
+        <include domain="file" path="sync/device.txt" />
     </device-transfer>
 </data-extraction-rules>

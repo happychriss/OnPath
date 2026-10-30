@@ -53,6 +53,27 @@ the git log.
       with ✓ (tooltip "Pixel 8 ↔ this browser · 1 min ago"), amber on the phone's problems (507 full, refused, local
       storage, last online pass > 6 h after the last good one; never plain offline); "ended from the phone" until the
       sync view is opened. Not paired: neutral "Pair phone".
+    - Sync model "one compartment per phone, Speichern sends to the phone" (owner 2026-10-30, after the e2e test) ·
+      Drive order A-017 (01 Aufträge) · browser: one store per phone (keyed by the phone's device id) + "Ohne Handy";
+      pull automatic, push only with the header's Speichern (bold + "Noch nicht auf dem Handy gespeichert"); no upload of
+      older browser routes on pairing ("Zu <Handy> kopieren"); unpair in the browser closes, never ends the mailbox.
+      App side **done on main** (A-017 phone side, format = web-sync.md §5.1 on web-spike 0e675f3): a paired phone that
+      scans another browser's code shows its check digits, Pair → `JoinRound` claims that browser's mailbox if needed
+      and PUTs exactly one JOIN item (kind 4, id `SyncJoin.ID` = first 16 bytes of SHA-256("OnPath join") =
+      `sAZCnWUrch6J4Mt9nYTAzw`, device = the phone's device id = folder key, field 5 = the phone's own pairing code as
+      `PairCode` text, sealed with the browser's keys; 409 → once more on the returned rev); "Unpair first" is gone.
+      Hello: field 6 = role varint (1 phone, 2 browser; missing = unknown) – the phone writes role 1. Web to do:
+      `SyncItem` / `SyncFormat` / `SyncLedger` / `SyncMerge` changes come with the shared files (no new file; the
+      phone-only `JoinRound` sits in `SyncRound.kt`); after a pull `SyncJoin.secretIn(ledger)` → adopt that code,
+      DELETE the own mailbox, read the phone's from 0; write the own hello with `ledger.hello(device, name, now,
+      SyncItem.ROLE_BROWSER)` (a call without role keeps the stored one); name the folder after the hello with
+      `role == ROLE_PHONE`. Phone name = Settings.Global.DEVICE_NAME, else Build.MODEL. Copy marker: items keep
+      " (copy)" (`SyncMerge.COPY`, unchanged – the web's titles stay as they are); the app shows "(Kopie)" via
+      `SyncMerge.shownTitle` / `storedTitle` (pure, shared – the web may use them with `web` strings). Frozen bytes:
+      `PlanSyncTest.joinItemIsFrozen` (also from Python hashlib). Phone device id now in Android backup + device
+      transfer (only `sync/device.txt`): a reinstalled phone opens its old folder. Node e2e: `SyncMailboxE2ETest.
+      aSecondBrowserJoinsThroughTheRealMailbox`; `tools/sync/e2e.sh` now copies every `web/host/src/*.js` (sync.js
+      imports maps.js).
   - *Should:*
     - Clearer add buttons · e7d4e5a · place card main button = `AddPreview.label` ("Set as destination", "Add as stop
       2", "Add as new destination"); `subtitle` is now only the reason ("fits best there · about +0.9 km"); small As

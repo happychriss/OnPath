@@ -1,6 +1,7 @@
 package com.onpath.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -44,14 +46,17 @@ data class SyncUi(
     val askCheck: String? = null,
     /** Right after Pair (owner 2026-10-30): "Paired – … They're kept on your phone." with OK, before the paired page. */
     val pairedNote: Boolean = false,
+    /** Pair was tapped for another browser while paired (A-017) and its one write runs: a spinner instead of the buttons. */
+    val joining: Boolean = false,
 ) {
     companion object {
         /**
          * [pairedNote]: a pairing made here was stored and its OK not tapped yet. Shown only while the state says paired
          * and no new code waits for Pair / Cancel ("already paired" never sets it).
          */
-        fun of(s: PlanSync.State, askCheck: String?, pairedNote: Boolean = false) =
-            SyncUi(s.paired, s.peer, s.lastOkMs, s.problem, askCheck, pairedNote = pairedNote && s.paired && askCheck == null)
+        fun of(s: PlanSync.State, askCheck: String?, pairedNote: Boolean = false, joining: Boolean = false) =
+            SyncUi(s.paired, s.peer, s.lastOkMs, s.problem, askCheck, pairedNote = pairedNote && s.paired && askCheck == null,
+                joining = joining && askCheck != null)
     }
 }
 
@@ -171,7 +176,12 @@ fun SyncSection(ui: SyncUi, cb: SyncCallbacks, now: Long = System.currentTimeMil
                     // a scanned pairing code: the check digits, then Pair / Cancel (nothing is stored before Pair)
                     Text(str(Res.string.sync_ask_title), style = MaterialTheme.typography.titleMedium)
                     Text(str(Res.string.sync_ask_check, ui.askCheck), style = MaterialTheme.typography.bodyLarge)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (ui.joining) {
+                        // another browser is being sent into this phone's mailbox (A-017): one write, then "Paired – …"
+                        Box(Modifier.heightIn(min = 48.dp), contentAlignment = Alignment.CenterStart) {
+                            CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                        }
+                    } else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = cb.onPair, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.sync_pair)) }
                         TextButton(onClick = cb.onCancelPair, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) }
                     }

@@ -164,6 +164,41 @@ class SyncMailboxE2ETest {
         assertEquals(410, HttpMailbox(base, keys).end().status)
     }
 
+    /** A-017 through the real mailbox: a second browser's code → one JOIN in its mailbox → it moves into the phone's. */
+    @Test fun aSecondBrowserJoinsThroughTheRealMailbox() {
+        val store = FakeTourStore()
+        val files = SyncFiles(tmp.newFolder("sync")).also { it.savePairing(secret, clock) }
+        val phone = PlanSyncPass(files, store, { HttpMailbox(base, it) }, { n -> rnd.nextBytes(n) }, { clock }, "Pixel 8",
+            { "Route" }, JcaAead)
+        store.savePlanned("Waalweg", listOf(a, b, c))
+        assertTrue(phone.run { false }!!.outcome is SyncRound.Outcome.Done)
+        clock += 1000
+
+        // browser B shows its own code and waits in its own (claimed) mailbox
+        val secretB = ByteArray(32) { (it * 13 + 9).toByte() }
+        val keysB = SyncKeys(secretB)
+        val webB = SyncFormat.newDevice(ByteArray(8) { 5 })
+        var n = 0
+        val ledgerB = SyncLedger.empty().also { it.hello(webB, "Firefox on Windows", clock, SyncItem.ROLE_BROWSER) }
+        assertTrue(SyncRound(keysB, HttpMailbox(base, keysB), { ByteArray(12) { (n++).toByte() } }, AesGcm).run(ledgerB) is SyncRound.Outcome.Done)
+
+        // the phone scans B: one JOIN, the phone stays in its mailbox
+        assertEquals(SyncRound.Outcome.Done(0, 1, 0), phone.join(secretB))
+        assertEquals(SyncRound.Outcome.Done(0, 1, 0), phone.join(secretB)) // scanned twice: on the current revision
+        assertEquals(keys.mailbox, SyncKeys(files.pairing()!!.secret!!).mailbox)
+        assertTrue(SyncRound(keysB, HttpMailbox(base, keysB), { ByteArray(12) { (n++).toByte() } }, AesGcm).run(ledgerB) is SyncRound.Outcome.Done)
+        val adopted = com.onpath.app.sync.SyncJoin.secretIn(ledgerB)!!
+        assertTrue(secret.contentEquals(adopted))
+        // B deletes its own mailbox and reads the phone's from 0
+        assertEquals(200, HttpMailbox(base, keysB).end().status)
+        val moved = SyncLedger.empty().also { it.hello(webB, "Firefox on Windows", clock, SyncItem.ROLE_BROWSER) }
+        assertTrue(SyncRound(keys, HttpMailbox(base, keys), { ByteArray(12) { (n++).toByte() } }, AesGcm).run(moved) is SyncRound.Outcome.Done)
+        assertEquals(listOf("Waalweg"), moved.plans().map { it.title })
+        assertEquals("Pixel 8", moved.devices(webB).single { it.role == SyncItem.ROLE_PHONE }.name)
+        // B's code is used up now
+        assertEquals(SyncRound.Outcome.Ended, phone.join(secretB))
+    }
+
     @Test fun offlineAndWrongTokenAnswers() {
         // nothing listens on this port: offline, never a crash
         val dead = HttpMailbox("http://127.0.0.1:1/", keys)
