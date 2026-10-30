@@ -424,8 +424,40 @@ the after-routing refresh (~09:45 UTC) to the map on the phone (10:34). From the
 
 The same cell (10-531-342) on donald with the job image (4 CPUs, low priority): 247 s cold (+ 89 s for the two
 Geofabrik extracts), **179 s warm** (overlays 61 s, base 30 s, pois 22 s, addresses 23 s, terrain 20 s) – 2.5–3× faster
-than Cloud Run's 2 vCPU. An overlays-only rebuild would take ~80 s here, ~4.2 min in the cloud (see backlog: partial
-rebuild).
+than Cloud Run's 2 vCPU. An overlays-only rebuild takes ~80 s here, ~4.2 min in the cloud (partial rebuild, below).
+
+**Partial rebuild** (`cells.py LAYER_SCHEMA`, `job_build.py plan / reuse`): a look-only schema bump no longer
+rebuilds every layer.
+- **Per-layer schema:** `LAYER_SCHEMA` = per layer of a format-2 cell (`base`, `overlays`, `pois`, `addresses`,
+  `terrain`, `contours`) the cell schema in which its data last changed. A change bumps `CELL_SCHEMA` **and** the
+  layer(s) it touches (a change needing two layers in step bumps both). `CELL_SCHEMA` stays the highest of them
+  (selftest), so the version name `<osm_date>-s<CELL_SCHEMA>`, the doorman's "current" test (`schemaOf(version) ≥
+  CELL_SCHEMA`, adoption, pre-warm) and the app (`CellApi.schemaOf`) are **unchanged** – no doorman or app change.
+  The table starts with every layer at 7; versions below `PARTIAL_FROM_SCHEMA` (7) are always rebuilt whole.
+- **Decision** (`rebuild_plan`, per cell, in the job after the sources are fresh): the published version (R2
+  `current.json` + manifest) has the same OSM date as the extracts now (`cells.py osm-date`, header dates) and some –
+  not all – of its layers are older than `LAYER_SCHEMA` (from its manifest's `"layers"`, else min(version schema,
+  layer schema)) → only those are built. Whole build as before for: another OSM date (the normal refresh), no / an
+  unreadable published version, region packages (own `PACKAGE_SCHEMA`), a file of no known layer, a required layer
+  (base, overlays, terrain) missing, nothing stale (a plain re-run), `PARTIAL=0`. Any error in the decision → whole.
+- **Build:** `build_cell.sh` with `LAYERS="overlays"` + `BASE_MANIFEST` runs only that layer's steps (the cut only for
+  base / overlays / pois / addresses; terrain / contours need none). The manifest lists the new files plus the published
+  version's entries of the other layers (size + sha256 kept, url in the **new** version folder); the local version
+  folder holds only the rebuilt files. A failed partial build is retried whole in the same execution.
+- **Publish:** the kept files are copied into the new version folder in R2 (**CopyObject**, server-side; checked by
+  size + ETag = same bytes as the source), fallback: download, check size + sha256 against the manifest, upload. Then
+  the new files, the manifest, `current.json` – as before. Every version folder stays complete and immutable, so the
+  daily cleanup (keeps current + previous) never removes a file a newer version needs; the phone downloads the whole
+  new version as before (an app that reused unchanged files by sha256 would also save the download – not done).
+- **Manifest:** `"layers": {"overlays": {"schema": 8, "version": "<osm>-s8"}, "base": {"schema": 7, "version":
+  "<osm>-s7"}, …}` (where each layer was built) and `"reused_from"`; the ready status file has `layers` /
+  `reused_from` (diagnostics). The doorman's ETA average then mixes partial and whole build times (accepted).
+- **Measured** (donald, 2026-10-30, Hilden 10-531-342, job image, `--cpus 4`, low priority, but the PC heavily loaded
+  by other work): whole build 403 s (cut + merge + renumber 13 s, base 39 s, overlays 274 s, pois 25 s, addresses 28 s,
+  terrain 23 s); the same steps of an overlays-only rebuild = **~290 s** under that load (≈ 80 s with the warm, quiet
+  numbers above: cut ~15 s + overlays ~61 s). The copy + merge, run on that real s7 output with a local store: 5 of 6
+  files kept, sha256 of all 6 equal to the manifest, < 1 s. Cloud (not yet measured): overlays 129–197 s + cut 25–35 s
+  + upload instead of 8–10.5 min → **~4 min**.
 
 **App poll while updating:** a cell answered "ready + updating" counts as being built (`MapCells.updatingOnServer`):
 the app asks again at the doorman's `poll_s`, and the doorman answers `poll_s` 15 while any asked cell is rebuilt

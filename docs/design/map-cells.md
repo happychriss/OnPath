@@ -162,6 +162,10 @@ Cells nobody requested for 12 months are deleted (storage is cheap; rebuilding i
 }
 ```
 
+Format-2 cells also carry `"layers"`: per layer (`base`, `overlays`, `pois`, `addresses`, `terrain`, `contours`) the
+schema it was built for and the version folder it was built in, plus `"reused_from"` after a partial rebuild
+(map-hosting.md §7h "Partial rebuild"). The app ignores both; every file of a version still lies in its own folder.
+
 `format` lets the file set change (map-data-size.md) without breaking old apps: the app sends the formats it
 understands, the server builds/serves the newest of those. An old format is built only while app versions that need
 it are still in use.
