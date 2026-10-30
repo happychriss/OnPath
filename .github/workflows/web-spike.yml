@@ -2,9 +2,10 @@
 # TeaVM, builds the web page, and checks that 20 routes come out the same in headless Chromium as on the JVM.
 # Only for the web-spike branch – nothing here touches the app build or main.
 #
-# Layout (web-planner.md §9 "CI"): build (engine + page, uploaded as artifact "web-build") → in parallel: jvm (the
-# app's tests of the shared files, JVM routes, Wasm = JVM checks, browser compare, host tests) and smokes (4 machines,
-# browser smokes balanced by time) → deploy (only when every job above is green) + results (one artifact as before).
+# Layout (web-planner.md §9 "CI"): build (engine + page, uploaded as artifact "web-build") ∥ jvm (the app's tests of
+# the shared files, JVM routes, Wasm = JVM checks, browser compare, host tests) ∥ smokes (5 machines, browser smokes
+# balanced by time; jvm and smokes set up while build runs, then wait for it) → deploy (only when every job above is
+# green) + results (one artifact as before).
 # The TeaVM build is skipped when nothing it compiles changed (cache key = hash of every file the engine build reads).
 name: Web spike
 
@@ -23,6 +24,11 @@ on:
       deploy:
         type: boolean
         default: false
+
+# actions: read = jvm / smokes ask the API whether this run's build job is done (cloudflare-setup.yml grants the same)
+permissions:
+  contents: read
+  actions: read
 
 concurrency:
   group: web-spike-${{ github.ref }}
@@ -124,8 +130,9 @@ jobs:
           ls -la web/engine/build/generated/teavm/wasm-gc/ || true
           gzip -9c web/engine/build/generated/teavm/wasm-gc/onpath-web-engine.wasm | wc -c || true
 
+  # jvm and smokes start with build (no `needs`, so their setup – Gradle tests, Chromium – runs while the engine is
+  # built) and wait for the build job before they read its artifact. deploy still `needs` all three.
   jvm:
-    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -159,14 +166,35 @@ jobs:
           [ -s segments/E10_N45.rd5 ] || curl -fsS --retry 3 -o segments/E10_N45.rd5 https://brouter.de/brouter/segments4/E10_N45.rd5
           ls -la segments
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: web-build
-          path: web
+      - name: Playwright's Chromium
+        working-directory: web/app
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
 
       # test = the app's own tests of the shared files (appTests) + WebImportTest (writes build/jvm-gpx.json)
       - name: The app's tests of the shared files + routes on the JVM (same engine code)
         run: ./gradlew -p web/engine --no-daemon test runJvm -Psegments=$GITHUB_WORKSPACE/segments
+
+      - name: Wait for the build job (engine + page)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 120); do # the build job of this run ("<caller> / build" when called by another workflow)
+            st=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?per_page=100" \
+              --jq '[.jobs[] | select(.name == "build" or (.name | endswith(" / build")))][0] | "\(.status) \(.conclusion)"' || echo "?")
+            case "$st" in
+              "completed success") echo "build job done"; exit 0 ;;
+              completed*) echo "::error::the build job ended: $st"; exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "::error::the build job did not finish in 20 min"; exit 1
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: web
 
       - name: Engine texts follow the page's language (German / English, decimal comma)
         run: node web/app/test/lang-engine.mjs $GITHUB_WORKSPACE/segments
@@ -180,12 +208,6 @@ jobs:
       - name: Planner host tests (web/host)
         working-directory: web/host
         run: node --test
-
-      - name: Playwright's Chromium
-        working-directory: web/app
-        run: |
-          npm ci
-          npx playwright install --with-deps chromium
 
       - name: Routes in headless Chromium, compared with the JVM
         working-directory: web/app
@@ -201,16 +223,15 @@ jobs:
             web/engine/build/*.json
             web/engine/build/*.png
 
-  # The browser smokes on 4 machines, balanced by their times (each group ~2.5 min). Each smoke stays its own step, so
-  # a failure's log is that smoke's alone; a new smoke goes into the shortest group.
+  # The browser smokes on 5 machines, balanced by their times (cells-smoke alone is the longest, ~150 s). Each smoke
+  # stays its own step, so a failure's log is that smoke's alone; a new smoke goes into the shortest group.
   smokes:
-    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        group: [cells, sheet-parity, areas-lang-sync, short]
+        group: [cells, sheet-sync, areas-parity, lang-gpx, short]
     name: smokes (${{ matrix.group }})
     steps:
       - uses: actions/checkout@v4
@@ -240,45 +261,76 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
+      - name: Wait for the build job (engine + page)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 120); do # the build job of this run ("<caller> / build" when called by another workflow)
+            st=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?per_page=100" \
+              --jq '[.jobs[] | select(.name == "build" or (.name | endswith(" / build")))][0] | "\(.status) \(.conclusion)"' || echo "?")
+            case "$st" in
+              "completed success") echo "build job done"; exit 0 ;;
+              completed*) echo "::error::the build job ended: $st"; exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "::error::the build job did not finish in 20 min"; exit 1
+
       - uses: actions/download-artifact@v4
         with:
           name: web-build
           path: web
 
-      # group cells (~145 s)
+      # group cells (~150 s)
       - name: A cell whose map fails (404, busy, 429, new generation, slow) – bounded tries, overview stays, strip says it, diagnostics
         if: matrix.group == 'cells'
         working-directory: web/app
         run: node test/cells-smoke.mjs $GITHUB_WORKSPACE/segments
 
-      # group sheet-parity (~145 s)
+      # group sheet-sync (~140 s)
       - name: Plan sheet steps (small / profile / Points on desktop and phone, handle, chevron, remembered; Share icon, place card)
-        if: matrix.group == 'sheet-parity'
+        if: matrix.group == 'sheet-sync'
         working-directory: web/app
         run: node test/sheet-smoke.mjs $GITHUB_WORKSPACE/segments
 
-      - name: Phone parity (first-point menu, undo / redo, eye, compass, Google link-out, GPX, bottom sheet)
-        if: matrix.group == 'sheet-parity'
-        working-directory: web/app
-        run: node test/parity-smoke.mjs $GITHUB_WORKSPACE/segments
-
-      # group areas-lang-sync (~145 s)
-      - name: Never a blank map, every wait said, map areas on demand (fake doorman behind the host's proxy)
-        if: matrix.group == 'areas-lang-sync'
-        working-directory: web/app
-        run: node test/areas-smoke.mjs $GITHUB_WORKSPACE/segments
-
-      - name: German first (browser language, switch, engine texts, website links, the one line about the app, noindex)
-        if: matrix.group == 'areas-lang-sync'
-        working-directory: web/app
-        run: node test/lang-smoke.mjs $GITHUB_WORKSPACE/segments
-
       - name: Plan sync (phase 2) – two browsers pair, sync both ways, offline + conflict copy, delete, unpair
-        if: matrix.group == 'areas-lang-sync'
+        if: matrix.group == 'sheet-sync'
         working-directory: web/app
         run: node test/sync-smoke.mjs $GITHUB_WORKSPACE/segments
 
-      # group short (~150 s)
+      # group areas-parity (~135 s)
+      - name: Never a blank map, every wait said, map areas on demand (fake doorman behind the host's proxy)
+        if: matrix.group == 'areas-parity'
+        working-directory: web/app
+        run: node test/areas-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: Phone parity (first-point menu, undo / redo, eye, compass, Google link-out, GPX, bottom sheet)
+        if: matrix.group == 'areas-parity'
+        working-directory: web/app
+        run: node test/parity-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      # group lang-gpx (~100 s)
+      - name: German first (browser language, switch, engine texts, website links, the one line about the app, noindex)
+        if: matrix.group == 'lang-gpx'
+        working-directory: web/app
+        run: node test/lang-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: Long-route question and GPX import (☰ → Import GPX, drop, Plan a route from it, export ⇄ import)
+        if: matrix.group == 'lang-gpx'
+        working-directory: web/app
+        run: node test/import-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: Following the position ends on the page's own camera moves (search pick), compass keeps it
+        if: matrix.group == 'lang-gpx'
+        working-directory: web/app
+        run: node test/follow-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: Where the time goes (numbers only, nothing checked)
+        if: matrix.group == 'lang-gpx'
+        working-directory: web/app
+        run: node test/perf.mjs normal $GITHUB_WORKSPACE/segments
+
+      # group short (~80 s)
       - name: Planner page click test (two points → route + profile; screenshot)
         if: matrix.group == 'short'
         working-directory: web/app
@@ -298,21 +350,6 @@ jobs:
         if: matrix.group == 'short'
         working-directory: web/app
         run: node test/overview-smoke.mjs $GITHUB_WORKSPACE/segments
-
-      - name: Long-route question and GPX import (☰ → Import GPX, drop, Plan a route from it, export ⇄ import)
-        if: matrix.group == 'short'
-        working-directory: web/app
-        run: node test/import-smoke.mjs $GITHUB_WORKSPACE/segments
-
-      - name: Following the position ends on the page's own camera moves (search pick), compass keeps it
-        if: matrix.group == 'short'
-        working-directory: web/app
-        run: node test/follow-smoke.mjs $GITHUB_WORKSPACE/segments
-
-      - name: Where the time goes (numbers only, nothing checked)
-        if: matrix.group == 'short'
-        working-directory: web/app
-        run: node test/perf.mjs normal $GITHUB_WORKSPACE/segments
 
       - uses: actions/upload-artifact@v4
         if: always()

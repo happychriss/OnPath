@@ -259,6 +259,21 @@ in the browser.
    deploy (read-only; red when one fails). Without the secrets the step only notes that it was skipped. The token only
    opens this Access app; delete it in Zero Trust to revoke.
 
+**CI** (`.github/workflows/web-spike.yml`, owner 2026-10-30: faster, no test dropped, every test a gate before the
+deploy). Jobs: `build` (parity check, TeaVM engine + overview style, texts check, the page with the overview files →
+artifact `web-build` = `web/app/dist` + the engine files) ∥ `jvm` (the app's tests of the shared files +
+`WebImportTest`, JVM routes, the three Wasm = JVM Node checks, host tests, browser compare) ∥ `smokes` (a matrix of 5
+machines – `cells`, `sheet-sync`, `areas-parity`, `lang-gpx`, `short` – balanced by the smokes' times, each smoke its
+own step with its own log). `jvm` and `smokes` have no `needs`: they set up (Gradle tests, Chromium, routing data)
+while `build` runs, then wait for it through the API (`actions: read`) before downloading `web-build` → `deploy` (`needs` all of them, same condition as before: `inputs.deploy` or a push to web-spike) and
+`results` (merges every job's `results-*` into the one artifact `web-spike-results`). A new smoke goes into the
+shortest group. **Engine cache:** the TeaVM step is skipped when its key matches – `hashFiles` of `web/engine/**`,
+`app/src/main/java/**`, `app/src/test/java/com/onpath/app/**`, `app/libs/**`, `app/src/main/assets/**`,
+`tools/routing/jvm-test/**`, `strings/**`, `web/strings/**`, the Gradle wrapper / root Gradle files and the workflow
+itself (deliberately wider than `appFiles`; a miss only costs ~2 min). The Gradle tests and JVM routes are not cached:
+they run in `jvm` on every run.
+**Agents:** locally run only the smokes your change touches; CI runs all.
+
 Open: the home / help pages (drafts live in WordPress on 44-2.de, marketing session) – `onpath.earth` can redirect
 there first. Requesting new cells from the web: §17 (the host holds the key, the browser does not).
 

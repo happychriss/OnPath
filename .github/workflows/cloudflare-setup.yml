@@ -151,6 +151,9 @@ jobs:
     needs: setup
     if: needs.setup.outputs.deploy == 'true'
     uses: ./.github/workflows/web-spike.yml
+    permissions: # web-spike.yml's test jobs ask the API whether its build job is done
+      contents: read
+      actions: read
     with:
       deploy: true
     secrets: inherit
