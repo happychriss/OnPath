@@ -351,6 +351,11 @@ jobs:
         working-directory: web/app
         run: node test/edit-smoke.mjs $GITHUB_WORKSPACE/segments
 
+      - name: Map look per activity (the app's map/ActivityLayers – Bike / Hike T4 / MTB as on the phone)
+        if: matrix.group == 'short'
+        working-directory: web/app
+        run: node test/activity-look-smoke.mjs $GITHUB_WORKSPACE/segments
+
       - name: World overview below the cells (the app's Overview.merge; zoom 5 / 8 never blank)
         if: matrix.group == 'short'
         working-directory: web/app

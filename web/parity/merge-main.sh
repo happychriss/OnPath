@@ -27,7 +27,7 @@ run node web/app/test/sync-engine.mjs
 run node web/app/test/gpx-engine.mjs
 run ./gradlew -q -p web/engine runJvm -Psegments="$SEG"
 ( cd web/app && run npm run build )
-for t in browser-compare ui-smoke share-smoke edit-smoke parity-smoke sync-smoke import-smoke overview-smoke; do
+for t in browser-compare ui-smoke share-smoke edit-smoke activity-look-smoke parity-smoke sync-smoke import-smoke overview-smoke; do
   ( cd web/app && run node "test/$t.mjs" "$SEG" )
 done
 ( cd web/app && run node test/search-smoke.mjs "$SEG" "$CELLS" )

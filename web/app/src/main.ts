@@ -240,6 +240,7 @@ map.on('load', () => {
     'icon-image': 'route-arrow', 'icon-size': ['interpolate', ['linear'], ['zoom'], 12, 0.55, 16, 0.8],
     'icon-rotation-alignment': 'map', 'icon-keep-upright': false, 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
   applyMapContent();
+  lookReady = true; applyActivityLook();
   render();
 });
 
@@ -1010,7 +1011,29 @@ function setActivity(a: Activity, sac: number, plan: boolean) {
   state.activity = a; state.sac = sac;
   localStorageSet('activity', a); localStorageSet('sac', String(sac));
   renderChip();
+  applyActivityLook();
   if (plan && !same) changed();
+}
+/**
+ * The map look for the activity and T level – the app's map/ActivityLayers (MapController.setOverlay / setSacLimit):
+ * the shipped style has the Hike look; bike activities get the bike map, their green / forbidden ways and the cycle
+ * band, Hike the band filtered at its T level. Identical to the phone (owner 2026-10-31). A newer choice wins.
+ */
+let lookAsked = 0;
+let lookReady = false; // the style's 'load' came (isStyleLoaded() is false while tiles load)
+async function applyActivityLook() {
+  if (!lookReady) return; // the load handler applies it
+  const ask = ++lookAsked;
+  const a = state.activity, sac = state.sac;
+  try {
+    const ids = map.getStyle().layers.map((l) => l.id).join(',');
+    const j = JSON.parse(await engine.call('activityLayers', a, sac, ids)) as
+      { visibility: Record<string, boolean>; filters: Record<string, unknown> };
+    if (ask !== lookAsked) return;
+    for (const [id, on] of Object.entries(j.visibility)) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+    for (const [id, f] of Object.entries(j.filters)) if (map.getLayer(id)) map.setFilter(id, f as maplibregl.FilterSpecification);
+    (window as unknown as { __look: string }).__look = `${a}/${sac}`; // for the browser tests
+  } catch (e) { problem('map', `map look for ${a} T${sac} not applied`, e); }
 }
 $('activityChip').onclick = (e) => { e.stopPropagation(); closeMenus(); picker.toggle($('activityChip'), state.activity, state.sac); };
 
