@@ -500,22 +500,6 @@
     "confidence": "sicher",
     "max": 90
   },
-  "settings_nav_battery_hint": {
-    "area": "Settings · Navigation",
-    "context": "Hint beside the \"App settings\" button: Android battery setting of the app",
-    "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "Must match the German Android label of the battery option (Pixel: „Nicht eingeschränkt“ / „Uneingeschränkt“)",
-    "max": 90
-  },
-  "settings_nav_location_hint": {
-    "area": "Settings · Navigation",
-    "context": "Hint beside \"App settings\" when background location is not allowed: after a phone restart the tour is continued by a tap",
-    "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "„Fortsetzen“ = the button of the interrupted-tour dialog; „Immer zulassen“ = German Android permission label",
-    "max": 90
-  },
   "settings_pace_intro": {
     "area": "Settings · Your pace",
     "context": "Intro line of the pace page",
@@ -876,5 +860,35 @@
     "priority": 1,
     "confidence": "bitte prüfen",
     "doubt": "Must match the website text"
+  },
+  "settings_nav_junction_off": {
+    "area": "Settings → Navigation",
+    "context": "Junction vibration chip: off",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "settings_nav_junction_always": {
+    "area": "Settings → Navigation",
+    "context": "Junction vibration chip: always",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "settings_nav_junction_locked": {
+    "area": "Settings → Navigation",
+    "context": "Junction vibration chip: only while the screen is locked",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "settings_nav_on_route": {
+    "area": "Settings → Navigation",
+    "context": "Switch: draw the position dot on the route line when close to it",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "settings_nav_on_route_sub": {
+    "area": "Settings → Navigation",
+    "context": "Line under the switch 'Position on route'",
+    "priority": 1,
+    "confidence": "sicher"
   }
 }

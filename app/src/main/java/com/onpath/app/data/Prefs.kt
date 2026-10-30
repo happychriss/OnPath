@@ -151,6 +151,43 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         return true
     }
 
+    // ---- Phone setup (docs/design/onboarding-phone-check.md) ----
+    /** The user's answer to the vibration test ("Did you feel it?"). */
+    var vibrationFelt: com.onpath.app.setup.Felt
+        get() = sp.getString("vibrationFelt", null)?.let { runCatching { com.onpath.app.setup.Felt.valueOf(it) }.getOrNull() }
+            ?: com.onpath.app.setup.Felt.UNKNOWN
+        set(v) = sp.edit().putString("vibrationFelt", v.name).apply()
+
+    /** The user went through the steps for their phone brand ("Done"). */
+    var brandStepsDone: Boolean
+        get() = sp.getBoolean("brandStepsDone", false)
+        set(v) = sp.edit().putBoolean("brandStepsDone", v).apply()
+
+    /** The welcome ("Set up now / Later") was answered – it is shown once. */
+    var setupWelcomeSeen: Boolean
+        get() = sp.getBoolean("setupWelcomeSeen", false)
+        set(v) = sp.edit().putBoolean("setupWelcomeSeen", v).apply()
+
+    /** How often each system dialog was shown (location, notifications) – after a denial Android may stop showing it. */
+    fun asks(what: String): Int = sp.getInt("asks_$what", 0)
+    fun countAsk(what: String) = sp.edit().putInt("asks_$what", asks(what) + 1).apply()
+
+    /** Recommended checks put off with "Later" before a tour: id → when (ms). */
+    fun snoozed(now: Long): Set<com.onpath.app.setup.CheckId> = com.onpath.app.setup.CheckId.entries.filter {
+        now - sp.getLong("snooze_${it.name}", 0L) < com.onpath.app.setup.PhoneCheck.SNOOZE_MS
+    }.toSet()
+    fun snooze(id: com.onpath.app.setup.CheckId, now: Long) = sp.edit().putLong("snooze_${id.name}", now).apply()
+
+    /** What was fine when OnPath was last open, and when (for "your phone removed …"). */
+    var lastSeen: com.onpath.app.setup.LastSeen?
+        get() {
+            val at = sp.getLong("lastSeenAt", 0L).takeIf { it > 0 } ?: return null
+            val ok = sp.getString("lastSeenOk", "").orEmpty().split(',').mapNotNull { n ->
+                runCatching { com.onpath.app.setup.CheckId.valueOf(n) }.getOrNull() }.toSet()
+            return com.onpath.app.setup.LastSeen(ok, at)
+        }
+        set(v) { if (v != null) sp.edit().putLong("lastSeenAt", v.atMs).putString("lastSeenOk", v.ok.joinToString(",") { it.name }).apply() }
+
     /** Developer tools unlocked by 7 taps on the version in Settings → About (owner); stays. */
     var devToolsUnlocked: Boolean
         get() = sp.getBoolean("devToolsUnlocked", false)

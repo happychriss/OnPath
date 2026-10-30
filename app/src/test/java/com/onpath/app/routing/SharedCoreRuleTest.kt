@@ -11,7 +11,7 @@ import java.io.File
  * the known exceptions (each needs an interface or a JSON helper when the split happens); the list may only shrink.
  */
 class SharedCoreRuleTest {
-    private val packages = listOf("routing", "navigation", "time", "rides", "gpx", "sync")
+    private val packages = listOf("routing", "navigation", "time", "rides", "gpx", "sync", "setup")
     private val platform = Regex("""\b(android|androidx|org\.maplibre|btools|org\.json)\.""")
 
     /** File (package/name) -> why it is allowed today. */

@@ -76,8 +76,6 @@
     <string name="settings_nav_on_route_sub">While you are close to the route, the dot sits on it</string>
     <string name="settings_nav_screen_on">Keep screen on while navigating</string>
     <string name="settings_nav_screen_on_sub">Only while following a route; off in your pocket</string>
-    <string name="settings_nav_battery_hint">Recording with the screen off: best with battery “Unrestricted”.</string>
-    <string name="settings_nav_location_hint">After a restart, tap Continue. Automatic with location “Allow all the time”.</string>
     <string name="settings_pace_intro">Changes the times only, not the route. Times are walking / riding time without breaks.</string>
     <string name="settings_pace_hiking">Hiking</string>
     <string name="settings_pace_cycling">Cycling · %1$s</string>

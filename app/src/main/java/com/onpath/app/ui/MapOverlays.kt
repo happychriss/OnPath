@@ -87,6 +87,7 @@ fun MapOverlayHost(
                 fromMeBlocked = MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
                 onFromMe = { vm.poiFromMyLocation(poi) },
                 onAdd = { vm.addPoiPoint(poi) },
+                addLabel = vm.poiAddLabel(poi),
                 onGoogle = {
                     vm.closeMapOverlays()
                     com.onpath.app.poi.PoiIntents.openInGoogleMaps(ctx, poi)
@@ -164,12 +165,14 @@ fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: ()
 }
 
 /**
- * Menu of a held POI that is not a route point: its name + "Add to route" · "Open in Google Maps". On an empty plan
+ * Menu of a held POI that is not a route point: its name + what adding it does ("Set as destination", "Add as
+ * stop 2", …) · "Open in Google Maps". On an empty plan
  * it asks like the first-point menu (owner): "Start here" · "Go here" · "Open in Google Maps".
  */
 @Composable
 fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifier = Modifier,
-            emptyPlan: Boolean = false, fromMeBlocked: String? = null, onFromMe: () -> Unit = {}) {
+            emptyPlan: Boolean = false, fromMeBlocked: String? = null, onFromMe: () -> Unit = {},
+            addLabel: String = str(Res.string.search_card_set_destination)) {
     val place = Place.fromPoi(poi)
     val de = Poi.isGerman()
     MenuSurface(modifier) {
@@ -185,7 +188,7 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
             HoldMenuItem(Icons.Outlined.MyLocation, str(Res.string.plan_go_here), enabled = fromMeBlocked == null,
                 supporting = fromMeBlocked, onClick = onFromMe)
         } else {
-            HoldMenuItem(Icons.Outlined.AddLocationAlt, str(Res.string.plan_add_to_route), onClick = onAdd)
+            HoldMenuItem(Icons.Outlined.AddLocationAlt, addLabel, onClick = onAdd)
         }
         HoldMenuItem(Icons.Outlined.Map, str(Res.string.plan_open_google_maps), onClick = onGoogle)
     }

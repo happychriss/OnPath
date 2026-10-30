@@ -97,7 +97,18 @@ class SettingsSummaryTest {
     @Test fun twoGroups() {
         assertEquals(listOf(SettingsPage.PACE, SettingsPage.POI, SettingsPage.MAP, SettingsPage.NAVIGATION, SettingsPage.OFFLINE_MAPS,
             SettingsPage.BACKUP, SettingsPage.SYNC), SettingsPage.entries.filter { !it.app })
-        assertEquals(listOf(SettingsPage.UPDATES, SettingsPage.PRIVACY, SettingsPage.DIAGNOSTICS, SettingsPage.ABOUT),
+        assertEquals(listOf(SettingsPage.PHONE, SettingsPage.UPDATES, SettingsPage.PRIVACY, SettingsPage.DIAGNOSTICS, SettingsPage.ABOUT),
             SettingsPage.entries.filter { it.app })
+    }
+
+    /** Phone setup: "Everything set up", else how many things to check – red when a tour needs one of them. */
+    @Test fun phoneSetupSummary() {
+        val good = com.onpath.app.setup.PhoneState(sdk = 35, location = com.onpath.app.setup.LocationGrant.PRECISE,
+            vibrationFelt = com.onpath.app.setup.Felt.YES, unusedReset = com.onpath.app.setup.ResetStatus.ON)
+        assertEquals(Summary("Everything set up"), SettingsSummary.phone(com.onpath.app.setup.PhoneCheck.all(good)))
+        val two = SettingsSummary.phone(com.onpath.app.setup.PhoneCheck.all(good.copy(notificationsOn = false, backgroundRestricted = true)))
+        assertEquals(Summary("2 things to check", Summary.Attention.ACCENT), two)
+        val noLoc = SettingsSummary.phone(com.onpath.app.setup.PhoneCheck.all(good.copy(location = com.onpath.app.setup.LocationGrant.NONE)))
+        assertEquals(Summary.Attention.PROBLEM, noLoc.attention)
     }
 }

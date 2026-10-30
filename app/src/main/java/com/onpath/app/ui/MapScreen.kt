@@ -213,16 +213,12 @@ fun MapScreen(
         onKeepGoing = { vm.arrivalAsk = false })
     if (vm.navSettingsOpen) {
         // Navigate → ⚙: the Navigation settings page on the way (owner); everything else stays in Plan → Settings
-        val ctx = androidx.compose.ui.platform.LocalContext.current
         androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.navSettingsOpen = false }) {
             androidx.compose.foundation.lazy.LazyColumn(Modifier.padding(bottom = 24.dp)) {
                 item {
-                    NavigationSection(vm.settings, vm::updateSettings) {
-                        try {
-                            ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                android.net.Uri.fromParts("package", ctx.packageName, null)))
-                        } catch (e: Exception) { Problems.warn("ui", "App settings could not be opened from Navigate", e) }
-                    }
+                    NavigationSection(vm.settings, vm::updateSettings,
+                        onPhoneSetup = { vm.navSettingsOpen = false; vm.openSetup(com.onpath.app.setup.Purpose.SETTINGS) },
+                        onTestVibration = { vm.navSettingsOpen = false; vm.openSetupStep(com.onpath.app.setup.CheckId.VIBRATION) })
                 }
             }
         }

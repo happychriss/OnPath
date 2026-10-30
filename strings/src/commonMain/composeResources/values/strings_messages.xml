@@ -61,7 +61,6 @@
     <string name="msg_gpx_import_failed_reason">Could not import this file: %1$s</string>
     <string name="msg_gpx_import_failed">Could not import this file – it could not be opened or read.</string>
     <string name="msg_route_updated_newer_data">Route updated with newer map data – please check it.</string>
-    <string name="msg_no_location_permission">Without location permission the map works, but position and recording do not.</string>
     <string name="msg_no_storage_permission">Without storage access OnPath cannot copy tracks and routes to Documents/OnPath. Choose another folder in Settings → Backup.</string>
     <string name="msg_no_folder_picker">This phone has no folder picker – restore and folder choice are not possible.</string>
     <string name="msg_something_wrong">Something went wrong. It was noted in Settings → Diagnostics.</string>

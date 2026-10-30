@@ -159,7 +159,6 @@
     <string name="plan_new_route">New route</string>
     <string name="plan_start_here">Start here</string>
     <string name="plan_go_here">Go here</string>
-    <string name="plan_add_to_route">Add to route</string>
     <string name="plan_open_google_maps">Open in Google Maps</string>
     <plurals name="plan_removes_points">
         <item quantity="one">Removes the %1$d point before it</item>

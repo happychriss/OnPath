@@ -43,6 +43,8 @@ abstract class E2EBase {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         // empty plan, default camera (Meran)
         ctx.getSharedPreferences("onpath", 0).edit().clear().commit()
+        // phone setup done like on a set-up phone: no welcome, vibration felt (the guide has its own test)
+        com.onpath.app.data.Prefs(ctx).apply { setupWelcomeSeen = true; vibrationFelt = com.onpath.app.setup.Felt.YES }
         // the one-time restore offer on an empty tour list (backup) would cover the map too
         ctx.getSharedPreferences("backup", 0).edit().putBoolean("restoreOffered", true).commit()
         val dir = dataDir

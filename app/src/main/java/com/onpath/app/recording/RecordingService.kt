@@ -654,29 +654,8 @@ class RecordingService : Service() {
         true
     }
 
-    /** Plays [pattern]; false when the phone has no vibrator or it failed (reported). */
-    private fun vibrate(pattern: LongArray = OFF_ROUTE_VIBRATION, what: String = "alert"): Boolean {
-        return try {
-            val vib = if (Build.VERSION.SDK_INT >= 31) {
-                (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-            } else @Suppress("DEPRECATION") (getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
-            if (!vib.hasVibrator()) { Problems.warn("sensor", "This phone reports no vibrator ($what); given without vibration"); return false }
-            val effect = VibrationEffect.createWaveform(pattern, -1)
-            // As an alarm: Android drops vibrations without a usage while the app is not on screen (phone in the
-            // pocket). Alarm vibrations also pass the touch setting.
-            if (Build.VERSION.SDK_INT >= 33) {
-                vib.vibrate(effect, android.os.VibrationAttributes.createForUsage(android.os.VibrationAttributes.USAGE_ALARM))
-            } else {
-                @Suppress("DEPRECATION")
-                vib.vibrate(effect, android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_ALARM)
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
-            }
-            true
-        } catch (e: Exception) {
-            Problems.warn("sensor", "Vibration failed ($what); given without vibration", e)
-            false
-        }
-    }
+    /** Plays [pattern] through [Cues]; false when the phone has no vibrator or it failed (reported). */
+    private fun vibrate(pattern: LongArray = OFF_ROUTE_VIBRATION, what: String = "alert"): Boolean = Cues.vibrate(this, pattern, what)
 
     /**
      * The off-route notification carries the same question as the screen ("Take new route" / "Keep original").

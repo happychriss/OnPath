@@ -113,7 +113,7 @@ sealed interface UiEvent {
 class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val dataFiles = DataFiles(app)
-    private val prefs = Prefs(app)
+    val prefs = Prefs(app)
     private val db = TourDb.get(app)
     // time estimate state, declared before init {} uses it (recalc / refreshTours)
     init {
@@ -1469,6 +1469,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 .put("offRouteM", it.offRouteM).put("saveFailed", it.saveFailed)
                 .put("toGoS", it.time?.toGoS).put("arrivalMs", it.time?.arrivalMs) } ?: org.json.JSONObject.NULL)
             .put("gps", tracker.status().name)
+            .put("phone", com.onpath.app.setup.PhoneCheck.describe(phone))
             .put("demo", com.onpath.app.recording.DemoLocation.state.value?.let { d -> org.json.JSONObject().put("kind", d.kind.name)
                 .put("label", d.label).put("factor", d.factor).put("paused", d.paused).put("alongM", d.alongM.toInt())
                 .put("lengthM", d.lengthM.toInt()).put("ended", d.ended) } ?: org.json.JSONObject.NULL)
@@ -1883,6 +1884,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** POI menu → "Add to route": a pinned, named route point; when it already is a stop, its point menu opens. */
+    /** The POI menu's add item, saying what it does ("Set as destination", "Add as stop 2", …) – same rule as [addPoint]. */
+    fun poiAddLabel(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0): String {
+        val w = waypoints.toList()
+        return com.onpath.app.search.AddPreview.label(
+            WaypointInsertion.decide(w, GeoPoint(poi.lat, poi.lon), if (routing) null else route?.points, lineSnapM), w.size)
+    }
+
     fun addPoiPoint(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) {
         closeMapOverlays()
         val idx = waypoints.indexOfFirst { sameSpot(it, poi.lat, poi.lon) }
@@ -2082,10 +2090,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun placeCardUi(place: com.onpath.app.search.Place): com.onpath.app.ui.search.PlaceCardUi {
         val idx = routeIndexOf(place)
         val r = route
-        val subtitle = if (idx != null) com.onpath.app.search.AddPreview.existingRole(idx, waypoints.size)
-        else com.onpath.app.search.AddPreview.of(waypoints.toList(), GeoPoint(place.lat, place.lon), if (routing) null else r?.points,
-            r?.takeIf { it.durationS > 0 }?.let { it.distanceM / it.durationS }).subtitle
-        return com.onpath.app.ui.search.PlaceCardUi(place, idx, waypoints.size, subtitle)
+        if (idx != null) return com.onpath.app.ui.search.PlaceCardUi(place, idx, waypoints.size,
+            com.onpath.app.search.AddPreview.existingRole(idx, waypoints.size))
+        val pv = com.onpath.app.search.AddPreview.of(waypoints.toList(), GeoPoint(place.lat, place.lon), if (routing) null else r?.points,
+            r?.takeIf { it.durationS > 0 }?.let { it.distanceM / it.durationS })
+        val k = pv.decision.kind
+        return com.onpath.app.ui.search.PlaceCardUi(place, null, waypoints.size, pv.subtitle, pv.label,
+            addIsStart = k == WaypointInsertion.Kind.START,
+            addIsDestination = k == WaypointInsertion.Kind.DESTINATION && waypoints.size <= 1)
     }
 
     /** Adds the place as a pinned stop (passed exactly), named after the place. Moves it when already planned. */
@@ -3787,6 +3799,112 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var locationAsking by mutableStateOf(false)
     /** The loading modal waits for the map / routing data of the user's area. */
     val loadModalOpen: Boolean get() = loadModalFor.isNotEmpty() || routingModal
+    // ---------------- Phone setup (docs/design/onboarding-phone-check.md) ----------------
+    /** The phone as last read by MainActivity (every return to the app, every system answer). */
+    var phone by mutableStateOf(com.onpath.app.setup.PhoneState(sdk = android.os.Build.VERSION.SDK_INT))
+        private set
+    /** Android's unused-app reset for OnPath (read off the main thread at start). */
+    var unusedReset = com.onpath.app.setup.ResetStatus.UNKNOWN
+    /** What the phone or the user removed since the last use (the guide and Settings say so calmly). */
+    var phoneTaken by mutableStateOf<Map<com.onpath.app.setup.CheckId, com.onpath.app.setup.Taken>>(emptyMap())
+    /** The first-start welcome ("Set up now / Later"). */
+    var setupWelcome by mutableStateOf(false)
+    /** The open step-by-step guide; null = none. */
+    var setupGuide by mutableStateOf<com.onpath.app.setup.SetupGuide?>(null)
+        private set
+    private var setupThen: (() -> Unit)? = null
+    val setupOpen: Boolean get() = setupWelcome || setupGuide != null
+
+    /** Navigation vibrations in use: the vibration step applies only then. */
+    val vibrationUsed: Boolean get() = settings.junctionVibration != com.onpath.app.data.JunctionVibration.OFF ||
+        (settings.offRouteWarning && settings.offRouteVibrate)
+
+    fun updatePhone(s: com.onpath.app.setup.PhoneState) {
+        phone = s
+        setupGuide = setupGuide?.refresh(s, vibrationUsed)
+        finishSetupIfDone()
+    }
+
+    /**
+     * Opens the guide for [purpose] with what is missing; nothing missing → [then] runs at once. Before a tour and for
+     * the locate button [then] runs when the guide ends and what it needs is there.
+     */
+    fun openSetup(purpose: com.onpath.app.setup.Purpose, then: (() -> Unit)? = null) {
+        val g = com.onpath.app.setup.SetupGuide.of(purpose, phone, vibrationUsed, prefs.snoozed(System.currentTimeMillis()))
+            ?.refresh(phone, vibrationUsed)
+        if (g == null || g.finished && then != null && setupReady(purpose)) { then?.invoke(); return }
+        Problems.trace("setup", "Phone setup guide ($purpose): ${g.steps.joinToString()}")
+        setupThen = then
+        setupGuide = g
+    }
+
+    /** Settings → Phone setup → a row: that one step. */
+    fun openSetupStep(id: com.onpath.app.setup.CheckId) {
+        setupThen = null
+        setupGuide = com.onpath.app.setup.SetupGuide.single(id)
+    }
+
+    fun setupWelcomeNow() {
+        setupWelcome = false; prefs.setupWelcomeSeen = true
+        openSetup(com.onpath.app.setup.Purpose.FIRST_SETUP)
+    }
+
+    /** "Later": before a tour a recommended step stays quiet for a week. */
+    fun setupLater() {
+        val g = setupGuide ?: return
+        val id = g.current
+        if (id != null && g.purpose == com.onpath.app.setup.Purpose.BEFORE_TOUR &&
+            com.onpath.app.setup.PhoneCheck.need(id) != com.onpath.app.setup.Need.REQUIRED) prefs.snooze(id, System.currentTimeMillis())
+        setupGuide = g.putOff().refresh(phone, vibrationUsed)
+        finishSetupIfDone()
+    }
+
+    /** The system dialog for [id] came back without it. */
+    fun setupDenied(id: com.onpath.app.setup.CheckId) {
+        val g = setupGuide ?: return
+        if (g.current == id && !com.onpath.app.setup.PhoneCheck.isOk(id, phone)) setupGuide = g.denied(id)
+    }
+
+    fun setupVibrationPlayed() { setupGuide = setupGuide?.vibrationPlayed() }
+
+    fun setupVibrationAnswer(f: com.onpath.app.setup.Felt) {
+        prefs.vibrationFelt = f
+        Problems.trace("setup", "Vibration test: felt = $f")
+        setupGuide = setupGuide?.vibrationAnswer(f)
+        updatePhone(phone.copy(vibrationFelt = f))
+    }
+
+    fun setupBrandDone() {
+        prefs.brandStepsDone = true
+        updatePhone(phone.copy(brandDone = true))
+    }
+
+    /** Closes the welcome / guide (Back, Close, Later on the welcome). */
+    fun closeSetup() {
+        if (setupWelcome) { setupWelcome = false; prefs.setupWelcomeSeen = true }
+        setupGuide = null
+        setupThen = null
+    }
+
+    private fun setupReady(purpose: com.onpath.app.setup.Purpose) = when (purpose) {
+        com.onpath.app.setup.Purpose.BEFORE_TOUR -> com.onpath.app.setup.PhoneCheck.tourReady(phone)
+        com.onpath.app.setup.Purpose.LOCATE -> com.onpath.app.setup.PhoneCheck.isOk(com.onpath.app.setup.CheckId.LOCATION, phone)
+        else -> true
+    }
+
+    /** At its end a guide for a tour / the locate button closes by itself and goes on; the others show their end page. */
+    private fun finishSetupIfDone() {
+        val g = setupGuide ?: return
+        if (!g.finished) return
+        val goOn = g.purpose == com.onpath.app.setup.Purpose.BEFORE_TOUR || g.purpose == com.onpath.app.setup.Purpose.LOCATE
+        val single = g.purpose == com.onpath.app.setup.Purpose.SETTINGS && g.steps.size == 1
+        if (goOn && setupReady(g.purpose) || single) {
+            val then = setupThen
+            setupGuide = null; setupThen = null
+            then?.invoke()
+        }
+    }
+
     /** A restore is running: its progress line ("Restoring 5 / 28"); null = none. */
     var restoreProgress by mutableStateOf<String?>(null)
         private set

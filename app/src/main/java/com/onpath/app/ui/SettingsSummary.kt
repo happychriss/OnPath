@@ -24,6 +24,8 @@ enum class SettingsPage(private val titleRes: StringResource, val app: Boolean =
     BACKUP(Res.string.settings_page_backup),
     /** Plan sync with the web planner (A-007): shown when the app has the sync (always, not in older screenshots). */
     SYNC(Res.string.settings_page_sync),
+    /** Phone setup (location, notifications, vibration, battery …): shown when the app passes the checks. */
+    PHONE(Res.string.settings_page_phone, app = true),
     UPDATES(Res.string.settings_page_updates, app = true),
     PRIVACY(Res.string.settings_page_privacy, app = true),
     DIAGNOSTICS(Res.string.settings_page_diagnostics, app = true),
@@ -112,6 +114,16 @@ object SettingsSummary {
             unseen > 0 -> Summary(Txt.p(Res.plurals.settings_sum_diag_new, unseen, unseen), Summary.Attention.PROBLEM)
             problems.isEmpty() -> Summary(Txt.s(Res.string.settings_sum_diag))
             else -> Summary(Txt.p(Res.plurals.settings_sum_diag_notes, problems.size, problems.size))
+        }
+    }
+
+    /** "Everything set up", or "2 things to check" (red when something a tour needs is missing). */
+    fun phone(checks: List<com.onpath.app.setup.Check>): Summary {
+        val missing = checks.filter { !it.ok && it.need != com.onpath.app.setup.Need.OPTIONAL }
+        return when {
+            missing.isEmpty() -> Summary(Txt.s(Res.string.settings_sum_phone_ok))
+            else -> Summary(Txt.p(Res.plurals.settings_sum_phone_missing, missing.size, missing.size),
+                if (missing.any { it.need == com.onpath.app.setup.Need.REQUIRED }) Summary.Attention.PROBLEM else Summary.Attention.ACCENT)
         }
     }
 

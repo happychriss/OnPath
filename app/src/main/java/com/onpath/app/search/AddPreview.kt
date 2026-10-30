@@ -8,15 +8,16 @@ import com.onpath.strings.*
 import kotlin.math.roundToInt
 
 /**
- * What "Add to route" will do, said before the tap: computed with the same
- * [WaypointInsertion.decide] the map hold uses, so the card never promises something else.
+ * What adding a place will do, said on the button before the tap ("Set as destination", "Add as stop 2", "Add as
+ * new destination") – computed with the same [WaypointInsertion.decide] the map hold uses, so the button never
+ * promises something else. [Preview.subtitle] is the short reason under it ("fits best · about +0.9 km").
  */
 object AddPreview {
 
     /** Straight-line detour → typical path detour (paths are rarely straight). An estimate, shown with "about". */
     const val DETOUR_FACTOR = 1.3
 
-    data class Preview(val decision: WaypointInsertion.Decision, val subtitle: String, val extraM: Double?)
+    data class Preview(val decision: WaypointInsertion.Decision, val label: String, val subtitle: String, val extraM: Double?)
 
     /**
      * @param speedMps average speed of the current route (distance / duration), for "+15 min"; null = no time
@@ -34,14 +35,22 @@ object AddPreview {
             }
             else -> null // on the line: practically no detour
         }
+        val label = label(d, n)
         val text = when (d.kind) {
-            WaypointInsertion.Kind.START -> Txt.s(Res.string.search_add_as_start)
-            WaypointInsertion.Kind.DESTINATION -> if (n <= 1) Txt.s(Res.string.search_add_as_destination)
-                else Txt.s(Res.string.search_add_as_new_destination) + extraText(extra, speedMps)
-            WaypointInsertion.Kind.VIA_ON_LINE -> Txt.s(Res.string.search_add_as_stop_on_route, d.index + 1)
-            WaypointInsertion.Kind.VIA_BEST_FIT -> Txt.s(Res.string.search_add_as_stop_best, d.index + 1) + extraText(extra, speedMps)
+            WaypointInsertion.Kind.START -> ""
+            WaypointInsertion.Kind.DESTINATION -> if (n <= 1) "" else extraText(extra, speedMps).removePrefix(" · ")
+            WaypointInsertion.Kind.VIA_ON_LINE -> Txt.s(Res.string.search_add_on_route)
+            WaypointInsertion.Kind.VIA_BEST_FIT -> Txt.s(Res.string.search_add_fits_best) + extraText(extra, speedMps)
         }
-        return Preview(d, text, extra)
+        return Preview(d, label, text, extra)
+    }
+
+    /** The button text for adding a point to a plan of [n] points ([d] from [WaypointInsertion.decide]). */
+    fun label(d: WaypointInsertion.Decision, n: Int): String = when (d.kind) {
+        WaypointInsertion.Kind.START -> Txt.s(Res.string.search_card_set_start)
+        WaypointInsertion.Kind.DESTINATION -> if (n <= 1) Txt.s(Res.string.search_card_set_destination)
+            else Txt.s(Res.string.search_card_new_destination)
+        WaypointInsertion.Kind.VIA_ON_LINE, WaypointInsertion.Kind.VIA_BEST_FIT -> Txt.s(Res.string.search_card_add_stop, d.index + 1)
     }
 
     /** " · about +0.9 km, +15 min" */

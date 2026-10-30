@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Navigation
 import androidx.compose.material.icons.outlined.Place
@@ -107,8 +108,11 @@ fun SettingsScreen(
     /** Available map themes (StyleLoader.themes); the chooser is shown when there is more than one. */
     themes: List<String> = listOf("classic"),
     onImportData: () -> Unit = {},
-    /** Opens Android's app settings (battery usage). */
-    onAppSettings: () -> Unit = {},
+    /** Settings → Phone setup: the checks of this phone; null = topic hidden (screenshots of older pages). */
+    phoneChecks: List<com.onpath.app.setup.Check>? = null,
+    phone: com.onpath.app.setup.PhoneState = com.onpath.app.setup.PhoneState(sdk = 35),
+    /** A row's "Set up" (or the vibration test): that step of the guide. */
+    onPhoneFix: (com.onpath.app.setup.CheckId) -> Unit = {},
     /** Diagnostics → "Download routing data" (normally it comes with the map by itself). */
     onDownloadRouting: () -> Unit = {},
     /** Diagnostics → Developer tools → the planned route's time estimate with its formulas; null = no route (greyed). */
@@ -170,6 +174,7 @@ fun SettingsScreen(
             SettingsPage.SYNC -> sync != null
             SettingsPage.UPDATES -> update != null
             SettingsPage.DIAGNOSTICS -> diagnostics
+            SettingsPage.PHONE -> phoneChecks != null
             else -> true
         }
     }
@@ -209,6 +214,7 @@ fun SettingsScreen(
                                             SettingsPage.UPDATES -> SettingsSummary.updates(update!!, version)
                                             SettingsPage.DIAGNOSTICS -> SettingsSummary.diagnostics(problems, diagnosticsSeenMs)
                                             SettingsPage.PRIVACY -> SettingsSummary.privacy
+                                            SettingsPage.PHONE -> SettingsSummary.phone(phoneChecks!!)
                                             SettingsPage.ABOUT -> SettingsSummary.about
                                         }
                                         TopicRow(t, s, small = app) { onPage(t) }
@@ -225,7 +231,14 @@ fun SettingsScreen(
                         SettingsPage.PACE -> item { PaceSection(settings, onChange, activity) } // PaceSettings.kt
                         SettingsPage.POI -> item { PoiSection(settings, onChange, initiallyExpanded) }
                         SettingsPage.MAP -> item { MapSection(settings, onChange, themes) }
-                        SettingsPage.NAVIGATION -> item { NavigationSection(settings, onChange, onAppSettings) }
+                        SettingsPage.NAVIGATION -> item {
+                            NavigationSection(settings, onChange, onPhoneSetup = { onPage(SettingsPage.PHONE) },
+                                onTestVibration = { onPhoneFix(com.onpath.app.setup.CheckId.VIBRATION) })
+                        }
+                        SettingsPage.PHONE -> if (phoneChecks != null) item {
+                            com.onpath.app.ui.setup.PhoneSetupSection(phoneChecks, phone, onPhoneFix,
+                                onTestVibration = { onPhoneFix(com.onpath.app.setup.CheckId.VIBRATION) })
+                        }
                         SettingsPage.OFFLINE_MAPS -> if (offlineMaps != null) item { OfflineMapsSection(offlineMaps, offlineMapsCb) }
                         SettingsPage.BACKUP -> if (backup != null) item { BackupSection(backup, backupCb) }
                         SettingsPage.SYNC -> if (sync != null) item { SyncSection(sync, syncCb, now) }
@@ -258,6 +271,7 @@ private val SettingsPage.icon: ImageVector
         SettingsPage.BACKUP -> Icons.Outlined.SaveAlt
         SettingsPage.SYNC -> Icons.Outlined.Sync
         SettingsPage.PRIVACY -> Icons.Outlined.Lock
+        SettingsPage.PHONE -> Icons.Outlined.PhoneAndroid
         SettingsPage.UPDATES -> Icons.Outlined.SystemUpdate
         SettingsPage.DIAGNOSTICS -> Icons.Outlined.BugReport
         SettingsPage.ABOUT -> Icons.Outlined.Info
@@ -368,10 +382,11 @@ private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, t
     }
 }
 
-/** Navigation, in the owner's order: warning → distance → vibrations → screen → battery / location hints. */
+/** Navigation, in the owner's order: warning → distance → vibrations (+ test) → screen → phone setup. */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> Unit, onAppSettings: () -> Unit) {
+internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> Unit, onPhoneSetup: () -> Unit,
+                               onTestVibration: () -> Unit) {
     Section(SettingsPage.NAVIGATION.title) {
         SwitchRow(str(Res.string.settings_nav_offroute), str(Res.string.settings_nav_offroute_sub),
             settings.offRouteWarning) { onChange(settings.copy(offRouteWarning = it)) }
@@ -402,30 +417,21 @@ internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) ->
                 }
             }
         }
+        if (settings.junctionVibration != com.onpath.app.data.JunctionVibration.OFF || settings.offRouteVibrate)
+            TextButton(onClick = onTestVibration, modifier = Modifier.padding(start = 8.dp).heightIn(min = 48.dp)) {
+                Text(str(Res.string.setup_nav_test_vibration))
+            }
         SwitchRow(str(Res.string.settings_nav_on_route), str(Res.string.settings_nav_on_route_sub), settings.positionOnRoute) {
             onChange(settings.copy(positionOnRoute = it))
         }
         SwitchRow(str(Res.string.settings_nav_screen_on), str(Res.string.settings_nav_screen_on_sub), settings.keepScreenOn) {
             onChange(settings.copy(keepScreenOn = it))
         }
-        // a quiet hint, never a pop-up (owner)
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(str(Res.string.settings_nav_battery_hint),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f))
-            TextButton(onClick = onAppSettings, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_app_settings)) }
-        }
-        if (android.os.Build.VERSION.SDK_INT >= 29) {
-            val ctx = androidx.compose.ui.platform.LocalContext.current
-            val bg = androidx.core.content.ContextCompat.checkSelfPermission(ctx,
-                android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            // a quiet hint instead of a question (owner: never ask); nothing to say once it is set
-            if (!bg) Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(str(Res.string.settings_nav_location_hint),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f))
-                TextButton(onClick = onAppSettings, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_app_settings)) }
-            }
+        // what the phone must allow (location, notifications, vibration, battery): one row to Phone setup
+        Row(Modifier.fillMaxWidth().clickable(onClick = onPhoneSetup).heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Text(str(Res.string.setup_nav_check), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

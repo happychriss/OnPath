@@ -148,12 +148,6 @@
     "doubt": "'Alle löschen' – or 'Alle entfernen' (removing maps, not deleting user data)",
     "max": 18
   },
-  "common_app_settings": {
-    "area": "Common",
-    "context": "Button: opens Android's settings page of OnPath (permissions)",
-    "priority": 2,
-    "confidence": "sicher"
-  },
   "common_recycle_bin": {
     "area": "Common",
     "context": "Title / button: deleted routes and tours that can be restored",

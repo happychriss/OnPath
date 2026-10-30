@@ -89,13 +89,14 @@ class SearchScreenshotTest {
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     PlanTopBar({}, com.onpath.app.ui.PlanMenu(), Modifier.fillMaxWidth())
                     Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 24.dp)) {
-                        PlaceCard(PlaceCardUi(hut, null, 3, "as stop 2 – fits best · about +0.9 km, +15 min"),
+                        PlaceCard(PlaceCardUi(hut, null, 3, "fits best there · about +0.9 km, +15 min", "Add as stop 2"),
                             com.onpath.app.ui.search.PlaceCardActions())
                         PlaceCard(PlaceCardUi(Place("o:N1", "Laubengasse 10", "address", 46.67, 11.16, address = "39012 Meran",
                             source = Place.Source.ONLINE), 2, 3, "is the destination"), com.onpath.app.ui.search.PlaceCardActions())
                         // a shared place positioned from its address keeps the note
                         PlaceCard(PlaceCardUi(Place("shared:1", "Gelateria Costantin", "other", 46.67, 11.16,
-                            address = "Passeggiata Lungo Passirio 1, Meran", note = SharedPosition.NOTE)),
+                            address = "Passeggiata Lungo Passirio 1, Meran", note = SharedPosition.NOTE), waypointCount = 1,
+                            addLabel = "Set as destination", addIsDestination = true),
                             com.onpath.app.ui.search.PlaceCardActions())
                     }
                 }

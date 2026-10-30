@@ -606,11 +606,12 @@ class ScreenshotTest {
         }
     }
 
-    /** Hold on a POI in Plan: its menu "Add to route · Open in Google Maps". */
+    /** Hold on a POI in Plan: its menu "Add as stop 2 · Open in Google Maps". */
     @Test fun poiMenu() = paparazzi.snapshot {
         OnPathTheme {
             OverlayFrame(OnPathColors.Rec, androidx.compose.ui.unit.DpOffset(110.dp, 400.dp)) {
-                PoiMenu(com.onpath.app.poi.Poi("n1", "hut", "Meraner Hütte", 46.68, 11.25, ele = 1960), onAdd = {}, onGoogle = {})
+                PoiMenu(com.onpath.app.poi.Poi("n1", "hut", "Meraner Hütte", 46.68, 11.25, ele = 1960), onAdd = {}, onGoogle = {},
+                    addLabel = "Add as stop 2")
             }
         }
     }

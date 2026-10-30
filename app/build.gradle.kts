@@ -29,7 +29,7 @@ android {
         // One source of truth for the version: "-PappVersion=0.4.1" (the release workflow passes the git
         // tag) or the default below. versionCode is derived (major*10000 + minor*100 + patch), so every
         // newer version installs as an update.
-        val appVersion = (project.findProperty("appVersion") as String?)?.removePrefix("v") ?: "0.12.0"
+        val appVersion = (project.findProperty("appVersion") as String?)?.removePrefix("v") ?: "0.13.0"
         val (vMaj, vMin, vPatch) = appVersion.split(".").map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 }
             .plus(listOf(0, 0, 0)).take(3)
         versionCode = vMaj * 10000 + vMin * 100 + vPatch
@@ -129,6 +129,8 @@ dependencies {
     implementation(project(":strings"))
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.core:core-ktx:1.15.0")
+    // the one interface androidx.core's getUnusedAppRestrictionsStatus returns (Phone setup); no Guava, no Play services
+    implementation("com.google.guava:listenablefuture:1.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")

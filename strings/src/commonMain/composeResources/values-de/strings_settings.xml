@@ -75,8 +75,6 @@
     <string name="settings_nav_on_route_sub">Solange du nah an der Route bist, sitzt der Punkt auf ihr</string>
     <string name="settings_nav_screen_on">Bildschirm beim Navigieren anlassen</string>
     <string name="settings_nav_screen_on_sub">Nur beim Folgen einer Route; in der Tasche aus</string>
-    <string name="settings_nav_battery_hint">Aufzeichnen bei ausgeschaltetem Bildschirm: am besten mit Akku „Nicht eingeschränkt“.</string>
-    <string name="settings_nav_location_hint">Tippe nach einem Neustart auf „Fortsetzen“. Automatisch mit Standort „Immer zulassen“.</string>
     <string name="settings_pace_intro">Ändert nur die Zeiten, nicht die Route. Die Zeiten sind Geh- bzw. Fahrzeit ohne Pausen.</string>
     <string name="settings_pace_hiking">Wandern</string>
     <string name="settings_pace_cycling">Radfahren · %1$s</string>

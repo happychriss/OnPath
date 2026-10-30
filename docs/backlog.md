@@ -7,16 +7,15 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [cloud] Onboarding + phone check (owner: yes to all 4) + point texts when planning (start / destination / "Add …") – since 2026-10-29
 
 ## Next
-- **Onboarding + "Phone check" (owner: older users, step by step, must survive the phone removing things)** – concept
-  `docs/design/onboarding-phone-check.md`: one pure `PhoneCheck` model (location precise / on, notifications,
-  vibration felt, battery restricted, brand killers, battery saver GPS mode, unused-app reset), one step-by-step guide,
-  three entry points (first start "Set up now / Later" instead of today's start-up dialog, before the tour, Settings →
-  Phone setup), re-check on every return, calm "your phone removed it" message after months unused. Waiting for the
-  owner's 4 decisions (§12: first start card, remove background location before Play, hibernation only optional,
-  vibration test). Build plan §11 (6 steps); Pixel checklist in the appendix.
+- **Phone setup – check on the Pixel (0.13.0)** – the appendix checklist of `docs/design/onboarding-phone-check.md`
+  (first start welcome, deny twice, approximate, notifications off, vibration test with Alarm vibration on / off,
+  battery Restricted, screen-off ride with battery saver); brand steps (Samsung, Xiaomi, Huawei, OnePlus) are not
+  checked on such phones – testers' diagnostics now carry a "Phone check:" line. Small follow-up: a quiet plan-sheet
+  line for recommended items instead of the guide before a tour, if the guide feels like too much.
+- **Flaky under full local load:** `NoStaleDownloadsTest.pointNoLongerWantedIsNotDownloaded` failed once in a full local
+  run, green alone and in CI – watch it.
 - **Web planner (branch web-spike): take over the app's plan-sync format (A-007, main 880850d)** – additive, old web code stays
   safe. New `SyncItem.kind = 3` (TRACK), field tag 4 = raw `TrackCode` bytes (`sync/TrackCode.kt`, frozen in `SyncTrackTest`;
   max 16,000 bytes, thinned by Douglas–Peucker); `PlanCode.activityCode` / `activityOf` now public; merge copies the losing

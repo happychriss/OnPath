@@ -1129,5 +1129,29 @@
     "context": "Time details: the pace level ('Average')",
     "priority": 2,
     "confidence": "sicher"
+  },
+  "nav_settings_cd": {
+    "area": "Navigate",
+    "context": "Content description of the ⚙ button in Navigate: opens the navigation settings",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_roundabout_exit": {
+    "area": "Navigate",
+    "context": "Turn card at a roundabout: %1$d = exit number",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_title_turn_round": {
+    "area": "Navigate",
+    "context": "Reroute question title when the new route starts with a U-turn",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_state_turn_round": {
+    "area": "Navigate",
+    "context": "Turn card / map sign: turn round (U-turn)",
+    "priority": 1,
+    "confidence": "sicher"
   }
 }

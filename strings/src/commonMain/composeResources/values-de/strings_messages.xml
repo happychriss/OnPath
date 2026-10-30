@@ -60,7 +60,6 @@
     <string name="msg_gpx_import_failed_reason">Diese Datei konnte nicht importiert werden: %1$s</string>
     <string name="msg_gpx_import_failed">Diese Datei konnte nicht importiert werden – sie ließ sich nicht öffnen oder lesen.</string>
     <string name="msg_route_updated_newer_data">Route mit neueren Kartendaten aktualisiert – bitte prüfe sie.</string>
-    <string name="msg_no_location_permission">Ohne Standortberechtigung funktioniert die Karte, aber Position und Aufzeichnung nicht.</string>
     <string name="msg_no_storage_permission">Ohne Speicherzugriff kann OnPath Tracks und Routen nicht nach Documents/OnPath kopieren. Wähle einen anderen Ordner unter Einstellungen → Sicherung.</string>
     <string name="msg_no_folder_picker">Dieses Handy hat keine Ordnerauswahl – Wiederherstellen und Ordnerwahl sind nicht möglich.</string>
     <string name="msg_something_wrong">Etwas ist schiefgegangen. Es wurde unter Einstellungen → Diagnose notiert.</string>

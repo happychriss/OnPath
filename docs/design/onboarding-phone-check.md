@@ -1,6 +1,6 @@
 # Onboarding and "Phone check": permissions, location, vibration, battery
 
-Status: **proposal (cloud, 2026-10-29)** – nothing built yet. Owner decisions needed: section 12.
+Status: **built in 0.13.0** (owner: yes to all four decisions of §12). Code: `setup/PhoneCheck.kt`, `setup/SetupGuide.kt` (pure rules), `ui/setup/` (reader, guide screen, Settings → Phone setup), `recording/Cues.kt` (vibration incl. test). Core feature C17.
 
 Goal: an older hiker or cyclist sets OnPath up once, understands *why* each thing is needed, and can trust that on the
 trail it still works – also after months without use, on any brand of phone and in English or German. The owner can
@@ -257,7 +257,7 @@ button labels except from APIs.
 5. Brand battery pages – small (texts), tester feedback later.
 6. Play cleanup (background location out, updater out in the Play build) – with A-003.
 
-## 12. Owner decisions
+## 12. Owner decisions (all four: yes, 2026-10-29)
 
 1. **First start**: welcome card with *Set up now / Later* instead of today's immediate system dialog? (Recommended.)
 2. **Background location**: remove before the Play test (one tap on "Continue" after a phone restart)? (Recommended.)
