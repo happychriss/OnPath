@@ -325,7 +325,13 @@
   },
   "setup_saver_why": {
     "area": "Phone setup",
-    "context": "Step B3: why",
+    "context": "Step B3 + Settings row when battery saver turns GPS off: why",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_saver_ok_why": {
+    "area": "Phone setup",
+    "context": "Settings → Phone setup, battery saver row when this phone keeps GPS running in battery saver (green tick)",
     "priority": 1,
     "confidence": "sicher"
   },
@@ -381,6 +387,12 @@
   "setup_state_untested": {
     "area": "Phone setup",
     "context": "Settings → Phone setup: vibration not tested",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "setup_state_none": {
+    "area": "Phone setup",
+    "context": "Settings → Phone setup: state of the vibration row when the phone has no vibrator (grey, no tick)",
     "priority": 1,
     "confidence": "sicher"
   },

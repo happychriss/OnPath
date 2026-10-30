@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import com.onpath.app.setup.Brand
 import com.onpath.app.setup.CheckId
 import com.onpath.app.setup.Felt
+import com.onpath.app.setup.PhoneCheck
 import com.onpath.app.setup.PhoneState
 import com.onpath.app.setup.SetupGuide
 import com.onpath.app.setup.Taken
@@ -104,7 +105,10 @@ fun checkIcon(id: CheckId): ImageVector = when (id) {
 
 private fun str0(r: org.jetbrains.compose.resources.StringResource) = Txt.s(r)
 
-/** The "why" line of a check (also the explanation in Settings → Phone setup). */
+/**
+ * The "why" line of a check (also the explanation in Settings → Phone setup, where it stands next to ✓, ⚠ or ✗ – so
+ * it reads right in every state; battery saver has its own text for ✓).
+ */
 fun checkWhy(id: CheckId, phone: PhoneState): String = when (id) {
     CheckId.LOCATION -> str0(Res.string.setup_loc_why)
     CheckId.PRECISE -> str0(Res.string.setup_precise_why)
@@ -113,7 +117,7 @@ fun checkWhy(id: CheckId, phone: PhoneState): String = when (id) {
     CheckId.VIBRATION -> if (phone.hasVibrator) str0(Res.string.setup_vib_why) else str0(Res.string.setup_vib_none)
     CheckId.BATTERY -> str0(Res.string.setup_bat_why)
     CheckId.BRAND -> Txt.s(Res.string.setup_brand_why, phone.brand?.let(::brandName) ?: "")
-    CheckId.BATTERY_SAVER -> str0(Res.string.setup_saver_why)
+    CheckId.BATTERY_SAVER -> if (PhoneCheck.isOk(id, phone)) str0(Res.string.setup_saver_ok_why) else str0(Res.string.setup_saver_why)
     CheckId.UNUSED_RESET -> str0(Res.string.setup_unused_why)
 }
 

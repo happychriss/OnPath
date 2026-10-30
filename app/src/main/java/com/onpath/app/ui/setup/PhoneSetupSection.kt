@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -35,6 +36,7 @@ import com.onpath.app.setup.ResetStatus
 import com.onpath.app.setup.Taken
 import com.onpath.app.ui.OnPathColors
 import com.onpath.strings.*
+import org.jetbrains.compose.resources.StringResource
 
 /**
  * Settings → Phone setup: every check that applies to this phone, grouped (needed for a tour · recommended ·
@@ -63,19 +65,27 @@ fun PhoneSetupSection(checks: List<Check>, phone: PhoneState, onFix: (CheckId) -
     }
 }
 
+/** Nothing to set up because the phone lacks the part (no vibrator): a neutral row, not a green "Set up". */
+internal fun notOnThisPhone(c: Check, phone: PhoneState): Boolean = c.id == CheckId.VIBRATION && !phone.hasVibrator
+
+/** The state line under a row's title. */
+internal fun rowState(c: Check, phone: PhoneState): StringResource = when {
+    c.id == CheckId.UNUSED_RESET -> if (phone.unusedReset == ResetStatus.ON) Res.string.setup_unused_on else Res.string.setup_unused_off
+    notOnThisPhone(c, phone) -> Res.string.setup_state_none
+    c.ok -> Res.string.setup_state_ok
+    c.id == CheckId.VIBRATION && phone.vibrationFelt == Felt.UNKNOWN -> Res.string.setup_state_untested
+    else -> Res.string.setup_state_missing
+}
+
 @Composable
 private fun Row(c: Check, phone: PhoneState, onFix: (CheckId) -> Unit, onTestVibration: () -> Unit) {
     val (icon, tint) = when {
+        notOnThisPhone(c, phone) -> Icons.Filled.RemoveCircleOutline to MaterialTheme.colorScheme.onSurfaceVariant
         c.ok -> Icons.Filled.CheckCircle to OnPathColors.Good
         c.need == Need.REQUIRED -> Icons.Outlined.ErrorOutline to OnPathColors.Error
         else -> Icons.Outlined.WarningAmber to OnPathColors.Warn
     }
-    val state = when {
-        c.id == CheckId.UNUSED_RESET -> str(if (phone.unusedReset == ResetStatus.ON) Res.string.setup_unused_on else Res.string.setup_unused_off)
-        c.ok -> str(Res.string.setup_state_ok)
-        c.id == CheckId.VIBRATION && phone.vibrationFelt == Felt.UNKNOWN -> str(Res.string.setup_state_untested)
-        else -> str(Res.string.setup_state_missing)
-    }
+    val state = str(rowState(c, phone))
     Row(Modifier.fillMaxWidth().clickable { onFix(c.id) }.heightIn(min = 64.dp).padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))

@@ -143,15 +143,17 @@ A full-screen sheet with one step per screen:
 
 | Step | Title | Why | What to do |
 | --- | --- | --- | --- |
-| L1 | Your location | So the map shows where you are, and your tour is recorded and guided. OnPath keeps it on your phone. | On the next screen, allow OnPath **while using the app**. |
-| L2 | Precise location | For a track and turn guidance OnPath needs your exact position – an approximate one is off by up to 2 km. | On the next screen, switch **precise location** on. |
-| L3 | Location is off | Your phone's location is switched off, so no app can find your position. | Tap Continue and switch location on. |
-| N1 | Notifications | While you record, a notification shows that OnPath is working and lets you pause. It also asks if you leave the route while your screen is off. | Allow notifications. |
-| V1 | Vibration | In your pocket OnPath tells you about turns: one buzz = left, two = right. | Tap **Test**. Did you feel two short buzzes? **Yes** / **No** (No → the phone's vibration settings, with the path for this phone). |
-| B1 | Battery | Your phone is set to restrict OnPath in the background. It may stop recording when the screen is off. | Tap Continue, then *Battery* → **Unrestricted** (or "Optimized"). |
-| B2 | [Brand] phones | Phones from [brand] close apps in the background to save battery. Two settings keep OnPath recording. | numbered steps for that brand (section 6) |
-| B3 | Battery saver | Battery saver is on. On some phones it turns off GPS when the screen is off. | Turn battery saver off for long tours, or keep the screen on. |
-| H1 | When you don't use OnPath for a while | Android removes access from apps you have not opened for some months. OnPath then asks again – or you switch this off. | Tap Continue, then switch off **Pause app activity if unused** (wording varies by phone). |
+| L1 | Your location | The dot on the map shows where you are. On a tour OnPath records your track and tells you about every turn. Your exact position and your tracks stay on your phone. | On the next screen, allow OnPath **while using the app**. |
+| L2 | Precise location | Only with your exact position does OnPath record a clean track and buzz at the right junction. An approximate position can be a kilometre or more off – with it a tour cannot start. | On the next screen, switch **precise location** on. |
+| L3 | Location is off | The Location switch on your phone (swipe down from the top of the screen) must be on, so OnPath can find you – for the dot on the map, your track and the turn buzzes. When it is off, no app knows where you are. | Tap Continue and switch location on. |
+| N1 | Notifications | On the lock screen OnPath shows the next turn, the time left and your arrival (“Left in 300 m · arrive 13:00”). If you leave the route while the phone is locked, OnPath asks there “New route?”. And if something goes wrong, like storage full, you hear about it at once. Turn vibration and recording work without it too. | Allow notifications. |
+| V1 | Vibration | With the phone in your pocket OnPath buzzes before junctions where you could go wrong: one buzz = left, two = right. Three long buzzes mean you have left the route. Some phones mute this – the test shows whether you feel it. *No vibrator:* state “Not on this phone” (grey, no tick) + “This phone cannot vibrate. OnPath shows each turn on the screen and on the lock screen instead (“Left in 300 m”) – so keep notifications on.” | Tap **Test**. Did you feel two short buzzes? **Yes** / **No** (No → the phone's vibration settings, with the path for this phone). |
+| B1 | Battery | With the screen off in your pocket, OnPath keeps recording your track and buzzes at turns. If your phone restricts OnPath's battery use, it can stop OnPath on the way – your track gets gaps and the buzzes stop. | Tap Continue, then *Battery* → **Unrestricted** (or "Optimized"). |
+| B2 | [Brand] phones | Phones from [brand] close apps in the background to save battery – sometimes in the middle of a tour, with the screen off. Recording then stops until you open OnPath again, and the turn buzzes stop too. A few settings on the phone prevent that. | numbered steps for that brand (section 6) |
+| B3 | Battery saver | Battery saver is on, and on this phone it switches GPS off as soon as the screen goes off. With the phone in your pocket your track would get gaps, and the turn buzzes would stop. *Row ✓ (GPS kept):* “Battery saver is on, but on this phone it keeps GPS running with the screen off – your track stays complete.” | Turn battery saver off for long tours, or keep the screen on. |
+| H1 | When you don't use OnPath for a while | If you don't open OnPath for a few months, say over winter, Android takes back what you allowed it, like your location. At the first tour of the season OnPath then asks again – a few taps. With this switched off, everything simply keeps working after the break. | Tap Continue, then switch off **Pause app activity if unused** (wording varies by phone). |
+
+The "why" texts read right next to a green ✓, an amber ⚠ and a red ✗ – the Settings row shows the same text in every state.
 
 Rules: "you" form (DE "du", as the website), no word "permission" in titles, numbers in plain words, no system
 button labels except from APIs.
@@ -183,7 +185,7 @@ button labels except from APIs.
   | --- | --- |
   | samsung | Settings → Battery → Background usage limits: *Put unused apps to sleep* off; OnPath not in *Sleeping / Deep sleeping apps*, add to *Never sleeping apps*. App info → Battery → **Unrestricted**. |
   | xiaomi, redmi, poco | App info → *Autostart* on; App info → Battery saver → **No restrictions**; in Recent apps pull OnPath down → lock 🔒. |
-  | huawei, honor | Settings → Battery → *App launch* → OnPath → *Manage manually*, all three switches on. |
+  | huawei, honor | Settings → Battery → *App launch* → OnPath → switch off *Manage automatically*, then all three switches on. |
   | oneplus, oppo, realme | Battery → Battery optimization → OnPath → **Don't optimize**; App info → *Allow background activity*; lock in Recent apps. |
   | others | App info → Battery → **Unrestricted** (or "Don't optimize"). |
 

@@ -9,6 +9,7 @@ import app.cash.paparazzi.Paparazzi
 import com.onpath.app.setup.CheckId
 import com.onpath.app.setup.Felt
 import com.onpath.app.setup.LocationGrant
+import com.onpath.app.setup.LocationSaverMode
 import com.onpath.app.setup.PhoneCheck
 import com.onpath.app.setup.PhoneState
 import com.onpath.app.setup.Purpose
@@ -49,12 +50,21 @@ open class SetupScreenshotTest {
     @Test fun samsungSteps() = shot(SetupGuide.of(Purpose.FIRST_SETUP, samsung), phone = samsung)
     @Test fun endSomeLater() = shot(SetupGuide.of(Purpose.FIRST_SETUP, located)!!.putOff(), phone = located)
 
-    @Test fun settingsPage() {
-        val p = samsung.copy(notificationsOn = false, vibrationFelt = Felt.UNKNOWN, unusedReset = ResetStatus.ON, brandDone = true)
-        paparazzi.snapshot {
-            OnPathTheme { androidx.compose.material3.Surface(color = androidx.compose.material3.MaterialTheme.colorScheme.background) {
-                Column(Modifier.padding(top = 24.dp)) { PhoneSetupSection(PhoneCheck.all(p), p, onFix = {}, onTestVibration = {}) } } }
-        }
+    private val settingsPhone = samsung.copy(notificationsOn = false, vibrationFelt = Felt.UNKNOWN, unusedReset = ResetStatus.ON, brandDone = true)
+    @Test fun settingsPage() = settings(settingsPhone)
+    /** The same page further down (it scrolls): vibration, battery, the brand and the unused-app reset. */
+    @Test fun settingsPageLower() = settings(settingsPhone,
+        only = setOf(CheckId.VIBRATION, CheckId.BATTERY, CheckId.BRAND, CheckId.UNUSED_RESET))
+
+    /** No vibrator (neutral "Not on this phone") and a battery saver that keeps GPS (its own ✓ text) – those rows only. */
+    @Test fun settingsPageNoVibratorSaverOn() =
+        settings(located.copy(hasVibrator = false, powerSave = true, locationSaverMode = LocationSaverMode.THROTTLE_SCREEN_OFF),
+            only = setOf(CheckId.VIBRATION, CheckId.BATTERY, CheckId.BATTERY_SAVER))
+
+    private fun settings(p: PhoneState, only: Set<CheckId>? = null) = paparazzi.snapshot {
+        val checks = PhoneCheck.all(p).filter { only == null || it.id in only }
+        OnPathTheme { androidx.compose.material3.Surface(color = androidx.compose.material3.MaterialTheme.colorScheme.background) {
+            Column(Modifier.padding(top = 24.dp)) { PhoneSetupSection(checks, p, onFix = {}, onTestVibration = {}) } } }
     }
 }
 
