@@ -15,7 +15,12 @@ export class Position {
   private waiters: ((p: [number, number] | null) => void)[] = [];
 
   constructor(private map: maplibregl.Map, private onChange: () => void) {
-    map.on('dragstart', () => { if (this.following) { this.following = false; onChange(); } });
+    // Following ends on ANY camera move that is not its own (the app's rule: before an intended camera fly – a search
+    // result, fitting a route, a point list tap – following stops; owner 2026-10-30: after picking a search result the
+    // next GPS fix pulled the map back to the position). Moves marked { keepFollow: true } (compass north) keep it.
+    map.on('movestart', (e) => {
+      if (this.following && !(e as unknown as { keepFollow?: boolean }).keepFollow) { this.following = false; onChange(); }
+    });
   }
 
   /** CSS class of the small dot on the locate button (good / weak / searching / bad, like the app's gpsColor). */
@@ -28,7 +33,7 @@ export class Position {
   locate() {
     this.following = true;
     this.start();
-    if (this.fix) this.map.easeTo({ center: [this.fix[1], this.fix[0]], zoom: Math.max(this.map.getZoom(), 15) });
+    if (this.fix) this.map.easeTo({ center: [this.fix[1], this.fix[0]], zoom: Math.max(this.map.getZoom(), 15) }, { keepFollow: true });
     this.onChange();
   }
 
@@ -50,7 +55,7 @@ export class Position {
       this.fix = [p.coords.latitude, p.coords.longitude];
       this.status = p.coords.accuracy <= 50 ? 'GOOD' : 'WEAK';
       this.draw();
-      if (this.following) this.map.easeTo({ center: [this.fix[1], this.fix[0]], zoom: Math.max(this.map.getZoom(), 15) });
+      if (this.following) this.map.easeTo({ center: [this.fix[1], this.fix[0]], zoom: Math.max(this.map.getZoom(), 15) }, { keepFollow: true });
       this.waiters.splice(0).forEach((w) => w(this.fix));
       this.onChange();
     }, (err) => {

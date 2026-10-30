@@ -149,6 +149,10 @@ jobs:
         working-directory: web/app
         run: node test/perf.mjs normal $GITHUB_WORKSPACE/segments
 
+      - name: Following the position ends on the page's own camera moves (search pick), compass keeps it
+        working-directory: web/app
+        run: node test/follow-smoke.mjs $GITHUB_WORKSPACE/segments
+
       - name: Planner host tests (web/host)
         working-directory: web/host
         run: node --test

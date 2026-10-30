@@ -786,7 +786,7 @@ function renderFabs() {
   l.title = lw; l.setAttribute('aria-label', lw);
 }
 map.on('rotate', () => renderFabs());
-$('compass').onclick = () => map.easeTo({ bearing: 0, pitch: 0 });
+$('compass').onclick = () => map.easeTo({ bearing: 0, pitch: 0 }, { keepFollow: true }); // north up keeps following
 $('undo').onclick = () => step('undo');
 $('redo').onclick = () => step('redo');
 $('locate').onclick = () => { locating = true; position.locate(); locateNotice(); };
