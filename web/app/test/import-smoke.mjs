@@ -2,6 +2,10 @@
 // 1. a plan ~600 km long is asked about first ("This route is very long", the app's words) – no routing data is
 //    fetched until it is answered; Cancel of a link's plan keeps the points unrouted ("Plan anyway"), Cancel of a
 //    clicked point takes that point back (PlanStatus.onCancel);
+//    "Far from your route" (web): an empty plan + a far search result as start is never asked; a single point left in
+//    Algund + Hilden "As start" → the question names the point, "Start a new route here" (undo brings it back) /
+//    "Add to the route" (= Plan anyway); "1 point · Algund" in the small step; "Your route is outside the map · Show";
+//    Delete (Clear route) in the Points head + undo;
 // 2. ☰ → Import GPX with a Komoot hike: the track panel, Activity set to Hike T2 from the file, "Plan a route from it"
 //    (TrackToPlan) → a plan with few points along the track;
 // 3. a .gpx dropped on the map (route + waypoints, <type>MTB</type>), Close track;
@@ -22,6 +26,9 @@ const { server, url } = await serve({ dist: path.resolve(here, '../dist'), segme
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, acceptDownloads: true });
 await ctx.addInitScript(() => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('onpath.activity', 'BIKE_TOURING'); sessionStorage.setItem('seeded', '1'); } });
+// Photon (online search) answers "Hilden" with one town – no network in the test
+await ctx.route('https://photon.komoot.io/**', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ type: 'FeatureCollection', features: [
+  { type: 'Feature', geometry: { type: 'Point', coordinates: [6.9353, 51.1693] }, properties: { name: 'Hilden', osm_key: 'place', osm_value: 'town', type: 'city', country: 'Deutschland', state: 'Nordrhein-Westfalen' } }] }) }));
 const page = await ctx.newPage();
 const fails = [];
 const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (!ok) fails.push(what); };
@@ -71,6 +78,81 @@ await page.waitForFunction(() => document.querySelectorAll('.pin').length === 2,
 await page.waitForTimeout(500); await planned().catch(() => {});
 console.log('after cancel:', await pins(), await page.textContent('#summary'), await page.textContent('#status'));
 check(await pins() === 2 && !!(await page.$('#summary .big')), 'Cancel (a clicked point): the point is taken back, the short route stays');
+
+// 1d. "Far from your route" (owner 2026-10-30: "war in Meran, suche nach Hilden, gebe als Start" – a point left in
+// Algund made Hilden's "As start" a 35 h plan). A fake Photon answer for "Hilden"; the map jumps there first.
+const toHilden = async () => {
+  await page.evaluate(() => window.__map.jumpTo({ center: [6.93, 51.17], zoom: 12 }));
+  await page.waitForTimeout(800);
+};
+const hildenAs = async (button) => {
+  await page.fill('#q', 'Hilden');
+  await page.waitForSelector('#results .hit:has-text("Hilden")', { timeout: 30_000 });
+  await page.click('#results .hit:has-text("Hilden")');
+  await page.waitForSelector(`${button}:not([disabled])`);
+  await page.click(button);
+};
+const summaryText = () => page.textContent('#summary .subline');
+// (a) an empty plan + a far search result as start: never the question
+await page.goto(url + 'index.html');
+await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 60_000 });
+await toHilden();
+await hildenAs('#cstart');
+await page.waitForTimeout(1500);
+check(!(await page.$('dialog.longroute')) && await pins() === 1 && (await summaryText()).includes('1 point · Hilden'),
+  `empty plan + Hilden as start: no question, "1 point · Hilden" (${await summaryText()})`);
+// (b) the owner's case: a single point "Algund" left from earlier, Hilden as start
+const algund = await page.evaluate(() => window.__engine.encode({ points: [[46.6773, 11.1302]], activity: 'BIKE_TOURING', sac: 2, pinned: [0], names: { 0: 'Algund' }, title: null }));
+await page.goto(url + 'index.html#p=' + algund);
+await page.waitForFunction(() => document.querySelectorAll('.pin').length === 1, null, { timeout: 60_000 });
+await page.click('#sheetStep').catch(() => {}); // points → small: the one point is still named there
+await page.waitForFunction(() => document.getElementById('sheet').dataset.step === 'small', null, { timeout: 5000 }).catch(() => {});
+check(await page.evaluate(() => document.getElementById('sheet').dataset.step) === 'small' && (await summaryText()).includes('1 point · Algund') &&
+  await page.isVisible('#summary .onepoint'), 'one point: "1 point · Algund" also in the small step');
+check(!(await page.isVisible('#offmap')), 'the point in view: no off-map line');
+await toHilden();
+await page.waitForSelector('#offmap:not([hidden])', { timeout: 5000 }).catch(() => {});
+check((await page.textContent('#offmap')).includes('Your route is outside the map') && await page.isVisible('#showPlan'), 'map far away: "Your route is outside the map · Show"');
+await page.click('#showPlan');
+await page.waitForFunction(() => window.__map.getBounds().contains([11.1302, 46.6773]) && !window.__map.isMoving(), null, { timeout: 15_000 }).catch(() => {});
+check(await page.evaluate(() => window.__map.getBounds().contains([11.1302, 46.6773])) && !(await page.isVisible('#offmap')), 'Show: the plan in view, the line gone');
+await page.click('#sheetStep').catch(() => {}); // back to a bigger step for the rest
+await toHilden();
+await hildenAs('#cstart');
+await page.waitForSelector('dialog.longroute.far', { timeout: 30_000 });
+const farText = (await page.textContent('dialog.longroute')).replace(/\s+/g, ' ').trim();
+const order = await page.$$eval('dialog.longroute button', (b) => b.map((x) => x.id));
+check(/Far from your route/.test(farText) && /Your point Algund is about \d+ hours by bike from here\./.test(farText) &&
+  order.join() === 'lrFresh,lrPlan,lrCancel' && !/very long/.test(farText), `a single far point: "${farText}" (${order.join(' · ')})`);
+await page.locator('dialog.longroute').screenshot({ path: path.join(here, '../../engine/build/far-from-route.png') }).catch(() => {});
+await page.click('#lrFresh');
+await page.waitForFunction(() => document.querySelectorAll('.pin').length === 1, null, { timeout: 10_000 }).catch(() => {});
+check(!(await page.$('dialog.longroute')) && await pins() === 1 && (await summaryText()).includes('1 point · Hilden'), 'Start a new route here: only Hilden');
+await page.click('#undo');
+await page.waitForFunction(() => document.getElementById('summary').textContent.includes('Algund'), null, { timeout: 10_000 }).catch(() => {});
+check(await pins() === 1 && (await summaryText()).includes('1 point · Algund') && !(await page.$('dialog.longroute')), 'undo: the point in Algund is back, no question');
+// (c) a route in Meran (2 points, Hike) + Hilden as start: the question names it; "Add to the route" = the old Plan anyway
+await page.goto(url + 'index.html#p=' + CODE);
+await planned();
+await toHilden();
+await hildenAs('#cstart');
+await page.waitForSelector('dialog.longroute.far', { timeout: 30_000 });
+const farRoute = (await page.textContent('dialog.longroute')).replace(/\s+/g, ' ').trim();
+check(/Your route near Vellau is about \d+ (hours|days) on foot from here\./.test(farRoute), `a far route: "${farRoute}"`);
+await page.click('#lrPlan');
+await page.waitForFunction(() => !document.querySelector('dialog.longroute') && (/failed|Planning|Calculating/.test(document.getElementById('status').textContent) || !!document.querySelector('#summary .big')), null, { timeout: 120_000 }).catch(() => {});
+check(!(await page.$('dialog.longroute')) && await pins() === 3, 'Add to the route: three points, planned without asking again');
+// (d) Clear route in the Points head (owner: "Route löschen" not found in ⋯): no question, undo brings it back
+await page.goto(url + 'index.html#p=' + CODE);
+await planned();
+for (let i = 0; i < 3 && await page.evaluate(() => document.getElementById('sheet').dataset.step) !== 'points'; i++) await page.click('#sheetStep');
+check(await page.isVisible('#clearPoints') && (await page.getAttribute('#clearPoints', 'title')) === 'Clear route', 'Points head: Delete (Clear route)');
+await page.click('#clearPoints');
+await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 }).catch(() => {});
+check(await pins() === 0 && !(await page.$('dialog[open]')), 'Delete in the Points head: the route is gone, no question');
+await page.click('#undo');
+await planned().catch(() => {});
+check(await pins() === 2 && !!(await page.$('#summary .big')), 'undo: the route is back');
 
 // 2. ☰ → Import GPX (Komoot hike) while the activity is Bike
 await page.evaluate(() => { localStorage.setItem('onpath.activity', 'BIKE_TOURING'); });

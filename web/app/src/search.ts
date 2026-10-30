@@ -168,7 +168,10 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   };
   host.map.on('move', layout);
   host.map.on('resize', layout);
-  new ResizeObserver(layout).observe(card);
+  // the card and what it must not cover: a sheet or top bar that grows later (a route arrives, a line shows) moves the card too
+  const ro = new ResizeObserver(layout);
+  ro.observe(card);
+  for (const q of BLOCKERS) for (const e of document.querySelectorAll<HTMLElement>(q)) ro.observe(e);
 
   const close = () => {
     picked++; // a pick still waiting for its preview must not open the card afterwards

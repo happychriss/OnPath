@@ -68,7 +68,9 @@ function checkAnchored(g, vp, P) {
   check(g.anchored && g.visible && across <= 3 && along <= 16, `${P} the card's tail points at the point (${g.side}, tip ${across.toFixed(1)} px across, ${along.toFixed(1)} px from it)`);
   check(g.card.x >= 0 && g.card.y >= 0 && g.card.x + g.card.w <= vp.width && g.card.y + g.card.h <= vp.height && g.ring.x > 0 && g.ring.x < vp.width && g.ring.y > 0 && g.ring.y < vp.height,
     `${P} card and point inside the window`);
-  check(!overlaps(g.card, g.sheet) && !overlaps(g.card, g.bar), `${P} the card covers neither the plan sheet nor the top bar`);
+  const r = (b) => b && [b.x, b.y, b.w, b.h].map(Math.round).join(',');
+  check(!overlaps(g.card, g.sheet) && !overlaps(g.card, g.bar), `${P} the card covers neither the plan sheet nor the top bar`
+    + (overlaps(g.card, g.sheet) || overlaps(g.card, g.bar) ? ` (${g.side}: card ${r(g.card)}, sheet ${r(g.sheet)}, bar ${r(g.bar)}, point ${r({ ...g.ring, w: 0, h: 0 })})` : ''));
 }
 
 async function open(vp, phone) {
