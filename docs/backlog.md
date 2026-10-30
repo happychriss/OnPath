@@ -23,6 +23,10 @@ the git log.
   line for recommended items instead of the guide before a tour, if the guide feels like too much.
 - **Flaky under full local load:** `NoStaleDownloadsTest.pointNoLongerWantedIsNotDownloaded` failed once in a full local
   run, green alone and in CI – watch it.
+- **Web planner – owner confirmed the five assumptions (2026-10-30):** dark mode green text #8ED6A8; pace menu shows
+  only the current activity's group; the browser shows only built region packages (Germany is pre-built in TEST
+  overnight, `tools/dev/publish_area.sh`); on the PC a click adds a point, points drag, undo / redo / eye always shown;
+  address plan.onpath.earth.
 - **Web planner (branch web-spike): take over the app's plan-sync format (A-007, main 880850d)** – additive, old web code stays
   safe. New `SyncItem.kind = 3` (TRACK), field tag 4 = raw `TrackCode` bytes (`sync/TrackCode.kt`, frozen in `SyncTrackTest`;
   max 16,000 bytes, thinned by Douglas–Peucker); `PlanCode.activityCode` / `activityOf` now public; merge copies the losing
