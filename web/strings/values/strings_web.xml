@@ -201,4 +201,16 @@
     <string name="web_phone_more">More</string>
     <string name="web_phone_code_again">Show code again</string>
     <string name="web_phone_code_again_title">For another device: it joins the same pairing</string>
+    <!-- a new point far from the plan (docs/design/web-planner.md §15): "Far from your route" -->
+    <string name="web_far_title">Far from your route</string>
+    <string name="web_far_point">Your point %1$s is %2$s from here.</string>
+    <string name="web_far_point_unnamed">Your point is %1$s from here.</string>
+    <string name="web_far_route">Your route near %1$s is %2$s from here.</string>
+    <string name="web_far_route_unnamed">Your route is %1$s from here.</string>
+    <string name="web_far_bike">%1$s by bike</string>
+    <string name="web_far_foot">%1$s on foot</string>
+    <string name="web_far_new">Start a new route here</string>
+    <string name="web_far_add">Add to the route</string>
+    <string name="web_route_off_map">Your route is outside the map</string>
+    <string name="web_one_point">1 point · %1$s</string>
 </resources>

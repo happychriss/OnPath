@@ -27,7 +27,7 @@ import { PlanSync } from './sync';
 import { myPlansDialog, joinDialog, requestSave, phoneDialog, phoneState } from './plans';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
-import { longRouteOk, allowLongRoute, notRoutedTexts } from './longroute';
+import { longRouteOk, allowLongRoute, notRoutedTexts, type Before } from './longroute';
 import { setupGpxImport } from './gpximport';
 import { overviewStyle, followCover, followPackages } from './overview';
 import { PlanGapsLayer } from './plangaps';
@@ -151,13 +151,15 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </div>
     <div id="savedLine" class="savedline muted small" hidden></div>
     <div id="notice" class="notice" hidden></div>
+    <div id="offmap" class="offmap" hidden></div>
     <button id="warning" class="notice warnline" aria-expanded="false" hidden></button>
     <ul id="spots" class="spots" hidden></ul>
     <div id="profile"></div>
     <div id="pointsSection" hidden>
       <div class="pointshead"><b>${escapeHtml(t('plan_points'))}</b>
         <button id="reverse" class="textbtn">${icon('swap', 18)}${escapeHtml(t('plan_reverse'))}</button>
-        <button id="roundTrip" class="textbtn">${icon('loop', 18)}${escapeHtml(t('plan_round_trip'))}</button></div>
+        <button id="roundTrip" class="textbtn">${icon('loop', 18)}${escapeHtml(t('plan_round_trip'))}</button>
+        <button id="clearPoints" class="textbtn" title="${escapeHtml(t('plan_clear_route'))}" aria-label="${escapeHtml(t('plan_clear_route'))}">${icon('delete', 18)}${escapeHtml(t('common_delete'))}</button></div>
       <ol id="points"></ol>
     </div>
     <div id="status" class="status muted" role="status"></div>
@@ -337,6 +339,7 @@ const namesText = () => state.meta.map((m, i) => (m.name ? `${i}\t${m.name.repla
 /** Replaces the points (one undo step); names and pins follow their points by value. */
 async function commit(points: LatLon[], meta?: Meta[]) {
   runCause = nextCause ?? 'edit'; nextCause = null;
+  editBefore = runCause === 'edit' ? { points: state.points, names: state.meta.map((m) => m.name) } : null;
   await engine.call('historyRecord', enc(state.points));
   setPoints(points, meta);
   await changed();
@@ -683,7 +686,10 @@ async function rememberInAddress() {
 }
 
 // ---- planning ----
+/** The plan before the point edit that is being planned now (the long-route question's "Far from your route"). */
+let editBefore: Before | null = null;
 async function changed() {
+  const before = editBefore; editBefore = null;
   await drawPoints();
   const h = JSON.parse(await engine.call('historyState'));
   state.canUndo = h.canUndo; state.canRedo = h.canRedo;
@@ -694,7 +700,9 @@ async function changed() {
   state.notRouted = false;
   if (state.points.length < 2) { state.plan = null; state.planning = false; planGaps.clear(); render(); return; }
   // the app's long-route question first (routing/LongRoute): nothing is routed or downloaded until it is answered
-  if (!(await longRouteOk(engine, state.points, state.activity))) { await cancelLongRoute(); return; }
+  const answer = await longRouteOk(engine, state.points, state.activity, before);
+  if (answer === 'cancel') { await cancelLongRoute(); return; }
+  if (answer !== 'plan') { await startFresh(answer.fresh); return; }
   const id = ++state.latest;
   state.planning = true;
   render();
@@ -722,6 +730,48 @@ async function changed() {
   render();
   areas?.wantLine(r.plan.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon))); // T4: the map areas along the route
 }
+
+/**
+ * "Start a new route here" (Far from your route): only the new point stays – one undo step with the edit that set it,
+ * so ↶ brings the old route back (like Clear route, nothing more is said).
+ */
+async function startFresh(p: LatLon) {
+  const m = state.meta[state.points.findIndex((q) => key(q) === key(p))] ?? { pinned: false };
+  state.latest++; state.plan = null; state.planning = false;
+  state.title = null; forgetSaved();
+  setPoints([p], [m]);
+  await changed();
+}
+
+/** Clear route (⋯ and the Points head; the app's RouteRules.canClear: from one point): no question – ↶ brings it back. */
+function clearRoute() { closeMenus(); state.title = null; forgetSaved(); commit([], []); }
+
+/**
+ * A plan the map does not show (owner 2026-10-30: a point left in Meran, the map in Hilden): when no point and no piece
+ * of the route is in view and the nearest point is more than [OFF_MAP_M] away, the sheet says so with Show (= the
+ * toolbar's "Show whole route", also for a single point).
+ */
+const OFF_MAP_M = 25_000;
+function renderOffMap() {
+  const el = $('offmap');
+  let off = false;
+  if (state.points.length) {
+    const v = map.getBounds(), c = map.getCenter();
+    const inView = (la: number, lo: number) => v.contains([lo, la]);
+    const line = state.plan?.legs.flatMap((l) => l.points) ?? [];
+    const near = Math.min(...state.points.map(([la, lo]) => c.distanceTo(new maplibregl.LngLat(lo, la))));
+    off = near > OFF_MAP_M && !state.points.some(([la, lo]) => inView(la, lo)) && !line.some(([la, lo]) => inView(la, lo));
+  }
+  if (off === !el.hidden) return;
+  el.hidden = !off;
+  el.innerHTML = '';
+  if (!off) return;
+  const b = document.createElement('button');
+  b.className = 'textbtn'; b.id = 'showPlan'; b.textContent = t('common_show');
+  b.onclick = fitRoute;
+  el.append(t('web_route_off_map'), ' · ', b);
+}
+map.on('moveend', renderOffMap);
 
 /** T1: the map area of each point newly set (more than 3 new at once = a loaded plan → only T4, like the app). */
 const askedPoints = new Set<string>();
@@ -762,6 +812,9 @@ function render() {
     const n = state.points.length;
     sub.textContent = n === 0 ? t('web_hint_first_point')
       : n === 1 ? t('web_hint_destination') : state.notRouted ? notRoutedTexts.line : t('plan_calculating');
+    // one point: which one, also in the small step where the Points list is hidden (owner 2026-10-30)
+    if (n === 1) sub.prepend(Object.assign(document.createElement('span'), { className: 'onepoint',
+      textContent: t('web_one_point', state.meta[0]?.name || t('plan_point_start')) }));
     if (state.notRouted && n >= 2) {
       const b = document.createElement('button');
       b.className = 'textbtn'; b.id = 'planAnyway'; b.textContent = notRoutedTexts.button;
@@ -793,6 +846,7 @@ function render() {
   if (!p?.warning) { spots.hidden = true; w.setAttribute('aria-expanded', 'false'); }
   spots.innerHTML = (p?.spots ?? []).map((s, i) => `<li><button data-spot="${i}"><b>${escapeHtml(s.title)}</b><span class="muted small">${escapeHtml(s.detail)}</span></button></li>`).join('');
   $('sheet').classList.toggle('busy', state.planning);
+  renderOffMap();
   renderSaved();
   renderChip();
   renderFabs();
@@ -884,7 +938,7 @@ $('locate').onclick = () => { locating = true; position.locate(); locateNotice()
  *  (fitPadding: clear of the sheet in any step, the top bar, the place card and the controls). Not keepFollow – it
  *  ends position following, like every camera move made for the user (CLAUDE.md "Map camera"). */
 function fitRoute() {
-  if (state.points.length < 2) return;
+  if (!state.points.length) return; // the button needs two; the off-map line's Show also one point
   const b = new maplibregl.LngLatBounds();
   state.points.forEach(([la, lo]) => b.extend([lo, la]));
   state.plan?.legs.forEach((l) => l.points.forEach(([la, lo]) => b.extend([lo, la])));
@@ -983,7 +1037,8 @@ document.addEventListener('click', (e) => { if (!(e.target as HTMLElement).close
 
 $('reverse').onclick = () => applyEdit('reverse');
 $('roundTrip').onclick = () => applyEdit('roundTrip');
-$('clear').onclick = () => { closeMenus(); state.title = null; forgetSaved(); commit([], []); };
+$('clear').onclick = clearRoute;
+$('clearPoints').onclick = clearRoute;
 function forgetSaved() { state.savedId = null; state.savedTitle = null; state.savedCode = null; }
 const plansHost = {
   current: async () => (state.points.length >= 2 && (await ready) ? { code: await engine.encode(sharedPlan()), title: state.title } : null),

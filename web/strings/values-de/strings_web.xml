@@ -186,4 +186,16 @@
     <string name="web_phone_more">Mehr dazu</string>
     <string name="web_phone_code_again">Code noch einmal zeigen</string>
     <string name="web_phone_code_again_title">Für ein weiteres Gerät: es kommt zur selben Verbindung dazu</string>
+    <!-- ein neuer Punkt weit weg vom Plan (docs/design/web-planner.md §15) -->
+    <string name="web_far_title">Weit weg von deiner Route</string>
+    <string name="web_far_point">Dein Punkt %1$s liegt %2$s von hier entfernt.</string>
+    <string name="web_far_point_unnamed">Dein Punkt liegt %1$s von hier entfernt.</string>
+    <string name="web_far_route">Deine Route bei %1$s liegt %2$s von hier entfernt.</string>
+    <string name="web_far_route_unnamed">Deine Route liegt %1$s von hier entfernt.</string>
+    <string name="web_far_bike">%1$s mit dem Rad</string>
+    <string name="web_far_foot">%1$s zu Fuß</string>
+    <string name="web_far_new">Neue Route hier beginnen</string>
+    <string name="web_far_add">Zur Route hinzufügen</string>
+    <string name="web_route_off_map">Deine Route liegt außerhalb der Karte</string>
+    <string name="web_one_point">1 Punkt · %1$s</string>
 </resources>

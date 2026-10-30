@@ -208,6 +208,15 @@ dialog.share .qr svg { display: block; width: 100%; height: auto; }
 dialog.share input { width: 100%; box-sizing: border-box; font: inherit; font-size: .85rem; padding: 6px 8px; margin: 4px 0 10px; }
 dialog.share .row button { padding: 8px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--bg); }
 dialog.share .row button.primary { border: none; background: var(--green); }
+/* "Far from your route" (§15): three verbs stacked, the primary first */
+dialog.longroute .col { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+dialog.longroute .col button { padding: 10px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--bg); font-weight: 600; }
+dialog.longroute .col button.primary { border: none; background: var(--green); color: #fff; }
+dialog.longroute .col button.plain { border: none; color: var(--green-fg); }
+.subline .onepoint { flex-basis: 100%; color: var(--fg); }
+.pointshead .textbtn { white-space: nowrap; }
+.offmap { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.offmap .textbtn { padding: 4px 6px; }
 .credits { padding-left: 18px; margin: 6px 0; } .credits li { margin: 2px 0; color: var(--muted); }
 .acts { display: flex; flex-direction: column; gap: 2px; }
 .acts button { display: flex; gap: 16px; align-items: center; border: none; background: none; text-align: left; padding: 8px 12px; border-radius: 12px; color: var(--muted); }
