@@ -9,7 +9,7 @@ preview_urls = false
 [assets]
 directory = "../app/dist"
 binding = "ASSETS"
-run_worker_first = ["/data/*", "/segments/*", "/sync/*"]
+run_worker_first = ["/data/*", "/segments/*", "/sync/*", "/maps/*"]
 
 [env.test]
 name = "onpath-planner-test"
@@ -39,3 +39,21 @@ simple = { limit = 120, period = 60 }
 # daily: delete mailboxes idle for 12 months
 [env.test.triggers]
 crons = ["17 3 * * *"]
+
+# Map areas on demand (src/maps.js, docs/design/web-planner.md §17): build requests go to the doorman Worker of the same
+# account through this service binding; the app key comes from the secret MAP_KEY (the deploy step puts it from the
+# repository secret ONPATH_MAP_KEY_TEST; without it the page says the area's map is not available on the web yet).
+[[env.test.services]]
+binding = "DOORMAN"
+service = "onpath-doorman-test"
+
+# 20 map-area calls per minute per IP (a request + polling every 15 s), 120 per minute for all browsers together
+[[env.test.ratelimits]]
+name = "MAPS_RATE"
+namespace_id = "7302"
+simple = { limit = 20, period = 60 }
+
+[[env.test.ratelimits]]
+name = "MAPS_RATE_ALL"
+namespace_id = "7303"
+simple = { limit = 120, period = 60 }

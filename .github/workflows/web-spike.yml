@@ -167,6 +167,39 @@ jobs:
           npx --yes wrangler@4.141.0 d1 migrations apply onpath-sync-test --env test --remote
           npx --yes wrangler@4.141.0 deploy --env test
 
+      # Map areas on demand (web-planner.md §17): the host adds the doorman's app key to the two build calls, so the
+      # browser never holds it. Owner step, once: repository secret ONPATH_MAP_KEY_TEST = the newest entry of the
+      # environment "test" secret ONPATH_APP_KEYS (an environment secret is not readable here). Without it the page says
+      # the area's map is not available on the web yet. The key goes from the secret straight into wrangler's stdin.
+      - name: Map key for the planner host (map areas on demand)
+        if: inputs.deploy || (github.event_name == 'push' && github.ref == 'refs/heads/web-spike')
+        working-directory: web/host
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PLANNER_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          MAP_KEY: ${{ secrets.ONPATH_MAP_KEY_TEST }}
+        run: |
+          if [ -z "$MAP_KEY" ]; then
+            echo "::notice::ONPATH_MAP_KEY_TEST not set – map areas cannot be requested from the web yet (web-planner.md §9, owner step 5)"; exit 0
+          fi
+          printf '%s' "$MAP_KEY" | npx --yes wrangler@4.141.0 secret put MAP_KEY --env test >/dev/null
+          echo "MAP_KEY set on the planner host"
+
+      # Live check after the deploy (web-planner.md §9, owner step 6 – optional): only when the Cloudflare Access service
+      # token exists (repository secrets CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET, policy "Service Auth" on the
+      # planner app). Reads the page, the engine, the overview, routing data and the map-area proxy – nothing is changed.
+      - name: Live smoke test of the deployed planner (needs the Access service token)
+        if: inputs.deploy || (github.event_name == 'push' && github.ref == 'refs/heads/web-spike')
+        env:
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          HOST: ${{ vars.PLANNER_HOST_TEST || 'plan.onpath.earth' }}
+        run: |
+          if [ -z "$CF_ACCESS_CLIENT_ID" ] || [ -z "$CF_ACCESS_CLIENT_SECRET" ]; then
+            echo "::notice::no Access service token (CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET) – live smoke test skipped"; exit 0
+          fi
+          node web/host/live-smoke.mjs "https://$HOST/"
+
       - name: Sizes
         if: always()
         run: |

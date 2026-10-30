@@ -6,9 +6,12 @@
 //                     header, so the browser cannot read it directly; the app downloads from there too)
 //   /sync/v1/…        the plan sync mailbox (src/sync.js, docs/design/web-sync.md) – encrypted blobs only; Access
 //                     lets this path through (the phone app cannot log in), the mailbox token guards it
+//   /maps/v1/cells/… map areas on demand: request + status passed to the doorman with the app key added here
+//                     (src/maps.js, web-planner.md §17) – the browser never holds the key
 //   everything else   the built page (web/app/dist, static assets)
 import { serveFile } from "../../../tools/cloud/worker/src/api.js";
 import { handleSync, purgeIdle } from "./sync.js";
+import { handleMaps } from "./maps.js";
 
 const RD5 = /^\/segments\/([EW]\d{1,3}_[NS]\d{1,2}\.rd5)$/;
 const UPSTREAM = "https://brouter.de/brouter/segments4/";
@@ -20,6 +23,7 @@ export async function handle(request, env, fetchImpl = fetch) {
     if (request.method !== "GET" && request.method !== "HEAD") return new Response("method not allowed", { status: 405 });
   }
   if (p.startsWith("/sync/")) return handleSync(request, env);
+  if (p.startsWith("/maps/")) return handleMaps(request, env, fetchImpl);
   if (p.startsWith("/data/")) return serveFile({ BUCKET: env.MAPS }, request, decodeURIComponent(p.slice(6)));
   if (p.startsWith("/segments/")) {
     const m = RD5.exec(p);
