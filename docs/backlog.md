@@ -28,8 +28,6 @@ the git log.
   Saved routes and imported GPX tracks sync both ways (a delete from the browser → recycle bin; never during a tour).
   Tested without a phone: `CorePlanSyncTest`, `SyncFilesTest`, `SyncTrackTest`, and against the real `sync.js` in Node
   (`tools/sync/e2e.sh`). Web planner: track items (kind 3, field 4 = `TrackCode`) to show / keep – see `sync/TrackCode.kt`.
-- **Search: first letter is slow (340–930 ms)** – the address search takes 430–780 ms for a one-letter query (measured
-  2026-10-30 on the Pixel 8, `~/onpath-cells-work/search-mem/`); the place index itself is 22 ms median per keystroke.
 - **Check on the phone (0.11.6 – 0.12.0, built without a phone):**
   - junction vibration: the app vibrated at every junction on the 2026-10-28 ride (trace "vibrated=true"), the owner
     felt nothing → Pixel Settings → Sound & vibration → Vibration & haptics → *Alarm vibration*, Do Not Disturb /
