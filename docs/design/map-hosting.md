@@ -467,6 +467,18 @@ status file says a cloud job is building it (< 70 min) is skipped. `--dry-run` =
   Revoke: dashboard → R2 → Manage API tokens → delete the donald token.
 - Expected: 6 dense cells ≈ 10 min (2 at once, ~3 min each warm) + upload (~130 MB); the phone loads them at its
   next refresh / request for them.
+- **A whole area overnight – `tools/dev/publish_area.sh <dir>`** (owner 2026-10-30: all of Germany into TEST):
+  `tools/dev/area_cells.py <natural_earth_vector.sqlite> DEU [--packages]` lists the z10 cells touching the country
+  (Natural Earth 10 m admin-0 + 2 km: border cells in, open sea out – Germany 708 cells, 17 region packages) into
+  `<dir>/cells.txt` / `packages.txt`. The runner pins origin/main, asks the bucket which ids are already current
+  (`area_state.py` in the job image – resume after a crash or stop), then builds cells (grouped by z7 block), then
+  packages: up to `PARALLEL` containers of `BATCH` ids each; a container starts only while the RAM left after its cut
+  peak (and the running ones' growth to theirs) stays ≥ 6 GB; a failed id is tried once more, then listed in
+  `failed.txt`. One-line `<dir>/status.txt` (done / failed / left / ETA), log `<dir>/run-YYYYMMDD.log`. Run as a user
+  unit, e.g. `systemd-run --user --unit onpath-germany --on-calendar='… 19:00' -p Nice=19 -p IOSchedulingClass=idle
+  tools/dev/publish_area.sh ~/onpath-cells-work/germany`; `systemctl --user stop onpath-germany` kills its containers.
+  Probe on donald (pipeline 32ac3de, warm): Berlin 10/550/335 159 s 23 MB, Passau 10/550/353 (niederbayern + austria)
+  93 s 10 MB, Seenplatte 10/548/331 61 s 4 MB; peak 4.0 GB (the raw cut); the doorman adopted all three at the first request.
 
 ## 7i. Region packages (z7)
 
