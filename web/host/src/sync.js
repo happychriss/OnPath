@@ -11,6 +11,13 @@
 //
 // Auth: "Authorization: Bearer <token>". Cloudflare Access must let /sync/* through (bypass policy) – the phone app
 // cannot pass Access; the token is the lock here. Storage: D1 (binding SYNC), blobs as Base64url text.
+//
+// New mailboxes per IP per day are capped (var SYNC_NEW_PER_IP_DAY, default LIMITS.newPerIpDay), counted like the
+// map-area quota (maps.js): table map_quota, k = "sync:<daily salted hash of the IP>", period = the UTC day – counts
+// only, old days deleted by the daily purgeQuota. Over the cap a claim answers 429 {error, code: "new-mailbox-cap"}
+// with retry-after = seconds to the next UTC day. Only a claim that creates a mailbox counts; another device using an
+// existing mailbox (pairing) does not.
+import { ipHash } from "./maps.js";
 
 export const LIMITS = {
   blobBytes: 32 * 1024,       // one item (a plan of 500 points is ~3 KB)
@@ -18,14 +25,16 @@ export const LIMITS = {
   mailboxBytes: 4 * 1024 * 1024,
   page: 200,
   idleDays: 365,              // a mailbox nobody used for this long is deleted (scheduled job)
+  newPerIpDay: 5,             // new mailboxes (pairings) per IP per UTC day
 };
+export const NEW_MAILBOX_CAP = "new-mailbox-cap";
 
 const ID = /^[A-Za-z0-9_-]{22}$/;
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const DAY = 86_400_000;
 
-const json = (status, body) => new Response(JSON.stringify(body), {
-  status, headers: { "content-type": "application/json", "cache-control": "no-store" },
+const json = (status, body, extra = {}) => new Response(JSON.stringify(body), {
+  status, headers: { "content-type": "application/json", "cache-control": "no-store", ...extra },
 });
 const fail = (status, error) => json(status, { error });
 
@@ -50,8 +59,8 @@ export async function handleSync(request, env, now = Date.now()) {
   const m = /^\/sync\/v1\/([^/]+)(?:\/([^/]+))?$/.exec(url.pathname);
   if (!m || !ID.test(m[1]) || (m[2] !== undefined && !ID.test(m[2]))) return fail(404, "not found");
   if (!env.SYNC) return fail(503, "sync is not set up on this server");
+  const ip = request.headers.get("cf-connecting-ip") ?? "?";
   if (env.SYNC_RATE) {
-    const ip = request.headers.get("cf-connecting-ip") ?? "?";
     const { success } = await env.SYNC_RATE.limit({ key: ip });
     if (!success) return fail(429, "too many requests – try again in a minute");
   }
@@ -65,8 +74,20 @@ export async function handleSync(request, env, now = Date.now()) {
 
   if (request.method === "POST" && !item) {
     if (!row) {
-      await db.prepare("INSERT INTO mailbox (id, token_hash, rev, created, seen) VALUES (?1, ?2, 0, ?3, ?3) ON CONFLICT(id) DO NOTHING")
+      const day = new Date(now).toISOString().slice(0, 10);
+      const k = "sync:" + await ipHash(env, ip, day);
+      const cap = Number(env.SYNC_NEW_PER_IP_DAY) || LIMITS.newPerIpDay;
+      const made = (await db.prepare("SELECT n FROM map_quota WHERE k = ?1 AND period = ?2").bind(k, day).first("n")) ?? 0;
+      if (made >= cap) {
+        const wait = Math.max(60, Math.ceil((DAY - (now % DAY)) / 1000));
+        return json(429, { error: "too many new pairings from this network today – try again tomorrow", code: NEW_MAILBOX_CAP }, { "retry-after": String(wait) });
+      }
+      const ins = await db.prepare("INSERT INTO mailbox (id, token_hash, rev, created, seen) VALUES (?1, ?2, 0, ?3, ?3) ON CONFLICT(id) DO NOTHING")
         .bind(box, hash, now).run();
+      if (ins.meta?.changes) { // this call made the mailbox (not a parallel claim of the same one)
+        await db.prepare("INSERT INTO map_quota (k, period, n) VALUES (?1, ?2, 1) ON CONFLICT(k, period) DO UPDATE SET n = n + 1")
+          .bind(k, day).run();
+      }
       const again = await db.prepare("SELECT token_hash, rev FROM mailbox WHERE id = ?1").bind(box).first();
       if (!again || !sameText(again.token_hash, hash)) return fail(403, "wrong token");
       return json(201, { rev: again.rev });

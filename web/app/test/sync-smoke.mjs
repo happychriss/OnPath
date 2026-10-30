@@ -142,7 +142,15 @@ check(!sa.paired && sa.message.includes('ended on the other device'), 'the brows
 check(JSON.stringify(await plans(A)) === '["Browser name"]' && JSON.stringify(await plans(B)) === '["Browser name"]', 'plans stay on both sides');
 check(env.SYNC.sqlite.prepare('SELECT COUNT(*) AS n FROM item').get().n === 0, 'the mailbox is empty after unpairing');
 
+// 10. the host's cap on new mailboxes per IP and day: a new pairing over it is refused in plain words
+env.SYNC_NEW_PER_IP_DAY = '1'; // this run made one mailbox today already
+await menu(A, '#menuPair');
+await A.waitForSelector('#pairBody .status.error', { timeout: 30_000 }).catch(() => {});
+const capText = (await A.textContent('#pairBody').catch(() => '')) ?? '';
+check(capText.includes('Too many new pairings from this network today'), 'over the new-mailbox cap: the page says so ' + JSON.stringify(capText.slice(0, 80)));
+check(env.SYNC.sqlite.prepare('SELECT COUNT(*) AS n FROM mailbox').get().n === 1, 'no mailbox made over the cap');
+
 await browser.close(); server.close();
-const real = errors.filter((e) => !/status of (404|409|410)/.test(e) && !/ERR_INTERNET_DISCONNECTED|Failed to fetch/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));
+const real = errors.filter((e) => !/status of (404|409|410|429)/.test(e) && !/ERR_INTERNET_DISCONNECTED|Failed to fetch/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));
 if (real.length) { console.log('errors:', real); fails.push('page errors'); }
 process.exit(fails.length ? 1 : 0);

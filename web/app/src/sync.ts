@@ -58,6 +58,13 @@ class Store {
 
 class Gone extends Error {}
 
+/** The host's cap on new mailboxes per network and day (web/host/src/sync.js, web-sync.md §8): 429 code "new-mailbox-cap". */
+async function capped(r: Response): Promise<boolean> {
+  if (r.status !== 429) return false;
+  const body = await r.clone().json().catch(() => ({})) as { code?: string }; // expected: the plain rate limit has no JSON code
+  return body.code === 'new-mailbox-cap';
+}
+
 export class PlanSync {
   private store = new Store();
   private chain: Promise<unknown> = Promise.resolve();
@@ -119,6 +126,7 @@ export class PlanSync {
       const k = await this.keys(pair);
       try {
         const r = await this.fetch(k.mailbox, { method: 'POST' }, k.token);
+        if (await capped(r)) return { error: t('web_sync_pair_cap') };
         if (!r.ok) return { error: t('web_sync_pair_refused', r.status) };
       } catch {
         return { error: t('web_sync_pair_offline') }; // expected: offline
@@ -231,6 +239,7 @@ export class PlanSync {
 
   private async refused(r: Response): Promise<never> {
     if (r.status === 410 || r.status === 403) throw new Gone(t('web_sync_gone'));
+    if (await capped(r)) throw new Error(t('web_sync_pair_cap'));
     if (r.status === 429) throw new Error(t('web_sync_busy'));
     if (r.status === 507) throw new Error(t('web_sync_full'));
     throw new Error(t('web_sync_answered', r.status));

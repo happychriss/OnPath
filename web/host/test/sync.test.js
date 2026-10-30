@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { handleSync, purgeIdle, LIMITS } from "../src/sync.js";
 import { handle } from "../src/index.js";
+import { purgeQuota } from "../src/maps.js";
 import { fakeD1 } from "./fake-d1.js";
 
 const H = "https://plan.example.org/sync/v1/";
@@ -128,4 +129,35 @@ test("the host sends /sync/ to the mailbox, not to the page", async () => {
   const r = await handle(new Request(H + BOX, { method: "POST", headers: { authorization: "Bearer " + TOKEN } }), env);
   assert.equal(r.status, 201);
   assert.equal(r.headers.get("cache-control"), "no-store");
+});
+
+// a claim with its own mailbox id / token from one IP (ids: 22 chars, tokens: 43)
+const claimFrom = (env, ip, i, now = Date.UTC(2026, 9, 30, 12)) => handleSync(new Request(H + ("box" + i).padEnd(22, "x"), {
+  method: "POST", headers: { authorization: "Bearer " + ("tok" + i).padEnd(43, "y"), "cf-connecting-ip": ip },
+}), env, now);
+
+test("new mailboxes per IP per day are capped; joining an existing one does not count", async () => {
+  const env = { ...fresh(), MAP_KEY: "k", SYNC_NEW_PER_IP_DAY: "3" };
+  for (let i = 0; i < 3; i++) assert.equal((await claimFrom(env, "203.0.113.7", i)).status, 201);
+  for (let i = 0; i < 3; i++) assert.equal((await claimFrom(env, "203.0.113.7", i)).status, 200, "pairing an existing mailbox");
+  const over = await claimFrom(env, "203.0.113.7", 9);
+  assert.equal(over.status, 429);
+  assert.equal((await over.json()).code, "new-mailbox-cap");
+  assert.equal(over.headers.get("retry-after"), String(12 * 3600));
+  assert.equal(env.SYNC.sqlite.prepare("SELECT COUNT(*) AS n FROM mailbox").get().n, 3, "nothing made over the cap");
+  assert.equal((await claimFrom(env, "198.51.100.1", 9)).status, 201, "another IP has its own count");
+  assert.equal((await claimFrom(env, "203.0.113.7", 8, Date.UTC(2026, 9, 31, 0, 1))).status, 201, "a new day starts again");
+  // counts only, the IP only as a salted hash
+  const rows = env.SYNC.sqlite.prepare("SELECT * FROM map_quota").all();
+  assert.ok(rows.every((r) => /^sync:[0-9a-f]{32}$/.test(r.k)));
+  assert.ok(!JSON.stringify(rows).includes("203.0.113"));
+  assert.deepEqual(rows.map((r) => r.n).sort(), [1, 1, 3]);
+});
+
+test("the cap defaults to LIMITS.newPerIpDay; its counters go with the daily purge", async () => {
+  const env = { ...fresh(), MAP_KEY: "k" };
+  for (let i = 0; i < LIMITS.newPerIpDay; i++) assert.equal((await claimFrom(env, "203.0.113.7", i)).status, 201);
+  assert.equal((await claimFrom(env, "203.0.113.7", 99)).status, 429);
+  await purgeQuota(env, Date.UTC(2026, 10, 2));
+  assert.equal(env.SYNC.sqlite.prepare("SELECT COUNT(*) AS n FROM map_quota").get().n, 0);
 });

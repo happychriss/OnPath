@@ -37,11 +37,15 @@ async function hex(text) {
   return [...d].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
 }
 
+/** The IP in a quota counter: SHA-256 of the host's secret MAP_KEY, the day and the IP – never the plain address; it
+ *  changes every day and cannot be traced back without the secret. Also used by the sync mailbox cap (sync.js). */
+export const ipHash = (env, ip, day) => hex(`${env.MAP_KEY}|${day}|${ip}`);
+
 /** The counters a new-area request touches: [key, period, limit, name]. */
 async function counters(env, ip, browser, now) {
   const day = new Date(now).toISOString().slice(0, 10), month = day.slice(0, 7);
   const q = quota(env);
-  const list = [["all", day, q.globalDay, "global"], ["ip:" + await hex(`${env.MAP_KEY}|${day}|${ip}`), day, q.ipDay, "ip"]];
+  const list = [["all", day, q.globalDay, "global"], ["ip:" + await ipHash(env, ip, day), day, q.ipDay, "ip"]];
   if (browser) list.push(["b:" + browser, day, q.browserDay, "browser"], ["b:" + browser, month, q.browserMonth, "browser"]);
   return list;
 }

@@ -162,6 +162,7 @@
     <string name="web_sync_to_send">%1$d to send</string>
     <string name="web_sync_not_kept">This browser does not keep saved plans after the tab is closed (storage blocked).</string>
     <string name="web_sync_pair_refused">The sync server refused a new pairing (%1$d). Try again later.</string>
+    <string name="web_sync_pair_cap">Too many new pairings from this network today. Try again tomorrow.</string>
     <string name="web_sync_pair_offline">Pairing needs the internet. Check the connection and try again.</string>
     <string name="web_sync_not_a_code">This is not a pairing code of OnPath.</string>
     <string name="web_sync_already_paired">This browser is already paired. Unpair it first (☰ → Pair phone).</string>

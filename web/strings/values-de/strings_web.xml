@@ -148,6 +148,7 @@
     <string name="web_sync_to_send">%1$d zu senden</string>
     <string name="web_sync_not_kept">Dieser Browser behält gespeicherte Pläne nicht, wenn der Tab zu ist (Speicher blockiert).</string>
     <string name="web_sync_pair_refused">Der Sync-Server hat eine neue Kopplung abgelehnt (%1$d). Versuch es später noch einmal.</string>
+    <string name="web_sync_pair_cap">Zu viele neue Kopplungen aus diesem Netz heute. Versuch es morgen noch einmal.</string>
     <string name="web_sync_pair_offline">Zum Koppeln braucht es Internet. Prüfe die Verbindung und versuch es noch einmal.</string>
     <string name="web_sync_not_a_code">Das ist kein Kopplungscode von OnPath.</string>
     <string name="web_sync_already_paired">Dieser Browser ist schon gekoppelt. Entkopple ihn zuerst (☰ → Handy koppeln).</string>

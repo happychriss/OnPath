@@ -155,7 +155,8 @@ Header `Authorization: Bearer <token>` on every call.
 | `GET /sync/v1/<mb>?since=N` | 200 `{rev, more, items:[{id, rev, blob}]}` – items with rev > N, ≤ 200; `rev` = what this page covers |
 | `PUT /sync/v1/<mb>/<id>` body = blob bytes, `x-onpath-base: B` | 200 `{rev}`; 409 `{rev}` when the item is not at B; 413 > 32 KiB; 507 limits |
 | `DELETE /sync/v1/<mb>` | 200 – all items deleted, the mailbox answers 410 from then on (cannot be claimed again) |
-| others | 401 no/odd token, 404 unknown mailbox / path, 429 rate limit, 503 no database bound |
+| `POST` that would create a mailbox, over the daily cap | 429 `{"error": "…", "code": "new-mailbox-cap"}`, `retry-after` = seconds to the next UTC day |
+| others | 401 no/odd token, 404 unknown mailbox / path, 429 rate limit (plain `{"error"}`, no `code`), 503 no database bound |
 
 - **Compare-and-set in one D1 batch** (one transaction): `UPDATE mailbox SET rev = rev + 1 … WHERE` the item is
   still at B, then `INSERT … SELECT … WHERE changes() = 1` – two writers on the same item: exactly one wins, the
@@ -166,8 +167,15 @@ Header `Authorization: Bearer <token>` on every call.
   time. `seen` is written at most once a day per mailbox.
 - **Schema:** `migrations/0001_sync.sql` (`mailbox`: id, token_hash, rev, created, seen, deleted; `item`: mailbox,
   id, rev, blob). D1 database `onpath-sync-test`, EU jurisdiction.
-- Not built: deleting old tombstones (they are ~60 bytes; the item limit catches abuse), a cap on new mailboxes per
-  day (the rate limit covers the test), per-mailbox write rate.
+- **New mailboxes per IP per day:** at most `SYNC_NEW_PER_IP_DAY` (wrangler var, default 5). Only a `POST` that
+  creates a mailbox counts – a second device joining an existing pairing (its `POST` answers 200) does not; the
+  `GET` 404 → `POST` claim of a not-yet-claimed mailbox does (it creates one). Counted in the map-area quota table
+  (`map_quota`, migration 0002): `k = "sync:<SHA-256 of MAP_KEY | day | IP>"`, period = the UTC day – counts only,
+  the IP never in plain, the hash changes daily; rows of earlier days are deleted by the daily cron (`purgeQuota`).
+  Over the cap: 429 with `code: "new-mailbox-cap"` (above). The browser says "Too many new pairings from this network
+  today. Try again tomorrow." (`web_sync_pair_cap`). **App (§11):** map 429 + `code == "new-mailbox-cap"` to the same
+  sentence (WARNING, no retry until the next day); a 429 without that code stays "busy, try again in a minute".
+- Not built: deleting old tombstones (they are ~60 bytes; the item limit catches abuse), per-mailbox write rate.
 
 ## 9. Browser (web/app)
 
@@ -252,7 +260,8 @@ Merge `feat/plan-sync` (or main once it is in) – the shared code is ready and 
 > **Plan sync with the web planner (only when you pair).** Your saved plans are encrypted on your phone and in your
 > browser before they leave the device. They pass through our sync server (Cloudflare, EU) as locked data: the server
 > cannot read them and never learns your name, e-mail or where you plan to go. It stores a random mailbox number, the
-> locked plans and when they last changed. Unpairing deletes everything there at once; a mailbox nobody uses for 12
+> locked plans and when they last changed; against misuse it counts new pairings per network for one day (your
+> internet address only as a code that changes daily, deleted the next day). Unpairing deletes everything there at once; a mailbox nobody uses for 12
 > months is deleted automatically. Whoever has your pairing code can see your saved plans – do not share it.
 
 ## 13. Open decisions (owner)
