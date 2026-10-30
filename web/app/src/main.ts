@@ -103,6 +103,14 @@ const siteLink = (key: string, label: string, cls = '') =>
 const navItem = (id: string) => NAV.find((n) => n.id === id)!;
 
 document.title = t('web_page_title');
+// No WebGL2 (old browser, hardware acceleration off, some headless browsers): maplibre cannot draw and the page would
+// stay blank without a word (owner 2026-10-30) – say so plainly and stop here.
+if (!hasWebGl2()) {
+  document.querySelector<HTMLDivElement>('#app')!.innerHTML = `<main class="nowebgl" role="alert"><div>${logo(40)}
+    <h1>${escapeHtml(t('web_no_webgl_title'))}</h1><p>${escapeHtml(t('web_no_webgl_text'))}</p></div></main>`;
+  console.warn('[map] no WebGL2 – the map cannot be drawn');
+  await new Promise(() => {}); // expected: nothing else can run without a map
+}
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <header id="header">
     <a class="brand" href="${t('web_url_app')}" target="_blank" rel="noopener" title="${escapeHtml(t('web_brand_title'))}">${logo(30)}<span class="wordmark">OnPath <span class="product">${escapeHtml(t('web_product'))}</span></span></a>
@@ -1312,4 +1320,9 @@ function arrowImage(): ImageData {
   g.strokeStyle = '#fff'; g.lineWidth = s * 0.16; g.lineCap = 'round'; g.lineJoin = 'round';
   g.beginPath(); g.moveTo(s * 0.32, s * 0.2); g.lineTo(s * 0.72, s * 0.5); g.lineTo(s * 0.32, s * 0.8); g.stroke();
   return g.getImageData(0, 0, s, s);
+}
+
+/** Can this browser draw the map? maplibre-gl needs WebGL2. */
+function hasWebGl2(): boolean {
+  try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; } // expected: blocked → no
 }

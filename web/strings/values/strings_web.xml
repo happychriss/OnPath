@@ -218,4 +218,6 @@
     <string name="web_far_add">Add to the route</string>
     <string name="web_route_off_map">Your route is outside the map</string>
     <string name="web_one_point">1 point · %1$s</string>
+    <string name="web_no_webgl_title">Your browser cannot draw the map</string>
+    <string name="web_no_webgl_text">WebGL2 is missing. Please use a current Chrome, Firefox or Edge and switch on hardware acceleration in its settings.</string>
 </resources>

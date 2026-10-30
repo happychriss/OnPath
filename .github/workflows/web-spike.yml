@@ -331,6 +331,11 @@ jobs:
         run: node test/perf.mjs normal $GITHUB_WORKSPACE/segments
 
       # group short (~80 s)
+      - name: No WebGL2 → a plain message, never a blank page (owner 2026-10-30)
+        if: matrix.group == 'short'
+        working-directory: web/app
+        run: node test/nowebgl-smoke.mjs $GITHUB_WORKSPACE/segments
+
       - name: Planner page click test (two points → route + profile; screenshot)
         if: matrix.group == 'short'
         working-directory: web/app

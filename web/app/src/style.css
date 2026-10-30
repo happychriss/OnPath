@@ -423,3 +423,9 @@ dialog.phone .phonemore { display: flex; flex-direction: column; align-items: fl
 dialog.phone .phonemore[hidden] { display: none; }
 dialog.phone .phonemore .textbtn { padding-left: 0; }
 .textbtn.quiet { color: var(--muted); font-weight: 400; font-size: 13px; padding: 4px 6px; }
+
+/* no WebGL2: one calm message instead of a blank page */
+.nowebgl { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: var(--site-bg); color: var(--site-fg); }
+.nowebgl > div { max-width: 460px; text-align: center; }
+.nowebgl h1 { font-size: 22px; margin: 16px 0 8px; }
+.nowebgl p { font-size: 16px; line-height: 1.5; margin: 0; }

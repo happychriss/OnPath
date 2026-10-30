@@ -203,4 +203,6 @@
     <string name="web_far_add">Zur Route hinzufügen</string>
     <string name="web_route_off_map">Deine Route liegt außerhalb der Karte</string>
     <string name="web_one_point">1 Punkt · %1$s</string>
+    <string name="web_no_webgl_title">Dein Browser kann die Karte nicht zeichnen</string>
+    <string name="web_no_webgl_text">WebGL2 fehlt. Bitte einen aktuellen Chrome, Firefox oder Edge nutzen und in seinen Einstellungen die Hardwarebeschleunigung einschalten.</string>
 </resources>
