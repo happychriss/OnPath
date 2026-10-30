@@ -371,6 +371,18 @@ class ScreenshotTest {
             approx = approxLine(com.onpath.app.navigation.Provisional.Fix(com.onpath.app.navigation.Provisional.Source.WIFI, 80))))
     }
 
+    /** Notifications off during a tour: the small amber chip under the status card (tap → setup, OK → gone this tour). */
+    @Test fun navigateNotificationsOff() = paparazzi.snapshot {
+        NavFrame(navUi.copy(arriveAt = "16:40", notificationsOff = true))
+    }
+
+    /** Started indoors with notifications off: the approximate-position line and the chip at once, both readable. */
+    @Test fun navigateNotificationsOffApproximate() = paparazzi.snapshot {
+        NavFrame(navUi.copy(recordedM = 0.0, elapsedS = 40, arriveAt = "16:40", notificationsOff = true,
+            approx = approxLine(com.onpath.app.navigation.Provisional.Fix(com.onpath.app.navigation.Provisional.Source.WIFI, 80)),
+            turn = TurnHint(com.onpath.app.routing.TurnKind.LEFT, 180.0)))
+    }
+
     /** The question: stays until answered or back on the route; big buttons in thumb reach above the map controls. */
     @Test fun navigateRerouteQuestion() = paparazzi.snapshot {
         NavFrame(navUi.copy(offRoute = OffRouteUi(question, hint)))

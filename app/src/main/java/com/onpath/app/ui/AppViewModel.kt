@@ -3814,6 +3814,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     private var setupThen: (() -> Unit)? = null
     val setupOpen: Boolean get() = setupWelcome || setupGuide != null
+    /** The tour whose "Notifications off" chip was confirmed with OK (in memory: the next tour shows it again). */
+    var notificationsOkTour by mutableStateOf<Long?>(null)
 
     /** Navigation vibrations in use: the vibration step applies only then. */
     val vibrationUsed: Boolean get() = settings.junctionVibration != com.onpath.app.data.JunctionVibration.OFF ||

@@ -123,6 +123,8 @@ data class NavUi(
      * instead of "No GPS" while what is left counts from the Wi-Fi / fused fix ([com.onpath.app.navigation.Provisional]).
      */
     val approx: String? = null,
+    /** OnPath's notifications are off during this tour: the amber chip under the status card ([NotificationsOffChip]). */
+    val notificationsOff: Boolean = false,
 )
 
 /** [roundabout]: non-null = the turn is a roundabout, with the exit to take (0 = unknown). */
@@ -177,6 +179,9 @@ fun NavigateOverlay(
     /** A background download runs (after 10 s): small "⬇ Bozen · 40 %" chip under the status (name cut to fit); tap → details. */
     download: BackgroundDownloadUi? = null,
     onDownload: () -> Unit = {},
+    /** The "Notifications off" chip: tap → phone setup step, OK → gone for this tour. */
+    onNotifications: () -> Unit = {},
+    onNotificationsOk: () -> Unit = {},
 ) {
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -193,6 +198,7 @@ fun NavigateOverlay(
                 NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity,
                     onProfileScrub = onProfileScrub, onProfileRelease = onProfileRelease)
             }
+            if (ui.notificationsOff) NotificationsOffChip(onNotifications, onNotificationsOk)
             download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
         }
         Column(Modifier.align(Alignment.BottomCenter).modeEdge(ModeEdge.BOTTOM).fillMaxWidth()) {
@@ -663,6 +669,8 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         positionCopy = location?.let { NavText.positionCopy(it.latitude, it.longitude) },
         fixAgeS = location?.let { com.onpath.app.recording.LocationTracker.ageSeconds(it) },
         approx = prov?.let { approxLine(it) },
+        notificationsOff = com.onpath.app.navigation.NotificationsOff.shown(rec?.tourId,
+            com.onpath.app.setup.PhoneCheck.isOk(com.onpath.app.setup.CheckId.NOTIFICATIONS, vm.phone), vm.notificationsOkTour),
     )
     // Back on the open sheet = "Keep" (nothing changes)
     androidx.activity.compose.BackHandler(enabled = vm.activityCheck != null) { vm.closeActivityCheck() }
@@ -672,7 +680,9 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute,
         onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
         onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,
-        download = bg, onDownload = { vm.downloadDetailsOpen = true })
+        download = bg, onDownload = { vm.downloadDetailsOpen = true },
+        onNotifications = { vm.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },
+        onNotificationsOk = { vm.notificationsOkTour = rec?.tourId })
     BackgroundDownloadDetails(vm, bg)
 }
 

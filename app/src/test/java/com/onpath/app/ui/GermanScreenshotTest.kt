@@ -41,6 +41,8 @@ class GermanScreenshotTest {
     @Test fun navigate() = shots.navigate()
     @Test fun navigateRerouteQuestion() = shots.navigateRerouteQuestion()
     @Test fun navigateApproximatePosition() = shots.navigateApproximatePosition()
+    @Test fun navigateNotificationsOff() = shots.navigateNotificationsOff()
+    @Test fun navigateNotificationsOffApproximate() = shots.navigateNotificationsOffApproximate()
     @Test fun arrival() = shots.arrival()
     @Test fun tours() = shots.tours()
     @Test fun unfinishedTour() = shots.unfinishedTour()

@@ -204,4 +204,7 @@
     <string name="nav_time_moving">Bewegungszeit</string>
     <string name="nav_time_with_breaks">Mit Pausen</string>
     <string name="nav_time_pace_level">Tempo</string>
+    <string name="nav_notif_off">Benachrichtigungen aus</string>
+    <string name="nav_notif_off_line">Keine Tour-Hinweise auf dem Sperrbildschirm</string>
+    <string name="nav_notif_off_click">Benachrichtigungen einrichten</string>
 </resources>
