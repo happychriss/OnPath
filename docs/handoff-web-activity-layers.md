@@ -25,6 +25,12 @@ API:
 
 ## What web-spike must do
 
+**Done on branch `web-activity-layers`** (off web-spike 6088bc7, not pushed; 2026-10-31): the shared commit
+cherry-picked + steps 1–5 below. Engine built (TeaVM Wasm, engine tests green), `activityLayers` checked in Wasm
+(Node 24), page built, `activity-look-smoke` green, `edit-smoke` green, `parity/check.mjs` ok. `parity-smoke` has one
+failure ("Points list ✕ deletes the point") that web-spike has without this change too. Merging that branch into
+web-spike does all of this; the steps stay here as the description.
+
 1. **Merge main**, then add `"map/ActivityLayers.kt"` to `appFiles` in `web/engine/build.gradle.kts` (beside
    `map/Overview.kt`), and `"map/ActivityLayersTest.kt"` to `appTests` only if the engine's test classpath has MapLibre's
    `Expression` – it does not (the test compares with the former Expression code), so leave the test out; the app's CI
