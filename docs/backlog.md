@@ -52,12 +52,13 @@ the git log.
   When should the way back skip the next route point (much closer to the one after) – or ask? Work from real cases:
   the owner's ride of 2026-10-28 (left the plan at km 0.5–0.8 and 6.0–6.8, up to 380 m) and routes the owner uploads.
   Idea: skip when the detour is far longer and the point is not POI-pinned / named; ask only when it might matter.
-- **Screen off while cycling when no turn is near (owner idea)** – today "keep screen on" (`PocketScreen.kt`) keeps it
-  on all the time. Wanted: the display goes off when the next turn is far (> 500 m / 1 km) and wakes shortly before it
-  (vibration as today). Owner chooses the distance and whether it is the bike default.
-- **Battery while navigating** – CPU 1.6–1.7 cores at ~63 fps with the screen on (no frame cap): a frame cap while
-  navigating, or the screen-off idea above. From `docs/design/battery-audit.md`: slower GPS with the screen off,
-  frozen track + tail.
+- **[desktop] Smart screen while cycling (owner decisions 2026-10-30)** – Bike activities only (Bike, Gravel, E-bike, MTB,
+  E-MTB; Hike keeps the pocket logic): far from the next turn a **rest view** – black (OLED), big next-turn arrow,
+  distance, time left, dimmed; the map stops drawing. Full map again ~**50 s before a turn** (time at current speed,
+  at least 150 m), ~10 s after it, on a tap (~30 s), off-route, arrival, GPS lost. Setting "Screen while cycling:
+  Always on / Smart / Like the phone", **Smart is the default for bike activities**. **No lower frame rate while the
+  map is visible** (owner: "never"). Measure first and after: Pixel 8 power rails (display / CPU / GPU / GNSS) on a
+  10-min demo ride. From `docs/design/battery-audit.md` still open: slower GPS with the screen off, frozen track + tail.
 - **Cycle junction networks ("Knotenpunkte", NL / BE / DE) on the map (owner)** – OSM nodes with `rcn_ref`
   (`network:type=node_network`): green numbered circles + the network lines, own overlay layer, switchable in
   Settings → Map. Needs `extract_overlays.py` + `make_style.py` + a cell schema bump (donald / map pipeline).
