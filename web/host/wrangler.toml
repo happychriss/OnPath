@@ -58,13 +58,15 @@ name = "MAPS_RATE_ALL"
 namespace_id = "7303"
 simple = { limit = 120, period = 60 }
 
-# Before the login goes (A-011, docs/design/web-planner.md §18): per-IP limits for the map files (/data/: a map view is
-# ~100 tile ranges, so 600 per minute is several views per second) and the routing data (/segments/: a plan needs a few
-# 2–10 MB parts) – generous for planning, against mass downloads.
+# Before the login goes (A-011, docs/design/web-planner.md §18): per-IP limits for the map files (/data/) and the routing
+# data (/segments/: a plan needs a few 2–10 MB parts) – generous for planning, against mass downloads. /data/: a map view
+# is ~100 tile ranges, but a fly to a search result or the position on a fast desktop passes many zooms and cells (4
+# files each), Chrome on Windows reads every range uncached (pmtiles), and a household shares one IP – 600 per minute
+# is the likely cause of the owner report 2026-10-30 (Hilden: streets missing); 2400 is still 40 ranges a second.
 [[env.test.ratelimits]]
 name = "DATA_RATE"
 namespace_id = "7304"
-simple = { limit = 600, period = 60 }
+simple = { limit = 2400, period = 60 }
 
 [[env.test.ratelimits]]
 name = "SEGMENTS_RATE"
