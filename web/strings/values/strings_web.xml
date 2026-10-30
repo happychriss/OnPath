@@ -119,14 +119,13 @@
 
     <!-- My plans -->
     <string name="web_plan_dated">Route %1$s</string>
-    <string name="web_plans_saved">Saved routes</string>
     <string name="web_plans_sync_now">Sync now</string>
     <string name="web_plans_sync_title">Pair with phone</string>
     <string name="web_sync_badge">Paired with your phone</string>
     <string name="web_sync_paired">Paired</string>
-    <string name="web_saved_short">Saved</string>
     <string name="web_saved_title">Saved as “%1$s” – click to save again or as a new route</string>
     <string name="web_sync_badge_last">last synced %1$s</string>
+    <string name="web_plans_heading">Your planned routes</string>
     <string name="web_plans_none">No saved routes yet.</string>
     <string name="web_plans_open">Open this route</string>
     <string name="web_plans_from_other">from the other device</string>
@@ -150,8 +149,7 @@
     <string name="web_pair_digits">Check digits: %1$s</string>
     <string name="web_pair_not_paired">This browser is not paired.</string>
     <string name="web_unpair">Unpair</string>
-    <string name="web_unpair_q">Unpair? Routes stop syncing. They stay in this browser and on the phone.</string>
-    <string name="web_stay_paired">Stay paired</string>
+    <string name="web_unpair_q">Routes stop syncing. They stay in this browser and on the phone.</string>
     <string name="web_join_title">Pairing code</string>
     <string name="web_join_text">This link pairs a device with your saved routes. Usually you scan it with the OnPath app on your phone (☰ → Pair with browser).</string>
     <string name="web_join_instead">You can also pair this browser instead – then your saved routes sync here too.</string>

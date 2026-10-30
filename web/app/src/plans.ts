@@ -10,6 +10,8 @@ export interface PlanHost {
   current(): Promise<{ code: string; title: string | null } | null>;
   /** The saved plan the page shows now (to save a new version of it), or null. */
   openId(): string | null;
+  /** The shown route's save state: empty (nothing to save), save, or saved and unchanged as [title]. */
+  saveState(): Promise<{ state: 'empty' | 'save' | 'saved'; title: string | null }>;
   open(plan: SavedPlan): void;
   /** A name proposal for a new saved plan ("Algund → Meran", the app's RouteNamer), "" when none fits. */
   suggestName(): Promise<string>;
@@ -49,25 +51,36 @@ export function syncLine(s: SyncStatus): { text: string; kind: SyncStatus['kind'
  * the header): not paired → Pair phone (the QR code + check digits, [pair]); paired → "Paired with …", Sync now, Unpair.
  */
 export async function myPlansDialog(sync: PlanSync, host: PlanHost, pair: () => void, atSync = false) {
+  const save = await host.saveState(); // before the dialog shows: its Save button is right from the start
   const d = dialog('plans', `
     <h2>${esc(t('routes_title'))}</h2>
+    <h3 id="planHead" class="listhead">${icon('route', 20)}${esc(t('web_plans_heading'))}</h3>
     <button id="saveCurrent" class="outline">${icon('save', 18)}${esc(t('plan_save_current_route'))}</button>
-    <ul id="planList" class="planlist" aria-label="${esc(t('web_plans_saved'))}"></ul>
+    <ul id="planList" class="planlist" aria-labelledby="planHead"></ul>
     <section class="syncsec" aria-labelledby="syncTitle">
       <h3 id="syncTitle">${icon('sync', 20)}${esc(t('web_plans_sync_title'))}</h3>
       <div id="plansStatus" class="status muted"></div>
-      <div class="row"><button id="pairPhone" hidden>${esc(t('web_pair_phone'))}</button><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button><button id="unpair" class="danger" hidden>${esc(t('web_unpair'))}</button></div>
+      <div class="row" id="syncRow"><button id="pairPhone" hidden>${esc(t('web_pair_phone'))}</button><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button><button id="unpair" class="danger" hidden>${esc(t('web_unpair'))}</button></div>
     </section>
     <div class="row end"><button id="closePlans">${esc(t('common_close'))}</button></div>`);
   const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
-  const cur = await host.current();
-  $<HTMLButtonElement>('saveCurrent').disabled = !cur;
-  if (!cur) $('saveCurrent').title = t('plan_err_set_start_dest');
+  // only planned routes sync (no tracks) – the heading says so. Save: greyed on an empty route, ✓ while saved and
+  // unchanged (a click still asks Save again / Save as new – the app's saveMode)
+  const sb = $<HTMLButtonElement>('saveCurrent');
+  sb.disabled = save.state === 'empty';
+  sb.dataset.state = save.state;
+  if (save.state === 'empty') sb.title = t('plan_err_set_start_dest');
+  if (save.state === 'saved') {
+    sb.innerHTML = `${icon('check', 18)}<span>${t('web_saved_as', `<b>${esc(save.title ?? t('plan_route_default_name'))}</b>`)}</span>`;
+    sb.title = t('web_saved_title', save.title ?? t('plan_route_default_name'));
+  }
   $('saveCurrent').onclick = () => { d.close(); requestSave(sync, host); };
 
   const render = async () => {
     const plans = await sync.list();
     const ul = $('planList');
+    if (!sync.status.paired) d.querySelector<AskBox>('.syncsec .confirm')?.cancel(); // ended meanwhile: nothing to ask
+    if (ul.querySelector('.confirm')) return syncRender(); // a delete question is open: keep the list as it is
     ul.innerHTML = plans.length ? '' : `<li class="muted">${esc(t('web_plans_none'))}</li>`;
     for (const p of plans) {
       const li = document.createElement('li');
@@ -84,9 +97,13 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost, pair: () => 
           render();
         }
       };
-      li.querySelector<HTMLButtonElement>('.del')!.onclick = () => confirmDelete(d, p, async () => { await sync.remove(p.id); render(); });
+      li.querySelector<HTMLButtonElement>('.del')!.onclick = () => askInPlace(li, t('web_delete_q', p.title ?? t('plan_route_default_name')),
+        t('common_delete'), () => li.querySelector('.del'), async () => { await sync.remove(p.id); await render(); $('saveCurrent').focus(); }, t('web_keep'));
       ul.append(li);
     }
+    syncRender();
+  };
+  const syncRender = () => {
     const line = syncLine(sync.status);
     const st = $('plansStatus');
     st.textContent = line.text;
@@ -100,11 +117,13 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost, pair: () => 
   d.addEventListener('close', () => off());
   $('syncNow').onclick = () => sync.syncNow();
   $('pairPhone').onclick = () => pair(); // the pairing dialog takes this one's place
-  $('unpair').onclick = () => confirmUnpair(d, async () => {
+  // the question takes the place of "Sync now / Unpair" (owner 2026-10-30: one "Unpair" at a time, above Close)
+  $('unpair').onclick = () => askInPlace($('syncRow'), t('web_unpair_q'), t('web_unpair'), () => $('unpair'), async () => {
     const err = await sync.unpair();
     await render();
     $('plansStatus').textContent = err ?? t('web_sync_unpaired');
     $('plansStatus').classList.toggle('error', !!err);
+    d.querySelector<HTMLButtonElement>('.syncsec button:not([hidden])')?.focus();
   });
   $('closePlans').onclick = () => d.close();
   await render();
@@ -164,17 +183,6 @@ function nameDialog(sync: PlanSync, host: PlanHost, cur: { code: string; title: 
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } });
 }
 
-/** Deleting loses something – one question, verb buttons. */
-function confirmDelete(parent: HTMLDialogElement, p: SavedPlan, del: () => void) {
-  const box = document.createElement('div');
-  box.className = 'confirm';
-  box.innerHTML = `<p>${esc(t('web_delete_q', p.title ?? t('plan_route_default_name')))}</p>
-    <div class="row end"><button class="keep">${esc(t('web_keep'))}</button><button class="danger primary">${esc(t('common_delete'))}</button></div>`;
-  parent.append(box);
-  box.querySelector<HTMLButtonElement>('.keep')!.onclick = () => box.remove();
-  box.querySelector<HTMLButtonElement>('.danger')!.onclick = () => { box.remove(); del(); };
-}
-
 export async function pairDialog(sync: PlanSync, page: string) {
   const d = dialog('pair', `<h2>${esc(t('web_pair_phone'))}</h2><div id="pairBody"><p class="muted">${esc(t('web_pair_preparing'))}</p></div>
     <div id="pairStatus" class="status muted"></div>
@@ -213,10 +221,11 @@ export async function pairDialog(sync: PlanSync, page: string) {
       if (!$('pairButtons').querySelector('#unpair')) {
         const b = document.createElement('button');
         b.id = 'unpair'; b.className = 'danger'; b.textContent = t('web_unpair');
-        b.onclick = () => confirmUnpair(d, async () => {
+        b.onclick = () => askInPlace($('pairButtons'), t('web_unpair_q'), t('web_unpair'), () => b, async () => {
           const err = await sync.unpair();
           $('pairStatus').textContent = err ?? t('web_sync_unpaired');
           if (!err) { $('pairBody').innerHTML = `<p>${esc(t('web_pair_not_paired'))}</p>`; b.remove(); }
+          $('closePair').focus();
         });
         $('pairButtons').prepend(b);
       }
@@ -227,14 +236,33 @@ export async function pairDialog(sync: PlanSync, page: string) {
   if (sync.status.paired && sync.status.devices.length) render(); else { await showCode(); render(); }
 }
 
-function confirmUnpair(parent: HTMLDialogElement, unpair: () => void) {
-  const box = document.createElement('div');
+type AskBox = HTMLElement & { cancel(): void };
+
+/**
+ * A question that can lose something (CLAUDE.md "Messages": verb buttons, no body that repeats them), asked in place
+ * (owner 2026-10-30, "zu viele Trennen"): the box takes the place of [row] – the buttons (or the list line) that asked –
+ * with [no] + one red [verb]. No / Escape bring [row] back and focus [back]; [verb] does it. One question at a time.
+ */
+function askInPlace(row: HTMLElement, text: string, verb: string, back: () => HTMLElement | null, act: () => void, no = t('common_cancel')) {
+  const d = row.closest('dialog')!;
+  d.querySelector<AskBox>('.confirm')?.cancel();
+  const box = document.createElement(row.tagName === 'LI' ? 'li' : 'div') as unknown as AskBox;
   box.className = 'confirm';
-  box.innerHTML = `<p>${esc(t('web_unpair_q'))}</p>
-    <div class="row end"><button class="keep">${esc(t('web_stay_paired'))}</button><button class="danger primary">${esc(t('web_unpair'))}</button></div>`;
-  parent.append(box);
-  box.querySelector<HTMLButtonElement>('.keep')!.onclick = () => box.remove();
-  box.querySelector<HTMLButtonElement>('.danger')!.onclick = () => { box.remove(); unpair(); };
+  box.setAttribute('role', 'group');
+  box.innerHTML = `<p>${esc(text)}</p>
+    <div class="row end"><button class="keep">${esc(no)}</button><button class="danger primary">${esc(verb)}</button></div>`;
+  // Escape answers "no" instead of closing the whole dialog (keydown first; the dialog's cancel event as the fallback)
+  const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); box.cancel(); } };
+  const onCancel = (e: Event) => { e.preventDefault(); box.cancel(); };
+  const end = () => { box.remove(); row.hidden = false; d.removeEventListener('keydown', onKey, true); d.removeEventListener('cancel', onCancel); };
+  box.cancel = () => { end(); back()?.focus(); };
+  d.addEventListener('keydown', onKey, true);
+  d.addEventListener('cancel', onCancel);
+  row.hidden = true;
+  row.after(box);
+  box.querySelector<HTMLButtonElement>('.keep')!.onclick = () => box.cancel();
+  box.querySelector<HTMLButtonElement>('.danger')!.onclick = () => { end(); act(); };
+  box.querySelector<HTMLButtonElement>('.keep')!.focus();
 }
 
 /** A pairing link opened in a browser (normally the phone app scans it): pair this browser instead? */

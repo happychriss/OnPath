@@ -288,6 +288,10 @@ dialog.plans .saveRow button { padding: 8px 16px; }
 .status.warning { color: var(--warn); }
 dialog .confirm { margin-top: 12px; padding: 12px; border-radius: 12px; background: var(--surface2); }
 dialog .confirm p { margin: 0 0 8px; }
+/* a question in place of the buttons / the list line that asked (plans.ts askInPlace) */
+dialog .syncsec .confirm, dialog .row + .confirm { margin-top: 8px; }
+.planlist li.confirm { display: block; border-top: none; margin: 4px 0; }
+.planlist li.confirm + li { border-top: none; }
 dialog.share .row button.danger { color: var(--error); }
 dialog.share .row button.danger.primary { color: #fff; background: var(--error); border: none; }
 dialog.pair .check { font-size: 16px; }
@@ -341,6 +345,13 @@ dialog.plans .syncsec h3 { display: flex; align-items: center; gap: 8px; margin:
 dialog.plans .syncsec h3 .ic { color: var(--green-fg); }
 dialog.plans .syncsec .row { margin-top: 8px; }
 dialog.plans .syncsec .danger { color: var(--error); }
+dialog.plans > .row.end { margin-top: 16px; } /* Close, alone at the bottom right */
+/* "Your planned routes" with the app's planned-route icon (Icons.Filled.Route in OnPathColors.Route) – only planned
+   routes sync, no tracks; Save current route below it, ✓ "Saved as …" while saved and unchanged */
+dialog.plans .listhead { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 16px; }
+dialog.plans .listhead .ic { color: var(--route); }
+dialog.plans #saveCurrent[data-state="saved"] { font-weight: 400; color: var(--fg); }
+dialog.plans #saveCurrent[data-state="saved"] .ic { color: var(--green-fg); }
 dialog.share .scanline { margin: 0 0 8px; font-weight: 600; }
 /* the phone pairing entry beside My routes (header, always there): "Pair phone" or, paired, phone + green dot + "Paired" */
 .nav button.syncbadge { position: relative; }

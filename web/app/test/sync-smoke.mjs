@@ -154,6 +154,24 @@ await menu(B, '#menuPlans');
 await B.waitForSelector('dialog.plans #unpair:not([hidden])', { timeout: 30_000 });
 check((await B.textContent('dialog.plans .syncsec')).includes('Pair with phone') && (await B.textContent('#plansStatus')).includes('Paired with')
   && await B.isVisible('dialog.plans #syncNow') && await B.isHidden('dialog.plans #pairPhone'), 'My routes → Pair with phone: "Paired with …", Sync now, Unpair');
+// the question takes the place of "Sync now / Unpair" (owner 2026-10-30: "zu viele Trennen"), above Close; Escape and
+// Cancel bring the buttons back, focus on Unpair
+await B.click('dialog.plans #unpair');
+const ask = await B.evaluate(() => {
+  const d = document.querySelector('dialog.plans'), box = d.querySelector('.syncsec .confirm');
+  const close = d.querySelector('#closePlans');
+  return { inSection: !!box, aboveClose: !!box && !!(box.compareDocumentPosition(close) & Node.DOCUMENT_POSITION_FOLLOWING),
+    rowHidden: d.querySelector('#syncRow').hidden, unpairs: [...d.querySelectorAll('button')].filter((b) => b.getClientRects().length && b.textContent.trim() === 'Unpair').length,
+    text: box?.querySelector('p').textContent, buttons: [...(box?.querySelectorAll('button') ?? [])].map((b) => b.textContent.trim()), focus: document.activeElement?.textContent.trim() };
+});
+check(ask.inSection && ask.aboveClose && ask.rowHidden && ask.unpairs === 1 && ask.text === 'Routes stop syncing. They stay in this browser and on the phone.'
+  && ask.buttons.join() === 'Cancel,Unpair' && ask.focus === 'Cancel', `Unpair asks in place of Sync now / Unpair, above Close, one "Unpair" (${JSON.stringify(ask)})`);
+await B.keyboard.press('Escape');
+check(await B.isVisible('dialog.plans') && await B.isVisible('dialog.plans #syncNow') && await B.locator('dialog.plans .confirm').count() === 0
+  && await B.evaluate(() => document.activeElement?.id) === 'unpair', 'Escape: the question goes, My routes stays, Sync now / Unpair back (focus on Unpair)');
+await B.click('dialog.plans #unpair');
+await B.click('dialog.plans .confirm .keep');
+check(await B.isVisible('dialog.plans #syncNow') && await B.locator('dialog.plans .confirm').count() === 0, 'Cancel: Sync now / Unpair back');
 await B.click('dialog.plans #unpair');
 await B.click('dialog.plans .confirm .danger');
 await B.waitForFunction(() => document.getElementById('plansStatus')?.textContent?.includes('Unpaired'), null, { timeout: 30_000 }).catch(() => {});

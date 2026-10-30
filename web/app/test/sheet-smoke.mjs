@@ -212,14 +212,14 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     'empty plan: Share icon shown but greyed (owner 2026-10-30), no big button');
   check(await page.getAttribute('#share', 'title') === 'Set a start and destination first' && await page.getAttribute('#share', 'aria-label') === 'Set a start and destination first',
     'empty plan: Share says "Set a start and destination first"');
-  // header (owner 2026-10-30): "OnPath Planner" as one name; every icon with its text; Save greyed on an empty route
+  // header (owner 2026-10-30): "OnPath Planner" as one name; every icon with its text; no Save (⋯ and My routes have it)
   const brand = await page.evaluate(() => { const w = document.querySelector('.wordmark'), p = document.querySelector('.product');
     return { text: w.textContent.replace(/\s+/g, ' ').trim(), same: getComputedStyle(w).fontSize === getComputedStyle(p).fontSize, upper: getComputedStyle(p).textTransform }; });
   check(brand.text === 'OnPath Planner' && brand.same && brand.upper === 'none', `header: "OnPath Planner" in one size (${JSON.stringify(brand)})`);
-  check(await page.isVisible('#header #menuSavePlan') && await page.isDisabled('#menuSavePlan'), 'header: Save route beside My routes, greyed on an empty route');
+  check(!(await page.$('#header #menuSavePlan')), 'header: no Save entry (owner 2026-10-30: ⋯ → Save route, My routes → Save current route)');
   const labels = () => page.$$eval('#mainMenu button:not([hidden])', (bs) => bs.map((b) => { const sp = b.querySelector('span'); return { id: b.id, label: !!sp && sp.getClientRects().length > 0, icon: !!b.querySelector('.ic'), title: b.title }; }));
   let l = await labels();
-  check(l.length >= 5 && l.every((x) => x.icon && x.label), `header at 1440 px: every icon has its text (${l.map((x) => x.id).join(', ')}; without: ${JSON.stringify(l.filter((x) => !x.icon || !x.label))})`);
+  check(l.map((x) => x.id).join() === 'menuPlans,syncBadge,menuImportGpx,menuAbout' && l.every((x) => x.icon && x.label), `header at 1440 px: 4 entries, every icon has its text (${l.map((x) => x.id).join(', ')}; without: ${JSON.stringify(l.filter((x) => !x.icon || !x.label))})`);
   check((await page.textContent('#syncBadge')).trim() === 'Pair phone' && await page.isHidden('#syncBadge .syncdot'), 'header: not paired, the phone entry says "Pair phone" (no dot)');
   await page.waitForSelector('#syncBadge[aria-label]', { state: 'attached', timeout: 60_000 }); // sync ready, the entry follows it
   // the paired status, for the look only: the page's own first sync (sync.init → syncSoon → refresh) may still set
@@ -230,7 +230,7 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     return document.querySelector('#syncBadge .lbl')?.textContent === 'Paired'; }, null, { timeout: 10_000, polling: 200 }).catch(() => {});
   check((await page.textContent('#syncBadge')).trim() === 'Paired' && await page.isVisible('#syncBadge .syncdot'), 'header: the paired status says "Paired" with the green dot');
   l = await labels();
-  check(l.length >= 5 && l.every((x) => x.icon && x.label), 'header at 1440 px, paired: every icon has its text');
+  check(l.length === 4 && l.every((x) => x.icon && x.label), 'header at 1440 px, paired: 4 entries ("Paired"), every icon has its text');
   await page.setViewportSize({ width: 1000, height: 800 });
   l = await labels();
   check(l.every((x) => x.icon && !x.label && x.title), 'header at 1000 px: icons only, each with its title');

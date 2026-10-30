@@ -72,7 +72,8 @@ check(/Vellau/.test(pts) && /Ifinger/.test(pts), 'found places are named stops i
 check((await page.evaluate(() => location.hash)).length > 10, 'plan with pinned, named places in the link');
 await page.screenshot({ path: shot });
 // Save proposes a name like the app (RouteNamer: the places the stops came from)
-await page.click('#menuSavePlan');
+await page.click('#sheetMenuBtn');
+await page.click('#sheetSave');
 await page.waitForFunction(() => document.getElementById('saveTitle')?.value, null, { timeout: 30_000 }).catch(() => {});
 const proposed = await page.inputValue('#saveTitle');
 console.log('proposed name:', proposed);

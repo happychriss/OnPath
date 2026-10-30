@@ -1,5 +1,5 @@
 // Screenshots of the page layout (header – not paired and paired –, toolbar, the sheet's three steps, place card, activity drop-down, Map content,
-// My routes) at desktop (1440×900) and phone (390×844) width, for looking at – nothing is checked. Needs the cell store.
+// My routes – paired and the unpair question on desktop) at desktop (1440×900) and phone (390×844) width, for looking at – nothing is checked. Needs the cell store.
 // Usage: node test/ui-shots.mjs [segmentsDir] [mapStoreDir] [outDir]
 import path from 'node:path';
 import fs from 'node:fs';
@@ -48,6 +48,18 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
   await page.waitForSelector('dialog.plans[open] .syncsec');
   await page.screenshot({ path: path.join(out, `${name}-myroutes.png`) });
   await page.click('#closePlans');
+  if (name === 'desktop') { // paired (for the look only, as the header above): Sync now / Unpair, then the question in their place
+    await page.evaluate(() => { const s = window.__sync; s.status = { ...s.status, paired: true, lastSync: Date.now(), devices: [{ name: 'Pixel 8' }] }; s.changed(); });
+    await page.click('#menuPlans');
+    await page.waitForSelector('dialog.plans[open] #unpair:not([hidden])', { timeout: 10_000 }).catch(() => {});
+    await page.screenshot({ path: path.join(out, `${name}-myroutes-paired.png`) });
+    await page.click('dialog.plans #unpair').catch(() => {});
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: path.join(out, `${name}-myroutes-unpair.png`) });
+    await page.keyboard.press('Escape');
+    await page.click('#closePlans');
+    await page.evaluate(() => { const s = window.__sync; s.status = { ...s.status, paired: false, lastSync: null, devices: [] }; s.changed(); });
+  }
   await page.click('#activityChip');
   await page.waitForTimeout(200);
   await page.screenshot({ path: path.join(out, `${name}-activity.png`) });
