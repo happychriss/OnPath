@@ -84,5 +84,6 @@ MAPS_QUOTA_BROWSER_MONTH = "60"
 MAPS_QUOTA_IP_DAY = "40"
 MAPS_QUOTA_GLOBAL_DAY = "200"
 # New plan-sync mailboxes (pairings) per IP per day (src/sync.js; counted in map_quota as a daily salted hash, like
-# the map-area quota). A second device joining an existing pairing does not count.
-SYNC_NEW_PER_IP_DAY = "5"
+# the map-area quota). A second device joining an existing pairing does not count. Test site: 50 (owner 2026-10-30 –
+# with A-017 every "Pair phone" claims a fresh mailbox, so testing pairing hit 5 quickly); production: decide at launch.
+SYNC_NEW_PER_IP_DAY = "50"

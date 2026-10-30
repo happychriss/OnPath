@@ -213,7 +213,7 @@ Header `Authorization: Bearer <token>` on every call.
   is the later of them. A browser on an old host gets no `appSeen` and shows only when it synced itself.
 - **Schema:** `migrations/0001_sync.sql` (`mailbox`: id, token_hash, rev, created, seen, deleted; `item`: mailbox,
   id, rev, blob). D1 database `onpath-sync-test`, EU jurisdiction.
-- **New mailboxes per IP per day:** at most `SYNC_NEW_PER_IP_DAY` (wrangler var, default 5). Only a `POST` that
+- **New mailboxes per IP per day:** at most `SYNC_NEW_PER_IP_DAY` (wrangler var, default 5; the test site sets 50 since A-017, owner 2026-10-30). Only a `POST` that
   creates a mailbox counts – a second device joining an existing pairing (its `POST` answers 200) does not; the
   `GET` 404 → `POST` claim of a not-yet-claimed mailbox does (it creates one). Counted in the map-area quota table
   (`map_quota`, migration 0002): `k = "sync:<SHA-256 of MAP_KEY | day | IP>"`, period = the UTC day – counts only,
