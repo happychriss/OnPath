@@ -348,8 +348,8 @@ pairing uploaded everything that was in the browser – a friend's PC mixed its 
 | The same phone again → its folder comes back with unsaved changes and marks | the phone (paired) redirects with JOIN to its one mailbox → the folder with that device id; its ledger is read again from `since = 0` (`syncRebase`: same mailbox → everything kept; a new mailbox → only the unsaved changes kept, with base 0, the rest comes back from the phone) |
 | Phone → browser by itself | pull triggers §7 |
 | Browser → phone only with Save | `round(pair, all)`: without Save only the own hello is pushed (`syncOutboxOf` with one id); Save → `sendAll` pushes the folder's outbox. Rename, delete, GPX import, saving a route only make the ledger dirty |
-| Save bold + "Not saved on the phone yet" | `status.pending` = the folder's dirty plans / tracks / tombstones (`syncState.unsaved`) > 0, or the shown route changed (`saveState`) |
-| Planned before pairing stays in Without phone, never uploaded | no `forget()` / no "mark all dirty"; **Copy to ‹phone›** copies one route with a new id into the phone folder (unsaved) |
+| Save dark (§14.6) | `status.pending` = the folder's dirty plans / tracks / tombstones (`syncState.unsaved`) > 0, or the shown route new / changed (`saveState`) |
+| Planned without a phone → the next paired phone, waiting (§14.6 rule 2) | `adoptNone(key)` when a folder opens by pairing (and once on load for a store paired before §14.6): every route / track of Without phone goes into the phone's folder with the same id, unsent (`syncSave` / `syncSaveTrack`), Without phone is emptied; its open route stays open (the draft moves along). Never uploaded by itself – Save sends it. (The A-017 "Copy to ‹phone›" is gone.) |
 | A friend's PC | Pair phone always makes a new code; another phone opens its folder, the open one closes untouched (no DELETE); the friend's phone redirects (JOIN) or pairs directly later and its folder is back |
 | Laptop + desktop | each pairs itself; the phone redirects the second (JOIN); each has its own copy of the folder |
 | Marks | an item new or changed by a pull (not changed last by this browser – the phone's own and another browser's saves) → "New from the phone" / "Changed on the phone" until opened; the first fill of a folder (since = 0) is not marked |
@@ -357,7 +357,7 @@ pairing uploaded everything that was in the browser – a friend's PC mixed its 
 | Delete | browser + Save → the phone's recycle bin (app); phone → gone here |
 | Imported GPX | kept as a TRACK item (`TrackCode.fit`, the shared code) in the open folder, sent with Save; opened from My routes it shows like an imported file (`syncTrackGpx` → the app's GpxWriter → the import) |
 | 410 / 403 (Unpair on the phone) | the folder closes like Unpair, quiet line "The connection was ended on the phone." / "Die Verbindung wurde am Handy getrennt." |
-| 507 | amber "Mailbox full – too many saved routes. Delete some on the phone, then save again." beside Save; everything stays unsaved in the folder |
+| 507 | Save amber, its tooltip "Mailbox full – too many saved routes. Delete some on the phone, then save again."; everything stays unsaved in the folder |
 | Two phones with the same name | "Pixel 8 · paired 30 Oct" / "Pixel 8 · verbunden 30. Okt." |
 
 ### 14.2 Pairing in the browser
@@ -379,13 +379,19 @@ other hello (or `mb:<mailbox>` until the phone says hello, then re-keyed).
 
 `syncHelloAs` (hello with role), `syncOutboxOf` (only some ids), `syncPeek` (a page's JOIN and hellos with roles),
 `syncJoinBlob` (the JOIN a phone writes – for tests and as the reference), `syncHelloId`, `syncRebase`,
-`syncSaveTrack`, `syncTrackFit`, `syncTrackGpx`; `syncList` gives `kind`, `track`, `device`; `syncDevices` the device
+`syncSaveTrack`, `syncTrackFit`, `syncTrackGpx`; `syncList` gives `kind`, `track`, `device`, `dirty` (not in the mailbox in
+this version – bold) and `onPhone` (a version is in the mailbox – 📱); `syncDevices` the device
 id; `syncState` `unsaved`. The JOIN / role format is main's shared `SyncItem.pairCode` / `role` and `SyncJoin`
 (f94b5050) – the web has no copy of it. JVM test `web/engine/src/test/.../WebSyncJoinTest.kt` pins the bytes of §5.1.
 
 ### 14.4 Tests
 
-`web/app/test/sync-smoke.mjs` – desktop A, laptop L and fake phones: the app's shared sync code in the Wasm engine of
+`web/app/test/sync-smoke.mjs` (rewritten for §14.6 – 85 checks: Save "Save" / "Save to phone", dark / light ✓ / amber,
+no hint; the Save field: the same name overwrites, a new name adds a route and the old stays, Enter / Escape / a click
+beside it, only waiting changes → no field; a fresh browser's two routes join the phone waiting (bold, 🖥, Save dark,
+nothing sent) → one click → 🖥 📱; the phone's routes 📱 without marks; ⋮ Rename / Export GPX / Delete; another phone's
+folder invisible, Save not dark; the Phone window small. The A-017 description below is kept for the machinery.)
+Before: desktop A, laptop L and fake phones: the app's shared sync code in the Wasm engine of
 an idle page, driven from Node with the real crypto against the host's mailbox (hello role 1, routes, rename, delete,
 JOIN redirect, "Unpair?" = DELETE). 67 checks: Without phone → pairing opens the phone's folder, nothing uploaded;
 the Phone window (no unpair question, no Show code again, three states); unsaved edits survive a reload, a pull sends
@@ -401,7 +407,7 @@ unchanged.
 - **Phone reinstalled:** a new device id ⇒ a new folder; the old one stays closed, its unsaved changes reachable only
   by removing it. Proposal: the device id into the Android backup (A-017 app point 6), or allow "Copy to ‹phone›" from
   a closed folder too.
-- "Copy to ‹phone›" is offered for routes; an imported track from Without phone is not copied (import it again).
+- ~~"Copy to ‹phone›"~~ – gone with §14.6 rule 2 (Without phone joins the next paired phone, tracks too).
 
 ### 14.6 What the page shows – the owner's display rules (2026-10-30, final; replaces the A-017 UI wording)
 
@@ -444,8 +450,26 @@ the left; at phone width Save and Phone stay in the header, the rest goes behind
    planned after unpairing join my phone as waiting – nothing goes without my click.)
 3. Delete of a route with 📱 → on the next save it goes to the phone's recycle bin.
 4. Reload / closing the tab never loses anything unsaved.
+5. **Save as in Word** (owner 2026-10-30): a click on Save / "Aufs Handy sichern" opens a small field right under the
+   button (a popover, no dialog): the name – the open saved route's, or the proposal Start → Destination – selected,
+   and one button "Speichern" / "Aufs Handy sichern". Enter confirms, Escape or a click beside it cancels. **Same
+   name:** overwrites the open saved route. **New route:** a new entry with that name. **A saved route under a changed
+   name:** like "Save as" – a NEW route with the new name, the old one stays unchanged; the new one is the open route
+   from then on. Never a question "overwrite or new". **Nothing new for the open route, only waiting changes** (routes
+   from before pairing, a rename, a delete, a GPX import): the click sends at once, no field. Rename without saving:
+   ⋮ in My routes. The sheet's ⋯ → Save route opens the same field (no Save / Save as new dialog, no name dialog).
 
 **Phone window – small:** state with dot + one sentence; not paired: "Handy verbinden" → QR code, 3 steps, check
 number; paired: "Jetzt abgleichen", "Trennen" (no question). "Wie funktioniert das?" expands the explanation and the
 privacy line in place. At the bottom, small: "Anderes Handy verbinden", "Routen von ‹Handy› aus diesem Browser
 entfernen" (closed folders).
+
+**Built (cloud, 2026-10-30):** `main.ts` `saveEntry` / `headerSave` / `syncBadge` (header right, `#headActs`),
+`plans.ts` `myPlansDialog` (one list; `.waiting` = paired + `dirty`, 🖥 = not paired or `mine`, 📱 = paired + `onPhone`,
+`.current` = the open route; ⋮ menu placed fixed at its button), `phoneDialog`, `phonePill`, `savePopover` (rule 5),
+`appDate` (the app's `common_date` pattern, "30. Okt 2026"); `sync.ts` `adoptNone` (rule 2); engine `syncList` +
+`dirty`, `onPhone` (`WebSyncJoinTest`). Light green of the open route `--current`, GPX purple `--gpx` (the app's
+`OnPathColors.Gpx`). The marks' data stays in the store (`fach:<key>:marks`) but is not shown. Delete in the ⋮ menu is
+not red (red only for errors). Two choices not in the rules: the light ✓ Save opens the field too when nothing waits (a
+"Save as" of an unchanged route); the ⋮ → Export GPX of a route opens it and exports once it is planned (a track
+downloads at once, named as the app's `GpxWriter.fileName`).
