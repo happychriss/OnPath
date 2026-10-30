@@ -587,7 +587,23 @@ the blue dot and no word why. "When there are waits, the user must know why … 
 - a region package's relief (z7–9, §13 #15) goes on magnified above zoom 9 where no cell draws (`region-relief`
   without maxzoom, under the cover) – the app stops it at 10 because its cells are installed there. Its vector data is
   not overzoomed (would need copies of the detailed layers from a second source – open decision below);
-- a cell file that cannot be read (404, broken; contours are optional) is left out and warned once, like a package's.
+- **a cell whose map fails** (`cells.ts` `failed`, owner report 2026-10-30: Hilden showed POIs on beige, no streets):
+  pmtiles keeps a failed header for good and maplibre keeps a failed tile as empty, so one 429 used to cost the cell's
+  streets for the whole visit. Now a busy answer (429 / 5xx / network, also an expired login) drops the archive and tries
+  again after 5, 15, 30, 60, 120, 300 s (a 429 at least 60 s – the host's Retry-After), then reloads that layer's tiles;
+  after 6 tries, or when the file is gone (404, wrong bytes) and `current.json` read once more still names the same
+  version, the file is left out until the page is reloaded. A new version in `current.json` (the cell rebuilt while the
+  page was open) → the page switches to it. Many tiles failing at once count as one failure; a busy `current.json` is
+  not asked again before its backoff (no request per tile). While a cell's base does not draw it leaves `found` (the
+  overview shows there) and the map strip says it: grey `maps_err_unreachable` ("Map server not reachable – trying
+  again.") while it is tried again, red `web_maps_cell_failed` ("… could not be loaded – the overview map is shown.
+  Reload the page to try again.") when left out. Test: `cells-smoke.mjs` (404, 503, 429, new generation, busy
+  current.json, slow answers, diagnostics).
+- **Diagnostics** (`diag.ts`, English): every recovered failure goes to the page's problem log once (deduped, counted),
+  also uncaught errors, maplibre errors and main-thread blocks over 1 s (Chrome's long-task timing – a frozen page leaves
+  a trace). To send it: open the browser console (F12) and type `__diag()` – the report is copied to the clipboard; or
+  add `?debug` to the address for a "Copy diagnostics" button on the map. It holds the page address (no plan), the
+  browser, the rounded map view, the cells' state and the problems.
 
 **Every wait said** (CLAUDE.md "Messages": a spinner where the user started it, INFO grey, ERROR red with a way out):
 
@@ -700,7 +716,7 @@ Cloudflare Access stays on until the owner switches it off (steps below).
 ### 18.3 Cost protection (host)
 | What | Limit | Where |
 | --- | --- | --- |
-| Map files `/data/` | 600 requests / min per IP (a map view ≈ 100 tile ranges) | `DATA_RATE` (Workers rate limit) |
+| Map files `/data/` | 2400 requests / min per IP (a map view ≈ 100 tile ranges; 600 is the likely cause of the missing streets in the owner report 2026-10-30) | `DATA_RATE` (Workers rate limit) |
 | Routing data `/segments/` | 30 requests / min per IP (a plan needs a few 2–10 MB parts) | `SEGMENTS_RATE` |
 | Map-area calls `/maps/` | 20 / min per IP, 120 / min all (existing) | `MAPS_RATE`, `MAPS_RATE_ALL` |
 | **New map areas** | 15 per browser per day, 60 per month; 40 per IP per day; 200 per day for everyone | `maps.js` quotas, D1 table `map_quota` in the sync database (migration 0002) |

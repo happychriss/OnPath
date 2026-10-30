@@ -141,6 +141,10 @@ jobs:
         working-directory: web/app
         run: node test/areas-smoke.mjs $GITHUB_WORKSPACE/segments
 
+      - name: A cell whose map fails (404, busy, 429, new generation, slow) – bounded tries, overview stays, strip says it, diagnostics
+        working-directory: web/app
+        run: node test/cells-smoke.mjs $GITHUB_WORKSPACE/segments
+
       - name: German first (browser language, switch, engine texts, website links, the one line about the app, noindex)
         working-directory: web/app
         run: node test/lang-smoke.mjs $GITHUB_WORKSPACE/segments

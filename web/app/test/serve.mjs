@@ -12,10 +12,12 @@ const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/ja
  * [sync] = (Request) => Promise<Response> for /sync/ (the host's mailbox on a fake D1, see sync-smoke.mjs).
  * [maps] = the same for /maps/ (map areas on demand: the host's proxy with a fake doorman, see areas-smoke.mjs).
  * [log] = an array that gets every request path (what the page fetched).
+ * [intercept] = (req, res) => true when it answered the request itself (faults: 404, 429, slow – see cells-smoke.mjs).
  */
-export function serve({ dist, segments, mapDir = null, dataDir = null, extra = {}, port = 0, sync = null, maps = null, log = null }) {
+export function serve({ dist, segments, mapDir = null, dataDir = null, extra = {}, port = 0, sync = null, maps = null, log = null, intercept = null }) {
   const server = http.createServer((req, res) => {
     log?.push(req.url);
+    if (intercept?.(req, res)) return;
     if (sync && req.url.startsWith('/sync/')) { forward(sync, req, res); return; }
     if (maps && req.url.startsWith('/maps/')) { forward(maps, req, res); return; }
     const url = decodeURIComponent(new URL(req.url, 'http://x').pathname);

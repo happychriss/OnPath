@@ -32,12 +32,16 @@ export async function overviewStyle(base: string): Promise<StyleSpecification | 
   return s;
 }
 
-/** Keeps the cover on the cells found (z10 tiles "x/y"): there the detailed map hides the magnified overview. */
+/**
+ * Keeps the cover on the cells found (z10 tiles "x/y"): there the detailed map hides the magnified overview. A cell
+ * whose map stops drawing leaves [found] (cells.ts failed) and the overview shows there again.
+ */
 export function followCover(map: maplibregl.Map, found: Set<string>) {
-  let shown = -1;
+  let shown: string | null = null; // the style's placeholder cover is replaced on the first update
   const update = () => {
-    if (found.size === shown) return;
-    shown = found.size;
+    const now = [...found].sort().join(' ');
+    if (now === shown) return;
+    shown = now;
     const src = map.getSource('detail-cover') as GeoJSONSource | undefined;
     if (!src) return;
     src.setData({ type: 'FeatureCollection', features: [...found].map((k) => {

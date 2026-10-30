@@ -81,6 +81,7 @@
     <!-- map areas (the strip) -->
     <string name="web_maps_overview_only">Overview only – set a point here to load the detailed map.</string>
     <string name="web_maps_not_on_web">The detailed map for this area is not available on the web yet – the overview map is shown.</string>
+    <string name="web_maps_cell_failed">The detailed map for this area could not be loaded – the overview map is shown. Reload the page to try again.</string>
     <string name="web_maps_quota">Enough new map areas for today in this browser. The OnPath app loads every area – or try again tomorrow.</string>
     <string name="web_maps_quota_all">The planner has prepared many new map areas today. Try again tomorrow – the OnPath app loads every area.</string>
 

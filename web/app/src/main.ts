@@ -35,6 +35,7 @@ import { MapAreas, type MapTexts } from './areas';
 import { t, tp, lang, languages, switchLanguage, number, distance, locale } from './i18n';
 import { appHint } from './apphint';
 import { setupSheetSteps } from './sheetstep';
+import { installDiag, addDiagSection, problem } from './diag';
 import './fonts/manrope.css';
 import './style.css';
 import manropeLicence from './fonts/manrope/OFL.txt?url';
@@ -177,6 +178,7 @@ const useCells = params.get('map') !== 'folder' && import.meta.env.VITE_MAP !== 
 const cells = new Cells(params.get('data') ?? base + 'data/');
 const mapFolder = params.get('data') ?? base + 'map/'; // folder mode only
 if (useCells) maplibregl.addProtocol('cell', cells.protocol);
+installDiag(DEBUG); // the problem log, window.__diag(), ?debug → "Copy diagnostics" (diag.ts)
 const map = new maplibregl.Map({
   // start view: ?at=lon,lat,zoom, else the build's VITE_START (preview), else Meran
   container: 'map', style: await loadStyle(), center: [startAt[0], startAt[1]], zoom: startAt[2],
@@ -193,6 +195,13 @@ $('footer').prepend(new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 90 }
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right'); // zoom ± (wide screens; the compass is in the toolbar)
 if (useCells) map.on('moveend', () => cells.loadPois(map));
 if (useCells) followCover(map, cells.found); // the overview hides where the cells' detailed map is
+if (useCells) cells.attach(map); // a failed cell file is tried again by reloading its source (cells.ts)
+addDiagSection(() => {
+  const c = map.getCenter();
+  return `map: ${c.lng.toFixed(3)},${c.lat.toFixed(3)} z${map.getZoom().toFixed(1)}, style loaded ${map.isStyleLoaded()}, tiles loaded ${map.areTilesLoaded()}` +
+    (useCells ? '\n' + cells.diag() : '') + `\nmap strip: ${$('mapnotes').innerText.replace(/\n/g, ' | ') || '-'}`;
+});
+map.on('error', (e) => { problem('map', 'map error', e.error); console.error(e.error); }); // maplibre's own; logged as before
 if (useCells) followPackages(map, cells.packages); // region packages (z7–9): the overview's labels left out there
 map.on('load', () => {
   if (useCells) cells.loadPois(map);
@@ -282,6 +291,16 @@ const notices = new MapNotices($('mapnotes'));
 const mapTexts: Promise<MapTexts> = ready.then(async (ok) => (ok ? JSON.parse(await engine.call('mapTexts')) as MapTexts : {}))
   .catch((e) => { console.warn('map texts not loaded', e); return {}; });
 const areas = useCells ? new MapAreas(map, cells, params.get('mapsApi') ?? base + 'maps/v1/', mapTexts, notices) : null;
+// a cell in view whose detailed map does not load (cells.ts): grey while it is tried again, red when it is left out –
+// the overview stays visible there either way (never a blank map)
+function showCellTrouble() {
+  const s = useCells ? cells.baseTrouble(map) : null;
+  const now = notices.get('cells');
+  const want = s === 'broken' ? t('web_maps_cell_failed') : s === 'busy' ? t('maps_err_unreachable') : null;
+  if ((now?.title ?? null) === want) return;
+  notices.set('cells', want ? { kind: s === 'broken' ? 'error' : 'info', title: want } : null);
+}
+if (useCells) { cells.onChange = showCellTrouble; map.on('moveend', showCellTrouble); }
 (window as unknown as { __areas: MapAreas | null }).__areas = areas; // for the browser tests
 // the map's tiles still loading 400 ms after it stopped: "Loading the map for your area" with a spinner, until idle
 let loadingTimer = 0;

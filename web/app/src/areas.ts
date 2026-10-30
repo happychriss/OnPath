@@ -94,7 +94,7 @@ export class MapAreas {
   /** T1 / T2 / T3: the area of a point set, a search result shown, the own position. */
   async wantPoint(lat: number, lon: number, why: Why) {
     const id = cellOf(lat, lon);
-    if (await this.cells.exists(...xy(id))) return;
+    if ((await this.cells.exists(...xy(id))) !== false) return; // built, or not known now (server busy): nothing asked
     this.request([id], 'point', why, id);
   }
 
@@ -103,7 +103,7 @@ export class MapAreas {
     const ids: string[] = [];
     for (const [la, lo] of line) { const id = cellOf(la, lo); if (!ids.includes(id)) ids.push(id); if (ids.length >= MAX_CORRIDOR) break; }
     const built = await Promise.all(ids.map((id) => this.cells.exists(...xy(id))));
-    const missing = ids.filter((_, i) => !built[i]);
+    const missing = ids.filter((_, i) => built[i] === false);
     if (missing.length) this.request(missing, 'corridor', 'planned', null);
   }
 
@@ -115,6 +115,7 @@ export class MapAreas {
     this.cells.exists(...xy(id)).then((there) => {
       const now = this.map.getCenter();
       if (cellOf(now.lat, now.lng) !== id) return; // moved on meanwhile
+      if (there == null) return; // not known now (server busy): the cells' own line says so
       this.centreAbsent = !there;
       this.restAbsent = there || this.states.has(id) || !this.available ? null : id;
       this.show();

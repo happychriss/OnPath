@@ -73,6 +73,7 @@
 
     <string name="web_maps_overview_only">Nur Übersicht – setze hier einen Punkt, dann lädt die Detailkarte.</string>
     <string name="web_maps_not_on_web">Die Detailkarte für dieses Gebiet gibt es im Web noch nicht – die Übersichtskarte wird gezeigt.</string>
+    <string name="web_maps_cell_failed">Die Detailkarte für dieses Gebiet konnte nicht geladen werden – die Übersichtskarte wird gezeigt. Lade die Seite neu, um es noch einmal zu versuchen.</string>
     <string name="web_maps_quota">Für heute genug neue Kartengebiete in diesem Browser. Die OnPath-App lädt jedes Gebiet – oder versuch es morgen wieder.</string>
     <string name="web_maps_quota_all">Der Planer hat heute schon viele neue Kartengebiete vorbereitet. Versuch es morgen wieder – die OnPath-App lädt jedes Gebiet.</string>
 

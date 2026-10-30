@@ -14,8 +14,8 @@ export interface Notice {
   close?: { label: string; onClose: () => void };
 }
 
-/** Slots in their order on screen: the position, then the map loading, then the map areas. */
-const ORDER = ['locate', 'loading', 'areas'] as const;
+/** Slots in their order on screen: the position, then the map loading, a cell whose map fails, then the map areas. */
+const ORDER = ['locate', 'loading', 'cells', 'areas'] as const;
 export type Slot = (typeof ORDER)[number];
 
 export class MapNotices {
