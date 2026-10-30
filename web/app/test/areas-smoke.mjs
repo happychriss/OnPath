@@ -17,7 +17,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 import { serve } from './serve.mjs';
-import { writeFakePackage } from './fake-package.mjs';
+import { writeFakePackage, writeFakeCell } from './fake-package.mjs';
 import { handleMaps } from '../../host/src/maps.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -104,9 +104,8 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
     const ids = u.searchParams.get('ids').split(',');
     polls++;
     if (polls >= 2) { // built: the bucket gets the cell's current.json (the page reads the files in place)
-      const dir = path.join(store, 'cells/f2/10', String(cellX), String(cellY));
-      fs.mkdirSync(path.join(dir, 'web-test-s7'), { recursive: true });
-      fs.writeFileSync(path.join(dir, 'current.json'), JSON.stringify({ version: 'web-test-s7' }));
+      // with real (fake) files: an empty version would rightly be reported as "could not be loaded" (cells.ts)
+      writeFakeCell(store, cellX, cellY, 'web-test-s7');
       return Response.json({ cells: ids.map((id) => ({ id, state: 'ready', version: 'web-test-s7' })), poll_s: 60 });
     }
     return Response.json({ cells: ids.map((id) => ({ id, state: 'building', step: 'base', progress: 0.4, eta_s: 110 })), poll_s: 5 });
