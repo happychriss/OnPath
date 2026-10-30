@@ -50,6 +50,12 @@ the git log.
   When should the way back skip the next route point (much closer to the one after) – or ask? Work from real cases:
   the owner's ride of 2026-10-28 (left the plan at km 0.5–0.8 and 6.0–6.8, up to 380 m) and routes the owner uploads.
   Idea: skip when the detour is far longer and the point is not POI-pinned / named; ask only when it might matter.
+- **[desktop] Smarter turn cues on the bike + map wake 20 s (owner decisions 2026-10-30)** – vibration: (1) lead by
+  time ~8 s at current speed (min 30 m, max 100 m) instead of a fixed 80 m; (2) turns within ~12 s of each other → one
+  cue before the first; (3) cue only where you would go wrong without it – no cue when the route follows the street /
+  the clearly straightest branch, cue on clear turns and forks with similar branches (BRouter voice hints carry the
+  other branches). Not chosen: signed cycle routes. Smart screen: full map **20 s** before every turn (at least 100 m)
+  instead of 50 s (the rest view already shows the arrow).
 - **Smart screen while cycling – built (e6ee6ed), measure + ride** – rest view for bike activities (owner decisions
   2026-10-30). Still: Pixel power rails A/B on a 10-min demo ride (Always on vs Smart), the owner rides with it.
   From `docs/design/battery-audit.md` still open: slower GPS with the screen off, frozen track + tail.
