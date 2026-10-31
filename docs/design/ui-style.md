@@ -56,8 +56,8 @@ Nothing a hiker must read is below 14. No hand-set `fontSize =` in `ui/` (`FontS
   the verb: "Off route – re-plan?" → Yes).
 - **One primary button** per box / sheet: filled `Green` with white text. The others are green text buttons.
 - Label style `labelLarge` (16 sp); the primary one bold.
-- **Icon row with labels** (the plan sheet's ✕ Close plan · ⇅ Reverse · ↻ Round trip, owner 2026-10-31): small icons
-  (24 dp) with their short label under each in `labelMedium` (14 sp) – never icon-only; each ≥ 48 dp, spread evenly; a
+- **Icon row with labels** (the plan sheet's ✕ Close · ⇅ Reverse · ↻ Round trip, owner 2026-10-31): small icons
+  (20 dp) with their short label beside each in `labelMedium` (14 sp) – never icon-only; each ≥ 48 dp, spread evenly; a
   word is never cut – with a large phone font the row wraps onto a second line. Greyed (38 %) when it cannot be used.
 - **Dot on ☰**: a 12 dp dot with a white ring at the button's upper right – **green** (`Green`) while the plan has
   unsaved changes (Save route is the top item), **amber** (`Warn`, wins) when the browser sync needs a look.

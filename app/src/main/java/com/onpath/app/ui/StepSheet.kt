@@ -86,13 +86,32 @@ class StepSheetState internal constructor(stepCount: Int, initialStep: Int) {
     internal val stops = mutableStateListOf<Float>().apply { repeat(stepCount) { add(-1f) } }
     internal var bodyH by mutableFloatStateOf(0f)
     internal var barH by mutableFloatStateOf(0f)
+    /** The opaque strip under the bar (navigation bar + a little air): there in every step. */
+    internal var footH by mutableFloatStateOf(0f)
+    /**
+     * Steps below this show no bottom bar: the bar slides in from under the sheet's bottom edge while the sheet grows
+     * from step barFrom - 1 to barFrom (the plan sheet's rolled-up row has its own small Start button).
+     */
+    internal var barFrom by mutableIntStateOf(0)
     internal var bodyCoords: LayoutCoordinates? = null
     internal val markers = arrayOfNulls<Pair<LayoutCoordinates, () -> Float>>(stepCount)
 
-    /** Sheet height of step [i] at rest: the body down to its stop + the bottom bar. */
+    /** Sheet height of step [i] at rest: the body down to its stop + the bottom bar (from step [barFrom]) + the foot. */
     fun natural(i: Int): Float {
         val stop = if (i >= stops.lastIndex) bodyH else stops[i].takeIf { it >= 0f } ?: bodyH
-        return minOf(stop, bodyH) + barH
+        return minOf(stop, bodyH) + footH + if (i >= barFrom) barH else 0f
+    }
+
+    /**
+     * How much of the bottom bar shows now, 0..1: 0 at step barFrom - 1 and below, 1 from step barFrom on, in between
+     * with the sheet's height (finger or spring). Read it only in layout / draw (graphicsLayer), never in composition.
+     */
+    fun barShown(): Float {
+        if (barFrom <= 0) return 1f
+        val lo = natural(barFrom - 1)
+        val hi = natural(barFrom)
+        if (hi <= lo + 0.5f) return if (shown() >= hi) 1f else 0f
+        return ((shown() - lo) / (hi - lo)).coerceIn(0f, 1f)
     }
 
     fun heights(): List<Float> = List(stops.size) { natural(it) }
@@ -146,6 +165,8 @@ fun StepSheet(
     state: StepSheetState,
     modifier: Modifier = Modifier,
     onDragging: (Boolean) -> Unit = {},
+    /** Steps below this have no [bottomBar] (see StepSheetState.barFrom); 0 = the bar in every step. */
+    barFrom: Int = 0,
     bottomBar: @Composable ColumnScope.() -> Unit,
     body: @Composable StepSheetScope.() -> Unit,
 ) {
@@ -153,6 +174,7 @@ fun StepSheet(
     val flingPxS = with(density) { 700.dp.toPx() }
     val scope = rememberCoroutineScope()
     val onStepNow by rememberUpdatedState(onStep)
+    androidx.compose.runtime.SideEffect { if (state.barFrom != barFrom) state.barFrom = barFrom }
     val stepNow by rememberUpdatedState(step)
     // the caller's step (handle tap, VM) wins; the spring follows below
     LaunchedEffect(step) { if (state.step != step && !state.dragging) state.step = step }
@@ -242,8 +264,9 @@ fun StepSheet(
             {
                 Column(Modifier.fillMaxWidth().onPlaced { state.bodyCoords = it; state.updateStops() }
                     .padding(horizontal = 16.dp)) {
-                    // Material drag handle (32 × 4 dp) in a full-width 48 dp tall touch area
-                    Box(Modifier.fillMaxWidth().height(48.dp)
+                    // Material drag handle (32 × 4 dp) in a full-width 24 dp tall strip (owner 2026-10-31: less air; the
+                    // whole sheet can be dragged, and the rolled-up row is one big tap target)
+                    Box(Modifier.fillMaxWidth().height(HANDLE_HEIGHT)
                         .clickable(onClickLabel = str(Res.string.plan_resize_panel), onClick = onHandleTap)
                         .semantics { contentDescription = Txt.s(Res.string.plan_resize_panel) },
                         contentAlignment = Alignment.Center) {
@@ -257,7 +280,13 @@ fun StepSheet(
                 // opaque, and it takes the touches over the body behind it (rows hidden below the step)
                 Column(Modifier.fillMaxWidth().background(surface)
                     .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } }
-                    .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp), content = bottomBar)
+                    .padding(horizontal = 16.dp), content = bottomBar)
+            },
+            {
+                // the foot: navigation bar + a little air, opaque in every step (the bar slides out behind it)
+                Box(Modifier.fillMaxWidth().background(surface)
+                    .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } }
+                    .navigationBarsPadding().padding(bottom = FOOT_AIR))
             },
         ),
         modifier = modifier.fillMaxWidth()
@@ -268,22 +297,32 @@ fun StepSheet(
                 onDragStarted = { start() },
                 onDragStopped = { v -> release(v) },
             ),
-    ) { (bg, body, bar), c ->
+    ) { (bg, body, bar, foot), c ->
         val w = c.maxWidth
         // body and bar keep their constraints → measured once, not per frame
         val bodyP = body.first().measure(Constraints(minWidth = w, maxWidth = w, maxHeight = c.maxHeight))
         val barP = bar.first().measure(Constraints(minWidth = w, maxWidth = w, maxHeight = c.maxHeight))
+        val footP = foot.first().measure(Constraints(minWidth = w, maxWidth = w, maxHeight = c.maxHeight))
         if (state.bodyH != bodyP.height.toFloat()) state.bodyH = bodyP.height.toFloat()
         if (state.barH != barP.height.toFloat()) state.barH = barP.height.toFloat()
-        val h = state.shown().roundToInt().coerceIn(barP.height, c.maxHeight)
+        if (state.footH != footP.height.toFloat()) state.footH = footP.height.toFloat()
+        val h = state.shown().roundToInt().coerceIn(footP.height, c.maxHeight)
         val bgP = bg.first().measure(Constraints.fixed(w, h))
+        // below step barFrom the bar slides down behind the foot (what is left of it lies below the screen's edge)
+        val shownBar = (barP.height * state.barShown()).roundToInt()
         layout(w, h) {
             bgP.place(0, 0)
             bodyP.placeWithLayer(0, 0)
-            barP.placeWithLayer(0, h - barP.height)
+            if (shownBar > 0) barP.placeWithLayer(0, h - footP.height - shownBar)
+            footP.placeWithLayer(0, h - footP.height)
         }
     }
 }
+
+/** Height of the grab-handle strip at the sheet's top. */
+internal val HANDLE_HEIGHT = 24.dp
+/** Air under the bottom bar (above the navigation bar). */
+private val FOOT_AIR = 10.dp
 
 /** Frame times while the sheet moves → events trace. Not in previews / tests. */
 @Composable

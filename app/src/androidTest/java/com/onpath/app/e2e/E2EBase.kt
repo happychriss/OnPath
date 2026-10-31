@@ -152,7 +152,8 @@ abstract class E2EBase {
      * so the point sits in the upper open map, like a user would. Not the map's centre: in Plan during a tour the sheet
      * used to reach above the middle of the screen (CI 2026-10-31: the point centred at y 0.50 h lay under the sheet top
      * at 0.475 h); since the one-row tour sheet (owner 2026-10-31) the open map is larger – 0.22–0.40 h lies in it at
-     * every sheet step that opens by itself.
+     * every sheet step that opens by itself (a plan opens at the summary step, lower than the profile step was; the
+     * rolled-up row is lower still).
      */
     protected fun ensureOnOpenMap(index: Int) {
         val (w, h) = mapSize()

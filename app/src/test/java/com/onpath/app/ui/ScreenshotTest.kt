@@ -654,10 +654,30 @@ class ScreenshotTest {
         }
     }
 
-    /** Swiped down twice: one line with the key numbers. */
+    /** The summary step (where a plan opens): chip · time · km, the route lines, the icon row, the 48 dp Start. */
     @Test fun planMini() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI), PlanCallbacks()) }
     }
+
+    private val bikeRoute get() = route.copy(distanceM = 94_200.0, durationS = 4 * 3600.0 + 40 * 60)
+    private val bikeHints = listOf(RouteSpot(SpotKind.PUSH, 13, 20, 0.0, 210.0), RouteSpot(SpotKind.STEPS, 30, 31, 3000.0, 3010.0),
+        RouteSpot(SpotKind.STEPS, 50, 51, 5000.0, 5010.0))
+    private fun bikePlan(size: PlanSize) = planUi(r = bikeRoute, size = size).copy(activity = Activity.BIKE_TOURING,
+        warnText = RouteWarnings.text(bikeHints, 2), warnCount = RouteWarnings.count(bikeHints))
+
+    /** Owner 2026-10-31: the tightened summary step – icon + word side by side, "Close", Start 48 dp. */
+    @Test fun planSummaryBike() = paparazzi.snapshot { Frame { PlanPanel(bikePlan(PlanSize.MINI), PlanCallbacks()) } }
+
+    /** Owner 2026-10-31: rolled up – ONE row "🚲 4 h 40 min · 94.2 km ⚠2 [▶ Start]", the map almost free. */
+    @Test fun planCollapsed() = paparazzi.snapshot { Frame { PlanPanel(bikePlan(PlanSize.COLLAPSED), PlanCallbacks()) } }
+
+    /** Rolled up with a point the route does not reach: the red ✕ beside the ⚠ count. */
+    @Test fun planCollapsedGap() = paparazzi.snapshot {
+        Frame { PlanPanel(bikePlan(PlanSize.COLLAPSED).copy(gapText = "Last 180 m to “Taser Alm”: no way for Bike"), PlanCallbacks()) }
+    }
+
+    /** The profile step and the points step of the same bike plan. */
+    @Test fun planProfileBike() = paparazzi.snapshot { Frame { PlanPanel(bikePlan(PlanSize.COMPACT), PlanCallbacks()) } }
 
     /** A point the route does not reach – one red bold line in the small sheet (no message box). */
     @Test fun planGapSmall() = paparazzi.snapshot {

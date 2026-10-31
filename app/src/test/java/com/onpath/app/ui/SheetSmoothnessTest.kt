@@ -64,12 +64,12 @@ class SheetSmoothnessTest {
         var settledAt = -1
         paparazzi.gif("drag", 0, 1500, 60) {
             var size by remember { mutableStateOf(PlanSize.COMPACT) }
-            val state = rememberStepSheetState(3, size.step)
+            val state = rememberStepSheetState(PlanSize.entries.size, size.step)
             LaunchedEffect(Unit) {
                 withFrameNanos { }
                 withFrameNanos { }
                 heights = state.heights()
-                val from = heights[1]; val to = heights[2]
+                val from = heights[PlanSize.COMPACT.step]; val to = heights[PlanSize.FULL.step]
                 for (k in 0 until 60) {
                     withFrameNanos {
                         state.dragging = true
@@ -92,10 +92,10 @@ class SheetSmoothnessTest {
         }
         println("SMOOTH drag: frames=$frames heights=$heights ${counts()}")
         assertEquals(60, frames)
-        assertTrue("three different step heights: $heights", heights[0] < heights[1] && heights[1] < heights[2])
+        assertTrue("four different step heights: $heights", heights.zipWithNext().all { (a, b) -> a < b })
         assertEquals("the points list composed once for 60 sheet heights", 1, RecomposeProbe.count("points"))
         assertEquals("the profile composed once for 60 sheet heights", 1, RecomposeProbe.count("profile"))
-        assertEquals(1, settledAt)
+        assertEquals(PlanSize.COMPACT.step, settledAt)
     }
 
     /** Handle tap: profile step → points step; the spring runs ~40 frames. At most the one switch recomposes. */

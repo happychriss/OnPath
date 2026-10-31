@@ -2,6 +2,8 @@
 
 **Several sessions work on this repo (laptop, desktop "donald", cloud): follow `docs/working-agreement.md` – pull first, claim in
 `docs/backlog.md`, push small green commits, leave a handoff.**
+**Every session has a role (`docs/roles/`: cloud-app, cloud-plan, cloud-web, cloud-captain) – at the start name it and
+read `docs/roles/<role>.md`.**
 
 Read this first, then `docs/owner-preferences.md` (how the owner likes to work), `docs/project-status.md` (where we are, decisions, next steps) and
 `docs/requirements.md` (full requirements with IDs like F-PLAN-04, R-07).
@@ -45,6 +47,11 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
 - Requirements: JDK 17+ (21 used), Android SDK 35 (`local.properties` → `sdk.dir`, not committed).
 - `./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk` (arm64-v8a only, ~32 MB).
 - `./gradlew testDebugUnitTest` – JVM unit tests (run in UTC, so snapshots don't depend on the machine's time zone).
+- **Agents gate a push with `tools/ci/gate.sh`** (not the full suite): tests picked from the files changed vs origin/main
+  (`risk_tests.py --gate`: core packages + changed ones + rule tests; build files → all), screenshots only when ui /
+  texts / snapshots changed, docs-only → no Gradle; a release (version line + notes) skips it when `unit.yml` is green.
+  It takes the Gradle lock and `--max-workers=2` itself; `--full` runs everything. No `./gradlew --stop` afterwards –
+  the daemon ends itself after 10 idle minutes. The full suite + screenshots still run in CI (`unit.yml`) on every push.
 - `./gradlew :app:recordPaparazziDebug` / `verifyPaparazziDebug` – JVM screenshot tests of the UI
   (map replaced by a placeholder). Images in `app/src/test/snapshots/images/`. Use these to check layouts
   when no device/emulator is available.
@@ -110,7 +117,7 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
   Actions in the workflows are pinned to a commit (`# vX.Y.Z` beside it). Cloud sessions may not
   push tags or create releases themselves; this push-to-main flow avoids both. Manual: Actions → Release → Run.
 - **Release-Rundgang is OPTIONAL** (owner 2026-10-31, "it takes too long"): a normal release = the unit + screenshot gate
-  (`testDebugUnitTest verifyPaparazziDebug`) + GitHub's `StartSmokeE2ETest`. Run `tools/ci/release_rundgang.sh` (~6 min, own
+  (`tools/ci/gate.sh`: nothing to run on a CI-green base) + GitHub's `StartSmokeE2ETest`. Run `tools/ci/release_rundgang.sh` (~6 min, own
   emulator; red = no release) only when the owner asks or when a release changes navigation / recording core logic. Nobody
   waits for the push E2E run. Flows: `docs/release-rundgang.md`; every field bug adds one.
 - The app (Settings → Updates, plus a quiet daily check) installs new releases via `update/AppUpdater.kt`.

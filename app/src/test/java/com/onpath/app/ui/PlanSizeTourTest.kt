@@ -25,6 +25,29 @@ class PlanSizeTourTest {
         assertEquals(PlanSize.FULL, PlanSize.afterTour(PlanSize.FULL))
     }
 
+    /** Owner 2026-10-31: the rolled-up step below the summary; a tap / drag up opens the summary. */
+    @Test fun rolledUpIsTheSmallestStepAndOpensToTheSummary() {
+        assertEquals(listOf(PlanSize.COLLAPSED, PlanSize.MINI, PlanSize.COMPACT, PlanSize.FULL),
+            PlanSize.entries.sortedBy { it.step })
+        PlanSize.entries.forEach { assertEquals(it, PlanSize.ofStep(it.step)) }
+        assertEquals(PlanSize.MINI, PlanSize.COLLAPSED.tapped())
+        assertEquals(PlanSize.MINI, PlanSize.ofStep(PlanSize.COLLAPSED.step + 1))
+    }
+
+    @Test fun duringATourThereIsNoRolledUpStep() {
+        assertEquals(PlanSize.MINI, PlanSize.duringTour(PlanSize.COLLAPSED, tour = true))
+        assertEquals(PlanSize.COLLAPSED, PlanSize.duringTour(PlanSize.COLLAPSED, tour = false))
+        listOf(PlanSize.MINI, PlanSize.COMPACT, PlanSize.FULL).forEach { assertEquals(it, PlanSize.duringTour(it, tour = true)) }
+    }
+
+    @Test fun aPlanOpensAtTheSummaryAndStaysRolledUp() {
+        val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        assertEquals(true, vm.contains("var planSize by mutableStateOf(PlanSize.MINI)"))
+        // nothing but the user (and an emptied plan) opens a rolled-up sheet: no route update sets the size
+        val sets = Regex("planSize = PlanSize\\.([A-Z_]+)\\b").findAll(vm).map { it.groupValues[1] }.toList()
+        assertEquals(listOf("COMPACT", "MINI"), sets.sorted()) // Points list row tap → COMPACT; clearPlan → MINI
+    }
+
     @Test fun statusBreaksOnlyAfterADot() {
         // never "1,7 / km" at a large font (owner: numbers in full)
         assertEquals("Tour\u00A0läuft\u00A0· 1,7\u00A0km\u00A0· 0:14:38", breakOnlyAtDots("Tour läuft · 1,7 km · 0:14:38"))

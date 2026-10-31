@@ -7,7 +7,7 @@ Search mockups: `docs/ux-search-proposals.md` (proposal C's "Add to route" card 
 | --- | --- | --- |
 | Purpose | Build / change the route, look around, manage tours and settings | Walk or ride: map follows you, nothing changes by accident |
 | Map taps | **Hold only** (0.3 s): map → add point (first one: "Start here / Go here (from my location)"), POI → "Add to route / Open in Google Maps", route point → point menu. Quick taps change nothing, nothing is dragged (see "Plan gestures") | **Nothing is added or moved.** POI tap shows info only. Pan/zoom allowed; "centre on me" (locate) re-follows **at the standard Navigate zoom** (Hike 17, every bike 16 – owner 2026-10-31, `AppMode.locateZoom`); the map coming back by itself (free look, back in the app) keeps the user's zoom |
-| Shown | Plan sheet: activity, stats, profile, undo/redo, the action row ✕ Close plan · ⇅ Reverse · ↻ Round trip; top ☰: Save route, My routes, start recording, Pair with browser, Settings (see "Menus") | Full map, route (line only – no numbered plan points, owner), position, top strip "to go: km · ↑m · time", GPS dot on the locate button |
+| Shown | Plan sheet: activity, stats, profile, undo/redo, the action row ✕ Close · ⇅ Reverse · ↻ Round trip; top ☰: Save route, My routes, start recording, Pair with browser, Settings (see "Menus") | Full map, route (line only – no numbered plan points, owner), position, top strip "to go: km · ↑m · time", GPS dot on the locate button |
 | Switch | **"Start navigation"** – normal big button (safe direction). With a tour running: **"Continue navigation"** | **Slide-to-plan switch** at the bottom: "Tour menu" / „Tour-Menü“ with a small second line "Change route · Pause · End" / „Route ändern · Pause · Beenden“ (owner 2026-10-31; was "Plan" / „Planen“, before that "Edit route"). The small line only when it fits (large font: main line only, never cut); without a recording only "Change route" / „Route ändern“ (`ui/SlideToUnlock.kt`, `SlideLabel`) – the only way out of Navigate (protects against pocket/glove touches) |
 
 ## Rules
@@ -165,7 +165,8 @@ Everything about **this route** lives in the route sheet; the **library and app*
 | ☰ (round button right of the search pill) | Save route (with a plan; dot while unsaved), My routes (open = load, import, rename, copy, export, share, delete), Start recording (no route), Pair with browser, Settings |
 | Sheet, first line | activity button (icon ▾) · time + distance (tap = Time details) (during a tour the activity button opens the check-and-switch sheet, owner) |
 | Map buttons (right) | compass · eye · Show whole route ⛶ · Undo · Redo (Redo only when there is something to redo, owner) · locate |
-| Sheet action row | ✕ Close plan (also during a tour: ends the route guidance, Undo brings it back; "Discard changes?" first when unsaved) · ⇅ Reverse · ↻ Round trip – icons with labels |
+| Sheet action row | ✕ Close (also during a tour: ends the route guidance, Undo brings it back; "Discard changes?" first when unsaved) · ⇅ Reverse · ↻ Round trip – icon and word side by side |
+| Sheet steps (owner 2026-10-31) | rolled up: ONE row `🚲 4 h 40 min · 94.2 km ⚠2 [▶ Start]` (tap / drag up → summary) · summary: first line, route lines, action row, Start (48 dp) – where a plan opens · profile · points. Rolled up by the user it stays rolled up through route updates. During a tour there is no rolled-up step (the one-row tour status is the smallest). |
 
 ## Activity while navigating (owner: "a wrong activity is a disaster")
 - **Visible:** the Navigate status card starts with the activity icon (48 dp button):
