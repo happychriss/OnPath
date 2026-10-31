@@ -199,9 +199,6 @@ the git log.
   7.2 km – expectation or gap?); zip import checks only sizes (cell downloads check sha256).
 
 ## Waiting for the owner
-- **GitHub ruleset (owner, once)** – Settings → Rules → Rulesets → New branch ruleset, target `main` and `web-spike`:
-  "Block force pushes" + "Restrict deletions", nothing else (no PR required). Backs the push rule in
-  `docs/working-agreement.md` §1 "Where to push".
 - **Role setup leftovers (captain 2026-10-31)** – (1) cloud-web needs write access to `onpath.private` (Drive copy);
   (2) map data for the laptop (`/home/development/Projects/work/onpath-data/`) – and does the Germany pre-build stay
   on donald (item "[desktop] Germany pre-built") or move to cloud-plan on the laptop?; (3) git on the laptop:
