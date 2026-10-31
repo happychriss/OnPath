@@ -463,8 +463,10 @@ class ScreenshotTest {
     /**
      * Never on the route yet, 31 km from its start (owner 2026-10-31, field: tour started at home): a calm question –
      * no vibration, no off-route card – "Route starts 31 km away" · "south-west (direct) · recording" · Just record / Guide me.
+     * The status card says the same number: "Not on the route yet · Start 31 km away" (not the line's nearest 28.4 km).
      */
-    private val farUi = navUi.copy(toGo = ToGo(0.0, 0.0, 0.0, 28_400.0, state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE),
+    private val farUi = navUi.copy(toGo = ToGo(0.0, 0.0, 0.0, 28_400.0, state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE,
+        startM = 30_600.0),
         recordedM = 0.0, elapsedS = 40, activity = Activity.BIKE_TOURING)
     private val farHint = com.onpath.app.navigation.RouteHint(30_600.0, 225.0, GeoPoint(46.4, 10.9))
 

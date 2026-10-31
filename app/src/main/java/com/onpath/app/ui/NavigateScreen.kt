@@ -158,6 +158,11 @@ data class ToGo(
     val pausedBecause: String? = null,
     /** Where the time counts to: the last stop's name under the arrival clock; null = the (unnamed) destination. */
     val target: String? = null,
+    /**
+     * Never on the route yet ([com.onpath.app.navigation.NavSession.reached] false): the distance to the route's START
+     * – the far-start box's number ([com.onpath.app.navigation.NavPrompt.FarStart.distanceM]); null = reached / unknown.
+     */
+    val startM: Double? = null,
 )
 
 /**
@@ -336,9 +341,10 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         // never a stale time (owner rule 6): what is left counts again once back on the route. While the
                         // amber off-route card shows, it says it (one place, one distance).
                         if (!offCard) {
-                            Text(str(Res.string.nav_not_on_route), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                            val off = g.offM
-                            if (off != null && off > 0) Text(str(Res.string.nav_from_route, Format.distance(off)), style = MaterialTheme.typography.bodyLarge,
+                            // never reached: "Not on the route yet · Start 31 km away" (the far-start box's number)
+                            val (title, line2) = NavText.notOnRoute(g.startM, g.offM)
+                            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                            if (line2 != null) Text(line2, style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                         }
                     } else {
@@ -668,9 +674,14 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val target = nav?.session?.stops?.lastOrNull()?.name
     val notOnRoute = if (prov != null) line != null && (remaining == null || provOff)
         else nav != null && (remaining == null || tt?.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE)
+    // never on the route yet: the card counts from the START like the far-start box (its number while it shows)
+    val startM = nav?.session?.takeIf { !it.reached }?.let { s ->
+        (nav.prompt as? com.onpath.app.navigation.NavPrompt.FarStart)?.distanceM
+            ?: s.original.firstOrNull()?.let { st -> here?.let { com.onpath.app.data.Geo.distance(it, st) } }
+    }
     val ui = NavUi(
         toGo = if (notOnRoute) ToGo(0.0, 0.0, 0.0, if (prov != null) remaining?.offM else nav?.offM,
-            state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE, target = target)
+            state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE, target = target, startM = startM)
         else remaining?.let { r ->
             ToGo(r.distanceM, r.ascentM, toGoS ?: 0.0, r.offM, r.descentM,
                 profile = line?.let { l -> l.subList(r.index.coerceIn(0, l.size - 1), l.size) } ?: emptyList(),

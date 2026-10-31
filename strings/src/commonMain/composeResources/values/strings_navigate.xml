@@ -24,6 +24,9 @@
     <string name="nav_activity_cd">Activity: %1$s. Tap to check or switch</string>
     <string name="nav_not_on_route">Not on the route</string>
     <string name="nav_from_route">%1$s from the route</string>
+    <!-- never on the route yet: the START, the same number as the far-start box (owner 2026-10-31) -->
+    <string name="nav_not_on_route_yet">Not on the route yet</string>
+    <string name="nav_start_away">Start %1$s away</string>
     <string name="nav_arrive">Arrive</string>
     <string name="nav_profile_show">Show elevation profile</string>
     <string name="nav_profile_hide">Hide elevation profile</string>

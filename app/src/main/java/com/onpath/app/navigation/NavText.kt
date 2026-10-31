@@ -81,6 +81,16 @@ object NavText {
     fun farDistance(m: Double): String =
         if (m >= 10_000) "${(m / 1000).roundToInt()} km" else Format.distance(round10(m))
 
+    /**
+     * The status card's two lines while not on the route. Never reached yet ([startM] = distance to the route's start):
+     * "Not on the route yet" · "Start 31 km away" – the far-start box's number, never the nearest point of the line
+     * (owner 2026-10-31: the card must not contradict the box). Else "Not on the route" · "120 m from the route"
+     * ([offM]; no second line without it).
+     */
+    fun notOnRoute(startM: Double?, offM: Double?): Pair<String, String?> =
+        if (startM != null) Txt.s(Res.string.nav_not_on_route_yet) to Txt.s(Res.string.nav_start_away, farDistance(startM))
+        else Txt.s(Res.string.nav_not_on_route) to offM?.takeIf { it > 0 }?.let { Txt.s(Res.string.nav_from_route, Format.distance(it)) }
+
     /** "New route for Gravel bike" / "New route for Hike T3". */
     fun switchTitle(sw: ActivitySwitch): String = Txt.s(Res.string.nav_switch_title, activityName(sw.activity, sw.sac))
 

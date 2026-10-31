@@ -23,6 +23,9 @@
     <string name="nav_activity_cd">Aktivität: %1$s. Tippen zum Prüfen oder Wechseln</string>
     <string name="nav_not_on_route">Nicht auf der Route</string>
     <string name="nav_from_route">%1$s von der Route entfernt</string>
+    <!-- never on the route yet: the START, the same number as the far-start box (owner 2026-10-31) -->
+    <string name="nav_not_on_route_yet">Noch nicht auf der Route</string>
+    <string name="nav_start_away">Start %1$s entfernt</string>
     <string name="nav_arrive">Ankunft</string>
     <string name="nav_profile_show">Höhenprofil anzeigen</string>
     <string name="nav_profile_hide">Höhenprofil ausblenden</string>

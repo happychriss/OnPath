@@ -79,6 +79,26 @@ class NavTextTest {
         assertEquals("No way to the route found – recording continues", NavText.title(NavPrompt.LeadFailed(2)))
     }
 
+    /**
+     * Owner 2026-10-31: never on the route yet, the status card counts from the START – the same number as the
+     * far-start box ("Route starts 31 km away"), never the nearest point of the line (28.4 km).
+     */
+    @Test fun statusCardNotOnRouteYetMatchesTheBox() {
+        val p = NavPrompt.FarStart(1, 30_600.0, 225.0)
+        assertEquals("Not on the route yet" to "Start 31 km away", NavText.notOnRoute(p.distanceM, 28_400.0))
+        assertTrue(NavText.title(p).contains(NavText.farDistance(p.distanceM)))
+        assertEquals("Not on the route yet" to "Start 4.2 km away", NavText.notOnRoute(4_180.0, 3_900.0))
+        // reached before: off the line, its distance
+        assertEquals("Not on the route" to "28.4 km from the route", NavText.notOnRoute(null, 28_400.0))
+        assertEquals("Not on the route" to null, NavText.notOnRoute(null, null))
+        val old = java.util.Locale.getDefault()
+        java.util.Locale.setDefault(java.util.Locale.GERMANY)
+        try {
+            assertEquals("Noch nicht auf der Route" to "Start 31 km entfernt", NavText.notOnRoute(p.distanceM, 28_400.0))
+            assertEquals("Nicht auf der Route" to "28,4 km von der Route entfernt", NavText.notOnRoute(null, 28_400.0))
+        } finally { java.util.Locale.setDefault(old) }
+    }
+
     /** Owner 2026-10-31: "You're 120 m off the route", the new route / the way back with "350 m longer" (or shorter). */
     private val fresh = NavPrompt.Question(1, 350.0, Double.NaN, 5.0, emptyList(), 3_400.0, 0.0, offM = 118.0)
     private val back = NavPrompt.Question(1, 350.0, 600.0, 5.0, emptyList(), 900.0, 2_000.0, offM = 118.0)
