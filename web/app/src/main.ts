@@ -351,6 +351,9 @@ map.on('moveend', () => {
   }, 400);
 });
 map.on('movestart', (e) => { clearTimeout(loadingTimer); if ((e as { originalEvent?: unknown }).originalEvent) lastMapTouch = performance.now(); }); // a pan / zoom by the user
+// any press on the map counts as touched (the app's lastMapTouchMs): a point being set stops the first route's fit
+map.on('mousedown', () => { lastMapTouch = performance.now(); });
+map.on('touchstart', () => { lastMapTouch = performance.now(); });
 map.on('idle', () => { clearTimeout(loadingTimer); if (notices.get('loading')) notices.set('loading', null); });
 // The routing data around the map view is fetched while the user looks at the map, so the first plan starts at once
 // (docs/design/web-planner.md §11.2). Only from zoom 9: one 1° part is 2–10 MB.
