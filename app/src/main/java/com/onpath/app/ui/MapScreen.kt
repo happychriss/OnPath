@@ -7,6 +7,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -62,6 +66,8 @@ fun MapScreen(
     val topInsetPx = WindowInsets.statusBars.getTop(density)
     var controller by remember { mutableStateOf<MapController?>(null) }
     var panelHeightPx by remember { mutableIntStateOf(0) }
+    /** Navigate: dp covered at the top (turn / status column, message box) and the bottom (slider) – route fits. */
+    val navCover = remember { intArrayOf(0, 0) }
     var scale by remember { mutableStateOf<Pair<String, Dp>?>(null) }
     var cameraTick by remember { mutableIntStateOf(0) }
     var bearing by remember { mutableFloatStateOf(0f) }
@@ -87,7 +93,7 @@ fun MapScreen(
                 Unit
             }
             gps == GpsStatus.NO_PERMISSION -> onRequestLocation()
-            else -> vm.followMe = true
+            else -> vm.locate()
         }
     }
     // One grouped control: compass (always: Plan = needle, tap north up; Navigate = orientation toggle), eye
@@ -103,6 +109,8 @@ fun MapScreen(
                     else CompassSpec(vm.headingUp && vm.followMe, bearing) { vm.onCompass(kotlin.math.abs(bearing) > 1f) },
                 showEye = !pointsOpen && (vm.route != null || vm.shown != null || vm.followLine != null),
                 onPeek = { vm.routePeek = it },
+                // under the eye: the whole line + its points (Navigate: + where you are), following stops
+                onFitRoute = if (vm.wholeRouteShown(mode, pointsOpen)) vm::showWholeRoute else null,
                 gps = gps, following = vm.followMe, onLocate = onLocate,
                 onUndo = if (mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
                 // Undo and Redo side by side as map buttons; Redo only when there is something to redo
@@ -132,7 +140,13 @@ fun MapScreen(
         )
         // A newer version of an area the user has (checked after each route) is told by the background-download strip
         // only – one loading indicator is enough. No cell-state read here: download ticks must not recompose this screen.
-        MapSync(vm, controller, rec, location, panelHeightPx)
+        // one padding rule for every route fit (FitPaddingRule): clear of the top elements and the sheet / slider
+        val fitPadding = {
+            FitPaddingRule.of(vm.mode, density.density, topInsetPx,
+                planTopDp = if (vm.backgroundStripShown) vm.backgroundStripBottomDp else 0, sheetPx = panelHeightPx,
+                navTopDp = navCover[0], navBottomDp = navCover[1])
+        }
+        MapSync(vm, controller, rec, location, fitPadding)
         // hike: keep-on + pocket logic; bike: Settings → "Screen while cycling", pocket after 5 s covered (ScreenPolicy,
         // rest view in NavigateMode)
         val screen = ScreenPolicy.of(vm.settings, rec?.nav?.session?.activity ?: vm.activity)
@@ -148,7 +162,7 @@ fun MapScreen(
                     onActivity = { if (rec != null) vm.openActivityCheck() else showActivity = true }, onEndTour = { vm.askEndTour() },
                     onPanelHeight = { panelHeightPx = it })
             },
-            navigate = { NavigateMode(vm, rec, location, bearing) { footer(AppMode.NAVIGATE) } },
+            navigate = { NavigateMode(vm, rec, location, bearing, onCover = { t, b -> navCover[0] = t; navCover[1] = b }) { footer(AppMode.NAVIGATE) } },
         )
         // "Where I face" arrow at the dot in heading-up following (MapController.Facing)
         // (not over the rest view while cycling)
@@ -282,7 +296,16 @@ private fun PlanMode(
         }
         val density = LocalDensity.current
         val topLimit = with(density) { WindowInsets.statusBars.getTop(density).toDp() } + TOP_BAR_BOTTOM
-        SheetWithFooter(topLimit, modifier = Modifier.modeEdge(ModeEdge.BOTTOM), footer = {
+        // the sheet's name field ("Saved as …" tapped): a touch on the map / top bar cancels it (in the sheet: PlanPanel),
+        // Back too, and the sheet rides above the keyboard so the field stays in sight
+        val renaming = vm.renamingPlan && vm.savedName != null && vm.cardPlace == null && vm.shown == null
+        if (renaming) {
+            Box(Modifier.fillMaxSize().pointerInput(Unit) {
+                awaitEachGesture { awaitFirstDown(requireUnconsumed = false).consume(); vm.cancelRenamePlan() }
+            })
+            androidx.activity.compose.BackHandler { vm.cancelRenamePlan() }
+        }
+        SheetWithFooter(topLimit, modifier = Modifier.modeEdge(ModeEdge.BOTTOM).then(if (renaming) Modifier.imePadding() else Modifier), footer = {
             Column(Modifier.fillMaxWidth()) {
                 // after Install: the download's progress (a state, no box); the question itself is a box at the top
                 if (rec == null) UpdateDownloadingCard(vm.update, Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
@@ -311,6 +334,16 @@ private fun PlanMode(
  * questions first (pairing step, map questions, map for here?, new version), then the must-know notes (error, paired,
  * a map failure / note). The rest wait in their state and come next.
  */
+/**
+ * A place shared from another app (Google Maps) without a coordinate, whose name is found only elsewhere – not in the
+ * shared town: no ring (never a namesake in another town), this box with the one way out, Search (the search view with
+ * [text] typed in). HINWEIS_WARN, stays until tapped.
+ */
+@Composable
+internal fun sharedUnsureMessage(text: String, onSearch: () -> Unit): Message =
+    Message(MessageKind.HINWEIS_WARN, str(Res.string.msg_shared_place_unsure), str(Res.string.msg_shared_place_unsure_detail, text),
+        listOf(MessageButton(str(Res.string.msg_shared_place_search), onSearch)))
+
 @Composable
 private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppViewModel, rec: RecState?,
                                                                         onRequestLocation: () -> Unit,
@@ -343,6 +376,8 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
             updateMessage(v, onInstall = { vm.installUpdate() }, onLater = { vm.updateDismissed = v })
         },
         vm.errorCard?.let { errorMessage(it) { vm.errorCard = null } },
+        // a shared place with only namesakes elsewhere: no ring, the search with its name + town (field bug 0.13.2)
+        vm.sharedUnsure?.let { sharedUnsureMessage(it, onSearch = vm::searchSharedUnsure) },
         // a pairing was just made or ended (owner 2026-10-30): "Paired. …" / "Unpaired. …" with OK, until OK
         syncNote?.let { syncNoteMessage(it, onOk = vm::syncNoteOk) },
         mapBox?.takeIf { it.kind != MessageKind.FRAGE },
@@ -411,8 +446,9 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     vm.loadAsk?.let { LoadAskDialog(it.regions, it.bytes, onLoad = { vm.answerLoadAsk(true) }, onNotNow = { vm.answerLoadAsk(false) }) }
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
-            sac = vm.sac, tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),
-            tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) },
+            sac = vm.sac, tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, renaming = vm.renamingPlan,
+            roundTrip = vm.isRoundTrip(),
+            tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused, vm.guidanceEndedByEmptyPlan) },
             points = rows,
             routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText(),
             changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote),
@@ -420,7 +456,9 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onSheetDrag = vm::mapGesture, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
             onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
-            onActivity = onActivity, onSave = vm::requestSave, onShare = vm::sharePlan, onTimeDetails = vm::openTimeDetails, onDetails = { vm.routeDetailsOpen = true },
+            onActivity = onActivity, onSave = vm::requestSave, onSaveAsNew = { vm.saveAsNew() },
+            onRenameStart = vm::startRenamePlan, onRename = vm::renamePlan, onRenameCancel = vm::cancelRenamePlan,
+            onShare = vm::sharePlan, onTimeDetails = vm::openTimeDetails, onDetails = { vm.routeDetailsOpen = true },
             onHighlight = { vm.highlight = it },
             onCancelRouting = vm::cancelRouting,
             onPlanAnyway = vm::planAnyway,
@@ -445,7 +483,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
 
 /** Keeps the map layers in step with the app state. */
 @Composable
-private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: android.location.Location?, panelHeightPx: Int) {
+private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: android.location.Location?, fitPadding: () -> FitPadding) {
     val context = LocalContext.current
     if (c == null) {
         // share events must also work before the map is ready
@@ -459,19 +497,24 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         return
     }
     LaunchedEffect(c, vm.routePeek) { c.setRouteOverlaysVisible(!vm.routePeek) } // eye button (re-applied per style)
+    // the plan points behind the user in a running tour (TourSplit): grey with ✓; re-read every ~20 track points
+    var passed by remember { mutableStateOf(emptySet<Int>()) }
+    val trackSize = rec?.track?.sumOf { it.size } ?: 0
+    LaunchedEffect(vm.waypoints.toList(), trackSize / 20, vm.followLine, rec != null) { passed = vm.tourPassed() }
     // Planned line only while the plan can be edited (Plan mode, no track shown); markers only in Plan (planLayers).
     LaunchedEffect(c) {
         // canEditMap is part of the key on its own: Navigate → Plan while the plan is followed must redraw the markers
         snapshotFlow {
             val (line, markers) = planLayers(vm.canEditMap, vm.planIsFollowed())
-            PlanDrawing(vm.route, line, markers, vm.waypoints.toList(), vm.planGaps)
+            PlanDrawing(vm.route, line, markers, vm.waypoints.toList(), vm.planGaps, passed)
         }
             .collect { d ->
                 c.setPlanned(if (d.showLine) d.route else null)
                 // unreachable points: grey dashed missing piece + grey hollow marker
                 val gaps = if (d.showLine && d.showMarkers) d.gaps else emptyList()
                 c.setPlanGaps(gaps)
-                c.setWaypoints(if (d.showMarkers) d.points else emptyList(), vm.pinnedIndices(), gaps.map { it.index }.toSet())
+                c.setWaypoints(if (d.showMarkers) d.points else emptyList(), vm.pinnedIndices(), gaps.map { it.index }.toSet(),
+                    if (d.showMarkers) d.passed else emptySet())
             }
     }
     LaunchedEffect(c, vm.shown, vm.followLine) {
@@ -494,7 +537,9 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     val rest = vm.screenRest
     val location = fix.takeUnless { rest }
     LaunchedEffect(c, rest) { c.setQuiet(rest) }
-    LaunchedEffect(c, nav?.original) { c.setNavOriginal(nav?.original) }
+    // the whole plan pale under the followed line while a tour follows position → points ahead (Plan only, TourSplit)
+    val paleBehind = vm.route?.points?.takeIf { vm.mode == AppMode.PLAN && passed.isNotEmpty() && vm.planIsFollowed() }
+    LaunchedEffect(c, nav?.original, paleBehind) { c.setNavOriginal(nav?.original ?: paleBehind) }
     // Heading-up on the route: the stretch ahead points straight up (HeadingFilter). Only in Navigate, matched to
     // the line, not off route; otherwise null = compass / GPS bearing.
     val navLine = remember(nav?.line) { nav?.line?.let { com.onpath.app.navigation.NavLine(it) } }
@@ -567,7 +612,9 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         }
     }
     // Camera: follow the position, walking direction up or north up (both modes); next-turn arrow (see NavigateScreen).
-    LaunchedEffect(c, vm.followMe, vm.mode, vm.headingUp, vm.recentreTick, vm.navStartZoom) {
+    // (navStartZoom is no key: it is set with the mode / by locate (with recentreTick) and cleared below – a second run right away would cancel the
+    // zoom transition just started; field A-019)
+    LaunchedEffect(c, vm.followMe, vm.mode, vm.headingUp, vm.recentreTick) {
         val startZoom = vm.navStartZoom.takeIf { vm.mode == AppMode.NAVIGATE && vm.followMe }
         val zoomed = c.setCamera(vm.followMe, vm.mode == AppMode.NAVIGATE, vm.headingUp, startZoom) { vm.onMapGesture() }
         if (startZoom != null && zoomed) vm.navStartZoom = null
@@ -579,8 +626,8 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         vm.events.clear()
         pending.forEach { e ->
             when (e) {
-                is UiEvent.Fit -> c.fitTo(e.points, panelHeightPx)
-                is UiEvent.CenterOn -> c.flyTo(e.point, e.zoom)
+                is UiEvent.Fit -> c.fitTo(e.points, fitPadding(), e.northUp)
+                is UiEvent.CenterOn -> c.flyTo(e.point, e.zoom, fitPadding())
                 is UiEvent.PanTo -> c.panTo(e.point)
                 is UiEvent.Share -> runCatching { context.startActivity(e.intent) }
                     .onFailure { Problems.warn("ui", "Share screen could not be opened (no app?)", it) }
@@ -621,4 +668,5 @@ private data class PlanDrawing(
     val showMarkers: Boolean,
     val points: List<com.onpath.app.routing.GeoPoint>,
     val gaps: List<PlanGap> = emptyList(),
+    val passed: Set<Int> = emptySet(),
 )

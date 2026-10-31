@@ -16,11 +16,12 @@
     <string name="search_near_route">near your route</string>
     <string name="search_online">online</string>
 
-    <string name="search_cat_huts">Huts</string>
-    <string name="search_cat_peaks">Peaks</string>
-    <string name="search_cat_water">Water</string>
     <string name="search_cat_places">Places</string>
-    <string name="search_cat_stations">Stations</string>
+    <string name="search_cat_food">Food</string>
+    <string name="search_cat_sights">Sights</string>
+    <string name="search_cat_water">Water</string>
+    <string name="search_cat_transit">Transit</string>
+    <string name="search_cat_parking">Parking</string>
 
     <string name="search_kind_peak">Peak</string>
     <string name="search_kind_saddle">Pass / saddle</string>

@@ -1,6 +1,5 @@
 package com.onpath.app.data
 
-import com.onpath.strings.*
 import com.onpath.app.cells.CellId
 import com.onpath.app.cells.NetworkStatus
 import com.onpath.app.debug.Problems
@@ -51,38 +50,13 @@ object RoutingTiles {
 }
 
 /**
- * Plain notice on the plan while routing data is missing (never a file name or path – those go to Problems). Pure,
- * unit-tested.
- */
-object RoutingDataNotice {
-    val LOADING: String get() = Txt.s(Res.string.maps_routing_loading)
-    val NOT_YET: String get() = Txt.s(Res.string.maps_routing_not_yet)
-
-    fun text(loading: Boolean): String = if (loading) LOADING else NOT_YET
-
-    fun isNotice(s: String?): Boolean = s == LOADING || s == NOT_YET
-
-    /**
-     * The plan's notice: [missing] = a tile under the route is not on the phone → the plain notice (loading or not);
-     * a router message about missing data (any wording, may hold a path) → the plain notice too; else [error] as is.
-     */
-    fun forRoute(error: String?, missing: Boolean, loading: Boolean): String? = when {
-        missing -> text(loading)
-        // the router's own sentence (in English or the app's language) or a file name
-        error != null && (error.contains("No routing data") || error.contains(com.onpath.app.routing.BRouterEngine.NO_DATA) ||
-            error.contains(".rd5")) -> text(loading)
-        else -> error
-    }
-}
-
-/**
  * Loads missing routing data from brouter.de by itself (owner): when a map area is loaded or a route is
  * planned where it is missing. On mobile data too, unless "Maps only on Wi-Fi" is set. The unit is a 1° part
  * ([RoutingTiles] keys, [Rd5PartStore]: HTTP range, resume, atomic rewrite, no mixed versions); a plain 5° file name
  * ("E10_N45.rd5") means the whole file. Failures go to Problems and are tried again
  * when the network changes ([retry]) or the next time the part is needed. One 5° file at a time; the real sizes are read
  * from the server's index before the first part loads, so the modal can say "about X MB". The wanted parts of one 5° file
- * load together and are written into its rd5 once.
+ * load together and are written into its rd5 once. The plan's notice text is [RoutingDataNotice] (pure, shared with the web).
  *
  * [launch] runs a block in the background (tests: at once); [onInstalled] gets the keys that arrived (the plan is
  * computed again), [onChange] every status change (progress, offline …). Thread-safe.

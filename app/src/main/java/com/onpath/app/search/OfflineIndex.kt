@@ -108,7 +108,8 @@ class OfflineIndex(val entries: List<Entry>, override val signature: String = ""
                     w.write(key); w.write("\n")
                     for (it in items) { w.write(cacheLine(it)); w.write("\n") }
                 }
-                tmp.renameTo(cache)
+                // plain rename (also compiled for the web planner: TeaVM has no File.toPath, so not data/AtomicFiles)
+                if (!tmp.renameTo(cache)) Problems.warn("search", "Search place cache not saved (rename failed); rebuilt on next start")
             } catch (e: Exception) { Problems.warn("search", "Search place cache not written; rebuilt on next start", e) }
             return items
         }
@@ -328,7 +329,7 @@ object SearchRanking {
             val score = 100.0 * text + SearchKinds.boost(e.place.kind, e.place.sub) - distancePenalty(d)
             cand += SearchHit(e.place, score, tier, d, false)
         }
-        if (kinds == null) addresses.forEach { cand += addressHit(it, q) }
+        addresses.forEach { if (kinds == null || it.place.kind in kinds) cand += addressHit(it, q) }
         // Best few hundred by text, then the (more expensive) route check.
         val top = cand.sortedWith(compareByDescending<SearchHit> { it.tier }.thenByDescending { it.score }).take(400)
         val line = q.route?.takeIf { it.size >= 2 }?.let { simplify(it, 400) }
@@ -356,16 +357,40 @@ object SearchRanking {
         val qTokens = SearchText.tokens(q.text)
         val qFull = qTokens.joinToString(" ")
         return places.mapIndexed { i, p ->
-            val e = OfflineIndex.Entry(p, (listOfNotNull(p.name, p.town, p.address) + p.alt)
-                .flatMap { SearchText.tokens(it) }.distinct().toTypedArray(),
-                (listOfNotNull(p.name) + p.alt).map { SearchText.normalize(it) }.filter { it.isNotEmpty() }.distinct().toTypedArray())
-            val (text, tier) = textMatch(qTokens, qFull, e) ?: (0.5 to 1)
+            val (text, tier) = textMatch(qTokens, qFull, onlineEntry(p)) ?: (0.5 to 1)
             val d = Geo.distance(q.refLat, q.refLon, p.lat, p.lon)
             val dc = if (centreLat == q.refLat && centreLon == q.refLon) d else Geo.distance(centreLat, centreLon, p.lat, p.lon)
             var score = 100.0 * text + SearchKinds.boost(p.kind, p.sub) - distancePenalty(dc) - 1.5 * i - ONLINE_PENALTY
             if (p.town != null && SearchText.normalize(p.town) in queryTowns) score += QUERY_TOWN_BONUS
             SearchHit(p, score, tier, d, false)
         }
+    }
+
+    /** An online place as an index entry: its words are those of the name, other names, town and address. */
+    private fun onlineEntry(p: Place) = OfflineIndex.Entry(p, (listOfNotNull(p.name, p.town, p.address) + p.alt)
+        .flatMap { SearchText.tokens(it) }.distinct().toTypedArray(),
+        (listOfNotNull(p.name) + p.alt).map { SearchText.normalize(it) }.filter { it.isNotEmpty() }.distinct().toTypedArray())
+
+    /**
+     * Online places (found for an earlier text) that also match [text] by the words we see – name, town, address – so
+     * they stay in the list while the user types on ("olive hild" → "olive hilde": the restaurant in Hilden stays).
+     */
+    fun stillMatching(places: List<Place>, text: String): List<Place> {
+        val qTokens = SearchText.tokens(text)
+        if (qTokens.isEmpty()) return emptyList()
+        val qFull = qTokens.joinToString(" ")
+        return places.filter { textMatch(qTokens, qFull, onlineEntry(it)) != null }
+    }
+
+    /**
+     * The next list for the SAME text as the one on screen ([shown]): every row shown stays where it is (updated when
+     * [next] has it again), rows of [next] not shown yet go below, in [next]'s order. Nothing moves or vanishes under
+     * the finger (owner; field bug 0.13.2: the restaurant shown, then the list jumped). A new text is ranked afresh.
+     */
+    fun keepShown(shown: List<SearchHit>, next: List<SearchHit>): List<SearchHit> {
+        val kept = shown.map { s -> next.firstOrNull { it.place.id == s.place.id } ?: s }
+        val added = next.filter { n -> shown.none { it.place.id == n.place.id || SearchMerge.samePlace(it.place, n.place) } }
+        return kept + added
     }
 
     /**

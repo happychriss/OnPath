@@ -2,10 +2,7 @@ package com.onpath.app.ui
 
 import com.onpath.strings.*
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
@@ -13,24 +10,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 
 /**
- * Dialogs of saving / loading routes, drawn above every screen (map, My routes): Save route name,
- * "Replace current plan?", and a save problem. None of them closes by itself.
+ * Dialogs of saving / loading routes, drawn above every screen (map, My routes): "Replace current plan?", "Navigate
+ * anyway?" and a save problem. None of them closes by itself. Save itself asks nothing (owner 2026-10-31, "wie Word"):
+ * it saves at once, the sheet's "Saved as …" renames in place.
  */
 @Composable
 fun RouteDialogs(vm: AppViewModel) {
-    vm.saveChoice?.let { _ ->
-        SaveChoiceDialog(vm.savedName ?: "", unsaved = vm.planUnsaved,
-            onSave = vm::saveChoiceOverwrite, onSaveAsNew = vm::saveChoiceAsNew, onCancel = { vm.saveChoice = null })
-    }
-    if (vm.saveDialog) NameDialog(str(if (vm.savedName != null) Res.string.plan_save_as_new_route else Res.string.plan_save_route),
-        vm.savedName ?: vm.defaultName(str(Res.string.plan_route_default_name)),
-        onDone = { vm.saveDialog = false; vm.saveRoute(it) }, onDismiss = { vm.saveDialog = false },
-        suggestion = vm.suggestedName.takeIf { vm.savedName == null })
-    vm.saveFirst?.let { _ ->
-        NameDialog(str(Res.string.plan_save_current_route), vm.savedName ?: vm.defaultName(str(Res.string.plan_route_default_name)),
-            onDone = { vm.saveFirstDone(it) }, onDismiss = { vm.saveFirst = null },
-            suggestion = vm.suggestedName.takeIf { vm.savedName == null })
-    }
     vm.replaceAsk?.let { t ->
         ReplacePlanDialog(onSaveFirst = vm::replaceSaveFirst, onReplace = vm::replaceConfirmed, onCancel = { vm.replaceAsk = null },
             fromLink = t is PlanToOpen.Shared)
@@ -44,28 +29,6 @@ fun RouteDialogs(vm: AppViewModel) {
             confirmButton = { TextButton(onClick = { vm.routesProblem = null }) { Text(str(Res.string.common_ok)) } },
         )
     }
-}
-
-/**
- * Sheet ⋯ → Save route for a plan that belongs to a saved route [name]: **Save** overwrites it (name stays),
- * **Save as new…** asks for a name and keeps [name] as it was. No Cancel button: a tap outside or Back cancels
- * (like "Replace current plan?").
- */
-@Composable
-fun SaveChoiceDialog(name: String, unsaved: Boolean, onSave: () -> Unit, onSaveAsNew: () -> Unit, onCancel: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onCancel,
-        icon = { Icon(Icons.Outlined.Save, null) },
-        title = { Text(str(Res.string.plan_save_route)) },
-        text = {
-            DialogText(if (unsaved) str(Res.string.plan_save_changes_into, name)
-                else str(Res.string.plan_saved_again, name))
-        },
-        confirmButton = { TextButton(onClick = onSave, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_save)) } },
-        dismissButton = {
-            TextButton(onClick = onSaveAsNew, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.plan_save_as_new)) }
-        },
-    )
 }
 
 /**

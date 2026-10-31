@@ -53,9 +53,10 @@ class ScreenshotTest {
 
     @Composable
     private fun Footer(gps: GpsStatus = GpsStatus.GOOD, following: Boolean = false, compass: CompassSpec? = null,
-                       eye: Boolean = false, peeking: Boolean = false, large: Boolean = false) =
+                       eye: Boolean = false, peeking: Boolean = false, large: Boolean = false, fit: Boolean = false) =
         MapFooter("500 m" to 64.dp) {
-            MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking, large = large, onSettings = if (large) ({}) else null)
+            MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking,
+                onFitRoute = if (fit) ({}) else null, large = large, onSettings = if (large) ({}) else null)
         }
 
     /**
@@ -84,12 +85,14 @@ class ScreenshotTest {
     }
 
     @Composable
-    private fun NavFrame(ui: NavUi, slide: Float = 0f) {
+    private fun NavFrame(ui: NavUi, slide: Float = 0f, fit: Boolean = false) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    NavigateOverlay(ui, footer = { Footer(following = true, compass = CompassSpec(ui.headingUp, 0f) {}, eye = true, large = true) },
+                    // after "Show whole route" following is off: compass needle, locate not filled
+                    NavigateOverlay(ui, footer = { Footer(following = !fit, compass = CompassSpec(ui.headingUp.takeUnless { fit }, 0f) {},
+                        eye = true, large = true, fit = fit) },
                         onSlideToPlan = {}, slideStartFraction = slide)
                 }
             }
@@ -168,6 +171,21 @@ class ScreenshotTest {
 
     @Test fun plan() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
+    /** "Show whole route" (⛶) under the eye: compass · eye · whole route · Undo · locate on the sheet's edge. */
+    @Test fun planWholeRoute() = paparazzi.snapshot {
+        Frame(footer = {
+            MapFooter("500 m" to 64.dp) {
+                MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false,
+                    onLocate = {}, onFitRoute = {}, onUndo = {})
+            }
+        }) { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
+    /** Navigate after "Show whole route": the big buttons gear · compass · eye · whole route · locate, following off. */
+    @Test fun navigateWholeRoute() = paparazzi.snapshot {
+        NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.RIGHT, 120.0)), fit = true)
     }
 
     // ------------------------------------------------ Points section: three sheet sizes with points
@@ -331,7 +349,7 @@ class ScreenshotTest {
     private val paired = com.onpath.app.plansync.PlanSync.State(paired = true, peer = "Chrome on Linux", lastOkMs = syncNow - 60_000,
         sinceMs = syncNow - 86_400_000, checkedMs = syncNow - 60_000)
 
-    /** ☰ paired with a browser (owner 2026-10-30): "Paired with browser ✓" + "Pixel 8 ↔ Chrome on Linux · 1 min ago". */
+    /** ☰ paired with a browser (owner 2026-10-30): "Paired with browser ✓" + "Pixel 8 ↔ Chrome on Linux · synced 1 min ago". */
     @Test fun planMenuSyncPaired() = paparazzi.snapshot {
         TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false),
             sync = { SyncMenuUi.of(paired, "Pixel 8", syncNow) }) { PlanPanel(planUi(), PlanCallbacks()) }
@@ -341,6 +359,14 @@ class ScreenshotTest {
     @Test fun planMenuSyncProblem() = paparazzi.snapshot {
         TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false),
             sync = { SyncMenuUi.of(paired.copy(problem = com.onpath.app.plansync.PlanSync.Problem.Refused(507, "full")), "Pixel 8", syncNow) }) {
+            PlanPanel(planUi(), PlanCallbacks())
+        }
+    }
+
+    /** ☰ when the browser unpaired itself (field bug 2026-10-31): "Pair with browser" + grey "Unpaired in the browser", no dot. */
+    @Test fun planMenuSyncUnpairedInBrowser() = paparazzi.snapshot {
+        TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false),
+            sync = { SyncMenuUi.of(paired.copy(peer = null, browser = com.onpath.app.plansync.BrowserLink.UNPAIRED), "Pixel 8", syncNow) }) {
             PlanPanel(planUi(), PlanCallbacks())
         }
     }
@@ -368,10 +394,21 @@ class ScreenshotTest {
         }
     }
 
-    /** Back in Plan while the tour records: one sheet – tour status + Continue / Pause / End on top, then the route. */
+    /**
+     * Back in Plan while the tour records, pulled up one step: tour status + compact Continue, Pause / End tour, then
+     * the route (activity, time / km, profile).
+     */
     @Test fun planTourRunning() = paparazzi.snapshot {
         Frame {
-            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(6_400.0, 5025, paused = false)),
+            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
+                PlanCallbacks())
+        }
+    }
+
+    /** Plan during a tour as it opens (owner 2026-10-31): ONE row – "● Tour running · km · time" + [Continue]; map free. */
+    @Test fun planTourRunningCollapsed() = paparazzi.snapshot {
+        Frame {
+            PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
                 PlanCallbacks())
         }
     }
@@ -397,7 +434,7 @@ class ScreenshotTest {
 
     // --- Re-routing while navigating (owner: ask every time, nothing disappears by itself) ---
     private val hint = com.onpath.app.navigation.RouteHint(120.0, 45.0, GeoPoint(46.68, 11.13))
-    private val question = com.onpath.app.navigation.NavPrompt.Question(1, 350.0, 600.0, 20.0, emptyList(), 900.0, 2_000.0)
+    private val question = com.onpath.app.navigation.NavPrompt.Question(1, 350.0, 600.0, 20.0, emptyList(), 900.0, 2_000.0, offM = 118.0)
 
     /** While off route the service says "not on route" (no stale time): the status card keeps only the recording line. */
     private val offUi = navUi.copy(toGo = ToGo(0.0, 0.0, 0.0, 120.0, state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE))
@@ -458,6 +495,30 @@ class ScreenshotTest {
     @Test fun navigateRerouteSkipStopNamed() = paparazzi.snapshot {
         NavFrame(navUi.copy(offRoute = OffRouteUi(question.copy(skipStop = 2, skipName = "Gasthof Hochmuth",
             via = question.copy(extraM = question.extraM + 1_400.0)), hint)))
+    }
+
+    /**
+     * Never on the route yet, 31 km from its start (owner 2026-10-31, field: tour started at home): a calm question –
+     * no vibration, no off-route card – "Route starts 31 km away" · "south-west (direct) · recording" · Just record / Guide me.
+     * The status card says the same number: "Not on the route yet · Start 31 km away" (not the line's nearest 28.4 km).
+     */
+    private val farUi = navUi.copy(toGo = ToGo(0.0, 0.0, 0.0, 28_400.0, state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE,
+        startM = 30_600.0),
+        recordedM = 0.0, elapsedS = 40, activity = Activity.BIKE_TOURING)
+    private val farHint = com.onpath.app.navigation.RouteHint(30_600.0, 225.0, GeoPoint(46.4, 10.9))
+
+    @Test fun navigateFarStart() = paparazzi.snapshot {
+        NavFrame(farUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.FarStart(1, 30_600.0, 225.0), farHint, arrowDeg = -135f)))
+    }
+
+    /** "Guide me" tapped: the way to the start is being computed (spinner, "Guide me" waits). */
+    @Test fun navigateFarStartSearching() = paparazzi.snapshot {
+        NavFrame(farUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.FarStart(1, 30_600.0, 225.0, searching = true), farHint, arrowDeg = -135f)))
+    }
+
+    /** "Guide me" found no way: the red note with OK where the question was; recording goes on. */
+    @Test fun navigateLeadFailed() = paparazzi.snapshot {
+        NavFrame(farUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.LeadFailed(2), farHint, arrowDeg = -135f)))
     }
 
     /** No way back found: arrow + distance to the route (arrow relative to the map). */
@@ -742,6 +803,23 @@ class ScreenshotTest {
         }
     }
 
+    /**
+     * Bug 02: a point just held far away – while its route is computed a ring turns around it on the map (the sheet
+     * shows its thin progress line as before).
+     */
+    @Test fun planRoutingSpinnerAtNewPoint() = paparazzi.snapshot {
+        OnPathTheme {
+            Frame { PlanPanel(planUi(n = 4, routing = true), PlanCallbacks()) }
+            val d = androidx.compose.ui.platform.LocalDensity.current
+            val a = with(d) { androidx.compose.ui.geometry.Offset(150.dp.toPx(), 420.dp.toPx()) }
+            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                drawCircle(androidx.compose.ui.graphics.Color.White, 13.dp.toPx(), a)
+                drawCircle(OnPathColors.Bad, 11.dp.toPx(), a)
+            }
+            RoutingRing(a, stillProgress = 0.3f)
+        }
+    }
+
     /** Hold on the start (unnamed): only Delete – it already is the start, it can't be the end of the route. */
     @Test fun pointMenuStart() = paparazzi.snapshot {
         OnPathTheme {
@@ -808,10 +886,13 @@ class ScreenshotTest {
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}) }
     }
 
-    /** Planned tab after a sync: a route new from the browser and a changed imported track – bold + grey line until opened. */
+    /**
+     * Planned tab after a sync: a route new from the browser (long name: it ellipsizes, the tag stays whole) and a
+     * changed imported track – a "New" / "Changed" tag after the name until opened (RouteTag).
+     */
     @Test fun toursFromBrowser() = paparazzi.snapshot {
         val list = tourList.mapIndexed { i, t -> t.copy(uuid = "u-$i") } +
-            Tour(5, TourKind.PLANNED, "Meran → Vellau", 1_760_600_000_000, "MTB", 2, 11_300.0, 690.0, 40.0, 1.9 * 3600, "done", viaPts, uuid = "u-new")
+            Tour(5, TourKind.PLANNED, "Meran → Vellau → Leiter Alm → Hochganghaus", 1_760_600_000_000, "MTB", 2, 11_300.0, 690.0, 40.0, 1.9 * 3600, "done", viaPts, uuid = "u-new")
         OnPathTheme {
             RoutesScreen(list.sortedByDescending { it.createdMs }, {}, {}, {}, {}, {},
                 marks = mapOf("u-new" to com.onpath.app.plansync.SyncMark.NEW, "u-2" to com.onpath.app.plansync.SyncMark.CHANGED))
@@ -895,13 +976,6 @@ class ScreenshotTest {
         }
     }
 
-    /** Sheet ⋯ → Save route on a plan loaded from a saved route: Save (overwrite) or Save as new… (tap outside = cancel). */
-    @Test fun saveChoice() = paparazzi.snapshot {
-        OnPathTheme {
-            Frame { PlanPanel(planUi().copy(savedName = "Route Meran – Hirzer", unsaved = true), PlanCallbacks()) }
-            SaveChoiceDialog("Route Meran – Hirzer", unsaved = true, {}, {}, {})
-        }
-    }
 
     /** My routes → ⋮ → Rename: name dialog prefilled with the current name. */
     @Test fun routesRename() = paparazzi.snapshot {
@@ -924,9 +998,23 @@ class ScreenshotTest {
         }
     }
 
-    /** The sheet shows the save state instead of a message. */
+    /** The sheet shows the save state instead of a message; ✎ – a tap renames in place (owner 2026-10-31). */
     @Test fun planSaved() = paparazzi.snapshot {
         Frame { PlanPanel(planUi().copy(savedName = "Route Meran – Hirzer"), PlanCallbacks()) }
+    }
+
+    /** "Saved as …" tapped: the name field in place (no dialog) – Done / ✓ renames, Back / a tap outside cancels. */
+    @Test fun planSavedRename() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi().copy(savedName = "Route Meran – Hirzer", renaming = true), PlanCallbacks()) }
+    }
+
+    /** Sheet ⋯ of a saved route: Save (overwrites it) and Save as new route (a copy, at once). */
+    @Test fun planMenuSavedRoute() = paparazzi.snapshot {
+        val ui = planUi().copy(savedName = "Route Meran – Hirzer", unsaved = true)
+        Box(Modifier.fillMaxSize()) {
+            Frame { PlanPanel(ui, PlanCallbacks()) }
+            OnPathTheme { MenuCard(Modifier.align(Alignment.BottomEnd).padding(bottom = 150.dp, end = 12.dp)) { SheetMenuItems(ui, PlanCallbacks()) {} } }
+        }
     }
 
     /** A new route, not saved yet (owner 2026-10-30): green "Save" beside ⋯ in the sheet's first line. */

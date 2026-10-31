@@ -104,10 +104,26 @@ class RouteRulesTest {
     }
 
     @Test fun saveModeOverwriteOnlyForAnExistingSavedRoute() {
-        assertEquals(SaveMode.NAME_DIALOG, RouteRules.saveMode(-1, null, listOf(1L, 2L))) // never saved
-        assertEquals(SaveMode.OVERWRITE_OR_NEW, RouteRules.saveMode(2, "Hirzer", listOf(1L, 2L))) // loaded / saved as #2
-        assertEquals(SaveMode.NAME_DIALOG, RouteRules.saveMode(3, "Gone", listOf(1L, 2L))) // deleted meanwhile
-        assertEquals(SaveMode.NAME_DIALOG, RouteRules.saveMode(2, null, listOf(2L))) // no name known
+        assertEquals(SaveMode.NEW_ROUTE, RouteRules.saveMode(-1, null, listOf(1L, 2L))) // never saved
+        assertEquals(SaveMode.OVERWRITE, RouteRules.saveMode(2, "Hirzer", listOf(1L, 2L))) // loaded / saved as #2
+        assertEquals(SaveMode.NEW_ROUTE, RouteRules.saveMode(3, "Gone", listOf(1L, 2L))) // deleted meanwhile
+        assertEquals(SaveMode.NEW_ROUTE, RouteRules.saveMode(2, null, listOf(2L))) // no name known
+    }
+
+    @Test fun newRouteNameIsTheProposalElseTheDateName() {
+        val dated = "Route 31 Oct, 10:12"
+        assertEquals("Vellau → Leiteralm", RouteRules.newRouteName("Vellau → Leiteralm", dated, emptyList()))
+        assertEquals(dated, RouteRules.newRouteName(null, dated, emptyList())) // nothing fits / place index too slow
+        assertEquals(dated, RouteRules.newRouteName("   ", dated, emptyList()))
+        assertEquals("Vellau → Leiteralm", RouteRules.newRouteName("  Vellau → Leiteralm ", dated, listOf("Hirzer")))
+    }
+
+    @Test fun newRouteNameNeverRepeatsASavedRoutesName() {
+        val dated = "Route 31 Oct, 10:12"
+        assertEquals("Vellau → Leiteralm (2)", RouteRules.newRouteName("Vellau → Leiteralm", dated, listOf("Vellau → Leiteralm")))
+        assertEquals("Vellau → Leiteralm (3)",
+            RouteRules.newRouteName("Vellau → Leiteralm", dated, listOf("Vellau → Leiteralm", "Vellau → Leiteralm (2)")))
+        assertEquals("$dated (2)", RouteRules.newRouteName(null, dated, listOf(dated)))
     }
 
     @Test fun cleanName() {

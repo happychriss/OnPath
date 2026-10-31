@@ -1,5 +1,6 @@
 package com.onpath.app.cells
 
+import com.onpath.app.data.AtomicFiles
 import com.onpath.strings.*
 import com.onpath.app.debug.Problems
 import org.json.JSONArray
@@ -385,10 +386,16 @@ class CellStore(
         addressesDir.mkdirs()
         val dest = File(addressesDir, "${d.manifest.cell.id}.sqlite")
         // copy + rename (the download folder is deleted afterwards; a rename across folders works on one volume)
-        if (!src.renameTo(dest)) {
+        try { AtomicFiles.replace(src, dest) } catch (e: IOException) {
+            Problems.info("cells", "Addresses of cell ${d.manifest.cell} not moved; copied instead", e)
             val tmp = File(addressesDir, ".${dest.name}.tmp")
-            src.copyTo(tmp, overwrite = true)
-            if (!tmp.renameTo(dest)) { tmp.delete(); Problems.warn("cells", "Addresses of cell ${d.manifest.cell} could not be installed; address search there is missing") }
+            try {
+                src.copyTo(tmp, overwrite = true)
+                AtomicFiles.replace(tmp, dest)
+            } catch (e2: IOException) {
+                tmp.delete()
+                Problems.warn("cells", "Addresses of cell ${d.manifest.cell} could not be installed; address search there is missing", e2)
+            }
         }
     }
 

@@ -54,8 +54,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -269,7 +269,7 @@ internal object SacScale {
  * My routes (☰ → My routes): two tabs ([RoutesTab]) – Planned (planned routes + imported GPX files, what syncs to the
  * browser; Import GPX lives here) and Done (recorded tours) – each a list, newest first: type icon, name, date,
  * distance. Per item ⋮ Rename / Export GPX / Delete (asks first), tap = open. A route from the browser not opened yet
- * has a bold title and "New from the browser" / "Changed in the browser" ([marks]). ⋮ Export all takes both tabs.
+ * has a tag after its name: "New" / "Changed" ([marks] → [RouteTag]). ⋮ Export all takes both tabs.
  * During a tour a planned route loads nothing: a tap shows the box "End the running tour first, then this route can be
  * loaded." with OK under the tabs (HINWEIS, ScreenMessageHost – AppViewModel.requestOpen; owner 2026-10-31).
  */
@@ -299,7 +299,7 @@ fun RoutesScreen(
     /** The tab shown first (the app keeps the last one chosen while it runs). */
     initialTab: RoutesTab = RoutesTab.PLANNED,
     onTab: (RoutesTab) -> Unit = {},
-    /** Routes from the browser not opened yet (tour uuid → mark): bold title + a grey line (plansync/SyncMarks). */
+    /** Routes from the browser not opened yet (tour uuid → mark): a "New" / "Changed" tag after the name (plansync/SyncMarks). */
     marks: Map<String, SyncMark> = emptyMap(),
 ) {
     var confirmDelete by remember { mutableStateOf(initialConfirmDelete) }
@@ -308,18 +308,27 @@ fun RoutesScreen(
     var rename by remember { mutableStateOf(initialRename) }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.systemBarsPadding()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack, Modifier.size(56.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, str(Res.string.common_back)) }
-                Text(str(Res.string.routes_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            // the title never breaks inside a word: at a large font Import GPX becomes its icon (TopBarLayout)
+            val importLabel = str(Res.string.routes_import_gpx)
+            val importingLabel = str(Res.string.routes_importing)
+            TopBarRow(
+                back = { IconButton(onClick = onBack, Modifier.size(56.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, str(Res.string.common_back)) } },
+                title = { ellipsize ->
+                    Text(str(Res.string.routes_title), style = MaterialTheme.typography.titleLarge,
+                        maxLines = if (ellipsize) 1 else Int.MAX_VALUE, overflow = TextOverflow.Ellipsis)
+                },
                 // Import GPX lives in Planned (an import lands there); a running import keeps its spinner on either tab
-                if (tab == RoutesTab.PLANNED || busy == Busy.IMPORT) {
-                    TextButton(onClick = { if (busy == null) onImport() }, modifier = Modifier.heightIn(min = 48.dp)) {
-                        if (busy == Busy.IMPORT) BusyContent(str(Res.string.routes_importing))
-                        else { Icon(Icons.Filled.UploadFile, null); Spacer(Modifier.width(6.dp)); Text(str(Res.string.routes_import_gpx)) }
+                action = if (tab == RoutesTab.PLANNED || busy == Busy.IMPORT) ({ iconOnly ->
+                    if (iconOnly) IconButton(onClick = { if (busy == null) onImport() }, Modifier.size(48.dp)) {
+                        if (busy == Busy.IMPORT) CircularProgressIndicator(Modifier.size(18.dp).semantics { contentDescription = importingLabel }, strokeWidth = 2.dp)
+                        else Icon(Icons.Filled.UploadFile, importLabel)
+                    } else TextButton(onClick = { if (busy == null) onImport() }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        if (busy == Busy.IMPORT) BusyContent(importingLabel)
+                        else { Icon(Icons.Filled.UploadFile, null); Spacer(Modifier.width(6.dp)); Text(importLabel) }
                     }
-                }
-                RoutesMenu(onExportAll, onRecycleBin, canExport = tours.isNotEmpty() && busy == null)
-            }
+                }) else null,
+                menu = { RoutesMenu(onExportAll, onRecycleBin, canExport = tours.isNotEmpty() && busy == null) },
+            )
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
                 RoutesTab.entries.forEachIndexed { i, t ->
                     SegmentedButton(
@@ -342,7 +351,7 @@ fun RoutesScreen(
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(shown, key = { it.id }) { t ->
-                        TourCard(t, mark = marks[t.uuid].takeIf { t.uuid.isNotEmpty() }, onOpen = { onOpen(t) },
+                        TourCard(t, tag = RouteTag.of(t, marks), onOpen = { onOpen(t) },
                             onRename = { rename = t }, onExport = { onExport(t) },
                             onDelete = if (t.id == recordingId) null else ({ confirmDelete = t }),
                             onEditRides = if (t.rides?.rides.isNullOrEmpty() || t.id == recordingId) null else ({ onEditRides(t) }))
@@ -393,7 +402,7 @@ fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: 
 
 @Composable
 private fun TourCard(
-    t: Tour, mark: SyncMark?, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?,
+    t: Tour, tag: RouteTag?, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?,
     onEditRides: (() -> Unit)? = null,
 ) {
     val (icon, color) = when (t.kind) {
@@ -409,12 +418,8 @@ private fun TourCard(
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                // from the browser and not opened yet (owner 2026-10-30): bold title + a grey line, until opened
-                Text(t.name, fontWeight = if (mark != null) FontWeight.ExtraBold else FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                mark?.let {
-                    Text(str(if (it == SyncMark.NEW) Res.string.routes_mark_new else Res.string.routes_mark_changed),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                // from the browser and not opened yet (owner 2026-10-31): a "New" / "Changed" tag after the name, until opened
+                RouteTitle(t.name, tag)
                 Text("${t.kind.label} · " + SimpleDateFormat(str(Res.string.common_date), Locale.getDefault()).format(Date(t.createdMs)),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}", style = MaterialTheme.typography.bodySmall)
@@ -467,16 +472,12 @@ private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, on
 // ------------------------------------------------------------------ dialogs
 
 @Composable
-fun NameDialog(title: String, initial: String, onDone: (String) -> Unit, onDismiss: () -> Unit, confirmLabel: String = str(Res.string.common_save),
-               /** A better name computed in the background (route names): replaces [initial] until the user types. */
-               suggestion: String? = null) {
-    var text by remember { mutableStateOf(suggestion ?: initial) }
-    var typed by remember { mutableStateOf(false) }
-    LaunchedEffect(suggestion) { if (suggestion != null && !typed) text = suggestion }
+fun NameDialog(title: String, initial: String, onDone: (String) -> Unit, onDismiss: () -> Unit, confirmLabel: String = str(Res.string.common_save)) {
+    var text by remember { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
-        text = { OutlinedTextField(value = text, onValueChange = { text = it; typed = true }, singleLine = true, label = { Text(str(Res.string.routes_name_label)) }) },
+        text = { OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true, label = { Text(str(Res.string.routes_name_label)) }) },
         confirmButton = { TextButton(onClick = { onDone(text) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(confirmLabel) } },
         dismissButton = { TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
     )

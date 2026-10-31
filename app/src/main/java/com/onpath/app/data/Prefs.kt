@@ -222,9 +222,8 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             val arr = JSONArray()
             val ele = JSONArray()
             points.forEach { arr.put(it.lat); arr.put(it.lon); ele.put(it.ele ?: org.json.JSONObject.NULL) }
-            val tmp = File(followFile.path + ".tmp")
-            tmp.writeText(org.json.JSONObject().put("name", name).put("pts", arr).put("ele", ele).toString())
-            if (!tmp.renameTo(followFile)) Problems.error("data", "Followed line not saved (rename failed) – lost after a restart")
+            AtomicFiles.writeText(followFile, org.json.JSONObject().put("name", name).put("pts", arr).put("ele", ele).toString(),
+                File(followFile.path + ".tmp"))
         } catch (e: Exception) { Problems.error("data", "Followed line not saved – lost after a restart", e) }
     }
 

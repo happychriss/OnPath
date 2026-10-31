@@ -2,6 +2,7 @@ package com.onpath.app.search
 
 import com.onpath.app.cells.CellId
 import com.onpath.app.cells.CellStore
+import com.onpath.app.data.AtomicFiles
 import com.onpath.app.debug.Problems
 import com.onpath.app.search.OfflineIndex.Companion.TrailPart
 import java.io.File
@@ -333,7 +334,7 @@ class SearchAreas(
                 for (t in c.trails) { w.write("T\t${clean(t.name)}\t${t.lat}\t${t.lon}\t${t.len}\n"); n++ }
                 w.write("END\t$n\n")
             }
-            if (!tmp.renameTo(f)) { tmp.delete(); throw java.io.IOException("rename failed: ${f.name}") }
+            try { AtomicFiles.replace(tmp, f) } catch (e: java.io.IOException) { tmp.delete(); throw e } // a cache: rebuilt next time
         }
 
         /** The file's content, or null when it belongs to another area / version. Throws when it is incomplete. */

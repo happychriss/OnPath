@@ -96,6 +96,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val NAV_TILT_DEG = 0.0
         /** Heading-up: the position sits lower on screen so more of the way ahead is visible (share of height). */
         const val NAV_TOP_PADDING = 0.30
+        /** "Show whole route": never closer than this (as the browser planner). */
+        const val FIT_MAX_ZOOM = 16.0
         /** Position puck in both modes: MapLibre's small blue dot + bearing triangle (not the big GPS puck). */
         private const val PUCK_MODE = RenderMode.COMPASS
     }
@@ -465,7 +467,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 lc.renderMode = if (headingUp) RenderMode.NORMAL else PUCK_MODE
                 facing.visible = false
                 wantedCameraMode = mode
-                // Navigate's start zoom (AppMode.navStartZoom) once; else only zoom in when far out
+                // Navigate's start zoom (AppMode.navStartZoom: on entering Navigate and on locate there); else only zoom in when far out
                 val zoom = startZoom ?: if (map.cameraPosition.zoom < 13) 15.0 else null
                 zoomed = true
                 // a north-up animation from Plan must not run on into the walking-direction camera
@@ -474,8 +476,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 // MapLibre ignores paddingWhileTracking while the camera moves into tracking:
                 // set it again when the transition ends, so the dot always sits at the same place
                 lc.setCameraMode(mode, 750L, zoom, bearing, tilt, object : org.maplibre.android.location.OnLocationCameraTransitionListener {
-                    override fun onLocationCameraTransitionFinished(cameraMode: Int) { pad(top); showFacing(headingUp) }
-                    override fun onLocationCameraTransitionCanceled(cameraMode: Int) { pad(top); showFacing(headingUp) }
+                    override fun onLocationCameraTransitionFinished(cameraMode: Int) { pad(top); showFacing(headingUp); ensureStartZoom(startZoom) }
+                    override fun onLocationCameraTransitionCanceled(cameraMode: Int) { pad(top); showFacing(headingUp); ensureStartZoom(startZoom) }
                 })
                 // the camera takes the walking direction at once, after the transition and a north-up animation
                 // that may still run (Plan → Navigate); it must not wait for the next change of direction
@@ -502,6 +504,23 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             Problems.warn("map", "Map camera mode not changed (follow / heading-up)", e)
         }
         return zoomed
+    }
+
+    /**
+     * Navigate's start zoom, made sure (field A-019: after "Continue" the map kept Plan's 1 km zoom). MapLibre zooms in
+     * setCameraMode only when tracking starts from none: from Plan's own following (same or another tracking mode) it
+     * does not zoom at all, and a transition can be cancelled. So when the transition ends and the map still follows,
+     * the missing zoom is animated while tracking ([com.onpath.app.ui.AppMode.zoomStill]).
+     */
+    private fun ensureStartZoom(wanted: Double?) {
+        try {
+            val lc = map.locationComponent
+            if (lc.cameraMode == CameraMode.NONE) return // a gesture or a fit ended following: the user's / app's view stays
+            val z = com.onpath.app.ui.AppMode.zoomStill(map.cameraPosition.zoom, wanted) ?: return
+            lc.zoomWhileTracking(z, 600L)
+        } catch (e: Exception) {
+            Problems.warn("map", "Navigate start zoom not set", e)
+        }
     }
 
     private fun pad(top: Double) {
@@ -708,12 +727,16 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         src.setGeoJson(Feature.fromGeometry(MultiLineString.fromLngLats(lines)))
     }
 
-    /** [unreached] = indices the route does not reach: drawn grey and hollow (see [setPlanGaps]). */
-    fun setWaypoints(points: List<GeoPoint>, pinned: Set<Int> = emptySet(), unreached: Set<Int> = emptySet()) = guarded("waypoints") {
+    /**
+     * [unreached] = indices the route does not reach: drawn grey and hollow (see [setPlanGaps]); [passed] = points behind
+     * the user in a running tour (navigation/TourSplit): grey with a ✓, numbers kept.
+     */
+    fun setWaypoints(points: List<GeoPoint>, pinned: Set<Int> = emptySet(), unreached: Set<Int> = emptySet(),
+                     passed: Set<Int> = emptySet()) = guarded("waypoints") {
         val src = source(SRC_WPT) ?: return
         ensureMarkerImages(points.size)
         val features = points.mapIndexed { i, p ->
-            val kind = when { i in unreached -> "g"; i == 0 -> "s"; i == points.lastIndex && points.size > 1 -> "e"; else -> "v" }
+            val kind = when { i in unreached -> "g"; i in passed -> "p"; i == 0 -> "s"; i == points.lastIndex && points.size > 1 -> "e"; else -> "v" }
             Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)).apply {
                 addStringProperty("icon", "wp-$kind-${i + 1}")
                 addNumberProperty("idx", i)
@@ -832,22 +855,40 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         lastPanMs = now
     }.onFailure { Problems.warn("map", "Map did not move to the profile point", it) }
 
-    /** Search result: fly to [p] at [zoom]. Never throws. */
-    fun flyTo(p: GeoPoint, zoom: Double) = runCatching {
-        map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(p.lat, p.lon), zoom), 700)
+    /**
+     * Search result: fly to [p] at [zoom], in the middle of the free room [pad] leaves (ui/FitPaddingRule – not half
+     * behind the plan sheet, field A-019). Following must be off before (CLAUDE.md "Map camera"). Never throws.
+     */
+    fun flyTo(p: GeoPoint, zoom: Double, pad: com.onpath.app.ui.FitPadding) = runCatching {
+        map.animateCamera(CameraUpdateFactory.newCameraPosition(centred(p, zoom, pad)), 700)
     }.onFailure { Problems.warn("map", "Map did not fly to the search result", it) }
 
-    fun fitTo(points: List<GeoPoint>, bottomPaddingPx: Int) {
+    /** [p] at [zoom] in the middle of the room [pad] leaves (the camera keeps that padding, like a route fit). */
+    private fun centred(p: GeoPoint, zoom: Double, pad: com.onpath.app.ui.FitPadding): CameraPosition =
+        CameraPosition.Builder().target(LatLng(p.lat, p.lon)).zoom(zoom)
+            .padding(pad.left.toDouble(), pad.top.toDouble(), pad.right.toDouble(), pad.bottom.toDouble()).build()
+
+    /**
+     * Show all [points] in the free room [pad] leaves (ui/FitPaddingRule: clear of the top and bottom elements).
+     * [northUp]: the overview north up and flat ("Show whole route", also from Navigate's turned, tilted camera);
+     * else the current bearing / tilt stay. Following must be off before (CLAUDE.md "Map camera"). Never throws.
+     */
+    fun fitTo(points: List<GeoPoint>, pad: com.onpath.app.ui.FitPadding, northUp: Boolean = false) {
         if (points.isEmpty()) return
         try {
             if (points.size == 1) {
                 // one place (search result): close enough to see the POI icon and the paths around it
-                map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(points[0].lat, points[0].lon), 16.0), 700)
+                map.animateCamera(CameraUpdateFactory.newCameraPosition(centred(points[0], 16.0, pad)), 700)
                 return
             }
             val b = LatLngBounds.Builder().apply { points.forEach { include(LatLng(it.lat, it.lon)) } }.build()
-            val pad = (48 * density).toInt()
-            map.animateCamera(CameraUpdateFactory.newLatLngBounds(b, pad, pad * 2, pad, bottomPaddingPx + pad), 800)
+            val update = if (northUp) {
+                // a short route not closer than z16 (the browser planner's maxZoom)
+                val cp = map.getCameraForLatLngBounds(b, intArrayOf(pad.left, pad.top, pad.right, pad.bottom), 0.0, 0.0)
+                if (cp != null) CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(cp).zoom(minOf(cp.zoom, FIT_MAX_ZOOM)).build())
+                else CameraUpdateFactory.newLatLngBounds(b, 0.0, 0.0, pad.left, pad.top, pad.right, pad.bottom)
+            } else CameraUpdateFactory.newLatLngBounds(b, pad.left, pad.top, pad.right, pad.bottom)
+            map.animateCamera(update, 800)
         } catch (e: Exception) {
             Problems.warn("map", "Map not zoomed to fit the route / places", e)
         }
@@ -861,12 +902,16 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             style.addImage("wp-v-$n", marker(n, ROUTE_COLOR))
             style.addImage("wp-e-$n", marker(n, "#C62828"))
             style.addImage("wp-g-$n", marker(n, GAP_COLOR, hollow = true))
+            style.addImage("wp-p-$n", marker(n, NAV_ORIGINAL_COLOR, check = true))
             markerImages++
         }
     }
 
-    /** A numbered route point; [hollow] = white inside, ring and number in [color] (a point the route does not reach). */
-    private fun marker(n: Int, color: String, hollow: Boolean = false): Bitmap {
+    /**
+     * A numbered route point; [hollow] = white inside, ring and number in [color] (a point the route does not reach);
+     * [check] = a small green ✓ badge at the top right (a point passed in the tour).
+     */
+    private fun marker(n: Int, color: String, hollow: Boolean = false, check: Boolean = false): Bitmap {
         val sizeDp = 30
         val px = (sizeDp * density).toInt()
         val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
@@ -887,6 +932,23 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         p.textAlign = Paint.Align.CENTER
         val y = px / 2f - (p.descent() + p.ascent()) / 2
         c.drawText(n.toString(), px / 2f, y, p)
+        if (check) {
+            val r = 6.5f * density
+            val cx = px - r; val cy = r
+            p.color = android.graphics.Color.WHITE
+            c.drawCircle(cx, cy, r, p)
+            p.color = android.graphics.Color.parseColor("#2E7D32")
+            c.drawCircle(cx, cy, r - 1.2f * density, p)
+            p.color = android.graphics.Color.WHITE
+            p.style = Paint.Style.STROKE; p.strokeWidth = 1.6f * density; p.strokeCap = Paint.Cap.ROUND
+            val path = android.graphics.Path().apply {
+                moveTo(cx - 2.6f * density, cy + 0.2f * density)
+                lineTo(cx - 0.6f * density, cy + 2.2f * density)
+                lineTo(cx + 2.8f * density, cy - 1.8f * density)
+            }
+            c.drawPath(path, p)
+            p.style = Paint.Style.FILL
+        }
         return bmp
     }
 }

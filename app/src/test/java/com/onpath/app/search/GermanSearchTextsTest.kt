@@ -17,7 +17,7 @@ class GermanSearchTextsTest {
     @Test fun kindsInGerman() = inGerman {
         assertEquals("Trinkwasser", PoiKinds.of("water").label)
         assertEquals("Gipfel", SearchKinds.of("peak").label)
-        assertEquals("Hütten", SearchKinds.Category.HUTS.label)
+        assertEquals(listOf("Orte", "Essen", "Sehenswert", "Wasser", "Bahn", "Parken"), SearchKinds.Category.entries.map { it.label })
     }
 
     @Test fun importNoteInGerman() = inGerman {

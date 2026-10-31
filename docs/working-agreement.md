@@ -61,7 +61,9 @@ If a rebase gets messy: `git rebase --abort`, push your work to `feat/<topic>` i
 - **Version** lives in one place: the default `appVersion` in `app/build.gradle.kts`
   (versionCode = major·10000 + minor·100 + patch). It is changed **only** in a release commit.
 - **Release** (either session): bump the version, add `docs/release-notes/vX.Y.Z.md`, pull --rebase, test, push to
-  `main`. `.github/workflows/release.yml` builds, creates tag + GitHub Release with the APK. Check the Actions run.
+  `main`. `.github/workflows/release.yml` builds, runs the short emulator start test, creates tag + GitHub Release with
+  the APK. Check the Actions run. A release made on **donald** runs the Release-Rundgang locally first
+  (`tools/ci/release_rundgang.sh`, `docs/release-rundgang.md`; red = no release); from elsewhere it goes out without it.
   Announce it in "Last session".
 - **Laptop dev builds** (`./gradlew installDebug`) use the same fixed test key (`keystore/`), so dev builds and
   release builds update each other in place – no uninstall, tours are kept. A dev build carries the last

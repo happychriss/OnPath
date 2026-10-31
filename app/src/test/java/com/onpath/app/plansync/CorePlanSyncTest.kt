@@ -286,6 +286,53 @@ class CorePlanSyncTest {
         assertNull(phone.join(secret))
     }
 
+    /**
+     * Field bug 2026-10-31: the browser unpaired itself (its hello as a tombstone, the mailbox stays) – the phone is still
+     * paired but no longer "connected" (☰ "Pair with browser" + "Unpaired in the browser"). Scanning a new browser code
+     * then JOINs it into the phone's existing mailbox: no new key, the routes stay, the new browser gets them, and once
+     * its hello is in the phone's ledger it is connected again.
+     */
+    @Test fun aBrowserThatUnpairedItselfCanBePairedAgainIntoTheSameMailbox() {
+        val me = files.device { ByteArray(it) }
+        store.savePlanned("Waalweg", listOf(a, b, c))
+        phoneSync()
+        assertEquals("paired, no browser hello yet", BrowserLink.WAITING, BrowserLink.of(files.ledger(), me))
+        browser.hello(web, "Chrome on Linux", clock, SyncItem.ROLE_BROWSER)
+        browserSync(); phoneSync()
+        assertEquals(BrowserLink.CONNECTED, BrowserLink.of(files.ledger(), me))
+        // the browser unpairs (web sync.ts: its hello written as deleted, pushed, no DELETE of the mailbox)
+        assertTrue(browser.delete(SyncFormat.deviceItemId(web), clock, web))
+        browserSync()
+        val r = phoneSync()
+        assertTrue("the mailbox still answers", r.outcome is SyncRound.Outcome.Done)
+        assertNotNull("the phone keeps its pairing", files.pairing())
+        assertEquals(BrowserLink.UNPAIRED, BrowserLink.of(files.ledger(), me))
+        assertNull("no browser name any more", r.peer)
+
+        // a new code from the browser (a fresh mailbox): JOIN – the phone stays paired
+        val secretB = ByteArray(32) { (it * 7 + 11).toByte() }
+        val keysB = SyncKeys(secretB)
+        val webB = SyncFormat.newDevice(ByteArray(8) { 5 })
+        val browserB = SyncLedger.empty().also { it.hello(webB, "Chrome on Linux", clock, SyncItem.ROLE_BROWSER) }
+        SyncRound(keysB, server.box(keysB), { ByteArray(12) { (n++).toByte() } }).run(browserB)
+        assertEquals(PairStep.JOIN, PairStep.of(SyncKeys(files.pairing()!!.secret!!).mailbox, keysB.mailbox))
+        val ledgerBefore = files.ledger().write()
+        assertEquals(SyncRound.Outcome.Done(0, 1, 0), phone.join(secretB))
+        assertTrue("no new key", secret.contentEquals(files.pairing()!!.secret!!))
+        assertEquals(ledgerBefore, files.ledger().write())
+        // the browser reads the JOIN, moves into the phone's mailbox and says hello there
+        SyncRound(keysB, server.box(keysB), { ByteArray(12) { (n++).toByte() } }).run(browserB)
+        val adopted = SyncJoin.secretIn(browserB)!!
+        assertTrue(secret.contentEquals(adopted))
+        val moved = SyncLedger.empty().also { it.hello(webB, "Chrome on Linux", clock, SyncItem.ROLE_BROWSER) }
+        SyncRound(SyncKeys(adopted), server.box(SyncKeys(adopted)), { ByteArray(12) { (n++).toByte() } }).run(moved)
+        assertEquals("no data lost: the browser gets the phone's routes", listOf("Waalweg"), moved.plans().map { it.title })
+        val back = phoneSync()
+        assertEquals(BrowserLink.CONNECTED, BrowserLink.of(files.ledger(), me))
+        assertEquals("Chrome on Linux", back.peer)
+        assertEquals(listOf("Waalweg"), store.tours().filter { it.deletedMs == null }.map { it.name })
+    }
+
     @Test fun joinNeedsAPairing() {
         val unpaired = PlanSyncPass(SyncFiles(tmp.newFolder("fresh")), store, { server.box(it) }, { n -> rnd.nextBytes(n) }, { clock },
             "Pixel 8", { "Route" }, AesGcm)

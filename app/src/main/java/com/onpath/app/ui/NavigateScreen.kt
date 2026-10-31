@@ -54,6 +54,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -71,6 +72,7 @@ import com.onpath.app.navigation.NavText
 import com.onpath.app.navigation.RouteHint
 import com.onpath.app.recording.RecState
 import androidx.compose.material.icons.outlined.AltRoute
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -139,7 +141,10 @@ data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: I
  * Off-route state for the screen. [arrowDeg] = direction to the route relative to the screen's "up" (map bearing
  * already taken off), null without a direction. Nothing here times out: it stays until answered or back on route.
  */
-data class OffRouteUi(val prompt: NavPrompt, val toRoute: RouteHint? = null, val arrowDeg: Float? = null)
+data class OffRouteUi(val prompt: NavPrompt, val toRoute: RouteHint? = null, val arrowDeg: Float? = null) {
+    /** The ONE amber off-route card on top (searching, no way, kept) – not the questions below, not the far start. */
+    val amber: Boolean get() = prompt is NavPrompt.Searching || prompt is NavPrompt.NoWay || prompt == NavPrompt.Kept
+}
 
 data class ToGo(
     val distanceM: Double, val ascentM: Double, val timeS: Double, val offM: Double?,
@@ -154,6 +159,11 @@ data class ToGo(
     val pausedBecause: String? = null,
     /** Where the time counts to: the last stop's name under the arrival clock; null = the (unnamed) destination. */
     val target: String? = null,
+    /**
+     * Never on the route yet ([com.onpath.app.navigation.NavSession.reached] false): the distance to the route's START
+     * – the far-start box's number ([com.onpath.app.navigation.NavPrompt.FarStart.distanceM]); null = reached / unknown.
+     */
+    val startM: Double? = null,
 )
 
 /**
@@ -173,6 +183,10 @@ fun NavigateOverlay(
     onKeepRoute: (Int) -> Unit = {},
     /** "Off route – re-plan?" – Yes: the new route via the stop in question (StopSkip). */
     onTakeVia: (Int) -> Unit = {},
+    /** "Route starts 31 km away" (never on the route yet): Guide me / Just record; OK on "no way to the route". */
+    onLeadThere: (Int) -> Unit = {},
+    onJustRecord: (Int) -> Unit = {},
+    onLeadFailedOk: (Int) -> Unit = {},
     onActivity: () -> Unit = {},
     onChooseActivity: (Activity) -> Unit = {},
     onKeepActivity: () -> Unit = {},
@@ -188,10 +202,17 @@ fun NavigateOverlay(
     /** An error without a screen of its own (AppViewModel.errorCard): the red box with OK. */
     error: String? = null,
     onErrorOk: () -> Unit = {},
+    /**
+     * What covers the map (dp): the top column or the message box under it (below the status bar), the slider at the
+     * bottom (with the navigation bar) – a route fit leaves that room free (FitPaddingRule).
+     */
+    onCover: (topDp: Int, bottomDp: Int) -> Unit = { _, _ -> },
 ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     // the top column's height (turn card, status, chips) below the status bar: the one box goes 12 dp below it
     var topColumnDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    var messageBottomDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    var sliderDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding()
@@ -202,7 +223,7 @@ fun NavigateOverlay(
             // cards glide in and out instead of popping and pushing the status card
             Appearing(ui.turn) { TurnCard(it) }
             // ONE amber card while off route (owner): "Off route", distance + direction, the state
-            Appearing(ui.offRoute?.takeIf { it.prompt !is NavPrompt.Question }) { OffRouteCard(it) }
+            Appearing(ui.offRoute?.takeIf { it.amber }) { OffRouteCard(it) }
             if (ui.toGo != null || ui.recordedM != null) {
                 var profileOpen by rememberSaveable { mutableStateOf(false) }
                 NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity,
@@ -212,18 +233,30 @@ fun NavigateOverlay(
         }
         Column(Modifier.align(Alignment.BottomCenter).modeEdge(ModeEdge.BOTTOM).fillMaxWidth()) {
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
-            SlideToPlan(onSlideToPlan, Modifier.navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            SlideToPlan(onSlideToPlan, Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
+                .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 recording = ui.recordedM != null, startFraction = slideStartFraction)
         }
         // ONE box under the turn / status column (docs/design/ui-style.md, owner 2026-10-31 – the re-route and
         // activity-switch question moved here from the bottom, 56 dp buttons kept); the question wins, the rest wait.
         // Drawn over the map controls: a tall question (three answers, large font) is never hidden under a button.
         val question = ui.offRoute?.prompt as? NavPrompt.Question
-        MessageSlot(Messages.pick(listOf(
+        // never on the route yet (owner 2026-10-31): the calm far-start question; "Guide me" found nothing → red note
+        val far = ui.offRoute?.prompt as? NavPrompt.FarStart
+        val leadFailed = ui.offRoute?.prompt as? NavPrompt.LeadFailed
+        val message = Messages.pick(listOf(
             question?.let { q -> rerouteMessage(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) }, onVia = { onTakeVia(q.id) }) },
+            far?.let { p -> farStartMessage(p, onLead = { onLeadThere(p.id) }, onJustRecord = { onJustRecord(p.id) }) },
+            leadFailed?.let { e -> errorMessage(NavText.title(e)) { onLeadFailedOk(e.id) } },
             error?.let { errorMessage(it, onErrorOk) },
             if (ui.notificationsOff) notificationsOffMessage(onNotifications, onNotificationsOk) else null,
-        )), MessagePlacement.topDp(MessageScreen.NAVIGATE, topColumnDp), Modifier.modeEdge(ModeEdge.TOP))
+        ))
+        MessageSlot(message, MessagePlacement.topDp(MessageScreen.NAVIGATE, topColumnDp), Modifier.modeEdge(ModeEdge.TOP),
+            onBottomDp = { messageBottomDp = it })
+        // a route fit ("Show whole route") keeps clear of the column / the box and of the slider
+        val shownMessageBottom = if (message == null) 0 else messageBottomDp
+        val cover by androidx.compose.runtime.rememberUpdatedState(onCover)
+        androidx.compose.runtime.SideEffect { cover(maxOf(topColumnDp, shownMessageBottom), sliderDp) }
         // over the controls: nothing else is touched by accident while choosing; no tap-outside dismiss
         ui.activityCheck?.let { ActivitySwitchSheet(it, onChooseActivity, onKeepActivity, Modifier.align(Alignment.BottomCenter)) }
     }
@@ -296,7 +329,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
     val movingLine = ui.recordedM?.let { movingLine(ui) }
     val canOpen = hasProfile || ui.position != null || (movingLine != null && ui.toGo != null)
     // the amber off-route card says where the route is – not repeated here (the question card at the bottom does not)
-    val offCard = ui.offRoute != null && ui.offRoute.prompt !is NavPrompt.Question
+    val offCard = ui.offRoute?.amber == true
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp,
         // only the activity icon and the chevron are buttons (gloves: no tap target as big as the card)
         modifier = Modifier.fillMaxWidth()) {
@@ -323,9 +356,10 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         // never a stale time (owner rule 6): what is left counts again once back on the route. While the
                         // amber off-route card shows, it says it (one place, one distance).
                         if (!offCard) {
-                            Text(str(Res.string.nav_not_on_route), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                            val off = g.offM
-                            if (off != null && off > 0) Text(str(Res.string.nav_from_route, Format.distance(off)), style = MaterialTheme.typography.bodyLarge,
+                            // never reached: "Not on the route yet · Start 31 km away" (the far-start box's number)
+                            val (title, line2) = NavText.notOnRoute(g.startM, g.offM)
+                            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                            if (line2 != null) Text(line2, style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                         }
                     } else {
@@ -371,17 +405,19 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
             if (ui.paused && ui.recordedM != null) TextButton(onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_resume)) }
             else if (ui.toGo != null && ui.arriveAt != null && ui.toGo.state != com.onpath.app.time.EstimateState.NOT_ON_ROUTE) Column(
                 horizontalAlignment = Alignment.End,
-                modifier = Modifier.padding(start = 8.dp).width(IntrinsicSize.Max).semantics(mergeDescendants = true) {}) {
+                modifier = Modifier.padding(start = 8.dp).widthIn(min = targetWordWidth(ui.toGo.target))
+                    .width(IntrinsicSize.Max).semantics(mergeDescendants = true) {}) {
                 val paused = ui.toGo.state == com.onpath.app.time.EstimateState.PAUSED
-                // "Arrive 16:40 <target>": the clock large, the target under it, no wider than the clock
-                // (the time on the left keeps its room)
+                // "Arrive 16:40 <target>": the clock large, the target under it, as wide as the clock or its longest
+                // word (the time on the left keeps its room); two lines, so a name like "Gasthof Hochmuth" is not cut
+                // to "Gasthof H…" (field A-019) and no word is split – a longer name ends in "…" on the second line
                 Text(str(Res.string.nav_arrive), style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 Text(ui.arriveAt, style = MaterialTheme.typography.headlineMedium, maxLines = 1,
                     color = if (paused) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else Color.Unspecified)
                 ui.toGo.target?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End,
                         modifier = Modifier.then(NoIntrinsicWidth).fillMaxWidth())
                 }
             }
@@ -423,6 +459,23 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
         }
       }
     }
+}
+
+/**
+ * Width of the longest word of the destination name under the arrival clock (bodySmall): the column is at least that
+ * wide, so a word is never split ("Leiteral / m" at the largest font) – at most 40 % of the screen.
+ */
+@Composable
+private fun targetWordWidth(target: String?): androidx.compose.ui.unit.Dp {
+    if (target.isNullOrBlank()) return 0.dp
+    val measurer = rememberTextMeasurer()
+    val style = MaterialTheme.typography.bodySmall
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val capDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp * 0.4f
+    val wordPx = remember(target, style, density) {
+        target.split(' ').filter { it.isNotEmpty() }.maxOfOrNull { measurer.measure(it, style, maxLines = 1).size.width } ?: 0
+    }
+    return (with(density) { wordPx.toDp() }.value + 1f).coerceAtMost(capDp).dp
 }
 
 /** The child does not widen an IntrinsicSize column (the target under the arrival clock is cut, not the clock's room). */
@@ -570,6 +623,17 @@ internal fun rerouteMessage(q: NavPrompt.Question, onTake: () -> Unit, onKeep: (
 }
 
 /**
+ * Never on the route yet and away from it (owner 2026-10-31): "Route starts 31 km away" · "south-west (direct) ·
+ * recording" · Just record / Guide me (FRAGE). Calm: no vibration, no sound; stays until answered or the route is
+ * reached. After "Guide me" only "Just record" stays while the way there is computed ("Finding a way to the start…").
+ */
+internal fun farStartMessage(p: NavPrompt.FarStart, onLead: () -> Unit, onJustRecord: () -> Unit): Message {
+    val buttons = if (p.searching) listOf(MessageButton(NavText.JUST_RECORD, onJustRecord))
+        else listOf(MessageButton(NavText.JUST_RECORD, onJustRecord), MessageButton(NavText.LEAD, onLead))
+    return Message(MessageKind.FRAGE, NavText.title(p), NavText.state(p), buttons, icon = Icons.Outlined.Flag, navigate = true)
+}
+
+/**
  * A tour runs with OnPath's notifications off ([com.onpath.app.navigation.NotificationsOff]): "⚠ Notifications off / No
  * turns … on the lock screen" + OK (HINWEIS_WARN). Tap on the text → the phone setup step; OK → gone for this tour.
  * Never goes by itself (owner: no self-dismissing messages).
@@ -585,7 +649,8 @@ internal fun notificationsOffMessage(onSetUp: () -> Unit, onOk: () -> Unit): Mes
  * it (no tour yet) the nearest point of the line.
  */
 @Composable
-internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?, mapBearing: Float, footer: @Composable () -> Unit) {
+internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?, mapBearing: Float,
+                          onCover: (topDp: Int, bottomDp: Int) -> Unit = { _, _ -> }, footer: @Composable () -> Unit) {
     val nav = rec?.nav?.takeIf { it.line.size >= 2 }
     val line = nav?.line ?: vm.followLine
     val progress = remember(line) { line?.let { FollowProgress(it) } }
@@ -644,9 +709,14 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val target = nav?.session?.stops?.lastOrNull()?.name
     val notOnRoute = if (prov != null) line != null && (remaining == null || provOff)
         else nav != null && (remaining == null || tt?.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE)
+    // never on the route yet: the card counts from the START like the far-start box (its number while it shows)
+    val startM = nav?.session?.takeIf { !it.reached }?.let { s ->
+        (nav.prompt as? com.onpath.app.navigation.NavPrompt.FarStart)?.distanceM
+            ?: s.original.firstOrNull()?.let { st -> here?.let { com.onpath.app.data.Geo.distance(it, st) } }
+    }
     val ui = NavUi(
         toGo = if (notOnRoute) ToGo(0.0, 0.0, 0.0, if (prov != null) remaining?.offM else nav?.offM,
-            state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE, target = target)
+            state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE, target = target, startM = startM)
         else remaining?.let { r ->
             ToGo(r.distanceM, r.ascentM, toGoS ?: 0.0, r.offM, r.descentM,
                 profile = line?.let { l -> l.subList(r.index.coerceIn(0, l.size - 1), l.size) } ?: emptyList(),
@@ -702,12 +772,13 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     Box(Modifier.fillMaxSize()) {
         NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
             onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute, onTakeVia = vm::takeViaRoute,
+            onLeadThere = vm::leadToStart, onJustRecord = vm::justRecord, onLeadFailedOk = vm::leadFailedOk,
             onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
             onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,
             download = bg, onDownload = { vm.downloadDetailsOpen = true },
             onNotifications = { vm.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },
             onNotificationsOk = { vm.notificationsOkTour = rec?.tourId },
-            error = vm.errorCard, onErrorOk = { vm.errorCard = null })
+            error = vm.errorCard, onErrorOk = { vm.errorCard = null }, onCover = onCover)
         RestLayer(restTarget?.takeIf { rest }?.let { RestUi(it.event, it.distanceM, ui.toGo?.timeS, ui.arriveAt) },
             onTap = ScreenTouch::note)
     }

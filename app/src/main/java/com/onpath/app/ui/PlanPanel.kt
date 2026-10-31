@@ -5,6 +5,15 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.SaveAs
+import androidx.compose.material.icons.outlined.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.LaunchedEffect
@@ -82,8 +91,16 @@ class PlanCallbacks(
     val onRoundTrip: () -> Unit = {},
     /** Activity icon at the start of the sheet: opens the activity picker. */
     val onActivity: () -> Unit = {},
-    /** Route ⋯: Save (name / overwrite choice). */
+    /** Save (green button, ⋯ → Save route): at once, no dialog – a new route under a proposed name, or the saved one overwritten. */
     val onSave: () -> Unit = {},
+    /** Route ⋯ → Save as new route (only while the plan is a saved route): a copy at once under a proposed name. */
+    val onSaveAsNew: () -> Unit = {},
+    /** Tap on "Saved as “Name”": the line becomes the name field. */
+    val onRenameStart: () -> Unit = {},
+    /** Done / Enter in the name field: the new name (blank keeps the old one). */
+    val onRename: (String) -> Unit = {},
+    /** Back / a tap outside the name field: the name stays. */
+    val onRenameCancel: () -> Unit = {},
     /** Route ⋯ → Share plan: the plan as a plan.onpath.earth link (A-005), from two points. */
     val onShare: () -> Unit = {},
     /** Profile or difficulty badge tapped: route details (way types, surfaces, difficulty, large profile). */
@@ -116,12 +133,15 @@ class PlanCallbacks(
 )
 
 /** Recording status shown at the top of the plan sheet during a tour. */
-data class TourState(val distanceM: Double, val elapsedS: Long, val paused: Boolean)
+/** [recordOnly]: the route guidance was ended during the tour – the status line says "Recording only". */
+data class TourState(val distanceM: Double, val elapsedS: Long, val paused: Boolean, val recordOnly: Boolean = false)
 
 /**
  * Plan sheet steps: MINI = summary only (time, distance), COMPACT = + the large elevation profile
  * with the finger ruler (default), FULL = + the Points list (Reverse / Round trip). The primary button stays at the
  * bottom in every step. Way types & surfaces are in the route details only.
+ * During a tour (owner 2026-10-31) MINI is ONE row – "● Tour running · km · time" + a compact [Continue] – so about
+ * two thirds of the map are free for holds; COMPACT adds Pause / End tour (one drag + one tap) and the route summary.
  */
 enum class PlanSize {
     FULL, COMPACT, MINI;
@@ -134,6 +154,12 @@ enum class PlanSize {
 
     companion object {
         fun ofStep(i: Int): PlanSize = when { i <= 0 -> MINI; i == 1 -> COMPACT; else -> FULL }
+
+        /** Back in Plan from Navigate: during a tour the sheet starts at its one-row step (owner 2026-10-31). */
+        fun backInPlan(current: PlanSize, tourRunning: Boolean): PlanSize = if (tourRunning) MINI else current
+
+        /** The tour ended: its one-row step becomes the usual profile step again (the plan sheet as before the tour). */
+        fun afterTour(current: PlanSize): PlanSize = if (current == MINI) COMPACT else current
     }
 }
 
@@ -154,6 +180,8 @@ data class PlanUi(
     val savedName: String? = null,
     /** The plan differs from [savedName]'s points (RouteRules.isUnsaved). */
     val unsaved: Boolean = false,
+    /** "Saved as “Name”" is the name field (tap on it; owner 2026-10-31). Only with a [savedName]. */
+    val renaming: Boolean = false,
     /** The route already ends at its start: "Round trip" is greyed out (smart menu, no message). */
     val roundTrip: Boolean = false,
     /** A tour records: its status + Continue / Pause / End sit at the top of this sheet (one surface). */
@@ -193,11 +221,15 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false,
     val full = ui.size == PlanSize.FULL
     // leaving the points: the list goes back to its top, so the profile is what the smaller steps show
     LaunchedEffect(full) { if (!full && scroll.value > 0) scroll.animateScrollTo(0) }
+    // the name field's place in the window: a touch in the sheet beside it cancels the rename (outside the sheet: MapScreen)
+    val field = remember { NameFieldBounds() }
+    val cancelRename by androidx.compose.runtime.rememberUpdatedState(cb.onRenameCancel)
     StepSheet(
         step = ui.size.step,
         onStep = { cb.onResize(PlanSize.ofStep(it)) },
         onHandleTap = { cb.onResize(ui.size.tapped()) },
         state = state,
+        modifier = if (ui.renaming && ui.savedName != null) Modifier.cancelOnTouchOutside(field) { cancelRename() } else Modifier,
         onDragging = cb.onSheetDrag,
         bottomBar = { PlanBar(ui, cb) },
     ) {
@@ -205,7 +237,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false,
         // bar) never makes its top edge jump; the scrolling area takes what is left
         val bodyH = (LocalConfiguration.current.screenHeightDp * FULL_SHEET_FRACTION).dp - PRIMARY_BAR
         val sheet = this
-        Column(Modifier.fillMaxWidth().height(bodyH)) { PlanBody(sheet, ui, cb, menuInitiallyOpen, scroll) }
+        Column(Modifier.fillMaxWidth().height(bodyH)) { PlanBody(sheet, ui, cb, menuInitiallyOpen, scroll, field) }
     }
 }
 
@@ -278,14 +310,56 @@ internal const val FULL_SHEET_FRACTION = 0.62f
 private val PRIMARY_BAR = 68.dp
 
 @Composable
-private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean, scroll: ScrollState) {
+private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean, scroll: ScrollState,
+                                 field: NameFieldBounds) {
     val route = ui.route
     val full = ui.size == PlanSize.FULL
-    // During a tour: the tour first (status + Continue / Pause / End), then the route – one surface.
+    // During a tour: the tour first, then the route – one surface (owner 2026-10-31). The first step is ONE row (status +
+    // compact Continue), the map stays about two thirds free; the next step adds Pause / End tour and the route below.
+    // What the first step hides is not for TalkBack / tests either (it lies under the sheet's bottom edge).
+    val tourMini = ui.tour != null && ui.size == PlanSize.MINI
+    val belowStep = if (tourMini) Modifier.clearAndSetSemantics { } else Modifier
     ui.tour?.let { t ->
-        TourControls(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, cb.onEndTour, ui.activity)
+        TourStatusRow(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, ui.activity, t.recordOnly)
+        Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.MINI.step) })
+        TourPauseEnd(t.paused, cb.onPause, cb.onEndTour, belowStep.padding(top = 4.dp))
         HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
+    Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb, menuInitiallyOpen) }
+    // without a tour the first step ends under the summary lines
+    if (ui.tour == null) Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
+    var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
+    Column(Modifier.fillMaxWidth().weight(1f).onGloballyPositioned { viewport = it }.then(belowStep)
+        .verticalScroll(scroll, enabled = full)) {
+        SubLine(ui, route, cb.onDetails)
+        if (route != null) SavedLine(ui, cb, field)
+        if (route != null && !ui.routing) {
+            Column(Modifier.fillMaxWidth().padding(top = 8.dp).semantics { contentDescription = Txt.s(Res.string.plan_elevation_profile) }) {
+                // stable callbacks: a new PlanCallbacks (every sheet recomposition) must not recompose the profile
+                val highlight = cb.onHighlight
+                // the gradient legend lives on Route details only
+                ElevationProfile(route.points, height = PROFILE_HEIGHT, gradient = true,
+                    onHighlight = highlight, onRelease = remember(highlight) { { highlight(null) } })
+            }
+        }
+        Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COMPACT.step) { scroll.value.toFloat() } })
+        // below the profile step the list is hidden behind the button: not for touch, not for TalkBack / tests
+        Box(if (full) Modifier else Modifier.clearAndSetSemantics { }) {
+            PointsSection(
+                ui.points, canReverse = ui.pointCount >= 2, canRoundTrip = ui.pointCount >= 2 && !ui.roundTrip,
+                onReverse = cb.onReverse, onRoundTrip = cb.onRoundTrip,
+                onMove = cb.onMovePoint, onDelete = cb.onDeletePoint, onShow = cb.onShowPoint,
+                modifier = Modifier.padding(top = 4.dp),
+                scroll = scroll, viewport = { viewport },
+            )
+        }
+    }
+}
+
+/** Line 1 (activity · time + distance · [Save] ⋯) and the route state lines under it: ERROR, WARNING, INFO. */
+@Composable
+private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean) {
+    val route = ui.route
     // Line 1: activity · time + distance · [Save] ⋯ (Undo and Redo are map buttons).
     val saveAtHand = RouteRules.saveAtHand(ui.pointCount, ui.unsaved)
     HeaderLine(
@@ -320,33 +394,6 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     if (loadingNotice) InfoLine(ui.error!!, spinner = ui.error == RoutingDataNotice.LOADING)
     ui.changedText?.takeIf { !ui.routing }?.let { InfoLine(it, onTap = cb.onRouteChanged) }
     ui.syncRoutingText?.takeIf { !ui.routing }?.let { InfoLine(it) }
-    Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
-    var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
-    Column(Modifier.fillMaxWidth().weight(1f).onGloballyPositioned { viewport = it }
-        .verticalScroll(scroll, enabled = full)) {
-        SubLine(ui, route, cb.onDetails)
-        if (route != null) SavedLine(ui)
-        if (route != null && !ui.routing) {
-            Column(Modifier.fillMaxWidth().padding(top = 8.dp).semantics { contentDescription = Txt.s(Res.string.plan_elevation_profile) }) {
-                // stable callbacks: a new PlanCallbacks (every sheet recomposition) must not recompose the profile
-                val highlight = cb.onHighlight
-                // the gradient legend lives on Route details only
-                ElevationProfile(route.points, height = PROFILE_HEIGHT, gradient = true,
-                    onHighlight = highlight, onRelease = remember(highlight) { { highlight(null) } })
-            }
-        }
-        Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COMPACT.step) { scroll.value.toFloat() } })
-        // below the profile step the list is hidden behind the button: not for touch, not for TalkBack / tests
-        Box(if (full) Modifier else Modifier.clearAndSetSemantics { }) {
-            PointsSection(
-                ui.points, canReverse = ui.pointCount >= 2, canRoundTrip = ui.pointCount >= 2 && !ui.roundTrip,
-                onReverse = cb.onReverse, onRoundTrip = cb.onRoundTrip,
-                onMove = cb.onMovePoint, onDelete = cb.onDeletePoint, onShow = cb.onShowPoint,
-                modifier = Modifier.padding(top = 4.dp),
-                scroll = scroll, viewport = { viewport },
-            )
-        }
-    }
 }
 
 /** The large profile of the profile step. */
@@ -427,20 +474,85 @@ internal fun WarnLine(text: String, onTap: () -> Unit) {
     }
 }
 
-/** Visible save state instead of a message: "Saved as “Name”", or that it changed since. */
+/**
+ * Visible save state instead of a message: "Saved as “Name” ✎", or "“Name” · changed, not saved ✎". The name is edited
+ * in place (owner 2026-10-31, "wie Word", like the browser planner): a tap on the line (≥ 48 dp, ✎ says it can be
+ * edited) turns it into the name field – [NameField].
+ */
 @Composable
-private fun SavedLine(ui: PlanUi) {
+private fun SavedLine(ui: PlanUi, cb: PlanCallbacks, field: NameFieldBounds) {
     val name = ui.savedName ?: return
+    if (ui.renaming) { NameField(name, cb.onRename, field); return }
     val saved = !ui.unsaved
-    Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(if (saved) Icons.Outlined.CheckCircle else Icons.Outlined.Edit, null,
-            tint = if (saved) OnPathColors.Good else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+    val grey = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(MaterialTheme.shapes.small)
+        .clickable(role = Role.Button, onClickLabel = str(Res.string.common_rename)) { cb.onRenameStart() },
+        verticalAlignment = Alignment.CenterVertically) {
+        Icon(if (saved) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked, null,
+            tint = if (saved) OnPathColors.Good else grey, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
         Text(if (saved) str(Res.string.plan_saved_as, name) else str(Res.string.plan_changed_not_saved, name),
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1, overflow = TextOverflow.Ellipsis)
+            style = MaterialTheme.typography.bodySmall, color = grey,
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        Spacer(Modifier.width(6.dp))
+        Icon(Icons.Outlined.Edit, null, tint = grey, modifier = Modifier.size(18.dp))
     }
 }
+
+/**
+ * The saved route's name as an edit field in the sheet, in place of "Saved as …": the name selected (typing replaces
+ * it), the keyboard open; Done / Enter or ✓ renames ([onDone], a blank name keeps the old one – RouteRules.cleanName).
+ * Back / a touch outside the field cancels (MapScreen, [cancelOnTouchOutside]).
+ */
+@Composable
+private fun NameField(name: String, onDone: (String) -> Unit, bounds: NameFieldBounds) {
+    var text by remember(name) {
+        mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(name, androidx.compose.ui.text.TextRange(0, name.length)))
+    }
+    val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(Unit) {
+        // expected: not attached yet in a screenshot test – the field is shown without the keyboard then
+        try { focus.requestFocus() } catch (e: IllegalStateException) { com.onpath.app.debug.Problems.trace("ui", "Name field: no focus ($e)") }
+    }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { bounds.rect = null } }
+    val done = { onDone(text.text) }
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp).onGloballyPositioned { bounds.rect = it.boundsInWindow() },
+        verticalAlignment = Alignment.CenterVertically) {
+        androidx.compose.material3.OutlinedTextField(
+            value = text, onValueChange = { text = it }, singleLine = true,
+            label = { Text(str(Res.string.routes_name_label)) },
+            textStyle = MaterialTheme.typography.bodyLarge,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
+                imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { done() }),
+            modifier = Modifier.weight(1f).focusRequester(focus),
+        )
+        IconButton(onClick = done, modifier = Modifier.size(48.dp)) {
+            Icon(Icons.Filled.Check, contentDescription = str(Res.string.common_rename), tint = OnPathColors.Green)
+        }
+    }
+}
+
+/** Where the sheet's name field is in the window (null = not shown): touches beside it cancel the rename. */
+internal class NameFieldBounds {
+    var rect: androidx.compose.ui.geometry.Rect? = null
+    /** Top left of the element watching the touches ([cancelOnTouchOutside]) in the window. */
+    var origin = androidx.compose.ui.geometry.Offset.Zero
+}
+
+/**
+ * Watches every touch on this element before its children see it ([androidx.compose.ui.input.pointer.PointerEventPass.Initial],
+ * nothing consumed): a touch outside [field] calls [onOutside] – the tap itself still does what it does.
+ */
+internal fun Modifier.cancelOnTouchOutside(field: NameFieldBounds, onOutside: () -> Unit): Modifier =
+    this.onGloballyPositioned { field.origin = it.positionInWindow() }.pointerInput(field) {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+            val r = field.rect
+            if (r == null || !r.contains(field.origin + down.position)) onOutside()
+        }
+    }
 
 /** Read-only status, first line: time + distance (or "Plan a route"). */
 @Composable
@@ -536,6 +648,9 @@ internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
     // About this route: save, share, time details, clear. No "Export GPX" here (owner: it clutters next to saving) –
     // export lives in My routes (⋮ Export GPX / Export all).
     MenuItem(Icons.Outlined.Save, str(Res.string.plan_save_route), enabled = ui.route != null, onClick = run(cb.onSave))
+    // a copy of the saved route the plan belongs to (Save overwrites it; owner 2026-10-31, "wie Word": Save as)
+    if (ui.savedName != null) MenuItem(Icons.Outlined.SaveAs, str(Res.string.plan_save_as_new_route), enabled = ui.route != null,
+        onClick = run(cb.onSaveAsNew))
     MenuItem(Icons.Outlined.Link, str(Res.string.plan_share_plan), enabled = ui.pointCount >= 2, onClick = run(cb.onShare))
     MenuItem(Icons.Outlined.Schedule, str(Res.string.plan_time_details), enabled = ui.route != null, onClick = run(cb.onTimeDetails))
     // Reverse / Round trip live above the points (full sheet) only – not twice

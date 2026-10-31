@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,31 +13,41 @@ import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.resources.Density
 import com.onpath.app.routing.Activity
+import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.util.Locale
 
-/** Background downloads, visible and stoppable: Plan strip, Navigate chip, details, Settings line. */
-class BackgroundDownloadScreenshotTest {
+/**
+ * Background downloads, visible and stoppable: the light blue chip with its progress ring (Plan, Navigate; spinning while
+ * areas are still prepared), the details sheet, the Settings line. German + largest font: the subclasses below.
+ */
+open class BackgroundDownloadScreenshotTest {
 
     @get:Rule
-    val paparazzi = Paparazzi(
+    open val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1024, screenHeight = 2400, xdpi = 428, ydpi = 428, density = Density.create(420)),
         showSystemUi = false,
     )
 
     private val mb = 1_048_576L
-    private val ui = BackgroundDownloadUi(regions = 3, routingParts = 1, bytes = 24L * mb, percent = 34,
+    // getters: the names are read in the test (after @Before set the language), not when the class is made
+    private val ui get() = BackgroundDownloadUi(regions = 3, routingParts = 1, bytes = 24L * mb, percent = 34,
         groups = LoadNames.groups(listOf(
             LoadEntry(LoadWhy.POINT, "Bad Waldsee", "Ravensburg", waiting = true, bytes = 9 * mb),
             LoadEntry(LoadWhy.ROUTE, "Gasthof Taser Alm", "Bozen", bytes = 7 * mb, phase = LoadPhase.PREPARING),
             LoadEntry(LoadWhy.ROUTE, "Gasthof Taser Alm", "Bozen", bytes = 6 * mb, phase = LoadPhase.WAITING),
             LoadEntry(null, paths = true, bytes = 2 * mb),
         )))
-    private val longName = ui.copy(groups = LoadNames.groups(listOf(
+    private val longName get() = ui.copy(groups = LoadNames.groups(listOf(
         LoadEntry(LoadWhy.ROUTE, "Berggasthof Gampenalm am Hochplateau über Unsere Liebe Frau im Walde", bytes = 9 * mb))))
 
-    /** Plan: small blue chip under ☰ – "⬇ Bad Waldsee +1 · 34 %". */
+    /** Plan: small light blue chip under ☰ – ring at 34 %, "Bad Waldsee +1 · 34 %". */
     @Test fun planChip() = planWith(ui)
+
+    /** Nothing has a percent yet (areas being prepared on the server): the ring spins, no "0 %". */
+    @Test fun planChipPreparing() = planWith(ui.copy(percent = 0))
 
     /** A long name is cut with "…" at about half the width; the % always shows. */
     @Test fun planChipLongName() = planWith(longName)
@@ -67,12 +78,24 @@ class BackgroundDownloadScreenshotTest {
         }
     }
 
-    /** Tap on the strip / chip: what loads, Cancel all. */
-    @Test fun details() = paparazzi.snapshot {
+    /** Tap on the chip: what loads, Cancel all (red) · Close – a bottom sheet over the map (drawn as the sheet looks). */
+    @Test fun details() = sheet(ui)
+
+    /** The bottom sheet as ModalBottomSheet draws it (white, 28 dp top corners, drag handle, scrim) – Paparazzi has no popups. */
+    @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+    private fun sheet(u: BackgroundDownloadUi) = paparazzi.snapshot {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
-                BackgroundDownloadDialog(ui, onCancelAll = {}, onClose = {})
+                Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.32f)))
+                androidx.compose.material3.Surface(Modifier.fillMaxWidth().align(Alignment.BottomCenter),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                    color = OnPathColors.CardWhite) {
+                    Column {
+                        androidx.compose.material3.BottomSheetDefaults.DragHandle(Modifier.align(Alignment.CenterHorizontally))
+                        BackgroundDownloadDetailsContent(u, onCancelAll = {}, onClose = {})
+                    }
+                }
             }
         }
     }
@@ -89,7 +112,7 @@ class BackgroundDownloadScreenshotTest {
         }
     }
 
-    private val newer = BackgroundDownloadUi(regions = 3, routingParts = 0, bytes = 22L * mb, percent = 34, newer = 3, newerEtaMin = 4,
+    private val newer get() = BackgroundDownloadUi(regions = 3, routingParts = 0, bytes = 22L * mb, percent = 34, newer = 3, newerEtaMin = 4,
         groups = LoadNames.groups(listOf(
             LoadEntry(LoadWhy.REFRESH, town = "Meran", bytes = 8 * mb, phase = LoadPhase.PREPARING),
             LoadEntry(LoadWhy.REFRESH, town = "Meran", bytes = 7 * mb, phase = LoadPhase.PREPARING),
@@ -97,12 +120,25 @@ class BackgroundDownloadScreenshotTest {
         )))
 
     /** Its details: newer version, being prepared, about N min. */
-    @Test fun detailsNewerMap() = paparazzi.snapshot {
-        OnPathTheme {
-            Box(Modifier.fillMaxSize()) {
-                MapPlaceholder(Modifier.fillMaxSize())
-                BackgroundDownloadDialog(newer, onCancelAll = {}, onClose = {})
-            }
-        }
-    }
+    @Test fun detailsNewerMap() = sheet(newer)
+}
+
+/** The same in German. */
+class BackgroundDownloadGermanScreenshotTest : BackgroundDownloadScreenshotTest() {
+    private val before = Locale.getDefault()
+    @Before fun german() = Locale.setDefault(Locale.GERMANY)
+    @After fun back() = Locale.setDefault(before)
+}
+
+/** The phone's largest font (2.0), German: the chip still a small pill (name cut, % whole), the sheet's buttons fit. */
+class BackgroundDownloadLargeFontTest : BackgroundDownloadScreenshotTest() {
+    @get:Rule
+    override val paparazzi = Paparazzi(
+        deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1024, screenHeight = 2400, xdpi = 428, ydpi = 428,
+            density = Density.create(420), fontScale = 2.0f),
+        showSystemUi = false,
+    )
+    private val before = Locale.getDefault()
+    @Before fun german() = Locale.setDefault(Locale.GERMANY)
+    @After fun back() = Locale.setDefault(before)
 }

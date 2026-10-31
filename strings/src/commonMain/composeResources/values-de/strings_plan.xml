@@ -129,12 +129,7 @@
     <string name="plan_because_unpaved">%1$s, weil %2$d % unbefestigt sind (%3$s)</string>
     <string name="plan_because_loose">%1$s wegen %2$s auf losem Untergrund</string>
     <string name="plan_save_as_new_route">Als neue Route speichern</string>
-    <string name="plan_save_current_route">Aktuelle Route speichern</string>
-    <string name="plan_route_default_name">Route</string>
     <string name="plan_something_wrong">Etwas ist schiefgegangen</string>
-    <string name="plan_save_changes_into">Speichere die Änderungen in „%1$s“ oder als neue Route.</string>
-    <string name="plan_saved_again">„%1$s“ ist gespeichert. Speichere sie erneut oder als neue Route.</string>
-    <string name="plan_save_as_new">Als neue speichern…</string>
     <string name="plan_straight_title">Teile dieser Route wurden nicht gefunden</string>
     <string name="plan_straight_text">Die gestrichelten Teile sind gerade Linien, keine Wege.</string>
     <string name="plan_navigate_anyway">Trotzdem navigieren</string>
@@ -151,6 +146,7 @@
     <string name="plan_compass_turned">Karte ist gedreht. Tippen für Norden oben</string>
     <string name="plan_compass_north">Norden ist oben. Tippen, um die Karte mit deiner Bewegungsrichtung zu drehen</string>
     <string name="plan_hold_hide_route">Halten, um die Route auszublenden</string>
+    <string name="plan_show_whole_route">Ganze Route zeigen</string>
     <string name="plan_location_off_tap">Standort ist aus, tippen zum Einschalten</string>
     <string name="plan_location_denied_tap">Standort nicht erlaubt, tippen zum Erlauben</string>
     <string name="plan_centre_on_me">Auf meinen Standort zentrieren. %1$s</string>

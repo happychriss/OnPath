@@ -56,6 +56,24 @@ public class OnPathHintsTest {
         assertNull(OnPathHints.snappedWay(null, "via1"));
     }
 
+    /**
+     * The island list (RoutingEngine.islandNodePairs, package-private in OnPath's patched brouter-core jar) read and
+     * written without reflection, so the browser gets the second snap for an island point like the app (Köln Dom).
+     */
+    @Test public void islandListWithoutReflection() {
+        RoutingContext rc = new RoutingContext();
+        rc.localFunction = new java.io.File("src/main/assets/brouter/touring.brf").getAbsolutePath();
+        RoutingEngine engine = new RoutingEngine(null, null, null, new ArrayList<>(), rc);
+        assertEquals("a fresh engine has not retried", 0, OnPathHints.islandRetries(engine));
+        long a = new OsmNode(1000, 2000).getIdFromPos(), b = new OsmNode(3000, 4000).getIdFromPos();
+        assertEquals(true, OnPathHints.skipOnSnap(engine, new long[][] { { a, b } }));
+        assertEquals("skipped ways are frozen like BRouter's own retry", 1, OnPathHints.islandRetries(engine));
+        assertEquals(true, engine.islandNodePairs.hasPair(a, b));
+        assertEquals(false, engine.islandNodePairs.hasPair(a, a));
+        assertEquals(-1, OnPathHints.islandRetries(null));
+        assertEquals(false, OnPathHints.skipOnSnap(null, new long[][] { { a, b } }));
+    }
+
     @Test public void noTrackOrNoListIsUnknown() {
         assertEquals(2, OnPathHints.matched(null, new String[] { "from", "to" }).length);
         assertNull(OnPathHints.matched(null, new String[] { "from", "to" })[0]);

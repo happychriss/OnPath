@@ -30,6 +30,9 @@
     <string name="msg_import_failed_damaged">Import failed – the file may be damaged or the phone's storage full. Your existing map data is unchanged.</string>
     <string name="msg_route_back_no_position">No GPS position yet, so no route back. The tour keeps recording; set a new destination any time.</string>
     <string name="msg_shared_place_not_found">Couldn't find this place. Try again when you have internet.</string>
+    <string name="msg_shared_place_unsure">Place not clear</string>
+    <string name="msg_shared_place_unsure_detail">No sure match – search for “%1$s” in OnPath.</string>
+    <string name="msg_shared_place_search">Search</string>
     <string name="msg_routing_failed">Routing failed.</string>
     <string name="msg_no_new_route">No new route found – still following the old one.</string>
     <string name="msg_route_save_failed">The route could not be saved. Your route is still here – please try again.</string>

@@ -93,6 +93,8 @@ class PlanSync(
     @Volatile private var manualWaiting = false
     /** When the last pass ended in this run of the app ([State.checkedMs]); only the worker thread writes it. */
     @Volatile private var checkedMs = 0L
+    /** A browser was sent into this mailbox (JOIN) in this run and has not said hello yet ([BrowserLink.afterJoin]). */
+    @Volatile private var joined = false
 
     /** What Settings → Browser sync shows. */
     data class State(
@@ -110,6 +112,11 @@ class PlanSync(
         val checkedMs: Long = 0,
         /** The pairing was ended in the browser and Settings → Browser sync was not opened since (☰ shows it amber). */
         val ended: Boolean = false,
+        /**
+         * Paired: is a browser at the other end ([BrowserLink], from the browser hellos)? [BrowserLink.UNPAIRED] = the
+         * browser unpaired itself (☰ "Pair with browser" + grey "Unpaired in the browser"). Not paired: unused.
+         */
+        val browser: BrowserLink = BrowserLink.CONNECTED,
     )
 
     /** Why the last pass did not end well. */
@@ -137,7 +144,7 @@ class PlanSync(
         { if (it == SyncItem.TRACK) Txt.s(Res.string.sync_untitled_track) else Txt.s(Res.string.sync_untitled_route) }, JcaAead,
         copyLabel(Txt.s(Res.string.sync_copy)), routing)
 
-    private fun mailbox(keys: SyncKeys): Mailbox = HttpMailbox(server, keys)
+    private fun mailbox(keys: SyncKeys): Mailbox = mailboxForTests?.invoke(keys) ?: HttpMailbox(server, keys)
     private fun randomBytes(n: Int) = ByteArray(n).also { rnd.nextBytes(it) }
 
     /** Reads the stored pairing (background) – the state for Settings; then a first pass. */
@@ -242,6 +249,12 @@ class PlanSync(
                 is SyncRound.Outcome.Ended -> "its code is no longer valid"
                 is SyncRound.Outcome.Refused -> "server refused (${o.status}${o.error?.let { ": $it" } ?: ""})"
             })
+            if (o is SyncRound.Outcome.Done) {
+                // no "unpaired in the browser" meanwhile: the joined browser says hello in this mailbox soon (connected)
+                joined = true
+                _state.value = _state.value.let { it.copy(browser = BrowserLink.afterJoin(it.browser, joined = true)) }
+                if (!busy()) request("joined", delayMs = JOIN_PULL_DELAY_MS)
+            }
             main.post { done(o) }
         }
     }
@@ -281,9 +294,18 @@ class PlanSync(
 
     private fun refreshState(r: PlanSyncPass.Result? = null) {
         val p = files.pairing()
-        val peer = r?.peer ?: if (p == null) null else try {
-            files.ledger().devices(files.device(::randomBytes)).firstOrNull()?.name
-        } catch (e: Exception) { Problems.warn("sync", "Paired browser name not read", e); null }
+        var peer = r?.peer
+        // not read: as before (never a false "unpaired")
+        var seen = BrowserLink.CONNECTED
+        if (p != null) try {
+            val ledger = files.ledger()
+            val me = files.device(::randomBytes)
+            if (peer == null) peer = ledger.devices(me).firstOrNull()?.name
+            seen = BrowserLink.of(ledger, me)
+        } catch (e: Exception) { Problems.warn("sync", "Paired browser not read", e) }
+        if (seen == BrowserLink.CONNECTED) joined = false
+        val browser = BrowserLink.afterJoin(seen, joined)
+        if (p != null && _state.value.paired && browser != _state.value.browser) Problems.info("sync", "Browser at the other end: $browser")
         val problem: Problem? = when (val o = r?.outcome) {
             null -> null
             is SyncRound.Outcome.Offline -> Problem.Offline
@@ -297,7 +319,7 @@ class PlanSync(
         }
         _state.value = State(paired = p != null, peer = if (p == null) null else peer, lastOkMs = if (p == null) 0 else files.lastOk(),
             running = false, problem = if (p == null) null else problem, check = p?.secret?.let { SyncKeys(it).check },
-            sinceMs = p?.since ?: 0, checkedMs = checkedMs, ended = p == null && files.ended() > 0)
+            sinceMs = p?.since ?: 0, checkedMs = checkedMs, ended = p == null && files.ended() > 0, browser = browser)
     }
 
     private fun report(r: Report) = main.post { try { onReport(r) } catch (e: Exception) { Problems.warn("sync", "Sync result not shown", e) } }
@@ -335,7 +357,15 @@ class PlanSync(
     companion object {
         /** The mailbox's host (docs/design/web-sync.md §8: the planner's host, no CORS) – the one constant. */
         const val SERVER = PlanLinks.BASE
+
+        /**
+         * Emulator tests only (Release-Rundgang, docs/release-rundgang.md): a mailbox in memory instead of [SERVER], so
+         * the flow "a plan from the browser arrives" never depends on the network or the server's limits. Null in the app.
+         */
+        @androidx.annotation.VisibleForTesting @Volatile var mailboxForTests: ((SyncKeys) -> Mailbox)? = null
         const val CHANGE_DELAY_MS = 1_500L
+        /** After a JOIN: a pass this much later picks up the joined browser's hello (it reads the JOIN on its next look). */
+        const val JOIN_PULL_DELAY_MS = 20_000L
 
         /** The phone's name: Settings → About phone → Device name (Settings.Global.DEVICE_NAME), else Build.MODEL. */
         fun deviceName(context: Context): String = deviceName(

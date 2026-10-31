@@ -33,12 +33,14 @@ import com.onpath.app.navigation.NavKind
 import com.onpath.app.navigation.NavLine
 import com.onpath.app.navigation.NavSession
 import com.onpath.app.navigation.NavSessionStore
+import com.onpath.app.navigation.TourSplit
 import com.onpath.app.recording.RecState
 import com.onpath.app.recording.RecordingService
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.EngineProvider
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanEdits
+import com.onpath.app.search.SharedPlaceLookup
 import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.Planner
 import com.onpath.app.routing.WaypointSnap
@@ -59,6 +61,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.async
 import com.onpath.app.routing.ArrivalGate
 import com.onpath.strings.*
 import java.io.File
@@ -105,8 +108,9 @@ sealed interface PlanToOpen {
 /** One-off things the UI must do with an Activity context. */
 sealed interface UiEvent {
     data class Share(val intent: Intent) : UiEvent
-    data class Fit(val points: List<GeoPoint>) : UiEvent
-    /** Fly to one place at [zoom] (search results). */
+    /** Show all [points] (MapController.fitTo); [northUp] = north up and flat ("Show whole route"). */
+    data class Fit(val points: List<GeoPoint>, val northUp: Boolean = false) : UiEvent
+    /** Fly to one place at [zoom] (search results), in the free room of the fit padding (FitPaddingRule). */
     data class CenterOn(val point: GeoPoint, val zoom: Double) : UiEvent
     /** Move the map to [point] at once, same zoom (profile scrubbing in Navigate). */
     data class PanTo(val point: GeoPoint) : UiEvent
@@ -175,7 +179,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     /** Navigate → ⚙: the navigation settings sheet is open. */
     var navSettingsOpen by mutableStateOf(false)
-    /** Zoom the map takes when Navigate starts ([AppMode.navStartZoom]); null once taken (then the user's zoom stays). */
+    /**
+     * Zoom the map takes when Navigate starts or locate is tapped in Navigate ([AppMode.navStartZoom],
+     * [AppMode.locateZoom]); null once taken (then the user's zoom stays).
+     */
     var navStartZoom by mutableStateOf<Double?>(null)
     /** Map taps may add, move or insert points (Plan with no track shown). */
     val canEditMap: Boolean get() = mode == AppMode.PLAN && shown == null
@@ -282,6 +289,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var northTick by mutableIntStateOf(0)
     /** Bumped when the camera must follow the position again although [followMe] did not change. */
     var recentreTick by mutableIntStateOf(0)
+
+    /**
+     * Locate button (GPS on, permission given): follow the position again. In Navigate also back to the standard
+     * follow zoom of the activity (owner 2026-10-31, [AppMode.locateZoom]) – also when the map still follows but was
+     * pinched; the map takes it while tracking (MapController.ensureStartZoom, no camera move – CLAUDE.md camera rule).
+     * Plan: unchanged, following resumes at the user's zoom.
+     */
+    fun locate() {
+        val zoom = AppMode.locateZoom(mode, activity)
+        followMe = true
+        if (zoom != null) { navStartZoom = zoom; recentreTick++ }
+    }
 
     private fun setHeadingUp(on: Boolean) {
         if (settings.navHeadingUp != on) { settings = settings.copy(navHeadingUp = on); prefs.settings = settings }
@@ -971,7 +990,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.warn("cells", "Background download status unknown; strip hidden", e); null
     }
 
-    // ---- names of what loads (owner: "⬇ Bad Waldsee · 34 %"; map areas only have grid ids) ----
+    // ---- names of what loads (owner: "Bad Waldsee · 34 %" chip; map areas only have grid ids) ----
 
     /** Why each map area was asked for, set where the app asks (point, search, route, newer map); main thread only. */
     private val loadTags = HashMap<com.onpath.app.cells.CellId, LoadTag>()
@@ -1155,6 +1174,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val pinned = prefs.planPinned.toMutableSet()
     fun pinnedIndices(): Set<Int> = waypoints.indices.filter { waypoints[it] in pinned }.toSet()
     private val history = PlanHistory()
+    /** Followed routes replaced by plan edits during the tour (Undo takes them back exactly, Bug 02). */
+    private val followHistory = FollowHistory()
     var canUndo by mutableStateOf(false)
         private set
     var canRedo by mutableStateOf(false)
@@ -1169,6 +1190,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var route by mutableStateOf<PlannedRoute?>(null)
         private set
     var routing by mutableStateOf(false)
+        private set
+    /** The point the last edit added or moved: the map's spinner turns there while its route is computed ([RoutingSpot]). */
+    var routingSpot by mutableStateOf<GeoPoint?>(null)
         private set
     var routeError by mutableStateOf<String?>(null)
         private set
@@ -1265,18 +1289,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val savedId: Long get() = if (planLinked) linkId else -1L
     /** The plan has a route worth keeping that differs from the last save / load (RouteRules.isUnsaved). */
     val planUnsaved: Boolean get() = RouteRules.isUnsaved(waypoints, savedPoints)
-    /** "Save route" name dialog is open (always a new entry). */
-    var saveDialog by mutableStateOf(false)
     /**
-     * "Save route" choice is open: Save (overwrite the loaded / last saved route) or Save as new…; [SaveChoice.thenOpen]
-     * is the route to load afterwards ("Save first" before loading), else null.
+     * The sheet's "Saved as “Name”" is an edit field (owner 2026-10-31, "wie Word"): Done / Enter renames the saved
+     * route ([renamePlan], the same path as My routes → Rename), Back / a tap outside cancels ([cancelRenamePlan]).
      */
-    var saveChoice by mutableStateOf<SaveChoice?>(null)
-    class SaveChoice(val thenOpen: PlanToOpen?)
+    var renamingPlan by mutableStateOf(false)
+        private set
+    /** A save runs (the name is found, then the DB write): a second tap on Save does not make a second route. */
+    private var saving = false
     /** "Replace current plan?" is open for this route (a saved one or one from a plan link). */
     var replaceAsk by mutableStateOf<PlanToOpen?>(null)
-    /** "Save first" was chosen: the name dialog saves the plan, then loads this route. */
-    var saveFirst by mutableStateOf<PlanToOpen?>(null)
     /** A save failed: shown in a dialog until OK (no message that disappears by itself). */
     var routesProblem by mutableStateOf<String?>(null)
 
@@ -1410,7 +1432,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The followed line was taken from this plan ("Start navigation"), so Clear removes it too. */
     private var followFromPlan = false
     /** All plan points were deleted during the tour, which ended the guidance; points back → followed again (PlanGuidance). */
-    private var guidanceEndedByEmptyPlan = false
+    /** The route guidance was ended in the tour (all points deleted / "Just record"): the status says "Recording only". */
+    var guidanceEndedByEmptyPlan by mutableStateOf(false)
+        private set
+
+    /**
+     * What the last plan edit means for the running tour ([TourSplit], docs/design/tour-edit-position.md): the position
+     * splits the plan into passed points and points ahead. Taken by [followEditedPlan] once the plan's route is ready;
+     * null = no tour following the plan, or nothing passed (the plan is followed as a whole, as before).
+     */
+    private var pendingSplit: TourSplit.Outcome? = null
+    /** The plan before that edit (FollowHistory key: Undo brings its followed route back exactly). */
+    private var splitBefore: List<GeoPoint>? = null
+    /** Newer position → ahead routes supersede older ones. */
+    private var splitGen = 0
     /** The followed line is a shown track: "Continue navigation" keeps it instead of re-planning. */
     private var followIsTrack = prefs.followIsTrack
     /** The plan's points when a track was taken to follow ([PlanGuidance.planReplacesTrack]); null = no track / unknown. */
@@ -1470,6 +1505,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var recordingSeen: Long? = null
             RecordingService.state.collect { st ->
                 if (st?.tourId != recordingSeen) {
+                    followHistory.clear() // Undo brings back a followed route only within its own tour
                     if (st != null) Problems.trace("tour", "Tour ${st.tourId} recording (plan ${waypoints.size} points, " +
                         (if (followLine != null) "following ${followName ?: "a route"}" else "nothing followed") + ")")
                     else { Problems.trace("tour", "Tour $recordingSeen recording ended"); guidanceEndedByEmptyPlan = false }
@@ -1787,13 +1823,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         history.record(waypoints)
         val before = waypoints.toList()
         waypoints.block()
+        if (WholeRoute.firstRoute(before.size, waypoints.size)) fitNextRoute = true
+        routingSpot = RoutingSpot.of(before, waypoints)
         cellsForNewPoints(before, waypoints)
         canUndo = history.canUndo; canRedo = history.canRedo
         prefs.planWaypoints = waypoints.toList()
         prunePinned()
         planEditPending = true
-        routeBackAsk = RouteBack.asks(before, waypoints, recState.value != null, followLine != null, followIsTrack, myPosition())
-        if (routeBackAsk) Problems.trace("plan", "Goal of the 2-point plan deleted during the tour: asking \"Route back to the start?\"")
+        val split = splitOf(before, waypoints.toList())
+        routeBackAsk = split == TourSplit.Outcome.NothingAhead ||
+            RouteBack.asks(before, waypoints, recState.value != null, followLine != null, followIsTrack, myPosition())
+        if (routeBackAsk) Problems.trace("plan", "Edit during the tour left no point ahead: asking \"No destination ahead\"")
         planChanged()
         endGuidanceIfPlanEmpty()
         nextCause = PlanStatus.Cause.PointEdit
@@ -1804,6 +1844,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun myPosition(): GeoPoint? =
         tracker.location.value?.let { GeoPoint(it.latitude, it.longitude) }
             ?: recState.value?.track?.lastOrNull()?.lastOrNull()
+
+    /**
+     * The plan points passed in the running tour ([TourSplit.passed]) – empty without a tour that follows the plan.
+     * Only the app's tour: the plan itself is edited exactly as in the web planner.
+     */
+    fun tourPassed(plan: List<GeoPoint> = waypoints.toList()): Set<Int> {
+        val rec = recState.value ?: return emptySet()
+        if (followLine == null || followIsTrack || plan.isEmpty()) return emptySet()
+        val s = rec.nav?.session?.takeIf { it.kind == NavKind.PLAN }
+        return TourSplit.passed(plan, TourSplit.Tour(
+            track = rec.track, position = myPosition(), reached = s?.reached == true, bike = activity != Activity.HIKE,
+            // progress compares with the stops' places on the original line only (a taken re-route has its own)
+            stops = s?.takeUnless { it.rerouted }?.stops.orEmpty(), progressM = rec.nav?.progressM ?: 0.0,
+            visited = s?.visited?.mapNotNull { s.stops.getOrNull(it)?.point }?.toSet().orEmpty(),
+        ))
+    }
+
+    /** [TourSplit.outcome] of the edit [before] → [after] during a tour, kept for [followEditedPlan]. */
+    private fun splitOf(before: List<GeoPoint>, after: List<GeoPoint>): TourSplit.Outcome? {
+        val passed = tourPassed(before)
+        val o = if (passed.isEmpty()) null else TourSplit.outcome(before, after, passed)
+        pendingSplit = o; splitBefore = before
+        if (o != null) Problems.trace("plan", "Edit during the tour: ${passed.size} of ${before.size} points passed → " +
+            (if (o is TourSplit.Outcome.Follow) "follow position → ${o.ahead.size} points ahead" else o.toString()))
+        return o
+    }
 
     /**
      * The goal of a start → goal plan was deleted during a tour (owner, [RouteBack]): "Route back to the start?" stays
@@ -1822,7 +1888,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         routeBackAsk = false
         if (recState.value == null) return
         val pos = myPosition()
-        val back = if (yes) RouteBack.plan(waypoints, pos) else null
+        val plan = waypoints.toList()
+        // one point left: position → start (RouteBack); more: the plan's start is appended as its goal (a round trip),
+        // the passed points stay, the tour follows position → start (TourSplit)
+        val back = if (!yes) null else if (plan.size == 1) RouteBack.plan(plan, pos)
+            else plan.takeIf { pos != null }?.let { it + it.first() }
+        if (back != null && plan.size > 1) splitOf(plan, back) else pendingSplit = null
         if (back != null) {
             Problems.trace("plan", "Route back to the start: yes – plan = position → start")
             val before = waypoints.toList()
@@ -1869,9 +1940,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun addPoint(p: GeoPoint, lineSnapM: Double = 30.0, onPoi: Boolean = false) {
         if (onPoi) { pinned += p; prefs.planPinned = pinned }
         val before = waypoints.toList()
+        // during a tour a new point goes only among the points ahead, never behind the user (TourSplit)
+        val passed = tourPassed(before)
+        val pos = myPosition()
+        if (passed.isNotEmpty() && pos != null) {
+            val ahead = listOf(pos) + TourSplit.ahead(before, passed)
+            // the followed line fits these points only once it runs from the position (else best fit by geometry)
+            val line = followLine?.takeIf { it.isNotEmpty() && com.onpath.app.data.Geo.distance(it.first(), pos) < 50.0 }
+            val d = WaypointInsertion.decide(ahead, p, line, lineSnapM)
+            change { add(TourSplit.insertIndex(passed, d.index).coerceIn(0, size), p) }
+            return
+        }
         // While a reroute runs, the shown line belongs to older waypoints: use best-fit only.
-        val d = WaypointInsertion.decide(before, p, if (routing) null else route?.points, lineSnapM)
+        val d = WaypointInsertion.decide(before, p, if (routing) null else route?.points, lineSnapM, wayThereFrom())
+        if (d.kind == WaypointInsertion.Kind.START && before.size >= 2)
+            Problems.trace("plan", "New point on the way there (led to a route never reached): it is the new start")
         change { add(d.index.coerceIn(0, size), p) }
+    }
+
+    /**
+     * Bug 02: the position while a tour is led to this plan ("Guide me") and has never reached it – a new point that fits
+     * on the way there becomes the new start ([WaypointInsertion] rule 4); else null.
+     */
+    private fun wayThereFrom(): GeoPoint? {
+        val s = recState.value?.nav?.session ?: return null
+        if (!s.lead || s.reached || s.kind != com.onpath.app.navigation.NavKind.PLAN || followIsTrack) return null
+        return myPosition()
     }
 
     /** Plan point [index] deleted (map menu, search card): a round trip stays closed, as in the Points list. */
@@ -1958,7 +2052,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun poiAddLabel(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0): String {
         val w = waypoints.toList()
         return com.onpath.app.search.AddPreview.label(
-            WaypointInsertion.decide(w, GeoPoint(poi.lat, poi.lon), if (routing) null else route?.points, lineSnapM), w.size)
+            WaypointInsertion.decide(w, GeoPoint(poi.lat, poi.lon), if (routing) null else route?.points, lineSnapM, wayThereFrom()), w.size)
     }
 
     fun addPoiPoint(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) {
@@ -2131,6 +2225,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun flyToPlace(p: com.onpath.app.search.Place) {
         val zoom = when (p.sub) { "city" -> 12.0; "town" -> 13.0; "village", "suburb" -> 14.0; else -> 16.0 }
+        followMe = false // an intended fly: following stops first (CLAUDE.md "Map camera")
+        freeLookAt = null
         events += UiEvent.CenterOn(GeoPoint(p.lat, p.lon), zoom)
         if (mode == AppMode.PLAN) safeCells("search") {
             showCellJob(cellTriggers.pointSet(GeoPoint(p.lat, p.lon), com.onpath.app.cells.CellWhy.SEARCHED)
@@ -2163,7 +2259,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (idx != null) return com.onpath.app.ui.search.PlaceCardUi(place, idx, waypoints.size,
             com.onpath.app.search.AddPreview.existingRole(idx, waypoints.size))
         val pv = com.onpath.app.search.AddPreview.of(waypoints.toList(), GeoPoint(place.lat, place.lon), if (routing) null else r?.points,
-            r?.takeIf { it.durationS > 0 }?.let { it.distanceM / it.durationS })
+            r?.takeIf { it.durationS > 0 }?.let { it.distanceM / it.durationS }, here = wayThereFrom())
         val k = pv.decision.kind
         return com.onpath.app.ui.search.PlaceCardUi(place, null, waypoints.size, pv.subtitle, pv.label,
             addIsStart = k == WaypointInsertion.Kind.START,
@@ -2224,6 +2320,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun receiveSharedPlace(shared: com.onpath.app.search.SharedPlace) {
         routesOpen = false; showSettings = false; offlineResult = null; timeDetails = null; routeDetailsOpen = false; searchOpen = false
+        sharedUnsure = null
         closeMapOverlays()
         // A shown track hides the plan sheet and blocks map holds – the ring's menu must work.
         if (shown != null) closeShown()
@@ -2235,6 +2332,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             // Cold start: the start mode (Plan / Navigate) is decided after a database check – switch after that.
             if (!startModeKnown) androidx.compose.runtime.snapshotFlow { startModeKnown }.first { it }
             if (mode != AppMode.PLAN) enter(AppMode.PLAN)
+            // one search per name / address / q text (the quick path and the end may ask the same)
+            val looked = HashMap<Triple<String?, String?, String?>, SharedPlaceLookup.Result>()
+            suspend fun lookup(s: com.onpath.app.search.SharedPlace): SharedPlaceLookup.Result = looked[Triple(s.name, s.address, s.query)] ?: (try {
+                search.findShared(s.name, s.address, s.query)
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
+                Problems.info("search", "Address search for a shared place failed", e); SharedPlaceLookup.Result.NotFound
+            }).also { looked[Triple(s.name, s.address, s.query)] = it }
             var p = shared
             var fromPage = false
             if (!p.hasPoint && p.link != null) {
@@ -2242,18 +2346,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val http = com.onpath.app.search.ShortLinkResolver.http(
                     com.onpath.app.search.PhotonProvider.userAgent(com.onpath.app.BuildConfig.VERSION_NAME))
                 // For speed (owner): when the redirect already names the address, search that and skip the Google
-                // page; the page is only read when the address is not found.
+                // page; the page (its place marker) is read when the address gives no sure place.
                 var r = withContext(Dispatchers.IO) { com.onpath.app.search.ShortLinkResolver(http, stopAtAddress = true).resolve(link) }
                 val quick = r.place?.takeIf { !it.hasPoint && it.address != null }
                 if (quick != null) {
                     val q = p.copy(name = p.name ?: quick.name, address = quick.address, query = p.query ?: quick.query)
-                    val hit = try { search.findOne(q.searchTexts()) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
-                        Problems.info("search", "Address search for a shared place failed", e); null
-                    }
+                    val hit = lookup(q) as? SharedPlaceLookup.Result.Found
                     if (hit != null) {
-                        Problems.info("search", "Shared place found by its address (${hit.second.name.lowercase()} search)")
-                        val shownName = q.name?.substringBefore(',')?.trim()?.ifEmpty { null } ?: hit.first.name
-                        showSharedPlace(hit.first.copy(name = shownName,
+                        Problems.info("search", "Shared place found by its address (${hit.how})")
+                        val shownName = q.name?.substringBefore(',')?.trim()?.ifEmpty { null } ?: hit.place.name
+                        showSharedPlace(hit.place.copy(name = shownName,
                             note = com.onpath.app.search.SharedPosition.of(point = false, fromPage = false, addressWon = false).note))
                         return@launch
                     }
@@ -2266,17 +2368,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var lat = p.lat; var lon = p.lon
             var addressWon = false
             // A point read from the downloaded Google page (the link itself had none) is checked against the address
-            // in the link: the page can carry other places' markers. More than SHARED_PAGE_MAX_OFF_M apart → the address wins.
+            // in the link: the page can carry other places' markers. More than SHARED_PAGE_MAX_OFF_M apart → the address
+            // wins – only a sure hit in the shared town, never a namesake elsewhere (SharedPlaceLookup).
             if (fromPage && lat != null && lon != null && p.searchTexts().isNotEmpty()) {
-                val byAddress = try { search.findOne(p.searchTexts()) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
-                    Problems.info("search", "Address check for a shared place failed", e); null
-                }
+                val byAddress = lookup(p) as? SharedPlaceLookup.Result.Found
                 if (byAddress != null) {
-                    val off = Geo.distance(lat, lon, byAddress.first.lat, byAddress.first.lon)
+                    val off = Geo.distance(lat, lon, byAddress.place.lat, byAddress.place.lon)
                     if (off > SHARED_PAGE_MAX_OFF_M) {
                         Problems.warn("search", "Shared place: the map page pointed ${(off / 1000).toInt()} km away from the " +
-                            "address – using the address (${byAddress.second.name.lowercase()} search)")
-                        lat = byAddress.first.lat; lon = byAddress.first.lon
+                            "address – using the address (${byAddress.how})")
+                        lat = byAddress.place.lat; lon = byAddress.place.lon
                         addressWon = true
                     }
                 }
@@ -2290,15 +2391,37 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     note = com.onpath.app.search.SharedPosition.of(point = true, fromPage = fromPage, addressWon = addressWon).note))
                 return@launch
             }
-            val found = search.findOne(p.searchTexts())
-            // Stays until OK (owner rule: no message disappears by itself).
-            if (found == null) { sayError(Txt.s(Res.string.msg_shared_place_not_found), NoticePlace.MAP); return@launch }
-            val (place, from) = found
-            Problems.info("search", "Shared place positioned from its address (${from.name.lowercase()} search)")
-            showSharedPlace(place.copy(name = p.name ?: place.name,
-                note = com.onpath.app.search.SharedPosition.of(point = false, fromPage = false, addressWon = false).note))
+            when (val found = lookup(p)) {
+                is SharedPlaceLookup.Result.Found -> {
+                    Problems.info("search", "Shared place positioned from its address (${found.how})")
+                    showSharedPlace(found.place.copy(name = p.name ?: found.place.name,
+                        note = com.onpath.app.search.SharedPosition.of(point = false, fromPage = false, addressWon = false).note))
+                }
+                // hits, but none surely the place (a namesake in another town): no ring – the search, prefilled; stays until tapped
+                is SharedPlaceLookup.Result.Unsure -> {
+                    Problems.info("search", "Shared place not clear: no sure hit in the shared town – the search is offered")
+                    sharedUnsure = found.searchText
+                }
+                // Stays until OK (owner rule: no message disappears by itself).
+                SharedPlaceLookup.Result.NotFound -> sayError(Txt.s(Res.string.msg_shared_place_not_found), NoticePlace.MAP)
+            }
           } finally { sharedLookup = false }
         }
+    }
+
+    /**
+     * A shared place without a sure position (only namesakes elsewhere): the text to search for. While set, Plan shows
+     * the box "Place not clear" with Search ([searchSharedUnsure]).
+     */
+    var sharedUnsure by mutableStateOf<String?>(null)
+        private set
+
+    /** The "Place not clear" box's button: the search opens with the shared name + town typed in. */
+    fun searchSharedUnsure() {
+        val text = sharedUnsure ?: return
+        sharedUnsure = null
+        openSearch()
+        search.onQuery(text)
     }
 
     private fun showSharedPlace(p: com.onpath.app.search.Place) {
@@ -2372,9 +2495,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun step(prev: List<GeoPoint>?, what: String) {
         if (prev == null) { Problems.trace("plan", "$what: nothing to ${what.lowercase()}"); return }
         Problems.trace("plan", "$what: plan ${waypoints.size} → ${prev.size} points")
+        routingSpot = RoutingSpot.of(waypoints.toList(), prev)
+        val split = splitOf(waypoints.toList(), prev)
         waypoints.clear(); waypoints.addAll(prev)
         canUndo = history.canUndo; canRedo = history.canRedo
-        routeBackAsk = false // the plan the question was about is gone
+        routeBackAsk = split == TourSplit.Outcome.NothingAhead // the plan an open question was about is gone
         closePointMenu("undo / redo"); firstPointMenu = null
         prefs.planWaypoints = waypoints.toList()
         planEditPending = true
@@ -2490,6 +2615,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         notRouted = null
         if (pts.size < 2) {
             requests.invalidate(); route = null; routeError = null; routing = false; followNextRoute = false
+            fitNextRoute = false
             corridorFollowsPlan(null); return
         }
         val act = activity; val level = sac
@@ -2542,6 +2668,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val it = res.route
                 baseline = adoptPlanBaseline
                 route = it; snapToRoute(pts, res)
+                if (fitNextRoute) { fitNextRoute = false; fitFirstRoute(it.points, pts) }
                 // the route warnings of this result (computed with it, off the main thread): routeSpots reads them
                 spotsMemo = Triple(it.points, act, level) to res.spots
                 if (changeBefore != null) {
@@ -2562,6 +2689,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (adoptPlanBaseline) { adoptPlanBaseline = false; planBaseline = it.points }
             }
                 .onFailure {
+                    fitNextRoute = false // the points were fitted when they came (link) or are where the user held
                     Problems.error("routing", "Route calculation failed", it); route = null; routeError = it.message ?: Txt.s(Res.string.msg_routing_failed)
                     corridorFollowsPlan(null)
                 }
@@ -2759,6 +2887,58 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun closeSpots() { spotsOpen = false }
 
+    /**
+     * The "Show whole route" button shows (WholeRoute.shows) – [layer] = the mode of the control layer it sits in (the
+     * leaving layer keeps its look while it animates out), [pointsOpen] = the Points step (MapScreen).
+     */
+    fun wholeRouteShown(layer: AppMode, pointsOpen: Boolean): Boolean =
+        WholeRoute.shows(layer, pointsOpen, hasPlanLine(), hasShownLine(), hasFollowLine())
+
+    private fun hasPlanLine() = (route?.points?.size ?: 0) >= 2
+    private fun hasShownLine() = (shown?.segments?.sumOf { it.size } ?: 0) >= 2
+    private fun hasFollowLine() = (followLine?.size ?: 0) >= 2
+
+    /**
+     * "Show whole route" (map button, owner 2026-10-31): following stops first (also free look – it would follow
+     * again by itself), then the map shows the whole line and its points north up; in Navigate also where you are.
+     * Following comes back with the locate button only.
+     */
+    fun showWholeRoute() {
+        val src = WholeRoute.source(mode, hasPlanLine(), hasShownLine(), hasFollowLine()) ?: return
+        val here = tracker.location.value?.takeIf { mode == AppMode.NAVIGATE }?.let { GeoPoint(it.latitude, it.longitude) }
+        val pts = when (src) {
+            WholeRoute.Source.SHOWN -> shown?.let { t -> WholeRoute.bounds(t.segments, t.waypoints.map { GeoPoint(it.lat, it.lon) }, null) }
+            WholeRoute.Source.PLANNED -> route?.let { r -> WholeRoute.bounds(listOf(r.points), waypoints.toList(), null) }
+            // with the original while a new route is followed (drawn thin grey)
+            WholeRoute.Source.FOLLOWED -> WholeRoute.bounds(listOfNotNull(followLine, recState.value?.nav?.original), emptyList(), here)
+        } ?: return
+        followMe = false
+        freeLookAt = null
+        events += UiEvent.Fit(pts, northUp = true)
+    }
+
+    /** The next computed route is fitted ([WholeRoute.firstRoute], a plan link): the whole line shows (field A-019). */
+    private var fitNextRoute = false
+
+    /**
+     * The plan's first route is there: the map shows it whole – the same fit as "Show whole route" (north up, the
+     * [FitPaddingRule] padding), once the sheet has grown to its route size. Not when the user took the map meanwhile,
+     * left Plan or the route changed again. Following stops first (CLAUDE.md "Map camera").
+     */
+    private fun fitFirstRoute(line: List<GeoPoint>, pts: List<GeoPoint>) {
+        val asked = android.os.SystemClock.uptimeMillis()
+        viewModelScope.launch {
+            delay(WholeRoute.SETTLE_MS)
+            if (lastMapTouchMs > asked || mode != AppMode.PLAN || shown != null || route?.points != line) {
+                Problems.trace("map", "First route not fitted: the map was touched or the plan moved on")
+                return@launch
+            }
+            followMe = false
+            freeLookAt = null
+            events += UiEvent.Fit(WholeRoute.bounds(listOf(line), pts, null), northUp = true)
+        }
+    }
+
     /** A spot in the list tapped: the list closes, following stops, the map shows that piece (drawn amber). */
     fun showSpot(s: RouteSpot) {
         spotsOpen = false
@@ -2779,91 +2959,143 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Saves the plan as a new planned route (⋮ Save route, or "Save first" before loading). The sheet then shows
-     * "Saved as …" (no message). Without a route line yet (still calculating / failed) the points are stored as
-     * the line, so nothing is lost; opening it re-routes. [then] runs on success only.
+     * Save – the sheet's green Save, ☰ "Save route", sheet ⋯ → Save route – at once, no dialog (owner 2026-10-31, "wie
+     * Word", like the browser planner; RouteRules.saveMode): the plan belongs to a saved route that still exists → that
+     * route is overwritten (its name stays), else a new route under a proposed name ([saveAsNew]). The sheet then shows
+     * "Saved as …" (no message); a tap on it renames.
+     */
+    fun requestSave() = save(null)
+
+    /** Save, then [then] on success ("Save first" before loading another route). */
+    private fun save(then: (() -> Unit)?) {
+        if (waypoints.size < 2) return
+        when (currentSaveMode()) {
+            SaveMode.OVERWRITE -> overwriteSaved(then)
+            SaveMode.NEW_ROUTE -> saveAsNew(then)
+        }
+    }
+
+    /** How long Save waits for the place proposal of a new route's name before it takes the date name. */
+    private val NAME_WAIT_MS = 2_000L
+
+    private fun currentSaveMode() =
+        RouteRules.saveMode(savedId, savedName, tours.filter { it.kind == TourKind.PLANNED }.map { it.id })
+
+    /**
+     * A new planned route from the plan, at once (sheet ⋯ → "Save as new route", or Save of a plan that is not a saved
+     * route yet): named by [RouteRules.newRouteName] – the plan link's title / the place proposal "Vellau → Leiteralm"
+     * (waited for [NAME_WAIT_MS] at most; the place index goes on building in the background), else "Route 31 Oct,
+     * 10:12". The points and line are the ones at the tap. [then] runs on success only.
+     */
+    fun saveAsNew(then: (() -> Unit)? = null) {
+        val pts = waypoints.toList()
+        if (pts.size < 2 || saving) return
+        saving = true
+        val r = route
+        val taken = tours.filter { it.kind == TourKind.PLANNED }.map { it.name }
+        val proposal = viewModelScope.async { proposeName(pts, r) }
+        viewModelScope.launch {
+            try {
+                val proposed = withTimeoutOrNull(NAME_WAIT_MS) { proposal.await() }
+                val name = RouteRules.newRouteName(proposed, defaultName(Txt.s(Res.string.msg_name_route)), taken)
+                insertPlanned(name, pts, r, then)
+            } finally { saving = false }
+        }
+    }
+
+    /**
+     * Saves the plan as a new planned route named [name]. The sheet then shows "Saved as …" (no message). Without a
+     * route line yet (still calculating / failed) the points are stored as the line, so nothing is lost; opening it
+     * re-routes. [then] runs on success only.
      */
     fun saveRoute(name: String, then: (() -> Unit)? = null) {
         val pts = waypoints.toList()
         if (pts.size < 2) return
         val r = route
+        viewModelScope.launch { insertPlanned(name, pts, r, then) }
+    }
+
+    private suspend fun insertPlanned(name: String, pts: List<GeoPoint>, r: PlannedRoute?, then: (() -> Unit)?) {
         val title = name.trim().ifBlank { defaultName(Txt.s(Res.string.msg_name_route)) }
         val act = activity; val level = sac
         val stops = savedStops(pts); val pins = pinnedIndices()
-        viewModelScope.launch {
-            val id = withContext(Dispatchers.IO) {
-                runCatching {
-                    db.insertTour(
-                        TourKind.PLANNED, title, act.name, level,
-                        r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
-                        listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
-                        stops, pinned = pins,
-                    ).also { storePlanTimes(it, r, act) }
-                }.onFailure { Problems.error("db", "Saving a planned route failed", it) }.getOrNull()
-            }
-            if (id == null) { routesProblem = Txt.s(Res.string.msg_route_save_failed); return@launch }
-            Backups.tourChanged(getApplication(), id)
-            sync.changed("route saved")
-            setSaved(title, id, pts)
-            refreshTours()
-            then?.invoke()
+        val id = withContext(Dispatchers.IO) {
+            runCatching {
+                db.insertTour(
+                    TourKind.PLANNED, title, act.name, level,
+                    r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
+                    listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
+                    stops, pinned = pins,
+                ).also { storePlanTimes(it, r, act) }
+            }.onFailure { Problems.error("db", "Saving a planned route failed", it) }.getOrNull()
         }
+        if (id == null) { routesProblem = Txt.s(Res.string.msg_route_save_failed); return }
+        Backups.tourChanged(getApplication(), id)
+        sync.changed("route saved")
+        setSaved(title, id, pts)
+        refreshTours()
+        then?.invoke()
     }
 
     /** The plan's stops as saved: with their place names (backup / restore keeps them). */
     private fun savedStops(pts: List<GeoPoint>) = com.onpath.app.gpx.PlanGpx.stops(pts) { stopName(pts[it]) }
 
-    /** ⋮ → Save route: Save / Save as new… when the plan belongs to a saved route (RouteRules.saveMode), else the name dialog. */
-    fun requestSave() {
-        if (waypoints.size < 2) return
-        when (currentSaveMode()) {
-            SaveMode.OVERWRITE_OR_NEW -> saveChoice = SaveChoice(null)
-            SaveMode.NAME_DIALOG -> { suggestName(); saveDialog = true }
-        }
-    }
-
-    private fun currentSaveMode() =
-        RouteRules.saveMode(savedId, savedName, tours.filter { it.kind == TourKind.PLANNED }.map { it.id })
-
-    /** Choice "Save": overwrite the saved route in place (name stays). Falls back to a new entry if it is gone. */
-    fun saveChoiceOverwrite() {
-        val choice = saveChoice ?: return
-        saveChoice = null
-        val then: (() -> Unit)? = choice.thenOpen?.let { t -> { open(t) } }
+    /** Save of a plan that belongs to a saved route: overwrite it in place (name stays). A new entry if it is gone. */
+    private fun overwriteSaved(then: (() -> Unit)?) {
         val pts = waypoints.toList()
         val name = savedName
         val id = savedId
-        if (pts.size < 2 || name == null || id < 0) { saveDialog = true; return }
+        if (pts.size < 2 || saving) return
+        if (name == null || id < 0) { saveAsNew(then); return }
+        saving = true
         val r = route
         val act = activity; val level = sac
         val stops = savedStops(pts); val pins = pinnedIndices()
         viewModelScope.launch {
-            val ok = withContext(Dispatchers.IO) {
-                runCatching {
-                    db.replacePlanned(
-                        id, act.name, level,
-                        r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
-                        listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
-                        stops, pins,
-                    ).also { if (it) { plannedTimes.remove(id); storePlanTimes(id, r, act) } }
+            try {
+                val ok = withContext(Dispatchers.IO) {
+                    runCatching {
+                        db.replacePlanned(
+                            id, act.name, level,
+                            r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
+                            listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
+                            stops, pins,
+                        ).also { if (it) { plannedTimes.remove(id); storePlanTimes(id, r, act) } }
+                    }
                 }
-            }
-            ok.onSuccess { replaced ->
-                if (replaced) { Backups.tourChanged(getApplication(), id); sync.changed("route overwritten"); setSaved(name, id, pts); refreshTours(); then?.invoke() }
-                else saveRoute(name, then) // deleted meanwhile: keep the work as a new route with the same name
-            }.onFailure {
-                Problems.error("db", "Overwriting a saved route failed", it)
-                routesProblem = Txt.s(Res.string.msg_route_save_failed)
-            }
+                val replaced = ok.getOrElse {
+                    Problems.error("db", "Overwriting a saved route failed", it)
+                    routesProblem = Txt.s(Res.string.msg_route_save_failed)
+                    return@launch
+                }
+                if (replaced) {
+                    Backups.tourChanged(getApplication(), id); sync.changed("route overwritten")
+                    setSaved(name, id, pts); refreshTours(); then?.invoke()
+                } else insertPlanned(name, pts, r, then) // deleted meanwhile: keep the work as a new route with the same name
+            } finally { saving = false }
         }
     }
 
-    /** Choice "Save as new…": the name dialog (then loading the picked route when it came from "Save first"). */
-    fun saveChoiceAsNew() {
-        val choice = saveChoice ?: return
-        saveChoice = null
-        suggestName()
-        if (choice.thenOpen != null) saveFirst = choice.thenOpen else saveDialog = true
+    /** Tap on the sheet's "Saved as “Name”": it becomes an edit field (only while the plan is a saved route). */
+    fun startRenamePlan() { if (savedName != null) renamingPlan = true }
+
+    /** Back / a tap outside the field: the name stays. */
+    fun cancelRenamePlan() { renamingPlan = false }
+
+    /**
+     * Done / Enter in the sheet's name field: renames the saved route the plan belongs to through [renameTour] – the
+     * same path as My routes → Rename (backup file, sync change, "Saved as" follows). A blank name keeps the old one.
+     */
+    fun renamePlan(input: String) {
+        renamingPlan = false
+        val id = linkId.takeIf { savedName != null } ?: return
+        val t = tours.firstOrNull { it.id == id && it.kind == TourKind.PLANNED }
+        if (t == null) {
+            Problems.warn("routes", "Rename from the plan sheet: the saved route $id is not in My routes; not renamed")
+            routesProblem = Txt.s(Res.string.msg_route_rename_failed)
+            return
+        }
+        renameTour(t, input)
     }
 
     /** Manage routes → Rename. The plan's "Saved as …" and a shown track follow the new name. */
@@ -2921,49 +3153,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         is PlanToOpen.Shared -> openSharedPlan(t.plan)
     }
 
-    /** "Save first": name dialog, then save and load [replaceAsk]. */
+    /**
+     * "Replace current plan?" → Save first: the plan is saved at once like Save (overwrite its saved route, else a new
+     * one under a proposed name), then [replaceAsk] loads. The question itself is the choice (Save first / Replace /
+     * tap outside = nothing happens) – no name dialog after it (owner 2026-10-31).
+     */
     fun replaceSaveFirst() {
         val t = replaceAsk ?: return
         replaceAsk = null
-        if (currentSaveMode() == SaveMode.OVERWRITE_OR_NEW) saveChoice = SaveChoice(t) else { suggestName(); saveFirst = t }
-    }
-
-    fun saveFirstDone(name: String) {
-        val t = saveFirst ?: return
-        saveFirst = null
-        saveRoute(name) { open(t) }
+        save { open(t) }
     }
 
     /**
-     * Proposed name for the open "Save route" dialog ("Algund → Meran", search/RouteNamer), null until computed or
-     * when nothing fits. The dialog opens at once with [defaultName] and takes this over while the user has not typed.
+     * Proposed name of a new route: a plan from a link keeps its title while its points are unchanged, else
+     * "Algund → Meran" (search/RouteNamer) from the offline place index (built first if needed); null when nothing fits.
      */
-    var suggestedName by mutableStateOf<String?>(null)
-        private set
-    private var nameJob: Job? = null
-
-    /** Computes [suggestedName] off the main thread from the offline place index (built first if needed). */
-    private fun suggestName() {
-        suggestedName = null
-        nameJob?.cancel()
-        val pts = waypoints.toList()
-        if (pts.size < 2) return
-        // a plan from a link brings its name while its points are unchanged
-        linkTitle?.let { (title, at) -> if (at == pts) { suggestedName = title; return } }
-        val line = route?.points?.takeIf { it.size >= 2 } ?: pts
+    private suspend fun proposeName(pts: List<GeoPoint>, r: PlannedRoute?): String? {
+        if (pts.size < 2) return null
+        linkTitle?.let { (title, at) -> if (at == pts) return title }
+        val line = r?.points?.takeIf { it.size >= 2 } ?: pts
         val startName = stopName(pts.first()); val endName = stopName(pts.last())
         val via = pts.subList(1, pts.size - 1).mapNotNull { stopName(it) }
-        nameJob = viewModelScope.launch {
-            val index = try { search.offlineIndex() } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) { Problems.warn("search", "Place index unavailable; route name from stop names only", e); null }
-            suggestedName = withContext(Dispatchers.IO) {
-                try {
-                    val places = index?.let { com.onpath.app.search.RouteNamer.placesNear(it, line) }.orEmpty()
-                    com.onpath.app.search.RouteNamer.name(line, places, startName, endName, via)
-                } catch (e: Exception) {
-                    Problems.warn("search", "No route name proposed (naming failed)", e); null
-                }
+        val index = try { search.offlineIndex() } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) { Problems.warn("search", "Place index unavailable; route name from stop names only", e); null }
+        return withContext(Dispatchers.IO) {
+            try {
+                val places = index?.let { com.onpath.app.search.RouteNamer.placesNear(it, line) }.orEmpty()
+                com.onpath.app.search.RouteNamer.name(line, places, startName, endName, via)
+            } catch (e: Exception) {
+                Problems.warn("search", "No route name proposed (naming failed)", e); null
             }
         }
     }
@@ -3011,6 +3230,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun enter(m: AppMode) {
         val was = mode
         mode = m
+        renamingPlan = false // the sheet's name field does not stay open behind another mode
         // the start zoom of Navigate, once per start (owner); the map takes it when it follows
         if (m == AppMode.NAVIGATE && was != AppMode.NAVIGATE) navStartZoom = AppMode.navStartZoom(activity)
         else if (m != AppMode.NAVIGATE) navStartZoom = null
@@ -3018,6 +3238,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Plan keeps the compass choice: walking direction up stays turned and following (until you edit or move the
         // map); north up stops following
         else followMe = headingUp && followMe && tracker.location.value != null
+        // Plan during a tour: the sheet is one row (tour status + Continue), the map free for holds (owner 2026-10-31)
+        if (m == AppMode.PLAN && was == AppMode.NAVIGATE) planSize = PlanSize.backInPlan(planSize, recState.value != null)
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_NAVIGATING) {
             putExtra(RecordingService.EXTRA_ON, m == AppMode.NAVIGATE)
         }
@@ -3122,6 +3344,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Off-route question in Navigate: keep following the original route. */
     fun keepOriginalRoute(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_KEEP_ROUTE) {
+        putExtra(RecordingService.EXTRA_QUESTION, questionId)
+    }
+
+    /** "Route starts 31 km away" (never on the route yet) – Guide me: a route from here via the start and all points. */
+    fun leadToStart(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_LEAD_THERE) {
+        putExtra(RecordingService.EXTRA_QUESTION, questionId)
+    }
+
+    /** "Route starts 31 km away" – Just record: quiet until the route is reached. */
+    fun justRecord(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_JUST_RECORD) {
+        putExtra(RecordingService.EXTRA_QUESTION, questionId)
+    }
+
+    /** OK on "No way to the route found – recording continues". */
+    fun leadFailedOk(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_LEAD_FAILED_OK) {
         putExtra(RecordingService.EXTRA_QUESTION, questionId)
     }
 
@@ -3371,11 +3608,55 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         if (recState.value == null || followLine == null || followIsTrack) return
+        val split = pendingSplit; pendingSplit = null
+        when (split) {
+            // only passed points edited: the guidance ahead stays, the plan line counts as followed
+            TourSplit.Outcome.Unchanged -> { planBaseline = r.points; return }
+            // "No destination ahead" is open: the followed line stays until it is answered
+            TourSplit.Outcome.NothingAhead -> return
+            is TourSplit.Outcome.Follow -> {
+                // Undo / Redo back to a plan followed before in this tour: that route exactly (FollowHistory)
+                val now = recState.value?.nav?.session?.takeIf { it.kind == com.onpath.app.navigation.NavKind.PLAN }
+                val back = followHistory.find(waypoints.toList())
+                val before = splitBefore
+                if (now != null && before != null) followHistory.remember(before, now)
+                if (back != null) { followAgain(back, r.points, now?.version ?: 0); return }
+                followAhead(split.ahead, r.points)
+                return
+            }
+            else -> Unit
+        }
         if (r.points.size < 2) return // nothing to follow (e.g. all points on one spot): keep the running line
         val orig = followOriginal
         if (planFollowed(r.points)) return
         if (orig != null && NavLine.sameRoute(r.points, orig)) { planBaseline = r.points; return }
+        // Bug 02: back at plan points followed before in this tour (Undo / Redo) → that route exactly, a way there
+        // ("Guide me") or a taken re-route included, no routing; the session it replaces is kept for Redo
+        val now = recState.value?.nav?.session?.takeIf { it.kind == com.onpath.app.navigation.NavKind.PLAN }
+        val back = followHistory.find(waypoints.toList())
+        now?.let { followHistory.remember(it.stops.map { st -> st.point }, it) }
+        if (back != null) { followAgain(back, r.points, now?.version ?: 0); return }
         followPlanned()
+    }
+
+    /** Follows [s] again as it was (Undo during a tour, [FollowHistory]); [planLine] = the plan's route line now. */
+    private fun followAgain(s: com.onpath.app.navigation.NavSession, planLine: List<GeoPoint>, versionNow: Int) {
+        // a new version: the service and the junction cues re-read the line
+        val session = s.copy(version = maxOf(s.version, versionNow) + 1)
+        guidanceEndedByEmptyPlan = false
+        navStore.save(session)
+        prefs.saveFollow(session.name, session.active)
+        followName = session.name
+        followLine = session.active
+        followOriginal = session.original
+        planBaseline = planLine
+        followIsTrack = false; prefs.followIsTrack = false
+        followFromPlan = true
+        planAtTrackFollow = null
+        arrivalGate.reset()
+        Problems.trace("tour", "The tour follows \"${session.name}\" again as before the edit (${session.stops.size} points" +
+            (if (session.rerouted) ", " + (if (session.lead && !session.reached) "way there" else "new route") + " kept" else "") + ")")
+        RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED)
     }
 
     /**
@@ -3389,6 +3670,44 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             stops = w, names = w.map { stopName(it) }, pinned = pinnedIndices())
         followFromPlan = true
         if (recState.value != null) Problems.trace("tour", "The tour follows \"$followName\" now (${activity.name}, ${w.size} points)")
+    }
+
+    /**
+     * The tour follows position → [ahead] ([TourSplit.Outcome.Follow]): routed like any plan (the same [PlanResult] the
+     * web planner uses), only for these points. [planLine] = the whole plan's route, which then counts as followed (Plan
+     * draws the followed line). No route found: the guidance followed so far stays, a red box says so.
+     */
+    private fun followAhead(ahead: List<GeoPoint>, planLine: List<GeoPoint>) {
+        val pos = myPosition()
+        val pts = listOfNotNull(pos) + ahead
+        if (pts.size < 2) { followPlanned(); return } // no position yet and one point ahead: the plan as a whole
+        val gen = ++splitGen
+        val act = activity; val level = sac; val f = planFactors(act)
+        val off = if (pos != null) 1 else 0
+        val pins = ahead.indices.filter { ahead[it] in pinned }.map { it + off }.toSet()
+        val name = savedName ?: defaultName(Txt.s(Res.string.msg_name_route))
+        val firstAhead = waypoints.indexOf(ahead.first()) + 1
+        viewModelScope.launch {
+            val res = withContext(routingDispatcher) {
+                runCatching {
+                    com.onpath.app.routing.PlanResult.plan(Planner(routingEngine(), com.onpath.app.routing.RouteCancel()), pts, act, level,
+                        pins, emptySet(), f)
+                }
+            }
+            if (gen != splitGen || recState.value == null) return@launch
+            val line = res.getOrNull()?.route?.takeIf { it.error == null && it.points.size >= 2 }?.points
+            if (line == null) {
+                Problems.warn("tour", "No route from the position to the ${ahead.size} points ahead; the guidance so far stays",
+                    res.exceptionOrNull())
+                sayError(Txt.s(Res.string.nav_no_route_ahead, firstAhead), NoticePlace.MAP)
+                return@launch
+            }
+            setFollow(name, line, isTrack = false, checkNow = true, stops = ahead, names = ahead.map { stopName(it) },
+                pinned = ahead.indices.filter { ahead[it] in pinned }.toSet())
+            planBaseline = planLine
+            followFromPlan = true
+            Problems.trace("tour", "The tour follows position → ${ahead.size} points ahead of \"$name\" (${line.size} line points)")
+        }
     }
 
     fun followShown() {
@@ -3533,6 +3852,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun stopRecording() {
         routeBackAsk = false // a question about this tour's plan never reaches the next tour
+        planSize = PlanSize.afterTour(planSize)
         RecordingService.send(getApplication(), RecordingService.ACTION_STOP)
     }
 
@@ -3597,7 +3917,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val sync = com.onpath.app.plansync.PlanSync(app, com.onpath.app.plansync.DbTourStore(app, db) { a -> planFactors(a) },
         recording = { recState.value != null }, onReport = ::syncReport)
 
-    /** Routes from the browser not opened yet (My routes → Planned: bold + "New from the browser"); read once at start. */
+    /** Routes from the browser not opened yet (My routes → Planned: a "New" / "Changed" tag – RouteTag); read once at start. */
     val syncMarks: kotlinx.coroutines.flow.StateFlow<Map<String, com.onpath.app.plansync.SyncMark>> get() = sync.files.marks.state
 
     /** Opened (load as plan / open the track): the route's "New from / Changed in the browser" mark goes. */
@@ -3937,7 +4257,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         linkPoints = load.points
         Problems.info("plan", "Plan link opened ($via): ${load.points.size} points, ${plan.activity.name}" +
             (if (plan.activity == Activity.HIKE) " T${plan.sac}" else "") + ", ${load.pinned.size} pinned, ${load.names.size} names")
-        events += UiEvent.Fit(load.points)
+        // the map shows the plan (field A-019: it stayed where it was): its points now, the whole route once computed;
+        // the start camera must not centre on the position afterwards, following stops first (CLAUDE.md "Map camera")
+        holdCameraForSharedPlace()
+        followMe = false
+        freeLookAt = null
+        fitNextRoute = true
+        events += UiEvent.Fit(load.points, northUp = true)
     }
 
     /** Sheet ⋯ → Share plan: the plan as a plan.onpath.earth link (PlanLinks) in the share sheet; from two points. */

@@ -11,6 +11,7 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.core.content.ContextCompat
+import com.onpath.app.data.AtomicFiles
 import com.onpath.app.debug.Problems
 import java.io.File
 import java.io.FileNotFoundException
@@ -85,9 +86,7 @@ internal class FileOps(private val resolver: ContentResolver) {
 
     companion object {
         fun writeFile(f: File, bytes: ByteArray) {
-            val tmp = File(f.parentFile, ".${f.name}.tmp")
-            tmp.writeBytes(bytes)
-            if (!tmp.renameTo(f)) { f.delete(); if (!tmp.renameTo(f)) { tmp.delete(); throw java.io.IOException("could not write ${f.name}") } }
+            AtomicFiles.writeBytes(f, bytes, File(f.parentFile, ".${f.name}.tmp"))
         }
     }
 }

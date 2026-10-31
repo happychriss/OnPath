@@ -25,7 +25,7 @@ import kotlin.random.Random
 
 /**
  * C16 (owner 2026-10-30): a route or imported track that arrived from the browser, or that the browser changed, is
- * marked in My routes → Planned (bold + "New from the browser" / "Changed in the browser") until the user opens it.
+ * marked in My routes → Planned (a "New" / "Changed" tag after the name, ui/RouteTag) until the user opens it.
  * A change on the phone never marks; opening, the recycle bin and unpair clear it; the marks survive a restart.
  */
 class SyncMarksTest {

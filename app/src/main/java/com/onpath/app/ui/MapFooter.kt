@@ -6,6 +6,7 @@ import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.material.icons.filled.FitScreen
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -110,7 +111,8 @@ data class CompassSpec(val headingUp: Boolean?, val bearing: Float, val onClick:
 /**
  * The map controls as one group (owner: "center, eye and compass grouped"):
  * compass on top (always), the eye in the middle (only when there is a route,
- * track or followed line – hold to hide them, position stays), locate at the bottom (always, GPS dot).
+ * track or followed line – hold to hide them, position stays), "Show whole route" under it (same lines, see
+ * [WholeRoute]; the browser planner's ⛶), locate at the bottom (always, GPS dot).
  * [large] (Navigate): each control its own bigger round button with a small gap, so the wrong one is not hit
  * while walking; Plan keeps the compact pill.
  */
@@ -123,6 +125,8 @@ fun MapControls(
     following: Boolean,
     onLocate: () -> Unit,
     peeking: Boolean = false,
+    /** "Show whole route" (shown only when there is a line to show, [WholeRoute.shows]). */
+    onFitRoute: (() -> Unit)? = null,
     /** Plan: undo the last edit (shown only when there is something to undo). */
     onUndo: (() -> Unit)? = null,
     /** Plan: redo the last undone edit (shown only when there is something to redo). */
@@ -136,6 +140,7 @@ fun MapControls(
         if (onSettings != null) add { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size) }
         if (compass != null) add { CompassControl(compass, size) }
         if (showEye) add { EyeControl(onPeek, peeking, size) }
+        if (onFitRoute != null) add { IconControl(Icons.Filled.FitScreen, Res.string.plan_show_whole_route, onFitRoute, size) }
         if (onUndo != null) add { IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo, size) }
         if (onRedo != null) add { IconControl(Icons.AutoMirrored.Filled.Redo, Res.string.plan_redo, onRedo, size) }
         add { LocateControl(gps, following, onLocate, size) }

@@ -128,6 +128,12 @@ class SettingsScreenshotTest {
             problem = com.onpath.app.plansync.PlanSync.Problem.Offline))
     }
 
+    /** Unpaired in the browser (field bug 2026-10-31): the grey line, the steps + Open camera to pair again, Unpair. */
+    @Test fun syncUnpairedInBrowser() = paparazzi.snapshot {
+        Screen(SettingsPage.SYNC, sync = SyncUi(paired = true, peer = null, lastOkMs = now - 60_000,
+            browser = com.onpath.app.plansync.BrowserLink.UNPAIRED))
+    }
+
     /** Offline maps → Clean up: what goes and what stays, before anything is removed. */
     @Test fun offlineMapsCleanUp() = paparazzi.snapshot {
         Screen(SettingsPage.OFFLINE_MAPS, OfflineMapsUi(true, areas, wifiOnly = false,

@@ -15,11 +15,12 @@
     <string name="search_near_route">nahe deiner Route</string>
     <string name="search_online">online</string>
 
-    <string name="search_cat_huts">Hütten</string>
-    <string name="search_cat_peaks">Gipfel</string>
-    <string name="search_cat_water">Wasser</string>
     <string name="search_cat_places">Orte</string>
-    <string name="search_cat_stations">Stationen</string>
+    <string name="search_cat_food">Essen</string>
+    <string name="search_cat_sights">Sehenswert</string>
+    <string name="search_cat_water">Wasser</string>
+    <string name="search_cat_transit">Bahn</string>
+    <string name="search_cat_parking">Parken</string>
 
     <string name="search_kind_peak">Gipfel</string>
     <string name="search_kind_saddle">Pass / Joch</string>

@@ -66,6 +66,12 @@ object OnPathColors {
     // ---- Message kinds (docs/design/ui-style.md): one colour = one meaning ----
     /** FRAGE: the blue left edge of a question box (MessageCard) – never a status or a failure. */
     val InfoBlue = Color(0xFF1565C0)
+    /**
+     * Tags (ui-style.md "Tags"): the light blue pill after a name that says the item's state in one word ("New",
+     * "Changed" in My routes) – the info blue family, ink ≥ 7:1 on the container.
+     */
+    val TagContainer = Color(0xFFDDEAFB)
+    val TagInk = Color(0xFF0B3D91)
     /** Attention: amber text / icons on white (route spots, off route, no GPS, a download that failed, HINWEIS_WARN edge). */
     val Warn = Color(0xFF9A5B00)
     val WarnContainer = Color(0xFFFFF0D2)

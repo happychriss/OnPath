@@ -15,7 +15,9 @@ class SharedCoreRuleTest {
     /** Single shared files in packages that also hold platform code (package/name; the web planner compiles them). */
     private val files = listOf("search/PlaceIndex.kt", "map/ActivityLayers.kt",
         // the plan result of app and web (routing/PlanResult, docs/handoff-web-planresult.md) and the ui/ rules it calls
-        "routing/PlanResult.kt", "routing/ProfileData.kt", "ui/PlanGaps.kt", "ui/RouteWarnings.kt", "data/Geo.kt")
+        "routing/PlanResult.kt", "routing/ProfileData.kt", "ui/PlanGaps.kt", "ui/RouteWarnings.kt", "data/Geo.kt",
+        // the plan sheet's routing-data notice and way-type / surface line (docs/handoff-web-notice-breakdown.md)
+        "data/RoutingDataNotice.kt", "routing/BreakdownRules.kt")
     private val platform = Regex("""\b(android|androidx|org\.maplibre|btools|org\.json)\.""")
 
     /** File (package/name) -> why it is allowed today. */
@@ -56,8 +58,12 @@ class SharedCoreRuleTest {
      * neither; hashes use sync/Sha256). Add a file here when the web is to compile it.
      */
     private val webShared = listOf("gpx/PlanGpx.kt", "gpx/GpxWriter.kt", "gpx/SportType.kt", "routing/PlanPoints.kt",
-        "routing/PlanEdits.kt", "routing/RoutingFingerprint.kt", "sync/SyncCrypto.kt")
-    private val notInTeaVm = Regex("""::class\.java|Class\.forName|kotlin\.reflect|java\.lang\.reflect|java\.security""")
+        "routing/PlanEdits.kt", "routing/RoutingFingerprint.kt", "sync/SyncCrypto.kt", "data/RoutingDataNotice.kt",
+        "routing/BreakdownRules.kt",
+        // the BRouter adapter and its helper in BRouter's package (island retry without reflection, docs/handoff-web-island.md)
+        "routing/BRouterEngine.kt", "../../../btools/router/OnPathHints.java")
+    private val notInTeaVm = Regex(
+        """::class\.java|\.getClass\(\)|Class\.forName|kotlin\.reflect|java\.lang\.reflect|getDeclared|[sg]etAccessible|isAccessible|java\.security""")
 
     @Test fun webSharedFilesStayTeaVmFriendly() {
         val root = File("src/main/java/com/onpath/app")
@@ -70,6 +76,19 @@ class SharedCoreRuleTest {
             }
         }
         assertEquals("reflection / java.security in a file the web planner compiles:\n" + hits.joinToString("\n"), emptyList<String>(), hits)
+    }
+
+    /**
+     * The position split of a running tour (navigation/TourSplit, docs/design/tour-edit-position.md §6) is the app's
+     * only: the code the web planner compiles must not reach it – plans are computed and edited the same in both.
+     */
+    @Test fun theTourSplitStaysOutOfTheCodeSharedWithTheWeb() {
+        val root = File("src/main/java/com/onpath/app")
+        val shared = listOf("routing", "gpx", "sync", "time").flatMap { p ->
+            File(root, p).walkTopDown().filter { it.isFile && it.extension == "kt" }.map { "$p/${it.name}" }.toList()
+        } + files + webShared + listOf("navigation/JunctionCues.kt", "navigation/CueRule.kt", "navigation/SpeedWindow.kt")
+        val hits = shared.distinct().filter { k -> File(root, k).let { it.isFile && it.readText().contains("TourSplit") } }
+        assertEquals("the tour's position split in code the web planner shares:\n" + hits.joinToString("\n"), emptyList<String>(), hits)
     }
 
     @Test fun theExceptionListOnlyShrinks() {

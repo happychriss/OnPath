@@ -43,7 +43,7 @@ interface TourStore {
  * 2. **round** – hello, pull + merge, push ([SyncRound]);
  * 3. **import** – what came from the other side into the tours: a new plan / track is added (a plan is routed
  *    afterwards, [Result.toRoute]), a change updates it, a delete moves it to the recycle bin – never deletes it.
- *    New and changed ones are marked until opened ([SyncFiles.marks], My routes: bold + "New from the browser").
+ *    New and changed ones are marked until opened ([SyncFiles.marks], My routes: a "New" / "Changed" tag).
  *
  * The ledger and the links are written after the round, also when it failed, and before the import starts; an import
  * that fails stays [SyncLinks.pending] and is tried again next pass. Runs on a background thread; never during a
@@ -204,7 +204,7 @@ class PlanSyncPass(
                         if (t == null) unreadable++
                         else {
                             links.link(id, t.uuid); added++
-                            files.marks.arrived(t.uuid) // My routes: bold + "New from the browser" until opened
+                            files.marks.arrived(t.uuid) // My routes: a "New" / "Changed" tag until opened
                             if (t.kind == TourKind.PLANNED) { toRoute += t.id; routedWith(item) }
                         }
                     }

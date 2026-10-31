@@ -105,16 +105,34 @@ object SearchKinds {
         return extra[kind] ?: PoiKinds.of(kind)
     }
 
-    /** Category chips in the search view, in order. */
+    /**
+     * Category chips in the search view, in order, with one short word each (owner 2026-10-31: Orte · Essen · Sehenswert
+     * · Wasser · Bahn · Parken). [kinds] is THE table of which search kinds a chip shows – every kind is in at most one
+     * chip (`SearchCategoryTest`); kinds in none (shops, toilets, bivouacs, trails …) are found by text only. Pure, also
+     * compiled by the web planner.
+     */
     enum class Category(private val res: StringResource, val kinds: Set<String>) {
-        HUTS(Res.string.search_cat_huts, setOf("hut", "bivouac", "shelter")),
-        PEAKS(Res.string.search_cat_peaks, setOf("peak", "saddle")),
-        WATER(Res.string.search_cat_water, setOf("water", "spring", "waterfall")),
-        PLACES(Res.string.search_cat_places, setOf("place")),
-        STATIONS(Res.string.search_cat_stations, setOf("train", "lift", "bus")),
+        /** Towns, villages, streets and addresses (the offline address hits come along). */
+        PLACES(Res.string.search_cat_places, setOf("place", "street", "address")),
+        /** Restaurants, inns, cafés, beer gardens (OSM biergarten → bar), snack bars, huts / Almen. */
+        FOOD(Res.string.search_cat_food, setOf("restaurant", "cafe", "bar", "fast_food", "hut")),
+        /** Worth a look: peaks, passes, viewpoints, castles, ruins, churches, chapels, caves, museums, waterfalls. */
+        SIGHTS(Res.string.search_cat_sights,
+            setOf("peak", "saddle", "viewpoint", "castle", "ruins", "church", "chapel", "cave", "museum", "waterfall")),
+        /** Drinking water, fountains, springs. */
+        WATER(Res.string.search_cat_water, setOf("water", "spring")),
+        /** Train stations, bus stops, cable cars / lifts. */
+        TRANSIT(Res.string.search_cat_transit, setOf("train", "bus", "lift")),
+        /** Car parks (hiking car parks included). */
+        PARKING(Res.string.search_cat_parking, setOf("parking")),
         ;
         /** Chip text in the app's language. */
         val label: String get() = Txt.s(res)
+
+        companion object {
+            /** The chip a kind belongs to, or null (found by text only). */
+            fun of(kind: String): Category? = entries.firstOrNull { kind in it.kinds }
+        }
     }
 
     /** Ranking boost by kind: things hikers and bikers aim for come first. */

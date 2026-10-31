@@ -198,6 +198,33 @@ class RouteWarningsTest {
         assertEquals(220.0, s.lengthM, 1.0)
     }
 
+    /** One span per (way, metres) piece, northwards, flat. */
+    private fun spans(vararg pieces: Pair<WayAttrs, Double>): List<GeoPoint> {
+        var lat = 46.6
+        val out = ArrayList<GeoPoint>()
+        for ((w, m) in pieces) { out += GeoPoint(lat, 11.1, 500.0, w); lat += m / 111_195.0 }
+        out += GeoPoint(lat, 11.1, 500.0, pieces.last().first)
+        return out
+    }
+
+    @Test fun snappingCrumbAtTheEndsIsNoSpot() {
+        // field A-019 (E-bike, 0.13.2): "Steps · 0 m · at the start" – the start snapped onto a staircase, a ~1 m piece
+        val crumbs = spans(steps to 1.0, road to 500.0, steps to 30.0, road to 500.0, steps to 2.0)
+        val spots = RouteWarnings.detect(crumbs, Activity.EBIKE, 3)
+        // only the real staircase in the middle is listed
+        assertEquals(listOf(SpotKind.STEPS), spots.map { it.kind })
+        assertEquals(30.0, spots.single().lengthM, 1.0)
+        assertEquals("30 m · after 500 m", RouteWarnings.rowDetail(spots.single()))
+        // a real staircase at the start or the end stays a spot
+        val real = RouteWarnings.detect(spans(steps to 20.0, road to 500.0, steps to 10.0), Activity.EBIKE, 3)
+        assertEquals(listOf(20.0, 10.0), real.map { Math.round(it.lengthM).toDouble() })
+        // a few metres of steps in the middle stay a spot (any length there)
+        val mid = RouteWarnings.detect(spans(road to 500.0, steps to 3.0, road to 500.0), Activity.EBIKE, 3)
+        assertEquals(listOf(SpotKind.STEPS), mid.map { it.kind })
+        // a short ferry / construction crumb at the end is no spot either
+        assertTrue(RouteWarnings.detect(spans(road to 500.0, WayAttrs("ferry", "") to 1.5), Activity.HIKE, 3).isEmpty())
+    }
+
     @Test fun textKeepsThreeItemsThenPlusN() {
         val spots = listOf(RouteSpot(SpotKind.PUSH, 0, 1, 0.0, 1234.0), RouteSpot(SpotKind.STEPS, 1, 2, 10.0, 20.0),
             RouteSpot(SpotKind.STEPS, 2, 3, 30.0, 40.0), RouteSpot(SpotKind.ABOVE_T, 3, 4, 50.0, 90.0, 4),

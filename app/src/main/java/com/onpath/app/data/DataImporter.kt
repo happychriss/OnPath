@@ -1,5 +1,6 @@
 package com.onpath.app.data
 
+import com.onpath.app.debug.Problems
 import com.onpath.strings.*
 import java.io.File
 import java.io.InputStream
@@ -108,10 +109,10 @@ object DataImporter {
                 out.fd.sync()
             }
             if (tmp.length() == 0L) throw ImportException(Txt.s(Res.string.maps_import_empty, dest.name))
-            // rename replaces the old file atomically: the existing data is never gone without the new one in place
-            if (!tmp.renameTo(dest)) {
-                if (dest.exists() && !dest.delete()) throw ImportException(Txt.s(Res.string.maps_import_cant_replace, dest.name))
-                if (!tmp.renameTo(dest)) throw ImportException(Txt.s(Res.string.maps_import_cant_save, dest.name))
+            // one atomic move over the old file: the existing data is never gone without the new one in place
+            try { AtomicFiles.replace(tmp, dest) } catch (e: java.io.IOException) {
+                Problems.warn("data", "Imported ${dest.name} could not replace the old file", e)
+                throw ImportException(Txt.s(Res.string.maps_import_cant_save, dest.name))
             }
         } finally {
             if (tmp.exists()) tmp.delete()

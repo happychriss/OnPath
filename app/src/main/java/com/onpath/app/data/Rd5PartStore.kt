@@ -406,9 +406,8 @@ class Rd5PartStore(
             .put("index", Base64.getEncoder().encodeToString(r.head.index))
             .put("tail", Base64.getEncoder().encodeToString(r.tail))
         val s = sidecar(tile)
-        val tmp = File(dir, ".${s.name}.tmp")
-        tmp.writeText(j.toString())
-        if (!tmp.renameTo(s)) throw IOException("could not save the parts list of $tile")
+        // throws when it fails (the caller reports it); the old list stays
+        AtomicFiles.writeText(s, j.toString(), File(dir, ".${s.name}.tmp"))
     }
 
     companion object {

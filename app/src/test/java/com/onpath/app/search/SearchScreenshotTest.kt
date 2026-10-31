@@ -62,7 +62,7 @@ class SearchScreenshotTest {
 
     @Test fun searchEmptyOffline() = paparazzi.snapshot {
         OnPathTheme {
-            SearchScreen(SearchUi(query = "Spar Algund", category = SearchKinds.Category.STATIONS, onlineState = OnlineState.FAILED),
+            SearchScreen(SearchUi(query = "Spar Algund", category = SearchKinds.Category.TRANSIT, onlineState = OnlineState.FAILED),
                 SearchActions(), autoFocus = false)
         }
     }

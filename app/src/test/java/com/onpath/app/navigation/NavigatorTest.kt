@@ -120,7 +120,7 @@ class NavigatorTest {
         r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
         r.nav.onResult(r.jobs.last().id, skip)
         val q = r.nav.prompt as NavPrompt.Question
-        assertEquals("Off route – turn round, new route found", NavText.title(q))
+        assertEquals("You're 150 m off the route – turn round", NavText.title(q))
         assertTrue(NavText.question(q), NavText.question(q).endsWith(" · without Café"))
         assertFalse(r.nav.takeVia(q.id).lineChanged) // nothing to answer "No" to
     }
@@ -169,9 +169,9 @@ class NavigatorTest {
         assertEquals(q1.legM, q2.legM, 0.0)
         assertEquals(110.0, q2.movedM - q1.movedM, 20.0)
         assertFalse(r.steps.any { it.vibrate })
-        val extra = { q: NavPrompt.Question -> Regex("^\\+(\\d+) m").find(NavText.question(q))!!.groupValues[1].toInt() }
+        val extra = { q: NavPrompt.Question -> Regex("\\((\\d+) m longer\\)").find(NavText.question(q))!!.groupValues[1].toInt() }
         assertEquals(110.0, (extra(q2) - extra(q1)).toDouble(), 20.0)
-        assertTrue(NavText.question(q2), NavText.question(q2).contains("new route"))
+        assertTrue(NavText.question(q2), NavText.question(q2).startsWith("New route to the end: "))
         // GPS noise standing still: at most one catch-up, then the numbers do not flicker
         val noise = { t0: Long -> (0 until 20).map { fix(1260.0 + (if (it % 2 == 0) 8.0 else -8.0), if (it % 3 == 0) 6.0 else -6.0, t0 + it * 1000) } }
         r.feed(noise(1_000_000L))
@@ -281,7 +281,8 @@ class NavigatorTest {
     }
 
     @Test fun continueNavigationAwayFromTheRouteAsksAtOnce() {
-        val n = Navigator(session())
+        // been on the route this tour (never reached: the far-start question instead, FarStartTest)
+        val n = Navigator(session().copy(reached = true))
         n.checkNow()
         val s = n.onFix(fix(500.0, 300.0, 0))
         assertNotNull(s.job)

@@ -43,7 +43,9 @@ object SegmentDownloader {
         try {
             val code = conn.responseCode
             if (code == 416) { // already complete
-                if (!part.renameTo(dest)) Problems.error("data", "Downloaded routing data $name could not be saved (rename failed)")
+                try { AtomicFiles.replace(part, dest) } catch (e: java.io.IOException) {
+                    Problems.error("data", "Downloaded routing data $name could not be saved (rename failed)", e)
+                }
                 return
             }
             if (code != 200 && code != 206) throw IllegalStateException("Server answered $code for $name.")
@@ -68,8 +70,8 @@ object SegmentDownloader {
                 }
             }
             if (total > 0 && part.length() != total) throw IllegalStateException("Download incomplete – tap again to resume.")
-            if (dest.exists()) dest.delete()
-            if (!part.renameTo(dest)) throw IllegalStateException("Could not save $name.")
+            // over the old file in one step: the router never finds the tile missing; on failure the part stays
+            try { AtomicFiles.replace(part, dest) } catch (e: java.io.IOException) { throw IllegalStateException("Could not save $name.", e) }
             onProgress(done, total)
         } finally {
             conn.disconnect()

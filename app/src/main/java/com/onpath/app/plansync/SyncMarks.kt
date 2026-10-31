@@ -4,11 +4,11 @@ import com.onpath.app.debug.Problems
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-/** Why a route in My routes → Planned is marked (bold title + a grey line). */
+/** Why a route in My routes → Planned is marked (a tag after its name: ui/RouteTag). */
 enum class SyncMark {
-    /** "New from the browser": the route / imported track arrived from the paired browser. */
+    /** "New" (from the browser): the route / imported track arrived from the paired browser. */
     NEW,
-    /** "Changed in the browser": the browser changed, renamed or restored it. */
+    /** "Changed" (in the browser): the browser changed, renamed or restored it. */
     CHANGED,
 }
 
@@ -19,7 +19,7 @@ enum class SyncMark {
  *
  * Stored in `files/sync/marks.txt` (written atomically by [SyncFiles]), so marks survive a restart. Text form: header
  * `onpath-sync-marks 1`, then per mark `<tour uuid> <n|c>`; unreadable lines are dropped (a lost mark only loses the
- * bold title). Thread-safe: the sync thread marks, the UI clears; [state] is what My routes shows. A write that fails
+ * tag). Thread-safe: the sync thread marks, the UI clears; [state] is what My routes shows. A write that fails
  * (storage full) is reported and the mark kept in memory for this run.
  */
 class SyncMarks(private val load: () -> String?, private val save: (String) -> Unit) {

@@ -77,6 +77,24 @@ class TimeScreenshotTest {
         }
     }
 
+    /**
+     * The destination under the arrival clock (field A-019: "Gasthof H…"): two lines no wider than the clock – a short
+     * name whole, word by word; a long one ends in "…" on the second line.
+     */
+    @Test fun navigateTargetNames() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                MapPlaceholder(Modifier.fillMaxSize())
+                Column(Modifier.padding(top = 40.dp, start = 12.dp, end = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    NavStatusCard(ui.copy(arriveAt = "14:15", toGo = ui.toGo!!.copy(target = "Gasthof Hochmuth"),
+                        routeNote = "New route · was 13:35"), onResume = {})
+                    NavStatusCard(ui.copy(toGo = ui.toGo!!.copy(target = "Leiteralm")), onResume = {})
+                    NavStatusCard(ui.copy(toGo = ui.toGo!!.copy(target = "Hirzer Hütte (Rifugio Punta Cervina)")), onResume = {})
+                }
+            }
+        }
+    }
+
     /** Navigate after a plan edit / re-route that moved the arrival > 5 min: the reason stays in the card. */
     @Test fun navigateNewRouteNote() = paparazzi.snapshot {
         OnPathTheme {

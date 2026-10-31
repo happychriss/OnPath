@@ -19,6 +19,9 @@ import kotlin.math.min
  *   grows. After [BACKWARD_M] backwards this counts as leaving the route (the normal off-route question follows).
  * - **Start anywhere** (mid-route start, new line during a tour): the first fixes search the whole line; with a known
  *   walking direction the part running that way, else the earliest one (corrected as soon as the direction is known).
+ * - **Never on the route yet** ([reached] false, owner 2026-10-31): away from it the progress stays at the start and it is
+ *   never "off route" (no LEAVING / OFF_ROUTE); the first time within the off distance counts as reaching it. Near the
+ *   start of a round trip its second half does not count (begun beside the end = the start).
  * - Off-route distance = setting + accuracy margin (min(accuracy, [MAX_MARGIN_M])).
  * - Confirmed only after [CONFIRM_MS] off **and** having moved [MOVE_M] (+ margin) since leaving: a break with GPS
  *   drift or a single jump never triggers.
@@ -61,6 +64,17 @@ class OffRouteDetector(
     var backward = false
         private set
 
+    /**
+     * The user has been on this line (within the off distance), or it is known where they are on it. Until then a
+     * position away from the line says nothing about the progress (it stays at the start) and is never "off route":
+     * field 2026-10-31 – a tour started 30 km away matched the nearest point, the END of a 2.7 km plan, and the way
+     * back skipped every point. The navigator asks "Route starts 31 km away" instead ([NavPrompt.FarStart]).
+     */
+    var reached = false
+        private set
+    /** Off distance of the last fix (its accuracy margin included). */
+    private var lastOffM = offRouteM
+
     private var started = false          // a first match was made on this line
     private var provisional = false       // matched before the walking direction was known (may be corrected)
     private var gap = false               // GPS was lost: allow a wider window ahead once
@@ -83,11 +97,15 @@ class OffRouteDetector(
     /**
      * New line to follow. [progressM] = where the user is known to be on it (e.g. a new route starts at the position);
      * null = unknown: the first fixes search the whole line from [minProgressM] (see the class comment).
-     * [assumeOnRoute] starts in ON_ROUTE (a route just taken) instead of waiting for 3 fixes.
+     * [assumeOnRoute] starts in ON_ROUTE (a route just taken) instead of waiting for 3 fixes. [reached]: the user has
+     * been on the route before (a restart mid-tour, `NavSession.reached`) – then a first match anywhere gives the
+     * progress, as for a known line.
      */
-    fun setLine(newLine: NavLine?, progressM: Double? = null, minProgressM: Double = 0.0, assumeOnRoute: Boolean = false) {
+    fun setLine(newLine: NavLine?, progressM: Double? = null, minProgressM: Double = 0.0, assumeOnRoute: Boolean = false,
+                reached: Boolean = false) {
         line = newLine
         started = progressM != null
+        this.reached = reached || progressM != null
         this.progressM = progressM ?: minProgressM
         highM = this.progressM
         state = if (assumeOnRoute && newLine != null) State.ON_ROUTE else State.NO_GPS
@@ -111,7 +129,10 @@ class OffRouteDetector(
      */
     val shownAlongM: Double?
         get() = when (state) {
-            State.ON_ROUTE, State.LEAVING -> progressM
+            State.ON_ROUTE -> progressM
+            // Bug 02: leaving counts as on the route only near the line – a plan edited 60 km away goes NO_GPS → LEAVING,
+            // and standing still never confirms "off route": no progress there, so no junction cues, no "to go"
+            State.LEAVING -> progressM.takeIf { (lastDistanceM ?: 0.0) <= LEAVING_SHOWN_FACTOR * lastOffM }
             State.OFF_ROUTE -> progressM.takeIf { backward && onLine }
             State.NO_GPS -> progressM.takeIf { started && onLine }
         }
@@ -133,6 +154,7 @@ class OffRouteDetector(
         if (l == null || !l.isUsable) return Status(state, null, progressM)
         val p = f.point
         val dOff = offDistance(f.accuracyM)
+        lastOffM = dOff
         val dOn = dOff / 2
         val h = move()
         val pick = pick(l, p, dOff, h) ?: return Status(state, null, progressM)
@@ -141,8 +163,9 @@ class OffRouteDetector(
         val within = m.distanceM <= dOff
         onLine = within
         if (!started) {
-            progressM = m.alongM; highM = progressM
-            if (within) { started = true; provisional = h == null }
+            // never on the route: a match away from it says nothing about where one is along it (progress = start)
+            if (within || reached) { progressM = m.alongM; highM = progressM }
+            if (within) { started = true; reached = true; provisional = h == null }
         }
         if (pick.jumped) { progressM = m.alongM; highM = progressM }
         when (state) {
@@ -152,7 +175,8 @@ class OffRouteDetector(
                 if (noGpsGood >= REJOIN_FIXES) {
                     gap = false
                     if (within) state = State.ON_ROUTE
-                    else startLeaving(f)
+                    else if (reached) startLeaving(f)
+                    // else: not on the route yet – wait for it (never "off route"; the navigator asks about the start)
                 }
             }
             State.ON_ROUTE -> {
@@ -211,13 +235,15 @@ class OffRouteDetector(
         val l = line ?: return false
         val m = pick(l, f.point, offDistance(f.accuracyM), move())?.match ?: return false
         lastDistanceM = m.distanceM
-        if (!started) { progressM = m.alongM; highM = progressM }
-        if (m.distanceM <= offDistance(f.accuracyM)) {
-            if (!started) { started = true; provisional = move() == null }
+        val within = m.distanceM <= offDistance(f.accuracyM)
+        if (!started && (within || reached)) { progressM = m.alongM; highM = progressM }
+        if (within) {
+            if (!started) { started = true; reached = true; provisional = move() == null }
             progressM = m.alongM; state = State.ON_ROUTE; noGpsGood = 0; onLine = true
             return false
         }
         onLine = false
+        if (!reached) return false // never on the route: not "off" it (the navigator asks about the start)
         state = State.OFF_ROUTE; rejoinCount = 0; noGpsGood = 0; backward = false
         return true
     }
@@ -242,8 +268,11 @@ class OffRouteDetector(
 
     private fun pick(l: NavLine, p: GeoPoint, dOff: Double, h: Move?): Pick? {
         if (!started) {
-            val parts = l.parts(p, dOff)
-            if (parts.isEmpty()) return l.match(p)?.let { Pick(it) } // nowhere near yet: distance only
+            // never on the route, near the start of a round trip: its end part next to the start does not count as
+            // reaching the route (begun 80 m beside the end – the tour starts at the start, not at its end)
+            val toM = if (!reached && nearRoundTripStart(l, p)) l.lengthM / 2 else l.lengthM
+            val parts = l.parts(p, dOff, 0.0, toM)
+            if (parts.isEmpty()) return l.match(p, 0.0, toM)?.let { Pick(it) } // nowhere near yet: distance only
             if (h != null) parts.firstOrNull { dir(l, it.alongM, h) > DIR_MIN }?.let { return Pick(it) }
             return Pick(parts.first())
         }
@@ -267,6 +296,12 @@ class OffRouteDetector(
         jumpFrom = null
         provisional = false
         return Pick(fwd, jumped = true)
+    }
+
+    /** A round trip (end within [ROUND_TRIP_M] of the start) and [p] within [NEAR_START_M] of its start. */
+    private fun nearRoundTripStart(l: NavLine, p: GeoPoint): Boolean {
+        val first = l.points.firstOrNull() ?: return false
+        return Geo.distance(first, l.points.last()) <= ROUND_TRIP_M && Geo.distance(p, first) <= NEAR_START_M
     }
 
     /** The last stretch walked: from the newest fix back to the last one at least [HEADING_M] away. */
@@ -312,6 +347,8 @@ class OffRouteDetector(
         const val MOVE_M = 25.0
         const val MAX_MARGIN_M = 20.0
         const val REJOIN_FIXES = 3
+        /** While leaving, progress is shown only within this many off distances of the line ([shownAlongM]). */
+        const val LEAVING_SHOWN_FACTOR = 2.0
         const val BACK_M = 300.0
         const val AHEAD_M = 2_000.0
         /** While off the route (or after a GPS gap) a rejoin further ahead also counts (shortcut). */
@@ -332,5 +369,9 @@ class OffRouteDetector(
         const val JUMP_DIR = 0.6
         /** … over this much walking. */
         const val JUMP_WALK_M = 40.0
+        /** A line whose end is this near its start is a round trip … */
+        const val ROUND_TRIP_M = 200.0
+        /** … and before the route was reached, its second half does not count within this distance of the start. */
+        const val NEAR_START_M = 500.0
     }
 }

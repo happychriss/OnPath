@@ -25,6 +25,19 @@ class ProblemsTest {
         assertEquals("map", e.area)
     }
 
+    /**
+     * Field A-019: a merged entry (numbers ignored) shows its LAST time – so it must show the last text too. It kept the
+     * first one: "Routing data missing for …E10_N46, …E11_N46" (loaded online at the start) stood at 12:11, when in
+     * fact other parts (E10_N47, E11_N47) were missing offline – it looked as if present data were missing.
+     */
+    @Test fun mergedEntryShowsTheNewestText() {
+        Problems.info("routing", "Routing data missing for E10_N45.rd5:E10_N46, E10_N45.rd5:E11_N46; loading it")
+        Problems.info("routing", "Routing data missing for E10_N45.rd5:E10_N47, E10_N45.rd5:E11_N47; loading it")
+        val e = Problems.snapshot().single()
+        assertEquals(2, e.count)
+        assertEquals("Routing data missing for E10_N45.rd5:E10_N47, E10_N45.rd5:E11_N47; loading it", e.message)
+    }
+
     @Test fun seriousIsAnnouncedOncePerRun() {
         Problems.error("db", "write failed")
         assertNotNull(Problems.newSerious.value)

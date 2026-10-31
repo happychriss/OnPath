@@ -31,7 +31,7 @@ the current state.
 | Map | MapLibre Native 13.7.1, PMTiles, own style from `tools/make_style.py` (one style, `tools/themes/classic.json`) |
 | Routing | BRouter (MIT) embedded, offline, rd5 segments; profiles per activity (CLAUDE.md "Activities") |
 | Activities | Exactly six: Bike, Gravelbike, E-bike, MTB, E-MTB, Hike T1–T5 |
-| Voice | Not planned; off-route warning and junction vibration instead |
+| Voice | Planned (owner 2026-10-31): Android text-to-speech, offline voices, only where we vibrate – backlog "Voice guidance" |
 | Komoot GPX | Imports correctly; `<trk><type>` preselects the activity, export writes it |
 | Offline corridor | Map areas and routing data follow the plan (~10 km corridor, at most 30 areas) |
 | Search | Offline OSM index + Photon (rough position only, ~1 km); no Google Places |

@@ -30,7 +30,9 @@ class MessagePlacementTest {
     /** The headers the rule assumes: My routes title row (56 dp button + 2×4) + 48 dp tabs, Settings title row. */
     @Test fun headersMatchTheScreens() {
         val routes = src("Screens.kt").substringAfter("fun RoutesScreen(")
-        assertTrue(routes.contains("Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp)"))
+        // the title row is a TopBarRow (title never broken inside a word): its padding lives there
+        assertTrue(routes.contains("TopBarRow("))
+        assertTrue(src("TopBar.kt").contains("Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp)"))
         assertTrue(routes.contains("IconButton(onClick = onBack, Modifier.size(56.dp))"))
         assertTrue(routes.contains("modifier = Modifier.heightIn(min = 48.dp),"))
         assertEquals(4 + 56 + 4 + 48, MessagePlacement.ROUTES_HEADER_DP)

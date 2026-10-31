@@ -8,6 +8,8 @@
     <string name="sync_menu_storage">Sync-Dateien nicht gespeichert – Speicher voll?</string>
     <string name="sync_menu_ended">Verbindung im Browser beendet</string>
     <string name="sync_menu_stale">Seit über 6 Stunden nicht abgeglichen</string>
+    <string name="sync_menu_unpaired_browser">Im Browser getrennt</string>
+    <string name="sync_menu_synced">Abgleich %1$s</string>
     <string name="sync_intro">Deine gespeicherten Routen und importierten GPX-Tracks können auch im Web-Planer auf deinem Computer sein – in beide Richtungen, verschlüsselt, bevor sie das Gerät verlassen.</string>
     <string name="sync_steps">Öffne auf dem Computer plan.onpath.earth und klicke oben auf „Handy verbinden“. Scanne den Code dort mit der Kamera deines Handys – OnPath öffnet sich und zeigt sechs Prüfziffern.</string>
     <string name="sync_open_camera">Kamera öffnen</string>

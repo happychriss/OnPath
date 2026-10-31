@@ -3,6 +3,7 @@ package com.onpath.app.ui
 import com.onpath.app.cells.CellId
 import com.onpath.app.cells.CellState
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -72,6 +73,9 @@ class BackgroundDownloadsTest {
         val p = BackgroundProgress()
         val ui = p.update(listOf(BackgroundProgress.Item("a", 3 * mb, 10 * mb)), 1, 0, groups = groups)!!
         assertEquals("Bad Waldsee · 30 %", ui.chipText)
+        // nothing has a percent yet (areas being prepared): the ring spins, the chip shows no "0 %"
+        assertFalse(ui.copy(percent = 0).hasPercent)
+        assertEquals("Bad Waldsee", ui.copy(percent = 0).chipText)
         assertEquals(listOf("Around Bad Waldsee · 10 MB · loading"), ui.groups.map { it.line })
         // a name change does not restart the 10 s wait nor hide the chip (the gate keys on nothing but presence)
         val gate = backgroundGate()
@@ -79,6 +83,13 @@ class BackgroundDownloadsTest {
         assertNotNull(gate.update(ui.copy(groups = emptyList()), 10_000).shown)
         val src = java.io.File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
         assertTrue("Plan shows the chip under ☰", "BackgroundDownloadChip(" in src && "BackgroundDownloadStrip" !in src)
+    }
+
+    /** Owner 2026-10-31: the details of a state are a bottom sheet, not a dialog (dialogs only for decisions). */
+    @Test fun detailsAreABottomSheet() {
+        val src = java.io.File("src/main/java/com/onpath/app/ui/BackgroundDownloads.kt").readText()
+        assertTrue("ModalBottomSheet(" in src)
+        assertFalse("AlertDialog" in src)
     }
 
     @Test fun routingDataAloneIsNotNamed() {

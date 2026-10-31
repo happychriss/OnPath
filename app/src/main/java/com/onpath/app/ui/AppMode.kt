@@ -18,9 +18,25 @@ enum class AppMode {
 
         /**
          * Map zoom when Navigate starts (owner): Hike 17 (paths readable), every bike 16 (more ahead).
-         * Only on entering Navigate – after that the user's own zoom stays until the next start.
+         * Taken on entering Navigate and again with the locate button in Navigate ([locateZoom]); in between the user's
+         * own zoom stays (pinch, the map coming back to the position by itself).
          */
         fun navStartZoom(activity: com.onpath.app.routing.Activity): Double =
             if (activity == com.onpath.app.routing.Activity.HIKE) 17.0 else 16.0
+
+        /**
+         * The start zoom [wanted] still to be applied when following has begun at [current]; null = nothing to do (no
+         * start zoom, or the map is there already). MapController uses it after MapLibre's own transition, which skips
+         * the zoom when the map was following already (Plan → Continue, field A-019).
+         */
+        fun zoomStill(current: Double, wanted: Double?): Double? =
+            wanted?.takeIf { kotlin.math.abs(current - it) > 0.05 }
+
+        /**
+         * Zoom a tap on locate brings back (owner 2026-10-31): in Navigate the standard follow zoom of the activity
+         * ([navStartZoom]) – the way back to "how navigating looks"; in Plan none (following resumes at the user's zoom).
+         */
+        fun locateZoom(mode: AppMode, activity: com.onpath.app.routing.Activity): Double? =
+            if (mode == NAVIGATE) navStartZoom(activity) else null
     }
 }

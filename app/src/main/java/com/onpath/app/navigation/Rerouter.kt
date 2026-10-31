@@ -39,6 +39,11 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
         val sac: Int,
         val perRequestMs: Long = PER_REQUEST_MS,
         val totalMs: Long = TOTAL_MS,
+        /**
+         * "Guide me" before the route was ever reached ([NavPrompt.FarStart], owner 2026-10-31): here → the start → all
+         * points → the destination ([leadThere]); nothing counts as passed.
+         */
+        val toStart: Boolean = false,
     )
 
     enum class Reason { NO_DATA, NO_WAY, TIMEOUT, CANCELLED, UNAVAILABLE }
@@ -74,7 +79,8 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
         val t0 = clock()
         if (engine is StraightLineEngine) return Failed(Reason.UNAVAILABLE, "Offline router not available", 0)
         if (!req.original.isUsable) return Failed(Reason.NO_WAY, "Nothing to rejoin", 0)
-        val base = RerouteTargets.base(req.original, req.position, req.progressM)
+        if (req.toStart) return leadThere(req, t0, cancel)
+        val base =RerouteTargets.base(req.original, req.position, req.progressM)
         val skipped = RerouteTargets.passed(req.stops, base, req.visited)
         val deadline = t0 + req.totalMs
         if (req.stops.size >= 2) fresh(req, base, skipped, t0, deadline, cancel)?.let { return it }
@@ -216,6 +222,40 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
             StopSkip.Decision.SKIP -> found(past, n)
             StopSkip.Decision.ASK -> found(past, n, ask = found(r, null))
         }
+    }
+
+    /**
+     * "Guide me" (never on the route yet): a plan → a fresh route here → the start → ALL points → the destination; a
+     * track, or when that is not found → the way to the start and then the whole line as planned. Nothing is skipped.
+     */
+    private fun leadThere(req: Request, t0: Long, cancel: RouteCancel?): Outcome {
+        val deadline = t0 + req.totalMs
+        val total = req.original.lengthM
+        if (req.stops.size >= 2) {
+            freshRoute(req, req.stops.indices.toList(), deadline, cancel)?.let { r ->
+                val len = Geo.length(r.points)
+                return Found(r.points, len, total, len - total, Double.NaN, Geo.distance(req.position, r.points.first()),
+                    targetStop = 0, skippedStops = emptySet(), tried = 1, tookMs = clock() - t0)
+            }
+            if (cancel?.isCancelled == true) return Failed(Reason.CANCELLED, "Cancelled", clock() - t0)
+        }
+        val left = deadline - clock()
+        if (left < MIN_LEFT_MS) return Failed(Reason.TIMEOUT, "No time left", clock() - t0)
+        val start = req.original.points.first()
+        val leg = try {
+            engine.route(listOf(req.position, start), req.activity, req.sac, RouteLimits(minOf(req.perRequestMs, left), cancel))
+        } catch (e: Exception) {
+            // expected: RoutingException = no way to the start (no data here, nothing found); anything else is an engine bug
+            if (e !is RoutingException) Problems.error("routing", "Way to the start request threw unexpectedly", e)
+            val kind = (e as? RoutingException)?.kind ?: RoutingException.Kind.OTHER
+            return Failed(reasonOf(kind), com.onpath.app.debug.UserText.of(e, "No route found"), clock() - t0)
+        }
+        if (leg.points.size < 2) return Failed(Reason.NO_WAY, "No route found", clock() - t0)
+        val legM = Geo.length(leg.points)
+        return Found(RerouteTargets.splice(leg.points, req.original, 0.0), legM, 0.0, legM, legM,
+            Geo.distance(req.position, leg.points.first()), targetStop = null, skippedStops = emptySet(),
+            tried = if (req.stops.size >= 2) 2 else 1,
+            tookMs = clock() - t0)
     }
 
     /** One fresh route request position → [stops]; null = none (logged; the caller falls back). */

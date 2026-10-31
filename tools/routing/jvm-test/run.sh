@@ -6,6 +6,9 @@
 #      SnapTest.kt = plan points moved onto the way; TimeP4Test.kt = route times without / with way attributes; RerouterJvmTest.kt = re-routing while navigating, pass/fail;
 #      StopSkipJvmTest.kt = re-routing and the next stop (Hilden bike ride 2026-10-28, needs E5_N50.rd5): via / skip / ask, pass/fail);
 #      IslandTest.kt = a point on a way without a connection (Köln Dom, needs E5_N50.rd5) still gets a route, pass/fail;
+#      ShortDetourTest.kt = a short trip with a long detour is retried via the midpoint (Hilden bike 0.73 km straight, BRouter
+#      2.05 km → ≤ 1.3 km, needs E5_N50.rd5; AB_N=100 JAVA_XMX=1g = A/B on random 0.4–2 km trips, also needs E10_N45.rd5), pass/fail;
+#      JVM_TRACE=1 prints the app's trace level (Planner);
 #      SpurStopJvmTest.kt = a stop on a path that BRouter's via correction cuts is still visited (TU Dortmund steps, bike,
 #      needs E5_N50.rd5; Planner + WaypointSnap.missesMatched + OnPathHints.matched), pass/fail;
 #      BikeCuesTest.kt = bike junction cues on town routes (Hilden, needs E5_N50.rd5): hints with their ways, cues before / after at 14 / 20 / 25 km/h (DUMP=1 lists every hint);

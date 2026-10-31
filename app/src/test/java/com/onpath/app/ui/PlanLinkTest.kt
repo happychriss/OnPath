@@ -52,15 +52,15 @@ class PlanLinkTest {
         h.record(plan); plan = listOf(hilden1, hilden2)
         assertEquals(null, shownName(plan))
         assertTrue(RouteRules.isUnsaved(plan, loaded))
-        // Save asks for a new name (the id of the old route is not used while unlinked)
+        // Save makes a new route (the id of the old route is not used while unlinked)
         val id = if (RouteRules.linkedToSaved(plan, loaded)) 7L else -1L
-        assertEquals(SaveMode.NAME_DIALOG, RouteRules.saveMode(id, shownName(plan), listOf(7L)))
+        assertEquals(SaveMode.NEW_ROUTE, RouteRules.saveMode(id, shownName(plan), listOf(7L)))
         // Undo back to the loaded route: the link and the name are back, nothing unsaved
         plan = h.undo(plan)!!; plan = h.undo(plan)!!; plan = h.undo(plan)!!
         assertEquals(loaded, plan)
         assertEquals("Gasthof Taser Alm → Gasthof Greitererhof", shownName(plan))
         assertFalse(RouteRules.isUnsaved(plan, loaded))
-        assertEquals(SaveMode.OVERWRITE_OR_NEW, RouteRules.saveMode(7L, shownName(plan), listOf(7L)))
+        assertEquals(SaveMode.OVERWRITE, RouteRules.saveMode(7L, shownName(plan), listOf(7L)))
     }
 
     @Test fun everyPointReplacedEndsTheLink() {

@@ -1,5 +1,6 @@
 package com.onpath.app.cells
 
+import com.onpath.app.data.AtomicFiles
 import com.onpath.strings.*
 import com.onpath.app.debug.Problems
 import com.onpath.app.routing.GeoPoint
@@ -1062,13 +1063,13 @@ class MapCells(
 
     private fun mbOf(bytes: Long) = "%.1f MB".format(java.util.Locale.ROOT, bytes / 1_048_576.0)
 
+    /**
+     * Replaces [f] so that a reader always finds the old or the new file, never none. Not `File.renameTo`: newer desktop
+     * JDKs (25; not 21, not Android) delete the target first on Linux – the unit tests found requests.json missing for a
+     * moment – and the old fallback here (delete, rename again) lost the saved requests when the second rename failed.
+     */
     private fun writeAtomic(f: File, text: String) {
-        try {
-            f.parentFile?.mkdirs()
-            val tmp = File(f.parentFile, ".${f.name}.tmp")
-            tmp.writeText(text)
-            if (!tmp.renameTo(f)) { f.delete(); if (!tmp.renameTo(f)) throw java.io.IOException("rename failed") }
-        } catch (e: Exception) { Problems.warn("cells", "${f.name} not saved; map requests may be asked again", e) }
+        try { AtomicFiles.writeText(f, text) } catch (e: Exception) { Problems.warn("cells", "${f.name} not saved; map requests may be asked again", e) }
     }
 
     private var cachedRegion: Pair<String, DoubleArray?>? = null
