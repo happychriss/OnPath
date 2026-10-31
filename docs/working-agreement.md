@@ -32,6 +32,14 @@ message each other directly for things that must be known now – see §8.
 5. **Leave a handoff:** at the end of a session (or when the owner switches), update "Last session" in
    `docs/project-status.md`: who, what changed, what's half done, what's next. Push. No uncommitted files left.
 
+### Where to push
+**Push straight to the role's branch** (owner 2026-10-31, standing permission): `main` (cloud-planner: `web-spike`,
+website: its own repo's `main`) – after `tools/ci/gate.sh`, no pull request. The `claude/…` branch a cloud session is
+given at start is not used; don't ask before pushing. **Pull request to the owner only** for: `.github/workflows/`,
+signing / build config (`app/build.gradle.kts` signing, `gradle/`, `settings.gradle.kts`), anything with keys or
+secrets, privacy / licence texts (`assets/licences/`, `data/Licences.kt`, the website's privacy page). Never force-push,
+never rewrite or delete a shared branch (owner: GitHub ruleset blocks force pushes and deletions on `main` / `web-spike`).
+
 ## 2. Ownership by default (to avoid stepping on each other)
 
 When sessions are active at the same time, split like this (laptop = laptop or desktop) unless the backlog says otherwise:
