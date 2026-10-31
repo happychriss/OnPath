@@ -96,6 +96,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val NAV_TILT_DEG = 0.0
         /** Heading-up: the position sits lower on screen so more of the way ahead is visible (share of height). */
         const val NAV_TOP_PADDING = 0.30
+        /** "Show whole route": never closer than this (as the browser planner). */
+        const val FIT_MAX_ZOOM = 16.0
         /** Position puck in both modes: MapLibre's small blue dot + bearing triangle (not the big GPS puck). */
         private const val PUCK_MODE = RenderMode.COMPASS
     }
@@ -837,7 +839,12 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(p.lat, p.lon), zoom), 700)
     }.onFailure { Problems.warn("map", "Map did not fly to the search result", it) }
 
-    fun fitTo(points: List<GeoPoint>, bottomPaddingPx: Int) {
+    /**
+     * Show all [points] in the free room [pad] leaves (ui/FitPaddingRule: clear of the top and bottom elements).
+     * [northUp]: the overview north up and flat ("Show whole route", also from Navigate's turned, tilted camera);
+     * else the current bearing / tilt stay. Following must be off before (CLAUDE.md "Map camera"). Never throws.
+     */
+    fun fitTo(points: List<GeoPoint>, pad: com.onpath.app.ui.FitPadding, northUp: Boolean = false) {
         if (points.isEmpty()) return
         try {
             if (points.size == 1) {
@@ -846,8 +853,13 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 return
             }
             val b = LatLngBounds.Builder().apply { points.forEach { include(LatLng(it.lat, it.lon)) } }.build()
-            val pad = (48 * density).toInt()
-            map.animateCamera(CameraUpdateFactory.newLatLngBounds(b, pad, pad * 2, pad, bottomPaddingPx + pad), 800)
+            val update = if (northUp) {
+                // a short route not closer than z16 (the browser planner's maxZoom)
+                val cp = map.getCameraForLatLngBounds(b, intArrayOf(pad.left, pad.top, pad.right, pad.bottom), 0.0, 0.0)
+                if (cp != null) CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(cp).zoom(minOf(cp.zoom, FIT_MAX_ZOOM)).build())
+                else CameraUpdateFactory.newLatLngBounds(b, 0.0, 0.0, pad.left, pad.top, pad.right, pad.bottom)
+            } else CameraUpdateFactory.newLatLngBounds(b, pad.left, pad.top, pad.right, pad.bottom)
+            map.animateCamera(update, 800)
         } catch (e: Exception) {
             Problems.warn("map", "Map not zoomed to fit the route / places", e)
         }

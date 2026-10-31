@@ -201,10 +201,17 @@ fun NavigateOverlay(
     /** An error without a screen of its own (AppViewModel.errorCard): the red box with OK. */
     error: String? = null,
     onErrorOk: () -> Unit = {},
+    /**
+     * What covers the map (dp): the top column or the message box under it (below the status bar), the slider at the
+     * bottom (with the navigation bar) – a route fit leaves that room free (FitPaddingRule).
+     */
+    onCover: (topDp: Int, bottomDp: Int) -> Unit = { _, _ -> },
 ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     // the top column's height (turn card, status, chips) below the status bar: the one box goes 12 dp below it
     var topColumnDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    var messageBottomDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    var sliderDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding()
@@ -225,7 +232,8 @@ fun NavigateOverlay(
         }
         Column(Modifier.align(Alignment.BottomCenter).modeEdge(ModeEdge.BOTTOM).fillMaxWidth()) {
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
-            SlideToPlan(onSlideToPlan, Modifier.navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            SlideToPlan(onSlideToPlan, Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
+                .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 recording = ui.recordedM != null, startFraction = slideStartFraction)
         }
         // ONE box under the turn / status column (docs/design/ui-style.md, owner 2026-10-31 – the re-route and
@@ -235,13 +243,19 @@ fun NavigateOverlay(
         // never on the route yet (owner 2026-10-31): the calm far-start question; "Guide me" found nothing → red note
         val far = ui.offRoute?.prompt as? NavPrompt.FarStart
         val leadFailed = ui.offRoute?.prompt as? NavPrompt.LeadFailed
-        MessageSlot(Messages.pick(listOf(
+        val message = Messages.pick(listOf(
             question?.let { q -> rerouteMessage(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) }, onVia = { onTakeVia(q.id) }) },
             far?.let { p -> farStartMessage(p, onLead = { onLeadThere(p.id) }, onJustRecord = { onJustRecord(p.id) }) },
             leadFailed?.let { e -> errorMessage(NavText.title(e)) { onLeadFailedOk(e.id) } },
             error?.let { errorMessage(it, onErrorOk) },
             if (ui.notificationsOff) notificationsOffMessage(onNotifications, onNotificationsOk) else null,
-        )), MessagePlacement.topDp(MessageScreen.NAVIGATE, topColumnDp), Modifier.modeEdge(ModeEdge.TOP))
+        ))
+        MessageSlot(message, MessagePlacement.topDp(MessageScreen.NAVIGATE, topColumnDp), Modifier.modeEdge(ModeEdge.TOP),
+            onBottomDp = { messageBottomDp = it })
+        // a route fit ("Show whole route") keeps clear of the column / the box and of the slider
+        val shownMessageBottom = if (message == null) 0 else messageBottomDp
+        val cover by androidx.compose.runtime.rememberUpdatedState(onCover)
+        androidx.compose.runtime.SideEffect { cover(maxOf(topColumnDp, shownMessageBottom), sliderDp) }
         // over the controls: nothing else is touched by accident while choosing; no tap-outside dismiss
         ui.activityCheck?.let { ActivitySwitchSheet(it, onChooseActivity, onKeepActivity, Modifier.align(Alignment.BottomCenter)) }
     }
@@ -615,7 +629,8 @@ internal fun notificationsOffMessage(onSetUp: () -> Unit, onOk: () -> Unit): Mes
  * it (no tour yet) the nearest point of the line.
  */
 @Composable
-internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?, mapBearing: Float, footer: @Composable () -> Unit) {
+internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?, mapBearing: Float,
+                          onCover: (topDp: Int, bottomDp: Int) -> Unit = { _, _ -> }, footer: @Composable () -> Unit) {
     val nav = rec?.nav?.takeIf { it.line.size >= 2 }
     val line = nav?.line ?: vm.followLine
     val progress = remember(line) { line?.let { FollowProgress(it) } }
@@ -743,7 +758,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
             download = bg, onDownload = { vm.downloadDetailsOpen = true },
             onNotifications = { vm.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },
             onNotificationsOk = { vm.notificationsOkTour = rec?.tourId },
-            error = vm.errorCard, onErrorOk = { vm.errorCard = null })
+            error = vm.errorCard, onErrorOk = { vm.errorCard = null }, onCover = onCover)
         RestLayer(restTarget?.takeIf { rest }?.let { RestUi(it.event, it.distanceM, ui.toGo?.timeS, ui.arriveAt) },
             onTap = ScreenTouch::note)
     }

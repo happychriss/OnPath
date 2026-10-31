@@ -152,6 +152,7 @@
     <string name="plan_compass_turned">Map is turned. Tap for north up</string>
     <string name="plan_compass_north">Map is north up. Tap to turn it with your direction of travel</string>
     <string name="plan_hold_hide_route">Hold to hide the route</string>
+    <string name="plan_show_whole_route">Show whole route</string>
     <string name="plan_location_off_tap">Location is off, tap to turn it on</string>
     <string name="plan_location_denied_tap">Location not allowed, tap to allow</string>
     <string name="plan_centre_on_me">Centre on my position. %1$s</string>

@@ -62,6 +62,8 @@ fun MapScreen(
     val topInsetPx = WindowInsets.statusBars.getTop(density)
     var controller by remember { mutableStateOf<MapController?>(null) }
     var panelHeightPx by remember { mutableIntStateOf(0) }
+    /** Navigate: dp covered at the top (turn / status column, message box) and the bottom (slider) – route fits. */
+    val navCover = remember { intArrayOf(0, 0) }
     var scale by remember { mutableStateOf<Pair<String, Dp>?>(null) }
     var cameraTick by remember { mutableIntStateOf(0) }
     var bearing by remember { mutableFloatStateOf(0f) }
@@ -103,6 +105,8 @@ fun MapScreen(
                     else CompassSpec(vm.headingUp && vm.followMe, bearing) { vm.onCompass(kotlin.math.abs(bearing) > 1f) },
                 showEye = !pointsOpen && (vm.route != null || vm.shown != null || vm.followLine != null),
                 onPeek = { vm.routePeek = it },
+                // under the eye: the whole line + its points (Navigate: + where you are), following stops
+                onFitRoute = if (vm.wholeRouteShown(mode, pointsOpen)) vm::showWholeRoute else null,
                 gps = gps, following = vm.followMe, onLocate = onLocate,
                 onUndo = if (mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
                 // Undo and Redo side by side as map buttons; Redo only when there is something to redo
@@ -132,7 +136,13 @@ fun MapScreen(
         )
         // A newer version of an area the user has (checked after each route) is told by the background-download strip
         // only – one loading indicator is enough. No cell-state read here: download ticks must not recompose this screen.
-        MapSync(vm, controller, rec, location, panelHeightPx)
+        // one padding rule for every route fit (FitPaddingRule): clear of the top elements and the sheet / slider
+        val fitPadding = {
+            FitPaddingRule.of(vm.mode, density.density, topInsetPx,
+                planTopDp = if (vm.backgroundStripShown) vm.backgroundStripBottomDp else 0, sheetPx = panelHeightPx,
+                navTopDp = navCover[0], navBottomDp = navCover[1])
+        }
+        MapSync(vm, controller, rec, location, fitPadding)
         // hike: keep-on + pocket logic; bike: Settings → "Screen while cycling", pocket after 5 s covered (ScreenPolicy,
         // rest view in NavigateMode)
         val screen = ScreenPolicy.of(vm.settings, rec?.nav?.session?.activity ?: vm.activity)
@@ -148,7 +158,7 @@ fun MapScreen(
                     onActivity = { if (rec != null) vm.openActivityCheck() else showActivity = true }, onEndTour = { vm.askEndTour() },
                     onPanelHeight = { panelHeightPx = it })
             },
-            navigate = { NavigateMode(vm, rec, location, bearing) { footer(AppMode.NAVIGATE) } },
+            navigate = { NavigateMode(vm, rec, location, bearing, onCover = { t, b -> navCover[0] = t; navCover[1] = b }) { footer(AppMode.NAVIGATE) } },
         )
         // "Where I face" arrow at the dot in heading-up following (MapController.Facing)
         // (not over the rest view while cycling)
@@ -445,7 +455,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
 
 /** Keeps the map layers in step with the app state. */
 @Composable
-private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: android.location.Location?, panelHeightPx: Int) {
+private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: android.location.Location?, fitPadding: () -> FitPadding) {
     val context = LocalContext.current
     if (c == null) {
         // share events must also work before the map is ready
@@ -579,7 +589,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         vm.events.clear()
         pending.forEach { e ->
             when (e) {
-                is UiEvent.Fit -> c.fitTo(e.points, panelHeightPx)
+                is UiEvent.Fit -> c.fitTo(e.points, fitPadding(), e.northUp)
                 is UiEvent.CenterOn -> c.flyTo(e.point, e.zoom)
                 is UiEvent.PanTo -> c.panTo(e.point)
                 is UiEvent.Share -> runCatching { context.startActivity(e.intent) }

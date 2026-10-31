@@ -53,9 +53,10 @@ class ScreenshotTest {
 
     @Composable
     private fun Footer(gps: GpsStatus = GpsStatus.GOOD, following: Boolean = false, compass: CompassSpec? = null,
-                       eye: Boolean = false, peeking: Boolean = false, large: Boolean = false) =
+                       eye: Boolean = false, peeking: Boolean = false, large: Boolean = false, fit: Boolean = false) =
         MapFooter("500 m" to 64.dp) {
-            MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking, large = large, onSettings = if (large) ({}) else null)
+            MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking,
+                onFitRoute = if (fit) ({}) else null, large = large, onSettings = if (large) ({}) else null)
         }
 
     /**
@@ -84,12 +85,14 @@ class ScreenshotTest {
     }
 
     @Composable
-    private fun NavFrame(ui: NavUi, slide: Float = 0f) {
+    private fun NavFrame(ui: NavUi, slide: Float = 0f, fit: Boolean = false) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    NavigateOverlay(ui, footer = { Footer(following = true, compass = CompassSpec(ui.headingUp, 0f) {}, eye = true, large = true) },
+                    // after "Show whole route" following is off: compass needle, locate not filled
+                    NavigateOverlay(ui, footer = { Footer(following = !fit, compass = CompassSpec(ui.headingUp.takeUnless { fit }, 0f) {},
+                        eye = true, large = true, fit = fit) },
                         onSlideToPlan = {}, slideStartFraction = slide)
                 }
             }
@@ -168,6 +171,21 @@ class ScreenshotTest {
 
     @Test fun plan() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
+    /** "Show whole route" (⛶) under the eye: compass · eye · whole route · Undo · locate on the sheet's edge. */
+    @Test fun planWholeRoute() = paparazzi.snapshot {
+        Frame(footer = {
+            MapFooter("500 m" to 64.dp) {
+                MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false,
+                    onLocate = {}, onFitRoute = {}, onUndo = {})
+            }
+        }) { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
+    /** Navigate after "Show whole route": the big buttons gear · compass · eye · whole route · locate, following off. */
+    @Test fun navigateWholeRoute() = paparazzi.snapshot {
+        NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.RIGHT, 120.0)), fit = true)
     }
 
     // ------------------------------------------------ Points section: three sheet sizes with points

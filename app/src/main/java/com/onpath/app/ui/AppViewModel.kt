@@ -105,7 +105,8 @@ sealed interface PlanToOpen {
 /** One-off things the UI must do with an Activity context. */
 sealed interface UiEvent {
     data class Share(val intent: Intent) : UiEvent
-    data class Fit(val points: List<GeoPoint>) : UiEvent
+    /** Show all [points] (MapController.fitTo); [northUp] = north up and flat ("Show whole route"). */
+    data class Fit(val points: List<GeoPoint>, val northUp: Boolean = false) : UiEvent
     /** Fly to one place at [zoom] (search results). */
     data class CenterOn(val point: GeoPoint, val zoom: Double) : UiEvent
     /** Move the map to [point] at once, same zoom (profile scrubbing in Navigate). */
@@ -2778,6 +2779,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun closeSpots() { spotsOpen = false }
+
+    /**
+     * The "Show whole route" button shows (WholeRoute.shows) – [layer] = the mode of the control layer it sits in (the
+     * leaving layer keeps its look while it animates out), [pointsOpen] = the Points step (MapScreen).
+     */
+    fun wholeRouteShown(layer: AppMode, pointsOpen: Boolean): Boolean =
+        WholeRoute.shows(layer, pointsOpen, hasPlanLine(), hasShownLine(), hasFollowLine())
+
+    private fun hasPlanLine() = (route?.points?.size ?: 0) >= 2
+    private fun hasShownLine() = (shown?.segments?.sumOf { it.size } ?: 0) >= 2
+    private fun hasFollowLine() = (followLine?.size ?: 0) >= 2
+
+    /**
+     * "Show whole route" (map button, owner 2026-10-31): following stops first (also free look – it would follow
+     * again by itself), then the map shows the whole line and its points north up; in Navigate also where you are.
+     * Following comes back with the locate button only.
+     */
+    fun showWholeRoute() {
+        val src = WholeRoute.source(mode, hasPlanLine(), hasShownLine(), hasFollowLine()) ?: return
+        val here = tracker.location.value?.takeIf { mode == AppMode.NAVIGATE }?.let { GeoPoint(it.latitude, it.longitude) }
+        val pts = when (src) {
+            WholeRoute.Source.SHOWN -> shown?.let { t -> WholeRoute.bounds(t.segments, t.waypoints.map { GeoPoint(it.lat, it.lon) }, null) }
+            WholeRoute.Source.PLANNED -> route?.let { r -> WholeRoute.bounds(listOf(r.points), waypoints.toList(), null) }
+            // with the original while a new route is followed (drawn thin grey)
+            WholeRoute.Source.FOLLOWED -> WholeRoute.bounds(listOfNotNull(followLine, recState.value?.nav?.original), emptyList(), here)
+        } ?: return
+        followMe = false
+        freeLookAt = null
+        events += UiEvent.Fit(pts, northUp = true)
+    }
 
     /** A spot in the list tapped: the list closes, following stops, the map shows that piece (drawn amber). */
     fun showSpot(s: RouteSpot) {

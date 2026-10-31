@@ -79,7 +79,13 @@ undo step. Tracks open next to the plan without asking.
 - Plan is the home; My routes + Settings via the top bar in Plan (no separate Plan / Record / My tours bar).
 - GPS status as a dot on the locate button (no GPS chip).
 - Map controls (one group on the right): **compass always** (Plan: needle turned with the map, tap = north up;
-  Navigate: walking direction / north up toggle), eye (only with a route / track), locate. MapLibre's own compass is off.
+  Navigate: walking direction / north up toggle), eye (only with a route / track), **Show whole route** ⛶ under the eye
+  (owner 2026-10-31, same icon as the browser planner: only when there is a line – Plan: a shown track, else the plan,
+  else the followed line; Navigate: the followed line incl. the lead-in to the start; hidden in the Points step), locate.
+  A tap stops following, then fits the line + all route points north up and flat (not closer than z16, as the browser),
+  clear of the top cards / message box and the sheet / slider (`FitPaddingRule`, the same padding as opening a route);
+  Navigate also includes where you are.
+  Following comes back only with locate. No box, no dialog (`ui/WholeRoute.kt`). MapLibre's own compass is off.
 - Own position in both modes: small blue dot with accuracy circle and a small direction triangle at its edge
   (MapLibre COMPASS render mode; direction = compass standing, GPS bearing moving – `map/HeadingEngine`); grey when stale.
 - One primary action per mode: Plan → "Start navigation" ("Start recording" without a route), Navigate → slide "Tour menu" (back to Plan).
@@ -126,7 +132,7 @@ Everything about **this route** lives in the route sheet; the **library and app*
 | Search pill | only search |
 | ☰ (round button right of the search pill) | My routes (open = load, import, rename, export, delete), Start recording (no route), Settings, Check for updates |
 | Sheet, first line | activity button (icon ▾) · time · ⋯ (during a tour the activity button opens the check-and-switch sheet, owner) |
-| Map buttons (right) | compass · eye · Undo · Redo (Redo only when there is something to redo, owner) · locate |
+| Map buttons (right) | compass · eye · Show whole route ⛶ · Undo · Redo (Redo only when there is something to redo, owner) · locate |
 | Sheet ⋯ | Save route (or Save / Save as new), Export GPX, Time details (plain; formulas in Settings → Diagnostics → Developer tools), Clear (also during a tour: ends the route guidance, Undo brings it back) |
 
 ## Activity while navigating (owner: "a wrong activity is a disaster")

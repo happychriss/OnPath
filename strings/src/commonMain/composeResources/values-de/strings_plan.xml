@@ -151,6 +151,7 @@
     <string name="plan_compass_turned">Karte ist gedreht. Tippen für Norden oben</string>
     <string name="plan_compass_north">Norden ist oben. Tippen, um die Karte mit deiner Bewegungsrichtung zu drehen</string>
     <string name="plan_hold_hide_route">Halten, um die Route auszublenden</string>
+    <string name="plan_show_whole_route">Ganze Route zeigen</string>
     <string name="plan_location_off_tap">Standort ist aus, tippen zum Einschalten</string>
     <string name="plan_location_denied_tap">Standort nicht erlaubt, tippen zum Erlauben</string>
     <string name="plan_centre_on_me">Auf meinen Standort zentrieren. %1$s</string>
