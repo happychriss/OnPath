@@ -23,6 +23,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [captain] code + architecture review before the first-user release (owner's order, overnight; read-only, report in `docs/reviews/`) – since 2026-11-01
 - [cloud-app] Release v0.14.0 (voice) – captain's go; waits for the owner's Pixel voice test OK + E2E green on 69515dd / 4c64138 – since 2026-11-01
 
 ## Next
