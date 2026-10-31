@@ -24,6 +24,8 @@ val appFiles = listOf(
     "gpx/GpxModel.kt", "gpx/GpxWriter.kt", "gpx/SportType.kt", "data/LastActivity.kt",
     // plan sync, phase 2 (docs/design/web-sync.md): pairing code, keys, crypto, item format, conflict rule, ledger
     "sync/SyncCrypto.kt", "sync/PairCode.kt", "sync/SyncItem.kt", "sync/SyncMerge.kt", "sync/SyncLedger.kt", "sync/TrackCode.kt",
+    // the app's sync pass over a mailbox (A-007; the page runs its own loop in sync.ts – compiled for SyncTrackTest only)
+    "sync/SyncRound.kt",
     // long-route question (web-planner.md §15): the app's LongRoute rule and plan status texts
     "routing/LongRoute.kt", "ui/PlanStatus.kt", "ui/PlanGaps.kt",
     // GPX import (web-planner.md §15): the app's tolerant parser (SAX → onpathweb stand-ins in Wasm), track → plan, time
@@ -40,7 +42,9 @@ val appFiles = listOf(
 // the plain JVM here, so web CI checks them too).
 val appTests = listOf("routing/PlanCodeTest.kt", "ui/PlanStateTest.kt", "ui/MapGesturesTest.kt", "ui/RouteWarningsTest.kt",
     "sync/SyncCryptoTest.kt", "sync/PlanSyncTest.kt", "routing/LongRouteTest.kt", "gpx/GpxParserTest.kt",
-    "gpx/SportTypeTest.kt", "routing/TrackToPlanTest.kt", "ui/PlanGapsTest.kt")
+    "gpx/SportTypeTest.kt", "routing/TrackToPlanTest.kt", "ui/PlanGapsTest.kt",
+    // plan-sync track items (SyncItem.TRACK, TrackCode frozen bytes) + the fake mailbox it runs against
+    "sync/SyncTrackTest.kt", "sync/MemoryMailbox.kt")
 
 sourceSets {
     main {

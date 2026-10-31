@@ -790,6 +790,18 @@
         "private fun clean(s: String?): String? = s?.filter { it >= ' ' }?.trim()?.take(MAX_NAME)?.trim()?.takeIf { it.isNotEmpty() }"
       ]
     },
+    "app/src/main/java/com/onpath/app/sync/SyncRound.kt": {
+      "blob": "ed77da5e45695cdafa8ed0a24e7fe0dd93505776",
+      "perf": [
+        "* answer at all: no network, timeout, DNS) and never throws.",
+        "* a 409 (someone wrote first) means read again and push once more ([MAX_PASSES]). Pure: no clock, no random, no",
+        "/** No answer from the server (no network, timeout). The ledger keeps what is still to upload. */",
+        "repeat(MAX_PASSES) { pass ->",
+        "413 -> Unit // one item too large (cannot happen below SyncFormat.MAX_BLOB) – the others go on",
+        "if (pass == MAX_PASSES - 1) return Outcome.Done(pulled, pushed, bad, ledger.outbox().size)",
+        "const val MAX_PASSES = 2"
+      ]
+    },
     "app/src/main/java/com/onpath/app/routing/LongRoute.kt": {
       "blob": "609dd792a5a5d9328b100b38d26df5215cdce967",
       "perf": []
