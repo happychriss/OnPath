@@ -10,5 +10,6 @@
   {"name": "POI stop pinned + named (Ifinger hut kept exactly)", "points": "46.6870,11.2350;46.6995,11.2430;46.7006,11.2585", "activity": "HIKE", "sac": 3, "pinned": [1], "names": {"1": "Ifinger Hütte"}},
   {"name": "Failed leg (a point in the Adriatic: straight dashed piece)", "points": "45.7000,13.7700;45.6800,13.3900", "activity": "BIKE_TOURING", "sac": 3},
   {"name": "Köln Dom → Neumarkt (island point)", "points": "50.9413,6.9583;50.9360,6.9475", "activity": "HIKE", "sac": 3},
-  {"name": "Hilden, short trip with a long detour (midpoint retry)", "points": "51.169243,6.925344;51.169,6.93578", "activity": "BIKE_TOURING", "sac": 2}
+  {"name": "Hilden, short trip with a long detour (midpoint retry)", "points": "51.169243,6.925344;51.169,6.93578", "activity": "BIKE_TOURING", "sac": 2},
+  {"name": "Vienna, no routing data (the plain notice line, a straight line)", "points": "48.2000,16.3700;48.2100,16.3800", "activity": "HIKE", "sac": 3}
 ]

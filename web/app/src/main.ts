@@ -173,6 +173,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <button id="warning" class="notice warnline" aria-expanded="false" hidden></button>
     <ul id="spots" class="spots" hidden></ul>
     <div id="profile"></div>
+    <div id="infoline" class="infoline" hidden></div>
+    <div id="breakdown" class="breakdown" hidden></div>
     <div id="pointsSection" hidden>
       <div class="pointshead"><b>${escapeHtml(t('plan_points'))}</b>
         <button id="reverse" class="textbtn">${icon('swap', 18)}${escapeHtml(t('plan_reverse'))}</button>
@@ -934,6 +936,7 @@ function render() {
     }
     $('profile').innerHTML = '';
     notice.hidden = true;
+    $('infoline').hidden = true; $('breakdown').hidden = true;
   } else {
     head.innerHTML = `<span class="big">${escapeHtml(p.texts.time)}</span><span class="dist">${escapeHtml(p.texts.distance)}</span>`;
     sub.innerHTML = `<span>${escapeHtml(p.texts.climb)}</span>` +
@@ -941,7 +944,12 @@ function render() {
     // the app's ElevationProfile: "No elevation data" when ProfileData has none
     $('profile').innerHTML = p.profile ? profileSvg(p.profile) : `<div class="muted small noele">${escapeHtml(t('plan_no_elevation'))}</div>`;
     // one red line: an unreachable point (the app's PlanGaps, with Show) or a failed leg – PlanPanel's order
-    const red = planGaps.last.text ?? p.error;
+    // missing routing data is no error: the app's plain grey line (RoutingDataNotice) instead of the router's text
+    const info = $('infoline');
+    info.hidden = !p.notice;
+    info.innerHTML = p.notice ? `${p.notice === 'LOADING' ? '<span class="spin" aria-hidden="true"></span>' : ''}${escapeHtml(p.noticeText ?? '')}` : '';
+    renderBreakdown(p.breakdown);
+    const red = planGaps.last.text ?? (p.notice ? null : p.error);
     notice.hidden = !red;
     notice.innerHTML = red ? `⚠ ${escapeHtml(red)}` : '';
     if (planGaps.last.text) {
@@ -988,6 +996,29 @@ async function renderSaved() {
   line.querySelector<HTMLButtonElement>('.savedname')!.onclick = renameInPlace;
   saveEntry(changed ? 'save' : 'saved');
 }
+/**
+ * Way types and surfaces – the app's RouteBreakdown (rules shared: routing/BreakdownRules): one line under its title
+ * ("Cycleway 92 % · Asphalt 98 %"), a click opens the two thin bars with their legend (label · distance), again closes.
+ */
+let breakdownOpen = false;
+function renderBreakdown(b: PlanResult['breakdown'] | undefined) {
+  const el = $('breakdown');
+  el.hidden = !b || !b.line;
+  if (el.hidden || !b) { el.innerHTML = ''; return; }
+  const bar = (title: string, parts: [string, string, string, number][]) => {
+    const total = parts.reduce((s, p) => s + p[3], 0) || 1;
+    return `<div class="bdtitle muted small">${escapeHtml(title)}</div><div class="bdbar">${parts.map((p) =>
+      `<span style="flex:${Math.max(1, p[3])} 1 0;background:${p[2]}" title="${escapeHtml(p[1])}"></span>`).join('')}</div>
+      <ul class="bdlegend">${parts.map((p) => `<li><i style="background:${p[2]}"></i>${escapeHtml(p[1])} ${escapeHtml(km(p[3], total))}</li>`).join('')}</ul>`;
+  };
+  el.innerHTML = `<button class="bdhead" aria-expanded="${breakdownOpen}"><span class="muted small">${escapeHtml(t('plan_way_types_surfaces'))}</span>
+    <span class="bdline">${escapeHtml(b.line)}</span>${icon(breakdownOpen ? 'expandLess' : 'expandMore', 20)}</button>` +
+    (breakdownOpen ? `<div class="bdbars">${bar(t('plan_way_types'), b.ways)}${bar(t('plan_surfaces'), b.surfaces)}</div>` : '');
+  el.querySelector<HTMLButtonElement>('.bdhead')!.onclick = () => { breakdownOpen = !breakdownOpen; renderBreakdown(b); };
+}
+/** A legend distance: "1.2 km" / "350 m" in the page's language (the app's Format.distance for these lengths). */
+const km = (m: number, _total: number) => (m >= 1000 ? `${number(m / 1000, 1)} km` : `${Math.round(m)} m`);
+
 /**
  * "Saved as ‚Name‘ ✎" tapped (the app's rename in place, 2026-10-31): the line becomes a name field with the name selected;
  * Enter renames the saved route (My routes, the phone after Save), Escape or leaving the field keeps the name.

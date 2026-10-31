@@ -17,9 +17,11 @@ object Res {
 object Txt {
     @Volatile var onError: ((String, Throwable) -> Unit)? = null
 
-    /** Position of the current language in [LANGUAGES] (0 = English). */
-    @Volatile var index = 0
-        private set
+    /**
+     * Position of the current language in [LANGUAGES] (0 = English): the default Locale's language, as the app's Txt
+     * reads it ([setLanguage] sets that Locale; the app's own tests switch languages with Locale.setDefault too).
+     */
+    val index: Int get() = LANGUAGES.indexOf(java.util.Locale.getDefault().language).coerceAtLeast(0)
 
     fun language(): String = LANGUAGES[index]
 
@@ -28,8 +30,8 @@ object Txt {
      * German locale for German texts). Returns the language now used.
      */
     fun setLanguage(lang: String): String {
-        index = LANGUAGES.indexOf(lang).coerceAtLeast(0)
-        java.util.Locale.setDefault(if (index == 0) java.util.Locale.US else java.util.Locale(language(), language().uppercase()))
+        val i = LANGUAGES.indexOf(lang).coerceAtLeast(0)
+        java.util.Locale.setDefault(if (i == 0) java.util.Locale.US else java.util.Locale(LANGUAGES[i], LANGUAGES[i].uppercase()))
         // ↑ with a country: TeaVM's number format looks up a currency, and a bare language finds none
         return language()
     }

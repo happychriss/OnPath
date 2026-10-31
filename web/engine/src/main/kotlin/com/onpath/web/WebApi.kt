@@ -263,6 +263,14 @@ object Engine {
         append(",\"moved\":").append(res.moved)
         append(",\"points\":").append(res.points.joinToString(",", "[", "]") { "[" + num(it.lat, 6) + "," + num(it.lon, 6) + "]" })
         append(",\"gaps\":").append(WebPlanRules.gapsJson(res, names))
+        // the routing-data notice (the app's data/RoutingDataNotice): a part under the plan still missing (fetch failed –
+        // offline) or the router's "no routing data" → the plain grey line instead of the router's text
+        val missing = partsNeeded(res.routed.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) }) != "[]"
+        val notice = com.onpath.app.data.RoutingDataNotice.kindForRoute(p.error, missing, loading = false)
+        append(",\"notice\":").append(notice?.let { str(it.name) } ?: "null")
+        append(",\"noticeText\":").append(notice?.let { str(it.text) } ?: "null")
+        // way types and surfaces (the app's routing/BreakdownRules): the summary line and the two bars' parts
+        append(",\"breakdown\":").append(breakdownJson(p.wayTypes, p.surfaces))
         append(",\"profile\":"); profileJson(res.profile)
         append(",\"legs\":[")
         p.legs.forEachIndexed { li, leg ->
@@ -290,6 +298,17 @@ object Engine {
         val wps = parsePoints(points)
         val route = lastPlanFor(wps)?.points
         return WaypointInsertion.decide(wps, GeoPoint(lat, lon), route, lineSnapM).index
+    }
+
+    /** `{"line": "Radweg 92 % · Asphalt 98 %", "ways": [[key, text, "#hex", m], …], "surfaces": […]}` (BreakdownRules). */
+    internal fun breakdownJson(ways: List<Share>, surfaces: List<Share>): String {
+        val r = com.onpath.app.routing.BreakdownRules
+        fun parts(kind: com.onpath.app.routing.BreakdownRules.Kind, s: List<Share>) = r.foldSmall(s).joinToString(",", "[", "]") { sh ->
+            val e = r.entry(kind, sh.key)
+            "[" + str(sh.key) + "," + str(e.text) + "," + str(e.hex) + "," + num(sh.meters, 0) + "]"
+        }
+        return "{\"line\":" + str(r.summaryLine(ways, surfaces)) + ",\"ways\":" + parts(com.onpath.app.routing.BreakdownRules.Kind.WAY, ways) +
+            ",\"surfaces\":" + parts(com.onpath.app.routing.BreakdownRules.Kind.SURFACE, surfaces) + "}"
     }
 
     /**

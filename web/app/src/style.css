@@ -462,3 +462,16 @@ dialog.phone .unpairline .textbtn.danger { color: var(--error); }
 #savedLine .savedname:hover b { text-decoration: underline; }
 #savedLine .savedname .ic { vertical-align: -2px; margin-left: 2px; color: var(--muted); }
 #savedLine #renameField { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; padding: 6px 8px; border: 1px solid var(--green); border-radius: 6px; }
+
+/* the app's grey INFO line (routing data still missing: straight line for now), with a spinner while it loads */
+.infoline { color: var(--muted); font-size: 13px; padding: 6px 2px; display: flex; align-items: center; gap: 8px; }
+.infoline .spin { width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--green); border-radius: 50%; animation: spin 1s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+/* way types & surfaces (the app's RouteBreakdown): one line, a click shows two bars with their legend */
+.breakdown .bdhead { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; width: 100%; border: 0; background: none; padding: 6px 2px;
+  font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.breakdown .bdhead .muted { flex-basis: 100%; }
+.breakdown .bdline { flex: 1; font-size: 14px; }
+.breakdown .bdbar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: 2px 0 4px; }
+.breakdown .bdlegend { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 12px; color: var(--muted); }
+.breakdown .bdlegend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }

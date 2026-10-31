@@ -67,6 +67,14 @@ await page.waitForFunction((b) => document.getElementById('points').textContent 
 check((await page.textContent('#points')) !== loopBefore, 'Start & finish here rotated the loop');
 await page.screenshot({ path: shot });
 
+// way types & surfaces (the app's RouteBreakdown, rules from routing/BreakdownRules): one line, a click → two bars
+const bd = await page.evaluate(() => { const b = document.getElementById('breakdown'); return { shown: !b.hidden, title: b.querySelector('.bdhead .muted')?.textContent, line: b.querySelector('.bdline')?.textContent ?? '' }; });
+check(bd.shown && bd.title === 'Way types & surfaces' && /^[A-Z][\w ]+ \d+ % · [A-Z][\w ]+ \d+ %$/.test(bd.line), `"Way types & surfaces": "${bd.line}" (the app's summary line)`);
+await page.click('#breakdown .bdhead');
+const bars = await page.evaluate(() => [...document.querySelectorAll('#breakdown .bdbar')].map((b) => b.children.length));
+check(bars.length === 2 && bars.every((n) => n >= 1) && await page.isVisible('#breakdown .bdlegend'), `a click shows the two bars with their legend (${bars})`);
+await page.click('#breakdown .bdhead');
+
 // Points list ✕ on the loop's start (the app's PlanPoints.deleteAt): the start goes, the loop closes at the next point –
 // still a round trip with ↺, one marker less (the web used to drop start and end: the loop opened)
 const pinsBefore = await page.evaluate(() => document.querySelectorAll('.pin').length);

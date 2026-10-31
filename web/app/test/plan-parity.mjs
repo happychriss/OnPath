@@ -92,6 +92,7 @@ function webSummary(j) {
     points: j.points ?? [], moved: !!j.moved, line, straight: j.legs.map((l) => l.straight),
     gaps: (j.gaps?.gaps ?? []).map((g) => g.index), gapText: j.gaps?.text ?? null,
     warning: j.warning ?? null, spots: (j.spots ?? []).map((s) => s.title), difficulty: j.difficulty, because: j.because ?? null,
+    breakdown: j.breakdown?.line ?? '', notice: j.notice ?? null,
     profile: j.profile ? { n: j.profile.dist.length, min: Math.min(...j.profile.ele), max: Math.max(...j.profile.ele),
       total: j.profile.dist.at(-1), steep: j.profile.steep } : null,
   };
@@ -123,6 +124,7 @@ cases.forEach((c, k) => {
   same('gaps', a.gaps, w.gaps); same('gap line', a.gapText, w.gapText);
   same('warning', a.warning, w.warning); same('spots', a.spots, w.spots);
   same('difficulty', a.difficulty, w.difficulty); same('because', a.because, w.because);
+  same('way types line', a.breakdown, w.breakdown); same('routing-data notice', a.notice, w.notice);
   if (!a.profile !== !w.profile) diffs.push(`profile: app ${a.profile ? 'yes' : 'none'} web ${w.profile ? 'yes' : 'none'}`);
   else if (a.profile && (a.profile.n !== w.profile.n || Math.abs(a.profile.min - w.profile.min) > 0.1 || Math.abs(a.profile.max - w.profile.max) > 0.1 ||
     Math.abs(a.profile.total - w.profile.total) > 1 || JSON.stringify(a.profile.steep) !== JSON.stringify(w.profile.steep))) diffs.push('profile differs');

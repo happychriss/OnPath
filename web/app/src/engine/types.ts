@@ -41,6 +41,10 @@ export interface PlanResult {
   points: [number, number][]; moved: boolean;
   /** Points the route does not reach or skips (the app's PlanGaps via PlanResult.gaps): the red line + grey pieces. */
   gaps: { text: string | null; gaps: { index: number; point: [number, number]; end: [number, number]; show: [number, number, number] }[] };
+  /** The app's RoutingDataNotice: routing data missing → the plain grey line [noticeText] instead of the router's error. */
+  notice: 'LOADING' | 'NOT_YET' | null; noticeText: string | null;
+  /** The app's BreakdownRules: the summary line and the bars' parts [key, label, colour, metres]. */
+  breakdown: { line: string; ways: [string, string, string, number][]; surfaces: [string, string, string, number][] };
 }
 
 export interface RouteResult {

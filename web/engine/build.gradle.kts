@@ -43,6 +43,8 @@ val appFiles = listOf(
     "gpx/PlanGpx.kt",
     // the routing fingerprint (docs/handoff-web-parity-b.md §4, routing-fingerprint.md): diagnostics + sync field 7
     "routing/RoutingFingerprint.kt",
+    // the plan sheet's routing-data notice and way-type / surface line (docs/handoff-web-notice-breakdown.md)
+    "data/RoutingDataNotice.kt", "routing/BreakdownRules.kt",
 )
 
 // The app's own unit tests for the shared files the web adds (the app's Gradle build needs an Android SDK; these run on
@@ -53,7 +55,8 @@ val appTests = listOf("routing/PlanCodeTest.kt", "ui/PlanStateTest.kt", "ui/MapG
     // plan-sync track items (SyncItem.TRACK, TrackCode frozen bytes) + the fake mailbox it runs against
     "sync/SyncTrackTest.kt", "sync/MemoryMailbox.kt",
     // the shared plan result, plan GPX and loop-aware edits (handoff-web-planresult.md, handoff-web-parity-b.md)
-    "routing/PlanResultTest.kt", "gpx/PlanGpxTest.kt", "routing/PlanPointsTest.kt")
+    "routing/PlanResultTest.kt", "gpx/PlanGpxTest.kt", "routing/PlanPointsTest.kt",
+    "data/RoutingDataNoticeTest.kt", "routing/BreakdownRulesTest.kt")
 
 sourceSets {
     main {

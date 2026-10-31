@@ -69,6 +69,10 @@ private fun summary(res: PlanResult, names: Map<Int, String>): JSONObject = JSON
     put("gapText", PlanGaps.text(res.gaps, res.activity) { names[it] } ?: JSONObject.NULL)
     put("warning", RouteWarnings.text(res.spots, res.sac) ?: JSONObject.NULL)
     put("spots", JSONArray(res.spots.map { RouteWarnings.rowTitle(it, res.sac) }))
+    // the plan sheet's way-type / surface line and routing-data notice (routing/BreakdownRules, data/RoutingDataNotice;
+    // the phone has every part it routed with, so "missing" is false here as in the web after its download)
+    put("breakdown", com.onpath.app.routing.BreakdownRules.summaryLine(p.wayTypes, p.surfaces))
+    put("notice", com.onpath.app.data.RoutingDataNotice.kindForRoute(p.error, missing = false, loading = false)?.name ?: JSONObject.NULL)
     put("difficulty", res.rating.text)
     put("because", res.rating.because ?: JSONObject.NULL)
     put("profile", res.profile?.let { d -> JSONObject().put("n", d.dist.size).put("min", d.min).put("max", d.max).put("total", d.total)
