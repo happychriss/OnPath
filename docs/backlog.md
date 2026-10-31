@@ -122,6 +122,10 @@ the git log.
       `PlanPoints.deleteAt`, `"move"` → `PlanPoints.move`, `deletePoint` through the engine, meta by value – steps in
       `docs/handoff-web-parity-b.md` §3.
   - *Should:*
+    - Route hints: no "Steps · 0 m · at the start" (field A-019) · 4ab0b37 · shared `ui/RouteWarnings.kt`: a stretch
+      < 5 m (`END_CRUMB_M`) at the very start / end of the route is no spot (the snapped end touching that way) – comes
+      with the merge, nothing to write; the parity test of the hints should pass unchanged. Web side, if it has its own
+      fit: the first route of a plan and an opened plan link are fitted whole like "Show whole route" (app c7bf190).
     - "Connected" only with a live hello of the other side (field bug 2026-10-31, owner: "why does my phone say
       connected when the browser doesn't?") · (this branch, 2026-10-31) · the app now reads the browser hellos
       (`plansync/BrowserLink`: live → connected, all deleted → "Unpaired in the browser" + pair again by JOIN, none →
