@@ -328,6 +328,7 @@ export class PlanSync {
         }
         this.status.lastSync = Date.now();
         this.status.full = false;
+        await this.refresh(); // the pairing / folders as this round left them (also another tab's change)
         this.say('', 'info');
       } catch (e) {
         if (e instanceof Gone) {
@@ -583,6 +584,8 @@ export class PlanSync {
   }
 
   private async refresh() {
+    // the folders as they are now – another tab may have paired or unpaired (backlog: re-read in refresh() too)
+    this.dir = await this.readDir();
     const pair = await this.store.get('pair');
     const ledger = await this.ledger();
     const st = JSON.parse(await this.call('syncState', ledger));

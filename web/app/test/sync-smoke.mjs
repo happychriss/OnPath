@@ -519,6 +519,8 @@ await tabPhone.pairDirect(pT.code);
 await T1.waitForFunction((d) => window.__sync.status.folder.key === d, tabPhone.device, { timeout: 30_000 }).catch(() => {});
 await T1.click('#closePair').catch(() => {});
 await T2.waitForFunction((d) => window.__sync.status.folder.key === d && window.__sync.status.paired, tabPhone.device, { timeout: 10_000 }).catch(() => {});
+// the header's pill draws a moment after the status (CI is slower than the status check)
+await T2.waitForFunction(() => document.querySelector('#syncBadge .lbl')?.textContent?.trim() === 'Tab phone', null, { timeout: 10_000 }).catch(() => {});
 const t2 = await status(T2);
 check(t2.paired && t2.folder.key === tabPhone.device && (await entry(T2)).label === 'Tab phone',
   `paired in tab 1 → tab 2 shows it without a reload (${JSON.stringify(t2.folder)}, "${(await entry(T2)).label}")`);
@@ -527,6 +529,7 @@ await T1.click('dialog.phone #unpair');
 await T1.waitForFunction(() => window.__sync.status.folder.key === 'none', null, { timeout: 30_000 }).catch(() => {});
 await T1.click('#closePhone').catch(() => {});
 await T2.waitForFunction(() => window.__sync.status.folder.key === 'none' && !window.__sync.status.paired, null, { timeout: 10_000 }).catch(() => {});
+await T2.waitForFunction(() => document.querySelector('#syncBadge .lbl')?.textContent?.trim() === 'Pair phone', null, { timeout: 10_000 }).catch(() => {});
 check(!(await status(T2)).paired && (await entry(T2)).label === 'Pair phone', 'unpaired in tab 1 → tab 2 shows "Pair phone" without a reload');
 await openRoute(T2, '#p=' + CODE);
 await T2.evaluate(() => window.__sync.save(location.hash.slice(3), 'Zweiter Tab'));
