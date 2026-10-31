@@ -11,10 +11,10 @@ import com.onpath.app.gpx.TrackPoint
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.ui.AppMode
+import com.onpath.app.ui.RoutesTab
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -153,11 +153,11 @@ class CoreFieldE2ETest : E2EBase() {
     }
 
     /**
-     * Owner 2026-10-31 ("routes can't be loaded"): during a tour My routes → a planned route asks "Replace the route of
-     * the running tour?". Cancel changes nothing; Replace makes it the plan with its activity and the tour follows it –
-     * the same tour, its track goes on (core feature C4); Undo brings the previous plan back, still the same tour.
+     * Owner 2026-10-31: no new route during a tour. My routes → a tap on a planned route loads nothing: the plan, the
+     * followed route, the activity and the tour stay; the blue box "End the running tour first, then this route can be
+     * loaded." shows until OK (core feature C4).
      */
-    @Test fun loadingASavedRouteDuringATourReplacesTheFollowedRouteOnly() {
+    @Test fun aSavedRouteTappedDuringATourKeepsTheTourRouteAndSaysEndTheTourFirst() {
         startPlanWithTwoPoints()
         Thread.sleep(if (realRouting) 3_000 else 1_000)
         scenario.onActivity { vm(it).startNavigation(force = true) }
@@ -166,64 +166,43 @@ class CoreFieldE2ETest : E2EBase() {
         var tourId = -1L
         var before: List<GeoPoint> = emptyList()
         var followedBefore: String? = null
-        scenario.onActivity { tourId = vm(it).recState.value!!.tourId; before = vm(it).waypoints.toList(); followedBefore = vm(it).followName }
+        var lineBefore: List<GeoPoint>? = null
+        var activityBefore: Activity? = null
+        scenario.onActivity {
+            tourId = vm(it).recState.value!!.tourId; before = vm(it).waypoints.toList(); followedBefore = vm(it).followName
+            lineBefore = vm(it).followLine; activityBefore = vm(it).activity
+        }
         // a saved route nearby, for another activity
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         val pts = listOf(GpxWaypoint(lat + 0.002, lon - 0.001, "E2E start"), GpxWaypoint(lat + 0.004, lon + 0.002, "E2E goal"))
-        val savedId = db.insertTour(TourKind.PLANNED, "E2E replace route", Activity.BIKE_TOURING.name, 2, 350.0, 0.0, 0.0, 90.0,
+        val name = "E2E saved route"
+        val savedId = db.insertTour(TourKind.PLANNED, name, Activity.BIKE_TOURING.name, 2, 350.0, 0.0, 0.0, 90.0,
             listOf(pts.map { TrackPoint(it.lat, it.lon) }), pts)
         try {
-            val saved = db.getTour(savedId)!!
-            val newPlan = pts.map { GeoPoint(it.lat, it.lon) }
             scenario.onActivity { vm(it).switchToPlan() }
             waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
-
-            scenario.onActivity { vm(it).requestOpen(saved) }
-            assertNotNull("the one question", device.wait(Until.findObject(By.text("Replace the route of the running tour?")), 5_000))
-            clickText("Cancel")
-            waitUntil("question closed", 5_000) { var open = true; scenario.onActivity { open = vm(it).tourReplaceAsk != null }; !open }
+            scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED; vm(it).openRoutes() }
+            clickText(name)
+            val box = "End the running tour first, then this route can be loaded."
+            assertNotNull("the box", device.wait(Until.findObject(By.text(box)), 5_000))
             Thread.sleep(1_500)
             scenario.onActivity {
-                assertEquals("Cancel: the plan stays", before, vm(it).waypoints.toList())
-                assertEquals("Cancel: the followed route stays", followedBefore, vm(it).followName)
-                assertEquals(tourId, vm(it).recState.value?.tourId)
+                assertEquals("the plan stays", before, vm(it).waypoints.toList())
+                assertEquals("the followed route stays", followedBefore, vm(it).followName)
+                assertEquals("the followed line stays", lineBefore, vm(it).followLine)
+                assertEquals("the activity stays", activityBefore, vm(it).activity)
+                assertEquals("the same tour records on", tourId, vm(it).recState.value?.tourId)
+                assertTrue("My routes stays open", vm(it).routesOpen)
             }
-
-            scenario.onActivity { vm(it).requestOpen(saved) }
-            assertNotNull(device.wait(Until.findObject(By.text("Replace the route of the running tour?")), 5_000))
-            var trackBefore = 0
-            scenario.onActivity { trackBefore = vm(it).recState.value!!.track.sumOf { s -> s.size } }
-            clickText("Replace")
-            waitUntil("the saved route is the plan", 10_000) { var p: List<GeoPoint> = emptyList(); scenario.onActivity { p = vm(it).waypoints.toList() }; p == newPlan }
-            waitUntil("the tour follows it", 30_000) { var n: String? = null; scenario.onActivity { n = vm(it).followName }; n == "E2E replace route" && guided() }
-            waitUntil("the service navigates it", 15_000) {
-                var n: String? = null; scenario.onActivity { n = vm(it).recState.value?.followName }; n == "E2E replace route"
-            }
-            scenario.onActivity {
-                val st = vm(it).recState.value
-                assertEquals("the same tour records on", tourId, st?.tourId)
-                assertTrue("its track is kept", (st?.track?.sumOf { s -> s.size } ?: 0) >= trackBefore)
-                assertEquals("the route keeps its activity", Activity.BIKE_TOURING, vm(it).activity)
-                assertNull(vm(it).tourReplaceAsk)
-            }
-            waitUntil("the tour is recorded as that activity", 10_000) { db.getTour(tourId)?.activity == Activity.BIKE_TOURING.name }
+            assertTrue(guided())
+            clickText("OK")
+            waitUntil("the box is gone after OK", 5_000) { device.findObject(By.text(box)) == null }
             assertEquals("still recording, not ended", "active", db.getTour(tourId)?.state)
-
-            scenario.onActivity { vm(it).undoStep() }
-            waitUntil("Undo: the previous plan", 10_000) { var p: List<GeoPoint> = emptyList(); scenario.onActivity { p = vm(it).waypoints.toList() }; p == before }
-            waitUntil("the previous plan is followed again", 30_000) {
-                var line: List<GeoPoint>? = null; var r: List<GeoPoint>? = null
-                scenario.onActivity { line = vm(it).followLine; r = vm(it).route?.points }
-                line != null && line == r && guided()
-            }
-            assertTrue(recording())
-            scenario.onActivity { assertEquals(tourId, vm(it).recState.value?.tourId) }
             val trace = com.onpath.app.debug.Problems.events().map { it.message }
-            for (step in listOf("Load \"E2E replace route\" during the tour", "Replace the tour's route by \"E2E replace route\": cancelled",
-                    "Replace the tour's route by \"E2E replace route\": yes", "The tour follows \"E2E replace route\" now")) {
-                assertTrue("\"$step\" traced: ${trace.take(30)}", trace.any { it.startsWith(step) })
-            }
+            val step = "Load \"$name\" during the tour: not loaded"
+            assertTrue("\"$step\" traced: ${trace.take(30)}", trace.any { it.startsWith(step) })
         } finally {
+            scenario.onActivity { vm(it).routesOpen = false }
             db.deleteTour(savedId)
         }
     }
