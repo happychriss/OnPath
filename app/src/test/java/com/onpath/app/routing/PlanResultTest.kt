@@ -109,14 +109,15 @@ class PlanResultTest {
     @Test fun aSkippedStopKeepsItsPlaceAndIsAGap() {
         val line = (0..6).map { GeoPoint(51.4870, 7.4100 + it * 0.003) }
         val stops = line.mapIndexed { i, p -> if (i in 1..5) north(p, -30.0) else p }
-        val cutFirst = object : RoutingEngine {
+        // stop 4 cannot be reached, not even as a request end: every line passes it 30 m off its spot
+        val k = 3
+        val missK = object : RoutingEngine {
             override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult {
-                val l = waypoints.mapIndexed { i, p -> if (i == 1 && waypoints.size > 2) north(p, 30.0) else p }
+                val l = waypoints.map { if (it == stops[k]) north(it, 30.0) else it }
                 return RouteResult(l, 1000.0, 0.0, 0.0, 60.0, matched = waypoints)
             }
         }
-        val r = PlanResult.plan(cutFirst, stops, Activity.BIKE_TOURING, 2, emptySet(), emptySet(), f)
-        val k = 1 + Planner.MAX_SPUR_PASSES
+        val r = PlanResult.plan(missK, stops, Activity.BIKE_TOURING, 2, emptySet(), emptySet(), f)
         assertEquals(setOf(k), r.route.skipped)
         assertTrue(k in r.far)
         assertSame(stops[k], r.points[k])

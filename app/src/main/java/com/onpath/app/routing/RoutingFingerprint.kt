@@ -25,7 +25,7 @@ object RoutingFingerprint {
      * activity and data (Planner passes and splits, WaypointSnap rules, BRouterEngine's profile parameters / via
      * handling). Not raised for refactors that keep every route the same.
      */
-    const val PLANNER_VERSION = 2
+    const val PLANNER_VERSION = 3
 
     /** The files BRouter routes with (assets/brouter), in hash order. */
     val FILES = listOf("lookups.dat", "hiking-mountain.brf", "mtb.brf", "touring.brf", "trekking.brf")

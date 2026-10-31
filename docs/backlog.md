@@ -88,6 +88,11 @@ the git log.
       (2.5 px, dash 2 × width, opacity 0.9, under the route points) from the place to `WaypointInsertion.joinPoint`
       (shared file: let `placePreview` return the join point) – only with a route. No orange (= recording).
       `map/CandidateMarker.kt` draws it; picture `CandidateMarkerScreenshotTest`.
+    - Bug-01 pass only around the cut stop (owner 2026-10-31, "Option 1", speed) · app commit "Planner: route only
+      around a cut stop" · shared `routing/Planner.kt` (`splice`: the first line stays, only ~1 km around the cut stop
+      is routed again and spliced in; owner's 70.6 km hike 2.7 → 1.3 s on the JVM, +1 m) – comes with the merge, nothing
+      to code; add the owner's plan to `web/test/plans.json` (app = web, 70,600 m), measure the Wasm time;
+      `PLANNER_VERSION` 3, fingerprint changes once – `docs/handoff-web-spur-splice.md`.
     - Short-trip detour retry (owner 2026-10-31, Hilden) · f8a55de, 17d78d1 · shared `routing/Planner.kt`
       (`retryShortDetours`: a leg < 2 km straight routed > 2× is retried via the midpoint, taken when ≥ 30 % shorter) –
       comes with the merge, nothing to code; add the Hilden case to `web/test/plans.json` (Bike 51.169243,6.925344 →
