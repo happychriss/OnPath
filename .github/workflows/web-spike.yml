@@ -359,6 +359,11 @@ jobs:
         working-directory: web/app
         run: node test/edit-smoke.mjs $GITHUB_WORKSPACE/segments
 
+      - name: A newer planner deployed while a tab is open – one box "New version of the planner" [Reload], never by itself
+        if: matrix.group == 'short'
+        working-directory: web/app
+        run: node test/version-smoke.mjs $GITHUB_WORKSPACE/segments
+
       - name: Plan points snapped like the app (routing/PlanResult – stable, undo / redo, a pinned POI kept)
         if: matrix.group == 'short'
         working-directory: web/app

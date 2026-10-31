@@ -6,7 +6,7 @@
 // "Save" before pairing and "Save to phone" after, dark while anything is to save, light ✓ when all is saved; routes
 // planned without a phone join the next paired phone as waiting (bold, Save dark, nothing sent until the click → 🖥 📱);
 // unsaved edits survive a reload and are not sent; My routes is one plain list (🖥 / 📱, ⋮ Rename / Export GPX /
-// Delete, the open route light green, no marks, no heading, no Save box); a conflict keeps "(copy)"; delete both ways;
+// Delete, the open route light green, the phone's "New" / "Changed" tags, no heading, no Save box); a conflict keeps "(copy)"; delete both ways;
 // GPX goes with Save; a friend's PC (another phone's folder is not visible, Save not dark); the same phone again brings
 // its folder back with unsaved changes; a second browser via JOIN (transitional mailbox deleted); unpair on the phone;
 // mailbox full (507) → amber Save, nothing lost; the server holds nothing readable.
@@ -82,7 +82,7 @@ const listRow = (P, name) => P.evaluate((n) => { const li = [...document.querySe
   if (!li) return null;
   const where = [...li.querySelectorAll('.where .w')].map((w) => (w.classList.contains('browser') ? 'browser' : 'phone') + ':' + w.getAttribute('aria-label')).join(' ');
   return { where, bold: Number(getComputedStyle(li.querySelector('.name')).fontWeight) >= 700, sub: li.querySelector('.sub').textContent, kind: li.dataset.kind,
-    current: li.classList.contains('current'), text: li.textContent.replace(/\s+/g, ' ').trim() }; }, name);
+    current: li.classList.contains('current'), tag: li.querySelector('.tag')?.textContent ?? '', text: li.textContent.replace(/\s+/g, ' ').trim() }; }, name);
 const HERE = 'browser:In this browser', PHONE = 'phone:On the phone', BOTH = HERE + ' ' + PHONE;
 /** My routes → ⋮ of [name] → [item] (rename / export / del). */
 async function rowMenu(P, name, item) {
@@ -243,7 +243,12 @@ await A.click('#closePlans');
 await A.click('#syncBadge');
 await A.waitForSelector('dialog.phone[open] #unpair:not([hidden])');
 const buttons = await A.evaluate(() => [...document.querySelectorAll('#phoneRow button')].filter((b) => !b.hidden).map((b) => b.textContent));
-check(buttons.join() === 'Sync now,Unpair', 'the Phone window: Sync now · Unpair ' + JSON.stringify(buttons));
+check(buttons.join() === 'Sync now', 'the Phone window: Sync now in the button row ' + JSON.stringify(buttons));
+const unp = await A.evaluate(() => { const u = document.getElementById('unpair'), s = document.getElementById('syncNow');
+  return { shown: !u.hidden, red: getComputedStyle(u).color === 'rgb(198, 40, 40)', below: u.getBoundingClientRect().top - s.getBoundingClientRect().bottom,
+    focused: document.activeElement === u, text: u.textContent }; });
+check(unp.shown && unp.red && unp.below > 40 && !unp.focused && unp.text === 'Unpair',
+  `Unpair: a red text button at the bottom, away from Sync now, never focused (${JSON.stringify(unp)})`);
 check((await A.textContent('#phoneWhy')) === 'Paired with Pixel 8', 'the Phone window names the folder\'s phone');
 check(await A.isHidden('#howBox') && await A.isVisible('#pairOther'), 'the explanation is behind "How does it work?"; "Pair another phone" small at the bottom');
 await A.click('#howToggle');
@@ -292,7 +297,8 @@ const ownFp = (await A.evaluate(() => window.__diag())).match(/routing: (r1-[0-9
 check(/^r1-[0-9a-f]{12}$/.test(waal?.routing ?? '') && waal.routing === ownFp && /^E10_N45:\d{5}$/.test(waal?.routingData ?? ''),
   `Save writes field 7 = the page's fingerprint, field 8 = the rd5 day (${waal?.routing} = ${ownFp}, ${waal?.routingData})`);
 
-// ---- 5. the phone's changes arrive (📱, no marks); a rename here via ⋮ is bold until Save sends it back (🖥 📱) ----
+// ---- 5. the phone's changes arrive (📱, a "New" / "Changed" tag as in the app); a rename here via ⋮ is bold until Save
+// sends it back (🖥 📱) ----
 await phone.save('Vom Handy', CODE, 'r1-0123456789ab', 'E10_N45:20700'); // planned on the phone with other routing
 await phone.rename(hw, 'Handweg neu');
 await phone.round();
@@ -301,9 +307,12 @@ await until(A, async () => (await window.__sync.list()).some((p) => p.title === 
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
 row = await listRow(A, 'Vom Handy');
-check(row?.where === PHONE && !row.bold && !/from the phone|on the phone/i.test(row.sub), `new from the phone: 📱, not bold, no mark (${JSON.stringify(row)})`);
+check(row?.where === PHONE && !row.bold && !/from the phone|on the phone/i.test(row.sub) && row.tag === 'New',
+  `new from the phone: 📱, not bold, the tag "New" after the name (the app's RouteTag) (${JSON.stringify(row)})`);
+const tagLook = await A.evaluate(() => { const g = getComputedStyle(document.querySelector('#planList .tag')); return [g.backgroundColor, g.color, g.borderRadius]; });
+check(tagLook[0] === 'rgb(221, 234, 251)' && tagLook[1] === 'rgb(11, 61, 145)', `the tag's look = the app's TagContainer / TagInk (${tagLook})`);
 row = await listRow(A, 'Handweg neu');
-check(row?.where === PHONE && !/Changed/.test(row.text), `renamed on the phone: 📱, no "Changed on the phone" (${JSON.stringify(row)})`);
+check(row?.where === PHONE && row.tag === 'Changed' && !/Changed on the phone/.test(row.text), `renamed on the phone: 📱, the tag "Changed" (${JSON.stringify(row)})`);
 A.once('dialog', (d) => d.accept('Handweg hier'));
 await rowMenu(A, 'Handweg neu', 'rename');
 await A.waitForFunction(() => [...document.querySelectorAll('#planList .name')].some((n) => n.textContent === 'Handweg hier'), null, { timeout: 10_000 }).catch(() => {});
@@ -319,7 +328,8 @@ await A.click('#planList li:has-text("Vom Handy") .open');
 await A.waitForFunction(() => document.getElementById('points')?.textContent?.includes('Vellau'), null, { timeout: 30_000 }).catch(() => {});
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
-check((await listRow(A, 'Vom Handy'))?.current, 'a click on a row opens it: the open route is marked (light green)');
+row = await listRow(A, 'Vom Handy');
+check(row?.current && row.tag === '', `a click on a row opens it: the open route is marked (light green), its tag gone (${JSON.stringify(row)})`);
 await A.click('#closePlans');
 const note = await A.evaluate(() => { const n = document.getElementById('routingNote'); return n && !n.hidden ? n.textContent : ''; });
 check(note === 'Planned on the phone with other routing – the route may differ slightly',
@@ -487,6 +497,34 @@ await A.reload();
 await A.waitForFunction(() => document.getElementById('syncBadge')?.dataset.ready === '1', null, { timeout: 60_000 });
 check((await titles(A, 'none')).length === 0 && (await titles(A, phone.device)).includes('Zweitroute') && (await saveBtn(A)).state !== 'dark',
   'Without phone opens empty (its routes went to the phone\'s folder, kept here); Save not dark');
+
+// ---- 14b. two tabs of one browser (incident 2026-10-31): a pairing / unpairing in one tab is seen in the other at once
+// (BroadcastChannel + the folders read again in every locked step) – the other tab never writes into the old folder ----
+const ctxT = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+const T1 = await open(ctxT);
+const T2 = await open(ctxT);
+const tabPhone = await new Phone('Tab phone').init();
+const pT = await showCode(T1);
+await tabPhone.pairDirect(pT.code);
+await T1.waitForFunction((d) => window.__sync.status.folder.key === d, tabPhone.device, { timeout: 30_000 }).catch(() => {});
+await T1.click('#closePair').catch(() => {});
+await T2.waitForFunction((d) => window.__sync.status.folder.key === d && window.__sync.status.paired, tabPhone.device, { timeout: 10_000 }).catch(() => {});
+const t2 = await status(T2);
+check(t2.paired && t2.folder.key === tabPhone.device && (await entry(T2)).label === 'Tab phone',
+  `paired in tab 1 → tab 2 shows it without a reload (${JSON.stringify(t2.folder)}, "${(await entry(T2)).label}")`);
+await menu(T1, '#syncBadge');
+await T1.click('dialog.phone #unpair');
+await T1.waitForFunction(() => window.__sync.status.folder.key === 'none', null, { timeout: 30_000 }).catch(() => {});
+await T1.click('#closePhone').catch(() => {});
+await T2.waitForFunction(() => window.__sync.status.folder.key === 'none' && !window.__sync.status.paired, null, { timeout: 10_000 }).catch(() => {});
+check(!(await status(T2)).paired && (await entry(T2)).label === 'Pair phone', 'unpaired in tab 1 → tab 2 shows "Pair phone" without a reload');
+await openRoute(T2, '#p=' + CODE);
+await T2.evaluate(() => window.__sync.save(location.hash.slice(3), 'Zweiter Tab'));
+await syncNow(T2);
+await tabPhone.round();
+check(!(await tabPhone.titles()).includes('Zweiter Tab') && (await titles(T2, 'none')).includes('Zweiter Tab') && !(await titles(T2, tabPhone.device)).includes('Zweiter Tab'),
+  'tab 2 saves after the unpairing: into Without phone, nothing written back to the phone\'s folder or mailbox');
+await ctxT.close();
 
 // ---- 15. the host's cap on new mailboxes per IP and day ----
 env.SYNC_NEW_PER_IP_DAY = '1';

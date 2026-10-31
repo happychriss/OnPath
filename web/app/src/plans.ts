@@ -44,7 +44,7 @@ export function appDate(ms: number): string {
   const d = new Date(ms), month = new Intl.DateTimeFormat(locale, { month: 'short' }).format(d);
   return t('common_date').replace(/yyyy|MMM|d/g, (k) => (k === 'yyyy' ? String(d.getFullYear()) : k === 'MMM' ? month : String(d.getDate())));
 }
-const titleOf = (p: { title: string | null }) => shownTitle(p.title, t('plan_route_default_name'));
+const titleOf = (p: { title: string | null }) => shownTitle(p.title, t('web_route_default_name'));
 
 /** "3 days ago" / "vor 3 Tagen", "2 min. ago" / "vor 2 Min." (Intl, the page's language); under a minute "just now". */
 export function ago(ms: number, now = Date.now()): string {
@@ -132,7 +132,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       const where = (cls: string, key: string, ic: 'monitor' | 'phone') =>
         `<span class="w ${cls}" role="img" title="${esc(t(key))}" aria-label="${esc(t(key))}">${icon(ic, 18)}</span>`;
       li.innerHTML = `<button class="open" title="${esc(t('web_plans_open'))}"><span class="kindic" title="${esc(kindName)}">${icon(p.kind === 'track' ? 'fileOpen' : 'route', 22)}</span>
-        <span class="txt"><span class="name">${esc(titleOf(p))}</span><span class="muted small sub">${esc(kind + ' · ' + appDate(p.updatedAt))}</span></span></button>
+        <span class="txt"><span class="nameline"><span class="name">${esc(titleOf(p))}</span>${tagOf(p)}</span><span class="muted small sub">${esc(kind + ' · ' + appDate(p.updatedAt))}</span></span></button>
         <span class="where">${here ? where('browser', 'web_where_browser', 'monitor') : ''}${phone ? where('phone', 'web_where_phone', 'phone') : ''}</span>
         <button class="more iconbtn" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(t('plan_route_options'))}" title="${esc(t('plan_route_options'))}">${icon('moreVert', 22)}</button>
         <div class="menu rowmenu" role="menu" hidden><button class="rename" role="menuitem">${esc(t('common_rename'))}</button><button class="export" role="menuitem">${esc(t('common_export_gpx'))}</button><button class="del" role="menuitem">${esc(t('common_delete'))}</button></div>`;
@@ -201,13 +201,16 @@ export function phoneDialog(sync: PlanSync, page: string) {
     <div id="phoneState" class="phonestate">${icon('phone', 28)}<i class="pdot" aria-hidden="true"></i>
       <div><b id="phoneHead"></b><p id="phoneWhy" class="muted small"></p></div></div>
     <div id="phoneStatus" class="status" role="status"></div>
-    <div class="row wrap" id="phoneRow"><button id="pairPhone" class="primary" hidden>${esc(t('web_pair_phone'))}</button><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button><button id="unpair" class="danger" hidden>${esc(t('web_unpair'))}</button></div>
+    <div class="row wrap" id="phoneRow"><button id="pairPhone" class="primary" hidden>${esc(t('web_pair_phone'))}</button><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button></div>
     <button id="howToggle" class="textbtn quiet howtoggle" aria-expanded="false" aria-controls="howBox">${esc(t('web_phone_how_link'))}</button>
     <div id="howBox" class="howbox" hidden>
       <ul class="how"><li>${esc(t('web_phone_why'))}</li><li>${esc(t('web_phone_how_2'))}</li><li>${esc(t('web_phone_how_3'))}</li></ul>
       <p class="muted small privacy">${esc(t('web_phone_privacy'))} <a href="${esc(t('web_url_privacy'))}" target="_blank" rel="noopener">${esc(t('web_phone_more'))}</a></p>
     </div>
     <div id="phoneMore" class="phonemore"><button id="pairOther" class="textbtn quiet" hidden>${esc(t('web_pair_other'))}</button></div>
+    <!-- Unpair away from "Sync now" (incident 2026-10-31: right beside it, one slip ended the pairing): a red text button
+         at the bottom, never the focused one; still no question (A-017 rule 3) -->
+    <div class="unpairline"><button id="unpair" class="textbtn danger" hidden>${esc(t('web_unpair'))}</button></div>
     <div class="row end"><button id="closePhone">${esc(t('common_close'))}</button></div>`);
   const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
   const render = () => {
@@ -247,6 +250,16 @@ export function phoneDialog(sync: PlanSync, page: string) {
   render();
   d.querySelector<HTMLButtonElement>('#phoneRow button:not([hidden])')?.focus();
   if (sync.status.paired) sync.syncNow(); // the phone's time fresh from the host
+}
+
+/**
+ * The phone's mark as the app's tag (ui/RouteTag, ui-style.md "Tags", docs/handoff-web-route-tags.md): "New" / "Changed"
+ * after the name – came from the phone, not opened here yet; gone when opened (sync.seen). Never cut: the name gives way.
+ */
+function tagOf(p: SavedPlan): string {
+  if (!p.mark) return '';
+  const word = t(p.mark === 'new' ? 'routes_tag_new' : 'routes_tag_changed');
+  return `<span class="tag" data-mark="${p.mark}">${esc(word)}</span>`;
 }
 
 /** A name as stored: a copy keeps its marker (SyncMerge.storedTitle) – "… (Kopie)" typed back is " (copy)" in the item. */

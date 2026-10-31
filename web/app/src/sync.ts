@@ -124,7 +124,27 @@ export class PlanSync {
   status: SyncStatus = { paired: false, check: null, devices: [], pending: 0, lastSync: null, phoneSeen: null,
     folder: { key: NONE, name: '' }, phone: null, closed: [], waiting: false, full: false, message: '', kind: 'info' };
 
-  constructor(private engine: EngineClient, private api: string) {}
+  /**
+   * The other tabs of this browser (incident 2026-10-31: a tab kept the folders it read at its start – paired in one
+   * tab, the other still wrote into Without phone; unpaired in one, the other wrote back). Every finished change of the
+   * pairing, the folders or the saved routes is announced; a tab that hears it reads them again.
+   */
+  private channel: BroadcastChannel | null = typeof BroadcastChannel === 'function' ? new BroadcastChannel('onpath-sync') : null;
+
+  constructor(private engine: EngineClient, private api: string) {
+    this.channel?.addEventListener('message', () => { void this.reload(); });
+  }
+
+  /** Another tab changed something: the folders as they are now, the status, the open folder's draft if it changed. */
+  private async reload() {
+    try {
+      const from = this.dir.open;
+      await this.locked(async () => undefined, false); // re-reads the folders inside the lock (locked())
+      this.status.phoneSeen = from === this.dir.open ? this.status.phoneSeen : null;
+      await this.refresh();
+      if (from !== this.dir.open) for (const l of this.folderListeners) l(from, this.dir.open);
+    } catch (e) { console.warn('[Problems] WARN sync: a change from another tab was not read', e); }
+  }
 
   /** Called after every change (list, pairing, sync status). */
   onChange(f: () => void) { this.listeners.add(f); return () => this.listeners.delete(f); }
@@ -583,10 +603,15 @@ export class PlanSync {
 
   private say(message: string, kind: SyncStatus['kind']) { this.status.message = message; this.status.kind = kind; this.changed(); }
 
-  /** One change at a time across this browser's tabs (Web Locks; one chain per tab where the browser lacks them). */
-  private locked<T>(f: () => Promise<T>): Promise<T> {
+  /**
+   * One change at a time across this browser's tabs (Web Locks; one chain per tab where the browser lacks them). Inside
+   * the lock the folders are read again first – another tab may have paired or unpaired – and a finished change is
+   * announced to the other tabs ([announce] false: a plain re-read).
+   */
+  private locked<T>(f: () => Promise<T>, announce = true): Promise<T> {
     const locks = (navigator as Navigator & { locks?: LockManager }).locks;
-    const run = locks ? () => locks.request('onpath-plans', f) as Promise<T> : f;
+    const body = async () => { this.dir = await this.readDir(); const r = await f(); if (announce) this.channel?.postMessage('changed'); return r; };
+    const run = locks ? () => locks.request('onpath-plans', body) as Promise<T> : body;
     const p = this.chain.then(run, run);
     this.chain = p.catch(() => undefined); // expected: the caller sees the error; the chain goes on
     return p;

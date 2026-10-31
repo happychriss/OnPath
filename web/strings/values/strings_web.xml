@@ -222,4 +222,10 @@
     <string name="web_one_point">1 point · %1$s</string>
     <string name="web_no_webgl_title">Your browser cannot draw the map</string>
     <string name="web_no_webgl_text">WebGL2 is missing. Please use a current Chrome, Firefox or Edge and switch on hardware acceleration in its settings.</string>
+    <!-- a newer planner was deployed while the tab was open (version.ts): one box, the user reloads -->
+    <string name="web_new_version">New version of the planner</string>
+    <string name="web_new_version_detail">Reload to use it – your route stays.</string>
+    <string name="web_reload">Reload</string>
+    <!-- the name shown for a saved route without one (the app dropped plan_route_default_name with its save dialog) -->
+    <string name="web_route_default_name">Route</string>
 </resources>

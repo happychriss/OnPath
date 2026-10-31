@@ -73,6 +73,13 @@ async function route(request, env, fetchImpl) {
     out.set("cache-control", "public, max-age=86400");
     return new Response(r.body, { status: r.status, headers: out });
   }
+  if (p === "/version.json") {
+    // the deployed build (the page's version.ts asks on focus): never from a cache, or an open tab never learns of it
+    const r = await env.ASSETS.fetch(request);
+    const out = new Response(r.body, r);
+    out.headers.set("cache-control", "no-store");
+    return out;
+  }
   return env.ASSETS.fetch(request);
 }
 

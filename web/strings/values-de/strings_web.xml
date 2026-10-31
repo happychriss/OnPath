@@ -206,4 +206,8 @@
     <string name="web_one_point">1 Punkt · %1$s</string>
     <string name="web_no_webgl_title">Dein Browser kann die Karte nicht zeichnen</string>
     <string name="web_no_webgl_text">WebGL2 fehlt. Bitte einen aktuellen Chrome, Firefox oder Edge nutzen und in seinen Einstellungen die Hardwarebeschleunigung einschalten.</string>
+    <string name="web_new_version">Neue Version des Planers</string>
+    <string name="web_new_version_detail">Neu laden, um sie zu nutzen – deine Route bleibt.</string>
+    <string name="web_reload">Neu laden</string>
+    <string name="web_route_default_name">Route</string>
 </resources>

@@ -5,6 +5,7 @@
   --bg: #fff; --fg: #243C31; --muted: #5f645e; --line: #e2e5e1; --surface2: #f3f5f2;
   --green: #245F46; --green-fg: #245F46; --green-light: #E1EAD5; --route: #1E3FAE; --chip: #DCE3F6; --chip-fg: #14245e;
   --warn: #9A5B00; --warn-bg: #FFF0D2; --error: #C62828; --error-bg: #FDE0DC;
+  --tag-bg: #DDEAFB; --tag-fg: #0B3D91; /* the app's TagContainer / TagInk: a state word after a name (New, Changed) */
   --good: #2E7D32; --weak: #F9A825; --grey: #6B6F6A; --shadow: rgba(0,0,0,.2);
   --sheet-w: 384px; --sheet-h: 0px; --current: #EEF4E8; --gpx: #8E24AA;
   --site-bg: #fafaf6; --site-fg: #243c31; --site-line: #dce1d6; --site-soft: #eef0e8;
@@ -429,3 +430,30 @@ dialog.phone .phonemore .textbtn { padding-left: 0; }
 .nowebgl > div { max-width: 460px; text-align: center; }
 .nowebgl h1 { font-size: 22px; margin: 16px 0 8px; }
 .nowebgl p { font-size: 16px; line-height: 1.5; margin: 0; }
+
+/* ---- the one message box (msgcard.ts = the app's MessageCard, docs/design/ui-style.md): white card, 16 px corners,
+   4 px left edge in the kind's colour (FRAGE blue, HINWEIS grey, attention amber, error red), one at a time ---- */
+#msgcards { position: fixed; z-index: 15; left: 50%; transform: translateX(-50%); width: min(520px, calc(100vw - 24px)); }
+.msgcard { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 12px 12px 16px; background: #fff;
+  border-radius: 16px; border-left: 4px solid #6B6F6A; box-shadow: 0 6px 18px var(--shadow); box-sizing: border-box; }
+.msgcard.frage { border-left-color: #1565C0; }
+.msgcard.hinweis-warn { border-left-color: var(--warn); } .msgcard.hinweis-warn .msgwarn { color: var(--warn); }
+.msgcard.hinweis-error { border-left-color: var(--error); } .msgcard.hinweis-error .msgwarn { color: var(--error); }
+.msgtext { flex: 1 1 220px; min-width: 0; }
+.msgtitle { font-size: 16px; font-weight: 700; color: #243C31; }
+.msgdetail { font-size: 14px; color: #4A4F4A; margin-top: 2px; }
+.msgbuttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-left: auto; }
+.msgcard:not(.one) .msgbuttons { flex-basis: 100%; }
+.msgbtn { min-height: 44px; padding: 0 16px; border: 0; border-radius: 22px; background: transparent; color: var(--green);
+  font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.msgbtn.primary { background: var(--green); color: #fff; }
+.msgbtn:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+/* Unpair: a red text button on its own line at the bottom of the Phone window, away from Sync now (plans.ts) */
+dialog.phone .unpairline { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+dialog.phone .unpairline .textbtn.danger { color: var(--error); }
+
+/* My routes: the name ellipsizes, the tag after it never gets cut (the app's RouteTag) */
+.planlist .nameline { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.planlist .nameline .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.tag { flex: none; padding: 3px 8px; border-radius: 999px; background: var(--tag-bg); color: var(--tag-fg); font-size: 12px; font-weight: 700; line-height: 1.2; }

@@ -108,3 +108,10 @@ test("Android App Links: assetlinks.json, 200, JSON, no redirect (A-016)", async
   assert.deepEqual(j[0].target.sha256_cert_fingerprints, ["21:F8:7F:27:34:AA:30:2E:9F:82:C5:8E:56:F3:B0:17:5E:20:D1:01:E2:FA:29:2A:D1:D3:31:DD:77:16:6D:C7"]);
   assert.equal((await handle(new Request(H + "/.well-known/other"), env)).status, 404);
 });
+
+test("version.json (the deployed build, version.ts): never cached, an open tab sees a new planner", async () => {
+  const r = await handle(new Request(H + "/version.json"), env);
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get("cache-control"), "no-store");
+  assert.equal(await r.text(), "page /version.json");
+});

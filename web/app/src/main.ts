@@ -37,6 +37,7 @@ import { t, tp, lang, languages, switchLanguage, number, distance, locale } from
 import { appHint } from './apphint';
 import { setupSheetSteps } from './sheetstep';
 import { installDiag, addDiagSection, problem } from './diag';
+import { watchVersion, BUILD } from './version';
 import './fonts/manrope.css';
 import './style.css';
 import manropeLicence from './fonts/manrope/OFL.txt?url';
@@ -201,6 +202,8 @@ const cells = new Cells(params.get('data') ?? base + 'data/');
 const mapFolder = params.get('data') ?? base + 'map/'; // folder mode only
 if (useCells) maplibregl.addProtocol('cell', cells.protocol);
 installDiag(DEBUG); // the problem log, window.__diag(), ?debug → "Copy diagnostics" (diag.ts)
+watchVersion(); // a newer planner deployed while this tab is open: one box "New version of the planner" [Reload] (version.ts)
+addDiagSection(() => `build: ${BUILD}`);
 const map = new maplibregl.Map({
   // start view: ?at=lon,lat,zoom, else the build's VITE_START (preview), else Meran
   container: 'map', style: await loadStyle(), center: [startAt[0], startAt[1]], zoom: startAt[2],
@@ -1205,7 +1208,7 @@ const plansHost = {
   openId: () => state.savedId,
   openFolder: () => (state.savedId && state.savedFolder) || sync.open,
   open: async (p: SavedPlan, folder: string) => {
-    if (p.kind === 'track') { gpxImport.showGpx(await sync.trackGpx(p), shownTitle(p.title, t('plan_route_default_name'))); return; }
+    if (p.kind === 'track') { gpxImport.showGpx(await sync.trackGpx(p), shownTitle(p.title, t('web_route_default_name'))); return; }
     const shared = await engine.parse('p=' + p.plan);
     if (!shared) { status(t('web_plan_unreadable'), 'error'); return; }
     state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.savedFolder = folder;
@@ -1220,11 +1223,11 @@ const plansHost = {
     state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.title = p.title; state.savedFolder = folder;
     rememberInAddress();
     render();
-    status(t('plan_saved_as', p.title ?? t('plan_route_default_name')));
+    status(t('plan_saved_as', p.title ?? t('web_route_default_name')));
   },
   suggestName,
   exportGpx: async (p: SavedPlan, folder: string) => {
-    if (p.kind === 'track') { download(await sync.trackGpx(p), gpxName(shownTitle(p.title, t('plan_route_default_name')), p.updatedAt)); return; }
+    if (p.kind === 'track') { download(await sync.trackGpx(p), gpxName(shownTitle(p.title, t('web_route_default_name')), p.updatedAt)); return; }
     await plansHost.open(p, folder);
     // the route is planned first (the GPX holds the planned line, as the sheet's ⋯ → Export GPX)
     const end = Date.now() + 60_000;

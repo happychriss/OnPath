@@ -497,7 +497,7 @@ entfernen" (closed folders).
 `.current` = the open route; ⋮ menu placed fixed at its button), `phoneDialog`, `phonePill`, `savePopover` (rule 5),
 `appDate` (the app's `common_date` pattern, "30. Okt 2026"); `sync.ts` `adoptNone` (rule 2); engine `syncList` +
 `dirty`, `onPhone` (`WebSyncJoinTest`). Light green of the open route `--current`, GPX purple `--gpx` (the app's
-`OnPathColors.Gpx`). The marks' data stays in the store (`fach:<key>:marks`) but is not shown. Delete in the ⋮ menu is
+`OnPathColors.Gpx`). The marks (`fach:<key>:marks`) are shown again since 2026-10-31 as the app's tags – "New" / "Changed" ("Neu" / "Geändert", app keys `routes_tag_*`) after the name, light blue pill (`--tag-bg` / `--tag-fg` = `TagContainer` / `TagInk`), gone when the route is opened (docs/handoff-web-route-tags.md); bold still means "waiting". Delete in the ⋮ menu is
 not red (red only for errors). Two choices not in the rules: the light ✓ Save opens the field too when nothing waits (a
 "Save as" of an unchanged route); the ⋮ → Export GPX of a route opens it and exports once it is planned (a track
 downloads at once, named as the app's `GpxWriter.fileName`).

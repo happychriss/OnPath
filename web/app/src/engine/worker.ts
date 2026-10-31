@@ -5,6 +5,9 @@
 import type { EngineRequest, EngineReply, RouteStats } from './types';
 import { fetchPacked } from '../b64';
 
+declare const __BUILD_ID__: string;
+const BUILD = typeof __BUILD_ID__ === 'string' ? __BUILD_ID__ : 'dev';
+
 interface WasmEngine {
   init(root: string): void;
   setLanguage(lang: string): string;
@@ -84,13 +87,14 @@ let loading: Promise<WasmEngine> | null = null;
 function getEngine(): Promise<WasmEngine> {
   loading ??= (async () => {
     const t0 = performance.now();
-    await import(/* @vite-ignore */ new URL('engine/onpath-web-engine.wasm-runtime.js', base).href);
-    const { exports } = await TeaVM.wasmGC.load(new URL('engine/onpath-web-engine.wasm', base).href);
+    // ?v=<build>: a new page never runs an old engine (or old profiles) from a cache (version.ts)
+    await import(/* @vite-ignore */ new URL('engine/onpath-web-engine.wasm-runtime.js?v=' + BUILD, base).href);
+    const { exports } = await TeaVM.wasmGC.load(new URL('engine/onpath-web-engine.wasm?v=' + BUILD, base).href);
     exports.init('/onpath');
     exports.setLanguage(lang); // the page's language (i18n.ts) for the app's texts the engine writes
-    const list: string[] = await (await fetch(new URL('brouter/index.json', base))).json();
+    const list: string[] = await (await fetch(new URL('brouter/index.json?v=' + BUILD, base))).json();
     await Promise.all(list.map(async (f) => {
-      const buf = await (await fetch(new URL('brouter/' + f, base))).arrayBuffer();
+      const buf = await (await fetch(new URL('brouter/' + f + '?v=' + BUILD, base))).arrayBuffer();
       exports.putFile('assets/brouter/' + f, new Int8Array(buf));
     }));
     loadMs.engine = performance.now() - t0;
