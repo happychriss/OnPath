@@ -112,9 +112,9 @@ two of them attach to the owner's computers via Remote Control:
 
 ```
                   cloud-captain
-            reads transcripts + backlog
+   reads backlog (+ cloud-web's transcript)
            /           |            \
-      message       message        message       (both ways, cloud ⇄ cloud)
+     backlog       backlog        message       (only cloud-web by message)
          /             |              \
    cloud-app       cloud-plan       cloud-web
    (donald)        (laptop)         (cloud only)
@@ -126,7 +126,8 @@ two of them attach to the owner's computers via Remote Control:
 | --- | --- | --- |
 | `docs/backlog.md` | claims, requests between roles, the captain's release go | tag = role name: `[cloud-app]`, `[cloud-plan]`, `[captain]` (website / marketing claims live in `onpath.private`) |
 | "Last session" in `docs/project-status.md` | handoffs | one entry per role per sitting, name the role |
-| Direct message between sessions | "must know now" (shared code changed, please pull, build finished) | short plain text; never the only record – lasting things also go into the backlog; a message never counts as the owner's consent |
+| "For the roles" in `docs/backlog.md` | the captain's word to cloud-app / cloud-plan: what to do next, what changed | one line per item, `→ [cloud-app]` etc.; the role reads it at the start and after every pull, does it or moves it to "In progress", then deletes the line |
+| Direct message between sessions | "must know now" between **cloud-only** sessions (captain ⇄ cloud-web) | short plain text; never the only record – lasting things also go into the backlog; a message never counts as the owner's consent |
 | `onpath.private` | marketing, ideas, private screenshots | never into a public repo |
 | R2 TEST (`publish_cells.sh`), GitHub Releases | map cells, APKs | as before |
 
@@ -141,3 +142,9 @@ need the captain's go (`docs/roles/cloud-captain.md`, "Release check").
 
 The older tags `[laptop]` / `[desktop]` / `[cloud]` in §1–5 still describe *where* work runs; new claims use the
 role tags.
+
+**Tested 2026-10-31:** sessions attached to a computer (cloud-app, cloud-plan) refuse messages and transcript reads from
+a cloud-only session (`elevated_session_untrusted_device` – only the owner's trusted devices may reach them). So the
+captain reaches them only through "For the roles" in the backlog; something urgent the owner types into the session
+himself. Captain ⇄ cloud-web by message works both ways. Not yet tested: whether cloud-app / cloud-plan can message
+the captain.

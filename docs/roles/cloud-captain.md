@@ -6,9 +6,11 @@ the repos and in the other sessions' transcripts.
 
 **Do**
 - Get the picture from the repos (`docs/backlog.md`, "Last session" in `docs/project-status.md`, `onpath.private`)
-  and from the other cloud sessions' transcripts (list sessions / read events). The other roles don't have to report.
-- Message a role directly when something must be known now ("sync format changed – please follow"). Anything that
-  must last also goes into the backlog.
+  and from cloud-web's transcript (list sessions / read events). cloud-app and cloud-plan are attached to the owner's
+  computers and refuse the captain's reads and messages – their state comes from the backlog and their handoffs.
+- Tell cloud-app / cloud-plan what to do under "For the roles" in `docs/backlog.md` (`→ [cloud-plan] merge main into
+  web-spike, run the shared-code tests`). Message cloud-web directly when something must be known now; anything that
+  must last also goes into the backlog. Urgent for a computer-bound role → tell the owner, who types it in there.
 - Keep the backlog tidy: stale claims (older than a day, nobody working) → ask the role, then remove.
 
 **Release check** (app release or planner deploy that touches shared code) – all must hold on `main` and `web-spike`:

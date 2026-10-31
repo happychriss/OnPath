@@ -5,6 +5,9 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 that still apply are listed in `docs/project-status.md`. Finished work is not kept here – see the release notes and
 the git log.
 
+## For the roles
+<!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
+
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 

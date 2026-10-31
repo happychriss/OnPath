@@ -9,6 +9,8 @@ Finished cells go out the usual way (`tools/dev/publish_cells.sh` → R2 TEST). 
 build in the backlog as open; don't fall back to slow cloud builds without asking the owner.
 
 **Do**
+- At the start and after every pull: read "For the roles" in `docs/backlog.md`; lines `→ [cloud-plan]` are the captain's
+  word for you (the captain cannot message you directly). Do them or move them to "In progress", then delete the line.
 - Before a big build: claim it in the backlog (`[cloud-plan] build cells Meran/Bozen on the laptop`).
 - Keep the shared code in step with `main` (list under "Shared code" in cloud-app.md); after a merge from `main`, run the
   shared-code tests on `web-spike`.

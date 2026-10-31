@@ -7,6 +7,8 @@
 `./gradlew installDebug`, `adb logcat`. Without donald: unit tests + Paparazzi only, device checks go to the backlog.
 
 **Do**
+- At the start and after every pull: read "For the roles" in `docs/backlog.md`; lines `→ [cloud-app]` are the captain's
+  word for you (the captain cannot message you directly). Do them or move them to "In progress", then delete the line.
 - Follow `CLAUDE.md` and the five rules in `docs/working-agreement.md` §1.
 - **Shared code** – a change to shared code (`routing/PlanResult`, `sync/`, `map/ActivityLayers`, `gpx/PlanGpx`, BRouter profiles,
   `PLANNER_VERSION`): message **cloud-plan** and note it in the handoff – the planner must follow.
