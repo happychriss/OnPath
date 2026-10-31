@@ -1149,7 +1149,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * one red line in the plan sheet – while it holds, never dismissed. Derived from the route of exactly these points.
      */
     val planGaps: List<PlanGap>
-        get() = route?.takeIf { !routing }?.let { PlanGaps.of(waypoints.toList(), it.snapped, it.skipped) } ?: emptyList()
+        get() = route?.takeIf { !routing }?.let { r ->
+            val w = waypoints.toList()
+            // the gaps of the last plan result (routing/PlanResult, the web's too) while it still describes these points
+            planResult?.takeIf { it.route.snapped === r.snapped && it.route.skipped === r.skipped && it.points == w }?.gaps
+                ?: PlanGaps.of(w, r.snapped, r.skipped)
+        } ?: emptyList()
+    /** The last route result applied ([recalc]; routing/PlanResult – the same computation as the web planner's). */
+    private var planResult: com.onpath.app.routing.PlanResult? = null
 
     // route warnings (RouteWarnings): declared before init {} – recalc() touches them (ViewModelInitOrderTest)
     /**
@@ -2466,19 +2473,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val result = withContext(routingDispatcher) {
                 runCatching {
                     val eng = routingEngine()
-                    withModelTime(Planner(eng, cancel).also { planner = it }.plan(pts, act, level, pins), act, f)
+                    // route, model time, snapped points, gaps, warnings: the one computation the web planner shares
+                    // (named stops: read on the main thread when the result is taken – snapToRoute → PlanResult.withNamed)
+                    com.onpath.app.routing.PlanResult.plan(Planner(eng, cancel).also { planner = it }, pts, act, level, pins, emptySet(), f)
                 }
             }
             slow.cancel()
             // the corridor work of a result off the main thread
-            val post = result.getOrNull()?.let { r -> withContext(Dispatchers.Default) { postRoute(r, pts) } }
+            val post = result.getOrNull()?.let { r -> withContext(Dispatchers.Default) { postRoute(r.route, pts) } }
             if (requests.isCurrent(gen)) routingSlow = false
             if (!requests.isCurrent(gen) || !isActive) { // superseded or cleared
                 Problems.trace("routing", "Route #$gen for ${pts.size} points superseded – result ignored")
                 return@launch
             }
             // one line per route: distance, size, profile, each try's time and outcome
-            val done = result.getOrNull()
+            val done = result.getOrNull()?.route
             Problems.trace("routing", "Route #$gen for ${pts.size} points " + (if (result.isSuccess) "ready" else "failed") +
                 " after ${android.os.SystemClock.elapsedRealtime() - started} ms (plan now ${waypoints.size} points): " +
                 "${act.name}, ${"%.1f".format(Locale.ROOT, com.onpath.app.routing.RouteTimeLimit.straightKm(pts))} km straight" +
@@ -2486,9 +2495,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     "${it.legs.count { l -> l.straight }} straight legs" } ?: "") +
                 (planner?.describeTries()?.takeIf { it.isNotEmpty() }?.let { "; tries: $it" } ?: ""))
             var baseline = false
-            result.onSuccess {
+            result.onSuccess { res ->
+                val it = res.route
                 baseline = adoptPlanBaseline
-                route = it; snapToRoute(pts, pins, it)
+                route = it; snapToRoute(pts, res)
+                // the route warnings of this result (computed with it, off the main thread): routeSpots reads them
+                spotsMemo = Triple(it.points, act, level) to res.spots
                 if (changeBefore != null) {
                     activityBefore = null
                     if (RouteWarnings.changedNoticeably(changeBefore.points, changeBefore.distanceM, changeBefore.ascentM,
@@ -2546,7 +2558,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * and Navigate "to go" at the start. Moving time, rounded for display.
      */
     private fun withModelTime(r: PlannedRoute, a: Activity, f: com.onpath.app.time.Factors): PlannedRoute =
-        r.copy(durationS = com.onpath.app.time.TimeEstimate.planSeconds(r.points, a, f))
+        com.onpath.app.routing.PlanResult.withModelTime(r, a, f)
 
     /** Times of a finished tour: the service's live summary, else recomputed from the stored points. */
     private fun tourTimes(t: Tour): com.onpath.app.time.TourTimes? = try {
@@ -2612,21 +2624,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Indices of the named stops of [pts] (they keep their coordinates when the route is snapped). */
+    private fun namedStops(pts: List<GeoPoint>): Set<Int> = pts.indices.filter { stopName(pts[it]) != null }.toSet()
+
     /**
-     * Moves free points onto the way the router used (owner: no off-road guidance), so marker, stored
-     * plan and route line agree. POI-pinned and named stops keep their coordinates, and so does a stop the route
-     * skips although it lies on a way ([PlannedRoute.skipped]: never moved silently – its gap is shown). Amends the current
+     * Takes the snapped plan points of [res0] ([com.onpath.app.routing.PlanResult.snap]: free points onto the way the
+     * router used – owner: no off-road guidance – so marker, stored plan and route line agree; POI-pinned and named
+     * stops and a stop the route does not reach or skips keep their coordinates, its gap is shown). Amends the current
      * state (no undo step; history snapshots get the same values) and does not re-route: [route] already
      * belongs to the snapped points. Only for the newest result of exactly these points.
      */
-    private fun snapToRoute(routed: List<GeoPoint>, pins: Set<Int>, r: PlannedRoute) {
-        if (waypoints.toList() != routed) return
-        // a point the route does not reach – or skips although it lies on a way – keeps its place: the gap is shown
-        // (planGaps), not hidden by moving the point (field bug 2026-10-30: a stop moved 47 m onto the line, no word)
-        val far = PlanGaps.farIndices(routed, r.snapped, r.skipped)
+    private fun snapToRoute(routed: List<GeoPoint>, res0: com.onpath.app.routing.PlanResult) {
+        if (waypoints.toList() != routed) { planResult = res0; return }
+        // the named stops keep their place: their names are read here, on the main thread (a stop named while the
+        // route was calculated counts too)
+        val res = res0.withNamed(namedStops(routed)).also { planResult = it }
+        val far = res.far
         if (far.isNotEmpty()) Problems.trace("routing", "Route does not reach point(s) ${far.sorted().joinToString { "${it + 1}" }}")
-        val keep = pins + far + routed.indices.filter { stopName(routed[it]) != null }
-        val snapped = WaypointSnap.apply(routed, r.snapped, keep) ?: return
+        val snapped = res.points.takeIf { res.moved } ?: return
         for (i in snapped.indices) if (snapped[i] != routed[i]) waypoints[i] = snapped[i]
         if (routed.size >= 2 && !RouteRules.isUnsaved(routed, savedPoints)) setSaved(linkName, linkId, snapped)
         linkTitle?.let { (title, at) -> if (at == routed) linkTitle = title to snapped }
