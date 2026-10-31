@@ -15,7 +15,9 @@ class SharedCoreRuleTest {
     /** Single shared files in packages that also hold platform code (package/name; the web planner compiles them). */
     private val files = listOf("search/PlaceIndex.kt", "map/ActivityLayers.kt",
         // the plan result of app and web (routing/PlanResult, docs/handoff-web-planresult.md) and the ui/ rules it calls
-        "routing/PlanResult.kt", "routing/ProfileData.kt", "ui/PlanGaps.kt", "ui/RouteWarnings.kt", "data/Geo.kt")
+        "routing/PlanResult.kt", "routing/ProfileData.kt", "ui/PlanGaps.kt", "ui/RouteWarnings.kt", "data/Geo.kt",
+        // the plan sheet's routing-data notice and way-type / surface line (docs/handoff-web-notice-breakdown.md)
+        "data/RoutingDataNotice.kt", "routing/BreakdownRules.kt")
     private val platform = Regex("""\b(android|androidx|org\.maplibre|btools|org\.json)\.""")
 
     /** File (package/name) -> why it is allowed today. */
@@ -56,7 +58,8 @@ class SharedCoreRuleTest {
      * neither; hashes use sync/Sha256). Add a file here when the web is to compile it.
      */
     private val webShared = listOf("gpx/PlanGpx.kt", "gpx/GpxWriter.kt", "gpx/SportType.kt", "routing/PlanPoints.kt",
-        "routing/PlanEdits.kt", "routing/RoutingFingerprint.kt", "sync/SyncCrypto.kt")
+        "routing/PlanEdits.kt", "routing/RoutingFingerprint.kt", "sync/SyncCrypto.kt", "data/RoutingDataNotice.kt",
+        "routing/BreakdownRules.kt")
     private val notInTeaVm = Regex("""::class\.java|Class\.forName|kotlin\.reflect|java\.lang\.reflect|java\.security""")
 
     @Test fun webSharedFilesStayTeaVmFriendly() {

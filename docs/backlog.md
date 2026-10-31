@@ -126,6 +126,12 @@ the git log.
       with Pixel 8". Today the phone never deletes its hello (Unpair DELETEs the mailbox → 410 → "ended"), so this is
       a guard: in `refresh()` a phone hello seen and now deleted → show "Unpaired on the phone" (grey, Pair phone), and
       the pill's "synced … ago" from `lastSync` (this browser's pass) labelled as such, never as the phone's time.
+    - Routing-data notice + way-type / surface line shared (owner: app = web) · (this branch, 2026-10-31) · new pure
+      `data/RoutingDataNotice.kt` (`kindForRoute` → LOADING / NOT_YET, keys `maps_routing_*`) and
+      `routing/BreakdownRules.kt` (labels, order, ARGB / hex colours, `foldSmall`, `summaryLine` „Radweg 92 % ·
+      Asphalt 98 %“): add both to `appFiles` (+ `RoutingDataNoticeTest`, `BreakdownRulesTest` to `appTests`); the plan
+      sheet shows the same notice line and the way-type / surface line with bars – steps in
+      `docs/handoff-web-notice-breakdown.md`.
     - Search list never jumps for the same text (field bug 0.13.2, "olive hilde…") · (this branch, 2026-10-31) · shared
       `SearchRanking.keepShown` (rows on screen stay, a later answer for the same text only adds below) and
       `SearchRanking.stillMatching` (online rows of the shorter text that still match the longer one stay in its list)

@@ -1,7 +1,6 @@
 package com.onpath.app.ui
 
 import com.onpath.strings.*
-import org.jetbrains.compose.resources.StringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
@@ -35,38 +34,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.onpath.app.data.Format
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.BreakdownRules
 import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.RouteSummary
 import com.onpath.app.routing.Share
 
-/** Labels and colours for the contract keys (RoutingContract.kt). */
-private val WAY = mapOf(
-    "cycleway" to (Res.string.plan_way_cycleway to Color(0xFF3B8E3B)),
-    "path" to (Res.string.plan_way_path to Color(0xFF8D5A3B)),
-    "footway" to (Res.string.plan_way_footway to Color(0xFFC08A5B)),
-    "track" to (Res.string.plan_way_track to Color(0xFFC9A64E)),
-    "quiet_road" to (Res.string.plan_way_quiet_road to Color(0xFF9AA5B1)),
-    "road" to (Res.string.plan_way_road to Color(0xFF5F6B78)),
-    "busy_road" to (Res.string.plan_way_busy_road to Color(0xFFC62828)),
-    "steps" to (Res.string.plan_way_steps to Color(0xFF4E342E)),
-    "ferry" to (Res.string.plan_way_ferry to Color(0xFF2F86C9)),
-)
-private val SURFACE = mapOf(
-    "asphalt" to (Res.string.plan_surface_asphalt to Color(0xFF546E7A)),
-    "paved" to (Res.string.plan_surface_paved to Color(0xFF90A4AE)),
-    "gravel" to (Res.string.plan_surface_gravel to Color(0xFFD1B074)),
-    "unpaved" to (Res.string.plan_surface_unpaved to Color(0xFFA1887F)),
-    "ground" to (Res.string.plan_surface_ground to Color(0xFF8D6E63)),
-    "natural_trail" to (Res.string.plan_surface_natural_trail to Color(0xFF6D8B3A)),
-    "alpine" to (Res.string.plan_surface_alpine to Color(0xFF7B7F86)),
-    "unknown" to (Res.string.plan_surface_unknown to Color(0xFFE6E6E6)),
-)
-private val OTHER = Res.string.plan_other to Color(0xFFD5D5D5)
-
 /**
  * Way types and surfaces. Collapsed by default to one summary line (e.g. "Cycleway 92 % · Asphalt 98 %")
  * so the planning panel leaves enough map to tap on; tap to show the two bars with a km legend.
- * Nothing is shown if both lists are empty.
+ * Nothing is shown if both lists are empty. Labels, colours, the fold and the line: [BreakdownRules] (shared with the web).
  */
 @Composable
 fun RouteBreakdown(
@@ -86,7 +62,7 @@ fun RouteBreakdown(
         ) {
             Column(Modifier.weight(1f)) {
                 Text(str(Res.string.plan_way_types_surfaces), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                Text(summaryLine(wayTypes, surfaces), style = MaterialTheme.typography.bodySmall,
+                Text(BreakdownRules.summaryLine(wayTypes, surfaces), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
             androidx.compose.material3.Icon(
@@ -96,53 +72,33 @@ fun RouteBreakdown(
             )
         }
         if (expanded) {
-            if (wayTypes.isNotEmpty()) BreakdownBar(str(Res.string.plan_way_types), wayTypes, WAY)
-            if (surfaces.isNotEmpty()) BreakdownBar(str(Res.string.plan_surfaces), surfaces, SURFACE)
+            if (wayTypes.isNotEmpty()) BreakdownBar(str(Res.string.plan_way_types), wayTypes, BreakdownRules.Kind.WAY)
+            if (surfaces.isNotEmpty()) BreakdownBar(str(Res.string.plan_surfaces), surfaces, BreakdownRules.Kind.SURFACE)
         }
     }
 }
 
-/** "Cycleway 92 % · Asphalt 98 %" – the largest way type and surface. */
-internal fun summaryLine(wayTypes: List<Share>, surfaces: List<Share>): String {
-    fun top(list: List<Share>, names: Map<String, Pair<StringResource, Color>>): String? {
-        val total = list.sumOf { it.meters }
-        val first = list.maxByOrNull { it.meters } ?: return null
-        if (total <= 0) return null
-        val pct = Math.round(first.meters / total * 100)
-        return "${names[first.key]?.first?.let { Txt.s(it) } ?: first.key.replace('_', ' ')} $pct %"
-    }
-    return listOfNotNull(top(wayTypes, WAY), top(surfaces, SURFACE)).joinToString(" · ")
-}
-
-/** Categories below 3 % are merged into "Other" so the legend stays short. */
-internal fun foldSmall(shares: List<Share>, minFraction: Double = 0.03): List<Share> {
-    val total = shares.sumOf { it.meters }
-    if (total <= 0) return emptyList()
-    val (big, small) = shares.partition { it.meters / total >= minFraction && it.key != "other" }
-    val rest = small.sumOf { it.meters }
-    return big + if (rest > 0) listOf(Share("other", rest)) else emptyList()
-}
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BreakdownBar(title: String, shares: List<Share>, names: Map<String, Pair<StringResource, Color>>) {
-    val parts = foldSmall(shares)
+private fun BreakdownBar(title: String, shares: List<Share>, kind: BreakdownRules.Kind) {
+    val parts = BreakdownRules.foldSmall(shares)
     if (parts.isEmpty()) return
     Column {
         Text(title, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(3.dp))
         Row(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp))) {
             parts.forEach { s ->
-                Box(Modifier.weight(s.meters.toFloat().coerceAtLeast(1f)).height(8.dp).background((names[s.key] ?: OTHER).second))
+                Box(Modifier.weight(s.meters.toFloat().coerceAtLeast(1f)).height(8.dp).background(Color(BreakdownRules.entry(kind, s.key).argb)))
             }
         }
         FlowRow(Modifier.padding(top = 3.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             parts.forEach { s ->
-                val (label, color) = names[s.key] ?: OTHER
+                val e = BreakdownRules.entry(kind, s.key)
+                val color = Color(e.argb)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(8.dp).clip(CircleShape).background(color))
                     Spacer(Modifier.width(4.dp))
-                    Text("${str(label)} ${Format.distance(s.meters)}", style = MaterialTheme.typography.labelSmall)
+                    Text("${str(e.label)} ${Format.distance(s.meters)}", style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
