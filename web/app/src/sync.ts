@@ -17,6 +17,10 @@ export interface SavedPlan {
   dirty: boolean; onPhone: boolean;
   /** From the phone since the last look (A-017 rule 11) – kept as data, no longer shown (§14.6). */
   mark?: 'new' | 'changed';
+  /** Sync fields 7 / 8 (web-sync.md §5.2): who saved it routed with this fingerprint / these rd5 days; null = unknown. */
+  routing?: string | null; routingData?: string | null;
+  /** A plan from the phone routed with another fingerprint than this page's: the sheet's grey line when opened. */
+  otherRouting?: boolean;
 }
 export interface Device { name: string; updatedAt: number }
 export interface FolderInfo { key: string; name: string }
@@ -161,7 +165,8 @@ export class PlanSync {
   async save(plan: string, title: string | null, id?: string, folder = this.dir.open): Promise<string> {
     const key = await this.locked(async () => {
       const k = id ?? await this.call('syncNewId', rand(16));
-      await this.setLedgerOf(folder, await this.call('syncSave', await this.ledgerOf(folder), k, plan, title ?? '', Date.now(), await this.device()));
+      // the page's Save: with this engine's routing fingerprint and rd5 dates (sync fields 7 / 8, web-sync.md §5.2)
+      await this.setLedgerOf(folder, await this.call('syncSaveRouted', await this.ledgerOf(folder), k, plan, title ?? '', Date.now(), await this.device()));
       return k;
     });
     await this.refresh();
@@ -449,7 +454,7 @@ export class PlanSync {
       let l = await this.ledgerOf(key);
       for (const p of items) {
         l = p.kind === 'track' ? await this.call('syncSaveTrack', l, p.id, p.track, p.title ?? '', p.updatedAt, dev)
-          : await this.call('syncSave', l, p.id, p.plan, p.title ?? '', p.updatedAt, dev);
+          : await this.call('syncSave', l, p.id, p.plan, p.title ?? '', p.updatedAt, dev, p.routing ?? '', p.routingData ?? '');
       }
       await this.setLedgerOf(key, l);
       for (const x of ['ledger', 'marks']) await this.store.set(`fach:${NONE}:${x}`, null);

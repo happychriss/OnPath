@@ -72,6 +72,7 @@
     <string name="web_activities_failed">Namen der Aktivitäten nicht geladen: %1$s</string>
     <string name="web_map_files_missing">Kartendateien hier nicht gefunden: %1$s</string>
     <string name="web_plan_unreadable">Diese gespeicherte Route konnte nicht gelesen werden.</string>
+    <string name="web_routing_other_phone">Auf dem Handy mit anderer Routenberechnung geplant – Route kann leicht abweichen</string>
     <string name="web_no_name">Kein Name vorgeschlagen: %1$s</string>
 
     <string name="web_maps_overview_only">Nur Übersicht – setze hier einen Punkt, dann lädt die Detailkarte.</string>

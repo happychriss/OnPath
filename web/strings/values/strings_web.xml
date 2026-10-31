@@ -79,6 +79,8 @@
     <string name="web_activities_failed">Activity names not loaded: %1$s</string>
     <string name="web_map_files_missing">Map files not found here: %1$s</string>
     <string name="web_plan_unreadable">This saved route could not be read.</string>
+    <!-- a plan from the phone whose routing fingerprint (sync field 7) differs from this page's: one grey line, web-sync.md §5.2 -->
+    <string name="web_routing_other_phone">Planned on the phone with other routing – the route may differ slightly</string>
     <string name="web_no_name">No name proposed: %1$s</string>
 
     <!-- map areas (the strip) -->

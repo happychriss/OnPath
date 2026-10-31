@@ -151,6 +151,34 @@ JOIN) and `role: Int?` (kind DEVICE); `isUserItem` stays plans + tracks only, so
 A browser that pairs directly with an unpaired phone (today's flow) gets no JOIN: the phone joins B itself and B is
 the phone's mailbox from then on. The folder key is the device id of the hello with role 1.
 
+### 5.2 Routing fingerprint and routing data dates (2026-10-31) – format fixed, built on main
+
+Owner rule: plans route the same in browser and app; when the routing differs, the other side says so quietly.
+Two optional fields for **kind 1 (plan)** items, backward compatible (old readers skip unknown tags):
+
+    kind 1 = PLAN, new optional fields (written by whoever saves the plan – the side whose route the user saw)
+      7 = routing      ASCII, RoutingFingerprint text "r1-" + 12 lowercase hex (e.g. "r1-3fa9c2e81b04"), ≤ 32 bytes,
+                       code characters only; a value that is not RoutingFingerprint.isComparable is never compared
+      8 = routingData  ASCII, rd5 dates of the tiles under the plan's points: "<tile>:<day>" joined by ",", sorted by tile
+                       tile = brouter.de's name without ".rd5" ([EW]<lon>_[NS]<lat>), day = UTC days since 1970-01-01 of
+                       the rd5's creation time (Rd5Parts.creationTime of its tail) – e.g. "E10_N45:20752,E5_N45:20750";
+                       ≤ 200 bytes, whole entries only; tiles without a known date are left out
+
+Days, not ms: brouter.de builds weekly, a day number compares without date parsing and is 5 digits. Neither field is
+content: `sameContent` ignores them (no conflict copy for a re-save with other data); `SyncMerge.newer` compares the
+content bytes first, the routing fields only for the same content (total order). A rename keeps them. Missing =
+unknown = no hint. `SyncItem` has `routing: String?` and `routingData: String?`; the codec is `SyncRoutingData`
+(`encode(tile → day)`, `parse`, `newer(text, own)`, `day(ms)`). The plan link (`PlanCode` v1) stays without them.
+
+**Phone:** writes its own fingerprint and the dates of its rd5 files; a plan from the browser whose field 7 differs
+gets one grey line when opened ("Im Browser mit anderer Routenberechnung geplant – Route kann leicht abweichen"); a tile
+whose field-8 day is newer than the phone's file is fetched again at once (`refreshIfNewer`, not after 35 days);
+without field 8 the plan's tiles older than 7 days are checked when it is opened.
+
+**Browser:** writes its engine's fingerprint and the dates of the rd5 it routed with; a plan from the phone whose field
+7 differs gets the same kind of grey line ("Auf dem Handy mit anderer Routenberechnung geplant – …"). The browser
+always reads current rd5 files (proxy, cached ≤ 1 day), so it has no refresh to do.
+
 ## 6. Conflict rule (`SyncMerge`)
 
 - **Newer wins** – total order: `updatedAt`, then device id, then the item bytes. Every device picks the same

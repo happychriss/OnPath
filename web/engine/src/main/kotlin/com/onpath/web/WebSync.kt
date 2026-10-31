@@ -47,7 +47,9 @@ object WebSync {
             "{\"id\":" + str(it.id) + ",\"kind\":" + str(if (it.kind == SyncItem.TRACK) "track" else "plan") +
                 ",\"title\":" + (it.title?.let(::str) ?: "null") + ",\"plan\":" + str(it.plan ?: "") + ",\"track\":" + str(it.track ?: "") +
                 ",\"updatedAt\":" + it.updatedAt + ",\"device\":" + str(it.device) + ",\"mine\":" + (it.device == device) +
-                ",\"dirty\":" + (e?.dirty ?: false) + ",\"onPhone\":" + ((e?.rev ?: 0L) > 0L) + "}"
+                ",\"dirty\":" + (e?.dirty ?: false) + ",\"onPhone\":" + ((e?.rev ?: 0L) > 0L) +
+                ",\"routing\":" + (it.routing?.let(::str) ?: "null") + ",\"routingData\":" + (it.routingData?.let(::str) ?: "null") +
+                ",\"otherRouting\":" + otherRouting(it, device) + "}"
         }
     }
 
@@ -66,8 +68,35 @@ object WebSync {
             ",\"unreadable\":" + l.unreadable + "}"
     }
 
-    fun save(ledger: String, id: String, plan: String, title: String, now: Double, device: String): String =
-        SyncLedger.read(ledger).also { it.save(id, plan, title.ifBlank { null }, now.toLong(), device) }.write()
+    /**
+     * Stores a plan item as it is – a route moved into another folder keeps the routing fields of whoever saved it
+     * ([routing] / [routingData] as `syncList` gave them, "" = none). The page's own Save is [saveRouted].
+     */
+    fun save(ledger: String, id: String, plan: String, title: String, now: Double, device: String,
+             routing: String = "", routingData: String = ""): String =
+        SyncLedger.read(ledger).also { it.save(id, plan, title.ifBlank { null }, now.toLong(), device,
+            routing.ifEmpty { null }, routingData.ifEmpty { null }) }.write()
+
+    /**
+     * The page's Save (Speichern) of the plan it shows – the route the user saw is this engine's: field 7 = its routing
+     * fingerprint, field 8 = the creation days of the rd5 it routed with under the plan's points (web-sync.md §5.2, as
+     * the app writes them). Unknown stays unknown (no field), never a guess.
+     */
+    fun saveRouted(ledger: String, id: String, plan: String, title: String, now: Double, device: String): String {
+        val fp = Engine.routingFingerprint().takeIf { com.onpath.app.routing.RoutingFingerprint.isComparable(it) }
+        val pts = com.onpath.app.routing.PlanCode.parse(plan)?.points.orEmpty()
+        return SyncLedger.read(ledger).also { it.save(id, plan, title.ifBlank { null }, now.toLong(), device, fp, Engine.routingData(pts)) }.write()
+    }
+
+    /**
+     * A plan from another device (the phone) planned with other routing: its field 7 and this engine's fingerprint are
+     * both comparable and differ – the page shows one grey line when it opens it (web-sync.md §5.2).
+     */
+    internal fun otherRouting(item: SyncItem, device: String): Boolean {
+        val own = Engine.routingFingerprint()
+        return item.kind == SyncItem.PLAN && item.device != device && com.onpath.app.routing.RoutingFingerprint.isComparable(item.routing) &&
+            com.onpath.app.routing.RoutingFingerprint.isComparable(own) && item.routing != own
+    }
 
     fun rename(ledger: String, id: String, title: String, now: Double, device: String): String =
         SyncLedger.read(ledger).also { it.rename(id, title.ifBlank { null }, now.toLong(), device) }.write()

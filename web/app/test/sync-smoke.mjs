@@ -137,7 +137,12 @@ class Phone {
   }
   async list() { return JSON.parse(await call('syncList', this.ledger, this.device)); }
   async titles() { return (await this.list()).map((x) => x.title).sort(); }
-  async save(title, plan = CODE) { const id = await call('syncNewId', rnd(16)); this.ledger = await call('syncSave', this.ledger, id, plan, title, Date.now(), this.device); return id; }
+  /** [routing] / [routingData] = sync fields 7 / 8 as the phone writes them (web-sync.md §5.2), '' = an older app. */
+  async save(title, plan = CODE, routing = '', routingData = '') {
+    const id = await call('syncNewId', rnd(16));
+    this.ledger = await call('syncSave', this.ledger, id, plan, title, Date.now(), this.device, routing, routingData);
+    return id;
+  }
   async rename(id, title) { this.ledger = await call('syncRename', this.ledger, id, title, Date.now(), this.device); }
   async remove(id) { this.ledger = await call('syncDelete', this.ledger, id, Date.now(), this.device); }
   idOf = async (title) => (await this.list()).find((x) => x.title === title)?.id;
@@ -281,9 +286,14 @@ sb = await saveBtn(A);
 check(!sb.unsaved && sb.state === 'done', `Save: the button is light again (${JSON.stringify(sb)})`);
 await phone.round();
 check((await phone.titles()).includes('Waalweg'), 'Save sent it: the phone has "Waalweg"');
+// sync fields 7 / 8 (web-sync.md §5.2): the browser's Save writes its routing fingerprint and the rd5 day it routed with
+const waal = (await phone.list()).find((x) => x.title === 'Waalweg');
+const ownFp = (await A.evaluate(() => window.__diag())).match(/routing: (r1-[0-9a-f]{12})/)?.[1];
+check(/^r1-[0-9a-f]{12}$/.test(waal?.routing ?? '') && waal.routing === ownFp && /^E10_N45:\d{5}$/.test(waal?.routingData ?? ''),
+  `Save writes field 7 = the page's fingerprint, field 8 = the rd5 day (${waal?.routing} = ${ownFp}, ${waal?.routingData})`);
 
 // ---- 5. the phone's changes arrive (📱, no marks); a rename here via ⋮ is bold until Save sends it back (🖥 📱) ----
-await phone.save('Vom Handy');
+await phone.save('Vom Handy', CODE, 'r1-0123456789ab', 'E10_N45:20700'); // planned on the phone with other routing
 await phone.rename(hw, 'Handweg neu');
 await phone.round();
 await A.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); // the tab is visible again → pull
@@ -311,6 +321,9 @@ await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
 check((await listRow(A, 'Vom Handy'))?.current, 'a click on a row opens it: the open route is marked (light green)');
 await A.click('#closePlans');
+const note = await A.evaluate(() => { const n = document.getElementById('routingNote'); return n && !n.hidden ? n.textContent : ''; });
+check(note === 'Planned on the phone with other routing – the route may differ slightly',
+  `a plan from the phone with another fingerprint: one grey line ("${note}")`);
 
 // ---- 6. conflict: both kept, the older as "(copy)" ----
 const wid = await phone.idOf('Waalweg');
