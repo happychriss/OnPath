@@ -1,12 +1,14 @@
 package btools.router;
 
 import btools.mapaccess.MatchedWaypoint;
+import btools.mapaccess.OsmNodePairSet;
 
 /**
  * Reads BRouter's turn instructions ("voice hints", computed at real junctions only) and matched waypoints from a
- * finished track. In BRouter's own package because VoiceHint's fields are package-private and
- * OsmTrack.matchedWaypoints is protected – no reflection, so the same code runs in the web planner (TeaVM). Never
- * throws; no hints = empty array.
+ * finished track, and reaches the engine's island list for the second snap of an isolated point. In BRouter's own
+ * package because VoiceHint's fields are package-private, OsmTrack.matchedWaypoints is protected and
+ * RoutingEngine.islandNodePairs is package-private in OnPath's jar – no reflection, so the same code runs in the web
+ * planner (TeaVM). Never throws; no hints = empty array.
  */
 public final class OnPathHints {
     private OnPathHints() {}
@@ -86,6 +88,38 @@ public final class OnPathHints {
             // expected: unknown means no second snap for an isolated way (the caller logs it)
         }
         return null;
+    }
+
+    /**
+     * How often BRouter itself retried after an island in a run of [engine] (the freeze count of its island list), or
+     * -1 when unknown. RoutingEngine.islandNodePairs is private upstream; OnPath's brouter-core jar has it
+     * package-private (tools/routing/patch_brouter_jar.py) so it is read here – no reflection, the web (TeaVM) too.
+     */
+    public static int islandRetries(RoutingEngine engine) {
+        try {
+            OsmNodePairSet pairs = engine == null ? null : engine.islandNodePairs;
+            return pairs == null ? -1 : pairs.getFreezeCount();
+        } catch (RuntimeException e) {
+            // expected: unknown means "no track found" is not taken for an island start (the caller logs it)
+            return -1;
+        }
+    }
+
+    /**
+     * Makes the waypoint matching of a not yet run [engine] skip [ways] (each { node1, node2 } as BRouter ids): they go
+     * into its island list – used only when snapping points – as BRouter's own island retry does. False = not done.
+     */
+    public static boolean skipOnSnap(RoutingEngine engine, long[][] ways) {
+        try {
+            OsmNodePairSet pairs = engine == null ? null : engine.islandNodePairs;
+            if (pairs == null || ways == null) return false;
+            for (long[] w : ways) pairs.addTempPair(w[0], w[1]);
+            pairs.freezeTempPairs();
+            return true;
+        } catch (RuntimeException e) {
+            // expected: not done means the point stays on the isolated way (the caller logs it)
+            return false;
+        }
     }
 
     private static double[] row(VoiceHint h) {

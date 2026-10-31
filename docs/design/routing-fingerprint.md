@@ -15,13 +15,14 @@ them weekly). This note says how they are made visible.
   (`lookups.dat`, `hiking-mountain.brf`, `mtb.brf`, `touring.brf`, `trekking.brf`), `"<name>\n<length>\n"` + its bytes
   without `\r` (a CRLF checkout is the same profile). Comments count (a profile with other comments is another version
   – simpler and safer than `RouterClassHash`'s normalising, which follows WayClass.java for another purpose).
-- `BROUTER_VERSION = "1.7.11-beta"` – `RoutingFingerprintTest` fails when the jars in `app/libs` are another version.
+- `BROUTER_VERSION = "1.7.11-beta-onpath1"` (BRouter 1.7.11-beta with OnPath's one jar patch, `docs/handoff-web-island.md`)
+  – `RoutingFingerprintTest` fails when the jars in `app/libs` are another version.
 - `PLANNER_VERSION = 1` – raised by hand with every change that can give another route for the same points, activity
   and data: Planner passes / splits, `WaypointSnap` rules, the profile parameters and via handling in `BRouterEngine`.
   Not raised for refactors that keep every route (e.g. `PlanResult`).
 - `FILES` – the test fails when `assets/brouter` gets a profile the fingerprint does not hash.
 - `RoutingFingerprint.describe(fp, rd5)` – the Diagnostics line, e.g.
-  `Routing: r1-3fa9c2e81b04 · BRouter 1.7.11-beta · planner 1 · data E10_N45 2026-10-26, E5_N45 2026-10-26`.
+  `Routing: r1-3fa9c2e81b04 · BRouter 1.7.11-beta-onpath1 · planner 1 · data E10_N45 2026-10-26, E5_N45 2026-10-26`.
   The date is the rd5's own creation time (BRouter writes it into the file's tail, `Rd5Parts.creationTime`; ms, UTC
   day), "–" for a file without a tail.
 

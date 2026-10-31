@@ -2,7 +2,6 @@ package com.onpath.app.routing
 
 import com.onpath.strings.*
 import android.content.Context
-import btools.mapaccess.OsmNodePairSet
 import btools.router.OsmNodeNamed
 import btools.router.OsmTrack
 import btools.router.ProfileCache
@@ -184,27 +183,19 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             if (it == null) Problems.warn("routing", "BRouter snapped way of $name unknown; no second snap for an isolated way")
         }
 
-    // islandRetries / skipOnSnap stay reflection: `RoutingEngine.islandNodePairs` is private (not protected), so no
-    // accessor in BRouter's package reaches it – the web planner (TeaVM) gets no second snap for an island point.
+    // islandRetries / skipOnSnap: `RoutingEngine.islandNodePairs` is private upstream; OnPath's brouter-core jar has it
+    // package-private (tools/routing/patch_brouter_jar.py, the only change to BRouter), so OnPathHints reaches it
+    // without reflection – the web planner (TeaVM) gets the same second snap for an island point as the app.
 
     /** How often BRouter itself retried after an island (its `islandNodePairs` freeze count); -1 = unknown. */
-    private fun islandRetries(engine: BRouter): Int = try {
-        val f = BRouter::class.java.getDeclaredField("islandNodePairs").apply { isAccessible = true }
-        (f.get(engine) as OsmNodePairSet).freezeCount
-    } catch (e: Throwable) {
-        Problems.warn("routing", "BRouter island retries not readable (reflection)", e)
-        -1
+    private fun islandRetries(engine: BRouter): Int = btools.router.OnPathHints.islandRetries(engine).also {
+        if (it < 0) Problems.warn("routing", "BRouter island retries not readable")
     }
 
     /** Makes BRouter's waypoint matching skip [ways] (its island list – used only when snapping points). */
     private fun skipOnSnap(engine: BRouter, ways: List<LongArray>) {
-        try {
-            val f = BRouter::class.java.getDeclaredField("islandNodePairs").apply { isAccessible = true }
-            val pairs = f.get(engine) as OsmNodePairSet
-            ways.forEach { pairs.addTempPair(it[0], it[1]) }
-            pairs.freezeTempPairs()
-        } catch (e: Throwable) {
-            Problems.warn("routing", "BRouter island list not writable (reflection); point stays on the isolated way", e)
+        if (!btools.router.OnPathHints.skipOnSnap(engine, ways.toTypedArray())) {
+            Problems.warn("routing", "BRouter island list not writable; point stays on the isolated way")
         }
     }
 

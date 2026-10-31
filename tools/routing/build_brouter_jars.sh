@@ -5,12 +5,17 @@
 # normal bike, TouringProfileTest) and is not copied.
 # Plain javac (no Gradle, no external deps): brouter-util, -codec, -expressions,
 # -mapaccess, -core, compiled with --release 11 (D8 compatible).
+# OnPath's one change to BRouter (MIT; the jar names say it: <version>-onpath1): brouter-core's
+# RoutingEngine.islandNodePairs is made package-private by tools/routing/patch_brouter_jar.py (access flag only, no
+# byte code changes), so btools.router.OnPathHints reaches the island list without reflection – the web planner (TeaVM)
+# then snaps an island point to the next way like the app (docs/handoff-web-island.md). Raise the label when the patch
+# changes; RoutingFingerprint.BROUTER_VERSION must match the jar names (RoutingFingerprintTest).
 # Usage: tools/routing/build_brouter_jars.sh [BROUTER_SRC_DIR]
 set -euo pipefail
 SRC=${1:-/home/user/build/brouter}
 HERE=$(cd "$(dirname "$0")/../.." && pwd)
 VER=$(grep -oE "version = '[^']+'" "$SRC/buildSrc/src/main/groovy/brouter.version-conventions.gradle" | cut -d"'" -f2)
-VER=${VER:-unknown}
+VER=${VER:-unknown}-onpath1
 WORK=$(mktemp -d)
 CP=""
 mkdir -p "$HERE/app/libs"
@@ -22,6 +27,8 @@ for m in util codec expressions mapaccess core; do
   jar --create --file "$HERE/app/libs/brouter-$m-$VER.jar" -C "$WORK/$m" .
   CP="$CP:$WORK/$m"
 done
+python3 -I "$HERE/tools/routing/patch_brouter_jar.py" "$HERE/app/libs/brouter-core-$VER.jar"
+python3 -I "$HERE/tools/routing/patch_brouter_jar.py" --check "$HERE/app/libs/brouter-core-$VER.jar"
 A="$HERE/app/src/main/assets/brouter"
 mkdir -p "$A"
 for f in lookups.dat trekking.brf mtb.brf hiking-mountain.brf; do

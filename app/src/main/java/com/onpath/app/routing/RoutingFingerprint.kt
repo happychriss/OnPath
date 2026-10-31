@@ -18,7 +18,7 @@ import com.onpath.app.sync.Sha256
  */
 object RoutingFingerprint {
     /** The BRouter jars in app/libs (tools/routing/build_brouter_jars.sh). */
-    const val BROUTER_VERSION = "1.7.11-beta"
+    const val BROUTER_VERSION = "1.7.11-beta-onpath1"
 
     /**
      * Our routing code's version: raise it with every change that can give another route for the same points,
@@ -49,7 +49,7 @@ object RoutingFingerprint {
     }
 
     /**
-     * The Diagnostics line: "r1-… · BRouter 1.7.11-beta · planner 1 · data E10_N45 2026-10-20, E5_N45 –" – [rd5] = the
+     * The Diagnostics line: "r1-… · BRouter 1.7.11-beta-onpath1 · planner 1 · data E10_N45 2026-10-20, E5_N45 –" – [rd5] = the
      * routing files on the phone (name → BRouter's creation time in ms, null = unknown / old file without a tail).
      */
     fun describe(fingerprint: String, rd5: List<Pair<String, Long?>>): String {

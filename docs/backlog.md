@@ -36,6 +36,11 @@ the git log.
   e8245e5 (10-29); after the next merge `web/parity.json` flags these files too. Drive hand-off: 00 Übergabe,
   "2026-10-30 donald → Web-Planer: App-Änderungen zum Nachziehen".
   - *Must (the web build or the web map breaks after merging main):*
+    - Island retry without reflection (Köln Dom) · (this branch, 2026-10-31) · BRouter jars renamed to
+      `1.7.11-beta-onpath1` (brouter-core: `islandNodePairs` package-private, `tools/routing/patch_brouter_jar.py`),
+      `OnPathHints.islandRetries` / `skipOnSnap` – run `node web/parity/check.mjs --update` (new jar names) and make
+      Köln Dom → Neumarkt a normal gate case in `web/test/plans.json` (1334 m); fingerprint changes once – steps in
+      `docs/handoff-web-island.md`.
     - My routes: "New" / "Changed" tags instead of bold + grey line (owner 2026-10-31) · (this branch, 2026-10-31) ·
       the web's My routes shows the phone's `mark` as the same light blue tag after the name ("Neu" / "Geändert"),
       same look (`#DDEAFB` / `#0B3D91`, 12 px bold pill, never cut) – steps in `docs/handoff-web-route-tags.md`.
