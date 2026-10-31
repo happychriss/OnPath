@@ -1,11 +1,11 @@
 package com.onpath.app.plansync
 
+import com.onpath.app.data.AtomicFiles
 import com.onpath.app.debug.Problems
 import com.onpath.app.sync.PairCode
 import com.onpath.app.sync.SyncFormat
 import com.onpath.app.sync.SyncLedger
 import java.io.File
-import java.io.FileOutputStream
 
 /**
  * Which synced item is which tour on this phone: item id ⇄ tour uuid (the tour's stable id, data/TourDb), plus the items
@@ -126,15 +126,10 @@ class SyncFiles(val dir: File) {
         Problems.warn("sync", "Sync file ${f.name} unreadable", e); null
     }
 
-    /** Temp file → flushed to disk → renamed over the old one. Throws on failure (disk full): the caller reports it. */
+    /** Temp file → flushed to disk → moved over the old one in one step. Throws on failure (disk full): the caller reports it. */
     private fun write(f: File, text: String) {
         if (!dir.isDirectory && !dir.mkdirs()) throw java.io.IOException("sync folder not created")
-        val tmp = File(dir, f.name + TMP)
-        FileOutputStream(tmp).use { out -> out.write(text.toByteArray()); out.flush(); out.fd.sync() }
-        if (!tmp.renameTo(f)) {
-            // some file systems refuse to rename over an existing file
-            if (!f.delete() || !tmp.renameTo(f)) throw java.io.IOException("${f.name} not replaced")
-        }
+        AtomicFiles.writeText(f, text, File(dir, f.name + TMP))
     }
 
     companion object {

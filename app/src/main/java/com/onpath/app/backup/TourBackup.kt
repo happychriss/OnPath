@@ -1,5 +1,6 @@
 package com.onpath.app.backup
 
+import com.onpath.app.data.AtomicFiles
 import com.onpath.app.debug.Problems
 import com.onpath.app.gpx.TrackPoint
 import org.json.JSONObject
@@ -75,9 +76,7 @@ class BackupIndex(private val file: File?) {
             map.forEach { (k, e) ->
                 o.put(k, JSONObject().put("store", e.store).put("handle", e.handle).put("file", e.fileName).put("deleted", e.deleted))
             }
-            val tmp = File(f.path + ".tmp")
-            tmp.writeText(o.toString())
-            if (!tmp.renameTo(f)) { f.delete(); if (!tmp.renameTo(f)) throw java.io.IOException("rename failed") }
+            AtomicFiles.writeText(f, o.toString(), File(f.path + ".tmp"))
         } catch (e: Exception) {
             Problems.warn("backup", "Backup index not saved – a tour may be written twice next time", e)
         }
