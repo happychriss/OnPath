@@ -7,6 +7,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] Plan edits during a tour – position splits the plan (`docs/design/tour-edit-position.md`) – since 2026-10-31
 
 ## Next
 - **On the next real ride (owner)** – onboarding checklist step 7 (30 min, screen off, battery saver; steps 2–6 passed on
