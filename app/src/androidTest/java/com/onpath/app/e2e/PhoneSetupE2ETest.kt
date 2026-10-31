@@ -16,7 +16,7 @@ import org.junit.runner.RunWith
 
 /**
  * Phone setup before a tour (docs/design/onboarding-phone-check.md): with location allowed nothing blocks; a step that
- * is only recommended (the untested vibration) shows once, and "Later" starts the tour anyway.
+ * is only recommended (the untested vibration, the voice not heard yet) shows once, and "Later" starts the tour anyway.
  */
 @RunWith(AndroidJUnit4::class)
 class PhoneSetupE2ETest : E2EBase() {
@@ -34,10 +34,20 @@ class PhoneSetupE2ETest : E2EBase() {
         var current: CheckId? = null
         scenario.onActivity { current = vm(it).setupGuide?.current }
         assertEquals(CheckId.VIBRATION, current)
-        val later = device.wait(Until.findObject(By.text("Later")), 5_000)
-        assertNotNull("the step offers Later", later)
-        later.click()
-        device.waitForIdle()
+        // every recommended step offers Later: the vibration, then (voice on, its test sentence not heard yet) the voice
+        val seen = ArrayList<CheckId?>()
+        repeat(3) {
+            var step: CheckId? = null
+            scenario.onActivity { step = vm(it).setupGuide?.current }
+            if (step == null) return@repeat
+            seen += step
+            // "Continue" where nothing can be done (no speech engine on the phone)
+            val later = device.wait(Until.findObject(By.text(java.util.regex.Pattern.compile("Later|Continue"))), 5_000)
+            assertNotNull("the step $step offers Later", later)
+            later.click()
+            device.waitForIdle()
+        }
+        assertTrue("$seen", seen.all { it == CheckId.VIBRATION || it == CheckId.VOICE })
         var open = true
         scenario.onActivity { open = vm(it).setupGuide != null }
         assertTrue("the tour starts after Later", started && !open)
