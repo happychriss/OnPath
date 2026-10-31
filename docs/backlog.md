@@ -28,8 +28,10 @@ the git log.
   sentence waits until voice guidance is released.
 
 - → [cloud-web] Help pages (`/hilfe/…`, `/help/…`) have no pictures at all – only the home page has the 14 app
-  images. Once the owner has put the A-019 set into Drive (backlog "Waiting for the owner"), add the matching
-  screens to the help topics (first steps, planning, tour menu, GPX, Google Maps place). Also: the site already
+  images. Add the matching
+  screens to the help topics (first steps, planning, tour menu, GPX, Google Maps place). **Ready now:** 59 PNGs in
+  `onpath.private/marketing/bilder/` (a019 = help set 08a–10d, nachtrag, nachtrag2; index = each Ergebnis.md).
+  Note: the set is from app 0.13.2 – check each picture against today's app texts (e.g. the empty plan hint) first. Also: the site already
   calls voice guidance available (065d3b7) – fine if v0.14.0 ships 2026-11-01, otherwise roll that text back –
   captain 2026-11-01.
 
