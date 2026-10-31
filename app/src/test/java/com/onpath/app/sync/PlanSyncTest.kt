@@ -150,6 +150,133 @@ class PlanSyncTest {
         assertEquals(SyncItem.ROLE_PHONE, l.get(SyncFormat.deviceItemId(phone))!!.role)
     }
 
+    // ---- routing fingerprint + routing data dates in a plan item (docs/design/routing-fingerprint.md "Sync fields") ----
+
+    private val fp = "r1-3fa9c2e81b04"
+    private val data = "E10_N45:20752,E5_N45:20750"
+
+    @Test fun planItemWithRoutingFieldsIsFrozen() {
+        val it = SyncItem(id(9), 1_793_000_000_000, web, title = "Waalweg", routing = fp, routingData = data)
+        val bytes = SyncFormat.encode(it)
+        // also built by hand in Python: …, 7 = "r1-…" (15 bytes), 8 = "E10_N45:20752,E5_N45:20750" (26 bytes)
+        assertEquals(FROZEN_ROUTING_ITEM, B64.encode(bytes))
+        assertEquals(it, SyncFormat.decode(bytes))
+    }
+
+    @Test fun routingFieldsRoundTripAndOldItemsStillRead() {
+        val with = item(1, 10).copy(routing = fp, routingData = data)
+        assertEquals(with, SyncFormat.decode(SyncFormat.encode(with)))
+        val old = item(1, 10)
+        val back = SyncFormat.decode(SyncFormat.encode(old))!!
+        assertNull(back.routing); assertNull(back.routingData)
+        assertEquals(old, back)
+        // only one of the two
+        assertEquals(old.copy(routing = fp), SyncFormat.decode(SyncFormat.encode(old.copy(routing = fp))))
+        assertEquals(old.copy(routingData = data), SyncFormat.decode(SyncFormat.encode(old.copy(routingData = data))))
+        // the item without them has the bytes of today's format (the blob stays frozen)
+        assertTrue(SyncFormat.encode(with).copyOf(SyncFormat.encode(old).size).contentEquals(SyncFormat.encode(old)))
+        // garbage in the fields: dropped, never a wrong value
+        val bad = old.copy(routing = "r1 3fa9!" + "x".repeat(40), routingData = "E10_N45:x,../etc:1,E5_N45:20750")
+        val b2 = SyncFormat.decode(SyncFormat.encode(bad))!!
+        assertNull(b2.routing)
+        assertEquals("E5_N45:20750", b2.routingData)
+        // a newer fingerprint format passes through (only the comparer decides what it can compare)
+        assertEquals("r2-abc", SyncFormat.decode(SyncFormat.encode(old.copy(routing = "r2-abc")))!!.routing)
+    }
+
+    /** PLAN items only: a track, a hello, a tombstone of a track never carry them. */
+    @Test fun routingFieldsOnlyInPlans() {
+        val hello = SyncItem(SyncFormat.deviceItemId(phone), 5, phone, kind = SyncItem.DEVICE, name = "Pixel 8")
+        assertEquals(SyncFormat.encode(hello).size, SyncFormat.encode(hello.copy(routing = fp, routingData = data)).size)
+        val tomb = SyncItem(id(2), 7, phone, deleted = true, kind = SyncItem.TRACK)
+        assertNull(SyncFormat.decode(SyncFormat.encode(tomb.copy(routing = fp)))!!.routing)
+    }
+
+    /**
+     * An older app / page reads a new item as the plain plan: fields 7 and 8 come after every field it knows and are
+     * skipped like any unknown tag. Emulated with today's reader by renumbering 7 / 8 to tags it does not know either.
+     */
+    @Test fun anOldReaderSkipsTheRoutingFields() {
+        val old = item(1, 10)
+        val bytes = SyncFormat.encode(old.copy(routing = fp, routingData = data))
+        val head = SyncFormat.encode(old).size
+        // the rest are exactly two fields: tag 7 and tag 8
+        assertEquals(7, bytes[head].toInt()); assertEquals(fp.length, bytes[head + 1].toInt())
+        val second = head + 2 + fp.length
+        assertEquals(8, bytes[second].toInt()); assertEquals(data.length, bytes[second + 1].toInt())
+        assertEquals(bytes.size, second + 2 + data.length)
+        val renumbered = bytes.copyOf().also { it[head] = 98; it[second] = 99 }
+        assertEquals("tags it does not know: the old plan, nothing else", old, SyncFormat.decode(renumbered))
+        // and the blob opens as before
+        val blob = SyncFormat.seal(keys, old.copy(routing = fp, routingData = data), ByteArray(12) { 4 })
+        assertEquals(fp, SyncFormat.open(keys, old.id, blob)!!.routing)
+    }
+
+    /** Not content: a re-save with other routing is the same plan – no conflict copy, one winner on every side. */
+    @Test fun routingFieldsAreNoContent() {
+        val a = item(1, 10).copy(routing = fp, routingData = data)
+        val b = item(1, 20, dev = web).copy(routing = "r1-000000000000", routingData = "E10_N45:20760")
+        assertTrue(a.sameContent(b.copy(device = phone, updatedAt = 10)))
+        assertTrue(a.sameContent(item(1, 10)))
+        assertFalse(a.sameContent(a.copy(title = "other")))
+        val m = SyncMerge.merge(a, b)
+        assertEquals(b, m.winner); assertNull("no copy for other routing", m.copy)
+        assertEquals(m, SyncMerge.merge(b, a))
+        // same time and device: content decides first, the routing fields only for the same content – a total order
+        val c = item(1, 10).copy(routing = "r1-ffffffffffff")
+        assertTrue(SyncMerge.newer(c, a) != SyncMerge.newer(a, c))
+        assertEquals(SyncMerge.merge(a, c).winner, SyncMerge.merge(c, a).winner)
+        assertNull(SyncMerge.merge(a, c).copy)
+        val t = item(1, 10, title = "Zz")
+        assertEquals("the title (content) decides, not the routing fields", SyncMerge.newer(t, item(1, 10)),
+            SyncMerge.newer(t, a))
+        // the ledger: a remote version with only other routing replaces the local one quietly
+        val l = SyncLedger.empty()
+        l.save(a.id, plan, "Plan 1", 10, phone, routing = fp, routingData = data)
+        val mine = l.get(a.id)!!
+        assertEquals(fp, mine.routing); assertEquals(data, mine.routingData)
+        val merged = SyncMerge.reconcile(l.entries, listOf(RemoteItem(b, 5)))
+        assertEquals(1, merged.size)
+        assertEquals("r1-000000000000", merged.getValue(a.id).item.routing)
+        // the ledger file keeps the fields; a rename keeps them (the plan was not routed again)
+        val back = SyncLedger.read(l.write())
+        assertEquals(mine, back.get(a.id))
+        back.rename(a.id, "New name", 30, phone)
+        assertEquals(fp, back.get(a.id)!!.routing)
+    }
+
+    @Test fun routingDataText() {
+        assertEquals(20752L, SyncRoutingData.day(1_793_000_000_000)) // 2026-10-26
+        assertEquals(0L, SyncRoutingData.day(0)); assertEquals(-1L, SyncRoutingData.day(-1))
+        assertEquals("E10_N45:20752,E5_N45:20750", SyncRoutingData.encode(mapOf("E5_N45.rd5" to 20750L, "E10_N45.rd5" to 20752L)))
+        assertEquals(mapOf("E10_N45" to 20752L, "E5_N45" to 20750L), SyncRoutingData.parse(data))
+        assertEquals(mapOf("W5_S10" to 1L), SyncRoutingData.parse("W5_S10:1"))
+        assertNull(SyncRoutingData.encode(emptyMap()))
+        assertNull(SyncRoutingData.encode(mapOf("foo" to 1L, "E10_N45" to -3L)))
+        for (g in listOf(null, "", ",", ":", "E10_N45", "E10_N45:", "E10_N45:12345678", "e10_n45:1", "E1000_N45:1")) {
+            assertTrue(g.toString(), SyncRoutingData.parse(g).isEmpty())
+        }
+        // cut to whole entries before the field limit
+        val many = (0 until 40).associate { "E${it}_N45" to 20752L }
+        val text = SyncRoutingData.encode(many)!!
+        assertTrue(text.length <= SyncFormat.MAX_ROUTING_DATA)
+        assertEquals(text, SyncRoutingData.clean(text))
+        assertTrue(SyncRoutingData.parse(text).size in 10..15)
+        // never throws on random text
+        val rnd = Random(5)
+        repeat(500) { SyncRoutingData.parse(String(CharArray(rnd.nextInt(0, 40)) { "EN_:,0123456789x".random(rnd) })) }
+    }
+
+    @Test fun newerRoutingDataNamesOnlyNewerTilesOnTheDevice() {
+        val own = mapOf<String, Long?>("E10_N45" to 20745L, "E5_N45" to 20750L, "E15_N45" to null)
+        assertEquals(listOf("E10_N45"), SyncRoutingData.newer(data, own)) // E5_N45 the same day: nothing
+        assertEquals(emptyList<String>(), SyncRoutingData.newer("E10_N45:20740", own)) // own is newer
+        assertEquals(emptyList<String>(), SyncRoutingData.newer("E20_N45:20999", own)) // not on the device
+        assertEquals(listOf("E15_N45"), SyncRoutingData.newer("E15_N45:1", own)) // own date unknown = older
+        assertEquals(emptyList<String>(), SyncRoutingData.newer(null, own))
+        assertEquals(listOf("E10_N45", "E15_N45"), SyncRoutingData.newer("E15_N45:20000,E10_N45:20800", own))
+    }
+
     /** The stored copy marker stays " (copy)" everywhere; a phone shows it in its language and stores it back unchanged. */
     @Test fun copyMarkerIsShownLocalizedAndStoredStable() {
         val de = " (Kopie)"
@@ -376,6 +503,7 @@ class PlanSyncTest {
         const val FROZEN_CHECK = "395 514"
         const val FROZEN_JOIN_ID = "sAZCnWUrch6J4Mt9nYTAzw" // also from Python hashlib (A-017)
         const val FROZEN_JOIN_ITEM = "AQSwBkKdZStyHongy32dhMDPAQEBAQEBAQGAlIO5lzQABSxBUUVJRHhZZEpDc3lPVUJIVGxWY1kycHhlSC1HalpTYm9xbXd0NzdGek5QYQ"
+        const val FROZEN_ROUTING_ITEM = "AQEJCQkJCQkJCQkJCQkJCQkJAgICAgICAgKAlIO5lzQAAQdXYWFsd2VnBw9yMS0zZmE5YzJlODFiMDQIGkUxMF9ONDU6MjA3NTIsRTVfTjQ1OjIwNzUw"
         const val FROZEN_BLOB = "AQUFBQUFBQUFBQUFBezwy_DS4VFukiv3lciLKrMNNEjd7xcqYoHVER5ZBI4rz0TPbKW5EUMZ1tFYUge1Y3M852rKXkBCQZmq1iHBROEndXRK7OMGVOO4YsmD_ALasLkzfJMGpmhFHoqWt-FC"
     }
 }

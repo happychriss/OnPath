@@ -49,13 +49,16 @@ class SyncLedger private constructor(
     fun get(id: String): SyncItem? = entries[id]?.item
 
     /**
-     * Saves a plan: a new one under [id] (from [SyncFormat.newId]) or a new version of an existing one.
+     * Saves a plan: a new one under [id] (from [SyncFormat.newId]) or a new version of an existing one. [routing] /
+     * [routingData] = this side's routing fingerprint and the plan's routing data dates (fields 7, 8; null = unknown).
      * Returns the stored item, or null when [id] is not an item id.
      */
-    fun save(id: String, plan: String, title: String?, now: Long, device: String): SyncItem? {
+    fun save(id: String, plan: String, title: String?, now: Long, device: String,
+             routing: String? = null, routingData: String? = null): SyncItem? {
         if (!SyncFormat.isId(id)) return null
         val old = entries[id]
-        return put(SyncItem(id, stamp(old, now), device, kind = SyncItem.PLAN, title = title, plan = plan), old)
+        return put(SyncItem(id, stamp(old, now), device, kind = SyncItem.PLAN, title = title, plan = plan,
+            routing = routing, routingData = routingData), old)
     }
 
     /**
