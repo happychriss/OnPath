@@ -7,6 +7,18 @@ the git log.
 
 ## For the roles
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
+- → [cloud-app] Order (captain 2026-10-31) – the next release is voice guidance: (1) `tools/ci/release_rundgang.sh` on
+  donald – flows 11 + 12 (plan edits during a tour) were only compiled; red → fix first (it changes navigation, so the
+  Rundgang counts for this release); (2) voice guidance on `wip/voice-guidance`: compile, gate + Paparazzi green, merge
+  to `main`, then the owner tests on the Pixel; (3) small field bugs (T0 bike link, track behind „Unterbrochene Tour“,
+  shared place menu). No release before the captain's go.
+- → [cloud-plan] Order (captain 2026-10-31): (1) merge `main` into `web-spike` (`web/parity/merge-main.sh`, 15
+  commits, mostly docs; your role: keep shared code in step) and run the shared-code tests there; (2) "Save asks for the
+  name" + "Plan sheet without ⋯" (app 0.13.5 parity, list below); (3) candidate marker + fit after adding a place.
+  Map builds wait until the owner has put map data on the laptop (`onpath-data/` is empty).
+- → [cloud-web] Order (captain 2026-10-31): (1) copy the Drive folder into `onpath.private` (setup step 7) as soon as the
+  owner gives write access; (2) A-021 tab name / alt text „Aufs Handy · Teilen“ → „Teilen“. The website's voice
+  sentence waits until voice guidance is released.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
@@ -194,6 +206,13 @@ the git log.
   7.2 km – expectation or gap?); zip import checks only sizes (cell downloads check sha256).
 
 ## Waiting for the owner
+- **Role setup leftovers (captain 2026-10-31)** – (1) cloud-web needs write access to `onpath.private` (Drive copy);
+  (2) map data for the laptop (`/home/development/Projects/work/onpath-data/`) – and does the Germany pre-build stay
+  on donald (item "[desktop] Germany pre-built") or move to cloud-plan on the laptop?; (3) git on the laptop:
+  `gh auth setup-git` + `user.name` / `user.email` (cloud-plan pushes through a workaround today); (4) old branches
+  that are fully merged and can go: `feat/plan-code`, `feat/plan-sync`, `web-activity-layers` (all in `web-spike`),
+  `claude/nifty-sagan-6zmueh`, `claude/clever-pasteur-lz4nc8`, `claude/compassionate-fermat-d7f0bs` (nothing beyond
+  `main`) – the captain does not delete branches.
 - **`MapController.metersPerPixel()` density mix-up** – map taps count "on the line" within ~60 dp instead of 24 dp,
   and the shared-place "arrived" check is loose. Owner decision needed: the fix changes hold behaviour.
 - **A-019 images to Drive** – the owner drags the folders (`external-docs/screenshots/2026-10-31-a019*`), or sets up
