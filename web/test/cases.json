@@ -18,5 +18,7 @@
   {"name": "ERR no data (Vienna)", "points": "48.2000,16.3700;48.2100,16.3800", "activity": "HIKE", "sac": 3},
   {"name": "Lake Garda (ferry)", "points": "45.5750,10.7050;45.5600,10.6200", "activity": "HIKE", "sac": 3},
   {"name": "ERR far from path (Adriatic sea)", "points": "45.6800,13.3900;45.5000,13.1500", "activity": "BIKE_TOURING", "sac": 3},
-  {"name": "ERR single point", "points": "46.4970,11.3580", "activity": "HIKE", "sac": 3}
+  {"name": "ERR single point", "points": "46.4970,11.3580", "activity": "HIKE", "sac": 3},
+  {"name": "TU Dortmund stop below steps, BRouter alone", "points": "51.49275,7.41772;51.48722,7.41716;51.48667,7.41685;51.48686,7.41162;51.48471,7.41236", "activity": "BIKE_TOURING", "sac": 2},
+  {"name": "TU Dortmund stop below steps, plan (Bug 01)", "points": "51.49275,7.41772;51.48722,7.41716;51.48667,7.41685;51.48686,7.41162;51.48471,7.41236", "activity": "BIKE_TOURING", "sac": 2, "plan": true, "visits": "51.48667,7.41685"}
 ]

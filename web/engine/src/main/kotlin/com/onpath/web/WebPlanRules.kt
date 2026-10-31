@@ -43,7 +43,8 @@ object WebPlanRules {
     fun gaps(points: String, activity: String, names: String): String {
         val wps = Engine.parsePoints(points)
         val p = Engine.lastPlanFor(wps) ?: return "{\"text\":null,\"gaps\":[]}"
-        val gaps = com.onpath.app.ui.PlanGaps.of(wps, p.snapped)
+        // a stop the route still skips although it lies on a way (Bug 01) keeps its place and shows its gap, as in the app
+        val gaps = com.onpath.app.ui.PlanGaps.of(wps, p.snapped, p.skipped)
         val nm = names.split('\n').mapNotNull { l -> l.substringBefore('\t').toIntOrNull()?.let { it to l.substringAfter('\t') } }.toMap()
         val gapText = com.onpath.app.ui.PlanGaps.text(gaps, Activity.valueOf(activity)) { nm[it] }
         val text = when {

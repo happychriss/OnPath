@@ -8,12 +8,14 @@ const engine = new EngineClient();
 const out: unknown[] = [];
 (async () => {
   const cfg = await engine.configure(new URL('./', location.href).href, params.get('segments') ?? new URL('segments/', location.href).href);
-  const cases: { name: string; points: string; activity: Activity; sac: number }[] = await (await fetch(params.get('cases') ?? 'cases.json')).json();
+  const cases: { name: string; points: string; activity: Activity; sac: number; plan?: boolean }[] = await (await fetch(params.get('cases') ?? 'cases.json')).json();
   for (const c of cases) {
     const pts = c.points.split(';').map((p) => p.split(',').map(Number) as [number, number]);
-    const r = await engine.route(pts, c.activity, c.sac);
-    out.push({ name: c.name, activity: c.activity, ...r });
-    document.body.insertAdjacentText('beforeend', `${c.name} ${c.activity}: ${r.result?.error ?? r.result?.distanceM ?? r.error}\n`);
+    // "plan": true = the plan sheet's Planner (as JvmRun.kt), else one BRouter request
+    const r = c.plan ? await engine.plan(pts, c.activity, c.sac) : await engine.route(pts, c.activity, c.sac);
+    const res = (c.plan ? r.plan : r.result) as { error?: string | null; distanceM?: number } | undefined;
+    out.push({ name: c.name, activity: c.activity, ...r, result: res, plan: undefined });
+    document.body.insertAdjacentText('beforeend', `${c.name} ${c.activity}: ${res?.error ?? res?.distanceM ?? r.error}\n`);
   }
   // pace setting (WebPace): the same runs as the JVM's paceRun (JvmRun.kt) – Hike, a bike, an e-bike
   const pace: unknown[] = [];

@@ -151,19 +151,21 @@ jobs:
           cache: npm
           cache-dependency-path: web/app/package-lock.json
 
-      # BRouter routing data for Südtirol (E10_N45, ~200 MB), refreshed weekly. The JVM and the browser read the
-      # same file in one run, so a newer brouter.de version never makes them differ.
+      # BRouter routing data for Südtirol (E10_N45, ~200 MB) and the Ruhr (E5_N50, ~180 MB: the TU Dortmund case of
+      # Bug 01, a stop on a way is always visited), refreshed weekly. The JVM and the browser read the same files in
+      # one run, so a newer brouter.de version never makes them differ.
       - name: Week number (cache key)
         id: week
         run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v4
         with:
           path: segments
-          key: rd5-E10_N45-${{ steps.week.outputs.week }}
+          key: rd5-E10_N45-E5_N50-${{ steps.week.outputs.week }}
       - name: Routing data
         run: |
           mkdir -p segments
           [ -s segments/E10_N45.rd5 ] || curl -fsS --retry 3 -o segments/E10_N45.rd5 https://brouter.de/brouter/segments4/E10_N45.rd5
+          [ -s segments/E5_N50.rd5 ] || curl -fsS --retry 3 -o segments/E5_N50.rd5 https://brouter.de/brouter/segments4/E5_N50.rd5
           ls -la segments
 
       - name: Playwright's Chromium

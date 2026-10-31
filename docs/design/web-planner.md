@@ -121,9 +121,17 @@ alternative to TeaVM but still experimental – watch, not use.
   on hosts without ranges). Planner page: click → point (WaypointInsertion), drag / click to move / delete,
   activity + T level, route (failed legs dashed), km / ↑ / ↓ / time / difficulty, profile coloured by
   `RouteSummary.steepness`. Map = the app's format-2 style, fonts and sprite unchanged.
-- Tests: `web/test/cases.json` (20 cases: Bozen–Meran × 6 activities, Algund, Meran 2000 T2/T3/T5, via Terlan,
-  Ultental loop, Lana–Ulten across 11°E, ferry, 3 error cases). `./gradlew -p web/engine runJvm` (same Engine on
-  the JVM, full rd5) vs `web/app/test/browser-compare.mjs` (headless Chromium, partial rd5 by range).
+- Tests: `web/test/cases.json` (22 cases: Bozen–Meran × 6 activities, Algund, Meran 2000 T2/T3/T5, via Terlan,
+  Ultental loop, Lana–Ulten across 11°E, ferry, 3 error cases, TU Dortmund by Bike – BRouter alone and as the plan
+  sheet plans it). A case with `"plan": true` runs the app's Planner (`Engine.plan`) instead of one BRouter request;
+  `"visits": "lat,lon"` = the line must pass that stop within 15 m (Bug 01, core feature C3: a stop on a way is always
+  visited – TU Dortmund 2599 m without the stop pass, 2691 m with it, the line 4 m from stop 3; needs E5_N50.rd5).
+  `./gradlew -p web/engine runJvm` (same Engine on the JVM, full rd5) vs `web/app/test/browser-compare.mjs`
+  (headless Chromium, partial rd5 by range).
+  Still open: an island point (Köln Dom → Neumarkt, `tools/routing/jvm-test/IslandTest.kt`) gets no second snap in the
+  browser – BRouter's `RoutingEngine.islandNodePairs` is private, the app reads it by reflection (`islandRetries` /
+  `skipOnSnap`), TeaVM has none ("BRouter island retries not readable (reflection)" in Problems). Needs a BRouter
+  patch or a subclass hook (low prio, docs/backlog.md); not a case here.
   `web/app/test/ui-smoke.mjs` clicks two points. `.github/workflows/web-spike.yml` runs all on the branch.
 
 **Numbers** (cloud container; CI green):

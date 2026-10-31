@@ -31,10 +31,24 @@ const metres = (a, b) => {
   const k = Math.PI / 180, x = (b[1] - a[1]) * k * Math.cos(((a[0] + b[0]) / 2) * k), y = (b[0] - a[0]) * k;
   return Math.sqrt(x * x + y * y) * 6371000;
 };
+// a "plan": true case (Engine.plan) has its line in legs; a route case in points
+const line = (x) => x.points ?? (x.legs ?? []).flatMap((l) => l.points);
+const cases = JSON.parse(fs.readFileSync(path.join(here, '../../test/cases.json'), 'utf8'));
 let fails = 0;
 const rows = [];
+const visits = [];
 web.cases.forEach((w, i) => {
-  const j = jvm[i]; const r = w.result ?? { error: w.error };
+  const j0 = jvm[i]; const r0 = w.result ?? { error: w.error };
+  const j = j0.error ? j0 : { ...j0, points: line(j0) }; const r = r0.error ? r0 : { ...r0, points: line(r0) };
+  // "visits": "lat,lon" = the line must pass this stop within 15 m (Bug 01: a stop on a way is always visited)
+  if (cases[i]?.visits && !r.error) {
+    const v = cases[i].visits.split(',').map(Number);
+    const near = (pts) => Math.min(...pts.map((p) => metres(p, v)));
+    const [wm, jm] = [near(r.points), near(j.points)];
+    const ok = wm <= 15 && jm <= 15;
+    visits.push(`${w.name}: browser ${r.distanceM} m, line ${wm.toFixed(1)} m from stop · JVM ${j.distanceM} m, ${jm.toFixed(1)} m${ok ? '' : ' – FAIL (must be ≤ 15 m)'}`);
+    if (!ok) fails++;
+  }
   let ok, note;
   if (j.error || r.error) { ok = j.error === r.error; note = ok ? `error: ${r.error}` : `JVM "${j.error}" vs web "${r.error}"`; }
   else {
@@ -48,6 +62,7 @@ web.cases.forEach((w, i) => {
     fetchMs: Math.round(w.stats?.fetchMs ?? 0), fetchedKB: Math.round((w.stats?.bytesFetched ?? 0) / 1024), note });
 });
 console.table(rows);
+for (const v of visits) console.log('visits: ' + v);
 // pace setting: every level's plan time as on the JVM (JvmRun.paceRun), a new plan at Very fit = planTime's, and the
 // levels really change the time (Relaxed > Average > Very fit; an e-bike on the flat is capped, PaceModel)
 const jvmPaceFile = path.join(path.dirname(jvmFile), 'jvm-pace.json');

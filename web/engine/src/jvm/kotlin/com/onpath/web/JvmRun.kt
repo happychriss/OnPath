@@ -15,13 +15,15 @@ fun main(args: Array<String>) {
     Files.createSymbolicLink(File(root, "assets").toPath(), File(app, "app/src/main/assets").toPath())
     Files.createSymbolicLink(File(root, "segments").toPath(), File(segDir).canonicalFile.toPath())
     Engine.init(root.path)
-    val cases = Regex("""\{"name":\s*"([^"]*)",\s*"points":\s*"([^"]*)",\s*"activity":\s*"([^"]*)",\s*"sac":\s*(\d+)\}""")
+    // optional after "sac": "plan": true = the plan sheet's Planner (Engine.plan: leg fallback, stop-visit passes) instead
+    // of one BRouter request (Engine.route); other fields (e.g. "visits") are for browser-compare only
+    val cases = Regex("""\{"name":\s*"([^"]*)",\s*"points":\s*"([^"]*)",\s*"activity":\s*"([^"]*)",\s*"sac":\s*(\d+)([^}]*)\}""")
         .findAll(File(casesFile).readText()).toList()
     File(outFile).printWriter().use { out ->
         out.println("[")
         cases.forEachIndexed { i, m ->
-            val (name, pts, act, sac) = m.destructured
-            val r = Engine.route(pts, act, sac.toInt())
+            val (name, pts, act, sac, rest) = m.destructured
+            val r = if (Regex(""""plan":\s*true""").containsMatchIn(rest)) Engine.plan(pts, act, sac.toInt()) else Engine.route(pts, act, sac.toInt())
             println("$name / $act: " + r.take(120))
             out.println((if (i > 0) "," else "") + r)
         }
@@ -30,7 +32,7 @@ fun main(args: Array<String>) {
     // pace setting (WebPace): per chosen case the plan time at every level – browser-compare checks the browser
     // gives the same numbers (owner 2026-10-29: "changing pace changes the time exactly as the JVM computes")
     File(File(outFile).absoluteFile.parentFile, "jvm-pace.json").writeText(
-        paceRun(cases.map { m -> m.destructured.let { (n, p, a, s) -> PaceCase(n, p, a, s.toInt()) } }))
+        paceRun(cases.map { m -> m.destructured.let { (n, p, a, s, _) -> PaceCase(n, p, a, s.toInt()) } }))
 }
 
 data class PaceCase(val name: String, val points: String, val activity: String, val sac: Int)
