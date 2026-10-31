@@ -13,7 +13,8 @@ run_worker_first = ["/data/*", "/segments/*", "/sync/*", "/maps/*", "/.well-know
 
 # no plain IPs anywhere (owner, doorman 2e851ef): the per-IP limits use a daily salted hash, and no invocation logs
 [observability.logs]
-invocation_logs = false
+enabled = true          # the worker's own console lines (no IPs in them)
+invocation_logs = false # but no per-request invocation logs
 
 [env.test]
 name = "onpath-planner-test"
