@@ -5,6 +5,22 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 that still apply are listed in `docs/project-status.md`. Finished work is not kept here – see the release notes and
 the git log.
 
+## Release day 2026-11-01 – captain's plan (first real users)
+1. **Morning, owner (10 min):** read the review's top list (`docs/reviews/2026-11-01-pre-release.md`, BLOCKERs first)
+   and say which blockers must be fixed before the release – the rest goes to "Next".
+2. **cloud-app** fixes the app blockers on `main`; **cloud-plan** the web blockers on `web-spike` and merges `main` again
+   (10 commits behind at 2026-11-01 00:00). Both run their gates; E2E on `main` must be green (5b2dfeec fixed the red
+   69515dd run).
+3. **Captain** re-runs the release check on the final `main` + `web-spike` commits and writes the go.
+4. **Release together:** cloud-app releases v0.14.0 (version + notes) and cloud-plan deploys the planner from the same
+   shared code – same hour, so phone and browser never differ in fingerprint / sync format.
+5. **cloud-web:** website texts match the release (voice already says "available" – 065d3b7), help pages get pictures
+   (A-019 set in `onpath.private/marketing/bilder/`), a short tester note: what to try, how to report (Settings →
+   Diagnostics export, mail, GitHub issue).
+6. **Owner decides:** how the first users install – APK from the GitHub release (sideload, Play Protect warning) or
+   wait for the Play internal test (A-003 not started)? All APKs still use the TEST map server (one shared key, IP
+   limits) – fine for a small group, say how many testers.
+
 ## For the roles
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 - → [cloud-web] Order (captain 2026-10-31): (1) copy the Drive folder into `onpath.private` (setup step 7) as soon as the
