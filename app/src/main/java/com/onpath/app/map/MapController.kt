@@ -467,7 +467,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 lc.renderMode = if (headingUp) RenderMode.NORMAL else PUCK_MODE
                 facing.visible = false
                 wantedCameraMode = mode
-                // Navigate's start zoom (AppMode.navStartZoom) once; else only zoom in when far out
+                // Navigate's start zoom (AppMode.navStartZoom: on entering Navigate and on locate there); else only zoom in when far out
                 val zoom = startZoom ?: if (map.cameraPosition.zoom < 13) 15.0 else null
                 zoomed = true
                 // a north-up animation from Plan must not run on into the walking-direction camera

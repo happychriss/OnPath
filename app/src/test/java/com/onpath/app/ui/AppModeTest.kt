@@ -21,4 +21,16 @@ class AppModeTest {
         assertEquals(null, AppMode.zoomStill(16.98, 17.0))
         assertEquals(null, AppMode.zoomStill(14.1, null))
     }
+
+    @Test fun locateInNavigateGoesBackToTheStandardZoom() {
+        // owner 2026-10-31: a tap on locate in Navigate = the standard follow zoom again, not the pinched one
+        assertEquals(17.0, AppMode.locateZoom(AppMode.NAVIGATE, com.onpath.app.routing.Activity.HIKE)!!, 0.0)
+        com.onpath.app.routing.Activity.entries.filter { it != com.onpath.app.routing.Activity.HIKE }
+            .forEach { assertEquals(it.name, 16.0, AppMode.locateZoom(AppMode.NAVIGATE, it)!!, 0.0) }
+        // and the map gets there while following, also from a pinched zoom
+        assertEquals(17.0, AppMode.zoomStill(13.2, AppMode.locateZoom(AppMode.NAVIGATE, com.onpath.app.routing.Activity.HIKE))!!, 0.0)
+    }
+
+    @Test fun locateInPlanKeepsTheUsersZoom() = com.onpath.app.routing.Activity.entries
+        .forEach { assertEquals(it.name, null, AppMode.locateZoom(AppMode.PLAN, it)) }
 }

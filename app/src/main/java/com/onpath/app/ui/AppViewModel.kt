@@ -178,7 +178,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     /** Navigate → ⚙: the navigation settings sheet is open. */
     var navSettingsOpen by mutableStateOf(false)
-    /** Zoom the map takes when Navigate starts ([AppMode.navStartZoom]); null once taken (then the user's zoom stays). */
+    /**
+     * Zoom the map takes when Navigate starts or locate is tapped in Navigate ([AppMode.navStartZoom],
+     * [AppMode.locateZoom]); null once taken (then the user's zoom stays).
+     */
     var navStartZoom by mutableStateOf<Double?>(null)
     /** Map taps may add, move or insert points (Plan with no track shown). */
     val canEditMap: Boolean get() = mode == AppMode.PLAN && shown == null
@@ -285,6 +288,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var northTick by mutableIntStateOf(0)
     /** Bumped when the camera must follow the position again although [followMe] did not change. */
     var recentreTick by mutableIntStateOf(0)
+
+    /**
+     * Locate button (GPS on, permission given): follow the position again. In Navigate also back to the standard
+     * follow zoom of the activity (owner 2026-10-31, [AppMode.locateZoom]) – also when the map still follows but was
+     * pinched; the map takes it while tracking (MapController.ensureStartZoom, no camera move – CLAUDE.md camera rule).
+     * Plan: unchanged, following resumes at the user's zoom.
+     */
+    fun locate() {
+        val zoom = AppMode.locateZoom(mode, activity)
+        followMe = true
+        if (zoom != null) { navStartZoom = zoom; recentreTick++ }
+    }
 
     private fun setHeadingUp(on: Boolean) {
         if (settings.navHeadingUp != on) { settings = settings.copy(navHeadingUp = on); prefs.settings = settings }

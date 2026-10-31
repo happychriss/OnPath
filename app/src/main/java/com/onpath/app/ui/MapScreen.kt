@@ -89,7 +89,7 @@ fun MapScreen(
                 Unit
             }
             gps == GpsStatus.NO_PERMISSION -> onRequestLocation()
-            else -> vm.followMe = true
+            else -> vm.locate()
         }
     }
     // One grouped control: compass (always: Plan = needle, tap north up; Navigate = orientation toggle), eye
@@ -596,7 +596,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         }
     }
     // Camera: follow the position, walking direction up or north up (both modes); next-turn arrow (see NavigateScreen).
-    // (navStartZoom is no key: it is set with the mode and cleared below – a second run right away would cancel the
+    // (navStartZoom is no key: it is set with the mode / by locate (with recentreTick) and cleared below – a second run right away would cancel the
     // zoom transition just started; field A-019)
     LaunchedEffect(c, vm.followMe, vm.mode, vm.headingUp, vm.recentreTick) {
         val startZoom = vm.navStartZoom.takeIf { vm.mode == AppMode.NAVIGATE && vm.followMe }
