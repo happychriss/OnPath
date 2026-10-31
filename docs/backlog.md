@@ -9,6 +9,13 @@ the git log.
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 
 ## Next
+- **Small field bugs (captain handoff 2026-10-31, not claimed):**
+  - Bike plan link with T level 0 is rejected („Plan-Link nicht lesbar“): check whether the web planner ever emits T0
+    for bikes; the app should accept T0 for non-hike activities.
+  - After a reboot the track is not drawn behind the „Unterbrochene Tour“ dialog. EN wording: dialog "Unfinished
+    tour" vs notification "Tour recording interrupted" – align.
+  - Second share of the same Google place: the menu does not open by itself (only the ring).
+  - EN shared-place menu shows only "Address" when the match came via an address (DE shows the POI type).
 - **Website and Google Play follow-ups (marketing; website repo `happychriss/onpath.earth`)** – (1) **Voice:** onpath.earth
   (since PR #7) and the Play store text say "Sprachansagen sind nicht vorgesehen – OnPath führt über Karte und
   Vibration" – written before the owner's voice decision of 2026-10-31; change both when voice guidance ships.
@@ -20,7 +27,8 @@ the git log.
   still shows the old "Zur Route hinzufügen". (5) **Owner, Cloudflare:** switch off Email Address Obfuscation (it adds
   a script the privacy text says is not active). (6) **Before the public launch:** legal check of imprint / privacy
   (website `docs/RELEASE.md`), then website `--release` and the planner's `INDEXING = "on"` together; privacy line on
-  the map server ("IP for a few minutes") once A-014 is in production; English store listing; video (idea in Drive).
+  the map server ("IP for a few minutes") once A-014 is in production; English store listing; video (idea in Drive). (7) **Alt text / tab name** „Aufs Handy · Teilen“ → „Teilen“
+  (A-021, captain handoff 2026-10-31).
 - **From the external review (A-020 §4) – build only after a small user test by the owner:**
   (1) offline readiness "Für diese Tour offline bereit" (maps + routing data for the planned route on the phone, one
   line before the start); (2) empty state with a permanent hold hint (the empty plan map says how to set a point –
@@ -104,6 +112,9 @@ the git log.
       glyphs, icons, npm libraries) with version + licence, offline in the page, plus the ODbL line.
     - [cloud-plan] Editing speed beyond the splice: a plan edit still routes the whole chunk once (owner's hike ≈ 2 s
       live); faster only by reusing legs of the previous plan – owner 2026-10-31 said no (same points, same route).
+    - Console error "no content-length header … HTTP Byte Serving" and a faint seam in the hillshade / contours
+      (captain handoff 2026-10-31) · web only · find which file is served without Content-Length (PMTiles range
+      requests) and where the seam comes from.
   - *Not for the browser:* lock-screen arrival rounding (30c01c6), smart screen / rest view, cue timing, vibration,
     pocket, lock-screen notification, notifications chip, provisional position, GPS-only recording, phone setup, demo
     location, POI tiles + search on disk on the phone, memory / health line, End-tour ride icons, ☰ phone-setup entry;
@@ -177,6 +188,12 @@ the git log.
   7.2 km – expectation or gap?); zip import checks only sizes (cell downloads check sha256).
 
 ## Waiting for the owner
+- **`MapController.metersPerPixel()` density mix-up** – map taps count "on the line" within ~60 dp instead of 24 dp,
+  and the shared-place "arrived" check is loose. Owner decision needed: the fix changes hold behaviour.
+- **A-019 images to Drive** – the owner drags the folders (`external-docs/screenshots/2026-10-31-a019*`), or sets up
+  `rclone` once (no remote configured on donald).
+- **Worktree `~/onpath-cells-work/germany/repo` (branch `germany-prebuild`)** still exists on donald – decide whether
+  to remove it.
 - **`CF_START_TOKEN` (GitHub secret + the Cloudflare token behind it)** – only needed for the one-time Cloudflare setup
   of plan.onpath.earth (A-008); owner 2026-10-30: keep for now, delete later (GitHub: `gh secret delete CF_START_TOKEN`;
   Cloudflare dashboard → My Profile → API Tokens). The branch `marketing` is already gone.
@@ -192,6 +209,9 @@ the git log.
 - **AGP 9.4.1 upgrade** – later, when the owner says so.
 
 ## Later
+- **Plan sheet "a third lower"** – reached only ~23 % (d2885035); more needs touch targets smaller than 48 dp, owner
+  said no (2026-10-31).
+- **(optional) Gradle shared remote build cache** (e.g. a GCS bucket) for donald + CI + cloud sessions.
 - **(low prio) Online place search depends on photon.komoot.io (owner 2026-10-30)** – `search/OnlineSearch.kt`
   (`PhotonProvider`, created in `AppViewModel`). Public use is allowed in reasonable volume, but no availability
   guarantee and possible throttling – an operational risk with many testers / a public launch. Today the offline index

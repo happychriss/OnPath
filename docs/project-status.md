@@ -1,8 +1,28 @@
 # OnPath – project status and decisions
 
-Current release **0.13.0** (2026-10-30). Open work: `docs/backlog.md`. Core features and their tests:
+Current release **0.13.5** (2026-10-31). Open work: `docs/backlog.md`. Core features and their tests:
 `docs/core-features.md`. What each release changed: `docs/release-notes/` and the git history – this file keeps only
 the current state.
+
+## Übergabe Captain-Sitzung donald – 2026-10-31 abends
+<!-- The captain session on donald ends here; the owner switches to fixed roles (`docs/working-agreement.md`). -->
+- **State:** released 0.13.2 → 0.13.5 today. main (8cf47345 or newer) also has, **not released yet**: the planner
+  splice "route only around a cut stop" (38fc16c6, ~2× faster, `PLANNER_VERSION` 3); the compact plan sheet with the
+  rolled-up one-row step (d2885035, interim build on the owner's phone since 21:45); faster builds (`tools/ci/gate.sh`,
+  warm Gradle daemon, configuration cache). Next release = **0.13.6**.
+- **Rules from today** (CLAUDE.md / memory): app ⇄ web identical, shared Kotlin; the Release-Rundgang
+  (13 flows, `tools/ci/release_rundgang.sh`) is **optional** – only on request or for core navigation / recording
+  changes, a normal release = gate + GitHub smoke; gates via `tools/ci/gate.sh`, never `./gradlew --stop` (kills other
+  sessions' daemons); one agent per core area; donald has 30 GB RAM: one emulator, no Gradle beside an emulator unless
+  ≥ 10 GB is free; messages per `docs/design/ui-style.md`.
+- **Web planner:** handoffs Teil 1–7 plus „2026-10-31 nachts App-Sitzung → Web-Planer“ are in Drive „00 Übergabe“;
+  the backlog list "Web planner: mirror app changes" is current.
+- **Marketing:** A-019 + Nachtrag + Nachtrag 2 delivered (artifacts and Drive result docs in „01 Aufträge“; images in
+  the private `external-docs/screenshots/2026-10-31-a019*`). A-021 (website / store texts) is **open** for the
+  marketing session. A-020 is done.
+- **Owner decisions still open:** RAM upgrade for donald (64 GB recommended) vs a cloud build VM; Rundgang margin for
+  offline (10 km kept; 5 km would save ~25 % download); `metersPerPixel` density fix (taps count "on the line"
+  within ~60 dp instead of 24 dp; the fix changes hold behaviour). Smaller open items: `docs/backlog.md`.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
