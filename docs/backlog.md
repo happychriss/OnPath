@@ -24,7 +24,8 @@ the git log.
   vor dir."). **donald:** run `tools/ci/release_rundgang.sh` once – flows 11 and 12 are new and were only compiled in the
   cloud (no emulator); a red flow blocks the next release.
 - **Voice guidance (owner 2026-10-31) – after the feature stop (first the ride with the checklist)** – owner: "every tester
-  asks whether it talks". Android's own text-to-speech (`TextToSpeech`, no Play Services; only voices that need no
+  asks whether it talks". **Concept: `docs/design/voice-guidance.md`** (rules, all sentences DE/EN, 5 questions for the
+  owner). Android's own text-to-speech (`TextToSpeech`, no Play Services; only voices that need no
   network), one voice for everything incl. names; all speech from one place (a `Speaker` interface) so the voice can
   later be swapped for pre-made recordings (whole sentences, e.g. Piper / "Thorsten") if testers find it poor.
   Three parts:
