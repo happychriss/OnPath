@@ -80,7 +80,13 @@
     <string name="plan_route_options">Routenoptionen</string>
     <string name="plan_save_route">Route speichern</string>
     <string name="plan_time_details">Zeitdetails</string>
-    <string name="plan_close_plan">Plan schließen</string>
+    <string name="plan_close_plan">Schließen</string>
+    <string name="plan_start_short">Start</string>
+    <string name="plan_sheet_expand">Routenübersicht zeigen</string>
+    <plurals name="plan_hint_count">
+        <item quantity="one">%1$d Hinweis zur Route</item>
+        <item quantity="other">%1$d Hinweise zur Route</item>
+    </plurals>
     <string name="plan_discard_title">Änderungen verwerfen?</string>
     <string name="plan_discard">Verwerfen</string>
     <string name="plan_activity_chip_desc">Aktivität: %1$s. Tippen zum Ändern</string>

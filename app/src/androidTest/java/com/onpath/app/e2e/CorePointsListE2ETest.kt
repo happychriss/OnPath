@@ -34,7 +34,7 @@ class CorePointsListE2ETest : E2EBase() {
         Thread.sleep(700)
     }
 
-    /** Three points by holds, then the sheet at full size (swipe up = handle tap twice from half size). */
+    /** Three points by holds, then the sheet at full size (handle taps: summary → profile → points). */
     private fun threePointsAndFullSheet() {
         startPlanWithTwoPoints()
         settle()
@@ -42,8 +42,8 @@ class CorePointsListE2ETest : E2EBase() {
         hold(w * 0.5f, h * 0.22f)
         waitUntil("third point by a hold") { waypointCount() == 3 }
         settle()
-        // the grab handle: half → full
-        for (i in 0 until 3) {
+        // the grab handle: summary → profile → full
+        for (i in 0 until 4) {
             if (size() == PlanSize.FULL) break
             desc("Resize panel").click(); Thread.sleep(500)
         }
@@ -119,8 +119,8 @@ class CorePointsListE2ETest : E2EBase() {
     }
 
     /**
-     * The sheet follows a slow drag of its handle and settles at the nearest step (no jumping) – small → profile (first
-     * swipe) → points (second swipe) → profile.
+     * The sheet follows a slow drag of its handle and settles at the nearest step (no jumping) – summary (where a plan
+     * opens, owner 2026-10-31) → rolled up (swipe down) → summary → profile → points → profile.
      *
      * Swipe lengths: on the CI emulator (4–15 frames/s) the sheet moves only 0.69–0.80 of the injected finger travel
      * (StepSheet's "Sheet let go at …" lines; steps 536 / 938 / 1602 px high). So every swipe that must stop at a middle
@@ -130,7 +130,7 @@ class CorePointsListE2ETest : E2EBase() {
     @Test fun swipeTheSheetHalfFullHalf() {
         startPlanWithTwoPoints()
         settle()
-        waitUntil("half sheet") { size() == PlanSize.COMPACT }
+        waitUntil("summary step") { size() == PlanSize.MINI }
         val (_, h) = mapSize()
         fun handle() = desc("Resize panel").visibleCenter
         fun dragHandle(dy: Int) {
@@ -141,14 +141,19 @@ class CorePointsListE2ETest : E2EBase() {
             repeat(4) { path += Point(c.x, c.y + dy) }  // stop before letting go: no fling, the distance decides
             device.swipe(path.toTypedArray(), 6)
         }
-        // where the handle rests at the profile step: the swipe back down from the points aims there (see below)
-        val profileY = handle().y
-        dragHandle((h * 0.2f).toInt())
-        waitForSize("small sheet after a swipe down", PlanSize.MINI)
+        // rolled up: the lowest step, so a long swipe only rubber-bands
+        dragHandle((h * 0.3f).toInt())
+        waitForSize("rolled up after a swipe down", PlanSize.COLLAPSED)
+        Thread.sleep(600)
+        // the summary again: about the height the summary is above the rolled-up row
+        dragHandle(-(h * 0.15f).toInt())
+        waitForSize("summary after a swipe up", PlanSize.MINI)
         Thread.sleep(600)
         // first swipe up: the profile, not yet the points
         dragHandle(-(h * 0.2f).toInt())
         waitForSize("profile step after the first swipe up", PlanSize.COMPACT)
+        // where the handle rests at the profile step: the swipe back down from the points aims there (see below)
+        val profileY = handle().y
         assertNotNull("profile shown", findFresh(By.desc("Elevation profile"), 5_000))
         assertTrue("no points list in the profile step", goneFresh(By.descStartsWith("Delete point"), 3_000))
         Thread.sleep(600)

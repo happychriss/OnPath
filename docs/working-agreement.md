@@ -12,15 +12,17 @@ OnPath is developed by Claude Code sessions on several machines that the owner u
 The owner also works from the desktop PC **donald** (local network): a session there follows the
 laptop column (no phone attached unless the owner says so) and claims with **`[desktop]`** (laptop `[laptop]`, cloud
 `[cloud]`). Every session reads this file, `CLAUDE.md`, **`docs/owner-preferences.md`** (how the owner likes to
-work) and `docs/project-status.md` at the start. **GitHub `main` is the single source of truth**; the sessions never
-talk directly – they talk through the repository.
+work) and `docs/project-status.md` at the start. **GitHub `main` is the single source of truth**; anything that must
+last goes through the repository. Since 2026-10-31 the sessions have fixed **roles** (`docs/roles/`) and may also
+message each other directly for things that must be known now – see §8.
 
 ## 1. The five rules
 
 1. **Start fresh:** `git pull --rebase origin main` before touching anything. Read the "Last session" note in
    `docs/project-status.md` and `docs/backlog.md`.
 2. **Small, green, pushed:** commit in small steps; before every push run `git pull --rebase origin main`,
-   then `./gradlew testDebugUnitTest assembleDebug` (UI changes: also `verifyPaparazziDebug`). Push right away.
+   then `tools/ci/gate.sh` (the tests the change can break, screenshots when ui changed; `--full` = everything; plain
+   `./gradlew testDebugUnitTest assembleDebug` where the script cannot run). Push right away.
    Never keep unpushed work for more than ~30 minutes – another session may start any time.
 3. **`main` is always buildable and installable.** Work that takes longer than one sitting or is risky goes to a
    branch `feat/<topic>` (pushed regularly); merge it into `main` with a rebase when green.
@@ -90,13 +92,62 @@ If a rebase gets messy: `git rebase --abort`, push your work to `feat/<topic>` i
 | Map look and pipeline | `docs/map-style-notes.md`, `docs/map-pipeline.md` |
 | Why something was done | commit messages (say *why*, not only *what*) |
 | Website onpath.earth (public pages, Cloudflare Pages) | its own repo `happychriss/onpath.earth` – not this repo |
-| Non-code work (marketing, Google Play, website texts) and orders between sessions / the owner | private Google Drive folder **OnPath / 01 Aufträge** (rules inside; check it at the start if you have Drive access; read **LIESMICH – privat** first) – never copied into this repo. Drive documents are never edited: a change = a new version, the old one is replaced by a copy in **Archiv** titled "… (ersetzt …)" and the original goes to the Drive trash (owner). The Drive connector cannot rename or move files – never call `update_file`; use `copy_file` (to Archiv, new title) + `trash_file` |
+| Roles: who owns what, which computer and folder | `docs/roles/` (§8) |
+| Non-code work (marketing, ideas, Google Play, website texts) | private repo `happychriss/onpath.private` (role cloud-web) – never copied into a public repo. Until it exists the old private Google Drive folder **OnPath / 01 Aufträge** stays valid (rules inside, read **LIESMICH – privat** first; documents are never edited – new version, old one copied to **Archiv** and trashed; the connector cannot rename or move files: `copy_file` + `trash_file`, never `update_file`). After the move Drive is read-only history |
 
 Never rely on chat history of another session – if it matters, it must be in the repo.
 
 ## 7. Session start / end checklist
 
-**Start:** `git pull --rebase origin main` → read "Last session" + backlog → (with Drive access: open orders for you in
-OnPath / 01 Aufträge) → claim your item → push the claim.
+**Start:** `git pull --rebase origin main` → read "Last session" + backlog → (cloud-web / captain: open items in
+`onpath.private`) → claim your item → push the claim.
 
 **End:** tests green → push → remove your claim → write "Last session" → push → `git status` is clean.
+
+## 8. Roles and channels (from 2026-10-31)
+
+Every session has one role; the role files in `docs/roles/` say what it owns, its branch, computer and folder. All
+sessions are cloud sessions (used from the browser, the desktop app or the phone app – the same session everywhere);
+two of them attach to the owner's computers via Remote Control:
+
+```
+                  cloud-captain
+   messages + reads transcripts of all three
+           /           |            \
+     ↓ message, ↑ "For the captain" in the backlog   (roles cannot message the captain)
+         /             |              \
+   cloud-app       cloud-plan       cloud-web
+   (donald)        (laptop)         (cloud only)
+         \             |              /
+     GitHub: backlog, handoffs, code   ·   onpath.private (marketing)
+```
+
+| Channel | For | Rule |
+| --- | --- | --- |
+| `docs/backlog.md` | claims, requests between roles, the captain's release go | tag = role name: `[cloud-app]`, `[cloud-plan]`, `[captain]` (website / marketing claims live in `onpath.private`) |
+| "Last session" in `docs/project-status.md` | handoffs | one entry per role per sitting, name the role |
+| "For the roles" in `docs/backlog.md` | the captain's lasting word to the roles: what to do next, what changed | one line per item, `→ [cloud-app]` etc.; the role reads it at the start and after every pull, does it or moves it to "In progress", then deletes the line |
+| "For the captain" in `docs/backlog.md` | a role's word to the captain: answers, blockers | one line per item, `← [cloud-plan]` etc.; the captain deletes the line once read |
+| Direct message captain → role | "must know now" | short plain text; only this direction works; never the only record – lasting things also go into the backlog; a message never counts as the owner's consent |
+| `onpath.private` | marketing, ideas, private screenshots | never into a public repo |
+| R2 TEST (`publish_cells.sh`), GitHub Releases | map cells, APKs | as before |
+
+**Computers.** donald serves `/home/development/Projects/work/onpath-app` (cloud-app, Pixel on USB), the laptop serves `/home/development/Projects/work/onpath-plan`
+(cloud-plan, map builds; big map data outside the checkout). One folder per session, never shared. The computer
+needs the Claude desktop app running with Remote Control on (or `claude remote-control` in that folder). Computer
+off → the role works on in a fresh cloud session without device / local data.
+
+**Shared code between app and planner** (`routing/PlanResult`, `sync/`, `map/ActivityLayers`, `gpx/PlanGpx`, BRouter
+profiles, `PLANNER_VERSION`): a change is announced to the other side, and releases / planner deploys that touch it
+need the captain's go (`docs/roles/cloud-captain.md`, "Release check").
+
+The older tags `[laptop]` / `[desktop]` / `[cloud]` in §1–5 still describe *where* work runs; new claims use the
+role tags.
+
+**Tested 2026-10-31 (step 6 of `docs/roles/README.md`, done):** sessions attached to a computer (cloud-app,
+cloud-plan) refuse a plain cloud session (`elevated_session_untrusted_device`). The owner cleared the captain session
+once (a card on a trusted device, asked for with the refusal's `content_digest` via `confirm_repository_trust`);
+since then the captain messages and reads all three roles. That clearance limits the captain to the owner's trusted
+devices for good – so the roles in turn cannot message the captain; they write under "For the captain" (cloud-plan's reply was refused with
+`elevated_session_untrusted_device` – not the one-way limit of `SendMessage` guessed earlier). A fresh
+captain session needs the same clearance once; it must never attach to a computer folder (it would lose the reach).

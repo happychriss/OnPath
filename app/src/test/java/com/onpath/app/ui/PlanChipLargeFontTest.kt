@@ -37,6 +37,10 @@ open class PlanChipLargeFontTest {
     @Test fun planUnsavedLongHike() = shots.planUnsavedLongHike()
     @Test fun planTourRunning() = shots.planTourRunning()
     @Test fun planTourRunningCollapsed() = shots.planTourRunningCollapsed()
+    @Test fun planSummaryBike() = shots.planSummaryBike()
+    @Test fun planCollapsed() = shots.planCollapsed()
+    @Test fun planCollapsedGap() = shots.planCollapsedGap()
+    @Test fun planPointsFull() = shots.planPointsFull()
 }
 
 /** The same in German. */

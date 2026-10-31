@@ -1180,8 +1180,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var canRedo by mutableStateOf(false)
         private set
-    /** Plan panel size (full / compact / mini), kept while the app runs. */
-    var planSize by mutableStateOf(PlanSize.COMPACT)
+    /**
+     * Plan panel size (full / compact / mini / rolled up), kept while the app runs: a plan opens at the summary step
+     * (owner 2026-10-31); rolled up by the user it stays rolled up through route updates until opened again.
+     */
+    var planSize by mutableStateOf(PlanSize.MINI)
     /** The route point whose point menu is open (hold on its marker, MapGestures): index when opened + position. */
     var pointMenuTarget by mutableStateOf<PointMenuTarget?>(null)
         private set
@@ -2530,6 +2533,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val planLine = route?.points
         if (waypoints.isNotEmpty()) change { clear() } else recalc()
         closePointMenu("plan cleared"); firstPointMenu = null; highlight = null
+        // the empty sheet says how to start a plan: not rolled up
+        if (planSize == PlanSize.COLLAPSED) planSize = PlanSize.MINI
         val fromPlan = followFromPlan || (planLine != null && followLine == planLine)
         if (fromPlan && followLine != null && recState.value == null) clearFollow()
     }
@@ -2871,6 +2876,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** The amber line of the plan sheet: spots on the way only (pushing, steps, above T, steep). */
     fun warningLineText(): String? = RouteWarnings.text(routeSpots, sac)
+
+    /** How many hints the amber line sums up: the ⚠ count of the rolled-up sheet. */
+    fun warningCount(): Int = RouteWarnings.count(routeSpots)
 
     /** Grey INFO line "New route for … – check it" (grey: the user changed the activity themselves). */
     fun routeChangedLineText(): String? = routeChangedNotice

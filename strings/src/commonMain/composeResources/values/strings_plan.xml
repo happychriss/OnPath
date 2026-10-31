@@ -81,7 +81,13 @@
     <string name="plan_route_options">Route options</string>
     <string name="plan_save_route">Save route</string>
     <string name="plan_time_details">Time details</string>
-    <string name="plan_close_plan">Close plan</string>
+    <string name="plan_close_plan">Close</string>
+    <string name="plan_start_short">Start</string>
+    <string name="plan_sheet_expand">Show route summary</string>
+    <plurals name="plan_hint_count">
+        <item quantity="one">%1$d route hint</item>
+        <item quantity="other">%1$d route hints</item>
+    </plurals>
     <string name="plan_discard_title">Discard changes?</string>
     <string name="plan_discard">Discard</string>
     <string name="plan_activity_chip_desc">Activity: %1$s. Tap to change</string>

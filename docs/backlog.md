@@ -5,11 +5,44 @@ push immediately), remove it when done. Newest requests on top. Owner decisions 
 that still apply are listed in `docs/project-status.md`. Finished work is not kept here – see the release notes and
 the git log.
 
+## For the roles
+<!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
+- → [cloud-plan] Order (captain 2026-10-31): (1) merge `main` into `web-spike` (`web/parity/merge-main.sh`, 15
+  commits, mostly docs; your role: keep shared code in step) and run the shared-code tests there; (2) "Save asks for the
+  name" + "Plan sheet without ⋯" (app 0.13.5 parity, list below); (3) candidate marker + fit after adding a place.
+  Map builds wait until the owner has put map data on the laptop (`onpath-data/` is empty).
+- → [cloud-web] Order (captain 2026-10-31): (1) copy the Drive folder into `onpath.private` (setup step 7) as soon as the
+  owner gives write access; (2) A-021 tab name / alt text „Aufs Handy · Teilen“ → „Teilen“. The website's voice
+  sentence waits until voice guidance is released.
+
+## For the captain
+<!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [cloud] Voice guidance (`docs/design/voice-guidance.md`) – for the next release – since 2026-10-31
+- [cloud-app] captain's order: (1) Release-Rundgang (flows 11 + 12), (2) voice guidance `wip/voice-guidance` → main, (3) small field bugs – since 2026-10-31
 
 ## Next
+- **Small field bugs (captain handoff 2026-10-31, not claimed):**
+  - Bike plan link with T level 0 is rejected („Plan-Link nicht lesbar“): check whether the web planner ever emits T0
+    for bikes; the app should accept T0 for non-hike activities.
+  - After a reboot the track is not drawn behind the „Unterbrochene Tour“ dialog. EN wording: dialog "Unfinished
+    tour" vs notification "Tour recording interrupted" – align.
+  - Second share of the same Google place: the menu does not open by itself (only the ring).
+  - EN shared-place menu shows only "Address" when the match came via an address (DE shows the POI type).
+- **Website and Google Play follow-ups (marketing; website repo `happychriss/onpath.earth`)** – (1) **Voice:** onpath.earth
+  (since PR #7) and the Play store text say "Sprachansagen sind nicht vorgesehen – OnPath führt über Karte und
+  Vibration" – written before the owner's voice decision of 2026-10-31; change both when voice guidance ships.
+  (2) **Play Console:** pricing is still "paid" → switch to free (Monetize → App pricing → Make free) before the first
+  release; data safety says approximate location + in-app search history (Photon), nothing shared – update when data
+  flows change; app access lists "Pair with browser" with steps. (3) **Play link:** when the closed test exists, set
+  `PLAY_OPTIN_URL` in the website's `content_de.py` and mail the link to the group (welcome message too). (4) **Images:**
+  A-019 (donald) – one image set from one app version for website, store, help and video; the store's place image
+  still shows the old "Zur Route hinzufügen". (5) **Owner, Cloudflare:** switch off Email Address Obfuscation (it adds
+  a script the privacy text says is not active). (6) **Before the public launch:** legal check of imprint / privacy
+  (website `docs/RELEASE.md`), then website `--release` and the planner's `INDEXING = "on"` together; privacy line on
+  the map server ("IP for a few minutes") once A-014 is in production; English store listing; video (idea in Drive). (7) **Alt text / tab name** „Aufs Handy · Teilen“ → „Teilen“
+  (A-021, captain handoff 2026-10-31).
 - **From the external review (A-020 §4) – build only after a small user test by the owner:**
   (1) offline readiness "Für diese Tour offline bereit" (maps + routing data for the planned route on the phone, one
   line before the start); (2) empty state with a permanent hold hint (the empty plan map says how to set a point –
@@ -24,7 +57,9 @@ the git log.
   ride delete a point ahead / the destination after passing the others (grey ✓ points, pale plan line, "Kein Ziel mehr
   vor dir."). **donald:** run `tools/ci/release_rundgang.sh` once – flows 11 and 12 are new and were only compiled in the
   cloud (no emulator); a red flow blocks the next release.
-- **Voice guidance (owner 2026-10-31) – after the feature stop (first the ride with the checklist)** – owner: "every tester
+- **Voice guidance – for the next release (owner 2026-10-31), half built on branch `wip/voice-guidance` (c9fcc073)** –
+  next: compile, unit tests + Paparazzi green there, merge to main, owner test on the Pixel (see project-status "Last
+  session"). Owner: "every tester
   asks whether it talks". **Concept: `docs/design/voice-guidance.md`** (rules, all sentences DE/EN, 5 questions for the
   owner). Android's own text-to-speech (`TextToSpeech`, no Play Services; only voices that need no
   network), one voice for everything incl. names; all speech from one place (a `Speaker` interface) so the voice can
@@ -44,101 +79,56 @@ the git log.
   doorman adopts them. Production stays cloud-only.
 - **Web planner: mirror app changes (keep this list current)** – owner 2026-10-30: every app change the browser should
   mirror gets a line here (what · app commit · what the web does); a done line is removed. Checked against
-  `origin/web-spike` 2026-10-31 evening: web-spike last merged main at fb2d467 (10-31 10:56, merge 096e8ac); main has
-  51 commits since (up to 565adf3, v0.13.3) – `web/parity/merge-main.sh` brings them, `web/parity.json` flags the
-  shared files. Drive hand-offs: 00 Übergabe, "2026-10-31 Web-Planer Teil 1–7" (open points: Teil 4–7).
-  - *Must:*
-    - Pairing in the browser – bugs (incident 2026-10-31, Drive Teil 4 §1) · web only · (1) `PlanSync.dir` (open
-      folder + folder list) is read only in `init()`: re-read the folders in every locked operation and in `refresh()`,
-      `BroadcastChannel('onpath-sync')` announces each change of pair / folders / pending; Playwright test with two tabs
-      (pair in A → B shows paired without reload; unpair in A → B shows unpaired and writes nothing back). (2) No new
-      version detection: build id in the page + `/version.json` (no-cache), checked on focus and every fetch; on a
-      mismatch one box "Neue Version des Planers" [Neu laden] – never reload by itself (unsaved route); engine file names
-      with version / hash. (3) „Trennen“ sits right beside „Jetzt abgleichen“: check `#unpair` cannot fire without a
-      deliberate click (focus / Enter), move it away (e.g. red text button at the bottom), still no question (A-017).
-    - Island retry without reflection (Köln Dom) · 287590d · BRouter jars renamed to `1.7.11-beta-onpath1`
-      (`islandNodePairs` package-private, `tools/routing/patch_brouter_jar.py`), `OnPathHints.islandRetries` /
-      `skipOnSnap` – after the merge run `node web/parity/check.mjs --update` (new jar names) and drop the `knownDiff` of
-      Köln Dom → Neumarkt in `web/test/plans.json` (a normal gate case, app 1334 m); fingerprint changes once – steps in
-      `docs/handoff-web-island.md` (Drive Teil 6).
-    - My routes: "Neu" / "Geändert" tags instead of bold + grey line (owner 2026-10-31, replaces A-018's bold marks) ·
-      3df74cd · the web's My routes shows the phone's `mark` as the same light blue tag after the name (`#DDEAFB` /
-      `#0B3D91`, 12 px bold pill, never cut), gone when opened; careful: bold means "waiting" in the browser today –
-      steps in `docs/handoff-web-route-tags.md`.
+  `origin/web-spike` 97e8836 (2026-10-31 evening, [cloud-plan]): web-spike merged main at 38fc16c (Planner splice);
+  main commits after that (d288503 plan sheet one-row step, 8c73742 / f0dc98c build time, a08f4a6 roles) come with the
+  next `web/parity/merge-main.sh`. Done there and removed from this list: pairing across tabs + new-version box +
+  Unpair apart, island retry (Köln = app, no knownDiff), New / Changed tags, short-trip retry, splice (owner's 70.6 km
+  hike live 4.7 → 2.2 s), routing-data notice + way-type line, search list never jumps + six chips, deleted phone hello,
+  privacy + pairing sentences, host ipHash, date with the dot, first-route fit, "New route for … – check it".
+  Plan parity: `web/test/plans.json` 14 cases, all app = web (gate in the jvm job).
   - *Should:*
-    - Save asks for the name (owner 2026-10-31, app 0.13.5, replaces "save at once") · app commit "Save always asks
-      for the name" · checked against `origin/web-spike` 761bbb6: the browser still saves at once and renames in place
-      (`#savedLine` → `#renameField`), so it does **not** match yet. Web: every Save (header, ⋯ → Save route, Save
-      first) opens the small name popover (the `.savepop` styles are still there) with the name fully selected,
-      Cancel · Save; a saved route is overwritten **and renamed when the name changed** (one route); blank = keep the
-      proposal / old name; "Save as copy" proposes `RouteRules.copyName` ("Name (2)", a copy of "Name (2)" is
-      "Name (3)"); "Saved as …" becomes a plain line (no `#renameField`). Update `parity-smoke.mjs` (renameTo, "no
-      field, no dialog" checks). App: `SaveNameDialog`, `AppViewModel.askSave / confirmSave`, `SaveDialogTest`.
-    - Plan sheet without ⋯ (owner 2026-10-31, app 0.13.5) · app commit "Plan sheet: icon row instead of ⋯" · the
-      browser's floating window keeps its own layout, but mirror the wording and placement: ✕ **„Plan schließen“ /
-      "Close plan"** (was „Route löschen“; "Discard changes?" / „Änderungen verwerfen?“ Cancel · Discard only with
-      unsaved changes; a saved route stays), **„Umkehren“ · „Rundtour“** beside it in the summary (not only above the
-      points), **„Als Kopie speichern“ / "Save as copy"** in My routes. String keys renamed – fix `t()` in main.ts after
-      `merge-main.sh`: `plan_clear_route` → `plan_close_plan` (+ `plan_discard_title`, `plan_discard`),
-      `plan_save_as_new_route` → `plan_save_as_copy`. App: `PlanPanel.PlanActions`, `PlanActionsTest`.
-    - Candidate marker instead of the orange search ring (owner 2026-10-31, A-019 add-on) · app commit "Candidate
-      marker" · the web's `.searchring` (search.ts, style.css) becomes the app's look: a dashed route-blue (`#1E3FAE`)
-      ring, radius 21 px, 3.5 px dashes 7 / 4.5 over a 7 px white halo, ~12 % blue tint inside, a small "+" badge
-      (blue disc r 8.5, white +) at its upper right, the name in route blue below; plus a thin dashed preview line
-      (2.5 px, dash 2 × width, opacity 0.9, under the route points) from the place to `WaypointInsertion.joinPoint`
-      (shared file: let `placePreview` return the join point) – only with a route. No orange (= recording).
-      `map/CandidateMarker.kt` draws it; picture `CandidateMarkerScreenshotTest`.
-    - Short-trip detour retry (owner 2026-10-31, Hilden) · f8a55de, 17d78d1 · shared `routing/Planner.kt`
-      (`retryShortDetours`: a leg < 2 km straight routed > 2× is retried via the midpoint, taken when ≥ 30 % shorter) –
-      comes with the merge, nothing to code; add the Hilden case to `web/test/plans.json` (Bike 51.169243,6.925344 →
-      51.169,6.93578 = 1099 m, before 2054 m); `PLANNER_VERSION` 2, fingerprint changes once –
-      `docs/handoff-web-short-detour.md`.
-    - Save like Word (owner 2026-10-31) · add2b08 · Save saves at once under the proposed name (plan link title, else
-      "Vellau → Leiteralm", else "Route 31. Okt., 10:12"; a taken name gets " (2)"), saving a saved route overwrites,
-      a copy via ⋯ "Save as new route", rename by tapping "Saved as ‚Name‘ ✎" (field in place). The browser still shows
-      the small name popover (`savePopover`) – save at once, name editable in place; `parity.json` flags `ui/RouteRules.kt`
-      (saveMode NEW_ROUTE / OVERWRITE). Drive Teil 7 §2.
-    - Routing-data notice + way-type / surface line shared (owner: app = web) · 64e217e · new pure
-      `data/RoutingDataNotice.kt` (`kindForRoute` → LOADING / NOT_YET, keys `maps_routing_*`) and
-      `routing/BreakdownRules.kt` (labels, order, ARGB / hex colours, `foldSmall`, `summaryLine` „Radweg 92 % ·
-      Asphalt 98 %“): add both to `appFiles` (+ `RoutingDataNoticeTest`, `BreakdownRulesTest` to `appTests`); the plan
-      sheet shows the same notice line and way-type / surface line with bars – `docs/handoff-web-notice-breakdown.md`.
-    - Search list never jumps for the same text (field bug 0.13.2) · e6b9c31 · shared `SearchRanking.keepShown` /
-      `stillMatching` (`search/OfflineIndex.kt`, already in `appFiles`): the page keeps the list it shows per text, later
-      answers only add below, online rows of the shorter text that still match stay (app: `ui/search/SearchSession.run`,
-      test `SearchStableListTest`). `WebSearch.online` only passes `keepShown` to `mix` today.
-    - Six short search chips: Orte · Essen · Sehenswert · Wasser · Bahn · Parken (Places · Food · Sights · Water ·
-      Transit · Parking) · 2fd9546 · table `SearchKinds.Category` in `search/Place.kt` (already compiled; `Category.of`,
-      strings `search_cat_*`, test `SearchCategoryTest`): same six chips (scrolling row), filter with
-      `SearchQuery.category`; the Places chip keeps street / address hits.
-    - Pairing display: a deleted phone hello (guard) · b585cbc · the app says "connected" only with a live browser hello.
-      The web's `phoneHello` skips a deleted hello silently, `status.paired` = pair + open folder: in `refresh()` a phone
-      hello seen and now deleted → "Unpaired on the phone" (grey, Pair phone); the pill's "synced … ago" labelled as this
-      browser's pass. Today no real case (phone Unpair ends the mailbox → 410).
-    - One message system · fb2d467 (merged), `docs/design/ui-style.md` · the page has no `MessageCard` look yet: FRAGE
-      (white card, blue 4 px left edge, two verb buttons, until answered), HINWEIS (one button – OK or the one way out;
-      grey / amber ⚠ / red ⚠ edge, never goes by itself), ANZEIGE (no box, a line in place); one box at a time (a
-      question first), 12 px under the top bar; details of a state = sheet from below, never a dialog. Drive Teil 4 §4.
-    - Route hints end crumbs + first-route fit (field A-019) · 4ab0b37, c7bf190 · shared `ui/RouteWarnings.kt`: a stretch
-      < 5 m (`END_CRUMB_M`) at the very start / end is no spot – comes with the merge, the hint parity should pass as is;
-      the first route of a plan and an opened plan link are fitted whole like ⛶ (check the page does so).
-    - Privacy sentence · 880850d · `web_pair_privacy` still says routes only: say the same as the app – routes +
-      imported tracks, encrypted on the device, we can't read them, recorded tours are never sent, server Cloudflare (EU).
-    - Pairing confirmation · app `sync_paired_plan` · `web_pair_done` still says "sync both ways by themselves": after
-      pairing the same sentence with OK, until OK: 'Verbunden. Was du im Browser speicherst, kommt auf dein Handy – dort
-      bleibt alles gespeichert.' (EN 'Paired. What you save in the browser comes to your phone – everything is kept
-      there.').
-    - Host: no plain IPs · 2e851ef (doorman) · `web/host/src/index.js` still keys the rate limit by the plain
-      `cf-connecting-ip` → the daily salted `ipHash` (as `sync.js` already does); `[observability.logs]
-      invocation_logs = false` in `web/host/wrangler.toml`.
+    - [cloud-plan] Save asks for the name (owner 2026-10-31, app 0.13.5, replaces "save at once") · app commit "Save
+      always asks for the name" (3be5469) · the browser still saves at once and renames in place (`#savedLine` →
+      `#renameField`). Web: every Save (header, ⋯ → Save route, Save first) opens a small name dialog / popover with the
+      name fully selected, Cancel · Save; a saved route is overwritten **and renamed when the name changed**; blank =
+      keep the proposal / old name; "Save as copy" proposes `RouteRules.copyName` ("Name (2)"); "Saved as …" becomes a
+      plain line. Update `parity-smoke.mjs` 6d and `sync-smoke.mjs` (`renameOpen` / `saveAs`). App: `SaveNameDialog`,
+      `AppViewModel.askSave / confirmSave`, `SaveDialogTest`. `web/parity.json` mirrors `ui/RouteRules.kt` (newRouteName,
+      saveMode – mirrored in `plans.ts` because RouteRules needs the app's TourDb).
+    - [cloud-plan] Plan sheet without ⋯ (owner 2026-10-31, app 0.13.5) · app commit 3be5469 · keys already renamed on
+      web-spike (`plan_close_plan`, `plan_save_as_copy`); still to do: ✕ „Plan schließen“ asks "Discard changes?"
+      (`plan_discard_title` / `plan_discard`, Cancel · Discard) only with unsaved changes – the web clears without a
+      question today; „Umkehren“ · „Rundtour“ beside it in the summary; My routes ⋮ → „Als Kopie speichern“ and „Teilen“
+      (app `Screens.TourItemMenu` onCopy / onShare). App: `PlanPanel.PlanActions`, `PlanActionsTest`.
+    - [cloud-plan] Candidate marker instead of the orange search ring (A-019 add-on 1) · f84fd63 · the web's
+      `.searchring` (search.ts, style.css) becomes the app's look: a dashed route-blue (`#1E3FAE`) ring, radius 21 px,
+      3.5 px dashes 7 / 4.5 over a 7 px white halo, ~12 % blue tint inside, a small "+" badge, the name in route blue
+      below; a thin dashed preview line to `WaypointInsertion.joinPoint` (let `placePreview` return it) – only with a
+      route. `map/CandidateMarker.kt`, picture `CandidateMarkerScreenshotTest`.
+    - [cloud-plan] Fit the new route after adding a place from the card (A-019 add-on 2) · 6b8875f ·
+      `WholeRoute.fitAfterPlace` (points changed and ≥ 2 → fit when the route is there); the web already fits the first
+      route (`WholeRoute.firstRoute`, mirrored in `main.ts` – WholeRoute needs `AppMode`).
+    - [cloud-plan] One message system – the rest · `docs/design/ui-style.md` · `web/app/src/msgcard.ts` is the app's
+      MessageCard (FRAGE / HINWEIS kinds, one at a time, 12 px under the search bar), used today only for "New version
+      of the planner". Still to move there: the map strip's questions / errors (`mapnotice.ts`, `areas.ts`), the
+      pairing confirmations, any `confirm()` / own dialog that is a HINWEIS; ANZEIGE stays a line in place.
+    - [cloud-plan] Quiet margin cells after planning (offline after planning) · 27029db · `cells/CellTriggers.kt`
+      (`CellJob.margin`: cells along the route vs the corridor margin, `tourStarted`) – check `areas.ts` (T1–T4 mirror)
+      asks the margin cells quietly like the app.
+    - [cloud-app] Pure files for two small rules the web mirrors today: `RouteRules.newRouteName` / `copyName` (needs
+      `TourDb.TourKind`) and `WholeRoute.firstRoute` / `fitAfterPlace` (needs `AppMode`) – as pure Kotlin beside them
+      (like `RoutingDataNotice` / `BreakdownRules`) the web compiles them instead of mirroring (`web/parity.json`).
   - *Low prio:*
-    - Date „30. Okt. 2026“ with the dot like the app (owner) · `appDate` in `plans.ts` takes `Intl` month 'short' → "Okt"
-      without the dot in German; also `web_plan_dated` / `when`. Drive Teil 7 §3.
-    - A-016 App Links · `/.well-known/assetlinks.json` is live (200, v0.13.1 key, checked 2026-10-31) · left: on the
-      phone `adb shell pm get-app-links com.onpath.app` – then `#p=` / `#pair=` links open the app.
-    - Licences list in the browser (A-020) · app: About → Licences (`data/Licences.kt`, texts in `assets/licences/`)
-      · the web planner lists its own bundled parts (MapLibre GL JS, BRouter onpath1, Noto Sans glyphs, icons, npm
-      libraries) with version + licence, offline in the page, plus the ODbL line.
+    - A-016 App Links · `/.well-known/assetlinks.json` is live (200, v0.13.1 key) · left: on the phone
+      `adb shell pm get-app-links com.onpath.app` – then `#p=` / `#pair=` links open the app (owner).
+    - [cloud-plan] Licences list in the browser (A-020) · app: About → Licences (`data/Licences.kt`,
+      `assets/licences/`) · the web planner lists its own bundled parts (MapLibre GL JS, BRouter onpath1, Noto Sans
+      glyphs, icons, npm libraries) with version + licence, offline in the page, plus the ODbL line.
+    - [cloud-plan] Editing speed beyond the splice: a plan edit still routes the whole chunk once (owner's hike ≈ 2 s
+      live); faster only by reusing legs of the previous plan – owner 2026-10-31 said no (same points, same route).
+    - Console error "no content-length header … HTTP Byte Serving" and a faint seam in the hillshade / contours
+      (captain handoff 2026-10-31) · web only · find which file is served without Content-Length (PMTiles range
+      requests) and where the seam comes from.
   - *Not for the browser:* lock-screen arrival rounding (30c01c6), smart screen / rest view, cue timing, vibration,
     pocket, lock-screen notification, notifications chip, provisional position, GPS-only recording, phone setup, demo
     location, POI tiles + search on disk on the phone, memory / health line, End-tour ride icons, ☰ phone-setup entry;
@@ -212,6 +202,19 @@ the git log.
   7.2 km – expectation or gap?); zip import checks only sizes (cell downloads check sha256).
 
 ## Waiting for the owner
+- **Role setup leftovers (captain 2026-10-31)** – (1) cloud-web needs write access to `onpath.private` (Drive copy);
+  (2) map data for the laptop (`/home/development/Projects/work/onpath-data/`) – and does the Germany pre-build stay
+  on donald (item "[desktop] Germany pre-built") or move to cloud-plan on the laptop?; (3) git on the laptop:
+  `gh auth setup-git` + `user.name` / `user.email` (cloud-plan pushes through a workaround today); (4) old branches
+  that are fully merged and can go: `feat/plan-code`, `feat/plan-sync`, `web-activity-layers` (all in `web-spike`),
+  `claude/nifty-sagan-6zmueh`, `claude/clever-pasteur-lz4nc8`, `claude/compassionate-fermat-d7f0bs` (nothing beyond
+  `main`) – the captain does not delete branches.
+- **`MapController.metersPerPixel()` density mix-up** – map taps count "on the line" within ~60 dp instead of 24 dp,
+  and the shared-place "arrived" check is loose. Owner decision needed: the fix changes hold behaviour.
+- **A-019 images to Drive** – the owner drags the folders (`external-docs/screenshots/2026-10-31-a019*`), or sets up
+  `rclone` once (no remote configured on donald).
+- **Worktree `~/onpath-cells-work/germany/repo` (branch `germany-prebuild`)** still exists on donald – decide whether
+  to remove it.
 - **`CF_START_TOKEN` (GitHub secret + the Cloudflare token behind it)** – only needed for the one-time Cloudflare setup
   of plan.onpath.earth (A-008); owner 2026-10-30: keep for now, delete later (GitHub: `gh secret delete CF_START_TOKEN`;
   Cloudflare dashboard → My Profile → API Tokens). The branch `marketing` is already gone.
@@ -227,6 +230,9 @@ the git log.
 - **AGP 9.4.1 upgrade** – later, when the owner says so.
 
 ## Later
+- **Plan sheet "a third lower"** – reached only ~23 % (d2885035); more needs touch targets smaller than 48 dp, owner
+  said no (2026-10-31).
+- **(optional) Gradle shared remote build cache** (e.g. a GCS bucket) for donald + CI + cloud sessions.
 - **(low prio) Online place search depends on photon.komoot.io (owner 2026-10-30)** – `search/OnlineSearch.kt`
   (`PhotonProvider`, created in `AppViewModel`). Public use is allowed in reasonable volume, but no availability
   guarantee and possible throttling – an operational risk with many testers / a public launch. Today the offline index

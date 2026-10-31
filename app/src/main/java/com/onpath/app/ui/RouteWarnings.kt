@@ -233,6 +233,9 @@ object RouteWarnings {
         return items.take(MAX_ITEMS).joinToString(" · ") + if (more > 0) " +$more" else ""
     }
 
+    /** How many items the amber line sums up (one per kind, like [items]): the ⚠ count of the rolled-up plan sheet. */
+    fun count(spots: List<RouteSpot>): Int = spots.map { it.kind }.distinct().size
+
     /** INFO line "New route for Gravel bike – check it" (hike with its level: "for Hike T4"); grey, not amber. */
     fun changedText(a: Activity, sac: Int): String =
         Txt.s(Res.string.plan_route_changed, com.onpath.app.data.LastActivity.name(a, sac))

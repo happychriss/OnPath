@@ -11,6 +11,8 @@
 #      JVM_TRACE=1 prints the app's trace level (Planner);
 #      SpurStopJvmTest.kt = a stop on a path that BRouter's via correction cuts is still visited (TU Dortmund steps, bike,
 #      needs E5_N50.rd5; Planner + WaypointSnap.missesMatched + OnPathHints.matched), pass/fail;
+#      SpurSpliceJvmTest.kt = the owner's 70.6 km hike (Dortmund → Hilden, needs E5_N50.rd5, JAVA_XMX=1g): the cut stop is
+#      routed to only around it and spliced in (Planner.splice) – planner time, length vs the old way, pass/fail;
 #      BikeCuesTest.kt = bike junction cues on town routes (Hilden, needs E5_N50.rd5): hints with their ways, cues before / after at 14 / 20 / 25 km/h (DUMP=1 lists every hint);
 #      ItterPathTest.kt = bike routes stay on a compacted foot / cycle path (Hilden Itter, needs E5_N50.rd5), pass/fail;
 #      FerryTest.kt = no route over a ferry that does not take bikes / people on foot (RAW_TAP=1, FERRY_CASES=<file>);
