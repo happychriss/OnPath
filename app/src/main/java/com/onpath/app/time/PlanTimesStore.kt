@@ -1,5 +1,6 @@
 package com.onpath.app.time
 
+import com.onpath.app.data.AtomicFiles
 import com.onpath.app.debug.Problems
 import org.json.JSONArray
 import org.json.JSONObject
@@ -30,12 +31,7 @@ class PlanTimesStore(private val file: File) {
             o.put(tourId.toString(), JSONObject().put("d", distanceM).put("g", JSONArray().apply { groups.forEach { put(it) } }))
             val keys = o.keys().asSequence().mapNotNull { it.toLongOrNull() }.sorted().toList()
             keys.take((keys.size - MAX).coerceAtLeast(0)).forEach { o.remove(it.toString()) }
-            val tmp = File(file.path + ".tmp")
-            tmp.writeText(o.toString())
-            if (!tmp.renameTo(file)) {
-                file.delete()
-                if (!tmp.renameTo(file)) Problems.error("time", "Plan times file (plan-times.json) could not be saved (rename failed)")
-            }
+            AtomicFiles.writeText(file, o.toString(), File(file.path + ".tmp"))
         } catch (e: Exception) {
             Problems.error("time", "Plan times file (plan-times.json) could not be saved", e)
         }

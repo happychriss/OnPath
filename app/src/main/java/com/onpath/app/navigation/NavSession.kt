@@ -1,5 +1,6 @@
 package com.onpath.app.navigation
 
+import com.onpath.app.data.AtomicFiles
 import com.onpath.app.routing.Activity
 import com.onpath.app.debug.Problems
 import com.onpath.app.routing.GeoPoint
@@ -87,12 +88,7 @@ class NavSessionStore(private val file: File) {
     fun save(s: NavSession?) {
         try {
             if (s == null) { file.delete(); return }
-            val tmp = File(file.path + ".tmp")
-            tmp.writeText(toJson(s).toString())
-            if (!tmp.renameTo(file)) {
-                file.delete()
-                if (!tmp.renameTo(file)) Problems.error("navigation", "Navigation session file could not be saved (rename failed)")
-            }
+            AtomicFiles.writeText(file, toJson(s).toString(), File(file.path + ".tmp"))
         } catch (e: Exception) {
             Problems.error("navigation", "Navigation session file could not be saved; a restart may lose the route", e)
         }

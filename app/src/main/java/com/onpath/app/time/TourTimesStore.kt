@@ -1,5 +1,6 @@
 package com.onpath.app.time
 
+import com.onpath.app.data.AtomicFiles
 import com.onpath.app.debug.Problems
 import org.json.JSONObject
 import java.io.File
@@ -25,12 +26,7 @@ class TourTimesStore(private val file: File) {
             // keep the file small: the newest [MAX] tours
             val keys = o.keys().asSequence().mapNotNull { it.toLongOrNull() }.sorted().toList()
             keys.take((keys.size - MAX).coerceAtLeast(0)).forEach { o.remove(it.toString()) }
-            val tmp = File(file.path + ".tmp")
-            tmp.writeText(o.toString())
-            if (!tmp.renameTo(file)) {
-                file.delete()
-                if (!tmp.renameTo(file)) Problems.error("time", "Tour times file (tour-times.json) could not be saved (rename failed)")
-            }
+            AtomicFiles.writeText(file, o.toString(), File(file.path + ".tmp"))
         } catch (e: Exception) {
             Problems.error("time", "Tour times file (tour-times.json) could not be saved", e)
         }

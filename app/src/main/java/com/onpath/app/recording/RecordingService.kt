@@ -1,5 +1,6 @@
 package com.onpath.app.recording
 
+import com.onpath.app.data.AtomicFiles
 import com.onpath.strings.*
 
 import android.app.Notification
@@ -977,12 +978,8 @@ class RecordingService : Service() {
         tripSaved = SystemClock.elapsedRealtime()
         try {
             val o = org.json.JSONObject().put("tour", tourId).put("trip", trip.toJson())
-            val f = File(filesDir, TRIP_FILE); val tmp = File(f.path + ".tmp")
-            tmp.writeText(o.toString())
-            if (!tmp.renameTo(f)) {
-                f.delete()
-                if (!tmp.renameTo(f)) Problems.error("time", "Trip pace file could not be saved (rename failed)")
-            }
+            val f = File(filesDir, TRIP_FILE)
+            AtomicFiles.writeText(f, o.toString(), File(f.path + ".tmp"))
         } catch (e: Exception) { Problems.error("time", "Trip pace file could not be saved (break time may be lost on restart)", e) }
     }
 
