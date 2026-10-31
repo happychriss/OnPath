@@ -78,6 +78,29 @@ class WholeRouteTest {
         assertTrue(screen.contains("is UiEvent.Fit -> c.fitTo(e.points, fitPadding(), e.northUp)"))
     }
 
+    /** Field A-019: the first destination / a plan link left the route half off the map. */
+    @Test fun firstRouteIsFitted() {
+        assertTrue(WholeRoute.firstRoute(1, 2)) // first destination held
+        assertTrue(WholeRoute.firstRoute(0, 2)) // "Go here", a route opened into an empty plan
+        assertTrue(WholeRoute.firstRoute(0, 5))
+        assertTrue(!WholeRoute.firstRoute(2, 3)) // later edits never move the map
+        assertTrue(!WholeRoute.firstRoute(3, 2))
+        assertTrue(!WholeRoute.firstRoute(0, 1))
+        val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        // the same fit as "Show whole route", following stopped first
+        val fit = vm.substringAfter("private fun fitFirstRoute(").substringBefore("\n    }\n")
+        val stop = fit.indexOf("followMe = false")
+        assertTrue(stop >= 0 && fit.indexOf("events += UiEvent.Fit(WholeRoute.bounds(listOf(line), pts, null), northUp = true)") > stop)
+        assertTrue(fit.contains("lastMapTouchMs > asked")) // the user took the map meanwhile: their view stays
+        assertTrue(vm.contains("if (WholeRoute.firstRoute(before.size, waypoints.size)) fitNextRoute = true"))
+        assertTrue(vm.contains("if (fitNextRoute) { fitNextRoute = false; fitFirstRoute(it.points, pts) }"))
+        // a plan link: following stops, the start camera keeps away, the route is fitted once computed
+        val link = vm.substringAfter("private fun openSharedPlan(").substringBefore("\n    }\n")
+        assertTrue(link.contains("holdCameraForSharedPlace()"))
+        assertTrue(link.indexOf("followMe = false") in 0 until link.indexOf("events += UiEvent.Fit(load.points, northUp = true)"))
+        assertTrue(link.contains("fitNextRoute = true"))
+    }
+
     /** Field A-019: a search result picked while planning during a tour landed half behind the plan sheet. */
     @Test fun searchResultFliesIntoTheFreeRoom() {
         val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()

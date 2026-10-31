@@ -85,7 +85,10 @@ undo step. Tracks open next to the plan without asking.
   A tap stops following, then fits the line + all route points north up and flat (not closer than z16, as the browser),
   clear of the top cards / message box and the sheet / slider (`FitPaddingRule`, the same padding as opening a route);
   Navigate also includes where you are.
-  Following comes back only with locate. No box, no dialog (`ui/WholeRoute.kt`). MapLibre's own compass is off.
+  Following comes back only with locate. No box, no dialog (`ui/WholeRoute.kt`). The same fit runs by itself once
+  when a plan link opens and when the plan gets its first route (first destination, "Go here") – never after later
+  edits, not when the map was touched meanwhile (`WholeRoute.firstRoute`, field A-019). A search result is centred in
+  the same free room. MapLibre's own compass is off.
 - Own position in both modes: small blue dot with accuracy circle and a small direction triangle at its edge
   (MapLibre COMPASS render mode; direction = compass standing, GPS bearing moving – `map/HeadingEngine`); grey when stale.
 - One primary action per mode: Plan → "Start navigation" ("Start recording" without a route), Navigate → slide "Tour menu" (back to Plan).

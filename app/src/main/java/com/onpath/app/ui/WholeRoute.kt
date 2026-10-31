@@ -36,6 +36,16 @@ internal object WholeRoute {
      */
     fun bounds(lines: List<List<GeoPoint>>, waypoints: List<GeoPoint>, position: GeoPoint?): List<GeoPoint> =
         lines.flatten() + waypoints + listOfNotNull(position)
+
+    /**
+     * An edit that gives the plan its first route (fewer than two points → two or more: the first destination set,
+     * "Go here", a route opened into an empty plan): the route is fitted once it is computed (field A-019 – the line
+     * lay half off the map). Later edits never move the map.
+     */
+    fun firstRoute(pointsBefore: Int, pointsAfter: Int): Boolean = pointsBefore < 2 && pointsAfter >= 2
+
+    /** Wait after the route arrived before fitting: the plan sheet grows to its route size and reports it (120 ms after it rests) – its height is the padding. */
+    const val SETTLE_MS = 500L
 }
 
 /** Room the camera leaves free when it fits a route (pixels; MapController.fitTo). */

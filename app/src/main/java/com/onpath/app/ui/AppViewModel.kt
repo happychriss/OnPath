@@ -1795,6 +1795,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         history.record(waypoints)
         val before = waypoints.toList()
         waypoints.block()
+        if (WholeRoute.firstRoute(before.size, waypoints.size)) fitNextRoute = true
         routingSpot = RoutingSpot.of(before, waypoints)
         cellsForNewPoints(before, waypoints)
         canUndo = history.canUndo; canRedo = history.canRedo
@@ -2541,6 +2542,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         notRouted = null
         if (pts.size < 2) {
             requests.invalidate(); route = null; routeError = null; routing = false; followNextRoute = false
+            fitNextRoute = false
             corridorFollowsPlan(null); return
         }
         val act = activity; val level = sac
@@ -2593,6 +2595,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val it = res.route
                 baseline = adoptPlanBaseline
                 route = it; snapToRoute(pts, res)
+                if (fitNextRoute) { fitNextRoute = false; fitFirstRoute(it.points, pts) }
                 // the route warnings of this result (computed with it, off the main thread): routeSpots reads them
                 spotsMemo = Triple(it.points, act, level) to res.spots
                 if (changeBefore != null) {
@@ -2613,6 +2616,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (adoptPlanBaseline) { adoptPlanBaseline = false; planBaseline = it.points }
             }
                 .onFailure {
+                    fitNextRoute = false // the points were fitted when they came (link) or are where the user held
                     Problems.error("routing", "Route calculation failed", it); route = null; routeError = it.message ?: Txt.s(Res.string.msg_routing_failed)
                     corridorFollowsPlan(null)
                 }
@@ -2838,6 +2842,28 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         followMe = false
         freeLookAt = null
         events += UiEvent.Fit(pts, northUp = true)
+    }
+
+    /** The next computed route is fitted ([WholeRoute.firstRoute], a plan link): the whole line shows (field A-019). */
+    private var fitNextRoute = false
+
+    /**
+     * The plan's first route is there: the map shows it whole – the same fit as "Show whole route" (north up, the
+     * [FitPaddingRule] padding), once the sheet has grown to its route size. Not when the user took the map meanwhile,
+     * left Plan or the route changed again. Following stops first (CLAUDE.md "Map camera").
+     */
+    private fun fitFirstRoute(line: List<GeoPoint>, pts: List<GeoPoint>) {
+        val asked = android.os.SystemClock.uptimeMillis()
+        viewModelScope.launch {
+            delay(WholeRoute.SETTLE_MS)
+            if (lastMapTouchMs > asked || mode != AppMode.PLAN || shown != null || route?.points != line) {
+                Problems.trace("map", "First route not fitted: the map was touched or the plan moved on")
+                return@launch
+            }
+            followMe = false
+            freeLookAt = null
+            events += UiEvent.Fit(WholeRoute.bounds(listOf(line), pts, null), northUp = true)
+        }
     }
 
     /** A spot in the list tapped: the list closes, following stops, the map shows that piece (drawn amber). */
@@ -4059,7 +4085,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         linkPoints = load.points
         Problems.info("plan", "Plan link opened ($via): ${load.points.size} points, ${plan.activity.name}" +
             (if (plan.activity == Activity.HIKE) " T${plan.sac}" else "") + ", ${load.pinned.size} pinned, ${load.names.size} names")
-        events += UiEvent.Fit(load.points)
+        // the map shows the plan (field A-019: it stayed where it was): its points now, the whole route once computed;
+        // the start camera must not centre on the position afterwards, following stops first (CLAUDE.md "Map camera")
+        holdCameraForSharedPlace()
+        followMe = false
+        freeLookAt = null
+        fitNextRoute = true
+        events += UiEvent.Fit(load.points, northUp = true)
     }
 
     /** Sheet ⋯ → Share plan: the plan as a plan.onpath.earth link (PlanLinks) in the share sheet; from two points. */
