@@ -22,6 +22,11 @@ the git log.
   e8245e5 (10-29); after the next merge `web/parity.json` flags these files too. Drive hand-off: 00 Übergabe,
   "2026-10-30 donald → Web-Planer: App-Änderungen zum Nachziehen".
   - *Must (the web build or the web map breaks after merging main):*
+    - One plan computation: `routing/PlanResult.kt` · (this branch, 2026-10-31) · `Engine.plan` calls
+      `PlanResult.plan` (route + model time, snapped points – pins, named, far and skipped stops kept – gaps, warnings,
+      rating, profile) instead of its own copy; the page adopts the snapped points; add `routing/PlanResult.kt` +
+      `routing/ProfileData.kt` to `appFiles`, delete `profileJson` / own time, rating, warnings and `WebPlanRules.gaps`
+      calls – steps in `docs/handoff-web-planresult.md`.
     - Junction cues "only where one could go wrong" · 59802bc, 8706d07, 905a2c7 · `JunctionCues.kt` now needs
       `navigation/CueRule.kt` + `navigation/SpeedWindow.kt` – add both to `appFiles` (pure Kotlin); `GeoPoint.shape`,
       `JunctionShape` (Junctions.kt) and the longer `OnPathHints.java` rows come along by themselves; `CueRuleTest.kt`
