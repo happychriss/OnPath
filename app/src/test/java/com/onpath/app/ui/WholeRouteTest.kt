@@ -156,6 +156,28 @@ class WholeRouteTest {
         assertTrue(link.contains("fitNextRoute = true"))
     }
 
+    /** Field A-019 add-on (09d): after "Add as new destination" from the candidate's menu the map stayed on the place. */
+    @Test fun placeAddedFromTheCardOrTheCandidateIsFitted() {
+        val a = GeoPoint(46.69, 11.10); val b = GeoPoint(46.70, 11.12); val c = GeoPoint(46.70, 11.14)
+        assertTrue(WholeRoute.fitAfterPlace(listOf(a, b), listOf(a, b, c))) // new destination
+        assertTrue(WholeRoute.fitAfterPlace(listOf(a, b), listOf(a, c, b))) // stop 2
+        assertTrue(WholeRoute.fitAfterPlace(listOf(a), listOf(a, c))) // set as destination
+        assertTrue(WholeRoute.fitAfterPlace(listOf(a, c, b), listOf(a, b, c))) // a planned place made the destination
+        assertFalse(WholeRoute.fitAfterPlace(listOf(a, b), listOf(a, b))) // nothing changed (e.g. already a stop)
+        assertFalse(WholeRoute.fitAfterPlace(emptyList(), listOf(c))) // a start alone: no route to fit
+        val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        // the place card's actions (SMART = "Add as stop N" / "Add as new destination", START, DESTINATION) all go through it
+        assertTrue(vm.contains("fun addPlace(place: com.onpath.app.search.Place, role: PlaceRole) = fittingPlaceAdd {"))
+        // the candidate's hold menu ("Add as new destination") – a POI of the map held there does not move the map
+        val poi = vm.substringAfter("fun addPoiPoint(").substringBefore("\n    }\n")
+        assertTrue(poi.indexOf("val candidate = isCandidate(poi)") in 0 until poi.indexOf("closeMapOverlays()"))
+        assertTrue(poi.contains("if (candidate) fittingPlaceAdd { addPoint(p, lineSnapM, onPoi = true) } else addPoint(p, lineSnapM, onPoi = true)"))
+        val add = vm.substringAfter("private inline fun fittingPlaceAdd(").substringBefore("\n    }\n")
+        assertTrue(add.contains("if (WholeRoute.fitAfterPlace(before, waypoints.toList())) fitNextRoute = true"))
+        // the same fit as the first route: following stopped, the user's touch wins
+        assertTrue(vm.contains("if (fitNextRoute) { fitNextRoute = false; fitFirstRoute(it.points, pts) }"))
+    }
+
     /** Field A-019: a search result picked while planning during a tour landed half behind the plan sheet. */
     @Test fun searchResultFliesIntoTheFreeRoom() {
         val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()

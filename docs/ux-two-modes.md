@@ -101,8 +101,10 @@ undo step. Tracks open next to the plan without asking.
   whichever shows it bigger; a marker's radius of air, no more);
   Navigate also includes where you are.
   Following comes back only with locate. No box, no dialog (`ui/WholeRoute.kt`). The same fit runs by itself once
-  when a plan link opens and when the plan gets its first route (first destination, "Go here") – never after later
-  edits, not when the map was touched meanwhile (`WholeRoute.firstRoute`, field A-019). A search result is centred in
+  when a plan link opens, when the plan gets its first route (first destination, "Go here") and when a place is added
+  from the place card or the candidate marker's menu ("Add as new destination", "Add as stop 2", "Set as destination";
+  `WholeRoute.fitAfterPlace`, A-019 add-on) – never after map holds and other edits, not when the map was touched
+  meanwhile (`WholeRoute.firstRoute`, field A-019). A search result is centred in
   the same free room. MapLibre's own compass is off.
 - Own position in both modes: small blue dot with accuracy circle and a small direction triangle at its edge
   (MapLibre COMPASS render mode; direction = compass standing, GPS bearing moving – `map/HeadingEngine`); grey when stale.

@@ -2058,6 +2058,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun addPoiPoint(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) {
+        // the candidate marker's menu (a search result / shared place, maybe far off): the new route is fitted
+        val candidate = isCandidate(poi)
         closeMapOverlays()
         val idx = waypoints.indexOfFirst { sameSpot(it, poi.lat, poi.lon) }
         if (idx >= 0) { openPointMenu(idx, via = "POI that is a stop"); return }
@@ -2065,7 +2067,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
         clearSearchMarkAt(poi.lat, poi.lon)
         val before = waypoints.size
-        addPoint(p, lineSnapM, onPoi = true)
+        if (candidate) fittingPlaceAdd { addPoint(p, lineSnapM, onPoi = true) } else addPoint(p, lineSnapM, onPoi = true)
         Problems.trace("plan", "POI menu: \"${poi.name ?: poi.kind}\" added to the route (plan $before → ${waypoints.size} points)")
     }
 
@@ -2240,6 +2242,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Search result marked on the map (pin); see [pickSearchResult]. */
     var searchMark by mutableStateOf<com.onpath.app.search.Place?>(null)
 
+    /** [poi] is the candidate marker's place (its hold menu): a search result / shared place, not a POI of the map. */
+    private fun isCandidate(poi: com.onpath.app.poi.Poi): Boolean =
+        searchMark?.let { sameSpot(GeoPoint(it.lat, it.lon), poi.lat, poi.lon) } == true
+
+    /**
+     * [block] adds a place from the place card or the candidate marker's menu: the new route is fitted once computed
+     * ([WholeRoute.fitAfterPlace], the same fit as the first route).
+     */
+    private inline fun fittingPlaceAdd(block: () -> Unit) {
+        val before = waypoints.toList()
+        block()
+        if (WholeRoute.fitAfterPlace(before, waypoints.toList())) fitNextRoute = true
+    }
+
     private fun clearSearchMarkAt(lat: Double, lon: Double) {
         val m = searchMark ?: return
         if (sameSpot(GeoPoint(m.lat, m.lon), lat, lon)) searchMark = null
@@ -2269,7 +2285,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Adds the place as a pinned stop (passed exactly), named after the place. Moves it when already planned. */
-    fun addPlace(place: com.onpath.app.search.Place, role: PlaceRole) {
+    fun addPlace(place: com.onpath.app.search.Place, role: PlaceRole) = fittingPlaceAdd {
         val p = GeoPoint(place.lat, place.lon)
         val name = place.title()
         val idx = routeIndexOf(place)
@@ -2278,7 +2294,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (idx != null) {
             // "As start" = the point menu's "Start here" (owner); "As destination" moves it to the end
             when (role) { PlaceRole.START -> startAtPoint(idx); PlaceRole.DESTINATION -> makeDestination(idx); PlaceRole.SMART -> Unit }
-            return
+            return@fittingPlaceAdd
         }
         pinned += p; prefs.planPinned = pinned
         when (role) {
@@ -2864,7 +2880,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         events += UiEvent.Fit(pts, northUp = true)
     }
 
-    /** The next computed route is fitted ([WholeRoute.firstRoute], a plan link): the whole line shows (field A-019). */
+    /**
+     * The next computed route is fitted ([WholeRoute.firstRoute], a plan link, a place added from the card / candidate
+     * menu – [WholeRoute.fitAfterPlace]): the whole line shows (field A-019).
+     */
     private var fitNextRoute = false
 
     /**

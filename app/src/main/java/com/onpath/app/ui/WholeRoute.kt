@@ -40,9 +40,18 @@ internal object WholeRoute {
     /**
      * An edit that gives the plan its first route (fewer than two points → two or more: the first destination set,
      * "Go here", a route opened into an empty plan): the route is fitted once it is computed (field A-019 – the line
-     * lay half off the map). Later edits never move the map.
+     * lay half off the map). Later map edits never move the map ([fitAfterPlace]: a place from the card does).
      */
     fun firstRoute(pointsBefore: Int, pointsAfter: Int): Boolean = pointsBefore < 2 && pointsAfter >= 2
+
+    /**
+     * A place added from the place card or the candidate marker's menu ("Add as new destination", "Add as stop 2", "Set
+     * as destination" – a search result or shared place, often far off the shown part): the new route is fitted once it
+     * is computed, like the first route (field A-019 add-on, 09d: the map stayed on the place). Only when the plan
+     * changed and has a route. A hold on the map never moves it (the user is looking there).
+     */
+    fun fitAfterPlace(pointsBefore: List<GeoPoint>, pointsAfter: List<GeoPoint>): Boolean =
+        pointsAfter.size >= 2 && pointsAfter != pointsBefore
 
     /** Wait after the route arrived before fitting: the plan sheet grows to its route size and reports it (120 ms after it rests) – its height is the padding. */
     const val SETTLE_MS = 500L
