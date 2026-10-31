@@ -64,8 +64,16 @@ check(await pins() === 2, 'both points still there');
 await page.click('#planAnyway');
 await page.waitForFunction(() => !document.querySelector('dialog.longroute') && (/failed|Planning/.test(document.getElementById('status').textContent) || !!document.querySelector('#summary .big')), null, { timeout: 120_000 });
 check(!(await page.$('dialog.longroute')), 'Plan anyway: routed without asking again');
-// the long plan runs on in the engine's one worker: wait for its end, or the next plan and click queue behind it
-await page.waitForFunction(() => !document.getElementById('sheet').classList.contains('busy'), null, { timeout: 180_000 });
+// 1b'. Clear route while that long plan may still run in the engine's one worker: the page answers at once (as the app
+// cancels its plan) and the plan's late end brings no route back
+const clearAt = Date.now();
+await page.click('#sheetMenuBtn'); await page.click('#clear');
+await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0 && !document.getElementById('sheet').classList.contains('busy'), null, { timeout: 5_000 }).catch(() => {});
+const clearMs = Date.now() - clearAt;
+check(await pins() === 0 && clearMs < 5_000, `Clear route during a long plan: the points go at once (${clearMs} ms)`);
+await page.evaluate(() => window.__engine.call('historyState')); // the worker is free again: the long plan has ended
+await page.waitForTimeout(300);
+check(await pins() === 0 && !(await page.$('#summary .big')), 'the long plan\'s late result is dropped: no route comes back');
 
 // 1c. a clicked point that makes a short plan very long: Cancel takes it back (PlanStatus.onCancel → UNDO)
 await page.goto(url + 'index.html#p=' + CODE);

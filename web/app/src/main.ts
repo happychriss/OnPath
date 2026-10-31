@@ -373,9 +373,12 @@ async function commit(points: LatLon[], meta?: Meta[]) {
   runCause = nextCause ?? 'edit'; nextCause = null;
   if (runCause === 'edit') state.otherRouting = false; // edited here: the route is the page's own now
   editBefore = runCause === 'edit' ? { points: state.points, names: state.meta.map((m) => m.name) } : null;
-  await engine.call('historyRecord', enc(state.points));
+  // sent now with the points as they are (the worker keeps the order), not waited for: a long plan still running in the
+  // one engine worker must not hold the page (Clear / Delete while planning answers at once, as in the app)
+  const recorded = engine.call('historyRecord', enc(state.points));
   setPoints(points, meta);
   await changed();
+  await recorded;
 }
 
 function setPoints(points: LatLon[], meta?: Meta[]) {
@@ -419,7 +422,8 @@ const stopColor = (i: number, count: number) => (i === 0 ? COLORS.start : i === 
 
 /** Markers + the Points list (the app's PlanPoints rows: names, leg distances, a round trip shown once with ↺). */
 async function drawPoints() {
-  const r = await engine.rows(state.points, namesText());
+  // no points: nothing to ask the engine (it may still be busy with a plan that was just cleared)
+  const r = state.points.length ? await engine.rows(state.points, namesText()) : { roundTrip: false, rows: [] };
   state.roundTrip = r.roundTrip;
   markers.splice(0).forEach((m) => m.remove());
   const n = state.points.length, last = n - 1;
@@ -768,14 +772,19 @@ let editBefore: Before | null = null;
 async function changed() {
   const before = editBefore; editBefore = null;
   await drawPoints();
-  const h = JSON.parse(await engine.call('historyState'));
-  state.canUndo = h.canUndo; state.canRedo = h.canRedo;
+  const few = state.points.length < 2;
+  // fewer than two points (Clear route, a point deleted): no route – shown at once. A plan still running in the engine
+  // (one worker, it cannot be stopped mid-way) is dropped when it ends (state.latest), as the app cancels it.
+  if (few) { state.latest++; state.plan = null; state.planning = false; planGaps.clear(); status(''); }
   // Share (icon next to ⋯): always there (owner 2026-10-30), greyed until a start and a destination are set
   const sh = $<HTMLButtonElement>('share'), two = state.points.length >= 2, shw = two ? t('web_share') : t('web_share_needs_two');
   sh.disabled = !two; sh.title = shw; sh.setAttribute('aria-label', shw);
   rememberInAddress();
   state.notRouted = false;
-  if (state.points.length < 2) { state.plan = null; state.planning = false; planGaps.clear(); render(); return; }
+  if (few) render();
+  const h = JSON.parse(await engine.call('historyState'));
+  state.canUndo = h.canUndo; state.canRedo = h.canRedo;
+  if (few) { render(); return; }
   planGaps.clear(); // the last plan's gaps belong to other points
   // the app's long-route question first (routing/LongRoute): nothing is routed or downloaded until it is answered
   const answer = await longRouteOk(engine, state.points, state.activity, before);
