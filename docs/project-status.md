@@ -44,7 +44,7 @@ the current state.
 | Map ↔ route colours | Green = good, black = possible, red / dashed = forbidden; difficulty = grey line |
 | Navigate | Only the followed line (no numbered points); what Plan shows = what Navigate follows |
 | Deleting all points in a tour | Guidance ends, recording goes on, Undo restores |
-| Messages | INFO grey / ACTION blue strip for questions / WARNING amber ⚠ / ERROR red with one way out; no dark bar |
+| Messages | `docs/design/ui-style.md`: FRAGE box (blue edge, two verbs) / HINWEIS box (one button; grey, amber ⚠, red ⚠) / ANZEIGE (no box); one box at a time, 12 dp under the top; no dark bar |
 | Settings | Topic list, one page per topic; developer tools after 7 taps on the version |
 | Vehicle detection | Nothing during the ride; a summary with four choices at End tour; raw points kept |
 | Ideas dropped | Sunset warning, emergency screen, battery check at start, weather |

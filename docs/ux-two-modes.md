@@ -63,7 +63,7 @@ and ⋮ with **Rename** (name dialog, the sheet's "Saved as" follows), Export (G
 the dialog stays until Cancel / Delete, a tap outside does nothing).
 **During a tour no new route is loaded** (owner 2026-10-31: "too much automation – as a hiker I wouldn't trust it";
 `RouteRules.openAsk` → `BLOCKED_DURING_TOUR`). The list looks as always (no hint under the routes – nobody reads it);
-a tap on a planned route is the action, the answer is the blue box at the top of My routes, over the list: **"End the
+a tap on a planned route is the action, the answer is a HINWEIS box under the tabs of My routes, over the list: **"End the
 running tour first, then this route can be loaded."** / „Erst die laufende Tour beenden, dann lässt sich diese Route
 laden.“ – **OK** (48 dp). It stays until OK or until My routes is left. Nothing changes: plan, followed route, activity
 and the recording. Tracks open as before (shown as a track; "Start navigation · …" in the track panel follows one).
@@ -104,7 +104,20 @@ nothing is dragged any more (points and the route line can't be moved by draggin
   the place card. The empty plan sheet says how it works: "Hold the map to start there – or to go there from your
   location. Hold a point or place for options." (no "Start from my location" button – the first-hold menu does it).
 - **No message disappears by itself** (owner rule for the whole app – rain, stress): no "point added" notices, no
-  "hold to add" hint, no timed bubbles; the error card stays until OK is tapped (no dark message bar).
+  "hold to add" hint, no timed bubbles; a message box stays until it is answered / OK is tapped (no dark message bar).
+
+## Messages (owner 2026-10-31, `docs/design/ui-style.md`)
+Three kinds: **FRAGE** (a question box, blue edge, two verb buttons), **HINWEIS** (a box with one button – OK or the
+one way out; grey, amber ⚠ or red ⚠ edge), **ANZEIGE** (no box: plan sheet lines, the off-route card, the download
+chip, the grey pill, lines in My routes / Settings). All boxes are one look (`MessageCard`: white card, coloured left
+edge), **one at a time** (a question first, the others wait) and sit **12 dp under the top element**:
+- **Plan:** under the search pill + ☰ row – pairing step, mobile data?, map for here?, new version (Later / Install),
+  "Paired." / "Unpaired.", a map failure (Try again), an error. The plan sheet is drawn over the box; while a box shows,
+  the download chip and the grey pill wait.
+- **Navigate:** under the turn card / status card – the re-route question and the activity-switch question (moved here
+  from the bottom, 56 dp buttons; drawn over the map controls), "Notifications off" (OK; a tap = the setup step), an
+  error. While the app is on screen the question is not a heads-up notification too (quiet channel, lock screen keeps it).
+- **My routes / Settings:** under the tabs / title, over the list – "End the running tour first …", an error.
 
 ## Layout rule (owner)
 Everything about **this route** lives in the route sheet; the **library and app** live at the top.
@@ -132,7 +145,7 @@ Everything about **this route** lives in the route sheet; the **library and app*
   <activity>" (no access, too hard, above the SAC limit – the profile avoids them); plus from its way types / surfaces:
   steps (bikes), unpaved (Bike / E-bike), rough trail (Gravelbike), busy road (Hike). Chosen because the same route is
   then the proposal – choosing needs no second wait.
-- **Choosing an activity** shows that route as the dashed proposal with the usual persistent question
+- **Choosing an activity** shows that route as the dashed proposal with the usual persistent question (the box under the status card)
   ("New route for MTB – Rest of the tour 8.6 km (+1.2 km) · 38 min" · Take new route / Keep original, also in the
   notification, silent). It stays until answered, also while on the route. **Take** = the new line becomes the tour's
   line for the new activity (no grey line of the old one), the tour is stored with the new activity, the app switches

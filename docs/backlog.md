@@ -102,6 +102,10 @@ the git log.
   - *Should:*
     - Map symbols: rock / scree from z14, stronger orchard / vineyard · 2026-10-31 · nothing to code – `copy-engine.mjs`
       copies `style/f2/onpath.json` + `sprites/` on the next merge of main; just check them on the web map.
+    - One message system · `ui/MessageCard.kt` (2026-10-31, `docs/design/ui-style.md`) · the browser uses the same three
+      kinds and look: FRAGE (white card, blue left edge, two verb buttons, until answered), HINWEIS (one button – OK or
+      the one way out; grey / amber ⚠ / red ⚠ edge, never goes by itself), ANZEIGE (no box, a line in place); one box at
+      a time (a question first), 12 dp under the top bar; green filled primary button, green text button beside it.
     - One plan GPX export · `gpx/PlanGpx.kt` (pure, shared) · the web's `WebApi.gpx` writes the line only: use
       `PlanGpx.export` (named route points as `<wpt>`, sport, "<name> - plan.gpx"); on import `PlanGpx.stopsOf` first
       (an exported plan comes back exactly, no fitting) – `docs/handoff-web-parity-b.md` §1–2.
