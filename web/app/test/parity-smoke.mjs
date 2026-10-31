@@ -214,8 +214,8 @@ check(await page.isVisible('#header #menuSavePlan') && sh.state === 'dark' && !s
   `header: "Save", dark with a new route (${JSON.stringify(sh)})`);
 await page.click('#sheetMenuBtn');
 const sheetItems = await page.evaluate(() => [...document.querySelectorAll('#sheetMenu button')].filter((b) => !b.hidden).map((b) => b.textContent.trim()));
-check(sheetItems.includes('Save route') && sheetItems.includes('Save as new route') && await page.isEnabled('#sheetSave'),
-  `⋯: "Save route" and "Save as new route", active with a route (as in the app) ${JSON.stringify(sheetItems)}`);
+check(sheetItems.includes('Save route') && sheetItems.includes('Save as copy') && await page.isEnabled('#sheetSave'),
+  `⋯: "Save route" and "Save as copy", active with a route (as in the app) ${JSON.stringify(sheetItems)}`);
 await page.click('#sheetSave');
 await page.waitForSelector('#savedLine:not([hidden])', { timeout: 10_000 }).catch(() => {});
 const firstSaved = await savedTitles();

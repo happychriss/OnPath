@@ -157,7 +157,7 @@ check(!(await page.$('dialog.longroute')) && await pins() === 3, 'Add to the rou
 await page.goto(url + 'index.html#p=' + CODE);
 await planned();
 for (let i = 0; i < 3 && await page.evaluate(() => document.getElementById('sheet').dataset.step) !== 'points'; i++) await page.click('#sheetStep');
-check(await page.isVisible('#clearPoints') && (await page.getAttribute('#clearPoints', 'title')) === 'Clear route', 'Points head: Delete (Clear route)');
+check(await page.isVisible('#clearPoints') && (await page.getAttribute('#clearPoints', 'title')) === 'Close plan', 'Points head: Delete (Clear route)');
 await page.click('#clearPoints');
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 }).catch(() => {});
 check(await pins() === 0 && !(await page.$('dialog[open]')), 'Delete in the Points head: the route is gone, no question');

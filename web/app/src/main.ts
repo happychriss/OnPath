@@ -161,9 +161,9 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <button id="sheetStep" class="iconbtn" aria-controls="sheet"></button>
       <div id="sheetMenu" class="menu" role="menu" hidden>
         <button id="sheetSave" role="menuitem">${icon('save')}${escapeHtml(t('plan_save_route'))}</button>
-        <button id="sheetSaveNew" role="menuitem">${icon('save')}${escapeHtml(t('plan_save_as_new_route'))}</button>
+        <button id="sheetSaveNew" role="menuitem">${icon('save')}${escapeHtml(t('plan_save_as_copy'))}</button>
         <button id="exportGpx" role="menuitem">${icon('download')}${escapeHtml(t('common_export_gpx'))}</button>
-        <hr><button id="clear" role="menuitem">${icon('delete')}${escapeHtml(t('plan_clear_route'))}</button>
+        <hr><button id="clear" role="menuitem">${icon('delete')}${escapeHtml(t('plan_close_plan'))}</button>
       </div>
     </div>
     <div id="savedLine" class="savedline muted small" hidden></div>
@@ -180,7 +180,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div class="pointshead"><b>${escapeHtml(t('plan_points'))}</b>
         <button id="reverse" class="textbtn">${icon('swap', 18)}${escapeHtml(t('plan_reverse'))}</button>
         <button id="roundTrip" class="textbtn">${icon('loop', 18)}${escapeHtml(t('plan_round_trip'))}</button>
-        <button id="clearPoints" class="textbtn" title="${escapeHtml(t('plan_clear_route'))}" aria-label="${escapeHtml(t('plan_clear_route'))}">${icon('delete', 18)}${escapeHtml(t('common_delete'))}</button></div>
+        <button id="clearPoints" class="textbtn" title="${escapeHtml(t('plan_close_plan'))}" aria-label="${escapeHtml(t('plan_close_plan'))}">${icon('delete', 18)}${escapeHtml(t('common_delete'))}</button></div>
       <ol id="points"></ol>
     </div>
     <div id="status" class="status muted" role="status"></div>
