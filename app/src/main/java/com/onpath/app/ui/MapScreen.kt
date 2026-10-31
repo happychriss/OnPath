@@ -567,6 +567,10 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         val m = vm.searchMark
         c.setSearchMark(m?.let { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }, m?.title())
     }
+    // the candidate's dashed preview line to where it would join the route (Plan, with a route; AppViewModel.candidateJoin)
+    LaunchedEffect(c, passed, trackSize / 20) {
+        snapshotFlow { vm.candidateJoin() }.distinctUntilChanged().collect { c.setCandidateJoin(it?.first, it?.second) }
+    }
     // Google Maps place → go there (owner): the ring's menu opens by itself once the camera has arrived there (and the
     // map-download modal for it is gone) – checked on every camera stop while it waits (SharedPlaceMenu)
     LaunchedEffect(c, vm.sharedMenuWaiting, vm.cameraIdleTick, vm.loadModalOpen) {

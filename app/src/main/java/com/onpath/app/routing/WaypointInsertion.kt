@@ -63,6 +63,42 @@ object WaypointInsertion {
         else Decision(waypoints.size, Kind.DESTINATION)
     }
 
+    /**
+     * Where a candidate place [p] would join the [route] if added with [d] (from [decide] on the same [waypoints] and
+     * route): the route's start for a new start, its end for a new destination, else the spot of the leg it goes into
+     * that lies nearest to [p]. The map draws a thin dashed line from the candidate marker to it ("not taken yet");
+     * null = no route to join (fewer than two points, no line, a route still being computed).
+     */
+    fun joinPoint(waypoints: List<GeoPoint>, p: GeoPoint, route: List<GeoPoint>?, d: Decision): GeoPoint? {
+        if (route == null || route.size < 2 || waypoints.size < 2) return null
+        if (d.index <= 0) return route.first()
+        if (d.index >= waypoints.size) return route.last()
+        val wpIdx = routeIndices(waypoints, route)
+        val from = wpIdx[d.index - 1].coerceIn(0, route.size - 1)
+        val to = wpIdx[d.index].coerceIn(from, route.size - 1)
+        if (from == to) return route[from]
+        var best = route[from]
+        var bestD = Double.MAX_VALUE
+        for (i in from until to) {
+            val c = closestOnSegment(p, route[i], route[i + 1])
+            val dist = Geo.distance(p, c)
+            if (dist < bestD) { bestD = dist; best = c }
+        }
+        return best
+    }
+
+    /** The point of segment a–b nearest to [p] (local equirectangular projection, as [distanceToSegment]). */
+    fun closestOnSegment(p: GeoPoint, a: GeoPoint, b: GeoPoint): GeoPoint {
+        val mPerDegLat = 111_320.0
+        val mPerDegLon = 111_320.0 * Math.cos(Math.toRadians(p.lat))
+        val ax = (a.lon - p.lon) * mPerDegLon; val ay = (a.lat - p.lat) * mPerDegLat
+        val bx = (b.lon - p.lon) * mPerDegLon; val by = (b.lat - p.lat) * mPerDegLat
+        val dx = bx - ax; val dy = by - ay
+        val len2 = dx * dx + dy * dy
+        val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
+        return GeoPoint(a.lat + t * (b.lat - a.lat), a.lon + t * (b.lon - a.lon))
+    }
+
     /** Index of the route vertex nearest to [p] (segment-projected) and the distance in metres. */
     fun nearestOnRoute(route: List<GeoPoint>, p: GeoPoint): Pair<Int, Double>? {
         if (route.size < 2) return null

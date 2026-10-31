@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
@@ -734,10 +736,12 @@ class ScreenshotTest {
             drawCircle(androidx.compose.ui.graphics.Color.White, 13.dp.toPx(), a)
             drawCircle(dotColor, 11.dp.toPx(), a)
         }
-        // the orange ring of a search result / shared place (MapController.setSearchMark: radius 22, stroke 3.5)
+        // the candidate marker of a search result / shared place – the map's own drawing (MapController.setSearchMark)
         if (ring) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-            drawCircle(androidx.compose.ui.graphics.Color(0xFFF28C00), 22.dp.toPx(), a,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(3.5.dp.toPx()))
+            drawIntoCanvas { c ->
+                com.onpath.app.map.CandidateMarker.draw(c.nativeCanvas, a.x, a.y, density,
+                    android.graphics.Color.parseColor(com.onpath.app.map.MapController.ROUTE_COLOR))
+            }
         }
         AnchoredOverlay(a, topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }, content = content)
     }

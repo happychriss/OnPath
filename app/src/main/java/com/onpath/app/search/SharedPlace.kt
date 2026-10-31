@@ -12,7 +12,7 @@ import kotlin.math.abs
  * A place another app handed to OnPath: "Share" from Google Maps (name, address, link), a `geo:` URI, a map link.
  *
  * Owner decision: the coordinate inside a Google Maps link may be used to place our own marker (the
- * orange search ring). Nothing else from Google is drawn or stored – only that point and the shared name.
+ * candidate marker). Nothing else from Google is drawn or stored – only that point and the shared name.
  *
  * [lat]/[lon] are set when the coordinate is known; otherwise [link] (a short link to resolve online) and / or
  * [name] + [address] (to search for) are.

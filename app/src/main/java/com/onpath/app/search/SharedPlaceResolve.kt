@@ -13,7 +13,7 @@ import kotlinx.coroutines.withContext
  *  3. then the phone's own address service (Android `Geocoder`, [PlaceGeocoder]);
  *  4. every hit of 2 and 3 must lie in the shared town / postcode ([SharedPlaceLookup]);
  *  5. else [SharedOutcome.Unsure]: the "Place not clear" box with the search prefilled.
- * What is kept: only the point and the shared name / address on the orange ring (owner rule, CLAUDE.md).
+ * What is kept: only the point and the shared name / address on the candidate marker (owner rule, CLAUDE.md).
  */
 class SharedPlaceResolve(
     /** One HTTP request (no redirects followed, no body read) – [ShortLinkResolver.http] on the phone. */
@@ -56,7 +56,7 @@ class SharedPlaceResolve(
 
 /** What the map shows for a shared place. */
 sealed class SharedOutcome {
-    /** The orange ring at [place] (its note says when the position came from the address). */
+    /** The candidate marker at [place] (its note says when the position came from the address). */
     data class Show(val place: Place) : SharedOutcome()
     /** No sure place: the "Place not clear" box, its button opens the search with [searchText]. */
     data class Unsure(val searchText: String) : SharedOutcome()

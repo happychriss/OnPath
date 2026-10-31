@@ -68,7 +68,11 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val LAYER_TURN = "nav-turn-arrow"
         /** U-turn sign where a way back starts by turning round. */
         const val SRC_UTURN = "nav-uturn"
+        /** The candidate marker (search result / shared place, not yet taken – [CandidateMarker]) and its preview line. */
         const val SRC_MARK = "search-mark"
+        const val LAYER_MARK = "search-mark"
+        const val SRC_MARK_JOIN = "candidate-join"
+        private const val IMG_CANDIDATE = "candidate-mark"
         /** MapLibre's own position layers (dot, accuracy circle, bearing) all start with this. */
         const val POSITION_LAYER_PREFIX = "mapbox-location"
         // --- Re-routing while navigating (navigation/Navigator) ---
@@ -87,7 +91,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         val ROUTE_OVERLAY_LAYERS = NAV_LAYERS + listOf(
             "planned-route-casing", "planned-route", "planned-straight-casing", "planned-straight",
             "$SRC_GPX-casing", SRC_GPX, SRC_RIDES, SRC_LIFTS, "highlight-dot", "waypoints-pin", LAYER_WPT, LAYER_TURN, SRC_UTURN,
-            "planned-route-arrows", "$SRC_GPX-arrows", SRC_GAPS, SRC_SPOT,
+            "planned-route-arrows", "$SRC_GPX-arrows", SRC_GAPS, SRC_SPOT, SRC_MARK_JOIN,
         )
         private const val ARROW_IMAGE = "route-arrow"
         private const val IMG_TURN = "nav-turn-arrow"
@@ -192,7 +196,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             PF.lineCap(Property.LINE_CAP_ROUND),
         ))
         style.addSource(GeoJsonSource(SRC_WPT))
-        // No ring for POI-pinned stops (owner): the only orange ring is the search mark.
+        // No ring for POI-pinned stops (owner): the only ring is the candidate marker (search mark).
         addBelowPosition(SymbolLayer(LAYER_WPT, SRC_WPT).withProperties(
             PF.iconImage(Expression.get("icon")),
             PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
@@ -774,22 +778,49 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         if (firstPosition != null) style.addLayerBelow(l, firstPosition) else style.addLayer(l)
     }
 
-    /** Search result mark (orange ring around the place, with its name); null removes it. Never throws. */
+    /**
+     * The candidate marker ([CandidateMarker]: a search result / shared place, suggested but not yet in the route – a
+     * dashed route-blue ring around the place's icon with a "+" badge, its name below); null removes it. Never throws.
+     */
     fun setSearchMark(p: GeoPoint?, name: String?) = guarded("search mark") {
         if (style.getSource(SRC_MARK) == null) {
             style.addSource(GeoJsonSource(SRC_MARK))
-            // One orange ring around the place's icon (owner: not a red dot covering it), clearly outside the icon.
-            addBelowPosition(CircleLayer("search-mark", SRC_MARK).withProperties(
-                PF.circleRadius(22f), PF.circleColor("#00000000"), PF.circleStrokeColor("#F28C00"), PF.circleStrokeWidth(3.5f)))
+            if (style.getImage(IMG_CANDIDATE) == null)
+                style.addImage(IMG_CANDIDATE, CandidateMarker.bitmap(density, context.resources.displayMetrics.densityDpi))
+            // around the place's icon (owner: never a dot covering it), clearly outside the icon
+            addBelowPosition(SymbolLayer(LAYER_MARK, SRC_MARK).withProperties(
+                PF.iconImage(IMG_CANDIDATE), PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
+                PF.iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP)))
             addBelowPosition(SymbolLayer("search-mark-label", SRC_MARK).withProperties(
                 PF.textField(Expression.get("name")), PF.textFont(arrayOf("Noto Sans Medium")), PF.textSize(13f),
                 PF.textOffset(arrayOf(0f, 2.2f)), PF.textAnchor(Property.TEXT_ANCHOR_TOP),
-                PF.textColor("#B35C00"), PF.textHaloColor("#FFFFFF"), PF.textHaloWidth(1.6f),
+                PF.textColor(ROUTE_COLOR), PF.textHaloColor("#FFFFFF"), PF.textHaloWidth(1.6f),
                 PF.textAllowOverlap(true), PF.textIgnorePlacement(true)))
         }
         val src = source(SRC_MARK) ?: return
         if (p == null) src.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
         else src.setGeoJson(Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)).apply { addStringProperty("name", name ?: "") })
+    }
+
+    /**
+     * The candidate's preview line: thin, dashed, route blue, from the candidate marker [from] to where adding it would
+     * join the route [to] (WaypointInsertion.joinPoint) – under the route points and the marker; null removes it.
+     * Hidden with the eye button like every route line. Never throws.
+     */
+    fun setCandidateJoin(from: GeoPoint?, to: GeoPoint?) = guarded("candidate join") {
+        if (style.getSource(SRC_MARK_JOIN) == null) {
+            style.addSource(GeoJsonSource(SRC_MARK_JOIN))
+            val l = LineLayer(SRC_MARK_JOIN, SRC_MARK_JOIN).withProperties(PF.lineColor(ROUTE_COLOR),
+                PF.lineWidth(CandidateMarker.JOIN_WIDTH), PF.lineDasharray(CandidateMarker.JOIN_DASH), PF.lineOpacity(0.9f),
+                PF.lineCap(Property.LINE_CAP_ROUND))
+            val below = style.layers.firstOrNull { it.id == LAYER_MARK || it.id == LAYER_WPT }?.id
+            if (below != null) style.addLayerBelow(l, below) else addBelowPosition(l)
+            applyRouteOverlaysVisibility()
+        }
+        val src = source(SRC_MARK_JOIN) ?: return
+        if (from == null || to == null) src.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+        else src.setGeoJson(Feature.fromGeometry(LineString.fromLngLats(listOf(
+            Point.fromLngLat(from.lon, from.lat), Point.fromLngLat(to.lon, to.lat)))))
     }
 
     /** The spot tapped in the route warnings list: its piece of route drawn wide amber under the markers; null = none. */

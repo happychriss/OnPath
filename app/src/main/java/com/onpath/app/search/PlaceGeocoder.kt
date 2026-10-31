@@ -4,7 +4,7 @@ package com.onpath.app.search
  * The phone's own address service (Android's `Geocoder`; on most phones Google's, on others the maker's, on some none)
  * – the last search for a shared place without a coordinate, after our offline index and Photon (owner 2026-10-31,
  * A-020). Behind this interface so the rules are tested without a phone ([AndroidPlaceGeocoder] on the phone).
- * Only the found point and the address line are used for the orange ring, nothing else is kept.
+ * Only the found point and the address line are used for the candidate marker, nothing else is kept.
  * Blocking (called off the main thread), never throws: empty = missing, offline or nothing found.
  */
 fun interface PlaceGeocoder {

@@ -30,6 +30,7 @@ Colours come only from `OnPathColors` (and the Material scheme built from it in 
 | `Error` (+ `ErrorContainer`, `OnErrorContainer`) | **error**: ⚠ + red edge, red error lines, delete buttons |
 | `Good` | "ready ✓", "up to date" |
 | `Route`, `Gpx`, `Rec`, `Position`, `PositionUnsure`, `Weak` | map furniture only (planned line, GPX track, recording, own position, GPS dot) |
+| `Route` dashed (candidate marker) | a place **suggested, not yet taken** (search result, shared place): a dashed route-blue ring with a small "+" around the place's icon, its name in route blue below, and a thin dashed route-blue preview line to where adding it would join the route (only with a route); never orange (= recording). `map/CandidateMarker.kt`, `WaypointInsertion.joinPoint`; its actions stay in the place card / hold menu |
 | `RestBackground`, `RestInk`, `RestDim`, `OnDarkMuted` | the rest view while cycling and the dark slide switch only |
 
 Add a token when a new meaning is needed (with a comment saying what it is for); `inverseSurface` and Snackbars stay

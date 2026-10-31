@@ -1941,6 +1941,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun addPoint(p: GeoPoint, lineSnapM: Double = 30.0, onPoi: Boolean = false) {
         if (onPoi) { pinned += p; prefs.planPinned = pinned }
+        val ins = insertionFor(p, lineSnapM)
+        if (!ins.inTour && ins.decision.kind == WaypointInsertion.Kind.START && ins.points.size >= 2)
+            Problems.trace("plan", "New point on the way there (led to a route never reached): it is the new start")
+        change { add(ins.index.coerceIn(0, size), p) }
+    }
+
+    /**
+     * Where a new point [p] goes ([addPoint]): [points] and [line] = what the decision was made on, [index] = the place in
+     * the plan. [inTour]: a tour passed plan points – only the points ahead count, from the position.
+     */
+    private class Insertion(val points: List<GeoPoint>, val line: List<GeoPoint>?, val decision: WaypointInsertion.Decision,
+                            val index: Int, val inTour: Boolean)
+
+    private fun insertionFor(p: GeoPoint, lineSnapM: Double): Insertion {
         val before = waypoints.toList()
         // during a tour a new point goes only among the points ahead, never behind the user (TourSplit)
         val passed = tourPassed(before)
@@ -1950,14 +1964,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             // the followed line fits these points only once it runs from the position (else best fit by geometry)
             val line = followLine?.takeIf { it.isNotEmpty() && com.onpath.app.data.Geo.distance(it.first(), pos) < 50.0 }
             val d = WaypointInsertion.decide(ahead, p, line, lineSnapM)
-            change { add(TourSplit.insertIndex(passed, d.index).coerceIn(0, size), p) }
-            return
+            return Insertion(ahead, line, d, TourSplit.insertIndex(passed, d.index), inTour = true)
         }
         // While a reroute runs, the shown line belongs to older waypoints: use best-fit only.
-        val d = WaypointInsertion.decide(before, p, if (routing) null else route?.points, lineSnapM, wayThereFrom())
-        if (d.kind == WaypointInsertion.Kind.START && before.size >= 2)
-            Problems.trace("plan", "New point on the way there (led to a route never reached): it is the new start")
-        change { add(d.index.coerceIn(0, size), p) }
+        val line = if (routing) null else route?.points
+        val d = WaypointInsertion.decide(before, p, line, lineSnapM, wayThereFrom())
+        return Insertion(before, line, d, d.index, inTour = false)
+    }
+
+    /**
+     * The candidate marker's dashed preview line (owner 2026-10-31): from the search result / shared place to where
+     * adding it would join the route – the same decision as [addPoint] (WaypointInsertion.joinPoint). null = no line:
+     * no candidate, not in Plan, no route yet or one being computed, or the place already is a route point.
+     */
+    fun candidateJoin(): Pair<GeoPoint, GeoPoint>? {
+        val m = searchMark ?: return null
+        if (!canEditMap || waypoints.size < 2) return null
+        if (waypoints.any { sameSpot(it, m.lat, m.lon) }) return null
+        val p = GeoPoint(m.lat, m.lon)
+        val ins = insertionFor(p, 30.0)
+        return WaypointInsertion.joinPoint(ins.points, p, ins.line, ins.decision)?.let { p to it }
     }
 
     /**
@@ -1994,7 +2020,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Closes every map menu; [why] goes into the gesture log (Diagnostics) when a point menu was open. */
     fun closeMapOverlays(why: String = "closed") {
         // The search mark lives only until its menu is done (owner): closing that menu – by an action or by
-        // tapping elsewhere – removes the orange ring too.
+        // tapping elsewhere – removes the candidate marker too.
         if (poiMenu != null) searchMark = null // the menu may belong to the place's own map icon a few metres away
         closePointMenu(why)
         if (firstPointMenu != null) Problems.trace("plan", "First-point menu closed: $why")
@@ -2291,6 +2317,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val idx = routeIndexOf(place)
         closePlaceCard()
         rememberPlaceName(p, name)
+        // taken: the candidate marker goes (the numbered route point shows the place now)
+        clearSearchMarkAt(place.lat, place.lon)
         if (idx != null) {
             // "As start" = the point menu's "Start here" (owner); "As destination" moves it to the end
             when (role) { PlaceRole.START -> startAtPoint(idx); PlaceRole.DESTINATION -> makeDestination(idx); PlaceRole.SMART -> Unit }
@@ -2333,7 +2361,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * A place shared from Google Maps, a `geo:` link … (MainActivity): back to the map in Plan (a running tour goes on
-     * untouched), fly there and show the orange ring like a search result – nothing is added to the route. Without a
+     * untouched), fly there and show the candidate marker like a search result – nothing is added to the route. Without a
      * coordinate (short link offline, address only) the address is searched offline, then online, with a note.
      */
     fun receiveSharedPlace(shared: com.onpath.app.search.SharedPlace) {

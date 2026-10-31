@@ -64,6 +64,13 @@ the git log.
       `#0B3D91`, 12 px bold pill, never cut), gone when opened; careful: bold means "waiting" in the browser today –
       steps in `docs/handoff-web-route-tags.md`.
   - *Should:*
+    - Candidate marker instead of the orange search ring (owner 2026-10-31, A-019 add-on) · app commit "Candidate
+      marker" · the web's `.searchring` (search.ts, style.css) becomes the app's look: a dashed route-blue (`#1E3FAE`)
+      ring, radius 21 px, 3.5 px dashes 7 / 4.5 over a 7 px white halo, ~12 % blue tint inside, a small "+" badge
+      (blue disc r 8.5, white +) at its upper right, the name in route blue below; plus a thin dashed preview line
+      (2.5 px, dash 2 × width, opacity 0.9, under the route points) from the place to `WaypointInsertion.joinPoint`
+      (shared file: let `placePreview` return the join point) – only with a route. No orange (= recording).
+      `map/CandidateMarker.kt` draws it; picture `CandidateMarkerScreenshotTest`.
     - Short-trip detour retry (owner 2026-10-31, Hilden) · f8a55de, 17d78d1 · shared `routing/Planner.kt`
       (`retryShortDetours`: a leg < 2 km straight routed > 2× is retried via the midpoint, taken when ≥ 30 % shorter) –
       comes with the merge, nothing to code; add the Hilden case to `web/test/plans.json` (Bike 51.169243,6.925344 →
