@@ -41,8 +41,11 @@ enum class PlanStart {
     }
 }
 
-/** What sheet ⋯ → Save route does: ask for a name (new entry), or offer Save (overwrite) / Save as new…. */
-enum class SaveMode { NAME_DIALOG, OVERWRITE_OR_NEW }
+/**
+ * What Save does – at once, no dialog (owner 2026-10-31, "wie Word", like the browser planner): a new entry under a
+ * proposed name ([RouteRules.newRouteName]), or overwrite the saved route the plan belongs to (its name stays).
+ */
+enum class SaveMode { NEW_ROUTE, OVERWRITE }
 
 /**
  * "Enabled when" rules of the menus and route management (docs/ux-two-modes.md "Menus").
@@ -61,13 +64,27 @@ object RouteRules {
     )
 
     /**
-     * Sheet ⋯ → Save route: when the plan was loaded from (or last saved as) a planned route that still exists, offer to
-     * overwrite it or save a new one; otherwise the name dialog (always a new entry).
+     * Save (sheet button, ☰ "Save route", sheet ⋯ → Save route, "Save first"): when the plan was loaded from (or last
+     * saved as) a planned route that still exists, it is overwritten (the name stays); otherwise a new entry. No
+     * question either way (owner 2026-10-31, like Word's Save); a copy is sheet ⋯ → "Save as new route".
      * @param savedId tour id the plan was last saved / loaded as (-1 = none)
      * @param plannedIds ids of the planned routes in My routes
      */
     fun saveMode(savedId: Long, savedName: String?, plannedIds: Collection<Long>): SaveMode =
-        if (savedId >= 0 && savedName != null && savedId in plannedIds) SaveMode.OVERWRITE_OR_NEW else SaveMode.NAME_DIALOG
+        if (savedId >= 0 && savedName != null && savedId in plannedIds) SaveMode.OVERWRITE else SaveMode.NEW_ROUTE
+
+    /**
+     * Name of a route saved at once (no name dialog, owner 2026-10-31): the [proposed] one – a plan link's title while
+     * its points are unchanged, else the place proposal "Vellau → Leiteralm" (search/RouteNamer) – or, when there is
+     * none, [dated] ("Route 31 Oct, 10:12"). A name a planned route already has ([taken]) gets " (2)", " (3)" … so two
+     * entries in My routes never look the same. The user renames it with a tap on "Saved as …" in the sheet.
+     */
+    fun newRouteName(proposed: String?, dated: String, taken: Collection<String>): String {
+        val base = proposed?.trim()?.takeIf { it.isNotEmpty() } ?: dated.trim()
+        val names = taken.map { it.trim() }.toSet()
+        if (base !in names) return base
+        return generateSequence(2) { it + 1 }.map { "$base ($it)" }.first { it !in names }
+    }
 
     /**
      * "Save" at hand (owner 2026-10-30: he looked for it in ☰, it was only in the sheet's ⋯): while the plan has unsaved
@@ -78,7 +95,7 @@ object RouteRules {
      */
     fun saveAtHand(pointCount: Int, unsaved: Boolean): Boolean = unsaved && pointCount >= 2
 
-    /** A new name from the rename / save dialog: trimmed; blank keeps [old]. */
+    /** A new name from My routes → Rename or the sheet's "Saved as …" field: trimmed; blank keeps [old]. */
     fun cleanName(input: String, old: String): String = input.trim().ifBlank { old }
 
     /**

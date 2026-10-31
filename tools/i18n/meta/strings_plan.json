@@ -687,20 +687,8 @@
     "confidence": "sicher"
   },
   "plan_save_as_new_route": {
-    "area": "Dialogs",
-    "context": "Name dialog title when the plan already is a saved route",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "plan_save_current_route": {
-    "area": "Dialogs",
-    "context": "Name dialog title before the plan is replaced",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "plan_route_default_name": {
-    "area": "Dialogs",
-    "context": "Start of the suggested name of a new route (\"Route 26 Oct\")",
+    "area": "Plan sheet",
+    "context": "Item in the plan sheet's ⋯ menu while the plan is a saved route: saves a copy at once (Save overwrites)",
     "priority": 2,
     "confidence": "sicher"
   },
@@ -709,27 +697,6 @@
     "context": "Title of a dialog when saving / loading a route failed",
     "priority": 3,
     "confidence": "sicher"
-  },
-  "plan_save_changes_into": {
-    "area": "Dialogs",
-    "context": "Save dialog for a changed saved route. %1$s = route name",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "plan_saved_again": {
-    "area": "Dialogs",
-    "context": "Save dialog for an unchanged saved route. %1$s = route name",
-    "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "\"sie\" refers to \"die Route\""
-  },
-  "plan_save_as_new": {
-    "area": "Dialogs",
-    "context": "Button in the save dialog",
-    "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "Short form of \"Als neue Route speichern…\"",
-    "max": 22
   },
   "plan_straight_title": {
     "area": "Dialogs",

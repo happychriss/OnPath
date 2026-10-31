@@ -56,7 +56,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -473,16 +472,12 @@ private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, on
 // ------------------------------------------------------------------ dialogs
 
 @Composable
-fun NameDialog(title: String, initial: String, onDone: (String) -> Unit, onDismiss: () -> Unit, confirmLabel: String = str(Res.string.common_save),
-               /** A better name computed in the background (route names): replaces [initial] until the user types. */
-               suggestion: String? = null) {
-    var text by remember { mutableStateOf(suggestion ?: initial) }
-    var typed by remember { mutableStateOf(false) }
-    LaunchedEffect(suggestion) { if (suggestion != null && !typed) text = suggestion }
+fun NameDialog(title: String, initial: String, onDone: (String) -> Unit, onDismiss: () -> Unit, confirmLabel: String = str(Res.string.common_save)) {
+    var text by remember { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
-        text = { OutlinedTextField(value = text, onValueChange = { text = it; typed = true }, singleLine = true, label = { Text(str(Res.string.routes_name_label)) }) },
+        text = { OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true, label = { Text(str(Res.string.routes_name_label)) }) },
         confirmButton = { TextButton(onClick = { onDone(text) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(confirmLabel) } },
         dismissButton = { TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
     )

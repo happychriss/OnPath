@@ -112,7 +112,7 @@ MessageSlot(Messages.pick(listOf(question, m)), MessagePlacement.topDp(MessageSc
 | Map areas could not be loaded | HINWEIS_WARN | "Map couldn't be loaded" – Try again |
 | A shared place found only as a namesake elsewhere (no coordinate, not in the shared town) | HINWEIS_WARN | "Place not clear" + "No sure match – search for “Olive Hilden” in OnPath." – Search (opens the search, text typed in); no ring |
 | An error without a screen of its own (background, link / share into the app) | HINWEIS_ERROR | "Couldn't find this place." – OK |
-| Route state | ANZEIGE | plan sheet lines (red ERROR, amber WARNING, grey INFO), "Saved as …", "New route · was 13:15" |
+| Route state | ANZEIGE | plan sheet lines (red ERROR, amber WARNING, grey INFO), "Saved as … ✎" (tap → the name field in place, no dialog), "New route · was 13:15" |
 | Off route, finding the way back | ANZEIGE | the amber off-route card with the arrow (Navigate) |
 | Downloads in the background | ANZEIGE | the small chip "◔ Bozen · 34 %" in the tag look (`TagContainer` / `TagInk` pill, a progress ring – spinning while areas are still prepared and no percent is known yet; ≥ 48 dp tap target); tap → its details as a bottom sheet; offline / waiting for GPS → the quiet grey pill |
 | The result of an action in My routes / Settings | ANZEIGE | `NoticeLine`: grey INFO / red ERROR line at the top, gone when the screen is left |

@@ -129,12 +129,7 @@
     <string name="plan_because_unpaved">%1$s, weil %2$d % unbefestigt sind (%3$s)</string>
     <string name="plan_because_loose">%1$s wegen %2$s auf losem Untergrund</string>
     <string name="plan_save_as_new_route">Als neue Route speichern</string>
-    <string name="plan_save_current_route">Aktuelle Route speichern</string>
-    <string name="plan_route_default_name">Route</string>
     <string name="plan_something_wrong">Etwas ist schiefgegangen</string>
-    <string name="plan_save_changes_into">Speichere die Änderungen in „%1$s“ oder als neue Route.</string>
-    <string name="plan_saved_again">„%1$s“ ist gespeichert. Speichere sie erneut oder als neue Route.</string>
-    <string name="plan_save_as_new">Als neue speichern…</string>
     <string name="plan_straight_title">Teile dieser Route wurden nicht gefunden</string>
     <string name="plan_straight_text">Die gestrichelten Teile sind gerade Linien, keine Wege.</string>
     <string name="plan_navigate_anyway">Trotzdem navigieren</string>

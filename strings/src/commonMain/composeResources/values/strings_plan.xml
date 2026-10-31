@@ -130,12 +130,7 @@
     <string name="plan_because_unpaved">%1$s because %2$d % is unpaved (%3$s)</string>
     <string name="plan_because_loose">%1$s because of %2$s on loose ground</string>
     <string name="plan_save_as_new_route">Save as new route</string>
-    <string name="plan_save_current_route">Save current route</string>
-    <string name="plan_route_default_name">Route</string>
     <string name="plan_something_wrong">Something went wrong</string>
-    <string name="plan_save_changes_into">Save the changes into “%1$s”, or as a new route.</string>
-    <string name="plan_saved_again">“%1$s” is saved. Save it again, or as a new route.</string>
-    <string name="plan_save_as_new">Save as new…</string>
     <string name="plan_straight_title">Parts of this route were not found</string>
     <string name="plan_straight_text">The dashed parts are straight lines, not paths.</string>
     <string name="plan_navigate_anyway">Navigate anyway</string>

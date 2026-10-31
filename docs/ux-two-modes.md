@@ -50,17 +50,24 @@ tour recording (also while looking at Plan during a tour).
 | Start recording | no planned route (fewer than 2 points) and nothing recording | Free recording without a route (closes a shown track) |
 | Settings, Check for updates | always (updates: only when the build supports them) | |
 
-**Save route** (sheet ⋯): plan loaded from / last saved as a route that still exists: **Save** (overwrite it, name
-stays) · **Save as new…** (name dialog); a tap outside / Back cancels. Otherwise the name dialog (new entry).
-Rule: `RouteRules.saveMode`.
+**Save** (sheet's green Save, ☰ "Save route", sheet ⋯ → Save route) saves **at once, no dialog** (owner 2026-10-31,
+"wie Word", like the browser planner; rule `RouteRules.saveMode`): a plan loaded from / last saved as a route that still
+exists → that route is overwritten (name stays); otherwise a new route under a proposed name (`RouteRules.newRouteName`:
+a plan link's title while its points are unchanged, else the place proposal "Vellau → Leiteralm" (search/RouteNamer,
+waited for 2 s at most), else "Route 31 Oct, 10:12"; a name a planned route already has gets " (2)"). A second tap while
+it saves does nothing. Sheet ⋯ → **Save as new route** (only while the plan is a saved route) saves a copy the same
+way. **Rename in place:** the sheet's "Saved as “Name” ✎" (≥ 48 dp) is tapped → it becomes the name field (name
+selected, keyboard open, the sheet rides above the keyboard); Done / Enter / ✓ renames through the same code as My
+routes → Rename (`renameTour`: backup file, sync change); Back or a touch outside the field cancels; a blank name keeps
+the old one.
 
 **Plan sheet:** the primary button exists from two points: "Start navigation · Hike" with a route line (also a
 straight-line fallback; disabled while the points wait for their line), "Continue navigation" while a tour runs. With
 no point or one, a free recording is ☰ → Start recording. One rule for the words and what Start does (`PlanStart`,
 owner 2026-10-30): nothing to follow = **"Start recording · Hike"** with the record dot – also in the track panel for a
 track without a line (an empty recorded tour, a GPX with one point; during a tour its button is off). Its ⋯ holds everything about this route: Save route, Export GPX, Reverse,
-Round trip, Clear (Clear is disabled while navigating). The sheet shows the save state as text, not as a message: "Saved as “Name”" or
-"“Name” · changed, not saved".
+Round trip, Clear (Clear is disabled while navigating). The sheet shows the save state as text, not as a message: "Saved as “Name” ✎" or
+"“Name” · changed, not saved ✎" – a tap renames (above).
 
 **My routes** (`RoutesScreen`): one list of planned routes, recorded tours and imported GPX (type icon, name,
 type + date, distance · ascent · time), newest first. Import GPX at the top (the imported track is then shown on the
@@ -75,8 +82,8 @@ laden.“ – **OK** (48 dp). It stays until OK or until My routes is left. Noth
 and the recording. Tracks open as before (shown as a track; "Start navigation · …" in the track panel follows one).
 While the plan belongs to a saved route, the followed route carries its name ("Back to …", tour log).
 
-**Loading over an unsaved plan:** "Replace current plan?" – **Save first** (the Save / Save as new choice or the name
-dialog as above, then load) · **Replace**
+**Loading over an unsaved plan:** "Replace current plan?" – **Save first** (saves at once like Save above, then
+loads) · **Replace**
 (tap outside / Back = cancel). The plan counts as unsaved when it has two or more points and they differ (lat/lon)
 from what was last saved or loaded (persisted, follows the snapping of points onto the way). Replacing is also one
 undo step. Tracks open next to the plan without asking.
@@ -142,7 +149,7 @@ Everything about **this route** lives in the route sheet; the **library and app*
 | ☰ (round button right of the search pill) | My routes (open = load, import, rename, export, delete), Start recording (no route), Settings, Check for updates |
 | Sheet, first line | activity button (icon ▾) · time · ⋯ (during a tour the activity button opens the check-and-switch sheet, owner) |
 | Map buttons (right) | compass · eye · Show whole route ⛶ · Undo · Redo (Redo only when there is something to redo, owner) · locate |
-| Sheet ⋯ | Save route (or Save / Save as new), Export GPX, Time details (plain; formulas in Settings → Diagnostics → Developer tools), Clear (also during a tour: ends the route guidance, Undo brings it back) |
+| Sheet ⋯ | Save route (at once; overwrites a saved route), Save as new route (a saved route only), Export GPX, Time details (plain; formulas in Settings → Diagnostics → Developer tools), Clear (also during a tour: ends the route guidance, Undo brings it back) |
 
 ## Activity while navigating (owner: "a wrong activity is a disaster")
 - **Visible:** the Navigate status card starts with the activity icon (48 dp button):

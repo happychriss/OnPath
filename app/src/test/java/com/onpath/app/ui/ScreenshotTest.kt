@@ -976,13 +976,6 @@ class ScreenshotTest {
         }
     }
 
-    /** Sheet ⋯ → Save route on a plan loaded from a saved route: Save (overwrite) or Save as new… (tap outside = cancel). */
-    @Test fun saveChoice() = paparazzi.snapshot {
-        OnPathTheme {
-            Frame { PlanPanel(planUi().copy(savedName = "Route Meran – Hirzer", unsaved = true), PlanCallbacks()) }
-            SaveChoiceDialog("Route Meran – Hirzer", unsaved = true, {}, {}, {})
-        }
-    }
 
     /** My routes → ⋮ → Rename: name dialog prefilled with the current name. */
     @Test fun routesRename() = paparazzi.snapshot {
@@ -1005,9 +998,23 @@ class ScreenshotTest {
         }
     }
 
-    /** The sheet shows the save state instead of a message. */
+    /** The sheet shows the save state instead of a message; ✎ – a tap renames in place (owner 2026-10-31). */
     @Test fun planSaved() = paparazzi.snapshot {
         Frame { PlanPanel(planUi().copy(savedName = "Route Meran – Hirzer"), PlanCallbacks()) }
+    }
+
+    /** "Saved as …" tapped: the name field in place (no dialog) – Done / ✓ renames, Back / a tap outside cancels. */
+    @Test fun planSavedRename() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi().copy(savedName = "Route Meran – Hirzer", renaming = true), PlanCallbacks()) }
+    }
+
+    /** Sheet ⋯ of a saved route: Save (overwrites it) and Save as new route (a copy, at once). */
+    @Test fun planMenuSavedRoute() = paparazzi.snapshot {
+        val ui = planUi().copy(savedName = "Route Meran – Hirzer", unsaved = true)
+        Box(Modifier.fillMaxSize()) {
+            Frame { PlanPanel(ui, PlanCallbacks()) }
+            OnPathTheme { MenuCard(Modifier.align(Alignment.BottomEnd).padding(bottom = 150.dp, end = 12.dp)) { SheetMenuItems(ui, PlanCallbacks()) {} } }
+        }
     }
 
     /** A new route, not saved yet (owner 2026-10-30): green "Save" beside ⋯ in the sheet's first line. */

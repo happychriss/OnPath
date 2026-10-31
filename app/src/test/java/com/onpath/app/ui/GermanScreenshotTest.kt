@@ -50,6 +50,8 @@ class GermanScreenshotTest {
     @Test fun planChipLongHike() = shots.planChipLongHike()
     @Test fun planUnsaved() = shots.planUnsaved()
     @Test fun planSaved() = shots.planSaved()
+    @Test fun planSavedRename() = shots.planSavedRename()
+    @Test fun planMenuSavedRoute() = shots.planMenuSavedRoute()
     @Test fun planChangedNotSaved() = shots.planChangedNotSaved()
     @Test fun planUnsavedLongHike() = shots.planUnsavedLongHike()
     @Test fun planMenuUnsaved() = shots.planMenuUnsaved()
