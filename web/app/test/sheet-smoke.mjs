@@ -1,5 +1,5 @@
 // The plan sheet's three steps on both widths (owner 2026-10-30, option A; docs/design/web-planner.md §11.3 – the app's
-// PlanSize): small = summary row (chip, time, distance, ↑/↓, badge, ⋯, chevron, a compact Share), profile = + profile,
+// PlanSize): small = summary row (chip, time, distance, ↑/↓, badge, chevron, a compact Share) + ✕ Close · ⇅ Reverse · ↻ Round trip, profile = + profile,
 // points = + Points. Grab handle (the app's handle tap), chevron (Show more / Show less), a click on the summary, Arrow
 // keys; remembered after a reload; the camera fit leaves the sheet free (also the toolbar's "Show whole route" after a
 // pan / zoom away, in the small and Points step, with a GPX track); the place card, the GPX track panel and the
@@ -31,7 +31,7 @@ const settle = (page) => page.waitForFunction(() => !window.__map.isMoving(), nu
 /** The search ring (the picked point), the card, its side and tail tip, sheet and top bar – page pixels. */
 const cardGeom = (page) => page.evaluate(() => {
   const box = (e) => { if (!e || e.hidden || !e.offsetParent) return null; const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
-  const ring = box(document.querySelector('.searchring')), pc = document.getElementById('placecard'), card = box(pc);
+  const ring = box(document.querySelector('.candidate')), pc = document.getElementById('placecard'), card = box(pc);
   const side = pc.dataset.side, t = parseFloat(pc.style.getPropertyValue('--tail'));
   const tip = !card || !side ? null : side === 'above' ? { x: card.x + t, y: card.y + card.h + 10 } : side === 'below' ? { x: card.x + t, y: card.y - 10 }
     : side === 'right' ? { x: card.x - 10, y: card.y + t } : { x: card.x + card.w + 10, y: card.y + t };
@@ -106,9 +106,10 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   check(await step(page) === 'small' && s['#summary .big'] && s['#sheet .subline'] && !s['#profile svg'] && !s['#points'],
     `${P} small: time, distance, ↑/↓ + badge; no profile, no Points`);
   check(s['#share'] && !(await page.isDisabled('#share')) && await page.getAttribute('#share', 'aria-label') === 'Share' &&await page.getAttribute('#share', 'title') === 'Share' && !(await page.$('#sheet button.primary')),
-    `${P} small: Share is the icon next to ⋯, active with two points (label + tooltip), no big green button`);
+    `${P} small: Share is the icon next to the chevron, active with two points (label + tooltip), no big green button`);
   const sh = await page.locator('#sheet').boundingBox();
-  check(sh.height < 180, `${P} small step is compact (${Math.round(sh.height)} px)`);
+  // the app's summary step holds the action row ✕ Close · ⇅ Reverse · ↻ Round trip too (owner 2026-10-31)
+  check(sh.height < 230, `${P} small step is compact (${Math.round(sh.height)} px)`);
   check(await page.getAttribute('#sheetStep', 'aria-label') === 'Show more' && await page.getAttribute('#sheetStep', 'title') === 'Show more', `${P} chevron says "Show more" (label + tooltip)`);
   await page.screenshot({ path: path.join(shots, `${name}-small.png`) });
 
@@ -219,11 +220,22 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     await page.keyboard.press('Escape');
     await pick('Ifinger');
   }
+  // the candidate marker (the app's CandidateMarker, A-019 add-on 1): dashed route-blue ring with "+", the name below,
+  // a thin dashed line to where adding it would join the route
+  const joinCount = () => page.evaluate(() => window.__map.getSource('candidate-join')?.serialize().data.features.length ?? 0);
+  const cand = await page.evaluate(() => ({ dashed: !!document.querySelector('.candidate svg circle[stroke-dasharray]'), name: document.querySelector('.candidate .candname')?.textContent,
+    orange: !!document.querySelector('.searchring') }));
+  check(cand.dashed && cand.name === 'Ifinger' && !cand.orange && await joinCount() === 1, `${P} candidate marker: dashed ring, the name below, a dashed line to the route (${JSON.stringify(cand)})`);
   await page.screenshot({ path: path.join(shots, `${name}-card.png`) });
   await page.click('#cdest');
-  check(await page.isHidden('#placecard') && await page.isVisible('#sheet'), `${P} the card closes after its action, the sheet is back`);
+  check(await page.isHidden('#placecard') && await page.isVisible('#sheet') && await joinCount() === 0, `${P} the card closes after its action, the sheet is back, the preview line gone`);
   await page.waitForFunction(() => document.querySelectorAll('.pin').length === 3, null, { timeout: 20_000 }).catch(() => {});
   check(await step(page) === 'small', `${P} the step is kept`);
+  // a place added from the card: the new route is fitted once it is there (the app's WholeRoute.fitAfterPlace, add-on 2)
+  await page.waitForFunction(() => !document.getElementById('sheet').classList.contains('busy') && window.__state.plan, null, { timeout: 60_000 }).catch(() => {});
+  await page.waitForTimeout(900); await settle(page);
+  const fitted = await freeRoom(page);
+  check(fitted.bad === 0, `${P} after "As destination" the whole new route shows (${JSON.stringify(fitted)})`);
 
   // the GPX track panel shows fully in any step; closing it brings the remembered step back
   await page.evaluate(() => window.__gpx.importFile(new File([`<?xml version="1.0"?><gpx version="1.1" creator="t" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>Test track</name><trkseg>

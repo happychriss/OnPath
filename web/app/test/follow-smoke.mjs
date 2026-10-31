@@ -51,7 +51,7 @@ await page.fill('#q', 'Ifinger');
 await page.waitForSelector('#results .hit', { timeout: 30_000 });
 await page.click('#results .hit');
 await page.waitForSelector('#placecard:not([hidden])', { timeout: 20_000 }); await settle();
-const ring = () => page.evaluate(() => { const r = document.querySelector('.searchring').getBoundingClientRect(); return [r.x, r.y]; });
+const ring = () => page.evaluate(() => { const r = document.querySelector('.candidate').getBoundingClientRect(); return [r.x, r.y]; });
 const before = await ring();
 await page.evaluate(() => window.__fix(46.6790, 11.1690)); await settle();
 const after = await ring();

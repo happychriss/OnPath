@@ -123,11 +123,11 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     if (timer) clearTimeout(timer);
     results.hidden = true;
     marker?.remove();
-    const ring = document.createElement('div');
-    ring.className = 'searchring';
-    marker = new maplibregl.Marker({ element: ring }).setLngLat([h.lon, h.lat]).addTo(host.map);
+    setJoin(host.map, null);
+    marker = new maplibregl.Marker({ element: candidateMarker(h.title) }).setLngLat([h.lon, h.lat]).addTo(host.map);
     host.placeShown?.(h.lat, h.lon);
     const pv = await host.engine.placePreview(host.points(), h.lat, h.lon);
+    if (my === picked) setJoin(host.map, pv.join ? [[h.lon, h.lat], [pv.join[1], pv.join[0]]] : null);
     const n = host.points().length;
     const atStart = pv.existing === 0, atEnd = pv.existing != null && pv.existing === n - 1;
     // the main button already sets the start / the destination: its small button is left out (app PlaceCard)
@@ -189,7 +189,7 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   const close = () => {
     picked++; // a pick still waiting for its preview must not open the card afterwards
     const was = !card.hidden;
-    card.hidden = true; card.innerHTML = ''; marker?.remove(); marker = null; at = null;
+    card.hidden = true; card.innerHTML = ''; marker?.remove(); marker = null; at = null; setJoin(host.map, null);
     card.classList.remove('anchored'); card.style.cssText = '';
     if (was) host.cardShown?.(false);
   };
@@ -200,6 +200,43 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   q.addEventListener('keydown', (e) => { if (e.key === 'Escape') { q.value = ''; run(); } });
   clear.onclick = () => { q.value = ''; run(); q.focus(); };
   return { close, isOpen: () => !card.hidden };
+}
+
+/**
+ * The candidate marker (the app's map/CandidateMarker, owner 2026-10-31 – replaces the orange search ring): a place
+ * suggested but not yet in the route. Route blue, dashed and hollow like everything "not taken yet": a dashed ring
+ * (radius 21, 3.5 px dashes 7 / 4.5 over a 7 px white halo) around the place, a faint blue tint inside, a small "+"
+ * badge at its upper right, the name in route blue below. Orange stays the recording's colour.
+ */
+const ROUTE_BLUE = '#1E3FAE';
+function candidateMarker(name: string): HTMLElement {
+  const el = document.createElement('div');
+  el.className = 'candidate';
+  const c = 27, r = 21, d = r / Math.SQRT2, bx = c + d, by = c - d, br = 8.5, arm = br * 0.5;
+  el.innerHTML = `<svg width="54" height="54" viewBox="0 0 54 54" aria-hidden="true">
+    <circle cx="${c}" cy="${c}" r="${r}" fill="${ROUTE_BLUE}" fill-opacity=".125"/>
+    <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="7"/>
+    <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${ROUTE_BLUE}" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="7 4.5"/>
+    <circle cx="${bx}" cy="${by}" r="${br + 1.5}" fill="#fff"/><circle cx="${bx}" cy="${by}" r="${br}" fill="${ROUTE_BLUE}"/>
+    <path d="M${bx - arm} ${by}H${bx + arm}M${bx} ${by - arm}V${by + arm}" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  </svg><span class="candname">${esc(name)}</span>`;
+  return el;
+}
+
+/**
+ * The candidate's preview line (the app's MapController join line): thin (2.5), dashed (2 / 2 line widths), route blue,
+ * from the marker to where adding it would join the route; null removes it. Over the route (the route points are markers).
+ */
+const JOIN = 'candidate-join';
+function setJoin(map: maplibregl.Map, line: [number, number][] | null) {
+  const data: GeoJSON.FeatureCollection = { type: 'FeatureCollection',
+    features: line ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: line } }] : [] };
+  const src = map.getSource(JOIN) as maplibregl.GeoJSONSource | undefined;
+  if (src) { src.setData(data); return; }
+  if (!line || !map.isStyleLoaded()) return;
+  map.addSource(JOIN, { type: 'geojson', data });
+  map.addLayer({ id: JOIN, type: 'line', source: JOIN, layout: { 'line-cap': 'round' },
+    paint: { 'line-color': ROUTE_BLUE, 'line-width': 2.5, 'line-dasharray': [2, 2] } });
 }
 
 function esc(s: string) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!); }

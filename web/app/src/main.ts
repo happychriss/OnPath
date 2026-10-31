@@ -24,7 +24,7 @@ import { ActivityPicker, type ActivityRow, type PaceChoices } from './activity';
 import { holdMenu, type MenuItem } from './menus';
 import { Position } from './position';
 import { PlanSync, shownTitle, type SavedPlan } from './sync';
-import { myPlansDialog, joinDialog, saveRoute, phoneDialog, phonePill, appDate } from './plans';
+import { myPlansDialog, joinDialog, saveRoute, askDiscard, phoneDialog, phonePill, appDate } from './plans';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
 import { longRouteOk, allowLongRoute, notRoutedTexts, type Before } from './longroute';
@@ -157,13 +157,13 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <button id="activityChip" class="chip" aria-haspopup="menu" aria-expanded="false"></button>
       <div id="summary"><div class="headline"></div><div class="subline muted"></div></div>
       <button id="share" class="sharebtn" aria-label="${escapeHtml(t('web_share_needs_two'))}" title="${escapeHtml(t('web_share_needs_two'))}" disabled>${icon('share', 18)}<span>${escapeHtml(t('web_share'))}</span></button>
-      <button id="sheetMenuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_route_options'))}" aria-haspopup="menu">${icon('more')}</button>
       <button id="sheetStep" class="iconbtn" aria-controls="sheet"></button>
-      <div id="sheetMenu" class="menu" role="menu" hidden>
-        <button id="sheetSave" role="menuitem">${icon('save')}${escapeHtml(t('plan_save_route'))}</button>
-        <button id="exportGpx" role="menuitem">${icon('download')}${escapeHtml(t('common_export_gpx'))}</button>
-        <hr><button id="clear" role="menuitem">${icon('delete')}${escapeHtml(t('plan_close_plan'))}</button>
-      </div>
+    </div>
+    <!-- the app's PlanActions (owner 2026-10-31, no ⋯): icon + word side by side; Save is the header's, GPX is in Share -->
+    <div id="planActions" class="planactions" role="group" hidden>
+      <button id="clear" class="textbtn">${icon('close', 18)}${escapeHtml(t('plan_close_plan'))}</button>
+      <button id="reverse" class="textbtn">${icon('swap', 18)}${escapeHtml(t('plan_reverse'))}</button>
+      <button id="roundTrip" class="textbtn">${icon('loop', 18)}${escapeHtml(t('plan_round_trip'))}</button>
     </div>
     <div id="savedLine" class="savedline muted small" hidden></div>
     <div id="routingNote" class="muted small" hidden></div>
@@ -176,10 +176,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <button id="changedLine" class="infoline changedline" hidden></button>
     <div id="breakdown" class="breakdown" hidden></div>
     <div id="pointsSection" hidden>
-      <div class="pointshead"><b>${escapeHtml(t('plan_points'))}</b>
-        <button id="reverse" class="textbtn">${icon('swap', 18)}${escapeHtml(t('plan_reverse'))}</button>
-        <button id="roundTrip" class="textbtn">${icon('loop', 18)}${escapeHtml(t('plan_round_trip'))}</button>
-        <button id="clearPoints" class="textbtn" title="${escapeHtml(t('plan_close_plan'))}" aria-label="${escapeHtml(t('plan_close_plan'))}">${icon('delete', 18)}${escapeHtml(t('common_delete'))}</button></div>
+      <div class="pointshead"><b>${escapeHtml(t('plan_points'))}</b></div>
       <ol id="points"></ol>
     </div>
     <div id="status" class="status muted" role="status"></div>
@@ -474,6 +471,7 @@ async function drawPoints() {
   $<HTMLButtonElement>('roundTrip').disabled = n < 2 || state.roundTrip;
   $<HTMLButtonElement>('reverse').disabled = n < 2;
   $('pointsSection').hidden = n === 0;
+  $('planActions').hidden = n === 0; // the app's RouteRules.canClear: something to close
 }
 
 // Points list: click = show on the map, ✕ = delete, drag ≡ = new order (PlanEdits.move; sortable.ts)
@@ -1071,13 +1069,13 @@ function saveEntry(st: 'empty' | 'save' | 'saved') {
  * a new one under the proposed name), no field, no question; then, paired, everything waiting goes to the phone. Only
  * waiting changes and the route unchanged: the click sends them at once. A rename = a click on "Saved as …".
  */
-async function headerSave(ask = false) {
+async function headerSave() {
   if (!(await syncReady)) return;
   await draftsRestored;
   await renderSaved();
   const paired = sync.status.paired, waiting = paired && sync.status.pending > 0;
   const send = () => { if (sync.status.paired) sync.sendAll(); };
-  if (ask || saveState === 'save' || (saveState === 'saved' && !waiting)) { await saveRoute(sync, plansHost, send); return; }
+  if (saveState === 'save' || (saveState === 'saved' && !waiting)) { await saveRoute(sync, plansHost, send); return; }
   send();
 }
 
@@ -1210,7 +1208,7 @@ placeCard = setupSearch({
   areas: async () => (useCells ? cells.searchAreas(map) : [{ key: 'map', dir: mapFolder }]),
   points: () => state.points,
   route: () => state.plan?.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon)) ?? [],
-  add: (h, role) => addPlace(h, role),
+  add: (h, role) => addPlace(h, role, true),
   google: (h) => google(h.name ?? '', h.lat, h.lon, h.name ? '' : h.title),
   cardShown: (open) => document.body.classList.toggle('card-open', open),
   placeShown: (lat, lon) => areas?.wantPoint(lat, lon, 'searched'), // T2
@@ -1220,11 +1218,16 @@ placeCard = setupSearch({
  * The place card's actions, as the app's addPlace: a pinned stop named after the place (passed exactly). "Add to
  * route" goes where the card said (WaypointInsertion via AddPreview); a place already planned: "As start" = the point
  * menu's Start here, "As destination" moves it to the end, "Remove from route" deletes it.
+ * [fit] (from the place card – a search hit, often far off the shown part): the new route is fitted once it is there,
+ * like the first route (the app's WholeRoute.fitAfterPlace, A-019 add-on 2); a tap on the map never moves it.
  */
-async function addPlace(h: Hit, role: PlaceRole) {
+async function addPlace(h: Hit, role: PlaceRole, fit = false) {
   closeMenu();
   const p: LatLon = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
   const pv = await engine.placePreview(state.points, p[0], p[1]);
+  // WholeRoute.fitAfterPlace: the points change and two or more remain (the card offers no edit that changes nothing)
+  const after = state.points.length + (pv.existing == null ? 1 : role === 'REMOVE' ? -1 : 0);
+  if (fit && after >= 2) { fitNextRoute = true; fitAskedAt = performance.now(); }
   if (pv.existing != null) {
     if (role === 'START') await applyEdit('startHere', pv.existing);
     else if (role === 'DESTINATION') await applyEdit('move', pv.existing, state.points.length - 1);
@@ -1238,14 +1241,7 @@ async function addPlace(h: Hit, role: PlaceRole) {
 }
 
 // ---- menus, sheet, dialogs ----
-function toggleMenu(btn: string, box: string) {
-  const m = $(box), open = m.hidden;
-  closeMenus();
-  m.hidden = !open;
-  $(btn).setAttribute('aria-expanded', String(open));
-}
 function closeMenus() {
-  $('sheetMenu').hidden = true; $('sheetMenuBtn').setAttribute('aria-expanded', 'false');
   $('mainMenu').classList.remove('open'); $('menuBtn').setAttribute('aria-expanded', 'false');
 }
 // ☰ (phone width): the header's entries as a drop-down
@@ -1261,13 +1257,12 @@ $('mainMenu').addEventListener('click', (e) => {
   e.stopPropagation(); closeMenus();
   NAV.find((n) => n.id === b.id)?.act?.();
 });
-$('sheetMenuBtn').onclick = (e) => { e.stopPropagation(); $<HTMLButtonElement>('exportGpx').disabled = !state.plan; $<HTMLButtonElement>('sheetSave').disabled = state.points.length < 2; toggleMenu('sheetMenuBtn', 'sheetMenu'); }; // Save: a start and a destination are enough (as the header's)
 document.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.menu, .nav')) closeMenus(); });
 
 $('reverse').onclick = () => applyEdit('reverse');
 $('roundTrip').onclick = () => applyEdit('roundTrip');
-$('clear').onclick = clearRoute;
-$('clearPoints').onclick = clearRoute;
+// ✕ Close: with unsaved changes it asks first (the app's DiscardPlanDialog: Cancel · Discard); a saved route stays in My routes
+$('clear').onclick = async () => { if (saveState === 'save' && !(await askDiscard())) return; clearRoute(); };
 function forgetSaved() { state.savedId = null; state.savedTitle = null; state.savedCode = null; state.savedFolder = null; }
 const plansHost = {
   current: async () => (state.points.length >= 2 && (await ready) ? { code: await engine.encode(sharedPlan()), title: state.title } : null),
@@ -1366,15 +1361,14 @@ $('syncBadge').onclick = async () => {
   if (!(await syncReady)) return; // the engine did not start – the status line says so
   phoneDialog(sync, location.href);
 };
-// Save: the header's button (§14.6, sends to the phone when paired) and the sheet's ⋯ → Save route – both open Save's
-// name dialog (plans.ts saveRoute); a copy is My routes → ⋮ → Save as copy (the app since 2026-10-31)
-$('sheetSave').onclick = () => { closeMenus(); headerSave(true); }; // always the dialog (the app's ⋯ → Save route)
+// Save: the header's button (§14.6, sends to the phone when paired) opens Save's name dialog (plans.ts saveRoute); a copy
+// is My routes → ⋮ → Save as copy (the app since 2026-10-31)
 $('menuSavePlan').onclick = () => { closeMenus(); headerSave(); };
-$('exportGpx').onclick = () => { closeMenus(); exportGpx(); };
 const share = async () => {
   closeMenus();
   if (state.points.length < 2) { status(t('plan_err_set_start_dest')); return; }
-  shareDialog(location.href.split('#')[0] + '#p=' + await engine.encode(sharedPlan()), state.title, appHint);
+  // Export GPX of the shown plan lives here since the sheet has no ⋯ (owner 2026-10-31); it needs the planned line
+  shareDialog(location.href.split('#')[0] + '#p=' + await engine.encode(sharedPlan()), state.title, appHint, state.plan ? exportGpx : undefined);
 };
 $('share').onclick = share;
 navItem('menuAbout').act = () => credits();

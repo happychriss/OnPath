@@ -77,4 +77,6 @@ export interface Hit {
 /** What adding a place does (the app's AddPreview / placeCardUi): button text, reason, index; or its role when planned. */
 export interface PlacePreview {
   index?: number; existing?: number; label?: string; subtitle: string; addIsStart?: boolean; addIsDestination?: boolean;
+  /** Where adding it would join the route (WaypointInsertion.joinPoint) – the candidate's dashed preview line; null without a route. */
+  join?: [number, number] | null;
 }

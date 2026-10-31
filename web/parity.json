@@ -100,7 +100,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "860cdf755fb1dbde36163a6b431df3b60c6f4298"
+      "blob": "57d8af5cfab2053fe08643184ed34c19f2f1498b"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/OptionalSources.kt",
@@ -155,7 +155,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "5a84f1b783dec6ae7fefce318ee6e43e1e5ff01a"
+      "blob": "9dc9086027888b6ce9b37f16c37dd78661dca123"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -238,7 +238,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "871c2ab994211d45d6f54e9f868fa3eba55e364f"
+      "blob": "da5f7d0adbc87b5bd3a9e139851d8158642ad32a"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/Overview.kt",
@@ -294,12 +294,12 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanPanel.kt",
       "why": "plan sheet layout and actions",
-      "blob": "49eafe3f23c2eb5fdb494208713fd5c91725f69b"
+      "blob": "0905c1e4da1c79070aa5fec44cf8d4ed4bf23ba8"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapScreen.kt",
       "why": "plan screen wiring, dialogs",
-      "blob": "d2d47166c821a1a62e0985495221c0820d5520a7"
+      "blob": "4fb12fee58b005e0e486966d24e701caa31e7bb7"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanGuidance.kt",
@@ -577,7 +577,7 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/routing/PlanCode.kt": {
-      "blob": "f3abed521beaa3ff2cbd41b8dc885b0546111d17",
+      "blob": "a96931dabbf8ca2400e732fa172afe8c63c973c4",
       "perf": [
         "const val MAX_POINTS = 500",
         "const val MAX_NAME = 100",
@@ -704,7 +704,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/ui/RouteWarnings.kt": {
-      "blob": "787edf395a6385ac377bf081c9fe9862979ed07e",
+      "blob": "7cdb7bbe92008b5866bfafbf538fb4c516bd86f3",
       "perf": [
         "const val MAX_ITEMS = 3",
         "steepPercent(activity)?.let { limit ->",
@@ -867,7 +867,7 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/data/AppSettings.kt": {
-      "blob": "91e779b10aff22c93a95144f94fc703c418f6ad4",
+      "blob": "681cc90c00b3df0953baca6b76aa7afa83910f03",
       "perf": [
         "* turn and on a tap; [PHONE] = no keep-screen-on, the phone's own timeout."
       ]
@@ -912,7 +912,7 @@
       "perf": []
     },
     "app/src/test/java/com/onpath/app/routing/PlanCodeTest.kt": {
-      "blob": "158857008f2222932217d0eb093067f11d37c272",
+      "blob": "6d4aeb37388478b3dd4b1862c450c3335d081e53",
       "perf": [
         "assertEquals(PlanCode.MAX_POINTS, back.points.size)",
         "assertEquals(PlanCode.MAX_NAME, back.names[0]!!.length)"
@@ -1004,7 +1004,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_plan.xml": {
-      "blob": "129adc24b531672268d404a16b5e16ebf16baf9a",
+      "blob": "e39a744b3423ff80047511da794c6402b1d0992b",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_poi.xml": {
@@ -1012,7 +1012,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_routes.xml": {
-      "blob": "2038df33c544e462a635cd27c03b5972e2ec096d",
+      "blob": "ccb6c07d82397f3e7d3846a57ae15a19376697b9",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_search.xml": {
@@ -1020,15 +1020,19 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_settings.xml": {
-      "blob": "429dcd652398450a37766a564df3cdefb956c94c",
+      "blob": "689a882dc30fd4d9888429010d0f6b6ef4437500",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_setup.xml": {
-      "blob": "8bdd8a21374e1cd129cb0f32de0e67906013036d",
+      "blob": "a537725d1425eaa7cb83dc820f04406f1c592360",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_sync.xml": {
       "blob": "9314bf4e76736b63997eaf89ded3ecb55ab721b1",
+      "perf": []
+    },
+    "strings/src/commonMain/composeResources/values/strings_voice.xml": {
+      "blob": "e618e6be25ad0a597aede67b40eeec12c8bd0d35",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_activity.xml": {
@@ -1056,7 +1060,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_plan.xml": {
-      "blob": "02828d120a617f05fe6c6ef9f45e3bbbcda623dc",
+      "blob": "7c109686ec6f207c9fdd958c14a8137960af5ead",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_poi.xml": {
@@ -1072,15 +1076,19 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_settings.xml": {
-      "blob": "397be85f7bbee4425ebc9018962a8cef1bdc61bf",
+      "blob": "5c65885cf6aa481a85f87a6c4d9019d2647997a8",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_setup.xml": {
-      "blob": "ca4bb972376a636602f80ce7a127965e6ae2c9d4",
+      "blob": "eefec2a3f77900ae876faa08231c3cae226a4ee5",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_sync.xml": {
       "blob": "507c3d3ba231a0fb99392cc8c22982ce16d598f3",
+      "perf": []
+    },
+    "strings/src/commonMain/composeResources/values-de/strings_voice.xml": {
+      "blob": "f9db54935d575e6fe8e5f7255756a75e6fcb15b0",
       "perf": []
     },
     "app/libs/brouter-codec-1.7.11-beta-onpath1.jar": {

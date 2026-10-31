@@ -67,7 +67,7 @@ check(!(await page.$('dialog.longroute')), 'Plan anyway: routed without asking a
 // 1b'. Clear route while that long plan may still run in the engine's one worker: the page answers at once (as the app
 // cancels its plan) and the plan's late end brings no route back
 const clearAt = Date.now();
-await page.click('#sheetMenuBtn'); await page.click('#clear');
+await page.click('#clear'); if (await page.locator('dialog.discard[open]').count()) await page.click('#discardOk');
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0 && !document.getElementById('sheet').classList.contains('busy'), null, { timeout: 5_000 }).catch(() => {});
 const clearMs = Date.now() - clearAt;
 check(await pins() === 0 && clearMs < 5_000, `Clear route during a long plan: the points go at once (${clearMs} ms)`);
@@ -153,14 +153,16 @@ check(/Your route near Vellau is about \d+ (hours|days) on foot from here\./.tes
 await page.click('#lrPlan');
 await page.waitForFunction(() => !document.querySelector('dialog.longroute') && (/failed|Planning|Calculating/.test(document.getElementById('status').textContent) || !!document.querySelector('#summary .big')), null, { timeout: 120_000 }).catch(() => {});
 check(!(await page.$('dialog.longroute')) && await pins() === 3, 'Add to the route: three points, planned without asking again');
-// (d) Clear route in the Points head (owner: "Route löschen" not found in ⋯): no question, undo brings it back
+// (d) ✕ Close in the summary's action row (the app's PlanActions, owner 2026-10-31): an unsaved plan asks "Discard
+// changes?" first; Discard closes it, undo brings it back
 await page.goto(url + 'index.html#p=' + CODE);
 await planned();
-for (let i = 0; i < 3 && await page.evaluate(() => document.getElementById('sheet').dataset.step) !== 'points'; i++) await page.click('#sheetStep');
-check(await page.isVisible('#clearPoints') && (await page.getAttribute('#clearPoints', 'title')) === 'Close', 'Points head: Delete (Close)');
-await page.click('#clearPoints');
+check(await page.isVisible('#planActions #clear') && (await page.textContent('#planActions #clear')).trim() === 'Close', 'action row: ✕ Close');
+await page.click('#clear');
+check(await page.locator('dialog.discard[open]').count() === 1, 'an unsaved plan: Close asks "Discard changes?"');
+await page.click('#discardOk');
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 }).catch(() => {});
-check(await pins() === 0 && !(await page.$('dialog[open]')), 'Delete in the Points head: the route is gone, no question');
+check(await pins() === 0 && !(await page.$('dialog[open]')), 'Discard: the route is gone');
 await page.click('#undo');
 await planned().catch(() => {});
 check(await pins() === 2 && !!(await page.$('#summary .big')), 'undo: the route is back');
@@ -191,8 +193,9 @@ check(n >= 2 && n <= 8 && /2[.,][345] km/.test(sum), `Plan a route from it: ${n}
 check(await page.evaluate(() => window.__map.getSource('gpx-track').serialize().data.features.length) === 0, 'the track is gone once it is a plan');
 
 // 4. Export GPX ⇄ Import GPX: the sport and the line come back
-await page.click('#sheetMenuBtn');
-const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#exportGpx')]);
+await page.click('#share');
+const [dl] = await Promise.all([page.waitForEvent('download'), page.click('dialog.share #exportGpx')]);
+await page.click('#closeShare');
 const exported = await dl.path();
 const gpx = fs.readFileSync(exported, 'utf8');
 check(gpx.includes('<type>hike</type>'), 'Export GPX writes <type>hike</type>');

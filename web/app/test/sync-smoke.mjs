@@ -71,16 +71,16 @@ async function answerSave(P, name) {
   if (name != null) await P.fill('#saveTitle', name);
   await P.click('#saveOk');
 }
-/** Renames the open saved route: sheet ⋯ → Save route, the dialog shows its name, [name], Save (overwrite + rename). */
+/** Renames the open saved route: Save, the dialog shows its name, [name], Save (overwrite + rename). */
 async function renameOpen(P, name) {
-  await P.click('#sheetMenuBtn'); await P.click('#sheetSave');
+  await P.click('#menuSavePlan');
   await answerSave(P, name);
   await until(P, async (n) => (await window.__sync.list()).some((p) => p.title === n), name);
 }
-/** The shown (new) route saved as [name]: sheet ⋯ → Save route, the dialog, [name], Save (paired, that also sends). */
+/** The shown (new) route saved as [name]: Save, the dialog, [name], Save (paired, that also sends). */
 async function saveAs(P, name) {
   const n = (await P.evaluate(async () => (await window.__sync.list()).length));
-  await P.click('#sheetMenuBtn'); await P.click('#sheetSave');
+  await P.click('#menuSavePlan');
   await answerSave(P, name);
   await until(P, async (k) => (await window.__sync.list()).length > k, n);
 }
@@ -389,7 +389,7 @@ await syncNow(A);
 check(!(await titles(A)).includes('Vom Handy'), 'deleted on the phone → gone in the browser');
 
 // ---- 8. GPX goes with Save ----
-await A.click('#sheetMenuBtn'); await A.click('#clear'); // an empty map: only the track is new
+await A.click('#clear'); if (await A.locator('dialog.discard[open]').count()) await A.click('#discardOk'); // an empty map: only the track is new
 await A.setInputFiles('#gpxFile', path.join(here, 'fixtures/komoot-hike.gpx'));
 await until(A, async () => (await window.__sync.list()).some((p) => p.kind === 'track'), null, { timeout: 120_000 }).catch(() => {});
 check((await A.evaluate(async () => (await window.__sync.list()).filter((p) => p.kind === 'track').map((p) => p.title))).join() === 'Meran 2000 & Ifinger Hütte', 'an imported GPX is kept in the folder as a track');
@@ -482,7 +482,7 @@ check((await titles(L)).includes('Laptop unsaved') && (await saveBtn(L)).unsaved
 
 // ---- 12. mailbox full (507): Save amber (its tooltip says why), nothing lost ----
 LIMITS.items = 1; // the test's limit in the host
-await L.click('#sheetMenuBtn'); await L.click('#clear');
+await L.click('#clear'); if (await L.locator('dialog.discard[open]').count()) await L.click('#discardOk');
 await openRoute(L, '#p=' + CODE); // a new route on the map
 await saveAs(L, 'Neuweg'); // a new item – the host counts items, a rename of one it has is fine
 await L.waitForFunction(() => window.__sync.status.full, null, { timeout: 30_000 }).catch(() => {});

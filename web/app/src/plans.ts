@@ -345,6 +345,22 @@ function nameDialog(copy: boolean, name: string, later?: MaybeName): MaybeName {
   });
 }
 
+/**
+ * ✕ Close while the plan has unsaved changes (the app's DiscardPlanDialog, owner 2026-10-31 – a decision that can lose
+ * something): "Discard changes?", Cancel · Discard (red). Resolves true for Discard.
+ */
+export function askDiscard(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const d = dialog('discard', `<h2>${esc(t('plan_discard_title'))}</h2>
+      <div class="row end"><button id="discardCancel">${esc(t('common_cancel'))}</button><button id="discardOk" class="danger">${esc(t('plan_discard'))}</button></div>`);
+    let yes = false;
+    d.querySelector<HTMLButtonElement>('#discardCancel')!.onclick = () => d.close();
+    d.querySelector<HTMLButtonElement>('#discardOk')!.onclick = () => { yes = true; d.close(); };
+    d.querySelector<HTMLButtonElement>('#discardCancel')!.focus();
+    d.addEventListener('close', () => resolve(yes));
+  });
+}
+
 /** How long the dialog waits for the place proposal of a new route's name (the app's NAME_WAIT_MS; the date name meanwhile). */
 const NAME_WAIT_MS = 5_000;
 

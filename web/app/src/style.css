@@ -85,7 +85,11 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 .cardhead .txt { flex: 1; }
 .cardhead .txt b { font-size: 16px; }
 .row.three > * { flex: 1; min-width: 0; }
-.searchring { width: 26px; height: 26px; border-radius: 50%; border: 4px solid #F57C00; box-sizing: border-box; background: rgba(245,124,0,.15); }
+/* the candidate marker (search.ts candidateMarker – the app's CandidateMarker): the ring centred on the place, its name below */
+.candidate { width: 54px; height: 54px; position: relative; pointer-events: none; }
+.candidate svg { display: block; }
+.candidate .candname { position: absolute; top: 50px; left: 50%; transform: translateX(-50%); white-space: nowrap; max-width: 220px; overflow: hidden;
+  text-overflow: ellipsis; color: #1E3FAE; font-size: 13px; font-weight: 600; text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff; }
 
 /* ---- menus (☰, ⋯) ---- */
 .menu { position: absolute; z-index: 5; right: 0; top: 60px; min-width: 230px; padding: 6px 0; background: var(--bg); border-radius: 6px;
@@ -131,15 +135,15 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 #sheet > #pointsSection { flex: 0 1 auto; min-height: 96px; display: flex; flex-direction: column; }
 #pointsSection > .pointshead { flex: none; }
 .savedline { display: flex; gap: 6px; align-items: center; margin-top: -4px; } .savedline .ic { color: var(--green-fg); }
-/* head: chip · Share · ⋯ · chevron in one line, then time + distance (never wrapped), then ↑/↓ + badge */
-.sheethead { position: relative; display: grid; grid-template-columns: auto 1fr auto auto auto; gap: 2px 2px; align-items: center; }
+/* head: chip · Share · chevron in one line, then time + distance (never wrapped), then ↑/↓ + badge */
+.sheethead { position: relative; display: grid; grid-template-columns: auto 1fr auto auto; gap: 2px 2px; align-items: center; }
 #activityChip { grid-row: 1; grid-column: 1; }
-#share, #sheetMenuBtn, #sheetStep { grid-row: 1; height: 40px; } #sheetMenuBtn, #sheetStep { width: 40px; }
-/* Share = icon + text next to ⋯ (owner 2026-10-30), always there */
+#share, #sheetStep { grid-row: 1; height: 40px; } #sheetStep { width: 40px; }
+/* Share = icon + text next to the chevron (owner 2026-10-30), always there */
 .sharebtn { display: inline-flex; align-items: center; gap: 6px; border: none; background: none; border-radius: 20px; padding: 0 10px; color: var(--green-fg); font: inherit; font-weight: 600; }
 .sharebtn:hover:not(:disabled) { background: var(--surface2); }
 #share { grid-column: 3; } #share:disabled { opacity: .45; cursor: default; color: var(--muted); } /* always there, greyed until two points (owner 2026-10-30) */
-#sheetMenuBtn { grid-column: 4; } #sheetStep { grid-column: 5; }
+#sheetStep { grid-column: 4; }
 .headline { grid-row: 2; grid-column: 1 / -1; margin-top: 6px; }
 #summary { display: contents; }
 .headline { display: flex; align-items: baseline; gap: 4px 10px; min-width: 0; flex-wrap: wrap; } .headline > span { white-space: nowrap; }
@@ -158,6 +162,10 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
   border-radius: 8px; display: flex; flex-direction: column; } .spots button:hover { background: var(--surface2); }
 #profile svg { width: 100%; height: 90px; display: block; } .axis { display: flex; justify-content: space-between; font-size: 11px; }
 .pointshead { display: flex; align-items: center; gap: 4px; } .pointshead b { flex: 1; font-size: 15px; }
+/* the app's PlanActions: ✕ Close · ⇅ Reverse · ↻ Round trip under the summary, icon + word, spread evenly, wrapping */
+.planactions { display: flex; flex-wrap: wrap; justify-content: space-evenly; gap: 0 4px; margin: -2px 0 2px; }
+.planactions .textbtn { white-space: nowrap; min-height: 40px; color: var(--fg); font-weight: 500; } /* the app: onSurface, not green */
+dialog.share #exportGpx { margin-top: 8px; }
 #points { list-style: none; margin: 0; padding: 0; overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
 #points li { display: grid; grid-template-columns: 32px 28px 1fr auto 40px; gap: 8px; align-items: center; padding: 6px 0; cursor: pointer; border-radius: 10px; background: var(--bg); }
 #points li:hover { background: var(--surface2); }

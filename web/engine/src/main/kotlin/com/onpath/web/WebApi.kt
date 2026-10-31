@@ -377,7 +377,8 @@ object Engine {
     /**
      * The place card's button for a search result (the app's [com.onpath.app.search.AddPreview]: what adding does –
      * "Set as destination", "Add as stop 2", … – with the same WaypointInsertion as a map click), its short reason, the
-     * index it would take and whether it already sets the start / the destination (the app's `placeCardUi`). JSON.
+     * index it would take, whether it already sets the start / the destination (the app's `placeCardUi`) and where it
+     * would join the route ([WaypointInsertion.joinPoint], null without a route). JSON.
      */
     fun placePreview(points: String, lat: Double, lon: Double): String {
         val w = parsePoints(points)
@@ -388,9 +389,12 @@ object Engine {
         val speed = plan?.takeIf { it.durationS > 0 }?.let { it.distanceM / it.durationS }
         val pr = com.onpath.app.search.AddPreview.of(w, p, plan?.points, speed)
         val k = pr.decision.kind
+        // where it would join the route – the candidate marker's thin dashed preview line (the app's MapController.setSearchMark)
+        val join = WaypointInsertion.joinPoint(w, p, plan?.points, pr.decision)
         return "{\"index\":" + pr.decision.index + ",\"label\":" + str(pr.label) + ",\"subtitle\":" + str(pr.subtitle) +
             ",\"addIsStart\":" + (k == WaypointInsertion.Kind.START) +
-            ",\"addIsDestination\":" + (k == WaypointInsertion.Kind.DESTINATION && w.size <= 1) + "}"
+            ",\"addIsDestination\":" + (k == WaypointInsertion.Kind.DESTINATION && w.size <= 1) +
+            ",\"join\":" + (join?.let { "[" + num(it.lat, 6) + "," + num(it.lon, 6) + "]" } ?: "null") + "}"
     }
 
     private fun parseNames(names: String): Map<Int, String> = names.split('\n').mapNotNull { l ->

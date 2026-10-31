@@ -135,10 +135,13 @@ await page.click('#points li:nth-child(2) .del');
 await waitPins(2);
 check(await pins() === 2, 'Points list ✕ deletes the point');
 
-// 6. Export GPX (the app's GpxWriter)
+// 6. Export GPX (the app's GpxWriter) – in Share since the sheet has no ⋯ (owner 2026-10-31)
 await planned();
-await page.click('#sheetMenuBtn');
-const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#exportGpx')]);
+check(await page.locator('#sheetMenuBtn').count() === 0 && await page.isVisible('#planActions #clear') && await page.isVisible('#planActions #reverse') && await page.isVisible('#planActions #roundTrip'),
+  'plan sheet without ⋯: ✕ Close · ⇅ Reverse · ↻ Round trip under the summary (the app\'s PlanActions)');
+await page.click('#share');
+const [dl] = await Promise.all([page.waitForEvent('download'), page.click('dialog.share #exportGpx')]);
+await page.click('#closeShare');
 const gpx = await (await import('node:fs')).promises.readFile(await dl.path(), 'utf8');
 check(dl.suggestedFilename().endsWith('.gpx') && gpx.includes('<trkpt') && gpx.includes('<type>'), 'Export GPX downloads a track with the sport type');
 
@@ -213,21 +216,17 @@ const answerSave = async (name) => {
 let sh = await saveHead();
 check(await page.isVisible('#header #menuSavePlan') && sh.state === 'dark' && !sh.disabled && sh.text === 'Save',
   `header: "Save", dark with a new route (${JSON.stringify(sh)})`);
-await page.click('#sheetMenuBtn');
-const sheetItems = await page.evaluate(() => [...document.querySelectorAll('#sheetMenu button')].filter((b) => !b.hidden).map((b) => b.textContent.trim()));
-check(sheetItems.includes('Save route') && !sheetItems.includes('Save as copy') && await page.isEnabled('#sheetSave'),
-  `⋯: "Save route", active with a route; no "Save as copy" (My routes → ⋮ since 2026-10-31) ${JSON.stringify(sheetItems)}`);
-await page.click('#sheetSave');
+await page.click('#menuSavePlan');
 await page.waitForSelector('dialog.savename[open]', { timeout: 10_000 });
 await page.click('#saveCancel');
 await page.waitForTimeout(300);
 check((await savedTitles()).length === 0 && !(await page.$('dialog[open]')), 'Save → Cancel: nothing saved');
-await page.click('#sheetMenuBtn'); await page.click('#sheetSave');
+await page.click('#menuSavePlan');
 const f1 = await answerSave(null);
 await page.waitForSelector('#savedLine:not([hidden])', { timeout: 10_000 }).catch(() => {});
 const firstSaved = await savedTitles();
 check(f1.title === 'Save route' && f1.selected && f1.value.length > 0 && JSON.stringify(firstSaved) === JSON.stringify([f1.value]) && (await page.textContent('#savedLine')).includes('Saved as ' + firstSaved[0]) && !(await page.$('#savedLine button')),
-  `⋯ → Save route: the dialog proposes "${f1.value}" (selected), Save stores it; "Saved as …" is a plain line (${JSON.stringify(f1)})`);
+  `Save: the dialog proposes "${f1.value}" (selected), Save stores it; "Saved as …" is a plain line (${JSON.stringify(f1)})`);
 await page.waitForFunction(() => document.getElementById('menuSavePlan').dataset.state === 'done', null, { timeout: 10_000 }).catch(() => {});
 await page.click('#menuSavePlan'); // saved and unchanged: the dialog with its name; a new name renames the same route
 const f2 = await answerSave('Test loop');
@@ -288,7 +287,16 @@ if (await page.isEnabled('#undo')) { // a change → Save dark; Save overwrites;
 }
 
 // 7. Go here from my position (browser location)
-await page.click('#sheetMenuBtn'); await page.click('#clear'); await waitPins(0);
+// ✕ Close with unsaved changes asks first (the app's DiscardPlanDialog): Cancel keeps the plan, Discard closes it
+await page.click('#clear');
+if (await page.locator('dialog.discard[open]').count()) {
+  await page.click('#discardCancel');
+  check(await pins() > 0, 'Close → "Discard changes?" → Cancel: the plan stays');
+  await page.click('#clear');
+  check(await page.locator('dialog.discard[open] #discardOk').count() === 1, 'Close asks again: Cancel · Discard');
+  await page.click('#discardOk');
+}
+await waitPins(0);
 await clickAt(11.1350, 46.6840);
 await page.waitForSelector('.pointmenu');
 await page.click('.pointmenu button:nth-of-type(2)'); // Go here
