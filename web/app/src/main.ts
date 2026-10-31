@@ -350,7 +350,7 @@ map.on('moveend', () => {
     if (!map.areTilesLoaded()) notices.set('loading', { kind: 'busy', title: t('maps_load_loading') });
   }, 400);
 });
-map.on('movestart', () => clearTimeout(loadingTimer));
+map.on('movestart', (e) => { clearTimeout(loadingTimer); if ((e as { originalEvent?: unknown }).originalEvent) lastMapTouch = performance.now(); }); // a pan / zoom by the user
 map.on('idle', () => { clearTimeout(loadingTimer); if (notices.get('loading')) notices.set('loading', null); });
 // The routing data around the map view is fetched while the user looks at the map, so the first plan starts at once
 // (docs/design/web-planner.md §11.2). Only from zoom 9: one 1° part is 2–10 MB.
@@ -380,6 +380,9 @@ async function commit(points: LatLon[], meta?: Meta[]) {
   // sent now with the points as they are (the worker keeps the order), not waited for: a long plan still running in the
   // one engine worker must not hold the page (Clear / Delete while planning answers at once, as in the app)
   const recorded = engine.call('historyRecord', enc(state.points));
+  // the plan's first route (fewer than two points before, two or more now – the app's WholeRoute.firstRoute, mirrored):
+  // the map shows it whole once it is there, unless the map was touched meanwhile (fitFirstRoute)
+  if (state.points.length < 2 && points.length >= 2) { fitNextRoute = true; fitAskedAt = performance.now(); }
   setPoints(points, meta);
   await changed();
   await recorded;
@@ -685,6 +688,8 @@ async function openFromLink() {
   linkTitle = shared.title ? { title: shared.title, at: enc(state.points) } : null;
   if (!draftsOn) await restoreDraft(); // the page opened with its route in the address: which saved route it is
 }
+/** The next route is the plan's first: fit it whole (the app's fitNextRoute); when it was asked; the last map gesture. */
+let fitNextRoute = false, fitAskedAt = 0, lastMapTouch = 0;
 /** A plan link's title and the points it was for (moved along when they are snapped) – the app's AppViewModel.linkTitle. */
 let linkTitle: { title: string; at: string } | null = null;
 
@@ -820,6 +825,12 @@ async function changed() {
   state.plan = r.plan;
   if (r.plan.moved) await adoptSnapped(routed, r.plan.points);
   planGaps.set(r.plan.gaps); // points the route does not reach or skips (the app's PlanGaps, in PlanResult)
+  if (fitNextRoute) {
+    fitNextRoute = false;
+    const asked = fitAskedAt, plan = state.plan;
+    // WholeRoute.SETTLE_MS: a moment for the map; not when the user moved it meanwhile or the plan moved on
+    setTimeout(() => { if (lastMapTouch <= asked && state.plan === plan) fitRoute(); }, 500);
+  }
   drawPoints(); // leg distances along the new route line (the engine now has this plan)
   engine.call('routingInfo').then((l) => { routingLine = l; }, (e) => problem('routing', 'routing fingerprint line not read', e));
   const s = r.stats!;

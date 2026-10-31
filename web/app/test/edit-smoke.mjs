@@ -38,6 +38,12 @@ await clickAt(11.1500, 46.6950);
 await planned('');
 const hike = await summary();
 console.log('hike:', hike);
+// the plan's first route is shown whole (the app's WholeRoute.firstRoute / fitFirstRoute, after a short settle)
+await page.waitForTimeout(1500);
+const inView = await page.evaluate(() => { const m = window.__map, b = m.getBounds();
+  const pts = m.getSource('planned-route').serialize().data.features.flatMap((f) => f.geometry.coordinates);
+  return { n: pts.length, out: pts.filter(([lo, la]) => !b.contains([lo, la])).length }; });
+check(inView.n > 2 && inView.out === 0, `the first route is fitted whole (${inView.n} line points, ${inView.out} outside the view)`);
 
 // activity switch re-plans
 await page.click('#activityChip');

@@ -280,6 +280,14 @@
         "web/app/src/i18n.ts"
       ],
       "blob": "74cb74d2734193734c8a870ebb11cb83434f0312"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/WholeRoute.kt",
+      "what": "firstRoute (fewer than two points before, two or more after → fit the first route whole after SETTLE_MS, not after a map gesture) – WholeRoute needs AppMode, so mirrored",
+      "web": [
+        "web/app/src/main.ts"
+      ],
+      "blob": "f5b2e6c012bd201c72acafce4c785906449c8e5c"
     }
   ],
   "watch": [
