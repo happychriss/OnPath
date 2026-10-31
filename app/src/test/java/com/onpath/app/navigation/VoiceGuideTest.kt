@@ -31,7 +31,10 @@ class VoiceGuideTest {
         val l = line(3000, emptyMap())
         val stops = listOf(NavStop(l.first(), 0.0, "Meran"), NavStop(l.last(), 3000.0, "Lana"))
         val said = ride(VoiceGuide(), l, bike = true, speed = 5.0) { _, i -> i.copy(stops = stops, toGoS = 900.0) }
-        assertEquals(listOf(Phrase.Start(3000.0, 900.0, "Lana")), said.map { it.second })
+        // the line's length comes from the geometry (3000 m ± a few mm) – the speech rounds it anyway
+        val start = said.map { it.second }.single() as Phrase.Start
+        assertEquals(3000.0, start.distanceM, 0.5)
+        assertEquals(Phrase.Start(start.distanceM, 900.0, "Lana"), start)
     }
 
     @Test fun bikeOneSentencePerJunction_earlyByTheSpeed() {
