@@ -121,7 +121,6 @@
     <string name="web_copy_by_hand">Press Ctrl+C to copy the selected link.</string>
 
     <!-- My plans -->
-    <string name="web_plan_dated">Route %1$s</string>
     <string name="web_plans_sync_now">Sync now</string>
     <string name="web_sync_paired">Paired</string>
     <string name="web_saved_short">Saved</string>
@@ -138,10 +137,10 @@
     <string name="web_pair_how">Open OnPath on the phone → %1$s → scan this code.</string>
     <string name="web_pair_menu_path">☰ → Pair with browser</string>
     <string name="web_pair_check">Check: %1$s – the app shows the same digits.</string>
-    <string name="web_pair_privacy">Your routes are encrypted on this browser and on the phone. The sync server only passes on locked data – it cannot read your routes. Keep this code to yourself: whoever scans it sees your saved routes.</string>
+    <string name="web_pair_privacy">Your saved routes and imported tracks are encrypted in this browser and on the phone before they go to the sync server (Cloudflare, EU): only your phone and your browser can read them – we can't. Recorded tours are never sent. Keep this code to yourself: whoever scans it sees your saved routes.</string>
     <string name="web_pair_link">Pairing link</string>
     <string name="web_pair_waiting">Waiting for the phone…</string>
-    <string name="web_pair_done">Paired with %1$s. Saved routes sync both ways by themselves while this page is open.</string>
+    <string name="web_pair_done">Paired with %1$s.</string>
     <string name="web_unpair">Unpair</string>
     <string name="web_join_title">Pairing code</string>
     <string name="web_join_text">This link pairs a device with your saved routes. Usually you scan it with the OnPath app on your phone (☰ → Pair with browser).</string>

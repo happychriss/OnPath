@@ -40,10 +40,17 @@ function dialog(cls: string, html: string): HTMLDialogElement {
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-const when = (ms: number) => new Date(ms).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 /** A date as the app writes it in My routes (its common_date pattern: "30. Okt. 2026" / "30 Oct 2026"). */
+/**
+ * The short month as it reads inside a date, like the app's SimpleDateFormat "MMM" ("Okt." with its dot in German –
+ * Intl's month alone gives the standalone "Okt"; owner 2026-10-31).
+ */
+export function shortMonth(d: Date): string {
+  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }).formatToParts(d).find((p) => p.type === 'month')?.value ?? '';
+}
+
 export function appDate(ms: number): string {
-  const d = new Date(ms), month = new Intl.DateTimeFormat(locale, { month: 'short' }).format(d);
+  const d = new Date(ms), month = shortMonth(d);
   return t('common_date').replace(/yyyy|MMM|d/g, (k) => (k === 'yyyy' ? String(d.getFullYear()) : k === 'MMM' ? month : String(d.getDate())));
 }
 const titleOf = (p: { title: string | null }) => shownTitle(p.title, t('web_route_default_name'));
@@ -284,7 +291,7 @@ export function newRouteName(proposed: string | null | undefined, dated: string,
 
 /** The app's date name (AppViewModel.defaultName): msg_name_route + msg_name_date_pattern ("d MMM, HH:mm" / "d. MMM, HH:mm"). */
 export function datedName(ms = Date.now()): string {
-  const d = new Date(ms), month = new Intl.DateTimeFormat(locale, { month: 'short' }).format(d).replace(/\.$/, '');
+  const d = new Date(ms), month = shortMonth(d);
   const two = (n: number) => String(n).padStart(2, '0');
   const date = t('msg_name_date_pattern').replace(/yyyy|MMM|HH|mm|d/g, (k) =>
     k === 'yyyy' ? String(d.getFullYear()) : k === 'MMM' ? month : k === 'HH' ? two(d.getHours()) : k === 'mm' ? two(d.getMinutes()) : String(d.getDate()));
@@ -348,7 +355,10 @@ export async function pairDialog(sync: PlanSync, page: string) {
     if (s.paired) {
       clearInterval(poll);
       $('pairStatus').textContent = '';
-      $('pairBody').innerHTML = `<p>${t('web_pair_done', `<b>${esc(s.phone ?? s.devices.map((x) => x.name).join(', '))}</b>`)}</p>`;
+      // the app's sentence after pairing (sync_paired_plan) – what Save does from now on – until OK
+      $('pairBody').innerHTML = `<p>${t('web_pair_done', `<b>${esc(s.phone ?? s.devices.map((x) => x.name).join(', '))}</b>`)}</p>
+        <p class="paireddone">${esc(t('sync_paired_plan'))}</p>`;
+      $('closePair').textContent = t('common_ok');
     }
   };
   const off = sync.onChange(() => { if (d.open) render(); });

@@ -115,3 +115,11 @@ test("version.json (the deployed build, version.ts): never cached, an open tab s
   assert.equal(r.headers.get("cache-control"), "no-store");
   assert.equal(await r.text(), "page /version.json");
 });
+
+test("the per-IP limits never see a plain IP: a daily salted hash is the key (owner, doorman 2e851ef)", async () => {
+  const keys = [];
+  const e = { ...env, MAP_KEY: "k", DATA_RATE: { limit: async ({ key }) => { keys.push(key); return { success: true }; } } };
+  await handle(new Request(H + "/data/cells/f2/10/543/361/current.json", { headers: { "cf-connecting-ip": "203.0.113.7" } }), e);
+  assert.equal(keys.length, 1);
+  assert.ok(!keys[0].includes("203.0.113.7") && /^[0-9a-f]{16,}$/.test(keys[0]), keys[0]);
+});

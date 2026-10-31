@@ -107,7 +107,6 @@
     <string name="web_link_copied">Link kopiert.</string>
     <string name="web_copy_by_hand">Drücke Strg+C, um den markierten Link zu kopieren.</string>
 
-    <string name="web_plan_dated">Route %1$s</string>
     <string name="web_plans_sync_now">Jetzt abgleichen</string>
     <string name="web_sync_paired">Verbunden</string>
     <string name="web_saved_short">Gespeichert</string>
@@ -122,10 +121,10 @@
     <string name="web_pair_how">OnPath auf dem Handy öffnen → %1$s → diesen Code scannen.</string>
     <string name="web_pair_menu_path">☰ → Mit Browser verbinden</string>
     <string name="web_pair_check">Prüfe: %1$s – die App zeigt dieselben Ziffern.</string>
-    <string name="web_pair_privacy">Deine Routen sind in diesem Browser und auf dem Handy verschlüsselt. Der Sync-Server reicht nur verschlossene Daten weiter – er kann deine Routen nicht lesen. Behalte den Code für dich: Wer ihn scannt, sieht deine gespeicherten Routen.</string>
+    <string name="web_pair_privacy">Deine gespeicherten Routen und importierten Tracks werden in diesem Browser und auf dem Handy verschlüsselt, bevor sie zum Sync-Server gehen (Cloudflare, EU): Lesen kannst du sie nur auf deinem Handy und in deinem Browser – wir können es nicht. Aufgezeichnete Touren werden nie übertragen. Behalte den Code für dich: Wer ihn scannt, sieht deine gespeicherten Routen.</string>
     <string name="web_pair_link">Verbindungslink</string>
     <string name="web_pair_waiting">Warte auf das Handy…</string>
-    <string name="web_pair_done">Verbunden mit %1$s. Gespeicherte Routen werden in beide Richtungen abgeglichen, solange diese Seite offen ist.</string>
+    <string name="web_pair_done">Verbunden mit %1$s.</string>
     <string name="web_unpair">Trennen</string>
     <string name="web_join_title">Verbindungscode</string>
     <string name="web_join_text">Dieser Link verbindet ein Gerät mit deinen gespeicherten Routen. Meist scannst du ihn mit der OnPath-App auf dem Handy (☰ → Mit Browser verbinden).</string>

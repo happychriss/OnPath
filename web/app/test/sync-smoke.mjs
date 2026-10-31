@@ -208,6 +208,8 @@ check(/^[A-Za-z0-9_-]{44}$/.test(p1.code) && /^\d{3} \d{3}$/.test(p1.check), 'Pa
 await phone.pairDirect(p1.code);
 await A.waitForFunction(() => document.getElementById('pairBody')?.textContent?.includes('Paired with Pixel 8'), null, { timeout: 30_000 }).catch(() => {});
 check((await A.textContent('#pairBody')).includes('Paired with Pixel 8'), 'the browser says "Paired with Pixel 8" (the phone\'s hello, role 1)');
+check((await A.textContent('#pairBody')).includes('What you save in the browser comes to your phone – everything is kept there.') && (await A.textContent('#closePair')) === 'OK',
+  'after pairing: the app\'s sentence (sync_paired_plan) with OK');
 await A.click('#closePair');
 let st = await status(A);
 check(st.paired && st.folder.key === phone.device && st.phone === 'Pixel 8', `the phone's folder is open (key = its device id) ${JSON.stringify(st.folder)}`);

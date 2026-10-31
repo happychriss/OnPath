@@ -15,7 +15,7 @@
 // (X-Robots-Tag on every answer + the page's meta robots) – one switch: INDEXING = "on" in wrangler.toml [vars].
 import { serveFile } from "../../../tools/cloud/worker/src/api.js";
 import { handleSync, purgeIdle } from "./sync.js";
-import { handleMaps, purgeQuota } from "./maps.js";
+import { handleMaps, purgeQuota, ipHash } from "./maps.js";
 
 // Android App Links (A-016): the app's signing certificate (release key, public – not a secret). A later Play Store
 // signing key is added as a second fingerprint in the same list.
@@ -49,7 +49,9 @@ async function route(request, env, fetchImpl) {
   if (p.startsWith("/data/") || p.startsWith("/segments/")) {
     if (request.method !== "GET" && request.method !== "HEAD") return new Response("method not allowed", { status: 405 });
     const limit = p.startsWith("/data/") ? env.DATA_RATE : env.SEGMENTS_RATE;
-    if (limit && !(await limit.limit({ key: request.headers.get("cf-connecting-ip") ?? "?" })).success) return tooMany();
+    // keyed by the daily salted hash of the IP (as sync.js / maps.js), never the plain address
+    const key = await ipHash(env, request.headers.get("cf-connecting-ip") ?? "?", new Date().toISOString().slice(0, 10));
+    if (limit && !(await limit.limit({ key })).success) return tooMany();
   }
   if (p === "/.well-known/assetlinks.json") {
     return new Response(ASSET_LINKS, { headers: { "content-type": "application/json", "cache-control": "public, max-age=3600" } });
