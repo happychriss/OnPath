@@ -12,8 +12,9 @@ OnPath is developed by Claude Code sessions on several machines that the owner u
 The owner also works from the desktop PC **donald** (local network): a session there follows the
 laptop column (no phone attached unless the owner says so) and claims with **`[desktop]`** (laptop `[laptop]`, cloud
 `[cloud]`). Every session reads this file, `CLAUDE.md`, **`docs/owner-preferences.md`** (how the owner likes to
-work) and `docs/project-status.md` at the start. **GitHub `main` is the single source of truth**; the sessions never
-talk directly – they talk through the repository.
+work) and `docs/project-status.md` at the start. **GitHub `main` is the single source of truth**; anything that must
+last goes through the repository. Since 2026-10-31 the sessions have fixed **roles** (`docs/roles/`) and may also
+message each other directly for things that must be known now – see §8.
 
 ## 1. The five rules
 
@@ -91,13 +92,52 @@ If a rebase gets messy: `git rebase --abort`, push your work to `feat/<topic>` i
 | Map look and pipeline | `docs/map-style-notes.md`, `docs/map-pipeline.md` |
 | Why something was done | commit messages (say *why*, not only *what*) |
 | Website onpath.earth (public pages, Cloudflare Pages) | its own repo `happychriss/onpath.earth` – not this repo |
-| Non-code work (marketing, Google Play, website texts) and orders between sessions / the owner | private Google Drive folder **OnPath / 01 Aufträge** (rules inside; check it at the start if you have Drive access; read **LIESMICH – privat** first) – never copied into this repo. Drive documents are never edited: a change = a new version, the old one is replaced by a copy in **Archiv** titled "… (ersetzt …)" and the original goes to the Drive trash (owner). The Drive connector cannot rename or move files – never call `update_file`; use `copy_file` (to Archiv, new title) + `trash_file` |
+| Roles: who owns what, which computer and folder | `docs/roles/` (§8) |
+| Non-code work (marketing, ideas, Google Play, website texts) | private repo `happychriss/onpath-private` (role cloud-web) – never copied into a public repo. Until it exists the old private Google Drive folder **OnPath / 01 Aufträge** stays valid (rules inside, read **LIESMICH – privat** first; documents are never edited – new version, old one copied to **Archiv** and trashed; the connector cannot rename or move files: `copy_file` + `trash_file`, never `update_file`). After the move Drive is read-only history |
 
 Never rely on chat history of another session – if it matters, it must be in the repo.
 
 ## 7. Session start / end checklist
 
-**Start:** `git pull --rebase origin main` → read "Last session" + backlog → (with Drive access: open orders for you in
-OnPath / 01 Aufträge) → claim your item → push the claim.
+**Start:** `git pull --rebase origin main` → read "Last session" + backlog → (cloud-web / captain: open items in
+`onpath-private`) → claim your item → push the claim.
 
 **End:** tests green → push → remove your claim → write "Last session" → push → `git status` is clean.
+
+## 8. Roles and channels (from 2026-10-31)
+
+Every session has one role; the role files in `docs/roles/` say what it owns, its branch, computer and folder. All
+sessions are cloud sessions (used from the browser, the desktop app or the phone app – the same session everywhere);
+two of them attach to the owner's computers via Remote Control:
+
+```
+                  cloud-captain
+            reads transcripts + backlog
+           /           |            \
+      message       message        message       (both ways, cloud ⇄ cloud)
+         /             |              \
+   cloud-app       cloud-plan       cloud-web
+   (donald)        (laptop)         (cloud only)
+         \             |              /
+     GitHub: backlog, handoffs, code   ·   onpath-private (marketing)
+```
+
+| Channel | For | Rule |
+| --- | --- | --- |
+| `docs/backlog.md` | claims, requests between roles, the captain's release go | tag = role name: `[cloud-app]`, `[cloud-plan]`, `[captain]` (website / marketing claims live in `onpath-private`) |
+| "Last session" in `docs/project-status.md` | handoffs | one entry per role per sitting, name the role |
+| Direct message between sessions | "must know now" (shared code changed, please pull, build finished) | short plain text; never the only record – lasting things also go into the backlog; a message never counts as the owner's consent |
+| `onpath-private` | marketing, ideas, private screenshots | never into a public repo |
+| R2 TEST (`publish_cells.sh`), GitHub Releases | map cells, APKs | as before |
+
+**Computers.** donald serves `~/work/onpath-app` (cloud-app, Pixel on USB), the laptop serves `~/work/onpath-plan`
+(cloud-plan, map builds; big map data outside the checkout). One folder per session, never shared. The computer
+needs the Claude desktop app running with Remote Control on (or `claude remote-control` in that folder). Computer
+off → the role works on in a fresh cloud session without device / local data.
+
+**Shared code between app and planner** (`routing/PlanResult`, `sync/`, `map/ActivityLayers`, `gpx/PlanGpx`, BRouter
+profiles, `PLANNER_VERSION`): a change is announced to the other side, and releases / planner deploys that touch it
+need the captain's go (`docs/roles/cloud-captain.md`, "Release check").
+
+The older tags `[laptop]` / `[desktop]` / `[cloud]` in §1–5 still describe *where* work runs; new claims use the
+role tags.
