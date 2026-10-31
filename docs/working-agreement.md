@@ -146,5 +146,9 @@ role tags.
 **Tested 2026-10-31:** sessions attached to a computer (cloud-app, cloud-plan) refuse messages and transcript reads from
 a cloud-only session (`elevated_session_untrusted_device` – only the owner's trusted devices may reach them). So the
 captain reaches them only through "For the roles" in the backlog; something urgent the owner types into the session
-himself. Captain ⇄ cloud-web by message works both ways. Not yet tested: whether cloud-app / cloud-plan can message
-the captain.
+himself. Captain ⇄ cloud-web by message works both ways. Later the same day (fresh
+sessions, owner): captain → cloud-app / cloud-plan was delivered, but **replies never came back**. Known limit: a cloud
+session cannot answer a cross-machine message with `SendMessage` (docs "Replies from other machines and cloud
+sessions"); open reports anthropics/claude-code#98897 (reply via the Remote `send_message` tool to the sender's
+session id works), #104160, #103124, #103864. So: treat messages as one-way; answers go into the backlog / handoff.
+To try: the role answers with the Remote `send_message` tool to the captain's `session_…` id.
