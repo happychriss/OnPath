@@ -132,6 +132,16 @@ alternative to TeaVM but still experimental – watch, not use.
   browser – BRouter's `RoutingEngine.islandNodePairs` is private, the app reads it by reflection (`islandRetries` /
   `skipOnSnap`), TeaVM has none ("BRouter island retries not readable (reflection)" in Problems). Needs a BRouter
   patch or a subclass hook (low prio, docs/backlog.md); not a case here.
+- **Plan parity app ⇄ web** (owner 2026-10-31: routes and plans identical, shared Kotlin, parity tests – no checks by
+  hand): `web/test/plans.json` – each case planned by the app's own path on the JVM (`./gradlew -p web/engine
+  parityJvm`: `BRouterEngine` on the full rd5, `PlanPoints` for edits, `PlanResult.plan` with the app's default pace =
+  `AppViewModel.recalc`) and by the page's calls in the Wasm engine (`web/app/test/plan-parity.mjs`: `edit` + `plan`, rd5
+  in parts like the browser). Same line and plan points (1 m), distance (1 m), time (1 s), climb, gaps, warnings,
+  difficulty, profile – a gate in the jvm job; a case with `"knownDiff"` is listed, not gated (Köln island point).
+  2026-10-31: 10 of 11 the same, Köln known (app 1334 m snapped to the next way, web 959 m straight "no path found").
+  Since `Engine.plan` calls `routing/PlanResult` (docs/handoff-web-planresult.md) the page also takes the snapped plan
+  points (`snap-smoke.mjs`), exports the app's plan GPX (`PlanGpx`, `<wpt>` stops, re-import exact) and deletes / drags
+  with `PlanPoints.deleteAt` / `move` (a round trip stays closed).
   `web/app/test/ui-smoke.mjs` clicks two points. `.github/workflows/web-spike.yml` runs all on the branch.
 
 **Numbers** (cloud container; CI green):
