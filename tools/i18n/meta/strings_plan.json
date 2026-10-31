@@ -384,12 +384,23 @@
     "priority": 2,
     "confidence": "sicher"
   },
-  "plan_clear_route": {
+  "plan_close_plan": {
     "area": "Plan sheet",
-    "context": "⋯ menu item: remove all points (Undo brings them back)",
+    "context": "Label under ✕ in the plan sheet's action row: the plan leaves the screen (Undo brings it back); a saved route stays in My routes – not a delete",
     "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "\"löschen\" may sound final; alternative \"Route leeren\""
+    "confidence": "sicher"
+  },
+  "plan_discard_title": {
+    "area": "Plan sheet",
+    "context": "Title of the question after ✕ Close plan while the plan has unsaved changes",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_discard": {
+    "area": "Plan sheet",
+    "context": "Button of that question: closes the plan, the unsaved changes are lost (Cancel beside it)",
+    "priority": 2,
+    "confidence": "sicher"
   },
   "plan_activity_chip_desc": {
     "area": "Plan sheet",
@@ -686,9 +697,9 @@
     "priority": 2,
     "confidence": "sicher"
   },
-  "plan_save_as_new_route": {
+  "plan_save_as_copy": {
     "area": "Plan sheet",
-    "context": "Item in the plan sheet's ⋯ menu while the plan is a saved route: saves a copy at once (Save overwrites)",
+    "context": "Item in My routes → ⋮ of a planned route, and the title of its name dialog: saves a copy under a new name (proposed \"Name (2)\")",
     "priority": 2,
     "confidence": "sicher"
   },

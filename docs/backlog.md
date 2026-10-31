@@ -64,6 +64,21 @@ the git log.
       `#0B3D91`, 12 px bold pill, never cut), gone when opened; careful: bold means "waiting" in the browser today –
       steps in `docs/handoff-web-route-tags.md`.
   - *Should:*
+    - Save asks for the name (owner 2026-10-31, app 0.13.5, replaces "save at once") · app commit "Save always asks
+      for the name" · checked against `origin/web-spike` 761bbb6: the browser still saves at once and renames in place
+      (`#savedLine` → `#renameField`), so it does **not** match yet. Web: every Save (header, ⋯ → Save route, Save
+      first) opens the small name popover (the `.savepop` styles are still there) with the name fully selected,
+      Cancel · Save; a saved route is overwritten **and renamed when the name changed** (one route); blank = keep the
+      proposal / old name; "Save as copy" proposes `RouteRules.copyName` ("Name (2)", a copy of "Name (2)" is
+      "Name (3)"); "Saved as …" becomes a plain line (no `#renameField`). Update `parity-smoke.mjs` (renameTo, "no
+      field, no dialog" checks). App: `SaveNameDialog`, `AppViewModel.askSave / confirmSave`, `SaveDialogTest`.
+    - Plan sheet without ⋯ (owner 2026-10-31, app 0.13.5) · app commit "Plan sheet: icon row instead of ⋯" · the
+      browser's floating window keeps its own layout, but mirror the wording and placement: ✕ **„Plan schließen“ /
+      "Close plan"** (was „Route löschen“; "Discard changes?" / „Änderungen verwerfen?“ Cancel · Discard only with
+      unsaved changes; a saved route stays), **„Umkehren“ · „Rundtour“** beside it in the summary (not only above the
+      points), **„Als Kopie speichern“ / "Save as copy"** in My routes. String keys renamed – fix `t()` in main.ts after
+      `merge-main.sh`: `plan_clear_route` → `plan_close_plan` (+ `plan_discard_title`, `plan_discard`),
+      `plan_save_as_new_route` → `plan_save_as_copy`. App: `PlanPanel.PlanActions`, `PlanActionsTest`.
     - Candidate marker instead of the orange search ring (owner 2026-10-31, A-019 add-on) · app commit "Candidate
       marker" · the web's `.searchring` (search.ts, style.css) becomes the app's look: a dashed route-blue (`#1E3FAE`)
       ring, radius 21 px, 3.5 px dashes 7 / 4.5 over a 7 px white halo, ~12 % blue tint inside, a small "+" badge

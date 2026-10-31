@@ -81,7 +81,9 @@
     <string name="plan_route_options">Route options</string>
     <string name="plan_save_route">Save route</string>
     <string name="plan_time_details">Time details</string>
-    <string name="plan_clear_route">Clear route</string>
+    <string name="plan_close_plan">Close plan</string>
+    <string name="plan_discard_title">Discard changes?</string>
+    <string name="plan_discard">Discard</string>
     <string name="plan_activity_chip_desc">Activity: %1$s. Tap to change</string>
     <string name="plan_points">Points</string>
     <string name="plan_reverse">Reverse</string>
@@ -129,7 +131,7 @@
     <string name="plan_because_grade">%1$s because of %2$s at %3$s or harder</string>
     <string name="plan_because_unpaved">%1$s because %2$d % is unpaved (%3$s)</string>
     <string name="plan_because_loose">%1$s because of %2$s on loose ground</string>
-    <string name="plan_save_as_new_route">Save as new route</string>
+    <string name="plan_save_as_copy">Save as copy</string>
     <string name="plan_something_wrong">Something went wrong</string>
     <string name="plan_straight_title">Parts of this route were not found</string>
     <string name="plan_straight_text">The dashed parts are straight lines, not paths.</string>

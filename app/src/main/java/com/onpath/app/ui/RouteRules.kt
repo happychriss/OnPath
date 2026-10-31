@@ -42,10 +42,20 @@ enum class PlanStart {
 }
 
 /**
- * What Save does – at once, no dialog (owner 2026-10-31, "wie Word", like the browser planner): a new entry under a
- * proposed name ([RouteRules.newRouteName]), or overwrite the saved route the plan belongs to (its name stays).
+ * What Save's dialog leads to (owner 2026-10-31: Save always asks for the name): a new entry under the name in the
+ * field (proposed by [RouteRules.newRouteName]), or overwrite the saved route the plan belongs to (renamed when the name
+ * changed – still one route).
  */
 enum class SaveMode { NEW_ROUTE, OVERWRITE }
+
+/**
+ * Save's name dialog while it is open: [name] prefilled (the proposal, the saved route's name, or "<name> (2)" for a
+ * copy) and fully selected; a blank name keeps it. [routeId] = the route overwritten ([Kind.OVERWRITE]), else -1.
+ * [then] runs after a successful save ("Replace current plan?" → Save first loads the other route then).
+ */
+data class SaveAsk(val kind: Kind, val name: String, val routeId: Long, val then: (() -> Unit)?) {
+    enum class Kind { NEW, OVERWRITE, COPY }
+}
 
 /**
  * "Enabled when" rules of the menus and route management (docs/ux-two-modes.md "Menus").
@@ -65,8 +75,8 @@ object RouteRules {
 
     /**
      * Save (sheet button, ☰ "Save route", sheet ⋯ → Save route, "Save first"): when the plan was loaded from (or last
-     * saved as) a planned route that still exists, it is overwritten (the name stays); otherwise a new entry. No
-     * question either way (owner 2026-10-31, like Word's Save); a copy is sheet ⋯ → "Save as new route".
+     * saved as) a planned route that still exists, it is overwritten (renamed when the dialog's name changed);
+     * otherwise a new entry. Both ask for the name first (owner 2026-10-31); a copy is sheet ⋯ → "Save as copy".
      * @param savedId tour id the plan was last saved / loaded as (-1 = none)
      * @param plannedIds ids of the planned routes in My routes
      */
@@ -74,10 +84,10 @@ object RouteRules {
         if (savedId >= 0 && savedName != null && savedId in plannedIds) SaveMode.OVERWRITE else SaveMode.NEW_ROUTE
 
     /**
-     * Name of a route saved at once (no name dialog, owner 2026-10-31): the [proposed] one – a plan link's title while
+     * Name proposed in Save's dialog for a new route: the [proposed] one – a plan link's title while
      * its points are unchanged, else the place proposal "Vellau → Leiteralm" (search/RouteNamer) – or, when there is
      * none, [dated] ("Route 31 Oct, 10:12"). A name a planned route already has ([taken]) gets " (2)", " (3)" … so two
-     * entries in My routes never look the same. The user renames it with a tap on "Saved as …" in the sheet.
+     * entries in My routes never look the same; a copy of "Name" is proposed as "Name (2)".
      */
     fun newRouteName(proposed: String?, dated: String, taken: Collection<String>): String {
         val base = proposed?.trim()?.takeIf { it.isNotEmpty() } ?: dated.trim()
@@ -87,19 +97,30 @@ object RouteRules {
     }
 
     /**
-     * "Save" at hand (owner 2026-10-30: he looked for it in ☰, it was only in the sheet's ⋯): while the plan has unsaved
-     * changes – new or changed since the last save / load ([unsaved] = [isUnsaved]) – the sheet's first line shows a
-     * green "Save" button beside ⋯ and ☰ gets "Save route" on top. Saved: neither (the sheet says "Saved as …", the line
-     * stays calm). Tapping either = sheet ⋯ → Save route; it can be used once a route line exists ([RouteMenuState.save]),
-     * also during a tour like ⋯ → Save route.
+     * Proposed name of Save as copy of [name]: "Name (2)" – the next free number, and a copy of "Name (2)" is
+     * "Name (3)", not "Name (2) (2)".
+     */
+    fun copyName(name: String, taken: Collection<String>): String {
+        val base = name.trim().replace(Regex(""" \(\d+\)$"""), "")
+        return newRouteName(base, base, taken + base)
+    }
+
+    /**
+     * Unsaved changes worth a hint (owner 2026-10-31): while the plan is new or changed since the last save / load
+     * ([unsaved] = [isUnsaved]) the ☰ button shows a small green dot – Save route is its top item ([saveInMenu]). Saved:
+     * no dot (the sheet says "Saved as …"). Save can be used once a route line exists ([RouteMenuState.save]), also
+     * during a tour.
      */
     fun saveAtHand(pointCount: Int, unsaved: Boolean): Boolean = unsaved && pointCount >= 2
 
-    /** A new name from My routes → Rename or the sheet's "Saved as …" field: trimmed; blank keeps [old]. */
+    /** ☰ → "Save route" as the top item (owner 2026-10-31, the sheet has no Save any more): whenever there is a plan. */
+    fun saveInMenu(pointCount: Int): Boolean = pointCount >= 2
+
+    /** A new name from My routes → Rename or Save's dialog: trimmed; blank keeps [old] (the proposal / old name). */
     fun cleanName(input: String, old: String): String = input.trim().ifBlank { old }
 
     /**
-     * Clear in the sheet's ⋯: something to clear – also during a tour (owner): like deleting every point,
+     * ✕ Close plan in the sheet's action row: something to close – also during a tour (owner): like deleting every point,
      * the route guidance ends and the recording goes on; Undo brings plan and guidance back (PlanGuidance).
      */
     fun canClear(pointCount: Int): Boolean = pointCount > 0

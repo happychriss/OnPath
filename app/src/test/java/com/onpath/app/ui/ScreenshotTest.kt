@@ -317,8 +317,9 @@ class ScreenshotTest {
                         unsaved: Boolean = false, bottom: @Composable () -> Unit) {
         Box(Modifier.fillMaxSize()) {
             // [sync] is built inside the composition: its texts follow the test's language
+            // Save route is the top item whenever there is a plan; [unsaved] = the green dot on ☰
             val menu = PlanMenu(state, onUpdates = {}, onPairBrowser = {}, onPhoneSetup = if (phoneSetup) ({}) else null,
-                sync = sync?.invoke() ?: SyncMenuUi(), onSaveRoute = if (unsaved) ({}) else null)
+                sync = sync?.invoke() ?: SyncMenuUi(), onSaveRoute = if (state.save) ({}) else null, unsaved = unsaved)
             Frame(menu = menu) { bottom() }
             OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 92.dp, end = 12.dp)) {
                 PlanMenuItems(menu) {}
@@ -333,7 +334,7 @@ class ScreenshotTest {
         }
     }
 
-    /** ☰ while the plan has unsaved changes (owner 2026-10-30): "Save route" on top, the sheet shows Save beside ⋯. */
+    /** ☰ while the plan has unsaved changes: "Save route" on top (the one Save), a green dot on ☰; the sheet has no Save. */
     @Test fun planMenuUnsaved() = paparazzi.snapshot {
         TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false), unsaved = true) {
             PlanPanel(planUi().copy(unsaved = true), PlanCallbacks())
@@ -388,11 +389,11 @@ class ScreenshotTest {
         }
     }
 
-    /** The ⋯ menu of the plan sheet: the rare route actions. */
-    @Test fun planSheetMenuOpen() = paparazzi.snapshot {
-        Box(Modifier.fillMaxSize()) {
-            Frame { PlanPanel(planUi(), PlanCallbacks()) }
-            OnPathTheme { MenuCard(Modifier.align(Alignment.BottomEnd).padding(bottom = 150.dp, end = 12.dp)) { SheetMenuItems(planUi(), PlanCallbacks()) {} } }
+    /** ✕ Close plan with unsaved changes (owner 2026-10-31): the one question "Discard changes?" Cancel · Discard. */
+    @Test fun planDiscardAsk() = paparazzi.snapshot {
+        OnPathTheme {
+            Frame { PlanPanel(planUi().copy(unsaved = true), PlanCallbacks()) }
+            DiscardPlanDialog({}, {})
         }
     }
 
@@ -1002,22 +1003,34 @@ class ScreenshotTest {
         }
     }
 
-    /** The sheet shows the save state instead of a message; ✎ – a tap renames in place (owner 2026-10-31). */
+    /** The sheet shows the save state instead of a message – a plain line (renamed in Save's dialog / My routes). */
     @Test fun planSaved() = paparazzi.snapshot {
         Frame { PlanPanel(planUi().copy(savedName = "Route Meran – Hirzer"), PlanCallbacks()) }
     }
 
-    /** "Saved as …" tapped: the name field in place (no dialog) – Done / ✓ renames, Back / a tap outside cancels. */
-    @Test fun planSavedRename() = paparazzi.snapshot {
-        Frame { PlanPanel(planUi().copy(savedName = "Route Meran – Hirzer", renaming = true), PlanCallbacks()) }
+    /** Save (owner 2026-10-31: always asks): the name dialog over the sheet, the proposal selected – Cancel / Save. */
+    @Test fun planSaveDialog() = paparazzi.snapshot {
+        OnPathTheme {
+            Frame { PlanPanel(planUi().copy(unsaved = true), PlanCallbacks()) }
+            SaveNameDialog(SaveAsk.Kind.NEW, "Vellau → Leiteralm", {}, {})
+        }
     }
 
-    /** Sheet ⋯ of a saved route: Save (overwrites it) and Save as new route (a copy, at once). */
-    @Test fun planMenuSavedRoute() = paparazzi.snapshot {
-        val ui = planUi().copy(savedName = "Route Meran – Hirzer", unsaved = true)
+    /** My routes → ⋮ → Save as copy: the same dialog, titled "Save as copy", proposing "<name> (2)". */
+    @Test fun planSaveCopyDialog() = paparazzi.snapshot {
+        OnPathTheme {
+            RoutesScreen(tourList, {}, {}, {}, {}, {})
+            SaveNameDialog(SaveAsk.Kind.COPY, "Route Meran – Hirzer (2)", {}, {})
+        }
+    }
+
+    /** My routes → ⋮ of a planned route (owner 2026-10-31): Rename, Save as copy, Export GPX, Share plan, Delete. */
+    @Test fun routesItemMenuPlanned() = paparazzi.snapshot {
         Box(Modifier.fillMaxSize()) {
-            Frame { PlanPanel(ui, PlanCallbacks()) }
-            OnPathTheme { MenuCard(Modifier.align(Alignment.BottomEnd).padding(bottom = 150.dp, end = 12.dp)) { SheetMenuItems(ui, PlanCallbacks()) {} } }
+            OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}) }
+            OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 200.dp, end = 12.dp)) {
+                TourMenuItems(tourList.first { it.kind == com.onpath.app.data.TourKind.PLANNED }, {}, {}, {}, null, {}, {}) {}
+            } }
         }
     }
 

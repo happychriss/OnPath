@@ -61,7 +61,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.coroutines.async
 import com.onpath.app.routing.ArrivalGate
 import com.onpath.strings.*
 import java.io.File
@@ -1290,13 +1289,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val savedId: Long get() = if (planLinked) linkId else -1L
     /** The plan has a route worth keeping that differs from the last save / load (RouteRules.isUnsaved). */
     val planUnsaved: Boolean get() = RouteRules.isUnsaved(waypoints, savedPoints)
-    /**
-     * The sheet's "Saved as “Name”" is an edit field (owner 2026-10-31, "wie Word"): Done / Enter renames the saved
-     * route ([renamePlan], the same path as My routes → Rename), Back / a tap outside cancels ([cancelRenamePlan]).
-     */
-    var renamingPlan by mutableStateOf(false)
+    /** Save's name dialog while open (owner 2026-10-31: Save always asks for the name; [requestSave], [requestCopyRoute]). */
+    var saveAsk by mutableStateOf<SaveAsk?>(null)
         private set
-    /** A save runs (the name is found, then the DB write): a second tap on Save does not make a second route. */
+    /** A save runs (the DB write): a second tap on Save does not make a second route. */
     private var saving = false
     /** "Replace current plan?" is open for this route (a saved one or one from a plan link). */
     var replaceAsk by mutableStateOf<PlanToOpen?>(null)
@@ -2501,7 +2497,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Clear the plan right away (owner): one Undo step brings it back, so no question. */
-    fun requestClear() = clearPlan()
+    /** "Discard changes?" is open (✕ Close plan with unsaved changes). */
+    var discardAsk by mutableStateOf(false)
+
+    /**
+     * ✕ Close plan in the sheet (owner 2026-10-31, was "Clear route"): the plan leaves the screen – a saved route stays in
+     * My routes; with unsaved changes ([planUnsaved]) ONE question first, "Discard changes?" Cancel · Discard.
+     */
+    fun requestClear() { if (planUnsaved) discardAsk = true else clearPlan() }
+
+    /** "Discard changes?" → Discard. */
+    fun discardConfirmed() { discardAsk = false; clearPlan() }
 
     /**
      * Resets the whole plan in one undoable step: points, route line, pinned marks (kept while
@@ -2953,49 +2959,89 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Save – the sheet's green Save, ☰ "Save route", sheet ⋯ → Save route – at once, no dialog (owner 2026-10-31, "wie
-     * Word", like the browser planner; RouteRules.saveMode): the plan belongs to a saved route that still exists → that
-     * route is overwritten (its name stays), else a new route under a proposed name ([saveAsNew]). The sheet then shows
-     * "Saved as …" (no message); a tap on it renames.
+     * Save – the sheet's green Save, ☰ "Save route", sheet ⋯ → Save route – always opens the name dialog (owner
+     * 2026-10-31, replaces "save at once"): a plan that belongs to a saved route that still exists ([RouteRules.saveMode])
+     * shows that route's name and is overwritten on Save – renamed when the name changed, still ONE route; else the
+     * proposed name ([RouteRules.newRouteName]: plan link title / "Vellau → Leiteralm", else "Route 31 Oct, 10:12") and
+     * a new route. The sheet then shows "Saved as …" (no message).
      */
-    fun requestSave() = save(null)
+    fun requestSave() = askSave(null)
 
-    /** Save, then [then] on success ("Save first" before loading another route). */
-    private fun save(then: (() -> Unit)?) {
-        if (waypoints.size < 2) return
-        when (currentSaveMode()) {
-            SaveMode.OVERWRITE -> overwriteSaved(then)
-            SaveMode.NEW_ROUTE -> saveAsNew(then)
+    /**
+     * My routes → ⋮ → Save as copy (planned routes; owner 2026-10-31, was the plan sheet's ⋯): the same dialog with
+     * "<name> (2)" ([RouteRules.copyName]); Save copies the stored route ([copyRoute]) – the plan stays as it is.
+     */
+    fun requestCopyRoute(t: Tour) {
+        if (t.kind != TourKind.PLANNED || saving) return
+        saveAsk = SaveAsk(SaveAsk.Kind.COPY, RouteRules.copyName(t.name, plannedNames()), t.id, null)
+    }
+
+    /** Opens Save's dialog; [then] runs after a successful save ("Save first" before loading another route). */
+    private fun askSave(then: (() -> Unit)?) {
+        val pts = waypoints.toList()
+        if (pts.size < 2 || saving) return
+        if (currentSaveMode() == SaveMode.OVERWRITE) {
+            saveAsk = SaveAsk(SaveAsk.Kind.OVERWRITE, savedName!!, savedId, then); return
+        }
+        val dated = defaultName(Txt.s(Res.string.msg_name_route))
+        val taken = plannedNames()
+        val ask = SaveAsk(SaveAsk.Kind.NEW, RouteRules.newRouteName(null, dated, taken), -1L, then)
+        saveAsk = ask
+        // the proposal (plan link title / "Vellau → Leiteralm") replaces the date name in the field until the user types
+        val r = route
+        viewModelScope.launch {
+            val proposed = withTimeoutOrNull(NAME_WAIT_MS) { proposeName(pts, r) } ?: return@launch
+            if (saveAsk === ask) saveAsk = ask.copy(name = RouteRules.newRouteName(proposed, dated, taken))
         }
     }
 
-    /** How long Save waits for the place proposal of a new route's name before it takes the date name. */
-    private val NAME_WAIT_MS = 2_000L
+    /** Save's dialog → Cancel / Back / a tap outside: nothing is saved, "Save first" does not load. */
+    fun cancelSave() { saveAsk = null }
+
+    /**
+     * Save's dialog → Save with [input]: a blank name keeps the proposal / old name ([RouteRules.cleanName]). A new
+     * route or a copy is inserted; the saved route is overwritten in place and renamed if the name changed.
+     */
+    fun confirmSave(input: String) {
+        val ask = saveAsk ?: return
+        saveAsk = null
+        val name = RouteRules.cleanName(input, ask.name)
+        when {
+            ask.kind == SaveAsk.Kind.COPY -> copyRoute(ask.routeId, name)
+            ask.kind == SaveAsk.Kind.OVERWRITE && ask.routeId == savedId -> overwriteSaved(name, ask.then)
+            else -> saveRoute(name, ask.then)
+        }
+    }
+
+    /** Save as copy from My routes: a new planned route [name] with the stored line, points and pins of route [id]. */
+    private fun copyRoute(id: Long, name: String) {
+        if (saving) return
+        saving = true
+        viewModelScope.launch {
+            try {
+                val newId = withContext(Dispatchers.IO) {
+                    runCatching {
+                        val t = db.getTour(id) ?: return@runCatching null
+                        db.insertTour(TourKind.PLANNED, name, t.activity, t.sac, t.distanceM, t.ascentM, t.descentM, t.durationS,
+                            db.loadSegments(id), t.waypoints, pinned = t.pinned)
+                            .also { n -> planTimes.get(id, t.distanceM)?.let { planTimes.put(n, t.distanceM, it) } }
+                    }.onFailure { Problems.error("db", "Copying a planned route failed", it) }.getOrNull()
+                }
+                if (newId == null) { routesProblem = Txt.s(Res.string.msg_route_save_failed); return@launch }
+                Backups.tourChanged(getApplication(), newId)
+                sync.changed("route copied")
+                refreshTours()
+            } finally { saving = false }
+        }
+    }
+
+    /** How long the dialog waits for the place proposal of a new route's name (it shows the date name meanwhile). */
+    private val NAME_WAIT_MS = 5_000L
 
     private fun currentSaveMode() =
         RouteRules.saveMode(savedId, savedName, tours.filter { it.kind == TourKind.PLANNED }.map { it.id })
 
-    /**
-     * A new planned route from the plan, at once (sheet ⋯ → "Save as new route", or Save of a plan that is not a saved
-     * route yet): named by [RouteRules.newRouteName] – the plan link's title / the place proposal "Vellau → Leiteralm"
-     * (waited for [NAME_WAIT_MS] at most; the place index goes on building in the background), else "Route 31 Oct,
-     * 10:12". The points and line are the ones at the tap. [then] runs on success only.
-     */
-    fun saveAsNew(then: (() -> Unit)? = null) {
-        val pts = waypoints.toList()
-        if (pts.size < 2 || saving) return
-        saving = true
-        val r = route
-        val taken = tours.filter { it.kind == TourKind.PLANNED }.map { it.name }
-        val proposal = viewModelScope.async { proposeName(pts, r) }
-        viewModelScope.launch {
-            try {
-                val proposed = withTimeoutOrNull(NAME_WAIT_MS) { proposal.await() }
-                val name = RouteRules.newRouteName(proposed, defaultName(Txt.s(Res.string.msg_name_route)), taken)
-                insertPlanned(name, pts, r, then)
-            } finally { saving = false }
-        }
-    }
+    private fun plannedNames() = tours.filter { it.kind == TourKind.PLANNED }.map { it.name }
 
     /**
      * Saves the plan as a new planned route named [name]. The sheet then shows "Saved as …" (no message). Without a
@@ -3004,9 +3050,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun saveRoute(name: String, then: (() -> Unit)? = null) {
         val pts = waypoints.toList()
-        if (pts.size < 2) return
+        if (pts.size < 2 || saving) return
+        saving = true
         val r = route
-        viewModelScope.launch { insertPlanned(name, pts, r, then) }
+        viewModelScope.launch { try { insertPlanned(name, pts, r, then) } finally { saving = false } }
     }
 
     private suspend fun insertPlanned(name: String, pts: List<GeoPoint>, r: PlannedRoute?, then: (() -> Unit)?) {
@@ -3034,13 +3081,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The plan's stops as saved: with their place names (backup / restore keeps them). */
     private fun savedStops(pts: List<GeoPoint>) = com.onpath.app.gpx.PlanGpx.stops(pts) { stopName(pts[it]) }
 
-    /** Save of a plan that belongs to a saved route: overwrite it in place (name stays). A new entry if it is gone. */
-    private fun overwriteSaved(then: (() -> Unit)?) {
+    /**
+     * Save of a plan that belongs to a saved route: overwrite it in place under [name] (renamed when it differs – still
+     * one route). A new entry with that name if it is gone meanwhile.
+     */
+    private fun overwriteSaved(name: String, then: (() -> Unit)?) {
         val pts = waypoints.toList()
-        val name = savedName
+        val old = savedName
         val id = savedId
         if (pts.size < 2 || saving) return
-        if (name == null || id < 0) { saveAsNew(then); return }
+        if (old == null || id < 0) { saveRoute(name, then); return }
         saving = true
         val r = route
         val act = activity; val level = sac
@@ -3054,7 +3104,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                             r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
                             listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
                             stops, pins,
-                        ).also { if (it) { plannedTimes.remove(id); storePlanTimes(id, r, act) } }
+                        ).also {
+                            if (it) { plannedTimes.remove(id); storePlanTimes(id, r, act) }
+                            if (it && name != old) db.rename(id, name)
+                        }
                     }
                 }
                 val replaced = ok.getOrElse {
@@ -3064,32 +3117,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 if (replaced) {
                     Backups.tourChanged(getApplication(), id); sync.changed("route overwritten")
-                    setSaved(name, id, pts); refreshTours(); then?.invoke()
-                } else insertPlanned(name, pts, r, then) // deleted meanwhile: keep the work as a new route with the same name
+                    setSaved(name, id, pts)
+                    shown?.let { if (it.tourId == id) shown = it.copy(name = name) }
+                    refreshTours(); then?.invoke()
+                } else insertPlanned(name, pts, r, then) // deleted meanwhile: keep the work as a new route with that name
             } finally { saving = false }
         }
-    }
-
-    /** Tap on the sheet's "Saved as “Name”": it becomes an edit field (only while the plan is a saved route). */
-    fun startRenamePlan() { if (savedName != null) renamingPlan = true }
-
-    /** Back / a tap outside the field: the name stays. */
-    fun cancelRenamePlan() { renamingPlan = false }
-
-    /**
-     * Done / Enter in the sheet's name field: renames the saved route the plan belongs to through [renameTour] – the
-     * same path as My routes → Rename (backup file, sync change, "Saved as" follows). A blank name keeps the old one.
-     */
-    fun renamePlan(input: String) {
-        renamingPlan = false
-        val id = linkId.takeIf { savedName != null } ?: return
-        val t = tours.firstOrNull { it.id == id && it.kind == TourKind.PLANNED }
-        if (t == null) {
-            Problems.warn("routes", "Rename from the plan sheet: the saved route $id is not in My routes; not renamed")
-            routesProblem = Txt.s(Res.string.msg_route_rename_failed)
-            return
-        }
-        renameTour(t, input)
     }
 
     /** Manage routes → Rename. The plan's "Saved as …" and a shown track follow the new name. */
@@ -3148,14 +3181,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * "Replace current plan?" → Save first: the plan is saved at once like Save (overwrite its saved route, else a new
-     * one under a proposed name), then [replaceAsk] loads. The question itself is the choice (Save first / Replace /
-     * tap outside = nothing happens) – no name dialog after it (owner 2026-10-31).
+     * "Replace current plan?" → Save first: Save's name dialog like every Save (overwrite its saved route, else a new
+     * one), then [replaceAsk] loads; Cancel in the dialog loads nothing.
      */
     fun replaceSaveFirst() {
         val t = replaceAsk ?: return
         replaceAsk = null
-        save { open(t) }
+        askSave { open(t) }
     }
 
     /**
@@ -3224,7 +3256,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun enter(m: AppMode) {
         val was = mode
         mode = m
-        renamingPlan = false // the sheet's name field does not stay open behind another mode
+        saveAsk = null // Save's dialog does not stay open behind another mode
         // the start zoom of Navigate, once per start (owner); the map takes it when it follows
         if (m == AppMode.NAVIGATE && was != AppMode.NAVIGATE) navStartZoom = AppMode.navStartZoom(activity)
         else if (m != AppMode.NAVIGATE) navStartZoom = null
@@ -4284,15 +4316,34 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         events += UiEvent.Fit(load.points, northUp = true)
     }
 
-    /** Sheet ⋯ → Share plan: the plan as a plan.onpath.earth link (PlanLinks) in the share sheet; from two points. */
+    /**
+     * The open plan as a plan.onpath.earth link (PlanLinks) in the share sheet; from two points. No button since 0.13.5
+     * (the sheet's ⋯ is gone – My routes → ⋮ → Share plan, [shareRoute]); kept for the plan-link round trip
+     * (`CorePlanLinkE2ETest`) and the same link shape.
+     */
     fun sharePlan() {
         if (waypoints.size < 2) return
         val pts = waypoints.toList()
         // the route's name: as saved, else the name a link brought while its points are unchanged
         val title = savedName ?: linkTitle?.takeIf { it.second == pts }?.first
-        val plan = com.onpath.app.routing.PlanLinks.share(pts, activity, sac, pinnedIndices(), ::stopName, title)
+        sendPlanLink(com.onpath.app.routing.PlanLinks.share(pts, activity, sac, pinnedIndices(), ::stopName, title), pts.size, title)
+    }
+
+    /**
+     * My routes → ⋮ → Share plan (planned routes; owner 2026-10-31, was the plan sheet's ⋯): the saved route as a
+     * plan.onpath.earth link (PlanLinks) in the share sheet – its points, names, pins, activity and name.
+     */
+    fun shareRoute(t: Tour) {
+        if (t.kind != TourKind.PLANNED || t.waypoints.size < 2) return
+        val pts = t.waypoints.map { GeoPoint(it.lat, it.lon, it.ele) }
+        val names = t.waypoints.associate { GeoPoint(it.lat, it.lon, it.ele) to it.name }
+        val act = activityOrNull(t.activity) ?: Activity.HIKE
+        sendPlanLink(com.onpath.app.routing.PlanLinks.share(pts, act, t.sac, t.pinned, { names[it] }, t.name), pts.size, t.name)
+    }
+
+    private fun sendPlanLink(plan: com.onpath.app.routing.SharedPlan, count: Int, title: String?) {
         val link = com.onpath.app.routing.PlanLinks.link(plan)
-        Problems.trace("plan", "Plan shared as a link: ${pts.size} points, ${link.length} characters")
+        Problems.trace("plan", "Plan shared as a link: $count points, ${link.length} characters")
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, link)

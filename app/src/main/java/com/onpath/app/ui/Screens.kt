@@ -25,6 +25,8 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
@@ -268,7 +270,7 @@ internal object SacScale {
 /**
  * My routes (☰ → My routes): two tabs ([RoutesTab]) – Planned (planned routes + imported GPX files, what syncs to the
  * browser; Import GPX lives here) and Done (recorded tours) – each a list, newest first: type icon, name, date,
- * distance. Per item ⋮ Rename / Export GPX / Delete (asks first), tap = open. A route from the browser not opened yet
+ * distance. Per item ⋮ Rename / Save as copy + Share plan (planned routes) / Export GPX / Delete (asks first), tap = open. A route from the browser not opened yet
  * has a tag after its name: "New" / "Changed" ([marks] → [RouteTag]). ⋮ Export all takes both tabs.
  * During a tour a planned route loads nothing: a tap shows the box "End the running tour first, then this route can be
  * loaded." with OK under the tabs (HINWEIS, ScreenMessageHost – AppViewModel.requestOpen; owner 2026-10-31).
@@ -284,6 +286,10 @@ fun RoutesScreen(
     /** The tour being recorded right now: it cannot be deleted (that would lose the track). */
     recordingId: Long = -1L,
     onRename: (Tour, String) -> Unit = { _, _ -> },
+    /** ⋮ → Save as copy (planned routes): Save's name dialog with "<name> (2)" (owner 2026-10-31, from the plan sheet's ⋯). */
+    onCopy: (Tour) -> Unit = {},
+    /** ⋮ → Share plan (planned routes): the route as a plan.onpath.earth link (A-005). */
+    onShare: (Tour) -> Unit = {},
     initialConfirmDelete: Tour? = null,
     initialRename: Tour? = null,
     /** ⋮ → Export all (one ZIP of GPX files). */
@@ -353,6 +359,8 @@ fun RoutesScreen(
                     items(shown, key = { it.id }) { t ->
                         TourCard(t, tag = RouteTag.of(t, marks), onOpen = { onOpen(t) },
                             onRename = { rename = t }, onExport = { onExport(t) },
+                            onCopy = if (t.kind == TourKind.PLANNED) ({ onCopy(t) }) else null,
+                            onShare = if (t.kind == TourKind.PLANNED && t.waypoints.size >= 2) ({ onShare(t) }) else null,
                             onDelete = if (t.id == recordingId) null else ({ confirmDelete = t }),
                             onEditRides = if (t.rides?.rides.isNullOrEmpty() || t.id == recordingId) null else ({ onEditRides(t) }))
                     }
@@ -403,7 +411,7 @@ fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: 
 @Composable
 private fun TourCard(
     t: Tour, tag: RouteTag?, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?,
-    onEditRides: (() -> Unit)? = null,
+    onEditRides: (() -> Unit)? = null, onCopy: (() -> Unit)? = null, onShare: (() -> Unit)? = null,
 ) {
     val (icon, color) = when (t.kind) {
         TourKind.PLANNED -> Icons.Filled.Route to OnPathColors.Route
@@ -425,7 +433,7 @@ private fun TourCard(
                 Text("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}", style = MaterialTheme.typography.bodySmall)
                 if (onDelete == null) Text(str(Res.string.routes_recording_now), style = MaterialTheme.typography.bodySmall, color = OnPathColors.Rec)
             }
-            TourItemMenu(t, onRename, onExport, onDelete, onEditRides)
+            TourItemMenu(t, onRename, onExport, onDelete, onEditRides, onCopy, onShare)
         }
     }
 }
@@ -445,28 +453,43 @@ private fun RoutesMenu(onExportAll: () -> Unit, onRecycleBin: () -> Unit, canExp
     }
 }
 
-/** ⋮ per item in My routes: Rename, Export GPX, Delete (asks first; not for the tour being recorded). */
+/**
+ * ⋮ per item in My routes: Rename, Save as copy (planned), Export GPX, Share plan (planned), Delete (asks first; not
+ * for the tour being recorded).
+ */
 @Composable
-private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?, onEditRides: (() -> Unit)? = null) {
+private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?, onEditRides: (() -> Unit)? = null,
+                         onCopy: (() -> Unit)? = null, onShare: (() -> Unit)? = null) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }, Modifier.size(48.dp)) {
             Icon(Icons.Filled.MoreVert, str(Res.string.routes_options_desc, t.name), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            fun run(a: () -> Unit): () -> Unit = { open = false; a() }
-            DropdownMenuItem(text = { Text(str(Res.string.common_rename)) }, leadingIcon = { Icon(Icons.Filled.Edit, null) },
-                onClick = run(onRename), modifier = Modifier.heightIn(min = 48.dp))
-            DropdownMenuItem(text = { Text(str(Res.string.common_export_gpx)) }, leadingIcon = { Icon(Icons.Filled.Share, null) },
-                onClick = run(onExport), modifier = Modifier.heightIn(min = 48.dp))
-            if (onEditRides != null) DropdownMenuItem(text = { Text(str(Res.string.routes_edit_rides)) },
-                leadingIcon = { Icon(rideIcon(t.rides?.rides.orEmpty()), null) },
-                onClick = run(onEditRides), modifier = Modifier.heightIn(min = 48.dp))
-            if (onDelete != null) DropdownMenuItem(text = { Text(str(Res.string.common_delete), color = OnPathColors.Bad) },
-                leadingIcon = { Icon(Icons.Filled.Delete, null, tint = OnPathColors.Bad) },
-                onClick = run(onDelete), modifier = Modifier.heightIn(min = 48.dp))
+            TourMenuItems(t, onRename, onExport, onDelete, onEditRides, onCopy, onShare) { open = false }
         }
     }
+}
+
+/** The items of a My routes ⋮ (also drawn on their own by the screenshot tests). */
+@Composable
+internal fun TourMenuItems(t: Tour, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?, onEditRides: (() -> Unit)?,
+                           onCopy: (() -> Unit)?, onShare: (() -> Unit)?, close: () -> Unit) {
+    fun on(a: () -> Unit): () -> Unit = { close(); a() }
+    DropdownMenuItem(text = { Text(str(Res.string.common_rename)) }, leadingIcon = { Icon(Icons.Filled.Edit, null) },
+        onClick = on(onRename), modifier = Modifier.heightIn(min = 48.dp))
+    if (onCopy != null) DropdownMenuItem(text = { Text(str(Res.string.plan_save_as_copy)) },
+        leadingIcon = { Icon(Icons.Outlined.ContentCopy, null) }, onClick = on(onCopy), modifier = Modifier.heightIn(min = 48.dp))
+    DropdownMenuItem(text = { Text(str(Res.string.common_export_gpx)) }, leadingIcon = { Icon(Icons.Filled.Share, null) },
+        onClick = on(onExport), modifier = Modifier.heightIn(min = 48.dp))
+    if (onShare != null) DropdownMenuItem(text = { Text(str(Res.string.plan_share_plan)) },
+        leadingIcon = { Icon(Icons.Outlined.Link, null) }, onClick = on(onShare), modifier = Modifier.heightIn(min = 48.dp))
+    if (onEditRides != null) DropdownMenuItem(text = { Text(str(Res.string.routes_edit_rides)) },
+        leadingIcon = { Icon(rideIcon(t.rides?.rides.orEmpty()), null) },
+        onClick = on(onEditRides), modifier = Modifier.heightIn(min = 48.dp))
+    if (onDelete != null) DropdownMenuItem(text = { Text(str(Res.string.common_delete), color = OnPathColors.Bad) },
+        leadingIcon = { Icon(Icons.Filled.Delete, null, tint = OnPathColors.Bad) },
+        onClick = on(onDelete), modifier = Modifier.heightIn(min = 48.dp))
 }
 
 // ------------------------------------------------------------------ dialogs

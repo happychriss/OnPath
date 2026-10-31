@@ -1,19 +1,11 @@
 package com.onpath.app.ui
 
 import com.onpath.strings.*
-import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.outlined.Link
-import androidx.compose.material.icons.outlined.Save
-import androidx.compose.material.icons.outlined.SaveAs
+import androidx.compose.material.icons.outlined.SwapVert
+import androidx.compose.material.icons.outlined.Loop
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.LaunchedEffect
@@ -26,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,19 +26,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.FiberManualRecord
-import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.CircularProgressIndicator
 import com.onpath.app.data.RoutingDataNotice
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -82,6 +71,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 /** Everything the plan panel can ask for; defaults keep previews and tests short. */
 class PlanCallbacks(
     val onUndo: () -> Unit = {},
+    /** ✕ "Close plan" in the sheet's action row: the plan leaves the screen (asks first with unsaved changes). */
     val onClear: () -> Unit = {},
     /** Primary action: follow the route (free recording is in the ⋮ menu). */
     val onStartNavigation: () -> Unit = {},
@@ -91,21 +81,9 @@ class PlanCallbacks(
     val onRoundTrip: () -> Unit = {},
     /** Activity icon at the start of the sheet: opens the activity picker. */
     val onActivity: () -> Unit = {},
-    /** Save (green button, ⋯ → Save route): at once, no dialog – a new route under a proposed name, or the saved one overwritten. */
-    val onSave: () -> Unit = {},
-    /** Route ⋯ → Save as new route (only while the plan is a saved route): a copy at once under a proposed name. */
-    val onSaveAsNew: () -> Unit = {},
-    /** Tap on "Saved as “Name”": the line becomes the name field. */
-    val onRenameStart: () -> Unit = {},
-    /** Done / Enter in the name field: the new name (blank keeps the old one). */
-    val onRename: (String) -> Unit = {},
-    /** Back / a tap outside the name field: the name stays. */
-    val onRenameCancel: () -> Unit = {},
-    /** Route ⋯ → Share plan: the plan as a plan.onpath.earth link (A-005), from two points. */
-    val onShare: () -> Unit = {},
     /** Profile or difficulty badge tapped: route details (way types, surfaces, difficulty, large profile). */
     val onDetails: () -> Unit = {},
-    /** Route ⋯ → Time details (how the time was calculated). */
+    /** Tap on time + distance: Time details (how the time was calculated). */
     val onTimeDetails: () -> Unit = {},
     /** Points section (full sheet): row [from] dropped at row [to] (hold ≡ and drag). */
     val onMovePoint: (from: Int, to: Int) -> Unit = { _, _ -> },
@@ -180,8 +158,6 @@ data class PlanUi(
     val savedName: String? = null,
     /** The plan differs from [savedName]'s points (RouteRules.isUnsaved). */
     val unsaved: Boolean = false,
-    /** "Saved as “Name”" is the name field (tap on it; owner 2026-10-31). Only with a [savedName]. */
-    val renaming: Boolean = false,
     /** The route already ends at its start: "Round trip" is greyed out (smart menu, no message). */
     val roundTrip: Boolean = false,
     /** A tour records: its status + Continue / Pause / End sit at the top of this sheet (one surface). */
@@ -215,21 +191,17 @@ data class PlanUi(
  * surfaces are in the route details only. The ONE filled primary button rides on the sheet's bottom edge in every step.
  */
 @Composable
-fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false, sheetState: StepSheetState? = null) {
+fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null) {
     val state = sheetState ?: rememberStepSheetState(PlanSize.entries.size, ui.size.step)
     val scroll = rememberScrollState()
     val full = ui.size == PlanSize.FULL
     // leaving the points: the list goes back to its top, so the profile is what the smaller steps show
     LaunchedEffect(full) { if (!full && scroll.value > 0) scroll.animateScrollTo(0) }
-    // the name field's place in the window: a touch in the sheet beside it cancels the rename (outside the sheet: MapScreen)
-    val field = remember { NameFieldBounds() }
-    val cancelRename by androidx.compose.runtime.rememberUpdatedState(cb.onRenameCancel)
     StepSheet(
         step = ui.size.step,
         onStep = { cb.onResize(PlanSize.ofStep(it)) },
         onHandleTap = { cb.onResize(ui.size.tapped()) },
         state = state,
-        modifier = if (ui.renaming && ui.savedName != null) Modifier.cancelOnTouchOutside(field) { cancelRename() } else Modifier,
         onDragging = cb.onSheetDrag,
         bottomBar = { PlanBar(ui, cb) },
     ) {
@@ -237,70 +209,60 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false,
         // bar) never makes its top edge jump; the scrolling area takes what is left
         val bodyH = (LocalConfiguration.current.screenHeightDp * FULL_SHEET_FRACTION).dp - PRIMARY_BAR
         val sheet = this
-        Column(Modifier.fillMaxWidth().height(bodyH)) { PlanBody(sheet, ui, cb, menuInitiallyOpen, scroll, field) }
+        Column(Modifier.fillMaxWidth().height(bodyH)) { PlanBody(sheet, ui, cb, scroll) }
     }
 }
 
 /**
- * The sheet's first line: activity chip · time + distance · [Save] ⋯. The chip always names the activity ("Wandern · T2",
- * owner 2026-10-30) and time and distance are always shown in full (owner rule) – when both do not fit beside each
- * other (German, a long day, a large phone font), time and distance move to their own line under the chip. [save] /
- * [saveIcon]: the Save button with its label, or only its icon when chip + label + ⋯ do not fit in one line (large
- * font); both null = no Save button (RouteRules.saveAtHand).
+ * The sheet's first line: activity chip · time + distance. The chip always names the activity ("Wandern · T2", owner
+ * 2026-10-30) and time and distance are always shown in full (owner rule) – when both do not fit beside each other
+ * (German, a long day, a large phone font), time and distance move to their own line under the chip. No ⋯ and no Save
+ * here any more (owner 2026-10-31): Save is ☰ → Save route, the route actions are the row of [PlanActions].
  */
 @Composable
-private fun HeaderLine(
-    chip: @Composable () -> Unit, title: @Composable () -> Unit, overflow: @Composable () -> Unit,
-    save: (@Composable () -> Unit)? = null, saveIcon: (@Composable () -> Unit)? = null,
-) {
-    Layout(content = { chip(); title(); overflow(); save?.invoke(); saveIcon?.invoke() }) { ms, c ->
+private fun HeaderLine(chip: @Composable () -> Unit, title: @Composable () -> Unit) {
+    Layout(content = { chip(); title() }) { ms, c ->
         val gap = 8.dp.roundToPx()
         val below = 2.dp.roundToPx()
         val max = c.maxWidth
-        val loose = c.copy(minWidth = 0, minHeight = 0)
-        val ov = ms[2].measure(loose)
-        // the Save button: with its label when the chip still fits whole beside it, else only the icon
-        val sv = if (ms.size < 5) null else {
-            val chipW = ms[0].maxIntrinsicWidth(Constraints.Infinity)
-            val full = ms[3].measure(loose)
-            if (chipW + gap + full.width + ov.width <= max) full else ms[4].measure(loose)
-        }
-        val svW = sv?.let { it.width + gap / 2 } ?: 0
-        val ch = ms[0].measure(Constraints(maxWidth = (max - ov.width - svW - gap).coerceAtLeast(0)))
-        val besideW = (max - ch.width - gap - svW - ov.width).coerceAtLeast(0)
+        val ch = ms[0].measure(Constraints(maxWidth = max))
+        val besideW = (max - ch.width - gap).coerceAtLeast(0)
         val oneLine = ms[1].maxIntrinsicWidth(Constraints.Infinity) <= besideW
         val t = ms[1].measure(Constraints(maxWidth = if (oneLine) besideW else max))
-        val line1 = maxOf(ch.height, ov.height, sv?.height ?: 0, if (oneLine) t.height else 0)
+        val line1 = maxOf(ch.height, if (oneLine) t.height else 0)
         val h = if (oneLine) line1 else line1 + below + t.height
         layout(max, h) {
             ch.placeRelative(0, (line1 - ch.height) / 2)
-            ov.placeRelative(max - ov.width, (line1 - ov.height) / 2)
-            sv?.placeRelative(max - ov.width - svW, (line1 - sv.height) / 2)
             if (oneLine) t.placeRelative(ch.width + gap, (line1 - t.height) / 2) else t.placeRelative(0, line1 + below)
         }
     }
 }
 
 /**
- * The sheet's Save button (RouteRules.saveAtHand): green tonal "Save" – the one filled button stays Start navigation.
- * [iconOnly] = the narrow form for a large phone font (TalkBack still hears "Save route").
+ * The sheet's route actions (owner 2026-10-31, the ⋯ menu is gone): three small icons, each with its short label under
+ * it (never icon-only) – ✕ Close plan (asks first with unsaved changes; the saved route stays in My routes), ⇅ Reverse,
+ * ↻ Round trip. Each ≥ 48 dp, spread evenly; a word is never cut – with a large phone font the row wraps (FlowRow).
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun SaveButton(enabled: Boolean, onClick: () -> Unit, iconOnly: Boolean) {
-    val colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
-        containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)
-    if (iconOnly) {
-        androidx.compose.material3.FilledTonalIconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(48.dp),
-            colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)) {
-            Icon(Icons.Outlined.Save, contentDescription = str(Res.string.plan_save_route))
-        }
-    } else androidx.compose.material3.FilledTonalButton(onClick = onClick, enabled = enabled, colors = colors,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 12.dp, end = 14.dp),
-        modifier = Modifier.heightIn(min = 40.dp)) {
-        Icon(Icons.Outlined.Save, null, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(str(Res.string.common_save), style = MaterialTheme.typography.labelLarge, maxLines = 1)
+private fun PlanActions(ui: PlanUi, cb: PlanCallbacks) {
+    androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth().padding(top = 6.dp),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly) {
+        PlanAction(Icons.Filled.Close, str(Res.string.plan_close_plan), RouteRules.canClear(ui.pointCount), cb.onClear)
+        PlanAction(Icons.Outlined.SwapVert, str(Res.string.plan_reverse), ui.pointCount >= 2, cb.onReverse)
+        PlanAction(Icons.Outlined.Loop, str(Res.string.plan_round_trip), ui.pointCount >= 2 && !ui.roundTrip, cb.onRoundTrip)
+    }
+}
+
+@Composable
+private fun PlanAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
+    val tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    Column(Modifier.widthIn(min = 88.dp).heightIn(min = 48.dp).clip(MaterialTheme.shapes.small)
+        .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(icon, null, tint = tint, modifier = Modifier.size(24.dp))
+        Text(label, style = MaterialTheme.typography.labelMedium, color = tint, maxLines = 1,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = 2.dp))
     }
 }
 
@@ -310,8 +272,7 @@ internal const val FULL_SHEET_FRACTION = 0.62f
 private val PRIMARY_BAR = 68.dp
 
 @Composable
-private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean, scroll: ScrollState,
-                                 field: NameFieldBounds) {
+private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCallbacks, scroll: ScrollState) {
     val route = ui.route
     val full = ui.size == PlanSize.FULL
     // During a tour: the tour first, then the route – one surface (owner 2026-10-31). The first step is ONE row (status +
@@ -325,14 +286,14 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         TourPauseEnd(t.paused, cb.onPause, cb.onEndTour, belowStep.padding(top = 4.dp))
         HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
-    Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb, menuInitiallyOpen) }
+    Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb) }
     // without a tour the first step ends under the summary lines
     if (ui.tour == null) Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
     var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     Column(Modifier.fillMaxWidth().weight(1f).onGloballyPositioned { viewport = it }.then(belowStep)
         .verticalScroll(scroll, enabled = full)) {
         SubLine(ui, route, cb.onDetails)
-        if (route != null) SavedLine(ui, cb, field)
+        if (route != null) SavedLine(ui)
         if (route != null && !ui.routing) {
             Column(Modifier.fillMaxWidth().padding(top = 8.dp).semantics { contentDescription = Txt.s(Res.string.plan_elevation_profile) }) {
                 // stable callbacks: a new PlanCallbacks (every sheet recomposition) must not recompose the profile
@@ -346,8 +307,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         // below the profile step the list is hidden behind the button: not for touch, not for TalkBack / tests
         Box(if (full) Modifier else Modifier.clearAndSetSemantics { }) {
             PointsSection(
-                ui.points, canReverse = ui.pointCount >= 2, canRoundTrip = ui.pointCount >= 2 && !ui.roundTrip,
-                onReverse = cb.onReverse, onRoundTrip = cb.onRoundTrip,
+                ui.points,
                 onMove = cb.onMovePoint, onDelete = cb.onDeletePoint, onShow = cb.onShowPoint,
                 modifier = Modifier.padding(top = 4.dp),
                 scroll = scroll, viewport = { viewport },
@@ -356,18 +316,17 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     }
 }
 
-/** Line 1 (activity · time + distance · [Save] ⋯) and the route state lines under it: ERROR, WARNING, INFO. */
+/**
+ * Line 1 (activity · time + distance), the route state lines under it (ERROR, WARNING, INFO), then the route actions
+ * (✕ Close plan · ⇅ Reverse · ↻ Round trip) from one point on.
+ */
 @Composable
-private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean) {
+private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks) {
     val route = ui.route
-    // Line 1: activity · time + distance · [Save] ⋯ (Undo and Redo are map buttons).
-    val saveAtHand = RouteRules.saveAtHand(ui.pointCount, ui.unsaved)
+    // Line 1: activity · time + distance (Undo and Redo are map buttons; a tap on the time = Time details).
     HeaderLine(
         chip = { ActivityButton(ui.activity, ui.sac, cb.onActivity) },
-        title = { Title(ui, route) },
-        overflow = { SheetOverflow(ui, cb, menuInitiallyOpen) },
-        save = if (saveAtHand) ({ SaveButton(route != null, cb.onSave, iconOnly = false) }) else null,
-        saveIcon = if (saveAtHand) ({ SaveButton(route != null, cb.onSave, iconOnly = true) }) else null,
+        title = { Title(ui, route, cb.onTimeDetails) },
     )
     if (ui.routing && ui.routingSlow) {
         // a long calculation can be stopped (the last change is taken back)
@@ -394,6 +353,7 @@ private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boole
     if (loadingNotice) InfoLine(ui.error!!, spinner = ui.error == RoutingDataNotice.LOADING)
     ui.changedText?.takeIf { !ui.routing }?.let { InfoLine(it, onTap = cb.onRouteChanged) }
     ui.syncRoutingText?.takeIf { !ui.routing }?.let { InfoLine(it) }
+    if (ui.pointCount >= 1) PlanActions(ui, cb)
 }
 
 /** The large profile of the profile step. */
@@ -475,93 +435,34 @@ internal fun WarnLine(text: String, onTap: () -> Unit) {
 }
 
 /**
- * Visible save state instead of a message: "Saved as “Name” ✎", or "“Name” · changed, not saved ✎". The name is edited
- * in place (owner 2026-10-31, "wie Word", like the browser planner): a tap on the line (≥ 48 dp, ✎ says it can be
- * edited) turns it into the name field – [NameField].
+ * Visible save state instead of a message: "Saved as “Name”", or "“Name” · changed, not saved". Only a line (ANZEIGE):
+ * the name is changed in Save's dialog or My routes → ⋮ → Rename (owner 2026-10-31, no rename in place).
  */
 @Composable
-private fun SavedLine(ui: PlanUi, cb: PlanCallbacks, field: NameFieldBounds) {
+private fun SavedLine(ui: PlanUi) {
     val name = ui.savedName ?: return
-    if (ui.renaming) { NameField(name, cb.onRename, field); return }
     val saved = !ui.unsaved
     val grey = MaterialTheme.colorScheme.onSurfaceVariant
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(MaterialTheme.shapes.small)
-        .clickable(role = Role.Button, onClickLabel = str(Res.string.common_rename)) { cb.onRenameStart() },
-        verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(if (saved) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked, null,
             tint = if (saved) OnPathColors.Good else grey, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
         Text(if (saved) str(Res.string.plan_saved_as, name) else str(Res.string.plan_changed_not_saved, name),
             style = MaterialTheme.typography.bodySmall, color = grey,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-        Spacer(Modifier.width(6.dp))
-        Icon(Icons.Outlined.Edit, null, tint = grey, modifier = Modifier.size(18.dp))
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
-/**
- * The saved route's name as an edit field in the sheet, in place of "Saved as …": the name selected (typing replaces
- * it), the keyboard open; Done / Enter or ✓ renames ([onDone], a blank name keeps the old one – RouteRules.cleanName).
- * Back / a touch outside the field cancels (MapScreen, [cancelOnTouchOutside]).
- */
+/** First line: time + distance (or "Plan a route"); a tap on them = Time details (how the time was calculated). */
 @Composable
-private fun NameField(name: String, onDone: (String) -> Unit, bounds: NameFieldBounds) {
-    var text by remember(name) {
-        mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(name, androidx.compose.ui.text.TextRange(0, name.length)))
-    }
-    val focus = remember { androidx.compose.ui.focus.FocusRequester() }
-    LaunchedEffect(Unit) {
-        // expected: not attached yet in a screenshot test – the field is shown without the keyboard then
-        try { focus.requestFocus() } catch (e: IllegalStateException) { com.onpath.app.debug.Problems.trace("ui", "Name field: no focus ($e)") }
-    }
-    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { bounds.rect = null } }
-    val done = { onDone(text.text) }
-    Row(Modifier.fillMaxWidth().padding(top = 4.dp).onGloballyPositioned { bounds.rect = it.boundsInWindow() },
-        verticalAlignment = Alignment.CenterVertically) {
-        androidx.compose.material3.OutlinedTextField(
-            value = text, onValueChange = { text = it }, singleLine = true,
-            label = { Text(str(Res.string.routes_name_label)) },
-            textStyle = MaterialTheme.typography.bodyLarge,
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
-                imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { done() }),
-            modifier = Modifier.weight(1f).focusRequester(focus),
-        )
-        IconButton(onClick = done, modifier = Modifier.size(48.dp)) {
-            Icon(Icons.Filled.Check, contentDescription = str(Res.string.common_rename), tint = OnPathColors.Green)
-        }
-    }
-}
-
-/** Where the sheet's name field is in the window (null = not shown): touches beside it cancel the rename. */
-internal class NameFieldBounds {
-    var rect: androidx.compose.ui.geometry.Rect? = null
-    /** Top left of the element watching the touches ([cancelOnTouchOutside]) in the window. */
-    var origin = androidx.compose.ui.geometry.Offset.Zero
-}
-
-/**
- * Watches every touch on this element before its children see it ([androidx.compose.ui.input.pointer.PointerEventPass.Initial],
- * nothing consumed): a touch outside [field] calls [onOutside] – the tap itself still does what it does.
- */
-internal fun Modifier.cancelOnTouchOutside(field: NameFieldBounds, onOutside: () -> Unit): Modifier =
-    this.onGloballyPositioned { field.origin = it.positionInWindow() }.pointerInput(field) {
-        awaitEachGesture {
-            val down = awaitFirstDown(requireUnconsumed = false, pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial)
-            val r = field.rect
-            if (r == null || !r.contains(field.origin + down.position)) onOutside()
-        }
-    }
-
-/** Read-only status, first line: time + distance (or "Plan a route"). */
-@Composable
-private fun Title(ui: PlanUi, route: PlannedRoute?) {
+private fun Title(ui: PlanUi, route: PlannedRoute?, onTimeDetails: () -> Unit) {
     if (route == null) {
         Text(str(Res.string.plan_plan_a_route), style = MaterialTheme.typography.titleLarge, maxLines = 1)
         return
     }
-    Row(verticalAlignment = Alignment.Bottom) {
+    Row(Modifier.heightIn(min = 48.dp).clip(MaterialTheme.shapes.small)
+        .clickable(role = Role.Button, onClickLabel = str(Res.string.plan_time_details), onClick = onTimeDetails),
+        verticalAlignment = Alignment.CenterVertically) {
         Text(Format.duration(route.durationS), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
             maxLines = 1)
         Spacer(Modifier.width(8.dp))
@@ -626,38 +527,6 @@ internal fun primaryLabel(ui: PlanUi): String = Txt.s(when {
     ui.start == PlanStart.RECORD_ONLY -> Res.string.plan_start_recording_for
     else -> Res.string.plan_start_navigation_for
 }, ui.activity.navName)
-
-/** ⋯ of the sheet: route edits only (reverse, round trip, clear). */
-@Composable
-private fun SheetOverflow(ui: PlanUi, cb: PlanCallbacks, initiallyOpen: Boolean) {
-    var open by remember { mutableStateOf(initiallyOpen) }
-    Box {
-        IconButton(onClick = { open = true }, modifier = Modifier.size(48.dp)) {
-            Icon(Icons.Filled.MoreHoriz, contentDescription = str(Res.string.plan_route_options))
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            SheetMenuItems(ui, cb, close = { open = false })
-        }
-    }
-}
-
-/** The items of the sheet's ⋯ menu (also rendered on their own by the screenshot tests). */
-@Composable
-internal fun SheetMenuItems(ui: PlanUi, cb: PlanCallbacks, close: () -> Unit) {
-    fun run(a: () -> Unit): () -> Unit = { close(); a() }
-    // About this route: save, share, time details, clear. No "Export GPX" here (owner: it clutters next to saving) –
-    // export lives in My routes (⋮ Export GPX / Export all).
-    MenuItem(Icons.Outlined.Save, str(Res.string.plan_save_route), enabled = ui.route != null, onClick = run(cb.onSave))
-    // a copy of the saved route the plan belongs to (Save overwrites it; owner 2026-10-31, "wie Word": Save as)
-    if (ui.savedName != null) MenuItem(Icons.Outlined.SaveAs, str(Res.string.plan_save_as_new_route), enabled = ui.route != null,
-        onClick = run(cb.onSaveAsNew))
-    MenuItem(Icons.Outlined.Link, str(Res.string.plan_share_plan), enabled = ui.pointCount >= 2, onClick = run(cb.onShare))
-    MenuItem(Icons.Outlined.Schedule, str(Res.string.plan_time_details), enabled = ui.route != null, onClick = run(cb.onTimeDetails))
-    // Reverse / Round trip live above the points (full sheet) only – not twice
-    HorizontalDivider()
-    MenuItem(Icons.Outlined.DeleteSweep, str(Res.string.plan_clear_route), enabled = RouteRules.canClear(ui.pointCount),
-        onClick = run(cb.onClear))
-}
 
 /** The route's activity as a small tonal icon button with ▾ (opens the activity picker). */
 @Composable

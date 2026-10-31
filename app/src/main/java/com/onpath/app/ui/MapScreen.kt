@@ -7,10 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -278,8 +274,10 @@ private fun PlanMode(
                 // owner 2026-10-30: red "Phone setup" first while a tour needs something (vm.phone is re-read on resume)
                 onPhoneSetup = if (!SettingsSummary.phoneNeeded(com.onpath.app.setup.PhoneCheck.all(vm.phone, vm.vibrationUsed, vm.phoneTaken))) null
                     else ({ vm.openSettings(SettingsPage.PHONE) }),
-                // owner 2026-10-30: "Save route" on top while the plan has unsaved changes (same as the sheet's Save)
-                onSaveRoute = if (RouteRules.saveAtHand(vm.waypoints.size, vm.planUnsaved)) vm::requestSave else null,
+                // owner 2026-10-31: "Save route" on top whenever there is a plan (the sheet has no Save any more); a dot
+                // on ☰ while it has unsaved changes
+                onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
+                unsaved = RouteRules.saveAtHand(vm.waypoints.size, vm.planUnsaved),
                 onOpened = vm::refreshTours,
                 // no "Check for updates" in the ☰ menu – Settings has the Updates section (owner)
                 onUpdates = null,
@@ -298,16 +296,7 @@ private fun PlanMode(
         }
         val density = LocalDensity.current
         val topLimit = with(density) { WindowInsets.statusBars.getTop(density).toDp() } + TOP_BAR_BOTTOM
-        // the sheet's name field ("Saved as …" tapped): a touch on the map / top bar cancels it (in the sheet: PlanPanel),
-        // Back too, and the sheet rides above the keyboard so the field stays in sight
-        val renaming = vm.renamingPlan && vm.savedName != null && vm.cardPlace == null && vm.shown == null
-        if (renaming) {
-            Box(Modifier.fillMaxSize().pointerInput(Unit) {
-                awaitEachGesture { awaitFirstDown(requireUnconsumed = false).consume(); vm.cancelRenamePlan() }
-            })
-            androidx.activity.compose.BackHandler { vm.cancelRenamePlan() }
-        }
-        SheetWithFooter(topLimit, modifier = Modifier.modeEdge(ModeEdge.BOTTOM).then(if (renaming) Modifier.imePadding() else Modifier), footer = {
+        SheetWithFooter(topLimit, modifier = Modifier.modeEdge(ModeEdge.BOTTOM), footer = {
             Column(Modifier.fillMaxWidth()) {
                 // after Install: the download's progress (a state, no box); the question itself is a box at the top
                 if (rec == null) UpdateDownloadingCard(vm.update, Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
@@ -448,7 +437,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     vm.loadAsk?.let { LoadAskDialog(it.regions, it.bytes, onLoad = { vm.answerLoadAsk(true) }, onNotNow = { vm.answerLoadAsk(false) }) }
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
-            sac = vm.sac, tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, renaming = vm.renamingPlan,
+            sac = vm.sac, tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved,
             roundTrip = vm.isRoundTrip(),
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused, vm.guidanceEndedByEmptyPlan) },
             points = rows,
@@ -458,9 +447,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onSheetDrag = vm::mapGesture, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
             onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
-            onActivity = onActivity, onSave = vm::requestSave, onSaveAsNew = { vm.saveAsNew() },
-            onRenameStart = vm::startRenamePlan, onRename = vm::renamePlan, onRenameCancel = vm::cancelRenamePlan,
-            onShare = vm::sharePlan, onTimeDetails = vm::openTimeDetails, onDetails = { vm.routeDetailsOpen = true },
+            onActivity = onActivity, onTimeDetails = vm::openTimeDetails, onDetails = { vm.routeDetailsOpen = true },
             onHighlight = { vm.highlight = it },
             onCancelRouting = vm::cancelRouting,
             onPlanAnyway = vm::planAnyway,
