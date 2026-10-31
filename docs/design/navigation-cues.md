@@ -42,7 +42,8 @@ instead of at the second of them.
 
 | What | When | Pattern | Setting |
 | --- | --- | --- | --- |
-| Off route | confirmed off the route (setting distance + GPS margin, 15 s and 25 m moved), and when a new way back arrives after a retry | long: 400 – 200 – 400 – 200 – 600 ms | *Off-route warning* (default on, 40 m) + *Vibrate when off route* (default on); hike and bike alike |
+| Off route | confirmed off the route (setting distance + GPS margin, 15 s and 25 m moved), and when a new way back arrives after a retry – **only after the route was reached once this tour** | long: 400 – 200 – 400 – 200 – 600 ms | *Off-route warning* (default on, 40 m) + *Vibrate when off route* (default on); hike and bike alike |
+| Route not reached yet (far start, owner 2026-10-31) | never – "Route starts 31 km away" is a calm question (screen + silent notification) | none | – |
 | Paused but moving | moved 150 m while paused | the same long pattern | always |
 | Recording stopped / not saved | the tour could not be written | the same long pattern | always |
 
@@ -67,7 +68,8 @@ Only in Navigate while a tour follows a route. `ui/SmartScreen.kt` (`ScreenPolic
 | --- | --- |
 | Tour notification | Following a route: channel `navigation` (importance DEFAULT, so Android 14+ shows it on the lock screen; no sound, no vibration, no light, never a popup). A plain recording: the quiet channel `recording`. Same notification id – switching is an update, the service never restarts (`recording/TourChannels`) |
 | Its text (`navigation/NavNotification`) | Title: the next junction within 500 m, "Left in 120 m" (10 m steps, 50 m above 500 m) – **every** junction BRouter names, also the ones that do not vibrate – else "8.2 km to go"; or the status: Paused / Searching GPS… / Off route. Below: time to go · arrival · distance left (the distance only once). Updated at most every 10 s. Buttons: Pause / Resume, never Stop |
-| Off-route question | Channel `offroute-question` (importance HIGH, no channel vibration – the service vibrates itself): "New route?" with *Take new route* / *Keep original*, answerable on the lock screen, stays until answered or back on the route |
+| Off-route question | Channel `offroute-question` (importance HIGH, no channel vibration – the service vibrates itself): "You're 120 m off the route" · "Back on the route after 600 m · 350 m longer" with *New route* / *Keep original*, answerable on the lock screen, stays until answered or back on the route |
+| Far start (route never reached yet) | Same channel, but **silent** (no sound, no vibration, no popup): "Route starts 31 km away" · "south-west (direct) · recording" with *Guide me* / *Just record*; "No way to the route found – recording continues" with *OK*. Status word stays "Recording", never "Off route" |
 | Navigate over the lock screen | While a tour runs and the app is in Navigate, a short press of the power button shows Navigate without unlocking (`ui/LockScreenNav`, `MainActivity.showOverLockScreen`). Plan, My routes and Settings ask to unlock first |
 | Notifications off | the setup guide and a chip in Navigate say what is missing: "No turns and no “New route?” on the lock screen" |
 
@@ -78,6 +80,6 @@ Only in Navigate while a tour follows a route. `ui/SmartScreen.kt` (`ScreenPolic
 - Both activities use the same rule and the same speed window; only the timing (seconds of walking / riding) and the
   way classes differ.
 - Pocket behaviour differs only in the 5 s wait on the bike; the 60 s sleep is the same.
-- Tests: `JunctionCuesTest`, `CueRuleTest`, `PocketLogicTest`, `SmartScreenTest`, `TourChannelsTest`, `NavTextTest`,
+- Tests: `JunctionCuesTest`, `CueRuleTest`, `PocketLogicTest`, `SmartScreenTest`, `TourChannelsTest`, `NavTextTest`, `FarStartTest`,
   `LockScreenNavTest`; real routes: `tools/routing/jvm-test/JunctionsTest.kt` (South Tyrol, hike + bike),
   `BikeCuesTest.kt` (Hilden town rides).
