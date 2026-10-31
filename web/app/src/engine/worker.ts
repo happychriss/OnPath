@@ -72,7 +72,9 @@ const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historySt
   // sync fields 7 / 8 (web-sync.md §5.2): Save with this engine's routing; the diagnostics line
   'syncSaveRouted', 'routingInfo',
   // the app's search chips and a fresh search (WebSearch.kt: SearchKinds.Category, SearchSession's kept list)
-  'searchCategories', 'searchReset']);
+  'searchCategories', 'searchReset',
+  // the phone unpaired itself (its hello deleted – the app's guard)
+  'syncPhoneGone']);
 
 declare const TeaVM: { wasmGC: { load(url: string): Promise<{ exports: WasmEngine }> } };
 

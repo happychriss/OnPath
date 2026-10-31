@@ -48,6 +48,15 @@ const bike = await summary();
 console.log('bike:', bike);
 check(bike !== hike, 'switching Hike → Bike plans again (summary changed)');
 check((await page.textContent('#activityChip')).includes('Bike'), 'chip shows Bike');
+// the app's "New route for Bike – check it" (RouteWarnings.changedNoticeably: 10 % length / ascent or 10 % of the line
+// moved > 50 m) – a grey line; a click: it goes and the whole route shows
+const changed = await page.evaluate(() => { const c = document.getElementById('changedLine'); return c.hidden ? null : c.textContent; });
+console.log('changed line:', changed);
+if (changed !== null) {
+  check(/^New route for Bike – check it$/.test(changed), `after Hike → Bike: "${changed}" (the app's plan_route_changed)`);
+  await page.click('#changedLine');
+  check(await page.isHidden('#changedLine'), 'a click on the line: it goes (the map shows the whole route)');
+}
 
 // round trip: loop shown once with ↺
 await page.click('#roundTrip');
@@ -68,6 +77,8 @@ check((await page.textContent('#points')) !== loopBefore, 'Start & finish here r
 await page.screenshot({ path: shot });
 
 // way types & surfaces (the app's RouteBreakdown, rules from routing/BreakdownRules): one line, a click → two bars
+// (in the sheet's profile step – the Points step stays the list)
+for (let i = 0; i < 3 && await page.evaluate(() => document.getElementById('sheet').dataset.step) !== 'profile'; i++) await page.click('#sheetStep');
 const bd = await page.evaluate(() => { const b = document.getElementById('breakdown'); return { shown: !b.hidden, title: b.querySelector('.bdhead .muted')?.textContent, line: b.querySelector('.bdline')?.textContent ?? '' }; });
 check(bd.shown && bd.title === 'Way types & surfaces' && /^[A-Z][\w ]+ \d+ % · [A-Z][\w ]+ \d+ %$/.test(bd.line), `"Way types & surfaces": "${bd.line}" (the app's summary line)`);
 await page.click('#breakdown .bdhead');
@@ -91,6 +102,7 @@ await page.mouse.click(640, 500);
 
 // Points list ✕ on the loop's start (the app's PlanPoints.deleteAt): the start goes, the loop closes at the next point –
 // still a round trip with ↺, one marker less (the web used to drop start and end: the loop opened)
+for (let i = 0; i < 3 && await page.evaluate(() => document.getElementById('sheet').dataset.step) !== 'points'; i++) await page.click('#sheetStep');
 const pinsBefore = await page.evaluate(() => document.querySelectorAll('.pin').length);
 const hashBefore = await page.evaluate(() => location.hash);
 await page.click('#points li:first-child .del');

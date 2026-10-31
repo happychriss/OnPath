@@ -319,6 +319,13 @@ export class PlanSync {
         const pair = await this.store.get('pair');
         if (!pair) return;
         await this.round(pair, all);
+        // the phone unpaired itself – its hello came back deleted (the app's guard, b585cbc): the folder closes as when
+        // the phone ended the mailbox; its routes stay here, the header says "Pair phone"
+        if (this.dir.open !== NONE && (await this.call('syncPhoneGone', await this.ledger(), this.dir.open)) === 'true') {
+          await this.closeFolder();
+          this.say(t('web_sync_gone'), 'info');
+          return;
+        }
         this.status.lastSync = Date.now();
         this.status.full = false;
         this.say('', 'info');

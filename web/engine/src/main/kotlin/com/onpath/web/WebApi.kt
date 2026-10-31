@@ -220,10 +220,15 @@ object Engine {
             val wps = parsePoints(points)
             val act = Activity.valueOf(activity)
             val nm = parseNames(names)
+            // the same points planned before with another activity / T level: the app's "New route for … – check it"
+            val before = lastResultFor(wps)?.takeIf { it.activity != act || it.sac != sac }
             val res = PlanResult.plan(engine(), wps, act, sac, parseIndices(pinned), nm.filterValues { it.isNotBlank() }.keys,
                 WebPace.factors(act))
             lastResult = res
-            planJson(res, nm, System.currentTimeMillis() - t0)
+            val changed = before?.route?.takeIf { b ->
+                RouteWarnings.changedNoticeably(b.points, b.distanceM, b.ascentM, res.route.points, res.route.distanceM, res.route.ascentM)
+            }?.let { RouteWarnings.changedText(act, sac) }
+            planJson(res, nm, System.currentTimeMillis() - t0, changed)
         } catch (e: Exception) {
             Problems.error("web", "Plan request failed", e)
             "{\"error\":" + str("Unexpected: $e") + ",\"legs\":[]}"
@@ -231,7 +236,7 @@ object Engine {
     }
 
     /** The page's JSON of a [PlanResult] (texts from the app's Format, RouteWarnings and PlanGaps). */
-    internal fun planJson(res: PlanResult, names: Map<Int, String>, ms: Long): String = buildString {
+    internal fun planJson(res: PlanResult, names: Map<Int, String>, ms: Long, changed: String? = null): String = buildString {
         val p = res.route
         val sac = res.sac
         append("{\"distanceM\":").append(num(p.distanceM))
@@ -263,6 +268,8 @@ object Engine {
         append(",\"moved\":").append(res.moved)
         append(",\"points\":").append(res.points.joinToString(",", "[", "]") { "[" + num(it.lat, 6) + "," + num(it.lon, 6) + "]" })
         append(",\"gaps\":").append(WebPlanRules.gapsJson(res, names))
+        // after an activity / T level change the route differs noticeably (RouteWarnings.changedNoticeably): the grey line
+        append(",\"changed\":").append(changed?.let { str(it) } ?: "null")
         // the routing-data notice (the app's data/RoutingDataNotice): a part under the plan still missing (fetch failed –
         // offline) or the router's "no routing data" → the plain grey line instead of the router's text
         val missing = partsNeeded(res.routed.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) }) != "[]"
@@ -621,6 +628,7 @@ class WebContext(private val dir: File) : android.content.Context() {
 @JSExport fun syncNewDevice(random: String): String = WebSync.newDevice(random)
 @JSExport fun syncList(ledger: String, device: String): String = WebSync.list(ledger, device)
 @JSExport fun syncDevices(ledger: String, device: String): String = WebSync.devices(ledger, device)
+@JSExport fun syncPhoneGone(ledger: String, phone: String): Boolean = WebSync.phoneGone(ledger, phone)
 @JSExport fun syncState(ledger: String): String = WebSync.state(ledger)
 @JSExport fun syncSave(ledger: String, id: String, plan: String, title: String, now: Double, device: String,
                        routing: String, routingData: String): String =

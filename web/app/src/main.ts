@@ -174,6 +174,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <ul id="spots" class="spots" hidden></ul>
     <div id="profile"></div>
     <div id="infoline" class="infoline" hidden></div>
+    <button id="changedLine" class="infoline changedline" hidden></button>
     <div id="breakdown" class="breakdown" hidden></div>
     <div id="pointsSection" hidden>
       <div class="pointshead"><b>${escapeHtml(t('plan_points'))}</b>
@@ -709,7 +710,9 @@ function fitPadding(): maplibregl.PaddingOptions {
   // the sheet as it is now (its step, or the track panel); the place card on a phone stands in for it
   if (phoneWidth()) {
     const card = document.body.classList.contains('card-open') ? $('placecard').getBoundingClientRect().height : 0;
-    return { top: 130, bottom: Math.max(sheet.height, card) + 30, left: 40, right: 40 };
+    // never more than the screen allows: at least 120 px of map stay, or fitBounds refuses to move at all
+    const mapH = $('stage').getBoundingClientRect().height;
+    return { top: 130, bottom: Math.min(Math.max(sheet.height, card) + 30, Math.max(0, mapH - 130 - 120)), left: 40, right: 40 };
   }
   // wide: the room beside the side panel, or – when the panel is short (small step) – the larger room below it
   const stage = $('stage').getBoundingClientRect(), w = stage.width, h = stage.height;
@@ -936,7 +939,7 @@ function render() {
     }
     $('profile').innerHTML = '';
     notice.hidden = true;
-    $('infoline').hidden = true; $('breakdown').hidden = true;
+    $('infoline').hidden = true; $('breakdown').hidden = true; $('changedLine').hidden = true;
   } else {
     head.innerHTML = `<span class="big">${escapeHtml(p.texts.time)}</span><span class="dist">${escapeHtml(p.texts.distance)}</span>`;
     sub.innerHTML = `<span>${escapeHtml(p.texts.climb)}</span>` +
@@ -949,6 +952,11 @@ function render() {
     info.hidden = !p.notice;
     info.innerHTML = p.notice ? `${p.notice === 'LOADING' ? '<span class="spin" aria-hidden="true"></span>' : ''}${escapeHtml(p.noticeText ?? '')}` : '';
     renderBreakdown(p.breakdown);
+    // "New route for MTB – check it" (the app's routeChangedNotice): until tapped – then the whole route shows – or the
+    // next plan (an edit, another activity)
+    const ch = $<HTMLButtonElement>('changedLine');
+    ch.hidden = !p.changed || changedSeen === p;
+    ch.textContent = p.changed ?? '';
     const red = planGaps.last.text ?? (p.notice ? null : p.error);
     notice.hidden = !red;
     notice.innerHTML = red ? `⚠ ${escapeHtml(red)}` : '';
@@ -1016,6 +1024,8 @@ function renderBreakdown(b: PlanResult['breakdown'] | undefined) {
     (breakdownOpen ? `<div class="bdbars">${bar(t('plan_way_types'), b.ways)}${bar(t('plan_surfaces'), b.surfaces)}</div>` : '');
   el.querySelector<HTMLButtonElement>('.bdhead')!.onclick = () => { breakdownOpen = !breakdownOpen; renderBreakdown(b); };
 }
+/** The plan whose "New route for …" line was tapped away. */
+let changedSeen: PlanResult | null = null;
 /** A legend distance: "1.2 km" / "350 m" in the page's language (the app's Format.distance for these lengths). */
 const km = (m: number, _total: number) => (m >= 1000 ? `${number(m / 1000, 1)} km` : `${Math.round(m)} m`);
 
@@ -1405,6 +1415,7 @@ const gpxImport = setupGpxImport({
 navItem('menuImportGpx').act = () => gpxImport.pick();
 (window as unknown as { __gpx: typeof gpxImport }).__gpx = gpxImport; // for the browser tests
 $('credits').onclick = () => credits();
+$('changedLine').onclick = () => { changedSeen = state.plan; $('changedLine').hidden = true; fitRoute(); }; // the app's tapRouteChangedLine
 $('warning').onclick = () => { const sp = $('spots'); sp.hidden = !sp.hidden; $('warning').setAttribute('aria-expanded', String(!sp.hidden)); };
 $('spots').addEventListener('click', (e) => {
   const i = (e.target as HTMLElement).closest<HTMLElement>('[data-spot]')?.dataset.spot;

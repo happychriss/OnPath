@@ -54,6 +54,15 @@ object WebSync {
     }
 
     /** The other devices: [{name, device, updatedAt}], newest first. */
+    /**
+     * The phone [phone] (the open folder's key) unpaired itself: its hello is in the ledger and written as deleted (the
+     * app's guard, b585cbc – "connected" only with a live hello). A phone never seen here is not gone.
+     */
+    fun phoneGone(ledger: String, phone: String): Boolean {
+        val e = SyncLedger.read(ledger).entries[SyncFormat.deviceItemId(phone)] ?: return false
+        return e.item.kind == SyncItem.DEVICE && e.item.deleted
+    }
+
     fun devices(ledger: String, device: String): String = SyncLedger.read(ledger).devices(device).joinToString(",", "[", "]") {
         "{\"name\":" + str(it.name ?: "") + ",\"device\":" + str(it.device) + ",\"updatedAt\":" + it.updatedAt + "}"
     }

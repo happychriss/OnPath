@@ -509,6 +509,7 @@ check((await titles(A, 'none')).length === 0 && (await titles(A, phone.device)).
 
 // ---- 14b. two tabs of one browser (incident 2026-10-31): a pairing / unpairing in one tab is seen in the other at once
 // (BroadcastChannel + the folders read again in every locked step) – the other tab never writes into the old folder ----
+env.SYNC_NEW_PER_IP_DAY = '50'; // two more pairings below (the test host's 50 a day; the default 5 is reached by now)
 const ctxT = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 const T1 = await open(ctxT);
 const T2 = await open(ctxT);
@@ -534,6 +535,22 @@ await tabPhone.round();
 check(!(await tabPhone.titles()).includes('Zweiter Tab') && (await titles(T2, 'none')).includes('Zweiter Tab') && !(await titles(T2, tabPhone.device)).includes('Zweiter Tab'),
   'tab 2 saves after the unpairing: into Without phone, nothing written back to the phone\'s folder or mailbox');
 await ctxT.close();
+
+// ---- 14c. the phone unpairs itself and only deletes its hello (the app's guard b585cbc): the browser closes the folder ----
+const ctxH = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+const H1 = await open(ctxH);
+const helloPhone = await new Phone('Hello phone').init();
+const pH = await showCode(H1);
+await helloPhone.pairDirect(pH.code);
+await H1.waitForFunction((d) => window.__sync.status.folder.key === d, helloPhone.device, { timeout: 30_000 }).catch(() => {});
+await H1.click('#closePair').catch(() => {});
+helloPhone.ledger = await call('syncDelete', helloPhone.ledger, await call('syncHelloId', helloPhone.device), Date.now(), helloPhone.device);
+await helloPhone.round();
+await syncNow(H1);
+const hs = await status(H1);
+check(!hs.paired && hs.folder.key === 'none' && hs.message === 'The connection was ended on the phone.' && (await entry(H1)).label === 'Pair phone',
+  `the phone's hello deleted: the folder closes, "The connection was ended on the phone.", "Pair phone" (${hs.message})`);
+await ctxH.close();
 
 // ---- 15. the host's cap on new mailboxes per IP and day ----
 env.SYNC_NEW_PER_IP_DAY = '1';

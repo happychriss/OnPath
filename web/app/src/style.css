@@ -465,6 +465,9 @@ dialog.phone .unpairline .textbtn.danger { color: var(--error); }
 
 /* the app's grey INFO line (routing data still missing: straight line for now), with a spinner while it loads */
 .infoline { color: var(--muted); font-size: 13px; padding: 6px 2px; display: flex; align-items: center; gap: 8px; }
+.infoline[hidden], .breakdown[hidden] { display: none; }
+/* way types & surfaces in the profile step only (the app keeps them in Route details): the Points step stays the list */
+#sheet:not([data-step="profile"]) > #breakdown { display: none; }
 .infoline .spin { width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--green); border-radius: 50%; animation: spin 1s linear infinite; flex: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 /* way types & surfaces (the app's RouteBreakdown): one line, a click shows two bars with their legend */
@@ -481,3 +484,7 @@ dialog.phone .unpairline .textbtn.danger { color: var(--error); }
 .searchchips .chip { flex: none; min-height: 32px; padding: 0 12px; border: 1px solid var(--line); border-radius: 16px; background: #fff;
   font: inherit; font-size: 13px; color: var(--fg); cursor: pointer; }
 .searchchips .chip.on { background: var(--green-light); border-color: var(--green); color: var(--green); font-weight: 700; }
+
+/* "New route for MTB – check it": a grey INFO line you can tap (the whole route then shows) */
+.changedline { border: 0; background: none; font: inherit; font-size: 13px; text-align: left; cursor: pointer; width: 100%; }
+.changedline:hover { text-decoration: underline; }

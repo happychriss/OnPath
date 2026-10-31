@@ -43,6 +43,8 @@ export interface PlanResult {
   gaps: { text: string | null; gaps: { index: number; point: [number, number]; end: [number, number]; show: [number, number, number] }[] };
   /** The app's RoutingDataNotice: routing data missing → the plain grey line [noticeText] instead of the router's error. */
   notice: 'LOADING' | 'NOT_YET' | null; noticeText: string | null;
+  /** After an activity / T level change the route differs noticeably: the app's grey "New route for … – check it". */
+  changed: string | null;
   /** The app's BreakdownRules: the summary line and the bars' parts [key, label, colour, metres]. */
   breakdown: { line: string; ways: [string, string, string, number][]; surfaces: [string, string, string, number][] };
 }
