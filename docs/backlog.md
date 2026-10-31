@@ -126,6 +126,10 @@ the git log.
       `PlanPoints.deleteAt`, `"move"` → `PlanPoints.move`, `deletePoint` through the engine, meta by value – steps in
       `docs/handoff-web-parity-b.md` §3.
   - *Should:*
+    - Short-trip detour retry (owner 2026-10-31, Hilden) · (this branch, 2026-10-31) · shared `routing/Planner.kt`
+      (a leg < 2 km routed > 2× its straight distance is retried via the midpoint, taken when ≥ 30 % shorter) – comes
+      with the merge, nothing to code; add the Hilden case to `web/test/plans.json` (app 1099 m); `PLANNER_VERSION` 2,
+      fingerprint changes once – steps in `docs/handoff-web-short-detour.md`.
     - Route hints: no "Steps · 0 m · at the start" (field A-019) · 4ab0b37 · shared `ui/RouteWarnings.kt`: a stretch
       < 5 m (`END_CRUMB_M`) at the very start / end of the route is no spot (the snapped end touching that way) – comes
       with the merge, nothing to write; the parity test of the hints should pass unchanged. Web side, if it has its own

@@ -17,7 +17,7 @@ them weekly). This note says how they are made visible.
   – simpler and safer than `RouterClassHash`'s normalising, which follows WayClass.java for another purpose).
 - `BROUTER_VERSION = "1.7.11-beta-onpath1"` (BRouter 1.7.11-beta with OnPath's one jar patch, `docs/handoff-web-island.md`)
   – `RoutingFingerprintTest` fails when the jars in `app/libs` are another version.
-- `PLANNER_VERSION = 1` – raised by hand with every change that can give another route for the same points, activity
+- `PLANNER_VERSION = 2` (2 = the short-trip detour retry, 2026-10-31) – raised by hand with every change that can give another route for the same points, activity
   and data: Planner passes / splits, `WaypointSnap` rules, the profile parameters and via handling in `BRouterEngine`.
   Not raised for refactors that keep every route (e.g. `PlanResult`).
 - `FILES` – the test fails when `assets/brouter` gets a profile the fingerprint does not hash.
