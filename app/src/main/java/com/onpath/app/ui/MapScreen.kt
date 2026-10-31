@@ -46,9 +46,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import androidx.compose.runtime.rememberUpdatedState
-import kotlin.math.floor
-import kotlin.math.log10
-import kotlin.math.pow
 
 /** The main screen: full-screen map with the Plan or Navigate controls on top (AppMode). */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -127,7 +124,7 @@ fun MapScreen(
             topInsetPx = topInsetPx,
             onReady = { controller = it },
             onCamera = { map ->
-                scale = computeScale(map, density.density); cameraTick++; bearing = map.cameraPosition.bearing.toFloat()
+                scale = computeScale(map); cameraTick++; bearing = map.cameraPosition.bearing.toFloat()
                 hintKey = try {
                     val b = map.projection.visibleRegion.latLngBounds
                     listOf(b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast).map { kotlin.math.round(it * 1000) / 1000 } +
@@ -636,15 +633,10 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     }
 }
 
-/** Nice round scale bar length (max ~100dp). */
-private fun computeScale(map: org.maplibre.android.maps.MapLibreMap, density: Float): Pair<String, Dp>? = try {
+/** Scale bar ([ScaleRule]): the projection gives metres per dp – never multiplied by the density again. */
+private fun computeScale(map: org.maplibre.android.maps.MapLibreMap): Pair<String, Dp>? = try {
     val lat = map.cameraPosition.target?.latitude ?: 0.0
-    val mPerPx = map.projection.getMetersPerPixelAtLatitude(lat)
-    val maxM = mPerPx * 100 * density
-    val pow10 = 10.0.pow(floor(log10(maxM)))
-    val nice = listOf(5.0, 2.0, 1.0).map { it * pow10 }.first { it <= maxM }
-    val label = if (nice >= 1000) "${(nice / 1000).let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }} km" else "${nice.toInt()} m"
-    label to (nice / mPerPx / density).dp
+    ScaleRule.of(map.projection.getMetersPerPixelAtLatitude(lat))?.let { (label, widthDp) -> label to widthDp.dp }
 } catch (e: Exception) {
     Problems.warn("map", "Scale bar could not be computed; hidden", e)
     null
