@@ -525,4 +525,22 @@ class CellDownloadTest {
         mc.delete(listOf(a))
         waitFor("packages removed with the last cell") { mc.packages.value.isEmpty() && mc.installed.value.isEmpty() }
     }
+
+    /** The saved requests are replaced atomically: a reader (the next app start, a test) never finds no file. Flaky
+     *  packagesFollowTheirCells: `File.renameTo` on JDK 25 deletes the target before the rename. */
+    @Test fun requestsFileIsNeverMissingWhileItIsRewritten() {
+        val mc = cells(Net(connected = false))
+        mc.request(listOf(a), CellReason.POINT)
+        val f = File(mc.store.root, "requests.json")
+        assertTrue(f.isFile)
+        val done = java.util.concurrent.atomic.AtomicBoolean(false)
+        val writer = Thread { try { repeat(3_000) { mc.approveMobile(listOf(a)) } } finally { done.set(true) } }.apply { start() }
+        var reads = 0; var missing = 0
+        while (!done.get()) {
+            // expected while the bug is there: the file gone between delete and rename – counted, asserted below
+            try { f.readText(); reads++ } catch (e: java.io.FileNotFoundException) { missing++ }
+        }
+        writer.join()
+        assertEquals("requests.json missing in $missing of ${reads + missing} reads", 0, missing)
+    }
 }
