@@ -240,6 +240,9 @@ the git log.
 - **Open source + self-hosted map servers (concept, not built):** app setting "Map server" (custom URL + key, also via
   QR code; cells carry their server in the manifest); `/v1` API as an open spec; all-in-one Docker Compose or the cloud
   setup; builder image on ghcr.io; F-Droid build without Play Billing. Not before the Play launch.
+- **Replace the tour's route by a saved route during a tour** – owner 2026-10-31: not for now (too much automation).
+  Today a tap on a planned route in My routes during a tour says "End the running tour first, then this route can be
+  loaded." (`RouteRules.openAsk` → `BLOCKED_DURING_TOUR`).
 - **Ideas:** outdoor mode, way back on own track, hut info, tour suggestions, first-start intro / help page.
 - **Map wishes (only when the owner says so):** shrub symbols; trail numbers abroad beyond numeric refs (E5 / GR20,
   `osmc:symbol`); contours below z12.

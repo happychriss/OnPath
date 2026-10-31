@@ -19,8 +19,8 @@ Search mockups: `docs/ux-search-proposals.md` (proposal C's "Add to route" card 
    follows the new plan **at once, without a question** (followed line, target and arrival change as soon as the
    route is computed; also while still in Plan). "Continue navigation" is just the way back to Navigate. A line that
    is the same route again (e.g. Undo to it) keeps the running session. A followed GPX track and a free recording are
-   not changed by plan edits; a plan with fewer than two points changes nothing. A saved route loaded from My routes
-   during the tour (after "Replace the route of the running tour?", see "My routes") is followed in every case.
+   not changed by plan edits; a plan with fewer than two points changes nothing. A saved route cannot be loaded during
+   the tour (owner 2026-10-31, see "My routes").
 3. **Ending a tour:** (a) on arrival (within ~50 m of the destination) the app asks "You have arrived – end tour?"
    (End & save / Keep going), or (b) in Plan mode via "End tour" (with confirmation). Never from Navigate directly.
 4. **Navigate without a route** = free recording (position + track only).
@@ -61,14 +61,13 @@ type + date, distance · ascent · time), newest first. Import GPX at the top (t
 map). Per item: tap = open (planned route with via points → into the plan; tracks → shown on the map), Export
 and ⋮ with **Rename** (name dialog, the sheet's "Saved as" follows), Export (GPX share), Delete (asks "Delete “Name”?";
 the dialog stays until Cancel / Delete, a tap outside does nothing).
-During a tour a planned route asks one question first (owner 2026-10-31, `RouteRules.openAsk`): **"Replace the route of
-the running tour?"** / „Route der laufenden Tour ersetzen?“ – **Replace** · **Cancel** (no body; tap outside / Back =
-Cancel, nothing changes). Replace loads it like any plan change: one Undo step back to the previous plan, its activity
-and T level (the recorded tour takes them, as an activity switch during the tour does), and the tour follows it as soon as
-its line is computed – also after a followed GPX track or a free recording – with the usual "New route · was 13:15" and,
-far from it, the usual way to the line. The followed route is named after it ("Back to …", tour log). **The recording
-goes on unchanged:** same tour, track and timer, never ended or split. Tracks open as before (shown as a track; "Start
-navigation · …" in the track panel follows one).
+**During a tour no new route is loaded** (owner 2026-10-31: "too much automation – as a hiker I wouldn't trust it";
+`RouteRules.openAsk` → `BLOCKED_DURING_TOUR`). The list looks as always (no hint under the routes – nobody reads it);
+a tap on a planned route is the action, the answer is the blue box at the top of My routes, over the list: **"End the
+running tour first, then this route can be loaded."** / „Erst die laufende Tour beenden, dann lässt sich diese Route
+laden.“ – **OK** (48 dp). It stays until OK or until My routes is left. Nothing changes: plan, followed route, activity
+and the recording. Tracks open as before (shown as a track; "Start navigation · …" in the track panel follows one).
+While the plan belongs to a saved route, the followed route carries its name ("Back to …", tour log).
 
 **Loading over an unsaved plan:** "Replace current plan?" – **Save first** (the Save / Save as new choice or the name
 dialog as above, then load) · **Replace**
