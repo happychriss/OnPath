@@ -131,6 +131,18 @@ class VoiceGuideTest {
         assertEquals(Turn.RIGHT, (p as Phrase.NewRoute).next?.turn)
     }
 
+    /** Pixel 2026-11-01: the line was re-routed 5 s after the tour start – "Neue Route." came before "Los geht's.". */
+    @Test fun aNewRouteBeforeTheStartSentenceIsNotSaid() {
+        val g = VoiceGuide()
+        val first = line(3000, emptyMap())
+        val second = line(2800, emptyMap())
+        // tour started, position not on the line yet (no start sentence)
+        assertNull(g.update(VoiceGuide.Input(0, first, 1, null, onRoute = false, speedMps = null, bike = true)))
+        val p = g.update(VoiceGuide.Input(5_000, second, 2, 0.0, onRoute = true, speedMps = 5.0, bike = true, rerouted = true))
+        assertTrue("$p", p is Phrase.Start)
+        assertNull(g.update(VoiceGuide.Input(20_000, second, 2, 50.0, onRoute = true, speedMps = 5.0, bike = true, rerouted = true)))
+    }
+
     @Test fun stopReachedWithTheNextStop_notTheStartNorTheDestination() {
         val g = VoiceGuide()
         val l = line(3000, emptyMap())
