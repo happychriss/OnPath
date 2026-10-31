@@ -53,13 +53,13 @@ class CellCardsTest {
         assertNull(answered.question)
         assertEquals("2 map areas wait for Wi-Fi · 25 MB", answered.wifiNote)
         // just answered "Wi-Fi only": a quiet status, no choice
-        assertEquals(NoticeLook.QUIET, noticeLook(answered))
+        assertNull(mapNoticeKind(answered))
         val wifiOnly = card(st, sizes = mapOf(own to 9 * MB), wifiOnly = true) as CellCardUi.Working
         assertNull(wifiOnly.question)
         assertEquals("2 map areas wait for Wi-Fi · 25 MB", wifiOnly.wifiNote)
         // Settings says Wi-Fi only: "Load now over mobile data" stays offered – a question
-        assertEquals(NoticeLook.QUESTION, noticeLook(wifiOnly))
-        assertEquals(NoticeLook.QUESTION, noticeLook(c))
+        assertEquals(MessageKind.FRAGE, mapNoticeKind(wifiOnly))
+        assertEquals(MessageKind.FRAGE, mapNoticeKind(c))
     }
 
     @Test fun offlineOneLine() {

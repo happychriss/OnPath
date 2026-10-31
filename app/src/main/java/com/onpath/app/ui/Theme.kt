@@ -30,6 +30,10 @@ object OnPathColors {
     val GreenLight = Color(0xFFE1EAD5)
     /** Text on light surfaces: the website's dark green-grey (11.4:1 on the background). */
     val Ink = Color(0xFF243C31)
+    /** Secondary text: detail lines, explanations (Material `onSurfaceVariant`). */
+    val InkMuted = Color(0xFF4A4F4A)
+    /** Cards over the map (message boxes, sheets) and text on [Green]. */
+    val CardWhite = Color(0xFFFFFFFF)
     /** Page background (website `#FAFAF6`). */
     val Paper = Color(0xFFFAFAF6)
     val Route = Color(0xFF1E3FAE)
@@ -59,14 +63,14 @@ object OnPathColors {
      */
     val OnDarkMuted = RestInk
 
-    // ---- Message kinds: one colour = one meaning ----
-    /** ACTION: the blue strip / card that asks a question with buttons – never a status or a failure. */
+    // ---- Message kinds (docs/design/ui-style.md): one colour = one meaning ----
+    /** FRAGE: the blue left edge of a question box (MessageCard) – never a status or a failure. */
     val InfoBlue = Color(0xFF1565C0)
-    /** WARNING: amber text / icons on white (route spots, off route, no GPS, a download that failed). */
+    /** Attention: amber text / icons on white (route spots, off route, no GPS, a download that failed, HINWEIS_WARN edge). */
     val Warn = Color(0xFF9A5B00)
     val WarnContainer = Color(0xFFFFF0D2)
     val OnWarnContainer = Color(0xFF2C1A00)
-    /** ERROR: something the user asked for did not work (and delete buttons). */
+    /** ERROR: something the user asked for did not work (HINWEIS_ERROR edge, red lines, delete buttons). */
     val Error = Color(0xFFC62828)
     val ErrorContainer = Color(0xFFFDE0DC)
     val OnErrorContainer = Color(0xFF5F1410)
@@ -85,10 +89,10 @@ private val scheme = lightColorScheme(
     onSecondary = Color.White,
     secondaryContainer = Color(0xFFDDE3F7),
     onSecondaryContainer = Color(0xFF0E1E57),
-    surface = Color.White,
+    surface = OnPathColors.CardWhite,
     onSurface = OnPathColors.Ink,
     surfaceVariant = Color(0xFFF1F3EF),
-    onSurfaceVariant = Color(0xFF4A4F4A),
+    onSurfaceVariant = OnPathColors.InkMuted,
     background = OnPathColors.Paper,
     onBackground = OnPathColors.Ink,
     tertiary = OnPathColors.Warn,

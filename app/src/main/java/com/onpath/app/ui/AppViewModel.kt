@@ -152,12 +152,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- screens and mode ---
     // messages (declared before routesOpen / showSettings, whose setters clear their lines) – see [say]
-    /** The light error card over the map (⚠, red edge, OK); null = none. Never cleared by itself. */
+    /** The red error box (MessageCard HINWEIS_ERROR: ⚠, red edge, OK) on the screen shown; null = none. Never cleared by itself. */
     var errorCard by mutableStateOf<String?>(null)
     /** The line at the top of My routes; goes when My routes is left. */
     var routesNote by mutableStateOf<Notice?>(null)
     /**
-     * A planned route was tapped during a tour ([requestOpen]): the blue box "End the running tour first, then this route
+     * A planned route was tapped during a tour ([requestOpen]): the box "End the running tour first, then this route
      * can be loaded." with OK at the top of My routes; until OK or until My routes is left.
      */
     var routesTourBlocked by mutableStateOf(false)
@@ -426,7 +426,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** T3 waits for a usable fix after app start / return in Plan. */
     private var t3Pending by mutableStateOf(true)
 
-    /** "Detailed map for here?" – asked in the blue strip when the app opens where there is no detailed map. */
+    /** "Detailed map for here?" – asked in a question box when the app opens where there is no detailed map. */
     data class HereAsk(val at: GeoPoint, val accuracyM: Float?, val own: com.onpath.app.cells.CellId, val regions: Int, val bytes: Long,
                        /** The server must build it first (a few minutes); false = status unknown. */
                        val mustBuild: Boolean = false)
@@ -898,7 +898,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (t3Pending && startModeKnown && !onTour && (acc == null || acc <= com.onpath.app.cells.CellTriggers.T3_MAX_ACCURACY_M)) {
             t3Pending = false
             // owner (e.g. in a car): opening the app loads the map for here silently only when the server
-            // has it ready (seconds); when it must be built first (minutes) the blue strip asks. No loading window.
+            // has it ready (seconds); when it must be built first (minutes) the question box asks. No loading window.
             safeCells("position") {
                 val want = cellTriggers.preview(p)
                 val own = want.firstOrNull()
@@ -943,12 +943,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val bgCellProgress = HashMap<com.onpath.app.cells.CellId, MapLoadProgress>()
     /** The strip / chip was tapped: what loads in the background, with "Cancel all". */
     var downloadDetailsOpen by mutableStateOf(false)
-    /** The Plan strip is on screen (hints below the search bar move down). */
+    /** Plan: a message box, the quiet pill or the download chip is on screen (hints below the search bar move down). */
     var backgroundStripShown by mutableStateOf(false)
-    /** Bottom of that strip / chip below the status bar in dp (measured); the error card goes below it ([MessagePlacement]). */
+    /** Bottom of that box / pill / chip below the status bar in dp (measured); hints go below it. */
     var backgroundStripBottomDp by mutableStateOf(0)
-    /** Navigate: height of the top column (turn card, status card, chips) in dp – the error card goes below it. */
-    var navigateTopDp by mutableStateOf(0)
 
     /**
      * What loads in the background now (map regions, routing data the user does not wait for in the modal); null =
@@ -1370,7 +1368,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // --- dialogs / messages ---
     /**
      * Says [text] where it belongs (owner: no dark message bar): a line in My routes / the open Settings page where the
-     * user acted ([place]); an error without such a place on the light [errorCard] (stays until OK); an INFO without a
+     * user acted ([place]); an error without such a place in the red [errorCard] box (stays until OK); an INFO without a
      * place only in the problem log. Routing: [NoticeRouting].
      */
     fun say(text: String, kind: NoticeKind, place: NoticePlace) {
@@ -2899,8 +2897,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openRoutes() { refreshTours(); routesOpen = true }
 
     /**
-     * Open / load from My routes ([RouteRules.openAsk]): during a tour a planned route loads nothing – the blue box "End
-     * the running tour first, then this route can be loaded." with OK at the top of My routes ([routesTourBlocked];
+     * Open / load from My routes ([RouteRules.openAsk]): during a tour a planned route loads nothing – the box "End
+     * the running tour first, then this route can be loaded." with OK under the tabs of My routes ([routesTourBlocked];
      * owner 2026-10-31: no new route during a tour, too much automation); else "Replace current plan?" when that would
      * lose changes; tracks open at once.
      */
@@ -3614,7 +3612,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun syncNoteOk() { syncNote = null }
 
-    /** ☰ → Pair with browser, the first time: the step line + Open camera as a blue strip on the Plan map ([PairEntry]). */
+    /** ☰ → Pair with browser, the first time: the step line + Open camera as a question box on the Plan map ([PairEntry]). */
     var pairHint by mutableStateOf(false)
         private set
 
@@ -4242,7 +4240,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             Backups.failure.collect { text ->
                 if (text == null) return@collect
-                while (errorCard != null) delay(500) // after the current error card
+                while (errorCard != null) delay(500) // after the current error box
                 sayError(Txt.s(Res.string.msg_backup_failed, text), NoticePlace.BACKGROUND)
                 Backups.failureSeen(getApplication())
             }
@@ -4264,7 +4262,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             restoreProgress = null
             if (r != null) sync.changed("restored from the backup folder")
             // the result where it was started (Settings → Backup), else where the tracks are now: My routes (restore
-            // offered at the first start); a failure there → the error card
+            // offered at the first start); a failure there → the error box
             if (r != null) sayInfo(com.onpath.app.backup.BackupRestore.summary(r),
                 if (showSettings) NoticePlace.SETTINGS else { routesOpen = true; NoticePlace.ROUTES })
             else sayError(Txt.s(Res.string.msg_restore_folder_unreadable), if (showSettings) NoticePlace.SETTINGS else NoticePlace.MAP)
@@ -4374,7 +4372,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 Problems.error("gpx", "GPX import failed", e)
                 // GpxException: our own plain reason ("No track, route or waypoint found in this file.")
                 val own = com.onpath.app.debug.UserText.of(e, "")
-                // My routes when the import was started there; a file opened from another app → the error card
+                // My routes when the import was started there; a file opened from another app → the error box
                 sayError(if (own.isNotEmpty()) Txt.s(Res.string.msg_gpx_import_failed_reason, own)
                     else Txt.s(Res.string.msg_gpx_import_failed), NoticePlace.ROUTES)
             }

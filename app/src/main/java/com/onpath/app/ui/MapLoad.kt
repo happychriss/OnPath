@@ -82,7 +82,7 @@ data class MapLoadUi(
     companion object {
         val OFFLINE_TEXT: String get() = Txt.s(Res.string.maps_offline_text)
         val WIFI_TEXT: String get() = Txt.s(Res.string.maps_wifi_text)
-        /** One-time load over mobile data while "Maps only on Wi-Fi" waits (modal and blue strip; setting unchanged). */
+        /** One-time load over mobile data while "Maps only on Wi-Fi" waits (modal and question box; setting unchanged). */
         val LOAD_ON_MOBILE: String get() = Txt.s(Res.string.maps_load_on_mobile)
 
         fun timeLeft(s: Int): String = when {

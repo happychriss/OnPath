@@ -41,21 +41,22 @@ class UxReviewFixesTest {
         assertTrue(main.contains("vm.locationAsking = true\n                    permissionLauncher.launch"))
     }
 
-    /** Problem 11: the message bar (stays until OK) never covers the blue strip – it goes below it. */
-    @Test fun messageBarGoesBelowTheStrip() {
-        assertTrue(MessagePlacement.topDp(stripShown = false, stripBottomDp = 0) == MessagePlacement.MESSAGE_TOP_DP)
-        val stripHeight = 96
-        val top = MessagePlacement.topDp(stripShown = true, stripBottomDp = MessagePlacement.STRIP_TOP_DP + stripHeight)
-        assertTrue("$top", top >= MessagePlacement.STRIP_TOP_DP + stripHeight)
-        // below the small chip under ☰ too
-        val chip = MessagePlacement.topDp(stripShown = true, stripBottomDp = MessagePlacement.CHIP_TOP_DP + 48)
-        assertTrue("$chip", chip >= MessagePlacement.CHIP_TOP_DP + 48)
-        // not measured yet: as before
-        assertTrue(MessagePlacement.topDp(stripShown = true, stripBottomDp = 0) == MessagePlacement.MESSAGE_TOP_DP)
+    /**
+     * Problem 11: the error box (stays until OK) never covers a question's buttons – one box at a time (Messages.pick,
+     * a question first), on every screen: Plan, Navigate, My routes / Settings each list it with their other boxes.
+     */
+    @Test fun errorBoxIsOneOfTheBoxes() {
+        val ui = "src/main/java/com/onpath/app/ui/"
+        val plan = File(ui + "MapScreen.kt").readText().substringAfter("PlanMessageHost(vm: AppViewModel").substringBefore("\n}\n")
+        assertTrue(plan.contains("Messages.pick(listOf("))
+        assertTrue(plan.contains("vm.errorCard?.let { errorMessage(it) { vm.errorCard = null } }"))
+        val nav = File(ui + "NavigateScreen.kt").readText()
+        assertTrue(nav.contains("error?.let { errorMessage(it, onErrorOk) }"))
+        assertTrue(nav.contains("error = vm.errorCard, onErrorOk = { vm.errorCard = null }"))
+        val screens = File(ui + "Notices.kt").readText().substringAfter("ScreenMessageHost(vm: AppViewModel)").substringBefore("\n}\n")
+        assertTrue(screens.contains("Messages.pick(listOf(error, blocked))"))
         val main = File("src/main/java/com/onpath/app/MainActivity.kt").readText()
-        assertTrue(main.contains("ErrorCardHost(vm)"))
-        val host = File("src/main/java/com/onpath/app/ui/Notices.kt").readText()
-        assertTrue(host.contains("MessagePlacement.topDp(vm.backgroundStripShown"))
+        assertTrue(main.contains("ScreenMessageHost(vm)"))
     }
 
     /** Owner text Q7: ⋯ → Time details keeps plain lines only; the formulas moved to Settings → Diagnostics. */

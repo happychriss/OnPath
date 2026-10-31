@@ -220,30 +220,6 @@ internal fun rememberBackgroundDownload(vm: AppViewModel): BackgroundDownloadUi?
     return rememberNoFlash(target, gate)
 }
 
-/**
- * Where the strips and the error card (stays until OK) sit. Owner 2026-10-30: the blue strips not glued under the
- * search bar – a calm gap below it; the small loading chip stays right under ☰. The error card never covers the blue
- * strip's buttons (Try again, Allow location, Load now): below the strip / chip while it shows. In Navigate it goes below
- * the turn card, status card and chips. The plan sheet is drawn over the strips (PlanMode), so they never cover its
- * primary button. Pure, tested.
- */
-object MessagePlacement {
-    /** Top of the loading chip's touch area below the status bar (search pill + ☰ row above it). */
-    const val CHIP_TOP_DP = 68
-    /** Top of the blue / amber strips below the status bar: ≈ 24 dp below the search pill + ☰ row. */
-    const val STRIP_TOP_DP = 92
-    /** The error card without a strip: where a strip would be. */
-    const val MESSAGE_TOP_DP = STRIP_TOP_DP
-    const val GAP_DP = 8
-
-    /** Plan: [stripBottomDp] = the bottom of the strip / chip below the status bar (0 = not measured yet). */
-    fun topDp(stripShown: Boolean, stripBottomDp: Int): Int =
-        if (stripShown && stripBottomDp > 0) maxOf(MESSAGE_TOP_DP, stripBottomDp + GAP_DP) else MESSAGE_TOP_DP
-
-    /** Navigate: [topColumnDp] = height of the turn card + status card + chips column below the status bar. */
-    fun navigateTopDp(topColumnDp: Int): Int = topColumnDp.coerceAtLeast(0) + GAP_DP
-}
-
 /** The details dialog for [ui] while the user opened it (strip / chip tap). */
 @androidx.compose.runtime.Composable
 internal fun BackgroundDownloadDetails(vm: AppViewModel, ui: BackgroundDownloadUi?) {
@@ -253,7 +229,7 @@ internal fun BackgroundDownloadDetails(vm: AppViewModel, ui: BackgroundDownloadU
 }
 
 /**
- * What of the map card still needs the user (no second map card in the plan sheet – the blue strip at the top says it
+ * What of the map card still needs the user (no second map card in the plan sheet – the box at the top says it
  * and asks there): the mobile-data question, areas waiting for Wi-Fi, a failure, offline, no position
  * yet on a fresh install, no downloads in this build. Plain progress is the [BackgroundDownloadChip]'s; "ready" needs
  * nothing. Pure, unit-tested.
@@ -264,101 +240,53 @@ fun mapNotice(card: CellCardUi?): CellCardUi? = when (card) {
     is CellCardUi.Done, null -> null
 }
 
-/** How the map notice looks: one colour = one meaning. Pure, unit-tested. */
-enum class NoticeLook { QUESTION, WARNING, QUIET }
-
-fun noticeLook(card: CellCardUi): NoticeLook = when (card) {
-    is CellCardUi.Failed -> NoticeLook.WARNING
-    is CellCardUi.Working -> if (card.question != null || card.canLoadNow) NoticeLook.QUESTION else NoticeLook.QUIET
-    is CellCardUi.NeedPosition -> if (card.permission) NoticeLook.QUIET else NoticeLook.QUESTION
-    is CellCardUi.Offline, CellCardUi.NotAvailable, is CellCardUi.Done -> NoticeLook.QUIET
+/**
+ * Which box a map notice is (docs/design/ui-style.md), null = no box but the quiet grey pill (a state: offline, waiting
+ * for GPS, waiting for Wi-Fi after "Wi-Fi only"). FRAGE: mobile data?, "Load over mobile data" while Settings says Wi-Fi
+ * only; HINWEIS: "Allow location" (the one way out), "No map downloads in this build" (OK); HINWEIS_WARN: a failure
+ * (Try again). Pure, unit-tested.
+ */
+fun mapNoticeKind(card: CellCardUi): MessageKind? = when (card) {
+    is CellCardUi.Failed -> MessageKind.HINWEIS_WARN
+    is CellCardUi.Working -> if (card.question != null || card.canLoadNow) MessageKind.FRAGE else null
+    is CellCardUi.NeedPosition -> if (card.permission) null else MessageKind.HINWEIS
+    CellCardUi.NotAvailable -> MessageKind.HINWEIS
+    is CellCardUi.Offline, is CellCardUi.Done -> null
 }
 
-/**
- * The map notice at the top (see [mapNotice]); same place as the progress chip. Blue strip only for a question with
- * buttons (mobile data, Allow location, "Load now" while Settings says Wi-Fi only); a failure = amber strip with Try
- * again; a pure status (offline, waiting for GPS, waiting for Wi-Fi after "Wi-Fi only") = the quiet grey pill, no ×.
- * No "why" lines.
- */
+/** The map notice ([mapNotice]) as a box, or null when it is the quiet pill ([MapNoticePill]). */
 @Composable
-fun MapNoticeStrip(card: CellCardUi, cb: CellCardCallbacks, modifier: Modifier = Modifier) {
+fun mapNoticeMessage(card: CellCardUi, cb: CellCardCallbacks): Message? {
+    val kind = mapNoticeKind(card) ?: return null
     val working = card as? CellCardUi.Working
     val title = working?.question?.text ?: working?.wifiNote ?: card.title
-    when (noticeLook(card)) {
-        NoticeLook.QUIET -> Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            QuietPill(title, if (card is CellCardUi.NeedPosition) Icons.Outlined.LocationSearching else Icons.Outlined.CloudOff,
-                action = if (card == CellCardUi.NotAvailable) str(Res.string.common_ok) to cb.onClose else null)
-        }
-        NoticeLook.WARNING -> {
-            val f = card as CellCardUi.Failed
-            Notice(title, warning = true, onClose = null,
-                listOfNotNull(str(Res.string.common_not_now) to cb.onClose, if (f.retryable) str(Res.string.common_try_again) to cb.onRetry else null), modifier)
-        }
-        NoticeLook.QUESTION -> {
-            val buttons: List<Pair<String, () -> Unit>> = when {
-                working?.question != null -> listOf(str(Res.string.maps_btn_wifi_only) to cb.onWifiOnly, str(Res.string.maps_btn_load_now) to cb.onMobileYes)
-                // "Maps only on Wi-Fi": areas wait – once over mobile data, the setting stays (owner)
-                working?.wifiNote != null -> listOf(MapLoadUi.LOAD_ON_MOBILE to cb.onMobileYes)
-                else -> listOf(str(Res.string.maps_btn_allow_location) to cb.onAllowLocation)
-            }
-            // the Wi-Fi note can be hidden (the areas keep waiting); a question is answered with its buttons
-            Notice(title, warning = false, onClose = if (working != null && working.question == null) cb.onClose else null, buttons, modifier)
-        }
+    val buttons = when {
+        card is CellCardUi.Failed ->
+            listOf(if (card.retryable) MessageButton(str(Res.string.common_try_again), cb.onRetry) else MessageButton(str(Res.string.common_ok), cb.onClose))
+        working?.question != null -> listOf(MessageButton(str(Res.string.maps_btn_wifi_only), cb.onWifiOnly),
+            MessageButton(str(Res.string.maps_btn_load_now), cb.onMobileYes))
+        // "Maps only on Wi-Fi": areas wait – once over mobile data, the setting stays (owner); Not now = the areas keep waiting
+        working != null -> listOf(MessageButton(str(Res.string.common_not_now), cb.onClose), MessageButton(MapLoadUi.LOAD_ON_MOBILE, cb.onMobileYes))
+        card == CellCardUi.NotAvailable -> listOf(MessageButton(str(Res.string.common_ok), cb.onClose))
+        else -> listOf(MessageButton(str(Res.string.maps_btn_allow_location), cb.onAllowLocation))
+    }
+    return Message(kind, title, buttons = buttons)
+}
+
+/** A map notice that is a state, not a box: the quiet grey pill (offline, waiting for GPS / Wi-Fi). */
+@Composable
+fun MapNoticePill(card: CellCardUi, modifier: Modifier = Modifier) {
+    val working = card as? CellCardUi.Working
+    Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        QuietPill(working?.wifiNote ?: card.title,
+            if (card is CellCardUi.NeedPosition) Icons.Outlined.LocationSearching else Icons.Outlined.CloudOff)
     }
 }
 
-/** The app opened where there is no detailed map: the strip asks instead of loading (e.g. in a car – owner). */
+/** The app opened where there is no detailed map: the box asks instead of loading (e.g. in a car – owner). */
 @Composable
-fun HereAskStrip(regions: Int, bytes: Long, onLoad: () -> Unit, onNotNow: () -> Unit, modifier: Modifier = Modifier,
-                 mustBuild: Boolean = true) =
+fun hereAskMessage(bytes: Long, onLoad: () -> Unit, onNotNow: () -> Unit, mustBuild: Boolean = true): Message =
     // short (owner): title ≤ 5 words, one detail line at most
-    Notice(str(Res.string.maps_here_ask, mb(bytes)),
-        warning = false, onClose = null, listOf(str(Res.string.common_not_now) to onNotNow, str(Res.string.maps_btn_load) to onLoad), modifier,
-        detail = if (mustBuild) str(Res.string.maps_here_ask_detail) else null)
-
-/**
- * A note the user must see once at the top of the map, with OK (owner allows this one blue strip without a question,
- * e.g. "Paired. …"): same look as the map strips, stays until OK, the map below stays usable.
- */
-@Composable
-fun OkNoteStrip(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onOk: () -> Unit, modifier: Modifier = Modifier) =
-    Notice(title, warning = false, onClose = null, listOf(str(Res.string.common_ok) to onOk), modifier, icon = icon)
-
-/** A blue ACTION strip at the top of the map: a question / one step with its buttons (last = main), e.g. the pairing step. */
-@Composable
-fun ActionStrip(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, buttons: List<Pair<String, () -> Unit>>,
-                modifier: Modifier = Modifier) =
-    Notice(title, warning = false, onClose = null, buttons, modifier, icon = icon)
-
-/**
- * One strip at the top: a title, an optional detail line, buttons right-aligned (last = main). Blue (ACTION) for a
- * question; amber with ⚠ (WARNING) for a failure that offers "Try again".
- */
-@Composable
-private fun Notice(title: String, warning: Boolean, onClose: (() -> Unit)?,
-                   buttons: List<Pair<String, () -> Unit>>, modifier: Modifier, detail: String? = null,
-                   icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Outlined.Download) {
-    val bg = if (warning) OnPathColors.WarnContainer else OnPathColors.InfoBlue.copy(alpha = 0.94f)
-    val fg = if (warning) OnPathColors.OnWarnContainer else Color.White
-    Surface(shape = RoundedCornerShape(12.dp), color = bg, contentColor = fg, shadowElevation = 2.dp,
-        modifier = modifier.fillMaxWidth().semantics { contentDescription = title }) {
-        Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(if (warning) Icons.Outlined.Warning else icon, null,
-                    tint = if (warning) OnPathColors.Warn else fg, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                // 48 dp like every other target (gloves)
-                if (onClose != null) androidx.compose.material3.IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.Filled.Close, str(Res.string.maps_hide_cd), modifier = Modifier.size(20.dp))
-                } else Spacer(Modifier.width(8.dp))
-            }
-            detail?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = fg.copy(alpha = 0.9f),
-                modifier = Modifier.padding(start = 26.dp, end = 8.dp)) }
-            if (buttons.isNotEmpty()) {
-                NoticeButtons(buttons, if (warning) NoticeTone.AMBER else NoticeTone.BLUE,
-                    Modifier.padding(top = 6.dp, end = 4.dp, bottom = 4.dp))
-            } else Spacer(Modifier.height(4.dp))
-        }
-    }
-}
+    Message(MessageKind.FRAGE, str(Res.string.maps_here_ask, mb(bytes)),
+        detail = if (mustBuild) str(Res.string.maps_here_ask_detail) else null,
+        buttons = listOf(MessageButton(str(Res.string.common_not_now), onNotNow), MessageButton(str(Res.string.maps_btn_load), onLoad)))

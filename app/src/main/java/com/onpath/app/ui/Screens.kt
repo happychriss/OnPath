@@ -270,8 +270,8 @@ internal object SacScale {
  * browser; Import GPX lives here) and Done (recorded tours) – each a list, newest first: type icon, name, date,
  * distance. Per item ⋮ Rename / Export GPX / Delete (asks first), tap = open. A route from the browser not opened yet
  * has a bold title and "New from the browser" / "Changed in the browser" ([marks]). ⋮ Export all takes both tabs.
- * During a tour a planned route loads nothing: a tap shows the blue box "End the running tour first, then this route can
- * be loaded." with OK at the top ([tourBlocked], AppViewModel.requestOpen; owner 2026-10-31).
+ * During a tour a planned route loads nothing: a tap shows the box "End the running tour first, then this route can be
+ * loaded." with OK under the tabs (HINWEIS, ScreenMessageHost – AppViewModel.requestOpen; owner 2026-10-31).
  */
 @Composable
 fun RoutesScreen(
@@ -296,9 +296,6 @@ fun RoutesScreen(
     busy: Busy? = null,
     /** The result of something done here (restored, export / import failed …): a line under the title. */
     note: Notice? = null,
-    /** A planned route was tapped during a tour: the blue box "End the running tour first …" with OK, over the list. */
-    tourBlocked: Boolean = false,
-    onTourBlockedOk: () -> Unit = {},
     /** The tab shown first (the app keeps the last one chosen while it runs). */
     initialTab: RoutesTab = RoutesTab.PLANNED,
     onTab: (RoutesTab) -> Unit = {},
@@ -336,9 +333,6 @@ fun RoutesScreen(
             if (busy == Busy.EXPORT) Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 20.dp),
                 verticalAlignment = Alignment.CenterVertically) { BusyContent(Busy.EXPORT.text) }
             note?.let { NoticeLine(it, Modifier.padding(horizontal = 20.dp)) }
-            // the tap is the action, this box the answer (owner 2026-10-31: a line is overlooked) – until OK or Back
-            if (tourBlocked) OkNoteStrip(str(Res.string.routes_end_tour_first), Icons.Outlined.Info, onTourBlockedOk,
-                Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp))
             if (shown.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                     Text(str(if (tab == RoutesTab.PLANNED) Res.string.routes_empty_planned else Res.string.routes_empty_done),

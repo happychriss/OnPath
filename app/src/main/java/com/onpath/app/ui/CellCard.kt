@@ -26,8 +26,8 @@ import com.onpath.app.cells.label
 import kotlin.math.atan2
 
 /**
- * What happens with the detailed map of the area the user plans in (docs/design/map-cells.md §9). Shown in the blue strip
- * at the top ([mapNotice] / [MapNoticeStrip] in BackgroundDownloads.kt), not in the plan sheet (owner): Load now / Only
+ * What happens with the detailed map of the area the user plans in (docs/design/map-cells.md §9). Shown in the message box
+ * at the top ([mapNotice] / [mapNoticeMessage] in BackgroundDownloads.kt), not in the plan sheet (owner): Load now / Only
  * on Wi-Fi for mobile data, Try again / Not now when it failed, × to hide.
  */
 sealed interface CellCardUi {
@@ -236,22 +236,20 @@ fun OverviewHint(modifier: Modifier = Modifier) = QuietPill(str(Res.string.maps_
 
 /**
  * The quiet grey pill under the search bar: a status with nothing to decide ("Overview only – …",
- * "No detailed map – loads when online", "Waiting for GPS …"). No ×: it goes when the state goes. [action]: one small
- * text button for the rare status that still needs an OK.
+ * "No detailed map – loads when online", "Waiting for GPS …"). An ANZEIGE (docs/design/ui-style.md): no button, no ×
+ * – it goes when the state goes. Anything that needs an OK is a [MessageCard] instead.
  */
 @Composable
-fun QuietPill(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier,
-              action: Pair<String, () -> Unit>? = null) {
+fun QuietPill(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
     Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp), shadowElevation = 2.dp,
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
         modifier = modifier.androidxSemantics(text)) {
-        Row(Modifier.padding(start = 12.dp, end = if (action == null) 12.dp else 4.dp, top = 6.dp, bottom = 6.dp),
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
             Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f, fill = false))
-            action?.let { (label, act) -> Spacer(Modifier.width(8.dp)); NoticeButton(label, act, NoticeTone.LIGHT) }
         }
     }
 }

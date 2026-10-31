@@ -38,7 +38,7 @@ import com.onpath.app.ui.FinishedTourDialogs
 import com.onpath.app.ui.MapScreen
 import com.onpath.app.ui.MissingDataScreen
 import com.onpath.app.ui.AppMode
-import com.onpath.app.ui.ErrorCardHost
+import com.onpath.app.ui.ScreenMessageHost
 import com.onpath.app.ui.OnPathTheme
 import com.onpath.app.ui.SettingsScreen
 import com.onpath.app.ui.RouteDialogs
@@ -136,7 +136,7 @@ class MainActivity : ComponentActivity() {
             val serious by com.onpath.app.debug.Problems.newSerious.collectAsState()
             LaunchedEffect(serious, vm.errorCard == null) {
                 if (serious == null) return@LaunchedEffect
-                if (vm.errorCard != null) return@LaunchedEffect // wait until the current error card is gone
+                if (vm.errorCard != null) return@LaunchedEffect // wait until the current error box is gone
                 vm.sayError(Txt.s(Res.string.msg_something_wrong), com.onpath.app.ui.NoticePlace.BACKGROUND)
                 com.onpath.app.debug.Problems.announcedSerious()
             }
@@ -180,8 +180,6 @@ class MainActivity : ComponentActivity() {
                                 onExportAll = { vm.exportAll() },
                                 busy = vm.busy,
                                 note = vm.routesNote,
-                                tourBlocked = vm.routesTourBlocked,
-                                onTourBlockedOk = { vm.routesTourBlocked = false },
                                 onRecycleBin = { vm.openRecycleBin() },
                                 onEditRides = { vm.openEditRides(it) },
                                 initialTab = vm.routesTab,
@@ -331,10 +329,10 @@ class MainActivity : ComponentActivity() {
                         if (vm.mapOverlayOpen) vm.closeMapOverlays() else vm.closeShown()
                     }
 
-                    // The one error card (no dark bar; results go where the user acted – vm.say).
-                    // Stays until OK is tapped (owner rule: no message disappears by itself – rain, stress).
-                    // Plan: below the blue strip while it shows; Navigate: below the turn card (MessagePlacement)
-                    ErrorCardHost(vm)
+                    // My routes / Settings: the one message box (MessageCard) under the title / tabs – "End the running
+                    // tour first …" or the error box (no dark bar; results go where the user acted – vm.say). Stays
+                    // until OK (owner rule: no message disappears by itself). Plan and Navigate host their own.
+                    ScreenMessageHost(vm)
                 }
 
                 RouteDialogs(vm)

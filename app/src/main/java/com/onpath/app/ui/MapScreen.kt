@@ -154,7 +154,7 @@ fun MapScreen(
         // (not over the rest view while cycling)
         if (!vm.screenRest) controller?.let { ctl -> FacingArrow(ctl.facing) { bearing } }
         // hints below the search bar go below the background-download strip while it shows
-        // (measured height: the blue strip with a question is taller than the progress chip)
+        // (measured height: a message box is taller than the progress chip)
         val hintTop = if (vm.backgroundStripShown && vm.mode == AppMode.PLAN)
             (vm.backgroundStripBottomDp + MessagePlacement.GAP_DP).coerceAtLeast(124).dp else 76.dp
         // A shared place is being looked up (link + address search take a moment): say so at once.
@@ -272,7 +272,7 @@ private fun PlanMode(
         )
         // background downloads (corridor, refresh, routing data): small blue chip under ☰ after 10 s, until all is done;
         // tap → details with "Cancel all" (own composable: its per-second progress recomposes only the chip, not PlanMode)
-        PlanBackgroundStrip(vm, onRequestLocation, pairCamera)
+        PlanMessageHost(vm, rec, onRequestLocation, pairCamera)
         // The sheet's height changes every frame while it moves; the map only hears the height once it rests (a state
         // read by MapScreen would recompose the whole screen per frame and the sheet stutters).
         val sheetHeight = remember { mutableIntStateOf(0) }
@@ -284,13 +284,8 @@ private fun PlanMode(
         val topLimit = with(density) { WindowInsets.statusBars.getTop(density).toDp() } + TOP_BAR_BOTTOM
         SheetWithFooter(topLimit, modifier = Modifier.modeEdge(ModeEdge.BOTTOM), footer = {
             Column(Modifier.fillMaxWidth()) {
-                val upd = vm.update
-                val updVersion = (upd as? AppViewModel.UpdateState.Available)?.release?.version
-                    ?: (upd as? AppViewModel.UpdateState.Downloading)?.release?.version
-                if (rec == null && updVersion != null && updVersion != vm.updateDismissed) {
-                    UpdateBanner(upd, onInstall = { vm.installUpdate() }, onLater = { vm.updateDismissed = updVersion },
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
-                }
+                // after Install: the download's progress (a state, no box); the question itself is a box at the top
+                if (rec == null) UpdateDownloadingCard(vm.update, Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
                 footer()
             }
         }, sheet = {
@@ -310,11 +305,17 @@ private fun PlanMode(
     }
 }
 
-/** Plan: the map notice strip or the background-download chip under ☰, + the details dialog. */
+/**
+ * Plan: the one message box at the top (MessageCard, docs/design/ui-style.md) – or, when no box waits, the quiet pill /
+ * the background-download chip under ☰ (states) – + the download details dialog. One box at a time (Messages.pick):
+ * questions first (pairing step, map questions, map for here?, new version), then the must-know notes (error, paired,
+ * a map failure / note). The rest wait in their state and come next.
+ */
 @Composable
-private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: AppViewModel, onRequestLocation: () -> Unit,
-                                                                           pairCamera: (String) -> Unit) {
-    // Cell states tick with every downloaded chunk: read only through derived values, so the strip recomposes when the
+private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppViewModel, rec: RecState?,
+                                                                        onRequestLocation: () -> Unit,
+                                                                        pairCamera: (String) -> Unit) {
+    // Cell states tick with every downloaded chunk: read only through derived values, so the box recomposes when the
     // card / modal really changes, not per tick (else the sheet moves janky while areas download – CellStateReads.kt).
     val cellCardTarget by rememberDerived(vm.cells.states, vm.cells.installed) { s, i -> vm.cellCardUi(s, i) }
     // no flash (owner rule): fast steps ("Preparing…" for a moment before "Downloading") are skipped,
@@ -325,43 +326,44 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: 
     val cellCb = CellCardCallbacks(onMobileYes = acted(vm::cellCardMobileYes), onWifiOnly = acted(vm::cellCardWifiOnly),
         onRetry = acted(vm::cellCardRetry), onClose = acted(vm::closeCellCard), onCancel = acted(vm::cancelCellLoading),
         onAllowLocation = acted(onRequestLocation))
-    // ONE blue strip at the top (owner): a map answer / problem (mobile data, failed, offline …), otherwise the
-    // background progress; no second map card in the plan sheet
+    // a map answer / problem (mobile data, failed, offline …) – no second map card in the plan sheet
     val notice = mapNotice(cellCard)
     val bg = rememberBackgroundDownload(vm)
-    val density = LocalDensity.current
-    // the bottom below the status bar: top (chip / strip) + measured height
-    fun Modifier.measured(topDp: Int) =
-        onSizeChanged { vm.backgroundStripBottomDp = topDp + with(density) { it.height.toDp().value.toInt() } }
-    // strips: a calm gap below the search bar (owner 2026-10-30); the small chip right under ☰
-    val top = Modifier.modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = MessagePlacement.STRIP_TOP_DP.dp)
-    val chipTop = Modifier.modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = MessagePlacement.CHIP_TOP_DP.dp)
-    // plain progress is a small chip under ☰ ("⬇ Bad Waldsee · 34 %"), not a full-width strip
-    val chipOn = bg != null && !vm.searchOpen && notice == null && !vm.pairHint
-    LaunchedEffect(chipOn, notice != null, vm.hereAsk != null, vm.syncNote != null, vm.pairHint) {
-        vm.backgroundStripShown = chipOn ||
-            ((notice != null || vm.hereAsk != null || vm.syncNote != null || vm.pairHint) && !vm.searchOpen)
-    }
     val here = vm.hereAsk
     val syncNote = vm.syncNote
-    val strip = Modifier.align(Alignment.TopCenter).then(top).padding(start = 16.dp, end = 16.dp)
-        .measured(MessagePlacement.STRIP_TOP_DP)
-    if (vm.pairHint && !vm.searchOpen) {
-        // ☰ → Pair with browser, the first time (owner 2026-10-30): the one step line, then the camera
-        PairHintStrip(onCamera = { vm.pairHintCamera(pairCamera) }, onCancel = vm::pairHintCancel, modifier = strip)
-    } else if (syncNote != null && !vm.searchOpen) {
-        // a pairing was just made or ended (owner 2026-10-30): "Paired. …" / "Unpaired. …" with OK, until OK; the map
-        // strips wait for it
-        SyncNoteStrip(syncNote, onOk = vm::syncNoteOk, modifier = strip)
-    } else if (notice != null && !vm.searchOpen) {
-        MapNoticeStrip(notice, cellCb, strip)
-    } else if (here != null && !vm.searchOpen) {
+    val upd = vm.update as? AppViewModel.UpdateState.Available
+    val mapBox = notice?.let { mapNoticeMessage(it, cellCb) }
+    val message = if (vm.searchOpen) null else Messages.pick(listOf(
+        // ☰ → Pair with browser, the first time (owner 2026-10-30): the one step, then the camera
+        if (vm.pairHint) pairHintMessage(onCamera = { vm.pairHintCamera(pairCamera) }, onCancel = vm::pairHintCancel) else null,
+        mapBox?.takeIf { it.kind == MessageKind.FRAGE },
         // opening the app asks for the map of here, it never loads by itself, e.g. in a car (owner)
-        HereAskStrip(here.regions, here.bytes, onLoad = { vm.answerHereAsk(true) }, onNotNow = { vm.answerHereAsk(false) },
-            mustBuild = here.mustBuild, modifier = strip)
+        here?.let { hereAskMessage(it.bytes, onLoad = { vm.answerHereAsk(true) }, onNotNow = { vm.answerHereAsk(false) }, mustBuild = it.mustBuild) },
+        upd?.release?.version?.takeIf { rec == null && it != vm.updateDismissed }?.let { v ->
+            updateMessage(v, onInstall = { vm.installUpdate() }, onLater = { vm.updateDismissed = v })
+        },
+        vm.errorCard?.let { errorMessage(it) { vm.errorCard = null } },
+        // a pairing was just made or ended (owner 2026-10-30): "Paired. …" / "Unpaired. …" with OK, until OK
+        syncNote?.let { syncNoteMessage(it, onOk = vm::syncNoteOk) },
+        mapBox?.takeIf { it.kind != MessageKind.FRAGE },
+    ))
+    // states (no box) only while no box shows: the quiet pill, else plain progress as a small chip under ☰
+    val pill = notice?.takeIf { message == null && !vm.searchOpen && mapNoticeKind(it) == null }
+    val chipOn = bg != null && !vm.searchOpen && message == null && notice == null
+    LaunchedEffect(chipOn, message != null, pill != null) { vm.backgroundStripShown = chipOn || message != null || pill != null }
+    val density = LocalDensity.current
+    // the bottom below the status bar: top + measured height (hints under the search bar go below it)
+    fun Modifier.measured(topDp: Int) =
+        onSizeChanged { vm.backgroundStripBottomDp = topDp + with(density) { it.height.toDp().value.toInt() } }
+    val top = MessagePlacement.topDp(MessageScreen.PLAN)
+    MessageSlot(message, top, Modifier.modeEdge(ModeEdge.TOP), onBottomDp = { vm.backgroundStripBottomDp = it })
+    if (pill != null) {
+        MapNoticePill(pill, Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding()
+            .padding(top = top.dp, start = 16.dp, end = 16.dp).measured(top))
     } else if (chipOn) {
         BackgroundDownloadChip(bg!!, onClick = { vm.downloadDetailsOpen = true },
-            modifier = Modifier.align(Alignment.TopEnd).then(chipTop).padding(end = 12.dp).measured(MessagePlacement.CHIP_TOP_DP))
+            modifier = Modifier.align(Alignment.TopEnd).modeEdge(ModeEdge.TOP).statusBarsPadding()
+                .padding(top = MessagePlacement.CHIP_TOP_DP.dp, end = 12.dp).measured(MessagePlacement.CHIP_TOP_DP))
     }
     BackgroundDownloadDetails(vm, bg)
 }

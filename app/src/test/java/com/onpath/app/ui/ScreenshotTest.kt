@@ -76,7 +76,8 @@ class ScreenshotTest {
                     SheetWithFooter(TOP_BAR_BOTTOM, footer = {
                         Column(Modifier.fillMaxWidth()) { aboveFooter(); footer() }
                     }, sheet = bottom)
-                    Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.STRIP_TOP_DP.dp, start = 16.dp, end = 16.dp)) { top() }
+                    Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.topDp(MessageScreen.PLAN).dp,
+                        start = MessagePlacement.GAP_DP.dp, end = MessagePlacement.GAP_DP.dp)) { top() }
                 }
             }
         }
@@ -882,11 +883,16 @@ class ScreenshotTest {
     }
 
     /**
-     * My routes during a tour → a planned route tapped: nothing loads, the blue box "End the running tour first, then this
-     * route can be loaded." with OK over the list (owner 2026-10-31); the list itself looks as always.
+     * My routes during a tour → a planned route tapped: nothing loads, the box "End the running tour first, then this
+     * route can be loaded." with OK under the tabs, over the list (HINWEIS, owner 2026-10-31); the list looks as always.
      */
     @Test fun routesTourBlocked() = paparazzi.snapshot {
-        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, tourBlocked = true) }
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                RoutesScreen(tourList, {}, {}, {}, {}, {})
+                MessageSlot(tourBlockedMessage {}, MessagePlacement.topDp(MessageScreen.ROUTES))
+            }
+        }
     }
 
     /** Sheet ⋯ → Save route on a plan loaded from a saved route: Save (overwrite) or Save as new… (tap outside = cancel). */
@@ -936,22 +942,22 @@ class ScreenshotTest {
     /** Save beside ⋯ on a long day hike: time and distance still in full (their own line when they do not fit). */
     /** Right after Pair (owner 2026-10-30): back on the Plan map, "Paired. …" with OK at the top until OK. */
     @Test fun planPairedNote() = paparazzi.snapshot {
-        Frame(top = { SyncNoteStrip(SyncNote.PAIRED, onOk = {}) }) { PlanPanel(planUi(), PlanCallbacks()) }
+        Frame(top = { MessageCard(syncNoteMessage(SyncNote.PAIRED, onOk = {})) }) { PlanPanel(planUi(), PlanCallbacks()) }
     }
 
     /** Right after Unpair (owner 2026-10-30, as simple as pairing): back on the Plan map, "Unpaired. …" with OK. */
     @Test fun planUnpairedNote() = paparazzi.snapshot {
-        Frame(top = { SyncNoteStrip(SyncNote.UNPAIRED, onOk = {}) }) { PlanPanel(planUi(), PlanCallbacks()) }
+        Frame(top = { MessageCard(syncNoteMessage(SyncNote.UNPAIRED, onOk = {})) }) { PlanPanel(planUi(), PlanCallbacks()) }
     }
 
     /** Unpaired, the server not reached: the same strip asks to unpair the browser there too. */
     @Test fun planUnpairedOfflineNote() = paparazzi.snapshot {
-        Frame(top = { SyncNoteStrip(SyncNote.UNPAIRED_OFFLINE, onOk = {}) }) { PlanPanel(planUi(), PlanCallbacks()) }
+        Frame(top = { MessageCard(syncNoteMessage(SyncNote.UNPAIRED_OFFLINE, onOk = {})) }) { PlanPanel(planUi(), PlanCallbacks()) }
     }
 
     /** ☰ → Pair with browser, the first time (owner 2026-10-30): the one step line + Open camera, then the camera. */
     @Test fun planPairHint() = paparazzi.snapshot {
-        Frame(top = { PairHintStrip(onCamera = {}, onCancel = {}) }) { PlanPanel(planUi(), PlanCallbacks()) }
+        Frame(top = { MessageCard(pairHintMessage(onCamera = {}, onCancel = {})) }) { PlanPanel(planUi(), PlanCallbacks()) }
     }
 
     @Test fun planUnsavedLongHike() = paparazzi.snapshot {
@@ -979,7 +985,7 @@ class ScreenshotTest {
         "0.4.1", "- Trail names along the paths\n- Update button in Settings", "https://x/onpath.apk", 32_000_000, "https://x")
 
     @Test fun updateBanner() = paparazzi.snapshot {
-        Frame(aboveFooter = { UpdateBanner(AppViewModel.UpdateState.Available(release), {}, {}, Modifier.padding(12.dp)) }) {
+        Frame(top = { MessageCard(updateMessage(release.version, {}, {})) }) {
             PlanPanel(planUi(n = 0, r = null), PlanCallbacks())
         }
     }
@@ -1004,14 +1010,16 @@ class ScreenshotTest {
 
     private fun planWithCard(n: Int = 1, r: PlannedRoute? = null, size: PlanSize = PlanSize.COMPACT) = planUi(n = n, r = r, size = size)
 
-    /** What the map needs from the user shows in the blue strip at the top, not as a card in the sheet. */
+    /** What the map needs from the user shows at the top (a box, or the grey pill for a state), not as a card in the sheet. */
     @Composable
     private fun CardFrame(card: CellCardUi?, ui: PlanUi, gps: GpsStatus = GpsStatus.GOOD) =
-        Frame(gps = gps, top = { mapNotice(card)?.let { MapNoticeStrip(it, CellCardCallbacks()) } }) { PlanPanel(ui, PlanCallbacks()) }
+        Frame(gps = gps, top = {
+            mapNotice(card)?.let { n -> mapNoticeMessage(n, CellCardCallbacks())?.let { MessageCard(it) } ?: MapNoticePill(n) }
+        }) { PlanPanel(ui, PlanCallbacks()) }
 
-    /** The app opened where there is no detailed map – the strip asks, nothing loads by itself. */
+    /** The app opened where there is no detailed map – the box asks, nothing loads by itself. */
     @Test fun hereAsk() = paparazzi.snapshot {
-        Frame(top = { HereAskStrip(2, 21L * 1_048_576, {}, {}) }) { PlanPanel(planWithCard(n = 0), PlanCallbacks()) }
+        Frame(top = { MessageCard(hereAskMessage(21L * 1_048_576, {}, {})) }) { PlanPanel(planWithCard(n = 0), PlanCallbacks()) }
     }
 
     /** T1: a start point set outside the detailed map – the server builds the cells. */
