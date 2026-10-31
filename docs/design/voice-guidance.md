@@ -1,6 +1,7 @@
 # Voice guidance: few, clear sentences
 
-Status: **agreed with the owner 2026-10-31 (all questions of §6: yes), not built** (backlog "Voice guidance"; F-NAV-05). Owner 2026-10-31: "every tester asks
+Status: **built 2026-10-31** (`navigation/VoiceGuide`, `navigation/VoiceText`, `recording/Speaker`, phone setup step
+"Voice", Settings → Navigation); agreed with the owner (all questions of §6: yes) (backlog "Voice guidance"; F-NAV-05). Owner 2026-10-31: "every tester asks
 whether it talks" – Android's own speech output (Google or the phone's engine, offline voices only), names spoken by the
 same voice; "smart, clever sentences, not too much". Built after the feature stop (first the ride with the checklist).
 
@@ -42,18 +43,18 @@ same voice; "smart, clever sentences, not too much". Built after the feature sto
 
 | When | Deutsch | English |
 | --- | --- | --- |
-| Tour starts with a route | „Los geht's. 12 Kilometer bis Lana, etwa 50 Minuten." | "Off we go. 12 kilometres to Lana, about 50 minutes." |
-| Junction | „In 100 Metern links." | "In 100 metres, turn left." |
+| Tour starts with a route | „Los geht's. 12 Kilometer bis Lana, etwa 50 Minuten." | "Off we go. 12 kilometers to Lana, about 50 minutes." |
+| Junction | „In 100 Metern links." | "In 100 meters, turn left." |
 | … slight / sharp / keep | „In 100 Metern leicht rechts." · „… scharf links." · „… links halten." | "… bear right." · "… sharp left." · "… keep left." |
-| … onto another kind of way | „In 50 Metern links auf den Feldweg." | "In 50 metres, turn left onto the track." |
-| … two turns close | „In 100 Metern links, danach gleich rechts." | "In 100 metres turn left, then right." |
-| … then a long quiet stretch | „In 100 Metern rechts, dann 3 Kilometer geradeaus." | "In 100 metres turn right, then 3 kilometres straight on." |
+| … onto another kind of way | „In 50 Metern links auf den Feldweg." | "In 50 meters, turn left onto the track." |
+| … two turns close | „In 100 Metern links, danach gleich rechts." | "In 100 meters turn left, then right." |
+| … then a long quiet stretch | „In 100 Metern rechts, dann 3 Kilometer geradeaus." | "In 100 meters turn right, then 3 kilometers straight on." |
 | Roundabout | „Im Kreisverkehr die zweite Ausfahrt." | "At the roundabout, take the second exit." |
 | Turn round (U-turn on the route) | „Bitte wenden." | "Please turn round." |
 | Off route (the question appears) | „Abseits der Route. Bitte aufs Handy schauen." | "Off the route. Please look at your phone." |
 | Back on the route by yourself | „Wieder auf der Route." | "Back on the route." |
-| New route taken | „Neue Route. In 200 Metern rechts." (the next junction) | "New route. In 200 metres, turn right." |
-| Stop reached | „Gasthof Hochmuth erreicht. Weiter nach Algund, 4 Kilometer." (no name → „Stopp 3 erreicht.") | "Gasthof Hochmuth reached. On to Algund, 4 kilometres." |
+| New route taken | „Neue Route. In 200 Metern rechts." (the next junction) | "New route. In 200 meters, turn right." |
+| Stop reached | „Gasthof Hochmuth erreicht. Weiter nach Algund, 4 Kilometer." (no name → „Stopp 3 erreicht.") | "Gasthof Hochmuth reached. On to Algund, 4 kilometers." |
 | Destination | „Ziel erreicht." | "You have arrived." |
 | No point ahead (tour edit) | „Kein Ziel mehr vor dir. Bitte aufs Handy schauen." | "No destination ahead. Please look at your phone." |
 | No GPS for 30 s while guided | „Kein GPS-Signal." (once; nothing when it is back) | "No GPS signal." |
@@ -110,3 +111,16 @@ ride with ~40 cues today → ~40 sentences in 3 h, about one every 4–5 min.
    https://learn.microsoft.com/en-us/dotnet/api/android.speech.tts.texttospeech.engine.keyfeaturenotinstalled
 7. Mapbox voice instructions player defaults (usage, focus):
    https://docs.mapbox.com/android/navigation/api/coreframework/3.30.1/voice/com.mapbox.navigation.voice.options/-voice-instructions-player-options/
+
+## 7. A new language (owner: more languages without a big change)
+The voice speaks the app's text language (`Txt.language()`), with the phone's offline voice for it. Nothing in the
+code knows a language:
+1. Add `strings/…/composeResources/values-xx/strings_voice.xml` – the same keys as `values/strings_voice.xml`. They are
+   **whole phrases with placeholders**, so the language orders them its own way: `voice_in` = "%1$s, %2$s" in English
+   ("In 100 meters, turn left"), "%1$s %2$s" in German ("In 100 Metern links"); the "in …" distance and the plain
+   distance are separate keys (German dative "Metern" vs "Meter"); ordinals of roundabout exits are words
+   (`voice_exit_1…6`); counts use `<plurals>`.
+2. The app's other texts in `values-xx` and the language in `Txt.language()` / `docs/i18n.md` (the app is EN + DE today).
+3. Nothing else: `Speaker` picks the best offline voice for that language; a phone without one gets the setup step's
+   "Load voice".
+`VoiceTextTest` shows every sentence in EN and DE – add the new language there.

@@ -236,7 +236,8 @@ fun MapScreen(
                 item {
                     NavigationSection(vm.settings, vm::updateSettings,
                         onPhoneSetup = { vm.navSettingsOpen = false; vm.openSetup(com.onpath.app.setup.Purpose.SETTINGS) },
-                        onTestVibration = { vm.navSettingsOpen = false; vm.openSetupStep(com.onpath.app.setup.CheckId.VIBRATION) })
+                        onTestVibration = { vm.navSettingsOpen = false; vm.openSetupStep(com.onpath.app.setup.CheckId.VIBRATION) },
+                        onTestVoice = { vm.navSettingsOpen = false; vm.openSetupStep(com.onpath.app.setup.CheckId.VOICE) })
                 }
             }
         }
@@ -272,7 +273,7 @@ private fun PlanMode(
                 sync = SyncMenuUi.of(vm.sync.state.collectAsState().value, vm.sync.deviceName,
                     System.currentTimeMillis()),
                 // owner 2026-10-30: red "Phone setup" first while a tour needs something (vm.phone is re-read on resume)
-                onPhoneSetup = if (!SettingsSummary.phoneNeeded(com.onpath.app.setup.PhoneCheck.all(vm.phone, vm.vibrationUsed, vm.phoneTaken))) null
+                onPhoneSetup = if (!SettingsSummary.phoneNeeded(com.onpath.app.setup.PhoneCheck.all(vm.phone, vm.vibrationUsed, vm.phoneTaken, vm.voiceUsed))) null
                     else ({ vm.openSettings(SettingsPage.PHONE) }),
                 // owner 2026-10-31: "Save route" on top whenever there is a plan (the sheet has no Save any more); a dot
                 // on ☰ while it has unsaved changes
@@ -546,7 +547,9 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         val guide = nav?.toRoute?.takeIf { nav.prompt != null && nav.prompt !is com.onpath.app.navigation.NavPrompt.Question }
         c.setNavGuide(location?.let { com.onpath.app.routing.GeoPoint(it.latitude, it.longitude) }, guide?.target)
     }
-    LaunchedEffect(c, rec?.track?.sumOf { it.size }?.takeUnless { rest }) { if (!rest) c.setTrack(MapController.SRC_REC, rec?.track ?: emptyList()) }
+    // no service after a reboot: the interrupted tour's track behind its question (Continue · Delete · Save)
+    val recTrack = rec?.track ?: vm.unfinished?.let { vm.unfinishedTrack } ?: emptyList()
+    LaunchedEffect(c, recTrack.sumOf { it.size }.takeUnless { rest }) { if (!rest) c.setTrack(MapController.SRC_REC, recTrack) }
     LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
     // the spot tapped in the route warnings list: its piece of route amber (Plan only)
     LaunchedEffect(c, vm.spotLine, vm.mode) { c.setSpotLine(vm.spotLine?.takeIf { vm.mode == AppMode.PLAN }) }

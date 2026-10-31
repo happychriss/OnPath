@@ -1409,6 +1409,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Work the user started that takes a moment: a spinner where it was started. */
     var busy by mutableStateOf<Busy?>(null)
     var unfinished by mutableStateOf<Tour?>(null)
+    /** The track of [unfinished], drawn on the map while its question shows (no service runs then). */
+    var unfinishedTrack by mutableStateOf<List<List<GeoPoint>>>(emptyList())
     var finishedTour by mutableStateOf<Tour?>(null)
     /** Moving time / breaks / planned vs. needed of [finishedTour] (null = not known). */
     var finishedTimes by mutableStateOf<com.onpath.app.time.TourTimes?>(null)
@@ -1491,7 +1493,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             withContext(Dispatchers.Main) { enter(start); startModeKnown = true }
             if (active != null && RecordingService.state.value == null) {
                 delay(1500) // the service may be restarting by itself (sticky)
-                if (RecordingService.state.value == null) withContext(Dispatchers.Main) { unfinished = active }
+                if (RecordingService.state.value == null) {
+                    // drawn behind the question, so the user sees which tour it is (field bug 2026-10-31: empty map)
+                    val line = runCatching { db.loadSegments(active.id).map { seg -> seg.map { GeoPoint(it.lat, it.lon) } } }
+                        .onFailure { Problems.warn("db", "Track of the unfinished tour could not be read – not drawn", it) }
+                        .getOrDefault(emptyList())
+                    withContext(Dispatchers.Main) { unfinishedTrack = line; unfinished = active }
+                }
             }
         }
         // The service stopped by itself (permission gone, foreground refused, database broken): say why, in the app too.
@@ -1834,11 +1842,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val split = splitOf(before, waypoints.toList())
         routeBackAsk = split == TourSplit.Outcome.NothingAhead ||
             RouteBack.asks(before, waypoints, recState.value != null, followLine != null, followIsTrack, myPosition())
-        if (routeBackAsk) Problems.trace("plan", "Edit during the tour left no point ahead: asking \"No destination ahead\"")
+        if (routeBackAsk) {
+            Problems.trace("plan", "Edit during the tour left no point ahead: asking \"No destination ahead\"")
+            sayEvent(RecordingService.SAY_NO_DESTINATION)
+        }
         planChanged()
         endGuidanceIfPlanEmpty()
         nextCause = PlanStatus.Cause.PointEdit
         recalc()
+    }
+
+    /** A tour event for the spoken directions (the service says it when they are on). */
+    private fun sayEvent(what: String) {
+        if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_SAY) {
+            putExtra(RecordingService.EXTRA_SAY, what)
+        }
     }
 
     /** Current position (the map's GPS), else the tour's last recorded point; null without either. */
@@ -2421,9 +2439,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         searchPlace = p
         searchMark = p
         followMe = false
-        // Google Maps place → go there (owner): the ring's menu opens by itself once the map is there – once per share
+        // Google Maps place → go there (owner): the ring's menu opens by itself once the map is there – on every share
         sharedMenuWaiting = sharedMenu.arrived(SharedPlaceMenu.key(p.lat, p.lon, p.name))
-        if (!sharedMenuWaiting) Problems.trace("plan", "Shared place again: its menu opened before – ring only")
         // outside the downloaded map the ring still shows (on an empty map) – the overview zoom makes that clear
         flyToPlace(p)
     }
@@ -3648,7 +3665,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun checkArrival(position: GeoPoint, remainingAlongM: Double?) {
         if (mode != AppMode.NAVIGATE || recState.value == null) return
         val acc = tracker.location.value?.takeIf { it.hasAccuracy() }?.accuracy?.toDouble()
-        if (arrivalGate.onFix(position, followLine?.lastOrNull(), remainingAlongM, acc)) arrivalAsk = true
+        if (arrivalGate.onFix(position, followLine?.lastOrNull(), remainingAlongM, acc)) {
+            if (!arrivalAsk) sayEvent(RecordingService.SAY_ARRIVED)
+            arrivalAsk = true
+        }
     }
 
     // ---------------- follow / record ----------------
@@ -4537,7 +4557,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun updatePhone(s: com.onpath.app.setup.PhoneState) {
         phone = s
-        setupGuide = setupGuide?.refresh(s, vibrationUsed)
+        setupGuide = setupGuide?.refresh(s, vibrationUsed, voiceUsed)
         finishSetupIfDone()
     }
 
@@ -4546,8 +4566,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * the locate button [then] runs when the guide ends and what it needs is there.
      */
     fun openSetup(purpose: com.onpath.app.setup.Purpose, then: (() -> Unit)? = null) {
-        val g = com.onpath.app.setup.SetupGuide.of(purpose, phone, vibrationUsed, prefs.snoozed(System.currentTimeMillis()))
-            ?.refresh(phone, vibrationUsed)
+        val g = com.onpath.app.setup.SetupGuide.of(purpose, phone, vibrationUsed, prefs.snoozed(System.currentTimeMillis()), voiceUsed)
+            ?.refresh(phone, vibrationUsed, voiceUsed)
         if (g == null || g.finished && then != null && setupReady(purpose)) { then?.invoke(); return }
         Problems.trace("setup", "Phone setup guide ($purpose): ${g.steps.joinToString()}")
         setupThen = then
@@ -4571,7 +4591,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val id = g.current
         if (id != null && g.purpose == com.onpath.app.setup.Purpose.BEFORE_TOUR &&
             com.onpath.app.setup.PhoneCheck.need(id) != com.onpath.app.setup.Need.REQUIRED) prefs.snooze(id, System.currentTimeMillis())
-        setupGuide = g.putOff().refresh(phone, vibrationUsed)
+        setupGuide = g.putOff().refresh(phone, vibrationUsed, voiceUsed)
         finishSetupIfDone()
     }
 
@@ -4584,10 +4604,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setupVibrationPlayed() { setupGuide = setupGuide?.vibrationPlayed() }
 
     fun setupVibrationAnswer(f: com.onpath.app.setup.Felt) {
+        if (setupGuide?.current == com.onpath.app.setup.CheckId.VOICE) {
+            prefs.voiceHeard = f
+            Problems.trace("setup", "Voice test: heard = $f")
+            setupGuide = setupGuide?.vibrationAnswer(f)
+            updatePhone(phone.copy(voiceHeard = f))
+            return
+        }
         prefs.vibrationFelt = f
         Problems.trace("setup", "Vibration test: felt = $f")
         setupGuide = setupGuide?.vibrationAnswer(f)
         updatePhone(phone.copy(vibrationFelt = f))
+    }
+
+    /** Spoken directions switched on for bike or hike: the voice step applies only then. */
+    val voiceUsed: Boolean get() = settings.voiceBike || settings.voiceHike
+
+    /** The voice test found the phone's speech output in this [status] (recording/Speaker). */
+    fun setupVoiceStatus(status: com.onpath.app.setup.VoiceStatus) {
+        prefs.voiceStatus = status
+        Problems.trace("setup", "Voice test: speech output $status")
+        updatePhone(phone.copy(voice = status))
     }
 
     fun setupBrandDone() {

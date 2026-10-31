@@ -8,8 +8,8 @@ import java.util.Locale
  * destination" / "Add as stop N" / "Add as new destination", plus "Open in Google Maps") opens by itself – the very menu
  * a hold on the ring opens, under the same rules (Plan, no shown track: [AppViewModel.canEditMap]).
  *
- * Once per share: the same place shared again right after (no other shared place's menu in between) shows the ring
- * only – hold it for the menu. The menu does not open
+ * Every share opens it, the same place shared again too (field bug 2026-10-31; a re-delivered intent never gets here –
+ * MainActivity's IncomingIntent handles each share once). The menu does not open
  * when the user went on meanwhile – moved the map by hand, opened another menu or screen, the ring is gone.
  * Pure state; AppViewModel holds one, MapScreen asks [check] whenever the camera stops.
  */
@@ -19,11 +19,8 @@ class SharedPlaceMenu {
     /** Key of the shared place whose menu waits for the camera; null = nothing waits. */
     var waiting: String? = null
         private set
-    private var lastOpened: String? = null
-
-    /** A shared place is shown: its menu waits for the camera. False = its menu opened before (same share again). */
+    /** A shared place is shown: its menu waits for the camera. Always true (kept for the caller's trace). */
     fun arrived(key: String): Boolean {
-        if (key == lastOpened) { waiting = null; return false }
         waiting = key
         return true
     }
@@ -47,7 +44,6 @@ class SharedPlaceMenu {
             loading || offPx == null || offPx > arrivedPx -> Step.WAIT
             else -> Step.OPEN
         }
-        if (step == Step.OPEN) lastOpened = w
         if (step != Step.WAIT) waiting = null
         return step
     }

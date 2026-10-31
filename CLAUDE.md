@@ -174,7 +174,10 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
   E-bike → `touring.brf`, Gravelbike → `trekking.brf`, MTB + E-MTB → `mtb.brf`, Hike → `hiking-mountain.brf` with the
   T limit (E-bike / E-MTB change only power, speed and mass). In a sentence the activity reads "Hike T3"
   (`LastActivity.name`), on the chip "Hike · T3".
-- **Git**: small commits with clear messages on `main` (single developer for now); never commit map data,
+- **Git**: small commits with clear messages, pushed **straight to `main`** (planner: `web-spike`) after `tools/ci/gate.sh` –
+  standing permission of the owner, no pull request, don't use or ask about the session's `claude/…` branch. A pull
+  request to the owner only for `.github/workflows/`, signing / build config, keys / secrets, privacy / licence texts.
+  Never force-push or delete a shared branch (`docs/working-agreement.md` §1 "Where to push"); never commit map data,
   APKs or `local.properties`.
 - **Requirements** live in `docs/requirements.md` (exported from the shared Claude doc); keep IDs stable,
   add new ones at the end of a section.

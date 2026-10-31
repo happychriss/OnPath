@@ -280,3 +280,10 @@ button labels except from APIs.
 5. Vibration test with Alarm vibration on (felt) and off (not felt → steps shown).
 6. App info → Battery → Restricted → Phone setup shows ✗ B1 → fix → ✓ after coming back.
 7. 30-minute ride with the screen off, battery saver on → B3 shown before the start; track complete.
+
+
+## Addendum 2026-10-31: Voice (V2)
+A recommended step "Spoken directions" after the vibration test (only while spoken directions are on for bike or
+hike): the test sentence through the phone's offline voice → "Did you hear it?"; no offline voice for the app
+language → "Load voice" (`TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA`); no speech output at all → a note, Continue.
+The voice speaks on a tour only once the answer was yes (`docs/design/voice-guidance.md`).

@@ -7,7 +7,7 @@ import java.io.File
 
 /**
  * There are three ways to end a tour – End tour, "You have arrived" → Save
- * and the "Unfinished tour" dialog after a restart. All three show the bus / car / lift summary when a ride was found
+ * and the "Interrupted tour" dialog after a restart. All three show the bus / car / lift summary when a ride was found
  * (core feature C12), and the unfinished dialog has Continue · Delete · Save like End tour.
  */
 class TourEndPathsTest {
@@ -24,6 +24,15 @@ class TourEndPathsTest {
         assertFalse(arrival, arrival.contains("onSave = vm::endTour"))
         val ask = body(vm, "fun askEndTour(")
         assertTrue(ask, ask.contains("EndAsk.Rides(id, s)") && ask.contains("saveIfNoRides -> endTour()"))
+    }
+
+    /** Field bug 2026-10-31: after a reboot the map behind "Interrupted tour" was empty – no service, no track. */
+    @Test fun unfinishedTourIsDrawnBehindItsQuestion() {
+        val start = vm.substringAfter("val active = db.findActiveRecording()").substringBefore("\n        }\n")
+        assertTrue(start, start.contains("db.loadSegments(active.id)") && start.contains("unfinishedTrack = line; unfinished = active"))
+        val draw = map.substringAfter("val recTrack =").substringBefore("\n")
+        assertTrue(draw, draw.contains("rec?.track ?: vm.unfinished?.let { vm.unfinishedTrack }"))
+        assertTrue(map.contains("c.setTrack(MapController.SRC_REC, recTrack)"))
     }
 
     @Test fun unfinishedSaveRunsTheRideCheckAndAppliesTheChoice() {

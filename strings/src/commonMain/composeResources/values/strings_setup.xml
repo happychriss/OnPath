@@ -85,4 +85,13 @@
         <item quantity="one">%1$d recommended</item>
         <item quantity="other">%1$d recommended</item>
     </plurals>
+    <string name="setup_voice_title">Spoken directions</string>
+    <string name="setup_voice_why">On a tour OnPath can say where to turn – only where you could take the wrong way, and in good time. The phone speaks without the internet, with its own voice. The test shows whether you can hear it.</string>
+    <string name="setup_voice_do">Turn up the volume and tap Test.</string>
+    <string name="setup_voice_question">Did you hear the sentence?</string>
+    <string name="setup_voice_yes">Yes, heard it</string>
+    <string name="setup_voice_not_heard">Then the media volume is low or off. Press the volume button while the test plays, then test again. With headphones the sound comes there.</string>
+    <string name="setup_voice_missing">Your phone has no offline voice for this language yet. Tap Load voice, choose the language and download it – after that it works without the internet.</string>
+    <string name="setup_voice_load">Load voice</string>
+    <string name="setup_voice_none">This phone has no speech output. OnPath guides you by vibration and on the screen.</string>
 </resources>

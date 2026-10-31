@@ -61,6 +61,8 @@ object PhoneStateReader {
             notificationAskBlocked = notificationAskBlocked,
             hasVibrator = guard(true, "vibrator") { Cues.hasVibrator(ctx) },
             vibrationFelt = prefs.vibrationFelt,
+            voice = prefs.voiceStatus,
+            voiceHeard = prefs.voiceHeard,
             backgroundRestricted = guard(false, "background restriction") {
                 sdk >= 28 && ctx.getSystemService(ActivityManager::class.java).isBackgroundRestricted
             },

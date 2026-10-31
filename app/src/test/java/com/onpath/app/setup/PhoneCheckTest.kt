@@ -51,6 +51,24 @@ class PhoneCheckTest {
         assertTrue("no vibrator: nothing to test", PhoneCheck.isOk(CheckId.VIBRATION, s.copy(hasVibrator = false)))
     }
 
+    @Test fun voiceStepOnlyWithSpokenDirectionsOn_okOnceHeard() {
+        // off: no step, no row
+        assertEquals(emptyList<CheckId>(), PhoneCheck.steps(Purpose.FIRST_SETUP, good))
+        // on, not tested yet: after the vibration step, recommended (snoozable before a tour)
+        assertEquals(listOf(CheckId.VOICE), PhoneCheck.steps(Purpose.FIRST_SETUP, good, voiceOn = true))
+        assertEquals(Need.RECOMMENDED, PhoneCheck.need(CheckId.VOICE))
+        assertEquals(emptyList<CheckId>(), PhoneCheck.steps(Purpose.BEFORE_TOUR, good, snoozed = setOf(CheckId.VOICE), voiceOn = true))
+        val heard = good.copy(voice = VoiceStatus.READY, voiceHeard = Felt.YES)
+        assertTrue(PhoneCheck.isOk(CheckId.VOICE, heard))
+        // the voice was removed from the phone since: missing again
+        assertFalse(PhoneCheck.isOk(CheckId.VOICE, heard.copy(voice = VoiceStatus.MISSING)))
+        // no speech output at all: nothing to set up
+        assertFalse(PhoneCheck.applies(CheckId.VOICE, good.copy(voice = VoiceStatus.NO_ENGINE), voiceOn = true))
+        val fresh = PhoneState(sdk = 35, manufacturer = "Google")
+        assertEquals(listOf(CheckId.LOCATION, CheckId.PRECISE, CheckId.VIBRATION, CheckId.VOICE),
+            PhoneCheck.steps(Purpose.FIRST_SETUP, fresh, voiceOn = true))
+    }
+
     @Test fun channelSwitchedOffCountsAsNotificationsOff() {
         assertFalse(PhoneCheck.isOk(CheckId.NOTIFICATIONS, good.copy(channelOff = true)))
     }

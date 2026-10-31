@@ -218,7 +218,7 @@ class MainActivity : ComponentActivity() {
                             settings = vm.settings,
                             onChange = vm::updateSettings,
                             activity = vm.activity,
-                            phoneChecks = com.onpath.app.setup.PhoneCheck.all(vm.phone, vm.vibrationUsed, vm.phoneTaken),
+                            phoneChecks = com.onpath.app.setup.PhoneCheck.all(vm.phone, vm.vibrationUsed, vm.phoneTaken, vm.voiceUsed),
                             phone = vm.phone,
                             onPhoneFix = vm::openSetupStep,
                             checks = remember(vm.missing) { vm.dataFiles.check() },
@@ -383,6 +383,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        voiceTest?.stop(); voiceTest = null
         val others = ScreenLifecycle.destroyed(screenNo)
         com.onpath.app.debug.Problems.trace("app", ScreenLifecycle.destroyedLine(screenNo, isFinishing, isChangingConfigurations, others))
         super.onDestroy()
@@ -683,6 +684,10 @@ class MainActivity : ComponentActivity() {
             vm.setupVibrationPlayed()
         },
         onVibrationAnswer = vm::setupVibrationAnswer,
+        onTestVoice = ::testVoice,
+        onLoadVoice = {
+            open(Intent(android.speech.tts.TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA), "voice download")
+        },
         onSoundSettings = { open(Intent(Settings.ACTION_SOUND_SETTINGS), "sound settings") },
         onAppSettings = ::openAppSettings,
         onMoreHelp = { b -> open(Intent(Intent.ACTION_VIEW, Uri.parse("https://dontkillmyapp.com/${b.helpPage}")), "brand help page") },
@@ -722,8 +727,25 @@ class MainActivity : ComponentActivity() {
                 com.onpath.app.debug.Problems.warn("ui", "Unused-app settings could not be opened", e)
                 openAppSettings()
             }
-            com.onpath.app.setup.CheckId.VIBRATION -> Unit // its own buttons (Test / Yes / No)
+            com.onpath.app.setup.CheckId.VIBRATION, com.onpath.app.setup.CheckId.VOICE -> Unit // their own buttons (Test / Yes / No)
         }
+    }
+
+    /** The voice step's test: the phone's speech output says the test sentence; what it found goes to the phone check. */
+    private var voiceTest: com.onpath.app.recording.Speaker? = null
+
+    private fun testVoice() {
+        val s = voiceTest ?: com.onpath.app.recording.Speaker(applicationContext).also { voiceTest = it }
+        s.onState = { st ->
+            runOnUiThread {
+                vm.setupVoiceStatus(com.onpath.app.recording.Speaker.status(st))
+                if (st == com.onpath.app.recording.Speaker.State.READY) vm.setupVibrationPlayed()
+            }
+        }
+        val ready = s.state == com.onpath.app.recording.Speaker.State.READY
+        s.start()
+        s.say(com.onpath.app.navigation.VoiceText.test())
+        if (ready) vm.setupVibrationPlayed()
     }
 
     private fun openNotificationSettings() =

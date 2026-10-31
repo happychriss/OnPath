@@ -1,0 +1,284 @@
+{
+  "voice_test": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_start": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_start_dest": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_start_time": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_start_dest_time": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_in": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_soon": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_in_m": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_turn_left": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_turn_slight_left": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_turn_sharp_left": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_keep_left": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_turn_right": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_turn_slight_right": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_turn_sharp_right": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_keep_right": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_u_turn": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_roundabout": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_roundabout_exit": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_exit_1": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_exit_2": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_exit_3": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_exit_4": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_exit_5": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_exit_6": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_onto": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_way_path": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_way_track": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_way_road": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_then": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_then_straight": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_sentence": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_off_route": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_back_on_route": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_new_route": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_stop_named": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_stop_number": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_next": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_arrived": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_no_gps": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_no_destination": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_hours_minutes": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_in_km": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_km": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_m": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_minutes": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_hours": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  }
+}
