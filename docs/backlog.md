@@ -7,7 +7,6 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [cloud] Voice guidance (`docs/design/voice-guidance.md`) – for the next release – since 2026-10-31
 
 ## Next
 - **From the external review (A-020 §4) – build only after a small user test by the owner:**
@@ -24,7 +23,9 @@ the git log.
   ride delete a point ahead / the destination after passing the others (grey ✓ points, pale plan line, "Kein Ziel mehr
   vor dir."). **donald:** run `tools/ci/release_rundgang.sh` once – flows 11 and 12 are new and were only compiled in the
   cloud (no emulator); a red flow blocks the next release.
-- **Voice guidance (owner 2026-10-31) – after the feature stop (first the ride with the checklist)** – owner: "every tester
+- **Voice guidance – for the next release (owner 2026-10-31), half built on branch `wip/voice-guidance` (c9fcc073)** –
+  next: compile, unit tests + Paparazzi green there, merge to main, owner test on the Pixel (see project-status "Last
+  session"). Owner: "every tester
   asks whether it talks". **Concept: `docs/design/voice-guidance.md`** (rules, all sentences DE/EN, 5 questions for the
   owner). Android's own text-to-speech (`TextToSpeech`, no Play Services; only voices that need no
   network), one voice for everything incl. names; all speech from one place (a `Speaker` interface) so the voice can

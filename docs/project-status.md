@@ -6,6 +6,17 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud (Claude Code web), 2026-10-31 – session ended (owner: switch to fixed roles).** On `main`: plan edits
+  during a tour – the position splits the plan into passed / ahead (`navigation/TourSplit`, field bug Hilden, design
+  `docs/design/tour-edit-position.md`, a3e9a4a3, CI green; Rundgang flows 11 + 12 only compiled); voice concept
+  `docs/design/voice-guidance.md` (owner: all questions yes); F-NAV-05 planned. **Half done – branch
+  `wip/voice-guidance` (c9fcc073), NOT on main, not compiled yet:** `navigation/VoiceGuide` + `VoiceText` +
+  `strings_voice.xml` EN/DE (+ meta), `recording/Speaker` (TTS, offline voice, ducking), service wiring (`voiceStep`,
+  `ACTION_SAY` for arrival / nothing ahead), Settings → Navigation voice switches per bike / hike, phone setup step
+  VOICE (`PhoneCheck`, `SetupGuideScreen`, test via `MainActivity.testVoice`), tests `VoiceGuideTest`, `VoiceTextTest`,
+  `PhoneCheckTest.voiceStep…`, docs. The earlier compile hang was a corrupted `VoiceGuide.kt` (129k lines, rewritten in
+  c9fcc073). **Next:** compile + all unit tests + Paparazzi (Settings → Navigation and setup snapshots change) on that
+  branch, fix, then merge to main; the owner tests on the Pixel (setup voice step, a ride). Not released.
 - **cloud-plan (desktop donald, `~/Projects/OnPath-Planner`), 2026-10-31 – browser planner on `web-spike` 97e8836,
   live on plan.onpath.earth, CI green.** App ⇄ web parity made a gate: `web/test/plans.json` (14 plans: TU Dortmund
   Bug 01, Meran T3, Zoggler loop + delete / drag, MTB Lana–Ulten, meadow snap, pinned POI, failed leg, Köln island,
