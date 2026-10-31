@@ -14,6 +14,10 @@ the git log.
   5 s on the bike; lock-screen notification on the Pixel; the older phone checks below; compass arrow: does it stay grey
   all the time on the Pixel? (1c5b8ad); new off-route question "Abseits der Route – neu planen?" with "Ja" / "Ja, Stopp N
   auslassen" (16, 81dbff7); map symbols: rock from z14, orchards / vineyards stronger.
+- **Plan edits during a tour: the position splits the plan (owner 2026-10-31, field bug Hilden)** – deleting the last
+  point ahead left a route behind the user and no word. Rule + all cases: `docs/design/tour-edit-position.md` (passed
+  vs ahead, carried over edits, "Kein Ziel mehr vor dir" replaces RouteBack, pale line behind, ✓ on passed points).
+  Tests first (field case first), then build; release-rundgang flow.
 - **Voice guidance (owner 2026-10-31) – after the feature stop (first the ride with the checklist)** – owner: "every tester
   asks whether it talks". Android's own text-to-speech (`TextToSpeech`, no Play Services; only voices that need no
   network), one voice for everything incl. names; all speech from one place (a `Speaker` interface) so the voice can
