@@ -13,6 +13,12 @@ import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.resources.Density
+import com.onpath.strings.Res
+import com.onpath.strings.Txt
+import com.onpath.strings.maps_card_ready_to_download
+import com.onpath.strings.maps_card_wait_wifi_mb
+import com.onpath.strings.maps_err_area_failed
+import com.onpath.strings.msg_shared_place_not_found
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -27,7 +33,7 @@ import java.util.Locale
 open class MessageCardScreenshotTest {
     @get:Rule
     open val paparazzi = Paparazzi(
-        deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1024, screenHeight = 4200, xdpi = 428, ydpi = 428, density = Density.create(420)),
+        deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1024, screenHeight = 4600, xdpi = 428, ydpi = 428, density = Density.create(420)),
         showSystemUi = false,
     )
 
@@ -37,10 +43,11 @@ open class MessageCardScreenshotTest {
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 MessageCard(pairHintMessage(onCamera = {}, onCancel = {}))
                 MessageCard(hereAskMessage(21L * 1_048_576, {}, {}))
-                mapNoticeMessage(CellCardUi.Working("Load the map along the route?", null, emptyList(), null, null,
+                // the real texts (EN / DE resources) – literal English here showed English boxes in the German picture
+                mapNoticeMessage(CellCardUi.Working(Txt.s(Res.string.maps_card_ready_to_download), null, emptyList(), null, null,
                     MobileQuestion(4, 25L * 1_048_576), null), CellCardCallbacks())?.let { MessageCard(it) }
-                mapNoticeMessage(CellCardUi.Working("Detailed map ready to download", null, emptyList(), null, null, null,
-                    "2 map areas wait for Wi-Fi · 25 MB", canLoadNow = true), CellCardCallbacks())?.let { MessageCard(it) }
+                mapNoticeMessage(CellCardUi.Working(Txt.s(Res.string.maps_card_ready_to_download), null, emptyList(), null, null, null,
+                    Txt.p(Res.plurals.maps_card_wait_wifi_mb, 2, 2, 25L), canLoadNow = true), CellCardCallbacks())?.let { MessageCard(it) }
                 MessageCard(updateMessage("0.4.1", {}, {}))
                 val q = com.onpath.app.navigation.NavPrompt.Question(1, 350.0, 600.0, 20.0, emptyList(), 900.0, 2_000.0)
                 MessageCard(rerouteMessage(q, {}, {}))
@@ -49,9 +56,9 @@ open class MessageCardScreenshotTest {
                 mapNoticeMessage(CellCardUi.NotAvailable, CellCardCallbacks())?.let { MessageCard(it) }
                 mapNoticeMessage(CellCardUi.NeedPosition(permission = false), CellCardCallbacks())?.let { MessageCard(it) }
                 MessageCard(notificationsOffMessage(onSetUp = {}, onOk = {}))
-                mapNoticeMessage(CellCardUi.Failed("Map couldn't be loaded", null, retryable = true), CellCardCallbacks())
+                mapNoticeMessage(CellCardUi.Failed(Txt.s(Res.string.maps_err_area_failed), null, retryable = true), CellCardCallbacks())
                     ?.let { MessageCard(it) }
-                MessageCard(errorMessage("Couldn't find this place. Try again when you have internet.") {})
+                MessageCard(errorMessage(Txt.s(Res.string.msg_shared_place_not_found)) {})
             }
         }
     }
@@ -73,7 +80,7 @@ class MessageCardGermanScreenshotTest : MessageCardScreenshotTest() {
 class MessageCardLargeFontTest : MessageCardScreenshotTest() {
     @get:Rule
     override val paparazzi = Paparazzi(
-        deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1024, screenHeight = 8400, xdpi = 428, ydpi = 428,
+        deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1024, screenHeight = 9400, xdpi = 428, ydpi = 428,
             density = Density.create(420), fontScale = 2.0f),
         showSystemUi = false,
     )
