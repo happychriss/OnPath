@@ -386,7 +386,8 @@ class ReleaseRundgang : E2EBase() {
             nav()?.line?.let { Geo.distance(it.last(), STATION) < 80 && Geo.distance(it.first(), position()) < 150 } == true
         }
         assertFalse("no question", read { it.routeBackAsk })
-        assertEquals(listOf(THEATRE, STATION), read { it.waypoints.toList() })
+        val pts = read { it.waypoints.toList() }
+        assertTrue("the passed start stays, the point ahead is gone: $pts", samePoints(pts, listOf(THEATRE, STATION)))
         shot("2-follows-the-rest")
     }
 
@@ -411,7 +412,7 @@ class ReleaseRundgang : E2EBase() {
         }
         shot("3-back-to-the-start")
         undo()
-        waitUntil("Undo: the destination is back", 15_000) { read { it.waypoints.toList() } == listOf(THEATRE, NORTH, STATION) }
+        waitUntil("Undo: the destination is back", 15_000) { samePoints(read { it.waypoints.toList() }, listOf(THEATRE, NORTH, STATION)) }
         assertFalse(read { it.routeBackAsk })
         shot("4-undo")
     }
@@ -436,6 +437,9 @@ class ReleaseRundgang : E2EBase() {
 
     /** The same line point by point (within 1 m – the session file keeps coordinates, not every extra). */
     private fun sameLine(a: List<GeoPoint>, b: List<GeoPoint>) = a.size == b.size && a.indices.all { Geo.distance(a[it], b[it]) < 1.0 }
+    /** The same plan points within [tolM] – the app snaps free points onto the way ([AppViewModel] snapToRoute). */
+    private fun samePoints(a: List<GeoPoint>, b: List<GeoPoint>, tolM: Double = 30.0) =
+        a.size == b.size && a.indices.all { Geo.distance(a[it], b[it]) < tolM }
     private fun nav(): NavState? = com.onpath.app.recording.RecordingService.state.value?.nav
     private fun position(): GeoPoint = read { vm -> vm.tracker.location.value!!.let { GeoPoint(it.latitude, it.longitude) } }
 

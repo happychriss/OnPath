@@ -65,6 +65,9 @@ for _ in $(seq 1 180); do [ "$("${A[@]}" shell getprop sys.boot_completed 2>/dev
 # ---- APKs + routing data ----
 "${A[@]}" install -r -t "$ROOT/app/build/outputs/apk/debug/app-debug.apk" >/dev/null
 "${A[@]}" install -r -t "$ROOT/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk" >/dev/null
+# a clean app like CI's fresh emulator: this AVD keeps its data, and `emu kill` drops writes not yet on its disk – the
+# last flow's "tour ended" was lost once and the next run began with an interrupted demo tour (2026-10-31)
+"${A[@]}" shell pm clear com.onpath.app >/dev/null
 RD5=${RD5:-$HOME/onpath-routing/segments/E10_N45.rd5}
 if [ "$("${A[@]}" shell ls -l /data/local/tmp/E10_N45.rd5 2>/dev/null | awk '{print $5}')" != "$(stat -c %s "$RD5" 2>/dev/null || echo x)" ]; then
   if [ ! -f "$RD5" ]; then RD5="$WORK/rundgang/E10_N45.rd5"; [ -f "$RD5" ] || curl -fsSL --retry 3 -o "$RD5" https://brouter.de/brouter/segments4/E10_N45.rd5; fi
@@ -103,6 +106,8 @@ for l in lines:
         if code != 1: cur = {}
         else: cur = {k: v for k, v in cur.items() if k in ("class", "test")}
 crash = [l for l in lines if l.startswith("INSTRUMENTATION_RESULT: shortMsg") or "Process crashed" in l]
+# the run never finished (emulator killed, e.g. out of memory): the flows that did not run are no pass
+if not any(l.startswith("INSTRUMENTATION_CODE:") for l in lines): crash.append("run incomplete (no INSTRUMENTATION_CODE)")
 print("\nRelease-Rundgang")
 print("%-52s %s" % ("flow", "result"))
 for t, r, why in rows: print("%-52s %-8s %s" % (t, r, why))
