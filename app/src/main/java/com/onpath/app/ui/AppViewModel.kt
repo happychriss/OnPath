@@ -33,6 +33,7 @@ import com.onpath.app.navigation.NavKind
 import com.onpath.app.navigation.NavLine
 import com.onpath.app.navigation.NavSession
 import com.onpath.app.navigation.NavSessionStore
+import com.onpath.app.navigation.TourSplit
 import com.onpath.app.recording.RecState
 import com.onpath.app.recording.RecordingService
 import com.onpath.app.routing.Activity
@@ -1417,7 +1418,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The followed line was taken from this plan ("Start navigation"), so Clear removes it too. */
     private var followFromPlan = false
     /** All plan points were deleted during the tour, which ended the guidance; points back → followed again (PlanGuidance). */
-    private var guidanceEndedByEmptyPlan = false
+    /** The route guidance was ended in the tour (all points deleted / "Just record"): the status says "Recording only". */
+    var guidanceEndedByEmptyPlan by mutableStateOf(false)
+        private set
+
+    /**
+     * What the last plan edit means for the running tour ([TourSplit], docs/design/tour-edit-position.md): the position
+     * splits the plan into passed points and points ahead. Taken by [followEditedPlan] once the plan's route is ready;
+     * null = no tour following the plan, or nothing passed (the plan is followed as a whole, as before).
+     */
+    private var pendingSplit: TourSplit.Outcome? = null
+    /** The plan before that edit (FollowHistory key: Undo brings its followed route back exactly). */
+    private var splitBefore: List<GeoPoint>? = null
+    /** Newer position → ahead routes supersede older ones. */
+    private var splitGen = 0
     /** The followed line is a shown track: "Continue navigation" keeps it instead of re-planning. */
     private var followIsTrack = prefs.followIsTrack
     /** The plan's points when a track was taken to follow ([PlanGuidance.planReplacesTrack]); null = no track / unknown. */
@@ -1802,8 +1816,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         prefs.planWaypoints = waypoints.toList()
         prunePinned()
         planEditPending = true
-        routeBackAsk = RouteBack.asks(before, waypoints, recState.value != null, followLine != null, followIsTrack, myPosition())
-        if (routeBackAsk) Problems.trace("plan", "Goal of the 2-point plan deleted during the tour: asking \"Route back to the start?\"")
+        val split = splitOf(before, waypoints.toList())
+        routeBackAsk = split == TourSplit.Outcome.NothingAhead ||
+            RouteBack.asks(before, waypoints, recState.value != null, followLine != null, followIsTrack, myPosition())
+        if (routeBackAsk) Problems.trace("plan", "Edit during the tour left no point ahead: asking \"No destination ahead\"")
         planChanged()
         endGuidanceIfPlanEmpty()
         nextCause = PlanStatus.Cause.PointEdit
@@ -1814,6 +1830,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun myPosition(): GeoPoint? =
         tracker.location.value?.let { GeoPoint(it.latitude, it.longitude) }
             ?: recState.value?.track?.lastOrNull()?.lastOrNull()
+
+    /**
+     * The plan points passed in the running tour ([TourSplit.passed]) – empty without a tour that follows the plan.
+     * Only the app's tour: the plan itself is edited exactly as in the web planner.
+     */
+    fun tourPassed(plan: List<GeoPoint> = waypoints.toList()): Set<Int> {
+        val rec = recState.value ?: return emptySet()
+        if (followLine == null || followIsTrack || plan.isEmpty()) return emptySet()
+        val s = rec.nav?.session?.takeIf { it.kind == NavKind.PLAN }
+        return TourSplit.passed(plan, TourSplit.Tour(
+            track = rec.track, position = myPosition(), reached = s?.reached == true, bike = activity != Activity.HIKE,
+            // progress compares with the stops' places on the original line only (a taken re-route has its own)
+            stops = s?.takeUnless { it.rerouted }?.stops.orEmpty(), progressM = rec.nav?.progressM ?: 0.0,
+            visited = s?.visited?.mapNotNull { s.stops.getOrNull(it)?.point }?.toSet().orEmpty(),
+        ))
+    }
+
+    /** [TourSplit.outcome] of the edit [before] → [after] during a tour, kept for [followEditedPlan]. */
+    private fun splitOf(before: List<GeoPoint>, after: List<GeoPoint>): TourSplit.Outcome? {
+        val passed = tourPassed(before)
+        val o = if (passed.isEmpty()) null else TourSplit.outcome(before, after, passed)
+        pendingSplit = o; splitBefore = before
+        if (o != null) Problems.trace("plan", "Edit during the tour: ${passed.size} of ${before.size} points passed → " +
+            (if (o is TourSplit.Outcome.Follow) "follow position → ${o.ahead.size} points ahead" else o.toString()))
+        return o
+    }
 
     /**
      * The goal of a start → goal plan was deleted during a tour (owner, [RouteBack]): "Route back to the start?" stays
@@ -1832,7 +1874,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         routeBackAsk = false
         if (recState.value == null) return
         val pos = myPosition()
-        val back = if (yes) RouteBack.plan(waypoints, pos) else null
+        val plan = waypoints.toList()
+        // one point left: position → start (RouteBack); more: the plan's start is appended as its goal (a round trip),
+        // the passed points stay, the tour follows position → start (TourSplit)
+        val back = if (!yes) null else if (plan.size == 1) RouteBack.plan(plan, pos)
+            else plan.takeIf { pos != null }?.let { it + it.first() }
+        if (back != null && plan.size > 1) splitOf(plan, back) else pendingSplit = null
         if (back != null) {
             Problems.trace("plan", "Route back to the start: yes – plan = position → start")
             val before = waypoints.toList()
@@ -1879,6 +1926,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun addPoint(p: GeoPoint, lineSnapM: Double = 30.0, onPoi: Boolean = false) {
         if (onPoi) { pinned += p; prefs.planPinned = pinned }
         val before = waypoints.toList()
+        // during a tour a new point goes only among the points ahead, never behind the user (TourSplit)
+        val passed = tourPassed(before)
+        val pos = myPosition()
+        if (passed.isNotEmpty() && pos != null) {
+            val ahead = listOf(pos) + TourSplit.ahead(before, passed)
+            // the followed line fits these points only once it runs from the position (else best fit by geometry)
+            val line = followLine?.takeIf { it.isNotEmpty() && com.onpath.app.data.Geo.distance(it.first(), pos) < 50.0 }
+            val d = WaypointInsertion.decide(ahead, p, line, lineSnapM)
+            change { add(TourSplit.insertIndex(passed, d.index).coerceIn(0, size), p) }
+            return
+        }
         // While a reroute runs, the shown line belongs to older waypoints: use best-fit only.
         val d = WaypointInsertion.decide(before, p, if (routing) null else route?.points, lineSnapM, wayThereFrom())
         if (d.kind == WaypointInsertion.Kind.START && before.size >= 2)
@@ -2424,9 +2482,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (prev == null) { Problems.trace("plan", "$what: nothing to ${what.lowercase()}"); return }
         Problems.trace("plan", "$what: plan ${waypoints.size} → ${prev.size} points")
         routingSpot = RoutingSpot.of(waypoints.toList(), prev)
+        val split = splitOf(waypoints.toList(), prev)
         waypoints.clear(); waypoints.addAll(prev)
         canUndo = history.canUndo; canRedo = history.canRedo
-        routeBackAsk = false // the plan the question was about is gone
+        routeBackAsk = split == TourSplit.Outcome.NothingAhead // the plan an open question was about is gone
         closePointMenu("undo / redo"); firstPointMenu = null
         prefs.planWaypoints = waypoints.toList()
         planEditPending = true
@@ -3493,6 +3552,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         if (recState.value == null || followLine == null || followIsTrack) return
+        val split = pendingSplit; pendingSplit = null
+        when (split) {
+            // only passed points edited: the guidance ahead stays, the plan line counts as followed
+            TourSplit.Outcome.Unchanged -> { planBaseline = r.points; return }
+            // "No destination ahead" is open: the followed line stays until it is answered
+            TourSplit.Outcome.NothingAhead -> return
+            is TourSplit.Outcome.Follow -> {
+                // Undo / Redo back to a plan followed before in this tour: that route exactly (FollowHistory)
+                val now = recState.value?.nav?.session?.takeIf { it.kind == com.onpath.app.navigation.NavKind.PLAN }
+                val back = followHistory.find(waypoints.toList())
+                val before = splitBefore
+                if (now != null && before != null) followHistory.remember(before, now)
+                if (back != null) { followAgain(back, r.points, now?.version ?: 0); return }
+                followAhead(split.ahead, r.points)
+                return
+            }
+            else -> Unit
+        }
         if (r.points.size < 2) return // nothing to follow (e.g. all points on one spot): keep the running line
         val orig = followOriginal
         if (planFollowed(r.points)) return
@@ -3537,6 +3614,44 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             stops = w, names = w.map { stopName(it) }, pinned = pinnedIndices())
         followFromPlan = true
         if (recState.value != null) Problems.trace("tour", "The tour follows \"$followName\" now (${activity.name}, ${w.size} points)")
+    }
+
+    /**
+     * The tour follows position → [ahead] ([TourSplit.Outcome.Follow]): routed like any plan (the same [PlanResult] the
+     * web planner uses), only for these points. [planLine] = the whole plan's route, which then counts as followed (Plan
+     * draws the followed line). No route found: the guidance followed so far stays, a red box says so.
+     */
+    private fun followAhead(ahead: List<GeoPoint>, planLine: List<GeoPoint>) {
+        val pos = myPosition()
+        val pts = listOfNotNull(pos) + ahead
+        if (pts.size < 2) { followPlanned(); return } // no position yet and one point ahead: the plan as a whole
+        val gen = ++splitGen
+        val act = activity; val level = sac; val f = planFactors(act)
+        val off = if (pos != null) 1 else 0
+        val pins = ahead.indices.filter { ahead[it] in pinned }.map { it + off }.toSet()
+        val name = savedName ?: defaultName(Txt.s(Res.string.msg_name_route))
+        val firstAhead = waypoints.indexOf(ahead.first()) + 1
+        viewModelScope.launch {
+            val res = withContext(routingDispatcher) {
+                runCatching {
+                    com.onpath.app.routing.PlanResult.plan(Planner(routingEngine(), com.onpath.app.routing.RouteCancel()), pts, act, level,
+                        pins, emptySet(), f)
+                }
+            }
+            if (gen != splitGen || recState.value == null) return@launch
+            val line = res.getOrNull()?.route?.takeIf { it.error == null && it.points.size >= 2 }?.points
+            if (line == null) {
+                Problems.warn("tour", "No route from the position to the ${ahead.size} points ahead; the guidance so far stays",
+                    res.exceptionOrNull())
+                sayError(Txt.s(Res.string.nav_no_route_ahead, firstAhead), NoticePlace.MAP)
+                return@launch
+            }
+            setFollow(name, line, isTrack = false, checkNow = true, stops = ahead, names = ahead.map { stopName(it) },
+                pinned = ahead.indices.filter { ahead[it] in pinned }.toSet())
+            planBaseline = planLine
+            followFromPlan = true
+            Problems.trace("tour", "The tour follows position → ${ahead.size} points ahead of \"$name\" (${line.size} line points)")
+        }
     }
 
     fun followShown() {

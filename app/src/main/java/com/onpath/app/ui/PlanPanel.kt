@@ -116,7 +116,8 @@ class PlanCallbacks(
 )
 
 /** Recording status shown at the top of the plan sheet during a tour. */
-data class TourState(val distanceM: Double, val elapsedS: Long, val paused: Boolean)
+/** [recordOnly]: the route guidance was ended during the tour – the status line says "Recording only". */
+data class TourState(val distanceM: Double, val elapsedS: Long, val paused: Boolean, val recordOnly: Boolean = false)
 
 /**
  * Plan sheet steps: MINI = summary only (time, distance), COMPACT = + the large elevation profile
@@ -283,7 +284,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     val full = ui.size == PlanSize.FULL
     // During a tour: the tour first (status + Continue / Pause / End), then the route – one surface.
     ui.tour?.let { t ->
-        TourControls(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, cb.onEndTour, ui.activity)
+        TourControls(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, cb.onEndTour, ui.activity, t.recordOnly)
         HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
     // Line 1: activity · time + distance · [Save] ⋯ (Undo and Redo are map buttons).

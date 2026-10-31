@@ -134,8 +134,10 @@ fun TourControls(
     distanceM: Double, elapsedS: Long, paused: Boolean,
     onPause: (Boolean) -> Unit, onContinue: () -> Unit, onEnd: () -> Unit,
     activity: com.onpath.app.routing.Activity? = null,
+    recordOnly: Boolean = false,
 ) {
-    val status = str(if (paused) Res.string.nav_tour_paused else Res.string.nav_tour_running, Format.distance(distanceM), Format.clock(elapsedS))
+    val res = when { paused -> Res.string.nav_tour_paused; recordOnly -> Res.string.nav_tour_record_only; else -> Res.string.nav_tour_running }
+    val status = str(res, Format.distance(distanceM), Format.clock(elapsedS))
     Row(Modifier.semantics { contentDescription = status }, verticalAlignment = Alignment.CenterVertically) {
         RecDot(paused)
         Spacer(Modifier.width(10.dp))

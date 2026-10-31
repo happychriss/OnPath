@@ -7,7 +7,6 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [cloud] Plan edits during a tour – position splits the plan (`docs/design/tour-edit-position.md`) – since 2026-10-31
 
 ## Next
 - **On the next real ride (owner)** – onboarding checklist step 7 (30 min, screen off, battery saver; steps 2–6 passed on
@@ -15,10 +14,10 @@ the git log.
   5 s on the bike; lock-screen notification on the Pixel; the older phone checks below; compass arrow: does it stay grey
   all the time on the Pixel? (1c5b8ad); new off-route question "Abseits der Route – neu planen?" with "Ja" / "Ja, Stopp N
   auslassen" (16, 81dbff7); map symbols: rock from z14, orchards / vineyards stronger.
-- **Plan edits during a tour: the position splits the plan (owner 2026-10-31, field bug Hilden)** – deleting the last
-  point ahead left a route behind the user and no word. Rule + all cases: `docs/design/tour-edit-position.md` (passed
-  vs ahead, carried over edits, "Kein Ziel mehr vor dir" replaces RouteBack, pale line behind, ✓ on passed points).
-  Tests first (field case first), then build; release-rundgang flow.
+- **Plan edits during a tour – built 2026-10-31 (cloud), check it** – `docs/design/tour-edit-position.md`. Owner: on the next
+  ride delete a point ahead / the destination after passing the others (grey ✓ points, pale plan line, "Kein Ziel mehr
+  vor dir."). **donald:** run `tools/ci/release_rundgang.sh` once – flows 11 and 12 are new and were only compiled in the
+  cloud (no emulator); a red flow blocks the next release.
 - **Voice guidance (owner 2026-10-31) – after the feature stop (first the ride with the checklist)** – owner: "every tester
   asks whether it talks". Android's own text-to-speech (`TextToSpeech`, no Play Services; only voices that need no
   network), one voice for everything incl. names; all speech from one place (a `Speaker` interface) so the voice can

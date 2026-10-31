@@ -727,12 +727,16 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         src.setGeoJson(Feature.fromGeometry(MultiLineString.fromLngLats(lines)))
     }
 
-    /** [unreached] = indices the route does not reach: drawn grey and hollow (see [setPlanGaps]). */
-    fun setWaypoints(points: List<GeoPoint>, pinned: Set<Int> = emptySet(), unreached: Set<Int> = emptySet()) = guarded("waypoints") {
+    /**
+     * [unreached] = indices the route does not reach: drawn grey and hollow (see [setPlanGaps]); [passed] = points behind
+     * the user in a running tour (navigation/TourSplit): grey with a ✓, numbers kept.
+     */
+    fun setWaypoints(points: List<GeoPoint>, pinned: Set<Int> = emptySet(), unreached: Set<Int> = emptySet(),
+                     passed: Set<Int> = emptySet()) = guarded("waypoints") {
         val src = source(SRC_WPT) ?: return
         ensureMarkerImages(points.size)
         val features = points.mapIndexed { i, p ->
-            val kind = when { i in unreached -> "g"; i == 0 -> "s"; i == points.lastIndex && points.size > 1 -> "e"; else -> "v" }
+            val kind = when { i in unreached -> "g"; i in passed -> "p"; i == 0 -> "s"; i == points.lastIndex && points.size > 1 -> "e"; else -> "v" }
             Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)).apply {
                 addStringProperty("icon", "wp-$kind-${i + 1}")
                 addNumberProperty("idx", i)
@@ -898,12 +902,16 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             style.addImage("wp-v-$n", marker(n, ROUTE_COLOR))
             style.addImage("wp-e-$n", marker(n, "#C62828"))
             style.addImage("wp-g-$n", marker(n, GAP_COLOR, hollow = true))
+            style.addImage("wp-p-$n", marker(n, NAV_ORIGINAL_COLOR, check = true))
             markerImages++
         }
     }
 
-    /** A numbered route point; [hollow] = white inside, ring and number in [color] (a point the route does not reach). */
-    private fun marker(n: Int, color: String, hollow: Boolean = false): Bitmap {
+    /**
+     * A numbered route point; [hollow] = white inside, ring and number in [color] (a point the route does not reach);
+     * [check] = a small green ✓ badge at the top right (a point passed in the tour).
+     */
+    private fun marker(n: Int, color: String, hollow: Boolean = false, check: Boolean = false): Bitmap {
         val sizeDp = 30
         val px = (sizeDp * density).toInt()
         val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
@@ -924,6 +932,23 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         p.textAlign = Paint.Align.CENTER
         val y = px / 2f - (p.descent() + p.ascent()) / 2
         c.drawText(n.toString(), px / 2f, y, p)
+        if (check) {
+            val r = 6.5f * density
+            val cx = px - r; val cy = r
+            p.color = android.graphics.Color.WHITE
+            c.drawCircle(cx, cy, r, p)
+            p.color = android.graphics.Color.parseColor("#2E7D32")
+            c.drawCircle(cx, cy, r - 1.2f * density, p)
+            p.color = android.graphics.Color.WHITE
+            p.style = Paint.Style.STROKE; p.strokeWidth = 1.6f * density; p.strokeCap = Paint.Cap.ROUND
+            val path = android.graphics.Path().apply {
+                moveTo(cx - 2.6f * density, cy + 0.2f * density)
+                lineTo(cx - 0.6f * density, cy + 2.2f * density)
+                lineTo(cx + 2.8f * density, cy - 1.8f * density)
+            }
+            c.drawPath(path, p)
+            p.style = Paint.Style.FILL
+        }
         return bmp
     }
 }

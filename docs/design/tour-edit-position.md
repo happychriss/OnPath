@@ -1,6 +1,8 @@
 # Editing the plan during a tour: the position splits the plan
 
-Status: **agreed with the owner 2026-10-31, not built yet** (backlog "Plan edits during a tour").
+Status: **built 2026-10-31** (`navigation/TourSplit`, wired in `AppViewModel.change` / `step` / `followEditedPlan` / `addPoint` /
+`answerRouteBack`; map: `MapController.setWaypoints(passed)`, the plan pale via the grey original line). Check on the
+next ride.
 Field case (owner, Hilden, bike, 2026-10-31): plan 1 → 2 → 3, he had ridden past 1 and 2 on another way; deleting 3
 left the route 1 → 2 – short, behind him, under the orange track – and the app said nothing. He read it as "the whole
 route is gone".

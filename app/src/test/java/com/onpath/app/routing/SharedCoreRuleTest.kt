@@ -78,6 +78,19 @@ class SharedCoreRuleTest {
         assertEquals("reflection / java.security in a file the web planner compiles:\n" + hits.joinToString("\n"), emptyList<String>(), hits)
     }
 
+    /**
+     * The position split of a running tour (navigation/TourSplit, docs/design/tour-edit-position.md §6) is the app's
+     * only: the code the web planner compiles must not reach it – plans are computed and edited the same in both.
+     */
+    @Test fun theTourSplitStaysOutOfTheCodeSharedWithTheWeb() {
+        val root = File("src/main/java/com/onpath/app")
+        val shared = listOf("routing", "gpx", "sync", "time").flatMap { p ->
+            File(root, p).walkTopDown().filter { it.isFile && it.extension == "kt" }.map { "$p/${it.name}" }.toList()
+        } + files + webShared + listOf("navigation/JunctionCues.kt", "navigation/CueRule.kt", "navigation/SpeedWindow.kt")
+        val hits = shared.distinct().filter { k -> File(root, k).let { it.isFile && it.readText().contains("TourSplit") } }
+        assertEquals("the tour's position split in code the web planner shares:\n" + hits.joinToString("\n"), emptyList<String>(), hits)
+    }
+
     @Test fun theExceptionListOnlyShrinks() {
         val root = File("src/main/java/com/onpath/app")
         val stale = known.keys.filter { k ->

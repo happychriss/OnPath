@@ -162,9 +162,9 @@
     <string name="nav_tour_running">Tour running · %1$s · %2$s</string>
     <string name="nav_tour_paused">Tour paused · %1$s · %2$s</string>
     <string name="nav_end_tour">End tour</string>
-    <string name="nav_route_back_title">Route back to the start?</string>
-    <string name="nav_route_back_text">You deleted the destination. Undo brings it back.</string>
-    <string name="nav_route_back">Route back</string>
+    <string name="nav_route_back_title">No destination ahead any more.</string>
+    <string name="nav_route_back_text">The tour keeps recording. Undo brings the point back.</string>
+    <string name="nav_route_back">Back to the start</string>
     <string name="nav_just_record">Just record</string>
     <string name="nav_long_route_foot">%1$s on foot. Calculating and loading its maps takes long.</string>
     <string name="nav_long_route_bike">%1$s by bike. Calculating and loading its maps takes long.</string>
@@ -240,4 +240,6 @@
     <string name="nav_rest_destination">Destination</string>
     <string name="nav_rest_tap">Tap for the map</string>
     <string name="nav_rest_cd">%1$s in %2$s. Tap for the map</string>
+    <string name="nav_no_route_ahead">No route to point %1$d found. The tour keeps recording.</string>
+    <string name="nav_tour_record_only">Recording only · %1$s · %2$s</string>
 </resources>

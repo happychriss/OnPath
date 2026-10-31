@@ -434,7 +434,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
             sac = vm.sac, tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, roundTrip = vm.isRoundTrip(),
-            tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused) },
+            tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused, vm.guidanceEndedByEmptyPlan) },
             points = rows,
             routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText(),
             changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote),
@@ -481,19 +481,24 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         return
     }
     LaunchedEffect(c, vm.routePeek) { c.setRouteOverlaysVisible(!vm.routePeek) } // eye button (re-applied per style)
+    // the plan points behind the user in a running tour (TourSplit): grey with ✓; re-read every ~20 track points
+    var passed by remember { mutableStateOf(emptySet<Int>()) }
+    val trackSize = rec?.track?.sumOf { it.size } ?: 0
+    LaunchedEffect(vm.waypoints.toList(), trackSize / 20, vm.followLine, rec != null) { passed = vm.tourPassed() }
     // Planned line only while the plan can be edited (Plan mode, no track shown); markers only in Plan (planLayers).
     LaunchedEffect(c) {
         // canEditMap is part of the key on its own: Navigate → Plan while the plan is followed must redraw the markers
         snapshotFlow {
             val (line, markers) = planLayers(vm.canEditMap, vm.planIsFollowed())
-            PlanDrawing(vm.route, line, markers, vm.waypoints.toList(), vm.planGaps)
+            PlanDrawing(vm.route, line, markers, vm.waypoints.toList(), vm.planGaps, passed)
         }
             .collect { d ->
                 c.setPlanned(if (d.showLine) d.route else null)
                 // unreachable points: grey dashed missing piece + grey hollow marker
                 val gaps = if (d.showLine && d.showMarkers) d.gaps else emptyList()
                 c.setPlanGaps(gaps)
-                c.setWaypoints(if (d.showMarkers) d.points else emptyList(), vm.pinnedIndices(), gaps.map { it.index }.toSet())
+                c.setWaypoints(if (d.showMarkers) d.points else emptyList(), vm.pinnedIndices(), gaps.map { it.index }.toSet(),
+                    if (d.showMarkers) d.passed else emptySet())
             }
     }
     LaunchedEffect(c, vm.shown, vm.followLine) {
@@ -516,7 +521,9 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     val rest = vm.screenRest
     val location = fix.takeUnless { rest }
     LaunchedEffect(c, rest) { c.setQuiet(rest) }
-    LaunchedEffect(c, nav?.original) { c.setNavOriginal(nav?.original) }
+    // the whole plan pale under the followed line while a tour follows position → points ahead (Plan only, TourSplit)
+    val paleBehind = vm.route?.points?.takeIf { vm.mode == AppMode.PLAN && passed.isNotEmpty() && vm.planIsFollowed() }
+    LaunchedEffect(c, nav?.original, paleBehind) { c.setNavOriginal(nav?.original ?: paleBehind) }
     // Heading-up on the route: the stretch ahead points straight up (HeadingFilter). Only in Navigate, matched to
     // the line, not off route; otherwise null = compass / GPS bearing.
     val navLine = remember(nav?.line) { nav?.line?.let { com.onpath.app.navigation.NavLine(it) } }
@@ -645,4 +652,5 @@ private data class PlanDrawing(
     val showMarkers: Boolean,
     val points: List<com.onpath.app.routing.GeoPoint>,
     val gaps: List<PlanGap> = emptyList(),
+    val passed: Set<Int> = emptySet(),
 )

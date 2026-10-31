@@ -797,7 +797,7 @@
   },
   "nav_route_back_title": {
     "area": "Tour card (Plan)",
-    "context": "Dialog when the destination was deleted during a tour",
+    "context": "Question during a tour when an edit left no plan point ahead (docs/design/tour-edit-position.md)",
     "priority": 3,
     "confidence": "sicher"
   },
@@ -1203,6 +1203,18 @@
     "area": "Navigate",
     "context": "Turn card / map sign: turn round (U-turn)",
     "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_no_route_ahead": {
+    "area": "Plan during a tour",
+    "context": "Red box: no route from the position to the plan points ahead after an edit; %1$d = number of the first point ahead",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_tour_record_only": {
+    "area": "Tour card (Plan)",
+    "context": "Status line of a running tour after the route guidance was ended (all points deleted / Just record); %1$s distance, %2$s time",
+    "priority": 3,
     "confidence": "sicher"
   }
 }

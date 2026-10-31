@@ -39,6 +39,8 @@ import com.onpath.strings.common_save
 import com.onpath.strings.nav_arrived_title
 import com.onpath.strings.nav_end_tour
 import com.onpath.strings.nav_end_tour_title
+import com.onpath.strings.nav_route_back
+import com.onpath.strings.nav_route_back_title
 import com.onpath.strings.plan_start_here
 import com.onpath.strings.plan_undo
 import com.onpath.strings.routes_end_tour_first
@@ -46,6 +48,7 @@ import com.onpath.strings.routes_tag_new
 import com.onpath.strings.sync_pair
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -366,6 +369,50 @@ class ReleaseRundgang : E2EBase() {
     }
 
     /** What Google Maps' share sheet sends: ACTION_SEND text/plain to OnPath. */
+    /**
+     * 11 · Field bug Hilden (owner 2026-10-31, docs/design/tour-edit-position.md): during a tour a point AHEAD is deleted
+     * → the tour follows position → the rest at once, no question, the passed start stays in the plan.
+     */
+    @Test fun flow11_tourDeletePointAheadFollowsPositionToTheRest() {
+        planned(THEATRE, NORTH, STATION)
+        startTour()
+        waitUntil("the start counts as passed", 30_000) { 0 in read { it.tourPassed() } }
+        shot("1-tour")
+        scenario.onActivity { vm(it).removePoint(1) }
+        waitUntil("position → station followed", 60_000) {
+            nav()?.line?.let { Geo.distance(it.last(), STATION) < 80 && Geo.distance(it.first(), position()) < 150 } == true
+        }
+        assertFalse("no question", read { it.routeBackAsk })
+        assertEquals(listOf(THEATRE, STATION), read { it.waypoints.toList() })
+        shot("2-follows-the-rest")
+    }
+
+    /**
+     * 12 · Field bug Hilden: ridden past points 1 and 2, the destination deleted → "No destination ahead any more." →
+     * Back to the start: the tour follows position → start; Undo brings the destination back.
+     */
+    @Test fun flow12_tourNothingAheadAsksThenBackToTheStart() {
+        planned(THEATRE, NORTH, STATION)
+        startTour()
+        rideRoute(factor = 5)
+        waitUntil("point 2 counts as passed", 180_000) { 1 in read { it.tourPassed() } }
+        onMain { DemoLocation.stop("Rundgang: stand after point 2") }
+        shot("1-past-point-2")
+        scenario.onActivity { vm(it).removePoint(2) }
+        waitUntil("the question", 15_000) { read { it.routeBackAsk } }
+        assertNotNull("\"No destination ahead\" shown", findFresh(By.text(Txt.s(Res.string.nav_route_back_title)), 10_000))
+        shot("2-no-destination-ahead")
+        clickText(Txt.s(Res.string.nav_route_back))
+        waitUntil("position → start followed", 60_000) {
+            nav()?.line?.let { Geo.distance(it.last(), THEATRE) < 80 && Geo.distance(it.first(), position()) < 150 } == true
+        }
+        shot("3-back-to-the-start")
+        undo()
+        waitUntil("Undo: the destination is back", 15_000) { read { it.waypoints.toList() } == listOf(THEATRE, NORTH, STATION) }
+        assertFalse(read { it.routeBackAsk })
+        shot("4-undo")
+    }
+
     private fun share(text: String) {
         scenario.onActivity { a ->
             a.startActivity(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)

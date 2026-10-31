@@ -161,8 +161,8 @@
     <string name="nav_tour_running">Tour läuft · %1$s · %2$s</string>
     <string name="nav_tour_paused">Tour pausiert · %1$s · %2$s</string>
     <string name="nav_end_tour">Tour beenden</string>
-    <string name="nav_route_back_title">Route zurück zum Start?</string>
-    <string name="nav_route_back_text">Du hast das Ziel gelöscht. Rückgängig holt es zurück.</string>
+    <string name="nav_route_back_title">Kein Ziel mehr vor dir.</string>
+    <string name="nav_route_back_text">Die Tour wird weiter aufgezeichnet. Rückgängig holt den Punkt zurück.</string>
     <string name="nav_route_back">Zurück zum Start</string>
     <string name="nav_just_record">Nur aufzeichnen</string>
     <string name="nav_long_route_foot">%1$s zu Fuß. Berechnen und Laden der Karten dauert lange.</string>
@@ -239,4 +239,6 @@
     <string name="nav_rest_destination">Ziel</string>
     <string name="nav_rest_tap">Tippen für die Karte</string>
     <string name="nav_rest_cd">%1$s in %2$s. Tippen für die Karte</string>
+    <string name="nav_no_route_ahead">Keine Route zu Punkt %1$d gefunden. Die Tour wird weiter aufgezeichnet.</string>
+    <string name="nav_tour_record_only">Nur Aufzeichnung · %1$s · %2$s</string>
 </resources>
