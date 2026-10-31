@@ -3597,7 +3597,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val sync = com.onpath.app.plansync.PlanSync(app, com.onpath.app.plansync.DbTourStore(app, db) { a -> planFactors(a) },
         recording = { recState.value != null }, onReport = ::syncReport)
 
-    /** Routes from the browser not opened yet (My routes → Planned: bold + "New from the browser"); read once at start. */
+    /** Routes from the browser not opened yet (My routes → Planned: a "New" / "Changed" tag – RouteTag); read once at start. */
     val syncMarks: kotlinx.coroutines.flow.StateFlow<Map<String, com.onpath.app.plansync.SyncMark>> get() = sync.files.marks.state
 
     /** Opened (load as plan / open the track): the route's "New from / Changed in the browser" mark goes. */

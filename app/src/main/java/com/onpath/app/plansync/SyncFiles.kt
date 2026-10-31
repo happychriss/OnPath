@@ -81,7 +81,7 @@ class SyncFiles(val dir: File) {
     private val endedFile = File(dir, "ended.txt")
     private val marksFile = File(dir, "marks.txt")
 
-    /** Routes from the browser not opened yet (My routes: bold + "New from the browser"); one instance per folder user. */
+    /** Routes from the browser not opened yet (My routes: a "New" / "Changed" tag); one instance per folder user. */
     val marks = SyncMarks({ read(marksFile) }, { write(marksFile, it) })
 
     fun pairing(): Pairing? {

@@ -808,10 +808,13 @@ class ScreenshotTest {
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}) }
     }
 
-    /** Planned tab after a sync: a route new from the browser and a changed imported track – bold + grey line until opened. */
+    /**
+     * Planned tab after a sync: a route new from the browser (long name: it ellipsizes, the tag stays whole) and a
+     * changed imported track – a "New" / "Changed" tag after the name until opened (RouteTag).
+     */
     @Test fun toursFromBrowser() = paparazzi.snapshot {
         val list = tourList.mapIndexed { i, t -> t.copy(uuid = "u-$i") } +
-            Tour(5, TourKind.PLANNED, "Meran → Vellau", 1_760_600_000_000, "MTB", 2, 11_300.0, 690.0, 40.0, 1.9 * 3600, "done", viaPts, uuid = "u-new")
+            Tour(5, TourKind.PLANNED, "Meran → Vellau → Leiter Alm → Hochganghaus", 1_760_600_000_000, "MTB", 2, 11_300.0, 690.0, 40.0, 1.9 * 3600, "done", viaPts, uuid = "u-new")
         OnPathTheme {
             RoutesScreen(list.sortedByDescending { it.createdMs }, {}, {}, {}, {}, {},
                 marks = mapOf("u-new" to com.onpath.app.plansync.SyncMark.NEW, "u-2" to com.onpath.app.plansync.SyncMark.CHANGED))

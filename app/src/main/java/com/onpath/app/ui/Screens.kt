@@ -269,7 +269,7 @@ internal object SacScale {
  * My routes (☰ → My routes): two tabs ([RoutesTab]) – Planned (planned routes + imported GPX files, what syncs to the
  * browser; Import GPX lives here) and Done (recorded tours) – each a list, newest first: type icon, name, date,
  * distance. Per item ⋮ Rename / Export GPX / Delete (asks first), tap = open. A route from the browser not opened yet
- * has a bold title and "New from the browser" / "Changed in the browser" ([marks]). ⋮ Export all takes both tabs.
+ * has a tag after its name: "New" / "Changed" ([marks] → [RouteTag]). ⋮ Export all takes both tabs.
  * During a tour a planned route loads nothing: a tap shows the box "End the running tour first, then this route can be
  * loaded." with OK under the tabs (HINWEIS, ScreenMessageHost – AppViewModel.requestOpen; owner 2026-10-31).
  */
@@ -299,7 +299,7 @@ fun RoutesScreen(
     /** The tab shown first (the app keeps the last one chosen while it runs). */
     initialTab: RoutesTab = RoutesTab.PLANNED,
     onTab: (RoutesTab) -> Unit = {},
-    /** Routes from the browser not opened yet (tour uuid → mark): bold title + a grey line (plansync/SyncMarks). */
+    /** Routes from the browser not opened yet (tour uuid → mark): a "New" / "Changed" tag after the name (plansync/SyncMarks). */
     marks: Map<String, SyncMark> = emptyMap(),
 ) {
     var confirmDelete by remember { mutableStateOf(initialConfirmDelete) }
@@ -342,7 +342,7 @@ fun RoutesScreen(
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(shown, key = { it.id }) { t ->
-                        TourCard(t, mark = marks[t.uuid].takeIf { t.uuid.isNotEmpty() }, onOpen = { onOpen(t) },
+                        TourCard(t, tag = RouteTag.of(t, marks), onOpen = { onOpen(t) },
                             onRename = { rename = t }, onExport = { onExport(t) },
                             onDelete = if (t.id == recordingId) null else ({ confirmDelete = t }),
                             onEditRides = if (t.rides?.rides.isNullOrEmpty() || t.id == recordingId) null else ({ onEditRides(t) }))
@@ -393,7 +393,7 @@ fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: 
 
 @Composable
 private fun TourCard(
-    t: Tour, mark: SyncMark?, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?,
+    t: Tour, tag: RouteTag?, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?,
     onEditRides: (() -> Unit)? = null,
 ) {
     val (icon, color) = when (t.kind) {
@@ -409,12 +409,8 @@ private fun TourCard(
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                // from the browser and not opened yet (owner 2026-10-30): bold title + a grey line, until opened
-                Text(t.name, fontWeight = if (mark != null) FontWeight.ExtraBold else FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                mark?.let {
-                    Text(str(if (it == SyncMark.NEW) Res.string.routes_mark_new else Res.string.routes_mark_changed),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                // from the browser and not opened yet (owner 2026-10-31): a "New" / "Changed" tag after the name, until opened
+                RouteTitle(t.name, tag)
                 Text("${t.kind.label} · " + SimpleDateFormat(str(Res.string.common_date), Locale.getDefault()).format(Date(t.createdMs)),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}", style = MaterialTheme.typography.bodySmall)

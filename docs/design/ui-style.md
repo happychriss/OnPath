@@ -24,6 +24,7 @@ Colours come only from `OnPathColors` (and the Material scheme built from it in 
 | `Paper` | page background (My routes, Settings) |
 | `CardWhite` | cards over the map (message boxes, sheets), text on `Green` |
 | `InfoBlue` | the left edge of a **FRAGE** box (a question) – never a status or a failure |
+| `TagContainer`, `TagInk` | a **tag** (light blue pill, dark blue word): the state of an item – "New" / "Changed" in My routes |
 | `Grey` | the left edge of a plain **HINWEIS** box; grey icons |
 | `Warn` (+ `WarnContainer`, `OnWarnContainer`) | **attention**: ⚠ + amber edge, route warning lines, the off-route card, a weak state |
 | `Error` (+ `ErrorContainer`, `OnErrorContainer`) | **error**: ⚠ + red edge, red error lines, delete buttons |
@@ -39,7 +40,7 @@ Five steps, all `sp` (the phone's font size applies): **12 / 14 / 16 / 22 / 30**
 
 | Size | Style | For |
 | --- | --- | --- |
-| 12 | `labelSmall` | map furniture only: scale bar, ©, profile axes / legend |
+| 12 | `labelSmall` | map furniture: scale bar, ©, profile axes / legend; tags (bold) |
 | 14 | `bodySmall`, `bodyMedium`, `labelMedium` | detail lines, subtitles, settings explanations, chips |
 | 16 | `bodyLarge`, `titleSmall`, `titleMedium`, `labelLarge` | message titles, dialog text, list titles, buttons |
 | 22 | `titleLarge` | plan sheet time, screen titles, Navigate time · distance, "Off route" |
@@ -86,8 +87,7 @@ the safe choice. Everything else is a message box or a line (below).
   detail, buttons, icon, tap), `MessageCard(message)`, `Messages.pick(candidates)`, `MessagePlacement`.
 
 ```kotlin
-val m = Message(MessageKind.HINWEIS_ERROR, title = "Couldn't find this place.", detail = "Try again when you have internet.",
-    buttons = listOf(MessageButton(Txt.s(Res.string.common_ok)) { vm.errorCard = null }))
+val m = errorMessage(Txt.s(Res.string.msg_shared_place_not_found)) { vm.errorCard = null } // split into title + detail
 MessageSlot(Messages.pick(listOf(question, m)), MessagePlacement.topDp(MessageScreen.PLAN, 0))
 ```
 
@@ -126,6 +126,28 @@ MessageSlot(Messages.pick(listOf(question, m)), MessagePlacement.topDp(MessageSc
   notification – it goes on the quiet navigation channel (lock screen keeps it); heads-up only when the app is not on
   screen (`TourChannels.forQuestion`, `AppVisibility`).
 - Progress = a spinner where the user started it, never a message.
+
+## Tags
+A tag is the **state of an item** in one short word, in a light blue pill after the item's name: "New" / "Neu" (came
+from the browser, not opened yet) and "Changed" / "Geändert" (changed in the browser since it was last opened) in
+My routes (owner 2026-10-31).
+
+![Route tags](../../app/src/test/snapshots/images/com.onpath.app.ui_ScreenshotTest_toursFromBrowser.png)
+
+(German: `…GermanScreenshotTest_toursFromBrowser.png`, largest font: `…RouteTagLargeFontTest_toursFromBrowser.png`,
+`…RouteTagLargeFontGermanTest_toursFromBrowser.png`.)
+
+- **Look:** `TagContainer` pill (fully rounded), `TagInk` text, 12 sp bold (`labelSmall`), 8 dp side padding – one
+  colour family for every tag (the info blue family; never amber / red / green: a tag is not a warning, not a failure
+  and not a button). Code: `ui/RouteTag.kt` – `Tag(text)`, `TitleWithTag`, `RouteTitle(name, RouteTag)`.
+- **Place:** on the title row, 8 dp after the name. The name ellipsizes before the tag is cut; when the name would keep
+  less than 55 % of the row (largest font) the tag goes under the name (`TagRow.sameRow`, unit-tested). Never cut.
+- **One word**, at most one tag per item; no tap of its own (the row's tap opens the item).
+- **Goes when the state no longer holds** (here: the route was opened – `SyncMarks`), never by a timer.
+- **Use a tag** for a lasting state of one item in a list that the user should spot while scanning (new, changed).
+  **Not** for: something to do (→ a FRAGE box or a button), something wrong (→ an amber / red line), a count or a
+  number (→ the detail line), a kind of item (→ the icon in the circle), or the result of an action (→ `vm.say`).
+  No bold titles or extra grey lines to mark a state – that is what the tag is for.
 
 ## Positions per screen
 Boxes (FRAGE, HINWEIS) always sit **12 dp under the top element** (`MessagePlacement`, one rule, unit-tested),

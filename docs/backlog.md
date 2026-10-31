@@ -22,6 +22,9 @@ the git log.
   e8245e5 (10-29); after the next merge `web/parity.json` flags these files too. Drive hand-off: 00 Übergabe,
   "2026-10-30 donald → Web-Planer: App-Änderungen zum Nachziehen".
   - *Must (the web build or the web map breaks after merging main):*
+    - My routes: "New" / "Changed" tags instead of bold + grey line (owner 2026-10-31) · (this branch, 2026-10-31) ·
+      the web's My routes shows the phone's `mark` as the same light blue tag after the name ("Neu" / "Geändert"),
+      same look (`#DDEAFB` / `#0B3D91`, 12 px bold pill, never cut) – steps in `docs/handoff-web-route-tags.md`.
     - Plan sync fields 7 / 8 (routing fingerprint + rd5 dates, owner 2026-10-31) · (this branch, 2026-10-31) · shared
       `sync/SyncItem.kt` (`SyncItem.routing` / `routingData`, `SyncRoutingData`, `SyncLedger.save(…, routing,
       routingData)`) – no new file; the page fills both when it saves (its engine's `RoutingFingerprint` + the days of
