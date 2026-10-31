@@ -17,6 +17,8 @@ export interface PlanHost {
   open(plan: SavedPlan, folder: string): void;
   /** A name proposal for a new saved plan ("Algund → Meran", the app's RouteNamer), "" when none fits. */
   suggestName(): Promise<string>;
+  /** The plan link's title while the plan still has the link's points (the app's linkTitle), else null. */
+  linkTitle(): string | null;
   /** The plan was saved as [p] in [folder] – the page shows "Saved as …". */
   saved(p: SavedPlan, folder: string): void;
   /** My routes → ⋮ → Export GPX: [p] from [folder] as a GPX file (a route is opened and planned first). */
@@ -268,75 +270,58 @@ function storedTitle(name: string): string {
   return n.endsWith(label) ? n.slice(0, -label.length).trimEnd() + ' (copy)' : n;
 }
 
-let savePop: { el: HTMLElement; close(): void } | null = null;
-/** Closes the Save field if it is open; true when it was. */
-export function closeSavePop(): boolean {
-  if (!savePop) return false;
-  savePop.close();
-  return true;
+/**
+ * The app's RouteRules.newRouteName (a mirror – ui/RouteRules.kt needs the app's TourDb, web/parity.json): the name of a
+ * route saved at once – the [proposed] one (a plan link's title, else the place proposal "Vellau → Leiteralm"), else
+ * [dated] ("Route 31 Oct, 10:12"); a name a saved route already has ([taken]) gets " (2)", " (3)" …
+ */
+export function newRouteName(proposed: string | null | undefined, dated: string, taken: string[]): string {
+  const base = proposed?.trim() || dated.trim();
+  const names = new Set(taken.map((n) => n.trim()));
+  if (!names.has(base)) return base;
+  for (let k = 2; ; k++) if (!names.has(`${base} (${k})`)) return `${base} (${k})`;
+}
+
+/** The app's date name (AppViewModel.defaultName): msg_name_route + msg_name_date_pattern ("d MMM, HH:mm" / "d. MMM, HH:mm"). */
+export function datedName(ms = Date.now()): string {
+  const d = new Date(ms), month = new Intl.DateTimeFormat(locale, { month: 'short' }).format(d).replace(/\.$/, '');
+  const two = (n: number) => String(n).padStart(2, '0');
+  const date = t('msg_name_date_pattern').replace(/yyyy|MMM|HH|mm|d/g, (k) =>
+    k === 'yyyy' ? String(d.getFullYear()) : k === 'MMM' ? month : k === 'HH' ? two(d.getHours()) : k === 'mm' ? two(d.getMinutes()) : String(d.getDate()));
+  return `${t('msg_name_route')} ${date}`;
 }
 
 /**
- * Save "as in Word" (web-sync.md §14.6 rule 5): a small field right under the Save button (no dialog, never a question
- * "overwrite or new"): the name – the open saved route's, else the app's proposal Start → Destination (RouteNamer) –
- * selected, and one button [label]. Enter saves, Escape or a click beside it cancels. The same name overwrites the open
- * saved route; a new route, or a saved one under a changed name ("Save as"), becomes a new route (the old one stays) and
- * is the open route from then on. [then] runs after the save (paired: everything waiting goes to the phone).
+ * Save as the app does it since 2026-10-31 ("wie Word", RouteRules.saveMode, docs/backlog.md "Save like Word"): at once,
+ * no field, no question. The shown route belongs to a saved route that still exists → that route is overwritten (its name
+ * stays); else – or with [asNew], sheet ⋯ → "Save as new route" – a new route named by [newRouteName] (the proposal is
+ * waited for 2 s at most, like the app). The new one is the open route from then on; renaming = a click on "Saved as …".
+ * [then] runs after the save (paired: everything waiting goes to the phone).
  */
-export async function savePopover(anchor: HTMLElement, sync: PlanSync, host: PlanHost, label: string, then?: () => void) {
-  closeSavePop();
-  const cur = await host.current();
-  if (!cur) { then?.(); return; }
-  const id = host.openId(), folder = host.openFolder();
-  const existing = id ? (await sync.list(folder)).find((p) => p.id === id && p.kind === 'plan') : undefined;
-  const fallback = t('web_plan_dated', when(Date.now()));
-  const el = document.createElement('div');
-  el.className = 'savepop';
-  el.setAttribute('role', 'dialog');
-  el.setAttribute('aria-label', label);
-  el.innerHTML = `<label class="muted small" for="savePopName">${esc(t('routes_name_label'))}</label>
-    <div class="savepoprow"><input id="savePopName" maxlength="100" placeholder="${esc(fallback)}" value="${esc(existing ? titleOf(existing) : cur.title ?? '')}">
-    <button id="savePopGo" class="primary">${esc(label)}</button></div>`;
-  document.body.append(el);
-  const r = anchor.getBoundingClientRect(), w = el.offsetWidth;
-  el.style.top = r.bottom + 6 + 'px';
-  el.style.left = Math.max(8, Math.min(r.right - w, innerWidth - w - 8)) + 'px';
-  const input = el.querySelector<HTMLInputElement>('#savePopName')!;
-  let typed = !!(existing || cur.title), busy = false;
-  input.addEventListener('input', () => { typed = true; });
-  input.focus();
-  input.select();
-  if (!typed) host.suggestName().then((n) => { if (n && !typed && el.isConnected) { input.value = n; input.select(); } });
-  const outside = (e: PointerEvent) => { if (!el.contains(e.target as Node) && !anchor.contains(e.target as Node)) close(); };
-  const close = () => {
-    document.removeEventListener('pointerdown', outside, true);
-    el.remove();
-    if (savePop?.el === el) savePop = null;
-  };
-  setTimeout(() => document.addEventListener('pointerdown', outside, true)); // not the click that opened it
-  savePop = { el, close };
-  const go = async () => {
-    if (busy) return; // one click, one route (owner 2026-10-28: saving made duplicates)
-    busy = true;
-    const name = input.value.trim() || fallback;
-    close();
-    anchor.focus();
-    if (existing && name === titleOf(existing)) { // the same name: a new version of the open saved route
+export async function saveRoute(sync: PlanSync, host: PlanHost, asNew: boolean, then?: () => void) {
+  if (saving) return; // one click, one route (owner 2026-10-28: saving made duplicates)
+  saving = true;
+  try {
+    const cur = await host.current();
+    if (!cur) { then?.(); return; }
+    const id = host.openId(), folder = host.openFolder();
+    const plans = (await sync.list(folder)).filter((p) => p.kind === 'plan');
+    const existing = !asNew && id ? plans.find((p) => p.id === id) : undefined;
+    if (existing) { // OVERWRITE: a new version of the open saved route, its name stays
       await sync.save(cur.code, existing.title, existing.id, folder);
       host.saved({ ...existing, plan: cur.code, updatedAt: Date.now(), mine: true }, folder);
-    } else { // a new route, or "Save as" under a new name – the old one stays as it is
-      const title = storedTitle(name), into = sync.open;
-      const newId = await sync.save(cur.code, title, undefined, into);
-      host.saved({ id: newId, kind: 'plan', title, plan: cur.code, track: '', updatedAt: Date.now(), device: '', mine: true, dirty: true, onPhone: false }, into);
+    } else { // NEW_ROUTE
+      // the app's proposeName: the link's title while unchanged, else the place proposal (waited for 2 s at most)
+      const proposed = host.linkTitle() ?? await Promise.race([host.suggestName().catch(() => ''), new Promise<string>((r) => setTimeout(() => r(''), 2_000))]);
+      const title = newRouteName(proposed, datedName(), plans.map((p) => titleOf(p)));
+      const into = sync.open;
+      const newId = await sync.save(cur.code, storedTitle(title), undefined, into);
+      host.saved({ id: newId, kind: 'plan', title: storedTitle(title), plan: cur.code, track: '', updatedAt: Date.now(), device: '', mine: true, dirty: true, onPhone: false }, into);
     }
     then?.();
-  };
-  el.querySelector<HTMLButtonElement>('#savePopGo')!.onclick = go;
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); go(); }
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); anchor.focus(); }
-  });
+  } finally { saving = false; }
 }
+let saving = false;
 
 /**
  * Pair phone: always a new code (A-017 point 2), the QR code, the steps in the app and the check digits; once the

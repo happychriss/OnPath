@@ -183,28 +183,33 @@ await page.click('#mcReset'); await page.check('#mcContours');
 await page.click('#mcClose');
 check(await page.evaluate(() => JSON.parse(localStorage.getItem('onpath.mapContent')).hidden.includes('parking')), 'choice remembered in this browser');
 
-// 6d. Save (web-sync.md §14.6): the header's Save – not paired "Save", dark for a new or changed route, light "✓ Saved"
-// when saved. Rule 5 ("as in Word"): a click opens a small field under the button with the name (the open route's, or
-// the app's proposal), selected; the same name overwrites, a new name is a new route and the old one stays; Enter
-// saves, Escape cancels; never a question "overwrite or new". The sheet's ⋯ → Save route opens the same field.
+// 6d. Save (web-sync.md §14.6, the app's Save since 2026-10-31 "wie Word"): the header's Save – not paired "Save", dark
+// for a new or changed route, light "✓ Saved" when saved. A click saves at once (no field, no question) – a new route
+// under the proposed name (the place proposal, else "Route 31 Oct, 10:12"), the open saved route overwritten; a rename is
+// a click on "Saved as …" (the name field in place); sheet ⋯: "Save route" and "Save as new route" (a copy).
 const saveHead = () => page.evaluate(() => { const b = document.getElementById('menuSavePlan'); return { state: b.dataset.state, text: b.textContent.trim(), disabled: b.disabled, title: b.title }; });
-const fieldValue = () => page.evaluate(() => document.getElementById('savePopName')?.value ?? null);
 const savedTitles = () => page.evaluate(async () => (await window.__sync.list()).map((p) => p.title).sort());
+const renameTo = async (name) => {
+  await page.click('#savedLine .savedname');
+  await page.waitForSelector('#renameField');
+  await page.fill('#renameField', name);
+  await page.press('#renameField', 'Enter');
+  await page.waitForFunction((n) => document.getElementById('savedLine').textContent.includes('Saved as ' + n), name, { timeout: 10_000 }).catch(() => {});
+};
 let sh = await saveHead();
 check(await page.isVisible('#header #menuSavePlan') && sh.state === 'dark' && !sh.disabled && sh.text === 'Save',
   `header: "Save", dark with a new route (${JSON.stringify(sh)})`);
 await page.click('#sheetMenuBtn');
-check(await page.isVisible('#sheetMenu #sheetSave') && await page.isEnabled('#sheetSave') && (await page.textContent('#sheetSave')).trim() === 'Save route',
-  '⋯: "Save route", active with a route (as in the app)');
+const sheetItems = await page.evaluate(() => [...document.querySelectorAll('#sheetMenu button')].filter((b) => !b.hidden).map((b) => b.textContent.trim()));
+check(sheetItems.includes('Save route') && sheetItems.includes('Save as new route') && await page.isEnabled('#sheetSave'),
+  `⋯: "Save route" and "Save as new route", active with a route (as in the app) ${JSON.stringify(sheetItems)}`);
 await page.click('#sheetSave');
-await page.waitForSelector('.savepop #savePopName');
-const pop = await page.evaluate(() => { const p = document.querySelector('.savepop').getBoundingClientRect(), b = document.getElementById('menuSavePlan').getBoundingClientRect();
-  return { below: p.top >= b.bottom && p.top - b.bottom < 16, dialog: !!document.querySelector('dialog[open]') }; });
-check(pop.below && !pop.dialog, `⋯ → Save route: the name field opens right under the header's Save, no dialog (${JSON.stringify(pop)})`);
-await page.fill('#savePopName', 'Test loop');
-await page.click('#savePopGo');
 await page.waitForSelector('#savedLine:not([hidden])', { timeout: 10_000 }).catch(() => {});
-check(!(await fieldValue()) && (await page.textContent('#savedLine')).includes('Saved as Test loop'), 'Save closes the field; the sheet says "Saved as Test loop"');
+const firstSaved = await savedTitles();
+check(firstSaved.length === 1 && firstSaved[0].length > 0 && !(await page.$('.savepop, dialog[open]')) && (await page.textContent('#savedLine')).includes('Saved as ' + firstSaved[0]),
+  `⋯ → Save route: saved at once under the proposed name "${firstSaved[0]}" – no field, no dialog; the sheet says "Saved as …"`);
+await renameTo('Test loop');
+check(JSON.stringify(await savedTitles()) === '["Test loop"]', 'a click on "Saved as …" renames in place: "Test loop", still one route');
 await page.waitForFunction(() => document.getElementById('menuSavePlan').dataset.state === 'done', null, { timeout: 10_000 }).catch(() => {});
 sh = await saveHead();
 check(sh.state === 'done' && sh.text === 'Saved' && sh.title === 'Everything is saved in this browser', `header: saved and unchanged → light "✓ Saved" (${JSON.stringify(sh)})`);
@@ -215,36 +220,28 @@ const myRow = await page.evaluate(() => { const li = document.querySelector('#pl
 check(myRow.name === 'Test loop' && myRow.current && myRow.where === 'In this browser' && await page.locator('#saveCurrent').count() === 0,
   `My routes: the row "Test loop", marked as open, 🖥 – no "Save current route" box (${JSON.stringify(myRow)})`);
 await page.click('#closePlans');
-await page.click('#menuSavePlan'); // saved and unchanged: the field again, the same name → overwrites, no question
-await page.waitForSelector('.savepop #savePopName');
-check(await fieldValue() === 'Test loop', 'the field shows the open route\'s name');
-await page.press('#savePopName', 'Enter');
+await page.click('#menuSavePlan'); // saved and unchanged: overwrites, no question, no field
 await page.waitForTimeout(500);
-check(JSON.stringify(await savedTitles()) === '["Test loop"]' && await page.locator('dialog[open]').count() === 0, 'the same name: saved over it, no question, no duplicate');
-if (await page.isEnabled('#undo')) { // a change → Save dark; Escape cancels; Enter saves under the same name
+check(JSON.stringify(await savedTitles()) === '["Test loop"]' && !(await page.$('.savepop, dialog[open]')), 'Save again: saved over it, no question, no duplicate');
+if (await page.isEnabled('#undo')) { // a change → Save dark; Save overwrites; ⋯ → Save as new route makes a copy
   await page.click('#undo');
   await page.waitForFunction(() => /changed, not saved/.test(document.getElementById('savedLine').textContent), null, { timeout: 10_000 }).catch(() => {});
   check((await saveHead()).state === 'dark', 'header: changed since saving → dark');
   await page.click('#menuSavePlan');
-  await page.waitForSelector('.savepop #savePopName');
-  await page.press('#savePopName', 'Escape');
-  check(await fieldValue() === null && (await saveHead()).state === 'dark', 'Escape: the field goes, nothing saved (still dark)');
-  await page.click('#menuSavePlan');
-  await page.waitForSelector('.savepop #savePopName');
-  await page.press('#savePopName', 'Enter');
   await page.waitForFunction(() => document.getElementById('menuSavePlan').dataset.state === 'done', null, { timeout: 10_000 }).catch(() => {});
-  check((await saveHead()).state === 'done' && JSON.stringify(await savedTitles()) === '["Test loop"]', 'Enter with the same name: the changed route saved over "Test loop"');
+  check((await saveHead()).state === 'done' && JSON.stringify(await savedTitles()) === '["Test loop"]', 'Save: the changed route saved over "Test loop" (its name stays)');
   await page.click('#redo');
   await page.waitForFunction(() => document.getElementById('menuSavePlan').dataset.state === 'dark', null, { timeout: 10_000 }).catch(() => {});
   const before = await page.evaluate(async () => (await window.__sync.list()).find((p) => p.title === 'Test loop').plan);
-  await page.click('#menuSavePlan');
-  await page.waitForSelector('.savepop #savePopName');
-  await page.fill('#savePopName', 'Test loop B');
-  await page.press('#savePopName', 'Enter');
-  await page.waitForFunction(() => /Saved as Test loop B/.test(document.getElementById('savedLine').textContent), null, { timeout: 10_000 }).catch(() => {});
+  await page.click('#sheetMenuBtn'); await page.click('#sheetSaveNew');
+  for (let i = 0; i < 40 && (await savedTitles()).length < 2; i++) await page.waitForTimeout(250);
+  const copy = (await savedTitles()).find((n) => n !== 'Test loop');
+  // the app's saveAsNew: the proposal again – here no place is known, so the date name ("Route 31 Oct, 10:12")
+  check(!!copy && (copy === firstSaved[0] || /^Route \d{1,2} \w+, \d\d:\d\d$/.test(copy)), `⋯ → Save as new route: a second route under the proposal ("${copy}"), as the app's saveAsNew`);
+  await renameTo('Test loop B');
   const after = await page.evaluate(async () => (await window.__sync.list()).find((p) => p.title === 'Test loop')?.plan);
   check(JSON.stringify(await savedTitles()) === '["Test loop","Test loop B"]' && after === before && (await page.textContent('#savedLine')).includes('Saved as Test loop B'),
-    'a new name ("Save as"): a second route, "Test loop" unchanged, the new one is open');
+    'the copy renamed "Test loop B"; "Test loop" unchanged, the copy is the open route');
 }
 
 // 6e. the pointing hand over what a click opens: a POI and the route line; the plain map keeps maplibre's cursor

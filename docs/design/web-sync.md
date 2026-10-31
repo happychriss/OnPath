@@ -478,7 +478,13 @@ the left; at phone width Save and Phone stay in the header, the rest goes behind
    planned after unpairing join my phone as waiting – nothing goes without my click.)
 3. Delete of a route with 📱 → on the next save it goes to the phone's recycle bin.
 4. Reload / closing the tab never loses anything unsaved.
-5. **Save as in Word** (owner 2026-10-30): a click on Save / "Aufs Handy sichern" opens a small field right under the
+5. **Save at once** (owner 2026-10-31, the app's Save – replaces the field of 2026-10-30 below): a click on Save / "Aufs
+   Handy sichern" (or sheet ⋯ → "Save route") saves at once, no field, no question – the open saved route is overwritten
+   (its name stays), else a new route under the app's proposal (`RouteRules.newRouteName`, mirrored in `plans.ts`: the
+   link's title while its points are unchanged, else the place proposal "Vellau → Leiteralm", else "Route 31 Oct,
+   10:12"; a taken name gets " (2)"). A rename is a click on "Saved as ‚Name‘ ✎" (the name field in place; Enter
+   renames, Escape keeps it). Sheet ⋯ → "Save as new route" makes a copy. Paired, Save also sends everything waiting.
+   *Before (2026-10-30, replaced):* **Save as in Word**: a click on Save / "Aufs Handy sichern" opens a small field right under the
    button (a popover, no dialog): the name – the open saved route's, or the proposal Start → Destination – selected,
    and one button "Speichern" / "Aufs Handy sichern". Enter confirms, Escape or a click beside it cancels. **Same
    name:** overwrites the open saved route. **New route:** a new entry with that name. **A saved route under a changed

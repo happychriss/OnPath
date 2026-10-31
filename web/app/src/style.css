@@ -457,3 +457,8 @@ dialog.phone .unpairline .textbtn.danger { color: var(--error); }
 .planlist .nameline { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .planlist .nameline .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .tag { flex: none; padding: 3px 8px; border-radius: 999px; background: var(--tag-bg); color: var(--tag-fg); font-size: 12px; font-weight: 700; line-height: 1.2; }
+/* "Saved as ‚Name‘ ✎": tap to rename in place (the app's sheet line, 2026-10-31) */
+#savedLine .savedname { border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+#savedLine .savedname:hover b { text-decoration: underline; }
+#savedLine .savedname .ic { vertical-align: -2px; margin-left: 2px; color: var(--muted); }
+#savedLine #renameField { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; padding: 6px 8px; border: 1px solid var(--green); border-radius: 6px; }

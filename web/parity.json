@@ -53,7 +53,7 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/RouteRules.kt",
-      "what": "saveMode (Save a new version / save as new)",
+      "what": "saveMode (OVERWRITE / NEW_ROUTE: Save at once, \"wie Word\") + newRouteName (taken name → \" (2)\") – ui/RouteRules.kt needs TourDb, so mirrored",
       "web": [
         "web/app/src/plans.ts"
       ],

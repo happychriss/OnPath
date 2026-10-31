@@ -24,7 +24,7 @@ import { ActivityPicker, type ActivityRow, type PaceChoices } from './activity';
 import { holdMenu, type MenuItem } from './menus';
 import { Position } from './position';
 import { PlanSync, shownTitle, type SavedPlan } from './sync';
-import { myPlansDialog, joinDialog, savePopover, closeSavePop, phoneDialog, phonePill, appDate } from './plans';
+import { myPlansDialog, joinDialog, saveRoute, phoneDialog, phonePill, appDate } from './plans';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
 import { longRouteOk, allowLongRoute, notRoutedTexts, type Before } from './longroute';
@@ -161,6 +161,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <button id="sheetStep" class="iconbtn" aria-controls="sheet"></button>
       <div id="sheetMenu" class="menu" role="menu" hidden>
         <button id="sheetSave" role="menuitem">${icon('save')}${escapeHtml(t('plan_save_route'))}</button>
+        <button id="sheetSaveNew" role="menuitem">${icon('save')}${escapeHtml(t('plan_save_as_new_route'))}</button>
         <button id="exportGpx" role="menuitem">${icon('download')}${escapeHtml(t('common_export_gpx'))}</button>
         <hr><button id="clear" role="menuitem">${icon('delete')}${escapeHtml(t('plan_clear_route'))}</button>
       </div>
@@ -677,8 +678,12 @@ async function openFromLink() {
   // there before the camera fits the plan beside the sheet)
   if (shared.points.length >= 2) appHint($('apphint'));
   await loadShared(shared);
+  // the link's title is the name Save proposes while its points are unchanged (the app's linkTitle)
+  linkTitle = shared.title ? { title: shared.title, at: enc(state.points) } : null;
   if (!draftsOn) await restoreDraft(); // the page opened with its route in the address: which saved route it is
 }
+/** A plan link's title and the points it was for (moved along when they are snapped) – the app's AppViewModel.linkTitle. */
+let linkTitle: { title: string; at: string } | null = null;
 
 /** Shows [shared] as the plan (from a link or from My plans). */
 /** Set by My routes just before a plan from the phone opens (its otherRouting); any other load clears the grey line. */
@@ -831,6 +836,7 @@ async function adoptSnapped(routed: LatLon[], snapped: LatLon[]) {
   const wasSaved = state.savedCode != null && (await untitled(sharedPlan())) === (await savedUntitled(state.savedCode));
   state.points = snapped.map(([la, lo]) => [la, lo] as LatLon);
   state.points.forEach((p, i) => known.set(key(p), state.meta[i]));
+  if (linkTitle && linkTitle.at === enc(routed)) linkTitle = { ...linkTitle, at: enc(state.points) };
   await engine.call('historySnap', enc(routed), enc(state.points));
   if (wasSaved) state.savedCode = await engine.encode(sharedPlan());
   rememberInAddress();
@@ -977,9 +983,46 @@ async function renderSaved() {
   if (line.hidden) { saveEntry(state.points.length >= 2 ? 'save' : 'empty'); return; }
   // the name is in the code too, but naming it on Save (or a rename) is not a change of the route
   const changed = state.savedCode != null && (await ready) && (await untitled(sharedPlan())) !== (await savedUntitled(state.savedCode));
-  line.innerHTML = `${icon('check', 16)}<span>${t(changed ? 'web_saved_as_changed' : 'web_saved_as', `<b>${escapeHtml(shownTitle(state.savedTitle, ''))}</b>`)}</span>`;
+  if (renaming) return; // the name field is open in its place
+  line.innerHTML = `${icon('check', 16)}<button class="savedname" title="${escapeHtml(t('common_rename'))}">${t(changed ? 'web_saved_as_changed' : 'web_saved_as', `<b>${escapeHtml(shownTitle(state.savedTitle, ''))}</b>`)} ${icon('edit', 14)}</button>`;
+  line.querySelector<HTMLButtonElement>('.savedname')!.onclick = renameInPlace;
   saveEntry(changed ? 'save' : 'saved');
 }
+/**
+ * "Saved as ‚Name‘ ✎" tapped (the app's rename in place, 2026-10-31): the line becomes a name field with the name selected;
+ * Enter renames the saved route (My routes, the phone after Save), Escape or leaving the field keeps the name.
+ */
+let renaming = false;
+function renameInPlace() {
+  const line = $('savedLine'), id = state.savedId, folder = state.savedFolder ?? sync.open;
+  if (!id) return;
+  renaming = true;
+  line.innerHTML = `<input id="renameField" maxlength="100" aria-label="${escapeHtml(t('routes_name_label'))}">`;
+  const input = line.querySelector<HTMLInputElement>('#renameField')!;
+  input.value = shownTitle(state.savedTitle, '');
+  input.focus(); input.select();
+  let done = false;
+  const end = async (save: boolean) => {
+    if (done) return;
+    done = true;
+    const name = input.value.trim();
+    if (save && name && name !== shownTitle(state.savedTitle, '')) {
+      const stored = renameStored(name);
+      await sync.rename(id, stored, folder);
+      state.savedTitle = stored; state.title = stored;
+      rememberInAddress();
+    }
+    renaming = false;
+    render();
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); void end(true); }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); void end(false); }
+  });
+  input.addEventListener('blur', () => { void end(true); });
+}
+/** A name as stored: a copy typed back as "… (Kopie)" keeps its " (copy)" marker (plans.ts storedTitle). */
+const renameStored = (n: string) => { const label = t('web_copy_suffix').trim(); return n.endsWith(label) ? n.slice(0, -label.length).trimEnd() + ' (copy)' : n; };
 /** The shown route: empty (fewer than two points), save (new, or changed since it was saved), saved (and unchanged). */
 let saveState: 'empty' | 'save' | 'saved' = 'empty';
 /**
@@ -1005,22 +1048,18 @@ function saveEntry(st: 'empty' | 'save' | 'saved') {
   b.innerHTML = `${icon(shown === 'done' ? 'check' : paired ? 'phone' : 'save', 20)}<span class="lbl">${escapeHtml(label)}</span>`;
 }
 /**
- * A click on Save (§14.6 rule 5, "as in Word"): the shown route new or changed – or saved, with nothing waiting – opens
- * the small name field under the button (savePopover: the same name overwrites, a new name is a new route); then,
- * paired, everything waiting goes to the phone. Only waiting changes (the routes from before pairing, a rename, a
- * delete, a GPX import) and the route unchanged: the click sends them at once, no field. Never a question.
+ * A click on Save (the app's Save since 2026-10-31, "wie Word"; web-sync.md §14.6 rule 5 now): the shown route new or
+ * changed – or saved, with nothing waiting – is saved at once (plans.ts saveRoute: overwrite the open saved route, else
+ * a new one under the proposed name), no field, no question; then, paired, everything waiting goes to the phone. Only
+ * waiting changes and the route unchanged: the click sends them at once. A rename = a click on "Saved as …".
  */
-async function headerSave() {
-  if (closeSavePop()) return; // a second click on the button closes the field
+async function headerSave(asNew = false) {
   if (!(await syncReady)) return;
   await draftsRestored;
   await renderSaved();
   const paired = sync.status.paired, waiting = paired && sync.status.pending > 0;
   const send = () => { if (sync.status.paired) sync.sendAll(); };
-  if (saveState === 'save' || (saveState === 'saved' && !waiting)) {
-    savePopover($('menuSavePlan'), sync, plansHost, paired ? t('web_save_to_phone') : t('common_save'), send);
-    return;
-  }
+  if (asNew || saveState === 'save' || (saveState === 'saved' && !waiting)) { await saveRoute(sync, plansHost, asNew, send); return; }
   send();
 }
 
@@ -1204,7 +1243,7 @@ $('mainMenu').addEventListener('click', (e) => {
   e.stopPropagation(); closeMenus();
   NAV.find((n) => n.id === b.id)?.act?.();
 });
-$('sheetMenuBtn').onclick = (e) => { e.stopPropagation(); $<HTMLButtonElement>('exportGpx').disabled = !state.plan; $<HTMLButtonElement>('sheetSave').disabled = state.points.length < 2; toggleMenu('sheetMenuBtn', 'sheetMenu'); }; // Save: a start and a destination are enough (as the header's)
+$('sheetMenuBtn').onclick = (e) => { e.stopPropagation(); $<HTMLButtonElement>('exportGpx').disabled = !state.plan; $<HTMLButtonElement>('sheetSave').disabled = state.points.length < 2; $<HTMLButtonElement>('sheetSaveNew').disabled = state.points.length < 2; toggleMenu('sheetMenuBtn', 'sheetMenu'); }; // Save: a start and a destination are enough (as the header's)
 document.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.menu, .nav')) closeMenus(); });
 
 $('reverse').onclick = () => applyEdit('reverse');
@@ -1214,6 +1253,7 @@ $('clearPoints').onclick = clearRoute;
 function forgetSaved() { state.savedId = null; state.savedTitle = null; state.savedCode = null; state.savedFolder = null; }
 const plansHost = {
   current: async () => (state.points.length >= 2 && (await ready) ? { code: await engine.encode(sharedPlan()), title: state.title } : null),
+  linkTitle: () => (linkTitle && linkTitle.at === enc(state.points) ? linkTitle.title : null),
   openId: () => state.savedId,
   openFolder: () => (state.savedId && state.savedFolder) || sync.open,
   open: async (p: SavedPlan, folder: string) => {
@@ -1305,6 +1345,7 @@ $('syncBadge').onclick = async () => {
 // Save: the header's button (§14.6, sends to the phone when paired); the sheet's ⋯ → Save route (as in the app's
 // PlanPanel) opens the same name field under it
 $('sheetSave').onclick = () => { closeMenus(); headerSave(); };
+$('sheetSaveNew').onclick = () => { closeMenus(); headerSave(true); }; // a copy under a new name (the app's ⋯ → Save as new route)
 $('menuSavePlan').onclick = () => { closeMenus(); headerSave(); };
 $('exportGpx').onclick = () => { closeMenus(); exportGpx(); };
 const share = async () => {
