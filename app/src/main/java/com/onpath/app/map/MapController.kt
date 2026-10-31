@@ -476,8 +476,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 // MapLibre ignores paddingWhileTracking while the camera moves into tracking:
                 // set it again when the transition ends, so the dot always sits at the same place
                 lc.setCameraMode(mode, 750L, zoom, bearing, tilt, object : org.maplibre.android.location.OnLocationCameraTransitionListener {
-                    override fun onLocationCameraTransitionFinished(cameraMode: Int) { pad(top); showFacing(headingUp) }
-                    override fun onLocationCameraTransitionCanceled(cameraMode: Int) { pad(top); showFacing(headingUp) }
+                    override fun onLocationCameraTransitionFinished(cameraMode: Int) { pad(top); showFacing(headingUp); ensureStartZoom(startZoom) }
+                    override fun onLocationCameraTransitionCanceled(cameraMode: Int) { pad(top); showFacing(headingUp); ensureStartZoom(startZoom) }
                 })
                 // the camera takes the walking direction at once, after the transition and a north-up animation
                 // that may still run (Plan → Navigate); it must not wait for the next change of direction
@@ -504,6 +504,23 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             Problems.warn("map", "Map camera mode not changed (follow / heading-up)", e)
         }
         return zoomed
+    }
+
+    /**
+     * Navigate's start zoom, made sure (field A-019: after "Continue" the map kept Plan's 1 km zoom). MapLibre zooms in
+     * setCameraMode only when tracking starts from none: from Plan's own following (same or another tracking mode) it
+     * does not zoom at all, and a transition can be cancelled. So when the transition ends and the map still follows,
+     * the missing zoom is animated while tracking ([com.onpath.app.ui.AppMode.zoomStill]).
+     */
+    private fun ensureStartZoom(wanted: Double?) {
+        try {
+            val lc = map.locationComponent
+            if (lc.cameraMode == CameraMode.NONE) return // a gesture or a fit ended following: the user's / app's view stays
+            val z = com.onpath.app.ui.AppMode.zoomStill(map.cameraPosition.zoom, wanted) ?: return
+            lc.zoomWhileTracking(z, 600L)
+        } catch (e: Exception) {
+            Problems.warn("map", "Navigate start zoom not set", e)
+        }
     }
 
     private fun pad(top: Double) {

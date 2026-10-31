@@ -22,5 +22,13 @@ enum class AppMode {
          */
         fun navStartZoom(activity: com.onpath.app.routing.Activity): Double =
             if (activity == com.onpath.app.routing.Activity.HIKE) 17.0 else 16.0
+
+        /**
+         * The start zoom [wanted] still to be applied when following has begun at [current]; null = nothing to do (no
+         * start zoom, or the map is there already). MapController uses it after MapLibre's own transition, which skips
+         * the zoom when the map was following already (Plan → Continue, field A-019).
+         */
+        fun zoomStill(current: Double, wanted: Double?): Double? =
+            wanted?.takeIf { kotlin.math.abs(current - it) > 0.05 }
     }
 }

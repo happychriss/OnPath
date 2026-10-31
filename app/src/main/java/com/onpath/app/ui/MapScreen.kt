@@ -589,7 +589,9 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         }
     }
     // Camera: follow the position, walking direction up or north up (both modes); next-turn arrow (see NavigateScreen).
-    LaunchedEffect(c, vm.followMe, vm.mode, vm.headingUp, vm.recentreTick, vm.navStartZoom) {
+    // (navStartZoom is no key: it is set with the mode and cleared below – a second run right away would cancel the
+    // zoom transition just started; field A-019)
+    LaunchedEffect(c, vm.followMe, vm.mode, vm.headingUp, vm.recentreTick) {
         val startZoom = vm.navStartZoom.takeIf { vm.mode == AppMode.NAVIGATE && vm.followMe }
         val zoomed = c.setCamera(vm.followMe, vm.mode == AppMode.NAVIGATE, vm.headingUp, startZoom) { vm.onMapGesture() }
         if (startZoom != null && zoomed) vm.navStartZoom = null
