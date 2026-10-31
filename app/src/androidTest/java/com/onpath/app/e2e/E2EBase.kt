@@ -148,17 +148,26 @@ abstract class E2EBase {
 
     /**
      * Points snapped onto ways can end up under the search pill (top) or the plan sheet (bottom) – a finger there never
-     * reaches the map, or under the map buttons on the right (e.g. back in Plan after Navigate zoomed in). Centre the map
-     * on the point first, like a user would.
+     * reaches the map, or under the map buttons on the right (e.g. back in Plan after Navigate zoomed in). Move the map
+     * so the point sits in the upper open map, like a user would. Not the map's centre: in Plan during a tour the sheet
+     * (tour status + Continue / Pause / End tour + summary) reaches above the middle of the screen (CI 2026-10-31:
+     * the point centred at y 0.50 h lay under the sheet top at 0.475 h).
      */
     protected fun ensureOnOpenMap(index: Int) {
         val (w, h) = mapSize()
-        val (x, y) = waypointOnScreen(index)
-        if (y in h * 0.25f..h * 0.55f && x in w * 0.15f..w * 0.75f) return
+        fun open(s: Pair<Float, Float>) = s.second in h * 0.22f..h * 0.40f && s.first in w * 0.15f..w * 0.75f
+        if (open(waypointOnScreen(index))) return
         var p: LatLng? = null
         scenario.onActivity { a -> vm(a).followMe = false; vm(a).waypoints[index].let { p = LatLng(it.lat, it.lon) } }
         onMap { m -> m.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLng(p!!)) }
         Thread.sleep(600)
+        // the point is now at the centre (h/2): shift the map by pixels until it sits at (w/2, 0.32 h), measured each time
+        repeat(3) {
+            val (x, y) = waypointOnScreen(index)
+            if (open(x to y)) return
+            onMap { m -> m.scrollBy(w / 2f - x, h * 0.32f - y) }
+            Thread.sleep(600)
+        }
     }
 
     /** Screenshot into /sdcard/e2e (pulled by the workflow as an artifact). */
