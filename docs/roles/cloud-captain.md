@@ -5,7 +5,7 @@
 the repos and in the other sessions' transcripts.
 
 **Do**
-- Get the picture from the repos (`docs/backlog.md`, "Last session" in `docs/project-status.md`, `onpath-private`)
+- Get the picture from the repos (`docs/backlog.md`, "Last session" in `docs/project-status.md`, `onpath.private`)
   and from the other cloud sessions' transcripts (list sessions / read events). The other roles don't have to report.
 - Message a role directly when something must be known now ("sync format changed – please follow"). Anything that
   must last also goes into the backlog.

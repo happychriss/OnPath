@@ -93,14 +93,14 @@ If a rebase gets messy: `git rebase --abort`, push your work to `feat/<topic>` i
 | Why something was done | commit messages (say *why*, not only *what*) |
 | Website onpath.earth (public pages, Cloudflare Pages) | its own repo `happychriss/onpath.earth` – not this repo |
 | Roles: who owns what, which computer and folder | `docs/roles/` (§8) |
-| Non-code work (marketing, ideas, Google Play, website texts) | private repo `happychriss/onpath-private` (role cloud-web) – never copied into a public repo. Until it exists the old private Google Drive folder **OnPath / 01 Aufträge** stays valid (rules inside, read **LIESMICH – privat** first; documents are never edited – new version, old one copied to **Archiv** and trashed; the connector cannot rename or move files: `copy_file` + `trash_file`, never `update_file`). After the move Drive is read-only history |
+| Non-code work (marketing, ideas, Google Play, website texts) | private repo `happychriss/onpath.private` (role cloud-web) – never copied into a public repo. Until it exists the old private Google Drive folder **OnPath / 01 Aufträge** stays valid (rules inside, read **LIESMICH – privat** first; documents are never edited – new version, old one copied to **Archiv** and trashed; the connector cannot rename or move files: `copy_file` + `trash_file`, never `update_file`). After the move Drive is read-only history |
 
 Never rely on chat history of another session – if it matters, it must be in the repo.
 
 ## 7. Session start / end checklist
 
 **Start:** `git pull --rebase origin main` → read "Last session" + backlog → (cloud-web / captain: open items in
-`onpath-private`) → claim your item → push the claim.
+`onpath.private`) → claim your item → push the claim.
 
 **End:** tests green → push → remove your claim → write "Last session" → push → `git status` is clean.
 
@@ -119,15 +119,15 @@ two of them attach to the owner's computers via Remote Control:
    cloud-app       cloud-plan       cloud-web
    (donald)        (laptop)         (cloud only)
          \             |              /
-     GitHub: backlog, handoffs, code   ·   onpath-private (marketing)
+     GitHub: backlog, handoffs, code   ·   onpath.private (marketing)
 ```
 
 | Channel | For | Rule |
 | --- | --- | --- |
-| `docs/backlog.md` | claims, requests between roles, the captain's release go | tag = role name: `[cloud-app]`, `[cloud-plan]`, `[captain]` (website / marketing claims live in `onpath-private`) |
+| `docs/backlog.md` | claims, requests between roles, the captain's release go | tag = role name: `[cloud-app]`, `[cloud-plan]`, `[captain]` (website / marketing claims live in `onpath.private`) |
 | "Last session" in `docs/project-status.md` | handoffs | one entry per role per sitting, name the role |
 | Direct message between sessions | "must know now" (shared code changed, please pull, build finished) | short plain text; never the only record – lasting things also go into the backlog; a message never counts as the owner's consent |
-| `onpath-private` | marketing, ideas, private screenshots | never into a public repo |
+| `onpath.private` | marketing, ideas, private screenshots | never into a public repo |
 | R2 TEST (`publish_cells.sh`), GitHub Releases | map cells, APKs | as before |
 
 **Computers.** donald serves `~/work/onpath-app` (cloud-app, Pixel on USB), the laptop serves `~/work/onpath-plan`

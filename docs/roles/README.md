@@ -9,7 +9,7 @@ repo – never from another session's chat.
 | --- | --- | --- | --- | --- |
 | [cloud-app](cloud-app.md) | Android app | donald (desktop PC), via Remote Control | `~/work/onpath-app` | `OnPath` (`main`) |
 | [cloud-plan](cloud-plan.md) | browser planner, map cells | laptop (32 GB), via Remote Control | `~/work/onpath-plan` | `OnPath` (`web-spike`) |
-| [cloud-web](cloud-web.md) | website onpath.earth, marketing | cloud only | – | `onpath.earth`, `onpath-private` |
+| [cloud-web](cloud-web.md) | website onpath.earth, marketing | cloud only | – | `onpath.earth`, `onpath.private` |
 | [cloud-captain](cloud-captain.md) | overview, priorities, release go | cloud only | – | all, mostly read-only |
 
 Rules:
@@ -21,7 +21,7 @@ Rules:
 
 ## Setup and migration (owner, once)
 
-1. Create the private repo `happychriss/onpath-private` (`marketing/`, `ideen/`, `inbox/`); add it as a source for
+1. Create the private repo `happychriss/onpath.private` (done: `marketing/`, `ideen/`, `inbox/`, `backlog.md`); add it as a source for
    cloud-web and cloud-captain in claude.ai/code.
 2. donald: `git clone` OnPath to `~/work/onpath-app`; Claude desktop app → Settings → Claude Code → Remote Control →
    share that folder.
@@ -32,4 +32,4 @@ Rules:
    Start the captain as a fresh session.
 6. Test: the captain messages each role "test", each answers (checks that a session attached to a computer still
    sends and receives).
-7. cloud-web copies the Drive folder into `onpath-private`; from then on Drive is read-only history.
+7. cloud-web copies the Drive folder into `onpath.private`; from then on Drive is read-only history.
