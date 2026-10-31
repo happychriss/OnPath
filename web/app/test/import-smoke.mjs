@@ -79,6 +79,7 @@ check(await pins() === 0 && !(await page.$('#summary .big')), 'the long plan\'s 
 await page.goto(url + 'index.html#p=' + CODE);
 await planned();
 check(await pins() === 2, 'short plan from a link: 2 points, routed, no question');
+await page.waitForTimeout(900); // the first route's fit (WholeRoute: 500 ms after it is there) – then the test moves the map
 await page.evaluate(() => window.__map.jumpTo({ center: [11.16, 51.2], zoom: 5.5 }));
 await page.waitForTimeout(500);
 await clickAt(11.16, 52.05);
