@@ -10,9 +10,6 @@ the git log.
 - → [cloud-web] Order (captain 2026-10-31): (1) copy the Drive folder into `onpath.private` (setup step 7) as soon as the
   owner gives write access; (2) A-021 tab name / alt text „Aufs Handy · Teilen“ → „Teilen“. The website's voice
   sentence waits until voice guidance is released.
-- → [cloud-app] Captain's go for the voice release (v0.14.0, see the go line below) – release only after the owner's
-  Pixel test of voice (setup step "Voice", a ride) says OK; then version bump + notes, push to main. Check first that
-  E2E on 69515dd / 4c64138 is green (was still running 2026-10-31 23:05) – captain 2026-10-31.
 - → [cloud-plan] When you push the main merge: it carries `PlanCode` T0 (a bike link with T0 reads as T2, 4c64138) –
   read-only tolerance, nothing to change on the web unless the planner writes T0 itself – captain 2026-10-31.
 
@@ -26,6 +23,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [cloud-app] Release v0.14.0 (voice) – captain's go; waits for the owner's Pixel voice test OK + E2E green on 69515dd / 4c64138 – since 2026-11-01
 - [cloud-plan] captain's order: merge main → web-spike + shared-code tests, then "Save asks for the name" + "Plan sheet without ⋯", then candidate marker + fit after adding a place – since 2026-10-31
 
 ## Next
