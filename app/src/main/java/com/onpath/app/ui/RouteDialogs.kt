@@ -14,7 +14,7 @@ import androidx.compose.runtime.Composable
 
 /**
  * Dialogs of saving / loading routes, drawn above every screen (map, My routes): Save route name,
- * "Replace current plan?", and a save problem. None of them closes by itself.
+ * "Replace current plan?", "Replace the route of the running tour?" and a save problem. None of them closes by itself.
  */
 @Composable
 fun RouteDialogs(vm: AppViewModel) {
@@ -35,6 +35,7 @@ fun RouteDialogs(vm: AppViewModel) {
         ReplacePlanDialog(onSaveFirst = vm::replaceSaveFirst, onReplace = vm::replaceConfirmed, onCancel = { vm.replaceAsk = null },
             fromLink = t is PlanToOpen.Shared)
     }
+    vm.tourReplaceAsk?.let { _ -> ReplaceTourRouteDialog(onReplace = vm::tourReplaceConfirmed, onCancel = vm::tourReplaceCancel) }
     if (vm.straightAsk) StraightLegsDialog(onNavigate = vm::straightConfirmed, onCancel = { vm.straightAsk = false })
     vm.routesProblem?.let { msg ->
         AlertDialog(

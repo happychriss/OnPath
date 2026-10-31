@@ -881,6 +881,11 @@ class ScreenshotTest {
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}); ReplacePlanDialog({}, {}, {}) }
     }
 
+    /** My routes during a tour → a planned route: one question, Replace / Cancel, no body (owner 2026-10-31). */
+    @Test fun replaceTourRouteAsk() = paparazzi.snapshot {
+        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}); ReplaceTourRouteDialog({}, {}) }
+    }
+
     /** Sheet ⋯ → Save route on a plan loaded from a saved route: Save (overwrite) or Save as new… (tap outside = cancel). */
     @Test fun saveChoice() = paparazzi.snapshot {
         OnPathTheme {

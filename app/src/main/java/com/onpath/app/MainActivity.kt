@@ -170,7 +170,6 @@ class MainActivity : ComponentActivity() {
                             val recNow = vm.recState.collectAsState().value
                             RoutesScreen(
                                 tours = vm.tours,
-                                navigating = vm.navigating(recNow != null),
                                 recordingId = recNow?.tourId ?: -1L,
                                 onBack = { vm.routesOpen = false },
                                 onImport = { launchImport() },

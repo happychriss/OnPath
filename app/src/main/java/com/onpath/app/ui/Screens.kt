@@ -269,7 +269,7 @@ internal object SacScale {
  * browser; Import GPX lives here) and Done (recorded tours) – each a list, newest first: type icon, name, date,
  * distance. Per item ⋮ Rename / Export GPX / Delete (asks first), tap = open. A route from the browser not opened yet
  * has a bold title and "New from the browser" / "Changed in the browser" ([marks]). ⋮ Export all takes both tabs.
- * While [navigating], items that would replace the plan cannot be opened (they wait for the end of the tour).
+ * During a tour a planned route asks "Replace the route of the running tour?" first (AppViewModel.requestOpen).
  */
 @Composable
 fun RoutesScreen(
@@ -279,7 +279,6 @@ fun RoutesScreen(
     onOpen: (Tour) -> Unit,
     onExport: (Tour) -> Unit,
     onDelete: (Tour) -> Unit,
-    navigating: Boolean = false,
     /** The tour being recorded right now: it cannot be deleted (that would lose the track). */
     recordingId: Long = -1L,
     onRename: (Tour, String) -> Unit = { _, _ -> },
@@ -341,8 +340,7 @@ fun RoutesScreen(
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(shown, key = { it.id }) { t ->
-                        val openable = RouteRules.canOpen(t.kind, t.waypoints.size, navigating)
-                        TourCard(t, mark = marks[t.uuid].takeIf { t.uuid.isNotEmpty() }, onOpen = if (openable) ({ onOpen(t) }) else null,
+                        TourCard(t, mark = marks[t.uuid].takeIf { t.uuid.isNotEmpty() }, onOpen = { onOpen(t) },
                             onRename = { rename = t }, onExport = { onExport(t) },
                             onDelete = if (t.id == recordingId) null else ({ confirmDelete = t }),
                             onEditRides = if (t.rides?.rides.isNullOrEmpty() || t.id == recordingId) null else ({ onEditRides(t) }))
@@ -391,6 +389,21 @@ fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: 
     )
 }
 
+/**
+ * My routes during a tour → a planned route (owner 2026-10-31): one question, no body (the buttons say it). Replace = the
+ * tour follows that route, the recording goes on; Cancel, a tap outside or Back = nothing changes.
+ */
+@Composable
+fun ReplaceTourRouteDialog(onReplace: () -> Unit, onCancel: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        icon = { Icon(Icons.Filled.Route, null) },
+        title = { Text(str(Res.string.routes_replace_tour_title)) },
+        confirmButton = { TextButton(onClick = onReplace, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_replace)) } },
+        dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
+    )
+}
+
 @Composable
 private fun TourCard(
     t: Tour, mark: SyncMark?, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?,
@@ -419,7 +432,6 @@ private fun TourCard(
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}", style = MaterialTheme.typography.bodySmall)
                 if (onDelete == null) Text(str(Res.string.routes_recording_now), style = MaterialTheme.typography.bodySmall, color = OnPathColors.Rec)
-                else if (onOpen == null) Text(str(Res.string.routes_after_tour), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             TourItemMenu(t, onRename, onExport, onDelete, onEditRides)
         }
