@@ -3,9 +3,10 @@
 Owner 2026-10-31: a fixed list of real user flows played automatically in the emulator with the demo ride – about
 6 minutes on donald (13 flows), no human. Pushing a build to the phone needs no extra test (as before).
 
-**Rule: "mit donald = Rundgang"** (owner 2026-10-31)
-- A release made **on donald** runs the Rundgang **locally first** (`tools/ci/release_rundgang.sh`). **Red = no release.**
-- A release made **elsewhere** (cloud, laptop without an emulator) goes out **without** the Rundgang – no blocking.
+**Rule: the Rundgang is OPTIONAL** (owner 2026-10-31 evening, "it takes too long"; replaces "mit donald = Rundgang")
+- A **normal release** = the unit + screenshot gate (`testDebugUnitTest verifyPaparazziDebug`) + GitHub's smoke test.
+- Run the Rundgang (`tools/ci/release_rundgang.sh`, on donald) **only when the owner asks** or when a release **changes
+  navigation / recording core logic**. Then: **red = no release.**
 - GitHub `release.yml` runs only the short `StartSmokeE2ETest` as its emulator gate (job `smoke`).
 - Nobody waits for the push E2E run (`e2e.yml`) before releasing; that run keeps leaving the Rundgang out (`notClass`).
 
