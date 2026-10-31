@@ -36,8 +36,12 @@ enum class CellWhy {
     TAPPED,
 }
 
-/** Cells one trigger asked for: [own] (the point's / position's cell, null for a corridor) first in [cells]. */
-data class CellJob(val cells: List<CellId>, val own: CellId?, val why: CellWhy)
+/**
+ * Cells one trigger asked for: [own] (the point's / position's cell, null for a corridor) first in [cells]. [cells] are
+ * what the card / loading window is about; [margin] = route-corridor cells asked for quietly beside a route that has the
+ * detailed map (they show only in the background-download chip, never as "No detailed map").
+ */
+data class CellJob(val cells: List<CellId>, val own: CellId?, val why: CellWhy, val margin: List<CellId> = emptyList())
 
 /**
  * When the map is fetched (docs/design/map-cells.md §9): **the map comes where you plan or where you are**. A search
@@ -104,7 +108,12 @@ class CellTriggers(
      */
     fun corridorOf(line: List<GeoPoint>): List<CellId> = if (line.size < 2) emptyList() else cells.cellsAlong(line, CORRIDOR_M)
 
-    /** T4: a route was computed – every missing cell of the corridor (~10 km, F-OFF-02). Marks its cells used (T6). */
+    /**
+     * T4: a route was computed – every missing cell of the corridor (~10 km either side, start and destination included,
+     * F-OFF-02), so a hut or a detour beside the route routes offline later. Marks its cells used (T6). The returned job's
+     * [CellJob.cells] are the asked-for cells the route itself crosses (within [ROUTE_M]) – the card / loading window;
+     * the rest of the corridor is [CellJob.margin]: quiet, never "No detailed map" for a route that has it (field 0.13.3).
+     */
     fun routeComputed(line: List<GeoPoint>, corridorCells: List<CellId>? = null): CellJob? {
         if (line.size < 2) { planRoute(null); return null }
         val corridor = corridorCells ?: cells.cellsAlong(line, CORRIDOR_M)
@@ -119,7 +128,23 @@ class CellTriggers(
             "Route corridor needs ${all.size} map regions – only the first $CORRIDOR_MAX_CELLS load now, the rest on tour")
         if (!cells.downloadsAvailable) return CellJob(want, null, CellWhy.PLANNED)
         val added = cells.request(want, CellReason.CORRIDOR, ownPoint = false)
-        return if (added.isEmpty()) null else CellJob(added, null, CellWhy.PLANNED)
+        if (added.isEmpty()) return null
+        val under = cells.cellsAlong(line, ROUTE_M).toSet()
+        return CellJob(added.filter { it in under }, null, CellWhy.PLANNED, margin = added.filter { it !in under })
+    }
+
+    /**
+     * A tour starts on the planned route [line] (F-OFF-02 "started route", owner: "new route – even without signal"):
+     * what of its corridor is still missing – the loading was cancelled, the server failed, a part waited – is asked for
+     * again (quiet; the background-download chip shows it, the mobile-data rule applies as for T4). The first
+     * [CORRIDOR_MAX_CELLS] only; beyond them T5 loads ahead on the way. Returns the cells asked for.
+     */
+    fun tourStarted(line: List<GeoPoint>, corridorCells: List<CellId>? = null): List<CellId> {
+        if (!cells.downloadsAvailable || line.size < 2) return emptyList()
+        val corridor = corridorCells ?: cells.cellsAlong(line, CORRIDOR_M)
+        cells.markUsed(corridor)
+        val want = needed(corridor).take(CORRIDOR_MAX_CELLS)
+        return if (want.isEmpty()) emptyList() else cells.request(want, CellReason.CORRIDOR, ownPoint = false)
     }
 
     /**
@@ -185,7 +210,10 @@ class CellTriggers(
         fun nearAny(c: CellId, points: List<GeoPoint>): Boolean = points.any { c in CellId.near(it, NEAR_M) }
 
         const val NEAR_M = 5_000.0
+        /** Corridor either side of a route (F-OFF-02 default 10 km; measured to the area's border). */
         const val CORRIDOR_M = 10_000.0
+        /** Corridor cells this close to the route line are "under the route" (card / loading window), the rest margin. */
+        const val ROUTE_M = 1_000.0
         /** At most this many corridor regions load for one route (≈ 300 km of route, ~300 MB). */
         const val CORRIDOR_MAX_CELLS = 30
         const val AHEAD_M = 5_000.0

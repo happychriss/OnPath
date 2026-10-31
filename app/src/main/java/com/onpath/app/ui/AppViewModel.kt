@@ -494,6 +494,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun showCellJob(j: com.onpath.app.cells.CellJob?) {
         j ?: return
+        if (j.cells.isEmpty()) return // only a route's margin: quiet (the background chip shows it), no card
         routingForCells(j.cells, wait = j.own != null || viewWithoutDetail) // routing data comes with the map
         if (!cells.downloadsAvailable) {
             if (notAvailableShown) return
@@ -1006,7 +1007,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         for (c in cells) { val old = loadTags[c]; if (old == null || t.why.ordinal <= old.why.ordinal) loadTags[c] = t }
     }
 
-    private fun com.onpath.app.cells.CellJob?.tagged(tag: LoadTag): com.onpath.app.cells.CellJob? = also { j -> j?.let { tagLoads(it.cells, tag) } }
+    private fun com.onpath.app.cells.CellJob?.tagged(tag: LoadTag): com.onpath.app.cells.CellJob? = also { j -> j?.let { tagLoads(it.cells + it.margin, tag) } }
 
     /** The overview town nearest to [c]'s centre; null while the towns are read or none is near. */
     private fun townNear(c: com.onpath.app.cells.CellId): String? {
@@ -3202,7 +3203,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // PlanStart: the sheet's button says "Start recording" exactly when nothing is followed here
         when (PlanStart.of(trackPoints = s?.points?.size, hasRoute = route != null, pointCount = waypoints.size)) {
             PlanStart.FOLLOW_TRACK -> { followShown(); shown = null }
-            PlanStart.NAVIGATE_PLAN -> followPlanned()
+            PlanStart.NAVIGATE_PLAN -> { followPlanned(); secureTourCorridor() }
             // the button waits for the line; reached anyway: record (a tour is never refused), nothing followed.
             // A shown track without a line closes, like ☰ → Start recording.
             PlanStart.WAIT_FOR_ROUTE, PlanStart.RECORD_ONLY -> { clearFollow(); shown = null }
@@ -3219,6 +3220,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private var startJob: Job? = null
+
+    /**
+     * A tour starts on the plan's route (F-OFF-02 "started route", owner: "new route – even without signal"): map areas
+     * and routing parts of its corridor (~10 km either side) still missing – loading cancelled, server failed, waited –
+     * are asked for again, quietly (background chip; Wi-Fi-only rule as for the plan). Geometry off the main thread.
+     */
+    private fun secureTourCorridor() {
+        val line = route?.points?.takeIf { it.size >= 2 } ?: return
+        val pts = waypoints.toList()
+        val dest = if (com.onpath.app.routing.PlanEdits.isRoundTrip(pts)) pts.firstOrNull() else pts.lastOrNull()
+        viewModelScope.launch {
+            val pre = withContext(Dispatchers.Default) {
+                runCatching { cellTriggers.corridorOf(line) to com.onpath.app.data.RoutingTiles.forLine(line) }
+            }
+            val (corridor, keys) = pre.getOrElse {
+                Problems.error("cells", "Corridor of the started tour unknown; nothing more loads for it", it); return@launch
+            }
+            safeCells("tour") {
+                val asked = cellTriggers.tourStarted(line, corridor)
+                tagLoads(asked, LoadTag(LoadWhy.ROUTE, dest))
+                if (asked.isNotEmpty()) Problems.info("cells", "Tour started: ${asked.size} map area(s) of its corridor were missing; loading them")
+            }
+            routingForLine(keys)
+        }
+    }
 
     /** How long Start waits for the service's first state before saying that recording did not start. */
     private val START_TIMEOUT_MS = 6_000L
