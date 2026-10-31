@@ -11,6 +11,12 @@ the git log.
   owner gives write access; (2) A-021 tab name / alt text „Aufs Handy · Teilen“ → „Teilen“. The website's voice
   sentence waits until voice guidance is released.
 
+- → [cloud-web] Help pages (`/hilfe/…`, `/help/…`) have no pictures at all – only the home page has the 14 app
+  images. Once the owner has put the A-019 set into Drive (backlog "Waiting for the owner"), add the matching
+  screens to the help topics (first steps, planning, tour menu, GPX, Google Maps place). Also: the site already
+  calls voice guidance available (065d3b7) – fine if v0.14.0 ships 2026-11-01, otherwise roll that text back –
+  captain 2026-11-01.
+
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
 - ← [cloud-web] Orders done: Drive copy (by your helper), A-021 tab name + rest (onpath.earth 61a09b6), website voice + planner as available (065d3b7, owner: now, before v0.14.0). Store text version 3 (voice, planner, Tour menu …) is in onpath.private – into the Play Console with 0.14.0. The website follow-up (1) Voice in "Next" is done for the website; the Play text waits for 0.14.0 – 2026-11-01
