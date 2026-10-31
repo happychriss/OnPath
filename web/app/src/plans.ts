@@ -23,6 +23,8 @@ export interface PlanHost {
   saved(p: SavedPlan, folder: string): void;
   /** My routes → ⋮ → Export GPX: [p] from [folder] as a GPX file (a route is opened and planned first). */
   exportGpx(p: SavedPlan, folder: string): void;
+  /** My routes → ⋮ → Share plan: [p]'s link and QR code (the sheet's Share dialog). */
+  share(p: SavedPlan): void;
 }
 
 let openDialog: HTMLDialogElement | null = null;
@@ -108,7 +110,8 @@ export function phonePill(s: SyncStatus, now = Date.now()): { kind: PhoneState['
 /**
  * My routes – one plain list (web-sync.md §14.6): title, the rows, Close. A row: the kind in a circle as in the app
  * (planned route blue, imported GPX purple), the name, "Planned · 30 Oct 2026" / "GPX · …"; on the right where it lies
- * (🖥 this browser, 📱 the phone, both) and ⋮ with Rename, Export GPX, Delete. Bold = changed here and not on the phone
+ * (🖥 this browser, 📱 the phone, both) and ⋮ with Rename, Save as copy, Export GPX, Share plan, Delete (copy and share
+ * for planned routes – the app's TourItemMenu). Bold = changed here and not on the phone
  * yet; the open route on a light green. A click on the row opens it. Follows the sync live.
  */
 export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
@@ -144,7 +147,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
         <span class="txt"><span class="nameline"><span class="name">${esc(titleOf(p))}</span>${tagOf(p)}</span><span class="muted small sub">${esc(kind + ' · ' + appDate(p.updatedAt))}</span></span></button>
         <span class="where">${here ? where('browser', 'web_where_browser', 'monitor') : ''}${phone ? where('phone', 'web_where_phone', 'phone') : ''}</span>
         <button class="more iconbtn" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(t('plan_route_options'))}" title="${esc(t('plan_route_options'))}">${icon('moreVert', 22)}</button>
-        <div class="menu rowmenu" role="menu" hidden><button class="rename" role="menuitem">${esc(t('common_rename'))}</button><button class="export" role="menuitem">${esc(t('common_export_gpx'))}</button><button class="del" role="menuitem">${esc(t('common_delete'))}</button></div>`;
+        <div class="menu rowmenu" role="menu" hidden><button class="rename" role="menuitem">${esc(t('common_rename'))}</button>${p.kind === 'plan' ? `<button class="copy" role="menuitem">${esc(t('plan_save_as_copy'))}</button>` : ''}<button class="export" role="menuitem">${esc(t('common_export_gpx'))}</button>${p.kind === 'plan' ? `<button class="sharerow" role="menuitem">${esc(t('plan_share_plan'))}</button>` : ''}<button class="del" role="menuitem">${esc(t('common_delete'))}</button></div>`;
       const q = <T extends HTMLElement>(sel: string) => li.querySelector<T>(sel)!;
       q('.open').onclick = () => { d.close(); sync.seen(p.id, folder); host.open(p, folder); };
       q('.more').onclick = (e) => {
@@ -169,7 +172,13 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
         if (p.id === host.openId()) host.saved({ ...p, title: stored }, folder); // "Saved as …" follows the new name
         render();
       };
+      li.querySelector<HTMLButtonElement>('.copy')?.addEventListener('click', async () => {
+        closeMenus();
+        await copyRoute(sync, p, folder); // the name dialog takes My routes' place …
+        await myPlansDialog(sync, host); // … and My routes comes back, with the copy in it
+      });
       q('.export').onclick = () => { closeMenus(); d.close(); host.exportGpx(p, folder); };
+      li.querySelector<HTMLButtonElement>('.sharerow')?.addEventListener('click', () => { closeMenus(); d.close(); host.share(p); });
       q('.del').onclick = () => {
         closeMenus();
         askInPlace(li, folder === NONE ? t('web_delete_q_local', titleOf(p)) : t('web_delete_q', titleOf(p)),
@@ -299,13 +308,55 @@ export function datedName(ms = Date.now()): string {
 }
 
 /**
- * Save as the app does it since 2026-10-31 ("wie Word", RouteRules.saveMode, docs/backlog.md "Save like Word"): at once,
- * no field, no question. The shown route belongs to a saved route that still exists → that route is overwritten (its name
- * stays); else – or with [asNew], sheet ⋯ → "Save as new route" – a new route named by [newRouteName] (the proposal is
- * waited for 2 s at most, like the app). The new one is the open route from then on; renaming = a click on "Saved as …".
- * [then] runs after the save (paired: everything waiting goes to the phone).
+ * The app's RouteRules.copyName (mirror): the proposed name of Save as copy of [name] – "Name (2)", the next free number;
+ * a copy of "Name (2)" is "Name (3)", not "Name (2) (2)".
  */
-export async function saveRoute(sync: PlanSync, host: PlanHost, asNew: boolean, then?: () => void) {
+export function copyName(name: string, taken: string[]): string {
+  const base = name.trim().replace(/ \(\d+\)$/, '');
+  return newRouteName(base, base, [...taken, base]);
+}
+
+/** The app's RouteRules.cleanName: trimmed; blank keeps [old] (the proposal / old name). */
+export const cleanName = (input: string, old: string) => input.trim() || old;
+
+/**
+ * Save's name dialog (the app's SaveNameDialog, owner 2026-10-31 "Save always asks for the name"): title Save route /
+ * Save as copy, the name field with [name] fully selected, Cancel · Save; Enter saves, Escape cancels. [later] (the
+ * place proposal, arriving after the dialog opened) replaces the field until the user types. Resolves the typed name
+ * (blank kept as blank – [cleanName] decides) or null on Cancel.
+ */
+type MaybeName = Promise<string | null>;
+function nameDialog(copy: boolean, name: string, later?: MaybeName): MaybeName {
+  return new Promise((resolve) => {
+    const d = dialog('savename', `<h2>${esc(t(copy ? 'plan_save_as_copy' : 'plan_save_route'))}</h2>
+      <label class="field"><span class="muted small">${esc(t('routes_name_label'))}</span><input id="saveTitle" maxlength="100" autocomplete="off"></label>
+      <div class="row end"><button id="saveCancel">${esc(t('common_cancel'))}</button><button id="saveOk" class="primary">${esc(t('common_save'))}</button></div>`);
+    const input = d.querySelector<HTMLInputElement>('#saveTitle')!;
+    let typed = false, answer: string | null = null;
+    const fill = (n: string) => { input.value = n; input.focus(); input.select(); };
+    fill(name);
+    input.addEventListener('input', () => { typed = true; });
+    later?.then((n) => { if (n && !typed && d.open) fill(n); });
+    const ok = () => { answer = input.value; d.close(); };
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ok(); } });
+    d.querySelector<HTMLButtonElement>('#saveOk')!.onclick = ok;
+    d.querySelector<HTMLButtonElement>('#saveCancel')!.onclick = () => d.close();
+    d.addEventListener('close', () => resolve(answer));
+  });
+}
+
+/** How long the dialog waits for the place proposal of a new route's name (the app's NAME_WAIT_MS; the date name meanwhile). */
+const NAME_WAIT_MS = 5_000;
+
+/**
+ * Save – the header's Save, ⋯ → Save route – as the app does it since 2026-10-31 (RouteRules.saveMode, AppViewModel.askSave
+ * / confirmSave): always the name dialog first. The shown route belongs to a saved route that still exists → that route's
+ * name, and Save overwrites it – renamed when the name changed, still ONE route; else the proposal ([newRouteName]: the
+ * plan link's title while unchanged, else the place proposal "Vellau → Leiteralm" – shown when it arrives – else
+ * "Route 31 Oct, 10:12") and a new route, the open one from then on. Cancel saves nothing. [then] runs after a save
+ * (paired: everything waiting goes to the phone).
+ */
+export async function saveRoute(sync: PlanSync, host: PlanHost, then?: () => void) {
   if (saving) return; // one click, one route (owner 2026-10-28: saving made duplicates)
   saving = true;
   try {
@@ -313,22 +364,48 @@ export async function saveRoute(sync: PlanSync, host: PlanHost, asNew: boolean, 
     if (!cur) { then?.(); return; }
     const id = host.openId(), folder = host.openFolder();
     const plans = (await sync.list(folder)).filter((p) => p.kind === 'plan');
-    const existing = !asNew && id ? plans.find((p) => p.id === id) : undefined;
-    if (existing) { // OVERWRITE: a new version of the open saved route, its name stays
-      await sync.save(cur.code, existing.title, existing.id, folder);
-      host.saved({ ...existing, plan: cur.code, updatedAt: Date.now(), mine: true }, folder);
+    const existing = id ? plans.find((p) => p.id === id) : undefined;
+    if (existing) { // OVERWRITE: a new version of the open saved route, renamed when the name changed
+      const old = titleOf(existing);
+      const input = await nameDialog(false, old);
+      if (input == null) return;
+      const name = cleanName(input, old), title = name === old ? existing.title : storedTitle(name);
+      await sync.save(cur.code, title, existing.id, folder);
+      host.saved({ ...existing, title, plan: cur.code, updatedAt: Date.now(), mine: true }, folder);
     } else { // NEW_ROUTE
-      // the app's proposeName: the link's title while unchanged, else the place proposal (waited for 2 s at most)
-      const proposed = host.linkTitle() ?? await Promise.race([host.suggestName().catch(() => ''), new Promise<string>((r) => setTimeout(() => r(''), 2_000))]);
-      const title = newRouteName(proposed, datedName(), plans.map((p) => titleOf(p)));
+      const dated = datedName(), taken = plans.map((p) => titleOf(p)), link = host.linkTitle();
+      const first = newRouteName(link, dated, taken);
+      // the app's proposeName: the link's title while unchanged, else the place proposal (waited for 5 s at most)
+      const later = link ? undefined : Promise.race([host.suggestName().catch(() => ''), new Promise<string>((r) => setTimeout(() => r(''), NAME_WAIT_MS))])
+        .then((p) => (p ? newRouteName(p, dated, taken) : null));
+      const input = await nameDialog(false, first, later);
+      if (input == null) return;
+      const title = storedTitle(cleanName(input, first));
       const into = sync.open;
-      const newId = await sync.save(cur.code, storedTitle(title), undefined, into);
-      host.saved({ id: newId, kind: 'plan', title: storedTitle(title), plan: cur.code, track: '', updatedAt: Date.now(), device: '', mine: true, dirty: true, onPhone: false }, into);
+      const newId = await sync.save(cur.code, title, undefined, into);
+      host.saved({ id: newId, kind: 'plan', title, plan: cur.code, track: '', updatedAt: Date.now(), device: '', mine: true, dirty: true, onPhone: false }, into);
     }
     then?.();
   } finally { saving = false; }
 }
 let saving = false;
+
+/**
+ * My routes → ⋮ → Save as copy (planned routes; the app's requestCopyRoute, owner 2026-10-31 – was the plan sheet's ⋯):
+ * the name dialog with "<name> (2)" ([copyName]); Save stores a copy of the saved route – the shown plan stays as it is.
+ */
+async function copyRoute(sync: PlanSync, p: SavedPlan, folder: string): Promise<boolean> {
+  if (saving || p.kind !== 'plan') return false;
+  saving = true;
+  try {
+    const taken = (await sync.list(folder)).filter((x) => x.kind === 'plan').map((x) => titleOf(x));
+    const first = copyName(titleOf(p), taken);
+    const input = await nameDialog(true, first);
+    if (input == null) return false;
+    await sync.save(p.plan, storedTitle(cleanName(input, first)), undefined, folder);
+    return true;
+  } finally { saving = false; }
+}
 
 /**
  * Pair phone: always a new code (A-017 point 2), the QR code, the steps in the app and the check digits; once the

@@ -93,7 +93,8 @@ await page.screenshot({ path: shot });
 // Save proposes a name like the app (RouteNamer: the places the stops came from)
 await page.click('#sheetMenuBtn');
 await page.click('#sheetSave');
-await page.waitForFunction(() => document.getElementById('saveTitle')?.value, null, { timeout: 30_000 }).catch(() => {});
+// the dialog opens with the date name; the place proposal replaces it when it arrives (5 s at most)
+await page.waitForFunction(() => document.getElementById('saveTitle')?.value?.includes('→'), null, { timeout: 30_000 }).catch(() => {});
 const proposed = await page.inputValue('#saveTitle');
 console.log('proposed name:', proposed);
 check(proposed === 'Vellau → Ifinger Hütte', 'Save proposes "Vellau → Ifinger Hütte" (RouteNamer)');

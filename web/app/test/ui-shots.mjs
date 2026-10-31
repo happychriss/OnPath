@@ -41,12 +41,11 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
   const header = async (file) => { await page.waitForTimeout(200); await page.screenshot({ path: path.join(out, `${name}-header-${file}.png`), clip }); };
   await fake('none');
   await header('none-dark'); // the shared route is new here: Save dark
-  await page.click('#menuSavePlan'); // Save at once (the app's rule since 2026-10-31, "wie Word")
-  await page.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'done', null, { timeout: 10_000 }).catch(() => {});
-  await page.click('#savedLine .savedname'); // "Saved as …" → the name field in place
-  await page.waitForSelector('#renameField');
+  await page.click('#menuSavePlan'); // Save asks for the name (the app's rule since 2026-10-31)
+  await page.waitForSelector('dialog.savename[open] #saveTitle');
   await page.screenshot({ path: path.join(out, `${name}-savefield.png`) });
-  await page.press('#renameField', 'Escape');
+  await page.click('#saveOk');
+  await page.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'done', null, { timeout: 10_000 }).catch(() => {});
   await header('none-done');
   await fake('fresh', 2);
   await header('fresh-dark');

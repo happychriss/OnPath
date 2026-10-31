@@ -65,26 +65,25 @@ async function showCode(P, other = false) {
   await P.waitForSelector('dialog.pair[open] #pairLink', { timeout: 30_000 });
   return { code: (await P.inputValue('#pairLink')).split('#pair=')[1], check: await P.textContent('#checkDigits') };
 }
-/** Renames the open saved route in place: a click on "Saved as …", the name field, [name], Enter (the app's rename). */
+/** Save's name dialog (owner 2026-10-31: every Save asks): waits for it, types [name] (null = keep the proposal), Save. */
+async function answerSave(P, name) {
+  await P.waitForSelector('dialog.savename[open] #saveTitle', { timeout: 10_000 });
+  if (name != null) await P.fill('#saveTitle', name);
+  await P.click('#saveOk');
+}
+/** Renames the open saved route: sheet ⋯ → Save route, the dialog shows its name, [name], Save (overwrite + rename). */
 async function renameOpen(P, name) {
-  await P.click('#savedLine .savedname');
-  await P.waitForSelector('#renameField', { timeout: 10_000 });
-  await P.fill('#renameField', name);
-  await P.press('#renameField', 'Enter');
+  await P.click('#sheetMenuBtn'); await P.click('#sheetSave');
+  await answerSave(P, name);
   await until(P, async (n) => (await window.__sync.list()).some((p) => p.title === n), name);
 }
-/** The shown route as a new saved route named [name]: sheet ⋯ → "Save as new route" (at once, the app's rule – paired,
- *  that also sends everything waiting), then renamed in place. */
+/** The shown (new) route saved as [name]: sheet ⋯ → Save route, the dialog, [name], Save (paired, that also sends). */
 async function saveAs(P, name) {
   const n = (await P.evaluate(async () => (await window.__sync.list()).length));
-  await P.click('#sheetMenuBtn'); await P.click('#sheetSaveNew');
+  await P.click('#sheetMenuBtn'); await P.click('#sheetSave');
+  await answerSave(P, name);
   await until(P, async (k) => (await window.__sync.list()).length > k, n);
-  await renameOpen(P, name);
-  // paired: the rename waits like any change (as in the app) – Save sends it
-  if (await P.evaluate(() => window.__sync.status.paired)) await P.click('#menuSavePlan');
 }
-/** A Save name field (the old one under the button, or the rename field): open? Since 2026-10-31 Save never opens one. */
-const field = (P) => P.evaluate(() => ({ open: !!document.querySelector('.savepop, #savePopName') }));
 const openRoute = async (P, hash) => { await P.evaluate((h) => { location.hash = h; }, hash); await P.waitForFunction(() => document.getElementById('points')?.textContent?.includes('Vellau'), null, { timeout: 30_000 }); };
 /** A row of My routes: where it lies (browser / phone / browser+phone, from the 🖥 📱 symbols), bold, the line below, open. */
 const listRow = (P, name) => P.evaluate((n) => { const li = [...document.querySelectorAll('#planList li')].find((l) => l.querySelector('.name')?.textContent === n);
@@ -169,29 +168,38 @@ check(e.label === 'Pair phone' && !e.dot && e.sub === '', `not paired: the Phone
 await A.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'dark', null, { timeout: 30_000 }).catch(() => {});
 let sb = await saveBtn(A);
 check(sb.state === 'dark' && sb.filled && sb.label === 'Save' && !sb.hint, `not paired, a new route: "Save", dark (filled), no hint beside it (${JSON.stringify(sb)})`);
-// Save as the app (2026-10-31, "wie Word"): at once under the proposed name – the plan link's title "Waalweg" – no field,
-// no question; a rename = a click on "Saved as …" (the name field in place); Save again overwrites; ⋯ → "Save as new
-// route" makes a copy
+// Save as the app (2026-10-31, "Save always asks for the name"): the dialog proposes the plan link's title "Waalweg",
+// fully selected; Cancel saves nothing; Save again shows the saved name and renames the same route; a copy is My routes
+// → ⋮ → Save as copy
 await A.click('#menuSavePlan');
+await A.waitForSelector('dialog.savename[open] #saveTitle');
+const rf = await A.evaluate(() => { const i = document.getElementById('saveTitle'); return { value: i.value, selected: i.selectionEnd - i.selectionStart === i.value.length }; });
+check(rf.value === 'Waalweg' && rf.selected, `Save: the name dialog proposes the link's title, selected (${JSON.stringify(rf)})`);
+await A.click('#saveCancel');
+await A.waitForTimeout(300);
+check((await titles(A)).length === 0, 'Cancel saves nothing');
+await A.click('#menuSavePlan');
+await answerSave(A, null);
 await until(A, async () => (await window.__sync.list()).length === 1);
 await A.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'done', null, { timeout: 30_000 }).catch(() => {});
 sb = await saveBtn(A);
-check(JSON.stringify(await titles(A)) === '["Waalweg"]' && !(await field(A)).open && sb.state === 'done' && !sb.filled && sb.label === 'Saved' && await A.locator('dialog[open]').count() === 0,
-  `Save saves at once under the link's title "Waalweg", no field, no dialog; light "✓ Saved" (${JSON.stringify(sb)})`);
-await A.click('#savedLine .savedname');
-await A.waitForSelector('#renameField');
-const rf = await A.evaluate(() => { const i = document.getElementById('renameField'); return { value: i.value, selected: i.selectionEnd - i.selectionStart === i.value.length }; });
-check(rf.value === 'Waalweg' && rf.selected, `a click on "Saved as …": the name field in place, the name selected (${JSON.stringify(rf)})`);
-await A.press('#renameField', 'Escape');
-check(JSON.stringify(await titles(A)) === '["Waalweg"]' && !(await A.$('#renameField')), 'Escape keeps the name');
+check(JSON.stringify(await titles(A)) === '["Waalweg"]' && sb.state === 'done' && !sb.filled && sb.label === 'Saved' && await A.locator('dialog[open]').count() === 0,
+  `Save → "Waalweg"; light "✓ Saved" (${JSON.stringify(sb)})`);
 await renameOpen(A, 'Altroute');
-check(JSON.stringify(await titles(A)) === '["Altroute"]' && (await A.textContent('#savedLine')).includes('Saved as Altroute'), 'renamed in place: "Altroute", one route');
-await A.click('#menuSavePlan');
-await A.waitForTimeout(500);
-check(JSON.stringify(await titles(A)) === '["Altroute"]' && await A.locator('dialog[open]').count() === 0, 'Save again overwrites the open route – no question, no second route');
-await saveAs(A, 'Zweitroute'); // ⋯ → Save as new route
-check((await status(A)).folder.key === 'none' && JSON.stringify(await titles(A)) === '["Altroute","Zweitroute"]', '"Save as new route" makes a second route, "Altroute" stays (Without phone)');
-check((await A.textContent('#savedLine')).includes('Saved as Zweitroute'), 'the new one is the open route');
+check(JSON.stringify(await titles(A)) === '["Altroute"]' && (await A.textContent('#savedLine')).includes('Saved as Altroute'), 'Save with a new name renames the open route: "Altroute", one route');
+// a copy, then opened: the open route from then on
+await menu(A, '#menuPlans');
+await A.waitForSelector('#planList li[data-id]');
+await rowMenu(A, 'Altroute', 'copy');
+await A.waitForSelector('dialog.savename[open] #saveTitle');
+check(await A.inputValue('#saveTitle') === 'Altroute (2)', 'My routes ⋮ → Save as copy proposes "Altroute (2)"');
+await answerSave(A, 'Zweitroute');
+await until(A, async () => (await window.__sync.list()).length === 2);
+await A.waitForSelector('dialog.plans[open] #planList li[data-id]');
+await A.click('#planList li:has(.name:text-is("Zweitroute")) .open');
+await A.waitForFunction(() => document.getElementById('savedLine')?.textContent?.includes('Saved as Zweitroute'), null, { timeout: 30_000 }).catch(() => {});
+check((await status(A)).folder.key === 'none' && JSON.stringify(await titles(A)) === '["Altroute","Zweitroute"]', 'the copy "Zweitroute" is a second route, "Altroute" stays (Without phone)');
+check((await A.textContent('#savedLine')).includes('Saved as Zweitroute'), 'the copy opened: the open route');
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
 let row = await listRow(A, 'Zweitroute');
@@ -233,7 +241,7 @@ row = await listRow(A, 'Handweg');
 check(row?.where === PHONE && !row.bold && !/New from the phone/.test(row.text), `the phone's route: 📱 only, not bold, no "New from the phone" mark (${JSON.stringify(row)})`);
 await A.click('#closePlans');
 await A.click('#menuSavePlan'); // one click sends everything waiting – no field (nothing new on the shown route)
-check(!(await field(A)).open, 'only waiting routes: Save sends at once, no field');
+check(await A.locator('dialog.savename[open]').count() === 0, 'only waiting routes: Save sends at once, no name dialog');
 await A.waitForFunction(() => window.__sync.status.pending === 0, null, { timeout: 30_000 }).catch(() => {});
 await phone.round();
 check(JSON.stringify(await phone.titles()) === '["Altroute","Handweg","Zweitroute"]', 'one click on "Save to phone": both routes are on the phone ' + JSON.stringify(await phone.titles()));
@@ -294,7 +302,7 @@ check((await A.textContent('#savedLine')).includes('Saved as Zweitroute'), 'afte
 await phone.round();
 check(!(await phone.titles()).includes('Waalweg'), 'still nothing on the phone');
 await A.click('#menuSavePlan');
-check(!(await field(A)).open, 'Save with only a waiting rename: no field');
+check(await A.locator('dialog.savename[open]').count() === 0, 'Save with only a waiting rename: no name dialog');
 await A.waitForFunction(() => !document.getElementById('menuSavePlan').classList.contains('unsaved'), null, { timeout: 30_000 }).catch(() => {});
 sb = await saveBtn(A);
 check(!sb.unsaved && sb.state === 'done', `Save: the button is light again (${JSON.stringify(sb)})`);
