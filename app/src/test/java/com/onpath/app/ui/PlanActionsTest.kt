@@ -39,7 +39,7 @@ class PlanActionsTest {
             assertTrue(item, row.contains(item))
         val action = panel.substringAfter("private fun PlanAction(").substringBefore("\n}\n")
         assertTrue("≥ 48 dp", action.contains("heightIn(min = 48.dp)"))
-        assertTrue("a label under the icon, never icon-only", action.contains("Text(label"))
+        assertTrue("a label beside the icon, never icon-only", action.contains("Text(label"))
         assertFalse("Reverse / Round trip not twice", src("ui/PointsSection.kt").contains("onReverse"))
     }
 
