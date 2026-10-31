@@ -150,10 +150,14 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
   `str(Res.string.x)` in Compose / `Txt.s(…)` elsewhere – no new hard-coded texts; review sheet round trip
   `tools/i18n/i18n.py export|import`. Diagnostics, Developer tools and the problem log stay English.
 - **Data/licences**: the map shows a short "© OpenStreetMap"; a tap opens Settings → About with the full credits
-  ("© OpenStreetMap contributors, © OpenMapTiles" + terrain attribution). Google
+  ("© OpenStreetMap contributors, © OpenMapTiles" + terrain attribution) and About → Licences (every bundled library
+  with version + licence, texts in `assets/licences/`, list from the build – `data/Licences.kt`, `LicencesTest`). Google
   content is never stored or drawn; only link out to Google Maps. Exception (owner): the coordinate
   of a place the user shares from Google Maps (share sheet / link, `search/SharedPlace.kt`) may be used to place our own
-  marker (orange search ring); nothing else from Google is drawn or stored beyond that point and the shared name.
+  marker (orange search ring); nothing else from Google is drawn or stored beyond that point and the shared name /
+  address. A short link is only followed through its redirects – the Google Maps page is never loaded or read (owner
+  2026-10-31, A-020); without a coordinate: our offline index → Photon → Android's `Geocoder` (on most phones a Google
+  service), each hit checked against the shared town (`SharedPlaceResolve`, `SharedPlaceLookup`).
 - **Activities** (exactly six): Bike, Gravelbike, E-bike, MTB, E-MTB, Hike (SAC T1–T5,
   default T2, chosen in the activity picker; the app remembers the last activity and T level). Names + the one picker line
   under each: `Activity.label` / `line`, chip `Activity.chip` ("Gravel") (enum names BIKE_TOURING / BIKE_TREKKING … unchanged and the only

@@ -123,6 +123,50 @@ android {
     }
 }
 
+/**
+ * Settings → About → Licences (A-020): the libraries each build really bundles, from Gradle's resolved runtime
+ * classpath – one "group:name:version" per line in assets/licences/deps.txt. The app pairs each with its licence
+ * (data/Licences.kt); LicencesTest fails when a library has none there. No licence plugin, nothing online.
+ */
+abstract class LicenceDepsTask : DefaultTask() {
+    @get:Input abstract val coordinates: ListProperty<String>
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+    @TaskAction fun write() {
+        val f = outputDir.get().asFile.resolve("licences/deps.txt")
+        f.parentFile.mkdirs()
+        f.writeText(coordinates.get().sorted().distinct().joinToString("\n", postfix = "\n"))
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val cap = variant.name.replaceFirstChar { it.uppercase() }
+        val task = tasks.register<LicenceDepsTask>("licenceDeps$cap") {
+            coordinates.set(variant.runtimeConfiguration.incoming.resolutionResult.rootComponent.map { root ->
+                val out = sortedSetOf<String>()
+                val seen = HashSet<ComponentIdentifier>()
+                fun walk(c: org.gradle.api.artifacts.result.ResolvedComponentResult) {
+                    if (!seen.add(c.id)) return
+                    (c.id as? ModuleComponentIdentifier)?.let { out += "${it.group}:${it.module}:${it.version}" }
+                    c.dependencies.filterIsInstance<org.gradle.api.artifacts.result.ResolvedDependencyResult>().forEach { walk(it.selected) }
+                }
+                walk(root)
+                out.toList()
+            })
+        }
+        variant.sources.assets?.addGeneratedSourceDirectory(task, LicenceDepsTask::outputDir)
+        // the unit test checks the debug list (a superset of release: + ui-tooling)
+        if (variant.name == "debug") {
+            val deps = task.flatMap { it.outputDir }.map { it.file("licences/deps.txt").asFile.absolutePath }
+            tasks.withType<Test>().matching { it.name == "testDebugUnitTest" }.configureEach {
+                inputs.files(task).withPropertyName("licenceDeps")
+                jvmArgumentProviders.add(CommandLineArgumentProvider { listOf("-Donpath.licenceDeps=${deps.get()}") })
+            }
+        }
+    }
+}
+
 dependencies {
     // Routing engine jars (BRouter) dropped in by the routing agent.
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
