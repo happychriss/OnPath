@@ -29,6 +29,9 @@
     <string name="msg_import_failed_damaged">Import fehlgeschlagen – die Datei ist vielleicht beschädigt oder der Speicher voll. Deine vorhandenen Kartendaten sind unverändert.</string>
     <string name="msg_route_back_no_position">Noch keine GPS-Position, daher keine Route zurück. Die Tour wird weiter aufgezeichnet; du kannst jederzeit ein neues Ziel setzen.</string>
     <string name="msg_shared_place_not_found">Dieser Ort wurde nicht gefunden. Versuche es noch einmal, wenn du Internet hast.</string>
+    <string name="msg_shared_place_unsure">Ort nicht eindeutig</string>
+    <string name="msg_shared_place_unsure_detail">Kein sicherer Treffer – such „%1$s“ in OnPath.</string>
+    <string name="msg_shared_place_search">Suchen</string>
     <string name="msg_routing_failed">Routenberechnung fehlgeschlagen.</string>
     <string name="msg_no_new_route">Keine neue Route gefunden – du folgst weiter der bisherigen.</string>
     <string name="msg_route_save_failed">Die Route konnte nicht gespeichert werden. Deine Route ist noch da – versuche es bitte noch einmal.</string>

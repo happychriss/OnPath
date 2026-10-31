@@ -321,6 +321,16 @@ private fun PlanMode(
  * questions first (pairing step, map questions, map for here?, new version), then the must-know notes (error, paired,
  * a map failure / note). The rest wait in their state and come next.
  */
+/**
+ * A place shared from another app (Google Maps) without a coordinate, whose name is found only elsewhere – not in the
+ * shared town: no ring (never a namesake in another town), this box with the one way out, Search (the search view with
+ * [text] typed in). HINWEIS_WARN, stays until tapped.
+ */
+@Composable
+internal fun sharedUnsureMessage(text: String, onSearch: () -> Unit): Message =
+    Message(MessageKind.HINWEIS_WARN, str(Res.string.msg_shared_place_unsure), str(Res.string.msg_shared_place_unsure_detail, text),
+        listOf(MessageButton(str(Res.string.msg_shared_place_search), onSearch)))
+
 @Composable
 private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppViewModel, rec: RecState?,
                                                                         onRequestLocation: () -> Unit,
@@ -353,6 +363,8 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
             updateMessage(v, onInstall = { vm.installUpdate() }, onLater = { vm.updateDismissed = v })
         },
         vm.errorCard?.let { errorMessage(it) { vm.errorCard = null } },
+        // a shared place with only namesakes elsewhere: no ring, the search with its name + town (field bug 0.13.2)
+        vm.sharedUnsure?.let { sharedUnsureMessage(it, onSearch = vm::searchSharedUnsure) },
         // a pairing was just made or ended (owner 2026-10-30): "Paired. …" / "Unpaired. …" with OK, until OK
         syncNote?.let { syncNoteMessage(it, onOk = vm::syncNoteOk) },
         mapBox?.takeIf { it.kind != MessageKind.FRAGE },

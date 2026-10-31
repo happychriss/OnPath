@@ -110,6 +110,7 @@ MessageSlot(Messages.pick(listOf(question, m)), MessagePlacement.topDp(MessageSc
 | The map needs the location | HINWEIS | "Allow location" |
 | Notifications off during a tour | HINWEIS_WARN | "Notifications off" + lock screen line – OK (tap = setup step) |
 | Map areas could not be loaded | HINWEIS_WARN | "Map couldn't be loaded" – Try again |
+| A shared place found only as a namesake elsewhere (no coordinate, not in the shared town) | HINWEIS_WARN | "Place not clear" + "No sure match – search for “Olive Hilden” in OnPath." – Search (opens the search, text typed in); no ring |
 | An error without a screen of its own (background, link / share into the app) | HINWEIS_ERROR | "Couldn't find this place." – OK |
 | Route state | ANZEIGE | plan sheet lines (red ERROR, amber WARNING, grey INFO), "Saved as …", "New route · was 13:15" |
 | Off route, finding the way back | ANZEIGE | the amber off-route card with the arrow (Navigate) |

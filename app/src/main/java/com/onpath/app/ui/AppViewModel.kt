@@ -39,6 +39,7 @@ import com.onpath.app.routing.Activity
 import com.onpath.app.routing.EngineProvider
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanEdits
+import com.onpath.app.search.SharedPlaceLookup
 import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.Planner
 import com.onpath.app.routing.WaypointSnap
@@ -2244,6 +2245,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun receiveSharedPlace(shared: com.onpath.app.search.SharedPlace) {
         routesOpen = false; showSettings = false; offlineResult = null; timeDetails = null; routeDetailsOpen = false; searchOpen = false
+        sharedUnsure = null
         closeMapOverlays()
         // A shown track hides the plan sheet and blocks map holds – the ring's menu must work.
         if (shown != null) closeShown()
@@ -2255,6 +2257,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             // Cold start: the start mode (Plan / Navigate) is decided after a database check – switch after that.
             if (!startModeKnown) androidx.compose.runtime.snapshotFlow { startModeKnown }.first { it }
             if (mode != AppMode.PLAN) enter(AppMode.PLAN)
+            // one search per name / address / q text (the quick path and the end may ask the same)
+            val looked = HashMap<Triple<String?, String?, String?>, SharedPlaceLookup.Result>()
+            suspend fun lookup(s: com.onpath.app.search.SharedPlace): SharedPlaceLookup.Result = looked[Triple(s.name, s.address, s.query)] ?: (try {
+                search.findShared(s.name, s.address, s.query)
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
+                Problems.info("search", "Address search for a shared place failed", e); SharedPlaceLookup.Result.NotFound
+            }).also { looked[Triple(s.name, s.address, s.query)] = it }
             var p = shared
             var fromPage = false
             if (!p.hasPoint && p.link != null) {
@@ -2262,18 +2271,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val http = com.onpath.app.search.ShortLinkResolver.http(
                     com.onpath.app.search.PhotonProvider.userAgent(com.onpath.app.BuildConfig.VERSION_NAME))
                 // For speed (owner): when the redirect already names the address, search that and skip the Google
-                // page; the page is only read when the address is not found.
+                // page; the page (its place marker) is read when the address gives no sure place.
                 var r = withContext(Dispatchers.IO) { com.onpath.app.search.ShortLinkResolver(http, stopAtAddress = true).resolve(link) }
                 val quick = r.place?.takeIf { !it.hasPoint && it.address != null }
                 if (quick != null) {
                     val q = p.copy(name = p.name ?: quick.name, address = quick.address, query = p.query ?: quick.query)
-                    val hit = try { search.findOne(q.searchTexts()) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
-                        Problems.info("search", "Address search for a shared place failed", e); null
-                    }
+                    val hit = lookup(q) as? SharedPlaceLookup.Result.Found
                     if (hit != null) {
-                        Problems.info("search", "Shared place found by its address (${hit.second.name.lowercase()} search)")
-                        val shownName = q.name?.substringBefore(',')?.trim()?.ifEmpty { null } ?: hit.first.name
-                        showSharedPlace(hit.first.copy(name = shownName,
+                        Problems.info("search", "Shared place found by its address (${hit.how})")
+                        val shownName = q.name?.substringBefore(',')?.trim()?.ifEmpty { null } ?: hit.place.name
+                        showSharedPlace(hit.place.copy(name = shownName,
                             note = com.onpath.app.search.SharedPosition.of(point = false, fromPage = false, addressWon = false).note))
                         return@launch
                     }
@@ -2286,17 +2293,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var lat = p.lat; var lon = p.lon
             var addressWon = false
             // A point read from the downloaded Google page (the link itself had none) is checked against the address
-            // in the link: the page can carry other places' markers. More than SHARED_PAGE_MAX_OFF_M apart → the address wins.
+            // in the link: the page can carry other places' markers. More than SHARED_PAGE_MAX_OFF_M apart → the address
+            // wins – only a sure hit in the shared town, never a namesake elsewhere (SharedPlaceLookup).
             if (fromPage && lat != null && lon != null && p.searchTexts().isNotEmpty()) {
-                val byAddress = try { search.findOne(p.searchTexts()) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
-                    Problems.info("search", "Address check for a shared place failed", e); null
-                }
+                val byAddress = lookup(p) as? SharedPlaceLookup.Result.Found
                 if (byAddress != null) {
-                    val off = Geo.distance(lat, lon, byAddress.first.lat, byAddress.first.lon)
+                    val off = Geo.distance(lat, lon, byAddress.place.lat, byAddress.place.lon)
                     if (off > SHARED_PAGE_MAX_OFF_M) {
                         Problems.warn("search", "Shared place: the map page pointed ${(off / 1000).toInt()} km away from the " +
-                            "address – using the address (${byAddress.second.name.lowercase()} search)")
-                        lat = byAddress.first.lat; lon = byAddress.first.lon
+                            "address – using the address (${byAddress.how})")
+                        lat = byAddress.place.lat; lon = byAddress.place.lon
                         addressWon = true
                     }
                 }
@@ -2310,15 +2316,37 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     note = com.onpath.app.search.SharedPosition.of(point = true, fromPage = fromPage, addressWon = addressWon).note))
                 return@launch
             }
-            val found = search.findOne(p.searchTexts())
-            // Stays until OK (owner rule: no message disappears by itself).
-            if (found == null) { sayError(Txt.s(Res.string.msg_shared_place_not_found), NoticePlace.MAP); return@launch }
-            val (place, from) = found
-            Problems.info("search", "Shared place positioned from its address (${from.name.lowercase()} search)")
-            showSharedPlace(place.copy(name = p.name ?: place.name,
-                note = com.onpath.app.search.SharedPosition.of(point = false, fromPage = false, addressWon = false).note))
+            when (val found = lookup(p)) {
+                is SharedPlaceLookup.Result.Found -> {
+                    Problems.info("search", "Shared place positioned from its address (${found.how})")
+                    showSharedPlace(found.place.copy(name = p.name ?: found.place.name,
+                        note = com.onpath.app.search.SharedPosition.of(point = false, fromPage = false, addressWon = false).note))
+                }
+                // hits, but none surely the place (a namesake in another town): no ring – the search, prefilled; stays until tapped
+                is SharedPlaceLookup.Result.Unsure -> {
+                    Problems.info("search", "Shared place not clear: no sure hit in the shared town – the search is offered")
+                    sharedUnsure = found.searchText
+                }
+                // Stays until OK (owner rule: no message disappears by itself).
+                SharedPlaceLookup.Result.NotFound -> sayError(Txt.s(Res.string.msg_shared_place_not_found), NoticePlace.MAP)
+            }
           } finally { sharedLookup = false }
         }
+    }
+
+    /**
+     * A shared place without a sure position (only namesakes elsewhere): the text to search for. While set, Plan shows
+     * the box "Place not clear" with Search ([searchSharedUnsure]).
+     */
+    var sharedUnsure by mutableStateOf<String?>(null)
+        private set
+
+    /** The "Place not clear" box's button: the search opens with the shared name + town typed in. */
+    fun searchSharedUnsure() {
+        val text = sharedUnsure ?: return
+        sharedUnsure = null
+        openSearch()
+        search.onQuery(text)
     }
 
     private fun showSharedPlace(p: com.onpath.app.search.Place) {

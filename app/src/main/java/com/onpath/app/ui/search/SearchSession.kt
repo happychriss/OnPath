@@ -25,6 +25,9 @@ import com.onpath.app.search.SearchProvider
 import com.onpath.app.search.SearchQuery
 import com.onpath.app.search.SearchRanking
 import com.onpath.app.search.SearchStore
+import com.onpath.app.search.SharedPlaceFinder
+import com.onpath.app.search.SharedPlaceLookup
+import com.onpath.app.search.SharedTown
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -209,46 +212,48 @@ class SearchSession(
         }
     }
 
-    /** Where a [findOne] result came from. */
-    enum class Found { OFFLINE, ONLINE }
-
     /**
-     * The one best place for a shared address / name (no search view): offline first – a good match only (name or
-     * street equal / starting with the text, tier ≥ 2) – then the online provider. Null when nothing is found
-     * (offline and no offline match, or no match at all). Never throws.
+     * A shared place without a coordinate (no search view): by its address, else by its name in the shared town –
+     * never a namesake elsewhere ([SharedPlaceLookup]: the rules, unit-tested). Offline first – good matches only (name
+     * or street equal / starting with the text, tier ≥ 2) – then the online provider. Never throws.
      */
-    suspend fun findOne(texts: List<String>): Pair<Place, Found>? {
-        if (texts.isEmpty()) return null
+    suspend fun findShared(name: String?, address: String?, query: String?): SharedPlaceLookup.Result {
         val ctx = context()
         val idx = try { ensureIndex() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
             Problems.warn("search", "Place index unavailable; shared place searched online only", e); null
         }
-        val offline = withContext(Dispatchers.IO) {
-            texts.firstNotNullOfOrNull { t ->
-                try {
-                    val q = SearchQuery(t, null, ctx.refLat, ctx.refLon, null, limit = 5)
-                    val addr = ensureAddresses().search(AddressQuery.parse(t))
-                    (idx?.search(q, addr) ?: addr.map { com.onpath.app.search.SearchRanking.addressHit(it, q) })
-                        .firstOrNull { it.tier >= 2 }?.place
-                } catch (e: Exception) {
-                    Problems.warn("search", "Offline search for a shared place failed", e); null
+        val provider = online
+        val finder = object : SharedPlaceFinder {
+            override fun offline(text: String): List<Place> = try {
+                val q = SearchQuery(text, null, ctx.refLat, ctx.refLon, null, limit = 20) // room for the namesake in the shared town behind nearer ones
+                val addr = ensureAddresses().search(AddressQuery.parse(text))
+                (idx?.search(q, addr) ?: addr.map { SearchRanking.addressHit(it, q) }).filter { it.tier >= 2 }.map { it.place }
+            } catch (e: Exception) {
+                Problems.warn("search", "Offline search for a shared place failed", e); emptyList()
+            }
+
+            override fun online(text: String): List<Place> = if (provider == null) emptyList() else try {
+                val addr = ensureAddresses()
+                OnlineRanking.rank(provider.search(text, ctx.refLat, ctx.refLon, 10), ctx.refLat, ctx.refLon,
+                    addr.countryNear(ctx.refLat, ctx.refLon), OnlineRanking.queryTowns(text, addr.townsNamed(SearchText.tokens(text))))
+            } catch (e: Exception) {
+                Problems.info("search", "Online search for a shared place failed (offline or server unreachable)", e); emptyList()
+            }
+
+            override fun town(town: String, postcode: String?): SharedTown? {
+                val named = try { ensureAddresses().townsNamed(SearchText.tokens(town)) } catch (e: Exception) {
+                    Problems.warn("search", "Offline towns unreadable for a shared place", e); emptyList()
                 }
+                // one town of that name (or all its entries close together); namesakes elsewhere → ask online with the postcode
+                val first = named.firstOrNull()
+                if (first != null && named.all { Geo.distance(it.lat, it.lon, first.lat, first.lon) < 10_000 }) {
+                    return SharedTown(first.lat, first.lon, named.flatMap { listOf(it.name) + it.alt }.distinct())
+                }
+                val o = online(listOfNotNull(postcode, town).joinToString(" ")).firstOrNull() ?: return null
+                return SharedTown(o.lat, o.lon, listOfNotNull(o.town, o.name).distinct())
             }
         }
-        if (offline != null) return offline to Found.OFFLINE
-        val provider = online ?: return null
-        return withContext(Dispatchers.IO) {
-            texts.firstNotNullOfOrNull { t ->
-                try {
-                    val addr = ensureAddresses()
-                    OnlineRanking.rank(provider.search(t, ctx.refLat, ctx.refLon, 10), ctx.refLat, ctx.refLon,
-                        addr.countryNear(ctx.refLat, ctx.refLon), OnlineRanking.queryTowns(t, addr.townsNamed(SearchText.tokens(t))))
-                        .firstOrNull()
-                } catch (e: Exception) {
-                    Problems.info("search", "Online search for a shared place failed (offline or server unreachable)", e); null
-                }
-            }?.let { it to Found.ONLINE }
-        }
+        return withContext(Dispatchers.IO) { SharedPlaceLookup(finder).find(name, address, query) }
     }
 
     /** What one ranked list is for: the normalised text and the category (a space or case change is the same text). */
