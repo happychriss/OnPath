@@ -509,6 +509,19 @@ test("fast lane: a current version published outside a job is taken at request t
   assert.equal(g.calls.filter((x) => x.url.endsWith(":run")).length, 0); // nothing to build
 });
 
+test("fast lane: a rebuild on the same OSM date (job_build.py rebuild number, 2026-10-25.2-s7) is taken over the old name", async () => {
+  const env = testEnv();
+  const cfg = config(env);
+  assert.equal(schemaOf("2026-10-25.2-s7"), 7);
+  await env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, requests)
+      VALUES (?, 2, '2026-10-25-s7', '2026-10-25', 5, 3, 1)`).bind(MERAN).run();
+  await publishCurrent(env, MERAN, "2026-10-25.2-s7", "2026-10-25");
+  const j = await requestCells(env, cfg, { cells: [MERAN], reason: "refresh" }, NOW);
+  assert.equal(j.cells[0].state, "ready");
+  assert.equal(j.cells[0].version, "2026-10-25.2-s7");
+  assert.deepEqual(await row(env, MERAN), { version: "2026-10-25.2-s7", osm_date: "2026-10-25", size: 4321, job: null });
+});
+
 test("fast lane: an old-schema or OSM-old published version is not taken – the cell is built", async () => {
   const env = testEnv();
   const cfg = config(env);
@@ -648,6 +661,21 @@ test("cleanup: format 1 goes, format 2 keeps current + previous, older versions 
   await B.put(`${base}/current.json`, JSON.stringify({ version: "2026-10-22-s2" }));
   const r2 = await cleanupStorage(env, now);
   assert.equal(r2.oldVersions, 0);
+});
+
+test("cleanup: a rebuild number sorts between its OSM date and the next one (current .2 kept with the plain one)", async () => {
+  const env = testEnv();
+  const now = Date.parse("2026-11-01T03:17:00Z");
+  const old = now - 10 * 86_400_000;
+  const base = "cells/f2/10/543/361";
+  for (const v of ["2026-10-19-s7", "2026-10-25-s7", "2026-10-25.2-s7"]) {
+    await env.BUCKET.put(`${base}/${v}/base.pmtiles`, "x", { _uploaded: old });
+  }
+  await env.BUCKET.put(`${base}/current.json`, JSON.stringify({ version: "2026-10-25.2-s7" }));
+  assert.equal((await cleanupStorage(env, now)).oldVersions, 1);
+  const keys = [...env.BUCKET.objects.keys()];
+  assert.ok(keys.includes(`${base}/2026-10-25.2-s7/base.pmtiles`) && keys.includes(`${base}/2026-10-25-s7/base.pmtiles`));
+  assert.ok(!keys.some((k) => k.startsWith(`${base}/2026-10-19-s7/`)));
 });
 
 test("cleanup: deletes at most maxDeletes per run", async () => {

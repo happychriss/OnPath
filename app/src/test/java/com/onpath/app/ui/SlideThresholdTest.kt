@@ -20,6 +20,13 @@ class SlideThresholdTest {
         assertEquals(1f, SlideThreshold.fraction(5000f, 1000f))
     }
 
+    /** "Change route · Pause · End" only when it fits beside the thumb and under the main line; else main line only. */
+    @Test fun smallLineOnlyWhenItFits() {
+        assertTrue(SlideLabel.subFits(subWidth = 200, availWidth = 300, mainHeight = 22, subHeight = 20, availHeight = 56))
+        assertFalse(SlideLabel.subFits(subWidth = 320, availWidth = 300, mainHeight = 22, subHeight = 20, availHeight = 56))
+        assertFalse(SlideLabel.subFits(subWidth = 200, availWidth = 300, mainHeight = 33, subHeight = 30, availHeight = 56))
+    }
+
     @Test fun noTrackNeverCompletes() {
         assertFalse(SlideThreshold.isComplete(0f, 0f))
         assertFalse(SlideThreshold.isComplete(10f, -5f))

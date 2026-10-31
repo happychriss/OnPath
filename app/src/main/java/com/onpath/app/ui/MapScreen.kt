@@ -54,6 +54,8 @@ fun MapScreen(
     onRequestLocation: () -> Unit,
     /** Start navigation; the caller makes sure location permission is granted first. */
     onStartNavigation: () -> Unit,
+    /** startActivity of the camera action (☰ → Pair with browser, [PairEntry]); throws without a camera app. */
+    pairCamera: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -141,7 +143,7 @@ fun MapScreen(
         // Plan ⇄ Navigate: the control layers slide / fade (≈250 ms, ModeSwitch); the map above is not touched.
         ModeSwitch(vm.mode,
             plan = {
-                PlanMode(vm, rec, { footer(AppMode.PLAN) }, onStartNavigation, onRequestLocation,
+                PlanMode(vm, rec, { footer(AppMode.PLAN) }, onStartNavigation, onRequestLocation, pairCamera,
                     // during a tour the same check-and-switch sheet as Navigate: Take new route / Keep
                     onActivity = { if (rec != null) vm.openActivityCheck() else showActivity = true }, onEndTour = { vm.askEndTour() },
                     onPanelHeight = { panelHeightPx = it })
@@ -154,7 +156,7 @@ fun MapScreen(
         // hints below the search bar go below the background-download strip while it shows
         // (measured height: the blue strip with a question is taller than the progress chip)
         val hintTop = if (vm.backgroundStripShown && vm.mode == AppMode.PLAN)
-            (MessagePlacement.STRIP_TOP_DP + vm.backgroundStripHeightDp + 8).coerceAtLeast(124).dp else 76.dp
+            (vm.backgroundStripBottomDp + MessagePlacement.GAP_DP).coerceAtLeast(124).dp else 76.dp
         // A shared place is being looked up (link + address search take a moment): say so at once.
         val sharedLookup = rememberNoFlash(if (vm.sharedLookup) Unit else null, remember { NoFlash<Unit>() }) != null
         androidx.compose.animation.AnimatedVisibility(sharedLookup,
@@ -239,7 +241,8 @@ fun MapScreen(
 @Composable
 private fun PlanMode(
     vm: AppViewModel, rec: RecState?, footer: @Composable () -> Unit, onStartNavigation: () -> Unit,
-    onRequestLocation: () -> Unit, onActivity: () -> Unit, onEndTour: () -> Unit, onPanelHeight: (Int) -> Unit,
+    onRequestLocation: () -> Unit, pairCamera: (String) -> Unit, onActivity: () -> Unit, onEndTour: () -> Unit,
+    onPanelHeight: (Int) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
         PlanTopBar(
@@ -250,14 +253,17 @@ private fun PlanMode(
                 // Free recording without a route: a shown track is closed so it is not followed.
                 onStartRecording = { vm.closeShown(); onStartNavigation() },
                 onSettings = { vm.openSettings() },
-                // plan sync (A-007): Settings → Browser sync – how to pair, or "Paired with …"
-                onPairBrowser = { vm.openSettings(SettingsPage.SYNC) },
+                // plan sync (A-007), owner 2026-10-30: not paired → the camera at once (first time the step line
+                // before it); paired / a problem → Settings → Browser sync ([PairEntry])
+                onPairBrowser = { vm.startPairing(pairCamera) },
                 // owner 2026-10-30: "Paired with browser ✓ · Pixel 8 ↔ Chrome · 1 min ago"; amber + ☰ dot on a real problem
                 sync = SyncMenuUi.of(vm.sync.state.collectAsState().value, vm.sync.deviceName,
                     System.currentTimeMillis()),
                 // owner 2026-10-30: red "Phone setup" first while a tour needs something (vm.phone is re-read on resume)
                 onPhoneSetup = if (!SettingsSummary.phoneNeeded(com.onpath.app.setup.PhoneCheck.all(vm.phone, vm.vibrationUsed, vm.phoneTaken))) null
                     else ({ vm.openSettings(SettingsPage.PHONE) }),
+                // owner 2026-10-30: "Save route" on top while the plan has unsaved changes (same as the sheet's Save)
+                onSaveRoute = if (RouteRules.saveAtHand(vm.waypoints.size, vm.planUnsaved)) vm::requestSave else null,
                 onOpened = vm::refreshTours,
                 // no "Check for updates" in the ☰ menu – Settings has the Updates section (owner)
                 onUpdates = null,
@@ -266,7 +272,7 @@ private fun PlanMode(
         )
         // background downloads (corridor, refresh, routing data): small blue chip under ☰ after 10 s, until all is done;
         // tap → details with "Cancel all" (own composable: its per-second progress recomposes only the chip, not PlanMode)
-        PlanBackgroundStrip(vm, onRequestLocation)
+        PlanBackgroundStrip(vm, onRequestLocation, pairCamera)
         // The sheet's height changes every frame while it moves; the map only hears the height once it rests (a state
         // read by MapScreen would recompose the whole screen per frame and the sheet stutters).
         val sheetHeight = remember { mutableIntStateOf(0) }
@@ -306,7 +312,8 @@ private fun PlanMode(
 
 /** Plan: the map notice strip or the background-download chip under ☰, + the details dialog. */
 @Composable
-private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: AppViewModel, onRequestLocation: () -> Unit) {
+private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: AppViewModel, onRequestLocation: () -> Unit,
+                                                                           pairCamera: (String) -> Unit) {
     // Cell states tick with every downloaded chunk: read only through derived values, so the strip recomposes when the
     // card / modal really changes, not per tick (else the sheet moves janky while areas download – CellStateReads.kt).
     val cellCardTarget by rememberDerived(vm.cells.states, vm.cells.installed) { s, i -> vm.cellCardUi(s, i) }
@@ -323,23 +330,38 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanBackgroundStrip(vm: 
     val notice = mapNotice(cellCard)
     val bg = rememberBackgroundDownload(vm)
     val density = LocalDensity.current
-    fun Modifier.measured() = onSizeChanged { vm.backgroundStripHeightDp = with(density) { it.height.toDp().value.toInt() } }
+    // the bottom below the status bar: top (chip / strip) + measured height
+    fun Modifier.measured(topDp: Int) =
+        onSizeChanged { vm.backgroundStripBottomDp = topDp + with(density) { it.height.toDp().value.toInt() } }
+    // strips: a calm gap below the search bar (owner 2026-10-30); the small chip right under ☰
     val top = Modifier.modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = MessagePlacement.STRIP_TOP_DP.dp)
+    val chipTop = Modifier.modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = MessagePlacement.CHIP_TOP_DP.dp)
     // plain progress is a small chip under ☰ ("⬇ Bad Waldsee · 34 %"), not a full-width strip
-    val chipOn = bg != null && !vm.searchOpen && notice == null
-    LaunchedEffect(chipOn, notice != null, vm.hereAsk != null) {
-        vm.backgroundStripShown = chipOn || ((notice != null || vm.hereAsk != null) && !vm.searchOpen)
+    val chipOn = bg != null && !vm.searchOpen && notice == null && !vm.pairHint
+    LaunchedEffect(chipOn, notice != null, vm.hereAsk != null, vm.syncNote != null, vm.pairHint) {
+        vm.backgroundStripShown = chipOn ||
+            ((notice != null || vm.hereAsk != null || vm.syncNote != null || vm.pairHint) && !vm.searchOpen)
     }
     val here = vm.hereAsk
-    if (notice != null && !vm.searchOpen) {
-        MapNoticeStrip(notice, cellCb, Modifier.align(Alignment.TopCenter).then(top).padding(start = 16.dp, end = 16.dp).measured())
+    val syncNote = vm.syncNote
+    val strip = Modifier.align(Alignment.TopCenter).then(top).padding(start = 16.dp, end = 16.dp)
+        .measured(MessagePlacement.STRIP_TOP_DP)
+    if (vm.pairHint && !vm.searchOpen) {
+        // ☰ → Pair with browser, the first time (owner 2026-10-30): the one step line, then the camera
+        PairHintStrip(onCamera = { vm.pairHintCamera(pairCamera) }, onCancel = vm::pairHintCancel, modifier = strip)
+    } else if (syncNote != null && !vm.searchOpen) {
+        // a pairing was just made or ended (owner 2026-10-30): "Paired. …" / "Unpaired. …" with OK, until OK; the map
+        // strips wait for it
+        SyncNoteStrip(syncNote, onOk = vm::syncNoteOk, modifier = strip)
+    } else if (notice != null && !vm.searchOpen) {
+        MapNoticeStrip(notice, cellCb, strip)
     } else if (here != null && !vm.searchOpen) {
         // opening the app asks for the map of here, it never loads by itself, e.g. in a car (owner)
         HereAskStrip(here.regions, here.bytes, onLoad = { vm.answerHereAsk(true) }, onNotNow = { vm.answerHereAsk(false) },
-            mustBuild = here.mustBuild, modifier = Modifier.align(Alignment.TopCenter).then(top).padding(start = 16.dp, end = 16.dp).measured())
+            mustBuild = here.mustBuild, modifier = strip)
     } else if (chipOn) {
         BackgroundDownloadChip(bg!!, onClick = { vm.downloadDetailsOpen = true },
-            modifier = Modifier.align(Alignment.TopEnd).then(top).padding(end = 12.dp).measured())
+            modifier = Modifier.align(Alignment.TopEnd).then(chipTop).padding(end = 12.dp).measured(MessagePlacement.CHIP_TOP_DP))
     }
     BackgroundDownloadDetails(vm, bg)
 }

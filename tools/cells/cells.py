@@ -11,7 +11,10 @@ A region package (map-cells.md §20, build_package.sh) is the tile z7/x/y: it ow
                                              every edge 1e-7 deg inwards so tools that turn a bbox into a tile
                                              range do not pick up the neighbour's tiles on an exact border
   cells.py tiles Z X Y IN.pmtiles OUT.pmtiles [--minzoom 10] [--maxzoom M]
-                                             keep only the tiles the cell owns (minzoom <= zoom <= maxzoom)
+                                             keep only the tiles the cell owns (minzoom <= zoom <= maxzoom);
+                                             none (a sea cell): a valid archive without tiles
+  cells.py empty-overlays OUT.pmtiles NAME ATTRIBUTION [DESCRIPTION]
+                                             an overlays archive without tiles (build_overlays.sh, no features)
   cells.py clip Z X Y IN_DIR OUT_DIR         GeoJSON: lines cut at the cell border (pieces inside kept),
                                              points kept by the owner rule; other files copied unchanged
   cells.py remap-ids IDX_DIR FILE.geojson    POI ids of a renumbered extract ("n12", "w3") back to OSM ids
@@ -133,19 +136,57 @@ def filter_tiles(z, x, y, src, dst, minzoom=10, maxzoom=None):
                 dropped += 1
     tiles.sort()
     tmp = dst + ".tmp"
+    h = {k: header[k] for k in ("tile_type", "tile_compression")}
+    h.update(min_zoom=minzoom, max_zoom=maxz if maxzoom is not None else max(maxz, header.get("max_zoom", maxz)),
+             min_lon_e7=int(w_ * 1e7), min_lat_e7=int(s_ * 1e7),
+             max_lon_e7=int(e_ * 1e7), max_lat_e7=int(n_ * 1e7),
+             center_zoom=max(minzoom, 12),
+             center_lon_e7=int((w_ + e_) / 2 * 1e7), center_lat_e7=int((s_ + n_) / 2 * 1e7))
     with open(tmp, "wb") as f:
-        w = Writer(f)
-        for tid, data in tiles:
-            w.write_tile(tid, data)
-        h = {k: header[k] for k in ("tile_type", "tile_compression")}
-        h.update(min_zoom=minzoom, max_zoom=maxz if maxzoom is not None else max(maxz, header.get("max_zoom", maxz)),
-                 min_lon_e7=int(w_ * 1e7), min_lat_e7=int(s_ * 1e7),
-                 max_lon_e7=int(e_ * 1e7), max_lat_e7=int(n_ * 1e7),
-                 center_zoom=max(minzoom, min(12, h.get("max_zoom", 12))),
-                 center_lon_e7=int((w_ + e_) / 2 * 1e7), center_lat_e7=int((s_ + n_) / 2 * 1e7))
-        w.finalize(h, meta)
+        if not tiles:  # data only in the buffer (a sea cell, a cut without the cell's land): a valid empty file
+            write_empty_pmtiles(f, h, meta)
+        else:
+            w = Writer(f)
+            for tid, data in tiles:
+                w.write_tile(tid, data)
+            w.finalize(h, meta)
     os.replace(tmp, dst)
     return kept, dropped
+
+
+def write_empty_pmtiles(f, header, meta):
+    """A PMTiles v3 archive without tiles (pmtiles' Writer.finalize cannot write one): header, an empty root directory,
+    the metadata. header: tile_type, tile_compression, zooms, bounds, center (as for Writer.finalize). The app reads
+    it like any cell file (cells/PmTiles.kt: no entries, nothing merged); the cell is complete, its map just empty."""
+    import gzip
+    from pmtiles.tile import Compression, serialize_directory, serialize_header
+    root = serialize_directory([])
+    md = gzip.compress(json.dumps(meta).encode(), mtime=0)
+    h = dict(header)
+    h.update(addressed_tiles_count=0, tile_entries_count=0, tile_contents_count=0, clustered=True,
+             internal_compression=Compression.GZIP, root_offset=127, root_length=len(root),
+             metadata_offset=127 + len(root), metadata_length=len(md),
+             leaf_directory_offset=127 + len(root) + len(md), leaf_directory_length=0,
+             tile_data_offset=127 + len(root) + len(md), tile_data_length=0)
+    f.write(serialize_header(h))
+    f.write(root)
+    f.write(md)
+
+
+def empty_overlays(dst, name, attribution, description=None, minzoom=9, maxzoom=14):
+    """build_overlays.sh when no overlay layer has a feature (tippecanoe refuses empty input): an empty MVT archive
+    (gzip tiles, like tippecanoe's) with the usual metadata and no vector layers."""
+    from pmtiles.tile import Compression, TileType
+    meta = {"name": name, "format": "pbf", "type": "overlay", "attribution": attribution, "vector_layers": []}
+    if description:
+        meta["description"] = description
+    h = dict(tile_type=TileType.MVT, tile_compression=Compression.GZIP, min_zoom=minzoom, max_zoom=maxzoom,
+             min_lon_e7=-1800000000, min_lat_e7=-850511287, max_lon_e7=1800000000, max_lat_e7=850511287,
+             center_zoom=minzoom, center_lon_e7=0, center_lat_e7=0)
+    tmp = dst + ".tmp"
+    with open(tmp, "wb") as f:
+        write_empty_pmtiles(f, h, meta)
+    os.replace(tmp, dst)
 
 
 # ------------------------------------------------------------------------------------------- GeoJSON
@@ -319,10 +360,13 @@ def osm_date(paths):
     return min(dates)
 
 
-def version_name(osm_date, schema=CELL_SCHEMA):
+def version_name(osm_date, schema=CELL_SCHEMA, rebuild=1):
     """Version folder of a cell build: "2026-10-20-s2" (schema 1 cells were named by the OSM date alone); a region
-    package: version_name(date, PACKAGE_SCHEMA)."""
-    return f"{osm_date}-s{schema}"
+    package: version_name(date, PACKAGE_SCHEMA). rebuild > 1: a rebuild of a version already published with the same
+    OSM date and schema (a pipeline fix, job_build.py rebuild_number) – "2026-10-20.2-s7": a published folder is
+    immutable and cached, and app and doorman compare only names. The name still ends in "-s<schema>" (schema_of, the
+    doorman's and the app's schemaOf) and sorts after "2026-10-20-s7" and before the next OSM date (cleanup.js)."""
+    return f"{osm_date}{f'.{rebuild}' if rebuild > 1 else ''}-s{schema}"
 
 
 def is_package(z):
@@ -416,6 +460,9 @@ def selftest():
     assert not owns_tile(7, 66, 42, 10, 531, 342, 7, 9) and not owns_tile(7, 66, 42, 6, 33, 21, 7, 9)
     assert (531 >> 3, 342 >> 3) == (66, 42)  # the Hilden cell lies under it
     assert version_name("2026-10-26", PACKAGE_SCHEMA) == f"2026-10-26-s{PACKAGE_SCHEMA}"
+    assert version_name("2026-10-26", 7, 2) == "2026-10-26.2-s7" and schema_of("2026-10-26.2-s7") == 7
+    assert sorted(["2026-10-27-s7", "2026-10-26.2-s7", "2026-10-26-s7"]) == \
+        ["2026-10-26-s7", "2026-10-26.2-s7", "2026-10-27-s7"]
     # per-layer schema: the cell schema is the newest layer's (version name, doorman and app compare only that)
     assert CELL_SCHEMA == max(LAYER_SCHEMA.values()) and PARTIAL_FROM_SCHEMA <= CELL_SCHEMA
     assert [layer_of(n) for n in ("base.pmtiles", "pois.geojson", "addresses/10-1-2.sqlite", "build.json")] == \
@@ -431,8 +478,9 @@ def main(argv):
     if cmd == "selftest":
         selftest()
         return 0
-    if cmd == "version-name":   # cells.py version-name OSM_DATE [--package] → "2026-10-20-s2"
-        print(version_name(rest[0], PACKAGE_SCHEMA if "--package" in rest[1:] else CELL_SCHEMA))
+    if cmd == "version-name":   # cells.py version-name OSM_DATE [--package] [--rebuild N] → "2026-10-20-s2"
+        n = int(rest[rest.index("--rebuild") + 1] or 1) if "--rebuild" in rest[1:] else 1
+        print(version_name(rest[0], PACKAGE_SCHEMA if "--package" in rest[1:] else CELL_SCHEMA, n))
         return 0
     if cmd == "remap-ids":
         print(f"    {os.path.basename(rest[1])}: {remap_ids(rest[0], rest[1])} ids mapped back to OSM ids")
@@ -442,6 +490,9 @@ def main(argv):
         return 0
     if cmd == "layers":
         print(" ".join(LAYER_SCHEMA))
+        return 0
+    if cmd == "empty-overlays":
+        empty_overlays(*rest[:4])
         return 0
     z, x, y = map(int, rest[:3])
     a = rest[3:]

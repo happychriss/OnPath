@@ -88,7 +88,7 @@ PY
 GIT_REV=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)
 [ -n "$(git -C "$REPO" status --porcelain -- tools 2>/dev/null)" ] && GIT_REV="$GIT_REV+dirty"
 DEST="$DATA_ROOT/cells/f$FORMAT/$Z/$X/$Y"
-VERSION=$($PY version-name "$OSM_DATE" --package)
+VERSION=$($PY version-name "$OSM_DATE" --package --rebuild "${REBUILD:-1}")
 VER="$DEST/$VERSION"
 
 rm -rf "$TMP"; mkdir -p "$TMP/logs" "$TMP/raw" "$TMP/out" "$TMP/planetiler"

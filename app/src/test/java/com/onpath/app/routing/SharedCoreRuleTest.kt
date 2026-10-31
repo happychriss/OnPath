@@ -13,7 +13,9 @@ import java.io.File
 class SharedCoreRuleTest {
     private val packages = listOf("routing", "navigation", "time", "rides", "gpx", "sync", "setup")
     /** Single shared files in packages that also hold platform code (package/name; the web planner compiles them). */
-    private val files = listOf("search/PlaceIndex.kt", "map/ActivityLayers.kt")
+    private val files = listOf("search/PlaceIndex.kt", "map/ActivityLayers.kt",
+        // the plan result of app and web (routing/PlanResult, docs/handoff-web-planresult.md) and the ui/ rules it calls
+        "routing/PlanResult.kt", "routing/ProfileData.kt", "ui/PlanGaps.kt", "ui/RouteWarnings.kt", "data/Geo.kt")
     private val platform = Regex("""\b(android|androidx|org\.maplibre|btools|org\.json)\.""")
 
     /** File (package/name) -> why it is allowed today. */
@@ -46,6 +48,28 @@ class SharedCoreRuleTest {
         }
         assertEquals("Android / MapLibre / BRouter / org.json in shared logic – put it behind an interface in the app " +
             "layer instead (docs/design/multiplatform.md):\n" + hits.joinToString("\n"), emptyList<String>(), hits)
+    }
+
+    /**
+     * Shared with the web planner's engine (TeaVM, `web/engine/build.gradle.kts` appFiles on web-spike – owner: plans
+     * and routes identical in browser and app): besides no Android, no reflection and no java.security (TeaVM has
+     * neither; hashes use sync/Sha256). Add a file here when the web is to compile it.
+     */
+    private val webShared = listOf("gpx/PlanGpx.kt", "gpx/GpxWriter.kt", "gpx/SportType.kt", "routing/PlanPoints.kt",
+        "routing/PlanEdits.kt", "routing/RoutingFingerprint.kt", "sync/SyncCrypto.kt")
+    private val notInTeaVm = Regex("""::class\.java|Class\.forName|kotlin\.reflect|java\.lang\.reflect|java\.security""")
+
+    @Test fun webSharedFilesStayTeaVmFriendly() {
+        val root = File("src/main/java/com/onpath/app")
+        val hits = webShared.flatMap { key ->
+            val f = File(root, key)
+            if (!f.isFile) listOf("$key: missing – update SharedCoreRuleTest.webShared")
+            else f.readLines().mapIndexedNotNull { i, line ->
+                val code = line.substringBefore("//").trim()
+                if (code.startsWith("*") || code.startsWith("/*") || !notInTeaVm.containsMatchIn(code)) null else "$key:${i + 1}: $code"
+            }
+        }
+        assertEquals("reflection / java.security in a file the web planner compiles:\n" + hits.joinToString("\n"), emptyList<String>(), hits)
     }
 
     @Test fun theExceptionListOnlyShrinks() {

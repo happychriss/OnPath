@@ -13,6 +13,34 @@ data class RouteMenuState(
     val updates: Boolean = true,
 )
 
+/**
+ * What the plan sheet's primary button (and ☰ → Start recording) does when no tour runs – [AppViewModel.startNavigation]
+ * and the button's words follow this one rule (owner 2026-10-30: without a line "Start navigation" was a lie).
+ */
+enum class PlanStart {
+    /** A track with a line is shown (My routes / import): follow it ("Start navigation · …" in the track panel). */
+    FOLLOW_TRACK,
+    /** The plan has a line – routed or straight-line fallback ("Navigate anyway?" asks first): navigate it. */
+    NAVIGATE_PLAN,
+    /** Two or more points, the line is not there (calculating, cancelled, failed): the button waits (disabled). */
+    WAIT_FOR_ROUTE,
+    /**
+     * No point or only one – or a shown track without a line (an empty recording, a GPX with one point): a plain
+     * recording, nothing to follow – "Start recording · Hike".
+     */
+    RECORD_ONLY;
+
+    companion object {
+        /** [trackPoints] = points of the shown track, null = no track shown (the plan sheet). */
+        fun of(trackPoints: Int?, hasRoute: Boolean, pointCount: Int): PlanStart = when {
+            trackPoints != null -> if (trackPoints >= 2) FOLLOW_TRACK else RECORD_ONLY
+            pointCount >= 2 && hasRoute -> NAVIGATE_PLAN
+            pointCount >= 2 -> WAIT_FOR_ROUTE
+            else -> RECORD_ONLY
+        }
+    }
+}
+
 /** What sheet ⋯ → Save route does: ask for a name (new entry), or offer Save (overwrite) / Save as new…. */
 enum class SaveMode { NAME_DIALOG, OVERWRITE_OR_NEW }
 
@@ -40,6 +68,15 @@ object RouteRules {
      */
     fun saveMode(savedId: Long, savedName: String?, plannedIds: Collection<Long>): SaveMode =
         if (savedId >= 0 && savedName != null && savedId in plannedIds) SaveMode.OVERWRITE_OR_NEW else SaveMode.NAME_DIALOG
+
+    /**
+     * "Save" at hand (owner 2026-10-30: he looked for it in ☰, it was only in the sheet's ⋯): while the plan has unsaved
+     * changes – new or changed since the last save / load ([unsaved] = [isUnsaved]) – the sheet's first line shows a
+     * green "Save" button beside ⋯ and ☰ gets "Save route" on top. Saved: neither (the sheet says "Saved as …", the line
+     * stays calm). Tapping either = sheet ⋯ → Save route; it can be used once a route line exists ([RouteMenuState.save]),
+     * also during a tour like ⋯ → Save route.
+     */
+    fun saveAtHand(pointCount: Int, unsaved: Boolean): Boolean = unsaved && pointCount >= 2
 
     /** A new name from the rename / save dialog: trimmed; blank keeps [old]. */
     fun cleanName(input: String, old: String): String = input.trim().ifBlank { old }

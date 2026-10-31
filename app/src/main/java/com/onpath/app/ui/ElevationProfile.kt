@@ -37,8 +37,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
-import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.ProfileData
 import com.onpath.app.routing.RouteSummary
 
 /**
@@ -62,7 +62,7 @@ fun ElevationProfile(
     onRelease: () -> Unit = {},
 ) {
     RecomposeProbe.hit("profile")
-    val data = remember(points) { profileData(points) }
+    val data = remember(points) { ProfileData.of(points) }
     if (data == null) {
         Box(modifier.fillMaxWidth().height(40.dp), contentAlignment = Alignment.CenterStart) {
             Text(str(Res.string.plan_no_elevation), style = MaterialTheme.typography.bodySmall,
@@ -70,7 +70,7 @@ fun ElevationProfile(
         }
         return
     }
-    val steep = remember(data, gradient) { if (gradient) RouteSummary.steepness(data.dist, data.ele) else null }
+    val steep = remember(data, gradient) { if (gradient) data.steepness() else null }
     val cache = remember(data, steep, color) { ProfileCache(data, steep, color) }
     var cursor by remember { mutableStateOf<Int?>(null) }
     // the gesture survives new data (a GPS fix shortens the remaining profile mid-drag)
@@ -156,7 +156,7 @@ private val STEEP_ORDER = RouteSummary.Steepness.entries
  * The profile's paths for one route, built once per drawing size. Unit tested (ProfileCacheTest): asking again for the
  * same size returns the same geometry.
  */
-internal class ProfileCache(private val data: Profile, private val steep: List<RouteSummary.Steepness>?, private val color: Color) {
+internal class ProfileCache(private val data: ProfileData, private val steep: List<RouteSummary.Steepness>?, private val color: Color) {
     class Geometry(
         val x: (Double) -> Float, val y: (Double) -> Float,
         val line: Path, val area: Path, val areaBrush: Brush,
@@ -263,17 +263,4 @@ internal fun columnIndices(dist: DoubleArray, ele: DoubleArray, total: Double, c
         i = j + 1
     }
     return out.toIntArray()
-}
-
-internal class Profile(val dist: DoubleArray, val ele: DoubleArray, val idx: IntArray, val min: Double, val max: Double, val total: Double)
-
-/** Keeps only points with elevation; null if there is not enough data. */
-internal fun profileData(points: List<GeoPoint>): Profile? {
-    if (points.size < 2) return null
-    val cum = Geo.cumulative(points)
-    val keep = points.indices.filter { points[it].ele != null }
-    if (keep.size < 2 || cum.last() <= 0) return null
-    val d = DoubleArray(keep.size) { cum[keep[it]] }
-    val e = DoubleArray(keep.size) { points[keep[it]].ele!! }
-    return Profile(d, e, keep.toIntArray(), e.min(), e.max(), cum.last())
 }

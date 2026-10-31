@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Edit
@@ -170,8 +171,10 @@ data class PlanUi(
     /** "New route for … – check it" after an activity change: one grey INFO line (not a warning). */
     val changedText: String? = null,
 ) {
-    /** Without a route navigation just records; while a route is being computed, wait for it. */
-    val canStart: Boolean get() = pointCount < 2 || route != null
+    /** What Start does (the shown track has its own panel): navigate the line, wait for it, or only record. */
+    val start: PlanStart get() = PlanStart.of(trackPoints = null, hasRoute = route != null, pointCount = pointCount)
+    /** Without a point / with one point Start only records; while a route is being computed, wait for it. */
+    val canStart: Boolean get() = start != PlanStart.WAIT_FOR_ROUTE
 }
 
 /**
@@ -205,28 +208,65 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean = false,
 }
 
 /**
- * The sheet's first line: activity chip · time + distance · ⋯. The chip always names the activity ("Wandern · T2",
+ * The sheet's first line: activity chip · time + distance · [Save] ⋯. The chip always names the activity ("Wandern · T2",
  * owner 2026-10-30) and time and distance are always shown in full (owner rule) – when both do not fit beside each
- * other (German, a long day, a large phone font), time and distance move to their own line under the chip.
+ * other (German, a long day, a large phone font), time and distance move to their own line under the chip. [save] /
+ * [saveIcon]: the Save button with its label, or only its icon when chip + label + ⋯ do not fit in one line (large
+ * font); both null = no Save button (RouteRules.saveAtHand).
  */
 @Composable
-private fun HeaderLine(chip: @Composable () -> Unit, title: @Composable () -> Unit, overflow: @Composable () -> Unit) {
-    Layout(content = { chip(); title(); overflow() }) { ms, c ->
+private fun HeaderLine(
+    chip: @Composable () -> Unit, title: @Composable () -> Unit, overflow: @Composable () -> Unit,
+    save: (@Composable () -> Unit)? = null, saveIcon: (@Composable () -> Unit)? = null,
+) {
+    Layout(content = { chip(); title(); overflow(); save?.invoke(); saveIcon?.invoke() }) { ms, c ->
         val gap = 8.dp.roundToPx()
         val below = 2.dp.roundToPx()
         val max = c.maxWidth
-        val ov = ms[2].measure(c.copy(minWidth = 0, minHeight = 0))
-        val ch = ms[0].measure(Constraints(maxWidth = (max - ov.width - gap).coerceAtLeast(0)))
-        val besideW = (max - ch.width - gap - ov.width).coerceAtLeast(0)
+        val loose = c.copy(minWidth = 0, minHeight = 0)
+        val ov = ms[2].measure(loose)
+        // the Save button: with its label when the chip still fits whole beside it, else only the icon
+        val sv = if (ms.size < 5) null else {
+            val chipW = ms[0].maxIntrinsicWidth(Constraints.Infinity)
+            val full = ms[3].measure(loose)
+            if (chipW + gap + full.width + ov.width <= max) full else ms[4].measure(loose)
+        }
+        val svW = sv?.let { it.width + gap / 2 } ?: 0
+        val ch = ms[0].measure(Constraints(maxWidth = (max - ov.width - svW - gap).coerceAtLeast(0)))
+        val besideW = (max - ch.width - gap - svW - ov.width).coerceAtLeast(0)
         val oneLine = ms[1].maxIntrinsicWidth(Constraints.Infinity) <= besideW
         val t = ms[1].measure(Constraints(maxWidth = if (oneLine) besideW else max))
-        val line1 = maxOf(ch.height, ov.height, if (oneLine) t.height else 0)
+        val line1 = maxOf(ch.height, ov.height, sv?.height ?: 0, if (oneLine) t.height else 0)
         val h = if (oneLine) line1 else line1 + below + t.height
         layout(max, h) {
             ch.placeRelative(0, (line1 - ch.height) / 2)
             ov.placeRelative(max - ov.width, (line1 - ov.height) / 2)
+            sv?.placeRelative(max - ov.width - svW, (line1 - sv.height) / 2)
             if (oneLine) t.placeRelative(ch.width + gap, (line1 - t.height) / 2) else t.placeRelative(0, line1 + below)
         }
+    }
+}
+
+/**
+ * The sheet's Save button (RouteRules.saveAtHand): green tonal "Save" – the one filled button stays Start navigation.
+ * [iconOnly] = the narrow form for a large phone font (TalkBack still hears "Save route").
+ */
+@Composable
+private fun SaveButton(enabled: Boolean, onClick: () -> Unit, iconOnly: Boolean) {
+    val colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
+        containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)
+    if (iconOnly) {
+        androidx.compose.material3.FilledTonalIconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(48.dp),
+            colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)) {
+            Icon(Icons.Outlined.Save, contentDescription = str(Res.string.plan_save_route))
+        }
+    } else androidx.compose.material3.FilledTonalButton(onClick = onClick, enabled = enabled, colors = colors,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 12.dp, end = 14.dp),
+        modifier = Modifier.heightIn(min = 40.dp)) {
+        Icon(Icons.Outlined.Save, null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(str(Res.string.common_save), style = MaterialTheme.typography.labelLarge, maxLines = 1)
     }
 }
 
@@ -244,11 +284,14 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         TourControls(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, cb.onEndTour, ui.activity)
         HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
-    // Line 1: activity · time + distance · ⋯ (Undo and Redo are map buttons).
+    // Line 1: activity · time + distance · [Save] ⋯ (Undo and Redo are map buttons).
+    val saveAtHand = RouteRules.saveAtHand(ui.pointCount, ui.unsaved)
     HeaderLine(
         chip = { ActivityButton(ui.activity, ui.sac, cb.onActivity) },
         title = { Title(ui, route) },
         overflow = { SheetOverflow(ui, cb, menuInitiallyOpen) },
+        save = if (saveAtHand) ({ SaveButton(route != null, cb.onSave, iconOnly = false) }) else null,
+        saveIcon = if (saveAtHand) ({ SaveButton(route != null, cb.onSave, iconOnly = true) }) else null,
     )
     if (ui.routing && ui.routingSlow) {
         // a long calculation can be stopped (the last change is taken back)
@@ -452,14 +495,22 @@ private fun PrimaryAction(ui: PlanUi, cb: PlanCallbacks) {
     // the button names the activity (owner: a wrong activity is a disaster)
     Button(onClick = if (ui.tourRunning) cb.onContinue else cb.onStartNavigation, enabled = ui.tourRunning || ui.canStart,
         modifier = Modifier.fillMaxWidth().height(56.dp)) {
-        Icon(Icons.Filled.Navigation, null); Spacer(Modifier.width(8.dp))
+        // without a line it only records: the record dot of ☰ → Start recording, not the navigation arrow
+        Icon(if (!ui.tourRunning && ui.start == PlanStart.RECORD_ONLY) Icons.Filled.FiberManualRecord else Icons.Filled.Navigation, null)
+        Spacer(Modifier.width(8.dp))
         Text(primaryLabel(ui), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
-/** "Start navigation · Hike" / "Continue navigation · Gravel bike". */
-internal fun primaryLabel(ui: PlanUi): String =
-    Txt.s(if (ui.tourRunning) Res.string.plan_continue_navigation_for else Res.string.plan_start_navigation_for, ui.activity.navName)
+/**
+ * "Start navigation · Hike" / "Continue navigation · Gravel bike"; no point or only one: "Start recording · Hike"
+ * (owner 2026-10-30: nothing to navigate – say what happens).
+ */
+internal fun primaryLabel(ui: PlanUi): String = Txt.s(when {
+    ui.tourRunning -> Res.string.plan_continue_navigation_for
+    ui.start == PlanStart.RECORD_ONLY -> Res.string.plan_start_recording_for
+    else -> Res.string.plan_start_navigation_for
+}, ui.activity.navName)
 
 /** ⋯ of the sheet: route edits only (reverse, round trip, clear). */
 @Composable

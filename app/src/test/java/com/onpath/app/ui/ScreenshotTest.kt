@@ -76,7 +76,7 @@ class ScreenshotTest {
                     SheetWithFooter(TOP_BAR_BOTTOM, footer = {
                         Column(Modifier.fillMaxWidth()) { aboveFooter(); footer() }
                     }, sheet = bottom)
-                    Box(Modifier.fillMaxWidth().padding(top = 68.dp, start = 16.dp, end = 16.dp)) { top() }
+                    Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.STRIP_TOP_DP.dp, start = 16.dp, end = 16.dp)) { top() }
                 }
             }
         }
@@ -155,9 +155,14 @@ class ScreenshotTest {
         }
     }
 
-    /** App start without a plan: Plan is home; no points, Start navigation = free recording. GPS searching. */
+    /** App start without a plan: Plan is home; no points, no primary button (free recording = ☰ → Start recording). GPS searching. */
     @Test fun planEmpty() = paparazzi.snapshot {
         Frame(gps = GpsStatus.SEARCHING) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
+    }
+
+    /** Only a start point (owner 2026-10-30): no line to follow, no "Start navigation" (free recording = ☰ → Start recording). */
+    @Test fun planOnePoint() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(n = 1, r = null), PlanCallbacks()) }
     }
 
     @Test fun plan() = paparazzi.snapshot {
@@ -288,11 +293,11 @@ class ScreenshotTest {
 
     @Composable
     private fun TopMenu(state: RouteMenuState, phoneSetup: Boolean = false, sync: (() -> SyncMenuUi)? = null,
-                        bottom: @Composable () -> Unit) {
+                        unsaved: Boolean = false, bottom: @Composable () -> Unit) {
         Box(Modifier.fillMaxSize()) {
             // [sync] is built inside the composition: its texts follow the test's language
             val menu = PlanMenu(state, onUpdates = {}, onPairBrowser = {}, onPhoneSetup = if (phoneSetup) ({}) else null,
-                sync = sync?.invoke() ?: SyncMenuUi())
+                sync = sync?.invoke() ?: SyncMenuUi(), onSaveRoute = if (unsaved) ({}) else null)
             Frame(menu = menu) { bottom() }
             OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 92.dp, end = 12.dp)) {
                 PlanMenuItems(menu) {}
@@ -304,6 +309,13 @@ class ScreenshotTest {
     @Test fun planMenuOpen() = paparazzi.snapshot {
         TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false)) {
             PlanPanel(planUi(), PlanCallbacks())
+        }
+    }
+
+    /** ☰ while the plan has unsaved changes (owner 2026-10-30): "Save route" on top, the sheet shows Save beside ⋯. */
+    @Test fun planMenuUnsaved() = paparazzi.snapshot {
+        TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false), unsaved = true) {
+            PlanPanel(planUi().copy(unsaved = true), PlanCallbacks())
         }
     }
 
@@ -375,6 +387,9 @@ class ScreenshotTest {
 
     /** Navigate: what is left on top, recording chip, slide-to-plan at the bottom. */
     @Test fun navigate() = paparazzi.snapshot { NavFrame(navUi) }
+
+    /** Navigate without a recording (e.g. an unfinished tour being asked about): the slider says only "Change route". */
+    @Test fun navigateNotRecording() = paparazzi.snapshot { NavFrame(navUi.copy(recordedM = null)) }
 
     /** Slider dragged half way (springs back on release). */
     @Test fun navigateSlideHalf() = paparazzi.snapshot { NavFrame(navUi, slide = 0.5f) }
@@ -762,6 +777,14 @@ class ScreenshotTest {
         }
     }
 
+    /** A recorded tour ended before its first point (owner 2026-10-30): nothing to follow – "Start recording · Hike". */
+    @Test fun trackWithoutLine() = paparazzi.snapshot {
+        Frame {
+            TrackPanel(ShownTrack(1, "Tour 30 Oct, 09:14", emptyList(), emptyList(), 0.0, 0.0, 0.0, 0.0),
+                isFollowed = false, recording = false, activity = Activity.HIKE, {}, {}, onHighlight = {})
+        }
+    }
+
     /** A Komoot import switched the activity: one grey INFO line says so. */
     @Test fun trackImportedActivityNote() = paparazzi.snapshot {
         Frame {
@@ -890,6 +913,42 @@ class ScreenshotTest {
     /** The sheet shows the save state instead of a message. */
     @Test fun planSaved() = paparazzi.snapshot {
         Frame { PlanPanel(planUi().copy(savedName = "Route Meran – Hirzer"), PlanCallbacks()) }
+    }
+
+    /** A new route, not saved yet (owner 2026-10-30): green "Save" beside ⋯ in the sheet's first line. */
+    @Test fun planUnsaved() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi().copy(unsaved = true), PlanCallbacks()) }
+    }
+
+    /** A saved route changed since: "Save" beside ⋯ again, "… changed, not saved" below. */
+    @Test fun planChangedNotSaved() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi().copy(savedName = "Route Meran – Hirzer", unsaved = true), PlanCallbacks()) }
+    }
+
+    /** Save beside ⋯ on a long day hike: time and distance still in full (their own line when they do not fit). */
+    /** Right after Pair (owner 2026-10-30): back on the Plan map, "Paired. …" with OK at the top until OK. */
+    @Test fun planPairedNote() = paparazzi.snapshot {
+        Frame(top = { SyncNoteStrip(SyncNote.PAIRED, onOk = {}) }) { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
+    /** Right after Unpair (owner 2026-10-30, as simple as pairing): back on the Plan map, "Unpaired. …" with OK. */
+    @Test fun planUnpairedNote() = paparazzi.snapshot {
+        Frame(top = { SyncNoteStrip(SyncNote.UNPAIRED, onOk = {}) }) { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
+    /** Unpaired, the server not reached: the same strip asks to unpair the browser there too. */
+    @Test fun planUnpairedOfflineNote() = paparazzi.snapshot {
+        Frame(top = { SyncNoteStrip(SyncNote.UNPAIRED_OFFLINE, onOk = {}) }) { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
+    /** ☰ → Pair with browser, the first time (owner 2026-10-30): the one step line + Open camera, then the camera. */
+    @Test fun planPairHint() = paparazzi.snapshot {
+        Frame(top = { PairHintStrip(onCamera = {}, onCancel = {}) }) { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
+    @Test fun planUnsavedLongHike() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(r = route.copy(distanceM = 28_740.0, durationS = 10.4 * 3600)).copy(sac = 3, unsaved = true),
+            PlanCallbacks()) }
     }
 
     @Test fun missingData() = paparazzi.snapshot {

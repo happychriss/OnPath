@@ -8,7 +8,7 @@ Search mockups: `docs/ux-search-proposals.md` (proposal C's "Add to route" card 
 | Purpose | Build / change the route, look around, manage tours and settings | Walk or ride: map follows you, nothing changes by accident |
 | Map taps | **Hold only** (0.3 s): map → add point (first one: "Start here / Go here (from my location)"), POI → "Add to route / Open in Google Maps", route point → point menu. Quick taps change nothing, nothing is dragged (see "Plan gestures") | **Nothing is added or moved.** POI tap shows info only. Pan/zoom allowed; "centre on me" re-follows |
 | Shown | Plan sheet: activity, stats, profile, undo/redo, route actions in ⋯ (save/export/reverse/round trip/clear); top ☰: My routes, start recording, Settings (see "Menus") | Full map, route (line only – no numbered plan points, owner), position, top strip "to go: km · ↑m · time", GPS dot on the locate button |
-| Switch | **"Start navigation"** – normal big button (safe direction). With a tour running: **"Continue navigation"** | **Slide-to-plan switch** "→ slide to plan" at the bottom – the only way out of Navigate (protects against pocket/glove touches) |
+| Switch | **"Start navigation"** – normal big button (safe direction). With a tour running: **"Continue navigation"** | **Slide-to-plan switch** at the bottom: "Tour menu" / „Tour-Menü“ with a small second line "Change route · Pause · End" / „Route ändern · Pause · Beenden“ (owner 2026-10-31; was "Plan" / „Planen“, before that "Edit route"). The small line only when it fits (large font: main line only, never cut); without a recording only "Change route" / „Route ändern“ (`ui/SlideToUnlock.kt`, `SlideLabel`) – the only way out of Navigate (protects against pocket/glove touches) |
 
 ## Rules
 1. **Recording never stops when switching.** Starting navigation starts (or continues) the recording; going back to
@@ -47,8 +47,11 @@ tour recording (also while looking at Plan during a tour).
 stays) · **Save as new…** (name dialog); a tap outside / Back cancels. Otherwise the name dialog (new entry).
 Rule: `RouteRules.saveMode`.
 
-**Plan sheet:** the primary button exists only with a route ("Start navigation", disabled while calculating) or
-while a tour runs ("Continue navigation"). Its ⋯ holds everything about this route: Save route, Export GPX, Reverse,
+**Plan sheet:** the primary button exists from two points: "Start navigation · Hike" with a route line (also a
+straight-line fallback; disabled while the points wait for their line), "Continue navigation" while a tour runs. With
+no point or one, a free recording is ☰ → Start recording. One rule for the words and what Start does (`PlanStart`,
+owner 2026-10-30): nothing to follow = **"Start recording · Hike"** with the record dot – also in the track panel for a
+track without a line (an empty recorded tour, a GPX with one point; during a tour its button is off). Its ⋯ holds everything about this route: Save route, Export GPX, Reverse,
 Round trip, Clear (Clear is disabled while navigating). The sheet shows the save state as text, not as a message: "Saved as “Name”" or
 "“Name” · changed, not saved".
 
@@ -72,7 +75,7 @@ undo step. Tracks open next to the plan without asking.
   Navigate: walking direction / north up toggle), eye (only with a route / track), locate. MapLibre's own compass is off.
 - Own position in both modes: small blue dot with accuracy circle and a small direction triangle at its edge
   (MapLibre COMPASS render mode; direction = compass standing, GPS bearing moving – `map/HeadingEngine`); grey when stale.
-- One primary action per mode: Plan → "Start navigation", Navigate → slide to plan.
+- One primary action per mode: Plan → "Start navigation" ("Start recording" without a route), Navigate → slide "Tour menu" (back to Plan).
 
 ## Plan gestures (owner spec, `ui/MapGestures.kt`)
 **Hold only.** A hold is ≥ 0.3 s (`HOLD_MS`) with a ring filling under the finger; the vibration comes the moment

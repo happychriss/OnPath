@@ -280,6 +280,12 @@
     "priority": 2,
     "confidence": "sicher"
   },
+  "plan_gap_skipped": {
+    "area": "Plan sheet",
+    "context": "Red line: the route leaves out a stop that lies on a way (the router cut the there-and-back to it); the stop stays where it was set. %1$s = distance from the line (\"50 m\"), %2$s = point name in quotes or \"point 3\"",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
   "plan_gap_point": {
     "area": "Plan sheet",
     "context": "Unnamed point inside the red gap line (\"Last 180 m to point 3\"). %1$d = point number",
@@ -351,6 +357,14 @@
     "confidence": "sicher",
     "max": 34,
     "decided": "Owner 2026-10-26: short MTB / E-MTB on buttons"
+  },
+  "plan_start_recording_for": {
+    "area": "Plan sheet",
+    "context": "Main button (plan sheet / track panel) when there is nothing to follow: starts a plain recording, no navigation. %1$s = activity name",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 34,
+    "decided": "Owner 2026-10-30: honest wording – no route, no \"Start navigation\""
   },
   "plan_route_options": {
     "area": "Plan sheet",
@@ -914,11 +928,27 @@
   },
   "plan_slide_to_plan": {
     "area": "Navigate",
-    "context": "The slider at the bottom of Navigate: the only way back to Plan",
+    "context": "The slider at the bottom of Navigate (main line): the only way back to Plan",
     "priority": 1,
     "confidence": "sicher",
-    "max": 24,
-    "decided": "Owner answer 2026-10-26: \"Edit route\" (sentence case) / \"Route ändern\""
+    "max": 16,
+    "decided": "Owner 2026-10-31: \"Tour menu\" / \"Tour-Menü\" with a small second line (plan_slide_to_plan_sub); was \"Plan\" / \"Planen\" (2026-10-30), \"Edit route\" / \"Route ändern\" (2026-10-26)"
+  },
+  "plan_slide_to_plan_sub": {
+    "area": "Navigate",
+    "context": "Small second line under the Navigate slider's \"Tour menu\": what is behind it. Dropped when it does not fit (large font)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 32,
+    "decided": "Owner 2026-10-31: \"Change route · Pause · End\" / \"Route ändern · Pause · Beenden\""
+  },
+  "plan_slide_change_route": {
+    "area": "Navigate",
+    "context": "The Navigate slider's only line while no recording runs (Pause / End make no sense then)",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 16,
+    "decided": "Owner 2026-10-31: \"Change route\" / \"Route ändern\""
   },
   "plan_slide_desc": {
     "area": "Navigate",

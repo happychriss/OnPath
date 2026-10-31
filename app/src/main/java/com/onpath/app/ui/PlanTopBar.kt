@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
@@ -69,12 +70,17 @@ class PlanMenu(
      * (SettingsSummary.phoneNeeded); null hides it.
      */
     val onPhoneSetup: (() -> Unit)? = null,
+    /**
+     * "Save route" on top (owner 2026-10-30: he looked for Save in ☰): only while the plan has unsaved changes
+     * (RouteRules.saveAtHand) – the same action as the sheet's Save; null hides it.
+     */
+    val onSaveRoute: (() -> Unit)? = null,
 )
 
 /**
  * Plan mode top area: the search pill (only search) and one round ☰ app-menu button next to it (My routes, Start
- * recording, Settings, Updates; Phone setup first while a tour needs it). The activity and all route actions live in
- * the route sheet (PlanPanel).
+ * recording, Settings, Updates; Phone setup first while a tour needs it, then Save route while the plan is unsaved).
+ * The activity and all route actions live in the route sheet (PlanPanel) – Save route is the one also here.
  */
 @Composable
 fun PlanTopBar(
@@ -131,6 +137,10 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     val st = menu.state
     menu.onPhoneSetup?.let { p ->
         MenuItem(Icons.Outlined.WarningAmber, str(Res.string.settings_page_phone), enabled = st.settings, tint = OnPathColors.Error) { close(); p() }
+        HorizontalDivider()
+    }
+    menu.onSaveRoute?.let { save ->
+        MenuItem(Icons.Outlined.Save, str(Res.string.plan_save_route), enabled = st.save) { close(); save() }
         HorizontalDivider()
     }
     MenuItem(Icons.Outlined.FolderOpen, str(Res.string.plan_menu_my_routes), enabled = st.manage) { close(); menu.onManage() }

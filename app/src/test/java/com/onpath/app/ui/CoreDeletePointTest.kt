@@ -1,6 +1,7 @@
 package com.onpath.app.ui
 
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.PlanPoints
 import com.onpath.app.routing.WaypointSnap
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -20,10 +21,10 @@ class CoreDeletePointTest {
     private val c = GeoPoint(46.675, 11.170)
     private val d = GeoPoint(46.678, 11.175)
 
-    /** What "Delete" in the menu does (AppViewModel.deletePointFromMenu). */
+    /** What "Delete" in the menu does (AppViewModel.deletePointFromMenu → removePoint). */
     private fun delete(plan: List<GeoPoint>, menu: PointMenuTarget): List<GeoPoint> {
         val i = menu.indexIn(plan) ?: return plan
-        return plan.toMutableList().apply { removeAt(i) }
+        return PlanPoints.deleteAt(plan, i)
     }
 
     @Test fun deleteRemovesTheHeldPoint() {
@@ -63,11 +64,25 @@ class CoreDeletePointTest {
         assertEquals(listOf(a, c), delete(snapped, menu))
     }
 
-    /** Round trip: start and destination on the same spot – the menu deletes the one it was opened for. */
-    @Test fun roundTripSameSpot() {
+    /**
+     * Round trip: start and destination on the same spot are one point (the Points list shows it once, ↺) – the menu
+     * of either deletes that one point and the loop closes again at the next point, as ✕ in the Points list does
+     * ([com.onpath.app.routing.PlanPoints.delete]). Before: the map menu removed only one of the two copies – the
+     * loop was open ([b, c, a]) or the start stayed as the destination ([a, b, c]).
+     */
+    @Test fun roundTripDeleteTheStartFromTheMenuKeepsTheLoopClosed() {
         val plan = listOf(a, b, c, a)
-        assertEquals(listOf(a, b, c), delete(plan, PointMenuTarget(3, a)))
-        assertEquals(listOf(b, c, a), delete(plan, PointMenuTarget(0, a)))
+        assertEquals(listOf(b, c, b), delete(plan, PointMenuTarget(0, a)))
+        assertEquals("the closing copy (same spot) is the same point", listOf(b, c, b), delete(plan, PointMenuTarget(3, a)))
+        assertTrue(com.onpath.app.routing.PlanEdits.isRoundTrip(delete(plan, PointMenuTarget(0, a))))
+    }
+
+    /** Round trip: a stop deleted from the map menu – the loop stays closed at its start; as in the Points list. */
+    @Test fun roundTripDeleteAStopFromTheMenuKeepsTheLoop() {
+        val plan = listOf(a, b, c, d, a)
+        assertEquals(listOf(a, b, d, a), delete(plan, PointMenuTarget(2, c)))
+        for (row in 0..3) assertEquals("map menu = Points list ✕ for row $row",
+            com.onpath.app.routing.PlanPoints.delete(plan, row), delete(plan, PointMenuTarget(row, plan[row])))
     }
 
     /**

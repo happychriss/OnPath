@@ -24,8 +24,12 @@ data class PlannedRoute(
      * unknown (straight legs, fallback engine). Empty = nothing known. See [WaypointSnap.apply].
      */
     val snapped: List<GeoPoint?> = emptyList(),
-    /** Interior points (indices in the request) the router matched on a way but cut out as a spike – see [Planner.SPUR_ON_WAY_M]. */
-    val spurs: Set<Int> = emptySet(),
+    /**
+     * Interior points (indices in the request) the router matched on a way but whose spot the line misses – cut out as
+     * a there-and-back ([WaypointSnap.missesMatched]). [Planner.plan] routes to them again; what is left here is a stop
+     * the route still skips: the plan keeps the point where it is and shows the gap (PlanGaps), never moves it.
+     */
+    val skipped: Set<Int> = emptySet(),
 ) {
     val points: List<GeoPoint> by lazy {
         val out = ArrayList<GeoPoint>()
@@ -81,14 +85,22 @@ class Planner(
      */
     fun plan(waypoints: List<GeoPoint>, activity: Activity, sac: Int, pinned: Set<Int> = emptySet()): PlannedRoute {
         require(waypoints.size >= 2)
-        val first = planPinned(waypoints, activity, sac, pinned)
         // A point ON a way, reachable only there and back, can be cut out by BRouter's via correction (up to 400 m
-        // for bikes) and then reads as "no way". Owner rule: a point on a way is always visited – route again with it
-        // as a chunk end (chunk ends are never corrected).
-        val spurs = first.spurs - pinned
-        if (spurs.isEmpty()) return first
-        Problems.trace("routing", "Point(s) ${spurs.sorted().joinToString { "${it + 1}" }} on a way but cut as a detour – routed to them")
-        return planPinned(waypoints, activity, sac, pinned + spurs)
+        // for bikes) and then reads as "no way" or the stop silently moves onto the line. Owner rule: a point on a way is
+        // always visited – route again with it as a chunk end (chunk ends are never corrected). A new chunk can cut
+        // another point, so a few passes (the chunks routed before come from the engine's cache); a stop still cut
+        // after them stays in [PlannedRoute.skipped] and the plan sheet shows it.
+        var plan = planPinned(waypoints, activity, sac, pinned)
+        var ends = pinned
+        repeat(MAX_SPUR_PASSES) {
+            val spurs = plan.skipped - ends
+            if (spurs.isEmpty()) return plan
+            Problems.trace("routing", "Point(s) ${spurs.sorted().joinToString { "${it + 1}" }} on a way but cut as a detour – routed to them")
+            ends = ends + spurs
+            plan = planPinned(waypoints, activity, sac, ends)
+        }
+        if (plan.skipped.isNotEmpty()) Problems.trace("routing", "Point(s) ${plan.skipped.sorted().joinToString { "${it + 1}" }} still cut after $MAX_SPUR_PASSES passes – shown as skipped")
+        return plan
     }
 
     private fun planPinned(waypoints: List<GeoPoint>, activity: Activity, sac: Int, pinned: Set<Int>): PlannedRoute {
@@ -101,7 +113,7 @@ class Planner(
             parts.firstNotNullOfOrNull { it.error },
             RouteSummary.mergeShares(parts.map { it.wayTypes }), RouteSummary.mergeShares(parts.map { it.surfaces }),
             mergeSnapped(waypoints.size, cuts, parts.map { it.snapped }),
-            parts.flatMap { it.spurs }.toSet(),
+            parts.flatMap { it.skipped }.toSet(),
         )
     }
 
@@ -175,14 +187,9 @@ class Planner(
             RouteSummary.mergeShares(ways), RouteSummary.mergeShares(surf), snapped.toList())
     }
 
-    /** Interior points matched on a way (≤ [SPUR_ON_WAY_M]) whose matched spot the route line misses (> [SPUR_MISSED_M]). */
-    private fun spurs(waypoints: List<GeoPoint>, r: RouteResult, offset: Int): Set<Int> {
-        if (waypoints.size < 3 || r.matched.size != waypoints.size) return emptySet()
-        return (1 until waypoints.lastIndex).filter { i ->
-            val m = r.matched[i] ?: return@filter false
-            Geo.distance(waypoints[i], m) <= SPUR_ON_WAY_M && WaypointSnap.distToLine(m, r.points) > SPUR_MISSED_M
-        }.map { it + offset }.toSet()
-    }
+    /** Interior points matched on a way whose matched spot the route line misses ([WaypointSnap.missesMatched]). */
+    private fun spurs(waypoints: List<GeoPoint>, r: RouteResult, offset: Int): Set<Int> =
+        WaypointSnap.skipped(waypoints, r.points, r.matched).map { it + offset }.toSet()
 
     /** A straight leg (no router): flat, timed by the one time model (the plan sheet re-times the whole line anyway). */
     private fun flatSeconds(d: Double, activity: Activity) = com.onpath.app.time.PaceModel.seconds(d, 0.0, activity)
@@ -214,10 +221,8 @@ class Planner(
             return Txt.s(Res.string.plan_leg_error, from, to, why)
         }
 
-        /** A point this close to the way it was matched on counts as "on the way" (the user meant that way). */
-        const val SPUR_ON_WAY_M = 30.0
-        /** The route line passes the matched spot farther than this = the router cut the point out as a detour. */
-        const val SPUR_MISSED_M = 50.0
+        /** Re-plans at most this often for points cut as a detour ([plan]); each pins at least one more point. */
+        const val MAX_SPUR_PASSES = 3
 
         /** With a cancel signal: the overall wait for the router (each request keeps its own search budget). */
         const val PLAN_LIMIT_MS = 10 * 60_000L

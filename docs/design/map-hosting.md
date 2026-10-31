@@ -255,7 +255,11 @@ Why: cells built before the overlays layer `streets` existed showed no small str
 only from it), and a version named by the OSM date alone would give a rebuild on the same OSM date the same
 (immutable, cached) name. So:
 - **Builder:** version folder = `<osm_date>-s<schema>` (`tools/cells/cells.py CELL_SCHEMA`, currently 7 – see below); the manifest has
-  `version` and `schema`.
+  `version` and `schema`. A build whose name is already published (a pipeline fix rebuilt on the same OSM date) gets a
+  rebuild number: `<osm_date>.N-s<schema>`, first free N ≥ 2 (`job_build.py rebuild_number` → `build_cell.sh REBUILD`;
+  2026-10-30, the Bremen / Berlin repair) – app and doorman compare names only, so the repaired cell reaches phones
+  that hold the old one. Still `-s<schema>` at the end (every `schemaOf` unchanged); sorts after the plain name and
+  before the next OSM date (cleanup's "previous").
 - **Doorman:** `CELL_SCHEMA` (wrangler.toml, = builder's). A request for a published cell of an older schema queues a
   rebuild with the asked priority; while it builds, such a cell is answered as `queued` / `building` (not `ready`).
   A cell that is only OSM-old is still answered `ready` at once, with `"updating": true` while its refresh builds.
@@ -304,12 +308,15 @@ Every cell is built, wherever it is:
   extract stay as they are until their normal refresh (osm_date older than `REFRESH_DAYS` 35, asked for again) – no
   schema bump, the content is the same kind. (2) Geofabrik *country leaves* – regions with a .pbf, no sub-regions, ISO code on the
   region or a parent (italy/nord-est, austria, switzerland, germany/bayern/oberbayern, us/new-york …; never alps,
-  dach, britain-and-ireland). A leaf that holds most of another candidate is a container and is dropped ("us": the
-  states' parent is north-america). One leaf contains B → that one (the smallest). Else the 1–8 leaves touching B
-  (`MAX_EXTRACTS`), smallest first (border cell; Innsbruck reaches the Brenner → nord-est + austria, Scuol → 4,
-  Bodensee 10/538/357 → 5). (3) More than 8, or none of them: the smallest leaf of any kind containing B (alps,
+  dach, britain-and-ireland). A leaf that holds most of 3 or more other leaves is a *collection* and is dropped
+  ("us": 50 states, their parent is north-america); one that holds one or two (niedersachsen ⊃ bremen, brandenburg ⊃
+  berlin, stredocesky ⊃ praha, south-africa ⊃ lesotho) stays a leaf – until 2026-10-30 it was dropped too, and the
+  Bremerhaven / Berlin cells were cut from the city extract alone (nearly empty, 5 failed in the overlays, the rest
+  published with the state missing). One leaf contains B → that one (the smallest). Else the 1–8 leaves touching B
+  (`MAX_EXTRACTS`), smallest first, without a leaf lying wholly inside another of them (border cell; Innsbruck
+  reaches the Brenner → nord-est + austria, Scuol → 4, Bodensee 10/538/357 → 5). (3) More than 8, or none of them: the smallest leaf of any kind containing B (alps,
   great-britain …); nothing containing B either → all the leaves (never a subset – a dropped leaf is a hole in the
-  map). (4) Nothing → open sea, a permanent failure. Tests on a 25-region subset of the real index (`testdata/`).
+  map). (4) Nothing → open sea, a permanent failure. Tests on a 29-region subset of the real index (`testdata/`).
   Why 8 (2026-10-30, was 4): the leaves are cut one after the other and only the small cuts are merged, so one more
   leaf is one more cut (time: ~10 s Regierungsbezirk, ~50 s austria), not memory; the old fallback for 5 leaves was
   dach (over `max_extract_mb` → the Bodensee cells could not be built) or alps (2.3 GB), and two cells with 5 leaves
@@ -497,6 +504,8 @@ status file says a cloud job is building it (< 70 min) is skipped. `--dry-run` =
   queues a build (request) and before it starts one (every pump, first 40 queued cells, also with builds off), it
   reads the cell's `current.json` + manifest; a version that is current – schema ≥ `CELL_SCHEMA`, OSM date younger than
   `REFRESH_DAYS`, other than the D1 row's – is taken as it is: row ready (`version`, `osm_date`, `size`), no build.
+  A request for a cell that is ready and current also reads its `current.json` (one read, the manifest only when it
+  names another version): a rebuild published on the same OSM date (`<osm_date>.2-s7`, §7c) replaces the row's version.
   Never while a Cloud Run job builds the cell (that job finishes and publishes its own). Logged as `{"ev":"adopted"}`.
 - **Credentials:** one R2 API token, **Object Read & Write on bucket `onpath-maps-test` only** (owner, Cloudflare
   dashboard → R2 → Manage API tokens), in `~/.config/onpath/r2-test.env` on donald (0600, outside the repo; keys

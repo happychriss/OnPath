@@ -65,6 +65,7 @@
     <string name="plan_calculate">Calculate</string>
     <string name="plan_gap_first">First %1$s from %2$s: no way for %3$s</string>
     <string name="plan_gap_last">Last %1$s to %2$s: no way for %3$s</string>
+    <string name="plan_gap_skipped">Route misses %2$s by %1$s</string>
     <string name="plan_gap_point">point %1$d</string>
     <string name="plan_quoted">“%1$s”</string>
     <string name="plan_more">%1$s (+%2$d more)</string>
@@ -76,6 +77,7 @@
     <string name="plan_elevation_profile">Elevation profile</string>
     <string name="plan_start_navigation_for">Start navigation · %1$s</string>
     <string name="plan_continue_navigation_for">Continue navigation · %1$s</string>
+    <string name="plan_start_recording_for">Start recording · %1$s</string>
     <string name="plan_route_options">Route options</string>
     <string name="plan_save_route">Save route</string>
     <string name="plan_time_details">Time details</string>
@@ -168,7 +170,9 @@
     <string name="plan_same_round_trip">Same round trip, starts here</string>
     <string name="plan_finding_shared_place">Finding the shared place…</string>
     <string name="plan_resize_panel">Resize panel</string>
-    <string name="plan_slide_to_plan">Edit route</string>
+    <string name="plan_slide_to_plan">Tour menu</string>
+    <string name="plan_slide_to_plan_sub">Change route · Pause · End</string>
+    <string name="plan_slide_change_route">Change route</string>
     <string name="plan_slide_desc">%1$s. Switch to plan mode.</string>
     <string name="plan_switch_to_plan">Switch to plan mode</string>
     <string name="plan_stat_distance">Distance</string>

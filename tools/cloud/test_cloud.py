@@ -152,6 +152,32 @@ class SourceSelection(unittest.TestCase):
                                               "austria"])                                     # Bregenz
         self.assertGreaterEqual(osm_sources.MAX_EXTRACTS, 5)
 
+    def test_city_state_cells_take_the_surrounding_state(self):
+        # Germany pre-build 2026-10-30: niedersachsen holds bremen, brandenburg holds berlin – both were dropped as
+        # "containers", so these cells were cut from the city extract alone (nearly empty, failed in the overlays)
+        self.assertEqual(self.ids(535, 330), ["niedersachsen"])   # Wilhelmshaven / Jadebusen (was: bremen)
+        self.assertEqual(self.ids(536, 330), ["niedersachsen"])   # Bremerhaven (was: bremen – Niedersachsen missing)
+        self.assertEqual(self.ids(549, 334), ["brandenburg"])     # Oranienburg (was: berlin)
+        self.assertEqual(self.ids(550, 335), ["brandenburg"])     # Berlin centre + 5 km reaches Brandenburg
+
+    def test_collection_and_enclosed_leaf(self):
+        def reg(rid, w, s, e, n):
+            r = osm_sources.Region({"properties": {"id": rid, "urls": {"pbf": rid}},
+                                    "geometry": {"type": "Polygon", "coordinates": [
+                                        [[w, s], [e, s], [e, n], [w, n], [w, s]]]}})
+            r.country = True  # (load_index sets it from the ISO codes)
+            return r
+        land, city, other = reg("land", 0, 0, 10, 10), reg("city", 4, 4, 5, 5), reg("other", 10, 0, 20, 10)
+        regions = [land, city, other]
+        sel = lambda box: [r.id for r in osm_sources.select(regions, box)]  # noqa: E731
+        self.assertEqual(sel((4.2, 4.2, 4.8, 4.8)), ["city"])            # inside the city: the small extract
+        self.assertEqual(sel((4.5, 4.5, 6, 6)), ["land"])                # city + land around it: land has both
+        self.assertEqual(sel((4.5, 4.5, 11, 6)), ["land", "other"])      # city inside land: not cut twice
+        # a leaf holding COLLECTION_MIN others is a collection ("us"): the small leaves are cut instead
+        parts = [reg(f"p{i}", 2 * i + 1, 1, 2 * i + 3, 3) for i in range(osm_sources.COLLECTION_MIN)]
+        big = reg("big", 0, 0, 2 * len(parts) + 2, 10)
+        self.assertEqual([r.id for r in osm_sources.select([big] + parts, (2, 1.5, 4, 2.5))], ["p0", "p1"])
+
     def test_too_many_leaves_falls_back_to_a_containing_leaf(self):
         box = buffered_bbox(cell_bbox(10, 541, 361), 5)
         self.assertEqual([r.id for r in osm_sources.select(self.regions, box, max_extracts=2)], ["alps"])
@@ -521,7 +547,7 @@ cid = f"{z}-{x}-{y}"
 layers = os.environ.get("LAYERS", "").split()
 base = json.load(open(os.environ["BASE_MANIFEST"])) if layers else None
 osm = os.environ.get("FAKE_OSM_DATE", "2026-10-19")
-ver = cells.version_name(osm, cells.CELL_SCHEMA)
+ver = cells.version_name(osm, cells.CELL_SCHEMA, int(os.environ.get("REBUILD") or 1))
 dest = os.path.join(os.environ["DATA_ROOT"], "cells", "f2", str(z), str(x), str(y))
 vdir = os.path.join(dest, ver)
 os.makedirs(os.path.join(vdir, "addresses"), exist_ok=True)
@@ -620,6 +646,24 @@ class PartialRebuild(unittest.TestCase):
         self.assertEqual({k: v["version"][-2:] for k, v in m9["layers"].items()},
                          {"base": "s7", "overlays": "s8", "pois": "s9", "addresses": "s7", "terrain": "s7",
                           "contours": "s7"})
+
+    def test_rebuild_on_the_same_osm_date_gets_a_new_version_name(self):
+        """A pipeline fix rebuilt on the same OSM date: phones compare names only, so the repaired cell needs a new
+        one (the published folder is immutable and cached). Still "-s<schema>" at the end."""
+        self.build(self.S7, "exec-1")
+        s = self.build(self.S7, "exec-2")
+        self.assertEqual((s["state"], s["version"]), ("ready", "2026-10-19.2-s7"))
+        self.assertEqual(json.load(open(self.cell("current.json"))), {"version": "2026-10-19.2-s7"})
+        self.assertEqual(job_build.cell_tools.schema_of(s["version"]), 7)
+        m = self.manifest("2026-10-19.2-s7")
+        self.assertEqual((m["version"], m["osm_date"]), ("2026-10-19.2-s7", "2026-10-19"))
+        self.assertTrue(all(f["url"].startswith("cells/f2/10/543/361/2026-10-19.2-s7/") for f in m["files"]))
+        self.assertEqual(self.manifest("2026-10-19-s7")["version"], "2026-10-19-s7")  # the old folder untouched
+        self.assertEqual(self.build(self.S7, "exec-3")["version"], "2026-10-19.3-s7")
+        # a schema bump or a new OSM date is a new name anyway: no number
+        self.assertEqual(self.build(dict(self.S7, overlays=8), "exec-4")["version"], "2026-10-19-s8")
+        self.assertEqual(self.build(self.S7, "exec-5", osm="2026-10-26")["version"], "2026-10-26-s7")
+        self.assertEqual(self.calls, ["", "", "", "overlays", ""])
 
     def test_new_extract_date_builds_the_whole_cell(self):
         self.build(self.S7, "exec-1")

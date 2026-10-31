@@ -11,7 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LinkOff
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -44,28 +47,126 @@ data class SyncUi(
     val problem: PlanSync.Problem? = null,
     /** A scanned pairing code waits for Pair / Cancel: its six check digits ("395 514"). */
     val askCheck: String? = null,
-    /** Right after Pair (owner 2026-10-30): "Paired – … They're kept on your phone." with OK, before the paired page. */
-    val pairedNote: Boolean = false,
     /** Pair was tapped for another browser while paired (A-017) and its one write runs: a spinner instead of the buttons. */
     val joining: Boolean = false,
 ) {
     companion object {
-        /**
-         * [pairedNote]: a pairing made here was stored and its OK not tapped yet. Shown only while the state says paired
-         * and no new code waits for Pair / Cancel ("already paired" never sets it).
-         */
-        fun of(s: PlanSync.State, askCheck: String?, pairedNote: Boolean = false, joining: Boolean = false) =
-            SyncUi(s.paired, s.peer, s.lastOkMs, s.problem, askCheck, pairedNote = pairedNote && s.paired && askCheck == null,
-                joining = joining && askCheck != null)
+        fun of(s: PlanSync.State, askCheck: String?, joining: Boolean = false) =
+            SyncUi(s.paired, s.peer, s.lastOkMs, s.problem, askCheck, joining = joining && askCheck != null)
     }
 }
+
+/** How a tapped Pair ended on the phone. */
+enum class PairResult {
+    /** The first pairing was stored. */
+    PAIRED,
+    /** Another browser joined this phone's mailbox (A-017). */
+    JOINED,
+    /** The scanned code is the browser this phone is paired with already (no question was asked). */
+    ALREADY,
+    /** The pairing could not be stored (the page shows the storage problem). */
+    NOT_STORED,
+    /** Joining failed: offline, code used / ended, refused – a red line on the pairing step. */
+    JOIN_FAILED,
+}
+
+/** The strip at the top of the Plan map after a pairing was made or ended here (owner 2026-10-30), until OK. */
+enum class SyncNote {
+    /** "Paired. What you save in the browser comes to your phone – …" */
+    PAIRED,
+    /** "Unpaired. Your routes stay on your phone." */
+    UNPAIRED,
+    /** Unpaired here, the mailbox could not be ended: "… – the browser couldn't be reached, unpair it there too." */
+    UNPAIRED_OFFLINE,
+}
+
+/**
+ * Where the app goes after Pair / Unpair (owner 2026-10-30: unpairing as simple as pairing): a pairing made (first
+ * browser or another one) or ended → straight back to the Plan screen (Settings and My routes closed) with its strip and
+ * OK at the top of the map, until OK; anything else stays where it is, without a strip.
+ */
+object PairLanding {
+    data class Screens(val settingsOpen: Boolean, val settingsPage: SettingsPage?, val routesOpen: Boolean, val note: SyncNote?)
+
+    fun after(result: PairResult, now: Screens): Screens = when (result) {
+        PairResult.PAIRED, PairResult.JOINED -> plan(SyncNote.PAIRED)
+        else -> now.copy(note = null)
+    }
+
+    /**
+     * Unpair ended with the mailbox's [status] ([PlanSync.unpair]): ended (200) or gone already (404 / 410) → Plan +
+     * "Unpaired. …"; not reached (offline, other answers – unpaired on the phone anyway) → Plan + the sentence to
+     * unpair the browser too; not stored here (-2) → stay on Browser sync (its red line), no strip.
+     */
+    fun afterUnpair(status: Int, now: Screens): Screens = when (status) {
+        200, 404, 410 -> plan(SyncNote.UNPAIRED)
+        UNPAIR_NOT_STORED -> now.copy(note = null)
+        else -> plan(SyncNote.UNPAIRED_OFFLINE)
+    }
+
+    /** [PlanSync.unpair]'s status when the phone could not forget the pairing (storage). */
+    const val UNPAIR_NOT_STORED = -2
+
+    private fun plan(note: SyncNote) = Screens(settingsOpen = false, settingsPage = null, routesOpen = false, note = note)
+}
+
+/** The text of a [SyncNote] strip. */
+@Composable
+fun syncNoteText(note: SyncNote): String = when (note) {
+    SyncNote.PAIRED -> str(Res.string.sync_paired_plan)
+    SyncNote.UNPAIRED -> str(Res.string.sync_unpaired_plan)
+    SyncNote.UNPAIRED_OFFLINE -> str(Res.string.sync_unpaired_plan_offline)
+}
+
+/**
+ * A pairing just made or ended, at the top of the Plan map (owner 2026-10-30): what it means + OK – the same blue strip
+ * for both. Stays until OK (never by itself); the map below stays usable.
+ */
+@Composable
+fun SyncNoteStrip(note: SyncNote, onOk: () -> Unit, modifier: Modifier = Modifier) =
+    OkNoteStrip(syncNoteText(note), if (note == SyncNote.PAIRED) Icons.Outlined.CheckCircle else Icons.Outlined.LinkOff, onOk, modifier)
+
+/**
+ * ☰ → "Pair with browser" (owner 2026-10-30: shorter pairing): not paired → the phone's camera at once (it reads the QR
+ * code; the `#pair=` link comes back through PlanLinks). The one line "On your computer open plan.onpath.earth → …" is
+ * shown once before, as a blue step strip on the map with "Open camera" – no dialog; after the camera opened once, one
+ * tap. Paired, or a sync problem to look at → Settings → Browser sync (status, Unpair). No camera app → that page with
+ * its steps (fallback). Pure, unit-tested.
+ */
+object PairEntry {
+    enum class Step { SETTINGS, HINT, CAMERA }
+
+    /** `MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA`: the camera app in photo mode (Google / Samsung read QR codes there). */
+    const val CAMERA_ACTION = "android.media.action.STILL_IMAGE_CAMERA"
+
+    fun step(s: PlanSync.State, hintSeen: Boolean): Step = when {
+        s.paired || SyncMenuUi.attention(s) != null -> Step.SETTINGS
+        !hintSeen -> Step.HINT
+        else -> Step.CAMERA
+    }
+
+    /**
+     * Opens the camera through [start] (startActivity of [CAMERA_ACTION]); no camera app (it throws) → [fallback].
+     * True = the camera opened.
+     */
+    fun openCamera(start: (action: String) -> Unit, fallback: (Exception) -> Unit): Boolean = try {
+        start(CAMERA_ACTION); true
+    } catch (e: Exception) {
+        // expected on phones without a camera app (ActivityNotFoundException) – the caller logs it and falls back
+        fallback(e); false
+    }
+}
+
+/** The pairing step before the camera opens (first time): what to do on the computer + Cancel / Open camera. */
+@Composable
+fun PairHintStrip(onCamera: () -> Unit, onCancel: () -> Unit, modifier: Modifier = Modifier) =
+    ActionStrip(str(Res.string.sync_pair_hint), Icons.Outlined.QrCodeScanner,
+        listOf(str(Res.string.common_cancel) to onCancel, str(Res.string.sync_open_camera) to onCamera), modifier)
 
 class SyncCallbacks(
     val onOpenCamera: () -> Unit = {},
     val onPair: () -> Unit = {},
     val onCancelPair: () -> Unit = {},
-    /** OK under the "Paired – …" confirmation: the normal paired page. */
-    val onPairedOk: () -> Unit = {},
     /** After the question (it can lose something: the browser stops getting the routes). */
     val onUnpair: () -> Unit = {},
 )
@@ -185,11 +286,6 @@ fun SyncSection(ui: SyncUi, cb: SyncCallbacks, now: Long = System.currentTimeMil
                         Button(onClick = cb.onPair, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.sync_pair)) }
                         TextButton(onClick = cb.onCancelPair, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) }
                     }
-                }
-                ui.pairedNote -> {
-                    // the pairing just made (owner 2026-10-30): what it means, then OK → the paired page
-                    Text(str(Res.string.sync_paired_note), style = MaterialTheme.typography.bodyLarge)
-                    Button(onClick = cb.onPairedOk, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_ok)) }
                 }
                 !ui.paired -> {
                     Text(str(Res.string.sync_intro), style = MaterialTheme.typography.bodyMedium)

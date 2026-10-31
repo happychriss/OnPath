@@ -53,6 +53,11 @@ object OnPathColors {
     val RestInk = Color(0xFFB3B3B3)
     /** Direction, time left, arrival, the tap hint: 6:1 on black (above the 4.5:1 text minimum). */
     val RestDim = Color(0xFF8A8A8A)
+    /**
+     * Small secondary text on the dark Navigate slider track ("Change route · Pause · End"): the rest view's grey,
+     * ≥ 5:1 on the track even over a white map.
+     */
+    val OnDarkMuted = RestInk
 
     // ---- Message kinds: one colour = one meaning ----
     /** ACTION: the blue strip / card that asks a question with buttons – never a status or a failure. */

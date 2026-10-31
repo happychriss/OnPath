@@ -11,6 +11,12 @@ import sys
 import tempfile
 import unittest
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+# build_overlays.sh / cells.py tiles: tippecanoe + the pmtiles package (the cell builder image has both)
+HAVE_TILES = (all(subprocess.run(["sh", "-c", f"command -v {t}"], capture_output=True).returncode == 0
+                  for t in ("tippecanoe", "tile-join"))
+              and subprocess.run([sys.executable, "-c", "import pmtiles"], capture_output=True).returncode == 0)
+
 # Probe in a fresh interpreter, the way the script runs: another test in the same run (test_extract_pois) may put a
 # stand-in "osmium" into sys.modules, so an import here could succeed while the real script cannot.
 HAVE_LIBS = subprocess.run([sys.executable, "-c", "import osmium, shapely"], capture_output=True).returncode == 0
@@ -316,6 +322,66 @@ class JunctionAreas(unittest.TestCase):
         lon, lat = at(100, 120)
         self.assertFalse(any(abs(p[0] - lon) < 2e-6 and abs(p[1] - lat) < 2e-6
                              for f in links for p in f["geometry"]["coordinates"]), links)
+
+
+@unittest.skipUnless(HAVE_LIBS and HAVE_TILES, "pyosmium / shapely / tippecanoe / pmtiles not installed")
+class EmptyOverlays(unittest.TestCase):
+    """Germany pre-build 2026-10-30: sea cells (10-532-329 north of the East Frisian islands) and cells cut from the
+    wrong extract failed in overlays-tiles ("trails.ndjson missing or empty") or overlays-own (pmtiles IndexError: the
+    cell owns none of the tiles, all data lies in the 5 km buffer). Empty overlays must give a valid, empty file."""
+
+    def tiles(self, path):
+        from pmtiles.reader import MmapSource, Reader, all_tiles
+        with open(path, "rb") as f:
+            get = MmapSource(f)
+            r = Reader(get)
+            return r.header(), r.metadata(), [t for t, _ in all_tiles(get)]
+
+    def build(self, osm, tmp):
+        run_extract(osm, tmp)
+        out = os.path.join(tmp, "overlays.pmtiles")
+        res = subprocess.run([os.path.join(HERE, "build_overlays.sh"), os.path.join(tmp, "tiles"), out],
+                             capture_output=True, text=True)
+        self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
+        return out, res.stdout
+
+    def own(self, src, tmp, z, x, y):
+        dst = os.path.join(tmp, "own.pmtiles")
+        res = subprocess.run([sys.executable, os.path.join(HERE, "cells", "cells.py"), "tiles", str(z), str(x), str(y),
+                              src, dst], capture_output=True, text=True)
+        self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
+        return dst
+
+    def test_no_feature_at_all(self):
+        o = Osm()
+        o.area(0, 0, 400, 300, natural="water")          # open sea: nothing for the overlays
+        with tempfile.TemporaryDirectory() as tmp:
+            out, log = self.build(o, tmp)
+            self.assertIn("no overlay features at all", log)
+            h, meta, tiles = self.tiles(out)
+            self.assertEqual(tiles, [])
+            self.assertEqual((h["tile_type"].name, h["tile_compression"].name), ("MVT", "GZIP"))  # as tippecanoe's
+            self.assertEqual(meta["name"], "OnPath overlays")
+            h, _, tiles = self.tiles(self.own(out, tmp, 10, 543, 364))
+            self.assertEqual((tiles, h["addressed_tiles_count"]), ([], 0))
+
+    def test_layers_without_features_left_out(self):
+        o = Osm()
+        o.way([(0, 0), (300, 0)], highway="path")         # a path, no trail / route / street
+        with tempfile.TemporaryDirectory() as tmp:
+            out, log = self.build(o, tmp)
+            self.assertIn("trails: no features", log)
+            _, meta, tiles = self.tiles(out)
+            self.assertTrue(tiles)
+            self.assertIn("paths", [layer["id"] for layer in meta["vector_layers"]])
+            # the east neighbour owns none of these tiles (in a cell build: data only in the buffer): an empty file,
+            # not the IndexError of pmtiles
+            h, meta2, own = self.tiles(self.own(out, tmp, 10, 544, 364))
+            self.assertEqual((own, h["addressed_tiles_count"], h["min_zoom"]), ([], 0, 10))
+            self.assertEqual(meta2["name"], "OnPath overlays")
+            # and the cell holding the path keeps its tiles as before
+            _, _, mine = self.tiles(self.own(out, tmp, 10, 543, 364))
+            self.assertTrue(mine and all(z >= 10 for z, _, _ in mine))
 
 
 if __name__ == "__main__":

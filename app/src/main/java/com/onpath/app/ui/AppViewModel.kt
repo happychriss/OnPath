@@ -191,10 +191,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var settings by mutableStateOf(prefs.settings)
         private set
     /**
-     * The pairing just made here was stored: Browser sync shows "Paired – … They're kept on your phone." with OK
-     * (owner 2026-10-30) until OK, Unpair or the page is left; never for "already paired".
+     * A pairing was just made (first browser or another one, A-017) or ended here: the Plan map shows "Paired. …" /
+     * "Unpaired. …" with OK at the top (owner 2026-10-30) until OK or the next Pair / Unpair; never for "already
+     * paired" or a failure ([PairLanding]).
      */
-    var pairedNote by mutableStateOf(false)
+    var syncNote by mutableStateOf<SyncNote?>(null)
         private set
 
     private var settingsShown by mutableStateOf(false)
@@ -210,9 +211,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (v != page) settingsNote = null
             if (v == SettingsPage.DIAGNOSTICS || page == SettingsPage.DIAGNOSTICS) markDiagnosticsSeen()
             if (v == SettingsPage.SYNC) sync.endedSeen() // "ended in the browser" seen: the ☰ item is no longer amber
-            if (v != SettingsPage.SYNC) pairedNote = false // the "Paired – …" confirmation lasts until the page is left
+            if (v == SettingsPage.DIAGNOSTICS && v != page) loadRoutingInfo()
             page = v
         }
+
+    /** Settings → Diagnostics: the routing fingerprint and the routing data's dates (RoutingFingerprint); null = not read yet. */
+    var routingInfo by mutableStateOf<String?>(null)
+        private set
+
+    private val routingFingerprint by lazy {
+        com.onpath.app.routing.RoutingFingerprint.of(read = { n -> getApplication<Application>().assets.open("brouter/$n").use { it.readBytes() } })
+    }
+
+    private fun loadRoutingInfo() {
+        viewModelScope.launch {
+            routingInfo = withContext(Dispatchers.IO) {
+                try {
+                    val rd5 = dataFiles.segmentsDir.listFiles { f -> f.name.endsWith(".rd5") }.orEmpty().map { f ->
+                        f.name to try {
+                            com.onpath.app.routing.Rd5Parts.readIndex(f)?.let { com.onpath.app.routing.Rd5Parts.creationTime(com.onpath.app.routing.Rd5Parts.readTail(f, it)) }
+                        } catch (e: java.io.IOException) {
+                            Problems.info("routing", "Diagnostics: date of routing data ${f.name} not read", e); null
+                        }
+                    }
+                    com.onpath.app.routing.RoutingFingerprint.describe(routingFingerprint, rd5)
+                } catch (e: Exception) {
+                    Problems.warn("routing", "Diagnostics: routing fingerprint not computed", e); null
+                }
+            }
+        }
+    }
 
     /** Developer tools in Diagnostics (owner): debug builds always, else after 7 taps on the version. */
     var devToolsShown by mutableStateOf(DevToolsUnlock.shown(com.onpath.app.BuildConfig.DEBUG, prefs.devToolsUnlocked))
@@ -912,8 +940,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var downloadDetailsOpen by mutableStateOf(false)
     /** The Plan strip is on screen (hints below the search bar move down). */
     var backgroundStripShown by mutableStateOf(false)
-    /** Height of that strip in dp (measured); the error card goes below it ([MessagePlacement]). */
-    var backgroundStripHeightDp by mutableStateOf(0)
+    /** Bottom of that strip / chip below the status bar in dp (measured); the error card goes below it ([MessagePlacement]). */
+    var backgroundStripBottomDp by mutableStateOf(0)
+    /** Navigate: height of the top column (turn card, status card, chips) in dp – the error card goes below it. */
+    var navigateTopDp by mutableStateOf(0)
 
     /**
      * What loads in the background now (map regions, routing data the user does not wait for in the modal); null =
@@ -1147,7 +1177,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * one red line in the plan sheet – while it holds, never dismissed. Derived from the route of exactly these points.
      */
     val planGaps: List<PlanGap>
-        get() = route?.takeIf { !routing }?.let { PlanGaps.of(waypoints.toList(), it.snapped) } ?: emptyList()
+        get() = route?.takeIf { !routing }?.let { r ->
+            val w = waypoints.toList()
+            // the gaps of the last plan result (routing/PlanResult, the web's too) while it still describes these points
+            planResult?.takeIf { it.route.snapped === r.snapped && it.route.skipped === r.skipped && it.points == w }?.gaps
+                ?: PlanGaps.of(w, r.snapped, r.skipped)
+        } ?: emptyList()
+    /** The last route result applied ([recalc]; routing/PlanResult – the same computation as the web planner's). */
+    private var planResult: com.onpath.app.routing.PlanResult? = null
 
     // route warnings (RouteWarnings): declared before init {} – recalc() touches them (ViewModelInitOrderTest)
     /**
@@ -1827,7 +1864,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         change { add(d.index.coerceIn(0, size), p) }
     }
 
-    fun removePoint(index: Int) { if (index in waypoints.indices) change { removeAt(index) } }
+    /** Plan point [index] deleted (map menu, search card): a round trip stays closed, as in the Points list. */
+    fun removePoint(index: Int) {
+        val after = com.onpath.app.routing.PlanPoints.deleteAt(waypoints, index)
+        if (after.size != waypoints.size) set(after)
+    }
 
     /** Search result shown in the place card (search, ui/search); map-held POIs use [poiMenu]. */
     var planPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
@@ -2305,7 +2346,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- end shared places ----------------
 
     fun makeDestination(index: Int) {
-        if (index in waypoints.indices && index != waypoints.lastIndex) set(PlanEdits.move(waypoints, index, waypoints.size - 1))
+        // the last row; a round trip stays closed at its start (as dragging the row to the end of the Points list)
+        if (index in waypoints.indices && index != waypoints.lastIndex) set(com.onpath.app.routing.PlanPoints.move(waypoints, index, waypoints.size - 1))
     }
     fun reverseRoute() { if (waypoints.size >= 2) set(PlanEdits.reverse(waypoints)) }
     fun roundTrip() {
@@ -2464,19 +2506,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val result = withContext(routingDispatcher) {
                 runCatching {
                     val eng = routingEngine()
-                    withModelTime(Planner(eng, cancel).also { planner = it }.plan(pts, act, level, pins), act, f)
+                    // route, model time, snapped points, gaps, warnings: the one computation the web planner shares
+                    // (named stops: read on the main thread when the result is taken – snapToRoute → PlanResult.withNamed)
+                    com.onpath.app.routing.PlanResult.plan(Planner(eng, cancel).also { planner = it }, pts, act, level, pins, emptySet(), f)
                 }
             }
             slow.cancel()
             // the corridor work of a result off the main thread
-            val post = result.getOrNull()?.let { r -> withContext(Dispatchers.Default) { postRoute(r, pts) } }
+            val post = result.getOrNull()?.let { r -> withContext(Dispatchers.Default) { postRoute(r.route, pts) } }
             if (requests.isCurrent(gen)) routingSlow = false
             if (!requests.isCurrent(gen) || !isActive) { // superseded or cleared
                 Problems.trace("routing", "Route #$gen for ${pts.size} points superseded – result ignored")
                 return@launch
             }
             // one line per route: distance, size, profile, each try's time and outcome
-            val done = result.getOrNull()
+            val done = result.getOrNull()?.route
             Problems.trace("routing", "Route #$gen for ${pts.size} points " + (if (result.isSuccess) "ready" else "failed") +
                 " after ${android.os.SystemClock.elapsedRealtime() - started} ms (plan now ${waypoints.size} points): " +
                 "${act.name}, ${"%.1f".format(Locale.ROOT, com.onpath.app.routing.RouteTimeLimit.straightKm(pts))} km straight" +
@@ -2484,9 +2528,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     "${it.legs.count { l -> l.straight }} straight legs" } ?: "") +
                 (planner?.describeTries()?.takeIf { it.isNotEmpty() }?.let { "; tries: $it" } ?: ""))
             var baseline = false
-            result.onSuccess {
+            result.onSuccess { res ->
+                val it = res.route
                 baseline = adoptPlanBaseline
-                route = it; snapToRoute(pts, pins, it)
+                route = it; snapToRoute(pts, res)
+                // the route warnings of this result (computed with it, off the main thread): routeSpots reads them
+                spotsMemo = Triple(it.points, act, level) to res.spots
                 if (changeBefore != null) {
                     activityBefore = null
                     if (RouteWarnings.changedNoticeably(changeBefore.points, changeBefore.distanceM, changeBefore.ascentM,
@@ -2544,7 +2591,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * and Navigate "to go" at the start. Moving time, rounded for display.
      */
     private fun withModelTime(r: PlannedRoute, a: Activity, f: com.onpath.app.time.Factors): PlannedRoute =
-        r.copy(durationS = com.onpath.app.time.TimeEstimate.planSeconds(r.points, a, f))
+        com.onpath.app.routing.PlanResult.withModelTime(r, a, f)
 
     /** Times of a finished tour: the service's live summary, else recomputed from the stored points. */
     private fun tourTimes(t: Tour): com.onpath.app.time.TourTimes? = try {
@@ -2610,19 +2657,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Indices of the named stops of [pts] (they keep their coordinates when the route is snapped). */
+    private fun namedStops(pts: List<GeoPoint>): Set<Int> = pts.indices.filter { stopName(pts[it]) != null }.toSet()
+
     /**
-     * Moves free points onto the way the router used (owner: no off-road guidance), so marker, stored
-     * plan and route line agree. POI-pinned and named stops keep their coordinates. Amends the current
+     * Takes the snapped plan points of [res0] ([com.onpath.app.routing.PlanResult.snap]: free points onto the way the
+     * router used – owner: no off-road guidance – so marker, stored plan and route line agree; POI-pinned and named
+     * stops and a stop the route does not reach or skips keep their coordinates, its gap is shown). Amends the current
      * state (no undo step; history snapshots get the same values) and does not re-route: [route] already
      * belongs to the snapped points. Only for the newest result of exactly these points.
      */
-    private fun snapToRoute(routed: List<GeoPoint>, pins: Set<Int>, r: PlannedRoute) {
-        if (waypoints.toList() != routed) return
-        // a point the route does not reach keeps its place: the gap is shown (planGaps), not hidden by moving the point
-        val far = PlanGaps.farIndices(routed, r.snapped)
+    private fun snapToRoute(routed: List<GeoPoint>, res0: com.onpath.app.routing.PlanResult) {
+        if (waypoints.toList() != routed) { planResult = res0; return }
+        // the named stops keep their place: their names are read here, on the main thread (a stop named while the
+        // route was calculated counts too)
+        val res = res0.withNamed(namedStops(routed)).also { planResult = it }
+        val far = res.far
         if (far.isNotEmpty()) Problems.trace("routing", "Route does not reach point(s) ${far.sorted().joinToString { "${it + 1}" }}")
-        val keep = pins + far + routed.indices.filter { stopName(routed[it]) != null }
-        val snapped = WaypointSnap.apply(routed, r.snapped, keep) ?: return
+        val snapped = res.points.takeIf { res.moved } ?: return
         for (i in snapped.indices) if (snapped[i] != routed[i]) waypoints[i] = snapped[i]
         if (routed.size >= 2 && !RouteRules.isUnsaved(routed, savedPoints)) setSaved(linkName, linkId, snapped)
         linkTitle?.let { (title, at) -> if (at == routed) linkTitle = title to snapped }
@@ -2748,7 +2800,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** The plan's stops as saved: with their place names (backup / restore keeps them). */
-    private fun savedStops(pts: List<GeoPoint>) = pts.map { GpxWaypoint(it.lat, it.lon, stopName(it)) }
+    private fun savedStops(pts: List<GeoPoint>) = com.onpath.app.gpx.PlanGpx.stops(pts) { stopName(pts[it]) }
 
     /** ⋮ → Save route: Save / Save as new… when the plan belongs to a saved route (RouteRules.saveMode), else the name dialog. */
     fun requestSave() {
@@ -2950,17 +3002,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Plan's primary action (location permission is checked by the caller). Follows the planned
-     * route, else the shown track, else nothing (free recording), and starts recording.
+     * Plan's primary action (location permission is checked by the caller). Follows the shown track, else the planned
+     * route, else nothing (free recording – the button then reads "Start recording · …", [PlanStart]), and starts recording.
      */
     fun startNavigation(force: Boolean = false) {
         if (recState.value != null) { continueNavigation(force); return }
         val s = shown
         if (s == null && !force && planHasStraightLegs()) { straightAsk = true; return }
-        when {
-            s != null -> { followShown(); shown = null }
-            route != null && waypoints.size >= 2 -> followPlanned()
-            else -> clearFollow()
+        // PlanStart: the sheet's button says "Start recording" exactly when nothing is followed here
+        when (PlanStart.of(trackPoints = s?.points?.size, hasRoute = route != null, pointCount = waypoints.size)) {
+            PlanStart.FOLLOW_TRACK -> { followShown(); shown = null }
+            PlanStart.NAVIGATE_PLAN -> followPlanned()
+            // the button waits for the line; reached anyway: record (a tour is never refused), nothing followed.
+            // A shown track without a line closes, like ☰ → Start recording.
+            PlanStart.WAIT_FOR_ROUTE, PlanStart.RECORD_ONLY -> { clearFollow(); shown = null }
         }
         startRecording()
         // Navigate only once the service really records (R-01): a refused foreground service, a missing
@@ -3527,7 +3582,38 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var pairAsk by mutableStateOf<ByteArray?>(null)
         private set
 
-    fun pairedNoteOk() { pairedNote = false }
+    fun syncNoteOk() { syncNote = null }
+
+    /** ☰ → Pair with browser, the first time: the step line + Open camera as a blue strip on the Plan map ([PairEntry]). */
+    var pairHint by mutableStateOf(false)
+        private set
+
+    /** ☰ → Pair with browser: camera at once (paired / a problem → Settings → Browser sync; first time the step line). */
+    fun startPairing(start: (String) -> Unit) {
+        val step = PairEntry.step(sync.state.value, prefs.pairHintSeen)
+        Problems.info("sync", "Pair with browser from the menu: $step")
+        when (step) {
+            PairEntry.Step.SETTINGS -> openSettings(SettingsPage.SYNC)
+            PairEntry.Step.HINT -> pairHint = true
+            PairEntry.Step.CAMERA -> openPairCamera(start, fromSettings = false)
+        }
+    }
+
+    fun pairHintCamera(start: (String) -> Unit) { pairHint = false; openPairCamera(start, fromSettings = false) }
+    fun pairHintCancel() { pairHint = false }
+
+    /**
+     * The camera for the pairing code. No camera app: from the map → Settings → Browser sync (its steps) with the line;
+     * on that page → the line there.
+     */
+    fun openPairCamera(start: (String) -> Unit, fromSettings: Boolean) {
+        val opened = PairEntry.openCamera(start) { e ->
+            Problems.warn("sync", "No camera app to scan the pairing code", e)
+            if (!fromSettings) openSettings(SettingsPage.SYNC)
+            sayError(Txt.s(Res.string.sync_no_camera), NoticePlace.SETTINGS)
+        }
+        if (opened) prefs.pairHintSeen = true
+    }
 
     /** Sync while the app stays open (owner: automatic like WhatsApp Web): every minute, back-off when offline. */
     private val syncPoll = com.onpath.app.plansync.SyncPoll()
@@ -3592,7 +3678,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 com.onpath.app.plansync.PairStep.JOIN -> "another browser – asking (it joins this phone's mailbox)"
             })
             when (step) {
-                com.onpath.app.plansync.PairStep.ALREADY -> sayInfo(Txt.s(Res.string.sync_already_paired), NoticePlace.SETTINGS)
+                com.onpath.app.plansync.PairStep.ALREADY -> {
+                    pairEnded(PairResult.ALREADY) // stays on Browser sync, no "Paired. …" strip
+                    sayInfo(Txt.s(Res.string.sync_already_paired), NoticePlace.SETTINGS)
+                }
                 // A-017: a second browser (laptop + desktop, a friend's PC) – the same check digits and Pair, no "unpair first"
                 else -> if (!pairJoining) pairAsk = secret
             }
@@ -3610,34 +3699,52 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun confirmPair() {
         val s = pairAsk ?: return
-        pairedNote = false
-        if (!sync.state.value.paired) { pairAsk = null; sync.pair(s) { ok -> pairedNote = ok }; return }
+        syncNote = null
+        if (!sync.state.value.paired) { pairAsk = null; sync.pair(s) { ok -> pairEnded(if (ok) PairResult.PAIRED else PairResult.NOT_STORED) }; return }
         if (pairJoining) return
         pairJoining = true
         sync.join(s) { o ->
             pairJoining = false
             if (pairAsk === s) pairAsk = null // (Pair / Cancel are hidden meanwhile; a newer scanned code stays)
             when (o) {
-                null -> sync.pair(s) { ok -> pairedNote = ok } // unpaired meanwhile: a normal pairing
-                is com.onpath.app.sync.SyncRound.Outcome.Done -> pairedNote = true
-                is com.onpath.app.sync.SyncRound.Outcome.Offline -> sayError(Txt.s(Res.string.sync_join_offline), NoticePlace.SETTINGS)
-                is com.onpath.app.sync.SyncRound.Outcome.Ended -> sayError(Txt.s(Res.string.sync_join_used), NoticePlace.SETTINGS)
-                is com.onpath.app.sync.SyncRound.Outcome.Refused -> sayError(Txt.s(Res.string.sync_join_failed), NoticePlace.SETTINGS)
+                // unpaired meanwhile: a normal pairing
+                null -> sync.pair(s) { ok -> pairEnded(if (ok) PairResult.PAIRED else PairResult.NOT_STORED) }
+                is com.onpath.app.sync.SyncRound.Outcome.Done -> pairEnded(PairResult.JOINED)
+                is com.onpath.app.sync.SyncRound.Outcome.Offline -> { pairEnded(PairResult.JOIN_FAILED); sayError(Txt.s(Res.string.sync_join_offline), NoticePlace.SETTINGS) }
+                is com.onpath.app.sync.SyncRound.Outcome.Ended -> { pairEnded(PairResult.JOIN_FAILED); sayError(Txt.s(Res.string.sync_join_used), NoticePlace.SETTINGS) }
+                is com.onpath.app.sync.SyncRound.Outcome.Refused -> { pairEnded(PairResult.JOIN_FAILED); sayError(Txt.s(Res.string.sync_join_failed), NoticePlace.SETTINGS) }
             }
         }
     }
 
-    fun cancelPair() { pairAsk = null; pairedNote = false; Problems.info("sync", "Pairing cancelled") }
+    /** Pair ended (main thread): made → back to the Plan map with "Paired. …" + OK (owner 2026-10-30); else stay. */
+    private fun pairEnded(r: PairResult) {
+        val s = PairLanding.after(r, landingNow())
+        Problems.info("sync", "Pair ended: $r" + if (s.note != null) " – back to the Plan map with the note" else "")
+        landOn(s)
+    }
 
-    /** Settings → Unpair (after the question): the mailbox ends for both sides; the routes stay everywhere. */
+    private fun landingNow() = PairLanding.Screens(showSettings, settingsPage, routesOpen, syncNote)
+
+    private fun landOn(s: PairLanding.Screens) {
+        if (settingsPage != s.settingsPage) settingsPage = s.settingsPage
+        if (showSettings != s.settingsOpen) showSettings = s.settingsOpen
+        if (routesOpen != s.routesOpen) routesOpen = s.routesOpen
+        syncNote = s.note
+    }
+
+    fun cancelPair() { pairAsk = null; syncNote = null; Problems.info("sync", "Pairing cancelled") }
+
+    /**
+     * Settings → Unpair (after the question): the mailbox ends for both sides; the routes stay everywhere. Then straight
+     * back to the Plan map with "Unpaired. …" + OK (owner 2026-10-30, like Pair); the phone could not forget the
+     * pairing → stay on the page with its red line.
+     */
     fun unpair() {
-        pairedNote = false
+        syncNote = null
         sync.unpair { status ->
-            when (status) {
-                200, 404, 410 -> sayInfo(Txt.s(Res.string.sync_unpaired), NoticePlace.SETTINGS)
-                -2 -> sayError(Txt.s(Res.string.sync_unpair_failed), NoticePlace.SETTINGS)
-                else -> sayInfo(Txt.s(Res.string.sync_unpaired_offline), NoticePlace.SETTINGS)
-            }
+            if (status == PairLanding.UNPAIR_NOT_STORED) sayError(Txt.s(Res.string.sync_unpair_failed), NoticePlace.SETTINGS)
+            landOn(PairLanding.afterUnpair(status, landingNow()))
         }
     }
 
@@ -3819,6 +3926,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (planFromTrackBusy) return
         val track = sh.segments.flatten()
         if (track.size < 2) return
+        // an exported OnPath plan (gpx/PlanGpx): its <wpt> are the route points – the plan comes back exactly, with names
+        com.onpath.app.gpx.PlanGpx.stopsOf(track, sh.waypoints)?.let { stops ->
+            Problems.trace("plan", "Track → plan: the file's ${stops.size} route points (a plan GPX), no fitting")
+            val pts = stops.map { GeoPoint(it.lat, it.lon) }
+            closeShown()
+            change { clear(); addAll(pts) }
+            stops.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
+            return
+        }
         val act = activity; val level = sac
         // routing data along the track first: without it every leg fails
         val missing = try { routingData.ensure(com.onpath.app.data.RoutingTiles.forLine(track)) } catch (e: Exception) {
@@ -4105,22 +4221,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             // as chosen at End tour: rides not counted are their own segments, a dropped ride is not exported
             val segs = withContext(Dispatchers.IO) { com.onpath.app.rides.RideView.layout(db.loadSegments(t.id), t.rides).trk.map { it.first } }
-            // a planned route carries its route points as <wpt> (start, stops, goal – with their names): other apps
-            // show them, and a re-import can rebuild the plan from them
-            share(t.name, segs, t.waypoints, SportType.typeOf(t.activity, t.sac), t.kind)
+            share(t.name) {
+                // a planned route: the one plan export shared with the web planner (gpx/PlanGpx) – its route points
+                // as <wpt> (start, stops, goal – with their names): other apps show them, a re-import rebuilds the plan
+                if (t.kind == TourKind.PLANNED) com.onpath.app.gpx.PlanGpx.export(t.name, segs, t.waypoints, t.activity, t.sac)
+                // the sport as `<trk><type>` (Komoot's string, so Komoot and OnPath read the activity back);
+                // the file name the same in every language (owner): "Hilden - rec.gpx"
+                else com.onpath.app.gpx.GpxFile(GpxWriter.fileName(t.name, GpxWriter.kindSuffix(false, t.kind == TourKind.RECORDED)),
+                    GpxWriter.write(t.name, segs, t.waypoints, type = SportType.typeOf(t.activity, t.sac)))
+            }
         }
     }
 
-    /** [sport] = the sport as `<trk><type>` (Komoot's string, so Komoot and OnPath read the activity back). */
-    private suspend fun share(name: String, segs: List<List<TrackPoint>>, wpts: List<GpxWaypoint>, sport: String?,
-                              kind: TourKind? = null) {
+    /** Writes the GPX [gpx] builds (off the main thread) into the export folder and opens the share sheet. */
+    private suspend fun share(name: String, gpx: () -> com.onpath.app.gpx.GpxFile) {
         try {
             val uri = withContext(Dispatchers.IO) {
                 val dir = File(getApplication<Application>().cacheDir, "export").apply { mkdirs() }
-                // the same in every language (owner): "Hilden - plan.gpx" / "Hilden - rec.gpx"
-                val suffix = GpxWriter.kindSuffix(kind == TourKind.PLANNED, kind == TourKind.RECORDED)
-                val file = File(dir, GpxWriter.fileName(name, suffix))
-                file.writeText(GpxWriter.write(name, segs, wpts, type = sport))
+                val g = gpx()
+                val file = File(dir, g.fileName)
+                file.writeText(g.text)
                 FileProvider.getUriForFile(getApplication(), getApplication<Application>().packageName + ".files", file)
             }
             val send = Intent(Intent.ACTION_SEND).apply {

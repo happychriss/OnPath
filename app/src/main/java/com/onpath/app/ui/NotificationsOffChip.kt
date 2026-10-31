@@ -14,7 +14,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,9 +46,7 @@ fun NotificationsOffChip(onSetUp: () -> Unit, onOk: () -> Unit, modifier: Modifi
                         maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
-            TextButton(onClick = onOk, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(str(Res.string.common_ok), color = OnPathColors.Warn, fontWeight = FontWeight.SemiBold)
-            }
+            NoticeButton(str(Res.string.common_ok), onOk, NoticeTone.AMBER, modifier = Modifier.padding(end = 8.dp))
         }
     }
 }

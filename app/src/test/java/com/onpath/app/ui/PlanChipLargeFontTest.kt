@@ -11,7 +11,8 @@ import java.util.Locale
 
 /**
  * The plan sheet's first line at the phone's largest font (2.0): the activity chip ("Hike · T2" / "Wandern · T2") beside
- * time and distance. Same pictures as the English tests of the same name, drawn with this class's Paparazzi.
+ * time and distance (and the Save button while unsaved). Same pictures as the English tests of the same name, drawn
+ * with this class's Paparazzi.
  */
 open class PlanChipLargeFontTest {
     @get:Rule
@@ -30,6 +31,9 @@ open class PlanChipLargeFontTest {
     @Test fun plan() = shots.plan()
     @Test fun planChipLongHike() = shots.planChipLongHike()
     @Test fun planChipLongBikeTour() = shots.planChipLongBikeTour()
+    @Test fun planUnsaved() = shots.planUnsaved()
+    @Test fun planSaved() = shots.planSaved()
+    @Test fun planUnsavedLongHike() = shots.planUnsavedLongHike()
 }
 
 /** The same in German. */

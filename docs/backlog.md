@@ -22,6 +22,11 @@ the git log.
   e8245e5 (10-29); after the next merge `web/parity.json` flags these files too. Drive hand-off: 00 Übergabe,
   "2026-10-30 donald → Web-Planer: App-Änderungen zum Nachziehen".
   - *Must (the web build or the web map breaks after merging main):*
+    - One plan computation: `routing/PlanResult.kt` · (this branch, 2026-10-31) · `Engine.plan` calls
+      `PlanResult.plan` (route + model time, snapped points – pins, named, far and skipped stops kept – gaps, warnings,
+      rating, profile) instead of its own copy; the page adopts the snapped points; add `routing/PlanResult.kt` +
+      `routing/ProfileData.kt` to `appFiles`, delete `profileJson` / own time, rating, warnings and `WebPlanRules.gaps`
+      calls – steps in `docs/handoff-web-planresult.md`.
     - Junction cues "only where one could go wrong" · 59802bc, 8706d07, 905a2c7 · `JunctionCues.kt` now needs
       `navigation/CueRule.kt` + `navigation/SpeedWindow.kt` – add both to `appFiles` (pure Kotlin); `GeoPoint.shape`,
       `JunctionShape` (Junctions.kt) and the longer `OnPathHints.java` rows come along by themselves; `CueRuleTest.kt`
@@ -74,7 +79,37 @@ the git log.
       transfer (only `sync/device.txt`): a reinstalled phone opens its old folder. Node e2e: `SyncMailboxE2ETest.
       aSecondBrowserJoinsThroughTheRealMailbox`; `tools/sync/e2e.sh` now copies every `web/host/src/*.js` (sync.js
       imports maps.js).
+    - Mark plans that came from the phone (order A-018) · 4673d12 (app side: `plansync/SyncMarks.kt`) · bold title +
+      'Neu vom Handy' / 'Am Handy geändert' (EN 'New from the phone' / 'Changed on the phone') in My plans until opened;
+      seeing the list does not clear it, own changes in the browser never mark, a delete / unpair removes it; kept per
+      compartment in local storage (owner 2026-10-30). web-spike 14938ba has marks (A-017 point 7) but only
+      `font-weight: 700` – make it as clearly bold as the app (ExtraBold vs SemiBold) and check it is live.
+    - Map look per activity (owner 2026-10-31: routes and map look identical in browser and app) · `map/ActivityLayers.kt`
+      (pure, shared) · the web always drew the Hike look (bike layers hidden): add the file to `appFiles`, engine call
+      `activityLayers`, apply it in `main.ts` on `load` and in `setActivity()`, smoke test Bike / Hike T4 – exact steps
+      in `docs/handoff-web-activity-layers.md`.
+    - Round trip delete / reorder like the app (owner 2026-10-31: plans identical) · `PlanPoints.deleteAt` (app map
+      menu Delete now keeps a loop closed: `[a, b, c, a]` → `[b, c, b]`) · the web's `deletePoint` opens the loop
+      (`[b, c]`) and `edit "move"` uses `PlanEdits.move` (breaks a loop on a list drag): `edit "delete"` →
+      `PlanPoints.deleteAt`, `"move"` → `PlanPoints.move`, `deletePoint` through the engine, meta by value – steps in
+      `docs/handoff-web-parity-b.md` §3.
   - *Should:*
+    - One plan GPX export · `gpx/PlanGpx.kt` (pure, shared) · the web's `WebApi.gpx` writes the line only: use
+      `PlanGpx.export` (named route points as `<wpt>`, sport, "<name> - plan.gpx"); on import `PlanGpx.stopsOf` first
+      (an exported plan comes back exactly, no fitting) – `docs/handoff-web-parity-b.md` §1–2.
+    - Routing fingerprint · `routing/RoutingFingerprint.kt` (pure, shared; app: Settings → Diagnostics) · the web shows
+      the same line (fingerprint + rd5 dates) – `docs/handoff-web-parity-b.md` §4; sync fields 7 / 8 + hint only a
+      proposal (`docs/design/routing-fingerprint.md`, owner to decide).
+    - A stop on a way is always visited, a skipped stop is never moved (Bug 01, 2026-10-31) · 060f35e, 0ef8dd3,
+      d5a7db5 · matched points now come from `OnPathHints.matched` (no reflection) and the Planner's spur rule is
+      relative – both come along with the merge (shared files; `PlannedRoute.spurs` is now `skipped`, the web never
+      read it), so the browser re-routes to the stop by itself (check: TU Dortmund 51.48667, 7.41685 by Bike, the line
+      goes down the steps to stop 3 and back). Web to do: `WebPlanRules.gaps` passes the skipped stops,
+      `PlanGaps.of(wps, p.snapped, p.skipped)` – then a stop still skipped shows its grey gap and the red line "Route
+      misses point 3 by 50 m" (new string `plan_gap_skipped`, generated); the markers already stay where they were set.
+      Island points (Köln Dom, `IslandTest.kt`): `snappedWay` is now read in `OnPathHints` too, but BRouter's
+      `RoutingEngine.islandNodePairs` is *private* – `islandRetries` / `skipOnSnap` stay reflection, so the browser
+      still gets no second snap for an island point (needs a BRouter patch or a subclass hook; low prio).
     - Clearer add buttons · e7d4e5a · place card main button = `AddPreview.label` ("Set as destination", "Add as stop
       2", "Add as new destination"); `subtitle` is now only the reason ("fits best there · about +0.9 km"); small As
       start / As destination left out when the main button does the same; the POI hold menu says the label too.
@@ -86,17 +121,23 @@ the git log.
       daily salted `ipHash`; `[observability.logs] invocation_logs = false` in `web/host/wrangler.toml`.
     - Plan header: time + distance never cut (own line when narrow) · e55badb · check the web sheet on a narrow phone.
       The German chip "Wandern · T2" – the web already builds it so.
-    - Pairing confirmation · after pairing the browser shows the same short confirmation ('Verbunden – … Gespeichert
-      wird auf deinem Handy.', app string `sync_paired_note`, with OK); the route list may say 'Gespeichert auf deinem
-      Handy' (owner 2026-10-30).
+    - Pairing confirmation · (this commit, app side) · after pairing the browser shows the same sentence with OK, until
+      OK: 'Verbunden. Was du im Browser speicherst, kommt auf dein Handy – dort bleibt alles gespeichert.' (EN 'Paired.
+      What you save in the browser comes to your phone – everything is kept there.', app string `sync_paired_plan`);
+      the phone goes straight back to the Plan map and shows it there as a strip with OK (first pairing and a joining
+      browser alike); the route list may say 'Gespeichert auf deinem Handy' (owner 2026-10-30).
     - Pull right away when the plans list opens (owner 2026-10-30) · app: a pass when My routes / its Planned tab /
       Browser sync opens (`SyncPoll.opened` / `openDue`), not within 10 s of another pass, never during a tour; the
       ~60 s poll runs only while My routes / Browser sync is shown, no longer on the Plan map · browser: poll only
       while the plans list (or the sync view) is visible, pull on open (same 10 s debounce).
-    - Mark plans that came from the phone · (this commit, app side: `plansync/SyncMarks.kt`) · bold title + 'Neu vom
-      Handy' / 'Am Handy geändert' (EN 'New from the phone' / 'Changed on the phone') in My plans until opened; seeing
-      the list does not clear it, own changes in the browser never mark, a delete / unpair removes it; kept in local
-      storage (owner 2026-10-30).
+    - Save at hand (owner 2026-10-30) · (this commit, `RouteRules.saveAtHand`) · app: green tonal "Speichern" beside ⋯
+      in the plan sheet's first line (icon only at a large font) and "Route speichern" on top of ☰ – only while the plan
+      is new / changed, hidden once saved. Web already has Speichern in its header (A-017, bold when unsaved); differs
+      only in that it stays visible when saved – fine as is unless the owner wants it alike.
+  - *Low prio:*
+    - No WebGL2 → blank page (owner 2026-10-30) · seen in a headless browser test; old browsers / hardware acceleration
+      off hit it too · instead of a blank map the browser shows: „Dein Browser kann die Karte nicht zeichnen (WebGL2
+      fehlt). Bitte einen aktuellen Chrome, Firefox oder Edge nutzen und die Hardwarebeschleunigung einschalten.“
   - *Open order A-016 (replaces A-005):* `/.well-known/assetlinks.json` built on web-spike (ad990c9, v0.13.1 key);
     plan.onpath.earth answers 404 today → deploy the host, let Cloudflare Access pass `/.well-known/*` without login,
     check `adb shell pm get-app-links com.onpath.app`. Until then Android opens `#p=` / `#pair=` links in the browser.
@@ -185,6 +226,15 @@ the git log.
 - **AGP 9.4.1 upgrade** – later, when the owner says so.
 
 ## Later
+- **(low prio) Online place search depends on photon.komoot.io (owner 2026-10-30)** – `search/OnlineSearch.kt`
+  (`PhotonProvider`, created in `AppViewModel`). Public use is allowed in reasonable volume, but no availability
+  guarantee and possible throttling – an operational risk with many testers / a public launch. Today the offline index
+  of loaded areas is searched first; Photon only adds places outside loaded maps (rough position ~1 km), so an outage
+  means "nothing found outside loaded areas", not a crash. Small step: check we use it gently (own User-Agent / app id
+  – `PhotonProvider.userAgent` exists, check it names the app; typing debounce, cache, back-off on errors), make the
+  endpoint configurable, a calm line when it fails. Later (with the public launch / map server access): an own
+  lightweight place index per country (towns, peaks, huts – not every address), built in the map pipeline and served by
+  the map server, offline too – then Photon can go.
 - **iPhone version** – direction and order in `docs/design/multiplatform.md`; core logic free of Android
   (`SharedCoreRuleTest`).
 - **Open source + self-hosted map servers (concept, not built):** app setting "Map server" (custom URL + key, also via
