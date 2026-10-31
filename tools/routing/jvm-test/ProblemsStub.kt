@@ -5,7 +5,7 @@ object Problems {
     fun info(area: String, message: String, t: Throwable? = null) = report(area, message, t, "INFO")
     fun warn(area: String, message: String, t: Throwable? = null) = report(area, message, t, "WARN")
     fun error(area: String, message: String, t: Throwable? = null) = report(area, message, t, "ERROR")
-    fun trace(area: String, message: String) = Unit // the app's trace level is not printed here (Planner)
+    fun trace(area: String, message: String) { if (System.getenv("JVM_TRACE") != null) System.err.println("[trace] $area: $message") } // JVM_TRACE=1 prints the app's trace level (Planner)
     fun report(area: String, message: String, t: Throwable? = null, level: Any = "WARN") {
         System.err.println("[Problems $level] $area: $message" + (t?.let { " ($it)" } ?: ""))
     }

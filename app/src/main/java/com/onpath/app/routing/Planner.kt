@@ -47,6 +47,10 @@ class Planner(
     private val engine: RoutingEngine,
     /** "Cancel" while a route is calculated: stops the router at once, no leg-by-leg fallback. */
     private val cancel: RouteCancel? = null,
+    /** Wall clock in ms (tests pass their own: the short-trip retry's time budget, [retryShortDetours]). */
+    private val now: () -> Long = { System.currentTimeMillis() },
+    /** false = no short-trip detour retry ([retryShortDetours]) – only for A/B runs (tools/routing/jvm-test/ShortDetourTest.kt). */
+    private val shortDetourRetry: Boolean = true,
 ) {
     /** One engine request of this planner: points, time, outcome ("ok", "timeout", "failed"), wait for the engine lock. */
     data class Try(val points: Int, val ms: Long, val outcome: String, val lockWaitMs: Long)
@@ -60,18 +64,20 @@ class Planner(
             if (t.lockWaitMs > 0) " (waited ${t.lockWaitMs} ms for the router)" else ""
     }
 
-    private fun route(pts: List<GeoPoint>, activity: Activity, sac: Int): RouteResult {
+    /** [limitMs] = this request's own time limit (the short-trip retry, [retryShortDetours]); null = the engine's usual one. */
+    private fun route(pts: List<GeoPoint>, activity: Activity, sac: Int, limitMs: Long? = null): RouteResult {
         if (cancel?.isCancelled == true) throw RoutingException(BRouterEngine.CANCELLED)
-        val t0 = System.currentTimeMillis()
+        val t0 = now()
         var outcome = "failed"
         try {
-            return (if (cancel == null) engine.route(pts, activity, sac)
+            return (if (limitMs != null) engine.route(pts, activity, sac, RouteLimits(minOf(limitMs, PLAN_LIMIT_MS), cancel))
+            else if (cancel == null) engine.route(pts, activity, sac)
             else engine.route(pts, activity, sac, RouteLimits(PLAN_LIMIT_MS, cancel))).also { outcome = "ok" }
         } catch (e: RoutingException) {
             outcome = if (e.timedOut) "timeout" else if (cancel?.isCancelled == true) "cancelled" else "failed"
             throw e
         } finally {
-            tries += Try(pts.size, System.currentTimeMillis() - t0, outcome,
+            tries += Try(pts.size, now() - t0, outcome,
                 if (engine is BRouterEngine) BRouterEngine.lastLockWaitMs() else 0L)
         }
     }
@@ -126,7 +132,8 @@ class Planner(
                 Txt.s(Res.string.plan_err_straight))
         }
         try {
-            val r = route(waypoints, activity, sac)
+            val t0 = now()
+            val r = retryShortDetours(waypoints, route(waypoints, activity, sac), activity, sac, offset, t0)
             if (r.points.size >= 2) {
                 return PlannedRoute(listOf(PlannedLeg(r.points, false)), r.distanceM, r.ascentM, r.descentM, r.durationS, null,
                     RouteSummary.mergeShares(listOf(r.wayTypes)), RouteSummary.mergeShares(listOf(r.surfaces)),
@@ -157,8 +164,10 @@ class Planner(
             val a = waypoints[i - 1]; val b = waypoints[i]
             stopIfCancelled()
             try {
-                val r = route(listOf(a, b), activity, sac)
-                if (r.points.size < 2) throw RoutingException(Txt.s(Res.string.plan_err_no_route_between, i + offset, i + offset + 1))
+                val t0 = now()
+                val first = route(listOf(a, b), activity, sac)
+                if (first.points.size < 2) throw RoutingException(Txt.s(Res.string.plan_err_no_route_between, i + offset, i + offset + 1))
+                val r = retryShortDetours(listOf(a, b), first, activity, sac, offset + i - 1, t0)
                 routed[i] = r
                 dist += r.distanceM; up += r.ascentM; down += r.descentM; time += r.durationS
                 ways += r.wayTypes; surf += r.surfaces
@@ -186,6 +195,77 @@ class Planner(
         return PlannedRoute(legs, dist, up, down, time, firstError,
             RouteSummary.mergeShares(ways), RouteSummary.mergeShares(surf), snapped.toList())
     }
+
+    /**
+     * Short-trip detour retry (owner 2026-10-31, field case Hilden; docs/design/bike-routing.md decision 12): BRouter's
+     * cheapest way between two points close together can be a long detour – 2.1 km over signed cycle routes for
+     * 0.73 km straight, because the direct 1.1 km has 13 right-angle turns and a short pedestrian zone. A leg with a
+     * straight distance under [SHORT_LEG_M] routed more than [DETOUR_FACTOR] × that (and at least [MIN_DETOUR_M] longer,
+     * [isShortDetour]) is routed once more through the middle of the straight line ([midpoint]), a normal via BRouter
+     * snaps onto the nearest way. The retry is taken only when it is at least [SHORTER_BY] shorter; a retry that fails
+     * keeps the first route (it never makes a straight leg). The extra via is internal to the leg: [waypoints] – the
+     * plan's points – stay as they are, and the result's [RouteResult.matched] keeps their size and order.
+     *
+     * In a request of more than two points each leg is tried on its own (a short 3-point request); the vias taken go
+     * into ONE more request of the whole chunk, kept only when it is shorter than the first and skips no stop the first
+     * passed (Bug 01 stays in charge of skipped stops, [plan]).
+     *
+     * Time: the retries count against the time limit of the request that gave the legs ([RouteTimeLimit.forRoute] of
+     * [waypoints], started at [t0]); each gets only what is left of it, and none starts with less than [MIN_RETRY_MS].
+     * Returns [r] when nothing was taken.
+     */
+    private fun retryShortDetours(waypoints: List<GeoPoint>, r: RouteResult, activity: Activity, sac: Int, offset: Int, t0: Long): RouteResult {
+        if (!shortDetourRetry || r.points.size < 2 || waypoints.size < 2) return r
+        val legs = legLengths(waypoints, r.points, r.matched) ?: return r
+        val budget = RouteTimeLimit.forRoute(waypoints, activity)
+        fun left() = budget - (now() - t0)
+        val mids = HashMap<Int, GeoPoint>() // leg i (waypoints i → i+1) → the via taken for it
+        var single: RouteResult? = null     // the retry taken, for a 2-point request
+        for (i in legs.indices) {
+            val a = waypoints[i]; val b = waypoints[i + 1]
+            val straight = Geo.distance(r.matched.getOrNull(i) ?: a, r.matched.getOrNull(i + 1) ?: b)
+            val routed = legs[i]
+            if (!isShortDetour(straight, routed)) continue
+            val leg = "Leg ${i + offset + 1}: short-trip detour ${fmt(routed / straight)}×"
+            if (left() < MIN_RETRY_MS) { Problems.trace("routing", "$leg → no time left to retry via the midpoint"); continue }
+            val mid = midpoint(a, b)
+            val retry = try { route(listOf(a, mid, b), activity, sac, left()) } catch (e: Exception) {
+                stopIfCancelled()
+                // expected: RoutingException = no route via the midpoint (an island, a timeout) – the first route stays
+                if (e !is RoutingException) Problems.error("routing", "Short-trip retry threw unexpectedly; kept the first route", e)
+                Problems.trace("routing", "$leg → retried via midpoint: no route (${e.message}) – kept ${routed.toInt()} m"); continue
+            }
+            // line lengths on both sides: [routed] is a piece of the first line
+            val len = Geo.length(retry.points)
+            val take = retry.points.size >= 2 && len <= (1.0 - SHORTER_BY) * routed
+            Problems.trace("routing", "$leg → retried via midpoint: ${routed.toInt()} → ${len.toInt()} m (${if (take) "taken" else "kept the first"})")
+            if (take) { mids[i] = mid; single = retry }
+        }
+        if (mids.isEmpty()) return r
+        if (waypoints.size == 2) {
+            val t = single ?: return r
+            if (t.distanceM >= r.distanceM) return r // never longer by the router's own count either
+            return t.copy(matched = if (t.matched.size == 3) listOf(t.matched[0], t.matched[2]) else emptyList())
+        }
+        // the whole chunk once more with the vias taken: one request keeps ascent, breakdown and matching consistent
+        val withVias = ArrayList<GeoPoint>(); val user = ArrayList<Int>() // user[k] = index of waypoints[k] in withVias
+        waypoints.forEachIndexed { k, p -> user += withVias.size; withVias += p; mids[k]?.let { withVias += it } }
+        if (left() < MIN_RETRY_MS) { Problems.trace("routing", "Short-trip retry: no time left for the whole request – kept the first route"); return r }
+        val again = try { route(withVias, activity, sac, left()) } catch (e: Exception) {
+            stopIfCancelled()
+            // expected: RoutingException = the whole request with the extra vias fails or times out – the first route stays
+            if (e !is RoutingException) Problems.error("routing", "Short-trip retry threw unexpectedly; kept the first route", e)
+            Problems.trace("routing", "Short-trip retry: the whole request failed (${e.message}) – kept the first route"); return r
+        }
+        val out = again.copy(matched = if (again.matched.size == withVias.size) user.map { again.matched[it] } else emptyList())
+        val skippedBefore = WaypointSnap.skipped(waypoints, r.points, r.matched)
+        val ok = out.points.size >= 2 && out.distanceM < r.distanceM &&
+            skippedBefore.containsAll(WaypointSnap.skipped(waypoints, out.points, out.matched))
+        Problems.trace("routing", "Short-trip retry, whole request: ${r.distanceM.toInt()} → ${out.distanceM.toInt()} m (${if (ok) "taken" else "kept the first"})")
+        return if (ok) out else r
+    }
+
+    private fun fmt(v: Double) = String.format(java.util.Locale.ROOT, "%.1f", v)
 
     /** Interior points matched on a way whose matched spot the route line misses ([WaypointSnap.missesMatched]). */
     private fun spurs(waypoints: List<GeoPoint>, r: RouteResult, offset: Int): Set<Int> =
@@ -219,6 +299,43 @@ class Planner(
                 else -> Txt.s(Res.string.plan_leg_no_path)
             }
             return Txt.s(Res.string.plan_leg_error, from, to, why)
+        }
+
+        /** Short-trip detour retry ([retryShortDetours]): legs shorter than this (straight, metres) … */
+        const val SHORT_LEG_M = 2_000.0
+        /** … routed more than this many times their straight distance … */
+        const val DETOUR_FACTOR = 2.0
+        /** … and at least this much longer (metres; going round a block is no detour) are retried. */
+        const val MIN_DETOUR_M = 100.0
+        /** The retry is taken when it is at least this share shorter than the leg's first route. */
+        const val SHORTER_BY = 0.30
+        /** A retry does not start with less than this left of its request's time limit (ms). */
+        const val MIN_RETRY_MS = 1_000L
+
+        /** A leg [straight] metres apart, routed [routed] metres: a short trip with a long detour ([retryShortDetours]). */
+        fun isShortDetour(straight: Double, routed: Double): Boolean =
+            straight > 0.0 && straight < SHORT_LEG_M && routed > DETOUR_FACTOR * straight && routed - straight >= MIN_DETOUR_M
+
+        /** The middle of the straight line [a] → [b] (short legs: the flat mean is exact enough). */
+        fun midpoint(a: GeoPoint, b: GeoPoint) = GeoPoint((a.lat + b.lat) / 2.0, (a.lon + b.lon) / 2.0)
+
+        /**
+         * Routed metres per leg of [line] through [waypoints] (size − 1 values): the line is split at the line point
+         * nearest each interior point's matched spot ([matched], else the point itself), searched forward from the last
+         * split, at the first pass within 5 m of the nearest (a line that passes a spot twice). null = no line.
+         */
+        fun legLengths(waypoints: List<GeoPoint>, line: List<GeoPoint>, matched: List<GeoPoint?>): DoubleArray? {
+            if (line.size < 2 || waypoints.size < 2) return null
+            val cum = Geo.cumulative(line)
+            val cut = IntArray(waypoints.size); cut[waypoints.lastIndex] = line.lastIndex
+            for (k in 1 until waypoints.lastIndex) {
+                val target = matched.getOrNull(k) ?: waypoints[k]
+                val from = cut[k - 1]
+                val d = DoubleArray(line.size - from) { Geo.distance(line[from + it], target) }
+                val best = d.minOrNull() ?: return null
+                cut[k] = from + d.indexOfFirst { it <= best + 5.0 }
+            }
+            return DoubleArray(waypoints.size - 1) { cum[cut[it + 1]] - cum[cut[it]] }
         }
 
         /** Re-plans at most this often for points cut as a detour ([plan]); each pins at least one more point. */
