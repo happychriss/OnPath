@@ -108,7 +108,8 @@ class OfflineIndex(val entries: List<Entry>, override val signature: String = ""
                     w.write(key); w.write("\n")
                     for (it in items) { w.write(cacheLine(it)); w.write("\n") }
                 }
-                tmp.renameTo(cache)
+                // plain rename (also compiled for the web planner: TeaVM has no File.toPath, so not data/AtomicFiles)
+                if (!tmp.renameTo(cache)) Problems.warn("search", "Search place cache not saved (rename failed); rebuilt on next start")
             } catch (e: Exception) { Problems.warn("search", "Search place cache not written; rebuilt on next start", e) }
             return items
         }

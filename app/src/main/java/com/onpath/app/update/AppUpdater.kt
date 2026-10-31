@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
+import com.onpath.app.data.AtomicFiles
 import com.onpath.app.debug.Problems
 import org.json.JSONObject
 import java.io.File
@@ -155,7 +156,7 @@ object AppUpdater {
                 }
             }
             if (release.apkSize > 0 && tmp.length() != release.apkSize) throw java.io.IOException("Download incomplete")
-            if (!tmp.renameTo(dest)) error("Could not save the update.")
+            try { AtomicFiles.replace(tmp, dest) } catch (e: java.io.IOException) { throw IllegalStateException("Could not save the update.", e) }
             return dest
         } finally {
             conn.disconnect()

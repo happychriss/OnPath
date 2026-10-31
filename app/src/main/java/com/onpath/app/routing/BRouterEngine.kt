@@ -307,12 +307,11 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
                 if (target.isFile && target.length() == bytes.size.toLong() && target.readBytes().contentEquals(bytes)) continue
                 val tmp = File(profileDir, "$name.tmp")
                 tmp.writeBytes(bytes)
+                // a plain rename over the old profile (one rename(2) on Android); no delete-and-retry, the old one stays.
+                // Not data/AtomicFiles: this file is also compiled for the web planner (TeaVM, no File.toPath)
                 if (!tmp.renameTo(target)) {
-                    target.delete()
-                    if (!tmp.renameTo(target)) {
-                        Problems.error("routing", "Routing profile could not be installed: $name")
-                        throw RoutingException(Txt.s(Res.string.plan_err_profile_install, name))
-                    }
+                    Problems.error("routing", "Routing profile could not be installed: $name")
+                    throw RoutingException(Txt.s(Res.string.plan_err_profile_install, name))
                 }
             }
             for (name in removeObsoleteProfiles(profileDir)) Problems.warn("routing", "Old routing profile could not be deleted: $name")

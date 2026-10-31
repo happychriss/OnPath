@@ -1,5 +1,6 @@
 package com.onpath.app.cells
 
+import com.onpath.app.data.AtomicFiles
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
@@ -251,7 +252,7 @@ object PmTiles {
             entries.size.toLong(), entries.size.toLong(), offsets.size.toLong(), true, COMPRESSION_GZIP, tileCompression, tileType,
             zs.minOrNull() ?: 0, zs.maxOrNull() ?: 0, -1800000000, -850511287, 1800000000, 850511287, 0, 0, 0)
         FileOutputStream(tmp).use { it.write(h.bytes()); it.write(root); it.write(meta); it.write(leaves); it.write(data.toByteArray()) }
-        if (!tmp.renameTo(out)) { out.delete(); if (!tmp.renameTo(out)) throw IOException("could not write ${out.name}") }
+        AtomicFiles.replace(tmp, out) // throws (IOException) when it fails; the old archive stays
     }
 
     /**
