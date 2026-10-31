@@ -118,6 +118,12 @@ the git log.
       `PlanPoints.deleteAt`, `"move"` → `PlanPoints.move`, `deletePoint` through the engine, meta by value – steps in
       `docs/handoff-web-parity-b.md` §3.
   - *Should:*
+    - Search list never jumps for the same text (field bug 0.13.2, "olive hilde…") · (this branch, 2026-10-31) · shared
+      `SearchRanking.keepShown` (rows on screen stay, a later answer for the same text only adds below) and
+      `SearchRanking.stillMatching` (online rows of the shorter text that still match the longer one stay in its list)
+      in `search/OfflineIndex.kt` (already in `appFiles`). `WebSearch.online` keeps `mix(keepShown = …)` (still
+      there), but the page should keep the list it shows per text and carry online rows across keystrokes the same way
+      (see `ui/search/SearchSession.run`, test `SearchStableListTest`).
     - Map symbols: rock / scree from z14, stronger orchard / vineyard · 2026-10-31 · nothing to code – `copy-engine.mjs`
       copies `style/f2/onpath.json` + `sprites/` on the next merge of main; just check them on the web map.
     - One message system · `ui/MessageCard.kt` (2026-10-31, `docs/design/ui-style.md`) · the browser uses the same three

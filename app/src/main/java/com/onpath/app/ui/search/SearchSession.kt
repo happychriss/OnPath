@@ -53,13 +53,18 @@ data class SearchUi(
     val indexing: Boolean = false,
     val recent: List<SearchHit> = emptyList(),
     val hasRoute: Boolean = false,
-    /** Offline rows were on screen when [online] arrived: those stay in place, online rows go below (no jumping). */
-    val onlineBelow: Boolean = false,
+    /**
+     * The list on screen, kept by [SearchSession]: ranked once per text ([shownFor]); later answers for the same text
+     * (online, a re-indexed map) only add rows below ([SearchRanking.keepShown]). Null: ranked from [hits] + [online].
+     */
+    val shown: List<SearchHit>? = null,
+    /** The text (normalised) and category [shown] was ranked for. */
+    val shownFor: String? = null,
 ) {
     val active: Boolean get() = query.isNotBlank() || category != null
 
     /** Offline and online results as ONE list, best first. */
-    val results: List<SearchHit> get() = SearchRanking.mix(hits, online, keepShown = onlineBelow)
+    val results: List<SearchHit> get() = shown ?: SearchRanking.mix(hits, online)
 }
 
 /**
@@ -246,27 +251,57 @@ class SearchSession(
         }
     }
 
+    /** What one ranked list is for: the normalised text and the category (a space or case change is the same text). */
+    private fun keyOf(u: SearchUi) = SearchText.normalize(u.query) + "|" + (u.category?.name ?: "")
+
+    /** [next] as the list on screen: for the text already shown, rows on screen stay and new ones go below. */
+    private fun shownList(cur: SearchUi, key: String, next: List<SearchHit>): List<SearchHit> {
+        val shown = cur.shown
+        return if (shown != null && cur.shownFor == key) SearchRanking.keepShown(shown, next) else next
+    }
+
+    /** Where the last online search was centred (scores online rows kept for the next text). */
+    @Volatile private var onlineCentre: Pair<Double, Double>? = null
+
     private fun run() {
         val gen = ++generation
-        // the user typed (or changed the category): the whole list may be re-ranked
-        ui = ui.copy(onlineBelow = false)
+        // the list on screen stays until the answer for the new text is there (old rows are not re-ranked meanwhile)
         val u = ui
         val ctx = context()
         offlineJob?.cancel(); onlineJob?.cancel()
-        if (!u.active) { ui = u.copy(hits = emptyList(), online = emptyList(), onlineState = OnlineState.IDLE, hasRoute = ctx.route != null); return }
+        if (!u.active) {
+            ui = u.copy(hits = emptyList(), online = emptyList(), onlineState = OnlineState.IDLE, hasRoute = ctx.route != null,
+                shown = null, shownFor = null)
+            return
+        }
+        val key = keyOf(u)
         val q = SearchQuery(u.query, u.category, ctx.refLat, ctx.refLon, ctx.route)
+        val text = u.query.trim()
+        val useOnline = online != null && text.length >= 3
+        val kinds = u.category?.kinds
+        // online rows on screen (an earlier text) that still match this one stay in its list: typing on never loses them
+        val before = u.online.map { it.place }
         offlineJob = scope.launch {
             val idx = ensureIndex()
-            val hits = withContext(Dispatchers.IO) {
+            val (hits, carried) = withContext(Dispatchers.IO) {
                 // a newer keystroke cancels this job: the address files not searched yet are skipped
                 val addr = if (u.category == null) ensureAddresses().search(AddressQuery.parse(u.query)) { !isActive } else emptyList()
                 ensureActive()
-                idx.search(q, addr)
+                val hits = idx.search(q, addr)
+                val keep = if (!useOnline) emptyList() else SearchRanking.stillMatching(before, text).filter { kinds == null || it.kind in kinds }
+                val carried = if (keep.isEmpty()) emptyList() else {
+                    val towns = OnlineRanking.queryTowns(text, ensureAddresses().townsNamed(SearchText.tokens(text)))
+                    val (cLat, cLon) = onlineCentre ?: (ctx.refLat to ctx.refLon)
+                    SearchRanking.onlineHits(SearchMerge.onlineExtras(hits.map { it.place }, keep), q, towns, cLat, cLon)
+                }
+                hits to carried
             }
-            if (gen == generation) ui = ui.copy(hits = hits, hasRoute = ctx.route != null)
+            if (gen != generation) return@launch
+            val cur = ui
+            ui = cur.copy(hits = hits, online = carried, hasRoute = ctx.route != null,
+                shown = shownList(cur, key, SearchRanking.mix(hits, carried)), shownFor = key)
         }
-        val text = u.query.trim()
-        if (online == null || text.length < 3) { ui = ui.copy(online = emptyList(), onlineState = OnlineState.IDLE); return }
+        if (!useOnline) { ui = ui.copy(onlineState = OnlineState.IDLE); return }
         onlineJob = scope.launch {
             delay(DEBOUNCE_MS)
             if (gen != generation) return@launch
@@ -288,13 +323,18 @@ class SearchSession(
             }
             if (gen != generation) return@launch
             offlineJob?.join()
-            if (res == null) { ui = ui.copy(online = emptyList(), onlineState = OnlineState.FAILED); return@launch }
-            val kinds = u.category?.kinds
-            val extras = SearchMerge.onlineExtras(ui.hits.map { it.place }, res.places)
+            if (gen != generation) return@launch
+            // no answer: the rows on screen stay (also online ones kept from the text before)
+            if (res == null) { ui = ui.copy(onlineState = OnlineState.FAILED); return@launch }
+            onlineCentre = res.lat to res.lon
+            val cur = ui
+            val offline = if (cur.shownFor == key) cur.hits else emptyList()
+            val extras = SearchMerge.onlineExtras(offline.map { it.place } + cur.online.map { it.place }, res.places)
                 .filter { kinds == null || it.kind in kinds }
-            // scored like the offline hits: SearchUi.results mixes both into one list
-            val scored = SearchRanking.onlineHits(extras, q, res.towns, res.lat, res.lon)
-            ui = ui.copy(online = scored, onlineState = OnlineState.DONE, onlineBelow = ui.hits.isNotEmpty())
+            // scored like the offline hits, so both rank in one list
+            val all = cur.online + SearchRanking.onlineHits(extras, q, res.towns, res.lat, res.lon)
+            ui = cur.copy(online = all, onlineState = OnlineState.DONE,
+                shown = shownList(cur, key, SearchRanking.mix(offline, all)), shownFor = key)
         }
     }
 

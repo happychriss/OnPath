@@ -115,9 +115,23 @@ class SearchRankingTest {
         assertTrue(mixed.indexOfFirst { it.place.name == "Meran 2000" } < offline.size)
         // no offline rows shown: online only, best first
         assertEquals(listOf("Meran 2000", "Meraner Straße 12"), names(SearchRanking.mix(emptyList(), online, keepShown = true)))
-        // SearchUi uses the flag
-        val ui = com.onpath.app.ui.search.SearchUi(query = "meran", hits = offline, online = online, onlineBelow = true)
+        // the session keeps the shown list for the same text: rows on screen stay, new ones go below, nothing twice
+        val shown = SearchRanking.keepShown(offline, mixed)
+        assertEquals(offline, shown.take(offline.size))
+        assertEquals(listOf("Meran 2000", "Meraner Straße 12"), names(shown.drop(offline.size)))
+        assertEquals(shown, SearchRanking.keepShown(shown, mixed))
+        // SearchUi shows the kept list when there is one
+        val ui = com.onpath.app.ui.search.SearchUi(query = "meran", hits = offline, online = online, shown = kept)
         assertEquals(kept, ui.results)
+    }
+
+    @Test fun onlineRowsStillMatchingTheLongerText() {
+        val olive = Place("o:1", "Restaurant Olive", "restaurant", 51.1655, 6.9395, address = "Mittelstraße 1, 40721 Hilden",
+            source = Place.Source.ONLINE, town = "Hilden")
+        val hill = Place("o:2", "Olive Hill", "place", 38.3, -83.2, source = Place.Source.ONLINE)
+        assertEquals(listOf(olive, hill), SearchRanking.stillMatching(listOf(olive, hill), "olive hil"))
+        assertEquals(listOf(olive), SearchRanking.stillMatching(listOf(olive, hill), "olive hilde"))
+        assertEquals(emptyList<Place>(), SearchRanking.stillMatching(listOf(olive, hill), " "))
     }
 
     @Test fun onlineTieWithOfflineKeepsOfflineFirst() {
