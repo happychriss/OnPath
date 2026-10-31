@@ -22,6 +22,12 @@ the git log.
   e8245e5 (10-29); after the next merge `web/parity.json` flags these files too. Drive hand-off: 00 Übergabe,
   "2026-10-30 donald → Web-Planer: App-Änderungen zum Nachziehen".
   - *Must (the web build or the web map breaks after merging main):*
+    - Plan sync fields 7 / 8 (routing fingerprint + rd5 dates, owner 2026-10-31) · (this branch, 2026-10-31) · shared
+      `sync/SyncItem.kt` (`SyncItem.routing` / `routingData`, `SyncRoutingData`, `SyncLedger.save(…, routing,
+      routingData)`) – no new file; the page fills both when it saves (its engine's `RoutingFingerprint` + the days of
+      the rd5 it routed with) and shows a grey line "Planned on the phone with other routing – the route may differ
+      slightly" when the phone's fingerprint differs; web-sync.md gets §5.2 – text and steps in
+      `docs/handoff-web-sync-fingerprint.md`.
     - One plan computation: `routing/PlanResult.kt` · (this branch, 2026-10-31) · `Engine.plan` calls
       `PlanResult.plan` (route + model time, snapped points – pins, named, far and skipped stops kept – gaps, warnings,
       rating, profile) instead of its own copy; the page adopts the snapped points; add `routing/PlanResult.kt` +
