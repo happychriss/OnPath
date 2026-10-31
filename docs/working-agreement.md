@@ -130,7 +130,7 @@ two of them attach to the owner's computers via Remote Control:
 | `onpath.private` | marketing, ideas, private screenshots | never into a public repo |
 | R2 TEST (`publish_cells.sh`), GitHub Releases | map cells, APKs | as before |
 
-**Computers.** donald serves `~/work/onpath-app` (cloud-app, Pixel on USB), the laptop serves `~/work/onpath-plan`
+**Computers.** donald serves `/home/development/Projects/work/onpath-app` (cloud-app, Pixel on USB), the laptop serves `/home/development/Projects/work/onpath-plan`
 (cloud-plan, map builds; big map data outside the checkout). One folder per session, never shared. The computer
 needs the Claude desktop app running with Remote Control on (or `claude remote-control` in that folder). Computer
 off → the role works on in a fresh cloud session without device / local data.

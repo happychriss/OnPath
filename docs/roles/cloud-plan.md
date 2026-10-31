@@ -3,8 +3,8 @@
 **Owns:** `web/` on branch `web-spike` (served at plan.onpath.earth), the data pipeline and map cells
 (`tools/cells/`, `tools/cloud/`, `tools/dev/`, `tools/build_*`, `tools/extract_*`).
 **Branch:** `web-spike` for the planner; pipeline changes that the app needs go to `main` (small, green, as usual).
-**Computer:** the laptop (32 GB), folder `~/work/onpath-plan` (own checkout, shared via Remote Control). Big map data
-(OSM extracts, rd5, built cells) lives on the laptop outside the checkout, e.g. `~/onpath-data/` – never in git.
+**Computer:** the laptop (32 GB), folder `/home/development/Projects/work/onpath-plan` (own checkout, shared via Remote Control). Big map data
+(OSM extracts, rd5, built cells) lives on the laptop outside the checkout, e.g. `/home/development/Projects/work/onpath-data/` – never in git.
 Finished cells go out the usual way (`tools/dev/publish_cells.sh` → R2 TEST). Laptop off → work on code, put the
 build in the backlog as open; don't fall back to slow cloud builds without asking the owner.
 

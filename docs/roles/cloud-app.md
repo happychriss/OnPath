@@ -3,7 +3,7 @@
 **Owns:** everything under `app/`, `strings/`, app releases (version in `app/build.gradle.kts`,
 `docs/release-notes/`), routing engine and profiles (shared with the planner).
 **Branch:** `main` (risky / multi-sitting work on `feat/<topic>`).
-**Computer:** donald, folder `~/work/onpath-app` (own checkout, shared via Remote Control). Pixel 8 on USB there:
+**Computer:** donald, folder `/home/development/Projects/work/onpath-app` (own checkout, shared via Remote Control). Pixel 8 on USB there:
 `./gradlew installDebug`, `adb logcat`. Without donald: unit tests + Paparazzi only, device checks go to the backlog.
 
 **Do**
