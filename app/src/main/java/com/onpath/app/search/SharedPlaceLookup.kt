@@ -62,10 +62,13 @@ interface SharedPlaceFinder {
     fun online(text: String): List<Place>
     /** Where [town] (with [postcode], when known) is – offline towns first, then online; null when unknown. */
     fun town(town: String, postcode: String?): SharedTown?
+    /** The phone's own address service ([PlaceGeocoder]) for [text]; empty when missing / offline. */
+    fun geocode(text: String): List<Place> = emptyList()
 }
 
 /**
- * Finds a shared place that came without a coordinate – by its address, else by its name IN the shared town – and
+ * Finds a shared place that came without a coordinate – by its address, else by its name IN the shared town; offline
+ * index, then Photon, then the phone's address service ([SharedPlaceFinder.geocode]) – and
  * never jumps to a namesake elsewhere: a hit counts only when it names the shared postcode / town or lies close to
  * that town. Without any town in the share, a name counts only when all its namesakes are one place. Else [Result.Unsure]:
  * nothing is placed, the user searches ([Result.Unsure.searchText]). Pure (unit-tested, SharedPlaceLookupTest).
@@ -126,6 +129,10 @@ class SharedPlaceLookup(private val finder: SharedPlaceFinder) {
             pick(finder.offline(placeName))?.let { return Result.Found(it, false, "offline name") }
             pick(finder.online(placeName))?.let { return Result.Found(it, true, "online name") }
         }
+        // last: the phone's own address service (A-020) – its hits pass the same town / postcode check
+        for (t in located) pick(finder.geocode(t))?.let { return Result.Found(it, true, "phone address service, address") }
+        if (nameInTown != null) pick(finder.geocode(nameInTown))?.let { return Result.Found(it, true, "phone address service, name in town") }
+        if (area.isEmpty && placeName != null) pick(finder.geocode(placeName))?.let { return Result.Found(it, true, "phone address service, name") }
         return if (seen) Result.Unsure(searchText) else Result.NotFound
     }
 

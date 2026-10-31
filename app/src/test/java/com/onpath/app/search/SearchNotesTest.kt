@@ -8,13 +8,10 @@ import org.junit.Test
 class SearchNotesTest {
 
     @Test fun noteOnlyWhenPositionedFromTheAddress() {
-        assertEquals(SharedPosition.LINK, SharedPosition.of(point = true, fromPage = false, addressWon = false))
-        assertNull(SharedPosition.of(point = true, fromPage = false, addressWon = false).note)
-        assertNull(SharedPosition.of(point = true, fromPage = true, addressWon = false).note)
-        // the address overruled the map page's point
-        assertEquals("Position from the address", SharedPosition.of(point = true, fromPage = true, addressWon = true).note)
+        assertEquals(SharedPosition.LINK, SharedPosition.of(point = true))
+        assertNull(SharedPosition.of(point = true).note)
         // no coordinate at all: found by searching the address
-        assertEquals("Position from the address", SharedPosition.of(point = false, fromPage = false, addressWon = false).note)
+        assertEquals("Position from the address", SharedPosition.of(point = false).note)
     }
 
     @Test fun recentsKeepVillageAndReadOldLines() {

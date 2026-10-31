@@ -22,11 +22,14 @@ class SharedPlaceLookupTest {
         val offline: Map<String, List<Place>> = emptyMap(),
         val online: Map<String, List<Place>> = emptyMap(),
         val towns: Map<String, SharedTown> = emptyMap(),
+        /** The phone's address service (a fake Geocoder). */
+        val geocoder: Map<String, List<Place>> = emptyMap(),
     ) : SharedPlaceFinder {
         val asked = ArrayList<String>()
         override fun offline(text: String): List<Place> { asked += "off:$text"; return offline[text].orEmpty() }
         override fun online(text: String): List<Place> { asked += "on:$text"; return online[text].orEmpty() }
         override fun town(town: String, postcode: String?): SharedTown? = towns[town]
+        override fun geocode(text: String): List<Place> { asked += "geo:$text"; return geocoder[text].orEmpty() }
     }
 
     /** What the short link of a Google Maps share redirects to (real form: place path, no coordinate). */
@@ -36,7 +39,7 @@ class SharedPlaceLookupTest {
     private fun sharedFromLink(): SharedPlace {
         val share = SharedPlaceParser.fromText("https://maps.app.goo.gl/OlvHld25xyz?g_st=ac", subject = "Olive")!!
         assertEquals("https://maps.app.goo.gl/OlvHld25xyz?g_st=ac", share.link)
-        val r = ShortLinkResolver({ u -> if (u.contains("goo.gl")) HttpHop(302, redirect, null) else error("no page wanted: $u") },
+        val r = ShortLinkResolver({ u -> if (u.contains("goo.gl")) HttpHop(302, redirect) else error("no page wanted: $u") },
             stopAtAddress = true).resolve(share.link!!)
         val got = r.place!!
         return share.copy(name = share.name ?: got.name, address = got.address, query = got.query)
@@ -115,16 +118,51 @@ class SharedPlaceLookupTest {
         assertEquals(51.1688, p.lat!!, 1e-6); assertEquals(6.9372, p.lon!!, 1e-6)
     }
 
-    @Test fun theShortLinksPageMarkerIsTheFallback() {
-        // the address gave no sure place: the full resolve reads the Google page's place marker (in Hilden)
-        val r = ShortLinkResolver({ u ->
-            when {
-                u.contains("goo.gl") -> HttpHop(302, redirect, null)
-                else -> HttpHop(200, null, "…[\"Olive\",null,[null,null,51.1688,6.9372]]…!3d51.1688!4d6.9372…")
-            }
-        }).resolve("https://maps.app.goo.gl/OlvHld25xyz?g_st=ac")
-        assertTrue(r.fromPage)
-        assertEquals(51.1688, r.place!!.lat!!, 1e-6); assertEquals(6.9372, r.place!!.lon!!, 1e-6)
+    // ---- the phone's address service (Android Geocoder, faked) – last, after offline + Photon (owner 2026-10-31, A-020) ----
+
+    /** What a Geocoder answers for "Mittelstraße 25, 40721 Hilden" (through the real mapping). */
+    private val geoHilden = PlaceGeocoder.place(GeocodedAddress(51.16884, 6.93718, feature = "25", street = "Mittelstraße",
+        number = "25", postcode = "40721", town = "Hilden", countryCode = "DE", line = "Mittelstraße 25, 40721 Hilden, Deutschland"), 0)!!
+    private val geoDus = PlaceGeocoder.place(GeocodedAddress(51.2200, 6.7700, street = "Mittelstraße", number = "25",
+        postcode = "40213", town = "Düsseldorf", line = "Mittelstraße 25, 40213 Düsseldorf, Deutschland"), 0)!!
+
+    @Test fun onlyThePhonesAddressServiceFindsIt() {
+        // offline index and Photon know nothing (or only Düsseldorf's Olive): the Geocoder's hit in Hilden is taken
+        val p = sharedFromLink()
+        val f = Fake(offline = mapOf("Olive" to listOf(oliveDus)), towns = mapOf("Hilden" to hilden),
+            geocoder = mapOf("Mittelstraße 25, 40721 Hilden" to listOf(geoHilden)))
+        val r = SharedPlaceLookup(f).find(p.name, p.address, p.query) as SharedPlaceLookup.Result.Found
+        assertEquals(51.16884, r.place.lat, 1e-6)
+        assertTrue(r.how.startsWith("phone address service"))
+        // it is asked last: after every offline and online search
+        val firstGeo = f.asked.indexOfFirst { it.startsWith("geo:") }
+        assertTrue(f.asked.toString(), f.asked.drop(firstGeo).all { it.startsWith("geo:") })
+        assertTrue(f.asked.toString(), f.asked.take(firstGeo).any { it.startsWith("on:") })
+    }
+
+    @Test fun thePhonesAddressServiceIsNotAskedWhenOurSearchFindsIt() {
+        val p = sharedFromLink()
+        val f = Fake(offline = mapOf("Olive" to listOf(oliveDus, oliveHilden)), towns = mapOf("Hilden" to hilden),
+            geocoder = mapOf("Mittelstraße 25, 40721 Hilden" to listOf(geoHilden)))
+        assertEquals("p:hil", (SharedPlaceLookup(f).find(p.name, p.address, p.query) as SharedPlaceLookup.Result.Found).place.id)
+        assertFalse(f.asked.toString(), f.asked.any { it.startsWith("geo:") })
+    }
+
+    @Test fun aGeocoderHitInAnotherTownIsNotTaken() {
+        // Olive Hilden: the Geocoder answers with the same street in Düsseldorf – the town check rejects it
+        val p = sharedFromLink()
+        val f = Fake(offline = mapOf("Olive" to listOf(oliveDus)), towns = mapOf("Hilden" to hilden),
+            geocoder = mapOf("Mittelstraße 25, 40721 Hilden" to listOf(geoDus), "Olive Hilden" to listOf(geoDus)))
+        assertEquals(SharedPlaceLookup.Result.Unsure("Olive Hilden"), SharedPlaceLookup(f).find(p.name, p.address, p.query))
+    }
+
+    @Test fun geocodedAddressBecomesAPlace() {
+        assertEquals("address", geoHilden.kind)
+        assertEquals("Mittelstraße 25", geoHilden.name) // the feature name "25" only repeats the number
+        assertEquals("Hilden", geoHilden.town)
+        val poi = PlaceGeocoder.place(GeocodedAddress(46.67, 11.16, feature = "Hotel Aurora", town = "Meran"), 1)!!
+        assertEquals("Hotel Aurora", poi.name)
+        assertEquals(null, PlaceGeocoder.place(GeocodedAddress(0.0, 0.0, town = "Nowhere"), 2))
     }
 
     @Test fun bilingualTownNamesAgree() {
