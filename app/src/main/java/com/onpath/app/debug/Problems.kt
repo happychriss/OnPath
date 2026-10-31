@@ -14,8 +14,8 @@ import java.util.concurrent.TimeUnit
  * makes MapLibre drop whole map tiles, unnoticed for days.
  *
  * - `Problems.report("map", "Glyph range missing", e)` from any thread, also in a catch block that recovers.
- * - Same area + message (numbers ignored) = one entry with a counter, first and last time: a problem that repeats
- *   every second on a 14-hour tour is one line with "× 50 400", not 50 400 lines.
+ * - Same area + message (numbers ignored) = one entry with a counter, first and last time and the last text: a problem
+ *   that repeats every second on a 14-hour tour is one line with "× 50 400", not 50 400 lines.
  * - Kept in memory and written (debounced, atomically) to `problems.json` in the app's files folder, so problems of
  *   earlier runs – including crashes – are still there after a restart.
  * - Shown in Settings → Diagnostics, included in the diagnostics export; a new ERROR or CRASH is announced once per
@@ -124,7 +124,10 @@ object Problems {
             synchronized(lock) {
                 val old = entries.remove(key)
                 entry = if (old == null) Entry(level, area, message.take(500), detail, now, now, 1)
-                else old.copy(level = maxOf(old.level, level), detail = detail ?: old.detail, last = now, count = old.count + 1)
+                // the newest text with the newest time: the entry shows "last", so its numbers (tile ids, parts) must be
+                // that report's – A-019 showed the first report's parts at the time of a later one
+                else old.copy(level = maxOf(old.level, level), message = message.take(500), detail = detail ?: old.detail,
+                    last = now, count = old.count + 1)
                 entries[key] = entry // re-insert: most recent last
                 while (entries.size > MAX_ENTRIES) entries.remove(entries.keys.first())
                 _count.value = entries.size

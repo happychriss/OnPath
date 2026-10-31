@@ -52,6 +52,16 @@ class RoutingDataAutoTest {
         assertEquals(setOf("E5_N45.rd5:E9_N46", "E10_N45.rd5:E10_N46"), RoutingTiles.forCells(listOf(edge)).toSet())
     }
 
+    /**
+     * Field A-019: the map region north of Vellau (46.80–47.04°N, in a route's ~10 km corridor up the slope) reaches
+     * over 47°N – its routing parts E10_N47 / E11_N47 are wanted with it, while every planned point lies in E11_N46.
+     */
+    @Test fun regionNorthOfMeranReachesThe47Parts() {
+        val north = CellId(543, 360) // 10.90–11.25 E, 46.80–47.04 N
+        assertEquals(setOf("E10_N45.rd5:E10_N46", "E10_N45.rd5:E11_N46", "E10_N45.rd5:E10_N47", "E10_N45.rd5:E11_N47"),
+            RoutingTiles.forCells(listOf(north)).toSet())
+    }
+
     @Test fun missingParts() {
         assertEquals(listOf("b"), RoutingTiles.missing(listOf("a", "b")) { it == "a" })
     }
@@ -206,6 +216,26 @@ class RoutingDataAutoTest {
         l.ensure(listOf(meran, "E10_N45.rd5:E10_N46"))
         val idx = com.onpath.app.routing.Rd5Parts.readIndex(server.file)!!
         assertEquals(listOf(idx.size(6) + idx.size(1)), sizes)
+    }
+
+    /**
+     * A whole rd5 on the phone without a parts list (an old download, adb push) holds every part: nothing counts as
+     * missing, nothing loads (no mobile data), no "missing" line in the problem log – offline and online.
+     */
+    @Test fun wholeFileWithoutPartsListIsPresent() {
+        server.file.copyTo(File(dir, "E10_N45.rd5"))
+        val calls = mutableListOf<String>()
+        com.onpath.app.debug.Problems.clear()
+        for (online in listOf(false, true)) {
+            val l = loader(Net(online = online), calls = calls)
+            val keys = RoutingTiles.forCells(listOf(CellId.at(46.67, 11.16)!!, CellId(543, 360))) +
+                RoutingTiles.forLine(listOf(GeoPoint(46.6956, 11.1094), GeoPoint(46.7061, 11.1113)))
+            assertTrue(l.ensure(keys).isEmpty())
+            assertTrue(l.ensure(keys, corridor = true).isEmpty())
+            assertNull(l.status)
+        }
+        assertTrue(calls.isEmpty())
+        assertTrue(com.onpath.app.debug.Problems.snapshot().none { it.message.startsWith("Routing data missing") })
     }
 
     /** The wanted parts of one 5° file load in one batch – the local rd5 is written once. */
