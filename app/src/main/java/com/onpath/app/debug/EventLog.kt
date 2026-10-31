@@ -1,5 +1,6 @@
 package com.onpath.app.debug
 
+import com.onpath.app.data.AtomicFiles
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
@@ -163,9 +164,7 @@ object EventLog {
 
     private fun rotate(d: File) {
         closeOut()
-        val older = File(d, OLDER)
-        older.delete()
-        File(d, CURRENT).renameTo(older)
+        try { AtomicFiles.replace(File(d, CURRENT), File(d, OLDER), quiet = true) } catch (_: Exception) { } // expected: not reported into Problems (it writes here – would loop); the current file grows until the next rotation
         currentBytes = 0
         dropOld(System.currentTimeMillis())
     }

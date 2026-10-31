@@ -1,6 +1,7 @@
 package com.onpath.app.debug
 
 import android.util.Log
+import com.onpath.app.data.AtomicFiles
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.json.JSONArray
@@ -216,10 +217,7 @@ object Problems {
     private fun writeNow() {
         val f = file ?: return
         try {
-            val text = toJson().toString()
-            val tmp = File(f.path + ".tmp")
-            tmp.writeText(text)
-            if (!tmp.renameTo(f)) { f.delete(); tmp.renameTo(f) }
+            AtomicFiles.writeText(f, toJson().toString(), File(f.path + ".tmp"), quiet = true)
         } catch (_: Throwable) { } // expected: never reported into Problems itself (would loop); the next write retries
     }
 
