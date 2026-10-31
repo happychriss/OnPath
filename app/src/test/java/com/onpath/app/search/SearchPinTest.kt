@@ -98,9 +98,10 @@ object SearchFixture {
         "bahnhof", "station", "gipfel", "dorf", "lodz", "aero", "citta", "cafe", "café", "schloss", "kirche", "12", "alm 3",
         "leiter alm", "ultner hof", "mut spitze", "hohe weisse", "   ", "-", "ultnr", "kofel see", "parkplatz", "wc",
     ).map { Triple(it, null, false) } + listOf(
-        Triple("", SearchKinds.Category.HUTS, false), Triple("", SearchKinds.Category.PEAKS, false),
-        Triple("", SearchKinds.Category.WATER, true), Triple("zog", SearchKinds.Category.HUTS, false),
-        Triple("alm", SearchKinds.Category.STATIONS, true), Triple("", SearchKinds.Category.PLACES, false),
+        Triple("", SearchKinds.Category.FOOD, false), Triple("", SearchKinds.Category.SIGHTS, false),
+        Triple("", SearchKinds.Category.WATER, true), Triple("zog", SearchKinds.Category.FOOD, false),
+        Triple("alm", SearchKinds.Category.TRANSIT, true), Triple("", SearchKinds.Category.PLACES, false),
+        Triple("", SearchKinds.Category.PARKING, false),
         Triple("mer", null, true), Triple("hütte", null, true), Triple("weg", null, true), Triple("a", null, true),
     )
 

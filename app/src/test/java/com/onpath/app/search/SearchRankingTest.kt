@@ -58,11 +58,12 @@ class SearchRankingTest {
     }
 
     @Test fun categoryWithoutTextListsKindByDistance() {
-        val hits = index.search(q("", SearchKinds.Category.HUTS))
-        assertEquals(setOf("Hochganghaus", "Meraner Hütte"), names(hits).toSet())
-        assertTrue(hits[0].distanceM <= hits[1].distanceM)
+        val hits = index.search(q("", SearchKinds.Category.FOOD))
+        assertEquals(setOf("Hochganghaus", "Meraner Hütte", "Gasthaus Merana", "Leiter Alm"), names(hits).toSet())
+        assertTrue(hits.zipWithNext().all { (a, b) -> a.distanceM <= b.distanceM || a.score >= b.score })
         assertTrue(index.search(q("")).isEmpty())
-        assertEquals(listOf("Bahnhof Algund"), names(index.search(q("", SearchKinds.Category.STATIONS))))
+        assertEquals(listOf("Bahnhof Algund"), names(index.search(q("", SearchKinds.Category.TRANSIT))))
+        assertEquals(setOf("Hohe Weiße"), names(index.search(q("", SearchKinds.Category.SIGHTS))).toSet())
     }
 
     @Test fun nearRouteHelpsButExactNameStaysFirst() {

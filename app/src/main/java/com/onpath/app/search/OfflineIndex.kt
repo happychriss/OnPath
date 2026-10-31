@@ -328,7 +328,7 @@ object SearchRanking {
             val score = 100.0 * text + SearchKinds.boost(e.place.kind, e.place.sub) - distancePenalty(d)
             cand += SearchHit(e.place, score, tier, d, false)
         }
-        if (kinds == null) addresses.forEach { cand += addressHit(it, q) }
+        addresses.forEach { if (kinds == null || it.place.kind in kinds) cand += addressHit(it, q) }
         // Best few hundred by text, then the (more expensive) route check.
         val top = cand.sortedWith(compareByDescending<SearchHit> { it.tier }.thenByDescending { it.score }).take(400)
         val line = q.route?.takeIf { it.size >= 2 }?.let { simplify(it, 400) }

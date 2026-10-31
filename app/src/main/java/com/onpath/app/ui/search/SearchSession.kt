@@ -285,7 +285,7 @@ class SearchSession(
             val idx = ensureIndex()
             val (hits, carried) = withContext(Dispatchers.IO) {
                 // a newer keystroke cancels this job: the address files not searched yet are skipped
-                val addr = if (u.category == null) ensureAddresses().search(AddressQuery.parse(u.query)) { !isActive } else emptyList()
+                val addr = if (kinds == null || "street" in kinds || "address" in kinds) ensureAddresses().search(AddressQuery.parse(u.query)) { !isActive } else emptyList()
                 ensureActive()
                 val hits = idx.search(q, addr)
                 val keep = if (!useOnline) emptyList() else SearchRanking.stillMatching(before, text).filter { kinds == null || it.kind in kinds }

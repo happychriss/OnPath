@@ -53,7 +53,7 @@ class DiskIndex internal constructor(
             SearchHit(p, c.score, c.tier, c.d, c.nearRoute)
         }
     } catch (e: Exception) {
-        fail("search", e); addresses.takeIf { q.category == null }.orEmpty().map { SearchRanking.addressHit(it, q) }
+        fail("search", e); addresses.filter { a -> q.category?.kinds?.let { a.place.kind in it } ?: true }.map { SearchRanking.addressHit(it, q) }
             .sortedWith(SearchRanking.ORDER).take(q.limit)
     }
 
@@ -270,7 +270,9 @@ class DiskIndex internal constructor(
             val score = 100.0 * text + boost[kc] - SearchRanking.distancePenalty(d)
             cand += Cand(i, score, tier, d, null)
         }
-        if (kinds == null) addresses.forEach { a -> SearchRanking.addressHit(a, q).let { cand += Cand(-1, it.score, it.tier, it.distanceM, it) } }
+        addresses.forEach { a ->
+            if (kinds == null || a.place.kind in kinds) SearchRanking.addressHit(a, q).let { cand += Cand(-1, it.score, it.tier, it.distanceM, it) }
+        }
         val top = cand.sortedWith(compareByDescending<Cand> { it.tier }.thenByDescending { it.score }).take(400)
         val line = q.route?.takeIf { it.size >= 2 }?.let { SearchRanking.simplify(it, 400) }
         if (line != null) {

@@ -124,6 +124,12 @@ the git log.
       in `search/OfflineIndex.kt` (already in `appFiles`). `WebSearch.online` keeps `mix(keepShown = …)` (still
       there), but the page should keep the list it shows per text and carry online rows across keystrokes the same way
       (see `ui/search/SearchSession.run`, test `SearchStableListTest`).
+    - Six short search chips (owner 2026-10-31): Orte · Essen · Sehenswert · Wasser · Bahn · Parken (Places · Food ·
+      Sights · Water · Transit · Parking) · (this branch, 2026-10-31) · the table is `SearchKinds.Category` in
+      `search/Place.kt` (pure, already in `appFiles`; `Category.of(kind)`, strings `search_cat_*`), test
+      `SearchCategoryTest`. The web can compile it as is: give the browser planner's search the same six chips
+      (scrolling row) and filter with `SearchQuery.category`; the Places chip also keeps street / address hits
+      (`SearchRanking.rank` filters addresses by the chip's kinds now).
     - Map symbols: rock / scree from z14, stronger orchard / vineyard · 2026-10-31 · nothing to code – `copy-engine.mjs`
       copies `style/f2/onpath.json` + `sprites/` on the next merge of main; just check them on the web map.
     - One message system · `ui/MessageCard.kt` (2026-10-31, `docs/design/ui-style.md`) · the browser uses the same three
