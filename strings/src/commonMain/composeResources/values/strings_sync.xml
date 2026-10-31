@@ -53,4 +53,5 @@
     <string name="sync_untitled_route">Route</string>
     <string name="sync_untitled_track">Track</string>
     <string name="sync_sum_off">Not paired · your routes in the web planner too</string>
+    <string name="sync_routing_other">Planned in the browser with other routing – the route may differ slightly</string>
 </resources>

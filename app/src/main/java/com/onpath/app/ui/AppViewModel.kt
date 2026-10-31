@@ -1199,6 +1199,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     var routeChangedNotice by mutableStateOf<String?>(null)
         private set
+    /**
+     * Grey INFO line in the plan sheet: the open plan came from the browser, routed there with another routing
+     * fingerprint ("Planned in the browser with other routing – the route may differ slightly"). Nothing to do; it goes
+     * with the next edit of the plan or another plan (docs/design/routing-fingerprint.md).
+     */
+    var syncRoutingNote by mutableStateOf<String?>(null)
+        private set
     /** The route before the activity / T level change whose result is still pending (null = none). */
     private var activityBefore: PlannedRoute? = null
     /** The next [recalc] runs for an activity / T level change. */
@@ -2713,6 +2720,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** A plan edit (points changed): the "route changed" notice and its pending comparison go. */
     private fun planChanged() {
         routeChangedNotice = null; activityBefore = null; activityRecalc = false
+        syncRoutingNote = null // edited here: the route is the phone's own now
     }
 
     /** Spots worth knowing on the current route ([RouteWarnings.detect]); none while it is being calculated. */
@@ -3557,6 +3565,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 t.waypoints.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
                 setSaved(t.name, t.id, pts)
                 events += UiEvent.Fit(segs.flatten().map { it.toGeo() })
+                syncRoutingCheck(t, pts)
             } else {
                 // a recorded or imported tour brings its activity, like the import: the T level stays inside the
                 // tour's band, not during a tour (the followed route keeps its activity), a change is said in the
@@ -3780,6 +3789,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             refreshTours()
             followSyncedSavedPlan()
             routeSyncedPlans(res.toRoute)
+        }
+        // a plan from the browser was routed with newer routing data than the phone's: get it now, not after 35 days
+        res?.newerData?.takeIf { it.isNotEmpty() }?.let { refreshRoutingTiles(it, "a plan from the browser was routed with newer data") }
+    }
+
+    /**
+     * A saved route opened as the plan: when it is a synced plan, the grey line if the browser routed it with another
+     * fingerprint, and its tiles checked for newer routing data (field 8 newer than the phone's, or without field 8
+     * older than 7 days – plansync/SyncRouting.opened).
+     */
+    private fun syncRoutingCheck(t: Tour, pts: List<GeoPoint>) {
+        syncRoutingNote = null
+        if (t.uuid.isEmpty()) return
+        viewModelScope.launch {
+            val o = withContext(Dispatchers.IO) {
+                try { sync.opened(t.uuid, pts) } catch (e: Exception) {
+                    Problems.warn("sync", "Routing of the opened synced plan not compared", e); null
+                }
+            } ?: return@launch
+            if (linkId != t.id || waypoints.toList() != pts) return@launch // another plan or edited meanwhile
+            if (o.otherRouting) {
+                Problems.info("sync", "Opened plan was routed in the browser with another routing fingerprint – grey line shown")
+                syncRoutingNote = Txt.s(Res.string.sync_routing_other)
+            }
+            if (o.refresh.isNotEmpty()) refreshRoutingTiles(o.refresh, "opened a synced plan")
         }
     }
 
@@ -4369,7 +4403,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             .filter { it.isFile && t - it.lastModified() > ROUTING_MAX_AGE_DAYS * 86_400_000L }
         prefs.routingDataCheckedAt = t
         if (due.isEmpty() || (settings.mapsWifiOnly && !com.onpath.app.cells.AndroidNetworkStatus(getApplication()).unmetered())) return
+        refreshRd5(due.map { it.name })
+    }
+
+    /** Synced plans' tile checks: once per tile in [ROUTING_CHECK_MS] (sync passes come every minute). */
+    private val syncRoutingThrottle = com.onpath.app.plansync.RefreshThrottle(ROUTING_CHECK_MS)
+
+    /**
+     * Newer routing data for [tiles] ("E10_N45") right away – a synced plan says the browser routed it with newer data,
+     * or a synced plan without that date was opened (plansync/SyncRouting). The rules of [checkRoutingData]: never
+     * during a tour, maps only on Wi-Fi respected, quiet (INFO); at most once per tile in [ROUTING_CHECK_MS].
+     */
+    private fun refreshRoutingTiles(tiles: List<String>, why: String) {
+        if (routingDataBusy || recState.value != null) return
+        val due = syncRoutingThrottle.take(tiles.filter { java.io.File(dataFiles.segmentsDir, "$it.rd5").isFile }, System.currentTimeMillis())
+        if (due.isEmpty()) return
+        if (settings.mapsWifiOnly && !com.onpath.app.cells.AndroidNetworkStatus(getApplication()).unmetered()) {
+            Problems.info("routing", "Routing data ${due.joinToString()}: newer data not checked ($why) – maps only on Wi-Fi"); return
+        }
+        Problems.info("routing", "Routing data ${due.joinToString()}: checking for newer data now ($why)")
+        refreshRd5(due.map { "$it.rd5" })
+    }
+
+    /** [names] ("E10_N45.rd5") fetched again when the server has another version; the open plan routed again then. */
+    private fun refreshRd5(names: List<String>) {
         routingDataBusy = true
+        val due = names.map { java.io.File(dataFiles.segmentsDir, it) }
         viewModelScope.launch(Dispatchers.IO) {
             var got = 0
             for (f in due) {

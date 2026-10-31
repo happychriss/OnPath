@@ -52,4 +52,5 @@
     <string name="sync_untitled_route">Route</string>
     <string name="sync_untitled_track">Track</string>
     <string name="sync_sum_off">Nicht verbunden · deine Routen auch im Web-Planer</string>
+    <string name="sync_routing_other">Im Browser mit anderer Routenberechnung geplant – Route kann leicht abweichen</string>
 </resources>

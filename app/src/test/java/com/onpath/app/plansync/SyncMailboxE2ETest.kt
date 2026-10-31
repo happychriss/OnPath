@@ -80,8 +80,13 @@ class SyncMailboxE2ETest {
     @Test fun phoneAndBrowserSyncThroughTheRealMailbox() {
         val store = FakeTourStore()
         val files = SyncFiles(tmp.newFolder("sync")).also { it.savePairing(secret, clock) }
+        // routing fingerprint + rd5 dates (docs/design/routing-fingerprint.md "Sync fields") travel in the blobs
+        val stamp = object : RoutingStamp {
+            override fun fingerprint() = "r1-aaaaaaaaaaaa"
+            override fun days() = mapOf<String, Long?>("E10_N45" to 20745L)
+        }
         val phone = PlanSyncPass(files, store, { HttpMailbox(base, it) }, { n -> rnd.nextBytes(n) }, { clock }, "Pixel 8",
-            { if (it == SyncItem.TRACK) "Track" else "Route" }, JcaAead)
+            { if (it == SyncItem.TRACK) "Track" else "Route" }, JcaAead, routing = stamp)
         fun phoneSync() = phone.run { false }!!.also { clock += 1000 }
 
         val web = SyncFormat.newDevice(ByteArray(8) { 4 })
@@ -100,6 +105,8 @@ class SyncMailboxE2ETest {
         assertTrue(browserSync() is SyncRound.Outcome.Done)
         assertEquals(listOf("Waalweg"), browser.plans().map { it.title })
         assertEquals(listOf(a, b, c), PlanCode.decode(browser.plans().single().plan!!)!!.points)
+        assertEquals("r1-aaaaaaaaaaaa", browser.plans().single().routing)
+        assertEquals("E10_N45:20745", browser.plans().single().routingData)
         assertEquals(trackLine.map { it.lat }, TrackCode.of(browser.tracks().single().track)!!.segments.single().map { it.lat })
         assertEquals("Pixel 8", browser.devices(web).single().name)
         // the server holds nothing readable
@@ -110,9 +117,11 @@ class SyncMailboxE2ETest {
         val routeId = browser.plans().single().id
         browser.rename(routeId, "Algunder Waalweg", clock, web)
         val newId = SyncFormat.newId(ByteArray(16) { 3 })
-        browser.save(newId, PlanCode.encode(SharedPlan(listOf(a, c), Activity.BIKE_TOURING)), "Meran → Lana", clock, web)
+        browser.save(newId, PlanCode.encode(SharedPlan(listOf(a, c), Activity.BIKE_TOURING)), "Meran → Lana", clock, web,
+            routing = "r1-bbbbbbbbbbbb", routingData = "E10_N45:20752")
         browserSync()
         val second = phoneSync()
+        assertEquals("routed in the browser with newer data: the phone checks for it now", listOf("E10_N45"), second.newerData)
         assertEquals("Peer name from the hello", "Chrome on Linux", second.peer)
         assertEquals(setOf("Algunder Waalweg", "Ultental GPX", "Meran → Lana"), store.live().map { it.name }.toSet())
         val added = store.byName("Meran → Lana")

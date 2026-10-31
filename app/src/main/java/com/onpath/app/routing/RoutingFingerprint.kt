@@ -7,8 +7,8 @@ import com.onpath.app.sync.Sha256
  * their own dates): the BRouter version, the profiles and lookups.dat the app routes with, and [PLANNER_VERSION] for
  * our own code around BRouter (Planner, WaypointSnap, the profile parameters BRouterEngine sets). The same plan with
  * the same fingerprint and the same rd5 dates gives the same route – in the app and in the web planner (owner: routes
- * identical in both). Shown in Settings → Diagnostics; carrying it in the sync item is a proposal
- * (docs/design/routing-fingerprint.md).
+ * identical in both). Shown in Settings → Diagnostics and carried in synced plan items (fields 7 / 8,
+ * docs/design/routing-fingerprint.md "Sync fields").
  *
  * Pure, no Android and no java.security (the web planner compiles it: [Sha256] is the sync's own, TeaVM-safe). Style
  * as [RouterClassHash]: "r1-" + the first 12 hex digits of sha256 over a header ([BROUTER_VERSION], [PLANNER_VERSION])
