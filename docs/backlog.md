@@ -10,11 +10,10 @@ the git log.
 - → [cloud-web] Order (captain 2026-10-31): (1) copy the Drive folder into `onpath.private` (setup step 7) as soon as the
   owner gives write access; (2) A-021 tab name / alt text „Aufs Handy · Teilen“ → „Teilen“. The website's voice
   sentence waits until voice guidance is released.
-- → [cloud-plan] When you push the main merge: it carries `PlanCode` T0 (a bike link with T0 reads as T2, 4c64138) –
-  read-only tolerance, nothing to change on the web unless the planner writes T0 itself – captain 2026-10-31.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-plan] Order done – web-spike f31b9ac (pushed; CI decides the deploy): (1) main merged twice (up to 4555c3d incl. voice guidance + field bugs), engine / shared-code / plan-parity tests and all browser smokes green on the laptop; mirrors checked (voice, tour, unfinished track: nothing for the browser). T0: the web reads links only through `PlanCode` and writes 1–5 – nothing to change. (2) Save asks for the name, Save as copy + Share plan in My routes ⋮, plan sheet without ⋯ (✕ Close asks "Discard changes?" when unsaved; Export GPX moved into the Share dialog – owner's choice 2026-11-01). (3) Candidate marker + dashed join line, fit after a place from the card. Not mirrored: the app's rolled-up one-row step (its green Start has no browser counterpart) – owner/captain decide. Laptop: Node via nvm, Playwright Chromium installed; search-smoke / cells-smoke need a cell store the laptop does not have yet – 2026-11-01
 
 - [captain] release v0.14.0 (voice guidance): app + planner OK – 2026-10-31. Fingerprint equal (BRouter + profiles
   unchanged, `PLANNER_VERSION` 3 both), `sync/` unchanged since the merge base 38fc16c, CI green (main unit 69515dd,
@@ -24,7 +23,6 @@ the git log.
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Release v0.14.0 (voice) – captain's go; waits for the owner's Pixel voice test OK + E2E green on 69515dd / 4c64138 – since 2026-11-01
-- [cloud-plan] captain's order: merge main → web-spike + shared-code tests, then "Save asks for the name" + "Plan sheet without ⋯", then candidate marker + fit after adding a place – since 2026-10-31
 
 ## Next
 - **Website and Google Play follow-ups (marketing; website repo `happychriss/onpath.earth`)** – (1) **Voice:** onpath.earth
@@ -76,38 +74,15 @@ the git log.
   doorman adopts them. Production stays cloud-only.
 - **Web planner: mirror app changes (keep this list current)** – owner 2026-10-30: every app change the browser should
   mirror gets a line here (what · app commit · what the web does); a done line is removed. Checked against
-  `origin/web-spike` 97e8836 (2026-10-31 evening, [cloud-plan]): web-spike merged main at 38fc16c (Planner splice);
-  main commits after that (d288503 plan sheet one-row step, 8c73742 / f0dc98c build time, a08f4a6 roles) come with the
-  next `web/parity/merge-main.sh`. Done there and removed from this list: pairing across tabs + new-version box +
+  `origin/web-spike` f31b9ac (2026-11-01, [cloud-plan]): web-spike has main up to 4555c3d. Done there and removed from this list: Save asks for the name, plan sheet without ⋯ (Export GPX in Share), candidate marker, fit after a place, T0 links (nothing to do), pairing across tabs + new-version box +
   Unpair apart, island retry (Köln = app, no knownDiff), New / Changed tags, short-trip retry, splice (owner's 70.6 km
   hike live 4.7 → 2.2 s), routing-data notice + way-type line, search list never jumps + six chips, deleted phone hello,
   privacy + pairing sentences, host ipHash, date with the dot, first-route fit, "New route for … – check it".
   Plan parity: `web/test/plans.json` 14 cases, all app = web (gate in the jvm job).
   - *Should:*
-    - [cloud-plan] Plan link with T level 0 · app commit "Field bugs: bike plan link with T0 opens" (4c64138d) –
-      shared `routing/PlanCode`: a non-hike plan with T0 reads as T2 (decoder only, the encoder still writes 1–5) · the
-      web gets it with the next `merge-main.sh`; check that the planner's own link reader has no stricter check.
-    - [cloud-plan] Save asks for the name (owner 2026-10-31, app 0.13.5, replaces "save at once") · app commit "Save
-      always asks for the name" (3be5469) · the browser still saves at once and renames in place (`#savedLine` →
-      `#renameField`). Web: every Save (header, ⋯ → Save route, Save first) opens a small name dialog / popover with the
-      name fully selected, Cancel · Save; a saved route is overwritten **and renamed when the name changed**; blank =
-      keep the proposal / old name; "Save as copy" proposes `RouteRules.copyName` ("Name (2)"); "Saved as …" becomes a
-      plain line. Update `parity-smoke.mjs` 6d and `sync-smoke.mjs` (`renameOpen` / `saveAs`). App: `SaveNameDialog`,
-      `AppViewModel.askSave / confirmSave`, `SaveDialogTest`. `web/parity.json` mirrors `ui/RouteRules.kt` (newRouteName,
-      saveMode – mirrored in `plans.ts` because RouteRules needs the app's TourDb).
-    - [cloud-plan] Plan sheet without ⋯ (owner 2026-10-31, app 0.13.5) · app commit 3be5469 · keys already renamed on
-      web-spike (`plan_close_plan`, `plan_save_as_copy`); still to do: ✕ „Plan schließen“ asks "Discard changes?"
-      (`plan_discard_title` / `plan_discard`, Cancel · Discard) only with unsaved changes – the web clears without a
-      question today; „Umkehren“ · „Rundtour“ beside it in the summary; My routes ⋮ → „Als Kopie speichern“ and „Teilen“
-      (app `Screens.TourItemMenu` onCopy / onShare). App: `PlanPanel.PlanActions`, `PlanActionsTest`.
-    - [cloud-plan] Candidate marker instead of the orange search ring (A-019 add-on 1) · f84fd63 · the web's
-      `.searchring` (search.ts, style.css) becomes the app's look: a dashed route-blue (`#1E3FAE`) ring, radius 21 px,
-      3.5 px dashes 7 / 4.5 over a 7 px white halo, ~12 % blue tint inside, a small "+" badge, the name in route blue
-      below; a thin dashed preview line to `WaypointInsertion.joinPoint` (let `placePreview` return it) – only with a
-      route. `map/CandidateMarker.kt`, picture `CandidateMarkerScreenshotTest`.
-    - [cloud-plan] Fit the new route after adding a place from the card (A-019 add-on 2) · 6b8875f ·
-      `WholeRoute.fitAfterPlace` (points changed and ≥ 2 → fit when the route is there); the web already fits the first
-      route (`WholeRoute.firstRoute`, mirrored in `main.ts` – WholeRoute needs `AppMode`).
+    - [cloud-plan] Rolled-up one-row step? (app d288503, PlanSize.COLLAPSED: activity icon, time · distance, ⚠ count,
+      compact green Start) · the web has small / profile / points (`sheetstep.ts`) and no Start – a fourth, one-row step
+      only if the owner wants it on a phone-width browser.
     - [cloud-plan] One message system – the rest · `docs/design/ui-style.md` · `web/app/src/msgcard.ts` is the app's
       MessageCard (FRAGE / HINWEIS kinds, one at a time, 12 px under the search bar), used today only for "New version
       of the planner". Still to move there: the map strip's questions / errors (`mapnotice.ts`, `areas.ts`), the
