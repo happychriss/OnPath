@@ -49,7 +49,9 @@ data class RouteSpot(val kind: SpotKind, val from: Int, val to: Int, val fromM: 
  * - ABOVE_T (hike): SAC level above the chosen T level, sections ≥ [ABOVE_T_MIN_M].
  * - STEEP: grade over a [STEEP_WINDOW_M] window (DEM noise) above [steepPercent] – hike 25 %, bikes 15 % – up or
  *   down, sections ≥ [STEEP_MIN_M]. Not for MTB / e-MTB (owner: steep is normal there).
- * Spans of the same kind less than [MERGE_GAP_M] apart are one spot.
+ * Spans of the same kind less than [MERGE_GAP_M] apart are one spot. A stretch shorter than [END_CRUMB_M] at the very
+ * start or end of the route is no spot: the route's end snapped onto that way (field A-019: "Steps · 0 m · at the
+ * start" for an E-bike) – it would read "0 m" anyway. In the middle of the route any length counts.
  */
 object RouteWarnings {
     const val PUSH_MIN_M = 50.0
@@ -57,6 +59,8 @@ object RouteWarnings {
     const val STEEP_MIN_M = 80.0
     const val STEEP_WINDOW_M = 100.0
     const val MERGE_GAP_M = 30.0
+    /** A stretch shorter than this within this distance of the route's start / end is a snapping crumb, not a spot. */
+    const val END_CRUMB_M = 5.0
     /** At most this many items in the line, then "+N". */
     const val MAX_ITEMS = 3
 
@@ -168,8 +172,13 @@ object RouteWarnings {
             else runs += run
             i = j
         }
-        return runs.filter { it.lengthM >= minM && it.lengthM > 0 }
+        val total = cum.last()
+        return runs.filter { it.lengthM >= minM && it.lengthM > 0 && !(kind !in POINT_KINDS && endCrumb(it, total)) }
     }
+
+    /** [s] is a few metres at the very start / end of a route [totalM] long (a snapped end touching that way). */
+    private fun endCrumb(s: RouteSpot, totalM: Double): Boolean =
+        s.lengthM < END_CRUMB_M && (s.fromM <= END_CRUMB_M || totalM - s.toM <= END_CRUMB_M)
 
     /** Grade (%) per span over a window of at least [STEEP_WINDOW_M] around it; null where elevations are missing. */
     private fun grades(points: List<GeoPoint>, cum: DoubleArray): Array<Double?> {
