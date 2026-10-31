@@ -54,6 +54,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -404,17 +405,19 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
             if (ui.paused && ui.recordedM != null) TextButton(onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_resume)) }
             else if (ui.toGo != null && ui.arriveAt != null && ui.toGo.state != com.onpath.app.time.EstimateState.NOT_ON_ROUTE) Column(
                 horizontalAlignment = Alignment.End,
-                modifier = Modifier.padding(start = 8.dp).width(IntrinsicSize.Max).semantics(mergeDescendants = true) {}) {
+                modifier = Modifier.padding(start = 8.dp).widthIn(min = targetWordWidth(ui.toGo.target))
+                    .width(IntrinsicSize.Max).semantics(mergeDescendants = true) {}) {
                 val paused = ui.toGo.state == com.onpath.app.time.EstimateState.PAUSED
-                // "Arrive 16:40 <target>": the clock large, the target under it, no wider than the clock
-                // (the time on the left keeps its room)
+                // "Arrive 16:40 <target>": the clock large, the target under it, as wide as the clock or its longest
+                // word (the time on the left keeps its room); two lines, so a name like "Gasthof Hochmuth" is not cut
+                // to "Gasthof H…" (field A-019) and no word is split – a longer name ends in "…" on the second line
                 Text(str(Res.string.nav_arrive), style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 Text(ui.arriveAt, style = MaterialTheme.typography.headlineMedium, maxLines = 1,
                     color = if (paused) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else Color.Unspecified)
                 ui.toGo.target?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End,
                         modifier = Modifier.then(NoIntrinsicWidth).fillMaxWidth())
                 }
             }
@@ -456,6 +459,23 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
         }
       }
     }
+}
+
+/**
+ * Width of the longest word of the destination name under the arrival clock (bodySmall): the column is at least that
+ * wide, so a word is never split ("Leiteral / m" at the largest font) – at most 40 % of the screen.
+ */
+@Composable
+private fun targetWordWidth(target: String?): androidx.compose.ui.unit.Dp {
+    if (target.isNullOrBlank()) return 0.dp
+    val measurer = rememberTextMeasurer()
+    val style = MaterialTheme.typography.bodySmall
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val capDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp * 0.4f
+    val wordPx = remember(target, style, density) {
+        target.split(' ').filter { it.isNotEmpty() }.maxOfOrNull { measurer.measure(it, style, maxLines = 1).size.width } ?: 0
+    }
+    return (with(density) { wordPx.toDp() }.value + 1f).coerceAtMost(capDp).dp
 }
 
 /** The child does not widen an IntrinsicSize column (the target under the arrival clock is cut, not the clock's room). */
