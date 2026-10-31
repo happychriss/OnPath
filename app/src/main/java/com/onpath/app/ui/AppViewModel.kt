@@ -108,7 +108,7 @@ sealed interface UiEvent {
     data class Share(val intent: Intent) : UiEvent
     /** Show all [points] (MapController.fitTo); [northUp] = north up and flat ("Show whole route"). */
     data class Fit(val points: List<GeoPoint>, val northUp: Boolean = false) : UiEvent
-    /** Fly to one place at [zoom] (search results). */
+    /** Fly to one place at [zoom] (search results), in the free room of the fit padding (FitPaddingRule). */
     data class CenterOn(val point: GeoPoint, val zoom: Double) : UiEvent
     /** Move the map to [point] at once, same zoom (profile scrubbing in Navigate). */
     data class PanTo(val point: GeoPoint) : UiEvent
@@ -2152,6 +2152,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun flyToPlace(p: com.onpath.app.search.Place) {
         val zoom = when (p.sub) { "city" -> 12.0; "town" -> 13.0; "village", "suburb" -> 14.0; else -> 16.0 }
+        followMe = false // an intended fly: following stops first (CLAUDE.md "Map camera")
+        freeLookAt = null
         events += UiEvent.CenterOn(GeoPoint(p.lat, p.lon), zoom)
         if (mode == AppMode.PLAN) safeCells("search") {
             showCellJob(cellTriggers.pointSet(GeoPoint(p.lat, p.lon), com.onpath.app.cells.CellWhy.SEARCHED)

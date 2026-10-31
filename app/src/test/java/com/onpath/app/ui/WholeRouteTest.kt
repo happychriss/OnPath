@@ -77,4 +77,13 @@ class WholeRouteTest {
         assertTrue(screen.contains("onFitRoute = if (vm.wholeRouteShown(mode, pointsOpen)) vm::showWholeRoute else null"))
         assertTrue(screen.contains("is UiEvent.Fit -> c.fitTo(e.points, fitPadding(), e.northUp)"))
     }
+
+    /** Field A-019: a search result picked while planning during a tour landed half behind the plan sheet. */
+    @Test fun searchResultFliesIntoTheFreeRoom() {
+        val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        val fly = vm.substringAfter("private fun flyToPlace(").substringBefore("\n    }\n")
+        assertTrue(fly.indexOf("followMe = false") in 0 until fly.indexOf("events += UiEvent.CenterOn("))
+        val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
+        assertTrue(screen.contains("is UiEvent.CenterOn -> c.flyTo(e.point, e.zoom, fitPadding())"))
+    }
 }

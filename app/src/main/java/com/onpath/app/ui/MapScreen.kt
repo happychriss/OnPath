@@ -604,7 +604,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         pending.forEach { e ->
             when (e) {
                 is UiEvent.Fit -> c.fitTo(e.points, fitPadding(), e.northUp)
-                is UiEvent.CenterOn -> c.flyTo(e.point, e.zoom)
+                is UiEvent.CenterOn -> c.flyTo(e.point, e.zoom, fitPadding())
                 is UiEvent.PanTo -> c.panTo(e.point)
                 is UiEvent.Share -> runCatching { context.startActivity(e.intent) }
                     .onFailure { Problems.warn("ui", "Share screen could not be opened (no app?)", it) }

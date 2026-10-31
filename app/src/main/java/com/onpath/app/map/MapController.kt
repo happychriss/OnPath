@@ -851,10 +851,18 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         lastPanMs = now
     }.onFailure { Problems.warn("map", "Map did not move to the profile point", it) }
 
-    /** Search result: fly to [p] at [zoom]. Never throws. */
-    fun flyTo(p: GeoPoint, zoom: Double) = runCatching {
-        map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(p.lat, p.lon), zoom), 700)
+    /**
+     * Search result: fly to [p] at [zoom], in the middle of the free room [pad] leaves (ui/FitPaddingRule – not half
+     * behind the plan sheet, field A-019). Following must be off before (CLAUDE.md "Map camera"). Never throws.
+     */
+    fun flyTo(p: GeoPoint, zoom: Double, pad: com.onpath.app.ui.FitPadding) = runCatching {
+        map.animateCamera(CameraUpdateFactory.newCameraPosition(centred(p, zoom, pad)), 700)
     }.onFailure { Problems.warn("map", "Map did not fly to the search result", it) }
+
+    /** [p] at [zoom] in the middle of the room [pad] leaves (the camera keeps that padding, like a route fit). */
+    private fun centred(p: GeoPoint, zoom: Double, pad: com.onpath.app.ui.FitPadding): CameraPosition =
+        CameraPosition.Builder().target(LatLng(p.lat, p.lon)).zoom(zoom)
+            .padding(pad.left.toDouble(), pad.top.toDouble(), pad.right.toDouble(), pad.bottom.toDouble()).build()
 
     /**
      * Show all [points] in the free room [pad] leaves (ui/FitPaddingRule: clear of the top and bottom elements).
@@ -866,7 +874,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         try {
             if (points.size == 1) {
                 // one place (search result): close enough to see the POI icon and the paths around it
-                map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(points[0].lat, points[0].lon), 16.0), 700)
+                map.animateCamera(CameraUpdateFactory.newCameraPosition(centred(points[0], 16.0, pad)), 700)
                 return
             }
             val b = LatLngBounds.Builder().apply { points.forEach { include(LatLng(it.lat, it.lon)) } }.build()
