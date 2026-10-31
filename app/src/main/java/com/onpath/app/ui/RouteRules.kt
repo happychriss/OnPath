@@ -91,15 +91,15 @@ object RouteRules {
     fun replacesPlan(kind: TourKind, waypointCount: Int): Boolean = kind == TourKind.PLANNED && waypointCount >= 2
 
     /**
-     * What a tap on an item in My routes asks first ([AppViewModel.requestOpen]). During a tour ([touring]) a planned
-     * route asks "Replace the route of the running tour?" (owner 2026-10-31: "routes can't be loaded" – they waited for the
-     * end of the tour); Replace makes it the plan and the tour follows it, the recording goes on unchanged. Without a tour
-     * an unsaved plan asks "Replace current route?" ([askBeforeLoading]). Tracks open beside the plan, never asked.
+     * What a tap on an item in My routes does first ([AppViewModel.requestOpen]). While [navigating] (a tour) a planned
+     * route is blocked: nothing loads, a box says "End the running tour first, then this route can be loaded." (owner
+     * 2026-10-31: no new route during a tour – too much automation, a hiker would not trust it). Without a tour an unsaved
+     * plan asks "Replace current route?" ([askBeforeLoading]). Tracks open beside the plan, also during a tour.
      */
-    fun openAsk(kind: TourKind, waypointCount: Int, touring: Boolean, points: List<GeoPoint>, saved: List<GeoPoint>?): OpenAsk =
+    fun openAsk(kind: TourKind, waypointCount: Int, navigating: Boolean, points: List<GeoPoint>, saved: List<GeoPoint>?): OpenAsk =
         when {
             !replacesPlan(kind, waypointCount) -> OpenAsk.NONE
-            touring -> OpenAsk.REPLACE_TOUR_ROUTE
+            navigating -> OpenAsk.BLOCKED_DURING_TOUR
             askBeforeLoading(kind, waypointCount, points, saved) -> OpenAsk.REPLACE_PLAN
             else -> OpenAsk.NONE
         }
@@ -144,8 +144,8 @@ object RouteRules {
         }
 }
 
-/** The question before an item of My routes opens ([RouteRules.openAsk]); NONE = it opens at once. */
-enum class OpenAsk { NONE, REPLACE_PLAN, REPLACE_TOUR_ROUTE }
+/** What comes before an item of My routes opens ([RouteRules.openAsk]); NONE = it opens at once. */
+enum class OpenAsk { NONE, REPLACE_PLAN, BLOCKED_DURING_TOUR }
 
 /** What happens with a plan from a link ([RouteRules.linkOpen]). */
 enum class LinkOpen { AFTER_TOUR, ASK_FIRST, NOW }

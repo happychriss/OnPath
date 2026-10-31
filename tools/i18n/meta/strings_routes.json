@@ -256,12 +256,11 @@
     "priority": 2,
     "confidence": "sicher"
   },
-  "routes_after_tour": {
+  "routes_end_tour_first": {
     "area": "My routes",
-    "context": "Grey line on a card that cannot be opened during navigation",
-    "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "'Nach der Tour ladbar' is short; 'Kann nach der Tour geladen werden' is the literal form"
+    "context": "Blue box with OK at the top of My routes when a planned route is tapped during a running tour (nothing is loaded)",
+    "priority": 1,
+    "confidence": "sicher"
   },
   "routes_export_all": {
     "area": "My routes",

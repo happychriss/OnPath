@@ -881,9 +881,12 @@ class ScreenshotTest {
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}); ReplacePlanDialog({}, {}, {}) }
     }
 
-    /** My routes during a tour → a planned route: one question, Replace / Cancel, no body (owner 2026-10-31). */
-    @Test fun replaceTourRouteAsk() = paparazzi.snapshot {
-        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}); ReplaceTourRouteDialog({}, {}) }
+    /**
+     * My routes during a tour → a planned route tapped: nothing loads, the blue box "End the running tour first, then this
+     * route can be loaded." with OK over the list (owner 2026-10-31); the list itself looks as always.
+     */
+    @Test fun routesTourBlocked() = paparazzi.snapshot {
+        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, tourBlocked = true) }
     }
 
     /** Sheet ⋯ → Save route on a plan loaded from a saved route: Save (overwrite) or Save as new… (tap outside = cancel). */

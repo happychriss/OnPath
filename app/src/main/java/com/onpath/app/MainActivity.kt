@@ -180,6 +180,8 @@ class MainActivity : ComponentActivity() {
                                 onExportAll = { vm.exportAll() },
                                 busy = vm.busy,
                                 note = vm.routesNote,
+                                tourBlocked = vm.routesTourBlocked,
+                                onTourBlockedOk = { vm.routesTourBlocked = false },
                                 onRecycleBin = { vm.openRecycleBin() },
                                 onEditRides = { vm.openEditRides(it) },
                                 initialTab = vm.routesTab,

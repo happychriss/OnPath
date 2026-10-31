@@ -41,7 +41,7 @@
     <string name="routes_rename_recorded">Aufgezeichneten Track umbenennen</string>
     <string name="routes_rename_imported">Importierte GPX umbenennen</string>
     <string name="routes_recording_now">Wird gerade aufgezeichnet</string>
-    <string name="routes_replace_tour_title">Route der laufenden Tour ersetzen?</string>
+    <string name="routes_end_tour_first">Erst die laufende Tour beenden, dann lässt sich diese Route laden.</string>
     <string name="routes_export_all">Alle exportieren (ZIP)</string>
     <string name="routes_options_desc">Optionen für „%1$s“</string>
     <string name="routes_edit_rides">Fahrten bearbeiten</string>

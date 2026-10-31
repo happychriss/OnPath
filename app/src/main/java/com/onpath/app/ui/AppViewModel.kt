@@ -156,13 +156,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var errorCard by mutableStateOf<String?>(null)
     /** The line at the top of My routes; goes when My routes is left. */
     var routesNote by mutableStateOf<Notice?>(null)
+    /**
+     * A planned route was tapped during a tour ([requestOpen]): the blue box "End the running tour first, then this route
+     * can be loaded." with OK at the top of My routes; until OK or until My routes is left.
+     */
+    var routesTourBlocked by mutableStateOf(false)
     /** The line at the top of the open Settings page; goes when the page changes or Settings closes. */
     var settingsNote by mutableStateOf<Notice?>(null)
     private var routesShown by mutableStateOf(false)
     /** My routes list (☰ → My routes) is open. */
     var routesOpen: Boolean
         get() = routesShown
-        set(v) { if (!v) routesNote = null; routesShown = v } // the line lasts until My routes is left
+        set(v) { if (!v) { routesNote = null; routesTourBlocked = false }; routesShown = v } // line / box last until My routes is left
     /** My routes' last chosen tab (Planned / Done); kept while the app runs, Planned after a restart. */
     var routesTab by mutableStateOf(RoutesTab.PLANNED)
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
@@ -1265,12 +1270,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     class SaveChoice(val thenOpen: PlanToOpen?)
     /** "Replace current plan?" is open for this route (a saved one or one from a plan link). */
     var replaceAsk by mutableStateOf<PlanToOpen?>(null)
-    /**
-     * "Replace the route of the running tour?" is open for this planned route (My routes during a tour, owner
-     * 2026-10-31); null = no question. Replace = [tourReplaceConfirmed], Cancel = [tourReplaceCancel].
-     */
-    var tourReplaceAsk by mutableStateOf<Tour?>(null)
-        private set
     /** "Save first" was chosen: the name dialog saves the plan, then loads this route. */
     var saveFirst by mutableStateOf<PlanToOpen?>(null)
     /** A save failed: shown in a dialog until OK (no message that disappears by itself). */
@@ -1413,11 +1412,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var planAtTrackFollow: List<GeoPoint>? = null
     /** "Continue navigation" re-plans: follow the next route result. */
     private var followNextRoute = false
-    /**
-     * A saved route replaced the tour's route ([tourReplaceConfirmed]): when it is followed, the recorded tour takes its
-     * activity / T level (as an activity switch during the tour does).
-     */
-    private var storeTourActivity = false
     /** The plan's points were edited (add, delete, round trip, reverse, undo …): a running tour follows the result. */
     private var planEditPending = false
 
@@ -2462,7 +2456,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         routeJob?.cancel(); routeJob = null
         requests.invalidate()
         route = null; routeError = null; routing = false; routingSlow = false; longRouteAsk = null
-        followNextRoute = false; planEditPending = false; storeTourActivity = false
+        followNextRoute = false; planEditPending = false
         notRouted = why
         corridorFollowsPlan(null)
         Problems.info("routing", "Plan left without a route (${why.name.lowercase()}): ${waypoints.size} points")
@@ -2491,7 +2485,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         notRouted = null
         if (pts.size < 2) {
             requests.invalidate(); route = null; routeError = null; routing = false; followNextRoute = false
-            storeTourActivity = false
             corridorFollowsPlan(null); return
         }
         val act = activity; val level = sac
@@ -2568,12 +2561,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     corridorFollowsPlan(null)
                 }
             if (followNextRoute) {
-                followNextRoute = false; planEditPending = false
-                val storeActivity = storeTourActivity; storeTourActivity = false
-                if (route != null) {
-                    followPlanned(checkNow = true)
-                    if (storeActivity) saveTourActivity()
-                } else sayError(Txt.s(Res.string.msg_no_new_route), NoticePlace.MAP)
+                followNextRoute = false
+                if (route != null) followPlanned(checkNow = true) else sayError(Txt.s(Res.string.msg_no_new_route), NoticePlace.MAP)
             } else if (planEditPending && result.isSuccess) {
                 // an edit of the plan during a tour: the tour follows the new plan (owner rule, no question)
                 planEditPending = false
@@ -2902,35 +2891,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openRoutes() { refreshTours(); routesOpen = true }
 
     /**
-     * Open / load from My routes ([RouteRules.openAsk]): during a tour a planned route asks "Replace the route of the
-     * running tour?"; else "Replace current plan?" when that would lose changes; tracks open at once.
+     * Open / load from My routes ([RouteRules.openAsk]): during a tour a planned route loads nothing – the blue box "End
+     * the running tour first, then this route can be loaded." with OK at the top of My routes ([routesTourBlocked];
+     * owner 2026-10-31: no new route during a tour, too much automation); else "Replace current plan?" when that would
+     * lose changes; tracks open at once.
      */
     fun requestOpen(t: Tour) {
-        when (RouteRules.openAsk(t.kind, t.waypoints.size, recState.value != null, waypoints, savedPoints)) {
-            OpenAsk.REPLACE_TOUR_ROUTE -> { Problems.trace("tour", "Load \"${t.name}\" during the tour: asking to replace the tour's route"); tourReplaceAsk = t }
+        when (RouteRules.openAsk(t.kind, t.waypoints.size, navigating(recState.value != null), waypoints, savedPoints)) {
+            OpenAsk.BLOCKED_DURING_TOUR -> {
+                Problems.trace("tour", "Load \"${t.name}\" during the tour: not loaded (end the tour first)")
+                routesTourBlocked = true
+            }
             OpenAsk.REPLACE_PLAN -> replaceAsk = PlanToOpen.Saved(t)
             OpenAsk.NONE -> openTour(t)
         }
-    }
-
-    /** "Replace the route of the running tour?" → Cancel: nothing changes. */
-    fun tourReplaceCancel() {
-        val t = tourReplaceAsk ?: return
-        tourReplaceAsk = null
-        Problems.trace("tour", "Replace the tour's route by \"${t.name}\": cancelled")
-    }
-
-    /**
-     * "Replace the route of the running tour?" → Replace: the route becomes the plan (one Undo step, its activity and T
-     * level, [openTour]) and the tour follows it as soon as its line is computed – the same path as a plan edit during
-     * the tour (nav session, re-routing, "New route · was 13:15", the way to the line when it starts far away). The
-     * recording is never touched: same tour, track and timer. The tour ended meanwhile: a plain load.
-     */
-    fun tourReplaceConfirmed() {
-        val t = tourReplaceAsk ?: return
-        tourReplaceAsk = null
-        Problems.trace("tour", "Replace the tour's route by \"${t.name}\": yes" + (if (recState.value == null) " (the tour has ended – plain load)" else ""))
-        openTour(t)
     }
 
     fun replaceConfirmed() { val t = replaceAsk ?: return; replaceAsk = null; open(t) }
@@ -3411,16 +3385,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (recState.value != null) Problems.trace("tour", "The tour follows \"$followName\" now (${activity.name}, ${w.size} points)")
     }
 
-    /** The running tour is recorded as the current activity / T level from now on (a loaded route brought it). */
-    private fun saveTourActivity() {
-        val id = recState.value?.tourId ?: return
-        val a = activity; val level = sac
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching { db.updateActivity(id, a.name, level) }
-                .onFailure { Problems.error("db", "Activity of the recorded tour not updated in the database", it) }
-        }
-    }
-
     fun followShown() {
         val s = shown ?: return
         setFollow(s.name, s.points, isTrack = true)
@@ -3592,9 +3556,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 change { clear(); addAll(pts) }
                 t.waypoints.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
                 setSaved(t.name, t.id, pts)
-                // during a tour (asked first, tourReplaceConfirmed): the tour follows this route once its line is there –
-                // also after a followed GPX track or a free recording; the recording itself goes on unchanged
-                if (recState.value != null) { followNextRoute = true; storeTourActivity = true }
                 events += UiEvent.Fit(segs.flatten().map { it.toGeo() })
             } else {
                 // a recorded or imported tour brings its activity, like the import: the T level stays inside the
