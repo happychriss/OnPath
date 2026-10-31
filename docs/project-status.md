@@ -33,23 +33,16 @@ the current state.
   told in the mirror list), track behind „Unterbrochene Tour“ + EN "Interrupted tour", shared place menu on every share,
   shared place found by address takes the named POI (kind). **Next:** owner tests voice on the Pixel, captain's go →
   release (version bump + notes; website / Play voice texts then change, marketing list).
-- **cloud-captain, 2026-10-31 (session ended; the owner starts a fresh captain).** Role setup step 6 done: the owner
-  cleared the captain once (trusted-device card via `confirm_repository_trust` with the refusal's `content_digest`) –
-  since then the captain messages and reads cloud-app, cloud-plan, cloud-web; the roles cannot message the captain and
-  answer under "For the captain" in the backlog (`docs/working-agreement.md` §8). **A fresh captain needs that clearance
-  once again** (first `send_message` to cloud-app is refused with a digest → ask the owner with it) and must never
-  attach to a computer folder. Owner decisions today: push straight to `main` / `web-spike`, PR only for workflows,
-  signing / build config, secrets, privacy / licence texts (§1 "Where to push"); GitHub ruleset on `main` + `web-spike`
-  (no force push, no delete) is set; `.claude/settings.json` lets sessions message / read each other without a prompt.
-  Orders given (backlog "In progress" / "For the roles"): **cloud-app** – Rundgang flows 11 + 12, voice guidance → main
-  (done 69515dd), field bugs (done 4c64138); CI on both was still running at hand-off, Rundgang result not yet reported.
-  **cloud-plan** – merge main → web-spike (27 behind), Save-asks-name + plan sheet without ⋯, candidate marker + fit.
-  **cloud-web** – Drive → `onpath.private` (waits for the owner's write access), A-021 tab name. **Next for the captain:**
-  read "For the captain"; check unit + E2E on 69515dd; once cloud-app reports the Rundgang green and cloud-plan has
-  merged main, run the release check (cloud-captain.md) for the voice release and write the go; then tell cloud-web
-  to change the website's voice sentence. Owner still owes: write access for cloud-web, map data on the laptop (+ where
-  the Germany pre-build runs), git setup on the laptop, deleting the six merged branches (backlog "Waiting for the
-  owner").
+- **cloud-captain (fresh session), 2026-10-31 late – release check for voice done.** Read "For the captain"
+  (cloud-app: Rundgang 14/14, voice on main 69515dd, field bugs 4c64138). Release check: fingerprint equal (BRouter +
+  profiles unchanged, `PLANNER_VERSION` 3 on both), `sync/` unchanged since merge base 38fc16c, unit green on 69515dd,
+  web-spike CI green on 97e8836; only shared change = `PlanCode` T0 read tolerance → go written for v0.14.0 in the
+  backlog. Orders: cloud-app releases after the owner's Pixel voice test (and E2E on 69515dd / 4c64138 green – still
+  running at hand-off); cloud-plan was merging main into web-spike (not pushed yet). Earlier captain decisions and the
+  clearance rule (a fresh captain needs the owner's trusted-device card once; never attach to a computer folder) still
+  hold – `docs/working-agreement.md` §8. **Next for the captain:** after the release tell cloud-web to change the
+  website's voice sentence (+ Play store text, backlog "Website and Google Play follow-ups" (1)); re-run the check if
+  cloud-plan's merge or a planner deploy touches shared code. Owner still owes the items under "Waiting for the owner".
 - **cloud (marketing / website), 2026-10-29/31 – onpath.earth live, planner public, Play Console prepared. Session
   ended (owner: fixed roles).** Website repo `happychriss/onpath.earth` (Cloudflare Pages, deploys `main`): PRs #3–#7
   merged – new home page (six points with real app screens, planner section, "Was OnPath besser kann", "Offen

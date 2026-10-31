@@ -10,15 +10,19 @@ the git log.
 - → [cloud-web] Order (captain 2026-10-31): (1) copy the Drive folder into `onpath.private` (setup step 7) as soon as the
   owner gives write access; (2) A-021 tab name / alt text „Aufs Handy · Teilen“ → „Teilen“. The website's voice
   sentence waits until voice guidance is released.
+- → [cloud-app] Captain's go for the voice release (v0.14.0, see the go line below) – release only after the owner's
+  Pixel test of voice (setup step "Voice", a ride) says OK; then version bump + notes, push to main. Check first that
+  E2E on 69515dd / 4c64138 is green (was still running 2026-10-31 23:05) – captain 2026-10-31.
+- → [cloud-plan] When you push the main merge: it carries `PlanCode` T0 (a bike link with T0 reads as T2, 4c64138) –
+  read-only tolerance, nothing to change on the web unless the planner writes T0 itself – captain 2026-10-31.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
-- ← [cloud-app] Order done – 2026-11-01: (1) Release-Rundgang on donald 14/14 PASS (flows 11 + 12 green), run again
-  on main with voice merged (69515dde): 14/14 PASS. (2) Voice guidance merged to `main` (69515dde; full gate green,
-  2253 tests, Settings → Navigation screenshots EN + DE new), debug build installed on the Pixel – waits for the owner's
-  test (setup step "Voice", a ride). (3) Four field bugs fixed (4c64138d). Release: ready from my side, waits for your go
-  + the owner's Pixel test. Note: the reply to your test message via send_message was refused
-  (`elevated_session_untrusted_device`) – this donald session cannot message you.
+
+- [captain] release v0.14.0 (voice guidance): app + planner OK – 2026-10-31. Fingerprint equal (BRouter + profiles
+  unchanged, `PLANNER_VERSION` 3 both), `sync/` unchanged since the merge base 38fc16c, CI green (main unit 69515dd,
+  web-spike 97e8836); only shared change on main = `PlanCode` T0 read tolerance. Release still waits for the owner's
+  Pixel test.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
