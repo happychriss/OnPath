@@ -52,7 +52,7 @@
     <string name="nav_pace_and">%1$s and %2$s</string>
 
     <!-- off route: question, card, notification -->
-    <string name="nav_take_new_route">Take new route</string>
+    <string name="nav_take_new_route">New route</string>
     <string name="nav_keep_original">Keep original</string>
     <string name="nav_title_searching">Off route – finding a way back…</string>
     <string name="nav_title_found">Off route – new route found</string>
@@ -95,6 +95,19 @@
     <string name="nav_notif_skip">Yes, skip it</string>
     <string name="nav_stop_n">stop %1$d</string>
     <string name="nav_without_stop">without %1$s</string>
+    <!-- off route, owner 2026-10-31: "You're 120 m off the route" · the new route / the way back and how much longer -->
+    <string name="nav_title_off_by">You're %1$s off the route</string>
+    <string name="nav_title_off_by_turn_round">You're %1$s off the route – turn round</string>
+    <string name="nav_line_fresh">New route to the end: %1$s (%2$s)</string>
+    <string name="nav_line_rejoin">Back on the route after %1$s · %2$s</string>
+    <string name="nav_longer">%1$s longer</string>
+    <!-- never on the route yet (owner 2026-10-31): "Route starts 31 km away" · Guide me / Just record -->
+    <string name="nav_far_title">Route starts %1$s away</string>
+    <string name="nav_far_detail">%1$s (direct) · recording</string>
+    <string name="nav_far_searching">Finding a way to the start…</string>
+    <string name="nav_far_lead">Guide me</string>
+    <string name="nav_far_record">Just record</string>
+    <string name="nav_lead_failed">No way to the route found – recording continues</string>
 
     <!-- lock screen notification while following a route -->
     <string name="nav_notif_to_go">%1$s to go</string>

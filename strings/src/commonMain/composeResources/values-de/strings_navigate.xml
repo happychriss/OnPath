@@ -51,7 +51,7 @@
     <string name="nav_pace_and">%1$s und %2$s</string>
 
     <!-- off route: question, card, notification -->
-    <string name="nav_take_new_route">Neue Route nehmen</string>
+    <string name="nav_take_new_route">Neue Route</string>
     <string name="nav_keep_original">Original behalten</string>
     <string name="nav_title_searching">Abseits der Route – Rückweg wird gesucht…</string>
     <string name="nav_title_found">Abseits der Route – neue Route gefunden</string>
@@ -94,6 +94,19 @@
     <string name="nav_notif_skip">Ja, auslassen</string>
     <string name="nav_stop_n">Stopp %1$d</string>
     <string name="nav_without_stop">ohne %1$s</string>
+    <!-- off route, owner 2026-10-31: "You're 120 m off the route" · the new route / the way back and how much longer -->
+    <string name="nav_title_off_by">Du bist %1$s von der Route weg</string>
+    <string name="nav_title_off_by_turn_round">Du bist %1$s von der Route weg – umdrehen</string>
+    <string name="nav_line_fresh">Neue Route bis zum Ziel: %1$s (%2$s)</string>
+    <string name="nav_line_rejoin">Zurück auf der Route nach %1$s · %2$s</string>
+    <string name="nav_longer">%1$s länger</string>
+    <!-- never on the route yet (owner 2026-10-31): "Route starts 31 km away" · Guide me / Just record -->
+    <string name="nav_far_title">Route beginnt %1$s entfernt</string>
+    <string name="nav_far_detail">%1$s (Luftlinie) · Aufnahme läuft</string>
+    <string name="nav_far_searching">Weg zum Start wird gesucht…</string>
+    <string name="nav_far_lead">Hinführen</string>
+    <string name="nav_far_record">Nur aufnehmen</string>
+    <string name="nav_lead_failed">Kein Weg zur Route gefunden – Aufnahme läuft weiter</string>
 
     <!-- lock screen notification while following a route -->
     <string name="nav_notif_to_go">noch %1$s</string>

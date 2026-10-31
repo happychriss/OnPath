@@ -209,11 +209,29 @@ class OffRouteDetectorTest {
     }
 
     @Test fun forceCheckWhenStartingAwayFromTheRoute() {
-        val d = detector(corner)
+        // been on the route this tour (restart, NavSession.reached): away from it = off route at once
+        val d = OffRouteDetector(40.0).apply { setLine(NavLine(corner), reached = true) }
         assertTrue(d.forceCheck(fix(500.0, 300.0, 0)))
         assertEquals(State.OFF_ROUTE, d.state)
         val d2 = detector(corner)
         assertFalse(d2.forceCheck(fix(500.0, 10.0, 0)))
         assertEquals(500.0, d2.progressM, 10.0)
+        assertTrue(d2.reached)
+    }
+
+    /** Owner 2026-10-31: never on the route yet – away from it is not "off route", and the progress stays at the start. */
+    @Test fun neverReachedIsNeverOffRouteAndKeepsTheStart() {
+        val d = detector(corner)
+        assertFalse(d.forceCheck(fix(500.0, 300.0, 0)))
+        assertEquals(State.NO_GPS, d.state)
+        val s = run(d, (0 until 60).map { fix(1_000.0 + 30_000.0 + (if (it % 2 == 0) 0.0 else 40.0), 1_000.0, it * 1000L) })
+        assertTrue(s.none { it.confirmedNow })
+        assertFalse(d.reached)
+        assertEquals(0.0, d.progressM, 0.0)
+        assertEquals(0.0, d.leftAtM, 0.0)
+        // first on the line in the middle: from there on as always
+        run(d, walk(1_000.0 to 300.0, 1_000.0 to 500.0, t0Ms = 100_000))
+        assertTrue(d.reached)
+        assertEquals(1_500.0, d.progressM, 15.0)
     }
 }

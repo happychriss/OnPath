@@ -35,6 +35,11 @@ data class NavSession(
     val visited: Set<Int> = emptySet(),
     /** Bumped whenever the navigated line changes (UI re-reads it). */
     val version: Int = 0,
+    /**
+     * The user has been on the navigated line during this tour (owner 2026-10-31). Until then a position away from it
+     * is "the route starts 31 km away", never "off route"; saved so a restart mid-tour does not forget it.
+     */
+    val reached: Boolean = false,
 ) {
     val active: List<GeoPoint> get() = current ?: original
     val rerouted: Boolean get() = current != null
@@ -99,6 +104,7 @@ class NavSessionStore(private val file: File) {
             .put("spliceAt", s.spliceAtM).put("resumeAlong", s.resumeAlongM).put("leftAt", s.leftAtM)
             .put("visited", JSONArray().apply { s.visited.sorted().forEach { put(it) } })
             .put("version", s.version)
+            .put("reached", s.reached)
 
         fun fromJson(o: JSONObject): NavSession? {
             val original = withShapes(withTurns(withWays(readPts(o.getJSONArray("original")), o.optJSONArray("originalWays")),
@@ -125,6 +131,8 @@ class NavSessionStore(private val file: File) {
                 original = original, stops = stops, current = current,
                 spliceAtM = o.optDouble("spliceAt", 0.0), resumeAlongM = o.optDouble("resumeAlong", 0.0),
                 leftAtM = o.optDouble("leftAt", 0.0), visited = visited, version = o.optInt("version", 0),
+                // a file without the key was written by an older app during a running tour: assume it was reached
+                reached = o.optBoolean("reached", true),
             )
         }
 

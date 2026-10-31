@@ -80,6 +80,20 @@ class RerouteTargetsTest {
         assertEquals(1_000.0, RerouteTargets.base(long, pt(500.0, 200.0), 1_000.0), 0.1)
     }
 
+    /**
+     * Field 2026-10-31: 30 km past the end of a 2.7 km plan the nearest line point is its END – "abeam" of it would mark
+     * every point as passed. Only a line within [RerouteTargets.ABEAM_MAX_M] moves the base ahead.
+     */
+    @Test fun baseStaysWhenTheLineIsFarAway() {
+        val short = NavLine(line(0.0 to 0.0, 2_700.0 to 0.0))
+        assertEquals(0.0, RerouteTargets.base(short, pt(32_700.0, 0.0), 0.0), 0.1)
+        assertEquals(0.0, RerouteTargets.base(short, pt(2_700.0, 1_500.0), 0.0), 0.1)
+        // a shortcut beside a later part (within 1 km): ahead as before
+        assertEquals(2_000.0, RerouteTargets.base(short, pt(2_000.0, 900.0), 0.0), 5.0)
+        val s = stops(short, 0.0, 700.0, 1_400.0, 2_000.0, 2_700.0)
+        assertEquals(setOf(0), RerouteTargets.passed(s, RerouteTargets.base(short, pt(32_700.0, 0.0), 0.0), emptySet()))
+    }
+
     @Test fun spliceKeepsTheRestAndTheDestination() {
         val leg = line(5_000.0 to 300.0, 5_500.0 to 0.0)
         val out = RerouteTargets.splice(leg, long, 5_500.0)

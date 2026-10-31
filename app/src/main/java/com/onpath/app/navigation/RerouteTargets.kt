@@ -39,11 +39,20 @@ object RerouteTargets {
     const val PAST_MAX_AHEAD_M = 10_000.0
 
     /**
+     * "Abeam of a later part" only counts with the line this near. A shortcut runs beside the route within a few hundred
+     * metres (the owner's real excursions: up to ~680 m, StopSkipJvmTest); farther away the nearest line point is a
+     * coincidence of the geometry – 30 km past a 2.7 km plan it is its end, and every point would count as passed
+     * (field 2026-10-31).
+     */
+    const val ABEAM_MAX_M = 1_000.0
+
+    /**
      * Where the user is along the original line for re-routing: the progress when they left it, or further when they
-     * are abeam of a later part (took a shortcut). Never behind the progress.
+     * are abeam of a later part within [ABEAM_MAX_M] (took a shortcut). Never behind the progress.
      */
     fun base(line: NavLine, position: GeoPoint, progressM: Double): Double {
         val m = line.match(position, progressM, progressM + PROJECT_AHEAD_M) ?: return progressM
+        if (m.distanceM > ABEAM_MAX_M) return progressM
         return max(progressM, m.alongM)
     }
 

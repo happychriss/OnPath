@@ -66,6 +66,54 @@ class NavTextTest {
         } finally { java.util.Locale.setDefault(old) }
     }
 
+    /** Owner 2026-10-31: the far start – "Route starts 31 km away" · "south-west (direct) · recording" · Guide me / Just record. */
+    @Test fun farStartTexts() {
+        val p = NavPrompt.FarStart(1, 30_600.0, 225.0)
+        assertEquals("Route starts 31 km away", NavText.title(p))
+        assertEquals("south-west (direct) · recording", NavText.state(p))
+        assertEquals("Guide me", NavText.LEAD)
+        assertEquals("Just record", NavText.JUST_RECORD)
+        assertEquals("Route starts 4.2 km away", NavText.title(p.copy(distanceM = 4_180.0)))
+        assertEquals("Route starts 350 m away", NavText.title(p.copy(distanceM = 347.0)))
+        assertEquals("Finding a way to the start…", NavText.state(p.copy(searching = true)))
+        assertEquals("No way to the route found – recording continues", NavText.title(NavPrompt.LeadFailed(2)))
+    }
+
+    /** Owner 2026-10-31: "You're 120 m off the route", the new route / the way back with "350 m longer" (or shorter). */
+    private val fresh = NavPrompt.Question(1, 350.0, Double.NaN, 5.0, emptyList(), 3_400.0, 0.0, offM = 118.0)
+    private val back = NavPrompt.Question(1, 350.0, 600.0, 5.0, emptyList(), 900.0, 2_000.0, offM = 118.0)
+
+    @Test fun offRouteQuestionTexts() {
+        assertEquals("You're 120 m off the route", NavText.title(fresh))
+        assertEquals("New route to the end: 3.4 km (350 m longer)", NavText.question(fresh))
+        assertEquals("New route to the end: 3.4 km (350 m shorter)", NavText.question(fresh.copy(extraM = -350.0)))
+        assertEquals("New route to the end: 3.4 km (about as long)", NavText.question(fresh.copy(extraM = 3.0)))
+        assertEquals("Back on the route after 600 m · 350 m longer", NavText.question(back))
+        assertEquals("Back on the route after 600 m · 800 m shorter", NavText.question(back.copy(extraM = -800.0)))
+        assertEquals("You're 120 m off the route – turn round", NavText.title(back.copy(turnRound = true)))
+        assertEquals("New route", NavText.TAKE)
+        assertEquals("Keep original", NavText.KEEP)
+    }
+
+    @Test fun farStartAndOffRouteTextsGerman() {
+        val old = java.util.Locale.getDefault()
+        java.util.Locale.setDefault(java.util.Locale.GERMANY)
+        try {
+            val p = NavPrompt.FarStart(1, 30_600.0, 225.0)
+            assertEquals("Route beginnt 31 km entfernt", NavText.title(p))
+            assertEquals("südwestlich (Luftlinie) · Aufnahme läuft", NavText.state(p))
+            assertEquals("Hinführen", NavText.LEAD)
+            assertEquals("Nur aufnehmen", NavText.JUST_RECORD)
+            assertEquals("Kein Weg zur Route gefunden – Aufnahme läuft weiter", NavText.title(NavPrompt.LeadFailed(2)))
+            assertEquals("Du bist 120 m von der Route weg", NavText.title(fresh))
+            assertEquals("Neue Route bis zum Ziel: 3,4 km (350 m länger)", NavText.question(fresh))
+            assertEquals("Neue Route bis zum Ziel: 3,4 km (350 m kürzer)", NavText.question(fresh.copy(extraM = -350.0)))
+            assertEquals("Zurück auf der Route nach 600 m · 350 m länger", NavText.question(back))
+            assertEquals("Neue Route", NavText.TAKE)
+            assertEquals("Original behalten", NavText.KEEP)
+        } finally { java.util.Locale.setDefault(old) }
+    }
+
     @Test fun positionCopyIsPlainLatLon() {
         assertEquals("46.54120, 10.90320", NavText.positionCopy(46.5412, 10.9032))
     }

@@ -33,11 +33,21 @@ object NavText {
     fun skipButton(q: NavPrompt.Question, maxName: Int = NAME_MAX): String =
         Txt.s(Res.string.nav_yes_skip_stop, stopLabel(q, maxName) ?: "")
 
+    /** "Guide me" / "Just record" – the far-start question's answers (owner 2026-10-31). */
+    val LEAD: String get() = Txt.s(Res.string.nav_far_lead)
+    val JUST_RECORD: String get() = Txt.s(Res.string.nav_far_record)
+
     fun title(p: NavPrompt): String = when (p) {
         NavPrompt.Searching -> Txt.s(Res.string.nav_title_searching)
         is NavPrompt.Question -> p.switch?.let { switchTitle(it) }
             ?: p.via?.let { Txt.s(Res.string.nav_title_replan) }
+            // "You're 120 m off the route" (owner 2026-10-31)
+            ?: p.offM?.let { Txt.s(if (p.turnRound) Res.string.nav_title_off_by_turn_round else Res.string.nav_title_off_by,
+                Format.distance(round10(it))) }
             ?: Txt.s(if (p.turnRound) Res.string.nav_title_turn_round else Res.string.nav_title_found)
+        // "Route starts 31 km away"
+        is NavPrompt.FarStart -> Txt.s(Res.string.nav_far_title, farDistance(p.distanceM))
+        is NavPrompt.LeadFailed -> Txt.s(Res.string.nav_lead_failed)
         is NavPrompt.NoWay -> when (p.reason) {
             Rerouter.Reason.NO_DATA -> Txt.s(Res.string.nav_title_no_data)
             Rerouter.Reason.UNAVAILABLE -> Txt.s(Res.string.nav_title_unavailable)
@@ -61,7 +71,15 @@ object NavText {
             else -> Txt.s(Res.string.nav_state_no_way)
         }
         NavPrompt.Kept -> Txt.s(Res.string.nav_state_kept)
+        // "south-west (direct) · recording" – a bearing, not a path
+        is NavPrompt.FarStart -> if (p.searching) Txt.s(Res.string.nav_far_searching)
+            else Txt.s(Res.string.nav_far_detail, compass(p.bearingDeg))
+        is NavPrompt.LeadFailed -> Txt.s(Res.string.nav_lead_failed)
     }
+
+    /** The far start's distance: whole kilometres from 10 km ("31 km"), else as everywhere ("4.2 km", "350 m"). */
+    fun farDistance(m: Double): String =
+        if (m >= 10_000) "${(m / 1000).roundToInt()} km" else Format.distance(round10(m))
 
     /** "New route for Gravel bike" / "New route for Hike T3". */
     fun switchTitle(sw: ActivitySwitch): String = Txt.s(Res.string.nav_switch_title, activityName(sw.activity, sw.sac))
@@ -81,17 +99,38 @@ object NavText {
             return@buildString
         }
         val via = q.via
+        // + movedM: the rider kept moving since the line was computed (Navigator.live)
+        val newM by lazy { Format.distance(round10((q.legM + q.movedM).coerceAtLeast(0.0))) }
+        val rejoinM by lazy { Format.distance(round10((q.rejoinInM + q.movedM).coerceAtLeast(0.0))) }
         if (via != null) {
             // "Re-plan?": what going via the stop costs on top of leaving it out, then the new route without it
             // (both lines move with the rider by the same amount, so the difference needs no movedM)
             append(Txt.s(Res.string.nav_via_stop, stopLabel(q, maxName) ?: "", extra(via.extraM - q.extraM).replaceFirstChar { it.lowercase() }))
-        } else append(extra(q.extraM + q.movedM))
-        // + movedM: the rider kept moving since the line was computed (Navigator.live)
-        if (q.rejoinInM.isNaN()) append(" · ").append(Txt.s(Res.string.nav_new_route_length, Format.distance(round10((q.legM + q.movedM).coerceAtLeast(0.0)))))   // fresh route (Rerouter.fresh)
-        else append(" · ").append(Txt.s(Res.string.nav_rejoins_in, Format.distance(round10((q.rejoinInM + q.movedM).coerceAtLeast(0.0)))))
+            if (q.rejoinInM.isNaN()) append(" · ").append(Txt.s(Res.string.nav_new_route_length, newM))   // fresh route (Rerouter.fresh)
+            else append(" · ").append(Txt.s(Res.string.nav_rejoins_in, rejoinM))
+        } else if (q.rejoinInM.isNaN()) {
+            // fresh route (Rerouter.fresh): "New route to the end: 3.4 km (350 m longer)" (owner 2026-10-31)
+            append(Txt.s(Res.string.nav_line_fresh, newM, longer(q.extraM + q.movedM)))
+        } else {
+            // way back: "Back on the route after 600 m · 350 m longer"
+            append(Txt.s(Res.string.nav_line_rejoin, rejoinM, longer(q.extraM + q.movedM)))
+        }
         if (q.startOffM > FAR_START_M) append(" · ").append(Txt.s(Res.string.nav_nearest_way, Format.distance(round10(q.startOffM))))
         // left out without asking (an ordinary route point far aside): said, so the plan's marker is not a surprise
         if (via == null) stopLabel(q, Int.MAX_VALUE)?.let { append(" · ").append(Txt.s(Res.string.nav_without_stop, it)) }
+    }
+
+    /**
+     * "350 m longer" / "350 m shorter" / "about as long" – the new remaining distance minus what was left of the plan
+     * ([NavPrompt.Question.extraM]).
+     */
+    fun longer(m: Double): String {
+        val r = round10(abs(m))
+        return when {
+            r < 10 -> Txt.s(Res.string.nav_about_as_long).replaceFirstChar { it.lowercase() }
+            m > 0 -> Txt.s(Res.string.nav_longer, Format.distance(r))
+            else -> Txt.s(Res.string.nav_shorter, Format.distance(r))
+        }
     }
 
     fun extra(m: Double): String {

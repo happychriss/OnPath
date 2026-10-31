@@ -5,6 +5,7 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.TurnDetector
 import kotlin.math.abs
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 /** What Navigate shows about being off the route. Every state stays until answered or the situation is gone. */
 sealed interface NavPrompt {
@@ -44,6 +45,8 @@ sealed interface NavPrompt {
          * while the rider walked from 77 to 183 m away).
          */
         val movedM: Double = 0.0,
+        /** Distance to the route now ("You're 120 m off the route"); follows the rider in steps. Null = not known. */
+        val offM: Double? = null,
     ) : NavPrompt
 
     /** No way back (no data, nothing found, timeout): arrow + distance to the route. */
@@ -51,7 +54,21 @@ sealed interface NavPrompt {
 
     /** The user chose to keep the original: arrow + distance to the route. */
     data object Kept : NavPrompt
+
+    /**
+     * Never on the route yet and away from it (owner 2026-10-31): "Route starts 31 km away" · "south-west (direct) ·
+     * recording" · Guide me / Just record. No vibration, no sound; nothing happens until the user decides.
+     * [distanceM] / [bearingDeg] = straight line to the route's first point (follow the rider in steps).
+     * [searching]: "Guide me" was tapped, the way there is being computed.
+     */
+    data class FarStart(val id: Int, val distanceM: Double, val bearingDeg: Double, val searching: Boolean = false) : NavPrompt
+
+    /** "Guide me" found no way: "No way to the route found – recording continues" · OK (the red note). */
+    data class LeadFailed(val id: Int) : NavPrompt
 }
+
+/** The prompt is about being off the route (amber card, "Off route" status) – not the far start before the route. */
+val NavPrompt.offRoute: Boolean get() = this !is NavPrompt.FarStart && this !is NavPrompt.LeadFailed
 
 /** Straight-line direction to the nearest route point ahead (arrow mode). */
 data class RouteHint(val distanceM: Double, val bearingDeg: Double, val target: GeoPoint)
@@ -81,6 +98,8 @@ data class NavState(
  * off route confirmed → vibrate → way back computed in the background → a question that stays until answered;
  * back on the route by yourself → the question goes away. After "Take new route" the original stays as a grey line
  * and is used again as soon as you are back on it. Passed stops are skipped. Never re-routes silently.
+ * Never on the route yet (owner 2026-10-31): no off-route question at all – a calm [NavPrompt.FarStart] ("Route starts
+ * 31 km away" · Guide me / Just record), no vibration; "reached" is kept in the session ([NavSession.reached]).
  *
  * The service feeds fixes and routing results and carries out the returned [Step] (vibration, routing job, saving).
  */
@@ -142,10 +161,15 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private var liveLine: NavLine? = null
     private var liveWindowM = 0.0
     private var liveBase = 0.0
+    /** Never on the route yet: "Just record" (or OK after no way was found) – no far-start question until reached. */
+    private var quiet = false
+    /** Fixes in a row away from the line while the route was never reached. */
+    private var farFixes = 0
 
     init {
-        // new session or restart (R-07): NO_GPS, the first fixes match the whole line (earliest part: round trips)
-        detector.setLine(NavLine(session.active), null)
+        // new session or restart (R-07): NO_GPS, the first fixes match the whole line (earliest part: round trips);
+        // never reached yet: a position away from it is not progress (see OffRouteDetector.reached)
+        detector.setLine(NavLine(session.active), null, reached = session.reached)
     }
 
     var offRouteM: Double
@@ -169,6 +193,10 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (on && prompt == null && enabled && detector.state == OffRouteDetector.State.OFF_ROUTE) {
             lastFix?.let { return ask(it, vibrate = true) }
         }
+        // never on the route and away from it: the calm far-start question (no vibration)
+        if (on && prompt == null && !session.reached && !quiet && farFixes >= OffRouteDetector.REJOIN_FIXES) {
+            lastFix?.let { showFarStart(it.point) }
+        }
         return Step()
     }
 
@@ -179,14 +207,24 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val p = f.point
         recent.addLast(p); while (recent.size > RECENT_FIXES) recent.removeFirst()
         var step = markVisited(p)
+        var farNow = false
         if (forceCheck) {
             forceCheck = false
             if (detector.forceCheck(f)) {
                 if (!session.rerouted) leftAtM = detector.leftAtM
                 if (enabled && prompt == null) return step + ask(f, vibrate = false)
-            }
+            } else if (!detector.reached) farNow = true // "Continue navigation" far from a route never reached
         }
         val st = detector.onFix(f)
+        if (!session.reached) {
+            // owner 2026-10-31: never on the route yet = always from the START – no off-route question, no vibration
+            if (!detector.reached) return step + farStart(f, st, farNow)
+            // reached for the first time: saved (a restart keeps it); a far-start question has nothing left to ask
+            session = session.copy(reached = true)
+            quiet = false; farFixes = 0
+            step += Step(sessionChanged = true)
+            if (prompt is NavPrompt.FarStart || prompt is NavPrompt.LeadFailed) step += clearPrompt()
+        }
         // turned round and on the way: the sign goes (also when the line changed again)
         if (turnRoundAt != null && (!session.rerouted || detector.progressM > TURN_ROUND_DONE_M)) turnRoundAt = null
         if (!session.rerouted && (st.state != OffRouteDetector.State.OFF_ROUTE || st.confirmedNow)) leftAtM = detector.leftAtM
@@ -233,6 +271,14 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val wasRefresh = refreshing; refreshing = false
         val vib = vibrateOnResult; vibrateOnResult = false
         if (prompt == null) return Step() // back on route meanwhile
+        if (prompt is NavPrompt.FarStart) return when (outcome) {
+            // "Guide me": the user asked – taken at once
+            is Rerouter.Found -> takeLine(outcome.line, outcome.legM, outcome.resumeAlongM, skipStop = null, turnRound = false)
+            is Rerouter.Failed -> {
+                if (outcome.reason != Rerouter.Reason.CANCELLED) prompt = NavPrompt.LeadFailed(++questionId)
+                Step()
+            }
+        }
         return when (outcome) {
             is Rerouter.Found -> {
                 val q = question(++questionId, outcome)
@@ -259,33 +305,95 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (q.id != id) return Step()
         q.switch?.let { sw ->
             // a new tour line for the new activity: it becomes the original (the old one was for the wrong activity)
-            session = sw.session.copy(version = session.version + 1)
+            session = sw.session.copy(version = session.version + 1, reached = true)
             original = NavLine(session.original)
             leftAtM = 0.0
             detector.setLine(original, 0.0, assumeOnRoute = true)
             prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0; refreshes = 0
             return Step(cancelJob = true, lineChanged = true, activityChanged = true)
         }
-        return takeLine(q)
+        return takeLine(q.line, q.legM, q.resumeAlongM, q.skipStop, q.turnRound)
     }
 
     /** "Yes" to "Off route – re-plan?" with a stop in question [id]: the new route via that stop. */
     fun takeVia(id: Int): Step {
         val q = prompt as? NavPrompt.Question ?: return Step()
         if (q.id != id) return Step()
-        return takeLine(q.via ?: return Step())
+        val v = q.via ?: return Step()
+        return takeLine(v.line, v.legM, v.resumeAlongM, v.skipStop, v.turnRound)
     }
 
-    private fun takeLine(q: NavPrompt.Question): Step {
-        turnRoundAt = if (q.turnRound) q.line.firstOrNull() else null
+    private fun takeLine(line: List<GeoPoint>, legM: Double, resumeAlongM: Double, skipStop: Int?, turnRound: Boolean): Step {
+        turnRoundAt = if (turnRound) line.firstOrNull() else null
         // a stop left out on purpose stays out: later re-routes never send back to it (like a passed one)
-        val visited = q.skipStop?.let { session.visited + it } ?: session.visited
-        session = session.copy(current = q.line, spliceAtM = q.legM, resumeAlongM = q.resumeAlongM, leftAtM = leftAtM,
+        val visited = skipStop?.let { session.visited + it } ?: session.visited
+        session = session.copy(current = line, spliceAtM = legM, resumeAlongM = resumeAlongM, leftAtM = leftAtM,
             visited = visited, version = session.version + 1)
-        detector.setLine(NavLine(q.line), 0.0, assumeOnRoute = true)
+        detector.setLine(NavLine(line), 0.0, assumeOnRoute = true)
         prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0; refreshes = 0
         return Step(cancelJob = true, lineChanged = true)
     }
+
+    // ---- never on the route yet (owner 2026-10-31) --------------------------------------------------------------
+
+    /** "Guide me" for far-start question [id]: here → the start → all points → the destination, taken when found. */
+    fun leadThere(id: Int): Step {
+        val pr = prompt as? NavPrompt.FarStart ?: return Step()
+        if (pr.id != id || pr.searching) return Step()
+        val f = lastFix ?: return Step()
+        prompt = pr.copy(searching = true)
+        val jid = ++jobId
+        runningJob = jid; refreshing = false; vibrateOnResult = false; jobFrom = f.point
+        return Step(job = Job(jid, Rerouter.Request(f.point, original, 0.0, session.stops, session.visited, session.activity,
+            session.sac, perRequestMs = LEAD_REQUEST_MS, totalMs = LEAD_TOTAL_MS, toStart = true)))
+    }
+
+    /** "Just record" for far-start question [id]: quiet until the route is first reached, then the usual flow. */
+    fun justRecord(id: Int): Step {
+        val pr = prompt as? NavPrompt.FarStart ?: return Step()
+        if (pr.id != id) return Step()
+        quiet = true
+        return clearPrompt()
+    }
+
+    /** OK on "No way to the route found – recording continues" ([id]): quiet like "Just record". */
+    fun leadFailedOk(id: Int): Step {
+        val pr = prompt as? NavPrompt.LeadFailed ?: return Step()
+        if (pr.id != id) return Step()
+        quiet = true
+        return clearPrompt()
+    }
+
+    /** A fix while the route was never reached: the far-start question (after a few fixes away, or at once). */
+    private fun farStart(f: OffRouteDetector.Fix, st: OffRouteDetector.Status, now: Boolean): Step {
+        val away = st.distanceM?.let { it > detector.offDistance(f.accuracyM) } == true
+        farFixes = if (away) farFixes + 1 else 0
+        val start = original.points.first()
+        val d = Geo.distance(f.point, start)
+        val b = TurnDetector.bearing(f.point, start)
+        when (val pr = prompt) {
+            is NavPrompt.FarStart -> {
+                toRoute = RouteHint(d, b, start)
+                // the numbers follow the rider in steps (no flicker from GPS noise); same question, nothing said again
+                if (abs(d - pr.distanceM) >= LIVE_STEP_M || sector(b) != sector(pr.bearingDeg)) prompt = pr.copy(distanceM = d, bearingDeg = b)
+            }
+            is NavPrompt.LeadFailed -> toRoute = RouteHint(d, b, start)
+            null -> if (away && !quiet && navigating && (now || farFixes >= OffRouteDetector.REJOIN_FIXES)) showFarStart(f.point)
+            else -> Unit // an activity switch question is open
+        }
+        return Step()
+    }
+
+    private fun showFarStart(p: GeoPoint) {
+        val start = original.points.first()
+        val d = Geo.distance(p, start)
+        val b = TurnDetector.bearing(p, start)
+        prompt = NavPrompt.FarStart(++questionId, d, b)
+        toRoute = RouteHint(d, b, start)
+    }
+
+    /** One of the eight compass words ([NavText.compass]). */
+    private fun sector(deg: Double) = ((((deg % 360) + 360) % 360) / 45.0).roundToInt() % 8
 
     /** "Keep original" for question [id]: no new route; arrow to the route; asked again only much later. */
     fun keep(id: Int): Step {
@@ -308,7 +416,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private fun question(id: Int, f: Rerouter.Found): NavPrompt.Question = NavPrompt.Question(id, f.extraM, f.rejoinInM,
         f.startOffM, f.line, f.legM, f.resumeAlongM, turnRound = TurnRound.needed(recent.toList(), f.line),
         skipStop = f.skipStop, skipName = f.skipStop?.let { session.stops.getOrNull(it)?.name?.takeIf { n -> n.isNotBlank() } },
-        via = f.ask?.let { question(id, it) })
+        via = f.ask?.let { question(id, it) }, offM = detector.lastDistanceM)
 
     private fun ask(f: OffRouteDetector.Fix, vibrate: Boolean): Step {
         prompt = NavPrompt.Searching
@@ -367,13 +475,18 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
      * noise does not make the numbers flicker; same question (id, line), no vibration, no new notification sound.
      */
     private fun live(p: GeoPoint) {
-        val q = prompt as? NavPrompt.Question ?: return
-        if (q.switch != null) return
-        val nl = liveLine ?: return
-        val now = cost(nl, p) ?: return
-        val moved = now - liveBase
-        if (abs(moved - q.movedM) < LIVE_STEP_M) return
-        prompt = q.copy(movedM = moved, via = q.via?.copy(movedM = moved))
+        val q0 = prompt as? NavPrompt.Question ?: return
+        if (q0.switch != null) return
+        var q = q0
+        // "You're 120 m off the route": the distance follows too
+        val off = detector.lastDistanceM
+        if (off != null && (q.offM == null || abs(off - q.offM!!) >= LIVE_STEP_M)) q = q.copy(offM = off)
+        val now = liveLine?.let { cost(it, p) }
+        if (now != null) {
+            val moved = now - liveBase
+            if (abs(moved - q.movedM) >= LIVE_STEP_M) q = q.copy(movedM = moved, via = q.via?.copy(movedM = moved))
+        }
+        if (q !== q0) prompt = q
     }
 
     /** Distance to the way back plus what is left of it from the nearest point (relative: only differences count). */
@@ -456,5 +569,11 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         const val HINT_AHEAD_M = 3_000.0
         /** An open question's numbers follow the rider in steps of this much ([live]). */
         const val LIVE_STEP_M = 20.0
+        /**
+         * "Guide me" may route far (30 km to the start and the whole plan): the user asked and waits with a spinner,
+         * so more time than a way back ([Rerouter.PER_REQUEST_MS] / [Rerouter.TOTAL_MS]).
+         */
+        const val LEAD_REQUEST_MS = 20_000L
+        const val LEAD_TOTAL_MS = 30_000L
     }
 }
