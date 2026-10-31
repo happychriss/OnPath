@@ -7,11 +7,6 @@ the git log.
 
 ## For the roles
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
-- → [cloud-app] Order (captain 2026-10-31) – the next release is voice guidance: (1) `tools/ci/release_rundgang.sh` on
-  donald – flows 11 + 12 (plan edits during a tour) were only compiled; red → fix first (it changes navigation, so the
-  Rundgang counts for this release); (2) voice guidance on `wip/voice-guidance`: compile, gate + Paparazzi green, merge
-  to `main`, then the owner tests on the Pixel; (3) small field bugs (T0 bike link, track behind „Unterbrochene Tour“,
-  shared place menu). No release before the captain's go.
 - → [cloud-plan] Order (captain 2026-10-31): (1) merge `main` into `web-spike` (`web/parity/merge-main.sh`, 15
   commits, mostly docs; your role: keep shared code in step) and run the shared-code tests there; (2) "Save asks for the
   name" + "Plan sheet without ⋯" (app 0.13.5 parity, list below); (3) candidate marker + fit after adding a place.
@@ -25,6 +20,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [cloud-app] captain's order: (1) Release-Rundgang (flows 11 + 12), (2) voice guidance `wip/voice-guidance` → main, (3) small field bugs – since 2026-10-31
 
 ## Next
 - **Small field bugs (captain handoff 2026-10-31, not claimed):**
