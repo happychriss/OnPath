@@ -1,0 +1,14 @@
+[
+  {"name": "TU Dortmund, stop below steps (Bug 01)", "points": "51.49275,7.41772;51.48722,7.41716;51.48667,7.41685;51.48686,7.41162;51.48471,7.41236", "activity": "BIKE_TOURING", "sac": 2},
+  {"name": "TU Dortmund on foot (spur stop, one request)", "points": "51.49275,7.41772;51.48722,7.41716;51.48667,7.41685;51.48686,7.41162;51.48471,7.41236", "activity": "HIKE", "sac": 2},
+  {"name": "Meran 2000 → Ifinger summit T3", "points": "46.6870,11.2350;46.7006,11.2585", "activity": "HIKE", "sac": 3},
+  {"name": "Zoggler round trip", "points": "46.5560,11.0040;46.5360,10.9590;46.5450,10.9800;46.5560,11.0040", "activity": "HIKE", "sac": 3},
+  {"name": "Zoggler round trip, start deleted (the loop closes at the next point)", "points": "46.5560,11.0040;46.5360,10.9590;46.5450,10.9800;46.5560,11.0040", "activity": "HIKE", "sac": 3, "edits": [["delete", 0]]},
+  {"name": "Zoggler round trip, last row dragged to the top", "points": "46.5560,11.0040;46.5360,10.9590;46.5450,10.9800;46.5560,11.0040", "activity": "HIKE", "sac": 3, "edits": [["move", 2, 0]]},
+  {"name": "MTB Lana → Ulten (crosses 11°E)", "points": "46.6160,11.1590;46.5480,10.9690", "activity": "MTB", "sac": 3},
+  {"name": "Algund, a point in a meadow (snapped onto the path)", "points": "46.6830,11.1300;46.6840,11.1000;46.6860,11.1090", "activity": "HIKE", "sac": 3},
+  {"name": "POI stop pinned + named (Ifinger hut kept exactly)", "points": "46.6870,11.2350;46.6995,11.2430;46.7006,11.2585", "activity": "HIKE", "sac": 3, "pinned": [1], "names": {"1": "Ifinger Hütte"}},
+  {"name": "Failed leg (a point in the Adriatic: straight dashed piece)", "points": "45.7000,13.7700;45.6800,13.3900", "activity": "BIKE_TOURING", "sac": 3},
+  {"name": "Köln Dom → Neumarkt (island point)", "points": "50.9413,6.9583;50.9360,6.9475", "activity": "HIKE", "sac": 3,
+   "knownDiff": "BRouter's island retry (RoutingEngine.islandNodePairs) is private: the app reads it by reflection, TeaVM has none – needs a BRouter patch (docs/design/web-planner.md, backlog low prio)"}
+]
