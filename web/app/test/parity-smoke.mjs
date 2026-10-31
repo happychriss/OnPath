@@ -27,6 +27,19 @@ const pins = () => page.evaluate(() => document.querySelectorAll('.pin').length)
 const waitPins = (n) => page.waitForFunction((k) => document.querySelectorAll('.pin').length === k, n, { timeout: 15_000 }).catch(() => {});
 const planned = () => page.waitForFunction(() => document.querySelector('#summary .big') && !document.getElementById('status').textContent.includes('Planning'), null, { timeout: 120_000 });
 const clickAt = async (lon, lat, button = 'left') => {
+  // the camera at rest (the first route is fitted whole a moment after it is there – the app's WholeRoute), and the spot
+  // in the free map room (not under the sheet or the search bar, on screen) – else the map is centred on it first
+  await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 10_000 }).catch(() => {});
+  const free = await page.evaluate(([lo, la]) => {
+    const m = window.__map, q = m.project([lo, la]), c = m.getContainer().getBoundingClientRect();
+    const sheet = document.getElementById('sheet').getBoundingClientRect(), bar = document.querySelector('.topbar').getBoundingClientRect();
+    const x = c.left + q.x, y = c.top + q.y;
+    return x > sheet.right + 10 && x < c.right - 60 && y > bar.bottom + 10 && y < c.bottom - 40;
+  }, [lon, lat]);
+  if (!free) {
+    await page.evaluate(([lo, la]) => window.__map.jumpTo({ center: [lo, la] }), [lon, lat]);
+    await page.waitForTimeout(200);
+  }
   const p = await page.evaluate(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }, [lon, lat]);
   await page.mouse.click(p[0], p[1], { button });
 };
