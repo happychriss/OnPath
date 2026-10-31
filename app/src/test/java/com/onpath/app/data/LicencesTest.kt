@@ -58,6 +58,6 @@ class LicencesTest {
         assertTrue(e.any { it.project == Licences.ANDROIDX && it.libraries == listOf("core 1.15.0") })
         // a library without a rule is still listed, by its group, marked "not checked"
         assertEquals("foo.bar", e.last().project.name)
-        assertEquals("Licence not checked yet", e.last().project.note)
+        assertEquals("License not checked yet", e.last().project.note)
     }
 }

@@ -40,7 +40,7 @@
     <string name="settings_sum_upd_failed">%1$s – check failed</string>
     <string name="settings_sum_diag">For bug reports</string>
     <string name="settings_sum_privacy">Nothing is tracked · what leaves your phone</string>
-    <string name="settings_sum_about">Credits, licence</string>
+    <string name="settings_sum_about">Credits, license</string>
     <string name="settings_poi_hide_all">Hide all</string>
     <string name="settings_poi_shown">%1$d of %2$d shown</string>
     <string name="settings_cd_collapse">Collapse</string>
@@ -128,7 +128,7 @@
     <string name="settings_privacy_diag_to">whoever you send it to</string>
     <string name="settings_privacy_diag_when">only when you share it</string>
     <string name="settings_about_devtools_on">Developer tools are on – Settings → Diagnostics.</string>
-    <string name="settings_about_licence">Licence: Apache-2.0</string>
+    <string name="settings_about_licence">License: Apache-2.0</string>
     <string name="settings_about_credits">Credits</string>
     <string name="settings_credit_osm">Map data © OpenStreetMap contributors (ODbL)</string>
     <string name="settings_credit_omt">Vector tile schema © OpenMapTiles</string>
@@ -136,18 +136,18 @@
     <string name="settings_credit_ne">World overview: Natural Earth (public domain)</string>
     <string name="settings_credit_brouter">Routing: BRouter (MIT)</string>
     <string name="settings_credit_icons">POI icons: Maki and Temaki (CC0)</string>
-    <string name="settings_credit_maplibre">Map renderer: MapLibre Native (BSD licence)</string>
-    <string name="settings_licences">Licences</string>
-    <string name="settings_licences_sum">The open-source parts of OnPath, with version and licence</string>
-    <string name="settings_licences_lead">OnPath is built from these open-source parts. Tap “Licence text” to read a licence – everything is in the app, no internet needed.</string>
-    <string name="settings_licences_text">Licence text</string>
-    <string name="settings_licences_text_hide">Hide licence text</string>
-    <string name="settings_licences_odbl">Map data © OpenStreetMap contributors, available under the Open Database Licence (ODbL) 1.0 (opendatacommons.org/licenses/odbl). Terrain and world overview: see Credits.</string>
-    <string name="settings_lic_note_maplibre">Includes the third-party parts of its map engine – all of them are in the licence text.</string>
+    <string name="settings_credit_maplibre">Map renderer: MapLibre Native (BSD license)</string>
+    <string name="settings_licences">Licenses</string>
+    <string name="settings_licences_sum">The open-source parts of OnPath, with version and license</string>
+    <string name="settings_licences_lead">OnPath is built from these open-source parts. Tap “License text” to read a license – everything is in the app, no internet needed.</string>
+    <string name="settings_licences_text">License text</string>
+    <string name="settings_licences_text_hide">Hide license text</string>
+    <string name="settings_licences_odbl">Map data © OpenStreetMap contributors, available under the Open Database License (ODbL) 1.0 (opendatacommons.org/licenses/odbl). Terrain and world overview: see Credits.</string>
+    <string name="settings_lic_note_maplibre">Includes the third-party parts of its map engine – all of them are in the license text.</string>
     <string name="settings_lic_note_brouter">Changed by OnPath (“onpath1”): one method made reachable so OnPath can try again when a point lies on a small separate piece of the path network. OnPath's routing profiles build on BRouter's.</string>
     <string name="settings_lic_note_noto">Glyphs for the map labels, made from the fonts (a change of format).</string>
     <string name="settings_lic_note_icons">Pictograms of the POI symbols. CC0 needs no credit – named with thanks.</string>
-    <string name="settings_lic_unchecked">Licence not checked yet</string>
+    <string name="settings_lic_unchecked">License not checked yet</string>
     <plurals name="settings_sum_maps_areas"><item quantity="one">%1$s · %2$d area</item><item quantity="other">%1$s · %2$d areas</item></plurals>
     <plurals name="settings_sum_diag_new"><item quantity="one">%1$d new problem</item><item quantity="other">%1$d new problems</item></plurals>
     <plurals name="settings_sum_diag_notes"><item quantity="one">For bug reports · %1$d note</item><item quantity="other">For bug reports · %1$d notes</item></plurals>
