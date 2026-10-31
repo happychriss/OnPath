@@ -157,4 +157,8 @@
     <string name="settings_privacy_sync_when">only when you pair with a browser: after a change and when the app opens</string>
     <string name="settings_privacy_sync_title">Plan sync with the web planner (only when you pair)</string>
     <string name="settings_privacy_sync_text">Your saved routes and imported tracks are encrypted on your phone and in your browser before they leave the device. They pass through our sync server (Cloudflare, stored in the EU) as locked data: the server cannot read them and never learns your name, e-mail or where you plan to go. It stores a random mailbox number, the locked routes and when they last changed. Unpairing deletes everything there at once; a mailbox nobody uses for 12 months is deleted automatically. Whoever has your pairing code can see your saved routes – do not share it.</string>
+    <string name="settings_nav_voice_bike">Spoken directions when cycling</string>
+    <string name="settings_nav_voice_hike">Spoken directions when hiking</string>
+    <string name="settings_nav_voice_sub">Only where you could take the wrong way. Starts after the voice test in Phone setup.</string>
+    <string name="settings_nav_voice_test">Test voice</string>
 </resources>

@@ -241,7 +241,8 @@ fun SettingsScreen(
                         SettingsPage.MAP -> item { MapSection(settings, onChange, themes) }
                         SettingsPage.NAVIGATION -> item {
                             NavigationSection(settings, onChange, onPhoneSetup = { onPage(SettingsPage.PHONE) },
-                                onTestVibration = { onPhoneFix(com.onpath.app.setup.CheckId.VIBRATION) })
+                                onTestVibration = { onPhoneFix(com.onpath.app.setup.CheckId.VIBRATION) },
+                                onTestVoice = { onPhoneFix(com.onpath.app.setup.CheckId.VOICE) })
                         }
                         SettingsPage.PHONE -> if (phoneChecks != null) item {
                             com.onpath.app.ui.setup.PhoneSetupSection(phoneChecks, phone, onPhoneFix,
@@ -401,7 +402,7 @@ private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, t
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> Unit, onPhoneSetup: () -> Unit,
-                               onTestVibration: () -> Unit) {
+                               onTestVibration: () -> Unit, onTestVoice: () -> Unit = {}) {
     Section(SettingsPage.NAVIGATION.title) {
         SwitchRow(str(Res.string.settings_nav_offroute), str(Res.string.settings_nav_offroute_sub),
             settings.offRouteWarning) { onChange(settings.copy(offRouteWarning = it)) }
@@ -435,6 +436,15 @@ internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) ->
         if (settings.junctionVibration != com.onpath.app.data.JunctionVibration.OFF || settings.offRouteVibrate)
             TextButton(onClick = onTestVibration, modifier = Modifier.padding(start = 8.dp).heightIn(min = 48.dp)) {
                 Text(str(Res.string.setup_nav_test_vibration))
+            }
+        // spoken directions (owner 2026-10-31, docs/design/voice-guidance.md): per bike / hike, plus the voice test
+        SwitchRow(str(Res.string.settings_nav_voice_bike), str(Res.string.settings_nav_voice_sub), settings.voiceBike) {
+            onChange(settings.copy(voiceBike = it))
+        }
+        SwitchRow(str(Res.string.settings_nav_voice_hike), null, settings.voiceHike) { onChange(settings.copy(voiceHike = it)) }
+        if (settings.voiceBike || settings.voiceHike)
+            TextButton(onClick = onTestVoice, modifier = Modifier.padding(start = 8.dp).heightIn(min = 48.dp)) {
+                Text(str(Res.string.settings_nav_voice_test))
             }
         SwitchRow(str(Res.string.settings_nav_on_route), str(Res.string.settings_nav_on_route_sub), settings.positionOnRoute) {
             onChange(settings.copy(positionOnRoute = it))

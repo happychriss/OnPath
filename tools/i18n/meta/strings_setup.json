@@ -473,5 +473,59 @@
     "context": "Settings → Phone setup: row name of battery saver",
     "priority": 1,
     "confidence": "sicher"
+  },
+  "setup_voice_title": {
+    "area": "Phone setup → Voice step",
+    "context": "Spoken directions (docs/design/voice-guidance.md)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "setup_voice_why": {
+    "area": "Phone setup → Voice step",
+    "context": "Spoken directions (docs/design/voice-guidance.md)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "setup_voice_do": {
+    "area": "Phone setup → Voice step",
+    "context": "Spoken directions (docs/design/voice-guidance.md)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "setup_voice_question": {
+    "area": "Phone setup → Voice step",
+    "context": "Spoken directions (docs/design/voice-guidance.md)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "setup_voice_yes": {
+    "area": "Phone setup → Voice step",
+    "context": "Spoken directions (docs/design/voice-guidance.md)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "setup_voice_not_heard": {
+    "area": "Phone setup → Voice step",
+    "context": "Spoken directions (docs/design/voice-guidance.md)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "setup_voice_missing": {
+    "area": "Phone setup → Voice step",
+    "context": "Spoken directions (docs/design/voice-guidance.md)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "setup_voice_load": {
+    "area": "Phone setup → Voice step",
+    "context": "Spoken directions (docs/design/voice-guidance.md)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "setup_voice_none": {
+    "area": "Phone setup → Voice step",
+    "context": "Spoken directions (docs/design/voice-guidance.md)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
   }
 }

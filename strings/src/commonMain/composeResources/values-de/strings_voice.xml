@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Spoken directions (docs/design/voice-guidance.md): whole phrases, spoken by the phone's text-to-speech. -->
+    <string name="voice_test">So klingen die Ansagen: In 100 Metern links.</string>
+    <string name="voice_start">Los geht's. %1$s.</string>
+    <string name="voice_start_dest">Los geht's. %1$s bis %2$s.</string>
+    <string name="voice_start_time">Los geht's. %1$s, etwa %2$s.</string>
+    <string name="voice_start_dest_time">Los geht's. %1$s bis %2$s, etwa %3$s.</string>
+    <string name="voice_in">%1$s %2$s</string>
+    <string name="voice_soon">Gleich %1$s</string>
+    <string name="voice_in_m">In %1$s Metern</string>
+    <string name="voice_turn_left">links</string>
+    <string name="voice_turn_slight_left">leicht links</string>
+    <string name="voice_turn_sharp_left">scharf links</string>
+    <string name="voice_keep_left">links halten</string>
+    <string name="voice_turn_right">rechts</string>
+    <string name="voice_turn_slight_right">leicht rechts</string>
+    <string name="voice_turn_sharp_right">scharf rechts</string>
+    <string name="voice_keep_right">rechts halten</string>
+    <string name="voice_u_turn">wenden</string>
+    <string name="voice_roundabout">in den Kreisverkehr</string>
+    <string name="voice_roundabout_exit">im Kreisverkehr die %1$s Ausfahrt</string>
+    <string name="voice_exit_1">erste</string>
+    <string name="voice_exit_2">zweite</string>
+    <string name="voice_exit_3">dritte</string>
+    <string name="voice_exit_4">vierte</string>
+    <string name="voice_exit_5">fünfte</string>
+    <string name="voice_exit_6">sechste</string>
+    <string name="voice_onto">%1$s %2$s</string>
+    <string name="voice_way_path">auf den Pfad</string>
+    <string name="voice_way_track">auf den Feldweg</string>
+    <string name="voice_way_road">auf die Straße</string>
+    <string name="voice_then">%1$s, danach gleich %2$s</string>
+    <string name="voice_then_straight">%1$s, dann %2$s geradeaus</string>
+    <string name="voice_sentence">%1$s.</string>
+    <string name="voice_off_route">Abseits der Route. Bitte aufs Handy schauen.</string>
+    <string name="voice_back_on_route">Wieder auf der Route.</string>
+    <string name="voice_new_route">Neue Route.</string>
+    <string name="voice_stop_named">%1$s erreicht.</string>
+    <string name="voice_stop_number">Stopp %1$d erreicht.</string>
+    <string name="voice_next">Weiter nach %1$s, %2$s.</string>
+    <string name="voice_arrived">Ziel erreicht.</string>
+    <string name="voice_no_gps">Kein GPS-Signal.</string>
+    <string name="voice_no_destination">Kein Ziel mehr vor dir. Bitte aufs Handy schauen.</string>
+    <string name="voice_hours_minutes">%1$s %2$s</string>
+    <plurals name="voice_in_km">
+        <item quantity="one">In einem Kilometer</item>
+        <item quantity="other">In %1$s Kilometern</item>
+    </plurals>
+    <plurals name="voice_km">
+        <item quantity="one">ein Kilometer</item>
+        <item quantity="other">%1$s Kilometer</item>
+    </plurals>
+    <plurals name="voice_m">
+        <item quantity="one">ein Meter</item>
+        <item quantity="other">%1$s Meter</item>
+    </plurals>
+    <plurals name="voice_minutes">
+        <item quantity="one">eine Minute</item>
+        <item quantity="other">%1$s Minuten</item>
+    </plurals>
+    <plurals name="voice_hours">
+        <item quantity="one">eine Stunde</item>
+        <item quantity="other">%1$s Stunden</item>
+    </plurals>
+</resources>

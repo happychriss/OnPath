@@ -890,5 +890,29 @@
     "context": "Line under the switch 'Position on route'",
     "priority": 1,
     "confidence": "sicher"
+  },
+  "settings_nav_voice_bike": {
+    "area": "Settings → Navigation",
+    "context": "Spoken directions (docs/design/voice-guidance.md)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "settings_nav_voice_hike": {
+    "area": "Settings → Navigation",
+    "context": "Spoken directions (docs/design/voice-guidance.md)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "settings_nav_voice_sub": {
+    "area": "Settings → Navigation",
+    "context": "Spoken directions (docs/design/voice-guidance.md)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "settings_nav_voice_test": {
+    "area": "Settings → Navigation",
+    "context": "Spoken directions (docs/design/voice-guidance.md)",
+    "priority": 2,
+    "confidence": "bitte prüfen"
   }
 }
