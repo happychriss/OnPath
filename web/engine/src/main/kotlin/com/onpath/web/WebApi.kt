@@ -566,9 +566,15 @@ class WebContext(private val dir: File) : android.content.Context() {
 
 @JSExport fun searchHasArea(key: String): Boolean = WebSearch.hasArea(key)
 
-@JSExport fun search(text: String, lat: Double, lon: Double, route: String): String = WebSearch.search(text, lat, lon, route)
+@JSExport fun search(text: String, lat: Double, lon: Double, route: String, category: String): String =
+    WebSearch.search(text, lat, lon, route, category)
 
-@JSExport fun searchOnline(text: String, photonJson: String): String = WebSearch.online(text, photonJson)
+@JSExport fun searchOnline(text: String, photonJson: String, category: String): String = WebSearch.online(text, photonJson, category)
+
+/** The six search chips (the app's SearchKinds.Category): [[name, label], …]. */
+@JSExport fun searchCategories(): String = WebSearch.categories()
+
+@JSExport fun searchReset() = WebSearch.reset()
 
 @JSExport fun insertIndex(points: String, lat: Double, lon: Double, lineSnapM: Double): Int =
     Engine.insertIndex(points, lat, lon, lineSnapM)

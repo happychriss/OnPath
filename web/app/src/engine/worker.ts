@@ -26,8 +26,10 @@ interface WasmEngine {
   placePreview(points: string, lat: number, lon: number): string;
   searchAddArea(key: string, dir: string): number;
   searchHasArea(key: string): boolean;
-  search(text: string, lat: number, lon: number, route: string): string;
-  searchOnline(text: string, photonJson: string): string;
+  search(text: string, lat: number, lon: number, route: string, category: string): string;
+  searchOnline(text: string, photonJson: string, category: string): string;
+  searchCategories(): string;
+  searchReset(): void;
   insertIndex(points: string, lat: number, lon: number, lineSnapM: number): number;
   historyRecord(points: string): void;
   historyStep(op: string, points: string): string;
@@ -68,7 +70,9 @@ const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historySt
   // A-017 folders (web-sync.md §5.1): JOIN, role, tracks, push only on Save
   'syncOutboxOf', 'syncHelloAs', 'syncPeek', 'syncJoinBlob', 'syncHelloId', 'syncRebase', 'syncSaveTrack', 'syncTrackFit', 'syncTrackGpx',
   // sync fields 7 / 8 (web-sync.md §5.2): Save with this engine's routing; the diagnostics line
-  'syncSaveRouted', 'routingInfo']);
+  'syncSaveRouted', 'routingInfo',
+  // the app's search chips and a fresh search (WebSearch.kt: SearchKinds.Category, SearchSession's kept list)
+  'searchCategories', 'searchReset']);
 
 declare const TeaVM: { wasmGC: { load(url: string): Promise<{ exports: WasmEngine }> } };
 
@@ -253,8 +257,8 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       reply({ id: req.id, ok: true });
       return;
     }
-    if (req.type === 'search') { reply({ id: req.id, ok: true, text: e.search(req.text, req.lat, req.lon, req.route) }); return; }
-    if (req.type === 'searchOnline') { reply({ id: req.id, ok: true, text: e.searchOnline(req.text, req.photon) }); return; }
+    if (req.type === 'search') { reply({ id: req.id, ok: true, text: e.search(req.text, req.lat, req.lon, req.route, req.category ?? '') }); return; }
+    if (req.type === 'searchOnline') { reply({ id: req.id, ok: true, text: e.searchOnline(req.text, req.photon, req.category ?? '') }); return; }
     if (req.type === 'call') {
       if (!CALLS.has(req.fn)) throw new Error(`unknown engine call ${req.fn}`);
       const fn = (e as unknown as Record<string, (...a: unknown[]) => unknown>)[req.fn];

@@ -8,8 +8,8 @@ export type EngineRequest =
   | { id: number; type: 'edit'; op: string; points: string; index: number; to: number }
   | { id: number; type: 'rows'; points: string; names: string }
   | { id: number; type: 'searchAreas'; areas: { key: string; dir: string }[] }
-  | { id: number; type: 'search'; text: string; lat: number; lon: number; route: string }
-  | { id: number; type: 'searchOnline'; text: string; photon: string }
+  | { id: number; type: 'search'; text: string; lat: number; lon: number; route: string; category: string }
+  | { id: number; type: 'searchOnline'; text: string; photon: string; category: string }
   | { id: number; type: 'placePreview'; points: string; lat: number; lon: number }
   | { id: number; type: 'prefetch'; lat: number; lon: number }
   | { id: number; type: 'call'; fn: string; args: (string | number | boolean)[] }

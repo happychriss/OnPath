@@ -75,6 +75,20 @@ const bars = await page.evaluate(() => [...document.querySelectorAll('#breakdown
 check(bars.length === 2 && bars.every((n) => n >= 1) && await page.isVisible('#breakdown .bdlegend'), `a click shows the two bars with their legend (${bars})`);
 await page.click('#breakdown .bdhead');
 
+// the app's six search chips (SearchKinds.Category): under the search field when it is focused; a click picks, again unpicks
+await page.click('#q');
+await page.waitForSelector('#results .searchchips .chip', { timeout: 10_000 }).catch(() => {});
+const chips = await page.$$eval('#results .searchchips .chip', (b) => b.map((x) => x.textContent));
+check(chips.join('|') === 'Places|Food|Sights|Water|Transit|Parking', `search chips as in the app: ${chips.join(' · ')}`);
+await page.click('#results .chip[data-cat="PARKING"]');
+await page.waitForFunction(() => document.querySelector('#results .chip[data-cat="PARKING"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 10_000 }).catch(() => {});
+const on = await page.getAttribute('#results .chip[data-cat="PARKING"]', 'aria-pressed');
+await page.click('#results .chip[data-cat="PARKING"]');
+await page.waitForFunction(() => document.querySelector('#results .chip[data-cat="PARKING"]')?.getAttribute('aria-pressed') === 'false', null, { timeout: 10_000 }).catch(() => {});
+check(on === 'true' && await page.getAttribute('#results .chip[data-cat="PARKING"]', 'aria-pressed') === 'false', 'a chip click picks "Parking", a second click unpicks it');
+await page.keyboard.press('Escape');
+await page.mouse.click(640, 500);
+
 // Points list ✕ on the loop's start (the app's PlanPoints.deleteAt): the start goes, the loop closes at the next point –
 // still a round trip with ↺, one marker less (the web used to drop start and end: the loop opened)
 const pinsBefore = await page.evaluate(() => document.querySelectorAll('.pin').length);

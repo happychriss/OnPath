@@ -81,14 +81,14 @@ export class EngineClient {
   async searchAreas(areas: { key: string; dir: string }[]): Promise<void> { await this.ask({ type: 'searchAreas', areas }); }
 
   /** Offline hits (the app's index + ranking). */
-  async search(text: string, lat: number, lon: number, route: [number, number][]): Promise<Hit[]> {
-    const r = await this.ask({ type: 'search', text, lat, lon, route: enc(route) });
+  async search(text: string, lat: number, lon: number, route: [number, number][], category = ''): Promise<Hit[]> {
+    const r = await this.ask({ type: 'search', text, lat, lon, route: enc(route), category });
     return r.ok && r.text ? JSON.parse(r.text) : [];
   }
 
   /** Offline + online hits for the last query, given Photon's answer (the app's merge). */
-  async searchOnline(text: string, photon: string): Promise<Hit[] | null> {
-    const r = await this.ask({ type: 'searchOnline', text, photon });
+  async searchOnline(text: string, photon: string, category = ''): Promise<Hit[] | null> {
+    const r = await this.ask({ type: 'searchOnline', text, photon, category });
     return r.ok && r.text ? JSON.parse(r.text) : null;
   }
 

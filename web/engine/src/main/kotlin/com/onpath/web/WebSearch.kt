@@ -27,6 +27,29 @@ object WebSearch {
     private var entries: List<OfflineIndex.Entry> = emptyList()
     private var lastQuery: SearchQuery? = null
     private var lastOffline: List<SearchHit> = emptyList()
+    /** Online rows on screen (also kept from an earlier text that still matches), as the app's SearchUi.online. */
+    private var lastOnline: List<SearchHit> = emptyList()
+    /** The list on screen and what it was ranked for (normalised text + category) – the app's SearchUi.shown / shownFor. */
+    private var shown: List<SearchHit>? = null
+    private var shownFor: String? = null
+    /** Where the last online search was centred (scores online rows kept for the next text). */
+    private var onlineCentre: Pair<Double, Double>? = null
+
+    private fun keyOf(text: String, cat: SearchKinds.Category?) = com.onpath.app.search.SearchText.normalize(text) + "|" + (cat?.name ?: "")
+
+    /** [next] as the list on screen: for the text already shown, rows on screen stay and new ones go below (keepShown). */
+    private fun shownList(key: String, next: List<SearchHit>): List<SearchHit> {
+        val s = shown
+        return (if (s != null && shownFor == key) SearchRanking.keepShown(s, next) else next).also { shown = it; shownFor = key }
+    }
+
+    private fun categoryOf(name: String): SearchKinds.Category? = SearchKinds.Category.entries.firstOrNull { it.name == name }
+
+    /** The six search chips (the app's SearchKinds.Category, labels in the page's language): JSON [[name, label], …]. */
+    fun categories(): String = SearchKinds.Category.entries.joinToString(",", "[", "]") { "[" + s(it.name) + "," + s(it.label) + "]" }
+
+    /** The search closed (or the text and chip emptied): the next one starts afresh, as the app's inactive search. */
+    fun reset() { shown = null; shownFor = null; lastOnline = emptyList(); lastOffline = emptyList(); lastQuery = null }
 
     /** Indexes one map area from the files in [dir] (pois.geojson, base.pmtiles, overlays.pmtiles). Returns its entries. */
     fun addArea(key: String, dir: String): Int {
@@ -52,29 +75,50 @@ object WebSearch {
         try { block() } catch (e: Throwable) { Problems.warn("search", "Search index: $what skipped (file unreadable)", e) }
     }
 
-    /** Offline hits for [text] near ([lat], [lon]); [route] = "lat,lon;…" of the planned line or "". JSON list. */
-    fun search(text: String, lat: Double, lon: Double, route: String): String {
+    /**
+     * Offline hits for [text] (and chip [category], "" = none) near ([lat], [lon]); [route] = "lat,lon;…" of the planned
+     * line or "". As the app's SearchSession: online rows already on screen that still match the new text stay in its
+     * list; for the same text the rows on screen keep their places, new ones go below (never a jump under the pointer,
+     * field bug 0.13.2). JSON list = the list to show.
+     */
+    fun search(text: String, lat: Double, lon: Double, route: String, category: String = ""): String {
         val line = route.split(';').filter { it.isNotBlank() }.map { p ->
             val (a, b) = p.split(','); GeoPoint(a.toDouble(), b.toDouble())
         }.takeIf { it.size >= 2 }
-        val q = SearchQuery(text, null, lat, lon, line)
+        val cat = categoryOf(category)
+        val q = SearchQuery(text, cat, lat, lon, line)
+        val key = keyOf(text, cat)
         lastQuery = q
         lastOffline = SearchRanking.rank(entries, q)
-        return json(lastOffline)
+        val t = text.trim()
+        val kinds = cat?.kinds
+        val keep = if (t.length < 3) emptyList()
+            else SearchRanking.stillMatching(lastOnline.map { it.place }, t).filter { kinds == null || it.kind in kinds }
+        lastOnline = if (keep.isEmpty()) emptyList() else {
+            val towns = OnlineRanking.queryTowns(t, emptyList())
+            val (cLat, cLon) = onlineCentre ?: (lat to lon)
+            SearchRanking.onlineHits(SearchMerge.onlineExtras(lastOffline.map { it.place }, keep), q, towns, cLat, cLon)
+        }
+        return json(shownList(key, SearchRanking.mix(lastOffline, lastOnline)))
     }
 
     /**
-     * Online answer for the last query: Photon's GeoJSON → places → the app's re-ranking, minus places the offline
-     * list already has, scored on the offline scale and put below the rows already shown (rows never move under the
-     * pointer, as in the app). Returns the whole list (offline + online) as JSON.
+     * Online answer for the last query: Photon's GeoJSON → places → the app's re-ranking, minus places already listed,
+     * scored on the offline scale and added – the rows on screen stay where they are (keepShown). Returns the list.
      */
-    fun online(text: String, photonJson: String): String {
-        val q = lastQuery?.takeIf { it.text == text } ?: return json(lastOffline)
+    fun online(text: String, photonJson: String, category: String = ""): String {
+        val q = lastQuery?.takeIf { it.text == text } ?: return json(shown ?: lastOffline)
+        val cat = categoryOf(category)
+        val key = keyOf(text, cat)
+        val kinds = cat?.kinds
         val towns = OnlineRanking.queryTowns(text, emptyList())
-        val ranked = OnlineRanking.rank(PhotonParser.parse(photonJson), q.refLat, q.refLon, null, towns).take(10)
-        val extras = SearchMerge.onlineExtras(lastOffline.map { it.place }, ranked)
-        val scored = SearchRanking.onlineHits(extras, q, towns)
-        return json(SearchRanking.mix(lastOffline, scored, keepShown = lastOffline.isNotEmpty()))
+        val ranked = OnlineRanking.rank(PhotonParser.parse(photonJson), q.refLat, q.refLon, null, towns, text).take(10)
+        val offline = if (shownFor == key) lastOffline else emptyList()
+        val extras = SearchMerge.onlineExtras(offline.map { it.place } + lastOnline.map { it.place }, ranked)
+            .filter { kinds == null || it.kind in kinds }
+        onlineCentre = q.refLat to q.refLon
+        lastOnline = lastOnline + SearchRanking.onlineHits(extras, q, towns, q.refLat, q.refLon)
+        return json(shownList(key, SearchRanking.mix(offline, lastOnline)))
     }
 
     private fun json(hits: List<SearchHit>): String = hits.joinToString(",", "[", "]") { h ->

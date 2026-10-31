@@ -64,17 +64,28 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   let gen = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let marker: maplibregl.Marker | null = null;
+  /** The chip picked (the app's SearchKinds.Category name), '' = none; the six chips with their labels from the engine. */
+  let category = '';
+  let chips: [string, string][] | null = null;
+  const loadChips = async () => { chips ??= JSON.parse(await host.engine.call('searchCategories')) as [string, string][]; return chips; };
+  /** The app's chip row (Orte · Essen · Sehenswert · Wasser · Bahn · Parken): one scrolling row, a click picks / unpicks. */
+  const chipRow = () => `<div class="searchchips" role="toolbar">${(chips ?? []).map(([k, label]) =>
+    `<button class="chip${k === category ? ' on' : ''}" data-cat="${k}" aria-pressed="${k === category}">${esc(label)}</button>`).join('')}</div>`;
+  const wireChips = () => results.querySelectorAll<HTMLButtonElement>('.searchchips .chip').forEach((b) => {
+    b.onclick = (e) => { e.stopPropagation(); category = category === b.dataset.cat ? '' : b.dataset.cat!; run(); q.focus(); };
+  });
 
   const render = (hits: Hit[], note: string) => {
     results.hidden = false;
-    results.innerHTML = (hits.length ? hits.map((h, i) => `
+    results.innerHTML = chipRow() + (hits.length ? hits.map((h, i) => `
       <button class="hit" data-i="${i}">
         <span class="glyph" style="background:${h.color}">${esc(h.glyph)}</span>
         <span class="txt"><b>${esc(h.title)}</b><span class="muted">${esc(h.subtitle)}</span>
         ${h.address ? `<span class="muted small">${esc(h.address)}</span>` : ''}</span>
-      </button>`).join('') : `<div class="muted pad">${esc(q.value.trim().length < 2 ? t('web_search_type') : t('web_search_nothing'))}</div>`) +
+      </button>`).join('') : `<div class="muted pad">${esc(q.value.trim().length < 2 && !category ? t('web_search_type') : t('web_search_nothing'))}</div>`) +
       (note ? `<div class="muted small pad">${esc(note)}</div>` : '');
     results.querySelectorAll<HTMLButtonElement>('.hit').forEach((b) => { b.onclick = () => pick(hits[Number(b.dataset.i)]); });
+    wireChips();
   };
 
   const run = async () => {
@@ -83,10 +94,12 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     clear.hidden = !text;
     close();
     if (timer) clearTimeout(timer);
-    if (!text.trim()) { results.hidden = true; return; }
+    await loadChips();
+    // nothing typed, no chip: the next search starts afresh (the app's inactive search); the chips stay to pick from
+    if (!text.trim() && !category) { void host.engine.call('searchReset'); if (my === gen && document.activeElement === q) render([], ''); else results.hidden = true; return; }
     const c = host.map.getCenter();
     await host.engine.searchAreas(await host.areas());
-    const offline = await host.engine.search(text, c.lat, c.lng, host.route());
+    const offline = await host.engine.search(text, c.lat, c.lng, host.route(), category);
     if (my !== gen) return;
     const online = text.trim().length >= 3;
     render(offline, online ? t('search_searching_online') : '');
@@ -95,7 +108,7 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
       let mixed: Hit[] | null = null;
       try {
         const r = await fetch(photonUrl(text, c.lat, c.lng));
-        if (r.ok) mixed = await host.engine.searchOnline(text, await r.text());
+        if (r.ok) mixed = await host.engine.searchOnline(text, await r.text(), category);
       } catch { /* expected: offline or Photon unreachable – the offline rows stay (the app is silent too) */ }
       if (my !== gen) return;
       const list = mixed ?? offline;
@@ -183,6 +196,7 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   card.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
 
   q.addEventListener('input', () => { run(); });
+  q.addEventListener('focus', () => { if (!q.value.trim() && !category) run(); }); // the chips to start from
   q.addEventListener('keydown', (e) => { if (e.key === 'Escape') { q.value = ''; run(); } });
   clear.onclick = () => { q.value = ''; run(); q.focus(); };
   return { close, isOpen: () => !card.hidden };
