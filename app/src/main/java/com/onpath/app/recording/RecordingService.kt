@@ -40,6 +40,7 @@ import com.onpath.app.navigation.NavSessionStore
 import com.onpath.app.navigation.NavState
 import com.onpath.app.navigation.NavText
 import com.onpath.app.navigation.Navigator
+import com.onpath.app.navigation.offRoute
 import com.onpath.app.navigation.OffRouteDetector
 import com.onpath.app.navigation.Rerouter
 import com.onpath.app.routing.EngineProvider
@@ -180,7 +181,8 @@ class RecordingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val control = intent?.action in setOf(ACTION_PAUSE, ACTION_RESUME, ACTION_STOP, ACTION_FOLLOW_CHANGED, ACTION_NAVIGATING,
-            ACTION_SETTINGS, ACTION_TAKE_ROUTE, ACTION_TAKE_VIA, ACTION_KEEP_ROUTE, ACTION_CHECK_NOW, ACTION_PROPOSE_SWITCH)
+            ACTION_SETTINGS, ACTION_TAKE_ROUTE, ACTION_TAKE_VIA, ACTION_KEEP_ROUTE, ACTION_CHECK_NOW, ACTION_PROPOSE_SWITCH,
+            ACTION_LEAD_THERE, ACTION_JUST_RECORD, ACTION_LEAD_FAILED_OK)
         if (control && tourId < 0) { stopSelf(startId); return START_NOT_STICKY } // nothing is recording
         when (intent?.action) {
             ACTION_PAUSE -> { setPaused(true); return START_STICKY }
@@ -213,6 +215,18 @@ class RecordingService : Service() {
             }
             ACTION_KEEP_ROUTE -> {
                 navigator?.let { handle(it.keep(intent.getIntExtra(EXTRA_QUESTION, -1))) }
+                return START_STICKY
+            }
+            ACTION_LEAD_THERE -> {
+                navigator?.let { handle(it.leadThere(intent.getIntExtra(EXTRA_QUESTION, -1))) }
+                return START_STICKY
+            }
+            ACTION_JUST_RECORD -> {
+                navigator?.let { handle(it.justRecord(intent.getIntExtra(EXTRA_QUESTION, -1))) }
+                return START_STICKY
+            }
+            ACTION_LEAD_FAILED_OK -> {
+                navigator?.let { handle(it.leadFailedOk(intent.getIntExtra(EXTRA_QUESTION, -1))) }
                 return START_STICKY
             }
             ACTION_PROPOSE_SWITCH -> {
@@ -527,7 +541,8 @@ class RecordingService : Service() {
         follow = Prefs(this).loadFollow()
         val line = follow?.second?.takeIf { it.size >= 2 }
         val stored = sessionStore.load()
-        val session = when {
+        val old = navigator
+        var session = when {
             line == null -> null
             stored != null && stored.active.size == line.size -> stored
             else -> {
@@ -535,7 +550,12 @@ class RecordingService : Service() {
                 NavSession(NavKind.TRACK, follow?.first ?: Txt.s(Res.string.nav_route_fallback), prefs.activity, prefs.sac, line)
             }
         }
-        val old = navigator
+        // the plan edited mid-tour ("Continue navigation"): the rider has been on the route already – off the edited
+        // line is off route as before, never "the route starts 3 km away" (a newly followed track starts afresh)
+        if (session != null && !session.reached && session.kind == NavKind.PLAN && old?.session?.let { it.reached && it.kind == NavKind.PLAN } == true) {
+            session = session.copy(reached = true)
+            sessionStore.save(session)
+        }
         // the walking direction carries over to the new line (plan edited mid-walk: the way back of a round trip)
         navigator = session?.let { Navigator(it).apply { setNavigating(navigating); old?.let { o -> detector.adoptHeading(o.detector) } } }
         applySettings()
@@ -710,14 +730,21 @@ class RecordingService : Service() {
             return
         }
         val hint = NavText.toRoute(nav.toRoute)
-        val channel = TourChannels.forQuestion(AppVisibility.visible)
-        val key = when (pr) { is NavPrompt.Question -> "q${pr.id}"; else -> pr.javaClass.simpleName } + "@" + channel
+        // never on the route yet (owner 2026-10-31): the far start is calm – always the quiet navigation channel
+        val channel = if (pr.offRoute) TourChannels.forQuestion(AppVisibility.visible) else TourChannels.NAVIGATION
+        val key = when (pr) {
+            is NavPrompt.Question -> "q${pr.id}"
+            is NavPrompt.FarStart -> "f${pr.id}${if (pr.searching) "s" else ""}"
+            is NavPrompt.LeadFailed -> "e${pr.id}"
+            else -> pr.javaClass.simpleName
+        } + "@" + channel
         val now = SystemClock.elapsedRealtime()
         if (key == alertKey && now - alertPosted < 15_000) return
         alertKey = key; alertPosted = now
         try {
             val text = when (pr) {
                 is NavPrompt.Question -> NavText.question(pr)
+                is NavPrompt.FarStart, is NavPrompt.LeadFailed -> NavText.state(pr)
                 else -> hint ?: follow?.first?.let { Txt.s(Res.string.nav_back_to, it) } ?: Txt.s(Res.string.nav_back_to_route)
             }
             val b = NotificationCompat.Builder(this, channel)
@@ -733,7 +760,14 @@ class RecordingService : Service() {
                 .setContentIntent(openAppIntent())
             // an activity switch was asked for on the screen: no sound (the user is looking), the question stays
             if (pr is NavPrompt.Question && pr.switch != null) b.setSilent(true)
-            if (pr is NavPrompt.Question && pr.via != null) {
+            // never on the route yet (owner 2026-10-31): a calm question – no sound, no vibration, no popup
+            if (!pr.offRoute) b.setSilent(true).setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            if (pr is NavPrompt.FarStart && !pr.searching) {
+                b.addAction(0, NavText.LEAD, actionIntent(ACTION_LEAD_THERE, 13) { putExtra(EXTRA_QUESTION, pr.id) })
+                b.addAction(0, NavText.JUST_RECORD, actionIntent(ACTION_JUST_RECORD, 14) { putExtra(EXTRA_QUESTION, pr.id) })
+            } else if (pr is NavPrompt.LeadFailed) {
+                b.addAction(0, Txt.s(Res.string.common_ok), actionIntent(ACTION_LEAD_FAILED_OK, 15) { putExtra(EXTRA_QUESTION, pr.id) })
+            } else if (pr is NavPrompt.Question && pr.via != null) {
                 // "Off route – re-plan?": Yes (via the stop) · Yes, skip it (without it) · Keep original. Three actions
                 // share one row and Android cuts long labels: the short skip label, the text names the stop.
                 b.addAction(0, NavText.YES, actionIntent(ACTION_TAKE_VIA, 12) { putExtra(EXTRA_QUESTION, pr.id) })
@@ -997,7 +1031,7 @@ class RecordingService : Service() {
     private fun notifStatus() = when {
         paused -> Txt.s(Res.string.nav_status_paused)
         tourId >= 0 && gpsLost() -> Txt.s(Res.string.nav_status_searching_gps)
-        navigator?.prompt != null -> Txt.s(Res.string.nav_off_route)
+        navigator?.prompt?.offRoute == true -> Txt.s(Res.string.nav_off_route)
         else -> Txt.s(Res.string.nav_status_recording)
     }
 
@@ -1058,6 +1092,10 @@ class RecordingService : Service() {
         const val ACTION_TAKE_ROUTE = "com.onpath.app.TAKE_ROUTE"
         const val ACTION_KEEP_ROUTE = "com.onpath.app.KEEP_ROUTE"
         const val ACTION_TAKE_VIA = "com.onpath.app.TAKE_VIA"
+        /** Never on the route yet (owner 2026-10-31): "Route starts 31 km away" – Guide me / Just record; OK on "no way". */
+        const val ACTION_LEAD_THERE = "com.onpath.app.LEAD_THERE"
+        const val ACTION_JUST_RECORD = "com.onpath.app.JUST_RECORD"
+        const val ACTION_LEAD_FAILED_OK = "com.onpath.app.LEAD_FAILED_OK"
         const val EXTRA_QUESTION = "question"
         /** Activity check: a proposed session for another activity is in ActivityCheck.PROPOSAL_FILE ([EXTRA_TIME_S] = its time). */
         const val ACTION_PROPOSE_SWITCH = "com.onpath.app.PROPOSE_SWITCH"

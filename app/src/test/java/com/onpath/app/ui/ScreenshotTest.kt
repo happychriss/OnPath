@@ -397,7 +397,7 @@ class ScreenshotTest {
 
     // --- Re-routing while navigating (owner: ask every time, nothing disappears by itself) ---
     private val hint = com.onpath.app.navigation.RouteHint(120.0, 45.0, GeoPoint(46.68, 11.13))
-    private val question = com.onpath.app.navigation.NavPrompt.Question(1, 350.0, 600.0, 20.0, emptyList(), 900.0, 2_000.0)
+    private val question = com.onpath.app.navigation.NavPrompt.Question(1, 350.0, 600.0, 20.0, emptyList(), 900.0, 2_000.0, offM = 118.0)
 
     /** While off route the service says "not on route" (no stale time): the status card keeps only the recording line. */
     private val offUi = navUi.copy(toGo = ToGo(0.0, 0.0, 0.0, 120.0, state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE))
@@ -458,6 +458,28 @@ class ScreenshotTest {
     @Test fun navigateRerouteSkipStopNamed() = paparazzi.snapshot {
         NavFrame(navUi.copy(offRoute = OffRouteUi(question.copy(skipStop = 2, skipName = "Gasthof Hochmuth",
             via = question.copy(extraM = question.extraM + 1_400.0)), hint)))
+    }
+
+    /**
+     * Never on the route yet, 31 km from its start (owner 2026-10-31, field: tour started at home): a calm question –
+     * no vibration, no off-route card – "Route starts 31 km away" · "south-west (direct) · recording" · Just record / Guide me.
+     */
+    private val farUi = navUi.copy(toGo = ToGo(0.0, 0.0, 0.0, 28_400.0, state = com.onpath.app.time.EstimateState.NOT_ON_ROUTE),
+        recordedM = 0.0, elapsedS = 40, activity = Activity.BIKE_TOURING)
+    private val farHint = com.onpath.app.navigation.RouteHint(30_600.0, 225.0, GeoPoint(46.4, 10.9))
+
+    @Test fun navigateFarStart() = paparazzi.snapshot {
+        NavFrame(farUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.FarStart(1, 30_600.0, 225.0), farHint, arrowDeg = -135f)))
+    }
+
+    /** "Guide me" tapped: the way to the start is being computed (spinner, "Guide me" waits). */
+    @Test fun navigateFarStartSearching() = paparazzi.snapshot {
+        NavFrame(farUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.FarStart(1, 30_600.0, 225.0, searching = true), farHint, arrowDeg = -135f)))
+    }
+
+    /** "Guide me" found no way: the red note with OK where the question was; recording goes on. */
+    @Test fun navigateLeadFailed() = paparazzi.snapshot {
+        NavFrame(farUi.copy(offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.LeadFailed(2), farHint, arrowDeg = -135f)))
     }
 
     /** No way back found: arrow + distance to the route (arrow relative to the map). */

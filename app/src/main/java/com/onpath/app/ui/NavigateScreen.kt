@@ -71,6 +71,7 @@ import com.onpath.app.navigation.NavText
 import com.onpath.app.navigation.RouteHint
 import com.onpath.app.recording.RecState
 import androidx.compose.material.icons.outlined.AltRoute
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -139,7 +140,10 @@ data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: I
  * Off-route state for the screen. [arrowDeg] = direction to the route relative to the screen's "up" (map bearing
  * already taken off), null without a direction. Nothing here times out: it stays until answered or back on route.
  */
-data class OffRouteUi(val prompt: NavPrompt, val toRoute: RouteHint? = null, val arrowDeg: Float? = null)
+data class OffRouteUi(val prompt: NavPrompt, val toRoute: RouteHint? = null, val arrowDeg: Float? = null) {
+    /** The ONE amber off-route card on top (searching, no way, kept) – not the questions below, not the far start. */
+    val amber: Boolean get() = prompt is NavPrompt.Searching || prompt is NavPrompt.NoWay || prompt == NavPrompt.Kept
+}
 
 data class ToGo(
     val distanceM: Double, val ascentM: Double, val timeS: Double, val offM: Double?,
@@ -173,6 +177,10 @@ fun NavigateOverlay(
     onKeepRoute: (Int) -> Unit = {},
     /** "Off route – re-plan?" – Yes: the new route via the stop in question (StopSkip). */
     onTakeVia: (Int) -> Unit = {},
+    /** "Route starts 31 km away" (never on the route yet): Guide me / Just record; OK on "no way to the route". */
+    onLeadThere: (Int) -> Unit = {},
+    onJustRecord: (Int) -> Unit = {},
+    onLeadFailedOk: (Int) -> Unit = {},
     onActivity: () -> Unit = {},
     onChooseActivity: (Activity) -> Unit = {},
     onKeepActivity: () -> Unit = {},
@@ -202,7 +210,7 @@ fun NavigateOverlay(
             // cards glide in and out instead of popping and pushing the status card
             Appearing(ui.turn) { TurnCard(it) }
             // ONE amber card while off route (owner): "Off route", distance + direction, the state
-            Appearing(ui.offRoute?.takeIf { it.prompt !is NavPrompt.Question }) { OffRouteCard(it) }
+            Appearing(ui.offRoute?.takeIf { it.amber }) { OffRouteCard(it) }
             if (ui.toGo != null || ui.recordedM != null) {
                 var profileOpen by rememberSaveable { mutableStateOf(false) }
                 NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity,
@@ -219,8 +227,13 @@ fun NavigateOverlay(
         // activity-switch question moved here from the bottom, 56 dp buttons kept); the question wins, the rest wait.
         // Drawn over the map controls: a tall question (three answers, large font) is never hidden under a button.
         val question = ui.offRoute?.prompt as? NavPrompt.Question
+        // never on the route yet (owner 2026-10-31): the calm far-start question; "Guide me" found nothing → red note
+        val far = ui.offRoute?.prompt as? NavPrompt.FarStart
+        val leadFailed = ui.offRoute?.prompt as? NavPrompt.LeadFailed
         MessageSlot(Messages.pick(listOf(
             question?.let { q -> rerouteMessage(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) }, onVia = { onTakeVia(q.id) }) },
+            far?.let { p -> farStartMessage(p, onLead = { onLeadThere(p.id) }, onJustRecord = { onJustRecord(p.id) }) },
+            leadFailed?.let { e -> errorMessage(NavText.title(e)) { onLeadFailedOk(e.id) } },
             error?.let { errorMessage(it, onErrorOk) },
             if (ui.notificationsOff) notificationsOffMessage(onNotifications, onNotificationsOk) else null,
         )), MessagePlacement.topDp(MessageScreen.NAVIGATE, topColumnDp), Modifier.modeEdge(ModeEdge.TOP))
@@ -296,7 +309,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
     val movingLine = ui.recordedM?.let { movingLine(ui) }
     val canOpen = hasProfile || ui.position != null || (movingLine != null && ui.toGo != null)
     // the amber off-route card says where the route is – not repeated here (the question card at the bottom does not)
-    val offCard = ui.offRoute != null && ui.offRoute.prompt !is NavPrompt.Question
+    val offCard = ui.offRoute?.amber == true
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp,
         // only the activity icon and the chevron are buttons (gloves: no tap target as big as the card)
         modifier = Modifier.fillMaxWidth()) {
@@ -570,6 +583,17 @@ internal fun rerouteMessage(q: NavPrompt.Question, onTake: () -> Unit, onKeep: (
 }
 
 /**
+ * Never on the route yet and away from it (owner 2026-10-31): "Route starts 31 km away" · "south-west (direct) ·
+ * recording" · Just record / Guide me (FRAGE). Calm: no vibration, no sound; stays until answered or the route is
+ * reached. After "Guide me" only "Just record" stays while the way there is computed ("Finding a way to the start…").
+ */
+internal fun farStartMessage(p: NavPrompt.FarStart, onLead: () -> Unit, onJustRecord: () -> Unit): Message {
+    val buttons = if (p.searching) listOf(MessageButton(NavText.JUST_RECORD, onJustRecord))
+        else listOf(MessageButton(NavText.JUST_RECORD, onJustRecord), MessageButton(NavText.LEAD, onLead))
+    return Message(MessageKind.FRAGE, NavText.title(p), NavText.state(p), buttons, icon = Icons.Outlined.Flag, navigate = true)
+}
+
+/**
  * A tour runs with OnPath's notifications off ([com.onpath.app.navigation.NotificationsOff]): "⚠ Notifications off / No
  * turns … on the lock screen" + OK (HINWEIS_WARN). Tap on the text → the phone setup step; OK → gone for this tour.
  * Never goes by itself (owner: no self-dismissing messages).
@@ -702,6 +726,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     Box(Modifier.fillMaxSize()) {
         NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
             onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute, onTakeVia = vm::takeViaRoute,
+            onLeadThere = vm::leadToStart, onJustRecord = vm::justRecord, onLeadFailedOk = vm::leadFailedOk,
             onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
             onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,
             download = bg, onDownload = { vm.downloadDetailsOpen = true },

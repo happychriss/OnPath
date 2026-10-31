@@ -3125,6 +3125,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         putExtra(RecordingService.EXTRA_QUESTION, questionId)
     }
 
+    /** "Route starts 31 km away" (never on the route yet) – Guide me: a route from here via the start and all points. */
+    fun leadToStart(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_LEAD_THERE) {
+        putExtra(RecordingService.EXTRA_QUESTION, questionId)
+    }
+
+    /** "Route starts 31 km away" – Just record: quiet until the route is reached. */
+    fun justRecord(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_JUST_RECORD) {
+        putExtra(RecordingService.EXTRA_QUESTION, questionId)
+    }
+
+    /** OK on "No way to the route found – recording continues". */
+    fun leadFailedOk(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_LEAD_FAILED_OK) {
+        putExtra(RecordingService.EXTRA_QUESTION, questionId)
+    }
+
     // ---------------- activity check while navigating (owner: a wrong activity is a disaster) ----------------
 
     /** The check-and-switch sheet (Navigate → tap the activity icon); null = closed. Stays until a choice is made. */
