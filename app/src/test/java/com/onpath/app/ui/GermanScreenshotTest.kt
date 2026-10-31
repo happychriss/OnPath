@@ -45,6 +45,7 @@ class GermanScreenshotTest {
     @Test fun planMenuPhoneSetup() = shots.planMenuPhoneSetup()
     @Test fun planMenuSyncPaired() = shots.planMenuSyncPaired()
     @Test fun planMenuSyncProblem() = shots.planMenuSyncProblem()
+    @Test fun planMenuSyncUnpairedInBrowser() = shots.planMenuSyncUnpairedInBrowser()
     @Test fun planChipLongBikeTour() = shots.planChipLongBikeTour()
     @Test fun planChipLongHike() = shots.planChipLongHike()
     @Test fun planUnsaved() = shots.planUnsaved()
@@ -87,4 +88,5 @@ class GermanScreenshotTest {
     @Test fun settingsSyncPaired() = borrow(SettingsScreenshotTest()).syncPaired()
     @Test fun settingsSyncOffline() = borrow(SettingsScreenshotTest()).syncOffline()
     @Test fun settingsSyncNotPaired() = borrow(SettingsScreenshotTest()).syncNotPaired()
+    @Test fun settingsSyncUnpairedInBrowser() = borrow(SettingsScreenshotTest()).syncUnpairedInBrowser()
 }

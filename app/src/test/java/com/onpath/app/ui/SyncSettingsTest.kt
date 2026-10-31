@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.app.plansync.BrowserLink
 import com.onpath.app.plansync.PlanSync
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
@@ -148,11 +149,43 @@ class SyncSettingsTest {
     @Test fun menuItemLines() {
         val now = 1_761_150_000_000L
         val ok = PlanSync.State(paired = true, peer = "Chrome on Linux", lastOkMs = now - 60_000, sinceMs = now - 86_400_000, checkedMs = now - 60_000)
-        assertEquals(SyncMenuUi(true, "Pixel 8 ↔ Chrome on Linux · 1 min ago", null), SyncMenuUi.of(ok, "Pixel 8", now))
+        assertEquals(SyncMenuUi(true, "Pixel 8 ↔ Chrome on Linux · synced 1 min ago", null), SyncMenuUi.of(ok, "Pixel 8", now))
         assertEquals("Pixel 8 ↔ browser", SyncMenuUi.of(ok.copy(peer = null, lastOkMs = 0, checkedMs = 0), "Pixel 8", now).line)
         assertEquals(SyncMenuUi(true, "Browser sync is full", SyncAttention.FULL),
             SyncMenuUi.of(ok.copy(problem = PlanSync.Problem.Refused(507, null)), "Pixel 8", now))
         assertEquals(SyncMenuUi(false, "Pairing ended in the browser", SyncAttention.ENDED), SyncMenuUi.of(PlanSync.State(ended = true), "Pixel 8", now))
         assertEquals(SyncMenuUi(), SyncMenuUi.of(PlanSync.State(), "Pixel 8", now))
+    }
+
+    /**
+     * Field bug 2026-10-31: the browser unpaired itself, the phone still has its pairing. ☰ reads "Pair with browser"
+     * again with the grey "Unpaired in the browser" – no amber, no dot (the user's own action), and no "1 min ago" of
+     * the phone's own pass as if the browser was seen. Just paired, no browser hello yet: still paired, as before.
+     */
+    @Test fun unpairedInTheBrowser() {
+        val now = 1_761_150_000_000L
+        val ok = PlanSync.State(paired = true, peer = null, lastOkMs = now - 60_000, sinceMs = now - 86_400_000, checkedMs = now - 60_000)
+        val gone = ok.copy(browser = BrowserLink.UNPAIRED)
+        assertEquals(SyncMenuUi(false, "Unpaired in the browser", null), SyncMenuUi.of(gone, "Pixel 8", now))
+        assertNull(SyncMenuUi.attention(gone))
+        // a real problem still wins (amber, the page)
+        assertEquals(SyncAttention.FULL, SyncMenuUi.of(gone.copy(problem = PlanSync.Problem.Refused(507, null)), "Pixel 8", now).warning)
+        // waiting for the browser's hello: paired, the time labelled as the phone's own sync
+        assertEquals(SyncMenuUi(true, "Pixel 8 ↔ browser · synced 1 min ago", null),
+            SyncMenuUi.of(ok.copy(browser = BrowserLink.WAITING), "Pixel 8", now))
+        // Settings list line + the page's state
+        val ui = SyncUi.of(gone, askCheck = null)
+        assertTrue(ui.unpairedInBrowser)
+        assertEquals(Summary("Unpaired in the browser"), SettingsSummary.sync(ui))
+        assertEquals(Summary("Unpaired in the browser"), SettingsSummary.sync(ui.copy(problem = PlanSync.Problem.Offline)))
+        assertEquals(false, SyncUi.of(ok.copy(browser = BrowserLink.WAITING), null).unpairedInBrowser)
+        assertEquals(false, SyncUi.of(PlanSync.State(browser = BrowserLink.UNPAIRED), null).unpairedInBrowser)
+        // German
+        val before = java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale.GERMAN)
+            assertEquals("Im Browser getrennt", SyncMenuUi.of(gone, "Pixel 8", now).line)
+            assertEquals("Pixel 8 ↔ Chrome · Abgleich vor 1 min", SyncMenuUi.of(ok.copy(peer = "Chrome"), "Pixel 8", now).line)
+        } finally { java.util.Locale.setDefault(before) }
     }
 }

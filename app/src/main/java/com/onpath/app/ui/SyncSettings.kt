@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.onpath.app.plansync.BrowserLink
 import com.onpath.app.plansync.PlanSync
 import com.onpath.strings.*
 import kotlinx.coroutines.delay
@@ -49,10 +50,15 @@ data class SyncUi(
     val askCheck: String? = null,
     /** Pair was tapped for another browser while paired (A-017) and its one write runs: a spinner instead of the buttons. */
     val joining: Boolean = false,
+    /** Paired: a browser at the other end? [BrowserLink.UNPAIRED] = unpaired in the browser (grey line, pair again). */
+    val browser: BrowserLink = BrowserLink.CONNECTED,
 ) {
+    /** Paired here, but the browser unpaired itself (owner 2026-10-31): not "connected", a grey line, the camera again. */
+    val unpairedInBrowser: Boolean get() = paired && browser == BrowserLink.UNPAIRED
+
     companion object {
         fun of(s: PlanSync.State, askCheck: String?, joining: Boolean = false) =
-            SyncUi(s.paired, s.peer, s.lastOkMs, s.problem, askCheck, joining = joining && askCheck != null)
+            SyncUi(s.paired, s.peer, s.lastOkMs, s.problem, askCheck, joining = joining && askCheck != null, browser = s.browser)
     }
 }
 
@@ -141,8 +147,10 @@ object PairEntry {
     /** `MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA`: the camera app in photo mode (Google / Samsung read QR codes there). */
     const val CAMERA_ACTION = "android.media.action.STILL_IMAGE_CAMERA"
 
+    /** Unpaired in the browser ([BrowserLink.UNPAIRED], no problem) = pairing again: the camera as when not paired. */
     fun step(s: PlanSync.State, hintSeen: Boolean): Step = when {
-        s.paired || SyncMenuUi.attention(s) != null -> Step.SETTINGS
+        SyncMenuUi.attention(s) != null -> Step.SETTINGS
+        s.paired && s.browser != BrowserLink.UNPAIRED -> Step.SETTINGS
         !hintSeen -> Step.HINT
         else -> Step.CAMERA
     }
@@ -178,12 +186,12 @@ enum class SyncAttention { FULL, REFUSED, STORAGE, ENDED, STALE }
 
 /**
  * The ☰ item for the browser sync (owner 2026-10-30): not paired "Pair with browser"; paired "Paired with browser ✓"
- * with a grey line "Pixel 8 ↔ Chrome on Linux · 1 min ago"; a problem worth attention ([warning]) makes the item amber
+ * with a grey line "Pixel 8 ↔ Chrome on Linux · synced 1 min ago"; a problem worth attention ([warning]) makes the item amber
  * with the reason as its line, and an amber dot on the ☰ button. Tap → Settings → Browser sync.
  */
 data class SyncMenuUi(
     val paired: Boolean = false,
-    /** Second line: "<device> ↔ <browser> · <ago>" (paired), the reason (problem); null = none. */
+    /** Second line: "<device> ↔ <browser> · synced <ago>" (paired), "Unpaired in the browser", the reason (problem); null = none. */
     val line: String? = null,
     /** Why the item is amber and ☰ has the dot; null = all well (or not paired). */
     val warning: SyncAttention? = null,
@@ -208,13 +216,21 @@ data class SyncMenuUi(
             }
         }
 
+        /**
+         * Unpaired in the browser (owner 2026-10-31): "Pair with browser" again with the grey "Unpaired in the browser"
+         * – no amber, it was the user's own action. The time in the line is the phone's own last good pass, so it says
+         * "synced 1 min ago" – never as if the browser was seen then.
+         */
         fun of(s: PlanSync.State, device: String, now: Long): SyncMenuUi {
             val warning = attention(s)
+            if (warning == null && s.paired && s.browser == BrowserLink.UNPAIRED) {
+                return SyncMenuUi(paired = false, Txt.s(Res.string.sync_menu_unpaired_browser), null)
+            }
             val line = when {
                 warning != null -> reason(warning)
                 !s.paired -> null
                 else -> "$device ↔ ${s.peer ?: Txt.s(Res.string.sync_menu_browser)}" +
-                    (if (s.lastOkMs > 0) " · " + syncAgo(s.lastOkMs, now) else "")
+                    (if (s.lastOkMs > 0) " · " + Txt.s(Res.string.sync_menu_synced, syncAgo(s.lastOkMs, now)) else "")
             }
             return SyncMenuUi(s.paired, line, warning)
         }
@@ -233,6 +249,8 @@ data class SyncMenuUi(
 fun SettingsSummary.sync(ui: SyncUi): Summary = when {
     ui.askCheck != null -> Summary(Txt.s(Res.string.sync_ask_title), Summary.Attention.ACCENT)
     !ui.paired -> Summary(Txt.s(Res.string.sync_sum_off))
+    ui.unpairedInBrowser && (ui.problem == null || ui.problem == PlanSync.Problem.Offline) ->
+        Summary(Txt.s(Res.string.sync_menu_unpaired_browser))
     ui.problem != null && ui.problem != PlanSync.Problem.Offline ->
         Summary(peerLine(ui), Summary.Attention.PROBLEM)
     else -> Summary(peerLine(ui))
@@ -293,6 +311,15 @@ fun SyncSection(ui: SyncUi, cb: SyncCallbacks, now: Long = System.currentTimeMil
                     Text(str(Res.string.sync_intro), style = MaterialTheme.typography.bodyMedium)
                     Text(str(Res.string.sync_steps), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedButton(onClick = cb.onOpenCamera, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(str(Res.string.sync_open_camera)) }
+                }
+                ui.unpairedInBrowser -> {
+                    // the browser unpaired itself (owner 2026-10-31): a grey line, pair again (a scanned code joins this
+                    // phone's mailbox, A-017), and the normal Unpair – no "Last synced" (no browser at the other end)
+                    SyncStatusLine(str(Res.string.sync_menu_unpaired_browser) to NoticeKind.INFO)
+                    Text(str(Res.string.sync_steps), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedButton(onClick = cb.onOpenCamera, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(str(Res.string.sync_open_camera)) }
+                    ui.problem?.takeIf { it != PlanSync.Problem.Offline }?.let { p -> SyncStatusLine(syncProblemText(p)) }
+                    TextButton(onClick = { askUnpair = true }, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.sync_unpair)) }
                 }
                 else -> {
                     Text(peerLine(ui), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)

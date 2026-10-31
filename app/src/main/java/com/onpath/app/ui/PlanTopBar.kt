@@ -151,7 +151,10 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     menu.onUpdates?.let { u -> MenuItem(Icons.Outlined.SystemUpdate, str(Res.string.plan_menu_check_updates), enabled = st.updates) { close(); u() } }
 }
 
-/** "Pair with browser"; paired: "Paired with browser ✓" + grey "<device> ↔ <browser> · 1 min ago"; a problem: amber ⚠ + why. */
+/**
+ * "Pair with browser" (unpaired in the browser: + grey "Unpaired in the browser"); paired: "Paired with browser ✓" + grey
+ * "<device> ↔ <browser> · synced 1 min ago"; a problem: amber ⚠ + why.
+ */
 @Composable
 private fun SyncMenuItem(ui: SyncMenuUi, enabled: Boolean, onClick: () -> Unit) {
     val warn = ui.warning != null

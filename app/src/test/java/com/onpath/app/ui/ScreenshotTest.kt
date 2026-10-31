@@ -349,7 +349,7 @@ class ScreenshotTest {
     private val paired = com.onpath.app.plansync.PlanSync.State(paired = true, peer = "Chrome on Linux", lastOkMs = syncNow - 60_000,
         sinceMs = syncNow - 86_400_000, checkedMs = syncNow - 60_000)
 
-    /** ☰ paired with a browser (owner 2026-10-30): "Paired with browser ✓" + "Pixel 8 ↔ Chrome on Linux · 1 min ago". */
+    /** ☰ paired with a browser (owner 2026-10-30): "Paired with browser ✓" + "Pixel 8 ↔ Chrome on Linux · synced 1 min ago". */
     @Test fun planMenuSyncPaired() = paparazzi.snapshot {
         TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false),
             sync = { SyncMenuUi.of(paired, "Pixel 8", syncNow) }) { PlanPanel(planUi(), PlanCallbacks()) }
@@ -359,6 +359,14 @@ class ScreenshotTest {
     @Test fun planMenuSyncProblem() = paparazzi.snapshot {
         TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false),
             sync = { SyncMenuUi.of(paired.copy(problem = com.onpath.app.plansync.PlanSync.Problem.Refused(507, "full")), "Pixel 8", syncNow) }) {
+            PlanPanel(planUi(), PlanCallbacks())
+        }
+    }
+
+    /** ☰ when the browser unpaired itself (field bug 2026-10-31): "Pair with browser" + grey "Unpaired in the browser", no dot. */
+    @Test fun planMenuSyncUnpairedInBrowser() = paparazzi.snapshot {
+        TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false),
+            sync = { SyncMenuUi.of(paired.copy(peer = null, browser = com.onpath.app.plansync.BrowserLink.UNPAIRED), "Pixel 8", syncNow) }) {
             PlanPanel(planUi(), PlanCallbacks())
         }
     }

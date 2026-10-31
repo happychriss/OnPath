@@ -118,6 +118,14 @@ the git log.
       `PlanPoints.deleteAt`, `"move"` → `PlanPoints.move`, `deletePoint` through the engine, meta by value – steps in
       `docs/handoff-web-parity-b.md` §3.
   - *Should:*
+    - "Connected" only with a live hello of the other side (field bug 2026-10-31, owner: "why does my phone say
+      connected when the browser doesn't?") · (this branch, 2026-10-31) · the app now reads the browser hellos
+      (`plansync/BrowserLink`: live → connected, all deleted → "Unpaired in the browser" + pair again by JOIN, none →
+      waiting) and labels its own last pass "synced 1 min ago". The web's `status.paired` = pair + open folder only and
+      `phoneHello` skips a deleted hello without saying so: a phone hello written as deleted would still show "Paired
+      with Pixel 8". Today the phone never deletes its hello (Unpair DELETEs the mailbox → 410 → "ended"), so this is
+      a guard: in `refresh()` a phone hello seen and now deleted → show "Unpaired on the phone" (grey, Pair phone), and
+      the pill's "synced … ago" from `lastSync` (this browser's pass) labelled as such, never as the phone's time.
     - Search list never jumps for the same text (field bug 0.13.2, "olive hilde…") · (this branch, 2026-10-31) · shared
       `SearchRanking.keepShown` (rows on screen stay, a later answer for the same text only adds below) and
       `SearchRanking.stillMatching` (online rows of the shorter text that still match the longer one stay in its list)

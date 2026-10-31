@@ -23,6 +23,18 @@ class PairEntryTest {
         assertEquals(PairEntry.Step.SETTINGS, PairEntry.step(notPaired.copy(paired = true), hintSeen = false))
         // ended in the browser: the amber ☰ item is cleared by opening the page – it opens, not the camera
         assertEquals(PairEntry.Step.SETTINGS, PairEntry.step(notPaired.copy(ended = true), hintSeen = true))
+        // paired, waiting for the browser's first hello: the page as before
+        assertEquals(PairEntry.Step.SETTINGS, PairEntry.step(notPaired.copy(paired = true, browser = com.onpath.app.plansync.BrowserLink.WAITING), hintSeen = true))
+    }
+
+    /** Unpaired in the browser (field bug 2026-10-31): ☰ "Pair with browser" opens the camera as for a first pairing. */
+    @Test fun unpairedInTheBrowserOpensTheCamera() {
+        val gone = notPaired.copy(paired = true, browser = com.onpath.app.plansync.BrowserLink.UNPAIRED)
+        assertEquals(PairEntry.Step.CAMERA, PairEntry.step(gone, hintSeen = true))
+        assertEquals(PairEntry.Step.HINT, PairEntry.step(gone, hintSeen = false))
+        assertEquals(PairEntry.Step.CAMERA, PairEntry.step(gone.copy(problem = PlanSync.Problem.Offline), hintSeen = true))
+        // a problem worth a look still opens the page
+        assertEquals(PairEntry.Step.SETTINGS, PairEntry.step(gone.copy(problem = PlanSync.Problem.Storage), hintSeen = true))
     }
 
     @Test fun cameraIntentFirst() {
