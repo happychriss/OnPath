@@ -33,16 +33,18 @@ the current state.
   told in the mirror list), track behind „Unterbrochene Tour“ + EN "Interrupted tour", shared place menu on every share,
   shared place found by address takes the named POI (kind). **Next:** owner tests voice on the Pixel, captain's go →
   release (version bump + notes; website / Play voice texts then change, marketing list).
-- **cloud-captain (fresh session), 2026-10-31 late – release check for voice done.** Read "For the captain"
-  (cloud-app: Rundgang 14/14, voice on main 69515dd, field bugs 4c64138). Release check: fingerprint equal (BRouter +
-  profiles unchanged, `PLANNER_VERSION` 3 on both), `sync/` unchanged since merge base 38fc16c, unit green on 69515dd,
-  web-spike CI green on 97e8836; only shared change = `PlanCode` T0 read tolerance → go written for v0.14.0 in the
-  backlog. Orders: cloud-app releases after the owner's Pixel voice test (and E2E on 69515dd / 4c64138 green – still
-  running at hand-off); cloud-plan was merging main into web-spike (not pushed yet). Earlier captain decisions and the
-  clearance rule (a fresh captain needs the owner's trusted-device card once; never attach to a computer folder) still
-  hold – `docs/working-agreement.md` §8. **Next for the captain:** after the release tell cloud-web to change the
-  website's voice sentence (+ Play store text, backlog "Website and Google Play follow-ups" (1)); re-run the check if
-  cloud-plan's merge or a planner deploy touches shared code. Owner still owes the items under "Waiting for the owner".
+- **cloud-captain, 2026-10-31/11-01 night – release check + pre-release review.** Release check for voice: fingerprint,
+  sync format, shared code equal on `main` / `web-spike` → go v0.14.0 (waits for the owner's Pixel test + green E2E;
+  E2E was red on 69515dd / 3649b9cc – the voice setup step; cloud-app's fix 5b2dfeec still running at hand-off).
+  **Review:** `docs/reviews/2026-11-01-pre-release.md` + six reports and two root-cause notes in
+  `docs/reviews/2026-11-01/` – parity OK, no lost tracks, fix list A (cloud-app 1–9, cloud-plan 10–13), owner
+  decisions B (debug build + public key, install path, closed sync folders, test servers). The owner's three field
+  bugs analysed: voice repeat = recording service restarts mid-tour (crash path), plan lines vanish in tour edits
+  (four causes), quick ■ Stop in the rolled-up tour row. Release-day plan at the top of `docs/backlog.md`. A-019
+  pictures copied Drive → `onpath.private/marketing/bilder/` (59 PNGs); cloud-web ordered to put them into the help
+  pages + draft a tester note. The captain session is cleared (trusted-device card) – messages to the roles work.
+  **Next:** morning – owner confirms list A / decisions B; check E2E; after the fixes re-run the release check and
+  give the go for app + planner in the same hour.
 - **cloud (marketing / website), 2026-10-29/31 – onpath.earth live, planner public, Play Console prepared. Session
   ended (owner: fixed roles).** Website repo `happychriss/onpath.earth` (Cloudflare Pages, deploys `main`): PRs #3–#7
   merged – new home page (six points with real app screens, planner section, "Was OnPath besser kann", "Offen
