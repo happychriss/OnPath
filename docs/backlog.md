@@ -7,9 +7,13 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [desktop] A-020: privacy texts, Google place switch, licences page – since 2026-10-31
 
 ## Next
+- **From the external review (A-020 §4) – build only after a small user test by the owner:**
+  (1) offline readiness "Für diese Tour offline bereit" (maps + routing data for the planned route on the phone, one
+  line before the start); (2) empty state with a permanent hold hint (the empty plan map says how to set a point –
+  hold – and the hint stays until the first point); (3) Pause / End easy to find during a tour (today behind the slide
+  "Tour menu"). Photon outage and WebGL2 stay low (owner 2026-10-30).
 - **On the next real ride (owner)** – onboarding checklist step 7 (30 min, screen off, battery saver; steps 2–6 passed on
   the Pixel 2026-10-30, step 1 = fresh install → emulator); rest view + smarter cues on the bike and on foot; pocket after
   5 s on the bike; lock-screen notification on the Pixel; the older phone checks below; compass arrow: does it stay grey
@@ -108,6 +112,9 @@ the git log.
       without the dot in German; also `web_plan_dated` / `when`. Drive Teil 7 §3.
     - A-016 App Links · `/.well-known/assetlinks.json` is live (200, v0.13.1 key, checked 2026-10-31) · left: on the
       phone `adb shell pm get-app-links com.onpath.app` – then `#p=` / `#pair=` links open the app.
+    - Licences list in the browser (A-020) · app: About → Licences (`data/Licences.kt`, texts in `assets/licences/`)
+      · the web planner lists its own bundled parts (MapLibre GL JS, BRouter onpath1, Noto Sans glyphs, icons, npm
+      libraries) with version + licence, offline in the page, plus the ODbL line.
   - *Not for the browser:* lock-screen arrival rounding (30c01c6), smart screen / rest view, cue timing, vibration,
     pocket, lock-screen notification, notifications chip, provisional position, GPS-only recording, phone setup, demo
     location, POI tiles + search on disk on the phone, memory / health line, End-tour ride icons, ☰ phone-setup entry;
