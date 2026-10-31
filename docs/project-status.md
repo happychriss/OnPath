@@ -26,6 +26,23 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud-captain, 2026-10-31 (session ended; the owner starts a fresh captain).** Role setup step 6 done: the owner
+  cleared the captain once (trusted-device card via `confirm_repository_trust` with the refusal's `content_digest`) –
+  since then the captain messages and reads cloud-app, cloud-plan, cloud-web; the roles cannot message the captain and
+  answer under "For the captain" in the backlog (`docs/working-agreement.md` §8). **A fresh captain needs that clearance
+  once again** (first `send_message` to cloud-app is refused with a digest → ask the owner with it) and must never
+  attach to a computer folder. Owner decisions today: push straight to `main` / `web-spike`, PR only for workflows,
+  signing / build config, secrets, privacy / licence texts (§1 "Where to push"); GitHub ruleset on `main` + `web-spike`
+  (no force push, no delete) is set; `.claude/settings.json` lets sessions message / read each other without a prompt.
+  Orders given (backlog "In progress" / "For the roles"): **cloud-app** – Rundgang flows 11 + 12, voice guidance → main
+  (done 69515dd), field bugs (done 4c64138); CI on both was still running at hand-off, Rundgang result not yet reported.
+  **cloud-plan** – merge main → web-spike (27 behind), Save-asks-name + plan sheet without ⋯, candidate marker + fit.
+  **cloud-web** – Drive → `onpath.private` (waits for the owner's write access), A-021 tab name. **Next for the captain:**
+  read "For the captain"; check unit + E2E on 69515dd; once cloud-app reports the Rundgang green and cloud-plan has
+  merged main, run the release check (cloud-captain.md) for the voice release and write the go; then tell cloud-web
+  to change the website's voice sentence. Owner still owes: write access for cloud-web, map data on the laptop (+ where
+  the Germany pre-build runs), git setup on the laptop, deleting the six merged branches (backlog "Waiting for the
+  owner").
 - **cloud (marketing / website), 2026-10-29/31 – onpath.earth live, planner public, Play Console prepared. Session
   ended (owner: fixed roles).** Website repo `happychriss/onpath.earth` (Cloudflare Pages, deploys `main`): PRs #3–#7
   merged – new home page (six points with real app screens, planner section, "Was OnPath besser kann", "Offen
