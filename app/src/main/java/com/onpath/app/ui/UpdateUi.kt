@@ -23,38 +23,37 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.onpath.app.ui.AppViewModel.UpdateState
 import com.onpath.strings.*
 
-/** Small card above the plan sheet when a newer version is published. Never blocks the map. */
+/** A newer version is published (Plan, no tour): the question box at the top – Later / Install. Never blocks the map. */
 @Composable
-fun UpdateBanner(state: UpdateState, onInstall: () -> Unit, onLater: () -> Unit, modifier: Modifier = Modifier) {
-    val (version, percent) = when (state) {
-        is UpdateState.Available -> state.release.version to null
-        is UpdateState.Downloading -> state.release.version to state.percent
-        else -> return
-    }
-    Surface(modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 3.dp) {
-        Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 6.dp)) {
+fun updateMessage(version: String, onInstall: () -> Unit, onLater: () -> Unit): Message =
+    Message(MessageKind.FRAGE, str(Res.string.settings_upd_banner_title, version), str(Res.string.settings_upd_kept),
+        listOf(MessageButton(str(Res.string.settings_upd_later), onLater), MessageButton(str(Res.string.settings_upd_install), onInstall)))
+
+/**
+ * After Install: the download's progress, a small white card above the plan sheet (a state – no box, no button); the
+ * phone's installer follows.
+ */
+@Composable
+fun UpdateDownloadingCard(state: UpdateState, modifier: Modifier = Modifier) {
+    val s = state as? UpdateState.Downloading ?: return
+    Surface(modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), color = OnPathColors.CardWhite, shadowElevation = 3.dp) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.SystemUpdate, null, tint = OnPathColors.Green, modifier = Modifier.size(22.dp))
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(str(Res.string.settings_upd_banner_title, version), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
-                    Text(if (percent != null) str(Res.string.settings_upd_downloading, percent) else str(Res.string.settings_upd_kept),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(str(Res.string.settings_upd_banner_title, s.release.version), fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodyLarge)
+                    Text(str(Res.string.settings_upd_downloading, s.percent), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            if (percent != null) {
-                LinearProgressIndicator(progress = { percent / 100f }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 8.dp))
-                Spacer(Modifier.height(8.dp))
-            } else {
-                NoticeButtons(listOf(str(Res.string.settings_upd_later) to onLater, str(Res.string.settings_upd_install) to onInstall),
-                    NoticeTone.LIGHT, Modifier.padding(top = 4.dp, end = 4.dp, bottom = 4.dp))
-            }
+            LinearProgressIndicator(progress = { s.percent / 100f }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
         }
     }
 }

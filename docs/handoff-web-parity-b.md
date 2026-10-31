@@ -74,5 +74,5 @@ dates = the same route.
   `Rd5Parts.creationTime(tail)` (the tail bytes are fetched with the index anyway – `PartialRd5`), `null` if unknown.
 - Show it where the page keeps technical info (About / a diagnostics line), English like the app.
 - Parity: `web/test/compare.mjs` can assert the Wasm value equals the JVM `runJvm` value (same files → same text).
-- Not to build yet: the sync fields 7 / 8 and the "routed with other routing data" hint – proposal in the design note,
-  owner to decide.
+- The sync fields 7 / 8 and the "planned with other routing" line are built on main (owner 2026-10-31) – web steps in
+  `docs/handoff-web-sync-fingerprint.md`.

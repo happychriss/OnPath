@@ -128,7 +128,7 @@ object ScreenTouch {
 }
 
 /**
- * Something needs the user (owner: then the full map) – a dialog, sheet or the error card over Navigate. The
+ * Something needs the user (owner: then the full map) – a dialog, sheet or the error box over Navigate. The
  * navigation states (off route, arrival question, GPS) are added by NavigateMode.
  */
 internal fun AppViewModel.restBlocked(): Boolean = arrivalAsk || endAsk != null || routeBackAsk || longRouteAsk != null ||

@@ -42,7 +42,7 @@
     <string name="routes_rename_recorded">Rename recorded track</string>
     <string name="routes_rename_imported">Rename imported gpx</string>
     <string name="routes_recording_now">Recording now</string>
-    <string name="routes_after_tour">Can be loaded after the tour</string>
+    <string name="routes_end_tour_first">End the running tour first, then this route can be loaded.</string>
     <string name="routes_export_all">Export all (ZIP)</string>
     <string name="routes_options_desc">Options for “%1$s”</string>
     <string name="routes_edit_rides">Edit rides</string>

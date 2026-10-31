@@ -355,7 +355,7 @@
    "type": "fill",
    "source": "base",
    "source-layer": "landcover",
-   "minzoom": 16,
+   "minzoom": 14,
    "filter": [
     "==",
     [

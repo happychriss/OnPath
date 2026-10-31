@@ -74,7 +74,8 @@ class NoticesTest {
         }
         val vm = src.getValue("AppViewModel.kt")
         // the lines last until their screen is left
-        assertTrue(vm.contains("set(v) { if (!v) routesNote = null; routesShown = v }"))
+        // (My routes: also the "End the running tour first" box)
+        assertTrue(vm.contains("set(v) { if (!v) { routesNote = null; routesTourBlocked = false }; routesShown = v }"))
         assertTrue(vm.contains("set(v) { if (!v) settingsNote = null; settingsShown = v }"))
         // results that are visible anyway are not said (owner example: "Track saved to My routes.")
         assertTrue("msg_track_saved" !in vm && "msg_track_to_bin" !in vm && "msg_round_trip_already" !in vm)
@@ -85,8 +86,8 @@ class NoticesTest {
     @Test fun errorCardAndLines() = paparazzi.snapshot {
         OnPathTheme {
             Column(Modifier.background(Color(0xFFE8EEDC)).fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ErrorCard("The track cannot be saved any more (phone storage full or damaged). Free up space – recording keeps trying.", onOk = {})
-                ErrorCard("Couldn't find this place. Try again when you have internet.", onOk = {})
+                MessageCard(errorMessage("The track cannot be saved any more (phone storage full or damaged). Free up space – recording keeps trying.") {})
+                MessageCard(errorMessage("Couldn't find this place. Try again when you have internet.") {})
                 Surface(color = Color.White) {
                     Column(Modifier.padding(horizontal = 20.dp)) {
                         NoticeLine(Notice("1 track and 2 routes restored.", NoticeKind.INFO))

@@ -40,13 +40,21 @@ object SyncMerge {
 
     data class Merged(val winner: SyncItem, val copy: SyncItem?)
 
-    /** True when [a] wins over [b]. */
+    /**
+     * True when [a] wins over [b]. Ties of time and device are decided by the content's bytes first – the routing
+     * fields (7, 8: no content) only when the content is the same, so the order stays total.
+     */
     fun newer(a: SyncItem, b: SyncItem): Boolean {
         if (a.updatedAt != b.updatedAt) return a.updatedAt > b.updatedAt
         if (a.device != b.device) return a.device > b.device
-        val x = SyncFormat.encode(a); val y = SyncFormat.encode(b)
+        fun content(i: SyncItem) = SyncFormat.encode(i.copy(routing = null, routingData = null))
+        return compare(content(a), content(b)) ?: (compare(SyncFormat.encode(a), SyncFormat.encode(b)) == true)
+    }
+
+    /** x > y byte-wise (unsigned, then longer wins); null when equal. */
+    private fun compare(x: ByteArray, y: ByteArray): Boolean? {
         for (i in 0 until minOf(x.size, y.size)) if (x[i] != y[i]) return (x[i].toInt() and 0xff) > (y[i].toInt() and 0xff)
-        return x.size > y.size
+        return if (x.size == y.size) null else x.size > y.size
     }
 
     fun merge(a: SyncItem, b: SyncItem): Merged {

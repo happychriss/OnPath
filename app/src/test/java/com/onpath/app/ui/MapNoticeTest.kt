@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** Only what needs the user goes to the blue strip; plain progress and "ready" do not. */
+/** Only what needs the user goes to the top (box or pill); plain progress and "ready" do not. */
 class MapNoticeTest {
     private fun working(q: MobileQuestion? = null, wifi: String? = null) =
         CellCardUi.Working("Getting the detailed map", null, emptyList(), null, 0.4f, q, wifi)
@@ -22,14 +22,14 @@ class MapNoticeTest {
         assertNull(mapNotice(null))
     }
 
-    /** Blue only for questions, amber for a failure, grey pill for a status. */
+    /** A question = FRAGE, one way out = HINWEIS, a failure = ⚠ HINWEIS (amber), a state = the grey pill (no box). */
     @Test fun oneColourOneMeaning() {
-        assertEquals(NoticeLook.QUESTION, noticeLook(working(MobileQuestion(3, null))))
-        assertEquals(NoticeLook.QUESTION, noticeLook(CellCardUi.NeedPosition(permission = false)))
-        assertEquals(NoticeLook.QUIET, noticeLook(CellCardUi.NeedPosition(permission = true)))
-        assertEquals(NoticeLook.QUIET, noticeLook(CellCardUi.Offline(CellCards.OFFLINE_TITLE, null)))
-        assertEquals(NoticeLook.QUIET, noticeLook(CellCardUi.NotAvailable))
-        assertEquals(NoticeLook.WARNING, noticeLook(CellCardUi.Failed("Download damaged – please try again later.", null, true)))
+        assertEquals(MessageKind.FRAGE, mapNoticeKind(working(MobileQuestion(3, null))))
+        assertEquals(MessageKind.HINWEIS, mapNoticeKind(CellCardUi.NeedPosition(permission = false)))
+        assertNull(mapNoticeKind(CellCardUi.NeedPosition(permission = true)))
+        assertNull(mapNoticeKind(CellCardUi.Offline(CellCards.OFFLINE_TITLE, null)))
+        assertEquals(MessageKind.HINWEIS, mapNoticeKind(CellCardUi.NotAvailable))
+        assertEquals(MessageKind.HINWEIS_WARN, mapNoticeKind(CellCardUi.Failed("Download damaged – please try again later.", null, true)))
         assertEquals("Use mobile data? · 1 map area", MobileQuestion(1, null).text)
     }
 

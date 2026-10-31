@@ -45,7 +45,7 @@ class PairEntryTest {
     @Test fun wiring() {
         val map = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
         assertTrue(map.contains("onPairBrowser = { vm.startPairing(pairCamera) }"))
-        assertTrue(map.contains("PairHintStrip(onCamera = { vm.pairHintCamera(pairCamera) }"))
+        assertTrue(map.contains("pairHintMessage(onCamera = { vm.pairHintCamera(pairCamera) }"))
         val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText().substringAfter("fun openPairCamera(")
             .substringBefore("\n    }\n")
         assertTrue(vm.contains("if (!fromSettings) openSettings(SettingsPage.SYNC)"))

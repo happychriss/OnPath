@@ -90,9 +90,19 @@ object RouteRules {
     /** Opening this item puts its points into the plan (else it is only shown as a track). */
     fun replacesPlan(kind: TourKind, waypointCount: Int): Boolean = kind == TourKind.PLANNED && waypointCount >= 2
 
-    /** While navigating only tracks can be opened; loading into the plan waits for the end of the tour. */
-    fun canOpen(kind: TourKind, waypointCount: Int, navigating: Boolean): Boolean =
-        !navigating || !replacesPlan(kind, waypointCount)
+    /**
+     * What a tap on an item in My routes does first ([AppViewModel.requestOpen]). While [navigating] (a tour) a planned
+     * route is blocked: nothing loads, a box says "End the running tour first, then this route can be loaded." (owner
+     * 2026-10-31: no new route during a tour – too much automation, a hiker would not trust it). Without a tour an unsaved
+     * plan asks "Replace current route?" ([askBeforeLoading]). Tracks open beside the plan, also during a tour.
+     */
+    fun openAsk(kind: TourKind, waypointCount: Int, navigating: Boolean, points: List<GeoPoint>, saved: List<GeoPoint>?): OpenAsk =
+        when {
+            !replacesPlan(kind, waypointCount) -> OpenAsk.NONE
+            navigating -> OpenAsk.BLOCKED_DURING_TOUR
+            askBeforeLoading(kind, waypointCount, points, saved) -> OpenAsk.REPLACE_PLAN
+            else -> OpenAsk.NONE
+        }
 
     /**
      * The plan is worth keeping and differs from what was last saved or loaded ([saved], null = never).
@@ -133,6 +143,9 @@ object RouteRules {
             else -> LinkOpen.NOW
         }
 }
+
+/** What comes before an item of My routes opens ([RouteRules.openAsk]); NONE = it opens at once. */
+enum class OpenAsk { NONE, REPLACE_PLAN, BLOCKED_DURING_TOUR }
 
 /** What happens with a plan from a link ([RouteRules.linkOpen]). */
 enum class LinkOpen { AFTER_TOUR, ASK_FIRST, NOW }

@@ -29,51 +29,87 @@ Settings → Diagnostics shows the line (English, read on a background thread wh
 show the same line from the same code (`docs/handoff-web-parity-b.md`). Same fingerprint + same data dates for the
 plan's tiles = the same route.
 
-## 2. Proposal (not built): carry it in the sync item
+## 2. Sync fields (built, owner-approved 2026-10-31)
 
-So app and browser can say quietly when a synced plan was routed with other routing – without anyone opening
-Diagnostics.
+So app and browser say quietly when a synced plan was routed with other routing – without anyone opening Diagnostics.
+The code is in `sync/SyncItem.kt` (pure, shared with the web through TeaVM; no new file, so the web's `appFiles` stay
+as they are).
 
-**Fields** (`sync/SyncItem.kt`, `SyncFormat`): the item format already has the rule "optional fields until the end:
-tag, length, bytes; unknown tags are skipped; one tag never means two things". Used today: 1 title, 2 plan code,
-3 device name, 4 track, 5 pairing code, 6 role. Proposed:
+### 2.1 Wire format
 
-| Tag | Name | Content | Kind |
-| --- | --- | --- | --- |
-| **7** | routing | ASCII, `RoutingFingerprint` text (`r1-` + 12 hex), ≤ 32 bytes; anything not `isComparable` is ignored | 1 PLAN only |
-| **8** | routingData | ASCII, the rd5 stamps of the plan's tiles: `E10_N45:1792982642161,E5_N45:…` (tile without `.rd5`, `:`, creation time ms), ≤ 200 bytes | 1 PLAN only |
+The item format's rule holds: optional fields until the end – tag (varint), length (varint), bytes; unknown tags are
+skipped; one tag never means two things. Used before: 1 title, 2 plan code, 3 device name, 4 track, 5 pairing code,
+6 role. New, **kind 1 (PLAN) only** – the encoder writes them for plans only:
 
-- Written by whoever saves the plan (the device whose route the user looked at when saving). `SyncItem` gets
-  `routing: String? = null` and `routingData: String? = null`; `encode` / `decode` as the other optional fields.
-- **Not** part of `sameContent`: the user's plan is the same plan; a re-save on another device with newer data must
-  not make a conflict copy. `SyncMerge` keeps the fields of the winning version, as it does now.
-- Old readers skip tags 7 / 8 (forward-compatible as tags 5 / 6 were). An old app re-saving the plan drops them –
-  missing = unknown = no hint, never a wrong one. `PlanSyncTest` gets a frozen-bytes test for an item with both fields
-  (like `joinItemIsFrozen`), and an old item without them must still read.
-- The plan link (`PlanCode` v1) stays frozen – the fingerprint is not in links.
+```
+7 = routing      ASCII, the RoutingFingerprint text: "r1-" + 12 lowercase hex, e.g. "r1-3fa9c2e81b04"
+                 ≤ 32 bytes (SyncFormat.MAX_ROUTING), Base64url code characters only ([A-Za-z0-9_-]);
+                 anything else is dropped on reading. A later format ("r2-…") passes through; only
+                 RoutingFingerprint.isComparable values are compared – others give no hint.
+8 = routingData  ASCII, the rd5 dates of the tiles under the plan's points (SyncRoutingData):
+                 "<tile>:<day>" joined by ",", sorted by tile
+                 tile = brouter.de's file name without ".rd5": [EW]<0–180>_[NS]<0–90>   e.g. E10_N45, W5_S10
+                 day  = whole UTC days since 1970-01-01 of the rd5's creation time (its tail, Rd5Parts.creationTime)
+                        = floorDiv(ms, 86 400 000), 1–7 digits
+                 e.g. "E10_N45:20752,E5_N45:20750"  (20752 = 2026-10-26)
+                 ≤ 200 bytes (SyncFormat.MAX_ROUTING_DATA): whole entries only, the rest left out (≈ 15 tiles);
+                 entries that do not read are dropped; a tile without a known date on the saving side is left out.
+```
 
-**The hint** (owner to decide the words; INFO = grey, no box, no dialog):
-- When a synced plan is opened and its `routing` differs from the own fingerprint, or a tile in `routingData` has
-  another creation time than the own file: one grey line in the plan sheet, e.g. "Routed in the browser with other
-  routing data – the route may differ a little". Nothing when either side is unknown.
-- When only the data differs and the own data is the older: the phone first tries to get the newer data (§3), then
-  routes; the line goes away when the stamps match.
+Order in the bytes: after every older field (7 then 8), so an item without them has exactly today's bytes
+(`PlanSyncTest.planItemWithRoutingFieldsIsFrozen` pins an item with both, `blobIsFrozenForVersion1` stays as it was).
 
-## 3. Proposal (not built): refresh the phone's routing data when a synced plan arrives
+**Why days, not ms or "2026-10-26":** brouter.de builds the rd5 files once a week, so a day tells two versions apart;
+a day number compares as a plain integer (no date parsing in TeaVM); 5 digits instead of 13 for ms or 10 for an ISO
+date – a plan's 1–2 tiles are 13–27 bytes. The tile name stays readable and is the downloader's own name. A finer
+"other file, same day" difference is still caught on the phone: `Rd5PartStore.refreshIfNewer` compares the whole tail
+(creation time + part checksums).
 
-Today (`AppViewModel.checkRoutingData`): at most every 12 h (`ROUTING_CHECK_MS`) and only for the start's and the
-goal's tiles, a tile whose file is older than 35 days (`ROUTING_MAX_AGE_DAYS`, by the file's modification time = its
-fetch time) is refreshed with `Rd5PartStore.refreshIfNewer` (only the 1° parts on the phone, Wi-Fi rule respected,
-never during a tour). So for up to 35 days the phone can route with older data than the browser, which reads the
-current files from brouter.de through its proxy (`web/host`, cached up to a day).
+**Not content:** `SyncItem.sameContent` ignores 7 and 8 – the user's plan is the same plan, a re-save on another device
+with newer data never makes a conflict copy. `SyncMerge.newer` (same time and device) compares the content bytes first
+and the routing fields only when the content is the same, so the order stays total. The winner's fields are kept.
 
-Proposal:
-- When a pass brings a new or changed plan (`PlanSyncPass`, kind PLAN) whose `routingData` (tag 8) names a tile with a
-  **newer** creation time than the own file, call `refreshIfNewer(tile)` for those tiles right away – the same rules as
-  today: not during a tour, "Maps only on Wi-Fi" respected, at most once per tile per 12 h, failures INFO (offline).
-- Without tag 8 (older browser / app): when the plan is opened, check its tiles once with `refreshIfNewer` if the own
-  file is older than 7 days (instead of 35) – a HEAD request per tile (`Rd5Remote.head`), cheap.
-- After a refresh the plan is routed again (as now: "routing data freshness" re-route, tells the user only when the way
-  changed).
-- `refreshIfNewer` already compares versions by the tail (creation time + part checksums), so a needless download
-  does not happen.
+**Old readers** (app ≤ 0.12.x, web before the merge) skip tags 7 / 8 (`else -> Unit` in `SyncFormat.decode`; tested by
+renumbering them to unknown tags – `anOldReaderSkipsTheRoutingFields`). An old app re-saving the plan drops them:
+missing = unknown = no hint, never a wrong one. The plan link (`PlanCode` v1) stays frozen – the fingerprint is not in
+links.
+
+### 2.2 Who writes them
+
+Whoever saves the plan (the device whose route the user looked at when saving):
+- the app (`PlanSyncPass.save` with `RoutingStamp` = `FileRoutingStamp`: the profiles in `assets/brouter` and the rd5
+  tails in `segments/`): field 7 = its fingerprint, field 8 = `SyncRouting.dataFor(plan points)` – the phone's tiles
+  under the points with their dates (`SyncLedger.save(…, routing, routingData)`);
+- the web: the same call with its own engine's fingerprint and the dates of the rd5 it routed with
+  (`docs/handoff-web-sync-fingerprint.md`).
+
+A rename keeps the fields (the plan was not routed again). The phone does **not** re-save a plan from the browser only
+because its own routing differs (`RouteItems.samePlan`) – the item keeps the browser's fields.
+
+## 3. What the app does with them (built)
+
+**Grey line when a synced plan is opened** (My routes → a planned route; `AppViewModel.syncRoutingCheck` →
+`PlanSync.opened` → `SyncRouting.opened`): when the linked plan item was saved by another device and its field 7
+differs from the phone's fingerprint (both `isComparable`), the plan sheet shows one grey INFO line, no box, no tap:
+EN "Planned in the browser with other routing – the route may differ slightly", DE „Im Browser mit anderer
+Routenberechnung geplant – Route kann leicht abweichen“ (`sync_routing_other`). Nothing when either side is unknown,
+for a plan this phone saved itself (with an older app version), or for an unsynced route. It goes with the next edit of
+the plan (`planChanged`) or another plan.
+
+**Newer routing data at once** (instead of the 35-day rule of `checkRoutingData`):
+- A pass brings a new or changed plan (`PlanSyncPass.import`) whose field 8 names a tile with a **newer** day than the
+  phone's file → `Result.newerData` → `AppViewModel.refreshRoutingTiles` → `Rd5PartStore.refreshIfNewer(tile)` right
+  away: background, the existing downloader (only the 1° parts on the phone), not during a tour, "Maps only on Wi-Fi"
+  respected, at most once per tile per 12 h (`RefreshThrottle`), quiet – INFO lines in Problems ("checking for newer
+  data now", failures INFO as before). Tiles not on the phone are no refresh (they load in the newest version when a
+  route needs them); a phone file without a readable date counts as older.
+- Opening such a plan checks the same again (a refresh that failed offline is retried, throttled).
+- **Without field 8** (older browser / app): opening a synced plan checks its tiles on the phone whose date is more
+  than 7 days old (`SyncRouting.FALLBACK_AGE_DAYS`, by the rd5's creation day) or unknown – one HEAD request per tile.
+- After a refresh the open plan is routed again (the existing "routing data freshness" re-route, which tells the user
+  only when the way changed).
+
+Tests: `PlanSyncTest` (round trip with / without, frozen bytes, old reader, not content, `SyncRoutingData`),
+`plansync/SyncRoutingTest` (line only when the fingerprints differ, refresh only for a newer date, 7-day fallback,
+throttle, the pass writes and reads the fields, `FileRoutingStamp` reads rd5 dates), `SyncMailboxE2ETest` (the fields
+through the real mailbox, `tools/sync/e2e.sh`).

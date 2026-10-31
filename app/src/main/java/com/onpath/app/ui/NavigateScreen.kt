@@ -124,7 +124,7 @@ data class NavUi(
      * instead of "No GPS" while what is left counts from the Wi-Fi / fused fix ([com.onpath.app.navigation.Provisional]).
      */
     val approx: String? = null,
-    /** OnPath's notifications are off during this tour: the amber chip under the status card ([NotificationsOffChip]). */
+    /** OnPath's notifications are off during this tour: the amber box under the status card ([notificationsOffMessage]). */
     val notificationsOff: Boolean = false,
 )
 
@@ -182,17 +182,20 @@ fun NavigateOverlay(
     /** A background download runs (after 10 s): small "⬇ Bozen · 40 %" chip under the status (name cut to fit); tap → details. */
     download: BackgroundDownloadUi? = null,
     onDownload: () -> Unit = {},
-    /** The "Notifications off" chip: tap → phone setup step, OK → gone for this tour. */
+    /** The "Notifications off" box: tap → phone setup step, OK → gone for this tour. */
     onNotifications: () -> Unit = {},
     onNotificationsOk: () -> Unit = {},
-    /** Height of the top column (turn card, status, chips) below the status bar, dp: the error card goes below it. */
-    onTopHeightDp: (Int) -> Unit = {},
+    /** An error without a screen of its own (AppViewModel.errorCard): the red box with OK. */
+    error: String? = null,
+    onErrorOk: () -> Unit = {},
 ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
+    // the top column's height (turn card, status, chips) below the status bar: the one box goes 12 dp below it
+    var topColumnDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding()
-                .onSizeChanged { onTopHeightDp(with(density) { it.height.toDp().value.toInt() }) }
+                .onSizeChanged { topColumnDp = with(density) { it.height.toDp().value.toInt() } }
                 .padding(top = 8.dp, start = 12.dp, end = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -205,19 +208,22 @@ fun NavigateOverlay(
                 NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity,
                     onProfileScrub = onProfileScrub, onProfileRelease = onProfileRelease)
             }
-            if (ui.notificationsOff) NotificationsOffChip(onNotifications, onNotificationsOk)
             download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
         }
         Column(Modifier.align(Alignment.BottomCenter).modeEdge(ModeEdge.BOTTOM).fillMaxWidth()) {
-            // the question sits low, in thumb reach (one hand, gloves), above the map controls – never under them
-            Appearing(ui.offRoute?.prompt as? NavPrompt.Question) { q ->
-                RerouteQuestionCard(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) }, onVia = { onTakeVia(q.id) },
-                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp))
-            }
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
             SlideToPlan(onSlideToPlan, Modifier.navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 recording = ui.recordedM != null, startFraction = slideStartFraction)
         }
+        // ONE box under the turn / status column (docs/design/ui-style.md, owner 2026-10-31 – the re-route and
+        // activity-switch question moved here from the bottom, 56 dp buttons kept); the question wins, the rest wait.
+        // Drawn over the map controls: a tall question (three answers, large font) is never hidden under a button.
+        val question = ui.offRoute?.prompt as? NavPrompt.Question
+        MessageSlot(Messages.pick(listOf(
+            question?.let { q -> rerouteMessage(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) }, onVia = { onTakeVia(q.id) }) },
+            error?.let { errorMessage(it, onErrorOk) },
+            if (ui.notificationsOff) notificationsOffMessage(onNotifications, onNotificationsOk) else null,
+        )), MessagePlacement.topDp(MessageScreen.NAVIGATE, topColumnDp), Modifier.modeEdge(ModeEdge.TOP))
         // over the controls: nothing else is touched by accident while choosing; no tap-outside dismiss
         ui.activityCheck?.let { ActivitySwitchSheet(it, onChooseActivity, onKeepActivity, Modifier.align(Alignment.BottomCenter)) }
     }
@@ -546,70 +552,32 @@ private fun OffRouteCard(o: OffRouteUi) {
 }
 
 /**
- * The off-route question (owner: ask every time, never re-route silently): stays until one of the two big buttons is
- * pressed or the user is back on the route. Buttons 56 dp high, full half width each – fine with gloves. With a stop in
- * question (StopSkip): "Off route – re-plan?" – Yes (via it) · Yes, skip stop 3 (without it) · Keep original.
+ * The off-route question (owner: ask every time, never re-route silently) as a FRAGE box under the status card: stays
+ * until one of the big buttons is pressed or the user is back on the route. Buttons 56 dp – fine with gloves. With a
+ * stop in question (StopSkip): "Off route – re-plan?" – Yes (via it) · Yes, skip stop 3 (without it) · Keep original.
+ * The activity switch ("New route for MTB") is the same question with the activity's icon.
  */
 @Composable
-internal fun RerouteQuestionCard(q: NavPrompt.Question, onTake: () -> Unit, onKeep: () -> Unit, modifier: Modifier = Modifier,
-                                 onVia: () -> Unit = {}) {
+internal fun rerouteMessage(q: NavPrompt.Question, onTake: () -> Unit, onKeep: () -> Unit, onVia: () -> Unit = {}): Message {
     val large = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
     val maxName = if (large) NavText.NAME_MAX_LARGE else NavText.NAME_MAX
-    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp,
-        border = androidx.compose.foundation.BorderStroke(2.dp, OnPathColors.Route), modifier = modifier.fillMaxWidth()) {
-        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // turn round: the U-turn sign, so a way back on the same road is not mistaken for "nothing happened"
-                Icon(q.switch?.activity?.icon ?: if (q.turnRound) Icons.Filled.UTurnLeft else Icons.Outlined.AltRoute, null,
-                    tint = OnPathColors.Route, modifier = Modifier.size(if (q.turnRound) 36.dp else 28.dp))
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(NavText.title(q), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(NavText.question(q, maxName), style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            Spacer(Modifier.size(12.dp))
-            if (q.via != null) {
-                // "Off route – re-plan?" (StopSkip: borderline, or a stop chosen on purpose): Yes = via the stop,
-                // "Yes, skip stop 3" = without it. The skip label wraps to two lines; at a large font (like the setup
-                // guide, > 1.3) the two buttons are stacked full width and only a short name is used
-                val yes: @Composable (Modifier) -> Unit = { m ->
-                    Button(onClick = onVia, modifier = m.heightIn(min = 56.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.Route)) {
-                        Text(NavText.YES, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                    }
-                }
-                val skip: @Composable (Modifier) -> Unit = { m ->
-                    OutlinedButton(onClick = onTake, modifier = m.heightIn(min = 56.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
-                        Text(NavText.skipButton(q, maxName), style = MaterialTheme.typography.titleSmall, maxLines = 2,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                    }
-                }
-                if (large) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    yes(Modifier.fillMaxWidth())
-                    skip(Modifier.fillMaxWidth())
-                } else Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    yes(Modifier.weight(1f))
-                    skip(Modifier.weight(2f))
-                }
-                TextButton(onClick = onKeep, modifier = Modifier.align(Alignment.End).heightIn(min = 48.dp)) {
-                    Text(NavText.KEEP, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                }
-            } else Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = onKeep, modifier = Modifier.weight(1f).heightIn(min = 56.dp)) {
-                    Text(NavText.KEEP, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                }
-                Button(onClick = onTake, modifier = Modifier.weight(1f).heightIn(min = 56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.Route)) {
-                    Text(NavText.TAKE, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                }
-            }
-        }
-    }
+    // turn round: the U-turn sign, so a way back on the same road is not mistaken for "nothing happened"
+    val icon = q.switch?.activity?.icon ?: if (q.turnRound) Icons.Filled.UTurnLeft else Icons.Outlined.AltRoute
+    val buttons = if (q.via != null) listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.skipButton(q, maxName), onTake),
+        MessageButton(NavText.YES, onVia))
+        else listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.TAKE, onTake))
+    return Message(MessageKind.FRAGE, NavText.title(q), NavText.question(q, maxName), buttons, icon = icon, navigate = true)
 }
+
+/**
+ * A tour runs with OnPath's notifications off ([com.onpath.app.navigation.NotificationsOff]): "⚠ Notifications off / No
+ * turns … on the lock screen" + OK (HINWEIS_WARN). Tap on the text → the phone setup step; OK → gone for this tour.
+ * Never goes by itself (owner: no self-dismissing messages).
+ */
+@Composable
+internal fun notificationsOffMessage(onSetUp: () -> Unit, onOk: () -> Unit): Message =
+    Message(MessageKind.HINWEIS_WARN, str(Res.string.nav_notif_off), str(Res.string.nav_notif_off_line),
+        listOf(MessageButton(str(Res.string.common_ok), onOk)), onTap = onSetUp, tapLabel = str(Res.string.nav_notif_off_click))
 
 /**
  * Stateful wrapper: remaining distance along the followed line and the arrival check. While the service navigates,
@@ -739,7 +707,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
             download = bg, onDownload = { vm.downloadDetailsOpen = true },
             onNotifications = { vm.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },
             onNotificationsOk = { vm.notificationsOkTour = rec?.tourId },
-            onTopHeightDp = { vm.navigateTopDp = it })
+            error = vm.errorCard, onErrorOk = { vm.errorCard = null })
         RestLayer(restTarget?.takeIf { rest }?.let { RestUi(it.event, it.distanceM, ui.toGo?.timeS, ui.arriveAt) },
             onTap = ScreenTouch::note)
     }

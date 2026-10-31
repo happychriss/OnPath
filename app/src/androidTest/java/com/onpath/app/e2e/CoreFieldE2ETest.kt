@@ -3,8 +3,17 @@ package com.onpath.app.e2e
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
+import androidx.test.platform.app.InstrumentationRegistry
+import com.onpath.app.data.TourDb
+import com.onpath.app.data.TourKind
+import com.onpath.app.gpx.GpxWaypoint
+import com.onpath.app.gpx.TrackPoint
+import com.onpath.app.routing.Activity
+import com.onpath.app.routing.GeoPoint
 import com.onpath.app.ui.AppMode
+import com.onpath.app.ui.RoutesTab
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -140,6 +149,61 @@ class CoreFieldE2ETest : E2EBase() {
         for (step in listOf("Tour start", "All points deleted during the tour", "Undo: plan 0 → 1 points",
                 "Undo: plan 1 → 2 points", "Plan points back during the tour")) {
             assertTrue("\"$step\" traced: ${trace.take(30)}", trace.any { it.startsWith(step) })
+        }
+    }
+
+    /**
+     * Owner 2026-10-31: no new route during a tour. My routes → a tap on a planned route loads nothing: the plan, the
+     * followed route, the activity and the tour stay; the blue box "End the running tour first, then this route can be
+     * loaded." shows until OK (core feature C4).
+     */
+    @Test fun aSavedRouteTappedDuringATourKeepsTheTourRouteAndSaysEndTheTourFirst() {
+        startPlanWithTwoPoints()
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the route is followed", 20_000) { guided() }
+        var tourId = -1L
+        var before: List<GeoPoint> = emptyList()
+        var followedBefore: String? = null
+        var lineBefore: List<GeoPoint>? = null
+        var activityBefore: Activity? = null
+        scenario.onActivity {
+            tourId = vm(it).recState.value!!.tourId; before = vm(it).waypoints.toList(); followedBefore = vm(it).followName
+            lineBefore = vm(it).followLine; activityBefore = vm(it).activity
+        }
+        // a saved route nearby, for another activity
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
+        val pts = listOf(GpxWaypoint(lat + 0.002, lon - 0.001, "E2E start"), GpxWaypoint(lat + 0.004, lon + 0.002, "E2E goal"))
+        val name = "E2E saved route"
+        val savedId = db.insertTour(TourKind.PLANNED, name, Activity.BIKE_TOURING.name, 2, 350.0, 0.0, 0.0, 90.0,
+            listOf(pts.map { TrackPoint(it.lat, it.lon) }), pts)
+        try {
+            scenario.onActivity { vm(it).switchToPlan() }
+            waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+            scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED; vm(it).openRoutes() }
+            clickText(name)
+            val box = "End the running tour first, then this route can be loaded."
+            assertNotNull("the box", device.wait(Until.findObject(By.text(box)), 5_000))
+            Thread.sleep(1_500)
+            scenario.onActivity {
+                assertEquals("the plan stays", before, vm(it).waypoints.toList())
+                assertEquals("the followed route stays", followedBefore, vm(it).followName)
+                assertEquals("the followed line stays", lineBefore, vm(it).followLine)
+                assertEquals("the activity stays", activityBefore, vm(it).activity)
+                assertEquals("the same tour records on", tourId, vm(it).recState.value?.tourId)
+                assertTrue("My routes stays open", vm(it).routesOpen)
+            }
+            assertTrue(guided())
+            clickText("OK")
+            waitUntil("the box is gone after OK", 5_000) { device.findObject(By.text(box)) == null }
+            assertEquals("still recording, not ended", "active", db.getTour(tourId)?.state)
+            val trace = com.onpath.app.debug.Problems.events().map { it.message }
+            val step = "Load \"$name\" during the tour: not loaded"
+            assertTrue("\"$step\" traced: ${trace.take(30)}", trace.any { it.startsWith(step) })
+        } finally {
+            scenario.onActivity { vm(it).routesOpen = false }
+            db.deleteTour(savedId)
         }
     }
 }

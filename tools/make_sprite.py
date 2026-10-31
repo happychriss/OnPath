@@ -169,8 +169,9 @@ def both_ways_arrow(pr, color, canvas=(18, 10)):
     return im.resize((canvas[0] * pr, canvas[1] * pr), Image.LANCZOS)
 
 
-# Ground symbols (fill-pattern tiles, drawn from z14 by make_style.py landcover()): very light, a darker tone of
-# the ground colour. Ground colours = tools/themes/classic.json; design: docs/design/map-colour-analysis.md.
+# Ground symbols (fill-pattern tiles, drawn by make_style.py landcover(): rock from z14, the others from z16): light,
+# a darker tone of the ground colour. Orchard / vineyard a bit stronger (owner 2026-10-30: they almost vanished on the
+# light farmland colour) – same sparse spacing, so towns' edges stay calm. Ground colours = tools/themes/classic.json; design: docs/design/map-colour-analysis.md.
 # name -> (ground colour, tile w, h (1x px), darken towards ink, opacity, filled?, stroke width, SVG content)
 PATTERNS = {
     "pattern-wetland": ("#d4e6d0", 32, 26, .55, .50, False, .8,
@@ -178,9 +179,9 @@ PATTERNS = {
     # Farmland: only orchards (small tree rings) and vineyards (short upright stakes) get a symbol; plain fields none.
     # The former furrow dashes (horizontal dashes) on every farmland read like the German wet-meadow / marsh symbol
     # (owner: "symbols on many meadows" – in the valley these are the apple orchards).
-    "pattern-orchard": ("#f1f0de", 14, 12, .45, .30, False, .7,
-                        '<circle cx="3.5" cy="3" r="1.2"/><circle cx="10.5" cy="9" r="1.2"/>'),
-    "pattern-vineyard": ("#f1f0de", 8, 12, .45, .30, False, .8, '<path d="M2 1.5v3.5M6 7.5v3.5"/>'),
+    "pattern-orchard": ("#f1f0de", 14, 12, .6, .55, False, .85,
+                        '<circle cx="3.5" cy="3" r="1.3"/><circle cx="10.5" cy="9" r="1.3"/>'),
+    "pattern-vineyard": ("#f1f0de", 8, 12, .6, .55, False, .9, '<path d="M2 1.5v3.5M6 7.5v3.5"/>'),
     "pattern-rock": ("#e7e2d9", 32, 32, .55, .45, False, .7,
                      '<path d="M3 11l2.5-5 5.5-1.5 2 4.5-2.5 3zM8 6.5l1 3.5M18 26l1.5-4.5 5-1 1.5 3.5-3 3zM21.5 21.5l.5 3.5'
                      'M22 9.5l2.8-3.5 3.2 2-1 2.5z"/>'),

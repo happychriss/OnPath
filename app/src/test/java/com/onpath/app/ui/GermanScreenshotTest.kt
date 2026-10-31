@@ -54,6 +54,7 @@ class GermanScreenshotTest {
     @Test fun planUnpairedNote() = shots.planUnpairedNote()
     @Test fun planUnpairedOfflineNote() = shots.planUnpairedOfflineNote()
     @Test fun planPairHint() = shots.planPairHint()
+    @Test fun routesTourBlocked() = shots.routesTourBlocked()
     @Test fun navigate() = shots.navigate()
     @Test fun navigateNotRecording() = shots.navigateNotRecording()
     @Test fun navigateRerouteQuestion() = shots.navigateRerouteQuestion()

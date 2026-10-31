@@ -4,6 +4,7 @@ import com.onpath.app.data.Tour
 import com.onpath.app.data.TourKind
 import com.onpath.app.debug.Problems
 import com.onpath.app.gpx.TrackPoint
+import com.onpath.app.routing.GeoPoint
 import com.onpath.app.sync.Aead
 import com.onpath.app.sync.Mailbox
 import com.onpath.app.sync.SyncFormat
@@ -14,6 +15,7 @@ import com.onpath.app.sync.SyncJoin
 import com.onpath.app.sync.SyncLedger
 import com.onpath.app.sync.SyncMerge
 import com.onpath.app.sync.SyncRound
+import com.onpath.app.sync.SyncRoutingData
 
 /**
  * The phone's saved routes and imported tracks as the sync sees them (AppSync: the tour database; tests: a list).
@@ -58,7 +60,16 @@ class PlanSyncPass(
     private val aead: Aead,
     /** How a copy ("… (copy)" in the item) is named on this phone, e.g. " (Kopie)" ([SyncMerge.shownTitle]). */
     private val copyLabel: String = SyncMerge.COPY,
+    /** This phone's routing: written into the plans it saves (fields 7, 8), compared with the plans that come in. */
+    private val routing: RoutingStamp? = null,
 ) {
+    /** The phone's rd5 dates, read once per pass when a plan needs them. */
+    private var days: Map<String, Long?>? = null
+    private fun days(): Map<String, Long?> = days ?: (try { routing?.days() } catch (e: Exception) {
+        // never blocks a plan: without the dates field 8 stays out and nothing is refreshed
+        Problems.warn("sync", "Routing data dates not read – synced plans carry none this time", e); null
+    } ?: emptyMap()).also { days = it }
+
     /** The tour's name as the item keeps it (the local copy label back to [SyncMerge.COPY]). */
     private fun title(t: Tour): String? = RouteItems.title(t, copyLabel)
 
@@ -77,10 +88,16 @@ class PlanSyncPass(
         /** True when the tours changed (refresh My routes). */
         val toursChanged: Boolean = false,
         val skippedForRecording: Boolean = false,
+        /**
+         * Routing data tiles ("E10_N45") a plan from outside was routed with in a newer version than the phone's file
+         * (field 8): check them for newer data now (AppViewModel, Rd5PartStore.refreshIfNewer) – not after 35 days.
+         */
+        val newerData: List<String> = emptyList(),
     )
 
     /** Runs one pass; null when not paired. Throws only when the sync files cannot be written (reported by the caller). */
     fun run(recording: () -> Boolean): Result? {
+        days = null
         val pairing = files.pairing() ?: return null
         val keys = SyncKeys(pairing.secret ?: return null)
         val device = files.device(random)
@@ -153,7 +170,10 @@ class PlanSyncPass(
         val stored = title(t)
         return if (t.kind == TourKind.PLANNED) {
             val plan = RouteItems.planOf(t) ?: return false // fewer than two points: nothing to plan with
-            ledger.save(id, plan, stored, now, device) != null
+            // routed here: this phone's fingerprint and the dates of the plan's tiles (null = unknown, never a guess)
+            val fp = routing?.fingerprint()
+            val data = routing?.let { SyncRouting.dataFor(t.waypoints.map { w -> GeoPoint(w.lat, w.lon) }, days()) }
+            ledger.save(id, plan, stored, now, device, fp, data) != null
         } else {
             val track = RouteItems.trackOf(t, store.segments(t.id)) ?: return false
             ledger.saveTrack(id, track, stored, now, device) != null
@@ -166,6 +186,10 @@ class PlanSyncPass(
         val tours = store.tours().filter(RouteItems::synced).associateBy { it.uuid }
         var added = 0; var updated = 0; var binned = 0; var failed = 0; var unreadable = 0
         val toRoute = ArrayList<Long>()
+        val newer = sortedSetOf<String>()
+        fun routedWith(item: SyncItem) {
+            if (item.routingData != null && routing != null) newer += SyncRoutingData.newer(item.routingData, days())
+        }
         for (id in links.pending.toList()) {
             val item = ledger.get(id)
             if (item == null || !item.isUserItem) { links.done(id); continue }
@@ -181,7 +205,7 @@ class PlanSyncPass(
                         else {
                             links.link(id, t.uuid); added++
                             files.marks.arrived(t.uuid) // My routes: bold + "New from the browser" until opened
-                            if (t.kind == TourKind.PLANNED) toRoute += t.id
+                            if (t.kind == TourKind.PLANNED) { toRoute += t.id; routedWith(item) }
                         }
                     }
                     else -> {
@@ -191,7 +215,7 @@ class PlanSyncPass(
                             if (!RouteItems.samePlan(RouteItems.planOf(tour), item.plan)) {
                                 val c = RouteItems.planContent(item)
                                 if (c == null) unreadable++
-                                else if (store.replacePlan(tour, c)) { toRoute += tour.id; changed = true }
+                                else if (store.replacePlan(tour, c)) { toRoute += tour.id; changed = true; routedWith(item) }
                             }
                         } else if (before[id]?.track != item.track || !RouteItems.sameTrackHeader(tour, item)) {
                             val c = RouteItems.trackContent(item)
@@ -208,8 +232,10 @@ class PlanSyncPass(
             }
         }
         if (added + updated + binned > 0) Problems.info("sync", "Sync from the browser: $added new, $updated changed, $binned to the recycle bin")
+        if (newer.isNotEmpty()) Problems.info("sync", "Sync: a plan from the browser was routed with newer routing data " +
+            "(${newer.joinToString()}) – checking for it now")
         return Result(null, added = added, updated = updated, binned = binned, failed = failed, unreadable = unreadable,
-            toRoute = toRoute, toursChanged = added + updated + binned > 0)
+            toRoute = toRoute, toursChanged = added + updated + binned > 0, newerData = newer.toList())
     }
 
     /**

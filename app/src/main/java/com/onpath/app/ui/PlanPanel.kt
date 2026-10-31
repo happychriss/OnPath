@@ -170,6 +170,8 @@ data class PlanUi(
     val warnText: String? = null,
     /** "New route for … – check it" after an activity change: one grey INFO line (not a warning). */
     val changedText: String? = null,
+    /** "Planned in the browser with other routing – …" (a synced plan, another routing fingerprint): grey INFO, no tap. */
+    val syncRoutingText: String? = null,
 ) {
     /** What Start does (the shown track has its own panel): navigate the line, wait for it, or only record. */
     val start: PlanStart get() = PlanStart.of(trackPoints = null, hasRoute = route != null, pointCount = pointCount)
@@ -317,6 +319,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     ui.warnText?.takeIf { !ui.routing }?.let { WarnLine(it, cb.onWarnings) }
     if (loadingNotice) InfoLine(ui.error!!, spinner = ui.error == RoutingDataNotice.LOADING)
     ui.changedText?.takeIf { !ui.routing }?.let { InfoLine(it, onTap = cb.onRouteChanged) }
+    ui.syncRoutingText?.takeIf { !ui.routing }?.let { InfoLine(it) }
     Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
     var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     Column(Modifier.fillMaxWidth().weight(1f).onGloballyPositioned { viewport = it }

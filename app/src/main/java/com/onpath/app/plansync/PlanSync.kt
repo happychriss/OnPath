@@ -80,6 +80,9 @@ class PlanSync(
     private val onReport: (Report) -> Unit,
     private val server: String = SERVER,
     dir: File = File(context.filesDir, SyncFiles.DIR),
+    /** This phone's routing (fingerprint + rd5 dates) for the plans it saves and the synced plans it opens. */
+    private val routing: RoutingStamp = FileRoutingStamp({ n -> context.assets.open("brouter/$n").use { it.readBytes() } },
+        { com.onpath.app.data.DataFiles(context.applicationContext).segmentsDir }),
 ) {
     private val app = context.applicationContext
     val files = SyncFiles(dir)
@@ -132,7 +135,7 @@ class PlanSync(
 
     private fun pass() = PlanSyncPass(files, store, ::mailbox, ::randomBytes, System::currentTimeMillis, deviceName,
         { if (it == SyncItem.TRACK) Txt.s(Res.string.sync_untitled_track) else Txt.s(Res.string.sync_untitled_route) }, JcaAead,
-        copyLabel(Txt.s(Res.string.sync_copy)))
+        copyLabel(Txt.s(Res.string.sync_copy)), routing)
 
     private fun mailbox(keys: SyncKeys): Mailbox = HttpMailbox(server, keys)
     private fun randomBytes(n: Int) = ByteArray(n).also { rnd.nextBytes(it) }
@@ -259,6 +262,18 @@ class PlanSync(
     fun endedSeen() {
         if (!_state.value.ended) return
         worker.execute { safely("ended note") { files.clearEnded() }; safely("state") { refreshState() } }
+    }
+
+    /**
+     * A saved route was opened as the plan ([points]): its synced plan item's routing against this phone's
+     * ([SyncRouting.opened] – the grey "planned with other routing" line, tiles to check for newer data); null when the
+     * route is not synced as a plan. Reads the sync files: background only.
+     */
+    fun opened(uuid: String, points: List<com.onpath.app.routing.GeoPoint>): SyncRouting.Opened? {
+        if (uuid.isEmpty() || files.pairing() == null) return null
+        val id = files.links().itemOf(uuid) ?: return null
+        val item = files.ledger().get(id)?.takeIf { it.kind == SyncItem.PLAN && !it.deleted } ?: return null
+        return SyncRouting.opened(item, files.device(::randomBytes), routing.fingerprint(), points, routing.days(), System.currentTimeMillis())
     }
 
     /** The mailbox of the stored pairing (same browser again?), or null. Reads a small file: background or rare taps. */

@@ -63,13 +63,24 @@ class RouteRulesTest {
         assertTrue(RouteRules.canClear(3))
     }
 
-    @Test fun openWhileNavigatingOnlyTracks() {
-        assertTrue(RouteRules.canOpen(TourKind.PLANNED, 3, navigating = false))
-        assertFalse(RouteRules.canOpen(TourKind.PLANNED, 3, navigating = true))
-        assertTrue(RouteRules.canOpen(TourKind.RECORDED, 0, navigating = true))
-        assertTrue(RouteRules.canOpen(TourKind.IMPORTED, 4, navigating = true))
-        // A planned route without via points is only shown as a track.
-        assertTrue(RouteRules.canOpen(TourKind.PLANNED, 1, navigating = true))
+    @Test fun aPlannedRouteDuringATourIsBlocked() {
+        // owner 2026-10-31: no new route during a tour – "end the running tour first" (too much automation), also over a
+        // saved plan; nothing is loaded
+        assertEquals(OpenAsk.BLOCKED_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 3, navigating = true, listOf(a, b), listOf(a, b)))
+        assertEquals(OpenAsk.BLOCKED_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 2, navigating = true, listOf(a, b), null))
+        assertEquals(OpenAsk.BLOCKED_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 2, navigating = true, emptyList(), null))
+        // tracks open beside the plan as before (shown as a track), also during a tour
+        assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.RECORDED, 0, navigating = true, listOf(a, b), null))
+        assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.IMPORTED, 4, navigating = true, listOf(a, b), null))
+        // a planned route without via points is only shown as a track
+        assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.PLANNED, 1, navigating = true, listOf(a, b), null))
+    }
+
+    @Test fun withoutATourOnlyAnUnsavedPlanAsks() {
+        assertEquals(OpenAsk.REPLACE_PLAN, RouteRules.openAsk(TourKind.PLANNED, 3, navigating = false, listOf(a, b), null))
+        assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.PLANNED, 3, navigating = false, listOf(a, b), listOf(a, b)))
+        assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.PLANNED, 3, navigating = false, emptyList(), null))
+        assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.IMPORTED, 3, navigating = false, listOf(a, b), null))
     }
 
     @Test fun unsavedPlan() {

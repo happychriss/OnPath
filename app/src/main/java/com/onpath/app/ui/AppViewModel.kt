@@ -152,17 +152,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- screens and mode ---
     // messages (declared before routesOpen / showSettings, whose setters clear their lines) – see [say]
-    /** The light error card over the map (⚠, red edge, OK); null = none. Never cleared by itself. */
+    /** The red error box (MessageCard HINWEIS_ERROR: ⚠, red edge, OK) on the screen shown; null = none. Never cleared by itself. */
     var errorCard by mutableStateOf<String?>(null)
     /** The line at the top of My routes; goes when My routes is left. */
     var routesNote by mutableStateOf<Notice?>(null)
+    /**
+     * A planned route was tapped during a tour ([requestOpen]): the box "End the running tour first, then this route
+     * can be loaded." with OK at the top of My routes; until OK or until My routes is left.
+     */
+    var routesTourBlocked by mutableStateOf(false)
     /** The line at the top of the open Settings page; goes when the page changes or Settings closes. */
     var settingsNote by mutableStateOf<Notice?>(null)
     private var routesShown by mutableStateOf(false)
     /** My routes list (☰ → My routes) is open. */
     var routesOpen: Boolean
         get() = routesShown
-        set(v) { if (!v) routesNote = null; routesShown = v } // the line lasts until My routes is left
+        set(v) { if (!v) { routesNote = null; routesTourBlocked = false }; routesShown = v } // line / box last until My routes is left
     /** My routes' last chosen tab (Planned / Done); kept while the app runs, Planned after a restart. */
     var routesTab by mutableStateOf(RoutesTab.PLANNED)
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
@@ -421,7 +426,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** T3 waits for a usable fix after app start / return in Plan. */
     private var t3Pending by mutableStateOf(true)
 
-    /** "Detailed map for here?" – asked in the blue strip when the app opens where there is no detailed map. */
+    /** "Detailed map for here?" – asked in a question box when the app opens where there is no detailed map. */
     data class HereAsk(val at: GeoPoint, val accuracyM: Float?, val own: com.onpath.app.cells.CellId, val regions: Int, val bytes: Long,
                        /** The server must build it first (a few minutes); false = status unknown. */
                        val mustBuild: Boolean = false)
@@ -893,7 +898,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (t3Pending && startModeKnown && !onTour && (acc == null || acc <= com.onpath.app.cells.CellTriggers.T3_MAX_ACCURACY_M)) {
             t3Pending = false
             // owner (e.g. in a car): opening the app loads the map for here silently only when the server
-            // has it ready (seconds); when it must be built first (minutes) the blue strip asks. No loading window.
+            // has it ready (seconds); when it must be built first (minutes) the question box asks. No loading window.
             safeCells("position") {
                 val want = cellTriggers.preview(p)
                 val own = want.firstOrNull()
@@ -938,12 +943,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val bgCellProgress = HashMap<com.onpath.app.cells.CellId, MapLoadProgress>()
     /** The strip / chip was tapped: what loads in the background, with "Cancel all". */
     var downloadDetailsOpen by mutableStateOf(false)
-    /** The Plan strip is on screen (hints below the search bar move down). */
+    /** Plan: a message box, the quiet pill or the download chip is on screen (hints below the search bar move down). */
     var backgroundStripShown by mutableStateOf(false)
-    /** Bottom of that strip / chip below the status bar in dp (measured); the error card goes below it ([MessagePlacement]). */
+    /** Bottom of that box / pill / chip below the status bar in dp (measured); hints go below it. */
     var backgroundStripBottomDp by mutableStateOf(0)
-    /** Navigate: height of the top column (turn card, status card, chips) in dp – the error card goes below it. */
-    var navigateTopDp by mutableStateOf(0)
 
     /**
      * What loads in the background now (map regions, routing data the user does not wait for in the modal); null =
@@ -1194,6 +1197,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     var routeChangedNotice by mutableStateOf<String?>(null)
         private set
+    /**
+     * Grey INFO line in the plan sheet: the open plan came from the browser, routed there with another routing
+     * fingerprint ("Planned in the browser with other routing – the route may differ slightly"). Nothing to do; it goes
+     * with the next edit of the plan or another plan (docs/design/routing-fingerprint.md).
+     */
+    var syncRoutingNote by mutableStateOf<String?>(null)
+        private set
     /** The route before the activity / T level change whose result is still pending (null = none). */
     private var activityBefore: PlannedRoute? = null
     /** The next [recalc] runs for an activity / T level change. */
@@ -1358,7 +1368,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // --- dialogs / messages ---
     /**
      * Says [text] where it belongs (owner: no dark message bar): a line in My routes / the open Settings page where the
-     * user acted ([place]); an error without such a place on the light [errorCard] (stays until OK); an INFO without a
+     * user acted ([place]); an error without such a place in the red [errorCard] box (stays until OK); an INFO without a
      * place only in the problem log. Routing: [NoticeRouting].
      */
     fun say(text: String, kind: NoticeKind, place: NoticePlace) {
@@ -2708,6 +2718,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** A plan edit (points changed): the "route changed" notice and its pending comparison go. */
     private fun planChanged() {
         routeChangedNotice = null; activityBefore = null; activityRecalc = false
+        syncRoutingNote = null // edited here: the route is the phone's own now
     }
 
     /** Spots worth knowing on the current route ([RouteWarnings.detect]); none while it is being calculated. */
@@ -2885,10 +2896,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openRoutes() { refreshTours(); routesOpen = true }
 
-    /** Open / load from Manage routes or Load route: asks "Replace current plan?" when that would lose changes. */
+    /**
+     * Open / load from My routes ([RouteRules.openAsk]): during a tour a planned route loads nothing – the box "End
+     * the running tour first, then this route can be loaded." with OK under the tabs of My routes ([routesTourBlocked];
+     * owner 2026-10-31: no new route during a tour, too much automation); else "Replace current plan?" when that would
+     * lose changes; tracks open at once.
+     */
     fun requestOpen(t: Tour) {
-        if (!RouteRules.canOpen(t.kind, t.waypoints.size, navigating(recState.value != null))) return
-        if (RouteRules.askBeforeLoading(t.kind, t.waypoints.size, waypoints, savedPoints)) replaceAsk = PlanToOpen.Saved(t) else openTour(t)
+        when (RouteRules.openAsk(t.kind, t.waypoints.size, navigating(recState.value != null), waypoints, savedPoints)) {
+            OpenAsk.BLOCKED_DURING_TOUR -> {
+                Problems.trace("tour", "Load \"${t.name}\" during the tour: not loaded (end the tour first)")
+                routesTourBlocked = true
+            }
+            OpenAsk.REPLACE_PLAN -> replaceAsk = PlanToOpen.Saved(t)
+            OpenAsk.NONE -> openTour(t)
+        }
     }
 
     fun replaceConfirmed() { val t = replaceAsk ?: return; replaceAsk = null; open(t) }
@@ -3356,12 +3378,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         followPlanned()
     }
 
+    /**
+     * The tour follows the plan's route. Its name (lock screen "Back to …", the tour log) is the saved route's while the
+     * plan belongs to one ([savedName]), else "Route <date>".
+     */
     fun followPlanned(checkNow: Boolean = false) {
         val r = route ?: return
         val w = waypoints.toList()
-        setFollow(defaultName(Txt.s(Res.string.msg_name_route)), r.points, isTrack = false, checkNow = checkNow,
+        setFollow(savedName ?: defaultName(Txt.s(Res.string.msg_name_route)), r.points, isTrack = false, checkNow = checkNow,
             stops = w, names = w.map { stopName(it) }, pinned = pinnedIndices())
         followFromPlan = true
+        if (recState.value != null) Problems.trace("tour", "The tour follows \"$followName\" now (${activity.name}, ${w.size} points)")
     }
 
     fun followShown() {
@@ -3536,6 +3563,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 t.waypoints.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
                 setSaved(t.name, t.id, pts)
                 events += UiEvent.Fit(segs.flatten().map { it.toGeo() })
+                syncRoutingCheck(t, pts)
             } else {
                 // a recorded or imported tour brings its activity, like the import: the T level stays inside the
                 // tour's band, not during a tour (the followed route keeps its activity), a change is said in the
@@ -3584,7 +3612,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun syncNoteOk() { syncNote = null }
 
-    /** ☰ → Pair with browser, the first time: the step line + Open camera as a blue strip on the Plan map ([PairEntry]). */
+    /** ☰ → Pair with browser, the first time: the step line + Open camera as a question box on the Plan map ([PairEntry]). */
     var pairHint by mutableStateOf(false)
         private set
 
@@ -3759,6 +3787,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             refreshTours()
             followSyncedSavedPlan()
             routeSyncedPlans(res.toRoute)
+        }
+        // a plan from the browser was routed with newer routing data than the phone's: get it now, not after 35 days
+        res?.newerData?.takeIf { it.isNotEmpty() }?.let { refreshRoutingTiles(it, "a plan from the browser was routed with newer data") }
+    }
+
+    /**
+     * A saved route opened as the plan: when it is a synced plan, the grey line if the browser routed it with another
+     * fingerprint, and its tiles checked for newer routing data (field 8 newer than the phone's, or without field 8
+     * older than 7 days – plansync/SyncRouting.opened).
+     */
+    private fun syncRoutingCheck(t: Tour, pts: List<GeoPoint>) {
+        syncRoutingNote = null
+        if (t.uuid.isEmpty()) return
+        viewModelScope.launch {
+            val o = withContext(Dispatchers.IO) {
+                try { sync.opened(t.uuid, pts) } catch (e: Exception) {
+                    Problems.warn("sync", "Routing of the opened synced plan not compared", e); null
+                }
+            } ?: return@launch
+            if (linkId != t.id || waypoints.toList() != pts) return@launch // another plan or edited meanwhile
+            if (o.otherRouting) {
+                Problems.info("sync", "Opened plan was routed in the browser with another routing fingerprint – grey line shown")
+                syncRoutingNote = Txt.s(Res.string.sync_routing_other)
+            }
+            if (o.refresh.isNotEmpty()) refreshRoutingTiles(o.refresh, "opened a synced plan")
         }
     }
 
@@ -4187,7 +4240,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             Backups.failure.collect { text ->
                 if (text == null) return@collect
-                while (errorCard != null) delay(500) // after the current error card
+                while (errorCard != null) delay(500) // after the current error box
                 sayError(Txt.s(Res.string.msg_backup_failed, text), NoticePlace.BACKGROUND)
                 Backups.failureSeen(getApplication())
             }
@@ -4209,7 +4262,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             restoreProgress = null
             if (r != null) sync.changed("restored from the backup folder")
             // the result where it was started (Settings → Backup), else where the tracks are now: My routes (restore
-            // offered at the first start); a failure there → the error card
+            // offered at the first start); a failure there → the error box
             if (r != null) sayInfo(com.onpath.app.backup.BackupRestore.summary(r),
                 if (showSettings) NoticePlace.SETTINGS else { routesOpen = true; NoticePlace.ROUTES })
             else sayError(Txt.s(Res.string.msg_restore_folder_unreadable), if (showSettings) NoticePlace.SETTINGS else NoticePlace.MAP)
@@ -4319,7 +4372,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 Problems.error("gpx", "GPX import failed", e)
                 // GpxException: our own plain reason ("No track, route or waypoint found in this file.")
                 val own = com.onpath.app.debug.UserText.of(e, "")
-                // My routes when the import was started there; a file opened from another app → the error card
+                // My routes when the import was started there; a file opened from another app → the error box
                 sayError(if (own.isNotEmpty()) Txt.s(Res.string.msg_gpx_import_failed_reason, own)
                     else Txt.s(Res.string.msg_gpx_import_failed), NoticePlace.ROUTES)
             }
@@ -4348,7 +4401,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             .filter { it.isFile && t - it.lastModified() > ROUTING_MAX_AGE_DAYS * 86_400_000L }
         prefs.routingDataCheckedAt = t
         if (due.isEmpty() || (settings.mapsWifiOnly && !com.onpath.app.cells.AndroidNetworkStatus(getApplication()).unmetered())) return
+        refreshRd5(due.map { it.name })
+    }
+
+    /** Synced plans' tile checks: once per tile in [ROUTING_CHECK_MS] (sync passes come every minute). */
+    private val syncRoutingThrottle = com.onpath.app.plansync.RefreshThrottle(ROUTING_CHECK_MS)
+
+    /**
+     * Newer routing data for [tiles] ("E10_N45") right away – a synced plan says the browser routed it with newer data,
+     * or a synced plan without that date was opened (plansync/SyncRouting). The rules of [checkRoutingData]: never
+     * during a tour, maps only on Wi-Fi respected, quiet (INFO); at most once per tile in [ROUTING_CHECK_MS].
+     */
+    private fun refreshRoutingTiles(tiles: List<String>, why: String) {
+        if (routingDataBusy || recState.value != null) return
+        val due = syncRoutingThrottle.take(tiles.filter { java.io.File(dataFiles.segmentsDir, "$it.rd5").isFile }, System.currentTimeMillis())
+        if (due.isEmpty()) return
+        if (settings.mapsWifiOnly && !com.onpath.app.cells.AndroidNetworkStatus(getApplication()).unmetered()) {
+            Problems.info("routing", "Routing data ${due.joinToString()}: newer data not checked ($why) – maps only on Wi-Fi"); return
+        }
+        Problems.info("routing", "Routing data ${due.joinToString()}: checking for newer data now ($why)")
+        refreshRd5(due.map { "$it.rd5" })
+    }
+
+    /** [names] ("E10_N45.rd5") fetched again when the server has another version; the open plan routed again then. */
+    private fun refreshRd5(names: List<String>) {
         routingDataBusy = true
+        val due = names.map { java.io.File(dataFiles.segmentsDir, it) }
         viewModelScope.launch(Dispatchers.IO) {
             var got = 0
             for (f in due) {

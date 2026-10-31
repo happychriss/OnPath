@@ -130,7 +130,10 @@ Used for map decisions (renders in `docs/design/img/`):
   symbol (furrow dashes on all farmland looked like the German wet-meadow symbol and covered every apple
   orchard in the valley). `rock`, `sand` have their own symbols.
 - **Ground symbols only close in.** The `landcover-*-pattern` layers start at `GROUND_SYMBOLS_ZOOM` = 16. The app's max zoom is 18 (`MapHost` → `setMaxZoomPreference(18.0)`), so the symbols show on the last two
-  zoom steps only; below z16 orchard, vineyard, wetland, rock and sand are plain landcover colour.
+  zoom steps only; below z16 orchard, vineyard, wetland and sand are plain landcover colour. **Rock / scree** start at
+  `ROCK_SYMBOLS_ZOOM` = 14 (owner 2026-10-30: mountain terrain, no towns, the stones help to read the slope).
+  Orchard rings and vineyard stakes are a bit stronger since then (`make_sprite.py`: darker ink, opacity 0.55 instead
+  of 0.30, same spacing) – at z16 they almost vanished on the light farmland colour.
 
 ## Solid track edges at way ends and in bends (owner field report)
 - **Cause.** The dotted track edges (`track-own-compact/medium/loose/soft`, from z14.5) used `line-cap: round` and

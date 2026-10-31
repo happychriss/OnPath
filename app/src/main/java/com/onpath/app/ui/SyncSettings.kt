@@ -119,17 +119,19 @@ fun syncNoteText(note: SyncNote): String = when (note) {
 }
 
 /**
- * A pairing just made or ended, at the top of the Plan map (owner 2026-10-30): what it means + OK – the same blue strip
- * for both. Stays until OK (never by itself); the map below stays usable.
+ * A pairing just made or ended, at the top of the Plan map (owner 2026-10-30): what it means + OK – a HINWEIS box
+ * ("Paired." + what it means). Stays until OK (never by itself); the map below stays usable.
  */
 @Composable
-fun SyncNoteStrip(note: SyncNote, onOk: () -> Unit, modifier: Modifier = Modifier) =
-    OkNoteStrip(syncNoteText(note), if (note == SyncNote.PAIRED) Icons.Outlined.CheckCircle else Icons.Outlined.LinkOff, onOk, modifier)
+fun syncNoteMessage(note: SyncNote, onOk: () -> Unit): Message {
+    val (title, detail) = Messages.split(syncNoteText(note))
+    return Message(MessageKind.HINWEIS, title, detail, listOf(MessageButton(str(Res.string.common_ok), onOk)))
+}
 
 /**
  * ☰ → "Pair with browser" (owner 2026-10-30: shorter pairing): not paired → the phone's camera at once (it reads the QR
  * code; the `#pair=` link comes back through PlanLinks). The one line "On your computer open plan.onpath.earth → …" is
- * shown once before, as a blue step strip on the map with "Open camera" – no dialog; after the camera opened once, one
+ * shown once before, as a question box on the map with "Open camera" – no dialog; after the camera opened once, one
  * tap. Paired, or a sync problem to look at → Settings → Browser sync (status, Unpair). No camera app → that page with
  * its steps (fallback). Pure, unit-tested.
  */
@@ -157,11 +159,11 @@ object PairEntry {
     }
 }
 
-/** The pairing step before the camera opens (first time): what to do on the computer + Cancel / Open camera. */
+/** The pairing step before the camera opens (first time): what to do on the computer + Cancel / Open camera (FRAGE). */
 @Composable
-fun PairHintStrip(onCamera: () -> Unit, onCancel: () -> Unit, modifier: Modifier = Modifier) =
-    ActionStrip(str(Res.string.sync_pair_hint), Icons.Outlined.QrCodeScanner,
-        listOf(str(Res.string.common_cancel) to onCancel, str(Res.string.sync_open_camera) to onCamera), modifier)
+fun pairHintMessage(onCamera: () -> Unit, onCancel: () -> Unit): Message =
+    Message(MessageKind.FRAGE, str(Res.string.sync_pair_hint), icon = Icons.Outlined.QrCodeScanner,
+        buttons = listOf(MessageButton(str(Res.string.common_cancel), onCancel), MessageButton(str(Res.string.sync_open_camera), onCamera)))
 
 class SyncCallbacks(
     val onOpenCamera: () -> Unit = {},

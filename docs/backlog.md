@@ -22,6 +22,12 @@ the git log.
   e8245e5 (10-29); after the next merge `web/parity.json` flags these files too. Drive hand-off: 00 Übergabe,
   "2026-10-30 donald → Web-Planer: App-Änderungen zum Nachziehen".
   - *Must (the web build or the web map breaks after merging main):*
+    - Plan sync fields 7 / 8 (routing fingerprint + rd5 dates, owner 2026-10-31) · (this branch, 2026-10-31) · shared
+      `sync/SyncItem.kt` (`SyncItem.routing` / `routingData`, `SyncRoutingData`, `SyncLedger.save(…, routing,
+      routingData)`) – no new file; the page fills both when it saves (its engine's `RoutingFingerprint` + the days of
+      the rd5 it routed with) and shows a grey line "Planned on the phone with other routing – the route may differ
+      slightly" when the phone's fingerprint differs; web-sync.md gets §5.2 – text and steps in
+      `docs/handoff-web-sync-fingerprint.md`.
     - One plan computation: `routing/PlanResult.kt` · (this branch, 2026-10-31) · `Engine.plan` calls
       `PlanResult.plan` (route + model time, snapped points – pins, named, far and skipped stops kept – gaps, warnings,
       rating, profile) instead of its own copy; the page adopts the snapped points; add `routing/PlanResult.kt` +
@@ -94,6 +100,12 @@ the git log.
       `PlanPoints.deleteAt`, `"move"` → `PlanPoints.move`, `deletePoint` through the engine, meta by value – steps in
       `docs/handoff-web-parity-b.md` §3.
   - *Should:*
+    - Map symbols: rock / scree from z14, stronger orchard / vineyard · 2026-10-31 · nothing to code – `copy-engine.mjs`
+      copies `style/f2/onpath.json` + `sprites/` on the next merge of main; just check them on the web map.
+    - One message system · `ui/MessageCard.kt` (2026-10-31, `docs/design/ui-style.md`) · the browser uses the same three
+      kinds and look: FRAGE (white card, blue left edge, two verb buttons, until answered), HINWEIS (one button – OK or
+      the one way out; grey / amber ⚠ / red ⚠ edge, never goes by itself), ANZEIGE (no box, a line in place); one box at
+      a time (a question first), 12 dp under the top bar; green filled primary button, green text button beside it.
     - One plan GPX export · `gpx/PlanGpx.kt` (pure, shared) · the web's `WebApi.gpx` writes the line only: use
       `PlanGpx.export` (named route points as `<wpt>`, sport, "<name> - plan.gpx"); on import `PlanGpx.stopsOf` first
       (an exported plan comes back exactly, no fitting) – `docs/handoff-web-parity-b.md` §1–2.
@@ -240,6 +252,9 @@ the git log.
 - **Open source + self-hosted map servers (concept, not built):** app setting "Map server" (custom URL + key, also via
   QR code; cells carry their server in the manifest); `/v1` API as an open spec; all-in-one Docker Compose or the cloud
   setup; builder image on ghcr.io; F-Droid build without Play Billing. Not before the Play launch.
+- **Replace the tour's route by a saved route during a tour** – owner 2026-10-31: not for now (too much automation).
+  Today a tap on a planned route in My routes during a tour says "End the running tour first, then this route can be
+  loaded." (`RouteRules.openAsk` → `BLOCKED_DURING_TOUR`).
 - **Ideas:** outdoor mode, way back on own track, hut info, tour suggestions, first-start intro / help page.
 - **Map wishes (only when the owner says so):** shrub symbols; trail numbers abroad beyond numeric refs (E5 / GR20,
   `osmc:symbol`); contours below z12.
