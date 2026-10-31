@@ -26,6 +26,13 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud-app (donald), 2026-10-31/11-01 – captain's order done.** Release-Rundgang 14/14 PASS (flows 11 + 12 green),
+  again 14/14 on main with voice. Voice guidance merged to `main` (69515dde): branch merged with main, one test made
+  tolerant to the line's geometry length, Settings → Navigation screenshots EN + DE; full gate green (2253 tests). Debug
+  build installed on the Pixel (data kept). Field bugs (4c64138d): T0 bike plan link (shared `PlanCode` – cloud-plan
+  told in the mirror list), track behind „Unterbrochene Tour“ + EN "Interrupted tour", shared place menu on every share,
+  shared place found by address takes the named POI (kind). **Next:** owner tests voice on the Pixel, captain's go →
+  release (version bump + notes; website / Play voice texts then change, marketing list).
 - **cloud-captain, 2026-10-31 (session ended; the owner starts a fresh captain).** Role setup step 6 done: the owner
   cleared the captain once (trusted-device card via `confirm_repository_trust` with the refusal's `content_digest`) –
   since then the captain messages and reads cloud-app, cloud-plan, cloud-web; the roles cannot message the captain and

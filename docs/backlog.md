@@ -13,20 +13,18 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-app] Order done – 2026-11-01: (1) Release-Rundgang on donald 14/14 PASS (flows 11 + 12 green), run again
+  on main with voice merged (69515dde): 14/14 PASS. (2) Voice guidance merged to `main` (69515dde; full gate green,
+  2253 tests, Settings → Navigation screenshots EN + DE new), debug build installed on the Pixel – waits for the owner's
+  test (setup step "Voice", a ride). (3) Four field bugs fixed (4c64138d). Release: ready from my side, waits for your go
+  + the owner's Pixel test. Note: the reply to your test message via send_message was refused
+  (`elevated_session_untrusted_device`) – this donald session cannot message you.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-plan] captain's order: merge main → web-spike + shared-code tests, then "Save asks for the name" + "Plan sheet without ⋯", then candidate marker + fit after adding a place – since 2026-10-31
-- [cloud-app] captain's order: (1) Release-Rundgang (flows 11 + 12), (2) voice guidance `wip/voice-guidance` → main, (3) small field bugs – since 2026-10-31
 
 ## Next
-- **Small field bugs (captain handoff 2026-10-31, not claimed):**
-  - Bike plan link with T level 0 is rejected („Plan-Link nicht lesbar“): check whether the web planner ever emits T0
-    for bikes; the app should accept T0 for non-hike activities.
-  - After a reboot the track is not drawn behind the „Unterbrochene Tour“ dialog. EN wording: dialog "Unfinished
-    tour" vs notification "Tour recording interrupted" – align.
-  - Second share of the same Google place: the menu does not open by itself (only the ring).
-  - EN shared-place menu shows only "Address" when the match came via an address (DE shows the POI type).
 - **Website and Google Play follow-ups (marketing; website repo `happychriss/onpath.earth`)** – (1) **Voice:** onpath.earth
   (since PR #7) and the Play store text say "Sprachansagen sind nicht vorgesehen – OnPath führt über Karte und
   Vibration" – written before the owner's voice decision of 2026-10-31; change both when voice guidance ships.
@@ -52,11 +50,11 @@ the git log.
   auslassen" (16, 81dbff7); map symbols: rock from z14, orchards / vineyards stronger.
 - **Plan edits during a tour – built 2026-10-31 (cloud), check it** – `docs/design/tour-edit-position.md`. Owner: on the next
   ride delete a point ahead / the destination after passing the others (grey ✓ points, pale plan line, "Kein Ziel mehr
-  vor dir."). **donald:** run `tools/ci/release_rundgang.sh` once – flows 11 and 12 are new and were only compiled in the
-  cloud (no emulator); a red flow blocks the next release.
-- **Voice guidance – for the next release (owner 2026-10-31), half built on branch `wip/voice-guidance` (c9fcc073)** –
-  next: compile, unit tests + Paparazzi green there, merge to main, owner test on the Pixel (see project-status "Last
-  session"). Owner: "every tester
+  vor dir."). Rundgang flows 11 + 12 green on donald (2026-11-01).
+- **Voice guidance – for the next release (owner 2026-10-31), on `main` since 69515dde (2026-11-01)** – gate + Rundgang
+  green, debug build on the Pixel. **Owner:** test on the Pixel – Phone setup step "Voice" (offline voice, test
+  sentence, "Heard it?"), Settings → Navigation voice switches, then a ride (sound, ducking, Bluetooth, phone call);
+  review the ~30–40 spoken sentences (`strings_voice.xml`). Then the captain's go → release. Owner: "every tester
   asks whether it talks". **Concept: `docs/design/voice-guidance.md`** (rules, all sentences DE/EN, 5 questions for the
   owner). Android's own text-to-speech (`TextToSpeech`, no Play Services; only voices that need no
   network), one voice for everything incl. names; all speech from one place (a `Speaker` interface) so the voice can
@@ -84,6 +82,9 @@ the git log.
   privacy + pairing sentences, host ipHash, date with the dot, first-route fit, "New route for … – check it".
   Plan parity: `web/test/plans.json` 14 cases, all app = web (gate in the jvm job).
   - *Should:*
+    - [cloud-plan] Plan link with T level 0 · app commit "Field bugs: bike plan link with T0 opens" (4c64138d) –
+      shared `routing/PlanCode`: a non-hike plan with T0 reads as T2 (decoder only, the encoder still writes 1–5) · the
+      web gets it with the next `merge-main.sh`; check that the planner's own link reader has no stricter check.
     - [cloud-plan] Save asks for the name (owner 2026-10-31, app 0.13.5, replaces "save at once") · app commit "Save
       always asks for the name" (3be5469) · the browser still saves at once and renames in place (`#savedLine` →
       `#renameField`). Web: every Save (header, ⋯ → Save route, Save first) opens a small name dialog / popover with the
