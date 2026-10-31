@@ -5,7 +5,8 @@ requirements, illogical spots from the user's view, strong deviations from stand
 scenarios, and above all: **app and web planner always in sync**. Read-only review of `main` (15de6d99) and
 `web-spike` (f31b9acb) by six parallel reviewers; nothing was run on a device. Full reports (each finding with
 scenario, file:line, fix, role, certainty) in `docs/reviews/2026-11-01/`:
-`ux.md` · `web.md` · `sync.md` · `recording.md` · `routing.md` · `architecture.md`.
+`ux.md` · `web.md` · `sync.md` · `recording.md` · `routing.md` · `architecture.md`; the owner's field bugs of
+2026-11-01: `fix-voice-repeat.md`, `fix-tour-edit-line.md`.
 
 ## Verdict
 - **App ⇄ web parity: OK.** The web engine compiles the app's shared files from the same `app/` sources
@@ -18,13 +19,27 @@ scenario, file:line, fix, role, certainty) in `docs/reviews/2026-11-01/`:
 
 ## A. Fix before the release (captain's proposal – owner confirms in the morning)
 App – **cloud-app**:
-1. **Owner field bug: the start sentence ("Los geht's") repeats** several times in the first km with a poor fix →
-   `fix-voice-repeat.md`. Every one-time sentence at most once per tour.
+1. **Owner field bug: the start sentence ("Los geht's") repeats** 3–4× in the first 3 km → `fix-voice-repeat.md`.
+   The guard `VoiceGuide.started` lives only in memory; it can repeat **only when the recording service is recreated
+   mid-tour** (sticky restart after the process died – Android's restart back-off 1 / 4 / 16 / 64 s fits). So the
+   bug points to **crashes during the tour**: likely the unguarded re-route result (`RecordingService.kt:643`) or the
+   ticker (`:376`), since the service scope has no exception handler. Fix: (a) catch + `Problems` around those paths
+   / a `CoroutineExceptionHandler` – stops the restarts; (b) keep the voice memory with the tour (`voiceStarted` in
+   `trip-pace.json`, `VoiceGuide.continueTour()` on the `existing != null` branch); (c) minimum intervals for "No GPS
+   signal" (only after the start, ≤ 1 / 10 min), "Off the route" (≥ 2 min), drop "Back on the route" within 1 min.
+   **First:** the owner's diagnostics export from that ride – crash entries + several "Voice ready" lines confirm it.
 2. **Owner field bug + UX B2: quick Stop.** The rolled-up tour row ("Tour läuft · 1,7 km · 0:14:38 · Weiter") gets a
    round ■ Stop button (48 dp) left of Weiter → opens the same "Tour beenden?" question as End tour. Today Pause / End
    are only reachable by dragging the sheet up; a tap on the slider gives no "slide" hint (`SlideToUnlock.kt:86-140`)
    → add one.
-3. **Owner field bug: route / lines vanish when editing the plan while moving** → `fix-tour-edit-line.md`.
+3. **Owner field bug: route / lines vanish when editing the plan while moving** → `fix-tour-edit-line.md`. After an
+   edit the plan line is hidden on purpose (`planIsFollowed`) and only a pale copy remains – and that copy goes away:
+   (1) passed points are recomputed on every call and lost after `followAhead` (the new session only knows the points
+   ahead; `TourSplit.carry` result is never stored) → keep a per-tour passed set; (2) a service re-route draws
+   `nav.original` *instead of* the pale plan (`MapScreen.kt:531`) → draw both; (3) `splitGen` is not bumped by later
+   edits / clear / undo, so a slow old result wins; (4) race: a service re-route can overwrite the app's new session
+   files → session token. Also: a failed recalc sets the route to null during a tour → keep the old route.
+   Each with a test that reproduces it first (see the file); device check in Demo mode.
 4. **UX B1:** the empty plan says "Select a point on the map" but a tap does nothing – it must say *hold*
    (`strings_plan.xml:59` `plan_hint_first_point`, text already in `ux-two-modes.md:142`). String only.
 5. **UX B3:** every fresh install asks "Earlier tracks and routes? … Restore" right after the welcome

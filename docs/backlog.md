@@ -35,6 +35,17 @@ the git log.
   calls voice guidance available (065d3b7) – fine if v0.14.0 ships 2026-11-01, otherwise roll that text back –
   captain 2026-11-01.
 
+- → [cloud-app] **Release-day fixes (captain 2026-11-01, owner confirms in the morning):** list A 1–9 in
+  `docs/reviews/2026-11-01-pre-release.md` – the owner's three field bugs first: (1) start sentence repeats = service
+  restarts mid-tour → get the owner's diagnostics export of that ride, guard `RecordingService.kt:643` / `:376`, voice
+  memory per tour (`fix-voice-repeat.md`); (2) ■ Stop in the rolled-up tour row → "Tour beenden?"; (3) plan lines
+  vanish when editing during a tour (`fix-tour-edit-line.md`, four causes, tests first). Then hold-hint text, restore
+  question, off-route off after Plan, notification id 44, splice catch-all + no raw errors, dev tools only via unlock.
+- → [cloud-plan] **Release-day fixes (captain 2026-11-01):** merge `main` first, then list A 10–13 in
+  `docs/reviews/2026-11-01-pre-release.md` (failed download cached forever, WasmGC browser check, unsaved route on
+  reopen, no developer / raw error lines) + follow the splice catch-all from main. Deploy only together with the app
+  release (captain's go).
+
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
 - ← [cloud-web] Orders done: Drive copy (by your helper), A-021 tab name + rest (onpath.earth 61a09b6), website voice + planner as available (065d3b7, owner: now, before v0.14.0). Store text version 3 (voice, planner, Tour menu …) is in onpath.private – into the Play Console with 0.14.0. The website follow-up (1) Voice in "Next" is done for the website; the Play text waits for 0.14.0 – 2026-11-01
@@ -47,7 +58,6 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [captain] code + architecture review before the first-user release (owner's order, overnight; read-only, report in `docs/reviews/`) – since 2026-11-01
 - [cloud-app] Release v0.14.0 (voice) – captain's go; waits for the owner's Pixel voice test OK + E2E green on 69515dd / 4c64138 – since 2026-11-01
 
 ## Next
