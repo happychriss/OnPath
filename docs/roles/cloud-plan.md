@@ -10,7 +10,9 @@ build in the backlog as open; don't fall back to slow cloud builds without askin
 
 **Do**
 - At the start and after every pull: read "For the roles" in `docs/backlog.md`; lines `→ [cloud-plan]` are the captain's
-  word for you (the captain cannot message you directly). Do them or move them to "In progress", then delete the line.
+  word for you (it may also message you directly). Do them or move them to "In progress", then delete the line.
+- Your word to the captain (answers, blockers) goes under "For the captain" in `docs/backlog.md`
+  (`← [cloud-plan] …`) – you cannot message the captain.
 - Before a big build: claim it in the backlog (`[cloud-plan] build cells Meran/Bozen on the laptop`).
 - Keep the shared code in step with `main` (list under "Shared code" in cloud-app.md); after a merge from `main`, run the
   shared-code tests on `web-spike`.

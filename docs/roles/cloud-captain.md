@@ -2,15 +2,18 @@
 
 **Owns:** priorities, the order of work between roles, the release check. Does not write product code.
 **Computer:** none – cloud only. Start a fresh captain session when the old one gets long; everything it needs is in
-the repos and in the other sessions' transcripts.
+the repos and in the other sessions' transcripts. A fresh captain session must be cleared once by the owner
+(see `docs/working-agreement.md` §8, "Tested 2026-10-31").
 
 **Do**
 - Get the picture from the repos (`docs/backlog.md`, "Last session" in `docs/project-status.md`, `onpath.private`)
-  and from cloud-web's transcript (list sessions / read events). cloud-app and cloud-plan are attached to the owner's
-  computers and refuse the captain's reads and messages – their state comes from the backlog and their handoffs.
-- Tell cloud-app / cloud-plan what to do under "For the roles" in `docs/backlog.md` (`→ [cloud-plan] merge main into
-  web-spike, run the shared-code tests`). Message cloud-web directly when something must be known now; anything that
-  must last also goes into the backlog. Urgent for a computer-bound role → tell the owner, who types it in there.
+  and from the roles' transcripts (list sessions / read events – all three, the captain session is cleared for the
+  owner's computers). Read "For the captain" in `docs/backlog.md` and delete each line once read.
+- Message a role directly when something must be known now ("sync format changed – please follow"); anything that
+  must last also goes under "For the roles" in `docs/backlog.md` (`→ [cloud-plan] merge main into web-spike, run the
+  shared-code tests`). The roles cannot message the captain back – they answer under "For the captain".
+- **Never ask for a computer folder** (`request_computer_folder`): once attached, the captain loses its reach into
+  the other sessions.
 - Keep the backlog tidy: stale claims (older than a day, nobody working) → ask the role, then remove.
 
 **Release check** (app release or planner deploy that touches shared code) – all must hold on `main` and `web-spike`:

@@ -33,5 +33,6 @@ Rules:
 5. Rename the sessions to the role names and tell each: "Pull `main`, you are `<role>`, read `docs/roles/<role>.md`."
    Start the captain as a fresh session.
 6. Test: the captain messages each role "test", each answers (checks that a session attached to a computer still
-   sends and receives).
+   sends and receives). **Done 2026-10-31:** captain → all roles by message (after the owner cleared the captain
+   once); roles → captain only through "For the captain" in `docs/backlog.md` – see `docs/working-agreement.md` §8.
 7. cloud-web copies the Drive folder into `onpath.private`; from then on Drive is read-only history.

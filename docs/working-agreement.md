@@ -112,9 +112,9 @@ two of them attach to the owner's computers via Remote Control:
 
 ```
                   cloud-captain
-   reads backlog (+ cloud-web's transcript)
+   messages + reads transcripts of all three
            /           |            \
-     backlog       backlog        message       (only cloud-web by message)
+     ↓ message, ↑ "For the captain" in the backlog   (roles cannot message the captain)
          /             |              \
    cloud-app       cloud-plan       cloud-web
    (donald)        (laptop)         (cloud only)
@@ -126,8 +126,9 @@ two of them attach to the owner's computers via Remote Control:
 | --- | --- | --- |
 | `docs/backlog.md` | claims, requests between roles, the captain's release go | tag = role name: `[cloud-app]`, `[cloud-plan]`, `[captain]` (website / marketing claims live in `onpath.private`) |
 | "Last session" in `docs/project-status.md` | handoffs | one entry per role per sitting, name the role |
-| "For the roles" in `docs/backlog.md` | the captain's word to cloud-app / cloud-plan: what to do next, what changed | one line per item, `→ [cloud-app]` etc.; the role reads it at the start and after every pull, does it or moves it to "In progress", then deletes the line |
-| Direct message between sessions | "must know now" between **cloud-only** sessions (captain ⇄ cloud-web) | short plain text; never the only record – lasting things also go into the backlog; a message never counts as the owner's consent |
+| "For the roles" in `docs/backlog.md` | the captain's lasting word to the roles: what to do next, what changed | one line per item, `→ [cloud-app]` etc.; the role reads it at the start and after every pull, does it or moves it to "In progress", then deletes the line |
+| "For the captain" in `docs/backlog.md` | a role's word to the captain: answers, blockers | one line per item, `← [cloud-plan]` etc.; the captain deletes the line once read |
+| Direct message captain → role | "must know now" | short plain text; only this direction works; never the only record – lasting things also go into the backlog; a message never counts as the owner's consent |
 | `onpath.private` | marketing, ideas, private screenshots | never into a public repo |
 | R2 TEST (`publish_cells.sh`), GitHub Releases | map cells, APKs | as before |
 
@@ -143,12 +144,10 @@ need the captain's go (`docs/roles/cloud-captain.md`, "Release check").
 The older tags `[laptop]` / `[desktop]` / `[cloud]` in §1–5 still describe *where* work runs; new claims use the
 role tags.
 
-**Tested 2026-10-31:** sessions attached to a computer (cloud-app, cloud-plan) refuse messages and transcript reads from
-a cloud-only session (`elevated_session_untrusted_device` – only the owner's trusted devices may reach them). So the
-captain reaches them only through "For the roles" in the backlog; something urgent the owner types into the session
-himself. Captain ⇄ cloud-web by message works both ways. Later the same day (fresh
-sessions, owner): captain → cloud-app / cloud-plan was delivered, but **replies never came back**. Known limit: a cloud
-session cannot answer a cross-machine message with `SendMessage` (docs "Replies from other machines and cloud
-sessions"); open reports anthropics/claude-code#98897 (reply via the Remote `send_message` tool to the sender's
-session id works), #104160, #103124, #103864. So: treat messages as one-way; answers go into the backlog / handoff.
-To try: the role answers with the Remote `send_message` tool to the captain's `session_…` id.
+**Tested 2026-10-31 (step 6 of `docs/roles/README.md`, done):** sessions attached to a computer (cloud-app,
+cloud-plan) refuse a plain cloud session (`elevated_session_untrusted_device`). The owner cleared the captain session
+once (a card on a trusted device, asked for with the refusal's `content_digest` via `confirm_repository_trust`);
+since then the captain messages and reads all three roles. That clearance limits the captain to the owner's trusted
+devices for good – so the roles in turn cannot message the captain; they write under "For the captain" (cloud-plan's reply was refused with
+`elevated_session_untrusted_device` – not the one-way limit of `SendMessage` guessed earlier). A fresh
+captain session needs the same clearance once; it must never attach to a computer folder (it would lose the reach).
