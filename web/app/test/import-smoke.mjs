@@ -64,6 +64,8 @@ check(await pins() === 2, 'both points still there');
 await page.click('#planAnyway');
 await page.waitForFunction(() => !document.querySelector('dialog.longroute') && (/failed|Planning/.test(document.getElementById('status').textContent) || !!document.querySelector('#summary .big')), null, { timeout: 120_000 });
 check(!(await page.$('dialog.longroute')), 'Plan anyway: routed without asking again');
+// the long plan runs on in the engine's one worker: wait for its end, or the next plan and click queue behind it
+await page.waitForFunction(() => !document.getElementById('sheet').classList.contains('busy'), null, { timeout: 180_000 });
 
 // 1c. a clicked point that makes a short plan very long: Cancel takes it back (PlanStatus.onCancel → UNDO)
 await page.goto(url + 'index.html#p=' + CODE);
