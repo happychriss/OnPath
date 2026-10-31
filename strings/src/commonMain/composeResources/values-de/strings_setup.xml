@@ -85,4 +85,13 @@
         <item quantity="one">%1$d empfohlen</item>
         <item quantity="other">%1$d empfohlen</item>
     </plurals>
+    <string name="setup_voice_title">Sprachansagen</string>
+    <string name="setup_voice_why">Auf einer Tour kann OnPath ansagen, wo du abbiegen musst – nur dort, wo du dich vertun könntest, und rechtzeitig. Das Handy spricht ohne Internet, mit seiner eigenen Stimme. Der Test zeigt, ob du es hörst.</string>
+    <string name="setup_voice_do">Stell den Ton laut und tippe auf Testen.</string>
+    <string name="setup_voice_question">Hast du den Satz gehört?</string>
+    <string name="setup_voice_yes">Ja, gehört</string>
+    <string name="setup_voice_not_heard">Dann ist die Medienlautstärke leise oder aus. Drück die Lauter-Taste, während der Test läuft, und teste nochmal. Mit Kopfhörern kommt der Ton dort.</string>
+    <string name="setup_voice_missing">Auf deinem Handy fehlt noch die Stimme für diese Sprache. Tippe auf Stimme laden, wähle die Sprache und lade sie herunter – danach geht es ohne Internet.</string>
+    <string name="setup_voice_load">Stimme laden</string>
+    <string name="setup_voice_none">Dieses Handy hat keine Sprachausgabe. OnPath führt dich mit Vibration und auf dem Bildschirm.</string>
 </resources>

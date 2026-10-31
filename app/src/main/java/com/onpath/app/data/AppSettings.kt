@@ -54,6 +54,12 @@ data class AppSettings(
     val keepScreenOn: Boolean = true,
     /** Screen while cycling: always on / smart rest view (default) / like the phone. */
     val bikeScreen: BikeScreen = BikeScreen.SMART,
+    /**
+     * Spoken directions (owner 2026-10-31, docs/design/voice-guidance.md) on the bike / on foot. On by default; the voice
+     * speaks only once the phone setup's test sentence was heard (Prefs.voiceHeard).
+     */
+    val voiceBike: Boolean = true,
+    val voiceHike: Boolean = true,
     /** Navigate: the dot sits on the followed route while within ~25 m of it (owner, like Komoot; default on). */
     val positionOnRoute: Boolean = true,
     /** Map theme key, see map/StyleLoader. Only "classic" is bundled; others = adb overrides. */

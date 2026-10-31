@@ -74,6 +74,7 @@ internal fun rowState(c: Check, phone: PhoneState): StringResource = when {
     notOnThisPhone(c, phone) -> Res.string.setup_state_none
     c.ok -> Res.string.setup_state_ok
     c.id == CheckId.VIBRATION && phone.vibrationFelt == Felt.UNKNOWN -> Res.string.setup_state_untested
+    c.id == CheckId.VOICE && phone.voiceHeard == Felt.UNKNOWN -> Res.string.setup_state_untested
     else -> Res.string.setup_state_missing
 }
 
@@ -100,6 +101,8 @@ private fun Row(c: Check, phone: PhoneState, onFix: (CheckId) -> Unit, onTestVib
         when {
             c.id == CheckId.VIBRATION && phone.hasVibrator ->
                 TextButton(onClick = onTestVibration, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.setup_vib_test)) }
+            c.id == CheckId.VOICE ->
+                TextButton(onClick = { onFix(c.id) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.setup_vib_test)) }
             !c.ok || c.id == CheckId.UNUSED_RESET ->
                 TextButton(onClick = { onFix(c.id) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.setup_fix)) }
         }

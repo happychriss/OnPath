@@ -140,6 +140,9 @@ class RecordingService : Service() {
     private var navigator: Navigator? = null
     /** Vibration before junctions of the followed line + the next junction for the lock screen (owner). */
     private val junctions = com.onpath.app.navigation.JunctionCues()
+    /** Spoken directions (docs/design/voice-guidance.md): what to say ([voice]), the phone's speech output ([speaker]). */
+    private val voice = com.onpath.app.navigation.VoiceGuide()
+    private var speaker: Speaker? = null
     private val junctionSpeeds = com.onpath.app.navigation.SpeedWindow()
     /** Line version whose junction count was traced (a missing junction vibration is explained in the trace). */
     private var junctionsTracedVersion = Int.MIN_VALUE
@@ -202,6 +205,17 @@ class RecordingService : Service() {
                 publish(); return START_STICKY
             }
             ACTION_CHECK_NOW -> { navigator?.checkNow(); return START_STICKY }
+            ACTION_SAY -> {
+                // an app event (arrival, nothing ahead after an edit): said at once when spoken directions are on
+                val phrase = when (intent.getStringExtra(EXTRA_SAY)) {
+                    SAY_ARRIVED -> com.onpath.app.navigation.Phrase.Arrived
+                    SAY_NO_DESTINATION -> com.onpath.app.navigation.Phrase.NoDestination
+                    else -> null
+                }
+                if (phrase != null && voiceOn()) voiceSpeaker()?.say(com.onpath.app.navigation.VoiceText.of(
+                    voice.event(phrase, SystemClock.elapsedRealtime())))
+                return START_STICKY
+            }
             ACTION_SETTINGS -> {
                 settings = null; applySettings(); trip.setPrior(priorFor(timeActivity())); updateAlert(); publish(); return START_STICKY
             }
@@ -360,6 +374,7 @@ class RecordingService : Service() {
                 // the lock times out after 12 h: long days go on; paused = slow GPS (10 s), no lock (battery)
                 if (!paused && wakeLock?.isHeld != true) acquireWakeLock()
                 if (gpsLost()) navigator?.onGpsLost() // no alarms without GPS (R-04)
+                if (gpsLost()) navigator?.state?.let { voiceStep(it, now) } // "No GPS signal" comes without fixes
                 if (now - lastStats >= 10_000) {
                     lastStats = now
                     safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
@@ -658,6 +673,7 @@ class RecordingService : Service() {
         val st = navigator?.state ?: return
         junctionSpeeds.note(if (loc.hasSpeed()) loc.speed.toDouble() else null, nowEl)
         junctions.bike = navigator?.session?.activity != com.onpath.app.routing.Activity.HIKE
+        voiceStep(st, nowEl)
         if (st.version != junctionsTracedVersion) {
             junctionsTracedVersion = st.version
             val n = com.onpath.app.navigation.JunctionCues.count(st.line)
@@ -677,6 +693,38 @@ class RecordingService : Service() {
             val ok = vibrate(com.onpath.app.navigation.JunctionCues.pattern(cue.side), "junction")
             Problems.trace("navigation", "Junction cue: ${cue.name} – vibrated=$ok (setting $choice, locked=$locked)")
         } else Problems.trace("navigation", "Junction cue: ${cue.name} – not vibrated (setting $choice, locked=$locked)")
+    }
+
+    /** Spoken directions on for this tour's activity, and the setup's test sentence was heard. */
+    private fun voiceOn(): Boolean {
+        val cfg = settings ?: Prefs(this).settings
+        val bike = (navigator?.session?.activity ?: Prefs(this).activity) != com.onpath.app.routing.Activity.HIKE
+        return (if (bike) cfg.voiceBike else cfg.voiceHike) && Prefs(this).voiceHeard == com.onpath.app.setup.Felt.YES
+    }
+
+    /** The speaker, started on first use (then the first sentence comes without delay); what it finds goes to the phone check. */
+    private fun voiceSpeaker(): Speaker? = speaker ?: Speaker(this).also { s ->
+        speaker = s
+        s.onState = { st -> Prefs(this).voiceStatus = Speaker.status(st) }
+        s.start()
+    }
+
+    /** One step of the spoken directions ([com.onpath.app.navigation.VoiceGuide]) for this fix / tick. */
+    private fun voiceStep(st: NavState, nowEl: Long) {
+        if (!voiceOn()) return
+        try {
+            val s = navigator?.session
+            val phrase = voice.update(com.onpath.app.navigation.VoiceGuide.Input(
+                nowMs = nowEl, line = st.line, version = st.version, alongM = st.shownAlongM,
+                onRoute = st.prompt == null && st.shownAlongM != null, speedMps = junctionSpeeds.speedOrNull(nowEl),
+                bike = s?.activity != com.onpath.app.routing.Activity.HIKE, offRoute = st.prompt?.offRoute == true,
+                rerouted = s?.rerouted == true, paused = paused, gpsLost = gpsLost(),
+                stops = s?.stops.orEmpty(), visited = s?.visited.orEmpty(), toGoS = tripTime().toGoS,
+            )) ?: return
+            voiceSpeaker()?.say(com.onpath.app.navigation.VoiceText.of(phrase))
+        } catch (e: Exception) {
+            Problems.warn("voice", "Spoken direction skipped", e)
+        }
     }
 
     // ---- heights above sea level ([SeaLevel]) ----
@@ -883,6 +931,7 @@ class RecordingService : Service() {
         cancelReroute()
         scope.cancel()
         routeExec.shutdown()
+        speaker?.stop(); speaker = null
         try { terrain?.close() } catch (e: Exception) { Problems.warn("elevation", "Terrain file not closed", e) }
         terrain = null
         tracker.stop()
@@ -1106,6 +1155,11 @@ class RecordingService : Service() {
         const val EXTRA_TIME_S = "timeS"
         /** With ACTION_FOLLOW_CHANGED ("Continue navigation"): check the next fix at once and ask when off route. */
         const val EXTRA_CHECK_NOW = "checkNow"
+        /** Speak an app event ([EXTRA_SAY] = [SAY_ARRIVED] / [SAY_NO_DESTINATION]) when spoken directions are on. */
+        const val ACTION_SAY = "com.onpath.app.SAY"
+        const val EXTRA_SAY = "say"
+        const val SAY_ARRIVED = "arrived"
+        const val SAY_NO_DESTINATION = "noDestination"
         /** "Continue navigation" with the same session: check the next fix at once. */
         const val ACTION_CHECK_NOW = "com.onpath.app.CHECK_NOW"
         const val EXTRA_CONTINUE_ID = "continueId"

@@ -87,6 +87,8 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             planVibrate = sp.getBoolean("planVibrate", true),
             keepScreenOn = sp.getBoolean("keepScreenOn", true),
             bikeScreen = BikeScreen.of(sp.getString("bikeScreen", null), sp.getBoolean("keepScreenOn", true)),
+            voiceBike = sp.getBoolean("voiceBike", true),
+            voiceHike = sp.getBoolean("voiceHike", true),
             positionOnRoute = sp.getBoolean("positionOnRoute", true),
             mapTheme = sp.getString("mapTheme", "classic") ?: "classic",
             navHeadingUp = sp.getBoolean("navHeadingUp", true),
@@ -106,6 +108,8 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             .putBoolean("planVibrate", v.planVibrate)
             .putBoolean("keepScreenOn", v.keepScreenOn)
             .putString("bikeScreen", v.bikeScreen.name)
+            .putBoolean("voiceBike", v.voiceBike)
+            .putBoolean("voiceHike", v.voiceHike)
             .putBoolean("positionOnRoute", v.positionOnRoute)
             .putString("mapTheme", v.mapTheme)
             .putBoolean("navHeadingUp", v.navHeadingUp)
@@ -154,6 +158,18 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
     }
 
     // ---- Phone setup (docs/design/onboarding-phone-check.md) ----
+    /** Phone setup: the voice's test sentence was heard (spoken directions start only then). */
+    var voiceHeard: com.onpath.app.setup.Felt
+        get() = sp.getString("voiceHeard", null)?.let { runCatching { com.onpath.app.setup.Felt.valueOf(it) }.getOrNull() }
+            ?: com.onpath.app.setup.Felt.UNKNOWN
+        set(v) = sp.edit().putString("voiceHeard", v.name).apply()
+
+    /** The speech output for the app language as last found (recording/Speaker). */
+    var voiceStatus: com.onpath.app.setup.VoiceStatus
+        get() = sp.getString("voiceStatus", null)?.let { runCatching { com.onpath.app.setup.VoiceStatus.valueOf(it) }.getOrNull() }
+            ?: com.onpath.app.setup.VoiceStatus.UNKNOWN
+        set(v) = sp.edit().putString("voiceStatus", v.name).apply()
+
     /** The user's answer to the vibration test ("Did you feel it?"). */
     var vibrationFelt: com.onpath.app.setup.Felt
         get() = sp.getString("vibrationFelt", null)?.let { runCatching { com.onpath.app.setup.Felt.valueOf(it) }.getOrNull() }

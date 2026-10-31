@@ -15,6 +15,8 @@ enum class CheckId {
     NOTIFICATIONS,
     /** The user felt the test vibration (V1). */
     VIBRATION,
+    /** Spoken directions: an offline voice in the app's language, and the user heard the test sentence (V2). */
+    VOICE,
     /** Battery usage not "Restricted" (B1). */
     BATTERY,
     /** A phone brand known to close apps in the background (B2). */
@@ -32,6 +34,9 @@ enum class LocationGrant { NONE, APPROXIMATE, PRECISE }
 enum class Felt { UNKNOWN, YES, NO }
 
 enum class ResetStatus { ON, OFF, NOT_AVAILABLE, UNKNOWN }
+
+/** The phone's speech output for the app language, as last found (recording/Speaker): stored, read on every return. */
+enum class VoiceStatus { UNKNOWN, READY, MISSING, NO_ENGINE }
 
 /** Who took something away that was there at the last use: Android's unused-app reset, or someone else. */
 enum class Taken { BY_PHONE, OFF }
@@ -73,6 +78,8 @@ data class PhoneState(
     val notificationAskBlocked: Boolean = false,
     val hasVibrator: Boolean = true,
     val vibrationFelt: Felt = Felt.UNKNOWN,
+    val voice: VoiceStatus = VoiceStatus.UNKNOWN,
+    val voiceHeard: Felt = Felt.UNKNOWN,
     val backgroundRestricted: Boolean = false,
     /** UsageStatsManager standby bucket (45 = restricted); null below API 28. */
     val standbyBucket: Int? = null,
@@ -106,6 +113,7 @@ object PhoneCheck {
         CheckId.LOCATION_ON -> s.locationOn
         CheckId.NOTIFICATIONS -> s.notificationsOn && !s.channelOff
         CheckId.VIBRATION -> !s.hasVibrator || s.vibrationFelt == Felt.YES
+        CheckId.VOICE -> s.voiceHeard == Felt.YES && s.voice != VoiceStatus.MISSING
         CheckId.BATTERY -> !s.backgroundRestricted && s.standbyBucket != BUCKET_RESTRICTED
         CheckId.BRAND -> s.brand == null || s.brandDone
         CheckId.BATTERY_SAVER -> !(s.powerSave && LocationSaverMode.stopsGps(s.locationSaverMode))
@@ -113,9 +121,10 @@ object PhoneCheck {
     }
 
     /** Whether a check applies to this phone and these settings at all (Settings → Phone setup shows only these). */
-    fun applies(id: CheckId, s: PhoneState, vibrationOn: Boolean = true): Boolean = when (id) {
+    fun applies(id: CheckId, s: PhoneState, vibrationOn: Boolean = true, voiceOn: Boolean = false): Boolean = when (id) {
         CheckId.PRECISE -> s.location != LocationGrant.NONE
         CheckId.VIBRATION -> vibrationOn
+        CheckId.VOICE -> voiceOn && s.voice != VoiceStatus.NO_ENGINE
         CheckId.BRAND -> s.brand != null
         CheckId.BATTERY_SAVER -> s.powerSave && s.sdk >= 28
         CheckId.UNUSED_RESET -> s.unusedReset == ResetStatus.ON || s.unusedReset == ResetStatus.OFF
@@ -129,24 +138,25 @@ object PhoneCheck {
     }
 
     /** Everything that applies, in guide order (Settings → Phone setup). */
-    fun all(s: PhoneState, vibrationOn: Boolean = true, taken: Map<CheckId, Taken> = emptyMap()): List<Check> =
-        CheckId.entries.filter { applies(it, s, vibrationOn) }.map { Check(it, isOk(it, s), need(it), taken[it]) }
+    fun all(s: PhoneState, vibrationOn: Boolean = true, taken: Map<CheckId, Taken> = emptyMap(), voiceOn: Boolean = false): List<Check> =
+        CheckId.entries.filter { applies(it, s, vibrationOn, voiceOn) }.map { Check(it, isOk(it, s), need(it), taken[it]) }
 
     /**
      * The steps a guide shows, in order: only what is missing. [snoozed] = recommended items the user put off
      * ("Later") recently – left out before a tour, never in Settings.
      */
-    fun steps(purpose: Purpose, s: PhoneState, vibrationOn: Boolean = true, snoozed: Set<CheckId> = emptySet()): List<CheckId> {
+    fun steps(purpose: Purpose, s: PhoneState, vibrationOn: Boolean = true, snoozed: Set<CheckId> = emptySet(),
+              voiceOn: Boolean = false): List<CheckId> {
         val ids = when (purpose) {
             Purpose.LOCATE -> listOf(CheckId.LOCATION, CheckId.LOCATION_ON)
             Purpose.FIRST_SETUP -> listOf(CheckId.LOCATION, CheckId.PRECISE, CheckId.LOCATION_ON, CheckId.NOTIFICATIONS,
-                CheckId.VIBRATION, CheckId.BATTERY, CheckId.BRAND)
+                CheckId.VIBRATION, CheckId.VOICE, CheckId.BATTERY, CheckId.BRAND)
             Purpose.BEFORE_TOUR -> listOf(CheckId.LOCATION, CheckId.PRECISE, CheckId.LOCATION_ON, CheckId.NOTIFICATIONS,
-                CheckId.VIBRATION, CheckId.BATTERY, CheckId.BRAND, CheckId.BATTERY_SAVER)
+                CheckId.VIBRATION, CheckId.VOICE, CheckId.BATTERY, CheckId.BRAND, CheckId.BATTERY_SAVER)
             Purpose.SETTINGS -> CheckId.entries
         }
         return ids.filter { id ->
-            val relevant = id == CheckId.PRECISE || applies(id, s, vibrationOn) // precise is asked together with location
+            val relevant = id == CheckId.PRECISE || applies(id, s, vibrationOn, voiceOn) // precise is asked together with location
             relevant && !isOk(id, s) && !(purpose == Purpose.BEFORE_TOUR && need(id) != Need.REQUIRED && id in snoozed)
         }
     }
@@ -175,6 +185,7 @@ object PhoneCheck {
         if (s.locationAskBlocked) append(" (no more asking)")
         append(", notifications ${if (s.notificationsOn) "on" else "off"}${if (s.channelOff) " (a channel off)" else ""}")
         append(", vibration ${if (s.hasVibrator) "felt ${s.vibrationFelt}" else "none"}")
+        append(", voice ${s.voice} heard ${s.voiceHeard}")
         append(", battery ${if (s.backgroundRestricted) "restricted" else "ok"}, bucket ${s.standbyBucket ?: "?"}")
         append(", saver ${if (s.powerSave) "on (location mode ${s.locationSaverMode ?: "?"})" else "off"}")
         append(", unused reset ${s.unusedReset}")

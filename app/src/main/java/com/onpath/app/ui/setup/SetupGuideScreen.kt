@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.outlined.Hiking
 import androidx.compose.material3.Button
@@ -61,6 +62,9 @@ data class SetupCallbacks(
     val onLater: () -> Unit = {},
     val onTestVibration: () -> Unit = {},
     val onVibrationAnswer: (Felt) -> Unit = {},
+    /** The voice step: say the test sentence; open the phone's voice download. */
+    val onTestVoice: () -> Unit = {},
+    val onLoadVoice: () -> Unit = {},
     val onSoundSettings: () -> Unit = {},
     val onAppSettings: () -> Unit = {},
     val onMoreHelp: (Brand) -> Unit = {},
@@ -86,6 +90,7 @@ fun checkTitle(id: CheckId, phone: PhoneState, row: Boolean = false): String = w
     CheckId.PRECISE -> str0(Res.string.setup_precise_title)
     CheckId.NOTIFICATIONS -> str0(Res.string.setup_notif_title)
     CheckId.VIBRATION -> str0(Res.string.setup_vib_title)
+    CheckId.VOICE -> str0(Res.string.setup_voice_title)
     CheckId.BATTERY -> str0(Res.string.setup_bat_title)
     CheckId.BRAND -> Txt.s(Res.string.setup_brand_title, phone.brand?.let(::brandName) ?: "")
     CheckId.UNUSED_RESET -> str0(Res.string.setup_unused_title)
@@ -97,6 +102,7 @@ fun checkIcon(id: CheckId): ImageVector = when (id) {
     CheckId.LOCATION_ON -> Icons.Outlined.LocationOff
     CheckId.NOTIFICATIONS -> Icons.Outlined.Notifications
     CheckId.VIBRATION -> Icons.Outlined.Vibration
+    CheckId.VOICE -> Icons.Outlined.RecordVoiceOver
     CheckId.BATTERY -> Icons.Outlined.BatteryAlert
     CheckId.BRAND -> Icons.Outlined.PhoneAndroid
     CheckId.BATTERY_SAVER -> Icons.Outlined.BatterySaver
@@ -115,6 +121,8 @@ fun checkWhy(id: CheckId, phone: PhoneState): String = when (id) {
     CheckId.LOCATION_ON -> str0(Res.string.setup_locon_why)
     CheckId.NOTIFICATIONS -> str0(Res.string.setup_notif_why)
     CheckId.VIBRATION -> if (phone.hasVibrator) str0(Res.string.setup_vib_why) else str0(Res.string.setup_vib_none)
+    CheckId.VOICE -> if (phone.voice == com.onpath.app.setup.VoiceStatus.NO_ENGINE) str0(Res.string.setup_voice_none)
+        else str0(Res.string.setup_voice_why)
     CheckId.BATTERY -> str0(Res.string.setup_bat_why)
     CheckId.BRAND -> Txt.s(Res.string.setup_brand_why, phone.brand?.let(::brandName) ?: "")
     CheckId.BATTERY_SAVER -> if (PhoneCheck.isOk(id, phone)) str0(Res.string.setup_saver_ok_why) else str0(Res.string.setup_saver_why)
@@ -133,6 +141,11 @@ fun checkDo(id: CheckId, phone: PhoneState, denied: Boolean): String = when (id)
     CheckId.NOTIFICATIONS -> if (phone.notificationAskBlocked || phone.sdk < 33 || phone.channelOff) str0(Res.string.setup_notif_blocked)
         else str0(Res.string.setup_notif_do)
     CheckId.VIBRATION -> str0(Res.string.setup_vib_do)
+    CheckId.VOICE -> when (phone.voice) {
+        com.onpath.app.setup.VoiceStatus.MISSING -> str0(Res.string.setup_voice_missing)
+        com.onpath.app.setup.VoiceStatus.NO_ENGINE -> ""
+        else -> str0(Res.string.setup_voice_do)
+    }
     CheckId.BATTERY -> str0(Res.string.setup_bat_do)
     CheckId.BRAND -> when (phone.brand) {
         Brand.SAMSUNG -> str0(Res.string.setup_brand_samsung)
@@ -180,6 +193,9 @@ fun SetupGuideScreen(guide: SetupGuide?, welcome: Boolean, phone: PhoneState, ta
                             checkDo(id, phone, id in guide.denied).takeIf { it.isNotEmpty() && (id != CheckId.VIBRATION || phone.hasVibrator) })
                         if (id == CheckId.VIBRATION && guide.vibrationPlayed && guide.vibrationAnswer == Felt.NO) {
                             NoteBox(str(Res.string.setup_vib_not_felt))
+                        }
+                        if (id == CheckId.VOICE && guide.vibrationPlayed && guide.vibrationAnswer == Felt.NO) {
+                            NoteBox(str(Res.string.setup_voice_not_heard))
                         }
                     }
                 }
@@ -248,6 +264,24 @@ private fun Buttons(guide: SetupGuide?, welcome: Boolean, phone: PhoneState, cb:
                     }
                     else -> {
                         Button(onClick = cb.onTestVibration, modifier = big) { Text(str(Res.string.setup_vib_test)) }
+                        TextButton(onClick = cb.onLater, modifier = big) { Text(str(Res.string.setup_later)) }
+                    }
+                }
+                CheckId.VOICE -> when {
+                    phone.voice == com.onpath.app.setup.VoiceStatus.NO_ENGINE ->
+                        Button(onClick = cb.onLater, modifier = big) { Text(str(Res.string.setup_continue)) }
+                    phone.voice == com.onpath.app.setup.VoiceStatus.MISSING -> {
+                        Button(onClick = cb.onLoadVoice, modifier = big) { Text(str(Res.string.setup_voice_load)) }
+                        OutlinedButton(onClick = cb.onTestVoice, modifier = big) { Text(str(Res.string.setup_vib_test)) }
+                        TextButton(onClick = cb.onLater, modifier = big) { Text(str(Res.string.setup_later)) }
+                    }
+                    guide.vibrationPlayed && guide.vibrationAnswer == Felt.UNKNOWN -> {
+                        Text(str(Res.string.setup_voice_question), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                        Button(onClick = { cb.onVibrationAnswer(Felt.YES) }, modifier = big) { Text(str(Res.string.setup_voice_yes)) }
+                        OutlinedButton(onClick = { cb.onVibrationAnswer(Felt.NO) }, modifier = big) { Text(str(Res.string.setup_vib_no)) }
+                    }
+                    else -> {
+                        Button(onClick = cb.onTestVoice, modifier = big) { Text(str(Res.string.setup_vib_test)) }
                         TextButton(onClick = cb.onLater, modifier = big) { Text(str(Res.string.setup_later)) }
                     }
                 }

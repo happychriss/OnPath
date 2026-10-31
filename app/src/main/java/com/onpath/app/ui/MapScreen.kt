@@ -236,7 +236,8 @@ fun MapScreen(
                 item {
                     NavigationSection(vm.settings, vm::updateSettings,
                         onPhoneSetup = { vm.navSettingsOpen = false; vm.openSetup(com.onpath.app.setup.Purpose.SETTINGS) },
-                        onTestVibration = { vm.navSettingsOpen = false; vm.openSetupStep(com.onpath.app.setup.CheckId.VIBRATION) })
+                        onTestVibration = { vm.navSettingsOpen = false; vm.openSetupStep(com.onpath.app.setup.CheckId.VIBRATION) },
+                        onTestVoice = { vm.navSettingsOpen = false; vm.openSetupStep(com.onpath.app.setup.CheckId.VOICE) })
                 }
             }
         }
@@ -272,7 +273,7 @@ private fun PlanMode(
                 sync = SyncMenuUi.of(vm.sync.state.collectAsState().value, vm.sync.deviceName,
                     System.currentTimeMillis()),
                 // owner 2026-10-30: red "Phone setup" first while a tour needs something (vm.phone is re-read on resume)
-                onPhoneSetup = if (!SettingsSummary.phoneNeeded(com.onpath.app.setup.PhoneCheck.all(vm.phone, vm.vibrationUsed, vm.phoneTaken))) null
+                onPhoneSetup = if (!SettingsSummary.phoneNeeded(com.onpath.app.setup.PhoneCheck.all(vm.phone, vm.vibrationUsed, vm.phoneTaken, vm.voiceUsed))) null
                     else ({ vm.openSettings(SettingsPage.PHONE) }),
                 // owner 2026-10-31: "Save route" on top whenever there is a plan (the sheet has no Save any more); a dot
                 // on ☰ while it has unsaved changes
