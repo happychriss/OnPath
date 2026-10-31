@@ -5,7 +5,7 @@ import { t, number } from './i18n';
 
 const COLOURS = ['#7fb77e', '#e3b23c', '#e07b39', '#c0392b']; // flat, moderate, steep, very steep
 
-export function profileSvg(p: PlanResult['profile']): string {
+export function profileSvg(p: NonNullable<PlanResult['profile']>): string {
   const { dist: d, ele, steep } = p;
   if (d.length < 2) return '';
   const total = d[d.length - 1] || 1;

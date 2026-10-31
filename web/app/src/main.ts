@@ -71,6 +71,8 @@ const state = {
   activity: (localStorageGet('activity') as Activity) ?? 'HIKE',
   sac: Number(localStorageGet('sac') ?? 2),
   plan: null as PlanResult | null,
+  /** The open plan came from the phone, routed with another fingerprint (sync field 7, web-sync.md §5.2): one grey line. */
+  otherRouting: false,
   planning: false,
   latest: 0,
   roundTrip: false,
@@ -163,6 +165,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       </div>
     </div>
     <div id="savedLine" class="savedline muted small" hidden></div>
+    <div id="routingNote" class="muted small" hidden></div>
     <div id="notice" class="notice" hidden></div>
     <div id="offmap" class="offmap" hidden></div>
     <button id="warning" class="notice warnline" aria-expanded="false" hidden></button>
@@ -215,6 +218,9 @@ map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom
 if (useCells) map.on('moveend', () => cells.loadPois(map));
 if (useCells) followCover(map, cells.found); // the overview hides where the cells' detailed map is
 if (useCells) cells.attach(map); // a failed cell file is tried again by reloading its source (cells.ts)
+/** The app's Diagnostics line (routing/RoutingFingerprint + the loaded rd5 dates), refreshed after each plan. */
+let routingLine = '-';
+addDiagSection(() => `routing: ${routingLine}`);
 addDiagSection(() => {
   const c = map.getCenter();
   return `map: ${c.lng.toFixed(3)},${c.lat.toFixed(3)} z${map.getZoom().toFixed(1)}, style loaded ${map.isStyleLoaded()}, tiles loaded ${map.areTilesLoaded()}` +
@@ -275,7 +281,7 @@ async function loadStyle(): Promise<StyleSpecification> {
 
 // ---- engine ----
 const engine = new EngineClient();
-const planGaps = new PlanGapsLayer(map, engine); // points the route does not reach (plangaps.ts)
+const planGaps = new PlanGapsLayer(map); // points the route does not reach (plangaps.ts)
 (window as unknown as { __engine: EngineClient }).__engine = engine; // for the browser tests (timings)
 (window as unknown as { __state: typeof state }).__state = state; // for the browser tests (pace: the plan the sheet shows)
 status(t('web_engine_loading'), 'busy');
@@ -362,6 +368,7 @@ const namesText = () => state.meta.map((m, i) => (m.name ? `${i}\t${m.name.repla
 /** Replaces the points (one undo step); names and pins follow their points by value. */
 async function commit(points: LatLon[], meta?: Meta[]) {
   runCause = nextCause ?? 'edit'; nextCause = null;
+  if (runCause === 'edit') state.otherRouting = false; // edited here: the route is the page's own now
   editBefore = runCause === 'edit' ? { points: state.points, names: state.meta.map((m) => m.name) } : null;
   await engine.call('historyRecord', enc(state.points));
   setPoints(points, meta);
@@ -384,18 +391,17 @@ async function step(op: 'undo' | 'redo') {
   closeMenu();
   const t = await engine.call('historyStep', op, enc(state.points));
   runCause = op;
+  state.otherRouting = false;
   if (t === 'null') return;
   setPoints(dec(t));
   await changed();
 }
 
-/** Deletes a point; a round trip's start goes with its closing copy (the app shows them as one point). */
-async function deletePoint(i: number) {
-  closeMenu();
-  const last = state.points.length - 1;
-  const drop = state.roundTrip && (i === 0 || i === last) ? [0, last] : [i];
-  await commit(state.points.filter((_, k) => !drop.includes(k)), state.meta.filter((_, k) => !drop.includes(k)));
-}
+/**
+ * Deletes plan point [i] – map menu Delete and the Points list ✕: the app's PlanPoints.deleteAt (in the engine), so a
+ * round trip stays closed at the next point, as on the phone. Names and pins follow their points by value.
+ */
+async function deletePoint(i: number) { await applyEdit('delete', i); }
 
 // ---- markers ----
 const markers: maplibregl.Marker[] = [];
@@ -668,8 +674,11 @@ async function openFromLink() {
 }
 
 /** Shows [shared] as the plan (from a link or from My plans). */
+/** Set by My routes just before a plan from the phone opens (its otherRouting); any other load clears the grey line. */
+let openedOtherRouting = false;
 async function loadShared(shared: SharedPlan) {
   state.title = shared.title;
+  state.otherRouting = openedOtherRouting; openedOtherRouting = false;
   setActivity(shared.activity, shared.sac, false);
   if (shared.points.length) {
     const b = new maplibregl.LngLatBounds();
@@ -764,6 +773,7 @@ async function changed() {
   rememberInAddress();
   state.notRouted = false;
   if (state.points.length < 2) { state.plan = null; state.planning = false; planGaps.clear(); render(); return; }
+  planGaps.clear(); // the last plan's gaps belong to other points
   // the app's long-route question first (routing/LongRoute): nothing is routed or downloaded until it is answered
   const answer = await longRouteOk(engine, state.points, state.activity, before);
   if (answer === 'cancel') { await cancelLongRoute(); return; }
@@ -776,24 +786,42 @@ async function changed() {
   // about 9 MB", map-cells.md §19.8), then "Calculating the route…"
   const calculating = () => t('plan_calculating');
   status(calculating(), 'busy');
-  const r = await engine.plan(state.points, state.activity, state.sac, sharedPlan().pinned, (pr) => {
+  const routed = state.points;
+  const r = await engine.plan(routed, state.activity, state.sac, sharedPlan().pinned, (pr) => {
     if (id !== state.latest) return;
     if (pr.phase === 'download') status(`${t('maps_load_loading')} · ${t('maps_about_mb', Math.max(1, Math.round(pr.bytes / 1e6)))}`, 'busy');
     else status(calculating(), 'busy');
-  });
+  }, namesText());
   if (id !== state.latest) return; // a newer request supersedes this one
   state.planning = false;
   if (!r.ok || !r.plan) { status(t('web_plan_failed', r.error ?? ''), 'error'); render(); return; }
   state.plan = r.plan;
-  await planGaps.update(state.points, state.activity, namesText()); // points the route does not reach (app: PlanGaps)
-  if (id !== state.latest) return;
+  if (r.plan.moved) await adoptSnapped(routed, r.plan.points);
+  planGaps.set(r.plan.gaps); // points the route does not reach or skips (the app's PlanGaps, in PlanResult)
   drawPoints(); // leg distances along the new route line (the engine now has this plan)
+  engine.call('routingInfo').then((l) => { routingLine = l; }, (e) => problem('routing', 'routing fingerprint line not read', e));
   const s = r.stats!;
   if (DEBUG) status(s.bytesFetched ? t('web_planned_in_data', Math.round(s.routeMs), number(s.bytesFetched / 1e6, 1), Math.round(s.fetchMs))
     : t('web_planned_in', Math.round(s.routeMs)));
   else status('');
   render();
   areas?.wantLine(r.plan.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon))); // T4: the map areas along the route
+}
+
+/**
+ * The plan's snapped points (the app's PlanResult / snapToRoute – owner: no off-road guidance): free points moved onto
+ * the way the router used replace the clicked ones in place – no undo step, no new plan (the route belongs to them);
+ * names and pins stay by index, the undo snapshots get the same values (PlanHistory.replacePoints), a saved plan stays
+ * saved (its baseline moves along, the app's setSaved).
+ */
+async function adoptSnapped(routed: LatLon[], snapped: LatLon[]) {
+  if (snapped.length !== routed.length || state.points !== routed) return;
+  const wasSaved = state.savedCode != null && (await untitled(sharedPlan())) === (await savedUntitled(state.savedCode));
+  state.points = snapped.map(([la, lo]) => [la, lo] as LatLon);
+  state.points.forEach((p, i) => known.set(key(p), state.meta[i]));
+  await engine.call('historySnap', enc(routed), enc(state.points));
+  if (wasSaved) state.savedCode = await engine.encode(sharedPlan());
+  rememberInAddress();
 }
 
 /**
@@ -892,7 +920,8 @@ function render() {
     head.innerHTML = `<span class="big">${escapeHtml(p.texts.time)}</span><span class="dist">${escapeHtml(p.texts.distance)}</span>`;
     sub.innerHTML = `<span>${escapeHtml(p.texts.climb)}</span>` +
       `<span class="badge ${p.difficulty.split(' ')[0].toLowerCase()}" ${p.because ? `title="${escapeHtml(p.because)}"` : ''}>${escapeHtml(p.difficulty)}</span>`;
-    $('profile').innerHTML = profileSvg(p.profile);
+    // the app's ElevationProfile: "No elevation data" when ProfileData has none
+    $('profile').innerHTML = p.profile ? profileSvg(p.profile) : `<div class="muted small noele">${escapeHtml(t('plan_no_elevation'))}</div>`;
     // one red line: an unreachable point (the app's PlanGaps, with Show) or a failed leg – PlanPanel's order
     const red = planGaps.last.text ?? p.error;
     notice.hidden = !red;
@@ -913,6 +942,9 @@ function render() {
   $('sheet').classList.toggle('busy', state.planning);
   renderOffMap();
   renderSaved();
+  const rn = $('routingNote');
+  rn.hidden = !state.otherRouting || state.points.length < 2;
+  rn.textContent = rn.hidden ? '' : t('web_routing_other_phone');
   renderChip();
   renderFabs();
 }
@@ -1177,7 +1209,10 @@ const plansHost = {
     const shared = await engine.parse('p=' + p.plan);
     if (!shared) { status(t('web_plan_unreadable'), 'error'); return; }
     state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.savedFolder = folder;
-    if (state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';')) { state.title = p.title; render(); rememberInAddress(); return; }
+    if (state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';')) {
+      state.title = p.title; state.otherRouting = !!p.otherRouting; render(); rememberInAddress(); return;
+    }
+    openedOtherRouting = !!p.otherRouting;
     await loadShared({ ...shared, title: p.title });
     rememberInAddress();
   },
@@ -1208,9 +1243,9 @@ function download(text: string, file: string) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
 }
-/** The shown plan as GPX (the app's GpxWriter in the engine). */
+/** The shown plan as GPX (the app's PlanGpx in the engine: the line, the route points as <wpt>, "<name> - plan.gpx"). */
 async function exportGpx() {
-  const r = JSON.parse(await engine.call('gpx', state.title ?? '', state.activity, state.sac));
+  const r = JSON.parse(await engine.call('gpx', state.title ?? '', state.activity, state.sac, enc(state.points), namesText()));
   if (r) download(r.gpx, r.file);
 }
 /** The app's name proposal (AppViewModel.suggestName → RouteNamer): stop names from places, else the map's places. */
@@ -1276,7 +1311,10 @@ const gpxImport = setupGpxImport({
   map, engine, status, fitPadding,
   activity: () => ({ activity: state.activity, sac: state.sac }),
   setActivity: (a, sac) => setActivity(a, sac, true),
-  plan: async (points, title) => { state.title = title; forgetSaved(); await commit(points); },
+  plan: async (points, title, names) => {
+    state.title = title; forgetSaved();
+    await commit(points, names ? points.map((_, i) => ({ pinned: false, name: names[i] ?? undefined })) : undefined);
+  },
   // A-017 rule 14: an imported track is kept in the open folder and goes to the phone with Save
   imported: (tr) => { syncReady.then((ok) => { if (ok) sync.saveTrack(tr.segments, tr.waypoints, tr.activity, tr.sac, tr.name); }); },
 });

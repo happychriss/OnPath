@@ -14,7 +14,8 @@ interface WasmEngine {
   putPart(tile: string, index: number, data: Int8Array): boolean;
   writeParts(): void;
   route(points: string, activity: string, sac: number): string;
-  plan(points: string, activity: string, sac: number, pinned: string): string;
+  plan(points: string, activity: string, sac: number, pinned: string, names: string): string;
+  historySnap(routed: string, snapped: string): void;
   planCode(points: string, activity: string, sac: number, pinned: string, names: string, title: string): string;
   planParse(text: string): string;
   edit(op: string, points: string, index: number, to: number): string;
@@ -33,12 +34,11 @@ interface WasmEngine {
   fromMeBlocked(status: string, hasFix: boolean): string;
   googleMaps(name: string, lat: number, lon: number, label: string): string;
   poiMenu(kind: string, name: string, ele: string, lat: number, lon: number): string;
-  gpx(name: string, activity: string, sac: number): string;
+  gpx(name: string, activity: string, sac: number, points: string, names: string): string;
   activities(): string;
   problems(): string;
   longRoute(points: string, activity: string): string;
   planCancel(cause: string, canUndo: boolean, canRedo: boolean): string;
-  planGaps(points: string, activity: string, names: string): string;
   gpxRead(data: Int8Array, fileName: string, activity: string, sac: number): string;
   planFromTrack(track: string, activity: string, sac: number): string;
   paceSet(hike: string, bike: string): string;
@@ -48,7 +48,7 @@ interface WasmEngine {
 }
 
 /** Small synchronous calls the page may make by name (the app's pure UI rules – see client.ts). */
-const CALLS = new Set(['historyRecord', 'historyStep', 'historyState', 'gesture', 'pointMenu', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
+const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyState', 'gesture', 'pointMenu', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
   // web UI rules (WebUi.kt): route name proposal (Save), POI kind filters (Map content)
   'routeName', 'poiKinds', 'poiFilter',
   // the app's map look per activity (map/ActivityLayers.kt): layer visibility + hiking band filter
@@ -56,14 +56,16 @@ const CALLS = new Set(['historyRecord', 'historyStep', 'historyState', 'gesture'
   // the app's pace setting (WebPace.kt): set the two levels, the drop-down's pace section, the last plan's time again
   'paceSet', 'paceChoices', 'planTime',
   // the app's plan rules before routing (WebPlanRules.kt): long-route question, what Cancel does
-  'longRoute', 'planCancel', 'planGaps',
+  'longRoute', 'planCancel',
   // the app's texts for map areas on demand and waits (WebMaps.kt)
   'mapTexts',
   // plan sync (WebSync.kt – the app's com.onpath.app.sync)
   'syncPairNew', 'syncPairParse', 'syncKeys', 'syncNewId', 'syncNewDevice', 'syncList', 'syncDevices', 'syncState', 'syncSave',
   'syncRename', 'syncDelete', 'syncHello', 'syncForget', 'syncApply', 'syncOutbox', 'syncAcked',
   // A-017 folders (web-sync.md §5.1): JOIN, role, tracks, push only on Save
-  'syncOutboxOf', 'syncHelloAs', 'syncPeek', 'syncJoinBlob', 'syncHelloId', 'syncRebase', 'syncSaveTrack', 'syncTrackFit', 'syncTrackGpx']);
+  'syncOutboxOf', 'syncHelloAs', 'syncPeek', 'syncJoinBlob', 'syncHelloId', 'syncRebase', 'syncSaveTrack', 'syncTrackFit', 'syncTrackGpx',
+  // sync fields 7 / 8 (web-sync.md §5.2): Save with this engine's routing; the diagnostics line
+  'syncSaveRouted', 'routingInfo']);
 
 declare const TeaVM: { wasmGC: { load(url: string): Promise<{ exports: WasmEngine }> } };
 
@@ -284,7 +286,7 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
     const t1 = performance.now();
     e.writeParts(); // new parts into the local rd5 files (once per plan, not per part)
     const storeMs = performance.now() - t1;
-    const json = req.type === 'plan' ? e.plan(req.points, req.activity, req.sac, req.pinned ?? '') : e.route(req.points, req.activity, req.sac);
+    const json = req.type === 'plan' ? e.plan(req.points, req.activity, req.sac, req.pinned ?? '', req.names ?? '') : e.route(req.points, req.activity, req.sac);
     const t2 = performance.now();
     reply({
       id: req.id, ok: true, [req.type === 'plan' ? 'plan' : 'result']: JSON.parse(json),

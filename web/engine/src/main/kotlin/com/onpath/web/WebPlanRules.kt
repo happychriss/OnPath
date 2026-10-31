@@ -1,6 +1,7 @@
 package com.onpath.web
 
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.PlanResult
 import com.onpath.app.routing.LongRoute
 import com.onpath.app.ui.PlanStatus
 import com.onpath.strings.*
@@ -35,21 +36,17 @@ object WebPlanRules {
     }
 
     /**
-     * Plan points the route does not reach (the app's [com.onpath.app.ui.PlanGaps]: a summit above the T level, a
-     * point off any path – the router stops at the nearest allowed way): the sheet's red line, combined with a failed
-     * leg like PlanPanel does (one line, "+N more"), and the grey dashed pieces. For the last plan of exactly these
-     * points; [names] = lines "index<TAB>name".
+     * Plan points the route does not reach (the app's [com.onpath.app.ui.PlanGaps], worked out in [PlanResult.gaps]: a
+     * summit above the T level, a point off any path – the router stops at the nearest allowed way – or a stop it skips
+     * although it lies on a way, Bug 01): the sheet's red line, combined with a failed leg like PlanPanel does (one line,
+     * "+N more"), and the grey dashed pieces. [names] = index → name. JSON {text, gaps}.
      */
-    fun gaps(points: String, activity: String, names: String): String {
-        val wps = Engine.parsePoints(points)
-        val p = Engine.lastPlanFor(wps) ?: return "{\"text\":null,\"gaps\":[]}"
-        // a stop the route still skips although it lies on a way (Bug 01) keeps its place and shows its gap, as in the app
-        val gaps = com.onpath.app.ui.PlanGaps.of(wps, p.snapped, p.skipped)
-        val nm = names.split('\n').mapNotNull { l -> l.substringBefore('\t').toIntOrNull()?.let { it to l.substringAfter('\t') } }.toMap()
-        val gapText = com.onpath.app.ui.PlanGaps.text(gaps, Activity.valueOf(activity)) { nm[it] }
+    fun gapsJson(res: PlanResult, names: Map<Int, String>): String {
+        val gaps = res.gaps
+        val gapText = com.onpath.app.ui.PlanGaps.text(gaps, res.activity) { names[it]?.takeIf { n -> n.isNotBlank() } }
         val text = when {
             gapText == null -> null
-            p.error != null && !com.onpath.app.ui.PlanGaps.hasMore(gapText) -> com.onpath.app.ui.PlanGaps.withMore(gapText, 1)
+            res.route.error != null && !com.onpath.app.ui.PlanGaps.hasMore(gapText) -> com.onpath.app.ui.PlanGaps.withMore(gapText, 1)
             else -> gapText
         }
         return "{\"text\":" + (text?.let { Engine.str(it) } ?: "null") + ",\"gaps\":" + gaps.joinToString(",", "[", "]") { g ->

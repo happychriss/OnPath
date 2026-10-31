@@ -67,6 +67,20 @@ await page.waitForFunction((b) => document.getElementById('points').textContent 
 check((await page.textContent('#points')) !== loopBefore, 'Start & finish here rotated the loop');
 await page.screenshot({ path: shot });
 
+// Points list ✕ on the loop's start (the app's PlanPoints.deleteAt): the start goes, the loop closes at the next point –
+// still a round trip with ↺, one marker less (the web used to drop start and end: the loop opened)
+const pinsBefore = await page.evaluate(() => document.querySelectorAll('.pin').length);
+const hashBefore = await page.evaluate(() => location.hash);
+await page.click('#points li:first-child .del');
+await page.waitForFunction((h) => location.hash !== h, hashBefore, { timeout: 10_000 }).catch(() => {});
+await page.waitForTimeout(500);
+const pinsAfter = await page.evaluate(() => document.querySelectorAll('.pin').length);
+check(pinsAfter === pinsBefore - 1 && (await page.textContent('#points')).includes('↺') && await page.isDisabled('#roundTrip'),
+  `✕ on a round trip's start: the loop stays closed (${pinsBefore} → ${pinsAfter} markers, ↺ still there)`);
+await page.click('#undo');
+await page.waitForFunction((h) => location.hash === h, hashBefore, { timeout: 10_000 }).catch(() => {});
+check(await page.evaluate(() => location.hash) === hashBefore, 'undo brings the deleted start back');
+
 // reverse
 const beforeRev = await page.evaluate(() => location.hash);
 await page.click('#reverse');

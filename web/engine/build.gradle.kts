@@ -36,6 +36,13 @@ val appFiles = listOf(
     // the map look per activity (owner 2026-10-31: identical in browser and app): which style layers show, the hiking
     // band's T-level filter – the app's MapController applies the same table
     "map/ActivityLayers.kt",
+    // one plan computation for app and web (docs/handoff-web-planresult.md): route + model time, snapped points, gaps,
+    // warnings, rating, profile – Engine.plan calls PlanResult.plan like AppViewModel.recalc
+    "routing/PlanResult.kt", "routing/ProfileData.kt",
+    // the app's plan GPX (docs/handoff-web-parity-b.md §2): line + route points as <wpt>, "<name> - plan.gpx", re-import
+    "gpx/PlanGpx.kt",
+    // the routing fingerprint (docs/handoff-web-parity-b.md §4, routing-fingerprint.md): diagnostics + sync field 7
+    "routing/RoutingFingerprint.kt",
 )
 
 // The app's own unit tests for the shared files the web adds (the app's Gradle build needs an Android SDK; these run on
@@ -44,7 +51,9 @@ val appTests = listOf("routing/PlanCodeTest.kt", "ui/PlanStateTest.kt", "ui/MapG
     "sync/SyncCryptoTest.kt", "sync/PlanSyncTest.kt", "routing/LongRouteTest.kt", "gpx/GpxParserTest.kt",
     "gpx/SportTypeTest.kt", "routing/TrackToPlanTest.kt", "ui/PlanGapsTest.kt",
     // plan-sync track items (SyncItem.TRACK, TrackCode frozen bytes) + the fake mailbox it runs against
-    "sync/SyncTrackTest.kt", "sync/MemoryMailbox.kt")
+    "sync/SyncTrackTest.kt", "sync/MemoryMailbox.kt",
+    // the shared plan result, plan GPX and loop-aware edits (handoff-web-planresult.md, handoff-web-parity-b.md)
+    "routing/PlanResultTest.kt", "gpx/PlanGpxTest.kt", "routing/PlanPointsTest.kt")
 
 sourceSets {
     main {
@@ -196,6 +205,16 @@ tasks.register<JavaExec>("runJvm") {
     args((project.findProperty("cases") as String?) ?: "../test/cases.json",
         (project.findProperty("segments") as String?) ?: "/home/user/build/routing-test/segments",
         (project.findProperty("out") as String?) ?: "build/jvm-results.json")
+}
+// App side of the plan parity test (web/test/plans.json → build/parity-app.json; web/app/test/plan-parity.mjs runs the
+// same cases in the Wasm engine and compares): the app's PlanResult / PlanPoints / BRouterEngine only, no web code.
+tasks.register<JavaExec>("parityJvm") {
+    classpath = jvm.runtimeClasspath
+    mainClass = "com.onpath.web.ParityRunKt"
+    systemProperty("onpath.root", root.canonicalPath)
+    args((project.findProperty("plans") as String?) ?: "../test/plans.json",
+        (project.findProperty("segments") as String?) ?: "/home/user/build/routing-test/segments",
+        (project.findProperty("out") as String?) ?: "build/parity-app.json")
 }
 // The app's style with the world overview merged in (map/Overview.kt, the app's own code, run here at build time;
 // docs/design/web-planner.md §16): the page loads it when the overview files are deployed next to it.

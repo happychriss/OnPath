@@ -25,14 +25,25 @@ await page.waitForFunction(() => document.querySelector('#summary .big'), null, 
 check((await page.textContent('#points')).includes('Vellau'), 'point name from the code is shown');
 check((await page.textContent('#activityChip')).replace(/\s+/g, ' ').includes('Hike · T3'), 'activity Hike, T3');
 check(await page.evaluate(() => document.querySelectorAll('.pin').length) === 2, 'two points on the map');
-await page.waitForFunction((c) => location.hash === '#p=' + c, CODE, { timeout: 10_000 }).catch(() => {});
-check(await page.evaluate(() => location.hash) === '#p=' + CODE, 'browser writes the same code as the app (address bar)');
+// the address holds the plan in the app's code; after routing the free start sits on the way the route uses (the app's
+// PlanResult snapping, as the phone stores it), the pinned + named Vellau keeps its place exactly
+await page.waitForTimeout(1500);
+const opened = await page.evaluate((c) => window.__engine.parse('p=' + c), CODE);
+const shown = await page.evaluate(() => window.__engine.parse(location.hash.slice(1)));
+const metres = (a, b) => {
+  const k = Math.PI / 180, x = (b[1] - a[1]) * k * Math.cos(((a[0] + b[0]) / 2) * k), y = (b[0] - a[0]) * k;
+  return Math.sqrt(x * x + y * y) * 6371000;
+};
+const startMoved = metres(opened.points[0], shown.points[0]);
+check(JSON.stringify({ ...shown, points: null }) === JSON.stringify({ ...opened, points: null }) && metres(opened.points[1], shown.points[1]) < 1.5 && startMoved < 60,
+  `the address holds the app's code of the plan: same activity, names, pins, title; Vellau exactly, the free start on the way (${startMoved.toFixed(0)} m)`);
+const hash = await page.evaluate(() => location.hash);
 
 // 2. share dialog with QR code and link
 await page.click('#share');
 await page.waitForSelector('dialog.share[open] .qr svg');
 const link = await page.inputValue('#shareLink');
-check(link.endsWith('#p=' + CODE), 'link in the dialog carries the code');
+check(link.endsWith(hash), 'link in the dialog carries the code of the address');
 check(await page.getAttribute('#share', 'title') === 'Share' && (await page.textContent('dialog.share .scanline')).includes('Scan with the OnPath app'), 'Share (icon next to ⋯) → "Scan with the OnPath app" above the QR code');
 check(await page.evaluate(() => document.querySelectorAll('dialog.share .qr svg rect, dialog.share .qr svg path').length) > 0, 'QR code drawn');
 await page.screenshot({ path: shot });

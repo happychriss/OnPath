@@ -185,6 +185,10 @@ const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#expo
 const exported = await dl.path();
 const gpx = fs.readFileSync(exported, 'utf8');
 check(gpx.includes('<type>hike</type>'), 'Export GPX writes <type>hike</type>');
+// the app's plan export (gpx/PlanGpx): the route points as <wpt>, the file "<name> - plan.gpx"
+const wpts = (gpx.match(/<wpt /g) ?? []).length;
+check(wpts === n && / - plan\.gpx$/.test(dl.suggestedFilename()), `Export GPX = the app's plan GPX: ${wpts} <wpt> for ${n} route points, "${dl.suggestedFilename()}"`);
+const planHash = await page.evaluate(() => location.hash);
 const planDist = sum.match(/[\d.,]+ km/)?.[0];
 await page.evaluate(async (text) => {
   const f = new File([text], 'exported.gpx', { type: 'application/gpx+xml' });
@@ -193,8 +197,11 @@ await page.evaluate(async (text) => {
 await page.waitForSelector('#trackPanel');
 const tp2 = await page.textContent('#trackPanel');
 check(tp2.includes(planDist) && !tp2.includes('Activity set to'), `re-import of the export: same ${planDist}, activity unchanged (no grey line)`);
-await page.click('#closeTrack');
-check(!(await page.$('#trackPanel')) && await page.isVisible('#summary'), 'Close track: the plan sheet is back');
+// "Plan a route from it" on an OnPath plan GPX: its <wpt> come back as the plan, exactly (PlanGpx.stopsOf) – no fitting
+await page.click('#planFromTrack');
+await page.waitForFunction(() => !document.getElementById('trackPanel'), null, { timeout: 60_000 });
+await planned();
+check(await pins() === n && await page.evaluate(() => location.hash) === planHash, `re-import → plan: the same ${n} route points (the plan GPX's <wpt>, no fitting)`);
 
 // 3. a .gpx dropped on the map: route + waypoints, <type>MTB</type>
 const dropText = fs.readFileSync(fixture('mtb-route.gpx'), 'utf8');

@@ -10,6 +10,7 @@ import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.PlanCode
 import com.onpath.app.routing.PlanEdits
 import com.onpath.app.routing.PlanPoints
+import com.onpath.app.routing.PlanResult
 import com.onpath.app.routing.Planner
 import com.onpath.app.routing.SharedPlan
 import com.onpath.app.routing.RouteSummary
@@ -43,6 +44,7 @@ object Engine {
         root = File(rootDir)
         android.content.res.AssetManager.root = File(root, "assets")
         engine = null
+        fingerprint = null // of the profiles handed over to this root
     }
 
     fun putFile(relPath: String, bytes: ByteArray) {
@@ -95,6 +97,37 @@ object Engine {
     }
 
     private val dirty = HashSet<String>()
+
+    // ---- routing fingerprint + routing data dates (routing/RoutingFingerprint, sync fields 7 / 8, web-sync.md §5.2) ----
+    private var fingerprint: String? = null
+
+    /**
+     * This engine's routing fingerprint (the app's [com.onpath.app.routing.RoutingFingerprint] of the BRouter profiles
+     * and lookups the page handed over – the same files as the app's assets → the same text as the app's Diagnostics).
+     * "" = not readable (then nothing is compared, never a guess).
+     */
+    fun routingFingerprint(): String = fingerprint ?: try {
+        com.onpath.app.routing.RoutingFingerprint.of({ n -> File(root, "assets/brouter/$n").readBytes() }).also { fingerprint = it }
+    } catch (e: Exception) {
+        Problems.warn("routing", "Routing fingerprint not computed (profiles not readable)", e); ""
+    }
+
+    /** BRouter's creation time (ms) of a tile the engine loaded in parts – from its tail; null = not known. */
+    private fun tileCreated(tile: String): Long? = layouts[tile]?.second?.let { Rd5Parts.creationTime(it) }
+
+    /**
+     * Sync field 8 for a plan through [points]: the creation day of each loaded tile under its points
+     * ([com.onpath.app.sync.SyncRoutingData], "E10_N45:20752,…"); null = none known (no field).
+     */
+    internal fun routingData(points: List<GeoPoint>): String? =
+        com.onpath.app.sync.SyncRoutingData.encode(points.map { Rd5Parts.tileName(it.lat, it.lon) }.toSet()
+            .mapNotNull { t -> tileCreated(t)?.let { t to com.onpath.app.sync.SyncRoutingData.day(it) } }.toMap())
+
+    /** The diagnostics line, as the app's Settings → Diagnostics: "r1-… · BRouter … · planner 1 · data E10_N45 2026-10-26". */
+    fun routingInfo(): String {
+        val fp = routingFingerprint().ifEmpty { return "routing fingerprint unknown" }
+        return com.onpath.app.routing.RoutingFingerprint.describe(fp, layouts.keys.sorted().map { it to tileCreated(it) })
+    }
 
     /**
      * Writes the rd5 files that got new parts. The engine (and its result cache) stays: BRouter opens the segment
@@ -152,75 +185,101 @@ object Engine {
         }
     }
 
-    private var lastPlan: Pair<List<GeoPoint>, PlannedRoute>? = null
+    /**
+     * The last plan result (the app's [PlanResult] – route, model time, snapped points, gaps, warnings, rating, profile),
+     * one for every page call that needs "the plan of these points" (rows, gaps, insert, GPX, pace).
+     */
+    private var lastResult: PlanResult? = null
 
-    /** The last plan when it was made for exactly [wps] (WebPlanRules.gaps). */
-    internal fun lastPlanFor(wps: List<GeoPoint>): PlannedRoute? = lastPlan?.takeIf { it.first == wps }?.second
+    /** The same points at the page's 6 decimals (the page sends them rounded; a snapped point comes back rounded). */
+    private fun same6(a: List<GeoPoint>, b: List<GeoPoint>): Boolean = a.size == b.size &&
+        a.indices.all { num(a[it].lat, 6) == num(b[it].lat, 6) && num(a[it].lon, 6) == num(b[it].lon, 6) }
 
-    /** Activity and SAC level the last plan was made for (WebPace.planTime). */
-    private var lastPlanAct: Pair<Activity, Int>? = null
+    /** The last result when it was made for [wps] – as routed or as snapped (the page then sends the snapped points). */
+    internal fun lastResultFor(wps: List<GeoPoint>): PlanResult? =
+        lastResult?.takeIf { same6(it.routed, wps) || same6(it.points, wps) }
 
-    /** The last plan's line when it was made for exactly [wps], [a] and [sac] (WebPace.planTime), else null. */
+    /** The last plan when it was made for [wps] (as routed or snapped). */
+    internal fun lastPlanFor(wps: List<GeoPoint>): PlannedRoute? = lastResultFor(wps)?.route
+
+    /** The last plan's line when it was made for [wps], [a] and [sac] (WebPace.planTime), else null. */
     internal fun lastPlanPoints(wps: List<GeoPoint>, a: Activity, sac: Int): List<GeoPoint>? =
-        if (lastPlanAct == a to sac) lastPlanFor(wps)?.points else null
+        lastResultFor(wps)?.takeIf { it.activity == a && it.sac == sac }?.route?.points
 
     /**
-     * Plans like the phone's plan sheet: the app's [Planner] (leg by leg, a failed leg becomes a straight dashed
-     * line with a plain message), times from [RouteTimes], difficulty from [RouteSummary].
+     * Plans like the phone's plan sheet – the app's one plan computation ([PlanResult.plan], the same call as
+     * AppViewModel.recalc): the [Planner] (leg by leg, a failed leg a straight dashed line with a plain message), OnPath's
+     * time model with the page's pace setting ([WebPace.factors]), free points snapped onto the way the router used
+     * ([pinned] = POI-pinned and [names] = named stops keep their place, so does a stop the route does not reach or
+     * skips), the gaps, the route warnings, the difficulty and the profile. Only the JSON is the web's.
+     * [names] = lines "index<TAB>name".
      */
-    fun plan(points: String, activity: String, sac: Int, pinned: String = ""): String {
+    fun plan(points: String, activity: String, sac: Int, pinned: String = "", names: String = ""): String {
         val t0 = System.currentTimeMillis()
         return try {
             val wps = parsePoints(points)
             val act = Activity.valueOf(activity)
-            val p = Planner(engine()).plan(wps, act, sac, parseIndices(pinned))
-            lastPlan = wps to p
-            lastPlanAct = act to sac
-            // the plan sheet's time like the app's (AppViewModel.withModelTime): the one time model with the pace setting
-            // (WebPace – the page's choice, default Average; e-bikes capped on the flat) – rounded for display (TimeEstimate.round)
-            val times = if (p.points.size >= 2) com.onpath.app.time.TimeEstimate.planSeconds(p.points, act, WebPace.factors(act)) else 0.0
-            buildString {
-                append("{\"distanceM\":").append(num(p.distanceM))
-                append(",\"ascentM\":").append(num(p.ascentM))
-                append(",\"descentM\":").append(num(p.descentM))
-                append(",\"timeS\":").append(num(times))
-                // the plan sheet's texts, from the app's code (data/Format, RouteSummary.rating as the badge)
-                val rating = RouteSummary.rating(act, p.distanceM, p.ascentM, p.points)
-                append(",\"difficulty\":").append(str(rating.text))
-                append(",\"because\":").append(rating.because?.let { str(it) } ?: "null")
-                val top = p.points.mapNotNull { it.ele }.maxOrNull()
-                append(",\"texts\":{\"time\":").append(str(Format.duration(times)))
-                append(",\"distance\":").append(str(Format.distance(p.distanceM)))
-                append(",\"climb\":").append(str("↑ ${Format.meters(p.ascentM)}  ↓ ${Format.meters(p.descentM)}" +
-                    (top?.let { "  ·  " + Txt.s(Res.string.plan_max_height, Format.meters(it)) } ?: ""))).append('}')
-                append(",\"error\":").append(p.error?.let { str(it) } ?: "null")
-                // route warnings and hints, the app's amber line and its "On this route" rows (ui/RouteWarnings)
-                val spots = if (p.points.size >= 2) RouteWarnings.detect(p.points, act, sac) else emptyList()
-                append(",\"warning\":").append(RouteWarnings.text(spots, sac)?.let { str(it) } ?: "null")
-                append(",\"spots\":").append(spots.joinToString(",", "[", "]") { sp ->
-                    val piece = RouteWarnings.showPoints(p.points, sp)
-                    val c = RouteWarnings.centerFor(p.points, sp)
-                    "{\"title\":" + str(RouteWarnings.rowTitle(sp, sac)) + ",\"detail\":" + str(RouteWarnings.rowDetail(sp)) +
-                        ",\"zoom\":" + (c?.second?.let { num(it, 1) } ?: "null") + ",\"line\":" +
-                        piece.joinToString(",", "[", "]") { "[" + num(it.lat, 6) + "," + num(it.lon, 6) + "]" } + "}"
-                })
-                append(",\"ms\":").append(System.currentTimeMillis() - t0)
-                append(",\"wayTypes\":").append(shares(p.wayTypes))
-                append(",\"surfaces\":").append(shares(p.surfaces))
-                profileJson(p.points)
-                append(",\"legs\":[")
-                p.legs.forEachIndexed { li, leg ->
-                    if (li > 0) append(',')
-                    append("{\"straight\":").append(leg.straight).append(",\"points\":")
-                    pointsJson(leg.points)
-                    append('}')
-                }
-                append("]}")
-            }
+            val nm = parseNames(names)
+            val res = PlanResult.plan(engine(), wps, act, sac, parseIndices(pinned), nm.filterValues { it.isNotBlank() }.keys,
+                WebPace.factors(act))
+            lastResult = res
+            planJson(res, nm, System.currentTimeMillis() - t0)
         } catch (e: Exception) {
             Problems.error("web", "Plan request failed", e)
             "{\"error\":" + str("Unexpected: $e") + ",\"legs\":[]}"
         }
+    }
+
+    /** The page's JSON of a [PlanResult] (texts from the app's Format, RouteWarnings and PlanGaps). */
+    internal fun planJson(res: PlanResult, names: Map<Int, String>, ms: Long): String = buildString {
+        val p = res.route
+        val sac = res.sac
+        append("{\"distanceM\":").append(num(p.distanceM))
+        append(",\"ascentM\":").append(num(p.ascentM))
+        append(",\"descentM\":").append(num(p.descentM))
+        // the model time (PlanResult.withModelTime: TimeEstimate.planSeconds with the pace setting), not the router's
+        append(",\"timeS\":").append(num(p.durationS))
+        append(",\"difficulty\":").append(str(res.rating.text))
+        append(",\"because\":").append(res.rating.because?.let { str(it) } ?: "null")
+        val top = p.points.mapNotNull { it.ele }.maxOrNull()
+        append(",\"texts\":{\"time\":").append(str(Format.duration(p.durationS)))
+        append(",\"distance\":").append(str(Format.distance(p.distanceM)))
+        append(",\"climb\":").append(str("↑ ${Format.meters(p.ascentM)}  ↓ ${Format.meters(p.descentM)}" +
+            (top?.let { "  ·  " + Txt.s(Res.string.plan_max_height, Format.meters(it)) } ?: ""))).append('}')
+        append(",\"error\":").append(p.error?.let { str(it) } ?: "null")
+        // route warnings and hints, the app's amber line and its "On this route" rows (ui/RouteWarnings)
+        append(",\"warning\":").append(RouteWarnings.text(res.spots, sac)?.let { str(it) } ?: "null")
+        append(",\"spots\":").append(res.spots.joinToString(",", "[", "]") { sp ->
+            val piece = RouteWarnings.showPoints(p.points, sp)
+            val c = RouteWarnings.centerFor(p.points, sp)
+            "{\"title\":" + str(RouteWarnings.rowTitle(sp, sac)) + ",\"detail\":" + str(RouteWarnings.rowDetail(sp)) +
+                ",\"zoom\":" + (c?.second?.let { num(it, 1) } ?: "null") + ",\"line\":" +
+                piece.joinToString(",", "[", "]") { "[" + num(it.lat, 6) + "," + num(it.lon, 6) + "]" } + "}"
+        })
+        append(",\"ms\":").append(ms)
+        append(",\"wayTypes\":").append(shares(p.wayTypes))
+        append(",\"surfaces\":").append(shares(p.surfaces))
+        // the plan points after snapping (same order as the request; the page takes them when moved)
+        append(",\"moved\":").append(res.moved)
+        append(",\"points\":").append(res.points.joinToString(",", "[", "]") { "[" + num(it.lat, 6) + "," + num(it.lon, 6) + "]" })
+        append(",\"gaps\":").append(WebPlanRules.gapsJson(res, names))
+        append(",\"profile\":"); profileJson(res.profile)
+        append(",\"legs\":[")
+        p.legs.forEachIndexed { li, leg ->
+            if (li > 0) append(',')
+            append("{\"straight\":").append(leg.straight).append(",\"points\":")
+            pointsJson(leg.points)
+            append('}')
+        }
+        append("]}")
+    }
+
+    /**
+     * The page took the snapped points of a plan ([routed] → [snapped], the plan's "points"): every undo / redo
+     * snapshot gets the same values, without a step (the app's PlanHistory.replacePoints with WaypointSnap.moves).
+     */
+    fun historySnap(routed: String, snapped: String) {
+        history.replacePoints(com.onpath.app.routing.WaypointSnap.moves(parsePoints(routed), parsePoints(snapped)))
     }
 
     /**
@@ -229,23 +288,20 @@ object Engine {
      */
     fun insertIndex(points: String, lat: Double, lon: Double, lineSnapM: Double): Int {
         val wps = parsePoints(points)
-        val route = lastPlan?.takeIf { it.first == wps }?.second?.points
+        val route = lastPlanFor(wps)?.points
         return WaypointInsertion.decide(wps, GeoPoint(lat, lon), route, lineSnapM).index
     }
 
     /**
-     * Elevation profile like the app's (ui/ElevationProfile `profileData`: points with elevation, distance along
-     * the whole line via [Geo.cumulative]) with the app's gradient classes ([RouteSummary.steepness], 100 m window).
+     * The elevation profile JSON of the app's [ProfileData] (points with elevation, distance along the whole line) with
+     * its gradient classes ([ProfileData.steepness]): `{"dist":[…],"ele":[…],"steep":[…]}`, or `null` = not enough
+     * elevation (the app's "No elevation data").
      */
-    internal fun StringBuilder.profileJson(points: List<GeoPoint>) {
-        val cum = if (points.size >= 2) Geo.cumulative(points) else DoubleArray(0)
-        val keep = points.indices.filter { points[it].ele != null }
-        val d = DoubleArray(keep.size) { cum[keep[it]] }
-        val e = DoubleArray(keep.size) { points[keep[it]].ele!! }
-        val steep = if (keep.size >= 2) RouteSummary.steepness(d, e) else emptyList()
-        append(",\"profile\":{\"dist\":").append(d.joinToString(",", "[", "]") { num(it, 1) })
-        append(",\"ele\":").append(e.joinToString(",", "[", "]") { num(it, 1) })
-        append(",\"steep\":").append(steep.joinToString(",", "[", "]") { it.ordinal.toString() }).append('}')
+    internal fun StringBuilder.profileJson(d: com.onpath.app.routing.ProfileData?) {
+        if (d == null) { append("null"); return }
+        append("{\"dist\":").append(d.dist.joinToString(",", "[", "]") { num(it, 1) })
+        append(",\"ele\":").append(d.ele.joinToString(",", "[", "]") { num(it, 1) })
+        append(",\"steep\":").append(d.steepness().joinToString(",", "[", "]") { it.ordinal.toString() }).append('}')
     }
 
     internal fun StringBuilder.pointsJson(pts: List<GeoPoint>) {
@@ -269,8 +325,10 @@ object Engine {
             "reverse" -> PlanEdits.reverse(w)
             "roundTrip" -> PlanEdits.roundTrip(w)
             "startHere" -> PlanEdits.startHere(w, index)
-            "delete" -> if (index in w.indices) w.filterIndexed { i, _ -> i != index } else w
-            "move" -> PlanEdits.move(w, index, to)
+            // the app's loop-aware edits (routing/PlanPoints): a round trip stays closed – map menu Delete and the
+            // Points list ✕ ([index] = plan index; the closing point is the start's row), the Points list drag (rows)
+            "delete" -> PlanPoints.deleteAt(w, index)
+            "move" -> PlanPoints.move(w, index, to)
             else -> w
         }
         return out.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) }
@@ -283,7 +341,7 @@ object Engine {
     fun rows(points: String, names: String): String {
         val w = parsePoints(points)
         val n = parseNames(names)
-        val line = lastPlan?.takeIf { it.first == w }?.second?.points
+        val line = lastPlanFor(w)?.points
         return PlanPoints.rows(w, line) { n[it] }.joinToString(",", "[", "]") { r ->
             "{\"i\":" + r.planIndex + ",\"role\":" + str(r.role.name) + ",\"name\":" + str(r.name) +
                 ",\"legM\":" + (r.legM?.let { num(it, 0) } ?: "null") + ",\"approx\":" + r.approx + ",\"loop\":" + r.loop + "}"
@@ -300,7 +358,7 @@ object Engine {
         val p = GeoPoint(lat, lon)
         val idx = w.indexOfFirst { Geo.distance(it, p) < 1.0 }
         if (idx >= 0) return "{\"existing\":" + idx + ",\"subtitle\":" + str(com.onpath.app.search.AddPreview.existingRole(idx, w.size)) + "}"
-        val plan = lastPlan?.takeIf { it.first == w }?.second
+        val plan = lastPlanFor(w)
         val speed = plan?.takeIf { it.durationS > 0 }?.let { it.distanceM / it.durationS }
         val pr = com.onpath.app.search.AddPreview.of(w, p, plan?.points, speed)
         val k = pr.decision.kind
@@ -393,15 +451,18 @@ object Engine {
     }
 
     /**
-     * "Export GPX" of the last plan, as the app's exportPlanned: one track of the routed line, the sport as `<trk><type>`
-     * ([com.onpath.app.gpx.SportType]), written by the app's [com.onpath.app.gpx.GpxWriter]. JSON {file, gpx} or "null".
+     * "Export GPX" of the page's plan, the app's plan export ([com.onpath.app.gpx.PlanGpx]): the routed line, the plan
+     * points as `<wpt>` with their names, the sport, "<name> - plan.gpx". [points] / [names] = the page's plan (the line
+     * must be this plan's). JSON {file, gpx} or "null".
      */
-    fun gpx(name: String, activity: String, sac: Int): String {
-        val line = lastPlan?.second?.points?.takeIf { it.size >= 2 } ?: return "null"
+    fun gpx(name: String, activity: String, sac: Int, points: String, names: String): String {
+        val w = parsePoints(points)
+        val line = lastPlanFor(w)?.points?.takeIf { it.size >= 2 } ?: return "null"
         val n = name.ifBlank { Txt.s(Res.string.msg_name_share) }
-        val text = com.onpath.app.gpx.GpxWriter.write(n, listOf(line.map { com.onpath.app.gpx.TrackPoint(it.lat, it.lon, it.ele) }),
-            type = com.onpath.app.gpx.SportType.typeOf(Activity.valueOf(activity), sac))
-        return "{\"file\":" + str(com.onpath.app.gpx.GpxWriter.fileName(n)) + ",\"gpx\":" + str(text) + "}"
+        val nm = parseNames(names)
+        val f = com.onpath.app.gpx.PlanGpx.export(n, listOf(line.map { com.onpath.app.gpx.TrackPoint(it.lat, it.lon, it.ele) }),
+            com.onpath.app.gpx.PlanGpx.stops(w) { nm[it]?.takeIf { s -> s.isNotBlank() } }, Activity.valueOf(activity), sac)
+        return "{\"file\":" + str(f.fileName) + ",\"gpx\":" + str(f.text) + "}"
     }
 
     /** The activity picker's rows from the app's [Activity] (label, the line under it, chip name). JSON. */
@@ -463,8 +524,13 @@ class WebContext(private val dir: File) : android.content.Context() {
 
 @JSExport fun route(points: String, activity: String, sac: Int): String = Engine.route(points, activity, sac)
 
-@JSExport fun plan(points: String, activity: String, sac: Int, pinned: String): String =
-    Engine.plan(points, activity, sac, pinned)
+@JSExport fun plan(points: String, activity: String, sac: Int, pinned: String, names: String): String =
+    Engine.plan(points, activity, sac, pinned, names)
+
+@JSExport fun historySnap(routed: String, snapped: String) = Engine.historySnap(routed, snapped)
+
+/** The routing fingerprint + loaded rd5 dates, the app's Diagnostics line (the page's window.__diag). */
+@JSExport fun routingInfo(): String = Engine.routingInfo()
 
 @JSExport fun planCode(points: String, activity: String, sac: Int, pinned: String, names: String, title: String): String =
     Engine.planCode(points, activity, sac, pinned, names, title)
@@ -507,7 +573,8 @@ class WebContext(private val dir: File) : android.content.Context() {
 @JSExport fun poiMenu(kind: String, name: String, ele: String, lat: Double, lon: Double): String =
     Engine.poiMenu(kind, name, ele, lat, lon)
 
-@JSExport fun gpx(name: String, activity: String, sac: Int): String = Engine.gpx(name, activity, sac)
+@JSExport fun gpx(name: String, activity: String, sac: Int, points: String, names: String): String =
+    Engine.gpx(name, activity, sac, points, names)
 
 @JSExport fun activities(): String = Engine.activities()
 
@@ -516,7 +583,6 @@ class WebContext(private val dir: File) : android.content.Context() {
 // plan rules before routing (WebPlanRules.kt) and GPX import (WebImport.kt)
 @JSExport fun longRoute(points: String, activity: String): String = WebPlanRules.longRoute(points, activity)
 @JSExport fun planCancel(cause: String, canUndo: Boolean, canRedo: Boolean): String = WebPlanRules.onCancel(cause, canUndo, canRedo)
-@JSExport fun planGaps(points: String, activity: String, names: String): String = WebPlanRules.gaps(points, activity, names)
 @JSExport fun gpxRead(data: Int8Array, fileName: String, activity: String, sac: Int): String =
     WebImport.read(data.copyToJavaArray(), fileName, activity, sac)
 @JSExport fun planFromTrack(track: String, activity: String, sac: Int): String = WebImport.planFromTrack(track, activity, sac)
@@ -531,8 +597,12 @@ class WebContext(private val dir: File) : android.content.Context() {
 @JSExport fun syncList(ledger: String, device: String): String = WebSync.list(ledger, device)
 @JSExport fun syncDevices(ledger: String, device: String): String = WebSync.devices(ledger, device)
 @JSExport fun syncState(ledger: String): String = WebSync.state(ledger)
-@JSExport fun syncSave(ledger: String, id: String, plan: String, title: String, now: Double, device: String): String =
-    WebSync.save(ledger, id, plan, title, now, device)
+@JSExport fun syncSave(ledger: String, id: String, plan: String, title: String, now: Double, device: String,
+                       routing: String, routingData: String): String =
+    WebSync.save(ledger, id, plan, title, now, device, routing, routingData)
+/** Save (Speichern) of the page's plan: with this engine's routing fingerprint and rd5 dates (fields 7 / 8, §5.2). */
+@JSExport fun syncSaveRouted(ledger: String, id: String, plan: String, title: String, now: Double, device: String): String =
+    WebSync.saveRouted(ledger, id, plan, title, now, device)
 @JSExport fun syncRename(ledger: String, id: String, title: String, now: Double, device: String): String =
     WebSync.rename(ledger, id, title, now, device)
 @JSExport fun syncDelete(ledger: String, id: String, now: Double, device: String): String = WebSync.delete(ledger, id, now, device)

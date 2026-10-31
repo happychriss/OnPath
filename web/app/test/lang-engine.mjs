@@ -29,7 +29,7 @@ if (process.argv[3] !== '--child') {
     for (const f of fs.readdirSync(assets)) e.putFile('assets/brouter/' + f, new Int8Array(fs.readFileSync(path.join(assets, f))));
     e.putFile('segments/E10_N45.rd5', new Int8Array(fs.readFileSync(path.join(process.argv[2], 'E10_N45.rd5'))));
     const route = '46.6717,11.1500;46.6870,11.1760'; // Algund → Vellau
-    const plan = () => JSON.parse(e.plan(route, 'HIKE', 2, ''));
+    const plan = () => JSON.parse(e.plan(route, 'HIKE', 2, '', ''));
 
     check(e.setLanguage('de') === 'de', 'German set');
     const de = plan();

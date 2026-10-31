@@ -2,7 +2,7 @@ export type Activity = 'BIKE_TOURING' | 'BIKE_TREKKING' | 'EBIKE' | 'MTB' | 'EMT
 
 export type EngineRequest =
   | { id: number; type: 'config'; base: string; segments: string; packed?: boolean; lang?: string }
-  | { id: number; type: 'route' | 'plan'; points: string; activity: Activity; sac: number; pinned?: string }
+  | { id: number; type: 'route' | 'plan'; points: string; activity: Activity; sac: number; pinned?: string; names?: string }
   | { id: number; type: 'encode'; plan: SharedPlan }
   | { id: number; type: 'parse'; text: string }
   | { id: number; type: 'edit'; op: string; points: string; index: number; to: number }
@@ -35,7 +35,12 @@ export interface PlanResult {
   spots: { title: string; detail: string; zoom: number | null; line: [number, number][] }[];
   wayTypes: [string, number][]; surfaces: [string, number][];
   legs: { straight: boolean; points: [number, number, number | null][] }[];
-  profile: { dist: number[]; ele: number[]; steep: number[] };
+  /** The app's ProfileData (null = not enough elevation: "No elevation data"). */
+  profile: { dist: number[]; ele: number[]; steep: number[] } | null;
+  /** The plan points after snapping (the app's PlanResult.points, same order as asked); [moved] = some point moved. */
+  points: [number, number][]; moved: boolean;
+  /** Points the route does not reach or skips (the app's PlanGaps via PlanResult.gaps): the red line + grey pieces. */
+  gaps: { text: string | null; gaps: { index: number; point: [number, number]; end: [number, number]; show: [number, number, number] }[] };
 }
 
 export interface RouteResult {

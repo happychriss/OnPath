@@ -1,11 +1,9 @@
 // Plan points the route does not reach (the app's ui/PlanGaps, MapController.setPlanGaps; docs/design/web-planner.md
 // §14): a summit above the T level or a point off any path – the router stops at the nearest allowed way. The sheet
 // shows one red line (`Last 180 m to "Taser Alm" not possible by gravel bike`, + Show) and the map a grey dashed piece
-// from the route's end to the point. Rule and text from the engine (WebPlanRules.gaps).
+// from the route's end to the point. Rule and text from the engine (the app's PlanResult.gaps, WebPlanRules.gapsJson).
 import type * as maplibregl from 'maplibre-gl';
 import type { GeoJSONSource } from 'maplibre-gl';
-import type { EngineClient } from './engine/client';
-import type { Activity } from './engine/types';
 import { roomFor } from './cardanchor';
 
 type LatLon = [number, number];
@@ -17,7 +15,7 @@ const NONE: Gaps = { text: null, gaps: [] };
 export class PlanGapsLayer {
   last: Gaps = NONE;
   private ensure: () => boolean = () => false;
-  constructor(private map: maplibregl.Map, private engine: EngineClient) {
+  constructor(private map: maplibregl.Map) {
     const add = () => {
       if (map.getSource('plan-gaps')) return;
       map.addSource('plan-gaps', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -30,14 +28,8 @@ export class PlanGapsLayer {
     this.ensure();
   }
 
-  /** After a plan of exactly [points]: the gaps (or none), drawn; returns them for the sheet. */
-  async update(points: LatLon[], activity: Activity, names: string): Promise<Gaps> {
-    const pts = points.map(([a, b]) => `${a.toFixed(6)},${b.toFixed(6)}`).join(';');
-    try { this.last = points.length >= 2 ? JSON.parse(await this.engine.call('planGaps', pts, activity, names)) as Gaps : NONE; }
-    catch (e) { console.warn('plan gaps', e); this.last = NONE; }
-    this.draw();
-    return this.last;
-  }
+  /** The gaps of the plan just applied (PlanResult.gaps, in the plan's answer), drawn; the sheet reads [last]. */
+  set(g: Gaps | null | undefined) { this.last = g ?? NONE; this.draw(); }
 
   clear() { this.last = NONE; this.draw(); }
 

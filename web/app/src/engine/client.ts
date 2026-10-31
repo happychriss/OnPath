@@ -53,8 +53,8 @@ export class EngineClient {
   }
 
   /** [pinned] = indices of points the route passes exactly (POI / place), as in the app's Planner. */
-  plan(points: [number, number][], activity: Activity, sac: number, pinned: number[] = [], onProgress?: (p: Progress) => void) {
-    return this.ask({ type: 'plan', points: enc(points), activity, sac, pinned: pinned.join(',') }, onProgress);
+  plan(points: [number, number][], activity: Activity, sac: number, pinned: number[] = [], onProgress?: (p: Progress) => void, names = '') {
+    return this.ask({ type: 'plan', points: enc(points), activity, sac, pinned: pinned.join(','), names }, onProgress);
   }
 
   /** The plan code (QR code, link) – the app's PlanCode. */

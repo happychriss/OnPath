@@ -176,7 +176,7 @@ jobs:
 
       # test = the app's own tests of the shared files (appTests) + WebImportTest (writes build/jvm-gpx.json)
       - name: The app's tests of the shared files + routes on the JVM (same engine code)
-        run: ./gradlew -p web/engine --no-daemon test runJvm -Psegments=$GITHUB_WORKSPACE/segments
+        run: ./gradlew -p web/engine --no-daemon test runJvm parityJvm -Psegments=$GITHUB_WORKSPACE/segments
 
       - name: Wait for the build job (engine + page)
         env:
@@ -210,6 +210,12 @@ jobs:
       - name: Planner host tests (web/host)
         working-directory: web/host
         run: node --test
+
+      # web/test/plans.json: the app's own plan path (PlanResult / PlanPoints on the JVM, parityJvm) against the Wasm
+      # engine's page calls (edit + plan, rd5 in parts like the browser): line, points, distance, time, gaps, warnings,
+      # difficulty, profile. A "knownDiff" case is listed, not a gate (Köln island point: needs a BRouter patch).
+      - name: Plan parity app ⇄ web (the same plans, the same result)
+        run: node web/app/test/plan-parity.mjs $GITHUB_WORKSPACE/segments
 
       - name: Routes in headless Chromium, compared with the JVM
         working-directory: web/app
@@ -352,6 +358,11 @@ jobs:
         if: matrix.group == 'short'
         working-directory: web/app
         run: node test/edit-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: Plan points snapped like the app (routing/PlanResult – stable, undo / redo, a pinned POI kept)
+        if: matrix.group == 'short'
+        working-directory: web/app
+        run: node test/snap-smoke.mjs $GITHUB_WORKSPACE/segments
 
       - name: Map look per activity (the app's map/ActivityLayers – Bike / Hike T4 / MTB as on the phone)
         if: matrix.group == 'short'
