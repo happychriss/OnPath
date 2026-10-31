@@ -7,7 +7,7 @@
       "web": [
         "web/app/src/activity.ts"
       ],
-      "blob": "7624fe152848221f8c2b81d05ca1a26190b64a1b"
+      "blob": "2faf83cc2161792b538898cd76e5d79b7a3b41b1"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
@@ -32,7 +32,7 @@
       "web": [
         "web/app/src/search.ts"
       ],
-      "blob": "4c2ea89d5575a82e325a8f4f0338b4a04433995e"
+      "blob": "f321e71a1901bb42072f265427d7b24727b09dcb"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/search/PlaceCard.kt",
@@ -57,7 +57,7 @@
       "web": [
         "web/app/src/plans.ts"
       ],
-      "blob": "19c409e852479ffb3248574082cfdd9fa2ed8c33"
+      "blob": "373d212f3d9192325f472041e0d5958deb935aaf"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapFooter.kt",
@@ -92,7 +92,7 @@
         "web/app/src/main.ts",
         "web/app/src/gpximport.ts"
       ],
-      "blob": "e008b2722b3b699af84b8dde6837a4bfd5409707"
+      "blob": "e17af788f276edba2c0953943f6d6ec5a94a414c"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/SettingsScreen.kt",
@@ -100,7 +100,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "fffa174c73b884bcb4497e9b9724bccd15bac1ca"
+      "blob": "860cdf755fb1dbde36163a6b431df3b60c6f4298"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/OptionalSources.kt",
@@ -155,7 +155,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "ec126540ebce93b364629bbe727109a6e46f2d4d"
+      "blob": "4782aeefb12a47a76ecf991513db0118ed97a3a7"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -172,7 +172,7 @@
         "web/app/src/main.ts",
         "web/app/src/sortable.ts"
       ],
-      "blob": "0a207391a091bd14dc81cec1c08801c0e1f36ad4"
+      "blob": "a8a071841033643fb10c4d154d09fa7a3355e8ee"
     },
     {
       "app": "app/src/main/java/com/onpath/app/debug/Problems.kt",
@@ -271,7 +271,7 @@
         "web/app/src/areas.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "c6e3a6a2e87a5c9de32a321b4e267e535693faa2"
+      "blob": "e8d4077e94cd4d5d0219adebcca33f8e01d00524"
     },
     {
       "app": "app/src/main/java/com/onpath/app/data/Geo.kt",
@@ -287,19 +287,19 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "f5b2e6c012bd201c72acafce4c785906449c8e5c"
+      "blob": "c71d05ce962f7b985cb33e2cd82463ebfc871c6d"
     }
   ],
   "watch": [
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanPanel.kt",
       "why": "plan sheet layout and actions",
-      "blob": "c6f82bb4219ce12bd351bdb6c0bc3d879b0db97f"
+      "blob": "49eafe3f23c2eb5fdb494208713fd5c91725f69b"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapScreen.kt",
       "why": "plan screen wiring, dialogs",
-      "blob": "79218c9f4ec75658f08d74869f1341441e76e885"
+      "blob": "d2d47166c821a1a62e0985495221c0820d5520a7"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanGuidance.kt",
@@ -339,7 +339,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/search/SharedPlace.kt",
       "why": "Google Maps share (phone only)",
-      "blob": "0bc5be1e8856df7d5ab61262fc9f535d140d8ad9"
+      "blob": "26d89c64e0b82f55df74a226c51adebf8e23208e"
     },
     {
       "app": "app/src/main/java/com/onpath/app/routing/EngineProvider.kt",
@@ -364,7 +364,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapLoad.kt",
       "why": "the loading modal's texts and when it closes (web: the map strip, areas.ts)",
-      "blob": "a42b6186716c90a56be63de9e81952034c7eb7cf"
+      "blob": "064f483c4e2fdf96962d334b1ea860c1ebb6cbfa"
     },
     {
       "app": "app/src/main/java/com/onpath/app/cells/CellApi.kt",
@@ -475,7 +475,7 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/routing/Planner.kt": {
-      "blob": "b5b83488d14f268ae7237219f0dedd08648887e6",
+      "blob": "05836b70e4617622742f59ed57d398ff07ef3533",
       "perf": [
         "/** Wall clock in ms (tests pass their own: the short-trip retry's time budget, [retryShortDetours]). */",
         "/** One engine request of this planner: points, time, outcome (\"ok\", \"timeout\", \"failed\"), wait for the engine lock. */",
@@ -484,8 +484,10 @@
         "return (if (limitMs != null) engine.route(pts, activity, sac, RouteLimits(minOf(limitMs, PLAN_LIMIT_MS), cancel))",
         "else engine.route(pts, activity, sac, RouteLimits(PLAN_LIMIT_MS, cancel))).also { outcome = \"ok\" }",
         "outcome = if (e.timedOut) \"timeout\" else if (cancel?.isCancelled == true) \"cancelled\" else \"failed\"",
-        "// another point, so a few passes (the chunks routed before come from the engine's cache); a stop still cut",
-        "repeat(MAX_SPUR_PASSES) {",
+        "* ([replan]). A stop still cut after [MAX_SPUR_PASSES] passes stays in [PlannedRoute.skipped]; the plan sheet shows it.",
+        "for (pass in 0 until MAX_SPUR_PASSES) {",
+        "?: return replan(waypoints, from, to, activity, sac, ends, MAX_SPUR_PASSES - pass - 1)",
+        "if (route.skipped.isNotEmpty()) Problems.trace(\"routing\", \"Point(s) ${route.skipped.sorted().joinToString { \"${it + 1}\" }} still cut after $MAX_SPUR_PASSES passes – shown as skipped\")",
         "if (plan.skipped.isNotEmpty()) Problems.trace(\"routing\", \"Point(s) ${plan.skipped.sorted().joinToString { \"${it + 1}\" }} still cut after $MAX_SPUR_PASSES passes – shown as skipped\")",
         "// Timed out: each leg would get its own limit and the wait multiplies (a 4-point plan up to 120 s) –",
         "* Time: the retries count against the time limit of the request that gave the legs ([RouteTimeLimit.forRoute] of",
@@ -503,7 +505,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/routing/WaypointInsertion.kt": {
-      "blob": "2da757f1fcdca5c9e0a7027c6cfe8b7f452f5445",
+      "blob": "ea1d941392aa466f6fca878b423c711f82059aad",
       "perf": [
         "var bestCost = Double.MAX_VALUE",
         "var bestD = Double.MAX_VALUE"
@@ -819,7 +821,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/sync/SyncRound.kt": {
-      "blob": "ed77da5e45695cdafa8ed0a24e7fe0dd93505776",
+      "blob": "9cc13d54c0dd563a24d5836821c27ed5e7f07e48",
       "perf": [
         "* answer at all: no network, timeout, DNS) and never throws.",
         "* a 409 (someone wrote first) means read again and push once more ([MAX_PASSES]). Pure: no clock, no random, no",
@@ -898,7 +900,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/routing/RoutingFingerprint.kt": {
-      "blob": "f30053c7e670521aae7244023ffbfcf5edf31c20",
+      "blob": "3700c798e1ee05a5d5c09d554ae3d9aa674b9bee",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/data/RoutingDataNotice.kt": {
@@ -998,11 +1000,11 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_navigate.xml": {
-      "blob": "96326ecb64667969103371e49c56cc27536b790a",
+      "blob": "e2f60f8b39a62738d5967e2a605adc3201df331f",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_plan.xml": {
-      "blob": "7fc1f050e0a5cb76e6a3144a335ed6cde1102084",
+      "blob": "129adc24b531672268d404a16b5e16ebf16baf9a",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_poi.xml": {
@@ -1018,15 +1020,15 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_settings.xml": {
-      "blob": "b34b011166e0dcb73a91008e2bee5b8fbd27b879",
+      "blob": "429dcd652398450a37766a564df3cdefb956c94c",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_setup.xml": {
-      "blob": "62650b5ae298f375820dacf96d043dd1a679f53b",
+      "blob": "8bdd8a21374e1cd129cb0f32de0e67906013036d",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_sync.xml": {
-      "blob": "6d9b9aeff0890dffb36573c622fd2e3c2decfc91",
+      "blob": "9314bf4e76736b63997eaf89ded3ecb55ab721b1",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_activity.xml": {
@@ -1054,7 +1056,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_plan.xml": {
-      "blob": "648369203b4006e6951bb2c8db594b0223211fc4",
+      "blob": "02828d120a617f05fe6c6ef9f45e3bbbcda623dc",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_poi.xml": {
@@ -1070,7 +1072,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_settings.xml": {
-      "blob": "f6206fecd8b2564c59566be6949de9c5342fa253",
+      "blob": "397be85f7bbee4425ebc9018962a8cef1bdc61bf",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_setup.xml": {
@@ -1078,7 +1080,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_sync.xml": {
-      "blob": "12708c5ca96249ab8e57c813667770fa28424679",
+      "blob": "507c3d3ba231a0fb99392cc8c22982ce16d598f3",
       "perf": []
     },
     "app/libs/brouter-codec-1.7.11-beta-onpath1.jar": {
