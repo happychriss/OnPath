@@ -83,4 +83,47 @@ class WaypointInsertionTest {
         val beyond = GeoPoint(51.60, 7.60) // ~15 km past the plan, away from here
         assertEquals(WaypointInsertion.Decision(4, Kind.DESTINATION), WaypointInsertion.decide(far, beyond, null, 30.0, here = here))
     }
+
+    // ---- candidate marker: where a place would join the route (the dashed preview line) ----
+
+    @Test fun joinOfAStopIsTheNearestSpotOfItsLeg() {
+        val p = GeoPoint(46.69, 11.165) // ~2 km north of the middle of A→B
+        val route = line(a, b)
+        val d = WaypointInsertion.decide(listOf(a, b), p, route, 30.0)
+        val j = WaypointInsertion.joinPoint(listOf(a, b), p, route, d)!!
+        assertEquals(46.67, j.lat, 1e-6)
+        assertEquals(11.165, j.lon, 1e-4) // straight south of the place, on the line
+    }
+
+    @Test fun joinOfANewDestinationIsTheRouteEnd() {
+        val p = GeoPoint(46.67, 11.25)
+        val route = line(a, b)
+        val d = WaypointInsertion.decide(listOf(a, b), p, route, 30.0)
+        assertEquals(Kind.DESTINATION, d.kind)
+        assertEquals(b, WaypointInsertion.joinPoint(listOf(a, b), p, route, d))
+    }
+
+    @Test fun joinOfANewStartIsTheRouteStart() {
+        val route = line(a, b)
+        assertEquals(a, WaypointInsertion.joinPoint(listOf(a, b), GeoPoint(46.6, 11.0), route, WaypointInsertion.Decision(0, Kind.START)))
+    }
+
+    @Test fun joinStaysInTheLegTheStopGoesInto() {
+        // A→B east, B→C north: a place beside B→C joins that leg, not the nearer-looking end of A→B
+        val c = GeoPoint(46.75, 11.23)
+        val route = line(a, b) + line(b, c).drop(1)
+        val p = GeoPoint(46.71, 11.245)
+        val d = WaypointInsertion.decide(listOf(a, b, c), p, route, 30.0)
+        assertEquals(2, d.index)
+        val j = WaypointInsertion.joinPoint(listOf(a, b, c), p, route, d)!!
+        assertEquals(11.23, j.lon, 1e-6)
+        assertEquals(46.71, j.lat, 1e-3)
+    }
+
+    @Test fun noJoinWithoutARoute() {
+        val d = WaypointInsertion.Decision(1, Kind.DESTINATION)
+        assertEquals(null, WaypointInsertion.joinPoint(listOf(a), b, line(a, b), d)) // one point: no route yet
+        assertEquals(null, WaypointInsertion.joinPoint(listOf(a, b), b, null, d)) // being computed
+        assertEquals(null, WaypointInsertion.joinPoint(listOf(a, b), b, listOf(a), d))
+    }
 }

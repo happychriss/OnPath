@@ -138,15 +138,6 @@ class SharedPlaceTest {
         assertEquals("Via Roma 3, Meran", SharedPlaceParser.cleanAddress("MRV7+2Q Via Roma 3, Meran"))
     }
 
-    // ---- HTML ----
-
-    @Test fun htmlOnlyTrustsThePlaceMarker() {
-        // The page's start view is the requester's IP location – never used.
-        assertNull(SharedPlaceParser.coordsInHtml("""APP_INITIALIZATION_STATE=[[[19877.4,7.3898,51.4823]] staticmap?center=51.48%2C7.38"""))
-        val p = SharedPlaceParser.coordsInHtml("""<link href="https://www.google.com/maps/place/X/data=!4m2!3m1!1s0x0:0x0!3d46.6712!4d11.1581">""")!!
-        assertEquals(46.6712, p.first, 1e-6); assertEquals(11.1581, p.second, 1e-6)
-    }
-
     // ---- short link resolver (fake network) ----
 
     private fun fake(vararg hops: Pair<String, HttpHop>): (String) -> HttpHop {
@@ -156,7 +147,7 @@ class SharedPlaceTest {
 
     @Test fun resolvesRedirectToPlaceLink() {
         val r = ShortLinkResolver(fake(
-            "https://maps.app.goo.gl/AbC" to HttpHop(302, "https://www.google.com/maps/place/Leiter+Alm/@46.1,11.1,17z/data=!3d46.6995!4d11.0958", null),
+            "https://maps.app.goo.gl/AbC" to HttpHop(302, "https://www.google.com/maps/place/Leiter+Alm/@46.1,11.1,17z/data=!3d46.6995!4d11.0958"),
         )).resolve("https://maps.app.goo.gl/AbC")
         assertAt(46.6995, 11.0958, r.place)
         assertEquals("Leiter Alm", r.place!!.name)
@@ -165,45 +156,47 @@ class SharedPlaceTest {
 
     @Test fun followsSeveralHopsAndRelativeLocation() {
         val r = ShortLinkResolver(fake(
-            "https://goo.gl/maps/x" to HttpHop(301, "https://maps.app.goo.gl/y", null),
-            "https://maps.app.goo.gl/y" to HttpHop(302, "https://www.google.com/r1", null),
-            "https://www.google.com/r1" to HttpHop(302, "/maps?q=46.5,11.3", null),
+            "https://goo.gl/maps/x" to HttpHop(301, "https://maps.app.goo.gl/y"),
+            "https://maps.app.goo.gl/y" to HttpHop(302, "https://www.google.com/r1"),
+            "https://www.google.com/r1" to HttpHop(302, "/maps?q=46.5,11.3"),
         )).resolve("https://goo.gl/maps/x")
         assertAt(46.5, 11.3, r.place)
     }
 
     @Test fun consentRedirectIsReadNotFollowed() {
         val r = ShortLinkResolver(fake(
-            "https://maps.app.goo.gl/c" to HttpHop(302, "https://consent.google.com/ml?continue=https://www.google.com/maps/place/X/data%3D!3d46.67!4d11.15&gl=DE", null),
+            "https://maps.app.goo.gl/c" to HttpHop(302, "https://consent.google.com/ml?continue=https://www.google.com/maps/place/X/data%3D!3d46.67!4d11.15&gl=DE"),
         )).resolve("https://maps.app.goo.gl/c")
         assertAt(46.67, 11.15, r.place)
     }
 
-    @Test fun bodyWithPlaceMarker() {
-        val r = ShortLinkResolver(fake(
-            "https://maps.app.goo.gl/b" to HttpHop(302, "https://www.google.com/maps?q=Hotel+Aurora&ftid=1", null),
-            "https://www.google.com/maps?q=Hotel+Aurora&ftid=1" to HttpHop(200, null, "...!3d46.6712!4d11.1581..."),
-        )).resolve("https://maps.app.goo.gl/b")
-        assertAt(46.6712, 11.1581, r.place)
-        assertEquals("Hotel Aurora", r.place!!.query)
-    }
-
-    @Test fun noCoordinateKeepsQueryForFallback() {
-        val r = ShortLinkResolver(fake(
-            "https://maps.app.goo.gl/q" to HttpHop(302, "https://www.google.com/maps?q=Hotel+Aurora,+Meran&ftid=1", null),
-            "https://www.google.com/maps?q=Hotel+Aurora,+Meran&ftid=1" to HttpHop(200, null, "APP_INITIALIZATION_STATE=[[[1,7.38,51.48]]"),
-        )).resolve("https://maps.app.goo.gl/q")
+    @Test fun theGoogleMapsPageIsNeverLoaded() {
+        // owner 2026-10-31 (A-020): the redirect ends on a Google Maps page without a coordinate in its link – the
+        // page is not requested (the fake network fails on any other URL), the link's q= text is kept for the search
+        val asked = ArrayList<String>()
+        val r = ShortLinkResolver({ u ->
+            asked += u
+            if (u == "https://maps.app.goo.gl/q") HttpHop(302, "https://www.google.com/maps?q=Hotel+Aurora,+Meran&ftid=1")
+            else throw java.io.IOException("the Google page was requested: $u")
+        }).resolve("https://maps.app.goo.gl/q")
+        assertEquals(listOf("https://maps.app.goo.gl/q"), asked)
         assertFalse(r.place!!.hasPoint)
         assertEquals("Hotel Aurora, Meran", r.place!!.query)
+    }
+
+    @Test fun aShortLinkAnsweringWithAPageGivesNothing() {
+        // no redirect: whatever the short link's server answers is not read
+        val r = ShortLinkResolver({ HttpHop(200, null) }).resolve("https://maps.app.goo.gl/page")
+        assertNull(r.place)
     }
 
     @Test fun offlineAndLoopsGiveNull() {
         val off = ShortLinkResolver({ throw java.net.UnknownHostException("maps.app.goo.gl") }).resolve("https://maps.app.goo.gl/z")
         assertNull(off.place)
-        val loop = ShortLinkResolver({ HttpHop(302, "https://maps.app.goo.gl/loop", null) }, maxHops = 3).resolve("https://maps.app.goo.gl/loop")
+        val loop = ShortLinkResolver({ HttpHop(302, "https://maps.app.goo.gl/loop") }, maxHops = 3).resolve("https://maps.app.goo.gl/loop")
         assertNull(loop.place)
         assertEquals("too many redirects", loop.reason)
-        val notFound = ShortLinkResolver({ HttpHop(404, null, null) }).resolve("https://maps.app.goo.gl/nope")
+        val notFound = ShortLinkResolver({ HttpHop(404, null) }).resolve("https://maps.app.goo.gl/nope")
         assertNull(notFound.place)
     }
 
@@ -224,7 +217,7 @@ class SharedPlaceTest {
     @Test fun resolverStopsAtAnAddressWithoutDownloadingThePage() {
         val hops = ArrayList<String>()
         val loc = "https://www.google.com/maps/place/PRIMUS+Garden+Bistrot,+Via+Goethe,+28,+39012+Merano+BZ,+Italien/data=!4m2"
-        val r = ShortLinkResolver({ u -> hops += u; if (u.contains("goo.gl")) HttpHop(302, loc, null) else HttpHop(200, null, "<html></html>") },
+        val r = ShortLinkResolver({ u -> hops += u; if (u.contains("goo.gl")) HttpHop(302, loc) else HttpHop(200, null) },
             stopAtAddress = true).resolve("https://maps.app.goo.gl/XkkXbKza9yV23AFA8")
         org.junit.Assert.assertEquals(1, hops.size)
         org.junit.Assert.assertEquals("PRIMUS Garden Bistrot", r.place?.name)

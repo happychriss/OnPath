@@ -219,7 +219,7 @@ object MapLoadCancel {
     data class Outcome(
         /** Regions to drop from the queue (not installed). */
         val stop: List<CellId>,
-        /** Remove the orange search ring / searched-place marker. */
+        /** Remove the candidate marker (searched / shared place). */
         val clearSearchMark: Boolean,
         /** The plan sheet's card for this job goes too (no "waiting for Wi-Fi" afterwards). */
         val closeCard: Boolean,

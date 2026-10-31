@@ -26,6 +26,6 @@ class GermanSearchTextsTest {
     }
 
     @Test fun sharedPlaceNoteInGerman() = inGerman {
-        assertEquals("Position aus der Adresse ermittelt", SharedPosition.of(point = false, fromPage = false, addressWon = false).note)
+        assertEquals("Position aus der Adresse ermittelt", SharedPosition.of(point = false).note)
     }
 }

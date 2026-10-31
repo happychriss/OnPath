@@ -139,6 +139,67 @@ class CellTriggersTest {
         assertNull(CellTriggers(f).routeComputed(line))
     }
 
+    /**
+     * "New route – even without signal" (field 0.13.3, emulator shoot A-019): a route ~1.5 km from an area border
+     * brings the neighbouring area too – the margin of [CellTriggers.CORRIDOR_M] either side, start and destination
+     * included – so a hut or a detour just over the border routes offline later.
+     */
+    @Test fun t4RouteNearAnAreaBorderAsksTheNeighbourWithinTheMargin() {
+        val f = FakeCells(installed = mutableSetOf(meran))
+        // ≈ 1.5 km west of Meran's east border (lon 11.25), the whole route inside Meran
+        val line = listOf(GeoPoint(46.70, 11.20), GeoPoint(46.69, 11.23))
+        assertEquals(meran, CellId.at(line[0])); assertEquals(meran, CellId.at(line[1]))
+        val job = CellTriggers(f).routeComputed(line)!!
+        assertTrue("the eastern neighbour is within the margin", east in f.queued)
+        assertEquals(CellReason.CORRIDOR to false, f.queued[east])
+        // the route itself has the detailed map: the neighbour loads quietly (download chip), no "No detailed map" card
+        assertEquals(emptyList<CellId>(), job.cells)
+        assertEquals(listOf(east), job.margin)
+    }
+
+    /**
+     * The field case: Vellau → Leiteralm lies > 10 km from every border of Meran (one area); appending Gasthof Hochmuth
+     * (~7.5 km from the east border) brings the eastern area into the margin. Offline the card said
+     * "No detailed map – loads when you're online" although the route and Hochmuth had the map: the margin is quiet.
+     */
+    @Test fun fieldVellauLeiteralmThenHochmuth() {
+        val f = FakeCells(installed = mutableSetOf(meran))
+        val t = CellTriggers(f)
+        val vellau = GeoPoint(46.6956, 11.10935); val leiteralm = GeoPoint(46.70605, 11.11125)
+        val hochmuth = GeoPoint(46.7035, 11.1515)
+        assertNull("one area covers the planned route and its margin", t.routeComputed(listOf(vellau, leiteralm)))
+        val job = t.routeComputed(listOf(vellau, leiteralm, hochmuth))!!
+        assertEquals(listOf(east), job.margin)
+        assertTrue("Hochmuth has the detailed map: no card", job.cells.isEmpty())
+    }
+
+    /** A cell the route itself crosses stays on the card (the user waits for it); margin cells beside it are quiet. */
+    @Test fun t4CellsUnderTheRouteAreOnTheCardTheMarginIsQuiet() {
+        val f = FakeCells(installed = mutableSetOf(meran))
+        val line = listOf(middle, GeoPoint(46.60, 11.40)) // into the eastern cell, ~5 km from its south border
+        val job = CellTriggers(f).routeComputed(line)!!
+        assertEquals(listOf(east), job.cells)
+        assertTrue(job.margin.isNotEmpty() && east !in job.margin && job.margin.all { it in f.queued })
+    }
+
+    /**
+     * A tour starts on the planned route (F-OFF-02 "started route"): what of its corridor is still missing – the user
+     * cancelled the loading, the server failed, the corridor was capped – is asked for again, quietly.
+     */
+    @Test fun tourStartAsksTheMissingCorridorAgain() {
+        val f = FakeCells(installed = mutableSetOf(meran))
+        val t = CellTriggers(f)
+        val line = listOf(GeoPoint(46.70, 11.20), GeoPoint(46.69, 11.23))
+        t.routeComputed(line)
+        f.queued.clear() // cancelled / failed: dropped from the queue
+        assertEquals(listOf(east), t.tourStarted(line))
+        assertEquals(Triple(listOf(east), CellReason.CORRIDOR, false), f.requests.last())
+        // everything there or asked for: nothing new; no key / no line: nothing
+        assertEquals(emptyList<CellId>(), t.tourStarted(line))
+        assertEquals(emptyList<CellId>(), CellTriggers(FakeCells(downloadsAvailable = false)).tourStarted(line))
+        assertEquals(emptyList<CellId>(), t.tourStarted(listOf(middle)))
+    }
+
     @Test fun t4FullyCoveredRouteAsksNothing() {
         val f = FakeCells(installed = CellId.alongLine(listOf(middle, GeoPoint(46.67, 11.20)), 10_000.0).toMutableSet())
         assertNull(CellTriggers(f).routeComputed(listOf(middle, GeoPoint(46.67, 11.20))))
@@ -226,7 +287,7 @@ class CellTriggersTest {
         val line = (0..90).map { GeoPoint(46.67 + it * 0.0894, 11.16 - it * 0.0127) }
         assertTrue(CellId.alongLine(line, CellTriggers.CORRIDOR_M).size > CellTriggers.CORRIDOR_MAX_CELLS)
         val job = CellTriggers(f).routeComputed(line)!!
-        assertEquals(CellTriggers.CORRIDOR_MAX_CELLS, job.cells.size)
-        assertTrue("the stretch at the start loads first", meran in job.cells || CellId.at(line.first()) in job.cells)
+        assertEquals(CellTriggers.CORRIDOR_MAX_CELLS, (job.cells + job.margin).size)
+        assertTrue("the stretch at the start loads first", CellId.at(line.first()) in job.cells)
     }
 }

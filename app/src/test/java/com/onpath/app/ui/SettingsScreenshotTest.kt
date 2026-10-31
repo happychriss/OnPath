@@ -47,7 +47,7 @@ class SettingsScreenshotTest {
     private fun Screen(page: SettingsPage?, offline: OfflineMapsUi = OfflineMapsUi(true, areas, wifiOnly = false,
         waiting = WaitingDownloads(2, 0, 60L * 1_048_576)), devTools: Boolean = false, seenMs: Long = now,
         demo: DemoUi? = null, sync: SyncUi = SyncUi(paired = true, peer = "Chrome on Linux", lastOkMs = now - 60_000),
-        phone: com.onpath.app.setup.PhoneState? = null) = OnPathTheme {
+        phone: com.onpath.app.setup.PhoneState? = null, licencesOpen: Boolean = false) = OnPathTheme {
         SettingsScreen(
             AppSettings(hiddenPoiKinds = PoiKinds.defaultHidden, offRouteM = 40), {},
             listOf(DataFiles.Check("base.pmtiles", true, "Base map"), DataFiles.Check("pois.geojson", false, "Points of interest")),
@@ -68,6 +68,10 @@ class SettingsScreenshotTest {
             demo = demo,
             sync = sync,
             phoneChecks = phone?.let { com.onpath.app.setup.PhoneCheck.all(it) },
+            licences = com.onpath.app.data.Licences.entries(listOf("org.maplibre.gl:android-sdk:13.7.1",
+                "org.maplibre.gl:android-sdk-geojson:6.0.1", "androidx.compose.ui:ui:1.7.6", "androidx.core:core:1.15.0",
+                "org.jetbrains.kotlin:kotlin-stdlib:2.2.10", "com.squareup.okhttp3:okhttp:4.12.0")),
+            licencesOpen = licencesOpen,
             now = now,
         )
     }
@@ -109,6 +113,18 @@ class SettingsScreenshotTest {
         }
     }
     @Test fun about() = paparazzi.snapshot { Screen(SettingsPage.ABOUT) }
+    /** About → Licences open (A-020): the ODbL line, MapLibre, BRouter (onpath1), glyphs, icons, the libraries. */
+    @Test fun aboutLicences() {
+        paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(
+            screenWidth = 1024, screenHeight = 5200, xdpi = 428, ydpi = 428, density = Density.create(420)))
+        paparazzi.snapshot { Screen(SettingsPage.ABOUT, licencesOpen = true) }
+    }
+    /** Privacy (A-020) in full: device backup, IP line, update check, search, Google short link, address service. */
+    @Test fun privacyFull() {
+        paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(
+            screenWidth = 1024, screenHeight = 4600, xdpi = 428, ydpi = 428, density = Density.create(420)))
+        paparazzi.snapshot { Screen(SettingsPage.PRIVACY) }
+    }
 
     // Browser sync (plan sync with the web planner, A-007)
     /** Not paired: how to pair (the system camera opens the pairing link). */

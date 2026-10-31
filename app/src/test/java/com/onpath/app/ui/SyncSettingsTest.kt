@@ -160,7 +160,7 @@ class SyncSettingsTest {
     /**
      * Field bug 2026-10-31: the browser unpaired itself, the phone still has its pairing. ☰ reads "Pair with browser"
      * again with the grey "Unpaired in the browser" – no amber, no dot (the user's own action), and no "1 min ago" of
-     * the phone's own pass as if the browser was seen. Just paired, no browser hello yet: still paired, as before.
+     * the phone's own pass as if the browser was seen. Just paired, no browser hello yet: [waitingForTheBrowser].
      */
     @Test fun unpairedInTheBrowser() {
         val now = 1_761_150_000_000L
@@ -170,9 +170,6 @@ class SyncSettingsTest {
         assertNull(SyncMenuUi.attention(gone))
         // a real problem still wins (amber, the page)
         assertEquals(SyncAttention.FULL, SyncMenuUi.of(gone.copy(problem = PlanSync.Problem.Refused(507, null)), "Pixel 8", now).warning)
-        // waiting for the browser's hello: paired, the time labelled as the phone's own sync
-        assertEquals(SyncMenuUi(true, "Pixel 8 ↔ browser · synced 1 min ago", null),
-            SyncMenuUi.of(ok.copy(browser = BrowserLink.WAITING), "Pixel 8", now))
         // Settings list line + the page's state
         val ui = SyncUi.of(gone, askCheck = null)
         assertTrue(ui.unpairedInBrowser)
@@ -186,6 +183,38 @@ class SyncSettingsTest {
             java.util.Locale.setDefault(java.util.Locale.GERMAN)
             assertEquals("Im Browser getrennt", SyncMenuUi.of(gone, "Pixel 8", now).line)
             assertEquals("Pixel 8 ↔ Chrome · Abgleich vor 1 min", SyncMenuUi.of(ok.copy(peer = "Chrome"), "Pixel 8", now).line)
+        } finally { java.util.Locale.setDefault(before) }
+    }
+
+    /**
+     * Field bug 2026-10-31 (owner: "the phone says paired and the planner says nothing"): until the scanned browser's
+     * hello is seen, ☰ and Browser sync say "Waiting for the browser …" – no ✓, never "connected"; while a tour records
+     * the routes wait for its end: grey "Routes sync after the tour". Grey (no dot), EN + DE.
+     */
+    @Test fun waitingForTheBrowser() {
+        val now = 1_761_150_000_000L
+        val ok = PlanSync.State(paired = true, peer = "Chrome on Linux", lastOkMs = now - 60_000, sinceMs = now - 86_400_000, checkedMs = now - 60_000)
+        val waiting = ok.copy(browser = BrowserLink.WAITING)
+        assertEquals(SyncMenuUi(true, "Waiting for the browser …", null, waiting = true), SyncMenuUi.of(waiting, "Pixel 8", now))
+        assertEquals(SyncMenuUi(true, "Waiting for the browser …", null, waiting = true),
+            SyncMenuUi.of(waiting.copy(afterTour = true), "Pixel 8", now))
+        assertNull(SyncMenuUi.attention(waiting))
+        // a real problem still wins (amber)
+        assertEquals(SyncAttention.FULL, SyncMenuUi.of(waiting.copy(problem = PlanSync.Problem.Refused(507, null)), "Pixel 8", now).warning)
+        // connected during a tour: the routes come after it
+        assertEquals(SyncMenuUi(true, "Routes sync after the tour", null), SyncMenuUi.of(ok.copy(afterTour = true), "Pixel 8", now))
+        // Settings: list line + the page's state
+        val ui = SyncUi.of(waiting.copy(afterTour = true), askCheck = null)
+        assertTrue(ui.waiting); assertTrue(ui.afterTour)
+        assertEquals(Summary("Waiting for the browser …"), SettingsSummary.sync(ui))
+        assertEquals(Summary("Waiting for the browser …"), SettingsSummary.sync(ui.copy(problem = PlanSync.Problem.Offline)))
+        assertEquals(false, SyncUi.of(ok, null).waiting)
+        assertEquals(false, SyncUi.of(PlanSync.State(afterTour = true), null).afterTour)
+        val before = java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale.GERMAN)
+            assertEquals("Wartet auf den Browser …", SyncMenuUi.of(waiting, "Pixel 8", now).line)
+            assertEquals("Routen gleichen sich nach der Tour ab", SyncMenuUi.of(ok.copy(afterTour = true), "Pixel 8", now).line)
         } finally { java.util.Locale.setDefault(before) }
     }
 }

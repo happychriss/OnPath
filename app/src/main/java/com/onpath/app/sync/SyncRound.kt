@@ -50,8 +50,12 @@ class SyncRound(
         data class Refused(val status: Int, val error: String?) : Outcome
     }
 
-    /** Runs a round on [ledger] (changed in place; the caller stores it afterwards, also after a failure). */
-    fun run(ledger: SyncLedger): Outcome {
+    /**
+     * Runs a round on [ledger] (changed in place; the caller stores it afterwards, also after a failure). [push] = which
+     * changed items go up in this round (default all; the phone's pairing handshake during a tour sends only its hello –
+     * the rest stays in the outbox for a later round).
+     */
+    fun run(ledger: SyncLedger, push: (SyncItem) -> Boolean = { true }): Outcome {
         var pulled = 0; var pushed = 0; var bad = 0
         repeat(MAX_PASSES) { pass ->
             // pull: every page since the last revision read (a mailbox nobody claimed yet is claimed first)
@@ -72,7 +76,7 @@ class SyncRound(
             }
             // push: everything changed here; a 409 → read again (the merge keeps both versions)
             var conflict = false
-            for (e in ledger.outbox()) {
+            for (e in ledger.outbox().filter { push(it.item) }) {
                 val w = box.write(e.item.id, e.rev, ledger.seal(keys, e, nonce(), aead))
                 when (w.status) {
                     200 -> { ledger.acked(e.item, w.rev); pushed++ }

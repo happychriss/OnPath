@@ -177,6 +177,8 @@ class MainActivity : ComponentActivity() {
                                 onExport = { vm.exportTour(it) },
                                 onDelete = { vm.deleteTour(it) },
                                 onRename = { t, name -> vm.renameTour(t, name) },
+                                onCopy = { vm.requestCopyRoute(it) },
+                                onShare = { vm.shareRoute(it) },
                                 onExportAll = { vm.exportAll() },
                                 busy = vm.busy,
                                 note = vm.routesNote,

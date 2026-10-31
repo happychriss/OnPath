@@ -7,10 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -46,9 +42,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import androidx.compose.runtime.rememberUpdatedState
-import kotlin.math.floor
-import kotlin.math.log10
-import kotlin.math.pow
 
 /** The main screen: full-screen map with the Plan or Navigate controls on top (AppMode). */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -68,6 +61,8 @@ fun MapScreen(
     var panelHeightPx by remember { mutableIntStateOf(0) }
     /** Navigate: dp covered at the top (turn / status column, message box) and the bottom (slider) – route fits. */
     val navCover = remember { intArrayOf(0, 0) }
+    /** Plan: size of the map button column (px, width + height) – a route fit keeps beside or above it (FitPaddingRule). */
+    val planFab = remember { intArrayOf(0, 0) }
     var scale by remember { mutableStateOf<Pair<String, Dp>?>(null) }
     var cameraTick by remember { mutableIntStateOf(0) }
     var bearing by remember { mutableFloatStateOf(0f) }
@@ -103,21 +98,24 @@ fun MapScreen(
         // the points step leaves little map: only Undo + locate (the compass would sit over ☰)
         val pointsOpen = mode == AppMode.PLAN && vm.planSize == PlanSize.FULL && vm.shown == null && vm.cardPlace == null
         MapFooter(scale, onCredits = { vm.openSettings(SettingsPage.ABOUT) }, demo = demoOn) {
-            MapControls(
-                // same cycle in both modes: turned by hand → north up → walking direction up → north up (AppViewModel.onCompass)
-                compass = if (pointsOpen) null
-                    else CompassSpec(vm.headingUp && vm.followMe, bearing) { vm.onCompass(kotlin.math.abs(bearing) > 1f) },
-                showEye = !pointsOpen && (vm.route != null || vm.shown != null || vm.followLine != null),
-                onPeek = { vm.routePeek = it },
-                // under the eye: the whole line + its points (Navigate: + where you are), following stops
-                onFitRoute = if (vm.wholeRouteShown(mode, pointsOpen)) vm::showWholeRoute else null,
-                gps = gps, following = vm.followMe, onLocate = onLocate,
-                onUndo = if (mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
-                // Undo and Redo side by side as map buttons; Redo only when there is something to redo
-                onRedo = if (mode == AppMode.PLAN && vm.canRedo && vm.shown == null) vm::redoStep else null,
-                large = mode == AppMode.NAVIGATE,
-                onSettings = if (mode == AppMode.NAVIGATE) { { vm.navSettingsOpen = true } } else null,
-            )
+            // measured, no state: a fit reads it when it happens
+            Box(if (mode == AppMode.PLAN) Modifier.onSizeChanged { planFab[0] = it.width; planFab[1] = it.height } else Modifier) {
+                MapControls(
+                    // same cycle in both modes: turned by hand → north up → walking direction up → north up (AppViewModel.onCompass)
+                    compass = if (pointsOpen) null
+                        else CompassSpec(vm.headingUp && vm.followMe, bearing) { vm.onCompass(kotlin.math.abs(bearing) > 1f) },
+                    showEye = !pointsOpen && (vm.route != null || vm.shown != null || vm.followLine != null),
+                    onPeek = { vm.routePeek = it },
+                    // under the eye: the whole line + its points (Navigate: + where you are), following stops
+                    onFitRoute = if (vm.wholeRouteShown(mode, pointsOpen)) vm::showWholeRoute else null,
+                    gps = gps, following = vm.followMe, onLocate = onLocate,
+                    onUndo = if (mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
+                    // Undo and Redo side by side as map buttons; Redo only when there is something to redo
+                    onRedo = if (mode == AppMode.PLAN && vm.canRedo && vm.shown == null) vm::redoStep else null,
+                    large = mode == AppMode.NAVIGATE,
+                    onSettings = if (mode == AppMode.NAVIGATE) { { vm.navSettingsOpen = true } } else null,
+                )
+            }
         }
     }
 
@@ -127,7 +125,7 @@ fun MapScreen(
             topInsetPx = topInsetPx,
             onReady = { controller = it },
             onCamera = { map ->
-                scale = computeScale(map, density.density); cameraTick++; bearing = map.cameraPosition.bearing.toFloat()
+                scale = computeScale(map); cameraTick++; bearing = map.cameraPosition.bearing.toFloat()
                 hintKey = try {
                     val b = map.projection.visibleRegion.latLngBounds
                     listOf(b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast).map { kotlin.math.round(it * 1000) / 1000 } +
@@ -144,7 +142,7 @@ fun MapScreen(
         val fitPadding = {
             FitPaddingRule.of(vm.mode, density.density, topInsetPx,
                 planTopDp = if (vm.backgroundStripShown) vm.backgroundStripBottomDp else 0, sheetPx = panelHeightPx,
-                navTopDp = navCover[0], navBottomDp = navCover[1])
+                navTopDp = navCover[0], navBottomDp = navCover[1], fabWidthPx = planFab[0], fabHeightPx = planFab[1])
         }
         MapSync(vm, controller, rec, location, fitPadding)
         // hike: keep-on + pocket logic; bike: Settings → "Screen while cycling", pocket after 5 s covered (ScreenPolicy,
@@ -276,8 +274,10 @@ private fun PlanMode(
                 // owner 2026-10-30: red "Phone setup" first while a tour needs something (vm.phone is re-read on resume)
                 onPhoneSetup = if (!SettingsSummary.phoneNeeded(com.onpath.app.setup.PhoneCheck.all(vm.phone, vm.vibrationUsed, vm.phoneTaken))) null
                     else ({ vm.openSettings(SettingsPage.PHONE) }),
-                // owner 2026-10-30: "Save route" on top while the plan has unsaved changes (same as the sheet's Save)
-                onSaveRoute = if (RouteRules.saveAtHand(vm.waypoints.size, vm.planUnsaved)) vm::requestSave else null,
+                // owner 2026-10-31: "Save route" on top whenever there is a plan (the sheet has no Save any more); a dot
+                // on ☰ while it has unsaved changes
+                onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
+                unsaved = RouteRules.saveAtHand(vm.waypoints.size, vm.planUnsaved),
                 onOpened = vm::refreshTours,
                 // no "Check for updates" in the ☰ menu – Settings has the Updates section (owner)
                 onUpdates = null,
@@ -296,16 +296,7 @@ private fun PlanMode(
         }
         val density = LocalDensity.current
         val topLimit = with(density) { WindowInsets.statusBars.getTop(density).toDp() } + TOP_BAR_BOTTOM
-        // the sheet's name field ("Saved as …" tapped): a touch on the map / top bar cancels it (in the sheet: PlanPanel),
-        // Back too, and the sheet rides above the keyboard so the field stays in sight
-        val renaming = vm.renamingPlan && vm.savedName != null && vm.cardPlace == null && vm.shown == null
-        if (renaming) {
-            Box(Modifier.fillMaxSize().pointerInput(Unit) {
-                awaitEachGesture { awaitFirstDown(requireUnconsumed = false).consume(); vm.cancelRenamePlan() }
-            })
-            androidx.activity.compose.BackHandler { vm.cancelRenamePlan() }
-        }
-        SheetWithFooter(topLimit, modifier = Modifier.modeEdge(ModeEdge.BOTTOM).then(if (renaming) Modifier.imePadding() else Modifier), footer = {
+        SheetWithFooter(topLimit, modifier = Modifier.modeEdge(ModeEdge.BOTTOM), footer = {
             Column(Modifier.fillMaxWidth()) {
                 // after Install: the download's progress (a state, no box); the question itself is a box at the top
                 if (rec == null) UpdateDownloadingCard(vm.update, Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
@@ -446,7 +437,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     vm.loadAsk?.let { LoadAskDialog(it.regions, it.bytes, onLoad = { vm.answerLoadAsk(true) }, onNotNow = { vm.answerLoadAsk(false) }) }
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
-            sac = vm.sac, tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved, renaming = vm.renamingPlan,
+            sac = vm.sac, tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved,
             roundTrip = vm.isRoundTrip(),
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused, vm.guidanceEndedByEmptyPlan) },
             points = rows,
@@ -456,9 +447,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onSheetDrag = vm::mapGesture, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
             onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
-            onActivity = onActivity, onSave = vm::requestSave, onSaveAsNew = { vm.saveAsNew() },
-            onRenameStart = vm::startRenamePlan, onRename = vm::renamePlan, onRenameCancel = vm::cancelRenamePlan,
-            onShare = vm::sharePlan, onTimeDetails = vm::openTimeDetails, onDetails = { vm.routeDetailsOpen = true },
+            onActivity = onActivity, onTimeDetails = vm::openTimeDetails, onDetails = { vm.routeDetailsOpen = true },
             onHighlight = { vm.highlight = it },
             onCancelRouting = vm::cancelRouting,
             onPlanAnyway = vm::planAnyway,
@@ -565,6 +554,10 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         val m = vm.searchMark
         c.setSearchMark(m?.let { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }, m?.title())
     }
+    // the candidate's dashed preview line to where it would join the route (Plan, with a route; AppViewModel.candidateJoin)
+    LaunchedEffect(c, passed, trackSize / 20) {
+        snapshotFlow { vm.candidateJoin() }.distinctUntilChanged().collect { c.setCandidateJoin(it?.first, it?.second) }
+    }
     // Google Maps place → go there (owner): the ring's menu opens by itself once the camera has arrived there (and the
     // map-download modal for it is gone) – checked on every camera stop while it waits (SharedPlaceMenu)
     LaunchedEffect(c, vm.sharedMenuWaiting, vm.cameraIdleTick, vm.loadModalOpen) {
@@ -636,15 +629,10 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     }
 }
 
-/** Nice round scale bar length (max ~100dp). */
-private fun computeScale(map: org.maplibre.android.maps.MapLibreMap, density: Float): Pair<String, Dp>? = try {
+/** Scale bar ([ScaleRule]): the projection gives metres per dp – never multiplied by the density again. */
+private fun computeScale(map: org.maplibre.android.maps.MapLibreMap): Pair<String, Dp>? = try {
     val lat = map.cameraPosition.target?.latitude ?: 0.0
-    val mPerPx = map.projection.getMetersPerPixelAtLatitude(lat)
-    val maxM = mPerPx * 100 * density
-    val pow10 = 10.0.pow(floor(log10(maxM)))
-    val nice = listOf(5.0, 2.0, 1.0).map { it * pow10 }.first { it <= maxM }
-    val label = if (nice >= 1000) "${(nice / 1000).let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }} km" else "${nice.toInt()} m"
-    label to (nice / mPerPx / density).dp
+    ScaleRule.of(map.projection.getMetersPerPixelAtLatitude(lat))?.let { (label, widthDp) -> label to widthDp.dp }
 } catch (e: Exception) {
     Problems.warn("map", "Scale bar could not be computed; hidden", e)
     null

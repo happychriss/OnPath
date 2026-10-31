@@ -40,22 +40,38 @@ internal object WholeRoute {
     /**
      * An edit that gives the plan its first route (fewer than two points → two or more: the first destination set,
      * "Go here", a route opened into an empty plan): the route is fitted once it is computed (field A-019 – the line
-     * lay half off the map). Later edits never move the map.
+     * lay half off the map). Later map edits never move the map ([fitAfterPlace]: a place from the card does).
      */
     fun firstRoute(pointsBefore: Int, pointsAfter: Int): Boolean = pointsBefore < 2 && pointsAfter >= 2
+
+    /**
+     * A place added from the place card or the candidate marker's menu ("Add as new destination", "Add as stop 2", "Set
+     * as destination" – a search result or shared place, often far off the shown part): the new route is fitted once it
+     * is computed, like the first route (field A-019 add-on, 09d: the map stayed on the place). Only when the plan
+     * changed and has a route. A hold on the map never moves it (the user is looking there).
+     */
+    fun fitAfterPlace(pointsBefore: List<GeoPoint>, pointsAfter: List<GeoPoint>): Boolean =
+        pointsAfter.size >= 2 && pointsAfter != pointsBefore
 
     /** Wait after the route arrived before fitting: the plan sheet grows to its route size and reports it (120 ms after it rests) – its height is the padding. */
     const val SETTLE_MS = 500L
 }
 
-/** Room the camera leaves free when it fits a route (pixels; MapController.fitTo). */
-data class FitPadding(val left: Int, val top: Int, val right: Int, val bottom: Int)
+/**
+ * Room the camera leaves free when it fits a route (pixels; MapController.fitTo). [above] = a second room the fit may
+ * take instead (Plan: the whole width above the map buttons, [FitPaddingRule]) – the one that shows the route bigger wins.
+ */
+data class FitPadding(val left: Int, val top: Int, val right: Int, val bottom: Int, val above: FitPadding? = null)
 
 /**
  * One padding rule for every fit (opening a route, "Show whole route"): nothing of the route hides under the top
- * elements or the bottom ones.
+ * elements or the bottom ones, and no more margin than that (field A-019 add-on, 01b: with the sheet pulled up the
+ * destination lay under the map buttons; with the small sheet the route had a wide margin).
  * - Plan: below the search pill / ☰ ([TOP_BAR_BOTTOM]) or the strip / box under it ([planTopDp], dp below the status
- *   bar); above the plan sheet ([sheetPx]); the controls sit on the sheet's edge.
+ *   bar); above the plan sheet at its CURRENT height ([sheetPx]). The map buttons stand in a column on the right above
+ *   the sheet ([fabWidthPx] × [fabHeightPx], measured): the route fits either beside them (right edge = the column) or
+ *   above them over the whole width (bottom edge = the column's top) – [FitPadding.above], the bigger route wins
+ *   ([pick]). Every edge keeps [AIR_DP] for a route point marker's radius.
  * - Navigate: below the turn / status column or the message box under it ([navTopDp]); above the slider
  *   ([navBottomDp]); clear of the big map buttons on the right.
  */
@@ -64,15 +80,42 @@ internal object FitPaddingRule {
     const val GAP_DP = 12
     /** Navigate's right edge: 16 dp margin + a 56 dp map button + 8 dp. */
     const val NAV_RIGHT_DP = 16 + 56 + 8
+    /** A route point marker's radius (30 dp marker) + 1: a point on the edge of the room is drawn whole. */
+    const val AIR_DP = 16
+    /** Plan: the left / free right edge – the marker's room and a little air. */
+    const val PLAN_SIDE_DP = AIR_DP + 8
+    /** Plan's map footer (MapFooter): 16 dp right of the button column, 12 dp below it, scale bar + © on the left. */
+    const val FAB_END_DP = 16
+    const val FAB_BOTTOM_DP = 12
+    const val FOOTER_DP = 48
 
-    fun of(mode: AppMode, density: Float, statusBarPx: Int, planTopDp: Int, sheetPx: Int, navTopDp: Int, navBottomDp: Int): FitPadding {
+    fun of(mode: AppMode, density: Float, statusBarPx: Int, planTopDp: Int, sheetPx: Int, navTopDp: Int, navBottomDp: Int,
+           fabWidthPx: Int = 0, fabHeightPx: Int = 0): FitPadding {
         fun px(dp: Int) = (dp * density).toInt()
         return when (mode) {
-            AppMode.PLAN -> FitPadding(px(SIDE_DP), statusBarPx + px(maxOf(planTopDp, TOP_BAR_DP) + GAP_DP),
-                px(SIDE_DP), sheetPx + px(SIDE_DP))
+            AppMode.PLAN -> {
+                val top = statusBarPx + px(maxOf(planTopDp, TOP_BAR_DP) + GAP_DP)
+                val fabW = if (fabWidthPx > 0) fabWidthPx else (MAP_FAB.value * density).toInt()
+                // over the whole width, above the button column (only once its height is known)
+                val above = if (fabHeightPx <= 0) null
+                    else FitPadding(px(PLAN_SIDE_DP), top, px(PLAN_SIDE_DP), sheetPx + px(FAB_BOTTOM_DP + AIR_DP) + fabHeightPx)
+                // beside the button column, down to the scale bar / © above the sheet
+                FitPadding(px(PLAN_SIDE_DP), top, fabW + px(FAB_END_DP + AIR_DP), sheetPx + px(FOOTER_DP), above)
+            }
             AppMode.NAVIGATE -> FitPadding(px(SIDE_DP), statusBarPx + px(navTopDp + GAP_DP), px(NAV_RIGHT_DP),
                 px(navBottomDp + 2 * GAP_DP))
         }
+    }
+
+    /**
+     * The room that shows the route bigger: [zoomFor] = the camera zoom a fit into that room gives (null = unknown).
+     * A tie keeps the first (beside the buttons).
+     */
+    fun pick(pad: FitPadding, zoomFor: (FitPadding) -> Double?): FitPadding {
+        val alt = pad.above ?: return pad
+        val a = zoomFor(pad.copy(above = null)) ?: return pad
+        val b = zoomFor(alt) ?: return pad
+        return if (b > a + 1e-6) alt else pad
     }
 
     /** [TOP_BAR_BOTTOM] in dp (search pill + ☰ below the status bar). */

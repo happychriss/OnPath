@@ -91,53 +91,268 @@ class Planner(
      */
     fun plan(waypoints: List<GeoPoint>, activity: Activity, sac: Int, pinned: Set<Int> = emptySet()): PlannedRoute {
         require(waypoints.size >= 2)
-        // A point ON a way, reachable only there and back, can be cut out by BRouter's via correction (up to 400 m
-        // for bikes) and then reads as "no way" or the stop silently moves onto the line. Owner rule: a point on a way is
-        // always visited – route again with it as a chunk end (chunk ends are never corrected). A new chunk can cut
-        // another point, so a few passes (the chunks routed before come from the engine's cache); a stop still cut
-        // after them stays in [PlannedRoute.skipped] and the plan sheet shows it.
-        var plan = planPinned(waypoints, activity, sac, pinned)
-        var ends = pinned
-        repeat(MAX_SPUR_PASSES) {
-            val spurs = plan.skipped - ends
-            if (spurs.isEmpty()) return plan
+        val cuts = chunkBounds(waypoints.size, pinned)
+        val parts = cuts.zipWithNext().map { (a, b) -> planChunk(waypoints, a, b, activity, sac) }
+        return if (parts.size == 1) parts[0] else merge(cuts, parts)
+    }
+
+    /**
+     * One chunk [from]..[to] (no pinned point inside). A point ON a way, reachable only there and back, can be cut out by
+     * BRouter's via correction (up to 400 m for bikes) and then reads as "no way" or the stop silently moves onto the
+     * line. Owner rule: a point on a way is always visited – it is routed to as a request end (request ends are never
+     * corrected). Owner 2026-10-31 ("Option 1", speed): the chunk's first line stays and only the stretch around a cut
+     * stop i is routed again, to i and on with i as a request end, spliced into the first line ([splice]) – not the whole
+     * chunk once more (a 68 km hike chunk took 2.5 s twice). The result depends only on the points, never on an earlier
+     * plan (same points, same route – app, web, plan link). Where a splice does not fit cleanly (a U-turn or a gap at a
+     * splice point, a leg without a route) the chunk is routed again with the cut stops as chunk ends, as before
+     * ([replan]). A stop still cut after [MAX_SPUR_PASSES] passes stays in [PlannedRoute.skipped]; the plan sheet shows it.
+     */
+    private fun planChunk(waypoints: List<GeoPoint>, from: Int, to: Int, activity: Activity, sac: Int): PlannedRoute {
+        val sub = waypoints.subList(from, to + 1)
+        val first = planOne(sub, activity, sac, from)
+        var route = first.route
+        var line = first.whole?.let { Line.of(sub, from, it) }
+        var ends = emptySet<Int>()
+        for (pass in 0 until MAX_SPUR_PASSES) {
+            val spurs = route.skipped - ends
+            if (spurs.isEmpty()) return route
             Problems.trace("routing", "Point(s) ${spurs.sorted().joinToString { "${it + 1}" }} on a way but cut as a detour – routed to them")
             ends = ends + spurs
-            plan = planPinned(waypoints, activity, sac, ends)
+            val spliced = line?.let { splice(it, spurs, activity, sac) }
+                ?: return replan(waypoints, from, to, activity, sac, ends, MAX_SPUR_PASSES - pass - 1)
+            line = spliced
+            route = spliced.planned()
+        }
+        if (route.skipped.isNotEmpty()) Problems.trace("routing", "Point(s) ${route.skipped.sorted().joinToString { "${it + 1}" }} still cut after $MAX_SPUR_PASSES passes – shown as skipped")
+        return route
+    }
+
+    /**
+     * The fallback when a splice does not fit ([planChunk]): the chunk [from]..[to] routed again with [ends] as chunk
+     * ends, then up to [passes] more passes that each pin the stops still cut (the planner before 2026-10-31).
+     */
+    private fun replan(waypoints: List<GeoPoint>, from: Int, to: Int, activity: Activity, sac: Int, ends: Set<Int>, passes: Int): PlannedRoute {
+        var pins = ends
+        var plan = planPinned(waypoints, from, to, activity, sac, pins)
+        repeat(passes) {
+            val spurs = plan.skipped - pins
+            if (spurs.isEmpty()) return plan
+            Problems.trace("routing", "Point(s) ${spurs.sorted().joinToString { "${it + 1}" }} on a way but cut as a detour – routed to them")
+            pins = pins + spurs
+            plan = planPinned(waypoints, from, to, activity, sac, pins)
         }
         if (plan.skipped.isNotEmpty()) Problems.trace("routing", "Point(s) ${plan.skipped.sorted().joinToString { "${it + 1}" }} still cut after $MAX_SPUR_PASSES passes – shown as skipped")
         return plan
     }
 
-    private fun planPinned(waypoints: List<GeoPoint>, activity: Activity, sac: Int, pinned: Set<Int>): PlannedRoute {
-        val cuts = chunkBounds(waypoints.size, pinned)
-        if (cuts.size == 2) return planOne(waypoints, activity, sac)
-        val parts = cuts.zipWithNext().map { (a, b) -> planOne(waypoints.subList(a, b + 1), activity, sac, a) }
+    /** [from]..[to] of [waypoints] split at [pinned] (global indices), every piece one request ([planOne]). */
+    private fun planPinned(waypoints: List<GeoPoint>, from: Int, to: Int, activity: Activity, sac: Int, pinned: Set<Int>): PlannedRoute {
+        val cuts = chunkBounds(to - from + 1, pinned.map { it - from }.toSet()).map { it + from }
+        val parts = cuts.zipWithNext().map { (a, b) -> planOne(waypoints.subList(a, b + 1), activity, sac, a).route }
+        return if (parts.size == 1) parts[0] else merge(cuts, parts)
+    }
+
+    /** Chunks [parts] between [cuts] (indices, sharing their boundary points) as one route. */
+    private fun merge(cuts: List<Int>, parts: List<PlannedRoute>): PlannedRoute {
+        val local = cuts.map { it - cuts.first() }
         return PlannedRoute(
             parts.flatMap { it.legs },
             parts.sumOf { it.distanceM }, parts.sumOf { it.ascentM }, parts.sumOf { it.descentM }, parts.sumOf { it.durationS },
             parts.firstNotNullOfOrNull { it.error },
             RouteSummary.mergeShares(parts.map { it.wayTypes }), RouteSummary.mergeShares(parts.map { it.surfaces }),
-            mergeSnapped(waypoints.size, cuts, parts.map { it.snapped }),
+            mergeSnapped(local.last() + 1, local, parts.map { it.snapped }),
             parts.flatMap { it.skipped }.toSet(),
         )
     }
 
-    /** [offset] = index of this chunk's first point in the full list (for messages). */
-    private fun planOne(waypoints: List<GeoPoint>, activity: Activity, sac: Int, offset: Int = 0): PlannedRoute {
+    /** A chunk's route, and the engine's result when it was routed in one request (null: leg by leg, straight lines). */
+    private class Chunk(val route: PlannedRoute, val whole: RouteResult? = null)
+
+    /**
+     * The numbers of a piece of a routed line, to take it out of its route's ([spliceRun]): metres ([scale] = BRouter's
+     * metres per drawn metre), filtered ascent / descent ([climb]) and metres per way type / surface from the points' way
+     * attributes ([GeoPoint.way] = the way to the next point); [unknown] = metres without attributes.
+     */
+    private class Piece(val dist: Double, val up: Double, val down: Double,
+                        val ways: Map<String, Double>, val surf: Map<String, Double>, val unknown: Double) {
+        /** [shares] (a route's breakdown) without this piece's metres per key ([ways] or [surf]); [unknown] in proportion. */
+        fun minus(shares: List<Share>, known: Map<String, Double>): List<Share> {
+            val left = shares.map { Share(it.key, (it.meters - (known[it.key] ?: 0.0)).coerceAtLeast(0.0)) }
+            val sum = left.sumOf { it.meters }
+            val keep = if (sum > 0.0) ((sum - unknown) / sum).coerceIn(0.0, 1.0) else 0.0
+            return left.map { Share(it.key, it.meters * keep) }.filter { it.meters > 0.0 }
+        }
+
+        companion object {
+            fun of(line: List<GeoPoint>, scale: Double): Piece {
+                val ways = HashMap<String, Double>(); val surf = HashMap<String, Double>()
+                var dist = 0.0; var unknown = 0.0
+                for (i in 1 until line.size) {
+                    val d = Geo.distance(line[i - 1], line[i]) * scale
+                    dist += d
+                    val w = line[i - 1].way
+                    if (w == null) unknown += d else { ways.merge(w.wayType, d, Double::plus); surf.merge(w.surface, d, Double::plus) }
+                }
+                val (up, down) = climb(line)
+                return Piece(dist, up, down, ways, surf, unknown)
+            }
+        }
+    }
+
+    /**
+     * A chunk routed in one request: its points [sub] (global index of the first: [offset]), its line, where BRouter
+     * matched each point ([matched], same size), the line index at each point ([at], [cutIndices]) and its numbers.
+     * [splice] replaces pieces of [points] and keeps the rest; [planned] is the chunk as a [PlannedRoute].
+     */
+    private class Line(
+        val sub: List<GeoPoint>, val offset: Int, val points: List<GeoPoint>, val matched: List<GeoPoint?>, val at: IntArray,
+        val dist: Double, val up: Double, val down: Double, val time: Double, val ways: List<Share>, val surf: List<Share>,
+    ) {
+        fun planned() = PlannedRoute(listOf(PlannedLeg(points, false)), dist, up, down, time, null,
+            RouteSummary.mergeShares(listOf(ways)), RouteSummary.mergeShares(listOf(surf)),
+            WaypointSnap.onRoute(sub, points, matched), WaypointSnap.skipped(sub, points, matched).map { it + offset }.toSet())
+
+        companion object {
+            /** null = no splice possible (BRouter reported no matched spots – then no stop counts as cut either). */
+            fun of(sub: List<GeoPoint>, offset: Int, r: RouteResult): Line? {
+                if (r.matched.size != sub.size) return null
+                val at = cutIndices(sub, r.points, r.matched) ?: return null
+                return Line(sub, offset, r.points, r.matched, at, r.distanceM, r.ascentM, r.descentM, r.durationS, r.wayTypes, r.surfaces)
+            }
+        }
+    }
+
+    /**
+     * Routes to the cut stops [spurs] (global indices, interior points of [line]) without routing the chunk again: for
+     * each run of consecutive cut stops i..j the legs A → i → … → j → B are routed one by one (2-point requests, so every
+     * stop is a request end; with the short-trip retry like any leg) and replace the first line between A and B
+     * ([spliceRun]). A and B are points of the first line [SPLICE_REACH_M] before / after where it passes the cut stops
+     * (BRouter's via correction cuts at most 400 m there and back), or the plan points i−1 / j+1 when those are nearer –
+     * a 50 km leg is not routed again for a spur at its start. The rest of the line keeps its route, short-trip retries
+     * included. null = it does not fit cleanly (a leg without a route, see [spliceRun]); the caller routes the chunk again.
+     */
+    private fun splice(line: Line, spurs: Set<Int>, activity: Activity, sac: Int): Line? {
+        val local = spurs.map { it - line.offset }.filter { it in 1 until line.sub.lastIndex }.sorted()
+        if (local.isEmpty()) return null
+        val runs = ArrayList<IntRange>()
+        for (k in local) if (runs.isNotEmpty() && runs.last().last == k - 1) runs[runs.lastIndex] = runs.last().first..k else runs += k..k
+        var cur = line
+        for (run in runs.asReversed()) { // last first: a splice moves only the line indices after it
+            val a = run.first - 1; val b = run.last + 1
+            // splice points: SPLICE_REACH_M along the first line before / after where it passes the cut stops – or the
+            // plan points a and b when they are nearer (a long leg need not be routed again for a spur at its end)
+            val ca = back(cur.points, cur.at[run.first], SPLICE_REACH_M).coerceAtLeast(cur.at[a])
+            val cb = ahead(cur.points, cur.at[run.last], SPLICE_REACH_M).coerceAtMost(cur.at[b])
+            val stops = listOf(if (ca == cur.at[a]) cur.sub[a] else cur.points[ca]) + cur.sub.subList(run.first, run.last + 1) +
+                (if (cb == cur.at[b]) cur.sub[b] else cur.points[cb])
+            val legs = (0 until stops.lastIndex).map { n ->
+                val k = a + n
+                stopIfCancelled()
+                try { routeLeg(stops[n], stops[n + 1], activity, sac, cur.offset + k) } catch (e: Exception) {
+                    stopIfCancelled()
+                    // expected: RoutingException = no route for this leg – the caller routes the whole chunk again as before
+                    if (e !is RoutingException) Problems.error("routing", "Leg route request threw unexpectedly", e)
+                    Problems.trace("routing", "Leg ${cur.offset + k + 1} → ${cur.offset + k + 2} to a cut stop: no route (${e.message}) – the whole stretch again")
+                    return null
+                }
+            }
+            cur = spliceRun(cur, a, b, ca, cb, legs) ?: return null
+        }
+        return cur
+    }
+
+    /** The line index [m] metres along [line] before index [from] (0 when the line is shorter). */
+    private fun back(line: List<GeoPoint>, from: Int, m: Double): Int {
+        var k = from; var d = 0.0
+        while (k > 0 && d < m) { d += Geo.distance(line[k - 1], line[k]); k-- }
+        return k
+    }
+
+    /** The line index [m] metres along [line] after index [from] (the last when the line is shorter). */
+    private fun ahead(line: List<GeoPoint>, from: Int, m: Double): Int {
+        var k = from; var d = 0.0
+        while (k < line.lastIndex && d < m) { d += Geo.distance(line[k], line[k + 1]); k++ }
+        return k
+    }
+
+    /**
+     * [line] with its piece between the line indices [ca] and [cb] replaced by [legs] (from there to the chunk points
+     * a+1 … b−1 and on to [cb]; [a] / [b] = the chunk points before / after them). Distance, ascent, descent, time, way
+     * types and surfaces: the old piece out ([Piece]), the legs in. null = the legs do not start / end within [JOIN_M] of
+     * the line at [ca] / [cb], or the line would turn back on itself there ([doubles]).
+     */
+    private fun spliceRun(line: Line, a: Int, b: Int, ca: Int, cb: Int, legs: List<RouteResult>): Line? {
+        val p = line.points
+        if (ca >= cb || ca < line.at[a] || cb > line.at[b]) return null
+        val where = "Splice between points ${line.offset + a + 1} and ${line.offset + b + 1}"
+        val joined = ArrayList<GeoPoint>()
+        val ends = IntArray(legs.size) // [k] = index in joined of leg k's last point
+        legs.forEachIndexed { k, leg ->
+            if (joined.isNotEmpty()) {
+                // at a stop the next leg's first point wins: its way attributes describe the way onward
+                if (Geo.distance(joined.last(), leg.points.first()) > JOIN_M) {
+                    Problems.trace("routing", "$where: the legs do not meet at point ${line.offset + a + k + 1} – the whole stretch again")
+                    return null
+                }
+                joined[joined.lastIndex] = leg.points.first()
+                joined.addAll(leg.points.subList(1, leg.points.size))
+            } else joined += leg.points
+            ends[k] = joined.lastIndex
+        }
+        val gapA = Geo.distance(p[ca], joined.first()); val gapB = Geo.distance(joined.last(), p[cb])
+        if (gapA > JOIN_M || gapB > JOIN_M) {
+            Problems.trace("routing", "$where: the legs start / end ${gapA.toInt()} / ${gapB.toInt()} m off the line – the whole stretch again")
+            return null
+        }
+        val before = p.subList(0, ca + 1); val after = p.subList(cb, p.size)
+        // a new U-turn only: a stop at a dead end that the first line already turned back at may stay one
+        val inner = p.subList(ca, cb + 1)
+        if ((doubles(before, joined) && !doubles(before, inner)) ||
+            (doubles(after.asReversed(), joined.asReversed()) && !doubles(after.asReversed(), inner.asReversed()))) {
+            Problems.trace("routing", "$where: the line would turn back on itself – the whole stretch again")
+            return null
+        }
+        // the first line's point at b carries the way onward (the legs' last point is the same spot, ≤ JOIN_M)
+        val points = ArrayList<GeoPoint>(ca + joined.size + after.size)
+        points += p.subList(0, ca); points += joined.subList(0, joined.lastIndex); points += after
+        val shift = ca + joined.lastIndex - cb
+        val at = IntArray(line.at.size) { k -> if (k <= a) line.at[k] else if (k < b) ca + ends[k - a - 1] else line.at[k] + shift }
+        val drawn = Geo.length(p)
+        val old = Piece.of(p.subList(ca, cb + 1), if (drawn > 0.0) line.dist / drawn else 1.0)
+        val rest = if (line.dist > 0.0) (1.0 - old.dist / line.dist).coerceIn(0.0, 1.0) else 0.0
+        Problems.trace("routing", "$where: ${old.dist.toInt()} m of the first line → ${legs.sumOf { it.distanceM }.toInt()} m to the cut stop(s)")
+        return Line(line.sub, line.offset, points, line.matched, at,
+            (line.dist - old.dist).coerceAtLeast(0.0) + legs.sumOf { it.distanceM },
+            (line.up - old.up).coerceAtLeast(0.0) + legs.sumOf { it.ascentM },
+            (line.down - old.down).coerceAtLeast(0.0) + legs.sumOf { it.descentM },
+            line.time * rest + legs.sumOf { it.durationS },
+            RouteSummary.mergeShares(listOf(old.minus(line.ways, old.ways)) + legs.map { it.wayTypes }),
+            RouteSummary.mergeShares(listOf(old.minus(line.surf, old.surf)) + legs.map { it.surfaces }))
+    }
+
+    /** One leg [a] → [b] as its own request, with the short-trip retry ([retryShortDetours]); [index] = global index of [a]. */
+    private fun routeLeg(a: GeoPoint, b: GeoPoint, activity: Activity, sac: Int, index: Int): RouteResult {
+        val t0 = now()
+        val first = route(listOf(a, b), activity, sac)
+        if (first.points.size < 2) throw RoutingException(Txt.s(Res.string.plan_err_no_route_between, index + 1, index + 2))
+        return retryShortDetours(listOf(a, b), first, activity, sac, index, t0)
+    }
+
+    /** [offset] = index of this chunk's first point in the full list (for messages and [PlannedRoute.skipped]). */
+    private fun planOne(waypoints: List<GeoPoint>, activity: Activity, sac: Int, offset: Int = 0): Chunk {
         if (engine is StraightLineEngine) {
             val r = engine.route(waypoints, activity, sac)
             val legs = (1 until waypoints.size).map { PlannedLeg(listOf(waypoints[it - 1], waypoints[it]), true) }
-            return PlannedRoute(legs, r.distanceM, r.ascentM, r.descentM, r.durationS,
-                Txt.s(Res.string.plan_err_straight))
+            return Chunk(PlannedRoute(legs, r.distanceM, r.ascentM, r.descentM, r.durationS,
+                Txt.s(Res.string.plan_err_straight)))
         }
         try {
             val t0 = now()
             val r = retryShortDetours(waypoints, route(waypoints, activity, sac), activity, sac, offset, t0)
             if (r.points.size >= 2) {
-                return PlannedRoute(listOf(PlannedLeg(r.points, false)), r.distanceM, r.ascentM, r.descentM, r.durationS, null,
+                return Chunk(PlannedRoute(listOf(PlannedLeg(r.points, false)), r.distanceM, r.ascentM, r.descentM, r.durationS, null,
                     RouteSummary.mergeShares(listOf(r.wayTypes)), RouteSummary.mergeShares(listOf(r.surfaces)),
-                    WaypointSnap.onRoute(waypoints, r.points, r.matched), spurs(waypoints, r, offset))
+                    WaypointSnap.onRoute(waypoints, r.points, r.matched), spurs(waypoints, r, offset)), r)
             }
         } catch (e: Exception) {
             stopIfCancelled() // cancelled: no fallback, the caller shows nothing new
@@ -146,13 +361,13 @@ class Planner(
             // Two points: no need to retry leg by leg (BRouter can take ~30 s to fail).
             if (waypoints.size == 2) {
                 val d = Geo.distance(waypoints[0], waypoints[1])
-                return PlannedRoute(listOf(PlannedLeg(waypoints, true)), d, 0.0, 0.0,
+                return Chunk(PlannedRoute(listOf(PlannedLeg(waypoints, true)), d, 0.0, 0.0,
                     flatSeconds(d, activity),
-                    legError(1, 2, e))
+                    legError(1, 2, e)))
             }
             // Timed out: each leg would get its own limit and the wait multiplies (a 4-point plan up to 120 s) –
             // straight lines at once, the user adds points or tries again.
-            if (e is RoutingException && e.timedOut) return straight(waypoints, activity, TOOK_TOO_LONG)
+            if (e is RoutingException && e.timedOut) return Chunk(straight(waypoints, activity, TOOK_TOO_LONG))
             // otherwise fall through to per-leg routing
         }
         var dist = 0.0; var up = 0.0; var down = 0.0; var time = 0.0
@@ -164,10 +379,7 @@ class Planner(
             val a = waypoints[i - 1]; val b = waypoints[i]
             stopIfCancelled()
             try {
-                val t0 = now()
-                val first = route(listOf(a, b), activity, sac)
-                if (first.points.size < 2) throw RoutingException(Txt.s(Res.string.plan_err_no_route_between, i + offset, i + offset + 1))
-                val r = retryShortDetours(listOf(a, b), first, activity, sac, offset + i - 1, t0)
+                val r = routeLeg(a, b, activity, sac, offset + i - 1)
                 routed[i] = r
                 dist += r.distanceM; up += r.ascentM; down += r.descentM; time += r.durationS
                 ways += r.wayTypes; surf += r.surfaces
@@ -192,8 +404,8 @@ class Planner(
                 PlannedLeg(listOf(a.copy(way = null), b.copy(way = null)), true) // no known way on a straight line
             }
         }
-        return PlannedRoute(legs, dist, up, down, time, firstError,
-            RouteSummary.mergeShares(ways), RouteSummary.mergeShares(surf), snapped.toList())
+        return Chunk(PlannedRoute(legs, dist, up, down, time, firstError,
+            RouteSummary.mergeShares(ways), RouteSummary.mergeShares(surf), snapped.toList()))
     }
 
     /**
@@ -325,8 +537,14 @@ class Planner(
          * split, at the first pass within 5 m of the nearest (a line that passes a spot twice). null = no line.
          */
         fun legLengths(waypoints: List<GeoPoint>, line: List<GeoPoint>, matched: List<GeoPoint?>): DoubleArray? {
-            if (line.size < 2 || waypoints.size < 2) return null
+            val cut = cutIndices(waypoints, line, matched) ?: return null
             val cum = Geo.cumulative(line)
+            return DoubleArray(waypoints.size - 1) { cum[cut[it + 1]] - cum[cut[it]] }
+        }
+
+        /** The index in [line] at each of [waypoints] (first 0, last the line's last), found as in [legLengths]. */
+        fun cutIndices(waypoints: List<GeoPoint>, line: List<GeoPoint>, matched: List<GeoPoint?>): IntArray? {
+            if (line.size < 2 || waypoints.size < 2) return null
             val cut = IntArray(waypoints.size); cut[waypoints.lastIndex] = line.lastIndex
             for (k in 1 until waypoints.lastIndex) {
                 val target = matched.getOrNull(k) ?: waypoints[k]
@@ -335,10 +553,67 @@ class Planner(
                 val best = d.minOrNull() ?: return null
                 cut[k] = from + d.indexOfFirst { it <= best + 5.0 }
             }
-            return DoubleArray(waypoints.size - 1) { cum[cut[it + 1]] - cum[cut[it]] }
+            return cut
         }
 
-        /** Re-plans at most this often for points cut as a detour ([plan]); each pins at least one more point. */
+        /** A splice ([splice]) starts / ends this far along the first line from where it passes a cut stop (m) … */
+        const val SPLICE_REACH_M = 1_000.0
+        /** … and its legs must start / end this close to the first line there (m). */
+        const val JOIN_M = 5.0
+        /** [doubles]: how far along both lines from the join the new line is checked (m) … */
+        const val TURN_BACK_M = 20.0
+        /** … and how close it may come to the old line's last metres there (m) – closer = it goes back the same way. */
+        const val TURN_BACK_NEAR_M = 3.0
+
+        /**
+         * The new line [next] (starting at the join) goes back along [prev] (ending at the join): a U-turn at the splice
+         * point, a piece walked twice. Its point [TURN_BACK_M] from the join lies within [TURN_BACK_NEAR_M] of [prev]'s
+         * last [TURN_BACK_M] + 10 m. An ordinary turn – even a sharp 30° one – stays clear of that.
+         */
+        fun doubles(prev: List<GeoPoint>, next: List<GeoPoint>): Boolean {
+            if (prev.size < 2 || next.size < 2) return false
+            val ahead = along(next, TURN_BACK_M) ?: return false
+            var back = 0.0; var k = prev.lastIndex
+            while (k > 0 && back < TURN_BACK_M + 10.0) { back += Geo.distance(prev[k - 1], prev[k]); k-- }
+            return WaypointSnap.distToLine(ahead, prev.subList(k, prev.size)) <= TURN_BACK_NEAR_M
+        }
+
+        /** The point [m] metres along [line] from its start; null = the line is shorter. */
+        private fun along(line: List<GeoPoint>, m: Double): GeoPoint? {
+            var done = 0.0
+            for (i in 1 until line.size) {
+                val d = Geo.distance(line[i - 1], line[i])
+                if (done + d >= m) {
+                    val t = if (d > 0.0) (m - done) / d else 0.0
+                    val a = line[i - 1]; val b = line[i]
+                    return GeoPoint(a.lat + t * (b.lat - a.lat), a.lon + t * (b.lon - a.lon))
+                }
+                done += d
+            }
+            return null
+        }
+
+        /** BRouter's hysteresis for ascent / descent (10 m, as [BRouterEngine] mirrors it for descent). */
+        const val ELE_FILTER_M = 10.0
+
+        /** Filtered ascent and descent of [line]'s elevations (BRouter's hysteresis, [ELE_FILTER_M]). */
+        fun climb(line: List<GeoPoint>): Pair<Double, Double> {
+            var up = 0.0; var down = 0.0; var bufUp = 0.0; var bufDown = 0.0
+            var last: Double? = null
+            for (q in line) {
+                val e = q.ele ?: continue
+                val prev = last
+                if (prev != null) {
+                    bufUp += e - prev; bufDown += prev - e
+                    if (bufUp > ELE_FILTER_M) { up += bufUp - ELE_FILTER_M; bufUp = ELE_FILTER_M } else if (bufUp < 0.0) bufUp = 0.0
+                    if (bufDown > ELE_FILTER_M) { down += bufDown - ELE_FILTER_M; bufDown = ELE_FILTER_M } else if (bufDown < 0.0) bufDown = 0.0
+                }
+                last = e
+            }
+            return up to down
+        }
+
+        /** Routes to points cut as a detour at most this often per chunk ([planChunk]); each pass ends at least one more point. */
         const val MAX_SPUR_PASSES = 3
 
         /** With a cancel signal: the overall wait for the router (each request keeps its own search budget). */

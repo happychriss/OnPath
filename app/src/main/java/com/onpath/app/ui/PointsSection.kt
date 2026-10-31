@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,8 +29,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.outlined.Loop
-import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -79,7 +78,7 @@ private val ROW_HEIGHT = 56.dp
 private val HANDLE_WIDTH = 48.dp
 
 /**
- * Points section of the full plan sheet: header with ⇅ Reverse and ↺ Round trip, then one row per
+ * Points section of the full plan sheet: its title (⇅ Reverse / ↻ Round trip are in the sheet's action row), then one row per
  * route point – ≡ (drag it to reorder; holding first works too), marker, name, distance from the previous point, ✕
  * (delete at once, Undo brings it back). Tapping a row shows the point on the map. No vibration in the list (owner).
  * After a ✕ the deleted row stays as a quiet placeholder for a moment and the list ignores taps ([PointsDeleteGuard]):
@@ -88,10 +87,6 @@ private val HANDLE_WIDTH = 48.dp
 @Composable
 fun PointsSection(
     rows: List<PlanPointRow>,
-    canReverse: Boolean,
-    canRoundTrip: Boolean,
-    onReverse: () -> Unit,
-    onRoundTrip: () -> Unit,
     onMove: (from: Int, to: Int) -> Unit,
     onDelete: (row: Int) -> Unit,
     onShow: (row: Int) -> Unit,
@@ -103,15 +98,9 @@ fun PointsSection(
 ) {
     RecomposeProbe.hit("points")
     Column(modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(str(Res.string.plan_points), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f))
-            TextButton(onClick = onReverse, enabled = canReverse) {
-                Icon(Icons.Outlined.SwapVert, null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text(str(Res.string.plan_reverse))
-            }
-            TextButton(onClick = onRoundTrip, enabled = canRoundTrip) {
-                Icon(Icons.Outlined.Loop, null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text(str(Res.string.plan_round_trip))
-            }
         }
         if (rows.isEmpty()) {
             Text(str(Res.string.plan_no_points), style = MaterialTheme.typography.bodyMedium,

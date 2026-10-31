@@ -30,6 +30,7 @@ Colours come only from `OnPathColors` (and the Material scheme built from it in 
 | `Error` (+ `ErrorContainer`, `OnErrorContainer`) | **error**: ⚠ + red edge, red error lines, delete buttons |
 | `Good` | "ready ✓", "up to date" |
 | `Route`, `Gpx`, `Rec`, `Position`, `PositionUnsure`, `Weak` | map furniture only (planned line, GPX track, recording, own position, GPS dot) |
+| `Route` dashed (candidate marker) | a place **suggested, not yet taken** (search result, shared place): a dashed route-blue ring with a small "+" around the place's icon, its name in route blue below, and a thin dashed route-blue preview line to where adding it would join the route (only with a route); never orange (= recording). `map/CandidateMarker.kt`, `WaypointInsertion.joinPoint`; its actions stay in the place card / hold menu |
 | `RestBackground`, `RestInk`, `RestDim`, `OnDarkMuted` | the rest view while cycling and the dark slide switch only |
 
 Add a token when a new meaning is needed (with a comment saying what it is for); `inverseSurface` and Snackbars stay
@@ -55,6 +56,11 @@ Nothing a hiker must read is below 14. No hand-set `fontSize =` in `ui/` (`FontS
   the verb: "Off route – re-plan?" → Yes).
 - **One primary button** per box / sheet: filled `Green` with white text. The others are green text buttons.
 - Label style `labelLarge` (16 sp); the primary one bold.
+- **Icon row with labels** (the plan sheet's ✕ Close plan · ⇅ Reverse · ↻ Round trip, owner 2026-10-31): small icons
+  (24 dp) with their short label under each in `labelMedium` (14 sp) – never icon-only; each ≥ 48 dp, spread evenly; a
+  word is never cut – with a large phone font the row wraps onto a second line. Greyed (38 %) when it cannot be used.
+- **Dot on ☰**: a 12 dp dot with a white ring at the button's upper right – **green** (`Green`) while the plan has
+  unsaved changes (Save route is the top item), **amber** (`Warn`, wins) when the browser sync needs a look.
 
 ## Dialogs
 Only for decisions that can **lose something** (delete, replace an unsaved plan, end a tour, unpair). **The details of a
@@ -112,7 +118,7 @@ MessageSlot(Messages.pick(listOf(question, m)), MessagePlacement.topDp(MessageSc
 | Map areas could not be loaded | HINWEIS_WARN | "Map couldn't be loaded" – Try again |
 | A shared place found only as a namesake elsewhere (no coordinate, not in the shared town) | HINWEIS_WARN | "Place not clear" + "No sure match – search for “Olive Hilden” in OnPath." – Search (opens the search, text typed in); no ring |
 | An error without a screen of its own (background, link / share into the app) | HINWEIS_ERROR | "Couldn't find this place." – OK |
-| Route state | ANZEIGE | plan sheet lines (red ERROR, amber WARNING, grey INFO), "Saved as … ✎" (tap → the name field in place, no dialog), "New route · was 13:15" |
+| Route state | ANZEIGE | plan sheet lines (red ERROR, amber WARNING, grey INFO), "Saved as …" (a plain line; the name is changed in Save's dialog), "New route · was 13:15" |
 | Off route, finding the way back | ANZEIGE | the amber off-route card with the arrow (Navigate) |
 | Downloads in the background | ANZEIGE | the small chip "◔ Bozen · 34 %" in the tag look (`TagContainer` / `TagInk` pill, a progress ring – spinning while areas are still prepared and no percent is known yet; ≥ 48 dp tap target); tap → its details as a bottom sheet; offline / waiting for GPS → the quiet grey pill |
 | The result of an action in My routes / Settings | ANZEIGE | `NoticeLine`: grey INFO / red ERROR line at the top, gone when the screen is left |

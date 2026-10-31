@@ -235,7 +235,8 @@ tap you confirm, the route, or your own position. Scrolling and zooming alone ne
 | T2 | **Search result** (search, or a place shared from Google Maps / geo: link) where there is no detailed map: the map flies there | that cell + close neighbours, at once (`CellWhy.SEARCHED`) | owner |
 | T2b | **Short tap on the world map** where there is no detailed map | first a question "Load the map for this area? N regions · ≈ X MB" – **Load** / **Not now**; on Load that cell + close neighbours (`CellWhy.TAPPED`). Never a silent download from a tap; a tap where detail exists does nothing | owner |
 | T3 | **App opened in Plan mode at a new place** – own GPS position has no cell on the phone (first start, holiday, travel) | own cell (`point`) + close neighbours | owner |
-| T4 | **Route computed** | every missing corridor cell (within ~10 km of the route, F-OFF-02) | |
+| T4 | **Route computed** | every missing corridor cell (within ~10 km of the route either side, start and destination included – measured to the cell's border, F-OFF-02); cells the route crosses (≤ 1 km) are the card / loading window, the margin loads quietly (download chip) | owner (margin quiet: 0.13.4) |
+| T4b | **Tour starts** on the planned route | the corridor cells (and routing parts) still missing – cancelled, failed, waiting – asked again, quiet (`CellTriggers.tourStarted`) | owner (0.13.4) |
 | T5 | **Navigate / recording** and the own position moves towards the edge of the cells on the phone (e.g. a tour leaves the planned corridor) | the next cell ahead (`near`) | owner |
 | T6 | **Refresh** – after every route computed in Plan, installed cells along it (10 km) are checked for a newer version (`CellTriggers.freshenAlong`, each at most hourly; `docs/design/map-updates-ux.md`) | new version (`refresh`) | – |
 | – | Scrolling / zooming the map, looking at a POI, opening a saved tour that is fully covered | nothing | – |
@@ -249,6 +250,15 @@ On screen the cells are called **regions**, never "cells". T4 with detail in vie
 small card.
 
 Notes:
+- **Offline after planning (owner: "new route – even without signal"):** the corridor margin is what makes a change on
+  the way work offline – a hut or a detour up to ~10 km beside the route has map and routing data. Field 0.13.3
+  (emulator, A-019): Vellau → Leiteralm lies > 10 km from every border of 10-543-361, so one region loaded (correct);
+  Gasthof Hochmuth appended in airplane mode is in the same region and routed offline, but the new leg came within
+  ~7.5 km of the east border, T4 asked for 10-544-361 and the card said "No detailed map – loads when you're online"
+  although the route had it. Since 0.13.4 margin cells never make that card. Typical size (map regions ≈ 10 MB, routing
+  parts ≈ 10 MB, Monte Carlo over the Alps / Germany): a 10 km hike ≈ 4 regions + 2 parts ≈ 55 MB (p90 ≈ 60 MB); a
+  50 km bike tour ≈ 6 regions + 2 parts ≈ 80 MB (p90 ≈ 115 MB). A 5 km margin would be ≈ 40 / 60 MB. Cap: 30 regions
+  (`CORRIDOR_MAX_CELLS`), the rest loads ahead on the tour (T5).
 - T3/T5 are "own point" requests, so the same data rule applies as for T1 (own cell automatic, more asks with size on
   mobile data, Q2). A cell already on the phone or queued is never requested again.
 - T3 runs once per app start / return to the app, only with a usable fix (accuracy ≤ ~500 m; a network fix is enough
@@ -551,7 +561,10 @@ joins the two real cells (+ region); `ONPATH_LIVE=1` downloads 10-543-361 from t
 - **Triggers** (`cells/CellTriggers.kt`, pure, on the `CellSource` interface that `MapCells` implements; called by
   `AppViewModel`): T1 every new point value in a plan edit (hold → Start here / Go here, stops, moved points; more than 3
   new points at once = a loaded route → T4 only) → own cell `POINT` + neighbours within 5 km `NEAR`; T3 first fix ≤ 500 m
-  after start / return in Plan; T4 every computed route → corridor 10 km `CORRIDOR` (+ `markUsed`); T5 on tour every
+  after start / return in Plan; T4 every computed route → corridor 10 km `CORRIDOR` (+ `markUsed`; cells within
+  `ROUTE_M` = 1 km of the line in `CellJob.cells` = the card, the rest `CellJob.margin` = quiet, tagged for the download
+  chip); T4b tour start on the plan (`startNavigation` → `tourStarted`) → the corridor's missing cells again + the routing
+  parts (`RoutingTiles.forLine`), quiet; T5 on tour every
   300 m → cells within 5 km of the position without detailed map, `NEAR` + own-point rule, each cell at most every
   30 min, no card; T6 after a computed route `freshenAlong` → `REFRESH`, no card. A cell counts as covered when an
   installed cell or the region package covers its centre (no cells inside the region package are fetched).
@@ -573,7 +586,7 @@ joins the two real cells (+ region); `ONPATH_LIVE=1` downloads 10-543-361 from t
 The user never sees "routing data" as a separate thing. BRouter's data loads as **1° × 1° parts** of the 5° rd5 files
 (~5–19 MB each instead of ~200 MB; `Rd5PartStore`, map-data-size.md §6) by `RoutingDataLoader`, triggered with the map:
 - every region job (`showCellJob` → `RoutingTiles.forCells`: the parts under the regions), a point set / the position /
-  a search (`forPoints`, 2 km), a computed route (`forLine`, 10 km corridor, never in the modal);
+  a search (`forPoints`, 2 km), a computed route and a tour start on it (`forLine`, 10 km corridor, never in the modal);
 - **one modal**: "Loading the map for your area · 4 regions · about 40 MB" with one % by bytes over regions + parts,
   one Cancel for both; only parts missing: "Loading the map for your area · about 10 MB" (sizes from the server's
   index before loading). No "routing data", no "+ routing data", no routing-only title;

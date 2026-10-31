@@ -40,7 +40,7 @@
     <string name="settings_sum_upd_failed">%1$s – check failed</string>
     <string name="settings_sum_diag">For bug reports</string>
     <string name="settings_sum_privacy">Nothing is tracked · what leaves your phone</string>
-    <string name="settings_sum_about">Credits, licence</string>
+    <string name="settings_sum_about">Credits, license</string>
     <string name="settings_poi_hide_all">Hide all</string>
     <string name="settings_poi_shown">%1$d of %2$d shown</string>
     <string name="settings_cd_collapse">Collapse</string>
@@ -101,18 +101,24 @@
     <string name="settings_upd_source">Updates come from the OnPath page on GitHub. Android asks you to confirm every install.</string>
     <string name="settings_privacy_lead">Nothing is tracked. No account, no analytics, no ads.</string>
     <string name="settings_privacy_tracks">Your tours and routes stay on your phone and in your own backup folder. When you pair your phone with your browser, your saved routes and imported tracks are sent there so you can plan on your computer too. They are encrypted on the phone first: only your phone and your browser can read them – we can't. Recorded tours are never sent.</string>
+    <string name="settings_privacy_device_backup">Depending on your phone's settings, Android may include your tours, routes and settings in the phone's own device backup (for example at Google) – separate from the sync with your browser. Map data and the pairing key are not included.</string>
     <string name="settings_privacy_what">What leaves your phone</string>
+    <string name="settings_privacy_ip">Every service below sees your IP address and the time of the request, as with any internet connection. OnPath sends no name and no account.</string>
     <string name="settings_privacy_maps_what">Which map area you need (an area of about 30 × 40 km, not your position)</string>
-    <string name="settings_privacy_maps_to">OnPath map server</string>
+    <string name="settings_privacy_maps_to">OnPath map server (Cloudflare)</string>
     <string name="settings_privacy_when_maps">when maps load</string>
     <string name="settings_privacy_routing_what">Which map area you need for route planning (an area of about 80 × 110 km)</string>
-    <string name="settings_privacy_search_what">Your search text and a rough position (about 1 km)</string>
+    <string name="settings_privacy_search_what">Your search text – it can itself be an address – and a position rounded to about 1 km. Rounding makes it coarser, not anonymous.</string>
     <string name="settings_privacy_search_to">%1$s (Germany)</string>
-    <string name="settings_privacy_search_when">only for online search</string>
-    <string name="settings_privacy_update_what">A request for the newest app version (no personal data)</string>
-    <string name="settings_privacy_update_when">update check, once a day and when you tap Check</string>
-    <string name="settings_privacy_link_what">A Google Maps link you share into OnPath</string>
-    <string name="settings_privacy_link_when">only to find the place of a short link</string>
+    <string name="settings_privacy_search_when">only for online search, and to find a place you share into OnPath</string>
+    <string name="settings_privacy_update_what">A request for the newest app version – no tour data, no ID of you or your phone. GitHub sees the technical connection data (IP address).</string>
+    <string name="settings_privacy_update_when">update check, once a day and when you tap Check; the download when you install an update</string>
+    <string name="settings_privacy_link_what">A Google Maps short link you share into OnPath</string>
+    <string name="settings_privacy_link_when">only to follow the link to its full address (the Google Maps page itself is not loaded)</string>
+    <string name="settings_privacy_geocoder_what">The address of a place you share into OnPath, when OnPath's own search finds no sure place</string>
+    <string name="settings_privacy_geocoder_to">your phone's address service (on most phones Google)</string>
+    <string name="settings_privacy_geocoder_when">only for a shared place</string>
+    <string name="settings_privacy_google">From Google, OnPath keeps only the position and the name and address of a place you share – nothing else is stored or drawn.</string>
     <string name="settings_privacy_tap_what">The place you tapped</string>
     <string name="settings_privacy_tap_when">only when you tap “Open in Google Maps”</string>
     <string name="settings_privacy_web_what">A place's website or Wikipedia page</string>
@@ -122,7 +128,7 @@
     <string name="settings_privacy_diag_to">whoever you send it to</string>
     <string name="settings_privacy_diag_when">only when you share it</string>
     <string name="settings_about_devtools_on">Developer tools are on – Settings → Diagnostics.</string>
-    <string name="settings_about_licence">Licence: Apache-2.0</string>
+    <string name="settings_about_licence">License: Apache-2.0</string>
     <string name="settings_about_credits">Credits</string>
     <string name="settings_credit_osm">Map data © OpenStreetMap contributors (ODbL)</string>
     <string name="settings_credit_omt">Vector tile schema © OpenMapTiles</string>
@@ -130,14 +136,25 @@
     <string name="settings_credit_ne">World overview: Natural Earth (public domain)</string>
     <string name="settings_credit_brouter">Routing: BRouter (MIT)</string>
     <string name="settings_credit_icons">POI icons: Maki and Temaki (CC0)</string>
-    <string name="settings_credit_maplibre">Map renderer: MapLibre Native (BSD licence)</string>
+    <string name="settings_credit_maplibre">Map renderer: MapLibre Native (BSD license)</string>
+    <string name="settings_licences">Licenses</string>
+    <string name="settings_licences_sum">The open-source parts of OnPath, with version and license</string>
+    <string name="settings_licences_lead">OnPath is built from these open-source parts. Tap “License text” to read a license – everything is in the app, no internet needed.</string>
+    <string name="settings_licences_text">License text</string>
+    <string name="settings_licences_text_hide">Hide license text</string>
+    <string name="settings_licences_odbl">Map data © OpenStreetMap contributors, available under the Open Database License (ODbL) 1.0 (opendatacommons.org/licenses/odbl). Terrain and world overview: see Credits.</string>
+    <string name="settings_lic_note_maplibre">Includes the third-party parts of its map engine – all of them are in the license text.</string>
+    <string name="settings_lic_note_brouter">Changed by OnPath (“onpath1”): one method made reachable so OnPath can try again when a point lies on a small separate piece of the path network. OnPath's routing profiles build on BRouter's.</string>
+    <string name="settings_lic_note_noto">Glyphs for the map labels, made from the fonts (a change of format).</string>
+    <string name="settings_lic_note_icons">Pictograms of the POI symbols. CC0 needs no credit – named with thanks.</string>
+    <string name="settings_lic_unchecked">License not checked yet</string>
     <plurals name="settings_sum_maps_areas"><item quantity="one">%1$s · %2$d area</item><item quantity="other">%1$s · %2$d areas</item></plurals>
     <plurals name="settings_sum_diag_new"><item quantity="one">%1$d new problem</item><item quantity="other">%1$d new problems</item></plurals>
     <plurals name="settings_sum_diag_notes"><item quantity="one">For bug reports · %1$d note</item><item quantity="other">For bug reports · %1$d notes</item></plurals>
     <string name="settings_page_sync">Browser sync</string>
     <string name="settings_privacy_sync_what">Your saved routes and imported tracks, encrypted on the phone</string>
-    <string name="settings_privacy_sync_to">OnPath sync server (Cloudflare, EU)</string>
+    <string name="settings_privacy_sync_to">OnPath sync server (Cloudflare, stored in the EU)</string>
     <string name="settings_privacy_sync_when">only when you pair with a browser: after a change and when the app opens</string>
     <string name="settings_privacy_sync_title">Plan sync with the web planner (only when you pair)</string>
-    <string name="settings_privacy_sync_text">Your saved routes and imported tracks are encrypted on your phone and in your browser before they leave the device. They pass through our sync server (Cloudflare, EU) as locked data: the server cannot read them and never learns your name, e-mail or where you plan to go. It stores a random mailbox number, the locked routes and when they last changed. Unpairing deletes everything there at once; a mailbox nobody uses for 12 months is deleted automatically. Whoever has your pairing code can see your saved routes – do not share it.</string>
+    <string name="settings_privacy_sync_text">Your saved routes and imported tracks are encrypted on your phone and in your browser before they leave the device. They pass through our sync server (Cloudflare, stored in the EU) as locked data: the server cannot read them and never learns your name, e-mail or where you plan to go. It stores a random mailbox number, the locked routes and when they last changed. Unpairing deletes everything there at once; a mailbox nobody uses for 12 months is deleted automatically. Whoever has your pairing code can see your saved routes – do not share it.</string>
 </resources>

@@ -107,7 +107,7 @@ These six profiles aim to cover about 70% of use cases. Road bike and gravel are
 | F-NAV-02 | Off-route detection (more than 40 m for 15 s while moving, configurable): vibration and sound, then – offline – a way back onto the route ahead is computed and offered as a question that stays until answered: "Take new route" / "Keep original" (also in the notification). Never re-routes silently; passed stops are skipped; the original stays visible as a grey line. No way found: arrow and distance to the route. | Must |
 | F-NAV-03 | Record track at the same time as navigating; also record without a route ("free tour"). | Must |
 | F-NAV-04 | Works with screen off and app in background; persistent notification shows distance and status; pause / resume / stop. | Must |
-| F-NAV-05 | Voice hints at junctions with offline text-to-speech. | Could (off-route warning is enough for v1) |
+| F-NAV-05 | Voice hints at junctions with offline text-to-speech: Android's own speech output (Google or the phone's engine, offline voices only), one voice for every text incl. place / stop names; spoken only where the app vibrates. | Should (owner 2026-10-31, backlog "Voice guidance") |
 | F-NAV-06 | After the tour: summary (distance, time, moving time and breaks, planned vs. needed on the route, ascent), save, export GPX, delete. | Must |
 
 ### 3.6 GPX
@@ -300,7 +300,7 @@ The build order puts the map style and robustness first, because those are what 
 
 - [x] Platform: Android first; iOS later.
 - [x] Licence: Apache-2.0.
-- [x] Voice: the off-route warning is enough; no turn-by-turn voice in v1.
+- [x] Voice: changed 2026-10-31 (owner) – voice hints are planned with Android's text-to-speech (F-NAV-05), names spoken by the same voice.
 - [x] Komoot GPX: reading GPX exported from Komoot is a Should (F-GPX-08).
 - [x] First test region: Bozen / Meran / Algund (South Tyrol).
 - [x] App name: OnPath. Code: github.com/happychriss/OnPath.

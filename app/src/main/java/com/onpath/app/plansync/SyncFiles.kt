@@ -80,6 +80,7 @@ class SyncFiles(val dir: File) {
     private val statusFile = File(dir, "status.txt")
     private val endedFile = File(dir, "ended.txt")
     private val marksFile = File(dir, "marks.txt")
+    private val scanFile = File(dir, "scan.txt")
 
     /** Routes from the browser not opened yet (My routes: a "New" / "Changed" tag); one instance per folder user. */
     val marks = SyncMarks({ read(marksFile) }, { write(marksFile, it) })
@@ -119,6 +120,14 @@ class SyncFiles(val dir: File) {
     fun ended(): Long = read(endedFile)?.trim()?.toLongOrNull() ?: 0
     fun saveEnded(ms: Long) = write(endedFile, "$ms\n")
     fun clearEnded() { if (endedFile.exists() && !endedFile.delete()) throw java.io.IOException("ended file not removed") }
+
+    /** A pairing scan (JOIN) still waiting for its browser's hello ([PairScan]); null = none. */
+    fun scan(): PairScan? {
+        val text = read(scanFile) ?: return null
+        return PairScan.read(text) ?: run { Problems.warn("sync", "Pairing scan file unreadable – not waiting for a browser"); null }
+    }
+    fun saveScan(s: PairScan) = write(scanFile, s.write())
+    fun clearScan() { if (scanFile.exists() && !scanFile.delete()) throw java.io.IOException("scan file not removed") }
 
     private fun read(f: File): String? = try {
         if (f.isFile) f.readText() else null

@@ -3,7 +3,7 @@ package com.onpath.app.ui
 import java.util.Locale
 
 /**
- * Google Maps place → go there (owner 2026-10-30): a place shared into OnPath gets the orange ring and, once the map
+ * Google Maps place → go there (owner 2026-10-30): a place shared into OnPath gets the candidate marker and, once the map
  * has flown there, the ring's own hold menu ([PoiMenu]: "Start here · Go here" on an empty plan, else "Set as
  * destination" / "Add as stop N" / "Add as new destination", plus "Open in Google Maps") opens by itself – the very menu
  * a hold on the ring opens, under the same rules (Plan, no shown track: [AppViewModel.canEditMap]).

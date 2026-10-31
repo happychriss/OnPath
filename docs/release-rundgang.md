@@ -1,11 +1,12 @@
 # Release-Rundgang (release walkthrough)
 
 Owner 2026-10-31: a fixed list of real user flows played automatically in the emulator with the demo ride – about
-6 minutes on donald (12 flows), no human. Pushing a build to the phone needs no extra test (as before).
+6 minutes on donald (13 flows), no human. Pushing a build to the phone needs no extra test (as before).
 
-**Rule: "mit donald = Rundgang"** (owner 2026-10-31)
-- A release made **on donald** runs the Rundgang **locally first** (`tools/ci/release_rundgang.sh`). **Red = no release.**
-- A release made **elsewhere** (cloud, laptop without an emulator) goes out **without** the Rundgang – no blocking.
+**Rule: the Rundgang is OPTIONAL** (owner 2026-10-31 evening, "it takes too long"; replaces "mit donald = Rundgang")
+- A **normal release** = the unit + screenshot gate (`testDebugUnitTest verifyPaparazziDebug`) + GitHub's smoke test.
+- Run the Rundgang (`tools/ci/release_rundgang.sh`, on donald) **only when the owner asks** or when a release **changes
+  navigation / recording core logic**. Then: **red = no release.**
 - GitHub `release.yml` runs only the short `StartSmokeE2ETest` as its emulator gate (job `smoke`).
 - Nobody waits for the push E2E run (`e2e.yml`) before releasing; that run keeps leaving the Rundgang out (`notClass`).
 
@@ -57,3 +58,4 @@ Meran (Theatre → station, ~1.4 km), one assertion per step, a screenshot per k
 | 10 | Shares a place from Google Maps to OnPath (name, address, `?q=lat,lon` link; then name + address only) | The ring and its menu sit at the shared coordinate; without one never a namesake in another town (a namesake in Bozen is in the offline data) – found in Meran or "Place not clear" (`SharedPlaceLookupTest`; the `maps.app.goo.gl` short link needs the network and is left out) |
 | 11 | During a tour deletes a point ahead (field bug Hilden 2026-10-31) | The tour follows position → the rest at once, no question; the passed start stays in the plan (`TourSplitTest`) |
 | 12 | Rides past points 1 and 2, deletes the destination → Back to the start → Undo | "No destination ahead any more." → the tour follows position → start; Undo brings the destination back |
+| 13 | Pairs with the browser while a tour records (field bug 2026-10-31: "the phone says paired and the planner says nothing") | The phone's hello reaches the browser at once (a one-off handshake), the phone sees the browser (connected); no route goes up; Browser sync says "Routes sync after the tour" (`CorePlanSyncTest.pairingDuringATourSaysHelloButTheRoutesWaitForTheTourEnd`; mailbox in memory as in 8) |

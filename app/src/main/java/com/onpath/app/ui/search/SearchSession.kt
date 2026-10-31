@@ -90,6 +90,8 @@ class SearchSession(
     private val areaPlan: () -> AreaPlan = { AreaPlan.of(dataDir) },
     /** Opens the offline index file (SQLite); replaced in tests. */
     private val openIndex: (File) -> SearchDb = { AndroidSearchDb(it) },
+    /** The phone's address service – only for a shared place, after offline + online (A-020); replaced in tests. */
+    private val geocoder: com.onpath.app.search.PlaceGeocoder = com.onpath.app.search.PlaceGeocoder.NONE,
     private val context: () -> SearchContext,
 ) {
     @Volatile private var addresses: AddressIndex? = null
@@ -251,6 +253,10 @@ class SearchSession(
                 }
                 val o = online(listOfNotNull(postcode, town).joinToString(" ")).firstOrNull() ?: return null
                 return SharedTown(o.lat, o.lon, listOfNotNull(o.town, o.name).distinct())
+            }
+
+            override fun geocode(text: String): List<Place> = try { geocoder.find(text) } catch (e: Exception) {
+                Problems.info("search", "The phone's address service failed for a shared place", e); emptyList()
             }
         }
         return withContext(Dispatchers.IO) { SharedPlaceLookup(finder).find(name, address, query) }

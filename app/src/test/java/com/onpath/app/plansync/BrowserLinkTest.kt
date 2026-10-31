@@ -53,10 +53,48 @@ class BrowserLinkTest {
         assertEquals(BrowserLink.WAITING, BrowserLink.of(l, phone))
     }
 
-    /** A browser sent into this mailbox (JOIN): waiting for its hello, not "unpaired", until it said hello. */
+    /** A browser sent into this mailbox (JOIN) after the old one unpaired: waiting for its hello, not "unpaired". */
     @Test fun afterAJoinItIsWaiting() {
-        assertEquals(BrowserLink.WAITING, BrowserLink.afterJoin(BrowserLink.UNPAIRED, joined = true))
-        assertEquals(BrowserLink.UNPAIRED, BrowserLink.afterJoin(BrowserLink.UNPAIRED, joined = false))
-        assertEquals(BrowserLink.CONNECTED, BrowserLink.afterJoin(BrowserLink.CONNECTED, joined = true))
+        val l = withPhoneHello()
+        l.hello(web, "Chrome on Linux", now, SyncItem.ROLE_BROWSER)
+        l.delete(SyncFormat.deviceItemId(web), now + 1, web)
+        val scan = PairScan.of(l, phone, now + 60_000)
+        assertEquals(BrowserLink.WAITING, BrowserLink.of(l, phone, scan))
+        // the same browser pairs again: its new hello over its tombstone → connected
+        l.hello(web, "Chrome on Linux", now + 70_000, SyncItem.ROLE_BROWSER)
+        assertEquals(BrowserLink.CONNECTED, BrowserLink.of(l, phone, scan))
+    }
+
+    /**
+     * Owner 2026-10-31: after a scan the phone said "connected" while the browser still said "Warten auf Handy" – an OLD
+     * live browser hello (an earlier browser) was in the ledger. After a scan only a hello after it counts.
+     */
+    @Test fun anOldLiveBrowserHelloIsNoSignOfTheScannedBrowser() {
+        val l = withPhoneHello()
+        l.hello(web, "Chrome on Linux", now, SyncItem.ROLE_BROWSER) // the earlier browser, still live
+        assertEquals(BrowserLink.CONNECTED, BrowserLink.of(l, phone))
+        val scanAt = now + 3_600_000
+        val scan = PairScan.of(l, phone, scanAt)
+        assertEquals("old hello only", BrowserLink.WAITING, BrowserLink.of(l, phone, scan))
+        // an old hello the phone had not pulled before the scan (another browser, hours ago) is no sign either
+        val older = SyncFormat.newDevice(ByteArray(8) { 4 })
+        l.hello(older, "Edge on Windows", scanAt - 2 * 3_600_000, SyncItem.ROLE_BROWSER)
+        assertEquals(BrowserLink.WAITING, BrowserLink.of(l, phone, scan))
+        // the scanned browser says hello (its clock a minute behind the phone's) → connected
+        val scanned = SyncFormat.newDevice(ByteArray(8) { 5 })
+        l.hello(scanned, "Firefox on Windows", scanAt - 60_000, SyncItem.ROLE_BROWSER)
+        assertEquals(BrowserLink.CONNECTED, BrowserLink.of(l, phone, scan))
+        // kept in a file: a restart keeps waiting the same way
+        val back = PairScan.read(scan.write())
+        assertEquals(scan, back)
+        assertEquals(null, PairScan.read("something else"))
+        assertEquals(null, PairScan.read(null))
+    }
+
+    @Test fun aScanStopsWaitingAfterHalfAnHourWithAGoodPass() {
+        val scan = PairScan(now)
+        assertEquals(false, scan.expired(now + PairScan.WAIT_MS + 1, passOk = false))
+        assertEquals(false, scan.expired(now + 60_000, passOk = true))
+        assertEquals(true, scan.expired(now + PairScan.WAIT_MS + 1, passOk = true))
     }
 }

@@ -22,7 +22,7 @@
     <string name="setup_loc_denied">No problem – the map and planning work without it. For the dot on the map and a tour OnPath needs your location.</string>
     <string name="setup_loc_blocked">Android does not ask again. Tap Continue, then Permissions → Location, and allow it while using the app, with precise location.</string>
     <string name="setup_precise_title">Precise location</string>
-    <string name="setup_precise_why">Only with your exact position does OnPath record a clean track and buzz at the right junction. An approximate position can be a kilometre or more off – with it a tour cannot start.</string>
+    <string name="setup_precise_why">Only with your exact position does OnPath record a clean track and buzz at the right junction. An approximate position can be a kilometer or more off – with it a tour cannot start.</string>
     <string name="setup_precise_do">On the next screen, change to precise location.</string>
     <string name="setup_locon_title">Location is off</string>
     <string name="setup_locon_row">Phone location</string>

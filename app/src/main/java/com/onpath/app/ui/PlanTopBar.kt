@@ -71,16 +71,18 @@ class PlanMenu(
      */
     val onPhoneSetup: (() -> Unit)? = null,
     /**
-     * "Save route" on top (owner 2026-10-30: he looked for Save in ☰): only while the plan has unsaved changes
-     * (RouteRules.saveAtHand) – the same action as the sheet's Save; null hides it.
+     * "Save route" on top (owner 2026-10-31: the one place of Save – the sheet has none): whenever there is a plan
+     * (RouteRules.saveInMenu); it opens Save's name dialog. Null hides it.
      */
     val onSaveRoute: (() -> Unit)? = null,
+    /** The plan has unsaved changes (RouteRules.saveAtHand): a small green dot on ☰ (an amber sync dot wins). */
+    val unsaved: Boolean = false,
 )
 
 /**
- * Plan mode top area: the search pill (only search) and one round ☰ app-menu button next to it (My routes, Start
- * recording, Settings, Updates; Phone setup first while a tour needs it, then Save route while the plan is unsaved).
- * The activity and all route actions live in the route sheet (PlanPanel) – Save route is the one also here.
+ * Plan mode top area: the search pill (only search) and one round ☰ app-menu button next to it: Save route (with a
+ * plan) · My routes · Start recording · Pair with browser · Settings; Phone setup first while a tour needs it. The
+ * activity and the route actions (Close plan · Reverse · Round trip) live in the route sheet (PlanPanel); Save is here.
  */
 @Composable
 fun PlanTopBar(
@@ -122,9 +124,12 @@ private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
             shadowElevation = 3.dp, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }) {
             Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Menu, contentDescription = null) }
         }
-        // amber dot: the browser sync needs a look (never for plain offline) – the ☰ item says why
-        if (menu.onPairBrowser != null && menu.sync.warning != null) Box(Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 6.dp)
-            .size(12.dp).background(OnPathColors.Warn, CircleShape).border(2.dp, MaterialTheme.colorScheme.surface, CircleShape))
+        // amber dot: the browser sync needs a look (never for plain offline) – the ☰ item says why; else a green dot while
+        // the plan has unsaved changes (Save route is the top item)
+        val dot = if (menu.onPairBrowser != null && menu.sync.warning != null) OnPathColors.Warn
+            else if (menu.unsaved && menu.onSaveRoute != null) OnPathColors.Green else null
+        if (dot != null) Box(Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 6.dp)
+            .size(12.dp).background(dot, CircleShape).border(2.dp, MaterialTheme.colorScheme.surface, CircleShape))
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, offset = DpOffset(0.dp, 4.dp)) {
             PlanMenuItems(menu, close = { open = false })
         }
@@ -153,12 +158,13 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
 
 /**
  * "Pair with browser" (unpaired in the browser: + grey "Unpaired in the browser"); paired: "Paired with browser ✓" + grey
- * "<device> ↔ <browser> · synced 1 min ago"; a problem: amber ⚠ + why.
+ * "<device> ↔ <browser> · synced 1 min ago"; the browser not seen yet: no ✓ + grey "Waiting for the browser …"; a
+ * problem: amber ⚠ + why.
  */
 @Composable
 private fun SyncMenuItem(ui: SyncMenuUi, enabled: Boolean, onClick: () -> Unit) {
     val warn = ui.warning != null
-    val label = if (!ui.paired) str(Res.string.sync_menu_pair) else str(Res.string.sync_menu_paired) + if (warn) "" else " ✓"
+    val label = if (!ui.paired) str(Res.string.sync_menu_pair) else str(Res.string.sync_menu_paired) + if (warn || ui.waiting) "" else " ✓"
     DropdownMenuItem(
         text = {
             Column {

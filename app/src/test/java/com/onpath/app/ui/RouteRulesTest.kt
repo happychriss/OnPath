@@ -126,6 +126,12 @@ class RouteRulesTest {
         assertEquals("$dated (2)", RouteRules.newRouteName(null, dated, listOf(dated)))
     }
 
+    @Test fun copyNameIsTheNextNumber() {
+        assertEquals("Hirzer (2)", RouteRules.copyName("Hirzer", listOf("Hirzer")))
+        assertEquals("Hirzer (3)", RouteRules.copyName("Hirzer (2)", listOf("Hirzer", "Hirzer (2)")))
+        assertEquals("the original renamed away: still a copy name", "Hirzer (2)", RouteRules.copyName("Hirzer", emptyList()))
+    }
+
     @Test fun cleanName() {
         assertEquals("Hirzer", RouteRules.cleanName("  Hirzer ", "Old"))
         assertEquals("Old", RouteRules.cleanName("   ", "Old"))

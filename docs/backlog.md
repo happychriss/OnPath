@@ -7,8 +7,14 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] Voice guidance (`docs/design/voice-guidance.md`) – for the next release – since 2026-10-31
 
 ## Next
+- **From the external review (A-020 §4) – build only after a small user test by the owner:**
+  (1) offline readiness "Für diese Tour offline bereit" (maps + routing data for the planned route on the phone, one
+  line before the start); (2) empty state with a permanent hold hint (the empty plan map says how to set a point –
+  hold – and the hint stays until the first point); (3) Pause / End easy to find during a tour (today behind the slide
+  "Tour menu"). Photon outage and WebGL2 stay low (owner 2026-10-30).
 - **On the next real ride (owner)** – onboarding checklist step 7 (30 min, screen off, battery saver; steps 2–6 passed on
   the Pixel 2026-10-30, step 1 = fresh install → emulator); rest view + smarter cues on the bike and on foot; pocket after
   5 s on the bike; lock-screen notification on the Pixel; the older phone checks below; compass arrow: does it stay grey
@@ -19,7 +25,8 @@ the git log.
   vor dir."). **donald:** run `tools/ci/release_rundgang.sh` once – flows 11 and 12 are new and were only compiled in the
   cloud (no emulator); a red flow blocks the next release.
 - **Voice guidance (owner 2026-10-31) – after the feature stop (first the ride with the checklist)** – owner: "every tester
-  asks whether it talks". Android's own text-to-speech (`TextToSpeech`, no Play Services; only voices that need no
+  asks whether it talks". **Concept: `docs/design/voice-guidance.md`** (rules, all sentences DE/EN, 5 questions for the
+  owner). Android's own text-to-speech (`TextToSpeech`, no Play Services; only voices that need no
   network), one voice for everything incl. names; all speech from one place (a `Speaker` interface) so the voice can
   later be swapped for pre-made recordings (whole sentences, e.g. Piper / "Thorsten") if testers find it poor.
   Three parts:
@@ -59,6 +66,33 @@ the git log.
       `#0B3D91`, 12 px bold pill, never cut), gone when opened; careful: bold means "waiting" in the browser today –
       steps in `docs/handoff-web-route-tags.md`.
   - *Should:*
+    - Save asks for the name (owner 2026-10-31, app 0.13.5, replaces "save at once") · app commit "Save always asks
+      for the name" · checked against `origin/web-spike` 761bbb6: the browser still saves at once and renames in place
+      (`#savedLine` → `#renameField`), so it does **not** match yet. Web: every Save (header, ⋯ → Save route, Save
+      first) opens the small name popover (the `.savepop` styles are still there) with the name fully selected,
+      Cancel · Save; a saved route is overwritten **and renamed when the name changed** (one route); blank = keep the
+      proposal / old name; "Save as copy" proposes `RouteRules.copyName` ("Name (2)", a copy of "Name (2)" is
+      "Name (3)"); "Saved as …" becomes a plain line (no `#renameField`). Update `parity-smoke.mjs` (renameTo, "no
+      field, no dialog" checks). App: `SaveNameDialog`, `AppViewModel.askSave / confirmSave`, `SaveDialogTest`.
+    - Plan sheet without ⋯ (owner 2026-10-31, app 0.13.5) · app commit "Plan sheet: icon row instead of ⋯" · the
+      browser's floating window keeps its own layout, but mirror the wording and placement: ✕ **„Plan schließen“ /
+      "Close plan"** (was „Route löschen“; "Discard changes?" / „Änderungen verwerfen?“ Cancel · Discard only with
+      unsaved changes; a saved route stays), **„Umkehren“ · „Rundtour“** beside it in the summary (not only above the
+      points), **„Als Kopie speichern“ / "Save as copy"** in My routes. String keys renamed – fix `t()` in main.ts after
+      `merge-main.sh`: `plan_clear_route` → `plan_close_plan` (+ `plan_discard_title`, `plan_discard`),
+      `plan_save_as_new_route` → `plan_save_as_copy`. App: `PlanPanel.PlanActions`, `PlanActionsTest`.
+    - Candidate marker instead of the orange search ring (owner 2026-10-31, A-019 add-on) · app commit "Candidate
+      marker" · the web's `.searchring` (search.ts, style.css) becomes the app's look: a dashed route-blue (`#1E3FAE`)
+      ring, radius 21 px, 3.5 px dashes 7 / 4.5 over a 7 px white halo, ~12 % blue tint inside, a small "+" badge
+      (blue disc r 8.5, white +) at its upper right, the name in route blue below; plus a thin dashed preview line
+      (2.5 px, dash 2 × width, opacity 0.9, under the route points) from the place to `WaypointInsertion.joinPoint`
+      (shared file: let `placePreview` return the join point) – only with a route. No orange (= recording).
+      `map/CandidateMarker.kt` draws it; picture `CandidateMarkerScreenshotTest`.
+    - Bug-01 pass only around the cut stop (owner 2026-10-31, "Option 1", speed) · app commit "Planner: route only
+      around a cut stop" · shared `routing/Planner.kt` (`splice`: the first line stays, only ~1 km around the cut stop
+      is routed again and spliced in; owner's 70.6 km hike 2.7 → 1.3 s on the JVM, +1 m) – comes with the merge, nothing
+      to code; add the owner's plan to `web/test/plans.json` (app = web, 70,600 m), measure the Wasm time;
+      `PLANNER_VERSION` 3, fingerprint changes once – `docs/handoff-web-spur-splice.md`.
     - Short-trip detour retry (owner 2026-10-31, Hilden) · f8a55de, 17d78d1 · shared `routing/Planner.kt`
       (`retryShortDetours`: a leg < 2 km straight routed > 2× is retried via the midpoint, taken when ≥ 30 % shorter) –
       comes with the merge, nothing to code; add the Hilden case to `web/test/plans.json` (Bike 51.169243,6.925344 →
@@ -107,6 +141,9 @@ the git log.
       without the dot in German; also `web_plan_dated` / `when`. Drive Teil 7 §3.
     - A-016 App Links · `/.well-known/assetlinks.json` is live (200, v0.13.1 key, checked 2026-10-31) · left: on the
       phone `adb shell pm get-app-links com.onpath.app` – then `#p=` / `#pair=` links open the app.
+    - Licences list in the browser (A-020) · app: About → Licences (`data/Licences.kt`, texts in `assets/licences/`)
+      · the web planner lists its own bundled parts (MapLibre GL JS, BRouter onpath1, Noto Sans glyphs, icons, npm
+      libraries) with version + licence, offline in the page, plus the ODbL line.
   - *Not for the browser:* lock-screen arrival rounding (30c01c6), smart screen / rest view, cue timing, vibration,
     pocket, lock-screen notification, notifications chip, provisional position, GPS-only recording, phone setup, demo
     location, POI tiles + search on disk on the phone, memory / health line, End-tour ride icons, ☰ phone-setup entry;

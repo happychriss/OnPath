@@ -12,7 +12,7 @@ import kotlin.math.abs
  * A place another app handed to OnPath: "Share" from Google Maps (name, address, link), a `geo:` URI, a map link.
  *
  * Owner decision: the coordinate inside a Google Maps link may be used to place our own marker (the
- * orange search ring). Nothing else from Google is drawn or stored – only that point and the shared name.
+ * candidate marker). Nothing else from Google is drawn or stored – only that point and the shared name.
  *
  * [lat]/[lon] are set when the coordinate is known; otherwise [link] (a short link to resolve online) and / or
  * [name] + [address] (to search for) are.
@@ -166,17 +166,6 @@ object SharedPlaceParser {
         return null
     }
 
-    /**
-     * Coordinates in a downloaded page – only the place marker (`!3d…!4d…`), never the page's start view: a Google
-     * Maps page for a link without coordinates opens centred on the requester's IP location
-     * (APP_INITIALIZATION_STATE / `center=`).
-     */
-    fun coordsInHtml(body: String): Pair<Double, Double>? {
-        val d = body.replace("\\u0021", "!").replace("\\u003d", "=").replace("\\u0026", "&").replace("%21", "!")
-        PLACE_RX.find(d)?.let { m -> pair(m.groupValues[1], m.groupValues[2])?.let { return it } }
-        return null
-    }
-
     /** `geo:46.6,11.1`, `geo:46.6,11.1?z=15`, `geo:0,0?q=46.6,11.1(Name)`, `geo:0,0?q=Via Roma 3, Meran`. */
     fun fromGeoUri(uri: String): SharedPlace? {
         if (!uri.startsWith("geo:", ignoreCase = true)) return null
@@ -285,27 +274,34 @@ object SharedPlaceParser {
     }
 }
 
-/** What one HTTP request answered: status, `Location` header, body (only read when not a redirect). */
-data class HttpHop(val code: Int, val location: String?, val body: String?)
+/** What one HTTP request answered: status and `Location` header (a page's content is never read). */
+data class HttpHop(val code: Int, val location: String?)
 
 /**
- * Follows a short map link (maps.app.goo.gl/…) to the link with the coordinate – off the main thread, ≤ [maxHops]
- * redirects, no cookies. [fetch] is replaced in tests. Never throws: null = no coordinate (offline, unknown link).
+ * Follows a short map link (maps.app.goo.gl/…) the way a browser does before it opens a page: one request per
+ * redirect, only the status and the `Location` header are read – off the main thread, ≤ [maxHops] redirects, no
+ * cookies. What the resolved link itself says is taken (a coordinate `!3d…!4d…` / `@lat,lon` / `?q=lat,lon`, the
+ * place name and address in its path, a `q=` text). A Google Maps page is never requested and no page content is
+ * read (owner 2026-10-31, A-020: the former read of the place marker from the page's HTML is gone).
+ * [fetch] is replaced in tests. Never throws: null = nothing in the link (offline, unknown link).
  */
 class ShortLinkResolver(
     private val fetch: (String) -> HttpHop,
     private val maxHops: Int = 5,
-    /** Stop at a redirect that names the place with an address (search that; no ~200 KB page download – faster). */
+    /** Stop at a redirect that names the place with an address (search that at once). */
     private val stopAtAddress: Boolean = false,
 ) {
     /** The coordinate (and name / q text found on the way) or null when nothing could be read. */
-    data class Result(val place: SharedPlace?, val reason: String?, val fromPage: Boolean = false)
+    data class Result(val place: SharedPlace?, val reason: String?)
 
     fun resolve(link: String): Result {
         var url = link
         var lastInfo: SharedPlace? = null
         try {
             repeat(maxHops + 1) {
+                // the redirect ends on a Google Maps page: what its link says was read; the page itself is not loaded
+                if (url != link && SharedPlaceParser.isMapsLink(url) && !SharedPlaceParser.isShortLink(url))
+                    return Result(lastInfo, "no coordinate in the link (the Google Maps page is not loaded)")
                 val hop = fetch(url)
                 val loc = hop.location?.let { absolute(url, it) }
                 if (hop.code in 300..399 && loc != null) {
@@ -315,10 +311,6 @@ class ShortLinkResolver(
                     if (stopAtAddress && lastInfo?.address != null) return Result(lastInfo, "address in the link")
                     url = loc
                     return@repeat
-                }
-                if (hop.code == 200) {
-                    val c = hop.body?.let { SharedPlaceParser.coordsInHtml(it) }
-                    if (c != null) return Result((lastInfo ?: SharedPlace()).copy(lat = c.first, lon = c.second, link = null), null, fromPage = true)
                 }
                 return Result(lastInfo, "no coordinate in the link (HTTP ${hop.code})")
             }
@@ -337,7 +329,7 @@ class ShortLinkResolver(
     }
 
     companion object {
-        /** The real network: HttpURLConnection without automatic redirects, [timeoutMs] each, body ≤ 2 MB. */
+        /** The real network: HttpURLConnection without automatic redirects, [timeoutMs] each; no body is read. */
         fun http(userAgent: String, timeoutMs: Int = 6000): (String) -> HttpHop = { url ->
             val c = URL(url).openConnection() as HttpURLConnection
             try {
@@ -345,14 +337,7 @@ class ShortLinkResolver(
                 c.connectTimeout = timeoutMs; c.readTimeout = timeoutMs
                 c.setRequestProperty("User-Agent", userAgent)
                 c.setRequestProperty("Accept-Language", "de,en;q=0.8")
-                val code = c.responseCode
-                val loc = c.getHeaderField("Location")
-                val body = if (code == 200) (c.inputStream.use { s ->
-                    val buf = java.io.ByteArrayOutputStream(); val b = ByteArray(16384); var n = 0
-                    while (buf.size() < 2_000_000) { n = s.read(b); if (n < 0) break; buf.write(b, 0, n) }
-                    buf.toString("UTF-8")
-                }) else null
-                HttpHop(code, loc, body)
+                HttpHop(c.responseCode, c.getHeaderField("Location"))
             } finally {
                 c.disconnect()
             }
@@ -362,15 +347,13 @@ class ShortLinkResolver(
 
 /**
  * Where the position of a shared place came from. A place positioned by searching its address
- * (not a coordinate in the link / text / map page) gets a small note on its card that stays ("Position from the
+ * (not a coordinate in the shared text / link) gets a small note on its card that stays ("Position from the
  * address") – the address search may land on the street rather than the door, or on a namesake.
  */
 enum class SharedPosition {
     /** A coordinate in the shared text or link (also after following a short link). */
     LINK,
-    /** A coordinate read from the downloaded map page, confirmed (or not checkable) by the address. */
-    PAGE,
-    /** Found by searching the address / name (offline or online), or the address overruled the page's point. */
+    /** Found by searching the address / name (offline index, Photon, the phone's address service). */
     ADDRESS;
 
     /** The persistent note for the place card, or null. */
@@ -380,11 +363,7 @@ enum class SharedPosition {
         /** The note in the app's language (strings_search.xml). */
         val NOTE: String get() = Txt.s(Res.string.search_note_from_address)
 
-        /** [point]: the shown point came from the link / page; [addressWon]: the address search replaced it. */
-        fun of(point: Boolean, fromPage: Boolean, addressWon: Boolean): SharedPosition = when {
-            !point || addressWon -> ADDRESS
-            fromPage -> PAGE
-            else -> LINK
-        }
+        /** [point]: the shown point came from the shared text / link. */
+        fun of(point: Boolean): SharedPosition = if (point) LINK else ADDRESS
     }
 }

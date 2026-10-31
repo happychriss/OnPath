@@ -69,8 +69,9 @@ enum class PairStep {
  * and when the app comes back ([request]), when the network comes back, and about every minute while the app stays
  * open on My routes / Browser sync ([poll], rule in [SyncPoll]), and right away when My routes or Browser sync
  * opens ([SyncPoll.opened], debounced). **Never during a recording** – the pass is
- * skipped and runs when the tour has ended ([request] from the view model). No sync while the app is closed or in the
- * background.
+ * skipped and runs when the tour has ended ([request] from the view model); only the pairing handshake right after a
+ * scan runs during a tour (the phone's hello + one pull, once – field bug 2026-10-31). No sync while the app is closed
+ * or in the background.
  */
 class PlanSync(
     context: Context,
@@ -93,8 +94,10 @@ class PlanSync(
     @Volatile private var manualWaiting = false
     /** When the last pass ended in this run of the app ([State.checkedMs]); only the worker thread writes it. */
     @Volatile private var checkedMs = 0L
-    /** A browser was sent into this mailbox (JOIN) in this run and has not said hello yet ([BrowserLink.afterJoin]). */
-    @Volatile private var joined = false
+    /** A scan arms it once: the next run is the handshake even during a tour ([PlanSyncPass.handshake]), never a loop. */
+    private val gate = PassGate()
+    /** Whether the last run during a tour left the routes for after it ([State.afterTour]); only the worker writes it. */
+    @Volatile private var afterTour = false
 
     /** What Settings → Browser sync shows. */
     data class State(
@@ -117,6 +120,8 @@ class PlanSync(
          * browser unpaired itself (☰ "Pair with browser" + grey "Unpaired in the browser"). Not paired: unused.
          */
         val browser: BrowserLink = BrowserLink.CONNECTED,
+        /** A tour is recording and the routes wait for its end (grey "Routes sync after the tour"). */
+        val afterTour: Boolean = false,
     )
 
     /** Why the last pass did not end well. */
@@ -181,13 +186,18 @@ class PlanSync(
         val manual = manualWaiting
         manualWaiting = false
         if (files.pairing() == null) { if (manual) report(Report(true, null)); return }
-        if (recording()) {
+        val step = gate.next(recording())
+        val handshake = step == PassGate.Step.HANDSHAKE
+        if (step == PassGate.Step.SKIP) {
             if (!quiet) Problems.trace("sync", "Sync ($why) skipped: a tour is recording – after the tour")
+            if (!afterTour) { afterTour = true; _state.value = _state.value.copy(afterTour = true) }
             if (manual) report(Report(true, null))
             return
         }
         _state.value = _state.value.copy(running = true)
-        val r = try { pass().run(recording) } catch (e: Exception) {
+        // during a tour only the pairing handshake right after a scan: the phone's hello + one pull, no routes
+        if (handshake) Problems.info("sync", "Sync ($why) during a tour: the pairing handshake only – routes after the tour")
+        val r = try { if (handshake) pass().handshake() else pass().run(recording) } catch (e: Exception) {
             Problems.error("sync", "Sync files could not be written", e)
             checkedMs = System.currentTimeMillis()
             _state.value = _state.value.copy(running = false, problem = Problem.Storage, checkedMs = checkedMs)
@@ -217,6 +227,8 @@ class PlanSync(
                 val l = files.ledger(); l.forget(); files.saveLedger(l)
                 files.savePairing(secret, System.currentTimeMillis())
                 files.clearEnded()
+                // a new mailbox: every browser hello in it is the scanned browser's (no scan to wait on, PairScan)
+                files.clearScan()
                 Problems.info("sync", "Paired with a browser (check ${SyncKeys(secret).check})")
             } catch (e: Exception) {
                 Problems.error("sync", "Pairing could not be stored", e)
@@ -228,6 +240,7 @@ class PlanSync(
             }
             refreshState()
             main.post { stored(true) }
+            gate.arm() // the browser waits for this phone's hello – also during a tour
             request("paired", manual = true)
         }
     }
@@ -239,6 +252,10 @@ class PlanSync(
      */
     fun join(browserSecret: ByteArray, done: (SyncRound.Outcome?) -> Unit) {
         worker.execute {
+            // the browser hellos known at the scan: an old one is no sign of the scanned browser (owner 2026-10-31)
+            val scan = try { PairScan.of(files.ledger(), files.device(::randomBytes), System.currentTimeMillis()) } catch (e: Exception) {
+                Problems.warn("sync", "Browser hellos at the scan not read – any new hello counts", e); PairScan(System.currentTimeMillis())
+            }
             val o = try { pass().join(browserSecret) } catch (e: Exception) {
                 Problems.error("sync", "The other browser could not be paired", e); SyncRound.Outcome.Refused(-2, null)
             }
@@ -250,9 +267,11 @@ class PlanSync(
                 is SyncRound.Outcome.Refused -> "server refused (${o.status}${o.error?.let { ": $it" } ?: ""})"
             })
             if (o is SyncRound.Outcome.Done) {
-                // no "unpaired in the browser" meanwhile: the joined browser says hello in this mailbox soon (connected)
-                joined = true
-                _state.value = _state.value.let { it.copy(browser = BrowserLink.afterJoin(it.browser, joined = true)) }
+                // waiting for the joined browser's hello (kept across a restart): never "connected" from an old hello,
+                // never "unpaired" meanwhile; a pass soon picks the hello up – during a tour once, as the handshake
+                safely("scan note") { files.saveScan(scan) }
+                _state.value = _state.value.copy(browser = BrowserLink.WAITING)
+                gate.arm()
                 if (!busy()) request("joined", delayMs = JOIN_PULL_DELAY_MS)
             }
             main.post { done(o) }
@@ -296,16 +315,23 @@ class PlanSync(
         val p = files.pairing()
         var peer = r?.peer
         // not read: as before (never a false "unpaired")
-        var seen = BrowserLink.CONNECTED
+        var browser = BrowserLink.CONNECTED
         if (p != null) try {
             val ledger = files.ledger()
             val me = files.device(::randomBytes)
             if (peer == null) peer = ledger.devices(me).firstOrNull()?.name
-            seen = BrowserLink.of(ledger, me)
+            var scan = files.scan()
+            if (scan != null && scan.expired(System.currentTimeMillis(), r?.outcome is SyncRound.Outcome.Done)) {
+                Problems.info("sync", "No new browser hello ${PairScan.WAIT_MS / 60_000} min after the scan – the browsers in the mailbox count again")
+                safely("scan note") { files.clearScan() }
+                scan = null
+            }
+            browser = BrowserLink.of(ledger, me, scan)
+            // the scanned browser said hello: from now on the plain rule (it may unpair itself later)
+            if (scan != null && browser == BrowserLink.CONNECTED) safely("scan note") { files.clearScan() }
         } catch (e: Exception) { Problems.warn("sync", "Paired browser not read", e) }
-        if (seen == BrowserLink.CONNECTED) joined = false
-        val browser = BrowserLink.afterJoin(seen, joined)
         if (p != null && _state.value.paired && browser != _state.value.browser) Problems.info("sync", "Browser at the other end: $browser")
+        if (p == null) afterTour = false else if (r != null) afterTour = r.skippedForRecording
         val problem: Problem? = when (val o = r?.outcome) {
             null -> null
             is SyncRound.Outcome.Offline -> Problem.Offline
@@ -319,7 +345,8 @@ class PlanSync(
         }
         _state.value = State(paired = p != null, peer = if (p == null) null else peer, lastOkMs = if (p == null) 0 else files.lastOk(),
             running = false, problem = if (p == null) null else problem, check = p?.secret?.let { SyncKeys(it).check },
-            sinceMs = p?.since ?: 0, checkedMs = checkedMs, ended = p == null && files.ended() > 0, browser = browser)
+            sinceMs = p?.since ?: 0, checkedMs = checkedMs, ended = p == null && files.ended() > 0, browser = browser,
+            afterTour = afterTour)
     }
 
     private fun report(r: Report) = main.post { try { onReport(r) } catch (e: Exception) { Problems.warn("sync", "Sync result not shown", e) } }

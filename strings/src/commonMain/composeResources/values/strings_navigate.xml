@@ -207,7 +207,7 @@
     <string name="nav_ride_until_last_detail">The last ride and everything after it dropped; earlier rides not counted</string>
     <string name="nav_ride_until_detail">The ride and everything after it dropped</string>
     <string name="nav_ride_not_counted">Save all, rides not counted</string>
-    <string name="nav_ride_not_counted_detail">Rides grey on the map, not in km, time or pace</string>
+    <string name="nav_ride_not_counted_detail">Rides gray on the map, not in km, time or pace</string>
     <string name="nav_ride_split_two">Split into two tracks</string>
     <string name="nav_ride_split_n">Split into %1$d tracks</string>
     <string name="nav_ride_split_two_detail">Before and after the ride</string>

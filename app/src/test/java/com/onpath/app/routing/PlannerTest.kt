@@ -153,7 +153,8 @@ class PlannerTest {
         assertTrue("the cut line misses the spot by 47 m", WaypointSnap.distToLine(spot, e.route(wps, Activity.BIKE_TOURING, 2).points) in 46.0..48.0)
         e.calls.clear()
         val r = Planner(e).plan(wps, Activity.BIKE_TOURING, 2)
-        assertEquals("routed again with stop 3 as a request end", listOf(wps, wps.subList(0, 3), wps.subList(2, 5)), e.calls)
+        // only the legs around stop 3 again, stop 3 as a request end (spliced into the first line, owner 2026-10-31)
+        assertEquals("routed again with stop 3 as a request end", listOf(wps, wps.subList(1, 3), wps.subList(2, 4)), e.calls)
         assertTrue("the line goes to stop 3's spot", WaypointSnap.distToLine(spot, r.points) < 1.0)
         assertEquals(spot, r.snapped[2])
         assertTrue(r.skipped.isEmpty())
@@ -177,10 +178,11 @@ class PlannerTest {
     }
 
     /**
-     * Every request with interior points cuts its first one (worst case): each pass pins one more stop. After
-     * [Planner.MAX_SPUR_PASSES] re-plans the stop still cut is reported as skipped (the plan sheet shows it), not hidden.
+     * Every request with interior points cuts its first one (worst case): each pass ends one more stop. Requests of two
+     * points have none – so the splice (legs around the cut stop, owner 2026-10-31) visits it in one pass, and
+     * the rest of the first line stays (the cut stop 2 was the only one cut).
      */
-    @Test fun aStopStillCutAfterTheLastPassIsReportedSkipped() {
+    @Test fun aStopCutInEveryRequestIsVisitedAfterOnePass() {
         val wps = (0..6).map { GeoPoint(51.4870, 7.4100 + it * 0.003) }.mapIndexed { i, p -> if (i in 1..5) north(p, -30.0) else p }
         val e = object : RoutingEngine {
             var n = 0
@@ -191,7 +193,25 @@ class PlannerTest {
             }
         }
         val r = Planner(e).plan(wps, Activity.BIKE_TOURING, 2)
-        assertEquals(setOf(1 + Planner.MAX_SPUR_PASSES), r.skipped)
-        assertTrue((1..Planner.MAX_SPUR_PASSES).all { WaypointSnap.distToLine(wps[it], r.points) < 1.0 })
+        assertEquals(3, e.n) // the whole plan, then 1 → 2 and 2 → 3
+        assertTrue(r.skipped.isEmpty())
+        assertTrue((0..6).all { WaypointSnap.distToLine(wps[it], r.points) < 1.0 })
+    }
+
+    /** A stop the router cannot reach even as a request end (the legs end 30 m short of its spot) stays skipped – shown. */
+    @Test fun aStopStillCutAfterTheLastPassIsReportedSkipped() {
+        val wps = (0..6).map { GeoPoint(51.4870, 7.4100 + it * 0.003) }.mapIndexed { i, p -> if (i in 1..5) north(p, -30.0) else p }
+        val e = object : RoutingEngine {
+            var n = 0
+            override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult {
+                n++
+                val line = waypoints.map { if (it == wps[3]) north(it, 30.0) else it }
+                return RouteResult(line, 1000.0, 0.0, 0.0, 60.0, matched = waypoints)
+            }
+        }
+        val r = Planner(e).plan(wps, Activity.BIKE_TOURING, 2)
+        assertEquals(setOf(3), r.skipped)
+        assertEquals(3, e.n) // the whole plan, then 3 → 4 and 4 → 5 – the stop still cut is not routed again
+        assertTrue((0..6).filter { it != 3 }.all { WaypointSnap.distToLine(wps[it], r.points) < 1.0 })
     }
 }

@@ -29,7 +29,7 @@ android {
         // One source of truth for the version: "-PappVersion=0.4.1" (the release workflow passes the git
         // tag) or the default below. versionCode is derived (major*10000 + minor*100 + patch), so every
         // newer version installs as an update.
-        val appVersion = (project.findProperty("appVersion") as String?)?.removePrefix("v") ?: "0.13.3"
+        val appVersion = (project.findProperty("appVersion") as String?)?.removePrefix("v") ?: "0.13.5"
         val (vMaj, vMin, vPatch) = appVersion.split(".").map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 }
             .plus(listOf(0, 0, 0)).take(3)
         versionCode = vMaj * 10000 + vMin * 100 + vPatch
@@ -119,6 +119,50 @@ android {
             // Texts in JVM tests and Paparazzi: read straight from the string files (strings/…/Txt.kt) – the Android
             // asset reader of Compose resources needs a running app.
             it.systemProperty("onpath.stringsDir", rootProject.file("strings/src/commonMain/composeResources").absolutePath)
+        }
+    }
+}
+
+/**
+ * Settings → About → Licences (A-020): the libraries each build really bundles, from Gradle's resolved runtime
+ * classpath – one "group:name:version" per line in assets/licences/deps.txt. The app pairs each with its licence
+ * (data/Licences.kt); LicencesTest fails when a library has none there. No licence plugin, nothing online.
+ */
+abstract class LicenceDepsTask : DefaultTask() {
+    @get:Input abstract val coordinates: ListProperty<String>
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+    @TaskAction fun write() {
+        val f = outputDir.get().asFile.resolve("licences/deps.txt")
+        f.parentFile.mkdirs()
+        f.writeText(coordinates.get().sorted().distinct().joinToString("\n", postfix = "\n"))
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val cap = variant.name.replaceFirstChar { it.uppercase() }
+        val task = tasks.register<LicenceDepsTask>("licenceDeps$cap") {
+            coordinates.set(variant.runtimeConfiguration.incoming.resolutionResult.rootComponent.map { root ->
+                val out = sortedSetOf<String>()
+                val seen = HashSet<ComponentIdentifier>()
+                fun walk(c: org.gradle.api.artifacts.result.ResolvedComponentResult) {
+                    if (!seen.add(c.id)) return
+                    (c.id as? ModuleComponentIdentifier)?.let { out += "${it.group}:${it.module}:${it.version}" }
+                    c.dependencies.filterIsInstance<org.gradle.api.artifacts.result.ResolvedDependencyResult>().forEach { walk(it.selected) }
+                }
+                walk(root)
+                out.toList()
+            })
+        }
+        variant.sources.assets?.addGeneratedSourceDirectory(task, LicenceDepsTask::outputDir)
+        // the unit test checks the debug list (a superset of release: + ui-tooling)
+        if (variant.name == "debug") {
+            val deps = task.flatMap { it.outputDir }.map { it.file("licences/deps.txt").asFile.absolutePath }
+            tasks.withType<Test>().matching { it.name == "testDebugUnitTest" }.configureEach {
+                inputs.files(task).withPropertyName("licenceDeps")
+                jvmArgumentProviders.add(CommandLineArgumentProvider { listOf("-Donpath.licenceDeps=${deps.get()}") })
+            }
         }
     }
 }
