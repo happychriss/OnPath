@@ -56,7 +56,7 @@ class SharedCoreRuleTest {
      * neither; hashes use sync/Sha256). Add a file here when the web is to compile it.
      */
     private val webShared = listOf("gpx/PlanGpx.kt", "gpx/GpxWriter.kt", "gpx/SportType.kt", "routing/PlanPoints.kt",
-        "routing/PlanEdits.kt", "sync/SyncCrypto.kt")
+        "routing/PlanEdits.kt", "routing/RoutingFingerprint.kt", "sync/SyncCrypto.kt")
     private val notInTeaVm = Regex("""::class\.java|Class\.forName|kotlin\.reflect|java\.lang\.reflect|java\.security""")
 
     @Test fun webSharedFilesStayTeaVmFriendly() {

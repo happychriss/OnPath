@@ -211,8 +211,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (v != page) settingsNote = null
             if (v == SettingsPage.DIAGNOSTICS || page == SettingsPage.DIAGNOSTICS) markDiagnosticsSeen()
             if (v == SettingsPage.SYNC) sync.endedSeen() // "ended in the browser" seen: the ☰ item is no longer amber
+            if (v == SettingsPage.DIAGNOSTICS && v != page) loadRoutingInfo()
             page = v
         }
+
+    /** Settings → Diagnostics: the routing fingerprint and the routing data's dates (RoutingFingerprint); null = not read yet. */
+    var routingInfo by mutableStateOf<String?>(null)
+        private set
+
+    private val routingFingerprint by lazy {
+        com.onpath.app.routing.RoutingFingerprint.of(read = { n -> getApplication<Application>().assets.open("brouter/$n").use { it.readBytes() } })
+    }
+
+    private fun loadRoutingInfo() {
+        viewModelScope.launch {
+            routingInfo = withContext(Dispatchers.IO) {
+                try {
+                    val rd5 = dataFiles.segmentsDir.listFiles { f -> f.name.endsWith(".rd5") }.orEmpty().map { f ->
+                        f.name to try {
+                            com.onpath.app.routing.Rd5Parts.readIndex(f)?.let { com.onpath.app.routing.Rd5Parts.creationTime(com.onpath.app.routing.Rd5Parts.readTail(f, it)) }
+                        } catch (e: java.io.IOException) {
+                            Problems.info("routing", "Diagnostics: date of routing data ${f.name} not read", e); null
+                        }
+                    }
+                    com.onpath.app.routing.RoutingFingerprint.describe(routingFingerprint, rd5)
+                } catch (e: Exception) {
+                    Problems.warn("routing", "Diagnostics: routing fingerprint not computed", e); null
+                }
+            }
+        }
+    }
 
     /** Developer tools in Diagnostics (owner): debug builds always, else after 7 taps on the version. */
     var devToolsShown by mutableStateOf(DevToolsUnlock.shown(com.onpath.app.BuildConfig.DEBUG, prefs.devToolsUnlocked))

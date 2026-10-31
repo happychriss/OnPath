@@ -241,6 +241,7 @@ class MainActivity : ComponentActivity() {
                                 onStop = { com.onpath.app.recording.DemoLocation.stop() },
                             ),
                             diagnosticsSeenMs = vm.diagnosticsSeenMs,
+                            routingInfo = vm.routingInfo,
                             diagnosticsBusy = vm.busy == com.onpath.app.ui.Busy.DIAGNOSTICS,
                             onExportDiagnostics = ::exportDiagnostics,
                             problems = remember(problemCount) { com.onpath.app.debug.Problems.snapshot() },

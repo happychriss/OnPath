@@ -165,6 +165,8 @@ fun SettingsScreen(
     testStyle: TestStyleUi? = null,
     /** Diagnostics: the active language line; Developer tools: System / English / Deutsch. */
     language: LanguageUi = LanguageUi(),
+    /** Diagnostics: routing fingerprint + routing data dates (routing/RoutingFingerprint.describe); null = no line. */
+    routingInfo: String? = null,
     /** Developer tools → Demo location (simulated GPS for screenshots); null = hidden. */
     demo: DemoUi? = null,
     now: Long = System.currentTimeMillis(),
@@ -248,7 +250,7 @@ fun SettingsScreen(
                             Section(SettingsPage.UPDATES.title) { UpdateSectionContent(update, version, onCheckUpdate, onInstallUpdate) }
                         }
                         SettingsPage.DIAGNOSTICS -> if (diagnostics) {
-                            item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems, language.active) }
+                            item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems, language.active, routingInfo) }
                             if (devTools) item {
                                 DeveloperTools(devToolsOpen, mapServer, mapCells, dataBusy, onDownloadRouting, onImportData, checks, mapPackage, dataDir,
                                     onTimeFormulas, testStyle, language, demo)
@@ -469,7 +471,7 @@ private fun BikeScreenRow(settings: AppSettings, onChange: (AppSettings) -> Unit
 @Composable
 private fun DiagnosticsSection(busy: Boolean, onExport: () -> Unit,
                                problems: List<com.onpath.app.debug.Problems.Entry>, onClearProblems: () -> Unit,
-                               language: String = "English (phone language)") {
+                               language: String = "English (phone language)", routing: String? = null) {
     Section("Diagnostics") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedButton(onClick = { if (!busy) onExport() }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
@@ -479,6 +481,8 @@ private fun DiagnosticsSection(busy: Boolean, onExport: () -> Unit,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("App language: $language", style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // the same fingerprint + data dates in the browser = the same routes (docs/design/routing-fingerprint.md)
+            routing?.let { Text("Routing: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
             ProblemList(problems, onClearProblems)
         }
