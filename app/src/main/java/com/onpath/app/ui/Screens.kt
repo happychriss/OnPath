@@ -54,6 +54,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -308,18 +309,27 @@ fun RoutesScreen(
     var rename by remember { mutableStateOf(initialRename) }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.systemBarsPadding()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack, Modifier.size(56.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, str(Res.string.common_back)) }
-                Text(str(Res.string.routes_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            // the title never breaks inside a word: at a large font Import GPX becomes its icon (TopBarLayout)
+            val importLabel = str(Res.string.routes_import_gpx)
+            val importingLabel = str(Res.string.routes_importing)
+            TopBarRow(
+                back = { IconButton(onClick = onBack, Modifier.size(56.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, str(Res.string.common_back)) } },
+                title = { ellipsize ->
+                    Text(str(Res.string.routes_title), style = MaterialTheme.typography.titleLarge,
+                        maxLines = if (ellipsize) 1 else Int.MAX_VALUE, overflow = TextOverflow.Ellipsis)
+                },
                 // Import GPX lives in Planned (an import lands there); a running import keeps its spinner on either tab
-                if (tab == RoutesTab.PLANNED || busy == Busy.IMPORT) {
-                    TextButton(onClick = { if (busy == null) onImport() }, modifier = Modifier.heightIn(min = 48.dp)) {
-                        if (busy == Busy.IMPORT) BusyContent(str(Res.string.routes_importing))
-                        else { Icon(Icons.Filled.UploadFile, null); Spacer(Modifier.width(6.dp)); Text(str(Res.string.routes_import_gpx)) }
+                action = if (tab == RoutesTab.PLANNED || busy == Busy.IMPORT) ({ iconOnly ->
+                    if (iconOnly) IconButton(onClick = { if (busy == null) onImport() }, Modifier.size(48.dp)) {
+                        if (busy == Busy.IMPORT) CircularProgressIndicator(Modifier.size(18.dp).semantics { contentDescription = importingLabel }, strokeWidth = 2.dp)
+                        else Icon(Icons.Filled.UploadFile, importLabel)
+                    } else TextButton(onClick = { if (busy == null) onImport() }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        if (busy == Busy.IMPORT) BusyContent(importingLabel)
+                        else { Icon(Icons.Filled.UploadFile, null); Spacer(Modifier.width(6.dp)); Text(importLabel) }
                     }
-                }
-                RoutesMenu(onExportAll, onRecycleBin, canExport = tours.isNotEmpty() && busy == null)
-            }
+                }) else null,
+                menu = { RoutesMenu(onExportAll, onRecycleBin, canExport = tours.isNotEmpty() && busy == null) },
+            )
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
                 RoutesTab.entries.forEachIndexed { i, t ->
                     SegmentedButton(
