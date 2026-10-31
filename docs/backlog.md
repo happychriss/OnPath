@@ -7,6 +7,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [desktop] A-019 marketing screenshots + clips from 0.13.2 (emulator, external-docs only) – since 2026-10-31
 
 ## Next
 - **On the next real ride (owner)** – onboarding checklist step 7 (30 min, screen off, battery saver; steps 2–6 passed on
