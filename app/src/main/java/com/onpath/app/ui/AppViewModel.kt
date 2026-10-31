@@ -2772,7 +2772,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** The plan's stops as saved: with their place names (backup / restore keeps them). */
-    private fun savedStops(pts: List<GeoPoint>) = pts.map { GpxWaypoint(it.lat, it.lon, stopName(it)) }
+    private fun savedStops(pts: List<GeoPoint>) = com.onpath.app.gpx.PlanGpx.stops(pts) { stopName(pts[it]) }
 
     /** ⋮ → Save route: Save / Save as new… when the plan belongs to a saved route (RouteRules.saveMode), else the name dialog. */
     fun requestSave() {
@@ -3898,6 +3898,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (planFromTrackBusy) return
         val track = sh.segments.flatten()
         if (track.size < 2) return
+        // an exported OnPath plan (gpx/PlanGpx): its <wpt> are the route points – the plan comes back exactly, with names
+        com.onpath.app.gpx.PlanGpx.stopsOf(track, sh.waypoints)?.let { stops ->
+            Problems.trace("plan", "Track → plan: the file's ${stops.size} route points (a plan GPX), no fitting")
+            val pts = stops.map { GeoPoint(it.lat, it.lon) }
+            closeShown()
+            change { clear(); addAll(pts) }
+            stops.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
+            return
+        }
         val act = activity; val level = sac
         // routing data along the track first: without it every leg fails
         val missing = try { routingData.ensure(com.onpath.app.data.RoutingTiles.forLine(track)) } catch (e: Exception) {
@@ -4184,22 +4193,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             // as chosen at End tour: rides not counted are their own segments, a dropped ride is not exported
             val segs = withContext(Dispatchers.IO) { com.onpath.app.rides.RideView.layout(db.loadSegments(t.id), t.rides).trk.map { it.first } }
-            // a planned route carries its route points as <wpt> (start, stops, goal – with their names): other apps
-            // show them, and a re-import can rebuild the plan from them
-            share(t.name, segs, t.waypoints, SportType.typeOf(t.activity, t.sac), t.kind)
+            share(t.name) {
+                // a planned route: the one plan export shared with the web planner (gpx/PlanGpx) – its route points
+                // as <wpt> (start, stops, goal – with their names): other apps show them, a re-import rebuilds the plan
+                if (t.kind == TourKind.PLANNED) com.onpath.app.gpx.PlanGpx.export(t.name, segs, t.waypoints, t.activity, t.sac)
+                // the sport as `<trk><type>` (Komoot's string, so Komoot and OnPath read the activity back);
+                // the file name the same in every language (owner): "Hilden - rec.gpx"
+                else com.onpath.app.gpx.GpxFile(GpxWriter.fileName(t.name, GpxWriter.kindSuffix(false, t.kind == TourKind.RECORDED)),
+                    GpxWriter.write(t.name, segs, t.waypoints, type = SportType.typeOf(t.activity, t.sac)))
+            }
         }
     }
 
-    /** [sport] = the sport as `<trk><type>` (Komoot's string, so Komoot and OnPath read the activity back). */
-    private suspend fun share(name: String, segs: List<List<TrackPoint>>, wpts: List<GpxWaypoint>, sport: String?,
-                              kind: TourKind? = null) {
+    /** Writes the GPX [gpx] builds (off the main thread) into the export folder and opens the share sheet. */
+    private suspend fun share(name: String, gpx: () -> com.onpath.app.gpx.GpxFile) {
         try {
             val uri = withContext(Dispatchers.IO) {
                 val dir = File(getApplication<Application>().cacheDir, "export").apply { mkdirs() }
-                // the same in every language (owner): "Hilden - plan.gpx" / "Hilden - rec.gpx"
-                val suffix = GpxWriter.kindSuffix(kind == TourKind.PLANNED, kind == TourKind.RECORDED)
-                val file = File(dir, GpxWriter.fileName(name, suffix))
-                file.writeText(GpxWriter.write(name, segs, wpts, type = sport))
+                val g = gpx()
+                val file = File(dir, g.fileName)
+                file.writeText(g.text)
                 FileProvider.getUriForFile(getApplication(), getApplication<Application>().packageName + ".files", file)
             }
             val send = Intent(Intent.ACTION_SEND).apply {
