@@ -88,7 +88,18 @@ the git log.
       (pure, shared) · the web always drew the Hike look (bike layers hidden): add the file to `appFiles`, engine call
       `activityLayers`, apply it in `main.ts` on `load` and in `setActivity()`, smoke test Bike / Hike T4 – exact steps
       in `docs/handoff-web-activity-layers.md`.
+    - Round trip delete / reorder like the app (owner 2026-10-31: plans identical) · `PlanPoints.deleteAt` (app map
+      menu Delete now keeps a loop closed: `[a, b, c, a]` → `[b, c, b]`) · the web's `deletePoint` opens the loop
+      (`[b, c]`) and `edit "move"` uses `PlanEdits.move` (breaks a loop on a list drag): `edit "delete"` →
+      `PlanPoints.deleteAt`, `"move"` → `PlanPoints.move`, `deletePoint` through the engine, meta by value – steps in
+      `docs/handoff-web-parity-b.md` §3.
   - *Should:*
+    - One plan GPX export · `gpx/PlanGpx.kt` (pure, shared) · the web's `WebApi.gpx` writes the line only: use
+      `PlanGpx.export` (named route points as `<wpt>`, sport, "<name> - plan.gpx"); on import `PlanGpx.stopsOf` first
+      (an exported plan comes back exactly, no fitting) – `docs/handoff-web-parity-b.md` §1–2.
+    - Routing fingerprint · `routing/RoutingFingerprint.kt` (pure, shared; app: Settings → Diagnostics) · the web shows
+      the same line (fingerprint + rd5 dates) – `docs/handoff-web-parity-b.md` §4; sync fields 7 / 8 + hint only a
+      proposal (`docs/design/routing-fingerprint.md`, owner to decide).
     - A stop on a way is always visited, a skipped stop is never moved (Bug 01, 2026-10-31) · 060f35e, 0ef8dd3,
       d5a7db5 · matched points now come from `OnPathHints.matched` (no reflection) and the Planner's spur rule is
       relative – both come along with the merge (shared files; `PlannedRoute.spurs` is now `skipped`, the web never
