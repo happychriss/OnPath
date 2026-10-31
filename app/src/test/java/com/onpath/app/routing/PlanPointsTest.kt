@@ -161,6 +161,26 @@ class PlanPointsTest {
         assertEquals(listOf(a), PlanPoints.delete(listOf(a, b, a), 1))
     }
 
+    /** By plan index (a map marker): a round trip's closing point is its start; an open route is a plain removal. */
+    @Test fun deleteAtAPlanIndex() {
+        val loop = listOf(a, b, c, a)
+        assertEquals(listOf(b, c, b), PlanPoints.deleteAt(loop, 0))
+        assertEquals(listOf(b, c, b), PlanPoints.deleteAt(loop, 3))
+        assertEquals(listOf(a, c, a), PlanPoints.deleteAt(loop, 1))
+        assertEquals(listOf(a, b), PlanPoints.deleteAt(listOf(a, b, c), 2))
+        assertEquals(listOf(b, c), PlanPoints.deleteAt(listOf(a, b, c), 0))
+        assertEquals(loop, PlanPoints.deleteAt(loop, 4))
+        assertEquals(loop, PlanPoints.deleteAt(loop, -1))
+    }
+
+    /** "As destination" on a planned stop (search card, AppViewModel.makeDestination): last row, a round trip stays closed. */
+    @Test fun moveToTheEnd() {
+        assertEquals(listOf(a, c, d, b), PlanPoints.move(listOf(a, b, c, d), 1, 3))
+        val loop = listOf(a, b, c, d, a)
+        assertEquals(listOf(a, c, d, b, a), PlanPoints.move(loop, 1, loop.size - 1))
+        assertTrue(PlanEdits.isRoundTrip(PlanPoints.move(loop, 1, loop.size - 1)))
+    }
+
     // ---------------------------------------------------------------- with undo and routing
 
     /** Undo after a reorder / delete brings the old order back (one step each). */

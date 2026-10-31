@@ -124,6 +124,17 @@ object PlanPoints {
         return if (loop && left.size >= 2) left + left.first() else left
     }
 
+    /**
+     * Plan point [index] deleted – a map marker's menu → Delete (core feature C1), the search card's Remove: the same
+     * edit as ✕ on its row ([delete]). A round trip's closing point is its start (the same spot, one row): deleting
+     * either removes that point and the loop closes again at the next one. Shared with the web planner.
+     */
+    fun deleteAt(plan: List<GeoPoint>, index: Int): List<GeoPoint> {
+        if (index !in plan.indices) return plan
+        val row = if (index == plan.lastIndex && PlanEdits.isRoundTrip(plan)) 0 else index
+        return delete(plan, row)
+    }
+
     /** The row a row dragged from [from] by [offsetPx] lands on ([rowPx] = row height, 0 = not measured). */
     fun dropIndex(from: Int, offsetPx: Float, rowPx: Float, count: Int): Int {
         if (rowPx <= 0f || count <= 0) return from

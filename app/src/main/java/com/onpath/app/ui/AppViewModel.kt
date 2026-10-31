@@ -1836,7 +1836,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         change { add(d.index.coerceIn(0, size), p) }
     }
 
-    fun removePoint(index: Int) { if (index in waypoints.indices) change { removeAt(index) } }
+    /** Plan point [index] deleted (map menu, search card): a round trip stays closed, as in the Points list. */
+    fun removePoint(index: Int) {
+        val after = com.onpath.app.routing.PlanPoints.deleteAt(waypoints, index)
+        if (after.size != waypoints.size) set(after)
+    }
 
     /** Search result shown in the place card (search, ui/search); map-held POIs use [poiMenu]. */
     var planPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
@@ -2314,7 +2318,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- end shared places ----------------
 
     fun makeDestination(index: Int) {
-        if (index in waypoints.indices && index != waypoints.lastIndex) set(PlanEdits.move(waypoints, index, waypoints.size - 1))
+        // the last row; a round trip stays closed at its start (as dragging the row to the end of the Points list)
+        if (index in waypoints.indices && index != waypoints.lastIndex) set(com.onpath.app.routing.PlanPoints.move(waypoints, index, waypoints.size - 1))
     }
     fun reverseRoute() { if (waypoints.size >= 2) set(PlanEdits.reverse(waypoints)) }
     fun roundTrip() {
