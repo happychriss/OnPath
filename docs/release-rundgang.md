@@ -4,7 +4,7 @@ Owner 2026-10-31: a fixed list of real user flows played automatically in the em
 6 minutes on donald (13 flows), no human. Pushing a build to the phone needs no extra test (as before).
 
 **Rule: the Rundgang is OPTIONAL** (owner 2026-10-31 evening, "it takes too long"; replaces "mit donald = Rundgang")
-- A **normal release** = the unit + screenshot gate (`testDebugUnitTest verifyPaparazziDebug`) + GitHub's smoke test.
+- A **normal release** = the unit + screenshot gate (`tools/ci/gate.sh` – skips itself on a CI-green base) + GitHub's smoke test.
 - Run the Rundgang (`tools/ci/release_rundgang.sh`, on donald) **only when the owner asks** or when a release **changes
   navigation / recording core logic**. Then: **red = no release.**
 - GitHub `release.yml` runs only the short `StartSmokeE2ETest` as its emulator gate (job `smoke`).

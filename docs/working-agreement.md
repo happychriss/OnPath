@@ -20,7 +20,8 @@ talk directly – they talk through the repository.
 1. **Start fresh:** `git pull --rebase origin main` before touching anything. Read the "Last session" note in
    `docs/project-status.md` and `docs/backlog.md`.
 2. **Small, green, pushed:** commit in small steps; before every push run `git pull --rebase origin main`,
-   then `./gradlew testDebugUnitTest assembleDebug` (UI changes: also `verifyPaparazziDebug`). Push right away.
+   then `tools/ci/gate.sh` (the tests the change can break, screenshots when ui changed; `--full` = everything; plain
+   `./gradlew testDebugUnitTest assembleDebug` where the script cannot run). Push right away.
    Never keep unpushed work for more than ~30 minutes – another session may start any time.
 3. **`main` is always buildable and installable.** Work that takes longer than one sitting or is risky goes to a
    branch `feat/<topic>` (pushed regularly); merge it into `main` with a rebase when green.
