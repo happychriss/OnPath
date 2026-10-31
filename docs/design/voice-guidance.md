@@ -1,6 +1,6 @@
 # Voice guidance: few, clear sentences
 
-Status: **concept for the owner, not built** (backlog "Voice guidance"; F-NAV-05). Owner 2026-10-31: "every tester asks
+Status: **agreed with the owner 2026-10-31 (all questions of §6: yes), not built** (backlog "Voice guidance"; F-NAV-05). Owner 2026-10-31: "every tester asks
 whether it talks" – Android's own speech output (Google or the phone's engine, offline voices only), names spoken by the
 same voice; "smart, clever sentences, not too much". Built after the feature stop (first the ride with the checklist).
 
@@ -21,8 +21,10 @@ same voice; "smart, clever sentences, not too much". Built after the feature sto
 1. **Speak only where we vibrate today** (`CueRule`: where one could go wrong). Never "continue straight on", never at a
    junction where the route simply follows the way. The voice adds no new junctions.
 2. **One sentence per junction, said early – the vibration is the "now".** The sentence comes a little before today's
-   vibration (bike ~15 s ≈ 60–150 m, on foot ~40 s ≈ 40–80 m; rounded distances), the vibration at the junction stays
-   as it is. No second "now turn left" – that is the vibration's job.
+   vibration, **timed by the current speed** (owner 2026-10-31, like the vibration: `SpeedWindow`, unknown speed → the
+   activity's typical speed): bike ~15 s ahead (clamped ~60–200 m), on foot ~40 s (clamped ~40–80 m); the spoken
+   distance is the real one, rounded. The vibration at the junction stays as it is. No second "now turn left" – that is
+   the vibration's job.
 3. **Close turns in one sentence:** "In 100 Metern links, danach gleich rechts." (the merge rule of `JunctionCues`).
 4. **Say what you turn onto when it changes** – only from what the router knows (the way's class): "links auf den
    Feldweg", "rechts auf die Straße". No street names (most ways have none), no guessed landmarks.
@@ -85,12 +87,13 @@ ride with ~40 cues today → ~40 sentences in 3 h, about one every 4–5 min.
   the Meran ride counts the sentences (budget); the sound itself only on the owner's ride.
 - Effort ~3–4 days.
 
-## 6. Questions for the owner
-1. Start sentence ("Los geht's. 12 Kilometer bis Lana …") – yes?
-2. Comfort clause ("dann 3 Kilometer geradeaus") – yes?
-3. "Wieder auf der Route." – yes, or quiet?
-4. Default On after the setup test – or always Off until switched on?
-5. "du" in "Kein Ziel mehr vor dir" and "bitte aufs Handy schauen" – fits the app's "du".
+## 6. Owner decisions (2026-10-31: "alles ja")
+1. Start sentence ("Los geht's. 12 Kilometer bis Lana …"): yes.
+2. Comfort clause ("dann 3 Kilometer geradeaus"): yes.
+3. "Wieder auf der Route.": yes.
+4. Default On once the setup test was heard (else Off).
+5. "du" as in the rest of the app.
+6. The announcement time follows the current speed (§2 rule 2).
 
 ## Sources
 1. Voice-only navigation for middle-aged and older adults, field study (Yamaguchi University repository):
