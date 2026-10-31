@@ -44,106 +44,53 @@ the git log.
   doorman adopts them. Production stays cloud-only.
 - **Web planner: mirror app changes (keep this list current)** – owner 2026-10-30: every app change the browser should
   mirror gets a line here (what · app commit · what the web does); a done line is removed. Checked against
-  `origin/web-spike` 2026-10-31 evening: web-spike last merged main at fb2d467 (10-31 10:56, merge 096e8ac); main has
-  51 commits since (up to 565adf3, v0.13.3) – `web/parity/merge-main.sh` brings them, `web/parity.json` flags the
-  shared files. Drive hand-offs: 00 Übergabe, "2026-10-31 Web-Planer Teil 1–7" (open points: Teil 4–7).
-  - *Must:*
-    - Pairing in the browser – bugs (incident 2026-10-31, Drive Teil 4 §1) · web only · (1) `PlanSync.dir` (open
-      folder + folder list) is read only in `init()`: re-read the folders in every locked operation and in `refresh()`,
-      `BroadcastChannel('onpath-sync')` announces each change of pair / folders / pending; Playwright test with two tabs
-      (pair in A → B shows paired without reload; unpair in A → B shows unpaired and writes nothing back). (2) No new
-      version detection: build id in the page + `/version.json` (no-cache), checked on focus and every fetch; on a
-      mismatch one box "Neue Version des Planers" [Neu laden] – never reload by itself (unsaved route); engine file names
-      with version / hash. (3) „Trennen“ sits right beside „Jetzt abgleichen“: check `#unpair` cannot fire without a
-      deliberate click (focus / Enter), move it away (e.g. red text button at the bottom), still no question (A-017).
-    - Island retry without reflection (Köln Dom) · 287590d · BRouter jars renamed to `1.7.11-beta-onpath1`
-      (`islandNodePairs` package-private, `tools/routing/patch_brouter_jar.py`), `OnPathHints.islandRetries` /
-      `skipOnSnap` – after the merge run `node web/parity/check.mjs --update` (new jar names) and drop the `knownDiff` of
-      Köln Dom → Neumarkt in `web/test/plans.json` (a normal gate case, app 1334 m); fingerprint changes once – steps in
-      `docs/handoff-web-island.md` (Drive Teil 6).
-    - My routes: "Neu" / "Geändert" tags instead of bold + grey line (owner 2026-10-31, replaces A-018's bold marks) ·
-      3df74cd · the web's My routes shows the phone's `mark` as the same light blue tag after the name (`#DDEAFB` /
-      `#0B3D91`, 12 px bold pill, never cut), gone when opened; careful: bold means "waiting" in the browser today –
-      steps in `docs/handoff-web-route-tags.md`.
+  `origin/web-spike` 97e8836 (2026-10-31 evening, [cloud-plan]): web-spike merged main at 38fc16c (Planner splice);
+  main commits after that (d288503 plan sheet one-row step, 8c73742 / f0dc98c build time, a08f4a6 roles) come with the
+  next `web/parity/merge-main.sh`. Done there and removed from this list: pairing across tabs + new-version box +
+  Unpair apart, island retry (Köln = app, no knownDiff), New / Changed tags, short-trip retry, splice (owner's 70.6 km
+  hike live 4.7 → 2.2 s), routing-data notice + way-type line, search list never jumps + six chips, deleted phone hello,
+  privacy + pairing sentences, host ipHash, date with the dot, first-route fit, "New route for … – check it".
+  Plan parity: `web/test/plans.json` 14 cases, all app = web (gate in the jvm job).
   - *Should:*
-    - Save asks for the name (owner 2026-10-31, app 0.13.5, replaces "save at once") · app commit "Save always asks
-      for the name" · checked against `origin/web-spike` 761bbb6: the browser still saves at once and renames in place
-      (`#savedLine` → `#renameField`), so it does **not** match yet. Web: every Save (header, ⋯ → Save route, Save
-      first) opens the small name popover (the `.savepop` styles are still there) with the name fully selected,
-      Cancel · Save; a saved route is overwritten **and renamed when the name changed** (one route); blank = keep the
-      proposal / old name; "Save as copy" proposes `RouteRules.copyName` ("Name (2)", a copy of "Name (2)" is
-      "Name (3)"); "Saved as …" becomes a plain line (no `#renameField`). Update `parity-smoke.mjs` (renameTo, "no
-      field, no dialog" checks). App: `SaveNameDialog`, `AppViewModel.askSave / confirmSave`, `SaveDialogTest`.
-    - Plan sheet without ⋯ (owner 2026-10-31, app 0.13.5) · app commit "Plan sheet: icon row instead of ⋯" · the
-      browser's floating window keeps its own layout, but mirror the wording and placement: ✕ **„Plan schließen“ /
-      "Close plan"** (was „Route löschen“; "Discard changes?" / „Änderungen verwerfen?“ Cancel · Discard only with
-      unsaved changes; a saved route stays), **„Umkehren“ · „Rundtour“** beside it in the summary (not only above the
-      points), **„Als Kopie speichern“ / "Save as copy"** in My routes. String keys renamed – fix `t()` in main.ts after
-      `merge-main.sh`: `plan_clear_route` → `plan_close_plan` (+ `plan_discard_title`, `plan_discard`),
-      `plan_save_as_new_route` → `plan_save_as_copy`. App: `PlanPanel.PlanActions`, `PlanActionsTest`.
-    - Candidate marker instead of the orange search ring (owner 2026-10-31, A-019 add-on) · app commit "Candidate
-      marker" · the web's `.searchring` (search.ts, style.css) becomes the app's look: a dashed route-blue (`#1E3FAE`)
-      ring, radius 21 px, 3.5 px dashes 7 / 4.5 over a 7 px white halo, ~12 % blue tint inside, a small "+" badge
-      (blue disc r 8.5, white +) at its upper right, the name in route blue below; plus a thin dashed preview line
-      (2.5 px, dash 2 × width, opacity 0.9, under the route points) from the place to `WaypointInsertion.joinPoint`
-      (shared file: let `placePreview` return the join point) – only with a route. No orange (= recording).
-      `map/CandidateMarker.kt` draws it; picture `CandidateMarkerScreenshotTest`.
-    - Bug-01 pass only around the cut stop (owner 2026-10-31, "Option 1", speed) · app commit "Planner: route only
-      around a cut stop" · shared `routing/Planner.kt` (`splice`: the first line stays, only ~1 km around the cut stop
-      is routed again and spliced in; owner's 70.6 km hike 2.7 → 1.3 s on the JVM, +1 m) – comes with the merge, nothing
-      to code; add the owner's plan to `web/test/plans.json` (app = web, 70,600 m), measure the Wasm time;
-      `PLANNER_VERSION` 3, fingerprint changes once – `docs/handoff-web-spur-splice.md`.
-    - Short-trip detour retry (owner 2026-10-31, Hilden) · f8a55de, 17d78d1 · shared `routing/Planner.kt`
-      (`retryShortDetours`: a leg < 2 km straight routed > 2× is retried via the midpoint, taken when ≥ 30 % shorter) –
-      comes with the merge, nothing to code; add the Hilden case to `web/test/plans.json` (Bike 51.169243,6.925344 →
-      51.169,6.93578 = 1099 m, before 2054 m); `PLANNER_VERSION` 2, fingerprint changes once –
-      `docs/handoff-web-short-detour.md`.
-    - Save like Word (owner 2026-10-31) · add2b08 · Save saves at once under the proposed name (plan link title, else
-      "Vellau → Leiteralm", else "Route 31. Okt., 10:12"; a taken name gets " (2)"), saving a saved route overwrites,
-      a copy via ⋯ "Save as new route", rename by tapping "Saved as ‚Name‘ ✎" (field in place). The browser still shows
-      the small name popover (`savePopover`) – save at once, name editable in place; `parity.json` flags `ui/RouteRules.kt`
-      (saveMode NEW_ROUTE / OVERWRITE). Drive Teil 7 §2.
-    - Routing-data notice + way-type / surface line shared (owner: app = web) · 64e217e · new pure
-      `data/RoutingDataNotice.kt` (`kindForRoute` → LOADING / NOT_YET, keys `maps_routing_*`) and
-      `routing/BreakdownRules.kt` (labels, order, ARGB / hex colours, `foldSmall`, `summaryLine` „Radweg 92 % ·
-      Asphalt 98 %“): add both to `appFiles` (+ `RoutingDataNoticeTest`, `BreakdownRulesTest` to `appTests`); the plan
-      sheet shows the same notice line and way-type / surface line with bars – `docs/handoff-web-notice-breakdown.md`.
-    - Search list never jumps for the same text (field bug 0.13.2) · e6b9c31 · shared `SearchRanking.keepShown` /
-      `stillMatching` (`search/OfflineIndex.kt`, already in `appFiles`): the page keeps the list it shows per text, later
-      answers only add below, online rows of the shorter text that still match stay (app: `ui/search/SearchSession.run`,
-      test `SearchStableListTest`). `WebSearch.online` only passes `keepShown` to `mix` today.
-    - Six short search chips: Orte · Essen · Sehenswert · Wasser · Bahn · Parken (Places · Food · Sights · Water ·
-      Transit · Parking) · 2fd9546 · table `SearchKinds.Category` in `search/Place.kt` (already compiled; `Category.of`,
-      strings `search_cat_*`, test `SearchCategoryTest`): same six chips (scrolling row), filter with
-      `SearchQuery.category`; the Places chip keeps street / address hits.
-    - Pairing display: a deleted phone hello (guard) · b585cbc · the app says "connected" only with a live browser hello.
-      The web's `phoneHello` skips a deleted hello silently, `status.paired` = pair + open folder: in `refresh()` a phone
-      hello seen and now deleted → "Unpaired on the phone" (grey, Pair phone); the pill's "synced … ago" labelled as this
-      browser's pass. Today no real case (phone Unpair ends the mailbox → 410).
-    - One message system · fb2d467 (merged), `docs/design/ui-style.md` · the page has no `MessageCard` look yet: FRAGE
-      (white card, blue 4 px left edge, two verb buttons, until answered), HINWEIS (one button – OK or the one way out;
-      grey / amber ⚠ / red ⚠ edge, never goes by itself), ANZEIGE (no box, a line in place); one box at a time (a
-      question first), 12 px under the top bar; details of a state = sheet from below, never a dialog. Drive Teil 4 §4.
-    - Route hints end crumbs + first-route fit (field A-019) · 4ab0b37, c7bf190 · shared `ui/RouteWarnings.kt`: a stretch
-      < 5 m (`END_CRUMB_M`) at the very start / end is no spot – comes with the merge, the hint parity should pass as is;
-      the first route of a plan and an opened plan link are fitted whole like ⛶ (check the page does so).
-    - Privacy sentence · 880850d · `web_pair_privacy` still says routes only: say the same as the app – routes +
-      imported tracks, encrypted on the device, we can't read them, recorded tours are never sent, server Cloudflare (EU).
-    - Pairing confirmation · app `sync_paired_plan` · `web_pair_done` still says "sync both ways by themselves": after
-      pairing the same sentence with OK, until OK: 'Verbunden. Was du im Browser speicherst, kommt auf dein Handy – dort
-      bleibt alles gespeichert.' (EN 'Paired. What you save in the browser comes to your phone – everything is kept
-      there.').
-    - Host: no plain IPs · 2e851ef (doorman) · `web/host/src/index.js` still keys the rate limit by the plain
-      `cf-connecting-ip` → the daily salted `ipHash` (as `sync.js` already does); `[observability.logs]
-      invocation_logs = false` in `web/host/wrangler.toml`.
+    - [cloud-plan] Save asks for the name (owner 2026-10-31, app 0.13.5, replaces "save at once") · app commit "Save
+      always asks for the name" (3be5469) · the browser still saves at once and renames in place (`#savedLine` →
+      `#renameField`). Web: every Save (header, ⋯ → Save route, Save first) opens a small name dialog / popover with the
+      name fully selected, Cancel · Save; a saved route is overwritten **and renamed when the name changed**; blank =
+      keep the proposal / old name; "Save as copy" proposes `RouteRules.copyName` ("Name (2)"); "Saved as …" becomes a
+      plain line. Update `parity-smoke.mjs` 6d and `sync-smoke.mjs` (`renameOpen` / `saveAs`). App: `SaveNameDialog`,
+      `AppViewModel.askSave / confirmSave`, `SaveDialogTest`. `web/parity.json` mirrors `ui/RouteRules.kt` (newRouteName,
+      saveMode – mirrored in `plans.ts` because RouteRules needs the app's TourDb).
+    - [cloud-plan] Plan sheet without ⋯ (owner 2026-10-31, app 0.13.5) · app commit 3be5469 · keys already renamed on
+      web-spike (`plan_close_plan`, `plan_save_as_copy`); still to do: ✕ „Plan schließen“ asks "Discard changes?"
+      (`plan_discard_title` / `plan_discard`, Cancel · Discard) only with unsaved changes – the web clears without a
+      question today; „Umkehren“ · „Rundtour“ beside it in the summary; My routes ⋮ → „Als Kopie speichern“ and „Teilen“
+      (app `Screens.TourItemMenu` onCopy / onShare). App: `PlanPanel.PlanActions`, `PlanActionsTest`.
+    - [cloud-plan] Candidate marker instead of the orange search ring (A-019 add-on 1) · f84fd63 · the web's
+      `.searchring` (search.ts, style.css) becomes the app's look: a dashed route-blue (`#1E3FAE`) ring, radius 21 px,
+      3.5 px dashes 7 / 4.5 over a 7 px white halo, ~12 % blue tint inside, a small "+" badge, the name in route blue
+      below; a thin dashed preview line to `WaypointInsertion.joinPoint` (let `placePreview` return it) – only with a
+      route. `map/CandidateMarker.kt`, picture `CandidateMarkerScreenshotTest`.
+    - [cloud-plan] Fit the new route after adding a place from the card (A-019 add-on 2) · 6b8875f ·
+      `WholeRoute.fitAfterPlace` (points changed and ≥ 2 → fit when the route is there); the web already fits the first
+      route (`WholeRoute.firstRoute`, mirrored in `main.ts` – WholeRoute needs `AppMode`).
+    - [cloud-plan] One message system – the rest · `docs/design/ui-style.md` · `web/app/src/msgcard.ts` is the app's
+      MessageCard (FRAGE / HINWEIS kinds, one at a time, 12 px under the search bar), used today only for "New version
+      of the planner". Still to move there: the map strip's questions / errors (`mapnotice.ts`, `areas.ts`), the
+      pairing confirmations, any `confirm()` / own dialog that is a HINWEIS; ANZEIGE stays a line in place.
+    - [cloud-plan] Quiet margin cells after planning (offline after planning) · 27029db · `cells/CellTriggers.kt`
+      (`CellJob.margin`: cells along the route vs the corridor margin, `tourStarted`) – check `areas.ts` (T1–T4 mirror)
+      asks the margin cells quietly like the app.
+    - [cloud-app] Pure files for two small rules the web mirrors today: `RouteRules.newRouteName` / `copyName` (needs
+      `TourDb.TourKind`) and `WholeRoute.firstRoute` / `fitAfterPlace` (needs `AppMode`) – as pure Kotlin beside them
+      (like `RoutingDataNotice` / `BreakdownRules`) the web compiles them instead of mirroring (`web/parity.json`).
   - *Low prio:*
-    - Date „30. Okt. 2026“ with the dot like the app (owner) · `appDate` in `plans.ts` takes `Intl` month 'short' → "Okt"
-      without the dot in German; also `web_plan_dated` / `when`. Drive Teil 7 §3.
-    - A-016 App Links · `/.well-known/assetlinks.json` is live (200, v0.13.1 key, checked 2026-10-31) · left: on the
-      phone `adb shell pm get-app-links com.onpath.app` – then `#p=` / `#pair=` links open the app.
-    - Licences list in the browser (A-020) · app: About → Licences (`data/Licences.kt`, texts in `assets/licences/`)
-      · the web planner lists its own bundled parts (MapLibre GL JS, BRouter onpath1, Noto Sans glyphs, icons, npm
-      libraries) with version + licence, offline in the page, plus the ODbL line.
+    - A-016 App Links · `/.well-known/assetlinks.json` is live (200, v0.13.1 key) · left: on the phone
+      `adb shell pm get-app-links com.onpath.app` – then `#p=` / `#pair=` links open the app (owner).
+    - [cloud-plan] Licences list in the browser (A-020) · app: About → Licences (`data/Licences.kt`,
+      `assets/licences/`) · the web planner lists its own bundled parts (MapLibre GL JS, BRouter onpath1, Noto Sans
+      glyphs, icons, npm libraries) with version + licence, offline in the page, plus the ODbL line.
+    - [cloud-plan] Editing speed beyond the splice: a plan edit still routes the whole chunk once (owner's hike ≈ 2 s
+      live); faster only by reusing legs of the previous plan – owner 2026-10-31 said no (same points, same route).
   - *Not for the browser:* lock-screen arrival rounding (30c01c6), smart screen / rest view, cue timing, vibration,
     pocket, lock-screen notification, notifications chip, provisional position, GPS-only recording, phone setup, demo
     location, POI tiles + search on disk on the phone, memory / health line, End-tour ride icons, ☰ phone-setup entry;

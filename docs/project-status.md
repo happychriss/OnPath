@@ -6,6 +6,24 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud-plan (desktop donald, `~/Projects/OnPath-Planner`), 2026-10-31 – browser planner on `web-spike` 97e8836,
+  live on plan.onpath.earth, CI green.** App ⇄ web parity made a gate: `web/test/plans.json` (14 plans: TU Dortmund
+  Bug 01, Meran T3, Zoggler loop + delete / drag, MTB Lana–Ulten, meadow snap, pinned POI, failed leg, Köln island,
+  Hilden short trip, Vienna no data, the owner's 70.6 km hike) – the app's own path on the JVM (`parityJvm`:
+  BRouterEngine + PlanPoints + PlanResult) against the Wasm engine's page calls (`web/app/test/plan-parity.mjs`), all
+  equal. The web now plans through the shared code: `routing/PlanResult` (snapped points, gaps incl. skipped, model
+  time, warnings, rating, ProfileData), `gpx/PlanGpx` (export with `<wpt>`, re-import exact), `PlanPoints.deleteAt` /
+  `move` (round trip stays closed), `RoutingFingerprint` (diagnostics + sync fields 7 / 8 on Save, grey line for a phone
+  plan routed otherwise, `web-sync.md` §5.2), `RoutingDataNotice`, `BreakdownRules`, `ActivityLayers`. Also built:
+  pairing across tabs (BroadcastChannel), new-version box (`msgcard.ts` = MessageCard, `version.json`), Unpair apart,
+  New / Changed tags, search list kept + six chips, Clear during a long plan answers at once, first-route fit. Speed
+  (owner): adding a point to his 70.6 km hike was ~5 s – half was the Bug-01 pass re-routing the whole chunk; main's
+  splice (38fc16c, owner "Option 1") → live 2.2 s. Lessons: donald runs out of memory with parallel builds (Gradle
+  under `~/onpath-cells-work/gradle.lock`, ≤ 2 workers, one heavy run at a time); Node never exits after loading the
+  TeaVM Wasm engine – run engine tests in a child process. Handoffs in Drive „2026-10-31 donald (Web-Planer) …“ (3
+  docs) are superseded by this entry and the backlog. **Half done / next (backlog "Web planner: mirror app changes"):**
+  Save asks for the name + plan sheet without ⋯ (app 0.13.5), candidate marker, fit after adding a place, rest of the
+  message system, margin cells; merge main (d288503 and later).
 - **cloud, 2026-10-29/30 – 0.13.0 phone setup (owner: yes to all 4 decisions).** Welcome page instead of the start-up
   dialog; step-by-step guide (location precise / on, notifications, vibration test, battery, brand steps, battery
   saver, unused-app reset) from the welcome, before a tour, the ◎ button and Settings → Phone setup; re-check on every
