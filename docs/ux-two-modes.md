@@ -96,7 +96,9 @@ undo step. Tracks open next to the plan without asking.
   (owner 2026-10-31, same icon as the browser planner: only when there is a line – Plan: a shown track, else the plan,
   else the followed line; Navigate: the followed line incl. the lead-in to the start; hidden in the Points step), locate.
   A tap stops following, then fits the line + all route points north up and flat (not closer than z16, as the browser),
-  clear of the top cards / message box and the sheet / slider (`FitPaddingRule`, the same padding as opening a route);
+  clear of the top cards / message box and the sheet / slider (`FitPaddingRule`, the same padding as opening a route;
+  Plan: the sheet at its current height, the route beside the map buttons or above them over the whole width –
+  whichever shows it bigger; a marker's radius of air, no more);
   Navigate also includes where you are.
   Following comes back only with locate. No box, no dialog (`ui/WholeRoute.kt`). The same fit runs by itself once
   when a plan link opens and when the plan gets its first route (first destination, "Go here") – never after later

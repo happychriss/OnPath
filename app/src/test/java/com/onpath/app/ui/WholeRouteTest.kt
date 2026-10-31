@@ -55,13 +55,68 @@ class WholeRouteTest {
         val d = 2.5f
         val status = 60
         // Plan: below the search pill (76 dp) or the strip / box under it, above the sheet
+        // map button column not measured yet: a 48 dp column beside, no room above it
         val p = FitPaddingRule.of(plan, d, status, planTopDp = 0, sheetPx = 800, navTopDp = 0, navBottomDp = 0)
-        assertEquals(FitPadding(120, status + 220, 120, 800 + 120), p)
+        assertEquals(FitPadding(60, status + 220, 120 + 80, 800 + 120), p)
         val withBox = FitPaddingRule.of(plan, d, status, planTopDp = 180, sheetPx = 800, navTopDp = 0, navBottomDp = 0)
         assertEquals(status + ((180 + 12) * d).toInt(), withBox.top)
         // Navigate: below the turn / status column (or the box under it), above the slider, clear of the big buttons
         val n = FitPaddingRule.of(nav, d, status, planTopDp = 0, sheetPx = 800, navTopDp = 200, navBottomDp = 90)
         assertEquals(FitPadding(120, status + 530, 200, 285), n)
+    }
+
+    /**
+     * Field A-019 add-on (01b): with the sheet pulled up the destination lay under the map buttons; with the small sheet
+     * the fit left a wide margin. Plan's room: the sheet's current height, beside the measured button column or above it.
+     */
+    @Test fun planRoomIsBesideOrAboveTheMapButtons() {
+        val d = 2.25f
+        val status = 54
+        val fabW = (48 * d).toInt()
+        val fabH = (5 * 48 * d).toInt()
+        val px = { dp: Int -> (dp * d).toInt() }
+        for (sheet in listOf(310, 2000)) { // the small sheet (one row) and the sheet pulled up: always its height now
+            val p = FitPaddingRule.of(plan, d, status, planTopDp = 0, sheetPx = sheet, navTopDp = 0, navBottomDp = 0,
+                fabWidthPx = fabW, fabHeightPx = fabH)
+            // beside: the right edge clears the column (16 dp margin) by a marker's radius
+            assertEquals(fabW + px(16) + px(FitPaddingRule.AIR_DP), p.right)
+            assertTrue(p.right >= fabW + px(16) + px(15))
+            assertEquals(sheet + px(FitPaddingRule.FOOTER_DP), p.bottom)
+            // above: the whole width, the bottom edge over the column's top (12 dp above the sheet) by a marker's radius
+            val a = p.above!!
+            assertEquals(px(FitPaddingRule.PLAN_SIDE_DP), a.right)
+            assertEquals(p.left, a.left)
+            assertEquals(p.top, a.top)
+            assertEquals(sheet + px(12) + fabH + px(FitPaddingRule.AIR_DP), a.bottom)
+            assertTrue(a.above == null)
+        }
+        // no excessive margin: the sides are a marker's radius + 8 dp, not the old 48 dp
+        val p = FitPaddingRule.of(plan, d, status, planTopDp = 0, sheetPx = 310, navTopDp = 0, navBottomDp = 0, fabWidthPx = fabW, fabHeightPx = fabH)
+        assertEquals(px(24), p.left)
+        assertTrue(p.above!!.right < px(FitPaddingRule.SIDE_DP))
+        // Navigate keeps its one room
+        assertNull(FitPaddingRule.of(nav, d, status, 0, 310, 200, 90, fabW, fabH).above)
+    }
+
+    /** The room that shows the route bigger wins; a tie or an unknown zoom keeps the room beside the buttons. */
+    @Test fun pickTakesTheRoomWithTheBiggerRoute() {
+        val above = FitPadding(10, 20, 10, 900)
+        val pad = FitPadding(10, 20, 200, 400, above)
+        // a wide route (01: east–west): above the buttons, over the whole width, is bigger
+        assertEquals(above, FitPaddingRule.pick(pad) { if (it == above) 13.6 else 13.3 })
+        // a tall route: beside the buttons (down to the sheet) is bigger
+        assertEquals(pad, FitPaddingRule.pick(pad) { if (it == above) 12.8 else 13.1 })
+        assertEquals(pad, FitPaddingRule.pick(pad) { 13.0 })
+        assertEquals(pad, FitPaddingRule.pick(pad) { if (it == above) null else 13.0 })
+        val single = FitPadding(1, 2, 3, 4)
+        assertEquals(single, FitPaddingRule.pick(single) { error("not asked") })
+        // the map asks the camera for both rooms
+        val ctl = File("src/main/java/com/onpath/app/map/MapController.kt").readText()
+        val fit = ctl.substringAfter("fun fitTo(").substringBefore("\n    }\n")
+        assertTrue(fit.contains("FitPaddingRule.pick(room)"))
+        val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
+        assertTrue(screen.contains("fabWidthPx = planFab[0], fabHeightPx = planFab[1]"))
+        assertTrue(screen.contains("sheetPx = panelHeightPx"))
     }
 
     /** Following stops before the camera moves (CLAUDE.md "Map camera"); free look must not take it up again. */

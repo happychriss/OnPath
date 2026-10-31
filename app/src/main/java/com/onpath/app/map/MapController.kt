@@ -873,15 +873,21 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
      * [northUp]: the overview north up and flat ("Show whole route", also from Navigate's turned, tilted camera);
      * else the current bearing / tilt stay. Following must be off before (CLAUDE.md "Map camera"). Never throws.
      */
-    fun fitTo(points: List<GeoPoint>, pad: com.onpath.app.ui.FitPadding, northUp: Boolean = false) {
+    fun fitTo(points: List<GeoPoint>, room: com.onpath.app.ui.FitPadding, northUp: Boolean = false) {
         if (points.isEmpty()) return
         try {
             if (points.size == 1) {
                 // one place (search result): close enough to see the POI icon and the paths around it
-                map.animateCamera(CameraUpdateFactory.newCameraPosition(centred(points[0], 16.0, pad)), 700)
+                map.animateCamera(CameraUpdateFactory.newCameraPosition(centred(points[0], 16.0, room)), 700)
                 return
             }
             val b = LatLngBounds.Builder().apply { points.forEach { include(LatLng(it.lat, it.lon)) } }.build()
+            // beside the map buttons or above them: the room that shows the route bigger (FitPaddingRule.pick)
+            val bearing = if (northUp) 0.0 else map.cameraPosition.bearing
+            val tilt = if (northUp) 0.0 else map.cameraPosition.tilt
+            val pad = com.onpath.app.ui.FitPaddingRule.pick(room) { p ->
+                map.getCameraForLatLngBounds(b, intArrayOf(p.left, p.top, p.right, p.bottom), bearing, tilt)?.zoom
+            }
             val update = if (northUp) {
                 // a short route not closer than z16 (the browser planner's maxZoom)
                 val cp = map.getCameraForLatLngBounds(b, intArrayOf(pad.left, pad.top, pad.right, pad.bottom), 0.0, 0.0)

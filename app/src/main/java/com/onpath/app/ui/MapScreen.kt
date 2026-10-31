@@ -65,6 +65,8 @@ fun MapScreen(
     var panelHeightPx by remember { mutableIntStateOf(0) }
     /** Navigate: dp covered at the top (turn / status column, message box) and the bottom (slider) – route fits. */
     val navCover = remember { intArrayOf(0, 0) }
+    /** Plan: size of the map button column (px, width + height) – a route fit keeps beside or above it (FitPaddingRule). */
+    val planFab = remember { intArrayOf(0, 0) }
     var scale by remember { mutableStateOf<Pair<String, Dp>?>(null) }
     var cameraTick by remember { mutableIntStateOf(0) }
     var bearing by remember { mutableFloatStateOf(0f) }
@@ -100,21 +102,24 @@ fun MapScreen(
         // the points step leaves little map: only Undo + locate (the compass would sit over ☰)
         val pointsOpen = mode == AppMode.PLAN && vm.planSize == PlanSize.FULL && vm.shown == null && vm.cardPlace == null
         MapFooter(scale, onCredits = { vm.openSettings(SettingsPage.ABOUT) }, demo = demoOn) {
-            MapControls(
-                // same cycle in both modes: turned by hand → north up → walking direction up → north up (AppViewModel.onCompass)
-                compass = if (pointsOpen) null
-                    else CompassSpec(vm.headingUp && vm.followMe, bearing) { vm.onCompass(kotlin.math.abs(bearing) > 1f) },
-                showEye = !pointsOpen && (vm.route != null || vm.shown != null || vm.followLine != null),
-                onPeek = { vm.routePeek = it },
-                // under the eye: the whole line + its points (Navigate: + where you are), following stops
-                onFitRoute = if (vm.wholeRouteShown(mode, pointsOpen)) vm::showWholeRoute else null,
-                gps = gps, following = vm.followMe, onLocate = onLocate,
-                onUndo = if (mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
-                // Undo and Redo side by side as map buttons; Redo only when there is something to redo
-                onRedo = if (mode == AppMode.PLAN && vm.canRedo && vm.shown == null) vm::redoStep else null,
-                large = mode == AppMode.NAVIGATE,
-                onSettings = if (mode == AppMode.NAVIGATE) { { vm.navSettingsOpen = true } } else null,
-            )
+            // measured, no state: a fit reads it when it happens
+            Box(if (mode == AppMode.PLAN) Modifier.onSizeChanged { planFab[0] = it.width; planFab[1] = it.height } else Modifier) {
+                MapControls(
+                    // same cycle in both modes: turned by hand → north up → walking direction up → north up (AppViewModel.onCompass)
+                    compass = if (pointsOpen) null
+                        else CompassSpec(vm.headingUp && vm.followMe, bearing) { vm.onCompass(kotlin.math.abs(bearing) > 1f) },
+                    showEye = !pointsOpen && (vm.route != null || vm.shown != null || vm.followLine != null),
+                    onPeek = { vm.routePeek = it },
+                    // under the eye: the whole line + its points (Navigate: + where you are), following stops
+                    onFitRoute = if (vm.wholeRouteShown(mode, pointsOpen)) vm::showWholeRoute else null,
+                    gps = gps, following = vm.followMe, onLocate = onLocate,
+                    onUndo = if (mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
+                    // Undo and Redo side by side as map buttons; Redo only when there is something to redo
+                    onRedo = if (mode == AppMode.PLAN && vm.canRedo && vm.shown == null) vm::redoStep else null,
+                    large = mode == AppMode.NAVIGATE,
+                    onSettings = if (mode == AppMode.NAVIGATE) { { vm.navSettingsOpen = true } } else null,
+                )
+            }
         }
     }
 
@@ -141,7 +146,7 @@ fun MapScreen(
         val fitPadding = {
             FitPaddingRule.of(vm.mode, density.density, topInsetPx,
                 planTopDp = if (vm.backgroundStripShown) vm.backgroundStripBottomDp else 0, sheetPx = panelHeightPx,
-                navTopDp = navCover[0], navBottomDp = navCover[1])
+                navTopDp = navCover[0], navBottomDp = navCover[1], fabWidthPx = planFab[0], fabHeightPx = planFab[1])
         }
         MapSync(vm, controller, rec, location, fitPadding)
         // hike: keep-on + pocket logic; bike: Settings → "Screen while cycling", pocket after 5 s covered (ScreenPolicy,
