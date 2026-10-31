@@ -2,8 +2,9 @@
 # a finger held on the screen (app/src/androidTest). Owner: "not good to find out during walking".
 #
 # Runs on every push to main that touches the app and by hand (owner: beside releases, not as a gate) – without the
-# Release-Rundgang (~5 min more); release.yml calls it with StartSmokeE2ETest + ReleaseRundgang as the gate before a
-# release (docs/release-rundgang.md). The screenshots (/sdcard/e2e) are always in the report "e2e-report".
+# Release-Rundgang (that runs locally on donald before a release made there: tools/ci/release_rundgang.sh,
+# docs/release-rundgang.md); release.yml calls it with only StartSmokeE2ETest as its gate. The screenshots (/sdcard/e2e)
+# are always in the report "e2e-report". A requested test class that produced no test case fails the run.
 name: E2E
 
 on:
@@ -21,7 +22,7 @@ on:
   workflow_call:
     inputs:
       tests:
-        description: "Only these test classes (release.yml: the start test + the Release-Rundgang)"
+        description: "Only these test classes (release.yml: the start test)"
         type: string
         required: false
         default: ""
@@ -110,6 +111,32 @@ jobs:
             adb logcat -c || true
             adb push rd5/E10_N45.rd5 /data/local/tmp/E10_N45.rd5 && adb shell chmod 644 /data/local/tmp/E10_N45.rd5 || true
             ./gradlew --no-daemon connectedDebugAndroidTest -Ponpath.e2e=true ${{ inputs.tests != '' && format('-Pandroid.testInstrumentationRunnerArguments.class={0}', inputs.tests) || '-Pandroid.testInstrumentationRunnerArguments.notClass=com.onpath.app.e2e.ReleaseRundgang' }} && R=0 || R=1; mkdir -p e2e-out; adb pull /sdcard/e2e e2e-out/ || true; [ $R = 0 ] || { adb logcat -d > e2e-out/logcat.txt || true; exit 1; }
+
+      # Guard: 0.13.3's release asked for "StartSmokeE2ETest,ReleaseRundgang", only the start test ran and the job was
+      # green (docs/release-rundgang.md). Every requested class (or Class#method) must show up in the JUnit XML with at
+      # least one test case; without a list (push run, notClass) at least one test case at all.
+      - name: Every requested test class ran
+        env:
+          TESTS: ${{ inputs.tests }}
+        run: |
+          python3 - <<'PY'
+          import glob, os, sys, xml.etree.ElementTree as ET
+          files = glob.glob("app/build/outputs/androidTest-results/connected/**/*.xml", recursive=True)
+          cases = set()
+          for f in files:
+              for tc in ET.parse(f).getroot().iter("testcase"):
+                  cases.add((tc.get("classname", ""), tc.get("name", "")))
+          print("%d test cases in %d report(s)" % (len(cases), len(files)))
+          wanted = [t.strip() for t in os.environ.get("TESTS", "").split(",") if t.strip()]
+          missing = []
+          for w in wanted:
+              cls, _, method = w.partition("#")
+              hits = [c for c in cases if c[0] == cls and (not method or c[1] == method)]
+              print("%-60s %d test case(s)" % (w, len(hits)))
+              if not hits: missing.append(w)
+          if not cases: print("::error::No test case ran at all"); sys.exit(1)
+          if missing: print("::error::Requested but never run: " + ", ".join(missing)); sys.exit(1)
+          PY
 
       - name: Test report
         if: always()

@@ -1,22 +1,42 @@
 # Release-Rundgang (release walkthrough)
 
-Owner 2026-10-31: before every **release** a fixed list of real user flows is played automatically in the emulator with
-the demo ride – about 5 minutes on donald (11 flows, 2026-10-31; longer on CI), no human. **If one flow fails, there is no release.** Pushing a build to the phone
-needs no extra test (as before).
+Owner 2026-10-31: a fixed list of real user flows played automatically in the emulator with the demo ride – about
+6 minutes on donald (12 flows), no human. Pushing a build to the phone needs no extra test (as before).
+
+**Rule: "mit donald = Rundgang"** (owner 2026-10-31)
+- A release made **on donald** runs the Rundgang **locally first** (`tools/ci/release_rundgang.sh`). **Red = no release.**
+- A release made **elsewhere** (cloud, laptop without an emulator) goes out **without** the Rundgang – no blocking.
+- GitHub `release.yml` runs only the short `StartSmokeE2ETest` as its emulator gate (job `smoke`).
+- Nobody waits for the push E2E run (`e2e.yml`) before releasing; that run keeps leaving the Rundgang out (`notClass`).
 
 **Rule: every field bug the owner finds becomes one more flow here** (a line below + a test method in
 `app/src/androidTest/java/com/onpath/app/e2e/ReleaseRundgang.kt`).
 
-## Run it
+## Run it (donald)
 
-- On donald: `tools/ci/release_rundgang.sh` – one emulator (a running one, else its own headless 4 GB one, killed
-  after), build with `-Ponpath.e2e=true` in the Gradle lock (`--max-workers=2`), only the Rundgang, screenshots into
-  `~/onpath-cells-work/rundgang/<date-time>/`, a short pass / fail table. Never on a phone.
-- CI: `release.yml` → job `smoke` (= `e2e.yml` with `StartSmokeE2ETest` + `ReleaseRundgang`); `publish` waits for it.
-  The full E2E run after every push leaves the Rundgang out (it runs at release time). Screenshots: artifact
-  `e2e-report` → `e2e-out/`.
+- `tools/ci/release_rundgang.sh` – takes a running emulator (`emulator-*` only, never a phone), else starts its own
+  headless 4 GB one and kills it after; builds app + test APK with `-Ponpath.e2e=true` inside the Gradle lock
+  (`flock ~/onpath-cells-work/gradle.lock`, `--max-workers=2`); installs both and **runs `pm clear com.onpath.app` on
+  the emulator first** (a clean app like CI's fresh emulator); pushes the real routing data; runs only
+  `ReleaseRundgang`; screenshots + `instrument.txt` + logcat into `~/onpath-cells-work/rundgang/<date-time>/`; prints
+  a pass / fail table, exit 1 when a flow failed or the run did not finish.
+- `--no-build` – reuse the APKs already in `app/build/outputs/` (e.g. a second run after a fix in the test only).
+- `FLOWS=com.onpath.app.e2e.ReleaseRundgang#flow05_roundTripDeleteStartFromMapMenuStaysClosed` (comma list of class or class#method) – only these flows, for
+  debugging one flow.
+- Other env: `SERIAL=`, `AVD=` (default `Rundgang`), `RD5=` (path to `E10_N45.rd5`).
+- **Never Gradle in parallel to the emulator**: no other build on the machine while the flows run (RAM, see the load
+  limits) – the script builds first, then plays the flows.
 
-Every flow: the demo location (never real GPS), the real routing data (E10_N45.rd5 – the script and CI push it), Bike in
+Why the Rundgang left CI: `release.yml` asked `e2e.yml` for
+`-Pandroid.testInstrumentationRunnerArguments.class=com.onpath.app.e2e.StartSmokeE2ETest,com.onpath.app.e2e.ReleaseRundgang`;
+the value reached Gradle intact (job log), yet `connectedDebugAndroidTest` (AGP 9.4.1, UTP) ran only the 3
+`StartSmokeE2ETest` tests and the job was green (0.13.3 and the run before). The local script's
+`am instrument -e class <one class>` runs the Rundgang fine. Where the second class was dropped (AGP / UTP passing the
+comma list on) is not proven. So: never trust a comma list through the Gradle property – `e2e.yml` now has the step
+"Every requested test class ran", which fails the job when a requested class (or `Class#method`) has no test case in
+the JUnit XML (and, without a list, when no test ran at all).
+
+Every flow: the demo location (never real GPS), the real routing data (E10_N45.rd5 – the script pushes it), Bike in
 Meran (Theatre → station, ~1.4 km), one assertion per step, a screenshot per key step
 (`ReleaseRundgang-<flow>-<step>.png`).
 

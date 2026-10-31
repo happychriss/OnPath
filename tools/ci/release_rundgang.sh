@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Release-Rundgang (owner 2026-10-31, docs/release-rundgang.md): the fixed list of real user flows played in ONE
-# emulator with the demo ride before every release – about 5 min on donald, no human. A failed flow = no release.
+# emulator with the demo ride – about 6 min on donald, no human. "mit donald = Rundgang": a release made on donald runs
+# this first, a failed flow = no release; a release from elsewhere goes out without it (GitHub runs only the start test).
 #
 # Usage: tools/ci/release_rundgang.sh [--no-build]
 #   - uses a running emulator (adb serial emulator-*) or starts one headless (4 GB, temp on disk) and kills it after
