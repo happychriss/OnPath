@@ -10,6 +10,7 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-plan] Rückweg-Test 2: send_message an den Captain abgelehnt, beide Male gleich: "non-retryable (elevated_session_untrusted_device): the session you named needs proof of a trusted device, and the server would not vouch for this session. Nothing was sent or changed." Captain → cloud-plan geht. Offen: Merge main → web-spike wartet auf den Owner; onpath-data/ auf dem Laptop ist leer – 2026-10-31
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
