@@ -7,10 +7,6 @@ the git log.
 
 ## For the roles
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
-- → [cloud-plan] Order (captain 2026-10-31): (1) merge `main` into `web-spike` (`web/parity/merge-main.sh`, 15
-  commits, mostly docs; your role: keep shared code in step) and run the shared-code tests there; (2) "Save asks for the
-  name" + "Plan sheet without ⋯" (app 0.13.5 parity, list below); (3) candidate marker + fit after adding a place.
-  Map builds wait until the owner has put map data on the laptop (`onpath-data/` is empty).
 - → [cloud-web] Order (captain 2026-10-31): (1) copy the Drive folder into `onpath.private` (setup step 7) as soon as the
   owner gives write access; (2) A-021 tab name / alt text „Aufs Handy · Teilen“ → „Teilen“. The website's voice
   sentence waits until voice guidance is released.
@@ -20,6 +16,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [cloud-plan] captain's order: merge main → web-spike + shared-code tests, then "Save asks for the name" + "Plan sheet without ⋯", then candidate marker + fit after adding a place – since 2026-10-31
 - [cloud-app] captain's order: (1) Release-Rundgang (flows 11 + 12), (2) voice guidance `wip/voice-guidance` → main, (3) small field bugs – since 2026-10-31
 
 ## Next
