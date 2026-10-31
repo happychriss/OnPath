@@ -4073,8 +4073,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val res = r.result
         syncPoll.passEnded(android.os.SystemClock.elapsedRealtime(), com.onpath.app.plansync.SyncPoll.ok(r))
         if (r.ended) sayInfo(Txt.s(Res.string.sync_ended), NoticePlace.SETTINGS)
-        // Pair during a tour: nothing ran – it comes after the tour
-        if (r.manual && res == null && !r.error && recState.value != null) sayInfo(Txt.s(Res.string.sync_during_tour), NoticePlace.SETTINGS)
+        // Pair during a tour: only the handshake ran – Browser sync / ☰ show "Routes sync after the tour" (State.afterTour)
         if (res?.toursChanged == true) {
             refreshTours()
             followSyncedSavedPlan()

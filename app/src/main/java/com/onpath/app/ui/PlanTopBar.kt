@@ -153,12 +153,13 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
 
 /**
  * "Pair with browser" (unpaired in the browser: + grey "Unpaired in the browser"); paired: "Paired with browser ✓" + grey
- * "<device> ↔ <browser> · synced 1 min ago"; a problem: amber ⚠ + why.
+ * "<device> ↔ <browser> · synced 1 min ago"; the browser not seen yet: no ✓ + grey "Waiting for the browser …"; a
+ * problem: amber ⚠ + why.
  */
 @Composable
 private fun SyncMenuItem(ui: SyncMenuUi, enabled: Boolean, onClick: () -> Unit) {
     val warn = ui.warning != null
-    val label = if (!ui.paired) str(Res.string.sync_menu_pair) else str(Res.string.sync_menu_paired) + if (warn) "" else " ✓"
+    val label = if (!ui.paired) str(Res.string.sync_menu_pair) else str(Res.string.sync_menu_paired) + if (warn || ui.waiting) "" else " ✓"
     DropdownMenuItem(
         text = {
             Column {

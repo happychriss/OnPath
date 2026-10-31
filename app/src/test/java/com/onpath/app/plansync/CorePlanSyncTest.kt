@@ -366,6 +366,108 @@ class CorePlanSyncTest {
         assertEquals("After the tour", store.list.single().name)
     }
 
+    /**
+     * Field bug 2026-10-31 (owner: "the phone says paired and the planner says nothing"): paired while a tour recorded –
+     * the phone skipped every pass, so its hello never reached the browser, which waited ("Warten auf Handy") forever.
+     * Now the scan arms one handshake that runs also during a tour: the phone's hello goes up, one pull shows the
+     * browser's hello (WAITING → CONNECTED); no route goes up, nothing comes into the tours, the tour data is not even
+     * read; then nothing more until the tour has ended – then the routes sync both ways.
+     */
+    @Test fun pairingDuringATourSaysHelloButTheRoutesWaitForTheTourEnd() {
+        val me = files.device { ByteArray(it) }
+        store.savePlanned("Waalweg", listOf(a, b, c))
+        // the phone's route is in its ledger, still to upload (an earlier pass that did not reach the server)
+        server.offline = true; phoneSync(); server.offline = false
+        // the browser shows its code: its hello waits in the new mailbox; it has a route of its own too
+        browser.hello(web, "Chrome on Linux", clock, SyncItem.ROLE_BROWSER)
+        browser.save(id(1), plan(listOf(a, b)), "From the browser", clock, web)
+        browserSync()
+        recording = true
+        // the scan (PlanSync.pair): the ledger forgotten, the pairing stored, one handshake armed
+        files.saveLedger(files.ledger().also { it.forget() })
+        assertEquals("paired, the browser not seen yet", BrowserLink.WAITING, BrowserLink.of(files.ledger(), me))
+        val gate = PassGate()
+        assertEquals("no scan: nothing during a tour", PassGate.Step.SKIP, gate.next(touring = true))
+        gate.arm()
+        assertEquals(PassGate.Step.HANDSHAKE, gate.next(touring = true))
+        val noTours = object : TourStore {
+            override fun tours() = error("tour data read during a tour")
+            override fun segments(id: Long) = error("tour data read during a tour")
+            override fun addPlan(name: String, plan: PlanContent) = error("tour written during a tour")
+            override fun replacePlan(t: com.onpath.app.data.Tour, plan: PlanContent) = error("tour written during a tour")
+            override fun addTrack(name: String, track: TrackContent) = error("tour written during a tour")
+            override fun replaceTrack(t: com.onpath.app.data.Tour, track: TrackContent) = error("tour written during a tour")
+            override fun rename(t: com.onpath.app.data.Tour, name: String) = error("tour written during a tour")
+            override fun toBin(t: com.onpath.app.data.Tour) = error("tour written during a tour")
+            override fun fromBin(t: com.onpath.app.data.Tour) = error("tour written during a tour")
+        }
+        val touring = PlanSyncPass(files, noTours, { server.box(it) }, { n -> rnd.nextBytes(n) }, { clock }, "Pixel 8",
+            { "Route" }, AesGcm)
+        val r = touring.handshake()!!
+        clock += 1000
+        assertTrue(r.outcome is SyncRound.Outcome.Done)
+        assertTrue("the routes wait for the tour end", r.skippedForRecording)
+        assertEquals("Chrome on Linux", r.peer)
+        assertEquals("the browser's hello seen", BrowserLink.CONNECTED, BrowserLink.of(files.ledger(), me))
+        assertEquals("not a good pass: no 'synced' time", 0L, files.lastOk())
+        assertEquals("the phone's route stays to upload", listOf("Waalweg"),
+            files.ledger().outbox().filter { it.item.kind == SyncItem.PLAN }.map { it.item.title })
+        // the browser sees the phone – and no route of the phone yet
+        browserSync()
+        assertEquals("Pixel 8", browser.devices(web).single { it.role == SyncItem.ROLE_PHONE }.name)
+        assertEquals(listOf("From the browser"), browser.plans().map { it.title })
+        assertEquals(listOf("Waalweg"), store.list.map { it.name })
+        // the tour goes on: no more handshakes, no loop
+        assertEquals(PassGate.Step.SKIP, gate.next(touring = true))
+        assertEquals(PassGate.Step.SKIP, gate.next(touring = true))
+        // after the tour: the full pass – both ways
+        recording = false
+        assertEquals(PassGate.Step.FULL, gate.next(touring = false))
+        val after = phoneSync()
+        assertFalse(after.skippedForRecording)
+        assertTrue(files.lastOk() > 0)
+        assertEquals(setOf("Waalweg", "From the browser"), store.live().map { it.name }.toSet())
+        browserSync()
+        assertEquals(setOf("Waalweg", "From the browser"), browser.plans().map { it.title }.toSet())
+    }
+
+    /**
+     * Owner 2026-10-31, the second half: after a scan the phone said "connected" while the browser still waited – an old
+     * live hello of an earlier browser was in the ledger. A JOIN scan waits for a hello after it ([PairScan], kept in
+     * sync/scan.txt): WAITING until the scanned browser said hello, then CONNECTED; a handshake during a tour finds it.
+     */
+    @Test fun anOldBrowserHelloIsNotTheBrowserJustScanned() {
+        val me = files.device { ByteArray(it) }
+        browser.hello(web, "Chrome on Linux", clock, SyncItem.ROLE_BROWSER)
+        browserSync(); phoneSync()
+        assertEquals(BrowserLink.CONNECTED, BrowserLink.of(files.ledger(), me))
+        clock += 3_600_000
+        // another browser's code, scanned during a tour (PlanSync.join: the scan noted, then the JOIN)
+        recording = true
+        val secretB = ByteArray(32) { (it * 7 + 11).toByte() }
+        val keysB = SyncKeys(secretB)
+        val webB = SyncFormat.newDevice(ByteArray(8) { 5 })
+        val waitingB = SyncLedger.empty().also { it.hello(webB, "Firefox on Windows", clock, SyncItem.ROLE_BROWSER) }
+        SyncRound(keysB, server.box(keysB), { ByteArray(12) { (n++).toByte() } }).run(waitingB)
+        files.saveScan(PairScan.of(files.ledger(), me, clock))
+        assertEquals(SyncRound.Outcome.Done(0, 1, 0), phone.join(secretB))
+        clock += 1000
+        assertEquals("the old browser's hello is no sign", BrowserLink.WAITING, BrowserLink.of(files.ledger(), me, files.scan()))
+        // a handshake before the browser read the JOIN: still waiting
+        phone.handshake()
+        assertEquals(BrowserLink.WAITING, BrowserLink.of(files.ledger(), me, files.scan()))
+        // the browser reads the JOIN, moves into the phone's mailbox and says hello there
+        SyncRound(keysB, server.box(keysB), { ByteArray(12) { (n++).toByte() } }).run(waitingB)
+        val moved = SyncLedger.empty().also { it.hello(webB, "Firefox on Windows", clock, SyncItem.ROLE_BROWSER) }
+        SyncRound(SyncKeys(SyncJoin.secretIn(waitingB)!!), server.box(keys), { ByteArray(12) { (n++).toByte() } }).run(moved)
+        phone.handshake()
+        assertEquals(BrowserLink.CONNECTED, BrowserLink.of(files.ledger(), me, files.scan()))
+        // a restart reads the same scan: the file holds it
+        assertEquals(files.scan(), SyncFiles(files.dir).scan())
+        phone.forgetHere()
+        assertNull("unpair forgets the scan", files.scan())
+    }
+
     @Test fun aFailedSaveIsTriedAgain() {
         browser.save(id(1), plan(listOf(a, b)), "Try again", clock, web); browserSync()
         store.failWrites = 1

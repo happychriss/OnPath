@@ -52,13 +52,19 @@ data class SyncUi(
     val joining: Boolean = false,
     /** Paired: a browser at the other end? [BrowserLink.UNPAIRED] = unpaired in the browser (grey line, pair again). */
     val browser: BrowserLink = BrowserLink.CONNECTED,
+    /** A tour is recording: the routes sync after it (grey line; the pairing handshake ran). */
+    val afterTour: Boolean = false,
 ) {
     /** Paired here, but the browser unpaired itself (owner 2026-10-31): not "connected", a grey line, the camera again. */
     val unpairedInBrowser: Boolean get() = paired && browser == BrowserLink.UNPAIRED
 
+    /** Paired, the scanned browser has not said hello yet (field bug 2026-10-31): grey "Waiting for the browser …". */
+    val waiting: Boolean get() = paired && browser == BrowserLink.WAITING
+
     companion object {
         fun of(s: PlanSync.State, askCheck: String?, joining: Boolean = false) =
-            SyncUi(s.paired, s.peer, s.lastOkMs, s.problem, askCheck, joining = joining && askCheck != null, browser = s.browser)
+            SyncUi(s.paired, s.peer, s.lastOkMs, s.problem, askCheck, joining = joining && askCheck != null, browser = s.browser,
+                afterTour = s.paired && s.afterTour)
     }
 }
 
@@ -195,6 +201,8 @@ data class SyncMenuUi(
     val line: String? = null,
     /** Why the item is amber and ☰ has the dot; null = all well (or not paired). */
     val warning: SyncAttention? = null,
+    /** Paired, the browser not seen yet: "Paired with browser" without ✓ (never "connected" before its hello). */
+    val waiting: Boolean = false,
 ) {
     companion object {
         /** Paired and online, passes run, but none ended well for this long: worth a look. */
@@ -219,16 +227,21 @@ data class SyncMenuUi(
         /**
          * Unpaired in the browser (owner 2026-10-31): "Pair with browser" again with the grey "Unpaired in the browser"
          * – no amber, it was the user's own action. The time in the line is the phone's own last good pass, so it says
-         * "synced 1 min ago" – never as if the browser was seen then.
+         * "synced 1 min ago" – never as if the browser was seen then. No browser hello yet (just paired / joined, field
+         * bug 2026-10-31) → no ✓ and the grey "Waiting for the browser …"; a tour recording → "Routes sync after the tour".
          */
         fun of(s: PlanSync.State, device: String, now: Long): SyncMenuUi {
             val warning = attention(s)
             if (warning == null && s.paired && s.browser == BrowserLink.UNPAIRED) {
                 return SyncMenuUi(paired = false, Txt.s(Res.string.sync_menu_unpaired_browser), null)
             }
+            if (warning == null && s.paired && s.browser == BrowserLink.WAITING) {
+                return SyncMenuUi(true, Txt.s(Res.string.sync_waiting_browser), null, waiting = true)
+            }
             val line = when {
                 warning != null -> reason(warning)
                 !s.paired -> null
+                s.afterTour -> Txt.s(Res.string.sync_during_tour)
                 else -> "$device ↔ ${s.peer ?: Txt.s(Res.string.sync_menu_browser)}" +
                     (if (s.lastOkMs > 0) " · " + Txt.s(Res.string.sync_menu_synced, syncAgo(s.lastOkMs, now)) else "")
             }
@@ -251,6 +264,7 @@ fun SettingsSummary.sync(ui: SyncUi): Summary = when {
     !ui.paired -> Summary(Txt.s(Res.string.sync_sum_off))
     ui.unpairedInBrowser && (ui.problem == null || ui.problem == PlanSync.Problem.Offline) ->
         Summary(Txt.s(Res.string.sync_menu_unpaired_browser))
+    ui.waiting && (ui.problem == null || ui.problem == PlanSync.Problem.Offline) -> Summary(Txt.s(Res.string.sync_waiting_browser))
     ui.problem != null && ui.problem != PlanSync.Problem.Offline ->
         Summary(peerLine(ui), Summary.Attention.PROBLEM)
     else -> Summary(peerLine(ui))
@@ -325,6 +339,9 @@ fun SyncSection(ui: SyncUi, cb: SyncCallbacks, now: Long = System.currentTimeMil
                     Text(peerLine(ui), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                     Text(if (ui.lastOkMs > 0) str(Res.string.sync_last, syncAgo(ui.lastOkMs, shownNow)) else str(Res.string.sync_never),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // ANZEIGE lines while the state holds (field bug 2026-10-31): the browser not seen yet; a tour defers the routes
+                    if (ui.waiting) SyncStatusLine(str(Res.string.sync_waiting_browser) to NoticeKind.INFO)
+                    if (ui.afterTour) SyncStatusLine(str(Res.string.sync_during_tour) to NoticeKind.INFO)
                     ui.problem?.let { p -> SyncStatusLine(syncProblemText(p)) }
                     TextButton(onClick = { askUnpair = true }, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.sync_unpair)) }
                 }

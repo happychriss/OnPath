@@ -10,6 +10,7 @@
     <string name="sync_menu_ended">Pairing ended in the browser</string>
     <string name="sync_menu_stale">Not synced for over 6 hours</string>
     <string name="sync_menu_unpaired_browser">Unpaired in the browser</string>
+    <string name="sync_waiting_browser">Waiting for the browser …</string>
     <string name="sync_menu_synced">synced %1$s</string>
     <string name="sync_intro">Your saved routes and imported GPX tracks can also be in the web planner on your computer – both ways, encrypted on the device before they leave it.</string>
     <string name="sync_steps">On the computer, open plan.onpath.earth and click “Pair phone” at the top. Scan the code shown there with your phone's camera – OnPath opens and shows six check digits.</string>
@@ -51,7 +52,7 @@
     <string name="sync_join_failed">Pairing this browser failed – show a new code in the browser and scan it again.</string>
     <string name="sync_copy">copy</string>
     <string name="sync_link_broken">This pairing code can't be read. Show the code in the browser again and scan it once more.</string>
-    <string name="sync_during_tour">Routes sync after the tour.</string>
+    <string name="sync_during_tour">Routes sync after the tour</string>
     <string name="sync_untitled_route">Route</string>
     <string name="sync_untitled_track">Track</string>
     <string name="sync_sum_off">Not paired · your routes in the web planner too</string>

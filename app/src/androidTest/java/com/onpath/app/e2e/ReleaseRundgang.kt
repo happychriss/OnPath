@@ -48,6 +48,7 @@ import com.onpath.strings.plan_undo
 import com.onpath.strings.routes_end_tour_first
 import com.onpath.strings.routes_tag_new
 import com.onpath.strings.sync_pair
+import com.onpath.strings.sync_during_tour
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -415,6 +416,59 @@ class ReleaseRundgang : E2EBase() {
         waitUntil("Undo: the destination is back", 15_000) { samePoints(read { it.waypoints.toList() }, listOf(THEATRE, NORTH, STATION)) }
         assertFalse(read { it.routeBackAsk })
         shot("4-undo")
+    }
+
+    /**
+     * 13 · Pair during a tour (field bug 2026-10-31: "the phone says paired and the planner says nothing"): the browser
+     * shows its code (its hello waits in the mailbox), the phone scans it while a tour records → the phone's hello reaches
+     * the browser at once, the phone sees the browser (connected), no route goes up; Browser sync says "Routes sync after
+     * the tour". In-memory mailbox as in flow 8.
+     */
+    @Test fun flow13_pairDuringATourTheBrowserSeesThePhone() {
+        val mailbox = RundgangMailbox()
+        PlanSync.mailboxForTests = { mailbox.box(it) }
+        java.io.File(ctx.filesDir, com.onpath.app.plansync.SyncFiles.DIR).deleteRecursively()
+        val secret = ByteArray(PairCode.SECRET_BYTES).also { java.security.SecureRandom().nextBytes(it) }
+        val keys = SyncKeys(secret)
+        val n = java.util.concurrent.atomic.AtomicInteger()
+        fun browserRound(l: SyncLedger) = SyncRound(keys, mailbox.box(keys), { ByteArray(12) { (n.incrementAndGet() and 0x7f).toByte() } }).run(l)
+        try {
+            planned(THEATRE, STATION)
+            startTour()
+            // the browser shows its code: the mailbox claimed, its hello in it (web sync.ts pendingRound)
+            val browser = SyncLedger.empty()
+            val web = SyncFormat.newDevice(ByteArray(8) { 8 })
+            browser.hello(web, "Chrome on Linux", System.currentTimeMillis(), com.onpath.app.sync.SyncItem.ROLE_BROWSER)
+            assertTrue("browser waits", browserRound(browser) is SyncRound.Outcome.Done)
+            scenario.onActivity { a ->
+                a.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PairCode.link(PlanSync.SERVER, secret))).setPackage(a.packageName)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
+            assertNotNull("check digits ${keys.check} shown", findFresh(By.textContains(keys.check.take(3)), 10_000))
+            shot("1-pair-during-tour")
+            clickText(Txt.s(Res.string.sync_pair))
+            waitUntil("paired", 20_000) { read { it.sync.state.value.paired } }
+            waitUntil("the phone sees the browser", 20_000) {
+                read { it.sync.state.value.browser } == com.onpath.app.plansync.BrowserLink.CONNECTED
+            }
+            assertTrue("the routes wait for the tour end", read { it.sync.state.value.afterTour })
+            // the browser's next look: the phone's hello is there, no route of the phone
+            assertTrue(browserRound(browser) is SyncRound.Outcome.Done)
+            assertEquals("Phone hello in the browser", 1, browser.devices(web).count { it.role == com.onpath.app.sync.SyncItem.ROLE_PHONE })
+            assertTrue("no route sent during the tour", browser.plans().isEmpty())
+            assertNotNull("still recording", com.onpath.app.recording.RecordingService.state.value)
+            scenario.onActivity { vm(it).openSettings(com.onpath.app.ui.SettingsPage.SYNC) }
+            assertNotNull("\"Routes sync after the tour\"", findFresh(By.text(Txt.s(Res.string.sync_during_tour)), 10_000))
+            shot("2-routes-after-the-tour")
+        } finally {
+            if (launched) {
+                scenario.onActivity { vm(it).showSettings = false }
+                val done = CountDownLatch(1)
+                scenario.onActivity { vm(it).sync.unpair { done.countDown() } }
+                done.await(10, TimeUnit.SECONDS)
+            }
+            PlanSync.mailboxForTests = null
+        }
     }
 
     private fun share(text: String) {

@@ -8,6 +8,7 @@
   "sync_menu_ended": {"area": "Plan · ☰ menu", "context": "Amber second line of \"Pair with browser\": the pairing was ended in the browser (until Browser sync is opened)", "priority": 2, "confidence": "sicher", "max": 40},
   "sync_menu_stale": {"area": "Plan · ☰ menu", "context": "Amber second line of the sync item: online and paired, but no good sync for more than 6 hours", "priority": 2, "confidence": "sicher", "max": 40},
   "sync_menu_unpaired_browser": {"area": "Plan · ☰ menu / Settings · Browser sync", "context": "Grey second line under \"Pair with browser\" (and the line on the Browser sync page): the user unpaired in the browser, the phone still has its pairing – scanning a new code pairs again", "priority": 2, "confidence": "sicher", "max": 40},
+  "sync_waiting_browser": {"area": "Plan · ☰ menu / Settings · Browser sync", "context": "Grey second line under \"Paired with browser\" (no ✓) and on the Browser sync page: paired, but the scanned browser has not answered yet (field bug 2026-10-31: never \"connected\" before)", "priority": 2, "confidence": "sicher", "max": 40},
   "sync_menu_synced": {"area": "Plan · ☰ menu", "context": "In the grey line \"Pixel 8 ↔ Chrome on Linux · synced 1 min ago\": %1$s = sync_ago_* or a time; the PHONE's own last good sync, not when the browser was seen", "priority": 2, "confidence": "sicher"},
   "sync_intro": {"area": "Settings · Browser sync", "context": "First line of the page when not paired", "priority": 2, "confidence": "sicher"},
   "sync_steps": {"area": "Settings · Browser sync", "context": "How to pair: the web planner's header button is \"Pair phone\" (the German web text must match)", "priority": 1, "confidence": "bitte prüfen", "doubt": "Must match the web planner's German header button text"},
@@ -42,7 +43,7 @@
   "sync_join_failed": {"area": "Settings · Browser sync", "context": "Red line: the server refused pairing another browser", "priority": 3, "confidence": "sicher"},
   "sync_copy": {"area": "My routes", "context": "Word in brackets after a route kept as a copy when phone and browser changed it at the same time: Waalweg (copy)", "priority": 3, "confidence": "sicher", "max": 12},
   "sync_link_broken": {"area": "Settings · Browser sync", "context": "Red line: a cut-off / unknown pairing code", "priority": 3, "confidence": "sicher"},
-  "sync_during_tour": {"area": "Settings · Browser sync", "context": "Grey line: a browser paired during a recording (nothing syncs before the tour ends)", "priority": 3, "confidence": "sicher"},
+  "sync_during_tour": {"area": "Plan · ☰ menu / Settings · Browser sync", "context": "Grey line while a tour records: the pairing is made (the browser sees the phone), the saved routes sync when the tour has ended", "priority": 2, "confidence": "sicher", "max": 40},
   "sync_untitled_route": {"area": "My routes", "context": "Name of a route from the browser without a name", "priority": 3, "confidence": "sicher"},
   "sync_untitled_track": {"area": "My routes", "context": "Name of a track from the browser without a name", "priority": 3, "confidence": "sicher"},
   "sync_sum_off": {"area": "Settings list", "context": "Line under the topic \"Browser sync\" when not paired", "priority": 2, "confidence": "sicher", "max": 50}

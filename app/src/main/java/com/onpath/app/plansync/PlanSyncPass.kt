@@ -47,7 +47,7 @@ interface TourStore {
  *
  * The ledger and the links are written after the round, also when it failed, and before the import starts; an import
  * that fails stays [SyncLinks.pending] and is tried again next pass. Runs on a background thread; never during a
- * recording ([recording] is asked before the import too).
+ * recording ([recording] is asked before the import too) – then only the pairing [handshake].
  */
 class PlanSyncPass(
     private val files: SyncFiles,
@@ -124,6 +124,30 @@ class PlanSyncPass(
         if (outcome is SyncRound.Outcome.Done) files.saveLastOk(now)
         return r.copy(outcome = outcome, peer = peer, unreadable = r.unreadable + ((outcome as? SyncRound.Outcome.Done)?.unreadable ?: 0) +
             ledger.entries.values.count { !it.item.deleted && it.item.kind != SyncItem.DEVICE && it.item.kind != SyncItem.JOIN && !it.item.isUserItem })
+    }
+
+    /**
+     * The pairing handshake during a tour (field bug 2026-10-31: paired while a tour recorded, the browser waited for
+     * the phone forever): only this phone's hello goes up, and one pull shows the browser's hello. No export, no import
+     * – the tours are not read or written; routes the pull brought stay [SyncLinks.pending] and come in after the tour,
+     * the phone's own routes stay in the outbox. Not a good pass ([SyncFiles.lastOk] stays). Null when not paired.
+     */
+    fun handshake(): Result? {
+        val pairing = files.pairing() ?: return null
+        val keys = SyncKeys(pairing.secret ?: return null)
+        val device = files.device(random)
+        val ledger = files.ledger()
+        val links = files.links()
+        ledger.hello(device, deviceName, clock(), SyncItem.ROLE_PHONE)
+        val hello = SyncFormat.deviceItemId(device)
+        val before = ledger.entries.mapValues { it.value.item }
+        val outcome = SyncRound(keys, mailbox(keys), { random(12) }, aead).run(ledger) { it.id == hello }
+        for ((id, e) in ledger.entries) if (e.item.isUserItem && e.item != before[id]) links.markPending(id)
+        files.saveLinks(links)
+        files.saveLedger(ledger)
+        val peer = ledger.devices(device).firstOrNull()?.name
+        if (outcome is SyncRound.Outcome.Ended) return Result(outcome, peer)
+        return Result(outcome, peer, skippedForRecording = true)
     }
 
     /** Local tours → ledger. */
@@ -270,6 +294,7 @@ class PlanSyncPass(
         l.forget()
         files.saveLedger(l)
         files.marks.clear()
+        files.clearScan()
         files.forgetPairing()
     }
 }
