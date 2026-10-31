@@ -22,6 +22,8 @@ class OnPathApp : Application() {
         // Must happen before any MapView is created. No API key / network needed.
         MapLibre.getInstance(this)
         RecordingService.createChannels(this)
+        // on screen or not: the off-route question is a heads-up only when the app is not on screen (AppVisibility)
+        registerActivityLifecycleCallbacks(com.onpath.app.recording.AppVisibility.callbacks)
         // the search index's size in the health line (only when it was built – the line never builds it)
         com.onpath.app.debug.Health.searchEntries = {
             com.onpath.app.ui.search.SearchSession.peekAreas(filesDir)?.latest?.size

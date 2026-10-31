@@ -697,7 +697,10 @@ class RecordingService : Service() {
     /**
      * The off-route notification carries the same question as the screen ("Take new route" / "Keep original").
      * Ongoing: it stays until answered or until the user is back on the route. Posted with sound once per
-     * off-route event (our own vibration comes with it), then updated silently.
+     * off-route event (our own vibration comes with it), then updated silently. No double question (owner 2026-10-31):
+     * while the app is on screen its box asks – the notification then goes on the quiet navigation channel (lock
+     * screen, no heads-up); a heads-up only when the app is not on screen ([TourChannels.forQuestion]). A change of
+     * visibility re-posts it on the other channel (still only alerting once).
      */
     private fun updateAlert() {
         val nav = navigator
@@ -707,7 +710,8 @@ class RecordingService : Service() {
             return
         }
         val hint = NavText.toRoute(nav.toRoute)
-        val key = when (pr) { is NavPrompt.Question -> "q${pr.id}"; else -> pr.javaClass.simpleName }
+        val channel = TourChannels.forQuestion(AppVisibility.visible)
+        val key = when (pr) { is NavPrompt.Question -> "q${pr.id}"; else -> pr.javaClass.simpleName } + "@" + channel
         val now = SystemClock.elapsedRealtime()
         if (key == alertKey && now - alertPosted < 15_000) return
         alertKey = key; alertPosted = now
@@ -716,12 +720,12 @@ class RecordingService : Service() {
                 is NavPrompt.Question -> NavText.question(pr)
                 else -> hint ?: follow?.first?.let { Txt.s(Res.string.nav_back_to, it) } ?: Txt.s(Res.string.nav_back_to_route)
             }
-            val b = NotificationCompat.Builder(this, CHANNEL_NAV)
+            val b = NotificationCompat.Builder(this, channel)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(NavText.title(pr))
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setPriority(if (channel == TourChannels.QUESTION) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT)
                 .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // answerable on the lock screen
                 .setOngoing(true)
@@ -1075,7 +1079,7 @@ class RecordingService : Service() {
         /** Old off-route channel (vibrated by itself); deleted, see [CHANNEL_NAV]. */
         private const val CHANNEL_ALERT_OLD = "offroute"
         /** Off-route question: high importance with sound, no channel vibration (the service vibrates once itself). */
-        const val CHANNEL_NAV = "offroute-question"
+        const val CHANNEL_NAV = TourChannels.QUESTION
         val OFF_ROUTE_VIBRATION = longArrayOf(0, 400, 200, 400, 200, 600)
         private const val ALERT_ID = 43
         private const val PAUSE_ALERT_ID = 44

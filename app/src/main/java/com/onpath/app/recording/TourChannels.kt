@@ -40,4 +40,14 @@ object TourChannels {
     data class Post(val id: Int, val channel: String)
 
     fun forTour(followingRoute: Boolean) = Post(NOTIF_ID, if (followingRoute) NAVIGATION else RECORDING)
+
+    /** The off-route question's own channel: importance HIGH (heads-up with sound), on the lock screen. */
+    const val QUESTION = "offroute-question"
+
+    /**
+     * Where the off-route / re-route question is posted (owner 2026-10-31: no double question). While the app is on
+     * screen ([appVisible]) the box at the top already asks: the quiet [NAVIGATION] channel (lock screen keeps it, no
+     * heads-up, no sound); otherwise [QUESTION] – a heads-up.
+     */
+    fun forQuestion(appVisible: Boolean): String = if (appVisible) NAVIGATION else QUESTION
 }
