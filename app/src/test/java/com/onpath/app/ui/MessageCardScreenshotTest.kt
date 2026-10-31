@@ -49,7 +49,7 @@ open class MessageCardScreenshotTest {
                 mapNoticeMessage(CellCardUi.Working(Txt.s(Res.string.maps_card_ready_to_download), null, emptyList(), null, null, null,
                     Txt.p(Res.plurals.maps_card_wait_wifi_mb, 2, 2, 25L), canLoadNow = true), CellCardCallbacks())?.let { MessageCard(it) }
                 MessageCard(updateMessage("0.4.1", {}, {}))
-                val q = com.onpath.app.navigation.NavPrompt.Question(1, 350.0, 600.0, 20.0, emptyList(), 900.0, 2_000.0)
+                val q = com.onpath.app.navigation.NavPrompt.Question(1, 350.0, 600.0, 20.0, emptyList(), 900.0, 2_000.0, offM = 118.0)
                 MessageCard(rerouteMessage(q, {}, {}))
                 MessageCard(syncNoteMessage(SyncNote.PAIRED, onOk = {}))
                 MessageCard(tourBlockedMessage {})
