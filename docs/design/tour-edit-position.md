@@ -57,6 +57,34 @@ Example plan 1 → 2 → 3 → 4, the user between 2 and 3 (1, 2 passed).
 - Passed points grey with a ✓ (numbers kept, so "stop 3" still means the same point).
 - The plan sheet's summary counts from the position (time / km to go), like Navigate.
 
-## 5. Tests first
+## 5. Messages (FRAGE / HINWEIS / ANZEIGE, `docs/design/ui-style.md`)
+What the map shows is not said again. Undo stays on the map in every case.
+
+| Case | Message |
+| --- | --- |
+| Point ahead deleted / moved / added, points still ahead | none – the routing ring at the position, then the new line |
+| Destination deleted, a point ahead becomes the destination | none – its red marker |
+| Passed point deleted | none – only the pale line behind changes |
+| A point counts as passed | none – grey point with ✓ |
+| Nothing ahead any more | FRAGE "Kein Ziel mehr vor dir." · "Die Tour wird weiter aufgezeichnet. Rückgängig holt den Punkt zurück." – [Zurück zum Start] / [Nur aufzeichnen]; replaces `nav_route_back_title` / `_text` |
+| … Zurück zum Start without a position | HINWEIS red, existing `msg_route_back_no_position` [OK] |
+| … Nur aufzeichnen / all points deleted | ANZEIGE: status line "Tour läuft · nur Aufzeichnung" while it holds |
+| No route to the points ahead (no data / no way) | HINWEIS red "Keine Route zu Punkt N gefunden. Die Tour wird weiter aufgezeichnet." [OK]; the guidance followed so far stays |
+| Off route | unchanged (C5) |
+
+## 6. Separation from the shared planner (owner 2026-10-31)
+The browser planner and the app share the plan computation (web `appFiles`: `routing/Planner`, `PlanResult`,
+`PlanEdits`, `PlanPoints`, `WaypointInsertion`, `RoutingContract` …). The position split is **only the app's tour** –
+it decides *which part* of the plan is followed, never *how* a plan is computed or edited.
+- New pure file `navigation/TourSplit.kt` (app only, **not** in the web `appFiles`): plan points + passed set +
+  position → ahead points, or "nothing ahead". Passed-point rules (§2) live there too.
+- The shared files stay unchanged: the plan is edited exactly as in the browser (`PlanPoints.delete` / `deleteAt` /
+  `move`, `WaypointInsertion`), and the followed line is computed by the same `PlanResult` for the points
+  `[position] + ahead`. "A new point only between ahead points" = `TourSplit` hands `WaypointInsertion` the ahead part
+  only and maps the index back – `WaypointInsertion` itself does not know about tours.
+- Guard: `SharedCoreRuleTest` – no file in the web `appFiles` list may reference `TourSplit` (or the position split);
+  the web planner behaves exactly as before.
+
+## 7. Tests first
 Every row of §3 gets a unit test (pure rule: plan points + passed set + edit → ahead points / question), the field case
 first. Core features C1 / C5 rows and `docs/release-rundgang.md` get the field case as a flow.
