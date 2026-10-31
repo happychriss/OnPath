@@ -39,8 +39,8 @@ the phone and the bin. First start with no tours asks once (prefs `backup` → `
 End to end on an emulator: `app/src/androidTest/.../CorePlanE2ETest` – the real app and MapLibre
 map, a finger held on the screen (UiAutomator): hold → Start here, hold → point added, hold a point → menu → Delete,
 the same after a map style reload and on a turned map. Runs in `.github/workflows/e2e.yml` on every app push to main,
-beside the release (owner); the release gate is only the short `StartSmokeE2ETest` (the app opens, also with a
-saved plan – that start once crashed). A red full run is fixed at once. On failure the run keeps
+beside the release (owner); the release gate is the short `StartSmokeE2ETest` (the app opens, also with a
+saved plan – that start once crashed) and the Release-Rundgang (`docs/release-rundgang.md`). A red full run is fixed at once. On failure the run keeps
 screenshots, the app state and logcat as the artifact "e2e-report".
 
 **Demo location** (Developer tools only – screenshots of navigation, re-planning during a tour, the slide switch and

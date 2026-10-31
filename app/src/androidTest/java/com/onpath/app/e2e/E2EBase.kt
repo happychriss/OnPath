@@ -36,10 +36,15 @@ abstract class E2EBase {
     @get:Rule val testName = org.junit.rules.TestName()
     protected val device: UiDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
     protected lateinit var scenario: ActivityScenario<MainActivity>
+    /** The app was started in this test ([launch]). */
+    protected val launched: Boolean get() = ::scenario.isInitialized
     protected val dataDir: File get() = InstrumentationRegistry.getInstrumentation().targetContext.let { File(it.getExternalFilesDir(null) ?: it.filesDir, "onpath") }
 
-    /** Clean app state + the tiny map package; [beforeLaunch] runs before the app starts (e.g. a GPS fix). */
-    protected fun launch(beforeLaunch: () -> Unit = {}) {
+    /**
+     * Clean app state + the tiny map package; [extraData] adds files to it (e.g. pois.geojson); [beforeLaunch] runs
+     * before the app starts (e.g. a GPS fix).
+     */
+    protected fun launch(extraData: (File) -> Unit = {}, beforeLaunch: () -> Unit = {}) {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         // empty plan, default camera (Meran)
         ctx.getSharedPreferences("onpath", 0).edit().clear().commit()
@@ -50,6 +55,7 @@ abstract class E2EBase {
         val dir = dataDir
         dir.deleteRecursively(); dir.mkdirs()
         writeTinyMapPackage(dir)
+        extraData(dir)
         gpsAt(MERAN_LAT, MERAN_LON) // the CI emulator sits in California: the app would load that area first (modal)
         beforeLaunch()
         wakeScreen()

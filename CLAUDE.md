@@ -50,7 +50,7 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
   when no device/emulator is available.
 - **Emulator (core features end to end):** `./gradlew connectedDebugAndroidTest -Ponpath.e2e=true` (needs an x86_64
   emulator; CI: `.github/workflows/e2e.yml` on every push to main, beside releases; a red run is
-  fixed at once. Release gate = only the short `StartSmokeE2ETest`, the app opens). `-Ponpath.e2e=true` adds
+  fixed at once. Release gate = the short `StartSmokeE2ETest` + the Release-Rundgang, see Releases). `-Ponpath.e2e=true` adds
   x86_64 libs – never for a released APK.
 - Routing on the JVM without a phone: `tools/routing/jvm-test/run.sh <segmentsDir>` (header lists the test mains, e.g.
   `GpxCompare.kt` + `gpx_compare_report.py`: our route vs a reference GPX line – aggregate numbers only in the repo).
@@ -109,6 +109,9 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
   reports new findings (known ones in `app/lint-baseline.xml`) – not a gate; a red run is fixed at once, like E2E.
   Actions in the workflows are pinned to a commit (`# vX.Y.Z` beside it). Cloud sessions may not
   push tags or create releases themselves; this push-to-main flow avoids both. Manual: Actions → Release → Run.
+- **Before a release: Release-Rundgang** (`tools/ci/release_rundgang.sh`, flows in `docs/release-rundgang.md`) – fixed
+  user flows in one emulator with the demo ride, ~5 min on donald; a failed flow = no release (CI: `release.yml` job `smoke`).
+  Every field bug adds a flow.
 - The app (Settings → Updates, plus a quiet daily check) installs new releases via `update/AppUpdater.kt`.
 
 ## Conventions

@@ -32,13 +32,13 @@ concurrency:
 
 jobs:
   # Owner decisions: the full emulator suite (e2e.yml) runs beside the release on every push to main; before
-  # publishing only a short start test (the app opens, also with a saved plan). Unit tests below.
-  # Owner ("make building shorter"): smoke and build run side by side, publish waits for both – the same
-  # gates, ~7 instead of ~12 minutes.
+  # publishing the short start test (the app opens, also with a saved plan) and the Release-Rundgang (owner
+  # 2026-10-31, docs/release-rundgang.md: the fixed user flows with the demo ride, ~5 min of tests; a failed flow = no
+  # release). Unit tests below. Smoke and build run side by side, publish waits for both.
   smoke:
     uses: ./.github/workflows/e2e.yml
     with:
-      tests: com.onpath.app.e2e.StartSmokeE2ETest
+      tests: com.onpath.app.e2e.StartSmokeE2ETest,com.onpath.app.e2e.ReleaseRundgang
 
   build:
     runs-on: ubuntu-latest
@@ -152,7 +152,7 @@ jobs:
           path: dist/
           retention-days: 3
 
-  # Publishes only when the start test on the emulator and the unit tests + APK build are both green.
+  # Publishes only when the start test + Release-Rundgang on the emulator and the unit tests + APK build are all green.
   publish:
     needs: [smoke, build]
     if: needs.build.outputs.skip != 'true'

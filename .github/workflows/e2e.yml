@@ -1,8 +1,9 @@
 # End-to-end tests of the core features (docs/core-features.md) on an Android emulator: the real app and map,
 # a finger held on the screen (app/src/androidTest). Owner: "not good to find out during walking".
 #
-# Runs on every push to main that touches the app and by hand (owner: beside releases, not as a gate);
-# release.yml calls it with only StartSmokeE2ETest as a short gate (the app opens).
+# Runs on every push to main that touches the app and by hand (owner: beside releases, not as a gate) – without the
+# Release-Rundgang (~5 min more); release.yml calls it with StartSmokeE2ETest + ReleaseRundgang as the gate before a
+# release (docs/release-rundgang.md). The screenshots (/sdcard/e2e) are always in the report "e2e-report".
 name: E2E
 
 on:
@@ -20,7 +21,7 @@ on:
   workflow_call:
     inputs:
       tests:
-        description: "Only these test classes (release.yml: the short start test)"
+        description: "Only these test classes (release.yml: the start test + the Release-Rundgang)"
         type: string
         required: false
         default: ""
@@ -108,7 +109,7 @@ jobs:
           script: |
             adb logcat -c || true
             adb push rd5/E10_N45.rd5 /data/local/tmp/E10_N45.rd5 && adb shell chmod 644 /data/local/tmp/E10_N45.rd5 || true
-            ./gradlew --no-daemon connectedDebugAndroidTest -Ponpath.e2e=true ${{ inputs.tests != '' && format('-Pandroid.testInstrumentationRunnerArguments.class={0}', inputs.tests) || '' }} || (mkdir -p e2e-out; adb pull /sdcard/e2e e2e-out/ || true; adb logcat -d > e2e-out/logcat.txt || true; exit 1)
+            ./gradlew --no-daemon connectedDebugAndroidTest -Ponpath.e2e=true ${{ inputs.tests != '' && format('-Pandroid.testInstrumentationRunnerArguments.class={0}', inputs.tests) || '-Pandroid.testInstrumentationRunnerArguments.notClass=com.onpath.app.e2e.ReleaseRundgang' }} && R=0 || R=1; mkdir -p e2e-out; adb pull /sdcard/e2e e2e-out/ || true; [ $R = 0 ] || { adb logcat -d > e2e-out/logcat.txt || true; exit 1; }
 
       - name: Test report
         if: always()

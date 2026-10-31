@@ -144,7 +144,7 @@ class PlanSync(
         { if (it == SyncItem.TRACK) Txt.s(Res.string.sync_untitled_track) else Txt.s(Res.string.sync_untitled_route) }, JcaAead,
         copyLabel(Txt.s(Res.string.sync_copy)), routing)
 
-    private fun mailbox(keys: SyncKeys): Mailbox = HttpMailbox(server, keys)
+    private fun mailbox(keys: SyncKeys): Mailbox = mailboxForTests?.invoke(keys) ?: HttpMailbox(server, keys)
     private fun randomBytes(n: Int) = ByteArray(n).also { rnd.nextBytes(it) }
 
     /** Reads the stored pairing (background) – the state for Settings; then a first pass. */
@@ -357,6 +357,12 @@ class PlanSync(
     companion object {
         /** The mailbox's host (docs/design/web-sync.md §8: the planner's host, no CORS) – the one constant. */
         const val SERVER = PlanLinks.BASE
+
+        /**
+         * Emulator tests only (Release-Rundgang, docs/release-rundgang.md): a mailbox in memory instead of [SERVER], so
+         * the flow "a plan from the browser arrives" never depends on the network or the server's limits. Null in the app.
+         */
+        @androidx.annotation.VisibleForTesting @Volatile var mailboxForTests: ((SyncKeys) -> Mailbox)? = null
         const val CHANGE_DELAY_MS = 1_500L
         /** After a JOIN: a pass this much later picks up the joined browser's hello (it reads the JOIN on its next look). */
         const val JOIN_PULL_DELAY_MS = 20_000L
