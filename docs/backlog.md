@@ -94,6 +94,8 @@ the git log.
       `PlanPoints.deleteAt`, `"move"` → `PlanPoints.move`, `deletePoint` through the engine, meta by value – steps in
       `docs/handoff-web-parity-b.md` §3.
   - *Should:*
+    - Map symbols: rock / scree from z14, stronger orchard / vineyard · 2026-10-31 · nothing to code – `copy-engine.mjs`
+      copies `style/f2/onpath.json` + `sprites/` on the next merge of main; just check them on the web map.
     - One plan GPX export · `gpx/PlanGpx.kt` (pure, shared) · the web's `WebApi.gpx` writes the line only: use
       `PlanGpx.export` (named route points as `<wpt>`, sport, "<name> - plan.gpx"); on import `PlanGpx.stopsOf` first
       (an exported plan comes back exactly, no fitting) – `docs/handoff-web-parity-b.md` §1–2.
