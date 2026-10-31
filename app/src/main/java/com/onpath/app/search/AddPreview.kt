@@ -23,8 +23,8 @@ object AddPreview {
      * @param speedMps average speed of the current route (distance / duration), for "+15 min"; null = no time
      */
     fun of(waypoints: List<GeoPoint>, p: GeoPoint, route: List<GeoPoint>?, speedMps: Double? = null,
-           lineSnapM: Double = 30.0): Preview {
-        val d = WaypointInsertion.decide(waypoints, p, route, lineSnapM)
+           lineSnapM: Double = 30.0, here: GeoPoint? = null): Preview {
+        val d = WaypointInsertion.decide(waypoints, p, route, lineSnapM, here)
         val n = waypoints.size
         val extra: Double? = when {
             n < 2 -> null

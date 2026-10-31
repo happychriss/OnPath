@@ -29,6 +29,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +45,9 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -74,6 +81,13 @@ fun MapOverlayHost(
     val c = controller ?: return
     if (!vm.canEditMap) return
     val ctx = LocalContext.current
+    // the route for the point just added / moved is computed: a spinner around it (Bug 02), after a short delay
+    RoutingSpot.shown(vm.routing, vm.routingSpot, vm.waypoints)?.let { p ->
+        var late by remember(p) { mutableStateOf(false) }
+        LaunchedEffect(p) { kotlinx.coroutines.delay(RoutingSpot.DELAY_MS); late = true }
+        @Suppress("UNUSED_EXPRESSION") cameraTick // re-read the projection on every camera move
+        if (late) c.toScreen(p)?.let { s -> RoutingRing(Offset(s.x, s.y)) }
+    }
     vm.firstPointMenu?.let { p ->
         Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { com.onpath.app.debug.Problems.trace("plan", "First-point menu closed: held spot left the visible map (onGone)"); vm.firstPointMenu = null }) {
             FirstPointMenu(MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
@@ -111,6 +125,29 @@ fun MapOverlayHost(
                 }
             }
         }
+    }
+}
+
+/**
+ * The spinner of [RoutingSpot]: a ring turning around the route point at [center] (pixels in this box) while its route
+ * is computed. Not a touch target: map gestures pass through.
+ */
+@Composable
+fun RoutingRing(center: Offset, stillProgress: Float? = null) {
+    val d = LocalDensity.current
+    val r = with(d) { 21.dp.roundToPx() }
+    val label = com.onpath.app.ui.PlanStatus.CALCULATING
+    val m = Modifier
+        .offset { androidx.compose.ui.unit.IntOffset(center.x.toInt() - r, center.y.toInt() - r) }
+        .size(42.dp)
+        .semantics { contentDescription = label }
+    val color = MaterialTheme.colorScheme.primary
+    val track = Color.White.copy(alpha = 0.85f)
+    Box(Modifier.fillMaxSize()) {
+        // [stillProgress]: a fixed arc for screenshots (the turning ring has no arc in its first frame)
+        if (stillProgress != null) androidx.compose.material3.CircularProgressIndicator(progress = { stillProgress }, modifier = m,
+            color = color, trackColor = track, strokeWidth = 4.dp)
+        else androidx.compose.material3.CircularProgressIndicator(modifier = m, color = color, trackColor = track, strokeWidth = 4.dp)
     }
 }
 

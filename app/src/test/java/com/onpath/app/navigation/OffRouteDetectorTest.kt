@@ -234,4 +234,12 @@ class OffRouteDetectorTest {
         assertTrue(d.reached)
         assertEquals(1_500.0, d.progressM, 15.0)
     }
+
+    /** Bug 02: a reached line, the user stands still 60 km away – LEAVING forever must not show progress on the line. */
+    @Test fun bug02StandingStillFarFromAReachedLineIsNotOnIt() {
+        val d = OffRouteDetector(40.0)
+        d.setLine(NavLine(line(0.0 to 0.0, 2_700.0 to 0.0)), null, reached = true)
+        (0 until 60).forEach { i -> d.onFix(fix(-60_000.0, 0.0, i * 1000L)) }
+        assertTrue("state ${d.state}, shown ${d.shownAlongM}", d.shownAlongM == null)
+    }
 }

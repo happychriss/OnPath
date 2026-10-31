@@ -60,4 +60,27 @@ class WaypointInsertionTest {
         val d = WaypointInsertion.distanceToSegment(GeoPoint(46.671, 11.165), a, b)
         assertEquals(111.0, d, 3.0)
     }
+
+    // ---- Bug 02 (field 2026-10-31): led ("Guide me") to a plan ~50 km away, a hold near home ----
+
+    /** Dortmund-like 4-point plan far north-east of "here" (Hilden-like); the hold is near here, on the way there. */
+    private val far = listOf(GeoPoint(51.49, 7.41), GeoPoint(51.495, 7.42), GeoPoint(51.50, 7.415), GeoPoint(51.492, 7.405))
+    private val here = GeoPoint(51.17, 6.94)
+    private val nearHome = GeoPoint(51.19, 6.98)
+
+    /** Field: without the way there the hold became a new destination after the plan's end (57 km back home). */
+    @Test fun bug02FarHoldWithoutTheWayThereStaysANewDestination() {
+        assertEquals(WaypointInsertion.Decision(4, Kind.DESTINATION), WaypointInsertion.decide(far, nearHome, null, 30.0))
+    }
+
+    /** Led to the plan and never on it: a hold on the way there is the new start (a stop on the way), no question. */
+    @Test fun bug02FarHoldOnTheWayThereBecomesTheNewStart() {
+        assertEquals(WaypointInsertion.Decision(0, Kind.START), WaypointInsertion.decide(far, nearHome, null, 30.0, here = here))
+    }
+
+    /** Even while led there: a point beyond the plan's end still extends the route (rule 3 as before). */
+    @Test fun bug02HoldBeyondTheEndWhileLedStaysADestination() {
+        val beyond = GeoPoint(51.60, 7.60) // ~15 km past the plan, away from here
+        assertEquals(WaypointInsertion.Decision(4, Kind.DESTINATION), WaypointInsertion.decide(far, beyond, null, 30.0, here = here))
+    }
 }

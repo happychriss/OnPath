@@ -40,6 +40,11 @@ data class NavSession(
      * is "the route starts 31 km away", never "off route"; saved so a restart mid-tour does not forget it.
      */
     val reached: Boolean = false,
+    /**
+     * "Guide me" was chosen for this route while it was never reached (Bug 02, owner 2026-10-31): a plan edited before
+     * the route is reached is led to again at once (here → the start → all points), never dropped for the bare plan.
+     */
+    val lead: Boolean = false,
 ) {
     val active: List<GeoPoint> get() = current ?: original
     val rerouted: Boolean get() = current != null
@@ -56,7 +61,24 @@ data class NavSession(
             val ns = alongs.mapIndexed { i, a -> NavStop(stops[i], a, names.getOrNull(i), i in pinned) }
             return NavSession(kind, name, activity, sac, line, ns)
         }
+
+        /**
+         * A fresh session for a plan edited mid-tour ([fresh]), after [old]: once on the route, off the edited line is off
+         * route as before ([reached] carries over); never reached but "Guide me" chosen → [lead] carries over and the
+         * service leads to the edited plan again ([needsLead]). A followed track starts afresh.
+         */
+        fun afterPlanEdit(old: NavSession?, fresh: NavSession): NavSession {
+            if (old == null || old.kind != NavKind.PLAN || fresh.kind != NavKind.PLAN || fresh.rerouted) return fresh
+            return when {
+                old.reached -> if (fresh.reached) fresh else fresh.copy(reached = true)
+                old.lead && !fresh.reached && !fresh.lead -> fresh.copy(lead = true)
+                else -> fresh
+            }
+        }
     }
+
+    /** "Guide me" holds for this plan but no way there is followed yet (plan edited before the route was reached). */
+    val needsLead: Boolean get() = lead && !reached && !rerouted && kind == NavKind.PLAN
 }
 
 /** JSON file for [NavSession]; never throws (a broken file = no session). */
@@ -105,6 +127,7 @@ class NavSessionStore(private val file: File) {
             .put("visited", JSONArray().apply { s.visited.sorted().forEach { put(it) } })
             .put("version", s.version)
             .put("reached", s.reached)
+            .put("lead", s.lead)
 
         fun fromJson(o: JSONObject): NavSession? {
             val original = withShapes(withTurns(withWays(readPts(o.getJSONArray("original")), o.optJSONArray("originalWays")),
@@ -133,6 +156,7 @@ class NavSessionStore(private val file: File) {
                 leftAtM = o.optDouble("leftAt", 0.0), visited = visited, version = o.optInt("version", 0),
                 // a file without the key was written by an older app during a running tour: assume it was reached
                 reached = o.optBoolean("reached", true),
+                lead = o.optBoolean("lead", false),
             )
         }
 

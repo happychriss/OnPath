@@ -551,16 +551,23 @@ class RecordingService : Service() {
             }
         }
         // the plan edited mid-tour ("Continue navigation"): the rider has been on the route already – off the edited
-        // line is off route as before, never "the route starts 3 km away" (a newly followed track starts afresh)
-        if (session != null && !session.reached && session.kind == NavKind.PLAN && old?.session?.let { it.reached && it.kind == NavKind.PLAN } == true) {
-            session = session.copy(reached = true)
-            sessionStore.save(session)
+        // line is off route as before, never "the route starts 3 km away" (a newly followed track starts afresh);
+        // never reached but led there ("Guide me", Bug 02): the edited plan is led to again at once
+        if (session != null) {
+            val carried = NavSession.afterPlanEdit(old?.session, session)
+            if (carried != session) { session = carried; sessionStore.save(carried) }
         }
         // the walking direction carries over to the new line (plan edited mid-walk: the way back of a round trip)
         navigator = session?.let { Navigator(it).apply { setNavigating(navigating); old?.let { o -> detector.adoptHeading(o.detector) } } }
         applySettings()
         timeLine()
         alertKey = null; nm().cancel(ALERT_ID)
+        navigator?.let { n ->
+            if (n.session.needsLead) {
+                Problems.trace("navigation", "Plan edited on the way there (\"Guide me\"): leading to the edited plan again")
+                handle(n.leadAgain(old?.lastPosition))
+            }
+        }
     }
 
     private fun applySettings() {

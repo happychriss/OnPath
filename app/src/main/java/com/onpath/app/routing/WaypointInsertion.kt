@@ -13,6 +13,10 @@ import com.onpath.app.data.Geo
  *    unless appending after the destination is cheaper – then the point becomes the new destination.
  *    Example: A→B, tap beside the middle → via between A and B; tap beyond B → new destination.
  *
+ * 4. Led to a far route that was never reached ("Guide me" during a tour, [here] = the position, Bug 02): the way
+ *    there counts as a leg too – a point that fits best between here and the start becomes the new START (a stop on the
+ *    way there), not a destination after the route's end.
+ *
  * The UI shows what happened ("Added as stop 2") with one-tap alternatives, so the user stays in control.
  */
 object WaypointInsertion {
@@ -27,8 +31,9 @@ object WaypointInsertion {
      * @param route current route geometry through all waypoints (may be empty / null)
      * @param lineSnapM distance to the route line that counts as "tapped on the line"
      *        (callers pass ~ 24 dp converted to metres at the current zoom)
+     * @param here the position while a tour is led to this plan and has never reached it (rule 4); else null
      */
-    fun decide(waypoints: List<GeoPoint>, p: GeoPoint, route: List<GeoPoint>?, lineSnapM: Double): Decision {
+    fun decide(waypoints: List<GeoPoint>, p: GeoPoint, route: List<GeoPoint>?, lineSnapM: Double, here: GeoPoint? = null): Decision {
         if (waypoints.isEmpty()) return Decision(0, Kind.START)
         if (waypoints.size == 1) return Decision(1, Kind.DESTINATION)
 
@@ -50,6 +55,10 @@ object WaypointInsertion {
             if (cost < bestCost) { bestCost = cost; bestLeg = i }
         }
         val appendCost = Geo.distance(waypoints.last(), p)
+        // Rule 4: on the way there (here → start) – the new start
+        val first = waypoints.first()
+        val wayThereCost = here?.let { Geo.distance(it, p) + Geo.distance(p, first) - Geo.distance(it, first) }
+        if (wayThereCost != null && wayThereCost < bestCost && wayThereCost < appendCost) return Decision(0, Kind.START)
         return if (bestCost < appendCost) Decision(bestLeg + 1, Kind.VIA_BEST_FIT)
         else Decision(waypoints.size, Kind.DESTINATION)
     }

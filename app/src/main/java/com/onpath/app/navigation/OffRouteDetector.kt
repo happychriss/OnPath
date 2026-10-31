@@ -72,6 +72,8 @@ class OffRouteDetector(
      */
     var reached = false
         private set
+    /** Off distance of the last fix (its accuracy margin included). */
+    private var lastOffM = offRouteM
 
     private var started = false          // a first match was made on this line
     private var provisional = false       // matched before the walking direction was known (may be corrected)
@@ -127,7 +129,10 @@ class OffRouteDetector(
      */
     val shownAlongM: Double?
         get() = when (state) {
-            State.ON_ROUTE, State.LEAVING -> progressM
+            State.ON_ROUTE -> progressM
+            // Bug 02: leaving counts as on the route only near the line – a plan edited 60 km away goes NO_GPS → LEAVING,
+            // and standing still never confirms "off route": no progress there, so no junction cues, no "to go"
+            State.LEAVING -> progressM.takeIf { (lastDistanceM ?: 0.0) <= LEAVING_SHOWN_FACTOR * lastOffM }
             State.OFF_ROUTE -> progressM.takeIf { backward && onLine }
             State.NO_GPS -> progressM.takeIf { started && onLine }
         }
@@ -149,6 +154,7 @@ class OffRouteDetector(
         if (l == null || !l.isUsable) return Status(state, null, progressM)
         val p = f.point
         val dOff = offDistance(f.accuracyM)
+        lastOffM = dOff
         val dOn = dOff / 2
         val h = move()
         val pick = pick(l, p, dOff, h) ?: return Status(state, null, progressM)
@@ -341,6 +347,8 @@ class OffRouteDetector(
         const val MOVE_M = 25.0
         const val MAX_MARGIN_M = 20.0
         const val REJOIN_FIXES = 3
+        /** While leaving, progress is shown only within this many off distances of the line ([shownAlongM]). */
+        const val LEAVING_SHOWN_FACTOR = 2.0
         const val BACK_M = 300.0
         const val AHEAD_M = 2_000.0
         /** While off the route (or after a GPS gap) a rejoin further ahead also counts (shortcut). */

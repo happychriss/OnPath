@@ -766,6 +766,23 @@ class ScreenshotTest {
         }
     }
 
+    /**
+     * Bug 02: a point just held far away – while its route is computed a ring turns around it on the map (the sheet
+     * shows its thin progress line as before).
+     */
+    @Test fun planRoutingSpinnerAtNewPoint() = paparazzi.snapshot {
+        OnPathTheme {
+            Frame { PlanPanel(planUi(n = 4, routing = true), PlanCallbacks()) }
+            val d = androidx.compose.ui.platform.LocalDensity.current
+            val a = with(d) { androidx.compose.ui.geometry.Offset(150.dp.toPx(), 420.dp.toPx()) }
+            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                drawCircle(androidx.compose.ui.graphics.Color.White, 13.dp.toPx(), a)
+                drawCircle(OnPathColors.Bad, 11.dp.toPx(), a)
+            }
+            RoutingRing(a, stillProgress = 0.3f)
+        }
+    }
+
     /** Hold on the start (unnamed): only Delete – it already is the start, it can't be the end of the route. */
     @Test fun pointMenuStart() = paparazzi.snapshot {
         OnPathTheme {

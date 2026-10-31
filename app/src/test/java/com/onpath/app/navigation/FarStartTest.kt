@@ -194,4 +194,94 @@ class FarStartTest {
         assertEquals(25_000.0, p2.distanceM, 50.0)
         assertTrue(r.steps.none { it.vibrate })
     }
+    // ---- Bug 02 (field 2026-10-31, 0.13.2): "Guide me" from home ~60 km away, then a plan edit + Undo in Plan mode ----
+
+    /**
+     * Being led to the route is not being ON it: the plan's "reached" (Q9: never reached = always from the START, no
+     * off-route flow) must stay false while one walks the lead's way there, and only turn true on the plan's own line.
+     * Field: the lead was taken at 11:54:29; its first fix set "reached", a plan edit then carried it over
+     * (RecordingService.loadFollow) and the tour treated the 2.6 km plan 60 km away as reached.
+     */
+    @Test fun bug02TakingTheLeadIsNotReachingTheRoute() {
+        val r = Run(Navigator(session()))
+        r.feed(drift(-30_000.0))
+        val p = r.nav.prompt as NavPrompt.FarStart
+        val job = r.nav.leadThere(p.id).job!!
+        r.nav.onResult(job.id, Rerouter(PolyEngine()).reroute(job.request) as Rerouter.Found)
+        assertTrue(r.nav.session.rerouted)
+        // still at home, on the very start of the lead, 30 km from the plan
+        r.feed(drift(-30_000.0, s = 10, t0 = 100_000))
+        assertFalse("on the way there, 30 km from the plan: not reached", r.nav.session.reached)
+        // walking the lead onto the plan's start: now it is reached
+        r.feed(walk(-30_000.0 to 0.0, 300.0 to 0.0, speed = 50.0, t0Ms = 1_000_000))
+        assertTrue(r.nav.session.reached)
+    }
+
+    /**
+     * A plan edited mid-tour keeps "reached" (loadFollow). Standing still 60 km from that line, the tour must not count
+     * as on it: the service plays junction cues when `prompt == null && shownAlongM != null` – field 11:55:25 a
+     * U_TURN_LEFT vibration at home, 3 s after Undo (detector NO_GPS → LEAVING, which never confirms without moving).
+     */
+    @Test fun bug02StandingFarFromAReachedLineGivesNoProgressForCues() {
+        val nav = Navigator(session().copy(reached = true))
+        nav.setNavigating(false) // Plan mode, as in the field
+        (0 until 60).forEach { i -> nav.onFix(fix(-60_000.0, 0.0, i * 1000L)) }
+        assertNull("60 km from the line: no progress to cue from", nav.state.shownAlongM)
+    }
+
+    /** "Guide me" is remembered with the session (and in nav-session.json) until the route is reached. */
+    @Test fun bug02GuideMeIsRememberedInTheSession() {
+        val r = Run(Navigator(session()))
+        r.feed(drift(-30_000.0))
+        val p = r.nav.prompt as NavPrompt.FarStart
+        val job = r.nav.leadThere(p.id).job!!
+        r.nav.onResult(job.id, Rerouter(PolyEngine()).reroute(job.request) as Rerouter.Found)
+        assertTrue(r.nav.session.lead)
+        val back = NavSessionStore.fromJson(JSONObject(NavSessionStore.toJson(r.nav.session).toString()))!!
+        assertTrue(back.lead)
+        assertFalse(back.reached)
+        assertFalse("an older file without the key", NavSessionStore.fromJson(JSONObject(
+            NavSessionStore.toJson(session()).apply { remove("lead") }.toString()))!!.lead)
+    }
+
+    /**
+     * The plan edited on the way there (field 11:55:19 – the lead was dropped for the bare plan and "reached" carried
+     * over): the fresh session keeps "Guide me", is not reached, and is led to again at once (here → start → all points).
+     */
+    @Test fun bug02PlanEditedOnTheWayThereIsLedToAgain() {
+        val led = session().copy(lead = true, current = line(-30_000.0 to 0.0, 0.0 to 0.0), version = 1)
+        val edited = NavSession.start(NavKind.PLAN, "punkt 3", Activity.BIKE_TOURING, 2, route, stops.dropLast(1))
+        val fresh = NavSession.afterPlanEdit(led, edited)
+        assertFalse(fresh.reached)
+        assertTrue(fresh.lead)
+        assertTrue(fresh.needsLead)
+        val nav = Navigator(fresh)
+        val s = nav.leadAgain(fix(-30_000.0, 0.0, 0))
+        val job = s.job!!
+        assertTrue(job.request.toStart)
+        assertTrue((nav.prompt as NavPrompt.FarStart).searching) // "Finding a way to the start…"
+        assertFalse(s.vibrate)
+        nav.onResult(job.id, Rerouter(PolyEngine()).reroute(job.request) as Rerouter.Found)
+        assertNull(nav.prompt)
+        assertTrue(nav.session.rerouted)
+        assertTrue(nav.session.lead)
+        // standing at home on the new way there: still not reached, no off-route question
+        val r = Run(nav)
+        r.feed(drift(-30_000.0, s = 30, t0 = 10_000))
+        assertFalse(nav.session.reached)
+        assertTrue(r.steps.none { it.vibrate })
+    }
+
+    /** Once on the route an edited plan stays "reached" (off it = off route, as before); a track starts afresh. */
+    @Test fun bug02AfterPlanEditKeepsReachedAndNeverLeadsATrack() {
+        val reached = session().copy(reached = true)
+        val edited = NavSession.start(NavKind.PLAN, "punkt 3", Activity.BIKE_TOURING, 2, route, stops.dropLast(1))
+        assertTrue(NavSession.afterPlanEdit(reached, edited).reached)
+        assertFalse(NavSession.afterPlanEdit(reached, edited).needsLead)
+        val track = NavSession.start(NavKind.TRACK, "gpx", Activity.BIKE_TOURING, 2, route)
+        assertFalse(NavSession.afterPlanEdit(session().copy(lead = true), track).lead)
+        // never reached, "Just record" (no lead): the far-start question comes again, nothing is routed
+        assertFalse(NavSession.afterPlanEdit(session(), edited).needsLead)
+        assertNull(Navigator(edited).leadAgain(fix(-30_000.0, 0.0, 0)).job)
+    }
 }

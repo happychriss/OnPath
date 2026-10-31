@@ -1155,6 +1155,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val pinned = prefs.planPinned.toMutableSet()
     fun pinnedIndices(): Set<Int> = waypoints.indices.filter { waypoints[it] in pinned }.toSet()
     private val history = PlanHistory()
+    /** Followed routes replaced by plan edits during the tour (Undo takes them back exactly, Bug 02). */
+    private val followHistory = FollowHistory()
     var canUndo by mutableStateOf(false)
         private set
     var canRedo by mutableStateOf(false)
@@ -1169,6 +1171,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var route by mutableStateOf<PlannedRoute?>(null)
         private set
     var routing by mutableStateOf(false)
+        private set
+    /** The point the last edit added or moved: the map's spinner turns there while its route is computed ([RoutingSpot]). */
+    var routingSpot by mutableStateOf<GeoPoint?>(null)
         private set
     var routeError by mutableStateOf<String?>(null)
         private set
@@ -1470,6 +1475,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var recordingSeen: Long? = null
             RecordingService.state.collect { st ->
                 if (st?.tourId != recordingSeen) {
+                    followHistory.clear() // Undo brings back a followed route only within its own tour
                     if (st != null) Problems.trace("tour", "Tour ${st.tourId} recording (plan ${waypoints.size} points, " +
                         (if (followLine != null) "following ${followName ?: "a route"}" else "nothing followed") + ")")
                     else { Problems.trace("tour", "Tour $recordingSeen recording ended"); guidanceEndedByEmptyPlan = false }
@@ -1787,6 +1793,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         history.record(waypoints)
         val before = waypoints.toList()
         waypoints.block()
+        routingSpot = RoutingSpot.of(before, waypoints)
         cellsForNewPoints(before, waypoints)
         canUndo = history.canUndo; canRedo = history.canRedo
         prefs.planWaypoints = waypoints.toList()
@@ -1870,8 +1877,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (onPoi) { pinned += p; prefs.planPinned = pinned }
         val before = waypoints.toList()
         // While a reroute runs, the shown line belongs to older waypoints: use best-fit only.
-        val d = WaypointInsertion.decide(before, p, if (routing) null else route?.points, lineSnapM)
+        val d = WaypointInsertion.decide(before, p, if (routing) null else route?.points, lineSnapM, wayThereFrom())
+        if (d.kind == WaypointInsertion.Kind.START && before.size >= 2)
+            Problems.trace("plan", "New point on the way there (led to a route never reached): it is the new start")
         change { add(d.index.coerceIn(0, size), p) }
+    }
+
+    /**
+     * Bug 02: the position while a tour is led to this plan ("Guide me") and has never reached it – a new point that fits
+     * on the way there becomes the new start ([WaypointInsertion] rule 4); else null.
+     */
+    private fun wayThereFrom(): GeoPoint? {
+        val s = recState.value?.nav?.session ?: return null
+        if (!s.lead || s.reached || s.kind != com.onpath.app.navigation.NavKind.PLAN || followIsTrack) return null
+        return myPosition()
     }
 
     /** Plan point [index] deleted (map menu, search card): a round trip stays closed, as in the Points list. */
@@ -1958,7 +1977,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun poiAddLabel(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0): String {
         val w = waypoints.toList()
         return com.onpath.app.search.AddPreview.label(
-            WaypointInsertion.decide(w, GeoPoint(poi.lat, poi.lon), if (routing) null else route?.points, lineSnapM), w.size)
+            WaypointInsertion.decide(w, GeoPoint(poi.lat, poi.lon), if (routing) null else route?.points, lineSnapM, wayThereFrom()), w.size)
     }
 
     fun addPoiPoint(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) {
@@ -2163,7 +2182,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (idx != null) return com.onpath.app.ui.search.PlaceCardUi(place, idx, waypoints.size,
             com.onpath.app.search.AddPreview.existingRole(idx, waypoints.size))
         val pv = com.onpath.app.search.AddPreview.of(waypoints.toList(), GeoPoint(place.lat, place.lon), if (routing) null else r?.points,
-            r?.takeIf { it.durationS > 0 }?.let { it.distanceM / it.durationS })
+            r?.takeIf { it.durationS > 0 }?.let { it.distanceM / it.durationS }, here = wayThereFrom())
         val k = pv.decision.kind
         return com.onpath.app.ui.search.PlaceCardUi(place, null, waypoints.size, pv.subtitle, pv.label,
             addIsStart = k == WaypointInsertion.Kind.START,
@@ -2372,6 +2391,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun step(prev: List<GeoPoint>?, what: String) {
         if (prev == null) { Problems.trace("plan", "$what: nothing to ${what.lowercase()}"); return }
         Problems.trace("plan", "$what: plan ${waypoints.size} → ${prev.size} points")
+        routingSpot = RoutingSpot.of(waypoints.toList(), prev)
         waypoints.clear(); waypoints.addAll(prev)
         canUndo = history.canUndo; canRedo = history.canRedo
         routeBackAsk = false // the plan the question was about is gone
@@ -3390,7 +3410,33 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val orig = followOriginal
         if (planFollowed(r.points)) return
         if (orig != null && NavLine.sameRoute(r.points, orig)) { planBaseline = r.points; return }
+        // Bug 02: back at plan points followed before in this tour (Undo / Redo) → that route exactly, a way there
+        // ("Guide me") or a taken re-route included, no routing; the session it replaces is kept for Redo
+        val now = recState.value?.nav?.session?.takeIf { it.kind == com.onpath.app.navigation.NavKind.PLAN }
+        val back = followHistory.find(waypoints.toList())
+        now?.let { followHistory.remember(it.stops.map { st -> st.point }, it) }
+        if (back != null) { followAgain(back, r.points, now?.version ?: 0); return }
         followPlanned()
+    }
+
+    /** Follows [s] again as it was (Undo during a tour, [FollowHistory]); [planLine] = the plan's route line now. */
+    private fun followAgain(s: com.onpath.app.navigation.NavSession, planLine: List<GeoPoint>, versionNow: Int) {
+        // a new version: the service and the junction cues re-read the line
+        val session = s.copy(version = maxOf(s.version, versionNow) + 1)
+        guidanceEndedByEmptyPlan = false
+        navStore.save(session)
+        prefs.saveFollow(session.name, session.active)
+        followName = session.name
+        followLine = session.active
+        followOriginal = session.original
+        planBaseline = planLine
+        followIsTrack = false; prefs.followIsTrack = false
+        followFromPlan = true
+        planAtTrackFollow = null
+        arrivalGate.reset()
+        Problems.trace("tour", "The tour follows \"${session.name}\" again as before the edit (${session.stops.size} points" +
+            (if (session.rerouted) ", " + (if (session.lead && !session.reached) "way there" else "new route") + " kept" else "") + ")")
+        RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED)
     }
 
     /**

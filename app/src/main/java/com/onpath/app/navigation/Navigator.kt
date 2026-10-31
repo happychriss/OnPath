@@ -193,8 +193,8 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (on && prompt == null && enabled && detector.state == OffRouteDetector.State.OFF_ROUTE) {
             lastFix?.let { return ask(it, vibrate = true) }
         }
-        // never on the route and away from it: the calm far-start question (no vibration)
-        if (on && prompt == null && !session.reached && !quiet && farFixes >= OffRouteDetector.REJOIN_FIXES) {
+        // never on the route and away from it: the calm far-start question (no vibration); not while led there
+        if (on && prompt == null && !session.reached && !session.rerouted && !quiet && farFixes >= OffRouteDetector.REJOIN_FIXES) {
             lastFix?.let { showFarStart(it.point) }
         }
         return Step()
@@ -219,11 +219,14 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (!session.reached) {
             // owner 2026-10-31: never on the route yet = always from the START – no off-route question, no vibration
             if (!detector.reached) return step + farStart(f, st, farNow)
-            // reached for the first time: saved (a restart keeps it); a far-start question has nothing left to ask
-            session = session.copy(reached = true)
-            quiet = false; farFixes = 0
-            step += Step(sessionChanged = true)
-            if (prompt is NavPrompt.FarStart || prompt is NavPrompt.LeadFailed) step += clearPrompt()
+            // reached for the first time: saved (a restart keeps it); a far-start question has nothing left to ask.
+            // Bug 02: on the way there ("Guide me") only the plan's own line counts – the lead is not the route.
+            if (!session.rerouted || onOriginal(f)) {
+                session = session.copy(reached = true)
+                quiet = false; farFixes = 0
+                step += Step(sessionChanged = true)
+                if (prompt is NavPrompt.FarStart || prompt is NavPrompt.LeadFailed) step += clearPrompt()
+            }
         }
         // turned round and on the way: the sign goes (also when the line changed again)
         if (turnRoundAt != null && (!session.rerouted || detector.progressM > TURN_ROUND_DONE_M)) turnRoundAt = null
@@ -272,8 +275,9 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val vib = vibrateOnResult; vibrateOnResult = false
         if (prompt == null) return Step() // back on route meanwhile
         if (prompt is NavPrompt.FarStart) return when (outcome) {
-            // "Guide me": the user asked – taken at once
+            // "Guide me": the user asked – taken at once; remembered for a plan edited before the route is reached
             is Rerouter.Found -> takeLine(outcome.line, outcome.legM, outcome.resumeAlongM, skipStop = null, turnRound = false)
+                .also { session = session.copy(lead = true) }
             is Rerouter.Failed -> {
                 if (outcome.reason != Rerouter.Reason.CANCELLED) prompt = NavPrompt.LeadFailed(++questionId)
                 Step()
@@ -342,11 +346,41 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (pr.id != id || pr.searching) return Step()
         val f = lastFix ?: return Step()
         prompt = pr.copy(searching = true)
+        return Step(job = leadJob(f))
+    }
+
+    /**
+     * Bug 02 (owner 2026-10-31): the plan was edited while "Guide me" led to it and the route was never reached
+     * ([NavSession.needsLead]) – the way there to the edited plan, at once (the user chose it; the far-start box shows
+     * "Finding a way to the start…"). [from] = the last position known before the edit. Nothing when already beside
+     * the new line (the normal flow counts it as reached).
+     */
+    fun leadAgain(from: OffRouteDetector.Fix?): Step {
+        if (!session.needsLead || runningJob >= 0) return Step()
+        val f = lastFix ?: from ?: return Step()
+        lastFix = f
+        if (onOriginal(f)) return Step()
+        val start = original.points.first()
+        val d = Geo.distance(f.point, start)
+        val b = TurnDetector.bearing(f.point, start)
+        prompt = NavPrompt.FarStart(++questionId, d, b, searching = true)
+        toRoute = RouteHint(d, b, start)
+        return Step(job = leadJob(f))
+    }
+
+    /** The last fix fed (the service hands it to the navigator of an edited plan, [leadAgain]). */
+    val lastPosition: OffRouteDetector.Fix? get() = lastFix
+
+    private fun leadJob(f: OffRouteDetector.Fix): Job {
         val jid = ++jobId
         runningJob = jid; refreshing = false; vibrateOnResult = false; jobFrom = f.point
-        return Step(job = Job(jid, Rerouter.Request(f.point, original, 0.0, session.stops, session.visited, session.activity,
-            session.sac, perRequestMs = LEAD_REQUEST_MS, totalMs = LEAD_TOTAL_MS, toStart = true)))
+        return Job(jid, Rerouter.Request(f.point, original, 0.0, session.stops, session.visited, session.activity,
+            session.sac, perRequestMs = LEAD_REQUEST_MS, totalMs = LEAD_TOTAL_MS, toStart = true))
     }
+
+    /** [f] is beside the plan's own line (within the off distance) – not the lead's way there. */
+    private fun onOriginal(f: OffRouteDetector.Fix): Boolean =
+        original.match(f.point, 0.0, original.lengthM)?.let { it.distanceM <= detector.offDistance(f.accuracyM) } == true
 
     /** "Just record" for far-start question [id]: quiet until the route is first reached, then the usual flow. */
     fun justRecord(id: Int): Step {
