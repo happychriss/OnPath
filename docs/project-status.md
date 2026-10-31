@@ -6,6 +6,18 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud (marketing / website), 2026-10-29/31 – onpath.earth live, planner public, Play Console prepared. Session
+  ended (owner: fixed roles).** Website repo `happychriss/onpath.earth` (Cloudflare Pages, deploys `main`): PRs #3–#7
+  merged – new home page (six points with real app screens, planner section, "Was OnPath besser kann", "Offen
+  entwickelt"), tester guide `/ausprobieren/` (Google Group "OnPath – Mitmachen & Testen" linked; Play link still
+  grey), "Die Idee" with the owner's portrait, privacy for planner + tester group + sync last-seen + Android device
+  backup, contact info@onpath.earth (Cloudflare Email Routing), external-review fixes (hold not tap, vibration only
+  where one could go wrong, no absolute promises, honest test status). Site stays `noindex` until the legal check
+  (`docs/RELEASE.md` there). plan.onpath.earth: Cloudflare Access off (owner), checked live. Play Console: app created
+  (`com.onpath.app`), app access / ads / rating / audience 18+ / data safety / health / ad ID / store listing filled
+  with the owner; store assets with the owner. Drive orders: A-019 (one image set per app version, donald), A-020
+  (review points for the app), A-003 (Play build) still unstarted. Open items: backlog "Website and Google Play
+  follow-ups". **Next:** Play build (A-003) → internal test → closed test → Play link on the website.
 - **cloud (Claude Code web), 2026-10-31 – session ended (owner: switch to fixed roles).** On `main`: plan edits
   during a tour – the position splits the plan into passed / ahead (`navigation/TourSplit`, field bug Hilden, design
   `docs/design/tour-edit-position.md`, a3e9a4a3, CI green; Rundgang flows 11 + 12 only compiled); voice concept
@@ -56,7 +68,8 @@ the current state.
 | --- | --- |
 | Platform | Android first (Kotlin, Compose); iPhone later (`docs/design/multiplatform.md`, core logic free of Android) |
 | Licence / repo | Apache-2.0, public repo github.com/happychriss/OnPath |
-| Distribution | Sideloaded test builds (GitHub Releases + in-app updater); Google Play internal track later |
+| Distribution | Sideloaded test builds (GitHub Releases + in-app updater). Google Play (owner 2026-10-30): app created in the Play Console, free download, purchases later in the app; closed test with the Google Group "OnPath – Mitmachen & Testen" (join on request, owner approves); needs the Play build (A-003) |
+| Website | onpath.earth (repo `happychriss/onpath.earth`, Cloudflare Pages): welcome, help, tester guide, privacy, imprint; `noindex` until the legal check; contact info@onpath.earth. Planner plan.onpath.earth public (no login), "App holen" only after Share / on shared links |
 | Map | MapLibre Native 13.7.1, PMTiles, own style from `tools/make_style.py` (one style, `tools/themes/classic.json`) |
 | Routing | BRouter (MIT) embedded, offline, rd5 segments; profiles per activity (CLAUDE.md "Activities") |
 | Activities | Exactly six: Bike, Gravelbike, E-bike, MTB, E-MTB, Hike T1–T5 |
