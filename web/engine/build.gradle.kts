@@ -31,6 +31,9 @@ val appFiles = listOf(
     // the world overview below the cells (web-planner.md §16): the app's style merge (org.json, as on Android; run on
     // the JVM at build time – task overviewStyle – so it adds nothing to the Wasm)
     "map/Overview.kt",
+    // the map look per activity (owner 2026-10-31: identical in browser and app): which style layers show, the hiking
+    // band's T-level filter – the app's MapController applies the same table
+    "map/ActivityLayers.kt",
 )
 
 // The app's own unit tests for the shared files the web adds (the app's Gradle build needs an Android SDK; these run on

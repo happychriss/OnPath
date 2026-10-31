@@ -51,6 +51,8 @@ interface WasmEngine {
 const CALLS = new Set(['historyRecord', 'historyStep', 'historyState', 'gesture', 'pointMenu', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
   // web UI rules (WebUi.kt): route name proposal (Save), POI kind filters (Map content)
   'routeName', 'poiKinds', 'poiFilter',
+  // the app's map look per activity (map/ActivityLayers.kt): layer visibility + hiking band filter
+  'activityLayers',
   // the app's pace setting (WebPace.kt): set the two levels, the drop-down's pace section, the last plan's time again
   'paceSet', 'paceChoices', 'planTime',
   // the app's plan rules before routing (WebPlanRules.kt): long-route question, what Cancel does

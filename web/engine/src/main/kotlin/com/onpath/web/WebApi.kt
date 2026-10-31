@@ -564,6 +564,13 @@ class WebContext(private val dir: File) : android.content.Context() {
 @JSExport fun paceChoices(activity: String): String = WebPace.choices(activity)
 @JSExport fun planTime(points: String, activity: String, sac: Int): String = WebPace.planTime(points, activity, sac)
 @JSExport fun poiFilter(original: String, hidden: String): String = WebUi.poiFilter(original, hidden)
+/**
+ * The map look for the activity (the app's map/ActivityLayers, as MapController.setOverlay / setSacLimit apply it):
+ * `{"visibility":{"<layer id>":true|false,…},"filters":{"routes-hike":[…],"routes-hike-over":[…]}}` for the style's
+ * layer ids [layerIds] (comma-separated, style order).
+ */
+@JSExport fun activityLayers(activity: String, sac: Int, layerIds: String): String =
+    com.onpath.app.map.ActivityLayers.toJson(Activity.valueOf(activity), sac, layerIds.split(',').filter { it.isNotEmpty() })
 
 fun main() {}
 

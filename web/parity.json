@@ -92,7 +92,7 @@
         "web/app/src/main.ts",
         "web/app/src/gpximport.ts"
       ],
-      "blob": "0cbd06ad8d1b1e049ac7345b63d032496126ba82"
+      "blob": "02189d3e23db7cfc6d0786572f12ab1faceb79a9"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/SettingsScreen.kt",
@@ -829,6 +829,14 @@
     "app/src/main/java/com/onpath/app/map/Overview.kt": {
       "blob": "9c76e0a2cfc6cedd6c386b87e71d72ea2a38029d",
       "perf": []
+    },
+    "app/src/main/java/com/onpath/app/map/ActivityLayers.kt": {
+      "blob": "2ad1ee2df36720fe94a8ed72f1d19d8f2daeb103",
+      "perf": [
+        "* Filters of the hiking band for the T level [limit] (SAC T1–T5): [HIKE_BAND_LAYERS] id → MapLibre style",
+        "fun hikeRouteFilters(limit: Int): Map<String, String> {",
+        "val t = limit.coerceIn(1, 6)"
+      ]
     },
     "app/src/test/java/com/onpath/app/routing/PlanCodeTest.kt": {
       "blob": "158857008f2222932217d0eb093067f11d37c272",
