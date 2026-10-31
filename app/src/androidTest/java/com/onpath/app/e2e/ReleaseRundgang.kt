@@ -30,6 +30,7 @@ import com.onpath.app.sync.SyncLedger
 import com.onpath.app.sync.SyncRound
 import com.onpath.app.ui.AppMode
 import com.onpath.app.ui.AppViewModel
+import com.onpath.app.ui.PlanSize
 import com.onpath.app.ui.RoutesTab
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
@@ -41,6 +42,7 @@ import com.onpath.strings.nav_end_tour
 import com.onpath.strings.nav_end_tour_title
 import com.onpath.strings.nav_route_back
 import com.onpath.strings.nav_route_back_title
+import com.onpath.strings.plan_resize_panel
 import com.onpath.strings.plan_start_here
 import com.onpath.strings.plan_undo
 import com.onpath.strings.routes_end_tour_first
@@ -246,6 +248,7 @@ class ReleaseRundgang : E2EBase() {
         waitUntil("some metres recorded", 60_000) { (com.onpath.app.recording.RecordingService.state.value?.distanceM ?: 0.0) > 100 }
         scenario.onActivity { vm(it).switchToPlan() }
         waitUntil("Plan during the tour", 10_000) { mode() == AppMode.PLAN }
+        pullTourSheetUp()
         clickText(Txt.s(Res.string.nav_end_tour))
         assertNotNull("\"End this tour?\"", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
         shot("1-end-tour")
@@ -499,6 +502,22 @@ class ReleaseRundgang : E2EBase() {
         Thread.sleep(500)
     }
 
+    /**
+     * Plan during a tour opens at its one-row step (status + Continue, owner 2026-10-31): End tour is one drag up away –
+     * the finger on the grab handle pulls the sheet up, then Pause / End tour show.
+     */
+    private fun pullTourSheetUp() {
+        waitUntil("the sheet at its one-row step", 5_000) { read { it.planSize } == PlanSize.MINI }
+        assertTrue("End tour hidden in the one-row step", goneFresh(By.text(Txt.s(Res.string.nav_end_tour)), 3_000))
+        val handle = findFresh(By.desc(Txt.s(Res.string.plan_resize_panel)), 5_000)
+        assertNotNull("no grab handle on the plan sheet – ${seenDescriptions()}", handle)
+        val c = handle!!.visibleCenter
+        device.swipe(c.x, c.y, c.x, c.y - device.displayHeight / 4, 40)
+        waitUntil("the sheet one step up", 5_000) { read { it.planSize } != PlanSize.MINI }
+        assertNotNull("End tour after one drag", findFresh(By.text(Txt.s(Res.string.nav_end_tour)), 5_000))
+        shot("0-sheet-pulled-up")
+    }
+
     /** The camera shows [a] and [b] in the open middle of the map (following stopped first – map camera rule). */
     private fun showOnMap(a: GeoPoint, b: GeoPoint) {
         scenario.onActivity { vm(it).followMe = false }
@@ -509,7 +528,7 @@ class ReleaseRundgang : E2EBase() {
         val cosLat = kotlin.math.cos(Math.toRadians(mid.latitude))
         val zoom = kotlin.math.floor(kotlin.math.log2(40_075_016.0 * cosLat / (512.0 * (d / 200.0)))).coerceIn(10.0, 17.0)
         // the app's own start camera (fly to the position) may still move the map: set it until it stays
-        // [mid] at 45 % across, 30 % down: above the plan sheet, which is tall during a tour (Pause / End tour)
+        // [mid] at 45 % across, 30 % down: in the open map above the plan sheet
         val (w, h) = mapSize()
         repeat(5) {
             var target: LatLng? = null

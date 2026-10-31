@@ -150,8 +150,9 @@ abstract class E2EBase {
      * Points snapped onto ways can end up under the search pill (top) or the plan sheet (bottom) – a finger there never
      * reaches the map, or under the map buttons on the right (e.g. back in Plan after Navigate zoomed in). Move the map
      * so the point sits in the upper open map, like a user would. Not the map's centre: in Plan during a tour the sheet
-     * (tour status + Continue / Pause / End tour + summary) reaches above the middle of the screen (CI 2026-10-31:
-     * the point centred at y 0.50 h lay under the sheet top at 0.475 h).
+     * used to reach above the middle of the screen (CI 2026-10-31: the point centred at y 0.50 h lay under the sheet top
+     * at 0.475 h); since the one-row tour sheet (owner 2026-10-31) the open map is larger – 0.22–0.40 h lies in it at
+     * every sheet step that opens by itself.
      */
     protected fun ensureOnOpenMap(index: Int) {
         val (w, h) = mapSize()

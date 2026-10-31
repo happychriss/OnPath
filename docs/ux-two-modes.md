@@ -6,13 +6,19 @@ Search mockups: `docs/ux-search-proposals.md` (proposal C's "Add to route" card 
 | | **Plan** | **Navigate** |
 | --- | --- | --- |
 | Purpose | Build / change the route, look around, manage tours and settings | Walk or ride: map follows you, nothing changes by accident |
-| Map taps | **Hold only** (0.3 s): map → add point (first one: "Start here / Go here (from my location)"), POI → "Add to route / Open in Google Maps", route point → point menu. Quick taps change nothing, nothing is dragged (see "Plan gestures") | **Nothing is added or moved.** POI tap shows info only. Pan/zoom allowed; "centre on me" re-follows |
+| Map taps | **Hold only** (0.3 s): map → add point (first one: "Start here / Go here (from my location)"), POI → "Add to route / Open in Google Maps", route point → point menu. Quick taps change nothing, nothing is dragged (see "Plan gestures") | **Nothing is added or moved.** POI tap shows info only. Pan/zoom allowed; "centre on me" (locate) re-follows **at the standard Navigate zoom** (Hike 17, every bike 16 – owner 2026-10-31, `AppMode.locateZoom`); the map coming back by itself (free look, back in the app) keeps the user's zoom |
 | Shown | Plan sheet: activity, stats, profile, undo/redo, route actions in ⋯ (save/export/reverse/round trip/clear); top ☰: My routes, start recording, Settings (see "Menus") | Full map, route (line only – no numbered plan points, owner), position, top strip "to go: km · ↑m · time", GPS dot on the locate button |
 | Switch | **"Start navigation"** – normal big button (safe direction). With a tour running: **"Continue navigation"** | **Slide-to-plan switch** at the bottom: "Tour menu" / „Tour-Menü“ with a small second line "Change route · Pause · End" / „Route ändern · Pause · Beenden“ (owner 2026-10-31; was "Plan" / „Planen“, before that "Edit route"). The small line only when it fits (large font: main line only, never cut); without a recording only "Change route" / „Route ändern“ (`ui/SlideToUnlock.kt`, `SlideLabel`) – the only way out of Navigate (protects against pocket/glove touches) |
 
 ## Rules
 1. **Recording never stops when switching.** Starting navigation starts (or continues) the recording; going back to
-   Plan keeps recording. A small bar in Plan shows "Tour running · 6.4 km · Continue navigation".
+   Plan keeps recording. **Plan during a tour (owner 2026-10-31):** the sheet opens at its first step, ONE row –
+   "● Tour running · 1.7 km · 0:14:38" on the left, a compact green **[Continue]** (≥ 48 dp; also resumes a paused
+   tour) on the right – so about two thirds of the map are free for holds. One drag up (or a tap on the handle) shows
+   **[Pause] / [End tour]** and under them the plan summary as always (activity chip, time / km, warnings, profile);
+   End tour is never deeper than one drag + one tap. Large font: Continue moves under the status, Pause / End stack
+   (never cut). Back in Plan from Navigate the sheet starts at that row again; after the tour it shows the profile
+   step (`PlanSize.backInPlan` / `afterTour`, `TourStatusRow`, `TourPauseEnd`).
 2. **Continue = smart re-route:** the route is recalculated from the current position to the remaining stops
    (stops already passed are dropped; a new point was placed by `WaypointInsertion`).
    **Plan edited during a tour (owner):** round trip, Undo, points added / removed, reverse – the tour

@@ -46,6 +46,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Constraints
 import com.onpath.app.data.Format
 
 /**
@@ -126,8 +128,8 @@ internal fun continueLabel(activity: com.onpath.app.routing.Activity?): String =
 
 /**
  * Status line + the three tour buttons: Continue (filled, full width, names the activity; also resumes), then Pause /
- * Resume (tonal) and End (outlined red, asks first) side by side. Used at the top of the plan sheet during a tour and in
- * the stand-alone tour card.
+ * Resume (tonal) and End (outlined red, asks first) side by side. Used in the stand-alone tour card (over a shown track
+ * or a place card); the plan sheet splits it into [TourStatusRow] and [TourPauseEnd].
  */
 @Composable
 fun TourControls(
@@ -136,13 +138,7 @@ fun TourControls(
     activity: com.onpath.app.routing.Activity? = null,
     recordOnly: Boolean = false,
 ) {
-    val res = when { paused -> Res.string.nav_tour_paused; recordOnly -> Res.string.nav_tour_record_only; else -> Res.string.nav_tour_running }
-    val status = str(res, Format.distance(distanceM), Format.clock(elapsedS))
-    Row(Modifier.semantics { contentDescription = status }, verticalAlignment = Alignment.CenterVertically) {
-        RecDot(paused)
-        Spacer(Modifier.width(10.dp))
-        Text(status, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1)
-    }
+    TourStatus(tourStatusText(distanceM, elapsedS, paused, recordOnly), paused)
     Spacer(Modifier.height(8.dp))
     Button(onClick = { if (paused) onPause(false); onContinue() }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
         contentPadding = PaddingValues(horizontal = 8.dp)) {
@@ -150,17 +146,110 @@ fun TourControls(
         Text(continueLabel(activity), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
     }
     Spacer(Modifier.height(8.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilledTonalButton(onClick = { onPause(!paused) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+    TourPauseEnd(paused, onPause, onEnd)
+}
+
+/** "Tour running · 6.4 km · 1:23:45" (paused / "Recording only" after the guidance ended). */
+@Composable
+internal fun tourStatusText(distanceM: Double, elapsedS: Long, paused: Boolean, recordOnly: Boolean): String {
+    val res = when { paused -> Res.string.nav_tour_paused; recordOnly -> Res.string.nav_tour_record_only; else -> Res.string.nav_tour_running }
+    return str(res, Format.distance(distanceM), Format.clock(elapsedS))
+}
+
+/**
+ * The orange (paused: grey) dot + the status; wraps rather than cuts at a large font (owner: numbers in full), and only
+ * after a "·" – never between a number and its unit ("1,7 / km").
+ */
+@Composable
+private fun TourStatus(status: String, paused: Boolean, modifier: Modifier = Modifier) {
+    Row(modifier.semantics { contentDescription = status }, verticalAlignment = Alignment.CenterVertically) {
+        RecDot(paused)
+        Spacer(Modifier.width(10.dp))
+        Text(breakOnlyAtDots(status), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+    }
+}
+
+/** "Tour running · 1.7 km · 0:14:38" with no-break spaces except after each "·" (the only places a line may break). */
+internal fun breakOnlyAtDots(s: String): String = s.replace(' ', '\u00A0').replace("\u00A0·\u00A0", "\u00A0· ")
+
+/**
+ * The plan sheet's first step during a tour (owner 2026-10-31): ONE row – the status on the left, a compact green
+ * [Continue] (≥ 48 dp, also resumes a paused tour) on the right. Pause / End tour come with the next step
+ * ([TourPauseEnd]); TalkBack hears the activity on the button ("Continue · Hike"). At a large font, when the status
+ * beside the button would be taller than status + button stacked, the button goes under the status (right-aligned).
+ */
+@Composable
+fun TourStatusRow(
+    distanceM: Double, elapsedS: Long, paused: Boolean, onPause: (Boolean) -> Unit, onContinue: () -> Unit,
+    activity: com.onpath.app.routing.Activity? = null, recordOnly: Boolean = false,
+) {
+    val status = tourStatusText(distanceM, elapsedS, paused, recordOnly)
+    val described = continueLabel(activity)
+    Layout(content = {
+        TourStatus(status, paused)
+        Button(onClick = { if (paused) onPause(false); onContinue() },
+            modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = described },
+            contentPadding = PaddingValues(start = 14.dp, end = 18.dp)) {
+            Icon(Icons.Filled.Navigation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
+            Text(str(Res.string.nav_continue), maxLines = 1)
+        }
+    }, modifier = Modifier.fillMaxWidth()) { ms, c ->
+        val gap = 8.dp.roundToPx()
+        val max = c.maxWidth
+        val b = ms[1].measure(c.copy(minWidth = 0, minHeight = 0))
+        val besideW = (max - b.width - gap).coerceAtLeast(0)
+        val beside = TourRowFit.beside(ms[0].minIntrinsicHeight(besideW), ms[0].minIntrinsicHeight(max), b.height)
+        val t = ms[0].measure(Constraints(maxWidth = if (beside) besideW else max))
+        if (beside) {
+            val h = maxOf(t.height, b.height)
+            layout(max, h) {
+                t.placeRelative(0, (h - t.height) / 2)
+                b.placeRelative(max - b.width, (h - b.height) / 2)
+            }
+        } else layout(max, t.height + gap + b.height) {
+            t.placeRelative(0, 0)
+            b.placeRelative(max - b.width, t.height + gap)
+        }
+    }
+}
+
+/** Layout rules of the tour row and the Pause / End pair (pure, for tests). */
+internal object TourRowFit {
+    /** The status goes beside Continue unless that makes it taller than status (full width) + button stacked. */
+    fun beside(statusBesideH: Int, statusFullH: Int, buttonH: Int): Boolean = statusBesideH <= maxOf(statusFullH, buttonH)
+
+    /** Pause and End tour side by side when both labels fit their half; else one under the other – never cut. */
+    fun sideBySide(pauseW: Int, endW: Int, width: Int, gap: Int): Boolean = maxOf(pauseW, endW) * 2 + gap <= width
+}
+
+/**
+ * Pause / Resume (tonal) and End tour (outlined red, asks first) side by side, equal width; at a large font (a label
+ * would be cut, e.g. „Tour beenden“) one under the other, full width.
+ */
+@Composable
+fun TourPauseEnd(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Unit, modifier: Modifier = Modifier) {
+    Layout(content = {
+        FilledTonalButton(onClick = { onPause(!paused) }, modifier = Modifier.heightIn(min = 48.dp),
             contentPadding = PaddingValues(horizontal = 8.dp)) {
             Icon(if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
             Text(str(if (paused) Res.string.common_resume else Res.string.nav_pause), maxLines = 1)
         }
-        OutlinedButton(onClick = onEnd, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+        OutlinedButton(onClick = onEnd, modifier = Modifier.heightIn(min = 48.dp),
             contentPadding = PaddingValues(horizontal = 8.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)) {
             Icon(Icons.Filled.Stop, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error); Spacer(Modifier.width(6.dp))
             Text(str(Res.string.nav_end_tour), color = MaterialTheme.colorScheme.error, maxLines = 1)
         }
+    }, modifier = modifier.fillMaxWidth()) { ms, c ->
+        val gap = 8.dp.roundToPx()
+        val max = c.maxWidth
+        val side = TourRowFit.sideBySide(ms[0].maxIntrinsicWidth(Constraints.Infinity), ms[1].maxIntrinsicWidth(Constraints.Infinity), max, gap)
+        val w = if (side) (max - gap) / 2 else max
+        val p = ms[0].measure(Constraints.fixedWidth(w))
+        val e = ms[1].measure(Constraints.fixedWidth(w))
+        if (side) {
+            val h = maxOf(p.height, e.height)
+            layout(max, h) { p.placeRelative(0, (h - p.height) / 2); e.placeRelative(max - e.width, (h - e.height) / 2) }
+        } else layout(max, p.height + gap + e.height) { p.placeRelative(0, 0); e.placeRelative(0, p.height + gap) }
     }
 }
 

@@ -3199,6 +3199,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Plan keeps the compass choice: walking direction up stays turned and following (until you edit or move the
         // map); north up stops following
         else followMe = headingUp && followMe && tracker.location.value != null
+        // Plan during a tour: the sheet is one row (tour status + Continue), the map free for holds (owner 2026-10-31)
+        if (m == AppMode.PLAN && was == AppMode.NAVIGATE) planSize = PlanSize.backInPlan(planSize, recState.value != null)
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_NAVIGATING) {
             putExtra(RecordingService.EXTRA_ON, m == AppMode.NAVIGATE)
         }
@@ -3811,6 +3813,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun stopRecording() {
         routeBackAsk = false // a question about this tour's plan never reaches the next tour
+        planSize = PlanSize.afterTour(planSize)
         RecordingService.send(getApplication(), RecordingService.ACTION_STOP)
     }
 

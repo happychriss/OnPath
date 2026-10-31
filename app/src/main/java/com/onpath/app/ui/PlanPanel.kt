@@ -123,6 +123,8 @@ data class TourState(val distanceM: Double, val elapsedS: Long, val paused: Bool
  * Plan sheet steps: MINI = summary only (time, distance), COMPACT = + the large elevation profile
  * with the finger ruler (default), FULL = + the Points list (Reverse / Round trip). The primary button stays at the
  * bottom in every step. Way types & surfaces are in the route details only.
+ * During a tour (owner 2026-10-31) MINI is ONE row – "● Tour running · km · time" + a compact [Continue] – so about
+ * two thirds of the map are free for holds; COMPACT adds Pause / End tour (one drag + one tap) and the route summary.
  */
 enum class PlanSize {
     FULL, COMPACT, MINI;
@@ -135,6 +137,12 @@ enum class PlanSize {
 
     companion object {
         fun ofStep(i: Int): PlanSize = when { i <= 0 -> MINI; i == 1 -> COMPACT; else -> FULL }
+
+        /** Back in Plan from Navigate: during a tour the sheet starts at its one-row step (owner 2026-10-31). */
+        fun backInPlan(current: PlanSize, tourRunning: Boolean): PlanSize = if (tourRunning) MINI else current
+
+        /** The tour ended: its one-row step becomes the usual profile step again (the plan sheet as before the tour). */
+        fun afterTour(current: PlanSize): PlanSize = if (current == MINI) COMPACT else current
     }
 }
 
@@ -282,11 +290,52 @@ private val PRIMARY_BAR = 68.dp
 private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean, scroll: ScrollState) {
     val route = ui.route
     val full = ui.size == PlanSize.FULL
-    // During a tour: the tour first (status + Continue / Pause / End), then the route – one surface.
+    // During a tour: the tour first, then the route – one surface (owner 2026-10-31). The first step is ONE row (status +
+    // compact Continue), the map stays about two thirds free; the next step adds Pause / End tour and the route below.
+    // What the first step hides is not for TalkBack / tests either (it lies under the sheet's bottom edge).
+    val tourMini = ui.tour != null && ui.size == PlanSize.MINI
+    val belowStep = if (tourMini) Modifier.clearAndSetSemantics { } else Modifier
     ui.tour?.let { t ->
-        TourControls(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, cb.onEndTour, ui.activity, t.recordOnly)
+        TourStatusRow(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, ui.activity, t.recordOnly)
+        Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.MINI.step) })
+        TourPauseEnd(t.paused, cb.onPause, cb.onEndTour, belowStep.padding(top = 4.dp))
         HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
+    Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb, menuInitiallyOpen) }
+    // without a tour the first step ends under the summary lines
+    if (ui.tour == null) Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
+    var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
+    Column(Modifier.fillMaxWidth().weight(1f).onGloballyPositioned { viewport = it }.then(belowStep)
+        .verticalScroll(scroll, enabled = full)) {
+        SubLine(ui, route, cb.onDetails)
+        if (route != null) SavedLine(ui)
+        if (route != null && !ui.routing) {
+            Column(Modifier.fillMaxWidth().padding(top = 8.dp).semantics { contentDescription = Txt.s(Res.string.plan_elevation_profile) }) {
+                // stable callbacks: a new PlanCallbacks (every sheet recomposition) must not recompose the profile
+                val highlight = cb.onHighlight
+                // the gradient legend lives on Route details only
+                ElevationProfile(route.points, height = PROFILE_HEIGHT, gradient = true,
+                    onHighlight = highlight, onRelease = remember(highlight) { { highlight(null) } })
+            }
+        }
+        Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COMPACT.step) { scroll.value.toFloat() } })
+        // below the profile step the list is hidden behind the button: not for touch, not for TalkBack / tests
+        Box(if (full) Modifier else Modifier.clearAndSetSemantics { }) {
+            PointsSection(
+                ui.points, canReverse = ui.pointCount >= 2, canRoundTrip = ui.pointCount >= 2 && !ui.roundTrip,
+                onReverse = cb.onReverse, onRoundTrip = cb.onRoundTrip,
+                onMove = cb.onMovePoint, onDelete = cb.onDeletePoint, onShow = cb.onShowPoint,
+                modifier = Modifier.padding(top = 4.dp),
+                scroll = scroll, viewport = { viewport },
+            )
+        }
+    }
+}
+
+/** Line 1 (activity · time + distance · [Save] ⋯) and the route state lines under it: ERROR, WARNING, INFO. */
+@Composable
+private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks, menuInitiallyOpen: Boolean) {
+    val route = ui.route
     // Line 1: activity · time + distance · [Save] ⋯ (Undo and Redo are map buttons).
     val saveAtHand = RouteRules.saveAtHand(ui.pointCount, ui.unsaved)
     HeaderLine(
@@ -321,33 +370,6 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     if (loadingNotice) InfoLine(ui.error!!, spinner = ui.error == RoutingDataNotice.LOADING)
     ui.changedText?.takeIf { !ui.routing }?.let { InfoLine(it, onTap = cb.onRouteChanged) }
     ui.syncRoutingText?.takeIf { !ui.routing }?.let { InfoLine(it) }
-    Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
-    var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
-    Column(Modifier.fillMaxWidth().weight(1f).onGloballyPositioned { viewport = it }
-        .verticalScroll(scroll, enabled = full)) {
-        SubLine(ui, route, cb.onDetails)
-        if (route != null) SavedLine(ui)
-        if (route != null && !ui.routing) {
-            Column(Modifier.fillMaxWidth().padding(top = 8.dp).semantics { contentDescription = Txt.s(Res.string.plan_elevation_profile) }) {
-                // stable callbacks: a new PlanCallbacks (every sheet recomposition) must not recompose the profile
-                val highlight = cb.onHighlight
-                // the gradient legend lives on Route details only
-                ElevationProfile(route.points, height = PROFILE_HEIGHT, gradient = true,
-                    onHighlight = highlight, onRelease = remember(highlight) { { highlight(null) } })
-            }
-        }
-        Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COMPACT.step) { scroll.value.toFloat() } })
-        // below the profile step the list is hidden behind the button: not for touch, not for TalkBack / tests
-        Box(if (full) Modifier else Modifier.clearAndSetSemantics { }) {
-            PointsSection(
-                ui.points, canReverse = ui.pointCount >= 2, canRoundTrip = ui.pointCount >= 2 && !ui.roundTrip,
-                onReverse = cb.onReverse, onRoundTrip = cb.onRoundTrip,
-                onMove = cb.onMovePoint, onDelete = cb.onDeletePoint, onShow = cb.onShowPoint,
-                modifier = Modifier.padding(top = 4.dp),
-                scroll = scroll, viewport = { viewport },
-            )
-        }
-    }
 }
 
 /** The large profile of the profile step. */

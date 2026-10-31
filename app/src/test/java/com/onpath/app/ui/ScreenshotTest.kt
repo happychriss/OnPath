@@ -394,10 +394,21 @@ class ScreenshotTest {
         }
     }
 
-    /** Back in Plan while the tour records: one sheet – tour status + Continue / Pause / End on top, then the route. */
+    /**
+     * Back in Plan while the tour records, pulled up one step: tour status + compact Continue, Pause / End tour, then
+     * the route (activity, time / km, profile).
+     */
     @Test fun planTourRunning() = paparazzi.snapshot {
         Frame {
-            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(6_400.0, 5025, paused = false)),
+            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
+                PlanCallbacks())
+        }
+    }
+
+    /** Plan during a tour as it opens (owner 2026-10-31): ONE row – "● Tour running · km · time" + [Continue]; map free. */
+    @Test fun planTourRunningCollapsed() = paparazzi.snapshot {
+        Frame {
+            PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
                 PlanCallbacks())
         }
     }
