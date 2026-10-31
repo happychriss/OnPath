@@ -7,6 +7,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [cloud] Voice guidance (`docs/design/voice-guidance.md`) – for the next release – since 2026-10-31
 
 ## Next
 - **From the external review (A-020 §4) – build only after a small user test by the owner:**
