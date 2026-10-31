@@ -24,7 +24,7 @@ Colours come only from `OnPathColors` (and the Material scheme built from it in 
 | `Paper` | page background (My routes, Settings) |
 | `CardWhite` | cards over the map (message boxes, sheets), text on `Green` |
 | `InfoBlue` | the left edge of a **FRAGE** box (a question) – never a status or a failure |
-| `TagContainer`, `TagInk` | a **tag** (light blue pill, dark blue word): the state of an item – "New" / "Changed" in My routes |
+| `TagContainer`, `TagInk` | a **tag** (light blue pill, dark blue word): the state of an item – "New" / "Changed" in My routes; the same look for the background-download chip |
 | `Grey` | the left edge of a plain **HINWEIS** box; grey icons |
 | `Warn` (+ `WarnContainer`, `OnWarnContainer`) | **attention**: ⚠ + amber edge, route warning lines, the off-route card, a weak state |
 | `Error` (+ `ErrorContainer`, `OnErrorContainer`) | **error**: ⚠ + red edge, red error lines, delete buttons |
@@ -57,7 +57,9 @@ Nothing a hiker must read is below 14. No hand-set `fontSize =` in `ui/` (`FontS
 - Label style `labelLarge` (16 sp); the primary one bold.
 
 ## Dialogs
-Only for decisions that can **lose something** (delete, replace an unsaved plan, end a tour, unpair). Verb buttons,
+Only for decisions that can **lose something** (delete, replace an unsaved plan, end a tour, unpair). **The details of a
+state are a bottom sheet, not a dialog** (e.g. tap on the download chip → "Loading in the background": what loads, the
+total, "Cancel all" as a red text button, Close; drag down closes it) – white, 28 dp top corners, drag handle. Verb buttons,
 a title that asks, no body that repeats the buttons. A tap outside does nothing where it could lose work; Back =
 the safe choice. Everything else is a message box or a line (below).
 
@@ -111,7 +113,7 @@ MessageSlot(Messages.pick(listOf(question, m)), MessagePlacement.topDp(MessageSc
 | An error without a screen of its own (background, link / share into the app) | HINWEIS_ERROR | "Couldn't find this place." – OK |
 | Route state | ANZEIGE | plan sheet lines (red ERROR, amber WARNING, grey INFO), "Saved as …", "New route · was 13:15" |
 | Off route, finding the way back | ANZEIGE | the amber off-route card with the arrow (Navigate) |
-| Downloads in the background | ANZEIGE | the small "⬇ Bozen · 34 %" chip; offline / waiting for GPS → the quiet grey pill |
+| Downloads in the background | ANZEIGE | the small chip "◔ Bozen · 34 %" in the tag look (`TagContainer` / `TagInk` pill, a progress ring – spinning while areas are still prepared and no percent is known yet; ≥ 48 dp tap target); tap → its details as a bottom sheet; offline / waiting for GPS → the quiet grey pill |
 | The result of an action in My routes / Settings | ANZEIGE | `NoticeLine`: grey INFO / red ERROR line at the top, gone when the screen is left |
 | Work the user started | ANZEIGE | a spinner where it was started (`Busy`) |
 

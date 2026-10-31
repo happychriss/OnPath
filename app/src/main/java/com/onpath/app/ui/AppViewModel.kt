@@ -971,7 +971,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.warn("cells", "Background download status unknown; strip hidden", e); null
     }
 
-    // ---- names of what loads (owner: "⬇ Bad Waldsee · 34 %"; map areas only have grid ids) ----
+    // ---- names of what loads (owner: "Bad Waldsee · 34 %" chip; map areas only have grid ids) ----
 
     /** Why each map area was asked for, set where the app asks (point, search, route, newer map); main thread only. */
     private val loadTags = HashMap<com.onpath.app.cells.CellId, LoadTag>()

@@ -17,13 +17,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.LocationSearching
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -65,8 +64,14 @@ data class BackgroundDownloadUi(
     /** The chip's name ("Bad Waldsee") and how many other names load ("+1"). */
     val chip: Pair<String, Int> get() = LoadNames.chip(groups)
 
-    /** "⬇ Bad Waldsee +1 · 34 %" without the arrow (accessibility, tests). */
-    val chipText: String get() = chip.let { (n, more) -> n + (if (more > 0) " +$more" else "") + " · $percent %" }
+    /**
+     * A percent to show: something moved. 0 % = nothing has a percent yet (areas still being prepared on the server) –
+     * the chip's ring spins and no "0 %" is shown.
+     */
+    val hasPercent: Boolean get() = percent > 0
+
+    /** "Bad Waldsee +1 · 34 %" – what the chip says (accessibility, tests); without a percent yet only the names. */
+    val chipText: String get() = chip.let { (n, more) -> n + (if (more > 0) " +$more" else "") + (if (hasPercent) " · $percent %" else "") }
 
     /** "Loading newer map" when only newer versions load (the strip is the one indicator for them). */
     val title: String get() = Txt.s(if (regions > 0 && newer >= regions && routingParts == 0) Res.string.maps_bg_title_newer
@@ -146,9 +151,11 @@ class BackgroundProgress {
 }
 
 /**
- * Small, slightly transparent blue chip "⬇ Bad Waldsee · 34 %" (not a full-width strip: too crowded). Plan: under the ☰
- * button; Navigate: under the status card. The name is cut with "…" at about half the screen width, "+N" (more names)
- * and the % always show. Tap → details.
+ * Small light blue chip "◔ Bad Waldsee · 34 %" in the tag look (owner 2026-10-31: `TagContainer` / `TagInk`, like the
+ * route tags) with a small progress ring in front – determinate with the percent, spinning while nothing has a percent
+ * yet ([BackgroundDownloadUi.hasPercent]: an area still being prepared). Plan: under the ☰ button; Navigate: under the
+ * status card. The name is cut with "…" at about half the screen width, "+N" (more names) and the % always show. The
+ * pill looks small; the tap target is ≥ 48 dp. Tap → the details sheet ([BackgroundDownloadSheet]).
  */
 @Composable
 fun BackgroundDownloadChip(ui: BackgroundDownloadUi, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -157,48 +164,69 @@ fun BackgroundDownloadChip(ui: BackgroundDownloadUi, onClick: () -> Unit, modifi
     val maxW = (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp * 0.5f).dp
     Box(modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = str(Res.string.maps_bg_chip_click), onClick = onClick)
         .semantics { contentDescription = text }, contentAlignment = Alignment.Center) {
-        Row(Modifier.widthIn(max = maxW).background(OnPathColors.InfoBlue.copy(alpha = 0.88f), RoundedCornerShape(14.dp))
-            .padding(horizontal = 10.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Download, null, tint = Color.White, modifier = Modifier.size(14.dp))
-            Spacer(Modifier.width(4.dp))
-            Text(name, color = Color.White, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-            Text((if (more > 0) " +$more" else "") + " · ${ui.percent} %", color = Color.White, style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+        Surface(shape = RoundedCornerShape(50), color = OnPathColors.TagContainer, contentColor = OnPathColors.TagInk,
+            shadowElevation = 2.dp) {
+            Row(Modifier.widthIn(max = maxW).padding(start = 7.dp, end = 10.dp, top = 5.dp, bottom = 5.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                // the ring as tall as the text (grows with the phone's font size)
+                val ring = Modifier.size(with(androidx.compose.ui.platform.LocalDensity.current) { MaterialTheme.typography.labelMedium.fontSize.toDp() })
+                val track = OnPathColors.TagInk.copy(alpha = 0.18f)
+                if (ui.hasPercent) CircularProgressIndicator(progress = { ui.percent / 100f }, modifier = ring, color = OnPathColors.TagInk,
+                    trackColor = track, strokeWidth = 2.dp, gapSize = 0.dp)
+                else CircularProgressIndicator(ring, color = OnPathColors.TagInk, trackColor = track, strokeWidth = 2.dp)
+                Spacer(Modifier.width(6.dp))
+                Text(name, color = OnPathColors.TagInk, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium,
+                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text((if (more > 0) " +$more" else "") + (if (ui.hasPercent) " · ${ui.percent} %" else ""), color = OnPathColors.TagInk,
+                    style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+            }
         }
     }
 }
 
-/** Tap on the strip / chip: what loads, and "Cancel all" (same as Settings → Offline maps; installed maps stay). */
+/**
+ * Tap on the chip: what loads, and "Cancel all" (same as Settings → Offline maps; installed maps stay) – a bottom sheet
+ * (owner 2026-10-31: the details of a state are a sheet, dialogs only for decisions). Drag down or Close closes it.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-fun BackgroundDownloadDialog(ui: BackgroundDownloadUi, onCancelAll: () -> Unit, onClose: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onClose,
-        title = { Text(str(Res.string.maps_bg_dialog_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (ui.groups.isNotEmpty()) {
-                    // one line per name: "Along your route to Gasthof Taser Alm (2 areas) · 24 MB · loading"
-                    ui.groups.forEach { Text(it.line) }
-                    if (ui.newer > 0) ui.newerEtaMin?.let { Text(str(Res.string.maps_bg_newer_ready, it), style = MaterialTheme.typography.bodyMedium) }
-                } else {
-                    val fresh = ui.regions - ui.newer
-                    if (fresh > 0) Text(plural(Res.plurals.maps_bg_fresh, fresh, fresh))
-                    ui.newerLine?.let { Text(it) }
-                }
-                Text(listOfNotNull(if (ui.bytes > 0) str(Res.string.maps_bg_total, mb(ui.bytes)) else null,
-                    str(Res.string.maps_bg_done, ui.percent)).joinToString(" · "),
-                    fontWeight = FontWeight.Medium)
-                Text(str(Res.string.maps_bg_maps_stay), style = MaterialTheme.typography.bodyMedium)
+fun BackgroundDownloadSheet(ui: BackgroundDownloadUi, onCancelAll: () -> Unit, onClose: () -> Unit) {
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onClose, containerColor = OnPathColors.CardWhite) {
+        BackgroundDownloadDetailsContent(ui, onCancelAll, onClose)
+    }
+}
+
+/** The sheet's content: title, one line per name, the total, "Your maps stay", Cancel all (red) · Close. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun BackgroundDownloadDetailsContent(ui: BackgroundDownloadUi, onCancelAll: () -> Unit, onClose: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(str(Res.string.maps_bg_dialog_title), style = MaterialTheme.typography.titleLarge, color = OnPathColors.Ink,
+            modifier = Modifier.padding(end = 8.dp, bottom = 4.dp))
+        if (ui.groups.isNotEmpty()) {
+            // one line per name: "Along your route to Gasthof Taser Alm (2 areas) · 24 MB · loading"
+            ui.groups.forEach { Text(it.line, style = MaterialTheme.typography.bodyLarge, color = OnPathColors.Ink) }
+            if (ui.newer > 0) ui.newerEtaMin?.let {
+                Text(str(Res.string.maps_bg_newer_ready, it), style = MaterialTheme.typography.bodyMedium, color = OnPathColors.InkMuted)
             }
-        },
-        confirmButton = { TextButton(onClick = onClose, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_close)) } },
-        dismissButton = {
+        } else {
+            val fresh = ui.regions - ui.newer
+            if (fresh > 0) Text(plural(Res.plurals.maps_bg_fresh, fresh, fresh), style = MaterialTheme.typography.bodyLarge)
+            ui.newerLine?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
+        }
+        Text(listOfNotNull(if (ui.bytes > 0) str(Res.string.maps_bg_total, mb(ui.bytes)) else null,
+            str(Res.string.maps_bg_done, ui.percent)).joinToString(" · "),
+            style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = OnPathColors.Ink)
+        Text(str(Res.string.maps_bg_maps_stay), style = MaterialTheme.typography.bodyMedium, color = OnPathColors.InkMuted)
+        // the two buttons wrap (right-aligned) when they do not fit side by side – never a word broken in a button
+        androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth().padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
             TextButton(onClick = onCancelAll, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(str(Res.string.common_cancel_all), color = OnPathColors.Bad, fontWeight = FontWeight.SemiBold)
+                Text(str(Res.string.common_cancel_all), color = OnPathColors.Bad, fontWeight = FontWeight.SemiBold, softWrap = false)
             }
-        },
-    )
+            TextButton(onClick = onClose, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_close), softWrap = false) }
+        }
+    }
 }
 
 /** The strip appears only after a background download has run this long (owner: 2 s is too hectic). */
@@ -220,12 +248,12 @@ internal fun rememberBackgroundDownload(vm: AppViewModel): BackgroundDownloadUi?
     return rememberNoFlash(target, gate)
 }
 
-/** The details dialog for [ui] while the user opened it (strip / chip tap). */
+/** The details sheet for [ui] while the user opened it (chip tap). */
 @androidx.compose.runtime.Composable
 internal fun BackgroundDownloadDetails(vm: AppViewModel, ui: BackgroundDownloadUi?) {
     if (!vm.downloadDetailsOpen) return
     if (ui == null) { androidx.compose.runtime.LaunchedEffect(Unit) { vm.downloadDetailsOpen = false }; return }
-    BackgroundDownloadDialog(ui, onCancelAll = vm::cancelAllDownloads, onClose = { vm.downloadDetailsOpen = false })
+    BackgroundDownloadSheet(ui, onCancelAll = vm::cancelAllDownloads, onClose = { vm.downloadDetailsOpen = false })
 }
 
 /**
