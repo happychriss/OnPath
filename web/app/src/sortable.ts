@@ -16,7 +16,7 @@ const EDGE = 40; // px from the list's visible edge where it starts to scroll
 /** [onMove] gets the rows' data-i values (point indices) of the dragged row and of the row it lands on. */
 export function sortable(list: HTMLElement, onMove: (from: number, to: number) => void) {
   let drag: { li: HTMLElement; rows: HTMLElement[]; from: number; to: number; y0: number; top0: number; y: number; rowPx: number; raf: number } | null = null;
-  let justDragged = 0;
+  let swallowClick = false; // the click the drag's own pointerup makes (dispatched before any timer runs)
 
   const update = () => {
     const d = drag!;
@@ -41,7 +41,7 @@ export function sortable(list: HTMLElement, onMove: (from: number, to: number) =
     list.classList.remove('sorting');
     d.li.classList.remove('lifted');
     d.rows.forEach((r) => { r.style.transform = ''; });
-    justDragged = Date.now();
+    swallowClick = true; setTimeout(() => { swallowClick = false; }, 0);
     if (commit && d.to !== d.from) onMove(Number(d.rows[d.from].dataset.i), Number(d.rows[d.to].dataset.i));
   };
 
@@ -72,6 +72,7 @@ export function sortable(list: HTMLElement, onMove: (from: number, to: number) =
     const to = from + (e.key === 'ArrowUp' ? -1 : 1);
     if (to >= 0 && to < rows.length) onMove(Number(rows[from].dataset.i), Number(rows[to].dataset.i));
   });
-  // the click that ends a drag must not also "show the point on the map"
-  list.addEventListener('click', (e) => { if (Date.now() - justDragged < 250) e.stopImmediatePropagation(); }, true);
+  // the click that ends a drag must not also "show the point on the map" – only that one: a ✕ or a row clicked right
+  // after a drop works at once, as in the app (a 250 ms window used to swallow it; parity-smoke "Points list ✕")
+  list.addEventListener('click', (e) => { if (swallowClick) { swallowClick = false; e.stopImmediatePropagation(); } }, true);
 }
