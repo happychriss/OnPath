@@ -546,7 +546,9 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         val guide = nav?.toRoute?.takeIf { nav.prompt != null && nav.prompt !is com.onpath.app.navigation.NavPrompt.Question }
         c.setNavGuide(location?.let { com.onpath.app.routing.GeoPoint(it.latitude, it.longitude) }, guide?.target)
     }
-    LaunchedEffect(c, rec?.track?.sumOf { it.size }?.takeUnless { rest }) { if (!rest) c.setTrack(MapController.SRC_REC, rec?.track ?: emptyList()) }
+    // no service after a reboot: the interrupted tour's track behind its question (Continue · Delete · Save)
+    val recTrack = rec?.track ?: vm.unfinished?.let { vm.unfinishedTrack } ?: emptyList()
+    LaunchedEffect(c, recTrack.sumOf { it.size }.takeUnless { rest }) { if (!rest) c.setTrack(MapController.SRC_REC, recTrack) }
     LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
     // the spot tapped in the route warnings list: its piece of route amber (Plan only)
     LaunchedEffect(c, vm.spotLine, vm.mode) { c.setSpotLine(vm.spotLine?.takeIf { vm.mode == AppMode.PLAN }) }

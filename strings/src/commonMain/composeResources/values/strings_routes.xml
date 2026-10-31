@@ -52,7 +52,7 @@
     <string name="routes_save_first">Save first</string>
     <string name="routes_name_label">Name</string>
 
-    <string name="routes_unfinished_title">Unfinished tour</string>
+    <string name="routes_unfinished_title">Interrupted tour</string>
     <string name="routes_unfinished_text">A recording was interrupted (%1$s, %2$s). Nothing was lost.</string>
     <string name="routes_unfinished_continue">Continue</string>
     <string name="routes_unfinished_delete_title">Delete this tour?</string>

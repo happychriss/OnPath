@@ -91,6 +91,19 @@ class SharedPlaceLookupTest {
         assertFalse(r.online)
     }
 
+    /** Field bug 2026-10-31: found by its address, the ring said "Address" – the named POI right there is the place. */
+    @Test fun theNamedPoiAtTheAddressIsTheSharedPlace() {
+        val p = sharedFromLink()
+        val a = Place("a:1", "Mittelstraße 25 · Hilden", "address", 51.16885, 6.93725, address = "40721", town = "Hilden", village = "Hilden")
+        val f = Fake(offline = mapOf("Mittelstraße 25, 40721 Hilden" to listOf(a), "Olive" to listOf(oliveDus, oliveHilden)))
+        val r = SharedPlaceLookup(f).find(p.name, p.address, p.query) as SharedPlaceLookup.Result.Found
+        assertEquals("p:hil", r.place.id)
+        assertEquals("restaurant", r.place.kind)
+        // no POI of that name near the address (only Düsseldorf's): the address stays
+        val g = Fake(offline = mapOf("Mittelstraße 25, 40721 Hilden" to listOf(a), "Olive" to listOf(oliveDus)))
+        assertEquals("a:1", (SharedPlaceLookup(g).find(p.name, p.address, p.query) as SharedPlaceLookup.Result.Found).place.id)
+    }
+
     @Test fun anAddressInAnotherTownIsNotTaken() {
         // the same street name in Düsseldorf (another postcode, another town) is not the shared address
         val a = Place("a:2", "Mittelstraße 25 · Düsseldorf", "address", 51.2200, 6.7700, address = "40213", town = "Düsseldorf")
@@ -134,9 +147,10 @@ class SharedPlaceLookupTest {
         val r = SharedPlaceLookup(f).find(p.name, p.address, p.query) as SharedPlaceLookup.Result.Found
         assertEquals(51.16884, r.place.lat, 1e-6)
         assertTrue(r.how.startsWith("phone address service"))
-        // it is asked last: after every offline and online search
+        // it is asked last: after every offline and online search (only the offline check for the named POI at its
+        // address hit may follow)
         val firstGeo = f.asked.indexOfFirst { it.startsWith("geo:") }
-        assertTrue(f.asked.toString(), f.asked.drop(firstGeo).all { it.startsWith("geo:") })
+        assertTrue(f.asked.toString(), f.asked.drop(firstGeo).none { it.startsWith("on:") })
         assertTrue(f.asked.toString(), f.asked.take(firstGeo).any { it.startsWith("on:") })
     }
 

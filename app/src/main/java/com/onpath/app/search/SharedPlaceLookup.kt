@@ -121,16 +121,27 @@ class SharedPlaceLookup(private val finder: SharedPlaceFinder) {
             return first.takeIf { hits.all { h -> key(h) != key(first) || Geo.distance(h.lat, h.lon, first.lat, first.lon) <= ONE_PLACE_M } }
         }
 
-        for (t in located) pick(finder.offline(t))?.let { return Result.Found(it, false, "offline address") }
+        // found by its address: the named place right there (a POI of our index) is what was shared – it gives the
+        // ring its kind ("Restaurant", not "Address"; field bug 2026-10-31) and the POI's own position
+        fun atAddress(hit: Place): Place {
+            if (hit.kind != "address" && hit.kind != "street") return hit
+            val n = placeName?.let { SearchText.normalize(it) }?.takeIf { it.isNotEmpty() } ?: return hit
+            return finder.offline(placeName).firstOrNull {
+                it.kind != "address" && it.kind != "street" && SearchText.normalize(it.name) == n &&
+                    Geo.distance(it.lat, it.lon, hit.lat, hit.lon) <= AT_ADDRESS_M
+            } ?: hit
+        }
+
+        for (t in located) pick(finder.offline(t))?.let { return Result.Found(atAddress(it), false, "offline address") }
         if (placeName != null && !area.isEmpty) pick(finder.offline(placeName))?.let { return Result.Found(it, false, "offline name in town") }
-        for (t in located) pick(finder.online(t))?.let { return Result.Found(it, true, "online address") }
+        for (t in located) pick(finder.online(t))?.let { return Result.Found(atAddress(it), true, "online address") }
         if (nameInTown != null) pick(finder.online(nameInTown))?.let { return Result.Found(it, true, "online name in town") }
         if (area.isEmpty && placeName != null) {
             pick(finder.offline(placeName))?.let { return Result.Found(it, false, "offline name") }
             pick(finder.online(placeName))?.let { return Result.Found(it, true, "online name") }
         }
         // last: the phone's own address service (A-020) – its hits pass the same town / postcode check
-        for (t in located) pick(finder.geocode(t))?.let { return Result.Found(it, true, "phone address service, address") }
+        for (t in located) pick(finder.geocode(t))?.let { return Result.Found(atAddress(it), true, "phone address service, address") }
         if (nameInTown != null) pick(finder.geocode(nameInTown))?.let { return Result.Found(it, true, "phone address service, name in town") }
         if (area.isEmpty && placeName != null) pick(finder.geocode(placeName))?.let { return Result.Found(it, true, "phone address service, name") }
         return if (seen) Result.Unsure(searchText) else Result.NotFound
@@ -143,5 +154,7 @@ class SharedPlaceLookup(private val finder: SharedPlaceFinder) {
         const val BORDER_M = 1_500.0
         /** Namesakes this close are one place (a POI and its map label, two entrances). */
         const val ONE_PLACE_M = 2_000.0
+        /** The shared name's POI this close to the address hit is the shared place (a building, its entrances). */
+        const val AT_ADDRESS_M = 150.0
     }
 }

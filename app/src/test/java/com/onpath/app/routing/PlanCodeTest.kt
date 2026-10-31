@@ -101,6 +101,21 @@ class PlanCodeTest {
         assertNull(PlanCode.decode("Ag" + code.drop(2))) // version byte 2
     }
 
+    /** Field bug 2026-10-31: a bike plan link with T level 0 was "Plan-Link nicht lesbar". */
+    @Test fun levelZeroReadsAsT2ForBikesButNotForAHike() {
+        fun withLevel0(a: Activity): String {
+            val bytes = java.util.Base64.getUrlDecoder().decode(PlanCode.encode(SharedPlan(listOf(meran, algund), a)))
+            bytes[2] = 0 // version, activity, SAC
+            return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+        }
+        for (a in Activity.entries.filter { it != Activity.HIKE }) {
+            val back = PlanCode.decode(withLevel0(a))!!
+            assertEquals(a, back.activity)
+            assertEquals(2, back.sac)
+        }
+        assertNull(PlanCode.decode(withLevel0(Activity.HIKE)))
+    }
+
     @Test fun unknownFieldsAreSkipped() {
         // a newer app may add fields: tag 9, length 3 after a valid plan
         val plain = SharedPlan(listOf(meran, algund), Activity.MTB, title = "T")

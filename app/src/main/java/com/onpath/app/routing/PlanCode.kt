@@ -117,7 +117,8 @@ object PlanCode {
     private fun read(r: Reader): SharedPlan? {
         if (r.byte() != VERSION) return null
         val activity = ACTIVITIES.getOrNull(r.byte()) ?: return null
-        val sac = r.byte().takeIf { it in 1..5 } ?: return null
+        // T0 from a bike plan (field bug 2026-10-31): the level means nothing there – read it as the default T2
+        val sac = r.byte().let { if (it == 0 && activity != Activity.HIKE) 2 else it }.takeIf { it in 1..5 } ?: return null
         val n = r.varint()
         if (n < 0 || n > MAX_POINTS) return null
         var lat = 0L

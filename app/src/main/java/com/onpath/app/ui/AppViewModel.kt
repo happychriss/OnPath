@@ -1409,6 +1409,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Work the user started that takes a moment: a spinner where it was started. */
     var busy by mutableStateOf<Busy?>(null)
     var unfinished by mutableStateOf<Tour?>(null)
+    /** The track of [unfinished], drawn on the map while its question shows (no service runs then). */
+    var unfinishedTrack by mutableStateOf<List<List<GeoPoint>>>(emptyList())
     var finishedTour by mutableStateOf<Tour?>(null)
     /** Moving time / breaks / planned vs. needed of [finishedTour] (null = not known). */
     var finishedTimes by mutableStateOf<com.onpath.app.time.TourTimes?>(null)
@@ -1491,7 +1493,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             withContext(Dispatchers.Main) { enter(start); startModeKnown = true }
             if (active != null && RecordingService.state.value == null) {
                 delay(1500) // the service may be restarting by itself (sticky)
-                if (RecordingService.state.value == null) withContext(Dispatchers.Main) { unfinished = active }
+                if (RecordingService.state.value == null) {
+                    // drawn behind the question, so the user sees which tour it is (field bug 2026-10-31: empty map)
+                    val line = runCatching { db.loadSegments(active.id).map { seg -> seg.map { GeoPoint(it.lat, it.lon) } } }
+                        .onFailure { Problems.warn("db", "Track of the unfinished tour could not be read – not drawn", it) }
+                        .getOrDefault(emptyList())
+                    withContext(Dispatchers.Main) { unfinishedTrack = line; unfinished = active }
+                }
             }
         }
         // The service stopped by itself (permission gone, foreground refused, database broken): say why, in the app too.
@@ -2421,9 +2429,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         searchPlace = p
         searchMark = p
         followMe = false
-        // Google Maps place → go there (owner): the ring's menu opens by itself once the map is there – once per share
+        // Google Maps place → go there (owner): the ring's menu opens by itself once the map is there – on every share
         sharedMenuWaiting = sharedMenu.arrived(SharedPlaceMenu.key(p.lat, p.lon, p.name))
-        if (!sharedMenuWaiting) Problems.trace("plan", "Shared place again: its menu opened before – ring only")
         // outside the downloaded map the ring still shows (on an empty map) – the overview zoom makes that clear
         flyToPlace(p)
     }

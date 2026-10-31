@@ -34,15 +34,13 @@ class SharedPlaceMenuTest {
         assertEquals(Step.NONE, m.at(0.0)) // a later camera stop opens nothing
     }
 
-    @Test fun sameShareAgainShowsTheRingOnly() {
+    /**
+     * Field bug 2026-10-31: the same place shared a second time showed the ring only. A share is the user's own act
+     * (a re-delivered intent is dropped by IncomingIntent), so every share opens the menu again.
+     */
+    @Test fun sameShareAgainOpensTheMenuAgain() {
         val m = SharedPlaceMenu()
         m.arrived(key); assertEquals(Step.OPEN, m.at(0.0))
-        assertFalse(m.arrived(key))
-        assertEquals(Step.NONE, m.at(0.0))
-        // another place opens its menu; after that the first one is a new share again (only a repeat is ignored)
-        val other = SharedPlaceMenu.key(46.70, 11.20, "Leiter Alm")
-        assertTrue(m.arrived(other)); assertEquals(Step.OPEN, m.at(0.0, mark = other))
-        assertFalse(m.arrived(other))
         assertTrue(m.arrived(key)); assertEquals(Step.OPEN, m.at(0.0))
         // the same share arriving twice before the camera got there: one menu
         val third = SharedPlaceMenu.key(46.71, 11.21, null)
