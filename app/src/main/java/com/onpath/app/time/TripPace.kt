@@ -24,7 +24,8 @@ import kotlin.math.roundToLong
  *   moves later as time passes (checked every 30 s). A new setting resets that limit once. A **new line** (plan edit,
  *   re-route) shows its own difference at once, but what the display had not shown yet (the calm lag) is kept as an
  *   offset blended out over [OFFSET_BLEND_MS]; when the arrival moves by more than [NOTE_MIN_MS] that way, the
- *   snapshot carries a [LineNote] ("New route: arrival 12:45, was 13:15") until the next line change.
+ *   snapshot carries a [LineNote] ("New route: arrival 12:45, was 13:15") until the next line change – back to the line
+ *   it compared with (Undo), it goes without a new one.
  *
  * Predictions are `model (Average) × prior × factors()`, where prior = the pace setting (Relaxed · Easy · Average · Fit · Very fit).
  */
@@ -70,6 +71,8 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
     /** Arrival shown before the line changed, until the first value on the new line is shown. */
     private var noteWasMs: Long? = null
     private var lineNote: LineNote? = null
+    /** The line the note's "was" time belongs to: back on it (Undo), the note has nothing left to explain. */
+    private var noteFrom: RouteTimes? = null
 
     /**
      * New line to follow (start, re-route, plan edit) or none. Learned sums stay. [alongM] = where the user is on it;
@@ -88,8 +91,10 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
             else -> lagMs
         }
         offsetFromWall = null
-        if (next == null) { lineNote = null; noteWasMs = null }
-        else if (!sameLine(old, next)) { lineNote = null; noteWasMs = shown }
+        if (next == null) { lineNote = null; noteWasMs = null; noteFrom = null }
+        // back to the line the note compared with (Undo of a plan edit): the note goes, no new one (field A-019)
+        else if (!sameLine(old, next) && sameLine(noteFrom, next)) { lineNote = null; noteWasMs = null; noteFrom = null }
+        else if (!sameLine(old, next)) { lineNote = null; noteWasMs = shown; noteFrom = old }
         times = next
         along = (alongM ?: 0.0).coerceAtLeast(0.0)
         matched = alongM != null
@@ -220,7 +225,7 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
             }
             lagMs = next - target
             noteWasMs?.let { was ->
-                if (abs(next - was) > NOTE_MIN_MS) lineNote = LineNote(was, next)
+                if (abs(next - was) > NOTE_MIN_MS) lineNote = LineNote(was, next) else noteFrom = null
                 noteWasMs = null
             }
             shownArrivalMs = next

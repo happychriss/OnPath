@@ -372,14 +372,39 @@ class TripPaceTest {
         trip.setLine(RouteTimes.of(longer, Activity.HIKE), times.lengthM * 0.5)
         trip.tick(s2 + 1, wall(s2 + 1))
         assertEquals(note, trip.snapshot().lineNote)
-        // back to the shorter plan: a new note (earlier)
-        trip.setLine(times, times.lengthM * 0.5)
+        // a third, shorter plan: a new note (earlier)
+        val shorter = pts.take(101)
+        trip.setLine(RouteTimes.of(shorter, Activity.HIKE), times.lengthM * 0.5)
         trip.tick(s2 + 2, wall(s2 + 2))
         val back = trip.snapshot().lineNote!!
         assertTrue(back.nowMs < back.wasMs - 20 * 60_000)
         // a change of less than 5 min: no note (the old one ends with the change)
-        trip.setLine(RouteTimes.of(pts.dropLast(1), Activity.HIKE), times.lengthM * 0.5)
+        trip.setLine(RouteTimes.of(shorter.dropLast(1), Activity.HIKE), times.lengthM * 0.5)
         trip.tick(s2 + 3, wall(s2 + 3))
         assertNull(trip.snapshot().lineNote)
+    }
+
+    @Test fun undoBackToTheOldLineEndsTheNote() {
+        // field A-019 (0.13.2): "New route · was 13:35" stayed after Undo and then showed the undone plan's time
+        val trip = TripPace(); trip.setLine(times, 0.0)
+        val s = walk(trip, Factors.ONE, 0.3)
+        val a = times.lengthM * 0.3
+        val p = line.pointAt(a)
+        val last = pts.last()
+        val longer = RouteTimes.of(pts + (1..40).map { GeoPoint(last.lat, last.lon + it * 0.00065, last.ele) }, Activity.HIKE)
+        trip.setLine(longer, a)
+        trip.onFix(s + 1, wall(s + 1), p.lat, p.lon, a, true)
+        assertNotNull(trip.snapshot().lineNote) // the plan edit moved the arrival: said
+        // Undo: the plan is back to the line the note compared with – nothing left to explain, no "was <undone time>"
+        trip.setLine(RouteTimes.of(pts, Activity.HIKE), a)
+        trip.onFix(s + 2, wall(s + 2), p.lat, p.lon, a, true)
+        assertNull(trip.snapshot().lineNote)
+        val s3 = walk(trip, Factors.ONE, 0.4, startS = s + 2, startAlong = a)
+        assertNull(trip.snapshot().lineNote)
+        // Redo: the edit again – said again
+        trip.setLine(longer, times.lengthM * 0.4)
+        val q = line.pointAt(times.lengthM * 0.4)
+        trip.onFix(s3 + 1, wall(s3 + 1), q.lat, q.lon, times.lengthM * 0.4, true)
+        assertNotNull(trip.snapshot().lineNote)
     }
 }
