@@ -6,7 +6,7 @@ that still apply are listed in `docs/project-status.md`. Finished work is not ke
 the git log.
 
 ## Release day 2026-11-01 – captain's plan (first real users)
-**On hold (owner 2026-11-01): no release until the owner says "get ready for the release" – work through the lists below meanwhile.**
+**On hold (owner 2026-11-01): no release until the owner says "get ready for the release"; first cloud-app's big rebuild must be on `main` – work through the lists below meanwhile.**
 1. **Morning, owner (10 min):** read the review's top list (`docs/reviews/2026-11-01-pre-release.md`, BLOCKERs first)
    and say which blockers must be fixed before the release – the rest goes to "Next".
 2. **cloud-app** fixes the app blockers on `main`; **cloud-plan** the web blockers on `web-spike` and merges `main` again
@@ -35,6 +35,11 @@ the git log.
   Note: the set is from app 0.13.2 – check each picture against today's app texts (e.g. the empty plan hint) first. Also: the site already
   calls voice guidance available (065d3b7) – fine if v0.14.0 ships 2026-11-01, otherwise roll that text back –
   captain 2026-11-01.
+
+- → [cloud-plan] **cloud-app is doing a big rebuild (owner 2026-11-01) – everything else waits for it.** Until it is
+  on `main`: no changes to files in `app/web-shared-files.txt` from `web-spike`, no planner deploy that touches shared
+  behaviour; web-only work goes on. After it lands: merge `main`, shared-code + parity tests, then the captain's
+  release check – captain 2026-11-01.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
