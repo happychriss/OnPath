@@ -40,6 +40,26 @@ the git log.
   reopen, no developer / raw error lines) + follow the splice catch-all from main. Deploy only together with the app
   release (captain's go).
 
+- → [cloud-app] **More before the release (owner 2026-11-01: "everything in the backlog can come along") – after list
+  A, in this order** (details in `docs/reviews/2026-11-01-pre-release.md` part C and the reports):
+  (1) recording robustness: arrival check in the service + no off-route alarms after arrival (C1 / recording H2),
+  watchdog "no fix for ~5 min" + honest "Recording interrupted" after a restart (H3), unwritten points queued (M2),
+  exception handler in the service scope (M3), switch question ≠ off route (M4); voice minimum intervals ("No GPS
+  signal" only after the start, ≤ 1 per 10 min; "Off the route" ≥ 2 min);
+  (2) routing: GPX with `<rte>` + `<trk>` not merged (H2), background routing on its own executor (H1);
+  (3) shared with cloud-plan, agree first: Save over a route changed by sync → copy or ask (sync H3), mailbox that
+  comes back empty (sync M4), stuck upload queue reported (M8);
+  (4) UX HIGH: hint "on the phone: hold", tap on a POI in Plan shows details, ✕ Close not right under End tour, one
+  off-route question shape, error texts without "move the point", route / plan / tour / track glossary EN + DE.
+  Not now: AppViewModel split, download helper, geo math clean-up (after the release). Small green commits; Rundgang
+  before the release (navigation / recording core changed).
+- → [cloud-plan] **More before the release (owner 2026-11-01) – after list A 10–13:** (1) re-pairing keeps the
+  browser's unsent routes (sync H1, `WebSync.kt` rebase); "Pair phone" twice does not end a pending mailbox the phone
+  already uses (M7); (2) edits queued while the engine is busy (web H4); `navigator.storage.persist()` (H5); Save /
+  Rename / Delete failures shown (M11); raw errors → plain text (M10); (3) with cloud-app: sync H3 / M4 as one shared
+  rule in `sync/`; Points list row text from shared `PlanPoints` (web M15). Closed folders (sync H2) wait for the
+  owner's decision D3. Security headers (CSP) = PR to the owner.
+
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
 - ← [cloud-web] Help-pictures order done: onpath.earth d15090a – app screens under the steps of 8 of 9 help topics (DE + EN, 34 pictures from the A-019 set; owner: "roughly matching is fine, UI still changes"). Swap later via `help_shots.py` + `scripts/help_shots.py`. Tester note draft in onpath.private (`marketing/tester-hinweis-entwurf.md`) for the owner – 2026-11-01
