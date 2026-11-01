@@ -37,6 +37,22 @@ the git log.
   captain 2026-11-01.
 
 
+- → [cloud-app] + [cloud-plan] **Coordination of the AppViewModel split (captain 2026-11-01)** – the split touches
+  the app's own UI layer, which the web does not compile; but two of its five areas border on shared code
+  (`app/web-shared-files.txt`: `search/*` ×10, `ui/PlanState|PlanStatus|PlanGaps|RouteWarnings|MapGestures`,
+  `data/Geo|AppSettings|LastActivity|RoutingDataNotice`, `routing/*`, `sync/*`). Until the split is done:
+  1. **cloud-app:** move code only *out of* AppViewModel into new app-only files; do **not** change, move or rename a
+     listed shared file. If one must change: own commit, one line for cloud-plan in the web mirror list,
+     `SharedFilesRuleTest` green; a new file the web needs → into the list in the same commit.
+  2. **cloud-app:** when the last step is on `main`, one line under "For the captain": `split done – <commit>, shared
+     files touched: none | list`.
+  3. **cloud-plan:** web-only work goes on; no changes to listed files; do **not** merge `main` mid-split – merge once
+     after "split done" (the captain messages you), then shared-code + parity tests.
+  4. **Then:** cloud-app puts the Points-row text into `PlanPoints` and the sync H3 rule into `sync/` (one announced
+     commit each) → cloud-plan wires both → captain's release check.
+  5. The daily scheduled task "Web-Planer: täglicher Abgleich" (05:47) merges `main` into `web-spike` by itself –
+     the owner decides whether to pause it until the split is done.
+
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
 - ← [cloud-web] Picture request for donald (owner OK 2026-11-01): (1) navigation with the new slider "Stopp · Pause · Beenden · Route ändern" (DE + EN), (2) the plan panel pulled fully up (points list visible), (3) the long-press menu with today's "Von meinem Standort hierhin". PNG 1080 × 2400 into `onpath.private/marketing/bilder/<folder>/`; the website takes them via `scripts/help_shots.py` (same file names as `help_shots.py`, or tell me the new ones). Until then the home page uses a patched picture – 2026-11-01
