@@ -155,6 +155,8 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private var origHits = 0
     private var forceCheck = false
     private var lastFix: OffRouteDetector.Fix? = null
+    /** Per stop point (survives plan edits that renumber): the closest good fix inside its radius so far (reached when moving away again, [markVisited]). */
+    private val stopClosest = HashMap<GeoPoint, Double>()
     /** A taken way back that starts by turning round: its start, until the rider has turned and moved on. */
     private var turnRoundAt: GeoPoint? = null
     /** The rider's latest positions, oldest first ([TurnRound]). */
@@ -567,6 +569,8 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     /**
      * Stops reached by this fix: within [NavSession.visitedM] (on foot 25 m, bike 40 m) and only from a fix good to
      * [NavSession.VISITED_MAX_ACCURACY_M] (owner 2026-11-01: a restaurant's jumping fixes said "Stopp 4 erreicht").
+     * Counted at the closest approach, not on entering the radius (owner on the replay: "Stopp 5 erreicht" came 24 m
+     * early): within [NavSession.VISITED_NOW_M], or inside the radius and moving away again (a point beside the way).
      */
     private fun markVisited(p: GeoPoint, accuracyM: Double): Step {
         val s = session
@@ -575,7 +579,12 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         var v: MutableSet<Int>? = null
         for (i in s.stops.indices) {
             if (i in s.visited) continue
-            if (Geo.distance(p, s.stops[i].point) <= radius) (v ?: s.visited.toMutableSet().also { v = it }).add(i)
+            val d = Geo.distance(p, s.stops[i].point)
+            val closest = stopClosest[s.stops[i].point]
+            if (d <= radius) stopClosest[s.stops[i].point] = minOf(closest ?: d, d)
+            val reached = d <= NavSession.VISITED_NOW_M ||
+                (closest != null && closest <= radius && d > closest + NavSession.VISITED_AWAY_M)
+            if (reached) (v ?: s.visited.toMutableSet().also { v = it }).add(i)
         }
         val nv = v ?: return Step()
         session = s.copy(visited = nv)

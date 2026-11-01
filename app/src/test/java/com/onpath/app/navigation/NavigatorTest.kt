@@ -361,8 +361,22 @@ class NavigatorTest {
         // a good fix 30 m beside the corner: still not within 25 m on foot
         r.feed(listOf(OffRouteDetector.Fix(pt(1000.0, 30.0).lat, pt(1000.0, 30.0).lon, 5.0, 3_001_000L)))
         assertTrue(1 !in r.nav.session.visited)
-        // a good fix 15 m from it: reached
+        // a good fix 15 m from it: inside the radius, still coming closer – not yet (owner: "Stopp 5 erreicht" came 24 m early)
         r.feed(listOf(OffRouteDetector.Fix(pt(985.0, 0.0).lat, pt(985.0, 0.0).lon, 5.0, 3_002_000L)))
+        assertTrue(1 !in r.nav.session.visited)
+        // 6 m from it: reached now
+        r.feed(listOf(OffRouteDetector.Fix(pt(994.0, 0.0).lat, pt(994.0, 0.0).lon, 5.0, 3_003_000L)))
+        assertTrue(1 in r.nav.session.visited)
+    }
+
+    /** A point 18 m beside the way: reached at the closest approach, when the distance grows again. */
+    @Test fun aPointBesideTheWayIsReachedWhenPassingIt() {
+        val s = NavSession.start(NavKind.PLAN, "Test", Activity.HIKE, 3, route,
+            listOf(pt(0.0, 0.0), pt(500.0, 18.0), pt(1000.0, 1000.0)))
+        val r = Run(Navigator(s))
+        r.feed(walk(0.0 to 0.0, 495.0 to 0.0))
+        assertTrue(1 !in r.nav.session.visited)
+        r.feed(walk(495.0 to 0.0, 520.0 to 0.0, t0Ms = 500_000L))
         assertTrue(1 in r.nav.session.visited)
     }
 }
