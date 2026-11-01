@@ -57,6 +57,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
@@ -209,6 +210,8 @@ fun NavigateOverlay(
      * bottom (with the navigation bar) – a route fit leaves that room free (FitPaddingRule).
      */
     onCover: (topDp: Int, bottomDp: Int) -> Unit = { _, _ -> },
+    /** Developer tools unlocked: the "Tour-Sim" chip ([NavSimChip]) under the status; null = none (everyone else). */
+    sim: (@Composable () -> Unit)? = null,
 ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     // the top column's height (turn card, status, chips) below the status bar: the one box goes 12 dp below it
@@ -232,6 +235,7 @@ fun NavigateOverlay(
                     onProfileScrub = onProfileScrub, onProfileRelease = onProfileRelease)
             }
             download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
+            sim?.let { Box(Modifier.align(Alignment.End)) { it() } }
         }
         Column(Modifier.align(Alignment.BottomCenter).modeEdge(ModeEdge.BOTTOM).fillMaxWidth()) {
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
@@ -783,7 +787,12 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
             download = bg, onDownload = { vm.downloadDetailsOpen = true },
             onNotifications = { vm.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },
             onNotificationsOk = { vm.notificationsOkTour = rec?.tourId },
-            error = vm.errorCard, onErrorOk = { vm.errorCard = null }, onCover = onCover)
+            error = vm.errorCard, onErrorOk = { vm.errorCard = null }, onCover = onCover,
+            sim = if (!vm.devToolsShown) null else { {
+                val demo by com.onpath.app.recording.DemoLocation.state.collectAsState()
+                NavSimChip(demo, onStart = { vm.startNavSim(line) }, onFactor = com.onpath.app.recording.DemoLocation::setFactor,
+                    onStop = { com.onpath.app.recording.DemoLocation.stop("stopped on the Navigate page") })
+            } })
         RestLayer(restTarget?.takeIf { rest }?.let { RestUi(it.event, it.distanceM, ui.toGo?.timeS, ui.arriveAt) },
             onTap = ScreenTouch::note)
     }

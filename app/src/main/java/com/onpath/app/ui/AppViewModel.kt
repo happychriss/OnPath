@@ -387,6 +387,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         com.onpath.app.recording.DemoLocation.startRide(path, label)
     }
 
+    /**
+     * Navigate → "▶ Sim" (developer tools, [NavSimChip]): rides [line] – the line followed now – from its start, else
+     * [demoLine]; a ride already on goes first.
+     */
+    fun startNavSim(line: List<GeoPoint>?) {
+        val (label, l) = line?.takeIf { it.size >= 2 }?.let { "followed route" to it } ?: demoLine()
+            ?: run { sayError("Nothing to simulate: no followed route or plan.", NoticePlace.MAP); return }
+        val path = com.onpath.app.recording.DemoPath.timed(l, activity, planFactors())
+            ?: run { sayError("This line is too short for a demo ride.", NoticePlace.MAP); return }
+        Problems.trace("demo", "Tour simulation started on the Navigate page ($label)")
+        com.onpath.app.recording.DemoLocation.startRide(path, label)
+    }
+
     /** Stands at the map centre (non-moving shots). */
     fun startDemoAtMapCentre() {
         val (lat, lon, _) = initialCamera()
