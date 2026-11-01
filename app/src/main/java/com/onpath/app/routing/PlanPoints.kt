@@ -26,6 +26,28 @@ data class PlanPointRow(
  * after every edit the loop is closed again at its (new) start.
  */
 object PlanPoints {
+    /**
+     * The role under a row's name (web review M15: the web had its own words; shared now): "Start" / "Destination" /
+     * "Start and finish"; not repeated when an unnamed point is already called by it.
+     */
+    fun roleText(r: PlanPointRow): String? = when {
+        r.loop -> Txt.s(Res.string.plan_point_start_finish)
+        r.role == PointRole.START -> Txt.s(Res.string.plan_point_start)
+        r.role == PointRole.GOAL -> Txt.s(Res.string.plan_point_destination)
+        else -> null
+    }?.takeIf { it != r.name }
+
+    /** "+2.3 km" / "+850 m" from the previous point, "~" when straight; a round trip's start shows the way back ("↺ 1.2 km"). */
+    fun legText(r: PlanPointRow): String? {
+        val m = r.legM ?: return null
+        val d = com.onpath.app.data.Format.distance(m)
+        return when {
+            r.loop -> "↺ " + (if (r.approx) "~" else "") + d
+            r.approx -> "~$d"
+            else -> "+$d"
+        }
+    }
+
     /** A route point found this far from the line still counts as on it (earliest such pass wins). */
     private const val PASS_SLACK_M = 25.0
 

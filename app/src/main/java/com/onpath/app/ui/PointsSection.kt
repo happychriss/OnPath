@@ -298,21 +298,7 @@ private fun PointMarker(r: PlanPointRow, count: Int) {
     }
 }
 
-/** The role under the name; not repeated when an unnamed point is already called by it ("Start", "Destination"). */
-private fun roleText(r: PlanPointRow): String? = when {
-    r.loop -> Txt.s(Res.string.plan_point_start_finish)
-    r.role == PointRole.START -> Txt.s(Res.string.plan_point_start)
-    r.role == PointRole.GOAL -> Txt.s(Res.string.plan_point_destination)
-    else -> null
-}?.takeIf { it != r.name }
+/** The row texts are shared with the web planner (web review M15). */
+private fun roleText(r: PlanPointRow): String? = com.onpath.app.routing.PlanPoints.roleText(r)
 
-/** "+2.3 km" from the previous point, "~" when straight; a round trip's start shows the way back ("↺ 1.2 km"). */
-private fun legText(r: PlanPointRow): String? {
-    val m = r.legM ?: return null
-    val d = Format.distance(m)
-    return when {
-        r.loop -> "↺ " + (if (r.approx) "~" else "") + d
-        r.approx -> "~$d"
-        else -> "+$d"
-    }
-}
+private fun legText(r: PlanPointRow): String? = com.onpath.app.routing.PlanPoints.legText(r)
