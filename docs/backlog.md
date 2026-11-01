@@ -54,6 +54,18 @@ the git log.
 - [cloud-app] Release v0.14.0 (voice) – captain's go; waits for the owner's Pixel voice test OK + E2E green on 69515dd / 4c64138 – since 2026-11-01
 
 ## Next
+- **Website screenshots per changed screen, not whole sets (owner 2026-11-01) – start right after the v0.14.0
+  release.** Instead of re-shooting all pictures after every UI change, each role re-shoots only the pictures of the
+  screens it changed. (1) **[cloud-app]** a list `docs/design/website-screens.md`: every website / store / help
+  picture (~35: home 14, help ~20, planner) with a fixed name (e.g. `08a-erste-route-leer`), what it shows, the fixed
+  scenario (emulator, Demo ride Vellau → Leiteralm as in A-019, never the owner's phone) and the UI files it depends
+  on; plus a script on donald that shoots ONE picture by name in DE + EN on the emulator (Paparazzi images don't do –
+  no map). (2) **[cloud-plan]** the same for the planner pictures from the existing `ui-shots` (Playwright).
+  (3) **Rule for both:** a change to a screen on the list → re-shoot exactly those pictures and drop them in
+  `onpath.private/marketing/bilder/aktuell/` with one line each (name, app / planner version, date); `tools/ci/gate.sh`
+  may remind when changed files touch a listed screen. (4) **[cloud-web]** swaps only the changed pictures on the
+  website and in the help, checks the version line. Mixed versions are fine as long as each picture matches today's
+  app.
 - **Website and Google Play follow-ups (marketing; website repo `happychriss/onpath.earth`)** – (1) **Voice:** onpath.earth
   (since PR #7) and the Play store text say "Sprachansagen sind nicht vorgesehen – OnPath führt über Karte und
   Vibration" – written before the owner's voice decision of 2026-10-31; change both when voice guidance ships.
