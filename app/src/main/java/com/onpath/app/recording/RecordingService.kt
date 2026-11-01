@@ -54,6 +54,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.Executors
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -107,7 +108,16 @@ data class RecState(
  */
 class RecordingService : Service() {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    /**
+     * Main-thread work of the tour. An uncaught exception here used to kill the process and START_STICKY brought the
+     * service back mid-tour (field 2026-11-01: "Los geht's" 3–4×): it is reported, the tour goes on. Recreated for a
+     * tour started on an instance whose previous tour just ended ([finish] cancels it).
+     */
+    private var scope = newScope()
+
+    private fun newScope() = CoroutineScope(SupervisorJob() + Dispatchers.Main + CoroutineExceptionHandler { _, e ->
+        Problems.error("recording", "Unexpected error in the recording service; the tour goes on", e)
+    })
     private lateinit var db: TourDb
     private lateinit var tracker: LocationTracker
     private var wakeLock: PowerManager.WakeLock? = null
@@ -142,6 +152,8 @@ class RecordingService : Service() {
     private val junctions = com.onpath.app.navigation.JunctionCues()
     /** Spoken directions (docs/design/voice-guidance.md): what to say ([voice]), the phone's speech output ([speaker]). */
     private val voice = com.onpath.app.navigation.VoiceGuide()
+    /** The voice memory last written to [TRIP_FILE] (written again when it changes). */
+    private var voiceSaved: com.onpath.app.navigation.VoiceGuide.Memory? = null
     private var speaker: Speaker? = null
     private val junctionSpeeds = com.onpath.app.navigation.SpeedWindow()
     /** Line version whose junction count was traced (a missing junction vibration is explained in the trace). */
@@ -212,8 +224,10 @@ class RecordingService : Service() {
                     SAY_NO_DESTINATION -> com.onpath.app.navigation.Phrase.NoDestination
                     else -> null
                 }
-                if (phrase != null && voiceOn()) voiceSpeaker()?.say(com.onpath.app.navigation.VoiceText.of(
-                    voice.event(phrase, SystemClock.elapsedRealtime())))
+                if (phrase != null && voiceOn()) {
+                    voice.event(phrase, SystemClock.elapsedRealtime())?.let { voiceSpeaker()?.say(com.onpath.app.navigation.VoiceText.of(it)) }
+                    saveVoice()
+                }
                 return START_STICKY
             }
             ACTION_SETTINGS -> {
@@ -256,6 +270,7 @@ class RecordingService : Service() {
         // Already recording: every startForegroundService() must be answered with startForeground(), or the
         // system kills the process ("did not call startForeground") – a double tap on Start must not do that.
         if (tourId >= 0) { goForeground(); return START_STICKY }
+        if (!scope.isActive) scope = newScope() // a tour ended on this instance a moment ago (finish cancelled it)
 
         // ACTION_START, or a sticky restart by the system (null intent): continue an active recording.
         val continueId = intent?.getLongExtra(EXTRA_CONTINUE_ID, -1L) ?: -1L
@@ -292,7 +307,8 @@ class RecordingService : Service() {
                 last = null
                 recActivity = activityOf(existing.activity)
                 demoMarked = existing.name.startsWith(DemoLocation.TOUR_PREFIX)
-                loadTrip()
+                voice.newTour()
+                loadTrip() // also the tour's voice memory: a sticky restart never says "Los geht's" again
             } else {
                 // a tour started during a demo is marked as such (easy to find and delete)
                 demoMarked = DemoLocation.active
@@ -307,6 +323,7 @@ class RecordingService : Service() {
                 firstFixElapsed = 0L // a new tour: its first heights settle again (SeaLevel)
                 climb.restart()
                 trip = com.onpath.app.time.TripPace(priorFor(recActivity))
+                voice.newTour(); voiceSaved = null
                 saveTrip()
             }
         } catch (e: Exception) {
@@ -360,32 +377,43 @@ class RecordingService : Service() {
 
     private fun startTicker() {
         scope.launch {
-            var lastTick = SystemClock.elapsedRealtime()
-            var lastStats = lastTick
-            var pausedBefore = paused
+            lastTick = SystemClock.elapsedRealtime()
+            lastStats = lastTick
+            pausedBefore = paused
             while (isActive) {
                 delay(1000)
-                val now = SystemClock.elapsedRealtime()
-                // real time since the last tick: a tick delayed by Doze or a busy phone must not lose minutes.
-                // Not across a pause: without the wake lock a paused tick can come late (resume counts from here).
-                if (!paused && !pausedBefore) elapsedS += ((now - lastTick) / 1000.0).toLong().coerceIn(1, 600)
-                pausedBefore = paused
-                lastTick = now
-                // the lock times out after 12 h: long days go on; paused = slow GPS (10 s), no lock (battery)
-                if (!paused && wakeLock?.isHeld != true) acquireWakeLock()
-                if (gpsLost()) navigator?.onGpsLost() // no alarms without GPS (R-04)
-                if (gpsLost()) navigator?.state?.let { voiceStep(it, now) } // "No GPS signal" comes without fixes
-                if (now - lastStats >= 10_000) {
-                    lastStats = now
-                    safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
+                try { tick() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
+                    Problems.error("recording", "Recording tick failed; the tour goes on", e)
                 }
-                try { trip.tick(elapsedS.toDouble(), System.currentTimeMillis()) } catch (e: Exception) {
-                    Problems.error("time", "Trip pace tick failed; times shown may be wrong", e)
-                }
-                if (now - tripSaved > 30_000) saveTrip()
-                publish()
             }
         }
+    }
+
+    private var lastTick = 0L
+    private var lastStats = 0L
+    private var pausedBefore = false
+
+    /** One second of the tour: time, wake lock, GPS lost, stats, trip pace, state for the app. */
+    private fun tick() {
+        val now = SystemClock.elapsedRealtime()
+        // real time since the last tick: a tick delayed by Doze or a busy phone must not lose minutes.
+        // Not across a pause: without the wake lock a paused tick can come late (resume counts from here).
+        if (!paused && !pausedBefore) elapsedS += ((now - lastTick) / 1000.0).toLong().coerceIn(1, 600)
+        pausedBefore = paused
+        lastTick = now
+        // the lock times out after 12 h: long days go on; paused = slow GPS (10 s), no lock (battery)
+        if (!paused && wakeLock?.isHeld != true) acquireWakeLock()
+        if (gpsLost()) navigator?.onGpsLost() // no alarms without GPS (R-04)
+        if (gpsLost()) navigator?.state?.let { voiceStep(it, now) } // "No GPS signal" comes without fixes
+        if (now - lastStats >= 10_000) {
+            lastStats = now
+            safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
+        }
+        try { trip.tick(elapsedS.toDouble(), System.currentTimeMillis()) } catch (e: Exception) {
+            Problems.error("time", "Trip pace tick failed; times shown may be wrong", e)
+        }
+        if (now - tripSaved > 30_000) saveTrip()
+        publish()
     }
 
     private fun gpsLost() = SystemClock.elapsedRealtime() - lastGoodFixElapsed > RestWatch.lostAfterMs(restWatch.resting)
@@ -640,7 +668,11 @@ class RecordingService : Service() {
                 is Rerouter.Failed -> "failed in ${out.tookMs} ms: ${out.reason} ${out.detail}"
             })
             if (rerouteCancel === cancel) { rerouteCancel = null; rerouteJob = null }
-            navigator?.let { handle(it.onResult(job.id, out)) }
+            // field 2026-11-01: an exception here (right after the start: far start / "Guide me" re-route) killed the
+            // process mid-tour; reported, the tour goes on with the line it has
+            try { navigator?.let { handle(it.onResult(job.id, out)) } } catch (e: Exception) {
+                Problems.error("navigation", "Re-route result could not be applied; the tour goes on", e)
+            }
         }
     }
 
@@ -720,12 +752,16 @@ class RecordingService : Service() {
                 bike = s?.activity != com.onpath.app.routing.Activity.HIKE, offRoute = st.prompt?.offRoute == true,
                 rerouted = s?.rerouted == true, paused = paused, gpsLost = gpsLost(),
                 stops = s?.stops.orEmpty(), visited = s?.visited.orEmpty(), toGoS = tripTime().toGoS,
-            )) ?: return
-            voiceSpeaker()?.say(com.onpath.app.navigation.VoiceText.of(phrase))
+            ))
+            saveVoice()
+            if (phrase != null) voiceSpeaker()?.say(com.onpath.app.navigation.VoiceText.of(phrase))
         } catch (e: Exception) {
             Problems.warn("voice", "Spoken direction skipped", e)
         }
     }
+
+    /** What the voice said this tour goes with the tour ([TRIP_FILE]): written when it changed ("Los geht's" once). */
+    private fun saveVoice() { if (voice.memory() != voiceSaved) saveTrip() }
 
     // ---- heights above sea level ([SeaLevel]) ----
     @Volatile private var geoid: SeaLevel.Offset? = null
@@ -1026,9 +1062,13 @@ class RecordingService : Service() {
         if (tourId < 0) return
         tripSaved = SystemClock.elapsedRealtime()
         try {
-            val o = org.json.JSONObject().put("tour", tourId).put("trip", trip.toJson())
+            val m = voice.memory()
+            val o = org.json.JSONObject().put("tour", tourId).put("trip", trip.toJson()).put("voice", org.json.JSONObject()
+                .put("started", m.started).putOpt("offRoute", m.offRouteSaidMs).putOpt("noGps", m.noGpsSaidMs)
+                .putOpt("arrived", m.arrivedSaidMs))
             val f = File(filesDir, TRIP_FILE)
             AtomicFiles.writeText(f, o.toString(), File(f.path + ".tmp"))
+            voiceSaved = m
         } catch (e: Exception) { Problems.error("time", "Trip pace file could not be saved (break time may be lost on restart)", e) }
     }
 
@@ -1036,8 +1076,15 @@ class RecordingService : Service() {
         val prior = priorFor(recActivity)
         trip = try {
             val o = org.json.JSONObject(File(filesDir, TRIP_FILE).readText())
-            if (o.optLong("tour", -1) == tourId) com.onpath.app.time.TripPace.fromJson(o.optJSONObject("trip"), prior)
-            else com.onpath.app.time.TripPace(prior)
+            if (o.optLong("tour", -1) == tourId) {
+                o.optJSONObject("voice")?.let { v ->
+                    fun ms(k: String) = if (v.has(k)) v.optLong(k) else null
+                    val m = com.onpath.app.navigation.VoiceGuide.Memory(v.optBoolean("started"), ms("offRoute"), ms("noGps"), ms("arrived"))
+                    voice.continueTour(m); voiceSaved = m
+                    if (m.started) Problems.trace("voice", "Tour continued after a restart: the start sentence was said already")
+                }
+                com.onpath.app.time.TripPace.fromJson(o.optJSONObject("trip"), prior)
+            } else com.onpath.app.time.TripPace(prior)
         } catch (_: java.io.FileNotFoundException) {
             com.onpath.app.time.TripPace(prior) // expected: no trip file yet (first start or older tour)
         } catch (e: Exception) {
