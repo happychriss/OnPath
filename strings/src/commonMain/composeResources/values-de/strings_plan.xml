@@ -55,7 +55,7 @@
     <string name="plan_spots_tap">Tippe auf eine Stelle, um sie auf der Karte zu sehen.</string>
     <string name="plan_warn_show_spots">Stellen anzeigen</string>
     <string name="plan_calculating">Route wird berechnet…</string>
-    <string name="plan_hint_first_point">Wähle einen Punkt auf der Karte, als Start oder Ziel.</string>
+    <string name="plan_hint_first_point">Halte die Karte gedrückt, um dort zu starten – oder um von deinem Standort dorthin zu kommen.</string>
     <string name="plan_hint_destination">Halte die Karte gedrückt, um das Ziel zu setzen.</string>
     <string name="plan_not_routed_long">Route nicht berechnet – sehr langer Plan.</string>
     <string name="plan_not_routed_stopped">Route nicht berechnet – Berechnung abgebrochen.</string>

@@ -56,7 +56,7 @@
     <string name="plan_spots_tap">Tap a spot to see it on the map.</string>
     <string name="plan_warn_show_spots">Show the spots</string>
     <string name="plan_calculating">Calculating the route…</string>
-    <string name="plan_hint_first_point">Select a point on the map, where to start or where to go.</string>
+    <string name="plan_hint_first_point">Hold the map to start there – or to go there from your location.</string>
     <string name="plan_hint_destination">Hold the map to set the destination.</string>
     <string name="plan_not_routed_long">Route not calculated – very long plan.</string>
     <string name="plan_not_routed_stopped">Route not calculated – calculation stopped.</string>

@@ -182,7 +182,11 @@ object RestoreOfferRule {
         offer && !recording && !locationAsking && !loadModalOpen
 }
 
-/** First start with no tours: offer the restore once (a reinstalled app may read the old folder only after the picker). */
+/**
+ * First start with no tours: offer the restore once (a reinstalled app may read the old folder only after the picker).
+ * Every new user sees it (no way to look for an old folder before the picker), so it asks "Used OnPath before?" with
+ * "No, I'm new" as the main answer (UX review B3).
+ */
 @Composable
 fun RestoreOfferDialog(onRestore: () -> Unit, onNotNow: () -> Unit) {
     AlertDialog(
@@ -191,8 +195,8 @@ fun RestoreOfferDialog(onRestore: () -> Unit, onNotNow: () -> Unit) {
         icon = { Icon(Icons.Filled.Restore, null) },
         title = { Text(str(Res.string.backup_offer_title)) },
         text = { DialogText(str(Res.string.backup_offer_text)) },
-        confirmButton = { TextButton(onClick = onRestore, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_restore)) } },
-        dismissButton = { TextButton(onClick = onNotNow, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_not_now)) } },
+        confirmButton = { TextButton(onClick = onNotNow, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.backup_offer_new)) } },
+        dismissButton = { TextButton(onClick = onRestore, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.backup_offer_restore)) } },
     )
 }
 
