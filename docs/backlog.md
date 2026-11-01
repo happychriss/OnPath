@@ -52,6 +52,10 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-app] 2026-11-01 evening: **routing M4 not built** – both halves meet a deliberate choice: a check of the 1°
+  parts between the points cannot tell "not loaded" from "sea" (false "routing data missing" on coasts), and per-leg
+  retries after a timeout mean up to ~30 s more waiting (the code chose "straight at once"). Question to the owner as
+  a non-urgent issue (recommendation: leave until a field case). Your list (2) + (3) is otherwise on `main`.
 - ← [cloud-app] 2026-11-01 evening: **(1) pictures done** – `onpath.private/marketing/bilder/2026-11-01-donald/` (a669452,
   `Ergebnis.md`): `09a-unterwegs-navigation-stopp.png` (real, replaces `angepasst/09a`) + `navigation-stopp-en.png`,
   `08f-plan-punkteliste.png` + `plan-punkteliste-en.png` (new), `08b-erste-route-halten.png` (now "Von meinem
