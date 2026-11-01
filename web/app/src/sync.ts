@@ -247,7 +247,14 @@ export class PlanSync {
    * Pair phone: always a new code (A-017 point 2 – never another phone's), its mailbox claimed; the open folder stays
    * open until the phone answered (then its folder opens). The pairing link (QR code) and check digits.
    */
-  async pairing(page: string): Promise<{ link: string; check: string } | { error: string }> {
+  async pairing(page: string): Promise<{ link: string; check: string } | { error: string } | { paired: true }> {
+    // the phone may already have answered the code shown before (a slow first pass, an impatient second click – review
+    // 2026-11-01, sync M7): look first, and finish that pairing instead of ending the mailbox the phone uses now
+    if (await this.pending()) {
+      const before = this.dir.open;
+      await this.syncNow();
+      if (!(await this.pending()) && this.dir.open !== before && this.status.paired) return { paired: true };
+    }
     const pair = await this.call('syncPairNew', rand(32));
     const k = await this.keys(pair);
     try {

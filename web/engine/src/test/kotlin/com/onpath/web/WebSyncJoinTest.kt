@@ -89,6 +89,13 @@ class WebSyncJoinTest {
         val other = SyncLedger.read(WebSync.rebase(acked, false))
         assertEquals(listOf(id), other.entries.keys.toList())
         assertTrue(other.entries[id]!!.dirty)
+        // review sync H1: a route already sent (the phone may never have pulled it) stays too – unsent, base 0; a
+        // deleted route (tombstone) and the hello go
+        val sentToo = SyncLedger.read(WebSync.rebase(WebSync.acked(sent, onlyHello[0].split(' ')[3], 8.0), false))
+        assertEquals(listOf(id), sentToo.entries.keys.toList())
+        assertTrue(sentToo.entries[id]!!.dirty)
+        assertEquals(0L, sentToo.entries[id]!!.rev)
+        assertEquals(0L, sentToo.since)
     }
 
     @Test fun trackFitGpxAndList() {

@@ -152,16 +152,20 @@ object WebSync {
 
     /**
      * The ledger read again from the start of the mailbox ([since] = 0, A-017 point 3). [sameMailbox] false (the
-     * folder's phone has a new mailbox now): what came from the old mailbox goes – it comes back from the phone – and
-     * the user's unsaved changes stay unsaved with base 0 (never uploaded by themselves: A-017 rule 8).
+     * folder's phone has a new mailbox now): the hellos and tombstones of the old mailbox go; every route and track
+     * stays, as not sent yet with base 0 – like the phone's [SyncLedger.forget]. The phone may never have pulled a route
+     * this browser sent (review 2026-11-01, sync H1: unpaired / reinstalled before its next pass), so "it comes back
+     * from the phone" is not safe. They still go only with Save (A-017 rule 8); the merge keeps one route per id
+     * (the same content → no copy).
      */
     fun rebase(ledger: String, sameMailbox: Boolean): String {
         val l = SyncLedger.read(ledger)
         return buildString {
             append(SyncLedger.HEADER).append(' ').append(SyncLedger.VERSION).append(" 0\n")
             for (e in l.entries.values) {
-                if (!sameMailbox && (!e.dirty || e.item.kind == SyncItem.DEVICE)) continue
-                append(if (sameMailbox) e.rev else 0).append(' ').append(if (e.dirty) 'd' else '-').append(' ')
+                if (!sameMailbox && (!e.item.isUserItem || e.item.deleted)) continue
+                val dirty = e.dirty || !sameMailbox
+                append(if (sameMailbox) e.rev else 0).append(' ').append(if (dirty) 'd' else '-').append(' ')
                     .append(SyncFormat.toText(SyncFormat.encode(e.item))).append('\n')
             }
         }
