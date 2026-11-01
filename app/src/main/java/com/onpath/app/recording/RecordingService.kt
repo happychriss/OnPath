@@ -858,7 +858,9 @@ class RecordingService : Service() {
     /** Carries out what the navigator asks for. */
     private fun handle(step: Navigator.Step, publishNow: Boolean = true) {
         val nav = navigator ?: return
-        if (step.vibrate && (settings ?: Prefs(this).settings).offRouteVibrate) vibrate()
+        // turn hints are either / or for every activity (owner 2026-11-01): with the voice on, the off-route warning is
+        // spoken, not vibrated too (the vibration stays while the voice was never heard – the phone setup check)
+        if (step.vibrate && (settings ?: Prefs(this).settings).offRouteVibrate && !voiceOn()) vibrate()
         if (step.cancelJob) cancelReroute()
         step.job?.let { startReroute(it) }
         // the app chose a new line meanwhile (its FOLLOW_CHANGED is on the way): this result belongs to the old session

@@ -149,7 +149,7 @@ data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: I
  */
 data class OffRouteUi(val prompt: NavPrompt, val toRoute: RouteHint? = null, val arrowDeg: Float? = null) {
     /** The ONE amber off-route card on top (searching, no way, kept) – not the questions below, not the far start. */
-    val amber: Boolean get() = prompt is NavPrompt.Searching || prompt is NavPrompt.NoWay || prompt == NavPrompt.Kept
+    val amber: Boolean get() = prompt is NavPrompt.NoWay || prompt == NavPrompt.Kept
 }
 
 data class ToGo(
@@ -255,6 +255,7 @@ fun NavigateOverlay(
         val leadFailed = ui.offRoute?.prompt as? NavPrompt.LeadFailed
         val message = Messages.pick(listOf(
             question?.let { q -> rerouteMessage(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) }, onVia = { onTakeVia(q.id) }) },
+            ui.offRoute?.takeIf { it.prompt == NavPrompt.Searching }?.let { o -> searchingMessage(o, onKeep = { onKeepRoute(-1) }) },
             far?.let { p -> farStartMessage(p, onLead = { onLeadThere(p.id) }, onJustRecord = { onJustRecord(p.id) }) },
             leadFailed?.let { e -> errorMessage(NavText.title(e)) { onLeadFailedOk(e.id) } },
             error?.let { errorMessage(it, onErrorOk) },
@@ -634,6 +635,16 @@ internal fun rerouteMessage(q: NavPrompt.Question, onTake: () -> Unit, onKeep: (
         else listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.TAKE, onTake))
     return Message(MessageKind.FRAGE, NavText.title(q), NavText.question(q, maxName), buttons, icon = icon, navigate = true)
 }
+
+/**
+ * Off the route, the way back still being computed (owner 2026-11-01: "erst piep, piep, anbieten, dann gemeinsam
+ * suchen"): the question comes at once – "Abseits der Route", how far and where the route is; "Keep original" works
+ * at once, "New route" shows a spinner until the way is found (then the normal question, [rerouteMessage]).
+ */
+internal fun searchingMessage(o: OffRouteUi, onKeep: () -> Unit): Message =
+    Message(MessageKind.FRAGE, Txt.s(Res.string.nav_title_searching), NavText.toRoute(o.toRoute),
+        listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.TAKE) {}.apply { busy = true }),
+        icon = Icons.Outlined.AltRoute, navigate = true)
 
 /**
  * Never on the route yet and away from it (owner 2026-10-31): "Route starts 31 km away" · "south-west (direct) ·

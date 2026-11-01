@@ -437,6 +437,13 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
 
     /** "Keep original" for question [id]: no new route; arrow to the route; asked again only much later. */
     fun keep(id: Int): Step {
+        if (prompt == NavPrompt.Searching) {
+            // "Keep original" before the way back was found (the question comes at once now): the search stops
+            prompt = NavPrompt.Kept
+            keeps++; refreshes = 0
+            lastFix?.let { markAsked(it); toRoute = hint(it.point) }
+            return Step(cancelJob = true)
+        }
         val q = prompt as? NavPrompt.Question ?: return Step()
         if (q.id != id) return Step()
         if (q.switch != null) {

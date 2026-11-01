@@ -59,7 +59,10 @@ enum class MessageKind {
 }
 
 /** A button of a box: a verb ("Load", "Take new route") or OK. */
-class MessageButton(val label: String, val onClick: () -> Unit)
+class MessageButton(val label: String, val onClick: () -> Unit) {
+    /** Not ready yet: a small spinner beside the label, not pressable (the new route being computed). */
+    var busy: Boolean = false
+}
 
 /**
  * One box message. [buttons]: last = the primary (filled green). [icon]: an optional meaning icon for a question
@@ -250,10 +253,15 @@ private fun MessageButtonView(b: MessageButton, main: Boolean, heightDp: Int, mo
     val size = modifier.heightIn(min = heightDp.dp).widthIn(min = 64.dp)
     val shape = RoundedCornerShape(16.dp)
     val content: @Composable () -> Unit = {
+        if (b.busy) {
+            androidx.compose.material3.CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = OnPathColors.InkMuted)
+            Spacer(Modifier.width(10.dp))
+        }
         Text(b.label, style = MaterialTheme.typography.labelLarge, fontWeight = if (main) FontWeight.Bold else FontWeight.Medium,
             textAlign = TextAlign.Center, maxLines = 2)
     }
     if (main) Button(onClick = b.onClick, modifier = size, shape = shape, contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+        enabled = !b.busy,
         colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.Green, contentColor = OnPathColors.CardWhite)) { content() }
     else TextButton(onClick = b.onClick, modifier = size, shape = shape, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
         colors = ButtonDefaults.textButtonColors(contentColor = OnPathColors.Green)) { content() }
