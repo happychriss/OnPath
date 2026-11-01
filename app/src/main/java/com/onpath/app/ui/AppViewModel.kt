@@ -2691,7 +2691,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val slow = launch { delay(ROUTING_SLOW_MS); if (requests.isCurrent(gen)) routingSlow = true }
             var planner: Planner? = null
             val result = withContext(routingDispatcher) {
-                runCatching {
+                exceptions {
                     val eng = routingEngine()
                     // route, model time, snapped points, gaps, warnings: the one computation the web planner shares
                     // (named stops: read on the main thread when the result is taken – snapToRoute → PlanResult.withNamed)
@@ -3816,7 +3816,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val firstAhead = waypoints.indexOf(ahead.first()) + 1
         viewModelScope.launch {
             val res = withContext(routingDispatcher) {
-                runCatching {
+                exceptions {
                     com.onpath.app.routing.PlanResult.plan(Planner(routingEngine(), com.onpath.app.routing.RouteCancel()), pts, act, level,
                         pins, emptySet(), f)
                 }
@@ -4270,7 +4270,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun followSyncedSavedPlan() {
         val id = linkId.takeIf { it >= 0 } ?: return
         viewModelScope.launch {
-            val t = withContext(Dispatchers.IO) { runCatching { db.getTour(id) }.getOrNull() }
+            // a database error is not "deleted": the plan stays linked (review Arch 9)
+            val read = withContext(Dispatchers.IO) { runCatching { db.getTour(id) } }
+            val t = read.getOrElse { Problems.warn("db", "Saved route not read after a browser change; the plan stays linked", it); return@launch }
             if (linkId != id) return@launch
             if (t == null || t.deletedMs != null) setSaved(null, -1, null) else if (t.name != linkName) setSaved(t.name, id, savedPoints)
         }
@@ -4280,6 +4282,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * Routes from the browser are saved with their points as the line; here they get the real route (the router, the
      * pace) like a route saved on the phone. No routing data there yet: the points stay – opening the route routes it.
      */
+    /**
+     * Like runCatching, but only for exceptions (review Arch 9): a cancellation goes on to the coroutine, an Error
+     * (OutOfMemoryError) is not taken for a failed route.
+     */
+    private inline fun <T> exceptions(block: () -> T): Result<T> = try { Result.success(block()) }
+        catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { Result.failure(e) }
+
     /** Routes from the browser that waited for routing data (review routing M5): routed again when data arrives. */
     private val syncRoutingLater = LinkedHashSet<Long>()
 
@@ -4287,7 +4296,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (ids.isEmpty()) return
         viewModelScope.launch {
             for (id in ids.distinct()) {
-                val t = withContext(Dispatchers.IO) { runCatching { db.getTour(id) }.getOrNull() } ?: continue
+                val t = withContext(Dispatchers.IO) {
+                    runCatching { db.getTour(id) }.onFailure { Problems.warn("db", "A route from the browser not read; routed when opened", it) }.getOrNull()
+                } ?: continue
                 if (t.kind != TourKind.PLANNED || t.waypoints.size < 2 || t.deletedMs != null) continue
                 val act = activityOrNull(t.activity) ?: Activity.HIKE
                 val pts = t.waypoints.map { GeoPoint(it.lat, it.lon) }
