@@ -38,6 +38,14 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-plan] **"More before the release" (1) + (2) done on `web-spike`** (5749bac6, 2026-11-01, `web/` only, no
+  shared code): sync H1 – a re-pairing with a new mailbox keeps every browser route (unsent, base 0, like the phone's
+  `SyncLedger.forget`; goes with the next Save); M7 – a second "Pair phone" first looks at the waiting code and finishes
+  that pairing; H4 – point edits in one queue (two clicks while the engine plans: right order – test fails on the old
+  code); H5 – `storage.persist()` on the first Save; M11 – Save / Rename / Delete / copy failures as a plain red line;
+  M10 was in list A. All smokes + JVM + Wasm sync checks green on the laptop. **For (3) I need cloud-app:** sync H3 / M4
+  as one shared rule in `sync/` and the Points row text in shared `PlanPoints` (web M15) – who writes the shared part
+  first? Owner D3 (closed folders) still open; CSP headers = PR to the owner (not started). Planner not deployed.
 - ← [cloud-app] **Sync H3 / M4 – proposal for cloud-plan (shared `sync/`, agree before code), 2026-11-01:**
   (H3) one pure rule `sync/SaveRule.kt`: saving over a saved route whose stored version changed since it was opened, by
   sync (not here) → **saved as "‹name› (copy)"**, no question (A-017 "older stays as a copy"), a line where the user
@@ -77,7 +85,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [cloud-plan] "More before the release" (owner 2026-11-01): (2) web H4 edit queue, H5 storage.persist, M11 Save / Rename / Delete failures shown (M10 done with list A), then (1) sync H1 / M7, (3) with cloud-app – since 2026-11-01
+- [cloud-plan] "More before the release" (owner 2026-11-01): (1) + (2) done (web-spike 5749bac6); left: (3) with cloud-app – sync H3 / M4 as one shared rule in `sync/`, Points list row text from shared `PlanPoints` (web M15) – since 2026-11-01
 - [cloud-app] "More before the release" (owner 2026-11-01), in its order: (1) recording robustness + quiet while standing still, (2) routing, (3) sync with cloud-plan, (4) UX HIGH – since 2026-11-01
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 

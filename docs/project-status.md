@@ -26,6 +26,15 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud-plan (laptop), 2026-11-01 – release-day web fixes.** main merged into `web-spike` twice (up to 2f0a231f, incl.
+  the splice catch-all – `PlannerSpliceTest` added to the web's shared tests); parity manifest re-checked. List A 10–13
+  (c652cd9e): failed downloads not kept + grey offline line + re-plan when online, WasmGC check → "browser too old"
+  page, unsaved route back without `#p=`, no developer / raw error lines. "More before the release" (1) + (2)
+  (21501007, 5749bac6): sync H1 / M7, edit queue H4, `storage.persist` H5, write failures M11. Tests: new
+  `web/app/test/robust-smoke.mjs` (run by the nowebgl CI step), manual `browsers-check.mjs` (Firefox 155 + WebKit 26.6
+  plan fine; WebKit needs 6 libs copied into Playwright's `minibrowser-wpe/sys/lib` on the laptop – no sudo).
+  **Not deployed** (owner: release on hold). **Next:** (3) with cloud-app (sync H3 / M4 shared rule, Points row text
+  M15); deploy only with the app release after the captain's go.
 - **cloud-app (donald), 2026-10-31/11-01 – captain's order done.** Release-Rundgang 14/14 PASS (flows 11 + 12 green),
   again 14/14 on main with voice. Voice guidance merged to `main` (69515dde): branch merged with main, one test made
   tolerant to the line's geometry length, Settings → Navigation screenshots EN + DE; full gate green (2253 tests). Debug
