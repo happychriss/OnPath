@@ -659,6 +659,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         arrivedNames += names
         arrivalGateJob = gated(routingArrivalGate, arrivalGateJob, busy = { routingData.loading }) {
             val n = arrivedNames.size; arrivedNames.clear()
+            if (syncRoutingLater.isNotEmpty()) { val later = syncRoutingLater.toList(); syncRoutingLater.clear(); routeSyncedPlans(later) }
             if (RoutingLoads.recalcOnArrival(mode, recState.value != null, waypoints.size)) {
                 Problems.trace("routing", "Plan computed again after $n routing part(s) arrived")
                 recalc()
@@ -4279,6 +4280,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * Routes from the browser are saved with their points as the line; here they get the real route (the router, the
      * pace) like a route saved on the phone. No routing data there yet: the points stay – opening the route routes it.
      */
+    /** Routes from the browser that waited for routing data (review routing M5): routed again when data arrives. */
+    private val syncRoutingLater = LinkedHashSet<Long>()
+
     private fun routeSyncedPlans(ids: List<Long>) {
         if (ids.isEmpty()) return
         viewModelScope.launch {
@@ -4297,6 +4301,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         Problems.warn("sync", "A route from the browser could not be routed; it keeps its points until opened", e); null
                     }
                 } ?: continue
+                // no routing data there yet (straight legs): keep the points, route it when the data arrives (review M5)
+                if (!com.onpath.app.plansync.SyncedRouting.storable(r)) {
+                    Problems.trace("sync", "Route \"${t.name}\" from the browser: no routing data there yet – points kept, routed later")
+                    syncRoutingLater += id
+                    continue
+                }
                 val ok = withContext(Dispatchers.IO) {
                     try {
                         // changed again meanwhile (a newer sync): leave it to that one's routing
