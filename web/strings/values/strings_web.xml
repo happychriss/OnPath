@@ -70,18 +70,18 @@
     <!-- engine and planning (status line) -->
     <string name="web_engine_loading">Loading the routing engine…</string>
     <string name="web_engine_ready">Routing engine ready (%1$d ms)</string>
-    <string name="web_engine_failed">The routing engine could not be loaded – reload the page. (%1$s)</string>
+    <string name="web_engine_failed">The routing engine could not be loaded – please reload the page.</string>
     <string name="web_engine_stopped">The planner stopped unexpectedly – please reload the page.</string>
     <string name="web_engine_no_answer">The planner did not answer – please reload the page.</string>
-    <string name="web_plan_failed">Planning failed: %1$s</string>
+    <string name="web_plan_failed">The route could not be planned. Move a point or try again.</string>
     <string name="web_planned_in">Planned in %1$d ms</string>
     <string name="web_planned_in_data">Planned in %1$d ms · routing data %2$s MB in %3$d ms</string>
-    <string name="web_activities_failed">Activity names not loaded: %1$s</string>
+    <string name="web_activities_failed">The activities could not be loaded – please reload the page.</string>
     <string name="web_map_files_missing">Map files not found here: %1$s</string>
     <string name="web_plan_unreadable">This saved route could not be read.</string>
     <!-- a plan from the phone whose routing fingerprint (sync field 7) differs from this page's: one grey line, web-sync.md §5.2 -->
     <string name="web_routing_other_phone">Planned on the phone with other routing – the route may differ slightly</string>
-    <string name="web_no_name">No name proposed: %1$s</string>
+    <string name="web_no_name">No name could be proposed – type one.</string>
 
     <!-- map areas (the strip) -->
     <string name="web_maps_overview_only">Overview only – set a point here to load the detailed map.</string>
@@ -107,8 +107,8 @@
     <string name="web_mc_find_label">Find a kind</string>
     <string name="web_mc_of">%1$d of %2$d</string>
     <string name="web_mc_no_match">No kind matches.</string>
-    <string name="web_mc_not_loaded">Map content settings not loaded: %1$s</string>
-    <string name="web_mc_filter_failed">POI filter on %1$s not applied: %2$s</string>
+    <string name="web_mc_not_loaded">The map content settings could not be loaded.</string>
+    <string name="web_mc_filter_failed">A map content filter could not be applied.</string>
 
     <!-- Share (QR code + link) -->
     <string name="web_share_scan">Scan with the OnPath app</string>
@@ -156,7 +156,7 @@
     <string name="web_sync_not_a_code">This is not a pairing code of OnPath.</string>
     <string name="web_sync_unpaired">Unpaired. The routes of %1$s stay in this browser.</string>
     <string name="web_sync_offline">Offline – your routes sync when the connection is back.</string>
-    <string name="web_sync_failed">Sync failed: %1$s</string>
+    <string name="web_sync_failed">Sync did not work this time – it tries again by itself.</string>
     <string name="web_sync_gone">The connection was ended on the phone.</string>
     <string name="web_sync_busy">the sync server is busy – it tries again in a minute</string>
     <string name="web_sync_answered">the sync server answered %1$d</string>
@@ -221,6 +221,8 @@
     <string name="web_one_point">1 point · %1$s</string>
     <string name="web_no_webgl_title">Your browser cannot draw the map</string>
     <string name="web_no_webgl_text">WebGL2 is missing. Please use a current Chrome, Firefox or Edge and switch on hardware acceleration in its settings.</string>
+    <string name="web_old_browser_title">This browser is too old for the planner</string>
+    <string name="web_old_browser_text">The route planner needs a newer browser: Safari 18.2 or later (iPhone / iPad: iOS 18.2), Chrome or Edge 119, or Firefox 120. Please update your browser – your routes are kept.</string>
     <!-- a newer planner was deployed while the tab was open (version.ts): one box, the user reloads -->
     <string name="web_new_version">New version of the planner</string>
     <string name="web_new_version_detail">Reload to use it – your route stays.</string>

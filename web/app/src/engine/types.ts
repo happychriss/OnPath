@@ -43,6 +43,8 @@ export interface PlanResult {
   gaps: { text: string | null; gaps: { index: number; point: [number, number]; end: [number, number]; show: [number, number, number] }[] };
   /** The app's RoutingDataNotice: routing data missing → the plain grey line [noticeText] instead of the router's error. */
   notice: 'LOADING' | 'NOT_YET' | null; noticeText: string | null;
+  /** The engine failed unexpectedly (WebApi.plan's catch-all): no plan; [detail] only for the diagnostics. */
+  failed?: boolean; detail?: string;
   /** After an activity / T level change the route differs noticeably: the app's grey "New route for … – check it". */
   changed: string | null;
   /** The app's BreakdownRules: the summary line and the bars' parts [key, label, colour, metres]. */
@@ -60,7 +62,9 @@ export interface RouteStats { engineLoadMs: number; fetchMs: number; storeMs?: n
 
 export interface EngineReply { id: number; ok: boolean; result?: RouteResult; plan?: PlanResult; index?: number; code?: string; text?: string; shared?: SharedPlan | null; stats?: RouteStats; problems?: string[]; error?: string;
   /** Sent before the answer while a request waits (worker → page): routing data to download, then routing. */
-  progress?: Progress }
+  progress?: Progress;
+  /** config only: the engine cannot run in this browser (no WasmGC / Wasm exceptions – a CompileError / LinkError). */
+  unsupported?: boolean }
 /** What a plan waits for: the routing data under it ([bytes] still to download), then the router. */
 export type Progress = { phase: 'download'; bytes: number } | { phase: 'route' };
 

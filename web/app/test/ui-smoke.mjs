@@ -16,7 +16,7 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 await page.goto(url + 'index.html');
-await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 60_000 });
+await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
 // Meran town centre → Schenna, one click each (map centred on 11.16 / 46.67 at z12)
 const clickAt = async (lon, lat) => {
   const p = await page.evaluate(([lo, la]) => { const m = window.__map; const q = m.project([lo, la]); return [q.x, q.y]; }, [lon, lat]);

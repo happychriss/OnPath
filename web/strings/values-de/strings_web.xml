@@ -63,17 +63,17 @@
 
     <string name="web_engine_loading">Routenplaner wird geladen…</string>
     <string name="web_engine_ready">Routenplaner bereit (%1$d ms)</string>
-    <string name="web_engine_failed">Der Routenplaner konnte nicht geladen werden – lade die Seite neu. (%1$s)</string>
+    <string name="web_engine_failed">Der Routenplaner konnte nicht geladen werden – bitte lade die Seite neu.</string>
     <string name="web_engine_stopped">Der Planer wurde unerwartet beendet – lade die Seite neu.</string>
     <string name="web_engine_no_answer">Der Planer antwortet nicht – lade die Seite neu.</string>
-    <string name="web_plan_failed">Planen fehlgeschlagen: %1$s</string>
+    <string name="web_plan_failed">Die Route konnte nicht geplant werden. Verschiebe einen Punkt oder versuch es noch einmal.</string>
     <string name="web_planned_in">Geplant in %1$d ms</string>
     <string name="web_planned_in_data">Geplant in %1$d ms · Routingdaten %2$s MB in %3$d ms</string>
-    <string name="web_activities_failed">Namen der Aktivitäten nicht geladen: %1$s</string>
+    <string name="web_activities_failed">Die Aktivitäten konnten nicht geladen werden – bitte lade die Seite neu.</string>
     <string name="web_map_files_missing">Kartendateien hier nicht gefunden: %1$s</string>
     <string name="web_plan_unreadable">Diese gespeicherte Route konnte nicht gelesen werden.</string>
     <string name="web_routing_other_phone">Auf dem Handy mit anderer Routenberechnung geplant – Route kann leicht abweichen</string>
-    <string name="web_no_name">Kein Name vorgeschlagen: %1$s</string>
+    <string name="web_no_name">Kein Name vorgeschlagen – gib einen ein.</string>
 
     <string name="web_maps_overview_only">Nur Übersicht – setze hier einen Punkt, dann lädt die Detailkarte.</string>
     <string name="web_maps_not_on_web">Die Detailkarte für dieses Gebiet gibt es im Web noch nicht – die Übersichtskarte wird gezeigt.</string>
@@ -95,8 +95,8 @@
     <string name="web_mc_find_label">Art suchen</string>
     <string name="web_mc_of">%1$d von %2$d</string>
     <string name="web_mc_no_match">Keine Art passt.</string>
-    <string name="web_mc_not_loaded">Einstellungen für den Karteninhalt nicht geladen: %1$s</string>
-    <string name="web_mc_filter_failed">Filter für %1$s nicht angewendet: %2$s</string>
+    <string name="web_mc_not_loaded">Die Einstellungen für den Karteninhalt konnten nicht geladen werden.</string>
+    <string name="web_mc_filter_failed">Ein Filter für den Karteninhalt konnte nicht angewendet werden.</string>
 
     <string name="web_share_scan">Mit der OnPath-App scannen</string>
     <string name="web_share_qr">QR-Code des Plan-Links</string>
@@ -140,7 +140,7 @@
     <string name="web_sync_not_a_code">Das ist kein Verbindungscode von OnPath.</string>
     <string name="web_sync_unpaired">Getrennt. Die Routen von %1$s bleiben in diesem Browser.</string>
     <string name="web_sync_offline">Offline – deine Routen werden abgeglichen, sobald du wieder Verbindung hast.</string>
-    <string name="web_sync_failed">Abgleich fehlgeschlagen: %1$s</string>
+    <string name="web_sync_failed">Der Abgleich hat diesmal nicht geklappt – er versucht es von selbst wieder.</string>
     <string name="web_sync_gone">Die Verbindung wurde am Handy getrennt.</string>
     <string name="web_sync_busy">der Sync-Server ist ausgelastet – in einer Minute geht es weiter</string>
     <string name="web_sync_answered">der Sync-Server antwortete %1$d</string>
@@ -205,6 +205,8 @@
     <string name="web_one_point">1 Punkt · %1$s</string>
     <string name="web_no_webgl_title">Dein Browser kann die Karte nicht zeichnen</string>
     <string name="web_no_webgl_text">WebGL2 fehlt. Bitte einen aktuellen Chrome, Firefox oder Edge nutzen und in seinen Einstellungen die Hardwarebeschleunigung einschalten.</string>
+    <string name="web_old_browser_title">Dieser Browser ist zu alt für den Planer</string>
+    <string name="web_old_browser_text">Der Routenplaner braucht einen neueren Browser: Safari ab 18.2 (iPhone / iPad: iOS 18.2), Chrome oder Edge ab 119 oder Firefox ab 120. Bitte aktualisiere deinen Browser – deine Routen bleiben erhalten.</string>
     <string name="web_new_version">Neue Version des Planers</string>
     <string name="web_new_version_detail">Neu laden, um sie zu nutzen – deine Route bleibt.</string>
     <string name="web_reload">Neu laden</string>

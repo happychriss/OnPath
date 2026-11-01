@@ -29,7 +29,7 @@ if (process.env.NET === 'slow') {
 }
 const t0 = Date.now();
 await page.goto(url + 'index.html');
-await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 300_000 });
+await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 300_000 });
 const readyMs = Date.now() - t0;
 const rows = [{ step: 'page → engine ready', wallMs: readyMs }];
 if (process.env.LOOK) await page.waitForTimeout(Number(process.env.LOOK));

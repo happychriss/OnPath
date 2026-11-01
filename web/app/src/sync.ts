@@ -10,6 +10,7 @@
 // as waiting (unsent) – nothing goes without a click on Save.
 import type { EngineClient } from './engine/client';
 import { t, locale } from './i18n';
+import { problem } from './diag';
 
 export interface SavedPlan {
   id: string; kind: 'plan' | 'track'; title: string | null; plan: string; track: string; updatedAt: number; device: string; mine: boolean;
@@ -340,8 +341,8 @@ export class PlanSync {
         } else if (e instanceof TypeError || (e as Error).name === 'TimeoutError' || !navigator.onLine) {
           this.say(t('web_sync_offline'), 'info'); // expected: no network
         } else {
-          this.say(t('web_sync_failed', (e as Error).message), 'error');
-          console.warn('[Problems] WARN sync', e);
+          this.say(t('web_sync_failed'), 'error'); // plain words; the detail goes to the diagnostics
+          problem('sync', 'sync round failed', e);
         }
       }
     }).then(() => this.refresh());

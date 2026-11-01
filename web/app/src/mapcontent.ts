@@ -7,6 +7,7 @@ import type * as maplibregl from 'maplibre-gl';
 import type { EngineClient } from './engine/client';
 import { icon } from './icons';
 import { t } from './i18n';
+import { problem } from './diag';
 
 interface Kind { key: string; group: string; en: string; glyph: string; color: string }
 export interface MapContent { hidden: string[]; contours: boolean; hillshade: boolean }
@@ -29,7 +30,7 @@ export class MapContentPanel {
       this.kinds = j.kinds; this.defaults = j.defaultHidden;
       this.groups = j.groups.map((g) => [g.key, g.label]);
       this.state = load() ?? { hidden: [...this.defaults], contours: true, hillshade: true };
-    }).catch((e) => onProblem(t('web_mc_not_loaded', String(e))));
+    }).catch((e) => { problem('map', 'map content settings not loaded', e); onProblem(t('web_mc_not_loaded')); });
   }
 
   /** Applies the remembered choice to the map (after the style loaded). */
@@ -42,7 +43,7 @@ export class MapContentPanel {
         if (!this.original.has(l.id)) this.original.set(l.id, 'filter' in l ? l.filter ?? null : null);
         const orig = this.original.get(l.id);
         const json = await this.engine.call('poiFilter', orig == null ? '' : JSON.stringify(orig), s.hidden.join(','));
-        try { this.map.setFilter(l.id, json ? JSON.parse(json) : null); } catch (e) { this.onProblem(t('web_mc_filter_failed', l.id, String(e))); }
+        try { this.map.setFilter(l.id, json ? JSON.parse(json) : null); } catch (e) { problem('map', `POI filter on ${l.id} not applied`, e); this.onProblem(t('web_mc_filter_failed')); }
       } else if (l.id.startsWith('contour-') || l.id.startsWith('hillshade')) {
         const on = l.id.startsWith('contour-') ? s.contours : s.hillshade;
         this.map.setLayoutProperty(l.id, 'visibility', on ? 'visible' : 'none');

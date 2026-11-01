@@ -50,7 +50,7 @@ async function open(ctxOpts, at, serverOpts) {
     }).observe(document.body, { subtree: true, childList: true, characterData: true }));
   });
   await page.goto(url + 'index.html?at=' + at);
-  await page.waitForFunction(() => window.__map?.isStyleLoaded() && document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 60_000 });
+  await page.waitForFunction(() => window.__map?.isStyleLoaded() && document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
   return { page, ctx, server, log };
 }
 const strip = (page) => page.evaluate(() => document.getElementById('mapnotes').innerText);

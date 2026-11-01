@@ -264,7 +264,7 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(url + 'index.html');
-  await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 120_000 });
+  await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 120_000 });
   check(await page.isVisible('#share') && await page.isDisabled('#share') && !(await page.$('#sheet button.primary')),
     'empty plan: Share icon shown but greyed (owner 2026-10-30), no big button');
   check(await page.getAttribute('#share', 'title') === 'Set a start and destination first' && await page.getAttribute('#share', 'aria-label') === 'Set a start and destination first',

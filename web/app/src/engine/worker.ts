@@ -91,7 +91,8 @@ const loadMs = { engine: 0 };
  */
 let loading: Promise<WasmEngine> | null = null;
 function getEngine(): Promise<WasmEngine> {
-  loading ??= (async () => {
+  if (loading) return loading;
+  const p = (async () => {
     const t0 = performance.now();
     // ?v=<build>: a new page never runs an old engine (or old profiles) from a cache (version.ts)
     await import(/* @vite-ignore */ new URL('engine/onpath-web-engine.wasm-runtime.js?v=' + BUILD, base).href);
@@ -106,7 +107,39 @@ function getEngine(): Promise<WasmEngine> {
     loadMs.engine = performance.now() - t0;
     return exports;
   })();
-  return loading;
+  // a failed load (network blip) is not kept: the next request loads again (review 2026-11-01, web B1)
+  p.catch(() => { if (loading === p) loading = null; });
+  loading = p;
+  return p;
+}
+
+/**
+ * Keeps [p] in [cache] under [key] while it is running or succeeded; a failure (network blip, HTTP 429 / 5xx) is
+ * forgotten, so the next plan downloads again instead of getting the same error until a reload (review 2026-11-01, web B1).
+ */
+function keep<T>(cache: Map<string, Promise<T>>, key: string, p: Promise<T>): Promise<T> {
+  cache.set(key, p);
+  p.catch(() => { if (cache.get(key) === p) cache.delete(key); });
+  return p;
+}
+
+/** A download that failed for a reason that may pass (offline, timeout, 429, 5xx) – tried once more after a moment. */
+class Transient extends Error {}
+const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** fetch with one retry after 1.5 s when the network fails or the server is busy (429 / 5xx). */
+async function fetchRetry(url: string, init?: RequestInit): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const r = await fetch(url, init);
+      if ((r.status === 429 || r.status >= 500) && attempt === 0) { await pause(1500); continue; }
+      if (r.status === 429 || r.status >= 500) throw new Transient(`${url}: HTTP ${r.status}`);
+      return r;
+    } catch (e) {
+      if (e instanceof Transient || attempt > 0) throw e;
+      await pause(1500); // expected: offline for a moment – once more
+    }
+  }
 }
 
 /** Whole files: the packed preview host (base64, no ranges) and servers that ignore ranges. Kept as promises, so
@@ -118,11 +151,11 @@ const whole = new Map<string, Promise<Uint8Array | null>>();
  * file, e.g. a simple static host for a small test area) still works – the file is kept once and sliced.
  */
 async function range(url: string, from: number, to: number): Promise<{ bytes: Uint8Array; total: number } | null> {
-  if (packed && !whole.has(url)) whole.set(url, fetchPacked(url));
+  if (packed && !whole.has(url)) keep(whole, url, fetchPacked(url));
   let all = await whole.get(url);
   if (whole.has(url) && !all) return null;
   if (!all) {
-    const r = await fetch(url, { headers: { Range: `bytes=${from}-${to}` } });
+    const r = await fetchRetry(url, { headers: { Range: `bytes=${from}-${to}` } });
     if (r.status === 404) return null;
     if (r.status === 206) {
       const total = Number((r.headers.get('Content-Range') ?? '').split('/')[1] ?? NaN);
@@ -159,7 +192,7 @@ function layout(e: WasmEngine, tile: string): Promise<number[] | null> {
       e.putLayout(tile, new Int8Array(head.bytes.buffer), new Int8Array(tail?.bytes.buffer ?? new ArrayBuffer(0)));
       return ends;
     })();
-    layoutLoads.set(tile, p);
+    keep(layoutLoads, tile, p);
   }
   return p;
 }
@@ -172,7 +205,7 @@ async function ensureParts(e: WasmEngine, points: string, onNeed?: (bytes: numbe
   const need: [string, number][] = JSON.parse(e.partsNeeded(points));
   if (onNeed) {
     // what is still to download (the layouts are small and fetched first), so the page can say "about 9 MB"
-    const ends = await Promise.all(need.map(([tile]) => layout(e, tile)));
+    const ends = await Promise.all(need.map(([tile]) => layout(e, tile).catch(() => null)));
     const bytes = need.reduce((sum, [tile, i], k) => {
       const en = ends[k];
       if (!en || partLoads.has(tile + '#' + i)) return sum;
@@ -197,18 +230,28 @@ async function ensureParts(e: WasmEngine, points: string, onNeed?: (bytes: numbe
         }
         return part.bytes.length;
       })();
-      partLoads.set(k, p);
-      return p;
+      keep(partLoads, k, p);
+      return p.catch((err) => noPart(tile, i, err));
     }
-    return p.then(() => 0); // someone else's download – counted there
+    return p.then(() => 0, (err) => noPart(tile, i, err)); // someone else's download – counted there
   }));
   return sizes.reduce((a, b) => a + b, 0);
+}
+
+/**
+ * A part that could not be downloaded (offline, server busy): the plan goes on without it – the engine then draws a
+ * straight line with the app's grey "Map loads when online" line (RoutingDataNotice NOT_YET), never "Planning failed:
+ * TypeError…". The next plan tries the part again (it is not kept as failed).
+ */
+function noPart(tile: string, i: number, err: unknown): number {
+  console.warn(`[Problems] WARN routing: ${tile} part ${i} not downloaded – planned without it`, err);
+  return 0;
 }
 
 /** A whole file (the packed preview host keeps binaries as base64 text). Null when it is not there. */
 async function fileBytes(url: string): Promise<Uint8Array | null> {
   if (packed && !url.endsWith('.geojson')) return fetchPacked(url);
-  const r = await fetch(url);
+  const r = await fetchRetry(url);
   return r.ok ? new Uint8Array(await r.arrayBuffer()) : null;
 }
 
@@ -225,7 +268,7 @@ function indexArea(e: WasmEngine, key: string, dir: string): Promise<void> {
       }));
       e.searchAddArea(key, '/onpath/' + folder);
     })();
-    indexing.set(key, p);
+    keep(indexing, key, p);
   }
   return p;
 }
@@ -235,7 +278,14 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
   try {
     if (req.type === 'config') {
       base = req.base; segments = req.segments; packed = !!req.packed; lang = req.lang ?? 'en';
-      const e = await getEngine();
+      let e: WasmEngine;
+      try { e = await getEngine(); } catch (err) {
+        // the browser cannot compile the engine (Safari < 18.2 has no WasmGC): no reload helps – the page says so
+        const unsupported = err instanceof WebAssembly.CompileError || err instanceof WebAssembly.LinkError ||
+          typeof WebAssembly.validate !== 'function';
+        reply({ id: req.id, ok: false, error: String(err), unsupported });
+        return;
+      }
       reply({ id: req.id, ok: true, stats: { engineLoadMs: loadMs.engine } as RouteStats, problems: JSON.parse(e.problems()) });
       return;
     }

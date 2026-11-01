@@ -1,6 +1,8 @@
 // Without WebGL2 the page says plainly that the browser cannot draw the map (owner 2026-10-30) – never a blank page.
+// Also runs robust-smoke.mjs (release-day checks: no WasmGC, failed downloads, unsaved route back).
 // Usage: node test/nowebgl-smoke.mjs [segmentsDir]
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 import { serve } from './serve.mjs';
@@ -29,4 +31,8 @@ for (const [locale, want] of [['de-DE', 'Dein Browser kann die Karte nicht zeich
   await ctx.close();
 }
 await browser.close(); server.close();
+// the release-day robustness checks (no WasmGC page, failed downloads, unsaved route back) ride in this CI step –
+// a new step would be a workflow change (an owner pull request)
+const robust = spawnSync(process.execPath, [path.join(here, 'robust-smoke.mjs'), segments], { stdio: 'inherit' });
+if (robust.status !== 0) fails.push('robust-smoke');
 process.exit(fails.length ? 1 : 0);

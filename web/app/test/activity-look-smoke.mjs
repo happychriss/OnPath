@@ -31,7 +31,7 @@ const IDS = ['greenway-foot', 'greenway-touring', 'surface-loose-path', 'surface
   'routes-hike', 'routes-hike-over', 'routes-bike', 'access-no-dash-foot', 'access-no-dash-touring', 'too-hard-foot'];
 
 await page.goto(url + 'index.html');
-await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 60_000 });
+await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
 await page.waitForFunction(() => window.__map?.isStyleLoaded(), null, { timeout: 60_000 });
 await looked('HIKE', 2);
 let v = await vis(IDS);

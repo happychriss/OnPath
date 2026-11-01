@@ -25,7 +25,7 @@ const planned = async (before) => {
 };
 
 await page.goto(url + 'index.html');
-await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 60_000 });
+await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
 const clickAt = async (lon, lat) => {
   const p = await page.evaluate(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }, [lon, lat]);
   await page.mouse.click(p[0], p[1]);

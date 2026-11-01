@@ -35,10 +35,10 @@ const settled = async () => { // the plan is done and the address no longer chan
 // a plan from a link: Algund → a meadow → towards Vellau, Hike (SnapTest.kt's case)
 const clicked = [[46.6830, 11.1300], [46.6840, 11.1000], [46.6860, 11.1090]];
 await page.goto(url + 'index.html');
-await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 60_000 });
+await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
 const code = await page.evaluate((pts) => window.__engine.encode({ points: pts, activity: 'HIKE', sac: 3, pinned: [], names: {}, title: null }), clicked);
 await page.goto(url + 'index.html#p=' + code);
-await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready') || document.querySelector('#summary .big'), null, { timeout: 60_000 });
+await page.waitForFunction(() => document.body.dataset.engine === 'ready' || document.querySelector('#summary .big'), null, { timeout: 60_000 });
 const h1 = await settled();
 const p1 = await planOf();
 const moved = p1.points.map((q, i) => metres(q, clicked[i]));

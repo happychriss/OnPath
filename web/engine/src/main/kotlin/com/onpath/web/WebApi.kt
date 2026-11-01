@@ -231,7 +231,9 @@ object Engine {
             planJson(res, nm, System.currentTimeMillis() - t0, changed)
         } catch (e: Exception) {
             Problems.error("web", "Plan request failed", e)
-            "{\"error\":" + str("Unexpected: $e") + ",\"legs\":[]}"
+            // never the exception text for the user (CLAUDE.md robustness): the page shows its plain line, the detail
+            // goes to the page's diagnostics
+            "{\"error\":null,\"failed\":true,\"detail\":" + str("Unexpected: $e") + ",\"legs\":[]}"
         }
     }
 

@@ -58,7 +58,7 @@ await page.click('#closeShare');
 const ctx3 = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'de-DE' });
 const p3 = await ctx3.newPage();
 await p3.goto(url + 'index.html');
-await p3.waitForFunction(() => document.getElementById('status')?.textContent?.includes('bereit'), null, { timeout: 120_000 }).catch(() => {});
+await p3.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 120_000 }).catch(() => {});
 await p3.click('#map', { position: { x: 700, y: 400 } });
 await p3.waitForSelector('.holdpopup button', { timeout: 20_000 });
 await p3.click('.holdpopup button');

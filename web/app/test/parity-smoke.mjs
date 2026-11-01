@@ -46,7 +46,7 @@ const clickAt = async (lon, lat, button = 'left') => {
 const menuItems = () => page.$$eval('.pointmenu button .txt > span:first-child', (b) => b.map((x) => x.textContent));
 
 await page.goto(url + 'index.html');
-await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 60_000 });
+await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
 
 // 1. first click on an empty plan: "New route" – Start here · Go here (MapGestures.FirstPointMenu)
 await clickAt(11.1600, 46.6700);

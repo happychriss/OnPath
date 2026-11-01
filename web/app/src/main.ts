@@ -109,10 +109,15 @@ document.title = t('web_page_title');
 // No WebGL2 (old browser, hardware acceleration off, some headless browsers): maplibre cannot draw and the page would
 // stay blank without a word (owner 2026-10-30) – say so plainly and stop here.
 if (!hasWebGl2()) {
-  document.querySelector<HTMLDivElement>('#app')!.innerHTML = `<main class="nowebgl" role="alert"><div>${logo(40)}
-    <h1>${escapeHtml(t('web_no_webgl_title'))}</h1><p>${escapeHtml(t('web_no_webgl_text'))}</p></div></main>`;
+  stopPage(t('web_no_webgl_title'), t('web_no_webgl_text'));
   console.warn('[map] no WebGL2 – the map cannot be drawn');
   await new Promise(() => {}); // expected: nothing else can run without a map
+}
+// The routing engine is TeaVM WasmGC (review 2026-11-01, web H2): Safari / iOS before 18.2, Chrome < 119, Firefox < 120
+// cannot run it – a reload never helps, so say plainly that the browser is too old, before anything else loads.
+if (!hasWasmGc()) {
+  oldBrowserPage();
+  await new Promise(() => {}); // expected: the planner cannot run without its engine
 }
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <header id="header">
@@ -288,8 +293,26 @@ const planGaps = new PlanGapsLayer(map); // points the route does not reach (pla
 (window as unknown as { __engine: EngineClient }).__engine = engine; // for the browser tests (timings)
 (window as unknown as { __state: typeof state }).__state = state; // for the browser tests (pace: the plan the sheet shows)
 status(t('web_engine_loading'), 'busy');
-const ready = engine.configure(base, params.get('segments') ?? base + 'segments/', PACKED, lang).then((r) => {
-  status(r.ok ? t('web_engine_ready', Math.round(r.stats?.engineLoadMs ?? 0)) : t('web_engine_failed', r.error ?? ''), r.ok ? 'info' : 'error');
+/** The engine, loaded with two more tries on a failed download (a network blip at start must not need a reload). */
+async function configureEngine() {
+  for (let i = 0; ; i++) {
+    const r = await engine.configure(base, params.get('segments') ?? base + 'segments/', PACKED, lang);
+    if (r.ok || r.unsupported || i >= 2) return r;
+    problem('engine', 'routing engine not loaded – trying again', r.error);
+    await new Promise((res) => setTimeout(res, 3000 * (i + 1)));
+  }
+}
+const ready = configureEngine().then((r) => {
+  if (r.ok) {
+    document.body.dataset.engine = 'ready'; // the browser tests wait for this (the timing line is ?debug only)
+    status(DEBUG ? t('web_engine_ready', Math.round(r.stats?.engineLoadMs ?? 0)) : '');
+  } else if (r.unsupported) {
+    problem('engine', 'routing engine cannot run in this browser', r.error, 'error');
+    oldBrowserPage();
+  } else {
+    problem('engine', 'routing engine not loaded', r.error, 'error'); // the detail goes to the diagnostics only
+    status(t('web_engine_failed'), 'error');
+  }
   return r.ok;
 });
 // the pace setting (the app's Settings → Pace, Prefs keys hikePaceLevel / bikePaceLevel) before the first plan
@@ -769,16 +792,29 @@ async function openDraft(folder: string) {
   render();
   rememberInAddress();
 }
-/** After a reload: the address holds the route; its saved state (which saved route, which folder) comes from the draft. */
+/**
+ * At start. After a reload the address holds the route; its saved state (which saved route, which folder) comes from
+ * the draft. Opened without a route in the address (bookmark, typed address, a tab the browser discarded) and nothing
+ * on the map: the open route of this folder comes back, saved or not – like the app's "Plan restored at app start"
+ * (review 2026-11-01, web H3: an unsaved route must not be lost).
+ */
 async function restoreDraft() {
   if (!(await syncReady)) return;
   const d = await sync.draft();
-  if (d?.code && state.points.length && d.code === await engine.encode(sharedPlan())) {
+  if (d?.code && !state.points.length && !/[#&?]p=/.test(location.href)) {
+    const shared = await engine.parse('p=' + d.code);
+    if (shared && shared.points.length && !state.points.length) {
+      await loadShared(shared);
+      state.savedId = d.savedId; state.savedTitle = d.savedTitle; state.savedCode = d.savedCode; state.savedFolder = d.savedFolder ?? null;
+      render();
+    }
+  } else if (d?.code && state.points.length && d.code === await engine.encode(sharedPlan())) {
     state.savedId = d.savedId; state.savedTitle = d.savedTitle; state.savedCode = d.savedCode; state.savedFolder = d.savedFolder ?? null;
     render();
   }
   draftsOn = true;
   draftsDone();
+  if (state.points.length) rememberInAddress(); // the route back in the address (a reload keeps it) and in the draft
 }
 
 // ---- planning ----
@@ -821,8 +857,13 @@ async function changed() {
   }, namesText());
   if (id !== state.latest) return; // a newer request supersedes this one
   state.planning = false;
-  if (!r.ok || !r.plan) { status(t('web_plan_failed', r.error ?? ''), 'error'); render(); return; }
+  if (!r.ok || !r.plan || r.plan.failed) {
+    problem('routing', 'plan request failed', r.error ?? r.plan?.detail, 'error'); // plain words for the user, the detail for the diagnostics
+    status(t('web_plan_failed'), 'error'); render(); return;
+  }
   state.plan = r.plan;
+  // routing data not downloaded (offline a moment, server busy): straight line + the grey line; tried again by itself
+  if (r.plan.notice === 'NOT_YET') setTimeout(retryMissingData, 20_000);
   if (r.plan.moved) await adoptSnapped(routed, r.plan.points);
   planGaps.set(r.plan.gaps); // points the route does not reach or skips (the app's PlanGaps, in PlanResult)
   if (fitNextRoute) {
@@ -840,6 +881,17 @@ async function changed() {
   render();
   areas?.wantLine(r.plan.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon))); // T4: the map areas along the route
 }
+
+/** The last plan lacked routing data (download failed): plan the same points once more – back online or after a moment. */
+let dataRetryFor = '';
+function retryMissingData() {
+  if (state.plan?.notice !== 'NOT_YET' || state.planning || state.points.length < 2) return;
+  const k = enc(state.points) + '|' + state.activity + state.sac;
+  if (dataRetryFor === k) return; // once per plan; an edit or "online" tries again
+  dataRetryFor = k;
+  changed();
+}
+addEventListener('online', () => { dataRetryFor = ''; retryMissingData(); });
 
 /**
  * The plan's snapped points (the app's PlanResult / snapToRoute – owner: no off-road guidance): free points moved onto
@@ -1097,7 +1149,7 @@ async function setPace(group: 'hike' | 'bike', level: string) {
   state.plan.timeS = t.timeS; state.plan.texts.time = t.time;
   render();
 }
-engine.call('activities').then((t) => { picker.setRows(JSON.parse(t) as ActivityRow[]); renderChip(); }).catch((e) => status(t('web_activities_failed', String(e)), 'error'));
+engine.call('activities').then((t) => { picker.setRows(JSON.parse(t) as ActivityRow[]); renderChip(); }).catch((e) => { problem('engine', 'activity names not loaded', e, 'error'); status(t('web_activities_failed'), 'error'); });
 function renderChip() {
   const row = picker.row(state.activity);
   $('activityChip').innerHTML = `${activityIcon(state.activity, 20)}<span>${escapeHtml(row?.chip ?? state.activity)}` +
@@ -1332,7 +1384,8 @@ async function suggestName(): Promise<string> {
     const names = [pinnedName(0), pinnedName(state.points.length - 1), ...via].map((n) => n.replace(/\t/g, ' ')).join('\t');
     return await engine.call('routeName', enc(thin as LatLon[]), names);
   } catch (e) {
-    status(t('web_no_name', String(e)));
+    problem('routes', 'no name proposed', e);
+    status(t('web_no_name'));
     return '';
   }
 }
@@ -1452,6 +1505,27 @@ function arrowImage(): ImageData {
   g.strokeStyle = '#fff'; g.lineWidth = s * 0.16; g.lineCap = 'round'; g.lineJoin = 'round';
   g.beginPath(); g.moveTo(s * 0.32, s * 0.2); g.lineTo(s * 0.72, s * 0.5); g.lineTo(s * 0.32, s * 0.8); g.stroke();
   return g.getImageData(0, 0, s, s);
+}
+
+/** One full-page message instead of the planner (no WebGL2, browser too old) – never a blank page. */
+function stopPage(title: string, text: string) {
+  document.querySelector<HTMLDivElement>('#app')!.innerHTML = `<main class="nowebgl" role="alert"><div>${logo(40)}
+    <h1>${escapeHtml(title)}</h1><p>${escapeHtml(text)}</p></div></main>`;
+}
+function oldBrowserPage() {
+  stopPage(t('web_old_browser_title'), t('web_old_browser_text'));
+  document.body.dataset.engine = 'unsupported';
+  console.warn('[engine] this browser cannot run the routing engine (WebAssembly GC missing)');
+}
+
+/**
+ * Can this browser run the routing engine? A tiny module with one GC struct type (as wasm-feature-detect's "gc"):
+ * WebAssembly.validate is false without WasmGC. Wasm exceptions etc. are caught later by the engine's CompileError.
+ */
+function hasWasmGc(): boolean {
+  try {
+    return typeof WebAssembly === 'object' && WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 95, 1, 120, 0]));
+  } catch { return false; } // expected: no WebAssembly at all → too old
 }
 
 /** Can this browser draw the map? maplibre-gl needs WebGL2. */

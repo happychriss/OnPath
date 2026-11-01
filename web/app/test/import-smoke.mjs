@@ -45,7 +45,7 @@ const clickAt = async (lon, lat) => {
 };
 
 await page.goto(url + 'index.html');
-await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 60_000 });
+await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
 
 // 1a. a link with two points ~600 km apart: asked first, nothing fetched meanwhile
 const far = await page.evaluate(() => window.__engine.encode({ points: [[46.6700, 11.1600], [52.0500, 11.1600]], activity: 'HIKE', sac: 2, pinned: [], names: {}, title: null }));
@@ -62,7 +62,7 @@ check((await page.textContent('#summary .subline')).includes('Route not calculat
 check(await pins() === 2, 'both points still there');
 // 1b. Plan anyway: no second question, the planner runs (no routing data up north here: its plain error)
 await page.click('#planAnyway');
-await page.waitForFunction(() => !document.querySelector('dialog.longroute') && (/failed|Planning/.test(document.getElementById('status').textContent) || !!document.querySelector('#summary .big')), null, { timeout: 120_000 });
+await page.waitForFunction(() => !document.querySelector('dialog.longroute') && (/failed|could not|Planning/.test(document.getElementById('status').textContent) || !!document.querySelector('#summary .big')), null, { timeout: 120_000 });
 check(!(await page.$('dialog.longroute')), 'Plan anyway: routed without asking again');
 // 1b'. Clear route while that long plan may still run in the engine's one worker: the page answers at once (as the app
 // cancels its plan) and the plan's late end brings no route back
@@ -104,9 +104,11 @@ const hildenAs = async (button) => {
   await page.click(button);
 };
 const summaryText = () => page.textContent('#summary .subline');
+// the planner brings the last open route back when opened without #p= (review 2026-11-01, web H3): forget it for an empty plan
+const emptyPlan = async () => { await page.evaluate(() => window.__sync.setDraft(null)); await page.goto(url + 'index.html'); };
 // (a) an empty plan + a far search result as start: never the question
-await page.goto(url + 'index.html');
-await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 60_000 });
+await emptyPlan();
+await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
 await toHilden();
 await hildenAs('#cadd'); // empty plan: the main button is "Set as start" (app 0.13), no small As start beside it
 await page.waitForTimeout(1500);
@@ -169,8 +171,8 @@ check(await pins() === 2 && !!(await page.$('#summary .big')), 'undo: the route 
 
 // 2. ☰ → Import GPX (Komoot hike) while the activity is Bike
 await page.evaluate(() => { localStorage.setItem('onpath.activity', 'BIKE_TOURING'); });
-await page.goto(url + 'index.html');
-await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 60_000 });
+await emptyPlan();
+await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
 if (await page.isVisible('#menuBtn')) await page.click('#menuBtn'); // phone width: ☰; wide: the header line
 check(await page.isVisible('#menuImportGpx') && (await page.textContent('#menuImportGpx')).includes('Import GPX'), 'header / ☰ has Import GPX');
 const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.click('#menuImportGpx')]);

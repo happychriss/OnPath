@@ -25,7 +25,7 @@ page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 
 await page.goto(url + 'index.html');
-await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes('ready'), null, { timeout: 60_000 });
+await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
 const titles = async () => page.$$eval('#results .hit b', (b) => b.map((x) => x.textContent));
 const searchFor = async (t) => {
   await page.fill('#q', t);
