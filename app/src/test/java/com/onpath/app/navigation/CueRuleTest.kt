@@ -74,6 +74,16 @@ class CueRuleTest {
         assertFalse(cue(JunctionCue.LEFT, shape(-90f, 6, 6)))
     }
 
+    /**
+     * Rosellen replay (owner 2026-11-01): off a quiet street right onto Benrather Straße, a dual carriageway – the other
+     * half is a oneway against us, so "no other way" – yet a real turn onto the main road: a cue. Same kind of way: quiet.
+     */
+    @Test fun noOtherWayButOntoAnotherKindOfWayIsATurn() {
+        assertTrue(cue(JunctionCue.RIGHT, shape(61f, 6, 26)))
+        assertFalse("a slight bend onto it", cue(JunctionCue.SLIGHT_RIGHT, shape(27f, 6, 26)))
+        assertFalse("the same kind", cue(JunctionCue.RIGHT, shape(70f, 20, 26)))
+    }
+
     @Test fun roundaboutsAndUTurnsAlwaysVibrate() {
         assertTrue(cue(JunctionCue.ROUNDABOUT, shape(-147f, 6, 6)))
         assertTrue(cue(JunctionCue.U_TURN_LEFT, shape(-175f, 6, 6)))

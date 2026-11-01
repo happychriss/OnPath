@@ -11,6 +11,9 @@ import kotlin.math.abs
  *
  * - Roundabouts and U-turns: always.
  * - No other way one could take (only oneways against the direction / ways without access): no – the road simply bends.
+ *   But onto another kind of way with a turn of at least [ONTO_DEG]: yes (owner 2026-11-01, Rosellen replay: off a
+ *   quiet street right onto Benrather Straße, a dual carriageway – its other half is a oneway against us, so BRouter
+ *   saw "no other way", and the rider heard nothing at a real turn onto the main road).
  * - Leaving the way one is on for a smaller one while that way goes on: yes, even straight on – the classic missed
  *   turn. On foot off the forest road onto a path; on the bike (owner 2026-10-30, after the hike) off the street onto a
  *   field track / path, off the cycleway onto a path, off the main road into a side street ([bikeKind]).
@@ -31,16 +34,18 @@ object CueRule {
     const val STRAIGHT_DEG = 45f
     const val MARGIN_DEG = 35f
     const val BEND_DEG = 75f
+    /** No other way, but onto another kind of way turning at least this much: a cue ([needed]). */
+    const val ONTO_DEG = 45f
 
     /** [hike] = the route is from hiking-mountain.brf (its classes, the on-foot rule). */
     fun needed(cue: JunctionCue, shape: JunctionShape?, hike: Boolean = false): Boolean {
         if (cue == JunctionCue.ROUNDABOUT || cue == JunctionCue.U_TURN_LEFT || cue == JunctionCue.U_TURN_RIGHT) return true
         if (shape == null) return cue != JunctionCue.SLIGHT_LEFT && cue != JunctionCue.SLIGHT_RIGHT
-        if (shape.others.isEmpty()) return false
+        val kind: (Int) -> Int = if (hike) ::hikeClass else ::bikeKind
+        if (shape.others.isEmpty()) return kind(shape.outPrio) != kind(shape.inPrio) && abs(shape.angle) >= ONTO_DEG
         val cls: (Int) -> Int = if (hike) ::hikeClass else { p -> p }
         val inC = cls(shape.inPrio); val outC = cls(shape.outPrio)
         // leaving the way one is on for a smaller one while that way goes on
-        val kind: (Int) -> Int = if (hike) ::hikeClass else ::bikeKind
         val inK = kind(shape.inPrio)
         if (kind(shape.outPrio) < inK && shape.others.any { kind(it.prio) >= inK }) return true
         val a = abs(shape.angle)
