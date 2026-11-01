@@ -26,6 +26,15 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud-app (donald), 2026-11-01 night – the owner's hikes (tours 61–63).** Data secured on donald:
+  `~/onpath-cells-work/field/2026-11-01-wanderungen/` (live-1931 during tour 63, final-* after it: DB, events, problems,
+  nav session, GPX, logcat, the owner's screenshot 17:43). Analysed: round trip 61 (a step back at the start → matcher on
+  the loop's closing part → 6 of 7 points "passed" → early "Ziel erreicht"), tour 62 (park path 2–25 m beside Neustraße
+  → switched back to the original behind its loop, point skipped, "Ziel erreicht" at 54 m). Built on main: no grey in
+  Plan during a tour, plan line always drawn (c2429f7a), plan points in Navigate with ✓ (6b8751da). Concept for the
+  owner: `docs/design/navigation-v2.md` (voice timing like Organic Maps / OsmAnd, points stay open – owner decision,
+  parallel ways, round trips, off-route side + distance) – three questions open in §4, nothing of it built yet.
+  Owner note for later: ☰ "Meine Routen" first. Pixel: main b047bf79 installed 19:55 (no tour running).
 - **cloud-app (donald), 2026-11-01 evening – voice after the owner's Hilden tour, pictures, captain's list.** Owner's
   field word "keine einzige Ansage passte" (demo tour 59 through Hilden's Stadtpark): replayed on the JVM with real data
   and checked against OSM – (1) a pedestrian crossing / sideways step was two turns ("links auf den Feldweg, danach
