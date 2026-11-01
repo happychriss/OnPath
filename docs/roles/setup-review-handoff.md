@@ -87,6 +87,22 @@ It is not mentioned in any role file and overlaps with cloud-plan.
 - Public repos never get private material; `onpath.private` for that.
 - The owner mostly works from the phone / browser; computers are sometimes off.
 
+## 5b. The owner's main wish – one place for open questions (2026-11-01)
+"I need one central place that tells me when any assistant has a question: a short overview, a little background,
+then the question – a dashboard with all questions I have to answer. Something like this probably exists already.
+We really don't want much more; that would be enough."
+- Requirements: every session (roles, scheduled tasks, helpers) puts each owner question there with: who asks, a
+  2–3 line background, the question with clear options + a recommendation, link to details; the owner answers there
+  (or the answer reaches the session); answered questions disappear; works on the phone; a notification when a new
+  one arrives. Nothing else – no big tool.
+- Check what already exists before building anything: the Claude app's session list already marks sessions that
+  wait for input (status "blocked" / `needs_action`, e.g. cloud-web's "Soll ich loslegen?" today); push
+  notifications from sessions; GitHub issues with a label like `owner-question` (phone app + notifications, every
+  session can write with `gh`, the answer is a comment the session can read); a small artifact page that lists them.
+  Today questions are scattered: chat in each session, "Waiting for the owner" in `docs/backlog.md`, decision lists in
+  review files (e.g. D1–D4 in `docs/reviews/2026-11-01-pre-release.md`).
+- Make this the first thing your proposal solves; the rest of the setup should serve it.
+
 ## 6. Ideas worth evaluating (not decided – check feasibility first)
 - **Fewer standing sessions:** e.g. one lead session for app + planner on donald, the website as an occasional cloud
   session, the captain's release check as a script / checklist instead of a session.
