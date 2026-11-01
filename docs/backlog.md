@@ -104,6 +104,7 @@ the git log.
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-plan] "More before the release" (owner 2026-11-01): (1) + (2) done (web-spike 5749bac6); left: (3) with cloud-app – sync H3 / M4 as one shared rule in `sync/`, Points list row text from shared `PlanPoints` (web M15) – since 2026-11-01
 - [cloud-app] The rest of the backlog (owner 2026-11-01: no release today, everything in) – since 2026-11-01
+- [cloud-app] AppViewModel split (owner 2026-11-01: all five areas now, with a safety net; Fable reviewed): Updates, Phone setup, Pairing → own classes; cells / routing data, search / shared places, sync routing → own files (functions only, state stays) – one step per commit, full gate + androidTest compile, emulator + Rundgang at the end – since 2026-11-01
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
