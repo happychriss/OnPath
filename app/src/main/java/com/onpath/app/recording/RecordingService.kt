@@ -999,7 +999,9 @@ class RecordingService : Service() {
                 onRoute = st.prompt?.offRoute != true && st.shownAlongM != null, speedMps = junctionSpeeds.speedOrNull(nowEl),
                 bike = s?.activity != com.onpath.app.routing.Activity.HIKE, offRoute = st.prompt?.offRoute == true,
                 rerouted = s?.rerouted == true, paused = paused, gpsLost = gpsLost(),
-                stops = s?.stops.orEmpty(), visited = s?.visited.orEmpty(), toGoS = tripTime().toGoS, quiet = standingStill(),
+                stops = s?.stops.orEmpty(), visited = s?.visited.orEmpty(), firstNumber = s?.firstNumber ?: 1,
+                skipped = s?.skipped.orEmpty(),
+                toGoS = tripTime().toGoS, quiet = standingStill(),
                 turnRound = st.uTurnAt != null,
             ))
             saveVoice()

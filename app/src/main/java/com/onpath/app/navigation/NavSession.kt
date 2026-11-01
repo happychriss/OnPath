@@ -51,7 +51,20 @@ data class NavSession(
      * an older session never overwrites the app's newer file ([mayOverwrite], fix-tour-edit-line.md cause 4).
      */
     val token: Long = 0,
+    /**
+     * The plan's number of [stops]'s first stop (1 = the plan's start). A tour that follows only the points ahead after a
+     * plan edit ("follow position → 3 points ahead") has the plan's point 7 as its first stop: box and voice say "Stopp 7",
+     * as the map numbers it (owner 2026-11-01, Rosellen replay: "warum Stopp 2?").
+     */
+    val firstNumber: Int = 1,
+    /**
+     * Stops left out on purpose ("Neue Route ohne Stopp 7"): in [visited] too (never routed to again), but never
+     * "reached" – the voice says nothing for them (owner 2026-11-01: "Stopp 2 erreicht, den wir gar nicht erreicht haben").
+     */
+    val skipped: Set<Int> = emptySet(),
 ) {
+    /** The number the map shows for stop [i] of [stops]. */
+    fun numberOf(i: Int): Int = i + firstNumber
     val active: List<GeoPoint> get() = current ?: original
     val rerouted: Boolean get() = current != null
 
@@ -145,6 +158,8 @@ class NavSessionStore(private val file: File) {
             .put("reached", s.reached)
             .put("lead", s.lead)
             .put("token", s.token)
+            .put("firstNumber", s.firstNumber)
+            .put("skipped", JSONArray().apply { s.skipped.sorted().forEach { put(it) } })
 
         fun fromJson(o: JSONObject): NavSession? {
             val original = withShapes(withTurns(withWays(readPts(o.getJSONArray("original")), o.optJSONArray("originalWays")),
@@ -175,6 +190,8 @@ class NavSessionStore(private val file: File) {
                 reached = o.optBoolean("reached", true),
                 lead = o.optBoolean("lead", false),
                 token = o.optLong("token", 0L),
+                firstNumber = o.optInt("firstNumber", 1).coerceAtLeast(1),
+                skipped = o.optJSONArray("skipped")?.let { a -> (0 until a.length()).map { a.getInt(it) }.toSet() }.orEmpty(),
             )
         }
 

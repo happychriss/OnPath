@@ -33,6 +33,8 @@ sealed interface NavPrompt {
         val skipStop: Int? = null,
         /** Name of [skipStop] when it has one (else "Stop N"). */
         val skipName: String? = null,
+        /** The number the map shows for [skipStop] ([NavSession.numberOf]); null = its index + 1. */
+        val skipNumber: Int? = null,
         /**
          * Non-null: "Off route – re-plan?" with [skipStop] in question – "Yes" takes [via] (the way via it), "Yes, skip
          * stop N" takes this line (without it); Keep original stays possible.
@@ -338,7 +340,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         // a stop left out on purpose stays out: later re-routes never send back to it (like a passed one)
         val visited = skipStop?.let { session.visited + it } ?: session.visited
         session = session.copy(current = line, spliceAtM = legM, resumeAlongM = resumeAlongM, leftAtM = leftAtM,
-            visited = visited, version = session.version + 1)
+            visited = visited, skipped = skipStop?.let { session.skipped + it } ?: session.skipped, version = session.version + 1)
         detector.setLine(NavLine(line), 0.0, assumeOnRoute = true)
         prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0; refreshes = 0
         return Step(cancelJob = true, lineChanged = true)
@@ -463,6 +465,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private fun question(id: Int, f: Rerouter.Found): NavPrompt.Question = NavPrompt.Question(id, f.extraM, f.rejoinInM,
         f.startOffM, f.line, f.legM, f.resumeAlongM, turnRound = TurnRound.needed(recent.toList(), f.line),
         skipStop = f.skipStop, skipName = f.skipStop?.let { session.stops.getOrNull(it)?.name?.takeIf { n -> n.isNotBlank() } },
+        skipNumber = f.skipStop?.let { session.numberOf(it) },
         via = f.ask?.let { question(id, it) }, offM = detector.lastDistanceM)
 
     private fun ask(f: OffRouteDetector.Fix, vibrate: Boolean): Step {

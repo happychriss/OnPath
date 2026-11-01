@@ -99,6 +99,10 @@ class VoiceGuide {
         /** The plan's stops on the original line and which were visited ([NavSession]). */
         val stops: List<NavStop> = emptyList(),
         val visited: Set<Int> = emptySet(),
+        /** The map's number of [stops]'s first stop ([NavSession.firstNumber]): "Stopp 7", not "Stopp 2". */
+        val firstNumber: Int = 1,
+        /** Stops left out on purpose ([NavSession.skipped]): in [visited], never "reached". */
+        val skipped: Set<Int> = emptySet(),
         /** To go for the start sentence (time model); null = not known yet. */
         val toGoS: Double? = null,
         /** Standing still ([com.onpath.app.recording.MoveWatch], owner 2026-11-01): no "No GPS", no "off the route". */
@@ -222,11 +226,11 @@ class VoiceGuide {
         lastVisited = i.visited
         if (prev != null) {
             for (k in i.visited.sorted()) {
-                if (k in prev || k == 0 || k >= i.stops.size - 1) continue
+                if (k in prev || k == 0 || k >= i.stops.size - 1 || k in i.skipped) continue
                 val next = (k + 1 until i.stops.size).firstOrNull { it !in i.visited }?.let { i.stops[it] }
                 val nextM = if (next != null && !i.rerouted && i.alongM != null) (next.alongM - i.alongM).takeIf { it > 0 } else null
                 val back = !i.rerouted && reversals.any { kotlin.math.abs(it - i.stops[k].alongM) < Reversals.SAME_M }
-                queue(Phrase.StopReached(i.stops[k].name, k + 1, next?.name, nextM, back), i.nowMs)
+                queue(Phrase.StopReached(i.stops[k].name, k + i.firstNumber, next?.name, nextM, back), i.nowMs)
             }
         }
         // a sentence that waited for the gap

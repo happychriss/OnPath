@@ -3066,7 +3066,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
             setFollow(name, line, isTrack = false, checkNow = true, stops = ahead, names = ahead.map { stopName(it) },
-                pinned = ahead.indices.filter { ahead[it] in pinned }.toSet())
+                pinned = ahead.indices.filter { ahead[it] in pinned }.toSet(), firstNumber = firstAhead)
             planBaseline = planLine
             followFromPlan = true
             Problems.trace("tour", "The tour follows position → ${ahead.size} points ahead of \"$name\" (${line.size} line points)")
@@ -3085,12 +3085,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * and the plain follow line. [checkNow]: the service checks the next fix at once ("Continue navigation").
      */
     private fun setFollow(name: String, points: List<GeoPoint>, isTrack: Boolean, checkNow: Boolean = false,
-                          stops: List<GeoPoint> = emptyList(), names: List<String?> = emptyList(), pinned: Set<Int> = emptySet()) {
+                          stops: List<GeoPoint> = emptyList(), names: List<String?> = emptyList(), pinned: Set<Int> = emptySet(),
+                          firstNumber: Int = 1) {
         guidanceEndedByEmptyPlan = false
         val session = runCatching {
             // a new token (a re-route of the old line never overwrites it) and a new version (cues / voice re-read the line)
             NavSession.start(if (isTrack) NavKind.TRACK else NavKind.PLAN, name, activity, sac, points, stops, names, pinned)
-                .copy(token = newSessionToken(), version = (recState.value?.nav?.version ?: navVersion).coerceAtLeast(0) + 1)
+                .copy(token = newSessionToken(), version = (recState.value?.nav?.version ?: navVersion).coerceAtLeast(0) + 1,
+                    firstNumber = firstNumber.coerceAtLeast(1))
         }.onFailure { Problems.error("navigation", "Navigation session could not be started; following without it", it) }.getOrNull()
         navStore.save(session)
         prefs.saveFollow(name, points)

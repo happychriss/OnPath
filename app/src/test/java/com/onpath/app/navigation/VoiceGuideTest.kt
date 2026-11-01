@@ -210,6 +210,29 @@ class VoiceGuideTest {
         assertTrue("$said", said.none { it is Phrase.StopReached })
     }
 
+    /** Rosellen replay (owner 2026-11-01): following the points ahead after an edit – the map's numbers, not 1, 2, 3. */
+    @Test fun stopNumbersAreTheMapsAfterAnEdit() {
+        val g = VoiceGuide()
+        val l = line(3000, emptyMap())
+        val stops = listOf(NavStop(l[0], 0.0), NavStop(l[100], 1000.0), NavStop(l.last(), 3000.0))
+        val base = VoiceGuide.Input(0, l, 1, 10.0, onRoute = true, speedMps = 5.0, bike = true, stops = stops, visited = setOf(0),
+            firstNumber = 6)
+        g.update(base)
+        val p = g.update(base.copy(nowMs = 300_000, alongM = 1000.0, visited = setOf(0, 1)))
+        assertEquals(7, (p as Phrase.StopReached).number)
+    }
+
+    /** A stop left out on purpose ("Neue Route ohne Stopp 7") is never "reached" (owner 2026-11-01). */
+    @Test fun aSkippedStopIsNotReached() {
+        val g = VoiceGuide()
+        val l = line(3000, emptyMap())
+        val stops = listOf(NavStop(l[0], 0.0), NavStop(l[100], 1000.0), NavStop(l.last(), 3000.0))
+        val base = VoiceGuide.Input(0, l, 1, 10.0, onRoute = true, speedMps = 5.0, bike = true, stops = stops, visited = setOf(0))
+        g.update(base)
+        val said = (1..5).mapNotNull { s -> g.update(base.copy(nowMs = s * 20_000L, alongM = 600.0, visited = setOf(0, 1), skipped = setOf(1))) }
+        assertTrue("$said", said.none { it is Phrase.StopReached })
+    }
+
     @Test fun stopReachedWithTheNextStop_notTheStartNorTheDestination() {
         val g = VoiceGuide()
         val l = line(3000, emptyMap())

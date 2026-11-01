@@ -26,7 +26,7 @@ object NavText {
      * has at most [maxName] characters: it goes into a button ([skipButton]), and the line says the same label.
      */
     fun stopLabel(q: NavPrompt.Question, maxName: Int = NAME_MAX): String? =
-        q.skipStop?.let { i -> q.skipName?.takeIf { it.length <= maxName } ?: Txt.s(Res.string.nav_stop_n, i + 1) }
+        q.skipStop?.let { i -> q.skipName?.takeIf { it.length <= maxName } ?: Txt.s(Res.string.nav_stop_n, q.skipNumber ?: (i + 1)) }
 
     /** "New route without stop 3" / "Neue Route ohne Gasthof Hochmuth" – the card's second answer (owner 2026-11-01). */
     fun skipButton(q: NavPrompt.Question, maxName: Int = NAME_MAX): String =
