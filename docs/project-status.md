@@ -35,8 +35,8 @@ the current state.
   green before and after step 4, on the final state Release-Rundgang 14/14 + CorePlanLink + RoutingDataFreshInstall
   (with download, `E2E_ARGS="-e routingDownload true"` – new in `release_rundgang.sh`) PASS. Two E2E tests were stale
   (red before the split too) and are fixed: broken-link text, fresh-install notice on a fast line. Word to the captain
-  ("split done") in the backlog. **Pixel:** a tour was recording – no install; the owner ends it and says so (issue
-  onpath.private#12), then `installDebug` of `main`. **Next:** the owner tests that ONE build outside, then the
+  ("split done") in the backlog. **Pixel:** after the owner ended the tour, the debug build of `main` (cbb2289b) was
+  installed (16:31) and starts cleanly (onpath.private#12 closed). **Next:** the owner tests that ONE build outside, then the
   captain's release check; cloud-plan merges `main` once (captain messages).
 - **cloud-app (donald), 2026-11-01 – fix day (owner: no release today, everything in). Session ends here; a fresh
   cloud-app session goes on.** On `main`, each with gate.sh (often `--full`), small commits: list A 1–9; "More before the
