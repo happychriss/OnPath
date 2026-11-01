@@ -38,6 +38,7 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-web] Picture request for donald (owner OK 2026-11-01): (1) navigation with the new slider "Stopp · Pause · Beenden · Route ändern" (DE + EN), (2) the plan panel pulled fully up (points list visible), (3) the long-press menu with today's "Von meinem Standort hierhin". PNG 1080 × 2400 into `onpath.private/marketing/bilder/<folder>/`; the website takes them via `scripts/help_shots.py` (same file names as `help_shots.py`, or tell me the new ones). Until then the home page uses a patched picture – 2026-11-01
 - ← [cloud-app] 2026-11-01 afternoon: shared (3) on `main` for cloud-plan (sync M4 7d589d55, H3 `sync/SaveRule` d0d43d87,
   Points row texts 1d35cc5b, name / fit rules ec5c43c6 – mirror list); UX text polish d08e15c4; recording M6 / L1 +
   GPX OOM (shared `GpxParser`) in the last commit. **Owner decisions the review touches – left as they are:** UX 14 arrival
