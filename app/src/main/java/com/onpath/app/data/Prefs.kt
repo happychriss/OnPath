@@ -109,8 +109,9 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             planVibrate = sp.getBoolean("planVibrate", true),
             keepScreenOn = sp.getBoolean("keepScreenOn", true),
             bikeScreen = BikeScreen.of(sp.getString("bikeScreen", null), sp.getBoolean("keepScreenOn", true)),
-            voiceBike = sp.getBoolean("voiceBike", true),
-            voiceHike = sp.getBoolean("voiceHike", true),
+            junctionGuide = JunctionGuide.of(sp.getString("junctionGuide", null),
+                voiceOn = sp.getBoolean("voiceBike", true) || sp.getBoolean("voiceHike", true),
+                vibrationOn = JunctionVibration.of(sp.getString("junctionVibration", null), sp.getBoolean("junctionVibrate", true)) != JunctionVibration.OFF),
             positionOnRoute = sp.getBoolean("positionOnRoute", true),
             mapTheme = sp.getString("mapTheme", "classic") ?: "classic",
             navHeadingUp = sp.getBoolean("navHeadingUp", true),
@@ -130,8 +131,7 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             .putBoolean("planVibrate", v.planVibrate)
             .putBoolean("keepScreenOn", v.keepScreenOn)
             .putString("bikeScreen", v.bikeScreen.name)
-            .putBoolean("voiceBike", v.voiceBike)
-            .putBoolean("voiceHike", v.voiceHike)
+            .putString("junctionGuide", v.junctionGuide.name)
             .putBoolean("positionOnRoute", v.positionOnRoute)
             .putString("mapTheme", v.mapTheme)
             .putBoolean("navHeadingUp", v.navHeadingUp)

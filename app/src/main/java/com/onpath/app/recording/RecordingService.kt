@@ -962,19 +962,19 @@ class RecordingService : Service() {
         }
         val onRoute = st.prompt?.offRoute != true && st.shownAlongM != null // a switch question is no reason to be quiet
         val cue = junctions.update(st.line, st.version, st.shownAlongM, onRoute, junctionSpeeds.speedOrNull(nowEl)) ?: return
-        val choice = (settings ?: Prefs(this).settings).junctionVibration
-        val locked = screenLocked()
-        if (choice.plays(locked)) {
+        // either – or (owner 2026-11-01): the voice tells the turn, else the vibration (also while the voice is not set up)
+        val guide = (settings ?: Prefs(this).settings).junctionGuide
+        val vib = guide == com.onpath.app.data.JunctionGuide.VIBRATION || (guide == com.onpath.app.data.JunctionGuide.VOICE && !voiceOn())
+        if (vib) {
             val ok = vibrate(com.onpath.app.navigation.JunctionCues.pattern(cue.side), "junction")
-            Problems.trace("navigation", "Junction cue: ${cue.name} – vibrated=$ok (setting $choice, locked=$locked)")
-        } else Problems.trace("navigation", "Junction cue: ${cue.name} – not vibrated (setting $choice, locked=$locked)")
+            Problems.trace("navigation", "Junction cue: ${cue.name} – vibrated=$ok (turn hints $guide)")
+        } else Problems.trace("navigation", "Junction cue: ${cue.name} – not vibrated (turn hints $guide)")
     }
 
     /** Spoken directions on for this tour's activity, and the setup's test sentence was heard. */
     private fun voiceOn(): Boolean {
         val cfg = settings ?: Prefs(this).settings
-        val bike = (navigator?.session?.activity ?: Prefs(this).activity) != com.onpath.app.routing.Activity.HIKE
-        return (if (bike) cfg.voiceBike else cfg.voiceHike) && Prefs(this).voiceHeard == com.onpath.app.setup.Felt.YES
+        return cfg.junctionGuide == com.onpath.app.data.JunctionGuide.VOICE && Prefs(this).voiceHeard == com.onpath.app.setup.Felt.YES
     }
 
     /** The speaker, started on first use (then the first sentence comes without delay); what it finds goes to the phone check. */

@@ -66,11 +66,6 @@
     <string name="settings_nav_meters">%1$d m</string>
     <string name="settings_nav_vibrate_off">Vibrieren abseits der Route</string>
     <string name="settings_nav_vibrate_off_sub">Spürbar in der Tasche, auch bei ausgeschaltetem Bildschirm</string>
-    <string name="settings_nav_junction">Vibrieren an Abzweigungen</string>
-    <string name="settings_nav_junction_sub">Vor einer Abzweigung der Route: 1× links, 2× rechts</string>
-    <string name="settings_nav_junction_off">Aus</string>
-    <string name="settings_nav_junction_always">Immer</string>
-    <string name="settings_nav_junction_locked">Nur gesperrt</string>
     <string name="settings_nav_on_route">Position auf der Route</string>
     <string name="settings_nav_on_route_sub">Solange du nah an der Route bist, sitzt der Punkt auf ihr</string>
     <string name="settings_nav_screen_on">Bildschirm beim Wandern anlassen</string>
@@ -156,8 +151,10 @@
     <string name="settings_privacy_sync_when">nur wenn du einen Browser verbindest: nach einer Änderung und beim Öffnen der App</string>
     <string name="settings_privacy_sync_title">Abgleich mit dem Web-Planer (nur wenn du verbindest)</string>
     <string name="settings_privacy_sync_text">Deine gespeicherten Routen und importierten Tracks werden auf deinem Handy und in deinem Browser verschlüsselt, bevor sie das Gerät verlassen. Sie laufen als verschlossene Daten über unseren Sync-Server (Cloudflare, Speicherort EU): Der Server kann sie nicht lesen und erfährt nie deinen Namen, deine E-Mail-Adresse oder wohin du planst. Er speichert eine zufällige Postfachnummer, die verschlossenen Routen und wann sie zuletzt geändert wurden. Beim Trennen wird dort sofort alles gelöscht; ein Postfach, das 12 Monate niemand nutzt, wird automatisch gelöscht. Wer deinen Verbindungscode hat, kann deine gespeicherten Routen sehen – gib ihn nicht weiter.</string>
-    <string name="settings_nav_voice_bike">Sprachansagen beim Radfahren</string>
-    <string name="settings_nav_voice_hike">Sprachansagen beim Wandern</string>
-    <string name="settings_nav_voice_sub">Nur dort, wo du dich vertun könntest. Startet nach dem Stimmtest in der Handy-Einrichtung.</string>
     <string name="settings_nav_voice_test">Stimme testen</string>
+    <string name="settings_nav_guide">Hinweise an Abzweigungen</string>
+    <string name="settings_nav_guide_sub">Kurz vor einer Abzweigung, wo du dich vertun könntest – Vibration: 1× links, 2× rechts</string>
+    <string name="settings_nav_guide_off">Aus</string>
+    <string name="settings_nav_guide_vibration">Vibration</string>
+    <string name="settings_nav_guide_voice">Stimme</string>
 </resources>
