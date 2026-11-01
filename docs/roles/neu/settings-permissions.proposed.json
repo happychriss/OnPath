@@ -1,0 +1,42 @@
+{
+  "_why": "Owner 2026-11-01: hard rules for every session in every permission mode (deny wins even over bypassPermissions). A session may not edit its own permissions (auto-mode classifier: self-modification), so the owner merges this block into .claude/settings.json: python3 tools/dev/apply_permissions.py – or by hand. Allow = fewer prompts for the project's own scripts and read-only git/gh.",
+  "permissions": {
+    "allow": [
+      "mcp__claude-code-remote__send_message",
+      "mcp__claude-code-remote__list_sessions",
+      "mcp__claude-code-remote__get_session",
+      "mcp__claude-code-remote__list_events",
+      "mcp__claude-code-remote__get_event",
+      "Bash(tools/ask.sh *)",
+      "Bash(tools/ci/gate.sh)",
+      "Bash(tools/ci/gate.sh *)",
+      "Bash(tools/ci/release_check.sh *)",
+      "Bash(tools/dev/device.sh *)",
+      "Bash(git status *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git fetch *)",
+      "Bash(git pull --rebase origin main)",
+      "Bash(gh api repos/happychriss/*)"
+    ],
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f *)",
+      "Bash(git push * --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(git reset * --hard*)",
+      "Bash(git branch -D *)",
+      "Bash(git push origin --delete *)",
+      "Bash(git push --delete *)",
+      "Bash(git checkout -- .)",
+      "Bash(git clean -f*)",
+      "Bash(adb uninstall*)",
+      "Bash(adb * uninstall*)",
+      "Bash(adb shell pm clear*)",
+      "Bash(adb * shell pm clear*)",
+      "Bash(adb shell pm uninstall*)",
+      "Bash(./gradlew --stop*)",
+      "Bash(gradle --stop*)"
+    ]
+  }
+}
