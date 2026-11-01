@@ -5,7 +5,7 @@
 # Saves unpushed work when the computer shuts down, so the owner can switch off any time (owner 2026-11-01).
 # For every git checkout under ROOT (and its worktrees): if it has changed / new files or commits that no remote branch
 # holds, a snapshot commit (parent = HEAD, all changes incl. new files, .gitignore respected) is pushed to
-#   wip/<host>-<YYYYMMDD-HHMM>-<folder>
+#   wip/<host>-<YYYYMMDD-HHMM>-<repo folder>-<branch>
 # The checkout itself is NOT touched: no branch switch, no stash, index and files stay as they are (the snapshot is
 # built with a temporary index). Never pushes to main, never force-pushes. Without network the snapshot is kept as a
 # local ref (refs/onpath-wip/…) and pushed by `retry` at the next start.
@@ -38,7 +38,12 @@ save_one() { # dir
   cd "$d" 2>/dev/null || return 0
   git rev-parse --verify -q HEAD >/dev/null || return 0
   git remote get-url origin >/dev/null 2>&1 || return 0
-  name=$(basename "$d")
+  # name = the repo's main folder + this work tree's branch (an agent's worktree in /tmp is named "wt" or so –
+  # the branch says where the work belongs; seen on donald 2026-11-01)
+  local repo br
+  repo=$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")
+  br=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); [ "$br" = HEAD ] && br="detached-$(git rev-parse --short HEAD)"
+  name="$repo-$(printf '%s' "$br" | tr -c 'A-Za-z0-9._-' '-' | sed 's/-\{2,\}/-/g; s/-$//')"
   dirty=$(git status --porcelain --untracked-files=normal | wc -l)
   # commits no remote branch holds (what we know of the remote – no fetch at shutdown)
   ahead=$(git rev-list --count HEAD --not --remotes=origin 2>/dev/null || echo 0)

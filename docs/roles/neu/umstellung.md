@@ -30,6 +30,9 @@
 - A.0: neuer Ordner → „Workspace not trusted“, bis einmal `claude` darin gestartet und bestätigt wurde (jetzt in `unit.sh`).
 - A.1: **Wiederanhängen klappt** – `unit.sh run test-donald` speichert die ID, der zweite Start verbindet dieselbe
   Sitzung, die Umgebung bleibt („Environment preserved“).
+- `gh` und `ask.sh` (mit `jq`) laufen auf donald – `an-alle` und die Push-Sperre greifen dort.
+- `save-on-shutdown.sh dry` findet `onpath-app` (cloud-app mitten in der Arbeit) und einen Unteragenten-Worktree in
+  `/tmp/claude-…/scratchpad` (den ein Neustart sonst löscht); keine falschen Ordner. Branch-Name jetzt Repo + Branch.
 - `claude remote-control` ist ein Gastgeber für bis zu 32 Sitzungen („Capacity 1/32“, `w` = Spawn-Modus).
 - Eine Cloud-Sitzung **ohne** Freigabe darf dort **keine** Sitzung starten (`elevated_session_untrusted_device`).
   Offen: darf es die Sitzung auf donald selbst (sie läuft auf einem vertrauten Gerät)? Dann wäre sie der Verteiler
