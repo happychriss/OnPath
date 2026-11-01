@@ -211,6 +211,21 @@ Kein MCP, keine Datenbank, keine eigene Seite. Später möglich: Artefakt-Seite,
 | 7 | Ungepushtes beim Ausschalten | **automatisch sichern** (Dienst, `wip/<rechner>-<datum>`) – §6c |
 Damit entfällt in §5 das Setup-Skript der Cloud-Umgebung; §6 Schritt 6 ebenfalls.
 
+## 7b. Für andere Projekte (Owner-Frage 2026-11-01)
+Die Ideen sind allgemein (Rechen-Einheiten, Fragen-Dashboard, `an-alle`, Captain mit Weckruf, Sichern beim
+Ausschalten); die Skripte sind heute auf OnPath zugeschnitten. Wenn ein zweites Projekt dazukommt:
+- **Eigenes kleines Repo `happychriss/leitstand`:** `ask.sh`, Sichern-Dienst, Autostart-Skript, Captain-Vorlage.
+  Jedes Projekt hat eine Datei `.leitstand` (Name, Tor-Befehl, Rechner, Checkout-Ordner).
+- **Ein Dashboard für alle Projekte** (ein Repo, Label `projekt:<name>` zusätzlich zu `frage` / `an-alle`). Bis dahin
+  bleibt `onpath.private` das Dashboard von OnPath; beim Umzug wechseln die offenen Fragen einmal das Repo.
+- **`an-alle`-Prüfung** = ein Aufruf `ask.sh check` im Tor des Projekts oder als Git-`pre-push`-Hook.
+- **Ordner:** Eine Remote-Control-Sitzung gehört zu genau einem Ordner → eine stehende Sitzung je Rechner **und**
+  Projekt, z. B. `~/Projects/work/onpath`, `~/Projects/work/<anderes>`. Zwei Rechner teilen nie einen Ordner; GitHub
+  gleicht ab. Der Sichern-Dienst geht über alle Checkouts unter `~/Projects/work/*`.
+- **Captain:** einer je Projekt, gleicher Prompt, andere `.leitstand`.
+- OnPath: nach dem Zusammenlegen den Ordner auf beiden Rechnern gleich nennen (`onpath` statt `onpath-app` /
+  `onpath-plan`).
+
 ## 8. Nicht geprüft
 - `--session-id` / `--continue` in der Praxis; ein Weckruf in eine Rechner-Sitzung; `/loop` dort;
   `interrupt_session` aus der Cloud. `create_session` auf einen Rechner ist mit 4g nicht mehr nötig.
