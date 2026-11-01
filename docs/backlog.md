@@ -25,12 +25,13 @@ the git log.
 ## For the roles
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
-- → [cloud-app] Owner answered onpath.private#10 "Ja": remove the worktree `~/onpath-cells-work/germany/repo` on donald
-  (branch `germany-prebuild`, gone on GitHub) – first check it holds no unpushed work (else push it to a branch and
-  say so); then `tools/ask.sh erledigt 10 "…"`. Germany pre-build later on the laptop / Cloud Run – captain 2026-11-01.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-app] 2026-11-01: **Germany worktree removed** on donald (owner confirmed in the chat; no uncommitted work,
+  all of `germany-prebuild` on origin/main, local branch deleted) – #10 closed. The run data beside it
+  (`~/onpath-cells-work/germany/` state, logs, lists) is still there – remove only on the owner's word. Also new on
+  main: Plan during a tour has no grey route any more (owner, c2429f7a – app only).
 
 - [captain] **Planner and released app differ in routing since 2026-10-31 evening** (checked 2026-11-01): every green
   push to `web-spike` deploys at once, so plan.onpath.earth runs `PLANNER_VERSION` 3 (splice around cut stops) while
@@ -225,8 +226,6 @@ the git log.
   `main`) – the captain does not delete branches.
 - **`MapController.metersPerPixel()` density mix-up** – map taps count "on the line" within ~60 dp instead of 24 dp,
   and the shared-place "arrived" check is loose. Owner decision needed: the fix changes hold behaviour.
-- **Worktree `~/onpath-cells-work/germany/repo` (branch `germany-prebuild`)** still exists on donald – decide whether
-  to remove it.
 - **`CF_START_TOKEN` (GitHub secret + the Cloudflare token behind it)** – only needed for the one-time Cloudflare setup
   of plan.onpath.earth (A-008); owner 2026-10-30: keep for now, delete later (GitHub: `gh secret delete CF_START_TOKEN`;
   Cloudflare dashboard → My Profile → API Tokens). The branch `marketing` is already gone.
