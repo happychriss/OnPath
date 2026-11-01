@@ -107,6 +107,14 @@ Organic Maps / CoMaps source code, komoot / Locus / Garmin help pages, two studi
     vibration, the time counts as a break; steps again → GPS as usual. Navigation pauses with it. Bike: as today (GPS
     speed). Tour 63's restaurant (53 min sitting) recorded 1.8 km of zigzag, up to 188 m from where he sat. Next to build.
 
+12. **Rosellen bike replay (owner 2026-11-01)** – built the same evening: the bike voice in two stages ("In 150 Metern
+    links." ~25 s ahead, "Gleich links." ~8 s ahead, "danach" within 100 m, a turn just ahead never lost in the pause);
+    leaving the route on the bike told by direction + speed (20 m, ≥ 9 km/h, confirmed in ~4 s); every new route said
+    ("Neue Route. Bitte umdrehen."); the off-route question at once with a spinner on "Neue Route"; with the voice on the
+    off-route warning is spoken, not vibrated; a turn onto another kind of way is a cue even with no other way (dual
+    carriageway); the radius rule's first half (a corner drawn as a curve); out-and-back to a point: "Umdrehen";
+    arrival only with every point reached and progress at the end; a point "reached" at the closest approach.
+
 ## 5. How it is tested
 - The field tours as replays on the JVM with the real routing data (tracks of tours 59–63 → the sentences, the screen
   turns, reached points, arrival) – each problem in §1 a pass / fail case (like `HildenVoiceTest`).

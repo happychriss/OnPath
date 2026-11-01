@@ -65,7 +65,7 @@ enum class WayKind { PATH, TRACK, ROAD, CYCLEWAY, WAY }
  * ([event]) and speaks what comes back.
  *
  * - Junctions only where the phone vibrates ([CueRule]), one sentence each, said early – timed by the current speed
- *   (bike [BIKE_LEAD_S] s within [BIKE_MIN_M]…[BIKE_MAX_M], on foot [HIKE_LEAD_S] s within [HIKE_MIN_M]…[HIKE_MAX_M]);
+ *   (bike in two stages – [BIKE_EARLY_S] s ahead with the distance, [BIKE_FINAL_S] s ahead "Gleich …" – see [nextJunction]; on foot [HIKE_LEAD_S] s within [HIKE_MIN_M]…[HIKE_MAX_M]);
  *   the vibration at the junction is the "now".
  * - Two close turns in one sentence (the merge distance of [JunctionCues]); the kind of way when it changes; a quiet
  *   stretch after it ≥ [BIKE_STRAIGHT_M] / [HIKE_STRAIGHT_M] is said ("then 3 km straight on").
@@ -116,6 +116,8 @@ class VoiceGuide {
     private var onto = arrayOfNulls<WayKind>(0)
     private var needed = BooleanArray(0)
     private val said = HashSet<Int>()
+    /** Bike: junctions whose early sentence ("In 200 Metern links.") was said. */
+    private val early = HashSet<Int>()
     private var lineLength = 0.0
     /** Where the line goes back the way it came (metres along it, [Reversals]). */
     private var reversals = DoubleArray(0)
@@ -158,7 +160,7 @@ class VoiceGuide {
 
     /** A new tour: everything is said afresh. */
     fun newTour() {
-        version = Int.MIN_VALUE; size = -1; said.clear(); lineLength = 0.0
+        version = Int.MIN_VALUE; size = -1; said.clear(); early.clear(); lineLength = 0.0
         started = false; offRouteSaidMs = null; noGpsSaidMs = null; arrivedSaidMs = null; offRouteSpoken = false
         lastSpokenMs = Long.MIN_VALUE / 2; lastOffRoute = false; lastRerouted = false; lastVisited = null
         gpsLostSince = null; gpsSaid = false; gpsGoodSince = null; waiting.clear()
@@ -225,11 +227,15 @@ class VoiceGuide {
         }
         // a sentence that waited for the gap
         while (waiting.isNotEmpty() && i.nowMs - waiting.first().second > STALE_MS) waiting.removeFirst()
-        if (i.nowMs - lastSpokenMs < GAP_MS) return null
-        waiting.removeFirstOrNull()?.let { return speak(it.first, i.nowMs) }
+        val since = i.nowMs - lastSpokenMs
+        // the pause between sentences – except for a junction that is just ahead now (owner 2026-11-01, Rosellen: the
+        // "left" 80 m after a sharp right fell into the pause and was dropped as too late)
+        if (since < URGENT_GAP_MS) return null
+        val gapOk = since >= GAP_MS
+        if (gapOk) waiting.removeFirstOrNull()?.let { return speak(it.first, i.nowMs) }
         // junctions
         if (!i.onRoute || i.alongM == null) return null
-        val j = nextJunction(i, closeOnly = false) ?: return null
+        val j = nextJunction(i, closeOnly = false, finalOnly = !gapOk) ?: return null
         return speak(j, i.nowMs)
     }
 
@@ -245,23 +251,46 @@ class VoiceGuide {
     /** Time since [last]; "long ago" when never, or when the clock went back (a reboot restarts the elapsed clock). */
     private fun since(last: Long?, nowMs: Long): Long = if (last == null || last > nowMs) Long.MAX_VALUE else nowMs - last
 
-    /** The junction to announce now ([closeOnly]: the first one ahead if within twice the lead, for "New route"). */
-    private fun nextJunction(i: Input, closeOnly: Boolean): Phrase.Junction? {
+    /**
+     * The junction to announce now ([closeOnly]: the first one ahead if within twice the lead, for "New route";
+     * [finalOnly]: only one that is just ahead, during the pause between sentences).
+     *
+     * Bike in two stages (owner 2026-11-01, Rosellen replay: "100 Meter – war das wirklich die empfohlene Entfernung?";
+     * Organic Maps / OsmAnd): early, ~[BIKE_EARLY_S] ahead at the speed ridden (≥ [BIKE_EARLY_MIN_M]): "In 200 Metern
+     * links." – then ~[BIKE_FINAL_S] ahead ([BIKE_FINAL_MIN_M]…[BIKE_FINAL_MAX_M]) without a number: "Gleich links."
+     * (with "danach"). A junction that comes into view too late for the early stage gets only the second.
+     * On foot one stage: "Gleich links." ~10 m before.
+     */
+    private fun nextJunction(i: Input, closeOnly: Boolean, finalOnly: Boolean = false): Phrase.Junction? {
         val along = i.alongM ?: return null
         val speed = i.speedMps?.takeIf { it.isFinite() && it >= 0 } ?: if (bike) SpeedWindow.FALLBACK_MPS else JunctionCues.WALK_FALLBACK_MPS
-        val lead = if (bike) (speed * BIKE_LEAD_S).coerceIn(BIKE_MIN_M, BIKE_MAX_M) else (speed * HIKE_LEAD_S).coerceIn(HIKE_MIN_M, HIKE_MAX_M)
+        val lead = if (bike) (speed * BIKE_FINAL_S).coerceIn(BIKE_FINAL_MIN_M, BIKE_FINAL_MAX_M)
+            else (speed * HIKE_LEAD_S).coerceIn(HIKE_MIN_M, HIKE_MAX_M)
         val k = alongs.indices.firstOrNull { needed[it] && it !in said && alongs[it] >= along - JunctionCues.PASSED_M } ?: return null
         val d = alongs[k] - along
-        if (d > (if (closeOnly) 2 * lead else lead)) return null
+        if (bike && !finalOnly && d > lead && k !in early) {
+            // the early sentence with its distance – only when there is time for both
+            val earlyLead = (speed * BIKE_EARLY_S).coerceIn(BIKE_EARLY_MIN_M, BIKE_EARLY_MAX_M)
+            val reach = if (closeOnly) 2 * earlyLead else earlyLead
+            if (d <= reach && d - lead >= speed * BIKE_EARLY_GAP_S) {
+                early += k
+                return Phrase.Junction(d, turns[k], exits[k], onto[k])
+            }
+            if (!closeOnly) return null
+        }
+        if (d > (if (closeOnly && !bike) 2 * lead else lead)) return null
         said += k
         if (d < (if (bike) TOO_LATE_M else HIKE_TOO_LATE_M)) return null // the vibration says it now
-        val merge = if (bike) JunctionCues.bikeMergeM(speed) else JunctionCues.hikeMergeM(speed)
+        // "danach": the next turn within [BIKE_THEN_M] on the bike (concept: never time for its own two sentences)
+        val merge = if (bike) maxOf(JunctionCues.bikeMergeM(speed), BIKE_THEN_M) else JunctionCues.hikeMergeM(speed)
         val j = alongs.indices.firstOrNull { it > k && needed[it] }?.takeIf { alongs[it] - alongs[k] < merge }
         if (j != null) said += j
         val last = j ?: k
         val after = alongs.indices.firstOrNull { it > last && needed[it] }?.let { alongs[it] } ?: lineLength
         val straight = (after - alongs[last]).takeIf { it >= (if (bike) BIKE_STRAIGHT_M else HIKE_STRAIGHT_M) }
-        return Phrase.Junction(d.coerceAtLeast(0.0), turns[k], exits[k], onto[k], j?.let { turns[it] }, j?.let { exits[it] } ?: 0, straight)
+        // the bike's second stage has no number ("Gleich links."); on foot it is close anyway
+        val inM = if (bike) 0.0 else d.coerceAtLeast(0.0)
+        return Phrase.Junction(inM, turns[k], exits[k], onto[k], j?.let { turns[it] }, j?.let { exits[it] } ?: 0, straight)
     }
 
     private fun queue(p: Phrase, nowMs: Long) { if (waiting.size < 3) waiting.addLast(p to nowMs) }
@@ -283,14 +312,25 @@ class VoiceGuide {
         onto = Array(idx.size) { ontoAt(line, cum, idx[it], isBike) }
         needed = JogRule.needed(line, cum, idx, hike = !isBike)
         reversals = if (line.size >= 3) Reversals.of(line, cum).map { cum[it] }.toDoubleArray() else DoubleArray(0)
-        said.clear()
+        said.clear(); early.clear()
         return !first
     }
 
     companion object {
-        const val BIKE_LEAD_S = 15.0
-        const val BIKE_MIN_M = 60.0
-        const val BIKE_MAX_M = 200.0
+        /** Bike, early sentence with the distance: this many seconds ahead at the speed ridden … */
+        const val BIKE_EARLY_S = 25.0
+        const val BIKE_EARLY_MIN_M = 100.0
+        const val BIKE_EARLY_MAX_M = 400.0
+        /** … and only with at least this many seconds of riding left before the second one. */
+        const val BIKE_EARLY_GAP_S = 6.0
+        /** Bike, "Gleich links." without a number: this many seconds ahead (Organic Maps 35–150 m). */
+        const val BIKE_FINAL_S = 8.0
+        const val BIKE_FINAL_MIN_M = 35.0
+        const val BIKE_FINAL_MAX_M = 150.0
+        /** Bike: a turn this close after the one said is part of its sentence ("Gleich links, danach rechts."). */
+        const val BIKE_THEN_M = 100.0
+        /** A junction just ahead may be said this soon after the last sentence (else [GAP_MS]). */
+        const val URGENT_GAP_MS = 3_000L
         /**
          * On foot a short "Gleich links." about 10 m before the junction, no distance (owner 2026-11-01 on the replay:
          * "50 Meter kann man zu Fuß gar nicht abschätzen – 10 Meter reichen"; Organic Maps: 15–25 m).

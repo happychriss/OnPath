@@ -37,18 +37,42 @@ class VoiceGuideTest {
         assertEquals(Phrase.Start(start.distanceM, 900.0, "Lana"), start)
     }
 
-    @Test fun bikeOneSentencePerJunction_earlyByTheSpeed() {
+    /**
+     * Bike in two stages (owner 2026-11-01, Rosellen replay; Organic Maps / OsmAnd): "In 150 Metern links." ~25 s ahead
+     * (100…400 m), then "Gleich links." ~8 s ahead (35…150 m) – both by the speed ridden.
+     */
+    @Test fun bikeTwoStagesByTheSpeed() {
         val l = line(2000, mapOf(500 to JunctionCue.LEFT, 1500 to JunctionCue.RIGHT))
         val said = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0))
-        assertEquals(2, said.size)
-        // 15 s × 6 m/s = 90 m before
-        assertEquals(410, said[0].first)
+        assertEquals(4, said.size)
+        // 25 s × 6 m/s = 150 m before, with the distance
+        assertEquals(350, said[0].first)
+        assertEquals(150.0, (said[0].second as Phrase.Junction).inM, 0.5)
         assertEquals(Turn.LEFT, (said[0].second as Phrase.Junction).turn)
-        // faster: earlier, up to 200 m
+        // 8 s × 6 m/s = 48 m before, no number ("Gleich links.")
+        assertEquals(455, said[1].first)
+        assertEquals(0.0, (said[1].second as Phrase.Junction).inM, 0.0)
+        // faster: earlier
         val fast = startless(ride(VoiceGuide(), l, bike = true, speed = 12.0))
-        assertEquals(320, fast[0].first)
+        assertEquals(listOf(200, 405), fast.take(2).map { it.first })
         val veryFast = startless(ride(VoiceGuide(), l, bike = true, speed = 20.0))
-        assertEquals(300, veryFast[0].first)
+        // (the early one waits for the 10 s after the start sentence: 200 m at 72 km/h)
+        assertEquals(listOf(200, 350), veryFast.take(2).map { it.first })
+    }
+
+    /** A junction that comes into view too late for the early sentence gets only "Gleich …". */
+    @Test fun bikeAJunctionRightAfterAnotherGetsOnlyTheSecondStage() {
+        val l = line(2000, mapOf(500 to JunctionCue.LEFT, 590 to JunctionCue.RIGHT))
+        val j = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).map { it.second as Phrase.Junction }
+        assertEquals(listOf(Turn.LEFT, Turn.LEFT), j.map { it.turn })
+        assertEquals(Turn.RIGHT, j[1].then)   // 90 m on: "Gleich links, danach rechts."
+    }
+
+    /** Rosellen replay: the second turn 80 m after the first must not be lost in the pause between sentences. */
+    @Test fun bikeAJunctionJustAheadIsSaidDuringThePause() {
+        val l = line(2000, mapOf(500 to JunctionCue.SHARP_RIGHT, 620 to JunctionCue.LEFT))
+        val said = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).map { it.second as Phrase.Junction }
+        assertTrue("$said", said.any { it.turn == Turn.LEFT || it.then == Turn.LEFT })
     }
 
     /** Owner 2026-11-01: on foot "Gleich links." about 10 m before, no distance ("50 m kann man nicht abschätzen"). */
@@ -72,7 +96,7 @@ class VoiceGuideTest {
 
     @Test fun twoCloseTurnsInOneSentence() {
         val l = line(2000, mapOf(500 to JunctionCue.LEFT, 540 to JunctionCue.RIGHT))
-        val j = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).single().second as Phrase.Junction
+        val j = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).last().second as Phrase.Junction
         assertEquals(Turn.LEFT, j.turn)
         assertEquals(Turn.RIGHT, j.then)
     }
@@ -80,8 +104,9 @@ class VoiceGuideTest {
     @Test fun aLongQuietStretchAfterwardsIsSaid() {
         val l = line(5000, mapOf(500 to JunctionCue.RIGHT, 4000 to JunctionCue.LEFT))
         val said = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).map { it.second as Phrase.Junction }
-        assertEquals(3500.0, said[0].straightM!!, 1.0)
-        assertNull("1000 m to the end: under 2 km on the bike", said[1].straightM)
+        // with the second stage ("Gleich rechts, dann 3,5 km geradeaus")
+        assertEquals(3500.0, said[1].straightM!!, 1.0)
+        assertNull("1000 m to the end: under 2 km on the bike", said[3].straightM)
     }
 
     @Test fun theKindOfWayWhenItChanges() {
@@ -89,11 +114,11 @@ class VoiceGuideTest {
         // "Weg" – never "Feldweg" from the class alone (owner 2026-11-01, Hilden: park paths and crossings were "Feldweg")
         val offRoad = JunctionShape(-85f, 22, 4, listOf(JunctionShape.Branch(0f, 22)))
         val l = line(1000, mapOf(500 to JunctionCue.LEFT), offRoad)
-        val j = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).single().second as Phrase.Junction
+        val j = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).last().second as Phrase.Junction
         assertEquals(WayKind.WAY, j.onto)
         // street to street: nothing about the way
         val streets = JunctionShape(-85f, 6, 6, listOf(JunctionShape.Branch(0f, 6)))
-        val k = startless(ride(VoiceGuide(), line(1000, mapOf(500 to JunctionCue.LEFT), streets), bike = true, speed = 6.0)).single().second
+        val k = startless(ride(VoiceGuide(), line(1000, mapOf(500 to JunctionCue.LEFT), streets), bike = true, speed = 6.0)).last().second
         assertNull((k as Phrase.Junction).onto)
     }
 
@@ -106,7 +131,7 @@ class VoiceGuideTest {
             p.copy(way = com.onpath.app.routing.WayAttrs(type, "asphalt"))
         }
         fun onto(l: List<GeoPoint>, bike: Boolean = true) =
-            (startless(ride(VoiceGuide(), l, bike = bike, speed = 6.0)).single().second as Phrase.Junction).onto
+            (startless(ride(VoiceGuide(), l, bike = bike, speed = 6.0)).last().second as Phrase.Junction).onto
         assertEquals(WayKind.TRACK, onto(typed("quiet_road", "track")))
         assertEquals(WayKind.WAY, onto(typed("quiet_road", "footway")))
         assertEquals(WayKind.CYCLEWAY, onto(typed("quiet_road", "cycleway")))
@@ -209,7 +234,8 @@ class VoiceGuideTest {
     @Test fun budget_aRideWithManyJunctionsIsAboutOneSentenceEachPlusStart() {
         val turns = (1..40).associate { it * 1000 to if (it % 2 == 0) JunctionCue.LEFT else JunctionCue.RIGHT }
         val said = ride(VoiceGuide(), line(41_000, turns), bike = true, speed = 6.0)
-        assertEquals(41, said.size)
+        // the start + two stages per junction on the bike ("In 150 Metern rechts." · "Gleich rechts.")
+        assertEquals(81, said.size)
     }
 
     /** Pixel 2026-11-01: "Los geht's" 3–4× in the first 3 km – the process died, the service came back with a fresh guide. */
