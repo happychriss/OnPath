@@ -637,8 +637,11 @@ class RecordingService : Service() {
         if (st.line.size < 2) return
         val len = lineLength?.takeIf { it.first == st.version }?.second
             ?: Geo.length(st.line).also { lineLength = st.version to it }
-        val remaining = st.shownAlongM?.let { (len - it).coerceAtLeast(0.0) }
-        if (!arrivalGate.onFix(pos, st.line.last(), remaining, accuracyM)) return
+        // the progress, not just a match: off the line the furthest progress on it counts (never "near the goal" alone)
+        val remaining = (len - (st.shownAlongM ?: st.progressM)).coerceAtLeast(0.0)
+        val s = nav.session
+        val open = (1 until s.stops.size - 1).count { it !in s.visited }
+        if (!arrivalGate.onFix(pos, st.line.last(), remaining, accuracyM, openStops = open)) return
         arrived = true
         arrivedToken = nav.session.token
         saveTrip()
