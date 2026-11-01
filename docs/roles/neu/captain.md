@@ -13,6 +13,9 @@ collects questions and tells the owner what is new. It writes no product code an
 - **Never accept a trusted-device clearance** (`confirm_repository_trust`). A cleared session can no longer wake
   itself (the old captain's reminder failed with `ACCESS_DENIED`). The captain does not need it: it reads no other
   session's transcript and messages none.
+- **It cannot start sessions on the owner's computers** (tested 2026-11-01: `create_session` into a bridge environment
+  → `elevated_session_untrusted_device`; it would need the trust card, which costs the wake-up). So the units pull
+  their work from the backlog (`docs/roles/neu/start.md`); the captain only orders it and starts **cloud** workers.
 - **Never ask for a computer folder** (`request_computer_folder`) and never `send_message` to a session.
 - Everything goes through the repos and the issues in `happychriss/onpath.private` (`tools/ask.sh`, REST – GraphQL /
   `gh issue` is blocked in cloud sessions). Repos needed in the session: `OnPath`, `onpath.private` (add with

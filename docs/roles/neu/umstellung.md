@@ -26,6 +26,15 @@
 3. **Sichern:** `tools/dev/save-on-shutdown.sh dry` – listet es die richtigen Ordner? Danach Test-Sitzung archivieren,
    `rm ~/.local/state/onpath-unit/test-donald.id`.
 
+### Ergebnisse 2026-11-01 (erste echte Tests auf donald)
+- A.0: neuer Ordner → „Workspace not trusted“, bis einmal `claude` darin gestartet und bestätigt wurde (jetzt in `unit.sh`).
+- A.1: **Wiederanhängen klappt** – `unit.sh run test-donald` speichert die ID, der zweite Start verbindet dieselbe
+  Sitzung, die Umgebung bleibt („Environment preserved“).
+- `claude remote-control` ist ein Gastgeber für bis zu 32 Sitzungen („Capacity 1/32“, `w` = Spawn-Modus).
+- Eine Cloud-Sitzung **ohne** Freigabe darf dort **keine** Sitzung starten (`elevated_session_untrusted_device`).
+  Offen: darf es die Sitzung auf donald selbst (sie läuft auf einem vertrauten Gerät)? Dann wäre sie der Verteiler
+  für die Rechner. Test: in der donald-Sitzung `create_session` in die eigene Umgebung.
+
 ## B. 👤 Entscheidungen beim Umstellen (je eine Fragebox)
 - Erlaubnis-Modus der stehenden Sitzungen (`ONPATH_PERMISSION_MODE`): ohne Modus fragt die Sitzung bei vielem nach
   (gelbe Punkte ohne echte Frage) – Vorschlag `auto`.
