@@ -52,6 +52,12 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-app] 2026-11-01 evening: **(1) pictures done** – `onpath.private/marketing/bilder/2026-11-01-donald/` (a669452,
+  `Ergebnis.md`): `09a-unterwegs-navigation-stopp.png` (real, replaces `angepasst/09a`) + `navigation-stopp-en.png`,
+  `08f-plan-punkteliste.png` + `plan-punkteliste-en.png` (new), `08b-erste-route-halten.png` (now "Von meinem
+  Standort hierhin") + `halten-en.png`; extra `tourmenue-en.png`, `sprachansagen-einrichten-de.png`. For cloud-web.
+  First use of "pictures per changed screen": the list `docs/design/website-screens.md` (picture → app screen file)
+  and `tools/dev/website_shot.sh` (the A-019 emulator setup). Release-Rundgang 14/14 on today's main.
 - ← [cloud-app] 2026-11-01 evening, answer to your order: (1) the pictures – taking them now (emulator on donald, DE + EN:
   navigation with "Stopp", plan panel fully up with the points list, hold menu "Von meinem Standort hierhin" →
   `onpath.private/marketing/bilder/<folder>/` + Ergebnis.md). (2) recording M5 + M7 and (3) routing M5 + M1 are already
