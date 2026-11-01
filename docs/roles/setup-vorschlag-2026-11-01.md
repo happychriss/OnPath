@@ -1,130 +1,198 @@
-# Vorschlag: einfacheres Setup für OnPath (2026-11-01)
+# Gesamtkonzept: wie OnPath künftig gebaut wird (Fassung 2, 2026-11-01)
 
-Von der Sitzung „Setup review handoff“ (Auftrag: `docs/roles/setup-review-handoff.md`, dort die Fakten).
-**Nur ein Vorschlag – nichts wurde umgestellt.** Du entscheidest.
+Von der Sitzung „Setup review handoff“. Fakten: `docs/roles/setup-review-handoff.md`. **Nur ein Vorschlag –
+nichts wurde umgestellt.** Fassung 2 nach deinen drei Hinweisen: meist Browser auf donald, vom Handy muss ein Fix
+bis ins App-Update gehen, die Rechner sind austauschbare Rechen-Einheiten.
 
 ## Kurz
-- **Fragen an dich:** ein Ort – GitHub-Issues mit dem Label `frage` im privaten Repo `onpath.private`. Ein Lesezeichen
-  auf dem Handy = dein Dashboard. Antwort = Kommentar, erledigt = Issue zu.
-- **Weniger Sitzungen:** eine Haupt-Sitzung für App + Web-Planer (auf donald), Website nur bei Bedarf. Der Captain
-  als Dauersitzung entfällt; der Release-Check wird ein Skript.
-- **Ein Branch:** `web-spike` nach dem Release in `main` holen. Dann gibt es keinen täglichen Abgleich mehr.
-- **Kein Nachrichten-Bus im Backlog:** Backlog = nur To-do-Liste. Abstimmung über ein Issue pro Release.
-- **Alles erst nach v0.14.0.** Nur die Fragen-Liste kann sofort starten, sie stört nichts.
+1. **Nicht Rollen, sondern Einheiten und Vorhaben.** Fünf Einheiten (donald, Laptop, GitHub Actions, Claude-Cloud,
+   Cloud Run) mit festen Fähigkeiten. Jedes Vorhaben sagt, was es braucht (Handy, Emulator, viel RAM, Kartendaten
+   oder nichts). Die Einheit, die das kann und an ist, nimmt es.
+2. **Vom Handy ein Fix bis ins App-Update: geht heute schon.** Cloud-Sitzung → Code → Push auf `main` mit Version +
+   Notizen → `release.yml` testet, baut, signiert, veröffentlicht → die App bietet das Update an. Donald ist dafür
+   nicht nötig. Eine Lücke: ob die Cloud-Sitzung vorher selbst testen kann (siehe §3).
+3. **Deine Fragen an einem Ort:** GitHub-Issues mit Label `frage` in `onpath.private`, immer gleich aufgebaut, von
+   jeder Einheit mit einem kleinen Skript angelegt. Lesezeichen auf dem Handy = Dashboard.
+4. **Kein Captain als Dauersitzung, kein Backlog-Postverkehr, ein Branch.** Der Release-Check wird ein Skript, der
+   tägliche Abgleich fällt mit dem einen Branch weg.
+5. **Alles Gebaute bleibt:** `gate.sh`, `risk_tests.py`, Release per Push, E2E mit Emulator-Snapshot, Web-Parity,
+   `merge-main.sh`, In-App-Update, Problems-Log, `onpath.private`. Es wird nur anders zusammengesteckt.
+6. **Nichts vor v0.14.0.** Nur die Fragen-Liste kann sofort anfangen.
 
-## 1. So läuft es heute (mein Verständnis)
-Vier feste Sitzungen: cloud-app (donald, Pixel), cloud-plan (Laptop, Web-Planer + Karten), cloud-web (Cloud,
-Website + Marketing), cloud-captain (Cloud, Überblick). Dazu ein täglicher Auftrag um 05:47, der `main` in
-`web-spike` mischt – in keiner Rollen-Datei erwähnt, überschneidet sich mit cloud-plan.
+## 1. Was du mir gesagt hast
+- Die meiste Arbeit: Browser, Sitzung auf donald. Ausnahme: vom Handy – und dann muss ein Fix wirklich gebaut und
+  über das In-App-Update verteilt werden können.
+- donald hat zu wenig RAM, darum der Laptop. Die Rechner sind Rechen-Einheiten mit Hardware- und
+  Software-Voraussetzungen, dynamisch zuteilbar – nicht fest „App“ und „Planer“.
+- Nichts ändern, beobachten, ein Gesamtkonzept vorschlagen. Etwas Kleines bauen (Skript, MCP) wäre in Ordnung.
 
-Der Captain kann den anderen schreiben, aber keiner kann ihm antworten. Antworten laufen als Commits in
-`docs/backlog.md`. Geprüft: **37 von 66 Commits auf `main` in den letzten 24 Stunden** sind Backlog-, Übergabe- oder
-Captain-Notizen. Die Erinnerung des Captains („E2E + review check“) ist um 00:24 mit `ACCESS_DENIED` gescheitert –
-er wird also nur wach, wenn du schreibst.
-
-Geht donald oder der Laptop aus, endet die Sitzung dort. Du legst neue an, benennst sie und fügst den Start-Text ein.
-Es gibt schon zwei Laptop-Umgebungen (`hp:onpath-plan:4225`, `hp:onpath-plan:dbef`). Deine Fragen stehen an vier
-Stellen: im Chat jeder Sitzung, im Backlog unter „Waiting for the owner“, in Review-Dateien (D1–D4) und in Drive.
-
-**Kern:** Du bist der Verteiler. Das Setup hat mehr Sitzungen, als ein Ein-Personen-Projekt braucht. Und die
-Kanäle zwischen den Sitzungen funktionieren nur in eine Richtung.
-
-## 2. Zuerst: ein Ort für deine Fragen
-Was es schon gibt, geprüft:
-
-| Möglichkeit | Ergebnis |
+## 2. Was schon gebaut ist und bleibt
+| Gebaut | Bleibt als |
 | --- | --- |
-| Sitzungsliste in der Claude-App | Zeigt „wartet“ (`needs_action`), aber nur pro Sitzung. Fragen aus Aufträgen und Helfern fehlen, kein Überblick. |
-| Backlog „Waiting for the owner“ | Nur nach einem Pull lesbar, keine Benachrichtigung, Antwort = Commit. |
-| **GitHub-Issues** | Funktioniert: Issues im Repo `OnPath` sind an, heute 0 offen. Cloud-Sitzungen schreiben über ihr GitHub-Werkzeug, die Rechner-Sitzungen über `gh`. GitHub-App auf dem Handy, Antwort per Kommentar. |
-| Artefakt-Seite mit Datenbank | Möglich, aber neu zu bauen. Unklar, ob die Rechner-Sitzungen sie erreichen. Später als hübschere Ansicht denkbar. |
+| `tools/ci/gate.sh` + `risk_tests.py` (Tests nach geänderten Dateien, Gradle-Lock, 2 Worker) | **Das** Tor vor jedem Push, auf jeder Einheit gleich. |
+| `release.yml`: Push auf `main` mit Version + Notizen → Tests, Smoke-Emulator, signierter APK, GitHub Release | **Der** Release-Weg – von jeder Einheit, auch vom Handy aus. |
+| `update/AppUpdater.kt`: App liest das neueste GitHub Release, installiert in place | Das Ende des Handy-Fix-Wegs. Fertig. |
+| `unit.yml` (alle Tests + Screenshots), `e2e.yml` (Emulator mit gecachtem Snapshot auf GitHub) | Emulator läuft auf GitHub – donald braucht ihn im Alltag nicht. Das löst das RAM-Problem zum Teil. |
+| `web-spike.yml`: Engine, Seite, 5 Smoke-Gruppen, Deploy nach plan.onpath.earth | Bleibt – nach dem Zusammenlegen mit Pfad-Filter auf `main`. |
+| `web/parity/check.mjs` + `merge-main.sh` + täglicher Abgleich 05:47 | Parity-Check bleibt (läuft in CI). Merge-Skript wird nach dem Zusammenlegen nicht mehr gebraucht. |
+| Release-Rundgang (`release_rundgang.sh`, 6 min), optional | Bleibt optional, nur auf donald. |
+| `tools/dev/push_cell.sh`, `publish_cells.sh`, Cloud Run Job, R2 TEST | Kartenbau = Cloud Run, Laptop als Ersatz. |
+| Problems-Log + Diagnose-Export | Für Tester-Rückmeldungen. |
+| `docs/roles/`, Working Agreement §8, Backlog-Kanäle, Captain-Freigabe | Werden zu einem Dokument `docs/roles/start.md` zusammengefasst; die Kanäle entfallen (§4f). |
+| `onpath.private` (Marketing, Bilder, Ideen) | Bleibt; dazu die Fragen-Issues. |
 
-**Vorschlag:** Issues im **privaten** Repo `onpath.private`, Label `frage`. Privat, weil Fragen auch Marketing oder
-Tester betreffen. Pro Frage ein Issue, immer gleich aufgebaut:
+## 3. Was ich geprüft habe
+- **Commits:** 37 von 66 auf `main` in 24 h waren Backlog-, Übergabe- oder Captain-Notizen. Letzte 7 Tage: 67 Commits
+  von 3 Autoren-Namen.
+- **Branches:** `web-spike` 1157 Commits voraus, 33 zurück; Unterschied unter `app/` nur 74 Dateien, 580 Zeilen.
+  Das Zusammenlegen ist ein einmaliger Merge (keine Umschreibung der Geschichte).
+- **Captain:** seine Erinnerung ist um 00:24 mit `ACCESS_DENIED` gescheitert. Eine freigegebene Cloud-Sitzung kann
+  sich nicht selbst wecken.
+- **Sitzungen heute:** `claud-app` und `claud-plan` laufen bereits über `claude remote-control` (CLI) auf donald /
+  Laptop. Auf dem Laptop gibt es zwei Umgebungen (`hp:onpath-plan:4225`, `:dbef`).
+- **Hat eine Cloud-Sitzung schon eine Sitzung auf einem Rechner gestartet?** Ja: „Web-Planer: Kartenlook + Bug 01
+  (donald)“ am 31.10. kam aus der Cloud-Sitzung „Web-Planer (Spikes)“ (`create_session` auf eine
+  Bridge-Umgebung). Das ist die Basis für §4c „Verteiler“. Nicht erneut getestet (ändert etwas).
+- **Claude-Cloud als Bau-Einheit:** Android-SDK in 12 s geladen (458 MB), 4 Kerne, 15 GB RAM, 30 GB Platz, kein
+  KVM (kein Emulator). Gradle-Build: **noch offen** – erster Lauf scheiterte, weil Maven Central den Cloud-Proxy drosselt (HTTP 429); ein Wiederholungslauf mit Pausen lief beim Schreiben noch (Ergebnis wird nachgetragen).
+- **GitHub-Issues:** im Repo an, 0 offen; von Cloud-Sitzungen über das GitHub-Werkzeug, von den Rechnern über `gh`
+  erreichbar.
+- **Das Handy:** `AppUpdater` liest `releases/latest`; `release.yml` läuft auf GitHub und braucht keinen Rechner von
+  dir. `gate.sh` lässt eine Release-Commit (nur Version + Notizen) ohne lokalen Test durch, wenn `unit.yml` auf der
+  Basis grün ist.
+
+## 4. Das Konzept
+
+### 4a. Rechen-Einheiten
+| Einheit | Kann | Kann nicht | Wann aus |
+| --- | --- | --- | --- |
+| **donald** (30 GB, Pixel per USB, SDK) | Bauen, Unit + Screenshot-Tests, auf dem Pixel testen, Rundgang, Emulator (einzeln) | Gradle und Emulator gleichzeitig | nachts, unterwegs |
+| **Laptop hp** (32 GB, Kartendaten, SDK?) | Bauen, Tests, Kartenbau, Planer-Smokes | Pixel (außer angesteckt) | nachts, unterwegs |
+| **GitHub Actions** (kostenlos, immer an) | Volle Tests + Screenshots, Emulator-E2E, Release bauen + signieren, Planer bauen + deployen, Karten-Deploy | Pixel, lange interaktive Arbeit | nie |
+| **Claude-Cloud** (4 Kerne, 15 GB, immer an) | Code schreiben, Docs, Website, Marketing, (Unit-Tests nach SDK-Setup – §3), Sitzungen anstoßen | Emulator, Pixel, Kartenbau | nie, aber jede Sitzung ist frisch |
+| **Cloud Run Job** | Kartenzellen bauen | alles andere | nie |
+
+Beide Rechner bekommen dieselbe Software (SDK, Node 22, Python, Karten-Tools, Gradle-Lock) und je einen Checkout
+von `OnPath` auf `main`. Dann ist es egal, auf welchem die Sitzung läuft – Ausnahme Pixel und große Kartendaten.
+Der Gradle-Lock pro Rechner (schon da) bleibt die einzige Rücksicht auf den RAM.
+
+### 4b. Vorhaben statt Rollen
+Das Backlog bleibt die To-do-Liste. Jedes Vorhaben bekommt ein Kürzel, was es braucht:
+
+| Kürzel | Heißt | Einheit |
+| --- | --- | --- |
+| `[pixel]` | muss auf dem Handy geprüft werden | donald |
+| `[emu]` | Emulator-E2E nötig | GitHub Actions (automatisch), sonst donald |
+| `[karten]` | Kartenbau | Cloud Run, sonst Laptop |
+| `[ram]` | großer Build (Wasm-Engine, Germany) | Laptop |
+| *(nichts)* | Code, Tests, Docs, Website | jede Einheit, die an ist |
+
+Die Rollen-Dateien werden ein Dokument `docs/roles/start.md`: ein Start-Satz pro Einheit, dieselben Regeln für
+alle. Die Rolle einer Sitzung ergibt sich aus Einheit + Vorhaben, nicht aus einem Namen.
+
+### 4c. Wie Sitzungen entstehen – drei Wege
+1. **Du, im Browser auf donald (Normalfall):** `claude remote-control` im Checkout, eine Zeile: „Lies
+   `docs/roles/start.md`, nimm das nächste Vorhaben ohne `[pixel]`“ – oder konkret, was du willst. Die Sitzung
+   liest Backlog + offene Fragen und legt los. Stirbt sie mit dem Rechner: dieselbe Zeile noch einmal. Alles Wichtige
+   liegt im Repo, nichts im Chat.
+2. **Verteiler (optional, wenn du nicht selbst anstoßen willst):** Ein geplanter Auftrag in der Cloud (frische
+   Sitzung, z. B. morgens 7:xx und 13:xx): liest Backlog, Fragen und CI, prüft, welche Einheit online ist
+   (`list_environments`), startet eine Sitzung dort mit dem Start-Satz und dem Vorhaben (`create_session` mit der
+   Bridge-Umgebung), und schreibt dir einen Push: „donald: Vorhaben X gestartet“. Keine Freigabe nötig: er liest
+   keine fremden Transkripte und schickt keine Nachrichten – genau das, woran der Captain scheiterte.
+3. **Vom Handy (Fix-Weg, §4d):** Cloud-Sitzung, auch ohne jeden Rechner.
+
+### 4d. Der Handy-Fall von Anfang bis Ende
+Du sitzt mit dem Handy auf einer Hütte, die App hat einen Fehler. Ablauf, alles schon vorhanden:
+1. Neue Cloud-Sitzung: „Lies `docs/roles/start.md`. Bug: … Fix + Release.“
+2. Die Sitzung schreibt Test + Fix auf `main`. Vor dem Push: `gate.sh` – **wenn die Cloud bauen kann** (§3); sonst
+   pusht sie mit dem Hinweis „ungetestet“ und `unit.yml` testet auf GitHub.
+3. Sie bumpt die Version, schreibt `docs/release-notes/vX.Y.Z.md`, pusht. `release.yml` testet (risikobasiert),
+   startet den Smoke-Emulator, baut, signiert, veröffentlicht. Rot = kein Release, nichts kaputt.
+4. Auf dem Handy: Einstellungen → Updates → installieren. Touren bleiben.
+Dauer heute: ~15–25 min Rechnerzeit auf GitHub. Du musst nichts freigeben; Pull Requests nur bei Workflows / Keys
+(wie heute).
+
+Das Einzige, was fehlt: Punkt 2 sicher machen. Zwei Wege:
+- **Setup-Skript der Cloud-Umgebung** lädt das SDK (12 s) + wärmt Gradle vor. Dann testet die Cloud-Sitzung wie
+  donald. Hängt davon ab, ob Maven Central den Cloud-Proxy durchlässt (§3).
+- **Oder** wir akzeptieren: Vom Handy wird „blind“ gepusht, GitHub testet. Für einen kleinen Fix reicht das, weil
+  `release.yml` rot bleibt, wenn etwas bricht.
+
+### 4e. Deine Fragen an einem Ort
+**GitHub-Issues, Label `frage`, im privaten Repo `onpath.private`** (privat wegen Tester / Marketing). Alle
+Einheiten erreichen GitHub. Ein Skript `tools/ask.sh` (neu, ~30 Zeilen) sorgt für dasselbe Format aus jeder
+Sitzung:
 
 ```
-Titel:  [cloud-app] Debug-Build für echte Tester?
-Wer:    cloud-app (donald)
-Worum:  2–3 Zeilen Hintergrund
-Frage:  … ?
-  A) … (Empfehlung)
-  B) …
-Details: Link auf Datei / Commit
+tools/ask.sh "Debug-Build für echte Tester?" \
+  --von donald --worum "Releases sind debuggable + Test-Key …" \
+  --frage "Vor den Testern auf Release-Build umstellen?" \
+  --a "Ja, mit dem Test-Key (Empfehlung)" --b "Nein, erst mit Play" \
+  --details docs/reviews/2026-11-01-pre-release.md#D1
 ```
 
-- **Du:** Lesezeichen `github.com/happychriss/onpath.private/issues?q=is:open+label:frage`. Antworte mit „A“ als
-  Kommentar.
-- **Die Sitzung:** liest die Antwort beim Start und nach jedem Pull, handelt danach und schließt das Issue. Erledigte
-  Fragen verschwinden so aus der Liste.
-- **Regel für alle (Sitzungen, Aufträge, Helfer):** Eine Frage an den Owner gibt es nur als Issue. Im Chat steht dann
-  nur „Frage #12 offen“.
+- Lesezeichen auf dem Handy: `github.com/happychriss/onpath.private/issues?q=is:open+label:frage`.
+- Du antwortest mit „A“ als Kommentar. Jede Sitzung liest beim Start und nach jedem Pull die offenen Issues
+  (`tools/ask.sh --offen`), handelt, schließt das Issue mit einer Zeile „gemacht: …“.
+- Regel für alle: Eine Frage an dich gibt es nur als Issue. Im Chat steht höchstens „Frage #12 offen“.
+- Die vier offenen Entscheidungen D1–D4 aus dem Review und die Liste „Waiting for the owner“ werden die ersten Issues.
+- **Benachrichtigung – einmal prüfen:** Die Sitzungen schreiben unter deinem Konto; GitHub meldet dir eigene Issues
+  nicht. Darum: (a) die Sitzung schickt einen Push (geht bei Remote-Control-Sitzungen), (b) der Verteiler (§4c)
+  meldet „3 Fragen offen“, oder (c) du schaust morgens und abends. Ein Test-Issue zeigt es in einer Minute.
+- Später, wenn gewünscht: eine kleine Artefakt-Seite, die dieselben Issues hübscher zeigt. Kein eigenes MCP nötig.
 
-**Ein Haken, bitte einmal prüfen:** Die Sitzungen schreiben unter *deinem* GitHub-Konto. GitHub benachrichtigt dich
-nicht über deine eigenen Issues. Die Benachrichtigung muss deshalb anders kommen. Zur Wahl:
-(a) die Sitzung schickt dir eine Push-Nachricht (bei Rechner-Sitzungen mit Remote Control geht das),
-(b) ein kleiner täglicher Auftrag mit Push („3 Fragen offen“), oder
-(c) einfach morgens und abends das Lesezeichen öffnen.
-Ein Test-Issue zeigt in einer Minute, was bei dir ankommt.
+### 4f. Wie Sitzungen miteinander reden
+Gar nicht direkt. Das Repo ist der Kanal – wie es die Working Agreement von Anfang an wollte:
+- Backlog = To-do + Claims (wie heute), aber ohne „For the roles / For the captain“.
+- Übergabe in `project-status.md` nur am Ende einer Sitzung (eine pro Sitzung, wie heute).
+- Abstimmung pro Release: ein Issue „Release vX.Y.Z“ in `OnPath` mit Checkliste (Fixes, Check-Skript grün, go).
+- Der Captain-Release-Check (Fingerprint, Sync-Format, Shared-Code-Tests) wird `tools/ci/release_check.sh` (neu,
+  ~40 Zeilen). Mit einem Branch ist er fast trivial.
+Damit entfallen: Captain-Sitzung, Freigabe-Karte, Einbahn-Nachrichten, 30+ Notiz-Commits pro Tag.
 
-## 3. Drei Setups
+### 4g. Ein Branch
+`web-spike` wird einmal in `main` gemergt (Planer unter `web/`). `web-spike.yml` läuft dann auf `main` mit
+Pfad-Filter (`web/**`, Shared-Code-Dateien) – diese Workflow-Änderung ist ein PR an dich. Der tägliche Abgleich
+05:47 wird ausgeschaltet. `web-spike` bleibt stehen (nicht löschen). `web/parity/check.mjs` läuft weiter in CI und
+meldet, wenn eine gespiegelte App-Datei sich ändert – nur ist das dann im selben Commit sichtbar.
 
-### A – „Eine Werkbank“ (meine Empfehlung)
-| | |
-| --- | --- |
-| Sitzungen | **OnPath** auf donald: App + Web-Planer, ein Branch `main`. **Website** in der Cloud, nur wenn es etwas zu tun gibt. **Karten** auf dem Laptop, nur für einen Kartenbau. |
-| Start | Du schreibst eine Zeile: „Du bist onpath – lies `docs/roles/onpath.md`“. Start-Texte liegen im Repo. |
-| Abstimmung | Fragen → Issues `frage`. Pro Release ein Issue „v0.15.0“ mit einer Checkliste. Backlog = To-do-Liste. Übergabe nur am Ende einer Sitzung. |
-| Release-Check | Skript `tools/ci/release_check.sh` (Fingerprint, Sync-Format, Shared-Code-Tests) statt Captain-Sitzung. Mit einem Branch fällt der Großteil ohnehin weg. |
-| donald aus | Die App-Arbeit wartet. Die Website läuft weiter. Wenn du dann etwas willst: eine Cloud-Sitzung mit gleichem Start-Satz (ohne Handy). |
-| Täglich für dich | Fragen-Lesezeichen ansehen, antworten. Sitzung starten, wenn donald neu gestartet ist (eine Zeile). |
-| Risiko | Die Zusammenlegung von `web-spike` ist einmal Arbeit (heute 1157 Commits voraus, 33 zurück). Dafür nach dem Release eine eigene, ruhige Sitzung einplanen. |
+### 4h. RAM auf donald
+- Emulator nicht lokal (E2E auf GitHub, Rundgang optional). Dann passt ein Gradle mit 2 Workern bequem.
+- Laptop ist gleichrangig: ist donald voll, läuft das zweite Vorhaben dort. Das regelt der Gradle-Lock pro Rechner,
+  keine Rolle.
+- 64 GB für donald (deine offene Entscheidung) wird damit weniger dringend.
 
-### B – „Rollen bleiben, Kanäle neu“
-Wie heute vier Rollen, aber:
-- Rückmeldungen über Issues statt Backlog-Commits.
-- Captain als täglicher Auftrag mit Push statt Dauersitzung. Der Auftrag liest Repo + CI und legt Fragen als Issues an.
-  Er braucht keine Freigabe, weil er niemandem schreibt.
-- Start-Texte im Repo.
+## 5. Was neu gebaut würde (klein, alles im Repo)
+| Teil | Umfang | Zweck |
+| --- | --- | --- |
+| `tools/ask.sh` | ~30 Zeilen, `gh` | Frage als Issue im festen Format; `--offen` listet Antworten |
+| `tools/ci/release_check.sh` | ~40 Zeilen | Captain-Check als Skript |
+| `docs/roles/start.md` | 1 Seite | Start-Satz je Einheit, Vorhaben-Kürzel, Regeln (ersetzt 4 Rollen-Dateien + §8) |
+| Verteiler-Auftrag (optional) | 1 Prompt | Sitzungen anstoßen, Fragen melden |
+| Setup-Skript Cloud-Umgebung (optional) | ~10 Zeilen | SDK + Gradle-Cache, damit Cloud-Sitzungen testen |
+Kein MCP, keine Datenbank, keine neue Seite.
 
-Vorteil: wenig Umbau. Nachteil: zwei Branches und der tägliche Abgleich bleiben. Rechner-Sitzungen sterben weiter mit
-dem Rechner. Du verteilst weiter Arbeit auf vier Stellen.
+## 6. Reihenfolge (das Release bleibt unberührt)
+1. **Jetzt:** Label `frage` in `onpath.private`, Test-Issue, Benachrichtigung prüfen. D1–D4 als Issues.
+   `tools/ask.sh` und die Regel in `CLAUDE.md` / `owner-preferences.md`.
+2. **v0.14.0** mit dem heutigen Setup fertig machen.
+3. **Danach:** `release_check.sh`; Captain-Sitzung beenden, seine Erinnerung löschen; `start.md` schreiben, Rollen
+   und §8 darauf kürzen; Backlog-Kanäle entfernen.
+4. **Eine ruhige Sitzung auf donald:** `web-spike` → `main` mergen, Workflow-PR an dich, Abgleich 05:47 aus.
+5. Laptop gleich ausstatten wie donald (SDK, Node, Checkout `main`); doppelte Umgebung in der App aufräumen.
+6. **Optional:** Cloud-Umgebung mit Setup-Skript; Verteiler-Auftrag.
 
-### C – „Cloud zuerst“
-Eigene Cloud-Umgebung mit Android SDK (Setup-Skript). Die Haupt-Sitzung läuft in der Cloud und überlebt jeden Rechner.
-donald nur für Pixel-Tests und Emulator: eine kurze Sitzung, wenn ein Gerätetest nötig ist.
-- Geprüft: Die Cloud erreicht die Android-Downloads (`dl.google.com`, `maven.google.com`), hat 4 Kerne, 15 GB RAM und
-  genug Platz. Unit- und Screenshot-Tests sollten damit laufen – **nicht getestet**, ein Probelauf wäre der nächste
-  Schritt.
-- Geprüft: **Kein Emulator in der Cloud** (kein KVM). E2E bleibt in GitHub Actions oder auf donald.
-- Nachteil: Jede neue Sitzung installiert das SDK erst (einige Minuten). Gerätetests brauchen weiter dich und donald.
+## 7. Fragen, die nur du beantworten kannst
+1. **Fragen-Ort:** Issues `frage` in `onpath.private` – ja?
+2. **Benachrichtigung:** Push von der Sitzung, Sammel-Push vom Verteiler, oder du schaust selbst?
+3. **Ein Branch** nach v0.14.0 – ja?
+4. **Captain** nach dem Release beenden – ja?
+5. **Verteiler-Auftrag** gewünscht, oder startest du Sitzungen lieber selbst mit einer Zeile?
+6. **Handy-Fix:** Reicht „blind pushen, GitHub testet“, oder soll die Cloud selbst testen können (Setup-Skript)?
+7. **Laptop:** gleich ausstatten wie donald, oder bleibt er nur die Karten-Einheit?
 
-## 4. Empfehlung: A, später ein Stück C
-A löst die meisten Schmerzpunkte mit dem wenigsten Neuen: eine Sitzung statt drei für den Code, keine Einbahn-Kanäle,
-ein Branch, Fragen an einem Ort. C ist nur nötig, wenn donald oft aus ist und trotzdem App-Arbeit laufen soll. Das
-kann man später ergänzen.
-
-### Schritte (das Release v0.14.0 bleibt unberührt)
-1. **Jetzt, ohne Risiko:** Label `frage` in `onpath.private` anlegen. Ein Test-Issue, prüfen, ob eine Benachrichtigung
-   ankommt. Die Regel „Fragen nur als Issue“ in `CLAUDE.md` + `docs/owner-preferences.md`. Die offenen D1–D4 als erste
-   Issues anlegen.
-2. **Release v0.14.0** wie geplant mit dem heutigen Setup fertig machen. Bis dahin nichts umbauen.
-3. **Nach dem Release:** Captain-Sitzung beenden, die Captain-Erinnerung löschen. Den Release-Check als Skript ins
-   Repo.
-4. **Eine Sitzung (donald):** `web-spike` in `main` holen. Den Planer aus `main` deployen (nur bei Änderungen unter
-   `web/` oder am Shared Code). Das Workflow-Update ist ein PR an dich. Danach den täglichen 05:47-Auftrag ausschalten
-   und `web-spike` stehen lassen (nicht löschen).
-5. Rollen-Dateien zusammenlegen: `onpath.md` (App + Planer), `web.md`, `karten.md`. Start-Texte in
-   `docs/roles/start.md`. §8 in `docs/working-agreement.md` kürzen. Backlog-Abschnitte „For the roles / For the
-   captain“ entfernen.
-6. Alte Umgebungen aufräumen (doppeltes `hp:onpath-plan`). Das machst du in der App, ich kann es nicht.
-7. Optional später: Cloud-Umgebung mit Android SDK ausprobieren (Setup C).
-
-## 5. Fragen, die nur du beantworten kannst
-1. **Fragen-Ort:** Issues in `onpath.private` mit Label `frage` – einverstanden, oder lieber eine eigene Seite
-   (Artefakt)?
-2. **Benachrichtigung:** Push von der Sitzung, ein täglicher Sammel-Push oder kein Push (du schaust selbst)?
-3. **Ein Branch:** `web-spike` nach v0.14.0 in `main` zusammenführen – ja?
-4. **Captain:** Darf die Dauersitzung nach dem Release weg (Release-Check als Skript)?
-5. **donald:** Darf donald tagsüber an bleiben, damit die Haupt-Sitzung dort lebt? Oder soll die Arbeit auch ohne
-   donald weiterlaufen? Dann wäre Setup C nötig: eigene Cloud-Umgebung, längere Starts.
-6. **Laptop:** Kartenbau künftig nur noch über den Cloud-Run-Job? Dann bräuchte der Laptop gar keine Sitzung mehr.
+## 8. Was ich nicht geprüft habe
+- `create_session` auf eine Bridge-Umgebung heute – nur die Spur vom 31.10. gesehen; ein Test ändert etwas.
+- Ob GitHub dir eigene Issues meldet (ich vermute: nein).
+- Ob der Laptop ein Android-SDK hat.
