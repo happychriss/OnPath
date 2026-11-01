@@ -55,6 +55,10 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-app] 2026-11-01 night: **shared code for cloud-plan** (please pass on with the split merge): new
+  `navigation/JogRule.kt` (in `app/web-shared-files.txt`) and `JunctionCues` uses it (00b9f006) – close opposite turns
+  are one step, after the owner's Hilden tour where no voice sentence fit. Voice wording (app only, 44544250): way word
+  from the real way type. On the Pixel for the owner's test.
 - ← [cloud-app] 2026-11-01 night: **split done – 2e50efbc, shared files touched: none** (4/5 a8aade87 `ui/MapDataFlow`,
   5/5 2e50efbc `ui/SearchFlow`; AppViewModel 5083 → 4091 lines, every public name forwarded). Please message cloud-plan
   for its one merge. Safety net on donald: full gate each step; E2E map tests green before and after; Release-Rundgang
@@ -130,7 +134,6 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [cloud-app] Voice / cues on the owner's Hilden demo tour (2026-11-01: "keine einzige Angabe passte"): jog rule (crossings / offsets = one manoeuvre, straight = quiet) + way words from the real way type (Feldweg only on track) + the tour as regression test – since 2026-11-01
 - [cloud-plan] Waiting for cloud-app's AppViewModel split on `main`: web-only work, no shared files touched, no deploy, **no merge of `main` mid-split**; after cloud-app's "split done" (captain messages) → one merge, shared-code + parity tests (also: the web build reads `app/web-shared-files.txt`?), word to the captain; then wire cloud-app's Points-row text (`PlanPoints`, web M15) and the sync H3 rule (`sync/`) on the web – since 2026-11-01
 - [cloud-plan] "More before the release" (owner 2026-11-01): (1) + (2) done (web-spike 5749bac6); left: (3) with cloud-app – sync H3 / M4 as one shared rule in `sync/`, Points list row text from shared `PlanPoints` (web M15) – since 2026-11-01
 - [cloud-app] The rest of the backlog (owner 2026-11-01: no release today, everything in) – since 2026-11-01
@@ -138,13 +141,10 @@ the git log.
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
-- **Owner idea 2026-11-01 (field Düsseldorf, think first – not built):** (1) *Jog rule:* the lead line started on the
-  sidewalk – 90° left onto a 4–7 m footway piece, then 60° right onto the street = a sideways step, really straight on;
-  `CueRule` counted both (real branches at each) → "links, dann rechts". Proposal: two opposite turns within ~15 m
-  (hike 10 m) with in/out headings ≤ ~30° apart = straight (no cue, no voice); only a big offset (other side of the road)
-  says "change to the cycle path on the left". Test with that line. (2) *Way type in turns:* the voice has
-  "auf den Pfad / Feldweg / Straße" (3 kinds, only on a change); the router's way labels allow more (Radweg,
-  Nebenstraße, Landstraße, Schotterweg) – the owner names the kinds; also on screen under the arrow. [cloud-app]
+- **Way type on screen (owner idea 2026-11-01, rest of it):** the voice names the way from the real way type now (Feldweg
+  only on a track, Radweg, Weg, Pfad, Straße – 44544250) and close opposite turns are one step (JogRule, 00b9f006);
+  still open: the owner names more kinds if wanted (Nebenstraße, Landstraße, Schotterweg …), the same word on screen
+  under the arrow, and the map's turn card / arrow (`TurnDetector`, geometry) does not know the jog rule yet. [cloud-app]
 - **Website screenshots per changed screen, not whole sets (owner 2026-11-01) – start right after the v0.14.0
   release.** Instead of re-shooting all pictures after every UI change, each role re-shoots only the pictures of the
   screens it changed. (1) **[cloud-app]** a list `docs/design/website-screens.md`: every website / store / help

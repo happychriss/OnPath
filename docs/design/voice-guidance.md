@@ -27,8 +27,14 @@ same voice; "smart, clever sentences, not too much". Built after the feature sto
    distance is the real one, rounded. The vibration at the junction stays as it is. No second "now turn left" – that is
    the vibration's job.
 3. **Close turns in one sentence:** "In 100 Metern links, danach gleich rechts." (the merge rule of `JunctionCues`).
-4. **Say what you turn onto when it changes** – only from what the router knows (the way's class): "links auf den
-   Feldweg", "rechts auf die Straße". No street names (most ways have none), no guessed landmarks.
+4. **Say what you turn onto when it changes** – from the route's way types (owner 2026-11-01, Hilden: every park path
+   was a "Feldweg"), read 20 m before / after the junction so a crossing is not "the way": "auf den Feldweg" only on a
+   track, "auf den Radweg" (cycleway), "auf den Weg" (footway; a path on the bike), "auf den Pfad" (a path on foot),
+   "auf die Straße". Without way types: "Weg", never "Feldweg". No street names, no guessed landmarks.
+4b. **A sideways step is straight on** (`navigation/JogRule`, shared): two opposite turns closer than 20 m (on foot
+   12 m) – onto a pedestrian crossing and off it, round an offset crossroads – are one manoeuvre; within 30° of
+   straight on nothing is said or felt, else only the turn of the step's way. Regression: the owner's Hilden park tour
+   (`tools/routing/jvm-test/HildenVoiceTest.kt`, real data).
 5. **Comfort after a turn when the next one is far:** "…, dann 3 Kilometer geradeaus." (bike ≥ 2 km, on foot ≥ 1 km).
    One clause, so the user knows it is quiet now and need not look.
 6. **Short:** at most ~8 words, one idea, the direction first, rounded numbers (50 / 100 / 150 / 200 / 300 / 500 m,
@@ -46,7 +52,7 @@ same voice; "smart, clever sentences, not too much". Built after the feature sto
 | Tour starts with a route | „Los geht's. 12 Kilometer bis Lana, etwa 50 Minuten." | "Off we go. 12 kilometers to Lana, about 50 minutes." |
 | Junction | „In 100 Metern links." | "In 100 meters, turn left." |
 | … slight / sharp / keep | „In 100 Metern leicht rechts." · „… scharf links." · „… links halten." | "… bear right." · "… sharp left." · "… keep left." |
-| … onto another kind of way | „In 50 Metern links auf den Feldweg." | "In 50 meters, turn left onto the track." |
+| … onto another kind of way | „In 50 Metern links auf den Feldweg." · „… auf den Radweg." · „… auf den Weg." | "… onto the track." · "… onto the cycle path." · "… onto the footpath." |
 | … two turns close | „In 100 Metern links, danach gleich rechts." | "In 100 meters turn left, then right." |
 | … then a long quiet stretch | „In 100 Metern rechts, dann 3 Kilometer geradeaus." | "In 100 meters turn right, then 3 kilometers straight on." |
 | Roundabout | „Im Kreisverkehr die zweite Ausfahrt." | "At the roundabout, take the second exit." |
