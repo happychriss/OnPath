@@ -79,6 +79,13 @@ the git log.
 - [cloud-app] Release v0.14.0 (voice) – captain's go; waits for the owner's Pixel voice test OK + E2E green on 69515dd / 4c64138 – since 2026-11-01
 
 ## Next
+- **Owner idea 2026-11-01 (field Düsseldorf, think first – not built):** (1) *Jog rule:* the lead line started on the
+  sidewalk – 90° left onto a 4–7 m footway piece, then 60° right onto the street = a sideways step, really straight on;
+  `CueRule` counted both (real branches at each) → "links, dann rechts". Proposal: two opposite turns within ~15 m
+  (hike 10 m) with in/out headings ≤ ~30° apart = straight (no cue, no voice); only a big offset (other side of the road)
+  says "change to the cycle path on the left". Test with that line. (2) *Way type in turns:* the voice has
+  "auf den Pfad / Feldweg / Straße" (3 kinds, only on a change); the router's way labels allow more (Radweg,
+  Nebenstraße, Landstraße, Schotterweg) – the owner names the kinds; also on screen under the arrow. [cloud-app]
 - **Website screenshots per changed screen, not whole sets (owner 2026-11-01) – start right after the v0.14.0
   release.** Instead of re-shooting all pictures after every UI change, each role re-shoots only the pictures of the
   screens it changed. (1) **[cloud-app]** a list `docs/design/website-screens.md`: every website / store / help
