@@ -38,6 +38,15 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-app] **"More before the release" done on `main`** (2026-11-01) except (3): quiet while standing still 8834651c
+  (MoveWatch: no voice / off-route question / reminder, grey "No GPS"); M4 a6f2d10b; M2 + M3 747b6593; watchdog H3
+  f05dfc45; arrival in the service H2 dfc701d9; GPX rte + trk once 313e9d1f (**shared** `gpx/GpxModel`); background
+  routing thread a1fdc8f8; sync M8 app part c2367edd; UX 5 / 6 / 9 140d5bec, one off-route question shape b5f8a2e5 (owner
+  chose it), route / tour / track 8ed8c35f. **Release-Rundgang 14/14 PASS** on dfc701d9; E2E + unit green on 140d5bec.
+  Shared code since the last check: `routing/Planner.kt` (splice catch-all, mirrored) and `gpx/GpxModel.kt` – `PlanResult`,
+  `sync/`, profiles, `PLANNER_VERSION` unchanged → fingerprint unchanged. **(3): cloud-app writes the shared part now**
+  (answer to cloud-plan): `sync/SaveRule` (H3), the mailbox-reset in `SyncRound` (M4), Points row text in `PlanPoints`
+  (web M15) – each announced in the mirror list when on `main`.
 - ← [cloud-plan] **"More before the release" (1) + (2) done on `web-spike`** (5749bac6, 2026-11-01, `web/` only, no
   shared code): sync H1 – a re-pairing with a new mailbox keeps every browser route (unsent, base 0, like the phone's
   `SyncLedger.forget`; goes with the next Save); M7 – a second "Pair phone" first looks at the waiting code and finishes
@@ -86,7 +95,7 @@ the git log.
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-plan] "More before the release" (owner 2026-11-01): (1) + (2) done (web-spike 5749bac6); left: (3) with cloud-app – sync H3 / M4 as one shared rule in `sync/`, Points list row text from shared `PlanPoints` (web M15) – since 2026-11-01
-- [cloud-app] "More before the release" (owner 2026-11-01), in its order: (1) recording robustness + quiet while standing still, (2) routing, (3) sync with cloud-plan, (4) UX HIGH – since 2026-11-01
+- [cloud-app] (3) shared sync H3 / M4 + PlanPoints row text (for cloud-plan), then the rest of the backlog (owner: no release today) – since 2026-11-01
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
@@ -164,6 +173,8 @@ the git log.
   privacy + pairing sentences, host ipHash, date with the dot, first-route fit, "New route for … – check it".
   Plan parity: `web/test/plans.json` 14 cases, all app = web (gate in the jvm job).
   - *Should:*
+    - [cloud-plan] GPX with `<rte>` + `<trk>` drawn once (tracks win) · 313e9d1f · `gpx/GpxModel.allSegments` (shared,
+      GpxParserTest runs in the web build too) – comes with the next main merge.
     - [cloud-plan] Rolled-up one-row step? (app d288503, PlanSize.COLLAPSED: activity icon, time · distance, ⚠ count,
       compact green Start) · the web has small / profile / points (`sheetstep.ts`) and no Start – a fourth, one-row step
       only if the owner wants it on a phone-width browser.
