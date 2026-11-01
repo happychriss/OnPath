@@ -90,8 +90,9 @@ the git log.
 ## Next
 - **Way type on screen (owner idea 2026-11-01, rest of it):** the voice names the way from the real way type now (Feldweg
   only on a track, Radweg, Weg, Pfad, Straße – 44544250) and close opposite turns are one step (JogRule, 00b9f006);
-  still open: the owner names more kinds if wanted (Nebenstraße, Landstraße, Schotterweg …), the same word on screen
-  under the arrow, and the map's turn card / arrow (`TurnDetector`, geometry) does not know the jog rule yet. [cloud-app]
+  the screen's turn card / arrow shows the same junctions now (`navigation/ScreenTurns`, 4418dc36); the Navigate Sim
+  follows a changed line (7a397432). Still open: the owner names more kinds if wanted (Nebenstraße, Landstraße,
+  Schotterweg …) and the same word on screen under the arrow. [cloud-app]
 - **Website screenshots per changed screen, not whole sets (owner 2026-11-01) – start right after the v0.14.0
   release.** Instead of re-shooting all pictures after every UI change, each role re-shoots only the pictures of the
   screens it changed. (1) **[cloud-app]** a list `docs/design/website-screens.md`: every website / store / help
