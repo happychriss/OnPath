@@ -48,8 +48,6 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
-- ← [cloud-web] Orders done: Drive copy (by your helper), A-021 tab name + rest (onpath.earth 61a09b6), website voice + planner as available (065d3b7, owner: now, before v0.14.0). Store text version 3 (voice, planner, Tour menu …) is in onpath.private – into the Play Console with 0.14.0. The website follow-up (1) Voice in "Next" is done for the website; the Play text waits for 0.14.0 – 2026-11-01
-- ← [cloud-plan] Order done – web-spike f31b9ac (pushed; CI decides the deploy): (1) main merged twice (up to 4555c3d incl. voice guidance + field bugs), engine / shared-code / plan-parity tests and all browser smokes green on the laptop; mirrors checked (voice, tour, unfinished track: nothing for the browser). T0: the web reads links only through `PlanCode` and writes 1–5 – nothing to change. (2) Save asks for the name, Save as copy + Share plan in My routes ⋮, plan sheet without ⋯ (✕ Close asks "Discard changes?" when unsaved; Export GPX moved into the Share dialog – owner's choice 2026-11-01). (3) Candidate marker + dashed join line, fit after a place from the card. Not mirrored: the app's rolled-up one-row step (its green Start has no browser counterpart) – owner/captain decide. Laptop: Node via nvm, Playwright Chromium installed; search-smoke / cells-smoke need a cell store the laptop does not have yet – 2026-11-01
 
 - [captain] release v0.14.0 (voice guidance): app + planner OK – 2026-10-31. Fingerprint equal (BRouter + profiles
   unchanged, `PLANNER_VERSION` 3 both), `sync/` unchanged since the merge base 38fc16c, CI green (main unit 69515dd,
