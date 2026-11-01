@@ -96,6 +96,16 @@ Organic Maps / CoMaps source code, komoot / Locus / Garmin help pages, two studi
 5. **Re-route that starts behind you**: "Neue Route. Bitte umdrehen." + the U sign on the map + the turn card shows
    "Umdrehen" – after an automatic re-route the screen must always show where to go ("sieht man plötzlich gar nichts").
 6. ☰ menu: "Meine Routen" first (later, backlog).
+7. **Turn hints: one setting "Aus · Vibration · Stimme"**, default Stimme – either / or, never both (*built* bdf5ce87).
+8. **On foot "Gleich links." ~10 m before**, no distance (*built* ae7922f3); off the route on foot from 25 m + accuracy
+   (*built* f2b6561d); the jog rule works on the phone now (angle from the shape, *built* 5820ef33).
+9. **A point is reached within 25 m on foot / 40 m on the bike, only from a fix good to 20 m** (*built* 7d9adfb9).
+10. **Points like Komoot**: start dark green, stops near black, goal dark red, no ring – map (Plan + Navigate) and list
+    (*built* 598c7d50).
+11. **Standing still = frozen** (owner: "großartige Idee"): the phone's step detector (no Google services) – no steps for
+    ~30 s on foot → the position is held: no track points, no jumping dot, no off-route / "Kein GPS" / voice /
+    vibration, the time counts as a break; steps again → GPS as usual. Navigation pauses with it. Bike: as today (GPS
+    speed). Tour 63's restaurant (53 min sitting) recorded 1.8 km of zigzag, up to 188 m from where he sat. Next to build.
 
 ## 5. How it is tested
 - The field tours as replays on the JVM with the real routing data (tracks of tours 59–63 → the sentences, the screen
