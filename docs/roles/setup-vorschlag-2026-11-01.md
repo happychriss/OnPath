@@ -188,10 +188,16 @@ Kein MCP, keine Datenbank, keine eigene Seite. Später möglich: Artefakt-Seite,
   (Schritt 3).
 
 ## 6c. Herunterfahren (owner 2026-11-01)
-- Beim Ausschalten geht nur **ungepushte** Arbeit verloren, keine offene Frage (die steht im Issue). Regel in
-  `CLAUDE.md`: vor einer blockierenden Frage den Stand pushen und ins Issue schreiben, wo man steht.
-- Mit dem Umbau (Schritt 3): `tools/dev/feierabend.sh` auf donald / Laptop – prüft ungepushte Checkouts, laufendes
-  Gradle / Emulator, eine Tour auf dem Pixel (RecordingService) und sagt „alles sicher“ oder was fehlt.
+- Beim Ausschalten geht nur **ungepushte** Arbeit verloren. Keine Gefahr: offene Fragen (stehen im Issue), eine Tour
+  auf dem Pixel (das Handy zeichnet selbst auf), ein laufender Gradle-Lauf / Emulator (kostet nur diesen Lauf).
+- Regel in `CLAUDE.md` (gilt schon): vor einer blockierenden Frage den Stand pushen, im Issue sagen, wo man steht.
+- **Entscheidung: automatisch beim Herunterfahren sichern** – niemand ruft etwas auf. Mit dem Umbau (Schritt 3):
+  ein systemd-User-Dienst auf donald und dem Laptop (`tools/dev/save-on-shutdown.sh` + Unit-Datei, `ExecStop`), der
+  in jedem OnPath-Checkout / Worktree Ungepushtes (Commits und geänderte Dateien) auf den Branch
+  `wip/<rechner>-<datum>` committet und pusht – nie auf `main`, nie force. Die nächste Sitzung sieht ihn beim Start
+  (`git branch -r | grep wip/`), übernimmt die Arbeit und löscht den Branch nicht selbst (Owner räumt auf, Regel
+  „Branches löscht der Owner“). Zeitlimit beim Herunterfahren ~30 s; ohne Netz: lokaler Commit, Push beim nächsten
+  Start (derselbe Dienst, `ExecStart`).
 
 ## 7. Entscheidungen des Owners (2026-11-01, Fragebox eine nach der anderen)
 | # | Frage | Entscheidung |
@@ -202,6 +208,7 @@ Kein MCP, keine Datenbank, keine eigene Seite. Später möglich: Artefakt-Seite,
 | 4 | Ein Branch | **ja, nach v0.14.0** `web-spike` → `main`; Workflow-PR; Abgleich 05:47 aus |
 | 5 | Laptop | **gleich ausstatten wie donald** (SDK, Node, Python, Karten-Tools, Checkout `main`) |
 | 6 | Cloud-Claude-Sitzung selbst bauen/testen | **nein – GitHub testet**; Handy-Fix = Cloud-Sitzung schreibt + pusht, `release.yml` baut; rot = kein Release. Kein Setup-Skript. |
+| 7 | Ungepushtes beim Ausschalten | **automatisch sichern** (Dienst, `wip/<rechner>-<datum>`) – §6c |
 Damit entfällt in §5 das Setup-Skript der Cloud-Umgebung; §6 Schritt 6 ebenfalls.
 
 ## 8. Nicht geprüft
