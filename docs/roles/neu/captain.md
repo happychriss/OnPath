@@ -38,6 +38,10 @@ collects questions and tells the owner what is new. It writes no product code an
    backlog line at the top of "Next" for the unit that can fix it (`[emu]` for E2E).
 5. **Order the work:** keep "Next" in `docs/backlog.md` ordered by the owner's priorities, every item with its tags
    (`docs/roles/neu/start.md`). Stale claims (> 1 day, nobody working) → remove with a note.
+5b. **Split big items over units, not over sub-agents on one computer:** the device / emulator part (`[pixel]`,
+   `[emu]`) to donald, the big-build / map part (`[ram]`, `[karten]`) to hp, docs / website to a cloud worker – each
+   part its own line in "Next", with `nach: <other line>` when it depends on another. A unit's own sub-agents are its
+   business (`CLAUDE.md` "Sub-agents"); the captain cannot see or steer them.
 6. **Nobody on, work waiting:** the first untagged item that needs no local test → start a cloud worker
    (`create_session`, cloud environment, `source_url` = OnPath, the cloud start sentence + the item). At most one
    cloud worker at a time; it ends after the item.

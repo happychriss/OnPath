@@ -50,6 +50,8 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
   `assets/overview/*.pmtiles`.
 
 ## Worktrees and agents
+- Sub-agents (owner 2026-11-01: split work over 3–4 when it costs little overhead): one worktree per editing agent,
+  one agent per device (`tools/dev/device.sh`), builds queue behind the Gradle lock – rules in `CLAUDE.md`.
 - Remove an agent's worktree only after its completion notice AND when no message to it is pending (twice a resumed
   agent lost its work).
 - Temporary folders (`/tmp/…/scratchpad`) are wiped on restart – anything worth keeping goes to the repo, the

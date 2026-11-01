@@ -40,7 +40,8 @@ no tag = any unit. An item may carry several tags.
    merge into a fresh branch), say so in the handoff; the owner deletes the branch.
 5. **Next item:** the first line under "Next" in `docs/backlog.md` (top = most important; the captain orders it) that
    this unit can do and nobody claims. Claim it under "In progress" (`- [donald] … – since YYYY-MM-DD`), push.
-6. Work: small green commits, `tools/ci/gate.sh`, push (`CLAUDE.md`, `docs/working-agreement.md` §1). Phone rules from
+6. Work – split over sub-agents when that saves time (`CLAUDE.md` "Sub-agents": own worktree each, devices only via
+   `tools/dev/device.sh`, builds queue behind the Gradle lock): small green commits, `tools/ci/gate.sh`, push (`CLAUDE.md`, `docs/working-agreement.md` §1). Phone rules from
    `docs/owner-preferences.md` stay (no wipe, check for a recording, never drive the phone while the owner uses it).
 7. Done: remove the claim, one handoff line in "Last session" (`docs/project-status.md`), push. Next round.
 

@@ -194,5 +194,13 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
   session: read at the start, after every pull and before every push (`tools/ask.sh an-alle --von <unit>` confirms
   "gelesen"); `gate.sh` refuses a push on `#push-sperre`, a release commit on `#release-sperre`. Toward the owner
   in a session: one question box at a time with answer options (`docs/owner-preferences.md`).
+- **Sub-agents** (owner 2026-11-01: a session may split work over 3–4 sub-agents when that costs little overhead):
+  every sub-agent that edits files works in **its own git worktree on its own branch**; the main session merges
+  (rebase), pushes and holds the one backlog claim for the whole item. Gradle only through `tools/ci/gate.sh` (one
+  build per computer – the others wait), so give the build-heavy part to one agent and let the others write code, read
+  or do docs. **Pixel and emulator only through `tools/dev/device.sh pixel|emulator -- <command>`** (one agent per
+  device, `--try` → do other work while busy, `device.sh status` shows who holds what; an install is refused while a
+  tour records); never start a second emulator. Sub-agents run on the session's own computer – parallel work across
+  computers is separate backlog items, one per unit (the captain splits them).
 - **Requirements** live in `docs/requirements.md` (exported from the shared Claude doc); keep IDs stable,
   add new ones at the end of a section.
