@@ -664,8 +664,10 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val nav = rec?.nav?.takeIf { it.line.size >= 2 }
     val line = nav?.line ?: vm.followLine
     val progress = remember(line) { line?.let { FollowProgress(it) } }
-    // turns on the followed line, computed once per line (pure, TurnDetector)
-    val turns = remember(line) { line?.let { TurnDetector.turns(it) } ?: emptyList() }
+    // turns on the followed line, once per line: the junctions the phone vibrates for and the voice names
+    // (ScreenTurns: BRouter's hints + JogRule; a GPX track without hints: the geometry, TurnDetector)
+    val hike = (rec?.nav?.session?.activity ?: vm.activity) == com.onpath.app.routing.Activity.HIKE
+    val turns = remember(line, hike) { line?.let { com.onpath.app.navigation.ScreenTurns.of(it, hike) } ?: emptyList() }
     val total = remember(line) { line?.let { com.onpath.app.data.Geo.length(it) } ?: 0.0 }
     // same time model as the plan sheet (time/RouteTimes): no jump when navigation starts
     val times = remember(line, vm.activity) { line?.let { com.onpath.app.time.RouteTimes.of(it, vm.activity) } }
