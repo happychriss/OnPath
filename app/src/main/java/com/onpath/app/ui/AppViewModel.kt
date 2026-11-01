@@ -403,8 +403,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Developer tools → Demo: the last recorded tours (not demo ones) to ride again at their recorded times. */
     fun recentRecordedTours(): List<Tour> = tours.filter {
-        it.kind == TourKind.RECORDED && !it.name.startsWith(com.onpath.app.recording.DemoLocation.TOUR_PREFIX)
-    }.sortedByDescending { it.id }.take(3)
+        it.kind == TourKind.RECORDED && !it.name.startsWith(com.onpath.app.recording.DemoLocation.TOUR_PREFIX) &&
+            it.distanceM >= 500.0   // not the empty / few-metre starts
+    }.sortedByDescending { it.id }.take(8)
 
     fun demoTourLabel(t: Tour): String = "ride tour \"${t.name}\" (${"%.1f".format(Locale.ROOT, t.distanceM / 1000)} km, recorded times)"
 
