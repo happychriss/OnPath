@@ -4451,9 +4451,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun closeShown() { shown = null; highlight = null }
 
-    /** A track is being turned into a plan ([planFromShown]): spinner on its button. */
+    /**
+     * A track is being turned into a plan ([planFromShown]): a modal box with Cancel over everything (owner 2026-11-01 –
+     * nothing else at the same time; review routing M3: minutes for a long track, points set meanwhile were overwritten).
+     */
     var planFromTrackBusy by mutableStateOf(false)
         private set
+    private var planFromTrackCancel: com.onpath.app.routing.RouteCancel? = null
+
+    fun cancelPlanFromTrack() {
+        Problems.trace("plan", "Track → plan cancelled by the user")
+        planFromTrackCancel?.cancel()
+        planFromTrackBusy = false
+    }
 
     /**
      * Shown track → a plannable route with few route points (owner; routing/TrackToPlan): our router and the
@@ -4483,17 +4493,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         planFromTrackBusy = true
+        val cancel = com.onpath.app.routing.RouteCancel().also { planFromTrackCancel = it }
         viewModelScope.launch {
             val t0 = android.os.SystemClock.elapsedRealtime()
             val r = withContext(backgroundRouting) {
                 try {
                     val eng = routingEngine()
                     if (eng is com.onpath.app.routing.StraightLineEngine) null
-                    else com.onpath.app.routing.TrackToPlan.fit(track, eng, act, level)
+                    else com.onpath.app.routing.TrackToPlan.fit(track, eng, act, level, cancel = cancel)
                 } catch (e: Exception) {
-                    Problems.error("routing", "Track could not be turned into a plan", e); null
+                    if (!cancel.isCancelled) Problems.error("routing", "Track could not be turned into a plan", e); null
                 }
             }
+            if (planFromTrackCancel === cancel) planFromTrackCancel = null
+            if (cancel.isCancelled) return@launch // the user cancelled: nothing changes
             planFromTrackBusy = false
             if (r == null || r.points.size < 2) { sayError(Txt.s(Res.string.plan_from_track_failed), NoticePlace.MAP); return@launch }
             Problems.trace("plan", "Track → plan: ${track.size} track points → ${r.points.size} route points, follows " +

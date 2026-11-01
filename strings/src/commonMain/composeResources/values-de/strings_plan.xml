@@ -225,6 +225,8 @@
     <string name="plan_leg_no_path">kein Weg gefunden</string>
     <string name="plan_share_plan">Route teilen</string>
     <string name="plan_from_track">Als Route planen</string>
+    <string name="plan_from_track_busy_title">Route wird aus dem Track geplant …</string>
+    <string name="plan_from_track_busy_text">Bei einem langen Track kann das ein paar Minuten dauern.</string>
     <string name="plan_from_track_failed">Aus dem Track ließ sich keine Route machen – dort fehlt vielleicht die Detailkarte.</string>
     <string name="plan_from_track_wait">Die Karte für diesen Track wird noch geladen – gleich noch einmal versuchen.</string>
 </resources>

@@ -226,6 +226,7 @@ fun MapScreen(
             onDelete = { vm.endTourAndDelete() }, onDismiss = { vm.endAsk = null })
         null -> {}
     }
+    if (vm.planFromTrackBusy) PlanFromTrackDialog(onCancel = vm::cancelPlanFromTrack)
     // arrival Save goes the End tour way: a bus / car / lift found → the ride summary
     if (vm.arrivalAsk && rec != null) ArrivalDialog(onSave = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
         onKeepGoing = { vm.arrivalAsk = false })

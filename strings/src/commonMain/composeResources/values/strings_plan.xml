@@ -226,6 +226,8 @@
     <string name="plan_leg_no_path">no path found</string>
     <string name="plan_share_plan">Share route</string>
     <string name="plan_from_track">Plan a route from it</string>
+    <string name="plan_from_track_busy_title">Planning a route from the track…</string>
+    <string name="plan_from_track_busy_text">A long track can take a few minutes.</string>
     <string name="plan_from_track_failed">The track could not be turned into a route – the detailed map may be missing there.</string>
     <string name="plan_from_track_wait">The map for this track is still loading – try again in a moment.</string>
 </resources>

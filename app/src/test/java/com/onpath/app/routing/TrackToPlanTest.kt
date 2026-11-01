@@ -65,4 +65,23 @@ class TrackToPlanTest {
         assertTrue(r.failedLegs >= 1)
         assertTrue(r.points.size >= 2)
     }
+
+    /** Owner 2026-11-01 / review routing M3: Cancel in the modal box stops the fit – the running request included. */
+    @Test fun cancelStopsTheFit() {
+        val c = (0..50).map { (it * 200.0) to (if (it % 2 == 0) 0.0 else 150.0) }.toTypedArray()
+        val cancel = RouteCancel()
+        var withLimits = 0
+        val eng = object : RoutingEngine {
+            val inner = Straight()
+            override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int) = inner.route(waypoints, activity, sacLimit)
+            override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, limits: RouteLimits): RouteResult {
+                withLimits++
+                assertTrue(limits.cancel === cancel)
+                if (withLimits == 3) cancel.cancel() // the user taps Cancel during the third request
+                return inner.route(waypoints, activity, sacLimit)
+            }
+        }
+        TrackToPlan.fit(line(*c), eng, Activity.BIKE_TOURING, cancel = cancel)
+        assertEquals("stops right after the request that ran", 3, withLimits)
+    }
 }
