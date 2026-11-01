@@ -44,8 +44,9 @@ the git log.
   A, in this order** (details in `docs/reviews/2026-11-01-pre-release.md` part C and the reports):
   (1) recording robustness: arrival check in the service + no off-route alarms after arrival (C1 / recording H2),
   watchdog "no fix for ~5 min" + honest "Recording interrupted" after a restart (H3), unwritten points queued (M2),
-  exception handler in the service scope (M3), switch question ≠ off route (M4); voice minimum intervals ("No GPS
-  signal" only after the start, ≤ 1 per 10 min; "Off the route" ≥ 2 min);
+  exception handler in the service scope (M3), switch question ≠ off route (M4); **"No GPS signal" exactly ONCE per
+  tour (owner 2026-11-01: in a restaurant it came again and again)** – spoken and as a text warning / box /
+  notification; never again in that tour, only a quiet state (grey GPS dot) may stay; "Off the route" ≥ 2 min apart;
   (2) routing: GPX with `<rte>` + `<trk>` not merged (H2), background routing on its own executor (H1);
   (3) shared with cloud-plan, agree first: Save over a route changed by sync → copy or ask (sync H3), mailbox that
   comes back empty (sync M4), stuck upload queue reported (M8);
