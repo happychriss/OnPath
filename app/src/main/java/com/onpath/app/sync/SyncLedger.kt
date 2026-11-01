@@ -131,6 +131,16 @@ class SyncLedger private constructor(
         since = 0
     }
 
+    /**
+     * The mailbox lost its history (review sync M4: idle purge, a reset database – it was claimed again, or its revision
+     * fell below [since]): read it from the start and upload every live item again, this device's hello included.
+     * Nothing is dropped; the merge keeps both versions where the other side changed an item meanwhile.
+     */
+    fun restart() {
+        entries = entries.filterValues { !it.item.deleted }.mapValues { SyncEntry(it.value.item, 0, dirty = true) }
+        since = 0
+    }
+
     fun write(): String = buildString {
         append(HEADER).append(' ').append(VERSION).append(' ').append(since).append('\n')
         for (e in entries.values) {

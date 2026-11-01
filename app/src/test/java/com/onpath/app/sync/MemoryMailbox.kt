@@ -66,6 +66,9 @@ class MemoryServer(private val page: Int = 200) {
         }
     }
 
+    /** The mailbox row is gone (idle purge after 365 days, a reset database): the next call finds nothing (404). */
+    fun purge(keys: SyncKeys) { boxes.remove(keys.mailbox) }
+
     /** Every stored blob as Latin-1 text (to check nothing readable is on the server). */
     fun stored(keys: SyncKeys): String = boxes[keys.mailbox]?.items?.values?.joinToString { String(it.second, Charsets.ISO_8859_1) }.orEmpty()
     fun itemCount(keys: SyncKeys): Int = boxes[keys.mailbox]?.items?.size ?: 0

@@ -343,6 +343,8 @@ class PlanSync(
             is SyncRound.Outcome.Refused -> Problem.Refused(o.status, o.error)
             is SyncRound.Outcome.Ended -> null
             is SyncRound.Outcome.Done -> {
+                if (o.restarted) Problems.warn("sync", "The browser mailbox had lost its history (idle purge / reset) – this phone sent everything again")
+                if (o.tooLarge > 0) Problems.warn("sync", "${o.tooLarge} item(s) refused by the server as too large – they stay on the phone")
                 stuckPasses = StuckOutbox.next(stuckPasses, o.left)
                 if (stuckPasses == StuckOutbox.PASSES) Problems.warn("sync", "${o.left} item(s) not sent for $stuckPasses passes in a row")
                 when {
