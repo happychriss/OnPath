@@ -22,7 +22,8 @@ class WebImportTest {
         assertTrue(j, j.contains("\"activity\":\"HIKE\",\"sac\":2,\"switch\":true"))
         assertTrue(j, j.contains("\"note\":\"Activity set to Hike T2 from the file\""))
         assertTrue(j, j.contains("\"skippedNote\":null"))
-        assertTrue(j, j.contains("\"durationS\":4860")) // the file's own time: 108 × 45 s
+        // the file's own moving time (TimeEstimate.trackStats, the app's import – main 6460dc98: stops left out)
+        assertTrue(j, j.contains("\"durationS\":4140")) // was 4860 first → last
     }
 
     @Test fun ownTLevelInsideTheBandStays() {

@@ -142,6 +142,10 @@
     <string name="web_sync_offline">Offline – deine Routen werden abgeglichen, sobald du wieder Verbindung hast.</string>
     <string name="web_sync_failed">Der Abgleich hat diesmal nicht geklappt – er versucht es von selbst wieder.</string>
     <string name="web_eye_hotkey">Halten, um die Route auszublenden – oder die Leertaste halten</string>
+    <string name="web_name_share">OnPath-Route</string>
+    <string name="web_hide_loading">Ausblenden (die Karte lädt weiter)</string>
+    <string name="web_route_changed_elsewhere">Inzwischen auf dem Handy geändert – als „%1$s“ gespeichert, die andere Fassung bleibt.</string>
+    <string name="web_route_options">Routenoptionen</string>
     <string name="web_save_failed">Nicht gespeichert – dieser Browser konnte die Route nicht ablegen. Versuch es noch einmal oder sichere sie mit „GPX exportieren“.</string>
     <string name="web_rename_failed">Nicht umbenannt – dieser Browser konnte die Änderung nicht ablegen. Bitte noch einmal versuchen.</string>
     <string name="web_delete_failed">Nicht gelöscht – dieser Browser konnte die Änderung nicht ablegen. Bitte noch einmal versuchen.</string>

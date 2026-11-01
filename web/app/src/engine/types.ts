@@ -69,7 +69,9 @@ export interface EngineReply { id: number; ok: boolean; result?: RouteResult; pl
 export type Progress = { phase: 'download'; bytes: number } | { phase: 'route' };
 
 /** One row of the Points list (the app's PlanPoints.rows). */
-export interface PointRow { i: number; role: 'START' | 'STOP' | 'GOAL'; name: string; legM: number | null; approx: boolean; loop: boolean }
+export interface PointRow { i: number; role: 'START' | 'STOP' | 'GOAL'; name: string; legM: number | null; approx: boolean; loop: boolean;
+  /** The app's PlanPoints.roleText / legText: the role under the name (null = none) and "+2.3 km" / "~850 m" / "↺ 1.2 km". */
+  roleText: string | null; legText: string | null }
 export interface PointRows { roundTrip: boolean; rows: PointRow[] }
 
 /** One search result (the app's SearchHit, with the app's row texts). */

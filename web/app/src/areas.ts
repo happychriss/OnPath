@@ -218,7 +218,7 @@ export class MapAreas {
   private show() { this.notices.set('areas', this.build()); }
 
   build(): Notice | null {
-    const close = { label: this.s('maps_hide_cd'), onClose: () => { this.hidden = true; } };
+    const close = { label: t('web_hide_loading'), onClose: () => { this.hidden = true; } };
     const job = this.job;
     const hide = { label: t('web_hide'), onClose: () => { this.naHidden = true; } };
     // no key on this host (owner step open): said while the map rests on a spot without detailed map – nothing hangs

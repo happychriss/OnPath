@@ -372,7 +372,10 @@ object Engine {
         val line = lastPlanFor(w)?.points
         return PlanPoints.rows(w, line) { n[it] }.joinToString(",", "[", "]") { r ->
             "{\"i\":" + r.planIndex + ",\"role\":" + str(r.role.name) + ",\"name\":" + str(r.name) +
-                ",\"legM\":" + (r.legM?.let { num(it, 0) } ?: "null") + ",\"approx\":" + r.approx + ",\"loop\":" + r.loop + "}"
+                ",\"legM\":" + (r.legM?.let { num(it, 0) } ?: "null") + ",\"approx\":" + r.approx + ",\"loop\":" + r.loop +
+                // the row texts (the app's PointsSection, shared since 1d35cc5b – web review M15): the page only renders them
+                ",\"roleText\":" + (PlanPoints.roleText(r)?.let { str(it) } ?: "null") +
+                ",\"legText\":" + (PlanPoints.legText(r)?.let { str(it) } ?: "null") + "}"
         } .let { "{\"roundTrip\":" + PlanEdits.isRoundTrip(w) + ",\"rows\":" + it + "}" }
     }
 
@@ -490,7 +493,7 @@ object Engine {
     fun gpx(name: String, activity: String, sac: Int, points: String, names: String): String {
         val w = parsePoints(points)
         val line = lastPlanFor(w)?.points?.takeIf { it.size >= 2 } ?: return "null"
-        val n = name.ifBlank { Txt.s(Res.string.msg_name_share) }
+        val n = name.ifBlank { Txt.s(Res.string.msg_name_route) } // the page sends its own name; this only if none
         val nm = parseNames(names)
         val f = com.onpath.app.gpx.PlanGpx.export(n, listOf(line.map { com.onpath.app.gpx.TrackPoint(it.lat, it.lon, it.ele) }),
             com.onpath.app.gpx.PlanGpx.stops(w) { nm[it]?.takeIf { s -> s.isNotBlank() } }, Activity.valueOf(activity), sac)
@@ -647,6 +650,20 @@ class WebContext(private val dir: File) : android.content.Context() {
 @JSExport fun syncDelete(ledger: String, id: String, now: Double, device: String): String = WebSync.delete(ledger, id, now, device)
 @JSExport fun syncHello(ledger: String, device: String, name: String, now: Double): String = WebSync.hello(ledger, device, name, now)
 @JSExport fun syncForget(ledger: String): String = WebSync.forget(ledger)
+/** The mailbox lost its history (review sync M4, the app's SyncRound): read from 0, every live item to send again. */
+@JSExport fun syncRestart(ledger: String): String = com.onpath.app.sync.SyncLedger.read(ledger).also { it.restart() }.write()
+/** Save over a saved route that sync changed meanwhile → a copy (review sync H3, the app's sync/SaveRule). */
+@JSExport fun saveKeepsOtherEdit(opened: String, stored: String): Boolean =
+    com.onpath.app.sync.SaveRule.keepsOtherEdit(opened.ifEmpty { null }, stored.ifEmpty { null })
+// names of saved routes and when a route is fitted (the app's routing/PlanNames.kt – was mirrored in plans.ts / main.ts);
+// [taken] = names, one per line
+@JSExport fun planNewRouteName(proposed: String, dated: String, taken: String): String =
+    com.onpath.app.routing.PlanNames.newRouteName(proposed, dated, taken.split('\n').filter { it.isNotEmpty() })
+@JSExport fun planCopyName(name: String, taken: String): String =
+    com.onpath.app.routing.PlanNames.copyName(name, taken.split('\n').filter { it.isNotEmpty() })
+@JSExport fun routeFirst(before: Int, after: Int): Boolean = com.onpath.app.routing.RouteFit.firstRoute(before, after)
+@JSExport fun routeFitAfterPlace(before: String, after: String): Boolean =
+    com.onpath.app.routing.RouteFit.fitAfterPlace(Engine.parsePoints(before), Engine.parsePoints(after))
 @JSExport fun syncApply(ledger: String, pair: String, page: String, upTo: Double): String = WebSync.apply(ledger, pair, page, upTo)
 @JSExport fun syncOutbox(ledger: String, pair: String, random: String): String = WebSync.outbox(ledger, pair, random)
 @JSExport fun syncAcked(ledger: String, sent: String, rev: Double): String = WebSync.acked(ledger, sent, rev)

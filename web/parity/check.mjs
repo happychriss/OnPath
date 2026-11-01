@@ -1,7 +1,7 @@
 // Web ⇄ app parity check (docs/design/web-planner.md §14). The web never drifts silently from the app:
 // - mirrors (web/parity.json): app logic the web re-implements. If the app file changed since the mirror was last
 //   checked (git blob hash), this FAILS – look at the app change, adjust the web, then record it with --update.
-// - shared: every app file the engine compiles as it is (web/engine/build.gradle.kts appFiles + appTests), the string
+// - shared: every app file the engine compiles as it is (app/web-shared-files.txt – web/engine/build.gradle.kts reads it), the string
 //   files, BRouter's jars and profiles. They reach the web by merging main; changes are listed as warnings, and lines
 //   that matter for performance / memory (caches, limits, timeouts, buffers – the phone's memory work) are shown
 //   added / removed, so the web side (Wasm heap, worker, prefetch) can be checked too.
@@ -37,13 +37,13 @@ function perfLines(rel) {
   return [...new Set(fs.readFileSync(f, 'utf8').split('\n').map((l) => l.trim()).filter((l) => l && PERF.test(l) && !l.startsWith('import ')))];
 }
 
-/** The app files the engine compiles: appFiles + appTests of web/engine/build.gradle.kts, strings, BRouter. */
+/** The app files the engine compiles: app/web-shared-files.txt ([files] / [tests] – the engine build reads it), strings, BRouter. */
 function sharedFiles() {
-  const g = fs.readFileSync(path.join(repo, 'web/engine/build.gradle.kts'), 'utf8');
-  const list = (name) => [...(g.match(new RegExp(`val ${name} = listOf\\(([\\s\\S]*?)\\n\\)`))?.[1] ?? g.match(new RegExp(`val ${name} = listOf\\(([^)]*)\\)`))?.[1] ?? '')
-    .matchAll(/"([^"]+\.kt)"/g)].map((x) => x[1]);
-  const main = list('appFiles').map((f) => 'app/src/main/java/com/onpath/app/' + f);
-  const tests = list('appTests').map((f) => 'app/src/test/java/com/onpath/app/' + f);
+  let section = '';
+  const rows = fs.readFileSync(path.join(repo, 'app/web-shared-files.txt'), 'utf8').split('\n').map((l) => l.replace(/#.*/, '').trim()).filter(Boolean)
+    .flatMap((l) => (l.startsWith('[') ? ((section = l), []) : [[section, l]]));
+  const main = rows.filter(([s]) => s === '[files]').map(([, f]) => 'app/src/main/java/com/onpath/app/' + f);
+  const tests = rows.filter(([s]) => s === '[tests]').map(([, f]) => 'app/src/test/java/com/onpath/app/' + f);
   const dir = (d, re) => fs.readdirSync(path.join(repo, d)).filter((f) => re.test(f)).sort().map((f) => `${d}/${f}`);
   return [...main, ...tests, 'app/src/main/java/btools/router/OnPathHints.java',
     ...dir('strings/src/commonMain/composeResources/values', /\.xml$/), ...dir('strings/src/commonMain/composeResources/values-de', /\.xml$/),

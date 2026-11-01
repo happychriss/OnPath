@@ -91,6 +91,35 @@ await again.keyboard.up(' ');
 const after = await vis();
 check(whileHeld === 'none' && after === 'visible', `Space held hides the route, let go shows it (${whileHeld} → ${after})`);
 check((await again.getAttribute('#eye', 'title')).includes('Space'), 'the eye\'s tooltip names the Space bar');
+// ---- 5c: the Points rows' texts come from the app's PlanPoints (web M15) ----
+const legs = await again.evaluate(() => [...document.querySelectorAll('#points .leg')].map((l) => l.textContent.trim()).filter(Boolean));
+check(legs.length >= 2 && legs.every((l) => /^[+~↺]/.test(l) && /\d/.test(l)), `Points rows: leg texts from PlanPoints.legText (${JSON.stringify(legs)})`);
+
+// ---- 5d: Save over a route the phone changed meanwhile → a copy, the other version stays (sync/SaveRule, H3) ----
+const saveNamed = async (name) => {
+  await again.click('#menuSavePlan');
+  await again.waitForSelector('dialog.savename[open] #saveTitle', { timeout: 20_000 });
+  if (name) await again.fill('#saveTitle', name);
+  await again.click('#saveOk');
+};
+await saveNamed('Waalweg H3');
+// (waitForFunction does not await an async predicate – poll here)
+const until = async (f, arg, ms = 20_000) => { for (const end = Date.now() + ms; Date.now() < end; await again.waitForTimeout(250)) if (await again.evaluate(f, arg)) return true; return false; };
+await until(async () => (await window.__sync.list()).some((p) => p.title === 'Waalweg H3'));
+// "the phone" changes the stored route (another plan code under the same id)
+await again.evaluate(async () => {
+  const p = (await window.__sync.list()).find((x) => x.title === 'Waalweg H3');
+  const other = await window.__engine.encode({ points: [[46.67, 11.16], [46.69, 11.15]], activity: 'HIKE', sac: 2, pinned: [], names: {}, title: null });
+  await window.__sync.save(other, p.title, p.id, window.__sync.open);
+});
+await saveNamed(null); // the name dialog proposes the copy's name
+
+await until(async () => (await window.__sync.list()).filter((p) => p.title.startsWith('Waalweg H3')).length === 2);
+const h3 = await again.evaluate(async () => ({ titles: (await window.__sync.list()).map((p) => p.title).filter((x) => x.startsWith('Waalweg H3')),
+  line: document.getElementById('status').textContent }));
+check(h3.titles.length === 2 && h3.titles.includes('Waalweg H3 (2)') && /Changed on the phone/.test(h3.line),
+  `changed on the phone meanwhile → saved as a copy (${JSON.stringify(h3)})`);
+
 // ---- 6: a failed write is said, never silent (review web M11) ----
 await again.evaluate(() => { window.__sync.save = () => Promise.reject(new DOMException('quota', 'QuotaExceededError')); });
 await again.click('#menuSavePlan');

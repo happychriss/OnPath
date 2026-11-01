@@ -45,7 +45,9 @@ export interface SyncStatus {
   message: string; kind: 'info' | 'warning' | 'error';
 }
 /** The open route's unsaved state, kept per folder (A-017 point 1): it comes back with its folder. */
-export interface Draft { code: string; savedId: string | null; savedTitle: string | null; savedCode: string | null; savedFolder?: string | null }
+export interface Draft { code: string; savedId: string | null; savedTitle: string | null; savedCode: string | null; savedFolder?: string | null;
+  /** The saved route's stored plan code when it was opened / last saved here (sync/SaveRule, review sync H3). */
+  storedCode?: string | null }
 
 /** The folder for planning without a phone (A-017 rule 1). */
 export const NONE = 'none';
@@ -371,9 +373,18 @@ export class PlanSync {
 
   /** Reads the open folder's mailbox from where it stood; the phone's hello names the folder, its changes get marks. */
   private async pull(k: Keys, pair: string) {
+    let restarted = false;
     for (let page = 0; page < 50; page++) {
       const before = JSON.parse(await this.call('syncState', await this.ledger())).since as number;
       const body = await this.read(k, before);
+      // the mailbox lost its history (review sync M4, the app's SyncRound): claimed again although this browser had read
+      // from it, or a revision below the one read up to → start over from 0, every live item to send again (nothing dropped)
+      if (!restarted && before > 0 && (body.claimed || body.rev < before)) {
+        restarted = true;
+        await this.setLedger(await this.call('syncRestart', await this.ledger()));
+        problem('sync', 'the mailbox had lost its history – read from the start, everything sent again');
+        page = -1; continue;
+      }
       if (body.appSeen !== undefined) this.status.phoneSeen = body.appSeen; // an older host has no appSeen: keep what we know
       const lines = body.items.map((i) => `${i.id} ${i.rev} ${i.blob}`).join('\n');
       const peek = JSON.parse(await this.call('syncPeek', pair, lines)) as { hellos: Hello[] };
@@ -400,6 +411,8 @@ export class PlanSync {
         headers: { 'x-onpath-base': base, 'content-type': 'application/octet-stream' },
       }, k.token);
       if (r.status === 409) { conflict = true; continue; }
+      // one item too large for the server (a limit change – the app's SyncRound tooLarge): it stays, the others go on
+      if (r.status === 413) { problem('sync', `item ${id} refused as too large – it stays and is tried again`, null, 'error'); continue; }
       if (!r.ok) await this.refused(r);
       const { rev } = await r.json() as { rev: number };
       await this.setLedger(await this.call('syncAcked', await this.ledger(), sent, rev));
@@ -568,13 +581,16 @@ export class PlanSync {
   /** GET one page since [since]; 404 = not claimed yet (or expired after a year): any key holder may claim it. */
   private async read(k: Keys, since: number) {
     let r = await this.fetch(`${k.mailbox}?since=${since}`, {}, k.token);
+    let claimed = false;
     if (r.status === 404) {
       const c = await this.fetch(k.mailbox, { method: 'POST' }, k.token);
       if (!c.ok) await this.refused(c);
+      claimed = true;
       r = await this.fetch(`${k.mailbox}?since=${since}`, {}, k.token);
     }
     if (!r.ok) await this.refused(r);
-    return await r.json() as { rev: number; more: boolean; items: { id: string; rev: number; blob: string }[]; appSeen?: number | null };
+    const body = await r.json() as { rev: number; more: boolean; items: { id: string; rev: number; blob: string }[]; appSeen?: number | null };
+    return { ...body, claimed };
   }
 
   /** DELETE a mailbox only this browser used (a transitional or never-scanned one) – best effort, in the background. */

@@ -74,7 +74,9 @@ const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historySt
   // the app's search chips and a fresh search (WebSearch.kt: SearchKinds.Category, SearchSession's kept list)
   'searchCategories', 'searchReset',
   // the phone unpaired itself (its hello deleted – the app's guard)
-  'syncPhoneGone']);
+  'syncPhoneGone',
+  // the app's shared rules wired since main 2e50efbc: mailbox restart (M4), save as copy (H3), route names, route fit
+  'syncRestart', 'saveKeepsOtherEdit', 'planNewRouteName', 'planCopyName', 'routeFirst', 'routeFitAfterPlace']);
 
 declare const TeaVM: { wasmGC: { load(url: string): Promise<{ exports: WasmEngine }> } };
 

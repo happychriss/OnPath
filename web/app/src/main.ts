@@ -69,6 +69,8 @@ const state = {
   savedCode: null as string | null,
   /** The folder the saved plan is in (A-017: one per phone + "none" = Without phone); null for a new route. */
   savedFolder: null as string | null,
+  /** The saved route's stored code as opened / last saved here – not moved along by snapping (sync/SaveRule, review sync H3). */
+  storedCode: null as string | null,
   activity: (localStorageGet('activity') as Activity) ?? 'HIKE',
   sac: Number(localStorageGet('sac') ?? 2),
   plan: null as PlanResult | null,
@@ -402,9 +404,14 @@ async function commit(points: LatLon[], meta?: Meta[]) {
   // sent now with the points as they are (the worker keeps the order), not waited for: a long plan still running in the
   // one engine worker must not hold the page (Clear / Delete while planning answers at once, as in the app)
   const recorded = engine.call('historyRecord', enc(state.points));
-  // the plan's first route (fewer than two points before, two or more now – the app's WholeRoute.firstRoute, mirrored):
-  // the map shows it whole once it is there, unless the map was touched meanwhile (fitFirstRoute)
-  if (state.points.length < 2 && points.length >= 2) { fitNextRoute = true; fitAskedAt = performance.now(); }
+  // the plan's first route, or a place from the card (the app's routing/RouteFit.firstRoute / fitAfterPlace, shared):
+  // the map shows it whole once it is there, unless the map was touched meanwhile (fitFirstRoute). Asked before the
+  // plan: the one worker answers in order, so this is known when the route comes.
+  const fromCard = placeFit; placeFit = false;
+  const asked = performance.now();
+  const fit = (yes: string) => { if (yes === 'true') { fitNextRoute = true; fitAskedAt = asked; } };
+  engine.call('routeFirst', state.points.length, points.length).then(fit, (e) => problem('plan', 'route fit rule not asked', e));
+  if (fromCard) engine.call('routeFitAfterPlace', enc(state.points), enc(points)).then(fit, (e) => problem('plan', 'route fit rule not asked', e));
   setPoints(points, meta);
   await changed();
   await recorded;
@@ -504,14 +511,14 @@ async function drawPoints() {
     });
     markers.push(m);
   });
+  // the row texts come from the app's PlanPoints.roleText / legText (shared, web review M15) – the page only renders them
   $('points').innerHTML = r.rows.map((row) => {
-    const role = row.role === 'START' ? t('plan_point_start') : row.role === 'GOAL' ? t('plan_point_destination') : '';
     const color = row.loop ? COLORS.start : stopColor(row.i, n);
     return `<li data-i="${row.i}">
       <button class="grip" title="${escapeHtml(t('web_grip_title'))}" aria-label="${escapeHtml(t('web_grip_move', row.name))}">${icon('drag', 20)}</button>
       <span class="num" style="background:${color}">${row.loop ? '↺' : row.i + 1}</span>
-      <span class="txt"><span>${escapeHtml(row.name)}</span>${role || row.loop ? `<span class="muted small">${escapeHtml(row.loop ? t('plan_point_start_finish') : role)}</span>` : ''}</span>
-      ${row.legM != null ? `<span class="leg muted">${row.approx ? '~' : '+'}${number(row.legM / 1000, 1)} km</span>` : '<span class="leg"></span>'}
+      <span class="txt"><span>${escapeHtml(row.name)}</span>${row.roleText ? `<span class="muted small">${escapeHtml(row.roleText)}</span>` : ''}</span>
+      ${row.legText ? `<span class="leg muted">${escapeHtml(row.legText)}</span>` : '<span class="leg"></span>'}
       <button class="del iconbtn" aria-label="${escapeHtml(t('web_delete_point', row.name))}">${icon('close', 20)}</button></li>`;
   }).join('');
   $<HTMLButtonElement>('roundTrip').disabled = n < 2 || state.roundTrip;
@@ -736,6 +743,8 @@ async function openFromLink() {
   linkTitle = shared.title ? { title: shared.title, at: enc(state.points) } : null;
   if (!draftsOn) await restoreDraft(); // the page opened with its route in the address: which saved route it is
 }
+/** The next commit comes from the place card: RouteFit.fitAfterPlace decides whether its route is fitted. */
+let placeFit = false;
 /** The next route is the plan's first: fit it whole (the app's fitNextRoute); when it was asked; the last map gesture. */
 let fitNextRoute = false, fitAskedAt = 0, lastMapTouch = 0;
 /** A plan link's title and the points it was for (moved along when they are snapped) – the app's AppViewModel.linkTitle. */
@@ -801,7 +810,7 @@ let draftsDone: () => void = () => {};
 const draftsRestored = new Promise<void>((r) => { draftsDone = r; });
 function storeDraft(code: string) {
   if (!draftsOn || !syncRef) return;
-  syncRef.setDraft({ code, savedId: state.savedId, savedTitle: state.savedTitle, savedCode: state.savedCode, savedFolder: state.savedFolder })
+  syncRef.setDraft({ code, savedId: state.savedId, savedTitle: state.savedTitle, savedCode: state.savedCode, savedFolder: state.savedFolder, storedCode: state.storedCode })
     .catch((e) => console.warn('[Problems] WARN sync: the open route was not kept for its folder', e));
 }
 /** Another folder opened (pairing, unpairing, the phone ended it): its own open route comes back, or an empty map. */
@@ -812,7 +821,7 @@ async function openDraft(folder: string) {
   forgetSaved();
   if (shared) await loadShared(shared);
   else if (state.points.length) { state.title = null; await commit([], []); }
-  if (shared && d) { state.savedId = d.savedId; state.savedTitle = d.savedTitle; state.savedCode = d.savedCode; state.savedFolder = d.savedFolder ?? null; }
+  if (shared && d) { state.savedId = d.savedId; state.savedTitle = d.savedTitle; state.savedCode = d.savedCode; state.savedFolder = d.savedFolder ?? null; state.storedCode = d.storedCode ?? null; }
   draftsOn = true;
   render();
   rememberInAddress();
@@ -830,11 +839,11 @@ async function restoreDraft() {
     const shared = await engine.parse('p=' + d.code);
     if (shared && shared.points.length && !state.points.length) {
       await loadShared(shared);
-      state.savedId = d.savedId; state.savedTitle = d.savedTitle; state.savedCode = d.savedCode; state.savedFolder = d.savedFolder ?? null;
+      state.savedId = d.savedId; state.savedTitle = d.savedTitle; state.savedCode = d.savedCode; state.savedFolder = d.savedFolder ?? null; state.storedCode = d.storedCode ?? null;
       render();
     }
   } else if (d?.code && state.points.length && d.code === await engine.encode(sharedPlan())) {
-    state.savedId = d.savedId; state.savedTitle = d.savedTitle; state.savedCode = d.savedCode; state.savedFolder = d.savedFolder ?? null;
+    state.savedId = d.savedId; state.savedTitle = d.savedTitle; state.savedCode = d.savedCode; state.savedFolder = d.savedFolder ?? null; state.storedCode = d.storedCode ?? null;
     render();
   }
   draftsOn = true;
@@ -1318,9 +1327,7 @@ async function addPlace(h: Hit, role: PlaceRole, fit = false) {
   closeMenu();
   const p: LatLon = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
   const pv = await engine.placePreview(state.points, p[0], p[1]);
-  // WholeRoute.fitAfterPlace: the points change and two or more remain (the card offers no edit that changes nothing)
-  const after = state.points.length + (pv.existing == null ? 1 : role === 'REMOVE' ? -1 : 0);
-  if (fit && after >= 2) { fitNextRoute = true; fitAskedAt = performance.now(); }
+  placeFit = fit; // the edit's commit asks RouteFit.fitAfterPlace (the plan changed and has a route)
   if (pv.existing != null) {
     if (role === 'START') await applyEdit('startHere', pv.existing);
     else if (role === 'DESTINATION') await applyEdit('move', pv.existing, state.points.length - 1);
@@ -1362,17 +1369,20 @@ $('reverse').onclick = () => applyEdit('reverse');
 $('roundTrip').onclick = () => applyEdit('roundTrip');
 // ✕ Close: with unsaved changes it asks first (the app's DiscardPlanDialog: Cancel · Discard); a saved route stays in My routes
 $('clear').onclick = async () => { if (saveState === 'save' && !(await askDiscard())) return; clearRoute(); };
-function forgetSaved() { state.savedId = null; state.savedTitle = null; state.savedCode = null; state.savedFolder = null; }
+function forgetSaved() { state.savedId = null; state.savedTitle = null; state.savedCode = null; state.savedFolder = null; state.storedCode = null; }
 const plansHost = {
   current: async () => (state.points.length >= 2 && (await ready) ? { code: await engine.encode(sharedPlan()), title: state.title } : null),
   linkTitle: () => (linkTitle && linkTitle.at === enc(state.points) ? linkTitle.title : null),
   openId: () => state.savedId,
+  openedCode: () => state.storedCode,
+  note: (text: string) => status(text),
+  engineCall: (fn: string, ...args: (string | number)[]) => engine.call(fn, ...args),
   openFolder: () => (state.savedId && state.savedFolder) || sync.open,
   open: async (p: SavedPlan, folder: string) => {
     if (p.kind === 'track') { gpxImport.showGpx(await sync.trackGpx(p), shownTitle(p.title, t('web_route_default_name'))); return; }
     const shared = await engine.parse('p=' + p.plan);
     if (!shared) { status(t('web_plan_unreadable'), 'error'); return; }
-    state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.savedFolder = folder;
+    state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.savedFolder = folder; state.storedCode = p.plan;
     if (state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';')) {
       state.title = p.title; state.otherRouting = !!p.otherRouting; render(); rememberInAddress(); return;
     }
@@ -1381,7 +1391,7 @@ const plansHost = {
     rememberInAddress();
   },
   saved: (p: SavedPlan, folder: string) => {
-    state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.title = p.title; state.savedFolder = folder;
+    state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.title = p.title; state.savedFolder = folder; state.storedCode = p.plan;
     rememberInAddress();
     render(); // the sheet says "Saved as …" – no message (the app's saveRoute)
   },

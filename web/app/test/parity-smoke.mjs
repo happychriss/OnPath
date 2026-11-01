@@ -51,7 +51,7 @@ await page.waitForFunction(() => document.body.dataset.engine === 'ready', null,
 // 1. first click on an empty plan: "New route" – Start here · Go here (MapGestures.FirstPointMenu)
 await clickAt(11.1600, 46.6700);
 await page.waitForSelector('.pointmenu');
-check((await page.textContent('.menuhead')).includes('New route') && (await menuItems()).join('|') === 'Start here|Go here', 'first click: New route – Start here · Go here');
+check((await page.textContent('.menuhead')).includes('New route') && (await menuItems()).join('|') === 'Start here|Go here from my location', 'first click: New route – Start here · Go here from my location');
 check(await page.isDisabled('#undo'), 'no undo before the first change (greyed in the toolbar)');
 const tb = await page.locator('#toolbar').boundingBox(), sb = await page.locator('#searchbox').boundingBox();
 const bar = await page.locator('#topbar').boundingBox();
@@ -65,6 +65,7 @@ await page.click('.pointmenu button:first-of-type');
 await waitPins(1);
 check(await pins() === 1, 'Start here sets the start');
 await page.waitForSelector('#undo', { state: 'visible', timeout: 10_000 }).catch(() => {}); // the state comes back from the engine worker
+await page.waitForFunction(() => !document.getElementById('undo').disabled, null, { timeout: 10_000 }).catch(() => {});
 check(await page.isEnabled('#undo') && await page.isDisabled('#redo'), 'undo possible, redo greyed');
 await clickAt(11.1350, 46.6840);
 await planned();
@@ -241,7 +242,7 @@ const myRow = await page.evaluate(() => { const li = document.querySelector('#pl
   return { name: li.querySelector('.name').textContent, current: li.classList.contains('current'), where: [...li.querySelectorAll('.where .w')].map((w) => w.getAttribute('aria-label')).join(),
     menu: [...li.querySelectorAll('.rowmenu button')].map((b) => b.textContent.trim()) }; });
 check(myRow.name === 'Test loop' && myRow.current && myRow.where === 'In this browser' && await page.locator('#saveCurrent').count() === 0
-  && JSON.stringify(myRow.menu) === '["Rename","Save as copy","Export GPX","Share plan","Delete"]',
+  && JSON.stringify(myRow.menu) === '["Rename","Save as copy","Export GPX","Share route","Delete"]',
   `My routes: the row "Test loop", marked as open, 🖥, ⋮ as the app's (${JSON.stringify(myRow)})`);
 await page.click('#closePlans');
 if (await page.isEnabled('#undo')) { // a change → Save dark; Save overwrites; My routes ⋮ → Save as copy makes a copy

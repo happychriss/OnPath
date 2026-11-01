@@ -159,7 +159,7 @@ check(!(await page.$('dialog.longroute')) && await pins() === 3, 'Add to the rou
 // changes?" first; Discard closes it, undo brings it back
 await page.goto(url + 'index.html#p=' + CODE);
 await planned();
-check(await page.isVisible('#planActions #clear') && (await page.textContent('#planActions #clear')).trim() === 'Close', 'action row: ✕ Close');
+check(await page.isVisible('#planActions #clear') && (await page.textContent('#planActions #clear')).trim() === 'Close plan', 'action row: ✕ Close plan');
 await page.click('#clear');
 check(await page.locator('dialog.discard[open]').count() === 1, 'an unsaved plan: Close asks "Discard changes?"');
 await page.click('#discardOk');
@@ -180,7 +180,7 @@ await chooser.setFiles(fixture('komoot-hike.gpx'));
 await page.waitForSelector('#trackPanel', { timeout: 30_000 });
 const tp = await page.textContent('#trackPanel');
 console.log('track panel:', tp.replace(/\s+/g, ' ').trim());
-check(tp.includes('Meran 2000 & Ifinger Hütte') && /2[.,]4 km/.test(tp) && tp.includes('1 h 21 min'), 'track panel: name, distance, the file\'s own time');
+check(tp.includes('Meran 2000 & Ifinger Hütte') && /2[.,]4 km/.test(tp) && tp.includes('1 h 09 min'), 'track panel: name, distance, the file\'s own moving time (main 6460dc98: stops left out)');
 check(tp.includes('Activity set to Hike T2 from the file'), 'Komoot <type>hike</type> → Hike T2, said in one grey line');
 check((await page.textContent('#activityChip')).includes('T2') && (await page.getAttribute('#activityChip', 'aria-label')).includes('Hike'), 'the activity chip shows Hike · T2');
 const drawn = await page.waitForFunction(() => (window.__map.getSource('gpx-track')?.serialize().data.features.length ?? 0) >= 1, null, { timeout: 15_000 }).then(() => true).catch(() => false);

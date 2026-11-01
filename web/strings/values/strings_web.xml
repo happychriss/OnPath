@@ -158,6 +158,10 @@
     <string name="web_sync_offline">Offline – your routes sync when the connection is back.</string>
     <string name="web_sync_failed">Sync did not work this time – it tries again by itself.</string>
     <string name="web_eye_hotkey">Hold to hide the route – or hold the Space bar</string>
+    <string name="web_name_share">OnPath route</string>
+    <string name="web_hide_loading">Hide (the map keeps loading)</string>
+    <string name="web_route_changed_elsewhere">Changed on the phone meanwhile – saved as “%1$s”, the other version stays.</string>
+    <string name="web_route_options">Route options</string>
     <string name="web_save_failed">Not saved – this browser could not store the route. Try again, or keep it with “Export GPX”.</string>
     <string name="web_rename_failed">Not renamed – this browser could not store the change. Please try again.</string>
     <string name="web_delete_failed">Not deleted – this browser could not store the change. Please try again.</string>

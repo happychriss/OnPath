@@ -27,11 +27,10 @@ object WebImport {
         val pick = choice.pick
         val name = data.name ?: fileName.ifBlank { null }?.removeSuffix(".gpx")?.removeSuffix(".GPX") ?: Txt.s(Res.string.msg_name_import)
         val geo = segs.map { s -> s.map { it.toGeo() } }
-        val dist = geo.sumOf { Geo.length(it) }
-        var up = 0.0; var down = 0.0
-        segs.forEach { s -> val (u, d) = Geo.climb(s.map { it.ele }); up += u; down += d }
-        // the file's own time, else the one time model with the pace setting (WebPace – the page's choice)
-        val dur = TimeEstimate.importedSeconds(segs, pick.activity, WebPace.factors(pick.activity))
+        // the app's one import stats (TimeEstimate.trackStats: distance, ascent with the GPS filter, the file's moving
+        // time – else the time model with the page's pace setting, WebPace)
+        val st = TimeEstimate.trackStats(segs, pick.activity, WebPace.factors(pick.activity))
+        val dist = st.distanceM; val up = st.ascentM; val down = st.descentM; val dur = st.durationS
         data.type?.let { t ->
             val to = if (SportType.activityOf(t) == null) "unknown, kept ${pick.activity.name}"
                 else pick.activity.name + if (pick.activity == Activity.HIKE) " T${pick.sac}" else ""
