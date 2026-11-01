@@ -350,4 +350,19 @@ class NavigatorTest {
         assertFalse(sw.offRoute)
         assertFalse(NavPrompt.FarStart(1, 900.0, 0.0).offRoute)
     }
+
+    /** Owner 2026-11-01: a stop is reached within 25 m on foot and only from a good fix (a restaurant's jumps said "Stopp 4 erreicht"). */
+    @Test fun aStopIsReachedOnlyCloseByAndFromAGoodFix() {
+        val r = Run(Navigator(session()))
+        r.feed(walk(0.0 to 0.0, 600.0 to 0.0))
+        // a jumping indoor fix right on the corner stop, claiming 35 m accuracy: not reached
+        r.feed(listOf(OffRouteDetector.Fix(pt(1000.0, 0.0).lat, pt(1000.0, 0.0).lon, 35.0, 3_000_000L)))
+        assertTrue(1 !in r.nav.session.visited)
+        // a good fix 30 m beside the corner: still not within 25 m on foot
+        r.feed(listOf(OffRouteDetector.Fix(pt(1000.0, 30.0).lat, pt(1000.0, 30.0).lon, 5.0, 3_001_000L)))
+        assertTrue(1 !in r.nav.session.visited)
+        // a good fix 15 m from it: reached
+        r.feed(listOf(OffRouteDetector.Fix(pt(985.0, 0.0).lat, pt(985.0, 0.0).lon, 5.0, 3_002_000L)))
+        assertTrue(1 in r.nav.session.visited)
+    }
 }

@@ -32,7 +32,7 @@ data class NavSession(
     val resumeAlongM: Double = 0.0,
     /** On [original]: progress when the user left it (re-routing targets lie ahead of it). */
     val leftAtM: Double = 0.0,
-    /** Stops the user came within [VISITED_M] of during the tour. */
+    /** Stops the user came within [visitedM] of during the tour (from a good fix). */
     val visited: Set<Int> = emptySet(),
     /** Bumped whenever the navigated line changes (UI re-reads it). */
     val version: Int = 0,
@@ -56,7 +56,12 @@ data class NavSession(
     val rerouted: Boolean get() = current != null
 
     companion object {
-        const val VISITED_M = 40.0
+        /** A stop counts as reached this close (owner 2026-11-01: was 40 m; phone GPS outside is good to 3–10 m) … */
+        const val VISITED_HIKE_M = 25.0
+        const val VISITED_BIKE_M = 40.0
+        /** … and only from a fix at least this good (indoor jumps of 50–190 m with "20 m" accuracy stay out). */
+        const val VISITED_MAX_ACCURACY_M = 20.0
+        fun visitedM(a: Activity): Double = if (a == Activity.HIKE) VISITED_HIKE_M else VISITED_BIKE_M
         const val FILE = "nav-session.json"
 
         /**

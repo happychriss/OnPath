@@ -210,7 +210,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         lastFix = f
         val p = f.point
         recent.addLast(p); while (recent.size > RECENT_FIXES) recent.removeFirst()
-        var step = markVisited(p)
+        var step = markVisited(p, f.accuracyM)
         var farNow = false
         if (forceCheck) {
             forceCheck = false
@@ -564,13 +564,18 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         return clearPrompt().copy(lineChanged = true)
     }
 
-    private fun markVisited(p: GeoPoint): Step {
+    /**
+     * Stops reached by this fix: within [NavSession.visitedM] (on foot 25 m, bike 40 m) and only from a fix good to
+     * [NavSession.VISITED_MAX_ACCURACY_M] (owner 2026-11-01: a restaurant's jumping fixes said "Stopp 4 erreicht").
+     */
+    private fun markVisited(p: GeoPoint, accuracyM: Double): Step {
         val s = session
-        if (s.stops.isEmpty()) return Step()
+        if (s.stops.isEmpty() || accuracyM > NavSession.VISITED_MAX_ACCURACY_M) return Step()
+        val radius = NavSession.visitedM(s.activity)
         var v: MutableSet<Int>? = null
         for (i in s.stops.indices) {
             if (i in s.visited) continue
-            if (Geo.distance(p, s.stops[i].point) <= NavSession.VISITED_M) (v ?: s.visited.toMutableSet().also { v = it }).add(i)
+            if (Geo.distance(p, s.stops[i].point) <= radius) (v ?: s.visited.toMutableSet().also { v = it }).add(i)
         }
         val nv = v ?: return Step()
         session = s.copy(visited = nv)

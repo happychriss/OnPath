@@ -12,8 +12,8 @@ import com.onpath.app.routing.PlanEdits
  */
 object TourSplit {
     /** Came this close to a point: passed (on foot / on a bike activity). */
-    const val NEAR_HIKE_M = 40.0
-    const val NEAR_BIKE_M = 60.0
+    const val NEAR_HIKE_M = NavSession.VISITED_HIKE_M
+    const val NEAR_BIKE_M = NavSession.VISITED_BIKE_M
     /** "Clearly closer to the next point": at least this much closer to it than to the point before … */
     const val CLOSER_M = 100.0
     /** … and the point before at least this far away (clearly left behind). */
