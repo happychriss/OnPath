@@ -178,6 +178,15 @@ Kein MCP, keine Datenbank, keine eigene Seite. Später möglich: Artefakt-Seite,
 5. Ruhige Sitzung auf donald: `web-spike` → `main`; Workflow-PR; Abgleich aus. Laptop ausstatten; doppelte
    Umgebung aufräumen.
 
+## 6b. Stand Schritt 1 (2026-11-01, erledigt)
+- Labels `frage` + `an-alle` in `onpath.private`; `tools/ask.sh` (REST – `gh issue` / GraphQL ist in Cloud-Sitzungen
+  gesperrt); `gate.sh` prüft `an-alle` (`#push-sperre` → rc 3, `#release-sperre` bei Release-Commits → rc 4).
+- Getestet mit Issue #1: Sperre stoppt `gate.sh`, „gelesen – …“ wird einmal bestätigt, Schließen geht. GitHub listet
+  ein neues Issue erst nach einigen Sekunden.
+- Erste Fragen: D1–D4 → #2–#5, Waiting-for-the-owner → #6–#10. Regel in `CLAUDE.md`.
+- Offen: ob GitHub dir die Issues aufs Handy meldet (vermutlich nicht – eigene Issues), daher der Push vom Captain
+  (Schritt 3).
+
 ## 7. Entscheidungen des Owners (2026-11-01, Fragebox eine nach der anderen)
 | # | Frage | Entscheidung |
 | --- | --- | --- |
