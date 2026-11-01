@@ -23,7 +23,7 @@ class RoutingExceptionKindTest {
         val old = java.util.Locale.getDefault()
         java.util.Locale.setDefault(java.util.Locale.GERMANY)
         try {
-            assertEquals("Keine Routing-Daten für dieses Gebiet.", BRouterEngine.NO_DATA)
+            assertEquals("Hier gibt es noch keine Detailkarte.", BRouterEngine.NO_DATA)
             assertEquals(RoutingException.Kind.NO_DATA, RoutingException(BRouterEngine.NO_DATA).kind)
             assertEquals(RoutingException.Kind.START_POINT,
                 RoutingException(Txt.s(Res.string.plan_err_too_far, Txt.s(Res.string.plan_err_start_point), 400, "Wandern")).kind)

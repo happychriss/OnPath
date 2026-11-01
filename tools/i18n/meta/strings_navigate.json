@@ -480,41 +480,22 @@
     "priority": 2,
     "confidence": "sicher"
   },
-  "nav_title_replan": {
-    "area": "Off route",
-    "context": "Off-route question card / notification title when the new route could go via the next route point or leave it out (owner 2026-10-30: the main question is re-plan, skipping is one of the answers)",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "nav_state_replan": {
-    "area": "Off route",
-    "context": "Small state line of the amber off-route card for the same question",
-    "priority": 2,
-    "confidence": "sicher"
-  },
   "nav_via_stop": {
     "area": "Off route",
     "context": "Start of the question line: %1$s = 'stop 3' or the stop's name, %2$s = what going via it costs on top of leaving it out ('+1.4 km', 'about as long'); followed by ' · rejoins in 600 m'",
     "priority": 1,
     "confidence": "sicher"
   },
-  "nav_yes": {
-    "area": "Off route",
-    "context": "Button (card and notification action): re-plan via the stop in question",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 8
-  },
   "nav_yes_skip_stop": {
     "area": "Off route",
-    "context": "Button on the card: re-plan without the stop; %1$s = 'stop 3' / 'Stopp 3' or a short name (≤ 16 characters). Wraps to two lines",
+    "context": "Off-route question with a stop in question: the answer that leaves the stop out. %1$s = stop name or 'stop 3'",
     "priority": 1,
     "confidence": "sicher",
     "max": 32
   },
   "nav_notif_skip": {
     "area": "Off route",
-    "context": "Notification action (three share one row, Android cuts long labels): re-plan without the stop; the notification text names it",
+    "context": "Same answer as a short notification action (Android cuts long labels)",
     "priority": 1,
     "confidence": "sicher",
     "max": 14
@@ -660,6 +641,43 @@
   "nav_rec_paused_moving": {
     "area": "Notification",
     "context": "Notification text when moving while paused (button Resume)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_rec_rescued_title": {
+    "area": "Notification",
+    "context": "Title: the tour database was damaged mid-tour and the running tour was put back",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_rec_rescued": {
+    "area": "Notification",
+    "context": "Text of that notification",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_saver_title": {
+    "area": "Notification",
+    "context": "Title: battery saver came on during a tour and stops GPS with the screen off on this phone",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Android's German name of battery saver: Energiesparmodus (Pixel) / Akku-Sparmodus (Samsung)"
+  },
+  "nav_saver_text": {
+    "area": "Notification",
+    "context": "Text of that notification",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_watchdog_title": {
+    "area": "Notification",
+    "context": "Notification: the recording service restarted by itself and has had no GPS fix for 5 minutes",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_watchdog_text": {
+    "area": "Notification",
+    "context": "Text of that notification; opens OnPath",
     "priority": 2,
     "confidence": "sicher"
   },
@@ -1099,6 +1117,12 @@
   "nav_pause_no_progress": {
     "area": "Navigate",
     "context": "Reason after 'Time paused · …'",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_tour_summary_times": {
+    "area": "Tour summary",
+    "context": "After a tour / opened tour. %1$s total h:mm, %2$s start clock, %3$s end clock, %4$s moving h:mm, %5$s breaks (incl. Pause) h:mm",
     "priority": 2,
     "confidence": "sicher"
   },

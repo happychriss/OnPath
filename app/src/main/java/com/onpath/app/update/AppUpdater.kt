@@ -29,6 +29,8 @@ object AppUpdater {
         val apkUrl: String,
         val apkSize: Long,
         val pageUrl: String,
+        /** The APK's sha256 from the release asset's `digest` (GitHub), checked before the installer gets it; null = unknown. */
+        val apkSha256: String? = null,
     )
 
     // ------------------------------------------------------------------ pure logic (unit-tested)
@@ -49,6 +51,7 @@ object AppUpdater {
                     apkUrl = a.optString("browser_download_url"),
                     apkSize = a.optLong("size", -1),
                     pageUrl = o.optString("html_url"),
+                    apkSha256 = a.optString("digest").removePrefix("sha256:").takeIf { it.length == 64 },
                 )
             }
         }
@@ -116,51 +119,23 @@ object AppUpdater {
         throw java.io.IOException("Download stopped – connection lost. Tap again to continue where it stopped.", lastError)
     }
 
+    /**
+     * One try ([com.onpath.app.net.HttpDownload]: resume, https-only redirects, fsync, size and – review Arch 6 – the
+     * release's sha256, so a damaged or swapped file never reaches the installer).
+     */
     private fun downloadOnce(release: Release, tmp: File, dest: File, onProgress: (Int) -> Unit): File {
-        var have = if (tmp.isFile) tmp.length() else 0L
-        if (release.apkSize > 0 && have > release.apkSize) { tmp.delete(); have = 0 }
-        var url = URL(release.apkUrl)
-        var conn: HttpURLConnection
-        // GitHub redirects to its file CDN; follow a few redirects manually (also across hosts).
-        var hops = 0
-        while (true) {
-            conn = (url.openConnection() as HttpURLConnection).apply {
-                instanceFollowRedirects = false
+        var last = -1
+        com.onpath.app.net.HttpDownload.resume(
+            release.apkUrl, tmp, release.apkSize.takeIf { it > 0 }, release.apkSha256,
+            open = { u -> (u.openConnection() as HttpURLConnection).apply {
                 connectTimeout = 15_000; readTimeout = 30_000
                 setRequestProperty("User-Agent", "OnPath-Android")
-                if (have > 0) setRequestProperty("Range", "bytes=$have-")
-            }
-            val code = conn.responseCode
-            if (code in 300..399 && hops++ < 5) {
-                val loc = conn.getHeaderField("Location") ?: error("Redirect without location")
-                conn.disconnect(); url = URL(url, loc); continue
-            }
-            if (code == 416 && release.apkSize > 0 && have == release.apkSize) { conn.disconnect(); break } // already complete
-            if (code != 200 && code != 206) { conn.disconnect(); error("Download failed ($code)") }
-            if (code == 200) have = 0 // the server ignored the range: start over
-            break
-        }
-        try {
-            if (!(release.apkSize > 0 && have == release.apkSize)) {
-                val total = release.apkSize.takeIf { it > 0 } ?: (conn.contentLengthLong.takeIf { it > 0 }?.plus(have) ?: -1)
-                conn.inputStream.use { inp ->
-                    java.io.FileOutputStream(tmp, have > 0).use { out ->
-                        val buf = ByteArray(128 * 1024)
-                        var done = have; var last = -1
-                        while (true) {
-                            val n = inp.read(buf); if (n < 0) break
-                            out.write(buf, 0, n); done += n
-                            if (total > 0) { val p = (done * 100 / total).toInt(); if (p != last) { last = p; onProgress(p) } }
-                        }
-                    }
-                }
-            }
-            if (release.apkSize > 0 && tmp.length() != release.apkSize) throw java.io.IOException("Download incomplete")
-            try { AtomicFiles.replace(tmp, dest) } catch (e: java.io.IOException) { throw IllegalStateException("Could not save the update.", e) }
-            return dest
-        } finally {
-            conn.disconnect()
-        }
+            } },
+            failure = { code, _ -> IllegalStateException("Download failed ($code)") },
+            onBytes = { done, total -> if (total > 0) { val p = (done * 100 / total).toInt(); if (p != last) { last = p; onProgress(p) } } },
+        )
+        try { AtomicFiles.replace(tmp, dest) } catch (e: java.io.IOException) { throw IllegalStateException("Could not save the update.", e) }
+        return dest
     }
 
     // ------------------------------------------------------------------ installing

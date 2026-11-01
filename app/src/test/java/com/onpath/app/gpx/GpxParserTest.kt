@@ -53,6 +53,35 @@ class GpxParserTest {
         assertNull(g.allSegments[0][0].timeMs)
     }
 
+    /** Review routing H2: a planned-route export with <rte> control points and the <trk> geometry is one line, not two. */
+    @Test fun routeAndTrackOfTheSameWayCountOnce() {
+        val g = GpxParser.parse("""<gpx version="1.1"><rte><name>R</name>
+            <rtept lat="46.60" lon="11.10"/><rtept lat="46.62" lon="11.12"/></rte>
+            <trk><name>R</name><trkseg><trkpt lat="46.60" lon="11.10"/><trkpt lat="46.61" lon="11.11"/><trkpt lat="46.62" lon="11.12"/></trkseg></trk>
+            </gpx>""")
+        assertEquals(2, g.lines.size)
+        assertEquals(1, g.allSegments.size)
+        assertEquals(3, g.pointCount)
+        assertEquals(46.61, g.allSegments[0][1].lat, 1e-9)
+    }
+
+    /** Review routing L3: a logger's "no fix" point at 0° / 0° and broken heights never reach the line. */
+    @Test fun noFixPointsAndBrokenHeightsAreDropped() {
+        val g = GpxParser.parse("""<gpx version="1.1"><trk><trkseg>
+            <trkpt lat="46.60" lon="11.10"><ele>600</ele></trkpt><trkpt lat="0" lon="0"><ele>0</ele></trkpt>
+            <trkpt lat="46.61" lon="11.11"><ele>Infinity</ele></trkpt><trkpt lat="46.62" lon="11.12"><ele>NaN</ele></trkpt>
+            </trkseg></trk></gpx>""")
+        assertEquals(3, g.pointCount)
+        assertTrue(g.allSegments.flatten().none { it.lat == 0.0 && it.lon == 0.0 })
+        assertTrue(g.allSegments.flatten().all { it.ele == null || it.ele!!.isFinite() })
+        assertTrue(Geo.length(g.allSegments[0].map { it.toGeo() }) < 5_000)
+        // the scan of a damaged file drops them too
+        val broken = GpxParser.parse("""<gpx><trk><trkseg><trkpt lat="46.60" lon="11.10"><ele>600</ele></trkpt>
+            <trkpt lat="0" lon="0"></trkpt><trkpt lat="46.61" lon="11.11"><ele>NaN</ele></trkpt><trkpt lat="46.62" """)
+        assertTrue(broken.allSegments.flatten().none { it.lat == 0.0 && it.lon == 0.0 })
+        assertTrue(broken.allSegments.flatten().all { it.ele == null || it.ele!!.isFinite() })
+    }
+
     @Test fun multipleSegmentsAndPrefixedNamespace() {
         val g = GpxParser.parse("""<g:gpx xmlns:g="http://www.topografix.com/GPX/1/0"><g:trk>
             <g:trkseg><g:trkpt lat="1" lon="2"/><g:trkpt lat="1.001" lon="2"/></g:trkseg>

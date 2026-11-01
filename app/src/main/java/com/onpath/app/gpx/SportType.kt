@@ -41,18 +41,37 @@ object SportType {
         "mountaineering" to Pick(Activity.HIKE, 3),
     )
 
+    /**
+     * Other apps' sport names (review routing L2: Strava, Garmin, OsmAnd …), read on import only – the export writes
+     * Komoot's. Normalised like [key].
+     */
+    private val others = mapOf(
+        "cycling" to Pick(Activity.BIKE_TOURING), "biking" to Pick(Activity.BIKE_TOURING), "bike" to Pick(Activity.BIKE_TOURING),
+        "ride" to Pick(Activity.BIKE_TOURING), "roadbiking" to Pick(Activity.BIKE_TOURING), "roadcycling" to Pick(Activity.BIKE_TOURING),
+        "touringcycling" to Pick(Activity.BIKE_TOURING), "bicycle" to Pick(Activity.BIKE_TOURING),
+        "gravel" to Pick(Activity.BIKE_TREKKING), "gravelride" to Pick(Activity.BIKE_TREKKING), "gravelcycling" to Pick(Activity.BIKE_TREKKING),
+        "ebike" to Pick(Activity.EBIKE), "ebikeride" to Pick(Activity.EBIKE), "ebiking" to Pick(Activity.EBIKE),
+        "mountainbiking" to Pick(Activity.MTB), "mountainbike" to Pick(Activity.MTB), "mountainbikeride" to Pick(Activity.MTB),
+        "emountainbike" to Pick(Activity.EMTB), "emountainbikeride" to Pick(Activity.EMTB), "emountainbiking" to Pick(Activity.EMTB),
+        "hiking" to Pick(Activity.HIKE, 2), "walking" to Pick(Activity.HIKE, 2), "walk" to Pick(Activity.HIKE, 2),
+        "running" to Pick(Activity.HIKE, 2), "run" to Pick(Activity.HIKE, 2), "trailrunning" to Pick(Activity.HIKE, 2),
+        "trailrun" to Pick(Activity.HIKE, 2),
+    )
+
     /** T levels a hiking type covers (normalised key → band); the default inside it is the [komoot] pick's level. */
     private val bands = mapOf(
         "hike" to 1..2,
         "jogging" to 1..2,
         "mountaineering" to 3..5,
+        "hiking" to 1..2, "walking" to 1..2, "walk" to 1..2, "running" to 1..2, "run" to 1..2,
+        "trailrunning" to 1..2, "trailrun" to 1..2,
     )
 
     private fun key(type: String?): String? =
         type?.trim()?.lowercase()?.filter { it != '_' && it != '-' && !it.isWhitespace() }?.takeIf { it.isNotEmpty() }
 
     /** The activity a GPX `<type>` stands for; null = unknown / missing (then the last used activity stays). */
-    fun activityOf(type: String?): Pick? = key(type)?.let { komoot[it] }
+    fun activityOf(type: String?): Pick? = key(type)?.let { komoot[it] ?: others[it] }
 
     /**
      * What an import with [type] uses: the type's activity, or the [current] one ([currentSac]) when the type is unknown.

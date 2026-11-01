@@ -122,7 +122,7 @@ class TimeScreenshotTest {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) { MapPlaceholder(Modifier.fillMaxSize()) }
             FinishedTourDialogs(Tour(2, TourKind.RECORDED, "Tour 18 Oct 2026, 09:14", 1_760_200_000_000, "HIKE", 3, 12_800.0, 840.0, 830.0,
-                3.55 * 3600, "done", emptyList()), {}, {}, {}, times = TourTimes(172 * 60.0, 41 * 60.0, 190 * 60.0, 172 * 60.0))
+                3.55 * 3600, "done", emptyList()), {}, {}, {}, times = TourTimes(172 * 60.0, 41 * 60.0, 190 * 60.0, 172 * 60.0, startMs = 1_793_527_920_000L, endMs = 1_793_527_920_000L + 245 * 60_000L))
         }
     }
 }

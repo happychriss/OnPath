@@ -106,7 +106,8 @@ class NavigatorTest {
             assertEquals(2, q.skipStop)
             assertEquals("Café", q.skipName)
             assertNotNull(q.via)
-            assertEquals("Off route – re-plan?", NavText.title(q))
+            // owner 2026-11-01: the same question shape as without a stop ("You're … off the route")
+            assertTrue(NavText.title(q), NavText.title(q).startsWith("You're 150 m off the route"))
             assertTrue(NavText.question(q), NavText.question(q).startsWith("Via Café: +780 m · rejoins in "))
             val st = if (yes) r.nav.take(q.id) else r.nav.takeVia(q.id)
             assertTrue(st.lineChanged)
@@ -120,7 +121,7 @@ class NavigatorTest {
         r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
         r.nav.onResult(r.jobs.last().id, skip)
         val q = r.nav.prompt as NavPrompt.Question
-        assertEquals("You're 150 m off the route – turn round", NavText.title(q))
+        assertEquals("You're 150 m off the route – turn around", NavText.title(q))
         assertTrue(NavText.question(q), NavText.question(q).endsWith(" · without Café"))
         assertFalse(r.nav.takeVia(q.id).lineChanged) // nothing to answer "No" to
     }
@@ -338,5 +339,15 @@ class NavigatorTest {
         r.nav.take((r.nav.prompt as NavPrompt.Question).id)
         assertTrue(r.nav.session.rerouted)
         assertEquals(100L, r.nav.session.token)
+    }
+
+    /** Review M4: the activity-switch question is not "off the route" (no "Off route" status / voice, junction cues go on). */
+    @Test fun theSwitchQuestionIsNotOffRoute() {
+        val s = session()
+        val q = NavPrompt.Question(1, 0.0, 0.0, 0.0, s.original, 0.0, 0.0)
+        assertTrue(q.offRoute)
+        val sw = q.copy(switch = ActivitySwitch(Activity.MTB, 3, s, 600.0))
+        assertFalse(sw.offRoute)
+        assertFalse(NavPrompt.FarStart(1, 900.0, 0.0).offRoute)
     }
 }

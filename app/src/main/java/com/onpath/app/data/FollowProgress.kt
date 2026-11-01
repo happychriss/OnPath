@@ -3,7 +3,10 @@ package com.onpath.app.data
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.WaypointInsertion
 
-/** What is left of a followed route from the current position (F-NAV-01). Pure, unit-tested. */
+/**
+ * What is left of a followed route from the current position (F-NAV-01). Pure, unit-tested. Ascent counted like the plan
+ * sheet ([Geo.routeClimb], review routing M1: the number jumped at Start).
+ */
 class FollowProgress(private val line: List<GeoPoint>) {
 
     data class Remaining(val index: Int, val distanceM: Double, val ascentM: Double, val descentM: Double, val offM: Double)
@@ -24,7 +27,7 @@ class FollowProgress(private val line: List<GeoPoint>) {
         val i = (seg + 1).coerceAtMost(line.size - 1)
         val partial = Geo.distance(p, line[i]).coerceAtMost(cum[i] - cum[seg])
         val dist = cum.last() - cum[i] + partial
-        val (up, down) = Geo.climb(line.subList(i, line.size).map { it.ele })
+        val (up, down) = Geo.routeClimb(line.subList(seg, line.size).map { it.ele })
         return Remaining(seg, dist, up, down, off)
     }
 
@@ -37,7 +40,7 @@ class FollowProgress(private val line: List<GeoPoint>) {
         val a = alongM.coerceIn(0.0, cum.last())
         val seg = java.util.Arrays.binarySearch(cum, a).let { if (it >= 0) it else -it - 2 }.coerceIn(0, line.size - 2)
         val i = seg + 1
-        val (up, down) = Geo.climb(line.subList(i, line.size).map { it.ele })
+        val (up, down) = Geo.routeClimb(line.subList(seg, line.size).map { it.ele })
         return Remaining(seg, cum.last() - a, up, down, offM ?: 0.0)
     }
 

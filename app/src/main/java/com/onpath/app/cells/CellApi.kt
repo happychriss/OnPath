@@ -67,47 +67,24 @@ class CellApi(
      * The caller renames [part] when it returns.
      */
     fun download(f: CellManifest.File, part: File, onBytes: (Long) -> Unit = {}) {
-        part.parentFile?.mkdirs()
-        if (part.length() > f.size) part.delete()
-        var have = if (part.isFile) part.length() else 0L
-        if (have < f.size) {
-            val conn = open("GET", "$apiUrl/files/${f.url}")
-            if (have > 0) conn.setRequestProperty("Range", "bytes=$have-")
+        // the one resumable download (net/HttpDownload, review Arch 6): resume, https-only redirects, fsync, size + sha256
+        guard {
             try {
-                val code = guard { conn.responseCode }
-                when {
-                    code == 206 -> {}
-                    code == 200 -> have = 0 // range ignored: start over
-                    code == 416 -> { // our part is not a prefix of the server's file: start over
-                        part.delete()
-                        throw ApiException(Failure.BAD_ANSWER, Txt.s(Res.string.maps_err_restart, f.name))
-                    }
-                    else -> throw failureFor(code, conn)
-                }
-                guard {
-                    conn.inputStream.use { inp ->
-                        FileOutputStream(part, have > 0).use { out ->
-                            val buf = ByteArray(128 * 1024)
-                            var done = have; var last = 0L
-                            while (true) {
-                                val n = inp.read(buf); if (n < 0) break
-                                out.write(buf, 0, n); done += n
-                                if (done > f.size) break // more than announced: checked below
-                                if (done - last >= 256 * 1024) { onBytes(done); last = done }
-                            }
-                            out.flush(); out.fd.sync()
-                        }
-                    }
-                }
-            } finally { conn.disconnect() }
+                com.onpath.app.net.HttpDownload.resume("$apiUrl/files/${f.url}", part, f.size, f.sha256,
+                    open = { u -> open("GET", u.toString()) },
+                    failure = { code, conn -> failureFor(code, conn) },
+                    onBytes = { done, _ -> onBytes(done) },
+                    allowHttp = apiUrl.startsWith("http://"), // a local test server only
+                )
+            } catch (e: com.onpath.app.net.HttpDownload.Restart) {
+                // our part is not a prefix of the server's file: deleted, start over
+                throw ApiException(Failure.BAD_ANSWER, Txt.s(Res.string.maps_err_restart, f.name), cause = e)
+            } catch (e: com.onpath.app.net.HttpDownload.Incomplete) {
+                throw ApiException(Failure.UNREACHABLE, Txt.s(Res.string.maps_err_stopped_at, e.have * 100 / maxOf(1, f.size)), cause = e)
+            } catch (e: com.onpath.app.net.HttpDownload.ChecksumMismatch) {
+                throw ChecksumException(Txt.s(Res.string.maps_err_checksum))
+            }
         }
-        val len = part.length()
-        if (len < f.size) throw ApiException(Failure.UNREACHABLE, Txt.s(Res.string.maps_err_stopped_at, len * 100 / maxOf(1, f.size)))
-        if (len != f.size || sha256(part) != f.sha256) {
-            part.delete()
-            throw ChecksumException(Txt.s(Res.string.maps_err_checksum))
-        }
-        onBytes(len)
     }
 
     class ChecksumException(message: String) : IOException(message)

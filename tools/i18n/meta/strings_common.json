@@ -66,19 +66,6 @@
     "confidence": "sicher",
     "max": 18
   },
-  "common_retry": {
-    "area": "Common",
-    "context": "Button on the map download card after a failed download",
-    "priority": 3,
-    "confidence": "sicher",
-    "max": 18
-  },
-  "common_open": {
-    "area": "Common",
-    "context": "Content description of an expand arrow / button: open",
-    "priority": 3,
-    "confidence": "sicher"
-  },
   "common_more": {
     "area": "Common",
     "context": "Content description (accessibility) of the ⋯ menu button",

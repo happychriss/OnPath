@@ -35,10 +35,10 @@
     <string name="routes_empty_planned">Noch keine geplanten Routen.\nSpeichere eine geplante Route oder importiere eine GPX-Datei.</string>
     <string name="routes_empty_done">Noch keine Touren aufgezeichnet.</string>
     <string name="routes_kind_planned">Geplante Route</string>
-    <string name="routes_kind_recorded">Aufgezeichneter Track</string>
+    <string name="routes_kind_recorded">Aufgezeichnete Tour</string>
     <string name="routes_kind_imported">Importierte GPX</string>
     <string name="routes_rename_planned">Geplante Route umbenennen</string>
-    <string name="routes_rename_recorded">Aufgezeichneten Track umbenennen</string>
+    <string name="routes_rename_recorded">Aufgezeichnete Tour umbenennen</string>
     <string name="routes_rename_imported">Importierte GPX umbenennen</string>
     <string name="routes_recording_now">Wird gerade aufgezeichnet</string>
     <string name="routes_end_tour_first">Erst die laufende Tour beenden, dann lässt sich diese Route laden.</string>
@@ -55,7 +55,7 @@
     <string name="routes_unfinished_text">Eine Aufzeichnung wurde unterbrochen (%1$s, %2$s). Es ist nichts verloren gegangen.</string>
     <string name="routes_unfinished_continue">Fortsetzen</string>
     <string name="routes_unfinished_delete_title">Diese Tour löschen?</string>
-    <string name="routes_track_saved">Track gespeichert</string>
+    <string name="routes_track_saved">Tour gespeichert</string>
 
     <string name="routes_activity_from_file">Aktivität aus der Datei übernommen: %1$s</string>
     <string name="routes_activity_from_tour">Aktivität aus der Tour übernommen: %1$s</string>

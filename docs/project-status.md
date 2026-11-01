@@ -26,6 +26,60 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud-app (donald), 2026-11-01 night – AppViewModel split 4 + 5, split done.** 4/5 `ui/MapDataFlow` (a8aade87:
+  cell triggers, card, loading modal, background strip, Offline maps, routing data loader), 5/5 `ui/SearchFlow`
+  (2e50efbc: search view, candidate marker, place names, shared places) – each with a small `Host` interface (getters /
+  setters on the ViewModel, no copies), public names forwarded; AppViewModel 5083 → 4091 lines; no shared file touched.
+  Kept in the ViewModel on purpose: `routingDataArrived` + `gated()` (one owner), routing data freshness, the
+  very-long-plan deferral, `addPlace` / place card (plan edits). Safety net on donald: full gate per step, E2E map tests
+  green before and after step 4, on the final state Release-Rundgang 14/14 + CorePlanLink + RoutingDataFreshInstall
+  (with download, `E2E_ARGS="-e routingDownload true"` – new in `release_rundgang.sh`) PASS. Two E2E tests were stale
+  (red before the split too) and are fixed: broken-link text, fresh-install notice on a fast line. Word to the captain
+  ("split done") in the backlog. **Pixel:** after the owner ended the tour, the debug build of `main` (cbb2289b) was
+  installed (16:31) and starts cleanly (onpath.private#12 closed). **Next:** the owner tests that ONE build outside, then the
+  captain's release check; cloud-plan merges `main` once (captain messages).
+- **cloud-app (donald), 2026-11-01 – fix day (owner: no release today, everything in). Session ends here; a fresh
+  cloud-app session goes on.** On `main`, each with gate.sh (often `--full`), small commits: list A 1–9; "More before the
+  release" incl. shared sync rules (M4 restart, H3 `sync/SaveRule`), Points row texts, name / fit rules; then the open
+  review items 1:1 with the owner (decided one question box at a time): recording M7 (corrupt DB → tour rescued), M5
+  (battery saver mid-tour said once), routing M5 (browser plans never stored straight), M3 (Plan from track: modal +
+  Cancel), M1 (remaining ascent = plan's), M8 (track time = moving time), L1–L3, L7, L8, Arch 6 (one `net/HttpDownload`,
+  APK sha256 from the release digest), 7 (brouter.de User-Agent), 8–14 (silent failures, style off the main thread, Prefs,
+  Gson declared, dead texts, one tile namer / flat distance), 5 (`app/web-shared-files.txt` + `SharedFilesRuleTest`);
+  owner wishes: GPS "No GPS" only after 2.5 min while moving, quiet standing still, slider "Stopp", ■ Stop, one off-route
+  question shape, tour summary "Unterwegs 4:05 (10:12–14:17) · in Bewegung 2:52 · Pausen 1:13", stale followed line
+  removed. **AppViewModel split (owner: all now): 1–3 done (Updates, Phone setup, Pairing → own classes); 4 + 5 (cells /
+  routing data, search / shared places) for the next session – plan + Fable's coupling list in
+  `docs/reviews/2026-11-01/appviewmodel-split.md`.** Release-Rundgang 14/14 PASS on cbe9833f (all of today incl. split
+  1–3). Not done: owner's jog-rule / way-type idea (backlog, think first); the diagnostics export showed no crash – the
+  "Los geht's" repeats were five short tours at night, each saying its start sentence. **Next:** split 4 + 5 (with the
+  emulator E2E map tests + Rundgang), then the owner tests ONE build outside, then the captain's release check.
+  Lessons (memory): gate misses androidTest and text-asserting tests in other packages – compile androidTest, `--full`
+  after text changes; never installDebug during a tour; owner's questions one box at a time.
+- **cloud-app (donald), 2026-11-01 – release day turned fix day (owner: no release today, everything in).** List A
+  1–9 + "More before the release" on `main`, small green commits, Release-Rundgang 14/14 PASS (dfc701d9), E2E + unit
+  green (140d5bec). Field bugs: voice repeat (voice memory per tour in trip-pace.json, service scope exception handler,
+  minimum intervals), ■ Stop in the one-row tour step + slider "Stopp" (owner), plan lines in tour edits (passed points
+  kept, pale plan beside a re-route, SplitRequests, session token). Robustness: quiet while standing still (MoveWatch),
+  arrival in the service (RecState.arrived), watchdog after a sticky restart, unwritten points queued, guarded service
+  actions, switch question ≠ off route, off-route on when Plan is off screen, notification ids. Routing / sync: splice
+  catch-all, GPX rte + trk once, background routing thread, mailbox restart (M4), save-as-copy over a sync change (H3,
+  `sync/SaveRule`), stuck outbox said, Points row texts + name / fit rules shared. UX: hold hint, "Used OnPath before?",
+  dev tools only via unlock, POI tap details, "Close plan", errors without "move", one off-route question shape (owner),
+  route / tour / track. **Shared code for cloud-plan** (mirror list): Planner, GpxModel, SyncRound / SyncLedger,
+  SaveRule, PlanPoints, PlanNames – fingerprint unchanged. **Open:** the owner's diagnostics export of the voice-repeat
+  ride (confirms the crash path); device check of the tour-edit lines in Demo mode; owner idea jog rule + way types
+  (backlog, think first); a mailbox epoch on the server (cloud-plan). **Next:** the rest of the backlog; release after the
+  captain's go.
+- **cloud-plan (laptop), 2026-11-01 – release-day web fixes.** main merged into `web-spike` twice (up to 2f0a231f, incl.
+  the splice catch-all – `PlannerSpliceTest` added to the web's shared tests); parity manifest re-checked. List A 10–13
+  (c652cd9e): failed downloads not kept + grey offline line + re-plan when online, WasmGC check → "browser too old"
+  page, unsaved route back without `#p=`, no developer / raw error lines. "More before the release" (1) + (2)
+  (21501007, 5749bac6): sync H1 / M7, edit queue H4, `storage.persist` H5, write failures M11. Tests: new
+  `web/app/test/robust-smoke.mjs` (run by the nowebgl CI step), manual `browsers-check.mjs` (Firefox 155 + WebKit 26.6
+  plan fine; WebKit needs 6 libs copied into Playwright's `minibrowser-wpe/sys/lib` on the laptop – no sudo).
+  **Not deployed** (owner: release on hold). **Next:** (3) with cloud-app (sync H3 / M4 shared rule, Points row text
+  M15); deploy only with the app release after the captain's go.
 - **cloud-app (donald), 2026-10-31/11-01 – captain's order done.** Release-Rundgang 14/14 PASS (flows 11 + 12 green),
   again 14/14 on main with voice. Voice guidance merged to `main` (69515dde): branch merged with main, one test made
   tolerant to the line's geometry length, Settings → Navigation screenshots EN + DE; full gate green (2253 tests). Debug

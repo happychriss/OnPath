@@ -525,7 +525,13 @@ class MainActivity : ComponentActivity() {
         }
         if (uri != null) {
             vm.dataScreenDismissed = true
-            vm.importGpx(uri)
+            // never OnPath's own private files through a file: URI, nothing but content: / file: (review Arch 12)
+            val private = listOfNotNull(filesDir.parentFile, filesDir, cacheDir, getExternalFilesDir(null)?.parentFile)
+            if (IncomingUri.importable(uri.scheme, uri.path, private)) vm.importGpx(uri)
+            else {
+                com.onpath.app.debug.Problems.warn("gpx", "Import refused: ${uri.scheme} URI to an app-private path or not a file")
+                vm.sayError(com.onpath.strings.Txt.s(com.onpath.strings.Res.string.msg_gpx_import_failed), com.onpath.app.ui.NoticePlace.MAP)
+            }
         }
     }
 
@@ -603,10 +609,9 @@ class MainActivity : ComponentActivity() {
 
     /** The app crashed in an earlier run: say so once (the details are in Settings → Diagnostics). */
     private fun announceLastCrash() {
-        val sp = getSharedPreferences("onpath", 0)
-        val shown = sp.getLong("crashShownUntil", 0)
-        val crash = com.onpath.app.debug.Problems.lastCrash(shown + 1) ?: return
-        sp.edit().putLong("crashShownUntil", crash.last).apply()
+        val prefs = com.onpath.app.data.Prefs(this)
+        val crash = com.onpath.app.debug.Problems.lastCrash(prefs.crashShownUntil + 1) ?: return
+        prefs.crashShownUntil = crash.last
         if (vm.errorCard == null) vm.sayError(Txt.s(Res.string.msg_crash_last_time), com.onpath.app.ui.NoticePlace.BACKGROUND)
     }
 

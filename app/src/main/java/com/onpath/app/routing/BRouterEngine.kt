@@ -513,18 +513,9 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         }
 
         /** BRouter 5x5 degree tile name, e.g. E10_N45.rd5 for lon 10..15, lat 45..50. */
-        fun segmentName(p: GeoPoint): String {
-            val lon = (floor(p.lon / 5.0) * 5.0).toInt()
-            val lat = (floor(p.lat / 5.0) * 5.0).toInt()
-            val ew = if (lon < 0) "W${-lon}" else "E$lon"
-            val ns = if (lat < 0) "S${-lat}" else "N$lat"
-            return String.format(Locale.ROOT, "%s_%s.rd5", ew, ns)
-        }
+        /** The rd5 tile of [p] – one namer for the app (review Arch 8): [Rd5Parts.tileName]. */
+        fun segmentName(p: GeoPoint): String = Rd5Parts.tileName(p.lat, p.lon)
 
-        private fun distM(a: GeoPoint, b: GeoPoint): Double {
-            val x = Math.toRadians(b.lon - a.lon) * cos(Math.toRadians((a.lat + b.lat) / 2.0))
-            val y = Math.toRadians(b.lat - a.lat)
-            return sqrt(x * x + y * y) * 6_371_000.0
-        }
+        private fun distM(a: GeoPoint, b: GeoPoint): Double = com.onpath.app.data.Geo.fastDistance(a, b)
     }
 }

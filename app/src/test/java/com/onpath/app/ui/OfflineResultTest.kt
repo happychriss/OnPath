@@ -21,7 +21,8 @@ class OfflineResultTest {
 
     /** No message box on the map for a successful Clean up / Clear all; the result line is cleared when the page is left. */
     @Test fun successGoesToThePageNotTheMap() {
-        val src = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        val src = File("src/main/java/com/onpath/app/ui/MapDataFlow.kt").readText() // Offline maps: out of AppViewModel
+        val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
         fun body(fn: String): String {
             val start = src.indexOf("fun $fn(")
             assertTrue(fn, start >= 0)
@@ -34,6 +35,6 @@ class OfflineResultTest {
             assertTrue("$fn: failures stay visible (removeAreas)", "removeAreas(" in b)
         }
         assertTrue("a failure is a red line on the page", "sayError(Txt.s(Res.string.msg_maps_remove_failed), NoticePlace.SETTINGS)" in body("removeAreas"))
-        assertTrue("leaving the page clears the line", Regex("""if \(v != SettingsPage.OFFLINE_MAPS\) offlineResult = null""").containsMatchIn(src))
+        assertTrue("leaving the page clears the line", Regex("""if \(v != SettingsPage.OFFLINE_MAPS\) offlineResult = null""").containsMatchIn(vm))
     }
 }

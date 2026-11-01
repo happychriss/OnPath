@@ -220,4 +220,17 @@ class SportTypeTest {
         assertNull(SportType.typeOf("SKI", 2))
         assertNull(SportType.typeOf(null as String?, 2))
     }
+
+    /** Review routing L2: Strava, Garmin and OsmAnd sport names are read too (the export still writes Komoot's). */
+    @Test fun otherAppsSportNames() {
+        assertEquals(com.onpath.app.routing.Activity.BIKE_TOURING, SportType.activityOf("cycling")?.activity)
+        assertEquals(com.onpath.app.routing.Activity.BIKE_TOURING, SportType.activityOf("Ride")?.activity)
+        assertEquals(com.onpath.app.routing.Activity.MTB, SportType.activityOf("mountain_biking")?.activity)
+        assertEquals(com.onpath.app.routing.Activity.EBIKE, SportType.activityOf("e_bike_ride")?.activity)
+        assertEquals(com.onpath.app.routing.Activity.EMTB, SportType.activityOf("EMountainBikeRide")?.activity)
+        assertEquals(com.onpath.app.routing.Activity.BIKE_TREKKING, SportType.activityOf("gravel_ride")?.activity)
+        assertEquals(com.onpath.app.routing.Activity.HIKE, SportType.activityOf("hiking")?.activity)
+        assertEquals(com.onpath.app.routing.Activity.HIKE, SportType.activityOf("walking")?.activity)
+        assertEquals(null, SportType.activityOf("swimming"))
+    }
 }

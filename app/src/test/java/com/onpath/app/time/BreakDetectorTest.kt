@@ -100,4 +100,16 @@ class BreakDetectorTest {
         assertEquals(5.0, store.get(9)!!.movingS, 0.0)
         f.delete()
     }
+
+    /** Owner 2026-11-01: the summary shows the whole time on the way beside the moving time. */
+    @Test fun summaryLineWithTimeOnTheWay() {
+        val start = java.time.ZonedDateTime.of(2026, 11, 1, 10, 12, 0, 0, java.util.TimeZone.getDefault().toZoneId()).toInstant().toEpochMilli()
+        val end = start + (4 * 60 + 5) * 60_000L
+        val t = TourTimes(172 * 60.0, 41 * 60.0, startMs = start, endMs = end)
+        assertEquals("On the way 4:05 (10:12–14:17) · moving 2:52 · breaks 1:13", t.summaryLine)
+        // the JSON keeps it; older tours have none and show the moving line
+        assertEquals(t, TourTimes.fromJson(t.toJson()))
+        assertNull(TourTimes(172 * 60.0, 41 * 60.0).summaryLine)
+        assertNull(TourTimes.fromJson(org.json.JSONObject().put("moving", 10.0).put("breaks", 0.0)).summaryLine)
+    }
 }

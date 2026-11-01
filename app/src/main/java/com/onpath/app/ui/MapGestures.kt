@@ -61,7 +61,8 @@ object MapGestures {
      */
     fun decide(editable: Boolean, press: Press, menuOpen: Boolean, marker: Int, poi: Boolean, planEmpty: Boolean): Action {
         if (!editable) return if (poi && press == Press.TAP) Action.PoiDetails else Action.None
-        if (press == Press.TAP) return if (menuOpen) Action.CloseMenu else Action.None
+        // a quick tap on a POI / hut shows its details in Plan too (UX review 5) – read-only, the plan never changes
+        if (press == Press.TAP) return if (menuOpen) Action.CloseMenu else if (poi && marker < 0) Action.PoiDetails else Action.None
         return when {
             marker >= 0 -> Action.PointMenu(marker)
             poi -> Action.PoiMenu

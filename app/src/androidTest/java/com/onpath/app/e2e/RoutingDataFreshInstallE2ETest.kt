@@ -25,11 +25,13 @@ class RoutingDataFreshInstallE2ETest : E2EBase() {
         launch(beforeLaunch = { File(dataDir, "segments").listFiles()?.forEach { it.delete() } })
         startPlanWithTwoPoints()
 
-        // while it loads: straight line + the plain notice (no path, no file name)
-        waitUntil("plan notice", 30_000) { error() != null }
-        val notice = error()!!
-        assertFalse("no file name/path in the notice: $notice", notice.contains(".rd5") || notice.contains("/"))
-        assertTrue(notice, RoutingDataNotice.isNotice(notice))
+        // while it loads: straight line + the plain notice (no path, no file name). On a fast line the part is there before
+        // the second point (donald 2026-11-01: 9 MB in 0.45 s) – then no notice ever shows and the route is real at once.
+        waitUntil("plan notice or a real route", 30_000) { error() != null || (!routing() && straight() == false) }
+        error()?.let { notice ->
+            assertFalse("no file name/path in the notice: $notice", notice.contains(".rd5") || notice.contains("/"))
+            assertTrue(notice, RoutingDataNotice.isNotice(notice))
+        }
 
         // routing data arrives (up to 15 min on a slow line), the plan is computed again: a real route
         waitUntil("routing data loaded and plan recalculated", 15 * 60_000L) {

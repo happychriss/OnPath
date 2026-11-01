@@ -17,7 +17,7 @@
     <string name="setup_taken_phone">Your phone removed this because OnPath was not used for some months. That is normal – set it up again here.</string>
     <string name="setup_taken_off">This was switched off since you last used OnPath.</string>
     <string name="setup_loc_title">Your location</string>
-    <string name="setup_loc_why">The dot on the map shows where you are. On a tour OnPath records your track and tells you about every turn. Your exact position and your tracks stay on your phone.</string>
+    <string name="setup_loc_why">The dot on the map shows where you are. On a tour OnPath records your track and guides you at the junctions where you could go wrong. Your exact position and your tracks stay on your phone.</string>
     <string name="setup_loc_do">On the next screen, allow OnPath while you use the app – with precise location.</string>
     <string name="setup_loc_denied">No problem – the map and planning work without it. For the dot on the map and a tour OnPath needs your location.</string>
     <string name="setup_loc_blocked">Android does not ask again. Tap Continue, then Permissions → Location, and allow it while using the app, with precise location.</string>

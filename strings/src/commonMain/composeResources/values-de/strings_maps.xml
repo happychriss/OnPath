@@ -107,7 +107,7 @@
     <string name="maps_row_area_south_west">Gebiet im Südwesten</string>
     <string name="maps_row_area_south">Gebiet im Süden</string>
     <string name="maps_row_area_south_east">Gebiet im Südosten</string>
-    <string name="maps_overview_hint">Nur Übersicht – für die Detailkarte hier lange drücken</string>
+    <string name="maps_overview_hint">Nur Übersicht – für die Detailkarte hier die Karte gedrückt halten</string>
     <string name="maps_update_loading">Neuere Karte wird geladen…</string>
     <string name="maps_update_preparing">Neuere Karte für dieses Gebiet wird vorbereitet</string>
     <string name="maps_update_preparing_min">Neuere Karte für dieses Gebiet wird vorbereitet · etwa %1$d min</string>
@@ -117,7 +117,6 @@
     <string name="maps_btn_load">Laden</string>
     <string name="maps_here_ask">Detailkarte für hier? · %1$d MB</string>
     <string name="maps_here_ask_detail">Die Vorbereitung dauert ein paar Minuten.</string>
-    <string name="maps_hide_cd">Ausblenden (die Karte lädt weiter)</string>
 
     <!-- Laden im Hintergrund -->
     <string name="maps_bg_title">Karte wird geladen</string>
@@ -247,6 +246,5 @@
     <string name="maps_import_none_found">Keine Kartendaten in „%1$s“ gefunden.</string>
     <string name="maps_import_no_space">Nicht genug freier Speicher für %1$s (benötigt %2$d MB).</string>
     <string name="maps_import_empty">%1$s ist leer.</string>
-    <string name="maps_import_cant_replace">%1$s konnte nicht ersetzt werden.</string>
     <string name="maps_import_cant_save">%1$s konnte nicht gespeichert werden.</string>
 </resources>

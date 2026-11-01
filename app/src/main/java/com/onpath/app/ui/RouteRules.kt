@@ -89,21 +89,14 @@ object RouteRules {
      * none, [dated] ("Route 31 Oct, 10:12"). A name a planned route already has ([taken]) gets " (2)", " (3)" … so two
      * entries in My routes never look the same; a copy of "Name" is proposed as "Name (2)".
      */
-    fun newRouteName(proposed: String?, dated: String, taken: Collection<String>): String {
-        val base = proposed?.trim()?.takeIf { it.isNotEmpty() } ?: dated.trim()
-        val names = taken.map { it.trim() }.toSet()
-        if (base !in names) return base
-        return generateSequence(2) { it + 1 }.map { "$base ($it)" }.first { it !in names }
-    }
+    fun newRouteName(proposed: String?, dated: String, taken: Collection<String>): String =
+        com.onpath.app.routing.PlanNames.newRouteName(proposed, dated, taken)
 
     /**
      * Proposed name of Save as copy of [name]: "Name (2)" – the next free number, and a copy of "Name (2)" is
      * "Name (3)", not "Name (2) (2)".
      */
-    fun copyName(name: String, taken: Collection<String>): String {
-        val base = name.trim().replace(Regex(""" \(\d+\)$"""), "")
-        return newRouteName(base, base, taken + base)
-    }
+    fun copyName(name: String, taken: Collection<String>): String = com.onpath.app.routing.PlanNames.copyName(name, taken)
 
     /**
      * Unsaved changes worth a hint (owner 2026-10-31): while the plan is new or changed since the last save / load

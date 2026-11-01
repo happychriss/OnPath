@@ -120,6 +120,14 @@ We really don't want much more; that would be enough."
   device and emulator checks stay on donald.
 - **Shared files:** screenshots and handoff material always in `onpath.private`, never only on one computer.
 
+## 6b. Owner's question: a ChatGPT agent in the crew? (2026-11-01)
+The owner asks whether a ChatGPT-based agent (e.g. Codex with GitHub access) could join. It cannot use Claude's
+session messages, but the repo channels (backlog "For the roles" / "For the captain", handoffs, GitHub issues) are
+tool-agnostic. Captain's view: feasible with a narrow, file-disjoint role – best as an **independent reviewer** (reads
+code / diffs, writes findings to an issue or "For the captain", does not push to `main`); it would need an
+`AGENTS.md` pointing to `CLAUDE.md`; it has the same Android-SDK limit in its cloud. Include it in your options
+(cost, benefit, how it fits the questions dashboard) – or say why not.
+
 ## 7. What to deliver
 1. A short picture of today's setup in your own words (so the owner sees you understood it).
 2. 2–3 concrete setups, each: who runs where, how work is started, how sessions talk, what happens when a computer is

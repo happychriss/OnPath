@@ -209,4 +209,14 @@ class PlanPointsTest {
 
     private fun interp(p: GeoPoint, q: GeoPoint, n: Int) =
         (0..n).map { GeoPoint(p.lat + (q.lat - p.lat) * it / n, p.lon + (q.lon - p.lon) * it / n) }
+
+    /** Web review M15: the row texts are shared – the web renders these, not its own "x.x km" / "Start" twice. */
+    @Test fun rowTexts() {
+        val start = PlanPointRow(0, PointRole.START, "Start", null, false)
+        assertEquals(null, PlanPoints.roleText(start))
+        assertEquals("Start", PlanPoints.roleText(start.copy(name = "Meran")))
+        assertEquals("+850 m", PlanPoints.legText(PlanPointRow(1, PointRole.STOP, "Hut", 850.0, false)))
+        assertEquals("~2.3 km", PlanPoints.legText(PlanPointRow(1, PointRole.STOP, "Hut", 2_300.0, true)))
+        assertEquals("↺ 1.2 km", PlanPoints.legText(PlanPointRow(0, PointRole.START, "Algund", 1_200.0, false, loop = true)))
+    }
 }

@@ -14,6 +14,7 @@
 #      SpurSpliceJvmTest.kt = the owner's 70.6 km hike (Dortmund → Hilden, needs E5_N50.rd5, JAVA_XMX=1g): the cut stop is
 #      routed to only around it and spliced in (Planner.splice) – planner time, length vs the old way, pass/fail;
 #      BikeCuesTest.kt = bike junction cues on town routes (Hilden, needs E5_N50.rd5): hints with their ways, cues before / after at 14 / 20 / 25 km/h (DUMP=1 lists every hint);
+#      HildenVoiceTest.kt = the owner's Hilden park tour: no cue on the crossing step, no "track" in the park (needs E5_N50.rd5), pass/fail;
 #      ItterPathTest.kt = bike routes stay on a compacted foot / cycle path (Hilden Itter, needs E5_N50.rd5), pass/fail;
 #      FerryTest.kt = no route over a ferry that does not take bikes / people on foot (RAW_TAP=1, FERRY_CASES=<file>);
 #      FerryHintTest.kt = routes over a Rhine ferry show the amber ferry hint (needs E5_N50.rd5), pass/fail;
@@ -63,7 +64,7 @@ python3 "$HERE/strings_stub.py" "$ROOT" "$W/StringsStub.kt" > /dev/null
 EXTRA+=("$W/StringsStub.kt" "$W/StringsStubRes.kt")
 java -cp "$KCP" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler -no-stdlib -no-reflect -jvm-target 17 \
   -cp "$STD:$W/stub:$LIBS" -d "$W/kt" "$R/RoutingContract.kt" "$R/Rd5Parts.kt" "$R/BRouterWayStats.kt" "$R/WaypointSnap.kt" "$W/BRouterEngine.kt" \
-  "$R/StraightLineEngine.kt" "$R/RouteTimeLimit.kt" "$R/TrackToPlan.kt" "$R/TurnDetector.kt" "$R/Junctions.kt" "$N/JunctionCues.kt" "$N/CueRule.kt" "$N/SpeedWindow.kt" "$D/Geo.kt" "$ROOT/app/src/main/java/com/onpath/app/time/PaceModel.kt" "$ROOT/app/src/main/java/com/onpath/app/time/RouteTimes.kt" "$N/NavLine.kt" "$N/StopSkip.kt" "$N/RerouteTargets.kt" "$N/Rerouter.kt" \
+  "$R/StraightLineEngine.kt" "$R/RouteTimeLimit.kt" "$R/TrackToPlan.kt" "$R/TurnDetector.kt" "$R/Junctions.kt" "$N/JunctionCues.kt" "$N/CueRule.kt" "$N/JogRule.kt" "$N/SpeedWindow.kt" "$N/VoiceGuide.kt" "$N/VoiceText.kt" "$D/Geo.kt" "$ROOT/app/src/main/java/com/onpath/app/time/PaceModel.kt" "$ROOT/app/src/main/java/com/onpath/app/time/RouteTimes.kt" "$N/NavLine.kt" "$N/StopSkip.kt" "$N/RerouteTargets.kt" "$N/Rerouter.kt" \
   "$R/Planner.kt" "$R/RouteSummary.kt" "$ROOT/app/src/main/java/com/onpath/app/ui/RouteWarnings.kt" "$D/LastActivity.kt" \
   "$HERE/ProblemsStub.kt" "$HERE/TimeEstimateStub.kt" ${EXTRA[@]+"${EXTRA[@]}"} "$W/$TN.kt"
 java -Xmx${JAVA_XMX:-192m} -cp "$STD:$W/stub:$LIBS:$W/kt" "${TN}Kt"

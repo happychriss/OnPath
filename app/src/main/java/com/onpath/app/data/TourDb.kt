@@ -314,11 +314,37 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
             "id=?", arrayOf(tourId.toString()))
     }
 
-    fun updateStats(tourId: Long, distance: Double, ascent: Double, descent: Double, duration: Double, state: String) {
+    /** Returns the rows changed: 0 = the tour row is gone (a corrupt database was replaced mid-tour – [rescueRecording]). */
+    fun updateStats(tourId: Long, distance: Double, ascent: Double, descent: Double, duration: Double, state: String): Int =
         writableDatabase.update("tours", ContentValues().apply {
             put("distance", distance); put("ascent", ascent); put("descent", descent)
             put("duration", duration); put("state", state)
         }, "id=?", arrayOf(tourId.toString()))
+
+    /**
+     * Review recording M7: the database was corrupt mid-tour, moved aside ([KeepCorruptFile]) and replaced by an empty
+     * one – the running tour has no row there and its new points would end up nowhere. Puts the tour back under its id
+     * with every point the service still holds ([segments]); points already written for it are replaced. One transaction.
+     */
+    fun rescueRecording(id: Long, name: String, activity: String?, sac: Int, createdMs: Long, segments: List<List<TrackPoint>>,
+                        distance: Double, ascent: Double, descent: Double, duration: Double): Int {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.delete("points", "tour_id=?", arrayOf(id.toString()))
+            db.insertOrThrow("tours", null, ContentValues().apply {
+                put("id", id); put("kind", TourKind.RECORDED.name); put("name", name); put("created", createdMs)
+                put("uuid", newUuid()); put("pinned", pinnedToJson(emptySet())); put("waypoints", waypointsToJson(emptyList()))
+                put("activity", activity); put("sac", sac); put("distance", distance); put("ascent", ascent)
+                put("descent", descent); put("duration", duration); put("state", "active")
+            })
+            var seq = 0
+            segments.forEachIndexed { segIdx, seg -> seg.forEach { insertPoint(db, id, seq++, segIdx, it) } }
+            db.setTransactionSuccessful()
+            return seq
+        } finally {
+            db.endTransaction()
+        }
     }
 
     /**

@@ -39,7 +39,6 @@
     <string name="msg_tour_delete_failed">„%1$s“ konnte nicht gelöscht werden. Versuche es bitte noch einmal.</string>
     <string name="msg_tour_restore_failed">„%1$s“ konnte nicht wiederhergestellt werden. Versuche es bitte noch einmal.</string>
     <string name="msg_name_route">Route</string>
-    <string name="msg_name_share">OnPath-Route</string>
     <string name="msg_name_import">Import</string>
     <string name="msg_name_date_pattern">d. MMM, HH:mm</string>
     <string name="msg_date_pattern_area">d. MMM yyyy</string>
@@ -84,6 +83,7 @@
         <item quantity="one">%1$d Kartengebiet wird auf eine neuere Version geprüft. Einstellung: „Karten nur über WLAN laden“.</item>
         <item quantity="other">%1$d Kartengebiete werden auf eine neuere Version geprüft. Einstellung: „Karten nur über WLAN laden“.</item>
     </plurals>
-    <string name="msg_plan_link_unreadable">Dieser Plan-Link ist nicht lesbar. Teile oder kopiere den ganzen Link noch einmal.</string>
-    <string name="msg_plan_link_after_tour">Plan-Links öffnen sich nach der Tour – beende die Tour und öffne den Link dann noch einmal.</string>
+    <string name="msg_route_changed_elsewhere">Inzwischen im Browser geändert – als „%1$s“ gespeichert, die andere Fassung bleibt.</string>
+    <string name="msg_plan_link_unreadable">Dieser Routen-Link ist nicht lesbar. Teile oder kopiere den ganzen Link noch einmal.</string>
+    <string name="msg_plan_link_after_tour">Routen-Links öffnen sich nach der Tour – beende die Tour und öffne den Link dann noch einmal.</string>
 </resources>

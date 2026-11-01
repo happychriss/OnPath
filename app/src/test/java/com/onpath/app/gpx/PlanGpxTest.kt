@@ -78,4 +78,23 @@ class PlanGpxTest {
         assertNull("one waypoint", PlanGpx.stopsOf(l, listOf(GpxWaypoint(a.lat, a.lon, null))))
         assertNull("no line", PlanGpx.stopsOf(emptyList(), listOf(GpxWaypoint(a.lat, a.lon, null), GpxWaypoint(c.lat, c.lon, null))))
     }
+
+    /** Review routing L1: a plan GPX keeps its pinned points (standard `<wpt><type>`), and one stop off the line keeps the rest. */
+    @Test fun pinsSurviveAndOneStopOffTheLineKeepsTheOthers() {
+        val line = (0..100).map { com.onpath.app.routing.GeoPoint(46.0 + it * 0.0005, 11.0) }
+        val pts = listOf(line.first(), line[30], line[60], line.last())
+        val stops = PlanGpx.stops(pts, pinned = setOf(1)) { if (it == 1) "Hütte" else null }
+        val text = PlanGpx.export("Test", listOf(line.map { TrackPoint(it.lat, it.lon) }), stops, com.onpath.app.routing.Activity.HIKE, 2).text
+        assertTrue(text.contains("<type>pinned</type>"))
+        val back = GpxParser.parse(text)
+        val again = PlanGpx.stopsOf(back.allSegments.flatten().map { it.toGeo() }, back.waypoints)!!
+        assertEquals(setOf(1), PlanGpx.pinnedOf(again))
+        // a summit the route could not reach, 400 m off the line: the other stops still make the plan
+        val summit = com.onpath.app.gpx.GpxWaypoint(line[60].lat, line[60].lon + 0.005, "Gipfel")
+        val withSummit = listOf(stops[0], stops[1], summit, stops[3])
+        assertEquals(4, PlanGpx.stopsOf(line, withSummit)?.size)
+        // most inner points elsewhere: POIs of a track, not a plan
+        val pois = listOf(stops[0], summit, summit.copy(lat = summit.lat + 0.01), summit.copy(lat = summit.lat + 0.02), stops[3])
+        assertEquals(null, PlanGpx.stopsOf(line, pois))
+    }
 }

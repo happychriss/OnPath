@@ -40,6 +40,26 @@ class DemoPath private constructor(val line: List<GeoPoint>, private val cumM: D
         return moving(lo, t)
     }
 
+    /**
+     * The ride time at the point of the line nearest to [lat] / [lon] (the Navigate "Sim" goes on along a new followed
+     * line from where it is, owner 2026-11-01). Flat projection per span – metres around one place.
+     */
+    fun timeNearest(lat: Double, lon: Double): Double {
+        val kx = 111_320.0 * kotlin.math.cos(Math.toRadians(lat)); val ky = 111_320.0
+        var best = Double.MAX_VALUE; var bestS = 0.0
+        for (i in 0 until line.size - 1) {
+            val a = line[i]; val b = line[i + 1]
+            val bx = (b.lon - a.lon) * kx; val by = (b.lat - a.lat) * ky
+            val px = (lon - a.lon) * kx; val py = (lat - a.lat) * ky
+            val len2 = bx * bx + by * by
+            val t = if (len2 <= 0) 0.0 else ((px * bx + py * by) / len2).coerceIn(0.0, 1.0)
+            val dx = px - t * bx; val dy = py - t * by
+            val d = dx * dx + dy * dy
+            if (d < best) { best = d; bestS = cumS[i] + t * (cumS[i + 1] - cumS[i]) }
+        }
+        return bestS
+    }
+
     /** The point at [i] + [t] of the span to the next point, moving along it. */
     private fun moving(i: Int, t: Double): DemoFix {
         if (i >= line.size - 1) return standing(line.size - 1, ended = true)

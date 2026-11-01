@@ -16,6 +16,8 @@ import com.onpath.app.data.Geo
 object TrackToPlan {
     /** The route counts as following the track within this. */
     const val DEVIATION_M = 40.0
+    /** One leg request when a [RouteCancel] is given (the cancel is what matters; this only bounds a stuck search). */
+    const val LEG_TIMEOUT_MS = 120_000L
     /** The track is looked at in steps of this. */
     const val STEP_M = 25.0
     /** Start and goal this close = a round trip. */
@@ -34,7 +36,7 @@ object TrackToPlan {
     )
 
     fun fit(track: List<GeoPoint>, engine: RoutingEngine, activity: Activity, sacLimit: Int = 3,
-            cancelled: () -> Boolean = { false }): Result {
+            cancelled: () -> Boolean = { false }, cancel: RouteCancel? = null): Result {
         val t = resample(track, STEP_M)
         if (t.size < 2) return Result(t, 1.0, 0, 0)
         val along = Geo.cumulative(t)
@@ -47,13 +49,18 @@ object TrackToPlan {
         var failed = 0
         fun line(i: Int, j: Int): List<GeoPoint>? = legLines.getOrPut(i to j) {
             calls++
-            try { engine.route(listOf(t[i], t[j]), activity, sacLimit).points.takeIf { it.size >= 2 } }
+            try {
+                // [cancel] (the app's Cancel button, review routing M3) also stops the request that runs
+                val r = if (cancel == null) engine.route(listOf(t[i], t[j]), activity, sacLimit)
+                    else engine.route(listOf(t[i], t[j]), activity, sacLimit, RouteLimits(LEG_TIMEOUT_MS, cancel))
+                r.points.takeIf { it.size >= 2 }
+            }
             catch (e: RoutingException) { null } // expected: no route for this leg – split half-way or count it failed
         }
         // legs to check, in track order; a split adds its two halves
         val todo = ArrayDeque<Pair<Int, Int>>()
         idx.zipWithNext().forEach { todo += it }
-        while (todo.isNotEmpty() && calls < MAX_CALLS && !cancelled()) {
+        while (todo.isNotEmpty() && calls < MAX_CALLS && !cancelled() && cancel?.isCancelled != true) {
             val (i, j) = todo.removeFirst()
             if (j - i < 2) continue
             val l = line(i, j)

@@ -33,10 +33,8 @@ object IncomingIntent {
         else -> fingerprint != lastHandled // the task's first intent once more after a reinstall / restart
     }
 
-    private const val PREFS = "onpath"
-    private const val KEY = "lastIncomingIntent"
 
-    fun lastHandled(c: Context): String? = c.getSharedPreferences(PREFS, 0).getString(KEY, null)
+    fun lastHandled(c: Context): String? = com.onpath.app.data.Prefs(c).lastIncomingIntent
 
-    fun remember(c: Context, fingerprint: String) { c.getSharedPreferences(PREFS, 0).edit().putString(KEY, fingerprint).apply() }
+    fun remember(c: Context, fingerprint: String) { com.onpath.app.data.Prefs(c).lastIncomingIntent = fingerprint }
 }

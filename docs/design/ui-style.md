@@ -53,7 +53,7 @@ Nothing a hiker must read is below 14. No hand-set `fontSize =` in `ui/` (`FontS
 - **48 dp minimum** height and touch target everywhere; **56 dp** for the buttons of a Navigate question (re-route,
   activity switch) – on the move, with gloves.
 - **Verb labels:** "Take new route", "Load", "Install", "Try again" – not "Yes" / "No" (except where the question names
-  the verb: "Off route – re-plan?" → Yes).
+  the verb: "You're 120 m off the route" → New route).
 - **One primary button** per box / sheet: filled `Green` with white text. The others are green text buttons.
 - Label style `labelLarge` (16 sp); the primary one bold.
 - **Icon row with labels** (the plan sheet's ✕ Close · ⇅ Reverse · ↻ Round trip, owner 2026-10-31): small icons

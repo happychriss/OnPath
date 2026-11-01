@@ -47,8 +47,12 @@ enum class Turn { LEFT, SLIGHT_LEFT, SHARP_LEFT, KEEP_LEFT, RIGHT, SLIGHT_RIGHT,
     }
 }
 
-/** The kind of way a turn goes onto, as far as the router's classes tell it. */
-enum class WayKind { PATH, TRACK, ROAD }
+/**
+ * The kind of way a turn goes onto (owner 2026-11-01, Hilden: every park path was a "Feldweg"): from the way type of the
+ * route ([com.onpath.app.routing.WayAttrs.wayType]) – TRACK only on a real track, CYCLEWAY a bike way, WAY a footway (on
+ * the bike also a path), PATH a path on foot, ROAD a street; from the router's classes only when the line has no way types.
+ */
+enum class WayKind { PATH, TRACK, ROAD, CYCLEWAY, WAY }
 
 /**
  * When the voice speaks during a tour (owner 2026-10-31, `docs/design/voice-guidance.md`): few, clear sentences. Pure,
@@ -62,7 +66,8 @@ enum class WayKind { PATH, TRACK, ROAD }
  *   stretch after it ≥ [BIKE_STRAIGHT_M] / [HIKE_STRAIGHT_M] is said ("then 3 km straight on").
  * - At least [GAP_MS] between sentences; off route / arrival / no destination never wait. A sentence that had to wait
  *   is dropped after [STALE_MS]; a junction is simply said at the next fix (with its distance then).
- * - Quiet while paused; "No GPS" once after [GPS_LOST_MS], only after the start, at most every [NO_GPS_EVERY_MS].
+ * - Quiet while paused; "No GPS" once after [GPS_LOST_MS] without a fix while moving (owner 2026-11-01: a short gap is no
+ *   news, standing still in a shop never), only after the start, at most every [NO_GPS_EVERY_MS].
  * - State sentences have a minimum interval (field 2026-11-01): "off the route" every [OFF_ROUTE_EVERY_MS], "back on the
  *   route" only after [BACK_ON_AFTER_MS] of the question that was said, "arrived" every [ARRIVED_EVERY_MS].
  * - The tour's voice memory ([Memory]) is kept with the tour, not with the service: a recording service recreated
@@ -136,6 +141,9 @@ class VoiceGuide {
         started = m.started; offRouteSaidMs = m.offRouteSaidMs; noGpsSaidMs = m.noGpsSaidMs; arrivedSaidMs = m.arrivedSaidMs
         lastVisited = null
     }
+
+    /** The app chose a new line (plan edited): an open off-route question of the old line is gone – no "back on". */
+    fun lineFromApp() { lastOffRoute = false; offRouteSpoken = false }
 
     /** A new tour: everything is said afresh. */
     fun newTour() {
@@ -247,8 +255,8 @@ class VoiceGuide {
         alongs = DoubleArray(idx.size) { cum[idx[it]] }
         turns = idx.map { Turn.of(line[it].turn!!) }
         exits = IntArray(idx.size) { line[idx[it]].exit }
-        onto = Array(idx.size) { wayKind(line[idx[it]], isBike) }
-        needed = BooleanArray(idx.size) { CueRule.needed(line[idx[it]].turn!!, line[idx[it]].shape, hike = !isBike) }
+        onto = Array(idx.size) { ontoAt(line, cum, idx[it], isBike) }
+        needed = JogRule.needed(line, cum, idx, hike = !isBike)
         said.clear()
         return !first
     }
@@ -268,13 +276,48 @@ class VoiceGuide {
         const val HIKE_STRAIGHT_M = 1_000.0
         const val GAP_MS = 10_000L
         const val STALE_MS = 30_000L
-        const val GPS_LOST_MS = 30_000L
+        /** Owner 2026-11-01: "2–3 minutes without GPS while on the way – then say it; otherwise it nags". */
+        const val GPS_LOST_MS = 150_000L
         const val NO_GPS_EVERY_MS = 10 * 60_000L
         const val OFF_ROUTE_EVERY_MS = 2 * 60_000L
         const val BACK_ON_AFTER_MS = 60_000L
         const val ARRIVED_EVERY_MS = 5 * 60_000L
 
-        /** The kind of way the route turns onto – only when it is another kind than the way it comes on. */
+        /** The way type is read this far before / after the junction: a crossing or a short link piece is not "the way". */
+        const val WAY_SAMPLE_M = 20.0
+
+        /**
+         * The kind of way the route turns onto at line point [i] – only when it is another kind than the way it comes on.
+         * From the line's way types [WAY_SAMPLE_M] before and after the junction (Hilden: the crossing into the park is
+         * not "the way", the park path behind it is); without way types from the router's classes ([wayKind]).
+         */
+        fun ontoAt(line: List<GeoPoint>, cum: DoubleArray, i: Int, bike: Boolean): WayKind? {
+            val inType = wayTypeAt(line, cum, cum[i] - WAY_SAMPLE_M)
+            val outType = wayTypeAt(line, cum, cum[i] + WAY_SAMPLE_M)
+            if (inType == null && outType == null) return wayKind(line[i], bike)
+            val out = outType?.let { kindOfType(it, bike) } ?: return null
+            return out.takeIf { it != inType?.let { t -> kindOfType(t, bike) } }
+        }
+
+        /** The way type of the span at [d] metres along the line (clamped); null = not known. */
+        private fun wayTypeAt(line: List<GeoPoint>, cum: DoubleArray, d: Double): String? {
+            if (line.size < 2) return null
+            var j = java.util.Arrays.binarySearch(cum, d.coerceIn(0.0, cum.last())).let { if (it >= 0) it else -it - 2 }
+            j = j.coerceIn(0, line.size - 2)
+            return line[j].way?.wayType
+        }
+
+        /** BRouterWayStats.wayType → the word said. Steps, ferries and the unknown: nothing. */
+        fun kindOfType(type: String, bike: Boolean): WayKind? = when (type) {
+            "track" -> WayKind.TRACK
+            "cycleway" -> WayKind.CYCLEWAY
+            "path" -> if (bike) WayKind.WAY else WayKind.PATH
+            "footway" -> WayKind.WAY
+            "quiet_road", "road", "busy_road" -> WayKind.ROAD
+            else -> null
+        }
+
+        /** From the router's classes (a line without way types): the kind of way turned onto, when it changes. */
         fun wayKind(p: GeoPoint, bike: Boolean): WayKind? {
             val s = p.shape ?: return null
             val out = kindOf(s.outPrio, bike)
@@ -283,7 +326,8 @@ class VoiceGuide {
 
         private fun kindOf(prio: Int, bike: Boolean): WayKind? =
             if (bike) {
-                when (CueRule.bikeKind(prio)) { 1 -> WayKind.TRACK; 3 -> WayKind.ROAD; else -> null }
+                // class ≤ 4 is track, path, footway, crossing, pedestrian alike – "Weg", never "Feldweg" (Hilden)
+                when (CueRule.bikeKind(prio)) { 1 -> WayKind.WAY; 3 -> WayKind.ROAD; else -> null }
             } else {
                 val c = CueRule.hikeClass(prio)
                 when { c == 1 -> WayKind.PATH; c == 2 -> WayKind.TRACK; c >= 18 -> WayKind.ROAD; else -> null }

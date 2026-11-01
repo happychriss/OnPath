@@ -120,6 +120,25 @@ class DemoLocationTest {
         assertTrue("still running until stopped", DemoLocation.active)
     }
 
+    /** Owner 2026-11-01 (Hilden): the followed line changed mid-ride – the Sim goes on along it from where it is. */
+    @Test fun aNewLineIsRiddenOnFromTheNearestPoint() {
+        val a = sink()
+        DemoLocation.startRide(DemoPath.constant(line, 10.0)!!, "followed route", nowMs = t0, autoTick = false)
+        repeat(50) { DemoLocation.tick(1000) } // ~500 m along
+        val here = a.fixes.last().first
+        // the new line: from 200 m along the old one, bending off east after 600 m
+        val newLine = line.subList(20, 61) + (1..60).map { k -> GeoPoint(line[60].lat, line[60].lon + k * 10 / 76_400.0) }
+        DemoLocation.switchLine(DemoPath.constant(newLine, 10.0)!!, "followed route")
+        val st = DemoLocation.state.value!!
+        assertEquals("about 300 m along the new line (500 − 200)", 300.0, st.alongM, 15.0)
+        DemoLocation.tick(1000)
+        val next = a.fixes.last().first
+        assertTrue("no jump: the next fix is a step on", com.onpath.app.data.Geo.distance(here.lat, here.lon, next.lat, next.lon) < 25)
+        // further on it follows the new line's eastward bend, not the old line
+        repeat(60) { DemoLocation.tick(1000) }
+        assertEquals(newLine.last().lat, a.fixes.last().first.lat, 1e-6)
+    }
+
     @Test fun placeStandsStill() {
         val a = sink()
         DemoLocation.jumpTo(46.5, 11.3, null, "map centre", nowMs = t0, autoTick = false)

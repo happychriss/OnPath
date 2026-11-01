@@ -16,7 +16,8 @@ class MapGesturesTest {
     // --- quick taps never change anything ---
     @Test fun quickTapDoesNothing() {
         assertEquals(Action.None, plan(Press.TAP))
-        assertEquals(Action.None, plan(Press.TAP, poi = true))
+        // UX review 5: a tap on a POI shows its details (read-only) in Plan as in Navigate
+        assertEquals(Action.PoiDetails, plan(Press.TAP, poi = true))
         assertEquals(Action.None, plan(Press.TAP, marker = 1, poi = true))
     }
     @Test fun quickTapClosesAnOpenMenu() {

@@ -473,6 +473,17 @@ class PlanSyncTest {
     }
 
     /** The mailbox's rules (web/host/src/sync.js) in a few lines: revisions, compare-and-set on the base revision. */
+    /** Review sync H3: saving over a route the other side changed since it was opened here keeps both (a copy). */
+    @Test fun saveOverARouteChangedElsewhereKeepsBoth() {
+        val opened = SaveRule.pointsKey(listOf(46.1 to 11.1, 46.2 to 11.2))
+        assertEquals(false, SaveRule.keepsOtherEdit(opened, SaveRule.pointsKey(listOf(46.1000000001 to 11.1, 46.2 to 11.2))))
+        assertEquals(true, SaveRule.keepsOtherEdit(opened, SaveRule.pointsKey(listOf(46.1 to 11.1, 46.15 to 11.15, 46.2 to 11.2))))
+        assertEquals("not known: overwrite as before", false, SaveRule.keepsOtherEdit(null, opened))
+        assertEquals("deleted meanwhile: the caller inserts anyway", false, SaveRule.keepsOtherEdit(opened, null))
+        // the web compares its plan codes the same way
+        assertEquals(true, SaveRule.keepsOtherEdit("AQEB", "AQEC"))
+    }
+
     private inner class FakeMailbox {
         private var rev = 0L
         private val items = LinkedHashMap<String, Pair<Long, ByteArray>>()

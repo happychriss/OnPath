@@ -14,14 +14,14 @@ object SegmentDownloader {
 
     const val BASE_URL = "https://brouter.de/brouter/segments4/"
 
+    /**
+     * Who asks brouter.de (a volunteer's server, review Arch 7): the app and version plus a contact, so its operator can
+     * reach us when OnPath's traffic is a problem.
+     */
+    val USER_AGENT: String get() = "OnPath-Android/${com.onpath.app.BuildConfig.VERSION_NAME} (+info@onpath.earth)"
+
     /** Tile name for a position: 5° steps, west/south as W/S. Bozen (46.5, 11.35) → "E10_N45". */
-    fun tileName(lat: Double, lon: Double): String {
-        val lo = (floor(lon / 5.0) * 5).toInt()
-        val la = (floor(lat / 5.0) * 5).toInt()
-        val ew = if (lo < 0) "W${-lo}" else "E$lo"
-        val ns = if (la < 0) "S${-la}" else "N$la"
-        return "${ew}_$ns.rd5"
-    }
+    fun tileName(lat: Double, lon: Double): String = com.onpath.app.routing.Rd5Parts.tileName(lat, lon)
 
     /**
      * Downloads [name] into [segmentsDir]. [onProgress] gets (bytesDone, bytesTotal or -1).
@@ -34,48 +34,28 @@ object SegmentDownloader {
         segmentsDir.mkdirs()
         val dest = File(segmentsDir, name)
         val part = File(segmentsDir, ".$name.part")
-        var done = if (part.exists()) part.length() else 0L
-        val conn = (URL(BASE_URL + name).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 20_000
-            readTimeout = 30_000
-            if (done > 0) setRequestProperty("Range", "bytes=$done-")
-        }
+        // the one resumable download (net/HttpDownload, review Arch 6); brouter.de publishes no checksums – size only
         try {
-            val code = conn.responseCode
-            if (code == 416) { // already complete
-                try { AtomicFiles.replace(part, dest) } catch (e: java.io.IOException) {
-                    Problems.error("data", "Downloaded routing data $name could not be saved (rename failed)", e)
-                }
-                return
-            }
-            if (code != 200 && code != 206) throw IllegalStateException("Server answered $code for $name.")
-            if (code == 200) done = 0 // server ignored the range: start over
-            val total = conn.getHeaderFieldLong("Content-Length", -1).let { if (it > 0) it + done else -1 }
-            if (total > 0 && (segmentsDir.usableSpace < total - done + 50L * 1024 * 1024)) {
-                throw IllegalStateException("Not enough free storage for routing data (${total / 1_048_576} MB).")
-            }
-            conn.inputStream.use { inp ->
-                java.io.FileOutputStream(part, code == 206).use { out ->
-                    val buf = ByteArray(256 * 1024)
-                    var lastReport = 0L
-                    while (true) {
-                        if (cancelled()) throw Cancelled()
-                        val n = inp.read(buf)
-                        if (n < 0) break
-                        out.write(buf, 0, n)
-                        done += n
-                        if (done - lastReport > 1_000_000) { onProgress(done, total); lastReport = done }
+            com.onpath.app.net.HttpDownload.resume(BASE_URL + name, part,
+                open = { u -> (u.openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 20_000; readTimeout = 30_000
+                    setRequestProperty("User-Agent", USER_AGENT)
+                } },
+                failure = { code, _ -> IllegalStateException("Server answered $code for $name.") },
+                onStart = { total ->
+                    val left = total - (if (part.exists()) part.length() else 0L)
+                    if (total > 0 && segmentsDir.usableSpace < left + 50L * 1024 * 1024) {
+                        throw IllegalStateException("Not enough free storage for routing data (${total / 1_048_576} MB).")
                     }
-                    out.fd.sync()
-                }
-            }
-            if (total > 0 && part.length() != total) throw IllegalStateException("Download incomplete – tap again to resume.")
-            // over the old file in one step: the router never finds the tile missing; on failure the part stays
-            try { AtomicFiles.replace(part, dest) } catch (e: java.io.IOException) { throw IllegalStateException("Could not save $name.", e) }
-            onProgress(done, total)
-        } finally {
-            conn.disconnect()
+                },
+                onBytes = { done, total -> onProgress(done, total) },
+                cancelled = cancelled, cancelError = { Cancelled() },
+            )
+        } catch (e: com.onpath.app.net.HttpDownload.Incomplete) {
+            throw IllegalStateException("Download incomplete – tap again to resume.", e)
         }
+        // over the old file in one step: the router never finds the tile missing; on failure the part stays
+        try { AtomicFiles.replace(part, dest) } catch (e: java.io.IOException) { throw IllegalStateException("Could not save $name.", e) }
     }
 
     /** The download was stopped by the user (Cancel); the partial file stays for resuming. */
@@ -90,6 +70,7 @@ object SegmentDownloader {
         val dest = File(segmentsDir, name)
         val conn = (URL(BASE_URL + name).openConnection() as HttpURLConnection).apply {
             requestMethod = "HEAD"; connectTimeout = 20_000; readTimeout = 30_000
+            setRequestProperty("User-Agent", USER_AGENT)
         }
         val serverDate = try {
             if (conn.responseCode != 200) throw IllegalStateException("Server answered ${conn.responseCode} for $name.")

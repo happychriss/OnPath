@@ -181,8 +181,10 @@ class WholeRouteTest {
     /** Field A-019: a search result picked while planning during a tour landed half behind the plan sheet. */
     @Test fun searchResultFliesIntoTheFreeRoom() {
         val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        val fly = vm.substringAfter("private fun flyToPlace(").substringBefore("\n    }\n")
-        assertTrue(fly.indexOf("followMe = false") in 0 until fly.indexOf("events += UiEvent.CenterOn("))
+        val search = File("src/main/java/com/onpath/app/ui/SearchFlow.kt").readText() // search: out of AppViewModel
+        assertTrue(search.substringAfter("fun flyToPlace(").substringBefore("\n    }\n").contains("host.flyTo("))
+        val fly = vm.substringAfter("override fun flyTo(").substringBefore("\n")
+        assertTrue(fly, fly.indexOf("followMe = false") in 0 until fly.indexOf("events += UiEvent.CenterOn("))
         val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
         assertTrue(screen.contains("is UiEvent.CenterOn -> c.flyTo(e.point, e.zoom, fitPadding())"))
     }

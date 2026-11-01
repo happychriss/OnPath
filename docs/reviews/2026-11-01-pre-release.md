@@ -64,6 +64,7 @@ Web planner – **cloud-plan** (after merging `main`):
 13. Hide the developer line "Routing engine ready (N ms)" (`main.ts:292`); no "Unexpected: java.lang…" texts.
 
 ## B. Owner decisions
+_Asked as issues in `happychriss/onpath.private`: D1 #2, D2 #3, D3 #4, D4 #5 (2026-11-01, `tools/ask.sh`)._
 - **D1 – Debug build + public test key for real users** (Arch H1/H2): releases are `assembleDebug` (debuggable,
   slower) and signed with the key that is in the public repo – anyone could build an "update" that installs over
   OnPath. Fine for a small invited group? Before Play / a wider group: release build type + private key with

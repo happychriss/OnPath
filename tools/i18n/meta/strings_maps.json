@@ -435,12 +435,6 @@
     "priority": 2,
     "confidence": "sicher"
   },
-  "maps_hide_cd": {
-    "area": "Map notice (top of map)",
-    "context": "Accessibility: the × of the strip (hides it, loading goes on)",
-    "priority": 3,
-    "confidence": "sicher"
-  },
   "maps_bg_title": {
     "area": "Background downloads",
     "context": "Title: map loads in the background",
@@ -1050,12 +1044,6 @@
     "confidence": "sicher"
   },
   "maps_import_empty": {
-    "area": "Map data import",
-    "context": "Result / error after importing map data from a file (Missing map data screen, Developer tools): %1$s = file name",
-    "priority": 3,
-    "confidence": "sicher"
-  },
-  "maps_import_cant_replace": {
     "area": "Map data import",
     "context": "Result / error after importing map data from a file (Missing map data screen, Developer tools): %1$s = file name",
     "priority": 3,

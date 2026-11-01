@@ -79,15 +79,38 @@ class VoiceGuideTest {
     }
 
     @Test fun theKindOfWayWhenItChanges() {
-        // off the road onto a track (bike classes: 22 road → 4 track)
+        // off the road onto a small way, no way types on the line (bike classes: 22 road → 4 track / path / footway alike):
+        // "Weg" – never "Feldweg" from the class alone (owner 2026-11-01, Hilden: park paths and crossings were "Feldweg")
         val offRoad = JunctionShape(-85f, 22, 4, listOf(JunctionShape.Branch(0f, 22)))
         val l = line(1000, mapOf(500 to JunctionCue.LEFT), offRoad)
         val j = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).single().second as Phrase.Junction
-        assertEquals(WayKind.TRACK, j.onto)
+        assertEquals(WayKind.WAY, j.onto)
         // street to street: nothing about the way
         val streets = JunctionShape(-85f, 6, 6, listOf(JunctionShape.Branch(0f, 6)))
         val k = startless(ride(VoiceGuide(), line(1000, mapOf(500 to JunctionCue.LEFT), streets), bike = true, speed = 6.0)).single().second
         assertNull((k as Phrase.Junction).onto)
+    }
+
+    /** The way types of the line (BRouterWayStats) name the way – read 20 m after the junction, past a crossing. */
+    @Test fun theKindOfWayFromTheWayTypes() {
+        fun typed(before: String, after: String, crossingM: Int = 0) = line(1000, mapOf(500 to JunctionCue.LEFT),
+            JunctionShape(-85f, 6, 4, listOf(JunctionShape.Branch(0f, 6)))).mapIndexed { i, p ->
+            val m = i * 10
+            val type = when { m < 500 -> before; m < 500 + crossingM -> "footway"; else -> after }
+            p.copy(way = com.onpath.app.routing.WayAttrs(type, "asphalt"))
+        }
+        fun onto(l: List<GeoPoint>, bike: Boolean = true) =
+            (startless(ride(VoiceGuide(), l, bike = bike, speed = 6.0)).single().second as Phrase.Junction).onto
+        assertEquals(WayKind.TRACK, onto(typed("quiet_road", "track")))
+        assertEquals(WayKind.WAY, onto(typed("quiet_road", "footway")))
+        assertEquals(WayKind.CYCLEWAY, onto(typed("quiet_road", "cycleway")))
+        assertEquals("a path on the bike is a Weg", WayKind.WAY, onto(typed("quiet_road", "path")))
+        assertEquals("on foot a Pfad", WayKind.PATH, onto(typed("quiet_road", "path"), bike = false))
+        // a 10 m crossing (footway) before the park's cycle path: the cycle path is the way turned onto
+        assertEquals(WayKind.CYCLEWAY, onto(typed("quiet_road", "cycleway", crossingM = 10)))
+        // the same kind on both sides: nothing about the way
+        assertNull(onto(typed("footway", "footway")))
+        assertNull("steps: no word", onto(typed("quiet_road", "steps")))
     }
 
     @Test fun neverTwoSentencesWithin10Seconds_aJunctionWaitsAndKeepsItsDistance() {
@@ -157,15 +180,17 @@ class VoiceGuideTest {
             ?.takeIf { it is Phrase.StopReached && it.number == 4 })
     }
 
-    @Test fun noGpsOnceAfter30Seconds_quietWhilePaused() {
+    /** Owner 2026-11-01: on the way, 2–3 min without GPS → said once; a short gap says nothing ("otherwise it nags"). */
+    @Test fun noGpsOnceAfterTwoAndAHalfMinutes_quietWhilePaused() {
         val g = VoiceGuide()
         val l = line(3000, emptyMap())
         val base = VoiceGuide.Input(0, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
         g.update(base)
         assertNull(g.update(base.copy(nowMs = 20_000, gpsLost = true)))
-        assertEquals(Phrase.NoGps, g.update(base.copy(nowMs = 51_000, gpsLost = true)))
-        assertNull(g.update(base.copy(nowMs = 90_000, gpsLost = true)))
-        assertNull(g.update(base.copy(nowMs = 200_000, gpsLost = true, paused = true)))
+        assertNull("a minute is no news", g.update(base.copy(nowMs = 80_000, gpsLost = true)))
+        assertEquals(Phrase.NoGps, g.update(base.copy(nowMs = 20_000 + VoiceGuide.GPS_LOST_MS + 1_000, gpsLost = true)))
+        assertNull(g.update(base.copy(nowMs = 300_000, gpsLost = true)))
+        assertNull(g.update(base.copy(nowMs = 600_000, gpsLost = true, paused = true)))
     }
 
     @Test fun eventsAreSaidAtOnce() {
@@ -225,12 +250,12 @@ class VoiceGuideTest {
         val on = VoiceGuide.Input(70_000, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
         assertTrue(g.update(on) is Phrase.Start)
         val said = mutableListOf<Pair<Long, Phrase>>()
-        // lost 40 s, one good fix, lost 40 s … for 15 minutes
+        // lost 160 s, one good fix, lost 160 s … for 20 minutes
         var t = 80_000L
-        while (t < 80_000L + 15 * 60_000L) {
-            for (k in 0 until 40) g.update(on.copy(nowMs = t + k * 1000L, gpsLost = true))?.let { said += (t + k * 1000L) to it }
-            g.update(on.copy(nowMs = t + 41_000L))?.let { said += (t + 41_000L) to it }
-            t += 42_000L
+        while (t < 80_000L + 20 * 60_000L) {
+            for (k in 0 until 160) g.update(on.copy(nowMs = t + k * 1000L, gpsLost = true))?.let { said += (t + k * 1000L) to it }
+            g.update(on.copy(nowMs = t + 161_000L))?.let { said += (t + 161_000L) to it }
+            t += 162_000L
         }
         val noGps = said.filter { it.second == Phrase.NoGps }.map { it.first }
         assertEquals("$noGps", 2, noGps.size)
@@ -275,7 +300,35 @@ class VoiceGuideTest {
             listOfNotNull(g.update(base.copy(nowMs = 700_000, onRoute = false, offRoute = true, quiet = true)))
         assertTrue("$sitting", sitting.isEmpty())
         // walking again, GPS lost in a forest: said
-        val walking = (1..40).mapNotNull { k -> g.update(base.copy(nowMs = 800_000L + k * 1_000L, gpsLost = true)) }
+        val walking = (1..160).mapNotNull { k -> g.update(base.copy(nowMs = 800_000L + k * 1_000L, gpsLost = true)) }
         assertEquals(listOf(Phrase.NoGps), walking)
+    }
+
+    /** Review recording L1: a plan edited while off route builds a new line – no false "back on the route". */
+    @Test fun aNewLineFromTheAppIsNoBackOnRoute() {
+        val l = line(3000, emptyMap())
+        val g = VoiceGuide()
+        val base = VoiceGuide.Input(0, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
+        g.update(base)
+        assertEquals(Phrase.OffRoute, g.update(base.copy(nowMs = 20_000, onRoute = false, offRoute = true)))
+        g.lineFromApp()
+        val said = (1..20).mapNotNull { g.update(base.copy(nowMs = 100_000L + it * 1000, version = 2)) }
+        assertTrue("$said", said.none { it == Phrase.BackOnRoute })
+    }
+
+    /** Owner 2026-11-01: on the way, short GPS gaps (a bridge, a few trees) never say anything. */
+    @Test fun shortGapsOnTheWaySayNothing() {
+        val l = line(3000, emptyMap())
+        val g = VoiceGuide()
+        val base = VoiceGuide.Input(0, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
+        g.update(base)
+        val said = mutableListOf<Phrase>()
+        var t = 20_000L
+        repeat(20) { // 90 s lost, a fix, again – half an hour of patchy GPS
+            for (k in 0 until 90) g.update(base.copy(nowMs = t + k * 1000L, gpsLost = true))?.let { said += it }
+            g.update(base.copy(nowMs = t + 91_000L))?.let { said += it }
+            t += 92_000L
+        }
+        assertTrue("$said", said.none { it == Phrase.NoGps })
     }
 }

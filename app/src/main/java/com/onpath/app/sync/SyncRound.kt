@@ -40,8 +40,13 @@ class SyncRound(
 ) {
     /** How a round ended. */
     sealed interface Outcome {
-        /** Done: [pulled] items read, [pushed] written, [unreadable] could not be opened (newer app, damage). */
-        data class Done(val pulled: Int, val pushed: Int, val unreadable: Int, val left: Int = 0) : Outcome
+        /**
+         * Done: [pulled] items read, [pushed] written, [unreadable] could not be opened (newer app, damage), [left] still
+         * to upload; [restarted] = the mailbox had lost its history and this device started over (review sync M4 – say
+         * it in the problem log); [tooLarge] = items the server refused as too large (they stay in the outbox).
+         */
+        data class Done(val pulled: Int, val pushed: Int, val unreadable: Int, val left: Int = 0,
+                        val restarted: Boolean = false, val tooLarge: Int = 0) : Outcome
         /** No answer from the server (no network, timeout). The ledger keeps what is still to upload. */
         data object Offline : Outcome
         /** 410 / 403: the pairing was ended (unpaired in the browser, or the mailbox belongs to another code). */
@@ -56,7 +61,8 @@ class SyncRound(
      * the rest stays in the outbox for a later round).
      */
     fun run(ledger: SyncLedger, push: (SyncItem) -> Boolean = { true }): Outcome {
-        var pulled = 0; var pushed = 0; var bad = 0
+        var pulled = 0; var pushed = 0; var bad = 0; var restarted = false; var tooLarge = 0
+        fun done() = Outcome.Done(pulled, pushed, bad, ledger.outbox().size, restarted, tooLarge)
         repeat(MAX_PASSES) { pass ->
             // pull: every page since the last revision read (a mailbox nobody claimed yet is claimed first)
             var claimed = false
@@ -66,10 +72,14 @@ class SyncRound(
                     val c = box.claim()
                     if (c.status != 200 && c.status != 201) return failed(c)
                     claimed = true
+                    // claimed again although this device had read from it: the mailbox lost its history (M4)
+                    if (ledger.since > 0 && !restarted) { ledger.restart(); restarted = true }
                     continue
                 }
                 val page = r.page
                 if (r.status != 200 || page == null) return failed(r)
+                // a revision below the one read up to: the mailbox started again from 0 (M4) – read it from the start
+                if (page.rev < ledger.since && !restarted) { ledger.restart(); restarted = true; continue }
                 bad += ledger.apply(keys, page.items, page.rev, aead)
                 pulled += page.items.size
                 if (!page.more || page.items.isEmpty()) break
@@ -81,14 +91,14 @@ class SyncRound(
                 when (w.status) {
                     200 -> { ledger.acked(e.item, w.rev); pushed++ }
                     409 -> conflict = true
-                    413 -> Unit // one item too large (cannot happen below SyncFormat.MAX_BLOB) – the others go on
+                    413 -> tooLarge++ // one item too large (a server limit change) – it stays, the others go on
                     else -> return failed(w)
                 }
             }
-            if (!conflict) return Outcome.Done(pulled, pushed, bad, ledger.outbox().size)
-            if (pass == MAX_PASSES - 1) return Outcome.Done(pulled, pushed, bad, ledger.outbox().size)
+            if (!conflict) return done()
+            if (pass == MAX_PASSES - 1) return done()
         }
-        return Outcome.Done(pulled, pushed, bad, ledger.outbox().size)
+        return done()
     }
 
     private fun failed(r: Mailbox.Reply): Outcome = outcomeOf(r)

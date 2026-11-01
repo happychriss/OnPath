@@ -74,4 +74,12 @@ class QuestionNotificationTest {
         val r = File("src/main/java/com/onpath/app/recording/TourInterruptedReceiver.kt").readText()
         assertTrue(r.contains("INTERRUPTED_ID = 45"))
     }
+
+    /** Review M3: no action of the service and no broken session file can kill the process (and with it the tour). */
+    @Test fun serviceActionsAreGuarded() {
+        val svc = File("src/main/java/com/onpath/app/recording/RecordingService.kt").readText()
+        assertTrue(svc.contains("override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = try {"))
+        assertTrue(svc.contains("CoroutineExceptionHandler"))
+        assertTrue(svc.substringAfter("private fun loadFollow() {").substringBefore("\n    }\n").contains("catch (e: Exception)"))
+    }
 }

@@ -36,11 +36,11 @@
     <string name="routes_empty_planned">No planned routes yet.\nSave a planned route or import a GPX file.</string>
     <string name="routes_empty_done">No tours recorded yet.</string>
     <string name="routes_kind_planned">Planned route</string>
-    <string name="routes_kind_recorded">Recorded track</string>
+    <string name="routes_kind_recorded">Recorded tour</string>
     <string name="routes_kind_imported">Imported GPX</string>
     <string name="routes_rename_planned">Rename planned route</string>
-    <string name="routes_rename_recorded">Rename recorded track</string>
-    <string name="routes_rename_imported">Rename imported gpx</string>
+    <string name="routes_rename_recorded">Rename recorded tour</string>
+    <string name="routes_rename_imported">Rename imported GPX</string>
     <string name="routes_recording_now">Recording now</string>
     <string name="routes_end_tour_first">End the running tour first, then this route can be loaded.</string>
     <string name="routes_export_all">Export all (ZIP)</string>
@@ -56,7 +56,7 @@
     <string name="routes_unfinished_text">A recording was interrupted (%1$s, %2$s). Nothing was lost.</string>
     <string name="routes_unfinished_continue">Continue</string>
     <string name="routes_unfinished_delete_title">Delete this tour?</string>
-    <string name="routes_track_saved">Track saved</string>
+    <string name="routes_track_saved">Tour saved</string>
 
     <string name="routes_activity_from_file">Activity set to %1$s from the file</string>
     <string name="routes_activity_from_tour">Activity set to %1$s from the tour</string>

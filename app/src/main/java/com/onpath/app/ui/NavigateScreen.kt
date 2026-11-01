@@ -57,6 +57,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
@@ -92,7 +93,7 @@ data class NavUi(
     val elapsedS: Long = 0,
     val paused: Boolean = false,
     val waitingGps: Boolean = false,
-    /** No GPS while standing still (owner 2026-11-01): a quiet grey state, not the amber ⚠ warning. */
+    /** No GPS while standing still or only briefly (owner 2026-11-01): a quiet grey state, not the amber ⚠ warning. */
     val quietGps: Boolean = false,
     /** Off route (confirmed): the question, "finding a way back…" or the arrow banner; null = on route. */
     val offRoute: OffRouteUi? = null,
@@ -209,6 +210,8 @@ fun NavigateOverlay(
      * bottom (with the navigation bar) – a route fit leaves that room free (FitPaddingRule).
      */
     onCover: (topDp: Int, bottomDp: Int) -> Unit = { _, _ -> },
+    /** Developer tools unlocked: the "Tour-Sim" chip ([NavSimChip]) under the status; null = none (everyone else). */
+    sim: (@Composable () -> Unit)? = null,
 ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     // the top column's height (turn card, status, chips) below the status bar: the one box goes 12 dp below it
@@ -232,6 +235,7 @@ fun NavigateOverlay(
                     onProfileScrub = onProfileScrub, onProfileRelease = onProfileRelease)
             }
             download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
+            sim?.let { Box(Modifier.align(Alignment.End)) { it() } }
         }
         Column(Modifier.align(Alignment.BottomCenter).modeEdge(ModeEdge.BOTTOM).fillMaxWidth()) {
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
@@ -612,7 +616,8 @@ private fun OffRouteCard(o: OffRouteUi) {
 /**
  * The off-route question (owner: ask every time, never re-route silently) as a FRAGE box under the status card: stays
  * until one of the big buttons is pressed or the user is back on the route. Buttons 56 dp – fine with gloves. With a
- * stop in question (StopSkip): "Off route – re-plan?" – Yes (via it) · Yes, skip stop 3 (without it) · Keep original.
+ * stop in question (StopSkip, owner 2026-11-01: one question shape): "You're 120 m off the route" – Keep original · New
+ * route without stop 3 · New route (via it).
  * The activity switch ("New route for MTB") is the same question with the activity's icon.
  */
 @Composable
@@ -622,7 +627,7 @@ internal fun rerouteMessage(q: NavPrompt.Question, onTake: () -> Unit, onKeep: (
     // turn round: the U-turn sign, so a way back on the same road is not mistaken for "nothing happened"
     val icon = q.switch?.activity?.icon ?: if (q.turnRound) Icons.Filled.UTurnLeft else Icons.Outlined.AltRoute
     val buttons = if (q.via != null) listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.skipButton(q, maxName), onTake),
-        MessageButton(NavText.YES, onVia))
+        MessageButton(NavText.TAKE, onVia))
         else listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.TAKE, onTake))
     return Message(MessageKind.FRAGE, NavText.title(q), NavText.question(q, maxName), buttons, icon = icon, navigate = true)
 }
@@ -683,9 +688,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     }
     // a provisional position far from the line: "not on route" (calm), never a "to go" from the line's nearest point
     val provOff = prov != null && remaining != null && !com.onpath.app.navigation.Provisional.onRoute(remaining.offM, prov)
-    LaunchedEffect(location) {
-        if (here != null && com.onpath.app.navigation.Provisional.arrivalCheck(prov)) vm.checkArrival(here, remaining?.distanceM)
-    }
+    // the arrival is checked in the recording service (review H2: also with the phone in the pocket) – RecState.arrived
     val next = remember(turns, remaining, rec?.offRouteAlert, provOff) {
         if (provOff) null else nextTurnHint(turns, total, remaining?.distanceM, remaining?.offM, rec?.offRouteAlert == true)
     }
@@ -729,7 +732,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         },
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,
         waitingGps = rec?.gpsLost == true && prov == null,
-        quietGps = rec?.standingStill == true,
+        quietGps = rec?.gpsQuiet == true,
         offRoute = rec?.nav?.let { n ->
             n.prompt?.let { p -> OffRouteUi(p, n.toRoute, n.toRoute?.let { (it.bearingDeg - mapBearing).toFloat() }) }
         },
@@ -757,6 +760,8 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     )
     // Back on the open sheet = "Keep" (nothing changes)
     androidx.activity.compose.BackHandler(enabled = vm.activityCheck != null) { vm.closeActivityCheck() }
+    // developer tools: the Navigate "Sim" follows a changed line (plan edit, new route) from where it is
+    LaunchedEffect(line) { vm.navSimFollow(line) }
     val bg = rememberBackgroundDownload(vm)
     val activity = androidx.compose.ui.platform.LocalContext.current as? com.onpath.app.MainActivity
     // Cycling, "Screen while cycling: Smart" (owner): far from the next turn the dim rest view covers the map (RestView.kt)
@@ -784,7 +789,12 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
             download = bg, onDownload = { vm.downloadDetailsOpen = true },
             onNotifications = { vm.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },
             onNotificationsOk = { vm.notificationsOkTour = rec?.tourId },
-            error = vm.errorCard, onErrorOk = { vm.errorCard = null }, onCover = onCover)
+            error = vm.errorCard, onErrorOk = { vm.errorCard = null }, onCover = onCover,
+            sim = if (!vm.devToolsShown) null else { {
+                val demo by com.onpath.app.recording.DemoLocation.state.collectAsState()
+                NavSimChip(demo, onStart = { vm.startNavSim(line) }, onFactor = com.onpath.app.recording.DemoLocation::setFactor,
+                    onStop = { com.onpath.app.recording.DemoLocation.stop("stopped on the Navigate page") })
+            } })
         RestLayer(restTarget?.takeIf { rest }?.let { RestUi(it.event, it.distanceM, ui.toGo?.timeS, ui.arriveAt) },
             onTap = ScreenTouch::note)
     }

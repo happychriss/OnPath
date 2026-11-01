@@ -280,6 +280,7 @@ fun syncProblemText(p: PlanSync.Problem): Pair<String, NoticeKind?> = when (p) {
     is PlanSync.Problem.NewerApp -> Txt.p(Res.plurals.sync_newer_app, p.count, p.count) to null
     is PlanSync.Problem.NotSaved -> Txt.p(Res.plurals.sync_not_saved, p.count, p.count) to null
     PlanSync.Problem.Storage -> Txt.s(Res.string.sync_storage) to NoticeKind.ERROR
+    is PlanSync.Problem.Stuck -> Txt.p(Res.plurals.sync_stuck, p.count, p.count) to null
 }
 
 /** When the last good pass was: "just now", "5 min ago", then "today 18:40" / "yesterday 09:12" / "21 Oct 18:40". */

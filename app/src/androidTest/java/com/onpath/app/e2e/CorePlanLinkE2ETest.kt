@@ -8,10 +8,12 @@ import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanLinks
 import com.onpath.app.ui.UiEvent
+import com.onpath.strings.Res
+import com.onpath.strings.Txt
+import com.onpath.strings.msg_plan_link_unreadable
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -62,7 +64,7 @@ class CorePlanLinkE2ETest : E2EBase() {
         waitUntil("error card") { var m: String? = null; scenario.onActivity { m = vm(it).errorCard }; m != null }
         scenario.onActivity { a ->
             // no place for it (the link came from outside): the light error card
-            assertTrue(vm(a).errorCard!!, vm(a).errorCard!!.startsWith("This plan link can't be read"))
+            assertEquals(Txt.s(Res.string.msg_plan_link_unreadable), vm(a).errorCard)
             assertNull(vm(a).replaceAsk)
         }
         assertEquals(before, points())

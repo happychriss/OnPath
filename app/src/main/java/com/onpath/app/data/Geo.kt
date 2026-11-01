@@ -22,6 +22,16 @@ object Geo {
 
     fun distance(a: GeoPoint, b: GeoPoint) = distance(a.lat, a.lon, b.lat, b.lon)
 
+    /**
+     * Quick flat distance (equirectangular, metres) for nearby points – where many distances are compared (snapping,
+     * BRouter's matched spots). The one copy (review Arch 8: it was pasted into WaypointSnap and BRouterEngine).
+     */
+    fun fastDistance(a: GeoPoint, b: GeoPoint): Double {
+        val x = Math.toRadians(b.lon - a.lon) * kotlin.math.cos(Math.toRadians((a.lat + b.lat) / 2.0))
+        val y = Math.toRadians(b.lat - a.lat)
+        return kotlin.math.sqrt(x * x + y * y) * 6_371_000.0
+    }
+
     fun length(points: List<GeoPoint>): Double {
         var d = 0.0
         for (i in 1 until points.size) d += distance(points[i - 1], points[i])
@@ -33,6 +43,27 @@ object Geo {
         val out = DoubleArray(points.size)
         for (i in 1 until points.size) out[i] = out[i - 1] + distance(points[i - 1], points[i])
         return out
+    }
+
+    /**
+     * Ascent / descent of a planned line's elevations the way BRouter counts them (10 m hysteresis buffer) – the plan
+     * sheet's numbers. Navigate's "remaining ascent" uses the same, so the number does not jump at Start (review routing
+     * M1). [climb] stays for recorded GPS tracks.
+     */
+    fun routeClimb(eles: List<Double?>, filterM: Double = 10.0): Pair<Double, Double> {
+        var up = 0.0; var down = 0.0; var bufUp = 0.0; var bufDown = 0.0
+        var last: Double? = null
+        for (e in eles) {
+            if (e == null) continue
+            val prev = last
+            if (prev != null) {
+                bufUp += e - prev; bufDown += prev - e
+                if (bufUp > filterM) { up += bufUp - filterM; bufUp = filterM } else if (bufUp < 0.0) bufUp = 0.0
+                if (bufDown > filterM) { down += bufDown - filterM; bufDown = filterM } else if (bufDown < 0.0) bufDown = 0.0
+            }
+            last = e
+        }
+        return up to down
     }
 
     /** Ascent/descent with a hysteresis threshold so GPS/DEM noise does not inflate totals. */

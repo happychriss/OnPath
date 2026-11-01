@@ -138,7 +138,25 @@ data class TourTimes(
     val plannedS: Double? = null,
     /** Moving time you needed for those parts. */
     val neededS: Double? = null,
+    /** Start and end of the tour (epoch ms; null = not known – tours from before 2026-11-01). */
+    val startMs: Long? = null,
+    val endMs: Long? = null,
 ) {
+    /**
+     * The tour summary (owner 2026-11-01): "On the way 4:05 (10:12–14:17) · moving 2:52 · breaks 1:13" – breaks = the
+     * rest of the time on the way (stops and Pause); null without start / end (then [movingLine]).
+     */
+    val summaryLine: String?
+        get() {
+            val s = startMs ?: return null; val e = endMs ?: return null
+            if (e <= s) return null
+            val total = (e - s) / 1000.0
+            val moving = movingS.coerceIn(0.0, total)
+            val fmt = java.text.SimpleDateFormat("HH:mm", java.util.Locale.ROOT)
+            return Txt.s(Res.string.nav_tour_summary_times, TimeEstimate.hm(total), fmt.format(java.util.Date(s)),
+                fmt.format(java.util.Date(e)), TimeEstimate.hm(moving), TimeEstimate.hm(total - moving))
+        }
+
     /** "Moving 2:52 · breaks 0:41" */
     val movingLine: String get() = Txt.s(Res.string.nav_moving_breaks, TimeEstimate.hm(movingS), TimeEstimate.hm(breakS))
 
@@ -152,11 +170,14 @@ data class TourTimes(
 
     fun toJson(): JSONObject = JSONObject().put("moving", movingS).put("breaks", breakS)
         .put("planned", plannedS ?: JSONObject.NULL).put("needed", neededS ?: JSONObject.NULL)
+        .put("start", startMs ?: JSONObject.NULL).put("end", endMs ?: JSONObject.NULL)
 
     companion object {
         fun fromJson(o: JSONObject): TourTimes = TourTimes(
             o.optDouble("moving", 0.0), o.optDouble("breaks", 0.0),
             if (o.isNull("planned")) null else o.optDouble("planned"), if (o.isNull("needed")) null else o.optDouble("needed"),
+            if (!o.has("start") || o.isNull("start")) null else o.optLong("start"),
+            if (!o.has("end") || o.isNull("end")) null else o.optLong("end"),
         )
 
         /** From a tour's elapsed time (pauses excluded) and its break time. */

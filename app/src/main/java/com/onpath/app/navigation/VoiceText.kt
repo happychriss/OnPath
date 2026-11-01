@@ -73,6 +73,8 @@ object VoiceText {
         WayKind.PATH -> Txt.s(Res.string.voice_way_path)
         WayKind.TRACK -> Txt.s(Res.string.voice_way_track)
         WayKind.ROAD -> Txt.s(Res.string.voice_way_road)
+        WayKind.CYCLEWAY -> Txt.s(Res.string.voice_way_cycleway)
+        WayKind.WAY -> Txt.s(Res.string.voice_way_way)
     }
 
     /** "In 150 metres" – a junction's distance, in the steps one can picture (50, 100, 150, 200, 300, 500 m, then km). */

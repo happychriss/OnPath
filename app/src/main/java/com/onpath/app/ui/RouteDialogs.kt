@@ -3,6 +3,12 @@ package com.onpath.app.ui
 import com.onpath.strings.*
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
@@ -108,5 +114,25 @@ fun DiscardPlanDialog(onDiscard: () -> Unit, onCancel: () -> Unit) {
         confirmButton = { TextButton(onClick = onDiscard, modifier = Modifier.heightIn(min = 48.dp)) {
             Text(str(Res.string.plan_discard), color = OnPathColors.Error) } },
         dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
+    )
+}
+
+/**
+ * "Planning a route from the track…" (owner 2026-11-01): a modal box while TrackToPlan runs – nothing else at the same
+ * time, one way out: Cancel (nothing changes). Not closed by a tap outside or Back.
+ */
+@Composable
+fun PlanFromTrackDialog(onCancel: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = {},
+        properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = false, dismissOnBackPress = false),
+        title = { Text(str(Res.string.plan_from_track_busy_title)) },
+        text = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 3.dp); Spacer(Modifier.width(12.dp))
+                Text(str(Res.string.plan_from_track_busy_text))
+            }
+        },
+        confirmButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
     )
 }

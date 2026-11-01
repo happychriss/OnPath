@@ -88,13 +88,10 @@
     <string name="nav_compass_nw">nordwestlich</string>
     <string name="nav_back_to">Zurück zu %1$s</string>
     <string name="nav_back_to_route">Zurück zur Route</string>
-    <!-- re-route and the next stop: "Off route – re-plan?" – Yes (via the stop) / Yes, skip stop 3 (navigation/StopSkip) -->
-    <string name="nav_title_replan">Abseits der Route – neu planen?</string>
-    <string name="nav_state_replan">Neu planen?</string>
+    <!-- re-route and the next stop (owner 2026-11-01: one question shape): "You're 120 m off the route" – Keep original / New route without stop 3 / New route (navigation/StopSkip) -->
     <string name="nav_via_stop">Über %1$s: %2$s</string>
-    <string name="nav_yes">Ja</string>
-    <string name="nav_yes_skip_stop">Ja, %1$s auslassen</string>
-    <string name="nav_notif_skip">Ja, auslassen</string>
+    <string name="nav_yes_skip_stop">Neue Route ohne %1$s</string>
+    <string name="nav_notif_skip">Ohne Stopp</string>
     <string name="nav_stop_n">Stopp %1$d</string>
     <string name="nav_without_stop">ohne %1$s</string>
     <!-- off route, owner 2026-10-31: "You're 120 m off the route" · the new route / the way back and how much longer -->
@@ -105,11 +102,11 @@
     <string name="nav_longer">%1$s länger</string>
     <!-- never on the route yet (owner 2026-10-31): "Route starts 31 km away" · Guide me / Just record -->
     <string name="nav_far_title">Route beginnt %1$s entfernt</string>
-    <string name="nav_far_detail">%1$s (Luftlinie) · Aufnahme läuft</string>
+    <string name="nav_far_detail">%1$s (Luftlinie) · Aufzeichnung läuft</string>
     <string name="nav_far_searching">Weg zum Start wird gesucht…</string>
     <string name="nav_far_lead">Hinführen</string>
-    <string name="nav_far_record">Nur aufnehmen</string>
-    <string name="nav_lead_failed">Kein Weg zur Route gefunden – Aufnahme läuft weiter</string>
+    <string name="nav_far_record">Nur aufzeichnen</string>
+    <string name="nav_lead_failed">Kein Weg zur Route gefunden – Aufzeichnung läuft weiter</string>
 
     <!-- lock screen notification while following a route -->
     <string name="nav_notif_to_go">noch %1$s</string>
@@ -137,6 +134,12 @@
     <string name="nav_rec_save_failed">Der Track kann nicht mehr gespeichert werden (Speicher voll oder beschädigt). Gib Speicher frei – die Aufzeichnung versucht es weiter.</string>
     <string name="nav_rec_paused_title">Aufzeichnung ist pausiert</string>
     <string name="nav_rec_paused_moving">Du bist unterwegs – Aufzeichnung fortsetzen?</string>
+    <string name="nav_rec_rescued_title">Tour gerettet</string>
+    <string name="nav_rec_rescued">Der Speicher des Handys hatte ein Problem. OnPath hat deine Tour wiederhergestellt – die Aufzeichnung läuft weiter. Details: Einstellungen → Diagnose.</string>
+    <string name="nav_saver_title">Energiesparmodus stoppt GPS</string>
+    <string name="nav_saver_text">Auf diesem Handy schaltet der Energiesparmodus GPS bei ausgeschaltetem Bildschirm ab – dein Track bekommt Lücken. Schalte ihn für die Tour aus.</string>
+    <string name="nav_watchdog_title">Aufzeichnung bekommt kein GPS</string>
+    <string name="nav_watchdog_text">OnPath hat die Aufzeichnung neu gestartet, aber seit 5 Minuten keine GPS-Position. Öffne OnPath und prüfe die Aufzeichnung.</string>
     <string name="nav_interrupted_title">Tour-Aufzeichnung unterbrochen</string>
     <string name="nav_interrupted_boot">Das Handy wurde neu gestartet – öffne OnPath und tippe auf „Fortsetzen“, um weiter aufzuzeichnen.</string>
     <string name="nav_interrupted_update">OnPath wurde aktualisiert – öffne OnPath und tippe auf „Fortsetzen“, um weiter aufzuzeichnen.</string>
@@ -152,7 +155,7 @@
 
     <!-- tour card, end tour, arrival -->
     <string name="nav_end_tour_title">Tour beenden?</string>
-    <string name="nav_delete_track_title">Diesen Track löschen?</string>
+    <string name="nav_delete_track_title">Diese Tour löschen?</string>
     <string name="nav_recycle_bin_note">Kommt für %1$d Tage in den Papierkorb.</string>
     <string name="nav_arrived_title">Du bist angekommen – Tour beenden?</string>
     <string name="nav_keep_going">Weitermachen</string>
@@ -207,10 +210,10 @@
     <string name="nav_ride_until_detail">Die Fahrt und alles danach fällt weg</string>
     <string name="nav_ride_not_counted">Alles speichern, Fahrten nicht zählen</string>
     <string name="nav_ride_not_counted_detail">Fahrten grau auf der Karte, nicht in km, Zeit oder Tempo</string>
-    <string name="nav_ride_split_two">In zwei Tracks aufteilen</string>
-    <string name="nav_ride_split_n">In %1$d Tracks aufteilen</string>
+    <string name="nav_ride_split_two">In zwei Touren aufteilen</string>
+    <string name="nav_ride_split_n">In %1$d Touren aufteilen</string>
     <string name="nav_ride_split_two_detail">Vor und nach der Fahrt</string>
-    <string name="nav_ride_split_n_detail">Ein Track zwischen den Fahrten</string>
+    <string name="nav_ride_split_n_detail">Eine Tour zwischen den Fahrten</string>
     <string name="nav_ride_as_recorded">Wie aufgezeichnet speichern</string>
     <string name="nav_ride_as_recorded_detail">Alles zählt, auch die Fahrten</string>
     <string name="nav_tour_date_name">Tour %1$s</string>
@@ -219,6 +222,7 @@
     <string name="nav_line_note">Neue Route · vorher %1$s</string>
     <string name="nav_pause_no_gps">kein GPS</string>
     <string name="nav_pause_no_progress">kein Fortschritt</string>
+    <string name="nav_tour_summary_times">Unterwegs %1$s (%2$s–%3$s) · in Bewegung %4$s · Pausen %5$s</string>
     <string name="nav_moving_breaks">In Bewegung %1$s · Pausen %2$s</string>
     <string name="nav_plan_vs_needed">Auf der Route: geplant %1$s – gebraucht %2$s</string>
     <string name="nav_pace_relaxed">Gemütlich</string>

@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -58,6 +59,8 @@ fun MapHost(
     val host = remember { MapHostView() }
     /** This host's controller (touch handling never uses another host's). */
     val myCtrl = remember { arrayOfNulls<MapController>(1) }
+    /** The style JSON is built off the main thread (review Arch 10: assets, disk checks, JSON per reload). */
+    val styleScope = androidx.compose.runtime.rememberCoroutineScope()
     /** Theme of this host's loaded style. */
     val myTheme = remember { arrayOfNulls<String>(1) }
     // No frame-rate cap (owner): the map runs at the display's full rate while you look at it.
@@ -119,8 +122,6 @@ fun MapHost(
                 isTiltGesturesEnabled = false
             }
             var fallbackUsed = false
-            fun styleJson() = StyleLoader.load(context, vm.dataFiles.dir, vm.settings.mapTheme, vm.dataFiles.mapDir(),
-                vm.detailedAreas(), vm.devToolsShown, vm.packageAreas())
             fun setStyle(json: String) {
                 val loadedFrom = StyleLoader.lastMapDir
                 host.loading(loadedFrom ?: vm.dataFiles.dir)
@@ -155,6 +156,25 @@ fun MapHost(
                 val freed = old?.let { MapMemory.releaseFileGeoJson(it) } ?: 0
                 if (freed == 0) setStyle(json)
                 else MapMemory.afterFrames(mapView, map) { if (!host.isGone && seq == loadSeq) setStyle(json) }
+            }
+            // what the style needs is read here (main thread); the JSON is built on IO and set back on main – a newer
+            // reload wins (an older build that finishes later is dropped)
+            var buildSeq = 0
+            fun reloadStyle() {
+                val dataDir = vm.dataFiles.dir; val theme = vm.settings.mapTheme; val mapDir = vm.dataFiles.mapDir()
+                val cover = vm.detailedAreas(); val dev = vm.devToolsShown; val packages = vm.packageAreas()
+                val seq = ++buildSeq
+                styleScope.launch {
+                    val json = try {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            StyleLoader.load(context, dataDir, theme, mapDir, cover, dev, packages)
+                        }
+                    } catch (e: Exception) {
+                        com.onpath.app.debug.Problems.error("map", "Map style could not be built; the minimal style is used", e)
+                        StyleLoader.fallback(mapDir)
+                    }
+                    if (seq == buildSeq && !host.isGone) load(json)
+                }
             }
             map.addOnCameraIdleListener {
                 val c = map.cameraPosition
@@ -250,16 +270,16 @@ fun MapHost(
                 // StyleLoader.noteFailure reports it as an ERROR (the map falls back to the minimal style); a rejected
                 // developer test style (dev/style.json) is a WARN and the normal style loads again
                 if (StyleLoader.noteFailure(msg ?: "?")) {
-                    load(styleJson())
+                    reloadStyle()
                 // a new generation of downloaded map cells that does not load: back to the previous one (R-16)
                 } else if (vm.rollbackMapCells(StyleLoader.lastMapDir)) {
-                    load(styleJson())
+                    reloadStyle()
                 } else if (!fallbackUsed) { fallbackUsed = true; load(StyleLoader.fallback(vm.dataFiles.mapDir())) }
             }
             myTheme[0] = vm.settings.mapTheme
             // this host's own reload (MapReload: two activities' hosts may live at once)
-            host.ready { load(styleJson()) }
-            load(styleJson())
+            host.ready { reloadStyle() }
+            reloadStyle()
         }
         // only clear what is ours: another (short-lived) map host must never switch off this one
         onDispose {

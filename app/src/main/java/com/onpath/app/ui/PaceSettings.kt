@@ -64,11 +64,14 @@ private fun PaceGroup(title: String, activity: Activity, selected: Pace, onPick:
     }
 }
 
-/** After a tour: "Moving 2:52 · breaks 0:41" and "On the route: planned 3:10 – you needed 2:52". */
+/**
+ * After a tour: "On the way 4:05 (10:12–14:17) · moving 2:52 · breaks 1:13" (older tours: "Moving 2:52 · breaks 0:41")
+ * and "On the route: planned 3:10 – you needed 2:52".
+ */
 @Composable
 internal fun TourTimesText(t: com.onpath.app.time.TourTimes) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(t.movingLine, style = MaterialTheme.typography.bodyMedium)
+        Text(t.summaryLine ?: t.movingLine, style = MaterialTheme.typography.bodyMedium)
         t.planLine?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }

@@ -25,6 +25,8 @@ import javax.xml.parsers.SAXParserFactory
 object GpxParser {
 
     const val MAX_BYTES = 60L * 1024 * 1024
+    /** A damaged file is scanned for points only up to this size (memory); bigger ones keep their readable part. */
+    const val RECOVERY_MAX_BYTES = 15 * 1024 * 1024
 
     fun parse(input: InputStream): GpxData {
         val bytes = readLimited(input)
@@ -59,8 +61,11 @@ object GpxParser {
         val warnings = handler.warnings.toMutableList()
 
         if (broken) {
-            val recovered = RegexRecovery.parse(String(bytes, Charsets.UTF_8))
-            if (recovered.pointCount + recovered.waypoints.size > result.pointCount + result.waypoints.size) {
+            // the scan holds the file as text (twice its size) plus the matches: only for files up to RECOVERY_MAX_BYTES,
+            // and memory running out keeps the readable part (review routing M6: a cut-off 50 MB export crashed the app)
+            val recovered = if (bytes.size > RECOVERY_MAX_BYTES) null else try { RegexRecovery.parse(String(bytes, Charsets.UTF_8)) }
+                catch (e: OutOfMemoryError) { Problems.warn("gpx", "Not enough memory to scan the damaged GPX; imported the readable part", e); null }
+            if (recovered != null && recovered.pointCount + recovered.waypoints.size > result.pointCount + result.waypoints.size) {
                 warnings += "The file is not valid XML; recovered ${recovered.pointCount} points by scanning it."
                 result = recovered.copy(name = recovered.name ?: result.name)
             } else {
@@ -112,6 +117,12 @@ object GpxParser {
         }
     }
 
+    /**
+     * A logger's "no fix" point at exactly 0° / 0° (review routing L3): one of them turned a track into a 5000 km line.
+     * Dropped from tracks and routes (a real point there is in the Gulf of Guinea).
+     */
+    internal fun noFix(lat: Double, lon: Double): Boolean = lat == 0.0 && lon == 0.0
+
     internal fun parseCoord(s: String?, limit: Double): Double? {
         val v = s?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: return null
         return if (v.isNaN() || v < -limit || v > limit) null else v
@@ -139,9 +150,11 @@ object GpxParser {
         private var ptEle: Double? = null
         private var ptTime: Long? = null
         private var ptName: String? = null
+        private var ptType: String? = null
         private val stack = ArrayDeque<String>()
         private val text = StringBuilder()
         private var badPoints = 0
+        private var noFixPoints = 0
 
         override fun startElement(uri: String?, localName: String?, qName: String, attrs: Attributes) {
             val name = local(qName)
@@ -157,7 +170,7 @@ object GpxParser {
                     ptKind = name
                     ptLat = parseCoord(attr(attrs, "lat"), 90.0)
                     ptLon = parseCoord(attr(attrs, "lon"), 180.0)
-                    ptEle = null; ptTime = null; ptName = null
+                    ptEle = null; ptTime = null; ptName = null; ptType = null
                 }
             }
         }
@@ -171,7 +184,7 @@ object GpxParser {
             val parent = stack.getOrNull(stack.size - 2)
             val value = text.toString().trim()
             when (name) {
-                "ele" -> if (ptKind != null) ptEle = value.replace(',', '.').toDoubleOrNull()?.takeIf { !it.isNaN() }
+                "ele" -> if (ptKind != null) ptEle = value.replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() }
                 "time" -> if (ptKind != null) ptTime = parseTime(value)
                 "name" -> when {
                     ptKind != null -> ptName = value
@@ -180,7 +193,8 @@ object GpxParser {
                 }
                 "trkpt", "rtept" -> {
                     val lat = ptLat; val lon = ptLon
-                    if (lat != null && lon != null) {
+                    if (lat != null && lon != null && noFix(lat, lon)) noFixPoints++
+                    else if (lat != null && lon != null) {
                         val seg = curSeg ?: mutableListOf<TrackPoint>().also { segs += it; curSeg = it }
                         seg += TrackPoint(lat, lon, ptEle, ptTime)
                     } else badPoints++
@@ -188,12 +202,13 @@ object GpxParser {
                 }
                 "wpt" -> {
                     val lat = ptLat; val lon = ptLon
-                    if (lat != null && lon != null) wpts += GpxWaypoint(lat, lon, ptName?.ifBlank { null }, ptEle)
+                    if (lat != null && lon != null) wpts += GpxWaypoint(lat, lon, ptName?.ifBlank { null }, ptEle, ptType)
                     else badPoints++
                     ptKind = null
                 }
-                // the line's sport (Komoot); a wpt's own <type> is not the line's
+                // the line's sport (Komoot); a wpt's own <type> is not the line's (OnPath's plan export: "pinned")
                 "type" -> if (ptKind == null && (parent == "trk" || parent == "rte")) lineType = value.ifBlank { null }
+                    else if (ptKind != null) ptType = value.ifBlank { null }
                 "trkseg" -> curSeg = null
                 "trk", "rte" -> closeLine()
             }
@@ -219,7 +234,9 @@ object GpxParser {
         fun result(): GpxData {
             closeLine()
             if (badPoints > 0) Problems.warn("gpx", "GPX: skipped $badPoints points without valid coordinates")
-            val w = if (badPoints > 0) listOf("Skipped $badPoints points without valid coordinates.") else emptyList()
+            if (noFixPoints > 0) Problems.info("gpx", "GPX: dropped $noFixPoints \"no fix\" points at 0° / 0°")
+            val w = (if (badPoints > 0) listOf("Skipped $badPoints points without valid coordinates.") else emptyList()) +
+                (if (noFixPoints > 0) listOf("Dropped $noFixPoints points at 0° / 0° (no GPS fix).") else emptyList())
             return GpxData(gpxName ?: lines.firstOrNull()?.name, lines.toList(), wpts.toList(), w)
         }
     }
@@ -255,10 +272,10 @@ internal object RegexRecovery {
             val body = m.groupValues.getOrNull(4).orEmpty()
             val lat = GpxParser.parseCoord(latRe.find(attrs)?.groupValues?.get(1), 90.0) ?: continue
             val lon = GpxParser.parseCoord(lonRe.find(attrs)?.groupValues?.get(1), 180.0) ?: continue
-            val ele = eleRe.find(body)?.groupValues?.get(1)?.trim()?.toDoubleOrNull()
+            val ele = eleRe.find(body)?.groupValues?.get(1)?.trim()?.toDoubleOrNull()?.takeIf { it.isFinite() }
             if (m.groupValues[1].equals("wpt", true)) {
                 wpts += GpxWaypoint(lat, lon, nameRe.find(body)?.groupValues?.get(1)?.trim(), ele)
-            } else {
+            } else if (!GpxParser.noFix(lat, lon)) {
                 val seg = current ?: mutableListOf<TrackPoint>().also { segments += it; current = it }
                 seg += TrackPoint(lat, lon, ele, GpxParser.parseTime(timeRe.find(body)?.groupValues?.get(1)))
             }

@@ -22,6 +22,15 @@ class AppUpdaterTest {
         assertTrue(r.notes.startsWith("- Trail names"))
     }
 
+    /** Review Arch 6: the asset's sha256 (GitHub's `digest`) is checked before the installer; none known = size only. */
+    @Test fun apkChecksumFromTheAssetDigest() {
+        val h = "ab".repeat(32)
+        val withDigest = json.replace(""""size":32000000}""", """"size":32000000,"digest":"sha256:$h"}""")
+        assertEquals(h, AppUpdater.parseRelease(withDigest)!!.apkSha256)
+        assertNull(AppUpdater.parseRelease(json)!!.apkSha256)
+        assertNull(AppUpdater.parseRelease(json.replace(""""size":32000000}""", """"size":32000000,"digest":null}"""))!!.apkSha256)
+    }
+
     @Test fun releaseWithoutApkIsIgnored() =
         assertNull(AppUpdater.parseRelease("""{"tag_name":"v1.0.0","assets":[{"name":"notes.txt","browser_download_url":"u","size":1}]}"""))
 

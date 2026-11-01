@@ -12,6 +12,7 @@
 #      RD5=<path to E10_N45.rd5> (default ~/onpath-routing/segments/E10_N45.rd5, else downloaded from brouter.de),
 #      JAVA_HOME (default Android Studio's JBR). Never runs on a real phone: only emulator-* serials are taken.
 #      FLOWS=<class or class#method,…> runs only these (debugging one flow).
+#      E2E_ARGS="-e routingDownload true" adds instrumentation arguments (e.g. the fresh-install routing download).
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 WORK=${WORK:-$HOME/onpath-cells-work}
@@ -29,6 +30,18 @@ mkdir -p "$OUT" "$ANDROID_AVD_HOME" "$ANDROID_TMP"
 BUILD=1; [ "${1:-}" = "--no-build" ] && BUILD=0
 T0=$(date +%s)
 
+# One agent per emulator (tools/dev/device.sh, owner 2026-11-01): hold the machine's emulator lock for the whole run,
+# so a parallel agent never shares (or kills) this emulator. Released when the script ends (fd 7).
+if command -v flock >/dev/null; then
+  exec 7>>"$WORK/emulator.lock"
+  if ! flock -n 7; then
+    echo "Waiting for the emulator – $(cat "$WORK/emulator.lock.info" 2>/dev/null || echo "another agent has it")"
+    flock 7
+  fi
+  echo "release_rundgang ($(basename "$ROOT")@$(git -C "$ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null)) since $(date '+%H:%M:%S')" > "$WORK/emulator.lock.info"
+  trap ': > "$WORK/emulator.lock.info"' EXIT
+fi
+
 # ---- the emulator: a running one, else our own (exactly one on the machine) ----
 STARTED=""
 SERIAL=${SERIAL:-$("$ADB" devices | awk '$1 ~ /^emulator-/ && $2 == "device" {print $1; exit}')}
@@ -44,7 +57,7 @@ if [ -z "$SERIAL" ]; then
   "$SDK/emulator/emulator" -avd "$AVD" -port $PORT -memory 4096 -no-window -no-snapshot -no-boot-anim \
     -gpu swiftshader_indirect -no-audio -camera-back none > "$OUT/emulator.log" 2>&1 &
   STARTED=$SERIAL
-  trap '"$ADB" -s "$STARTED" emu kill >/dev/null 2>&1 || true' EXIT
+  trap '"$ADB" -s "$STARTED" emu kill >/dev/null 2>&1 || true; : > "$WORK/emulator.lock.info" 2>/dev/null || true' EXIT
 fi
 case "$SERIAL" in emulator-*) ;; *) echo "Not an emulator: $SERIAL – the Rundgang never runs on a phone"; exit 2 ;; esac
 A=("$ADB" -s "$SERIAL")
@@ -81,7 +94,7 @@ fi
 "${A[@]}" shell mkdir -p /sdcard/e2e
 echo "Running $SUITE…"
 T1=$(date +%s)
-"${A[@]}" shell am instrument -w -r -e class "$SUITE" com.onpath.app.test/androidx.test.runner.AndroidJUnitRunner \
+"${A[@]}" shell am instrument -w -r ${E2E_ARGS:-} -e class "$SUITE" com.onpath.app.test/androidx.test.runner.AndroidJUnitRunner \
   > "$OUT/instrument.txt" 2>&1 || true
 T2=$(date +%s)
 "${A[@]}" pull /sdcard/e2e "$OUT/" >/dev/null 2>&1 || true

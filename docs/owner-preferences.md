@@ -5,6 +5,10 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
 
 ## Talking with the owner
 - **One question at a time**, with a short table of options and a recommendation first; the owner answers tersely.
+  Owner 2026-11-01, the general motto: open questions always as a **question box with answer options, one after the
+  other**, each with 2–3 lines of background – never a list of questions in prose. Every question also goes to the
+  dashboard (issues `frage` in `onpath.private`, `tools/ask.sh`); a blocking one is asked in the chat too (yellow
+  "waiting" dot), the owner answers where he is, the session keeps the issue up to date and closes it.
 - Plain words, short updates, outcome first. No diffs or file dumps in the terminal; quiet tool calls, one-line results.
 - Never name internals toward the owner as product words ("cells", "routing data") – it's "map areas", "the map".
 - Komoot is the UX reference (the owner is a long-time Komoot user).
@@ -46,6 +50,8 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
   `assets/overview/*.pmtiles`.
 
 ## Worktrees and agents
+- Sub-agents (owner 2026-11-01: split work over 3–4 when it costs little overhead): one worktree per editing agent,
+  one agent per device (`tools/dev/device.sh`), builds queue behind the Gradle lock – rules in `CLAUDE.md`.
 - Remove an agent's worktree only after its completion notice AND when no message to it is pending (twice a resumed
   agent lost its work).
 - Temporary folders (`/tmp/…/scratchpad`) are wiped on restart – anything worth keeping goes to the repo, the

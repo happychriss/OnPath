@@ -22,10 +22,10 @@ enum class LanguageChoice(val tag: String?, val label: String) {
 object AppLanguage {
     private const val KEY = "appLanguage"
 
-    private fun prefs(ctx: Context) = ctx.applicationContext.getSharedPreferences("onpath", Context.MODE_PRIVATE)
+    private fun prefs(ctx: Context) = Prefs(ctx)
 
     fun choice(ctx: Context): LanguageChoice = try {
-        prefs(ctx).getString(KEY, null)?.let { LanguageChoice.valueOf(it) } ?: LanguageChoice.SYSTEM
+        prefs(ctx).appLanguage?.let { LanguageChoice.valueOf(it) } ?: LanguageChoice.SYSTEM
     } catch (e: Exception) {
         Problems.warn("settings", "Setting $KEY unreadable, using the phone's language", e); LanguageChoice.SYSTEM
     }
@@ -50,7 +50,7 @@ object AppLanguage {
     }
 
     fun set(ctx: Context, c: LanguageChoice) {
-        prefs(ctx).edit().putString(KEY, c.name).apply()
+        prefs(ctx).appLanguage = c.name
         Problems.info("settings", "App language set to ${c.label}")
         apply(ctx)
     }

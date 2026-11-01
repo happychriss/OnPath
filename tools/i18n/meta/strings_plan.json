@@ -366,12 +366,6 @@
     "max": 34,
     "decided": "Owner 2026-10-30: honest wording – no route, no \"Start navigation\""
   },
-  "plan_route_options": {
-    "area": "Plan sheet",
-    "context": "Accessibility: the ⋯ button of the plan sheet",
-    "priority": 2,
-    "confidence": "sicher"
-  },
   "plan_save_route": {
     "area": "Plan sheet",
     "context": "⋯ menu item / dialog title",
@@ -1231,6 +1225,8 @@
     "priority": 1,
     "confidence": "sicher"
   },
+  "plan_from_track_busy_title": {"area": "Plan from a track", "context": "Modal box title while a track is turned into a route (Cancel only)", "priority": 2, "confidence": "sicher"},
+  "plan_from_track_busy_text": {"area": "Plan from a track", "context": "Line under the spinner in that box", "priority": 2, "confidence": "sicher"},
   "plan_from_track_failed": {
     "area": "Track panel",
     "context": "Error line: no route could be made from the track",

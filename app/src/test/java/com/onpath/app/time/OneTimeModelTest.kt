@@ -7,6 +7,7 @@ import com.onpath.app.routing.LongRoute
 import com.onpath.app.routing.StraightLineEngine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -41,6 +42,23 @@ class OneTimeModelTest {
         assertNull(TimeEstimate.fileSeconds(listOf(listOf(pts[0]), listOf(pts[1].copy(timeMs = null)))))
     }
 
+    /** Review routing M8: a 2-day hut tour and a café stop – moving time, not first → last timestamp. */
+    @Test fun aTracksTimeIsItsMovingTime() {
+        val t0 = 1_700_000_000_000L
+        // day 1: 2 h walking (a point every minute, 80 m apart), then 45 min in a café (points every minute, same spot)
+        val walk1 = (0..120).map { TrackPoint(46.6 + it * 0.00072, 11.1, 600.0, t0 + it * 60_000L) }
+        val cafe = (1..45).map { TrackPoint(walk1.last().lat + 0.00001 * (it % 3), 11.1, 600.0, walk1.last().timeMs!! + it * 60_000L) }
+        val day1 = walk1 + cafe
+        // day 2, next morning (a new segment): 1 h
+        val d2 = t0 + 24 * 3_600_000L
+        val day2 = (0..60).map { TrackPoint(46.8 + it * 0.00072, 11.1, 600.0, d2 + it * 60_000L) }
+        assertEquals(3 * 3600.0, TimeEstimate.fileSeconds(listOf(day1, day2))!!, 1.0)
+        // a pause with no points at all (the logger stopped) that long, on the same spot: not moving either
+        val gap = listOf(TrackPoint(46.6, 11.1, 600.0, t0), TrackPoint(46.60001, 11.1, 600.0, t0 + 3_600_000L),
+            TrackPoint(46.61, 11.1, 600.0, t0 + 3_600_000L + 900_000L))
+        assertEquals(900.0, TimeEstimate.fileSeconds(listOf(gap))!!, 1.0)
+    }
+
     @Test fun theGapBetweenSegmentsIsNotWalked() {
         val a = listOf(GeoPoint(46.60, 11.10, 300.0), GeoPoint(46.65, 11.10, 300.0))
         val b = listOf(GeoPoint(46.70, 11.10, 300.0), GeoPoint(46.75, 11.10, 300.0))
@@ -67,5 +85,19 @@ class OneTimeModelTest {
             val len = com.onpath.app.data.Geo.length(pts)
             assertEquals("$a", TimeEstimate.round(len / (kmh / 3.6)), s, 0.0)
         }
+    }
+
+    /** Review routing L8: one import stats for the app's import, the sync and the web (was three hand-made copies). */
+    @Test fun trackStatsAreTheImportsNumbers() {
+        val t0 = 1_700_000_000_000L
+        val seg = (0..60).map { TrackPoint(46.6 + it * 0.00072, 11.1, 600.0 + it * 5.0, t0 + it * 60_000L) }
+        val s = TimeEstimate.trackStats(listOf(seg), Activity.HIKE, Factors.ONE)
+        assertEquals(com.onpath.app.data.Geo.length(seg.map { it.toGeo() }), s.distanceM, 0.01)
+        assertEquals(300.0, s.ascentM, 1.0)
+        assertEquals(0.0, s.descentM, 0.01)
+        assertEquals(3600.0, s.durationS, 1.0)
+        val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        val sync = java.io.File("src/main/java/com/onpath/app/plansync/DbTourStore.kt").readText()
+        assertTrue(vm.contains("TimeEstimate.trackStats(") && sync.contains("TimeEstimate.trackStats("))
     }
 }

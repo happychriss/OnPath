@@ -158,6 +158,60 @@ class SyncTrackTest {
         assertFalse(server.stored(keys).contains("Browser"))
     }
 
+    /**
+     * Review sync M4: the mailbox row disappeared (365-day idle purge, a reset database). The next round re-claimed it
+     * but kept reading "since 57": nothing came, every push got a 409 – both sides said "synced" and nothing moved.
+     * A mailbox that lost its history is noticed (re-claimed after a 404, or a revision below the one read up to); the
+     * device starts over like after an unpairing, and both sides end with everything.
+     */
+    @Test fun aMailboxThatLostItsHistoryStartsOver() {
+        val server = MemoryServer()
+        val a = SyncLedger.empty(); val b = SyncLedger.empty()
+        var n = 0
+        val nonce = { ByteArray(12) { (n++).toByte() } }
+        val ra = SyncRound(keys, server.box(keys), nonce)
+        val rb = SyncRound(keys, server.box(keys), nonce)
+        a.hello(web, "Chrome", 1); b.hello(phone, "Pixel", 1)
+        for (i in 1..4) a.save(id(i), PLAN, "Plan $i", 10L + i, web)
+        ra.run(a); rb.run(b); ra.run(a)
+        assertEquals(4, b.plans().size)
+        assertTrue(a.since > 0 && b.since > 0)
+        server.purge(keys)
+        // the phone comes first: re-claims, notices the lost history, uploads everything again
+        b.save(id(9), PLAN, "Phone plan", 100, phone)
+        val pb = rb.run(b) as SyncRound.Outcome.Done
+        assertTrue(pb.restarted)
+        assertEquals(0, pb.left)
+        // the browser reads on; here the new mailbox already passed its "since", so it cannot tell (a server epoch would –
+        // cloud-plan) – nothing is lost either way: the phone uploaded everything again
+        val pa = ra.run(a) as SyncRound.Outcome.Done
+        assertEquals(0, pa.left)
+        rb.run(b)
+        assertEquals(5, a.plans().size)
+        assertEquals(a.plans().map { it.id }.toSet(), b.plans().map { it.id }.toSet())
+        assertEquals("Chrome", b.devices(phone).single().name)
+        // a normal round afterwards is no restart
+        assertFalse((ra.run(a) as SyncRound.Outcome.Done).restarted)
+    }
+
+    /** M4, the other way round: the new mailbox's revision is below what this device read – it starts over. */
+    @Test fun aRevisionBelowTheOneReadMeansStartOver() {
+        val server = MemoryServer()
+        val a = SyncLedger.empty(); val b = SyncLedger.empty()
+        val ra = SyncRound(keys, server.box(keys), { ByteArray(12) })
+        val rb = SyncRound(keys, server.box(keys), { ByteArray(12) })
+        for (i in 1..6) a.save(id(i), PLAN, "Plan $i", 10L + i, web)
+        ra.run(a); rb.run(b)
+        server.purge(keys)
+        // the browser re-claims with one new plan only (its others are not dirty – before the fix they were never sent)
+        val c = SyncLedger.empty().apply { save(id(20), PLAN, "Other browser", 300, web) }
+        SyncRound(keys, server.box(keys), { ByteArray(12) }).run(c)
+        val pb = rb.run(b) as SyncRound.Outcome.Done
+        assertTrue(pb.restarted)
+        assertEquals(7, b.plans().size)
+        assertEquals(0, pb.left)
+    }
+
     @Test fun roundSaysOfflineEndedAndRefused() {
         val server = MemoryServer()
         val l = SyncLedger.empty().apply { save(id(1), PLAN, "A", 1, phone) }

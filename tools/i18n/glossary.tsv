@@ -7,9 +7,9 @@ E-MTB	E-MTB	Activity: E-MTB in the picker and on buttons (owner review 2026-10-2
 Hike	Wandern	Activity; in a sentence "Wandern T3"; on the plan sheet chip only "T3" next to the hiking icon – Owner 2026-10-26
 SAC T1–T5	SAC T1–T5	Swiss hiking scale; stays as is (T1 … T5)
 activity	Aktivität
-route	Route	The planned line from start to destination
-tour	Tour	A trip being recorded / a recorded trip
-plan (mode)	Planen	Mode name; "the plan" = der Plan
+route	Route	Something planned, saved or not: "Save route", "Share route", "Route links" – never "plan" for the thing in the UI (UX review 10, 2026-11-01)
+tour	Tour	A trip being recorded / a recorded trip as an item: "Recorded tour", "Tour saved", "Split into two tours", "Delete this tour?"
+plan (mode)	Planen	Mode name and the editing state ("Close plan", "the plan line"); the saved thing is a route
 Navigate (mode)	Navigation	Mode name; button "Start navigation" = "Navigation starten"
 point (route point)	Punkt	Start, via points, destination
 via point	Zwischenpunkt	A point between start and destination (bitte prüfen: alternative "Via-Punkt")
@@ -33,7 +33,7 @@ elevation profile	Höhenprofil
 way type / surface	Wegtyp / Untergrund	Route breakdown bars
 path / track / road	Pfad / Fahrweg / Straße	Way types (track = forest/farm track: "Forstweg/Feldweg" → "Fahrweg" as general word, bitte prüfen)
 cycleway	Radweg
-track (GPX)	Track	A recorded or imported GPS line
+track (GPX)	Track	The GPS line itself ("your track so far is saved") and imported GPX lines ("Close track") – a recorded item is a tour
 recording	Aufzeichnung	"Start recording" = "Aufzeichnung starten"
 off route	abseits der Route	Navigation status
 re-route / new route	neue Route berechnen	Only after asking (owner rule)

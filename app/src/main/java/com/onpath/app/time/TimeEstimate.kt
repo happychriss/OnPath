@@ -1,6 +1,7 @@
 package com.onpath.app.time
 
 import com.onpath.app.data.AppSettings
+import com.onpath.app.data.Geo
 import com.onpath.app.gpx.TrackPoint
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
@@ -29,18 +30,58 @@ object TimeEstimate {
     fun planSeconds(points: List<GeoPoint>, a: Activity, f: Factors): Double = round(RouteTimes.of(points, a).total(f))
 
     /**
-     * Time of an imported track: the file's own (first → last timestamp, [fileSeconds]), else the model's for its
+     * Time of an imported track: the moving time in the file's own timestamps ([fileSeconds]), else the model's for its
      * segments – the same number a planned route on the same points shows (one time model, no second speed table).
-     * The gap between segments is not counted. Without way attributes = the activity's usual way.
+     * Neither counts the gap between segments. Without way attributes = the activity's usual way.
      */
     fun importedSeconds(segments: List<List<TrackPoint>>, a: Activity, f: Factors): Double =
         fileSeconds(segments) ?: round(segments.sumOf { s -> RouteTimes.of(s.map { it.toGeo() }, a).total(f) })
 
-    /** Seconds the file's timestamps span (first → last); null = fewer than two, or not increasing (time is estimated). */
-    fun fileSeconds(segments: List<List<TrackPoint>>): Double? {
-        val times = segments.flatten().mapNotNull { it.timeMs }
-        return if (times.size > 1 && times.last() > times.first()) (times.last() - times.first()) / 1000.0 else null
+    /** Distance, ascent, descent and time of an imported track – the numbers of the track panel and My routes. */
+    data class TrackStats(val distanceM: Double, val ascentM: Double, val descentM: Double, val durationS: Double)
+
+    /**
+     * [TrackStats] of an imported track (review routing L8: computed by hand in the app's import, the sync's import and
+     * the web's import) – one function for all three: distance per segment, ascent with the GPS filter, [importedSeconds].
+     */
+    fun trackStats(segments: List<List<TrackPoint>>, a: Activity, f: Factors): TrackStats {
+        val dist = segments.sumOf { s -> Geo.length(s.map { it.toGeo() }) }
+        var up = 0.0; var down = 0.0
+        segments.forEach { s -> val (u, d) = Geo.climb(s.map { it.ele }); up += u; down += d }
+        return TrackStats(dist, up, down, importedSeconds(segments, a, f))
     }
+
+    /**
+     * Moving time in the file's timestamps (review routing M8 – was first → last: a 2-day hut tour read "31 h", a café
+     * stop counted): per segment, without stops – staying within [STOP_RADIUS_M] for at least [STOP_MIN_S] (as
+     * BreakDetector does on a tour), a gap in the points that long included – and never across a night between segments.
+     * Null = no usable timestamps (time is estimated).
+     */
+    fun fileSeconds(segments: List<List<TrackPoint>>): Double? {
+        var total = 0.0
+        var timed = false
+        for (seg in segments) {
+            val pts = seg.filter { it.timeMs != null }
+            if (pts.size < 2) continue
+            var i = 0
+            while (i < pts.size - 1) {
+                // the longest run from i that stays within the radius: a stop when it lasts long enough
+                var j = i
+                while (j + 1 < pts.size && Geo.distance(pts[i].lat, pts[i].lon, pts[j + 1].lat, pts[j + 1].lon) <= STOP_RADIUS_M) j++
+                val runS = (pts[j].timeMs!! - pts[i].timeMs!!) / 1000.0
+                if (j > i && runS >= STOP_MIN_S) { i = j; continue } // a stop: not moving time
+                val dt = (pts[i + 1].timeMs!! - pts[i].timeMs!!) / 1000.0
+                if (dt > 0) { total += dt; timed = true }
+                i++
+            }
+        }
+        return total.takeIf { timed && it > 0 }
+    }
+
+    /** A stop in a track's timestamps: within this radius … */
+    const val STOP_RADIUS_M = 25.0
+    /** … for at least this long (as on a tour, BreakDetector.MIN_S). */
+    const val STOP_MIN_S = 120.0
 
     /** Display rounding (docs §4.2): under 20 min to the minute, above to 5 minutes. */
     fun round(s: Double): Double = when {
