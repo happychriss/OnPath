@@ -840,7 +840,11 @@ class RecordingService : Service() {
 
     private fun applySettings() {
         val cfg = settings ?: Prefs(this).settings.also { settings = it }
-        navigator?.let { it.offRouteM = cfg.offRouteM.toDouble(); it.enabled = cfg.offRouteWarning }
+        navigator?.let {
+            it.offRouteM = com.onpath.app.navigation.OffRouteDetector.offRouteFor(cfg.offRouteM.toDouble(),
+                hike = it.session.activity == com.onpath.app.routing.Activity.HIKE)
+            it.enabled = cfg.offRouteWarning
+        }
     }
 
     private fun checkOffRoute(p: TrackPoint, accuracyM: Double, nowEl: Long) {

@@ -343,6 +343,15 @@ class OffRouteDetector(
     fun heading(): Double? = move()?.let { m -> recent.lastOrNull()?.let { TurnDetector.bearing(m.from, it.point) } }
 
     companion object {
+        /**
+         * On foot "off the route" from at most this far (+ accuracy): 40 m + accuracy took a park path 2–25 m beside the
+         * street for the route (owner 2026-11-01, tour 62); OsmAnd ~30 m + accuracy on foot. The bike keeps the setting.
+         */
+        const val HIKE_OFF_ROUTE_M = 25.0
+
+        /** The off-route distance for the setting [settingM]: on foot at most [HIKE_OFF_ROUTE_M]. */
+        fun offRouteFor(settingM: Double, hike: Boolean): Double = if (hike) minOf(settingM, HIKE_OFF_ROUTE_M) else settingM
+
         const val CONFIRM_MS = 15_000L
         const val MOVE_M = 25.0
         const val MAX_MARGIN_M = 20.0

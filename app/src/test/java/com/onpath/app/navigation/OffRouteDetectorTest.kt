@@ -242,4 +242,11 @@ class OffRouteDetectorTest {
         (0 until 60).forEach { i -> d.onFix(fix(-60_000.0, 0.0, i * 1000L)) }
         assertTrue("state ${d.state}, shown ${d.shownAlongM}", d.shownAlongM == null)
     }
+
+    /** Owner 2026-11-01: on foot off the route from 25 m (+ accuracy), the bike keeps the setting (40 m). */
+    @Test fun onFootTheOffRouteDistanceIsSmaller() {
+        assertEquals(25.0, OffRouteDetector.offRouteFor(40.0, hike = true), 0.0)
+        assertEquals(20.0, OffRouteDetector.offRouteFor(20.0, hike = true), 0.0)
+        assertEquals(40.0, OffRouteDetector.offRouteFor(40.0, hike = false), 0.0)
+    }
 }
