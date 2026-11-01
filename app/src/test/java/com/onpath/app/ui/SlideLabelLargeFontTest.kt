@@ -9,7 +9,7 @@ import org.junit.Test
 import java.util.Locale
 
 /**
- * The Navigate slider "Tour menu" + small line "Change route · Pause · End" at the phone's largest font (2.0) on a
+ * The Navigate slider "Stop" + small line "Pause · End · Change route" at the phone's largest font (2.0) on a
  * normal phone: the small line does not fit and is left out – the main line stays whole, nothing is cut. Same
  * pictures as the [ScreenshotTest] tests of the same name, drawn with this class's Paparazzi.
  */

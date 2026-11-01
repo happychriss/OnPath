@@ -63,4 +63,18 @@ class PlanStateTest {
         assertFalse(r.isCurrent(running))
         assertTrue(r.isCurrent(newer))
     }
+
+    /** fix-tour-edit-line.md cause 3: edit 1's slow position → ahead route must not land after edit 2 / Undo / clear. */
+    @Test fun aLaterEditMakesARunningSplitRouteStale() {
+        val a = GeoPoint(51.0, 7.0); val b = GeoPoint(51.01, 7.0); val c = GeoPoint(51.02, 7.0)
+        val r = SplitRequests()
+        val first = r.next(listOf(a, b, c))
+        assertTrue(r.isCurrent(first, listOf(a, b, c)))
+        r.invalidate() // edit 2 (splitOf), Undo, clear, end of the guidance
+        assertFalse(r.isCurrent(first, listOf(a, b, c)))
+        // and the plan must still be the one it was routed for
+        val second = r.next(listOf(a, c))
+        assertFalse(r.isCurrent(second, listOf(a, b, c)))
+        assertTrue(r.isCurrent(second, listOf(a, c)))
+    }
 }

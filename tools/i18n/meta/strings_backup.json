@@ -19,6 +19,8 @@
   "backup_restore_button": {"area": "Settings · Backup", "context": "Button", "priority": 2, "confidence": "sicher", "max": 36},
   "backup_offer_title": {"area": "Restore offer", "context": "Dialog title at the first start with no tours", "priority": 2, "confidence": "sicher"},
   "backup_offer_text": {"area": "Restore offer", "context": "Dialog text; names the buttons of Android's folder picker", "priority": 2, "confidence": "bitte prüfen", "doubt": "„Diesen Ordner verwenden“ / „Zulassen“ must match the German Android folder picker"},
+  "backup_offer_new": {"area": "Restore offer", "context": "Main button: a new user, nothing to restore", "priority": 2, "confidence": "sicher"},
+  "backup_offer_restore": {"area": "Restore offer", "context": "Second button: opens Android's folder picker to restore", "priority": 2, "confidence": "sicher"},
   "backup_restoring_title": {"area": "Restore", "context": "Dialog title while restoring", "priority": 2, "confidence": "sicher"},
   "backup_progress_reading": {"area": "Restore", "context": "Progress line. %1$d = file number, %2$d = all files", "priority": 2, "confidence": "sicher"},
   "backup_progress_restoring": {"area": "Restore", "context": "Progress line. %1$d = item number, %2$d = all items", "priority": 2, "confidence": "sicher"},

@@ -247,7 +247,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         ))
     }
 
-    fun setNavOriginal(points: List<GeoPoint>?) = setTrack(SRC_NAV_ORIGINAL, listOfNotNull(points))
+    fun setNavOriginals(lines: List<List<GeoPoint>>) = setTrack(SRC_NAV_ORIGINAL, lines)
 
     /** How the [SRC_GPX] line looks (owner: one blue line – blue is the route you follow or will follow). */
     enum class TrackLook { TRACK, FOLLOW, FOLLOW_BEHIND }

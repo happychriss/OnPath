@@ -118,8 +118,14 @@ class Planner(
             if (spurs.isEmpty()) return route
             Problems.trace("routing", "Point(s) ${spurs.sorted().joinToString { "${it + 1}" }} on a way but cut as a detour – routed to them")
             ends = ends + spurs
-            val spliced = line?.let { splice(it, spurs, activity, sac) }
-                ?: return replan(waypoints, from, to, activity, sac, ends, MAX_SPUR_PASSES - pass - 1)
+            val spliced = line?.let { l ->
+                // a safety net for the young splice code (review routing H3): an unforeseen geometry must not fail the
+                // whole plan with a raw exception text – the chunk is routed again as before the splice existed
+                try { splice(l, spurs, activity, sac) } catch (e: RoutingException) { throw e } catch (e: Exception) {
+                    Problems.error("routing", "Splice failed unexpectedly; the stretch is routed again as a whole", e)
+                    null
+                }
+            } ?: return replan(waypoints, from, to, activity, sac, ends, MAX_SPUR_PASSES - pass - 1)
             line = spliced
             route = spliced.planned()
         }

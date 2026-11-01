@@ -83,7 +83,7 @@ class CoreBackupE2ETest : E2EBase() {
 
         // 4. restore through the folder picker
         scenario.onActivity { vm(it).restoreOffer = true }
-        clickText("Restore")
+        clickText(com.onpath.strings.Txt.s(com.onpath.strings.Res.string.backup_offer_restore))
         val use = device.wait(Until.findObject(By.text(Pattern.compile("(?i)use this folder|diesen ordner verwenden")) /* or a German phone */), 15_000)
         if (use == null) { shot("picker"); fail("folder picker did not show \"Use this folder\" – ${state()}") }
         use!!.click()

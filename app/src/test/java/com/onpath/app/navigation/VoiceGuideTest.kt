@@ -116,7 +116,8 @@ class VoiceGuideTest {
         assertTrue(g.update(base) is Phrase.Start)
         assertEquals(Phrase.OffRoute, g.update(base.copy(nowMs = 2_000, onRoute = false, offRoute = true)))
         assertNull(g.update(base.copy(nowMs = 20_000, onRoute = false, offRoute = true)))
-        assertEquals(Phrase.BackOnRoute, g.update(base.copy(nowMs = 40_000)))
+        // "back on the route" only when the question was open for a while (a flapping fix says nothing twice)
+        assertEquals(Phrase.BackOnRoute, g.update(base.copy(nowMs = 70_000)))
     }
 
     @Test fun aTakenNewRouteSaysSoWithItsFirstJunction() {
@@ -178,5 +179,103 @@ class VoiceGuideTest {
         val turns = (1..40).associate { it * 1000 to if (it % 2 == 0) JunctionCue.LEFT else JunctionCue.RIGHT }
         val said = ride(VoiceGuide(), line(41_000, turns), bike = true, speed = 6.0)
         assertEquals(41, said.size)
+    }
+
+    /** Pixel 2026-11-01: "Los geht's" 3–4× in the first 3 km – the process died, the service came back with a fresh guide. */
+    @Test fun theStartSentenceIsNotSaidAgainWhenTheServiceContinuesTheTour() {
+        val l = line(3000, emptyMap())
+        val before = VoiceGuide()
+        assertTrue(before.update(VoiceGuide.Input(0, l, 1, 0.0, onRoute = true, speedMps = 5.0, bike = true)) is Phrase.Start)
+        // sticky restart: same tour, same line, a new guide with the tour's voice memory
+        val after = VoiceGuide().apply { continueTour(before.memory()) }
+        val said = (1..120).mapNotNull { s ->
+            after.update(VoiceGuide.Input(s * 1000L, l, 1, 10.0 + s * 5, onRoute = true, speedMps = 5.0, bike = true))
+        }
+        assertTrue("$said", said.none { it is Phrase.Start })
+    }
+
+    /** The process died before the route was ever reached: the restarted guide still says the start sentence once. */
+    @Test fun aRestartBeforeTheStartSentenceStillSaysItOnce() {
+        val l = line(3000, emptyMap())
+        val before = VoiceGuide()
+        assertNull(before.update(VoiceGuide.Input(0, l, 1, null, onRoute = false, speedMps = null, bike = true)))
+        val after = VoiceGuide().apply { continueTour(before.memory()) }
+        val said = (1..60).mapNotNull { s ->
+            after.update(VoiceGuide.Input(s * 1000L, l, 1, 10.0 + s * 5, onRoute = true, speedMps = 5.0, bike = true))
+        }
+        assertEquals(1, said.count { it is Phrase.Start })
+    }
+
+    /** A second tour in the same service instance starts afresh (the guide was never reset between tours). */
+    @Test fun aNewTourSaysItsStartSentence() {
+        val l = line(3000, emptyMap())
+        val g = VoiceGuide()
+        assertTrue(g.update(VoiceGuide.Input(0, l, 1, 0.0, onRoute = true, speedMps = 5.0, bike = true)) is Phrase.Start)
+        g.newTour()
+        assertTrue(g.update(VoiceGuide.Input(60_000, l, 1, 0.0, onRoute = true, speedMps = 5.0, bike = true)) is Phrase.Start)
+    }
+
+    /** Indoors before the start there is no "No GPS signal"; a poor fix that comes and goes says it at most every 10 min. */
+    @Test fun noGpsOnlyAfterTheStart_atMostEvery10Minutes() {
+        val l = line(3000, emptyMap())
+        val g = VoiceGuide()
+        val off = VoiceGuide.Input(0, l, 1, null, onRoute = false, speedMps = null, bike = true, gpsLost = true)
+        assertNull(g.update(off))
+        assertNull("not before the start", g.update(off.copy(nowMs = 60_000)))
+        val on = VoiceGuide.Input(70_000, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
+        assertTrue(g.update(on) is Phrase.Start)
+        val said = mutableListOf<Pair<Long, Phrase>>()
+        // lost 40 s, one good fix, lost 40 s … for 15 minutes
+        var t = 80_000L
+        while (t < 80_000L + 15 * 60_000L) {
+            for (k in 0 until 40) g.update(on.copy(nowMs = t + k * 1000L, gpsLost = true))?.let { said += (t + k * 1000L) to it }
+            g.update(on.copy(nowMs = t + 41_000L))?.let { said += (t + 41_000L) to it }
+            t += 42_000L
+        }
+        val noGps = said.filter { it.second == Phrase.NoGps }.map { it.first }
+        assertEquals("$noGps", 2, noGps.size)
+        assertTrue(noGps[1] - noGps[0] >= VoiceGuide.NO_GPS_EVERY_MS)
+    }
+
+    /** Jumping fixes open and close the question again and again: "off the route" at most every 2 min, no "back on". */
+    @Test fun aFlappingOffRouteQuestionIsSaidAtMostEvery2Minutes() {
+        val l = line(3000, emptyMap())
+        val g = VoiceGuide()
+        val base = VoiceGuide.Input(0, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
+        assertTrue(g.update(base) is Phrase.Start)
+        val said = mutableListOf<Phrase>()
+        var t = 15_000L
+        repeat(8) { // open 10 s, closed 10 s → 160 s
+            g.update(base.copy(nowMs = t, onRoute = false, offRoute = true))?.let { said += it }
+            g.update(base.copy(nowMs = t + 10_000))?.let { said += it }
+            t += 20_000
+        }
+        assertEquals("$said", 2, said.count { it == Phrase.OffRoute })
+        assertTrue("$said", said.none { it == Phrase.BackOnRoute })
+    }
+
+    /** "Ziel erreicht" once: a second arrival question after "Not yet" within 5 min says nothing. */
+    @Test fun arrivedAtMostOnceIn5Minutes() {
+        val g = VoiceGuide()
+        assertEquals(Phrase.Arrived, g.event(Phrase.Arrived, 1_000))
+        assertNull(g.event(Phrase.Arrived, 120_000))
+        assertEquals(Phrase.Arrived, g.event(Phrase.Arrived, 400_000))
+        // a restart keeps it
+        val after = VoiceGuide().apply { continueTour(g.memory()) }
+        assertNull(after.event(Phrase.Arrived, 420_000))
+    }
+
+    /** Owner 2026-11-01: in a restaurant, phone in the pocket – no "No GPS signal", no "off the route" while standing still. */
+    @Test fun standingStillSaysNothing() {
+        val l = line(3000, emptyMap())
+        val g = VoiceGuide()
+        val base = VoiceGuide.Input(0, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
+        assertTrue(g.update(base) is Phrase.Start)
+        val sitting = (1..60).mapNotNull { k -> g.update(base.copy(nowMs = 20_000L + k * 10_000L, gpsLost = true, quiet = true)) } +
+            listOfNotNull(g.update(base.copy(nowMs = 700_000, onRoute = false, offRoute = true, quiet = true)))
+        assertTrue("$sitting", sitting.isEmpty())
+        // walking again, GPS lost in a forest: said
+        val walking = (1..40).mapNotNull { k -> g.update(base.copy(nowMs = 800_000L + k * 1_000L, gpsLost = true)) }
+        assertEquals(listOf(Phrase.NoGps), walking)
     }
 }

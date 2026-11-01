@@ -527,9 +527,10 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     val rest = vm.screenRest
     val location = fix.takeUnless { rest }
     LaunchedEffect(c, rest) { c.setQuiet(rest) }
-    // the whole plan pale under the followed line while a tour follows position → points ahead (Plan only, TourSplit)
-    val paleBehind = vm.route?.points?.takeIf { vm.mode == AppMode.PLAN && passed.isNotEmpty() && vm.planIsFollowed() }
-    LaunchedEffect(c, nav?.original, paleBehind) { c.setNavOriginal(nav?.original ?: paleBehind) }
+    // the whole plan pale under the followed line while a tour follows position → points ahead (Plan only, TourSplit);
+    // beside a re-route's grey original, never instead of it (fix-tour-edit-line.md cause 2)
+    val pale = paleLines(vm.mode == AppMode.PLAN, vm.planIsFollowed(), nav?.original, vm.route?.points, vm.followLine)
+    LaunchedEffect(c, pale) { c.setNavOriginals(pale) }
     // Heading-up on the route: the stretch ahead points straight up (HeadingFilter). Only in Navigate, matched to
     // the line, not off route; otherwise null = compass / GPS bearing.
     val navLine = remember(nav?.line) { nav?.line?.let { com.onpath.app.navigation.NavLine(it) } }
@@ -649,6 +650,19 @@ private const val ROUTE_UP_MAX_OFF_M = 30.0
  * edited (Plan mode, no track shown); the line not while the plan is followed (the followed line is drawn instead).
  * Navigate shows only the route line, no numbered points (owner).
  */
+/**
+ * The thin grey lines under the followed line: a re-route's original ([navOriginal]) and – in Plan, when the plan line
+ * is hidden because the tour follows it ([planFollowed]) but follows another line (position → ahead after an edit) –
+ * the whole plan, pale. In Plan the plan is never invisible (`PlanLayersTest`).
+ */
+internal fun paleLines(
+    plan: Boolean, planFollowed: Boolean, navOriginal: List<com.onpath.app.routing.GeoPoint>?,
+    planLine: List<com.onpath.app.routing.GeoPoint>?, followLine: List<com.onpath.app.routing.GeoPoint>?,
+): List<List<com.onpath.app.routing.GeoPoint>> {
+    val palePlan = planLine?.takeIf { plan && planFollowed && it.size >= 2 && it != followLine && it != navOriginal }
+    return listOfNotNull(navOriginal, palePlan)
+}
+
 internal fun planLayers(canEditMap: Boolean, planFollowed: Boolean): Pair<Boolean, Boolean> =
     (canEditMap && !planFollowed) to canEditMap
 

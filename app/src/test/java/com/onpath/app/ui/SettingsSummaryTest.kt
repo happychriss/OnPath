@@ -84,13 +84,14 @@ class SettingsSummaryTest {
             SettingsSummary.diagnostics(listOf(e(Problems.Level.WARN), e(Problems.Level.ERROR)), seenMs = 200))
     }
 
-    /** Developer tools after 7 taps on the version (remembered), debug builds always. */
+    /** Developer tools only after 7 taps on the version (remembered) – also in the debug builds testers get (Arch H1). */
     @Test fun developerTools() {
         assertFalse(DevToolsUnlock.unlocked(6))
         assertTrue(DevToolsUnlock.unlocked(7))
-        assertFalse(DevToolsUnlock.shown(debugBuild = false, unlocked = false))
-        assertTrue(DevToolsUnlock.shown(debugBuild = false, unlocked = true))
-        assertTrue(DevToolsUnlock.shown(debugBuild = true, unlocked = false))
+        assertFalse(DevToolsUnlock.shown(unlocked = false))
+        assertTrue(DevToolsUnlock.shown(unlocked = true))
+        val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        assertFalse(vm.substringAfter("var devToolsShown").substringBefore("\n").contains("DEBUG"))
     }
 
     /** "Your settings" first, then the smaller "App" group. */

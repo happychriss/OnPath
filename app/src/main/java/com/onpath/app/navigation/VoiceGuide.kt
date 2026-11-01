@@ -62,7 +62,12 @@ enum class WayKind { PATH, TRACK, ROAD }
  *   stretch after it ≥ [BIKE_STRAIGHT_M] / [HIKE_STRAIGHT_M] is said ("then 3 km straight on").
  * - At least [GAP_MS] between sentences; off route / arrival / no destination never wait. A sentence that had to wait
  *   is dropped after [STALE_MS]; a junction is simply said at the next fix (with its distance then).
- * - Quiet while paused; "No GPS" once after [GPS_LOST_MS].
+ * - Quiet while paused; "No GPS" once after [GPS_LOST_MS], only after the start, at most every [NO_GPS_EVERY_MS].
+ * - State sentences have a minimum interval (field 2026-11-01): "off the route" every [OFF_ROUTE_EVERY_MS], "back on the
+ *   route" only after [BACK_ON_AFTER_MS] of the question that was said, "arrived" every [ARRIVED_EVERY_MS].
+ * - The tour's voice memory ([Memory]) is kept with the tour, not with the service: a recording service recreated
+ *   mid-tour (sticky restart after the process died) continues with [continueTour] and never says "Los geht's" again
+ *   (Pixel 2026-11-01: 3–4× in the first 3 km).
  */
 class VoiceGuide {
     data class Input(
@@ -86,6 +91,8 @@ class VoiceGuide {
         val visited: Set<Int> = emptySet(),
         /** To go for the start sentence (time model); null = not known yet. */
         val toGoS: Double? = null,
+        /** Standing still ([com.onpath.app.recording.MoveWatch], owner 2026-11-01): no "No GPS", no "off the route". */
+        val quiet: Boolean = false,
     )
 
     private var version = Int.MIN_VALUE
@@ -99,7 +106,20 @@ class VoiceGuide {
     private val said = HashSet<Int>()
     private var lineLength = 0.0
 
+    /** What must outlive the service instance during one tour (times in [Input.nowMs] units, null = never). */
+    data class Memory(
+        val started: Boolean = false,
+        val offRouteSaidMs: Long? = null,
+        val noGpsSaidMs: Long? = null,
+        val arrivedSaidMs: Long? = null,
+    )
+
     private var started = false
+    private var offRouteSaidMs: Long? = null
+    private var noGpsSaidMs: Long? = null
+    private var arrivedSaidMs: Long? = null
+    /** The open off-route question was said (else its closing says nothing). */
+    private var offRouteSpoken = false
     private var lastSpokenMs = Long.MIN_VALUE / 2
     private var lastOffRoute = false
     private var lastRerouted = false
@@ -108,15 +128,40 @@ class VoiceGuide {
     private var gpsSaid = false
     private val waiting = ArrayDeque<Pair<Phrase, Long>>()
 
+    /** The tour's voice memory, to keep with the tour ([continueTour] after a restart). */
+    fun memory(): Memory = Memory(started, offRouteSaidMs, noGpsSaidMs, arrivedSaidMs)
+
+    /** The same tour goes on in a new service instance: what was said stays said (the start sentence is no news). */
+    fun continueTour(m: Memory) {
+        started = m.started; offRouteSaidMs = m.offRouteSaidMs; noGpsSaidMs = m.noGpsSaidMs; arrivedSaidMs = m.arrivedSaidMs
+        lastVisited = null
+    }
+
+    /** A new tour: everything is said afresh. */
+    fun newTour() {
+        version = Int.MIN_VALUE; size = -1; said.clear(); lineLength = 0.0
+        started = false; offRouteSaidMs = null; noGpsSaidMs = null; arrivedSaidMs = null; offRouteSpoken = false
+        lastSpokenMs = Long.MIN_VALUE / 2; lastOffRoute = false; lastRerouted = false; lastVisited = null
+        gpsLostSince = null; gpsSaid = false; waiting.clear()
+    }
+
     /** The phrase to say now for this fix, or null. */
     fun update(i: Input): Phrase? {
         if (i.paused) { gpsLostSince = null; return null }
         val newLine = load(i.line, i.version, i.bike)
-        // the off-route question: said once when it opens; closed by riding back → "back on the route"
-        if (i.offRoute && !lastOffRoute) { lastOffRoute = true; waiting.clear(); return speak(Phrase.OffRoute, i.nowMs) }
+        // the off-route question: said once when it opens (at most every OFF_ROUTE_EVERY_MS – jumping fixes open and
+        // close it again and again); closed by riding back → "back on the route" when it was said a while ago
+        if (i.offRoute && !lastOffRoute) {
+            lastOffRoute = true
+            offRouteSpoken = !i.quiet && since(offRouteSaidMs, i.nowMs) >= OFF_ROUTE_EVERY_MS
+            if (offRouteSpoken) { offRouteSaidMs = i.nowMs; waiting.clear(); return speak(Phrase.OffRoute, i.nowMs) }
+        }
         if (!i.offRoute && lastOffRoute) {
             lastOffRoute = false
-            if (!(newLine && i.rerouted)) queue(Phrase.BackOnRoute, i.nowMs)
+            if (offRouteSpoken && !(newLine && i.rerouted) && since(offRouteSaidMs, i.nowMs) >= BACK_ON_AFTER_MS) {
+                queue(Phrase.BackOnRoute, i.nowMs)
+            }
+            offRouteSpoken = false
         }
         // before the start sentence a new line is no news – the start sentence tells its length (field 2026-11-01:
         // "Neue Route." came before "Los geht's.")
@@ -125,7 +170,9 @@ class VoiceGuide {
         // GPS
         if (i.gpsLost) {
             val since = gpsLostSince ?: i.nowMs.also { gpsLostSince = it }
-            if (!gpsSaid && i.nowMs - since >= GPS_LOST_MS) { gpsSaid = true; queue(Phrase.NoGps, i.nowMs) }
+            if (!gpsSaid && started && !i.quiet && i.nowMs - since >= GPS_LOST_MS && since(noGpsSaidMs, i.nowMs) >= NO_GPS_EVERY_MS) {
+                gpsSaid = true; noGpsSaidMs = i.nowMs; queue(Phrase.NoGps, i.nowMs)
+            }
         } else { gpsLostSince = null; gpsSaid = false }
         // start
         if (!started && i.line.size >= 2 && i.alongM != null && i.onRoute) {
@@ -154,8 +201,17 @@ class VoiceGuide {
         return speak(j, i.nowMs)
     }
 
-    /** An app event (arrival, nothing ahead after an edit): said at once, never waits. */
-    fun event(p: Phrase, nowMs: Long): Phrase { waiting.clear(); return speak(p, nowMs) }
+    /** An app event (arrival, nothing ahead after an edit): said at once, never waits; "arrived" at most every [ARRIVED_EVERY_MS]. */
+    fun event(p: Phrase, nowMs: Long): Phrase? {
+        if (p == Phrase.Arrived) {
+            if (since(arrivedSaidMs, nowMs) < ARRIVED_EVERY_MS) return null
+            arrivedSaidMs = nowMs
+        }
+        waiting.clear(); return speak(p, nowMs)
+    }
+
+    /** Time since [last]; "long ago" when never, or when the clock went back (a reboot restarts the elapsed clock). */
+    private fun since(last: Long?, nowMs: Long): Long = if (last == null || last > nowMs) Long.MAX_VALUE else nowMs - last
 
     /** The junction to announce now ([closeOnly]: the first one ahead if within twice the lead, for "New route"). */
     private fun nextJunction(i: Input, closeOnly: Boolean): Phrase.Junction? {
@@ -213,6 +269,10 @@ class VoiceGuide {
         const val GAP_MS = 10_000L
         const val STALE_MS = 30_000L
         const val GPS_LOST_MS = 30_000L
+        const val NO_GPS_EVERY_MS = 10 * 60_000L
+        const val OFF_ROUTE_EVERY_MS = 2 * 60_000L
+        const val BACK_ON_AFTER_MS = 60_000L
+        const val ARRIVED_EVERY_MS = 5 * 60_000L
 
         /** The kind of way the route turns onto – only when it is another kind than the way it comes on. */
         fun wayKind(p: GeoPoint, bike: Boolean): WayKind? {

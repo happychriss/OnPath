@@ -74,3 +74,16 @@ data class PointMenuTarget(val index: Int, val point: GeoPoint) {
     fun afterSnap(moves: Map<GeoPoint, GeoPoint>): PointMenuTarget = moves[point]?.let { copy(point = it) } ?: this
 }
 
+
+/**
+ * A position → ahead route during a tour (`followAhead`, [com.onpath.app.navigation.TourSplit]) is applied only while it
+ * is the newest and the plan is still the one it was routed for (fix-tour-edit-line.md cause 3): every later edit, Undo,
+ * clear or end of the guidance makes it stale – a slow old result never brings back deleted points or hides the plan.
+ */
+class SplitRequests {
+    private var gen = 0
+    private var plan: List<GeoPoint>? = null
+    fun next(planNow: List<GeoPoint>): Int { plan = planNow.toList(); return ++gen }
+    fun invalidate() { gen++; plan = null }
+    fun isCurrent(g: Int, planNow: List<GeoPoint>): Boolean = g == gen && plan == planNow
+}

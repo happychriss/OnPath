@@ -159,4 +159,23 @@ class PlannerSpliceTest {
         assertEquals(10.0 to 0.0, Planner.climb(line(100.0, 120.0)))
         assertEquals(10.0 to 10.0, Planner.climb(line(100.0, 120.0, 100.0)))
     }
+
+    /**
+     * Review routing H3: an unforeseen leg (here: an empty line with NaN numbers) must not fail the whole plan with a raw
+     * exception text – the chunk is routed again as before the splice existed, the cut stop as a chunk end.
+     */
+    @Test fun aBrokenLegNeverFailsThePlan() {
+        val junction = road(7.4300); val stop = south(junction, 40.0)
+        val wps = listOf(road(7.4000), road(7.4200), stop, road(7.4400), road(7.4600))
+        val inner = RoadEngine(junction, stop)
+        val broken = object : RoutingEngine {
+            override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult =
+                if (waypoints.size == 2 && stop in waypoints) RouteResult(emptyList(), Double.NaN, 0.0, 0.0, Double.NaN, emptyList(), emptyList())
+                else inner.route(waypoints, activity, sacLimit)
+        }
+        val r = Planner(broken).plan(wps, Activity.HIKE, 2)
+        assertTrue(r.error == null)
+        assertTrue(r.points.size >= 2)
+        assertTrue(r.distanceM.isFinite())
+    }
 }

@@ -92,6 +92,8 @@ data class NavUi(
     val elapsedS: Long = 0,
     val paused: Boolean = false,
     val waitingGps: Boolean = false,
+    /** No GPS while standing still (owner 2026-11-01): a quiet grey state, not the amber ⚠ warning. */
+    val quietGps: Boolean = false,
     /** Off route (confirmed): the question, "finding a way back…" or the arrow banner; null = on route. */
     val offRoute: OffRouteUi? = null,
     /** Next turn on the followed line (≤ 500 m ahead, on route); null = no hint. */
@@ -384,12 +386,15 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 }
                 // (the provisional-position line has its own full-width row under this one)
                 if (ui.recordedM != null && ui.waitingGps && ui.approx == null) {
-                    // no fix: the arrow and the to-go are stale – a warning, not grey small text
+                    // no fix: the arrow and the to-go are stale – a warning, not grey small text; standing still (owner
+                    // 2026-11-01: a restaurant) only a quiet grey state
                     Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Warn, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
+                        if (!ui.quietGps) {
+                            Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Warn, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                        }
                         Text(noGpsLine(ui.fixAgeS), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium,
-                            color = OnPathColors.Warn, maxLines = 2)
+                            color = if (ui.quietGps) MaterialTheme.colorScheme.onSurfaceVariant else OnPathColors.Warn, maxLines = 2)
                     }
                 } else ui.recordedM?.let { d ->
                     recordingLine(ui, d, offCard)?.let { line ->
@@ -724,6 +729,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         },
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,
         waitingGps = rec?.gpsLost == true && prov == null,
+        quietGps = rec?.standingStill == true,
         offRoute = rec?.nav?.let { n ->
             n.prompt?.let { p -> OffRouteUi(p, n.toRoute, n.toRoute?.let { (it.bearingDeg - mapBearing).toFloat() }) }
         },

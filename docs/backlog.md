@@ -6,6 +6,7 @@ that still apply are listed in `docs/project-status.md`. Finished work is not ke
 the git log.
 
 ## Release day 2026-11-01 – captain's plan (first real users)
+**On hold (owner 2026-11-01): no release until the owner says "get ready for the release" – work through the lists below meanwhile.**
 1. **Morning, owner (10 min):** read the review's top list (`docs/reviews/2026-11-01-pre-release.md`, BLOCKERs first)
    and say which blockers must be fixed before the release – the rest goes to "Next".
 2. **cloud-app** fixes the app blockers on `main`; **cloud-plan** the web blockers on `web-spike` and merges `main` again
@@ -35,19 +36,30 @@ the git log.
   calls voice guidance available (065d3b7) – fine if v0.14.0 ships 2026-11-01, otherwise roll that text back –
   captain 2026-11-01.
 
-- → [cloud-app] **Release-day fixes (captain 2026-11-01, owner confirms in the morning):** list A 1–9 in
-  `docs/reviews/2026-11-01-pre-release.md` – the owner's three field bugs first: (1) start sentence repeats = service
-  restarts mid-tour → get the owner's diagnostics export of that ride, guard `RecordingService.kt:643` / `:376`, voice
-  memory per tour (`fix-voice-repeat.md`); (2) ■ Stop in the rolled-up tour row → "Tour beenden?"; (3) plan lines
-  vanish when editing during a tour (`fix-tour-edit-line.md`, four causes, tests first). Then hold-hint text, restore
-  question, off-route off after Plan, notification id 44, splice catch-all + no raw errors, dev tools only via unlock.
 - → [cloud-plan] **Release-day fixes (captain 2026-11-01):** merge `main` first, then list A 10–13 in
   `docs/reviews/2026-11-01-pre-release.md` (failed download cached forever, WasmGC browser check, unsaved route on
   reopen, no developer / raw error lines) + follow the splice catch-all from main. Deploy only together with the app
   release (captain's go).
 
+- → [cloud-plan] **More before the release (owner 2026-11-01) – after list A 10–13:** (1) re-pairing keeps the
+  browser's unsent routes (sync H1, `WebSync.kt` rebase); "Pair phone" twice does not end a pending mailbox the phone
+  already uses (M7); (2) edits queued while the engine is busy (web H4); `navigator.storage.persist()` (H5); Save /
+  Rename / Delete failures shown (M11); raw errors → plain text (M10); (3) with cloud-app: sync H3 / M4 as one shared
+  rule in `sync/`; Points list row text from shared `PlanPoints` (web M15). Closed folders (sync H2) wait for the
+  owner's decision D3. Security headers (CSP) = PR to the owner.
+
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-app] **List A 1–9 done on `main`** (2026-11-01): (1) voice repeat d6aebf06 – voice memory per tour in
+  trip-pace.json, service scope with exception handler, re-route result + ticker caught, minimum intervals; (2) ■ Stop in
+  the one-row tour step fb872ba8 + slider "Stopp" cc5508a6 (owner's choice, was "Tour-Menü"); (3) tour-edit lines
+  233af63d (passed points kept, pale plan beside a re-route, SplitRequests) + 95498f11 (session token, version + 1,
+  failed recalc keeps the line); (4)+(5) 4729bfb6; (6)+(7) 6691f666; (8) 644b4169 + 95498f11 (UserText); (9) 24d46ea1.
+  **Shared code:** only `routing/Planner.kt` (splice catch-all, 644b4169 – behaviour unchanged unless the splice throws);
+  `PlanResult`, `sync/`, profiles, `PLANNER_VERSION` untouched → fingerprint unchanged; noted for cloud-plan in the
+  mirror list. Owner: **no release today** – cloud-app goes on with "More before the release". The owner's diagnostics
+  export of the voice-repeat ride is still to come (confirms the crash path). Device check of (3) in Demo mode still open.
+- ← [cloud-web] Help-pictures order done: onpath.earth d15090a – app screens under the steps of 8 of 9 help topics (DE + EN, 34 pictures from the A-019 set; owner: "roughly matching is fine, UI still changes"). Swap later via `help_shots.py` + `scripts/help_shots.py`. Tester note draft in onpath.private (`marketing/tester-hinweis-entwurf.md`) for the owner – 2026-11-01
 
 - [captain] release v0.14.0 (voice guidance): app + planner OK – 2026-10-31. Fingerprint equal (BRouter + profiles
   unchanged, `PLANNER_VERSION` 3 both), `sync/` unchanged since the merge base 38fc16c, CI green (main unit 69515dd,
@@ -56,9 +68,29 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [cloud-app] Release v0.14.0 (voice) – captain's go; waits for the owner's Pixel voice test OK + E2E green on 69515dd / 4c64138 – since 2026-11-01
+- [cloud-app] "More before the release" (owner 2026-11-01), in its order: (1) recording robustness + quiet while standing still, (2) routing, (3) sync with cloud-plan, (4) UX HIGH – since 2026-11-01
+- [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
+- **Owner idea 2026-11-01 (field Düsseldorf, think first – not built):** (1) *Jog rule:* the lead line started on the
+  sidewalk – 90° left onto a 4–7 m footway piece, then 60° right onto the street = a sideways step, really straight on;
+  `CueRule` counted both (real branches at each) → "links, dann rechts". Proposal: two opposite turns within ~15 m
+  (hike 10 m) with in/out headings ≤ ~30° apart = straight (no cue, no voice); only a big offset (other side of the road)
+  says "change to the cycle path on the left". Test with that line. (2) *Way type in turns:* the voice has
+  "auf den Pfad / Feldweg / Straße" (3 kinds, only on a change); the router's way labels allow more (Radweg,
+  Nebenstraße, Landstraße, Schotterweg) – the owner names the kinds; also on screen under the arrow. [cloud-app]
+- **Website screenshots per changed screen, not whole sets (owner 2026-11-01) – start right after the v0.14.0
+  release.** Instead of re-shooting all pictures after every UI change, each role re-shoots only the pictures of the
+  screens it changed. (1) **[cloud-app]** a list `docs/design/website-screens.md`: every website / store / help
+  picture (~35: home 14, help ~20, planner) with a fixed name (e.g. `08a-erste-route-leer`), what it shows, the fixed
+  scenario (emulator, Demo ride Vellau → Leiteralm as in A-019, never the owner's phone) and the UI files it depends
+  on; plus a script on donald that shoots ONE picture by name in DE + EN on the emulator (Paparazzi images don't do –
+  no map). (2) **[cloud-plan]** the same for the planner pictures from the existing `ui-shots` (Playwright).
+  (3) **Rule for both:** a change to a screen on the list → re-shoot exactly those pictures and drop them in
+  `onpath.private/marketing/bilder/aktuell/` with one line each (name, app / planner version, date); `tools/ci/gate.sh`
+  may remind when changed files touch a listed screen. (4) **[cloud-web]** swaps only the changed pictures on the
+  website and in the help, checks the version line. Mixed versions are fine as long as each picture matches today's
+  app.
 - **Website and Google Play follow-ups (marketing; website repo `happychriss/onpath.earth`)** – (1) **Voice:** onpath.earth
   (since PR #7) and the Play store text say "Sprachansagen sind nicht vorgesehen – OnPath führt über Karte und
   Vibration" – written before the owner's voice decision of 2026-10-31; change both when voice guidance ships.
@@ -114,6 +146,8 @@ the git log.
   privacy + pairing sentences, host ipHash, date with the dot, first-route fit, "New route for … – check it".
   Plan parity: `web/test/plans.json` 14 cases, all app = web (gate in the jvm job).
   - *Should:*
+    - [cloud-plan] Splice catch-all · 644b4169 · `routing/Planner.kt` (shared): an unexpected error in the splice routes
+      the chunk again as before – comes with the next main merge; the web's own "Unexpected: …" text is web M10.
     - [cloud-plan] Rolled-up one-row step? (app d288503, PlanSize.COLLAPSED: activity icon, time · distance, ⚠ count,
       compact green Start) · the web has small / profile / points (`sheetstep.ts`) and no Start – a fourth, one-row step
       only if the owner wants it on a phone-width browser.

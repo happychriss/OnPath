@@ -18,8 +18,10 @@
     <string name="backup_choose_folder">Anderen Ordner wählen (z. B. Drive, Nextcloud)</string>
     <string name="backup_use_documents">Wieder Documents/OnPath verwenden</string>
     <string name="backup_restore_button">Tracks und Routen wiederherstellen</string>
-    <string name="backup_offer_title">Frühere Tracks und Routen?</string>
-    <string name="backup_offer_text">Wenn du OnPath schon früher genutzt hast, liegen deine Tracks und Routen vielleicht in Documents/OnPath. Wiederherstellen? Android zeigt dann den Ordner – tippe auf „Diesen Ordner verwenden“ und „Zulassen“.\n\nSpäter: Einstellungen → Sicherung → Wiederherstellen.</string>
+    <string name="backup_offer_title">OnPath schon genutzt?</string>
+    <string name="backup_offer_text">Dann liegen deine Tracks und Routen vielleicht in Documents/OnPath. Zum Wiederherstellen zeigt Android den Ordner – tippe auf „Diesen Ordner verwenden“ und „Zulassen“.\n\nSpäter: Einstellungen → Sicherung → Wiederherstellen.</string>
+    <string name="backup_offer_new">Nein, ich bin neu</string>
+    <string name="backup_offer_restore">Ja, wiederherstellen</string>
     <string name="backup_restoring_title">Tracks und Routen werden wiederhergestellt</string>
     <string name="backup_progress_reading">Sicherungsdateien werden gelesen: %1$d / %2$d</string>
     <string name="backup_progress_restoring">Wiederherstellen: %1$d / %2$d</string>

@@ -39,15 +39,17 @@ object TourSplit {
     /**
      * The plan points that count as passed, as indices (a prefix in plan order: everything before a passed point is passed
      * too). A round trip's goal (its last point, the start again) is never passed. In doubt a point is ahead.
+     * [known] = points already found passed earlier in this tour (by coordinate): they stay passed after the tour
+     * follows an edited plan whose session no longer knows them (field 2026-11-01 – the plan lines vanished).
      */
-    fun passed(plan: List<GeoPoint>, t: Tour): Set<Int> {
+    fun passed(plan: List<GeoPoint>, t: Tour, known: Set<GeoPoint> = emptySet()): Set<Int> {
         if (plan.isEmpty()) return emptySet()
         val last = if (PlanEdits.isRoundTrip(plan)) plan.size - 2 else plan.size - 1
         val near = if (t.bike) NEAR_BIKE_M else NEAR_HIKE_M
         var lastPassed = -1
         for (i in 0..last) {
             val p = plan[i]
-            val hit = p in t.visited || nearTrack(p, t.track, near) ||
+            val hit = p in t.visited || known.any { sameSpot(it, p) } || nearTrack(p, t.track, near) ||
                 t.stops.firstOrNull { sameSpot(it.point, p) }?.let { it.alongM <= t.progressM && t.reached } == true ||
                 (t.reached && i < plan.size - 1 && clearlyCloserToNext(p, plan[i + 1], t.position))
             if (hit) lastPassed = i

@@ -567,6 +567,8 @@ class ReleaseRundgang : E2EBase() {
     private fun pullTourSheetUp() {
         waitUntil("the sheet at its one-row step", 5_000) { read { it.planSize } == PlanSize.MINI }
         assertTrue("End tour hidden in the one-row step", goneFresh(By.text(Txt.s(Res.string.nav_end_tour)), 3_000))
+        // field 2026-11-01: the one-row step has its own round ■ Stop (same "End this tour?" question)
+        assertNotNull("■ Stop in the one-row step", findFresh(By.desc(Txt.s(Res.string.nav_end_tour)), 5_000))
         val handle = findFresh(By.desc(Txt.s(Res.string.plan_resize_panel)), 5_000)
         assertNotNull("no grab handle on the plan sheet – ${seenDescriptions()}", handle)
         val c = handle!!.visibleCenter
