@@ -13,7 +13,7 @@ Organic Maps / CoMaps source code, komoot / Locus / Garmin help pages, two studi
 | 1 | Almost every sentence on foot "In 50 Metern …", often "…, danach gleich …" | the lead rule: on foot ~40 s ahead clamped 40–80 m → always "50 m"; close junctions in parks merged into pairs |
 | 2 | "links auf den Feldweg, danach gleich rechts" at a pedestrian crossing | two junction hints 8 m apart (onto the crossing, off it); every small way was "Feldweg" – *fixed*: JogRule + way words (00b9f006, 44544250) |
 | 3 | Round trip (tour 61): after 46 m – 14 m from the start – 6 of 7 points "passed", later "Ziel erreicht" after 544 m | at a round trip's start the position also lies at the loop's end; a step back made the matcher jump to the closing part → progress ≈ the whole loop → every point "passed" by progress → the tour followed only "position → goal" |
-| 4 | Tour 62: blue loop through the park not walked, "Ziel erreicht" while the screen said 54 m and "left" | the route had a loop to a point in the park; the owner went round outside; the matcher caught him behind the loop → the point counted as done, the end looked near; voice, vibration and screen spoke of two different lines within 20 s |
+| 4 | Tour 62: blue loop through the park not walked, "Ziel erreicht" while the screen said 54 m and "left" | after "Abseits der Route" the tour followed a new route along Neustraße; the original route ran as a loop through the park, its path along the park's east edge **2–25 m beside Neustraße** (OSM, measured on the track). On foot "on the route" = within ~30 m + accuracy, so the app took the owner (always on Neustraße) for being back on the original and switched to it at 17:42:55 – behind the loop: the point in the loop counted as done, 54 m left → "Ziel erreicht"; voice, vibration and screen spoke of two lines within 20 s |
 | 5 | Re-route: "Neue Route" – no word and no sign that one must turn round, and where to | the sentence says only "new route" (+ the first junction when close); the U sign shows only in some cases |
 | 6 | Replanning during a tour: the route vanished and did not come back | Plan hid the plan line while "followed" and drew the followed line grey / partial – *fixed*: no grey in Plan, the plan line always drawn (c2429f7a) |
 | 7 | In Navigate one did not see where one had set a point | Navigate drew no plan points – *built*: points in Navigate, passed with ✓ (6b8751da) |
@@ -57,6 +57,9 @@ Organic Maps / CoMaps source code, komoot / Locus / Garmin help pages, two studi
 - **An open point is not skipped silently**: the guidance stays "to the next open point". Caught again on the line behind
   an open point (tour 62), the route leads **back to that point** ("Punkt 2 liegt hinter dir – 120 m"), as a new route
   from the position. Deleting the point (Undo, Points list) is the way to skip it.
+- **Parallel ways** (tour 62: park path 2–25 m beside the street): while one lies well on the line being followed, the
+  guidance never switches to another line (back to the original after a re-route) – only when one is clearly closer to
+  it than to the current one over ~30 m of walking, and **never past an open point**.
 - On the map (Plan and Navigate, *built*): numbered points, reached ones with a small ✓; the route blue, nothing grey.
 - A loop the route makes to reach a point ends **at the point**: the point is the "return point" – its marker on the
   line shows where one turns back.
