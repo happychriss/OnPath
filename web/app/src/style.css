@@ -499,3 +499,10 @@ dialog.phone .unpairline .textbtn.danger { color: var(--error); }
 /* "New route for MTB – check it": a grey INFO line you can tap (the whole route then shows) */
 .changedline { border: 0; background: none; font: inherit; font-size: 13px; text-align: left; cursor: pointer; width: 100%; }
 .changedline:hover { text-decoration: underline; }
+
+/* ---- keyboard shortcuts (? – owner 2026-11-01) ---- */
+.keystable { border-collapse: collapse; width: 100%; margin: 0 0 12px; font-size: 14px; }
+.keystable td { padding: 5px 4px; vertical-align: top; border-bottom: 1px solid var(--line); }
+.keystable td:first-child { white-space: nowrap; padding-right: 12px; }
+kbd { display: inline-block; min-width: 1.4em; padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px;
+  font: inherit; font-size: 13px; text-align: center; background: var(--bg); }

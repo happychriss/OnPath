@@ -162,6 +162,14 @@
     <string name="web_hide_loading">Hide (the map keeps loading)</string>
     <string name="web_route_changed_elsewhere">Changed on the phone meanwhile – saved as “%1$s”, the other version stays.</string>
     <string name="web_route_options">Route options</string>
+    <string name="web_keys_title">Keyboard shortcuts</string>
+    <string name="web_key_space">Space</string>
+    <string name="web_key_ctrl">Ctrl</string>
+    <string name="web_keys_hide">Hold: hide the route (like the eye)</string>
+    <string name="web_keys_search">Search</string>
+    <string name="web_keys_close">Close a menu or the place card</string>
+    <string name="web_keys_map">Zoom and move the map (click the map first)</string>
+    <string name="web_keys_this">This list</string>
     <string name="web_save_failed">Not saved – this browser could not store the route. Try again, or keep it with “Export GPX”.</string>
     <string name="web_rename_failed">Not renamed – this browser could not store the change. Please try again.</string>
     <string name="web_delete_failed">Not deleted – this browser could not store the change. Please try again.</string>

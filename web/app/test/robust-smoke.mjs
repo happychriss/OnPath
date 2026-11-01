@@ -91,6 +91,23 @@ await again.keyboard.up(' ');
 const after = await vis();
 check(whileHeld === 'none' && after === 'visible', `Space held hides the route, let go shows it (${whileHeld} → ${after})`);
 check((await again.getAttribute('#eye', 'title')).includes('Space'), 'the eye\'s tooltip names the Space bar');
+// ---- 5b2: / = search, F = whole route, ? = the list (owner 2026-11-01) ----
+await again.locator('#map canvas').focus().catch(() => {});
+await again.evaluate(() => window.__map.jumpTo({ center: [11.0, 46.5], zoom: 9 })); // away from the route
+await again.keyboard.press('f');
+await again.waitForTimeout(1500);
+const fitted = await again.evaluate(() => { const b = window.__map.getBounds(); return b.contains([11.15, 46.70]) && window.__map.getZoom() > 11; });
+check(fitted, 'F shows the whole route');
+await again.locator('#map canvas').focus().catch(() => {});
+await again.keyboard.press('/');
+check(await again.evaluate(() => document.activeElement?.id === 'q'), '/ puts the cursor into the search');
+await again.keyboard.press('Escape');
+await again.evaluate(() => document.activeElement?.blur());
+await again.keyboard.press('?');
+const keys = await again.waitForSelector('dialog.keys[open]', { timeout: 5_000 }).then(() => again.textContent('dialog.keys'), () => '');
+check(/Space/.test(keys) && /Search/.test(keys) && /Show whole route/.test(keys), `? opens the shortcut list ("${keys.replace(/\s+/g, ' ').slice(0, 60)}…")`);
+await again.click('#closeKeys');
+
 // ---- 5c: the Points rows' texts come from the app's PlanPoints (web M15) ----
 const legs = await again.evaluate(() => [...document.querySelectorAll('#points .leg')].map((l) => l.textContent.trim()).filter(Boolean));
 check(legs.length >= 2 && legs.every((l) => /^[+~↺]/.test(l) && /\d/.test(l)), `Points rows: leg texts from PlanPoints.legText (${JSON.stringify(legs)})`);

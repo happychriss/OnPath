@@ -1298,6 +1298,12 @@ if (matchMedia('(pointer: fine)').matches) eye.title = t('web_eye_hotkey');
 window.addEventListener('keydown', (e: KeyboardEvent) => {
   const typing = (e.target as HTMLElement).closest('input, textarea');
   if (e.key === 'Escape') { closeMenu(); closeMenus(); picker.close(); placeCard.close(); }
+  // single keys (owner 2026-11-01): / = search, F = whole route, ? = the list – not while typing or in a dialog
+  if (!typing && !e.ctrlKey && !e.metaKey && !e.altKey && !document.querySelector('dialog[open]')) {
+    if (e.key === '/') { e.preventDefault(); const q = document.getElementById('q') as HTMLInputElement | null; q?.focus(); q?.select(); return; }
+    if ((e.key === 'f' || e.key === 'F') && !$<HTMLButtonElement>('fitRoute').disabled) { e.preventDefault(); fitRoute(); return; }
+    if (e.key === '?') { e.preventDefault(); keysDialog(); return; }
+  }
   if (typing || !(e.ctrlKey || e.metaKey)) return;
   const k = e.key.toLowerCase();
   if (k === 'z' && !e.shiftKey) { e.preventDefault(); step('undo'); }
@@ -1514,6 +1520,29 @@ $('spots').addEventListener('click', (e) => {
 });
 
 /** Full credits (the app's Settings → About, MAP_CREDITS); the map shows only "© OpenStreetMap". */
+/** "?" (and Help → Keyboard shortcuts): every key the page knows, one dialog. */
+function keysDialog() {
+  if (document.querySelector('dialog.keys')) return;
+  const d = document.createElement('dialog');
+  d.className = 'share keys';
+  const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : t('web_key_ctrl');
+  const row = (keys: string[], what: string) => `<tr><td>${keys.map((k) => `<kbd>${escapeHtml(k)}</kbd>`).join(' ')}</td><td>${escapeHtml(what)}</td></tr>`;
+  d.innerHTML = `<h2>${escapeHtml(t('web_keys_title'))}</h2><table class="keystable">
+    ${row([t('web_key_space')], t('web_keys_hide'))}
+    ${row(['/'], t('web_keys_search'))}
+    ${row(['F'], t('web_fit_route'))}
+    ${row([mod + ' Z'], t('plan_undo'))}
+    ${row([mod + ' ⇧ Z', mod + ' Y'], t('plan_redo'))}
+    ${row(['Esc'], t('web_keys_close'))}
+    ${row(['+', '−', '← ↑ → ↓'], t('web_keys_map'))}
+    ${row(['?'], t('web_keys_this'))}</table>
+    <div class="row"><button class="primary" id="closeKeys">${escapeHtml(t('common_close'))}</button></div>`;
+  document.body.append(d);
+  d.querySelector<HTMLButtonElement>('#closeKeys')!.onclick = () => d.close();
+  d.addEventListener('close', () => d.remove());
+  d.showModal();
+}
+
 function credits() {
   const d = document.createElement('dialog');
   d.className = 'share';
@@ -1524,10 +1553,12 @@ function credits() {
     <b>${escapeHtml(t('settings_about_credits'))}</b><ul class="credits">${['settings_credit_osm', 'settings_credit_omt', 'settings_credit_terrain',
       'settings_credit_ne', 'settings_credit_brouter', 'web_credit_photon', 'settings_credit_icons', 'web_credit_maplibre'].map(li).join('')}
       <li>${escapeHtml(t('web_credit_font'))} <a href="${manropeLicence}" target="_blank" rel="noopener">SIL Open Font License 1.1</a></li></ul>
+    ${matchMedia('(pointer: fine)').matches ? `<p class="small"><button class="textbtn" id="openKeys">${escapeHtml(t('web_keys_title'))}</button> <span class="muted">(<kbd>?</kbd>)</span></p>` : ''}
     <p class="muted small">${escapeHtml(t('settings_about_licence'))} · ${siteLink('web_url_privacy', t('web_link_privacy'))} · ${siteLink('web_url_legal', t('web_link_legal'))}</p>
     <div class="row"><button class="primary" id="closeCredits">${escapeHtml(t('common_close'))}</button></div>`;
   document.body.append(d);
   d.querySelector<HTMLButtonElement>('#closeCredits')!.onclick = () => d.close();
+  d.querySelector<HTMLButtonElement>('#openKeys')?.addEventListener('click', () => { d.close(); keysDialog(); });
   d.addEventListener('close', () => d.remove());
   d.showModal();
 }
