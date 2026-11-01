@@ -119,7 +119,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [cloud-plan] Waiting for cloud-app's rebuild on `main`: no shared files touched from `web-spike`, no deploy; when it lands → merge `main`, shared-code + parity tests (also: the web build reads `app/web-shared-files.txt`?), word to the captain – since 2026-11-01
+- [cloud-plan] Waiting for cloud-app's AppViewModel split on `main`: web-only work, no shared files touched, no deploy, **no merge of `main` mid-split**; after cloud-app's "split done" (captain messages) → one merge, shared-code + parity tests (also: the web build reads `app/web-shared-files.txt`?), word to the captain; then wire cloud-app's Points-row text (`PlanPoints`, web M15) and the sync H3 rule (`sync/`) on the web – since 2026-11-01
 - [cloud-plan] "More before the release" (owner 2026-11-01): (1) + (2) done (web-spike 5749bac6); left: (3) with cloud-app – sync H3 / M4 as one shared rule in `sync/`, Points list row text from shared `PlanPoints` (web M15) – since 2026-11-01
 - [cloud-app] The rest of the backlog (owner 2026-11-01: no release today, everything in) – since 2026-11-01
 - [cloud-app] AppViewModel split (owner 2026-11-01: all five areas now, with a safety net; Fable reviewed): Updates, Phone setup, Pairing → own classes; cells / routing data, search / shared places, sync routing → own files (functions only, state stays) – one step per commit, full gate + androidTest compile, emulator + Rundgang at the end – since 2026-11-01
