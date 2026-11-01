@@ -4013,43 +4013,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch(Dispatchers.IO) { sync.files.marks.remove(t.uuid) }
     }
 
-    /** A pairing link was opened: the secret, until Pair / Cancel in Settings → Browser sync; null = no question. */
-    var pairAsk by mutableStateOf<ByteArray?>(null)
-        private set
-
-    fun syncNoteOk() { syncNote = null }
-
-    /** ☰ → Pair with browser, the first time: the step line + Open camera as a question box on the Plan map ([PairEntry]). */
-    var pairHint by mutableStateOf(false)
-        private set
-
-    /** ☰ → Pair with browser: camera at once (paired / a problem → Settings → Browser sync; first time the step line). */
-    fun startPairing(start: (String) -> Unit) {
-        val step = PairEntry.step(sync.state.value, prefs.pairHintSeen)
-        Problems.info("sync", "Pair with browser from the menu: $step")
-        when (step) {
-            PairEntry.Step.SETTINGS -> openSettings(SettingsPage.SYNC)
-            PairEntry.Step.HINT -> pairHint = true
-            PairEntry.Step.CAMERA -> openPairCamera(start, fromSettings = false)
-        }
-    }
-
-    fun pairHintCamera(start: (String) -> Unit) { pairHint = false; openPairCamera(start, fromSettings = false) }
-    fun pairHintCancel() { pairHint = false }
-
-    /**
-     * The camera for the pairing code. No camera app: from the map → Settings → Browser sync (its steps) with the line;
-     * on that page → the line there.
-     */
-    fun openPairCamera(start: (String) -> Unit, fromSettings: Boolean) {
-        val opened = PairEntry.openCamera(start) { e ->
-            Problems.warn("sync", "No camera app to scan the pairing code", e)
-            if (!fromSettings) openSettings(SettingsPage.SYNC)
-            sayError(Txt.s(Res.string.sync_no_camera), NoticePlace.SETTINGS)
-        }
-        if (opened) prefs.pairHintSeen = true
-    }
-
     /** Sync while the app stays open (owner: automatic like WhatsApp Web): every minute, back-off when offline. */
     private val syncPoll = com.onpath.app.plansync.SyncPoll()
 
@@ -4099,89 +4062,44 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** A pairing link (camera / QR code, a tapped link): Settings → Browser sync shows the check digits and asks. */
-    private fun receivePairing(secret: ByteArray, via: String) {
-        openSettings(SettingsPage.SYNC)
-        viewModelScope.launch {
-            val current = withContext(Dispatchers.IO) {
-                try { sync.pairedMailbox() } catch (e: Exception) { Problems.warn("sync", "Stored pairing not read", e); null }
-            }
-            val step = com.onpath.app.plansync.PairStep.of(current, com.onpath.app.sync.SyncKeys(secret).mailbox)
-            Problems.info("sync", "Pairing link ($via): " + when (step) {
-                com.onpath.app.plansync.PairStep.PAIR -> "asking"
-                com.onpath.app.plansync.PairStep.ALREADY -> "already paired"
-                com.onpath.app.plansync.PairStep.JOIN -> "another browser – asking (it joins this phone's mailbox)"
-            })
-            when (step) {
-                com.onpath.app.plansync.PairStep.ALREADY -> {
-                    pairEnded(PairResult.ALREADY) // stays on Browser sync, no "Paired. …" strip
-                    sayInfo(Txt.s(Res.string.sync_already_paired), NoticePlace.SETTINGS)
-                }
-                // A-017: a second browser (laptop + desktop, a friend's PC) – the same check digits and Pair, no "unpair first"
-                else -> if (!pairJoining) pairAsk = secret
-            }
-        }
+    /** Pairing with a browser: [PairingFlow] (the pairing half of the sync), forwarded member by member. */
+    private val pairing by lazy {
+        PairingFlow(sync, prefs, viewModelScope, object : PairingFlow.Screens {
+            override var showSettings: Boolean
+                get() = this@AppViewModel.showSettings
+                set(v) { this@AppViewModel.showSettings = v }
+            override var settingsPage: SettingsPage?
+                get() = this@AppViewModel.settingsPage
+                set(v) { this@AppViewModel.settingsPage = v }
+            override var routesOpen: Boolean
+                get() = this@AppViewModel.routesOpen
+                set(v) { this@AppViewModel.routesOpen = v }
+            override var syncNote: SyncNote?
+                get() = this@AppViewModel.syncNote
+                set(v) { this@AppViewModel.syncNote = v }
+            override fun openSettings(page: SettingsPage?) = this@AppViewModel.openSettings(page)
+            override fun say(text: String, kind: NoticeKind, place: NoticePlace) = this@AppViewModel.say(text, kind, place)
+        })
     }
-
+    /** A pairing link was opened: the secret, until Pair / Cancel in Settings → Browser sync; null = no question. */
+    val pairAsk: ByteArray? get() = pairing.pairAsk
+    fun syncNoteOk() = pairing.syncNoteOk()
+    /** ☰ → Pair with browser, the first time: the step line + Open camera as a question box on the Plan map ([PairEntry]). */
+    val pairHint: Boolean get() = pairing.pairHint
+    /** ☰ → Pair with browser: camera at once (paired / a problem → Settings → Browser sync; first time the step line). */
+    fun startPairing(start: (String) -> Unit) = pairing.startPairing(start)
+    fun pairHintCamera(start: (String) -> Unit) = pairing.pairHintCamera(start)
+    fun pairHintCancel() = pairing.pairHintCancel()
+    /** The camera for the pairing code (no camera app: Settings → Browser sync with the line). */
+    fun openPairCamera(start: (String) -> Unit, fromSettings: Boolean) = pairing.openPairCamera(start, fromSettings)
     /** Pair with another browser runs (A-017): the check digits stay, a spinner instead of Pair / Cancel. */
-    var pairJoining by mutableStateOf(false)
-        private set
-
-    /**
-     * "Pair": not paired yet → store the pairing, say hello, sync at once (the page shows "Paired with …" when the
-     * browser answered). Paired already (A-017) → that browser is sent into this phone's mailbox (one JOIN item); the
-     * phone's pairing stays. Both end in "Paired – …" with OK.
-     */
-    fun confirmPair() {
-        val s = pairAsk ?: return
-        syncNote = null
-        if (!sync.state.value.paired) { pairAsk = null; sync.pair(s) { ok -> pairEnded(if (ok) PairResult.PAIRED else PairResult.NOT_STORED) }; return }
-        if (pairJoining) return
-        pairJoining = true
-        sync.join(s) { o ->
-            pairJoining = false
-            if (pairAsk === s) pairAsk = null // (Pair / Cancel are hidden meanwhile; a newer scanned code stays)
-            when (o) {
-                // unpaired meanwhile: a normal pairing
-                null -> sync.pair(s) { ok -> pairEnded(if (ok) PairResult.PAIRED else PairResult.NOT_STORED) }
-                is com.onpath.app.sync.SyncRound.Outcome.Done -> pairEnded(PairResult.JOINED)
-                is com.onpath.app.sync.SyncRound.Outcome.Offline -> { pairEnded(PairResult.JOIN_FAILED); sayError(Txt.s(Res.string.sync_join_offline), NoticePlace.SETTINGS) }
-                is com.onpath.app.sync.SyncRound.Outcome.Ended -> { pairEnded(PairResult.JOIN_FAILED); sayError(Txt.s(Res.string.sync_join_used), NoticePlace.SETTINGS) }
-                is com.onpath.app.sync.SyncRound.Outcome.Refused -> { pairEnded(PairResult.JOIN_FAILED); sayError(Txt.s(Res.string.sync_join_failed), NoticePlace.SETTINGS) }
-            }
-        }
-    }
-
-    /** Pair ended (main thread): made → back to the Plan map with "Paired. …" + OK (owner 2026-10-30); else stay. */
-    private fun pairEnded(r: PairResult) {
-        val s = PairLanding.after(r, landingNow())
-        Problems.info("sync", "Pair ended: $r" + if (s.note != null) " – back to the Plan map with the note" else "")
-        landOn(s)
-    }
-
-    private fun landingNow() = PairLanding.Screens(showSettings, settingsPage, routesOpen, syncNote)
-
-    private fun landOn(s: PairLanding.Screens) {
-        if (settingsPage != s.settingsPage) settingsPage = s.settingsPage
-        if (showSettings != s.settingsOpen) showSettings = s.settingsOpen
-        if (routesOpen != s.routesOpen) routesOpen = s.routesOpen
-        syncNote = s.note
-    }
-
-    fun cancelPair() { pairAsk = null; syncNote = null; Problems.info("sync", "Pairing cancelled") }
-
-    /**
-     * Settings → Unpair (after the question): the mailbox ends for both sides; the routes stay everywhere. Then straight
-     * back to the Plan map with "Unpaired. …" + OK (owner 2026-10-30, like Pair); the phone could not forget the
-     * pairing → stay on the page with its red line.
-     */
-    fun unpair() {
-        syncNote = null
-        sync.unpair { status ->
-            if (status == PairLanding.UNPAIR_NOT_STORED) sayError(Txt.s(Res.string.sync_unpair_failed), NoticePlace.SETTINGS)
-            landOn(PairLanding.afterUnpair(status, landingNow()))
-        }
-    }
+    val pairJoining: Boolean get() = pairing.pairJoining
+    /** "Pair" (first browser) or another browser into this phone's mailbox (A-017). */
+    fun confirmPair() = pairing.confirmPair()
+    fun cancelPair() = pairing.cancelPair()
+    /** Settings → Unpair (after the question): the mailbox ends for both sides; the routes stay everywhere. */
+    fun unpair() = pairing.unpair()
+    private fun receivePairing(secret: ByteArray, via: String) = pairing.receivePairing(secret, via)
 
     /** A sync pass ended (main thread): new / changed routes into My routes, plans from the browser routed. */
     private fun syncReport(r: com.onpath.app.plansync.PlanSync.Report) {
