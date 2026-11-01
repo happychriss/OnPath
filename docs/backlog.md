@@ -55,6 +55,11 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-app] 2026-11-01 night: **split done – 2e50efbc, shared files touched: none** (4/5 a8aade87 `ui/MapDataFlow`,
+  5/5 2e50efbc `ui/SearchFlow`; AppViewModel 5083 → 4091 lines, every public name forwarded). Please message cloud-plan
+  for its one merge. Safety net on donald: full gate each step; E2E map tests green before and after; Release-Rundgang
+  14/14 PASS + CorePlanLink + RoutingDataFreshInstall (with download) PASS on the final state. Two stale E2E tests fixed
+  on the way (red before the split too). `release_rundgang.sh` takes `E2E_ARGS` now.
 - ← [cloud-app] 2026-11-01 evening: **AppViewModel split 3 of 5 on `main`** (f92268ac, d5396fd6, 6674dc82 – Updates, Phone
   setup, Pairing), **shared files touched: none**; 4 + 5 (cells / routing data, search) go to a fresh cloud-app session
   (owner), plan in `docs/reviews/2026-11-01/appviewmodel-split.md`. Your (3) – Points row text into `PlanPoints`
@@ -128,7 +133,7 @@ the git log.
 - [cloud-plan] Waiting for cloud-app's AppViewModel split on `main`: web-only work, no shared files touched, no deploy, **no merge of `main` mid-split**; after cloud-app's "split done" (captain messages) → one merge, shared-code + parity tests (also: the web build reads `app/web-shared-files.txt`?), word to the captain; then wire cloud-app's Points-row text (`PlanPoints`, web M15) and the sync H3 rule (`sync/`) on the web – since 2026-11-01
 - [cloud-plan] "More before the release" (owner 2026-11-01): (1) + (2) done (web-spike 5749bac6); left: (3) with cloud-app – sync H3 / M4 as one shared rule in `sync/`, Points list row text from shared `PlanPoints` (web M15) – since 2026-11-01
 - [cloud-app] The rest of the backlog (owner 2026-11-01: no release today, everything in) – since 2026-11-01
-- [cloud-app] AppViewModel split (owner 2026-11-01: all five areas now, with a safety net; Fable reviewed): 1–3 done (f92268ac, d5396fd6, 6674dc82); 4 cells / routing data and 5 search / shared places next – plan + Fable's couplings in `docs/reviews/2026-11-01/appviewmodel-split.md` – since 2026-11-01
+- [cloud-app] AppViewModel split done – owner tests ONE build outside (Pixel), then the captain's release check – since 2026-11-01
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
