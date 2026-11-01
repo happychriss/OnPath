@@ -37,6 +37,14 @@ object OnPathColors {
     /** Page background (website `#FAFAF6`). */
     val Paper = Color(0xFFFAFAF6)
     val Route = Color(0xFF1E3FAE)
+    /**
+     * The plan's numbered points, on the map and in the Points list (owner 2026-11-01, like Komoot): the start in the
+     * app's dark green, stops near black, the goal dark red – no white ring; they stand apart from the blue route by hue.
+     * Keep in step with MapController.POINT_*.
+     */
+    val PointStart = Color(0xFF245F46)
+    val PointStop = Color(0xFF262A2E)
+    val PointGoal = Color(0xFFA32020)
     val Gpx = Color(0xFF8E24AA)
     val Rec = Color(0xFFEF6C00)
     val Good = Color(0xFF2E7D32)

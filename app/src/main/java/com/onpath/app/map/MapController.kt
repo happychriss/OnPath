@@ -43,6 +43,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     companion object {
         const val ROUTE_COLOR = "#1E3FAE"     // deep blue, high contrast on green/beige
+        /** The plan's points (owner 2026-11-01, like Komoot; same as OnPathColors.Point*): start, stops, goal – no ring. */
+        const val POINT_START_COLOR = "#245F46"
+        const val POINT_STOP_COLOR = "#262A2E"
+        const val POINT_GOAL_COLOR = "#A32020"
         /** Turn badge / U-turn sign: a soft blue, clearly lighter than the position dot (owner). */
         const val TURN_HINT_COLOR = "#7C8FD0"
         const val GPX_COLOR = "#8E24AA"       // purple
@@ -934,9 +938,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     private fun ensureMarkerImages(count: Int) {
         while (markerImages < count) {
             val n = markerImages + 1
-            style.addImage("wp-s-$n", marker(n, "#2E7D32"))
-            style.addImage("wp-v-$n", marker(n, ROUTE_COLOR))
-            style.addImage("wp-e-$n", marker(n, "#C62828"))
+            style.addImage("wp-s-$n", marker(n, POINT_START_COLOR))
+            style.addImage("wp-v-$n", marker(n, POINT_STOP_COLOR))
+            style.addImage("wp-e-$n", marker(n, POINT_GOAL_COLOR))
             style.addImage("wp-g-$n", marker(n, GAP_COLOR, hollow = true))
             style.addImage("wp-p-$n", marker(n, NAV_ORIGINAL_COLOR, check = true))
             markerImages++
@@ -954,10 +958,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         bmp.density = context.resources.displayMetrics.densityDpi
         val c = Canvas(bmp)
         val p = Paint(Paint.ANTI_ALIAS_FLAG)
-        p.color = android.graphics.Color.WHITE
-        c.drawCircle(px / 2f, px / 2f, px / 2f, p)
+        // no white ring (owner 2026-11-01): the colour sets the point apart from the blue route; a hollow (unreachable)
+        // point keeps its ring look
         p.color = android.graphics.Color.parseColor(color)
-        c.drawCircle(px / 2f, px / 2f, px / 2f - 3 * density, p)
+        c.drawCircle(px / 2f, px / 2f, px / 2f, p)
         if (hollow) {
             p.color = android.graphics.Color.WHITE
             c.drawCircle(px / 2f, px / 2f, px / 2f - 6 * density, p)
