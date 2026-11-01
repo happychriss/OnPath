@@ -65,8 +65,8 @@
     <string name="nav_title_kept">Off route – original route kept</string>
     <string name="nav_state_searching">Looking for a way back…</string>
     <string name="nav_state_found">New route found</string>
-    <string name="nav_title_turn_round">Off route – turn round, new route found</string>
-    <string name="nav_state_turn_round">Turn round – new route found</string>
+    <string name="nav_title_turn_round">Off route – turn around, new route found</string>
+    <string name="nav_state_turn_round">Turn around – new route found</string>
     <string name="nav_state_no_data">No map here to find a way back</string>
     <string name="nav_state_unavailable">Can't search a way back right now</string>
     <string name="nav_state_no_way">No way back found</string>
@@ -97,7 +97,7 @@
     <string name="nav_without_stop">without %1$s</string>
     <!-- off route, owner 2026-10-31: "You're 120 m off the route" · the new route / the way back and how much longer -->
     <string name="nav_title_off_by">You're %1$s off the route</string>
-    <string name="nav_title_off_by_turn_round">You're %1$s off the route – turn round</string>
+    <string name="nav_title_off_by_turn_round">You're %1$s off the route – turn around</string>
     <string name="nav_line_fresh">New route to the end: %1$s (%2$s)</string>
     <string name="nav_line_rejoin">Back on the route after %1$s · %2$s</string>
     <string name="nav_longer">%1$s longer</string>

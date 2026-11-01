@@ -163,7 +163,7 @@
     <string name="plan_searching_gps">GPS wird gesucht…</string>
     <string name="plan_new_route">Neue Route</string>
     <string name="plan_start_here">Hier starten</string>
-    <string name="plan_go_here">Hierhin</string>
+    <string name="plan_go_here">Von meinem Standort hierhin</string>
     <string name="plan_open_google_maps">In Google Maps öffnen</string>
     <plurals name="plan_removes_points">
         <item quantity="one">Löscht den Punkt davor</item>
@@ -206,13 +206,13 @@
     <string name="plan_err_too_long">Route zu lang für die Berechnung auf dem Handy. Setze Zwischenpunkte oder wähle näher liegende Punkte.</string>
     <string name="plan_err_profile_folder">Ordner für Routing-Profile kann nicht angelegt werden.</string>
     <string name="plan_err_profile_install">Routing-Profil %1$s kann nicht installiert werden.</string>
-    <string name="plan_err_profiles">Routing-Profile konnten nicht installiert werden – der Speicher ist evtl. voll. Starte OnPath neu, um es erneut zu versuchen.</string>
+    <string name="plan_err_profiles">Die Routenplanung konnte nicht eingerichtet werden – der Speicher ist evtl. voll. Starte OnPath neu, um es erneut zu versuchen.</string>
     <string name="plan_err_coordinates">Ungültige Koordinaten.</string>
     <string name="plan_err_start_point">Startpunkt</string>
     <string name="plan_err_a_stop">Ein Zwischenpunkt</string>
     <string name="plan_err_a_point">Ein Routenpunkt</string>
     <string name="plan_err_cancelled">Die Routenberechnung wurde abgebrochen.</string>
-    <string name="plan_err_no_data">Keine Routing-Daten für dieses Gebiet.</string>
+    <string name="plan_err_no_data">Hier gibt es noch keine Detailkarte.</string>
     <string name="plan_err_busy">Es wird gerade eine andere Route berechnet – versuche es gleich noch einmal.</string>
     <string name="plan_err_unexpected">Die Routenberechnung ist unerwartet fehlgeschlagen. Versuche es erneut; passiert es wieder, sende einen Fehlerbericht (Einstellungen → Diagnose).</string>
     <string name="plan_err_straight">Routen können gerade nicht berechnet werden – gerade Linien angezeigt.</string>
@@ -225,6 +225,6 @@
     <string name="plan_leg_no_path">kein Weg gefunden</string>
     <string name="plan_share_plan">Route teilen</string>
     <string name="plan_from_track">Als Route planen</string>
-    <string name="plan_from_track_failed">Aus dem Track ließ sich keine Route machen – dort fehlen vielleicht Routing-Daten.</string>
-    <string name="plan_from_track_wait">Die Routing-Daten für diesen Track werden geladen – gleich noch einmal versuchen.</string>
+    <string name="plan_from_track_failed">Aus dem Track ließ sich keine Route machen – dort fehlt vielleicht die Detailkarte.</string>
+    <string name="plan_from_track_wait">Die Karte für diesen Track wird noch geladen – gleich noch einmal versuchen.</string>
 </resources>

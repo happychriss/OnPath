@@ -121,7 +121,7 @@ class NavigatorTest {
         r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
         r.nav.onResult(r.jobs.last().id, skip)
         val q = r.nav.prompt as NavPrompt.Question
-        assertEquals("You're 150 m off the route – turn round", NavText.title(q))
+        assertEquals("You're 150 m off the route – turn around", NavText.title(q))
         assertTrue(NavText.question(q), NavText.question(q).endsWith(" · without Café"))
         assertFalse(r.nav.takeVia(q.id).lineChanged) // nothing to answer "No" to
     }

@@ -23,8 +23,8 @@ class TurnRoundTest {
 
     @Test fun questionSaysTurnRound() {
         val q = NavPrompt.Question(1, 300.0, 600.0, 0.0, lineTo(-1.0, 0.0), 900.0, 0.0, turnRound = true)
-        assertEquals("Off route – turn round, new route found", NavText.title(q))
-        assertEquals("Turn round – new route found", NavText.state(q))
+        assertEquals("Off route – turn around, new route found", NavText.title(q))
+        assertEquals("Turn around – new route found", NavText.state(q))
         assertEquals("Off route – new route found", NavText.title(q.copy(turnRound = false)))
     }
 }

@@ -1,5 +1,8 @@
 package com.onpath.app.e2e
 
+import com.onpath.strings.Res
+import com.onpath.strings.Txt
+import com.onpath.strings.plan_go_here
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
@@ -67,7 +70,7 @@ class CoreFieldE2ETest : E2EBase() {
         follow()
         val (w, h) = mapSize()
         hold(w * 0.5f, h * 0.25f)
-        clickText("Go here")
+        clickText(Txt.s(Res.string.plan_go_here))
         waitUntil("route from my location", 20_000) { waypointCount() == 2 }
         hold(w * 0.30f, h * 0.30f)
         waitUntil("a stop added", 20_000) { waypointCount() == 3 }

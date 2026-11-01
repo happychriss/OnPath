@@ -102,11 +102,11 @@
     <string name="nav_longer">%1$s länger</string>
     <!-- never on the route yet (owner 2026-10-31): "Route starts 31 km away" · Guide me / Just record -->
     <string name="nav_far_title">Route beginnt %1$s entfernt</string>
-    <string name="nav_far_detail">%1$s (Luftlinie) · Aufnahme läuft</string>
+    <string name="nav_far_detail">%1$s (Luftlinie) · Aufzeichnung läuft</string>
     <string name="nav_far_searching">Weg zum Start wird gesucht…</string>
     <string name="nav_far_lead">Hinführen</string>
-    <string name="nav_far_record">Nur aufnehmen</string>
-    <string name="nav_lead_failed">Kein Weg zur Route gefunden – Aufnahme läuft weiter</string>
+    <string name="nav_far_record">Nur aufzeichnen</string>
+    <string name="nav_lead_failed">Kein Weg zur Route gefunden – Aufzeichnung läuft weiter</string>
 
     <!-- lock screen notification while following a route -->
     <string name="nav_notif_to_go">noch %1$s</string>

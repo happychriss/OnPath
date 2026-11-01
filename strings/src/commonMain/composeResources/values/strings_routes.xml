@@ -40,7 +40,7 @@
     <string name="routes_kind_imported">Imported GPX</string>
     <string name="routes_rename_planned">Rename planned route</string>
     <string name="routes_rename_recorded">Rename recorded tour</string>
-    <string name="routes_rename_imported">Rename imported gpx</string>
+    <string name="routes_rename_imported">Rename imported GPX</string>
     <string name="routes_recording_now">Recording now</string>
     <string name="routes_end_tour_first">End the running tour first, then this route can be loaded.</string>
     <string name="routes_export_all">Export all (ZIP)</string>

@@ -164,7 +164,7 @@
     <string name="plan_searching_gps">Searching GPS…</string>
     <string name="plan_new_route">New route</string>
     <string name="plan_start_here">Start here</string>
-    <string name="plan_go_here">Go here</string>
+    <string name="plan_go_here">Go here from my location</string>
     <string name="plan_open_google_maps">Open in Google Maps</string>
     <plurals name="plan_removes_points">
         <item quantity="one">Removes the %1$d point before it</item>
@@ -194,7 +194,7 @@
     <string name="plan_about_hours">about %1$d hours</string>
     <string name="plan_err_memory">Not enough memory for this route. Add via points or choose closer points.</string>
     <string name="plan_err_complex">Route too complex for on-phone routing. Add via points or choose closer points.</string>
-    <string name="plan_err_engine">Routing engine could not be loaded.</string>
+    <string name="plan_err_engine">The route planner could not be loaded.</string>
     <string name="plan_err_set_start_dest">Set a start point and a destination.</string>
     <string name="plan_err_set_start_end">Set a start and an end point.</string>
     <string name="plan_err_no_route_for">No route found between these points for %1$s.</string>
@@ -207,13 +207,13 @@
     <string name="plan_err_too_long">Route too long for on-phone routing. Add via points or choose closer points.</string>
     <string name="plan_err_profile_folder">Cannot create routing profile folder.</string>
     <string name="plan_err_profile_install">Cannot install routing profile %1$s.</string>
-    <string name="plan_err_profiles">Routing profiles could not be installed – the phone's storage may be full. Restart OnPath to try again.</string>
+    <string name="plan_err_profiles">The route planner could not be set up – the phone's storage may be full. Restart OnPath to try again.</string>
     <string name="plan_err_coordinates">Invalid coordinates.</string>
     <string name="plan_err_start_point">Start point</string>
     <string name="plan_err_a_stop">A stop</string>
     <string name="plan_err_a_point">A route point</string>
     <string name="plan_err_cancelled">Routing was canceled.</string>
-    <string name="plan_err_no_data">No routing data for this area.</string>
+    <string name="plan_err_no_data">No detailed map here yet.</string>
     <string name="plan_err_busy">The router is busy - try again in a moment.</string>
     <string name="plan_err_unexpected">Routing failed unexpectedly. Try again; if it keeps happening, send the diagnostics (Settings → Diagnostics).</string>
     <string name="plan_err_straight">Routes can't be calculated right now – straight lines shown.</string>
@@ -226,6 +226,6 @@
     <string name="plan_leg_no_path">no path found</string>
     <string name="plan_share_plan">Share route</string>
     <string name="plan_from_track">Plan a route from it</string>
-    <string name="plan_from_track_failed">The track could not be turned into a route – the routing data may be missing there.</string>
-    <string name="plan_from_track_wait">Routing data for this track is loading – try again in a moment.</string>
+    <string name="plan_from_track_failed">The track could not be turned into a route – the detailed map may be missing there.</string>
+    <string name="plan_from_track_wait">The map for this track is still loading – try again in a moment.</string>
 </resources>

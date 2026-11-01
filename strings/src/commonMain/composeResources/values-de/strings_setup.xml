@@ -17,7 +17,7 @@
     <string name="setup_taken_phone">Dein Handy hat das entfernt, weil OnPath einige Monate nicht genutzt wurde. Das ist normal – richte es hier wieder ein.</string>
     <string name="setup_taken_off">Das wurde seit deiner letzten Nutzung von OnPath ausgeschaltet.</string>
     <string name="setup_loc_title">Dein Standort</string>
-    <string name="setup_loc_why">Der Punkt auf der Karte zeigt, wo du bist. Auf einer Tour zeichnet OnPath deine Spur auf und meldet dir jede Abzweigung. Deine genaue Position und deine Touren bleiben auf deinem Handy.</string>
+    <string name="setup_loc_why">Der Punkt auf der Karte zeigt, wo du bist. Auf einer Tour zeichnet OnPath deine Spur auf und führt dich an den Abzweigungen, an denen man falsch gehen kann. Deine genaue Position und deine Touren bleiben auf deinem Handy.</string>
     <string name="setup_loc_do">Erlaube OnPath auf der nächsten Seite den Zugriff, während du die App nutzt – mit genauem Standort.</string>
     <string name="setup_loc_denied">Kein Problem – Karte und Planen gehen auch ohne. Für den Punkt auf der Karte und eine Tour braucht OnPath deinen Standort.</string>
     <string name="setup_loc_blocked">Android fragt nicht noch einmal. Tippe auf Weiter, dann auf Berechtigungen → Standort, und erlaube den Zugriff während der Nutzung, mit genauem Standort.</string>

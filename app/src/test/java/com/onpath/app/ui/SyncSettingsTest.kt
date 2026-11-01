@@ -182,7 +182,7 @@ class SyncSettingsTest {
         try {
             java.util.Locale.setDefault(java.util.Locale.GERMAN)
             assertEquals("Im Browser getrennt", SyncMenuUi.of(gone, "Pixel 8", now).line)
-            assertEquals("Pixel 8 ↔ Chrome · Abgleich vor 1 min", SyncMenuUi.of(ok.copy(peer = "Chrome"), "Pixel 8", now).line)
+            assertEquals("Pixel 8 ↔ Chrome · abgeglichen vor 1 min", SyncMenuUi.of(ok.copy(peer = "Chrome"), "Pixel 8", now).line)
         } finally { java.util.Locale.setDefault(before) }
     }
 
