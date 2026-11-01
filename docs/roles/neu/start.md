@@ -1,8 +1,13 @@
 # Start – every OnPath session (units and cloud workers)
 
-> **NOT ACTIVE YET.** Prepared 2026-11-01 for the setup switch after v0.14.0 (`docs/roles/neu/umstellung.md`). Until
-> then the roles in `docs/roles/*.md` apply. On the switch this file replaces `cloud-app.md`, `cloud-plan.md` and
-> `cloud-web.md`.
+> **ACTIVE for donald since 2026-11-01** (owner: switch now, in the middle of normal work). Replaces `cloud-app.md`.
+> **Transition** until `web-spike` is merged into `main` (`docs/roles/neu/umstellung.md` D):
+> - the laptop stays **cloud-plan** on `web-spike` under its old role file (`docs/roles/cloud-plan.md`); cloud-web too;
+> - backlog lines for **`[cloud-app]`** – claims, "For the roles" orders, handoffs – are **donald's** now; new claims
+>   use `[donald]`. Words to cloud-plan still go under "For the roles" (`→ [cloud-plan]`); the captain reads
+>   "For the captain" as before;
+> - donald's checkout stays `/home/development/Projects/work/onpath-app` (no rename now).
+> Worker sessions run in permission mode **auto** (owner 2026-11-01).
 
 Sessions are not roles any more but **units**: a computer (or a fresh cloud container) with what it can do. The work
 item says what it needs; the unit that can do it and is on takes it (owner 2026-11-01, setup concept §4).

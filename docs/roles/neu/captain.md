@@ -1,7 +1,9 @@
 # The OnPath captain
 
-> **NOT ACTIVE YET.** Prepared 2026-11-01 for the setup switch after v0.14.0 (`docs/roles/neu/umstellung.md`). Until
-> then `docs/roles/cloud-captain.md` applies. On the switch this file replaces it.
+> **ACTIVE since 2026-11-01** – replaces `docs/roles/cloud-captain.md`. Transition (until `web-spike` is merged into
+> `main`): donald runs as a unit with its Leitstand (`docs/roles/neu/start.md`) and has taken over `[cloud-app]`; the
+> laptop is still **cloud-plan** (old role) and cloud-web still runs as before. Orders to cloud-plan stay under
+> "For the roles" in `docs/backlog.md`; the captain cannot message it (no card) – cloud-plan reads the backlog.
 
 **Start:** the owner opens a cloud session and says „Du bist mein OnPath-Captain.“ – nothing else. Read this file,
 `CLAUDE.md`, `docs/owner-preferences.md`, `docs/roles/neu/start.md`, then do "Once" and the first round.
