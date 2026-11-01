@@ -25,6 +25,10 @@ the git log.
 ## For the roles
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
+- → [cloud-app] Owner answered onpath.private#10 "Ja": remove the worktree `~/onpath-cells-work/germany/repo` on donald
+  (branch `germany-prebuild`, gone on GitHub) – first check it holds no unpushed work (else push it to a branch and
+  say so); then `tools/ask.sh erledigt 10 "…"`. Germany pre-build later on the laptop / Cloud Run – captain 2026-11-01.
+
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
 
