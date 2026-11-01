@@ -54,6 +54,14 @@ keine Kartendaten. Offen nur (b) beim Einrichten des neuen Ordners `onpath` auf 
   angekommen 16:58 nach Neustart). → Leitstand mit stündlichem Weckruf an sich selbst.
 - `unit.sh` umgebaut: normaler Gastgeber über `script` (echtes Terminal + Log), kein `--session-id` mehr.
 
+### Hooks (2026-11-01, `docs/roles/setup-analyse-2026-11-01.md` Schritt 1)
+`.claude/settings.json` im Repo: SessionStart → `tools/hooks/session-start.sh` (Lage in den Kontext), PreToolUse Bash →
+`tools/hooks/pre-bash.sh` (kein `git push` ohne grünen `gate.sh`-Stempel für HEAD oder bei `#push-sperre`; `adb
+install` nur über `device.sh`). **Einmal auf donald prüfen:** eine neue Sitzung im Gastgeber zeigt in ihrer ersten
+Antwort die Lage „== OnPath session start ==“; `git push` nach einem Commit ohne Tor wird mit Meldung verweigert.
+Ausschalten im Notfall: `ONPATH_HOOKS=0` oder `"disableAllHooks": true` in den Settings. Gilt nur auf `main`
+(`web-spike` hat die Datei nicht).
+
 ## B. 👤 Entscheidungen beim Umstellen (je eine Fragebox)
 - Erlaubnis-Modus der stehenden Sitzungen (`ONPATH_PERMISSION_MODE`): ohne Modus fragt die Sitzung bei vielem nach
   (gelbe Punkte ohne echte Frage) – Vorschlag `auto`.

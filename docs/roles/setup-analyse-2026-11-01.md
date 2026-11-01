@@ -106,7 +106,10 @@ Eigenes MCP, Artefakt-Dashboard, Cloud-Setup-Skript (Entscheidung 6), noch mehr 
   Review bedenken (Reviewer öffnet die Dateien → Regel lädt).
 
 ## 5. Reihenfolge (jeder Schritt klein, messbar; nichts davon vor „split done“ auf donald nötig)
-1. **Hooks** `session-start` + `pre-push` (½ Tag): erzwingt an-alle/Tor/Gerät, streicht vier Prosa-Absätze.
+1. **Hooks** `session-start` + `pre-push` – **gebaut 2026-11-01** (`tools/hooks/`, `.claude/settings.json`,
+   Stempel in `gate.sh`; hier mit dem Stdin-JSON der Doku getestet, auch in Worktrees). Noch offen: ein Blick auf
+   donald, ob der Block „== OnPath session start ==“ in einer Remote-Control-Sitzung erscheint. Dann können die
+   Prosa-Absätze „read at the start“, „device.sh only“, „gate before push“ aus `CLAUDE.md`/`start.md` weg (Schritt 2).
    Messen: kein Push mehr ohne grünes Tor (Git-Log).
 2. **`CLAUDE.md`-Diät + `.claude/rules/`** (½ Tag): Ziel ≤ 120 Zeilen; `project-status`/`backlog` kürzen. Messen:
    Token beim Sitzungsstart (Diagnose in der App) vorher/nachher.
