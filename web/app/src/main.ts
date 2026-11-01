@@ -1274,6 +1274,18 @@ for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) eye.addEv
 eye.addEventListener('keydown', (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); peek(true); } });
 eye.addEventListener('keyup', () => peek(false));
 eye.addEventListener('contextmenu', (e) => e.preventDefault()); // a long press must not open the browser's menu
+// Space held anywhere on the page = the eye held (owner 2026-11-01) – not while typing, not on a focused button
+// (Space presses it) and not in a dialog; let go (or the tab loses focus) shows the route again
+const spaceTarget = (e: KeyboardEvent) => e.key === ' ' && !e.ctrlKey && !e.metaKey && !e.altKey &&
+  !(e.target as HTMLElement).closest('input, textarea, select, button, a, [contenteditable], dialog');
+window.addEventListener('keydown', (e) => {
+  if (!spaceTarget(e) || (eye as HTMLButtonElement).disabled) return;
+  e.preventDefault(); peek(true);
+});
+window.addEventListener('keyup', (e) => { if (e.key === ' ') peek(false); });
+window.addEventListener('blur', () => peek(false));
+// the hint: the eye's tooltip names the key where there is a keyboard (a mouse – a phone has no Space to hold)
+if (matchMedia('(pointer: fine)').matches) eye.title = t('web_eye_hotkey');
 window.addEventListener('keydown', (e: KeyboardEvent) => {
   const typing = (e.target as HTMLElement).closest('input, textarea');
   if (e.key === 'Escape') { closeMenu(); closeMenus(); picker.close(); placeCard.close(); }

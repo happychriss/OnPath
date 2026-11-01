@@ -81,6 +81,16 @@ console.log('after two quick clicks:', JSON.stringify(order));
 // the points may be snapped onto a path – compare which click each one is closer to
 const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 check(order.length === 4 && d(order[2], p1) < d(order[2], p2) && d(order[3], p2) < d(order[3], p1), 'two quick clicks: the second is the new destination (not put before the first)');
+// ---- 5b: Space held = the eye held (owner 2026-11-01) ----
+await again.waitForFunction(() => !document.getElementById('eye').disabled, null, { timeout: 60_000 }).catch(() => {});
+await again.locator('#map canvas').focus().catch(() => {});
+const vis = () => again.evaluate(() => window.__map.getLayoutProperty('planned-route', 'visibility') ?? 'visible');
+await again.keyboard.down(' ');
+const whileHeld = await vis();
+await again.keyboard.up(' ');
+const after = await vis();
+check(whileHeld === 'none' && after === 'visible', `Space held hides the route, let go shows it (${whileHeld} → ${after})`);
+check((await again.getAttribute('#eye', 'title')).includes('Space'), 'the eye\'s tooltip names the Space bar');
 // ---- 6: a failed write is said, never silent (review web M11) ----
 await again.evaluate(() => { window.__sync.save = () => Promise.reject(new DOMException('quota', 'QuotaExceededError')); });
 await again.click('#menuSavePlan');
