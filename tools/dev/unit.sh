@@ -1,19 +1,26 @@
 #!/usr/bin/env bash
-# NOT ACTIVE YET – part of the setup switch after v0.14.0 (docs/roles/setup-vorschlag-2026-11-01.md §4g, §6c).
-# Nothing calls this until the owner runs `tools/dev/unit.sh install <name>` once on a computer.
-# NOT TESTED on donald / the laptop yet: the three checks in docs/roles/neu/umstellung.md come first.
+# NOT ACTIVE YET – part of the setup switch after v0.14.0 (docs/roles/neu/umstellung.md). Nothing calls this until the
+# owner runs `tools/dev/unit.sh install <name>` once on a computer.
 #
-# One standing Claude session per computer and project (a "unit"), reached from the browser / phone via Remote Control,
-# that survives a reboot: the same session (chat, knowledge) is re-attached instead of a new throw-away one.
-#   run <name>        start Remote Control in this checkout: re-attach the saved session (--session-id), else start a
-#                     new one named <name> and save its id (state: ~/.local/state/onpath-unit/<name>.id)
+# A unit = one computer + one checkout, reached from the browser / phone via Remote Control. Tested on donald
+# 2026-11-01 (docs/roles/neu/umstellung.md "Ergebnisse"):
+#   - a plain `claude remote-control` is a HOST for up to 32 sessions; restarting it reconnects every session of the
+#     folder ("Environment preserved") – no --session-id needed
+#   - spawn mode "worktree" (press w once in the folder, saved per folder): every new session gets its own git worktree
+#   - a session on this computer may start sessions here (create_session into this environment) – the cloud may not
+#   - /loop dies with a restart; a send_later / scheduled task the session set for itself survives and wakes it
+# So the standing session of a unit ("<name>-leitstand") is the dispatcher: an hourly wake-up it set for itself, the
+# round in docs/roles/neu/start.md, one worker session per item (own worktree).
+#
+#   run <name>        start the host in this checkout (foreground; keys like w work; a log copy in
+#                     ~/.local/state/onpath-unit/<name>.log). Exit 3 = folder not trusted yet.
 #   install <name>    write + enable two systemd user services:
 #                       onpath-unit-<name>.service – `unit.sh run <name>` at login, restarted if it ends
 #                       onpath-save.service        – tools/dev/save-on-shutdown.sh: save at shutdown, retry at start
-#   uninstall <name>  stop + remove both services        status <name>   service state + saved session id
-#   new <name>        forget the saved session (the next start makes a fresh one – e.g. when the chat got too long)
-# Env: ONPATH_PERMISSION_MODE (passed to `claude remote-control --permission-mode`; unset = the CLI default – the owner
-# decides at the switch, see umstellung.md), ROOT for save-on-shutdown (default ~/Projects/work).
+#   uninstall <name>  stop + remove both services        status <name>   service state
+# Once per folder, by hand: `claude` (accept the trust dialog, /exit), then `claude remote-control`, press w until it
+# says "worktree", Ctrl-C. Env: ONPATH_PERMISSION_MODE (→ --permission-mode for spawned sessions; unset = CLI default),
+# ROOT for save-on-shutdown (default ~/Projects/work).
 set -uo pipefail
 cmd=${1:-}; NAME=${2:-}
 DIR=$(cd "$(dirname "$0")/../.." && pwd)
@@ -26,29 +33,17 @@ need_name() { [ -n "$NAME" ] || die "$cmd needs a name, e.g. donald or hp"; case
 run() {
   need_name; cd "$DIR" || exit 2
   command -v claude >/dev/null || die "claude CLI not found"
-  local idf=$STATE/$NAME.id id log=$STATE/$NAME.log mode=()
+  local log=$STATE/$NAME.log mode=() rc
   [ -n "${ONPATH_PERMISSION_MODE:-}" ] && mode=(--permission-mode "$ONPATH_PERMISSION_MODE")
-  id=$(cat "$idf" 2>/dev/null || true)
-  # a new folder must be trusted once by hand (`claude` there, accept the dialog) – an autostart cannot answer it
-  # (seen on donald 2026-11-01: "Error: Workspace not trusted"); exit 3 so systemd does not retry for ever
-  if [ -n "$id" ]; then
-    echo "$(date '+%F %T') re-attach $id" >> "$log"
-    local t0=$SECONDS
-    claude remote-control --session-id "$id" 2>&1 | tee -a "$log"
-    # ended within a minute = the session is gone (archived / unknown) → forget it and start fresh below
-    [ $((SECONDS - t0)) -lt 60 ] || exit 0
-    echo "$(date '+%F %T') re-attach ended at once – starting a new session" >> "$log"; rm -f "$idf"
+  echo "$(date '+%F %T') host start in $DIR" >> "$log"
+  # `script` gives claude a real terminal (a pipe made it ignore keys on donald) and keeps a copy of the output
+  script -qefa -c "claude remote-control --remote-control-session-name-prefix $NAME ${mode[*]}" "$log"; rc=$?
+  # a new folder must be trusted once by hand – an autostart cannot answer the dialog (seen on donald 2026-11-01)
+  if tail -n 40 "$log" | grep -q "Workspace not trusted"; then
+    echo "unit: this folder is not trusted yet – run \`claude\` in $DIR once, accept, /exit, then start again" | tee -a "$log"
+    exit 3
   fi
-  echo "$(date '+%F %T') new session $NAME" >> "$log"
-  # the session id is read from the CLI's output (its claude.ai/code link) and saved for the next start
-  claude remote-control --name "$NAME" "${mode[@]}" 2>&1 | while IFS= read -r line; do
-    printf '%s\n' "$line" | tee -a "$log"
-    if [[ $line == *"Workspace not trusted"* ]]; then
-      echo "unit: this folder is not trusted yet – run \`claude\` in $DIR once, accept, /exit, then start again" | tee -a "$log"
-      exit 3
-    fi
-    if [ ! -s "$idf" ] && [[ $line =~ (session_[A-Za-z0-9]+) ]]; then echo "${BASH_REMATCH[1]}" > "$idf"; fi
-  done
+  exit $rc
 }
 
 install() {
@@ -56,7 +51,7 @@ install() {
   command -v systemctl >/dev/null || die "systemctl not found (systemd user services needed)"
   cat > "$UNITS/onpath-unit-$NAME.service" <<EOF
 [Unit]
-Description=OnPath unit $NAME – standing Claude session (Remote Control) in $DIR
+Description=OnPath unit $NAME – Remote Control host (sessions reconnect after a restart) in $DIR
 After=network-online.target
 
 [Service]
@@ -64,7 +59,7 @@ Type=simple
 WorkingDirectory=$DIR
 Environment=ONPATH_PERMISSION_MODE=${ONPATH_PERMISSION_MODE:-}
 # a pseudo terminal, in case the CLI wants one
-ExecStart=/usr/bin/script -qefc "$DIR/tools/dev/unit.sh run $NAME" /dev/null
+ExecStart=$DIR/tools/dev/unit.sh run $NAME
 Restart=on-failure
 RestartSec=30
 # exit 3 = folder not trusted yet (needs the owner once) – do not retry
@@ -100,9 +95,7 @@ case "$cmd" in
   install) install ;;
   uninstall) need_name; systemctl --user disable --now "onpath-unit-$NAME.service" onpath-save.service 2>/dev/null
     rm -f "$UNITS/onpath-unit-$NAME.service" "$UNITS/onpath-save.service"; systemctl --user daemon-reload; echo "unit: removed" ;;
-  status) need_name; systemctl --user --no-pager status "onpath-unit-$NAME.service" onpath-save.service 2>&1 | grep -E "●|Active:"
-    echo "session id: $(cat "$STATE/$NAME.id" 2>/dev/null || echo –)" ;;
-  new) need_name; rm -f "$STATE/$NAME.id"; echo "unit: next start makes a new session (restart: systemctl --user restart onpath-unit-$NAME)" ;;
+  status) need_name; systemctl --user --no-pager status "onpath-unit-$NAME.service" onpath-save.service 2>&1 | grep -E "●|Active:" ;;
   -h|--help|"") sed -n '2,/^set -uo/p' "$0" | sed '$d; s/^# \{0,1\}//' ;;
-  *) die "unknown command $cmd (run | install | uninstall | status | new)" ;;
+  *) die "unknown command $cmd (run | install | uninstall | status)" ;;
 esac

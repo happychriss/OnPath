@@ -13,8 +13,9 @@
 | `tools/dev/unit.sh` | fertig, mit Platzhaltern getestet (ID merken, Wiederanhängen, Rückfall auf neue Sitzung, Dienst-Dateien) – **echte CLI nicht getestet** |
 | `docs/roles/neu/start.md`, `captain.md` | fertig, noch nicht gültig |
 
-## A. Drei Tests auf donald (je ~2 min, nichts wird dabei eingeschaltet)
-0. **Jeder neue Ordner einmal:** `claude` darin starten, die Vertrauensfrage bestätigen, `/exit`. Sonst endet
+## A. Tests auf donald (erledigt 2026-11-01, Ergebnisse unten; für den Laptop wiederholen)
+0. **Jeder neue Ordner einmal:** `claude` darin starten, die Vertrauensfrage bestätigen, `/exit`; dann
+   `claude remote-control`, `w` drücken bis „worktree“, Strg-C. Sonst endet
    `unit.sh` mit „Workspace not trusted“ (gesehen auf donald 2026-11-01; ein Autostart kann die Frage nicht beantworten).
 1. **Wiederanhängen:** im Terminal auf donald im OnPath-Ordner `tools/dev/unit.sh run test-donald`. Erscheint ein Link
    und steht danach eine ID in `~/.local/state/onpath-unit/test-donald.id`? Abbrechen (Strg-C), noch einmal starten
@@ -35,8 +36,16 @@
   `/tmp/claude-…/scratchpad` (den ein Neustart sonst löscht); keine falschen Ordner. Branch-Name jetzt Repo + Branch.
 - `claude remote-control` ist ein Gastgeber für bis zu 32 Sitzungen („Capacity 1/32“, `w` = Spawn-Modus).
 - Eine Cloud-Sitzung **ohne** Freigabe darf dort **keine** Sitzung starten (`elevated_session_untrusted_device`).
-  Offen: darf es die Sitzung auf donald selbst (sie läuft auf einem vertrauten Gerät)? Dann wäre sie der Verteiler
-  für die Rechner. Test: in der donald-Sitzung `create_session` in die eigene Umgebung.
+- **Die Sitzung auf donald darf** Sitzungen in ihrer Umgebung starten (spawn-test-2: eigener Worktree
+  `worktree-bridge-cse_…`, „Test ok“, nichts geändert) – aber nur, wenn der Gastgeber im Modus „mehrere Sitzungen“
+  läuft: ein normales `claude remote-control`. Mit `--session-id` / `--continue` ist er „Single session“ und nimmt
+  keine neuen an (spawn-test blieb PENDING).
+- Spawn-Modus mit `w` auf **worktree** – nur im echten Terminal (über eine Pipe reagierte `w` nicht); pro Ordner
+  gespeichert. Ein normaler Neustart von `claude remote-control` verbindet alle Sitzungen wieder.
+- `/loop` läuft ohne Zutun (alle 2 min, 16:35–16:46), **stirbt aber beim Neustart**.
+- Ein **Weckruf, den die donald-Sitzung sich selbst stellt** (`send_later`), **überlebt den Neustart** (fällig 16:57,
+  angekommen 16:58 nach Neustart). → Leitstand mit stündlichem Weckruf an sich selbst.
+- `unit.sh` umgebaut: normaler Gastgeber über `script` (echtes Terminal + Log), kein `--session-id` mehr.
 
 ## B. 👤 Entscheidungen beim Umstellen (je eine Fragebox)
 - Erlaubnis-Modus der stehenden Sitzungen (`ONPATH_PERMISSION_MODE`): ohne Modus fragt die Sitzung bei vielem nach
@@ -44,8 +53,9 @@
 - Ordnername auf beiden Rechnern: `~/Projects/work/onpath` (statt `onpath-app` / `onpath-plan`) – Vorschlag ja.
 
 ## C. Einschalten
-1. donald: im Checkout einmal `claude` starten und vertrauen (A.0), dann `ONPATH_PERMISSION_MODE=<B> tools/dev/unit.sh install donald` → Link öffnen, Start-Satz aus
-   `docs/roles/neu/start.md` einmal tippen, `/loop`. Neustart-Test: Rechner neu starten → dieselbe Sitzung läuft wieder.
+1. donald: A.0 im Checkout, dann `ONPATH_PERMISSION_MODE=<B> tools/dev/unit.sh install donald` → in der App im
+   Gastgeber eine neue Sitzung „donald-leitstand“ anlegen, Start-Satz aus
+   `docs/roles/neu/start.md` einmal tippen – sie stellt sich den stündlichen Weckruf selbst. Neustart-Test: Rechner neu starten → der Leitstand meldet sich spätestens zur vollen Stunde.
    Sicher-Test: eine Datei ändern, neu starten → Branch `wip/donald-…` auf GitHub.
 2. 👤 Die alte Sitzung `claud-app` beenden, sobald die neue läuft (vorher: alles gepusht, Übergabe geschrieben).
 3. Laptop einrichten wie donald: Android SDK, Node ≥ 22.23, Python + Karten-Tools, `gh auth setup-git`, `git config

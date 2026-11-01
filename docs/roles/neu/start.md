@@ -7,15 +7,23 @@
 Sessions are not roles any more but **units**: a computer (or a fresh cloud container) with what it can do. The work
 item says what it needs; the unit that can do it and is on takes it (owner 2026-11-01, setup concept §4).
 
-## Start sentence (the owner types it once per unit, never again)
-- donald: „Du bist die Einheit **donald** (OnPath). Lies `docs/roles/neu/start.md`.“
-- laptop: „Du bist die Einheit **hp** (OnPath). Lies `docs/roles/neu/start.md`.“
-- cloud worker (the captain starts it): „Du bist ein Cloud-Arbeiter (OnPath). Lies `docs/roles/neu/start.md`. Vorhaben:
-  …“ – one item, then end.
+## How a unit runs (tested on donald 2026-11-01)
+- The computer runs a **host**: `claude remote-control` in the checkout (`tools/dev/unit.sh`, autostart), spawn mode
+  **worktree** – every session it hosts gets its own git worktree; a restart reconnects all of them.
+- In it lives one standing session, the **Leitstand** of the unit (`donald-leitstand`, `hp-leitstand`). It does no
+  product work itself: it runs the round below and **starts one worker session per item** (`create_session` into its
+  own environment – allowed on the owner's computer, not from the cloud). Workers do the item, push, end.
+- **Wake-up:** the Leitstand sets itself an **hourly scheduled task** (`create_trigger`, `persistent_session_id` =
+  itself, cron `0 * * * *`, prompt „Runde – docs/roles/neu/start.md“). It survives a reboot (`/loop` does not – tested);
+  between the hourly rounds `/loop` may run faster while work is open. Check the task exists at every round.
 
-The unit sessions on donald / hp are standing sessions (`tools/dev/unit.sh`, autostart, the same session after a
-reboot). After the start sentence: read this file, `CLAUDE.md`, `docs/owner-preferences.md`, then start the round as a
-self-paced loop (`/loop` without an interval).
+## Start sentences (the owner types each once, never again)
+- Leitstand donald: „Du bist der Leitstand der Einheit **donald** (OnPath). Lies `docs/roles/neu/start.md`.“
+- Leitstand laptop: „Du bist der Leitstand der Einheit **hp** (OnPath). Lies `docs/roles/neu/start.md`.“
+- Worker (the Leitstand starts it): „Du bist ein Arbeiter der Einheit <unit> (OnPath). Lies `docs/roles/neu/start.md`,
+  Abschnitt Arbeiter. Vorhaben: <the backlog line>.“
+- Cloud worker (the captain starts it): „Du bist ein Cloud-Arbeiter (OnPath). Lies `docs/roles/neu/start.md`,
+  Abschnitt Arbeiter. Vorhaben: …“
 
 ## What each unit can do
 | Unit | Can | Takes items tagged |
@@ -30,7 +38,12 @@ Tags in `docs/backlog.md` "Next": `[pixel]` must be checked on the phone · `[em
 first – owner: emulator locally, GitHub only when no computer is on) · `[karten]` map build · `[ram]` big build ·
 no tag = any unit. An item may carry several tags.
 
-## The round (repeat; self-paced – sooner while work is open, ~30 min when there is nothing)
+## Arbeiter (worker sessions)
+One item, in your own worktree (the host made it): claim is held by the Leitstand; work per `CLAUDE.md` (gate, devices
+via `tools/dev/device.sh`, questions via `tools/ask.sh`), push to `main` (rebase), one handoff line, then end – say
+„fertig: <commit>“ as your last line. Never start other sessions.
+
+## The round of the Leitstand (every wake-up; sooner while workers run)
 1. `git pull --rebase origin main`.
 2. **The owner's word:** `tools/ask.sh an-alle --von <unit>` – read every open item, follow it, it confirms "gelesen".
    `#push-sperre` / `#release-sperre`: `gate.sh` refuses the push anyway.
@@ -38,12 +51,17 @@ no tag = any unit. An item may carry several tags.
    it, then `tools/ask.sh erledigt <nr> "…"`.
 4. **wip branches:** `git branch -r | grep "wip/<unit>-"` – unpushed work saved at a shutdown: carry it on (cherry-pick /
    merge into a fresh branch), say so in the handoff; the owner deletes the branch.
-5. **Next item:** the first line under "Next" in `docs/backlog.md` (top = most important; the captain orders it) that
-   this unit can do and nobody claims. Claim it under "In progress" (`- [donald] … – since YYYY-MM-DD`), push.
-6. Work – split over sub-agents when that saves time (`CLAUDE.md` "Sub-agents": own worktree each, devices only via
+5. **Workers:** `list_sessions` – which of this unit's workers run, wait (`needs_action` – make sure its question is
+   an issue) or are done (archive them, remove their claim). At most 2–3 workers at a time (RAM: Gradle and the
+   emulator queue behind their locks).
+5b. **Next item:** the first line under "Next" in `docs/backlog.md` (top = most important; the captain orders it) that
+   this unit can do and nobody claims → claim it under "In progress" (`- [donald] … – since YYYY-MM-DD`), push, start
+   a worker for it (start sentence above).
+6. (Worker) Work – split over sub-agents when that saves time (`CLAUDE.md` "Sub-agents": own worktree each, devices only via
    `tools/dev/device.sh`, builds queue behind the Gradle lock): small green commits, `tools/ci/gate.sh`, push (`CLAUDE.md`, `docs/working-agreement.md` §1). Phone rules from
    `docs/owner-preferences.md` stay (no wipe, check for a recording, never drive the phone while the owner uses it).
-7. Done: remove the claim, one handoff line in "Last session" (`docs/project-status.md`), push. Next round.
+7. (Worker) Done: one handoff line in "Last session" (`docs/project-status.md`), push; the Leitstand removes the
+   claim and archives the worker.
 
 ## Questions to the owner
 Only as an issue (`tools/ask.sh frage --von <unit> …`). Blocking → `--blockiert`, push your state first, then ask the
