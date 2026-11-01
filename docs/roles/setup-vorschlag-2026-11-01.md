@@ -1,4 +1,4 @@
-# Gesamtkonzept: wie OnPath künftig gebaut wird (Fassung 3b, 2026-11-01)
+# Gesamtkonzept: wie OnPath künftig gebaut wird (Fassung 3b, 2026-11-01 – mit Entscheidungen §7)
 
 Von der Sitzung „Setup review handoff“. Fakten: `docs/roles/setup-review-handoff.md`. **Nur ein Vorschlag –
 nichts wurde umgestellt.** Fassung 3 nach deinen Antworten: ein Captain, dem du nur „du bist mein OnPath-Captain“
@@ -164,7 +164,6 @@ passiert und die Sitzung bleibt:
 | `docs/roles/start.md`, `captain.md` | 2 Seiten | ersetzen 4 Rollen-Dateien + §8; Captain-Ablauf 4a |
 | Captain-Weckruf | 1 geplanter Auftrag, stündlich, auf die Captain-Sitzung | 4a |
 | Weckruf je Rechner-Sitzung **oder** `/loop` | 1 Auftrag oder 1 Satz | 4g |
-| Setup-Skript Cloud-Umgebung | ~10 Zeilen + Gradle-Cache | Cloud-Sitzungen testen und bauen |
 Kein MCP, keine Datenbank, keine eigene Seite. Später möglich: Artefakt-Seite, die die Issues hübscher zeigt.
 
 ## 6. Reihenfolge (Release bleibt unberührt)
@@ -178,16 +177,17 @@ Kein MCP, keine Datenbank, keine eigene Seite. Später möglich: Artefakt-Seite,
 4. `release_check.sh`; Rollen-Dateien + §8 kürzen; Backlog-Kanäle raus.
 5. Ruhige Sitzung auf donald: `web-spike` → `main`; Workflow-PR; Abgleich aus. Laptop ausstatten; doppelte
    Umgebung aufräumen.
-6. Optional: Cloud-Setup-Skript mit Gradle-Cache.
 
-## 7. Fragen, die nur du beantworten kannst
-1. Fragen + Stopp als Issues in `onpath.private` – ja?
-2. Captain stündlich wecken reicht? (Öfter geht nicht; du kannst ihn jederzeit anschreiben.)
-3. Dürfen die Rechner-Sitzungen von allein arbeiten (Weckruf / Schleife), sobald ein Vorhaben offen ist – oder
-   nur nach deinem „go“ pro Tag? Darf `claude remote-control` beim Anmelden automatisch starten?
-4. Ein Branch nach v0.14.0 – ja?
-5. Laptop gleich ausstatten wie donald – ja?
-6. Cloud-Setup-Skript (Cloud testet selbst) gewünscht, oder reicht „GitHub testet“ für den Handy-Fall?
+## 7. Entscheidungen des Owners (2026-11-01, Fragebox eine nach der anderen)
+| # | Frage | Entscheidung |
+| --- | --- | --- |
+| 1 | Ort für `frage` + `an-alle` | **GitHub-Issues in `onpath.private`** |
+| 2 | Benachrichtigung | **Push vom Captain** (stündlich bzw. sofort im Gespräch) – Ein-Minuten-Test steht aus |
+| 3 | Rechner-Sitzungen | **arbeiten von allein, `claude remote-control` per Autostart**; Steuerung über Backlog-Reihenfolge + `an-alle` |
+| 4 | Ein Branch | **ja, nach v0.14.0** `web-spike` → `main`; Workflow-PR; Abgleich 05:47 aus |
+| 5 | Laptop | **gleich ausstatten wie donald** (SDK, Node, Python, Karten-Tools, Checkout `main`) |
+| 6 | Cloud-Claude-Sitzung selbst bauen/testen | **nein – GitHub testet**; Handy-Fix = Cloud-Sitzung schreibt + pusht, `release.yml` baut; rot = kein Release. Kein Setup-Skript. |
+Damit entfällt in §5 das Setup-Skript der Cloud-Umgebung; §6 Schritt 6 ebenfalls.
 
 ## 8. Nicht geprüft
 - `--session-id` / `--continue` in der Praxis; ein Weckruf in eine Rechner-Sitzung; `/loop` dort;
