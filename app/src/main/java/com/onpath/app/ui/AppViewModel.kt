@@ -2867,7 +2867,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun switchToPlan() = enter(AppMode.PLAN)
 
     /** "End tour" in Plan (after confirmation) or "End & save" on arrival: stop and save. */
-    fun endTour() { Problems.trace("tour", "End tour (save)"); endAsk = null; arrivalAsk = false; deleteFinished = false; stopRecording() }
+    fun endTour() {
+        Problems.trace("tour", "End tour (save)"); endAsk = null; arrivalAsk = false; deleteFinished = false
+        val withRoute = saveRouteAtEnd && endRouteLabel() != null
+        saveRouteAtEnd = false
+        stopRecording()
+        if (withRoute) requestSave() // Save's dialog (name / overwrite) right after
+    }
+
+    /**
+     * "Aufnahme beenden?" – also save the route (owner 2026-11-01: the recording and the plan are two things; offered only
+     * when there is something to save, the box empty at first): "Neue Route auch speichern" (never saved) / "Geänderte
+     * Route auch speichern" (a saved route changed on the way); null = nothing to save.
+     */
+    fun endRouteLabel(): String? = when {
+        waypoints.size < 2 || !planUnsaved -> null
+        currentSaveMode() == SaveMode.OVERWRITE -> Txt.s(Res.string.nav_end_save_changed_route)
+        else -> Txt.s(Res.string.nav_end_save_new_route)
+    }
+    var saveRouteAtEnd by mutableStateOf(false)
 
     /** What "End tour" shows now (null = nothing): see [askEndTour]. */
     var endAsk by mutableStateOf<EndAsk?>(null)

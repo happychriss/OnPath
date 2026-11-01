@@ -27,6 +27,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.TurnLeft
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.TurnRight
 import androidx.compose.material.icons.filled.TurnSharpLeft
 import androidx.compose.material.icons.filled.TurnSharpRight
@@ -138,8 +139,10 @@ data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: I
                     /** BRouter's angle of the roundabout turn (> 0 right): where the drawn sign's exit goes. */
                     val roundaboutAngle: Float? = null,
                     /** The new route starts behind: "Umdrehen" with the U sign (owner 2026-11-01). */
-                    val turnRound: Boolean = false) {
-    val label: String get() = if (turnRound) Txt.s(Res.string.nav_turn_round)
+                    val turnRound: Boolean = false,
+                    /** No turn near: "↑ Geradeaus · 2,4 km" to the next one (the card always there, owner 2026-11-01). */
+                    val straight: Boolean = false) {
+    val label: String get() = if (straight) Txt.s(Res.string.nav_straight_on) else if (turnRound) Txt.s(Res.string.nav_turn_round)
         else roundabout?.let { com.onpath.app.routing.JunctionCue.ROUNDABOUT.text(it) } ?: kind.label
 }
 
@@ -184,6 +187,11 @@ fun NavigateOverlay(
     footer: @Composable () -> Unit,
     onSlideToPlan: () -> Unit,
     onResume: () -> Unit = {},
+    /** Behind the slider (owner 2026-11-01): Pause / Resume and End (asks first). */
+    onPause: (Boolean) -> Unit = {},
+    onEnd: () -> Unit = {},
+    /** Screenshot tests: the bar the slider unlocks, open. */
+    actionsOpen: Boolean = false,
     slideStartFraction: Float = 0f,
     onTakeRoute: (Int) -> Unit = {},
     onKeepRoute: (Int) -> Unit = {},
@@ -242,8 +250,15 @@ fun NavigateOverlay(
         }
         Column(Modifier.align(Alignment.BottomCenter).modeEdge(ModeEdge.BOTTOM).fillMaxWidth()) {
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
-            SlideToPlan(onSlideToPlan, Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
-                .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            // the slider unlocks Pause · Change route · End (a recording); without one it goes to the plan at once
+            var open by remember { mutableStateOf(actionsOpen) }
+            LaunchedEffect(open) { if (open && !actionsOpen) { kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false } }
+            val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
+                .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+            // paused: the bar stays open – "Fortsetzen" at once, no slider (owner 2026-11-01)
+            if ((open || ui.paused) && ui.recordedM != null) TourActionBar(ui.paused, onPause, onChangeRoute = onSlideToPlan,
+                onEnd = onEnd, onClose = { open = false }, modifier = bottom, closable = !ui.paused)
+            else SlideToPlan({ if (ui.recordedM != null) open = true else onSlideToPlan() }, bottom,
                 recording = ui.recordedM != null, startFraction = slideStartFraction)
         }
         // ONE box under the turn / status column (docs/design/ui-style.md, owner 2026-10-31 – the re-route and
@@ -275,14 +290,14 @@ fun NavigateOverlay(
 /** Next turn, the most prominent thing on screen (like Google Maps' green maneuver card): arrow, distance, direction. */
 @Composable
 private fun TurnCard(t: TurnHint) {
-    val text = if (t.distanceM < 15) str(Res.string.nav_turn_now, t.label)
+    val text = if (t.distanceM < 15 && !t.straight) str(Res.string.nav_turn_now, t.label)
         else str(Res.string.nav_turn_in, t.label, turnDistance(t.distanceM))
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primary,
         contentColor = MaterialTheme.colorScheme.onPrimary, shadowElevation = 4.dp,
         modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = text }) {
         Row(Modifier.heightIn(min = 76.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             if (t.roundabout != null) RoundaboutSign(t.roundabout, t.roundaboutAngle, Modifier.size(48.dp))
-            else Icon(turnIcon(t.kind), null, modifier = Modifier.size(48.dp))
+            else Icon(if (t.straight) Icons.Filled.ArrowUpward else turnIcon(t.kind), null, modifier = Modifier.size(48.dp))
             Spacer(Modifier.width(16.dp))
             Column {
                 Text(turnDistance(t.distanceM), style = MaterialTheme.typography.headlineMedium)
@@ -295,7 +310,8 @@ private fun TurnCard(t: TurnHint) {
 internal fun turnDistance(m: Double): String = when {
     m < 15 -> Txt.s(Res.string.nav_turn_distance_now)
     m < 195 -> "${Math.round(m / 10) * 10} m"
-    else -> "${Math.round(m / 50) * 50} m"
+    m < 1_000 -> "${Math.round(m / 50) * 50} m"
+    else -> Format.distance(m)
 }
 
 internal fun turnIcon(k: TurnKind): ImageVector = when (k) {
@@ -764,6 +780,12 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
                     next?.first?.turnRound == true -> h.copy(turnRound = true)   // an out-and-back: "Umdrehen"
                     else -> h
                 }
+            }
+            // no turn near: the card stays, "↑ Geradeaus" to the next turn / the goal – nothing jumps (owner 2026-11-01)
+            ?: remaining?.takeIf { !provOff && rec?.offRouteAlert != true && (it.offM ?: 0.0) <= TURN_HIDE_OFF_M }?.let { r ->
+                val along = (total - r.distanceM).coerceAtLeast(0.0)
+                val to = turns.firstOrNull { it.distanceFromStart > along + 5.0 }?.distanceFromStart ?: total
+                TurnHint(TurnKind.SLIGHT_RIGHT, (to - along).coerceAtLeast(0.0), straight = true)
             },
         headingUp = vm.navHeadingUp,
         arriveAt = arrive,
@@ -808,6 +830,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     DisposableEffect(Unit) { onDispose { vm.screenRest = false } }
     Box(Modifier.fillMaxSize()) {
         NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
+            onPause = vm::pauseRecording, onEnd = { vm.askEndTour() },
             onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute, onTakeVia = vm::takeViaRoute,
             onLeadThere = vm::leadToStart, onJustRecord = vm::justRecord, onLeadFailedOk = vm::leadFailedOk,
             onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,

@@ -80,7 +80,7 @@
     <string name="plan_start_recording_for">Start recording · %1$s</string>
     <string name="plan_save_route">Save route</string>
     <string name="plan_time_details">Time details</string>
-    <string name="plan_close_plan">Close plan</string>
+    <string name="plan_close_plan">New plan</string>
     <string name="plan_start_short">Start</string>
     <string name="plan_sheet_expand">Show route summary</string>
     <plurals name="plan_hint_count">
@@ -163,7 +163,7 @@
     <string name="plan_searching_gps">Searching GPS…</string>
     <string name="plan_new_route">New route</string>
     <string name="plan_start_here">Start here</string>
-    <string name="plan_go_here">Go here from my location</string>
+    <string name="plan_go_here">Go here</string>
     <string name="plan_open_google_maps">Open in Google Maps</string>
     <plurals name="plan_removes_points">
         <item quantity="one">Removes the %1$d point before it</item>
@@ -174,7 +174,7 @@
     <string name="plan_finding_shared_place">Finding the shared place…</string>
     <string name="plan_resize_panel">Resize panel</string>
     <string name="plan_slide_to_plan">Stop</string>
-    <string name="plan_slide_to_plan_sub">Pause · End · Change route</string>
+    <string name="plan_slide_to_plan_sub">Pause · Change route · End</string>
     <string name="plan_slide_change_route">Change route</string>
     <string name="plan_slide_desc">%1$s. Switch to plan mode.</string>
     <string name="plan_switch_to_plan">Switch to plan mode</string>

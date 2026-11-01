@@ -110,6 +110,8 @@ class PlanCallbacks(
     /** Tour controls at the top of the sheet (only while a tour records). */
     val onPause: (Boolean) -> Unit = {},
     val onEndTour: () -> Unit = {},
+    /** Save the (edited) plan – the sheet's second button during a tour; null = no plan to save. */
+    val onSaveRoute: (() -> Unit)? = null,
 )
 
 /** Recording status shown at the top of the plan sheet during a tour. */
@@ -277,9 +279,11 @@ private fun PlanActions(ui: PlanUi, cb: PlanCallbacks) {
 @Composable
 private fun PlanAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
     val tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-    // icon and word side by side (owner 2026-10-31: the stacked label made the row twice as high)
-    Row(Modifier.heightIn(min = 48.dp).clip(MaterialTheme.shapes.small)
-        .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 10.dp),
+    // icon and word side by side (owner 2026-10-31: the stacked label made the row twice as high); a light pill so it
+    // reads as a button, calm like the activity field (owner 2026-11-01)
+    Row(Modifier.heightIn(min = 48.dp).padding(vertical = 4.dp).clip(CircleShape)
+        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 0.7f else 0.35f))
+        .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
         Text(label, style = MaterialTheme.typography.labelMedium, color = tint, maxLines = 1,
@@ -304,12 +308,11 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     val tourMini = ui.tour != null && ui.shownSize == PlanSize.MINI
     val belowStep = if (tourMini || ui.collapsed) Modifier.clearAndSetSemantics { } else Modifier
     ui.tour?.let { t ->
-        // the row alone: its own ■ Stop (field 2026-11-01) – with the next step End tour is right under it
-        TourStatusRow(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, ui.activity, t.recordOnly,
-            onEnd = cb.onEndTour.takeIf { tourMini })
+        // the first step: Pause · End recording (owner 2026-11-01 – the status and "Done" are in the header on top,
+        // PlanTopBar's "Change route … Done"; was a status row with a ■ and "Continue")
+        TourContinueSave(t.paused, cb.onPause, cb.onContinue, cb.onSaveRoute)
         // no rolled-up step during a tour: its stop is the tour row's (PlanSize.duringTour)
         Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COLLAPSED.step).stepEnd(PlanSize.MINI.step) })
-        TourPauseEnd(t.paused, cb.onPause, cb.onEndTour, belowStep.padding(top = 4.dp))
         HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
     Box(Modifier.fillMaxWidth()) {

@@ -74,7 +74,8 @@ class PlanSizeTourTest {
         assertEquals(true, panel.contains("onEnd = cb.onEndTour.takeIf { tourMini }"))
         assertEquals(true, panel.contains("TourPauseEnd(t.paused, cb.onPause, cb.onEndTour"))
         val bar = java.io.File("src/main/java/com/onpath/app/ui/TourBar.kt").readText()
-        assertEquals(true, bar.contains("OutlinedIconButton(onClick = onEnd, modifier = Modifier.size(48.dp)"))
+        // a word, not a ■ (owner 2026-11-01): "Aufnahme beenden"
+        assertEquals(true, bar.contains("OutlinedButton(onClick = onEnd, modifier = Modifier.heightIn(min = 48.dp)"))
     }
 
     @Test fun aTapOnTheSliderOnlyNudgesTheThumb() {

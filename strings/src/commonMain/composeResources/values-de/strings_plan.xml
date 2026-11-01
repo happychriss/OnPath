@@ -79,7 +79,7 @@
     <string name="plan_start_recording_for">Aufzeichnung starten · %1$s</string>
     <string name="plan_save_route">Route speichern</string>
     <string name="plan_time_details">Zeitdetails</string>
-    <string name="plan_close_plan">Plan schließen</string>
+    <string name="plan_close_plan">Neu planen</string>
     <string name="plan_start_short">Start</string>
     <string name="plan_sheet_expand">Routenübersicht zeigen</string>
     <plurals name="plan_hint_count">
@@ -162,7 +162,7 @@
     <string name="plan_searching_gps">GPS wird gesucht…</string>
     <string name="plan_new_route">Neue Route</string>
     <string name="plan_start_here">Hier starten</string>
-    <string name="plan_go_here">Von meinem Standort hierhin</string>
+    <string name="plan_go_here">Hierhin</string>
     <string name="plan_open_google_maps">In Google Maps öffnen</string>
     <plurals name="plan_removes_points">
         <item quantity="one">Löscht den Punkt davor</item>
@@ -173,7 +173,7 @@
     <string name="plan_finding_shared_place">Geteilter Ort wird gesucht…</string>
     <string name="plan_resize_panel">Größe ändern</string>
     <string name="plan_slide_to_plan">Stopp</string>
-    <string name="plan_slide_to_plan_sub">Pause · Beenden · Route ändern</string>
+    <string name="plan_slide_to_plan_sub">Pause · Route ändern · Beenden</string>
     <string name="plan_slide_change_route">Route ändern</string>
     <string name="plan_slide_desc">%1$s. Zum Planen wechseln.</string>
     <string name="plan_switch_to_plan">Zum Planen wechseln</string>

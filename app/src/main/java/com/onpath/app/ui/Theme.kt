@@ -70,6 +70,8 @@ object OnPathColors {
      * ≥ 5:1 on the track even over a white map.
      */
     val OnDarkMuted = RestInk
+    /** "End" on the dark Navigate bar (TourActionBar): a light red, ≥ 4.5:1 on the track. */
+    val OnDarkError = Color(0xFFFF8A80)
 
     // ---- Message kinds (docs/design/ui-style.md): one colour = one meaning ----
     /** FRAGE: the blue left edge of a question box (MessageCard) – never a status or a failure. */

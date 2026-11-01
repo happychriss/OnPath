@@ -6,6 +6,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -90,11 +97,50 @@ fun PlanTopBar(
     menu: PlanMenu,
     modifier: Modifier = Modifier,
     menuInitiallyOpen: Boolean = false,
+    /** During a tour: the "Change route … Done" header instead of the search pill (owner 2026-11-01). */
+    edit: EditHeader? = null,
 ) {
     Row(modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        SearchBarPill(onSearch, Modifier.weight(1f))
+        if (edit != null) EditHeaderPill(edit, onSearch, Modifier.weight(1f)) else SearchBarPill(onSearch, Modifier.weight(1f))
         Spacer(Modifier.width(8.dp))
         AppMenuButton(menu, menuInitiallyOpen)
+    }
+}
+
+/** The plan during a tour: [status] = "Aufnahme läuft · 7,4 km · 0:42:10", [onDone] = back to the navigation. */
+class EditHeader(val status: String, val paused: Boolean, val onDone: () -> Unit)
+
+/**
+ * "✎ Change route · ● recording … 🔍 [Done]" (owner 2026-11-01: "wo bin ich eigentlich?"): the plan edited during a
+ * tour always says so on top, in the route's green – never the plain search pill of planning at home. Done = back to
+ * the navigation (was "Continue" in the sheet); the search stays one tap away (a café as a stop on the way).
+ */
+@Composable
+private fun EditHeaderPill(edit: EditHeader, onSearch: () -> Unit, modifier: Modifier) {
+    Surface(modifier = modifier.heightIn(min = 56.dp), shape = RoundedCornerShape(28.dp), color = OnPathColors.Green,
+        contentColor = OnPathColors.CardWhite, shadowElevation = 3.dp) {
+        Row(Modifier.padding(start = 16.dp, end = 6.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Edit, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
+                    Text(str(Res.string.plan_edit_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
+                        maxLines = 1)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RecDot(edit.paused, Modifier.size(8.dp)); Spacer(Modifier.width(6.dp))
+                    Text(edit.status, style = MaterialTheme.typography.bodySmall, maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                }
+            }
+            IconButton(onClick = onSearch, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Outlined.Search, contentDescription = str(Res.string.plan_search_hint))
+            }
+            Button(onClick = edit.onDone, modifier = Modifier.heightIn(min = 44.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.CardWhite, contentColor = OnPathColors.Green),
+                contentPadding = PaddingValues(horizontal = 14.dp)) {
+                Text(str(Res.string.common_done), fontWeight = FontWeight.Bold, maxLines = 1)
+            }
+        }
     }
 }
 

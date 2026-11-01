@@ -16,8 +16,8 @@ class ActivityLabelsTest {
 
     /** The tour's Continue names the activity, like the primary button. */
     @Test fun tourContinueNamesTheActivity() {
-        assertEquals("Continue · Gravelbike", continueLabel(Activity.BIKE_TREKKING))
-        assertEquals("Continue · Hike", continueLabel(Activity.HIKE))
+        assertEquals("Continue navigation · Gravelbike", continueLabel(Activity.BIKE_TREKKING))
+        assertEquals("Continue navigation · Hike", continueLabel(Activity.HIKE))
     }
 
     /** Problem 5: the track panel's button names the activity it navigates with. */

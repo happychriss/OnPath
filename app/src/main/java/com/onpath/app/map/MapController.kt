@@ -108,6 +108,9 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val FIT_MAX_ZOOM = 16.0
         /** Position puck in both modes: MapLibre's small blue dot + bearing triangle (not the big GPS puck). */
         private const val PUCK_MODE = RenderMode.COMPASS
+        /** The position sign while the route is changed during a tour ([setPlanPuck]) and an empty image (hides parts). */
+        private const val IMG_PLAN_PUCK = "onpath-plan-puck"
+        private const val IMG_NONE = "onpath-none"
     }
 
     /** Settings page → base style layers (POI filter, contours, hillshade). */
@@ -348,9 +351,31 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         return bmp
     }
 
+    /**
+     * The route is being changed during a tour (owner 2026-11-01: "an dem Punkt sehen, dass man im Planmodus ist"): the
+     * position is the activity's sign in a white circle with a green ring ([badge], ui/PlanPuck) – no accuracy circle,
+     * no "where I face" cone; null = the normal blue dot (Navigate, planning at home). Never throws.
+     */
+    fun setPlanPuck(badge: android.graphics.Bitmap?) {
+        if (badge === planBadge) return
+        planBadge = badge
+        try {
+            if (!live()) return
+            if (badge != null) {
+                style.addImage(IMG_PLAN_PUCK, badge)
+                if (style.getImage(IMG_NONE) == null)
+                    style.addImage(IMG_NONE, android.graphics.Bitmap.createBitmap(1, 1, android.graphics.Bitmap.Config.ARGB_8888))
+            }
+            map.locationComponent.applyStyle(puckOptions(heading.arrowGrey))
+        } catch (e: Exception) {
+            Problems.warn("map", "Position sign (plan / navigate) not changed", e)
+        }
+    }
+    private var planBadge: android.graphics.Bitmap? = null
+
     /** Position dot look; [grey] = the "where I face" image grey (compass unsure, map/CompassTrust). */
     private fun puckOptions(grey: Boolean): LocationComponentOptions = LocationComponentOptions.builder(context)
-        .accuracyAlpha(0.18f)
+        .accuracyAlpha(if (planBadge != null) 0f else 0.18f)
         .enableStaleState(true)
         .staleStateTimeout(30_000)
         // HeadingEngine turns smoothly at display rate itself
@@ -362,6 +387,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         .maxZoomIconScale(PositionDot.MAX_SCALE).minZoomIconScale(PositionDot.MIN_SCALE)
         // the "where I face" arrow (north-up / Plan) as large as the app's own in heading-up (owner)
         .bearingDrawable(if (grey) com.onpath.app.R.drawable.onpath_bearing_unsure else com.onpath.app.R.drawable.onpath_bearing)
+        .apply {
+            if (planBadge != null) foregroundName(IMG_PLAN_PUCK).foregroundStaleName(IMG_PLAN_PUCK)
+                .backgroundName(IMG_NONE).backgroundStaleName(IMG_NONE).bearingName(IMG_NONE)
+        }
         .build()
 
     @SuppressLint("MissingPermission")

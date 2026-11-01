@@ -107,7 +107,7 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
     val mainText = "→  $label"
     var tapped by remember { mutableIntStateOf(0) }
     BoxWithConstraints(
-        modifier.fillMaxWidth().height(TRACK_HEIGHT).clip(CircleShape).background(Color(0xE6202A33))
+        modifier.fillMaxWidth().height(TRACK_HEIGHT).clip(CircleShape).background(MaterialTheme.colorScheme.primary) // the turn card's green (owner 2026-11-01)
             .pointerInput(Unit) { detectTapGestures { tapped++ } }
             .clearAndSetSemantics {
                 contentDescription = desc
@@ -136,7 +136,7 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
 
         // Filled part behind the thumb.
         Box(Modifier.fillMaxHeight().width(with(density) { offset.toDp() } + THUMB + PAD * 2)
-            .clip(CircleShape).background(OnPathColors.Route.copy(alpha = 0.55f)))
+            .clip(CircleShape).background(Color.White.copy(alpha = 0.22f)))
         Column(
             Modifier.align(Alignment.Center).padding(start = THUMB).graphicsLayer { alpha = (1f - 2f * f).coerceIn(0f, 1f) },
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -158,7 +158,7 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
                 ),
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = OnPathColors.Route, modifier = Modifier.size(30.dp))
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(30.dp))
             }
         }
     }

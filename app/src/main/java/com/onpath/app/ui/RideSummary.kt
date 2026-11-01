@@ -86,23 +86,10 @@ fun rideIcon(rides: List<Ride>): ImageVector {
 @Composable
 fun RideSummaryDialog(
     summary: RideView.Summary, onSave: (RideChoice) -> Unit, onDelete: (() -> Unit)?, onDismiss: () -> Unit,
-    title: String = str(Res.string.nav_end_tour_title), saveLabel: String = str(Res.string.common_save), initial: RideChoice? = null,
+    title: String = str(Res.string.nav_end_tour_title), saveLabel: String = str(Res.string.nav_save_recording), initial: RideChoice? = null,
     zone: ZoneId = ZoneId.systemDefault(),
 ) {
     var choice by remember(summary) { mutableStateOf(initial?.takeIf { c -> summary.options.any { it.choice == c } } ?: summary.preselected) }
-    var askDelete by remember { mutableStateOf(false) }
-    if (askDelete && onDelete != null) {
-        AlertDialog(
-            onDismissRequest = { askDelete = false },
-            icon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(str(Res.string.nav_delete_track_title)) },
-            text = { DialogText(RECYCLE_BIN_NOTE) },
-            confirmButton = { TextButton(onClick = { askDelete = false; onDelete() },
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(str(Res.string.common_delete)) } },
-            dismissButton = { TextButton(onClick = { askDelete = false }) { Text(str(Res.string.common_cancel)) } },
-        )
-        return
-    }
     val rides = summary.rides.size
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -133,7 +120,7 @@ fun RideSummaryDialog(
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        confirmButton = { DeleteApartButtons(onDelete?.let { { askDelete = true } }, str(Res.string.common_cancel), onDismiss,
+        confirmButton = { DeleteApartButtons(onDelete, str(Res.string.common_cancel), onDismiss,
             saveLabel) { onSave(choice) } },
     )
 }

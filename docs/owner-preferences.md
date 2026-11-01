@@ -16,6 +16,8 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
 ## Product rules seen again and again (details in CLAUDE.md / backlog)
 - **No messages that disappear by themselves** – everything stays until answered or the situation is gone
   ("we are a hiking app – it can rain, stress…"). Nothing may flash.
+- **The owner's chosen words stay** (owner 2026-11-01, "Hierhin" had become "Von meinem Standort hierhin" in a UX
+  review): a review or polish pass never rewords a UI text the owner picked – it proposes the change as a question.
 - **Hold-only gestures in Plan**, no quick-tap actions, no dragging points (delete + add).
 - **Re-routing only after asking**; skip passed stops; show the original route grey.
 - **Core features**: a field bug first gets a reproducing test, then the fix.
