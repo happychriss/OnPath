@@ -88,8 +88,6 @@ class PlanGuidanceTest {
         val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
         val cont = vm.substringAfter("fun continueNavigation(").substringBefore("\n    }")
         assertTrue(cont, cont.contains("(!followIsTrack || planReplacesTrack())"))
-        val look = vm.substringAfter("fun trackLook(").substringBefore("\n    }")
-        assertTrue(look, look.contains("planReplacesTrack()") && look.contains("FOLLOW_BEHIND"))
         val shown = vm.substringAfter("fun followShown(").substringBefore("\n    }")
         assertTrue(shown, shown.contains("planAtTrackFollow = waypoints.toList()"))
     }

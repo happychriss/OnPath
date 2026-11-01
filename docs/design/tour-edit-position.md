@@ -1,8 +1,10 @@
 # Editing the plan during a tour: the position splits the plan
 
 Status: **built 2026-10-31** (`navigation/TourSplit`, wired in `AppViewModel.change` / `step` / `followEditedPlan` / `addPoint` /
-`answerRouteBack`; map: `MapController.setWaypoints(passed)`, the plan pale via the grey original line). Check on the
-next ride.
+`answerRouteBack`; map: `MapController.setWaypoints(passed)`). Check on the next ride.
+**Owner 2026-11-01: no grey route while planning** ("das Planen mit der grauen Route klappt überhaupt nicht – wir lassen
+die blaue Route"; the blue line had vanished): in Plan during a tour the plan's route is drawn blue as without a tour,
+the followed route stays blue, nothing pale / grey (§4).
 Field case (owner, Hilden, bike, 2026-10-31): plan 1 → 2 → 3, he had ridden past 1 and 2 on another way; deleting 3
 left the route 1 → 2 – short, behind him, under the orange track – and the app said nothing. He read it as "the whole
 route is gone".
@@ -55,7 +57,8 @@ Example plan 1 → 2 → 3 → 4, the user between 2 and 3 (1, 2 passed).
 | Round trip, delete 1 (start = goal ahead) | the loop stays closed at the next point: 2 is start and goal, position → 3 → 2 |
 
 ## 4. On the map (Plan during a tour)
-- Line **ahead** (position → ahead points) strong blue as today; the plan line **behind** pale.
+- The plan's route **blue**, as without a tour (never hidden); the followed line (position → ahead points) blue too.
+  No pale / grey lines in Plan (owner 2026-11-01). Navigate keeps a re-route's thin grey original.
 - Passed points grey with a ✓ (numbers kept, so "stop 3" still means the same point).
 - The plan sheet's summary counts from the position (time / km to go), like Navigate.
 
@@ -66,7 +69,7 @@ What the map shows is not said again. Undo stays on the map in every case.
 | --- | --- |
 | Point ahead deleted / moved / added, points still ahead | none – the routing ring at the position, then the new line |
 | Destination deleted, a point ahead becomes the destination | none – its red marker |
-| Passed point deleted | none – only the pale line behind changes |
+| Passed point deleted | none – only the plan line behind changes |
 | A point counts as passed | none – grey point with ✓ |
 | Nothing ahead any more | FRAGE "Kein Ziel mehr vor dir." · "Die Tour wird weiter aufgezeichnet. Rückgängig holt den Punkt zurück." – [Zurück zum Start] / [Nur aufzeichnen]; replaces `nav_route_back_title` / `_text` |
 | … Zurück zum Start without a position | HINWEIS red, existing `msg_route_back_no_position` [OK] |

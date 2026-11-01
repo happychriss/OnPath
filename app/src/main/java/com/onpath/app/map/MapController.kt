@@ -250,24 +250,23 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     fun setNavOriginals(lines: List<List<GeoPoint>>) = setTrack(SRC_NAV_ORIGINAL, lines)
 
     /** How the [SRC_GPX] line looks (owner: one blue line – blue is the route you follow or will follow). */
-    enum class TrackLook { TRACK, FOLLOW, FOLLOW_BEHIND }
+    enum class TrackLook { TRACK, FOLLOW }
 
     /**
-     * TRACK = a shown GPX track (own purple colour); FOLLOW = the followed route (route blue, like the plan);
-     * FOLLOW_BEHIND = followed route while the plan is being edited during a tour (thin grey under the blue plan).
+     * TRACK = a shown GPX track (own purple colour); FOLLOW = the followed route (route blue, like the plan – also while
+     * the plan is edited during a tour: no grey route while planning, owner 2026-11-01).
      */
     fun setTrackLook(look: TrackLook) {
         val (color, width, casing) = when (look) {
             TrackLook.TRACK -> Triple(GPX_COLOR, 5f, true)
             TrackLook.FOLLOW -> Triple(ROUTE_COLOR, 6f, true)
-            TrackLook.FOLLOW_BEHIND -> Triple(NAV_ORIGINAL_COLOR, 3f, false)
         }
         guarded("track look") {
             style.getLayer(SRC_GPX)?.setProperties(PF.lineColor(color), PF.lineWidth(width))
             style.getLayer("$SRC_GPX-casing")?.setProperties(PF.lineWidth(width + 4f),
                 PF.visibility(if (casing) Property.VISIBLE else Property.NONE))
             style.getLayer("$SRC_GPX-arrows")?.setProperties(
-                PF.visibility(if (look == TrackLook.FOLLOW_BEHIND) Property.NONE else Property.VISIBLE))
+                PF.visibility(Property.VISIBLE))
         }
         applyRouteOverlaysVisibility() // keep the eye button's state
     }
