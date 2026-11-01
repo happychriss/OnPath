@@ -166,6 +166,10 @@ passiert und die Sitzung bleibt:
 | Weckruf je Rechner-Sitzung **oder** `/loop` | 1 Auftrag oder 1 Satz | 4g |
 Kein MCP, keine Datenbank, keine eigene Seite. Später möglich: Artefakt-Seite, die die Issues hübscher zeigt.
 
+> **Vorbereitet (2026-11-01, noch nicht eingeschaltet):** `tools/ci/release_check.sh`, `tools/dev/save-on-shutdown.sh`,
+> `tools/dev/unit.sh`, `docs/roles/neu/start.md` + `captain.md`. **Die Umstellung nach v0.14.0 geht nach
+> `docs/roles/neu/umstellung.md`** (Tests → Einschalten → ein Branch → Altes abbauen).
+
 ## 6. Reihenfolge (Release bleibt unberührt)
 1. **Jetzt:** Labels `frage` + `an-alle` in `onpath.private`; Test-Issue; `tools/ask.sh`; `an-alle` in `gate.sh`;
    D1–D4 und „Waiting for the owner“ als Issues; Regel in `CLAUDE.md`.

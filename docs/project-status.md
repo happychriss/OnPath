@@ -26,6 +26,15 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud (setup review), 2026-11-01 – new setup concept, owner questions as issues, switch prepared.** Concept with
+  the owner's decisions: `docs/roles/setup-vorschlag-2026-11-01.md`. **Active now:** owner questions / the owner's
+  word to all as issues in `onpath.private` (labels `frage`, `an-alle`; `tools/ask.sh`; `gate.sh` refuses a push on
+  `#push-sperre`, a release commit on `#release-sperre`; rules in `CLAUDE.md`); D1–D4 + waiting items asked as
+  onpath.private#2–#10 (#10 answered "Ja" – Germany worktree on donald can go). **Prepared, not switched on:**
+  `tools/ci/release_check.sh` (captain's check as a script – today: NO GO, web-spike lacks 13 shared files + 2 sync
+  files from main and "Web spike" CI is red on 5749bac6), `tools/dev/save-on-shutdown.sh` + `tools/dev/unit.sh`
+  (standing session per computer, autostart, save at shutdown – tested here, not on donald), `docs/roles/neu/`
+  (start, captain, umstellung). **Next:** after v0.14.0 follow `docs/roles/neu/umstellung.md`.
 - **cloud-app (donald), 2026-11-01 – release day turned fix day (owner: no release today, everything in).** List A
   1–9 + "More before the release" on `main`, small green commits, Release-Rundgang 14/14 PASS (dfc701d9), E2E + unit
   green (140d5bec). Field bugs: voice repeat (voice memory per tour in trip-pace.json, service scope exception handler,
