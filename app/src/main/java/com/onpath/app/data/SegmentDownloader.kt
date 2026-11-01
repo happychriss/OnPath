@@ -21,13 +21,7 @@ object SegmentDownloader {
     val USER_AGENT: String get() = "OnPath-Android/${com.onpath.app.BuildConfig.VERSION_NAME} (+info@onpath.earth)"
 
     /** Tile name for a position: 5° steps, west/south as W/S. Bozen (46.5, 11.35) → "E10_N45". */
-    fun tileName(lat: Double, lon: Double): String {
-        val lo = (floor(lon / 5.0) * 5).toInt()
-        val la = (floor(lat / 5.0) * 5).toInt()
-        val ew = if (lo < 0) "W${-lo}" else "E$lo"
-        val ns = if (la < 0) "S${-la}" else "N$la"
-        return "${ew}_$ns.rd5"
-    }
+    fun tileName(lat: Double, lon: Double): String = com.onpath.app.routing.Rd5Parts.tileName(lat, lon)
 
     /**
      * Downloads [name] into [segmentsDir]. [onProgress] gets (bytesDone, bytesTotal or -1).

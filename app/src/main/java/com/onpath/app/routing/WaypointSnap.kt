@@ -126,9 +126,5 @@ object WaypointSnap {
 
     fun distToLine(p: GeoPoint, line: List<GeoPoint>): Double = distM(p, project(p, line))
 
-    fun distM(a: GeoPoint, b: GeoPoint): Double {
-        val x = Math.toRadians(b.lon - a.lon) * cos(Math.toRadians((a.lat + b.lat) / 2.0))
-        val y = Math.toRadians(b.lat - a.lat)
-        return sqrt(x * x + y * y) * 6_371_000.0
-    }
+    fun distM(a: GeoPoint, b: GeoPoint): Double = com.onpath.app.data.Geo.fastDistance(a, b)
 }

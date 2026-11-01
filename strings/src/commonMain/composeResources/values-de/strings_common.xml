@@ -10,8 +10,6 @@
     <string name="common_done">Fertig</string>
     <string name="common_not_now">Nicht jetzt</string>
     <string name="common_try_again">Erneut versuchen</string>
-    <string name="common_retry">Erneut versuchen</string>
-    <string name="common_open">Öffnen</string>
     <string name="common_more">Mehr</string>
     <string name="common_show">Anzeigen</string>
     <string name="common_show_all">Alle anzeigen</string>

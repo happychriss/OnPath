@@ -117,7 +117,6 @@
     <string name="maps_btn_load">Laden</string>
     <string name="maps_here_ask">Detailkarte für hier? · %1$d MB</string>
     <string name="maps_here_ask_detail">Die Vorbereitung dauert ein paar Minuten.</string>
-    <string name="maps_hide_cd">Ausblenden (die Karte lädt weiter)</string>
 
     <!-- Laden im Hintergrund -->
     <string name="maps_bg_title">Karte wird geladen</string>
@@ -247,6 +246,5 @@
     <string name="maps_import_none_found">Keine Kartendaten in „%1$s“ gefunden.</string>
     <string name="maps_import_no_space">Nicht genug freier Speicher für %1$s (benötigt %2$d MB).</string>
     <string name="maps_import_empty">%1$s ist leer.</string>
-    <string name="maps_import_cant_replace">%1$s konnte nicht ersetzt werden.</string>
     <string name="maps_import_cant_save">%1$s konnte nicht gespeichert werden.</string>
 </resources>

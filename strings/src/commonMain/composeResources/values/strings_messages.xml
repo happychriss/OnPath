@@ -40,7 +40,6 @@
     <string name="msg_tour_delete_failed">“%1$s” could not be deleted. Please try again.</string>
     <string name="msg_tour_restore_failed">“%1$s” could not be restored. Please try again.</string>
     <string name="msg_name_route">Route</string>
-    <string name="msg_name_share">OnPath route</string>
     <string name="msg_name_import">Import</string>
     <string name="msg_name_date_pattern">d MMM, HH:mm</string>
     <string name="msg_date_pattern_area">d MMM yyyy</string>

@@ -22,6 +22,16 @@ object Geo {
 
     fun distance(a: GeoPoint, b: GeoPoint) = distance(a.lat, a.lon, b.lat, b.lon)
 
+    /**
+     * Quick flat distance (equirectangular, metres) for nearby points – where many distances are compared (snapping,
+     * BRouter's matched spots). The one copy (review Arch 8: it was pasted into WaypointSnap and BRouterEngine).
+     */
+    fun fastDistance(a: GeoPoint, b: GeoPoint): Double {
+        val x = Math.toRadians(b.lon - a.lon) * kotlin.math.cos(Math.toRadians((a.lat + b.lat) / 2.0))
+        val y = Math.toRadians(b.lat - a.lat)
+        return kotlin.math.sqrt(x * x + y * y) * 6_371_000.0
+    }
+
     fun length(points: List<GeoPoint>): Double {
         var d = 0.0
         for (i in 1 until points.size) d += distance(points[i - 1], points[i])

@@ -366,12 +366,6 @@
     "max": 34,
     "decided": "Owner 2026-10-30: honest wording – no route, no \"Start navigation\""
   },
-  "plan_route_options": {
-    "area": "Plan sheet",
-    "context": "Accessibility: the ⋯ button of the plan sheet",
-    "priority": 2,
-    "confidence": "sicher"
-  },
   "plan_save_route": {
     "area": "Plan sheet",
     "context": "⋯ menu item / dialog title",
