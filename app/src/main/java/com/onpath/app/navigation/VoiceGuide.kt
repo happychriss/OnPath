@@ -62,7 +62,8 @@ enum class WayKind { PATH, TRACK, ROAD }
  *   stretch after it ≥ [BIKE_STRAIGHT_M] / [HIKE_STRAIGHT_M] is said ("then 3 km straight on").
  * - At least [GAP_MS] between sentences; off route / arrival / no destination never wait. A sentence that had to wait
  *   is dropped after [STALE_MS]; a junction is simply said at the next fix (with its distance then).
- * - Quiet while paused; "No GPS" once after [GPS_LOST_MS], only after the start, at most every [NO_GPS_EVERY_MS].
+ * - Quiet while paused; "No GPS" once after [GPS_LOST_MS] without a fix while moving (owner 2026-11-01: a short gap is no
+ *   news, standing still in a shop never), only after the start, at most every [NO_GPS_EVERY_MS].
  * - State sentences have a minimum interval (field 2026-11-01): "off the route" every [OFF_ROUTE_EVERY_MS], "back on the
  *   route" only after [BACK_ON_AFTER_MS] of the question that was said, "arrived" every [ARRIVED_EVERY_MS].
  * - The tour's voice memory ([Memory]) is kept with the tour, not with the service: a recording service recreated
@@ -271,7 +272,8 @@ class VoiceGuide {
         const val HIKE_STRAIGHT_M = 1_000.0
         const val GAP_MS = 10_000L
         const val STALE_MS = 30_000L
-        const val GPS_LOST_MS = 30_000L
+        /** Owner 2026-11-01: "2–3 minutes without GPS while on the way – then say it; otherwise it nags". */
+        const val GPS_LOST_MS = 150_000L
         const val NO_GPS_EVERY_MS = 10 * 60_000L
         const val OFF_ROUTE_EVERY_MS = 2 * 60_000L
         const val BACK_ON_AFTER_MS = 60_000L

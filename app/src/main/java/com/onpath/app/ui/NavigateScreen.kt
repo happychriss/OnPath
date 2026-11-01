@@ -92,7 +92,7 @@ data class NavUi(
     val elapsedS: Long = 0,
     val paused: Boolean = false,
     val waitingGps: Boolean = false,
-    /** No GPS while standing still (owner 2026-11-01): a quiet grey state, not the amber ⚠ warning. */
+    /** No GPS while standing still or only briefly (owner 2026-11-01): a quiet grey state, not the amber ⚠ warning. */
     val quietGps: Boolean = false,
     /** Off route (confirmed): the question, "finding a way back…" or the arrow banner; null = on route. */
     val offRoute: OffRouteUi? = null,
@@ -728,7 +728,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         },
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,
         waitingGps = rec?.gpsLost == true && prov == null,
-        quietGps = rec?.standingStill == true,
+        quietGps = rec?.gpsQuiet == true,
         offRoute = rec?.nav?.let { n ->
             n.prompt?.let { p -> OffRouteUi(p, n.toRoute, n.toRoute?.let { (it.bearingDeg - mapBearing).toFloat() }) }
         },

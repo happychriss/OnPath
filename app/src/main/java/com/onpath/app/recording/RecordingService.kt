@@ -98,8 +98,11 @@ data class RecState(
      * shows its Wi-Fi / fused fix as a provisional position until then ([com.onpath.app.navigation.Provisional]).
      */
     val hadGpsFix: Boolean = true,
-    /** Standing still ([MoveWatch], owner 2026-11-01): warnings are quiet – "No GPS" is a grey state, not amber. */
-    val standingStill: Boolean = false,
+    /**
+     * "No GPS" is a quiet grey state, not the amber warning (owner 2026-11-01): standing still ([MoveWatch]), or lost
+     * for less than [com.onpath.app.navigation.VoiceGuide.GPS_LOST_MS] – the warning comes with the spoken one.
+     */
+    val gpsQuiet: Boolean = false,
     /**
      * The end of the followed line was reached (review H2: checked here, also with the phone in the pocket). Guidance
      * is quiet from then on (no off-route alarms on the way to the car park); recording goes on. The app asks once.
@@ -465,6 +468,10 @@ class RecordingService : Service() {
 
     /** Quiet while standing still (owner 2026-11-01): moving = a point accepted within the last 2 min ([MoveWatch]). */
     private val moveWatch = MoveWatch()
+
+    /** "No GPS" not worth a warning (yet): standing still, or a short gap (owner 2026-11-01). */
+    private fun gpsQuiet(): Boolean = standingStill() ||
+        SystemClock.elapsedRealtime() - lastGoodFixElapsed < com.onpath.app.navigation.VoiceGuide.GPS_LOST_MS
 
     /** Standing still now – after a GPS loss: already before it (a loss while walking is said, one at a table not). */
     private fun standingStill(): Boolean =
@@ -1130,7 +1137,7 @@ class RecordingService : Service() {
         _state.value = RecState(
             tourId, paused, distance, ascent, descent, elapsedS, gpsLost(),
             navigator?.state?.offM, navigator?.prompt != null, follow?.first, trackSnapshot,
-            navigator?.state, tripTime(), saveFailed, hadGpsFix = lastGoodFixElapsed > 0, standingStill = standingStill(),
+            navigator?.state, tripTime(), saveFailed, hadGpsFix = lastGoodFixElapsed > 0, gpsQuiet = gpsQuiet(),
             arrived = arrived,
         )
         // Battery: the clock runs by itself in the notification (chronometer); re-post only when what it says
