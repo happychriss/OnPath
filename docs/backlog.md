@@ -41,23 +41,6 @@ the git log.
   reopen, no developer / raw error lines) + follow the splice catch-all from main. Deploy only together with the app
   release (captain's go).
 
-- → [cloud-app] **More before the release (owner 2026-11-01: "everything in the backlog can come along") – after list
-  A, in this order** (details in `docs/reviews/2026-11-01-pre-release.md` part C and the reports):
-  (1) recording robustness: arrival check in the service + no off-route alarms after arrival (C1 / recording H2),
-  watchdog "no fix for ~5 min" + honest "Recording interrupted" after a restart (H3), unwritten points queued (M2),
-  exception handler in the service scope (M3), switch question ≠ off route (M4); **Quiet while standing still (owner
-  2026-11-01):** sitting in a restaurant, phone in the pocket, talking – no voice, no text box, no notification at
-  all (no "No GPS signal", no off-route, no reminders); only a quiet state (grey GPS dot) may change. While moving
-  (hiking / riding): a lost GPS signal is said once per loss, leaving the route is said – that is wanted. "Moving" =
-  the user moved in the last ~2 min before the loss (PointFilter already detects standing still); optional: Android's
-  step detector to notice walking off without GPS. Same rule for every repeat warning; "Off the route" ≥ 2 min apart;
-  (2) routing: GPX with `<rte>` + `<trk>` not merged (H2), background routing on its own executor (H1);
-  (3) shared with cloud-plan, agree first: Save over a route changed by sync → copy or ask (sync H3), mailbox that
-  comes back empty (sync M4), stuck upload queue reported (M8);
-  (4) UX HIGH: hint "on the phone: hold", tap on a POI in Plan shows details, ✕ Close not right under End tour, one
-  off-route question shape, error texts without "move the point", route / plan / tour / track glossary EN + DE.
-  Not now: AppViewModel split, download helper, geo math clean-up (after the release). Small green commits; Rundgang
-  before the release (navigation / recording core changed).
 - → [cloud-plan] **More before the release (owner 2026-11-01) – after list A 10–13:** (1) re-pairing keeps the
   browser's unsent routes (sync H1, `WebSync.kt` rebase); "Pair phone" twice does not end a pending mailbox the phone
   already uses (M7); (2) edits queued while the engine is busy (web H4); `navigator.storage.persist()` (H5); Save /
@@ -67,6 +50,15 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-app] **List A 1–9 done on `main`** (2026-11-01): (1) voice repeat d6aebf06 – voice memory per tour in
+  trip-pace.json, service scope with exception handler, re-route result + ticker caught, minimum intervals; (2) ■ Stop in
+  the one-row tour step fb872ba8 + slider "Stopp" cc5508a6 (owner's choice, was "Tour-Menü"); (3) tour-edit lines
+  233af63d (passed points kept, pale plan beside a re-route, SplitRequests) + 95498f11 (session token, version + 1,
+  failed recalc keeps the line); (4)+(5) 4729bfb6; (6)+(7) 6691f666; (8) 644b4169 + 95498f11 (UserText); (9) 24d46ea1.
+  **Shared code:** only `routing/Planner.kt` (splice catch-all, 644b4169 – behaviour unchanged unless the splice throws);
+  `PlanResult`, `sync/`, profiles, `PLANNER_VERSION` untouched → fingerprint unchanged; noted for cloud-plan in the
+  mirror list. Owner: **no release today** – cloud-app goes on with "More before the release". The owner's diagnostics
+  export of the voice-repeat ride is still to come (confirms the crash path). Device check of (3) in Demo mode still open.
 - ← [cloud-web] Help-pictures order done: onpath.earth d15090a – app screens under the steps of 8 of 9 help topics (DE + EN, 34 pictures from the A-019 set; owner: "roughly matching is fine, UI still changes"). Swap later via `help_shots.py` + `scripts/help_shots.py`. Tester note draft in onpath.private (`marketing/tester-hinweis-entwurf.md`) for the owner – 2026-11-01
 
 - [captain] release v0.14.0 (voice guidance): app + planner OK – 2026-10-31. Fingerprint equal (BRouter + profiles
@@ -76,7 +68,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [cloud-app] Release-day fixes list A 1–9 (`docs/reviews/2026-11-01-pre-release.md`) – since 2026-11-01
+- [cloud-app] "More before the release" (owner 2026-11-01), in its order: (1) recording robustness + quiet while standing still, (2) routing, (3) sync with cloud-plan, (4) UX HIGH – since 2026-11-01
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
@@ -154,6 +146,8 @@ the git log.
   privacy + pairing sentences, host ipHash, date with the dot, first-route fit, "New route for … – check it".
   Plan parity: `web/test/plans.json` 14 cases, all app = web (gate in the jvm job).
   - *Should:*
+    - [cloud-plan] Splice catch-all · 644b4169 · `routing/Planner.kt` (shared): an unexpected error in the splice routes
+      the chunk again as before – comes with the next main merge; the web's own "Unexpected: …" text is web M10.
     - [cloud-plan] Rolled-up one-row step? (app d288503, PlanSize.COLLAPSED: activity icon, time · distance, ⚠ count,
       compact green Start) · the web has small / profile / points (`sheetstep.ts`) and no Start – a fourth, one-row step
       only if the owner wants it on a phone-width browser.
