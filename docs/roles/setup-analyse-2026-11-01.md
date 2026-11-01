@@ -111,9 +111,13 @@ Eigenes MCP, Artefakt-Dashboard, Cloud-Setup-Skript (Entscheidung 6), noch mehr 
    donald, ob der Block „== OnPath session start ==“ in einer Remote-Control-Sitzung erscheint. Dann können die
    Prosa-Absätze „read at the start“, „device.sh only“, „gate before push“ aus `CLAUDE.md`/`start.md` weg (Schritt 2).
    Messen: kein Push mehr ohne grünes Tor (Git-Log).
-2. **`CLAUDE.md`-Diät + `.claude/rules/`** (½ Tag): Ziel ≤ 120 Zeilen; `project-status`/`backlog` kürzen. Messen:
-   Token beim Sitzungsstart (Diagnose in der App) vorher/nachher.
-3. **Deny/Allow-Regeln** (1 h): Handy-Regeln hart, weniger Nachfragen.
+2. **`CLAUDE.md`-Diät + `.claude/rules/`** – **gemacht 2026-11-01** (7ed48190): 3 851 → 1 125 Wörter, 73 Zeilen;
+   sieben Regel-Dateien mit `paths:` (ui, routing, map, recording, sync-web, data-pipeline, release), Inhalte
+   wortgetreu übernommen. Noch offen: `project-status.md` / `backlog.md` kürzen (Geschichte nach `docs/history/`).
+3. **Deny/Allow-Regeln** – **vorbereitet 2026-11-01:** eine Sitzung darf ihre eigenen Berechtigungen nicht ändern
+   (Auto-Modus-Prüfung), daher `docs/roles/neu/settings-permissions.proposed.json` + `tools/dev/apply_permissions.py`.
+   👤 Owner auf donald: `python3 tools/dev/apply_permissions.py && git commit -am "Permissions: hard rules" && git push`.
+   Enthält auch `git reset --hard` und `git push --force` (Vorfall von heute).
 4. **`--spawn worktree`** in `unit.sh` + Autostart-Dienst (1 h, nach Prüfung des Flags auf donald).
 5. **Skills + Agenten** (`/runde`, `/frage`, `/release`, `worker`, `tester`) (1 Tag): Abläufe aus den Rollen-Dateien
    in Skills, Rollen-Dateien auf je 1 Seite.

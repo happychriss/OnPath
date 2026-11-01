@@ -60,7 +60,10 @@ keine Kartendaten. Offen nur (b) beim Einrichten des neuen Ordners `onpath` auf 
 install` nur über `device.sh`). **Einmal auf donald prüfen:** eine neue Sitzung im Gastgeber zeigt in ihrer ersten
 Antwort die Lage „== OnPath session start ==“; `git push` nach einem Commit ohne Tor wird mit Meldung verweigert.
 Ausschalten im Notfall: `ONPATH_HOOKS=0` oder `"disableAllHooks": true` in den Settings. Gilt nur auf `main`
-(`web-spike` hat die Datei nicht).
+(`web-spike` hat die Datei nicht). Registriert in `.claude/settings.json` (im Repo – kein Einrichten je Rechner; neue
+Sitzungen haben sie nach dem nächsten Pull, laufende nach ihrem Neustart).
+**Deny-Regeln (👤 einmal auf donald):** `python3 tools/dev/apply_permissions.py`, dann committen und pushen – sperrt
+Force-Push, `reset --hard`, Branch-Löschen, `adb uninstall` / `pm clear`, `gradlew --stop` in jedem Modus.
 
 ## B. 👤 Entscheidungen beim Umstellen (je eine Fragebox)
 - Erlaubnis-Modus der stehenden Sitzungen (`ONPATH_PERMISSION_MODE`): ohne Modus fragt die Sitzung bei vielem nach
