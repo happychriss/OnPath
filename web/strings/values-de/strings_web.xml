@@ -141,6 +141,10 @@
     <string name="web_sync_unpaired">Getrennt. Die Routen von %1$s bleiben in diesem Browser.</string>
     <string name="web_sync_offline">Offline – deine Routen werden abgeglichen, sobald du wieder Verbindung hast.</string>
     <string name="web_sync_failed">Der Abgleich hat diesmal nicht geklappt – er versucht es von selbst wieder.</string>
+    <string name="web_save_failed">Nicht gespeichert – dieser Browser konnte die Route nicht ablegen. Versuch es noch einmal oder sichere sie mit „GPX exportieren“.</string>
+    <string name="web_rename_failed">Nicht umbenannt – dieser Browser konnte die Änderung nicht ablegen. Bitte noch einmal versuchen.</string>
+    <string name="web_delete_failed">Nicht gelöscht – dieser Browser konnte die Änderung nicht ablegen. Bitte noch einmal versuchen.</string>
+    <string name="web_copy_failed">Die Kopie wurde nicht gespeichert – dieser Browser konnte sie nicht ablegen. Bitte noch einmal versuchen.</string>
     <string name="web_sync_gone">Die Verbindung wurde am Handy getrennt.</string>
     <string name="web_sync_busy">der Sync-Server ist ausgelastet – in einer Minute geht es weiter</string>
     <string name="web_sync_answered">der Sync-Server antwortete %1$d</string>

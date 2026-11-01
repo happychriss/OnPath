@@ -157,6 +157,10 @@
     <string name="web_sync_unpaired">Unpaired. The routes of %1$s stay in this browser.</string>
     <string name="web_sync_offline">Offline – your routes sync when the connection is back.</string>
     <string name="web_sync_failed">Sync did not work this time – it tries again by itself.</string>
+    <string name="web_save_failed">Not saved – this browser could not store the route. Try again, or keep it with “Export GPX”.</string>
+    <string name="web_rename_failed">Not renamed – this browser could not store the change. Please try again.</string>
+    <string name="web_delete_failed">Not deleted – this browser could not store the change. Please try again.</string>
+    <string name="web_copy_failed">The copy was not saved – this browser could not store it. Please try again.</string>
     <string name="web_sync_gone">The connection was ended on the phone.</string>
     <string name="web_sync_busy">the sync server is busy – it tries again in a minute</string>
     <string name="web_sync_answered">the sync server answered %1$d</string>

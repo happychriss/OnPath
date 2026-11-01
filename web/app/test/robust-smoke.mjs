@@ -68,6 +68,27 @@ await again.waitForFunction(() => location.hash.startsWith('#p='), null, { timeo
 const restored = await again.evaluate(() => ({ n: window.__state.points.length, hash: location.hash.slice(0, 3) }));
 check(restored.n === pts && pts === 2, `the unsaved route is back after reopening (${restored.n} of ${pts} points)`);
 check(restored.hash === '#p=', 'and in the address again');
+// ---- 5: two quick clicks while the engine is busy go in the order clicked (review web H4) ----
+await again.waitForFunction(() => document.querySelector('#summary .big') && !document.getElementById('status').classList.contains('busy'), null, { timeout: 120_000 });
+const p1 = [11.1440, 46.7040], p2 = [11.1380, 46.7110]; // beyond the destination, one after the other
+const px = await again.evaluate((ps) => ps.map(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }), [p1, p2]);
+// the engine busy first (another activity → the plan again), then both clicks: both wait behind that plan
+await again.click('#activityChip'); await again.click('[data-act=BIKE_TOURING]');
+await again.mouse.click(px[0][0], px[0][1]); await again.mouse.click(px[1][0], px[1][1]);
+await again.waitForFunction(() => window.__state.points.length === 4, null, { timeout: 60_000 }).catch(() => {});
+const order = await again.evaluate(() => window.__state.points.map(([la, lo]) => [Number(lo.toFixed(3)), Number(la.toFixed(3))]));
+console.log('after two quick clicks:', JSON.stringify(order));
+// the points may be snapped onto a path – compare which click each one is closer to
+const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+check(order.length === 4 && d(order[2], p1) < d(order[2], p2) && d(order[3], p2) < d(order[3], p1), 'two quick clicks: the second is the new destination (not put before the first)');
+// ---- 6: a failed write is said, never silent (review web M11) ----
+await again.evaluate(() => { window.__sync.save = () => Promise.reject(new DOMException('quota', 'QuotaExceededError')); });
+await again.click('#menuSavePlan');
+await again.waitForSelector('dialog.savename[open] #saveOk', { timeout: 20_000 });
+await again.click('#saveOk');
+await again.waitForFunction(() => document.getElementById('status').classList.contains('error'), null, { timeout: 10_000 }).catch(() => {});
+const saveLine = await again.textContent('#status');
+check(/Not saved/.test(saveLine) && !/quota|DOMException/i.test(saveLine), `Save fails → a plain red line ("${saveLine.trim()}")`);
 await ctx.close();
 check(errors.length === 0, `no page error (${errors.join(' | ')})`);
 

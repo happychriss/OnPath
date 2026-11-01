@@ -416,20 +416,37 @@ function setPoints(points: LatLon[], meta?: Meta[]) {
   state.points.forEach((p, i) => known.set(key(p), state.meta[i]));
 }
 
-/** One of the app's plan edits (PlanEdits, in the engine). */
-async function applyEdit(op: 'reverse' | 'roundTrip' | 'startHere' | 'delete' | 'move', index = 0, to = 0) {
-  closeMenu();
-  await commit(await engine.edit(op, state.points, index, to));
+/**
+ * Point edits one after another (review 2026-11-01, web H4): each works out its new list from the points as the edits
+ * before it left them – two clicks while the one engine worker is busy with a long plan no longer both insert into the
+ * same old list (the second destination landing before the first), and a late edit never overwrites a drag. Only the
+ * point list waits; the plan of each edit runs as before (a newer plan supersedes an older one). [make] returns the
+ * started plan ({ planned }), or null when there is nothing to change.
+ */
+let editChain: Promise<void> = Promise.resolve();
+function queueEdit(make: () => Promise<{ planned: Promise<void> } | null>): Promise<void> {
+  let planned: Promise<void> = Promise.resolve();
+  const run = editChain.then(async () => { planned = (await make())?.planned ?? planned; });
+  editChain = run.catch((e) => problem('plan', 'a point edit failed', e, 'error'));
+  return run.then(() => planned);
 }
 
-async function step(op: 'undo' | 'redo') {
+/** One of the app's plan edits (PlanEdits, in the engine). */
+function applyEdit(op: 'reverse' | 'roundTrip' | 'startHere' | 'delete' | 'move', index = 0, to = 0) {
   closeMenu();
-  const t = await engine.call('historyStep', op, enc(state.points));
-  runCause = op;
-  state.otherRouting = false;
-  if (t === 'null') return;
-  setPoints(dec(t));
-  await changed();
+  return queueEdit(async () => ({ planned: commit(await engine.edit(op, state.points, index, to)) }));
+}
+
+function step(op: 'undo' | 'redo') {
+  closeMenu();
+  return queueEdit(async () => {
+    const t = await engine.call('historyStep', op, enc(state.points));
+    runCause = op;
+    state.otherRouting = false;
+    if (t === 'null') return null;
+    setPoints(dec(t));
+    return { planned: changed() };
+  });
 }
 
 /**
@@ -469,10 +486,16 @@ async function drawPoints() {
     m.on('dragend', () => {
       draggedAt = Date.now();
       const p = m.getLngLat();
-      const pts = state.points.slice(), meta = state.meta.slice();
-      pts[i] = [p.lat, p.lng]; meta[i] = { pinned: false };
-      if (state.roundTrip && i === 0) { pts[last] = [p.lat, p.lng]; meta[last] = { pinned: false }; }
-      commit(pts, meta);
+      const was = key([lat, lon]), loop = state.roundTrip && i === 0;
+      queueEdit(async () => {
+        // by value: an edit queued before this drag may have moved the point to another index
+        const k = state.points[i] && key(state.points[i]) === was ? i : state.points.findIndex((q) => key(q) === was);
+        if (k < 0) return null; // the point went meanwhile (undo, delete) – nothing to move
+        const pts = state.points.slice(), meta = state.meta.slice(), end = pts.length - 1;
+        pts[k] = [p.lat, p.lng]; meta[k] = { pinned: false };
+        if (loop && k === 0 && key(pts[end]) === was) { pts[end] = [p.lat, p.lng]; meta[end] = { pinned: false }; }
+        return { planned: commit(pts, meta) };
+      });
     });
     el.addEventListener('click', (ev) => {
       ev.stopPropagation();
@@ -577,13 +600,15 @@ function poiAt(pt: maplibregl.Point): MapGeoJSONFeature | null {
 }
 
 /** A click on the empty map or the line: the point goes where the app puts it (WaypointInsertion, in the engine). */
-async function addPoint(at: maplibregl.LngLat) {
+function addPoint(at: maplibregl.LngLat) {
   // ~24 px on screen = "clicked on the line" (the phone uses 24 dp)
   const mPerPx = 40075016 * Math.cos((at.lat * Math.PI) / 180) / (512 * 2 ** map.getZoom());
-  const i = await engine.insertIndex(state.points, at.lat, at.lng, 24 * mPerPx);
-  const pts = state.points.slice(), meta = state.meta.slice();
-  pts.splice(i, 0, [at.lat, at.lng]); meta.splice(i, 0, { pinned: false });
-  await commit(pts, meta);
+  return queueEdit(async () => {
+    const i = await engine.insertIndex(state.points, at.lat, at.lng, 24 * mPerPx);
+    const pts = state.points.slice(), meta = state.meta.slice();
+    pts.splice(i, 0, [at.lat, at.lng]); meta.splice(i, 0, { pinned: false });
+    return { planned: commit(pts, meta) };
+  });
 }
 
 const position = new Position(map, () => { renderFabs(); locateNotice(); });
@@ -1127,7 +1152,11 @@ async function headerSave() {
   await renderSaved();
   const paired = sync.status.paired, waiting = paired && sync.status.pending > 0;
   const send = () => { if (sync.status.paired) sync.sendAll(); };
-  if (saveState === 'save' || (saveState === 'saved' && !waiting)) { await saveRoute(sync, plansHost, send); return; }
+  if (saveState === 'save' || (saveState === 'saved' && !waiting)) {
+    // a failed write (quota, storage reset, private mode) is said, never silent (review 2026-11-01, web M11)
+    try { await saveRoute(sync, plansHost, send); } catch (e) { problem('sync', 'route not saved', e, 'error'); status(t('web_save_failed'), 'error'); }
+    return;
+  }
   send();
 }
 
@@ -1286,10 +1315,16 @@ async function addPlace(h: Hit, role: PlaceRole, fit = false) {
     else if (role === 'REMOVE') await deletePoint(pv.existing);
     return;
   }
-  const at = role === 'START' ? 0 : role === 'DESTINATION' ? state.points.length : pv.index ?? state.points.length;
-  const pts = state.points.slice(), meta = state.meta.slice();
-  pts.splice(at, 0, p); meta.splice(at, 0, { pinned: true, name: h.title });
-  await commit(pts, meta);
+  const asked = state.points;
+  await queueEdit(async () => {
+    // the points changed while waiting (an edit before this one): where the place goes, worked out again
+    const now = state.points === asked ? pv : await engine.placePreview(state.points, p[0], p[1]);
+    if (now.existing != null) return null; // planned meanwhile
+    const at = role === 'START' ? 0 : role === 'DESTINATION' ? state.points.length : now.index ?? state.points.length;
+    const pts = state.points.slice(), meta = state.meta.slice();
+    pts.splice(at, 0, p); meta.splice(at, 0, { pinned: true, name: h.title });
+    return { planned: commit(pts, meta) };
+  });
 }
 
 // ---- menus, sheet, dialogs ----

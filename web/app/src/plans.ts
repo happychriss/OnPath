@@ -5,6 +5,7 @@ import qrcode from 'qrcode-generator';
 import { NONE, shownTitle, type PlanSync, type SavedPlan, type SyncStatus } from './sync';
 import { icon } from './icons';
 import { t, locale } from './i18n';
+import { problem } from './diag';
 
 export interface PlanHost {
   /** The current plan as a plan code + its title, or null when there is nothing to save. */
@@ -28,6 +29,33 @@ export interface PlanHost {
 }
 
 let openDialog: HTMLDialogElement | null = null;
+
+/**
+ * A failed write in My routes (IndexedDB quota, a storage reset, Safari private mode – review 2026-11-01, web M11): one
+ * red line at the top of the list where the user acted, the detail for the diagnostics. Never silent.
+ */
+function failLine(d: HTMLElement, text: string, e: unknown) {
+  problem('sync', text, e, 'error');
+  let el = d.querySelector<HTMLElement>('.failline');
+  if (!el) {
+    el = document.createElement('p');
+    el.className = 'notice failline'; el.setAttribute('role', 'alert');
+    d.querySelector('#planList')?.before(el);
+  }
+  el.textContent = '⚠ ' + text;
+}
+
+/**
+ * Asks the browser once to keep this page's storage (review 2026-11-01, web H5): without it Safari may clear routes
+ * kept only here after 7 days without a visit, and other browsers under disk pressure. Asked on the first Save.
+ */
+let persistAsked = false;
+function askPersist() {
+  if (persistAsked) return;
+  persistAsked = true;
+  navigator.storage?.persist?.().then((ok) => { if (!ok) problem('sync', 'the browser did not grant persistent storage (routes may be cleared by it)'); },
+    (e) => problem('sync', 'persistent storage not asked', e));
+}
 
 function dialog(cls: string, html: string): HTMLDialogElement {
   openDialog?.close();
@@ -168,21 +196,26 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
         const name = prompt(t('web_plans_new_name'), titleOf(p));
         if (name == null || !name.trim()) return;
         const stored = storedTitle(name);
-        await sync.rename(p.id, stored, folder);
+        try { await sync.rename(p.id, stored, folder); } catch (e) { failLine(d, t('web_rename_failed'), e); return; }
         if (p.id === host.openId()) host.saved({ ...p, title: stored }, folder); // "Saved as …" follows the new name
         render();
       };
       li.querySelector<HTMLButtonElement>('.copy')?.addEventListener('click', async () => {
         closeMenus();
-        await copyRoute(sync, p, folder); // the name dialog takes My routes' place …
+        let failed: unknown = null;
+        try { await copyRoute(sync, p, folder); } catch (e) { failed = e; } // the name dialog takes My routes' place …
         await myPlansDialog(sync, host); // … and My routes comes back, with the copy in it
+        if (failed && openDialog) failLine(openDialog, t('web_copy_failed'), failed);
       });
       q('.export').onclick = () => { closeMenus(); d.close(); host.exportGpx(p, folder); };
       li.querySelector<HTMLButtonElement>('.sharerow')?.addEventListener('click', () => { closeMenus(); d.close(); host.share(p); });
       q('.del').onclick = () => {
         closeMenus();
         askInPlace(li, folder === NONE ? t('web_delete_q_local', titleOf(p)) : t('web_delete_q', titleOf(p)),
-          t('common_delete'), () => li.querySelector('.more'), async () => { await sync.remove(p.id, folder); await render(); $('closePlans').focus(); }, t('web_keep'));
+          t('common_delete'), () => li.querySelector('.more'), async () => {
+            try { await sync.remove(p.id, folder); } catch (e) { await render(); failLine(d, t('web_delete_failed'), e); return; }
+            await render(); $('closePlans').focus();
+          }, t('web_keep'));
       };
       ul.append(li);
     }
@@ -387,6 +420,7 @@ export async function saveRoute(sync: PlanSync, host: PlanHost, then?: () => voi
       if (input == null) return;
       const name = cleanName(input, old), title = name === old ? existing.title : storedTitle(name);
       await sync.save(cur.code, title, existing.id, folder);
+      askPersist();
       host.saved({ ...existing, title, plan: cur.code, updatedAt: Date.now(), mine: true }, folder);
     } else { // NEW_ROUTE
       const dated = datedName(), taken = plans.map((p) => titleOf(p)), link = host.linkTitle();
@@ -399,6 +433,7 @@ export async function saveRoute(sync: PlanSync, host: PlanHost, then?: () => voi
       const title = storedTitle(cleanName(input, first));
       const into = sync.open;
       const newId = await sync.save(cur.code, title, undefined, into);
+      askPersist();
       host.saved({ id: newId, kind: 'plan', title, plan: cur.code, track: '', updatedAt: Date.now(), device: '', mine: true, dirty: true, onPhone: false }, into);
     }
     then?.();
@@ -460,6 +495,7 @@ export async function pairDialog(sync: PlanSync, page: string) {
   const p = await sync.pairing(page);
   if (!d.open) return;
   if ('error' in p) { $('pairBody').innerHTML = `<p class="status error">${esc(p.error)}</p>`; return; }
+  if ('paired' in p) { shown = true; render(); return; } // the code shown before was answered meanwhile: "Paired with …"
   const qr = qrcode(0, 'M');
   qr.addData(p.link, 'Byte');
   qr.make();
