@@ -62,6 +62,12 @@ object LocationSaverMode {
     const val THROTTLE_SCREEN_OFF = 4
 
     fun stopsGps(mode: Int?): Boolean = mode == GPS_OFF_SCREEN_OFF || mode == ALL_OFF_SCREEN_OFF
+
+    /**
+     * Review recording M5: battery saver came on during a tour (often by itself at 15–20 %) on a phone where it stops GPS
+     * with the screen off – said once per tour ([warned]), loud: the track would get gaps.
+     */
+    fun warnDuringTour(powerSave: Boolean, mode: Int?, warned: Boolean): Boolean = powerSave && stopsGps(mode) && !warned
 }
 
 /** The phone as OnPath sees it now (read on every return to the app). */

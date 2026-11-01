@@ -137,6 +137,8 @@
     <string name="nav_rec_paused_moving">You are moving – resume recording?</string>
     <string name="nav_rec_rescued_title">Tour rescued</string>
     <string name="nav_rec_rescued">The phone's storage had a problem. OnPath put your tour back together – recording goes on. Details: Settings → Diagnostics.</string>
+    <string name="nav_saver_title">Battery saver stops GPS</string>
+    <string name="nav_saver_text">On this phone battery saver switches GPS off while the screen is off – your track gets gaps. Turn battery saver off for the tour.</string>
     <string name="nav_watchdog_title">Recording gets no GPS</string>
     <string name="nav_watchdog_text">OnPath restarted the recording but has had no GPS position for 5 minutes. Open OnPath and check the recording.</string>
     <string name="nav_interrupted_title">Tour recording interrupted</string>

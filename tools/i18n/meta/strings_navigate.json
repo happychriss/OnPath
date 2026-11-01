@@ -656,6 +656,19 @@
     "priority": 2,
     "confidence": "sicher"
   },
+  "nav_saver_title": {
+    "area": "Notification",
+    "context": "Title: battery saver came on during a tour and stops GPS with the screen off on this phone",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "Android's German name of battery saver: Energiesparmodus (Pixel) / Akku-Sparmodus (Samsung)"
+  },
+  "nav_saver_text": {
+    "area": "Notification",
+    "context": "Text of that notification",
+    "priority": 2,
+    "confidence": "sicher"
+  },
   "nav_watchdog_title": {
     "area": "Notification",
     "context": "Notification: the recording service restarted by itself and has had no GPS fix for 5 minutes",

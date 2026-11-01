@@ -386,6 +386,12 @@ class RecordingService : Service() {
         acquireWakeLock()
         restWatch.reset(); tracker.setInterval(RestWatch.NORMAL_MS) // never start a tour at the standing-still rate
         moveWatch.start(SystemClock.elapsedRealtime())
+        saverWarned = false
+        if (!saverRegistered) try {
+            ContextCompat.registerReceiver(this, saverReceiver,
+                android.content.IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)
+            saverRegistered = true
+        } catch (e: Exception) { Problems.warn("recording", "Battery saver changes not watched during the tour", e) }
         // came back by itself (sticky restart): say so if no GPS comes (review H3)
         if (intent == null) gpsWatchdog.arm(SystemClock.elapsedRealtime()) else gpsWatchdog.disarm()
         tracker.onFix = { onFix(it) }
@@ -583,6 +589,34 @@ class RecordingService : Service() {
     }
 
     private val gpsWatchdog = GpsWatchdog()
+
+    /** Battery saver that stops GPS with the screen off, said once per tour (review M5). */
+    private var saverWarned = false
+    private var saverRegistered = false
+    private val saverReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) { checkBatterySaver() }
+    }
+
+    private fun checkBatterySaver() {
+        if (tourId < 0) return
+        try {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            val mode = if (Build.VERSION.SDK_INT >= 28) pm.locationPowerSaveMode else null
+            if (!com.onpath.app.setup.LocationSaverMode.warnDuringTour(pm.isPowerSaveMode, mode, saverWarned)) return
+            saverWarned = true
+            Problems.warn("recording", "Battery saver came on during the tour and stops GPS with the screen off – user told")
+            val text = Txt.s(Res.string.nav_saver_text)
+            nm().notify(SAVE_FAIL_ID, NotificationCompat.Builder(this, CHANNEL_NAV)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(Txt.s(Res.string.nav_saver_title))
+                .setContentText(text).setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(openAppIntent())
+                .build())
+            vibrate()
+        } catch (e: Exception) { Problems.warn("recording", "Battery saver state not checked during the tour", e) }
+    }
 
     /** Arrival at the end of the followed line ([com.onpath.app.routing.ArrivalGate], review H2). */
     private val arrivalGate = com.onpath.app.routing.ArrivalGate()
@@ -1156,6 +1190,9 @@ class RecordingService : Service() {
     }
 
     override fun onDestroy() {
+        if (saverRegistered) try { unregisterReceiver(saverReceiver); saverRegistered = false } catch (e: Exception) {
+            Problems.warn("recording", "Battery saver watch not removed", e)
+        }
         // Process stays consistent: points are already in the DB; state stays "active"
         // unless finish() ran, so the app offers Continue / Save next time.
         cancelReroute()
