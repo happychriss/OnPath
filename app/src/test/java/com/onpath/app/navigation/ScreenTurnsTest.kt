@@ -54,4 +54,18 @@ class ScreenTurnsTest {
         val l = line(Triple(0.0, 80, null), Triple(90.0, 80, JunctionCue.ROUNDABOUT to 90f), Triple(0.0, 80, JunctionCue.LEFT to -90f))
         assertEquals(listOf(TurnKind.LEFT), ScreenTurns.of(l, hike = false).map { it.kind })
     }
+
+    /**
+     * Replay of tour 63 (owner 2026-11-01, Stopp 6 in Fabriciusstraße): the route goes into a dead end to a plan point
+     * and back – no junction, no hint; the card says "Umdrehen" there, and only there.
+     */
+    @Test fun anOutAndBackToAPointSaysTurnRound() {
+        val l = line(Triple(0.0, 60, null), Triple(270.0, 40, JunctionCue.LEFT to -90f), Triple(90.0, 40, null),
+            Triple(0.0, 60, JunctionCue.LEFT to -90f))
+        val t = ScreenTurns.of(l, hike = true)
+        assertEquals(1, t.count { it.turnRound })
+        val back = t.single { it.turnRound }
+        assertEquals(100.0, back.distanceFromStart, 3.0)
+        assertEquals(listOf(false, true, false), t.map { it.turnRound })
+    }
 }

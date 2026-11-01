@@ -25,6 +25,7 @@ class VoiceTextTest {
         assertEquals("Gasthof Hochmuth reached. On to Algund, 4 kilometers.",
             VoiceText.of(Phrase.StopReached("Gasthof Hochmuth", 2, "Algund", 4_020.0)))
         assertEquals("Stop 3 reached.", VoiceText.of(Phrase.StopReached(null, 3, null, null)))
+        assertEquals("Stop 6 reached. Please turn round.", VoiceText.of(Phrase.StopReached(null, 6, null, null, turnRound = true)))
     }
 
     @Test fun german() = de {

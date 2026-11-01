@@ -745,7 +745,11 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         // not know where to go) – until the Navigator clears the U sign (walked the new way)
         turn = nav?.uTurnAt?.let { u -> TurnHint(TurnKind.U_TURN_LEFT, here?.let { com.onpath.app.data.Geo.distance(it, u) } ?: 0.0, turnRound = true) }
             ?: turnHint(next?.let { (t, d) -> t.kind to d }, roundabout)?.let { h ->
-                if (h.roundabout != null) h.copy(roundaboutAngle = roundaboutAngle) else h
+                when {
+                    h.roundabout != null -> h.copy(roundaboutAngle = roundaboutAngle)
+                    next?.first?.turnRound == true -> h.copy(turnRound = true)   // an out-and-back: "Umdrehen"
+                    else -> h
+                }
             },
         headingUp = vm.navHeadingUp,
         arriveAt = arrive,

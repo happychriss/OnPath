@@ -31,7 +31,7 @@ object VoiceText {
             val reached = p.name?.takeIf { it.isNotBlank() }?.let { Txt.s(Res.string.voice_stop_named, it) }
                 ?: Txt.s(Res.string.voice_stop_number, p.number)
             val next = if (p.nextName != null && p.nextM != null) Txt.s(Res.string.voice_next, p.nextName, distance(p.nextM)) else null
-            listOfNotNull(reached, next).joinToString(" ")
+            listOfNotNull(reached, if (p.turnRound) Txt.s(Res.string.voice_turn_round) else null, next).joinToString(" ")
         }
         Phrase.Arrived -> Txt.s(Res.string.voice_arrived)
         Phrase.NoGps -> Txt.s(Res.string.voice_no_gps)

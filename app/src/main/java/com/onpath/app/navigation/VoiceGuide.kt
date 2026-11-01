@@ -27,7 +27,9 @@ sealed interface Phrase {
      */
     data class NewRoute(val next: Junction?, val turnRound: Boolean = false) : Phrase
     /** Stop [number] (1-based, as in the plan) reached; then on to [nextName] [nextM] away (either may be null). */
-    data class StopReached(val name: String?, val number: Int, val nextName: String?, val nextM: Double?) : Phrase
+    data class StopReached(val name: String?, val number: Int, val nextName: String?, val nextM: Double?,
+                           /** The route goes back the way it came at the stop ([Reversals]): "Bitte umdrehen." */
+                           val turnRound: Boolean = false) : Phrase
     data object Arrived : Phrase
     data object NoGps : Phrase
     data object NoDestination : Phrase
@@ -115,6 +117,8 @@ class VoiceGuide {
     private var needed = BooleanArray(0)
     private val said = HashSet<Int>()
     private var lineLength = 0.0
+    /** Where the line goes back the way it came (metres along it, [Reversals]). */
+    private var reversals = DoubleArray(0)
 
     /** What must outlive the service instance during one tour (times in [Input.nowMs] units, null = never). */
     data class Memory(
@@ -213,7 +217,8 @@ class VoiceGuide {
                 if (k in prev || k == 0 || k >= i.stops.size - 1) continue
                 val next = (k + 1 until i.stops.size).firstOrNull { it !in i.visited }?.let { i.stops[it] }
                 val nextM = if (next != null && !i.rerouted && i.alongM != null) (next.alongM - i.alongM).takeIf { it > 0 } else null
-                queue(Phrase.StopReached(i.stops[k].name, k + 1, next?.name, nextM), i.nowMs)
+                val back = !i.rerouted && reversals.any { kotlin.math.abs(it - i.stops[k].alongM) < Reversals.SAME_M }
+                queue(Phrase.StopReached(i.stops[k].name, k + 1, next?.name, nextM, back), i.nowMs)
             }
         }
         // a sentence that waited for the gap
@@ -275,6 +280,7 @@ class VoiceGuide {
         exits = IntArray(idx.size) { line[idx[it]].exit }
         onto = Array(idx.size) { ontoAt(line, cum, idx[it], isBike) }
         needed = JogRule.needed(line, cum, idx, hike = !isBike)
+        reversals = if (line.size >= 3) Reversals.of(line, cum).map { cum[it] }.toDoubleArray() else DoubleArray(0)
         said.clear()
         return !first
     }

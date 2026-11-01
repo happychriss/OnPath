@@ -19,6 +19,8 @@ data class Turn(
     /** Signed change of direction in degrees: > 0 right, < 0 left, ±180 = U-turn. */
     val angle: Double,
     val distanceFromStart: Double,
+    /** The route goes back the way it came (an out-and-back to a plan point): "Umdrehen" (app: ScreenTurns). */
+    val turnRound: Boolean = false,
 ) {
     val kind: TurnKind get() = TurnKind.of(angle)
 }
