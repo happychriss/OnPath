@@ -262,10 +262,11 @@ class VoiceGuide {
     private fun speak(p: Phrase, nowMs: Long): Phrase { lastSpokenMs = nowMs; return p }
 
     /** True when a new line was loaded (not the first one). */
-    private fun load(line: List<GeoPoint>, v: Int, isBike: Boolean): Boolean {
-        if (v == version && line.size == size && isBike == bike) return false
+    private fun load(given: List<GeoPoint>, v: Int, isBike: Boolean): Boolean {
+        if (v == version && given.size == size && isBike == bike) return false
         val first = version == Int.MIN_VALUE
-        version = v; size = line.size; bike = isBike
+        version = v; size = given.size; bike = isBike
+        val line = JogRule.approach(given, hike = !isBike)   // a corner drawn as a curve: its whole turn
         val cum = if (line.size >= 2) Geo.cumulative(line) else DoubleArray(line.size)
         lineLength = cum.lastOrNull() ?: 0.0
         val idx = line.indices.filter { line[it].turn != null }

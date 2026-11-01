@@ -108,9 +108,10 @@ class JunctionCues {
     /** A roundabout ahead: [exit] to take (0 = unknown), [angle] of the whole turn (> 0 right), [distanceM] to it. */
     data class Roundabout(val exit: Int, val angle: Float, val distanceM: Double)
 
-    private fun load(line: List<GeoPoint>, v: Int) {
-        if (v == version && line.size == size && bike == loadedBike) return
-        version = v; size = line.size; loadedBike = bike
+    private fun load(given: List<GeoPoint>, v: Int) {
+        if (v == version && given.size == size && bike == loadedBike) return
+        version = v; size = given.size; loadedBike = bike
+        val line = JogRule.approach(given, hike = !bike)   // a corner drawn as a curve: its whole turn
         val cum = if (line.size >= 2) Geo.cumulative(line) else DoubleArray(line.size)
         val idx = line.indices.filter { line[it].turn != null }
         alongs = DoubleArray(idx.size) { cum[idx[it]] }

@@ -20,9 +20,10 @@ object ScreenTurns {
     /** Heading before / after a junction is measured over this far (for the card's bearings only). */
     private const val ARM_M = 15.0
 
-    fun of(line: List<GeoPoint>, hike: Boolean): List<Turn> {
-        if (line.size < 2) return emptyList()
-        if (line.none { it.turn != null }) return TurnDetector.turns(line)
+    fun of(given: List<GeoPoint>, hike: Boolean): List<Turn> {
+        if (given.size < 2) return emptyList()
+        if (given.none { it.turn != null }) return TurnDetector.turns(given)
+        val line = JogRule.approach(given, hike)   // a corner drawn as a curve: its whole turn
         val cum = Geo.cumulative(line)
         val idx = line.indices.filter { line[it].turn != null }
         val needed = JogRule.needed(line, cum, idx, hike)

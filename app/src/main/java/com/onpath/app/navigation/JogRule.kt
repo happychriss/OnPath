@@ -34,9 +34,64 @@ object JogRule {
 
     /** Per hint of [line] (points with a turn, in line order): worth a cue. [hike] = the on-foot rules. */
     fun needed(line: List<GeoPoint>, hike: Boolean): BooleanArray {
-        val cum = if (line.size >= 2) Geo.cumulative(line) else DoubleArray(line.size)
-        return needed(line, cum, line.indices.filter { line[it].turn != null }, hike)
+        val l = approach(line, hike)
+        val cum = if (l.size >= 2) Geo.cumulative(l) else DoubleArray(l.size)
+        return needed(l, cum, l.indices.filter { l[it].turn != null }, hike)
     }
+
+    /** Bike / on foot: the heading one comes on is measured over this far before a junction ([approach]). */
+    const val APPROACH_BIKE_M = 30.0
+    const val APPROACH_HIKE_M = 20.0
+    /** A turn grown by [approach] to at least this is a plain turn (BRouter: 45° … 135°), above [SHARP_DEG] sharp. */
+    const val TURN_DEG = 45.0
+    const val SHARP_DEG = 135.0
+
+    /**
+     * The radius rule, first half (owner 2026-11-01, replay of tour 63 at Ellerstraße: no word at a corner of ~115°):
+     * BRouter measures a junction's angle against the last few metres one comes on. Where a corner is drawn as a curve
+     * of short pieces, the junction sits at its end and BRouter sees only the last 43° – "slight left, clearly the
+     * straightest way", no cue. Here the heading one comes on is measured over [APPROACH_HIKE_M] (bike
+     * [APPROACH_BIKE_M]) before the junction, never across the hint before it, and the junction's angles (the route's
+     * and the other ways', all relative to that heading) turned by the difference – only when that makes the route's
+     * turn larger the same way (a turn is never made smaller or quiet here; close opposite turns: [needed]). A turn grown
+     * past [TURN_DEG] becomes "left" / "right" (past [SHARP_DEG] "sharp"). Returns [line] with the hints corrected.
+     */
+    fun approach(line: List<GeoPoint>, hike: Boolean): List<GeoPoint> {
+        if (line.size < 3 || line.none { it.turn != null }) return line
+        val cum = Geo.cumulative(line)
+        val reach = if (hike) APPROACH_HIKE_M else APPROACH_BIKE_M
+        val out = line.toMutableList()
+        var prevHint = Double.NEGATIVE_INFINITY
+        for (i in line.indices) {
+            val p = line[i]
+            val cue = p.turn ?: continue
+            val c = cum[i]
+            val gap = c - prevHint
+            prevHint = c
+            if (i == 0 || cue == JunctionCue.ROUNDABOUT || cue == JunctionCue.U_TURN_LEFT || cue == JunctionCue.U_TURN_RIGHT) continue
+            val arm = minOf(reach, gap * 0.9)
+            if (arm < 5.0 || cum[i] - cum[i - 1] >= arm) continue   // the last piece is the approach itself
+            val a = angleOf(p).toDouble()
+            if (a == 0.0) continue
+            val delta = diff(bearing(at(line, cum, c - arm), p), bearing(line[i - 1], p))
+            val grown = a + delta
+            if (Math.signum(grown) != Math.signum(a) || abs(grown) <= abs(a) + 1.0) continue
+            val g = grown.coerceIn(-SHARP_DEG - 20.0, SHARP_DEG + 20.0).toFloat()
+            val left = g < 0
+            val newCue = when {
+                abs(g) > SHARP_DEG -> if (left) JunctionCue.SHARP_LEFT else JunctionCue.SHARP_RIGHT
+                abs(g) >= TURN_DEG -> if (left) JunctionCue.LEFT else JunctionCue.RIGHT
+                else -> cue
+            }
+            val d = (g - a).toFloat()
+            out[i] = p.copy(turn = newCue, turnAngle = g, shape = p.shape?.let { s ->
+                s.copy(angle = g, others = s.others.map { it.copy(angle = wrap(it.angle + d)) })
+            })
+        }
+        return out
+    }
+
+    private fun wrap(a: Float): Float = (((a + 540f) % 360f) - 180f)
 
     /** [idx] = the line indices of the hints, [cum] = the line's cumulative metres. */
     fun needed(line: List<GeoPoint>, cum: DoubleArray, idx: List<Int>, hike: Boolean): BooleanArray {
