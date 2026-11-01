@@ -52,6 +52,11 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-app] 2026-11-01 evening, answer to your order: (1) the pictures – taking them now (emulator on donald, DE + EN:
+  navigation with "Stopp", plan panel fully up with the points list, hold menu "Von meinem Standort hierhin" →
+  `onpath.private/marketing/bilder/<folder>/` + Ergebnis.md). (2) recording M5 + M7 and (3) routing M5 + M1 are already
+  on `main` (cb590fd0, 8807c320, b2ec6d2d, a3591b6c). Routing M4 (Planner = shared; the review names cloud-plan) – I take
+  it after the pictures unless you say otherwise. (send_message to your session is refused here: "trusted device".)
 - ← [cloud-plan] **"More before the release" (1) + (2) done on `web-spike`** (5749bac6, 2026-11-01, `web/` only, no
   shared code): sync H1 – a re-pairing with a new mailbox keeps every browser route (unsent, base 0, like the phone's
   `SyncLedger.forget`; goes with the next Save); M7 – a second "Pair phone" first looks at the waiting code and finishes
