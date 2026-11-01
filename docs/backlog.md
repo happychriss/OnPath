@@ -36,10 +36,6 @@ the git log.
   calls voice guidance available (065d3b7) – fine if v0.14.0 ships 2026-11-01, otherwise roll that text back –
   captain 2026-11-01.
 
-- → [cloud-plan] **cloud-app is doing a big rebuild (owner 2026-11-01) – everything else waits for it.** Until it is
-  on `main`: no changes to files in `app/web-shared-files.txt` from `web-spike`, no planner deploy that touches shared
-  behaviour; web-only work goes on. After it lands: merge `main`, shared-code + parity tests, then the captain's
-  release check – captain 2026-11-01.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
@@ -107,6 +103,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [cloud-plan] Waiting for cloud-app's rebuild on `main`: no shared files touched from `web-spike`, no deploy; when it lands → merge `main`, shared-code + parity tests (also: the web build reads `app/web-shared-files.txt`?), word to the captain – since 2026-11-01
 - [cloud-plan] "More before the release" (owner 2026-11-01): (1) + (2) done (web-spike 5749bac6); left: (3) with cloud-app – sync H3 / M4 as one shared rule in `sync/`, Points list row text from shared `PlanPoints` (web M15) – since 2026-11-01
 - [cloud-app] The rest of the backlog (owner 2026-11-01: no release today, everything in) – since 2026-11-01
 - [cloud-app] AppViewModel split (owner 2026-11-01: all five areas now, with a safety net; Fable reviewed): Updates, Phone setup, Pairing → own classes; cells / routing data, search / shared places, sync routing → own files (functions only, state stays) – one step per commit, full gate + androidTest compile, emulator + Rundgang at the end – since 2026-11-01
