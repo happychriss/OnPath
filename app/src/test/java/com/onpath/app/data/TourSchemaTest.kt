@@ -65,4 +65,33 @@ class TourSchemaTest {
             assertEquals(TourSchema.VERSION, TourDb.VERSION)
         }
     }
+
+    /**
+     * Review recording M7: a corrupt database replaced by an empty one mid-tour – the tour's row is put back under the
+     * SAME id (the service keeps writing points with it), points already written for it are replaced.
+     */
+    @Test fun aRecordingIsPutBackUnderItsId() {
+        db().use { c ->
+            TourSchema.CREATE.forEach { c.exec(it) }
+            // the fresh database: points of tour 42 arrived, no tour row
+            for (i in 0 until 3) c.exec("INSERT INTO points(tour_id, seq, seg, lat, lon) VALUES (42, $i, 0, 46.6, 11.1)")
+            assertEquals(0, c.count("SELECT COUNT(*) FROM tours WHERE id=42"))
+            // TourDb.rescueRecording: delete its points, insert the row with the id, all points from memory
+            c.exec("DELETE FROM points WHERE tour_id=42")
+            c.exec("INSERT INTO tours(id, kind, name, created, uuid, pinned, waypoints, sac, state) VALUES (42, 'RECORDED', 'Tour', 1, 'u', '[]', '[]', 2, 'active')")
+            for (i in 0 until 10) c.exec("INSERT INTO points(tour_id, seq, seg, lat, lon) VALUES (42, $i, ${i / 5}, 46.6, 11.1)")
+            assertEquals(10, c.count("SELECT COUNT(*) FROM points p JOIN tours t ON t.id = p.tour_id WHERE t.id=42"))
+            // a later new tour does not take the id
+            c.exec("INSERT INTO tours(kind, name, created) VALUES ('PLANNED', 'Next', 2)")
+            assertEquals(1, c.count("SELECT COUNT(*) FROM tours WHERE id > 42"))
+        }
+    }
+
+    /** The service checks the row with every stats save and on the end of the tour. */
+    @Test fun theServiceRescuesWhenTheRowIsGone() {
+        val svc = java.io.File("src/main/java/com/onpath/app/recording/RecordingService.kt").readText()
+        assertTrue(svc.contains("gone = db.updateStats(") && svc.contains("db.rescueRecording(tourId"))
+        assertTrue(svc.substringAfter("private fun tick()").substringBefore("\n    }\n").contains("saveStats(\"active\")"))
+        assertTrue(svc.substringAfter("private fun finish()").substringBefore("\n    }\n").contains("saveStats(\"done\")"))
+    }
 }

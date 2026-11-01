@@ -22,6 +22,9 @@ class PointQueue(private val max: Int = MAX) {
 
     val size: Int get() = queue.size
 
+    /** Everything waiting was written another way (a rescued tour, review M7). */
+    fun clear() = queue.clear()
+
     fun add(p: Pending) {
         if (queue.size >= max) { queue.removeFirst(); dropped++ }
         queue.addLast(p)

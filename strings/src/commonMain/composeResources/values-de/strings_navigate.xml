@@ -134,6 +134,8 @@
     <string name="nav_rec_save_failed">Der Track kann nicht mehr gespeichert werden (Speicher voll oder beschädigt). Gib Speicher frei – die Aufzeichnung versucht es weiter.</string>
     <string name="nav_rec_paused_title">Aufzeichnung ist pausiert</string>
     <string name="nav_rec_paused_moving">Du bist unterwegs – Aufzeichnung fortsetzen?</string>
+    <string name="nav_rec_rescued_title">Tour gerettet</string>
+    <string name="nav_rec_rescued">Der Speicher des Handys hatte ein Problem. OnPath hat deine Tour wiederhergestellt – die Aufzeichnung läuft weiter. Details: Einstellungen → Diagnose.</string>
     <string name="nav_watchdog_title">Aufzeichnung bekommt kein GPS</string>
     <string name="nav_watchdog_text">OnPath hat die Aufzeichnung neu gestartet, aber seit 5 Minuten keine GPS-Position. Öffne OnPath und prüfe die Aufzeichnung.</string>
     <string name="nav_interrupted_title">Tour-Aufzeichnung unterbrochen</string>

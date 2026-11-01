@@ -330,6 +330,7 @@ class RecordingService : Service() {
         try {
             if (existing != null) {
                 tourId = existing.id
+                tourMeta = Triple(existing.name, existing.createdMs, existing.sac)
                 distance = existing.distanceM; ascent = existing.ascentM; descent = existing.descentM
                 elapsedS = existing.durationS.toLong()
                 val (nextSeq, lastSeg) = db.recordingCursor(tourId)
@@ -352,8 +353,10 @@ class RecordingService : Service() {
                 // the tour keeps the T level it was recorded at: reopening it sets the user's level, and its GPX type
                 // follows it
                 val sac = newTourSac(intent?.getIntExtra(EXTRA_SAC, 0) ?: 0, Prefs(this).sac)
+                val created = System.currentTimeMillis()
                 tourId = db.insertTour(TourKind.RECORDED, name, intent?.getStringExtra(EXTRA_ACTIVITY), sac,
-                    0.0, 0.0, 0.0, 0.0, emptyList(), state = "active")
+                    0.0, 0.0, 0.0, 0.0, emptyList(), state = "active", createdMs = created)
+                tourMeta = Triple(name, created, sac)
                 recActivity = activityOf(intent?.getStringExtra(EXTRA_ACTIVITY))
                 firstFixElapsed = 0L // a new tour: its first heights settle again (SeaLevel)
                 climb.restart()
@@ -455,7 +458,7 @@ class RecordingService : Service() {
         if (now - lastStats >= 10_000) {
             lastStats = now
             if (pointQueue.size > 0) writePoints() // storage back while standing still: the waiting points go in
-            safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
+            saveStats("active")
         }
         try { trip.tick(elapsedS.toDouble(), System.currentTimeMillis()) } catch (e: Exception) {
             Problems.error("time", "Trip pace tick failed; times shown may be wrong", e)
@@ -622,6 +625,47 @@ class RecordingService : Service() {
         } catch (e: Exception) {
             Problems.warn("recording", "\"No GPS after restart\" notification could not be shown", e)
         }
+        vibrate()
+    }
+
+    /** Name, created time and T level of the running tour – to put its row back after a corrupt database (M7). */
+    private var tourMeta: Triple<String, Long, Int>? = null
+
+    /**
+     * Stats of the running tour; its row gone (review M7: a corrupt database was replaced by an empty one mid-tour) →
+     * the tour is put back under its id with every point the service holds, and the user is told it was rescued.
+     */
+    private fun saveStats(state: String) {
+        var gone = false
+        safeDb("stats") { gone = db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), state) == 0 }
+        if (!gone || tourId < 0) return
+        val (name, created, sac) = tourMeta ?: Triple(com.onpath.app.rides.RideApply.dateName(System.currentTimeMillis()),
+            System.currentTimeMillis(), Prefs(this).sac)
+        val segments = track.map { seg -> seg.map { TrackPoint(it.lat, it.lon, it.ele, null) } }
+        if (safeDb("rescue") {
+                seq = db.rescueRecording(tourId, name, recActivity.name, sac, created, segments, distance, ascent, descent,
+                    elapsedS.toDouble())
+                seg = segments.size; last = null
+                pointQueue.clear() // the waiting points are in the track just written
+                db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), state)
+            }) {
+            Problems.error("db", "Tour row missing after a database problem – tour rescued with ${segments.sumOf { it.size }} points")
+            notifyRescued()
+        }
+    }
+
+    private fun notifyRescued() {
+        try {
+            val text = Txt.s(Res.string.nav_rec_rescued)
+            nm().notify(SAVE_FAIL_ID, NotificationCompat.Builder(this, CHANNEL_NAV)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(Txt.s(Res.string.nav_rec_rescued_title))
+                .setContentText(text).setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(openAppIntent())
+                .build())
+        } catch (e: Exception) { Problems.warn("recording", "\"Tour rescued\" notification could not be shown", e) }
         vibrate()
     }
 
@@ -1079,7 +1123,7 @@ class RecordingService : Service() {
         if (tourId >= 0) {
             if (pointQueue.size > 0) writePoints() // the last waiting points, if the storage is back
             climb.flush().let { (up, down) -> ascent += up; descent += down }
-            safeDb("finish") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "done") }
+            saveStats("done")
             // bus / car / lift (docs/design/vehicle-detection.md): the choice made at End tour is applied now – or the
             // rides are only marked. The points stay as recorded; never throws (failures reported, tour as recorded).
             val parts = com.onpath.app.rides.RideApply.finish(com.onpath.app.rides.TourDbRides(db), tourId,

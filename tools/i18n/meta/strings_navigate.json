@@ -644,6 +644,18 @@
     "priority": 2,
     "confidence": "sicher"
   },
+  "nav_rec_rescued_title": {
+    "area": "Notification",
+    "context": "Title: the tour database was damaged mid-tour and the running tour was put back",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_rec_rescued": {
+    "area": "Notification",
+    "context": "Text of that notification",
+    "priority": 2,
+    "confidence": "sicher"
+  },
   "nav_watchdog_title": {
     "area": "Notification",
     "context": "Notification: the recording service restarted by itself and has had no GPS fix for 5 minutes",
