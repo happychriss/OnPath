@@ -602,8 +602,16 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     }
 
     /** Nearest point of the original ahead of where the user left it (never back to a passed part). */
+    /**
+     * Arrow + distance to the route: the line followed now from where it was left (owner 2026-11-01, Rosellen replay:
+     * on a re-routed line the arrow pointed 530 m back to where the ORIGINAL was left, the new line 50 m away).
+     */
     private fun hint(p: GeoPoint): RouteHint? {
-        val m = original.match(p, leftAtM, leftAtM + HINT_AHEAD_M) ?: return null
+        val active = detector.line
+        val m = if (session.rerouted && active != null && active.isUsable)
+            active.match(p, detector.leftAtM, detector.leftAtM + HINT_AHEAD_M)
+        else original.match(p, leftAtM, leftAtM + HINT_AHEAD_M)
+        m ?: return null
         return RouteHint(m.distanceM, TurnDetector.bearing(p, m.point), m.point)
     }
 

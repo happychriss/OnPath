@@ -224,6 +224,25 @@ class NavigatorTest {
         assertTrue("1st refresh of the new episode vibrates", r.nav.onResult(r.jobs.single().id, found(x to 300.0)).vibrate)
     }
 
+    /**
+     * Rosellen replay (owner 2026-11-01): off a re-routed line, the arrow points to that line – not back to where the
+     * original was left (530 m back while the new line was 50 m away).
+     */
+    @Test fun offARerouteTheArrowPointsToTheLineFollowedNow() {
+        val r = Run(Navigator(session()))
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        // a new line straight on north from here, rejoining the original 500 m up its second leg
+        val leg = line(1150.0 to 0.0, 1150.0 to 500.0, 1000.0 to 500.0)
+        val l = RerouteTargets.splice(leg, NavLine(route), 1500.0)
+        r.nav.onResult(r.jobs.last().id, Rerouter.Found(l, com.onpath.app.data.Geo.length(leg), 1500.0, 50.0, 110.0, 5.0, null, emptySet(), 2, 15))
+        r.nav.take((r.nav.prompt as NavPrompt.Question).id)
+        // ride it, then 200 m off it to the east
+        r.feed(walk(1150.0 to 0.0, 1150.0 to 300.0, 1350.0 to 300.0, t0Ms = 2_000_000))
+        val t = r.nav.state.toRoute
+        assertNotNull(t)
+        assertTrue("arrow to the new line (~200 m), was ${t!!.distanceM}", t.distanceM < 260)
+    }
+
     @Test fun keepOriginalShowsTheArrowAndAsksAgainOnlyMuchLater() {
         val r = Run(Navigator(session()))
         r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
