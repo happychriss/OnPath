@@ -191,9 +191,8 @@ the git log.
     - [cloud-plan] Quiet margin cells after planning (offline after planning) · 27029db · `cells/CellTriggers.kt`
       (`CellJob.margin`: cells along the route vs the corridor margin, `tourStarted`) – check `areas.ts` (T1–T4 mirror)
       asks the margin cells quietly like the app.
-    - [cloud-app] Pure files for two small rules the web mirrors today: `RouteRules.newRouteName` / `copyName` (needs
-      `TourDb.TourKind`) and `WholeRoute.firstRoute` / `fitAfterPlace` (needs `AppMode`) – as pure Kotlin beside them
-      (like `RoutingDataNotice` / `BreakdownRules`) the web compiles them instead of mirroring (`web/parity.json`).
+    - [cloud-plan] Pure files for the name / fit rules · ec5c43c6 · `routing/PlanNames.kt` (newRouteName, copyName) and
+      `routing/RouteFit.kt` (firstRoute, fitAfterPlace) – add to `appFiles`, drop the web's copies from `web/parity.json`.
   - *Low prio:*
     - A-016 App Links · `/.well-known/assetlinks.json` is live (200, v0.13.1 key) · left: on the phone
       `adb shell pm get-app-links com.onpath.app` – then `#p=` / `#pair=` links open the app (owner).
