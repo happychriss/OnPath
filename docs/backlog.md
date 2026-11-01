@@ -26,21 +26,18 @@ the git log.
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 
+- → [cloud-plan] **Pictures for the pairing help (owner 2026-11-01: "ask cloud-plan for new screenshots", order by
+  cloud-web):** planner on `web-spike`, 1440 × 900, DE + EN, plan Vellau Korblift → Leiteralm, the fake phone of
+  `sync-smoke.mjs` named "Pixel 8", no real pairing code visible (blur or a test mailbox): (W1) header right unpaired:
+  "Speichern" + "Handy verbinden"; (W2) pairing dialog with QR + check digits (code blurred); (W3) header paired: "Aufs
+  Handy sichern" dark + phone pill "Pixel 8 🟢 abgeglichen vor 2 Min."; (W4) after the click: "✓ Auf dem Handy"; (W5) My
+  routes paired: rows with 🖥 📱, one bold (waiting), one "Neu" tag; (W6) phone window paired: name + dot, "Jetzt
+  abgleichen", red "Trennen" at the bottom. Best as a script beside `ui-shots` so a later UI change re-shoots them.
+  PNGs `web-w1…w6-de|en.png` into `onpath.private/marketing/bilder/<date>-hp/` + `Ergebnis.md`; then a line under
+  "For the captain" – captain 2026-11-01.
+
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
-- ← [cloud-web] **Picture order for the pairing help (owner 2026-11-01: "ask cloud-plan for new screenshots")** – please pass on.
-  The help (onpath.earth cad1600, `/hilfe/route-planen/#koppeln`) now follows web-sync.md §14.6; today it shows only the
-  unpaired browser + old app snapshots. **cloud-plan** (planner on `web-spike`, 1440 × 900, DE + EN, plan Vellau Korblift →
-  Leiteralm, the fake phone of `sync-smoke.mjs` named "Pixel 8", no real pairing code visible – blur or a test mailbox):
-  (W1) header right unpaired: "Speichern" + "Handy verbinden"; (W2) the pairing dialog with QR + check digits (code
-  blurred); (W3) header paired: "Aufs Handy sichern" dark + phone pill "Pixel 8 🟢 abgeglichen vor 2 Min."; (W4) after
-  the click: "✓ Auf dem Handy"; (W5) My routes paired: rows with 🖥 📱, one bold (waiting), one "Neu" tag; (W6) Phone
-  window paired: name + dot, "Jetzt abgleichen", red "Trennen" at the bottom. **donald / cloud-app** (emulator, A-019
-  setup, DE + EN): (A1) ☰ open with "Mit Browser verbinden"; (A2) the question "Mit diesem Browser verbinden? Prüfe:
-  123 456" with "Verbinden"; (A3) My routes with a route from the browser ("Neu"); (A4) Settings → Browser-Abgleich
-  paired with "Trennen" (EN missing today). PNGs into `onpath.private/marketing/bilder/<date>-<unit>/` + `Ergebnis.md`,
-  file names `web-w1…w6-de|en.png`, `app-a1…a4-de|en.png`; cloud-web swaps them in (`scripts/help_shots.py`) – 2026-11-01
-- ← [cloud-web] Help now explains pairing (onpath.earth 8743fcc, route-planen #koppeln / planning #pair). New picture keys for `docs/design/website-screens.md`: browser `web-plan`, `web-teilen`, `web-handy`, `web-koppeln` (taken by cloud-web from plan.onpath.earth – a web UI change → cloud-web retakes them) and app `app-koppeln` (`planPairHint`), `app-verbunden` (`planPairedNote`), `app-routen` (`toursFromBrowser`), `app-trennen` (`settingsSyncPaired`) – these come straight from the Paparazzi snapshots, so they update with `recordPaparazziDebug` – 2026-11-01
 - ← [cloud-app] 2026-11-01: **Germany worktree removed** on donald (owner confirmed in the chat; no uncommitted work,
   all of `germany-prebuild` on origin/main, local branch deleted) – #10 closed. The run data beside it
   (`~/onpath-cells-work/germany/` state, logs, lists) is still there – remove only on the owner's word. Also new on
@@ -62,6 +59,13 @@ the git log.
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
+- **Pictures for the pairing help – app part (order by cloud-web, owner OK 2026-11-01)** [emu]: emulator, A-019 setup,
+  DE + EN: (A1) ☰ open with "Mit Browser verbinden"; (A2) the question "Mit diesem Browser verbinden? Prüfe: 123 456"
+  with "Verbinden"; (A3) My routes with a route from the browser ("Neu"); (A4) Settings → Browser-Abgleich paired with
+  "Trennen" (EN missing today). If the Paparazzi snapshots `planPairHint` / `planPairedNote` / `toursFromBrowser` /
+  `settingsSyncPaired` already show these well enough, say so instead (cloud-web uses them as `app-koppeln` …
+  `app-trennen`). PNGs `app-a1…a4-de|en.png` into `onpath.private/marketing/bilder/<date>-donald/` + `Ergebnis.md`, add
+  the keys to `docs/design/website-screens.md`; `tools/dev/website_shot.sh`.
 - **Bike difficulty limit S0 / S1 / S2 (owner 2026-11-01, "easy to build?"):** today only the hike has a chosen limit
   (T1–T5). Gravel (`trekking.brf`) and Bike / E-bike (`touring.brf`) already make S2 very expensive (+30) and shut S3+
   (10000); `mtb.brf` only adds a cost per S grade, no limit. Wanted: a chosen limit per bike activity ("nur S0", "bis S1"),
