@@ -152,7 +152,7 @@
 
     <!-- tour card, end tour, arrival -->
     <string name="nav_end_tour_title">End this tour?</string>
-    <string name="nav_delete_track_title">Delete this track?</string>
+    <string name="nav_delete_track_title">Delete this tour?</string>
     <string name="nav_recycle_bin_note">It stays in the recycle bin for %1$d days.</string>
     <string name="nav_arrived_title">You have arrived – end tour?</string>
     <string name="nav_keep_going">Keep going</string>
@@ -207,10 +207,10 @@
     <string name="nav_ride_until_detail">The ride and everything after it dropped</string>
     <string name="nav_ride_not_counted">Save all, rides not counted</string>
     <string name="nav_ride_not_counted_detail">Rides gray on the map, not in km, time or pace</string>
-    <string name="nav_ride_split_two">Split into two tracks</string>
-    <string name="nav_ride_split_n">Split into %1$d tracks</string>
+    <string name="nav_ride_split_two">Split into two tours</string>
+    <string name="nav_ride_split_n">Split into %1$d tours</string>
     <string name="nav_ride_split_two_detail">Before and after the ride</string>
-    <string name="nav_ride_split_n_detail">One track between rides</string>
+    <string name="nav_ride_split_n_detail">One tour between rides</string>
     <string name="nav_ride_as_recorded">Save as recorded</string>
     <string name="nav_ride_as_recorded_detail">Everything counts, the rides too</string>
     <string name="nav_tour_date_name">Tour %1$s</string>

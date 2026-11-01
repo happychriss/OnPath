@@ -151,7 +151,7 @@
 
     <!-- tour card, end tour, arrival -->
     <string name="nav_end_tour_title">Tour beenden?</string>
-    <string name="nav_delete_track_title">Diesen Track löschen?</string>
+    <string name="nav_delete_track_title">Diese Tour löschen?</string>
     <string name="nav_recycle_bin_note">Kommt für %1$d Tage in den Papierkorb.</string>
     <string name="nav_arrived_title">Du bist angekommen – Tour beenden?</string>
     <string name="nav_keep_going">Weitermachen</string>
@@ -206,10 +206,10 @@
     <string name="nav_ride_until_detail">Die Fahrt und alles danach fällt weg</string>
     <string name="nav_ride_not_counted">Alles speichern, Fahrten nicht zählen</string>
     <string name="nav_ride_not_counted_detail">Fahrten grau auf der Karte, nicht in km, Zeit oder Tempo</string>
-    <string name="nav_ride_split_two">In zwei Tracks aufteilen</string>
-    <string name="nav_ride_split_n">In %1$d Tracks aufteilen</string>
+    <string name="nav_ride_split_two">In zwei Touren aufteilen</string>
+    <string name="nav_ride_split_n">In %1$d Touren aufteilen</string>
     <string name="nav_ride_split_two_detail">Vor und nach der Fahrt</string>
-    <string name="nav_ride_split_n_detail">Ein Track zwischen den Fahrten</string>
+    <string name="nav_ride_split_n_detail">Eine Tour zwischen den Fahrten</string>
     <string name="nav_ride_as_recorded">Wie aufgezeichnet speichern</string>
     <string name="nav_ride_as_recorded_detail">Alles zählt, auch die Fahrten</string>
     <string name="nav_tour_date_name">Tour %1$s</string>

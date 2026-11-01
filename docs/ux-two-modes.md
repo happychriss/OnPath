@@ -77,7 +77,7 @@ track without a line (an empty recorded tour, a GPX with one point; during a tou
 under it (never icon-only, ≥ 48 dp): **✕ Close plan** (the plan leaves the screen, a saved route stays in My routes,
 Undo brings it back; with unsaved changes ONE question first, "Discard changes?" Cancel · Discard), **⇅ Reverse**,
 **↻ Round trip** (greyed when it already is one). A tap on time + distance opens Time details. Save is ☰ → Save route;
-Save as copy, Export GPX and Share plan are in My routes → ⋮. A real delete is only in My routes (recycle bin). The sheet shows the save state as text, not as a message: "Saved as “Name”" or
+Save as copy, Export GPX and Share route are in My routes → ⋮. A real delete is only in My routes (recycle bin). The sheet shows the save state as text, not as a message: "Saved as “Name”" or
 "“Name” · changed, not saved" (a plain line, not tappable).
 
 **My routes** (`RoutesScreen`): one list of planned routes, recorded tours and imported GPX (type icon, name,
