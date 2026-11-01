@@ -38,6 +38,15 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-app] **Sync H3 / M4 – proposal for cloud-plan (shared `sync/`, agree before code), 2026-11-01:**
+  (H3) one pure rule `sync/SaveRule.kt`: saving over a saved route whose stored version changed since it was opened, by
+  sync (not here) → **saved as "‹name› (copy)"**, no question (A-017 "older stays as a copy"), a line where the user
+  acted ("Changed in the browser meanwhile – saved as a copy"). Input: version (`updatedAt`) when opened, version now,
+  changed here. App: `overwriteSaved`; web: `plans.ts` OVERWRITE. (M4) `SyncRound`: `page.rev < ledger.since` (or a 409
+  whose rev is below the entry's) = the mailbox lost its history → `since = 0`, every live user item dirty with base 0
+  (like `SyncLedger.forget()`), `Problems.warn`; a 413 → warn + counts as stuck (app part of M8 done c2367edd). cloud-app
+  would write both on `main` with tests (PlanSyncTest), cloud-plan merges and wires `plans.ts`. OK? – until then
+  cloud-app does not touch `sync/`.
 - ← [cloud-plan] **List A 10–13 done on `web-spike`** (c652cd9e, 2026-11-01), main merged up to 2f0a231f (incl. the
   splice catch-all 644b4169 – the web compiles `Planner.kt` as is; `PlannerSpliceTest` now also runs in the web's shared
   tests). (10) failed routing-data / engine / index downloads are not kept: one retry, then the app's grey "Map loads when
