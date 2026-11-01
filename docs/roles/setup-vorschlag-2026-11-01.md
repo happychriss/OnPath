@@ -187,6 +187,12 @@ Kein MCP, keine Datenbank, keine eigene Seite. Später möglich: Artefakt-Seite,
 - Offen: ob GitHub dir die Issues aufs Handy meldet (vermutlich nicht – eigene Issues), daher der Push vom Captain
   (Schritt 3).
 
+## 6c. Herunterfahren (owner 2026-11-01)
+- Beim Ausschalten geht nur **ungepushte** Arbeit verloren, keine offene Frage (die steht im Issue). Regel in
+  `CLAUDE.md`: vor einer blockierenden Frage den Stand pushen und ins Issue schreiben, wo man steht.
+- Mit dem Umbau (Schritt 3): `tools/dev/feierabend.sh` auf donald / Laptop – prüft ungepushte Checkouts, laufendes
+  Gradle / Emulator, eine Tour auf dem Pixel (RecordingService) und sagt „alles sicher“ oder was fehlt.
+
 ## 7. Entscheidungen des Owners (2026-11-01, Fragebox eine nach der anderen)
 | # | Frage | Entscheidung |
 | --- | --- | --- |

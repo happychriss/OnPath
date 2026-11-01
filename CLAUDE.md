@@ -184,7 +184,9 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
   exists **only** as an issue with label `frage` (`tools/ask.sh frage --von <unit> …`: who, 2–3 lines background, the
   question, options with the recommendation first, a link). Two kinds (owner 2026-11-01 – the yellow "waiting" dot in
   the Claude app must keep meaning "something stands still"): **blocking** (nothing goes on without the answer) →
-  `--blockiert` **and** ask the same question in the chat as a question box and wait; when the owner answers in the
+  `--blockiert` **and** ask the same question in the chat as a question box and wait – **before asking, push your
+  state** (done work to `main`, half-done to `feat/<topic>`) and say in the issue where you stand, so the owner may
+  switch the computer off any time; when the owner answers in the
   chat, copy it into the issue (`tools/ask.sh antwort <nr> "…"`). **Not urgent** → only the issue, keep working, never
   wait in the chat for it; read answers after every pull (`tools/ask.sh offen`). Either way: act, then close with
   `tools/ask.sh erledigt <nr> "…"` – the owner never has to close an issue. Label `an-alle` = the owner's word to every
