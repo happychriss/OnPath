@@ -353,9 +353,11 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         contentDescription = Txt.s(Res.string.nav_activity_cd, NavText.activityName(a, ui.sac))
                     }) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(a.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(28.dp))
-                        // recording: the orange dot on the icon instead of a line (owner)
-                        if (ui.recordedM != null) RecDot(ui.paused, Modifier.align(Alignment.TopEnd).padding(5.dp).size(9.dp))
+                        val rec = ui.recordedM != null
+                        Icon(a.icon, null, tint = OnPathColors.Green,
+                            modifier = Modifier.size(if (rec) 24.dp else 28.dp).then(if (rec) Modifier.align(Alignment.TopCenter).padding(top = 4.dp) else Modifier))
+                        // recording: a small "● REC" sign on the icon instead of a line (owner 2026-11-01)
+                        if (rec) RecBadge(ui.paused, Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp))
                     }
                 }
                 Spacer(Modifier.width(10.dp))

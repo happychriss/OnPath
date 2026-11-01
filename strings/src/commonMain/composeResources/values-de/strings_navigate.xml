@@ -32,6 +32,7 @@
     <string name="nav_copy_position">Position kopieren</string>
     <string name="nav_position_clip">Position</string>
     <string name="nav_copied">%1$s · kopiert ✓</string>
+    <string name="nav_rec_badge">REC</string>
     <string name="nav_status_recording">Aufzeichnung</string>
     <string name="nav_status_paused">Pausiert</string>
     <string name="nav_status_searching_gps">GPS wird gesucht…</string>

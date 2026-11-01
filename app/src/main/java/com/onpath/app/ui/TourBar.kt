@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.outlined.Warning
@@ -66,6 +67,22 @@ fun TourRunningBar(
         Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp)) {
             TourControls(distanceM, elapsedS, paused, onPause, onContinue, onEnd, activity)
         }
+    }
+}
+
+/**
+ * The recording sign on the activity icon (owner 2026-11-01: "ein kleines REC-Schild" instead of the small dot): a red
+ * pill "● REC" – grey while paused.
+ */
+@Composable
+fun RecBadge(paused: Boolean, modifier: Modifier = Modifier) {
+    val bg = if (paused) OnPathColors.Grey else OnPathColors.Error
+    Row(modifier.background(bg, RoundedCornerShape(50)).padding(horizontal = 4.dp, vertical = 1.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        Box(Modifier.size(5.dp).background(OnPathColors.CardWhite, CircleShape))
+        Spacer(Modifier.width(2.dp))
+        Text(str(Res.string.nav_rec_badge), color = OnPathColors.CardWhite, style = MaterialTheme.typography.labelSmall,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, maxLines = 1)
     }
 }
 
