@@ -136,8 +136,11 @@ data class NavUi(
 /** [roundabout]: non-null = the turn is a roundabout, with the exit to take (0 = unknown). */
 data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: Int? = null,
                     /** BRouter's angle of the roundabout turn (> 0 right): where the drawn sign's exit goes. */
-                    val roundaboutAngle: Float? = null) {
-    val label: String get() = roundabout?.let { com.onpath.app.routing.JunctionCue.ROUNDABOUT.text(it) } ?: kind.label
+                    val roundaboutAngle: Float? = null,
+                    /** The new route starts behind: "Umdrehen" with the U sign (owner 2026-11-01). */
+                    val turnRound: Boolean = false) {
+    val label: String get() = if (turnRound) Txt.s(Res.string.nav_turn_round)
+        else roundabout?.let { com.onpath.app.routing.JunctionCue.ROUNDABOUT.text(it) } ?: kind.label
 }
 
 /**
@@ -738,9 +741,12 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         offRoute = rec?.nav?.let { n ->
             n.prompt?.let { p -> OffRouteUi(p, n.toRoute, n.toRoute?.let { (it.bearingDeg - mapBearing).toFloat() }) }
         },
-        turn = turnHint(next?.let { (t, d) -> t.kind to d }, roundabout)?.let { h ->
-            if (h.roundabout != null) h.copy(roundaboutAngle = roundaboutAngle) else h
-        },
+        // a new route that starts behind: "Umdrehen" first (owner 2026-11-01: after a re-route one saw nothing and did
+        // not know where to go) – until the Navigator clears the U sign (walked the new way)
+        turn = nav?.uTurnAt?.let { u -> TurnHint(TurnKind.U_TURN_LEFT, here?.let { com.onpath.app.data.Geo.distance(it, u) } ?: 0.0, turnRound = true) }
+            ?: turnHint(next?.let { (t, d) -> t.kind to d }, roundabout)?.let { h ->
+                if (h.roundabout != null) h.copy(roundaboutAngle = roundaboutAngle) else h
+            },
         headingUp = vm.navHeadingUp,
         arriveAt = arrive,
         movingS = rec?.time?.movingS, breakS = rec?.time?.breakS,

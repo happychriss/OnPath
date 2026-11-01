@@ -21,8 +21,11 @@ sealed interface Phrase {
     ) : Phrase
     data object OffRoute : Phrase
     data object BackOnRoute : Phrase
-    /** A new route was taken; [next] = its first junction when it is close. */
-    data class NewRoute(val next: Junction?) : Phrase
+    /**
+     * A new route was taken; [next] = its first junction when it is close; [turnRound] = it starts behind the user:
+     * "Neue Route. Bitte umdrehen." (owner 2026-11-01 – the U sign on the map, "Umdrehen" on the turn card).
+     */
+    data class NewRoute(val next: Junction?, val turnRound: Boolean = false) : Phrase
     /** Stop [number] (1-based, as in the plan) reached; then on to [nextName] [nextM] away (either may be null). */
     data class StopReached(val name: String?, val number: Int, val nextName: String?, val nextM: Double?) : Phrase
     data object Arrived : Phrase
@@ -98,6 +101,8 @@ class VoiceGuide {
         val toGoS: Double? = null,
         /** Standing still ([com.onpath.app.recording.MoveWatch], owner 2026-11-01): no "No GPS", no "off the route". */
         val quiet: Boolean = false,
+        /** The route taken starts behind the user ([TurnRound], the U sign): the new-route sentence says to turn round. */
+        val turnRound: Boolean = false,
     )
 
     private var version = Int.MIN_VALUE
@@ -131,6 +136,8 @@ class VoiceGuide {
     private var lastVisited: Set<Int>? = null
     private var gpsLostSince: Long? = null
     private var gpsSaid = false
+    /** GPS good again and walking since (after "No GPS" was said); null = not yet / standing. */
+    private var gpsGoodSince: Long? = null
     private val waiting = ArrayDeque<Pair<Phrase, Long>>()
 
     /** The tour's voice memory, to keep with the tour ([continueTour] after a restart). */
@@ -150,7 +157,7 @@ class VoiceGuide {
         version = Int.MIN_VALUE; size = -1; said.clear(); lineLength = 0.0
         started = false; offRouteSaidMs = null; noGpsSaidMs = null; arrivedSaidMs = null; offRouteSpoken = false
         lastSpokenMs = Long.MIN_VALUE / 2; lastOffRoute = false; lastRerouted = false; lastVisited = null
-        gpsLostSince = null; gpsSaid = false; waiting.clear()
+        gpsLostSince = null; gpsSaid = false; gpsGoodSince = null; waiting.clear()
     }
 
     /** The phrase to say now for this fix, or null. */
@@ -173,15 +180,25 @@ class VoiceGuide {
         }
         // before the start sentence a new line is no news – the start sentence tells its length (field 2026-11-01:
         // "Neue Route." came before "Los geht's.")
-        if (newLine && i.rerouted && !lastRerouted && started) queue(Phrase.NewRoute(nextJunction(i, closeOnly = true)), i.nowMs)
+        if (newLine && i.rerouted && !lastRerouted && started) {
+            queue(if (i.turnRound) Phrase.NewRoute(null, turnRound = true) else Phrase.NewRoute(nextJunction(i, closeOnly = true)), i.nowMs)
+        }
         lastRerouted = i.rerouted
-        // GPS
+        // GPS: said once; again only after the GPS was good for [GPS_REARM_MS] while walking (owner 2026-11-01: "einmal und
+        // dann erst wieder, wenn es einige Zeit gehabt hat und wir wieder gelaufen sind")
         if (i.gpsLost) {
+            gpsGoodSince = null
             val since = gpsLostSince ?: i.nowMs.also { gpsLostSince = it }
             if (!gpsSaid && started && !i.quiet && i.nowMs - since >= GPS_LOST_MS && since(noGpsSaidMs, i.nowMs) >= NO_GPS_EVERY_MS) {
                 gpsSaid = true; noGpsSaidMs = i.nowMs; queue(Phrase.NoGps, i.nowMs)
             }
-        } else { gpsLostSince = null; gpsSaid = false }
+        } else {
+            gpsLostSince = null
+            if (gpsSaid) {
+                if (i.quiet) gpsGoodSince = null
+                else if (i.nowMs - (gpsGoodSince ?: i.nowMs.also { gpsGoodSince = it }) >= GPS_REARM_MS) { gpsSaid = false; gpsGoodSince = null }
+            }
+        }
         // start
         if (!started && i.line.size >= 2 && i.alongM != null && i.onRoute) {
             started = true
@@ -279,6 +296,8 @@ class VoiceGuide {
         /** Owner 2026-11-01: "2–3 minutes without GPS while on the way – then say it; otherwise it nags". */
         const val GPS_LOST_MS = 150_000L
         const val NO_GPS_EVERY_MS = 10 * 60_000L
+        /** "No GPS" is said again only after the GPS was good this long while walking. */
+        const val GPS_REARM_MS = 2 * 60_000L
         const val OFF_ROUTE_EVERY_MS = 2 * 60_000L
         const val BACK_ON_AFTER_MS = 60_000L
         const val ARRIVED_EVERY_MS = 5 * 60_000L

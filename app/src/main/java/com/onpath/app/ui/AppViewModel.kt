@@ -991,6 +991,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     sayError(Txt.s(Res.string.msg_track_save_failing), NoticePlace.BACKGROUND)
                 } else if (st?.saveFailed == false) saveFailedShown = false
                 onArrived(st?.arrived == true)
+                // "Navigation Stopp" walked off with the phone pocketed: the guidance is back – so is Navigate
+                if (st?.guidanceBack == true && mode == AppMode.PLAN) {
+                    Problems.trace("tour", "Walked off from Navigation Stopp: back to Navigate"); enter(AppMode.NAVIGATE)
+                }
                 val n = st?.nav ?: run { navActivitySeen = null; return@collect }
                 if (n.version != navVersion) { navVersion = n.version; if (followLine != n.line) followLine = n.line }
                 syncNavActivity(n.session)

@@ -25,7 +25,8 @@ object VoiceText {
         is Phrase.Junction -> junction(p)
         Phrase.OffRoute -> Txt.s(Res.string.voice_off_route)
         Phrase.BackOnRoute -> Txt.s(Res.string.voice_back_on_route)
-        is Phrase.NewRoute -> listOfNotNull(Txt.s(Res.string.voice_new_route), p.next?.let { junction(it) }).joinToString(" ")
+        is Phrase.NewRoute -> listOfNotNull(Txt.s(Res.string.voice_new_route),
+            if (p.turnRound) Txt.s(Res.string.voice_turn_round) else p.next?.let { junction(it) }).joinToString(" ")
         is Phrase.StopReached -> {
             val reached = p.name?.takeIf { it.isNotBlank() }?.let { Txt.s(Res.string.voice_stop_named, it) }
                 ?: Txt.s(Res.string.voice_stop_number, p.number)

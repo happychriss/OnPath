@@ -240,8 +240,11 @@ class VoiceGuideTest {
         assertTrue(g.update(VoiceGuide.Input(60_000, l, 1, 0.0, onRoute = true, speedMps = 5.0, bike = true)) is Phrase.Start)
     }
 
-    /** Indoors before the start there is no "No GPS signal"; a poor fix that comes and goes says it at most every 10 min. */
-    @Test fun noGpsOnlyAfterTheStart_atMostEvery10Minutes() {
+    /**
+     * Indoors before the start there is no "No GPS signal"; a poor fix that comes and goes says it once (owner 2026-11-01,
+     * a restaurant: "einmal und dann erst wieder, wenn es einige Zeit gehabt hat und wir wieder gelaufen sind").
+     */
+    @Test fun noGpsOnlyAfterTheStart_onceWhileTheFixComesAndGoes() {
         val l = line(3000, emptyMap())
         val g = VoiceGuide()
         val off = VoiceGuide.Input(0, l, 1, null, onRoute = false, speedMps = null, bike = true, gpsLost = true)
@@ -258,8 +261,33 @@ class VoiceGuideTest {
             t += 162_000L
         }
         val noGps = said.filter { it.second == Phrase.NoGps }.map { it.first }
-        assertEquals("$noGps", 2, noGps.size)
-        assertTrue(noGps[1] - noGps[0] >= VoiceGuide.NO_GPS_EVERY_MS)
+        assertEquals("$noGps", 1, noGps.size)
+    }
+
+    /** Said again only after the GPS was good for 2 min while walking – and 10 min after the last time. */
+    @Test fun noGpsAgainOnlyAfterGoodGpsWhileWalking() {
+        val l = line(3000, emptyMap())
+        val g = VoiceGuide()
+        val on = VoiceGuide.Input(0, l, 1, 100.0, onRoute = true, speedMps = 1.4, bike = false)
+        assertTrue(g.update(on) is Phrase.Start)
+        fun lost(from: Long) = (0..170).mapNotNull { k -> g.update(on.copy(nowMs = from + k * 1000L, gpsLost = true)) }
+        assertEquals(listOf(Phrase.NoGps), lost(20_000))
+        // 3 min good GPS but standing (a restaurant table by the window): not re-armed
+        (0..180).forEach { k -> g.update(on.copy(nowMs = 200_000L + k * 1000L, quiet = true)) }
+        assertEquals(emptyList<Phrase>(), lost(800_000))
+        // 3 min good GPS while walking: re-armed – said again (more than 10 min after the first)
+        (0..180).forEach { k -> g.update(on.copy(nowMs = 1_000_000L + k * 1000L)) }
+        assertEquals(listOf(Phrase.NoGps), lost(1_200_000))
+    }
+
+    /** Owner 2026-11-01: a new route that starts behind the user says so – "Neue Route. Bitte umdrehen." */
+    @Test fun aNewRouteBehindSaysTurnRound() {
+        val l = line(1000, mapOf(300 to JunctionCue.LEFT))
+        val g = VoiceGuide()
+        assertTrue(g.update(VoiceGuide.Input(0, l, 1, 0.0, onRoute = true, speedMps = 1.4, bike = false)) is Phrase.Start)
+        val back = line(800, mapOf(40 to JunctionCue.RIGHT))
+        val said = g.update(VoiceGuide.Input(20_000, back, 2, 0.0, onRoute = true, speedMps = 1.4, bike = false, rerouted = true, turnRound = true))
+        assertEquals(Phrase.NewRoute(null, turnRound = true), said)
     }
 
     /** Jumping fixes open and close the question again and again: "off the route" at most every 2 min, no "back on". */

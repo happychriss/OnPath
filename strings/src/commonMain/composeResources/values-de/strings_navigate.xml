@@ -245,4 +245,5 @@
     <string name="nav_rest_cd">%1$s in %2$s. Tippen für die Karte</string>
     <string name="nav_no_route_ahead">Keine Route zu Punkt %1$d gefunden. Die Tour wird weiter aufgezeichnet.</string>
     <string name="nav_tour_record_only">Nur Aufzeichnung · %1$s · %2$s</string>
+    <string name="nav_turn_round">Umdrehen</string>
 </resources>

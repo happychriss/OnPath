@@ -108,6 +108,8 @@ data class RecState(
      * is quiet from then on (no off-route alarms on the way to the car park); recording goes on. The app asks once.
      */
     val arrived: Boolean = false,
+    /** "Navigation Stopp" walked off: the guidance came back by itself ([StopQuiet]) – the app shows Navigate again. */
+    val guidanceBack: Boolean = false,
 )
 
 /**
@@ -179,18 +181,20 @@ class RecordingService : Service() {
     private var alertPosted = 0L
     /** Off-route settings, re-read when the app sends ACTION_SETTINGS / ACTION_FOLLOW_CHANGED. */
     private var settings: com.onpath.app.data.AppSettings? = null
-    /** False while the app is in Plan mode: no off-route warnings then (recording goes on). */
+    /** False while the app is in Plan mode ("Navigation Stopp"): the phone is quiet then (recording goes on). */
     private var navigating = true
-    /** What the navigator was last told ([AppVisibility.navigatingNow]: Plan off screen counts as navigating). */
+    /** What the navigator was last told: Navigate, or Stopp walked off ([StopQuiet]). */
     private var navigatingApplied = true
+    /** "Navigation Stopp" = quiet, also with the screen off (owner 2026-11-01); back after walking off ([StopQuiet]). */
+    private val stopQuiet = StopQuiet()
 
-    /** Plan mode only while the app is on screen (review H1): re-applied when the app goes off / on screen. */
+    /** Guidance on in Navigate, or after walking off from a Stopp; re-applied every second. */
     private fun applyNavigating() {
-        val now = AppVisibility.navigatingNow(navigating, AppVisibility.visible)
+        val now = navigating || stopQuiet.resumed
         if (now == navigatingApplied) return
         navigatingApplied = now
-        Problems.trace("navigation", if (now) "Off-route warnings on (Navigate, or Plan with the app off screen)" else
-            "Off-route warnings paused: Plan on screen")
+        Problems.trace("navigation", if (now) "Guidance on (Navigate, or walked off from Navigation Stopp)" else
+            "Navigation Stopp: quiet – no voice, no junction vibration, no off-route question")
         navigator?.let { handle(it.setNavigating(now)) }
     }
     private var lastNotify = 0L
@@ -240,7 +244,8 @@ class RecordingService : Service() {
             ACTION_NAVIGATING -> {
                 // Plan mode: no new questions; a pending one stays (owner: nothing disappears by itself)
                 navigating = intent.getBooleanExtra(EXTRA_ON, true)
-                navigatingApplied = AppVisibility.navigatingNow(navigating, AppVisibility.visible)
+                stopQuiet.set(stopped = !navigating)
+                navigatingApplied = navigating
                 navigator?.let { handle(it.setNavigating(navigatingApplied)) } ?: publish()
                 return START_STICKY
             }
@@ -931,6 +936,15 @@ class RecordingService : Service() {
     private fun junctionCue(loc: Location, nowEl: Long) {
         val st = navigator?.state ?: return
         junctionSpeeds.note(if (loc.hasSpeed()) loc.speed.toDouble() else null, nowEl)
+        // "Navigation Stopp" (owner 2026-11-01): quiet – until the user walks off with the app off screen
+        if (stopQuiet.onFix(com.onpath.app.routing.GeoPoint(loc.latitude, loc.longitude), if (loc.hasAccuracy()) loc.accuracy else null,
+                AppVisibility.visible)) {
+            Problems.trace("navigation", "Navigation Stopp: walked ${StopQuiet.RESUME_M.toInt()} m away with the app off screen – guidance back")
+            applyNavigating()
+            if (voiceOn()) voiceSpeaker()?.say(Txt.s(Res.string.voice_guidance_back))
+            publish(force = true)
+        }
+        if (stopQuiet.quiet) return
         junctions.bike = navigator?.session?.activity != com.onpath.app.routing.Activity.HIKE
         voiceStep(st, nowEl)
         if (st.version != junctionsTracedVersion) {
@@ -977,6 +991,7 @@ class RecordingService : Service() {
                 bike = s?.activity != com.onpath.app.routing.Activity.HIKE, offRoute = st.prompt?.offRoute == true,
                 rerouted = s?.rerouted == true, paused = paused, gpsLost = gpsLost(),
                 stops = s?.stops.orEmpty(), visited = s?.visited.orEmpty(), toGoS = tripTime().toGoS, quiet = standingStill(),
+                turnRound = st.uTurnAt != null,
             ))
             saveVoice()
             if (phrase != null) voiceSpeaker()?.say(com.onpath.app.navigation.VoiceText.of(phrase))
@@ -1217,7 +1232,7 @@ class RecordingService : Service() {
             tourId, paused, distance, ascent, descent, elapsedS, gpsLost(),
             navigator?.state?.offM, navigator?.prompt != null, follow?.first, trackSnapshot,
             navigator?.state, tripTime(), saveFailed, hadGpsFix = lastGoodFixElapsed > 0, gpsQuiet = gpsQuiet(),
-            arrived = arrived,
+            arrived = arrived, guidanceBack = stopQuiet.resumed,
         )
         // Battery: the clock runs by itself in the notification (chronometer); re-post only when what it says
         // changes (status, shown distance), at most every 5 s, and once a minute to keep the clock in step.

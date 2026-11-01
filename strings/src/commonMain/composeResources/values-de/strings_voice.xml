@@ -65,4 +65,6 @@
         <item quantity="one">eine Stunde</item>
         <item quantity="other">%1$s Stunden</item>
     </plurals>
+    <string name="voice_guidance_back">Navigation läuft wieder.</string>
+    <string name="voice_turn_round">Bitte umdrehen.</string>
 </resources>
