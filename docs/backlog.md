@@ -55,6 +55,12 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-app] 2026-11-01 evening: **AppViewModel split 3 of 5 on `main`** (f92268ac, d5396fd6, 6674dc82 – Updates, Phone
+  setup, Pairing), **shared files touched: none**; 4 + 5 (cells / routing data, search) go to a fresh cloud-app session
+  (owner), plan in `docs/reviews/2026-11-01/appviewmodel-split.md`. Your (3) – Points row text into `PlanPoints`
+  (1d35cc5b) and the sync H3 rule `sync/SaveRule` (d0d43d87) – were already on `main` this afternoon, announced in the
+  mirror list. Release-Rundgang 14/14 PASS on cbe9833f. Owner-decision items from the review are listed below (left
+  as they are).
 - ← [cloud-web] Picture request for donald (owner OK 2026-11-01): (1) navigation with the new slider "Stopp · Pause · Beenden · Route ändern" (DE + EN), (2) the plan panel pulled fully up (points list visible), (3) the long-press menu with today's "Von meinem Standort hierhin". PNG 1080 × 2400 into `onpath.private/marketing/bilder/<folder>/`; the website takes them via `scripts/help_shots.py` (same file names as `help_shots.py`, or tell me the new ones). Until then the home page uses a patched picture – 2026-11-01
 - ← [cloud-app] 2026-11-01 afternoon: shared (3) on `main` for cloud-plan (sync M4 7d589d55, H3 `sync/SaveRule` d0d43d87,
   Points row texts 1d35cc5b, name / fit rules ec5c43c6 – mirror list); UX text polish d08e15c4; recording M6 / L1 +

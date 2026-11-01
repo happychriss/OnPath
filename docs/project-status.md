@@ -26,15 +26,24 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
-- **cloud (setup review), 2026-11-01 – new setup concept, owner questions as issues, switch prepared.** Concept with
-  the owner's decisions: `docs/roles/setup-vorschlag-2026-11-01.md`. **Active now:** owner questions / the owner's
-  word to all as issues in `onpath.private` (labels `frage`, `an-alle`; `tools/ask.sh`; `gate.sh` refuses a push on
-  `#push-sperre`, a release commit on `#release-sperre`; rules in `CLAUDE.md`); D1–D4 + waiting items asked as
-  onpath.private#2–#10 (#10 answered "Ja" – Germany worktree on donald can go). **Prepared, not switched on:**
-  `tools/ci/release_check.sh` (captain's check as a script – today: NO GO, web-spike lacks 13 shared files + 2 sync
-  files from main and "Web spike" CI is red on 5749bac6), `tools/dev/save-on-shutdown.sh` + `tools/dev/unit.sh`
-  (standing session per computer, autostart, save at shutdown – tested here, not on donald), `docs/roles/neu/`
-  (start, captain, umstellung). **Next:** after v0.14.0 follow `docs/roles/neu/umstellung.md`.
+- **cloud-app (donald), 2026-11-01 – fix day (owner: no release today, everything in). Session ends here; a fresh
+  cloud-app session goes on.** On `main`, each with gate.sh (often `--full`), small commits: list A 1–9; "More before the
+  release" incl. shared sync rules (M4 restart, H3 `sync/SaveRule`), Points row texts, name / fit rules; then the open
+  review items 1:1 with the owner (decided one question box at a time): recording M7 (corrupt DB → tour rescued), M5
+  (battery saver mid-tour said once), routing M5 (browser plans never stored straight), M3 (Plan from track: modal +
+  Cancel), M1 (remaining ascent = plan's), M8 (track time = moving time), L1–L3, L7, L8, Arch 6 (one `net/HttpDownload`,
+  APK sha256 from the release digest), 7 (brouter.de User-Agent), 8–14 (silent failures, style off the main thread, Prefs,
+  Gson declared, dead texts, one tile namer / flat distance), 5 (`app/web-shared-files.txt` + `SharedFilesRuleTest`);
+  owner wishes: GPS "No GPS" only after 2.5 min while moving, quiet standing still, slider "Stopp", ■ Stop, one off-route
+  question shape, tour summary "Unterwegs 4:05 (10:12–14:17) · in Bewegung 2:52 · Pausen 1:13", stale followed line
+  removed. **AppViewModel split (owner: all now): 1–3 done (Updates, Phone setup, Pairing → own classes); 4 + 5 (cells /
+  routing data, search / shared places) for the next session – plan + Fable's coupling list in
+  `docs/reviews/2026-11-01/appviewmodel-split.md`.** Release-Rundgang 14/14 PASS on cbe9833f (all of today incl. split
+  1–3). Not done: owner's jog-rule / way-type idea (backlog, think first); the diagnostics export showed no crash – the
+  "Los geht's" repeats were five short tours at night, each saying its start sentence. **Next:** split 4 + 5 (with the
+  emulator E2E map tests + Rundgang), then the owner tests ONE build outside, then the captain's release check.
+  Lessons (memory): gate misses androidTest and text-asserting tests in other packages – compile androidTest, `--full`
+  after text changes; never installDebug during a tour; owner's questions one box at a time.
 - **cloud-app (donald), 2026-11-01 – release day turned fix day (owner: no release today, everything in).** List A
   1–9 + "More before the release" on `main`, small green commits, Release-Rundgang 14/14 PASS (dfc701d9), E2E + unit
   green (140d5bec). Field bugs: voice repeat (voice memory per tour in trip-pace.json, service scope exception handler,
