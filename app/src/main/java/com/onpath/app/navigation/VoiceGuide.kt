@@ -118,7 +118,9 @@ class VoiceGuide {
             lastOffRoute = false
             if (!(newLine && i.rerouted)) queue(Phrase.BackOnRoute, i.nowMs)
         }
-        if (newLine && i.rerouted && !lastRerouted) queue(Phrase.NewRoute(nextJunction(i, closeOnly = true)), i.nowMs)
+        // before the start sentence a new line is no news – the start sentence tells its length (field 2026-11-01:
+        // "Neue Route." came before "Los geht's.")
+        if (newLine && i.rerouted && !lastRerouted && started) queue(Phrase.NewRoute(nextJunction(i, closeOnly = true)), i.nowMs)
         lastRerouted = i.rerouted
         // GPS
         if (i.gpsLost) {
