@@ -56,7 +56,9 @@ val appTests = listOf("routing/PlanCodeTest.kt", "ui/PlanStateTest.kt", "ui/MapG
     "sync/SyncTrackTest.kt", "sync/MemoryMailbox.kt",
     // the shared plan result, plan GPX and loop-aware edits (handoff-web-planresult.md, handoff-web-parity-b.md)
     "routing/PlanResultTest.kt", "gpx/PlanGpxTest.kt", "routing/PlanPointsTest.kt",
-    "data/RoutingDataNoticeTest.kt", "routing/BreakdownRulesTest.kt")
+    "data/RoutingDataNoticeTest.kt", "routing/BreakdownRulesTest.kt",
+    // the splice and its safety net (review routing H3, 644b416 on main)
+    "routing/PlannerSpliceTest.kt")
 
 sourceSets {
     main {
