@@ -36,6 +36,7 @@
   "sync_full": {"area": "Settings · Browser sync", "context": "Amber line: the mailbox limit (1000 items / 4 MB) is reached", "priority": 3, "confidence": "sicher"},
   "sync_newer_app": {"area": "Settings · Browser sync", "context": "Amber line. %1$d = count", "priority": 3, "confidence": "sicher"},
   "sync_not_saved": {"area": "Settings · Browser sync", "context": "Amber line. %1$d = count", "priority": 3, "confidence": "sicher"},
+  "sync_stuck": {"area": "Settings · Browser sync", "context": "Amber line: routes stayed unsent for 3 sync passes. %1$d = count", "priority": 3, "confidence": "sicher"},
   "sync_storage": {"area": "Settings · Browser sync", "context": "Red line", "priority": 3, "confidence": "sicher"},
   "sync_already_paired": {"area": "Settings · Browser sync", "context": "Grey line: the same code scanned again", "priority": 3, "confidence": "sicher"},
   "sync_join_offline": {"area": "Settings · Browser sync", "context": "Red line: Pair with another browser while this phone is paired (A-017: the phone sends that browser into its mailbox) – no connection", "priority": 2, "confidence": "sicher"},

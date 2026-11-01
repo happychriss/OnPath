@@ -134,7 +134,12 @@ class PlanSync(
         data class NotSaved(val count: Int) : Problem
         /** The sync files could not be written (storage full). */
         data object Storage : Problem
+        /** [count] routes stayed unsent for [StuckOutbox.PASSES] passes in a row (review sync M8: was "synced"). */
+        data class Stuck(val count: Int) : Problem
     }
+
+    /** Passes in a row that ended with routes still waiting to be sent. */
+    private var stuckPasses = 0
 
     /** A pass, pairing or unpairing ended. */
     data class Report(val manual: Boolean, val result: PlanSyncPass.Result?, val ended: Boolean = false, val error: Boolean = false)
@@ -337,10 +342,15 @@ class PlanSync(
             is SyncRound.Outcome.Offline -> Problem.Offline
             is SyncRound.Outcome.Refused -> Problem.Refused(o.status, o.error)
             is SyncRound.Outcome.Ended -> null
-            is SyncRound.Outcome.Done -> when {
-                r.failed > 0 -> Problem.NotSaved(r.failed)
-                r.unreadable > 0 -> Problem.NewerApp(r.unreadable)
-                else -> null
+            is SyncRound.Outcome.Done -> {
+                stuckPasses = StuckOutbox.next(stuckPasses, o.left)
+                if (stuckPasses == StuckOutbox.PASSES) Problems.warn("sync", "${o.left} item(s) not sent for $stuckPasses passes in a row")
+                when {
+                    r.failed > 0 -> Problem.NotSaved(r.failed)
+                    r.unreadable > 0 -> Problem.NewerApp(r.unreadable)
+                    StuckOutbox.stuck(stuckPasses) -> Problem.Stuck(o.left)
+                    else -> null
+                }
             }
         }
         _state.value = State(paired = p != null, peer = if (p == null) null else peer, lastOkMs = if (p == null) 0 else files.lastOk(),

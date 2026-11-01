@@ -45,6 +45,10 @@
         <item quantity="one">%1$d route from the browser could not be saved on the phone – it is tried again.</item>
         <item quantity="other">%1$d routes from the browser could not be saved on the phone – they are tried again.</item>
     </plurals>
+    <plurals name="sync_stuck">
+        <item quantity="one">%1$d route could not be sent to the browser for a while – it is tried again. Details: Settings → Diagnostics.</item>
+        <item quantity="other">%1$d routes could not be sent to the browser for a while – they are tried again. Details: Settings → Diagnostics.</item>
+    </plurals>
     <string name="sync_storage">The sync files could not be written – the phone's storage may be full.</string>
     <string name="sync_already_paired">This phone is already paired with this browser.</string>
     <string name="sync_join_offline">The browser was not reached – check the connection and scan the code again.</string>

@@ -44,6 +44,10 @@
         <item quantity="one">%1$d Route aus dem Browser konnte nicht auf dem Handy gespeichert werden – sie wird noch einmal versucht.</item>
         <item quantity="other">%1$d Routen aus dem Browser konnten nicht auf dem Handy gespeichert werden – sie werden noch einmal versucht.</item>
     </plurals>
+    <plurals name="sync_stuck">
+        <item quantity="one">%1$d Route konnte seit einer Weile nicht zum Browser geschickt werden – sie wird weiter versucht. Details: Einstellungen → Diagnose.</item>
+        <item quantity="other">%1$d Routen konnten seit einer Weile nicht zum Browser geschickt werden – sie werden weiter versucht. Details: Einstellungen → Diagnose.</item>
+    </plurals>
     <string name="sync_storage">Die Sync-Dateien konnten nicht geschrieben werden – der Speicher des Handys ist vielleicht voll.</string>
     <string name="sync_already_paired">Dieses Handy ist schon mit diesem Browser verbunden.</string>
     <string name="sync_join_offline">Der Browser war nicht erreichbar – prüfe die Verbindung und scanne den Code noch einmal.</string>
