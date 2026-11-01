@@ -59,13 +59,13 @@ the git log.
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
-- **FIRST on donald (captain 2026-11-01 night): unpushed work in the checkout** [pixel] – cloud-app changed code between
-  ~22:40 and 23:20 (owner's time) and only installed it on the Pixel; the last push was 4e16e629 (22:35). Seen in its
-  chat: new position marker while changing the route in a tour (white circle, green edge), Delete without the question
-  + grey "Kommt für 30 Tage in den Papierkorb." line, the turn card staying on top (owner's choice in the chat), "✕ Neu
-  planen · ⇅ Umkehren · ↻ Rundtour" as light round pills; plus its design review vs Komoot / Organic Maps / OsmAnd (chat
-  only – save it as a file). Then donald was switched off. Next start: `git status` in
-  `/home/development/Projects/work/onpath-app`, finish / test, `tools/ci/gate.sh`, push (half-done → `feat/<topic>`).
+- **FIRST on donald (captain 2026-11-01 night): bring `wip/donald-2026-11-01-nacht` to `main`** [pixel] – the owner
+  saved cloud-app's unpushed work of ~22:40–23:20 by hand (253bfdb0, on top of 4e16e629, NOT gated, 86 files): position
+  marker while changing the route in a tour (`ui/PlanPuck.kt`), `ui/TourActionBar.kt`, Delete without the question +
+  grey "Kommt für 30 Tage in den Papierkorb.", the turn card staying on top, "✕ Neu planen · ⇅ Umkehren · ↻ Rundtour" as
+  pills, texts, ~70 re-recorded screenshots. The donald checkout is left ON that branch. Next start: rebase onto
+  `main`, check against the owner's chat choices, `tools/ci/gate.sh`, push to `main`, delete nothing. Also save the
+  design review vs Komoot / Organic Maps / OsmAnd (only in the old claude-app chat) as a file.
 - **Pictures for the pairing help – app part (order by cloud-web, owner OK 2026-11-01)** [emu]: emulator, A-019 setup,
   DE + EN: (A1) ☰ open with "Mit Browser verbinden"; (A2) the question "Mit diesem Browser verbinden? Prüfe: 123 456"
   with "Verbinden"; (A3) My routes with a route from the browser ("Neu"); (A4) Settings → Browser-Abgleich paired with
