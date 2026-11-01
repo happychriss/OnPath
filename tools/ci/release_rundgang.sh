@@ -12,6 +12,7 @@
 #      RD5=<path to E10_N45.rd5> (default ~/onpath-routing/segments/E10_N45.rd5, else downloaded from brouter.de),
 #      JAVA_HOME (default Android Studio's JBR). Never runs on a real phone: only emulator-* serials are taken.
 #      FLOWS=<class or class#method,…> runs only these (debugging one flow).
+#      E2E_ARGS="-e routingDownload true" adds instrumentation arguments (e.g. the fresh-install routing download).
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 WORK=${WORK:-$HOME/onpath-cells-work}
@@ -93,7 +94,7 @@ fi
 "${A[@]}" shell mkdir -p /sdcard/e2e
 echo "Running $SUITE…"
 T1=$(date +%s)
-"${A[@]}" shell am instrument -w -r -e class "$SUITE" com.onpath.app.test/androidx.test.runner.AndroidJUnitRunner \
+"${A[@]}" shell am instrument -w -r ${E2E_ARGS:-} -e class "$SUITE" com.onpath.app.test/androidx.test.runner.AndroidJUnitRunner \
   > "$OUT/instrument.txt" 2>&1 || true
 T2=$(date +%s)
 "${A[@]}" pull /sdcard/e2e "$OUT/" >/dev/null 2>&1 || true
