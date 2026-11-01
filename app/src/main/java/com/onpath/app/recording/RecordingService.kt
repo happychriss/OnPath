@@ -209,7 +209,18 @@ class RecordingService : Service() {
         if (!routeChannelOk) Problems.warn("recording", "Navigation notification channel missing; the route notification stays off the lock screen")
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    /**
+     * Review M3: an exception in an action (Navigator answers, a bad session file) killed the process – and with a sticky
+     * restart the tour. Reported; a running tour stays in the foreground and goes on.
+     */
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = try {
+        startCommand(intent, startId)
+    } catch (e: Exception) {
+        Problems.error("recording", "Recording service action ${intent?.action ?: "restart"} failed; the tour goes on", e)
+        if (tourId >= 0) { goForeground(); START_STICKY } else { stopSelf(startId); START_NOT_STICKY }
+    }
+
+    private fun startCommand(intent: Intent?, startId: Int): Int {
         val control = intent?.action in setOf(ACTION_PAUSE, ACTION_RESUME, ACTION_STOP, ACTION_FOLLOW_CHANGED, ACTION_NAVIGATING,
             ACTION_SETTINGS, ACTION_TAKE_ROUTE, ACTION_TAKE_VIA, ACTION_KEEP_ROUTE, ACTION_CHECK_NOW, ACTION_PROPOSE_SWITCH,
             ACTION_LEAD_THERE, ACTION_JUST_RECORD, ACTION_LEAD_FAILED_OK)
@@ -424,6 +435,7 @@ class RecordingService : Service() {
         if (gpsLost()) navigator?.state?.let { voiceStep(it, now) } // "No GPS signal" comes without fixes
         if (now - lastStats >= 10_000) {
             lastStats = now
+            if (pointQueue.size > 0) writePoints() // storage back while standing still: the waiting points go in
             safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
         }
         try { trip.tick(elapsedS.toDouble(), System.currentTimeMillis()) } catch (e: Exception) {
@@ -527,9 +539,10 @@ class RecordingService : Service() {
             val (up, down) = climb.add(ground, p.ele, moved)
             ascent += up; descent += down
         } catch (e: Exception) { Problems.warn("recording", "Ascent not updated on a GPS fix; the track is still recorded", e) }
-        // The point goes to SQLite first (R-07). seq advances only when it is really stored.
-        if (safeDb("point") { db.appendPoint(tourId, seq, seg, p, loc.accuracy) }) {
-            seq++
+        // The point goes to SQLite first (R-07). A point that cannot be written now waits in order and is written with
+        // the next one that can (review M2) – never dropped while the service runs.
+        pointQueue.add(PointQueue.Pending(tourId, seq++, seg, p, loc.accuracy))
+        if (writePoints()) {
             if (saveFailed) { saveFailed = false; nm().cancel(SAVE_FAIL_ID) }
         }
         last = p
@@ -537,6 +550,20 @@ class RecordingService : Service() {
         track.last() += p.toGeo()
         snapshotDirty = true
         publish()
+    }
+
+    /** Track points not yet written ([PointQueue]). */
+    private val pointQueue = PointQueue()
+
+    /** Writes the waiting points in order; false = some still wait (reported once, loud – [safeDb]). */
+    private fun writePoints(): Boolean {
+        val waited = pointQueue.size
+        val ok = safeDb("point") { pointQueue.flush { db.appendPoint(it.tourId, it.seq, it.seg, it.point, it.accuracyM) }?.let { throw it } }
+        if (ok && waited > 1) Problems.info("recording", "${waited - 1} track point(s) written late – none lost")
+        if (pointQueue.dropped > 0 && pointQueue.dropped % 1000 == 1) {
+            Problems.error("recording", "Storage failed for hours: ${pointQueue.dropped} oldest unwritten point(s) given up")
+        }
+        return ok
     }
 
     /** A demo started during this tour: its name gets the "Demo · " prefix (once). */
@@ -606,7 +633,16 @@ class RecordingService : Service() {
      * (Re)loads what is navigated: `nav-session.json` written by the app (or by a re-route), else an older plain
      * `follow.json` (followed as a track without stops). A running re-route is cancelled.
      */
+    /** [loadFollowUnguarded]; a broken session file means recording without guidance, never a crash on every restart. */
     private fun loadFollow() {
+        try { loadFollowUnguarded() } catch (e: Exception) {
+            Problems.error("navigation", "The followed route could not be loaded; recording goes on without guidance", e)
+            navigator = null
+            alertKey = null; nm().cancel(ALERT_ID)
+        }
+    }
+
+    private fun loadFollowUnguarded() {
         cancelReroute()
         follow = Prefs(this).loadFollow()
         val line = follow?.second?.takeIf { it.size >= 2 }
@@ -753,7 +789,7 @@ class RecordingService : Service() {
                 (if (junctions.bike) "bike" else "hike") + " cue" +
                 (if (n == 0) " (GPX track or straight line: no junction cues)" else ""))
         }
-        val onRoute = st.prompt == null && st.shownAlongM != null
+        val onRoute = st.prompt?.offRoute != true && st.shownAlongM != null // a switch question is no reason to be quiet
         val cue = junctions.update(st.line, st.version, st.shownAlongM, onRoute, junctionSpeeds.speedOrNull(nowEl)) ?: return
         val choice = (settings ?: Prefs(this).settings).junctionVibration
         val locked = screenLocked()
@@ -784,7 +820,7 @@ class RecordingService : Service() {
             val s = navigator?.session
             val phrase = voice.update(com.onpath.app.navigation.VoiceGuide.Input(
                 nowMs = nowEl, line = st.line, version = st.version, alongM = st.shownAlongM,
-                onRoute = st.prompt == null && st.shownAlongM != null, speedMps = junctionSpeeds.speedOrNull(nowEl),
+                onRoute = st.prompt?.offRoute != true && st.shownAlongM != null, speedMps = junctionSpeeds.speedOrNull(nowEl),
                 bike = s?.activity != com.onpath.app.routing.Activity.HIKE, offRoute = st.prompt?.offRoute == true,
                 rerouted = s?.rerouted == true, paused = paused, gpsLost = gpsLost(),
                 stops = s?.stops.orEmpty(), visited = s?.visited.orEmpty(), toGoS = tripTime().toGoS, quiet = standingStill(),
@@ -964,6 +1000,7 @@ class RecordingService : Service() {
             Problems.warn("cells", "Map areas loaded during the tour not released; they join at the next app start", e)
         }
         if (tourId >= 0) {
+            if (pointQueue.size > 0) writePoints() // the last waiting points, if the storage is back
             climb.flush().let { (up, down) -> ascent += up; descent += down }
             safeDb("finish") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "done") }
             // bus / car / lift (docs/design/vehicle-detection.md): the choice made at End tour is applied now – or the
@@ -1009,6 +1046,7 @@ class RecordingService : Service() {
         tracker.stop()
         wakeLock?.let { if (it.isHeld) it.release() }
         if (tourId >= 0) {
+            if (pointQueue.size > 0) writePoints()
             safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
             saveTrip()
         }
