@@ -164,8 +164,6 @@ the git log.
   privacy + pairing sentences, host ipHash, date with the dot, first-route fit, "New route for … – check it".
   Plan parity: `web/test/plans.json` 14 cases, all app = web (gate in the jvm job).
   - *Should:*
-    - [cloud-plan] Splice catch-all · 644b4169 · `routing/Planner.kt` (shared): an unexpected error in the splice routes
-      the chunk again as before – comes with the next main merge; the web's own "Unexpected: …" text is web M10.
     - [cloud-plan] Rolled-up one-row step? (app d288503, PlanSize.COLLAPSED: activity icon, time · distance, ⚠ count,
       compact green Start) · the web has small / profile / points (`sheetstep.ts`) and no Start – a fourth, one-row step
       only if the owner wants it on a phone-width browser.
