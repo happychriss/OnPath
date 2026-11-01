@@ -541,11 +541,12 @@ private fun PositionLine(text: String, copy: String?) {
  */
 internal fun recordingLine(ui: NavUi, distanceM: Double, offRoute: Boolean = false): String? {
     val free = ui.toGo == null
-    if (!free && !ui.paused && !offRoute) return null
+    // off the route no recording line either (owner 2026-11-01: "überflüssig – der rote Punkt am Rad zeigt es")
+    if (!free && !ui.paused) return null
     val status = Txt.s(if (ui.paused) Res.string.nav_status_paused else Res.string.nav_status_recording)
     val moving = ui.movingS ?: return "$status · ${Format.distance(distanceM)} · ${Format.clock(ui.elapsedS)}"
     val parts = mutableListOf(status)
-    if (free || offRoute) parts += Format.distance(distanceM)
+    if (free) parts += Format.distance(distanceM)
     if (free || ui.paused) {
         parts += Txt.s(Res.string.nav_moving_lower, com.onpath.app.time.TimeEstimate.hm(moving))
         val b = ui.breakS ?: 0.0
