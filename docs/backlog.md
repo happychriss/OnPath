@@ -28,6 +28,7 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-web] Help now explains pairing (onpath.earth 8743fcc, route-planen #koppeln / planning #pair). New picture keys for `docs/design/website-screens.md`: browser `web-plan`, `web-teilen`, `web-handy`, `web-koppeln` (taken by cloud-web from plan.onpath.earth – a web UI change → cloud-web retakes them) and app `app-koppeln` (`planPairHint`), `app-verbunden` (`planPairedNote`), `app-routen` (`toursFromBrowser`), `app-trennen` (`settingsSyncPaired`) – these come straight from the Paparazzi snapshots, so they update with `recordPaparazziDebug` – 2026-11-01
 - ← [cloud-app] 2026-11-01: **Germany worktree removed** on donald (owner confirmed in the chat; no uncommitted work,
   all of `germany-prebuild` on origin/main, local branch deleted) – #10 closed. The run data beside it
   (`~/onpath-cells-work/germany/` state, logs, lists) is still there – remove only on the owner's word. Also new on
