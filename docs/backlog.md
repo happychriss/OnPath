@@ -77,7 +77,7 @@ the git log.
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Release-day fixes list A 1–9 (`docs/reviews/2026-11-01-pre-release.md`) – since 2026-11-01
-- [cloud-app] Release v0.14.0 (voice) – captain's go; waits for the owner's Pixel voice test OK + E2E green on 69515dd / 4c64138 – since 2026-11-01
+- [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
 - **Owner idea 2026-11-01 (field Düsseldorf, think first – not built):** (1) *Jog rule:* the lead line started on the

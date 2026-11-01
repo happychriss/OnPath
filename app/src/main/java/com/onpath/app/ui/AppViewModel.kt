@@ -2720,7 +2720,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
                 .onFailure {
                     fitNextRoute = false // the points were fitted when they came (link) or are where the user held
-                    Problems.error("routing", "Route calculation failed", it); route = null; routeError = it.message ?: Txt.s(Res.string.msg_routing_failed)
+                    Problems.error("routing", "Route calculation failed", it)
+                    // during a tour one failed run must not take the whole plan line off the map (fix-tour-edit-line.md)
+                    if (recState.value == null) route = null
+                    // our own routing texts only – never an exception's raw text (review Arch 4)
+                    routeError = com.onpath.app.debug.UserText.of(it, Txt.s(Res.string.msg_routing_failed))
                     corridorFollowsPlan(null)
                 }
             if (followNextRoute) {
@@ -3732,7 +3736,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Follows [s] again as it was (Undo during a tour, [FollowHistory]); [planLine] = the plan's route line now. */
     private fun followAgain(s: com.onpath.app.navigation.NavSession, planLine: List<GeoPoint>, versionNow: Int) {
         // a new version: the service and the junction cues re-read the line
-        val session = s.copy(version = maxOf(s.version, versionNow) + 1)
+        val session = s.copy(version = maxOf(s.version, versionNow) + 1, token = newSessionToken())
         guidanceEndedByEmptyPlan = false
         navStore.save(session)
         prefs.saveFollow(session.name, session.active)
@@ -3815,7 +3819,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                           stops: List<GeoPoint> = emptyList(), names: List<String?> = emptyList(), pinned: Set<Int> = emptySet()) {
         guidanceEndedByEmptyPlan = false
         val session = runCatching {
+            // a new token (a re-route of the old line never overwrites it) and a new version (cues / voice re-read the line)
             NavSession.start(if (isTrack) NavKind.TRACK else NavKind.PLAN, name, activity, sac, points, stops, names, pinned)
+                .copy(token = newSessionToken(), version = (recState.value?.nav?.version ?: navVersion).coerceAtLeast(0) + 1)
         }.onFailure { Problems.error("navigation", "Navigation session could not be started; following without it", it) }.getOrNull()
         navStore.save(session)
         prefs.saveFollow(name, points)
@@ -3830,6 +3836,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             putExtra(RecordingService.EXTRA_CHECK_NOW, checkNow)
         }
     }
+
+    /** A token no earlier session of this install had (time-based, strictly increasing). */
+    private fun newSessionToken(): Long = maxOf(System.currentTimeMillis(), lastSessionToken + 1).also { lastSessionToken = it }
+    private var lastSessionToken = 0L
 
     fun clearFollow() {
         splitRequests.invalidate()

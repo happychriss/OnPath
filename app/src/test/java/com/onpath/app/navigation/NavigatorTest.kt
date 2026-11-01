@@ -318,4 +318,25 @@ class NavigatorTest {
         val old = NavSessionStore.toJson(s).apply { remove("originalWays") }
         assertTrue(NavSessionStore.fromJson(JSONObject(old.toString()))!!.original.all { it.way == null })
     }
+
+    /**
+     * fix-tour-edit-line.md cause 4: a re-route of the old line finished just after the app wrote the edited plan's
+     * session – the service wrote the old session over it and the pre-edit route came back. The token tells them apart;
+     * re-routes keep it, so the service's own sessions still save.
+     */
+    @Test fun aReRouteOfAnOlderSessionNeverOverwritesTheAppsNewOne() {
+        val old = session().copy(token = 100)
+        assertTrue(NavSession.mayOverwrite(onDisk = 100, mine = old.token))
+        assertTrue(NavSession.mayOverwrite(onDisk = null, mine = old.token))
+        assertFalse("the app wrote a new session meanwhile", NavSession.mayOverwrite(onDisk = 200, mine = old.token))
+        // the token survives the file and a taken re-route
+        val back = NavSessionStore.fromJson(JSONObject(NavSessionStore.toJson(old).toString()))!!
+        assertEquals(100L, back.token)
+        val r = Run(Navigator(old))
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        r.nav.onResult(r.jobs.last().id, found(1150.0 to 0.0))
+        r.nav.take((r.nav.prompt as NavPrompt.Question).id)
+        assertTrue(r.nav.session.rerouted)
+        assertEquals(100L, r.nav.session.token)
+    }
 }

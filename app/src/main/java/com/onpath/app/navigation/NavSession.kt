@@ -46,6 +46,11 @@ data class NavSession(
      * the route is reached is led to again at once (here → the start → all points), never dropped for the bare plan.
      */
     val lead: Boolean = false,
+    /**
+     * Who wrote this session: a new value each time the app chooses what is followed; re-routes keep it. A re-route of
+     * an older session never overwrites the app's newer file ([mayOverwrite], fix-tour-edit-line.md cause 4).
+     */
+    val token: Long = 0,
 ) {
     val active: List<GeoPoint> get() = current ?: original
     val rerouted: Boolean get() = current != null
@@ -53,6 +58,13 @@ data class NavSession(
     companion object {
         const val VISITED_M = 40.0
         const val FILE = "nav-session.json"
+
+        /**
+         * The service may write its (re-routed) session over the file only when the file still holds the same
+         * session ([onDisk] = the file's token, null = no file): a re-route that finished just after the app chose a new
+         * line (plan edited during the tour) must not bring the old line back.
+         */
+        fun mayOverwrite(onDisk: Long?, mine: Long): Boolean = onDisk == null || onDisk == mine
 
         /** A new session for [line]; plan stops are placed along it in order. */
         fun start(kind: NavKind, name: String, activity: Activity, sac: Int, line: List<GeoPoint>,
@@ -124,6 +136,7 @@ class NavSessionStore(private val file: File) {
             .put("version", s.version)
             .put("reached", s.reached)
             .put("lead", s.lead)
+            .put("token", s.token)
 
         fun fromJson(o: JSONObject): NavSession? {
             val original = withShapes(withTurns(withWays(readPts(o.getJSONArray("original")), o.optJSONArray("originalWays")),
@@ -153,6 +166,7 @@ class NavSessionStore(private val file: File) {
                 // a file without the key was written by an older app during a running tour: assume it was reached
                 reached = o.optBoolean("reached", true),
                 lead = o.optBoolean("lead", false),
+                token = o.optLong("token", 0L),
             )
         }
 

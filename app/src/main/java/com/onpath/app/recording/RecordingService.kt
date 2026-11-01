@@ -591,7 +591,9 @@ class RecordingService : Service() {
             stored != null && stored.active.size == line.size -> stored
             else -> {
                 val prefs = Prefs(this)
-                NavSession(NavKind.TRACK, follow?.first ?: Txt.s(Res.string.nav_route_fallback), prefs.activity, prefs.sac, line)
+                // the file's token: this session replaces it (never "an older session" for mayOverwrite)
+                NavSession(NavKind.TRACK, follow?.first ?: Txt.s(Res.string.nav_route_fallback), prefs.activity, prefs.sac, line,
+                    token = stored?.token ?: 0L)
             }
         }
         // the plan edited mid-tour ("Continue navigation"): the rider has been on the route already – off the edited
@@ -630,6 +632,14 @@ class RecordingService : Service() {
         if (step.vibrate && (settings ?: Prefs(this).settings).offRouteVibrate) vibrate()
         if (step.cancelJob) cancelReroute()
         step.job?.let { startReroute(it) }
+        // the app chose a new line meanwhile (its FOLLOW_CHANGED is on the way): this result belongs to the old session
+        if ((step.lineChanged || step.sessionChanged) &&
+            !NavSession.mayOverwrite(sessionStore.load()?.token, nav.session.token)) {
+            Problems.trace("navigation", "Re-route result of an older line dropped: the app follows a new line")
+            loadFollow()
+            publish(force = true)
+            return
+        }
         if (step.lineChanged) {
             // written before the new line is shown (crash recovery R-07)
             sessionStore.save(nav.session)
