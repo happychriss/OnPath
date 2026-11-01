@@ -13,6 +13,10 @@ class PlanLayersTest {
     @Test fun planShowsLineAndMarkers() = assertEquals(true to true, planLayers(canEditMap = true))
     @Test fun navigateShowsNoPlanLineAndNoMarkers() = assertEquals(false to false, planLayers(canEditMap = false))
 
+    /** Owner 2026-11-01: in Navigate the plan's points show while the tour follows the plan (passed ones with a ✓). */
+    @Test fun navigateFollowingThePlanShowsItsPoints() =
+        assertEquals(false to true, planLayers(canEditMap = false, navigateWithPlan = true))
+
     private fun g(i: Int) = com.onpath.app.routing.GeoPoint(51.0 + i * 0.001, 7.0)
     private val ahead = (5..9).map(::g)
 

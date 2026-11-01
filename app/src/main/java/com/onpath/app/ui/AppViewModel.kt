@@ -2655,6 +2655,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         enter(AppMode.NAVIGATE)
     }
 
+    /** A tour is guided along the plan (not a followed GPX track): Navigate shows the plan's points (owner 2026-11-01). */
+    val planGuides: Boolean get() = followLine != null && !followIsTrack && waypoints.isNotEmpty()
+
     /** Look of the followed / shown line on the map (see MapController.setTrackLook): a shown track its own colour, else route blue. */
     fun trackLook(): com.onpath.app.map.MapController.TrackLook =
         if (shown != null) com.onpath.app.map.MapController.TrackLook.TRACK else com.onpath.app.map.MapController.TrackLook.FOLLOW

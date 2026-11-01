@@ -496,7 +496,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     LaunchedEffect(c) {
         // canEditMap is part of the key on its own: Navigate → Plan while the plan is followed must redraw the markers
         snapshotFlow {
-            val (line, markers) = planLayers(vm.canEditMap)
+            val (line, markers) = planLayers(vm.canEditMap, navigateWithPlan = vm.mode == AppMode.NAVIGATE && vm.planGuides)
             PlanDrawing(vm.route, line, markers, vm.waypoints.toList(), vm.planGaps, passed)
         }
             .collect { d ->
@@ -656,9 +656,12 @@ internal fun paleLines(plan: Boolean, navOriginal: List<com.onpath.app.routing.G
  * Which parts of the plan the map draws: (planned line, numbered point markers) – both whenever the plan can be edited
  * (Plan mode, no track shown), also during a tour: the plan's route is blue as without a tour, never hidden, so the blue
  * line can never vanish (owner 2026-11-01; before, the line was hidden while "followed" and only a pale copy showed it –
- * fix-tour-edit-line.md cause 2). Navigate shows only the followed line, no numbered points (owner).
+ * fix-tour-edit-line.md cause 2). Navigate shows the followed line and – while the tour follows the plan
+ * ([navigateWithPlan]) – the plan's numbered points, passed ones with a ✓ (owner 2026-11-01: "sonst weiß man gar nicht,
+ * wo man einen Punkt gemacht hat"); not tappable there (MapHost edits only when canEditMap).
  */
-internal fun planLayers(canEditMap: Boolean): Pair<Boolean, Boolean> = canEditMap to canEditMap
+internal fun planLayers(canEditMap: Boolean, navigateWithPlan: Boolean = false): Pair<Boolean, Boolean> =
+    canEditMap to (canEditMap || navigateWithPlan)
 
 /** What the plan drawing on the map depends on (MapSync). */
 private data class PlanDrawing(
