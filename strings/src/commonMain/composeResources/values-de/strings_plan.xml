@@ -80,7 +80,7 @@
     <string name="plan_route_options">Routenoptionen</string>
     <string name="plan_save_route">Route speichern</string>
     <string name="plan_time_details">Zeitdetails</string>
-    <string name="plan_close_plan">Schließen</string>
+    <string name="plan_close_plan">Plan schließen</string>
     <string name="plan_start_short">Start</string>
     <string name="plan_sheet_expand">Routenübersicht zeigen</string>
     <plurals name="plan_hint_count">
@@ -197,12 +197,12 @@
     <string name="plan_err_set_start_dest">Setze einen Startpunkt und ein Ziel.</string>
     <string name="plan_err_set_start_end">Setze einen Start- und einen Endpunkt.</string>
     <string name="plan_err_no_route_for">Keine Route zwischen diesen Punkten für %1$s gefunden.</string>
-    <string name="plan_err_no_route_for_try">Keine Route zwischen diesen Punkten für %1$s gefunden. Verschiebe einen Punkt oder setze einen Zwischenpunkt.</string>
-    <string name="plan_err_too_far">%1$s ist zu weit (%2$d m) von jedem Weg entfernt, der für %3$s nutzbar ist. Setze ihn näher an einen Weg.</string>
-    <string name="plan_err_not_mapped">%1$s ist mehr als %2$d m von jedem Weg entfernt, der für %3$s nutzbar ist. Setze ihn näher an einen Weg.</string>
-    <string name="plan_err_timeout_hike">Keine Route in %1$d s gefunden. Das Ziel ist evtl. nur über Wege schwerer als SAC T%2$d erreichbar – wähle eine höhere Stufe, verschiebe den Punkt oder setze einen Zwischenpunkt.</string>
+    <string name="plan_err_no_route_for_try">Keine Route zwischen diesen Punkten für %1$s gefunden. Setze einen Punkt an anderer Stelle oder füge einen Zwischenpunkt ein.</string>
+    <string name="plan_err_too_far">%1$s ist zu weit (%2$d m) von jedem Weg entfernt, der für %3$s nutzbar ist. Lösche ihn und setze ihn näher an einem Weg neu.</string>
+    <string name="plan_err_not_mapped">%1$s ist mehr als %2$d m von jedem Weg entfernt, der für %3$s nutzbar ist. Lösche ihn und setze ihn näher an einem Weg neu.</string>
+    <string name="plan_err_timeout_hike">Keine Route in %1$d s gefunden. Das Ziel ist evtl. nur über Wege schwerer als SAC T%2$d erreichbar – wähle eine höhere Stufe, setze den Punkt an anderer Stelle oder füge einen Zwischenpunkt ein.</string>
     <string name="plan_err_timeout">Die Berechnung hat zu lange gedauert (über %1$d s). Wähle näher liegende Punkte oder setze einen Zwischenpunkt.</string>
-    <string name="plan_err_island">Keine Route gefunden: Ein Punkt liegt auf einem abgeschlossenen Wegenetz, das für %1$s nicht nutzbar ist. Verschiebe ihn.</string>
+    <string name="plan_err_island">Keine Route gefunden: Ein Punkt liegt auf einem abgeschlossenen Wegenetz, das für %1$s nicht nutzbar ist. Lösche ihn und setze ihn auf einem verbundenen Weg neu.</string>
     <string name="plan_err_too_long">Route zu lang für die Berechnung auf dem Handy. Setze Zwischenpunkte oder wähle näher liegende Punkte.</string>
     <string name="plan_err_profile_folder">Ordner für Routing-Profile kann nicht angelegt werden.</string>
     <string name="plan_err_profile_install">Routing-Profil %1$s kann nicht installiert werden.</string>
