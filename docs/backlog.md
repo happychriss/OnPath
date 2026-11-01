@@ -50,8 +50,8 @@ the git log.
      after "split done" (the captain messages you), then shared-code + parity tests.
   4. **Then:** cloud-app puts the Points-row text into `PlanPoints` and the sync H3 rule into `sync/` (one announced
      commit each) → cloud-plan wires both → captain's release check.
-  5. The daily scheduled task "Web-Planer: täglicher Abgleich" (05:47) merges `main` into `web-spike` by itself –
-     the owner decides whether to pause it until the split is done.
+  5. The daily scheduled task "Web-Planer: täglicher Abgleich" (05:47) is **paused** (owner 2026-11-01,
+     onpath.private#11); the captain switches it on again after cloud-plan's merge of the finished split.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
