@@ -44,6 +44,8 @@ first – owner: emulator locally, GitHub only when no computer is on) · `[kart
 no tag = any unit. An item may carry several tags.
 
 ## Arbeiter (worker sessions)
+Stay responsive to the owner (`CLAUDE.md` "Responsive chat"): long self-contained steps in a background fork, talk and
+small things directly. The Leitstand itself is always responsive – it only starts workers and never works in its chat.
 One item, in your own worktree (the host made it): claim is held by the Leitstand; work per `CLAUDE.md` (gate, devices
 via `tools/dev/device.sh`, questions via `tools/ask.sh`), push to `main` (rebase), one handoff line, then end – say
 „fertig: <commit>“ as your last line. Never start other sessions.

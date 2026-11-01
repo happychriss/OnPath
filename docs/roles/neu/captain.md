@@ -56,6 +56,8 @@ collects questions and tells the owner what is new. It writes no product code an
    Nothing new → no push.
 
 ## The owner's words
+Answer at once; anything longer (reading many files, checking CI, writing several issues) goes to a background fork so
+the owner can go on talking (`CLAUDE.md` "Responsive chat").
 - A rule / priority / stop for everyone → an `an-alle` issue (`tools/ask.sh sag --titel … --text …`); a stop gets
   `#push-sperre` (everything) or `#release-sperre` (only releases). Close it when the owner says it is over.
 - An answer to a question → a comment on that issue (`tools/ask.sh antwort <nr> "…"`); the asking unit acts and closes.

@@ -29,10 +29,14 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
 ## How sessions work
 - **Main session talks and distributes; work runs in background agents** (builds, checks, merges, installs). The
   main session keeps the overview of all agents (task → state → next step), stops stuck ones, and reports without
-  being asked.
+  being asked. **The chat stays responsive** (owner 2026-11-01): a request that takes longer than ~2 minutes and stands
+  on its own goes to a background agent – preferably a fork, which keeps the whole conversation – and the session
+  answers at once "läuft: …"; talk, decisions, questions and small changes are done directly (a fresh agent would lose
+  the context, and for small things it is slower). A request that needs the same files, Gradle or the same device as a
+  running agent waits: "wartet auf X". Not "everything in the background" – that costs context.
 - **Keep the owner's computer usable:** heavy jobs `nice -n 19 ionice -c3`, ≤ 4 workers (`--max-workers=4`,
-  Docker `--cpus=2`, `OMP_NUM_THREADS=1`); prefer the cloud build for big map jobs. No local emulator – e2e runs in
-  CI or on the owner's phone.
+  Docker `--cpus=2`, `OMP_NUM_THREADS=1`); prefer the cloud build for big map jobs. Emulator runs locally on donald
+  (owner 2026-11-01: GitHub's E2E is slow – only when no computer is on), one at a time via `tools/dev/device.sh`.
 - **Code first for bugs:** when diagnostics exist, find the cause by reading the code and reproduce it in a JVM test.
   Use the phone only briefly to confirm, say how long, say when it is free again, and restore the owner's app state
   before handing it back (a long trial-and-error session on the phone at bedtime was not OK).

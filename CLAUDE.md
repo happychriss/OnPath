@@ -204,5 +204,10 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
   device, `--try` → do other work while busy, `device.sh status` shows who holds what; an install is refused while a
   tour records); never start a second emulator. Sub-agents run on the session's own computer – parallel work across
   computers is separate backlog items, one per unit (the captain splits them).
+- **Responsive chat** (owner 2026-11-01): long, self-contained work (> ~2 min: builds, test runs, device checks, a
+  bounded change, research) runs in a background agent – preferably a **fork** (it keeps the conversation) – and the
+  session answers at once ("läuft: …") and takes the next request; talk, decisions, questions and small changes it does
+  directly. A request that would touch the same files, Gradle or device as a running agent waits ("wartet auf X").
+  Details: `docs/owner-preferences.md` "How sessions work".
 - **Requirements** live in `docs/requirements.md` (exported from the shared Claude doc); keep IDs stable,
   add new ones at the end of a section.
