@@ -339,4 +339,14 @@ class NavigatorTest {
         assertTrue(r.nav.session.rerouted)
         assertEquals(100L, r.nav.session.token)
     }
+
+    /** Review M4: the activity-switch question is not "off the route" (no "Off route" status / voice, junction cues go on). */
+    @Test fun theSwitchQuestionIsNotOffRoute() {
+        val s = session()
+        val q = NavPrompt.Question(1, 0.0, 0.0, 0.0, s.original, 0.0, 0.0)
+        assertTrue(q.offRoute)
+        val sw = q.copy(switch = ActivitySwitch(Activity.MTB, 3, s, 600.0))
+        assertFalse(sw.offRoute)
+        assertFalse(NavPrompt.FarStart(1, 900.0, 0.0).offRoute)
+    }
 }

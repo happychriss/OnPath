@@ -67,8 +67,12 @@ sealed interface NavPrompt {
     data class LeadFailed(val id: Int) : NavPrompt
 }
 
-/** The prompt is about being off the route (amber card, "Off route" status) – not the far start before the route. */
-val NavPrompt.offRoute: Boolean get() = this !is NavPrompt.FarStart && this !is NavPrompt.LeadFailed
+/**
+ * The prompt is about being off the route (amber card, "Off route" status) – not the far start before the route, and
+ * not the activity-switch question (review M4: it said "Off the route" and stopped junction cues on the route).
+ */
+val NavPrompt.offRoute: Boolean get() =
+    this !is NavPrompt.FarStart && this !is NavPrompt.LeadFailed && (this as? NavPrompt.Question)?.switch == null
 
 /** Straight-line direction to the nearest route point ahead (arrow mode). */
 data class RouteHint(val distanceM: Double, val bearingDeg: Double, val target: GeoPoint)
