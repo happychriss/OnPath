@@ -43,3 +43,11 @@ Recommended technique: a controller per area that holds a narrow interface of th
 `invalidateEngine()`, `say`), state forwarded by getters / setters (never value copies), public names forwarded.
 Safety net before moving: emulator runs of `NoStaleDownloadsE2ETest`, `RoutingDataFreshInstallE2ETest`,
 `PhoneSetupE2ETest`, the Release-Rundgang; after each step the same + full gate + androidTest compile.
+
+## How the next session works (owner 2026-11-01)
+- **Split the work across agents where it causes no problems** – never two agents editing `AppViewModel.kt` (or any
+  file) at the same time. Safe in parallel: one agent writes / runs the safety-net tests (characterisation unit tests,
+  the E2E map tests on the emulator) while another prepares step 4 in a worktree; or step 4 and step 5 in two
+  worktrees only if their hunks in AppViewModel.kt do not overlap, merged one after the other with a full gate each.
+- **Every emulator run on donald** (`connectedDebugAndroidTest -Ponpath.e2e=true`, `tools/ci/release_rundgang.sh`),
+  one at a time under the Gradle lock (`~/onpath-cells-work/gradle.lock`) – never in a plain cloud container.
