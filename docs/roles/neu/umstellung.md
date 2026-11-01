@@ -14,6 +14,8 @@
 | `docs/roles/neu/start.md`, `captain.md` | fertig, noch nicht gültig |
 
 ## A. Drei Tests auf donald (je ~2 min, nichts wird dabei eingeschaltet)
+0. **Jeder neue Ordner einmal:** `claude` darin starten, die Vertrauensfrage bestätigen, `/exit`. Sonst endet
+   `unit.sh` mit „Workspace not trusted“ (gesehen auf donald 2026-11-01; ein Autostart kann die Frage nicht beantworten).
 1. **Wiederanhängen:** im Terminal auf donald im OnPath-Ordner `tools/dev/unit.sh run test-donald`. Erscheint ein Link
    und steht danach eine ID in `~/.local/state/onpath-unit/test-donald.id`? Abbrechen (Strg-C), noch einmal starten
    → ist es in der Claude-App **dieselbe** Sitzung (alter Chat da)? Wenn die ID nicht erkannt wird: die Ausgabe der
@@ -30,7 +32,7 @@
 - Ordnername auf beiden Rechnern: `~/Projects/work/onpath` (statt `onpath-app` / `onpath-plan`) – Vorschlag ja.
 
 ## C. Einschalten
-1. donald: `ONPATH_PERMISSION_MODE=<B> tools/dev/unit.sh install donald` → Link öffnen, Start-Satz aus
+1. donald: im Checkout einmal `claude` starten und vertrauen (A.0), dann `ONPATH_PERMISSION_MODE=<B> tools/dev/unit.sh install donald` → Link öffnen, Start-Satz aus
    `docs/roles/neu/start.md` einmal tippen, `/loop`. Neustart-Test: Rechner neu starten → dieselbe Sitzung läuft wieder.
    Sicher-Test: eine Datei ändern, neu starten → Branch `wip/donald-…` auf GitHub.
 2. 👤 Die alte Sitzung `claud-app` beenden, sobald die neue läuft (vorher: alles gepusht, Übergabe geschrieben).

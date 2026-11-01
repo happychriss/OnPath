@@ -29,6 +29,8 @@ run() {
   local idf=$STATE/$NAME.id id log=$STATE/$NAME.log mode=()
   [ -n "${ONPATH_PERMISSION_MODE:-}" ] && mode=(--permission-mode "$ONPATH_PERMISSION_MODE")
   id=$(cat "$idf" 2>/dev/null || true)
+  # a new folder must be trusted once by hand (`claude` there, accept the dialog) – an autostart cannot answer it
+  # (seen on donald 2026-11-01: "Error: Workspace not trusted"); exit 3 so systemd does not retry for ever
   if [ -n "$id" ]; then
     echo "$(date '+%F %T') re-attach $id" >> "$log"
     local t0=$SECONDS
@@ -41,6 +43,10 @@ run() {
   # the session id is read from the CLI's output (its claude.ai/code link) and saved for the next start
   claude remote-control --name "$NAME" "${mode[@]}" 2>&1 | while IFS= read -r line; do
     printf '%s\n' "$line" | tee -a "$log"
+    if [[ $line == *"Workspace not trusted"* ]]; then
+      echo "unit: this folder is not trusted yet – run \`claude\` in $DIR once, accept, /exit, then start again" | tee -a "$log"
+      exit 3
+    fi
     if [ ! -s "$idf" ] && [[ $line =~ (session_[A-Za-z0-9]+) ]]; then echo "${BASH_REMATCH[1]}" > "$idf"; fi
   done
 }
@@ -61,6 +67,8 @@ Environment=ONPATH_PERMISSION_MODE=${ONPATH_PERMISSION_MODE:-}
 ExecStart=/usr/bin/script -qefc "$DIR/tools/dev/unit.sh run $NAME" /dev/null
 Restart=on-failure
 RestartSec=30
+# exit 3 = folder not trusted yet (needs the owner once) – do not retry
+RestartPreventExitStatus=3
 
 [Install]
 WantedBy=default.target
