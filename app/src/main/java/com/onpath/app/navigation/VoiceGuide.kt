@@ -74,7 +74,7 @@ enum class WayKind { PATH, TRACK, ROAD, CYCLEWAY, WAY }
  * - Quiet while paused; "No GPS" once after [GPS_LOST_MS] without a fix while moving (owner 2026-11-01: a short gap is no
  *   news, standing still in a shop never), only after the start, at most every [NO_GPS_EVERY_MS].
  * - State sentences have a minimum interval (field 2026-11-01): "off the route" every [OFF_ROUTE_EVERY_MS], "back on the
- *   route" only after [BACK_ON_AFTER_MS] of the question that was said, "arrived" every [ARRIVED_EVERY_MS].
+ *   route" only after [BACK_ON_AFTER_MS] (15 s) of the question that was said, "arrived" every [ARRIVED_EVERY_MS].
  * - The tour's voice memory ([Memory]) is kept with the tour, not with the service: a recording service recreated
  *   mid-tour (sticky restart after the process died) continues with [continueTour] and never says "Los geht's" again
  *   (Pixel 2026-11-01: 3–4× in the first 3 km).
@@ -358,7 +358,9 @@ class VoiceGuide {
         /** "No GPS" is said again only after the GPS was good this long while walking. */
         const val GPS_REARM_MS = 2 * 60_000L
         const val OFF_ROUTE_EVERY_MS = 2 * 60_000L
-        const val BACK_ON_AFTER_MS = 60_000L
+        /** "Wieder auf der Route." when back this long after "Abseits der Route." (was 60 s – owner 2026-11-01, Rosellen
+         *  replay: back on the route 25 s after it, nothing said – "da wäre eine schöne Aussage"); quick flapping stays quiet. */
+        const val BACK_ON_AFTER_MS = 15_000L
         const val ARRIVED_EVERY_MS = 5 * 60_000L
 
         /** The way type is read this far before / after the junction: a crossing or a short link piece is not "the way". */

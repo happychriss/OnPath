@@ -348,6 +348,16 @@ class VoiceGuideTest {
         assertTrue(g.update(VoiceGuide.Input(120_000, fourth, 4, 0.0, onRoute = true, speedMps = 5.0, bike = true, rerouted = true)) is Phrase.NewRoute)
     }
 
+    /** Rosellen replay (owner 2026-11-01): back on the route 25 s after "Abseits der Route." – said. */
+    @Test fun backOnTheRouteSoonAfterIsSaid() {
+        val l = line(3000, emptyMap())
+        val g = VoiceGuide()
+        val base = VoiceGuide.Input(0, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
+        assertTrue(g.update(base) is Phrase.Start)
+        assertEquals(Phrase.OffRoute, g.update(base.copy(nowMs = 30_000, onRoute = false, offRoute = true)))
+        assertEquals(Phrase.BackOnRoute, g.update(base.copy(nowMs = 55_000, alongM = 400.0)))
+    }
+
     /** Jumping fixes open and close the question again and again: "off the route" at most every 2 min, no "back on". */
     @Test fun aFlappingOffRouteQuestionIsSaidAtMostEvery2Minutes() {
         val l = line(3000, emptyMap())
