@@ -37,6 +37,20 @@ object TimeEstimate {
     fun importedSeconds(segments: List<List<TrackPoint>>, a: Activity, f: Factors): Double =
         fileSeconds(segments) ?: round(segments.sumOf { s -> RouteTimes.of(s.map { it.toGeo() }, a).total(f) })
 
+    /** Distance, ascent, descent and time of an imported track – the numbers of the track panel and My routes. */
+    data class TrackStats(val distanceM: Double, val ascentM: Double, val descentM: Double, val durationS: Double)
+
+    /**
+     * [TrackStats] of an imported track (review routing L8: computed by hand in the app's import, the sync's import and
+     * the web's import) – one function for all three: distance per segment, ascent with the GPS filter, [importedSeconds].
+     */
+    fun trackStats(segments: List<List<TrackPoint>>, a: Activity, f: Factors): TrackStats {
+        val dist = segments.sumOf { s -> Geo.length(s.map { it.toGeo() }) }
+        var up = 0.0; var down = 0.0
+        segments.forEach { s -> val (u, d) = Geo.climb(s.map { it.ele }); up += u; down += d }
+        return TrackStats(dist, up, down, importedSeconds(segments, a, f))
+    }
+
     /**
      * Moving time in the file's timestamps (review routing M8 – was first → last: a 2-day hut tour read "31 h", a café
      * stop counted): per segment, without stops – staying within [STOP_RADIUS_M] for at least [STOP_MIN_S] (as

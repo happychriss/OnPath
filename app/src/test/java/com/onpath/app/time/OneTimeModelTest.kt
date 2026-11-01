@@ -7,6 +7,7 @@ import com.onpath.app.routing.LongRoute
 import com.onpath.app.routing.StraightLineEngine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -84,5 +85,19 @@ class OneTimeModelTest {
             val len = com.onpath.app.data.Geo.length(pts)
             assertEquals("$a", TimeEstimate.round(len / (kmh / 3.6)), s, 0.0)
         }
+    }
+
+    /** Review routing L8: one import stats for the app's import, the sync and the web (was three hand-made copies). */
+    @Test fun trackStatsAreTheImportsNumbers() {
+        val t0 = 1_700_000_000_000L
+        val seg = (0..60).map { TrackPoint(46.6 + it * 0.00072, 11.1, 600.0 + it * 5.0, t0 + it * 60_000L) }
+        val s = TimeEstimate.trackStats(listOf(seg), Activity.HIKE, Factors.ONE)
+        assertEquals(com.onpath.app.data.Geo.length(seg.map { it.toGeo() }), s.distanceM, 0.01)
+        assertEquals(300.0, s.ascentM, 1.0)
+        assertEquals(0.0, s.descentM, 0.01)
+        assertEquals(3600.0, s.durationS, 1.0)
+        val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        val sync = java.io.File("src/main/java/com/onpath/app/plansync/DbTourStore.kt").readText()
+        assertTrue(vm.contains("TimeEstimate.trackStats(") && sync.contains("TimeEstimate.trackStats("))
     }
 }

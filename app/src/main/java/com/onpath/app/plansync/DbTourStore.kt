@@ -57,11 +57,7 @@ class DbTourStore(
     override fun fromBin(t: Tour) { if (db.setDeleted(t.id, null)) Backups.tourChanged(context, t.id) }
 
     /** Distance, ascent, descent and time like a GPX import (AppViewModel.importGpx). */
-    private fun stats(track: TrackContent): List<Double> {
-        val dist = track.segments.sumOf { s -> Geo.length(s.map { GeoPoint(it.lat, it.lon) }) }
-        var up = 0.0; var down = 0.0
-        track.segments.forEach { s -> val (u, d) = Geo.climb(s.map { it.ele }); up += u; down += d }
-        val dur = com.onpath.app.time.TimeEstimate.importedSeconds(track.segments, track.activity, factors(track.activity))
-        return listOf(dist, up, down, dur)
-    }
+    private fun stats(track: TrackContent): List<Double> =
+        com.onpath.app.time.TimeEstimate.trackStats(track.segments, track.activity, factors(track.activity))
+            .let { listOf(it.distanceM, it.ascentM, it.descentM, it.durationS) }
 }

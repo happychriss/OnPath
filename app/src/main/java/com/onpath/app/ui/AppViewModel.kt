@@ -4861,13 +4861,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val pick = choice.pick
                 val name = data.name ?: fileName?.removeSuffix(".gpx")?.removeSuffix(".GPX") ?: defaultName(Txt.s(Res.string.msg_name_import))
                 val geo = segs.map { s -> s.map { it.toGeo() } }
-                val dist = geo.sumOf { Geo.length(it) }
-                var up = 0.0; var down = 0.0
-                segs.forEach { s -> val (u, d) = Geo.climb(s.map { it.ele }); up += u; down += d }
-                // the file's own time, else the one time model with the pace level (the same as this line planned)
-                val dur = com.onpath.app.time.TimeEstimate.importedSeconds(segs, pick.activity, planFactors(pick.activity))
+                // the file's own moving time, else the one time model with the pace level – the one import stats (app,
+                // sync, web: TimeEstimate.trackStats)
+                val st = com.onpath.app.time.TimeEstimate.trackStats(segs, pick.activity, planFactors(pick.activity))
                 val id = withContext(Dispatchers.IO) {
-                    db.insertTour(TourKind.IMPORTED, name, pick.activity.name, pick.sac, dist, up, down, dur, segs, data.waypoints)
+                    db.insertTour(TourKind.IMPORTED, name, pick.activity.name, pick.sac, st.distanceM, st.ascentM, st.descentM,
+                        st.durationS, segs, data.waypoints)
                 }
                 Backups.tourChanged(app, id)
                 sync.changed("GPX imported")
@@ -4881,7 +4880,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     selectActivity(pick.activity, userChange = false)
                 }
                 // something odd in the file: a grey line in the track panel, never a message (owner)
-                showTrack(ShownTrack(id, name, geo, data.waypoints, dist, up, down, dur, note = choice.note,
+                showTrack(ShownTrack(id, name, geo, data.waypoints, st.distanceM, st.ascentM, st.descentM, st.durationS, note = choice.note,
                     skippedNote = importedNote(data.warnings)))
                 if (geo.isEmpty()) events += UiEvent.Fit(pts)
                 // Diagnostics: the type is the file's own text – cut short, and say when it was not one we know
