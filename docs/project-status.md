@@ -26,6 +26,21 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud-app (donald), 2026-11-01 – release day turned fix day (owner: no release today, everything in).** List A
+  1–9 + "More before the release" on `main`, small green commits, Release-Rundgang 14/14 PASS (dfc701d9), E2E + unit
+  green (140d5bec). Field bugs: voice repeat (voice memory per tour in trip-pace.json, service scope exception handler,
+  minimum intervals), ■ Stop in the one-row tour step + slider "Stopp" (owner), plan lines in tour edits (passed points
+  kept, pale plan beside a re-route, SplitRequests, session token). Robustness: quiet while standing still (MoveWatch),
+  arrival in the service (RecState.arrived), watchdog after a sticky restart, unwritten points queued, guarded service
+  actions, switch question ≠ off route, off-route on when Plan is off screen, notification ids. Routing / sync: splice
+  catch-all, GPX rte + trk once, background routing thread, mailbox restart (M4), save-as-copy over a sync change (H3,
+  `sync/SaveRule`), stuck outbox said, Points row texts + name / fit rules shared. UX: hold hint, "Used OnPath before?",
+  dev tools only via unlock, POI tap details, "Close plan", errors without "move", one off-route question shape (owner),
+  route / tour / track. **Shared code for cloud-plan** (mirror list): Planner, GpxModel, SyncRound / SyncLedger,
+  SaveRule, PlanPoints, PlanNames – fingerprint unchanged. **Open:** the owner's diagnostics export of the voice-repeat
+  ride (confirms the crash path); device check of the tour-edit lines in Demo mode; owner idea jog rule + way types
+  (backlog, think first); a mailbox epoch on the server (cloud-plan). **Next:** the rest of the backlog; release after the
+  captain's go.
 - **cloud-plan (laptop), 2026-11-01 – release-day web fixes.** main merged into `web-spike` twice (up to 2f0a231f, incl.
   the splice catch-all – `PlannerSpliceTest` added to the web's shared tests); parity manifest re-checked. List A 10–13
   (c652cd9e): failed downloads not kept + grey offline line + re-plan when online, WasmGC check → "browser too old"
