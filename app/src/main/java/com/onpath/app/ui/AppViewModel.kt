@@ -1644,69 +1644,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         data class Failed(val message: String) : UpdateState
     }
 
-    var update by mutableStateOf<UpdateState>(UpdateState.Idle)
-        private set
+    /** App updates (F-OFF-06): [AppUpdates] – created on first use (nothing in the start-up reaches it). */
+    private val updates by lazy {
+        AppUpdates(getApplication(), viewModelScope, prefs, recording = { recState.value != null },
+            say = { text, kind -> say(text, kind, updatePlace()) })
+    }
+    val update: UpdateState get() = updates.update
     /** Release the user dismissed on the home screen (no nagging; still visible in Settings). */
-    var updateDismissed by mutableStateOf<String?>(null)
-
+    var updateDismissed: String?
+        get() = updates.updateDismissed
+        set(v) { updates.updateDismissed = v }
     /** Hidden when Google Play installed the app – Play handles updates then. */
-    val updatesEnabled: Boolean by lazy { !com.onpath.app.update.AppUpdater.installedFromPlay(getApplication()) }
-
-    fun checkForUpdates(manual: Boolean) {
-        if (!updatesEnabled || update is UpdateState.Checking || update is UpdateState.Downloading) return
-        val now = System.currentTimeMillis()
-        if (!manual && !com.onpath.app.update.AppUpdater.dueForAutoCheck(prefs.updateCheckMs, now)) return
-        if (manual) update = UpdateState.Checking
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = try {
-                val r = com.onpath.app.update.AppUpdater.fetchLatest(com.onpath.app.BuildConfig.UPDATE_REPO)
-                prefs.updateCheckMs = now
-                if (r != null && com.onpath.app.update.AppUpdater.isNewer(r.version, com.onpath.app.BuildConfig.VERSION_NAME))
-                    UpdateState.Available(r) else UpdateState.UpToDate
-            } catch (e: Exception) {
-                // Offline or GitHub unreachable: no user message for the automatic check, only the problem log.
-                Problems.info("update", "Update check failed (offline or GitHub unreachable)", e)
-                if (manual) UpdateState.Failed(Txt.s(Res.string.msg_update_check_failed)) else UpdateState.Idle
-            }
-            withContext(Dispatchers.Main) { update = result }
-        }
-    }
-
+    val updatesEnabled: Boolean get() = updates.updatesEnabled
     /** A tour is recording and the user tapped Install: ask first (installing closes OnPath, recording stops). */
-    var askUpdateDuringTour by mutableStateOf(false)
-
+    var askUpdateDuringTour: Boolean
+        get() = updates.askUpdateDuringTour
+        set(v) { updates.askUpdateDuringTour = v }
+    fun checkForUpdates(manual: Boolean) = updates.check(manual)
     /** Downloads the update and opens the Android installer (the user confirms there). */
-    fun installUpdate(duringTourOk: Boolean = false) {
-        if (!duringTourOk && recState.value != null) { askUpdateDuringTour = true; return }
-        askUpdateDuringTour = false
-        val app = getApplication<Application>()
-        val rel = (update as? UpdateState.Available)?.release ?: return
-        if (!com.onpath.app.update.AppUpdater.canInstall(app)) {
-            sayInfo(Txt.s(Res.string.msg_update_allow_install), updatePlace())
-            try { app.startActivity(com.onpath.app.update.AppUpdater.permissionIntent(app)) } catch (e: Exception) {
-                Problems.warn("update", "Install-permission settings screen could not be opened", e)
-            }
-            return
-        }
-        update = UpdateState.Downloading(rel, 0)
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val apk = com.onpath.app.update.AppUpdater.download(app, rel) { p ->
-                    viewModelScope.launch(Dispatchers.Main) { if (update is UpdateState.Downloading) update = UpdateState.Downloading(rel, p) }
-                }
-                withContext(Dispatchers.Main) {
-                    update = UpdateState.Available(rel)
-                    app.startActivity(com.onpath.app.update.AppUpdater.installIntent(app, apk))
-                }
-            } catch (e: Exception) {
-                Problems.warn("update", "Update download or installer start failed; current version kept", e)
-                withContext(Dispatchers.Main) {
-                    update = UpdateState.Available(rel)
-                    sayError(Txt.s(Res.string.msg_update_download_failed), updatePlace())
-                }
-            }
-        }
-    }
+    fun installUpdate(duringTourOk: Boolean = false) = updates.install(duringTourOk)
 
     /** Progress text while importing / downloading map data, null when idle. */
     var dataBusy by mutableStateOf<String?>(null)
