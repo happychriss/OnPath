@@ -100,6 +100,11 @@ data class RecState(
     val hadGpsFix: Boolean = true,
     /** Standing still ([MoveWatch], owner 2026-11-01): warnings are quiet – "No GPS" is a grey state, not amber. */
     val standingStill: Boolean = false,
+    /**
+     * The end of the followed line was reached (review H2: checked here, also with the phone in the pocket). Guidance
+     * is quiet from then on (no off-route alarms on the way to the car park); recording goes on. The app asks once.
+     */
+    val arrived: Boolean = false,
 )
 
 /**
@@ -334,6 +339,7 @@ class RecordingService : Service() {
                 recActivity = activityOf(existing.activity)
                 demoMarked = existing.name.startsWith(DemoLocation.TOUR_PREFIX)
                 voice.newTour()
+                arrivedToken = null
                 loadTrip() // also the tour's voice memory: a sticky restart never says "Los geht's" again
             } else {
                 // a tour started during a demo is marked as such (easy to find and delete)
@@ -350,6 +356,7 @@ class RecordingService : Service() {
                 climb.restart()
                 trip = com.onpath.app.time.TripPace(priorFor(recActivity))
                 voice.newTour(); voiceSaved = null
+                arrived = false; arrivedToken = null; arrivalGate.reset()
                 saveTrip()
             }
         } catch (e: Exception) {
@@ -510,10 +517,13 @@ class RecordingService : Service() {
 
         // navigation must never cost the track: a failure here is reported, the point below is still stored (R-07).
         // Standing still (owner 2026-11-01): no new off-route state, no reminder – the detector waits as without GPS
-        try { if (moveWatch.moving(nowEl)) checkOffRoute(p, loc.accuracy.toDouble(), nowEl) else navigator?.onGpsLost() } catch (e: Exception) {
+        try { if (moveWatch.moving(nowEl) && !arrived) checkOffRoute(p, loc.accuracy.toDouble(), nowEl) else navigator?.onGpsLost() } catch (e: Exception) {
             Problems.error("navigation", "Off-route check failed on a GPS fix; the track is still recorded", e)
         }
-        try { junctionCue(loc, nowEl) } catch (e: Exception) {
+        try { checkArrived(p.toGeo(), loc.accuracy.toDouble()) } catch (e: Exception) {
+            Problems.warn("navigation", "Arrival check failed on a GPS fix; asked again with the next one", e)
+        }
+        if (!arrived) try { junctionCue(loc, nowEl) } catch (e: Exception) {
             Problems.warn("navigation", "Junction check failed on a GPS fix; no junction vibration this time", e)
         }
         try { mapsAhead(p.toGeo()) } catch (e: Exception) {
@@ -557,6 +567,31 @@ class RecordingService : Service() {
     }
 
     private val gpsWatchdog = GpsWatchdog()
+
+    /** Arrival at the end of the followed line ([com.onpath.app.routing.ArrivalGate], review H2). */
+    private val arrivalGate = com.onpath.app.routing.ArrivalGate()
+    private var arrived = false
+    /** The session token the arrival belongs to (kept in [TRIP_FILE]: a restart keeps "arrived", a new line clears it). */
+    private var arrivedToken: Long? = null
+    private var lineLength: Pair<Int, Double>? = null
+
+    private fun checkArrived(pos: GeoPoint, accuracyM: Double) {
+        val nav = navigator ?: return
+        if (arrived || paused) return
+        val st = nav.state
+        if (st.line.size < 2) return
+        val len = lineLength?.takeIf { it.first == st.version }?.second
+            ?: Geo.length(st.line).also { lineLength = st.version to it }
+        val remaining = st.shownAlongM?.let { (len - it).coerceAtLeast(0.0) }
+        if (!arrivalGate.onFix(pos, st.line.last(), remaining, accuracyM)) return
+        arrived = true
+        arrivedToken = nav.session.token
+        saveTrip()
+        Problems.trace("navigation", "Arrived at the end of \"${nav.session.name}\": guidance quiet, recording goes on")
+        if (voiceOn()) voice.event(com.onpath.app.navigation.Phrase.Arrived, SystemClock.elapsedRealtime())
+            ?.let { voiceSpeaker()?.say(com.onpath.app.navigation.VoiceText.of(it)) }
+        publish(force = true)
+    }
 
     private fun notifyNoGpsAfterRestart() {
         Problems.error("recording", "Service restarted by itself and got no GPS fix for 5 min – user told")
@@ -694,6 +729,9 @@ class RecordingService : Service() {
         navigator = session?.let { Navigator(it).apply { setNavigating(navigatingApplied); old?.let { o -> detector.adoptHeading(o.detector) } } }
         applySettings()
         timeLine()
+        // arrived belongs to one followed line: a re-route keeps the token, the app's new line clears it
+        arrived = arrivedToken != null && navigator?.session?.token == arrivedToken
+        if (!arrived) arrivalGate.reset()
         alertKey = null; nm().cancel(ALERT_ID)
         navigator?.let { n ->
             if (n.session.needsLead) {
@@ -840,7 +878,7 @@ class RecordingService : Service() {
 
     /** One step of the spoken directions ([com.onpath.app.navigation.VoiceGuide]) for this fix / tick. */
     private fun voiceStep(st: NavState, nowEl: Long) {
-        if (!voiceOn()) return
+        if (!voiceOn() || arrived) return
         try {
             val s = navigator?.session
             val phrase = voice.update(com.onpath.app.navigation.VoiceGuide.Input(
@@ -1086,6 +1124,7 @@ class RecordingService : Service() {
             tourId, paused, distance, ascent, descent, elapsedS, gpsLost(),
             navigator?.state?.offM, navigator?.prompt != null, follow?.first, trackSnapshot,
             navigator?.state, tripTime(), saveFailed, hadGpsFix = lastGoodFixElapsed > 0, standingStill = standingStill(),
+            arrived = arrived,
         )
         // Battery: the clock runs by itself in the notification (chronometer); re-post only when what it says
         // changes (status, shown distance), at most every 5 s, and once a minute to keep the clock in step.
@@ -1162,7 +1201,8 @@ class RecordingService : Service() {
         tripSaved = SystemClock.elapsedRealtime()
         try {
             val m = voice.memory()
-            val o = org.json.JSONObject().put("tour", tourId).put("trip", trip.toJson()).put("voice", org.json.JSONObject()
+            val o = org.json.JSONObject().put("tour", tourId).put("trip", trip.toJson()).putOpt("arrivedToken", arrivedToken)
+                .put("voice", org.json.JSONObject()
                 .put("started", m.started).putOpt("offRoute", m.offRouteSaidMs).putOpt("noGps", m.noGpsSaidMs)
                 .putOpt("arrived", m.arrivedSaidMs))
             val f = File(filesDir, TRIP_FILE)
@@ -1176,6 +1216,7 @@ class RecordingService : Service() {
         trip = try {
             val o = org.json.JSONObject(File(filesDir, TRIP_FILE).readText())
             if (o.optLong("tour", -1) == tourId) {
+                arrivedToken = if (o.has("arrivedToken")) o.optLong("arrivedToken") else null
                 o.optJSONObject("voice")?.let { v ->
                     fun ms(k: String) = if (v.has(k)) v.optLong(k) else null
                     val m = com.onpath.app.navigation.VoiceGuide.Memory(v.optBoolean("started"), ms("offRoute"), ms("noGps"), ms("arrived"))

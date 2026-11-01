@@ -61,7 +61,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import com.onpath.app.routing.ArrivalGate
 import com.onpath.strings.*
 import java.io.File
 import java.text.SimpleDateFormat
@@ -187,8 +186,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val canEditMap: Boolean get() = mode == AppMode.PLAN && shown == null
     /** "You have arrived – end tour?" is open. */
     var arrivalAsk by mutableStateOf(false)
-    /** When to ask "You have arrived" (round trips, poor fixes, ask again after leaving); see [ArrivalGate]. */
-    private val arrivalGate = ArrivalGate()
     /** POI whose details sheet is open (F-MAP-09). */
     var selectedPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
 
@@ -1524,6 +1521,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     saveFailedShown = true
                     sayError(Txt.s(Res.string.msg_track_save_failing), NoticePlace.BACKGROUND)
                 } else if (st?.saveFailed == false) saveFailedShown = false
+                onArrived(st?.arrived == true)
                 val n = st?.nav ?: run { navActivitySeen = null; return@collect }
                 if (n.version != navVersion) { navVersion = n.version; if (followLine != n.line) followLine = n.line }
                 syncNavActivity(n.session)
@@ -3676,15 +3674,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun endTourAndDelete() { Problems.trace("tour", "End tour (delete)"); endAsk = null; arrivalAsk = false; deleteFinished = true; stopRecording() }
     private var deleteFinished = false
 
-    /** Called with each fix in Navigate: asks when the end of the followed line is reached ([ArrivalGate]). */
-    fun checkArrival(position: GeoPoint, remainingAlongM: Double?) {
-        if (mode != AppMode.NAVIGATE || recState.value == null) return
-        val acc = tracker.location.value?.takeIf { it.hasAccuracy() }?.accuracy?.toDouble()
-        if (arrivalGate.onFix(position, followLine?.lastOrNull(), remainingAlongM, acc)) {
-            if (!arrivalAsk) sayEvent(RecordingService.SAY_ARRIVED)
-            arrivalAsk = true
-        }
+    /**
+     * The service found the end of the followed line (RecState.arrived, review H2 – also with the phone in the pocket;
+     * it says "arrived" itself): the arrival question once per arrival this app instance sees.
+     */
+    private fun onArrived(arrived: Boolean) {
+        if (arrived && !arrivalSeen) { arrivalSeen = true; arrivalAsk = true }
+        if (!arrived) arrivalSeen = false
     }
+    private var arrivalSeen = false
 
     // ---------------- follow / record ----------------
 
@@ -3747,7 +3745,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         followIsTrack = false; prefs.followIsTrack = false
         followFromPlan = true
         planAtTrackFollow = null
-        arrivalGate.reset()
         Problems.trace("tour", "The tour follows \"${session.name}\" again as before the edit (${session.stops.size} points" +
             (if (session.rerouted) ", " + (if (session.lead && !session.reached) "way there" else "new route") + " kept" else "") + ")")
         RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED)
@@ -3831,7 +3828,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         planBaseline = null
         followIsTrack = isTrack; prefs.followIsTrack = isTrack
         planAtTrackFollow = null
-        arrivalGate.reset()
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_FOLLOW_CHANGED) {
             putExtra(RecordingService.EXTRA_CHECK_NOW, checkNow)
         }
@@ -3847,7 +3843,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         guidanceEndedByEmptyPlan = false
         followIsTrack = false; prefs.followIsTrack = false
         planAtTrackFollow = null
-        arrivalGate.reset()
         prefs.saveFollow("", null)
         navStore.save(null)
         followName = null

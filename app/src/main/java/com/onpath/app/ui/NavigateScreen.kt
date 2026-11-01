@@ -683,9 +683,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     }
     // a provisional position far from the line: "not on route" (calm), never a "to go" from the line's nearest point
     val provOff = prov != null && remaining != null && !com.onpath.app.navigation.Provisional.onRoute(remaining.offM, prov)
-    LaunchedEffect(location) {
-        if (here != null && com.onpath.app.navigation.Provisional.arrivalCheck(prov)) vm.checkArrival(here, remaining?.distanceM)
-    }
+    // the arrival is checked in the recording service (review H2: also with the phone in the pocket) – RecState.arrived
     val next = remember(turns, remaining, rec?.offRouteAlert, provOff) {
         if (provOff) null else nextTurnHint(turns, total, remaining?.distanceM, remaining?.offM, rec?.offRouteAlert == true)
     }
