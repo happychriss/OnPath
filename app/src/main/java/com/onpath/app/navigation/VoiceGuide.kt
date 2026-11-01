@@ -140,6 +140,7 @@ class VoiceGuide {
     private var lastOffRoute = false
     private var lastRerouted = false
     private var lastVisited: Set<Int>? = null
+    private var lastStops: List<NavStop>? = null
     private var gpsLostSince: Long? = null
     private var gpsSaid = false
     /** GPS good again and walking since (after "No GPS" was said); null = not yet / standing. */
@@ -214,7 +215,10 @@ class VoiceGuide {
             queue(Phrase.Start((lineLength - i.alongM).coerceAtLeast(0.0), i.toGoS, dest), i.nowMs)
         }
         // stops reached (not the start, not the destination – the arrival is its own event)
-        val prev = lastVisited
+        // another list of stops (a plan edited during the tour, the plan followed again after deleting a point): its
+        // visited stops are no news (owner 2026-11-01, Rosellen replay: "Stopp 2 erreicht" again 3 km after it)
+        val prev = lastVisited?.takeIf { i.stops == lastStops }
+        lastStops = i.stops
         lastVisited = i.visited
         if (prev != null) {
             for (k in i.visited.sorted()) {

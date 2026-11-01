@@ -198,6 +198,18 @@ class VoiceGuideTest {
         assertNull(g.update(VoiceGuide.Input(20_000, second, 2, 50.0, onRoute = true, speedMps = 5.0, bike = true, rerouted = true)))
     }
 
+    /** Rosellen replay (owner 2026-11-01): after deleting a point the whole plan is followed again – its visited stops are no news. */
+    @Test fun anotherListOfStopsSaysNoStopReached() {
+        val g = VoiceGuide()
+        val l = line(3000, emptyMap())
+        val all = listOf(NavStop(l[0], 0.0), NavStop(l[50], 500.0), NavStop(l[100], 1000.0), NavStop(l[200], 2000.0), NavStop(l.last(), 3000.0))
+        val ahead = listOf(NavStop(l[120], 0.0), NavStop(l[200], 800.0), NavStop(l.last(), 1800.0))
+        val base = VoiceGuide.Input(0, l, 1, 1200.0, onRoute = true, speedMps = 5.0, bike = true, stops = ahead, visited = emptySet())
+        g.update(base)
+        val said = (1..5).mapNotNull { s -> g.update(base.copy(nowMs = s * 20_000L, stops = all, visited = setOf(0, 1, 2))) }
+        assertTrue("$said", said.none { it is Phrase.StopReached })
+    }
+
     @Test fun stopReachedWithTheNextStop_notTheStartNorTheDestination() {
         val g = VoiceGuide()
         val l = line(3000, emptyMap())

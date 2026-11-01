@@ -239,14 +239,17 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         ))
     }
 
+    /** The proposed new route and the guide line – under the route points (owner 2026-11-01: "Punkte unter der Bahn"). */
     private fun addNavOverlays() {
+        fun under(l: org.maplibre.android.style.layers.Layer) =
+            if (style.getLayer(LAYER_WPT) != null) style.addLayerBelow(l, LAYER_WPT) else addBelowPosition(l)
         style.addSource(GeoJsonSource(SRC_NAV_PROPOSAL))
-        addBelowPosition(LineLayer(SRC_NAV_PROPOSAL, SRC_NAV_PROPOSAL).withProperties(
+        under(LineLayer(SRC_NAV_PROPOSAL, SRC_NAV_PROPOSAL).withProperties(
             PF.lineColor(ROUTE_COLOR), PF.lineWidth(5f), PF.lineDasharray(arrayOf(1.6f, 1.2f)),
             PF.lineJoin(Property.LINE_JOIN_ROUND),
         ))
         style.addSource(GeoJsonSource(SRC_NAV_GUIDE))
-        addBelowPosition(LineLayer(SRC_NAV_GUIDE, SRC_NAV_GUIDE).withProperties(
+        under(LineLayer(SRC_NAV_GUIDE, SRC_NAV_GUIDE).withProperties(
             PF.lineColor("#C62828"), PF.lineWidth(3f), PF.lineDasharray(arrayOf(1f, 1.5f)), PF.lineOpacity(0.9f),
         ))
     }
