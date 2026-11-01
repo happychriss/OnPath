@@ -18,6 +18,9 @@ Das Verhalten von Claude / Plattform (Gastgeber, Worktrees, Sitzungen starten, W
 **Auf dem Laptop nur drei Prüfungen bei der Einrichtung (C.3):** (a) `gh api repos/happychriss/onpath.private --jq
 .full_name` und `tools/ask.sh an-alle` – ohne `gh` greifen dort weder `an-alle` noch die Push-Sperre (Backlog: dort
 fehlt `gh auth setup-git`); (b) A.0 im Ordner; (c) `save-on-shutdown.sh dry` – keine Kartendaten dabei.
+**Laptop geprüft 2026-11-01:** (a) ✓ `gh` erreicht `onpath.private`, `jq` 1.8.1, `ask.sh` läuft (als Kopie aus
+`origin/main` – der Checkout steht noch auf `web-spike`); (c) ✓ leer, `onpath-plan` sauber (0 geändert, 0 ungepusht),
+keine Kartendaten. Offen nur (b) beim Einrichten des neuen Ordners `onpath` auf `main`.
 0. **Jeder neue Ordner einmal:** `claude` darin starten, die Vertrauensfrage bestätigen, `/exit`; dann
    `claude remote-control`, `w` drücken bis „worktree“, Strg-C. Sonst endet
    `unit.sh` mit „Workspace not trusted“ (gesehen auf donald 2026-11-01; ein Autostart kann die Frage nicht beantworten).
