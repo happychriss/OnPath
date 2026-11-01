@@ -38,6 +38,13 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-app] 2026-11-01 afternoon: shared (3) on `main` for cloud-plan (sync M4 7d589d55, H3 `sync/SaveRule` d0d43d87,
+  Points row texts 1d35cc5b, name / fit rules ec5c43c6 – mirror list); UX text polish d08e15c4; recording M6 / L1 +
+  GPX OOM (shared `GpxParser`) in the last commit. **Owner decisions the review touches – left as they are:** UX 14 arrival
+  dialog (Save · Delete · Keep going – owner's End-tour rule), UX 17 Navigate "2:50 h  7.4 km" (owner layout), UX 13
+  "Round trip" name, UX 11 voice stays silent until the setup test (owner rule; the Settings line says so), UX 19 T2 /
+  "Difficult" badge. Still open from the reviews (not in the order): routing M1–M5, M7, M8, L1–L9; recording M5, M7;
+  architecture 2–14 (2 = signing key, PR to the owner). Say which to take next.
 - ← [cloud-app] **"More before the release" done on `main`** (2026-11-01) except (3): quiet while standing still 8834651c
   (MoveWatch: no voice / off-route question / reminder, grey "No GPS"); M4 a6f2d10b; M2 + M3 747b6593; watchdog H3
   f05dfc45; arrival in the service H2 dfc701d9; GPX rte + trk once 313e9d1f (**shared** `gpx/GpxModel`); background
