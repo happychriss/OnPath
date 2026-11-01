@@ -146,4 +146,32 @@ class TourSplitTest {
         assertEquals(setOf(0), passed)
         assertEquals(TourSplit.Outcome.NothingAhead, TourSplit.outcome(plan, listOf(a1), passed))
     }
+
+    /**
+     * Field 2026-11-01 (fix-tour-edit-line.md cause 1): after an edit the tour follows position → ahead; its new session
+     * no longer knows the passed points, so they were worked out again from the position alone and dropped – the pale
+     * plan and the ✓ vanished and the next edit followed the whole plan from point 1 again. Passed points are kept per
+     * tour ([known]).
+     */
+    @Test fun passedPointsStayPassedAfterTheTourFollowsTheEditedPlan() {
+        val b1 = pt(0.0, 0.0); val b2 = pt(0.0, 500.0); val b3 = pt(0.0, 1000.0); val b4 = pt(0.0, 3000.0)
+        val plan = listOf(b1, b2, b3, b4)
+        val pos = pt(100.0, 600.0)
+        val track = line(pt(60.0, 0.0), pt(60.0, 600.0), pos)
+        val stops = listOf(NavStop(b1, 0.0), NavStop(b2, 500.0), NavStop(b3, 1000.0), NavStop(b4, 3000.0))
+        val before = TourSplit.Tour(listOf(track), pos, reached = true, bike = false, stops = stops, progressM = 600.0)
+        assertEquals(setOf(0, 1), TourSplit.passed(plan, before))
+        // delete b4 → follow position → b3
+        val after = listOf(b1, b2, b3)
+        assertEquals(TourSplit.Outcome.Follow(listOf(b3)), TourSplit.outcome(plan, after, setOf(0, 1)))
+        // the session after followAhead: position → b3, only b3 as a stop, nothing visited, no progress yet
+        val fresh = TourSplit.Tour(listOf(track), pos, reached = true, bike = false,
+            stops = listOf(NavStop(pos, 0.0), NavStop(b3, 420.0)), progressM = 0.0)
+        assertEquals("without the tour's memory b2 is lost", setOf(0), TourSplit.passed(after, fresh))
+        assertEquals(setOf(0, 1), TourSplit.passed(after, fresh, known = setOf(b1, b2)))
+        // a deleted point no longer matches; a known point never makes the goal of a round trip passed
+        assertEquals(setOf(0), TourSplit.passed(listOf(b1, b3), fresh, known = setOf(b1, b2)))
+        assertEquals(emptySet<Int>(), TourSplit.passed(listOf(b1, b3, b1), fresh.copy(position = null, track = emptyList()),
+            known = setOf(b1)).filter { it == 2 }.toSet())
+    }
 }

@@ -1446,8 +1446,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var pendingSplit: TourSplit.Outcome? = null
     /** The plan before that edit (FollowHistory key: Undo brings its followed route back exactly). */
     private var splitBefore: List<GeoPoint>? = null
-    /** Newer position → ahead routes supersede older ones. */
-    private var splitGen = 0
+    /** Newer position → ahead routes supersede older ones; any later edit / clear makes a running one stale. */
+    private val splitRequests = SplitRequests()
     /** The followed line is a shown track: "Continue navigation" keeps it instead of re-planning. */
     private var followIsTrack = prefs.followIsTrack
     /** The plan's points when a track was taken to follow ([PlanGuidance.planReplacesTrack]); null = no track / unknown. */
@@ -1870,6 +1870,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun tourPassed(plan: List<GeoPoint> = waypoints.toList()): Set<Int> {
         val rec = recState.value ?: return emptySet()
+        if (rec.tourId != passedTourId) { passedTourId = rec.tourId; passedPoints.clear() }
         if (followLine == null || followIsTrack || plan.isEmpty()) return emptySet()
         val s = rec.nav?.session?.takeIf { it.kind == NavKind.PLAN }
         return TourSplit.passed(plan, TourSplit.Tour(
@@ -1877,11 +1878,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             // progress compares with the stops' places on the original line only (a taken re-route has its own)
             stops = s?.takeUnless { it.rerouted }?.stops.orEmpty(), progressM = rec.nav?.progressM ?: 0.0,
             visited = s?.visited?.mapNotNull { s.stops.getOrNull(it)?.point }?.toSet().orEmpty(),
-        ))
+        ), known = passedPoints).also { r -> r.forEach { i -> plan.getOrNull(i)?.let { passedPoints += it } } }
     }
+
+    /**
+     * The plan points found passed in this tour (fix-tour-edit-line.md cause 1): after an edit the tour follows
+     * position → ahead and its session no longer knows them – they stay passed (matched by coordinate; a deleted point
+     * simply no longer matches). Cleared with a new tour.
+     */
+    private val passedPoints = HashSet<GeoPoint>()
+    private var passedTourId: Long? = null
 
     /** [TourSplit.outcome] of the edit [before] → [after] during a tour, kept for [followEditedPlan]. */
     private fun splitOf(before: List<GeoPoint>, after: List<GeoPoint>): TourSplit.Outcome? {
+        splitRequests.invalidate()
         val passed = tourPassed(before)
         val o = if (passed.isEmpty()) null else TourSplit.outcome(before, after, passed)
         pendingSplit = o; splitBefore = before
@@ -1905,6 +1915,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun answerRouteBack(yes: Boolean) {
         if (!routeBackAsk) return
         routeBackAsk = false
+        splitRequests.invalidate()
         if (recState.value == null) return
         val pos = myPosition()
         val plan = waypoints.toList()
@@ -3760,7 +3771,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val pos = myPosition()
         val pts = listOfNotNull(pos) + ahead
         if (pts.size < 2) { followPlanned(); return } // no position yet and one point ahead: the plan as a whole
-        val gen = ++splitGen
+        val gen = splitRequests.next(waypoints)
         val act = activity; val level = sac; val f = planFactors(act)
         val off = if (pos != null) 1 else 0
         val pins = ahead.indices.filter { ahead[it] in pinned }.map { it + off }.toSet()
@@ -3773,7 +3784,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         pins, emptySet(), f)
                 }
             }
-            if (gen != splitGen || recState.value == null) return@launch
+            if (!splitRequests.isCurrent(gen, waypoints.toList()) || recState.value == null) return@launch
             val line = res.getOrNull()?.route?.takeIf { it.error == null && it.points.size >= 2 }?.points
             if (line == null) {
                 Problems.warn("tour", "No route from the position to the ${ahead.size} points ahead; the guidance so far stays",
@@ -3821,6 +3832,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun clearFollow() {
+        splitRequests.invalidate()
         followFromPlan = false
         guidanceEndedByEmptyPlan = false
         followIsTrack = false; prefs.followIsTrack = false
