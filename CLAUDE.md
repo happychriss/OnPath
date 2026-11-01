@@ -182,8 +182,12 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
 - **Questions to the owner + the owner's word to all** (owner 2026-11-01): GitHub issues in the private repo
   `happychriss/onpath.private` via `tools/ask.sh` (REST, works in cloud and on the computers). A question to the owner
   exists **only** as an issue with label `frage` (`tools/ask.sh frage --von <unit> …`: who, 2–3 lines background, the
-  question, options with the recommendation first, a link) – in the chat at most "Frage #12 offen"; read answers with
-  `tools/ask.sh offen`, act, close with `tools/ask.sh erledigt <nr> "…"`. Label `an-alle` = the owner's word to every
+  question, options with the recommendation first, a link). Two kinds (owner 2026-11-01 – the yellow "waiting" dot in
+  the Claude app must keep meaning "something stands still"): **blocking** (nothing goes on without the answer) →
+  `--blockiert` **and** ask the same question in the chat as a question box and wait; when the owner answers in the
+  chat, copy it into the issue (`tools/ask.sh antwort <nr> "…"`). **Not urgent** → only the issue, keep working, never
+  wait in the chat for it; read answers after every pull (`tools/ask.sh offen`). Either way: act, then close with
+  `tools/ask.sh erledigt <nr> "…"` – the owner never has to close an issue. Label `an-alle` = the owner's word to every
   session: read at the start, after every pull and before every push (`tools/ask.sh an-alle --von <unit>` confirms
   "gelesen"); `gate.sh` refuses a push on `#push-sperre`, a release commit on `#release-sperre`. Toward the owner
   in a session: one question box at a time with answer options (`docs/owner-preferences.md`).

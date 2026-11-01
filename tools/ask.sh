@@ -12,7 +12,10 @@
 #
 # Usage:
 #   tools/ask.sh frage --von donald --titel "Debug-Build für Tester?" --worum "2–3 Zeilen" \
-#                      --frage "…?" --a "… (Empfehlung)" --b "…" [--c "…"] [--details docs/x.md#y]
+#                      --frage "…?" --a "… (Empfehlung)" --b "…" [--c "…"] [--details docs/x.md#y] [--blockiert]
+#                      --blockiert: nothing goes on without the answer – the session ALSO asks in its chat and waits
+#                      (the owner sees the yellow "waiting" dot); title gets "⏸". Without it: the session works on.
+#   tools/ask.sh antwort <nr> "A – …"      the owner answered in the chat: copy it into the issue (keeps the list true)
 #   tools/ask.sh offen [--von donald]      open questions + their last comment (= the owner's answer, if any)
 #   tools/ask.sh erledigt <nr> "was gemacht wurde"     comment + close a question
 #   tools/ask.sh an-alle [--von donald]    print the open `an-alle` issues (and confirm them as read with --von)
@@ -29,7 +32,9 @@ die() { echo "ask: $*" >&2; exit 2; }
 have_gh() { command -v gh >/dev/null && gh api "repos/$REPO" --silent >/dev/null 2>&1; }
 
 cmd=${1:-}; shift || true
+case "$cmd" in -h|--help|"") sed -n '2,/^set -uo/p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;; esac
 ARGS=()
+BLOCK=0
 VON="" TITEL="" WORUM="" FRAGE="" A="" B="" C="" DETAILS="" TEXT="" RELEASE=0
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -41,6 +46,7 @@ while [ $# -gt 0 ]; do
     --b) B=$2; shift ;;
     --c) C=$2; shift ;;
     --details) DETAILS=$2; shift ;;
+    --blockiert) BLOCK=1 ;;
     --text) TEXT=$2; shift ;;
     --release) RELEASE=1 ;;
     -h|--help) sed -n '2,/^set -uo/p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
@@ -80,6 +86,10 @@ case "$cmd" in
     [ -n "$C" ] && body+=$'\n'"- **C)** $C"
     [ -n "$DETAILS" ] && body+=$'\n\n'"**Details:** $DETAILS"
     body+=$'\n\n'"Antwort: einen Kommentar mit dem Buchstaben (oder eigenem Text)."
+    if [ "$BLOCK" = 1 ]; then
+      body="**⏸ Blockiert:** die Sitzung wartet – antworte am schnellsten im Chat der Sitzung ($VON); sie trägt die Antwort hier ein."$'\n\n'"$body"
+      TITEL="⏸ $TITEL"
+    fi
     new_issue frage "[$VON] $TITEL" "$body$FOOTER"
     ;;
   offen)
@@ -87,6 +97,12 @@ case "$cmd" in
     json=$(open_issues frage) || die "could not list questions"
     jq -r '.[] | "#\(.number) \(.title)\n   Antwort: \(if (.comments|length) > 0 then (.comments[-1]|split("\n")[0]) else "– noch keine –" end)"' <<<"$json" |
       { if [ -n "$VON" ]; then grep -A1 -F "[$VON]" | grep -v '^--$'; else cat; fi; }
+    ;;
+  antwort)
+    nr=${ARGS[0]:-}; what=${ARGS[1]:-}
+    [ -n "$nr" ] && [ -n "$what" ] || die "antwort needs <nr> \"die Antwort des Owners\""
+    have_gh || die "gh cannot reach $REPO"
+    comment "$nr" "Antwort im Chat: $what$FOOTER" && echo "#$nr: Antwort eingetragen"
     ;;
   erledigt)
     nr=${ARGS[0]:-}; what=${ARGS[1]:-}
@@ -125,5 +141,5 @@ case "$cmd" in
       fi
     fi
     ;;
-  *) die "unknown command '${cmd}' (frage | offen | erledigt | an-alle | sag | check; --help)" ;;
+  *) die "unknown command '${cmd}' (frage | offen | antwort | erledigt | an-alle | sag | check; --help)" ;;
 esac
