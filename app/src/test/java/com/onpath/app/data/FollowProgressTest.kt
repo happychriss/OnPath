@@ -4,6 +4,7 @@ import com.onpath.app.routing.GeoPoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FollowProgressTest {
@@ -13,7 +14,7 @@ class FollowProgressTest {
     @Test fun atStartEverythingRemains() {
         val r = FollowProgress(line).remaining(GeoPoint(46.6701, 11.10))!!
         assertEquals(Geo.length(line), r.distanceM, 120.0)
-        assertEquals(500.0, r.ascentM, 10.0)
+        assertEquals(500.0, r.ascentM, 20.0) // BRouter's 10 m buffer, like the plan sheet
         assertEquals(11.0, r.offM, 3.0)
     }
 
@@ -46,5 +47,22 @@ class FollowProgressTest {
         assertEquals(0.0, r.ascentM, 1.0)
         assertEquals(250.0, r.descentM, 10.0)
         assertEquals(4.0, r.offM, 0.0)
+    }
+
+    /**
+     * Review routing M1: the plan sheet says "↑ 850 m" (BRouter's 10 m hysteresis), Navigate counted every 4 m bump of the
+     * terrain – the number jumped at Start. At the start of the line both say the same.
+     */
+    @Test fun remainingAscentAtTheStartIsThePlansAscent() {
+        // 5 km climbing 200 m with 8 m terrain bumps every 50 m
+        val line = (0..100).map { i ->
+            com.onpath.app.routing.GeoPoint(46.0 + i * 0.00045, 11.0, 1000.0 + i * 2.0 + if (i % 2 == 0) 0.0 else 8.0)
+        }
+        val plan = com.onpath.app.routing.Planner.climb(line)
+        val start = FollowProgress(line).at(0.0, 0.0)!!
+        assertEquals(plan.first, start.ascentM, 1.0)
+        assertEquals(plan.second, start.descentM, 1.0)
+        // the old GPS filter counted the bumps: clearly more
+        assertTrue(Geo.climb(line.map { it.ele }).first > plan.first + 50)
     }
 }

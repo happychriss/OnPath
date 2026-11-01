@@ -603,21 +603,7 @@ class Planner(
         const val ELE_FILTER_M = 10.0
 
         /** Filtered ascent and descent of [line]'s elevations (BRouter's hysteresis, [ELE_FILTER_M]). */
-        fun climb(line: List<GeoPoint>): Pair<Double, Double> {
-            var up = 0.0; var down = 0.0; var bufUp = 0.0; var bufDown = 0.0
-            var last: Double? = null
-            for (q in line) {
-                val e = q.ele ?: continue
-                val prev = last
-                if (prev != null) {
-                    bufUp += e - prev; bufDown += prev - e
-                    if (bufUp > ELE_FILTER_M) { up += bufUp - ELE_FILTER_M; bufUp = ELE_FILTER_M } else if (bufUp < 0.0) bufUp = 0.0
-                    if (bufDown > ELE_FILTER_M) { down += bufDown - ELE_FILTER_M; bufDown = ELE_FILTER_M } else if (bufDown < 0.0) bufDown = 0.0
-                }
-                last = e
-            }
-            return up to down
-        }
+        fun climb(line: List<GeoPoint>): Pair<Double, Double> = Geo.routeClimb(line.map { it.ele }, ELE_FILTER_M)
 
         /** Routes to points cut as a detour at most this often per chunk ([planChunk]); each pass ends at least one more point. */
         const val MAX_SPUR_PASSES = 3

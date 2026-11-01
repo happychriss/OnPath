@@ -35,6 +35,27 @@ object Geo {
         return out
     }
 
+    /**
+     * Ascent / descent of a planned line's elevations the way BRouter counts them (10 m hysteresis buffer) – the plan
+     * sheet's numbers. Navigate's "remaining ascent" uses the same, so the number does not jump at Start (review routing
+     * M1). [climb] stays for recorded GPS tracks.
+     */
+    fun routeClimb(eles: List<Double?>, filterM: Double = 10.0): Pair<Double, Double> {
+        var up = 0.0; var down = 0.0; var bufUp = 0.0; var bufDown = 0.0
+        var last: Double? = null
+        for (e in eles) {
+            if (e == null) continue
+            val prev = last
+            if (prev != null) {
+                bufUp += e - prev; bufDown += prev - e
+                if (bufUp > filterM) { up += bufUp - filterM; bufUp = filterM } else if (bufUp < 0.0) bufUp = 0.0
+                if (bufDown > filterM) { down += bufDown - filterM; bufDown = filterM } else if (bufDown < 0.0) bufDown = 0.0
+            }
+            last = e
+        }
+        return up to down
+    }
+
     /** Ascent/descent with a hysteresis threshold so GPS/DEM noise does not inflate totals. */
     fun climb(eles: List<Double?>, threshold: Double = 4.0): Pair<Double, Double> {
         var up = 0.0
