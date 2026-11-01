@@ -52,6 +52,16 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-plan] **main 2e50efbc merged into `web-spike` + shared rules wired** (4e9913be, 2026-11-01, `web/` only):
+  the web build and the parity check read `app/web-shared-files.txt` (Arch 5); Points row texts from `PlanPoints`
+  (M15); `PlanNames` / `RouteFit` via the engine (TS copies gone); `SaveRule` H3 (changed on the phone meanwhile →
+  saved as a copy + line); sync M4 restart + 413 kept; GPX import via `TimeEstimate.trackStats` (moving time). JogRule:
+  nothing on the web (no cues). Shared-code JVM tests (incl. PlanNamesTest, PlannerSpliceTest), parity manifest, plan
+  parity 14/14, Wasm sync / gpx / lang checks, host tests, all CI smokes green on the laptop (4 smokes only needed the
+  app's renamed texts). Open: plan GPX pins, the track → plan modal, M4 mailbox epoch (mirror list). **Correction:**
+  every green push to `web-spike` deploys by itself (`web-spike.yml`, owner 2026-10-27) – my earlier "not deployed"
+  was wrong: list A, sync H1 / M7, edit queue etc. have been live since their pushes (live before this one: ebbcfbb2).
+  4e9913be goes live when its CI is green. Main moved on meanwhile (c2429f7a …) – not merged yet.
 - ← [cloud-app] 2026-11-01 evening: **routing M4 not built** – both halves meet a deliberate choice: a check of the 1°
   parts between the points cannot tell "not loaded" from "sea" (false "routing data missing" on coasts), and per-leg
   retries after a timeout mean up to ~30 s more waiting (the code chose "straight at once"). Question to the owner as
@@ -96,8 +106,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [cloud-plan] Waiting for cloud-app's AppViewModel split on `main`: web-only work, no shared files touched, no deploy, **no merge of `main` mid-split**; after cloud-app's "split done" (captain messages) → one merge, shared-code + parity tests (also: the web build reads `app/web-shared-files.txt`?), word to the captain; then wire cloud-app's Points-row text (`PlanPoints`, web M15) and the sync H3 rule (`sync/`) on the web – since 2026-11-01
-- [cloud-plan] "More before the release" (owner 2026-11-01): (1) + (2) done (web-spike 5749bac6); left: (3) with cloud-app – sync H3 / M4 as one shared rule in `sync/`, Points list row text from shared `PlanPoints` (web M15) – since 2026-11-01
+- [cloud-plan] Shared rules from main 2e50efbc wired on web-spike 4e9913be – left: the mirror line "Left from main 2e50efbc" – since 2026-11-01
 - [cloud-app] The rest of the backlog (owner 2026-11-01: no release today, everything in) – since 2026-11-01
 - [cloud-app] AppViewModel split done, build on the Pixel (16:31) – owner tests it outside, then the captain's release check – since 2026-11-01
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
@@ -175,27 +184,8 @@ the git log.
   privacy + pairing sentences, host ipHash, date with the dot, first-route fit, "New route for … – check it".
   Plan parity: `web/test/plans.json` 14 cases, all app = web (gate in the jvm job).
   - *Should:*
-    - [cloud-plan] **One shared-file list (review Arch 5, owner 2026-11-01: now)** · `app/web-shared-files.txt` on main
-      ([files] / [tests], paths as in your `appFiles` / `appTests`, plus the new `routing/PlanNames.kt`, `sync/SaveRule.kt`,
-      `routing/PlanNamesTest.kt`) · please read it in `web/engine/build.gradle.kts` (and `tools/routing/jvm-test/run.sh`)
-      instead of the hard-coded lists; the app's `SharedFilesRuleTest` already guards it on every gate.
-    - [cloud-plan] **Shared code changed on `main` this afternoon (cloud-app, 2026-11-01) – comes with the next merge, mostly
-      no web work:** `gpx/` – no-fix (0,0) points and NaN heights dropped, other apps' sport names (72c9bece), plan GPX
-      pins as `<wpt><type>pinned</type>` + one off-line stop keeps the rest (23f64bc3: the web's export can pass its pins
-      `PlanGpx.stops(points, pinned)`, its re-import can pin `PlanGpx.pinnedOf`), damaged big GPX never OOM (e7c86fa3);
-      `time/TimeEstimate` – imported track = moving time (6460dc98), `trackStats` = the one import stats (1d9a375a:
-      `WebImport` can use it instead of its own copy); `routing/TrackToPlan.fit(cancel =)` optional (c87765f1);
-      `data/Geo` – `routeClimb` (Planner.climb delegates, same numbers, a3591b6c) and `fastDistance`, BRouterEngine /
-      WaypointSnap use them, tile names from `Rd5Parts.tileName` (5562274c). PlanResult, `sync/` (beyond the rules
-      announced above), profiles, `PLANNER_VERSION` untouched → fingerprint unchanged.
-    - [cloud-plan] **Shared (3) is on `main` (cloud-app, 2026-11-01) – wire it:** sync M4 7d589d55 (`SyncRound` restarts a
-      mailbox that lost its history; `Done.restarted` / `Done.tooLarge` – say them on the web too; not detectable without
-      the server: a new mailbox whose revision already passed the device's "since" → proposal: a mailbox epoch (claim
-      time) in the GET page, kept in the ledger, a different one = restart – host + `Mailbox.Page`, your call);
-      sync H3 d0d43d87 (new file `sync/SaveRule.kt` → `appFiles`; `plans.ts` OVERWRITE: `SaveRule.keepsOtherEdit(code
-      when opened, existing.plan)` → save as copy + the line `msg_route_changed_elsewhere`); Points row texts 1d35cc5b (`PlanPoints.roleText` / `legText` → `Engine.rows`, TS only renders). PlanSyncTest / PlanPointsTest cover them.
-    - [cloud-plan] GPX with `<rte>` + `<trk>` drawn once (tracks win) · 313e9d1f · `gpx/GpxModel.allSegments` (shared,
-      GpxParserTest runs in the web build too) – comes with the next main merge.
+    - [cloud-plan] Left from main 2e50efbc: plan GPX pins (`PlanGpx.stops(points, pinned)` on export, `pinnedOf` on re-import,
+      23f64bc3); "Plan a route from it" as a modal box with Cancel (app, owner 2026-11-01); sync M4's mailbox epoch (host).
     - [cloud-plan] Rolled-up one-row step? (app d288503, PlanSize.COLLAPSED: activity icon, time · distance, ⚠ count,
       compact green Start) · the web has small / profile / points (`sheetstep.ts`) and no Start – a fourth, one-row step
       only if the owner wants it on a phone-width browser.
@@ -206,8 +196,6 @@ the git log.
     - [cloud-plan] Quiet margin cells after planning (offline after planning) · 27029db · `cells/CellTriggers.kt`
       (`CellJob.margin`: cells along the route vs the corridor margin, `tourStarted`) – check `areas.ts` (T1–T4 mirror)
       asks the margin cells quietly like the app.
-    - [cloud-plan] Pure files for the name / fit rules · ec5c43c6 · `routing/PlanNames.kt` (newRouteName, copyName) and
-      `RouteFit` (firstRoute, fitAfterPlace), both in that one file – add to `appFiles`, drop the web's copies from `web/parity.json`.
   - *Low prio:*
     - A-016 App Links · `/.well-known/assetlinks.json` is live (200, v0.13.1 key) · left: on the phone
       `adb shell pm get-app-links com.onpath.app` – then `#p=` / `#pair=` links open the app (owner).
