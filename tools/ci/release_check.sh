@@ -4,7 +4,7 @@
 #   1. routing fingerprint inputs equal: BRouter version + PLANNER_VERSION (routing/RoutingFingerprint.kt), the
 #      profiles + lookups.dat (app/src/main/assets/brouter/), the BRouter jars (app/libs/)
 #   2. sync format equal: the shared sync/ files
-#   3. every other app file the planner compiles (appFiles in web/engine/build.gradle.kts) equal
+#   3. every other app file the planner compiles (app/web-shared-files.txt, else appFiles in web/engine/build.gradle.kts) equal
 #   4. CI green on both heads: unit.yml on the app ref, "Web spike" on the planner ref (needs gh; else "unknown")
 # Two branches today (main = app, web-spike = planner). After web-spike is merged into main both refs are main:
 # 1–3 hold by construction and only CI is checked.
@@ -56,28 +56,38 @@ for dir in app/src/main/assets/brouter app/libs; do
     bad "$dir differs:"; diff <(echo "$a") <(echo "$w") | grep '^[<>]' | awk '{print "      " $1 " " $3}'; fi
 done
 
-# 2 + 3. the app files the planner compiles
-BUILD=web/engine/build.gradle.kts
-SPEC=$WEB; git cat-file -e "$WEB:$BUILD" 2>/dev/null || SPEC=$APP
+# 2 + 3. the app files the planner compiles: app/web-shared-files.txt ([files]) – the one list since 2026-11-01 –
+# else appFiles in web/engine/build.gradle.kts (web-spike before it reads the list)
+LIST=app/web-shared-files.txt BUILD=web/engine/build.gradle.kts
+shared_files() { # ref → file names below $SRC
+  if git cat-file -e "$1:$LIST" 2>/dev/null; then
+    git show "$1:$LIST" | awk '/^\[files\]/{on=1; next} /^\[/{on=0} on' | sed 's/#.*//; s/[[:space:]]//g' | grep -v '^$'
+  elif git cat-file -e "$1:$BUILD" 2>/dev/null; then
+    git show "$1:$BUILD" | awk '/^val appFiles = listOf\(/{on=1; next} on && /^\)/{exit} on' | grep -v '^\s*//' |
+      grep -o '"[^"]*\.kt"' | tr -d '"'
+  fi
+}
 if [ "$APP_SHA" = "$WEB_SHA" ]; then
   echo "2. Sync format"; ok "one commit for app and planner – equal by construction"
   echo "3. Shared app files"; ok "one commit for app and planner – equal by construction"
-elif ! git cat-file -e "$SPEC:$BUILD" 2>/dev/null; then
-  bad "no $BUILD on $WEB or $APP – cannot list the shared files"
 else
-  mapfile -t FILES < <(git show "$SPEC:$BUILD" | awk '/^val appFiles = listOf\(/{on=1; next} on && /^\)/{exit} on' |
-    grep -v '^\s*//' | grep -o '"[^"]*\.kt"' | tr -d '"')
-  sync_diff=() other_diff=()
-  for f in "${FILES[@]}"; do
-    [ "$(blob "$APP" "$SRC/$f")" = "$(blob "$WEB" "$SRC/$f")" ] && continue
-    case "$f" in sync/*) sync_diff+=("$f") ;; *) other_diff+=("$f") ;; esac
-  done
-  echo "2. Sync format"
-  if [ ${#sync_diff[@]} = 0 ]; then ok "sync/ files equal"; else bad "sync/ differs: ${sync_diff[*]}"; fi
-  echo "3. Shared app files (${#FILES[@]} from $BUILD on ${SPEC#origin/})"
-  if [ ${#other_diff[@]} = 0 ]; then ok "all equal"; else
-    bad "${#other_diff[@]} differ – merge $APP into $WEB first (web/parity/merge-main.sh):"
-    printf '      %s\n' "${other_diff[@]}"
+  # the union of both sides' lists: a file only one side shares is still compared
+  mapfile -t FILES < <({ shared_files "$APP"; shared_files "$WEB"; } | sort -u)
+  if [ ${#FILES[@]} = 0 ]; then
+    bad "no shared-file list ($LIST or $BUILD) on $APP or $WEB"
+  else
+    sync_diff=() other_diff=()
+    for f in "${FILES[@]}"; do
+      [ "$(blob "$APP" "$SRC/$f")" = "$(blob "$WEB" "$SRC/$f")" ] && continue
+      case "$f" in sync/*) sync_diff+=("$f") ;; *) other_diff+=("$f") ;; esac
+    done
+    echo "2. Sync format"
+    if [ ${#sync_diff[@]} = 0 ]; then ok "sync/ files equal"; else bad "sync/ differs: ${sync_diff[*]}"; fi
+    echo "3. Shared app files (${#FILES[@]})"
+    if [ ${#other_diff[@]} = 0 ]; then ok "all equal"; else
+      bad "${#other_diff[@]} differ – merge $APP into $WEB first (web/parity/merge-main.sh):"
+      printf '      %s\n' "${other_diff[@]}"
+    fi
   fi
 fi
 
