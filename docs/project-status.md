@@ -26,6 +26,18 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud-app (donald), 2026-11-01 night – AppViewModel split 4 + 5, split done.** 4/5 `ui/MapDataFlow` (a8aade87:
+  cell triggers, card, loading modal, background strip, Offline maps, routing data loader), 5/5 `ui/SearchFlow`
+  (2e50efbc: search view, candidate marker, place names, shared places) – each with a small `Host` interface (getters /
+  setters on the ViewModel, no copies), public names forwarded; AppViewModel 5083 → 4091 lines; no shared file touched.
+  Kept in the ViewModel on purpose: `routingDataArrived` + `gated()` (one owner), routing data freshness, the
+  very-long-plan deferral, `addPlace` / place card (plan edits). Safety net on donald: full gate per step, E2E map tests
+  green before and after step 4, on the final state Release-Rundgang 14/14 + CorePlanLink + RoutingDataFreshInstall
+  (with download, `E2E_ARGS="-e routingDownload true"` – new in `release_rundgang.sh`) PASS. Two E2E tests were stale
+  (red before the split too) and are fixed: broken-link text, fresh-install notice on a fast line. Word to the captain
+  ("split done") in the backlog. **Pixel:** a tour was recording – no install; the owner ends it and says so (issue
+  onpath.private#12), then `installDebug` of `main`. **Next:** the owner tests that ONE build outside, then the
+  captain's release check; cloud-plan merges `main` once (captain messages).
 - **cloud-app (donald), 2026-11-01 – fix day (owner: no release today, everything in). Session ends here; a fresh
   cloud-app session goes on.** On `main`, each with gate.sh (often `--full`), small commits: list A 1–9; "More before the
   release" incl. shared sync rules (M4 restart, H3 `sync/SaveRule`), Points row texts, name / fit rules; then the open
