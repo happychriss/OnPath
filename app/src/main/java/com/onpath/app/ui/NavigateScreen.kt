@@ -760,6 +760,8 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     )
     // Back on the open sheet = "Keep" (nothing changes)
     androidx.activity.compose.BackHandler(enabled = vm.activityCheck != null) { vm.closeActivityCheck() }
+    // developer tools: the Navigate "Sim" follows a changed line (plan edit, new route) from where it is
+    LaunchedEffect(line) { vm.navSimFollow(line) }
     val bg = rememberBackgroundDownload(vm)
     val activity = androidx.compose.ui.platform.LocalContext.current as? com.onpath.app.MainActivity
     // Cycling, "Screen while cycling: Smart" (owner): far from the next turn the dim rest view covers the map (RestView.kt)

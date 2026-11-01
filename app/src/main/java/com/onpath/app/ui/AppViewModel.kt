@@ -398,6 +398,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             ?: run { sayError("This line is too short for a demo ride.", NoticePlace.MAP); return }
         Problems.trace("demo", "Tour simulation started on the Navigate page ($label)")
         com.onpath.app.recording.DemoLocation.startRide(path, label)
+        navSimLine = l
+    }
+
+    /** The line the Navigate "Sim" rides; null = no Sim from the Navigate page. */
+    private var navSimLine: List<GeoPoint>? = null
+
+    /**
+     * The followed line changed (plan edit, new route) while the Navigate "Sim" rides: it goes on along the new line from
+     * where it is ([com.onpath.app.recording.DemoLocation.switchLine]) – else the voice speaks of one line while the
+     * simulated position moves on another (owner 2026-11-01).
+     */
+    fun navSimFollow(line: List<GeoPoint>?) {
+        val st = com.onpath.app.recording.DemoLocation.state.value
+        if (st == null || st.kind != com.onpath.app.recording.DemoLocation.Kind.RIDE) { navSimLine = null; return }
+        if (navSimLine == null || line == null || line.size < 2 || line == navSimLine) return
+        val path = com.onpath.app.recording.DemoPath.timed(line, activity, planFactors()) ?: return
+        navSimLine = line
+        com.onpath.app.recording.DemoLocation.switchLine(path, "followed route")
     }
 
     /** Stands at the map centre (non-moving shots). */
