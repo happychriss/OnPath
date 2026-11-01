@@ -373,6 +373,8 @@ class RecordingService : Service() {
         acquireWakeLock()
         restWatch.reset(); tracker.setInterval(RestWatch.NORMAL_MS) // never start a tour at the standing-still rate
         moveWatch.start(SystemClock.elapsedRealtime())
+        // came back by itself (sticky restart): say so if no GPS comes (review H3)
+        if (intent == null) gpsWatchdog.arm(SystemClock.elapsedRealtime()) else gpsWatchdog.disarm()
         tracker.onFix = { onFix(it) }
         tracker.start()
         startTicker()
@@ -433,6 +435,7 @@ class RecordingService : Service() {
         if (!paused && wakeLock?.isHeld != true) acquireWakeLock()
         if (gpsLost()) navigator?.onGpsLost() // no alarms without GPS (R-04)
         if (gpsLost()) navigator?.state?.let { voiceStep(it, now) } // "No GPS signal" comes without fixes
+        if (gpsWatchdog.due(now, paused)) notifyNoGpsAfterRestart()
         if (now - lastStats >= 10_000) {
             lastStats = now
             if (pointQueue.size > 0) writePoints() // storage back while standing still: the waiting points go in
@@ -497,6 +500,7 @@ class RecordingService : Service() {
         restRate(loc)
 
         val nowEl = SystemClock.elapsedRealtime()
+        gpsWatchdog.disarm()
         val wasLost = lastGoodFixElapsed > 0 && nowEl - lastGoodFixElapsed > GAP_MS
         val lostSinceElapsed = lastGoodFixElapsed
         lastGoodFixElapsed = nowEl
@@ -550,6 +554,27 @@ class RecordingService : Service() {
         track.last() += p.toGeo()
         snapshotDirty = true
         publish()
+    }
+
+    private val gpsWatchdog = GpsWatchdog()
+
+    private fun notifyNoGpsAfterRestart() {
+        Problems.error("recording", "Service restarted by itself and got no GPS fix for 5 min – user told")
+        try {
+            val text = Txt.s(Res.string.nav_watchdog_text)
+            nm().notify(SAVE_FAIL_ID, NotificationCompat.Builder(this, CHANNEL_NAV)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(Txt.s(Res.string.nav_watchdog_title))
+                .setContentText(text).setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_ERROR)
+                .setAutoCancel(true)
+                .setContentIntent(openAppIntent())
+                .build())
+        } catch (e: Exception) {
+            Problems.warn("recording", "\"No GPS after restart\" notification could not be shown", e)
+        }
+        vibrate()
     }
 
     /** Track points not yet written ([PointQueue]). */
@@ -975,7 +1000,7 @@ class RecordingService : Service() {
         if (tourId < 0) return
         if (paused == p) return
         paused = p
-        if (!p) { seg++; last = null; moveWatch.start(SystemClock.elapsedRealtime()) } // resume = new segment, distance not bridged
+        if (!p) { seg++; last = null; moveWatch.start(SystemClock.elapsedRealtime()); gpsWatchdog.resumed(SystemClock.elapsedRealtime()) } // resume = new segment, distance not bridged
         // Battery: a pause records nothing – GPS runs slowly (never off (owner): walking on with the pause still on
         // is noticed by PauseWatch), the wake lock rests until Resume.
         pauseWatch.reset()

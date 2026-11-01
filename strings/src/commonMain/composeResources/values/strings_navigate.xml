@@ -138,6 +138,8 @@
     <string name="nav_rec_save_failed">The track cannot be saved any more (phone storage full or damaged). Free up space; recording keeps trying.</string>
     <string name="nav_rec_paused_title">Recording is paused</string>
     <string name="nav_rec_paused_moving">You are moving – resume recording?</string>
+    <string name="nav_watchdog_title">Recording gets no GPS</string>
+    <string name="nav_watchdog_text">OnPath restarted the recording but has had no GPS position for 5 minutes. Open OnPath and check the recording.</string>
     <string name="nav_interrupted_title">Tour recording interrupted</string>
     <string name="nav_interrupted_boot">The phone restarted – open OnPath and tap Continue to record on.</string>
     <string name="nav_interrupted_update">OnPath was updated – open OnPath and tap Continue to record on.</string>

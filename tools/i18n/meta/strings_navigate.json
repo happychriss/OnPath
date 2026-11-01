@@ -663,6 +663,18 @@
     "priority": 2,
     "confidence": "sicher"
   },
+  "nav_watchdog_title": {
+    "area": "Notification",
+    "context": "Notification: the recording service restarted by itself and has had no GPS fix for 5 minutes",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_watchdog_text": {
+    "area": "Notification",
+    "context": "Text of that notification; opens OnPath",
+    "priority": 2,
+    "confidence": "sicher"
+  },
   "nav_interrupted_title": {
     "area": "Notification",
     "context": "Notification after a phone restart / app update during a tour",
