@@ -304,7 +304,9 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     val tourMini = ui.tour != null && ui.shownSize == PlanSize.MINI
     val belowStep = if (tourMini || ui.collapsed) Modifier.clearAndSetSemantics { } else Modifier
     ui.tour?.let { t ->
-        TourStatusRow(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, ui.activity, t.recordOnly)
+        // the row alone: its own ■ Stop (field 2026-11-01) – with the next step End tour is right under it
+        TourStatusRow(t.distanceM, t.elapsedS, t.paused, cb.onPause, cb.onContinue, ui.activity, t.recordOnly,
+            onEnd = cb.onEndTour.takeIf { tourMini })
         // no rolled-up step during a tour: its stop is the tour row's (PlanSize.duringTour)
         Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COLLAPSED.step).stepEnd(PlanSize.MINI.step) })
         TourPauseEnd(t.paused, cb.onPause, cb.onEndTour, belowStep.padding(top = 4.dp))

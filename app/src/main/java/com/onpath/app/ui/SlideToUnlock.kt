@@ -3,6 +3,13 @@ package com.onpath.app.ui
 import com.onpath.strings.*
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.Job
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -53,6 +60,8 @@ import kotlin.math.roundToInt
 object SlideThreshold {
     /** The thumb must travel at least this share of the track before release counts. */
     const val COMPLETE = 0.85f
+    /** A tap moves the thumb this share of the track and back: "this slides". */
+    const val NUDGE = 0.25f
 
     fun clamp(offsetPx: Float, maxPx: Float): Float = offsetPx.coerceIn(0f, maxPx.coerceAtLeast(0f))
     fun fraction(offsetPx: Float, maxPx: Float): Float = if (maxPx <= 0f) 0f else clamp(offsetPx, maxPx) / maxPx
@@ -78,7 +87,8 @@ object SlideLabel {
 /**
  * "→ Tour menu": the only way out of Navigate. The thumb has to be dragged across ≥ 85 % of
  * the track; released earlier it springs back, so pocket or glove touches change nothing.
- * TalkBack users get a normal action ("Switch to plan mode").
+ * TalkBack users get a normal action ("Switch to plan mode"). A tap (UX review B2) nudges the thumb a quarter of the way
+ * and lets it spring back – it shows that the thumb slides, nothing opens.
  * [recording] false (Navigate without a recording): only "Change route" – Pause / End make no sense there.
  * [startFraction] places the thumb (screenshot tests only).
  */
@@ -95,8 +105,10 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
     val mainStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
     val subStyle = MaterialTheme.typography.bodyMedium
     val mainText = "→  $label"
+    var tapped by remember { mutableIntStateOf(0) }
     BoxWithConstraints(
         modifier.fillMaxWidth().height(TRACK_HEIGHT).clip(CircleShape).background(Color(0xE6202A33))
+            .pointerInput(Unit) { detectTapGestures { tapped++ } }
             .clearAndSetSemantics {
                 contentDescription = desc
                 onClick(label = switchLabel) { slid(); true }
@@ -105,7 +117,15 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
     ) {
         val maxPx = with(density) { (maxWidth - THUMB - PAD * 2).toPx() }
         var offset by remember(maxPx) { mutableFloatStateOf(SlideThreshold.clamp(startFraction * maxPx, maxPx)) }
+        var nudge by remember { mutableStateOf<Job?>(null) }
         val f = SlideThreshold.fraction(offset, maxPx)
+        LaunchedEffect(tapped) {
+            if (tapped == 0 || offset != 0f) return@LaunchedEffect
+            nudge = scope.launch {
+                animate(0f, SlideThreshold.NUDGE * maxPx, animationSpec = tween(220)) { v, _ -> offset = v }
+                animate(offset, 0f, animationSpec = spring()) { v, _ -> offset = v }
+            }
+        }
         // the small line only when it fits (measured at the phone's font size): never cut, never an ellipsis
         val showSub = sub != null && with(density) {
             val m = measurer.measure(mainText, mainStyle, maxLines = 1, softWrap = false)
@@ -130,6 +150,7 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
                 .draggable(
                     state = rememberDraggableState { d -> offset = SlideThreshold.clamp(offset + d, maxPx) },
                     orientation = Orientation.Horizontal,
+                    onDragStarted = { nudge?.cancel(); nudge = null },
                     onDragStopped = {
                         if (SlideThreshold.isComplete(offset, maxPx)) { offset = 0f; slid() }
                         else scope.launch { animate(offset, 0f, animationSpec = spring()) { v, _ -> offset = v } }

@@ -64,4 +64,21 @@ class PlanSizeTourTest {
         // large font: „Tour beenden“ wider than half the row → one under the other
         assertEquals(false, TourRowFit.sideBySide(pauseW = 400, endW = 520, width = 1000, gap = 20))
     }
+
+    /**
+     * Field 2026-11-01 (owner + UX B2): stopping needed a drag up first. The one-row step has a round ■ that opens the
+     * same "End this tour?" question as End tour (the same callback), only while the row is alone.
+     */
+    @Test fun theOneRowStepHasItsOwnStopWithTheEndTourQuestion() {
+        val panel = java.io.File("src/main/java/com/onpath/app/ui/PlanPanel.kt").readText()
+        assertEquals(true, panel.contains("onEnd = cb.onEndTour.takeIf { tourMini }"))
+        assertEquals(true, panel.contains("TourPauseEnd(t.paused, cb.onPause, cb.onEndTour"))
+        val bar = java.io.File("src/main/java/com/onpath/app/ui/TourBar.kt").readText()
+        assertEquals(true, bar.contains("OutlinedIconButton(onClick = onEnd, modifier = Modifier.size(48.dp)"))
+    }
+
+    @Test fun aTapOnTheSliderOnlyNudgesTheThumb() {
+        assertEquals(true, SlideThreshold.NUDGE < SlideThreshold.COMPLETE)
+        assertEquals(false, SlideThreshold.isComplete(SlideThreshold.NUDGE * 300f, 300f))
+    }
 }

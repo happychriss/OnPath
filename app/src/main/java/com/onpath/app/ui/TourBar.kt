@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Arrangement
@@ -177,21 +178,33 @@ internal fun breakOnlyAtDots(s: String): String = s.replace(' ', '\u00A0').repla
  * [Continue] (≥ 48 dp, also resumes a paused tour) on the right. Pause / End tour come with the next step
  * ([TourPauseEnd]); TalkBack hears the activity on the button ("Continue · Hike"). At a large font, when the status
  * beside the button would be taller than status + button stacked, the button goes under the status (right-aligned).
+ * [onEnd] (the row alone, field 2026-11-01 / UX B2): a round ■ (48 dp, red edge) left of Continue opens the same
+ * "End this tour?" question as End tour – no drag needed to stop.
  */
 @Composable
 fun TourStatusRow(
     distanceM: Double, elapsedS: Long, paused: Boolean, onPause: (Boolean) -> Unit, onContinue: () -> Unit,
-    activity: com.onpath.app.routing.Activity? = null, recordOnly: Boolean = false,
+    activity: com.onpath.app.routing.Activity? = null, recordOnly: Boolean = false, onEnd: (() -> Unit)? = null,
 ) {
     val status = tourStatusText(distanceM, elapsedS, paused, recordOnly)
     val described = continueLabel(activity)
+    val endLabel = str(Res.string.nav_end_tour)
     Layout(content = {
         TourStatus(status, paused)
-        Button(onClick = { if (paused) onPause(false); onContinue() },
-            modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = described },
-            contentPadding = PaddingValues(start = 14.dp, end = 18.dp)) {
-            Icon(Icons.Filled.Navigation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
-            Text(str(Res.string.nav_continue), maxLines = 1)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (onEnd != null) {
+                OutlinedIconButton(onClick = onEnd, modifier = Modifier.size(48.dp).semantics { contentDescription = endLabel },
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)) {
+                    Icon(Icons.Filled.Stop, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.error)
+                }
+                Spacer(Modifier.width(8.dp))
+            }
+            Button(onClick = { if (paused) onPause(false); onContinue() },
+                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = described },
+                contentPadding = PaddingValues(start = 14.dp, end = 18.dp)) {
+                Icon(Icons.Filled.Navigation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
+                Text(str(Res.string.nav_continue), maxLines = 1)
+            }
         }
     }, modifier = Modifier.fillMaxWidth()) { ms, c ->
         val gap = 8.dp.roundToPx()
