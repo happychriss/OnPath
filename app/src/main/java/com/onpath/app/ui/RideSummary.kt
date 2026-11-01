@@ -133,14 +133,8 @@ fun RideSummaryDialog(
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(choice) }) { Text(saveLabel) } },
-        dismissButton = {
-            Row {
-                TextButton(onClick = onDismiss) { Text(str(Res.string.common_cancel)) }
-                if (onDelete != null) TextButton(onClick = { askDelete = true },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(str(Res.string.common_delete)) }
-            }
-        },
+        confirmButton = { DeleteApartButtons(onDelete?.let { { askDelete = true } }, str(Res.string.common_cancel), onDismiss,
+            saveLabel) { onSave(choice) } },
     )
 }
 
