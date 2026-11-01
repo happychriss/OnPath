@@ -49,6 +49,8 @@ the git log.
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
+- **☰ menu order (owner 2026-11-01, "nur merken" – not now):** "Meine Routen" always at the top of the ☰ menu, not
+  "Route speichern" – otherwise one gets confused. [cloud-app]
 - **Way type on screen (owner idea 2026-11-01, rest of it):** the voice names the way from the real way type now (Feldweg
   only on a track, Radweg, Weg, Pfad, Straße – 44544250) and close opposite turns are one step (JogRule, 00b9f006);
   the screen's turn card / arrow shows the same junctions now (`navigation/ScreenTurns`, 4418dc36); the Navigate Sim
