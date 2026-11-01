@@ -75,7 +75,7 @@ private val PAD = 4.dp
 private val TEXT_GAP = 20.dp
 
 /**
- * What the slider says (owner 2026-10-31): "Tour menu" with a small line "Change route · Pause · End" under it – the
+ * What the slider says (owner 2026-11-01, was "Tour menu"): "Stop" with a small line "Pause · End · Change route" under it – the
  * small line only when it fits (large font: the main line only, never cut). Without a recording only "Change route".
  */
 object SlideLabel {
@@ -85,7 +85,7 @@ object SlideLabel {
 }
 
 /**
- * "→ Tour menu": the only way out of Navigate. The thumb has to be dragged across ≥ 85 % of
+ * "→ Stop": the only way out of Navigate. The thumb has to be dragged across ≥ 85 % of
  * the track; released earlier it springs back, so pocket or glove touches change nothing.
  * TalkBack users get a normal action ("Switch to plan mode"). A tap (UX review B2) nudges the thumb a quarter of the way
  * and lets it spring back – it shows that the thumb slides, nothing opens.

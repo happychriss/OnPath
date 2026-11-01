@@ -8,7 +8,7 @@ Search mockups: `docs/ux-search-proposals.md` (proposal C's "Add to route" card 
 | Purpose | Build / change the route, look around, manage tours and settings | Walk or ride: map follows you, nothing changes by accident |
 | Map taps | **Hold only** (0.3 s): map → add point (first one: "Start here / Go here (from my location)"), POI → "Add to route / Open in Google Maps", route point → point menu. Quick taps change nothing, nothing is dragged (see "Plan gestures") | **Nothing is added or moved.** POI tap shows info only. Pan/zoom allowed; "centre on me" (locate) re-follows **at the standard Navigate zoom** (Hike 17, every bike 16 – owner 2026-10-31, `AppMode.locateZoom`); the map coming back by itself (free look, back in the app) keeps the user's zoom |
 | Shown | Plan sheet: activity, stats, profile, undo/redo, the action row ✕ Close · ⇅ Reverse · ↻ Round trip; top ☰: Save route, My routes, start recording, Pair with browser, Settings (see "Menus") | Full map, route (line only – no numbered plan points, owner), position, top strip "to go: km · ↑m · time", GPS dot on the locate button |
-| Switch | **"Start navigation"** – normal big button (safe direction). With a tour running: **"Continue navigation"** | **Slide-to-plan switch** at the bottom: "Tour menu" / „Tour-Menü“ with a small second line "Change route · Pause · End" / „Route ändern · Pause · Beenden“ (owner 2026-10-31; was "Plan" / „Planen“, before that "Edit route"). The small line only when it fits (large font: main line only, never cut); without a recording only "Change route" / „Route ändern“ (`ui/SlideToUnlock.kt`, `SlideLabel`) – the only way out of Navigate (protects against pocket/glove touches) |
+| Switch | **"Start navigation"** – normal big button (safe direction). With a tour running: **"Continue navigation"** | **Slide-to-plan switch** at the bottom: "Stop" / „Stopp“ with a small second line "Pause · End · Change route" / „Pause · Beenden · Route ändern“ (owner 2026-11-01; sliding ends nothing – Plan opens with the tour row ■ Stop · Continue; was "Tour menu" / „Tour-Menü“, "Plan" / „Planen“, "Edit route"). The small line only when it fits (large font: main line only, never cut); without a recording only "Change route" / „Route ändern“ (`ui/SlideToUnlock.kt`, `SlideLabel`) – the only way out of Navigate (protects against pocket/glove touches) |
 
 ## Rules
 1. **Recording never stops when switching.** Starting navigation starts (or continues) the recording; going back to
@@ -120,7 +120,7 @@ undo step. Tracks open next to the plan without asking.
   the same free room. MapLibre's own compass is off.
 - Own position in both modes: small blue dot with accuracy circle and a small direction triangle at its edge
   (MapLibre COMPASS render mode; direction = compass standing, GPS bearing moving – `map/HeadingEngine`); grey when stale.
-- One primary action per mode: Plan → "Start navigation" ("Start recording" without a route), Navigate → slide "Tour menu" (back to Plan).
+- One primary action per mode: Plan → "Start navigation" ("Start recording" without a route), Navigate → slide "Stop" (back to Plan).
 
 ## Plan gestures (owner spec, `ui/MapGestures.kt`)
 **Hold only.** A hold is ≥ 0.3 s (`HOLD_MS`) with a ring filling under the finger; the vibration comes the moment
