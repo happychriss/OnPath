@@ -44,7 +44,11 @@ object DevToolsUnlock {
 
     fun unlocked(taps: Int): Boolean = taps >= TAPS
 
-    fun shown(debugBuild: Boolean, unlocked: Boolean): Boolean = debugBuild || unlocked
+    /**
+     * Only after the unlock (review Arch H1): the releases testers install are debug builds, so "debug builds always"
+     * showed Diagnostics → Developer tools (demo location, test styles) to every user.
+     */
+    fun shown(unlocked: Boolean): Boolean = unlocked
 }
 
 /** One line under a topic in the Settings list; [attention] colours it (problem = red, recommended = amber, news = accent). */

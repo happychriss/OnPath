@@ -153,7 +153,7 @@ fun SettingsScreen(
     devToolsOpen: Boolean = false,
     /**
      * Developer tools shown in Diagnostics (owner): hidden until the version line in About is tapped 7 times
-     * (remembered); debug builds always.
+     * (remembered; also in debug builds – testers get those).
      */
     devTools: Boolean = true,
     onUnlockDevTools: () -> Unit = {},

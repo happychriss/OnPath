@@ -138,7 +138,7 @@ python3 tools/make_style.py           # regenerates assets/style/onpath.json
   one at a time (`Messages.pick`, FRAGE first), 12 dp under the top element (`MessagePlacement`). Colours from
   `OnPathColors`, sizes from `OnPathType` only. Dialogs only for decisions that can lose something. **No dark message
   bar**: a result goes where the user acted (`vm.say(text, NoticeKind, NoticePlace)` → `NoticeRouting`). Developer tools
-  (Settings → Diagnostics) appear after 7 taps on the version in Settings → About (remembered; debug builds always).
+  (Settings → Diagnostics) appear after 7 taps on the version in Settings → About (remembered; also in debug builds – testers get those).
 - **Robustness rules** (requirements section 4): never crash on missing files – show a clear screen;
   write every recorded point to SQLite immediately; long work off the main thread; show plain-language
   errors (no stack traces) to the user.

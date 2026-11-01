@@ -253,8 +253,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Developer tools in Diagnostics (owner): debug builds always, else after 7 taps on the version. */
-    var devToolsShown by mutableStateOf(DevToolsUnlock.shown(com.onpath.app.BuildConfig.DEBUG, prefs.devToolsUnlocked))
+    /** Developer tools in Diagnostics (owner): after 7 taps on the version (remembered) – also in debug builds (Arch H1). */
+    var devToolsShown by mutableStateOf(DevToolsUnlock.shown(prefs.devToolsUnlocked))
         private set
 
     fun unlockDevTools() {
