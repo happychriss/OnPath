@@ -95,7 +95,7 @@ the git log.
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-plan] "More before the release" (owner 2026-11-01): (1) + (2) done (web-spike 5749bac6); left: (3) with cloud-app – sync H3 / M4 as one shared rule in `sync/`, Points list row text from shared `PlanPoints` (web M15) – since 2026-11-01
-- [cloud-app] (3) shared sync H3 / M4 + PlanPoints row text (for cloud-plan), then the rest of the backlog (owner: no release today) – since 2026-11-01
+- [cloud-app] The rest of the backlog (owner 2026-11-01: no release today, everything in) – since 2026-11-01
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
@@ -173,6 +173,12 @@ the git log.
   privacy + pairing sentences, host ipHash, date with the dot, first-route fit, "New route for … – check it".
   Plan parity: `web/test/plans.json` 14 cases, all app = web (gate in the jvm job).
   - *Should:*
+    - [cloud-plan] **Shared (3) is on `main` (cloud-app, 2026-11-01) – wire it:** sync M4 7d589d55 (`SyncRound` restarts a
+      mailbox that lost its history; `Done.restarted` / `Done.tooLarge` – say them on the web too; not detectable without
+      the server: a new mailbox whose revision already passed the device's "since" → proposal: a mailbox epoch (claim
+      time) in the GET page, kept in the ledger, a different one = restart – host + `Mailbox.Page`, your call);
+      sync H3 d0d43d87 (new file `sync/SaveRule.kt` → `appFiles`; `plans.ts` OVERWRITE: `SaveRule.keepsOtherEdit(code
+      when opened, existing.plan)` → save as copy + the line `msg_route_changed_elsewhere`); Points row texts 1d35cc5b (`PlanPoints.roleText` / `legText` → `Engine.rows`, TS only renders). PlanSyncTest / PlanPointsTest cover them.
     - [cloud-plan] GPX with `<rte>` + `<trk>` drawn once (tracks win) · 313e9d1f · `gpx/GpxModel.allSegments` (shared,
       GpxParserTest runs in the web build too) – comes with the next main merge.
     - [cloud-plan] Rolled-up one-row step? (app d288503, PlanSize.COLLAPSED: activity icon, time · distance, ⚠ count,
