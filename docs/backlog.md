@@ -36,20 +36,20 @@ the git log.
   calls voice guidance available (065d3b7) – fine if v0.14.0 ships 2026-11-01, otherwise roll that text back –
   captain 2026-11-01.
 
-- → [cloud-plan] **Release-day fixes (captain 2026-11-01):** merge `main` first, then list A 10–13 in
-  `docs/reviews/2026-11-01-pre-release.md` (failed download cached forever, WasmGC browser check, unsaved route on
-  reopen, no developer / raw error lines) + follow the splice catch-all from main. Deploy only together with the app
-  release (captain's go).
-
-- → [cloud-plan] **More before the release (owner 2026-11-01) – after list A 10–13:** (1) re-pairing keeps the
-  browser's unsent routes (sync H1, `WebSync.kt` rebase); "Pair phone" twice does not end a pending mailbox the phone
-  already uses (M7); (2) edits queued while the engine is busy (web H4); `navigator.storage.persist()` (H5); Save /
-  Rename / Delete failures shown (M11); raw errors → plain text (M10); (3) with cloud-app: sync H3 / M4 as one shared
-  rule in `sync/`; Points list row text from shared `PlanPoints` (web M15). Closed folders (sync H2) wait for the
-  owner's decision D3. Security headers (CSP) = PR to the owner.
-
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-plan] **List A 10–13 done on `web-spike`** (c652cd9e, 2026-11-01), main merged up to 2f0a231f (incl. the
+  splice catch-all 644b4169 – the web compiles `Planner.kt` as is; `PlannerSpliceTest` now also runs in the web's shared
+  tests). (10) failed routing-data / engine / index downloads are not kept: one retry, then the app's grey "Map loads when
+  online" line, planned again when back online / after 20 s; engine load retried twice. (11) no WasmGC → full page
+  "This browser is too old" (Safari / iOS 18.2+, Chrome 119+, Firefox 120+); an engine CompileError gives the same page.
+  Tested once: **Firefox 155 and WebKit 26.6 (Safari's engine) plan fine**; an old Safari could not be run here – the
+  check is tested by simulating a browser without WasmGC. (12) the unsaved route comes back when the planner opens
+  without `#p=`. (13) no "Routing engine ready (N ms)" without `?debug`; no raw error texts (plan / engine / activities /
+  name / map content / sync) – the detail goes to the diagnostics. **Checks:** shared-code JVM tests, parity manifest,
+  plan parity 14/14 app = web, sync / gpx / lang engine, host tests, all CI smokes green on the laptop; new
+  `robust-smoke.mjs` (runs inside the nowebgl CI step – no workflow change). **Shared code:** unchanged by me (only
+  `web/`). Not deployed – waits for your go with the app release. Next: "More before the release" (taken).
 - ← [cloud-app] **List A 1–9 done on `main`** (2026-11-01): (1) voice repeat d6aebf06 – voice memory per tour in
   trip-pace.json, service scope with exception handler, re-route result + ticker caught, minimum intervals; (2) ■ Stop in
   the one-row tour step fb872ba8 + slider "Stopp" cc5508a6 (owner's choice, was "Tour-Menü"); (3) tour-edit lines
@@ -68,6 +68,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [cloud-plan] "More before the release" (owner 2026-11-01): (2) web H4 edit queue, H5 storage.persist, M11 Save / Rename / Delete failures shown (M10 done with list A), then (1) sync H1 / M7, (3) with cloud-app – since 2026-11-01
 - [cloud-app] "More before the release" (owner 2026-11-01), in its order: (1) recording robustness + quiet while standing still, (2) routing, (3) sync with cloud-plan, (4) UX HIGH – since 2026-11-01
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
