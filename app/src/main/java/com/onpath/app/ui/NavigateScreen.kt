@@ -612,7 +612,8 @@ private fun OffRouteCard(o: OffRouteUi) {
 /**
  * The off-route question (owner: ask every time, never re-route silently) as a FRAGE box under the status card: stays
  * until one of the big buttons is pressed or the user is back on the route. Buttons 56 dp – fine with gloves. With a
- * stop in question (StopSkip): "Off route – re-plan?" – Yes (via it) · Yes, skip stop 3 (without it) · Keep original.
+ * stop in question (StopSkip, owner 2026-11-01: one question shape): "You're 120 m off the route" – Keep original · New
+ * route without stop 3 · New route (via it).
  * The activity switch ("New route for MTB") is the same question with the activity's icon.
  */
 @Composable
@@ -622,7 +623,7 @@ internal fun rerouteMessage(q: NavPrompt.Question, onTake: () -> Unit, onKeep: (
     // turn round: the U-turn sign, so a way back on the same road is not mistaken for "nothing happened"
     val icon = q.switch?.activity?.icon ?: if (q.turnRound) Icons.Filled.UTurnLeft else Icons.Outlined.AltRoute
     val buttons = if (q.via != null) listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.skipButton(q, maxName), onTake),
-        MessageButton(NavText.YES, onVia))
+        MessageButton(NavText.TAKE, onVia))
         else listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.TAKE, onTake))
     return Message(MessageKind.FRAGE, NavText.title(q), NavText.question(q, maxName), buttons, icon = icon, navigate = true)
 }

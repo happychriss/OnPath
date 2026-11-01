@@ -89,13 +89,10 @@
     <string name="nav_compass_nw">north-west</string>
     <string name="nav_back_to">Back to %1$s</string>
     <string name="nav_back_to_route">Back to the route</string>
-    <!-- re-route and the next stop: "Off route – re-plan?" – Yes (via the stop) / Yes, skip stop 3 (navigation/StopSkip) -->
-    <string name="nav_title_replan">Off route – re-plan?</string>
-    <string name="nav_state_replan">Re-plan?</string>
+    <!-- re-route and the next stop (owner 2026-11-01: one question shape): "You're 120 m off the route" – Keep original / New route without stop 3 / New route (navigation/StopSkip) -->
     <string name="nav_via_stop">Via %1$s: %2$s</string>
-    <string name="nav_yes">Yes</string>
-    <string name="nav_yes_skip_stop">Yes, skip %1$s</string>
-    <string name="nav_notif_skip">Yes, skip it</string>
+    <string name="nav_yes_skip_stop">New route without %1$s</string>
+    <string name="nav_notif_skip">Without stop</string>
     <string name="nav_stop_n">stop %1$d</string>
     <string name="nav_without_stop">without %1$s</string>
     <!-- off route, owner 2026-10-31: "You're 120 m off the route" · the new route / the way back and how much longer -->

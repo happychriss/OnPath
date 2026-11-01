@@ -15,7 +15,6 @@ object NavText {
      * "Off route – re-plan?" with a stop in question (StopSkip, owner 2026-10-30): "Yes" = the new route via the stop
      * ([NavPrompt.Question.via]), "Yes, skip stop 3" ([skipButton]) = the new route without it, Keep original.
      */
-    val YES: String get() = Txt.s(Res.string.nav_yes)
     /**
      * The skip answer as a notification action: three actions share one row and Android cuts long labels ("Ja, Stopp 3
      * ausl…"), so the short "Yes, skip it" – the text above says which stop.
@@ -29,7 +28,7 @@ object NavText {
     fun stopLabel(q: NavPrompt.Question, maxName: Int = NAME_MAX): String? =
         q.skipStop?.let { i -> q.skipName?.takeIf { it.length <= maxName } ?: Txt.s(Res.string.nav_stop_n, i + 1) }
 
-    /** "Yes, skip stop 3" / "Ja, Gasthof Hochmuth auslassen" – the card's second answer. */
+    /** "New route without stop 3" / "Neue Route ohne Gasthof Hochmuth" – the card's second answer (owner 2026-11-01). */
     fun skipButton(q: NavPrompt.Question, maxName: Int = NAME_MAX): String =
         Txt.s(Res.string.nav_yes_skip_stop, stopLabel(q, maxName) ?: "")
 
@@ -40,7 +39,6 @@ object NavText {
     fun title(p: NavPrompt): String = when (p) {
         NavPrompt.Searching -> Txt.s(Res.string.nav_title_searching)
         is NavPrompt.Question -> p.switch?.let { switchTitle(it) }
-            ?: p.via?.let { Txt.s(Res.string.nav_title_replan) }
             // "You're 120 m off the route" (owner 2026-10-31)
             ?: p.offM?.let { Txt.s(if (p.turnRound) Res.string.nav_title_off_by_turn_round else Res.string.nav_title_off_by,
                 Format.distance(round10(it))) }
@@ -63,7 +61,6 @@ object NavText {
     fun state(p: NavPrompt): String = when (p) {
         NavPrompt.Searching -> Txt.s(Res.string.nav_state_searching)
         is NavPrompt.Question -> p.switch?.let { switchTitle(it) }
-            ?: p.via?.let { Txt.s(Res.string.nav_state_replan) }
             ?: Txt.s(if (p.turnRound) Res.string.nav_state_turn_round else Res.string.nav_state_found)
         is NavPrompt.NoWay -> when (p.reason) {
             Rerouter.Reason.NO_DATA -> Txt.s(Res.string.nav_state_no_data)

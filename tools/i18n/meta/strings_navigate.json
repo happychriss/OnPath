@@ -480,41 +480,22 @@
     "priority": 2,
     "confidence": "sicher"
   },
-  "nav_title_replan": {
-    "area": "Off route",
-    "context": "Off-route question card / notification title when the new route could go via the next route point or leave it out (owner 2026-10-30: the main question is re-plan, skipping is one of the answers)",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "nav_state_replan": {
-    "area": "Off route",
-    "context": "Small state line of the amber off-route card for the same question",
-    "priority": 2,
-    "confidence": "sicher"
-  },
   "nav_via_stop": {
     "area": "Off route",
     "context": "Start of the question line: %1$s = 'stop 3' or the stop's name, %2$s = what going via it costs on top of leaving it out ('+1.4 km', 'about as long'); followed by ' · rejoins in 600 m'",
     "priority": 1,
     "confidence": "sicher"
   },
-  "nav_yes": {
-    "area": "Off route",
-    "context": "Button (card and notification action): re-plan via the stop in question",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 8
-  },
   "nav_yes_skip_stop": {
     "area": "Off route",
-    "context": "Button on the card: re-plan without the stop; %1$s = 'stop 3' / 'Stopp 3' or a short name (≤ 16 characters). Wraps to two lines",
+    "context": "Off-route question with a stop in question: the answer that leaves the stop out. %1$s = stop name or 'stop 3'",
     "priority": 1,
     "confidence": "sicher",
     "max": 32
   },
   "nav_notif_skip": {
     "area": "Off route",
-    "context": "Notification action (three share one row, Android cuts long labels): re-plan without the stop; the notification text names it",
+    "context": "Same answer as a short notification action (Android cuts long labels)",
     "priority": 1,
     "confidence": "sicher",
     "max": 14

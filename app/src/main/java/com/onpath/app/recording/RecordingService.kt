@@ -995,9 +995,9 @@ class RecordingService : Service() {
             } else if (pr is NavPrompt.LeadFailed) {
                 b.addAction(0, Txt.s(Res.string.common_ok), actionIntent(ACTION_LEAD_FAILED_OK, 15) { putExtra(EXTRA_QUESTION, pr.id) })
             } else if (pr is NavPrompt.Question && pr.via != null) {
-                // "Off route – re-plan?": Yes (via the stop) · Yes, skip it (without it) · Keep original. Three actions
+                // New route (via the stop) · Without stop · Keep original (one question shape, owner 2026-11-01). Three actions
                 // share one row and Android cuts long labels: the short skip label, the text names the stop.
-                b.addAction(0, NavText.YES, actionIntent(ACTION_TAKE_VIA, 12) { putExtra(EXTRA_QUESTION, pr.id) })
+                b.addAction(0, NavText.TAKE, actionIntent(ACTION_TAKE_VIA, 12) { putExtra(EXTRA_QUESTION, pr.id) })
                 b.addAction(0, NavText.SKIP_SHORT, actionIntent(ACTION_TAKE_ROUTE, 10) { putExtra(EXTRA_QUESTION, pr.id) })
                 b.addAction(0, NavText.KEEP, actionIntent(ACTION_KEEP_ROUTE, 11) { putExtra(EXTRA_QUESTION, pr.id) })
             } else if (pr is NavPrompt.Question) {
