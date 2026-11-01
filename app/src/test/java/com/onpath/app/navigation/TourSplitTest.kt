@@ -25,18 +25,30 @@ class TourSplitTest {
     private fun tour(bike: Boolean, track: List<GeoPoint> = ridden, pos: GeoPoint? = here, reached: Boolean = true) =
         TourSplit.Tour(listOf(track), pos, reached, bike)
 
-    @Test fun fieldCaseOnTheBike_point2IsPassedByNearness_deleting3LeavesNothingAhead() {
+    /** A point counts as passed within 40 m on the bike (owner 2026-11-01): 45 m is not near – 2 stays open. */
+    @Test fun fieldCaseOnTheBike_45mIsNotNear_point2StaysOpen() {
         val plan = listOf(p1, p2, p3)
-        val passed = TourSplit.passed(plan, tour(bike = true))
+        assertEquals(setOf(0), TourSplit.passed(plan, tour(bike = true)))
+        // ridden within 30 m of it: passed; deleting 3 then leaves nothing ahead
+        val close = tour(bike = true, track = line(p1, pt(30.0, 300.0), pt(-100.0, 0.0), here))
+        val passed = TourSplit.passed(plan, close)
         assertEquals(setOf(0, 1), passed)
         assertEquals(TourSplit.Outcome.NothingAhead, TourSplit.outcome(plan, listOf(p1, p2), passed))
     }
 
-    @Test fun fieldCaseOnFoot_45mIsNotNear_butPoint3IsClearlyCloser() {
+    /** Owner 2026-11-01 "Punkt bleibt offen": on foot 45 m is not near – 2 stays open (no "clearly closer" rule any more). */
+    @Test fun fieldCaseOnFoot_45mIsNotNear_point2StaysOpen() {
         val plan = listOf(p1, p2, p3)
-        // 40 m on foot: 2 is not near the track; ~920 m to 2, ~710 m to 3 → 2 passed by the closer rule
-        assertEquals(setOf(0, 1), TourSplit.passed(plan, tour(bike = false)))
-        assertEquals(TourSplit.Outcome.NothingAhead, TourSplit.outcome(plan, listOf(p1, p2), setOf(0, 1)))
+        assertEquals(setOf(0), TourSplit.passed(plan, tour(bike = false)))
+    }
+
+    /** Tour 61 (2026-11-01): a round trip, 46 m walked near its start – nothing but the start is passed. */
+    @Test fun roundTrip_aStepBackAtTheStartPassesNothing() {
+        val r2 = pt(0.0, 400.0); val r3 = pt(400.0, 400.0); val r4 = pt(400.0, 0.0)
+        val loop = listOf(a1, r2, r3, r4, a1)
+        val start = TourSplit.Tour(listOf(line(a1, pt(0.0, 30.0), pt(0.0, 14.0))), pt(0.0, 14.0), reached = true, bike = false,
+            stops = loop.mapIndexed { i, p -> NavStop(p, i * 400.0) }, progressM = 1590.0) // matched on the loop's end
+        assertEquals(setOf(0), TourSplit.passed(loop, start))
     }
 
     // Plan 1 → 2 → 3 → 4 along a street, the user between 2 and 3
@@ -157,7 +169,7 @@ class TourSplitTest {
         val b1 = pt(0.0, 0.0); val b2 = pt(0.0, 500.0); val b3 = pt(0.0, 1000.0); val b4 = pt(0.0, 3000.0)
         val plan = listOf(b1, b2, b3, b4)
         val pos = pt(100.0, 600.0)
-        val track = line(pt(60.0, 0.0), pt(60.0, 600.0), pos)
+        val track = line(pt(20.0, 0.0), pt(20.0, 600.0), pos)
         val stops = listOf(NavStop(b1, 0.0), NavStop(b2, 500.0), NavStop(b3, 1000.0), NavStop(b4, 3000.0))
         val before = TourSplit.Tour(listOf(track), pos, reached = true, bike = false, stops = stops, progressM = 600.0)
         assertEquals(setOf(0, 1), TourSplit.passed(plan, before))
@@ -165,9 +177,9 @@ class TourSplitTest {
         val after = listOf(b1, b2, b3)
         assertEquals(TourSplit.Outcome.Follow(listOf(b3)), TourSplit.outcome(plan, after, setOf(0, 1)))
         // the session after followAhead: position → b3, only b3 as a stop, nothing visited, no progress yet
-        val fresh = TourSplit.Tour(listOf(track), pos, reached = true, bike = false,
+        val fresh = TourSplit.Tour(listOf(listOf(pos)), pos, reached = true, bike = false,
             stops = listOf(NavStop(pos, 0.0), NavStop(b3, 420.0)), progressM = 0.0)
-        assertEquals("without the tour's memory b2 is lost", setOf(0), TourSplit.passed(after, fresh))
+        assertEquals("without the tour's memory b1 and b2 are lost", emptySet<Int>(), TourSplit.passed(after, fresh))
         assertEquals(setOf(0, 1), TourSplit.passed(after, fresh, known = setOf(b1, b2)))
         // a deleted point no longer matches; a known point never makes the goal of a round trip passed
         assertEquals(setOf(0), TourSplit.passed(listOf(b1, b3), fresh, known = setOf(b1, b2)))

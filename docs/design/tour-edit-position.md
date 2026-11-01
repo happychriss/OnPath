@@ -25,14 +25,11 @@ field case:
    `reached` / `lead`) – after any edit every point counts as ahead again.
 
 New:
-- passed = came within **40 m (hike) / 60 m (bike activities)**, **or** the route progress went past the point (the
-  point's position along the followed line ≤ the furthest progress on it), **or** a later point is passed (plan order:
-  everything before a passed point is passed too), **or** (owner 2026-10-31) the user is clearly closer to the next
-  point than to this one: straight-line distance to point N+1 at least **100 m** less than to point N, and N itself
-  at least **200 m** away (clearly left behind). Catches the field case – off the route on another way, never close,
-  no progress on the line: 2 lay ~870 m away, 3 ~590 m → 2 passed. Guards: only consecutive points; not before the
-  route was reached (a tour started far away still counts from the start, C5); a round trip's goal never; on a
-  hairpin trail the 100 m margin keeps a point below a switchback ahead.
+- passed = came within **25 m (hike) / 40 m (bike activities)** (`NavSession.VISITED_*`), **or** a later point is
+  passed (plan order: everything before a passed point is passed too). Nothing else (owner 2026-11-01, "Punkt bleibt
+  offen"; on the bike replay a point set during the ride was "passed" by the old "clearly closer to the next point"
+  rule – "eine gefährliche Regel"): no longer by the route progress (a round trip's start is also its end – tour 61)
+  nor by "clearly closer to the next point". (Before: 40 / 60 m, progress, and closer by 100 m with 200 m left behind.)
 - Carried over every plan edit, matched by **coordinate** (not by index – indices shift on delete / insert).
 - In doubt a point is **ahead**: a wrong "ahead" shows as a line leading back to it, visible and fixed by deleting it;
   a wrong "passed" would hide a point silently.
