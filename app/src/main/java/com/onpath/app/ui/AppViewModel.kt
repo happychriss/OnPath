@@ -3140,8 +3140,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val r = route
         val act = activity; val level = sac
         val stops = savedStops(pts); val pins = pinnedIndices()
+        val opened = savedPoints?.let { p -> com.onpath.app.sync.SaveRule.pointsKey(p.map { it.lat to it.lon }) }
         viewModelScope.launch {
             try {
+                // changed by sync since it was opened here (review sync H3): save as a copy, the other edit stays
+                val stored = withContext(Dispatchers.IO) {
+                    runCatching { db.getTour(id)?.waypoints?.map { it.lat to it.lon } }
+                        .onFailure { Problems.warn("db", "Saved route not read before overwriting; overwritten as before", it) }.getOrNull()
+                }
+                if (com.onpath.app.sync.SaveRule.keepsOtherEdit(opened, stored?.let(com.onpath.app.sync.SaveRule::pointsKey))) {
+                    val copy = RouteRules.copyName(name, plannedNames())
+                    Problems.trace("plan", "Save over \"$old\": changed elsewhere since opened (browser sync) – saved as \"$copy\"")
+                    sayInfo(Txt.s(Res.string.msg_route_changed_elsewhere, copy), NoticePlace.MAP)
+                    insertPlanned(copy, pts, r, then)
+                    return@launch
+                }
                 val ok = withContext(Dispatchers.IO) {
                     runCatching {
                         db.replacePlanned(

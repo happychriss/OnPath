@@ -20,4 +20,10 @@ class BackgroundRoutingRuleTest {
         // the user's plan, the activity check and the tour's position → ahead stay on the interactive thread
         assertEquals(3, Regex("withContext\\(routingDispatcher\\)").findAll(vm).count())
     }
+
+    /** Review sync H3: Save over a saved route checks first whether sync changed it since it was opened. */
+    @Test fun overwriteChecksTheStoredRouteFirst() {
+        val over = vm.substringAfter("private fun overwriteSaved(").substringBefore("\n    }\n")
+        assertTrue(over.indexOf("SaveRule.keepsOtherEdit") in 0 until over.indexOf("db.replacePlanned("))
+    }
 }
