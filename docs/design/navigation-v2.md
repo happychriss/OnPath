@@ -1,6 +1,8 @@
 # Navigation neu – voice, points, re-route, round trip (proposal for the owner, 2026-11-01)
 
-Status: **proposal – the owner reads it before anything here is built** (except the parts marked *built*).
+Status: **owner 2026-11-01: "Ja, alles, in 3 Schritten"** – step 1 quiet + clear (Stopp = quiet, "Kein GPS" once,
+"Bitte umdrehen" with the U sign), step 2 round trips + points, step 3 the new voice; numbers are starting values, tuned
+after the owner's walks. Each step tested against the field tours, then on the Pixel.
 Why: the owner's field day 2026-11-01 (Hilden, demo tour 59 + hikes 61–63, data in
 `~/onpath-cells-work/field/2026-11-01-wanderungen/` on donald): "die Sprachansagen waren ziemlich unbrauchbar – da müssen
 wir uns ein komplett neues Konzept überlegen … mal im Internet gucken, wie das andere machen". Research: OsmAnd and
@@ -81,10 +83,19 @@ Organic Maps / CoMaps source code, komoot / Locus / Garmin help pages, two studi
 ### F. Repeat
 - A tap on the turn card repeats the last sentence (also with the screen locked: the notification's button).
 
-## 4. Questions for the owner (one by one in the chat, then into this file)
-1. On foot only "Links." about 15–25 m before (no "In 50 Metern") – yes?
-2. Off route: say the side and the distance ("Die Route liegt rechts, 40 Meter") – yes?
-3. Skipped point: lead back at once (proposed), or ask "Punkt 2 auslassen?" when caught behind it?
+## 4. Owner's decisions and additions (2026-11-01)
+1. All proposals taken ("Ja, alles, in 3 Schritten"): on foot "Links." 15–25 m before; off route with side + distance;
+   a skipped point leads back at once (deleting it skips it) – try first, tune after walks.
+2. **Radius rule** (owner's idea): a junction is said only when the direction really changes – the heading entering a
+   circle of ~20 m (bike ~30 m) around the junction against the heading leaving it, and a real other way there. Changing
+   the side of the street, a zigzag without a junction, an offset: nothing (generalises JogRule).
+3. **"Navigation Stopp" = the phone is quiet**: no voice, no junction vibration, no off-route warning – also with the
+   screen off (replaces review H1's "Plan off screen = warnings on"). Walking off without "Weiter" (app off screen):
+   after ~150 m the guidance comes back by itself and says so (chosen for the owner; he can object).
+4. **"Kein GPS" once**: said again only after GPS was good for a while and one walked on.
+5. **Re-route that starts behind you**: "Neue Route. Bitte umdrehen." + the U sign on the map + the turn card shows
+   "Umdrehen" – after an automatic re-route the screen must always show where to go ("sieht man plötzlich gar nichts").
+6. ☰ menu: "Meine Routen" first (later, backlog).
 
 ## 5. How it is tested
 - The field tours as replays on the JVM with the real routing data (tracks of tours 59–63 → the sentences, the screen
