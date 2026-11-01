@@ -937,9 +937,7 @@ class RecordingService : Service() {
             junctionsTracedVersion = st.version
             val n = com.onpath.app.navigation.JunctionCues.count(st.line)
             val rb = st.line.count { it.turn == com.onpath.app.routing.JunctionCue.ROUNDABOUT }
-            val worth = st.line.count { p ->
-                p.turn?.let { com.onpath.app.navigation.CueRule.needed(it, p.shape, hike = !junctions.bike) } == true
-            }
+            val worth = com.onpath.app.navigation.JogRule.needed(st.line, hike = !junctions.bike).count { it }
             Problems.trace("navigation", "Followed line v${st.version}: $n junctions, $rb roundabouts, $worth worth a " +
                 (if (junctions.bike) "bike" else "hike") + " cue" +
                 (if (n == 0) " (GPX track or straight line: no junction cues)" else ""))

@@ -30,6 +30,8 @@
     <string name="voice_way_path">auf den Pfad</string>
     <string name="voice_way_track">auf den Feldweg</string>
     <string name="voice_way_road">auf die Straße</string>
+    <string name="voice_way_cycleway">auf den Radweg</string>
+    <string name="voice_way_way">auf den Weg</string>
     <string name="voice_then">%1$s, danach gleich %2$s</string>
     <string name="voice_then_straight">%1$s, dann %2$s geradeaus</string>
     <string name="voice_sentence">%1$s.</string>

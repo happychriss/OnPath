@@ -79,15 +79,38 @@ class VoiceGuideTest {
     }
 
     @Test fun theKindOfWayWhenItChanges() {
-        // off the road onto a track (bike classes: 22 road → 4 track)
+        // off the road onto a small way, no way types on the line (bike classes: 22 road → 4 track / path / footway alike):
+        // "Weg" – never "Feldweg" from the class alone (owner 2026-11-01, Hilden: park paths and crossings were "Feldweg")
         val offRoad = JunctionShape(-85f, 22, 4, listOf(JunctionShape.Branch(0f, 22)))
         val l = line(1000, mapOf(500 to JunctionCue.LEFT), offRoad)
         val j = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).single().second as Phrase.Junction
-        assertEquals(WayKind.TRACK, j.onto)
+        assertEquals(WayKind.WAY, j.onto)
         // street to street: nothing about the way
         val streets = JunctionShape(-85f, 6, 6, listOf(JunctionShape.Branch(0f, 6)))
         val k = startless(ride(VoiceGuide(), line(1000, mapOf(500 to JunctionCue.LEFT), streets), bike = true, speed = 6.0)).single().second
         assertNull((k as Phrase.Junction).onto)
+    }
+
+    /** The way types of the line (BRouterWayStats) name the way – read 20 m after the junction, past a crossing. */
+    @Test fun theKindOfWayFromTheWayTypes() {
+        fun typed(before: String, after: String, crossingM: Int = 0) = line(1000, mapOf(500 to JunctionCue.LEFT),
+            JunctionShape(-85f, 6, 4, listOf(JunctionShape.Branch(0f, 6)))).mapIndexed { i, p ->
+            val m = i * 10
+            val type = when { m < 500 -> before; m < 500 + crossingM -> "footway"; else -> after }
+            p.copy(way = com.onpath.app.routing.WayAttrs(type, "asphalt"))
+        }
+        fun onto(l: List<GeoPoint>, bike: Boolean = true) =
+            (startless(ride(VoiceGuide(), l, bike = bike, speed = 6.0)).single().second as Phrase.Junction).onto
+        assertEquals(WayKind.TRACK, onto(typed("quiet_road", "track")))
+        assertEquals(WayKind.WAY, onto(typed("quiet_road", "footway")))
+        assertEquals(WayKind.CYCLEWAY, onto(typed("quiet_road", "cycleway")))
+        assertEquals("a path on the bike is a Weg", WayKind.WAY, onto(typed("quiet_road", "path")))
+        assertEquals("on foot a Pfad", WayKind.PATH, onto(typed("quiet_road", "path"), bike = false))
+        // a 10 m crossing (footway) before the park's cycle path: the cycle path is the way turned onto
+        assertEquals(WayKind.CYCLEWAY, onto(typed("quiet_road", "cycleway", crossingM = 10)))
+        // the same kind on both sides: nothing about the way
+        assertNull(onto(typed("footway", "footway")))
+        assertNull("steps: no word", onto(typed("quiet_road", "steps")))
     }
 
     @Test fun neverTwoSentencesWithin10Seconds_aJunctionWaitsAndKeepsItsDistance() {

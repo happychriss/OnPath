@@ -30,6 +30,8 @@
     <string name="voice_way_path">onto the path</string>
     <string name="voice_way_track">onto the track</string>
     <string name="voice_way_road">onto the road</string>
+    <string name="voice_way_cycleway">onto the cycle path</string>
+    <string name="voice_way_way">onto the footpath</string>
     <string name="voice_then">%1$s, then %2$s</string>
     <string name="voice_then_straight">%1$s, then %2$s straight on</string>
     <string name="voice_sentence">%1$s.</string>

@@ -31,6 +31,8 @@ class VoiceTextTest {
         assertEquals("Gleich scharf rechts.", VoiceText.of(Phrase.Junction(20.0, Turn.SHARP_RIGHT)))
         assertEquals("In 50 Metern links auf den Feldweg, danach gleich rechts.",
             VoiceText.of(Phrase.Junction(60.0, Turn.LEFT, onto = WayKind.TRACK, then = Turn.RIGHT)))
+        assertEquals("In 100 Metern rechts auf den Radweg.", VoiceText.of(Phrase.Junction(100.0, Turn.RIGHT, onto = WayKind.CYCLEWAY)))
+        assertEquals("In 100 Metern links auf den Weg.", VoiceText.of(Phrase.Junction(100.0, Turn.LEFT, onto = WayKind.WAY)))
         assertEquals("In 100 Metern rechts, dann 3 Kilometer geradeaus.", VoiceText.of(Phrase.Junction(100.0, Turn.RIGHT, straightM = 3_040.0)))
         assertEquals("In 1,5 Kilometern links halten.", VoiceText.of(Phrase.Junction(1_480.0, Turn.KEEP_LEFT)))
         assertEquals("In 150 Metern im Kreisverkehr die zweite Ausfahrt.", VoiceText.of(Phrase.Junction(160.0, Turn.ROUNDABOUT, exit = 2)))
