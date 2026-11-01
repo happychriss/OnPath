@@ -240,6 +240,7 @@ class MainActivity : ComponentActivity() {
                                 onFactor = com.onpath.app.recording.DemoLocation::setFactor,
                                 onPause = com.onpath.app.recording.DemoLocation::setPaused,
                                 onStop = { com.onpath.app.recording.DemoLocation.stop() },
+                                recorded = vm.recentRecordedTours().map { t -> vm.demoTourLabel(t) to { vm.startDemoTour(t) } },
                             ),
                             diagnosticsSeenMs = vm.diagnosticsSeenMs,
                             routingInfo = vm.routingInfo,

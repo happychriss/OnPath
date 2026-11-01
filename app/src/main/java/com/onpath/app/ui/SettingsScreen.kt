@@ -622,6 +622,8 @@ data class DemoUi(
     val onFactor: (Int) -> Unit = {},
     val onPause: (Boolean) -> Unit = {},
     val onStop: () -> Unit = {},
+    /** Recorded tours to ride again at their recorded times (label, start) – debugging a field tour. */
+    val recorded: List<Pair<String, () -> Unit>> = emptyList(),
 )
 
 @Composable
@@ -639,6 +641,11 @@ private fun DemoRow(d: DemoUi) {
         if (d.rideLabel == null) Text("Plan a route or open a track first.", style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedButton(onClick = d.onPlace, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Demo: stand at the map centre") }
+        if (d.recorded.isNotEmpty()) Text("Ride a recorded tour again (its own times; plan and start navigation first):",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        for ((label, start) in d.recorded) {
+            OutlinedButton(onClick = start, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Demo: $label") }
+        }
         return
     }
     val where = when (st.kind) {

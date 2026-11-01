@@ -401,6 +401,28 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         navSimLine = l
     }
 
+    /** Developer tools → Demo: the last recorded tours (not demo ones) to ride again at their recorded times. */
+    fun recentRecordedTours(): List<Tour> = tours.filter {
+        it.kind == TourKind.RECORDED && !it.name.startsWith(com.onpath.app.recording.DemoLocation.TOUR_PREFIX)
+    }.sortedByDescending { it.id }.take(3)
+
+    fun demoTourLabel(t: Tour): String = "ride tour \"${t.name}\" (${"%.1f".format(Locale.ROOT, t.distanceM / 1000)} km, recorded times)"
+
+    /** Rides recorded tour [t] again along its track at its own times (debugging a field tour, owner 2026-11-01). */
+    fun startDemoTour(t: Tour) {
+        viewModelScope.launch {
+            val pts = withContext(Dispatchers.IO) {
+                runCatching { db.loadSegments(t.id).flatten() }.onFailure { Problems.warn("demo", "Recorded tour not read for the demo", it) }
+                    .getOrDefault(emptyList())
+            }
+            val path = com.onpath.app.recording.DemoPath.recorded(pts.map { GeoPoint(it.lat, it.lon, it.ele) }, pts.map { it.timeMs })
+                ?: run { sayError("This tour has no track with times to ride.", NoticePlace.SETTINGS); return@launch }
+            navSimLine = null // a recorded tour is ridden as it was – never moved onto a changed line
+            Problems.trace("demo", "Riding recorded tour ${t.id} \"${t.name}\" again at its recorded times (${pts.size} points)")
+            com.onpath.app.recording.DemoLocation.startRide(path, "recorded tour \"${t.name}\"")
+        }
+    }
+
     /** The line the Navigate "Sim" rides; null = no Sim from the Navigate page. */
     private var navSimLine: List<GeoPoint>? = null
 
