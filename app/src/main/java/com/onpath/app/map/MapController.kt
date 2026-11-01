@@ -942,16 +942,15 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             style.addImage("wp-v-$n", marker(n, POINT_STOP_COLOR))
             style.addImage("wp-e-$n", marker(n, POINT_GOAL_COLOR))
             style.addImage("wp-g-$n", marker(n, GAP_COLOR, hollow = true))
-            style.addImage("wp-p-$n", marker(n, NAV_ORIGINAL_COLOR, check = true))
+            style.addImage("wp-p-$n", marker(n, NAV_ORIGINAL_COLOR)) // passed: grey, no tick (owner 2026-11-01)
             markerImages++
         }
     }
 
     /**
-     * A numbered route point; [hollow] = white inside, ring and number in [color] (a point the route does not reach);
-     * [check] = a small green ✓ badge at the top right (a point passed in the tour).
+     * A numbered route point; [hollow] = white inside, ring and number in [color] (a point the route does not reach).
      */
-    private fun marker(n: Int, color: String, hollow: Boolean = false, check: Boolean = false): Bitmap {
+    private fun marker(n: Int, color: String, hollow: Boolean = false): Bitmap {
         val sizeDp = 30
         val px = (sizeDp * density).toInt()
         val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
@@ -972,23 +971,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         p.textAlign = Paint.Align.CENTER
         val y = px / 2f - (p.descent() + p.ascent()) / 2
         c.drawText(n.toString(), px / 2f, y, p)
-        if (check) {
-            val r = 6.5f * density
-            val cx = px - r; val cy = r
-            p.color = android.graphics.Color.WHITE
-            c.drawCircle(cx, cy, r, p)
-            p.color = android.graphics.Color.parseColor("#2E7D32")
-            c.drawCircle(cx, cy, r - 1.2f * density, p)
-            p.color = android.graphics.Color.WHITE
-            p.style = Paint.Style.STROKE; p.strokeWidth = 1.6f * density; p.strokeCap = Paint.Cap.ROUND
-            val path = android.graphics.Path().apply {
-                moveTo(cx - 2.6f * density, cy + 0.2f * density)
-                lineTo(cx - 0.6f * density, cy + 2.2f * density)
-                lineTo(cx + 2.8f * density, cy - 1.8f * density)
-            }
-            c.drawPath(path, p)
-            p.style = Paint.Style.FILL
-        }
+
         return bmp
     }
 }

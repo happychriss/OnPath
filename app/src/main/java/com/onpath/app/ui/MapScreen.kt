@@ -488,7 +488,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         return
     }
     LaunchedEffect(c, vm.routePeek) { c.setRouteOverlaysVisible(!vm.routePeek) } // eye button (re-applied per style)
-    // the plan points behind the user in a running tour (TourSplit): grey with ✓; re-read every ~20 track points
+    // the plan points behind the user in a running tour (TourSplit): grey (no tick, owner 2026-11-01); re-read every ~20 track points
     var passed by remember { mutableStateOf(emptySet<Int>()) }
     val trackSize = rec?.track?.sumOf { it.size } ?: 0
     LaunchedEffect(vm.waypoints.toList(), trackSize / 20, vm.followLine, rec != null) { passed = vm.tourPassed() }
@@ -657,7 +657,7 @@ internal fun paleLines(plan: Boolean, navOriginal: List<com.onpath.app.routing.G
  * (Plan mode, no track shown), also during a tour: the plan's route is blue as without a tour, never hidden, so the blue
  * line can never vanish (owner 2026-11-01; before, the line was hidden while "followed" and only a pale copy showed it –
  * fix-tour-edit-line.md cause 2). Navigate shows the followed line and – while the tour follows the plan
- * ([navigateWithPlan]) – the plan's numbered points, passed ones with a ✓ (owner 2026-11-01: "sonst weiß man gar nicht,
+ * ([navigateWithPlan]) – the plan's numbered points, passed ones grey (owner 2026-11-01: "sonst weiß man gar nicht,
  * wo man einen Punkt gemacht hat"); not tappable there (MapHost edits only when canEditMap).
  */
 internal fun planLayers(canEditMap: Boolean, navigateWithPlan: Boolean = false): Pair<Boolean, Boolean> =

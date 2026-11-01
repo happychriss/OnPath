@@ -59,7 +59,7 @@ Example plan 1 → 2 → 3 → 4, the user between 2 and 3 (1, 2 passed).
 ## 4. On the map (Plan during a tour)
 - The plan's route **blue**, as without a tour (never hidden); the followed line (position → ahead points) blue too.
   No pale / grey lines in Plan (owner 2026-11-01). Navigate keeps a re-route's thin grey original.
-- Passed points grey with a ✓ (numbers kept, so "stop 3" still means the same point).
+- Passed points grey (numbers kept, so "stop 3" still means the same point; no tick – owner 2026-11-01).
 - The plan sheet's summary counts from the position (time / km to go), like Navigate.
 
 ## 5. Messages (FRAGE / HINWEIS / ANZEIGE, `docs/design/ui-style.md`)
