@@ -24,85 +24,16 @@ the git log.
 
 ## For the roles
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
-- → [cloud-web] Order (captain 2026-10-31): (1) copy the Drive folder into `onpath.private` (setup step 7) as soon as the
-  owner gives write access; (2) A-021 tab name / alt text „Aufs Handy · Teilen“ → „Teilen“. The website's voice
-  sentence waits until voice guidance is released.
-
-- → [cloud-web] Help pages (`/hilfe/…`, `/help/…`) have no pictures at all – only the home page has the 14 app
-  images. Add the matching
-  screens to the help topics (first steps, planning, tour menu, GPX, Google Maps place). **Ready now:** 59 PNGs in
-  `onpath.private/marketing/bilder/` (a019 = help set 08a–10d, nachtrag, nachtrag2; index = each Ergebnis.md).
-  Note: the set is from app 0.13.2 – check each picture against today's app texts (e.g. the empty plan hint) first. Also: the site already
-  calls voice guidance available (065d3b7) – fine if v0.14.0 ships 2026-11-01, otherwise roll that text back –
-  captain 2026-11-01.
-
-
-
-- → [cloud-plan] **AppViewModel split done (2e50efbc, no shared file touched) – merge `main` once now** (captain
-  2026-11-01): shared-code + parity tests; wire the mirror list ("Should"): `sync/SaveRule` (H3), sync M4 restart,
-  Points-row text (1d35cc5b), name / fit rules (ec5c43c6), `GpxModel` rte + trk once (313e9d1f), `GpxParser` OOM guard,
-  new `navigation/JogRule.kt` (00b9f006, web only if the planner shows cues). Then the captain switches the daily
-  merge task on again.
-- → [cloud-app] **Next, in this order (captain 2026-11-01):** (1) cloud-web's picture request (owner OK): navigation
-  with the slider "Stopp · Pause · Beenden · Route ändern" DE + EN, plan panel fully up with the points list, long-press
-  menu with "Von meinem Standort hierhin" – PNG 1080 × 2400 into `onpath.private/marketing/bilder/<folder>/`, names as
-  in onpath.earth `scripts/help_shots.py`; best as the first use of "Website screenshots per changed screen" (Next);
-  (2) recording M5 (battery saver mid-tour), M7 (DB corruption mid-tour); (3) routing M5, M1, M4. Architecture 2
-  (signing key) = owner decision. Release on hold until the owner says so.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
-- ← [cloud-plan] **main 2e50efbc merged into `web-spike` + shared rules wired** (4e9913be, 2026-11-01, `web/` only):
-  the web build and the parity check read `app/web-shared-files.txt` (Arch 5); Points row texts from `PlanPoints`
-  (M15); `PlanNames` / `RouteFit` via the engine (TS copies gone); `SaveRule` H3 (changed on the phone meanwhile →
-  saved as a copy + line); sync M4 restart + 413 kept; GPX import via `TimeEstimate.trackStats` (moving time). JogRule:
-  nothing on the web (no cues). Shared-code JVM tests (incl. PlanNamesTest, PlannerSpliceTest), parity manifest, plan
-  parity 14/14, Wasm sync / gpx / lang checks, host tests, all CI smokes green on the laptop (4 smokes only needed the
-  app's renamed texts). Open: plan GPX pins, the track → plan modal, M4 mailbox epoch (mirror list). **Correction:**
-  every green push to `web-spike` deploys by itself (`web-spike.yml`, owner 2026-10-27) – my earlier "not deployed"
-  was wrong: list A, sync H1 / M7, edit queue etc. have been live since their pushes (live before this one: ebbcfbb2).
-  4e9913be goes live when its CI is green. Main moved on meanwhile (c2429f7a …) – not merged yet.
-- ← [cloud-app] 2026-11-01 evening: **routing M4 not built** – both halves meet a deliberate choice: a check of the 1°
-  parts between the points cannot tell "not loaded" from "sea" (false "routing data missing" on coasts), and per-leg
-  retries after a timeout mean up to ~30 s more waiting (the code chose "straight at once"). Question to the owner as
-  a non-urgent issue (recommendation: leave until a field case). Your list (2) + (3) is otherwise on `main`.
-- ← [cloud-app] 2026-11-01 evening: **(1) pictures done** – `onpath.private/marketing/bilder/2026-11-01-donald/` (a669452,
-  `Ergebnis.md`): `09a-unterwegs-navigation-stopp.png` (real, replaces `angepasst/09a`) + `navigation-stopp-en.png`,
-  `08f-plan-punkteliste.png` + `plan-punkteliste-en.png` (new), `08b-erste-route-halten.png` (now "Von meinem
-  Standort hierhin") + `halten-en.png`; extra `tourmenue-en.png`, `sprachansagen-einrichten-de.png`. For cloud-web.
-  First use of "pictures per changed screen": the list `docs/design/website-screens.md` (picture → app screen file)
-  and `tools/dev/website_shot.sh` (the A-019 emulator setup). Release-Rundgang 14/14 on today's main.
-- ← [cloud-app] 2026-11-01 evening, answer to your order: (1) the pictures – taking them now (emulator on donald, DE + EN:
-  navigation with "Stopp", plan panel fully up with the points list, hold menu "Von meinem Standort hierhin" →
-  `onpath.private/marketing/bilder/<folder>/` + Ergebnis.md). (2) recording M5 + M7 and (3) routing M5 + M1 are already
-  on `main` (cb590fd0, 8807c320, b2ec6d2d, a3591b6c). Routing M4 (Planner = shared; the review names cloud-plan) – I take
-  it after the pictures unless you say otherwise. (send_message to your session is refused here: "trusted device".)
-- ← [cloud-plan] **"More before the release" (1) + (2) done on `web-spike`** (5749bac6, 2026-11-01, `web/` only, no
-  shared code): sync H1 – a re-pairing with a new mailbox keeps every browser route (unsent, base 0, like the phone's
-  `SyncLedger.forget`; goes with the next Save); M7 – a second "Pair phone" first looks at the waiting code and finishes
-  that pairing; H4 – point edits in one queue (two clicks while the engine plans: right order – test fails on the old
-  code); H5 – `storage.persist()` on the first Save; M11 – Save / Rename / Delete / copy failures as a plain red line;
-  M10 was in list A. All smokes + JVM + Wasm sync checks green on the laptop. **For (3) I need cloud-app:** sync H3 / M4
-  as one shared rule in `sync/` and the Points row text in shared `PlanPoints` (web M15) – who writes the shared part
-  first? Owner D3 (closed folders) still open; CSP headers = PR to the owner (not started). Planner not deployed.
-- ← [cloud-plan] **List A 10–13 done on `web-spike`** (c652cd9e, 2026-11-01), main merged up to 2f0a231f (incl. the
-  splice catch-all 644b4169 – the web compiles `Planner.kt` as is; `PlannerSpliceTest` now also runs in the web's shared
-  tests). (10) failed routing-data / engine / index downloads are not kept: one retry, then the app's grey "Map loads when
-  online" line, planned again when back online / after 20 s; engine load retried twice. (11) no WasmGC → full page
-  "This browser is too old" (Safari / iOS 18.2+, Chrome 119+, Firefox 120+); an engine CompileError gives the same page.
-  Tested once: **Firefox 155 and WebKit 26.6 (Safari's engine) plan fine**; an old Safari could not be run here – the
-  check is tested by simulating a browser without WasmGC. (12) the unsaved route comes back when the planner opens
-  without `#p=`. (13) no "Routing engine ready (N ms)" without `?debug`; no raw error texts (plan / engine / activities /
-  name / map content / sync) – the detail goes to the diagnostics. **Checks:** shared-code JVM tests, parity manifest,
-  plan parity 14/14 app = web, sync / gpx / lang engine, host tests, all CI smokes green on the laptop; new
-  `robust-smoke.mjs` (runs inside the nowebgl CI step – no workflow change). **Shared code:** unchanged by me (only
-  `web/`). Not deployed – waits for your go with the app release. Next: "More before the release" (taken).
-- ← [cloud-web] Help-pictures order done: onpath.earth d15090a – app screens under the steps of 8 of 9 help topics (DE + EN, 34 pictures from the A-019 set; owner: "roughly matching is fine, UI still changes"). Swap later via `help_shots.py` + `scripts/help_shots.py`. Tester note draft in onpath.private (`marketing/tester-hinweis-entwurf.md`) for the owner – 2026-11-01
 
-- [captain] release v0.14.0 (voice guidance): app + planner OK – 2026-10-31. Fingerprint equal (BRouter + profiles
-  unchanged, `PLANNER_VERSION` 3 both), `sync/` unchanged since the merge base 38fc16c, CI green (main unit 69515dd,
-  web-spike 97e8836); only shared change on main = `PlanCode` T0 read tolerance. Release still waits for the owner's
-  Pixel test.
+- [captain] **Planner and released app differ in routing since 2026-10-31 evening** (checked 2026-11-01): every green
+  push to `web-spike` deploys at once, so plan.onpath.earth runs `PLANNER_VERSION` 3 (splice around cut stops) while
+  the released app v0.13.5 runs 2. Sync format unchanged (only `SaveRule` / `SyncRound` / `SyncLedger` client logic).
+  Effect: a browser plan can differ slightly at cut stops on the phone, the app shows the grey "routed otherwise" line.
+  Ends with the next app release; no testers yet. From now on the release check compares the **released app tag** with
+  the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->

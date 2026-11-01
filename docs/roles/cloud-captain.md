@@ -16,7 +16,10 @@ the repos and in the other sessions' transcripts. A fresh captain session must b
   the other sessions.
 - Keep the backlog tidy: stale claims (older than a day, nobody working) → ask the role, then remove.
 
-**Release check** (app release or planner deploy that touches shared code) – all must hold on `main` and `web-spike`:
+**Release check** (app release or planner deploy that touches shared code) – all must hold on `main` and `web-spike`.
+Every green push to `web-spike` deploys at once (`web-spike.yml`), so also compare the **released app tag** with the
+**live planner**: a shared-code change on `web-spike` (fingerprint, sync format) is live before the app ships it –
+keep that gap short, release the app soon after:
 1. Same routing fingerprint: BRouter version, profiles, `PLANNER_VERSION` (`routing/RoutingFingerprint`).
 2. Same sync item format (`sync/`), or both sides read the new one.
 3. Shared-code tests green on both branches (`SharedCoreRuleTest` and the tests of the shared packages).
