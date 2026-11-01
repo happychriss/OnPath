@@ -32,6 +32,7 @@
     <string name="nav_copy_position">Position kopieren</string>
     <string name="nav_position_clip">Position</string>
     <string name="nav_copied">%1$s · kopiert ✓</string>
+    <string name="nav_rec_badge">REC</string>
     <string name="nav_status_recording">Aufzeichnung</string>
     <string name="nav_status_paused">Pausiert</string>
     <string name="nav_status_searching_gps">GPS wird gesucht…</string>
@@ -245,4 +246,5 @@
     <string name="nav_rest_cd">%1$s in %2$s. Tippen für die Karte</string>
     <string name="nav_no_route_ahead">Keine Route zu Punkt %1$d gefunden. Die Tour wird weiter aufgezeichnet.</string>
     <string name="nav_tour_record_only">Nur Aufzeichnung · %1$s · %2$s</string>
+    <string name="nav_turn_round">Umdrehen</string>
 </resources>

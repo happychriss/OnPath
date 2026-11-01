@@ -1,8 +1,13 @@
 # Start – every OnPath session (units and cloud workers)
 
-> **NOT ACTIVE YET.** Prepared 2026-11-01 for the setup switch after v0.14.0 (`docs/roles/neu/umstellung.md`). Until
-> then the roles in `docs/roles/*.md` apply. On the switch this file replaces `cloud-app.md`, `cloud-plan.md` and
-> `cloud-web.md`.
+> **ACTIVE for donald since 2026-11-01** (owner: switch now, in the middle of normal work). Replaces `cloud-app.md`.
+> **Transition** until `web-spike` is merged into `main` (`docs/roles/neu/umstellung.md` D):
+> - the laptop stays **cloud-plan** on `web-spike` under its old role file (`docs/roles/cloud-plan.md`); cloud-web too;
+> - backlog lines for **`[cloud-app]`** – claims, "For the roles" orders, handoffs – are **donald's** now; new claims
+>   use `[donald]`. Words to cloud-plan still go under "For the roles" (`→ [cloud-plan]`); the captain reads
+>   "For the captain" as before;
+> - donald's checkout stays `/home/development/Projects/work/onpath-app` (no rename now).
+> Worker sessions run in permission mode **auto** (owner 2026-11-01).
 
 Sessions are not roles any more but **units**: a computer (or a fresh cloud container) with what it can do. The work
 item says what it needs; the unit that can do it and is on takes it (owner 2026-11-01, setup concept §4).
@@ -39,6 +44,8 @@ first – owner: emulator locally, GitHub only when no computer is on) · `[kart
 no tag = any unit. An item may carry several tags.
 
 ## Arbeiter (worker sessions)
+Stay responsive to the owner (`CLAUDE.md` "Responsive chat"): long self-contained steps in a background fork, talk and
+small things directly. The Leitstand itself is always responsive – it only starts workers and never works in its chat.
 One item, in your own worktree (the host made it): claim is held by the Leitstand; work per `CLAUDE.md` (gate, devices
 via `tools/dev/device.sh`, questions via `tools/ask.sh`), push to `main` (rebase), one handoff line, then end – say
 „fertig: <commit>“ as your last line. Never start other sessions.

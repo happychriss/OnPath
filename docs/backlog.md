@@ -24,127 +24,61 @@ the git log.
 
 ## For the roles
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
-- → [cloud-web] Order (captain 2026-10-31): (1) copy the Drive folder into `onpath.private` (setup step 7) as soon as the
-  owner gives write access; (2) A-021 tab name / alt text „Aufs Handy · Teilen“ → „Teilen“. The website's voice
-  sentence waits until voice guidance is released.
-
-- → [cloud-web] Help pages (`/hilfe/…`, `/help/…`) have no pictures at all – only the home page has the 14 app
-  images. Add the matching
-  screens to the help topics (first steps, planning, tour menu, GPX, Google Maps place). **Ready now:** 59 PNGs in
-  `onpath.private/marketing/bilder/` (a019 = help set 08a–10d, nachtrag, nachtrag2; index = each Ergebnis.md).
-  Note: the set is from app 0.13.2 – check each picture against today's app texts (e.g. the empty plan hint) first. Also: the site already
-  calls voice guidance available (065d3b7) – fine if v0.14.0 ships 2026-11-01, otherwise roll that text back –
-  captain 2026-11-01.
 
 
-- → [cloud-app] + [cloud-plan] **Coordination of the AppViewModel split (captain 2026-11-01)** – the split touches
-  the app's own UI layer, which the web does not compile; but two of its five areas border on shared code
-  (`app/web-shared-files.txt`: `search/*` ×10, `ui/PlanState|PlanStatus|PlanGaps|RouteWarnings|MapGestures`,
-  `data/Geo|AppSettings|LastActivity|RoutingDataNotice`, `routing/*`, `sync/*`). Until the split is done:
-  1. **cloud-app:** move code only *out of* AppViewModel into new app-only files; do **not** change, move or rename a
-     listed shared file. If one must change: own commit, one line for cloud-plan in the web mirror list,
-     `SharedFilesRuleTest` green; a new file the web needs → into the list in the same commit.
-  2. **cloud-app:** when the last step is on `main`, one line under "For the captain": `split done – <commit>, shared
-     files touched: none | list`.
-  3. **cloud-plan:** web-only work goes on; no changes to listed files; do **not** merge `main` mid-split – merge once
-     after "split done" (the captain messages you), then shared-code + parity tests.
-  4. **Then:** cloud-app puts the Points-row text into `PlanPoints` and the sync H3 rule into `sync/` (one announced
-     commit each) → cloud-plan wires both → captain's release check.
-  5. The daily scheduled task "Web-Planer: täglicher Abgleich" (05:47) is **paused** (owner 2026-11-01,
-     onpath.private#11); the captain switches it on again after cloud-plan's merge of the finished split.
+- → [cloud-plan] **Pictures for the pairing help (owner 2026-11-01: "ask cloud-plan for new screenshots", order by
+  cloud-web):** planner on `web-spike`, 1440 × 900, DE + EN, plan Vellau Korblift → Leiteralm, the fake phone of
+  `sync-smoke.mjs` named "Pixel 8", no real pairing code visible (blur or a test mailbox): (W1) header right unpaired:
+  "Speichern" + "Handy verbinden"; (W2) pairing dialog with QR + check digits (code blurred); (W3) header paired: "Aufs
+  Handy sichern" dark + phone pill "Pixel 8 🟢 abgeglichen vor 2 Min."; (W4) after the click: "✓ Auf dem Handy"; (W5) My
+  routes paired: rows with 🖥 📱, one bold (waiting), one "Neu" tag; (W6) phone window paired: name + dot, "Jetzt
+  abgleichen", red "Trennen" at the bottom. Best as a script beside `ui-shots` so a later UI change re-shoots them.
+  PNGs `web-w1…w6-de|en.png` into `onpath.private/marketing/bilder/<date>-hp/` + `Ergebnis.md`; then a line under
+  "For the captain" – captain 2026-11-01.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
-- ← [cloud-app] 2026-11-01 night: **shared code for cloud-plan** (please pass on with the split merge): new
-  `navigation/JogRule.kt` (in `app/web-shared-files.txt`) and `JunctionCues` uses it (00b9f006) – close opposite turns
-  are one step, after the owner's Hilden tour where no voice sentence fit. Voice wording (app only, 44544250): way word
-  from the real way type. On the Pixel for the owner's test.
-- ← [cloud-app] 2026-11-01 night: **split done – 2e50efbc, shared files touched: none** (4/5 a8aade87 `ui/MapDataFlow`,
-  5/5 2e50efbc `ui/SearchFlow`; AppViewModel 5083 → 4091 lines, every public name forwarded). Please message cloud-plan
-  for its one merge. Safety net on donald: full gate each step; E2E map tests green before and after; Release-Rundgang
-  14/14 PASS + CorePlanLink + RoutingDataFreshInstall (with download) PASS on the final state. Two stale E2E tests fixed
-  on the way (red before the split too). `release_rundgang.sh` takes `E2E_ARGS` now.
-- ← [cloud-app] 2026-11-01 evening: **AppViewModel split 3 of 5 on `main`** (f92268ac, d5396fd6, 6674dc82 – Updates, Phone
-  setup, Pairing), **shared files touched: none**; 4 + 5 (cells / routing data, search) go to a fresh cloud-app session
-  (owner), plan in `docs/reviews/2026-11-01/appviewmodel-split.md`. Your (3) – Points row text into `PlanPoints`
-  (1d35cc5b) and the sync H3 rule `sync/SaveRule` (d0d43d87) – were already on `main` this afternoon, announced in the
-  mirror list. Release-Rundgang 14/14 PASS on cbe9833f. Owner-decision items from the review are listed below (left
-  as they are).
-- ← [cloud-web] Picture request for donald (owner OK 2026-11-01): (1) navigation with the new slider "Stopp · Pause · Beenden · Route ändern" (DE + EN), (2) the plan panel pulled fully up (points list visible), (3) the long-press menu with today's "Von meinem Standort hierhin". PNG 1080 × 2400 into `onpath.private/marketing/bilder/<folder>/`; the website takes them via `scripts/help_shots.py` (same file names as `help_shots.py`, or tell me the new ones). Until then the home page uses a patched picture – 2026-11-01
-- ← [cloud-app] 2026-11-01 afternoon: shared (3) on `main` for cloud-plan (sync M4 7d589d55, H3 `sync/SaveRule` d0d43d87,
-  Points row texts 1d35cc5b, name / fit rules ec5c43c6 – mirror list); UX text polish d08e15c4; recording M6 / L1 +
-  GPX OOM (shared `GpxParser`) in the last commit. **Owner decisions the review touches – left as they are:** UX 14 arrival
-  dialog (Save · Delete · Keep going – owner's End-tour rule), UX 17 Navigate "2:50 h  7.4 km" (owner layout), UX 13
-  "Round trip" name, UX 11 voice stays silent until the setup test (owner rule; the Settings line says so), UX 19 T2 /
-  "Difficult" badge. Still open from the reviews (not in the order): routing M1–M5, M7, M8, L1–L9; recording M5, M7;
-  architecture 2–14 (2 = signing key, PR to the owner). Say which to take next.
-- ← [cloud-app] **"More before the release" done on `main`** (2026-11-01) except (3): quiet while standing still 8834651c
-  (MoveWatch: no voice / off-route question / reminder, grey "No GPS"); M4 a6f2d10b; M2 + M3 747b6593; watchdog H3
-  f05dfc45; arrival in the service H2 dfc701d9; GPX rte + trk once 313e9d1f (**shared** `gpx/GpxModel`); background
-  routing thread a1fdc8f8; sync M8 app part c2367edd; UX 5 / 6 / 9 140d5bec, one off-route question shape b5f8a2e5 (owner
-  chose it), route / tour / track 8ed8c35f. **Release-Rundgang 14/14 PASS** on dfc701d9; E2E + unit green on 140d5bec.
-  Shared code since the last check: `routing/Planner.kt` (splice catch-all, mirrored) and `gpx/GpxModel.kt` – `PlanResult`,
-  `sync/`, profiles, `PLANNER_VERSION` unchanged → fingerprint unchanged. **(3): cloud-app writes the shared part now**
-  (answer to cloud-plan): `sync/SaveRule` (H3), the mailbox-reset in `SyncRound` (M4), Points row text in `PlanPoints`
-  (web M15) – each announced in the mirror list when on `main`.
-- ← [cloud-plan] **"More before the release" (1) + (2) done on `web-spike`** (5749bac6, 2026-11-01, `web/` only, no
-  shared code): sync H1 – a re-pairing with a new mailbox keeps every browser route (unsent, base 0, like the phone's
-  `SyncLedger.forget`; goes with the next Save); M7 – a second "Pair phone" first looks at the waiting code and finishes
-  that pairing; H4 – point edits in one queue (two clicks while the engine plans: right order – test fails on the old
-  code); H5 – `storage.persist()` on the first Save; M11 – Save / Rename / Delete / copy failures as a plain red line;
-  M10 was in list A. All smokes + JVM + Wasm sync checks green on the laptop. **For (3) I need cloud-app:** sync H3 / M4
-  as one shared rule in `sync/` and the Points row text in shared `PlanPoints` (web M15) – who writes the shared part
-  first? Owner D3 (closed folders) still open; CSP headers = PR to the owner (not started). Planner not deployed.
-- ← [cloud-app] **Sync H3 / M4 – proposal for cloud-plan (shared `sync/`, agree before code), 2026-11-01:**
-  (H3) one pure rule `sync/SaveRule.kt`: saving over a saved route whose stored version changed since it was opened, by
-  sync (not here) → **saved as "‹name› (copy)"**, no question (A-017 "older stays as a copy"), a line where the user
-  acted ("Changed in the browser meanwhile – saved as a copy"). Input: version (`updatedAt`) when opened, version now,
-  changed here. App: `overwriteSaved`; web: `plans.ts` OVERWRITE. (M4) `SyncRound`: `page.rev < ledger.since` (or a 409
-  whose rev is below the entry's) = the mailbox lost its history → `since = 0`, every live user item dirty with base 0
-  (like `SyncLedger.forget()`), `Problems.warn`; a 413 → warn + counts as stuck (app part of M8 done c2367edd). cloud-app
-  would write both on `main` with tests (PlanSyncTest), cloud-plan merges and wires `plans.ts`. OK? – until then
-  cloud-app does not touch `sync/`.
-- ← [cloud-plan] **List A 10–13 done on `web-spike`** (c652cd9e, 2026-11-01), main merged up to 2f0a231f (incl. the
-  splice catch-all 644b4169 – the web compiles `Planner.kt` as is; `PlannerSpliceTest` now also runs in the web's shared
-  tests). (10) failed routing-data / engine / index downloads are not kept: one retry, then the app's grey "Map loads when
-  online" line, planned again when back online / after 20 s; engine load retried twice. (11) no WasmGC → full page
-  "This browser is too old" (Safari / iOS 18.2+, Chrome 119+, Firefox 120+); an engine CompileError gives the same page.
-  Tested once: **Firefox 155 and WebKit 26.6 (Safari's engine) plan fine**; an old Safari could not be run here – the
-  check is tested by simulating a browser without WasmGC. (12) the unsaved route comes back when the planner opens
-  without `#p=`. (13) no "Routing engine ready (N ms)" without `?debug`; no raw error texts (plan / engine / activities /
-  name / map content / sync) – the detail goes to the diagnostics. **Checks:** shared-code JVM tests, parity manifest,
-  plan parity 14/14 app = web, sync / gpx / lang engine, host tests, all CI smokes green on the laptop; new
-  `robust-smoke.mjs` (runs inside the nowebgl CI step – no workflow change). **Shared code:** unchanged by me (only
-  `web/`). Not deployed – waits for your go with the app release. Next: "More before the release" (taken).
-- ← [cloud-app] **List A 1–9 done on `main`** (2026-11-01): (1) voice repeat d6aebf06 – voice memory per tour in
-  trip-pace.json, service scope with exception handler, re-route result + ticker caught, minimum intervals; (2) ■ Stop in
-  the one-row tour step fb872ba8 + slider "Stopp" cc5508a6 (owner's choice, was "Tour-Menü"); (3) tour-edit lines
-  233af63d (passed points kept, pale plan beside a re-route, SplitRequests) + 95498f11 (session token, version + 1,
-  failed recalc keeps the line); (4)+(5) 4729bfb6; (6)+(7) 6691f666; (8) 644b4169 + 95498f11 (UserText); (9) 24d46ea1.
-  **Shared code:** only `routing/Planner.kt` (splice catch-all, 644b4169 – behaviour unchanged unless the splice throws);
-  `PlanResult`, `sync/`, profiles, `PLANNER_VERSION` untouched → fingerprint unchanged; noted for cloud-plan in the
-  mirror list. Owner: **no release today** – cloud-app goes on with "More before the release". The owner's diagnostics
-  export of the voice-repeat ride is still to come (confirms the crash path). Device check of (3) in Demo mode still open.
-- ← [cloud-web] Help-pictures order done: onpath.earth d15090a – app screens under the steps of 8 of 9 help topics (DE + EN, 34 pictures from the A-019 set; owner: "roughly matching is fine, UI still changes"). Swap later via `help_shots.py` + `scripts/help_shots.py`. Tester note draft in onpath.private (`marketing/tester-hinweis-entwurf.md`) for the owner – 2026-11-01
+- ← [cloud-app] 2026-11-01: **Germany worktree removed** on donald (owner confirmed in the chat; no uncommitted work,
+  all of `germany-prebuild` on origin/main, local branch deleted) – #10 closed. The run data beside it
+  (`~/onpath-cells-work/germany/` state, logs, lists) is still there – remove only on the owner's word. Also new on
+  main: Plan during a tour has no grey route any more (owner, c2429f7a – app only).
 
-- [captain] release v0.14.0 (voice guidance): app + planner OK – 2026-10-31. Fingerprint equal (BRouter + profiles
-  unchanged, `PLANNER_VERSION` 3 both), `sync/` unchanged since the merge base 38fc16c, CI green (main unit 69515dd,
-  web-spike 97e8836); only shared change on main = `PlanCode` T0 read tolerance. Release still waits for the owner's
-  Pixel test.
+- [captain] **Planner and released app differ in routing since 2026-10-31 evening** (checked 2026-11-01): every green
+  push to `web-spike` deploys at once, so plan.onpath.earth runs `PLANNER_VERSION` 3 (splice around cut stops) while
+  the released app v0.13.5 runs 2. Sync format unchanged (only `SaveRule` / `SyncRound` / `SyncLedger` client logic).
+  Effect: a browser plan can differ slightly at cut stops on the phone, the app shows the grey "routed otherwise" line.
+  Ends with the next app release; no testers yet. From now on the release check compares the **released app tag** with
+  the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [cloud-plan] Waiting for cloud-app's AppViewModel split on `main`: web-only work, no shared files touched, no deploy, **no merge of `main` mid-split**; after cloud-app's "split done" (captain messages) → one merge, shared-code + parity tests (also: the web build reads `app/web-shared-files.txt`?), word to the captain; then wire cloud-app's Points-row text (`PlanPoints`, web M15) and the sync H3 rule (`sync/`) on the web – since 2026-11-01
-- [cloud-plan] "More before the release" (owner 2026-11-01): (1) + (2) done (web-spike 5749bac6); left: (3) with cloud-app – sync H3 / M4 as one shared rule in `sync/`, Points list row text from shared `PlanPoints` (web M15) – since 2026-11-01
+- [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
+- [cloud-plan] Shared rules from main 2e50efbc wired on web-spike 4e9913be – left: the mirror line "Left from main 2e50efbc" – since 2026-11-01
 - [cloud-app] The rest of the backlog (owner 2026-11-01: no release today, everything in) – since 2026-11-01
 - [cloud-app] AppViewModel split done, build on the Pixel (16:31) – owner tests it outside, then the captain's release check – since 2026-11-01
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
+- **Pictures for the pairing help – app part (order by cloud-web, owner OK 2026-11-01)** [emu]: emulator, A-019 setup,
+  DE + EN: (A1) ☰ open with "Mit Browser verbinden"; (A2) the question "Mit diesem Browser verbinden? Prüfe: 123 456"
+  with "Verbinden"; (A3) My routes with a route from the browser ("Neu"); (A4) Settings → Browser-Abgleich paired with
+  "Trennen" (EN missing today). If the Paparazzi snapshots `planPairHint` / `planPairedNote` / `toursFromBrowser` /
+  `settingsSyncPaired` already show these well enough, say so instead (cloud-web uses them as `app-koppeln` …
+  `app-trennen`). PNGs `app-a1…a4-de|en.png` into `onpath.private/marketing/bilder/<date>-donald/` + `Ergebnis.md`, add
+  the keys to `docs/design/website-screens.md`; `tools/dev/website_shot.sh`.
+- **Bike difficulty limit S0 / S1 / S2 (owner 2026-11-01, "easy to build?"):** today only the hike has a chosen limit
+  (T1–T5). Gravel (`trekking.brf`) and Bike / E-bike (`touring.brf`) already make S2 very expensive (+30) and shut S3+
+  (10000); `mtb.brf` only adds a cost per S grade, no limit. Wanted: a chosen limit per bike activity ("nur S0", "bis S1"),
+  like the T level. Size (cloud-app estimate): medium, not a one-liner – a profile variable in the three .brf (like the
+  hike's T limit), the picker line + stored level (`LastActivity`), `RoutingContract` / `EngineProvider` / `PlanResult`
+  pass it (shared with the web: picker + `PlanGpx` sport type), `RoutingFingerprint` + the cells' router-class hash
+  (`RouterClassCheck`) change, `ActivityLayers` maybe shows the band by S level. Most ways carry no `mtb:scale` – the
+  limit acts only where mappers set it (MTB areas yes, gravel roads mostly not). After Navigation neu. [cloud-app + cloud-plan]
 - **Way type on screen (owner idea 2026-11-01, rest of it):** the voice names the way from the real way type now (Feldweg
   only on a track, Radweg, Weg, Pfad, Straße – 44544250) and close opposite turns are one step (JogRule, 00b9f006);
-  still open: the owner names more kinds if wanted (Nebenstraße, Landstraße, Schotterweg …), the same word on screen
-  under the arrow, and the map's turn card / arrow (`TurnDetector`, geometry) does not know the jog rule yet. [cloud-app]
+  the screen's turn card / arrow shows the same junctions now (`navigation/ScreenTurns`, 4418dc36); the Navigate Sim
+  follows a changed line (7a397432). Still open: the owner names more kinds if wanted (Nebenstraße, Landstraße,
+  Schotterweg …) and the same word on screen under the arrow. [cloud-app]
 - **Website screenshots per changed screen, not whole sets (owner 2026-11-01) – start right after the v0.14.0
   release.** Instead of re-shooting all pictures after every UI change, each role re-shoots only the pictures of the
   screens it changed. (1) **[cloud-app]** a list `docs/design/website-screens.md`: every website / store / help
@@ -212,27 +146,8 @@ the git log.
   privacy + pairing sentences, host ipHash, date with the dot, first-route fit, "New route for … – check it".
   Plan parity: `web/test/plans.json` 14 cases, all app = web (gate in the jvm job).
   - *Should:*
-    - [cloud-plan] **One shared-file list (review Arch 5, owner 2026-11-01: now)** · `app/web-shared-files.txt` on main
-      ([files] / [tests], paths as in your `appFiles` / `appTests`, plus the new `routing/PlanNames.kt`, `sync/SaveRule.kt`,
-      `routing/PlanNamesTest.kt`) · please read it in `web/engine/build.gradle.kts` (and `tools/routing/jvm-test/run.sh`)
-      instead of the hard-coded lists; the app's `SharedFilesRuleTest` already guards it on every gate.
-    - [cloud-plan] **Shared code changed on `main` this afternoon (cloud-app, 2026-11-01) – comes with the next merge, mostly
-      no web work:** `gpx/` – no-fix (0,0) points and NaN heights dropped, other apps' sport names (72c9bece), plan GPX
-      pins as `<wpt><type>pinned</type>` + one off-line stop keeps the rest (23f64bc3: the web's export can pass its pins
-      `PlanGpx.stops(points, pinned)`, its re-import can pin `PlanGpx.pinnedOf`), damaged big GPX never OOM (e7c86fa3);
-      `time/TimeEstimate` – imported track = moving time (6460dc98), `trackStats` = the one import stats (1d9a375a:
-      `WebImport` can use it instead of its own copy); `routing/TrackToPlan.fit(cancel =)` optional (c87765f1);
-      `data/Geo` – `routeClimb` (Planner.climb delegates, same numbers, a3591b6c) and `fastDistance`, BRouterEngine /
-      WaypointSnap use them, tile names from `Rd5Parts.tileName` (5562274c). PlanResult, `sync/` (beyond the rules
-      announced above), profiles, `PLANNER_VERSION` untouched → fingerprint unchanged.
-    - [cloud-plan] **Shared (3) is on `main` (cloud-app, 2026-11-01) – wire it:** sync M4 7d589d55 (`SyncRound` restarts a
-      mailbox that lost its history; `Done.restarted` / `Done.tooLarge` – say them on the web too; not detectable without
-      the server: a new mailbox whose revision already passed the device's "since" → proposal: a mailbox epoch (claim
-      time) in the GET page, kept in the ledger, a different one = restart – host + `Mailbox.Page`, your call);
-      sync H3 d0d43d87 (new file `sync/SaveRule.kt` → `appFiles`; `plans.ts` OVERWRITE: `SaveRule.keepsOtherEdit(code
-      when opened, existing.plan)` → save as copy + the line `msg_route_changed_elsewhere`); Points row texts 1d35cc5b (`PlanPoints.roleText` / `legText` → `Engine.rows`, TS only renders). PlanSyncTest / PlanPointsTest cover them.
-    - [cloud-plan] GPX with `<rte>` + `<trk>` drawn once (tracks win) · 313e9d1f · `gpx/GpxModel.allSegments` (shared,
-      GpxParserTest runs in the web build too) – comes with the next main merge.
+    - [cloud-plan] Left from main 2e50efbc: plan GPX pins (`PlanGpx.stops(points, pinned)` on export, `pinnedOf` on re-import,
+      23f64bc3); "Plan a route from it" as a modal box with Cancel (app, owner 2026-11-01); sync M4's mailbox epoch (host).
     - [cloud-plan] Rolled-up one-row step? (app d288503, PlanSize.COLLAPSED: activity icon, time · distance, ⚠ count,
       compact green Start) · the web has small / profile / points (`sheetstep.ts`) and no Start – a fourth, one-row step
       only if the owner wants it on a phone-width browser.
@@ -243,8 +158,6 @@ the git log.
     - [cloud-plan] Quiet margin cells after planning (offline after planning) · 27029db · `cells/CellTriggers.kt`
       (`CellJob.margin`: cells along the route vs the corridor margin, `tourStarted`) – check `areas.ts` (T1–T4 mirror)
       asks the margin cells quietly like the app.
-    - [cloud-plan] Pure files for the name / fit rules · ec5c43c6 · `routing/PlanNames.kt` (newRouteName, copyName) and
-      `RouteFit` (firstRoute, fitAfterPlace), both in that one file – add to `appFiles`, drop the web's copies from `web/parity.json`.
   - *Low prio:*
     - A-016 App Links · `/.well-known/assetlinks.json` is live (200, v0.13.1 key) · left: on the phone
       `adb shell pm get-app-links com.onpath.app` – then `#p=` / `#pair=` links open the app (owner).
@@ -339,8 +252,6 @@ the git log.
   `main`) – the captain does not delete branches.
 - **`MapController.metersPerPixel()` density mix-up** – map taps count "on the line" within ~60 dp instead of 24 dp,
   and the shared-place "arrived" check is loose. Owner decision needed: the fix changes hold behaviour.
-- **Worktree `~/onpath-cells-work/germany/repo` (branch `germany-prebuild`)** still exists on donald – decide whether
-  to remove it.
 - **`CF_START_TOKEN` (GitHub secret + the Cloudflare token behind it)** – only needed for the one-time Cloudflare setup
   of plan.onpath.earth (A-008); owner 2026-10-30: keep for now, delete later (GitHub: `gh secret delete CF_START_TOKEN`;
   Cloudflare dashboard → My Profile → API Tokens). The branch `marketing` is already gone.

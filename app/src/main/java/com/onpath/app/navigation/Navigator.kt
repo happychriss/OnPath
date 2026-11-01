@@ -33,6 +33,8 @@ sealed interface NavPrompt {
         val skipStop: Int? = null,
         /** Name of [skipStop] when it has one (else "Stop N"). */
         val skipName: String? = null,
+        /** The number the map shows for [skipStop] ([NavSession.numberOf]); null = its index + 1. */
+        val skipNumber: Int? = null,
         /**
          * Non-null: "Off route – re-plan?" with [skipStop] in question – "Yes" takes [via] (the way via it), "Yes, skip
          * stop N" takes this line (without it); Keep original stays possible.
@@ -139,7 +141,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         private set
 
     private var original = NavLine(session.original)
-    val detector = OffRouteDetector(offRouteM)
+    val detector = OffRouteDetector(offRouteM).apply { headingRule = session.activity != com.onpath.app.routing.Activity.HIKE }
     private var leftAtM = session.leftAtM
     private var jobId = 0
     private var runningJob = -1
@@ -155,6 +157,8 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private var origHits = 0
     private var forceCheck = false
     private var lastFix: OffRouteDetector.Fix? = null
+    /** Per stop point (survives plan edits that renumber): the closest good fix inside its radius so far (reached when moving away again, [markVisited]). */
+    private val stopClosest = HashMap<GeoPoint, Double>()
     /** A taken way back that starts by turning round: its start, until the rider has turned and moved on. */
     private var turnRoundAt: GeoPoint? = null
     /** The rider's latest positions, oldest first ([TurnRound]). */
@@ -210,7 +214,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         lastFix = f
         val p = f.point
         recent.addLast(p); while (recent.size > RECENT_FIXES) recent.removeFirst()
-        var step = markVisited(p)
+        var step = markVisited(p, f.accuracyM)
         var farNow = false
         if (forceCheck) {
             forceCheck = false
@@ -336,7 +340,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         // a stop left out on purpose stays out: later re-routes never send back to it (like a passed one)
         val visited = skipStop?.let { session.visited + it } ?: session.visited
         session = session.copy(current = line, spliceAtM = legM, resumeAlongM = resumeAlongM, leftAtM = leftAtM,
-            visited = visited, version = session.version + 1)
+            visited = visited, skipped = skipStop?.let { session.skipped + it } ?: session.skipped, version = session.version + 1)
         detector.setLine(NavLine(line), 0.0, assumeOnRoute = true)
         prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0; refreshes = 0
         return Step(cancelJob = true, lineChanged = true)
@@ -435,6 +439,13 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
 
     /** "Keep original" for question [id]: no new route; arrow to the route; asked again only much later. */
     fun keep(id: Int): Step {
+        if (prompt == NavPrompt.Searching) {
+            // "Keep original" before the way back was found (the question comes at once now): the search stops
+            prompt = NavPrompt.Kept
+            keeps++; refreshes = 0
+            lastFix?.let { markAsked(it); toRoute = hint(it.point) }
+            return Step(cancelJob = true)
+        }
         val q = prompt as? NavPrompt.Question ?: return Step()
         if (q.id != id) return Step()
         if (q.switch != null) {
@@ -454,6 +465,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private fun question(id: Int, f: Rerouter.Found): NavPrompt.Question = NavPrompt.Question(id, f.extraM, f.rejoinInM,
         f.startOffM, f.line, f.legM, f.resumeAlongM, turnRound = TurnRound.needed(recent.toList(), f.line),
         skipStop = f.skipStop, skipName = f.skipStop?.let { session.stops.getOrNull(it)?.name?.takeIf { n -> n.isNotBlank() } },
+        skipNumber = f.skipStop?.let { session.numberOf(it) },
         via = f.ask?.let { question(id, it) }, offM = detector.lastDistanceM)
 
     private fun ask(f: OffRouteDetector.Fix, vibrate: Boolean): Step {
@@ -564,13 +576,25 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         return clearPrompt().copy(lineChanged = true)
     }
 
-    private fun markVisited(p: GeoPoint): Step {
+    /**
+     * Stops reached by this fix: within [NavSession.visitedM] (on foot 25 m, bike 40 m) and only from a fix good to
+     * [NavSession.VISITED_MAX_ACCURACY_M] (owner 2026-11-01: a restaurant's jumping fixes said "Stopp 4 erreicht").
+     * Counted at the closest approach, not on entering the radius (owner on the replay: "Stopp 5 erreicht" came 24 m
+     * early): within [NavSession.VISITED_NOW_M], or inside the radius and moving away again (a point beside the way).
+     */
+    private fun markVisited(p: GeoPoint, accuracyM: Double): Step {
         val s = session
-        if (s.stops.isEmpty()) return Step()
+        if (s.stops.isEmpty() || accuracyM > NavSession.VISITED_MAX_ACCURACY_M) return Step()
+        val radius = NavSession.visitedM(s.activity)
         var v: MutableSet<Int>? = null
         for (i in s.stops.indices) {
             if (i in s.visited) continue
-            if (Geo.distance(p, s.stops[i].point) <= NavSession.VISITED_M) (v ?: s.visited.toMutableSet().also { v = it }).add(i)
+            val d = Geo.distance(p, s.stops[i].point)
+            val closest = stopClosest[s.stops[i].point]
+            if (d <= radius) stopClosest[s.stops[i].point] = minOf(closest ?: d, d)
+            val reached = d <= NavSession.VISITED_NOW_M ||
+                (closest != null && closest <= radius && d > closest + NavSession.VISITED_AWAY_M)
+            if (reached) (v ?: s.visited.toMutableSet().also { v = it }).add(i)
         }
         val nv = v ?: return Step()
         session = s.copy(visited = nv)
@@ -578,8 +602,16 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     }
 
     /** Nearest point of the original ahead of where the user left it (never back to a passed part). */
+    /**
+     * Arrow + distance to the route: the line followed now from where it was left (owner 2026-11-01, Rosellen replay:
+     * on a re-routed line the arrow pointed 530 m back to where the ORIGINAL was left, the new line 50 m away).
+     */
     private fun hint(p: GeoPoint): RouteHint? {
-        val m = original.match(p, leftAtM, leftAtM + HINT_AHEAD_M) ?: return null
+        val active = detector.line
+        val m = if (session.rerouted && active != null && active.isUsable)
+            active.match(p, detector.leftAtM, detector.leftAtM + HINT_AHEAD_M)
+        else original.match(p, leftAtM, leftAtM + HINT_AHEAD_M)
+        m ?: return null
         return RouteHint(m.distanceM, TurnDetector.bearing(p, m.point), m.point)
     }
 

@@ -4,6 +4,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.Locale
+import com.onpath.strings.*
 
 /** The spoken sentences (docs/design/voice-guidance.md §3) in English and German. */
 class VoiceTextTest {
@@ -24,6 +25,7 @@ class VoiceTextTest {
         assertEquals("Gasthof Hochmuth reached. On to Algund, 4 kilometers.",
             VoiceText.of(Phrase.StopReached("Gasthof Hochmuth", 2, "Algund", 4_020.0)))
         assertEquals("Stop 3 reached.", VoiceText.of(Phrase.StopReached(null, 3, null, null)))
+        assertEquals("Stop 6 reached. Please turn round.", VoiceText.of(Phrase.StopReached(null, 6, null, null, turnRound = true)))
     }
 
     @Test fun german() = de {
@@ -39,6 +41,8 @@ class VoiceTextTest {
         assertEquals("Los geht's. 12 Kilometer bis Lana, etwa 50 Minuten.", VoiceText.of(Phrase.Start(12_200.0, 2_950.0, "Lana")))
         assertEquals("Los geht's. 1,5 Kilometer, etwa eine Stunde 20 Minuten.", VoiceText.of(Phrase.Start(1_500.0, 4_700.0, null)))
         assertEquals("Neue Route. In 200 Metern rechts.", VoiceText.of(Phrase.NewRoute(Phrase.Junction(210.0, Turn.RIGHT))))
+        assertEquals("Neue Route. Bitte umdrehen.", VoiceText.of(Phrase.NewRoute(null, turnRound = true)))
+        assertEquals("Navigation läuft wieder.", Txt.s(Res.string.voice_guidance_back))
         assertEquals("Gasthof Hochmuth erreicht. Weiter nach Algund, 4 Kilometer.",
             VoiceText.of(Phrase.StopReached("Gasthof Hochmuth", 2, "Algund", 4_020.0)))
         assertEquals("Kein Ziel mehr vor dir. Bitte aufs Handy schauen.", VoiceText.of(Phrase.NoDestination))

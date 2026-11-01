@@ -53,17 +53,19 @@ class QuestionNotificationTest {
     }
 
     /**
-     * Review H1: Plan opened during a tour, phone pocketed without "Continue" → off-route warnings were off for the rest
-     * of the ride (junction cues went on). Plan pauses them only while the app is on screen.
+     * Owner 2026-11-01 (replaces review H1): "Navigation Stopp" = the phone is quiet, also with the screen off; walking off
+     * with the phone pocketed brings the guidance back (H1's worry, StopQuietTest). Wiring in the service.
      */
-    @Test fun planModeOffScreenStillWarnsOffRoute() {
-        assertTrue(AppVisibility.navigatingNow(appInNavigate = true, appVisible = true))
-        assertFalse("Plan on screen: no questions (owner rule)", AppVisibility.navigatingNow(appInNavigate = false, appVisible = true))
-        assertTrue("Plan, then pocketed", AppVisibility.navigatingNow(appInNavigate = false, appVisible = false))
-        // the service re-applies it every second (the ticker) and on every mode switch
+    @Test fun navigationStoppIsQuietUntilContinueOrWalkingOff() {
         val svc = File("src/main/java/com/onpath/app/recording/RecordingService.kt").readText()
         assertTrue(svc.substringAfter("private fun tick()").substringBefore("\n    }\n").contains("applyNavigating()"))
         assertTrue(svc.contains("setNavigating(navigatingApplied)"))
+        assertTrue(svc.contains("val now = navigating || stopQuiet.resumed"))
+        assertTrue(svc.contains("stopQuiet.set(stopped = !navigating)"))
+        // no voice and no junction vibration while quiet: the check comes before both
+        val cue = svc.substringAfter("private fun junctionCue(").substringBefore("\n    }\n")
+        assertTrue(cue.indexOf("if (stopQuiet.quiet) return") in 0 until cue.indexOf("voiceStep(st, nowEl)"))
+        assertTrue(cue.indexOf("if (stopQuiet.quiet) return") < cue.indexOf("vibrate("))
     }
 
     /** Review M1: every notification of a tour has its own id – Pause / Resume never cancels "cannot be saved". */

@@ -116,6 +116,19 @@ class DemoPath private constructor(val line: List<GeoPoint>, private val cumM: D
             return DemoPath(line, c, s)
         }
 
+        /**
+         * A recorded tour again, at its recorded times (developer tools, owner 2026-11-01: walk a field tour through in
+         * debug mode – stops stay stops, gaps stay gaps). [timesMs] per point; a point without a time or going back in
+         * time keeps the time before it. Null = no line or no times.
+         */
+        fun recorded(line: List<GeoPoint>, timesMs: List<Long?>): DemoPath? {
+            val c = cumulative(line) ?: return null
+            val t0 = timesMs.firstOrNull { it != null } ?: return null
+            var last = 0.0
+            val s = DoubleArray(line.size) { i -> maxOf(last, ((timesMs.getOrNull(i) ?: t0) - t0) / 1000.0).also { last = it } }
+            return if (s.last() > 0) DemoPath(line, c, s) else null
+        }
+
         private fun cumulative(line: List<GeoPoint>): DoubleArray? {
             if (line.size < 2) return null
             val c = Geo.cumulative(line)

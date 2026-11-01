@@ -26,6 +26,31 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud-app (donald), 2026-11-01 night – the owner's hikes (tours 61–63).** Data secured on donald:
+  `~/onpath-cells-work/field/2026-11-01-wanderungen/` (live-1931 during tour 63, final-* after it: DB, events, problems,
+  nav session, GPX, logcat, the owner's screenshot 17:43). Analysed: round trip 61 (a step back at the start → matcher on
+  the loop's closing part → 6 of 7 points "passed" → early "Ziel erreicht"), tour 62 (park path 2–25 m beside Neustraße
+  → switched back to the original behind its loop, point skipped, "Ziel erreicht" at 54 m). Built on main: no grey in
+  Plan during a tour, plan line always drawn (c2429f7a), plan points in Navigate with ✓ (6b8751da). Concept for the
+  owner: `docs/design/navigation-v2.md` (voice timing like Organic Maps / OsmAnd, points stay open – owner decision,
+  parallel ways, round trips, off-route side + distance) – three questions open in §4, nothing of it built yet.
+  Owner note for later: ☰ "Meine Routen" first. Pixel: main b047bf79 installed 19:55 (no tour running).
+- **cloud-app (donald), 2026-11-01 evening – voice after the owner's Hilden tour, pictures, captain's list.** Owner's
+  field word "keine einzige Ansage passte" (demo tour 59 through Hilden's Stadtpark): replayed on the JVM with real data
+  and checked against OSM – (1) a pedestrian crossing / sideways step was two turns ("links auf den Feldweg, danach
+  rechts") → shared `navigation/JogRule` (00b9f006: two opposite turns < 20 m, on foot 12 m = one step, ≤ 30° = quiet;
+  JunctionCues, VoiceGuide, trace); (2) every park footway was "Feldweg" → the way word from the real way type
+  (44544250: Feldweg only on a track, Radweg, Weg, Pfad, Straße); (3) the screen's turn card came from geometry
+  ("Kehre rechts" for two park junctions) → `navigation/ScreenTurns` = the voice's junctions (4418dc36); (4) the Navigate
+  "Sim" kept riding the old line after a plan edit – what looked like "links und rechts vertauscht" (checked: no side is
+  swapped, 116 sentences on 14 Hilden routes) → `DemoLocation.switchLine` (7a397432). New: Navigate "▶ Sim" chip for
+  the developer tools (06d01d1f), `tools/routing/jvm-test/HildenVoiceTest.kt` (PASS). Release-Rundgang 14/14 on main.
+  Captain's order: (1) pictures DE + EN → `onpath.private/marketing/bilder/2026-11-01-donald/` (a669452), list
+  `docs/design/website-screens.md` + `tools/dev/website_shot.sh`; (2)/(3) M5, M7, M5, M1 were already on main; M4 not
+  built (owner question onpath.private#13). **Pixel:** 06d01d1f + voice fixes installed 17:01; the Sim-follow fix
+  (7a397432) and screen turns (4418dc36) are NOT on the Pixel yet – it went off USB; install when it is back (no tour
+  running). Shared code for cloud-plan: JogRule + JunctionCues (backlog "For the captain"). **Next:** owner's ride /
+  Sim check of the voice; the rest of the way-type idea (word on screen, more kinds) after the owner's word.
 - **cloud-app (donald), 2026-11-01 night – AppViewModel split 4 + 5, split done.** 4/5 `ui/MapDataFlow` (a8aade87:
   cell triggers, card, loading modal, background strip, Offline maps, routing data loader), 5/5 `ui/SearchFlow`
   (2e50efbc: search view, candidate marker, place names, shared places) – each with a small `Host` interface (getters /

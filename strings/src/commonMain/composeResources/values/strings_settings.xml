@@ -67,11 +67,6 @@
     <string name="settings_nav_meters">%1$d m</string>
     <string name="settings_nav_vibrate_off">Vibrate when off route</string>
     <string name="settings_nav_vibrate_off_sub">Felt in the pocket, also with the screen off</string>
-    <string name="settings_nav_junction">Vibrate at junctions</string>
-    <string name="settings_nav_junction_sub">Before a turn of the followed route: 1× left, 2× right</string>
-    <string name="settings_nav_junction_off">Off</string>
-    <string name="settings_nav_junction_always">Always</string>
-    <string name="settings_nav_junction_locked">Screen locked</string>
     <string name="settings_nav_on_route">Position on the route</string>
     <string name="settings_nav_on_route_sub">While you are close to the route, the dot sits on it</string>
     <string name="settings_nav_screen_on">Keep screen on while hiking</string>
@@ -157,8 +152,10 @@
     <string name="settings_privacy_sync_when">only when you pair with a browser: after a change and when the app opens</string>
     <string name="settings_privacy_sync_title">Plan sync with the web planner (only when you pair)</string>
     <string name="settings_privacy_sync_text">Your saved routes and imported tracks are encrypted on your phone and in your browser before they leave the device. They pass through our sync server (Cloudflare, stored in the EU) as locked data: the server cannot read them and never learns your name, e-mail or where you plan to go. It stores a random mailbox number, the locked routes and when they last changed. Unpairing deletes everything there at once; a mailbox nobody uses for 12 months is deleted automatically. Whoever has your pairing code can see your saved routes – do not share it.</string>
-    <string name="settings_nav_voice_bike">Spoken directions when cycling</string>
-    <string name="settings_nav_voice_hike">Spoken directions when hiking</string>
-    <string name="settings_nav_voice_sub">Only where you could take the wrong way. Starts after the voice test in Phone setup.</string>
     <string name="settings_nav_voice_test">Test voice</string>
+    <string name="settings_nav_guide">Turn hints</string>
+    <string name="settings_nav_guide_sub">Shortly before a junction where you could go wrong – vibration: 1× left, 2× right</string>
+    <string name="settings_nav_guide_off">Off</string>
+    <string name="settings_nav_guide_vibration">Vibration</string>
+    <string name="settings_nav_guide_voice">Voice</string>
 </resources>

@@ -284,13 +284,13 @@ private fun DeletedRow(r: PlanPointRow) {
     }
 }
 
-/** Green start (↺ on a round trip), numbered blue stops, red goal – the same colours and numbers as on the map. */
+/** Dark green start (↺ on a round trip), numbered near-black stops, dark red goal – the same colours and numbers as on the map. */
 @Composable
 private fun PointMarker(r: PlanPointRow, count: Int) {
     val color = when (r.role) {
-        PointRole.START -> OnPathColors.Good
-        PointRole.GOAL -> OnPathColors.Bad
-        PointRole.STOP -> OnPathColors.Route
+        PointRole.START -> OnPathColors.PointStart
+        PointRole.GOAL -> OnPathColors.PointGoal
+        PointRole.STOP -> OnPathColors.PointStop
     }
     Box(Modifier.size(28.dp).clip(CircleShape).background(color), contentAlignment = Alignment.Center) {
         Text(if (r.loop) "↺" else "${r.planIndex + 1}", color = Color.White, fontSize = if (r.loop) 15.sp else 13.sp,

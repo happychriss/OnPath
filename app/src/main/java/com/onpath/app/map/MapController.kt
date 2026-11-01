@@ -43,6 +43,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     companion object {
         const val ROUTE_COLOR = "#1E3FAE"     // deep blue, high contrast on green/beige
+        /** The plan's points (owner 2026-11-01, like Komoot; same as OnPathColors.Point*): start, stops, goal – no ring. */
+        const val POINT_START_COLOR = "#245F46"
+        const val POINT_STOP_COLOR = "#262A2E"
+        const val POINT_GOAL_COLOR = "#A32020"
         /** Turn badge / U-turn sign: a soft blue, clearly lighter than the position dot (owner). */
         const val TURN_HINT_COLOR = "#7C8FD0"
         const val GPX_COLOR = "#8E24AA"       // purple
@@ -235,14 +239,17 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         ))
     }
 
+    /** The proposed new route and the guide line – under the route points (owner 2026-11-01: "Punkte unter der Bahn"). */
     private fun addNavOverlays() {
+        fun under(l: org.maplibre.android.style.layers.Layer) =
+            if (style.getLayer(LAYER_WPT) != null) style.addLayerBelow(l, LAYER_WPT) else addBelowPosition(l)
         style.addSource(GeoJsonSource(SRC_NAV_PROPOSAL))
-        addBelowPosition(LineLayer(SRC_NAV_PROPOSAL, SRC_NAV_PROPOSAL).withProperties(
+        under(LineLayer(SRC_NAV_PROPOSAL, SRC_NAV_PROPOSAL).withProperties(
             PF.lineColor(ROUTE_COLOR), PF.lineWidth(5f), PF.lineDasharray(arrayOf(1.6f, 1.2f)),
             PF.lineJoin(Property.LINE_JOIN_ROUND),
         ))
         style.addSource(GeoJsonSource(SRC_NAV_GUIDE))
-        addBelowPosition(LineLayer(SRC_NAV_GUIDE, SRC_NAV_GUIDE).withProperties(
+        under(LineLayer(SRC_NAV_GUIDE, SRC_NAV_GUIDE).withProperties(
             PF.lineColor("#C62828"), PF.lineWidth(3f), PF.lineDasharray(arrayOf(1f, 1.5f)), PF.lineOpacity(0.9f),
         ))
     }
@@ -250,24 +257,23 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     fun setNavOriginals(lines: List<List<GeoPoint>>) = setTrack(SRC_NAV_ORIGINAL, lines)
 
     /** How the [SRC_GPX] line looks (owner: one blue line – blue is the route you follow or will follow). */
-    enum class TrackLook { TRACK, FOLLOW, FOLLOW_BEHIND }
+    enum class TrackLook { TRACK, FOLLOW }
 
     /**
-     * TRACK = a shown GPX track (own purple colour); FOLLOW = the followed route (route blue, like the plan);
-     * FOLLOW_BEHIND = followed route while the plan is being edited during a tour (thin grey under the blue plan).
+     * TRACK = a shown GPX track (own purple colour); FOLLOW = the followed route (route blue, like the plan – also while
+     * the plan is edited during a tour: no grey route while planning, owner 2026-11-01).
      */
     fun setTrackLook(look: TrackLook) {
         val (color, width, casing) = when (look) {
             TrackLook.TRACK -> Triple(GPX_COLOR, 5f, true)
             TrackLook.FOLLOW -> Triple(ROUTE_COLOR, 6f, true)
-            TrackLook.FOLLOW_BEHIND -> Triple(NAV_ORIGINAL_COLOR, 3f, false)
         }
         guarded("track look") {
             style.getLayer(SRC_GPX)?.setProperties(PF.lineColor(color), PF.lineWidth(width))
             style.getLayer("$SRC_GPX-casing")?.setProperties(PF.lineWidth(width + 4f),
                 PF.visibility(if (casing) Property.VISIBLE else Property.NONE))
             style.getLayer("$SRC_GPX-arrows")?.setProperties(
-                PF.visibility(if (look == TrackLook.FOLLOW_BEHIND) Property.NONE else Property.VISIBLE))
+                PF.visibility(Property.VISIBLE))
         }
         applyRouteOverlaysVisibility() // keep the eye button's state
     }
@@ -935,30 +941,29 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     private fun ensureMarkerImages(count: Int) {
         while (markerImages < count) {
             val n = markerImages + 1
-            style.addImage("wp-s-$n", marker(n, "#2E7D32"))
-            style.addImage("wp-v-$n", marker(n, ROUTE_COLOR))
-            style.addImage("wp-e-$n", marker(n, "#C62828"))
+            style.addImage("wp-s-$n", marker(n, POINT_START_COLOR))
+            style.addImage("wp-v-$n", marker(n, POINT_STOP_COLOR))
+            style.addImage("wp-e-$n", marker(n, POINT_GOAL_COLOR))
             style.addImage("wp-g-$n", marker(n, GAP_COLOR, hollow = true))
-            style.addImage("wp-p-$n", marker(n, NAV_ORIGINAL_COLOR, check = true))
+            style.addImage("wp-p-$n", marker(n, NAV_ORIGINAL_COLOR)) // passed: grey, no tick (owner 2026-11-01)
             markerImages++
         }
     }
 
     /**
-     * A numbered route point; [hollow] = white inside, ring and number in [color] (a point the route does not reach);
-     * [check] = a small green ✓ badge at the top right (a point passed in the tour).
+     * A numbered route point; [hollow] = white inside, ring and number in [color] (a point the route does not reach).
      */
-    private fun marker(n: Int, color: String, hollow: Boolean = false, check: Boolean = false): Bitmap {
+    private fun marker(n: Int, color: String, hollow: Boolean = false): Bitmap {
         val sizeDp = 30
         val px = (sizeDp * density).toInt()
         val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
         bmp.density = context.resources.displayMetrics.densityDpi
         val c = Canvas(bmp)
         val p = Paint(Paint.ANTI_ALIAS_FLAG)
-        p.color = android.graphics.Color.WHITE
-        c.drawCircle(px / 2f, px / 2f, px / 2f, p)
+        // no white ring (owner 2026-11-01): the colour sets the point apart from the blue route; a hollow (unreachable)
+        // point keeps its ring look
         p.color = android.graphics.Color.parseColor(color)
-        c.drawCircle(px / 2f, px / 2f, px / 2f - 3 * density, p)
+        c.drawCircle(px / 2f, px / 2f, px / 2f, p)
         if (hollow) {
             p.color = android.graphics.Color.WHITE
             c.drawCircle(px / 2f, px / 2f, px / 2f - 6 * density, p)
@@ -969,23 +974,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         p.textAlign = Paint.Align.CENTER
         val y = px / 2f - (p.descent() + p.ascent()) / 2
         c.drawText(n.toString(), px / 2f, y, p)
-        if (check) {
-            val r = 6.5f * density
-            val cx = px - r; val cy = r
-            p.color = android.graphics.Color.WHITE
-            c.drawCircle(cx, cy, r, p)
-            p.color = android.graphics.Color.parseColor("#2E7D32")
-            c.drawCircle(cx, cy, r - 1.2f * density, p)
-            p.color = android.graphics.Color.WHITE
-            p.style = Paint.Style.STROKE; p.strokeWidth = 1.6f * density; p.strokeCap = Paint.Cap.ROUND
-            val path = android.graphics.Path().apply {
-                moveTo(cx - 2.6f * density, cy + 0.2f * density)
-                lineTo(cx - 0.6f * density, cy + 2.2f * density)
-                lineTo(cx + 2.8f * density, cy - 1.8f * density)
-            }
-            c.drawPath(path, p)
-            p.style = Paint.Style.FILL
-        }
+
         return bmp
     }
 }

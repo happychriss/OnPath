@@ -1,5 +1,20 @@
 package com.onpath.app.data
 
+/**
+ * How the turns are told during a tour (owner 2026-11-01: "entweder, oder – Einstellung Aus, Vibration, Stimme; default
+ * Stimme"): [VOICE] = spoken directions, no junction vibration (it vibrates instead while the voice is not set up);
+ * [VIBRATION] = the junction vibration, no voice; [OFF] = neither. The off-route vibration is its own setting.
+ */
+enum class JunctionGuide {
+    OFF, VIBRATION, VOICE;
+
+    companion object {
+        /** Stored name → value; before it existed: voice on → VOICE, else the junction vibration on → VIBRATION, else OFF. */
+        fun of(stored: String?, voiceOn: Boolean, vibrationOn: Boolean): JunctionGuide =
+            entries.firstOrNull { it.name == stored } ?: when { voiceOn -> VOICE; vibrationOn -> VIBRATION; else -> OFF }
+    }
+}
+
 /** When to vibrate before a junction (owner): off, always, or only with the screen locked / off. */
 enum class JunctionVibration {
     OFF, ALWAYS, LOCKED;
@@ -55,11 +70,10 @@ data class AppSettings(
     /** Screen while cycling: always on / smart rest view (default) / like the phone. */
     val bikeScreen: BikeScreen = BikeScreen.SMART,
     /**
-     * Spoken directions (owner 2026-10-31, docs/design/voice-guidance.md) on the bike / on foot. On by default; the voice
-     * speaks only once the phone setup's test sentence was heard (Prefs.voiceHeard).
+     * How the turns are told ([JunctionGuide], default the voice). The voice speaks only once the phone setup's test
+     * sentence was heard (Prefs.voiceHeard); until then it vibrates.
      */
-    val voiceBike: Boolean = true,
-    val voiceHike: Boolean = true,
+    val junctionGuide: JunctionGuide = JunctionGuide.VOICE,
     /** Navigate: the dot sits on the followed route while within ~25 m of it (owner, like Komoot; default on). */
     val positionOnRoute: Boolean = true,
     /** Map theme key, see map/StyleLoader. Only "classic" is bundled; others = adb overrides. */

@@ -144,11 +144,11 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
         MenuItem(Icons.Outlined.WarningAmber, str(Res.string.settings_page_phone), enabled = st.settings, tint = OnPathColors.Error) { close(); p() }
         HorizontalDivider()
     }
+    // "Meine Routen" always first, Save route under it (owner 2026-11-01: otherwise one gets confused)
+    MenuItem(Icons.Outlined.FolderOpen, str(Res.string.plan_menu_my_routes), enabled = st.manage) { close(); menu.onManage() }
     menu.onSaveRoute?.let { save ->
         MenuItem(Icons.Outlined.Save, str(Res.string.plan_save_route), enabled = st.save) { close(); save() }
-        HorizontalDivider()
     }
-    MenuItem(Icons.Outlined.FolderOpen, str(Res.string.plan_menu_my_routes), enabled = st.manage) { close(); menu.onManage() }
     MenuItem(Icons.Filled.FiberManualRecord, str(Res.string.plan_menu_start_recording), enabled = st.startRecording) { close(); menu.onStartRecording() }
     HorizontalDivider()
     menu.onPairBrowser?.let { p -> SyncMenuItem(menu.sync, enabled = st.settings) { close(); p() } }

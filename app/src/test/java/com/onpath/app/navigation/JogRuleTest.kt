@@ -6,6 +6,7 @@ import com.onpath.app.routing.JunctionShape
 import com.onpath.app.routing.JunctionShape.Branch
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.cos
 
@@ -99,5 +100,61 @@ class JogRuleTest {
         var t = 0L
         val said = (0..400 step 5).mapNotNull { m -> t += 1000; g.update(VoiceGuide.Input(t, l, 1, m.toDouble(), true, 5.5, true)) }
         assertEquals("only the start sentence", 1, said.size)
+    }
+
+    /**
+     * Field 2026-11-01 (tour 65, Hilden): the line the recording service navigates is read back from the session file,
+     * where turnAngle is 0 – the angle lives in the shape. The step at the start (right, 6.5 m on left, net 2°) must stay
+     * quiet there too, and the screen must say "left" for a 86° left.
+     */
+    @Test fun aLineReadBackFromTheSessionFileKeepsItsAngles() {
+        val l = line(Triple(13.0, 20, null), Triple(99.0, 7, JunctionCue.RIGHT), Triple(13.0, 60, JunctionCue.LEFT),
+            angles = listOf(88f, -86f))
+        fun roundTrip(pts: List<GeoPoint>) = NavSessionStore.fromJson(NavSessionStore.toJson(
+            NavSession(NavKind.PLAN, "x", com.onpath.app.routing.Activity.HIKE, 2, pts)))!!.original
+        val back = roundTrip(l)
+        assertEquals("the file keeps no turnAngle", 0f, back.first { it.turn != null }.turnAngle)
+        assertEquals(listOf(false, false), JogRule.needed(back, hike = true).toList())
+        val left = line(Triple(0.0, 60, null), Triple(270.0, 60, JunctionCue.LEFT), angles = listOf(-86f))
+        val leftBack = roundTrip(left)
+        assertEquals(com.onpath.app.routing.TurnKind.LEFT, ScreenTurns.of(leftBack, hike = true).single().kind)
+    }
+
+    /**
+     * Replay of tour 63 (owner 2026-11-01): off a street onto the footway along Ellerstraße, a corner of ~115° left drawn
+     * as a curve of short pieces; BRouter's hint sits at its end with 43° ("slight left", the other way 138° back) – no
+     * cue, the owner heard nothing. Measured over the 20 m one comes on, it is a left turn worth a cue.
+     */
+    @Test fun aCornerDrawnAsACurveIsItsWholeTurn() {
+        val pts = listOf(51.168576 to 6.925829, 51.168689 to 6.926262, 51.168799 to 6.926681, 51.168837 to 6.926654,
+            51.168871 to 6.926633, 51.168983 to 6.927063, 51.169030 to 6.927245, 51.169049 to 6.927291,
+            51.169082 to 6.927318, 51.169126 to 6.927312, 51.169223 to 6.927144, 51.169344 to 6.926936,
+            51.169495 to 6.926679, 51.169556 to 6.926573)
+        val line = pts.mapIndexed { k, (la, lo) ->
+            when (k) {
+                2 -> GeoPoint(la, lo, turn = JunctionCue.LEFT, shape = JunctionShape(-91f, 6, 12, listOf(Branch(0f, 6), Branch(88f, 12))))
+                4 -> GeoPoint(la, lo, turn = JunctionCue.RIGHT, shape = JunctionShape(89f, 12, 6, listOf(Branch(-1f, 12), Branch(-92f, 6))))
+                9 -> GeoPoint(la, lo, turn = JunctionCue.SLIGHT_LEFT, shape = JunctionShape(-43f, 6, 6, listOf(Branch(138f, 6))))
+                else -> GeoPoint(la, lo)
+            }
+        }
+        assertEquals(false, CueRule.needed(JunctionCue.SLIGHT_LEFT, line[9].shape, hike = true))   // as BRouter sees it
+        val fixed = JogRule.approach(line, hike = true)
+        assertEquals(JunctionCue.LEFT, fixed[9].turn)
+        assertTrue(fixed[9].turnAngle < -70f)
+        assertTrue(JogRule.needed(line, hike = true).last())
+        assertEquals(com.onpath.app.routing.TurnKind.LEFT, ScreenTurns.of(line, hike = true).last().kind)
+    }
+
+    /** A plain right-angle turn after a straight approach is left as it is. */
+    @Test fun aStraightApproachChangesNothing() {
+        val l = line(Triple(0.0, 60, null), Triple(270.0, 60, JunctionCue.LEFT), angles = listOf(-86f))
+        assertEquals(l, JogRule.approach(l, hike = true))
+    }
+
+    /** A bend before the junction that makes the turn smaller never makes it quieter (only grown turns change). */
+    @Test fun anApproachThatShrinksTheTurnChangesNothing() {
+        val l = line(Triple(0.0, 30, null), Triple(300.0, 20, null), Triple(270.0, 60, JunctionCue.LEFT), angles = listOf(-30f))
+        assertEquals(l, JogRule.approach(l, hike = true))
     }
 }

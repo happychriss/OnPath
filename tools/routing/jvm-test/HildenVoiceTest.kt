@@ -1,6 +1,6 @@
 // The owner's Hilden demo tour (2026-11-01, "keine einzige Angabe passte"): through Hilden's Stadtpark on the bike,
 // rebuilt from three route points. Real BRouter hints → JogRule / CueRule → VoiceGuide sentences. Pass / fail:
-// no cue at the pedestrian crossing of Benrather Straße (a sideways step = straight on), never "track" (Feldweg) where
+// no cue and no screen turn at the pedestrian crossing of Benrather Straße (a sideways step = straight on), never "track" (Feldweg) where
 // no highway=track is, the park's cycle path named. Run: KTTEST=.../HildenVoiceTest.kt run.sh <segmentsDir with E5_N50.rd5>
 import com.onpath.app.data.Geo
 import com.onpath.app.navigation.*
@@ -30,6 +30,11 @@ fun main() {
         println("%5.0f m  %-12s %6.1f°  %-5s onto %-8s way %s".format(cum[i], p.turn, p.turnAngle, if (needed[k]) "CUE" else "quiet", onto, p.way?.wayType))
         if (needed[k] && Geo.distance(p, crossing) < 15) fails += "a cue at the crossing of Benrather Straße (${cum[i].toInt()} m)"
         if (onto == WayKind.TRACK) fails += "\"track\" at ${cum[i].toInt()} m (no highway=track in the park)"
+    }
+    // the screen's turn card / arrow (ScreenTurns: the same junctions as the voice) must not show the step either
+    for (s in ScreenTurns.of(r.points, hike = false)) {
+        println("SCREEN %5.0f m  %-13s %6.1f°".format(s.distanceFromStart, s.kind, s.angle))
+        if (Geo.distance(s.point, crossing) < 15) fails += "the screen shows a turn at the crossing (${s.distanceFromStart.toInt()} m)"
     }
     val g = VoiceGuide()
     var t = 0L

@@ -34,7 +34,7 @@ class PhoneSetupState(private val prefs: Prefs, private val settingsNow: () -> A
     var notificationsOkTour by mutableStateOf<Long?>(null)
 
     /** Navigation vibrations in use: the vibration step applies only then. */
-    val vibrationUsed: Boolean get() = settings.junctionVibration != com.onpath.app.data.JunctionVibration.OFF ||
+    val vibrationUsed: Boolean get() = settings.junctionGuide == com.onpath.app.data.JunctionGuide.VIBRATION ||
         (settings.offRouteWarning && settings.offRouteVibrate)
 
     fun updatePhone(s: com.onpath.app.setup.PhoneState) {
@@ -100,7 +100,7 @@ class PhoneSetupState(private val prefs: Prefs, private val settingsNow: () -> A
     }
 
     /** Spoken directions switched on for bike or hike: the voice step applies only then. */
-    val voiceUsed: Boolean get() = settings.voiceBike || settings.voiceHike
+    val voiceUsed: Boolean get() = settings.junctionGuide == com.onpath.app.data.JunctionGuide.VOICE
 
     /** The voice test found the phone's speech output in this [status] (recording/Speaker). */
     fun setupVoiceStatus(status: com.onpath.app.setup.VoiceStatus) {

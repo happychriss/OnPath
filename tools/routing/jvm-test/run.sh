@@ -64,7 +64,7 @@ python3 "$HERE/strings_stub.py" "$ROOT" "$W/StringsStub.kt" > /dev/null
 EXTRA+=("$W/StringsStub.kt" "$W/StringsStubRes.kt")
 java -cp "$KCP" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler -no-stdlib -no-reflect -jvm-target 17 \
   -cp "$STD:$W/stub:$LIBS" -d "$W/kt" "$R/RoutingContract.kt" "$R/Rd5Parts.kt" "$R/BRouterWayStats.kt" "$R/WaypointSnap.kt" "$W/BRouterEngine.kt" \
-  "$R/StraightLineEngine.kt" "$R/RouteTimeLimit.kt" "$R/TrackToPlan.kt" "$R/TurnDetector.kt" "$R/Junctions.kt" "$N/JunctionCues.kt" "$N/CueRule.kt" "$N/JogRule.kt" "$N/SpeedWindow.kt" "$N/VoiceGuide.kt" "$N/VoiceText.kt" "$D/Geo.kt" "$ROOT/app/src/main/java/com/onpath/app/time/PaceModel.kt" "$ROOT/app/src/main/java/com/onpath/app/time/RouteTimes.kt" "$N/NavLine.kt" "$N/StopSkip.kt" "$N/RerouteTargets.kt" "$N/Rerouter.kt" \
+  "$R/StraightLineEngine.kt" "$R/RouteTimeLimit.kt" "$R/TrackToPlan.kt" "$R/TurnDetector.kt" "$R/Junctions.kt" "$N/JunctionCues.kt" "$N/CueRule.kt" "$N/JogRule.kt" "$N/SpeedWindow.kt" "$N/VoiceGuide.kt" "$N/VoiceText.kt" "$N/ScreenTurns.kt" "$D/Geo.kt" "$ROOT/app/src/main/java/com/onpath/app/time/PaceModel.kt" "$ROOT/app/src/main/java/com/onpath/app/time/RouteTimes.kt" "$N/NavLine.kt" "$N/StopSkip.kt" "$N/RerouteTargets.kt" "$N/Rerouter.kt" \
   "$R/Planner.kt" "$R/RouteSummary.kt" "$ROOT/app/src/main/java/com/onpath/app/ui/RouteWarnings.kt" "$D/LastActivity.kt" \
   "$HERE/ProblemsStub.kt" "$HERE/TimeEstimateStub.kt" ${EXTRA[@]+"${EXTRA[@]}"} "$W/$TN.kt"
 java -Xmx${JAVA_XMX:-192m} -cp "$STD:$W/stub:$LIBS:$W/kt" "${TN}Kt"

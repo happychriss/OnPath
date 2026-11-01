@@ -11,13 +11,15 @@ import com.onpath.app.routing.PlanEdits
  * computed or edited.
  */
 object TourSplit {
-    /** Came this close to a point: passed (on foot / on a bike activity). */
-    const val NEAR_HIKE_M = 40.0
-    const val NEAR_BIKE_M = 60.0
-    /** "Clearly closer to the next point": at least this much closer to it than to the point before … */
-    const val CLOSER_M = 100.0
-    /** … and the point before at least this far away (clearly left behind). */
-    const val LEFT_M = 200.0
+    /**
+     * Came this close to a point: passed (on foot / on a bike activity). The only way a point counts as passed – besides
+     * a later point being passed (plan order). Owner 2026-11-01 ("Punkt bleibt offen"; on the bike replay: "plötzlich
+     * sagte er, ich war schon am Punkt 4 – eine gefährliche Regel"): no longer by the progress along the followed line (a
+     * round trip's start is also its end: tour 61 had 6 of 7 points "passed" after 46 m) nor by "clearly closer to the
+     * next point".
+     */
+    const val NEAR_HIKE_M = NavSession.VISITED_HIKE_M
+    const val NEAR_BIKE_M = NavSession.VISITED_BIKE_M
 
     /** What the tour knows when the plan is edited. */
     data class Tour(
@@ -49,9 +51,7 @@ object TourSplit {
         var lastPassed = -1
         for (i in 0..last) {
             val p = plan[i]
-            val hit = p in t.visited || known.any { sameSpot(it, p) } || nearTrack(p, t.track, near) ||
-                t.stops.firstOrNull { sameSpot(it.point, p) }?.let { it.alongM <= t.progressM && t.reached } == true ||
-                (t.reached && i < plan.size - 1 && clearlyCloserToNext(p, plan[i + 1], t.position))
+            val hit = p in t.visited || known.any { sameSpot(it, p) } || nearTrack(p, t.track, near)
             if (hit) lastPassed = i
         }
         return (0..lastPassed).toSet()
@@ -107,12 +107,6 @@ object TourSplit {
 
     private fun nearTrack(p: GeoPoint, track: List<List<GeoPoint>>, m: Double): Boolean =
         track.any { seg -> seg.any { Geo.distance(it, p) <= m } }
-
-    private fun clearlyCloserToNext(p: GeoPoint, next: GeoPoint, pos: GeoPoint?): Boolean {
-        pos ?: return false
-        val toP = Geo.distance(pos, p)
-        return toP >= LEFT_M && Geo.distance(pos, next) <= toP - CLOSER_M
-    }
 
     private fun sameSpot(a: GeoPoint, b: GeoPoint) = a == b || Geo.distance(a, b) < 1.0
 }

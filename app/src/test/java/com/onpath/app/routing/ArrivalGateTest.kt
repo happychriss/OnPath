@@ -42,6 +42,16 @@ class ArrivalGateTest {
         assertFalse(g.onFix(at(11.2003), dest, remainingAlongM = 400.0, accuracyM = 8.0)) // path passes the hut
     }
 
+    /** Owner 2026-11-01: never by being near the goal alone. */
+    @Test fun notWhilePointsAreOpenOrTheProgressIsNotAtTheEnd() {
+        val g = ArrivalGate()
+        g.onFix(at(11.21), dest, 3000.0, 8.0)
+        assertFalse("tour 62: 54 m and a turn left", g.onFix(at(11.2003), dest, remainingAlongM = 54.0, accuracyM = 8.0))
+        assertFalse("a point in the loop not reached", g.onFix(at(11.2003), dest, remainingAlongM = 20.0, accuracyM = 8.0, openStops = 1))
+        assertFalse("no progress known", g.onFix(at(11.2003), dest, remainingAlongM = null, accuracyM = 8.0))
+        assertTrue(g.onFix(at(11.2003), dest, remainingAlongM = 20.0, accuracyM = 8.0, openStops = 0))
+    }
+
     @Test fun resetForgetsEverything() {
         val g = ArrivalGate()
         g.onFix(at(11.21), dest, 3000.0, 8.0)

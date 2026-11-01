@@ -18,6 +18,9 @@ Das Verhalten von Claude / Plattform (Gastgeber, Worktrees, Sitzungen starten, W
 **Auf dem Laptop nur drei Prüfungen bei der Einrichtung (C.3):** (a) `gh api repos/happychriss/onpath.private --jq
 .full_name` und `tools/ask.sh an-alle` – ohne `gh` greifen dort weder `an-alle` noch die Push-Sperre (Backlog: dort
 fehlt `gh auth setup-git`); (b) A.0 im Ordner; (c) `save-on-shutdown.sh dry` – keine Kartendaten dabei.
+**Laptop geprüft 2026-11-01:** (a) ✓ `gh` erreicht `onpath.private`, `jq` 1.8.1, `ask.sh` läuft (als Kopie aus
+`origin/main` – der Checkout steht noch auf `web-spike`); (c) ✓ leer, `onpath-plan` sauber (0 geändert, 0 ungepusht),
+keine Kartendaten. Offen nur (b) beim Einrichten des neuen Ordners `onpath` auf `main`.
 0. **Jeder neue Ordner einmal:** `claude` darin starten, die Vertrauensfrage bestätigen, `/exit`; dann
    `claude remote-control`, `w` drücken bis „worktree“, Strg-C. Sonst endet
    `unit.sh` mit „Workspace not trusted“ (gesehen auf donald 2026-11-01; ein Autostart kann die Frage nicht beantworten).
@@ -50,6 +53,17 @@ fehlt `gh auth setup-git`); (b) A.0 im Ordner; (c) `save-on-shutdown.sh dry` –
 - Ein **Weckruf, den die donald-Sitzung sich selbst stellt** (`send_later`), **überlebt den Neustart** (fällig 16:57,
   angekommen 16:58 nach Neustart). → Leitstand mit stündlichem Weckruf an sich selbst.
 - `unit.sh` umgebaut: normaler Gastgeber über `script` (echtes Terminal + Log), kein `--session-id` mehr.
+
+### Hooks (2026-11-01, `docs/roles/setup-analyse-2026-11-01.md` Schritt 1)
+`.claude/settings.json` im Repo: SessionStart → `tools/hooks/session-start.sh` (Lage in den Kontext), PreToolUse Bash →
+`tools/hooks/pre-bash.sh` (kein `git push` ohne grünen `gate.sh`-Stempel für HEAD oder bei `#push-sperre`; `adb
+install` nur über `device.sh`). **Einmal auf donald prüfen:** eine neue Sitzung im Gastgeber zeigt in ihrer ersten
+Antwort die Lage „== OnPath session start ==“; `git push` nach einem Commit ohne Tor wird mit Meldung verweigert.
+Ausschalten im Notfall: `ONPATH_HOOKS=0` oder `"disableAllHooks": true` in den Settings. Gilt nur auf `main`
+(`web-spike` hat die Datei nicht). Registriert in `.claude/settings.json` (im Repo – kein Einrichten je Rechner; neue
+Sitzungen haben sie nach dem nächsten Pull, laufende nach ihrem Neustart).
+**Deny-Regeln (👤 einmal auf donald):** `python3 tools/dev/apply_permissions.py`, dann committen und pushen – sperrt
+Force-Push, `reset --hard`, Branch-Löschen, `adb uninstall` / `pm clear`, `gradlew --stop` in jedem Modus.
 
 ## B. 👤 Entscheidungen beim Umstellen (je eine Fragebox)
 - Erlaubnis-Modus der stehenden Sitzungen (`ONPATH_PERMISSION_MODE`): ohne Modus fragt die Sitzung bei vielem nach

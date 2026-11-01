@@ -401,6 +401,29 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         navSimLine = l
     }
 
+    /** Developer tools → Demo: the last recorded tours (not demo ones) to ride again at their recorded times. */
+    fun recentRecordedTours(): List<Tour> = tours.filter {
+        it.kind == TourKind.RECORDED && !it.name.startsWith(com.onpath.app.recording.DemoLocation.TOUR_PREFIX) &&
+            it.distanceM >= 500.0   // not the empty / few-metre starts
+    }.sortedByDescending { it.id }.take(8)
+
+    fun demoTourLabel(t: Tour): String = "ride tour \"${t.name}\" (${"%.1f".format(Locale.ROOT, t.distanceM / 1000)} km, recorded times)"
+
+    /** Rides recorded tour [t] again along its track at its own times (debugging a field tour, owner 2026-11-01). */
+    fun startDemoTour(t: Tour) {
+        viewModelScope.launch {
+            val pts = withContext(Dispatchers.IO) {
+                runCatching { db.loadSegments(t.id).flatten() }.onFailure { Problems.warn("demo", "Recorded tour not read for the demo", it) }
+                    .getOrDefault(emptyList())
+            }
+            val path = com.onpath.app.recording.DemoPath.recorded(pts.map { GeoPoint(it.lat, it.lon, it.ele) }, pts.map { it.timeMs })
+                ?: run { sayError("This tour has no track with times to ride.", NoticePlace.SETTINGS); return@launch }
+            navSimLine = null // a recorded tour is ridden as it was – never moved onto a changed line
+            Problems.trace("demo", "Riding recorded tour ${t.id} \"${t.name}\" again at its recorded times (${pts.size} points)")
+            com.onpath.app.recording.DemoLocation.startRide(path, "recorded tour \"${t.name}\"")
+        }
+    }
+
     /** The line the Navigate "Sim" rides; null = no Sim from the Navigate page. */
     private var navSimLine: List<GeoPoint>? = null
 
@@ -991,6 +1014,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     sayError(Txt.s(Res.string.msg_track_save_failing), NoticePlace.BACKGROUND)
                 } else if (st?.saveFailed == false) saveFailedShown = false
                 onArrived(st?.arrived == true)
+                // "Navigation Stopp" walked off with the phone pocketed: the guidance is back – so is Navigate
+                if (st?.guidanceBack == true && mode == AppMode.PLAN) {
+                    Problems.trace("tour", "Walked off from Navigation Stopp: back to Navigate"); enter(AppMode.NAVIGATE)
+                }
                 val n = st?.nav ?: run { navActivitySeen = null; return@collect }
                 if (n.version != navVersion) { navVersion = n.version; if (followLine != n.line) followLine = n.line }
                 syncNavActivity(n.session)
@@ -2655,24 +2682,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         enter(AppMode.NAVIGATE)
     }
 
-    /**
-     * True while a tour follows exactly the current plan (plan not edited): then the followed line (blue) is the
-     * plan, and after a re-route the plan line must not be drawn as a second blue line (the original shows grey).
-     */
-    fun planIsFollowed(): Boolean =
-        followLine != null && !followIsTrack && planFollowed(route?.points)
+    /** A tour is guided along the plan (not a followed GPX track): Navigate shows the plan's points (owner 2026-11-01). */
+    val planGuides: Boolean get() = followLine != null && !followIsTrack && waypoints.isNotEmpty()
 
-    /** Look of the followed / shown line on the map (see MapController.setTrackLook). */
-    fun trackLook(): com.onpath.app.map.MapController.TrackLook {
-        val planLine = route?.points
-        return when {
-            shown != null -> com.onpath.app.map.MapController.TrackLook.TRACK
-            mode == AppMode.PLAN && (!followIsTrack || planReplacesTrack()) && waypoints.size >= 2 && planLine != null &&
-                !planFollowed(planLine) ->
-                com.onpath.app.map.MapController.TrackLook.FOLLOW_BEHIND
-            else -> com.onpath.app.map.MapController.TrackLook.FOLLOW
-        }
-    }
+    /** Look of the followed / shown line on the map (see MapController.setTrackLook): a shown track its own colour, else route blue. */
+    fun trackLook(): com.onpath.app.map.MapController.TrackLook =
+        if (shown != null) com.onpath.app.map.MapController.TrackLook.TRACK else com.onpath.app.map.MapController.TrackLook.FOLLOW
 
     private fun checkNow() {
         if (recState.value != null && followLine != null) RecordingService.send(getApplication(), RecordingService.ACTION_CHECK_NOW)
@@ -3051,7 +3066,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
             setFollow(name, line, isTrack = false, checkNow = true, stops = ahead, names = ahead.map { stopName(it) },
-                pinned = ahead.indices.filter { ahead[it] in pinned }.toSet())
+                pinned = ahead.indices.filter { ahead[it] in pinned }.toSet(), firstNumber = firstAhead)
             planBaseline = planLine
             followFromPlan = true
             Problems.trace("tour", "The tour follows position → ${ahead.size} points ahead of \"$name\" (${line.size} line points)")
@@ -3070,12 +3085,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * and the plain follow line. [checkNow]: the service checks the next fix at once ("Continue navigation").
      */
     private fun setFollow(name: String, points: List<GeoPoint>, isTrack: Boolean, checkNow: Boolean = false,
-                          stops: List<GeoPoint> = emptyList(), names: List<String?> = emptyList(), pinned: Set<Int> = emptySet()) {
+                          stops: List<GeoPoint> = emptyList(), names: List<String?> = emptyList(), pinned: Set<Int> = emptySet(),
+                          firstNumber: Int = 1) {
         guidanceEndedByEmptyPlan = false
         val session = runCatching {
             // a new token (a re-route of the old line never overwrites it) and a new version (cues / voice re-read the line)
             NavSession.start(if (isTrack) NavKind.TRACK else NavKind.PLAN, name, activity, sac, points, stops, names, pinned)
-                .copy(token = newSessionToken(), version = (recState.value?.nav?.version ?: navVersion).coerceAtLeast(0) + 1)
+                .copy(token = newSessionToken(), version = (recState.value?.nav?.version ?: navVersion).coerceAtLeast(0) + 1,
+                    firstNumber = firstNumber.coerceAtLeast(1))
         }.onFailure { Problems.error("navigation", "Navigation session could not be started; following without it", it) }.getOrNull()
         navStore.save(session)
         prefs.saveFollow(name, points)

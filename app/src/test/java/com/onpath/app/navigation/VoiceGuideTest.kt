@@ -37,24 +37,54 @@ class VoiceGuideTest {
         assertEquals(Phrase.Start(start.distanceM, 900.0, "Lana"), start)
     }
 
-    @Test fun bikeOneSentencePerJunction_earlyByTheSpeed() {
+    /**
+     * Bike in two stages (owner 2026-11-01, Rosellen replay; Organic Maps / OsmAnd): "In 150 Metern links." ~25 s ahead
+     * (100…400 m), then "Gleich links." ~8 s ahead (35…150 m) – both by the speed ridden.
+     */
+    @Test fun bikeTwoStagesByTheSpeed() {
         val l = line(2000, mapOf(500 to JunctionCue.LEFT, 1500 to JunctionCue.RIGHT))
         val said = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0))
-        assertEquals(2, said.size)
-        // 15 s × 6 m/s = 90 m before
-        assertEquals(410, said[0].first)
+        assertEquals(4, said.size)
+        // 25 s × 6 m/s = 150 m before, with the distance
+        assertEquals(350, said[0].first)
+        assertEquals(150.0, (said[0].second as Phrase.Junction).inM, 0.5)
         assertEquals(Turn.LEFT, (said[0].second as Phrase.Junction).turn)
-        // faster: earlier, up to 200 m
+        // 8 s × 6 m/s = 48 m before, no number ("Gleich links.")
+        assertEquals(455, said[1].first)
+        assertEquals(0.0, (said[1].second as Phrase.Junction).inM, 0.0)
+        // faster: earlier
         val fast = startless(ride(VoiceGuide(), l, bike = true, speed = 12.0))
-        assertEquals(320, fast[0].first)
+        assertEquals(listOf(200, 405), fast.take(2).map { it.first })
         val veryFast = startless(ride(VoiceGuide(), l, bike = true, speed = 20.0))
-        assertEquals(300, veryFast[0].first)
+        // (the early one waits for the 10 s after the start sentence: 200 m at 72 km/h)
+        assertEquals(listOf(200, 350), veryFast.take(2).map { it.first })
     }
 
-    @Test fun onFoot_40SecondsWithin40To80m() {
+    /** A junction that comes into view too late for the early sentence gets only "Gleich …". */
+    @Test fun bikeAJunctionRightAfterAnotherGetsOnlyTheSecondStage() {
+        val l = line(2000, mapOf(500 to JunctionCue.LEFT, 590 to JunctionCue.RIGHT))
+        val j = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).map { it.second as Phrase.Junction }
+        assertEquals(listOf(Turn.LEFT, Turn.LEFT), j.map { it.turn })
+        assertEquals(Turn.RIGHT, j[1].then)   // 90 m on: "Gleich links, danach rechts."
+    }
+
+    /** Rosellen replay: the second turn 80 m after the first must not be lost in the pause between sentences. */
+    @Test fun bikeAJunctionJustAheadIsSaidDuringThePause() {
+        val l = line(2000, mapOf(500 to JunctionCue.SHARP_RIGHT, 620 to JunctionCue.LEFT))
+        val said = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).map { it.second as Phrase.Junction }
+        assertTrue("$said", said.any { it.turn == Turn.LEFT || it.then == Turn.LEFT })
+    }
+
+    /** Owner 2026-11-01: on foot "Gleich links." about 10 m before, no distance ("50 m kann man nicht abschätzen"). */
+    @Test fun onFoot_shortlyBeforeWithoutADistance() {
         val l = line(1000, mapOf(500 to JunctionCue.LEFT))
         val said = startless(ride(VoiceGuide(), l, bike = false, speed = 1.4))
-        assertEquals(445, said.single().first) // 40 s × 1.4 = 56 m → the fix at 445
+        assertEquals(490, said.single().first) // 8 s × 1.4 = 11 m → the fix at 490
+        val saved = java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale.GERMANY)
+            assertEquals("Gleich links.", VoiceText.of(said.single().second))
+        } finally { java.util.Locale.setDefault(saved) }
     }
 
     @Test fun onlyWhereWeVibrate_notWhereTheRouteFollowsTheWay() {
@@ -66,7 +96,7 @@ class VoiceGuideTest {
 
     @Test fun twoCloseTurnsInOneSentence() {
         val l = line(2000, mapOf(500 to JunctionCue.LEFT, 540 to JunctionCue.RIGHT))
-        val j = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).single().second as Phrase.Junction
+        val j = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).last().second as Phrase.Junction
         assertEquals(Turn.LEFT, j.turn)
         assertEquals(Turn.RIGHT, j.then)
     }
@@ -74,8 +104,9 @@ class VoiceGuideTest {
     @Test fun aLongQuietStretchAfterwardsIsSaid() {
         val l = line(5000, mapOf(500 to JunctionCue.RIGHT, 4000 to JunctionCue.LEFT))
         val said = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).map { it.second as Phrase.Junction }
-        assertEquals(3500.0, said[0].straightM!!, 1.0)
-        assertNull("1000 m to the end: under 2 km on the bike", said[1].straightM)
+        // with the second stage ("Gleich rechts, dann 3,5 km geradeaus")
+        assertEquals(3500.0, said[1].straightM!!, 1.0)
+        assertNull("1000 m to the end: under 2 km on the bike", said[3].straightM)
     }
 
     @Test fun theKindOfWayWhenItChanges() {
@@ -83,11 +114,11 @@ class VoiceGuideTest {
         // "Weg" – never "Feldweg" from the class alone (owner 2026-11-01, Hilden: park paths and crossings were "Feldweg")
         val offRoad = JunctionShape(-85f, 22, 4, listOf(JunctionShape.Branch(0f, 22)))
         val l = line(1000, mapOf(500 to JunctionCue.LEFT), offRoad)
-        val j = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).single().second as Phrase.Junction
+        val j = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).last().second as Phrase.Junction
         assertEquals(WayKind.WAY, j.onto)
         // street to street: nothing about the way
         val streets = JunctionShape(-85f, 6, 6, listOf(JunctionShape.Branch(0f, 6)))
-        val k = startless(ride(VoiceGuide(), line(1000, mapOf(500 to JunctionCue.LEFT), streets), bike = true, speed = 6.0)).single().second
+        val k = startless(ride(VoiceGuide(), line(1000, mapOf(500 to JunctionCue.LEFT), streets), bike = true, speed = 6.0)).last().second
         assertNull((k as Phrase.Junction).onto)
     }
 
@@ -100,7 +131,7 @@ class VoiceGuideTest {
             p.copy(way = com.onpath.app.routing.WayAttrs(type, "asphalt"))
         }
         fun onto(l: List<GeoPoint>, bike: Boolean = true) =
-            (startless(ride(VoiceGuide(), l, bike = bike, speed = 6.0)).single().second as Phrase.Junction).onto
+            (startless(ride(VoiceGuide(), l, bike = bike, speed = 6.0)).last().second as Phrase.Junction).onto
         assertEquals(WayKind.TRACK, onto(typed("quiet_road", "track")))
         assertEquals(WayKind.WAY, onto(typed("quiet_road", "footway")))
         assertEquals(WayKind.CYCLEWAY, onto(typed("quiet_road", "cycleway")))
@@ -167,6 +198,41 @@ class VoiceGuideTest {
         assertNull(g.update(VoiceGuide.Input(20_000, second, 2, 50.0, onRoute = true, speedMps = 5.0, bike = true, rerouted = true)))
     }
 
+    /** Rosellen replay (owner 2026-11-01): after deleting a point the whole plan is followed again – its visited stops are no news. */
+    @Test fun anotherListOfStopsSaysNoStopReached() {
+        val g = VoiceGuide()
+        val l = line(3000, emptyMap())
+        val all = listOf(NavStop(l[0], 0.0), NavStop(l[50], 500.0), NavStop(l[100], 1000.0), NavStop(l[200], 2000.0), NavStop(l.last(), 3000.0))
+        val ahead = listOf(NavStop(l[120], 0.0), NavStop(l[200], 800.0), NavStop(l.last(), 1800.0))
+        val base = VoiceGuide.Input(0, l, 1, 1200.0, onRoute = true, speedMps = 5.0, bike = true, stops = ahead, visited = emptySet())
+        g.update(base)
+        val said = (1..5).mapNotNull { s -> g.update(base.copy(nowMs = s * 20_000L, stops = all, visited = setOf(0, 1, 2))) }
+        assertTrue("$said", said.none { it is Phrase.StopReached })
+    }
+
+    /** Rosellen replay (owner 2026-11-01): following the points ahead after an edit – the map's numbers, not 1, 2, 3. */
+    @Test fun stopNumbersAreTheMapsAfterAnEdit() {
+        val g = VoiceGuide()
+        val l = line(3000, emptyMap())
+        val stops = listOf(NavStop(l[0], 0.0), NavStop(l[100], 1000.0), NavStop(l.last(), 3000.0))
+        val base = VoiceGuide.Input(0, l, 1, 10.0, onRoute = true, speedMps = 5.0, bike = true, stops = stops, visited = setOf(0),
+            firstNumber = 6)
+        g.update(base)
+        val p = g.update(base.copy(nowMs = 300_000, alongM = 1000.0, visited = setOf(0, 1)))
+        assertEquals(7, (p as Phrase.StopReached).number)
+    }
+
+    /** A stop left out on purpose ("Neue Route ohne Stopp 7") is never "reached" (owner 2026-11-01). */
+    @Test fun aSkippedStopIsNotReached() {
+        val g = VoiceGuide()
+        val l = line(3000, emptyMap())
+        val stops = listOf(NavStop(l[0], 0.0), NavStop(l[100], 1000.0), NavStop(l.last(), 3000.0))
+        val base = VoiceGuide.Input(0, l, 1, 10.0, onRoute = true, speedMps = 5.0, bike = true, stops = stops, visited = setOf(0))
+        g.update(base)
+        val said = (1..5).mapNotNull { s -> g.update(base.copy(nowMs = s * 20_000L, alongM = 600.0, visited = setOf(0, 1), skipped = setOf(1))) }
+        assertTrue("$said", said.none { it is Phrase.StopReached })
+    }
+
     @Test fun stopReachedWithTheNextStop_notTheStartNorTheDestination() {
         val g = VoiceGuide()
         val l = line(3000, emptyMap())
@@ -203,7 +269,8 @@ class VoiceGuideTest {
     @Test fun budget_aRideWithManyJunctionsIsAboutOneSentenceEachPlusStart() {
         val turns = (1..40).associate { it * 1000 to if (it % 2 == 0) JunctionCue.LEFT else JunctionCue.RIGHT }
         val said = ride(VoiceGuide(), line(41_000, turns), bike = true, speed = 6.0)
-        assertEquals(41, said.size)
+        // the start + two stages per junction on the bike ("In 150 Metern rechts." · "Gleich rechts.")
+        assertEquals(81, said.size)
     }
 
     /** Pixel 2026-11-01: "Los geht's" 3–4× in the first 3 km – the process died, the service came back with a fresh guide. */
@@ -240,8 +307,11 @@ class VoiceGuideTest {
         assertTrue(g.update(VoiceGuide.Input(60_000, l, 1, 0.0, onRoute = true, speedMps = 5.0, bike = true)) is Phrase.Start)
     }
 
-    /** Indoors before the start there is no "No GPS signal"; a poor fix that comes and goes says it at most every 10 min. */
-    @Test fun noGpsOnlyAfterTheStart_atMostEvery10Minutes() {
+    /**
+     * Indoors before the start there is no "No GPS signal"; a poor fix that comes and goes says it once (owner 2026-11-01,
+     * a restaurant: "einmal und dann erst wieder, wenn es einige Zeit gehabt hat und wir wieder gelaufen sind").
+     */
+    @Test fun noGpsOnlyAfterTheStart_onceWhileTheFixComesAndGoes() {
         val l = line(3000, emptyMap())
         val g = VoiceGuide()
         val off = VoiceGuide.Input(0, l, 1, null, onRoute = false, speedMps = null, bike = true, gpsLost = true)
@@ -258,8 +328,57 @@ class VoiceGuideTest {
             t += 162_000L
         }
         val noGps = said.filter { it.second == Phrase.NoGps }.map { it.first }
-        assertEquals("$noGps", 2, noGps.size)
-        assertTrue(noGps[1] - noGps[0] >= VoiceGuide.NO_GPS_EVERY_MS)
+        assertEquals("$noGps", 1, noGps.size)
+    }
+
+    /** Said again only after the GPS was good for 2 min while walking – and 10 min after the last time. */
+    @Test fun noGpsAgainOnlyAfterGoodGpsWhileWalking() {
+        val l = line(3000, emptyMap())
+        val g = VoiceGuide()
+        val on = VoiceGuide.Input(0, l, 1, 100.0, onRoute = true, speedMps = 1.4, bike = false)
+        assertTrue(g.update(on) is Phrase.Start)
+        fun lost(from: Long) = (0..170).mapNotNull { k -> g.update(on.copy(nowMs = from + k * 1000L, gpsLost = true)) }
+        assertEquals(listOf(Phrase.NoGps), lost(20_000))
+        // 3 min good GPS but standing (a restaurant table by the window): not re-armed
+        (0..180).forEach { k -> g.update(on.copy(nowMs = 200_000L + k * 1000L, quiet = true)) }
+        assertEquals(emptyList<Phrase>(), lost(800_000))
+        // 3 min good GPS while walking: re-armed – said again (more than 10 min after the first)
+        (0..180).forEach { k -> g.update(on.copy(nowMs = 1_000_000L + k * 1000L)) }
+        assertEquals(listOf(Phrase.NoGps), lost(1_200_000))
+    }
+
+    /** Owner 2026-11-01: a new route that starts behind the user says so – "Neue Route. Bitte umdrehen." */
+    @Test fun aNewRouteBehindSaysTurnRound() {
+        val l = line(1000, mapOf(300 to JunctionCue.LEFT))
+        val g = VoiceGuide()
+        assertTrue(g.update(VoiceGuide.Input(0, l, 1, 0.0, onRoute = true, speedMps = 1.4, bike = false)) is Phrase.Start)
+        val back = line(800, mapOf(40 to JunctionCue.RIGHT))
+        val said = g.update(VoiceGuide.Input(20_000, back, 2, 0.0, onRoute = true, speedMps = 1.4, bike = false, rerouted = true, turnRound = true))
+        assertEquals(Phrase.NewRoute(null, turnRound = true), said)
+    }
+
+    /** Rosellen replay (owner 2026-11-01): the first re-route came before the start; the next ones were never said. */
+    @Test fun everyNewRouteIsSaid() {
+        val g = VoiceGuide()
+        val first = line(3000, emptyMap())
+        assertNull(g.update(VoiceGuide.Input(0, first, 1, null, onRoute = false, speedMps = null, bike = true)))
+        val second = line(2800, emptyMap())
+        assertTrue(g.update(VoiceGuide.Input(5_000, second, 2, 0.0, onRoute = true, speedMps = 5.0, bike = true, rerouted = true)) is Phrase.Start)
+        val third = line(2900, mapOf(40 to JunctionCue.RIGHT))
+        val said = g.update(VoiceGuide.Input(60_000, third, 3, 0.0, onRoute = true, speedMps = 5.0, bike = true, rerouted = true, turnRound = true))
+        assertEquals(Phrase.NewRoute(null, turnRound = true), said)
+        val fourth = line(2700, emptyMap())
+        assertTrue(g.update(VoiceGuide.Input(120_000, fourth, 4, 0.0, onRoute = true, speedMps = 5.0, bike = true, rerouted = true)) is Phrase.NewRoute)
+    }
+
+    /** Rosellen replay (owner 2026-11-01): back on the route 25 s after "Abseits der Route." – said. */
+    @Test fun backOnTheRouteSoonAfterIsSaid() {
+        val l = line(3000, emptyMap())
+        val g = VoiceGuide()
+        val base = VoiceGuide.Input(0, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
+        assertTrue(g.update(base) is Phrase.Start)
+        assertEquals(Phrase.OffRoute, g.update(base.copy(nowMs = 30_000, onRoute = false, offRoute = true)))
+        assertEquals(Phrase.BackOnRoute, g.update(base.copy(nowMs = 55_000, alongM = 400.0)))
     }
 
     /** Jumping fixes open and close the question again and again: "off the route" at most every 2 min, no "back on". */

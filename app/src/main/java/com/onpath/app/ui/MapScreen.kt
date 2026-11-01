@@ -488,7 +488,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         return
     }
     LaunchedEffect(c, vm.routePeek) { c.setRouteOverlaysVisible(!vm.routePeek) } // eye button (re-applied per style)
-    // the plan points behind the user in a running tour (TourSplit): grey with ✓; re-read every ~20 track points
+    // the plan points behind the user in a running tour (TourSplit): grey (no tick, owner 2026-11-01); re-read every ~20 track points
     var passed by remember { mutableStateOf(emptySet<Int>()) }
     val trackSize = rec?.track?.sumOf { it.size } ?: 0
     LaunchedEffect(vm.waypoints.toList(), trackSize / 20, vm.followLine, rec != null) { passed = vm.tourPassed() }
@@ -496,7 +496,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     LaunchedEffect(c) {
         // canEditMap is part of the key on its own: Navigate → Plan while the plan is followed must redraw the markers
         snapshotFlow {
-            val (line, markers) = planLayers(vm.canEditMap, vm.planIsFollowed())
+            val (line, markers) = planLayers(vm.canEditMap, navigateWithPlan = vm.mode == AppMode.NAVIGATE && vm.planGuides)
             PlanDrawing(vm.route, line, markers, vm.waypoints.toList(), vm.planGaps, passed)
         }
             .collect { d ->
@@ -514,8 +514,8 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         c.setTrack(MapController.SRC_RIDES, rides.filter { it.second == com.onpath.app.rides.RideKind.VEHICLE }.map { it.first })
         c.setTrack(MapController.SRC_LIFTS, rides.filter { it.second == com.onpath.app.rides.RideKind.LIFT }.map { it.first })
     }
-    // One blue line: the followed route is blue; while the plan is edited during a tour it turns thin grey
-    // under the (blue) edited plan; a track that is only shown keeps its own colour.
+    // The followed route is blue – also while the plan is edited during a tour (owner 2026-11-01: no grey route while
+    // planning); a track that is only shown keeps its own colour.
     LaunchedEffect(c) {
         snapshotFlow { vm.trackLook() }.collect { c.setTrackLook(it) }
     }
@@ -528,9 +528,8 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     val rest = vm.screenRest
     val location = fix.takeUnless { rest }
     LaunchedEffect(c, rest) { c.setQuiet(rest) }
-    // the whole plan pale under the followed line while a tour follows position → points ahead (Plan only, TourSplit);
-    // beside a re-route's grey original, never instead of it (fix-tour-edit-line.md cause 2)
-    val pale = paleLines(vm.mode == AppMode.PLAN, vm.planIsFollowed(), nav?.original, vm.route?.points, vm.followLine)
+    // a re-route's thin grey original – in Navigate only; Plan has no grey lines (owner 2026-11-01)
+    val pale = paleLines(vm.mode == AppMode.PLAN, nav?.original)
     LaunchedEffect(c, pale) { c.setNavOriginals(pale) }
     // Heading-up on the route: the stretch ahead points straight up (HeadingFilter). Only in Navigate, matched to
     // the line, not off route; otherwise null = compass / GPS bearing.
@@ -647,25 +646,22 @@ private fun computeScale(map: org.maplibre.android.maps.MapLibreMap): Pair<Strin
 private const val ROUTE_UP_MAX_OFF_M = 30.0
 
 /**
- * Which parts of the plan the map draws: (planned line, numbered point markers). Both only while the plan can be
- * edited (Plan mode, no track shown); the line not while the plan is followed (the followed line is drawn instead).
- * Navigate shows only the route line, no numbered points (owner).
+ * The thin grey line under the followed line: a re-route's original ([navOriginal]) – in Navigate only. In Plan nothing
+ * is grey (owner 2026-11-01: "das Planen mit der grauen Route klappt überhaupt nicht – wir lassen die blaue Route").
  */
-/**
- * The thin grey lines under the followed line: a re-route's original ([navOriginal]) and – in Plan, when the plan line
- * is hidden because the tour follows it ([planFollowed]) but follows another line (position → ahead after an edit) –
- * the whole plan, pale. In Plan the plan is never invisible (`PlanLayersTest`).
- */
-internal fun paleLines(
-    plan: Boolean, planFollowed: Boolean, navOriginal: List<com.onpath.app.routing.GeoPoint>?,
-    planLine: List<com.onpath.app.routing.GeoPoint>?, followLine: List<com.onpath.app.routing.GeoPoint>?,
-): List<List<com.onpath.app.routing.GeoPoint>> {
-    val palePlan = planLine?.takeIf { plan && planFollowed && it.size >= 2 && it != followLine && it != navOriginal }
-    return listOfNotNull(navOriginal, palePlan)
-}
+internal fun paleLines(plan: Boolean, navOriginal: List<com.onpath.app.routing.GeoPoint>?): List<List<com.onpath.app.routing.GeoPoint>> =
+    if (plan) emptyList() else listOfNotNull(navOriginal)
 
-internal fun planLayers(canEditMap: Boolean, planFollowed: Boolean): Pair<Boolean, Boolean> =
-    (canEditMap && !planFollowed) to canEditMap
+/**
+ * Which parts of the plan the map draws: (planned line, numbered point markers) – both whenever the plan can be edited
+ * (Plan mode, no track shown), also during a tour: the plan's route is blue as without a tour, never hidden, so the blue
+ * line can never vanish (owner 2026-11-01; before, the line was hidden while "followed" and only a pale copy showed it –
+ * fix-tour-edit-line.md cause 2). Navigate shows the followed line and – while the tour follows the plan
+ * ([navigateWithPlan]) – the plan's numbered points, passed ones grey (owner 2026-11-01: "sonst weiß man gar nicht,
+ * wo man einen Punkt gemacht hat"); not tappable there (MapHost edits only when canEditMap).
+ */
+internal fun planLayers(canEditMap: Boolean, navigateWithPlan: Boolean = false): Pair<Boolean, Boolean> =
+    canEditMap to (canEditMap || navigateWithPlan)
 
 /** What the plan drawing on the map depends on (MapSync). */
 private data class PlanDrawing(

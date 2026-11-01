@@ -42,6 +42,9 @@ for a in "${EXTRA[@]}"; do case "$a" in -*) ;; *) EXTRA_TASKS=1 ;; esac; done
 
 ROOT=$(git rev-parse --show-toplevel) || exit 2
 cd "$ROOT" || exit 2
+# Green → a stamp with this HEAD in .git/onpath-gate-ok (per work tree); the pre-push hook (tools/hooks/pre-bash.sh)
+# lets `git push` through only when the stamp matches HEAD – so "gate before push" is enforced, not asked for.
+trap '[ $? = 0 ] && [ "$DRY" = 0 ] && git rev-parse HEAD > "$(git rev-parse --git-path onpath-gate-ok)" 2>/dev/null' EXIT
 BASE_SHA=$(git merge-base "$BASE" HEAD) || { echo "gate: no merge base with $BASE" >&2; exit 2; }
 T0=$(date +%s)
 

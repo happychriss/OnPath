@@ -108,6 +108,8 @@ data class RecState(
      * is quiet from then on (no off-route alarms on the way to the car park); recording goes on. The app asks once.
      */
     val arrived: Boolean = false,
+    /** "Navigation Stopp" walked off: the guidance came back by itself ([StopQuiet]) – the app shows Navigate again. */
+    val guidanceBack: Boolean = false,
 )
 
 /**
@@ -179,18 +181,20 @@ class RecordingService : Service() {
     private var alertPosted = 0L
     /** Off-route settings, re-read when the app sends ACTION_SETTINGS / ACTION_FOLLOW_CHANGED. */
     private var settings: com.onpath.app.data.AppSettings? = null
-    /** False while the app is in Plan mode: no off-route warnings then (recording goes on). */
+    /** False while the app is in Plan mode ("Navigation Stopp"): the phone is quiet then (recording goes on). */
     private var navigating = true
-    /** What the navigator was last told ([AppVisibility.navigatingNow]: Plan off screen counts as navigating). */
+    /** What the navigator was last told: Navigate, or Stopp walked off ([StopQuiet]). */
     private var navigatingApplied = true
+    /** "Navigation Stopp" = quiet, also with the screen off (owner 2026-11-01); back after walking off ([StopQuiet]). */
+    private val stopQuiet = StopQuiet()
 
-    /** Plan mode only while the app is on screen (review H1): re-applied when the app goes off / on screen. */
+    /** Guidance on in Navigate, or after walking off from a Stopp; re-applied every second. */
     private fun applyNavigating() {
-        val now = AppVisibility.navigatingNow(navigating, AppVisibility.visible)
+        val now = navigating || stopQuiet.resumed
         if (now == navigatingApplied) return
         navigatingApplied = now
-        Problems.trace("navigation", if (now) "Off-route warnings on (Navigate, or Plan with the app off screen)" else
-            "Off-route warnings paused: Plan on screen")
+        Problems.trace("navigation", if (now) "Guidance on (Navigate, or walked off from Navigation Stopp)" else
+            "Navigation Stopp: quiet – no voice, no junction vibration, no off-route question")
         navigator?.let { handle(it.setNavigating(now)) }
     }
     private var lastNotify = 0L
@@ -240,7 +244,8 @@ class RecordingService : Service() {
             ACTION_NAVIGATING -> {
                 // Plan mode: no new questions; a pending one stays (owner: nothing disappears by itself)
                 navigating = intent.getBooleanExtra(EXTRA_ON, true)
-                navigatingApplied = AppVisibility.navigatingNow(navigating, AppVisibility.visible)
+                stopQuiet.set(stopped = !navigating)
+                navigatingApplied = navigating
                 navigator?.let { handle(it.setNavigating(navigatingApplied)) } ?: publish()
                 return START_STICKY
             }
@@ -632,8 +637,11 @@ class RecordingService : Service() {
         if (st.line.size < 2) return
         val len = lineLength?.takeIf { it.first == st.version }?.second
             ?: Geo.length(st.line).also { lineLength = st.version to it }
-        val remaining = st.shownAlongM?.let { (len - it).coerceAtLeast(0.0) }
-        if (!arrivalGate.onFix(pos, st.line.last(), remaining, accuracyM)) return
+        // the progress, not just a match: off the line the furthest progress on it counts (never "near the goal" alone)
+        val remaining = (len - (st.shownAlongM ?: st.progressM)).coerceAtLeast(0.0)
+        val s = nav.session
+        val open = (1 until s.stops.size - 1).count { it !in s.visited }
+        if (!arrivalGate.onFix(pos, st.line.last(), remaining, accuracyM, openStops = open)) return
         arrived = true
         arrivedToken = nav.session.token
         saveTrip()
@@ -835,7 +843,11 @@ class RecordingService : Service() {
 
     private fun applySettings() {
         val cfg = settings ?: Prefs(this).settings.also { settings = it }
-        navigator?.let { it.offRouteM = cfg.offRouteM.toDouble(); it.enabled = cfg.offRouteWarning }
+        navigator?.let {
+            it.offRouteM = com.onpath.app.navigation.OffRouteDetector.offRouteFor(cfg.offRouteM.toDouble(),
+                hike = it.session.activity == com.onpath.app.routing.Activity.HIKE)
+            it.enabled = cfg.offRouteWarning
+        }
     }
 
     private fun checkOffRoute(p: TrackPoint, accuracyM: Double, nowEl: Long) {
@@ -846,7 +858,9 @@ class RecordingService : Service() {
     /** Carries out what the navigator asks for. */
     private fun handle(step: Navigator.Step, publishNow: Boolean = true) {
         val nav = navigator ?: return
-        if (step.vibrate && (settings ?: Prefs(this).settings).offRouteVibrate) vibrate()
+        // turn hints are either / or for every activity (owner 2026-11-01): with the voice on, the off-route warning is
+        // spoken, not vibrated too (the vibration stays while the voice was never heard – the phone setup check)
+        if (step.vibrate && (settings ?: Prefs(this).settings).offRouteVibrate && !voiceOn()) vibrate()
         if (step.cancelJob) cancelReroute()
         step.job?.let { startReroute(it) }
         // the app chose a new line meanwhile (its FOLLOW_CHANGED is on the way): this result belongs to the old session
@@ -931,6 +945,15 @@ class RecordingService : Service() {
     private fun junctionCue(loc: Location, nowEl: Long) {
         val st = navigator?.state ?: return
         junctionSpeeds.note(if (loc.hasSpeed()) loc.speed.toDouble() else null, nowEl)
+        // "Navigation Stopp" (owner 2026-11-01): quiet – until the user walks off with the app off screen
+        if (stopQuiet.onFix(com.onpath.app.routing.GeoPoint(loc.latitude, loc.longitude), if (loc.hasAccuracy()) loc.accuracy else null,
+                AppVisibility.visible)) {
+            Problems.trace("navigation", "Navigation Stopp: walked ${StopQuiet.RESUME_M.toInt()} m away with the app off screen – guidance back")
+            applyNavigating()
+            if (voiceOn()) voiceSpeaker()?.say(Txt.s(Res.string.voice_guidance_back))
+            publish(force = true)
+        }
+        if (stopQuiet.quiet) return
         junctions.bike = navigator?.session?.activity != com.onpath.app.routing.Activity.HIKE
         voiceStep(st, nowEl)
         if (st.version != junctionsTracedVersion) {
@@ -944,19 +967,19 @@ class RecordingService : Service() {
         }
         val onRoute = st.prompt?.offRoute != true && st.shownAlongM != null // a switch question is no reason to be quiet
         val cue = junctions.update(st.line, st.version, st.shownAlongM, onRoute, junctionSpeeds.speedOrNull(nowEl)) ?: return
-        val choice = (settings ?: Prefs(this).settings).junctionVibration
-        val locked = screenLocked()
-        if (choice.plays(locked)) {
+        // either – or (owner 2026-11-01): the voice tells the turn, else the vibration (also while the voice is not set up)
+        val guide = (settings ?: Prefs(this).settings).junctionGuide
+        val vib = guide == com.onpath.app.data.JunctionGuide.VIBRATION || (guide == com.onpath.app.data.JunctionGuide.VOICE && !voiceOn())
+        if (vib) {
             val ok = vibrate(com.onpath.app.navigation.JunctionCues.pattern(cue.side), "junction")
-            Problems.trace("navigation", "Junction cue: ${cue.name} – vibrated=$ok (setting $choice, locked=$locked)")
-        } else Problems.trace("navigation", "Junction cue: ${cue.name} – not vibrated (setting $choice, locked=$locked)")
+            Problems.trace("navigation", "Junction cue: ${cue.name} – vibrated=$ok (turn hints $guide)")
+        } else Problems.trace("navigation", "Junction cue: ${cue.name} – not vibrated (turn hints $guide)")
     }
 
     /** Spoken directions on for this tour's activity, and the setup's test sentence was heard. */
     private fun voiceOn(): Boolean {
         val cfg = settings ?: Prefs(this).settings
-        val bike = (navigator?.session?.activity ?: Prefs(this).activity) != com.onpath.app.routing.Activity.HIKE
-        return (if (bike) cfg.voiceBike else cfg.voiceHike) && Prefs(this).voiceHeard == com.onpath.app.setup.Felt.YES
+        return cfg.junctionGuide == com.onpath.app.data.JunctionGuide.VOICE && Prefs(this).voiceHeard == com.onpath.app.setup.Felt.YES
     }
 
     /** The speaker, started on first use (then the first sentence comes without delay); what it finds goes to the phone check. */
@@ -976,7 +999,10 @@ class RecordingService : Service() {
                 onRoute = st.prompt?.offRoute != true && st.shownAlongM != null, speedMps = junctionSpeeds.speedOrNull(nowEl),
                 bike = s?.activity != com.onpath.app.routing.Activity.HIKE, offRoute = st.prompt?.offRoute == true,
                 rerouted = s?.rerouted == true, paused = paused, gpsLost = gpsLost(),
-                stops = s?.stops.orEmpty(), visited = s?.visited.orEmpty(), toGoS = tripTime().toGoS, quiet = standingStill(),
+                stops = s?.stops.orEmpty(), visited = s?.visited.orEmpty(), firstNumber = s?.firstNumber ?: 1,
+                skipped = s?.skipped.orEmpty(),
+                toGoS = tripTime().toGoS, quiet = standingStill(),
+                turnRound = st.uTurnAt != null,
             ))
             saveVoice()
             if (phrase != null) voiceSpeaker()?.say(com.onpath.app.navigation.VoiceText.of(phrase))
@@ -1217,7 +1243,7 @@ class RecordingService : Service() {
             tourId, paused, distance, ascent, descent, elapsedS, gpsLost(),
             navigator?.state?.offM, navigator?.prompt != null, follow?.first, trackSnapshot,
             navigator?.state, tripTime(), saveFailed, hadGpsFix = lastGoodFixElapsed > 0, gpsQuiet = gpsQuiet(),
-            arrived = arrived,
+            arrived = arrived, guidanceBack = stopQuiet.resumed,
         )
         // Battery: the clock runs by itself in the notification (chronometer); re-post only when what it says
         // changes (status, shown distance), at most every 5 s, and once a minute to keep the clock in step.

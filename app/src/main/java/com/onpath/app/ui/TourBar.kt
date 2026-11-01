@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.outlined.Warning
@@ -69,6 +70,22 @@ fun TourRunningBar(
     }
 }
 
+/**
+ * The recording sign on the activity icon (owner 2026-11-01: "ein kleines REC-Schild" instead of the small dot): a red
+ * pill "● REC" – grey while paused.
+ */
+@Composable
+fun RecBadge(paused: Boolean, modifier: Modifier = Modifier) {
+    val bg = if (paused) OnPathColors.Grey else OnPathColors.Error
+    Row(modifier.background(bg, RoundedCornerShape(50)).padding(horizontal = 4.dp, vertical = 1.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        Box(Modifier.size(5.dp).background(OnPathColors.CardWhite, CircleShape))
+        Spacer(Modifier.width(2.dp))
+        Text(str(Res.string.nav_rec_badge), color = OnPathColors.CardWhite, style = MaterialTheme.typography.labelSmall,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, maxLines = 1)
+    }
+}
+
 /** Recording state dot: orange while recording, grey while paused. */
 @Composable
 fun RecDot(paused: Boolean, modifier: Modifier = Modifier) {
@@ -76,7 +93,7 @@ fun RecDot(paused: Boolean, modifier: Modifier = Modifier) {
 }
 
 /**
- * "End tour" (owner): always Cancel · Delete · Save. Save stops and keeps the tour; Delete (red) asks once
+ * "End tour" (owner): always Delete (apart, left) · Cancel · Save ([DeleteApartButtons]). Save stops and keeps the tour; Delete (red) asks once
  * more, then the tour goes to the recycle bin (30 days) – for a short walk nobody wants to keep.
  * [cancelLabel]: "Cancel" from the End button, "Keep going" on arrival.
  */
@@ -103,15 +120,50 @@ fun EndTourDialog(
         icon = { Icon(Icons.Filled.Flag, null) },
         title = { Text(title) },
         // no body: the buttons say it
-        confirmButton = { TextButton(onClick = onSave) { Text(str(Res.string.common_save)) } },
-        dismissButton = {
-            Row {
-                TextButton(onClick = onDismiss) { Text(cancelLabel) }
-                TextButton(onClick = { askDelete = true },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(str(Res.string.common_delete)) }
-            }
-        },
+        confirmButton = { DeleteApartButtons({ askDelete = true }, cancelLabel, onDismiss, str(Res.string.common_save), onSave) },
     )
+}
+
+/**
+ * The buttons of the dialogs that end a tour (End tour, arrival, an interrupted recording, the ride check) – the
+ * standard (owner 2026-11-01: "ich möchte immer auf Löschen drücken"): Delete red on the left, apart, never where the
+ * thumb lands; on the right the way back and Save, the main action, filled. Delete still asks once more.
+ */
+@Composable
+internal fun DeleteApartButtons(onDelete: (() -> Unit)?, cancelLabel: String, onCancel: () -> Unit, saveLabel: String, onSave: () -> Unit) {
+    androidx.compose.ui.layout.Layout(content = {
+        TextButton(onClick = onCancel) { Text(cancelLabel) }
+        Button(onClick = onSave) { Text(saveLabel, maxLines = 1) }
+        if (onDelete != null) TextButton(onClick = onDelete,
+            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(str(Res.string.common_delete)) }
+    }, modifier = Modifier.fillMaxWidth()) { ms, c ->
+        // one row when all fit (Delete left, apart); else Cancel + Save right-aligned (each on its own row when even
+        // that does not fit, a large font) and Delete under them on the left
+        val loose = c.copy(minWidth = 0)
+        val p = ms.map { it.measure(loose) }
+        val w = c.maxWidth
+        val gap = 8.dp.roundToPx()
+        val cancel = p[0]; val save = p[1]; val del = p.getOrNull(2)
+        val oneRow = p.sumOf { it.width } + gap * (p.size - 1) <= w
+        val pairFits = cancel.width + gap + save.width <= w
+        val rows = when {
+            oneRow -> 1
+            pairFits -> 1 + (if (del != null) 1 else 0)
+            else -> 2 + (if (del != null) 1 else 0)
+        }
+        val rowH = p.maxOf { it.height }
+        layout(w, rowH * rows + gap * (rows - 1)) {
+            if (oneRow || pairFits) {
+                save.placeRelative(w - save.width, (rowH - save.height) / 2)
+                cancel.placeRelative(w - save.width - gap - cancel.width, (rowH - cancel.height) / 2)
+                del?.placeRelative(0, if (oneRow) (rowH - del.height) / 2 else rowH + gap)
+            } else {
+                save.placeRelative(w - save.width, 0)
+                cancel.placeRelative(w - cancel.width, rowH + gap)
+                del?.placeRelative(0, 2 * (rowH + gap))
+            }
+        }
+    }
 }
 
 /** Body of every "Delete …?" dialog that moves to the recycle bin. */

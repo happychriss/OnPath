@@ -224,6 +224,25 @@ class NavigatorTest {
         assertTrue("1st refresh of the new episode vibrates", r.nav.onResult(r.jobs.single().id, found(x to 300.0)).vibrate)
     }
 
+    /**
+     * Rosellen replay (owner 2026-11-01): off a re-routed line, the arrow points to that line – not back to where the
+     * original was left (530 m back while the new line was 50 m away).
+     */
+    @Test fun offARerouteTheArrowPointsToTheLineFollowedNow() {
+        val r = Run(Navigator(session()))
+        r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
+        // a new line straight on north from here, rejoining the original 500 m up its second leg
+        val leg = line(1150.0 to 0.0, 1150.0 to 500.0, 1000.0 to 500.0)
+        val l = RerouteTargets.splice(leg, NavLine(route), 1500.0)
+        r.nav.onResult(r.jobs.last().id, Rerouter.Found(l, com.onpath.app.data.Geo.length(leg), 1500.0, 50.0, 110.0, 5.0, null, emptySet(), 2, 15))
+        r.nav.take((r.nav.prompt as NavPrompt.Question).id)
+        // ride it, then 200 m off it to the east
+        r.feed(walk(1150.0 to 0.0, 1150.0 to 300.0, 1350.0 to 300.0, t0Ms = 2_000_000))
+        val t = r.nav.state.toRoute
+        assertNotNull(t)
+        assertTrue("arrow to the new line (~200 m), was ${t!!.distanceM}", t.distanceM < 260)
+    }
+
     @Test fun keepOriginalShowsTheArrowAndAsksAgainOnlyMuchLater() {
         val r = Run(Navigator(session()))
         r.feed(walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0))
@@ -349,5 +368,34 @@ class NavigatorTest {
         val sw = q.copy(switch = ActivitySwitch(Activity.MTB, 3, s, 600.0))
         assertFalse(sw.offRoute)
         assertFalse(NavPrompt.FarStart(1, 900.0, 0.0).offRoute)
+    }
+
+    /** Owner 2026-11-01: a stop is reached within 25 m on foot and only from a good fix (a restaurant's jumps said "Stopp 4 erreicht"). */
+    @Test fun aStopIsReachedOnlyCloseByAndFromAGoodFix() {
+        val r = Run(Navigator(session()))
+        r.feed(walk(0.0 to 0.0, 600.0 to 0.0))
+        // a jumping indoor fix right on the corner stop, claiming 35 m accuracy: not reached
+        r.feed(listOf(OffRouteDetector.Fix(pt(1000.0, 0.0).lat, pt(1000.0, 0.0).lon, 35.0, 3_000_000L)))
+        assertTrue(1 !in r.nav.session.visited)
+        // a good fix 30 m beside the corner: still not within 25 m on foot
+        r.feed(listOf(OffRouteDetector.Fix(pt(1000.0, 30.0).lat, pt(1000.0, 30.0).lon, 5.0, 3_001_000L)))
+        assertTrue(1 !in r.nav.session.visited)
+        // a good fix 15 m from it: inside the radius, still coming closer – not yet (owner: "Stopp 5 erreicht" came 24 m early)
+        r.feed(listOf(OffRouteDetector.Fix(pt(985.0, 0.0).lat, pt(985.0, 0.0).lon, 5.0, 3_002_000L)))
+        assertTrue(1 !in r.nav.session.visited)
+        // 6 m from it: reached now
+        r.feed(listOf(OffRouteDetector.Fix(pt(994.0, 0.0).lat, pt(994.0, 0.0).lon, 5.0, 3_003_000L)))
+        assertTrue(1 in r.nav.session.visited)
+    }
+
+    /** A point 18 m beside the way: reached at the closest approach, when the distance grows again. */
+    @Test fun aPointBesideTheWayIsReachedWhenPassingIt() {
+        val s = NavSession.start(NavKind.PLAN, "Test", Activity.HIKE, 3, route,
+            listOf(pt(0.0, 0.0), pt(500.0, 18.0), pt(1000.0, 1000.0)))
+        val r = Run(Navigator(s))
+        r.feed(walk(0.0 to 0.0, 495.0 to 0.0))
+        assertTrue(1 !in r.nav.session.visited)
+        r.feed(walk(495.0 to 0.0, 520.0 to 0.0, t0Ms = 500_000L))
+        assertTrue(1 in r.nav.session.visited)
     }
 }

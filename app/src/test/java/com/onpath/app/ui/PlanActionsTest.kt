@@ -9,7 +9,7 @@ import java.io.File
 /**
  * Owner 2026-10-31 (0.13.5): the plan sheet's ⋯ menu is gone. The sheet has a row of three small icons with a label
  * under each – ✕ Close plan (was "Clear route"; asks "Discard changes?" only with unsaved changes), ⇅ Reverse, ↻ Round
- * trip. Save is ☰ → Save route (top item whenever there is a plan; a dot on ☰ while unsaved); Save as copy, Export GPX
+ * trip. Save is ☰ → Save route (under My routes whenever there is a plan; a dot on ☰ while unsaved); Save as copy, Export GPX
  * and Share plan are in My routes → ⋮; Time details = a tap on the time.
  */
 class PlanActionsTest {
@@ -43,13 +43,14 @@ class PlanActionsTest {
         assertFalse("Reverse / Round trip not twice", src("ui/PointsSection.kt").contains("onReverse"))
     }
 
-    @Test fun saveIsTheTopItemOfTheMenuWithAPlan() {
+    /** Owner 2026-11-01: "Meine Routen" first, Save route under it. */
+    @Test fun myRoutesIsTheTopItemSaveUnderIt() {
         assertTrue(RouteRules.saveInMenu(2))
         assertFalse(RouteRules.saveInMenu(1))
         val items = src("ui/PlanTopBar.kt").substringAfter("internal fun PlanMenuItems(").substringBefore("\n}\n")
-        val order = listOf("menu.onSaveRoute", "plan_menu_my_routes", "plan_menu_start_recording", "menu.onPairBrowser", "common_settings")
+        val order = listOf("plan_menu_my_routes", "menu.onSaveRoute", "plan_menu_start_recording", "menu.onPairBrowser", "common_settings")
             .map { items.indexOf(it) }
-        assertTrue("☰: Save route · My routes · Start recording · Pair with browser · Settings $order",
+        assertTrue("☰: My routes · Save route · Start recording · Pair with browser · Settings $order",
             order.all { it >= 0 } && order == order.sorted())
         assertTrue(src("ui/PlanTopBar.kt").contains("menu.unsaved && menu.onSaveRoute != null) OnPathColors.Green"))
     }

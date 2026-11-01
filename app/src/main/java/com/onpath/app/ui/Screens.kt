@@ -507,7 +507,7 @@ fun NameDialog(title: String, initial: String, onDone: (String) -> Unit, onDismi
 }
 
 /**
- * A recording was interrupted (app or phone restarted without the service): Continue · Delete · Save, like End tour.
+ * A recording was interrupted (app or phone restarted without the service): Delete · Continue · Save, like End tour.
  * Delete asks once more, then the tour goes to the recycle bin. Stays until answered.
  */
 @Composable
@@ -529,14 +529,8 @@ fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit, onDele
         onDismissRequest = {},
         title = { Text(str(Res.string.routes_unfinished_title)) },
         text = { DialogText(str(Res.string.routes_unfinished_text, Format.distance(t.distanceM), Format.duration(t.durationS))) },
-        confirmButton = { TextButton(onClick = onSave) { Text(str(Res.string.common_save)) } },
-        dismissButton = {
-            Row {
-                TextButton(onClick = onContinue) { Text(str(Res.string.routes_unfinished_continue)) }
-                TextButton(onClick = { askDelete = true },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(str(Res.string.common_delete)) }
-            }
-        },
+        confirmButton = { DeleteApartButtons({ askDelete = true }, str(Res.string.routes_unfinished_continue), onContinue,
+            str(Res.string.common_save), onSave) },
     )
 }
 

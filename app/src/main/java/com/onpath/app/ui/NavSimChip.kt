@@ -22,18 +22,20 @@ import com.onpath.app.recording.DemoLocation
 /**
  * Developer tools only (owner 2026-11-01: "Tour-Sim" on the Navigate page, shown only after the unlock – testers get
  * the same debug builds): a small chip that rides the followed line with the demo location ([DemoLocation]).
- * Off: "▶ Sim". On: "Sim ×5" (tap → next speed of [DemoLocation.FACTORS]) and "■" (back to real GPS). Developer tools
- * stay English (CLAUDE.md).
+ * Off: "▶ Sim". On: "Sim ×5" (tap → next speed of [DemoLocation.FACTORS]), "⏸" / "▶" (pause to look at a spot,
+ * owner 2026-11-01) and "■" (back to real GPS). Developer tools stay English (CLAUDE.md).
  */
 @Composable
 fun NavSimChip(state: DemoLocation.State?, onStart: () -> Unit, onFactor: (Int) -> Unit, onStop: () -> Unit,
-               modifier: Modifier = Modifier) {
+               modifier: Modifier = Modifier, onPause: (Boolean) -> Unit = {}) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         if (state == null) SimPill("▶ Sim", "Start tour simulation", onStart)
         else {
             val all = DemoLocation.FACTORS
             val next = all[(all.indexOf(state.factor) + 1).mod(all.size)]
             SimPill("Sim ×${state.factor}" + if (state.ended) " · end" else "", "Simulation speed, tap for ×$next") { onFactor(next) }
+            if (state.kind == DemoLocation.Kind.RIDE && !state.ended)
+                SimPill(if (state.paused) "▶" else "⏸", if (state.paused) "Go on" else "Pause the simulation") { onPause(!state.paused) }
             SimPill("■", "Stop tour simulation", onStop)
         }
     }

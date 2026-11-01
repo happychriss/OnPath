@@ -136,8 +136,11 @@ data class NavUi(
 /** [roundabout]: non-null = the turn is a roundabout, with the exit to take (0 = unknown). */
 data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: Int? = null,
                     /** BRouter's angle of the roundabout turn (> 0 right): where the drawn sign's exit goes. */
-                    val roundaboutAngle: Float? = null) {
-    val label: String get() = roundabout?.let { com.onpath.app.routing.JunctionCue.ROUNDABOUT.text(it) } ?: kind.label
+                    val roundaboutAngle: Float? = null,
+                    /** The new route starts behind: "Umdrehen" with the U sign (owner 2026-11-01). */
+                    val turnRound: Boolean = false) {
+    val label: String get() = if (turnRound) Txt.s(Res.string.nav_turn_round)
+        else roundabout?.let { com.onpath.app.routing.JunctionCue.ROUNDABOUT.text(it) } ?: kind.label
 }
 
 /**
@@ -146,7 +149,7 @@ data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: I
  */
 data class OffRouteUi(val prompt: NavPrompt, val toRoute: RouteHint? = null, val arrowDeg: Float? = null) {
     /** The ONE amber off-route card on top (searching, no way, kept) – not the questions below, not the far start. */
-    val amber: Boolean get() = prompt is NavPrompt.Searching || prompt is NavPrompt.NoWay || prompt == NavPrompt.Kept
+    val amber: Boolean get() = prompt is NavPrompt.NoWay || prompt == NavPrompt.Kept
 }
 
 data class ToGo(
@@ -252,6 +255,7 @@ fun NavigateOverlay(
         val leadFailed = ui.offRoute?.prompt as? NavPrompt.LeadFailed
         val message = Messages.pick(listOf(
             question?.let { q -> rerouteMessage(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) }, onVia = { onTakeVia(q.id) }) },
+            ui.offRoute?.takeIf { it.prompt == NavPrompt.Searching }?.let { o -> searchingMessage(o, onKeep = { onKeepRoute(-1) }) },
             far?.let { p -> farStartMessage(p, onLead = { onLeadThere(p.id) }, onJustRecord = { onJustRecord(p.id) }) },
             leadFailed?.let { e -> errorMessage(NavText.title(e)) { onLeadFailedOk(e.id) } },
             error?.let { errorMessage(it, onErrorOk) },
@@ -349,9 +353,11 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         contentDescription = Txt.s(Res.string.nav_activity_cd, NavText.activityName(a, ui.sac))
                     }) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(a.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(28.dp))
-                        // recording: the orange dot on the icon instead of a line (owner)
-                        if (ui.recordedM != null) RecDot(ui.paused, Modifier.align(Alignment.TopEnd).padding(5.dp).size(9.dp))
+                        val rec = ui.recordedM != null
+                        Icon(a.icon, null, tint = OnPathColors.Green,
+                            modifier = Modifier.size(if (rec) 24.dp else 28.dp).then(if (rec) Modifier.align(Alignment.TopCenter).padding(top = 4.dp) else Modifier))
+                        // recording: a small "● REC" sign on the icon instead of a line (owner 2026-11-01)
+                        if (rec) RecBadge(ui.paused, Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp))
                     }
                 }
                 Spacer(Modifier.width(10.dp))
@@ -537,11 +543,12 @@ private fun PositionLine(text: String, copy: String?) {
  */
 internal fun recordingLine(ui: NavUi, distanceM: Double, offRoute: Boolean = false): String? {
     val free = ui.toGo == null
-    if (!free && !ui.paused && !offRoute) return null
+    // off the route no recording line either (owner 2026-11-01: "überflüssig – der rote Punkt am Rad zeigt es")
+    if (!free && !ui.paused) return null
     val status = Txt.s(if (ui.paused) Res.string.nav_status_paused else Res.string.nav_status_recording)
     val moving = ui.movingS ?: return "$status · ${Format.distance(distanceM)} · ${Format.clock(ui.elapsedS)}"
     val parts = mutableListOf(status)
-    if (free || offRoute) parts += Format.distance(distanceM)
+    if (free) parts += Format.distance(distanceM)
     if (free || ui.paused) {
         parts += Txt.s(Res.string.nav_moving_lower, com.onpath.app.time.TimeEstimate.hm(moving))
         val b = ui.breakS ?: 0.0
@@ -633,6 +640,16 @@ internal fun rerouteMessage(q: NavPrompt.Question, onTake: () -> Unit, onKeep: (
 }
 
 /**
+ * Off the route, the way back still being computed (owner 2026-11-01: "erst piep, piep, anbieten, dann gemeinsam
+ * suchen"): the question comes at once – "Abseits der Route", how far and where the route is; "Keep original" works
+ * at once, "New route" shows a spinner until the way is found (then the normal question, [rerouteMessage]).
+ */
+internal fun searchingMessage(o: OffRouteUi, onKeep: () -> Unit): Message =
+    Message(MessageKind.FRAGE, Txt.s(Res.string.nav_title_searching), NavText.toRoute(o.toRoute),
+        listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.TAKE) {}.apply { busy = true }),
+        icon = Icons.Outlined.AltRoute, navigate = true)
+
+/**
  * Never on the route yet and away from it (owner 2026-10-31): "Route starts 31 km away" · "south-west (direct) ·
  * recording" · Just record / Guide me (FRAGE). Calm: no vibration, no sound; stays until answered or the route is
  * reached. After "Guide me" only "Just record" stays while the way there is computed ("Finding a way to the start…").
@@ -664,8 +681,10 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val nav = rec?.nav?.takeIf { it.line.size >= 2 }
     val line = nav?.line ?: vm.followLine
     val progress = remember(line) { line?.let { FollowProgress(it) } }
-    // turns on the followed line, computed once per line (pure, TurnDetector)
-    val turns = remember(line) { line?.let { TurnDetector.turns(it) } ?: emptyList() }
+    // turns on the followed line, once per line: the junctions the phone vibrates for and the voice names
+    // (ScreenTurns: BRouter's hints + JogRule; a GPX track without hints: the geometry, TurnDetector)
+    val hike = (rec?.nav?.session?.activity ?: vm.activity) == com.onpath.app.routing.Activity.HIKE
+    val turns = remember(line, hike) { line?.let { com.onpath.app.navigation.ScreenTurns.of(it, hike) } ?: emptyList() }
     val total = remember(line) { line?.let { com.onpath.app.data.Geo.length(it) } ?: 0.0 }
     // same time model as the plan sheet (time/RouteTimes): no jump when navigation starts
     val times = remember(line, vm.activity) { line?.let { com.onpath.app.time.RouteTimes.of(it, vm.activity) } }
@@ -736,9 +755,16 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         offRoute = rec?.nav?.let { n ->
             n.prompt?.let { p -> OffRouteUi(p, n.toRoute, n.toRoute?.let { (it.bearingDeg - mapBearing).toFloat() }) }
         },
-        turn = turnHint(next?.let { (t, d) -> t.kind to d }, roundabout)?.let { h ->
-            if (h.roundabout != null) h.copy(roundaboutAngle = roundaboutAngle) else h
-        },
+        // a new route that starts behind: "Umdrehen" first (owner 2026-11-01: after a re-route one saw nothing and did
+        // not know where to go) – until the Navigator clears the U sign (walked the new way)
+        turn = nav?.uTurnAt?.let { u -> TurnHint(TurnKind.U_TURN_LEFT, here?.let { com.onpath.app.data.Geo.distance(it, u) } ?: 0.0, turnRound = true) }
+            ?: turnHint(next?.let { (t, d) -> t.kind to d }, roundabout)?.let { h ->
+                when {
+                    h.roundabout != null -> h.copy(roundaboutAngle = roundaboutAngle)
+                    next?.first?.turnRound == true -> h.copy(turnRound = true)   // an out-and-back: "Umdrehen"
+                    else -> h
+                }
+            },
         headingUp = vm.navHeadingUp,
         arriveAt = arrive,
         movingS = rec?.time?.movingS, breakS = rec?.time?.breakS,
@@ -793,7 +819,8 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
             sim = if (!vm.devToolsShown) null else { {
                 val demo by com.onpath.app.recording.DemoLocation.state.collectAsState()
                 NavSimChip(demo, onStart = { vm.startNavSim(line) }, onFactor = com.onpath.app.recording.DemoLocation::setFactor,
-                    onStop = { com.onpath.app.recording.DemoLocation.stop("stopped on the Navigate page") })
+                    onStop = { com.onpath.app.recording.DemoLocation.stop("stopped on the Navigate page") },
+                    onPause = com.onpath.app.recording.DemoLocation::setPaused)
             } })
         RestLayer(restTarget?.takeIf { rest }?.let { RestUi(it.event, it.distanceM, ui.toGo?.timeS, ui.arriveAt) },
             onTap = ScreenTouch::note)

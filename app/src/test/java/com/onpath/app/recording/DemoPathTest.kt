@@ -97,4 +97,16 @@ class DemoPathTest {
         val v = h.lengthM / h.durationS * 3.6
         assertTrue("hike $v km/h", v in 3.0..6.0)
     }
+
+    /** Developer tools (owner 2026-11-01): a recorded tour ridden again at its own times – a stop stays a stop. */
+    @Test fun aRecordedTourKeepsItsTimesAndStops() {
+        val a = GeoPoint(51.1673, 6.9274); val b = GeoPoint(51.1683, 6.9274); val c = GeoPoint(51.1693, 6.9274)
+        // 111 m in 80 s, then 10 min standing at b, then 111 m in 80 s
+        val p = DemoPath.recorded(listOf(a, b, b, c), listOf(0L, 80_000L, 680_000L, 760_000L))!!
+        org.junit.Assert.assertEquals(760.0, p.durationS, 0.001)
+        org.junit.Assert.assertEquals(b.lat, p.at(400.0).lat, 1e-9) // standing at b in the middle of the stop
+        org.junit.Assert.assertEquals(0.0, p.at(400.0).speedMs, 1e-9)
+        org.junit.Assert.assertTrue(p.at(720.0).lat > b.lat)
+        org.junit.Assert.assertNull("no times", DemoPath.recorded(listOf(a, b), listOf(null, null)))
+    }
 }
