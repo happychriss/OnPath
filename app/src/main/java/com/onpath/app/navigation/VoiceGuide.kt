@@ -91,6 +91,8 @@ class VoiceGuide {
         val visited: Set<Int> = emptySet(),
         /** To go for the start sentence (time model); null = not known yet. */
         val toGoS: Double? = null,
+        /** Standing still ([com.onpath.app.recording.MoveWatch], owner 2026-11-01): no "No GPS", no "off the route". */
+        val quiet: Boolean = false,
     )
 
     private var version = Int.MIN_VALUE
@@ -151,7 +153,7 @@ class VoiceGuide {
         // close it again and again); closed by riding back → "back on the route" when it was said a while ago
         if (i.offRoute && !lastOffRoute) {
             lastOffRoute = true
-            offRouteSpoken = since(offRouteSaidMs, i.nowMs) >= OFF_ROUTE_EVERY_MS
+            offRouteSpoken = !i.quiet && since(offRouteSaidMs, i.nowMs) >= OFF_ROUTE_EVERY_MS
             if (offRouteSpoken) { offRouteSaidMs = i.nowMs; waiting.clear(); return speak(Phrase.OffRoute, i.nowMs) }
         }
         if (!i.offRoute && lastOffRoute) {
@@ -168,7 +170,7 @@ class VoiceGuide {
         // GPS
         if (i.gpsLost) {
             val since = gpsLostSince ?: i.nowMs.also { gpsLostSince = it }
-            if (!gpsSaid && started && i.nowMs - since >= GPS_LOST_MS && since(noGpsSaidMs, i.nowMs) >= NO_GPS_EVERY_MS) {
+            if (!gpsSaid && started && !i.quiet && i.nowMs - since >= GPS_LOST_MS && since(noGpsSaidMs, i.nowMs) >= NO_GPS_EVERY_MS) {
                 gpsSaid = true; noGpsSaidMs = i.nowMs; queue(Phrase.NoGps, i.nowMs)
             }
         } else { gpsLostSince = null; gpsSaid = false }

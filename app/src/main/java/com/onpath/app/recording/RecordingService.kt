@@ -98,6 +98,8 @@ data class RecState(
      * shows its Wi-Fi / fused fix as a provisional position until then ([com.onpath.app.navigation.Provisional]).
      */
     val hadGpsFix: Boolean = true,
+    /** Standing still ([MoveWatch], owner 2026-11-01): warnings are quiet – "No GPS" is a grey state, not amber. */
+    val standingStill: Boolean = false,
 )
 
 /**
@@ -359,6 +361,7 @@ class RecordingService : Service() {
         }
         acquireWakeLock()
         restWatch.reset(); tracker.setInterval(RestWatch.NORMAL_MS) // never start a tour at the standing-still rate
+        moveWatch.start(SystemClock.elapsedRealtime())
         tracker.onFix = { onFix(it) }
         tracker.start()
         startTicker()
@@ -432,6 +435,13 @@ class RecordingService : Service() {
 
     private fun gpsLost() = SystemClock.elapsedRealtime() - lastGoodFixElapsed > RestWatch.lostAfterMs(restWatch.resting)
 
+    /** Quiet while standing still (owner 2026-11-01): moving = a point accepted within the last 2 min ([MoveWatch]). */
+    private val moveWatch = MoveWatch()
+
+    /** Standing still now – after a GPS loss: already before it (a loss while walking is said, one at a table not). */
+    private fun standingStill(): Boolean =
+        !moveWatch.moving(if (gpsLost() && lastGoodFixElapsed > 0) lastGoodFixElapsed else SystemClock.elapsedRealtime())
+
     /** Slower GPS while standing still (owner, battery); the paused rate is [PauseWatch]'s. */
     private val restWatch = RestWatch()
 
@@ -482,8 +492,9 @@ class RecordingService : Service() {
         gapWatch.reset()
         val p = TrackPoint(loc.latitude, loc.longitude, seaLevelHeight(loc, nowEl), loc.time)
 
-        // navigation must never cost the track: a failure here is reported, the point below is still stored (R-07)
-        try { checkOffRoute(p, loc.accuracy.toDouble(), nowEl) } catch (e: Exception) {
+        // navigation must never cost the track: a failure here is reported, the point below is still stored (R-07).
+        // Standing still (owner 2026-11-01): no new off-route state, no reminder – the detector waits as without GPS
+        try { if (moveWatch.moving(nowEl)) checkOffRoute(p, loc.accuracy.toDouble(), nowEl) else navigator?.onGpsLost() } catch (e: Exception) {
             Problems.error("navigation", "Off-route check failed on a GPS fix; the track is still recorded", e)
         }
         try { junctionCue(loc, nowEl) } catch (e: Exception) {
@@ -507,6 +518,7 @@ class RecordingService : Service() {
             if (bridged) "line kept connected" else "new track piece")
         val (verdict, moved) = PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost || bridged)
         if (verdict != PointFilter.Verdict.ACCEPT) return             // GPS jump or standing still
+        moveWatch.moved(nowEl)
         distance += moved
         if (wasLost && prev != null && !bridged) seg++                // long GPS gap: new segment
         // ascent from the terrain under the point (the point keeps its GPS altitude); never costs the track
@@ -775,7 +787,7 @@ class RecordingService : Service() {
                 onRoute = st.prompt == null && st.shownAlongM != null, speedMps = junctionSpeeds.speedOrNull(nowEl),
                 bike = s?.activity != com.onpath.app.routing.Activity.HIKE, offRoute = st.prompt?.offRoute == true,
                 rerouted = s?.rerouted == true, paused = paused, gpsLost = gpsLost(),
-                stops = s?.stops.orEmpty(), visited = s?.visited.orEmpty(), toGoS = tripTime().toGoS,
+                stops = s?.stops.orEmpty(), visited = s?.visited.orEmpty(), toGoS = tripTime().toGoS, quiet = standingStill(),
             ))
             saveVoice()
             if (phrase != null) voiceSpeaker()?.say(com.onpath.app.navigation.VoiceText.of(phrase))
@@ -927,7 +939,7 @@ class RecordingService : Service() {
         if (tourId < 0) return
         if (paused == p) return
         paused = p
-        if (!p) { seg++; last = null } // resume = new segment, distance not bridged
+        if (!p) { seg++; last = null; moveWatch.start(SystemClock.elapsedRealtime()) } // resume = new segment, distance not bridged
         // Battery: a pause records nothing – GPS runs slowly (never off (owner): walking on with the pause still on
         // is noticed by PauseWatch), the wake lock rests until Resume.
         pauseWatch.reset()
@@ -1010,7 +1022,7 @@ class RecordingService : Service() {
         _state.value = RecState(
             tourId, paused, distance, ascent, descent, elapsedS, gpsLost(),
             navigator?.state?.offM, navigator?.prompt != null, follow?.first, trackSnapshot,
-            navigator?.state, tripTime(), saveFailed, hadGpsFix = lastGoodFixElapsed > 0,
+            navigator?.state, tripTime(), saveFailed, hadGpsFix = lastGoodFixElapsed > 0, standingStill = standingStill(),
         )
         // Battery: the clock runs by itself in the notification (chronometer); re-post only when what it says
         // changes (status, shown distance), at most every 5 s, and once a minute to keep the clock in step.

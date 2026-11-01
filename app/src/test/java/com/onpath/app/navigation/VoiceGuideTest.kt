@@ -264,4 +264,18 @@ class VoiceGuideTest {
         val after = VoiceGuide().apply { continueTour(g.memory()) }
         assertNull(after.event(Phrase.Arrived, 420_000))
     }
+
+    /** Owner 2026-11-01: in a restaurant, phone in the pocket – no "No GPS signal", no "off the route" while standing still. */
+    @Test fun standingStillSaysNothing() {
+        val l = line(3000, emptyMap())
+        val g = VoiceGuide()
+        val base = VoiceGuide.Input(0, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
+        assertTrue(g.update(base) is Phrase.Start)
+        val sitting = (1..60).mapNotNull { k -> g.update(base.copy(nowMs = 20_000L + k * 10_000L, gpsLost = true, quiet = true)) } +
+            listOfNotNull(g.update(base.copy(nowMs = 700_000, onRoute = false, offRoute = true, quiet = true)))
+        assertTrue("$sitting", sitting.isEmpty())
+        // walking again, GPS lost in a forest: said
+        val walking = (1..40).mapNotNull { k -> g.update(base.copy(nowMs = 800_000L + k * 1_000L, gpsLost = true)) }
+        assertEquals(listOf(Phrase.NoGps), walking)
+    }
 }
