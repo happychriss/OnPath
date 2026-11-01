@@ -13,7 +13,11 @@
 | `tools/dev/unit.sh` | fertig, mit Platzhaltern getestet (ID merken, Wiederanhängen, Rückfall auf neue Sitzung, Dienst-Dateien) – **echte CLI nicht getestet** |
 | `docs/roles/neu/start.md`, `captain.md` | fertig, noch nicht gültig |
 
-## A. Tests auf donald (erledigt 2026-11-01, Ergebnisse unten; für den Laptop wiederholen)
+## A. Tests auf donald (erledigt 2026-11-01, Ergebnisse unten)
+Das Verhalten von Claude / Plattform (Gastgeber, Worktrees, Sitzungen starten, Weckruf) gilt auf dem Laptop genauso.
+**Auf dem Laptop nur drei Prüfungen bei der Einrichtung (C.3):** (a) `gh api repos/happychriss/onpath.private --jq
+.full_name` und `tools/ask.sh an-alle` – ohne `gh` greifen dort weder `an-alle` noch die Push-Sperre (Backlog: dort
+fehlt `gh auth setup-git`); (b) A.0 im Ordner; (c) `save-on-shutdown.sh dry` – keine Kartendaten dabei.
 0. **Jeder neue Ordner einmal:** `claude` darin starten, die Vertrauensfrage bestätigen, `/exit`; dann
    `claude remote-control`, `w` drücken bis „worktree“, Strg-C. Sonst endet
    `unit.sh` mit „Workspace not trusted“ (gesehen auf donald 2026-11-01; ein Autostart kann die Frage nicht beantworten).
