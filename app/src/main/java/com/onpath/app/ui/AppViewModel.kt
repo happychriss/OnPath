@@ -1488,6 +1488,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.trace("plan", "Plan restored at app start: ${waypoints.size} points" +
             (followName?.let { ", following \"$it\" (${followLine?.size ?: 0} line points)" } ?: ", nothing followed"))
         refreshTours() // "Load route" is enabled only when something is saved
+        // an empty plan with a followed line left and no tour in the database (Pixel 2026-11-01: a blue line without points
+        // that nothing could remove): the line goes – never while a tour is recording (the service may come back)
+        if (waypoints.isEmpty() && followLine != null && !followIsTrack) viewModelScope.launch {
+            val active = withContext(Dispatchers.IO) {
+                runCatching { db.findActiveRecording() != null }
+                    .onFailure { Problems.warn("db", "Active tour not checked at start; the followed line stays", it) }.getOrDefault(true)
+            }
+            if (!active && waypoints.isEmpty() && recState.value == null && followLine != null && !followIsTrack) {
+                Problems.trace("plan", "Empty plan, no tour: the followed line left from before is removed")
+                clearFollow()
+            }
+        }
         // Set directly (enter() touches properties declared below); the check after the DB read
         // calls enter() and so also tells a running service which mode we are in.
         if (RecordingService.state.value != null) mode = AppMode.NAVIGATE
