@@ -137,6 +137,9 @@ class VoiceGuide {
         lastVisited = null
     }
 
+    /** The app chose a new line (plan edited): an open off-route question of the old line is gone – no "back on". */
+    fun lineFromApp() { lastOffRoute = false; offRouteSpoken = false }
+
     /** A new tour: everything is said afresh. */
     fun newTour() {
         version = Int.MIN_VALUE; size = -1; said.clear(); lineLength = 0.0

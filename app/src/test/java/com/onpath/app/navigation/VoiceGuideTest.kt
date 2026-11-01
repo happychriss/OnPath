@@ -278,4 +278,16 @@ class VoiceGuideTest {
         val walking = (1..40).mapNotNull { k -> g.update(base.copy(nowMs = 800_000L + k * 1_000L, gpsLost = true)) }
         assertEquals(listOf(Phrase.NoGps), walking)
     }
+
+    /** Review recording L1: a plan edited while off route builds a new line – no false "back on the route". */
+    @Test fun aNewLineFromTheAppIsNoBackOnRoute() {
+        val l = line(3000, emptyMap())
+        val g = VoiceGuide()
+        val base = VoiceGuide.Input(0, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
+        g.update(base)
+        assertEquals(Phrase.OffRoute, g.update(base.copy(nowMs = 20_000, onRoute = false, offRoute = true)))
+        g.lineFromApp()
+        val said = (1..20).mapNotNull { g.update(base.copy(nowMs = 100_000L + it * 1000, version = 2)) }
+        assertTrue("$said", said.none { it == Phrase.BackOnRoute })
+    }
 }

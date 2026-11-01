@@ -25,6 +25,8 @@ import javax.xml.parsers.SAXParserFactory
 object GpxParser {
 
     const val MAX_BYTES = 60L * 1024 * 1024
+    /** A damaged file is scanned for points only up to this size (memory); bigger ones keep their readable part. */
+    const val RECOVERY_MAX_BYTES = 15 * 1024 * 1024
 
     fun parse(input: InputStream): GpxData {
         val bytes = readLimited(input)
@@ -59,8 +61,11 @@ object GpxParser {
         val warnings = handler.warnings.toMutableList()
 
         if (broken) {
-            val recovered = RegexRecovery.parse(String(bytes, Charsets.UTF_8))
-            if (recovered.pointCount + recovered.waypoints.size > result.pointCount + result.waypoints.size) {
+            // the scan holds the file as text (twice its size) plus the matches: only for files up to RECOVERY_MAX_BYTES,
+            // and memory running out keeps the readable part (review routing M6: a cut-off 50 MB export crashed the app)
+            val recovered = if (bytes.size > RECOVERY_MAX_BYTES) null else try { RegexRecovery.parse(String(bytes, Charsets.UTF_8)) }
+                catch (e: OutOfMemoryError) { Problems.warn("gpx", "Not enough memory to scan the damaged GPX; imported the readable part", e); null }
+            if (recovered != null && recovered.pointCount + recovered.waypoints.size > result.pointCount + result.waypoints.size) {
                 warnings += "The file is not valid XML; recovered ${recovered.pointCount} points by scanning it."
                 result = recovered.copy(name = recovered.name ?: result.name)
             } else {

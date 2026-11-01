@@ -426,6 +426,8 @@ class RecordingService : Service() {
     }
 
     private var lastTick = 0L
+    /** The part of a second not counted yet ([tick]). */
+    private var tickRestMs = 0L
     private var lastStats = 0L
     private var pausedBefore = false
 
@@ -435,7 +437,11 @@ class RecordingService : Service() {
         applyNavigating()
         // real time since the last tick: a tick delayed by Doze or a busy phone must not lose minutes.
         // Not across a pause: without the wake lock a paused tick can come late (resume counts from here).
-        if (!paused && !pausedBefore) elapsedS += ((now - lastTick) / 1000.0).toLong().coerceIn(1, 600)
+        // milliseconds, not whole seconds per tick (review M6: a 1.9 s tick counted 1 s – minutes lost over a day)
+        if (!paused && !pausedBefore) {
+            tickRestMs += (now - lastTick).coerceIn(1_000L, 600_000L)
+            elapsedS += tickRestMs / 1000; tickRestMs %= 1000
+        }
         pausedBefore = paused
         lastTick = now
         // the lock times out after 12 h: long days go on; paused = slow GPS (10 s), no lock (battery)
@@ -732,6 +738,7 @@ class RecordingService : Service() {
         // arrived belongs to one followed line: a re-route keeps the token, the app's new line clears it
         arrived = arrivedToken != null && navigator?.session?.token == arrivedToken
         if (!arrived) arrivalGate.reset()
+        voice.lineFromApp() // a plan edited while off route: no false "back on the route" (review recording L1)
         alertKey = null; nm().cancel(ALERT_ID)
         navigator?.let { n ->
             if (n.session.needsLead) {
