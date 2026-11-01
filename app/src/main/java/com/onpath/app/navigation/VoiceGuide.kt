@@ -184,7 +184,9 @@ class VoiceGuide {
         }
         // before the start sentence a new line is no news – the start sentence tells its length (field 2026-11-01:
         // "Neue Route." came before "Los geht's.")
-        if (newLine && i.rerouted && !lastRerouted && started) {
+        // every new route is said, not just the first one away from the plan (owner 2026-11-01, Rosellen replay: the
+        // second and third re-route came without a word – "keine Nachricht, bitte wenden")
+        if (newLine && i.rerouted && started) {
             queue(if (i.turnRound) Phrase.NewRoute(null, turnRound = true) else Phrase.NewRoute(nextJunction(i, closeOnly = true)), i.nowMs)
         }
         lastRerouted = i.rerouted

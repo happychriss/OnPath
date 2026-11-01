@@ -139,7 +139,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         private set
 
     private var original = NavLine(session.original)
-    val detector = OffRouteDetector(offRouteM)
+    val detector = OffRouteDetector(offRouteM).apply { headingRule = session.activity != com.onpath.app.routing.Activity.HIKE }
     private var leftAtM = session.leftAtM
     private var jobId = 0
     private var runningJob = -1

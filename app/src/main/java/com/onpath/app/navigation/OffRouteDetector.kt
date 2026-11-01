@@ -26,6 +26,12 @@ import kotlin.math.min
  * - Confirmed only after [CONFIRM_MS] off **and** having moved [MOVE_M] (+ margin) since leaving: a break with GPS
  *   drift or a single jump never triggers.
  * - Back on route (hysteresis): within half the off distance for [REJOIN_FIXES] fixes in a row.
+ * - **Bike: direction and speed** ([headingRule], owner 2026-11-01, replay of the Rosellen ride: "von der Fahrtrichtung
+ *   her ist doch klar, dass ich mich von der Route wegbewege"): riding at least [EARLY_MIN_MPS], at least [EARLY_M] from
+ *   the line and getting away from it (over the last [HEADING_M] the distance grew by [EARLY_AWAY] of the way ridden,
+ *   ~30° and more) = leaving at once, long before the off distance: no turns of the old route are said any more
+ *   ([shownAlongM] null) and it is confirmed after [EARLY_CONFIRM_MS] and [MOVE_M] instead of [CONFIRM_MS]. It stays
+ *   leaving until back within [EARLY_M]. A fix worse than [EARLY_MAX_ACCURACY_M] never starts it.
  * - GPS lost ([gpsLost]): timers stop, nothing is confirmed; a confirmed off-route state is kept (the question stays
  *   until the situation is really gone).
  */
@@ -72,6 +78,11 @@ class OffRouteDetector(
      */
     var reached = false
         private set
+    /** Bike: leaving is told by direction and speed too (see the class comment). */
+    var headingRule = false
+    /** The leaving was started by [headingRule]. */
+    private var leaveEarly = false
+
     /** Off distance of the last fix (its accuracy margin included). */
     private var lastOffM = offRouteM
 
@@ -109,7 +120,7 @@ class OffRouteDetector(
         this.progressM = progressM ?: minProgressM
         highM = this.progressM
         state = if (assumeOnRoute && newLine != null) State.ON_ROUTE else State.NO_GPS
-        noGpsGood = 0; rejoinCount = 0; gap = false; jumpFrom = null; provisional = false; backward = false
+        noGpsGood = 0; rejoinCount = 0; gap = false; jumpFrom = null; provisional = false; backward = false; leaveEarly = false
         onLine = assumeOnRoute && newLine != null
         leaveStart = null; leaveMoved = 0.0; lastDistanceM = null
     }
@@ -132,7 +143,7 @@ class OffRouteDetector(
             State.ON_ROUTE -> progressM
             // Bug 02: leaving counts as on the route only near the line – a plan edited 60 km away goes NO_GPS → LEAVING,
             // and standing still never confirms "off route": no progress there, so no junction cues, no "to go"
-            State.LEAVING -> progressM.takeIf { (lastDistanceM ?: 0.0) <= LEAVING_SHOWN_FACTOR * lastOffM }
+            State.LEAVING -> progressM.takeIf { !leaveEarly && (lastDistanceM ?: 0.0) <= LEAVING_SHOWN_FACTOR * lastOffM }
             State.OFF_ROUTE -> progressM.takeIf { backward && onLine }
             State.NO_GPS -> progressM.takeIf { started && onLine }
         }
@@ -160,7 +171,9 @@ class OffRouteDetector(
         val pick = pick(l, p, dOff, h) ?: return Status(state, null, progressM)
         val m = pick.match
         lastDistanceM = m.distanceM
-        val within = m.distanceM <= dOff
+        val early = started && reached && (state == State.ON_ROUTE || state == State.LEAVING) && !backward &&
+            leavingByHeading(l, f, m.distanceM, h)
+        val within = m.distanceM <= dOff && !early && !(state == State.LEAVING && leaveEarly && m.distanceM >= EARLY_M)
         onLine = within
         if (!started) {
             // never on the route: a match away from it says nothing about where one is along it (progress = start)
@@ -186,7 +199,7 @@ class OffRouteDetector(
                         state = State.OFF_ROUTE; backward = true; rejoinCount = 0; lowM = progressM
                         return Status(state, m.distanceM, progressM, confirmedNow = true)
                     }
-                } else startLeaving(f)
+                } else startLeaving(f, early)
             }
             State.LEAVING -> {
                 if (within) {
@@ -194,7 +207,7 @@ class OffRouteDetector(
                 } else {
                     leaveStart?.let { leaveMoved = max(leaveMoved, Geo.distance(it, p)) }
                     val needMove = MOVE_M + min(f.accuracyM, MAX_MARGIN_M)
-                    if (f.timeMs - leaveStartMs >= CONFIRM_MS && leaveMoved >= needMove) {
+                    if (f.timeMs - leaveStartMs >= (if (leaveEarly) EARLY_CONFIRM_MS else CONFIRM_MS) && leaveMoved >= needMove) {
                         state = State.OFF_ROUTE; rejoinCount = 0; backward = false
                         return Status(state, m.distanceM, progressM, confirmedNow = true)
                     }
@@ -248,8 +261,17 @@ class OffRouteDetector(
         return true
     }
 
-    private fun startLeaving(f: Fix) {
-        state = State.LEAVING; leaveStartMs = f.timeMs; leaveStart = f.point; leaveMoved = 0.0
+    private fun startLeaving(f: Fix, early: Boolean = false) {
+        state = State.LEAVING; leaveStartMs = f.timeMs; leaveStart = f.point; leaveMoved = 0.0; leaveEarly = early
+    }
+
+    /** [headingRule]: riding away from the line at speed (see the class comment). */
+    private fun leavingByHeading(l: NavLine, f: Fix, distM: Double, mv: Move?): Boolean {
+        if (!headingRule || mv == null || f.accuracyM > EARLY_MAX_ACCURACY_M || distM < EARLY_M) return false
+        val s = (f.timeMs - mv.timeMs) / 1000.0
+        if (s <= 0 || mv.distM / s < EARLY_MIN_MPS) return false
+        val before = l.match(mv.from, progressM - BACK_M, progressM + AHEAD_M)?.distanceM ?: return false
+        return distM - before >= EARLY_AWAY * mv.distM
     }
 
     /** Updates the forward high-water mark; true when the user has now walked [BACKWARD_M] backwards along the line. */
@@ -305,7 +327,7 @@ class OffRouteDetector(
     }
 
     /** The last stretch walked: from the newest fix back to the last one at least [HEADING_M] away. */
-    private class Move(val from: GeoPoint, val distM: Double)
+    private class Move(val from: GeoPoint, val distM: Double, val timeMs: Long)
 
     /**
      * Does the line at [alongM] run the way the user walks? Where was the start of the last stretch walked: on the line
@@ -334,7 +356,7 @@ class OffRouteDetector(
             val o = recent[k]
             if (now.timeMs - o.timeMs > HEADING_MAX_MS) break
             val d = Geo.distance(o.point, now.point)
-            if (d >= HEADING_M) return Move(o.point, d)
+            if (d >= HEADING_M) return Move(o.point, d, o.timeMs)
         }
         return null
     }
@@ -353,6 +375,15 @@ class OffRouteDetector(
         fun offRouteFor(settingM: Double, hike: Boolean): Double = if (hike) minOf(settingM, HIKE_OFF_ROUTE_M) else settingM
 
         const val CONFIRM_MS = 15_000L
+        /** Bike, leaving told by direction and speed ([headingRule]): from this far off the line … */
+        const val EARLY_M = 20.0
+        /** … riding at least this fast (9 km/h) … */
+        const val EARLY_MIN_MPS = 2.5
+        /** … the distance grown by this share of the last [HEADING_M] ridden (sin 30°) … */
+        const val EARLY_AWAY = 0.5
+        /** … from a fix this good; confirmed after this long (and [MOVE_M]). */
+        const val EARLY_MAX_ACCURACY_M = 15.0
+        const val EARLY_CONFIRM_MS = 4_000L
         const val MOVE_M = 25.0
         const val MAX_MARGIN_M = 20.0
         const val REJOIN_FIXES = 3

@@ -296,6 +296,20 @@ class VoiceGuideTest {
         assertEquals(Phrase.NewRoute(null, turnRound = true), said)
     }
 
+    /** Rosellen replay (owner 2026-11-01): the first re-route came before the start; the next ones were never said. */
+    @Test fun everyNewRouteIsSaid() {
+        val g = VoiceGuide()
+        val first = line(3000, emptyMap())
+        assertNull(g.update(VoiceGuide.Input(0, first, 1, null, onRoute = false, speedMps = null, bike = true)))
+        val second = line(2800, emptyMap())
+        assertTrue(g.update(VoiceGuide.Input(5_000, second, 2, 0.0, onRoute = true, speedMps = 5.0, bike = true, rerouted = true)) is Phrase.Start)
+        val third = line(2900, mapOf(40 to JunctionCue.RIGHT))
+        val said = g.update(VoiceGuide.Input(60_000, third, 3, 0.0, onRoute = true, speedMps = 5.0, bike = true, rerouted = true, turnRound = true))
+        assertEquals(Phrase.NewRoute(null, turnRound = true), said)
+        val fourth = line(2700, emptyMap())
+        assertTrue(g.update(VoiceGuide.Input(120_000, fourth, 4, 0.0, onRoute = true, speedMps = 5.0, bike = true, rerouted = true)) is Phrase.NewRoute)
+    }
+
     /** Jumping fixes open and close the question again and again: "off the route" at most every 2 min, no "back on". */
     @Test fun aFlappingOffRouteQuestionIsSaidAtMostEvery2Minutes() {
         val l = line(3000, emptyMap())

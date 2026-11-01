@@ -249,4 +249,39 @@ class OffRouteDetectorTest {
         assertEquals(20.0, OffRouteDetector.offRouteFor(20.0, hike = true), 0.0)
         assertEquals(40.0, OffRouteDetector.offRouteFor(40.0, hike = false), 0.0)
     }
+
+    /**
+     * Bike, replay of the Rosellen ride (owner 2026-11-01): the route turns north at the corner, the rider goes straight
+     * on at 18 km/h. Direction + speed say "leaving" ~20 m past the corner – no more turns of the old route – and it is
+     * confirmed within ~50 m, not after 40 m + margin and 15 s (~120 m).
+     */
+    @Test fun bikeRidingAwayIsLeavingAtOnce() {
+        val d = OffRouteDetector(40.0).apply { headingRule = true; setLine(NavLine(corner)) }
+        val s = run(d, walk(0.0 to 0.0, 1000.0 to 0.0, 1300.0 to 0.0, speed = 5.0))
+        val leaving = s.indexOfFirst { it.distanceM != null && it.state == State.LEAVING }
+        val past = (leaving - 1000 / 5.0) * 5.0
+        assertTrue("leaving at ~${past.toInt()} m past the corner", past in 10.0..40.0)
+        val i = s.indexOfFirst { it.confirmedNow }
+        val x = (i - 1000 / 5.0) * 5.0
+        assertTrue("confirmed at ~${x.toInt()} m past the corner", x in 25.0..70.0)
+        // the rule off (on foot): as before, much later
+        val f = OffRouteDetector(40.0).apply { setLine(NavLine(corner)) }
+        val y = (run(f, walk(0.0 to 0.0, 1000.0 to 0.0, 1300.0 to 0.0, speed = 5.0)).indexOfFirst { it.confirmedNow } - 200) * 5.0
+        assertTrue("without the rule at ~${y.toInt()} m", y > 100.0)
+    }
+
+    /** Bike on a cycleway 25 m beside the route, parallel: the distance does not grow – never leaving. */
+    @Test fun bikeOnAParallelWayStaysOnTheRoute() {
+        val d = OffRouteDetector(40.0).apply { headingRule = true; setLine(NavLine(corner)) }
+        val s = run(d, walk(0.0 to 0.0, 100.0 to 25.0, 900.0 to 25.0, speed = 5.0))
+        assertTrue(s.none { it.confirmedNow })
+        assertEquals(State.ON_ROUTE, d.state)
+    }
+
+    /** Bike standing / pushing slowly away (below 9 km/h): the old rule. */
+    @Test fun bikeSlowIsTheOldRule() {
+        val d = OffRouteDetector(40.0).apply { headingRule = true; setLine(NavLine(corner)) }
+        val s = run(d, walk(0.0 to 0.0, 1000.0 to 0.0, 1040.0 to 0.0, speed = 1.3))
+        assertTrue(s.none { it.state == State.LEAVING })
+    }
 }
