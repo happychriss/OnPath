@@ -53,6 +53,18 @@ class GpxParserTest {
         assertNull(g.allSegments[0][0].timeMs)
     }
 
+    /** Review routing H2: a planned-route export with <rte> control points and the <trk> geometry is one line, not two. */
+    @Test fun routeAndTrackOfTheSameWayCountOnce() {
+        val g = GpxParser.parse("""<gpx version="1.1"><rte><name>R</name>
+            <rtept lat="46.60" lon="11.10"/><rtept lat="46.62" lon="11.12"/></rte>
+            <trk><name>R</name><trkseg><trkpt lat="46.60" lon="11.10"/><trkpt lat="46.61" lon="11.11"/><trkpt lat="46.62" lon="11.12"/></trkseg></trk>
+            </gpx>""")
+        assertEquals(2, g.lines.size)
+        assertEquals(1, g.allSegments.size)
+        assertEquals(3, g.pointCount)
+        assertEquals(46.61, g.allSegments[0][1].lat, 1e-9)
+    }
+
     @Test fun multipleSegmentsAndPrefixedNamespace() {
         val g = GpxParser.parse("""<g:gpx xmlns:g="http://www.topografix.com/GPX/1/0"><g:trk>
             <g:trkseg><g:trkpt lat="1" lon="2"/><g:trkpt lat="1.001" lon="2"/></g:trkseg>
