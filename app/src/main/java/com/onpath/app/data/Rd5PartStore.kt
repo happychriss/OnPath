@@ -46,6 +46,7 @@ class HttpRd5Remote(private val baseUrl: String = SegmentDownloader.BASE_URL) : 
     private fun conn(tile: String, range: String, etag: String?) =
         (URL(baseUrl + tile).openConnection() as HttpURLConnection).apply {
             connectTimeout = 20_000; readTimeout = 30_000
+            setRequestProperty("User-Agent", SegmentDownloader.USER_AGENT)
             setRequestProperty("Range", "bytes=$range")
             if (etag != null) setRequestProperty("If-Range", etag)
         }

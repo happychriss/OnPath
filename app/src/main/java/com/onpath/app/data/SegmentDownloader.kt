@@ -14,6 +14,12 @@ object SegmentDownloader {
 
     const val BASE_URL = "https://brouter.de/brouter/segments4/"
 
+    /**
+     * Who asks brouter.de (a volunteer's server, review Arch 7): the app and version plus a contact, so its operator can
+     * reach us when OnPath's traffic is a problem.
+     */
+    val USER_AGENT: String get() = "OnPath-Android/${com.onpath.app.BuildConfig.VERSION_NAME} (+info@onpath.earth)"
+
     /** Tile name for a position: 5° steps, west/south as W/S. Bozen (46.5, 11.35) → "E10_N45". */
     fun tileName(lat: Double, lon: Double): String {
         val lo = (floor(lon / 5.0) * 5).toInt()
@@ -38,6 +44,7 @@ object SegmentDownloader {
         val conn = (URL(BASE_URL + name).openConnection() as HttpURLConnection).apply {
             connectTimeout = 20_000
             readTimeout = 30_000
+            setRequestProperty("User-Agent", USER_AGENT)
             if (done > 0) setRequestProperty("Range", "bytes=$done-")
         }
         try {
@@ -90,6 +97,7 @@ object SegmentDownloader {
         val dest = File(segmentsDir, name)
         val conn = (URL(BASE_URL + name).openConnection() as HttpURLConnection).apply {
             requestMethod = "HEAD"; connectTimeout = 20_000; readTimeout = 30_000
+            setRequestProperty("User-Agent", USER_AGENT)
         }
         val serverDate = try {
             if (conn.responseCode != 200) throw IllegalStateException("Server answered ${conn.responseCode} for $name.")
