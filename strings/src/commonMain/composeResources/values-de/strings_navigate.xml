@@ -222,6 +222,7 @@
     <string name="nav_line_note">Neue Route · vorher %1$s</string>
     <string name="nav_pause_no_gps">kein GPS</string>
     <string name="nav_pause_no_progress">kein Fortschritt</string>
+    <string name="nav_tour_summary_times">Unterwegs %1$s (%2$s–%3$s) · in Bewegung %4$s · Pausen %5$s</string>
     <string name="nav_moving_breaks">In Bewegung %1$s · Pausen %2$s</string>
     <string name="nav_plan_vs_needed">Auf der Route: geplant %1$s – gebraucht %2$s</string>
     <string name="nav_pace_relaxed">Gemütlich</string>

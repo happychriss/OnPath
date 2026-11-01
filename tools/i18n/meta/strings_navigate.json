@@ -1120,6 +1120,12 @@
     "priority": 2,
     "confidence": "sicher"
   },
+  "nav_tour_summary_times": {
+    "area": "Tour summary",
+    "context": "After a tour / opened tour. %1$s total h:mm, %2$s start clock, %3$s end clock, %4$s moving h:mm, %5$s breaks (incl. Pause) h:mm",
+    "priority": 2,
+    "confidence": "sicher"
+  },
   "nav_moving_breaks": {
     "area": "End of tour",
     "context": "Finished tour: %1$s = moving time, %2$s = breaks (h:mm)",

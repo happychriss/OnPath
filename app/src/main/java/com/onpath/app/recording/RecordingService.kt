@@ -1169,7 +1169,7 @@ class RecordingService : Service() {
             parts.forEach { com.onpath.app.backup.Backups.tourChanged(this, it) }
             try {
                 com.onpath.app.time.TourTimesStore(File(filesDir, com.onpath.app.time.TourTimesStore.FILE))
-                    .put(tourId, tourTimes())
+                    .put(tourId, tourTimes().copy(startMs = tourMeta?.second, endMs = System.currentTimeMillis()))
                 // learning per tour only (owner): this tour's pace ends with it
                 File(filesDir, TRIP_FILE).delete()
             } catch (e: Exception) { Problems.error("time", "Tour times could not be saved at tour end", e) }
