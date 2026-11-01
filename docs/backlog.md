@@ -6,6 +6,7 @@ that still apply are listed in `docs/project-status.md`. Finished work is not ke
 the git log.
 
 ## Release day 2026-11-01 – captain's plan (first real users)
+**On hold (owner 2026-11-01): no release until the owner says "get ready for the release" – work through the lists below meanwhile.**
 1. **Morning, owner (10 min):** read the review's top list (`docs/reviews/2026-11-01-pre-release.md`, BLOCKERs first)
    and say which blockers must be fixed before the release – the rest goes to "Next".
 2. **cloud-app** fixes the app blockers on `main`; **cloud-plan** the web blockers on `web-spike` and merges `main` again
