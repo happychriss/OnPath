@@ -12,7 +12,8 @@ data class TrackPoint(
     fun toGeo() = GeoPoint(lat, lon, ele)
 }
 
-data class GpxWaypoint(val lat: Double, val lon: Double, val name: String?, val ele: Double? = null)
+/** [type] = the waypoint's GPX `<type>` (OnPath's plan export: [PlanGpx.PINNED] for a pinned route point). */
+data class GpxWaypoint(val lat: Double, val lon: Double, val name: String?, val ele: Double? = null, val type: String? = null)
 
 /**
  * A line with one or more segments (gaps between segments are not drawn). [type] = its `<type>` as written (Komoot:

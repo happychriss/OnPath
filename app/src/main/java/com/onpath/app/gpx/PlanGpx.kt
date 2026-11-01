@@ -12,7 +12,8 @@ data class GpxFile(val fileName: String, val text: String)
  * (Export GPX); pure, no Android (SharedCoreRuleTest). Written by [GpxWriter]:
  * - the routed line as one track (most apps prefer `<trk>`), its sport as `<trk><type>` ([SportType], Komoot's string);
  * - the route points as `<wpt>` in plan order (start, stops, goal – a round trip ends with its start again), with their
- *   names: other apps show them, and a re-import rebuilds the plan from them ([stopsOf]);
+ *   names: other apps show them, and a re-import rebuilds the plan from them ([stopsOf]); a pinned point (a POI the
+ *   route must pass exactly) carries the standard GPX `<type>` [PINNED] (review routing L1: pins were lost);
  * - the file name "<name> - plan.gpx" (the same in every language, owner: a plan and its ride never overwrite each other).
  */
 object PlanGpx {
@@ -22,13 +23,22 @@ object PlanGpx {
     const val ON_LINE_M = 100.0
     /** More route points than this: waypoints of something else (turn hints, POIs), not a plan. */
     const val MAX_STOPS = 200
+    /** `<wpt><type>` of a pinned route point. */
+    const val PINNED = "pinned"
 
     /** The file name of a plan named [name]: "Hilden - plan.gpx". */
     fun fileName(name: String): String = GpxWriter.fileName(name, GpxWriter.kindSuffix(planned = true, recorded = false))
 
     /** The plan's route points as `<wpt>`, [name] = the known name of point i (pinned POI, search) or null. */
-    fun stops(points: List<GeoPoint>, name: (Int) -> String?): List<GpxWaypoint> =
-        points.mapIndexed { i, p -> GpxWaypoint(p.lat, p.lon, name(i)) }
+    fun stops(points: List<GeoPoint>, pinned: Set<Int> = emptySet(), name: (Int) -> String?): List<GpxWaypoint> =
+        points.mapIndexed { i, p -> GpxWaypoint(p.lat, p.lon, name(i), type = if (i in pinned) PINNED else null) }
+
+    /** The pinned route points of a re-imported plan ([stopsOf]'s result), as indices. */
+    fun pinnedOf(stops: List<GpxWaypoint>): Set<Int> = stops.indices.filter { stops[it].type == PINNED }.toSet()
+
+    /** [stops] with the plan's pinned points marked (a stored route's stops + its pinned indices, for the export). */
+    fun withPins(stops: List<GpxWaypoint>, pinned: Set<Int>): List<GpxWaypoint> =
+        stops.mapIndexed { i, w -> if (i in pinned) w.copy(type = PINNED) else w }
 
     /** The plan GPX: [line] = the routed line (segments), [stops] = its route points ([stops]), the activity's sport. */
     fun export(name: String, line: List<List<TrackPoint>>, stops: List<GpxWaypoint>, activity: Activity?, sac: Int,
@@ -42,15 +52,17 @@ object PlanGpx {
 
     /**
      * Re-import: the plan's route points when the file's [waypoints] are the stops of a plan along [line] (as [export]
-     * writes them) – at least two, the first at the line's start and the last at its end ([END_M]), all near the line
-     * ([ON_LINE_M]); else null (a track with POIs or turn hints: the plan is fitted to the line instead, TrackToPlan).
+     * writes them) – at least two, the first at the line's start and the last at its end ([END_M]); else null (a track
+     * with POIs or turn hints: the plan is fitted to the line instead, TrackToPlan). A stop away from the line (a summit
+     * the route could not reach) no longer throws all of them away (review routing L1); when most are away it is not a plan.
      */
     fun stopsOf(line: List<GeoPoint>, waypoints: List<GpxWaypoint>): List<GpxWaypoint>? {
         if (line.size < 2 || waypoints.size < 2 || waypoints.size > MAX_STOPS) return null
         val first = waypoints.first(); val last = waypoints.last()
         if (Geo.distance(GeoPoint(first.lat, first.lon), line.first()) > END_M) return null
         if (Geo.distance(GeoPoint(last.lat, last.lon), line.last()) > END_M) return null
-        if (waypoints.any { Geo.distanceToLine(it.lat, it.lon, line) > ON_LINE_M }) return null
+        val away = waypoints.count { Geo.distanceToLine(it.lat, it.lon, line) > ON_LINE_M }
+        if (away * 2 > waypoints.size - 2) return null // the inner points are mostly elsewhere: POIs, not stops
         return waypoints
     }
 }

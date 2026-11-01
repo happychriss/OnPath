@@ -150,6 +150,7 @@ object GpxParser {
         private var ptEle: Double? = null
         private var ptTime: Long? = null
         private var ptName: String? = null
+        private var ptType: String? = null
         private val stack = ArrayDeque<String>()
         private val text = StringBuilder()
         private var badPoints = 0
@@ -169,7 +170,7 @@ object GpxParser {
                     ptKind = name
                     ptLat = parseCoord(attr(attrs, "lat"), 90.0)
                     ptLon = parseCoord(attr(attrs, "lon"), 180.0)
-                    ptEle = null; ptTime = null; ptName = null
+                    ptEle = null; ptTime = null; ptName = null; ptType = null
                 }
             }
         }
@@ -201,12 +202,13 @@ object GpxParser {
                 }
                 "wpt" -> {
                     val lat = ptLat; val lon = ptLon
-                    if (lat != null && lon != null) wpts += GpxWaypoint(lat, lon, ptName?.ifBlank { null }, ptEle)
+                    if (lat != null && lon != null) wpts += GpxWaypoint(lat, lon, ptName?.ifBlank { null }, ptEle, ptType)
                     else badPoints++
                     ptKind = null
                 }
-                // the line's sport (Komoot); a wpt's own <type> is not the line's
+                // the line's sport (Komoot); a wpt's own <type> is not the line's (OnPath's plan export: "pinned")
                 "type" -> if (ptKind == null && (parent == "trk" || parent == "rte")) lineType = value.ifBlank { null }
+                    else if (ptKind != null) ptType = value.ifBlank { null }
                 "trkseg" -> curSeg = null
                 "trk", "rte" -> closeLine()
             }

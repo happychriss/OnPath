@@ -4479,6 +4479,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Problems.trace("plan", "Track → plan: the file's ${stops.size} route points (a plan GPX), no fitting")
             val pts = stops.map { GeoPoint(it.lat, it.lon) }
             closeShown()
+            // pinned route points come back pinned (review routing L1)
+            com.onpath.app.gpx.PlanGpx.pinnedOf(stops).forEach { pinned += pts[it] }
+            prefs.planPinned = pinned
             change { clear(); addAll(pts) }
             stops.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
             return
@@ -4792,7 +4795,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             share(t.name) {
                 // a planned route: the one plan export shared with the web planner (gpx/PlanGpx) – its route points
                 // as <wpt> (start, stops, goal – with their names): other apps show them, a re-import rebuilds the plan
-                if (t.kind == TourKind.PLANNED) com.onpath.app.gpx.PlanGpx.export(t.name, segs, t.waypoints, t.activity, t.sac)
+                if (t.kind == TourKind.PLANNED) com.onpath.app.gpx.PlanGpx.export(t.name, segs,
+                    com.onpath.app.gpx.PlanGpx.withPins(t.waypoints, t.pinned), t.activity, t.sac)
                 // the sport as `<trk><type>` (Komoot's string, so Komoot and OnPath read the activity back);
                 // the file name the same in every language (owner): "Hilden - rec.gpx"
                 else com.onpath.app.gpx.GpxFile(GpxWriter.fileName(t.name, GpxWriter.kindSuffix(false, t.kind == TourKind.RECORDED)),

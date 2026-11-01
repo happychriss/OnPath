@@ -35,6 +35,7 @@ object GpxWriter {
             sb.append("  <wpt lat=\"").append(coord(w.lat)).append("\" lon=\"").append(coord(w.lon)).append("\">")
             w.ele?.let { sb.append("<ele>").append(fmt1(it)).append("</ele>") }
             w.name?.let { sb.append("<name>").append(esc(it)).append("</name>") }
+            w.type?.let { sb.append("<type>").append(esc(it)).append("</type>") }
             sb.append("</wpt>\n")
         }
         sb.append("  <trk>\n    <name>").append(esc(name)).append("</name>\n")
