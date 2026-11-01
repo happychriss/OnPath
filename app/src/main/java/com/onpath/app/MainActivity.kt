@@ -609,10 +609,9 @@ class MainActivity : ComponentActivity() {
 
     /** The app crashed in an earlier run: say so once (the details are in Settings → Diagnostics). */
     private fun announceLastCrash() {
-        val sp = getSharedPreferences("onpath", 0)
-        val shown = sp.getLong("crashShownUntil", 0)
-        val crash = com.onpath.app.debug.Problems.lastCrash(shown + 1) ?: return
-        sp.edit().putLong("crashShownUntil", crash.last).apply()
+        val prefs = com.onpath.app.data.Prefs(this)
+        val crash = com.onpath.app.debug.Problems.lastCrash(prefs.crashShownUntil + 1) ?: return
+        prefs.crashShownUntil = crash.last
         if (vm.errorCard == null) vm.sayError(Txt.s(Res.string.msg_crash_last_time), com.onpath.app.ui.NoticePlace.BACKGROUND)
     }
 

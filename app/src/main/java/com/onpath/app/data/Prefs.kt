@@ -15,6 +15,28 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
 
     private val followFile = File(filesDir, "follow.json")
 
+    // ---- small app state, all in this one place (review Arch 11: written around Prefs before) ----
+
+    /** When the automatic update check last ran (epoch ms; 0 = never). */
+    var updateCheckMs: Long
+        get() = sp.getLong("updateCheck", 0)
+        set(v) = sp.edit().putLong("updateCheck", v).apply()
+
+    /** The newest crash already announced (Problems' time; the next one is said once). */
+    var crashShownUntil: Long
+        get() = sp.getLong("crashShownUntil", 0)
+        set(v) = sp.edit().putLong("crashShownUntil", v).apply()
+
+    /** The app language override (LanguageChoice name; null = the phone's). */
+    var appLanguage: String?
+        get() = sp.getString("appLanguage", null)
+        set(v) = sp.edit().putString("appLanguage", v).apply()
+
+    /** Fingerprint of the last share / open intent handled (IncomingIntent: not handled twice after a restart). */
+    var lastIncomingIntent: String?
+        get() = sp.getString("lastIncomingIntent", null)
+        set(v) = sp.edit().putString("lastIncomingIntent", v).apply()
+
     /**
      * Last chosen activity (owner: the app always starts with it; fresh install → Hike). Older installs:
      * the activity the old app started with ([LastActivity] – Settings default before the stale key activity).

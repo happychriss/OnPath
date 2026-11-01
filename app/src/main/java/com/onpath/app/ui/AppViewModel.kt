@@ -1654,14 +1654,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun checkForUpdates(manual: Boolean) {
         if (!updatesEnabled || update is UpdateState.Checking || update is UpdateState.Downloading) return
-        val sp = getApplication<Application>().getSharedPreferences("onpath", 0)
         val now = System.currentTimeMillis()
-        if (!manual && !com.onpath.app.update.AppUpdater.dueForAutoCheck(sp.getLong("updateCheck", 0), now)) return
+        if (!manual && !com.onpath.app.update.AppUpdater.dueForAutoCheck(prefs.updateCheckMs, now)) return
         if (manual) update = UpdateState.Checking
         viewModelScope.launch(Dispatchers.IO) {
             val result = try {
                 val r = com.onpath.app.update.AppUpdater.fetchLatest(com.onpath.app.BuildConfig.UPDATE_REPO)
-                sp.edit().putLong("updateCheck", now).apply()
+                prefs.updateCheckMs = now
                 if (r != null && com.onpath.app.update.AppUpdater.isNewer(r.version, com.onpath.app.BuildConfig.VERSION_NAME))
                     UpdateState.Available(r) else UpdateState.UpToDate
             } catch (e: Exception) {
