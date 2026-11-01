@@ -181,6 +181,10 @@ the git log.
   privacy + pairing sentences, host ipHash, date with the dot, first-route fit, "New route for … – check it".
   Plan parity: `web/test/plans.json` 14 cases, all app = web (gate in the jvm job).
   - *Should:*
+    - [cloud-plan] **One shared-file list (review Arch 5, owner 2026-11-01: now)** · `app/web-shared-files.txt` on main
+      ([files] / [tests], paths as in your `appFiles` / `appTests`, plus the new `routing/PlanNames.kt`, `sync/SaveRule.kt`,
+      `routing/PlanNamesTest.kt`) · please read it in `web/engine/build.gradle.kts` (and `tools/routing/jvm-test/run.sh`)
+      instead of the hard-coded lists; the app's `SharedFilesRuleTest` already guards it on every gate.
     - [cloud-plan] **Shared code changed on `main` this afternoon (cloud-app, 2026-11-01) – comes with the next merge, mostly
       no web work:** `gpx/` – no-fix (0,0) points and NaN heights dropped, other apps' sport names (72c9bece), plan GPX
       pins as `<wpt><type>pinned</type>` + one off-line stop keeps the rest (23f64bc3: the web's export can pass its pins
