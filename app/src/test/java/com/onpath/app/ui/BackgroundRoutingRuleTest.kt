@@ -26,4 +26,11 @@ class BackgroundRoutingRuleTest {
         val over = vm.substringAfter("private fun overwriteSaved(").substringBefore("\n    }\n")
         assertTrue(over.indexOf("SaveRule.keepsOtherEdit") in 0 until over.indexOf("db.replacePlanned("))
     }
+
+    /** Pixel 2026-11-01: Close plan after an app restart left the old followed line (the way there) without points. */
+    @Test fun closePlanWithoutATourTakesEveryPlanLineAlong() {
+        val clear = vm.substringAfter("fun clearPlan() {").substringBefore("\n    }\n")
+        assertTrue(clear.contains("|| !followIsTrack"))
+        assertTrue(clear.contains("recState.value == null) clearFollow()"))
+    }
 }

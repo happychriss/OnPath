@@ -2558,7 +2558,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         closePointMenu("plan cleared"); firstPointMenu = null; highlight = null
         // the empty sheet says how to start a plan: not rolled up
         if (planSize == PlanSize.COLLAPSED) planSize = PlanSize.MINI
-        val fromPlan = followFromPlan || (planLine != null && followLine == planLine)
+        // no tour: the followed line goes with the plan – also when it was the way there ("Guide me") or the app restarted
+        // meanwhile (followFromPlan lives in memory only; Pixel 2026-11-01: a blue line without points stayed). A shown
+        // GPX track keeps its own line.
+        val fromPlan = followFromPlan || (planLine != null && followLine == planLine) || !followIsTrack
         if (fromPlan && followLine != null && recState.value == null) clearFollow()
     }
 
