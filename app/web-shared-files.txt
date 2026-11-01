@@ -21,6 +21,7 @@ routing/PlanEdits.kt
 routing/RouteSummary.kt
 navigation/JunctionCues.kt
 navigation/CueRule.kt
+navigation/JogRule.kt
 navigation/SpeedWindow.kt
 data/Geo.kt
 time/PaceModel.kt

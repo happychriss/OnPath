@@ -12,6 +12,7 @@ import com.onpath.app.time.TimeEstimate
  * calls [update] on every GPS fix and plays the returned cue. Overview of all cues: docs/design/navigation-cues.md.
  *
  * - A junction = a route point with [GeoPoint.turn] (BRouter's turn instructions – real junctions only).
+ * - Close turns are one manoeuvre ([JogRule]: onto a crossing and off it, a sideways step – straight on = no cue).
  * - Only where one could go wrong ([CueRule]: clear turns, forks with a similar way, roundabouts, U-turns – not where
  *   the route simply goes on along the street / trail or the clearly straightest way). Owner 2026-10-30: the bike first
  *   (in a town the old rules vibrated ~40 times in 50 min), then the hike the same way ([bike] = false: [CueRule] with
@@ -116,7 +117,8 @@ class JunctionCues {
         cues = idx.map { line[it].turn!! }
         exits = IntArray(idx.size) { line[idx[it]].exit }
         angles = FloatArray(idx.size) { line[idx[it]].turnAngle }
-        needed = BooleanArray(idx.size) { CueRule.needed(cues[it], line[idx[it]].shape, hike = !bike) }
+        // CueRule per junction, then close turns as one manoeuvre (a crossing, a sideways step = straight on: JogRule)
+        needed = JogRule.needed(line, cum, idx, hike = !bike)
         var prev = Double.NEGATIVE_INFINITY
         prevNeeded = DoubleArray(idx.size) { k -> prev.also { if (needed[k]) prev = alongs[k] } }
         next = 0
