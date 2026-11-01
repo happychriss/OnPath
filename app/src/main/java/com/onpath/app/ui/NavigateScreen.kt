@@ -801,7 +801,8 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
             sim = if (!vm.devToolsShown) null else { {
                 val demo by com.onpath.app.recording.DemoLocation.state.collectAsState()
                 NavSimChip(demo, onStart = { vm.startNavSim(line) }, onFactor = com.onpath.app.recording.DemoLocation::setFactor,
-                    onStop = { com.onpath.app.recording.DemoLocation.stop("stopped on the Navigate page") })
+                    onStop = { com.onpath.app.recording.DemoLocation.stop("stopped on the Navigate page") },
+                    onPause = com.onpath.app.recording.DemoLocation::setPaused)
             } })
         RestLayer(restTarget?.takeIf { rest }?.let { RestUi(it.event, it.distanceM, ui.toGo?.timeS, ui.arriveAt) },
             onTap = ScreenTouch::note)
