@@ -51,10 +51,16 @@ class VoiceGuideTest {
         assertEquals(300, veryFast[0].first)
     }
 
-    @Test fun onFoot_40SecondsWithin40To80m() {
+    /** Owner 2026-11-01: on foot "Gleich links." about 10 m before, no distance ("50 m kann man nicht abschätzen"). */
+    @Test fun onFoot_shortlyBeforeWithoutADistance() {
         val l = line(1000, mapOf(500 to JunctionCue.LEFT))
         val said = startless(ride(VoiceGuide(), l, bike = false, speed = 1.4))
-        assertEquals(445, said.single().first) // 40 s × 1.4 = 56 m → the fix at 445
+        assertEquals(490, said.single().first) // 8 s × 1.4 = 11 m → the fix at 490
+        val saved = java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale.GERMANY)
+            assertEquals("Gleich links.", VoiceText.of(said.single().second))
+        } finally { java.util.Locale.setDefault(saved) }
     }
 
     @Test fun onlyWhereWeVibrate_notWhereTheRouteFollowsTheWay() {

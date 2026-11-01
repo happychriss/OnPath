@@ -247,7 +247,7 @@ class VoiceGuide {
         val d = alongs[k] - along
         if (d > (if (closeOnly) 2 * lead else lead)) return null
         said += k
-        if (d < TOO_LATE_M) return null // the vibration says it now
+        if (d < (if (bike) TOO_LATE_M else HIKE_TOO_LATE_M)) return null // the vibration says it now
         val merge = if (bike) JunctionCues.bikeMergeM(speed) else JunctionCues.hikeMergeM(speed)
         val j = alongs.indices.firstOrNull { it > k && needed[it] }?.takeIf { alongs[it] - alongs[k] < merge }
         if (j != null) said += j
@@ -282,9 +282,15 @@ class VoiceGuide {
         const val BIKE_LEAD_S = 15.0
         const val BIKE_MIN_M = 60.0
         const val BIKE_MAX_M = 200.0
-        const val HIKE_LEAD_S = 40.0
-        const val HIKE_MIN_M = 40.0
-        const val HIKE_MAX_M = 80.0
+        /**
+         * On foot a short "Gleich links." about 10 m before the junction, no distance (owner 2026-11-01 on the replay:
+         * "50 Meter kann man zu Fuß gar nicht abschätzen – 10 Meter reichen"; Organic Maps: 15–25 m).
+         */
+        const val HIKE_LEAD_S = 8.0
+        const val HIKE_MIN_M = 8.0
+        const val HIKE_MAX_M = 15.0
+        /** On foot closer than this nothing is said any more. */
+        const val HIKE_TOO_LATE_M = 3.0
         /** Closer than this the sentence says "now". */
         const val SOON_M = 30.0
         /** Closer than this nothing is said any more – the vibration comes. */
