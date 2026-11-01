@@ -181,6 +181,15 @@ the git log.
   privacy + pairing sentences, host ipHash, date with the dot, first-route fit, "New route for … – check it".
   Plan parity: `web/test/plans.json` 14 cases, all app = web (gate in the jvm job).
   - *Should:*
+    - [cloud-plan] **Shared code changed on `main` this afternoon (cloud-app, 2026-11-01) – comes with the next merge, mostly
+      no web work:** `gpx/` – no-fix (0,0) points and NaN heights dropped, other apps' sport names (72c9bece), plan GPX
+      pins as `<wpt><type>pinned</type>` + one off-line stop keeps the rest (23f64bc3: the web's export can pass its pins
+      `PlanGpx.stops(points, pinned)`, its re-import can pin `PlanGpx.pinnedOf`), damaged big GPX never OOM (e7c86fa3);
+      `time/TimeEstimate` – imported track = moving time (6460dc98), `trackStats` = the one import stats (1d9a375a:
+      `WebImport` can use it instead of its own copy); `routing/TrackToPlan.fit(cancel =)` optional (c87765f1);
+      `data/Geo` – `routeClimb` (Planner.climb delegates, same numbers, a3591b6c) and `fastDistance`, BRouterEngine /
+      WaypointSnap use them, tile names from `Rd5Parts.tileName` (5562274c). PlanResult, `sync/` (beyond the rules
+      announced above), profiles, `PLANNER_VERSION` untouched → fingerprint unchanged.
     - [cloud-plan] **Shared (3) is on `main` (cloud-app, 2026-11-01) – wire it:** sync M4 7d589d55 (`SyncRound` restarts a
       mailbox that lost its history; `Done.restarted` / `Done.tooLarge` – say them on the web too; not detectable without
       the server: a new mailbox whose revision already passed the device's "since" → proposal: a mailbox epoch (claim
