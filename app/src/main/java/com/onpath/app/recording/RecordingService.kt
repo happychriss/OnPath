@@ -171,6 +171,18 @@ class RecordingService : Service() {
     private var settings: com.onpath.app.data.AppSettings? = null
     /** False while the app is in Plan mode: no off-route warnings then (recording goes on). */
     private var navigating = true
+    /** What the navigator was last told ([AppVisibility.navigatingNow]: Plan off screen counts as navigating). */
+    private var navigatingApplied = true
+
+    /** Plan mode only while the app is on screen (review H1): re-applied when the app goes off / on screen. */
+    private fun applyNavigating() {
+        val now = AppVisibility.navigatingNow(navigating, AppVisibility.visible)
+        if (now == navigatingApplied) return
+        navigatingApplied = now
+        Problems.trace("navigation", if (now) "Off-route warnings on (Navigate, or Plan with the app off screen)" else
+            "Off-route warnings paused: Plan on screen")
+        navigator?.let { handle(it.setNavigating(now)) }
+    }
     private var lastNotify = 0L
     /** Moving time, breaks and pace learning of this tour (persisted in [TRIP_FILE], survives a restart). */
     private var trip = com.onpath.app.time.TripPace()
@@ -207,7 +219,8 @@ class RecordingService : Service() {
             ACTION_NAVIGATING -> {
                 // Plan mode: no new questions; a pending one stays (owner: nothing disappears by itself)
                 navigating = intent.getBooleanExtra(EXTRA_ON, true)
-                navigator?.let { handle(it.setNavigating(navigating)) } ?: publish()
+                navigatingApplied = AppVisibility.navigatingNow(navigating, AppVisibility.visible)
+                navigator?.let { handle(it.setNavigating(navigatingApplied)) } ?: publish()
                 return START_STICKY
             }
             ACTION_FOLLOW_CHANGED -> {
@@ -396,6 +409,7 @@ class RecordingService : Service() {
     /** One second of the tour: time, wake lock, GPS lost, stats, trip pace, state for the app. */
     private fun tick() {
         val now = SystemClock.elapsedRealtime()
+        applyNavigating()
         // real time since the last tick: a tick delayed by Doze or a busy phone must not lose minutes.
         // Not across a pause: without the wake lock a paused tick can come late (resume counts from here).
         if (!paused && !pausedBefore) elapsedS += ((now - lastTick) / 1000.0).toLong().coerceIn(1, 600)
@@ -604,7 +618,7 @@ class RecordingService : Service() {
             if (carried != session) { session = carried; sessionStore.save(carried) }
         }
         // the walking direction carries over to the new line (plan edited mid-walk: the way back of a round trip)
-        navigator = session?.let { Navigator(it).apply { setNavigating(navigating); old?.let { o -> detector.adoptHeading(o.detector) } } }
+        navigator = session?.let { Navigator(it).apply { setNavigating(navigatingApplied); old?.let { o -> detector.adoptHeading(o.detector) } } }
         applySettings()
         timeLine()
         alertKey = null; nm().cancel(ALERT_ID)
@@ -1234,10 +1248,13 @@ class RecordingService : Service() {
         /** Off-route question: high importance with sound, no channel vibration (the service vibrates once itself). */
         const val CHANNEL_NAV = TourChannels.QUESTION
         val OFF_ROUTE_VIBRATION = longArrayOf(0, 400, 200, 400, 200, 600)
-        private const val ALERT_ID = 43
-        private const val PAUSE_ALERT_ID = 44
-        /** "Recording cannot be saved" / "Recording stopped" (one slot: the newer problem wins). */
-        private const val SAVE_FAIL_ID = 44
+        internal const val ALERT_ID = 43
+        internal const val PAUSE_ALERT_ID = 44
+        /**
+         * "Recording cannot be saved" / "Recording stopped" (one slot: the newer problem wins). Its own id (review M1: it
+         * shared 44 with the pause reminder, so Pause / Resume cancelled the save warning for good).
+         */
+        internal const val SAVE_FAIL_ID = 46
 
         const val GAP_MS = 30_000L          // no fix for 30 s -> new segment
         /** Trip state (breaks, pace learning) of the running tour. */

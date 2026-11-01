@@ -51,4 +51,27 @@ class QuestionNotificationTest {
         // a change of visibility re-posts on the other channel
         assertTrue(alert.contains("+ \"@\" + channel"))
     }
+
+    /**
+     * Review H1: Plan opened during a tour, phone pocketed without "Continue" → off-route warnings were off for the rest
+     * of the ride (junction cues went on). Plan pauses them only while the app is on screen.
+     */
+    @Test fun planModeOffScreenStillWarnsOffRoute() {
+        assertTrue(AppVisibility.navigatingNow(appInNavigate = true, appVisible = true))
+        assertFalse("Plan on screen: no questions (owner rule)", AppVisibility.navigatingNow(appInNavigate = false, appVisible = true))
+        assertTrue("Plan, then pocketed", AppVisibility.navigatingNow(appInNavigate = false, appVisible = false))
+        // the service re-applies it every second (the ticker) and on every mode switch
+        val svc = File("src/main/java/com/onpath/app/recording/RecordingService.kt").readText()
+        assertTrue(svc.substringAfter("private fun tick()").substringBefore("\n    }\n").contains("applyNavigating()"))
+        assertTrue(svc.contains("setNavigating(navigatingApplied)"))
+    }
+
+    /** Review M1: every notification of a tour has its own id – Pause / Resume never cancels "cannot be saved". */
+    @Test fun notificationIdsAreDistinct() {
+        val ids = listOf(TourChannels.NOTIF_ID, RecordingService.ALERT_ID, RecordingService.PAUSE_ALERT_ID,
+            RecordingService.SAVE_FAIL_ID, 45 /* TourInterruptedReceiver */, 4711 /* MapLoadService */)
+        assertEquals(ids.size, ids.toSet().size)
+        val r = File("src/main/java/com/onpath/app/recording/TourInterruptedReceiver.kt").readText()
+        assertTrue(r.contains("INTERRUPTED_ID = 45"))
+    }
 }

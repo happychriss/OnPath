@@ -20,6 +20,12 @@ object AppVisibility {
 
     private val counter = Counter()
 
+    /**
+     * Off-route checks on? Plan mode pauses them only while the user looks at the app (review H1: Plan opened at a café,
+     * phone pocketed without "Continue" → no off-route warning for the rest of the ride, while junction cues went on).
+     */
+    fun navigatingNow(appInNavigate: Boolean, appVisible: Boolean): Boolean = appInNavigate || !appVisible
+
     /** True while one of OnPath's activities is started (on screen, also above the lock screen). */
     @Volatile var visible: Boolean = false
         private set
