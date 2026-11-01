@@ -100,4 +100,22 @@ class JogRuleTest {
         val said = (0..400 step 5).mapNotNull { m -> t += 1000; g.update(VoiceGuide.Input(t, l, 1, m.toDouble(), true, 5.5, true)) }
         assertEquals("only the start sentence", 1, said.size)
     }
+
+    /**
+     * Field 2026-11-01 (tour 65, Hilden): the line the recording service navigates is read back from the session file,
+     * where turnAngle is 0 – the angle lives in the shape. The step at the start (right, 6.5 m on left, net 2°) must stay
+     * quiet there too, and the screen must say "left" for a 86° left.
+     */
+    @Test fun aLineReadBackFromTheSessionFileKeepsItsAngles() {
+        val l = line(Triple(13.0, 20, null), Triple(99.0, 7, JunctionCue.RIGHT), Triple(13.0, 60, JunctionCue.LEFT),
+            angles = listOf(88f, -86f))
+        fun roundTrip(pts: List<GeoPoint>) = NavSessionStore.fromJson(NavSessionStore.toJson(
+            NavSession(NavKind.PLAN, "x", com.onpath.app.routing.Activity.HIKE, 2, pts)))!!.original
+        val back = roundTrip(l)
+        assertEquals("the file keeps no turnAngle", 0f, back.first { it.turn != null }.turnAngle)
+        assertEquals(listOf(false, false), JogRule.needed(back, hike = true).toList())
+        val left = line(Triple(0.0, 60, null), Triple(270.0, 60, JunctionCue.LEFT), angles = listOf(-86f))
+        val leftBack = roundTrip(left)
+        assertEquals(com.onpath.app.routing.TurnKind.LEFT, ScreenTurns.of(leftBack, hike = true).single().kind)
+    }
 }

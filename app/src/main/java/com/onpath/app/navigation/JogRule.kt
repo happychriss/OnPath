@@ -46,7 +46,7 @@ object JogRule {
         while (k + 1 < idx.size) {
             val a = line[idx[k]]; val b = line[idx[k + 1]]
             val gap = cum[idx[k + 1]] - cum[idx[k]]
-            val opposite = a.turnAngle * b.turnAngle < 0
+            val opposite = angleOf(a) * angleOf(b) < 0
             if (gap >= reach || !opposite || a.turn == JunctionCue.ROUNDABOUT || b.turn == JunctionCue.ROUNDABOUT) { k++; continue }
             // headings before / after the step, not reaching over the neighbouring hints
             val first = cum[idx[k]]; val last = cum[idx[k + 1]]
@@ -56,10 +56,29 @@ object JogRule {
                 bearing(at(line, cum, last), at(line, cum, last + armOut)))
             val any = out[k] || out[k + 1]
             out[k] = false; out[k + 1] = false
-            if (abs(net) > STRAIGHT_DEG && any) out[if (Math.signum(a.turnAngle.toDouble()) == Math.signum(net)) k else k + 1] = true
+            if (abs(net) > STRAIGHT_DEG && any) out[if (Math.signum(angleOf(a).toDouble()) == Math.signum(net)) k else k + 1] = true
             k += 2
         }
         return out
+    }
+
+    /**
+     * The junction's angle (> 0 right): [GeoPoint.turnAngle], else the shape's angle, else a typical one for the cue.
+     * A line read back from the navigation session file has turnAngle 0 except at roundabouts (NavSession stores the
+     * angle in the shape) – field 2026-11-01: the jog rule never fired on the phone and the turn card said "Leicht links"
+     * for every turn.
+     */
+    fun angleOf(p: GeoPoint): Float {
+        if (p.turnAngle != 0f) return p.turnAngle
+        p.shape?.angle?.takeIf { it != 0f }?.let { return it }
+        return when (p.turn) {
+            JunctionCue.LEFT -> -90f; JunctionCue.RIGHT -> 90f
+            JunctionCue.SLIGHT_LEFT -> -35f; JunctionCue.SLIGHT_RIGHT -> 35f
+            JunctionCue.SHARP_LEFT -> -135f; JunctionCue.SHARP_RIGHT -> 135f
+            JunctionCue.KEEP_LEFT -> -15f; JunctionCue.KEEP_RIGHT -> 15f
+            JunctionCue.U_TURN_LEFT -> -180f; JunctionCue.U_TURN_RIGHT -> 180f
+            JunctionCue.ROUNDABOUT, null -> 0f
+        }
     }
 
     /** The point [d] metres along the line (clamped to its ends). */

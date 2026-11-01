@@ -30,7 +30,7 @@ object ScreenTurns {
             val i = idx[k]
             val p = line[i]
             val before = near(line, cum, i, -ARM_M); val after = near(line, cum, i, ARM_M)
-            Turn(i, p, TurnDetector.bearing(before, p), TurnDetector.bearing(p, after), p.turnAngle.toDouble(), cum[i])
+            Turn(i, p, TurnDetector.bearing(before, p), TurnDetector.bearing(p, after), JogRule.angleOf(p).toDouble(), cum[i])
         }
     }
 
