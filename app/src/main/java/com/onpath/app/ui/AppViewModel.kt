@@ -1420,9 +1420,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val recState: StateFlow<RecState?> = RecordingService.state
 
     private val routingDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
-    private var engine: RoutingEngine? = null
+    /**
+     * Routing nobody waits for at the screen (browser plans after a pairing, "Plan a route from it"): its own thread, so
+     * the user's own plan never queues behind ten of them (review routing H1). BRouter itself runs one search at a time
+     * (BRouterEngine.LOCK), so a plan edit waits at most for one search of this work, not all of it.
+     */
+    private val backgroundRouting = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+    @Volatile private var engine: RoutingEngine? = null
 
     /** The router (on [routingDispatcher]); only a real one is kept, so a failed start is retried next time. */
+    @Synchronized // two routing threads ([backgroundRouting]): one engine
     private fun routingEngine(): RoutingEngine =
         engine ?: EngineProvider.create(getApplication(), dataFiles.segmentsDir).also { if (EngineProvider.isRealRouter) engine = it }
 
@@ -4253,7 +4260,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val act = activityOrNull(t.activity) ?: Activity.HIKE
                 val pts = t.waypoints.map { GeoPoint(it.lat, it.lon) }
                 val f = planFactors(act)
-                val r = withContext(routingDispatcher) {
+                val r = withContext(backgroundRouting) {
                     try {
                         val eng = routingEngine()
                         if (eng is com.onpath.app.routing.StraightLineEngine) null
@@ -4440,7 +4447,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         planFromTrackBusy = true
         viewModelScope.launch {
             val t0 = android.os.SystemClock.elapsedRealtime()
-            val r = withContext(routingDispatcher) {
+            val r = withContext(backgroundRouting) {
                 try {
                     val eng = routingEngine()
                     if (eng is com.onpath.app.routing.StraightLineEngine) null
@@ -4991,6 +4998,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         ownRelevance?.let { cells.releaseRelevance(it) }
         sync.stop()
         routingDispatcher.close()
+        backgroundRouting.close()
         super.onCleared()
     }
 }
