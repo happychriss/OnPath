@@ -35,12 +35,6 @@ the git log.
   calls voice guidance available (065d3b7) – fine if v0.14.0 ships 2026-11-01, otherwise roll that text back –
   captain 2026-11-01.
 
-- → [cloud-app] **Release-day fixes (captain 2026-11-01, owner confirms in the morning):** list A 1–9 in
-  `docs/reviews/2026-11-01-pre-release.md` – the owner's three field bugs first: (1) start sentence repeats = service
-  restarts mid-tour → get the owner's diagnostics export of that ride, guard `RecordingService.kt:643` / `:376`, voice
-  memory per tour (`fix-voice-repeat.md`); (2) ■ Stop in the rolled-up tour row → "Tour beenden?"; (3) plan lines
-  vanish when editing during a tour (`fix-tour-edit-line.md`, four causes, tests first). Then hold-hint text, restore
-  question, off-route off after Plan, notification id 44, splice catch-all + no raw errors, dev tools only via unlock.
 - → [cloud-plan] **Release-day fixes (captain 2026-11-01):** merge `main` first, then list A 10–13 in
   `docs/reviews/2026-11-01-pre-release.md` (failed download cached forever, WasmGC browser check, unsaved route on
   reopen, no developer / raw error lines) + follow the splice catch-all from main. Deploy only together with the app
@@ -56,6 +50,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [cloud-app] Release-day fixes list A 1–9 (`docs/reviews/2026-11-01-pre-release.md`) – since 2026-11-01
 - [cloud-app] Release v0.14.0 (voice) – captain's go; waits for the owner's Pixel voice test OK + E2E green on 69515dd / 4c64138 – since 2026-11-01
 
 ## Next
