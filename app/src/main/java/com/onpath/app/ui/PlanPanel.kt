@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.ui.text.withStyle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.FiberManualRecord
@@ -634,12 +636,33 @@ private fun Title(ui: PlanUi, route: PlannedRoute?, onTimeDetails: () -> Unit) {
     }
 }
 
+/**
+ * The empty plan (owner 2026-11-02, for a first start): ✋ "Wohin soll’s gehen? Halte dein Ziel auf der Karte gedrückt –
+ * oder such es oben in der Suchleiste." – the question bold, both ways in one sentence, as high as the old line. The
+ * hand is the one sign for "hold the map".
+ */
+@Composable
+private fun FirstPointHint() {
+    Row(verticalAlignment = Alignment.Top) {
+        Icon(Icons.Filled.TouchApp, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 1.dp).size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(androidx.compose.ui.text.buildAnnotatedString {
+            withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)) {
+                append(str(Res.string.plan_hint_first_point_question))
+            }
+            append(" ")
+            append(str(Res.string.plan_hint_first_point))
+        }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
 /** Read-only status, second line: ascent / descent / highest point + difficulty badge, or what to do next. */
 @Composable
 private fun SubLine(ui: PlanUi, route: PlannedRoute?, onDetails: () -> Unit = {}) {
     val variant = MaterialTheme.colorScheme.onSurfaceVariant
     if (route == null) {
         if (ui.notRouted != null && !ui.routing && ui.pointCount >= 2) return // the not-routed notice says it
+        if (ui.pointCount == 0) { FirstPointHint(); return }
         // "Calculating the route…" only while a request runs (not after Cancel)
         Text(PlanStatus.noRouteLine(ui.pointCount, ui.routing, ui.notRouted),
             style = MaterialTheme.typography.bodyMedium, color = variant)

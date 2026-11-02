@@ -101,10 +101,11 @@ the git log.
   signed AAB for prod in `release.yml` next to the APK; upload key made by the owner locally → GitHub secret, never in
   the repo. Signing / build config → **pull request to the owner** (CLAUDE.md). Spec: `onpath.private/auftraege/a-003-play-fassung.md`,
   steps for the owner: `onpath.private/marketing/anleitung-geschlossener-test.md` §1–5. Not before v0.14.0 is out.
-- **Word pair Route / Tour / Aufnahme (proposal from the design review, needs the owner's word – owner words):** today
-  "Tour 1. Nov.", "Unterbrochene Tour" in My routes, "Aufnahme" on the way. Proposal: **Route** = planned, **Tour** =
-  ridden, "Aufnahme" only for the running recording (REC); then two tabs "Geplant" / "Unterwegs" in My routes like
-  Komoot. Asked: onpath.private#14 (not blocking); after the answer a small text round. `docs/design/review-2026-11-01-vs-komoot.md`.
+- **Word pair Route / Tour / Aufnahme – DECIDED (owner 2026-11-02, onpath.private#14, A):** **Route** = planned,
+  **Tour** = ridden, "Aufnahme" only for the running recording (REC); My routes with two tabs **"Geplant" / "Unterwegs"**;
+  "Track" only for GPX exchange ("GPX-Track importieren"). Today: "Tour 1. Nov.", "Unterbrochene Tour", "Aufnahme" on the
+  way – a text round EN + DE over strings/ + the My routes tabs, then `tools/ask.sh erledigt 14`.
+  `docs/design/review-2026-11-01-vs-komoot.md`.
 - **Pictures for the pairing help – app part (order by cloud-web, owner OK 2026-11-01)** [emu]: emulator, A-019 setup,
   DE + EN: (A1) ☰ open with "Mit Browser verbinden"; (A2) the question "Mit diesem Browser verbinden? Prüfe: 123 456"
   with "Verbinden"; (A3) My routes with a route from the browser ("Neu"); (A4) Settings → Browser-Abgleich paired with

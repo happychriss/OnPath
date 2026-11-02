@@ -139,8 +139,9 @@ nothing is dragged any more (points and the route line can't be moved by draggin
   close when their point leaves the map. **No Cancel button:** a tap anywhere else or Back closes a menu. A hold on
   another marker / POI switches to its menu; a hold on the empty map while a menu is open only closes it.
 - Navigate (and a shown track): nothing is added or moved; a POI tap opens read-only details. Search results keep
-  the place card. The empty plan sheet says how it works: "Hold the map to start there – or to go there from your
-  location. Hold a point or place for options." (no "Start from my location" button – the first-hold menu does it).
+  the place card. The empty plan sheet says how it works (owner 2026-11-02): ✋ "**Where to?** Hold your destination on the map – or
+  find it in the search bar above." (DE "**Wohin soll’s gehen?** Halte dein Ziel auf der Karte gedrückt – oder such es
+  oben in der Suchleiste."; `PlanPanel.FirstPointHint`; the hand = the one sign for "hold the map") (no "Start from my location" button – the first-hold menu does it).
 - **No message disappears by itself** (owner rule for the whole app – rain, stress): no "point added" notices, no
   "hold to add" hint, no timed bubbles; a message box stays until it is answered / OK is tapped (no dark message bar).
 
