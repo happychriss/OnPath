@@ -32,6 +32,18 @@ Colours come only from `OnPathColors` (and the Material scheme built from it in 
 | `Route`, `Gpx`, `Rec`, `Position`, `PositionUnsure`, `Weak` | map furniture only (planned line, GPX track, recording, own position, GPS dot) |
 | `Route` pin (found place, owner 2026-11-02) | a place **found, not yet taken** (search result, shared place): a route-blue pin (teardrop, white outline + white dot, tip on the place) with its name as a white chip under it "Name ›" – a real button that opens the place's menu (add / start here / Google Maps / "Nadel entfernen"); a thin dashed route-blue preview line to where adding it would join the route (only with a route). Pin = not in the route, numbered circle = in the route, blue dot = you; never orange (= recording). The pin goes when the place is added, with a new search, "Neu planen" or "Nadel entfernen" – a tap elsewhere closes only the menu. Hidden in Navigate; the chip hidden while a track is shown. `map/CandidateMarker.kt`, `ui/MapOverlays.kt` (`PinChip`), `WaypointInsertion.joinPoint` |
 | `RestBackground`, `RestInk`, `RestDim`, `OnDarkMuted` | the rest view while cycling and the dark slide switch only |
+| `ActionGo`, `ActionEdit`, `ActionStop` | **actions by kind** (colour rule below): navigation green `#2E7A58`, edit blue `#2E6A9E`, stop red `#C62828` – white words on each ≥ 5:1 |
+
+### Colour rule for actions (owner 2026-11-02)
+One colour = one kind of action, so the hand finds it the second time by colour:
+- **green = navigation** – start, continue, pause / resume the guidance (`ActionGo`; the primary buttons stay `Green`);
+- **blue = edit** – change the route, you are editing (`ActionEdit`);
+- **red = stop** – end the process you are in (end the recording, discard the edit) (`ActionStop`).
+
+First user: the bar the Navigate slider unlocks (`ui/TourActionBar.kt`, onpath.private#17 = C compact) – green Pause /
+Resume, blue Change route, red End, white words, icons that carry the track (the line ends in ⏸ / branches off / ends
+in ■, `TrackIcon`), ≈ 1.5× the slider, a small ✕ above it on the right. Next: Plan during a tour (green "Weiter
+navigieren", blue = editing, red "Änderungen verwerfen", onpath.private#19).
 
 Add a token when a new meaning is needed (with a comment saying what it is for); `inverseSurface` and Snackbars stay
 out (`NoticesTest.noDarkBarAnyMore`).

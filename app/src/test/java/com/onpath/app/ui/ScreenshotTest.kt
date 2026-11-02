@@ -87,7 +87,7 @@ class ScreenshotTest {
     }
 
     @Composable
-    private fun NavFrame(ui: NavUi, slide: Float = 0f, fit: Boolean = false) {
+    private fun NavFrame(ui: NavUi, slide: Float = 0f, fit: Boolean = false, actions: Boolean = false) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
@@ -95,7 +95,7 @@ class ScreenshotTest {
                     // after "Show whole route" following is off: compass needle, locate not filled
                     NavigateOverlay(ui, footer = { Footer(following = !fit, compass = CompassSpec(ui.headingUp.takeUnless { fit }, 0f) {},
                         eye = true, large = true, fit = fit) },
-                        onSlideToPlan = {}, slideStartFraction = slide)
+                        onSlideToPlan = {}, slideStartFraction = slide, actionsOpen = actions)
                 }
             }
         }
@@ -564,6 +564,9 @@ class ScreenshotTest {
     }
 
     /** Free recording (no route), paused from the notification. */
+    /** After the slide (owner 2026-11-02, #17 C): green Pause · blue Change route · red End, ✕ above on the right. */
+    @Test fun navigateActionsOpen() = paparazzi.snapshot { NavFrame(navUi, actions = true) }
+
     @Test fun navigateFreePaused() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true)) }
 
     // --- Activity while navigating (owner: a wrong activity is a disaster) ---
