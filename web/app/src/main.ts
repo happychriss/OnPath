@@ -43,7 +43,9 @@ import './style.css';
 import manropeLicence from './fonts/manrope/OFL.txt?url';
 
 const ROUTE = '#1E3FAE';
-const COLORS = { start: '#2E7D32', via: ROUTE, end: '#C62828' }; // OnPathColors.Good / Route / Bad (ui/PlanPanel.stopColor)
+// the plan's points like the app since 2026-11-01 (owner, like Komoot – OnPathColors.PointStart / PointStop / PointGoal,
+// MapController.POINT_*): dark green start, near-black stops, dark red goal, no white ring – apart from the blue route by hue
+const COLORS = { start: '#245F46', via: '#262A2E', end: '#A32020' };
 const base = new URL('./', location.href).href;
 const params = new URLSearchParams(location.search);
 /** ?debug: developer lines ("Planned in … ms · routing data …") in the sheet's status line (owner 2026-10-30: hidden otherwise). */

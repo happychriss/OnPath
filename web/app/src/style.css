@@ -176,7 +176,8 @@ dialog.share #exportGpx { margin-top: 8px; }
 .leg { font-size: 13px; white-space: nowrap; }
 .status { font-size: 12px; min-height: 1.4em; } .status.error { color: var(--error); }
 .pin { width: 26px; height: 26px; border-radius: 50%; color: #fff; font: 700 12px/26px system-ui, sans-serif; text-align: center; cursor: pointer;
-  border: 2px solid #fff; /* pins sit on the map, which stays light */ box-shadow: 0 1px 4px rgba(0,0,0,.35); background: var(--route); }
+  /* no white ring (app MapController.marker, owner 2026-11-01) – the colour sets the point apart from the blue route */
+  box-shadow: 0 1px 4px rgba(0,0,0,.35); background: var(--route); }
 
 /* ---- hold menus (ui/MapOverlays) ---- */
 .holdpopup .maplibregl-popup-content { padding: 0; border-radius: 14px; background: var(--bg); color: var(--fg); box-shadow: 0 6px 20px var(--shadow); overflow: hidden; }
