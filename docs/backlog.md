@@ -60,6 +60,13 @@ the git log.
   one check: `after "As destination" the whole new route shows` – FAIL phone on 6f60dd01 (1352 of 1467 points outside,
   zoom 13.7), FAIL desktop on 07a1d77f (765 of 1382 outside, zoom 13). Same check, different viewport each run → likely
   timing: the map fits before the new, longer route is in. Main is merged now (6f60dd01). https://github.com/happychriss/OnPath/actions/runs/41518256147
+- **[cloud-plan] Planner: "Route wird berechnet…" in the middle of the map** (owner 2026-11-02: "man guckt auf den
+  Bildschirm und nichts passiert – nur oben links die Uhr"): after ~1 s of routing, the one message box (msgcard) in
+  the middle of the map: spinner + `plan_calculating` + **Abbrechen** (cancels like the app's `onCancelRouting`); map
+  and points stay visible, no dimming; fast routes show nothing (no flash); the small top-left clock goes. When the
+  time limit is hit the same card becomes the onpath.private#13 question ("weiter warten / abbrechen", text from
+  [cloud-app] first – the app leads). App unchanged (its "Route wird berechnet… Abbrechen" line in the plan sheet
+  stays). For v0.14.0 if it fits, else right after.
 - **[cloud-plan] For v0.14.0: closed sync folder – ask before deleting** (owner 2026-11-02, onpath.private#4; changes
   A-017 rule 16): `removeFolder` asks first when the folder holds routes not yet sent to the phone (dirty); after an
   unpair / new phone, My routes shows a short note that routes of the old phone are still in this browser instead of
