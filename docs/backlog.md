@@ -18,9 +18,9 @@ the git log.
 5. **cloud-web:** website texts match the release (voice already says "available" – 065d3b7), help pages get pictures
    (A-019 set in `onpath.private/marketing/bilder/`), a short tester note: what to try, how to report (Settings →
    Diagnostics export, mail, GitHub issue).
-6. **Owner decides:** how the first users install – APK from the GitHub release (sideload, Play Protect warning) or
-   wait for the Play internal test (A-003 not started)? All APKs still use the TEST map server (one shared key, IP
-   limits) – fine for a small group, say how many testers.
+6. **Owner decided 2026-11-02 (onpath.private#2, #3):** the first testers (family, friends) install through the
+   **Google Play internal test**, not GitHub. Order: today as much of the open work as possible into v0.14.0 → release
+   → then A-003 Play build (next big item). Debug build + test key stay for the team's GitHub builds.
 
 ## For the roles
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
@@ -65,6 +65,11 @@ the git log.
 - **[cloud-plan] Web spike red – planner not deployed since ebbcfbb2** (captain 2026-11-02): job "smokes (sheet-sync)",
   step "Plan sheet steps" failed on 4e9913be and 3561ad78. Then merge main again: `release_check.sh` shows 5 shared files
   differ (AppSettings, CueRule, JogRule, JunctionCues, TurnDetector). https://github.com/happychriss/OnPath/actions/runs/41354594301
+- **[cloud-app] A-003 Play build – right after v0.14.0** (owner 2026-11-02, onpath.private#3): flavours prod (Google Play:
+  no self-update, no REQUEST_INSTALL_PACKAGES, no GitHub update line in Settings → Datenschutz) / dev (as today);
+  signed AAB for prod in `release.yml` next to the APK; upload key made by the owner locally → GitHub secret, never in
+  the repo. Signing / build config → **pull request to the owner** (CLAUDE.md). Spec: `onpath.private/auftraege/a-003-play-fassung.md`,
+  steps for the owner: `onpath.private/marketing/anleitung-geschlossener-test.md` §1–5. Not before v0.14.0 is out.
 - **Word pair Route / Tour / Aufnahme (proposal from the design review, needs the owner's word – owner words):** today
   "Tour 1. Nov.", "Unterbrochene Tour" in My routes, "Aufnahme" on the way. Proposal: **Route** = planned, **Tour** =
   ridden, "Aufnahme" only for the running recording (REC); then two tabs "Geplant" / "Unterwegs" in My routes like
@@ -272,8 +277,8 @@ the git log.
   production deploy is part of the launch together with Google Play.
 - **Google Play internal test track** – create the app, secret release key + `PLAY_SERVICE_ACCOUNT_JSON` in GitHub
   secrets, upload from `release.yml` (today: fixed test key). Removes Play Protect warnings.
-- **Footways without a bicycle tag (Hilden Itter path)** – Bike / Gravel profiles avoid them (push penalty). Option:
-  allow paved footways with an amber "footway – may need to push" note?
+- **Footways without a bicycle tag (Hilden Itter path)** – **answered 2026-11-02 (onpath.private#7): A** – allow paved
+  footways for Bike / Gravel with an amber "Fußweg – evtl. schieben" note. [cloud-app] takes it and moves it to Next.
 - **AGP 9.4.1 upgrade** – later, when the owner says so.
 
 ## Later
