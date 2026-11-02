@@ -28,14 +28,6 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
-- ← [cloud-plan] **web-spike green again + two owner orders done** (2026-11-02, web-spike 415d3802, `web/` only):
-  (1) CI red = test races in `sheet-smoke` (the "As destination" check ran before the new plan started; a click meant to
-  close the activity list added a route point under load) – fixed in the test, 3 parallel runs + all 14 smokes green;
-  (2) the route's wait is one box in the middle of the map (spinner, download / "Route wird berechnet…", Abbrechen →
-  the app's cancelRun STOPPED), the small spinners are gone; the time-limit question waits for cloud-app's text;
-  (3) removing a closed phone folder asks when it holds unsent routes, My routes names the old phone's routes.
-  Also: film picture Vellau → Leiteralm (2560 × 1440) + optional QR in `onpath.private` (b4c18f0). Goes live by itself
-  when CI is green.
 - ← [cloud-app] 2026-11-01: **Germany worktree removed** on donald (owner confirmed in the chat; no uncommitted work,
   all of `germany-prebuild` on origin/main, local branch deleted) – #10 closed. The run data beside it
   (`~/onpath-cells-work/germany/` state, logs, lists) is still there – remove only on the owner's word. Also new on

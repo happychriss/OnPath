@@ -8,11 +8,8 @@ the current state.
 <!-- Kept by the captain every round (docs/roles/neu/captain.md 5c). -->
 - **Pixel:** main b047bf79, installed 2026-11-01 19:55 (newest handoff that names it; the night draft 63b0194d is not on it).
 - **GitHub release:** v0.13.5 (2026-10-31). Next planned: v0.14.0 (owner: not before all fixes are in).
-- **Planner (plan.onpath.earth):** web-spike ebbcfbb2 (2026-11-01 15:59, last green run). The two newer pushes
-  (4e9913be, 3561ad78) are red in "smokes (sheet-sync)" and were not deployed.
-
-## Übergabe Captain-Sitzung donald – 2026-10-31 abends
-<!-- The captain session on donald ends here; the owner switches to fixed roles (`docs/working-agreement.md`). -->
+- **Planner (plan.onpath.earth):** web-spike 415d3802 (2026-11-02 ~23:00, green: wait box in the middle, closed-folder
+  question, test races fixed; has main up to ~21:00). Laptop off for the night.
 - **State:** released 0.13.2 → 0.13.5 today. main (8cf47345 or newer) also has, **not released yet**: the planner
   splice "route only around a cut stop" (38fc16c6, ~2× faster, `PLANNER_VERSION` 3); the compact plan sheet with the
   rolled-up one-row step (d2885035, interim build on the owner's phone since 21:45); faster builds (`tools/ci/gate.sh`,
