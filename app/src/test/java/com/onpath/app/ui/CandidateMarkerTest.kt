@@ -19,7 +19,13 @@ class CandidateMarkerTest {
         assertTrue(mark.contains("CandidateMarker.bitmap("))
         assertFalse(mark.contains("#F28C00"))
         assertFalse(mark.contains("#B35C00"))
-        assertTrue(mark.contains("PF.textColor(ROUTE_COLOR)"))
+    }
+
+    /** Owner 2026-11-02: a pin, its tip on the place; the name is the chip under it, not a map label. */
+    @Test fun thePinStandsOnThePlaceAndHasNoMapLabel() {
+        val mark = ctl.substringAfter("fun setSearchMark(").substringBefore("\n    }\n")
+        assertTrue(mark.contains("PF.iconAnchor(Property.ICON_ANCHOR_BOTTOM), PF.iconOffset(arrayOf(0f, CandidateMarker.TIP_MARGIN_DP))"))
+        assertFalse("no name label on the map", mark.contains("textField"))
     }
 
     @Test fun previewLineUsesTheAddDecision() {

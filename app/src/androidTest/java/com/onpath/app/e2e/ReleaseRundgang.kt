@@ -39,6 +39,8 @@ import com.onpath.strings.nav_arrived_title
 import com.onpath.strings.nav_end_short
 import com.onpath.strings.nav_end_tour_title
 import com.onpath.strings.nav_save_recording
+import com.onpath.strings.plan_pin_chip_desc
+import com.onpath.strings.plan_remove_pin
 import com.onpath.strings.plan_slide_to_plan
 import com.onpath.strings.nav_route_back
 import com.onpath.strings.nav_route_back_title
@@ -370,6 +372,21 @@ class ReleaseRundgang : E2EBase() {
         }
         waitUntil("a) its menu opens there", 30_000) { read { it.poiMenu }?.let { Geo.distance(GeoPoint(it.lat, it.lon), PIN) < 30 } == true }
         shot("2-shared-with-coordinate")
+        // c) the pin + name chip (owner 2026-11-02): closing the menu keeps the pin; its chip opens the menu again;
+        // "Nadel entfernen" removes it
+        val name = read { it.searchMark }!!.title()
+        assertNotNull("\"Remove pin\" in the pin's menu", findFresh(By.text(Txt.s(Res.string.plan_remove_pin)), 5_000))
+        scenario.onActivity { vm(it).closeMapOverlays("rundgang: tap elsewhere") }
+        waitUntil("c) the menu closed", 5_000) { read { it.poiMenu } == null }
+        assertNotNull("c) the pin stays when its menu closes", read { it.searchMark })
+        val chip = findFresh(By.desc(Txt.s(Res.string.plan_pin_chip_desc, name)), 10_000)
+        assertNotNull("c) the name chip \"$name ›\" under the pin – ${seenDescriptions()}", chip)
+        shot("3-pin-and-chip")
+        chip!!.click()
+        waitUntil("c) the chip opens the pin's menu", 5_000) { read { it.poiMenu } != null }
+        clickText(Txt.s(Res.string.plan_remove_pin))
+        waitUntil("c) \"Remove pin\" removes it", 5_000) { read { it.searchMark } == null && read { it.poiMenu } == null }
+        shot("4-pin-removed")
     }
 
     /** What Google Maps' share sheet sends: ACTION_SEND text/plain to OnPath. */

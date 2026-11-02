@@ -563,8 +563,9 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
     // the spot tapped in the route warnings list: its piece of route amber (Plan only)
     LaunchedEffect(c, vm.spotLine, vm.mode) { c.setSpotLine(vm.spotLine?.takeIf { vm.mode == AppMode.PLAN }) }
-    LaunchedEffect(c, vm.searchMark) {
-        val m = vm.searchMark
+    // the found place's pin – Plan only: hidden in Navigate, back in Plan (owner 2026-11-02); its chip: MapOverlayHost
+    LaunchedEffect(c, vm.searchMark, vm.mode) {
+        val m = vm.searchMark?.takeIf { vm.mode == AppMode.PLAN }
         c.setSearchMark(m?.let { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }, m?.title())
     }
     // the candidate's dashed preview line to where it would join the route (Plan, with a route; AppViewModel.candidateJoin)

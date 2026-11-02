@@ -165,6 +165,9 @@
     <string name="plan_start_here">Hier starten</string>
     <string name="plan_go_here">Hierhin</string>
     <string name="plan_open_google_maps">In Google Maps öffnen</string>
+    <!-- the found place's pin (owner 2026-11-02): its menu's last line, the name chip for TalkBack -->
+    <string name="plan_remove_pin">Nadel entfernen</string>
+    <string name="plan_pin_chip_desc">%1$s: Möglichkeiten zeigen</string>
     <plurals name="plan_removes_points">
         <item quantity="one">Löscht den Punkt davor</item>
         <item quantity="other">Löscht die %1$d Punkte davor</item>

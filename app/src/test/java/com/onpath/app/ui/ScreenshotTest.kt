@@ -757,14 +757,21 @@ class ScreenshotTest {
             drawCircle(androidx.compose.ui.graphics.Color.White, 13.dp.toPx(), a)
             drawCircle(dotColor, 11.dp.toPx(), a)
         }
-        // the candidate marker of a search result / shared place – the map's own drawing (MapController.setSearchMark)
-        if (ring) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-            drawIntoCanvas { c ->
-                com.onpath.app.map.CandidateMarker.draw(c.nativeCanvas, a.x, a.y, density,
-                    android.graphics.Color.parseColor(com.onpath.app.map.MapController.ROUTE_COLOR))
+        // the found place's pin – the map's own drawing (MapController.setSearchMark) – and its name chip (MapOverlayHost)
+        if (ring) {
+            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                drawIntoCanvas { c ->
+                    com.onpath.app.map.CandidateMarker.draw(c.nativeCanvas, a.x, a.y, density,
+                        android.graphics.Color.parseColor(com.onpath.app.map.MapController.ROUTE_COLOR))
+                }
+            }
+            PinChipAt(a, topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }) {
+                PinChip(shared.title(), onClick = {})
             }
         }
-        AnchoredOverlay(a, topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }, content = content)
+        // the pin's menu above the pin's head (MapOverlayHost: lift = CandidateMarker.PIN_HEIGHT_DP)
+        val lift = if (ring) with(d) { com.onpath.app.map.CandidateMarker.PIN_HEIGHT_DP.dp.toPx() } else 0f
+        AnchoredOverlay(a.copy(y = a.y - lift), topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }, content = content)
     }
 
     /** First hold on an empty plan: Start here · Go here (from my location) (position known). */
@@ -812,10 +819,17 @@ class ScreenshotTest {
     @Test fun sharedPlaceMenu() = paparazzi.snapshot {
         OnPathTheme {
             OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), ring = true) {
-                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {},
+                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {}, onRemovePin = {},
                     addLabel = com.onpath.app.search.AddPreview.label(
                         com.onpath.app.routing.WaypointInsertion.Decision(3, com.onpath.app.routing.WaypointInsertion.Kind.DESTINATION), 3))
             }
+        }
+    }
+
+    /** A found place (search hit / shared place, owner 2026-11-02): the blue pin and its name chip "Gelateria Costantin ›". */
+    @Test fun foundPlacePin() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), ring = true) {}
         }
     }
 
@@ -823,7 +837,7 @@ class ScreenshotTest {
     @Test fun sharedPlaceMenuEmptyPlan() = paparazzi.snapshot {
         OnPathTheme {
             OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), empty = true, ring = true) {
-                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {}, emptyPlan = true)
+                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {}, emptyPlan = true, onRemovePin = {})
             }
         }
     }

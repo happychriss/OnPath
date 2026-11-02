@@ -72,11 +72,11 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         const val LAYER_TURN = "nav-turn-arrow"
         /** U-turn sign where a way back starts by turning round. */
         const val SRC_UTURN = "nav-uturn"
-        /** The candidate marker (search result / shared place, not yet taken – [CandidateMarker]) and its preview line. */
+        /** The found place's pin (search result / shared place, not yet taken – [CandidateMarker]) and its preview line. */
         const val SRC_MARK = "search-mark"
         const val LAYER_MARK = "search-mark"
         const val SRC_MARK_JOIN = "candidate-join"
-        private const val IMG_CANDIDATE = "candidate-mark"
+        private const val IMG_CANDIDATE = "candidate-pin"
         /** MapLibre's own position layers (dot, accuracy circle, bearing) all start with this. */
         const val POSITION_LAYER_PREFIX = "mapbox-location"
         // --- Re-routing while navigating (navigation/Navigator) ---
@@ -814,23 +814,20 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     }
 
     /**
-     * The candidate marker ([CandidateMarker]: a search result / shared place, suggested but not yet in the route – a
-     * dashed route-blue ring around the place's icon with a "+" badge, its name below); null removes it. Never throws.
+     * The found place ([CandidateMarker]: a search result / shared place, not yet in the route – a route-blue pin, its
+     * tip on the place); null removes it. Its name is not drawn on the map: it is the chip under the pin (ui/MapOverlays
+     * `PinChip`, owner 2026-11-02); [name] stays on the feature (diagnostics). Never throws.
      */
     fun setSearchMark(p: GeoPoint?, name: String?) = guarded("search mark") {
         if (style.getSource(SRC_MARK) == null) {
             style.addSource(GeoJsonSource(SRC_MARK))
             if (style.getImage(IMG_CANDIDATE) == null)
                 style.addImage(IMG_CANDIDATE, CandidateMarker.bitmap(density, context.resources.displayMetrics.densityDpi))
-            // around the place's icon (owner: never a dot covering it), clearly outside the icon
+            // the tip on the place: anchored at the bitmap's bottom edge, moved down by the room under the tip
             addBelowPosition(SymbolLayer(LAYER_MARK, SRC_MARK).withProperties(
                 PF.iconImage(IMG_CANDIDATE), PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
-                PF.iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_MAP)))
-            addBelowPosition(SymbolLayer("search-mark-label", SRC_MARK).withProperties(
-                PF.textField(Expression.get("name")), PF.textFont(arrayOf("Noto Sans Medium")), PF.textSize(13f),
-                PF.textOffset(arrayOf(0f, 2.2f)), PF.textAnchor(Property.TEXT_ANCHOR_TOP),
-                PF.textColor(ROUTE_COLOR), PF.textHaloColor("#FFFFFF"), PF.textHaloWidth(1.6f),
-                PF.textAllowOverlap(true), PF.textIgnorePlacement(true)))
+                PF.iconAnchor(Property.ICON_ANCHOR_BOTTOM), PF.iconOffset(arrayOf(0f, CandidateMarker.TIP_MARGIN_DP)),
+                PF.iconPitchAlignment(Property.ICON_PITCH_ALIGNMENT_VIEWPORT)))
         }
         val src = source(SRC_MARK) ?: return
         if (p == null) src.setGeoJson(FeatureCollection.fromFeatures(emptyList()))

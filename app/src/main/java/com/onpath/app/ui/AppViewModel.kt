@@ -1478,9 +1478,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Closes every map menu; [why] goes into the gesture log (Diagnostics) when a point menu was open. */
     fun closeMapOverlays(why: String = "closed") {
-        // The search mark lives only until its menu is done (owner): closing that menu – by an action or by
-        // tapping elsewhere – removes the candidate marker too.
-        if (poiMenu != null) searchMark = null // the menu may belong to the place's own map icon a few metres away
+        // The found place's pin stays when its menu closes (owner 2026-11-02: a tap elsewhere closes only the menu); it
+        // goes when the place is added, with a new search, "Neu planen" or the menu's "Nadel entfernen" ([removePin]).
         closePointMenu(why)
         if (firstPointMenu != null) Problems.trace("plan", "First-point menu closed: $why")
         if (poiMenu != null) Problems.trace("plan", "POI menu closed: $why")
@@ -1509,6 +1508,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (waypoints.isEmpty()) change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) } else addPoint(p)
     }
     fun openPoiMenu(poi: com.onpath.app.poi.Poi) { closeMapOverlays("POI menu opened"); poiMenu = poi }
+
+    /** The pin's name chip tapped (owner 2026-11-02): the same menu a hold on the pin opens. */
+    fun openPinMenu() {
+        val m = searchMark ?: return
+        Problems.trace("plan", "Pin chip tapped: menu of \"${m.title()}\"")
+        openPoiMenu(m.toPoi())
+    }
+
+    /**
+     * The found place's pin goes (owner 2026-11-02): its menu's "Nadel entfernen" or "Neu planen" ([clearPlan]); adding
+     * the place ([clearSearchMarkAt]) and a new search pick replace it on their own.
+     */
+    fun removePin(why: String) {
+        if (searchMark == null) return
+        Problems.trace("plan", "Pin removed: $why")
+        searchMark = null; searchPlace = null
+    }
 
     /** POI menu on an empty plan → "Go here": start = position, the POI (pinned, named) = destination. */
     fun poiFromMyLocation(poi: com.onpath.app.poi.Poi) {
@@ -1695,7 +1711,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openSearch() = searchFlow.openSearch()
     fun closeSearch() = searchFlow.closeSearch()
     fun pickSearchResult(place: com.onpath.app.search.Place) = searchFlow.pickSearchResult(place)
-    private fun isCandidate(poi: com.onpath.app.poi.Poi): Boolean = searchFlow.isCandidate(poi)
+    /** [poi] is the found place's pin (its menu then ends with "Nadel entfernen"). */
+    fun isCandidate(poi: com.onpath.app.poi.Poi): Boolean = searchFlow.isCandidate(poi)
     private fun clearSearchMarkAt(lat: Double, lon: Double) = searchFlow.clearSearchMarkAt(lat, lon)
     /**
      * [block] adds a place from the place card or the candidate marker's menu: the new route is fitted once computed
@@ -1831,6 +1848,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val planLine = route?.points
         if (waypoints.isNotEmpty()) change { clear() } else recalc()
         closePointMenu("plan cleared"); firstPointMenu = null; highlight = null
+        removePin("plan cleared")
         // the empty sheet says how to start a plan: not rolled up
         if (planSize == PlanSize.COLLAPSED) planSize = PlanSize.MINI
         // no tour: the followed line goes with the plan – also when it was the way there ("Guide me") or the app restarted

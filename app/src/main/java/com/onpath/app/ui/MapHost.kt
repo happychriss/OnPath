@@ -214,9 +214,12 @@ fun MapHost(
                         "${near?.plus(1)} at ${near?.let(dpOf)} dp, ${pts.size} points (${c.drawnWaypointCount()} drawn), " +
                         "follow ${vm.followMe}, bearing ${map.cameraPosition.bearing.toInt()}°, menu open ${vm.mapOverlayOpen}")
                 }
-                // A marked search result (pin) counts as a POI: holding it opens the POI menu.
+                // A marked search result (pin) counts as a POI: holding it – the place or the pin's head – opens the POI menu.
                 val mark = vm.searchMark?.takeIf { m ->
-                    c?.toScreen(GeoPoint(m.lat, m.lon))?.let { s -> kotlin.math.hypot(s.x - screen.x, s.y - screen.y) <= c.dpToPx(26f) } == true
+                    c?.toScreen(GeoPoint(m.lat, m.lon))?.let { s ->
+                        val dp = c.dpToPx(1f)
+                        com.onpath.app.map.CandidateMarker.hit((screen.x - s.x) / dp, (screen.y - s.y) / dp)
+                    } == true
                 }
                 val poi = if (marker >= 0) null else mark?.toPoi() ?: com.onpath.app.poi.findPoiAt(map, screen)
                 // ~24 dp around the planned line counts as "on the line" (smart insertion into that leg).
