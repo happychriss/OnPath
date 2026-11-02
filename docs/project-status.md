@@ -33,6 +33,14 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **donald, 2026-11-02 late – found place = pin + name chip, new empty-plan hint (owner's choices, drafts on
+  https://claude.ai/artifact/5mhA8L5AR6vb1TNx8BB2qU).** A search result / shared place is a route-blue pin with a white
+  chip "Name ›" under it (tap = the place's menu, which ends with "Nadel entfernen"); it goes when added, with a new
+  search, "Neu planen", map-load cancel or "Nadel entfernen" – a tap elsewhere closes only the menu; hidden in Navigate,
+  chip hidden while a track is shown; the menu never covers the pin. Empty plan: ✋ "**Wohin soll’s gehen?** Halte dein
+  Ziel auf der Karte gedrückt – oder such es oben in der Suchleiste." gate --full green; Rundgang flow 10 PASS, flow 9
+  flaky once after flow 10 on the same emulator (passed alone). Not yet on the Pixel. Web planner still draws the old
+  ring – its daily merge follows. Word pair Route / Tour / Aufnahme decided (#14) → backlog, next.
 - **donald, 2026-11-02 evening – the night draft is on `main` (63b0194d).** `wip/donald-2026-11-01-nacht` rebased,
   checked against the old claude-app chat (owner choices 21:38–22:17): all as chosen except the green "Route ändern …
   Fertig" header, which the owner turned down (22:07) – the unused code + 3 unused texts removed. 3 unit tests follow the
