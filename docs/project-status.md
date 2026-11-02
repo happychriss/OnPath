@@ -33,6 +33,18 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud-plan (laptop), 2026-11-01/02 – end of the sitting.** `web-spike` 415d3802, everything pushed, goes live by itself
+  on green CI (every green push to `web-spike` deploys – `web-spike.yml`). Done: list A 10–13, "More before the release"
+  (sync H1 / M7, edit queue, storage.persist, write failures), main merged three times (last: 6f60dd01 – shared rules wired:
+  `app/web-shared-files.txt` read by the web build, PlanPoints rows, PlanNames / RouteFit, SaveRule H3, sync M4), keys
+  Space / `/` / `F` / `?`, plan point colours, German badge colour, wait box in the middle of the map with Cancel,
+  closed-folder question, sheet-smoke races fixed (CI was red). Pictures in `onpath.private` (`marketing/bilder/2026-11-02-hp/`):
+  W1–W6 pairing help + film picture. **Open:** main has newer commits not merged (merge once on the captain's word);
+  wait box → time-limit question (needs cloud-app's text, onpath.private#13); mirror line "Left from main 2e50efbc"
+  (plan GPX pins, track → plan modal, M4 mailbox epoch). **Laptop:** `onpath.private` cloned beside the checkout
+  (`Projects/work/onpath.private`); WebKit for `browsers-check.mjs` needs 6 libs copied into Playwright's
+  `minibrowser-wpe/sys/lib` (done); a leftover helper worktree `.claude/worktrees/agent-a1a7c490002c2fb5d` (branch
+  `web-closed-folder-ask`, already merged) – delete when convenient.
 - **donald, 2026-11-02 late – found place = pin + name chip, new empty-plan hint (owner's choices, drafts on
   https://claude.ai/artifact/5mhA8L5AR6vb1TNx8BB2qU).** A search result / shared place is a route-blue pin with a white
   chip "Name ›" under it (tap = the place's menu, which ends with "Nadel entfernen"); it goes when added, with a new
@@ -120,15 +132,6 @@ the current state.
   ride (confirms the crash path); device check of the tour-edit lines in Demo mode; owner idea jog rule + way types
   (backlog, think first); a mailbox epoch on the server (cloud-plan). **Next:** the rest of the backlog; release after the
   captain's go.
-- **cloud-plan (laptop), 2026-11-01 – release-day web fixes.** main merged into `web-spike` twice (up to 2f0a231f, incl.
-  the splice catch-all – `PlannerSpliceTest` added to the web's shared tests); parity manifest re-checked. List A 10–13
-  (c652cd9e): failed downloads not kept + grey offline line + re-plan when online, WasmGC check → "browser too old"
-  page, unsaved route back without `#p=`, no developer / raw error lines. "More before the release" (1) + (2)
-  (21501007, 5749bac6): sync H1 / M7, edit queue H4, `storage.persist` H5, write failures M11. Tests: new
-  `web/app/test/robust-smoke.mjs` (run by the nowebgl CI step), manual `browsers-check.mjs` (Firefox 155 + WebKit 26.6
-  plan fine; WebKit needs 6 libs copied into Playwright's `minibrowser-wpe/sys/lib` on the laptop – no sudo).
-  **Not deployed** (owner: release on hold). **Next:** (3) with cloud-app (sync H3 / M4 shared rule, Points row text
-  M15); deploy only with the app release after the captain's go.
 - **cloud-app (donald), 2026-10-31/11-01 – captain's order done.** Release-Rundgang 14/14 PASS (flows 11 + 12 green),
   again 14/14 on main with voice. Voice guidance merged to `main` (69515dde): branch merged with main, one test made
   tolerant to the line's geometry length, Settings → Navigation screenshots EN + DE; full gate green (2253 tests). Debug
