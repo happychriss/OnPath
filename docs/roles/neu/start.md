@@ -22,6 +22,11 @@ item says what it needs; the unit that can do it and is on takes it (owner 2026-
 - **Wake-up:** the unit sets itself an **hourly scheduled task** once (`create_trigger`, `persistent_session_id` =
   itself, cron `0 * * * *`, prompt „Runde – docs/roles/neu/start.md“) – it survives a reboot (`/loop` does not). So the
   unit goes on by itself after a restart and while the owner is away. Check at every round that the task exists.
+- **10-minute check** (owner 2026-11-02 – the captain can neither message nor wake a unit, tested): at every round make
+  sure a loop runs in this session – `/loop 10m tools/dev/new_items.sh <unit>; if it prints "NEU", take those items
+  now (claim, background agent / fork), else end the turn silently`. The loop dies with a restart; the hourly round
+  sets it again. It only fires while the chat is idle – one more reason to run long work in background agents.
+  `new_items.sh` prints only new `[sofort]` items for this unit (and new an-alle issues), so an empty tick costs little.
 - When the chat gets long (days): write the handoff, archive the session, start a new one in the host with the same
   start sentence – the repo is the memory.
 

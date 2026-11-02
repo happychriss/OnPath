@@ -70,6 +70,10 @@ the owner can go on talking (`CLAUDE.md` "Responsive chat").
   `#push-sperre` (everything) or `#release-sperre` (only releases). Close it when the owner says it is over.
 - An answer to a question → a comment on that issue (`tools/ask.sh antwort <nr> "…"`); the asking unit acts and closes.
 - "Mach X zuerst" → move X to the top of "Next" (with tags).
+- "Mach X jetzt" / anything urgent → top of "Next" with **`[sofort]`** + the unit tag (`[donald]`, `[laptop]`) or the
+  device tag; the unit's 10-minute check (`tools/dev/new_items.sh`) picks it up and starts it beside its running work.
+  Tell the owner: "donald nimmt es in ≤ 10 min, wenn er läuft" – or, when it must start this minute, to say it to the
+  unit directly (the captain cannot message or wake it – tested 2026-11-02).
 - A fix from the phone („Bug: … Fix + Release“) → top of "Next"; if donald is on, its unit takes it; else a cloud
   worker (GitHub tests and builds it – owner 2026-11-01, no cloud SDK). Tell the owner when the release is out.
 
