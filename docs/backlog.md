@@ -59,12 +59,16 @@ the git log.
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
-- **[emu] E2E red on main** (captain 2026-11-02): "Core feature tests on the emulator" failed on efbb01e1, 267f0875,
-  4e16e629 (runs 291, 293, 295); the run on 63b0194d is going. If it is red too: find the failing test class from the
-  report and fix it before the release. https://github.com/happychriss/OnPath/actions/runs/41352773832
+- **[emu] E2E red on main** (captain 2026-11-02): one test, the same in every red run since c88ee137 (runs 285, 291, 293,
+  295, 296 on 63b0194d): `CoreFieldE2ETest.navigateThenBackToPlanStillDeletes` line 97 – `timeout: no plan markers in
+  Navigate (points: 2)`. The test still expects "Navigate shows only the route line, no numbered plan points"; the app
+  now draws the 2 plan points during a tour (plan edits during a tour / stop numbers, 2026-11-01). Likely the test is
+  outdated, not a bug – check the owner's current rule, then fix the test (or the app). (`RoutingDataFreshInstallE2ETest`
+  shows up only as a skipped assumption.) https://github.com/happychriss/OnPath/actions/runs/41515891090
 - **[cloud-plan] Web spike red – planner not deployed since ebbcfbb2** (captain 2026-11-02): job "smokes (sheet-sync)",
-  step "Plan sheet steps" failed on 4e9913be and 3561ad78. Then merge main again: `release_check.sh` shows 5 shared files
-  differ (AppSettings, CueRule, JogRule, JunctionCues, TurnDetector). https://github.com/happychriss/OnPath/actions/runs/41354594301
+  one check: `after "As destination" the whole new route shows` – FAIL phone on 6f60dd01 (1352 of 1467 points outside,
+  zoom 13.7), FAIL desktop on 07a1d77f (765 of 1382 outside, zoom 13). Same check, different viewport each run → likely
+  timing: the map fits before the new, longer route is in. Main is merged now (6f60dd01). https://github.com/happychriss/OnPath/actions/runs/41518256147
 - **[cloud-app] For v0.14.0: own User-Agent for brouter.de downloads** (owner 2026-11-02, onpath.private#5 A): every
   request to brouter.de (routing data) sends `OnPath/<version> (+https://onpath.earth)`; the first testers (up to ~20)
   stay on the test servers. Small change, with a JVM test.
