@@ -17,9 +17,10 @@ class TourActionBarTest {
     private fun contrastWithWhite(c: Color): Double = 1.05 / (c.luminance() + 0.05)
 
     @Test fun greenPauseBlueChangeRedEnd() {
-        val pause = bar.indexOf("TrackIconKind.PAUSE, str(if (paused)").also { assertTrue("paused → ▶", bar.contains("if (paused) TrackIconKind.RESUME else TrackIconKind.PAUSE")) }
-        val change = bar.indexOf("TrackIconKind.CHANGE, str(Res.string.plan_slide_change_route), OnPathColors.ActionEdit")
-        val end = bar.indexOf("TrackIconKind.END, str(Res.string.nav_end_short), OnPathColors.ActionStop")
+        // plain signs (owner 2026-11-02): ⏸ / ▶, the pencil, ■
+        val pause = bar.indexOf("Icons.Filled.Pause, str(if (paused)").also { assertTrue("paused → ▶", bar.contains("if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause")) }
+        val change = bar.indexOf("Icons.Filled.Edit, str(Res.string.plan_slide_change_route), OnPathColors.ActionEdit")
+        val end = bar.indexOf("Icons.Filled.Stop, str(Res.string.nav_end_short), OnPathColors.ActionStop")
         assertTrue("$pause $change $end", pause in 0 until change && change < end)
         assertTrue(bar.substring(pause, change).contains("OnPathColors.ActionGo"))
         assertTrue("no hand colours in the bar", !Regex("Color\\(0x").containsMatchIn(bar))
@@ -35,5 +36,14 @@ class TourActionBarTest {
         val barDp = TourActions.TILE_HEIGHT.value + 2 * TourActions.BAR_PAD.value
         assertTrue("$barDp dp vs the 64 dp slider", barDp in 88f..104f)
         assertEquals(30_000L, TourActions.OPEN_MS)
+    }
+
+    /** Owner 2026-11-02: no ✕ – a tap on the map or Android's back closes the open bar (not while paused). */
+    @Test fun aTapOnTheMapOrBackClosesTheBar() {
+        assertTrue("no ✕ in the bar", !bar.contains("Icons.Filled.Close"))
+        val nav = File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()
+        assertTrue(nav.contains("val closableBar = open && !ui.paused && ui.recordedM != null"))
+        assertTrue(nav.contains("BackHandler(enabled = closableBar) { open = false }"))
+        assertTrue(nav.contains("detectTapGestures { open = false }"))
     }
 }

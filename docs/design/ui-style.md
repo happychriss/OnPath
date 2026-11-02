@@ -41,8 +41,8 @@ One colour = one kind of action, so the hand finds it the second time by colour:
 - **red = stop** – end the process you are in (end the recording, discard the edit) (`ActionStop`).
 
 First user: the bar the Navigate slider unlocks (`ui/TourActionBar.kt`, onpath.private#17 = C compact) – green Pause /
-Resume, blue Change route, red End, white words, icons that carry the track (the line ends in ⏸ / branches off / ends
-in ■, `TrackIcon`), ≈ 1.5× the slider, a small ✕ above it on the right. Next: Plan during a tour (green "Weiter
+Resume, blue Change route, red End, white words, the plain signs ⏸ (▶ paused) / ✎ / ■ (owner 2026-11-02: the
+track-line icons did not please), ≈ 1.5× the slider; no ✕ – a tap on the map or Android's back closes it (owner 2026-11-02). Next: Plan during a tour (green "Weiter
 navigieren", blue = editing, red "Änderungen verwerfen", onpath.private#19).
 
 Add a token when a new meaning is needed (with a comment saying what it is for); `inverseSurface` and Snackbars stay

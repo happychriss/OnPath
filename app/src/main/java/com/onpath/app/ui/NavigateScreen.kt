@@ -61,6 +61,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -231,7 +233,15 @@ fun NavigateOverlay(
     var topColumnDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var messageBottomDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var sliderDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    // the slider unlocks Pause · Change route · End (a recording); without one it goes to the plan at once
+    var open by remember { mutableStateOf(actionsOpen) }
+    LaunchedEffect(open) { if (open && !actionsOpen) { kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false } }
+    // closing it without a choice (owner 2026-11-02, no ✕): a tap on the map or Android's back; paused it stays open
+    val closableBar = open && !ui.paused && ui.recordedM != null
+    androidx.activity.compose.BackHandler(enabled = closableBar) { open = false }
     Box(Modifier.fillMaxSize()) {
+        if (closableBar) Box(Modifier.fillMaxSize().clearAndSetSemantics { }
+            .pointerInput(Unit) { detectTapGestures { open = false } })
         Column(
             Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding()
                 .onSizeChanged { topColumnDp = with(density) { it.height.toDp().value.toInt() } }
@@ -252,14 +262,11 @@ fun NavigateOverlay(
         }
         Column(Modifier.align(Alignment.BottomCenter).modeEdge(ModeEdge.BOTTOM).fillMaxWidth()) {
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
-            // the slider unlocks Pause · Change route · End (a recording); without one it goes to the plan at once
-            var open by remember { mutableStateOf(actionsOpen) }
-            LaunchedEffect(open) { if (open && !actionsOpen) { kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false } }
             val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
             // paused: the bar stays open – "Fortsetzen" at once, no slider (owner 2026-11-01)
             if ((open || ui.paused) && ui.recordedM != null) TourActionBar(ui.paused, onPause, onChangeRoute = onSlideToPlan,
-                onEnd = onEnd, onClose = { open = false }, modifier = bottom, closable = !ui.paused)
+                onEnd = onEnd, onClose = { open = false }, modifier = bottom)
             else SlideToPlan({ if (ui.recordedM != null) open = true else onSlideToPlan() }, bottom,
                 recording = ui.recordedM != null, startFraction = slideStartFraction)
         }

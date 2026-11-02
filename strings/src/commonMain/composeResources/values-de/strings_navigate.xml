@@ -171,7 +171,6 @@
     <string name="nav_save_recording">Aufnahme speichern</string>
     <string name="nav_continue_navigation">Navigation fortsetzen</string>
     <string name="nav_action_pause">Pause</string>
-    <string name="nav_actions_close">Leiste schließen</string>
     <string name="nav_route_back_title">Kein Ziel mehr vor dir.</string>
     <string name="nav_route_back_text">Die Tour wird weiter aufgezeichnet. Rückgängig holt den Punkt zurück.</string>
     <string name="nav_route_back">Zurück zum Start</string>
