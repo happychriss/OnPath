@@ -247,6 +247,8 @@ object Engine {
         // the model time (PlanResult.withModelTime: TimeEstimate.planSeconds with the pace setting), not the router's
         append(",\"timeS\":").append(num(p.durationS))
         append(",\"difficulty\":").append(str(res.rating.text))
+        // the badge colour by level, not by the (translated) word – "Mittel" was red (easy / moderate / difficult)
+        append(",\"level\":").append(str(res.rating.level.name.lowercase()))
         append(",\"because\":").append(res.rating.because?.let { str(it) } ?: "null")
         val top = p.points.mapNotNull { it.ele }.maxOrNull()
         append(",\"texts\":{\"time\":").append(str(Format.duration(p.durationS)))

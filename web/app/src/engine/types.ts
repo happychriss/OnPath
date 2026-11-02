@@ -43,6 +43,8 @@ export interface PlanResult {
   gaps: { text: string | null; gaps: { index: number; point: [number, number]; end: [number, number]; show: [number, number, number] }[] };
   /** The app's RoutingDataNotice: routing data missing → the plain grey line [noticeText] instead of the router's error. */
   notice: 'LOADING' | 'NOT_YET' | null; noticeText: string | null;
+  /** The rating's level for the badge colour (RouteSummary.Difficulty): easy / moderate / difficult. */
+  level?: 'easy' | 'moderate' | 'difficult';
   /** The engine failed unexpectedly (WebApi.plan's catch-all): no plan; [detail] only for the diagnostics. */
   failed?: boolean; detail?: string;
   /** After an activity / T level change the route differs noticeably: the app's grey "New route for … – check it". */

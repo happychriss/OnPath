@@ -1042,7 +1042,7 @@ function render() {
   } else {
     head.innerHTML = `<span class="big">${escapeHtml(p.texts.time)}</span><span class="dist">${escapeHtml(p.texts.distance)}</span>`;
     sub.innerHTML = `<span>${escapeHtml(p.texts.climb)}</span>` +
-      `<span class="badge ${p.difficulty.split(' ')[0].toLowerCase()}" ${p.because ? `title="${escapeHtml(p.because)}"` : ''}>${escapeHtml(p.difficulty)}</span>`;
+      `<span class="badge ${p.level ?? ''}" ${p.because ? `title="${escapeHtml(p.because)}"` : ''}>${escapeHtml(p.difficulty)}</span>`;
     // the app's ElevationProfile: "No elevation data" when ProfileData has none
     $('profile').innerHTML = p.profile ? profileSvg(p.profile) : `<div class="muted small noele">${escapeHtml(t('plan_no_elevation'))}</div>`;
     // one red line: an unreachable point (the app's PlanGaps, with Show) or a failed leg – PlanPanel's order
