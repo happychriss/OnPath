@@ -51,7 +51,6 @@ the git log.
   the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
-- [donald] `wip/donald-2026-11-01-nacht` → `main` (rebase, check, gate, push; design review as a file) – since 2026-11-02
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [cloud-plan] Shared rules from main 2e50efbc wired on web-spike 4e9913be – left: the mirror line "Left from main 2e50efbc" – since 2026-11-01
@@ -60,13 +59,10 @@ the git log.
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
-- **FIRST on donald (captain 2026-11-01 night): bring `wip/donald-2026-11-01-nacht` to `main`** [pixel] – the owner
-  saved cloud-app's unpushed work of ~22:40–23:20 by hand (253bfdb0, on top of 4e16e629, NOT gated, 86 files): position
-  marker while changing the route in a tour (`ui/PlanPuck.kt`), `ui/TourActionBar.kt`, Delete without the question +
-  grey "Kommt für 30 Tage in den Papierkorb.", the turn card staying on top, "✕ Neu planen · ⇅ Umkehren · ↻ Rundtour" as
-  pills, texts, ~70 re-recorded screenshots. The donald checkout is left ON that branch. Next start: rebase onto
-  `main`, check against the owner's chat choices, `tools/ci/gate.sh`, push to `main`, delete nothing. Also save the
-  design review vs Komoot / Organic Maps / OsmAnd (only in the old claude-app chat) as a file.
+- **Word pair Route / Tour / Aufnahme (proposal from the design review, needs the owner's word – owner words):** today
+  "Tour 1. Nov.", "Unterbrochene Tour" in My routes, "Aufnahme" on the way. Proposal: **Route** = planned, **Tour** =
+  ridden, "Aufnahme" only for the running recording (REC); then two tabs "Geplant" / "Unterwegs" in My routes like
+  Komoot. Asked: onpath.private#14 (not blocking); after the answer a small text round. `docs/design/review-2026-11-01-vs-komoot.md`.
 - **Pictures for the pairing help – app part (order by cloud-web, owner OK 2026-11-01)** [emu]: emulator, A-019 setup,
   DE + EN: (A1) ☰ open with "Mit Browser verbinden"; (A2) the question "Mit diesem Browser verbinden? Prüfe: 123 456"
   with "Verbinden"; (A3) My routes with a route from the browser ("Neu"); (A4) Settings → Browser-Abgleich paired with

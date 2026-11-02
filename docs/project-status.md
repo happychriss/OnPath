@@ -26,6 +26,15 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **donald, 2026-11-02 evening – the night draft is on `main` (63b0194d).** `wip/donald-2026-11-01-nacht` rebased,
+  checked against the old claude-app chat (owner choices 21:38–22:17): all as chosen except the green "Route ändern …
+  Fertig" header, which the owner turned down (22:07) – the unused code + 3 unused texts removed. 3 unit tests follow the
+  new behaviour, 191 screenshots re-recorded, Rundgang flow 7 ends the recording via the slider bar, flow 2 presses
+  "Aufnahme speichern"; gate --full green. Design review vs Komoot / Organic Maps / OsmAnd saved:
+  `docs/design/review-2026-11-01-vs-komoot.md`. The owner never said "passt" to the whole draft – on the next ride:
+  route-change mode vs planning at home, the dense status card, the small line on the green slider outdoors. Hourly
+  wake-up for donald set (trig_01AXEuUPbmvBV1DfJfeokDg5, :56). The owner may delete `wip/donald-2026-11-01-nacht`
+  (and `wip/voice-guidance` – nothing on it beyond main).
 - **cloud-app (donald), 2026-11-01 night – the owner's hikes (tours 61–63).** Data secured on donald:
   `~/onpath-cells-work/field/2026-11-01-wanderungen/` (live-1931 during tour 63, final-* after it: DB, events, problems,
   nav session, GPX, logcat, the owner's screenshot 17:43). Analysed: round trip 61 (a step back at the start → matcher on
