@@ -107,9 +107,10 @@ Ein „Agent-Distro“: man redet mit einem **First Mate**, der eine Crew in Wor
 - **Docker für uns:** schlecht passend (Pixel per USB, Emulator mit KVM, Android-SDK müssten durchgereicht werden);
   wir sichern stattdessen mit Auto-Modus + Deny-Regeln + Push-Hook. Leichter Zusatzschritt, falls gewünscht: eigener
   Linux-Benutzer für Claude auf donald (eigener `gh`-Zugang nur für OnPath, keine SSH-Schlüssel des Owners).
-- **Übernehmen:** (1) ein **Stop-Hook**, der am Ende jeder Antwort prüft, ob `[sofort]`-Arbeit offen ist – robuster als
-  die 10-Minuten-Schleife; (2) ein Skill **`/lage`** (wie `/bearings`): Lage in vier Abschnitten auf Knopfdruck.
-  **Nicht übernehmen:** das Gesamtsystem.
+- **Übernommen 2026-11-02:** (1) **Stop-Hook mit `asyncRewake`** als Wecker (`tools/hooks/stop-wake.sh`): wartet nach
+  jeder Antwort im Hintergrund ohne Token, der Chat bleibt frei, weckt nur bei Neuem – ersetzt die 10-Minuten-Schleife;
+  (2) **`/fragen`** (wie `/ahoy`): offene Fragen eine nach der anderen, wichtigste zuerst, als Fragebox. Offen: `/lage`
+  (wie `/bearings`). **Nicht übernehmen:** das Gesamtsystem.
 
 ## 6. Wo was liegt
 | Thema | Datei |

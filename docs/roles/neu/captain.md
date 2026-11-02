@@ -63,6 +63,10 @@ nothing the owner decides.
    blocked, red CI, a release ready. One short push (`PushNotification`, < 200 characters) + the same in the chat.
    Nothing new → no push.
 
+## /fragen
+When the owner types `/fragen` or asks what is open: the skill `.claude/skills/fragen/` walks him through the open
+questions one at a time (most important first, each as a question box) and records each answer in its issue.
+
 ## The owner's words
 Answer at once; anything longer (reading many files, checking CI, writing several issues) goes to a background fork so
 the owner can go on talking (`CLAUDE.md` "Responsive chat").
@@ -71,8 +75,8 @@ the owner can go on talking (`CLAUDE.md` "Responsive chat").
 - An answer to a question → a comment on that issue (`tools/ask.sh antwort <nr> "…"`); the asking unit acts and closes.
 - "Mach X zuerst" → move X to the top of "Next" (with tags).
 - "Mach X jetzt" / anything urgent → top of "Next" with **`[sofort]`** + the unit tag (`[donald]`, `[laptop]`) or the
-  device tag; the unit's 10-minute check (`tools/dev/new_items.sh`) picks it up and starts it beside its running work.
-  Tell the owner: "donald nimmt es in ≤ 10 min, wenn er läuft" – or, when it must start this minute, to say it to the
+  device tag; the unit's alarm clock (Stop hook + `tools/dev/new_items.sh`, checks every minute) picks it up and starts
+  it beside its running work. Tell the owner: "donald nimmt es in ein, zwei Minuten, wenn er läuft" – or, when it must start this minute, to say it to the
   unit directly (the captain cannot message or wake it – tested 2026-11-02).
 - A fix from the phone („Bug: … Fix + Release“) → top of "Next"; if donald is on, its unit takes it; else a cloud
   worker (GitHub tests and builds it – owner 2026-11-01, no cloud SDK). Tell the owner when the release is out.
