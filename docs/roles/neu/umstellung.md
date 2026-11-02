@@ -11,7 +11,7 @@
 | `tools/ci/release_check.sh` | fertig, in der Cloud gegen `main` / `web-spike` getestet (zwei Branches und ein Branch) |
 | `tools/dev/save-on-shutdown.sh` | fertig, mit Test-Repo getestet (Checkout bleibt unberührt, Worktrees, offline → nachpushen, keine Doppelten) – **nicht auf donald** |
 | `tools/dev/unit.sh` | fertig, mit Platzhaltern getestet (ID merken, Wiederanhängen, Rückfall auf neue Sitzung, Dienst-Dateien) – **echte CLI nicht getestet** |
-| `docs/roles/neu/start.md`, `captain.md` | fertig, noch nicht gültig |
+| `docs/roles/neu/start.md`, `captain.md` | gültig (donald + Captain), „Leicht mit Captain“ seit 2026-11-02 |
 
 ## A. Tests auf donald (erledigt 2026-11-01, Ergebnisse unten)
 Das Verhalten von Claude / Plattform (Gastgeber, Worktrees, Sitzungen starten, Weckruf) gilt auf dem Laptop genauso.
@@ -51,7 +51,7 @@ keine Kartendaten. Offen nur (b) beim Einrichten des neuen Ordners `onpath` auf 
   gespeichert. Ein normaler Neustart von `claude remote-control` verbindet alle Sitzungen wieder.
 - `/loop` läuft ohne Zutun (alle 2 min, 16:35–16:46), **stirbt aber beim Neustart**.
 - Ein **Weckruf, den die donald-Sitzung sich selbst stellt** (`send_later`), **überlebt den Neustart** (fällig 16:57,
-  angekommen 16:58 nach Neustart). → Leitstand mit stündlichem Weckruf an sich selbst.
+  angekommen 16:58 nach Neustart). → die Einheit stellt sich den stündlichen Weckruf selbst.
 - `unit.sh` umgebaut: normaler Gastgeber über `script` (echtes Terminal + Log), kein `--session-id` mehr.
 
 ### Hooks (2026-11-01, `docs/roles/setup-analyse-2026-11-01.md` Schritt 1)
@@ -70,18 +70,21 @@ Force-Push, `reset --hard`, Branch-Löschen, `adb uninstall` / `pm clear`, `grad
   (gelbe Punkte ohne echte Frage) – Vorschlag `auto`.
 - Ordnername auf beiden Rechnern: `~/Projects/work/onpath` (statt `onpath-app` / `onpath-plan`) – Vorschlag ja.
 
-## C. Einschalten
-1. donald: A.0 im Checkout, dann `ONPATH_PERMISSION_MODE=<B> tools/dev/unit.sh install donald` → in der App im
-   Gastgeber eine neue Sitzung „donald-leitstand“ anlegen, Start-Satz aus
-   `docs/roles/neu/start.md` einmal tippen – sie stellt sich den stündlichen Weckruf selbst. Neustart-Test: Rechner neu starten → der Leitstand meldet sich spätestens zur vollen Stunde.
-   Sicher-Test: eine Datei ändern, neu starten → Branch `wip/donald-…` auf GitHub.
-2. 👤 Die alte Sitzung `claud-app` beenden, sobald die neue läuft (vorher: alles gepusht, Übergabe geschrieben).
-3. Laptop einrichten wie donald: Android SDK, Node ≥ 22.23, Python + Karten-Tools, `gh auth setup-git`, `git config
-   user.name/email`, Checkout auf `main`, Kartendaten daneben. Dann `tools/dev/unit.sh install hp`, Start-Satz, `/loop`.
-   👤 Alte Sitzung `claud-plan` beenden.
-4. **Captain:** 👤 die alte Captain-Sitzung archivieren (sie ist freigegeben und kann sich nicht wecken). Neue
-   Cloud-Sitzung, Satz: „Du bist mein OnPath-Captain.“ Sie richtet ihren Weckruf selbst ein und testet den Push
-   (`docs/roles/neu/captain.md` „Once“). **Keine Freigabe-Karte bestätigen.**
+## C. Einschalten – „Leicht mit Captain“ (owner 2026-11-02)
+0. **Nachtarbeit retten** (`wip/donald-2026-11-01-nacht`, Backlog ganz oben) macht die neue donald-Sitzung als Erstes.
+1. donald: altes `claude remote-control` (Terminal `onpath-app`) mit Strg-C beenden; `git status --short` muss leer sein
+   (sonst: Ausgabe an die Setup-Sitzung). Dann A.0 im Checkout (Vertrauen, `w` → worktree), dann
+   `ONPATH_PERMISSION_MODE=auto tools/dev/unit.sh run donald` (später `install donald` für den Autostart).
+2. In der App im Gastgeber eine neue Sitzung anlegen, Name **donald**, Start-Satz aus `start.md`. Erste Antwort muss mit
+   „== OnPath session start ==“ beginnen (Hooks feuern). Sie stellt sich den stündlichen Weckruf selbst und beginnt mit
+   dem wip-Branch.
+3. 👤 Alte Sitzung `claude-app` archivieren (ihre Design-Review vs. Komoot steht nur dort – vorher als Datei sichern
+   lassen, siehe Backlog).
+4. **Captain:** 👤 alte Captain-Sitzung archivieren und ihren toten Weckruf „Captain: E2E + review check“ löschen. Neue
+   Cloud-Sitzung mit `OnPath` + `onpath.private`, Satz „Du bist mein OnPath-Captain.“ **Keine Freigabe-Karte
+   bestätigen.** Er richtet seinen Weckruf ein, testet den Push, lässt `release_check.sh` laufen.
+5. Laptop später wie donald (SDK, Node ≥ 22.23, `gh auth setup-git`, Checkout `main`, A.0, `unit.sh run hp`); bis zum
+   Branch-Merge bleibt cloud-plan.
 
 ## D. Ein Branch (eine ruhige Sitzung auf donald)
 1. `web-spike` in `main` mergen (Planer unter `web/`); `web/parity/merge-main.sh` zeigt, was dabei kollidiert.
