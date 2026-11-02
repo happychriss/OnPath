@@ -96,6 +96,8 @@ data class NavUi(
     val waitingGps: Boolean = false,
     /** No GPS while standing still or only briefly (owner 2026-11-01): a quiet grey state, not the amber ⚠ warning. */
     val quietGps: Boolean = false,
+    /** No GPS while the phone lies still (its motion sensor, owner 2026-11-02): nothing about GPS – the usual line. */
+    val stillGps: Boolean = false,
     /** Off route (confirmed): the question, "finding a way back…" or the arrow banner; null = on route. */
     val offRoute: OffRouteUi? = null,
     /** Next turn on the followed line (≤ 500 m ahead, on route); null = no hint. */
@@ -411,7 +413,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                     }
                 }
                 // (the provisional-position line has its own full-width row under this one)
-                if (ui.recordedM != null && ui.waitingGps && ui.approx == null) {
+                if (ui.recordedM != null && ui.waitingGps && !ui.stillGps && ui.approx == null) {
                     // no fix: the arrow and the to-go are stale – a warning, not grey small text; standing still (owner
                     // 2026-11-01: a restaurant) only a quiet grey state
                     Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -768,6 +770,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,
         waitingGps = rec?.gpsLost == true && prov == null,
         quietGps = rec?.gpsQuiet == true,
+        stillGps = rec?.gpsStill == true,
         offRoute = rec?.nav?.let { n ->
             n.prompt?.let { p -> OffRouteUi(p, n.toRoute, n.toRoute?.let { (it.bearingDeg - mapBearing).toFloat() }) }
         },
@@ -820,7 +823,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val restOn = ScreenPolicy.of(vm.settings, ui.activity ?: vm.activity).rest && rec != null && nav != null
     val restWanted = rememberRest(restOn,
         // until the tour's first GPS fix (provisional Wi-Fi / fused position, amber line) always the full map
-        attention = SmartScreen.needsUser(paused = rec?.paused == true, gpsLost = rec?.gpsLost == true,
+        attention = SmartScreen.needsUser(paused = rec?.paused == true, gpsLost = rec?.gpsLost == true && rec.gpsStill != true,
             hadGpsFix = rec?.hadGpsFix == true, provisional = prov != null, offRouteAlert = rec?.offRouteAlert == true,
             prompt = nav?.prompt != null, notOnRoute = notOnRoute, noFix = location == null, notFollowing = !vm.followMe,
             dialog = vm.restBlocked()),
