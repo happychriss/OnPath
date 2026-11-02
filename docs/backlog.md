@@ -65,7 +65,8 @@ the git log.
   green "Weiter navigieren", red "Änderungen verwerfen" (#19); (5) paved footways for Bike / Gravel with the amber note
   (#7); (6) slow planning: propose the "weiter warten / abbrechen" text as a `frage` first (#13), build after the
   answer. Diagnostics review needs the Pixel → morning. Do not release – the captain runs the release check in the
-  morning. Laptop's "Route wird berechnet" card stays for cloud-plan tomorrow.
+  morning. Laptop's "Route wird berechnet" card stays for cloud-plan tomorrow. **The Pixel is unplugged tonight
+  (owner: it must not start talking at night) – no adb, no install, emulator only; [pixel] items wait for the morning.**
 - **[cloud-plan] Planner wait box: the time-limit question** (owner 2026-11-02, onpath.private#13): the wait box with
   Cancel is on web-spike (415d3802); when the time limit is hit it should become the question "weiter warten / abbrechen"
   – waits for [cloud-app]'s text (the app leads).
