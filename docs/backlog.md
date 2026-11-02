@@ -41,7 +41,6 @@ the git log.
   the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
-- [donald] No GPS while lying still = no line (motion sensor) – since 2026-11-02
 - [donald] Stop slider three coloured tiles + colour rule tokens (pictures to the owner first) – since 2026-11-02
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
@@ -75,12 +74,10 @@ the git log.
 - **☰ item "Aufzeichnung starten" goes** (owner 2026-11-02, onpath.private#15): the green Start in Plan does the same
   without a route (RECORD_ONLY) – remove the menu item + its test / screenshot; "Aufnahme" there per #14. **Answered 2026-11-02:** start
   button "Navigation starten" → "Los geht's · ‹Ziel›" (#16 A). [cloud-app] after the answer – small text / icon round with #14.
-- **[cloud-app] No GPS while lying still = no line at all** (owner 2026-11-02, phone on the table; onpath.private issue
-  "GPS auf dem Tisch", A): today the first 2 min after start / continue / resume count as moving (`MoveWatch.start` → amber
-  "Kein GPS"), then the grey `quietGps` line stays. Wanted: still → nothing shown; "still" from the phone's own motion
-  sensor (accelerometer / significant-motion, no Google Play Services) so it works without GPS fixes; amber warning only
-  when the phone moves and GPS is missing. Reproducing JVM test first (core rule), battery: sensor only while recording
-  without a fix. Recording itself unchanged.
+- **[pixel] Field check: no GPS line while lying still (built 2026-11-02, `recording/StillSense`)** – phone flat on a
+  table with a tour running: no GPS line, also in the first 2 min; phone in a pocket while sitting (threshold 0.5 m/s²
+  is a guess); walking / riding without GPS → amber after the short gap; no extra battery drain. Open: the notification
+  still says "Suche GPS…" while the phone lies still – ask the owner.
 - **[cloud-app] Colour rule for actions (owner 2026-11-02) – into `docs/design/ui-style.md` + `OnPathColors`:**
   **green = navigation** (start / continue navigating), **blue = edit** (change the route), **red = stop – end the
   process you are in**. The stop slider tiles follow it (Pause stays with the green navigation tile – check with the
