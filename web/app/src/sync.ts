@@ -304,7 +304,16 @@ export class PlanSync {
     this.say(t('web_sync_unpaired', name), 'info');
   }
 
-  /** "Remove routes of ‹phone› from this browser" (A-017 rule 16): only the local copy of a closed folder goes. */
+  /**
+   * Routes and tracks of [folder] saved here but never sent to its phone (dirty in its ledger) – Remove asks first
+   * when there are any (owner 2026-11-02, changes A-017 rule 16: they exist nowhere else).
+   */
+  async unsent(folder: string): Promise<number> { return (await this.list(folder)).filter((p) => p.dirty).length; }
+
+  /**
+   * "Remove routes of ‹phone› from this browser" (A-017 rule 16): only the local copy of a closed folder goes. The page
+   * asks first when [unsent] finds routes not on the phone (plans.ts removeLines).
+   */
   async removeFolder(key: string) {
     if (key === NONE || key === this.dir.open) return;
     await this.locked(async () => {
