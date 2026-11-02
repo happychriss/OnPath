@@ -41,6 +41,7 @@ the git log.
   the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
+- [donald] Word pair Route / Tour / Aufnahme (#14) + "Los geht's · ‹Ziel›" (#16) + ☰ "Aufzeichnung starten" goes (#15) – since 2026-11-02
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [cloud-plan] Shared rules from main 2e50efbc wired on web-spike 4e9913be – left: the mirror line "Left from main 2e50efbc" – since 2026-11-01
