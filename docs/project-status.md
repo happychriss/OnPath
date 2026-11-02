@@ -219,7 +219,7 @@ the current state.
 | Komoot GPX | Imports correctly; `<trk><type>` preselects the activity, export writes it |
 | Offline corridor | Map areas and routing data follow the plan (~10 km corridor, at most 30 areas) |
 | Search | Offline OSM index + Photon (rough position only, ~1 km); no Google Places |
-| Google | Never store or draw Google content; link out only (exception: a place shared from Google Maps) |
+| Google | Never store or draw Google content; link out only (exception: a place the user shared from Google Maps into OnPath – shown with the pin, and kept in "Recent" with a share sign, owner 2026-11-02) |
 | Place shared from Google Maps | The map flies there, shows the found-place pin with its name chip ("Name ›", preview line to the route) and opens its menu by itself, once per share; a search hit gets the same pin + chip, its menu opens with a tap on the chip (owner 2026-11-02) |
 | Footways without a bicycle tag | Bike / Gravel keep avoiding them; the amber "… m pushing" note is enough (owner 2026-10-30) |
 | POIs | From OSM, offline; calm defaults like Komoot |

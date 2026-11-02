@@ -201,6 +201,8 @@ class SearchFlow(
         holdCameraForSharedPlace()
         searchPlace = p
         searchMark = p
+        // a place shared into OnPath counts as searched: it goes to "Recent" with its share sign (owner 2026-11-02)
+        search.remember(p.copy(shared = true))
         host.stopFollowing()
         // Google Maps place → go there (owner): the ring's menu opens by itself once the map is there – on every share
         sharedMenuWaiting = sharedMenu.arrived(SharedPlaceMenu.key(p.lat, p.lon, p.name))
