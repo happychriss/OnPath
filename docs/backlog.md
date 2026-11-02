@@ -41,6 +41,10 @@ the git log.
   the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
+- [donald] E2E red on main (CoreFieldE2ETest plan markers in Navigate) – since 2026-11-02
+- [donald] Own User-Agent for brouter.de downloads (v0.14.0) – since 2026-11-02
+- [donald] No GPS while lying still = no line (motion sensor) – since 2026-11-02
+- [donald] Stop slider three coloured tiles + colour rule tokens (pictures to the owner first) – since 2026-11-02
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [cloud-plan] Shared rules from main 2e50efbc wired on web-spike 4e9913be – left: the mirror line "Left from main 2e50efbc" – since 2026-11-01
