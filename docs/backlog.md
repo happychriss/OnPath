@@ -28,16 +28,6 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
-- ← [cloud-plan] **Pairing-help pictures W1–W6 done** (2026-11-02): 12 PNGs DE + EN in `onpath.private`
-  `marketing/bilder/2026-11-02-hp/` + `Ergebnis.md` (4af0860) – a real pairing with the fake "Pixel 8" against a local
-  test mailbox, QR + link blurred anyway. Re-shoot: `web/app/test/pair-shots.mjs` (web-spike 07a1d77f) → for cloud-web.
-  Found on the way: the German difficulty badge was always red ("Mittel" like "Schwer") – fixed on web-spike, live with CI.
-- ← [cloud-plan] **main merged again into `web-spike`** (6f60dd01, 2026-11-02; 63 commits of main up to c2429f7a and later):
-  shared changes are cue code only (`JogRule`, `JunctionCues`, `CueRule`, `TurnDetector`) + `AppSettings` – compiled, not
-  shown in the planner. Shared-code JVM tests, parity manifest, plan parity 14/14, Wasm checks and all CI smokes green
-  on the laptop (sheet-smoke once red under load, 3× green alone). Mirrored: the plan points' new colours (no white ring).
-  Also live: keys `/` search, `F` whole route, `?` list (3561ad78). main has 9 newer commits – not merged.
-  W1–W6 pictures: taken, waiting for the owner on where they go (no `onpath.private` here).
 - ← [cloud-app] 2026-11-01: **Germany worktree removed** on donald (owner confirmed in the chat; no uncommitted work,
   all of `germany-prebuild` on origin/main, local branch deleted) – #10 closed. The run data beside it
   (`~/onpath-cells-work/germany/` state, logs, lists) is still there – remove only on the owner's word. Also new on
