@@ -83,6 +83,9 @@ the git log.
 - **☰ item "Aufzeichnung starten" goes** (owner 2026-11-02, onpath.private#15): the green Start in Plan does the same
   without a route (RECORD_ONLY) – remove the menu item + its test / screenshot; "Aufnahme" there per #14. **Asked:** start
   button "Navigation starten" → "Los geht's"? (#16). [cloud-app] after the answer – small text / icon round with #14.
+- **[cloud-app] Stop slider clearer + bigger** (owner 2026-11-02): the small line under "Stopp" is grey and the
+  unlocked Pause · Change route · End look switched off (white 12 % fill) – white text, bigger. Three sketches (A white
+  buttons · B action sheet · C tiles), asked: onpath.private#17; build after the answer, screenshots to the owner first.
 - **[cloud-app] A-003 Play build – right after v0.14.0** (owner 2026-11-02, onpath.private#3): flavours prod (Google Play:
   no self-update, no REQUEST_INSTALL_PACKAGES, no GitHub update line in Settings → Datenschutz) / dev (as today);
   signed AAB for prod in `release.yml` next to the APK; upload key made by the owner locally → GitHub secret, never in
