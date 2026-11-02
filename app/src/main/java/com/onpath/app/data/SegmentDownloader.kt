@@ -15,10 +15,13 @@ object SegmentDownloader {
     const val BASE_URL = "https://brouter.de/brouter/segments4/"
 
     /**
-     * Who asks brouter.de (a volunteer's server, review Arch 7): the app and version plus a contact, so its operator can
-     * reach us when OnPath's traffic is a problem.
+     * Who asks brouter.de (a volunteer's server, review Arch 7; owner 2026-11-02, onpath.private#5 A): the app and version
+     * plus our site, so its operator can reach us when OnPath's traffic is a problem. Every brouter.de request sends it.
      */
-    val USER_AGENT: String get() = "OnPath-Android/${com.onpath.app.BuildConfig.VERSION_NAME} (+info@onpath.earth)"
+    val USER_AGENT: String get() = userAgent(com.onpath.app.BuildConfig.VERSION_NAME)
+
+    /** `OnPath/<version> (+https://onpath.earth)` – pure, for the test. */
+    fun userAgent(version: String): String = "OnPath/$version (+https://onpath.earth)"
 
     /** Tile name for a position: 5° steps, west/south as W/S. Bozen (46.5, 11.35) → "E10_N45". */
     fun tileName(lat: Double, lon: Double): String = com.onpath.app.routing.Rd5Parts.tileName(lat, lon)
