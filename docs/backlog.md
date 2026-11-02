@@ -80,8 +80,8 @@ the git log.
 - **[cloud-app] Diagnostics list folds** (owner 2026-11-02, low prio, after v0.14.0): Settings → Diagnostics starts
   folded – one line "127 Einträge, davon 3 Fehler ▸" – so the developer tools under it are reached without scrolling.
 - **☰ item "Aufzeichnung starten" goes** (owner 2026-11-02, onpath.private#15): the green Start in Plan does the same
-  without a route (RECORD_ONLY) – remove the menu item + its test / screenshot; "Aufnahme" there per #14. **Asked:** start
-  button "Navigation starten" → "Los geht's"? (#16). [cloud-app] after the answer – small text / icon round with #14.
+  without a route (RECORD_ONLY) – remove the menu item + its test / screenshot; "Aufnahme" there per #14. **Answered 2026-11-02:** start
+  button "Navigation starten" → "Los geht's · ‹Ziel›" (#16 A). [cloud-app] after the answer – small text / icon round with #14.
 - **[cloud-app] No GPS while lying still = no line at all** (owner 2026-11-02, phone on the table; onpath.private issue
   "GPS auf dem Tisch", A): today the first 2 min after start / continue / resume count as moving (`MoveWatch.start` → amber
   "Kein GPS"), then the grey `quietGps` line stays. Wanted: still → nothing shown; "still" from the phone's own motion
@@ -92,8 +92,9 @@ the git log.
   **green = navigation** (start / continue navigating), **blue = edit** (change the route), **red = stop – end the
   process you are in**. The stop slider tiles follow it (Pause stays with the green navigation tile – check with the
   owner on the screenshots). Next place: **Plan during a tour** – today "Navigation fortsetzen" + "Route speichern",
-  ending / discarding only via "✕ Neuer Plan" at the bottom (owner: not self-explanatory); asked as its own issue
-  (what red means there: discard the edit vs end the tour). Save moves to ☰ during a tour, "✕ Neuer Plan" hidden then.
+  ending / discarding only via "✕ Neuer Plan" at the bottom (owner: not self-explanatory). **Answered (onpath.private#19
+  A):** big green "Weiter navigieren", blue = you are editing, red "Änderungen verwerfen" (ends the edit); "Tour
+  beenden" stays in the slider. Save moves to ☰ during a tour, "✕ Neuer Plan" hidden then.
 - **[cloud-app] Stop slider: three coloured tiles (owner 2026-11-02, onpath.private#17 = C, refined)**: after the slide,
   a compact bar (~1.5× the slider's height) with three tiles in fixed colours to remember – **green Pause / Resume,
   blue Change route, red End** – white text, icons that carry the track (Pause: the line ends in ⏸; Change route: the
