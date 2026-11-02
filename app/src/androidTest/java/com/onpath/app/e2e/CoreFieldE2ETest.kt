@@ -17,6 +17,7 @@ import com.onpath.app.ui.AppMode
 import com.onpath.app.ui.RoutesTab
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -85,7 +86,10 @@ class CoreFieldE2ETest : E2EBase() {
         waitUntil("destination deleted", 15_000) { waypointCount() == 1 }
     }
 
-    /** A tour from the plan, back to Plan (the plan is being followed) – its points must still be editable. */
+    /**
+     * A tour from the plan: Navigate shows its points (not editable), back to Plan (the plan is being followed) – its
+     * points must still be editable.
+     */
     @Test fun navigateThenBackToPlanStillDeletes() {
         startPlanWithTwoPoints()
         Thread.sleep(if (realRouting) 3_000 else 1_000)
@@ -93,8 +97,11 @@ class CoreFieldE2ETest : E2EBase() {
         waitUntil("Navigate (recording started)", 20_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; m == AppMode.NAVIGATE }
         Thread.sleep(2_000)
         assertPositionDotOnTop("navigate")
-        // Navigate shows only the route line, no numbered plan points (owner)
-        waitUntil("no plan markers in Navigate", 10_000) { drawnMarkers() == 0 }
+        // Navigate shows the plan's numbered points while the tour follows the plan (owner 2026-11-01: "sonst weiß man
+        // gar nicht, wo man einen Punkt gemacht hat") – not editable there (MapHost edits only when canEditMap)
+        waitUntil("plan markers in Navigate (the tour follows the plan)", 10_000) { drawnMarkers() > 0 }
+        var editable = true; scenario.onActivity { editable = vm(it).canEditMap }
+        assertFalse("plan points not editable in Navigate", editable)
         scenario.onActivity { vm(it).switchToPlan() }
         waitUntil("back in Plan", 10_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; m == AppMode.PLAN }
         Thread.sleep(2_000)

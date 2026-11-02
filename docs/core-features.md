@@ -57,9 +57,10 @@ log and diagnostics export say when it ran. Never stuck on: process memory only 
 itself after 6 h, Stop in Developer tools. Tests: `DemoPathTest` (positions, speed, bearing, end),
 `DemoLocationTest` (demo vs real switch, clock, stop, and the demo ride through `PointFilter` + `NavReplay`).
 
-Navigate draws only the route line, no numbered plan points (owner); Plan draws them,
-also during a tour (`MapScreen.planLayers`, `PlanLayersTest`; e2e `CoreFieldE2ETest.navigateThenBackToPlanStillDeletes`
-checks none in Navigate, back in Plan).
+Navigate draws the followed line and – while the tour follows the plan – the plan's numbered points, passed ones grey,
+not editable there (owner 2026-11-01: "sonst weiß man gar nicht, wo man einen Punkt gemacht hat"); Plan draws them and
+lets you edit them, also during a tour (`MapScreen.planLayers`, `PlanLayersTest`; e2e
+`CoreFieldE2ETest.navigateThenBackToPlanStillDeletes` checks them shown but not editable in Navigate, editable back in Plan).
 
 Route warnings and hints (plan sheet, `ui/RouteWarnings`): one amber ⚠ line, tap → "On this route" list → tap a row →
 the map shows that spot. Way warnings (pushing, steps, above your T, steep) – no pushing / steep for
