@@ -322,6 +322,9 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         // the rolled-up row lies over the summary's first line and fades with the bar sliding in (one body, no rebuild)
         if (ui.tour == null) CollapsedRow(ui, cb, barShown, with(sheet) { Modifier.stepEnd(PlanSize.COLLAPSED.step) })
     }
+    // the empty plan's hint belongs to the summary step: the sheet opens at it, so a first start sees how to begin
+    // (owner 2026-11-02: "beim ersten Öffnen … sieht man es gar nicht")
+    if (ui.pointCount == 0 && ui.tour == null) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { FirstPointHint() }
     // without a tour the summary step ends under the summary lines
     if (ui.tour == null) Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
     var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
@@ -644,15 +647,15 @@ private fun Title(ui: PlanUi, route: PlannedRoute?, onTimeDetails: () -> Unit) {
 @Composable
 private fun FirstPointHint() {
     Row(verticalAlignment = Alignment.Top) {
-        Icon(Icons.Filled.TouchApp, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 1.dp).size(20.dp))
-        Spacer(Modifier.width(8.dp))
+        Icon(Icons.Filled.TouchApp, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 1.dp).size(24.dp))
+        Spacer(Modifier.width(10.dp))
         Text(androidx.compose.ui.text.buildAnnotatedString {
             withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)) {
                 append(str(Res.string.plan_hint_first_point_question))
             }
             append(" ")
             append(str(Res.string.plan_hint_first_point))
-        }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -662,7 +665,7 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?, onDetails: () -> Unit = {}
     val variant = MaterialTheme.colorScheme.onSurfaceVariant
     if (route == null) {
         if (ui.notRouted != null && !ui.routing && ui.pointCount >= 2) return // the not-routed notice says it
-        if (ui.pointCount == 0) { FirstPointHint(); return }
+        if (ui.pointCount == 0) return // the hint sits in the summary step (FirstPointHint, PlanBody)
         // "Calculating the route…" only while a request runs (not after Cancel)
         Text(PlanStatus.noRouteLine(ui.pointCount, ui.routing, ui.notRouted),
             style = MaterialTheme.typography.bodyMedium, color = variant)
