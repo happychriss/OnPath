@@ -112,8 +112,10 @@ class PlanCallbacks(
     /** Tour controls at the top of the sheet (only while a tour records). */
     val onPause: (Boolean) -> Unit = {},
     val onEndTour: () -> Unit = {},
-    /** Save the (edited) plan – the sheet's second button during a tour; null = no plan to save. */
+    /** Save the (edited) plan – the blue tile during a tour; null = no plan to save. */
     val onSaveRoute: (() -> Unit)? = null,
+    /** Discard the changes made since "Route ändern" and go back to Navigate – the red tile during a tour. */
+    val onDiscardChanges: () -> Unit = {},
 )
 
 /** Recording status shown at the top of the plan sheet during a tour. */
@@ -191,6 +193,8 @@ data class PlanUi(
     val changedText: String? = null,
     /** "Planned in the browser with other routing – …" (a synced plan, another routing fingerprint): grey INFO, no tap. */
     val syncRoutingText: String? = null,
+    /** During a tour: the plan differs from when "Route ändern" opened – the red "Discard changes" tile is live. */
+    val tourEditChanged: Boolean = false,
 ) {
     /** What Start does (the shown track has its own panel): navigate the line, wait for it, or only record. */
     val start: PlanStart get() = PlanStart.of(trackPoints = null, hasRoute = route != null, pointCount = pointCount)
@@ -231,7 +235,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
     ) {
         // the pulled-up sheet has ONE fixed height (owner): deleting / adding / moving points (or the routing
         // bar) never makes its top edge jump; the scrolling area takes what is left
-        val bodyH = (LocalConfiguration.current.screenHeightDp * FULL_SHEET_FRACTION).dp - PRIMARY_BAR
+        val bodyH = (LocalConfiguration.current.screenHeightDp * FULL_SHEET_FRACTION).dp - if (tour) TOUR_BAR else PRIMARY_BAR
         val sheet = this
         Column(Modifier.fillMaxWidth().height(bodyH)) { PlanBody(sheet, ui, cb, scroll, state::barShown) }
     }
@@ -272,7 +276,8 @@ private fun HeaderLine(chip: @Composable () -> Unit, title: @Composable () -> Un
 private fun PlanActions(ui: PlanUi, cb: PlanCallbacks) {
     androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(),
         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly) {
-        PlanAction(Icons.Filled.Close, str(Res.string.plan_close_plan), RouteRules.canClear(ui.pointCount), cb.onClear)
+        // during a tour the tiles end the edit ("Änderungen verwerfen"), not "Neu planen" (owner 2026-11-02)
+        if (ui.tour == null) PlanAction(Icons.Filled.Close, str(Res.string.plan_close_plan), RouteRules.canClear(ui.pointCount), cb.onClear)
         PlanAction(Icons.Outlined.SwapVert, str(Res.string.plan_reverse), ui.pointCount >= 2, cb.onReverse)
         PlanAction(Icons.Outlined.Loop, str(Res.string.plan_round_trip), ui.pointCount >= 2 && !ui.roundTrip, cb.onRoundTrip)
     }
@@ -297,6 +302,10 @@ private fun PlanAction(icon: androidx.compose.ui.graphics.vector.ImageVector, la
 internal const val FULL_SHEET_FRACTION = 0.62f
 /** Height of the primary button row at the sheet's bottom (4 dp gap + 48 dp button). */
 private val PRIMARY_BAR = 52.dp
+/** Above and below the tile bar during a tour. */
+private val TOUR_BAR_GAP = 6.dp
+/** The bottom bar during a tour: the tiles + their gaps. */
+private val TOUR_BAR = TourActions.BAR_HEIGHT + TOUR_BAR_GAP * 2
 
 @Composable
 private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCallbacks, scroll: ScrollState,
@@ -309,13 +318,10 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     // the rolled-up row without a tour.
     val tourMini = ui.tour != null && ui.shownSize == PlanSize.MINI
     val belowStep = if (tourMini || ui.collapsed) Modifier.clearAndSetSemantics { } else Modifier
-    ui.tour?.let { t ->
-        // the first step: Pause · End recording (owner 2026-11-01 – the status and "Done" are in the header on top,
-        // PlanTopBar's "Change route … Done"; was a status row with a ■ and "Continue")
-        TourContinueSave(t.paused, cb.onPause, cb.onContinue, cb.onSaveRoute)
-        // no rolled-up step during a tour: its stop is the tour row's (PlanSize.duringTour)
+    if (ui.tour != null) {
+        // the first step is the tile bar alone (owner 2026-11-02: Continue · Save route · Discard changes, the same bar
+        // as Navigate's, PlanBar) – the map stays free above it; no rolled-up step during a tour (PlanSize.duringTour)
         Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COLLAPSED.step).stepEnd(PlanSize.MINI.step) })
-        HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
     Box(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb) }
@@ -397,10 +403,19 @@ private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks) {
 /** The large profile of the profile step. */
 private val PROFILE_HEIGHT = 120.dp
 
-/** Bottom of the sheet: the one primary button – not during a tour (Continue is in the tour controls above). */
+/**
+ * Bottom of the sheet: the one primary button; during a tour the tile bar (owner 2026-11-02, [TourEditBar]): green
+ * Continue navigation · blue Save route · red Discard changes – in every step.
+ */
 @Composable
 private fun ColumnScope.PlanBar(ui: PlanUi, cb: PlanCallbacks) {
-    if (ui.tour == null && !ui.tourRunning && ui.pointCount >= 2) {
+    val t = ui.tour
+    if (t != null) {
+        Spacer(Modifier.height(TOUR_BAR_GAP))
+        TourEditBar(t.paused, cb.onPause, cb.onContinue, cb.onSaveRoute, ui.tourEditChanged, cb.onDiscardChanges,
+            Modifier.padding(horizontal = 4.dp))
+        Spacer(Modifier.height(TOUR_BAR_GAP))
+    } else if (!ui.tourRunning && ui.pointCount >= 2) {
         Spacer(Modifier.height(4.dp))
         // rolled up, the bar lies below the screen's edge: the row's own Start is the one for TalkBack / tests
         Box(if (ui.collapsed) Modifier.clearAndSetSemantics { } else Modifier) { PrimaryAction(ui, cb) }

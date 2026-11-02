@@ -34,9 +34,9 @@ class PlanActionsTest {
     @Test fun theSheetHasTheActionRowAndNoMenu() {
         for (gone in listOf("SheetOverflow", "SheetMenuItems", "MoreHoriz", "SaveButton", "plan_clear_route"))
             assertFalse("$gone gone from the sheet", panel.contains(gone))
-        // the one save in the sheet is the tour's "Route speichern" beside "Navigation fortsetzen" (owner 2026-11-01)
+        // the one save in the sheet is the tour's blue tile "Route speichern" (owner 2026-11-02)
         assertTrue("save only during a tour", Regex("onSave\\w*").findAll(panel).all { it.value == "onSaveRoute" })
-        assertTrue(panel.contains("TourContinueSave(t.paused, cb.onPause, cb.onContinue, cb.onSaveRoute)"))
+        assertTrue(panel.contains("TourEditBar(t.paused, cb.onPause, cb.onContinue, cb.onSaveRoute, ui.tourEditChanged, cb.onDiscardChanges"))
         val row = panel.substringAfter("private fun PlanActions(").substringBefore("\n}\n")
         for (item in listOf("Res.string.plan_close_plan", "Res.string.plan_reverse", "Res.string.plan_round_trip"))
             assertTrue(item, row.contains(item))

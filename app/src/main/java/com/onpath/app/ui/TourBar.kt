@@ -306,46 +306,6 @@ internal object TourRowFit {
  * Pause / Resume (tonal) and End tour (outlined red, asks first) side by side, equal width; at a large font (a label
  * would be cut, e.g. „Tour beenden“) one under the other, full width.
  */
-/**
- * The plan sheet's first step during a tour (owner 2026-11-01, "Route ändern"): Continue navigation (filled, also resumes
- * a paused recording) · Save route (the edited plan; without a plan only Continue). Pause and End recording are behind
- * the Navigate slider. Same layout rule as [TourPauseEnd]: side by side when both fit, else stacked.
- */
-@Composable
-fun TourContinueSave(paused: Boolean, onPause: (Boolean) -> Unit, onContinue: () -> Unit, onSave: (() -> Unit)?,
-                     modifier: Modifier = Modifier) {
-    if (onSave == null) {
-        Button(onClick = { if (paused) onPause(false); onContinue() }, modifier = modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Icon(Icons.Filled.Navigation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
-            Text(str(Res.string.nav_continue_navigation), maxLines = 1)
-        }
-        return
-    }
-    Layout(content = {
-        Button(onClick = { if (paused) onPause(false); onContinue() }, modifier = Modifier.heightIn(min = 48.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp)) {
-            Icon(Icons.Filled.Navigation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
-            Text(str(Res.string.nav_continue_navigation), maxLines = 1)
-        }
-        // the edited route – what one does here (owner 2026-11-01: "Aufnahme beenden heißt in Wahrheit Plan speichern")
-        OutlinedButton(onClick = onSave, modifier = Modifier.heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 8.dp)) {
-            Icon(Icons.Filled.Save, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
-            Text(str(Res.string.plan_save_route), maxLines = 1)
-        }
-    }, modifier = modifier.fillMaxWidth()) { ms, c ->
-        val gap = 8.dp.roundToPx()
-        val max = c.maxWidth
-        val side = TourRowFit.sideBySide(ms[0].maxIntrinsicWidth(Constraints.Infinity), ms[1].maxIntrinsicWidth(Constraints.Infinity), max, gap)
-        val w = if (side) (max - gap) / 2 else max
-        val p = ms[0].measure(Constraints.fixedWidth(w))
-        val e = ms[1].measure(Constraints.fixedWidth(w))
-        if (side) {
-            val h = maxOf(p.height, e.height)
-            layout(max, h) { p.placeRelative(0, (h - p.height) / 2); e.placeRelative(max - e.width, (h - e.height) / 2) }
-        } else layout(max, p.height + gap + e.height) { p.placeRelative(0, 0); e.placeRelative(0, p.height + gap) }
-    }
-}
-
 @Composable
 fun TourPauseEnd(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Unit, modifier: Modifier = Modifier) {
     Layout(content = {

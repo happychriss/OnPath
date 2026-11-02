@@ -279,7 +279,8 @@ private fun PlanMode(
                     else ({ vm.openSettings(SettingsPage.PHONE) }),
                 // owner 2026-10-31: "Save route" on top whenever there is a plan (the sheet has no Save any more); a dot
                 // on ☰ while it has unsaved changes
-                onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
+                // during a tour the blue tile saves (owner 2026-11-02): not in ☰ then
+                onSaveRoute = if (rec == null && RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
                 unsaved = RouteRules.saveAtHand(vm.waypoints.size, vm.planUnsaved),
                 onOpened = vm::refreshTours,
                 // no "Check for updates" in the ☰ menu – Settings has the Updates section (owner)
@@ -445,7 +446,8 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused, vm.guidanceEndedByEmptyPlan) },
             points = rows,
             routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText(), warnCount = vm.warningCount(),
-            changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote),
+            changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote,
+            tourEditChanged = rec != null && vm.tourEditChanged),
         PlanCallbacks(
             onSheetDrag = vm::mapGesture, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -460,6 +462,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
             onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
+            onDiscardChanges = vm::discardTourEdits,
             onMovePoint = vm::movePointInList, onDeletePoint = vm::deletePointFromList, onShowPoint = vm::showPointFromList,
         ),
     )

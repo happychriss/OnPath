@@ -2620,6 +2620,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         else followMe = headingUp && followMe && tracker.location.value != null
         // Plan during a tour: the sheet is one row (tour status + Continue), the map free for holds (owner 2026-10-31)
         if (m == AppMode.PLAN && was == AppMode.NAVIGATE) planSize = PlanSize.backInPlan(planSize, recState.value != null)
+        // "Route ändern" opens: the plan as it is now is what "Änderungen verwerfen" goes back to (owner 2026-11-02)
+        tourEditStart = TourEdit.startOf(was, m, recState.value != null, waypoints.toList(), tourEditStart)
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_NAVIGATING) {
             putExtra(RecordingService.EXTRA_ON, m == AppMode.NAVIGATE)
         }
@@ -2698,6 +2700,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
         } else checkNow()
         enter(AppMode.NAVIGATE)
+    }
+
+    /** The plan when "Route ändern" opened during this tour ([TourEdit]); null outside that. */
+    private var tourEditStart by mutableStateOf<List<GeoPoint>?>(null)
+
+    /** The plan was changed since "Route ändern" opened: the red "Änderungen verwerfen" tile is live. */
+    val tourEditChanged: Boolean get() = TourEdit.changed(tourEditStart, waypoints.toList())
+
+    /**
+     * "Änderungen verwerfen" (owner 2026-11-02): the plan goes back to how it was when "Route ändern" opened – one
+     * undoable change, so the tour follows that plan again (FollowHistory: the very route it followed) – and Navigate
+     * comes back.
+     */
+    fun discardTourEdits() {
+        val start = tourEditStart
+        if (start != null && TourEdit.changed(start, waypoints.toList())) {
+            Problems.trace("plan", "Discard changes during the tour: plan ${waypoints.size} → ${start.size} points")
+            set(start)
+        }
+        continueNavigation()
     }
 
     /** A tour is guided along the plan (not a followed GPX track): Navigate shows the plan's points (owner 2026-11-01). */

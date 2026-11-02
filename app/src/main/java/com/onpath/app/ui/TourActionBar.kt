@@ -13,7 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
@@ -43,31 +46,58 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun TourActionBar(paused: Boolean, onPause: (Boolean) -> Unit, onChangeRoute: () -> Unit, onEnd: () -> Unit,
                   onClose: () -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxWidth()) {
-        Surface(shape = RoundedCornerShape(TourActions.BAR_CORNER), color = OnPathColors.Green, shadowElevation = 3.dp,
-            modifier = Modifier.fillMaxWidth()) {
-            Row(Modifier.padding(TourActions.BAR_PAD), horizontalArrangement = Arrangement.spacedBy(TourActions.BAR_PAD)) {
-                ActionTile(if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause, str(if (paused) Res.string.common_resume else Res.string.nav_action_pause),
-                    OnPathColors.ActionGo, Modifier.weight(1f)) { onClose(); onPause(!paused) }
-                ActionTile(Icons.Filled.Edit, str(Res.string.plan_slide_change_route), OnPathColors.ActionEdit,
-                    Modifier.weight(1f)) { onClose(); onChangeRoute() }
-                ActionTile(Icons.Filled.Stop, str(Res.string.nav_end_short), OnPathColors.ActionStop, Modifier.weight(1f)) {
-                    onClose(); onEnd()
-                }
-            }
+    ActionTiles(listOf(
+        ActionTileSpec(if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause, str(if (paused) Res.string.common_resume else Res.string.nav_action_pause),
+            OnPathColors.ActionGo) { onClose(); onPause(!paused) },
+        ActionTileSpec(Icons.Filled.Edit, str(Res.string.plan_slide_change_route), OnPathColors.ActionEdit) { onClose(); onChangeRoute() },
+        ActionTileSpec(Icons.Filled.Stop, str(Res.string.nav_end_short), OnPathColors.ActionStop) { onClose(); onEnd() },
+    ), modifier)
+}
+
+/**
+ * The plan during a tour ("Route ändern", owner 2026-11-02 – the same bar as Navigate's, refines onpath.private#19):
+ * **green** Continue navigation (also resumes a paused recording), **blue** Save route (Save's dialog, you stay in the
+ * plan; greyed without a plan to save), **red** Discard changes (back to the plan as it was when "Route ändern" opened,
+ * then Navigate; greyed while nothing changed).
+ */
+@Composable
+fun TourEditBar(paused: Boolean, onPause: (Boolean) -> Unit, onContinue: () -> Unit, onSave: (() -> Unit)?,
+                changed: Boolean, onDiscard: () -> Unit, modifier: Modifier = Modifier) {
+    ActionTiles(listOf(
+        ActionTileSpec(Icons.Filled.Navigation, str(Res.string.nav_continue_navigation), OnPathColors.ActionGo) {
+            if (paused) onPause(false); onContinue()
+        },
+        ActionTileSpec(Icons.Filled.Save, str(Res.string.plan_save_route), OnPathColors.ActionEdit, enabled = onSave != null) { onSave?.invoke() },
+        ActionTileSpec(Icons.AutoMirrored.Filled.Undo, str(Res.string.nav_discard_changes), OnPathColors.ActionStop, enabled = changed, onClick = onDiscard),
+    ), modifier)
+}
+
+/** One tile of [ActionTiles]: icon, word, its fixed colour (green / blue / red, [OnPathColors]), greyed when not [enabled]. */
+class ActionTileSpec(val icon: ImageVector, val label: String, val color: Color, val enabled: Boolean = true, val onClick: () -> Unit)
+
+/** The green bar with its tiles – ONE look for Navigate's slider bar and the plan during a tour (owner 2026-11-02). */
+@Composable
+fun ActionTiles(tiles: List<ActionTileSpec>, modifier: Modifier = Modifier) {
+    Surface(shape = RoundedCornerShape(TourActions.BAR_CORNER), color = OnPathColors.Green, shadowElevation = 3.dp,
+        modifier = modifier.fillMaxWidth()) {
+        Row(Modifier.padding(TourActions.BAR_PAD), horizontalArrangement = Arrangement.spacedBy(TourActions.BAR_PAD)) {
+            tiles.forEach { ActionTile(it, Modifier.weight(1f)) }
         }
     }
 }
 
 @Composable
-private fun ActionTile(icon: ImageVector, label: String, color: Color, modifier: Modifier, onClick: () -> Unit) {
-    Surface(onClick = onClick, shape = RoundedCornerShape(TourActions.TILE_CORNER), color = color,
-        contentColor = OnPathColors.CardWhite, modifier = modifier.heightIn(min = TourActions.TILE_HEIGHT)) {
+private fun ActionTile(t: ActionTileSpec, modifier: Modifier) {
+    // greyed: a faint white tile on the green bar, the word dimmed – nothing to do here now
+    val bg = if (t.enabled) t.color else OnPathColors.CardWhite.copy(alpha = TourActions.OFF_TILE_ALPHA)
+    val ink = if (t.enabled) OnPathColors.CardWhite else OnPathColors.CardWhite.copy(alpha = TourActions.OFF_INK_ALPHA)
+    Surface(onClick = t.onClick, enabled = t.enabled, shape = RoundedCornerShape(TourActions.TILE_CORNER), color = bg,
+        contentColor = ink, modifier = modifier.heightIn(min = TourActions.TILE_HEIGHT)) {
         Column(Modifier.padding(horizontal = 4.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center) {
-            Icon(icon, null, tint = OnPathColors.CardWhite, modifier = Modifier.size(28.dp))
+            Icon(t.icon, null, tint = ink, modifier = Modifier.size(28.dp))
             Spacer(Modifier.height(2.dp))
-            Text(label, color = OnPathColors.CardWhite, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
+            Text(t.label, color = ink, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center, maxLines = 2)
         }
     }
@@ -82,4 +112,9 @@ object TourActions {
     val BAR_PAD = 4.dp
     val BAR_CORNER = 24.dp
     val TILE_CORNER = 18.dp
+    /** The whole bar's height (tiles + padding): the plan sheet's bottom bar during a tour. */
+    val BAR_HEIGHT = TILE_HEIGHT + BAR_PAD * 2
+    /** A greyed tile: white at this alpha on the green bar, its word and icon at [OFF_INK_ALPHA]. */
+    const val OFF_TILE_ALPHA = 0.14f
+    const val OFF_INK_ALPHA = 0.55f
 }

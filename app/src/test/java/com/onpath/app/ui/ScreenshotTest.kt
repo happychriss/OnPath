@@ -398,21 +398,21 @@ class ScreenshotTest {
     }
 
     /**
-     * Back in Plan while the tour records, pulled up one step: tour status + compact Continue, Pause / End tour, then
-     * the route (activity, time / km, profile).
+     * "Route ändern" during a tour, pulled up one step, the plan changed (owner 2026-11-02): the route above, at the
+     * bottom the tile bar – green Continue navigation · blue Save route · red Discard changes (live).
      */
     @Test fun planTourRunning() = paparazzi.snapshot {
         Frame {
-            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
-                PlanCallbacks())
+            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false),
+                tourEditChanged = true), PlanCallbacks(onSaveRoute = {}))
         }
     }
 
-    /** Plan during a tour as it opens (owner 2026-10-31): ONE row – "● Tour running · km · time" + [Continue]; map free. */
+    /** "Route ändern" as it opens, nothing changed yet: only the tile bar, red Discard changes greyed; the map free. */
     @Test fun planTourRunningCollapsed() = paparazzi.snapshot {
         Frame {
             PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
-                PlanCallbacks())
+                PlanCallbacks(onSaveRoute = {}))
         }
     }
 
