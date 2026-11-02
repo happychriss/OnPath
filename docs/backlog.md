@@ -83,6 +83,12 @@ the git log.
 - **☰ item "Aufzeichnung starten" goes** (owner 2026-11-02, onpath.private#15): the green Start in Plan does the same
   without a route (RECORD_ONLY) – remove the menu item + its test / screenshot; "Aufnahme" there per #14. **Asked:** start
   button "Navigation starten" → "Los geht's"? (#16). [cloud-app] after the answer – small text / icon round with #14.
+- **[cloud-app] No GPS while lying still = no line at all** (owner 2026-11-02, phone on the table; onpath.private issue
+  "GPS auf dem Tisch", A): today the first 2 min after start / continue / resume count as moving (`MoveWatch.start` → amber
+  "Kein GPS"), then the grey `quietGps` line stays. Wanted: still → nothing shown; "still" from the phone's own motion
+  sensor (accelerometer / significant-motion, no Google Play Services) so it works without GPS fixes; amber warning only
+  when the phone moves and GPS is missing. Reproducing JVM test first (core rule), battery: sensor only while recording
+  without a fix. Recording itself unchanged.
 - **[cloud-app] Stop slider clearer + bigger** (owner 2026-11-02): the small line under "Stopp" is grey and the
   unlocked Pause · Change route · End look switched off (white 12 % fill) – white text, bigger. Three sketches (A white
   buttons · B action sheet · C tiles), asked: onpath.private#17; build after the answer, screenshots to the owner first.
