@@ -26,18 +26,14 @@ the git log.
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 
-- → [cloud-plan] **Pictures for the pairing help (owner 2026-11-01: "ask cloud-plan for new screenshots", order by
-  cloud-web):** planner on `web-spike`, 1440 × 900, DE + EN, plan Vellau Korblift → Leiteralm, the fake phone of
-  `sync-smoke.mjs` named "Pixel 8", no real pairing code visible (blur or a test mailbox): (W1) header right unpaired:
-  "Speichern" + "Handy verbinden"; (W2) pairing dialog with QR + check digits (code blurred); (W3) header paired: "Aufs
-  Handy sichern" dark + phone pill "Pixel 8 🟢 abgeglichen vor 2 Min."; (W4) after the click: "✓ Auf dem Handy"; (W5) My
-  routes paired: rows with 🖥 📱, one bold (waiting), one "Neu" tag; (W6) phone window paired: name + dot, "Jetzt
-  abgleichen", red "Trennen" at the bottom. Best as a script beside `ui-shots` so a later UI change re-shoots them.
-  PNGs `web-w1…w6-de|en.png` into `onpath.private/marketing/bilder/<date>-hp/` + `Ergebnis.md`; then a line under
-  "For the captain" – captain 2026-11-01.
-
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-plan] **main merged again into `web-spike`** (6f60dd01, 2026-11-02; main up to 8 Nov-1 evening, 63 commits):
+  shared changes are cue code only (`JogRule`, `JunctionCues`, `CueRule`, `TurnDetector`) + `AppSettings` – compiled, not
+  shown in the planner. Shared-code JVM tests, parity manifest, plan parity 14/14, Wasm checks and all CI smokes green
+  on the laptop (sheet-smoke once red under load, 3× green alone). Mirrored: the plan points' new colours (no white ring).
+  Also live: keys `/` search, `F` whole route, `?` list (3561ad78). main has 9 newer commits – not merged.
+  W1–W6 pictures: taken, waiting for the owner on where they go (no `onpath.private` here).
 - ← [cloud-app] 2026-11-01: **Germany worktree removed** on donald (owner confirmed in the chat; no uncommitted work,
   all of `germany-prebuild` on origin/main, local branch deleted) – #10 closed. The run data beside it
   (`~/onpath-cells-work/germany/` state, logs, lists) is still there – remove only on the owner's word. Also new on
@@ -52,6 +48,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [cloud-plan] Pairing-help pictures W1–W6 (captain 2026-11-01): script beside `ui-shots`, DE + EN – **blocked on the drop place**: no `onpath.private` checkout on the laptop and the session has no access; asked the owner – since 2026-11-02
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [cloud-plan] Shared rules from main 2e50efbc wired on web-spike 4e9913be – left: the mirror line "Left from main 2e50efbc" – since 2026-11-01
 - [cloud-app] The rest of the backlog (owner 2026-11-01: no release today, everything in) – since 2026-11-01
