@@ -42,7 +42,7 @@ nothing the owner decides.
 3. **Sessions:** `list_sessions` (titles, `status_bucket`, `needs_action`, last update). A session that waits
    (`needs_action`) for a question that has no issue yet → create it for that session
    (`tools/ask.sh frage --von <unit> --blockiert …`, from the waiting text). Which units are on: a bridge session of
-   donald / hp updated within the last ~2 h = on.
+   donald / laptop updated within the last ~2 h = on.
 4. **CI:** `unit.yml`, `e2e.yml`, `release.yml`, "Web spike" on the newest commits (REST `actions/runs`). Red → one
    backlog line at the top of "Next" for the unit that can fix it (`[emu]` for E2E).
 5. **Order the work:** keep "Next" in `docs/backlog.md` ordered by the owner's priorities, every item with its tags
@@ -51,7 +51,7 @@ nothing the owner decides.
    newest "Web spike" run. Differs → one line at the top of "Next" for the side that must follow (the app leads), and
    tell the owner in the next push if he changed the planner and the app does not have it yet.
 5b. **Split big items over units, not over sub-agents on one computer:** the device / emulator part (`[pixel]`,
-   `[emu]`) to donald, the big-build / map part (`[ram]`, `[karten]`) to hp, docs / website to a cloud worker – each
+   `[emu]`) to donald, the big-build / map part (`[ram]`, `[karten]`) to laptop, docs / website to a cloud worker – each
    part its own line in "Next", with `nach: <other line>` when it depends on another. A unit's own sub-agents are its
    business (`CLAUDE.md` "Sub-agents"); the captain cannot see or steer them.
 5c. **Builds in the overview:** keep three lines current at the top of `docs/project-status.md` ("Where things are"):

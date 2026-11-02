@@ -28,7 +28,7 @@ STATE=${XDG_STATE_HOME:-$HOME/.local/state}/onpath-unit
 UNITS=${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user
 mkdir -p "$STATE"
 die() { echo "unit: $*" >&2; exit 2; }
-need_name() { [ -n "$NAME" ] || die "$cmd needs a name, e.g. donald or hp"; case "$NAME" in *[!a-z0-9-]*) die "name: a-z 0-9 - only" ;; esac; }
+need_name() { [ -n "$NAME" ] || die "$cmd needs a name, e.g. donald or laptop"; case "$NAME" in *[!a-z0-9-]*) die "name: a-z 0-9 - only" ;; esac; }
 
 run() {
   need_name; cd "$DIR" || exit 2

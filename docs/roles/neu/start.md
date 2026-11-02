@@ -15,7 +15,7 @@ item says what it needs; the unit that can do it and is on takes it (owner 2026-
 ## How a unit runs (owner 2026-11-02: "Leicht mit Captain" – one working session per computer, no Leitstand)
 - The computer runs a **host**: `claude remote-control` in the checkout (`tools/dev/unit.sh`, autostart), spawn mode
   **worktree**; a restart reconnects every session of the folder (tested).
-- In it lives **one standing session, the unit itself** (`donald`, `hp`). It **does the work** – like cloud-app did –
+- In it lives **one standing session, the unit itself** (`donald`, `laptop` – owner 2026-11-02: sessions are named after the computer, the work is routed by the backlog tags). It **does the work** – like cloud-app did –
   and splits it over sub-agents / forks in their own worktrees when that saves time (`CLAUDE.md` "Sub-agents",
   "Responsive chat"). It may start an extra session in its own environment for a big separate item (works, tested);
   that is the exception, not the rule.
@@ -25,9 +25,17 @@ item says what it needs; the unit that can do it and is on takes it (owner 2026-
 - When the chat gets long (days): write the handoff, archive the session, start a new one in the host with the same
   start sentence – the repo is the memory.
 
+## Names (owner 2026-11-02)
+The session on a computer is named after the computer: **donald**, **laptop** – in the Claude app, in the start
+sentence and as the backlog tag (`[donald]`, `[laptop]`). The name says *where* the work runs, not *what* it is: until
+`web-spike` is merged the laptop still does the planner (as cloud-plan, tag `[cloud-plan]`), afterwards both do both.
+The owner does not route work: he tells the captain (or whichever session he is talking to), the item goes into the
+backlog with its tags, and the computer that can do it takes it. A session told something that belongs to the other
+computer puts it into the backlog for it instead of doing it.
+
 ## Start sentences (the owner types each once, never again)
 - donald: „Du bist die Einheit **donald** (OnPath). Lies `docs/roles/neu/start.md`.“
-- laptop: „Du bist die Einheit **hp** (OnPath). Lies `docs/roles/neu/start.md`.“
+- laptop: „Du bist die Einheit **laptop** (OnPath). Lies `docs/roles/neu/start.md`.“
 - Cloud worker (the captain starts it for an item that needs no computer): „Du bist ein Cloud-Arbeiter (OnPath). Lies
   `docs/roles/neu/start.md`. Vorhaben: …“ – one item, then end.
 
@@ -35,7 +43,7 @@ item says what it needs; the unit that can do it and is on takes it (owner 2026-
 | Unit | Can | Takes items tagged |
 | --- | --- | --- |
 | **donald** | build, unit + screenshot tests, Pixel on USB, emulator (one at a time, no Gradle beside it unless ≥ 10 GB free) | `[pixel]`, `[emu]`, untagged |
-| **hp** (laptop, 32 GB) | build, tests, map builds with local data, big builds (Wasm engine, Germany) | `[karten]`, `[ram]`, untagged; `[emu]` only when it has an emulator |
+| **laptop** (32 GB) | build, tests, map builds with local data, big builds (Wasm engine, Germany) | `[karten]`, `[ram]`, untagged; `[emu]` only when it has an emulator |
 | **cloud worker** | code, docs, website, marketing – no Android SDK, no emulator, no Pixel | untagged items that need no local test; pushes, GitHub tests (`unit.yml`, `release.yml`) |
 | GitHub Actions | full tests, E2E (slow – only as a net), releases, planner deploy | – (runs on every push) |
 | Cloud Run job | map cells | – (`tools/dev/publish_cells.sh`, `maps-deploy.yml`) |

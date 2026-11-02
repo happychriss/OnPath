@@ -91,7 +91,7 @@ durchrutscht: ntfy-Hook (`Notification`, `idle_prompt`) als nächster Schritt.
 4. **Captain:** 👤 alte Captain-Sitzung archivieren und ihren toten Weckruf „Captain: E2E + review check“ löschen. Neue
    Cloud-Sitzung mit `OnPath` + `onpath.private`, Satz „Du bist mein OnPath-Captain.“ **Keine Freigabe-Karte
    bestätigen.** Er richtet seinen Weckruf ein, testet den Push, lässt `release_check.sh` laufen.
-5. Laptop später wie donald (SDK, Node ≥ 22.23, `gh auth setup-git`, Checkout `main`, A.0, `unit.sh run hp`); bis zum
+5. Laptop später wie donald (SDK, Node ≥ 22.23, `gh auth setup-git`, Checkout `main`, A.0, `unit.sh run laptop`); bis zum
    Branch-Merge bleibt cloud-plan.
 
 ## D. Ein Branch (eine ruhige Sitzung auf donald)
