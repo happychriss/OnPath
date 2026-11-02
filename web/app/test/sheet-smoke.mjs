@@ -51,12 +51,24 @@ const freeRoom = (page) => page.evaluate(() => {
     .filter((p) => !(p.x >= map.left + 4 && p.x <= map.right - 4 && p.y >= map.top + 4 && p.y <= map.bottom - 4) || inside(p, sheet) || inside(p, bar));
   return { n: pts.length, bad: bad.length, first: bad[0] && { x: Math.round(bad[0].x), y: Math.round(bad[0].y) }, zoom: +m.getZoom().toFixed(1) };
 });
+/** Waits until the sheet's height has not changed for 300 ms (its step animation is over). */
+async function sheetStill(page) {
+  let last = -1;
+  for (let i = 0; i < 40; i++) {
+    const h = await page.evaluate(() => Math.round(document.getElementById('sheet').getBoundingClientRect().height));
+    if (h === last) return;
+    last = h; await page.waitForTimeout(300);
+  }
+}
 /** "Show whole route" after the map was moved away: pan + zoom far off, click (or Enter), every point in the free room. */
 async function checkFit(page, P, how = 'click') {
+  await sheetStill(page); // a step change still growing the sheet would give the fit an old height (seen under load)
   await page.evaluate(() => window.__map.jumpTo({ center: [11.45, 46.42], zoom: 16 }));
   await settle(page);
   check((await freeRoom(page)).bad > 0, `${P} moved away: the route is out of view`);
   if (how === 'enter') { await page.focus('#fitRoute'); await page.keyboard.press('Enter'); } else await page.click('#fitRoute');
+  // under load the camera may not have started yet – wait for the move to begin (≤ 1 s), then for it to end
+  await page.waitForFunction(() => window.__map.isMoving(), null, { timeout: 1_000 }).catch(() => {});
   await settle(page);
   const r = await freeRoom(page);
   check(r.n >= 2 && r.bad === 0, `${P} "Show whole route" (${how}): all ${r.n} route points in the free map room, clear of sheet and top bar (zoom ${r.zoom}${r.bad ? `, ${r.bad} outside, e.g. ${JSON.stringify(r.first)}` : ''})`);
@@ -127,7 +139,9 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   await page.click('#activityChip');
   check(await step(page) === 'profile' && await page.isVisible('#activityMenu'), `${P} the chip opens its list, the step stays`);
   await page.keyboard.press('Escape');
-  await page.click('body', { position: { x: 5, y: vp.height / 2 } }).catch(() => {});
+  // only when Escape left the list open: a click at the map's edge with the list already closed adds a route point
+  // (seen under load: a third point, a taller sheet, the later fit checks fail)
+  if (await page.isVisible('#activityMenu')) await page.click('body', { position: { x: 5, y: vp.height / 2 } }).catch(() => {});
 
   // keyboard: Arrow towards the open edge = more (desktop: down, phone: up), Enter on the chevron
   await page.focus('#handle');
@@ -145,7 +159,8 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   // remembered after a reload; the camera fit keeps the route clear of the small sheet
   await page.reload();
   await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
-  await page.waitForTimeout(500);
+  // the first-route fit comes WholeRoute.SETTLE_MS (500 ms) after the route, then the camera eases – wait for both
+  await page.waitForTimeout(900); await page.waitForFunction(() => window.__map.isMoving(), null, { timeout: 1_000 }).catch(() => {}); await settle(page);
   check(await step(page) === 'small' && await page.evaluate(() => localStorage.getItem('onpath.sheetStep')) === 'small', `${P} small step remembered after a reload`);
   const clear = await page.evaluate(() => { const r = document.getElementById('sheet').getBoundingClientRect();
     return [...document.querySelectorAll('.pin')].every((p) => { const b = p.getBoundingClientRect(); return b.right < r.left || b.left > r.right || b.bottom < r.top || b.top > r.bottom; }); });
@@ -232,7 +247,9 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   await page.waitForFunction(() => document.querySelectorAll('.pin').length === 3, null, { timeout: 20_000 }).catch(() => {});
   check(await step(page) === 'small', `${P} the step is kept`);
   // a place added from the card: the new route is fitted once it is there (the app's WholeRoute.fitAfterPlace, add-on 2)
-  await page.waitForFunction(() => !document.getElementById('sheet').classList.contains('busy') && window.__state.plan, null, { timeout: 60_000 }).catch(() => {});
+  // wait for the NEW plan (three points) – the old two-point plan is still in state.plan while the new one is routed;
+  // then the fit (WholeRoute.SETTLE_MS = 500 ms after the route) and the camera's ease
+  await page.waitForFunction(() => !window.__state.planning && window.__state.plan?.points.length === 3, null, { timeout: 60_000 }).catch(() => {});
   await page.waitForTimeout(900); await settle(page);
   const fitted = await freeRoom(page);
   check(fitted.bad === 0, `${P} after "As destination" the whole new route shows (${JSON.stringify(fitted)})`);
