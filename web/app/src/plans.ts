@@ -164,6 +164,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
     const ul = $('planList');
     if (ul.querySelector('.confirm')) return; // a delete question is open: keep the list as it is
     ul.innerHTML = plans.length ? '' : `<li class="muted">${esc(t('web_plans_none'))}</li>`;
+    if (!plans.length) await oldPhoneLine(ul);
     for (const p of plans) {
       const li = document.createElement('li');
       li.dataset.id = p.id;
@@ -226,21 +227,46 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       ul.append(li);
     }
   };
+  /**
+   * The open folder is empty but closed folders still hold routes (after Unpair / pairing another phone, owner
+   * 2026-11-02): a calm line instead of only "No saved routes yet" – they are still here, the Phone window lists them.
+   */
+  const oldPhoneLine = async (ul: HTMLElement) => {
+    const names: string[] = [];
+    for (const f of sync.status.closed) if (f.key !== sync.open && (await sync.count(f.key)) > 0) names.push(f.name);
+    if (!names.length) return;
+    ul.innerHTML = `<li class="muted oldphone"><span>${esc(t('web_plans_old_phone', names.join(', ')))}</span>
+      <button class="textbtn openphone">${esc(t('web_plans_old_phone_open'))}</button></li>`;
+    ul.querySelector<HTMLButtonElement>('.openphone')!.onclick = () => { d.close(); phoneDialog(sync, location.href); };
+  };
   const off = sync.onChange(() => { if (d.open && !d.querySelector('.rowmenu:not([hidden])')) render(); });
   d.addEventListener('close', () => off());
   $('closePlans').onclick = () => d.close();
   await render();
 }
 
-/** The quiet lines "Remove routes of ‹phone› from this browser" for the closed folders (A-017 rule 16), no question. */
+/**
+ * The quiet lines "Remove routes of ‹phone› from this browser" for the closed folders (A-017 rule 16). No question –
+ * unless the folder holds routes never sent to that phone (owner 2026-11-02): they would be lost, so a FRAGE in place
+ * says how many, with Cancel and a red Remove.
+ */
 function removeLines(box: HTMLElement, sync: PlanSync) {
+  if (box.querySelector('.confirm')) return; // a remove question is open: keep its line as it is
   box.querySelectorAll('.removefolder').forEach((b) => b.remove());
   for (const f of sync.status.closed) {
     const b = document.createElement('button');
     b.className = 'textbtn quiet removefolder';
     b.dataset.folder = f.key;
     b.textContent = t('web_remove_folder', f.name);
-    b.onclick = () => sync.removeFolder(f.key);
+    b.onclick = async () => {
+      let n = 0;
+      try { n = await sync.unsent(f.key); }
+      catch (e) { problem('sync', 'unsent routes of a closed folder not counted – asking anyway', e); n = -1; }
+      if (n === 0) { await sync.removeFolder(f.key); return; }
+      const text = n === 1 ? t('web_remove_folder_q_one', f.name) : n > 1 ? t('web_remove_folder_q', f.name, n) : t('web_remove_folder_q_unknown', f.name);
+      askInPlace(b, text, t('common_remove'), () => box.querySelector<HTMLElement>(`.removefolder[data-folder="${CSS.escape(f.key)}"]`),
+        () => { sync.removeFolder(f.key); });
+    };
     box.append(b);
   }
 }

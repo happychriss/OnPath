@@ -466,7 +466,22 @@ const quiet = await L.textContent('#phoneStatus');
 check(quiet.startsWith('Unpaired. The routes of Pixel 8'), 'the quiet line says the routes stay ' + quiet);
 const removes = await L.evaluate(() => [...document.querySelectorAll('dialog.phone .removefolder')].map((b) => b.textContent));
 check(removes.length === 2 && removes.every((r) => r.startsWith('Remove routes of Pixel 8 · paired')), 'the Phone window offers removing each closed folder ' + JSON.stringify(removes));
+// the first phone's folder holds a route never sent to it ("Laptop unsaved"): Remove asks first (owner 2026-11-02),
+// Cancel keeps the folder
+await L.click(`dialog.phone .removefolder[data-folder="${phone.device}"]`);
+await L.waitForSelector('dialog.phone .phonemore .confirm', { timeout: 10_000 }).catch(() => {});
+const askR = await L.evaluate(() => { const c = document.querySelector('dialog.phone .confirm');
+  return c ? { text: c.querySelector('p').textContent, buttons: [...c.querySelectorAll('button')].map((b) => b.textContent) } : null; });
+check(askR?.text?.startsWith('Remove the routes of Pixel 8 · paired') && askR.text.includes('1 route was never sent to that phone – it would be lost')
+  && JSON.stringify(askR.buttons) === '["Cancel","Remove"]', 'unsent routes in the folder: Remove asks, says how many would be lost, Cancel · Remove ' + JSON.stringify(askR));
+await L.click('dialog.phone .confirm .keep');
+await L.waitForTimeout(300);
+check(await L.locator('dialog.phone .confirm').count() === 0 && (await status(L)).closed.length === 2 && (await titles(L, phone.device)).includes('Laptop unsaved')
+  && await L.isVisible(`dialog.phone .removefolder[data-folder="${phone.device}"]`), 'Cancel: the question goes, the folder and its unsent route stay');
+// the friend's folder has nothing unsent: removed at once, no question (as before)
 await L.click(`dialog.phone .removefolder[data-folder="${friend.device}"]`);
+await L.waitForTimeout(300);
+check(await L.locator('dialog.phone .confirm').count() === 0, 'nothing unsent in the folder: Remove asks nothing');
 await L.waitForFunction(() => window.__sync.status.closed.length === 1, null, { timeout: 10_000 }).catch(() => {});
 check((await status(L)).closed.length === 1 && (await titles(L, friend.device)).length === 0, 'removed: only the local copy of the friend\'s folder');
 await friend.round();
@@ -562,6 +577,43 @@ const hs = await status(H1);
 check(!hs.paired && hs.folder.key === 'none' && hs.message === 'The connection was ended on the phone.' && (await entry(H1)).label === 'Pair phone',
   `the phone's hello deleted: the folder closes, "The connection was ended on the phone.", "Pair phone" (${hs.message})`);
 await ctxH.close();
+
+// ---- 14d. after Unpair (owner 2026-11-02): My routes says the old phone's routes are still here (way: the Phone window);
+// Remove asks because a route was never sent, the answer Remove takes the folder from this browser ----
+const ctxR = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+const R = await open(ctxR);
+const restPhone = await new Phone('Rest phone').init();
+await restPhone.save('Handyroute');
+const pR = await showCode(R);
+await restPhone.pairDirect(pR.code);
+await R.waitForFunction((d) => window.__sync.status.folder.key === d, restPhone.device, { timeout: 30_000 }).catch(() => {});
+await R.click('#closePair').catch(() => {});
+await until(R, async () => (await window.__sync.list()).some((p) => p.title === 'Handyroute'));
+await R.evaluate((c) => window.__sync.save(c, 'Nie gesendet'), CODE); // saved here, never sent (no Save to the phone)
+await menu(R, '#syncBadge');
+await R.click('dialog.phone #unpair');
+await R.waitForFunction(() => window.__sync.status.folder.key === 'none' && window.__sync.status.closed.length === 1, null, { timeout: 30_000 }).catch(() => {});
+await R.click('#closePhone');
+await menu(R, '#menuPlans');
+await R.waitForSelector('#planList li.oldphone', { timeout: 10_000 }).catch(() => {});
+const oldLine = await R.evaluate(() => document.querySelector('#planList li.oldphone')?.textContent.replace(/\s+/g, ' ').trim() ?? '');
+check(oldLine.startsWith('The routes of Rest phone are still in this browser') && !oldLine.includes('No saved routes yet'),
+  `My routes after Unpair: the old phone's routes are still here, not only "No saved routes yet" (${oldLine})`);
+await R.click('#planList li.oldphone .openphone');
+await R.waitForSelector(`dialog.phone[open] .removefolder[data-folder="${restPhone.device}"]`, { timeout: 10_000 });
+check(!(await R.locator('dialog.plans[open]').count()), 'its button opens the Phone window (it lists the old phone\'s folder)');
+await R.click(`dialog.phone .removefolder[data-folder="${restPhone.device}"]`);
+await R.waitForSelector('dialog.phone .confirm', { timeout: 10_000 }).catch(() => {});
+check(((await R.textContent('dialog.phone .confirm p').catch(() => '')) ?? '').includes('1 route was never sent'), 'Remove asks (one route never sent)');
+await R.click('dialog.phone .confirm .danger');
+await R.waitForFunction(() => window.__sync.status.closed.length === 0, null, { timeout: 10_000 }).catch(() => {});
+check((await status(R)).closed.length === 0 && (await titles(R, restPhone.device)).length === 0 && !(await R.locator('dialog.phone .removefolder').count()),
+  'the answer Remove: the folder and its routes leave this browser');
+await R.click('#closePhone');
+await menu(R, '#menuPlans');
+await R.waitForSelector('#planList li', { timeout: 10_000 });
+check(!(await R.locator('#planList li.oldphone').count()) && (await R.textContent('#planList')).includes('No saved routes yet'), 'no closed folder left: My routes says only "No saved routes yet"');
+await ctxR.close();
 
 // ---- 15. the host's cap on new mailboxes per IP and day ----
 env.SYNC_NEW_PER_IP_DAY = '1';

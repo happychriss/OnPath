@@ -208,6 +208,13 @@
     <string name="web_folder_phone">Phone</string>
     <string name="web_folder_paired_on">%1$s · paired %2$s</string>
     <string name="web_remove_folder">Remove routes of %1$s from this browser</string>
+    <!-- Remove a closed folder that holds routes never sent to its phone: the question (owner 2026-11-02) -->
+    <string name="web_remove_folder_q_one">Remove the routes of %1$s from this browser? 1 route was never sent to that phone – it would be lost.</string>
+    <string name="web_remove_folder_q">Remove the routes of %1$s from this browser? %2$d routes were never sent to that phone – they would be lost.</string>
+    <string name="web_remove_folder_q_unknown">Remove the routes of %1$s from this browser? Routes never sent to that phone would be lost.</string>
+    <!-- My routes, the open folder empty: the closed folders' routes are still here (owner 2026-11-02) -->
+    <string name="web_plans_old_phone">The routes of %1$s are still in this browser – the Phone window lists them.</string>
+    <string name="web_plans_old_phone_open">Open Phone window</string>
     <string name="web_copy_suffix">(copy)</string>
     <string name="web_save_title_phone">Save – sends your changes to %1$s</string>
     <string name="web_save_title_local">Save the route in this browser</string>
