@@ -64,8 +64,10 @@ the git log.
   (#14); (3) start button "Los geht's · ‹Ziel›" (#16) + ☰ "Aufzeichnung starten" removed (#15); (4) Plan during a tour:
   green "Weiter navigieren", red "Änderungen verwerfen" (#19); (5) paved footways for Bike / Gravel with the amber note
   (#7); (6) slow planning: propose the "weiter warten / abbrechen" text as a `frage` first (#13), build after the
-  answer. Diagnostics review needs the Pixel → morning. Do not release – the captain runs the release check in the
-  morning. Laptop's "Route wird berechnet" card stays for cloud-plan tomorrow. **The Pixel is unplugged tonight
+  answer. Diagnostics review needs the Pixel → morning. **Release v0.14.0 tonight – owner's word 2026-11-02 ~22:15:**
+  around 04:00 stop taking new items, run the emulator Rundgang (`tools/ci/release_rundgang.sh`), and release (version +
+  notes on main) only after the captain's GO line here (`release_check.sh --go v0.14.0`); what is not done goes into the
+  next release. The captain then starts the planner sync (the 05:47 task) at once so the planner follows within the hour. Laptop's "Route wird berechnet" card stays for cloud-plan tomorrow. **The Pixel is unplugged tonight
   (owner: it must not start talking at night) – no adb, no install, emulator only; [pixel] items wait for the morning.**
 - **[cloud-plan] Planner wait box: the time-limit question** (owner 2026-11-02, onpath.private#13): the wait box with
   Cancel is on web-spike (415d3802); when the time limit is hit it should become the question "weiter warten / abbrechen"
