@@ -156,7 +156,6 @@
 
     <!-- tour card, end tour, arrival -->
     <string name="nav_end_tour_title">Aufnahme beenden?</string>
-    <string name="nav_delete_track_title">Diese Tour löschen?</string>
     <string name="nav_recycle_bin_note">Kommt für %1$d Tage in den Papierkorb.</string>
     <string name="nav_arrived_title">Du bist angekommen – Aufnahme beenden?</string>
     <string name="nav_keep_going">Weitermachen</string>
@@ -173,7 +172,6 @@
     <string name="nav_continue_navigation">Navigation fortsetzen</string>
     <string name="nav_action_pause">Pause</string>
     <string name="nav_actions_close">Leiste schließen</string>
-    <string name="plan_edit_title">Route ändern</string>
     <string name="nav_route_back_title">Kein Ziel mehr vor dir.</string>
     <string name="nav_route_back_text">Die Tour wird weiter aufgezeichnet. Rückgängig holt den Punkt zurück.</string>
     <string name="nav_route_back">Zurück zum Start</string>

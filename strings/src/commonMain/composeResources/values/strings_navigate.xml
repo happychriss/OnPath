@@ -157,7 +157,6 @@
 
     <!-- tour card, end tour, arrival -->
     <string name="nav_end_tour_title">End recording?</string>
-    <string name="nav_delete_track_title">Delete this tour?</string>
     <string name="nav_recycle_bin_note">It stays in the recycle bin for %1$d days.</string>
     <string name="nav_arrived_title">You have arrived – end recording?</string>
     <string name="nav_keep_going">Keep going</string>
@@ -174,7 +173,6 @@
     <string name="nav_continue_navigation">Continue navigation</string>
     <string name="nav_action_pause">Pause</string>
     <string name="nav_actions_close">Close the bar</string>
-    <string name="plan_edit_title">Change route</string>
     <string name="nav_route_back_title">No destination ahead any more.</string>
     <string name="nav_route_back_text">The tour keeps recording. Undo brings the point back.</string>
     <string name="nav_route_back">Back to the start</string>

@@ -55,7 +55,6 @@
     <string name="routes_unfinished_title">Interrupted tour</string>
     <string name="routes_unfinished_text">A recording was interrupted (%1$s, %2$s). Nothing was lost.</string>
     <string name="routes_unfinished_continue">Continue</string>
-    <string name="routes_unfinished_delete_title">Delete this tour?</string>
     <string name="routes_track_saved">Tour saved</string>
 
     <string name="routes_activity_from_file">Activity set to %1$s from the file</string>

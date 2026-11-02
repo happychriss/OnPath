@@ -54,7 +54,6 @@
     <string name="routes_unfinished_title">Unterbrochene Tour</string>
     <string name="routes_unfinished_text">Eine Aufzeichnung wurde unterbrochen (%1$s, %2$s). Es ist nichts verloren gegangen.</string>
     <string name="routes_unfinished_continue">Fortsetzen</string>
-    <string name="routes_unfinished_delete_title">Diese Tour löschen?</string>
     <string name="routes_track_saved">Tour gespeichert</string>
 
     <string name="routes_activity_from_file">Aktivität aus der Datei übernommen: %1$s</string>

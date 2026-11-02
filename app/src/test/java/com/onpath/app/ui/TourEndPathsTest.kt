@@ -44,13 +44,18 @@ class TourEndPathsTest {
         assertTrue(main.contains("RideSummaryDialog(s, onSave = { vm.saveUnfinished(t, it) }, onDelete = { vm.deleteUnfinished(t) }"))
     }
 
-    @Test fun unfinishedDialogHasContinueDeleteSaveAndDeleteAsksAgain() {
+    /** Delete asks no second question (owner 2026-11-01: "ist ja sowieso alles im Papierkorb") – the grey bin note under it. */
+    @Test fun unfinishedDialogHasContinueDeleteSaveAndTheBinNote() {
         val dlg = screens.substringAfter("fun UnfinishedDialog(").substringBefore("\n}\n")
-        // texts as string resources (EN + DE): Continue, Delete, Save, "Delete this tour?"
-        listOf("Res.string.routes_unfinished_continue", "Res.string.common_delete", "Res.string.common_save",
-            "Res.string.routes_unfinished_delete_title", "onDismissRequest = {}").forEach {
+        // texts as string resources (EN + DE): Continue, Save; Delete + the note come with DeleteApartButtons
+        listOf("Res.string.routes_unfinished_continue", "Res.string.common_save", "DeleteApartButtons(onDelete,",
+            "onDismissRequest = {}").forEach {
             assertTrue(it, dlg.contains(it))
         }
+        assertFalse(dlg, dlg.contains("askDelete"))
+        val buttons = File("src/main/java/com/onpath/app/ui/TourBar.kt").readText()
+            .substringAfter("internal fun DeleteApartButtons(").substringBefore("\n}\n")
+        assertTrue(buttons, buttons.contains("Res.string.common_delete") && buttons.contains("Text(RECYCLE_BIN_NOTE"))
         val del = body(vm, "fun deleteUnfinished(")
         // done first: from the recycle bin it comes back as a normal tour, never as "unfinished" again
         assertTrue(del, del.indexOf("\"done\"") in 0 until del.indexOf("setDeleted"))
