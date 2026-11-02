@@ -94,6 +94,23 @@ statt je Rechner; Backlog als Nachrichtenkanal.
 - Push für Cloud-Sitzungen (ntfy über einen `Notification`-Hook), falls etwas durchrutscht.
 - Für weitere Projekte: Skripte und diese Datei in ein eigenes Repo `leitstand` mit einer `.leitstand`-Datei je Projekt.
 
+## 5b. Vergleich: firstmate (github.com/kunchenguid/firstmate, angesehen 2026-11-02)
+Ein „Agent-Distro“: man redet mit einem **First Mate**, der eine Crew in Worktrees startet und überwacht.
+- **Gleiche Ideen wie wir:** ein Ansprechpartner, Worktree je Aufgabe, Zustand auf der Platte, nur echte
+  Entscheidungen eskalieren, Hooks (SessionStart, PreToolUse Bash, Stop als Weckmechanismus), Lagebericht
+  (`/bearings`), Wissen sichern (`/stow`), Abwesenheit (`/afk`). Unabhängig zu denselben Schlüssen gekommen.
+- **Anders:** alles auf **einem** Rechner im Terminal (tmux) – der First Mate steuert die Crew direkt, das
+  Cloud ⇄ Rechner-Problem gibt es dort nicht, aber auch keine Handy-Steuerung. Sehr groß (819 Dateien, ~26 000 Wörter
+  Kern-Anweisungen, > 8 000 PRs, täglich Änderungen) – ein zweites System zum Pflegen.
+- **Sicherheit:** Claude-Crew startet standardmäßig mit `--dangerously-skip-permissions`, Codex ohne Sandbox; die Doku
+  sagt selbst „not a sandbox“. Ohne Container hat jeder Agent alle Rechte des Benutzers.
+- **Docker für uns:** schlecht passend (Pixel per USB, Emulator mit KVM, Android-SDK müssten durchgereicht werden);
+  wir sichern stattdessen mit Auto-Modus + Deny-Regeln + Push-Hook. Leichter Zusatzschritt, falls gewünscht: eigener
+  Linux-Benutzer für Claude auf donald (eigener `gh`-Zugang nur für OnPath, keine SSH-Schlüssel des Owners).
+- **Übernehmen:** (1) ein **Stop-Hook**, der am Ende jeder Antwort prüft, ob `[sofort]`-Arbeit offen ist – robuster als
+  die 10-Minuten-Schleife; (2) ein Skill **`/lage`** (wie `/bearings`): Lage in vier Abschnitten auf Knopfdruck.
+  **Nicht übernehmen:** das Gesamtsystem.
+
 ## 6. Wo was liegt
 | Thema | Datei |
 | --- | --- |
