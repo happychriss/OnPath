@@ -88,6 +88,12 @@ the git log.
   sensor (accelerometer / significant-motion, no Google Play Services) so it works without GPS fixes; amber warning only
   when the phone moves and GPS is missing. Reproducing JVM test first (core rule), battery: sensor only while recording
   without a fix. Recording itself unchanged.
+- **[cloud-app] Colour rule for actions (owner 2026-11-02) – into `docs/design/ui-style.md` + `OnPathColors`:**
+  **green = navigation** (start / continue navigating), **blue = edit** (change the route), **red = stop – end the
+  process you are in**. The stop slider tiles follow it (Pause stays with the green navigation tile – check with the
+  owner on the screenshots). Next place: **Plan during a tour** – today "Navigation fortsetzen" + "Route speichern",
+  ending / discarding only via "✕ Neuer Plan" at the bottom (owner: not self-explanatory); asked as its own issue
+  (what red means there: discard the edit vs end the tour). Save moves to ☰ during a tour, "✕ Neuer Plan" hidden then.
 - **[cloud-app] Stop slider: three coloured tiles (owner 2026-11-02, onpath.private#17 = C, refined)**: after the slide,
   a compact bar (~1.5× the slider's height) with three tiles in fixed colours to remember – **green Pause / Resume,
   blue Change route, red End** – white text, icons that carry the track (Pause: the line ends in ⏸; Change route: the
