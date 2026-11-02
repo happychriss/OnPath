@@ -29,6 +29,9 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
   (zo.fritz.box:3000) – never in this public GitHub repo.
 
 ## How sessions work
+- **The owner must notice when a session waits** (owner 2026-11-02): every question also goes to the dashboard
+  (`tools/ask.sh`), and on donald / the laptop the Claude push is on (`/config`: "Push when actions required" + "Push
+  when Claude decides" – `docs/roles/neu/umstellung.md`). A question asked only in the chat is a bug.
 - **Main session talks and distributes; work runs in background agents** (builds, checks, merges, installs). The
   main session keeps the overview of all agents (task → state → next step), stops stuck ones, and reports without
   being asked. **The chat stays responsive** (owner 2026-11-01): a request that takes longer than ~2 minutes and stands

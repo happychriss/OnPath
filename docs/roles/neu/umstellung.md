@@ -65,6 +65,14 @@ Sitzungen haben sie nach dem nächsten Pull, laufende nach ihrem Neustart).
 **Deny-Regeln (👤 einmal auf donald):** `python3 tools/dev/apply_permissions.py`, dann committen und pushen – sperrt
 Force-Push, `reset --hard`, Branch-Löschen, `adb uninstall` / `pm clear`, `gradlew --stop` in jedem Modus.
 
+### Push aufs Handy (owner 2026-11-02: „sonst kriege ich das nie mit“)
+GitHub meldet eigene Issues nicht – der Push kommt von Claude selbst. 👤 **Einmal pro Rechner** (donald, Laptop):
+zweites Terminal → `claude` → `/config` → **„Push when actions required“** und **„Push when Claude decides“** an
+(„No mobile registered“: Claude-App auf dem Handy öffnen, dann erneut) → `/exit`. Gilt für alle Remote-Control-
+Sitzungen des Rechners; kein Push, solange man am Terminal tippt. Cloud-Sitzungen (Captain, cloud-web) können nicht
+pushen (Doku) – Entscheidung: vorerst ohne Push-Dienst; Captain-Fragen im Gespräch + Dashboard. Falls etwas
+durchrutscht: ntfy-Hook (`Notification`, `idle_prompt`) als nächster Schritt.
+
 ## B. 👤 Entscheidungen beim Umstellen (je eine Fragebox)
 - Erlaubnis-Modus der stehenden Sitzungen (`ONPATH_PERMISSION_MODE`): ohne Modus fragt die Sitzung bei vielem nach
   (gelbe Punkte ohne echte Frage) – Vorschlag `auto`.
