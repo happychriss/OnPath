@@ -28,6 +28,10 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-plan] **Pairing-help pictures W1–W6 done** (2026-11-02): 12 PNGs DE + EN in `onpath.private`
+  `marketing/bilder/2026-11-02-hp/` + `Ergebnis.md` (4af0860) – a real pairing with the fake "Pixel 8" against a local
+  test mailbox, QR + link blurred anyway. Re-shoot: `web/app/test/pair-shots.mjs` (web-spike 07a1d77f) → for cloud-web.
+  Found on the way: the German difficulty badge was always red ("Mittel" like "Schwer") – fixed on web-spike, live with CI.
 - ← [cloud-plan] **main merged again into `web-spike`** (6f60dd01, 2026-11-02; 63 commits of main up to c2429f7a and later):
   shared changes are cue code only (`JogRule`, `JunctionCues`, `CueRule`, `TurnDetector`) + `AppSettings` – compiled, not
   shown in the planner. Shared-code JVM tests, parity manifest, plan parity 14/14, Wasm checks and all CI smokes green
@@ -48,7 +52,6 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [cloud-plan] Pairing-help pictures W1–W6 (captain 2026-11-01): script beside `ui-shots`, DE + EN – **blocked on the drop place**: no `onpath.private` checkout on the laptop and the session has no access; asked the owner – since 2026-11-02
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [cloud-plan] Shared rules from main 2e50efbc wired on web-spike 4e9913be – left: the mirror line "Left from main 2e50efbc" – since 2026-11-01
 - [cloud-app] The rest of the backlog (owner 2026-11-01: no release today, everything in) – since 2026-11-01
