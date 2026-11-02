@@ -47,9 +47,12 @@ async function open(ctxOpts, at, serverOpts) {
     addEventListener('DOMContentLoaded', () => new MutationObserver(() => {
       const s = document.getElementById('status');
       if (s?.textContent) window.__statusLog.push((s.classList.contains('busy') ? '[busy] ' : '') + s.textContent);
+      // the route's wait is the box in the middle of the map (owner 2026-11-02): spinner + text + Cancel
+      const c = document.querySelector('#msgcards .msgcard.busy .msgtitle');
+      if (c?.textContent && window.__statusLog.at(-1) !== '[busy] ' + c.textContent) window.__statusLog.push('[busy] ' + c.textContent);
     }).observe(document.body, { subtree: true, childList: true, characterData: true }));
   });
-  await page.goto(url + 'index.html?at=' + at);
+  await page.goto(url + 'index.html?waitMs=0&at=' + at); // waitMs=0: the route's wait box at once (no 1 s delay)
   await page.waitForFunction(() => window.__map?.isStyleLoaded() && document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
   return { page, ctx, server, log };
 }
@@ -173,7 +176,7 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
   check(seen.includes('[busy] Loading the routing engine…'), 'engine start: "Loading the routing engine…" with a spinner');
   check(seen.some((t) => /^\[busy\] Loading the map for your area · about \d+ MB$/.test(t)), `routing data: "${seen.find((t) => t.includes('about')) ?? 'not seen'}"`);
   check(seen.includes('[busy] Calculating the route…'), 'routing: "Calculating the route…" (the app\'s plan_calculating) with a spinner');
-  check(!(await page.evaluate(() => document.getElementById('status').classList.contains('busy'))), 'after the plan: no spinner left');
+  check(!(await page.evaluate(() => document.getElementById('status').classList.contains('busy') || !!document.querySelector('#msgcards .msgcard.busy'))), 'after the plan: no spinner left');
   await ctx.close(); server.close();
 }
 

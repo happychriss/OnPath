@@ -35,7 +35,7 @@ await clickAt(11.1600, 46.6700);
 await page.waitForSelector('.pointmenu');
 await page.click('.pointmenu button:first-of-type'); await page.waitForTimeout(300);
 await clickAt(11.1500, 46.6950);
-const settled = () => page.waitForFunction(() => document.querySelector('#summary .big') && !document.getElementById('status').classList.contains('busy'),
+const settled = () => page.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1',
   null, { timeout: 120_000 });
 await settled();
 const offline = await page.evaluate(() => ({ info: document.getElementById('infoline').hidden ? '' : document.getElementById('infoline').textContent,
@@ -49,7 +49,7 @@ check(!offline.error && !/TypeError|Failed to fetch|java\.|Unexpected/.test(offl
 blockData = false;
 await page.evaluate(() => dispatchEvent(new Event('online')));
 await page.waitForFunction(() => document.getElementById('infoline').hidden && document.querySelector('#summary .big') &&
-  !document.getElementById('status').classList.contains('busy'), null, { timeout: 120_000 }).catch(() => {});
+  document.body.dataset.planning !== '1', null, { timeout: 120_000 }).catch(() => {});
 const back = await page.evaluate(() => ({ info: document.getElementById('infoline').hidden ? '' : document.getElementById('infoline').textContent,
   straight: window.__state.plan?.legs.every((l) => l.straight) }));
 console.log('back online:', JSON.stringify(back));
@@ -69,7 +69,7 @@ const restored = await again.evaluate(() => ({ n: window.__state.points.length, 
 check(restored.n === pts && pts === 2, `the unsaved route is back after reopening (${restored.n} of ${pts} points)`);
 check(restored.hash === '#p=', 'and in the address again');
 // ---- 5: two quick clicks while the engine is busy go in the order clicked (review web H4) ----
-await again.waitForFunction(() => document.querySelector('#summary .big') && !document.getElementById('status').classList.contains('busy'), null, { timeout: 120_000 });
+await again.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1', null, { timeout: 120_000 });
 const p1 = [11.1440, 46.7040], p2 = [11.1380, 46.7110]; // beyond the destination, one after the other
 const px = await again.evaluate((ps) => ps.map(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }), [p1, p2]);
 // the engine busy first (another activity → the plan again), then both clicks: both wait behind that plan
@@ -147,6 +147,38 @@ const saveLine = await again.textContent('#status');
 check(/Not saved/.test(saveLine) && !/quota|DOMException/i.test(saveLine), `Save fails → a plain red line ("${saveLine.trim()}")`);
 await ctx.close();
 check(errors.length === 0, `no page error (${errors.join(' | ')})`);
+
+// ---- 7: the route's wait (owner 2026-11-02): after ~1 s a box in the middle of the map – spinner, text, Cancel ----
+{
+  const c = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  // a slow routing-data server, so the plan takes a few seconds
+  await c.route('**/segments/**', async (r) => { await new Promise((res) => setTimeout(res, 2500)); return r.continue(); });
+  const p = await c.newPage();
+  const CODE = 'AQUDAsTcuQTwjYgBqBnjPAIBB1dhYWx3ZWcCBwFWZWxsYXU'; // Hike T3, Meran → Vellau
+  await p.goto(url + 'index.html#p=' + CODE);
+  await p.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 120_000 });
+  const t0 = Date.now();
+  const box = await p.waitForSelector('#msgcards .msgcard.busy', { timeout: 30_000 }).then(() => true, () => false);
+  const at = Date.now() - t0;
+  const card = box ? await p.evaluate(() => { const c = document.querySelector('#msgcards .msgcard.busy'), r = c.getBoundingClientRect(),
+    sheet = document.getElementById('sheet').getBoundingClientRect();
+    return { text: c.textContent, spin: !!c.querySelector('.msgspin'), cx: r.left + r.width / 2, sheetRight: sheet.right, w: innerWidth,
+      clock: document.getElementById('status').classList.contains('busy') }; }) : null;
+  check(box && card.spin && /Cancel/.test(card.text) && /Calculating the route|Loading the map/.test(card.text),
+    `the wait box: spinner, "${card?.text}", Cancel`);
+  check(box && card.cx > card.sheetRight && !card.clock, 'in the free map beside the sheet; no small spinner in the sheet');
+  await p.click('#msgcards .msgcard.busy .msgbtn');
+  await p.waitForFunction(() => !document.querySelector('#msgcards .msgcard.busy') && document.body.dataset.planning !== '1', null, { timeout: 5_000 }).catch(() => {});
+  const after = await p.evaluate(() => ({ pts: window.__state.points.length, plan: !!window.__state.plan, line: document.getElementById('summary').textContent,
+    btn: document.getElementById('planAnyway')?.textContent }));
+  check(after.pts === 2 && !after.plan && /calculation stopped/.test(after.line) && after.btn === 'Calculate',
+    `Cancel: the points stay, "Route not calculated – calculation stopped." + Calculate (${JSON.stringify(after)})`);
+  await p.click('#planAnyway');
+  await p.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1', null, { timeout: 120_000 }).catch(() => {});
+  check(await p.evaluate(() => !!window.__state.plan && !document.querySelector('#msgcards .msgcard.busy')), 'Calculate: the route comes, the box is gone');
+  console.log(`(the box came after ${at} ms)`);
+  await c.close();
+}
 
 // ---- 4: no WasmGC ----
 for (const [locale, want] of [['de-DE', 'zu alt'], ['en-US', 'too old']]) {

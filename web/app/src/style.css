@@ -153,8 +153,7 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 .chip .ic:first-child { color: var(--green-fg); }
 .badge { border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: 600; background: var(--error-bg); color: var(--error); }
 .badge.easy { background: var(--green-light); color: var(--green-fg); } .badge.moderate { background: var(--warn-bg); color: var(--warn); }
-#sheet.busy .headline::after { content: ""; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--route); border-radius: 50%;
-  animation: spin 1s linear infinite; align-self: center; }
+/* no small spinner beside the headline any more (owner 2026-11-02): the route's wait is the box in the middle of the map */
 @keyframes spin { to { transform: rotate(360deg); } }
 .notice { background: var(--warn-bg); color: var(--warn); border-radius: 10px; padding: 8px 10px; font-size: 13px; }
 .warnline { border: none; text-align: left; font-weight: 600; }
@@ -449,6 +448,9 @@ dialog.phone .phonemore .confirm { align-self: stretch; }
 /* ---- the one message box (msgcard.ts = the app's MessageCard, docs/design/ui-style.md): white card, 16 px corners,
    4 px left edge in the kind's colour (FRAGE blue, HINWEIS grey, attention amber, error red), one at a time ---- */
 #msgcards { position: fixed; z-index: 15; left: 50%; transform: translateX(-50%); width: min(520px, calc(100vw - 24px)); }
+#msgcards.at { transform: translate(-50%, -50%); width: min(380px, calc(100vw - 24px)); } /* centred on a point (the map's middle) */
+.msgcard.busy .msgtitle { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.msgspin { flex: none; width: 18px; height: 18px; border: 2.5px solid var(--line); border-top-color: var(--green); border-radius: 50%; animation: spin 1s linear infinite; box-sizing: border-box; }
 .msgcard { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 12px 12px 16px; background: #fff;
   border-radius: 16px; border-left: 4px solid #6B6F6A; box-shadow: 0 6px 18px var(--shadow); box-sizing: border-box; }
 .msgcard.frage { border-left-color: #1565C0; }

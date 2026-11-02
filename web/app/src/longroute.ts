@@ -20,6 +20,8 @@ export function allowLongRoute(points: LatLon[]) { okFor = keyOf(points); }
 
 /** Texts of the not-routed line after Cancel: "Route not calculated – very long plan." + "Plan anyway". */
 export let notRoutedTexts = { line: t('plan_not_routed_long'), button: t('plan_anyway') };
+/** The not-routed line for another reason (the app's NotRouted.STOPPED after Cancel of the wait). */
+export function setNotRouted(line: string, button: string) { notRoutedTexts = { line, button }; }
 
 /** The plan before a point edit: its points and their names (for "far from your route"). */
 export interface Before { points: LatLon[]; names: (string | undefined)[] }

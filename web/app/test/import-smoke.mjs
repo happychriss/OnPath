@@ -68,7 +68,7 @@ check(!(await page.$('dialog.longroute')), 'Plan anyway: routed without asking a
 // cancels its plan) and the plan's late end brings no route back
 const clearAt = Date.now();
 await page.click('#clear'); if (await page.locator('dialog.discard[open]').count()) await page.click('#discardOk');
-await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0 && !document.getElementById('sheet').classList.contains('busy'), null, { timeout: 5_000 }).catch(() => {});
+await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0 && document.body.dataset.planning !== '1', null, { timeout: 5_000 }).catch(() => {});
 const clearMs = Date.now() - clearAt;
 check(await pins() === 0 && clearMs < 5_000, `Clear route during a long plan: the points go at once (${clearMs} ms)`);
 await page.evaluate(() => window.__engine.call('historyState')); // the worker is free again: the long plan has ended

@@ -14,6 +14,10 @@ export interface Message {
   detail?: string;
   /** Last = the primary one. A HINWEIS has exactly one, a FRAGE two. */
   buttons: MessageButton[];
+  /** A wait the user started (the route being calculated): a spinner before the title; its one button is the way out. */
+  busy?: boolean;
+  /** Where the box's centre goes (page pixels) instead of 12 px under the top bar – e.g. the middle of the free map. */
+  at?: () => { x: number; y: number };
 }
 
 const waiting: Message[] = [];
@@ -53,9 +57,12 @@ function draw() {
   if (!m) return;
   // 12 px under the top element (the app's MessagePlacement): the search bar over the map, else the header
   const top = document.querySelector('.topbar') ?? document.getElementById('header');
-  host.style.top = `${Math.round((top?.getBoundingClientRect().bottom ?? 56) + 12)}px`;
+  const at = m.at?.();
+  host.classList.toggle('at', !!at);
+  host.style.left = at ? `${Math.round(at.x)}px` : '';
+  host.style.top = at ? `${Math.round(at.y)}px` : `${Math.round((top?.getBoundingClientRect().bottom ?? 56) + 12)}px`;
   const card = document.createElement('div');
-  card.className = `msgcard ${m.kind}`;
+  card.className = `msgcard ${m.kind}${m.busy ? ' busy' : ''}`;
   card.dataset.id = m.id;
   card.setAttribute('role', m.kind === 'frage' ? 'alertdialog' : 'alert');
   const text = document.createElement('div');
@@ -63,6 +70,7 @@ function draw() {
   const title = document.createElement('div');
   title.className = 'msgtitle';
   if (m.kind === 'hinweis-warn' || m.kind === 'hinweis-error') title.append(Object.assign(document.createElement('span'), { className: 'msgwarn', textContent: '⚠ ' }));
+  if (m.busy) title.append(Object.assign(document.createElement('span'), { className: 'spin msgspin', ariaHidden: 'true' }));
   title.append(m.title);
   text.append(title);
   if (m.detail) text.append(Object.assign(document.createElement('div'), { className: 'msgdetail', textContent: m.detail }));

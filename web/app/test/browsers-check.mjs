@@ -36,7 +36,7 @@ for (const [name, type] of [['firefox', firefox], ['webkit', webkit]]) {
   await page.click('.pointmenu button:first-of-type').catch(() => {});
   await page.waitForTimeout(300);
   await clickAt(11.1500, 46.6950);
-  await page.waitForFunction(() => document.querySelector('#summary .big') && !document.getElementById('status').classList.contains('busy'),
+  await page.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1',
     null, { timeout: 180_000 }).catch(() => {});
   const r = await page.evaluate(() => ({ sum: document.getElementById('summary').textContent.replace(/\s+/g, ' ').trim(),
     routed: window.__state.plan ? !window.__state.plan.legs.every((l) => l.straight) : false }));

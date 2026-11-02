@@ -24,7 +24,7 @@ const metres = (a, b) => {
 };
 /** The plan in the address (the app's PlanCode, read by the engine). */
 const planOf = () => page.evaluate(async () => (location.hash.startsWith('#p=') ? window.__engine.parse(location.hash.slice(1)) : null));
-const idle = () => page.waitForFunction(() => document.querySelector('#summary .big') && !document.getElementById('sheet').classList.contains('busy'), null, { timeout: 120_000 });
+const idle = () => page.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1', null, { timeout: 120_000 });
 const settled = async () => { // the plan is done and the address no longer changes
   await idle();
   let h = '';

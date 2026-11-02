@@ -27,7 +27,8 @@ import { PlanSync, shownTitle, type SavedPlan } from './sync';
 import { myPlansDialog, joinDialog, saveRoute, askDiscard, phoneDialog, phonePill, appDate } from './plans';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
-import { longRouteOk, allowLongRoute, notRoutedTexts, type Before } from './longroute';
+import { longRouteOk, allowLongRoute, notRoutedTexts, setNotRouted, type Before } from './longroute';
+import { post, dismiss } from './msgcard';
 import { setupGpxImport } from './gpximport';
 import { overviewStyle, followCover, followPackages } from './overview';
 import { PlanGapsLayer } from './plangaps';
@@ -854,6 +855,35 @@ async function restoreDraft() {
 }
 
 // ---- planning ----
+/** The wait box shows only after this long (a fast route shows nothing). */
+const WAIT_CARD_MS = Number(params.get('waitMs') ?? 1000); // ?waitMs=0: the browser tests see every wait
+/** Planning or not – also for the page's tests (body[data-planning]); off takes the wait box away. */
+function setPlanning(on: boolean) {
+  state.planning = on;
+  document.body.dataset.planning = on ? '1' : '';
+  if (!on) dismiss('routing');
+}
+/** The wait box in the middle of the free map (beside / above the sheet), with Cancel – the app's onCancelRouting. */
+function waitCard(text: string) {
+  post({ id: 'routing', kind: 'hinweis', busy: true, title: text, buttons: [{ label: t('common_cancel'), act: cancelRouting }], at: mapMiddle });
+}
+function mapMiddle() {
+  const st = $('stage').getBoundingClientRect(), sh = $('sheet').getBoundingClientRect(), bar = $('topbar').getBoundingClientRect();
+  if (phoneWidth()) return { x: st.left + st.width / 2, y: (bar.bottom + Math.min(sh.top, st.bottom)) / 2 };
+  const left = Math.max(st.left, sh.right);
+  return { x: (left + st.right) / 2, y: (bar.bottom + st.bottom) / 2 };
+}
+/**
+ * Cancel of the wait (the app's cancelRouting → cancelRun(NotRouted.STOPPED)): the running plan's result is dropped (the
+ * one engine worker cannot stop mid-way – it finishes unseen), then the app's PlanStatus.onCancel: undo the edit, put
+ * the activity back, or keep the points with "Route not calculated – calculation stopped." + Calculate.
+ */
+async function cancelRouting() {
+  if (!state.planning) return;
+  problem('routing', 'route calculation cancelled by the user');
+  setNotRouted(t('plan_not_routed_stopped'), t('plan_calculate'));
+  await cancelLongRoute();
+}
 /** The plan before the point edit that is being planned now (the long-route question's "Far from your route"). */
 let editBefore: Before | null = null;
 async function changed() {
@@ -862,7 +892,7 @@ async function changed() {
   const few = state.points.length < 2;
   // fewer than two points (Clear route, a point deleted): no route – shown at once. A plan still running in the engine
   // (one worker, it cannot be stopped mid-way) is dropped when it ends (state.latest), as the app cancels it.
-  if (few) { state.latest++; state.plan = null; state.planning = false; planGaps.clear(); status(''); }
+  if (few) { state.latest++; state.plan = null; setPlanning(false); planGaps.clear(); status(''); }
   // Share (icon next to ⋯): always there (owner 2026-10-30), greyed until a start and a destination are set
   const sh = $<HTMLButtonElement>('share'), two = state.points.length >= 2, shw = two ? t('web_share') : t('web_share_needs_two');
   sh.disabled = !two; sh.title = shw; sh.setAttribute('aria-label', shw);
@@ -878,21 +908,25 @@ async function changed() {
   if (answer === 'cancel') { await cancelLongRoute(); return; }
   if (answer !== 'plan') { await startFresh(answer.fresh); return; }
   const id = ++state.latest;
-  state.planning = true;
+  setPlanning(true);
   render();
   newPointsAsked();
-  // waits said where the user acted (the sheet): the routing data download (the app's "Loading the map for your area ·
-  // about 9 MB", map-cells.md §19.8), then "Calculating the route…"
-  const calculating = () => t('plan_calculating');
-  status(calculating(), 'busy');
+  // the wait (owner 2026-11-02: "man guckt auf den Bildschirm und nichts passiert"): after about a second one box in the
+  // middle of the map – spinner, the routing data download (the app's "Loading the map for your area · about 9 MB",
+  // map-cells.md §19.8), then "Calculating the route…", and Cancel; a fast route shows nothing (no flash)
+  let wait = t('plan_calculating');
+  const show = () => { if (id === state.latest && state.planning) waitCard(wait); };
+  let shown = false;
+  const waitTimer = setTimeout(() => { shown = true; show(); }, WAIT_CARD_MS);
   const routed = state.points;
   const r = await engine.plan(routed, state.activity, state.sac, sharedPlan().pinned, (pr) => {
     if (id !== state.latest) return;
-    if (pr.phase === 'download') status(`${t('maps_load_loading')} · ${t('maps_about_mb', Math.max(1, Math.round(pr.bytes / 1e6)))}`, 'busy');
-    else status(calculating(), 'busy');
+    wait = pr.phase === 'download' ? `${t('maps_load_loading')} · ${t('maps_about_mb', Math.max(1, Math.round(pr.bytes / 1e6)))}` : t('plan_calculating');
+    if (shown) show();
   }, namesText());
-  if (id !== state.latest) return; // a newer request supersedes this one
-  state.planning = false;
+  clearTimeout(waitTimer);
+  if (id !== state.latest) return; // a newer request supersedes this one (or Cancel dropped it)
+  setPlanning(false);
   if (!r.ok || !r.plan || r.plan.failed) {
     problem('routing', 'plan request failed', r.error ?? r.plan?.detail, 'error'); // plain words for the user, the detail for the diagnostics
     status(t('web_plan_failed'), 'error'); render(); return;
@@ -952,7 +986,7 @@ async function adoptSnapped(routed: LatLon[], snapped: LatLon[]) {
  */
 async function startFresh(p: LatLon) {
   const m = state.meta[state.points.findIndex((q) => key(q) === key(p))] ?? { pinned: false };
-  state.latest++; state.plan = null; state.planning = false;
+  state.latest++; state.plan = null; setPlanning(false);
   state.title = null; forgetSaved();
   setPoints([p], [m]);
   await changed();
@@ -1003,7 +1037,7 @@ let activityBefore: { a: Activity; sac: number } | null = null;
 /** Cancel of "This route is very long" (AppViewModel.cancelRun): undo / redo the change, put the activity back, or keep the points. */
 async function cancelLongRoute() {
   const what = await engine.call('planCancel', runCause, state.canUndo, state.canRedo);
-  state.latest++; state.plan = null; state.planning = false;
+  state.latest++; state.plan = null; setPlanning(false);
   if (what === 'UNDO') return step('undo');
   if (what === 'REDO') return step('redo');
   if (what === 'RESTORE_ACTIVITY' && activityBefore) return setActivity(activityBefore.a, activityBefore.sac, true);
