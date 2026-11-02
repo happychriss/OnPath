@@ -65,6 +65,9 @@ the git log.
 - **[cloud-plan] Web spike red – planner not deployed since ebbcfbb2** (captain 2026-11-02): job "smokes (sheet-sync)",
   step "Plan sheet steps" failed on 4e9913be and 3561ad78. Then merge main again: `release_check.sh` shows 5 shared files
   differ (AppSettings, CueRule, JogRule, JunctionCues, TurnDetector). https://github.com/happychriss/OnPath/actions/runs/41354594301
+- **[cloud-app] For v0.14.0: own User-Agent for brouter.de downloads** (owner 2026-11-02, onpath.private#5 A): every
+  request to brouter.de (routing data) sends `OnPath/<version> (+https://onpath.earth)`; the first testers (up to ~20)
+  stay on the test servers. Small change, with a JVM test.
 - **[cloud-app] A-003 Play build – right after v0.14.0** (owner 2026-11-02, onpath.private#3): flavours prod (Google Play:
   no self-update, no REQUEST_INSTALL_PACKAGES, no GitHub update line in Settings → Datenschutz) / dev (as today);
   signed AAB for prod in `release.yml` next to the APK; upload key made by the owner locally → GitHub secret, never in
