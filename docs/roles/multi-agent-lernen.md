@@ -112,6 +112,14 @@ Ein „Agent-Distro“: man redet mit einem **First Mate**, der eine Crew in Wor
   (2) **`/fragen`** (wie `/ahoy`): offene Fragen eine nach der anderen, wichtigste zuerst, als Fragebox. Offen: `/lage`
   (wie `/bearings`). **Nicht übernehmen:** das Gesamtsystem.
 
+## 5c. Irgendwann vielleicht: eigener Linux-Benutzer für Claude (owner 2026-11-02: „ganz weit in die Zukunft“)
+Mehr Abstand ohne Docker: `sudo adduser claude-onpath` (Gruppen `plugdev` für das Pixel, `kvm` für den Emulator), dort
+einmal `claude` anmelden, ein **eigener GitHub-Token nur für OnPath + onpath.private**, eigener Klon; SDK, Kartendaten
+und die Gradle-Sperre gemeinsam lesbar. Start: `sudo -iu claude-onpath`, dann `tools/dev/unit.sh run donald`.
+Haken: nur **ein** `adb`-Server pro Rechner – Owner und Claude-Benutzer kommen sich in die Quere. Aufwand ~1 h je
+Rechner. Gewinn: kein Zugriff auf die SSH-Schlüssel, andere Projekte und das volle GitHub-Konto des Owners. Nicht
+geplant; heute schützen Auto-Modus, Deny-Regeln und der Push-Hook.
+
 ## 6. Wo was liegt
 | Thema | Datei |
 | --- | --- |
