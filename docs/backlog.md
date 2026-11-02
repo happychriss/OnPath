@@ -28,6 +28,14 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-plan] **web-spike green again + two owner orders done** (2026-11-02, web-spike 415d3802, `web/` only):
+  (1) CI red = test races in `sheet-smoke` (the "As destination" check ran before the new plan started; a click meant to
+  close the activity list added a route point under load) – fixed in the test, 3 parallel runs + all 14 smokes green;
+  (2) the route's wait is one box in the middle of the map (spinner, download / "Route wird berechnet…", Abbrechen →
+  the app's cancelRun STOPPED), the small spinners are gone; the time-limit question waits for cloud-app's text;
+  (3) removing a closed phone folder asks when it holds unsent routes, My routes names the old phone's routes.
+  Also: film picture Vellau → Leiteralm (2560 × 1440) + optional QR in `onpath.private` (b4c18f0). Goes live by itself
+  when CI is green.
 - ← [cloud-app] 2026-11-01: **Germany worktree removed** on donald (owner confirmed in the chat; no uncommitted work,
   all of `germany-prebuild` on origin/main, local branch deleted) – #10 closed. The run data beside it
   (`~/onpath-cells-work/germany/` state, logs, lists) is still there – remove only on the owner's word. Also new on
@@ -58,21 +66,9 @@ the git log.
   (#7); (6) slow planning: propose the "weiter warten / abbrechen" text as a `frage` first (#13), build after the
   answer. Diagnostics review needs the Pixel → morning. Do not release – the captain runs the release check in the
   morning. Laptop's "Route wird berechnet" card stays for cloud-plan tomorrow.
-- **[cloud-plan] Web spike red – planner not deployed since ebbcfbb2** (captain 2026-11-02): job "smokes (sheet-sync)",
-  one check: `after "As destination" the whole new route shows` – FAIL phone on 6f60dd01 (1352 of 1467 points outside,
-  zoom 13.7), FAIL desktop on 07a1d77f (765 of 1382 outside, zoom 13). Same check, different viewport each run → likely
-  timing: the map fits before the new, longer route is in. Main is merged now (6f60dd01). https://github.com/happychriss/OnPath/actions/runs/41518256147
-- **[cloud-plan] Planner: "Route wird berechnet…" in the middle of the map** (owner 2026-11-02: "man guckt auf den
-  Bildschirm und nichts passiert – nur oben links die Uhr"): after ~1 s of routing, the one message box (msgcard) in
-  the middle of the map: spinner + `plan_calculating` + **Abbrechen** (cancels like the app's `onCancelRouting`); map
-  and points stay visible, no dimming; fast routes show nothing (no flash); the small top-left clock goes. When the
-  time limit is hit the same card becomes the onpath.private#13 question ("weiter warten / abbrechen", text from
-  [cloud-app] first – the app leads). App unchanged (its "Route wird berechnet… Abbrechen" line in the plan sheet
-  stays). For v0.14.0 if it fits, else right after.
-- **[cloud-plan] For v0.14.0: closed sync folder – ask before deleting** (owner 2026-11-02, onpath.private#4; changes
-  A-017 rule 16): `removeFolder` asks first when the folder holds routes not yet sent to the phone (dirty); after an
-  unpair / new phone, My routes shows a short note that routes of the old phone are still in this browser instead of
-  "no routes". No read-only / move section now. Review: `docs/reviews/2026-11-01/sync*.md` §2.
+- **[cloud-plan] Planner wait box: the time-limit question** (owner 2026-11-02, onpath.private#13): the wait box with
+  Cancel is on web-spike (415d3802); when the time limit is hit it should become the question "weiter warten / abbrechen"
+  – waits for [cloud-app]'s text (the app leads).
 - **[cloud-app] [pixel] Diagnostics: 127 entries on the owner's Pixel – look at them before v0.14.0 if it fits**
   (owner 2026-11-02: "hat sich die mal jemand angeguckt?"): pull the diagnostics export briefly over adb (no tour
   recording, phone untouched otherwise), sort: old (fixed / old version) · new + harmless (INFO, offline) · new + a real
