@@ -50,6 +50,9 @@ the git log.
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
+- **[captain] 00:09: donald blocked on a chat question box since 23:57** (Plan-during-tour tile bar) – the night list and the
+  04:00 release wait for the owner's answer. Night rule for next time: no `AskUserQuestion` while the owner sleeps –
+  a `frage` issue (not blocking) and go on with the next item. E2E green on 28552a8a, planner live 415d3802.
 - **Night 2026-11-02 → 03 (owner: donald stays on, laptop off)** – [cloud-app] in this order, each green + pushed on
   its own; anything that needs the owner's word → a `frage` issue (not blocking) and go on with the next:
   (1) E2E green on main (watch run on 295a639c+); (2) words Route / Tour / Aufnahme + tabs "Geplant" / "Unterwegs"
