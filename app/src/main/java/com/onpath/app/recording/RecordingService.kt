@@ -1407,7 +1407,9 @@ class RecordingService : Service() {
     /** The status word (app language); NavNotification compares it with nav_status_recording. */
     private fun notifStatus() = when {
         paused -> Txt.s(Res.string.nav_status_paused)
-        tourId >= 0 && gpsLost() -> Txt.s(Res.string.nav_status_searching_gps)
+        // lying still by the motion sensor: nothing about GPS here either (owner 2026-11-02: "wenn das Handy still liegt
+        // … sollte es auch nicht anzeigen") – the notification says "Recording" as usual
+        tourId >= 0 && gpsLost() && noGpsLine() != NoGpsShow.Line.NONE -> Txt.s(Res.string.nav_status_searching_gps)
         navigator?.prompt?.offRoute == true -> Txt.s(Res.string.nav_off_route)
         else -> Txt.s(Res.string.nav_status_recording)
     }

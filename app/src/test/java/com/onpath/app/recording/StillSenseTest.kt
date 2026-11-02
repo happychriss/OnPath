@@ -75,4 +75,11 @@ class StillSenseTest {
         for (i in 0..50) d.add(i * 200L, 0.2f * sin(i * 0.7).toFloat(), 0.15f, g + 0.2f * sin(i * 1.3).toFloat())
         assertEquals(true, d.still(10_000))
     }
+
+    /** Owner 2026-11-02: lying still = the notification does not say "GPS wird gesucht" either. */
+    @Test fun theNotificationStaysQuietWhileStill() {
+        val svc = java.io.File("src/main/java/com/onpath/app/recording/RecordingService.kt").readText()
+        val status = svc.substringAfter("private fun notifStatus()").substringBefore("\n    }\n")
+        org.junit.Assert.assertTrue(status, status.contains("gpsLost() && noGpsLine() != NoGpsShow.Line.NONE -> Txt.s(Res.string.nav_status_searching_gps)"))
+    }
 }
