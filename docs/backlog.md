@@ -28,7 +28,7 @@ the git log.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
-- ← [cloud-plan] **main merged again into `web-spike`** (6f60dd01, 2026-11-02; main up to 8 Nov-1 evening, 63 commits):
+- ← [cloud-plan] **main merged again into `web-spike`** (6f60dd01, 2026-11-02; 63 commits of main up to c2429f7a and later):
   shared changes are cue code only (`JogRule`, `JunctionCues`, `CueRule`, `TurnDetector`) + `AppSettings` – compiled, not
   shown in the planner. Shared-code JVM tests, parity manifest, plan parity 14/14, Wasm checks and all CI smokes green
   on the laptop (sheet-smoke once red under load, 3× green alone). Mirrored: the plan points' new colours (no white ring).
