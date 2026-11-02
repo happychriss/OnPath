@@ -707,14 +707,21 @@ private fun PrimaryAction(ui: PlanUi, cb: PlanCallbacks) {
 }
 
 /**
- * "Start navigation · Hike" / "Continue navigation · Gravel bike"; no point or only one: "Start recording · Hike"
- * (owner 2026-10-30: nothing to navigate – say what happens).
+ * "Los geht's · Schloss Nordkirchen" (owner 2026-11-02, onpath.private#16: the destination's name; unnamed destination or
+ * a round trip: the activity, "Los geht's · Wandern") / "Continue navigation · Gravel bike"; no point or only one:
+ * "Aufnahme starten · Hike" (owner 2026-10-30: nothing to navigate – say what happens).
  */
-internal fun primaryLabel(ui: PlanUi): String = Txt.s(when {
-    ui.tourRunning -> Res.string.plan_continue_navigation_for
-    ui.start == PlanStart.RECORD_ONLY -> Res.string.plan_start_recording_for
-    else -> Res.string.plan_start_navigation_for
-}, ui.activity.navName)
+internal fun primaryLabel(ui: PlanUi): String = when {
+    ui.tourRunning -> Txt.s(Res.string.plan_continue_navigation_for, ui.activity.navName)
+    ui.start == PlanStart.RECORD_ONLY -> Txt.s(Res.string.plan_start_recording_for, ui.activity.navName)
+    else -> Txt.s(Res.string.plan_start_navigation_for, destinationName(ui.points) ?: ui.activity.navName)
+}
+
+/** The destination's own name (a place, a search result), or null when it has none (then "Ziel") or the plan is a loop. */
+internal fun destinationName(points: List<com.onpath.app.routing.PlanPointRow>): String? {
+    val goal = points.lastOrNull()?.takeIf { it.role == com.onpath.app.routing.PointRole.GOAL && !it.loop } ?: return null
+    return goal.name.takeIf { it.isNotBlank() && it != Txt.s(Res.string.plan_point_destination) }
+}
 
 /** The route's activity as a small tonal icon button with ▾ (opens the activity picker). */
 @Composable

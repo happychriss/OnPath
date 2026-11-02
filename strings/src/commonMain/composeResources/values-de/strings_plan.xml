@@ -75,9 +75,9 @@
     <string name="plan_max_height">max. %1$s</string>
     <string name="plan_show_route_details">Routendetails anzeigen</string>
     <string name="plan_elevation_profile">Höhenprofil</string>
-    <string name="plan_start_navigation_for">Navigation starten · %1$s</string>
+    <string name="plan_start_navigation_for">Los geht’s · %1$s</string>
     <string name="plan_continue_navigation_for">Navigation fortsetzen · %1$s</string>
-    <string name="plan_start_recording_for">Aufzeichnung starten · %1$s</string>
+    <string name="plan_start_recording_for">Aufnahme starten · %1$s</string>
     <string name="plan_save_route">Route speichern</string>
     <string name="plan_time_details">Zeitdetails</string>
     <string name="plan_close_plan">Neu planen</string>
@@ -145,7 +145,6 @@
     <string name="plan_search_hint">Orte oder Adressen suchen</string>
     <string name="plan_menu">Menü</string>
     <string name="plan_menu_my_routes">Meine Routen</string>
-    <string name="plan_menu_start_recording">Aufzeichnung starten</string>
     <string name="plan_menu_check_updates">Nach Updates suchen</string>
     <string name="plan_map_credits">Kartenquellen anzeigen</string>
     <string name="plan_undo">Rückgängig</string>
@@ -185,8 +184,8 @@
     <string name="plan_stat_ascent">Aufstieg</string>
     <string name="plan_stat_descent">Abstieg</string>
     <string name="plan_stat_time">Zeit</string>
-    <string name="plan_close_track">Track schließen</string>
-    <string name="plan_navigate_track_for">Track navigieren · %1$s</string>
+    <string name="plan_close_track">Tour schließen</string>
+    <string name="plan_navigate_track_for">Tour nachfahren · %1$s</string>
     <string name="plan_busy_import">GPX wird importiert…</string>
     <string name="plan_busy_export">Export wird vorbereitet…</string>
     <string name="plan_busy_backup">Wird gesichert…</string>
@@ -228,8 +227,8 @@
     <string name="plan_leg_no_path">kein Weg gefunden</string>
     <string name="plan_share_plan">Route teilen</string>
     <string name="plan_from_track">Als Route planen</string>
-    <string name="plan_from_track_busy_title">Route wird aus dem Track geplant …</string>
-    <string name="plan_from_track_busy_text">Bei einem langen Track kann das ein paar Minuten dauern.</string>
-    <string name="plan_from_track_failed">Aus dem Track ließ sich keine Route machen – dort fehlt vielleicht die Detailkarte.</string>
-    <string name="plan_from_track_wait">Die Karte für diesen Track wird noch geladen – gleich noch einmal versuchen.</string>
+    <string name="plan_from_track_busy_title">Route wird aus der Tour geplant …</string>
+    <string name="plan_from_track_busy_text">Bei einer langen Tour kann das ein paar Minuten dauern.</string>
+    <string name="plan_from_track_failed">Aus der Tour ließ sich keine Route machen – dort fehlt vielleicht die Detailkarte.</string>
+    <string name="plan_from_track_wait">Die Karte für diese Tour wird noch geladen – gleich noch einmal versuchen.</string>
 </resources>

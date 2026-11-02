@@ -10,8 +10,23 @@ class ActivityLabelsTest {
         PlanUi(3, null, false, null, canUndo = false, canRedo = false, activity = a, tourRunning = running)
 
     @Test fun primaryButtonNamesTheActivity() {
-        assertEquals("Start navigation · Hike", primaryLabel(ui(Activity.HIKE, false)))
+        // owner 2026-11-02 (#16): "Let's go · ‹destination›"; no named destination → the activity
+        assertEquals("Let’s go · Hike", primaryLabel(ui(Activity.HIKE, false)))
         assertEquals("Continue navigation · Gravelbike", primaryLabel(ui(Activity.BIKE_TREKKING, true)))
+    }
+
+    /** "Let's go · Schloss Nordkirchen": the destination's own name; "Destination" (unnamed) or a loop → the activity. */
+    @Test fun letsGoNamesTheDestination() {
+        fun row(i: Int, role: com.onpath.app.routing.PointRole, name: String, loop: Boolean = false) =
+            com.onpath.app.routing.PlanPointRow(i, role, name, null, false, loop)
+        val start = com.onpath.app.routing.PointRole.START
+        val goal = com.onpath.app.routing.PointRole.GOAL
+        val named = listOf(row(0, start, "Start"), row(1, goal, "Schloss Nordkirchen"))
+        assertEquals("Let’s go · Schloss Nordkirchen", primaryLabel(ui(Activity.HIKE, false).copy(points = named)))
+        val unnamed = listOf(row(0, start, "Start"), row(1, goal, "Destination"))
+        assertEquals("Let’s go · Hike", primaryLabel(ui(Activity.HIKE, false).copy(points = unnamed)))
+        val loop = listOf(row(0, start, "Café", loop = true), row(1, com.onpath.app.routing.PointRole.STOP, "Stop 2"))
+        assertEquals("Let’s go · Hike", primaryLabel(ui(Activity.HIKE, false).copy(points = loop)))
     }
 
     /** The tour's Continue names the activity, like the primary button. */
@@ -22,8 +37,8 @@ class ActivityLabelsTest {
 
     /** Problem 5: the track panel's button names the activity it navigates with. */
     @Test fun trackButtonNamesTheActivity() {
-        assertEquals("Start navigation · Hike", trackFollowLabel(recording = false, Activity.HIKE))
-        assertEquals("Navigate this track · MTB", trackFollowLabel(recording = true, Activity.MTB))
+        assertEquals("Let’s go · Hike", trackFollowLabel(recording = false, Activity.HIKE))
+        assertEquals("Follow this tour · MTB", trackFollowLabel(recording = true, Activity.MTB))
     }
 
     @Test fun rowStatusTexts() {

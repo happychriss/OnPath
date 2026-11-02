@@ -134,10 +134,10 @@ class BackupTest {
     }
 
     @Test fun restoreSummary() {
-        assertEquals("23 tracks and 5 routes restored.", BackupRestore.summary(BackupRestore.Result(23, 5, 0, 0)))
-        assertEquals("1 track and 0 routes restored (2 already on this phone, 1 could not be read).",
+        assertEquals("23 tours and 5 routes restored.", BackupRestore.summary(BackupRestore.Result(23, 5, 0, 0)))
+        assertEquals("1 tour and 0 routes restored (2 already on this phone, 1 could not be read).",
             BackupRestore.summary(BackupRestore.Result(1, 0, 2, 1)))
-        assertEquals("No tracks or routes restored.", BackupRestore.summary(BackupRestore.Result(0, 0, 0, 0)))
+        assertEquals("No tours or routes restored.", BackupRestore.summary(BackupRestore.Result(0, 0, 0, 0)))
     }
 
     // ---------------------------------------------------------------- recycle bin

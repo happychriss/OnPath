@@ -76,7 +76,7 @@
     <string name="plan_max_height">max %1$s</string>
     <string name="plan_show_route_details">Show route details</string>
     <string name="plan_elevation_profile">Elevation profile</string>
-    <string name="plan_start_navigation_for">Start navigation · %1$s</string>
+    <string name="plan_start_navigation_for">Let’s go · %1$s</string>
     <string name="plan_continue_navigation_for">Continue navigation · %1$s</string>
     <string name="plan_start_recording_for">Start recording · %1$s</string>
     <string name="plan_save_route">Save route</string>
@@ -146,7 +146,6 @@
     <string name="plan_search_hint">Search places or addresses</string>
     <string name="plan_menu">Menu</string>
     <string name="plan_menu_my_routes">My routes</string>
-    <string name="plan_menu_start_recording">Start recording</string>
     <string name="plan_menu_check_updates">Check for updates</string>
     <string name="plan_map_credits">Show map credits</string>
     <string name="plan_undo">Undo</string>
@@ -186,8 +185,8 @@
     <string name="plan_stat_ascent">Ascent</string>
     <string name="plan_stat_descent">Descent</string>
     <string name="plan_stat_time">Time</string>
-    <string name="plan_close_track">Close track</string>
-    <string name="plan_navigate_track_for">Navigate this track · %1$s</string>
+    <string name="plan_close_track">Close tour</string>
+    <string name="plan_navigate_track_for">Follow this tour · %1$s</string>
     <string name="plan_busy_import">Importing GPX…</string>
     <string name="plan_busy_export">Preparing the export…</string>
     <string name="plan_busy_backup">Backing up…</string>
@@ -229,8 +228,8 @@
     <string name="plan_leg_no_path">no path found</string>
     <string name="plan_share_plan">Share route</string>
     <string name="plan_from_track">Plan a route from it</string>
-    <string name="plan_from_track_busy_title">Planning a route from the track…</string>
-    <string name="plan_from_track_busy_text">A long track can take a few minutes.</string>
-    <string name="plan_from_track_failed">The track could not be turned into a route – the detailed map may be missing there.</string>
-    <string name="plan_from_track_wait">The map for this track is still loading – try again in a moment.</string>
+    <string name="plan_from_track_busy_title">Planning a route from the tour…</string>
+    <string name="plan_from_track_busy_text">A long tour can take a few minutes.</string>
+    <string name="plan_from_track_failed">The tour could not be turned into a route – the detailed map may be missing there.</string>
+    <string name="plan_from_track_wait">The map for this tour is still loading – try again in a moment.</string>
 </resources>

@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Search
@@ -54,8 +53,6 @@ import androidx.compose.ui.unit.dp
 class PlanMenu(
     val state: RouteMenuState = RouteRules.menu(hasRoute = false, pointCount = 0, savedCount = 0, navigating = false, recording = false),
     val onManage: () -> Unit = {},
-    /** Free recording without a route (location permission is checked by the caller). */
-    val onStartRecording: () -> Unit = {},
     val onSettings: () -> Unit = {},
     /** Called when the menu opens (refresh the saved-routes count). */
     val onOpened: () -> Unit = {},
@@ -151,7 +148,8 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     menu.onSaveRoute?.let { save ->
         MenuItem(Icons.Outlined.Save, str(Res.string.plan_save_route), enabled = st.save) { close(); save() }
     }
-    MenuItem(Icons.Filled.FiberManualRecord, str(Res.string.plan_menu_start_recording), enabled = st.startRecording) { close(); menu.onStartRecording() }
+    // no "Aufzeichnung starten" here (owner 2026-11-02, onpath.private#15): the green start button in Plan records
+    // without a route ("Aufnahme starten · ‹Aktivität›", PlanStart.RECORD_ONLY)
     HorizontalDivider()
     menu.onPairBrowser?.let { p -> SyncMenuItem(menu.sync, enabled = st.settings) { close(); p() } }
     MenuItem(Icons.Outlined.Settings, str(Res.string.common_settings), enabled = st.settings) { close(); menu.onSettings() }

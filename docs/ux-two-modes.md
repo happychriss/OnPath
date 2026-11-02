@@ -44,7 +44,7 @@ tour recording (also while looking at Plan during a tour).
 
 **☰ (round button right of the search pill)** – library and app (see "Layout rule" below):
 
-Order (owner 2026-10-31): **Save route** · My routes · Start recording · Pair with browser · Settings (red "Phone setup"
+Order (owner 2026-10-31; "Start recording" gone 2026-11-02, onpath.private#15 – the green start button records): **Save route** · My routes · Pair with browser · Settings (red "Phone setup"
 first while a tour needs it). A small **green dot** on ☰ while the plan has unsaved changes (`RouteRules.saveAtHand`; an
 amber sync dot wins).
 
@@ -52,7 +52,6 @@ amber sync dot wins).
 | --- | --- | --- |
 | Save route | shown whenever there is a plan (two points, `RouteRules.saveInMenu`); enabled with a route line | Save's name dialog (below) – the one Save of the plan |
 | My routes | always | The routes list (below): tap = open / load |
-| Start recording | no planned route (fewer than 2 points) and nothing recording | Free recording without a route (closes a shown track) |
 | Settings, Check for updates | always (updates: only when the build supports them) | |
 
 **Save** (☰ → "Save route", "Replace current plan?" → Save first; the sheet has no Save button since 0.13.5) **always
@@ -70,7 +69,7 @@ does not use this dialog.
 
 **Plan sheet:** the primary button exists from two points: "Start navigation · Hike" with a route line (also a
 straight-line fallback; disabled while the points wait for their line), "Continue navigation" while a tour runs. With
-no point or one, a free recording is ☰ → Start recording. One rule for the words and what Start does (`PlanStart`,
+no point or one, the green start button records ("Aufnahme starten · Hike"). One rule for the words and what Start does (`PlanStart`,
 owner 2026-10-30): nothing to follow = **"Start recording · Hike"** with the record dot – also in the track panel for a
 track without a line (an empty recorded tour, a GPX with one point; during a tour its button is off). **No ⋯ menu**
 (owner 2026-10-31): from one point on, the summary step ends with a row of three small icons, each with its short label
@@ -120,7 +119,7 @@ undo step. Tracks open next to the plan without asking.
   the same free room. MapLibre's own compass is off.
 - Own position in both modes: small blue dot with accuracy circle and a small direction triangle at its edge
   (MapLibre COMPASS render mode; direction = compass standing, GPS bearing moving – `map/HeadingEngine`); grey when stale.
-- One primary action per mode: Plan → "Start navigation" ("Start recording" without a route), Navigate → slide "Stop" (back to Plan).
+- One primary action per mode: Plan → "Los geht’s · ‹Ziel›" (owner 2026-11-02; "Aufnahme starten" without a route), Navigate → slide "Stop" (back to Plan).
 
 ## Plan gestures (owner spec, `ui/MapGestures.kt`)
 **Hold only.** A hold is ≥ 0.3 s (`HOLD_MS`) with a ring filling under the finger; the vibration comes the moment
@@ -163,7 +162,7 @@ Everything about **this route** lives in the route sheet; the **library and app*
 | Where | What |
 | --- | --- |
 | Search pill | only search |
-| ☰ (round button right of the search pill) | Save route (with a plan; dot while unsaved), My routes (open = load, import, rename, copy, export, share, delete), Start recording (no route), Pair with browser, Settings |
+| ☰ (round button right of the search pill) | Save route (with a plan; dot while unsaved), My routes (open = load, import, rename, copy, export, share, delete), Pair with browser, Settings |
 | Sheet, first line | activity button (icon ▾) · time + distance (tap = Time details) (during a tour the activity button opens the check-and-switch sheet, owner) |
 | Map buttons (right) | compass · eye · Show whole route ⛶ · Undo · Redo (Redo only when there is something to redo, owner) · locate |
 | Sheet action row | ✕ Close (also during a tour: ends the route guidance, Undo brings it back; "Discard changes?" first when unsaved) · ⇅ Reverse · ↻ Round trip – icon and word side by side |

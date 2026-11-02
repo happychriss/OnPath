@@ -267,8 +267,6 @@ private fun PlanMode(
             menu = PlanMenu(
                 state = vm.menuState(recording = rec != null),
                 onManage = { vm.openRoutes() },
-                // Free recording without a route: a shown track is closed so it is not followed.
-                onStartRecording = { vm.closeShown(); onStartNavigation() },
                 onSettings = { vm.openSettings() },
                 // plan sync (A-007), owner 2026-10-30: not paired → the camera at once (first time the step line
                 // before it); paired / a problem → Settings → Browser sync ([PairEntry])

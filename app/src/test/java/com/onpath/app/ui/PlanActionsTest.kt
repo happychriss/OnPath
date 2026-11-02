@@ -51,9 +51,11 @@ class PlanActionsTest {
         assertTrue(RouteRules.saveInMenu(2))
         assertFalse(RouteRules.saveInMenu(1))
         val items = src("ui/PlanTopBar.kt").substringAfter("internal fun PlanMenuItems(").substringBefore("\n}\n")
-        val order = listOf("plan_menu_my_routes", "menu.onSaveRoute", "plan_menu_start_recording", "menu.onPairBrowser", "common_settings")
+        val order = listOf("plan_menu_my_routes", "menu.onSaveRoute", "menu.onPairBrowser", "common_settings")
             .map { items.indexOf(it) }
-        assertTrue("☰: My routes · Save route · Start recording · Pair with browser · Settings $order",
+        // owner 2026-11-02 (#15): "Aufzeichnung starten" is gone from ☰ – the green start button does it
+        assertFalse("no Start recording in ☰", items.contains("plan_menu_start_recording") || items.contains("onStartRecording"))
+        assertTrue("☰: My routes · Save route · Pair with browser · Settings $order",
             order.all { it >= 0 } && order == order.sorted())
         assertTrue(src("ui/PlanTopBar.kt").contains("menu.unsaved && menu.onSaveRoute != null) OnPathColors.Green"))
     }

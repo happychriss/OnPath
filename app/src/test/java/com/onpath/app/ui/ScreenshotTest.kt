@@ -161,12 +161,12 @@ class ScreenshotTest {
         }
     }
 
-    /** App start without a plan: Plan is home; no points, no primary button (free recording = ☰ → Start recording). GPS searching. */
+    /** App start without a plan: Plan is home; no points, no primary button (free recording = the green start button, ☰ has no Start recording since 2026-11-02). GPS searching. */
     @Test fun planEmpty() = paparazzi.snapshot {
         Frame(gps = GpsStatus.SEARCHING) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
     }
 
-    /** Only a start point (owner 2026-10-30): no line to follow, no "Start navigation" (free recording = ☰ → Start recording). */
+    /** Only a start point (owner 2026-10-30): no line to follow, no "Start navigation" (free recording = the green start button, ☰ has no Start recording since 2026-11-02). */
     @Test fun planOnePoint() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(n = 1, r = null), PlanCallbacks()) }
     }
