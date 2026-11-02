@@ -146,13 +146,22 @@ object MapGestures {
     fun placeOverlay(
         ax: Float, ay: Float, w: Int, h: Int,
         left: Int, top: Int, right: Int, bottom: Int, gap: Int,
+        /** Where "below" starts when the anchor has a body under it (the found place's pin: under its name chip). */
+        belowAy: Float = ay,
+        /**
+         * The found place's pin (owner 2026-11-02): when neither fits inside [top]..[bottom], the menu may reach over the
+         * top bar ([looseTop]) or the sheet ([looseBottom]) rather than cover the pin; null = the plain clamp.
+         */
+        looseTop: Int? = null, looseBottom: Int? = null,
     ): Pair<Int, Int> {
         val x = (ax - w / 2f).toInt().coerceIn(left, max(left, right - w))
         val above = (ay - gap - h).toInt()
-        val below = (ay + gap).toInt()
+        val below = (belowAy + gap).toInt()
         val y = when {
             above >= top -> above
             below + h <= bottom -> below
+            looseTop != null && above >= looseTop -> above
+            looseBottom != null && below + h <= looseBottom -> below
             else -> min(max(top, above), max(top, bottom - h))
         }
         return x to y

@@ -110,7 +110,9 @@ fun MapOverlayHost(
         val pin = vm.isCandidate(poi)
         // the pin's menu goes above the pin's head, not over it
         val lift = if (pin) c.dpToPx(com.onpath.app.map.CandidateMarker.PIN_HEIGHT_DP) else 0f
-        Anchored(c, GeoPoint(poi.lat, poi.lon), cameraTick, topPx, bottomPx, liftPx = lift, onGone = { com.onpath.app.debug.Problems.trace("plan", "POI menu closed: POI left the visible map (onGone)"); vm.poiMenu = null }) {
+        // no room above: under the name chip, never over the pin (owner 2026-11-02, the empty plan's 4-line menu)
+        val drop = if (pin) c.dpToPx(PIN_CHIP_BELOW_DP) else 0f
+        Anchored(c, GeoPoint(poi.lat, poi.lon), cameraTick, topPx, bottomPx, liftPx = lift, dropPx = drop, onGone = { com.onpath.app.debug.Problems.trace("plan", "POI menu closed: POI left the visible map (onGone)"); vm.poiMenu = null }) {
             PoiMenu(poi,
                 emptyPlan = vm.waypoints.isEmpty(),
                 fromMeBlocked = MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
@@ -170,11 +172,11 @@ fun RoutingRing(center: Offset, stillProgress: Float? = null) {
 @Composable
 private fun Anchored(
     c: MapController, at: GeoPoint, cameraTick: Int, topPx: Int, bottomPx: Int, onGone: () -> Unit, liftPx: Float = 0f,
-    content: @Composable () -> Unit,
+    dropPx: Float = 0f, content: @Composable () -> Unit,
 ) {
     @Suppress("UNUSED_EXPRESSION") cameraTick // re-read the projection on every camera move
     val s = c.toScreen(at) ?: return
-    AnchoredOverlay(Offset(s.x, s.y - liftPx), topPx, bottomPx, onGone, content)
+    AnchoredOverlay(Offset(s.x, s.y - liftPx), topPx, bottomPx, onGone, belowY = s.y + dropPx, loose = dropPx > 0f, content = content)
 }
 
 /** The found place's name chip (owner 2026-11-02), pure rules. */
@@ -218,6 +220,9 @@ internal fun PinChipAt(anchor: Offset, topPx: Int, bottomPx: Int, content: @Comp
     }
 }
 
+/** From the pin's tip to below its name chip (gap + the chip's 48 dp touch box): where the menu goes when not above. */
+internal const val PIN_CHIP_BELOW_DP = 54f
+
 /** Room above and below the visible pill so the touch target is ≥ 48 dp high. */
 private val PIN_CHIP_TOUCH_PAD = 8.dp
 
@@ -249,7 +254,9 @@ fun PinChip(name: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
  * inside the map area between [topPx] and the bottom minus [bottomPx]. [onGone] when the anchor leaves the box.
  */
 @Composable
-fun AnchoredOverlay(anchor: Offset, topPx: Int, bottomPx: Int, onGone: () -> Unit = {}, content: @Composable () -> Unit) {
+fun AnchoredOverlay(anchor: Offset, topPx: Int, bottomPx: Int, onGone: () -> Unit = {}, belowY: Float = anchor.y,
+                    /** The pin's menu: may reach over the top bar / the sheet rather than cover the pin. */
+                    loose: Boolean = false, content: @Composable () -> Unit) {
     val d = LocalDensity.current
     val margin = with(d) { 12.dp.roundToPx() }
     val gap = with(d) { 22.dp.roundToPx() }
@@ -262,7 +269,8 @@ fun AnchoredOverlay(anchor: Offset, topPx: Int, bottomPx: Int, onGone: () -> Uni
         }
         Layout(content = { Box { content() } }, modifier = Modifier.fillMaxSize()) { measurables, cs ->
             val pl = measurables.first().measure(cs.copy(minWidth = 0, minHeight = 0, maxWidth = minOf(maxW, w - 2 * margin)))
-            val (x, y) = MapGestures.placeOverlay(anchor.x, anchor.y, pl.width, pl.height, margin, topPx, w - margin, h - bottomPx, gap)
+            val (x, y) = MapGestures.placeOverlay(anchor.x, anchor.y, pl.width, pl.height, margin, topPx, w - margin, h - bottomPx, gap, belowY,
+                looseTop = margin.takeIf { loose }, looseBottom = (h - margin).takeIf { loose })
             layout(w, h) { pl.place(x, y) }
         }
     }

@@ -769,9 +769,11 @@ class ScreenshotTest {
                 PinChip(shared.title(), onClick = {})
             }
         }
-        // the pin's menu above the pin's head (MapOverlayHost: lift = CandidateMarker.PIN_HEIGHT_DP)
+        // the pin's menu above the pin's head, else under its name chip (MapOverlayHost: lift / drop)
         val lift = if (ring) with(d) { com.onpath.app.map.CandidateMarker.PIN_HEIGHT_DP.dp.toPx() } else 0f
-        AnchoredOverlay(a.copy(y = a.y - lift), topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }, content = content)
+        val drop = if (ring) with(d) { PIN_CHIP_BELOW_DP.dp.toPx() } else 0f
+        AnchoredOverlay(a.copy(y = a.y - lift), topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() },
+            belowY = a.y + drop, loose = ring, content = content)
     }
 
     /** First hold on an empty plan: Start here · Go here (from my location) (position known). */

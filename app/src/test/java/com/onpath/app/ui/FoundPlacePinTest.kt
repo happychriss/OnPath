@@ -94,4 +94,18 @@ class FoundPlacePinTest {
         assertFalse("well beside", CandidateMarker.hit(40f, -CandidateMarker.TIP_DP))
         assertFalse("well below", CandidateMarker.hit(0f, 40f))
     }
+
+    /**
+     * Owner 2026-11-02 (empty plan, 4-line menu): with no room above the pin's head the menu goes under the name chip –
+     * never over the pin. Head at y 400 (tip 450), chip down to 500, menu 300 high, top bar at 200.
+     */
+    @Test fun theMenuNeverCoversThePin() {
+        val (_, y) = MapGestures.placeOverlay(500f, 400f, 300, 300, 12, 200, 1068, 1800, 22, belowAy = 500f)
+        assertEquals("under the chip", 522, y)
+        // room neither above nor below inside the map area: over the top bar rather than over the pin
+        val tight = MapGestures.placeOverlay(500f, 400f, 300, 300, 12, 200, 1068, 700, 22, belowAy = 500f, looseTop = 12, looseBottom = 1888)
+        assertEquals(400 - 22 - 300, tight.second)
+        // room above: above the head as before
+        assertEquals(400 - 22 - 300, MapGestures.placeOverlay(500f, 400f, 300, 300, 12, 50, 1068, 1800, 22, belowAy = 500f).second)
+    }
 }
