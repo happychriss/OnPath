@@ -89,9 +89,13 @@ the git log.
   sensor (accelerometer / significant-motion, no Google Play Services) so it works without GPS fixes; amber warning only
   when the phone moves and GPS is missing. Reproducing JVM test first (core rule), battery: sensor only while recording
   without a fix. Recording itself unchanged.
-- **[cloud-app] Stop slider clearer + bigger** (owner 2026-11-02): the small line under "Stopp" is grey and the
-  unlocked Pause · Change route · End look switched off (white 12 % fill) – white text, bigger. Three sketches (A white
-  buttons · B action sheet · C tiles), asked: onpath.private#17; build after the answer, screenshots to the owner first.
+- **[cloud-app] Stop slider: three coloured tiles (owner 2026-11-02, onpath.private#17 = C, refined)**: after the slide,
+  a compact bar (~1.5× the slider's height) with three tiles in fixed colours to remember – **green Pause / Resume,
+  blue Change route, red End** – white text, icons that carry the track (Pause: the line ends in ⏸; Change route: the
+  line branches, old dashed / new solid; End: the line ends in ■). Sketch "Gewählt" on
+  https://claude.ai/artifact/MExiAyU5nmXsNWouk3WNEh. Tokens in `OnPathColors` (no hand colours), screenshots DE + EN
+  to the owner before main. Owner idea to follow: use the same colour meaning elsewhere (navigation green, change
+  route blue) – propose where (Plan buttons, menu, web) as a question.
 - **[cloud-app] A-003 Play build – right after v0.14.0** (owner 2026-11-02, onpath.private#3): flavours prod (Google Play:
   no self-update, no REQUEST_INSTALL_PACKAGES, no GitHub update line in Settings → Datenschutz) / dev (as today);
   signed AAB for prod in `release.yml` next to the APK; upload key made by the owner locally → GitHub secret, never in
