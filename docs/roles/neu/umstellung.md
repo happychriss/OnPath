@@ -75,9 +75,9 @@ Force-Push, `reset --hard`, Branch-Löschen, `adb uninstall` / `pm clear`, `grad
 1. donald: altes `claude remote-control` (Terminal `onpath-app`) mit Strg-C beenden; `git status --short` muss leer sein
    (sonst: Ausgabe an die Setup-Sitzung). Dann A.0 im Checkout (Vertrauen, `w` → worktree), dann
    `ONPATH_PERMISSION_MODE=auto tools/dev/unit.sh run donald` (später `install donald` für den Autostart).
-2. In der App im Gastgeber eine neue Sitzung anlegen, Name **donald**, Start-Satz aus `start.md`. Erste Antwort muss mit
-   „== OnPath session start ==“ beginnen (Hooks feuern). Sie stellt sich den stündlichen Weckruf selbst und beginnt mit
-   dem wip-Branch.
+2. ✅ 2026-11-02 19:53: Sitzung **donald** läuft im Gastgeber (Worktree-Modus, auto). Hooks feuern in der
+   Remote-Control-Sitzung (sie kannte `wip/`-Branches und die offenen Fragen ungefragt); stündlicher Weckruf
+   „donald: Runde (stündlich)“ steht (Minute 56); erstes Vorhaben = Nacht-Branch rebased, Tor im Hintergrund.
 3. 👤 Alte Sitzung `claude-app` archivieren (ihre Design-Review vs. Komoot steht nur dort – vorher als Datei sichern
    lassen, siehe Backlog).
 4. **Captain:** 👤 alte Captain-Sitzung archivieren und ihren toten Weckruf „Captain: E2E + review check“ löschen. Neue
