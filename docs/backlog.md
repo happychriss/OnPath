@@ -60,6 +60,10 @@ the git log.
   one check: `after "As destination" the whole new route shows` – FAIL phone on 6f60dd01 (1352 of 1467 points outside,
   zoom 13.7), FAIL desktop on 07a1d77f (765 of 1382 outside, zoom 13). Same check, different viewport each run → likely
   timing: the map fits before the new, longer route is in. Main is merged now (6f60dd01). https://github.com/happychriss/OnPath/actions/runs/41518256147
+- **[cloud-plan] For v0.14.0: closed sync folder – ask before deleting** (owner 2026-11-02, onpath.private#4; changes
+  A-017 rule 16): `removeFolder` asks first when the folder holds routes not yet sent to the phone (dirty); after an
+  unpair / new phone, My routes shows a short note that routes of the old phone are still in this browser instead of
+  "no routes". No read-only / move section now. Review: `docs/reviews/2026-11-01/sync*.md` §2.
 - **[cloud-app] For v0.14.0: own User-Agent for brouter.de downloads** (owner 2026-11-02, onpath.private#5 A): every
   request to brouter.de (routing data) sends `OnPath/<version> (+https://onpath.earth)`; the first testers (up to ~20)
   stay on the test servers. Small change, with a JVM test.
