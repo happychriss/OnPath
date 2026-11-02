@@ -59,6 +59,12 @@ the git log.
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
+- **[emu] E2E red on main** (captain 2026-11-02): "Core feature tests on the emulator" failed on efbb01e1, 267f0875,
+  4e16e629 (runs 291, 293, 295); the run on 63b0194d is going. If it is red too: find the failing test class from the
+  report and fix it before the release. https://github.com/happychriss/OnPath/actions/runs/41352773832
+- **[cloud-plan] Web spike red – planner not deployed since ebbcfbb2** (captain 2026-11-02): job "smokes (sheet-sync)",
+  step "Plan sheet steps" failed on 4e9913be and 3561ad78. Then merge main again: `release_check.sh` shows 5 shared files
+  differ (AppSettings, CueRule, JogRule, JunctionCues, TurnDetector). https://github.com/happychriss/OnPath/actions/runs/41354594301
 - **Word pair Route / Tour / Aufnahme (proposal from the design review, needs the owner's word – owner words):** today
   "Tour 1. Nov.", "Unterbrochene Tour" in My routes, "Aufnahme" on the way. Proposal: **Route** = planned, **Tour** =
   ridden, "Aufnahme" only for the running recording (REC); then two tabs "Geplant" / "Unterwegs" in My routes like

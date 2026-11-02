@@ -4,6 +4,13 @@ Current release **0.13.5** (2026-10-31). Open work: `docs/backlog.md`. Core feat
 `docs/core-features.md`. What each release changed: `docs/release-notes/` and the git history – this file keeps only
 the current state.
 
+## Where things are
+<!-- Kept by the captain every round (docs/roles/neu/captain.md 5c). -->
+- **Pixel:** main b047bf79, installed 2026-11-01 19:55 (newest handoff that names it; the night draft 63b0194d is not on it).
+- **GitHub release:** v0.13.5 (2026-10-31). Next planned: v0.14.0 (owner: not before all fixes are in).
+- **Planner (plan.onpath.earth):** web-spike ebbcfbb2 (2026-11-01 15:59, last green run). The two newer pushes
+  (4e9913be, 3561ad78) are red in "smokes (sheet-sync)" and were not deployed.
+
 ## Übergabe Captain-Sitzung donald – 2026-10-31 abends
 <!-- The captain session on donald ends here; the owner switches to fixed roles (`docs/working-agreement.md`). -->
 - **State:** released 0.13.2 → 0.13.5 today. main (8cf47345 or newer) also has, **not released yet**: the planner
