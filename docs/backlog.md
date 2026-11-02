@@ -50,6 +50,14 @@ the git log.
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
+- **Night 2026-11-02 → 03 (owner: donald stays on, laptop off)** – [cloud-app] in this order, each green + pushed on
+  its own; anything that needs the owner's word → a `frage` issue (not blocking) and go on with the next:
+  (1) E2E green on main (watch run on 295a639c+); (2) words Route / Tour / Aufnahme + tabs "Geplant" / "Unterwegs"
+  (#14); (3) start button "Los geht's · ‹Ziel›" (#16) + ☰ "Aufzeichnung starten" removed (#15); (4) Plan during a tour:
+  green "Weiter navigieren", red "Änderungen verwerfen" (#19); (5) paved footways for Bike / Gravel with the amber note
+  (#7); (6) slow planning: propose the "weiter warten / abbrechen" text as a `frage` first (#13), build after the
+  answer. Diagnostics review needs the Pixel → morning. Do not release – the captain runs the release check in the
+  morning. Laptop's "Route wird berechnet" card stays for cloud-plan tomorrow.
 - **[cloud-plan] Web spike red – planner not deployed since ebbcfbb2** (captain 2026-11-02): job "smokes (sheet-sync)",
   one check: `after "As destination" the whole new route shows` – FAIL phone on 6f60dd01 (1352 of 1467 points outside,
   zoom 13.7), FAIL desktop on 07a1d77f (765 of 1382 outside, zoom 13). Same check, different viewport each run → likely
