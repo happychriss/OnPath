@@ -9,6 +9,10 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
   other**, each with 2–3 lines of background – never a list of questions in prose. Every question also goes to the
   dashboard (issues `frage` in `onpath.private`, `tools/ask.sh`); a blocking one is asked in the chat too (yellow
   "waiting" dot), the owner answers where he is, the session keeps the issue up to date and closes it.
+- **No numbers toward the owner** (owner 2026-11-02: "sowas wie #19 kann ich mir nicht merken"): in the chat and in
+  push messages name a question, issue, commit or item by a short description ("die Frage zum Startknopf"), never by
+  its number alone. Numbers stay in issues, the backlog and commit messages for the sessions; the owner may answer
+  with a word ("Startknopf: A").
 - Plain words, short updates, outcome first. No diffs or file dumps in the terminal; quiet tool calls, one-line results.
 - Never name internals toward the owner as product words ("cells", "routing data") – it's "map areas", "the map".
 - Komoot is the UX reference (the owner is a long-time Komoot user).
