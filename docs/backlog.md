@@ -74,6 +74,14 @@ the git log.
 - **[cloud-app] For v0.14.0: own User-Agent for brouter.de downloads** (owner 2026-11-02, onpath.private#5 A): every
   request to brouter.de (routing data) sends `OnPath/<version> (+https://onpath.earth)`; the first testers (up to ~20)
   stay on the test servers. Small change, with a JVM test.
+- **[cloud-app] [pixel] Diagnostics: 127 entries on the owner's Pixel – look at them before v0.14.0 if it fits**
+  (owner 2026-11-02: "hat sich die mal jemand angeguckt?"): pull the diagnostics export briefly over adb (no tour
+  recording, phone untouched otherwise), sort: old (fixed / old version) · new + harmless (INFO, offline) · new + a real
+  bug → its own Next line with a reproducing test. A short overview to the owner; the owner then clears with the button.
+- **[cloud-app] Diagnostics list folds** (owner 2026-11-02, low prio, after v0.14.0): Settings → Diagnostics starts
+  folded – one line "127 Einträge, davon 3 Fehler ▸" – so the developer tools under it are reached without scrolling.
+- **Asked, not blocking:** ☰ item "Aufzeichnung starten" grey dot reads like a status (onpath.private#15); start
+  button "Navigation starten" → "Los geht's"? (#16). [cloud-app] after the answer – small text / icon round with #14.
 - **[cloud-app] A-003 Play build – right after v0.14.0** (owner 2026-11-02, onpath.private#3): flavours prod (Google Play:
   no self-update, no REQUEST_INSTALL_PACKAGES, no GitHub update line in Settings → Datenschutz) / dev (as today);
   signed AAB for prod in `release.yml` next to the APK; upload key made by the owner locally → GitHub secret, never in
