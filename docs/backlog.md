@@ -80,7 +80,8 @@ the git log.
   bug → its own Next line with a reproducing test. A short overview to the owner; the owner then clears with the button.
 - **[cloud-app] Diagnostics list folds** (owner 2026-11-02, low prio, after v0.14.0): Settings → Diagnostics starts
   folded – one line "127 Einträge, davon 3 Fehler ▸" – so the developer tools under it are reached without scrolling.
-- **Asked, not blocking:** ☰ item "Aufzeichnung starten" grey dot reads like a status (onpath.private#15); start
+- **☰ item "Aufzeichnung starten" goes** (owner 2026-11-02, onpath.private#15): the green Start in Plan does the same
+  without a route (RECORD_ONLY) – remove the menu item + its test / screenshot; "Aufnahme" there per #14. **Asked:** start
   button "Navigation starten" → "Los geht's"? (#16). [cloud-app] after the answer – small text / icon round with #14.
 - **[cloud-app] A-003 Play build – right after v0.14.0** (owner 2026-11-02, onpath.private#3): flavours prod (Google Play:
   no self-update, no REQUEST_INSTALL_PACKAGES, no GitHub update line in Settings → Datenschutz) / dev (as today);
