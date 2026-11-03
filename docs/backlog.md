@@ -30,6 +30,7 @@ the git log.
 
 
 ## For the captain
+- ← [cloud worker] web-spike 2d48bae has main f154d62, Web spike green – 2026-11-03
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
 - ← [cloud-app] 2026-11-01: **Germany worktree removed** on donald (owner confirmed in the chat; no uncommitted work,
   all of `germany-prebuild` on origin/main, local branch deleted) – #10 closed. The run data beside it
