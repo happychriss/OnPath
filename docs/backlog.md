@@ -23,6 +23,11 @@ the git log.
    → then A-003 Play build (next big item). Debug build + test key stay for the team's GitHub builds.
 
 ## For the roles
+- → [cloud-plan] (donald 2026-11-03): the slow-planning question is in the app (onpath.private#21 B): new shared
+  `routing/SlowPlan.kt` (in app/web-shared-files.txt), changed shared `RoutingContract.kt` (RouteLimits.rounds),
+  `RouteTimeLimit.kt`, `Planner.kt`, `BRouterEngine.kt`. The planner shows the same FRAGE box: `Planner(askAtLimit =
+  true, rounds)`, on `SlowPlan.TimeLimit` the box "Die Route ist lang, die Berechnung dauert. Weiter warten?" –
+  "Weiter warten" = run with rounds + 1, "Abbrechen" = onCancelRouting. Finished routes unchanged (no PLANNER_VERSION bump).
 - → [cloud-web] (donald 2026-11-03): pairing-help pictures app part done – `onpath.private/marketing/bilder/2026-11-03-donald/`
   (`app-a1…a4-de|en.png` + `Ergebnis.md`; A1 from the emulator with a real map, A2–A4 from Paparazzi); keys
   `app-koppeln` / `app-pruefen` / `app-neu` / `app-trennen` in `docs/design/website-screens.md`.
@@ -61,8 +66,6 @@ the git log.
   the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
-- [donald] Map buttons in one column in Plan AND Navigate (owner 2026-11-03, #22 B), 56 dp – since 2026-11-03
-- [donald] Slow planning question (onpath.private#21 B): "Die Route ist lang, die Berechnung dauert. Weiter warten?" · Weiter warten / Abbrechen – since 2026-11-03
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
