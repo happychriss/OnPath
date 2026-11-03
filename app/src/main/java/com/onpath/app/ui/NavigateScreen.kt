@@ -145,9 +145,12 @@ data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: I
                     /** The new route starts behind: "Umdrehen" with the U sign (owner 2026-11-01). */
                     val turnRound: Boolean = false,
                     /** No turn near: "↑ Geradeaus · 2,4 km" to the next one (the card always there, owner 2026-11-01). */
-                    val straight: Boolean = false) {
+                    val straight: Boolean = false,
+                    /** The kind of way the turn goes onto, as the voice says it ("Links auf den Radweg"); null = no word. */
+                    val onto: com.onpath.app.navigation.WayKind? = null) {
     val label: String get() = if (straight) Txt.s(Res.string.nav_straight_on) else if (turnRound) Txt.s(Res.string.nav_turn_round)
-        else roundabout?.let { com.onpath.app.routing.JunctionCue.ROUNDABOUT.text(it) } ?: kind.label
+        else roundabout?.let { com.onpath.app.routing.JunctionCue.ROUNDABOUT.text(it) }
+            ?: onto?.let { com.onpath.app.navigation.VoiceText.onto(kind.label, it) } ?: kind.label
 }
 
 /**
@@ -308,9 +311,12 @@ private fun TurnCard(t: TurnHint) {
             if (t.roundabout != null) RoundaboutSign(t.roundabout, t.roundaboutAngle, Modifier.size(48.dp))
             else Icon(if (t.straight) Icons.Filled.ArrowUpward else turnIcon(t.kind), null, modifier = Modifier.size(48.dp))
             Spacer(Modifier.width(16.dp))
-            Column {
+            // the way word goes on the same line as the direction ("Links auf den Radweg"): the card never grows, a long
+            // label ends in "…" (owner: nothing jumps)
+            Column(Modifier.weight(1f)) {
                 Text(turnDistance(t.distanceM), style = MaterialTheme.typography.headlineMedium)
-                Text(t.label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text(t.label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
         }
     }
@@ -710,6 +716,8 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     // (ScreenTurns: BRouter's hints + JogRule; a GPX track without hints: the geometry, TurnDetector)
     val hike = (rec?.nav?.session?.activity ?: vm.activity) == com.onpath.app.routing.Activity.HIKE
     val turns = remember(line, hike) { line?.let { com.onpath.app.navigation.ScreenTurns.of(it, hike) } ?: emptyList() }
+    // the way word the voice says at each turn, the same on the card ("Links auf den Radweg", owner idea 2026-11-01)
+    val onto = remember(line, turns, hike) { line?.let { com.onpath.app.navigation.ScreenTurns.onto(it, turns, hike) } ?: emptyMap() }
     val total = remember(line) { line?.let { com.onpath.app.data.Geo.length(it) } ?: 0.0 }
     // same time model as the plan sheet (time/RouteTimes): no jump when navigation starts
     val times = remember(line, vm.activity) { line?.let { com.onpath.app.time.RouteTimes.of(it, vm.activity) } }
@@ -788,7 +796,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
                 when {
                     h.roundabout != null -> h.copy(roundaboutAngle = roundaboutAngle)
                     next?.first?.turnRound == true -> h.copy(turnRound = true)   // an out-and-back: "Umdrehen"
-                    else -> h
+                    else -> h.copy(onto = next?.first?.index?.let { onto[it] })
                 }
             }
             // no turn near: the card stays, "↑ Geradeaus" to the next turn / the goal – nothing jumps (owner 2026-11-01)

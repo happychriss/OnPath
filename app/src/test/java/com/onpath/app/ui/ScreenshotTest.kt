@@ -569,6 +569,11 @@ class ScreenshotTest {
         NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.RIGHT, 120.0)))
     }
 
+    /** The way word the voice says, on the card too (owner idea 2026-11-01): "Left onto the cycle path". */
+    @Test fun navigateTurnOnto() = paparazzi.snapshot {
+        NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.LEFT, 150.0, onto = com.onpath.app.navigation.WayKind.CYCLEWAY)))
+    }
+
     /** North-up orientation button ("N" needle) and a slight-left hint close by. */
     @Test fun navigateNorthUp() = paparazzi.snapshot {
         NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.SLIGHT_LEFT, 40.0), headingUp = false))
