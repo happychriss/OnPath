@@ -56,8 +56,6 @@ the git log.
   the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
-- [donald] Fewer terms: Planen / Unterwegs + Route / Tour – "Aufnahme" and "Navigation" go as everyday words (owner OK 2026-11-03, table in the chat) – since 2026-11-03
-- [donald] Load a route during a tour → question "Mit dieser Route weiter / Tour beenden und laden / Abbrechen" (owner 2026-11-03) – since 2026-11-03
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [cloud-plan] Laptop back (2026-11-03): planner shot list done; wait box time-limit question waits for the owner's answer to onpath.private#21 – since 2026-11-03
