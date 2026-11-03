@@ -41,7 +41,6 @@ the git log.
   the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
-- [donald] Word pair Route / Tour / Aufnahme (#14) + "Los geht's · ‹Ziel›" (#16) + ☰ "Aufzeichnung starten" goes (#15) – since 2026-11-02
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [cloud-plan] Laptop off (2026-11-02 evening) – web-spike 415d3802 clean; next sitting: merge main on the captain's word, time-limit question, mirror leftovers – since 2026-11-02
@@ -73,9 +72,6 @@ the git log.
   bug → its own Next line with a reproducing test. A short overview to the owner; the owner then clears with the button.
 - **[cloud-app] Diagnostics list folds** (owner 2026-11-02, low prio, after v0.14.0): Settings → Diagnostics starts
   folded – one line "127 Einträge, davon 3 Fehler ▸" – so the developer tools under it are reached without scrolling.
-- **☰ item "Aufzeichnung starten" goes** (owner 2026-11-02, onpath.private#15): the green Start in Plan does the same
-  without a route (RECORD_ONLY) – remove the menu item + its test / screenshot; "Aufnahme" there per #14. **Answered 2026-11-02:** start
-  button "Navigation starten" → "Los geht's · ‹Ziel›" (#16 A). [cloud-app] after the answer – small text / icon round with #14.
 - **[pixel] Field check: no GPS line while lying still (built 2026-11-02, `recording/StillSense`)** – phone flat on a
   table with a tour running: no GPS line, also in the first 2 min; phone in a pocket while sitting (threshold 0.5 m/s²
   is a guess); walking / riding without GPS → amber after the short gap; no extra battery drain. Open: the notification
@@ -91,11 +87,6 @@ the git log.
   signed AAB for prod in `release.yml` next to the APK; upload key made by the owner locally → GitHub secret, never in
   the repo. Signing / build config → **pull request to the owner** (CLAUDE.md). Spec: `onpath.private/auftraege/a-003-play-fassung.md`,
   steps for the owner: `onpath.private/marketing/anleitung-geschlossener-test.md` §1–5. Not before v0.14.0 is out.
-- **Word pair Route / Tour / Aufnahme – DECIDED (owner 2026-11-02, onpath.private#14, A):** **Route** = planned,
-  **Tour** = ridden, "Aufnahme" only for the running recording (REC); My routes with two tabs **"Geplant" / "Unterwegs"**;
-  "Track" only for GPX exchange ("GPX-Track importieren"). Today: "Tour 1. Nov.", "Unterbrochene Tour", "Aufnahme" on the
-  way – a text round EN + DE over strings/ + the My routes tabs, then `tools/ask.sh erledigt 14`.
-  `docs/design/review-2026-11-01-vs-komoot.md`.
 - **Pictures for the pairing help – app part (order by cloud-web, owner OK 2026-11-01)** [emu]: emulator, A-019 setup,
   DE + EN: (A1) ☰ open with "Mit Browser verbinden"; (A2) the question "Mit diesem Browser verbinden? Prüfe: 123 456"
   with "Verbinden"; (A3) My routes with a route from the browser ("Neu"); (A4) Settings → Browser-Abgleich paired with
