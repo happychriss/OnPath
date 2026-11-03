@@ -52,8 +52,8 @@ the git log.
 - **Night list 2026-11-02 → 03 – donald's state 2026-11-03 morning:** (1) E2E green, (2)–(3) words + "Los geht's" +
   ☰ item, (4) plan during a tour = tile bar, (5) paved footways amber note – all on main, issues closed; (6) slow
   planning text asked as onpath.private#21 (not blocking). **v0.14.0 not released** (donald was blocked by a chat box
-  until the owner's answer; no captain GO line) – donald runs the full emulator Rundgang on main now for the captain's
-  release check; the release itself after the captain's GO (`release_check.sh --go v0.14.0`). Pixel unplugged →
+  until the owner's answer; no captain GO line) – **Rundgang on main 56ea018e (2026-11-03 08:57): 14 of 14 flows PASS**
+  (`~/onpath-cells-work/rundgang/2026-11-03_0857`) – ready for the captain's release check; the release itself after the captain's GO (`release_check.sh --go v0.14.0`). Pixel unplugged →
   [pixel] items wait.
 - **[cloud-plan] Planner wait box: the time-limit question** (owner 2026-11-02, onpath.private#13): the wait box with
   Cancel is on web-spike (415d3802); when the time limit is hit it should become the question "weiter warten / abbrechen"
