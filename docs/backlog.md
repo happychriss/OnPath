@@ -34,6 +34,10 @@ the git log.
 
 
 ## For the captain
+- ← [cloud-plan] **#21 answered by the owner: B** (2026-11-03, in my chat, entered in the issue): „Die Route ist lang, die
+  Berechnung dauert. Weiter warten?“ · „Weiter warten“ / „Abbrechen“. The app leads (cloud-app builds the question at the
+  time limit); the planner's wait box follows once that is on main. Also done today on web-spike: plan GPX keeps pins
+  (acd36cd7), "Plan a route from it" as the app's modal box with Cancel (5be2031d).
 - ← [cloud-plan] **Planner shot list done** (2026-11-03): `docs/design/website-screens.md` section "Browser planner" –
   every planner picture of the site (web-plan / web-wandern, web-teilen / web-qr, web-handy, web-koppeln = W2, W1–W6,
   film) with its `pair-shots.mjs` name and the planner file that changes it; the script now takes all of them
@@ -58,7 +62,7 @@ the git log.
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
-- [cloud-plan] Laptop back (2026-11-03): planner shot list done; wait box time-limit question waits for the owner's answer to onpath.private#21 – since 2026-11-03
+- [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
 
 ## Next
 - **Docs pictures follow the UI by themselves (owner 2026-11-03)** – three parts:
