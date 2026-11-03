@@ -112,7 +112,6 @@ fun MapScreen(
                     onUndo = if (mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
                     // Undo and Redo side by side as map buttons; Redo only when there is something to redo
                     onRedo = if (mode == AppMode.PLAN && vm.canRedo && vm.shown == null) vm::redoStep else null,
-                    large = mode == AppMode.NAVIGATE,
                     onSettings = if (mode == AppMode.NAVIGATE) { { vm.navSettingsOpen = true } } else null,
                     plan = mode == AppMode.PLAN, // Plan is blue (owner 2026-11-03), Navigate unchanged
                 )

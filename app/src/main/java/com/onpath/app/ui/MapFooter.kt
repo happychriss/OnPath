@@ -83,9 +83,6 @@ fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, demo: Boolea
 
 /** Size of one map control (owner 2026-11-03: "trifft man kaum" – 56 dp in both modes, was 48 in Plan). */
 val MAP_FAB = 56.dp
-/** Navigate (owner): used while walking, a little apart from each other – the same size as Plan's now. */
-val MAP_FAB_LARGE = 56.dp
-private val LARGE_GAP = 8.dp
 
 fun gpsColor(status: GpsStatus): Color = when (status) {
     GpsStatus.GOOD -> OnPathColors.Good
@@ -114,8 +111,8 @@ data class CompassSpec(val headingUp: Boolean?, val bearing: Float, val onClick:
  * compass on top (always), the eye in the middle (only when there is a route,
  * track or followed line – hold to hide them, position stays), "Show whole route" under it (same lines, see
  * [WholeRoute]; the browser planner's ⛶), locate at the bottom (always, GPS dot).
- * [large] (Navigate): each control its own bigger round button with a small gap, so the wrong one is not hit
- * while walking; Plan keeps the compact pill.
+ * ONE column card with dividers in both modes (owner 2026-11-03, onpath.private#22 B – Navigate had separate round
+ * buttons): Navigate ⚙ · compass · eye · ⛶ · locate (white), Plan compass · eye · ⛶ · ↶ · ↷ · locate (blue tint).
  */
 @Composable
 fun MapControls(
@@ -132,7 +129,6 @@ fun MapControls(
     onUndo: (() -> Unit)? = null,
     /** Plan: redo the last undone edit (shown only when there is something to redo). */
     onRedo: (() -> Unit)? = null,
-    large: Boolean = false,
     /** Navigate: the navigation settings on the way – a gear on top of the controls. */
     onSettings: (() -> Unit)? = null,
     /** Plan is blue (owner 2026-11-03): light blue pill, blue icons ([OnPathColors.PlanTint] / [OnPathColors.PlanAccent]). */
@@ -140,7 +136,7 @@ fun MapControls(
     /** Screenshot tests: the tooltip of this control (its index from the top) is open. */
     tipShown: Int = -1,
 ) {
-    val size = if (large) MAP_FAB_LARGE else MAP_FAB
+    val size = MAP_FAB
     val tint = if (plan) OnPathColors.PlanAccent else MaterialTheme.colorScheme.onSurfaceVariant
     val bg = if (plan) OnPathColors.PlanTint else MaterialTheme.colorScheme.surface
     // every control says its name on a long press (owner 2026-11-03, novice fix: "what does the eye do?")
@@ -154,14 +150,6 @@ fun MapControls(
         add(locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint) })
     }
     val items = tips.mapIndexed { i, (text, control) -> @Composable { MapTip(text, i == tipShown) { control() } } }
-    if (large) {
-        Column(verticalArrangement = Arrangement.spacedBy(LARGE_GAP), horizontalAlignment = Alignment.CenterHorizontally) {
-            items.forEach { item ->
-                Surface(shape = CircleShape, color = bg, shadowElevation = 3.dp) { item() }
-            }
-        }
-        return
-    }
     Surface(shape = RoundedCornerShape(MAP_FAB / 2), color = bg, shadowElevation = 3.dp) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             items.forEachIndexed { i, item ->

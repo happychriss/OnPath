@@ -60,7 +60,7 @@ class ScreenshotTest {
                        plan: Boolean = false) =
         MapFooter("500 m" to 64.dp) {
             MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking,
-                onFitRoute = if (fit) ({}) else null, large = large, onSettings = if (large) ({}) else null, plan = plan)
+                onFitRoute = if (fit) ({}) else null, onSettings = if (large) ({}) else null, plan = plan)
         }
 
     /**
