@@ -48,7 +48,6 @@ the git log.
 
 ## In progress
 - [donald] Plan colour = blue, strong version 3 (owner 2026-11-03; Navigate unchanged) + the plan position sign blue – pictures first – since 2026-11-03
-- [donald] Way word on the turn card (the voice's word: Radweg / Weg / Pfad / Feldweg / Straße) – since 2026-11-03
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [cloud-plan] Laptop off (2026-11-02 evening) – web-spike 415d3802 clean; next sitting: merge main on the captain's word, time-limit question, mirror leftovers – since 2026-11-02
@@ -83,11 +82,8 @@ the git log.
   pass it (shared with the web: picker + `PlanGpx` sport type), `RoutingFingerprint` + the cells' router-class hash
   (`RouterClassCheck`) change, `ActivityLayers` maybe shows the band by S level. Most ways carry no `mtb:scale` – the
   limit acts only where mappers set it (MTB areas yes, gravel roads mostly not). After Navigation neu. [cloud-app + cloud-plan]
-- **Way type on screen (owner idea 2026-11-01, rest of it):** the voice names the way from the real way type now (Feldweg
-  only on a track, Radweg, Weg, Pfad, Straße – 44544250) and close opposite turns are one step (JogRule, 00b9f006);
-  the screen's turn card / arrow shows the same junctions now (`navigation/ScreenTurns`, 4418dc36); the Navigate Sim
-  follows a changed line (7a397432). Still open: the owner names more kinds if wanted (Nebenstraße, Landstraße,
-  Schotterweg …) and the same word on screen under the arrow. [cloud-app]
+- **Way type – more kinds (owner idea 2026-11-01, rest):** voice and turn card name the same way word now ("Links auf
+  den Radweg", 2026-11-03). Still open only if the owner wants: more kinds (Nebenstraße, Landstraße, Schotterweg …).
 - **Website screenshots per changed screen, not whole sets (owner 2026-11-01) – start right after the v0.14.0
   release.** Instead of re-shooting all pictures after every UI change, each role re-shoots only the pictures of the
   screens it changed. (1) **[cloud-app]** a list `docs/design/website-screens.md`: every website / store / help
