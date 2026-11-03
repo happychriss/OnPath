@@ -41,7 +41,6 @@ the git log.
   the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
-- [donald] Paved footways for Bike / Gravel with the amber note (#7) – since 2026-11-03
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [cloud-plan] Laptop off (2026-11-02 evening) – web-spike 415d3802 clean; next sitting: merge main on the captain's word, time-limit question, mirror leftovers – since 2026-11-02
@@ -285,8 +284,6 @@ the git log.
   production deploy is part of the launch together with Google Play.
 - **Google Play internal test track** – create the app, secret release key + `PLAY_SERVICE_ACCOUNT_JSON` in GitHub
   secrets, upload from `release.yml` (today: fixed test key). Removes Play Protect warnings.
-- **Footways without a bicycle tag (Hilden Itter path)** – **answered 2026-11-02 (onpath.private#7): A** – allow paved
-  footways for Bike / Gravel with an amber "Fußweg – evtl. schieben" note. [cloud-app] takes it and moves it to Next.
 - **AGP 9.4.1 upgrade** – later, when the owner says so.
 
 ## Later
