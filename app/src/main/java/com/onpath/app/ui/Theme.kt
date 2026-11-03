@@ -89,8 +89,6 @@ object OnPathColors {
     val PlanAccent = ActionEdit
     /** Plan's surfaces: the sheet, the search pill, ☰ and the map buttons – [ActionEdit] at ~8 % on white (Ink 10.8:1). */
     val PlanTint = Color(0xFFEEF3F7)
-    /** The light blue band under the status bar in Plan – [ActionEdit] at 16 % over the map. */
-    val PlanBand = Color(0x292E6A9E)
     /** The soft edge round the screen in Plan (strongest at the edge, fading inwards) – [ActionEdit] at 22 %. */
     val PlanEdge = Color(0x382E6A9E)
 

@@ -81,7 +81,7 @@ class ScreenshotTest {
                 if (editing) androidx.compose.foundation.Image(rememberPlanPuck(Activity.HIKE).asImageBitmap(), null,
                     Modifier.align(Alignment.Center))
                 // Plan is blue (owner 2026-11-03): band under the status bar (the 32 dp stand-in) + soft edge
-                PlanFrame(bandHeight = 32.dp)
+                PlanFrame()
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing)
                     SheetWithFooter(TOP_BAR_BOTTOM, footer = {

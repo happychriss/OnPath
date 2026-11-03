@@ -214,35 +214,25 @@ internal fun MenuItem(icon: ImageVector, label: String, enabled: Boolean = true,
 
 
 /**
- * Plan is blue (owner 2026-11-03, design page §3 version 3 "deutlich" – Plan only, Navigate unchanged): a light blue band
- * under the status bar with a thin blue line, and a soft blue edge round the screen ([OnPathColors.PlanBand],
- * [OnPathColors.PlanEdge], [OnPathColors.PlanAccent]). Only drawn – no pointer input, the map under it takes every touch.
+ * Plan is blue (owner 2026-11-03, design page §3 version 3 "deutlich" – Plan only, Navigate unchanged): a soft blue edge
+ * at the screen's left, right and bottom ([OnPathColors.PlanEdge]); no band at the top (owner 2026-11-03: "die
+ * dunkelblaue Leiste oben … kann wieder weg"). Only drawn – no pointer input, the map under it takes every touch.
  */
 @Composable
-fun PlanFrame(modifier: Modifier = Modifier, bandHeight: androidx.compose.ui.unit.Dp? = null) {
-    val band = bandHeight ?: androidx.compose.foundation.layout.WindowInsets.statusBars
-        .asPaddingValues().calculateTopPadding().coerceAtLeast(PLAN_BAND_MIN)
+fun PlanFrame(modifier: Modifier = Modifier) {
     androidx.compose.foundation.Canvas(modifier.fillMaxSize()) {
         val edge = PLAN_EDGE.toPx()
         val clear = androidx.compose.ui.graphics.Color.Transparent
         val e = OnPathColors.PlanEdge
-        // the soft edge: from the screen's left, right and bottom edges inwards (the band is the top edge)
+        // the soft edge: from the screen's left, right and bottom edges inwards (nothing at the top)
         drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(e, clear), 0f, edge),
             size = androidx.compose.ui.geometry.Size(edge, size.height))
         drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(clear, e), size.width - edge, size.width),
             topLeft = androidx.compose.ui.geometry.Offset(size.width - edge, 0f), size = androidx.compose.ui.geometry.Size(edge, size.height))
         drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(clear, e), size.height - edge, size.height),
             topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - edge), size = androidx.compose.ui.geometry.Size(size.width, edge))
-        val h = band.toPx()
-        drawRect(OnPathColors.PlanBand, size = androidx.compose.ui.geometry.Size(size.width, h))
-        drawRect(OnPathColors.PlanAccent, topLeft = androidx.compose.ui.geometry.Offset(0f, h - PLAN_BAND_LINE.toPx()),
-            size = androidx.compose.ui.geometry.Size(size.width, PLAN_BAND_LINE.toPx()))
     }
 }
 
 /** Width of the soft blue edge. */
 private val PLAN_EDGE = 14.dp
-/** The band is at least this high (screenshots / phones without a status-bar inset). */
-private val PLAN_BAND_MIN = 24.dp
-/** The thin blue line under the band. */
-private val PLAN_BAND_LINE = 1.5.dp
