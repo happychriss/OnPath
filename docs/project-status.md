@@ -30,6 +30,12 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **donald, 2026-11-03 evening – after v0.14.0, all on main:** route hold 24 dp (#6), diagnostics list folded,
+  Plan silent during a tour (no walk-off back to Navigate – owner), red tile "Neu planen" in "Route ändern", way word
+  on the turn card ("Links auf den Radweg"), Plan in blue (version 3, Navigate unchanged, blue position sign).
+  A-003 Play build = pull request #2 (waiting for the owner + secrets). Open for the owner: slow-planning wording
+  (#21), map buttons form (issue), hook vs pushes to onpath.private. Not on the Pixel yet (unplugged) – install the
+  whole state when it is back; [pixel] check lines in the backlog.
 - **donald, 2026-11-03 – v0.14.0 released** after the captain's GO (release.yml green, APK + SHA256SUMS). Before it:
   the night list (words Route / Tour / Aufnahme, "Los geht's", plan during a tour = tile bar, paved footways note,
   stop bar ⏸ / ✎ / ■ without ✕, found place = pin + chip, empty-plan hint, shared places in Recent, no GPS line while
