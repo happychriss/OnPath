@@ -11,3 +11,6 @@
   border-radius: 50%; animation: gpxspin 0.8s linear infinite; }
 @keyframes gpxspin { to { transform: rotate(360deg); } }
 #map.gpxdrop { outline: 4px dashed #8E24AA; outline-offset: -8px; }
+
+/* the modal box while a track is routed (the app's PlanFromTrackDialog) */
+dialog.trackbusy .busyline { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; }

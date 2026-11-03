@@ -161,11 +161,17 @@ export function setupGpxImport(h: GpxHost) {
       const err = p.querySelector<HTMLDivElement>('#trackError')!;
       err.hidden = true;
       const { activity, sac } = h.activity();
+      // the app's PlanFromTrackDialog (owner 2026-11-01): a modal box with Cancel over everything while the track is
+      // routed – nothing else at the same time (points set meanwhile were overwritten). Cancel drops the result (the one
+      // engine worker cannot stop mid-way – it finishes unseen).
+      let cancelled = false;
+      const box = busyBox(() => { cancelled = true; });
       let r: { points?: LatLon[]; error?: string };
       try { r = JSON.parse(await h.engine.planFromTrack(track, activity, sac)); }
       catch (e) { r = { error: text('plan_from_track_failed') }; console.warn(e); }
+      box.close();
       planBtn.disabled = false; planBtn.classList.remove('busy');
-      if (shown !== t) return; // closed or replaced meanwhile
+      if (cancelled || shown !== t) return; // cancelled, or closed / replaced meanwhile
       if (!r.points || r.points.length < 2) { err.textContent = r.error ?? ''; err.hidden = false; return; }
       close();
       await h.plan(r.points, t.name);
@@ -177,6 +183,21 @@ export function setupGpxImport(h: GpxHost) {
   /** A synced track from My routes (GPX text from the engine), shown like an imported file – not kept again. */
   const showGpx = (text: string, name: string) => importFile(new File([text], name + '.gpx'), false);
   return { importFile, pick, close, showGpx, get shown() { return shown; } };
+}
+
+/** The modal "Planning a route from the tour…" box with a spinner and Cancel (the app's PlanFromTrackDialog). */
+function busyBox(onCancel: () => void): HTMLDialogElement {
+  const d = document.createElement('dialog');
+  d.className = 'share trackbusy';
+  d.innerHTML = `<h2>${esc(text('plan_from_track_busy_title'))}</h2>
+    <p class="busyline"><span class="msgspin" aria-hidden="true"></span>${esc(text('plan_from_track_busy_text'))}</p>
+    <div class="row end"><button id="cancelTrackPlan">${esc(text('common_cancel'))}</button></div>`;
+  document.body.append(d);
+  d.addEventListener('cancel', (e) => e.preventDefault()); // Escape does not dismiss it (the app: no outside dismiss)
+  d.querySelector<HTMLButtonElement>('#cancelTrackPlan')!.onclick = () => { onCancel(); d.close(); };
+  d.addEventListener('close', () => d.remove());
+  d.showModal();
+  return d;
 }
 
 const empty = () => ({ type: 'FeatureCollection' as const, features: [] });
