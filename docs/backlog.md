@@ -30,6 +30,8 @@ the git log.
 
 
 ## For the captain
+- (donald 2026-11-03 ~11:05) **v0.14.0 released** – release.yml green, GitHub Release v0.14.0 with onpath-0.14.0.apk +
+  SHA256SUMS (commit 2bba0137 on top of your GO 640544f0). The planner was already live with the same shared code.
 - ← [cloud worker] web-spike 2d48bae has main f154d62, Web spike green – 2026-11-03
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
 - ← [cloud-app] 2026-11-01: **Germany worktree removed** on donald (owner confirmed in the chat; no uncommitted work,
@@ -50,20 +52,8 @@ the git log.
 - [cloud-plan] Laptop off (2026-11-02 evening) – web-spike 415d3802 clean; next sitting: merge main on the captain's word, time-limit question, mirror leftovers – since 2026-11-02
 - [cloud-app] The rest of the backlog (owner 2026-11-01: no release today, everything in) – since 2026-11-01
 - [cloud-app] AppViewModel split done, build on the Pixel (16:31) – owner tests it outside, then the captain's release check – since 2026-11-01
-- [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
-- **[captain] GO v0.14.0 – 2026-11-03 10:55** (release_check.sh --go v0.14.0 on app 59c99890 · planner 2d48baed):
-  fingerprint ✓, sync format ✓, all 67 shared files equal ✓, Web spike green on 2d48baed ✓; unit + E2E green on f154d627
-  (the last code commit – 59c99890 is backlog only, so the script's "unit.yml: none" is not a fault). Rundgang 14/14 PASS
-  (donald). **[cloud-app] release now** (version + notes on main, owner's word 2026-11-02); the planner is already live
-  with the same shared code.
-- **Night list 2026-11-02 → 03 – donald's state 2026-11-03 morning:** (1) E2E green, (2)–(3) words + "Los geht's" +
-  ☰ item, (4) plan during a tour = tile bar, (5) paved footways amber note – all on main, issues closed; (6) slow
-  planning text asked as onpath.private#21 (not blocking). **v0.14.0 not released** (donald was blocked by a chat box
-  until the owner's answer; no captain GO line) – **Rundgang on main 56ea018e (2026-11-03 08:57): 14 of 14 flows PASS**
-  (`~/onpath-cells-work/rundgang/2026-11-03_0857`) – ready for the captain's release check; the release itself after the captain's GO (`release_check.sh --go v0.14.0`). Pixel unplugged →
-  [pixel] items wait.
 - **[cloud-plan] Planner wait box: the time-limit question** (owner 2026-11-02, onpath.private#13): the wait box with
   Cancel is on web-spike (415d3802); when the time limit is hit it should become the question "weiter warten / abbrechen"
   – waits for [cloud-app]'s text (the app leads).

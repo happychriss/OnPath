@@ -30,6 +30,12 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **donald, 2026-11-03 – v0.14.0 released** after the captain's GO (release.yml green, APK + SHA256SUMS). Before it:
+  the night list (words Route / Tour / Aufnahme, "Los geht's", plan during a tour = tile bar, paved footways note,
+  stop bar ⏸ / ✎ / ■ without ✕, found place = pin + chip, empty-plan hint, shared places in Recent, no GPS line while
+  still), Rundgang 14/14 PASS, pairing-help pictures for cloud-web. Open for the owner: colour mockups (draft page
+  §5), slow-planning wording (#21), hook vs pushes to onpath.private. [pixel] items wait for the phone (diagnostics,
+  still-sense field check).
 - **cloud-plan (laptop), 2026-11-01/02 – end of the sitting.** `web-spike` 415d3802, everything pushed, goes live by itself
   on green CI (every green push to `web-spike` deploys – `web-spike.yml`). Done: list A 10–13, "More before the release"
   (sync H1 / M7, edit queue, storage.persist, write failures), main merged three times (last: 6f60dd01 – shared rules wired:
