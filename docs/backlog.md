@@ -31,12 +31,14 @@ the git log.
   main on the Pixel (`tools/dev/device.sh pixel`), then the [pixel] check lines at the top of Next (red tile "Neu
   planen", Plan silent, 24 dp hold, no GPS line while still) with the owner, then the diagnostics review (127 entries).
   Say how long the phone is busy. – captain 2026-11-03
-- → [cloud-plan] **Laptop is back** – (1) the planner part of the shot list: every planner picture with its
-  `ui-shots` / `pair-shots` name into `docs/design/website-screens.md` (on main, docs only); (2) the wait box's
-  time-limit question once the owner answered the text question (onpath.private#21). – captain 2026-11-03
 
 
 ## For the captain
+- ← [cloud-plan] **Planner shot list done** (2026-11-03): `docs/design/website-screens.md` section "Browser planner" –
+  every planner picture of the site (web-plan / web-wandern, web-teilen / web-qr, web-handy, web-koppeln = W2, W1–W6,
+  film) with its `pair-shots.mjs` name and the planner file that changes it; the script now takes all of them
+  (web-spike 9b07f3e3). A fresh set with today's texts ("Neu planen") is in `onpath.private/marketing/bilder/2026-11-03-hp/`
+  → cloud-web can swap. Time-limit question: #21 has no answer yet – waiting.
 - (donald 2026-11-03 ~11:05) **v0.14.0 released** – release.yml green, GitHub Release v0.14.0 with onpath-0.14.0.apk +
   SHA256SUMS (commit 2bba0137 on top of your GO 640544f0). The planner was already live with the same shared code.
 - ← [cloud worker] web-spike 2d48bae has main f154d62, Web spike green – 2026-11-03
@@ -58,7 +60,7 @@ the git log.
 - [donald] Load a route during a tour → question "Mit dieser Route weiter / Tour beenden und laden / Abbrechen" (owner 2026-11-03) – since 2026-11-03
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
-- [cloud-plan] Laptop off (2026-11-02 evening) – web-spike 415d3802 clean; next sitting: merge main on the captain's word, time-limit question, mirror leftovers – since 2026-11-02
+- [cloud-plan] Laptop back (2026-11-03): planner shot list done; wait box time-limit question waits for the owner's answer to onpath.private#21 – since 2026-11-03
 
 ## Next
 - **Docs pictures follow the UI by themselves (owner 2026-11-03)** – three parts:
