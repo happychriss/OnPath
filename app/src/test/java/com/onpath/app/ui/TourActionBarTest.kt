@@ -49,4 +49,10 @@ class TourActionBarTest {
         assertTrue(nav.contains("BackHandler(enabled = closableBar) { open = false }"))
         assertTrue(nav.contains("detectTapGestures { open = false }"))
     }
+
+    /** Owner 2026-11-03: the three pills of the plan during a tour are always equally high. */
+    @Test fun pillsAreEquallyHigh() {
+        val pills = bar.substringAfter("fun ActionPills(").substringBefore("\n}\n")
+        assertTrue(pills, pills.contains(".height(IntrinsicSize.Min)") && pills.contains("Modifier.weight(1f).fillMaxHeight()"))
+    }
 }

@@ -5,6 +5,8 @@ import com.onpath.strings.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -85,13 +87,15 @@ class ActionTileSpec(val icon: ImageVector, val label: String, val color: Color,
  */
 @Composable
 fun ActionPills(pills: List<ActionTileSpec>, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    // all pills as high as the tallest (owner 2026-11-03: "die Pillen müssen gleich hoch sein") – one wrapped label
+    // ("Route speichern") makes the whole row taller, never one pill alone
+    Row(modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         pills.forEach { p ->
             val bg = if (p.enabled) p.color else OnPathColors.Ink.copy(alpha = TourActions.OFF_TILE_ALPHA)
             val ink = if (p.enabled) OnPathColors.CardWhite else OnPathColors.Ink.copy(alpha = TourActions.OFF_INK_ALPHA)
             Surface(onClick = p.onClick, enabled = p.enabled, shape = CircleShape, color = bg, contentColor = ink,
-                shadowElevation = if (p.enabled) 2.dp else 0.dp, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
-                Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically,
+                shadowElevation = if (p.enabled) 2.dp else 0.dp, modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = 48.dp)) {
+                Row(Modifier.fillMaxHeight().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center) {
                     Icon(p.icon, null, tint = ink, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
