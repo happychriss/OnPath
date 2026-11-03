@@ -230,7 +230,8 @@ fun MapScreen(
     }
     if (vm.planFromTrackBusy) PlanFromTrackDialog(onCancel = vm::cancelPlanFromTrack)
     // arrival Save goes the End tour way: a bus / car / lift found → the ride summary
-    if (vm.arrivalAsk && rec != null) ArrivalDialog(onSave = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
+    // Plan is silent (owner 2026-11-03): "Du bist angekommen" waits for Navigate
+    if (vm.arrivalAsk && rec != null && vm.mode == AppMode.NAVIGATE) ArrivalDialog(onSave = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
         onKeepGoing = { vm.saveRouteAtEnd = false; vm.arrivalAsk = false },
         routeLabel = vm.endRouteLabel(), routeChecked = vm.saveRouteAtEnd, onRouteChecked = { vm.saveRouteAtEnd = it })
     if (vm.navSettingsOpen) {

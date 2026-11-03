@@ -54,7 +54,8 @@ class QuestionNotificationTest {
 
     /**
      * Owner 2026-11-01 (replaces review H1): "Navigation Stopp" = the phone is quiet, also with the screen off; walking off
-     * with the phone pocketed brings the guidance back (H1's worry, StopQuietTest). Wiring in the service.
+     * with the phone pocketed brings the guidance back (H1's worry, StopQuietTest). Owner 2026-11-03: Plan is silent for
+     * everything from movement / navigation ([ModeQuiet], ModeQuietTest). Wiring in the service.
      */
     @Test fun navigationStoppIsQuietUntilContinueOrWalkingOff() {
         val svc = File("src/main/java/com/onpath/app/recording/RecordingService.kt").readText()
@@ -62,10 +63,13 @@ class QuestionNotificationTest {
         assertTrue(svc.contains("setNavigating(navigatingApplied)"))
         assertTrue(svc.contains("val now = navigating || stopQuiet.resumed"))
         assertTrue(svc.contains("stopQuiet.set(stopped = !navigating)"))
-        // no voice and no junction vibration while quiet: the check comes before both
+        // no voice and no junction vibration while quiet (owner 2026-11-03, ModeQuiet): the voice follows without a word,
+        // the check comes before the spoken step and the vibration
         val cue = svc.substringAfter("private fun junctionCue(").substringBefore("\n    }\n")
-        assertTrue(cue.indexOf("if (stopQuiet.quiet) return") in 0 until cue.indexOf("voiceStep(st, nowEl)"))
-        assertTrue(cue.indexOf("if (stopQuiet.quiet) return") < cue.indexOf("vibrate("))
+        val quiet = cue.indexOf("if (!ModeQuiet.allows(planQuiet(), ModeQuiet.Event.TURN_VIBRATION)) { voiceStep(st, nowEl, speak = false); return }")
+        assertTrue(cue, quiet in 0 until cue.indexOf("voiceStep(st, nowEl)\n"))
+        assertTrue(quiet < cue.indexOf("vibrate("))
+        assertTrue(svc.contains("private fun planQuiet(): Boolean = tourId >= 0 && stopQuiet.quiet"))
     }
 
     /** Review M1: every notification of a tour has its own id – Pause / Resume never cancels "cannot be saved". */

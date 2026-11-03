@@ -11,6 +11,10 @@ Search mockups: `docs/ux-search-proposals.md` (proposal C's "Add to route" card 
 | Switch | **"Start navigation"** – normal big button (safe direction). With a tour running: **"Continue navigation"** | **Slide-to-plan switch** at the bottom: "Stop" / „Stopp“ with a small second line "Pause · End · Change route" / „Pause · Beenden · Route ändern“ (owner 2026-11-01; sliding ends nothing – Plan opens with the tour row ■ Stop · Continue; was "Tour menu" / „Tour-Menü“, "Plan" / „Planen“, "Edit route"). The small line only when it fits (large font: main line only, never cut); without a recording only "Change route" / „Route ändern“ (`ui/SlideToUnlock.kt`, `SlideLabel`) – the only way out of Navigate (protects against pocket/glove touches) |
 
 ## Rules
+0. **Plan is silent** (owner 2026-11-03: "Das Handy verhält sich dann still, Plan only"): in Plan during a tour – also with
+   the screen off – no voice, no navigation vibration and no message that comes from movement or navigation (off-route
+   box / notification, re-route proposal, "Stopp N erreicht", arrival, "Kein GPS"). The recording goes on. Back in
+   Navigate the state is checked afresh – nothing from the time in Plan is said or shown late (`recording/ModeQuiet`).
 1. **Recording never stops when switching.** Starting navigation starts (or continues) the recording; going back to
    Plan keeps recording. **Plan during a tour (owner 2026-10-31):** the sheet opens at its first step, ONE row –
    "● Tour running · 1.7 km · 0:14:38" on the left, a compact green **[Continue]** (≥ 48 dp; also resumes a paused

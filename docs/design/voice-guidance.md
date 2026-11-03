@@ -44,6 +44,11 @@ same voice; "smart, clever sentences, not too much". Built after the feature sto
 8. **Questions stay on the screen:** the voice never asks; it says "bitte aufs Handy schauen" once.
 9. **Quiet** while paused, during a phone call, while the user is off the route and the question is open (said once),
    and when no offline voice is there (then vibration + screen as today).
+10. **Plan is silent** (owner 2026-11-03: "im Planmodus soll die Stimme auf jeden Fall schweigen zu allem … Plan only"):
+   while the app is in Plan during a tour – also with the screen off – nothing is said and nothing vibrates (turns,
+   "Stopp N erreicht", "Kein GPS", arrival, "kein Ziel mehr" after an edit). The voice follows silently (what it would
+   have said counts as said), so "Navigation fortsetzen" brings nothing from the time in Plan; waiting sentences are
+   dropped then. `recording/ModeQuiet`.
 
 ## 3. What is said (DE · EN) – the owner reviews these texts
 
