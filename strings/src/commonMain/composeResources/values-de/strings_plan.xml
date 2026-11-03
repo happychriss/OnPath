@@ -59,6 +59,8 @@
     <string name="plan_calculating">Route wird berechnet…</string>
     <string name="plan_hint_first_point_question">Wohin soll’s gehen?</string>
     <string name="plan_hint_first_point">Halte dein Ziel auf der Karte gedrückt – oder such es oben in der Suchleiste.</string>
+    <string name="plan_hint_tap_hold">Gedrückt halten, um hier einen Punkt zu setzen.</string>
+    <string name="map_tip_locate">Mein Standort</string>
     <string name="plan_hint_destination">Halte die Karte gedrückt, um das Ziel zu setzen.</string>
     <string name="plan_not_routed_long">Route nicht berechnet – sehr langer Plan.</string>
     <string name="plan_not_routed_stopped">Route nicht berechnet – Berechnung abgebrochen.</string>

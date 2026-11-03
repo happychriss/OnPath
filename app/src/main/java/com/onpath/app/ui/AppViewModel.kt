@@ -631,6 +631,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * (owner 2026-10-31); rolled up by the user it stays rolled up through route updates until opened again.
      */
     var planSize by mutableStateOf(PlanSize.MINI)
+
+    /**
+     * A tap on the open map in Plan (owner 2026-11-03, novice fix): the plan sheet says "Gedrückt halten, um hier einen
+     * Punkt zu setzen." ([MapGestures.tapShowsHoldHint]). A line that stays until the user acts – a hold on the map, a
+     * plan change, a sheet drag, a mode switch – never gone by itself (docs/design/ui-style.md, no flashing).
+     */
+    var tapHoldHint by mutableStateOf(false)
+    fun showTapHoldHint() {
+        if (!tapHoldHint) com.onpath.app.debug.Problems.trace("plan", "Tap on the map: 'hold to set a point' shown")
+        tapHoldHint = true
+        if (planSize == PlanSize.COLLAPSED) planSize = PlanSize.MINI // the line sits in the summary step
+    }
     /** The route point whose point menu is open (hold on its marker, MapGestures): index when opened + position. */
     var pointMenuTarget by mutableStateOf<PointMenuTarget?>(null)
         private set
@@ -2606,6 +2618,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun enter(m: AppMode) {
         val was = mode
         mode = m
+        tapHoldHint = false
         saveAsk = null // Save's dialog does not stay open behind another mode
         // the start zoom of Navigate, once per start (owner); the map takes it when it follows
         if (m == AppMode.NAVIGATE && was != AppMode.NAVIGATE) navStartZoom = AppMode.navStartZoom(activity)

@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -136,19 +137,23 @@ fun MapControls(
     onSettings: (() -> Unit)? = null,
     /** Plan is blue (owner 2026-11-03): light blue pill, blue icons ([OnPathColors.PlanTint] / [OnPathColors.PlanAccent]). */
     plan: Boolean = false,
+    /** Screenshot tests: the tooltip of this control (its index from the top) is open. */
+    tipShown: Int = -1,
 ) {
     val size = if (large) MAP_FAB_LARGE else MAP_FAB
     val tint = if (plan) OnPathColors.PlanAccent else MaterialTheme.colorScheme.onSurfaceVariant
     val bg = if (plan) OnPathColors.PlanTint else MaterialTheme.colorScheme.surface
-    val items = buildList<@Composable () -> Unit> {
-        if (onSettings != null) add { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size, tint) }
-        if (compass != null) add { CompassControl(compass, size) }
-        if (showEye) add { EyeControl(onPeek, peeking, size, tint) }
-        if (onFitRoute != null) add { IconControl(Icons.Filled.FitScreen, Res.string.plan_show_whole_route, onFitRoute, size, tint) }
-        if (onUndo != null) add { IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo, size, tint) }
-        if (onRedo != null) add { IconControl(Icons.AutoMirrored.Filled.Redo, Res.string.plan_redo, onRedo, size, tint) }
-        add { LocateControl(gps, following, onLocate, size, tint) }
+    // every control says its name on a long press (owner 2026-11-03, novice fix: "what does the eye do?")
+    val tips = buildList<Pair<String, @Composable () -> Unit>> {
+        if (onSettings != null) add(str(Res.string.nav_settings_cd) to { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size, tint) })
+        if (compass != null) add(compassText(compass) to { CompassControl(compass, size) })
+        if (showEye) add(str(Res.string.plan_hold_hide_route) to { EyeControl(onPeek, peeking, size, tint) })
+        if (onFitRoute != null) add(str(Res.string.plan_show_whole_route) to { IconControl(Icons.Filled.FitScreen, Res.string.plan_show_whole_route, onFitRoute, size, tint) })
+        if (onUndo != null) add(str(Res.string.plan_undo) to { IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo, size, tint) })
+        if (onRedo != null) add(str(Res.string.plan_redo) to { IconControl(Icons.AutoMirrored.Filled.Redo, Res.string.plan_redo, onRedo, size, tint) })
+        add(locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint) })
     }
+    val items = tips.mapIndexed { i, (text, control) -> @Composable { MapTip(text, i == tipShown) { control() } } }
     if (large) {
         Column(verticalArrangement = Arrangement.spacedBy(LARGE_GAP), horizontalAlignment = Alignment.CenterHorizontally) {
             items.forEach { item ->
@@ -168,6 +173,36 @@ fun MapControls(
 }
 
 private fun iconSize(size: Dp): Dp = if (size > MAP_FAB) 30.dp else 24.dp
+
+/**
+ * A map control's name on a long press (Material 3 plain tooltip, owner 2026-11-03): the signs alone (eye, ⛶, ↶ ↷)
+ * do not explain themselves to a first-time user. A tap still does what it did; the eye's hold still hides the route.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+internal fun MapTip(text: String, initiallyVisible: Boolean = false, content: @Composable () -> Unit) {
+    androidx.compose.material3.TooltipBox(
+        positionProvider = androidx.compose.material3.TooltipDefaults.rememberPlainTooltipPositionProvider(),
+        tooltip = { PlainTooltip { Text(text, style = MaterialTheme.typography.bodyMedium) } },
+        state = androidx.compose.material3.rememberTooltipState(initialIsVisible = initiallyVisible, isPersistent = initiallyVisible),
+    ) { content() }
+}
+
+/** The compass's name: what it shows now and what a tap does (the same words TalkBack hears). */
+@Composable
+private fun compassText(c: CompassSpec): String = when {
+    c.headingUp == true -> str(Res.string.plan_compass_heading)
+    kotlin.math.abs(c.bearing) > 1f -> str(Res.string.plan_compass_turned)
+    else -> str(Res.string.plan_compass_north)
+}
+
+/** The locate control's name: "Mein Standort" – or how to switch location on / allow it. */
+@Composable
+private fun locateTip(status: GpsStatus): String = when (status) {
+    GpsStatus.OFF -> str(Res.string.plan_location_off_tap)
+    GpsStatus.NO_PERMISSION -> str(Res.string.plan_location_denied_tap)
+    else -> str(Res.string.map_tip_locate)
+}
 
 /** A plain round map control: [icon] in the control colour, [desc] for TalkBack. */
 @Composable

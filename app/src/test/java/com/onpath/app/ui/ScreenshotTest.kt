@@ -183,6 +183,21 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi(), PlanCallbacks()) }
     }
 
+    /** A tap on the open map (owner 2026-11-03): "Hold to set a point here." in the summary step the sheet opens at. */
+    @Test fun planTapHoldHint() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(tapHint = true), PlanCallbacks()) }
+    }
+
+    /** A long press on a map control names it (owner 2026-11-03): the eye's tooltip open. */
+    @Test fun planMapControlTip() = paparazzi.snapshot {
+        Frame(footer = {
+            MapFooter("500 m" to 64.dp) {
+                MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false, plan = true,
+                    onLocate = {}, onFitRoute = {}, onUndo = {}, tipShown = 1)
+            }
+        }) { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
     /** "Show whole route" (⛶) under the eye: compass · eye · whole route · Undo · locate on the sheet's edge. */
     @Test fun planWholeRoute() = paparazzi.snapshot {
         Frame(footer = {

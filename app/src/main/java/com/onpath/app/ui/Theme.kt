@@ -70,6 +70,11 @@ object OnPathColors {
      * ≥ 5:1 on the track even over a white map.
      */
     val OnDarkMuted = RestInk
+    /**
+     * Small secondary text on the green slider ("Pause · Route ändern · Beenden", owner 2026-11-03 novice fix): a pale
+     * green-white, ≥ 5.5:1 on [Green] – [OnDarkMuted] was made for the old dark track and reads only 3.6:1 on green.
+     */
+    val OnGreenMuted = Color(0xFFDCE8E1)
 
     // ---- Actions: one colour = one kind of action (owner 2026-11-02, docs/design/ui-style.md "Colour rule") ----
     /** Navigation: start / continue / pause-resume the guidance – a step lighter than [Green] (white 5.2:1). */

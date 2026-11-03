@@ -60,6 +60,8 @@
     <string name="plan_calculating">Calculating the route…</string>
     <string name="plan_hint_first_point_question">Where to?</string>
     <string name="plan_hint_first_point">Hold your destination on the map – or find it in the search bar above.</string>
+    <string name="plan_hint_tap_hold">Hold to set a point here.</string>
+    <string name="map_tip_locate">My location</string>
     <string name="plan_hint_destination">Hold the map to set the destination.</string>
     <string name="plan_not_routed_long">Route not calculated – very long plan.</string>
     <string name="plan_not_routed_stopped">Route not calculated – calculation stopped.</string>

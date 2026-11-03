@@ -191,6 +191,8 @@ data class PlanUi(
     val changedText: String? = null,
     /** "Planned in the browser with other routing – …" (a synced plan, another routing fingerprint): grey INFO, no tap. */
     val syncRoutingText: String? = null,
+    /** A tap on the open map: "Gedrückt halten, um hier einen Punkt zu setzen." in the summary step (owner 2026-11-03). */
+    val tapHint: Boolean = false,
 ) {
     /** What Start does (the shown track has its own panel): navigate the line, wait for it, or only record. */
     val start: PlanStart get() = PlanStart.of(trackPoints = null, hasRoute = route != null, pointCount = pointCount)
@@ -321,6 +323,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         // Navigate's, PlanBar) – the map stays free above it; no rolled-up step during a tour (PlanSize.duringTour).
         // After "Neu planen" the plan is empty: the first step shows how to begin again (owner 2026-11-03)
         if (ui.pointCount == 0) Box(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) { FirstPointHint() }
+        else if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) { TapHoldHint() }
         Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COLLAPSED.step).stepEnd(PlanSize.MINI.step) })
     }
     Box(Modifier.fillMaxWidth()) {
@@ -331,6 +334,8 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     // the empty plan's hint belongs to the summary step: the sheet opens at it, so a first start sees how to begin
     // (owner 2026-11-02: "beim ersten Öffnen … sieht man es gar nicht")
     if (ui.pointCount == 0 && ui.tour == null) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { FirstPointHint() }
+    // a tap on the open map (hold-only): the same hand says how to set a point – in the step the sheet opens at
+    else if (ui.tapHint && ui.tour == null) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { TapHoldHint() }
     // without a tour the summary step ends under the summary lines
     if (ui.tour == null) Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
     var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
@@ -571,7 +576,7 @@ private fun ErrorLine(text: String, onShow: (() -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Outlined.Cancel, null, tint = red, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold,
+        Text(text, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold,
             color = red, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         if (onShow != null) androidx.compose.material3.TextButton(onClick = onShow) {
             Text(str(Res.string.common_show), fontWeight = FontWeight.Bold, color = red)
@@ -592,7 +597,7 @@ internal fun InfoLine(text: String, spinner: Boolean = false, onTap: (() -> Unit
         if (spinner) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = grey)
         else Icon(Icons.Outlined.Info, null, tint = grey, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = grey,
+        Text(text, style = MaterialTheme.typography.bodyLarge, color = grey,
             maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         if (onTap != null) Icon(Icons.Filled.ChevronRight, null, tint = grey, modifier = Modifier.size(20.dp))
     }
@@ -610,7 +615,7 @@ internal fun WarnLine(text: String, onTap: () -> Unit) {
         .padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Outlined.Warning, null, tint = amber, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = amber,
+        Text(text, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = amber,
             maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         Icon(Icons.Filled.ChevronRight, null, tint = amber, modifier = Modifier.size(20.dp))
     }
@@ -674,6 +679,19 @@ private fun FirstPointHint() {
     }
 }
 
+/**
+ * A tap on the open map in Plan sets nothing (hold-only gestures, owner): ✋ "Gedrückt halten, um hier einen Punkt zu
+ * setzen." (owner 2026-11-03, novice fix) – an ANZEIGE line, it stays until the user acts ([AppViewModel.tapHoldHint]).
+ */
+@Composable
+private fun TapHoldHint() {
+    Row(verticalAlignment = Alignment.Top, modifier = Modifier.semantics(mergeDescendants = true) {}) {
+        Icon(Icons.Filled.TouchApp, null, tint = OnPathColors.PlanAccent, modifier = Modifier.padding(top = 1.dp).size(24.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(str(Res.string.plan_hint_tap_hold), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
 /** Read-only status, second line: ascent / descent / highest point + difficulty badge, or what to do next. */
 @Composable
 private fun SubLine(ui: PlanUi, route: PlannedRoute?, onDetails: () -> Unit = {}) {
@@ -683,7 +701,7 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?, onDetails: () -> Unit = {}
         if (ui.pointCount == 0) return // the hint sits in the summary step (FirstPointHint, PlanBody)
         // "Calculating the route…" only while a request runs (not after Cancel)
         Text(PlanStatus.noRouteLine(ui.pointCount, ui.routing, ui.notRouted),
-            style = MaterialTheme.typography.bodyMedium, color = variant)
+            style = MaterialTheme.typography.bodyLarge, color = variant)
         return
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -691,7 +709,7 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?, onDetails: () -> Unit = {}
         Text(
             "↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}" +
                 (top?.let { "  ·  " + str(Res.string.plan_max_height, Format.meters(it)) } ?: ""),
-            style = MaterialTheme.typography.bodyMedium, color = variant, maxLines = 1,
+            style = MaterialTheme.typography.bodyLarge, color = variant, maxLines = 1,
             modifier = Modifier.weight(1f, fill = false),
         )
         if (!ui.routing) {
