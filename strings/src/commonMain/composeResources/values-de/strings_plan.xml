@@ -180,6 +180,7 @@
     <string name="plan_slide_to_plan">Stopp</string>
     <string name="plan_slide_to_plan_sub">Pause · Route ändern · Beenden</string>
     <string name="plan_slide_change_route">Route ändern</string>
+    <string name="plan_mode_label">Planen</string>
     <string name="plan_slide_desc">%1$s. Zum Planen wechseln.</string>
     <string name="plan_switch_to_plan">Zum Planen wechseln</string>
     <string name="plan_stat_distance">Strecke</string>

@@ -79,6 +79,16 @@ object OnPathColors {
     /** Stop: end the process you are in (white 5.6:1) – the same red as [Error]. */
     val ActionStop = Color(0xFFC62828)
 
+    // ---- Plan mode is blue (owner 2026-11-03, design page §3 version 3 "deutlich", Plan only – Navigate unchanged) ----
+    /** Plan's accent: search glass, ☰, map-button icons, the sheet's handle + top edge, the mode label – [ActionEdit]. */
+    val PlanAccent = ActionEdit
+    /** Plan's surfaces: the sheet, the search pill, ☰ and the map buttons – [ActionEdit] at ~8 % on white (Ink 10.8:1). */
+    val PlanTint = Color(0xFFEEF3F7)
+    /** The light blue band under the status bar in Plan – [ActionEdit] at 16 % over the map. */
+    val PlanBand = Color(0x292E6A9E)
+    /** The soft edge round the screen in Plan (strongest at the edge, fading inwards) – [ActionEdit] at 22 %. */
+    val PlanEdge = Color(0x382E6A9E)
+
     // ---- Message kinds (docs/design/ui-style.md): one colour = one meaning ----
     /** FRAGE: the blue left edge of a question box (MessageCard) – never a status or a failure. */
     val InfoBlue = Color(0xFF1565C0)

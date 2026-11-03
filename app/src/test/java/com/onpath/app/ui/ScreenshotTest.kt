@@ -30,6 +30,7 @@ import com.onpath.app.poi.PoiGroup
 import com.onpath.app.poi.PoiKinds
 import org.junit.Rule
 import org.junit.Test
+import androidx.compose.ui.graphics.asImageBitmap
 import kotlin.math.sin
 
 /** JVM screenshots of the non-map UI at 390 dp width (map replaced by a placeholder). */
@@ -55,10 +56,11 @@ class ScreenshotTest {
 
     @Composable
     private fun Footer(gps: GpsStatus = GpsStatus.GOOD, following: Boolean = false, compass: CompassSpec? = null,
-                       eye: Boolean = false, peeking: Boolean = false, large: Boolean = false, fit: Boolean = false) =
+                       eye: Boolean = false, peeking: Boolean = false, large: Boolean = false, fit: Boolean = false,
+                       plan: Boolean = false) =
         MapFooter("500 m" to 64.dp) {
             MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking,
-                onFitRoute = if (fit) ({}) else null, large = large, onSettings = if (large) ({}) else null)
+                onFitRoute = if (fit) ({}) else null, large = large, onSettings = if (large) ({}) else null, plan = plan)
         }
 
     /**
@@ -68,14 +70,20 @@ class ScreenshotTest {
     @Composable
     private fun Frame(gps: GpsStatus = GpsStatus.GOOD, aboveFooter: @Composable () -> Unit = {},
                       top: @Composable () -> Unit = {},
-                      footer: @Composable () -> Unit = { Footer(gps, compass = CompassSpec(null, 0f) {}) }, // Plan: compass shown
+                      footer: @Composable () -> Unit = { Footer(gps, compass = CompassSpec(null, 0f) {}, plan = true) }, // Plan: compass shown
                       menu: PlanMenu = PlanMenu(onUpdates = {}),
+                      /** "Route ändern" during a tour: the mode label and the blue position sign in the map's middle. */
+                      editing: Boolean = false,
                       bottom: @Composable () -> Unit) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
+                if (editing) androidx.compose.foundation.Image(rememberPlanPuck(Activity.HIKE).asImageBitmap(), null,
+                    Modifier.align(Alignment.Center))
+                // Plan is blue (owner 2026-11-03): band under the status bar (the 32 dp stand-in) + soft edge
+                PlanFrame(bandHeight = 32.dp)
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar({}, menu, Modifier.fillMaxWidth())
+                    PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing)
                     SheetWithFooter(TOP_BAR_BOTTOM, footer = {
                         Column(Modifier.fillMaxWidth()) { aboveFooter(); footer() }
                     }, sheet = bottom)
@@ -179,7 +187,7 @@ class ScreenshotTest {
     @Test fun planWholeRoute() = paparazzi.snapshot {
         Frame(footer = {
             MapFooter("500 m" to 64.dp) {
-                MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false,
+                MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false, plan = true,
                     onLocate = {}, onFitRoute = {}, onUndo = {})
             }
         }) { PlanPanel(planUi(), PlanCallbacks()) }
@@ -215,7 +223,7 @@ class ScreenshotTest {
     @Test fun planPointsFullControlsNeverOverTheTopBar() = paparazzi.snapshot {
         Frame(footer = {
             MapFooter("500 m" to 64.dp) {
-                MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false,
+                MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false, plan = true,
                     onLocate = {}, onUndo = {})
             }
         }) { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) }
@@ -225,7 +233,7 @@ class ScreenshotTest {
     @Test fun planPointsFullCollapsedControls() = paparazzi.snapshot {
         Frame(footer = {
             MapFooter("500 m" to 64.dp) {
-                MapControls(null, showEye = false, onPeek = {}, gps = GpsStatus.GOOD, following = false, onLocate = {}, onUndo = {}, onRedo = {})
+                MapControls(null, showEye = false, onPeek = {}, gps = GpsStatus.GOOD, following = false, onLocate = {}, onUndo = {}, onRedo = {}, plan = true)
             }
         }) { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) }
     }
@@ -402,7 +410,7 @@ class ScreenshotTest {
      * tile bar – green Continue navigation · blue Save route · red New plan.
      */
     @Test fun planTourRunning() = paparazzi.snapshot {
-        Frame {
+        Frame(editing = true) {
             PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
                 PlanCallbacks(onSaveRoute = {}))
         }
@@ -413,7 +421,7 @@ class ScreenshotTest {
      * step shows how to begin again above the tiles; Save route and New plan greyed.
      */
     @Test fun planTourNewPlan() = paparazzi.snapshot {
-        Frame {
+        Frame(editing = true) {
             PlanPanel(planUi(n = 0, r = null, size = PlanSize.MINI, tourRunning = true)
                 .copy(tour = TourState(1_700.0, 878, paused = false, recordOnly = true)), PlanCallbacks(onSaveRoute = null))
         }
@@ -421,7 +429,7 @@ class ScreenshotTest {
 
     /** "Route ändern" as it opens: only the tile bar (red New plan live – there is a plan); the map free. */
     @Test fun planTourRunningCollapsed() = paparazzi.snapshot {
-        Frame {
+        Frame(editing = true) {
             PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
                 PlanCallbacks(onSaveRoute = {}))
         }

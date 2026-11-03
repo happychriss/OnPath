@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -30,6 +33,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,14 +92,31 @@ fun PlanTopBar(
     menu: PlanMenu,
     modifier: Modifier = Modifier,
     menuInitiallyOpen: Boolean = false,
+    /** During a tour ("Route ändern"): the mode label says so instead of "Planen". */
+    editing: Boolean = false,
 ) {
-    Row(modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        // also while the route is changed during a tour: search + ☰ as at home (owner 2026-11-01 turned down a green
-        // "Route ändern … Fertig" header)
-        SearchBarPill(onSearch, Modifier.weight(1f))
-        Spacer(Modifier.width(8.dp))
-        AppMenuButton(menu, menuInitiallyOpen)
+    Box(modifier) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            // also while the route is changed during a tour: search + ☰ as at home (owner 2026-11-01 turned down a green
+            // "Route ändern … Fertig" header)
+            SearchBarPill(onSearch, Modifier.weight(1f))
+            Spacer(Modifier.width(8.dp))
+            AppMenuButton(menu, menuInitiallyOpen)
+        }
+        // Plan is blue (owner 2026-11-03, design §3 version 3): a small blue label on the pill's top edge – "PLANEN",
+        // during a tour "ROUTE ÄNDERN"; the word helps in the sun and with colour blindness
+        PlanModeLabel(editing, Modifier.align(Alignment.TopStart).padding(start = 28.dp))
     }
+}
+
+/** "PLANEN" / "ROUTE ÄNDERN" in white on [OnPathColors.PlanAccent] (white 5.7:1), over the search pill's top edge. */
+@Composable
+internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier) {
+    Text(str(if (editing) Res.string.plan_slide_change_route else Res.string.plan_mode_label).uppercase(),
+        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite,
+        maxLines = 1,
+        modifier = modifier.clearAndSetSemantics { }.background(OnPathColors.PlanAccent, CircleShape)
+            .padding(horizontal = 8.dp, vertical = 2.dp))
 }
 
 @Composable
@@ -103,11 +125,11 @@ private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
         onClick = onSearch,
         modifier = modifier.height(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_search_hint); role = Role.Button },
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surface,
+        color = OnPathColors.PlanTint, // Plan is blue (owner 2026-11-03)
         shadowElevation = 3.dp,
     ) {
         Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Outlined.Search, contentDescription = null, tint = OnPathColors.PlanAccent)
             Spacer(Modifier.width(12.dp))
             Text(str(Res.string.plan_search_hint), style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.weight(1f))
@@ -119,16 +141,16 @@ private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
 private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Box {
-        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = MaterialTheme.colorScheme.surface,
+        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = OnPathColors.PlanTint,
             shadowElevation = 3.dp, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }) {
-            Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Menu, contentDescription = null) }
+            Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Menu, contentDescription = null, tint = OnPathColors.PlanAccent) }
         }
         // amber dot: the browser sync needs a look (never for plain offline) – the ☰ item says why; else a green dot while
         // the plan has unsaved changes (Save route is the top item)
         val dot = if (menu.onPairBrowser != null && menu.sync.warning != null) OnPathColors.Warn
             else if (menu.unsaved && menu.onSaveRoute != null) OnPathColors.Green else null
         if (dot != null) Box(Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 6.dp)
-            .size(12.dp).background(dot, CircleShape).border(2.dp, MaterialTheme.colorScheme.surface, CircleShape))
+            .size(12.dp).background(dot, CircleShape).border(2.dp, OnPathColors.PlanTint, CircleShape))
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, offset = DpOffset(0.dp, 4.dp)) {
             PlanMenuItems(menu, close = { open = false })
         }
@@ -190,3 +212,37 @@ internal fun MenuItem(icon: ImageVector, label: String, enabled: Boolean = true,
     )
 }
 
+
+/**
+ * Plan is blue (owner 2026-11-03, design page §3 version 3 "deutlich" – Plan only, Navigate unchanged): a light blue band
+ * under the status bar with a thin blue line, and a soft blue edge round the screen ([OnPathColors.PlanBand],
+ * [OnPathColors.PlanEdge], [OnPathColors.PlanAccent]). Only drawn – no pointer input, the map under it takes every touch.
+ */
+@Composable
+fun PlanFrame(modifier: Modifier = Modifier, bandHeight: androidx.compose.ui.unit.Dp? = null) {
+    val band = bandHeight ?: androidx.compose.foundation.layout.WindowInsets.statusBars
+        .asPaddingValues().calculateTopPadding().coerceAtLeast(PLAN_BAND_MIN)
+    androidx.compose.foundation.Canvas(modifier.fillMaxSize()) {
+        val edge = PLAN_EDGE.toPx()
+        val clear = androidx.compose.ui.graphics.Color.Transparent
+        val e = OnPathColors.PlanEdge
+        // the soft edge: from the screen's left, right and bottom edges inwards (the band is the top edge)
+        drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(e, clear), 0f, edge),
+            size = androidx.compose.ui.geometry.Size(edge, size.height))
+        drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(clear, e), size.width - edge, size.width),
+            topLeft = androidx.compose.ui.geometry.Offset(size.width - edge, 0f), size = androidx.compose.ui.geometry.Size(edge, size.height))
+        drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(clear, e), size.height - edge, size.height),
+            topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - edge), size = androidx.compose.ui.geometry.Size(size.width, edge))
+        val h = band.toPx()
+        drawRect(OnPathColors.PlanBand, size = androidx.compose.ui.geometry.Size(size.width, h))
+        drawRect(OnPathColors.PlanAccent, topLeft = androidx.compose.ui.geometry.Offset(0f, h - PLAN_BAND_LINE.toPx()),
+            size = androidx.compose.ui.geometry.Size(size.width, PLAN_BAND_LINE.toPx()))
+    }
+}
+
+/** Width of the soft blue edge. */
+private val PLAN_EDGE = 14.dp
+/** The band is at least this high (screenshots / phones without a status-bar inset). */
+private val PLAN_BAND_MIN = 24.dp
+/** The thin blue line under the band. */
+private val PLAN_BAND_LINE = 1.5.dp

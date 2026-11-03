@@ -49,6 +49,15 @@ onpath.private#19) – at the sheet's bottom in every step: green ▲ "Navigatio
 on; an unsaved plan asks first; Undo brings it back). A tile with nothing to do is greyed (faint white on the green bar). "✕ Neu planen" and
 ☰ → Save route are hidden during a tour.
 
+**The Plan screen is blue** (owner 2026-11-03, design page §3 version 3 "deutlich" – Plan only; Navigate stays as it is:
+the compass, the route and the blue dot say enough there): the plan sheet, the search pill, ☰ and the map buttons in a
+very light blue (`PlanTint` `#EEF3F7`), their signs, the sheet's handle and a top edge in the edit blue (`PlanAccent` =
+`ActionEdit`), a light blue band under the status bar with a thin blue line (`PlanBand`) and a soft blue edge round the
+screen (`PlanEdge`, only drawn – no touches taken; `ui/PlanTopBar.PlanFrame`), a small label "PLANEN" on the search
+pill ("ROUTE ÄNDERN" during a tour), and the position sign while the route is changed during a tour in blue
+(`ui/PlanPuck`). Kept: the green start button ("Los geht's" – a navigation action), the blue route line, red for stop /
+errors. `PlanColourTest` keeps the plan tokens out of Navigate.
+
 Add a token when a new meaning is needed (with a comment saying what it is for); `inverseSurface` and Snackbars stay
 out (`NoticesTest.noDarkBarAnyMore`).
 

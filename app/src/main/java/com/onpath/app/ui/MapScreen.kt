@@ -114,6 +114,7 @@ fun MapScreen(
                     onRedo = if (mode == AppMode.PLAN && vm.canRedo && vm.shown == null) vm::redoStep else null,
                     large = mode == AppMode.NAVIGATE,
                     onSettings = if (mode == AppMode.NAVIGATE) { { vm.navSettingsOpen = true } } else null,
+                    plan = mode == AppMode.PLAN, // Plan is blue (owner 2026-11-03), Navigate unchanged
                 )
             }
         }
@@ -263,6 +264,9 @@ private fun PlanMode(
     onPanelHeight: (Int) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
+        // Plan is blue (owner 2026-11-03, design §3 version 3): a soft blue edge round the screen and a light blue band
+        // under the status bar – drawn only, no touches taken
+        PlanFrame(Modifier.modeEdge(ModeEdge.TOP))
         PlanTopBar(
             onSearch = vm::openSearch,
             menu = PlanMenu(
@@ -288,6 +292,7 @@ private fun PlanMode(
                 onUpdates = null,
             ),
             modifier = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding(),
+            editing = rec != null,
         )
         // background downloads (corridor, refresh, routing data): small blue chip under ☰ after 10 s, until all is done;
         // tap → details with "Cancel all" (own composable: its per-second progress recomposes only the chip, not PlanMode)

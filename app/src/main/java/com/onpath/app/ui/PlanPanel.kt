@@ -227,6 +227,8 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
         onDragging = cb.onSheetDrag,
         // the rolled-up row has its own small Start; during a tour every step has the (empty) bar
         barFrom = if (tour) 0 else PlanSize.MINI.step,
+        // Plan is blue (owner 2026-11-03): a light blue sheet with a blue handle and top edge – also during a tour
+        surfaceColor = OnPathColors.PlanTint, accent = OnPathColors.PlanAccent,
         bottomBar = { PlanBar(ui, cb) },
     ) {
         // the pulled-up sheet has ONE fixed height (owner): deleting / adding / moving points (or the routing
@@ -660,7 +662,7 @@ private fun Title(ui: PlanUi, route: PlannedRoute?, onTimeDetails: () -> Unit) {
 @Composable
 private fun FirstPointHint() {
     Row(verticalAlignment = Alignment.Top) {
-        Icon(Icons.Filled.TouchApp, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 1.dp).size(24.dp))
+        Icon(Icons.Filled.TouchApp, null, tint = OnPathColors.PlanAccent, modifier = Modifier.padding(top = 1.dp).size(24.dp))
         Spacer(Modifier.width(10.dp))
         Text(androidx.compose.ui.text.buildAnnotatedString {
             withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)) {

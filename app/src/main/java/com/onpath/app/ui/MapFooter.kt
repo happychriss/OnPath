@@ -134,26 +134,30 @@ fun MapControls(
     large: Boolean = false,
     /** Navigate: the navigation settings on the way – a gear on top of the controls. */
     onSettings: (() -> Unit)? = null,
+    /** Plan is blue (owner 2026-11-03): light blue pill, blue icons ([OnPathColors.PlanTint] / [OnPathColors.PlanAccent]). */
+    plan: Boolean = false,
 ) {
     val size = if (large) MAP_FAB_LARGE else MAP_FAB
+    val tint = if (plan) OnPathColors.PlanAccent else MaterialTheme.colorScheme.onSurfaceVariant
+    val bg = if (plan) OnPathColors.PlanTint else MaterialTheme.colorScheme.surface
     val items = buildList<@Composable () -> Unit> {
-        if (onSettings != null) add { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size) }
+        if (onSettings != null) add { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size, tint) }
         if (compass != null) add { CompassControl(compass, size) }
-        if (showEye) add { EyeControl(onPeek, peeking, size) }
-        if (onFitRoute != null) add { IconControl(Icons.Filled.FitScreen, Res.string.plan_show_whole_route, onFitRoute, size) }
-        if (onUndo != null) add { IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo, size) }
-        if (onRedo != null) add { IconControl(Icons.AutoMirrored.Filled.Redo, Res.string.plan_redo, onRedo, size) }
-        add { LocateControl(gps, following, onLocate, size) }
+        if (showEye) add { EyeControl(onPeek, peeking, size, tint) }
+        if (onFitRoute != null) add { IconControl(Icons.Filled.FitScreen, Res.string.plan_show_whole_route, onFitRoute, size, tint) }
+        if (onUndo != null) add { IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo, size, tint) }
+        if (onRedo != null) add { IconControl(Icons.AutoMirrored.Filled.Redo, Res.string.plan_redo, onRedo, size, tint) }
+        add { LocateControl(gps, following, onLocate, size, tint) }
     }
     if (large) {
         Column(verticalArrangement = Arrangement.spacedBy(LARGE_GAP), horizontalAlignment = Alignment.CenterHorizontally) {
             items.forEach { item ->
-                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp) { item() }
+                Surface(shape = CircleShape, color = bg, shadowElevation = 3.dp) { item() }
             }
         }
         return
     }
-    Surface(shape = RoundedCornerShape(MAP_FAB / 2), color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp) {
+    Surface(shape = RoundedCornerShape(MAP_FAB / 2), color = bg, shadowElevation = 3.dp) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             items.forEachIndexed { i, item ->
                 if (i > 0) GroupDivider()
@@ -167,10 +171,11 @@ private fun iconSize(size: Dp): Dp = if (size > MAP_FAB) 30.dp else 24.dp
 
 /** A plain round map control: [icon] in the control colour, [desc] for TalkBack. */
 @Composable
-private fun IconControl(icon: ImageVector, desc: StringResource, onClick: () -> Unit, size: Dp) {
+private fun IconControl(icon: ImageVector, desc: StringResource, onClick: () -> Unit, size: Dp,
+                        tint: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onClick).semantics { contentDescription = Txt.s(desc) },
         contentAlignment = Alignment.Center) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(iconSize(size)))
+        Icon(icon, null, tint = tint, modifier = Modifier.size(iconSize(size)))
     }
 }
 
@@ -196,7 +201,8 @@ private fun CompassControl(c: CompassSpec, size: Dp) {
 
 /** Hold to hide route lines and markers; release shows them again. */
 @Composable
-private fun EyeControl(onPeek: (Boolean) -> Unit, peekingPreview: Boolean, size: Dp) {
+private fun EyeControl(onPeek: (Boolean) -> Unit, peekingPreview: Boolean, size: Dp,
+                       tint: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     val peek by rememberUpdatedState(onPeek)
     var held by remember { mutableStateOf(false) }
     DisposableEffect(Unit) { onDispose { if (held) peek(false) } }
@@ -214,12 +220,13 @@ private fun EyeControl(onPeek: (Boolean) -> Unit, peekingPreview: Boolean, size:
         contentAlignment = Alignment.Center,
     ) {
         Icon(if (down) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(iconSize(size)))
+            tint = tint, modifier = Modifier.size(iconSize(size)))
     }
 }
 
 @Composable
-private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> Unit, size: Dp) {
+private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> Unit, size: Dp,
+                          tint: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     val what = when (status) {
         GpsStatus.OFF -> str(Res.string.plan_location_off_tap)
         GpsStatus.NO_PERMISSION -> str(Res.string.plan_location_denied_tap)
@@ -228,7 +235,7 @@ private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> 
     Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onClick).semantics { contentDescription = what },
         contentAlignment = Alignment.Center) {
         Icon(if (following) Icons.Filled.GpsFixed else Icons.Filled.GpsNotFixed, null,
-            tint = if (following) OnPathColors.Route else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = if (following) OnPathColors.Route else tint,
             modifier = Modifier.size(iconSize(size)))
         Box(
             Modifier.align(Alignment.TopEnd).offset(x = (-6).dp, y = 6.dp).size(12.dp)
