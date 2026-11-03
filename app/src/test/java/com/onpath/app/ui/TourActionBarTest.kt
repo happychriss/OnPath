@@ -40,7 +40,8 @@ class TourActionBarTest {
 
     /** Owner 2026-11-02: no ✕ – a tap on the map or Android's back closes the open bar (not while paused). */
     @Test fun aTapOnTheMapOrBackClosesTheBar() {
-        assertTrue("no ✕ in the bar", !bar.contains("Icons.Filled.Close"))
+        // Navigate's bar has no ✕ close button (the plan's red "Neu planen" tile uses the ✕ sign – that is not a close)
+        assertTrue("no ✕ in the bar", !bar.substringAfter("fun TourActionBar(").substringBefore("\n}\n").contains("Icons.Filled.Close"))
         val nav = File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()
         assertTrue(nav.contains("val closableBar = open && !ui.paused && ui.recordedM != null"))
         assertTrue(nav.contains("BackHandler(enabled = closableBar) { open = false }"))

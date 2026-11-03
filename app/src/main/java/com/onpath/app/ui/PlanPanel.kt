@@ -114,8 +114,6 @@ class PlanCallbacks(
     val onEndTour: () -> Unit = {},
     /** Save the (edited) plan – the blue tile during a tour; null = no plan to save. */
     val onSaveRoute: (() -> Unit)? = null,
-    /** Discard the changes made since "Route ändern" and go back to Navigate – the red tile during a tour. */
-    val onDiscardChanges: () -> Unit = {},
 )
 
 /** Recording status shown at the top of the plan sheet during a tour. */
@@ -193,8 +191,6 @@ data class PlanUi(
     val changedText: String? = null,
     /** "Planned in the browser with other routing – …" (a synced plan, another routing fingerprint): grey INFO, no tap. */
     val syncRoutingText: String? = null,
-    /** During a tour: the plan differs from when "Route ändern" opened – the red "Discard changes" tile is live. */
-    val tourEditChanged: Boolean = false,
 ) {
     /** What Start does (the shown track has its own panel): navigate the line, wait for it, or only record. */
     val start: PlanStart get() = PlanStart.of(trackPoints = null, hasRoute = route != null, pointCount = pointCount)
@@ -319,8 +315,10 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     val tourMini = ui.tour != null && ui.shownSize == PlanSize.MINI
     val belowStep = if (tourMini || ui.collapsed) Modifier.clearAndSetSemantics { } else Modifier
     if (ui.tour != null) {
-        // the first step is the tile bar alone (owner 2026-11-02: Continue · Save route · Discard changes, the same bar
-        // as Navigate's, PlanBar) – the map stays free above it; no rolled-up step during a tour (PlanSize.duringTour)
+        // the first step is the tile bar alone (owner 2026-11-02: Continue · Save route · New plan, the same bar as
+        // Navigate's, PlanBar) – the map stays free above it; no rolled-up step during a tour (PlanSize.duringTour).
+        // After "Neu planen" the plan is empty: the first step shows how to begin again (owner 2026-11-03)
+        if (ui.pointCount == 0) Box(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) { FirstPointHint() }
         Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COLLAPSED.step).stepEnd(PlanSize.MINI.step) })
     }
     Box(Modifier.fillMaxWidth()) {
@@ -405,14 +403,14 @@ private val PROFILE_HEIGHT = 120.dp
 
 /**
  * Bottom of the sheet: the one primary button; during a tour the tile bar (owner 2026-11-02, [TourEditBar]): green
- * Continue navigation · blue Save route · red Discard changes – in every step.
+ * Continue navigation · blue Save route · red New plan (owner 2026-11-03) – in every step.
  */
 @Composable
 private fun ColumnScope.PlanBar(ui: PlanUi, cb: PlanCallbacks) {
     val t = ui.tour
     if (t != null) {
         Spacer(Modifier.height(TOUR_BAR_GAP))
-        TourEditBar(t.paused, cb.onPause, cb.onContinue, cb.onSaveRoute, ui.tourEditChanged, cb.onDiscardChanges,
+        TourEditBar(t.paused, cb.onPause, cb.onContinue, cb.onSaveRoute, canNewPlan = ui.pointCount > 0, onNewPlan = cb.onClear,
             Modifier.padding(horizontal = 4.dp))
         Spacer(Modifier.height(TOUR_BAR_GAP))
     } else if (!ui.tourRunning && ui.pointCount >= 2) {

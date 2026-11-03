@@ -447,8 +447,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused, vm.guidanceEndedByEmptyPlan) },
             points = rows,
             routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText(), warnCount = vm.warningCount(),
-            changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote,
-            tourEditChanged = rec != null && vm.tourEditChanged),
+            changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote),
         PlanCallbacks(
             onSheetDrag = vm::mapGesture, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -463,7 +462,6 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
             onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
-            onDiscardChanges = vm::discardTourEdits,
             onMovePoint = vm::movePointInList, onDeletePoint = vm::deletePointFromList, onShowPoint = vm::showPointFromList,
         ),
     )

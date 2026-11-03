@@ -170,7 +170,6 @@
     <string name="nav_end_save_changed_route">Geänderte Route auch speichern</string>
     <string name="nav_save_recording">Aufnahme speichern</string>
     <string name="nav_continue_navigation">Navigation fortsetzen</string>
-    <string name="nav_discard_changes">Änderungen verwerfen</string>
     <string name="nav_action_pause">Pause</string>
     <string name="nav_route_back_title">Kein Ziel mehr vor dir.</string>
     <string name="nav_route_back_text">Die Aufnahme läuft weiter. Rückgängig holt den Punkt zurück.</string>

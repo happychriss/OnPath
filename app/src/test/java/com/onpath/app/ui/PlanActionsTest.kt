@@ -36,7 +36,7 @@ class PlanActionsTest {
             assertFalse("$gone gone from the sheet", panel.contains(gone))
         // the one save in the sheet is the tour's blue tile "Route speichern" (owner 2026-11-02)
         assertTrue("save only during a tour", Regex("onSave\\w*").findAll(panel).all { it.value == "onSaveRoute" })
-        assertTrue(panel.contains("TourEditBar(t.paused, cb.onPause, cb.onContinue, cb.onSaveRoute, ui.tourEditChanged, cb.onDiscardChanges"))
+        assertTrue(panel.contains("TourEditBar(t.paused, cb.onPause, cb.onContinue, cb.onSaveRoute, canNewPlan = ui.pointCount > 0, onNewPlan = cb.onClear"))
         val row = panel.substringAfter("private fun PlanActions(").substringBefore("\n}\n")
         for (item in listOf("Res.string.plan_close_plan", "Res.string.plan_reverse", "Res.string.plan_round_trip"))
             assertTrue(item, row.contains(item))

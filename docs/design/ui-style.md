@@ -38,15 +38,15 @@ Colours come only from `OnPathColors` (and the Material scheme built from it in 
 One colour = one kind of action, so the hand finds it the second time by colour:
 - **green = navigation** – start, continue, pause / resume the guidance (`ActionGo`; the primary buttons stay `Green`);
 - **blue = edit** – change the route, you are editing (`ActionEdit`);
-- **red = stop** – end the process you are in (end the recording, discard the edit) (`ActionStop`).
+- **red = stop** – end the process you are in (end the recording, clear the plan to start anew) (`ActionStop`).
 
 First user: the bar the Navigate slider unlocks (`ui/TourActionBar.kt`, onpath.private#17 = C compact) – green Pause /
 Resume, blue Change route, red End, white words, the plain signs ⏸ (▶ paused) / ✎ / ■ (owner 2026-11-02: the
 track-line icons did not please), ≈ 1.5× the slider; no ✕ – a tap on the map or Android's back closes it (owner 2026-11-02).
 Second user, the same bar (`ActionTiles`): **Plan during a tour** ("Route ändern", owner 2026-11-02, refines
 onpath.private#19) – at the sheet's bottom in every step: green ▲ "Navigation fortsetzen", blue 💾 "Route speichern"
-(Save's dialog, you stay in the plan), red ↶ "Änderungen verwerfen" (back to the plan as it was when "Route ändern"
-opened, then Navigate). A tile with nothing to do is greyed (faint white on the green bar). "✕ Neu planen" and
+(Save's dialog, you stay in the plan), red ✕ "Neu planen" (owner 2026-11-03: the plan is emptied, the recording goes
+on; an unsaved plan asks first; Undo brings it back). A tile with nothing to do is greyed (faint white on the green bar). "✕ Neu planen" and
 ☰ → Save route are hidden during a tour.
 
 Add a token when a new meaning is needed (with a comment saying what it is for); `inverseSurface` and Snackbars stay

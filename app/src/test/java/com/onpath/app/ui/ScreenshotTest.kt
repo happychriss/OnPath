@@ -398,17 +398,28 @@ class ScreenshotTest {
     }
 
     /**
-     * "Route ändern" during a tour, pulled up one step, the plan changed (owner 2026-11-02): the route above, at the
-     * bottom the tile bar – green Continue navigation · blue Save route · red Discard changes (live).
+     * "Route ändern" during a tour, pulled up one step (owner 2026-11-02 / 2026-11-03): the route above, at the bottom the
+     * tile bar – green Continue navigation · blue Save route · red New plan.
      */
     @Test fun planTourRunning() = paparazzi.snapshot {
         Frame {
-            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false),
-                tourEditChanged = true), PlanCallbacks(onSaveRoute = {}))
+            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
+                PlanCallbacks(onSaveRoute = {}))
         }
     }
 
-    /** "Route ändern" as it opens, nothing changed yet: only the tile bar, red Discard changes greyed; the map free. */
+    /**
+     * After the red "Neu planen" during a tour (owner 2026-11-03): the plan is empty, the recording goes on – the first
+     * step shows how to begin again above the tiles; Save route and New plan greyed.
+     */
+    @Test fun planTourNewPlan() = paparazzi.snapshot {
+        Frame {
+            PlanPanel(planUi(n = 0, r = null, size = PlanSize.MINI, tourRunning = true)
+                .copy(tour = TourState(1_700.0, 878, paused = false, recordOnly = true)), PlanCallbacks(onSaveRoute = null))
+        }
+    }
+
+    /** "Route ändern" as it opens: only the tile bar (red New plan live – there is a plan); the map free. */
     @Test fun planTourRunningCollapsed() = paparazzi.snapshot {
         Frame {
             PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),

@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Save
@@ -57,18 +57,19 @@ fun TourActionBar(paused: Boolean, onPause: (Boolean) -> Unit, onChangeRoute: ()
 /**
  * The plan during a tour ("Route ändern", owner 2026-11-02 – the same bar as Navigate's, refines onpath.private#19):
  * **green** Continue navigation (also resumes a paused recording), **blue** Save route (Save's dialog, you stay in the
- * plan; greyed without a plan to save), **red** Discard changes (back to the plan as it was when "Route ändern" opened,
- * then Navigate; greyed while nothing changed).
+ * plan; greyed without a plan to save), **red** New plan (owner 2026-11-03, was "Discard changes" – it doubled Undo):
+ * the plan is emptied, the recording goes on, the sheet shows how to begin again; an unsaved plan asks first
+ * ("Discard changes?", the same as ✕ New plan without a tour); greyed when the plan is already empty. Undo brings it back.
  */
 @Composable
 fun TourEditBar(paused: Boolean, onPause: (Boolean) -> Unit, onContinue: () -> Unit, onSave: (() -> Unit)?,
-                changed: Boolean, onDiscard: () -> Unit, modifier: Modifier = Modifier) {
+                canNewPlan: Boolean, onNewPlan: () -> Unit, modifier: Modifier = Modifier) {
     ActionTiles(listOf(
         ActionTileSpec(Icons.Filled.Navigation, str(Res.string.nav_continue_navigation), OnPathColors.ActionGo) {
             if (paused) onPause(false); onContinue()
         },
         ActionTileSpec(Icons.Filled.Save, str(Res.string.plan_save_route), OnPathColors.ActionEdit, enabled = onSave != null) { onSave?.invoke() },
-        ActionTileSpec(Icons.AutoMirrored.Filled.Undo, str(Res.string.nav_discard_changes), OnPathColors.ActionStop, enabled = changed, onClick = onDiscard),
+        ActionTileSpec(Icons.Filled.Close, str(Res.string.plan_close_plan), OnPathColors.ActionStop, enabled = canNewPlan, onClick = onNewPlan),
     ), modifier)
 }
 
