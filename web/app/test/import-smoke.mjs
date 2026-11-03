@@ -159,7 +159,7 @@ check(!(await page.$('dialog.longroute')) && await pins() === 3, 'Add to the rou
 // changes?" first; Discard closes it, undo brings it back
 await page.goto(url + 'index.html#p=' + CODE);
 await planned();
-check(await page.isVisible('#planActions #clear') && (await page.textContent('#planActions #clear')).trim() === 'Close plan', 'action row: ✕ Close plan');
+check(await page.isVisible('#planActions #clear') && (await page.textContent('#planActions #clear')).trim() === 'New plan', 'action row: ✕ New plan');
 await page.click('#clear');
 check(await page.locator('dialog.discard[open]').count() === 1, 'an unsaved plan: Close asks "Discard changes?"');
 await page.click('#discardOk');
