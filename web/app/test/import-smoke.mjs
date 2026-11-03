@@ -218,6 +218,24 @@ await page.click('#planFromTrack');
 await page.waitForFunction(() => !document.getElementById('trackPanel'), null, { timeout: 60_000 });
 await planned();
 check(await pins() === n && await page.evaluate(() => location.hash) === planHash, `re-import → plan: the same ${n} route points (the plan GPX's <wpt>, no fitting)`);
+// pinned points (a POI / place, passed exactly) go out as <wpt><type>pinned</type> and come back pinned (PlanGpx, 23f64bc3)
+const pinCode = await page.evaluate(() => window.__engine.encode({ points: [[46.677, 11.161], [46.6879, 11.1111]], activity: 'HIKE', sac: 2,
+  pinned: [1], names: { 1: 'Leiteralm' }, title: 'Pin test' }));
+await page.goto(url + 'index.html#p=' + pinCode);
+await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
+await planned();
+await page.click('#share');
+const [dl2] = await Promise.all([page.waitForEvent('download'), page.click('dialog.share #exportGpx')]);
+await page.click('#closeShare');
+const gpx2 = fs.readFileSync(await dl2.path(), 'utf8');
+check((gpx2.match(/<type>pinned<\/type>/g) ?? []).length === 1, 'Export GPX: the pinned point as <wpt><type>pinned</type>');
+await page.evaluate(async (text) => { await window.__gpx.importFile(new File([text], 'pins.gpx', { type: 'application/gpx+xml' })); }, gpx2);
+await page.waitForSelector('#trackPanel');
+await page.click('#planFromTrack');
+await page.waitForFunction(() => !document.getElementById('trackPanel'), null, { timeout: 60_000 });
+await planned();
+const pinsBack = await page.evaluate(() => window.__state.meta.map((m) => !!m.pinned));
+check(JSON.stringify(pinsBack) === '[false,true]', `re-import → plan: the pinned point is pinned again (${JSON.stringify(pinsBack)})`);
 
 // 3. a .gpx dropped on the map: route + waypoints, <type>MTB</type>
 const dropText = fs.readFileSync(fixture('mtb-route.gpx'), 'utf8');

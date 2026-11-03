@@ -22,7 +22,8 @@ export interface GpxHost {
   /** Like the app's selectActivity(userChange = false): the plan (if any) is planned again for it. */
   setActivity(a: Activity, sac: number): void;
   /** The track's route points become the plan (one undo step); [names] = point index → name (a plan GPX's <wpt>). */
-  plan(points: LatLon[], title: string, names?: (string | null)[]): Promise<void>;
+  /** [pinned] per point: passed exactly (an exported plan's <type>pinned</type>, PlanGpx.pinnedOf). */
+  plan(points: LatLon[], title: string, names?: (string | null)[], pinned?: boolean[]): Promise<void>;
   status(msg: string, kind?: 'info' | 'error'): void;
   /** A file was imported and shown (not a synced track opened again): the page keeps it in My routes. */
   imported?(t: Track): void;
@@ -36,7 +37,7 @@ export interface Track {
   segments: [number, number, number | null][][];
   waypoints: { lat: number; lon: number; name: string | null }[];
   /** An exported OnPath plan (the app's PlanGpx.stopsOf): its <wpt> are the route points; null = a track to fit. */
-  stops: { lat: number; lon: number; name: string | null }[] | null;
+  stops: { lat: number; lon: number; name: string | null; pinned?: boolean }[] | null;
   profile: PlanResult['profile'];
   error?: string;
 }
@@ -155,7 +156,7 @@ export function setupGpxImport(h: GpxHost) {
       if (planBtn.disabled) return;
       // a plan GPX (exported by OnPath, app or web): the plan comes back exactly, with its names – no fitting
       // (the app's planFromShown with PlanGpx.stopsOf)
-      if (t.stops) { close(); await h.plan(t.stops.map((w) => [w.lat, w.lon] as LatLon), t.name, t.stops.map((w) => w.name)); return; }
+      if (t.stops) { close(); await h.plan(t.stops.map((w) => [w.lat, w.lon] as LatLon), t.name, t.stops.map((w) => w.name), t.stops.map((w) => !!w.pinned)); return; }
       planBtn.disabled = true; planBtn.classList.add('busy');
       const err = p.querySelector<HTMLDivElement>('#trackError')!;
       err.hidden = true;

@@ -1467,7 +1467,7 @@ function download(text: string, file: string) {
 }
 /** The shown plan as GPX (the app's PlanGpx in the engine: the line, the route points as <wpt>, "<name> - plan.gpx"). */
 async function exportGpx() {
-  const r = JSON.parse(await engine.call('gpx', state.title ?? '', state.activity, state.sac, enc(state.points), namesText()));
+  const r = JSON.parse(await engine.call('gpx', state.title ?? '', state.activity, state.sac, enc(state.points), namesText(), sharedPlan().pinned.join(',')));
   if (r) download(r.gpx, r.file);
 }
 /** The app's name proposal (AppViewModel.suggestName → RouteNamer): stop names from places, else the map's places. */
@@ -1533,9 +1533,9 @@ const gpxImport = setupGpxImport({
   map, engine, status, fitPadding,
   activity: () => ({ activity: state.activity, sac: state.sac }),
   setActivity: (a, sac) => setActivity(a, sac, true),
-  plan: async (points, title, names) => {
+  plan: async (points, title, names, pinned) => {
     state.title = title; forgetSaved();
-    await commit(points, names ? points.map((_, i) => ({ pinned: false, name: names[i] ?? undefined })) : undefined);
+    await commit(points, names ? points.map((_, i) => ({ pinned: !!pinned?.[i], name: names[i] ?? undefined })) : undefined);
   },
   // A-017 rule 14: an imported track is kept in the open folder and goes to the phone with Save
   imported: (tr) => { syncReady.then((ok) => { if (ok) sync.saveTrack(tr.segments, tr.waypoints, tr.activity, tr.sac, tr.name); }); },

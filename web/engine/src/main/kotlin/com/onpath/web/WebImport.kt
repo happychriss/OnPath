@@ -60,8 +60,10 @@ object WebImport {
             append(",\"profile\":"); with(Engine) { profileJson(com.onpath.app.routing.ProfileData.of(geo.flatten())) }
             // an exported OnPath plan (gpx/PlanGpx.stopsOf, the app's planFromShown): its <wpt> are the route points –
             // "Plan a route from it" takes them with their names, no fitting; null = a track to fit (TrackToPlan)
+            // pinned = <type>pinned</type> of the app's / page's export (PlanGpx.pinnedOf): passed exactly again
             append(",\"stops\":").append(com.onpath.app.gpx.PlanGpx.stopsOf(geo.flatten(), data.waypoints)?.joinToString(",", "[", "]") { w ->
-                "{\"lat\":" + Engine.num(w.lat, 6) + ",\"lon\":" + Engine.num(w.lon, 6) + ",\"name\":" + (w.name?.let { Engine.str(it) } ?: "null") + "}"
+                "{\"lat\":" + Engine.num(w.lat, 6) + ",\"lon\":" + Engine.num(w.lon, 6) + ",\"name\":" + (w.name?.let { Engine.str(it) } ?: "null") +
+                    ",\"pinned\":" + (w.type == com.onpath.app.gpx.PlanGpx.PINNED) + "}"
             } ?: "null")
             append('}')
         }

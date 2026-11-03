@@ -492,13 +492,14 @@ object Engine {
      * points as `<wpt>` with their names, the sport, "<name> - plan.gpx". [points] / [names] = the page's plan (the line
      * must be this plan's). JSON {file, gpx} or "null".
      */
-    fun gpx(name: String, activity: String, sac: Int, points: String, names: String): String {
+    fun gpx(name: String, activity: String, sac: Int, points: String, names: String, pinned: String = ""): String {
         val w = parsePoints(points)
         val line = lastPlanFor(w)?.points?.takeIf { it.size >= 2 } ?: return "null"
         val n = name.ifBlank { Txt.s(Res.string.msg_name_route) } // the page sends its own name; this only if none
         val nm = parseNames(names)
         val f = com.onpath.app.gpx.PlanGpx.export(n, listOf(line.map { com.onpath.app.gpx.TrackPoint(it.lat, it.lon, it.ele) }),
-            com.onpath.app.gpx.PlanGpx.stops(w) { nm[it]?.takeIf { s -> s.isNotBlank() } }, Activity.valueOf(activity), sac)
+            // pinned points (POI / place, passed exactly) as <wpt><type>pinned</type> – a re-import pins them again (23f64bc3)
+            com.onpath.app.gpx.PlanGpx.stops(w, parseIndices(pinned)) { nm[it]?.takeIf { s -> s.isNotBlank() } }, Activity.valueOf(activity), sac)
         return "{\"file\":" + str(f.fileName) + ",\"gpx\":" + str(f.text) + "}"
     }
 
@@ -616,8 +617,8 @@ class WebContext(private val dir: File) : android.content.Context() {
 @JSExport fun poiMenu(kind: String, name: String, ele: String, lat: Double, lon: Double): String =
     Engine.poiMenu(kind, name, ele, lat, lon)
 
-@JSExport fun gpx(name: String, activity: String, sac: Int, points: String, names: String): String =
-    Engine.gpx(name, activity, sac, points, names)
+@JSExport fun gpx(name: String, activity: String, sac: Int, points: String, names: String, pinned: String): String =
+    Engine.gpx(name, activity, sac, points, names, pinned)
 
 @JSExport fun activities(): String = Engine.activities()
 
