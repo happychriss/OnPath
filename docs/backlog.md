@@ -47,6 +47,7 @@ the git log.
   SHA256SUMS (commit 2bba0137 on top of your GO 640544f0). The planner was already live with the same shared code.
 - ← [cloud worker] web-spike 2d48bae has main f154d62, Web spike green – 2026-11-03
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-web] For **cloud-plan** (owner 2026-11-03): the planner's header link „Die App“ / “The app” (`web_link_app` → `web_url_app` = onpath.earth home) tells a first-time visitor nothing. Rename it **„Android-App testen“ / “Try the Android app”** and point it (and the sheet's „App holen“) at the sign-up page `https://onpath.earth/ausprobieren/` · EN `https://onpath.earth/try/` – new keys or a second URL key; the logo can stay on the home page. The website now links the planner in its header („Im Browser planen“, onpath.earth main) – 2026-11-03
 - ← [cloud-app] 2026-11-01: **Germany worktree removed** on donald (owner confirmed in the chat; no uncommitted work,
   all of `germany-prebuild` on origin/main, local branch deleted) – #10 closed. The run data beside it
   (`~/onpath-cells-work/germany/` state, logs, lists) is still there – remove only on the owner's word. Also new on
