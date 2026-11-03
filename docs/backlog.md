@@ -47,7 +47,6 @@ the git log.
   the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
-- [donald] Diagnostics list starts folded (low prio, after v0.14.0) – since 2026-11-03
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [cloud-plan] Laptop off (2026-11-02 evening) – web-spike 415d3802 clean; next sitting: merge main on the captain's word, time-limit question, mirror leftovers – since 2026-11-02
@@ -63,8 +62,6 @@ the git log.
   (owner 2026-11-02: "hat sich die mal jemand angeguckt?"): pull the diagnostics export briefly over adb (no tour
   recording, phone untouched otherwise), sort: old (fixed / old version) · new + harmless (INFO, offline) · new + a real
   bug → its own Next line with a reproducing test. A short overview to the owner; the owner then clears with the button.
-- **[cloud-app] Diagnostics list folds** (owner 2026-11-02, low prio, after v0.14.0): Settings → Diagnostics starts
-  folded – one line "127 Einträge, davon 3 Fehler ▸" – so the developer tools under it are reached without scrolling.
 - **[pixel] Field check: no GPS line while lying still (built 2026-11-02, `recording/StillSense`)** – phone flat on a
   table with a tour running: no GPS line, also in the first 2 min; phone in a pocket while sitting (threshold 0.5 m/s²
   is a guess); walking / riding without GPS → amber after the short gap; no extra battery drain. Open: the notification
