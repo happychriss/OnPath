@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.ui.text.withStyle
 import androidx.compose.material.icons.filled.ChevronRight
@@ -193,6 +194,8 @@ data class PlanUi(
     val syncRoutingText: String? = null,
     /** A tap on the open map: "Gedrückt halten, um hier einen Punkt zu setzen." in the summary step (owner 2026-11-03). */
     val tapHint: Boolean = false,
+    /** A tap on the plan's mode pill: the offline state explained in one line ([OfflineReady.explain]); null = none. */
+    val offlineInfo: String? = null,
 ) {
     /** What Start does (the shown track has its own panel): navigate the line, wait for it, or only record. */
     val start: PlanStart get() = PlanStart.of(trackPoints = null, hasRoute = route != null, pointCount = pointCount)
@@ -327,6 +330,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
             // the summary row in the first step, above the bar (owner 2026-11-03: "dass man Fahrrad und 4 Minuten sieht")
             HeaderLine(chip = { ActivityButton(ui.activity, ui.sac, cb.onActivity) }, title = { Title(ui, ui.route, cb.onTimeDetails) })
             if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) { TapHoldHint() }
+            ui.offlineInfo?.let { t -> Box(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) { OfflineInfoLine(t) } }
         }
         Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COLLAPSED.step).stepEnd(PlanSize.MINI.step) })
     }
@@ -340,6 +344,8 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     if (ui.pointCount == 0 && ui.tour == null) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { FirstPointHint() }
     // a tap on the open map (hold-only): the same hand says how to set a point – in the step the sheet opens at
     else if (ui.tapHint && ui.tour == null) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { TapHoldHint() }
+    if (ui.offlineInfo != null && ui.tour == null && ui.pointCount > 0)
+        Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { OfflineInfoLine(ui.offlineInfo) }
     // without a tour the summary step ends under the summary lines
     if (ui.tour == null) Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
     var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
@@ -694,6 +700,19 @@ private fun TapHoldHint() {
         Icon(Icons.Filled.TouchApp, null, tint = OnPathColors.PlanAccent, modifier = Modifier.padding(top = 1.dp).size(24.dp))
         Spacer(Modifier.width(10.dp))
         Text(str(Res.string.plan_hint_tap_hold), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+/**
+ * The plan's mode pill was tapped (owner 2026-11-03, "Ohne Netz ✓ / ⟳ / ⚠"): what it means for this route, in one calm
+ * ANZEIGE line – it stays until the plan changes, the pill is tapped again or the mode changes ([AppViewModel.offlineInfo]).
+ */
+@Composable
+private fun OfflineInfoLine(text: String) {
+    Row(verticalAlignment = Alignment.Top, modifier = Modifier.semantics(mergeDescendants = true) {}) {
+        Icon(Icons.Filled.CloudDone, null, tint = OnPathColors.PlanAccent, modifier = Modifier.padding(top = 1.dp).size(24.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 

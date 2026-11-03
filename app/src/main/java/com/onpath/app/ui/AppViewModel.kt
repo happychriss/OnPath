@@ -646,6 +646,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         tapHoldHint = true
         if (planSize == PlanSize.COLLAPSED) planSize = PlanSize.MINI // the line sits in the summary step
     }
+    /**
+     * The plan's route offline ("Ohne Netz ✓ / ⟳ / ⚠" in the mode pill, owner 2026-11-03, [OfflineReady]); null = no
+     * route / unknown. Recomputed by MapScreen off the main thread when the route changes, and now and then while loading.
+     */
+    var offlineReady by mutableStateOf<OfflineReady.Result?>(null)
+    /** The pill was tapped: the plan sheet explains the offline state in one line, until the plan changes / tapped again. */
+    var offlineInfo by mutableStateOf(false)
+    fun toggleOfflineInfo() {
+        offlineInfo = !offlineInfo && offlineReady != null
+        if (offlineInfo) {
+            com.onpath.app.debug.Problems.trace("plan", "Offline state explained: ${offlineReady?.state}")
+            if (planSize == PlanSize.COLLAPSED) planSize = PlanSize.MINI // the line sits in the summary step
+        }
+    }
+    /** Blocking: what [OfflineReady] says for [line] (MapScreen calls it on Dispatchers.IO). */
+    fun computeOfflineReady(line: List<GeoPoint>): OfflineReady.Result? = mapData.offlineReady(line)
+
     /** The route point whose point menu is open (hold on its marker, MapGestures): index when opened + position. */
     var pointMenuTarget by mutableStateOf<PointMenuTarget?>(null)
         private set
@@ -2694,6 +2711,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val was = mode
         mode = m
         tapHoldHint = false
+        offlineInfo = false
         saveAsk = null // Save's dialog does not stay open behind another mode
         // the start zoom of Navigate, once per start (owner); the map takes it when it follows
         if (m == AppMode.NAVIGATE && was != AppMode.NAVIGATE) navStartZoom = AppMode.navStartZoom(activity)

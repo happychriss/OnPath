@@ -152,6 +152,32 @@ class MapDataFlow(
     /** Routing data is loading now (the plan's notice says "loading" rather than "not yet"). */
     val routingLoading: Boolean get() = routingData.loading
 
+    /**
+     * Can the route [line] be ridden without a network ("Ohne Netz ✓ / ⟳ / ⚠" in the plan's pill, owner 2026-11-03,
+     * [OfflineReady]): the map regions along it and the corridor's routing parts on the phone, loading, or missing.
+     * Blocking (file checks) – call off the main thread. Null for no route or when it cannot tell (reported).
+     */
+    fun offlineReady(line: List<GeoPoint>): OfflineReady.Result? {
+        if (line.size < 2) return null
+        return try {
+            val m = cells
+            val states = m.states.value
+            val installed = m.installed.value.map { it.id }.toSet()
+            val along = m.cellsAlong(line, OfflineReady.ROUTE_M)
+            val map = along.associateWith { c -> OfflineReady.cell(states[c], c in installed || m.hasDetailedMap(c.center)) }
+            val parts = com.onpath.app.data.RoutingTiles.forLine(line)
+            val st = routingData.status?.takeIf { it.phase == com.onpath.app.data.RoutingDataLoader.Phase.LOADING }
+            val cellBytes = along.sumOf { c ->
+                (states[c] as? com.onpath.app.cells.CellState.Downloading)?.let { (it.totalBytes - it.doneBytes).coerceAtLeast(0) } ?: 0L
+            }
+            val routingBytes = st?.let { (it.totalBytes - it.doneBytes).coerceAtLeast(0) } ?: 0L
+            OfflineReady.of(line, map, parts, routingData::exists, st?.names?.toSet() ?: emptySet(), cellBytes + routingBytes)
+        } catch (e: Exception) {
+            Problems.warn("cells", "Offline state of the route unknown; the plan's label shows none", e)
+            null
+        }
+    }
+
     /** T4: the plan's route was computed – its corridor's map regions (named after [dest] in the loading chip). */
     fun routeComputed(line: List<GeoPoint>, corridor: List<com.onpath.app.cells.CellId>?, dest: GeoPoint?) =
         safeCells("route") { showCellJob(cellTriggers.routeComputed(line, corridor).tagged(LoadTag(LoadWhy.ROUTE, dest))) }

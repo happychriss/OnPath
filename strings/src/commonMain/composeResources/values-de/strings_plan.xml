@@ -60,6 +60,15 @@
     <string name="plan_hint_first_point_question">Wohin soll’s gehen?</string>
     <string name="plan_hint_first_point">Halte dein Ziel auf der Karte gedrückt – oder such es oben in der Suchleiste.</string>
     <string name="plan_hint_tap_hold">Gedrückt halten, um hier einen Punkt zu setzen.</string>
+    <string name="plan_offline_pill">Ohne Netz</string>
+    <string name="plan_offline_ready">Karte und Wege für diese Route sind auf dem Handy – es geht auch ohne Netz.</string>
+    <string name="plan_offline_loading_mb">Karte und Wege werden geladen (%1$s).</string>
+    <string name="plan_offline_loading">Karte und Wege werden geladen.</string>
+    <string name="plan_offline_missing_map">Für %1$s dieser Route fehlt die Karte – mit Netz wird sie geladen.</string>
+    <string name="plan_offline_missing_ways">Für diese Route fehlen noch Wege – mit Netz werden sie geladen.</string>
+    <string name="plan_offline_desc_ready">Ohne Netz: bereit</string>
+    <string name="plan_offline_desc_loading">Ohne Netz: lädt</string>
+    <string name="plan_offline_desc_missing">Ohne Netz: fehlt etwas</string>
     <string name="map_tip_locate">Mein Standort</string>
     <string name="plan_hint_destination">Halte die Karte gedrückt, um das Ziel zu setzen.</string>
     <string name="plan_not_routed_long">Route nicht berechnet – sehr langer Plan.</string>

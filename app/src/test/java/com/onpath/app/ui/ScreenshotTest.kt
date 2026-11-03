@@ -74,6 +74,8 @@ class ScreenshotTest {
                       menu: PlanMenu = PlanMenu(onUpdates = {}),
                       /** "Route ändern" during a tour: the mode label and the blue position sign in the map's middle. */
                       editing: Boolean = false,
+                      /** "Ohne Netz ✓ / ⟳ / ⚠" in the mode pill (owner 2026-11-03). */
+                      offline: OfflineReady.State? = null,
                       bottom: @Composable () -> Unit) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
@@ -83,7 +85,7 @@ class ScreenshotTest {
                 // Plan is blue (owner 2026-11-03): band under the status bar (the 32 dp stand-in) + soft edge
                 PlanFrame()
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing)
+                    PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing, offline = offline)
                     SheetWithFooter(TOP_BAR_BOTTOM, footer = {
                         Column(Modifier.fillMaxWidth()) { aboveFooter(); footer() }
                     }, sheet = bottom)
@@ -186,6 +188,24 @@ class ScreenshotTest {
     /** A tap on the open map (owner 2026-11-03): "Hold to set a point here." in the summary step the sheet opens at. */
     @Test fun planTapHoldHint() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(tapHint = true), PlanCallbacks()) }
+    }
+
+    /** Owner 2026-11-03: the route works without a network – "PLANEN · Ohne Netz ✓", the tap's line in the sheet. */
+    @Test fun planOfflineReady() = paparazzi.snapshot {
+        val r = OfflineReady.Result(OfflineReady.State.READY, 0.0, false, 0)
+        Frame(offline = r.state) { PlanPanel(planUi(size = PlanSize.MINI).copy(offlineInfo = OfflineReady.explain(r)), PlanCallbacks()) }
+    }
+
+    /** Still loading: "PLANEN · Ohne Netz ⟳", "Karte und Wege werden geladen (12 MB)." */
+    @Test fun planOfflineLoading() = paparazzi.snapshot {
+        val r = OfflineReady.Result(OfflineReady.State.LOADING, 0.0, true, 12L * 1_048_576)
+        Frame(offline = r.state) { PlanPanel(planUi(size = PlanSize.MINI).copy(offlineInfo = OfflineReady.explain(r)), PlanCallbacks()) }
+    }
+
+    /** Something missing, nothing loading: "PLANEN · Ohne Netz ⚠", "Für 3,0 km dieser Route fehlt die Karte …". */
+    @Test fun planOfflineMissing() = paparazzi.snapshot {
+        val r = OfflineReady.Result(OfflineReady.State.MISSING, 3_000.0, false, 0)
+        Frame(offline = r.state) { PlanPanel(planUi(size = PlanSize.MINI).copy(offlineInfo = OfflineReady.explain(r)), PlanCallbacks()) }
     }
 
     /** A long press on a map control names it (owner 2026-11-03): the eye's tooltip open. */
