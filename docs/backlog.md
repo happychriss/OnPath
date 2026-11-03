@@ -23,6 +23,9 @@ the git log.
    → then A-003 Play build (next big item). Debug build + test key stay for the team's GitHub builds.
 
 ## For the roles
+- → [cloud-web] (donald 2026-11-03): pairing-help pictures app part done – `onpath.private/marketing/bilder/2026-11-03-donald/`
+  (`app-a1…a4-de|en.png` + `Ergebnis.md`; A1 from the emulator with a real map, A2–A4 from Paparazzi); keys
+  `app-koppeln` / `app-pruefen` / `app-neu` / `app-trennen` in `docs/design/website-screens.md`.
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 
@@ -41,7 +44,6 @@ the git log.
   the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
-- [donald] Pictures for the pairing help – app part (emulator / snapshots, no app code) – since 2026-11-03
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [cloud-plan] Laptop off (2026-11-02 evening) – web-spike 415d3802 clean; next sitting: merge main on the captain's word, time-limit question, mirror leftovers – since 2026-11-02
@@ -78,13 +80,6 @@ the git log.
   signed AAB for prod in `release.yml` next to the APK; upload key made by the owner locally → GitHub secret, never in
   the repo. Signing / build config → **pull request to the owner** (CLAUDE.md). Spec: `onpath.private/auftraege/a-003-play-fassung.md`,
   steps for the owner: `onpath.private/marketing/anleitung-geschlossener-test.md` §1–5. Not before v0.14.0 is out.
-- **Pictures for the pairing help – app part (order by cloud-web, owner OK 2026-11-01)** [emu]: emulator, A-019 setup,
-  DE + EN: (A1) ☰ open with "Mit Browser verbinden"; (A2) the question "Mit diesem Browser verbinden? Prüfe: 123 456"
-  with "Verbinden"; (A3) My routes with a route from the browser ("Neu"); (A4) Settings → Browser-Abgleich paired with
-  "Trennen" (EN missing today). If the Paparazzi snapshots `planPairHint` / `planPairedNote` / `toursFromBrowser` /
-  `settingsSyncPaired` already show these well enough, say so instead (cloud-web uses them as `app-koppeln` …
-  `app-trennen`). PNGs `app-a1…a4-de|en.png` into `onpath.private/marketing/bilder/<date>-donald/` + `Ergebnis.md`, add
-  the keys to `docs/design/website-screens.md`; `tools/dev/website_shot.sh`.
 - **Bike difficulty limit S0 / S1 / S2 (owner 2026-11-01, "easy to build?"):** today only the hike has a chosen limit
   (T1–T5). Gravel (`trekking.brf`) and Bike / E-bike (`touring.brf`) already make S2 very expensive (+30) and shut S3+
   (10000); `mtb.brf` only adds a cost per S grade, no limit. Wanted: a chosen limit per bike activity ("nur S0", "bis S1"),
