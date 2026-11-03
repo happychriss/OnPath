@@ -27,7 +27,8 @@ class TourEditTest {
             "Res.string.plan_save_route), OnPathColors.ActionEdit, enabled = onSave != null",
             "Icons.Filled.Close, str(Res.string.plan_close_plan), OnPathColors.ActionStop, enabled = canNewPlan, onClick = onNewPlan",
         )) assertTrue(t, bar.contains(t))
-        assertTrue(bar.contains("ActionTiles("))
+        // variant B (owner 2026-11-03): one row of filled pills in the same colours
+        assertTrue(bar.contains("ActionPills("))
         // the same path as ✕ New plan without a tour: requestClear (saved → clear, unsaved → "Discard changes?")
         val panel = src("ui/PlanPanel.kt")
         assertTrue(panel.contains("canNewPlan = ui.pointCount > 0, onNewPlan = cb.onClear"))

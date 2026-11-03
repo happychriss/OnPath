@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -65,7 +66,8 @@ fun TourActionBar(paused: Boolean, onPause: (Boolean) -> Unit, onChangeRoute: ()
 @Composable
 fun TourEditBar(paused: Boolean, onPause: (Boolean) -> Unit, onContinue: () -> Unit, onSave: (() -> Unit)?,
                 canNewPlan: Boolean, onNewPlan: () -> Unit, modifier: Modifier = Modifier) {
-    ActionTiles(listOf(
+    // variant B (owner 2026-11-03): one row of three filled pills on the sheet – no green bar around them
+    ActionPills(listOf(
         ActionTileSpec(Icons.Filled.Navigation, str(Res.string.nav_continue_navigation), OnPathColors.ActionGo) {
             if (paused) onPause(false); onContinue()
         },
@@ -76,6 +78,30 @@ fun TourEditBar(paused: Boolean, onPause: (Boolean) -> Unit, onContinue: () -> U
 
 /** One tile of [ActionTiles]: icon, word, its fixed colour (green / blue / red, [OnPathColors]), greyed when not [enabled]. */
 class ActionTileSpec(val icon: ImageVector, val label: String, val color: Color, val enabled: Boolean = true, val onClick: () -> Unit)
+
+/**
+ * The plan during a tour, variant B: three filled pills in their colours (like the sheet's "Neu planen · Umkehren ·
+ * Rundtour" row, filled), white words, ≥ 48 dp to touch; greyed = a faint pill, the word dimmed.
+ */
+@Composable
+fun ActionPills(pills: List<ActionTileSpec>, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        pills.forEach { p ->
+            val bg = if (p.enabled) p.color else OnPathColors.Ink.copy(alpha = TourActions.OFF_TILE_ALPHA)
+            val ink = if (p.enabled) OnPathColors.CardWhite else OnPathColors.Ink.copy(alpha = TourActions.OFF_INK_ALPHA)
+            Surface(onClick = p.onClick, enabled = p.enabled, shape = CircleShape, color = bg, contentColor = ink,
+                shadowElevation = if (p.enabled) 2.dp else 0.dp, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center) {
+                    Icon(p.icon, null, tint = ink, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(p.label, color = ink, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Start, maxLines = 2)
+                }
+            }
+        }
+    }
+}
 
 /** The green bar with its tiles – ONE look for Navigate's slider bar and the plan during a tour (owner 2026-11-02). */
 @Composable
