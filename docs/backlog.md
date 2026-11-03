@@ -76,12 +76,6 @@ the git log.
   table with a tour running: no GPS line, also in the first 2 min; phone in a pocket while sitting (threshold 0.5 m/s²
   is a guess); walking / riding without GPS → amber after the short gap; no extra battery drain. Open: the notification
   says nothing about GPS while the phone lies still (owner 2026-11-02).
-- **[donald] Plan during a tour = the same tile bar as Navigate (owner 2026-11-02, refines onpath.private#19 A)** – next
-  after the word round (same files): at the bottom of the plan sheet during a tour (today `TourContinueSave`) the
-  `TourActionBar` look with three tiles: **green "Navigation fortsetzen"**, **blue "Route speichern"** (opens Save as
-  today, you stay in the plan), **red "Änderungen verwerfen"** (grey while nothing changed; undoes the edits since
-  "Route ändern" and goes back to Navigate – the followed route stays). "✕ Neu planen" and ☰ → Save route hidden during
-  a tour. Colour rule: green = navigation, blue = edit, red = stop what you are in (`docs/design/ui-style.md`).
 - **[cloud-app] A-003 Play build – right after v0.14.0** (owner 2026-11-02, onpath.private#3): flavours prod (Google Play:
   no self-update, no REQUEST_INSTALL_PACKAGES, no GitHub update line in Settings → Datenschutz) / dev (as today);
   signed AAB for prod in `release.yml` next to the APK; upload key made by the owner locally → GitHub secret, never in
