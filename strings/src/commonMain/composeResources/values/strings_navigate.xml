@@ -95,6 +95,10 @@
     <string name="nav_yes_skip_stop">New route without %1$s</string>
     <string name="nav_notif_skip">Without stop</string>
     <string name="nav_stop_n">stop %1$d</string>
+    <string name="nav_card_stop">Stop %1$d</string>
+    <string name="nav_card_stop_named">Stop %1$d · %2$s</string>
+    <string name="nav_card_goal">Destination</string>
+    <string name="nav_card_goal_named">Destination · %1$s</string>
     <string name="nav_without_stop">without %1$s</string>
     <!-- off route, owner 2026-10-31: "You're 120 m off the route" · the new route / the way back and how much longer -->
     <string name="nav_title_off_by">You're %1$s off the route</string>

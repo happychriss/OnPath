@@ -75,6 +75,8 @@ class GermanScreenshotTest {
     @Test fun planTourNewPlan() = shots.planTourNewPlan()
     @Test fun navigate() = shots.navigate()
     @Test fun navigateTurnOnto() = shots.navigateTurnOnto()
+    @Test fun navigateNextStop() = shots.navigateNextStop()
+    @Test fun navigateNextGoal() = shots.navigateNextGoal()
     @Test fun navigateNotRecording() = shots.navigateNotRecording()
     @Test fun navigateRerouteQuestion() = shots.navigateRerouteQuestion()
     @Test fun navigateFarStart() = shots.navigateFarStart()

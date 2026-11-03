@@ -597,6 +597,18 @@ class ScreenshotTest {
         NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.LEFT, 150.0, onto = com.onpath.app.navigation.WayKind.CYCLEWAY)))
     }
 
+    /** The next stop before the next turn (owner 2026-11-03): "1,2 km · Stopp 2 · Leiteralm" with the stop's sign. */
+    @Test fun navigateNextStop() = paparazzi.snapshot {
+        NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.SLIGHT_RIGHT, 1_200.0,
+            stop = StopAhead(2, "Leiteralm", false, 1_200.0))))
+    }
+
+    /** The goal next, named: "Ziel · Gasthof Hochmuth" with the dark red flag sign. */
+    @Test fun navigateNextGoal() = paparazzi.snapshot {
+        NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.SLIGHT_RIGHT, 650.0,
+            stop = StopAhead(4, "Gasthof Hochmuth", true, 650.0))))
+    }
+
     /** North-up orientation button ("N" needle) and a slight-left hint close by. */
     @Test fun navigateNorthUp() = paparazzi.snapshot {
         NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.SLIGHT_LEFT, 40.0), headingUp = false))
