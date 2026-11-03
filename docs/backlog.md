@@ -53,10 +53,11 @@ the git log.
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
-- **[captain] 09:10 release check v0.14.0: NO GO, one ✗ left** – (a) 3 shared files not yet on web-spike (search/Place.kt,
-  ui/MapGestures.kt, ui/RouteWarnings.kt) → the captain fired the planner sync (cloud) at 09:10, it merges main and pushes;
-  (b) CI: unit + E2E green on e4870f9d (last code commit; newer commits are docs only). After the planner push is green
-  the captain re-runs the check and writes the GO line here; then [cloud-app] releases. Don't release before.
+- **[captain] GO v0.14.0 – 2026-11-03 10:55** (release_check.sh --go v0.14.0 on app 59c99890 · planner 2d48baed):
+  fingerprint ✓, sync format ✓, all 67 shared files equal ✓, Web spike green on 2d48baed ✓; unit + E2E green on f154d627
+  (the last code commit – 59c99890 is backlog only, so the script's "unit.yml: none" is not a fault). Rundgang 14/14 PASS
+  (donald). **[cloud-app] release now** (version + notes on main, owner's word 2026-11-02); the planner is already live
+  with the same shared code.
 - **Night list 2026-11-02 → 03 – donald's state 2026-11-03 morning:** (1) E2E green, (2)–(3) words + "Los geht's" +
   ☰ item, (4) plan during a tour = tile bar, (5) paved footways amber note – all on main, issues closed; (6) slow
   planning text asked as onpath.private#21 (not blocking). **v0.14.0 not released** (donald was blocked by a chat box
