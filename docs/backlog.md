@@ -49,20 +49,12 @@ the git log.
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
-- **[captain] 00:09: donald blocked on a chat question box since 23:57** (Plan-during-tour tile bar) – the night list and the
-  04:00 release wait for the owner's answer. Night rule for next time: no `AskUserQuestion` while the owner sleeps –
-  a `frage` issue (not blocking) and go on with the next item. E2E green on 28552a8a, planner live 415d3802.
-- **Night 2026-11-02 → 03 (owner: donald stays on, laptop off)** – [cloud-app] in this order, each green + pushed on
-  its own; anything that needs the owner's word → a `frage` issue (not blocking) and go on with the next:
-  (1) E2E green on main (watch run on 295a639c+); (2) words Route / Tour / Aufnahme + tabs "Geplant" / "Unterwegs"
-  (#14); (3) start button "Los geht's · ‹Ziel›" (#16) + ☰ "Aufzeichnung starten" removed (#15); (4) Plan during a tour:
-  green "Weiter navigieren", red "Änderungen verwerfen" (#19); (5) paved footways for Bike / Gravel with the amber note
-  (#7); (6) slow planning: propose the "weiter warten / abbrechen" text as a `frage` first (#13), build after the
-  answer. Diagnostics review needs the Pixel → morning. **Release v0.14.0 tonight – owner's word 2026-11-02 ~22:15:**
-  around 04:00 stop taking new items, run the emulator Rundgang (`tools/ci/release_rundgang.sh`), and release (version +
-  notes on main) only after the captain's GO line here (`release_check.sh --go v0.14.0`); what is not done goes into the
-  next release. The captain then starts the planner sync (the 05:47 task) at once so the planner follows within the hour. Laptop's "Route wird berechnet" card stays for cloud-plan tomorrow. **The Pixel is unplugged tonight
-  (owner: it must not start talking at night) – no adb, no install, emulator only; [pixel] items wait for the morning.**
+- **Night list 2026-11-02 → 03 – donald's state 2026-11-03 morning:** (1) E2E green, (2)–(3) words + "Los geht's" +
+  ☰ item, (4) plan during a tour = tile bar, (5) paved footways amber note – all on main, issues closed; (6) slow
+  planning text asked as onpath.private#21 (not blocking). **v0.14.0 not released** (donald was blocked by a chat box
+  until the owner's answer; no captain GO line) – donald runs the full emulator Rundgang on main now for the captain's
+  release check; the release itself after the captain's GO (`release_check.sh --go v0.14.0`). Pixel unplugged →
+  [pixel] items wait.
 - **[cloud-plan] Planner wait box: the time-limit question** (owner 2026-11-02, onpath.private#13): the wait box with
   Cancel is on web-spike (415d3802); when the time limit is hit it should become the question "weiter warten / abbrechen"
   – waits for [cloud-app]'s text (the app leads).
