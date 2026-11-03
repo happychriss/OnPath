@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -92,14 +93,16 @@ private fun ActionTile(t: ActionTileSpec, modifier: Modifier) {
     // greyed: a faint white tile on the green bar, the word dimmed – nothing to do here now
     val bg = if (t.enabled) t.color else OnPathColors.CardWhite.copy(alpha = TourActions.OFF_TILE_ALPHA)
     val ink = if (t.enabled) OnPathColors.CardWhite else OnPathColors.CardWhite.copy(alpha = TourActions.OFF_INK_ALPHA)
+    // compact (owner 2026-11-03: "echt riesig"): the sign left of the word in one row, about half the old height
     Surface(onClick = t.onClick, enabled = t.enabled, shape = RoundedCornerShape(TourActions.TILE_CORNER), color = bg,
         contentColor = ink, modifier = modifier.heightIn(min = TourActions.TILE_HEIGHT)) {
-        Column(Modifier.padding(horizontal = 4.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center) {
-            Icon(t.icon, null, tint = ink, modifier = Modifier.size(28.dp))
-            Spacer(Modifier.height(2.dp))
+        // little side room for the sign so "Route speichern" keeps its whole words on two lines
+        Row(Modifier.padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center) {
+            Icon(t.icon, null, tint = ink, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(4.dp))
             Text(t.label, color = ink, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center, maxLines = 2)
+                textAlign = TextAlign.Start, maxLines = 2)
         }
     }
 }
@@ -108,8 +111,8 @@ private fun ActionTile(t: ActionTileSpec, modifier: Modifier) {
 object TourActions {
     /** The unlocked bar closes by itself after this long without a tap (phone back in the pocket). */
     const val OPEN_MS = 30_000L
-    /** Tile height: with the bar's padding ≈ 1.5× the slider's 64 dp (owner 2026-11-02: compact, not twice). */
-    val TILE_HEIGHT = 84.dp
+    /** Tile height (owner 2026-11-03: the tiles were "echt riesig" – sign and word in one row, about the slider's size). */
+    val TILE_HEIGHT = 52.dp
     val BAR_PAD = 4.dp
     val BAR_CORNER = 24.dp
     val TILE_CORNER = 18.dp

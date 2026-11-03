@@ -323,11 +323,15 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         // Navigate's, PlanBar) – the map stays free above it; no rolled-up step during a tour (PlanSize.duringTour).
         // After "Neu planen" the plan is empty: the first step shows how to begin again (owner 2026-11-03)
         if (ui.pointCount == 0) Box(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) { FirstPointHint() }
-        else if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) { TapHoldHint() }
+        else {
+            // the summary row in the first step, above the bar (owner 2026-11-03: "dass man Fahrrad und 4 Minuten sieht")
+            HeaderLine(chip = { ActivityButton(ui.activity, ui.sac, cb.onActivity) }, title = { Title(ui, ui.route, cb.onTimeDetails) })
+            if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) { TapHoldHint() }
+        }
         Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COLLAPSED.step).stepEnd(PlanSize.MINI.step) })
     }
     Box(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb) }
+        Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb, header = ui.tour == null || ui.pointCount == 0) }
         // the rolled-up row lies over the summary's first line and fades with the bar sliding in (one body, no rebuild)
         if (ui.tour == null) CollapsedRow(ui, cb, barShown, with(sheet) { Modifier.stepEnd(PlanSize.COLLAPSED.step) })
     }
@@ -370,10 +374,11 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
  * (✕ Close plan · ⇅ Reverse · ↻ Round trip) from one point on.
  */
 @Composable
-private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks) {
+private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks, header: Boolean = true) {
     val route = ui.route
-    // Line 1: activity · time + distance (Undo and Redo are map buttons; a tap on the time = Time details).
-    HeaderLine(
+    // Line 1: activity · time + distance (Undo and Redo are map buttons; a tap on the time = Time details). During a tour
+    // it sits in the first step above the tile bar (PlanBody) – not twice.
+    if (header) HeaderLine(
         chip = { ActivityButton(ui.activity, ui.sac, cb.onActivity) },
         title = { Title(ui, route, cb.onTimeDetails) },
     )

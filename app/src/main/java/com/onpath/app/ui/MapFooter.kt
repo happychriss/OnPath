@@ -81,9 +81,9 @@ fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, demo: Boolea
     }
 }
 
-/** Size of one map control (48 dp = full touch target). */
-val MAP_FAB = 48.dp
-/** Navigate (owner): used while walking, so bigger and a little apart from each other. */
+/** Size of one map control (owner 2026-11-03: "trifft man kaum" – 56 dp in both modes, was 48 in Plan). */
+val MAP_FAB = 56.dp
+/** Navigate (owner): used while walking, a little apart from each other – the same size as Plan's now. */
 val MAP_FAB_LARGE = 56.dp
 private val LARGE_GAP = 8.dp
 
@@ -172,7 +172,7 @@ fun MapControls(
     }
 }
 
-private fun iconSize(size: Dp): Dp = if (size > MAP_FAB) 30.dp else 24.dp
+private fun iconSize(size: Dp): Dp = 28.dp
 
 /**
  * A map control's name on a long press (Material 3 plain tooltip, owner 2026-11-03): the signs alone (eye, ⛶, ↶ ↷)
@@ -230,7 +230,7 @@ private fun CompassControl(c: CompassSpec, size: Dp) {
         contentAlignment = Alignment.Center,
     ) {
         if (c.headingUp == true) Icon(Icons.Filled.Navigation, null, tint = OnPathColors.Route, modifier = Modifier.size(iconSize(size)))
-        else NorthNeedle(Modifier.size(if (size > MAP_FAB) 42.dp else 34.dp).rotate(-c.bearing))
+        else NorthNeedle(Modifier.size(40.dp).rotate(-c.bearing))
     }
 }
 

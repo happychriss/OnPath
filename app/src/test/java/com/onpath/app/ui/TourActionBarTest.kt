@@ -32,9 +32,11 @@ class TourActionBarTest {
             assertTrue("$name ${contrastWithWhite(c)}", contrastWithWhite(c) >= 4.5)
     }
 
-    @Test fun compactAboutOneAndAHalfSliders() {
+    /** Owner 2026-11-03: the tiles were "echt riesig" – the bar now about the slider's own 64 dp, still ≥ 48 dp to touch. */
+    @Test fun compactAboutTheSlidersHeight() {
         val barDp = TourActions.TILE_HEIGHT.value + 2 * TourActions.BAR_PAD.value
-        assertTrue("$barDp dp vs the 64 dp slider", barDp in 88f..104f)
+        assertTrue("$barDp dp vs the 64 dp slider", barDp in 52f..66f)
+        assertTrue(TourActions.TILE_HEIGHT.value >= 48f)
         assertEquals(30_000L, TourActions.OPEN_MS)
     }
 
