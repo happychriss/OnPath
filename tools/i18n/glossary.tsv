@@ -8,7 +8,7 @@ Hike	Wandern	Activity; in a sentence "Wandern T3"; on the plan sheet chip only "
 SAC T1–T5	SAC T1–T5	Swiss hiking scale; stays as is (T1 … T5)
 activity	Aktivität
 route	Route	Something planned, saved or not: "Save route", "Share route", "Route links" – never "plan" for the thing in the UI (UX review 10, 2026-11-01). Owner 2026-11-02 (onpath.private#14): Route = planned; My routes tab "Geplant" / "Planned"
-tour	Tour	A ridden / walked trip as an item (owner 2026-11-02, onpath.private#14: Tour = gefahren): "Tour 1. Nov.", "Tour saved", "Delete this tour?", My routes tab "Unterwegs" / "Ridden"; never "Track" for it
+tour	Tour	A ridden / walked trip as an item (owner 2026-11-02, onpath.private#14: Tour = gefahren): "Tour 1. Nov.", "Tour saved", "Delete this tour?", My routes tab "Unterwegs" / "Tours" (owner 2026-11-03); never "Track" for it
 recording (running)	Aufnahme	Only the running recording (REC): "Aufnahme läuft / pausiert / beenden / speichern", "Aufnahme starten" – never "Aufzeichnung" (owner 2026-11-02, onpath.private#14)
 track (GPX)	Track	Only for GPX exchange: "GPX-Track importieren", imported GPX tracks (owner 2026-11-02, onpath.private#14)
 plan (mode)	Planen	Mode name and the editing state ("Close plan", "the plan line"); the saved thing is a route
