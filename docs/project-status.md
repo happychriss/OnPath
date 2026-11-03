@@ -1,15 +1,15 @@
 # OnPath – project status and decisions
 
-Current release **0.13.5** (2026-10-31). Open work: `docs/backlog.md`. Core features and their tests:
+Current release **0.14.0** (2026-11-03). Open work: `docs/backlog.md`. Core features and their tests:
 `docs/core-features.md`. What each release changed: `docs/release-notes/` and the git history – this file keeps only
 the current state.
 
 ## Where things are
 <!-- Kept by the captain every round (docs/roles/neu/captain.md 5c). -->
 - **Pixel:** main b047bf79, installed 2026-11-01 19:55 (newest handoff that names it; the night draft 63b0194d is not on it).
-- **GitHub release:** v0.13.5 (2026-10-31). Next planned: v0.14.0 (owner: not before all fixes are in).
-- **Planner (plan.onpath.earth):** web-spike 415d3802 (2026-11-02 ~23:00, green: wait box in the middle, closed-folder
-  question, test races fixed; has main up to ~21:00). Laptop off for the night.
+- **GitHub release:** v0.14.0 (2026-11-03 ~11:00, 2bba0137, Release workflow green). Next: A-003 Play build (first testers
+  via the Play internal test).
+- **Planner (plan.onpath.earth):** web-spike 2d48baed (2026-11-03 10:38, has main f154d62 = the v0.14.0 shared code; green).
 - **State:** released 0.13.2 → 0.13.5 today. main (8cf47345 or newer) also has, **not released yet**: the planner
   splice "route only around a cut stop" (38fc16c6, ~2× faster, `PLANNER_VERSION` 3); the compact plan sheet with the
   rolled-up one-row step (d2885035, interim build on the owner's phone since 21:45); faster builds (`tools/ci/gate.sh`,
