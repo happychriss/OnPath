@@ -73,6 +73,7 @@ the git log.
   the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
+- [donald] A-022 words Plan · Tour · Route (owner 2026-11-03, onpath.private/auftraege/a-022-plan-tour-route.md) – app texts – since 2026-11-03
 - [donald] Round trip stays a round trip (owner 2026-11-03, analysis https://claude.ai/artifact/UEzamgzCNMJBthSgE8onWw):
   rule "every tour starts at point 1 and skips nothing – shortening = the user deletes points". Decisions: (1) lead
   always to point ① itself; (2) start beside a later part of the route → question "Zu ① führen" (primary) / "Hier
