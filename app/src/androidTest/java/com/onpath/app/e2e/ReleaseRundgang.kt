@@ -244,7 +244,7 @@ class ReleaseRundgang : E2EBase() {
 
     /**
      * 7 · End the recording the Navigate way (owner 2026-11-01): slide → the bar Pause · Route ändern · Beenden →
-     * "Aufnahme beenden?" → Aufnahme speichern → it is listed in My routes → Done.
+     * "Tour beenden?" → Tour speichern → it is listed in My routes → Touren.
      */
     @Test fun flow07_endTourSaveListedInDone() {
         planned(THEATRE, STATION)

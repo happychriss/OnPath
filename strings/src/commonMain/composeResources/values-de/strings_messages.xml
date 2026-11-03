@@ -16,7 +16,7 @@
     <string name="msg_area_removed_after_tour">wird nach der Tour entfernt</string>
     <string name="msg_clear_all_blocked">Nicht während einer Tour – die Karte bleibt, wie sie ist, bis du die Tour beendest.</string>
     <string name="msg_maps_already_checking">Die Kartengebiete werden bereits geprüft.</string>
-    <string name="msg_track_save_failing">Die Tour kann nicht mehr gespeichert werden (Speicher voll oder beschädigt). Gib Speicher frei – die Aufnahme versucht es weiter.</string>
+    <string name="msg_track_save_failing">Die Tour kann nicht mehr gespeichert werden (Speicher voll oder beschädigt). Gib Speicher frei – OnPath versucht es weiter.</string>
     <string name="msg_track_delete_failed_here">Die Tour konnte hier nicht gelöscht werden. Du kannst sie in „Meine Routen“ löschen.</string>
     <string name="msg_package_mixed">Kartendateien aus einem anderen Paket: %1$s – dort hat die Karte Lücken. Importiere alle Teile des Kartenpakets (für Südtirol: beide ZIP-Dateien).</string>
     <string name="msg_update_check_failed">Updates konnten nicht geprüft werden. Prüfe die Internetverbindung und versuche es noch einmal.</string>
@@ -27,7 +27,7 @@
     <string name="msg_import_restart_after_tour">Starte OnPath nach der Tour neu, um die neue Karte zu sehen.</string>
     <string name="msg_import_failed_unchanged">Import fehlgeschlagen. Deine vorhandenen Kartendaten sind unverändert.</string>
     <string name="msg_import_failed_damaged">Import fehlgeschlagen – die Datei ist vielleicht beschädigt oder der Speicher voll. Deine vorhandenen Kartendaten sind unverändert.</string>
-    <string name="msg_route_back_no_position">Noch keine GPS-Position, daher keine Route zurück. Die Aufnahme läuft weiter; du kannst jederzeit ein neues Ziel setzen.</string>
+    <string name="msg_route_back_no_position">Noch keine GPS-Position, daher keine Route zurück. Die Tour läuft weiter; du kannst jederzeit ein neues Ziel setzen.</string>
     <string name="msg_shared_place_not_found">Dieser Ort wurde nicht gefunden. Versuche es noch einmal, wenn du Internet hast.</string>
     <string name="msg_shared_place_unsure">Ort nicht eindeutig</string>
     <string name="msg_shared_place_unsure_detail">Kein sicherer Treffer – such „%1$s“ in OnPath.</string>
@@ -42,8 +42,8 @@
     <string name="msg_name_import">Import</string>
     <string name="msg_name_date_pattern">d. MMM, HH:mm</string>
     <string name="msg_date_pattern_area">d. MMM yyyy</string>
-    <string name="msg_recording_not_started">Die Aufnahme ist nicht gestartet. Erlaube OnPath den genauen Standort und Benachrichtigungen und versuche es dann noch einmal.</string>
-    <string name="msg_check_no_route_followed">Du folgst keiner Route – die neue Aktivität gilt für die Aufnahme und den Plan.</string>
+    <string name="msg_recording_not_started">Die Tour ist nicht gestartet. Erlaube OnPath den genauen Standort und Benachrichtigungen und versuche es dann noch einmal.</string>
+    <string name="msg_check_no_route_followed">Du folgst keiner Route – die neue Aktivität gilt für die Tour und den Plan.</string>
     <string name="msg_check_waiting_gps">Warten auf GPS…</string>
     <string name="msg_check_nothing_left">Von der Route ist nichts mehr zu prüfen</string>
     <string name="msg_check_cannot_route">Routen können gerade nicht geprüft werden</string>
@@ -51,7 +51,7 @@
     <string name="msg_rides_read_failed">Die Fahrten dieser Tour konnten nicht gelesen werden.</string>
     <string name="msg_rides_change_failed">Die Fahrten konnten nicht geändert werden. Versuche es bitte noch einmal.</string>
     <string name="msg_track_delete_failed">Die Tour konnte nicht gelöscht werden – sie ist in „Meine Routen“, lösche sie dort.</string>
-    <string name="msg_track_recording_now">Diese Tour wird gerade aufgenommen – beende zuerst die Aufnahme.</string>
+    <string name="msg_track_recording_now">Diese Tour läuft gerade – beende sie zuerst.</string>
     <string name="msg_gpx_parts_skipped">Einige Teile der Datei wurden übersprungen.</string>
     <string name="msg_export_all_chooser">Alle exportieren</string>
     <string name="msg_export_reason">Export: %1$s.</string>
@@ -67,8 +67,8 @@
     <string name="msg_something_wrong">Etwas ist schiefgegangen. Es wurde unter Einstellungen → Diagnose notiert.</string>
     <string name="msg_rides_title">Fahrten in „%1$s“</string>
     <string name="msg_unfinished_save_title">Nicht beendete Tour speichern?</string>
-    <string name="msg_update_tour_title">Eine Aufnahme läuft</string>
-    <string name="msg_update_tour_text">Beim Installieren des Updates wird OnPath geschlossen und die Aufnahme stoppt. Deine Tour bis hierhin bleibt erhalten – öffne OnPath danach und tippe auf „Fortsetzen“. Besser: nach der Tour installieren.</string>
+    <string name="msg_update_tour_title">Du bist unterwegs</string>
+    <string name="msg_update_tour_text">Beim Installieren des Updates wird OnPath geschlossen und die Tour stoppt. Deine Tour bis hierhin bleibt erhalten – öffne OnPath danach und tippe auf „Fortsetzen“. Besser: nach der Tour installieren.</string>
     <string name="msg_update_after_tour">Nach der Tour</string>
     <string name="msg_update_install_now">Jetzt installieren</string>
     <string name="msg_shared_no_place">OnPath hat im geteilten Text keinen Ort gefunden.</string>

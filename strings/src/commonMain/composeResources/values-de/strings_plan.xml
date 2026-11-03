@@ -80,8 +80,8 @@
     <string name="plan_show_route_details">Routendetails anzeigen</string>
     <string name="plan_elevation_profile">Höhenprofil</string>
     <string name="plan_start_navigation_for">Los geht’s · %1$s</string>
-    <string name="plan_continue_navigation_for">Navigation fortsetzen · %1$s</string>
-    <string name="plan_start_recording_for">Aufnahme starten · %1$s</string>
+    <string name="plan_continue_navigation_for">Weiter · %1$s</string>
+    <string name="plan_start_recording_for">Los geht’s · ohne Route</string>
     <string name="plan_save_route">Route speichern</string>
     <string name="plan_time_details">Zeitdetails</string>
     <string name="plan_close_plan">Neu planen</string>

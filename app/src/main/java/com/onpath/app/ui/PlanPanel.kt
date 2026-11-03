@@ -741,12 +741,12 @@ private fun PrimaryAction(ui: PlanUi, cb: PlanCallbacks) {
 
 /**
  * "Los geht's · Schloss Nordkirchen" (owner 2026-11-02, onpath.private#16: the destination's name; unnamed destination or
- * a round trip: the activity, "Los geht's · Wandern") / "Continue navigation · Gravel bike"; no point or only one:
- * "Aufnahme starten · Hike" (owner 2026-10-30: nothing to navigate – say what happens).
+ * a round trip: the activity, "Los geht's · Wandern") / "Weiter · Gravelbike"; no point or only one:
+ * "Los geht’s · ohne Route" (owner 2026-11-03, fewer terms: Planen / Unterwegs, Route / Tour).
  */
 internal fun primaryLabel(ui: PlanUi): String = when {
     ui.tourRunning -> Txt.s(Res.string.plan_continue_navigation_for, ui.activity.navName)
-    ui.start == PlanStart.RECORD_ONLY -> Txt.s(Res.string.plan_start_recording_for, ui.activity.navName)
+    ui.start == PlanStart.RECORD_ONLY -> Txt.s(Res.string.plan_start_recording_for)
     else -> Txt.s(Res.string.plan_start_navigation_for, destinationName(ui.points) ?: ui.activity.navName)
 }
 

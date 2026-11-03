@@ -72,13 +72,13 @@ class NavTextTest {
     @Test fun farStartTexts() {
         val p = NavPrompt.FarStart(1, 30_600.0, 225.0)
         assertEquals("Route starts 31 km away", NavText.title(p))
-        assertEquals("south-west (direct) · recording", NavText.state(p))
+        assertEquals("south-west (direct) · on the way", NavText.state(p))
         assertEquals("Guide me", NavText.LEAD)
-        assertEquals("Just record", NavText.JUST_RECORD)
+        assertEquals("Go on without a route", NavText.JUST_RECORD)
         assertEquals("Route starts 4.2 km away", NavText.title(p.copy(distanceM = 4_180.0)))
         assertEquals("Route starts 350 m away", NavText.title(p.copy(distanceM = 347.0)))
         assertEquals("Finding a way to the start…", NavText.state(p.copy(searching = true)))
-        assertEquals("No way to the route found – recording continues", NavText.title(NavPrompt.LeadFailed(2)))
+        assertEquals("No way to the route found – the tour goes on", NavText.title(NavPrompt.LeadFailed(2)))
     }
 
     /**
@@ -123,10 +123,10 @@ class NavTextTest {
         try {
             val p = NavPrompt.FarStart(1, 30_600.0, 225.0)
             assertEquals("Route beginnt 31 km entfernt", NavText.title(p))
-            assertEquals("südwestlich (Luftlinie) · Aufnahme läuft", NavText.state(p))
+            assertEquals("südwestlich (Luftlinie) · unterwegs", NavText.state(p))
             assertEquals("Hinführen", NavText.LEAD)
-            assertEquals("Nur aufnehmen", NavText.JUST_RECORD)
-            assertEquals("Kein Weg zur Route gefunden – Aufnahme läuft weiter", NavText.title(NavPrompt.LeadFailed(2)))
+            assertEquals("Ohne Route weiter", NavText.JUST_RECORD)
+            assertEquals("Kein Weg zur Route gefunden – die Tour läuft weiter", NavText.title(NavPrompt.LeadFailed(2)))
             assertEquals("Du bist 120 m von der Route weg", NavText.title(fresh))
             assertEquals("Neue Route bis zum Ziel: 3,4 km (350 m länger)", NavText.question(fresh))
             assertEquals("Neue Route bis zum Ziel: 3,4 km (350 m kürzer)", NavText.question(fresh.copy(extraM = -350.0)))
