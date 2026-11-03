@@ -1,10 +1,13 @@
-// Pictures for the pairing help (W1–W6, captain 2026-11-01, ordered by cloud-web), DE + EN, 1440 × 900: a real pairing
+// The planner's pictures for onpath.earth (docs/design/website-screens.md, "Browser planner"), DE + EN:
+// web-plan (= web-wandern), web-teilen (= web-qr), web-handy at 1440 × 900, the film picture at 2560 × 1440, and the
+// pairing help W1–W6 (captain 2026-11-01, ordered by cloud-web), 1440 × 900: a real pairing
 // with the fake phone "Pixel 8" of sync-smoke.mjs against the host's mailbox code on a fake D1 – no real mailbox, and
 // the pairing code (QR + link) blurred anyway. Plan: the A-019 link Vellau Korblift → Leiteralm (Hike T2).
 // W1 header unpaired (Save + Pair phone) · W2 pairing dialog (QR, check digits) · W3 header paired (Save to phone dark,
 // phone pill "synced 2 min ago") · W4 after the click (✓ On the phone) · W5 My routes paired (🖥 📱, one waiting in
 // bold, one "New" from the phone) · W6 the Phone window paired (name + dot, Sync now, red Unpair).
-// Re-run after a UI change. Usage: node test/pair-shots.mjs <segmentsDir> <mapFolder (format 1)> <outDir>
+// Re-run after a UI change (only the rows whose files changed are needed – the table names them).
+// Usage: node test/pair-shots.mjs <segmentsDir> <mapFolder (format 1)> <outDir>
 import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
@@ -67,8 +70,46 @@ class Phone {
   }
 }
 
+/** The plan opened, planned, the sheet at [step]; the page's own sync timer off (the pictures choose when it syncs). */
+async function planPage(ctx, step) {
+  const page = await ctx.newPage();
+  await page.goto(url + 'index.html' + page0 + '#p=' + PLAN);
+  await page.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1'
+    && document.getElementById('syncBadge')?.dataset.ready === '1', null, { timeout: 180_000 });
+  for (let i = 0; i < 3 && (await page.getAttribute('#sheet', 'data-step')) !== step; i++) { await page.click('#sheetStep'); await page.waitForTimeout(300); }
+  await page.click('#fitRoute');
+  await page.waitForTimeout(2500); // the camera and the map tiles
+  await page.evaluate(() => clearInterval(window.__sync.timer));
+  return page;
+}
+
 for (const [lang, locale] of [['de', 'de-DE'], ['en', 'en-GB']]) {
+  // the film picture (marketing/video-aufnahmen-uebergabe.md §2): 2560 × 1440, the profile step, no dialog
+  const big = await browser.newContext({ viewport: { width: 2560, height: 1440 }, locale });
+  await big.route('https://photon.komoot.io/**', (r) => r.abort());
+  const film = await planPage(big, 'profile');
+  await film.screenshot({ path: path.join(out, `web-plan-vellau-leiteralm-${lang}.png`) });
+  await big.close();
+
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale });
+  await ctx.route('https://photon.komoot.io/**', (r) => r.abort());
+  // web-plan (= the home page's web-wandern): the route, time, profile and Points
+  const pp = await planPage(ctx, 'points');
+  await pp.screenshot({ path: path.join(out, `web-plan-${lang}.png`) });
+  // web-teilen (= web-qr): Share with the QR code of the plan link (public, harmless)
+  await pp.click('#share');
+  await pp.waitForSelector('dialog.share[open]');
+  await pp.waitForTimeout(500);
+  await pp.screenshot({ path: path.join(out, `web-teilen-${lang}.png`) });
+  await pp.click('#closeShare');
+  // web-handy: the Phone window, not paired, "How does it work?" open
+  await pp.click('#syncBadge');
+  await pp.waitForSelector('dialog.phone[open] #howToggle');
+  await pp.click('#howToggle');
+  await pp.waitForTimeout(400);
+  await pp.screenshot({ path: path.join(out, `web-handy-${lang}.png`) });
+  await pp.close();
+
   await ctx.route('https://photon.komoot.io/**', (r) => r.abort());
   const page = await ctx.newPage();
   const shot = async (n) => { await page.waitForTimeout(400); await page.screenshot({ path: path.join(out, `web-w${n}-${lang}.png`) }); };
