@@ -73,6 +73,15 @@ the git log.
   the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
+- [donald] Round trip stays a round trip (owner 2026-11-03, analysis https://claude.ai/artifact/UEzamgzCNMJBthSgE8onWw):
+  rule "every tour starts at point 1 and skips nothing – shortening = the user deletes points". Decisions: (1) lead
+  always to point ① itself; (2) start beside a later part of the route → question "Zu ① führen" (primary) / "Hier
+  einsteigen" (skipped points grey, not deleted); (3) a re-route that would skip a stop → "Über ③" (primary) / "③
+  auslassen" with the map's numbered circle instead of the word (voice, notification and TalkBack keep "Stopp 3");
+  (4) a point set on the way there = a stop on the way, the loop 1→2→3→1 unchanged, still recognised as a round trip;
+  "Hier starten" on a loop point rotates only the loop (taken-over round trips); (5) a route loaded on the way
+  ("Mit dieser Route weiter") follows the same rule. Three agents A (lead / start / passed rules), B (re-route
+  question + circles), C (stop on the way + round-trip recognition) – since 2026-11-03
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
