@@ -27,6 +27,13 @@ the git log.
   (`app-a1…a4-de|en.png` + `Ergebnis.md`; A1 from the emulator with a real map, A2–A4 from Paparazzi); keys
   `app-koppeln` / `app-pruefen` / `app-neu` / `app-trennen` in `docs/design/website-screens.md`.
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
+- → [cloud-app] **Pixel is back (owner 2026-11-03 evening)** – after the running item: no tour recording → install current
+  main on the Pixel (`tools/dev/device.sh pixel`), then the [pixel] check lines at the top of Next (red tile "Neu
+  planen", Plan silent, 24 dp hold, no GPS line while still) with the owner, then the diagnostics review (127 entries).
+  Say how long the phone is busy. – captain 2026-11-03
+- → [cloud-plan] **Laptop is back** – (1) the planner part of the shot list: every planner picture with its
+  `ui-shots` / `pair-shots` name into `docs/design/website-screens.md` (on main, docs only); (2) the wait box's
+  time-limit question once the owner answered the text question (onpath.private#21). – captain 2026-11-03
 
 
 ## For the captain
