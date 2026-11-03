@@ -89,12 +89,14 @@ map). Per item: tap = open (planned route with via points → into the plan; tra
 and ⋮ with **Rename** (name dialog, the sheet's "Saved as" follows), **Save as copy** + **Share plan** (planned
 routes), Export (GPX share), Delete (asks "Delete “Name”?";
 the dialog stays until Cancel / Delete, a tap outside does nothing).
-**During a tour no new route is loaded** (owner 2026-10-31: "too much automation – as a hiker I wouldn't trust it";
-`RouteRules.openAsk` → `BLOCKED_DURING_TOUR`). The list looks as always (no hint under the routes – nobody reads it);
-a tap on a planned route is the action, the answer is a HINWEIS box under the tabs of My routes, over the list: **"End the
-running tour first, then this route can be loaded."** / „Erst die laufende Tour beenden, dann lässt sich diese Route
-laden.“ – **OK** (48 dp). It stays until OK or until My routes is left. Nothing changes: plan, followed route, activity
-and the recording. Tracks open as before (shown as a track; "Start navigation · …" in the track panel follows one).
+**During a tour a planned route asks first** (owner 2026-11-03 – was 2026-10-31's dead end "End the running tour first";
+`RouteRules.openAsk` → `BLOCKED_DURING_TOUR` → `ui/TourLoad`). The list looks as always; a tap on a planned route is the
+action, the answer is a FRAGE box under the tabs of My routes, over the list: **„Route „‹Name›“ laden?“ – „Du bist gerade
+unterwegs.“** / "Load route “‹name›”? – You are on the way." – **Abbrechen** · **Tour beenden und laden** · **Mit dieser
+Route weiter** (primary). Continue: the recording goes on, the tour follows the loaded route from the current position
+(as an edit during the tour), the tour keeps its activity, back to Navigate. End and load: the usual end question; the
+route loads only after the tour has ended (saved or deleted) – Cancel there loads nothing. Cancel / leaving My routes:
+nothing changes. Tracks open as before (shown as a track; "Start navigation · …" in the track panel follows one).
 While the plan belongs to a saved route, the followed route carries its name ("Back to …", tour log).
 
 **Loading over an unsaved plan:** "Replace current plan?" – **Save first** (Save's name dialog as above, then
@@ -159,7 +161,7 @@ edge), **one at a time** (a question first, the others wait) and sit **12 dp und
 - **Navigate:** under the turn card / status card – the re-route question and the activity-switch question (moved here
   from the bottom, 56 dp buttons; drawn over the map controls), "Notifications off" (OK; a tap = the setup step), an
   error. While the app is on screen the question is not a heads-up notification too (quiet channel, lock screen keeps it).
-- **My routes / Settings:** under the tabs / title, over the list – "End the running tour first …", an error.
+- **My routes / Settings:** under the tabs / title, over the list – "Load route …? You are on the way." (during a tour), an error.
 
 ## Layout rule (owner)
 Everything about **this route** lives in the route sheet; the **library and app** live at the top.

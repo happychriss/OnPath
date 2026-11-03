@@ -159,17 +159,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The line at the top of My routes; goes when My routes is left. */
     var routesNote by mutableStateOf<Notice?>(null)
     /**
-     * A planned route was tapped during a tour ([requestOpen]): the box "End the running tour first, then this route
-     * can be loaded." with OK at the top of My routes; until OK or until My routes is left.
+     * A planned route was tapped during a tour ([requestOpen], owner 2026-11-03 – was a dead end "End the tour first"):
+     * the question "Route „‹name›“ laden? Du bist gerade unterwegs." at the top of My routes ([TourLoad]); until answered
+     * or until My routes is left.
      */
-    var routesTourBlocked by mutableStateOf(false)
+    var tourLoadAsk by mutableStateOf<Tour?>(null)
+    /** "Tour beenden und laden": this route loads once the tour has ended (saved or deleted); null on Cancel. */
+    private var loadAfterTour: Tour? = null
     /** The line at the top of the open Settings page; goes when the page changes or Settings closes. */
     var settingsNote by mutableStateOf<Notice?>(null)
     private var routesShown by mutableStateOf(false)
     /** My routes list (☰ → My routes) is open. */
     var routesOpen: Boolean
         get() = routesShown
-        set(v) { if (!v) { routesNote = null; routesTourBlocked = false }; routesShown = v } // line / box last until My routes is left
+        set(v) { if (!v) { routesNote = null; tourLoadAsk = null }; routesShown = v } // line / box last until My routes is left
     /** My routes' last chosen tab (Planned / Done); kept while the app runs, Planned after a restart. */
     var routesTab by mutableStateOf(RoutesTab.PLANNED)
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
@@ -1059,6 +1062,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     // (one Undo step brings it back)
                     if (waypoints.isNotEmpty()) clearPlan()
                     enter(AppMode.PLAN)
+                    // "Tour beenden und laden" (owner 2026-11-03): the route asked for loads now
+                    loadAfterTour?.let { t -> loadAfterTour = null; openTour(t) }
                 }
             }
         }
@@ -2518,20 +2523,40 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openRoutes() { refreshTours(); routesOpen = true }
 
     /**
-     * Open / load from My routes ([RouteRules.openAsk]): during a tour a planned route loads nothing – the box "End
-     * the running tour first, then this route can be loaded." with OK under the tabs of My routes ([routesTourBlocked];
-     * owner 2026-10-31: no new route during a tour, too much automation); else "Replace current plan?" when that would
-     * lose changes; tracks open at once.
+     * Open / load from My routes ([RouteRules.openAsk]): during a tour a planned route first asks ([tourLoadAsk], owner
+     * 2026-11-03: "Mit dieser Route weiter" · "Tour beenden und laden" · "Abbrechen" – [TourLoad]); else "Replace
+     * current plan?" when that would lose changes; tracks open at once.
      */
     fun requestOpen(t: Tour) {
         when (RouteRules.openAsk(t.kind, t.waypoints.size, navigating(recState.value != null), waypoints, savedPoints)) {
             OpenAsk.BLOCKED_DURING_TOUR -> {
-                Problems.trace("tour", "Load \"${t.name}\" during the tour: not loaded (end the tour first)")
-                routesTourBlocked = true
+                Problems.trace("tour", "Load \"${t.name}\" during the tour: asked (continue with it / end the tour and load / cancel)")
+                tourLoadAsk = t
             }
             OpenAsk.REPLACE_PLAN -> replaceAsk = PlanToOpen.Saved(t)
             OpenAsk.NONE -> openTour(t)
         }
+    }
+
+    /** The answer to [tourLoadAsk] (owner 2026-11-03). */
+    fun answerTourLoad(a: TourLoad.Answer) {
+        val t = tourLoadAsk ?: return
+        tourLoadAsk = null
+        Problems.trace("tour", "Load \"${t.name}\" during the tour: ${a.name.lowercase()}")
+        when (TourLoad.step(a)) {
+            // the tour follows the loaded route from here – like changing the route during the tour (TourSplit /
+            // followEditedPlan); the tour keeps its activity; back to Navigate
+            TourLoad.Step.FOLLOW_NOW -> openTour(t, duringTour = true)
+            // the usual end question first; the route loads once the tour has ended (saved or deleted)
+            TourLoad.Step.END_THEN_LOAD -> { loadAfterTour = t; routesOpen = false; askEndTour() }
+            TourLoad.Step.NOTHING -> Unit
+        }
+    }
+
+    /** The end question closed without ending the tour: nothing loads ([loadAfterTour] dropped). */
+    fun dismissEndAsk() {
+        saveRouteAtEnd = false; endAsk = null
+        loadAfterTour?.let { Problems.trace("tour", "End tour cancelled: \"${it.name}\" not loaded"); loadAfterTour = null }
     }
 
     fun replaceConfirmed() { val t = replaceAsk ?: return; replaceAsk = null; open(t) }
@@ -3280,15 +3305,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun openTour(t: Tour) {
+    /**
+     * [duringTour] ("Mit dieser Route weiter", owner 2026-11-03): the running tour follows the loaded route – its
+     * activity stays, the plan is replaced like an edit during the tour (followEditedPlan), and the app goes to Navigate.
+     */
+    fun openTour(t: Tour, duringTour: Boolean = false) {
         syncMarkSeen(t)
         viewModelScope.launch {
             val segs = withContext(Dispatchers.IO) { db.loadSegments(t.id) }
             routesOpen = false
             if (RouteRules.replacesPlan(t.kind, t.waypoints.size)) {
                 // Back into planning with its via points (recalculated with the current engine).
-                activityOrNull(t.activity)?.let { activity = it; prefs.activity = it } // unknown: the current one stays
-                sac = t.sac
+                if (!duringTour) {
+                    activityOrNull(t.activity)?.let { activity = it; prefs.activity = it } // unknown: the current one stays
+                    sac = t.sac
+                }
                 shown = null
                 val pts = t.waypoints.map { GeoPoint(it.lat, it.lon) }
                 // stop names and POI pins saved with the plan come back too – the pins
@@ -3299,6 +3330,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 setSaved(t.name, t.id, pts)
                 events += UiEvent.Fit(segs.flatten().map { it.toGeo() })
                 syncRoutingCheck(t, pts)
+                if (duringTour && recState.value != null) enter(AppMode.NAVIGATE)
             } else {
                 // a recorded or imported tour brings its activity, like the import: the T level stays inside the
                 // tour's band, not during a tour (the followed route keeps its activity), a change is said in the

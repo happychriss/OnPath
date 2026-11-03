@@ -46,7 +46,8 @@ import com.onpath.strings.nav_route_back
 import com.onpath.strings.nav_route_back_title
 import com.onpath.strings.plan_start_here
 import com.onpath.strings.plan_undo
-import com.onpath.strings.routes_end_tour_first
+import com.onpath.strings.routes_load_ask_text
+import com.onpath.strings.routes_load_continue
 import com.onpath.strings.routes_tag_new
 import com.onpath.strings.sync_pair
 import com.onpath.strings.sync_during_tour
@@ -213,8 +214,11 @@ class ReleaseRundgang : E2EBase() {
         shot("3-still-closed")
     }
 
-    /** 6 · During a tour, tap a saved route in My routes → "End the running tour first …", nothing loaded. */
-    @Test fun flow06_savedRouteDuringATourIsNotLoaded() {
+    /**
+     * 6 · During a tour, tap a saved route in My routes → "Load route …? You are on the way." (owner 2026-11-03) →
+     * "Continue with this route": the same tour records on, it follows the loaded route, back in Navigate.
+     */
+    @Test fun flow06_savedRouteDuringATourAsksAndContinuesWithTheRoute() {
         planned(THEATRE, STATION)
         val tourId = startTour()
         val before = read { it.waypoints.toList() }
@@ -228,14 +232,16 @@ class ReleaseRundgang : E2EBase() {
             waitUntil("Plan during the tour", 10_000) { mode() == AppMode.PLAN }
             scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED; vm(it).openRoutes() }
             clickText(name)
-            assertNotNull("the box", findFresh(By.text(Txt.s(Res.string.routes_end_tour_first)), 10_000))
-            shot("1-end-tour-first")
-            assertEquals("the plan stays", before, read { it.waypoints.toList() })
-            assertEquals("the followed line stays", lineBefore, nav()?.line)
-            assertEquals("the activity stays", Activity.BIKE_TOURING, read { it.activity })
+            assertNotNull("the question", findFresh(By.text(Txt.s(Res.string.routes_load_ask_text)), 10_000))
+            shot("1-load-ask")
+            assertEquals("nothing loaded before the answer", before, read { it.waypoints.toList() })
+            clickText(Txt.s(Res.string.routes_load_continue))
+            waitUntil("the loaded route is the plan", 15_000) { read { it.waypoints.size == 2 && it.waypoints.first().lat == pts.first().lat } }
+            waitUntil("back in Navigate", 10_000) { mode() == AppMode.NAVIGATE }
+            waitUntil("the tour follows the loaded route", 60_000) { nav()?.line?.let { it != lineBefore } == true }
+            shot("2-following-the-loaded-route")
+            assertEquals("the activity stays the tour's", Activity.BIKE_TOURING, read { it.activity })
             assertEquals("the same tour records on", tourId, com.onpath.app.recording.RecordingService.state.value?.tourId)
-            clickText(Txt.s(Res.string.common_ok))
-            assertTrue("the box goes with OK", goneFresh(By.text(Txt.s(Res.string.routes_end_tour_first)), 5_000))
         } finally {
             scenario.onActivity { vm(it).routesOpen = false }
             db.deleteTour(savedId)

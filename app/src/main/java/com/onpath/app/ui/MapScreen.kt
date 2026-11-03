@@ -223,10 +223,10 @@ fun MapScreen(
     vm.longRouteAsk?.let { s -> LongRouteDialog(s, vm.activity, onPlan = { vm.answerLongRoute(true) }, onCancel = { vm.answerLongRoute(false) }) }
     when (val ask = vm.endAsk) {
         EndAsk.Plain -> EndTourDialog(onSave = { vm.endTour() }, onDelete = { vm.saveRouteAtEnd = false; vm.endTourAndDelete() },
-            onDismiss = { vm.saveRouteAtEnd = false; vm.endAsk = null },
+            onDismiss = { vm.dismissEndAsk() },
             routeLabel = vm.endRouteLabel(), routeChecked = vm.saveRouteAtEnd, onRouteChecked = { vm.saveRouteAtEnd = it })
         is EndAsk.Rides -> RideSummaryDialog(ask.summary, onSave = { vm.endTourWith(ask, it) },
-            onDelete = { vm.endTourAndDelete() }, onDismiss = { vm.endAsk = null })
+            onDelete = { vm.endTourAndDelete() }, onDismiss = { vm.dismissEndAsk() })
         null -> {}
     }
     if (vm.planFromTrackBusy) PlanFromTrackDialog(onCancel = vm::cancelPlanFromTrack)

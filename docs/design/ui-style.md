@@ -98,7 +98,7 @@ the safe choice. Everything else is a message box or a line (below).
 
 | Kind | What | Look | Goes away |
 | --- | --- | --- | --- |
-| **FRAGE** (question / decision) | the user must choose | box, **blue** edge, title (+ one detail), **two verb buttons** (three only for "re-plan via the stop?") | when answered |
+| **FRAGE** (question / decision) | the user must choose | box, **blue** edge, title (+ one detail), **two verb buttons** (three only for "re-plan via the stop?" and "Load route …? during a tour") | when answered |
 | **HINWEIS** (must know) | the user must see it once | box with **one** button: OK or the one way out ("Try again", "Allow location") | when the button is pressed (never by itself) |
 | ↳ plain | | **grey** edge | |
 | ↳ ⚠ attention (`HINWEIS_WARN`) | something needs care | **amber** edge + amber ⚠ | |
@@ -135,7 +135,7 @@ MessageSlot(Messages.pick(listOf(question, m)), MessagePlacement.topDp(MessageSc
 | Off route, a way back found | FRAGE (56 dp) | "Off route – new route found" – Keep original / Take new route |
 | Activity switched during a tour | FRAGE (56 dp) | "New route for MTB" – Keep original / Take new route |
 | First ☰ → Pair with browser | FRAGE | "On your computer open plan.onpath.earth …" – Cancel / Open camera |
-| A planned route tapped during a tour | HINWEIS | "End the running tour first, then this route can be loaded." – OK |
+| A planned route tapped during a tour | FRAGE | "Load route “‹name›”? You are on the way." – Cancel / End tour and load / **Continue with this route** (owner 2026-11-03) |
 | Paired / unpaired | HINWEIS | "Paired." + what it means – OK |
 | No map downloads in this build | HINWEIS | OK |
 | The map needs the location | HINWEIS | "Allow location" |

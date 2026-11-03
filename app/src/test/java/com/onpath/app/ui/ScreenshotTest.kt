@@ -1049,14 +1049,14 @@ class ScreenshotTest {
     }
 
     /**
-     * My routes during a tour → a planned route tapped: nothing loads, the box "End the running tour first, then this
-     * route can be loaded." with OK under the tabs, over the list (HINWEIS, owner 2026-10-31); the list looks as always.
+     * My routes during a tour → a planned route tapped (owner 2026-11-03): the question "Load route “‹name›”? You are on
+     * the way." – Cancel · End tour and load · **Continue with this route** – under the tabs, over the list (FRAGE).
      */
-    @Test fun routesTourBlocked() = paparazzi.snapshot {
+    @Test fun routesTourLoadAsk() = paparazzi.snapshot {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 RoutesScreen(tourList, {}, {}, {}, {}, {})
-                MessageSlot(tourBlockedMessage {}, MessagePlacement.topDp(MessageScreen.ROUTES))
+                MessageSlot(tourLoadMessage(tourList[0].name) {}, MessagePlacement.topDp(MessageScreen.ROUTES))
             }
         }
     }
