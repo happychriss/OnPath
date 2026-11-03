@@ -47,6 +47,7 @@ the git log.
   the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
+- [donald] Fewer terms: Planen / Unterwegs + Route / Tour – "Aufnahme" and "Navigation" go as everyday words (owner OK 2026-11-03, table in the chat) – since 2026-11-03
 - [donald] Load a route during a tour → question "Mit dieser Route weiter / Tour beenden und laden / Abbrechen" (owner 2026-11-03) – since 2026-11-03
 - [donald] Novice fixes (owner OK 2026-11-03): tap on the map in Plan → a calm "hold to set a point" line; map buttons explain themselves on long press; grey secondary lines ≥ 14 sp and darker – since 2026-11-03
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
