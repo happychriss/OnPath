@@ -7,7 +7,8 @@ import java.util.Locale
 /**
  * Small persisted search state: the last 8 picked places ("Recent") and the names of route points
  * that were added from a place (so stops can be listed as "Leiter Alm" instead of "Point 3").
- * Only OSM / Photon data is stored – never anything from Google.
+ * Only OSM / Photon data is stored – never anything from Google, except a place the user shared into OnPath
+ * themselves (owner 2026-11-02: "zuletzt habe ich es ja gesucht"): it goes to "Recent" with its share sign.
  */
 class SearchStore(context: Context) {
     private val sp = context.getSharedPreferences("onpath-search", 0)
@@ -39,7 +40,7 @@ class SearchStore(context: Context) {
         fun encode(p: Place): String = listOf(p.id, clean(p.name), p.kind, p.sub.orEmpty(),
             String.format(Locale.ROOT, "%.6f", p.lat), String.format(Locale.ROOT, "%.6f", p.lon),
             p.ele?.toString().orEmpty(), clean(p.address), p.source.name,
-            clean(p.town), clean(p.village)).joinToString("\t")
+            clean(p.town), clean(p.village), if (p.shared) "s" else "").joinToString("\t")
 
         fun decode(l: String): Place? {
             val p = l.split('\t'); if (p.size < 9) return null
@@ -48,7 +49,9 @@ class SearchStore(context: Context) {
                 // expected: unknown/old source name → POI
                 runCatching { Place.Source.valueOf(p[8]) }.getOrDefault(Place.Source.POI),
                 // fields 10–11 (town, village) are missing in older entries
-                town = p.getOrNull(9)?.ifEmpty { null }, village = p.getOrNull(10)?.ifEmpty { null })
+                town = p.getOrNull(9)?.ifEmpty { null }, village = p.getOrNull(10)?.ifEmpty { null },
+                // field 12: shared into OnPath (missing in older entries)
+                shared = p.getOrNull(11) == "s")
         }
     }
 }

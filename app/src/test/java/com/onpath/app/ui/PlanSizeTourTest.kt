@@ -66,15 +66,20 @@ class PlanSizeTourTest {
     }
 
     /**
-     * Field 2026-11-01 (owner + UX B2): stopping needed a drag up first. The one-row step has a round ■ that opens the
-     * same "End this tour?" question as End tour (the same callback), only while the row is alone.
+     * Owner 2026-11-01 (night draft): the slider in Navigate unlocks Pause · Route ändern · Beenden – words, no ■; End
+     * opens the same "Aufnahme beenden?" question as before. The plan sheet during a tour has only "Navigation
+     * fortsetzen" (+ "Route speichern" with a plan) – no Pause / End there any more.
      */
-    @Test fun theOneRowStepHasItsOwnStopWithTheEndTourQuestion() {
+    @Test fun theSliderUnlocksPauseChangeRouteAndEnd() {
+        val nav = java.io.File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()
+        assertEquals(true, nav.contains("onPause = vm::pauseRecording, onEnd = { vm.askEndTour() }"))
+        assertEquals(true, nav.contains("TourActionBar(ui.paused, onPause, onChangeRoute = onSlideToPlan"))
+        val bar = java.io.File("src/main/java/com/onpath/app/ui/TourActionBar.kt").readText()
+        for (s in listOf("Res.string.nav_action_pause", "Res.string.common_resume", "Res.string.plan_slide_change_route", "Res.string.nav_end_short"))
+            assertEquals(s, true, bar.contains(s))
         val panel = java.io.File("src/main/java/com/onpath/app/ui/PlanPanel.kt").readText()
-        assertEquals(true, panel.contains("onEnd = cb.onEndTour.takeIf { tourMini }"))
-        assertEquals(true, panel.contains("TourPauseEnd(t.paused, cb.onPause, cb.onEndTour"))
-        val bar = java.io.File("src/main/java/com/onpath/app/ui/TourBar.kt").readText()
-        assertEquals(true, bar.contains("OutlinedIconButton(onClick = onEnd, modifier = Modifier.size(48.dp)"))
+        assertEquals(false, panel.contains("TourPauseEnd("))
+        assertEquals(false, panel.contains("cb.onEndTour"))
     }
 
     @Test fun aTapOnTheSliderOnlyNudgesTheThumb() {

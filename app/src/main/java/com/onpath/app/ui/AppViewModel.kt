@@ -1478,9 +1478,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Closes every map menu; [why] goes into the gesture log (Diagnostics) when a point menu was open. */
     fun closeMapOverlays(why: String = "closed") {
-        // The search mark lives only until its menu is done (owner): closing that menu – by an action or by
-        // tapping elsewhere – removes the candidate marker too.
-        if (poiMenu != null) searchMark = null // the menu may belong to the place's own map icon a few metres away
+        // The found place's pin stays when its menu closes (owner 2026-11-02: a tap elsewhere closes only the menu); it
+        // goes when the place is added, with a new search, "Neu planen" or the menu's "Nadel entfernen" ([removePin]).
         closePointMenu(why)
         if (firstPointMenu != null) Problems.trace("plan", "First-point menu closed: $why")
         if (poiMenu != null) Problems.trace("plan", "POI menu closed: $why")
@@ -1509,6 +1508,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (waypoints.isEmpty()) change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) } else addPoint(p)
     }
     fun openPoiMenu(poi: com.onpath.app.poi.Poi) { closeMapOverlays("POI menu opened"); poiMenu = poi }
+
+    /** The pin's name chip tapped (owner 2026-11-02): the same menu a hold on the pin opens. */
+    fun openPinMenu() {
+        val m = searchMark ?: return
+        Problems.trace("plan", "Pin chip tapped: menu of \"${m.title()}\"")
+        openPoiMenu(m.toPoi())
+    }
+
+    /**
+     * The found place's pin goes (owner 2026-11-02): its menu's "Nadel entfernen" or "Neu planen" ([clearPlan]); adding
+     * the place ([clearSearchMarkAt]) and a new search pick replace it on their own.
+     */
+    fun removePin(why: String) {
+        if (searchMark == null) return
+        Problems.trace("plan", "Pin removed: $why")
+        searchMark = null; searchPlace = null
+    }
 
     /** POI menu on an empty plan → "Go here": start = position, the POI (pinned, named) = destination. */
     fun poiFromMyLocation(poi: com.onpath.app.poi.Poi) {
@@ -1695,7 +1711,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openSearch() = searchFlow.openSearch()
     fun closeSearch() = searchFlow.closeSearch()
     fun pickSearchResult(place: com.onpath.app.search.Place) = searchFlow.pickSearchResult(place)
-    private fun isCandidate(poi: com.onpath.app.poi.Poi): Boolean = searchFlow.isCandidate(poi)
+    /** [poi] is the found place's pin (its menu then ends with "Nadel entfernen"). */
+    fun isCandidate(poi: com.onpath.app.poi.Poi): Boolean = searchFlow.isCandidate(poi)
     private fun clearSearchMarkAt(lat: Double, lon: Double) = searchFlow.clearSearchMarkAt(lat, lon)
     /**
      * [block] adds a place from the place card or the candidate marker's menu: the new route is fitted once computed
@@ -1831,6 +1848,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val planLine = route?.points
         if (waypoints.isNotEmpty()) change { clear() } else recalc()
         closePointMenu("plan cleared"); firstPointMenu = null; highlight = null
+        removePin("plan cleared")
         // the empty sheet says how to start a plan: not rolled up
         if (planSize == PlanSize.COLLAPSED) planSize = PlanSize.MINI
         // no tour: the followed line goes with the plan – also when it was the way there ("Guide me") or the app restarted
@@ -2602,6 +2620,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         else followMe = headingUp && followMe && tracker.location.value != null
         // Plan during a tour: the sheet is one row (tour status + Continue), the map free for holds (owner 2026-10-31)
         if (m == AppMode.PLAN && was == AppMode.NAVIGATE) planSize = PlanSize.backInPlan(planSize, recState.value != null)
+        // "Route ändern" opens: the plan as it is now is what "Änderungen verwerfen" goes back to (owner 2026-11-02)
+        tourEditStart = TourEdit.startOf(was, m, recState.value != null, waypoints.toList(), tourEditStart)
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_NAVIGATING) {
             putExtra(RecordingService.EXTRA_ON, m == AppMode.NAVIGATE)
         }
@@ -2680,6 +2700,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
         } else checkNow()
         enter(AppMode.NAVIGATE)
+    }
+
+    /** The plan when "Route ändern" opened during this tour ([TourEdit]); null outside that. */
+    private var tourEditStart by mutableStateOf<List<GeoPoint>?>(null)
+
+    /** The plan was changed since "Route ändern" opened: the red "Änderungen verwerfen" tile is live. */
+    val tourEditChanged: Boolean get() = TourEdit.changed(tourEditStart, waypoints.toList())
+
+    /**
+     * "Änderungen verwerfen" (owner 2026-11-02): the plan goes back to how it was when "Route ändern" opened – one
+     * undoable change, so the tour follows that plan again (FollowHistory: the very route it followed) – and Navigate
+     * comes back.
+     */
+    fun discardTourEdits() {
+        val start = tourEditStart
+        if (start != null && TourEdit.changed(start, waypoints.toList())) {
+            Problems.trace("plan", "Discard changes during the tour: plan ${waypoints.size} → ${start.size} points")
+            set(start)
+        }
+        continueNavigation()
     }
 
     /** A tour is guided along the plan (not a followed GPX track): Navigate shows the plan's points (owner 2026-11-01). */
@@ -2867,7 +2907,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun switchToPlan() = enter(AppMode.PLAN)
 
     /** "End tour" in Plan (after confirmation) or "End & save" on arrival: stop and save. */
-    fun endTour() { Problems.trace("tour", "End tour (save)"); endAsk = null; arrivalAsk = false; deleteFinished = false; stopRecording() }
+    fun endTour() {
+        Problems.trace("tour", "End tour (save)"); endAsk = null; arrivalAsk = false; deleteFinished = false
+        val withRoute = saveRouteAtEnd && endRouteLabel() != null
+        saveRouteAtEnd = false
+        stopRecording()
+        if (withRoute) requestSave() // Save's dialog (name / overwrite) right after
+    }
+
+    /**
+     * "Aufnahme beenden?" – also save the route (owner 2026-11-01: the recording and the plan are two things; offered only
+     * when there is something to save, the box empty at first): "Neue Route auch speichern" (never saved) / "Geänderte
+     * Route auch speichern" (a saved route changed on the way); null = nothing to save.
+     */
+    fun endRouteLabel(): String? = when {
+        waypoints.size < 2 || !planUnsaved -> null
+        currentSaveMode() == SaveMode.OVERWRITE -> Txt.s(Res.string.nav_end_save_changed_route)
+        else -> Txt.s(Res.string.nav_end_save_new_route)
+    }
+    var saveRouteAtEnd by mutableStateOf(false)
 
     /** What "End tour" shows now (null = nothing): see [askEndTour]. */
     var endAsk by mutableStateOf<EndAsk?>(null)

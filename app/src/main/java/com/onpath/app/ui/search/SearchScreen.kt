@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.FilterChip
@@ -228,7 +229,10 @@ private fun ResultRow(h: SearchHit, onPick: (Place) -> Unit, recent: Boolean = f
     ) {
         if (recent) {
             Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.History, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                // shared into OnPath (Google Maps → Share): the share sign instead of the clock (owner 2026-11-02)
+                if (h.place.shared) Icon(Icons.Outlined.Share, contentDescription = str(Res.string.search_recent_shared),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                else Icon(Icons.Outlined.History, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else KindIcon(h.place)
         Spacer(Modifier.width(16.dp))

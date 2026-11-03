@@ -512,24 +512,11 @@ fun NameDialog(title: String, initial: String, onDone: (String) -> Unit, onDismi
  */
 @Composable
 fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit, onDelete: () -> Unit) {
-    var askDelete by remember(t.id) { mutableStateOf(false) }
-    if (askDelete) {
-        AlertDialog(
-            onDismissRequest = { askDelete = false },
-            icon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(str(Res.string.routes_unfinished_delete_title)) },
-            text = { DialogText(RECYCLE_BIN_NOTE) },
-            confirmButton = { TextButton(onClick = { askDelete = false; onDelete() },
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(str(Res.string.common_delete)) } },
-            dismissButton = { TextButton(onClick = { askDelete = false }) { Text(str(Res.string.common_cancel)) } },
-        )
-        return
-    }
     AlertDialog(
         onDismissRequest = {},
         title = { Text(str(Res.string.routes_unfinished_title)) },
         text = { DialogText(str(Res.string.routes_unfinished_text, Format.distance(t.distanceM), Format.duration(t.durationS))) },
-        confirmButton = { DeleteApartButtons({ askDelete = true }, str(Res.string.routes_unfinished_continue), onContinue,
+        confirmButton = { DeleteApartButtons(onDelete, str(Res.string.routes_unfinished_continue), onContinue,
             str(Res.string.common_save), onSave) },
     )
 }

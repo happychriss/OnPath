@@ -33,7 +33,7 @@
     <string name="nav_position_clip">Position</string>
     <string name="nav_copied">%1$s · kopiert ✓</string>
     <string name="nav_rec_badge">REC</string>
-    <string name="nav_status_recording">Aufzeichnung</string>
+    <string name="nav_status_recording">Aufnahme</string>
     <string name="nav_status_paused">Pausiert</string>
     <string name="nav_status_searching_gps">GPS wird gesucht…</string>
     <string name="nav_moving_lower">in Bewegung %1$s</string>
@@ -103,49 +103,49 @@
     <string name="nav_longer">%1$s länger</string>
     <!-- never on the route yet (owner 2026-10-31): "Route starts 31 km away" · Guide me / Just record -->
     <string name="nav_far_title">Route beginnt %1$s entfernt</string>
-    <string name="nav_far_detail">%1$s (Luftlinie) · Aufzeichnung läuft</string>
+    <string name="nav_far_detail">%1$s (Luftlinie) · Aufnahme läuft</string>
     <string name="nav_far_searching">Weg zum Start wird gesucht…</string>
     <string name="nav_far_lead">Hinführen</string>
-    <string name="nav_far_record">Nur aufzeichnen</string>
-    <string name="nav_lead_failed">Kein Weg zur Route gefunden – Aufzeichnung läuft weiter</string>
+    <string name="nav_far_record">Nur aufnehmen</string>
+    <string name="nav_lead_failed">Kein Weg zur Route gefunden – Aufnahme läuft weiter</string>
 
     <!-- lock screen notification while following a route -->
     <string name="nav_notif_to_go">noch %1$s</string>
     <string name="nav_notif_arrival">Ankunft %1$s</string>
     <string name="nav_notif_left">noch %1$s</string>
     <string name="nav_notif_following">%1$s · Route: %2$s</string>
-    <string name="nav_notif_recorded">Aufgezeichnet %1$s · %2$s</string>
+    <string name="nav_notif_recorded">Aufgenommen %1$s · %2$s</string>
     <string name="nav_pause">Pausieren</string>
     <string name="nav_route_fallback">Route</string>
 
     <!-- recording notifications and problems -->
-    <string name="nav_channel_recording">Aufzeichnung</string>
-    <string name="nav_channel_recording_desc">Zeigt Strecke und Zeit während der Aufzeichnung</string>
+    <string name="nav_channel_recording">Aufnahme</string>
+    <string name="nav_channel_recording_desc">Zeigt Strecke und Zeit während der Aufnahme</string>
     <string name="nav_channel_navigation">Navigation</string>
     <string name="nav_channel_navigation_desc">Nächste Abzweigung, Restzeit und Ankunft, während du einer Route folgst – auch auf dem Sperrbildschirm. Lautlos.</string>
     <string name="nav_channel_off_route">Abseits der Route</string>
     <string name="nav_channel_off_route_desc">Fragt nach, wenn du die Route verlässt: neue Route nehmen oder die ursprüngliche behalten</string>
-    <string name="nav_rec_stopped_title">Aufzeichnung gestoppt</string>
-    <string name="nav_rec_fail_read">Die Aufzeichnung konnte nicht starten: Deine gespeicherten Tracks sind nicht lesbar.</string>
-    <string name="nav_rec_fail_permission">Aufzeichnung gestoppt: OnPath braucht den genauen Standort. Erlaube ihn unter Einstellungen → Apps → OnPath → Berechtigungen.</string>
-    <string name="nav_rec_fail_no_gps">Aufzeichnung gestoppt: Dieses Gerät hat kein GPS.</string>
-    <string name="nav_rec_fail_blocked">Die Aufzeichnung konnte nicht starten – Android hat sie blockiert. Öffne OnPath und versuche es noch einmal.</string>
-    <string name="nav_rec_fail_storage">Die Aufzeichnung konnte nicht starten: Der Track kann nicht gespeichert werden (Speicher voll oder beschädigt).</string>
-    <string name="nav_rec_save_failed_title">Aufzeichnung kann nicht gespeichert werden</string>
-    <string name="nav_rec_save_failed">Der Track kann nicht mehr gespeichert werden (Speicher voll oder beschädigt). Gib Speicher frei – die Aufzeichnung versucht es weiter.</string>
-    <string name="nav_rec_paused_title">Aufzeichnung ist pausiert</string>
-    <string name="nav_rec_paused_moving">Du bist unterwegs – Aufzeichnung fortsetzen?</string>
+    <string name="nav_rec_stopped_title">Aufnahme gestoppt</string>
+    <string name="nav_rec_fail_read">Die Aufnahme konnte nicht starten: Deine gespeicherten Touren sind nicht lesbar.</string>
+    <string name="nav_rec_fail_permission">Aufnahme gestoppt: OnPath braucht den genauen Standort. Erlaube ihn unter Einstellungen → Apps → OnPath → Berechtigungen.</string>
+    <string name="nav_rec_fail_no_gps">Aufnahme gestoppt: Dieses Gerät hat kein GPS.</string>
+    <string name="nav_rec_fail_blocked">Die Aufnahme konnte nicht starten – Android hat sie blockiert. Öffne OnPath und versuche es noch einmal.</string>
+    <string name="nav_rec_fail_storage">Die Aufnahme konnte nicht starten: Die Tour kann nicht gespeichert werden (Speicher voll oder beschädigt).</string>
+    <string name="nav_rec_save_failed_title">Aufnahme kann nicht gespeichert werden</string>
+    <string name="nav_rec_save_failed">Die Tour kann nicht mehr gespeichert werden (Speicher voll oder beschädigt). Gib Speicher frei – die Aufnahme versucht es weiter.</string>
+    <string name="nav_rec_paused_title">Aufnahme ist pausiert</string>
+    <string name="nav_rec_paused_moving">Du bist unterwegs – Aufnahme fortsetzen?</string>
     <string name="nav_rec_rescued_title">Tour gerettet</string>
-    <string name="nav_rec_rescued">Der Speicher des Handys hatte ein Problem. OnPath hat deine Tour wiederhergestellt – die Aufzeichnung läuft weiter. Details: Einstellungen → Diagnose.</string>
+    <string name="nav_rec_rescued">Der Speicher des Handys hatte ein Problem. OnPath hat deine Tour wiederhergestellt – die Aufnahme läuft weiter. Details: Einstellungen → Diagnose.</string>
     <string name="nav_saver_title">Energiesparmodus stoppt GPS</string>
-    <string name="nav_saver_text">Auf diesem Handy schaltet der Energiesparmodus GPS bei ausgeschaltetem Bildschirm ab – dein Track bekommt Lücken. Schalte ihn für die Tour aus.</string>
-    <string name="nav_watchdog_title">Aufzeichnung bekommt kein GPS</string>
-    <string name="nav_watchdog_text">OnPath hat die Aufzeichnung neu gestartet, aber seit 5 Minuten keine GPS-Position. Öffne OnPath und prüfe die Aufzeichnung.</string>
-    <string name="nav_interrupted_title">Tour-Aufzeichnung unterbrochen</string>
+    <string name="nav_saver_text">Auf diesem Handy schaltet der Energiesparmodus GPS bei ausgeschaltetem Bildschirm ab – deine Tour bekommt Lücken. Schalte ihn für die Tour aus.</string>
+    <string name="nav_watchdog_title">Aufnahme bekommt kein GPS</string>
+    <string name="nav_watchdog_text">OnPath hat die Aufnahme neu gestartet, aber seit 5 Minuten keine GPS-Position. Öffne OnPath und prüfe die Aufnahme.</string>
+    <string name="nav_interrupted_title">Aufnahme unterbrochen</string>
     <string name="nav_interrupted_boot">Das Handy wurde neu gestartet – öffne OnPath und tippe auf „Fortsetzen“, um weiter aufzuzeichnen.</string>
     <string name="nav_interrupted_update">OnPath wurde aktualisiert – öffne OnPath und tippe auf „Fortsetzen“, um weiter aufzuzeichnen.</string>
-    <string name="nav_interrupted_boot_long">Das Handy wurde neu gestartet, während „%1$s“ aufgezeichnet wurde. Der bisherige Track ist gespeichert. Öffne OnPath und tippe auf „Fortsetzen“, um weiter aufzuzeichnen.</string>
-    <string name="nav_interrupted_update_long">OnPath wurde aktualisiert, während „%1$s“ aufgezeichnet wurde. Der bisherige Track ist gespeichert. Öffne OnPath und tippe auf „Fortsetzen“, um weiter aufzuzeichnen.</string>
+    <string name="nav_interrupted_boot_long">Das Handy wurde neu gestartet, während „%1$s“ aufgenommen wurde. Die Tour bis hierhin ist gespeichert. Öffne OnPath und tippe auf „Fortsetzen“, um weiter aufzunehmen.</string>
+    <string name="nav_interrupted_update_long">OnPath wurde aktualisiert, während „%1$s“ aufgenommen wurde. Die Tour bis hierhin ist gespeichert. Öffne OnPath und tippe auf „Fortsetzen“, um weiter aufzunehmen.</string>
 
     <!-- GPS status -->
     <string name="nav_gps_no_permission">Keine Standortberechtigung</string>
@@ -155,20 +155,27 @@
     <string name="nav_gps_good">GPS gut</string>
 
     <!-- tour card, end tour, arrival -->
-    <string name="nav_end_tour_title">Tour beenden?</string>
-    <string name="nav_delete_track_title">Diese Tour löschen?</string>
+    <string name="nav_end_tour_title">Aufnahme beenden?</string>
     <string name="nav_recycle_bin_note">Kommt für %1$d Tage in den Papierkorb.</string>
-    <string name="nav_arrived_title">Du bist angekommen – Tour beenden?</string>
+    <string name="nav_arrived_title">Du bist angekommen – Aufnahme beenden?</string>
     <string name="nav_keep_going">Weitermachen</string>
-    <string name="nav_continue">Weiter</string>
-    <string name="nav_continue_as">Weiter · %1$s</string>
-    <string name="nav_tour_running">Tour läuft · %1$s · %2$s</string>
-    <string name="nav_tour_paused">Tour pausiert · %1$s · %2$s</string>
-    <string name="nav_end_tour">Tour beenden</string>
+    <string name="nav_continue">Navigation weiter</string>
+    <string name="nav_continue_as">Navigation weiter · %1$s</string>
+    <string name="nav_tour_running">Aufnahme läuft · %1$s · %2$s</string>
+    <string name="nav_tour_paused">Aufnahme pausiert · %1$s · %2$s</string>
+    <string name="nav_end_tour">Aufnahme beenden</string>
+    <string name="nav_end_short">Beenden</string>
+    <string name="nav_straight_on">Geradeaus</string>
+    <string name="nav_end_save_new_route">Neue Route auch speichern</string>
+    <string name="nav_end_save_changed_route">Geänderte Route auch speichern</string>
+    <string name="nav_save_recording">Aufnahme speichern</string>
+    <string name="nav_continue_navigation">Navigation fortsetzen</string>
+    <string name="nav_discard_changes">Änderungen verwerfen</string>
+    <string name="nav_action_pause">Pause</string>
     <string name="nav_route_back_title">Kein Ziel mehr vor dir.</string>
-    <string name="nav_route_back_text">Die Tour wird weiter aufgezeichnet. Rückgängig holt den Punkt zurück.</string>
+    <string name="nav_route_back_text">Die Aufnahme läuft weiter. Rückgängig holt den Punkt zurück.</string>
     <string name="nav_route_back">Zurück zum Start</string>
-    <string name="nav_just_record">Nur aufzeichnen</string>
+    <string name="nav_just_record">Nur aufnehmen</string>
     <string name="nav_long_route_foot">%1$s zu Fuß. Berechnen und Laden der Karten dauert lange.</string>
     <string name="nav_long_route_bike">%1$s mit dem Rad. Berechnen und Laden der Karten dauert lange.</string>
     <string name="nav_long_route_title">Diese Route ist sehr lang</string>
@@ -200,7 +207,7 @@
         <item quantity="one">Ein Teil dieser Tour sieht nach einer Fahrt aus (Bus, Auto oder Lift). Was soll zählen?</item>
         <item quantity="other">%1$d Teile dieser Tour sehen nach Fahrten aus (Bus, Auto oder Lift). Was soll zählen?</item>
     </plurals>
-    <string name="nav_rides_kept_note">Alle aufgezeichneten Punkte bleiben erhalten – du kannst das später in Meine Routen ändern (⋮ → Fahrten bearbeiten).</string>
+    <string name="nav_rides_kept_note">Alle aufgenommenen Punkte bleiben erhalten – du kannst das später in Meine Routen ändern (⋮ → Fahrten bearbeiten).</string>
     <string name="nav_row_on_foot">Zu Fuß</string>
     <string name="nav_row_by_bike">Mit dem Rad</string>
     <string name="nav_row_vehicle">Bus / Auto</string>
@@ -215,7 +222,7 @@
     <string name="nav_ride_split_n">In %1$d Touren aufteilen</string>
     <string name="nav_ride_split_two_detail">Vor und nach der Fahrt</string>
     <string name="nav_ride_split_n_detail">Eine Tour zwischen den Fahrten</string>
-    <string name="nav_ride_as_recorded">Wie aufgezeichnet speichern</string>
+    <string name="nav_ride_as_recorded">Wie aufgenommen speichern</string>
     <string name="nav_ride_as_recorded_detail">Alles zählt, auch die Fahrten</string>
     <string name="nav_tour_date_name">Tour %1$s</string>
 
@@ -244,7 +251,7 @@
     <string name="nav_rest_destination">Ziel</string>
     <string name="nav_rest_tap">Tippen für die Karte</string>
     <string name="nav_rest_cd">%1$s in %2$s. Tippen für die Karte</string>
-    <string name="nav_no_route_ahead">Keine Route zu Punkt %1$d gefunden. Die Tour wird weiter aufgezeichnet.</string>
-    <string name="nav_tour_record_only">Nur Aufzeichnung · %1$s · %2$s</string>
+    <string name="nav_no_route_ahead">Keine Route zu Punkt %1$d gefunden. Die Aufnahme läuft weiter.</string>
+    <string name="nav_tour_record_only">Nur Aufnahme · %1$s · %2$s</string>
     <string name="nav_turn_round">Umdrehen</string>
 </resources>

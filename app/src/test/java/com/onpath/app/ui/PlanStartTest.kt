@@ -11,7 +11,7 @@ import org.junit.Test
 import java.util.Locale
 
 /**
- * Field bug (owner 2026-10-30): "Start navigation · Hike" with no route – the tour then started with nothing to follow.
+ * Field bug (owner 2026-10-30): "Let’s go · Hike" with no route – the tour then started with nothing to follow.
  * One rule ([PlanStart]) for the words and for what Start does: without a line the button is honest,
  * "Start recording · Hike" (a plain recording, the same as ☰ → Start recording); with a line (also a straight-line
  * fallback) it stays "Start navigation · …". Before the fix the label ignored the line: the plan sheet's label said
@@ -41,10 +41,10 @@ class PlanStartTest {
     }
 
     @Test fun aRoutedLineIsNavigated() {
-        assertEquals("Start navigation · Hike", primaryLabel(ui(2, routed)))
+        assertEquals("Let’s go · Hike", primaryLabel(ui(2, routed)))
         assertEquals(PlanStart.NAVIGATE_PLAN, ui(2, routed).start)
         // the straight-line fallback (no router / a leg not found) is a line to follow too ("Navigate anyway?" asks)
-        assertEquals("Start navigation · Hike", primaryLabel(ui(2, straight)))
+        assertEquals("Let’s go · Hike", primaryLabel(ui(2, straight)))
         assertEquals(PlanStart.NAVIGATE_PLAN, ui(2, straight).start)
     }
 
@@ -54,7 +54,7 @@ class PlanStartTest {
             val u = ui(2, null, routing = routing)
             assertFalse(u.canStart)
             assertEquals(PlanStart.WAIT_FOR_ROUTE, u.start)
-            assertEquals("Start navigation · Hike", primaryLabel(u))
+            assertEquals("Let’s go · Hike", primaryLabel(u))
         }
     }
 
@@ -80,23 +80,23 @@ class PlanStartTest {
 
     /**
      * A shown track without a line – a recorded tour ended before its first point, a GPX with one point – said
-     * "Start navigation · Hike" in the track panel and followed nothing. Now it records only; during a tour the
+     * "Let’s go · Hike" in the track panel and followed nothing. Now it records only; during a tour the
      * button is off (nothing to switch to).
      */
     @Test fun aTrackWithoutALineOnlyRecords() {
         for (n in 0..1) assertEquals(PlanStart.RECORD_ONLY, PlanStart.of(trackPoints = n, hasRoute = true, pointCount = 3))
         assertEquals("Start recording · Hike", trackFollowLabel(recording = false, Activity.HIKE, line = false))
-        assertEquals("Start navigation · Hike", trackFollowLabel(recording = false, Activity.HIKE, line = true))
-        assertEquals("Navigate this track · Hike", trackFollowLabel(recording = true, Activity.HIKE, line = true))
+        assertEquals("Let’s go · Hike", trackFollowLabel(recording = false, Activity.HIKE, line = true))
+        assertEquals("Follow this tour · Hike", trackFollowLabel(recording = true, Activity.HIKE, line = true))
     }
 
     @Test fun germanLabels() {
         val before = Locale.getDefault()
         try {
             Locale.setDefault(Locale.GERMANY)
-            assertEquals("Aufzeichnung starten · Wandern", primaryLabel(ui(0, null)))
-            assertEquals("Aufzeichnung starten · Wandern", primaryLabel(ui(1, null)))
-            assertEquals("Navigation starten · Wandern", primaryLabel(ui(2, routed)))
+            assertEquals("Aufnahme starten · Wandern", primaryLabel(ui(0, null)))
+            assertEquals("Aufnahme starten · Wandern", primaryLabel(ui(1, null)))
+            assertEquals("Los geht’s · Wandern", primaryLabel(ui(2, routed)))
         } finally { Locale.setDefault(before) }
     }
 }

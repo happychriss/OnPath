@@ -104,6 +104,11 @@ data class RecState(
      */
     val gpsQuiet: Boolean = false,
     /**
+     * No GPS and the phone lies still by its own motion sensor (owner 2026-11-02, phone on the table): nothing is shown
+     * about GPS at all ([NoGpsShow]); false without a sensor or while it is not sure.
+     */
+    val gpsStill: Boolean = false,
+    /**
      * The end of the followed line was reached (review H2: checked here, also with the phone in the pocket). Guidance
      * is quiet from then on (no off-route alarms on the way to the car park); recording goes on. The app asks once.
      */
@@ -463,6 +468,8 @@ class RecordingService : Service() {
         lastTick = now
         // the lock times out after 12 h: long days go on; paused = slow GPS (10 s), no lock (battery)
         if (!paused && wakeLock?.isHeld != true) acquireWakeLock()
+        // the motion sensor only while recording without a fix (battery): "still" = nothing about GPS (owner 2026-11-02)
+        motion.listen(tourId >= 0 && !paused && gpsLost())
         if (gpsLost()) navigator?.onGpsLost() // no alarms without GPS (R-04)
         if (gpsLost()) navigator?.state?.let { voiceStep(it, now) } // "No GPS signal" comes without fixes
         if (gpsWatchdog.due(now, paused)) notifyNoGpsAfterRestart()
@@ -483,13 +490,22 @@ class RecordingService : Service() {
     /** Quiet while standing still (owner 2026-11-01): moving = a point accepted within the last 2 min ([MoveWatch]). */
     private val moveWatch = MoveWatch()
 
-    /** "No GPS" not worth a warning (yet): standing still, or a short gap (owner 2026-11-01). */
-    private fun gpsQuiet(): Boolean = standingStill() ||
-        SystemClock.elapsedRealtime() - lastGoodFixElapsed < com.onpath.app.navigation.VoiceGuide.GPS_LOST_MS
+    /** The phone's motion sensor while there is no fix (owner 2026-11-02): lying still = nothing about GPS. */
+    private val motion by lazy { MotionSense(this) }
 
-    /** Standing still now – after a GPS loss: already before it (a loss while walking is said, one at a table not). */
-    private fun standingStill(): Boolean =
-        !moveWatch.moving(if (gpsLost() && lastGoodFixElapsed > 0) lastGoodFixElapsed else SystemClock.elapsedRealtime())
+    /** What the card says about a missing fix ([NoGpsShow]): nothing (still), a quiet grey line, or the amber warning. */
+    private fun noGpsLine(): NoGpsShow.Line = NoGpsShow.line(motion.still(SystemClock.elapsedRealtime()), moveWatchMoving(),
+        SystemClock.elapsedRealtime() - lastGoodFixElapsed < com.onpath.app.navigation.VoiceGuide.GPS_LOST_MS)
+
+    /** "No GPS" not worth a warning (yet): standing still, or a short gap (owner 2026-11-01). */
+    private fun gpsQuiet(): Boolean = noGpsLine() != NoGpsShow.Line.WARN
+
+    /** Standing still now: the motion sensor's word while it has one, else [MoveWatch]. */
+    private fun standingStill(): Boolean = NoGpsShow.standingStill(motion.still(SystemClock.elapsedRealtime()), moveWatchMoving())
+
+    /** [MoveWatch] – after a GPS loss: moved already before it (a loss while walking is said, one at a table not). */
+    private fun moveWatchMoving(): Boolean =
+        moveWatch.moving(if (gpsLost() && lastGoodFixElapsed > 0) lastGoodFixElapsed else SystemClock.elapsedRealtime())
 
     /** Slower GPS while standing still (owner, battery); the paused rate is [PauseWatch]'s. */
     private val restWatch = RestWatch()
@@ -1226,6 +1242,7 @@ class RecordingService : Service() {
         try { terrain?.close() } catch (e: Exception) { Problems.warn("elevation", "Terrain file not closed", e) }
         terrain = null
         tracker.stop()
+        motion.listen(false)
         wakeLock?.let { if (it.isHeld) it.release() }
         if (tourId >= 0) {
             if (pointQueue.size > 0) writePoints()
@@ -1243,6 +1260,7 @@ class RecordingService : Service() {
             tourId, paused, distance, ascent, descent, elapsedS, gpsLost(),
             navigator?.state?.offM, navigator?.prompt != null, follow?.first, trackSnapshot,
             navigator?.state, tripTime(), saveFailed, hadGpsFix = lastGoodFixElapsed > 0, gpsQuiet = gpsQuiet(),
+            gpsStill = gpsLost() && noGpsLine() == NoGpsShow.Line.NONE,
             arrived = arrived, guidanceBack = stopQuiet.resumed,
         )
         // Battery: the clock runs by itself in the notification (chronometer); re-post only when what it says
@@ -1389,7 +1407,9 @@ class RecordingService : Service() {
     /** The status word (app language); NavNotification compares it with nav_status_recording. */
     private fun notifStatus() = when {
         paused -> Txt.s(Res.string.nav_status_paused)
-        tourId >= 0 && gpsLost() -> Txt.s(Res.string.nav_status_searching_gps)
+        // lying still by the motion sensor: nothing about GPS here either (owner 2026-11-02: "wenn das Handy still liegt
+        // … sollte es auch nicht anzeigen") – the notification says "Recording" as usual
+        tourId >= 0 && gpsLost() && noGpsLine() != NoGpsShow.Line.NONE -> Txt.s(Res.string.nav_status_searching_gps)
         navigator?.prompt?.offRoute == true -> Txt.s(Res.string.nav_off_route)
         else -> Txt.s(Res.string.nav_status_recording)
     }

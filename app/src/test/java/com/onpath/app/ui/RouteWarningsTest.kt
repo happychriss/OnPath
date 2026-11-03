@@ -38,11 +38,12 @@ class RouteWarningsTest {
     @Test fun trekkingBikePushingStepsSteep() {
         val r = route(p(road, 1000), p(footway, 300), p(road, 200), p(steps, 30), p(track, 500), p(track, 300, 18.0), p(road, 1000))
         val spots = RouteWarnings.detect(r, Activity.BIKE_TREKKING, 3)
-        assertEquals(listOf(SpotKind.PUSH, SpotKind.STEPS, SpotKind.STEEP), spots.map { it.kind })
+        // a paved footway without a bicycle tag: "may have to push" (owner #7 A), not pushing
+        assertEquals(listOf(SpotKind.FOOTWAY, SpotKind.STEPS, SpotKind.STEEP), spots.map { it.kind })
         assertEquals(300.0, spots[0].lengthM, 1.0)
         assertEquals(1000.0, spots[0].fromM, 1.0)
         assertEquals(18, spots[2].worst)
-        assertEquals("300 m pushing · steps · 1 steep section", RouteWarnings.text(spots, 3))
+        assertEquals("300 m footway – you may have to push · steps · 1 steep section", RouteWarnings.text(spots, 3))
     }
 
     @Test fun pushingOnHardPathsDependsOnTheBike() {
@@ -112,7 +113,7 @@ class RouteWarningsTest {
             assertTrue("$a", RouteWarnings.detect(route(p(road, 300), p(onRoute, 300), p(road, 300)), a, 3).isEmpty())
         }
         val off = route(p(road, 300), p(WayAttrs("footway", "paved"), 300), p(road, 300))
-        assertEquals(SpotKind.PUSH, RouteWarnings.detect(off, Activity.BIKE_TREKKING, 3).single().kind)
+        assertEquals(SpotKind.FOOTWAY, RouteWarnings.detect(off, Activity.BIKE_TREKKING, 3).single().kind)
         for (b in listOf("no", "dismount")) {
             val signed = route(p(road, 300), p(onRoute.copy(bicycle = b), 300), p(road, 300))
             assertEquals(b, SpotKind.PUSH, RouteWarnings.detect(signed, Activity.BIKE_TOURING, 3).single().kind)
@@ -132,7 +133,7 @@ class RouteWarningsTest {
         }
         // the same route for Bike: still pushing and steep
         val bike = RouteWarnings.detect(r, Activity.BIKE_TOURING, 3)
-        assertEquals(setOf(SpotKind.PUSH, SpotKind.STEEP), bike.map { it.kind }.toSet())
+        assertEquals(setOf(SpotKind.FOOTWAY, SpotKind.PUSH, SpotKind.STEEP), bike.map { it.kind }.toSet())
     }
 
     /**
@@ -189,6 +190,47 @@ class RouteWarningsTest {
                 val open = route(p(road, 300), p(zone.copy(bicycle = b), 300), p(road, 300))
                 assertTrue("$a $b", RouteWarnings.detect(open, a, 3).isEmpty())
             }
+        }
+    }
+
+    /**
+     * Owner 2026-11-02 (onpath.private#7 A): a paved footway without a bicycle tag is allowed for Bike / Gravel / E-bike
+     * (the profiles cost it +1) and marked amber "Fußweg – evtl. schieben" – not "pushing". Exactly the footways the
+     * profiles make cheap: no bicycle tag, no pedestrian zone, off a cycle route, paved or no surface tag. Everything else
+     * stays as before.
+     */
+    @Test fun pavedFootwayWithoutBikeTagIsMaybePushing() {
+        for (a in listOf(Activity.BIKE_TOURING, Activity.BIKE_TREKKING, Activity.EBIKE)) {
+            for (surface in listOf("asphalt", "paved", "unknown")) {
+                val r = route(p(road, 300), p(WayAttrs("footway", surface), 300), p(road, 300))
+                val s = RouteWarnings.detect(r, a, 3).single()
+                assertEquals("$a $surface", SpotKind.FOOTWAY, s.kind)
+                assertEquals(300.0, s.lengthM, 1.0)
+                assertEquals("300 m footway – you may have to push", RouteWarnings.text(listOf(s), 3))
+                assertEquals("Footway – you may have to push", RouteWarnings.rowTitle(s, 3))
+            }
+            // unpaved without a bicycle tag (profiles +4), bicycle=no / dismount, a pedestrian zone: still pushing
+            for (w in listOf(WayAttrs("footway", "gravel"), WayAttrs("footway", "ground"), WayAttrs("footway", "paved", bicycle = "no"),
+                WayAttrs("footway", "paved", bicycle = "dismount"), WayAttrs("footway", "paving_stones", pedestrian = true))) {
+                val r = route(p(road, 300), p(w, 300), p(road, 300))
+                assertEquals("$a $w", SpotKind.PUSH, RouteWarnings.detect(r, a, 3).single().kind)
+            }
+            // on a signed cycle route: ridden, no hint; open to bikes: no hint
+            assertTrue(RouteWarnings.detect(route(p(road, 300), p(WayAttrs("footway", "paved", cycleRoute = true), 300), p(road, 300)), a, 3).isEmpty())
+            assertTrue(RouteWarnings.detect(route(p(road, 300), p(WayAttrs("footway", "paved", bicycle = "yes"), 300), p(road, 300)), a, 3).isEmpty())
+            // a crossing-length bit stays quiet
+            assertTrue(RouteWarnings.detect(route(p(road, 300), p(footway, 30), p(road, 300)), a, 3).isEmpty())
+        }
+        // MTB / e-MTB and hikers: footways are normal, no hint
+        val r = route(p(road, 300), p(footway, 300), p(road, 300))
+        for (a in listOf(Activity.MTB, Activity.EMTB, Activity.HIKE)) assertTrue("$a", RouteWarnings.detect(r, a, 3).isEmpty())
+    }
+
+    /** The profiles really allow the paved untagged footway cheaply – the hint must not say more than the router does. */
+    @Test fun theProfilesAllowThePavedFootwayAtPlusOne() {
+        for (f in listOf("touring.brf", "trekking.brf")) {
+            val brf = java.io.File("src/main/assets/brouter/$f").readText()
+            assertTrue(f, brf.contains("else if footaccess then ( if ( and highway=footway and not footway=sidewalk|crossing and bicycle= not isunpaved ) then 1 else 4 )"))
         }
     }
 
@@ -300,7 +342,7 @@ class RouteWarningsTest {
         // pushing + steps + steep + ferry: four items, the ferry first, steep goes into "+1"
         val r = route(p(road, 1000), p(footway, 300), p(road, 200), p(steps, 30), p(track, 300, 18.0), p(road, 200),
             p(ferry, 400), p(road, 500))
-        assertEquals("Ferry 400 m – check times · 300 m pushing · steps +1",
+        assertEquals("Ferry 400 m – check times · 300 m footway – you may have to push · steps +1",
             RouteWarnings.text(RouteWarnings.detect(r, Activity.BIKE_TREKKING, 3), 3))
     }
 

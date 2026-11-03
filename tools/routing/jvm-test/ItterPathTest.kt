@@ -23,8 +23,18 @@ fun dist(a: GeoPoint, b: GeoPoint): Double {
     return Math.sqrt(x * x + y * y) * 6_371_000.0
 }
 
+/**
+ * A paved footway without a bicycle tag (owner 2026-11-02, onpath.private#7 A): allowed at +1 by the profiles, shown as
+ * "Fußweg – evtl. schieben" (ui/RouteWarnings FOOTWAY), no longer as pushing.
+ */
+fun maybePush(w: WayAttrs?): Boolean = w != null && w.wayType == "footway" && w.bicycle.isNullOrEmpty() && !w.pedestrian &&
+    !w.cycleRoute && w.surface in setOf("asphalt", "paved", "unknown")
+
 /** Pushing as the plan sheet counts it for touring / trekking / e-bike (ui/RouteWarnings PUSH, without merging). */
-fun push(w: WayAttrs?): Boolean = w != null && w.wayType != "steps" && when {
+fun push(w: WayAttrs?): Boolean = oldPush(w) && !maybePush(w)
+
+/** Pushing before #7 A (every footway without a bicycle tag off a cycle route) – for the before / after numbers. */
+fun oldPush(w: WayAttrs?): Boolean = w != null && w.wayType != "steps" && when {
     w.bicycle == "dismount" -> true
     w.wayType != "footway" && w.wayType != "path" -> false
     w.bicycle in setOf("yes", "designated", "permissive", "mtb") -> false
@@ -50,18 +60,21 @@ fun main() {
         )) {
             try {
                 val r = eng.route(wps, a, 2)
-                var street = 0.0; var pushM = 0.0
+                var street = 0.0; var pushM = 0.0; var oldPushM = 0.0; var maybeM = 0.0
                 val ways = sortedMapOf<String, Double>()
                 for (i in 1 until r.points.size) {
                     val w = r.points[i - 1].way; val d = dist(r.points[i - 1], r.points[i])
                     ways.merge(w?.wayType ?: "?", d, Double::plus)
                     if (w?.wayType in setOf("quiet_road", "road", "busy_road")) street += d
                     if (push(w)) pushM += d
+                    if (oldPush(w)) oldPushM += d
+                    if (maybePush(w)) maybeM += d
                 }
                 val ok = r.distanceM <= maxM && street <= maxStreetM && pushM <= maxPushM
                 if (!ok) failures++
-                println(String.format("%-4s %-34s %-13s %6.0f m (max %.0f)  streets %4.0f m  pushing %4.0f m  %s", if (ok) "OK" else "FAIL",
-                    name, a, r.distanceM, maxM, street, pushM, ways.entries.joinToString(" ") { String.format("%s=%.0f", it.key, it.value) }))
+                println(String.format("%-4s %-34s %-13s %6.0f m (max %.0f)  streets %4.0f m  pushing %4.0f m (before #7: %.0f)  footway maybe-push %4.0f m  %s",
+                    if (ok) "OK" else "FAIL", name, a, r.distanceM, maxM, street, pushM, oldPushM, maybeM,
+                    ways.entries.joinToString(" ") { String.format("%s=%.0f", it.key, it.value) }))
             } catch (e: RoutingException) {
                 failures++
                 println(String.format("FAIL %-34s %-13s %s", name, a, e.message))

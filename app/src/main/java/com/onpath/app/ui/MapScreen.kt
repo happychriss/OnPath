@@ -221,7 +221,9 @@ fun MapScreen(
     if (vm.routeBackAsk && rec != null) RouteBackDialog(onYes = { vm.answerRouteBack(true) }, onNo = { vm.answerRouteBack(false) })
     vm.longRouteAsk?.let { s -> LongRouteDialog(s, vm.activity, onPlan = { vm.answerLongRoute(true) }, onCancel = { vm.answerLongRoute(false) }) }
     when (val ask = vm.endAsk) {
-        EndAsk.Plain -> EndTourDialog(onSave = { vm.endTour() }, onDelete = { vm.endTourAndDelete() }, onDismiss = { vm.endAsk = null })
+        EndAsk.Plain -> EndTourDialog(onSave = { vm.endTour() }, onDelete = { vm.saveRouteAtEnd = false; vm.endTourAndDelete() },
+            onDismiss = { vm.saveRouteAtEnd = false; vm.endAsk = null },
+            routeLabel = vm.endRouteLabel(), routeChecked = vm.saveRouteAtEnd, onRouteChecked = { vm.saveRouteAtEnd = it })
         is EndAsk.Rides -> RideSummaryDialog(ask.summary, onSave = { vm.endTourWith(ask, it) },
             onDelete = { vm.endTourAndDelete() }, onDismiss = { vm.endAsk = null })
         null -> {}
@@ -229,7 +231,8 @@ fun MapScreen(
     if (vm.planFromTrackBusy) PlanFromTrackDialog(onCancel = vm::cancelPlanFromTrack)
     // arrival Save goes the End tour way: a bus / car / lift found → the ride summary
     if (vm.arrivalAsk && rec != null) ArrivalDialog(onSave = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
-        onKeepGoing = { vm.arrivalAsk = false })
+        onKeepGoing = { vm.saveRouteAtEnd = false; vm.arrivalAsk = false },
+        routeLabel = vm.endRouteLabel(), routeChecked = vm.saveRouteAtEnd, onRouteChecked = { vm.saveRouteAtEnd = it })
     if (vm.navSettingsOpen) {
         // Navigate → ⚙: the Navigation settings page on the way (owner); everything else stays in Plan → Settings
         androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.navSettingsOpen = false }) {
@@ -264,8 +267,6 @@ private fun PlanMode(
             menu = PlanMenu(
                 state = vm.menuState(recording = rec != null),
                 onManage = { vm.openRoutes() },
-                // Free recording without a route: a shown track is closed so it is not followed.
-                onStartRecording = { vm.closeShown(); onStartNavigation() },
                 onSettings = { vm.openSettings() },
                 // plan sync (A-007), owner 2026-10-30: not paired → the camera at once (first time the step line
                 // before it); paired / a problem → Settings → Browser sync ([PairEntry])
@@ -278,7 +279,8 @@ private fun PlanMode(
                     else ({ vm.openSettings(SettingsPage.PHONE) }),
                 // owner 2026-10-31: "Save route" on top whenever there is a plan (the sheet has no Save any more); a dot
                 // on ☰ while it has unsaved changes
-                onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
+                // during a tour the blue tile saves (owner 2026-11-02): not in ☰ then
+                onSaveRoute = if (rec == null && RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
                 unsaved = RouteRules.saveAtHand(vm.waypoints.size, vm.planUnsaved),
                 onOpened = vm::refreshTours,
                 // no "Check for updates" in the ☰ menu – Settings has the Updates section (owner)
@@ -444,7 +446,8 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused, vm.guidanceEndedByEmptyPlan) },
             points = rows,
             routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText(), warnCount = vm.warningCount(),
-            changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote),
+            changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote,
+            tourEditChanged = rec != null && vm.tourEditChanged),
         PlanCallbacks(
             onSheetDrag = vm::mapGesture, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -458,6 +461,8 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onRouteChanged = vm::tapRouteChangedLine,
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
+            onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
+            onDiscardChanges = vm::discardTourEdits,
             onMovePoint = vm::movePointInList, onDeletePoint = vm::deletePointFromList, onShowPoint = vm::showPointFromList,
         ),
     )
@@ -519,6 +524,11 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     LaunchedEffect(c) {
         snapshotFlow { vm.trackLook() }.collect { c.setTrackLook(it) }
     }
+    // the route changed during a tour: the position is the activity's sign (the guidance rests) – the mode visible at
+    // the position too (owner 2026-11-01)
+    val planPuck = rememberPlanPuck(vm.activity)
+    val changingRoute = vm.mode == AppMode.PLAN && rec != null
+    LaunchedEffect(c, changingRoute, planPuck) { c.setPlanPuck(planPuck.takeIf { changingRoute }) }
     LaunchedEffect(c, vm.settings) { c.layers.apply(vm.settings) }
     // Re-routing: thin grey original while a new route is followed, dashed proposal while asking, dashed guide to
     // the route when no way was found / the original was kept (see NavigateScreen, navigation/Navigator).
@@ -554,8 +564,9 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
     // the spot tapped in the route warnings list: its piece of route amber (Plan only)
     LaunchedEffect(c, vm.spotLine, vm.mode) { c.setSpotLine(vm.spotLine?.takeIf { vm.mode == AppMode.PLAN }) }
-    LaunchedEffect(c, vm.searchMark) {
-        val m = vm.searchMark
+    // the found place's pin – Plan only: hidden in Navigate, back in Plan (owner 2026-11-02); its chip: MapOverlayHost
+    LaunchedEffect(c, vm.searchMark, vm.mode) {
+        val m = vm.searchMark?.takeIf { vm.mode == AppMode.PLAN }
         c.setSearchMark(m?.let { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }, m?.title())
     }
     // the candidate's dashed preview line to where it would join the route (Plan, with a route; AppViewModel.candidateJoin)

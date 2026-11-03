@@ -6,6 +6,7 @@
     <string name="search_clear_recent">Clear</string>
     <string name="search_intro">Find huts, peaks, villages, trails and addresses. The offline map is searched first; online results are added when you are connected.</string>
     <string name="search_recent">Recent</string>
+    <string name="search_recent_shared">Shared</string>
     <string name="search_nothing_of_kind">Nothing of this kind in the offline map.</string>
     <string name="search_no_match">No match in the offline map – try online results or Google Maps.</string>
     <string name="search_online_attribution">Online results © OpenStreetMap</string>

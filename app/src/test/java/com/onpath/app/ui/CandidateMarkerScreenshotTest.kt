@@ -54,9 +54,12 @@ class CandidateMarkerScreenshotTest {
         poi = Poi("n1", "hut", "Meraner Hütte", 46.667, 11.120, 1960))
 
     /** Screen dp of a point: a local metric projection, ~0.1 dp per metre, the plan in the upper half. */
-    private fun at(p: GeoPoint, d: DrawScope): Offset = with(d) {
+    private fun at(p: GeoPoint, d: DrawScope): Offset = with(d) { atDp(p).let { Offset(it.x.dp.toPx(), it.y.dp.toPx()) } }
+
+    /** The same in dp. */
+    private fun atDp(p: GeoPoint): Offset {
         val s = 0.1
-        Offset(((20 + (p.lon - 11.096) * 76_400 * s)).dp.toPx(), ((300 + (46.661 - p.lat) * 111_320 * s)).dp.toPx())
+        return Offset((20 + (p.lon - 11.096) * 76_400 * s).toFloat(), (300 + (46.661 - p.lat) * 111_320 * s).toFloat())
     }
 
     private fun shot(locale: Locale) {
@@ -83,21 +86,18 @@ class CandidateMarkerScreenshotTest {
                             listOf(pts.first() to Color(0xFF2E7D32), pts.last() to Color(0xFFC62828)).forEach { (o, c) ->
                                 drawCircle(Color.White, 15.dp.toPx(), o); drawCircle(c, 12.dp.toPx(), o)
                             }
-                            // the hut's own map icon, then the candidate marker around it and its name
+                            // the hut's own map icon, then the pin on it (owner 2026-11-02: tip on the place)
                             val h = at(p, this)
                             drawCircle(Color.White, 10.dp.toPx(), h); drawCircle(Color(0xFF8D5524), 8.5.dp.toPx(), h)
                             drawIntoCanvas { cv ->
                                 CandidateMarker.draw(cv.nativeCanvas, h.x, h.y, density, android.graphics.Color.parseColor(MapController.ROUTE_COLOR))
-                                val tp = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                                    textSize = 13.dp.toPx(); textAlign = android.graphics.Paint.Align.CENTER
-                                    typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-                                }
-                                val y = h.y + 30.dp.toPx() + tp.textSize
-                                tp.style = android.graphics.Paint.Style.STROKE; tp.strokeWidth = 3.dp.toPx(); tp.color = android.graphics.Color.WHITE
-                                cv.nativeCanvas.drawText(hut.title(), h.x, y, tp)
-                                tp.style = android.graphics.Paint.Style.FILL; tp.color = android.graphics.Color.parseColor(MapController.ROUTE_COLOR)
-                                cv.nativeCanvas.drawText(hut.title(), h.x, y, tp)
                             }
+                        }
+                        // its name chip under the tip, placed as the app places it (MapOverlayHost → PinChipAt)
+                        val d = androidx.compose.ui.platform.LocalDensity.current
+                        val hPx = with(d) { Offset(atDp(p).x.dp.toPx(), atDp(p).y.dp.toPx()) }
+                        PinChipAt(hPx, topPx = with(d) { 100.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }) {
+                            PinChip(hut.title(), onClick = {})
                         }
                         Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                             PlanTopBar({}, PlanMenu(), Modifier.fillMaxWidth())

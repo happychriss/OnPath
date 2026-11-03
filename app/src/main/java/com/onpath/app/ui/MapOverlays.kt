@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.TripOrigin
+import androidx.compose.material.icons.outlined.WrongLocation
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,7 +46,10 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.text.font.FontWeight
@@ -94,8 +98,21 @@ fun MapOverlayHost(
                 onStartHere = { vm.startHere(p) }, onFromMe = { vm.routeFromMyLocation(p) })
         }
     }
+    // the found place's name chip under its pin (owner 2026-11-02): only where the plan can be edited – this host draws
+    // nothing in Navigate or while a track is shown (the pin itself stays there, MapScreen hides it in Navigate)
+    vm.searchMark?.let { m ->
+        @Suppress("UNUSED_EXPRESSION") cameraTick // re-read the projection on every camera move
+        c.toScreen(GeoPoint(m.lat, m.lon))?.let { s ->
+            PinChipAt(Offset(s.x, s.y), topPx, bottomPx) { PinChip(m.title(), onClick = vm::openPinMenu) }
+        }
+    }
     vm.poiMenu?.let { poi ->
-        Anchored(c, GeoPoint(poi.lat, poi.lon), cameraTick, topPx, bottomPx, onGone = { com.onpath.app.debug.Problems.trace("plan", "POI menu closed: POI left the visible map (onGone)"); vm.poiMenu = null }) {
+        val pin = vm.isCandidate(poi)
+        // the pin's menu goes above the pin's head, not over it
+        val lift = if (pin) c.dpToPx(com.onpath.app.map.CandidateMarker.PIN_HEIGHT_DP) else 0f
+        // no room above: under the name chip, never over the pin (owner 2026-11-02, the empty plan's 4-line menu)
+        val drop = if (pin) c.dpToPx(PIN_CHIP_BELOW_DP) else 0f
+        Anchored(c, GeoPoint(poi.lat, poi.lon), cameraTick, topPx, bottomPx, liftPx = lift, dropPx = drop, onGone = { com.onpath.app.debug.Problems.trace("plan", "POI menu closed: POI left the visible map (onGone)"); vm.poiMenu = null }) {
             PoiMenu(poi,
                 emptyPlan = vm.waypoints.isEmpty(),
                 fromMeBlocked = MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
@@ -105,7 +122,8 @@ fun MapOverlayHost(
                 onGoogle = {
                     vm.closeMapOverlays()
                     com.onpath.app.poi.PoiIntents.openInGoogleMaps(ctx, poi)
-                })
+                },
+                onRemovePin = if (pin) { { vm.closeMapOverlays("pin removed"); vm.removePin("its menu: Remove pin") } } else null)
         }
     }
     vm.pointMenuTarget?.let { t ->
@@ -153,12 +171,82 @@ fun RoutingRing(center: Offset, stillProgress: Float? = null) {
 
 @Composable
 private fun Anchored(
-    c: MapController, at: GeoPoint, cameraTick: Int, topPx: Int, bottomPx: Int, onGone: () -> Unit,
-    content: @Composable () -> Unit,
+    c: MapController, at: GeoPoint, cameraTick: Int, topPx: Int, bottomPx: Int, onGone: () -> Unit, liftPx: Float = 0f,
+    dropPx: Float = 0f, content: @Composable () -> Unit,
 ) {
     @Suppress("UNUSED_EXPRESSION") cameraTick // re-read the projection on every camera move
     val s = c.toScreen(at) ?: return
-    AnchoredOverlay(Offset(s.x, s.y), topPx, bottomPx, onGone, content)
+    AnchoredOverlay(Offset(s.x, s.y - liftPx), topPx, bottomPx, onGone, belowY = s.y + dropPx, loose = dropPx > 0f, content = content)
+}
+
+/** The found place's name chip (owner 2026-11-02), pure rules. */
+object PinChipRules {
+    /** Longer names end in "…" after this many characters (the chip stays small on the map). */
+    const val MAX_CHARS = 20
+    /** Gap between the place (the pin's tip) and the chip's visible top, dp. */
+    const val GAP_DP = 6
+
+    fun label(name: String): String {
+        val n = name.trim()
+        return if (n.length <= MAX_CHARS) n else n.take(MAX_CHARS - 1).trimEnd() + "…"
+    }
+
+    /**
+     * Where the chip box ([w] × [h], its visible pill centred in it, [touchPad] above and below) goes for a place at
+     * ([ax], [ay]): centred under the tip, kept inside [left]..[right] and above [bottom]; below [top] or off the map it
+     * is not shown (null) – the pin stays.
+     */
+    fun place(ax: Float, ay: Float, w: Int, h: Int, touchPad: Int, gap: Int, left: Int, right: Int, top: Int, bottom: Int): Pair<Int, Int>? {
+        if (ax < left - w || ax > right + w) return null
+        val y = (ay + gap - touchPad).toInt()
+        if (y + h > bottom || y < top) return null
+        val x = (ax - w / 2f).toInt().coerceIn(left, maxOf(left, right - w))
+        return x to y
+    }
+}
+
+/** Places the chip under the pin's tip at [anchor] (pixels in this box), following [PinChipRules.place]. */
+@Composable
+internal fun PinChipAt(anchor: Offset, topPx: Int, bottomPx: Int, content: @Composable () -> Unit) {
+    val d = LocalDensity.current
+    val margin = with(d) { 12.dp.roundToPx() }
+    val gap = with(d) { PinChipRules.GAP_DP.dp.roundToPx() }
+    val pad = with(d) { PIN_CHIP_TOUCH_PAD.roundToPx() }
+    Layout(content = { Box { content() } }, modifier = Modifier.fillMaxSize()) { ms, cs ->
+        val w = cs.maxWidth; val h = cs.maxHeight
+        val pl = ms.first().measure(cs.copy(minWidth = 0, minHeight = 0, maxWidth = w - 2 * margin))
+        val at = PinChipRules.place(anchor.x, anchor.y, pl.width, pl.height, pad, gap, margin, w - margin, topPx, h - bottomPx)
+        layout(w, h) { at?.let { (x, y) -> pl.place(x, y) } }
+    }
+}
+
+/** From the pin's tip to below its name chip (gap + the chip's 48 dp touch box): where the menu goes when not above. */
+internal const val PIN_CHIP_BELOW_DP = 54f
+
+/** Room above and below the visible pill so the touch target is ≥ 48 dp high. */
+private val PIN_CHIP_TOUCH_PAD = 8.dp
+
+/**
+ * The found place's name under its pin: "Fabriciusstraße ›" (owner 2026-11-02) – a real button, white pill, the name
+ * bold, a blue ›. A tap opens the place's menu (the one a hold on the pin opens: add / start here / Google Maps / remove
+ * pin). Long names end in "…" ([PinChipRules.label]).
+ */
+@Composable
+fun PinChip(name: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val desc = str(Res.string.plan_pin_chip_desc, name)
+    // TalkBack hears one button: "Fabriciusstraße: show options" (not the name and the › again)
+    Box(modifier.clickable(role = Role.Button, onClick = onClick)
+        .clearAndSetSemantics { contentDescription = desc; role = Role.Button; onClick { onClick(); true } }
+        .padding(vertical = PIN_CHIP_TOUCH_PAD), contentAlignment = Alignment.Center) {
+        Surface(shape = CircleShape, color = OnPathColors.CardWhite, contentColor = OnPathColors.Ink, shadowElevation = 3.dp) {
+            Row(Modifier.heightIn(min = 32.dp).padding(start = 12.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(PinChipRules.label(name), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
+                    color = OnPathColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.width(4.dp))
+                Text("›", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = OnPathColors.Route)
+            }
+        }
+    }
 }
 
 /**
@@ -166,7 +254,9 @@ private fun Anchored(
  * inside the map area between [topPx] and the bottom minus [bottomPx]. [onGone] when the anchor leaves the box.
  */
 @Composable
-fun AnchoredOverlay(anchor: Offset, topPx: Int, bottomPx: Int, onGone: () -> Unit = {}, content: @Composable () -> Unit) {
+fun AnchoredOverlay(anchor: Offset, topPx: Int, bottomPx: Int, onGone: () -> Unit = {}, belowY: Float = anchor.y,
+                    /** The pin's menu: may reach over the top bar / the sheet rather than cover the pin. */
+                    loose: Boolean = false, content: @Composable () -> Unit) {
     val d = LocalDensity.current
     val margin = with(d) { 12.dp.roundToPx() }
     val gap = with(d) { 22.dp.roundToPx() }
@@ -179,7 +269,8 @@ fun AnchoredOverlay(anchor: Offset, topPx: Int, bottomPx: Int, onGone: () -> Uni
         }
         Layout(content = { Box { content() } }, modifier = Modifier.fillMaxSize()) { measurables, cs ->
             val pl = measurables.first().measure(cs.copy(minWidth = 0, minHeight = 0, maxWidth = minOf(maxW, w - 2 * margin)))
-            val (x, y) = MapGestures.placeOverlay(anchor.x, anchor.y, pl.width, pl.height, margin, topPx, w - margin, h - bottomPx, gap)
+            val (x, y) = MapGestures.placeOverlay(anchor.x, anchor.y, pl.width, pl.height, margin, topPx, w - margin, h - bottomPx, gap, belowY,
+                looseTop = margin.takeIf { loose }, looseBottom = (h - margin).takeIf { loose })
             layout(w, h) { pl.place(x, y) }
         }
     }
@@ -209,7 +300,9 @@ fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: ()
 @Composable
 fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifier = Modifier,
             emptyPlan: Boolean = false, fromMeBlocked: String? = null, onFromMe: () -> Unit = {},
-            addLabel: String = str(Res.string.search_card_set_destination)) {
+            addLabel: String = str(Res.string.search_card_set_destination),
+            /** The found place's pin: its menu ends with "Nadel entfernen" (owner 2026-11-02); null = a map POI. */
+            onRemovePin: (() -> Unit)? = null) {
     val place = Place.fromPoi(poi)
     val de = Poi.isGerman()
     MenuSurface(modifier) {
@@ -228,6 +321,7 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
             HoldMenuItem(Icons.Outlined.AddLocationAlt, addLabel, onClick = onAdd)
         }
         HoldMenuItem(Icons.Outlined.Map, str(Res.string.plan_open_google_maps), onClick = onGoogle)
+        onRemovePin?.let { HoldMenuItem(Icons.Outlined.WrongLocation, str(Res.string.plan_remove_pin), onClick = it) }
     }
 }
 

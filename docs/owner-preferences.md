@@ -9,6 +9,10 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
   other**, each with 2–3 lines of background – never a list of questions in prose. Every question also goes to the
   dashboard (issues `frage` in `onpath.private`, `tools/ask.sh`); a blocking one is asked in the chat too (yellow
   "waiting" dot), the owner answers where he is, the session keeps the issue up to date and closes it.
+- **No numbers toward the owner** (owner 2026-11-02: "sowas wie #19 kann ich mir nicht merken"): in the chat and in
+  push messages name a question, issue, commit or item by a short description ("die Frage zum Startknopf"), never by
+  its number alone. Numbers stay in issues, the backlog and commit messages for the sessions; the owner may answer
+  with a word ("Startknopf: A").
 - Plain words, short updates, outcome first. No diffs or file dumps in the terminal; quiet tool calls, one-line results.
 - Never name internals toward the owner as product words ("cells", "routing data") – it's "map areas", "the map".
 - Komoot is the UX reference (the owner is a long-time Komoot user).
@@ -16,6 +20,8 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
 ## Product rules seen again and again (details in CLAUDE.md / backlog)
 - **No messages that disappear by themselves** – everything stays until answered or the situation is gone
   ("we are a hiking app – it can rain, stress…"). Nothing may flash.
+- **The owner's chosen words stay** (owner 2026-11-01, "Hierhin" had become "Von meinem Standort hierhin" in a UX
+  review): a review or polish pass never rewords a UI text the owner picked – it proposes the change as a question.
 - **Hold-only gestures in Plan**, no quick-tap actions, no dragging points (delete + add).
 - **Re-routing only after asking**; skip passed stops; show the original route grey.
 - **Core features**: a field bug first gets a reproducing test, then the fix.
@@ -27,6 +33,9 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
   (zo.fritz.box:3000) – never in this public GitHub repo.
 
 ## How sessions work
+- **The owner must notice when a session waits** (owner 2026-11-02): every question also goes to the dashboard
+  (`tools/ask.sh`), and on donald / the laptop the Claude push is on (`/config`: "Push when actions required" + "Push
+  when Claude decides" – `docs/roles/neu/umstellung.md`). A question asked only in the chat is a bug.
 - **Main session talks and distributes; work runs in background agents** (builds, checks, merges, installs). The
   main session keeps the overview of all agents (task → state → next step), stops stuck ones, and reports without
   being asked. **The chat stays responsive** (owner 2026-11-01): a request that takes longer than ~2 minutes and stands

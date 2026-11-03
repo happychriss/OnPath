@@ -61,6 +61,18 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/stop-wake.sh",
+            "asyncRewake": true,
+            "timeout": 3600
+          }
+        ]
+      }
     ]
   }
 }

@@ -84,7 +84,7 @@
     <string name="settings_pace_learn">During a tour, the arrival time adapts to your pace of the day after about 15 minutes.</string>
     <string name="settings_upd_banner_title">OnPath %1$s is available</string>
     <string name="settings_upd_downloading">Downloading… %1$d %</string>
-    <string name="settings_upd_kept">Your routes, tracks and maps are kept.</string>
+    <string name="settings_upd_kept">Your routes, tours and maps are kept.</string>
     <string name="settings_upd_later">Later</string>
     <string name="settings_upd_install">Install</string>
     <string name="settings_upd_installed">Installed: OnPath %1$s</string>

@@ -18,23 +18,16 @@ the git log.
 5. **cloud-web:** website texts match the release (voice already says "available" – 065d3b7), help pages get pictures
    (A-019 set in `onpath.private/marketing/bilder/`), a short tester note: what to try, how to report (Settings →
    Diagnostics export, mail, GitHub issue).
-6. **Owner decides:** how the first users install – APK from the GitHub release (sideload, Play Protect warning) or
-   wait for the Play internal test (A-003 not started)? All APKs still use the TEST map server (one shared key, IP
-   limits) – fine for a small group, say how many testers.
+6. **Owner decided 2026-11-02 (onpath.private#2, #3):** the first testers (family, friends) install through the
+   **Google Play internal test**, not GitHub. Order: today as much of the open work as possible into v0.14.0 → release
+   → then A-003 Play build (next big item). Debug build + test key stay for the team's GitHub builds.
 
 ## For the roles
+- → [cloud-web] (donald 2026-11-03): pairing-help pictures app part done – `onpath.private/marketing/bilder/2026-11-03-donald/`
+  (`app-a1…a4-de|en.png` + `Ergebnis.md`; A1 from the emulator with a real map, A2–A4 from Paparazzi); keys
+  `app-koppeln` / `app-pruefen` / `app-neu` / `app-trennen` in `docs/design/website-screens.md`.
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
-
-- → [cloud-plan] **Pictures for the pairing help (owner 2026-11-01: "ask cloud-plan for new screenshots", order by
-  cloud-web):** planner on `web-spike`, 1440 × 900, DE + EN, plan Vellau Korblift → Leiteralm, the fake phone of
-  `sync-smoke.mjs` named "Pixel 8", no real pairing code visible (blur or a test mailbox): (W1) header right unpaired:
-  "Speichern" + "Handy verbinden"; (W2) pairing dialog with QR + check digits (code blurred); (W3) header paired: "Aufs
-  Handy sichern" dark + phone pill "Pixel 8 🟢 abgeglichen vor 2 Min."; (W4) after the click: "✓ Auf dem Handy"; (W5) My
-  routes paired: rows with 🖥 📱, one bold (waiting), one "Neu" tag; (W6) phone window paired: name + dot, "Jetzt
-  abgleichen", red "Trennen" at the bottom. Best as a script beside `ui-shots` so a later UI change re-shoots them.
-  PNGs `web-w1…w6-de|en.png` into `onpath.private/marketing/bilder/<date>-hp/` + `Ergebnis.md`; then a line under
-  "For the captain" – captain 2026-11-01.
 
 ## For the captain
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
@@ -53,19 +46,40 @@ the git log.
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
-- [cloud-plan] Shared rules from main 2e50efbc wired on web-spike 4e9913be – left: the mirror line "Left from main 2e50efbc" – since 2026-11-01
+- [cloud-plan] Laptop off (2026-11-02 evening) – web-spike 415d3802 clean; next sitting: merge main on the captain's word, time-limit question, mirror leftovers – since 2026-11-02
 - [cloud-app] The rest of the backlog (owner 2026-11-01: no release today, everything in) – since 2026-11-01
 - [cloud-app] AppViewModel split done, build on the Pixel (16:31) – owner tests it outside, then the captain's release check – since 2026-11-01
 - [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
 
 ## Next
-- **Pictures for the pairing help – app part (order by cloud-web, owner OK 2026-11-01)** [emu]: emulator, A-019 setup,
-  DE + EN: (A1) ☰ open with "Mit Browser verbinden"; (A2) the question "Mit diesem Browser verbinden? Prüfe: 123 456"
-  with "Verbinden"; (A3) My routes with a route from the browser ("Neu"); (A4) Settings → Browser-Abgleich paired with
-  "Trennen" (EN missing today). If the Paparazzi snapshots `planPairHint` / `planPairedNote` / `toursFromBrowser` /
-  `settingsSyncPaired` already show these well enough, say so instead (cloud-web uses them as `app-koppeln` …
-  `app-trennen`). PNGs `app-a1…a4-de|en.png` into `onpath.private/marketing/bilder/<date>-donald/` + `Ergebnis.md`, add
-  the keys to `docs/design/website-screens.md`; `tools/dev/website_shot.sh`.
+- **[captain] 09:10 release check v0.14.0: NO GO, one ✗ left** – (a) 3 shared files not yet on web-spike (search/Place.kt,
+  ui/MapGestures.kt, ui/RouteWarnings.kt) → the captain fired the planner sync (cloud) at 09:10, it merges main and pushes;
+  (b) CI: unit + E2E green on e4870f9d (last code commit; newer commits are docs only). After the planner push is green
+  the captain re-runs the check and writes the GO line here; then [cloud-app] releases. Don't release before.
+- **Night list 2026-11-02 → 03 – donald's state 2026-11-03 morning:** (1) E2E green, (2)–(3) words + "Los geht's" +
+  ☰ item, (4) plan during a tour = tile bar, (5) paved footways amber note – all on main, issues closed; (6) slow
+  planning text asked as onpath.private#21 (not blocking). **v0.14.0 not released** (donald was blocked by a chat box
+  until the owner's answer; no captain GO line) – **Rundgang on main 56ea018e (2026-11-03 08:57): 14 of 14 flows PASS**
+  (`~/onpath-cells-work/rundgang/2026-11-03_0857`) – ready for the captain's release check; the release itself after the captain's GO (`release_check.sh --go v0.14.0`). Pixel unplugged →
+  [pixel] items wait.
+- **[cloud-plan] Planner wait box: the time-limit question** (owner 2026-11-02, onpath.private#13): the wait box with
+  Cancel is on web-spike (415d3802); when the time limit is hit it should become the question "weiter warten / abbrechen"
+  – waits for [cloud-app]'s text (the app leads).
+- **[cloud-app] [pixel] Diagnostics: 127 entries on the owner's Pixel – look at them before v0.14.0 if it fits**
+  (owner 2026-11-02: "hat sich die mal jemand angeguckt?"): pull the diagnostics export briefly over adb (no tour
+  recording, phone untouched otherwise), sort: old (fixed / old version) · new + harmless (INFO, offline) · new + a real
+  bug → its own Next line with a reproducing test. A short overview to the owner; the owner then clears with the button.
+- **[cloud-app] Diagnostics list folds** (owner 2026-11-02, low prio, after v0.14.0): Settings → Diagnostics starts
+  folded – one line "127 Einträge, davon 3 Fehler ▸" – so the developer tools under it are reached without scrolling.
+- **[pixel] Field check: no GPS line while lying still (built 2026-11-02, `recording/StillSense`)** – phone flat on a
+  table with a tour running: no GPS line, also in the first 2 min; phone in a pocket while sitting (threshold 0.5 m/s²
+  is a guess); walking / riding without GPS → amber after the short gap; no extra battery drain. Open: the notification
+  says nothing about GPS while the phone lies still (owner 2026-11-02).
+- **[cloud-app] A-003 Play build – right after v0.14.0** (owner 2026-11-02, onpath.private#3): flavours prod (Google Play:
+  no self-update, no REQUEST_INSTALL_PACKAGES, no GitHub update line in Settings → Datenschutz) / dev (as today);
+  signed AAB for prod in `release.yml` next to the APK; upload key made by the owner locally → GitHub secret, never in
+  the repo. Signing / build config → **pull request to the owner** (CLAUDE.md). Spec: `onpath.private/auftraege/a-003-play-fassung.md`,
+  steps for the owner: `onpath.private/marketing/anleitung-geschlossener-test.md` §1–5. Not before v0.14.0 is out.
 - **Bike difficulty limit S0 / S1 / S2 (owner 2026-11-01, "easy to build?"):** today only the hike has a chosen limit
   (T1–T5). Gravel (`trekking.brf`) and Bike / E-bike (`touring.brf`) already make S2 very expensive (+30) and shut S3+
   (10000); `mtb.brf` only adds a cost per S grade, no limit. Wanted: a chosen limit per bike activity ("nur S0", "bis S1"),
@@ -262,8 +276,6 @@ the git log.
   production deploy is part of the launch together with Google Play.
 - **Google Play internal test track** – create the app, secret release key + `PLAY_SERVICE_ACCOUNT_JSON` in GitHub
   secrets, upload from `release.yml` (today: fixed test key). Removes Play Protect warnings.
-- **Footways without a bicycle tag (Hilden Itter path)** – Bike / Gravel profiles avoid them (push penalty). Option:
-  allow paved footways with an amber "footway – may need to push" note?
 - **AGP 9.4.1 upgrade** – later, when the owner says so.
 
 ## Later

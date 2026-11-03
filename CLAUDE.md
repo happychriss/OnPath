@@ -4,8 +4,8 @@
 `docs/backlog.md`, push small green commits, leave a handoff.**
 **Every session has a role (`docs/roles/`: cloud-app, cloud-plan, cloud-web, cloud-captain) – at the start name it and
 read `docs/roles/<role>.md`.** **Switch in progress (owner 2026-11-01):** donald and the captain work by
-`docs/roles/neu/start.md` / `captain.md` (donald = unit with a Leitstand, `[cloud-app]` lines are donald's); the
-laptop (cloud-plan) and cloud-web keep their old role files until `web-spike` is merged.
+`docs/roles/neu/start.md` / `captain.md` (donald = one working session, the unit; `[cloud-app]` lines are donald's); the
+laptop (cloud-plan) and cloud-web keep their old role files until `web-spike` is merged. How and why the setup works: `docs/roles/multi-agent-lernen.md`.
 
 Read this first, then `docs/owner-preferences.md` (how the owner likes to work), `docs/project-status.md` (where we are, decisions, next steps) and
 `docs/requirements.md` (full requirements with IDs like F-PLAN-04, R-07). **Rules per area live in `.claude/rules/`** (ui, routing, map,

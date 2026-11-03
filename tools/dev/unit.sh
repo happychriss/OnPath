@@ -28,7 +28,7 @@ STATE=${XDG_STATE_HOME:-$HOME/.local/state}/onpath-unit
 UNITS=${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user
 mkdir -p "$STATE"
 die() { echo "unit: $*" >&2; exit 2; }
-need_name() { [ -n "$NAME" ] || die "$cmd needs a name, e.g. donald or hp"; case "$NAME" in *[!a-z0-9-]*) die "name: a-z 0-9 - only" ;; esac; }
+need_name() { [ -n "$NAME" ] || die "$cmd needs a name, e.g. donald or laptop"; case "$NAME" in *[!a-z0-9-]*) die "name: a-z 0-9 - only" ;; esac; }
 
 run() {
   need_name; cd "$DIR" || exit 2
@@ -37,6 +37,7 @@ run() {
   [ -n "${ONPATH_PERMISSION_MODE:-}" ] && mode=(--permission-mode "$ONPATH_PERMISSION_MODE")
   echo "$(date '+%F %T') host start in $DIR" >> "$log"
   # `script` gives claude a real terminal (a pipe made it ignore keys on donald) and keeps a copy of the output
+  export ONPATH_UNIT=$NAME   # the stop-wake hook (tools/hooks/stop-wake.sh) and new_items.sh know the unit by it
   script -qefa -c "claude remote-control --remote-control-session-name-prefix $NAME ${mode[*]}" "$log"; rc=$?
   # a new folder must be trusted once by hand – an autostart cannot answer the dialog (seen on donald 2026-11-01)
   if tail -n 40 "$log" | grep -q "Workspace not trusted"; then

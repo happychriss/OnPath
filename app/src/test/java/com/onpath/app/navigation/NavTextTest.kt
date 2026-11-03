@@ -123,10 +123,10 @@ class NavTextTest {
         try {
             val p = NavPrompt.FarStart(1, 30_600.0, 225.0)
             assertEquals("Route beginnt 31 km entfernt", NavText.title(p))
-            assertEquals("südwestlich (Luftlinie) · Aufzeichnung läuft", NavText.state(p))
+            assertEquals("südwestlich (Luftlinie) · Aufnahme läuft", NavText.state(p))
             assertEquals("Hinführen", NavText.LEAD)
-            assertEquals("Nur aufzeichnen", NavText.JUST_RECORD)
-            assertEquals("Kein Weg zur Route gefunden – Aufzeichnung läuft weiter", NavText.title(NavPrompt.LeadFailed(2)))
+            assertEquals("Nur aufnehmen", NavText.JUST_RECORD)
+            assertEquals("Kein Weg zur Route gefunden – Aufnahme läuft weiter", NavText.title(NavPrompt.LeadFailed(2)))
             assertEquals("Du bist 120 m von der Route weg", NavText.title(fresh))
             assertEquals("Neue Route bis zum Ziel: 3,4 km (350 m länger)", NavText.question(fresh))
             assertEquals("Neue Route bis zum Ziel: 3,4 km (350 m kürzer)", NavText.question(fresh.copy(extraM = -350.0)))

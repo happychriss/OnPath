@@ -49,6 +49,8 @@ fi
 mkdir -p "$WORK" 2>/dev/null
 LOCK=$WORK/$dev.lock
 if ! command -v flock >/dev/null; then echo "device: ⚠ flock missing – running without the $dev lock"; exec "$@"; fi
+# an adb server started by the command would inherit fd 8 and keep the lock after we end: start it before
+command -v adb >/dev/null && { adb start-server >/dev/null 2>&1 || true; } # expected: adb missing → the command fails itself
 exec 8>>"$LOCK"
 if ! flock -n 8; then
   holder=$(cat "$LOCK.info" 2>/dev/null || echo "another agent")
@@ -58,6 +60,8 @@ if ! flock -n 8; then
   else flock 8; fi
 fi
 echo "$(who) since $(date '+%H:%M:%S'): $*" > "$LOCK.info"
+# the command may take the same lock itself (release_rundgang.sh): tell it we hold it, else it waits for us forever
+export ONPATH_DEVICE_HELD="$dev"
 "$@"; rc=$?
 : > "$LOCK.info"
 exit $rc

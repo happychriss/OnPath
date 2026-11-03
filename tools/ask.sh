@@ -16,7 +16,8 @@
 #                      --blockiert: nothing goes on without the answer – the session ALSO asks in its chat and waits
 #                      (the owner sees the yellow "waiting" dot); title gets "⏸". Without it: the session works on.
 #   tools/ask.sh antwort <nr> "A – …"      the owner answered in the chat: copy it into the issue (keeps the list true)
-#   tools/ask.sh offen [--von donald]      open questions + their last comment (= the owner's answer, if any)
+#   tools/ask.sh offen [--von donald] [--json]   open questions + their last comment (= the owner's answer, if any);
+#                                          --json: number, title, body, all comments (for the /fragen skill)
 #   tools/ask.sh erledigt <nr> "was gemacht wurde"     comment + close a question
 #   tools/ask.sh an-alle [--von donald]    print the open `an-alle` issues (and confirm them as read with --von)
 #   tools/ask.sh sag --titel "…" --text "…"            new `an-alle` issue (owner / captain)
@@ -34,7 +35,7 @@ have_gh() { command -v gh >/dev/null && gh api "repos/$REPO" --silent >/dev/null
 cmd=${1:-}; shift || true
 case "$cmd" in -h|--help|"") sed -n '2,/^set -uo/p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;; esac
 ARGS=()
-BLOCK=0
+BLOCK=0 JSON=0
 VON="" TITEL="" WORUM="" FRAGE="" A="" B="" C="" DETAILS="" TEXT="" RELEASE=0
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -47,6 +48,7 @@ while [ $# -gt 0 ]; do
     --c) C=$2; shift ;;
     --details) DETAILS=$2; shift ;;
     --blockiert) BLOCK=1 ;;
+    --json) JSON=1 ;;
     --text) TEXT=$2; shift ;;
     --release) RELEASE=1 ;;
     -h|--help) sed -n '2,/^set -uo/p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
@@ -95,6 +97,7 @@ case "$cmd" in
   offen)
     have_gh || die "gh cannot reach $REPO"
     json=$(open_issues frage) || die "could not list questions"
+    [ "$JSON" = 1 ] && { jq '[.[] | {number, title, body: (.body | split("\n---\n")[0]), answers: .comments}]' <<<"$json"; exit 0; }
     jq -r '.[] | "#\(.number) \(.title)\n   Antwort: \(if (.comments|length) > 0 then (.comments[-1]|split("\n")[0]) else "– noch keine –" end)"' <<<"$json" |
       { if [ -n "$VON" ]; then grep -A1 -F "[$VON]" | grep -v '^--$'; else cat; fi; }
     ;;

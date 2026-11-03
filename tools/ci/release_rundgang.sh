@@ -32,7 +32,14 @@ T0=$(date +%s)
 
 # One agent per emulator (tools/dev/device.sh, owner 2026-11-01): hold the machine's emulator lock for the whole run,
 # so a parallel agent never shares (or kills) this emulator. Released when the script ends (fd 7).
-if command -v flock >/dev/null; then
+# Started through `tools/dev/device.sh emulator -- …` the lock is already ours (ONPATH_DEVICE_HELD) – taking it again
+# would wait for the parent forever (donald 2026-11-02).
+if [ "${ONPATH_DEVICE_HELD:-}" = emulator ]; then
+  echo "release_rundgang: emulator lock held by device.sh"
+elif command -v flock >/dev/null; then
+  # the adb server outlives this script: start it before the lock is open, or it inherits fd 7 and holds the emulator
+  # lock for good (donald 2026-11-02: "emulator: busy" with nobody running)
+  "$ADB" start-server >/dev/null 2>&1 || true # expected: no adb yet → the build step below says so
   exec 7>>"$WORK/emulator.lock"
   if ! flock -n 7; then
     echo "Waiting for the emulator – $(cat "$WORK/emulator.lock.info" 2>/dev/null || echo "another agent has it")"

@@ -40,6 +40,8 @@ data class Place(
     val village: String? = null,
     /** A small note that stays on the place card, e.g. "Position from the address" for a shared place. */
     val note: String? = null,
+    /** Shared into OnPath (Google Maps → Share → OnPath): "Recent" shows it with a share sign (owner 2026-11-02). */
+    val shared: Boolean = false,
 ) {
     enum class Source { POI, MAP, TRAIL, ONLINE }
 

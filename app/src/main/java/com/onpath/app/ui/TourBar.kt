@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -34,6 +35,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -101,26 +103,24 @@ fun RecDot(paused: Boolean, modifier: Modifier = Modifier) {
 fun EndTourDialog(
     onSave: () -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit,
     title: String = str(Res.string.nav_end_tour_title), cancelLabel: String = str(Res.string.common_cancel),
+    /** "Neue / Geänderte Route auch speichern" with its box (empty at first); null = no route to save. */
+    routeLabel: String? = null, routeChecked: Boolean = false, onRouteChecked: (Boolean) -> Unit = {},
 ) {
-    var askDelete by remember { mutableStateOf(false) }
-    if (askDelete) {
-        AlertDialog(
-            onDismissRequest = { askDelete = false },
-            icon = { Icon(Icons.Filled.Delete, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(str(Res.string.nav_delete_track_title)) },
-            text = { DialogText(RECYCLE_BIN_NOTE) },
-            confirmButton = { TextButton(onClick = { askDelete = false; onDelete() },
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(str(Res.string.common_delete)) } },
-            dismissButton = { TextButton(onClick = { askDelete = false }) { Text(str(Res.string.common_cancel)) } },
-        )
-        return
-    }
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Filled.Flag, null) },
         title = { Text(title) },
-        // no body: the buttons say it
-        confirmButton = { DeleteApartButtons({ askDelete = true }, cancelLabel, onDismiss, str(Res.string.common_save), onSave) },
+        // no body but the route option: the buttons say it
+        text = routeLabel?.let { label -> {
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(routeChecked, role = androidx.compose.ui.semantics.Role.Checkbox,
+                onValueChange = onRouteChecked), verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.Checkbox(checked = routeChecked, onCheckedChange = null)
+                Spacer(Modifier.width(8.dp))
+                Text(label, style = MaterialTheme.typography.bodyLarge)
+            }
+        } },
+        // "Aufnahme speichern" – not "Speichern": in the plan it read like saving the edited route (owner 2026-11-01)
+        confirmButton = { DeleteApartButtons(onDelete, cancelLabel, onDismiss, str(Res.string.nav_save_recording), onSave) },
     )
 }
 
@@ -134,34 +134,42 @@ internal fun DeleteApartButtons(onDelete: (() -> Unit)?, cancelLabel: String, on
     androidx.compose.ui.layout.Layout(content = {
         TextButton(onClick = onCancel) { Text(cancelLabel) }
         Button(onClick = onSave) { Text(saveLabel, maxLines = 1) }
-        if (onDelete != null) TextButton(onClick = onDelete,
-            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(str(Res.string.common_delete)) }
+        if (onDelete != null) {
+            TextButton(onClick = onDelete,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(str(Res.string.common_delete)) }
+            // no second question (owner 2026-11-01: "ist ja sowieso alles im Papierkorb") – the note says it, under Delete
+            Text(RECYCLE_BIN_NOTE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 12.dp))
+        }
     }, modifier = Modifier.fillMaxWidth()) { ms, c ->
         // one row when all fit (Delete left, apart); else Cancel + Save right-aligned (each on its own row when even
-        // that does not fit, a large font) and Delete under them on the left
+        // that does not fit, a large font) and Delete under them on the left; the bin note under Delete
         val loose = c.copy(minWidth = 0)
-        val p = ms.map { it.measure(loose) }
+        val cancel = ms[0].measure(loose); val save = ms[1].measure(loose)
+        val del = ms.getOrNull(2)?.measure(loose)
         val w = c.maxWidth
         val gap = 8.dp.roundToPx()
-        val cancel = p[0]; val save = p[1]; val del = p.getOrNull(2)
-        val oneRow = p.sumOf { it.width } + gap * (p.size - 1) <= w
+        val note = ms.getOrNull(3)?.measure(loose.copy(maxWidth = w))
+        val btns = listOfNotNull(cancel, save, del)
+        val oneRow = btns.sumOf { it.width } + gap * (btns.size - 1) <= w
         val pairFits = cancel.width + gap + save.width <= w
-        val rows = when {
-            oneRow -> 1
-            pairFits -> 1 + (if (del != null) 1 else 0)
-            else -> 2 + (if (del != null) 1 else 0)
-        }
-        val rowH = p.maxOf { it.height }
-        layout(w, rowH * rows + gap * (rows - 1)) {
+        val rowH = btns.maxOf { it.height }
+        // y of each row
+        val delY = when { del == null -> 0; oneRow -> 0; pairFits -> rowH + gap; else -> 2 * (rowH + gap) }
+        val buttonsH = when { oneRow || del == null && pairFits -> rowH; pairFits -> 2 * rowH + gap
+            del == null -> 2 * rowH + gap; else -> 3 * rowH + 2 * gap }
+        val noteY = if (del != null) delY + rowH else buttonsH
+        val h = maxOf(buttonsH, if (note != null) noteY + note.height else 0)
+        layout(w, h) {
             if (oneRow || pairFits) {
                 save.placeRelative(w - save.width, (rowH - save.height) / 2)
                 cancel.placeRelative(w - save.width - gap - cancel.width, (rowH - cancel.height) / 2)
-                del?.placeRelative(0, if (oneRow) (rowH - del.height) / 2 else rowH + gap)
             } else {
                 save.placeRelative(w - save.width, 0)
                 cancel.placeRelative(w - cancel.width, rowH + gap)
-                del?.placeRelative(0, 2 * (rowH + gap))
             }
+            del?.placeRelative(0, delY + (rowH - del.height) / 2)
+            note?.placeRelative(0, noteY)
         }
     }
 }
@@ -171,8 +179,10 @@ internal val RECYCLE_BIN_NOTE: String get() = Txt.s(Res.string.nav_recycle_bin_n
 
 /** Shown once in Navigate when the destination is reached: the same three choices. */
 @Composable
-fun ArrivalDialog(onSave: () -> Unit, onDelete: () -> Unit, onKeepGoing: () -> Unit) =
-    EndTourDialog(onSave, onDelete, onKeepGoing, title = str(Res.string.nav_arrived_title), cancelLabel = str(Res.string.nav_keep_going))
+fun ArrivalDialog(onSave: () -> Unit, onDelete: () -> Unit, onKeepGoing: () -> Unit,
+                  routeLabel: String? = null, routeChecked: Boolean = false, onRouteChecked: (Boolean) -> Unit = {}) =
+    EndTourDialog(onSave, onDelete, onKeepGoing, title = str(Res.string.nav_arrived_title), cancelLabel = str(Res.string.nav_keep_going),
+        routeLabel = routeLabel, routeChecked = routeChecked, onRouteChecked = onRouteChecked)
 
 
 /** "Continue · Gravel bike" (owner rule: the way back to Navigate names the activity). */
@@ -230,9 +240,10 @@ internal fun breakOnlyAtDots(s: String): String = s.replace(' ', '\u00A0').repla
  * [Continue] (≥ 48 dp, also resumes a paused tour) on the right. Pause / End tour come with the next step
  * ([TourPauseEnd]); TalkBack hears the activity on the button ("Continue · Hike"). At a large font, when the status
  * beside the button would be taller than status + button stacked, the button goes under the status (right-aligned).
- * [onEnd] (the row alone, field 2026-11-01 / UX B2): a round ■ (48 dp, red edge) left of Continue opens the same
- * "End this tour?" question as End tour – no drag needed to stop.
+ * [onEnd] (the row alone, field 2026-11-01 / UX B2): "Beenden" (red edge, owner 2026-11-01: a word, not a ■) left of
+ * "Navigation weiter" opens the same "End this tour?" question as End tour – no drag needed to stop.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun TourStatusRow(
     distanceM: Double, elapsedS: Long, paused: Boolean, onPause: (Boolean) -> Unit, onContinue: () -> Unit,
@@ -243,11 +254,15 @@ fun TourStatusRow(
     val endLabel = str(Res.string.nav_end_tour)
     Layout(content = {
         TourStatus(status, paused)
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // the two buttons side by side; at a large font they wrap (never cut to "▲ N")
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.End,
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (onEnd != null) {
-                OutlinedIconButton(onClick = onEnd, modifier = Modifier.size(48.dp).semantics { contentDescription = endLabel },
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)) {
-                    Icon(Icons.Filled.Stop, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.error)
+                // the word, not a ■ (owner 2026-11-01: "kryptisch – was macht dieses Stopp?"): it ends the recording
+                OutlinedButton(onClick = onEnd, modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = endLabel },
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error), contentPadding = PaddingValues(horizontal = 12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                    Text(str(Res.string.nav_end_tour), maxLines = 1)
                 }
                 Spacer(Modifier.width(8.dp))
             }

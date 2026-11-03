@@ -4,8 +4,12 @@ Current release **0.13.5** (2026-10-31). Open work: `docs/backlog.md`. Core feat
 `docs/core-features.md`. What each release changed: `docs/release-notes/` and the git history – this file keeps only
 the current state.
 
-## Übergabe Captain-Sitzung donald – 2026-10-31 abends
-<!-- The captain session on donald ends here; the owner switches to fixed roles (`docs/working-agreement.md`). -->
+## Where things are
+<!-- Kept by the captain every round (docs/roles/neu/captain.md 5c). -->
+- **Pixel:** main b047bf79, installed 2026-11-01 19:55 (newest handoff that names it; the night draft 63b0194d is not on it).
+- **GitHub release:** v0.13.5 (2026-10-31). Next planned: v0.14.0 (owner: not before all fixes are in).
+- **Planner (plan.onpath.earth):** web-spike 415d3802 (2026-11-02 ~23:00, green: wait box in the middle, closed-folder
+  question, test races fixed; has main up to ~21:00). Laptop off for the night.
 - **State:** released 0.13.2 → 0.13.5 today. main (8cf47345 or newer) also has, **not released yet**: the planner
   splice "route only around a cut stop" (38fc16c6, ~2× faster, `PLANNER_VERSION` 3); the compact plan sheet with the
   rolled-up one-row step (d2885035, interim build on the owner's phone since 21:45); faster builds (`tools/ci/gate.sh`,
@@ -26,6 +30,35 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud-plan (laptop), 2026-11-01/02 – end of the sitting.** `web-spike` 415d3802, everything pushed, goes live by itself
+  on green CI (every green push to `web-spike` deploys – `web-spike.yml`). Done: list A 10–13, "More before the release"
+  (sync H1 / M7, edit queue, storage.persist, write failures), main merged three times (last: 6f60dd01 – shared rules wired:
+  `app/web-shared-files.txt` read by the web build, PlanPoints rows, PlanNames / RouteFit, SaveRule H3, sync M4), keys
+  Space / `/` / `F` / `?`, plan point colours, German badge colour, wait box in the middle of the map with Cancel,
+  closed-folder question, sheet-smoke races fixed (CI was red). Pictures in `onpath.private` (`marketing/bilder/2026-11-02-hp/`):
+  W1–W6 pairing help + film picture. **Open:** main has newer commits not merged (merge once on the captain's word);
+  wait box → time-limit question (needs cloud-app's text, onpath.private#13); mirror line "Left from main 2e50efbc"
+  (plan GPX pins, track → plan modal, M4 mailbox epoch). **Laptop:** `onpath.private` cloned beside the checkout
+  (`Projects/work/onpath.private`); WebKit for `browsers-check.mjs` needs 6 libs copied into Playwright's
+  `minibrowser-wpe/sys/lib` (done); a leftover helper worktree `.claude/worktrees/agent-a1a7c490002c2fb5d` (branch
+  `web-closed-folder-ask`, already merged) – delete when convenient.
+- **donald, 2026-11-02 late – found place = pin + name chip, new empty-plan hint (owner's choices, drafts on
+  https://claude.ai/artifact/5mhA8L5AR6vb1TNx8BB2qU).** A search result / shared place is a route-blue pin with a white
+  chip "Name ›" under it (tap = the place's menu, which ends with "Nadel entfernen"); it goes when added, with a new
+  search, "Neu planen", map-load cancel or "Nadel entfernen" – a tap elsewhere closes only the menu; hidden in Navigate,
+  chip hidden while a track is shown; the menu never covers the pin. Empty plan: ✋ "**Wohin soll’s gehen?** Halte dein
+  Ziel auf der Karte gedrückt – oder such es oben in der Suchleiste." gate --full green; Rundgang flow 10 PASS, flow 9
+  flaky once after flow 10 on the same emulator (passed alone). Not yet on the Pixel. Web planner still draws the old
+  ring – its daily merge follows. Word pair Route / Tour / Aufnahme decided (#14) → backlog, next.
+- **donald, 2026-11-02 evening – the night draft is on `main` (63b0194d).** `wip/donald-2026-11-01-nacht` rebased,
+  checked against the old claude-app chat (owner choices 21:38–22:17): all as chosen except the green "Route ändern …
+  Fertig" header, which the owner turned down (22:07) – the unused code + 3 unused texts removed. 3 unit tests follow the
+  new behaviour, 191 screenshots re-recorded, Rundgang flow 7 ends the recording via the slider bar, flow 2 presses
+  "Aufnahme speichern"; gate --full green. Design review vs Komoot / Organic Maps / OsmAnd saved:
+  `docs/design/review-2026-11-01-vs-komoot.md`. The owner never said "passt" to the whole draft – on the next ride:
+  route-change mode vs planning at home, the dense status card, the small line on the green slider outdoors. Hourly
+  wake-up for donald set (trig_01AXEuUPbmvBV1DfJfeokDg5, :56). Rundgang flows 2 + 7 PASS on the emulator (21:16). Fixed: `device.sh emulator -- release_rundgang.sh` waited for itself forever, and an adb server started inside held the emulator lock after the run. The owner may delete `wip/donald-2026-11-01-nacht`
+  (and `wip/voice-guidance` – nothing on it beyond main).
 - **cloud-app (donald), 2026-11-01 night – the owner's hikes (tours 61–63).** Data secured on donald:
   `~/onpath-cells-work/field/2026-11-01-wanderungen/` (live-1931 during tour 63, final-* after it: DB, events, problems,
   nav session, GPX, logcat, the owner's screenshot 17:43). Analysed: round trip 61 (a step back at the start → matcher on
@@ -96,15 +129,6 @@ the current state.
   ride (confirms the crash path); device check of the tour-edit lines in Demo mode; owner idea jog rule + way types
   (backlog, think first); a mailbox epoch on the server (cloud-plan). **Next:** the rest of the backlog; release after the
   captain's go.
-- **cloud-plan (laptop), 2026-11-01 – release-day web fixes.** main merged into `web-spike` twice (up to 2f0a231f, incl.
-  the splice catch-all – `PlannerSpliceTest` added to the web's shared tests); parity manifest re-checked. List A 10–13
-  (c652cd9e): failed downloads not kept + grey offline line + re-plan when online, WasmGC check → "browser too old"
-  page, unsaved route back without `#p=`, no developer / raw error lines. "More before the release" (1) + (2)
-  (21501007, 5749bac6): sync H1 / M7, edit queue H4, `storage.persist` H5, write failures M11. Tests: new
-  `web/app/test/robust-smoke.mjs` (run by the nowebgl CI step), manual `browsers-check.mjs` (Firefox 155 + WebKit 26.6
-  plan fine; WebKit needs 6 libs copied into Playwright's `minibrowser-wpe/sys/lib` on the laptop – no sudo).
-  **Not deployed** (owner: release on hold). **Next:** (3) with cloud-app (sync H3 / M4 shared rule, Points row text
-  M15); deploy only with the app release after the captain's go.
 - **cloud-app (donald), 2026-10-31/11-01 – captain's order done.** Release-Rundgang 14/14 PASS (flows 11 + 12 green),
   again 14/14 on main with voice. Voice guidance merged to `main` (69515dde): branch merged with main, one test made
   tolerant to the line's geometry length, Settings → Navigation screenshots EN + DE; full gate green (2253 tests). Debug
@@ -195,8 +219,8 @@ the current state.
 | Komoot GPX | Imports correctly; `<trk><type>` preselects the activity, export writes it |
 | Offline corridor | Map areas and routing data follow the plan (~10 km corridor, at most 30 areas) |
 | Search | Offline OSM index + Photon (rough position only, ~1 km); no Google Places |
-| Google | Never store or draw Google content; link out only (exception: a place shared from Google Maps) |
-| Place shared from Google Maps | The map flies there, shows the candidate marker (dashed blue ring with "+", preview line to the route) and opens its add menu by itself, once per share |
+| Google | Never store or draw Google content; link out only (exception: a place the user shared from Google Maps into OnPath – shown with the pin, and kept in "Recent" with a share sign, owner 2026-11-02) |
+| Place shared from Google Maps | The map flies there, shows the found-place pin with its name chip ("Name ›", preview line to the route) and opens its menu by itself, once per share; a search hit gets the same pin + chip, its menu opens with a tap on the chip (owner 2026-11-02) |
 | Footways without a bicycle tag | Bike / Gravel keep avoiding them; the amber "… m pushing" note is enough (owner 2026-10-30) |
 | POIs | From OSM, offline; calm defaults like Komoot |
 | Pace | Settings pace (5 levels); during a tour the arrival adapts after ~15 min / 1 km; nothing carried across tours |

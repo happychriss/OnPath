@@ -30,8 +30,24 @@ Colours come only from `OnPathColors` (and the Material scheme built from it in 
 | `Error` (+ `ErrorContainer`, `OnErrorContainer`) | **error**: ⚠ + red edge, red error lines, delete buttons |
 | `Good` | "ready ✓", "up to date" |
 | `Route`, `Gpx`, `Rec`, `Position`, `PositionUnsure`, `Weak` | map furniture only (planned line, GPX track, recording, own position, GPS dot) |
-| `Route` dashed (candidate marker) | a place **suggested, not yet taken** (search result, shared place): a dashed route-blue ring with a small "+" around the place's icon, its name in route blue below, and a thin dashed route-blue preview line to where adding it would join the route (only with a route); never orange (= recording). `map/CandidateMarker.kt`, `WaypointInsertion.joinPoint`; its actions stay in the place card / hold menu |
+| `Route` pin (found place, owner 2026-11-02) | a place **found, not yet taken** (search result, shared place): a route-blue pin (teardrop, white outline + white dot, tip on the place) with its name as a white chip under it "Name ›" – a real button that opens the place's menu (add / start here / Google Maps / "Nadel entfernen"); a thin dashed route-blue preview line to where adding it would join the route (only with a route). Pin = not in the route, numbered circle = in the route, blue dot = you; never orange (= recording). The pin goes when the place is added, with a new search, "Neu planen" or "Nadel entfernen" – a tap elsewhere closes only the menu. Hidden in Navigate; the chip hidden while a track is shown. `map/CandidateMarker.kt`, `ui/MapOverlays.kt` (`PinChip`), `WaypointInsertion.joinPoint` |
 | `RestBackground`, `RestInk`, `RestDim`, `OnDarkMuted` | the rest view while cycling and the dark slide switch only |
+| `ActionGo`, `ActionEdit`, `ActionStop` | **actions by kind** (colour rule below): navigation green `#2E7A58`, edit blue `#2E6A9E`, stop red `#C62828` – white words on each ≥ 5:1 |
+
+### Colour rule for actions (owner 2026-11-02)
+One colour = one kind of action, so the hand finds it the second time by colour:
+- **green = navigation** – start, continue, pause / resume the guidance (`ActionGo`; the primary buttons stay `Green`);
+- **blue = edit** – change the route, you are editing (`ActionEdit`);
+- **red = stop** – end the process you are in (end the recording, discard the edit) (`ActionStop`).
+
+First user: the bar the Navigate slider unlocks (`ui/TourActionBar.kt`, onpath.private#17 = C compact) – green Pause /
+Resume, blue Change route, red End, white words, the plain signs ⏸ (▶ paused) / ✎ / ■ (owner 2026-11-02: the
+track-line icons did not please), ≈ 1.5× the slider; no ✕ – a tap on the map or Android's back closes it (owner 2026-11-02).
+Second user, the same bar (`ActionTiles`): **Plan during a tour** ("Route ändern", owner 2026-11-02, refines
+onpath.private#19) – at the sheet's bottom in every step: green ▲ "Navigation fortsetzen", blue 💾 "Route speichern"
+(Save's dialog, you stay in the plan), red ↶ "Änderungen verwerfen" (back to the plan as it was when "Route ändern"
+opened, then Navigate). A tile with nothing to do is greyed (faint white on the green bar). "✕ Neu planen" and
+☰ → Save route are hidden during a tour.
 
 Add a token when a new meaning is needed (with a comment saying what it is for); `inverseSurface` and Snackbars stay
 out (`NoticesTest.noDarkBarAnyMore`).

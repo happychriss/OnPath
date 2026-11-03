@@ -14,7 +14,7 @@ import kotlin.math.roundToInt
  * times, a closed way, a way closed to bikes (MTB) – first, then the existing way warnings, the rarer point hints,
  * steep last).
  */
-enum class SpotKind { FERRY, CONSTRUCTION, NO_BIKES, DISMOUNT, PUSH, STEPS, ABOVE_T, FORD, BARRIER, STEEP }
+enum class SpotKind { FERRY, CONSTRUCTION, NO_BIKES, DISMOUNT, PUSH, FOOTWAY, STEPS, ABOVE_T, FORD, BARRIER, STEEP }
 
 /**
  * One spot worth knowing on the planned route: points [from]..[to] of the route line, [fromM]..[toM] along it.
@@ -41,6 +41,11 @@ data class RouteSpot(val kind: SpotKind, val from: Int, val to: Int, val fromM: 
  *   pedestrian without bike access (not a footway on a signed cycle route – a pedestrian zone stays pushing); paths
  *   of SAC ≥ T2 or mtb:scale ≥ S2. A footway / path with bicycle=yes / designated / permissive (/ mtb) is never pushing.
  *   Sections < [PUSH_MIN_M] (a crossing, a short connector) are not listed.
+ * - FOOTWAY (Bike / Gravel bike / E-bike, owner 2026-11-02, onpath.private#7 A): a paved footway without a bicycle tag
+ *   (asphalt / paved, or no surface tag – in towns that is paved in practice) off a signed cycle route, not a pedestrian
+ *   zone – the way touring.brf / trekking.brf allow at only +1 ([firmFootway]). Riding it is often tolerated, by law
+ *   (DE sign 239) it may mean pushing: "Fußweg – evtl. schieben", amber like pushing; same [PUSH_MIN_M]. An unpaved
+ *   footway without a bicycle tag stays PUSH (the profiles keep +4 there).
  * - NO_BIKES / DISMOUNT (MTB / e-MTB instead of PUSH): only the signed cases, worded as legal information – footway /
  *   path with bicycle=no ("no bikes allowed"), any way with bicycle=dismount ("dismount (sign)"); same [PUSH_MIN_M].
  *   Owner: footways and hard trails are what MTBs ride (a pushing hint would be on most MTB routes); a sign on the
@@ -79,6 +84,18 @@ object RouteWarnings {
     private val FOOTWAY_ON_ROUTE_PROFILES = setOf("touring.brf", "trekking.brf")
     private fun footwayOnRouteRidden(a: Activity) = BRouterEngine.profileFile(a) in FOOTWAY_ON_ROUTE_PROFILES
 
+    /** Surface keys (BRouterWayStats.surface) of a footway the bike profiles allow at +1: paved, or not tagged. */
+    val FIRM_FOOTWAY_SURFACES = setOf("asphalt", "paved", "unknown")
+
+    /**
+     * A footway the bike profiles ride at only +1 (touring.brf / trekking.brf accesspenalty: highway=footway, no bicycle
+     * tag, not unpaved; owner #7 A): no bicycle tag, no pedestrian zone, off a signed cycle route (there it is ridden
+     * without any hint), paved or untagged surface. Shown as [SpotKind.FOOTWAY], not as pushing.
+     */
+    private fun firmFootway(w: com.onpath.app.routing.WayAttrs, a: Activity) =
+        w.wayType == "footway" && w.bicycle.isNullOrEmpty() && !w.pedestrian && !w.cycleRoute &&
+            w.surface in FIRM_FOOTWAY_SURFACES && footwayOnRouteRidden(a)
+
     /** Kinds that are a place, not a stretch: the spot is the point where it is (no length). */
     val POINT_KINDS = setOf(SpotKind.FORD, SpotKind.BARRIER)
 
@@ -116,7 +133,7 @@ object RouteWarnings {
                 }
             }
             val minM = when (kind) {
-                SpotKind.PUSH, SpotKind.NO_BIKES, SpotKind.DISMOUNT -> PUSH_MIN_M
+                SpotKind.PUSH, SpotKind.FOOTWAY, SpotKind.NO_BIKES, SpotKind.DISMOUNT -> PUSH_MIN_M
                 SpotKind.ABOVE_T -> ABOVE_T_MIN_M
                 else -> 0.0
             }
@@ -150,9 +167,10 @@ object RouteWarnings {
                 // a footway on a signed cycle route is ridden (owner) – only where the profile costs it so: touring.brf /
                 // trekking.brf (mtb.brf charges it as pushing), never in a pedestrian zone (no cycling there unless
                 // signed, German law)
-                w.wayType == "footway" -> !(w.cycleRoute && !w.pedestrian && footwayOnRouteRidden(a))
+                w.wayType == "footway" -> !(w.cycleRoute && !w.pedestrian && footwayOnRouteRidden(a)) && !firmFootway(w, a)
                 else -> w.sac >= 2 || w.mtb >= 2
             }
+            SpotKind.FOOTWAY -> isBike(a) && !isMtb(a) && firmFootway(w, a)
             SpotKind.ABOVE_T -> a == Activity.HIKE && w.sac > sac.coerceIn(1, 5)
             SpotKind.STEEP -> false
         }
@@ -219,6 +237,7 @@ object RouteWarnings {
             SpotKind.FORD -> Txt.p(Res.plurals.plan_hint_fords, s.size, s.size)
             SpotKind.BARRIER -> if (s.size == 1) barrierName(s[0].worst) else Txt.p(Res.plurals.plan_hint_barriers, s.size, s.size)
             SpotKind.PUSH -> Txt.s(Res.string.plan_hint_pushing, rounded(s.sumOf { it.lengthM }))
+            SpotKind.FOOTWAY -> Txt.s(Res.string.plan_hint_footway, rounded(s.sumOf { it.lengthM }))
             SpotKind.STEPS -> Txt.p(Res.plurals.plan_hint_steps, s.size, s.size)
             SpotKind.ABOVE_T -> Txt.p(Res.plurals.plan_hint_above_t, s.size, s.size, sac)
             SpotKind.STEEP -> Txt.p(Res.plurals.plan_hint_steep, s.size, s.size)
@@ -254,6 +273,7 @@ object RouteWarnings {
             else -> Txt.s(Res.string.plan_spot_stile)
         }
         SpotKind.PUSH -> Txt.s(Res.string.plan_spot_pushing)
+        SpotKind.FOOTWAY -> Txt.s(Res.string.plan_spot_footway)
         SpotKind.STEPS -> Txt.s(Res.string.plan_spot_steps)
         SpotKind.ABOVE_T -> Txt.s(Res.string.plan_spot_above_t, s.worst, sac)
         SpotKind.STEEP -> Txt.s(Res.string.plan_spot_steep, s.worst)

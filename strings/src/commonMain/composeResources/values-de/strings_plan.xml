@@ -23,6 +23,7 @@
     <string name="plan_barrier_kissing_gate">Schwinggatter</string>
     <string name="plan_barrier_turnstile">Drehkreuz</string>
     <string name="plan_hint_pushing">%1$s Schieben</string>
+    <string name="plan_hint_footway">%1$s Fußweg – evtl. schieben</string>
     <plurals name="plan_hint_steps">
         <item quantity="one">Treppe</item>
         <item quantity="other">%1$d× Treppen</item>
@@ -46,6 +47,7 @@
     <string name="plan_spot_turnstile_full">Drehkreuz – mit Rad evtl. nicht passierbar</string>
     <string name="plan_spot_stile">Zauntritt – Rad drüberheben</string>
     <string name="plan_spot_pushing">Schieben</string>
+    <string name="plan_spot_footway">Fußweg – evtl. schieben</string>
     <string name="plan_spot_steps">Treppe</string>
     <string name="plan_spot_above_t">T%1$d – schwerer als dein T%2$d</string>
     <string name="plan_spot_steep">Steil, bis %1$d %</string>
@@ -55,7 +57,8 @@
     <string name="plan_spots_tap">Tippe auf eine Stelle, um sie auf der Karte zu sehen.</string>
     <string name="plan_warn_show_spots">Stellen anzeigen</string>
     <string name="plan_calculating">Route wird berechnet…</string>
-    <string name="plan_hint_first_point">Halte die Karte gedrückt, um dort zu starten – oder um von deinem Standort dorthin zu kommen.</string>
+    <string name="plan_hint_first_point_question">Wohin soll’s gehen?</string>
+    <string name="plan_hint_first_point">Halte dein Ziel auf der Karte gedrückt – oder such es oben in der Suchleiste.</string>
     <string name="plan_hint_destination">Halte die Karte gedrückt, um das Ziel zu setzen.</string>
     <string name="plan_not_routed_long">Route nicht berechnet – sehr langer Plan.</string>
     <string name="plan_not_routed_stopped">Route nicht berechnet – Berechnung abgebrochen.</string>
@@ -74,12 +77,12 @@
     <string name="plan_max_height">max. %1$s</string>
     <string name="plan_show_route_details">Routendetails anzeigen</string>
     <string name="plan_elevation_profile">Höhenprofil</string>
-    <string name="plan_start_navigation_for">Navigation starten · %1$s</string>
+    <string name="plan_start_navigation_for">Los geht’s · %1$s</string>
     <string name="plan_continue_navigation_for">Navigation fortsetzen · %1$s</string>
-    <string name="plan_start_recording_for">Aufzeichnung starten · %1$s</string>
+    <string name="plan_start_recording_for">Aufnahme starten · %1$s</string>
     <string name="plan_save_route">Route speichern</string>
     <string name="plan_time_details">Zeitdetails</string>
-    <string name="plan_close_plan">Plan schließen</string>
+    <string name="plan_close_plan">Neu planen</string>
     <string name="plan_start_short">Start</string>
     <string name="plan_sheet_expand">Routenübersicht zeigen</string>
     <plurals name="plan_hint_count">
@@ -144,7 +147,6 @@
     <string name="plan_search_hint">Orte oder Adressen suchen</string>
     <string name="plan_menu">Menü</string>
     <string name="plan_menu_my_routes">Meine Routen</string>
-    <string name="plan_menu_start_recording">Aufzeichnung starten</string>
     <string name="plan_menu_check_updates">Nach Updates suchen</string>
     <string name="plan_map_credits">Kartenquellen anzeigen</string>
     <string name="plan_undo">Rückgängig</string>
@@ -162,8 +164,11 @@
     <string name="plan_searching_gps">GPS wird gesucht…</string>
     <string name="plan_new_route">Neue Route</string>
     <string name="plan_start_here">Hier starten</string>
-    <string name="plan_go_here">Von meinem Standort hierhin</string>
+    <string name="plan_go_here">Hierhin</string>
     <string name="plan_open_google_maps">In Google Maps öffnen</string>
+    <!-- the found place's pin (owner 2026-11-02): its menu's last line, the name chip for TalkBack -->
+    <string name="plan_remove_pin">Nadel entfernen</string>
+    <string name="plan_pin_chip_desc">%1$s: Möglichkeiten zeigen</string>
     <plurals name="plan_removes_points">
         <item quantity="one">Löscht den Punkt davor</item>
         <item quantity="other">Löscht die %1$d Punkte davor</item>
@@ -173,7 +178,7 @@
     <string name="plan_finding_shared_place">Geteilter Ort wird gesucht…</string>
     <string name="plan_resize_panel">Größe ändern</string>
     <string name="plan_slide_to_plan">Stopp</string>
-    <string name="plan_slide_to_plan_sub">Pause · Beenden · Route ändern</string>
+    <string name="plan_slide_to_plan_sub">Pause · Route ändern · Beenden</string>
     <string name="plan_slide_change_route">Route ändern</string>
     <string name="plan_slide_desc">%1$s. Zum Planen wechseln.</string>
     <string name="plan_switch_to_plan">Zum Planen wechseln</string>
@@ -181,8 +186,8 @@
     <string name="plan_stat_ascent">Aufstieg</string>
     <string name="plan_stat_descent">Abstieg</string>
     <string name="plan_stat_time">Zeit</string>
-    <string name="plan_close_track">Track schließen</string>
-    <string name="plan_navigate_track_for">Track navigieren · %1$s</string>
+    <string name="plan_close_track">Tour schließen</string>
+    <string name="plan_navigate_track_for">Tour nachfahren · %1$s</string>
     <string name="plan_busy_import">GPX wird importiert…</string>
     <string name="plan_busy_export">Export wird vorbereitet…</string>
     <string name="plan_busy_backup">Wird gesichert…</string>
@@ -224,8 +229,8 @@
     <string name="plan_leg_no_path">kein Weg gefunden</string>
     <string name="plan_share_plan">Route teilen</string>
     <string name="plan_from_track">Als Route planen</string>
-    <string name="plan_from_track_busy_title">Route wird aus dem Track geplant …</string>
-    <string name="plan_from_track_busy_text">Bei einem langen Track kann das ein paar Minuten dauern.</string>
-    <string name="plan_from_track_failed">Aus dem Track ließ sich keine Route machen – dort fehlt vielleicht die Detailkarte.</string>
-    <string name="plan_from_track_wait">Die Karte für diesen Track wird noch geladen – gleich noch einmal versuchen.</string>
+    <string name="plan_from_track_busy_title">Route wird aus der Tour geplant …</string>
+    <string name="plan_from_track_busy_text">Bei einer langen Tour kann das ein paar Minuten dauern.</string>
+    <string name="plan_from_track_failed">Aus der Tour ließ sich keine Route machen – dort fehlt vielleicht die Detailkarte.</string>
+    <string name="plan_from_track_wait">Die Karte für diese Tour wird noch geladen – gleich noch einmal versuchen.</string>
 </resources>

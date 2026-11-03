@@ -30,19 +30,20 @@ import com.onpath.app.sync.SyncLedger
 import com.onpath.app.sync.SyncRound
 import com.onpath.app.ui.AppMode
 import com.onpath.app.ui.AppViewModel
-import com.onpath.app.ui.PlanSize
 import com.onpath.app.ui.RoutesTab
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.common_delete
 import com.onpath.strings.common_ok
-import com.onpath.strings.common_save
 import com.onpath.strings.nav_arrived_title
-import com.onpath.strings.nav_end_tour
+import com.onpath.strings.nav_end_short
 import com.onpath.strings.nav_end_tour_title
+import com.onpath.strings.nav_save_recording
+import com.onpath.strings.plan_pin_chip_desc
+import com.onpath.strings.plan_remove_pin
+import com.onpath.strings.plan_slide_to_plan
 import com.onpath.strings.nav_route_back
 import com.onpath.strings.nav_route_back_title
-import com.onpath.strings.plan_resize_panel
 import com.onpath.strings.plan_start_here
 import com.onpath.strings.plan_undo
 import com.onpath.strings.routes_end_tour_first
@@ -116,7 +117,7 @@ class ReleaseRundgang : E2EBase() {
         waitUntil("the arrival question", 180_000) { read { it.arrivalAsk } }
         assertNotNull("\"You have arrived\" shown", findFresh(By.text(Txt.s(Res.string.nav_arrived_title)), 10_000))
         shot("3-arrived")
-        clickText(Txt.s(Res.string.common_save))
+        clickText(Txt.s(Res.string.nav_save_recording))
         waitUntil("tour saved", 30_000) { RecordingServiceState.idle() && db.getTour(tourId)?.state == "done" }
         shot("4-saved")
     }
@@ -241,19 +242,20 @@ class ReleaseRundgang : E2EBase() {
         }
     }
 
-    /** 7 · End the tour → Save → it is listed in My routes → Done. */
+    /**
+     * 7 · End the recording the Navigate way (owner 2026-11-01): slide → the bar Pause · Route ändern · Beenden →
+     * "Aufnahme beenden?" → Aufnahme speichern → it is listed in My routes → Done.
+     */
     @Test fun flow07_endTourSaveListedInDone() {
         planned(THEATRE, STATION)
         val tourId = startTour()
         rideRoute(factor = 5)
         waitUntil("some metres recorded", 60_000) { (com.onpath.app.recording.RecordingService.state.value?.distanceM ?: 0.0) > 100 }
-        scenario.onActivity { vm(it).switchToPlan() }
-        waitUntil("Plan during the tour", 10_000) { mode() == AppMode.PLAN }
-        pullTourSheetUp()
-        clickText(Txt.s(Res.string.nav_end_tour))
-        assertNotNull("\"End this tour?\"", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
+        openTourActions()
+        clickText(Txt.s(Res.string.nav_end_short))
+        assertNotNull("\"End recording?\"", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
         shot("1-end-tour")
-        clickText(Txt.s(Res.string.common_save))
+        clickText(Txt.s(Res.string.nav_save_recording))
         waitUntil("tour saved", 30_000) { RecordingServiceState.idle() && db.getTour(tourId)?.state == "done" }
         Thread.sleep(2_000) // the automatic name
         val name = db.getTour(tourId)!!.name
@@ -370,6 +372,21 @@ class ReleaseRundgang : E2EBase() {
         }
         waitUntil("a) its menu opens there", 30_000) { read { it.poiMenu }?.let { Geo.distance(GeoPoint(it.lat, it.lon), PIN) < 30 } == true }
         shot("2-shared-with-coordinate")
+        // c) the pin + name chip (owner 2026-11-02): closing the menu keeps the pin; its chip opens the menu again;
+        // "Nadel entfernen" removes it
+        val name = read { it.searchMark }!!.title()
+        assertNotNull("\"Remove pin\" in the pin's menu", findFresh(By.text(Txt.s(Res.string.plan_remove_pin)), 5_000))
+        scenario.onActivity { vm(it).closeMapOverlays("rundgang: tap elsewhere") }
+        waitUntil("c) the menu closed", 5_000) { read { it.poiMenu } == null }
+        assertNotNull("c) the pin stays when its menu closes", read { it.searchMark })
+        val chip = findFresh(By.desc(Txt.s(Res.string.plan_pin_chip_desc, name)), 10_000)
+        assertNotNull("c) the name chip \"$name ›\" under the pin – ${seenDescriptions()}", chip)
+        shot("3-pin-and-chip")
+        chip!!.click()
+        waitUntil("c) the chip opens the pin's menu", 5_000) { read { it.poiMenu } != null }
+        clickText(Txt.s(Res.string.plan_remove_pin))
+        waitUntil("c) \"Remove pin\" removes it", 5_000) { read { it.searchMark } == null && read { it.poiMenu } == null }
+        shot("4-pin-removed")
     }
 
     /** What Google Maps' share sheet sends: ACTION_SEND text/plain to OnPath. */
@@ -560,22 +577,14 @@ class ReleaseRundgang : E2EBase() {
         Thread.sleep(500)
     }
 
-    /**
-     * Plan during a tour opens at its one-row step (status + Continue, owner 2026-10-31): End tour is one drag up away –
-     * the finger on the grab handle pulls the sheet up, then Pause / End tour show.
-     */
-    private fun pullTourSheetUp() {
-        waitUntil("the sheet at its one-row step", 5_000) { read { it.planSize } == PlanSize.MINI }
-        assertTrue("End tour hidden in the one-row step", goneFresh(By.text(Txt.s(Res.string.nav_end_tour)), 3_000))
-        // field 2026-11-01: the one-row step has its own round ■ Stop (same "End this tour?" question)
-        assertNotNull("■ Stop in the one-row step", findFresh(By.desc(Txt.s(Res.string.nav_end_tour)), 5_000))
-        val handle = findFresh(By.desc(Txt.s(Res.string.plan_resize_panel)), 5_000)
-        assertNotNull("no grab handle on the plan sheet – ${seenDescriptions()}", handle)
-        val c = handle!!.visibleCenter
-        device.swipe(c.x, c.y, c.x, c.y - device.displayHeight / 4, 40)
-        waitUntil("the sheet one step up", 5_000) { read { it.planSize } != PlanSize.MINI }
-        assertNotNull("End tour after one drag", findFresh(By.text(Txt.s(Res.string.nav_end_tour)), 5_000))
-        shot("0-sheet-pulled-up")
+    /** Navigate: drag the slider's thumb across → the bar with Pause · Route ändern · Beenden opens in its place. */
+    private fun openTourActions() {
+        val slider = findFresh(By.descContains(Txt.s(Res.string.plan_slide_to_plan)), 5_000)
+        assertNotNull("no slider in Navigate – ${seenDescriptions()}", slider)
+        val r = slider!!.visibleBounds
+        device.swipe(r.left + r.height() / 2, r.centerY(), r.right - 4, r.centerY(), 40)
+        assertNotNull("the bar after the slide", findFresh(By.text(Txt.s(Res.string.nav_end_short)), 5_000))
+        shot("0-bar-unlocked")
     }
 
     /** The camera shows [a] and [b] in the open middle of the map (following stopped first – map camera rule). */

@@ -58,6 +58,11 @@ Example plan 1 → 2 → 3 → 4, the user between 2 and 3 (1, 2 passed).
   No pale / grey lines in Plan (owner 2026-11-01). Navigate keeps a re-route's thin grey original.
 - Passed points grey (numbers kept, so "stop 3" still means the same point; no tick – owner 2026-11-01).
 - The plan sheet's summary counts from the position (time / km to go), like Navigate.
+- The sheet's bottom is the same tile bar as Navigate's (owner 2026-11-02, `TourEditBar`): green "Navigation
+  fortsetzen", blue "Route speichern", red "Änderungen verwerfen". Discard = the plan as it was when Plan opened from
+  Navigate (`TourEdit`, snapshot in `AppViewModel.enter`) is set back as one undoable change – FollowHistory then follows
+  the very route of before – and Navigate comes back; greyed while the plan equals that snapshot. "✕ Neu planen" and
+  ☰ → Save route are hidden during a tour.
 
 ## 5. Messages (FRAGE / HINWEIS / ANZEIGE, `docs/design/ui-style.md`)
 What the map shows is not said again. Undo stays on the map in every case.

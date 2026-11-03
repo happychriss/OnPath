@@ -11,7 +11,7 @@ with an `Ergebnis.md` (what each shows, what it replaces). cloud-web turns them 
 | Key | Source PNG DE · EN | What it shows | App screen (change here → new picture) |
 | --- | --- | --- | --- |
 | leer | `08a-erste-route-leer.png` · – | empty plan, "Route planen" + hold hint | `ui/PlanPanel.kt`, `ui/MapScreen.kt` |
-| halten | `08b-erste-route-halten.png` · `halten-en.png` | hold on the map: "Neue Route – Hier starten · Von meinem Standort hierhin" | `ui/MapOverlays.kt` (first-point menu) |
+| halten | `08b-erste-route-halten.png` · `halten-en.png` | hold on the map: "Neue Route – Hier starten · Hierhin" | `ui/MapOverlays.kt` (first-point menu) |
 | punkt1 | `08c-erste-route-punkt1.png` · – | start set, waiting for the destination | `ui/PlanPanel.kt`, `ui/MapHost.kt` |
 | ziel | `08d-erste-route-ziel-menue.png` · – | hold a place → set as destination | `ui/MapOverlays.kt` (POI / point menu) |
 | fertig | `08e-erste-route-fertig.png` · – | route ready: time, length, notes, profile | `ui/PlanPanel.kt`, `ui/ElevationProfile.kt` |
@@ -35,6 +35,10 @@ with an `Ergebnis.md` (what each shows, what it replaces). cloud-web turns them 
 | meine-routen | `10c-meine-routen.png` · – | My routes → Gemacht | `ui/Screens.kt` (My routes) |
 | neustart-hinweis | `neustart-hinweis-de.png` · `…-en.png` | after a restart: the recording is saved | `ui/NavigateScreen.kt`, `ui/Screens.kt` |
 | neustart | `neustart-de.png` · `neustart-en.png` | "Unterbrochene Tour": continue / delete / save | `ui/Screens.kt` |
+| app-koppeln | `app-a1-de.png` · `app-a1-en.png` | ☰ open: "Mit Browser verbinden" (emulator, real map) | `ui/PlanTopBar.kt` (☰ menu) |
+| app-pruefen | `app-a2-de.png` · `app-a2-en.png` | "Mit diesem Browser verbinden? Prüfe: … – Verbinden" (Paparazzi `settingsSyncAsk` / `syncAsk`) | `ui/SyncSettings.kt` |
+| app-neu | `app-a3-de.png` · `app-a3-en.png` | My routes with a route from the browser ("Neu") (Paparazzi `toursFromBrowser`) | `ui/Screens.kt` (My routes), `ui/RouteTag.kt` |
+| app-trennen | `app-a4-de.png` · `app-a4-en.png` | Settings → Browser-Abgleich paired, "Trennen" (Paparazzi `settingsSyncPaired` / `syncPaired`) | `ui/SyncSettings.kt` |
 | (voice, later) | `sprachansagen-einrichten-de.png` · – | phone setup step "Sprachansagen" | `ui/setup/SetupGuideScreen.kt` |
 
 ## Home page (`onpath.earth/`, `assets/app/*-de|en.webp`)

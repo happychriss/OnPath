@@ -87,7 +87,7 @@ class ScreenshotTest {
     }
 
     @Composable
-    private fun NavFrame(ui: NavUi, slide: Float = 0f, fit: Boolean = false) {
+    private fun NavFrame(ui: NavUi, slide: Float = 0f, fit: Boolean = false, actions: Boolean = false) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
@@ -95,7 +95,7 @@ class ScreenshotTest {
                     // after "Show whole route" following is off: compass needle, locate not filled
                     NavigateOverlay(ui, footer = { Footer(following = !fit, compass = CompassSpec(ui.headingUp.takeUnless { fit }, 0f) {},
                         eye = true, large = true, fit = fit) },
-                        onSlideToPlan = {}, slideStartFraction = slide)
+                        onSlideToPlan = {}, slideStartFraction = slide, actionsOpen = actions)
                 }
             }
         }
@@ -161,12 +161,12 @@ class ScreenshotTest {
         }
     }
 
-    /** App start without a plan: Plan is home; no points, no primary button (free recording = ☰ → Start recording). GPS searching. */
+    /** App start without a plan: Plan is home; no points, no primary button (free recording = the green start button, ☰ has no Start recording since 2026-11-02). GPS searching. */
     @Test fun planEmpty() = paparazzi.snapshot {
         Frame(gps = GpsStatus.SEARCHING) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
     }
 
-    /** Only a start point (owner 2026-10-30): no line to follow, no "Start navigation" (free recording = ☰ → Start recording). */
+    /** Only a start point (owner 2026-10-30): no line to follow, no "Start navigation" (free recording = the green start button, ☰ has no Start recording since 2026-11-02). */
     @Test fun planOnePoint() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(n = 1, r = null), PlanCallbacks()) }
     }
@@ -398,21 +398,21 @@ class ScreenshotTest {
     }
 
     /**
-     * Back in Plan while the tour records, pulled up one step: tour status + compact Continue, Pause / End tour, then
-     * the route (activity, time / km, profile).
+     * "Route ändern" during a tour, pulled up one step, the plan changed (owner 2026-11-02): the route above, at the
+     * bottom the tile bar – green Continue navigation · blue Save route · red Discard changes (live).
      */
     @Test fun planTourRunning() = paparazzi.snapshot {
         Frame {
-            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
-                PlanCallbacks())
+            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false),
+                tourEditChanged = true), PlanCallbacks(onSaveRoute = {}))
         }
     }
 
-    /** Plan during a tour as it opens (owner 2026-10-31): ONE row – "● Tour running · km · time" + [Continue]; map free. */
+    /** "Route ändern" as it opens, nothing changed yet: only the tile bar, red Discard changes greyed; the map free. */
     @Test fun planTourRunningCollapsed() = paparazzi.snapshot {
         Frame {
             PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
-                PlanCallbacks())
+                PlanCallbacks(onSaveRoute = {}))
         }
     }
 
@@ -564,6 +564,9 @@ class ScreenshotTest {
     }
 
     /** Free recording (no route), paused from the notification. */
+    /** After the slide (owner 2026-11-02, #17 C): green Pause · blue Change route · red End, ✕ above on the right. */
+    @Test fun navigateActionsOpen() = paparazzi.snapshot { NavFrame(navUi, actions = true) }
+
     @Test fun navigateFreePaused() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true)) }
 
     // --- Activity while navigating (owner: a wrong activity is a disaster) ---
@@ -735,6 +738,8 @@ class ScreenshotTest {
                     Column(Modifier.padding(top = 24.dp)) {
                         RouteSpotsList(listOf(
                             RouteSpot(SpotKind.PUSH, 13, 20, 0.0, 350.0),
+                            // owner #7 A: a paved footway without a bicycle tag
+                            RouteSpot(SpotKind.FOOTWAY, 23, 25, 820.0, 980.0),
                             RouteSpot(SpotKind.STEEP, 0, 5, 1200.0, 1350.0, 28),
                             RouteSpot(SpotKind.ABOVE_T, 6, 9, 3420.0, 3640.0, 4),
                             RouteSpot(SpotKind.ABOVE_T, 10, 12, 5100.0, 5180.0, 5),
@@ -757,14 +762,23 @@ class ScreenshotTest {
             drawCircle(androidx.compose.ui.graphics.Color.White, 13.dp.toPx(), a)
             drawCircle(dotColor, 11.dp.toPx(), a)
         }
-        // the candidate marker of a search result / shared place – the map's own drawing (MapController.setSearchMark)
-        if (ring) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-            drawIntoCanvas { c ->
-                com.onpath.app.map.CandidateMarker.draw(c.nativeCanvas, a.x, a.y, density,
-                    android.graphics.Color.parseColor(com.onpath.app.map.MapController.ROUTE_COLOR))
+        // the found place's pin – the map's own drawing (MapController.setSearchMark) – and its name chip (MapOverlayHost)
+        if (ring) {
+            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                drawIntoCanvas { c ->
+                    com.onpath.app.map.CandidateMarker.draw(c.nativeCanvas, a.x, a.y, density,
+                        android.graphics.Color.parseColor(com.onpath.app.map.MapController.ROUTE_COLOR))
+                }
+            }
+            PinChipAt(a, topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }) {
+                PinChip(shared.title(), onClick = {})
             }
         }
-        AnchoredOverlay(a, topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }, content = content)
+        // the pin's menu above the pin's head, else under its name chip (MapOverlayHost: lift / drop)
+        val lift = if (ring) with(d) { com.onpath.app.map.CandidateMarker.PIN_HEIGHT_DP.dp.toPx() } else 0f
+        val drop = if (ring) with(d) { PIN_CHIP_BELOW_DP.dp.toPx() } else 0f
+        AnchoredOverlay(a.copy(y = a.y - lift), topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() },
+            belowY = a.y + drop, loose = ring, content = content)
     }
 
     /** First hold on an empty plan: Start here · Go here (from my location) (position known). */
@@ -812,10 +826,17 @@ class ScreenshotTest {
     @Test fun sharedPlaceMenu() = paparazzi.snapshot {
         OnPathTheme {
             OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), ring = true) {
-                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {},
+                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {}, onRemovePin = {},
                     addLabel = com.onpath.app.search.AddPreview.label(
                         com.onpath.app.routing.WaypointInsertion.Decision(3, com.onpath.app.routing.WaypointInsertion.Kind.DESTINATION), 3))
             }
+        }
+    }
+
+    /** A found place (search hit / shared place, owner 2026-11-02): the blue pin and its name chip "Gelateria Costantin ›". */
+    @Test fun foundPlacePin() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), ring = true) {}
         }
     }
 
@@ -823,7 +844,7 @@ class ScreenshotTest {
     @Test fun sharedPlaceMenuEmptyPlan() = paparazzi.snapshot {
         OnPathTheme {
             OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), empty = true, ring = true) {
-                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {}, emptyPlan = true)
+                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {}, emptyPlan = true, onRemovePin = {})
             }
         }
     }
