@@ -47,7 +47,6 @@ the git log.
   the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
-- [donald] A-003 Play build (flavours prod / dev, signed AAB) – as a pull request to the owner – since 2026-11-03
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [cloud-plan] Laptop off (2026-11-02 evening) – web-spike 415d3802 clean; next sitting: merge main on the captain's word, time-limit question, mirror leftovers – since 2026-11-02
@@ -67,11 +66,6 @@ the git log.
   table with a tour running: no GPS line, also in the first 2 min; phone in a pocket while sitting (threshold 0.5 m/s²
   is a guess); walking / riding without GPS → amber after the short gap; no extra battery drain. Open: the notification
   says nothing about GPS while the phone lies still (owner 2026-11-02).
-- **[cloud-app] A-003 Play build – right after v0.14.0** (owner 2026-11-02, onpath.private#3): flavours prod (Google Play:
-  no self-update, no REQUEST_INSTALL_PACKAGES, no GitHub update line in Settings → Datenschutz) / dev (as today);
-  signed AAB for prod in `release.yml` next to the APK; upload key made by the owner locally → GitHub secret, never in
-  the repo. Signing / build config → **pull request to the owner** (CLAUDE.md). Spec: `onpath.private/auftraege/a-003-play-fassung.md`,
-  steps for the owner: `onpath.private/marketing/anleitung-geschlossener-test.md` §1–5. Not before v0.14.0 is out.
 - **Bike difficulty limit S0 / S1 / S2 (owner 2026-11-01, "easy to build?"):** today only the hike has a chosen limit
   (T1–T5). Gravel (`trekking.brf`) and Bike / E-bike (`touring.brf`) already make S2 very expensive (+30) and shut S3+
   (10000); `mtb.brf` only adds a cost per S grade, no limit. Wanted: a chosen limit per bike activity ("nur S0", "bis S1"),
@@ -248,6 +242,12 @@ the git log.
   7.2 km – expectation or gap?); zip import checks only sizes (cell downloads check sha256).
 
 ## Waiting for the owner
+- **A-003 Play build – pull request https://github.com/happychriss/OnPath/pull/2** (donald 2026-11-03): build type `play`
+  (all debug task names unchanged), no self-update / install permission / GitHub line, signed AAB in release.yml as a
+  run artifact – skipped with a warning until the owner adds the secrets `ONPATH_UPLOAD_KEYSTORE_B64`,
+  `ONPATH_UPLOAD_KEYSTORE_PASSWORD`, `ONPATH_UPLOAD_KEY_ALIAS`, `ONPATH_UPLOAD_KEY_PASSWORD`. Questions in the PR: same app
+  id for GitHub and Play (never both on one phone) or a separate id for the GitHub build; automatic upload to the Play
+  Console later (service account). After the merge: docs mention `bundlePlay`, the result note in onpath.private.
 <!-- Owner 2026-11-01: owner questions now live as issues (label `frage`) in happychriss/onpath.private – `tools/ask.sh`. New questions go there, not here. Moved: D1–D4 → #2–#5, metersPerPixel → #6, footways → #7, old branches → #8, CF_START_TOKEN → #9, Germany worktree → #10. -->
 - **Role setup leftovers (captain 2026-10-31)** – (1) cloud-web needs write access to `onpath.private` (Drive copy);
   (2) map data for the laptop (`/home/development/Projects/work/onpath-data/`) – and does the Germany pre-build stay
