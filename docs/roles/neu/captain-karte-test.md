@@ -33,3 +33,16 @@ nur keine neuen starten – auch brauchbar. Schlägt alles fehl: nichts ändern,
 `docs/roles/neu/captain.md` umschreiben: der Captain gibt Aufträge direkt (`create_session` für ein neues Vorhaben,
 `send_message` an die laufende Sitzung), mit den Entscheidungen des Owners im Auftrag; kein eigener Weckruf; Überblick,
 wenn der Owner schreibt (`/fragen`, `/lage`). Die Rechner behalten Wecker, Runde und Push.
+
+## Ergebnis Karten-Test (2026-11-03, 23:03–23:10, Captain-Sitzung)
+- **Karte:** `create_session` auf `donald:onpath-app` lehnte zuerst ab (`elevated_session_untrusted_device`) →
+  `confirm_repository_trust` → Owner bestätigte auf dem Handy. Endgültig: die Sitzung ist jetzt an vertrauenswürdige Geräte gebunden.
+- **1 Starten ✓** – `karten-test` lief auf donald im eigenen Worktree (`.claude/worktrees/bridge-cse_…`, Branch
+  `worktree-bridge-cse_…`), Gastgeber zeigte „Capacity 2/32“. Erst nach `tools/dev/unit.sh run donald` verbunden (vorher PENDING).
+- **2 Schreiben ✓** – `send_message` kam an; die Antwort kam per `send_message` zurück.
+- **3 Mitlesen ✓** – `list_events` zeigt beide Antworten; `get_session` auf donald lesbar.
+- **Preis:** jeder Aufruf an eine andere Sitzung (`archive_session`, `send_message` …) fragt den Owner einzeln
+  („Einmal erlauben“, kein „immer“); auch die gestartete Sitzung auf donald brauchte eine Freigabe für ihre Antwort.
+  Der stündliche Captain-Weckruf ist gelöscht (Owner, mit Karte scheitert er).
+- **Folgerung:** Aufträge direkt an die Rechner gehen, kosten aber pro Aufruf einen Tipp des Owners. Vorschlag: nur
+  für eilige Dinge direkt (`send_message` an die laufende Sitzung), sonst weiter über das Backlog.
