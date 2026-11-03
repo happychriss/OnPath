@@ -69,6 +69,7 @@ class GermanScreenshotTest {
     @Test fun planUnpairedOfflineNote() = shots.planUnpairedOfflineNote()
     @Test fun planPairHint() = shots.planPairHint()
     @Test fun routesTourLoadAsk() = shots.routesTourLoadAsk()
+    @Test fun planSlowAsk() = shots.planSlowAsk()
     @Test fun planTourRunning() = shots.planTourRunning()
     @Test fun planTourRunningCollapsed() = shots.planTourRunningCollapsed()
     @Test fun planTourNewPlan() = shots.planTourNewPlan()

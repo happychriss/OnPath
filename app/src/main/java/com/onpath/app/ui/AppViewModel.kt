@@ -714,6 +714,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // declared before init {}: init restores the saved plan and routes it at once (declared below, they are still null then)
     /** Cancel signal of the route being calculated (Cancel button; a newer request stops the older one). */
     private var routeCancel: com.onpath.app.routing.RouteCancel? = null
+    /**
+     * The plan run reached its time limit (owner 2026-11-03, onpath.private#21 B, [com.onpath.app.routing.SlowPlan]):
+     * the box "Die Route ist lang, die Berechnung dauert. Weiter warten?" – the periods of the run that asked; null = none.
+     */
+    var slowPlanAsk by mutableStateOf<Int?>(null)
+        private set
+    /** Time-limit periods for the next plan run: 1, or more after "Weiter warten" ([answerSlowPlan]). */
+    private var planRounds = 1
+    /** The next [recalc] keeps [planRounds] (a "Weiter warten" run), else it starts at one period again. */
+    private var keepRounds = false
+
     private val ROUTING_SLOW_MS = 2_500L
     /** The route has been calculating for a while: the plan sheet offers Cancel. */
     var routingSlow by mutableStateOf(false)
@@ -1915,6 +1926,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         recalc()
     }
 
+    /** The answer to [slowPlanAsk]: wait one more period (the run again, longer) or stop like Cancel. */
+    fun answerSlowPlan(answer: com.onpath.app.routing.SlowPlan.Answer) {
+        val rounds = slowPlanAsk ?: return
+        slowPlanAsk = null
+        val next = com.onpath.app.routing.SlowPlan.next(rounds, answer)
+        Problems.info("routing", "Slow plan: ${answer.name.lowercase()} after $rounds period(s)")
+        if (next == null) { planRounds = 1; cancelRun(NotRouted.STOPPED); return }
+        planRounds = next; keepRounds = true
+        nextCause = runCause // Cancel later still takes back the change that started this run
+        recalc()
+    }
+
     /** "Plan anyway" / "Calculate" of the not-routed notice. */
     fun planAnyway() {
         if (waypoints.size < 2) return
@@ -1929,7 +1952,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         routeCancel?.cancel(); routeCancel = null
         routeJob?.cancel(); routeJob = null
         requests.invalidate()
-        route = null; routeError = null; routing = false; routingSlow = false; longRouteAsk = null
+        route = null; routeError = null; routing = false; routingSlow = false; longRouteAsk = null; slowPlanAsk = null
         followNextRoute = false; planEditPending = false
         notRouted = why
         mapData.corridorFollowsPlan(null)
@@ -1948,6 +1971,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun recalc() {
         runCause = nextCause; nextCause = PlanStatus.Cause.Other
+        // a new run (an edit, an activity change …) starts at one time-limit period and drops an open "Weiter warten?"
+        if (!keepRounds) planRounds = 1
+        keepRounds = false
+        slowPlanAsk = null
+        val rounds = planRounds
         routeJob?.cancel(); routeJob = null
         val viaData = routingDataReroute; routingDataReroute = false // this run: newer routing data arrived
         highlight = null; spotLine = null; spotsOpen = false
@@ -1978,6 +2006,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         routing = true
         val started = android.os.SystemClock.elapsedRealtime()
         val cancel = com.onpath.app.routing.RouteCancel().also { routeCancel = it }
+        val askAtLimit = mode == AppMode.PLAN
         routeJob = viewModelScope.launch {
             delay(150) // debounce quick taps
             // the Cancel button appears only when it takes a while (no flicker for normal routes)
@@ -1988,7 +2017,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     val eng = routingEngine()
                     // route, model time, snapped points, gaps, warnings: the one computation the web planner shares
                     // (named stops: read on the main thread when the result is taken – snapToRoute → PlanResult.withNamed)
-                    com.onpath.app.routing.PlanResult.plan(Planner(eng, cancel).also { planner = it }, pts, act, level, pins, emptySet(), f)
+                    // in Plan the time limit asks "Weiter warten?" (SlowPlan); a run for Navigate keeps the straight lines
+                    com.onpath.app.routing.PlanResult.plan(Planner(eng, cancel, askAtLimit = askAtLimit, rounds = rounds).also { planner = it },
+                        pts, act, level, pins, emptySet(), f)
                 }
             }
             slow.cancel()
@@ -2033,6 +2064,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (adoptPlanBaseline) { adoptPlanBaseline = false; planBaseline = it.points }
             }
                 .onFailure {
+                    if (it is com.onpath.app.routing.SlowPlan.TimeLimit) {
+                        // the time limit in Plan: ask (the box stays until answered); the points and the line stay as
+                        // they are – no straight lines, no error line
+                        Problems.info("routing", "Plan reached its time limit after ${it.rounds} period(s) – asking to wait on")
+                        slowPlanAsk = it.rounds
+                        routing = false
+                        return@launch
+                    }
                     fitNextRoute = false // the points were fitted when they came (link) or are where the user held
                     Problems.error("routing", "Route calculation failed", it)
                     // during a tour one failed run must not take the whole plan line off the map (fix-tour-edit-line.md)

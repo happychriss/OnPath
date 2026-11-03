@@ -1202,6 +1202,14 @@ class ScreenshotTest {
             mapNotice(card)?.let { n -> mapNoticeMessage(n, CellCardCallbacks())?.let { MessageCard(it) } ?: MapNoticePill(n) }
         }) { PlanPanel(ui, PlanCallbacks()) }
 
+    /**
+     * The plan run reached its time limit (owner 2026-11-03, onpath.private#21 B): "This route is long and takes a while.
+     * Keep waiting?" – Cancel · **Keep waiting** – the points stay, the line as it was.
+     */
+    @Test fun planSlowAsk() = paparazzi.snapshot {
+        Frame(top = { MessageCard(slowPlanMessage {}) }) { PlanPanel(planUi(4, null), PlanCallbacks()) }
+    }
+
     /** The app opened where there is no detailed map – the box asks, nothing loads by itself. */
     @Test fun hereAsk() = paparazzi.snapshot {
         Frame(top = { MessageCard(hereAskMessage(21L * 1_048_576, {}, {})) }) { PlanPanel(planWithCard(n = 0), PlanCallbacks()) }

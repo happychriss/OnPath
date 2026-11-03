@@ -82,6 +82,12 @@ Undo brings it back; with unsaved changes ONE question first, "Discard changes?"
 **↻ Round trip** (greyed when it already is one). A tap on time + distance opens Time details. Save is ☰ → Save route;
 Save as copy, Export GPX and Share route are in My routes → ⋮. A real delete is only in My routes (recycle bin). The sheet shows the save state as text, not as a message: "Saved as “Name”" or
 "“Name” · changed, not saved" (a plain line, not tappable).
+- **A slow plan asks** (owner 2026-11-03, onpath.private#13 / #21 B, `routing/SlowPlan`): when a plan run in Plan
+  reaches its time limit (`RouteTimeLimit`, 15 s – 2 min by distance and profile) the one message box asks "Die Route
+  ist lang, die Berechnung dauert. Weiter warten?" – **Weiter warten** runs it again with one more time-limit period
+  (BRouter cannot resume; routed pieces come from its cache) and asks again at that limit; **Abbrechen** = Cancel while
+  calculating (the change that started it is undone). It stays until answered. The points stay, no straight lines.
+  Runs that do not ask (Navigate, browser plans, plan from a track) keep the straight "took too long" lines.
 
 **My routes** (`RoutesScreen`): one list of planned routes, recorded tours and imported GPX (type icon, name,
 type + date, distance · ascent · time), newest first. Import GPX at the top (the imported track is then shown on the

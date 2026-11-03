@@ -237,4 +237,8 @@
     <string name="plan_from_track_busy_text">A long tour can take a few minutes.</string>
     <string name="plan_from_track_failed">The tour could not be turned into a route – the detailed map may be missing there.</string>
     <string name="plan_from_track_wait">The map for this tour is still loading – try again in a moment.</string>
+    <!-- the time limit of a plan run (owner 2026-11-03, onpath.private#21 B) -->
+    <string name="plan_slow_title">This route is long and takes a while.</string>
+    <string name="plan_slow_text">Keep waiting?</string>
+    <string name="plan_slow_wait">Keep waiting</string>
 </resources>

@@ -66,7 +66,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
                 val key = cacheKey(waypoints, activity, sacLimit)
                 cache[key] ?: run {
                     val budget = limits?.let { (it.timeoutMs - (System.currentTimeMillis() - start)).coerceAtLeast(MIN_BUDGET_MS) }
-                    routeLocked(waypoints, activity, sacLimit, budget, limits?.cancel)
+                    routeLocked(waypoints, activity, sacLimit, budget, limits?.cancel, limits?.rounds ?: 1)
                 }.also { cache[key] = it }
             } finally {
                 LOCK.unlock()
@@ -101,11 +101,12 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
 
     private fun routeLocked(
         waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, budgetMs: Long? = null, cancel: RouteCancel? = null,
+        rounds: Int = 1,
     ): RouteResult {
         if (waypoints.size < 2) throw RoutingException(Txt.s(Res.string.plan_err_set_start_dest))
         checkSegments(waypoints)
         ensureProfiles()
-        val limit = RouteTimeLimit.forRoute(waypoints, activity)
+        val limit = RouteTimeLimit.forRoute(waypoints, activity, rounds)
         val timeoutMs = budgetMs?.coerceAtMost(limit) ?: limit
         if (cancel?.isCancelled == true) throw RoutingException(CANCELLED)
 

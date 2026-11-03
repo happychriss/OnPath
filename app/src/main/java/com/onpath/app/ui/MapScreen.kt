@@ -344,6 +344,19 @@ internal fun sharedUnsureMessage(text: String, onSearch: () -> Unit): Message =
     Message(MessageKind.HINWEIS_WARN, str(Res.string.msg_shared_place_unsure), str(Res.string.msg_shared_place_unsure_detail, text),
         listOf(MessageButton(str(Res.string.msg_shared_place_search), onSearch)))
 
+/**
+ * The plan run reached its time limit (owner 2026-11-03, onpath.private#21 B, [com.onpath.app.routing.SlowPlan]): "Die
+ * Route ist lang, die Berechnung dauert. Weiter warten?" – Abbrechen · **Weiter warten** (the filled primary). FRAGE,
+ * stays until answered.
+ */
+@Composable
+internal fun slowPlanMessage(onAnswer: (com.onpath.app.routing.SlowPlan.Answer) -> Unit): Message =
+    Message(MessageKind.FRAGE, str(Res.string.plan_slow_title), str(Res.string.plan_slow_text),
+        buttons = listOf(
+            MessageButton(str(Res.string.common_cancel)) { onAnswer(com.onpath.app.routing.SlowPlan.Answer.CANCEL) },
+            MessageButton(str(Res.string.plan_slow_wait)) { onAnswer(com.onpath.app.routing.SlowPlan.Answer.KEEP_WAITING) },
+        ))
+
 @Composable
 private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppViewModel, rec: RecState?,
                                                                         onRequestLocation: () -> Unit,
@@ -367,6 +380,8 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     val upd = vm.update as? AppViewModel.UpdateState.Available
     val mapBox = notice?.let { mapNoticeMessage(it, cellCb) }
     val message = if (vm.searchOpen) null else Messages.pick(listOf(
+        // the plan run reached its time limit (owner 2026-11-03): "Weiter warten?" – stays until answered
+        vm.slowPlanAsk?.let { slowPlanMessage(onAnswer = vm::answerSlowPlan) },
         // ☰ → Pair with browser, the first time (owner 2026-10-30): the one step, then the camera
         if (vm.pairHint) pairHintMessage(onCamera = { vm.pairHintCamera(pairCamera) }, onCancel = vm::pairHintCancel) else null,
         mapBox?.takeIf { it.kind == MessageKind.FRAGE },

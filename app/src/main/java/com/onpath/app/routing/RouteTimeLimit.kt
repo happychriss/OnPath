@@ -30,8 +30,12 @@ object RouteTimeLimit {
         return (MIN_MS + km.coerceAtLeast(0.0) * r.msPerKm).toLong().coerceIn(MIN_MS, r.capMs)
     }
 
-    /** Limit for a request through [waypoints] (straight-line sum of the legs). */
-    fun forRoute(waypoints: List<GeoPoint>, activity: Activity): Long = forKm(straightKm(waypoints), activity)
+    /**
+     * Limit for a request through [waypoints] (straight-line sum of the legs); [rounds] periods after "Weiter warten"
+     * ([SlowPlan], owner 2026-11-03).
+     */
+    fun forRoute(waypoints: List<GeoPoint>, activity: Activity, rounds: Int = 1): Long =
+        forKm(straightKm(waypoints), activity) * rounds.coerceAtLeast(1)
 
     fun straightKm(waypoints: List<GeoPoint>): Double {
         var m = 0.0
