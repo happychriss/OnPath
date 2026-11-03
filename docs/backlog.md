@@ -66,6 +66,9 @@ the git log.
 - [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
 
 ## Next
+- **[cloud-plan] Web spike red on 5be2031d** (captain 2026-11-03 22:10) – planner not deployed since then: job "smokes (short)"
+  step "No WebGL2 → a plain message", job "smokes (lang-gpx)" step "Long-route question and GPX import" (the new
+  "Plan a route from it" box?). https://github.com/happychriss/OnPath/actions/runs/41715495112
 - **Docs pictures follow the UI by themselves (owner 2026-11-03)** – three parts:
   (1) **[cloud-web]** make `docs/design/website-screens.md` the full shot list: every picture on onpath.earth (home,
   help DE + EN, planner pages) and in the store listing, with key, file names DE · EN, what exactly it shows (state,
