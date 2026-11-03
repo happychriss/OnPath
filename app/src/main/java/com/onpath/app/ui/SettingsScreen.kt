@@ -151,6 +151,8 @@ fun SettingsScreen(
     activity: com.onpath.app.routing.Activity = com.onpath.app.routing.Activity.HIKE,
     /** Diagnostics → "Developer tools" open at first (screenshots). */
     devToolsOpen: Boolean = false,
+    /** Diagnostics: the problem list unfolded (screenshot tests); on the phone it always opens folded (owner 2026-11-02). */
+    problemsOpen: Boolean = false,
     /**
      * Developer tools shown in Diagnostics (owner): hidden until the version line in About is tapped 7 times
      * (remembered; also in debug builds – testers get those).
@@ -255,7 +257,7 @@ fun SettingsScreen(
                             Section(SettingsPage.UPDATES.title) { UpdateSectionContent(update, version, onCheckUpdate, onInstallUpdate) }
                         }
                         SettingsPage.DIAGNOSTICS -> if (diagnostics) {
-                            item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems, language.active, routingInfo) }
+                            item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems, language.active, routingInfo, problemsOpen) }
                             if (devTools) item {
                                 DeveloperTools(devToolsOpen, mapServer, mapCells, dataBusy, onDownloadRouting, onImportData, checks, mapPackage, dataDir,
                                     onTimeFormulas, testStyle, language, demo)
@@ -483,7 +485,8 @@ private fun BikeScreenRow(settings: AppSettings, onChange: (AppSettings) -> Unit
 @Composable
 private fun DiagnosticsSection(busy: Boolean, onExport: () -> Unit,
                                problems: List<com.onpath.app.debug.Problems.Entry>, onClearProblems: () -> Unit,
-                               language: String = "English (phone language)", routing: String? = null) {
+                               language: String = "English (phone language)", routing: String? = null,
+                               problemsOpen: Boolean = false) {
     Section("Diagnostics") {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedButton(onClick = { if (!busy) onExport() }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
@@ -496,7 +499,7 @@ private fun DiagnosticsSection(busy: Boolean, onExport: () -> Unit,
             // the same fingerprint + data dates in the browser = the same routes (docs/design/routing-fingerprint.md)
             routing?.let { Text("Routing: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
-            ProblemList(problems, onClearProblems)
+            ProblemList(problems, onClearProblems, problemsOpen)
         }
     }
 }
@@ -698,12 +701,26 @@ private fun MapCellsDebugList(d: MapCellsDebug) {
     }
 }
 
-/** Problems the app noticed (errors it recovered from, map engine warnings, crashes) – nothing is hidden. */
+/**
+ * Problems the app noticed (errors it recovered from, map engine warnings, crashes) – nothing is hidden, but the list
+ * starts folded to one line, "127 entries, 3 errors ▸" (owner 2026-11-02: the developer tools under it are reached
+ * without scrolling); a tap unfolds it. Not remembered: every visit opens folded. English like the whole page.
+ */
 @Composable
-private fun ProblemList(problems: List<com.onpath.app.debug.Problems.Entry>, onClear: () -> Unit) {
+private fun ProblemList(problems: List<com.onpath.app.debug.Problems.Entry>, onClear: () -> Unit, initiallyOpen: Boolean = false) {
     val serious = problems.count { it.level >= com.onpath.app.debug.Problems.Level.ERROR }
-    Text(if (problems.isEmpty()) "No problems noticed." else "Problems noticed: ${problems.size}" +
-        (if (serious > 0) " ($serious serious)" else ""), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+    var open by remember { mutableStateOf(initiallyOpen) }
+    if (problems.isEmpty()) {
+        Text(ProblemFold.summary(0, 0, open), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+        return
+    }
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = androidx.compose.ui.semantics.Role.Button) { open = !open },
+        verticalAlignment = Alignment.CenterVertically) {
+        Text(ProblemFold.summary(problems.size, serious, open), fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (serious > 0) OnPathColors.Bad else androidx.compose.ui.graphics.Color.Unspecified)
+    }
+    if (!open) return
     val fmt = remember { java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale.getDefault()) }
     problems.take(15).forEach { p ->
         val color = when (p.level) {
@@ -714,7 +731,17 @@ private fun ProblemList(problems: List<com.onpath.app.debug.Problems.Entry>, onC
             (if (p.count > 1) " (× ${p.count})" else ""), style = MaterialTheme.typography.bodySmall, color = color)
     }
     if (problems.size > 15) Text("… and ${problems.size - 15} more in the export.", style = MaterialTheme.typography.bodySmall)
-    if (problems.isNotEmpty()) TextButton(onClick = onClear, modifier = Modifier.heightIn(min = 48.dp)) { Text("Clear problem list") }
+    TextButton(onClick = onClear, modifier = Modifier.heightIn(min = 48.dp)) { Text("Clear problem list") }
+}
+
+/** The folded problem list's one line (pure): "127 entries, 3 errors ▸" – ▾ when open; errors = ERROR + CRASH. */
+object ProblemFold {
+    fun summary(total: Int, errors: Int, open: Boolean): String {
+        if (total == 0) return "No problems noticed."
+        val entries = if (total == 1) "1 entry" else "$total entries"
+        val errs = when (errors) { 0 -> ""; 1 -> ", 1 error"; else -> ", $errors errors" }
+        return entries + errs + if (open) " ▾" else " ▸"
+    }
 }
 
 /**

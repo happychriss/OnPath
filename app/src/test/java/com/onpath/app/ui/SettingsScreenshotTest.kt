@@ -47,7 +47,7 @@ class SettingsScreenshotTest {
     private fun Screen(page: SettingsPage?, offline: OfflineMapsUi = OfflineMapsUi(true, areas, wifiOnly = false,
         waiting = WaitingDownloads(2, 0, 60L * 1_048_576)), devTools: Boolean = false, seenMs: Long = now,
         demo: DemoUi? = null, sync: SyncUi = SyncUi(paired = true, peer = "Chrome on Linux", lastOkMs = now - 60_000),
-        phone: com.onpath.app.setup.PhoneState? = null, licencesOpen: Boolean = false) = OnPathTheme {
+        phone: com.onpath.app.setup.PhoneState? = null, licencesOpen: Boolean = false, problemsOpen: Boolean = false) = OnPathTheme {
         SettingsScreen(
             AppSettings(hiddenPoiKinds = PoiKinds.defaultHidden, offRouteM = 40), {},
             listOf(DataFiles.Check("base.pmtiles", true, "Base map"), DataFiles.Check("pois.geojson", false, "Points of interest")),
@@ -62,6 +62,7 @@ class SettingsScreenshotTest {
             backup = BackupUi("Documents/OnPath", now - 3 * 3_600_000, 28, null, custom = false),
             mapPackage = DataFiles.PackageCheck("Südtirol", listOf(10.70, 46.30, 11.60, 46.85), "2026-10-18T00:00:00Z", emptyList()),
             devToolsOpen = devTools,
+            problemsOpen = problemsOpen,
             devTools = devTools,
             diagnosticsSeenMs = seenMs,
             mapServer = "test · https://maps.example/v1 · key set (…28ec)",
@@ -96,7 +97,10 @@ class SettingsScreenshotTest {
     @Test fun backup() = paparazzi.snapshot { Screen(SettingsPage.BACKUP) }
     @Test fun privacy() = paparazzi.snapshot { Screen(SettingsPage.PRIVACY) }
     @Test fun updates() = paparazzi.snapshot { Screen(SettingsPage.UPDATES) }
+    /** Folded: one line "2 entries, 1 error ▸" (owner 2026-11-02). */
     @Test fun diagnostics() = paparazzi.snapshot { Screen(SettingsPage.DIAGNOSTICS) }
+    /** Unfolded after a tap: the entries and "Clear problem list". */
+    @Test fun diagnosticsProblemsOpen() = paparazzi.snapshot { Screen(SettingsPage.DIAGNOSTICS, problemsOpen = true) }
     @Test fun diagnosticsDeveloperTools() {
         paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(
             screenWidth = 1024, screenHeight = 4200, xdpi = 428, ydpi = 428, density = Density.create(420)))
