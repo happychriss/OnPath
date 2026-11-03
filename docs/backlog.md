@@ -88,6 +88,11 @@ the git log.
 - [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
 
 ## Next
+- **Owner 2026-11-03 ~23:15: donald takes NO new build items from now on – new work goes to the cloud** (captain starts
+  cloud workers). donald only finishes tonight's five (round trip A/B/C, "PLANEN · Ohne Netz ✓", A-022 app texts),
+  runs gate + the full Rundgang and releases **v0.15.0** for the owner's in-app update (owner's word: "baue mir das so,
+  dass ich mir das über die Update-Funktion holen kann"); the Pixel is unplugged. Then donald's hourly wake-up and
+  10-minute loop go off.
 - **[cloud-plan] Web spike red on 5be2031d** (captain 2026-11-03 22:10) – planner not deployed since then: job "smokes (short)"
   step "No WebGL2 → a plain message", job "smokes (lang-gpx)" step "Long-route question and GPX import" (the new
   "Plan a route from it" box?). https://github.com/happychriss/OnPath/actions/runs/41715495112
