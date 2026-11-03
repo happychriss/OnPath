@@ -113,8 +113,6 @@ data class RecState(
      * is quiet from then on (no off-route alarms on the way to the car park); recording goes on. The app asks once.
      */
     val arrived: Boolean = false,
-    /** "Navigation Stopp" walked off: the guidance came back by itself ([StopQuiet]) – the app shows Navigate again. */
-    val guidanceBack: Boolean = false,
 )
 
 /**
@@ -188,17 +186,17 @@ class RecordingService : Service() {
     private var settings: com.onpath.app.data.AppSettings? = null
     /** False while the app is in Plan mode ("Navigation Stopp"): the phone is quiet then (recording goes on). */
     private var navigating = true
-    /** What the navigator was last told: Navigate, or Stopp walked off ([StopQuiet]). */
+    /** What the navigator was last told: Navigate or Plan ([StopQuiet]). */
     private var navigatingApplied = true
-    /** "Navigation Stopp" = quiet, also with the screen off (owner 2026-11-01); back after walking off ([StopQuiet]). */
+    /** "Navigation Stopp" = quiet, also with the screen off (owner 2026-11-01); only Continue ends it (owner 2026-11-03). */
     private val stopQuiet = StopQuiet()
 
-    /** The app is in Plan during the tour and the guidance has not come back by walking off: silent ([ModeQuiet]). */
+    /** The app is in Plan during the tour: silent ([ModeQuiet]). */
     private fun planQuiet(): Boolean = tourId >= 0 && stopQuiet.quiet
 
-    /** Guidance on in Navigate, or after walking off from a Stopp; re-applied every second. */
+    /** Guidance on in Navigate only; re-applied every second. */
     private fun applyNavigating() {
-        val now = navigating || stopQuiet.resumed
+        val now = navigating
         if (now == navigatingApplied) return
         navigatingApplied = now
         if (now) voice.dropWaiting() // nothing from the time in Plan is said late (owner 2026-11-03)
@@ -973,14 +971,6 @@ class RecordingService : Service() {
     private fun junctionCue(loc: Location, nowEl: Long) {
         val st = navigator?.state ?: return
         junctionSpeeds.note(if (loc.hasSpeed()) loc.speed.toDouble() else null, nowEl)
-        // "Navigation Stopp" (owner 2026-11-01): quiet – until the user walks off with the app off screen
-        if (stopQuiet.onFix(com.onpath.app.routing.GeoPoint(loc.latitude, loc.longitude), if (loc.hasAccuracy()) loc.accuracy else null,
-                AppVisibility.visible)) {
-            Problems.trace("navigation", "Navigation Stopp: walked ${StopQuiet.RESUME_M.toInt()} m away with the app off screen – guidance back")
-            applyNavigating()
-            if (voiceOn()) voiceSpeaker()?.say(Txt.s(Res.string.voice_guidance_back))
-            publish(force = true)
-        }
         junctions.bike = navigator?.session?.activity != com.onpath.app.routing.Activity.HIKE
         // Plan is silent (owner 2026-11-03), also with the screen off: the voice follows without a word (stops passed,
         // off route, no GPS) so nothing is said late after "Navigation fortsetzen"; no junction vibration
@@ -1276,7 +1266,7 @@ class RecordingService : Service() {
             navigator?.state?.offM, navigator?.prompt != null, follow?.first, trackSnapshot,
             navigator?.state, tripTime(), saveFailed, hadGpsFix = lastGoodFixElapsed > 0, gpsQuiet = gpsQuiet(),
             gpsStill = gpsLost() && noGpsLine() == NoGpsShow.Line.NONE,
-            arrived = arrived, guidanceBack = stopQuiet.resumed,
+            arrived = arrived,
         )
         // Battery: the clock runs by itself in the notification (chronometer); re-post only when what it says
         // changes (status, shown distance), at most every 5 s, and once a minute to keep the clock in step.

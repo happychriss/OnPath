@@ -47,16 +47,18 @@ the git log.
   the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
-- [donald] Red tile in "Route ändern" = "Neu planen" (owner 2026-11-03: plan empty, recording goes on; unsaved route asks first) – since 2026-11-03
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [cloud-plan] Laptop off (2026-11-02 evening) – web-spike 415d3802 clean; next sitting: merge main on the captain's word, time-limit question, mirror leftovers – since 2026-11-02
 
 ## Next
+- **[pixel] Check: red tile "Neu planen" in "Route ändern" (built 2026-11-03)** – saved route: plan clears without a
+  question, recording goes on ("Nur Aufnahme"), the empty-plan hint shows; new / changed plan: "Änderungen verwerfen?"
+  first; ↶ brings plan + guidance back.
 - **[pixel] Check: Plan is silent during a tour (built 2026-11-03, `recording/ModeQuiet`)** – tour → "Route ändern",
   screen off, pass a junction / a stop: nothing said, no vibration; delete the point ahead in Plan: nothing said;
   "Navigation fortsetzen" after a passed stop: no late "Stopp N erreicht"; arrive while in Plan → "Du bist angekommen"
-  only after continuing; app in the background in Plan + 150 m walked → back to Navigate with "Navigation läuft wieder."
+  only after continuing; app in Plan + walking on: stays silent, no switch back by itself (owner 2026-11-03).
 - **[pixel] Feel: holding beside the route (24 dp, built 2026-11-03, onpath.private#6)** – a hold about a finger's width
   from the line inserts a stop into that leg; further away it is a new point / destination (before: 2–3 finger widths).
   Shared place: the menu opens only when the map is over the place. Owner checks on the Pixel.

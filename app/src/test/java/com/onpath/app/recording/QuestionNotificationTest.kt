@@ -57,11 +57,11 @@ class QuestionNotificationTest {
      * with the phone pocketed brings the guidance back (H1's worry, StopQuietTest). Owner 2026-11-03: Plan is silent for
      * everything from movement / navigation ([ModeQuiet], ModeQuietTest). Wiring in the service.
      */
-    @Test fun navigationStoppIsQuietUntilContinueOrWalkingOff() {
+    @Test fun navigationStoppIsQuietUntilContinue() {
         val svc = File("src/main/java/com/onpath/app/recording/RecordingService.kt").readText()
         assertTrue(svc.substringAfter("private fun tick()").substringBefore("\n    }\n").contains("applyNavigating()"))
         assertTrue(svc.contains("setNavigating(navigatingApplied)"))
-        assertTrue(svc.contains("val now = navigating || stopQuiet.resumed"))
+        assertTrue("only Continue ends the quiet (owner 2026-11-03)", svc.contains("val now = navigating\n"))
         assertTrue(svc.contains("stopQuiet.set(stopped = !navigating)"))
         // no voice and no junction vibration while quiet (owner 2026-11-03, ModeQuiet): the voice follows without a word,
         // the check comes before the spoken step and the vibration
