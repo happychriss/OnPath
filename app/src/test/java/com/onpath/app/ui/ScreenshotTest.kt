@@ -738,6 +738,8 @@ class ScreenshotTest {
                     Column(Modifier.padding(top = 24.dp)) {
                         RouteSpotsList(listOf(
                             RouteSpot(SpotKind.PUSH, 13, 20, 0.0, 350.0),
+                            // owner #7 A: a paved footway without a bicycle tag
+                            RouteSpot(SpotKind.FOOTWAY, 23, 25, 820.0, 980.0),
                             RouteSpot(SpotKind.STEEP, 0, 5, 1200.0, 1350.0, 28),
                             RouteSpot(SpotKind.ABOVE_T, 6, 9, 3420.0, 3640.0, 4),
                             RouteSpot(SpotKind.ABOVE_T, 10, 12, 5100.0, 5180.0, 5),

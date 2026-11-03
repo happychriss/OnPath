@@ -24,6 +24,7 @@
     <string name="plan_barrier_kissing_gate">kissing gate</string>
     <string name="plan_barrier_turnstile">turnstile</string>
     <string name="plan_hint_pushing">%1$s pushing</string>
+    <string name="plan_hint_footway">%1$s footway – you may have to push</string>
     <plurals name="plan_hint_steps">
         <item quantity="one">steps</item>
         <item quantity="other">%1$d× steps</item>
@@ -47,6 +48,7 @@
     <string name="plan_spot_turnstile_full">Turnstile – may not pass with a bike</string>
     <string name="plan_spot_stile">Stile – lift the bike over</string>
     <string name="plan_spot_pushing">Pushing</string>
+    <string name="plan_spot_footway">Footway – you may have to push</string>
     <string name="plan_spot_steps">Steps</string>
     <string name="plan_spot_above_t">T%1$d – above your T%2$d</string>
     <string name="plan_spot_steep">Steep, up to %1$d %</string>

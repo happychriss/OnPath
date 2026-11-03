@@ -23,6 +23,7 @@
     <string name="plan_barrier_kissing_gate">Schwinggatter</string>
     <string name="plan_barrier_turnstile">Drehkreuz</string>
     <string name="plan_hint_pushing">%1$s Schieben</string>
+    <string name="plan_hint_footway">%1$s Fußweg – evtl. schieben</string>
     <plurals name="plan_hint_steps">
         <item quantity="one">Treppe</item>
         <item quantity="other">%1$d× Treppen</item>
@@ -46,6 +47,7 @@
     <string name="plan_spot_turnstile_full">Drehkreuz – mit Rad evtl. nicht passierbar</string>
     <string name="plan_spot_stile">Zauntritt – Rad drüberheben</string>
     <string name="plan_spot_pushing">Schieben</string>
+    <string name="plan_spot_footway">Fußweg – evtl. schieben</string>
     <string name="plan_spot_steps">Treppe</string>
     <string name="plan_spot_above_t">T%1$d – schwerer als dein T%2$d</string>
     <string name="plan_spot_steep">Steil, bis %1$d %</string>
