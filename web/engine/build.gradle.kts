@@ -148,6 +148,13 @@ tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileKotlin") { 
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileTestKotlin") {
     source(appTests.map { root.resolve("app/src/test/java/com/onpath/app").resolve(it) })
 }
+// app tests read the BRouter profiles from the app module's path (RouteWarningsTest: src/main/assets/brouter/*.brf);
+// the engine's tests run in web/engine, so the profiles are copied there first (git-ignored, the app's files as they are)
+val appProfiles = tasks.register<Sync>("appProfiles") {
+    from(root.resolve("app/src/main/assets/brouter")) { include("*.brf") }
+    into(layout.projectDirectory.dir("src/main/assets/brouter"))
+}
+tasks.named<Test>("test") { dependsOn(appProfiles) }
 
 // Our few web replacements (src/main/java: btools.util.StackSampler, TeaVM's java.lang.Package, ReentrantLock) must
 // win over the BRouter jars and TeaVM's class library: project classes first on the TeaVM classpath.

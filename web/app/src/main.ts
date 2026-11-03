@@ -545,7 +545,7 @@ sortable($('points'), (from, to) => applyEdit('move', from, to));
 
 // ---- presses on the map: a click is the app's hold (MapGestures.decide, in the engine) ----
 let menu: maplibregl.Popup | null = null;
-let placeCard: PlaceCard = { close: () => {}, isOpen: () => false }; // the search's place card (set up below)
+let placeCard: PlaceCard = { close: () => {}, isOpen: () => false, removePin: () => {} }; // the search's place card (set up below)
 function closeMenu() { menu?.remove(); menu = null; }
 function openMenu(at: maplibregl.LngLat, items: MenuItem[], head: string) {
   closeMenu();
@@ -1410,7 +1410,7 @@ document.addEventListener('click', (e) => { if (!(e.target as HTMLElement).close
 $('reverse').onclick = () => applyEdit('reverse');
 $('roundTrip').onclick = () => applyEdit('roundTrip');
 // ✕ Close: with unsaved changes it asks first (the app's DiscardPlanDialog: Cancel · Discard); a saved route stays in My routes
-$('clear').onclick = async () => { if (saveState === 'save' && !(await askDiscard())) return; clearRoute(); };
+$('clear').onclick = async () => { if (saveState === 'save' && !(await askDiscard())) return; clearRoute(); placeCard.removePin(); };
 function forgetSaved() { state.savedId = null; state.savedTitle = null; state.savedCode = null; state.savedFolder = null; state.storedCode = null; }
 const plansHost = {
   current: async () => (state.points.length >= 2 && (await ready) ? { code: await engine.encode(sharedPlan()), title: state.title } : null),

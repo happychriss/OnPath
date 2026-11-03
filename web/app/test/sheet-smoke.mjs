@@ -35,7 +35,8 @@ const cardGeom = (page) => page.evaluate(() => {
   const side = pc.dataset.side, t = parseFloat(pc.style.getPropertyValue('--tail'));
   const tip = !card || !side ? null : side === 'above' ? { x: card.x + t, y: card.y + card.h + 10 } : side === 'below' ? { x: card.x + t, y: card.y - 10 }
     : side === 'right' ? { x: card.x - 10, y: card.y + t } : { x: card.x + card.w + 10, y: card.y + t };
-  return { ring: ring && { x: ring.x + ring.w / 2, y: ring.y + ring.h / 2 }, card, side, tip, anchored: pc.classList.contains('anchored'),
+  // the pin's tip is the place: 4.2 px above the pin box's bottom (search.ts TIP_MARGIN)
+  return { ring: ring && { x: ring.x + ring.w / 2, y: ring.y + ring.h - 4.2 }, card, side, tip, anchored: pc.classList.contains('anchored'),
     visible: getComputedStyle(pc).visibility !== 'hidden', sheet: box(document.getElementById('sheet')), bar: box(document.getElementById('topbar')) };
 });
 /** Every route point, the planned line and a shown GPX track (map coordinates) inside the free map room: in the map,
@@ -235,15 +236,25 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     await page.keyboard.press('Escape');
     await pick('Ifinger');
   }
-  // the candidate marker (the app's CandidateMarker, A-019 add-on 1): dashed route-blue ring with "+", the name below,
-  // a thin dashed line to where adding it would join the route
+  // the found place's pin (the app's CandidateMarker, 2026-11-02): a route-blue pin, its name as a chip "Ifinger ›" under
+  // it, a thin dashed line to where adding it would join the route
   const joinCount = () => page.evaluate(() => window.__map.getSource('candidate-join')?.serialize().data.features.length ?? 0);
-  const cand = await page.evaluate(() => ({ dashed: !!document.querySelector('.candidate svg circle[stroke-dasharray]'), name: document.querySelector('.candidate .candname')?.textContent,
+  const cand = await page.evaluate(() => ({ pin: !!document.querySelector('.candidate svg path[fill="#1E3FAE"]'), chip: document.querySelector('.pinchip b')?.textContent,
+    chipBelow: document.querySelector('.pinchip').getBoundingClientRect().y >= document.querySelector('.candidate').getBoundingClientRect().bottom - 6,
     orange: !!document.querySelector('.searchring') }));
-  check(cand.dashed && cand.name === 'Ifinger' && !cand.orange && await joinCount() === 1, `${P} candidate marker: dashed ring, the name below, a dashed line to the route (${JSON.stringify(cand)})`);
+  check(cand.pin && cand.chip === 'Ifinger' && cand.chipBelow && !cand.orange && await joinCount() === 1, `${P} found place: blue pin, the name chip below, a dashed line to the route (${JSON.stringify(cand)})`);
   await page.screenshot({ path: path.join(shots, `${name}-card.png`) });
+  // closing the card keeps the pin (the app 2026-11-02); its chip opens the card again; "Remove pin" takes it away
+  await page.click('#cclose');
+  check(await page.isHidden('#placecard') && await page.isVisible('.candidate') && await page.isVisible('.pinchip'), `${P} the card closed, the pin and its chip stay`);
+  await page.click('.pinchip');
+  await page.waitForSelector('#placecard:not([hidden]) #cunpin', { timeout: 20_000 }).catch(() => {});
+  check(await page.isVisible('#placecard') && await page.isVisible('#cunpin'), `${P} the chip opens the place card again (with "Remove pin")`);
+  await page.click('#cunpin');
+  check(await page.isHidden('#placecard') && await page.locator('.candidate').count() === 0 && await page.locator('.pinchip').count() === 0, `${P} "Remove pin": card, pin and chip gone`);
+  await pick('Ifinger');
   await page.click('#cdest');
-  check(await page.isHidden('#placecard') && await page.isVisible('#sheet') && await joinCount() === 0, `${P} the card closes after its action, the sheet is back, the preview line gone`);
+  check(await page.isHidden('#placecard') && await page.isVisible('#sheet') && await joinCount() === 0 && await page.locator('.candidate').count() === 0, `${P} the card closes after its action, the sheet is back, pin and preview line gone`);
   await page.waitForFunction(() => document.querySelectorAll('.pin').length === 3, null, { timeout: 20_000 }).catch(() => {});
   check(await step(page) === 'small', `${P} the step is kept`);
   // a place added from the card: the new route is fitted once it is there (the app's WholeRoute.fitAfterPlace, add-on 2)

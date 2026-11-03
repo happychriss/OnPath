@@ -7,7 +7,7 @@
       "web": [
         "web/app/src/activity.ts"
       ],
-      "blob": "c5f7ca62a16c943c32cbf33270115ceab89f5620"
+      "blob": "6f23d0844e6cb1b699b856ce0942648b22086909"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
@@ -16,7 +16,7 @@
         "web/app/src/main.ts",
         "web/app/src/menus.ts"
       ],
-      "blob": "868904eb8c9cb89b32c04c78e35609c12272a6c1"
+      "blob": "623db68b581c58000001f3eb2380d44b9529a17d"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanStatus.kt",
@@ -92,7 +92,7 @@
         "web/app/src/main.ts",
         "web/app/src/gpximport.ts"
       ],
-      "blob": "b8a61b258e2832d3719dbf68690062f13f6e9d18"
+      "blob": "b8f143243aaa2100cd9e972420ef92415126ccc2"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/SettingsScreen.kt",
@@ -142,7 +142,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebPlanRules.kt",
         "web/app/src/longroute.ts"
       ],
-      "blob": "9ad5cc9647bd1023b85e31121d449eda4f0cd5aa"
+      "blob": "ffa33dd2a94e6c0bd0f1ccdec03d6aa05a9a3505"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/AppViewModel.kt",
@@ -155,7 +155,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "083bd5b64ec9ab3f1eff1ba5af2b785f8756bdc5"
+      "blob": "949f0ae8ed5c795594b8a1272451e6900d7c11e3"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -230,7 +230,7 @@
       "web": [
         "web/engine/src/main/kotlin/com/onpath/web/WebPace.kt"
       ],
-      "blob": "8cb42f542c396a3a066e6ac1b0211fe2bfd6432a"
+      "blob": "61089288ec8a69b03fe27a8ba840ecda449f1014"
     },
     {
       "app": "app/src/main/java/com/onpath/app/data/Prefs.kt",
@@ -294,12 +294,12 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanPanel.kt",
       "why": "plan sheet layout and actions",
-      "blob": "60c512bd9584dea2d3145293af00f83648172205"
+      "blob": "a534f41a7d9f99eb7cbe37d338507aad53644d2e"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapScreen.kt",
       "why": "plan screen wiring, dialogs",
-      "blob": "e860233f617a8c9b397c619e0378c588503485c0"
+      "blob": "315dd7c71ed434899f7dfff8c72ccb3b2456cfd4"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanGuidance.kt",

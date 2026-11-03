@@ -31,7 +31,8 @@ export interface SearchHost {
 }
 
 /** What the page can do with the place card: close it (a map click elsewhere, Escape) and ask whether it is open. */
-export interface PlaceCard { close(): void; isOpen(): boolean }
+/** [close] closes the card only – the found place's pin stays (app 2026-11-02); [removePin] takes the pin away too. */
+export interface PlaceCard { close(): void; isOpen(): boolean; removePin(): void }
 
 /** The elements the anchored card must not cover (wide screen). */
 const BLOCKERS = ['#topbar', '#sheet', '#trackPanel', '#mapnotes', '#footer', '.maplibregl-ctrl-bottom-right'];
@@ -63,7 +64,12 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   const clear = box.querySelector<HTMLButtonElement>('#qclear')!;
   let gen = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
+  /** The found place's pin and its name chip (the app's CandidateMarker + MapOverlays PinChip): they outlive the card. */
   let marker: maplibregl.Marker | null = null;
+  let chip: maplibregl.Marker | null = null;
+  const removePin = () => {
+    marker?.remove(); marker = null; chip?.remove(); chip = null; setJoin(host.map, null);
+  };
   /** The chip picked (the app's SearchKinds.Category name), '' = none; the six chips with their labels from the engine. */
   let category = '';
   let chips: [string, string][] | null = null;
@@ -117,15 +123,21 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   };
 
   let picked = 0;
-  const pick = async (h: Hit) => {
+  /** [fly] false: the pin's chip (or the pin) tapped – the card opens again where the map is (the app's openPinMenu). */
+  const pick = async (h: Hit, fly = true) => {
     const my = ++picked;
     gen++; // a search still running (online results after 350 ms) must not open the list again over the card
     if (timer) clearTimeout(timer);
     results.hidden = true;
-    marker?.remove();
-    setJoin(host.map, null);
-    marker = new maplibregl.Marker({ element: candidateMarker(h.title) }).setLngLat([h.lon, h.lat]).addTo(host.map);
-    host.placeShown?.(h.lat, h.lon);
+    removePin();
+    const again = () => { if (card.hidden) void pick(h, false); };
+    const pinEl = candidateMarker();
+    pinEl.addEventListener('click', (e) => { e.stopPropagation(); again(); });
+    marker = new maplibregl.Marker({ element: pinEl, anchor: 'bottom', offset: [0, TIP_MARGIN] }).setLngLat([h.lon, h.lat]).addTo(host.map);
+    const chipEl = pinChip(h.title);
+    chipEl.addEventListener('click', (e) => { e.stopPropagation(); again(); });
+    chip = new maplibregl.Marker({ element: chipEl, anchor: 'top', offset: [0, CHIP_GAP - CHIP_PAD] }).setLngLat([h.lon, h.lat]).addTo(host.map);
+    if (fly) host.placeShown?.(h.lat, h.lon);
     const pv = await host.engine.placePreview(host.points(), h.lat, h.lon);
     if (my === picked) setJoin(host.map, pv.join ? [[h.lon, h.lat], [pv.join[1], pv.join[0]]] : null);
     const n = host.points().length;
@@ -145,8 +157,10 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
         : `<button id="cremove" class="primary wide twoline">${icon('delete')}<span class="txt"><span>${esc(t('search_card_remove'))}</span><span class="small">${esc(pv.subtitle)}</span></span></button>`}
       <div class="row three">${planned || !pv.addIsStart ? `<button id="cstart" class="outline" ${atStart ? 'disabled' : ''}>${esc(t('search_card_as_start'))}</button>` : ''}
         ${planned || !pv.addIsDestination ? `<button id="cdest" class="outline" ${atEnd ? 'disabled' : ''}>${esc(t('search_card_as_destination'))}</button>` : ''}
-        <button id="cgoogle" class="outline" title="${esc(t('web_google_title'))}">${icon('map', 18)}Google</button></div>`;
-    const done = (role: PlaceRole) => { close(); host.add(h, role); };
+        <button id="cgoogle" class="outline" title="${esc(t('web_google_title'))}">${icon('map', 18)}Google</button></div>
+      <button id="cunpin" class="textbtn small">${icon('close', 16)}${esc(t('plan_remove_pin'))}</button>`;
+    const done = (role: PlaceRole) => { close(); removePin(); host.add(h, role); };
+    card.querySelector<HTMLButtonElement>('#cunpin')!.onclick = () => { close(); removePin(); };
     card.querySelector<HTMLButtonElement>('#cadd')?.addEventListener('click', () => done('SMART'));
     card.querySelector<HTMLButtonElement>('#cremove')?.addEventListener('click', () => done('REMOVE'));
     card.querySelector<HTMLButtonElement>('#cstart')?.addEventListener('click', () => done('START'));
@@ -157,6 +171,7 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     layout();
     // the camera: point and card in the free room (beside the sheet / above the bottom card). Not keepFollow – this
     // ends following my position (CLAUDE.md map camera). padding 0 resets one an earlier move may have left behind.
+    if (!fly) return;
     const c = host.map.getContainer(), w = c.clientWidth, hh = c.clientHeight;
     const [tx, ty] = pointTarget(host.fitPadding(), w, hh, card.offsetHeight, !phone());
     host.map.flyTo({ center: at, zoom: Math.max(host.map.getZoom(), 14), offset: offsetTo(tx, ty, w, hh),
@@ -189,7 +204,7 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   const close = () => {
     picked++; // a pick still waiting for its preview must not open the card afterwards
     const was = !card.hidden;
-    card.hidden = true; card.innerHTML = ''; marker?.remove(); marker = null; at = null; setJoin(host.map, null);
+    card.hidden = true; card.innerHTML = ''; at = null; setJoin(host.map, null); // the preview line is the card's (it would go stale with the plan)
     card.classList.remove('anchored'); card.style.cssText = '';
     if (was) host.cardShown?.(false);
   };
@@ -199,28 +214,49 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   q.addEventListener('focus', () => { if (!q.value.trim() && !category) run(); }); // the chips to start from
   q.addEventListener('keydown', (e) => { if (e.key === 'Escape') { q.value = ''; run(); } });
   clear.onclick = () => { q.value = ''; run(); q.focus(); };
-  return { close, isOpen: () => !card.hidden };
+  return { close, isOpen: () => !card.hidden, removePin };
 }
 
 /**
- * The candidate marker (the app's map/CandidateMarker, owner 2026-10-31 – replaces the orange search ring): a place
- * suggested but not yet in the route. Route blue, dashed and hollow like everything "not taken yet": a dashed ring
- * (radius 21, 3.5 px dashes 7 / 4.5 over a 7 px white halo) around the place, a faint blue tint inside, a small "+"
- * badge at its upper right, the name in route blue below. Orange stays the recording's colour.
+ * The found place's pin (the app's map/CandidateMarker, owner 2026-11-02 – replaces the dashed ring with "+"): a search
+ * hit not yet in the route is a route-blue teardrop with a white outline and a white dot, its tip exactly on the place
+ * (head 11, tip → head centre 34, outline 2, dot 4.2, a soft shadow 1.2 right / down). Its name is the chip under it.
  */
 const ROUTE_BLUE = '#1E3FAE';
-function candidateMarker(name: string): HTMLElement {
+const HEAD = 11, TIP = 34, OUTLINE = 2, DOT = 4.2, SHADOW = 1.2;
+/** From the bottom edge of the pin's box up to its tip (the app's TIP_MARGIN_DP). */
+export const TIP_MARGIN = SHADOW + OUTLINE + 1;
+const PIN_W = 2 * (HEAD + OUTLINE) + 2 * SHADOW + 2, PIN_H = TIP + HEAD + OUTLINE + TIP_MARGIN + 1;
+function pinPath(x: number, y: number): string {
+  const h = HEAD, l = TIP;
+  return `M${x} ${y}C${x - 0.35 * h} ${y - 0.42 * l} ${x - h} ${y - 0.62 * l} ${x - h} ${y - l}`
+    + `A${h} ${h} 0 0 1 ${x + h} ${y - l}C${x + h} ${y - 0.62 * l} ${x + 0.35 * h} ${y - 0.42 * l} ${x} ${y}Z`;
+}
+function candidateMarker(): HTMLElement {
   const el = document.createElement('div');
   el.className = 'candidate';
-  const c = 27, r = 21, d = r / Math.SQRT2, bx = c + d, by = c - d, br = 8.5, arm = br * 0.5;
-  el.innerHTML = `<svg width="54" height="54" viewBox="0 0 54 54" aria-hidden="true">
-    <circle cx="${c}" cy="${c}" r="${r}" fill="${ROUTE_BLUE}" fill-opacity=".125"/>
-    <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="7"/>
-    <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${ROUTE_BLUE}" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="7 4.5"/>
-    <circle cx="${bx}" cy="${by}" r="${br + 1.5}" fill="#fff"/><circle cx="${bx}" cy="${by}" r="${br}" fill="${ROUTE_BLUE}"/>
-    <path d="M${bx - arm} ${by}H${bx + arm}M${bx} ${by - arm}V${by + arm}" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-  </svg><span class="candname">${esc(name)}</span>`;
+  const x = PIN_W / 2, y = PIN_H - TIP_MARGIN;
+  el.innerHTML = `<svg width="${PIN_W}" height="${PIN_H}" viewBox="0 0 ${PIN_W} ${PIN_H}" aria-hidden="true">
+    <path d="${pinPath(x + SHADOW, y + SHADOW)}" fill="#000" fill-opacity=".25"/>
+    <path d="${pinPath(x, y)}" fill="${ROUTE_BLUE}" stroke="#fff" stroke-width="${OUTLINE * 2}" stroke-linejoin="round" paint-order="stroke"/>
+    <circle cx="${x}" cy="${y - TIP}" r="${DOT}" fill="#fff"/></svg>`;
   return el;
+}
+
+/** The chip's name: longer than 20 characters ends in "…" (the app's PinChipRules.label). */
+export function pinChipLabel(name: string): string {
+  const n = name.trim();
+  return n.length <= 20 ? n : n.slice(0, 19).trimEnd() + '…';
+}
+/** Gap from the tip to the chip's visible top, and the room above / below the pill (touch target ≥ 48). */
+const CHIP_GAP = 6, CHIP_PAD = 8;
+/** "Fabriciusstraße ›" under the pin (the app's PinChip): a white pill, the name bold, a blue ›; a click opens the card. */
+function pinChip(name: string): HTMLElement {
+  const b = document.createElement('button');
+  b.className = 'pinchip';
+  b.setAttribute('aria-label', t('plan_pin_chip_desc', name));
+  b.innerHTML = `<span class="pill"><b>${esc(pinChipLabel(name))}</b><span class="chev">›</span></span>`;
+  return b;
 }
 
 /**
