@@ -35,6 +35,9 @@ android {
         versionCode = vMaj * 10000 + vMin * 100 + vPatch
         versionName = appVersion
         buildConfigField("String", "UPDATE_REPO", "\"happychriss/OnPath\"")
+        // Own updater from GitHub Releases (update/AppUpdater). Off in the Google Play build (A-003): Play forbids an
+        // app that updates itself past the store.
+        buildConfigField("boolean", "SELF_UPDATE", "true")
         // Pixel 8 and all current phones are arm64; keeps the APK small (MapLibre native libs).
         ndk {
             abiFilters += listOf("arm64-v8a")
@@ -53,10 +56,39 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        // Google Play upload key (A-003): made by the owner locally, never in the repository. release.yml decodes the
+        // secret ONPATH_UPLOAD_KEYSTORE_B64 to a file and passes its path + passwords as environment variables;
+        // locally the same names work as -P… properties or in local.properties. Not set → the play build is signed
+        // with the test key (local checks only – never uploaded).
+        val uploadStore = mapSetting("onpath.upload.keystore", "ONPATH_UPLOAD_KEYSTORE", "")
+        if (uploadStore.isNotBlank() && file(uploadStore).isFile) create("upload") {
+            storeFile = file(uploadStore)
+            storePassword = mapSetting("onpath.upload.storePassword", "ONPATH_UPLOAD_KEYSTORE_PASSWORD", "")
+            keyAlias = mapSetting("onpath.upload.keyAlias", "ONPATH_UPLOAD_KEY_ALIAS", "")
+            keyPassword = mapSetting("onpath.upload.keyPassword", "ONPATH_UPLOAD_KEY_PASSWORD", "")
+        }
     }
 
     buildTypes {
         debug {
+            buildConfigField("String", "MAP_SERVER_ENV", quoted("test"))
+            buildConfigField("String", "MAP_SERVER_URL", quoted(mapSetting("onpath.mapServer.test",
+                "ONPATH_MAP_SERVER_TEST", "https://maps-test.free-your-pictures.org")))
+            buildConfigField("String", "MAP_SERVER_KEY", quoted(mapSetting("onpath.mapKey.test", "ONPATH_MAP_KEY_TEST", "")))
+        }
+        // The Google Play build (A-003, closed test): the app as the GitHub APK, but no own updater
+        // (SELF_UPDATE = false, src/play/AndroidManifest.xml drops REQUEST_INSTALL_PACKAGES), not debuggable, signed
+        // with the upload key. A build type, not a product flavour: every debug task the tools and workflows use
+        // (assembleDebug, installDebug, testDebugUnitTest, recordPaparazziDebug, connectedDebugAndroidTest) keeps its
+        // name. Map server: the TEST server like the GitHub APK – the first testers stay there (owner 2026-11-02,
+        // onpath.private#5 A); production comes with the public Play release. `./gradlew bundlePlay` → app-play.aab.
+        create("play") {
+            initWith(getByName("release"))
+            isDebuggable = false
+            isMinifyEnabled = false
+            matchingFallbacks += listOf("release")
+            signingConfig = signingConfigs.findByName("upload") ?: signingConfigs.getByName("debug")
+            buildConfigField("boolean", "SELF_UPDATE", "false")
             buildConfigField("String", "MAP_SERVER_ENV", quoted("test"))
             buildConfigField("String", "MAP_SERVER_URL", quoted(mapSetting("onpath.mapServer.test",
                 "ONPATH_MAP_SERVER_TEST", "https://maps-test.free-your-pictures.org")))

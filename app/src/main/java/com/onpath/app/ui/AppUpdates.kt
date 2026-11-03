@@ -31,8 +31,13 @@ class AppUpdates(
     /** Release the user dismissed on the home screen (no nagging; still visible in Settings). */
     var updateDismissed by mutableStateOf<String?>(null)
 
-    /** Hidden when Google Play installed the app – Play handles updates then. */
-    val updatesEnabled: Boolean by lazy { !com.onpath.app.update.AppUpdater.installedFromPlay(app) }
+    /**
+     * Off in the Google Play build (BuildConfig.SELF_UPDATE, A-003) and hidden when Google Play installed the app –
+     * Play handles updates then: no check, no download, no Settings → Updates.
+     */
+    val updatesEnabled: Boolean by lazy {
+        com.onpath.app.BuildConfig.SELF_UPDATE && !com.onpath.app.update.AppUpdater.installedFromPlay(app)
+    }
 
     fun check(manual: Boolean) {
         if (!updatesEnabled || update is UpdateState.Checking || update is UpdateState.Downloading) return
