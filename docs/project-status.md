@@ -30,6 +30,11 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **donald, 2026-11-03 late – shut down by the owner (~23:20); new build items go to the cloud.** On main tonight:
+  plan in blue (no top band), novice fixes, fewer terms → superseded by A-022 (open), load-route question, compact
+  bars + equal pills, map buttons one column 56 dp, slow-planning question, next stop in the turn card, way word.
+  Five unfinished works are `wip/donald-2026-11-03-*` branches – the list and order are in the backlog ("For the cloud").
+  Not released: v0.15.0 waits for those five + a Rundgang. Pixel last installed ~22:10 (main of then).
 - **donald, 2026-11-03 evening – after v0.14.0, all on main:** route hold 24 dp (#6), diagnostics list folded,
   Plan silent during a tour (no walk-off back to Navigate – owner), red tile "Neu planen" in "Route ändern", way word
   on the turn card ("Links auf den Radweg"), Plan in blue (version 3, Navigate unchanged, blue position sign).

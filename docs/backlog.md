@@ -73,26 +73,25 @@ the git log.
   the **live planner** (`web-spike` head), not `main` with `web-spike`.
 
 ## In progress
-- [donald] A-022 words Plan · Tour · Route (owner 2026-11-03, onpath.private/auftraege/a-022-plan-tour-route.md) – app texts – since 2026-11-03
-- [donald] Round trip stays a round trip (owner 2026-11-03, analysis https://claude.ai/artifact/UEzamgzCNMJBthSgE8onWw):
-  rule "every tour starts at point 1 and skips nothing – shortening = the user deletes points". Decisions: (1) lead
-  always to point ① itself; (2) start beside a later part of the route → question "Zu ① führen" (primary) / "Hier
-  einsteigen" (skipped points grey, not deleted); (3) a re-route that would skip a stop → "Über ③" (primary) / "③
-  auslassen" with the map's numbered circle instead of the word (voice, notification and TalkBack keep "Stopp 3");
-  (4) a point set on the way there = a stop on the way, the loop 1→2→3→1 unchanged, still recognised as a round trip;
-  "Hier starten" on a loop point rotates only the loop (taken-over round trips); (5) a route loaded on the way
-  ("Mit dieser Route weiter") follows the same rule. Three agents A (lead / start / passed rules), B (re-route
-  question + circles), C (stop on the way + round-trip recognition) – since 2026-11-03
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
 
 ## Next
-- **Owner 2026-11-03 ~23:15: donald takes NO new build items from now on – new work goes to the cloud** (captain starts
-  cloud workers). donald only finishes tonight's five (round trip A/B/C, "PLANEN · Ohne Netz ✓", A-022 app texts),
-  runs gate + the full Rundgang and releases **v0.15.0** for the owner's in-app update (owner's word: "baue mir das so,
-  dass ich mir das über die Update-Funktion holen kann"); the Pixel is unplugged. Then donald's hourly wake-up and
-  10-minute loop go off.
+- **For the cloud (donald shut down by the owner 2026-11-03 ~23:20 – no new build items for donald):** five unfinished,
+  NOT gated works saved as branches – finish each, gate, merge to main (one cloud worker each, or in this order):
+  (1) `wip/donald-2026-11-03-roundtrip-A-lead` – lead always to ①, the start question "Zu ① führen / Hier einsteigen",
+  loaded route same rule, passed rules (Navigator reached / TourSplit); contains the field-bug test RoundTripLeadTest
+  (un-ignore it – it must pass); (2) `…-roundtrip-B-reroute-circles` – re-route skip question "Über ③ / ③ auslassen"
+  + the inline numbered circle (+ turn card "② Leiteralm"); was recording screenshots; (3) `…-roundtrip-C-stop-on-the-way`
+  – a point set on the way to a round trip = stop on the way, loop kept and recognised, "Hier starten & enden" rotates
+  only the loop; tests were next; (4) `…-offline-pill` – "PLANEN · Ohne Netz ✓ / ⟳ / ⚠" in the mode pill (state of map
+  cells + routing data for the route corridor; tap explains); (5) `…-a022-plan-tour-route` – A-022 app texts (spec
+  onpath.private/auftraege/a-022-plan-tour-route.md, owner's decision) – A-022 wins over tonight's "fewer terms" where
+  it names a key. All five: the owner's decisions are in the backlog lines above / the round-trip analysis
+  https://claude.ai/artifact/UEzamgzCNMJBthSgE8onWw. Then the full Rundgang (needs an emulator – GitHub E2E or
+  donald later) and **v0.15.0 for the owner's in-app update** (owner's word 2026-11-03: "so bauen, dass ich es über die
+  Update-Funktion aufs Handy holen kann"); cloud-plan mirrors SlowPlan + A-022 planner texts.
 - **[cloud-plan] Web spike red on 5be2031d** (captain 2026-11-03 22:10) – planner not deployed since then: job "smokes (short)"
   step "No WebGL2 → a plain message", job "smokes (lang-gpx)" step "Long-route question and GPX import" (the new
   "Plan a route from it" box?). https://github.com/happychriss/OnPath/actions/runs/41715495112
