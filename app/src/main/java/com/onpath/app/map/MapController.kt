@@ -42,6 +42,10 @@ import org.maplibre.geojson.Point
 class MapController(private val context: Context, val map: MapLibreMap, val style: Style) {
 
     companion object {
+        /** MapLibre's metres per dp → metres per screen pixel ([metersPerPixel]); a broken density counts as 1. */
+        fun metersPerScreenPx(metersPerDp: Double, density: Float): Double =
+            metersPerDp / (if (density > 0f && density.isFinite()) density.toDouble() else 1.0)
+
         const val ROUTE_COLOR = "#1E3FAE"     // deep blue, high contrast on green/beige
         /** The plan's points (owner 2026-11-01, like Komoot; same as OnPathColors.Point*): start, stops, goal – no ring. */
         const val POINT_START_COLOR = "#245F46"
@@ -796,9 +800,14 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     }
 
     /** Metres per screen pixel at the camera centre (for "tap near the line" tolerances). */
+    /**
+     * Metres per **screen pixel** at the camera's latitude. MapLibre's getMetersPerPixelAtLatitude counts per dp (see
+     * ui/ScaleRule), so it is divided by the density here – `dpToPx(24) × metersPerPixel()` is 24 dp of map, not 24 ×
+     * density (onpath.private#6, owner 2026-11-02: a hold counted "on the line" from ~60 dp away on the Pixel 8).
+     */
     fun metersPerPixel(): Double = try {
-        map.projection.getMetersPerPixelAtLatitude(map.cameraPosition.target?.latitude ?: 46.0)
-    } catch (e: Exception) { Problems.warn("map", "Map scale unreadable, using 5 m per pixel", e); 5.0 }
+        metersPerScreenPx(map.projection.getMetersPerPixelAtLatitude(map.cameraPosition.target?.latitude ?: 46.0), density)
+    } catch (e: Exception) { Problems.warn("map", "Map scale unreadable, using 5 m per dp", e); metersPerScreenPx(5.0, density) }
 
     fun dpToPx(dp: Float) = dp * density
 
