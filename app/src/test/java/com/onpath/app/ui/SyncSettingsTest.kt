@@ -15,7 +15,7 @@ import org.junit.Test
 /** Settings → Browser sync: the list line and the status line of the last pass follow the Messages rules. */
 class SyncSettingsTest {
     @Test fun listLine() {
-        assertEquals(Summary("Not paired · your routes in the web planner too"), SettingsSummary.sync(SyncUi()))
+        assertEquals(Summary("Not paired · your plans in the web planner too"), SettingsSummary.sync(SyncUi()))
         assertEquals(Summary("Paired with Chrome on Linux"), SettingsSummary.sync(SyncUi(paired = true, peer = "Chrome on Linux")))
         assertEquals(Summary("Paired with a browser"), SettingsSummary.sync(SyncUi(paired = true)))
         // offline is no problem worth red; a refused / unreadable / not saved pass is
@@ -71,14 +71,14 @@ class SyncSettingsTest {
         assertEquals(plan(SyncNote.UNPAIRED), PairLanding.afterUnpair(200, onSync.copy(note = SyncNote.PAIRED)))
         // not forgotten here: stay, no strip
         assertEquals(onSync, PairLanding.afterUnpair(PairLanding.UNPAIR_NOT_STORED, onSync.copy(note = SyncNote.PAIRED)))
-        assertEquals("Unpaired. Your routes stay on your phone.", Txt.s(Res.string.sync_unpaired_plan))
-        assertEquals("Unpaired. Your routes stay on your phone – the browser couldn't be reached, unpair it there too.",
+        assertEquals("Unpaired. Your plans stay on your phone.", Txt.s(Res.string.sync_unpaired_plan))
+        assertEquals("Unpaired. Your plans stay on your phone – the browser couldn't be reached, unpair it there too.",
             Txt.s(Res.string.sync_unpaired_plan_offline))
         val before = java.util.Locale.getDefault()
         java.util.Locale.setDefault(java.util.Locale.GERMANY)
         try {
-            assertEquals("Getrennt. Deine Routen bleiben auf dem Handy.", Txt.s(Res.string.sync_unpaired_plan))
-            assertEquals("Getrennt. Deine Routen bleiben auf dem Handy – der Browser war nicht erreichbar, trenne ihn dort auch.",
+            assertEquals("Getrennt. Deine Pläne bleiben auf dem Handy.", Txt.s(Res.string.sync_unpaired_plan))
+            assertEquals("Getrennt. Deine Pläne bleiben auf dem Handy – der Browser war nicht erreichbar, trenne ihn dort auch.",
                 Txt.s(Res.string.sync_unpaired_plan_offline))
         } finally { java.util.Locale.setDefault(before) }
     }
@@ -95,9 +95,9 @@ class SyncSettingsTest {
         assertEquals(NoticeKind.INFO, syncProblemText(PlanSync.Problem.Offline).second)
         assertNull(syncProblemText(PlanSync.Problem.Refused(503, "sync is not set up on this server")).second)
         assertTrue(syncProblemText(PlanSync.Problem.Refused(503, "x")).first.contains("HTTP 503"))
-        assertEquals("The browser sync is full – delete some routes or tracks, then try again.",
+        assertEquals("The browser sync is full – delete some plans or tracks, then try again.",
             syncProblemText(PlanSync.Problem.Refused(507, "too many saved plans")).first)
-        assertEquals("1 synced route comes from a newer app – update OnPath to see it.", syncProblemText(PlanSync.Problem.NewerApp(1)).first)
+        assertEquals("1 synced plan comes from a newer app – update OnPath to see it.", syncProblemText(PlanSync.Problem.NewerApp(1)).first)
         assertEquals(NoticeKind.ERROR, syncProblemText(PlanSync.Problem.Storage).second)
     }
 
@@ -202,7 +202,7 @@ class SyncSettingsTest {
         // a real problem still wins (amber)
         assertEquals(SyncAttention.FULL, SyncMenuUi.of(waiting.copy(problem = PlanSync.Problem.Refused(507, null)), "Pixel 8", now).warning)
         // connected during a tour: the routes come after it
-        assertEquals(SyncMenuUi(true, "Routes sync after the tour", null), SyncMenuUi.of(ok.copy(afterTour = true), "Pixel 8", now))
+        assertEquals(SyncMenuUi(true, "Plans sync after the tour", null), SyncMenuUi.of(ok.copy(afterTour = true), "Pixel 8", now))
         // Settings: list line + the page's state
         val ui = SyncUi.of(waiting.copy(afterTour = true), askCheck = null)
         assertTrue(ui.waiting); assertTrue(ui.afterTour)
@@ -214,7 +214,7 @@ class SyncSettingsTest {
         try {
             java.util.Locale.setDefault(java.util.Locale.GERMAN)
             assertEquals("Wartet auf den Browser …", SyncMenuUi.of(waiting, "Pixel 8", now).line)
-            assertEquals("Routen gleichen sich nach der Tour ab", SyncMenuUi.of(ok.copy(afterTour = true), "Pixel 8", now).line)
+            assertEquals("Pläne gleichen sich nach der Tour ab", SyncMenuUi.of(ok.copy(afterTour = true), "Pixel 8", now).line)
         } finally { java.util.Locale.setDefault(before) }
     }
 }

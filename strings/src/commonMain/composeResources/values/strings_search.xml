@@ -40,7 +40,7 @@
     <string name="search_place_quarter">District</string>
     <string name="search_place_isolated_dwelling">Farm / house</string>
     <string name="search_place_locality">Locality</string>
-    <string name="search_card_remove">Remove from route</string>
+    <string name="search_card_remove">Remove from plan</string>
     <string name="search_card_set_start">Set as start</string>
     <string name="search_card_on_the_way">Add as a stop on the way</string>
     <string name="search_card_set_destination">Set as destination</string>

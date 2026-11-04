@@ -174,8 +174,8 @@
     <string name="nav_end_tour">Tour beenden</string>
     <string name="nav_end_short">Beenden</string>
     <string name="nav_straight_on">Geradeaus</string>
-    <string name="nav_end_save_new_route">Neue Route auch speichern</string>
-    <string name="nav_end_save_changed_route">Geänderte Route auch speichern</string>
+    <string name="nav_end_save_new_route">Geänderten Plan auch speichern</string>
+    <string name="nav_end_save_changed_route">Geänderten Plan auch speichern</string>
     <string name="nav_save_recording">Tour speichern</string>
     <string name="nav_continue_navigation">Weiter</string>
     <string name="nav_action_pause">Pause</string>
@@ -214,7 +214,7 @@
         <item quantity="one">Ein Teil dieser Tour sieht nach einer Fahrt aus (Bus, Auto oder Lift). Was soll zählen?</item>
         <item quantity="other">%1$d Teile dieser Tour sehen nach Fahrten aus (Bus, Auto oder Lift). Was soll zählen?</item>
     </plurals>
-    <string name="nav_rides_kept_note">Alle gefahrenen Punkte bleiben erhalten – du kannst das später in Meine Routen ändern (⋮ → Fahrten bearbeiten).</string>
+    <string name="nav_rides_kept_note">Alle gefahrenen Punkte bleiben erhalten – du kannst das später in Meine Touren ändern (⋮ → Fahrten bearbeiten).</string>
     <string name="nav_row_on_foot">Zu Fuß</string>
     <string name="nav_row_by_bike">Mit dem Rad</string>
     <string name="nav_row_vehicle">Bus / Auto</string>

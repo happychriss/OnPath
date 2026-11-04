@@ -175,8 +175,8 @@
     <string name="nav_end_tour">End tour</string>
     <string name="nav_end_short">End</string>
     <string name="nav_straight_on">Straight on</string>
-    <string name="nav_end_save_new_route">Also save the new route</string>
-    <string name="nav_end_save_changed_route">Also save the changed route</string>
+    <string name="nav_end_save_new_route">Also save the changed plan</string>
+    <string name="nav_end_save_changed_route">Also save the changed plan</string>
     <string name="nav_save_recording">Save tour</string>
     <string name="nav_continue_navigation">Continue</string>
     <string name="nav_action_pause">Pause</string>
@@ -215,7 +215,7 @@
         <item quantity="one">Part of this tour looks like a ride (bus, car or lift). What should count?</item>
         <item quantity="other">%1$d parts of this tour look like rides (bus, car or lift). What should count?</item>
     </plurals>
-    <string name="nav_rides_kept_note">All ridden points are kept – you can change this later in My routes (⋮ → Edit rides).</string>
+    <string name="nav_rides_kept_note">All ridden points are kept – you can change this later in My tours (⋮ → Edit rides).</string>
     <string name="nav_row_on_foot">On foot</string>
     <string name="nav_row_by_bike">By bike</string>
     <string name="nav_row_vehicle">Bus / car</string>

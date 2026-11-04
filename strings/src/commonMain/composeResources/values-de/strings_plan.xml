@@ -84,14 +84,14 @@
     <string name="plan_more">%1$s (+%2$d weitere)</string>
     <string name="plan_saved_as">Gespeichert als „%1$s“</string>
     <string name="plan_changed_not_saved">„%1$s“ · geändert, nicht gespeichert</string>
-    <string name="plan_plan_a_route">Route planen</string>
+    <string name="plan_plan_a_route">Neuer Plan</string>
     <string name="plan_max_height">max. %1$s</string>
     <string name="plan_show_route_details">Routendetails anzeigen</string>
     <string name="plan_elevation_profile">Höhenprofil</string>
     <string name="plan_start_navigation_for">Los geht’s · %1$s</string>
     <string name="plan_continue_navigation_for">Weiter · %1$s</string>
     <string name="plan_start_recording_for">Los geht’s · ohne Route</string>
-    <string name="plan_save_route">Route speichern</string>
+    <string name="plan_save_route">Plan speichern</string>
     <string name="plan_time_details">Zeitdetails</string>
     <string name="plan_close_plan">Neu planen</string>
     <string name="plan_start_short">Start</string>
@@ -157,7 +157,7 @@
     <string name="plan_fix_route">Route korrigieren</string>
     <string name="plan_search_hint">Orte oder Adressen suchen</string>
     <string name="plan_menu">Menü</string>
-    <string name="plan_menu_my_routes">Meine Routen</string>
+    <string name="plan_menu_my_routes">Meine Touren</string>
     <string name="plan_menu_check_updates">Nach Updates suchen</string>
     <string name="plan_map_credits">Kartenquellen anzeigen</string>
     <string name="plan_undo">Rückgängig</string>
@@ -173,7 +173,7 @@
     <string name="plan_no_location_permission">Keine Standortberechtigung</string>
     <string name="plan_location_off">Standort aus</string>
     <string name="plan_searching_gps">GPS wird gesucht…</string>
-    <string name="plan_new_route">Neue Route</string>
+    <string name="plan_new_route">Neuer Plan</string>
     <string name="plan_start_here">Hier starten</string>
     <string name="plan_go_here">Hierhin</string>
     <string name="plan_open_google_maps">In Google Maps öffnen</string>
@@ -189,8 +189,8 @@
     <string name="plan_finding_shared_place">Geteilter Ort wird gesucht…</string>
     <string name="plan_resize_panel">Größe ändern</string>
     <string name="plan_slide_to_plan">Stopp</string>
-    <string name="plan_slide_to_plan_sub">Pause · Route ändern · Beenden</string>
-    <string name="plan_slide_change_route">Route ändern</string>
+    <string name="plan_slide_to_plan_sub">Pause · Plan ändern · Beenden</string>
+    <string name="plan_slide_change_route">Plan ändern</string>
     <string name="plan_mode_label">Planen</string>
     <string name="plan_slide_desc">%1$s. Zum Planen wechseln.</string>
     <string name="plan_switch_to_plan">Zum Planen wechseln</string>
@@ -239,11 +239,11 @@
     <string name="plan_leg_took_too_long">dauerte zu lange</string>
     <string name="plan_leg_too_long">zu lang – setze einen Punkt dazwischen</string>
     <string name="plan_leg_no_path">kein Weg gefunden</string>
-    <string name="plan_share_plan">Route teilen</string>
-    <string name="plan_from_track">Als Route planen</string>
-    <string name="plan_from_track_busy_title">Route wird aus der Tour geplant …</string>
+    <string name="plan_share_plan">Plan teilen</string>
+    <string name="plan_from_track">Als Plan übernehmen</string>
+    <string name="plan_from_track_busy_title">Plan wird aus der Tour erstellt …</string>
     <string name="plan_from_track_busy_text">Bei einer langen Tour kann das ein paar Minuten dauern.</string>
-    <string name="plan_from_track_failed">Aus der Tour ließ sich keine Route machen – dort fehlt vielleicht die Detailkarte.</string>
+    <string name="plan_from_track_failed">Aus der Tour ließ sich kein Plan machen – dort fehlt vielleicht die Detailkarte.</string>
     <string name="plan_from_track_wait">Die Karte für diese Tour wird noch geladen – gleich noch einmal versuchen.</string>
     <!-- the time limit of a plan run (owner 2026-11-03, onpath.private#21 B) -->
     <string name="plan_slow_title">Die Route ist lang, die Berechnung dauert.</string>
