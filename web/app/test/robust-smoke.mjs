@@ -61,7 +61,9 @@ await page.waitForTimeout(1500); // the draft is written after the address updat
 await page.close();
 const again = await ctx.newPage();
 again.on('pageerror', (e) => errors.push(String(e)));
-await again.goto(url + 'index.html'); // no #p= (a bookmark, the address typed)
+// no #p= (a bookmark, the address typed); waitMs: the wait box (middle of the map) stays away – on a slow machine it
+// came before the two quick clicks of step 5 and caught them (CI 2026-11-04); the box has its own test below
+await again.goto(url + 'index.html?waitMs=600000');
 await again.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 120_000 });
 await again.waitForFunction(() => window.__state?.points.length > 0, null, { timeout: 30_000 }).catch(() => {});
 await again.waitForFunction(() => location.hash.startsWith('#p='), null, { timeout: 10_000 }).catch(() => {});
@@ -73,6 +75,8 @@ await again.waitForFunction(() => document.querySelector('#summary .big') && doc
 const p1 = [11.1440, 46.7040], p2 = [11.1380, 46.7110]; // beyond the destination, one after the other
 // the engine busy first (another activity → the plan again), then both clicks: both wait behind that plan
 await again.click('#activityChip'); await again.click('[data-act=BIKE_TOURING]');
+// the menu closed – then the camera stands; both clicks queue behind the new plan
+await again.waitForFunction(() => ![...document.querySelectorAll('[data-act]')].some((e) => e.offsetParent !== null), null, { timeout: 10_000 }).catch(() => {});
 // projected only now: the camera may still move while the activity menu closes (CI: both clicks landed beside p1 / p2)
 const px = await again.evaluate((ps) => ps.map(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }), [p1, p2]);
 await again.mouse.click(px[0][0], px[0][1]); await again.mouse.click(px[1][0], px[1][1]);
