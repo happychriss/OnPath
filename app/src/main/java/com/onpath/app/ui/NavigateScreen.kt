@@ -28,6 +28,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.TurnLeft
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.filled.TurnRight
 import androidx.compose.material.icons.filled.TurnSharpLeft
 import androidx.compose.material.icons.filled.TurnSharpRight
@@ -145,9 +147,14 @@ data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: I
                     /** The new route starts behind: "Umdrehen" with the U sign (owner 2026-11-01). */
                     val turnRound: Boolean = false,
                     /** No turn near: "↑ Geradeaus · 2,4 km" to the next one (the card always there, owner 2026-11-01). */
-                    val straight: Boolean = false) {
-    val label: String get() = if (straight) Txt.s(Res.string.nav_straight_on) else if (turnRound) Txt.s(Res.string.nav_turn_round)
-        else roundabout?.let { com.onpath.app.routing.JunctionCue.ROUNDABOUT.text(it) } ?: kind.label
+                    val straight: Boolean = false,
+                    /** The kind of way the turn goes onto, as the voice says it ("Links auf den Radweg"); null = no word. */
+                    val onto: com.onpath.app.navigation.WayKind? = null,
+                    /** The next plan stop comes first: "1,2 km · Stopp 2 · Leiteralm" with the stop's sign ([NextStop]). */
+                    val stop: StopAhead? = null) {
+    val label: String get() = if (stop != null) stop.label else if (straight) Txt.s(Res.string.nav_straight_on) else if (turnRound) Txt.s(Res.string.nav_turn_round)
+        else roundabout?.let { com.onpath.app.routing.JunctionCue.ROUNDABOUT.text(it) }
+            ?: onto?.let { com.onpath.app.navigation.VoiceText.onto(kind.label, it) } ?: kind.label
 }
 
 /**
@@ -299,22 +306,43 @@ fun NavigateOverlay(
 /** Next turn, the most prominent thing on screen (like Google Maps' green maneuver card): arrow, distance, direction. */
 @Composable
 private fun TurnCard(t: TurnHint) {
-    val text = if (t.distanceM < 15 && !t.straight) str(Res.string.nav_turn_now, t.label)
+    val text = if (t.distanceM < 15 && !t.straight && t.stop == null) str(Res.string.nav_turn_now, t.label)
         else str(Res.string.nav_turn_in, t.label, turnDistance(t.distanceM))
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primary,
         contentColor = MaterialTheme.colorScheme.onPrimary, shadowElevation = 4.dp,
         modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = text }) {
         Row(Modifier.heightIn(min = 76.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (t.roundabout != null) RoundaboutSign(t.roundabout, t.roundaboutAngle, Modifier.size(48.dp))
+            if (t.stop != null) StopSign(t.stop, Modifier.size(48.dp))
+            else if (t.roundabout != null) RoundaboutSign(t.roundabout, t.roundaboutAngle, Modifier.size(48.dp))
             else Icon(if (t.straight) Icons.Filled.ArrowUpward else turnIcon(t.kind), null, modifier = Modifier.size(48.dp))
             Spacer(Modifier.width(16.dp))
-            Column {
+            // the way word goes on the same line as the direction ("Links auf den Radweg"): the card never grows, a long
+            // label ends in "…" (owner: nothing jumps)
+            Column(Modifier.weight(1f)) {
                 Text(turnDistance(t.distanceM), style = MaterialTheme.typography.headlineMedium)
-                Text(t.label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text(t.label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
         }
     }
 }
+/**
+ * The plan point's sign on the turn card, like on the map (owner 2026-11-01: near-black numbered stops, dark red goal),
+ * with a white ring so it reads on the green card.
+ */
+@Composable
+private fun StopSign(s: StopAhead, modifier: Modifier) {
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(40.dp).background(OnPathColors.CardWhite, androidx.compose.foundation.shape.CircleShape)
+            .padding(2.5.dp).background(if (s.goal) OnPathColors.PointGoal else OnPathColors.PointStop,
+                androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
+            if (s.goal) Icon(Icons.Filled.Flag, null, tint = OnPathColors.CardWhite, modifier = Modifier.size(22.dp))
+            else Text(s.number.toString(), color = OnPathColors.CardWhite, style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
 /** Rounded like a navigation display: 10 m steps below 200 m, 50 m steps above. */
 internal fun turnDistance(m: Double): String = when {
     m < 15 -> Txt.s(Res.string.nav_turn_distance_now)
@@ -710,6 +738,8 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     // (ScreenTurns: BRouter's hints + JogRule; a GPX track without hints: the geometry, TurnDetector)
     val hike = (rec?.nav?.session?.activity ?: vm.activity) == com.onpath.app.routing.Activity.HIKE
     val turns = remember(line, hike) { line?.let { com.onpath.app.navigation.ScreenTurns.of(it, hike) } ?: emptyList() }
+    // the way word the voice says at each turn, the same on the card ("Links auf den Radweg", owner idea 2026-11-01)
+    val onto = remember(line, turns, hike) { line?.let { com.onpath.app.navigation.ScreenTurns.onto(it, turns, hike) } ?: emptyMap() }
     val total = remember(line) { line?.let { com.onpath.app.data.Geo.length(it) } ?: 0.0 }
     // same time model as the plan sheet (time/RouteTimes): no jump when navigation starts
     val times = remember(line, vm.activity) { line?.let { com.onpath.app.time.RouteTimes.of(it, vm.activity) } }
@@ -783,12 +813,12 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         },
         // a new route that starts behind: "Umdrehen" first (owner 2026-11-01: after a re-route one saw nothing and did
         // not know where to go) – until the Navigator clears the U sign (walked the new way)
-        turn = nav?.uTurnAt?.let { u -> TurnHint(TurnKind.U_TURN_LEFT, here?.let { com.onpath.app.data.Geo.distance(it, u) } ?: 0.0, turnRound = true) }
+        turn = (nav?.uTurnAt?.let { u -> TurnHint(TurnKind.U_TURN_LEFT, here?.let { com.onpath.app.data.Geo.distance(it, u) } ?: 0.0, turnRound = true) }
             ?: turnHint(next?.let { (t, d) -> t.kind to d }, roundabout)?.let { h ->
                 when {
                     h.roundabout != null -> h.copy(roundaboutAngle = roundaboutAngle)
                     next?.first?.turnRound == true -> h.copy(turnRound = true)   // an out-and-back: "Umdrehen"
-                    else -> h
+                    else -> h.copy(onto = next?.first?.index?.let { onto[it] })
                 }
             }
             // no turn near: the card stays, "↑ Geradeaus" to the next turn / the goal – nothing jumps (owner 2026-11-01)
@@ -796,6 +826,10 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
                 val along = (total - r.distanceM).coerceAtLeast(0.0)
                 val to = turns.firstOrNull { it.distanceFromStart > along + 5.0 }?.distanceFromStart ?: total
                 TurnHint(TurnKind.SLIGHT_RIGHT, (to - along).coerceAtLeast(0.0), straight = true)
+            })?.let { h ->
+                // the next stop comes before that turn: "1,2 km · Stopp 2 · Leiteralm" (owner 2026-11-03) – "Umdrehen" stays
+                val stop = remaining?.let { r -> nav?.session?.let { NextStop.ahead(it, (total - r.distanceM).coerceAtLeast(0.0)) } }
+                if (!h.turnRound && NextStop.shown(h.distanceM, stop)) TurnHint(TurnKind.SLIGHT_RIGHT, stop!!.distanceM, stop = stop) else h
             },
         headingUp = vm.navHeadingUp,
         arriveAt = arrive,

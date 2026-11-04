@@ -16,7 +16,7 @@ import java.io.File
  * …" is a plain line (no rename in place).
  *
  * The steps are AppViewModel's (RouteRules.saveMode / newRouteName / cleanName + SaveAsk + the saved state), checked
- * here as a model like [TourRouteBlockedTest], plus the app's code for the same paths.
+ * here as a model like [TourLoadTest], plus the app's code for the same paths.
  */
 class SaveDialogTest {
     private val a = GeoPoint(46.680, 11.140)

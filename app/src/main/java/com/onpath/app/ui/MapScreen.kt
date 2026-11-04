@@ -112,8 +112,8 @@ fun MapScreen(
                     onUndo = if (mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
                     // Undo and Redo side by side as map buttons; Redo only when there is something to redo
                     onRedo = if (mode == AppMode.PLAN && vm.canRedo && vm.shown == null) vm::redoStep else null,
-                    large = mode == AppMode.NAVIGATE,
                     onSettings = if (mode == AppMode.NAVIGATE) { { vm.navSettingsOpen = true } } else null,
+                    plan = mode == AppMode.PLAN, // Plan is blue (owner 2026-11-03), Navigate unchanged
                 )
             }
         }
@@ -222,15 +222,16 @@ fun MapScreen(
     vm.longRouteAsk?.let { s -> LongRouteDialog(s, vm.activity, onPlan = { vm.answerLongRoute(true) }, onCancel = { vm.answerLongRoute(false) }) }
     when (val ask = vm.endAsk) {
         EndAsk.Plain -> EndTourDialog(onSave = { vm.endTour() }, onDelete = { vm.saveRouteAtEnd = false; vm.endTourAndDelete() },
-            onDismiss = { vm.saveRouteAtEnd = false; vm.endAsk = null },
+            onDismiss = { vm.dismissEndAsk() },
             routeLabel = vm.endRouteLabel(), routeChecked = vm.saveRouteAtEnd, onRouteChecked = { vm.saveRouteAtEnd = it })
         is EndAsk.Rides -> RideSummaryDialog(ask.summary, onSave = { vm.endTourWith(ask, it) },
-            onDelete = { vm.endTourAndDelete() }, onDismiss = { vm.endAsk = null })
+            onDelete = { vm.endTourAndDelete() }, onDismiss = { vm.dismissEndAsk() })
         null -> {}
     }
     if (vm.planFromTrackBusy) PlanFromTrackDialog(onCancel = vm::cancelPlanFromTrack)
     // arrival Save goes the End tour way: a bus / car / lift found → the ride summary
-    if (vm.arrivalAsk && rec != null) ArrivalDialog(onSave = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
+    // Plan is silent (owner 2026-11-03): "Du bist angekommen" waits for Navigate
+    if (vm.arrivalAsk && rec != null && vm.mode == AppMode.NAVIGATE) ArrivalDialog(onSave = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
         onKeepGoing = { vm.saveRouteAtEnd = false; vm.arrivalAsk = false },
         routeLabel = vm.endRouteLabel(), routeChecked = vm.saveRouteAtEnd, onRouteChecked = { vm.saveRouteAtEnd = it })
     if (vm.navSettingsOpen) {
@@ -262,6 +263,9 @@ private fun PlanMode(
     onPanelHeight: (Int) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
+        // Plan is blue (owner 2026-11-03, design §3 version 3): a soft blue edge round the screen and a light blue band
+        // under the status bar – drawn only, no touches taken
+        PlanFrame(Modifier.modeEdge(ModeEdge.TOP))
         PlanTopBar(
             onSearch = vm::openSearch,
             menu = PlanMenu(
@@ -287,6 +291,7 @@ private fun PlanMode(
                 onUpdates = null,
             ),
             modifier = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding(),
+            editing = rec != null,
         )
         // background downloads (corridor, refresh, routing data): small blue chip under ☰ after 10 s, until all is done;
         // tap → details with "Cancel all" (own composable: its per-second progress recomposes only the chip, not PlanMode)
@@ -339,6 +344,19 @@ internal fun sharedUnsureMessage(text: String, onSearch: () -> Unit): Message =
     Message(MessageKind.HINWEIS_WARN, str(Res.string.msg_shared_place_unsure), str(Res.string.msg_shared_place_unsure_detail, text),
         listOf(MessageButton(str(Res.string.msg_shared_place_search), onSearch)))
 
+/**
+ * The plan run reached its time limit (owner 2026-11-03, onpath.private#21 B, [com.onpath.app.routing.SlowPlan]): "Die
+ * Route ist lang, die Berechnung dauert. Weiter warten?" – Abbrechen · **Weiter warten** (the filled primary). FRAGE,
+ * stays until answered.
+ */
+@Composable
+internal fun slowPlanMessage(onAnswer: (com.onpath.app.routing.SlowPlan.Answer) -> Unit): Message =
+    Message(MessageKind.FRAGE, str(Res.string.plan_slow_title), str(Res.string.plan_slow_text),
+        buttons = listOf(
+            MessageButton(str(Res.string.common_cancel)) { onAnswer(com.onpath.app.routing.SlowPlan.Answer.CANCEL) },
+            MessageButton(str(Res.string.plan_slow_wait)) { onAnswer(com.onpath.app.routing.SlowPlan.Answer.KEEP_WAITING) },
+        ))
+
 @Composable
 private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppViewModel, rec: RecState?,
                                                                         onRequestLocation: () -> Unit,
@@ -362,6 +380,8 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     val upd = vm.update as? AppViewModel.UpdateState.Available
     val mapBox = notice?.let { mapNoticeMessage(it, cellCb) }
     val message = if (vm.searchOpen) null else Messages.pick(listOf(
+        // the plan run reached its time limit (owner 2026-11-03): "Weiter warten?" – stays until answered
+        vm.slowPlanAsk?.let { slowPlanMessage(onAnswer = vm::answerSlowPlan) },
         // ☰ → Pair with browser, the first time (owner 2026-10-30): the one step, then the camera
         if (vm.pairHint) pairHintMessage(onCamera = { vm.pairHintCamera(pairCamera) }, onCancel = vm::pairHintCancel) else null,
         mapBox?.takeIf { it.kind == MessageKind.FRAGE },
@@ -439,6 +459,8 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     MapLoadModal(loadUi, MapLoadCallbacks(onCancel = vm::cancelLoadModal, onRetry = vm::cellCardRetry, onClose = vm::hideLoadModal,
         onLoadOnMobile = vm::loadModalOnMobile))
     vm.loadAsk?.let { LoadAskDialog(it.regions, it.bytes, onLoad = { vm.answerLoadAsk(true) }, onNotNow = { vm.answerLoadAsk(false) }) }
+    // the "hold to set a point" line goes with any plan change (owner 2026-11-03)
+    LaunchedEffect(vm.waypoints.toList()) { vm.tapHoldHint = false }
     PlanPanel(
         PlanUi(vm.waypoints.size, vm.route, vm.routing, vm.routeError, vm.canUndo, vm.canRedo, vm.activity, vm.planSize,
             sac = vm.sac, tourRunning = rec != null, savedName = vm.savedName, unsaved = vm.planUnsaved,
@@ -446,10 +468,9 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused, vm.guidanceEndedByEmptyPlan) },
             points = rows,
             routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText(), warnCount = vm.warningCount(),
-            changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote,
-            tourEditChanged = rec != null && vm.tourEditChanged),
+            changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote, tapHint = vm.tapHoldHint),
         PlanCallbacks(
-            onSheetDrag = vm::mapGesture, onUndo = vm::undoStep, onClear = vm::requestClear,
+            onSheetDrag = { if (it) vm.tapHoldHint = false; vm.mapGesture(it) }, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
             onReverse = vm::reverseRoute, onRoundTrip = vm::roundTrip,
             onActivity = onActivity, onTimeDetails = vm::openTimeDetails, onDetails = { vm.routeDetailsOpen = true },
@@ -462,7 +483,6 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
             onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
-            onDiscardChanges = vm::discardTourEdits,
             onMovePoint = vm::movePointInList, onDeletePoint = vm::deletePointFromList, onShowPoint = vm::showPointFromList,
         ),
     )

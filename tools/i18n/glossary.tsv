@@ -7,12 +7,12 @@ E-MTB	E-MTB	Activity: E-MTB in the picker and on buttons (owner review 2026-10-2
 Hike	Wandern	Activity; in a sentence "Wandern T3"; on the plan sheet chip only "T3" next to the hiking icon – Owner 2026-10-26
 SAC T1–T5	SAC T1–T5	Swiss hiking scale; stays as is (T1 … T5)
 activity	Aktivität
-route	Route	Something planned, saved or not: "Save route", "Share route", "Route links" – never "plan" for the thing in the UI (UX review 10, 2026-11-01). Owner 2026-11-02 (onpath.private#14): Route = planned; My routes tab "Geplant" / "Planned"
-tour	Tour	A ridden / walked trip as an item (owner 2026-11-02, onpath.private#14: Tour = gefahren): "Tour 1. Nov.", "Tour saved", "Delete this tour?", My routes tab "Unterwegs" / "Tours" (owner 2026-11-03); never "Track" for it
-recording (running)	Aufnahme	Only the running recording (REC): "Aufnahme läuft / pausiert / beenden / speichern", "Aufnahme starten" – never "Aufzeichnung" (owner 2026-11-02, onpath.private#14)
+route	Route	Something planned, saved or not: "Save route", "Share route", "Route links" – never "plan" for the thing in the UI (UX review 10, 2026-11-01). Owner 2026-11-02 / 2026-11-03: Route = planned; My routes tab "Routen" / "Routes"
+tour	Tour	A ridden / walked trip, also while it runs (owner 2026-11-03, fewer terms): "Tour 1. Nov.", "Tour beenden?", "Tour speichern", "Tour unterbrochen", My routes tab "Touren" / "Tours"; never "Track" or "Aufnahme" for it
+on the way (state)	Unterwegs	The state while a tour runs (owner 2026-11-03, fewer terms: Planen / Unterwegs, Route / Tour): "Unterwegs · 7,4 km", "Ohne Route", "Weiter"; "Aufnahme" and "Navigation" are no everyday words any more (only Settings page names / Android channel names)
 track (GPX)	Track	Only for GPX exchange: "GPX-Track importieren", imported GPX tracks (owner 2026-11-02, onpath.private#14)
 plan (mode)	Planen	Mode name and the editing state ("Close plan", "the plan line"); the saved thing is a route
-Navigate (mode)	Navigation	Mode name; button "Start navigation" = "Navigation starten"
+Navigate (mode)	Unterwegs	Shown as "Unterwegs" (owner 2026-11-03); "Navigation" only as the Settings page name and the Android channel name; start button "Los geht’s · ‹Ziel›", back to it "Weiter"
 point (route point)	Punkt	Start, via points, destination
 via point	Zwischenpunkt	A point between start and destination (bitte prüfen: alternative "Via-Punkt")
 start / destination	Start / Ziel
@@ -36,7 +36,6 @@ way type / surface	Wegtyp / Untergrund	Route breakdown bars
 path / track / road	Pfad / Fahrweg / Straße	Way types (track = forest/farm track: "Forstweg/Feldweg" → "Fahrweg" as general word, bitte prüfen)
 cycleway	Radweg
 track (GPX)	Track	The GPS line itself ("your track so far is saved") and imported GPX lines ("Close track") – a recorded item is a tour
-recording	Aufzeichnung	"Start recording" = "Aufzeichnung starten"
 off route	abseits der Route	Navigation status
 re-route / new route	neue Route berechnen	Only after asking (owner rule)
 arrived	angekommen	"You have arrived" = "Du bist angekommen"

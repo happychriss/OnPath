@@ -167,11 +167,9 @@ fun TrackPanel(
  * without a line ([line] false) only records: "Start recording · Hike".
  */
 internal fun trackFollowLabel(recording: Boolean, activity: com.onpath.app.routing.Activity, line: Boolean = true): String =
-    Txt.s(when {
-        recording -> Res.string.plan_navigate_track_for
-        !line -> Res.string.plan_start_recording_for
-        else -> Res.string.plan_start_navigation_for
-    }, activity.navName)
+    // without a line: "Los geht’s · ohne Route" (owner 2026-11-03, no activity in it)
+    if (!line && !recording) Txt.s(Res.string.plan_start_recording_for)
+    else Txt.s(if (recording) Res.string.plan_navigate_track_for else Res.string.plan_start_navigation_for, activity.navName)
 
 /** Placeholder for previews/screenshot tests where MapLibre cannot render. */
 @Composable

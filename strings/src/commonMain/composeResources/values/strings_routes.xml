@@ -31,18 +31,17 @@
     <string name="routes_title">My routes</string>
     <string name="routes_importing">Importing…</string>
     <string name="routes_import_gpx">Import GPX</string>
-    <string name="routes_tab_planned">Planned</string>
+    <string name="routes_tab_planned">Routes</string>
     <string name="routes_tab_done">Tours</string>
     <string name="routes_empty_planned">No planned routes yet.\nSave a planned route or import a GPX file.</string>
-    <string name="routes_empty_done">No tours recorded yet.</string>
+    <string name="routes_empty_done">No tours yet.</string>
     <string name="routes_kind_planned">Planned route</string>
     <string name="routes_kind_recorded">Tour</string>
     <string name="routes_kind_imported">Imported GPX</string>
     <string name="routes_rename_planned">Rename planned route</string>
     <string name="routes_rename_recorded">Rename tour</string>
     <string name="routes_rename_imported">Rename imported GPX</string>
-    <string name="routes_recording_now">Recording now</string>
-    <string name="routes_end_tour_first">End the running tour first, then this route can be loaded.</string>
+    <string name="routes_recording_now">On the way</string>
     <string name="routes_export_all">Export all (ZIP)</string>
     <string name="routes_options_desc">Options for “%1$s”</string>
     <string name="routes_edit_rides">Edit rides</string>
@@ -53,7 +52,7 @@
     <string name="routes_name_label">Name</string>
 
     <string name="routes_unfinished_title">Interrupted tour</string>
-    <string name="routes_unfinished_text">A recording was interrupted (%1$s, %2$s). Nothing was lost.</string>
+    <string name="routes_unfinished_text">A tour was interrupted (%1$s, %2$s). Nothing was lost.</string>
     <string name="routes_unfinished_continue">Continue</string>
     <string name="routes_track_saved">Tour saved</string>
 
@@ -65,4 +64,8 @@
     <string name="routes_replace_text_link">Your current route is not saved. Save it first, or replace it with the route from the link.</string>
     <string name="routes_tag_new">New</string>
     <string name="routes_tag_changed">Changed</string>
+    <string name="routes_load_ask_title">Load route “%1$s”?</string>
+    <string name="routes_load_ask_text">You are on the way.</string>
+    <string name="routes_load_continue">Continue with this route</string>
+    <string name="routes_load_end">End tour and load</string>
 </resources>

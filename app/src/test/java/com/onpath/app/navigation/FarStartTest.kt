@@ -47,7 +47,7 @@ class FarStartTest {
         // the arrow / dashed guide line point to the start, not to the nearest part of the line
         assertEquals(0.0, Geo.distance(r.nav.state.toRoute!!.target, route.first()), 1.0)
         assertEquals("Route starts 30 km away", NavText.title(p))
-        assertEquals("east (direct) · recording", NavText.state(p))
+        assertEquals("east (direct) · on the way", NavText.state(p))
     }
 
     /** The field case: 30 km past the END – never "+30 km · new route" skipping every point, never the end as target. */
@@ -130,7 +130,7 @@ class FarStartTest {
         val job = r.nav.leadThere(p.id).job!!
         r.nav.onResult(job.id, Rerouter.Failed(Rerouter.Reason.NO_WAY, "x", 5))
         val e = r.nav.prompt as NavPrompt.LeadFailed
-        assertEquals("No way to the route found – recording continues", NavText.title(e))
+        assertEquals("No way to the route found – the tour goes on", NavText.title(e))
         r.nav.leadFailedOk(e.id)
         assertNull(r.nav.prompt)
         r.feed(drift(-30_000.0, t0 = 200_000))

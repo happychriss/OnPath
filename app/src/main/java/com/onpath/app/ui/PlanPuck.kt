@@ -19,14 +19,14 @@ import com.onpath.app.routing.Activity
 
 /**
  * The position sign while the route is changed during a tour (owner 2026-11-01: "das Symbol, was ich gerade mache –
- * Fahrrad, Wandern"): the activity's icon in green in a white circle with a green ring, no cone and no arrow – at a
- * glance not the blue Navigate dot ([com.onpath.app.map.MapController.setPlanPuck]).
+ * Fahrrad, Wandern"): the activity's icon in blue in a white circle with a blue ring (owner 2026-11-03: Plan is blue),
+ * no cone and no arrow – at a glance not the Navigate dot ([com.onpath.app.map.MapController.setPlanPuck]).
  */
 @Composable
 fun rememberPlanPuck(activity: Activity): android.graphics.Bitmap {
     val painter = rememberVectorPainter(activity.icon)
     val density = LocalDensity.current
-    val green = OnPathColors.Green
+    val blue = OnPathColors.PlanAccent // Plan is blue (owner 2026-11-03): ring + sign in the edit blue (was green)
     return remember(activity, density) {
         val side = with(density) { SIZE.toPx() }
         val ring = with(density) { RING.toPx() }
@@ -37,9 +37,9 @@ fun rememberPlanPuck(activity: Activity): android.graphics.Bitmap {
             val c = Offset(side / 2, side / 2)
             drawCircle(Color.Black.copy(alpha = 0.18f), radius = side / 2, center = c + Offset(0f, ring / 2))
             drawCircle(Color.White, radius = side / 2 - ring / 2, center = c)
-            drawCircle(green, radius = side / 2 - ring, center = c, style = Stroke(ring))
+            drawCircle(blue, radius = side / 2 - ring, center = c, style = Stroke(ring))
             translate((side - icon) / 2, (side - icon) / 2) {
-                with(painter) { draw(Size(icon, icon), colorFilter = ColorFilter.tint(green)) }
+                with(painter) { draw(Size(icon, icon), colorFilter = ColorFilter.tint(blue)) }
             }
         }
         img.asAndroidBitmap()

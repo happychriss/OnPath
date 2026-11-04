@@ -142,7 +142,7 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(mainText, color = Color.White, style = mainStyle, maxLines = 1, softWrap = false)
-            if (showSub && sub != null) Text(sub, color = OnPathColors.OnDarkMuted, style = subStyle, maxLines = 1, softWrap = false)
+            if (showSub && sub != null) Text(sub, color = OnPathColors.OnGreenMuted, style = subStyle, maxLines = 1, softWrap = false)
         }
         Surface(
             shape = CircleShape, color = Color.White, shadowElevation = 3.dp,

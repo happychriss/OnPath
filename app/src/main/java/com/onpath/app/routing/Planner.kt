@@ -51,6 +51,13 @@ class Planner(
     private val now: () -> Long = { System.currentTimeMillis() },
     /** false = no short-trip detour retry ([retryShortDetours]) – only for A/B runs (tools/routing/jvm-test/ShortDetourTest.kt). */
     private val shortDetourRetry: Boolean = true,
+    /**
+     * A plan run the user started in Plan (owner 2026-11-03, [SlowPlan]): at the time limit [plan] throws
+     * [SlowPlan.TimeLimit] – the caller asks "Weiter warten?" – instead of straight lines; false = straight lines as before.
+     */
+    private val askAtLimit: Boolean = false,
+    /** Time-limit periods of this run (2+ after "Weiter warten", [RouteLimits.rounds]). */
+    private val rounds: Int = 1,
 ) {
     /** One engine request of this planner: points, time, outcome ("ok", "timeout", "failed"), wait for the engine lock. */
     data class Try(val points: Int, val ms: Long, val outcome: String, val lockWaitMs: Long)
@@ -71,8 +78,8 @@ class Planner(
         var outcome = "failed"
         try {
             return (if (limitMs != null) engine.route(pts, activity, sac, RouteLimits(minOf(limitMs, PLAN_LIMIT_MS), cancel))
-            else if (cancel == null) engine.route(pts, activity, sac)
-            else engine.route(pts, activity, sac, RouteLimits(PLAN_LIMIT_MS, cancel))).also { outcome = "ok" }
+            else if (cancel == null && rounds <= 1) engine.route(pts, activity, sac)
+            else engine.route(pts, activity, sac, RouteLimits(PLAN_LIMIT_MS * rounds.coerceAtLeast(1), cancel, rounds))).also { outcome = "ok" }
         } catch (e: RoutingException) {
             outcome = if (e.timedOut) "timeout" else if (cancel?.isCancelled == true) "cancelled" else "failed"
             throw e
@@ -121,7 +128,7 @@ class Planner(
             val spliced = line?.let { l ->
                 // a safety net for the young splice code (review routing H3): an unforeseen geometry must not fail the
                 // whole plan with a raw exception text – the chunk is routed again as before the splice existed
-                try { splice(l, spurs, activity, sac) } catch (e: RoutingException) { throw e } catch (e: Exception) {
+                try { splice(l, spurs, activity, sac) } catch (e: RoutingException) { throw e } catch (e: SlowPlan.TimeLimit) { throw e } catch (e: Exception) {
                     Problems.error("routing", "Splice failed unexpectedly; the stretch is routed again as a whole", e)
                     null
                 }
@@ -364,6 +371,8 @@ class Planner(
             stopIfCancelled() // cancelled: no fallback, the caller shows nothing new
             // expected: RoutingException = no route (the user sees its message); anything else is an engine bug
             if (e !is RoutingException) Problems.error("routing", "Route request threw unexpectedly", e)
+            // at the time limit in Plan: the user is asked "Weiter warten?" (owner 2026-11-03, SlowPlan)
+            if (e is RoutingException && e.timedOut && SlowPlan.atLimit(askAtLimit) == SlowPlan.AtLimit.ASK) throw SlowPlan.TimeLimit(rounds)
             // Two points: no need to retry leg by leg (BRouter can take ~30 s to fail).
             if (waypoints.size == 2) {
                 val d = Geo.distance(waypoints[0], waypoints[1])
@@ -397,6 +406,7 @@ class Planner(
                 stopIfCancelled()
                 // expected: RoutingException = no route for this leg (shown as a straight dashed line)
                 if (e !is RoutingException) Problems.error("routing", "Leg route request threw unexpectedly", e)
+                if (e is RoutingException && e.timedOut && SlowPlan.atLimit(askAtLimit) == SlowPlan.AtLimit.ASK) throw SlowPlan.TimeLimit(rounds)
                 if (firstError == null) firstError = legError(i + offset, i + offset + 1, e)
             }
         }

@@ -38,16 +38,25 @@ Colours come only from `OnPathColors` (and the Material scheme built from it in 
 One colour = one kind of action, so the hand finds it the second time by colour:
 - **green = navigation** – start, continue, pause / resume the guidance (`ActionGo`; the primary buttons stay `Green`);
 - **blue = edit** – change the route, you are editing (`ActionEdit`);
-- **red = stop** – end the process you are in (end the recording, discard the edit) (`ActionStop`).
+- **red = stop** – end the process you are in (end the recording, clear the plan to start anew) (`ActionStop`).
 
 First user: the bar the Navigate slider unlocks (`ui/TourActionBar.kt`, onpath.private#17 = C compact) – green Pause /
 Resume, blue Change route, red End, white words, the plain signs ⏸ (▶ paused) / ✎ / ■ (owner 2026-11-02: the
 track-line icons did not please), ≈ 1.5× the slider; no ✕ – a tap on the map or Android's back closes it (owner 2026-11-02).
 Second user, the same bar (`ActionTiles`): **Plan during a tour** ("Route ändern", owner 2026-11-02, refines
 onpath.private#19) – at the sheet's bottom in every step: green ▲ "Navigation fortsetzen", blue 💾 "Route speichern"
-(Save's dialog, you stay in the plan), red ↶ "Änderungen verwerfen" (back to the plan as it was when "Route ändern"
-opened, then Navigate). A tile with nothing to do is greyed (faint white on the green bar). "✕ Neu planen" and
+(Save's dialog, you stay in the plan), red ✕ "Neu planen" (owner 2026-11-03: the plan is emptied, the recording goes
+on; an unsaved plan asks first; Undo brings it back). A tile with nothing to do is greyed (faint white on the green bar). "✕ Neu planen" and
 ☰ → Save route are hidden during a tour.
+
+**The Plan screen is blue** (owner 2026-11-03, design page §3 version 3 "deutlich" – Plan only; Navigate stays as it is:
+the compass, the route and the blue dot say enough there): the plan sheet, the search pill, ☰ and the map buttons in a
+very light blue (`PlanTint` `#EEF3F7`), their signs, the sheet's handle and a top edge in the edit blue (`PlanAccent` =
+`ActionEdit`), no band at the top (owner 2026-11-03 – removed) and a soft blue edge round the
+screen (`PlanEdge`, only drawn – no touches taken; `ui/PlanTopBar.PlanFrame`), a small label "PLANEN" on the search
+pill ("ROUTE ÄNDERN" during a tour), and the position sign while the route is changed during a tour in blue
+(`ui/PlanPuck`). Kept: the green start button ("Los geht's" – a navigation action), the blue route line, red for stop /
+errors. `PlanColourTest` keeps the plan tokens out of Navigate.
 
 Add a token when a new meaning is needed (with a comment saying what it is for); `inverseSurface` and Snackbars stay
 out (`NoticesTest.noDarkBarAnyMore`).
@@ -89,7 +98,7 @@ the safe choice. Everything else is a message box or a line (below).
 
 | Kind | What | Look | Goes away |
 | --- | --- | --- | --- |
-| **FRAGE** (question / decision) | the user must choose | box, **blue** edge, title (+ one detail), **two verb buttons** (three only for "re-plan via the stop?") | when answered |
+| **FRAGE** (question / decision) | the user must choose | box, **blue** edge, title (+ one detail), **two verb buttons** (three only for "re-plan via the stop?" and "Load route …? during a tour") | when answered |
 | **HINWEIS** (must know) | the user must see it once | box with **one** button: OK or the one way out ("Try again", "Allow location") | when the button is pressed (never by itself) |
 | ↳ plain | | **grey** edge | |
 | ↳ ⚠ attention (`HINWEIS_WARN`) | something needs care | **amber** edge + amber ⚠ | |
@@ -126,7 +135,7 @@ MessageSlot(Messages.pick(listOf(question, m)), MessagePlacement.topDp(MessageSc
 | Off route, a way back found | FRAGE (56 dp) | "Off route – new route found" – Keep original / Take new route |
 | Activity switched during a tour | FRAGE (56 dp) | "New route for MTB" – Keep original / Take new route |
 | First ☰ → Pair with browser | FRAGE | "On your computer open plan.onpath.earth …" – Cancel / Open camera |
-| A planned route tapped during a tour | HINWEIS | "End the running tour first, then this route can be loaded." – OK |
+| A planned route tapped during a tour | FRAGE | "Load route “‹name›”? You are on the way." – Cancel / End tour and load / **Continue with this route** (owner 2026-11-03) |
 | Paired / unpaired | HINWEIS | "Paired." + what it means – OK |
 | No map downloads in this build | HINWEIS | OK |
 | The map needs the location | HINWEIS | "Allow location" |

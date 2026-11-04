@@ -200,7 +200,7 @@ fun MapHost(
                 if (vm.routePeek) return true // peeking at the map: no edits
                 // A hold works on this spot: the start camera must not jump to a late first GPS fix any more – that
                 // would close the menu just opened ("held spot left the visible map").
-                if (press == MapGestures.Press.HOLD) vm.userMovedMap = true
+                if (press == MapGestures.Press.HOLD) { vm.userMovedMap = true; vm.tapHoldHint = false }
                 val edit = vm.canEditMap
                 val pts = vm.waypoints.toList()
                 val toScreen: (GeoPoint) -> Pair<Float, Float>? = { p -> c?.toScreen(p)?.let { it.x to it.y } }
@@ -237,6 +237,8 @@ fun MapHost(
                     MapGestures.Action.CloseMenu -> { vm.closeMapOverlays(if (press == MapGestures.Press.TAP) "tap outside" else "hold outside"); true }
                     MapGestures.Action.PoiDetails -> { vm.selectedPoi = poi; true }
                     MapGestures.Action.None -> {
+                        // a tap on the open map in Plan: "hold to set a point here" in the sheet (owner 2026-11-03)
+                        if (MapGestures.tapShowsHoldHint(edit, press, MapGestures.Action.None, poi != null, marker, pts.isEmpty())) vm.showTapHoldHint()
                         // a short tap on the world map where there is no detailed map: ask to load it
                         if (press == MapGestures.Press.TAP && poi == null) vm.mapTapped(p)
                         edit

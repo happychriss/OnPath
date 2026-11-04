@@ -30,6 +30,7 @@ import com.onpath.app.poi.PoiGroup
 import com.onpath.app.poi.PoiKinds
 import org.junit.Rule
 import org.junit.Test
+import androidx.compose.ui.graphics.asImageBitmap
 import kotlin.math.sin
 
 /** JVM screenshots of the non-map UI at 390 dp width (map replaced by a placeholder). */
@@ -55,10 +56,11 @@ class ScreenshotTest {
 
     @Composable
     private fun Footer(gps: GpsStatus = GpsStatus.GOOD, following: Boolean = false, compass: CompassSpec? = null,
-                       eye: Boolean = false, peeking: Boolean = false, large: Boolean = false, fit: Boolean = false) =
+                       eye: Boolean = false, peeking: Boolean = false, large: Boolean = false, fit: Boolean = false,
+                       plan: Boolean = false) =
         MapFooter("500 m" to 64.dp) {
             MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking,
-                onFitRoute = if (fit) ({}) else null, large = large, onSettings = if (large) ({}) else null)
+                onFitRoute = if (fit) ({}) else null, onSettings = if (large) ({}) else null, plan = plan)
         }
 
     /**
@@ -68,14 +70,20 @@ class ScreenshotTest {
     @Composable
     private fun Frame(gps: GpsStatus = GpsStatus.GOOD, aboveFooter: @Composable () -> Unit = {},
                       top: @Composable () -> Unit = {},
-                      footer: @Composable () -> Unit = { Footer(gps, compass = CompassSpec(null, 0f) {}) }, // Plan: compass shown
+                      footer: @Composable () -> Unit = { Footer(gps, compass = CompassSpec(null, 0f) {}, plan = true) }, // Plan: compass shown
                       menu: PlanMenu = PlanMenu(onUpdates = {}),
+                      /** "Route ändern" during a tour: the mode label and the blue position sign in the map's middle. */
+                      editing: Boolean = false,
                       bottom: @Composable () -> Unit) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
+                if (editing) androidx.compose.foundation.Image(rememberPlanPuck(Activity.HIKE).asImageBitmap(), null,
+                    Modifier.align(Alignment.Center))
+                // Plan is blue (owner 2026-11-03): band under the status bar (the 32 dp stand-in) + soft edge
+                PlanFrame()
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar({}, menu, Modifier.fillMaxWidth())
+                    PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing)
                     SheetWithFooter(TOP_BAR_BOTTOM, footer = {
                         Column(Modifier.fillMaxWidth()) { aboveFooter(); footer() }
                     }, sheet = bottom)
@@ -175,11 +183,26 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi(), PlanCallbacks()) }
     }
 
+    /** A tap on the open map (owner 2026-11-03): "Hold to set a point here." in the summary step the sheet opens at. */
+    @Test fun planTapHoldHint() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(tapHint = true), PlanCallbacks()) }
+    }
+
+    /** A long press on a map control names it (owner 2026-11-03): the eye's tooltip open. */
+    @Test fun planMapControlTip() = paparazzi.snapshot {
+        Frame(footer = {
+            MapFooter("500 m" to 64.dp) {
+                MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false, plan = true,
+                    onLocate = {}, onFitRoute = {}, onUndo = {}, tipShown = 1)
+            }
+        }) { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
     /** "Show whole route" (⛶) under the eye: compass · eye · whole route · Undo · locate on the sheet's edge. */
     @Test fun planWholeRoute() = paparazzi.snapshot {
         Frame(footer = {
             MapFooter("500 m" to 64.dp) {
-                MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false,
+                MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false, plan = true,
                     onLocate = {}, onFitRoute = {}, onUndo = {})
             }
         }) { PlanPanel(planUi(), PlanCallbacks()) }
@@ -215,7 +238,7 @@ class ScreenshotTest {
     @Test fun planPointsFullControlsNeverOverTheTopBar() = paparazzi.snapshot {
         Frame(footer = {
             MapFooter("500 m" to 64.dp) {
-                MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false,
+                MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false, plan = true,
                     onLocate = {}, onUndo = {})
             }
         }) { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) }
@@ -225,7 +248,7 @@ class ScreenshotTest {
     @Test fun planPointsFullCollapsedControls() = paparazzi.snapshot {
         Frame(footer = {
             MapFooter("500 m" to 64.dp) {
-                MapControls(null, showEye = false, onPeek = {}, gps = GpsStatus.GOOD, following = false, onLocate = {}, onUndo = {}, onRedo = {})
+                MapControls(null, showEye = false, onPeek = {}, gps = GpsStatus.GOOD, following = false, onLocate = {}, onUndo = {}, onRedo = {}, plan = true)
             }
         }) { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) }
     }
@@ -398,19 +421,30 @@ class ScreenshotTest {
     }
 
     /**
-     * "Route ändern" during a tour, pulled up one step, the plan changed (owner 2026-11-02): the route above, at the
-     * bottom the tile bar – green Continue navigation · blue Save route · red Discard changes (live).
+     * "Route ändern" during a tour, pulled up one step (owner 2026-11-02 / 2026-11-03): the route above, at the bottom the
+     * tile bar – green Continue navigation · blue Save route · red New plan.
      */
     @Test fun planTourRunning() = paparazzi.snapshot {
-        Frame {
-            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false),
-                tourEditChanged = true), PlanCallbacks(onSaveRoute = {}))
+        Frame(editing = true) {
+            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
+                PlanCallbacks(onSaveRoute = {}))
         }
     }
 
-    /** "Route ändern" as it opens, nothing changed yet: only the tile bar, red Discard changes greyed; the map free. */
+    /**
+     * After the red "Neu planen" during a tour (owner 2026-11-03): the plan is empty, the recording goes on – the first
+     * step shows how to begin again above the tiles; Save route and New plan greyed.
+     */
+    @Test fun planTourNewPlan() = paparazzi.snapshot {
+        Frame(editing = true) {
+            PlanPanel(planUi(n = 0, r = null, size = PlanSize.MINI, tourRunning = true)
+                .copy(tour = TourState(1_700.0, 878, paused = false, recordOnly = true)), PlanCallbacks(onSaveRoute = null))
+        }
+    }
+
+    /** "Route ändern" as it opens: only the tile bar (red New plan live – there is a plan); the map free. */
     @Test fun planTourRunningCollapsed() = paparazzi.snapshot {
-        Frame {
+        Frame(editing = true) {
             PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
                 PlanCallbacks(onSaveRoute = {}))
         }
@@ -556,6 +590,23 @@ class ScreenshotTest {
     /** Next-turn hint above the remaining strip; heading-up orientation button (navigation arrow). */
     @Test fun navigateTurn() = paparazzi.snapshot {
         NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.RIGHT, 120.0)))
+    }
+
+    /** The way word the voice says, on the card too (owner idea 2026-11-01): "Left onto the cycle path". */
+    @Test fun navigateTurnOnto() = paparazzi.snapshot {
+        NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.LEFT, 150.0, onto = com.onpath.app.navigation.WayKind.CYCLEWAY)))
+    }
+
+    /** The next stop before the next turn (owner 2026-11-03): "1,2 km · Stopp 2 · Leiteralm" with the stop's sign. */
+    @Test fun navigateNextStop() = paparazzi.snapshot {
+        NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.SLIGHT_RIGHT, 1_200.0,
+            stop = StopAhead(2, "Leiteralm", false, 1_200.0))))
+    }
+
+    /** The goal next, named: "Ziel · Gasthof Hochmuth" with the dark red flag sign. */
+    @Test fun navigateNextGoal() = paparazzi.snapshot {
+        NavFrame(navUi.copy(turn = TurnHint(com.onpath.app.routing.TurnKind.SLIGHT_RIGHT, 650.0,
+            stop = StopAhead(4, "Gasthof Hochmuth", true, 650.0))))
     }
 
     /** North-up orientation button ("N" needle) and a slight-left hint close by. */
@@ -1010,14 +1061,14 @@ class ScreenshotTest {
     }
 
     /**
-     * My routes during a tour → a planned route tapped: nothing loads, the box "End the running tour first, then this
-     * route can be loaded." with OK under the tabs, over the list (HINWEIS, owner 2026-10-31); the list looks as always.
+     * My routes during a tour → a planned route tapped (owner 2026-11-03): the question "Load route “‹name›”? You are on
+     * the way." – Cancel · End tour and load · **Continue with this route** – under the tabs, over the list (FRAGE).
      */
-    @Test fun routesTourBlocked() = paparazzi.snapshot {
+    @Test fun routesTourLoadAsk() = paparazzi.snapshot {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 RoutesScreen(tourList, {}, {}, {}, {}, {})
-                MessageSlot(tourBlockedMessage {}, MessagePlacement.topDp(MessageScreen.ROUTES))
+                MessageSlot(tourLoadMessage(tourList[0].name) {}, MessagePlacement.topDp(MessageScreen.ROUTES))
             }
         }
     }
@@ -1162,6 +1213,14 @@ class ScreenshotTest {
         Frame(gps = gps, top = {
             mapNotice(card)?.let { n -> mapNoticeMessage(n, CellCardCallbacks())?.let { MessageCard(it) } ?: MapNoticePill(n) }
         }) { PlanPanel(ui, PlanCallbacks()) }
+
+    /**
+     * The plan run reached its time limit (owner 2026-11-03, onpath.private#21 B): "This route is long and takes a while.
+     * Keep waiting?" – Cancel · **Keep waiting** – the points stay, the line as it was.
+     */
+    @Test fun planSlowAsk() = paparazzi.snapshot {
+        Frame(top = { MessageCard(slowPlanMessage {}) }) { PlanPanel(planUi(4, null), PlanCallbacks()) }
+    }
 
     /** The app opened where there is no detailed map – the box asks, nothing loads by itself. */
     @Test fun hereAsk() = paparazzi.snapshot {

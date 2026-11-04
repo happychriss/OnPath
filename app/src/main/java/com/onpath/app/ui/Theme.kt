@@ -70,6 +70,11 @@ object OnPathColors {
      * ≥ 5:1 on the track even over a white map.
      */
     val OnDarkMuted = RestInk
+    /**
+     * Small secondary text on the green slider ("Pause · Route ändern · Beenden", owner 2026-11-03 novice fix): a pale
+     * green-white, ≥ 5.5:1 on [Green] – [OnDarkMuted] was made for the old dark track and reads only 3.6:1 on green.
+     */
+    val OnGreenMuted = Color(0xFFDCE8E1)
 
     // ---- Actions: one colour = one kind of action (owner 2026-11-02, docs/design/ui-style.md "Colour rule") ----
     /** Navigation: start / continue / pause-resume the guidance – a step lighter than [Green] (white 5.2:1). */
@@ -78,6 +83,14 @@ object OnPathColors {
     val ActionEdit = Color(0xFF2E6A9E)
     /** Stop: end the process you are in (white 5.6:1) – the same red as [Error]. */
     val ActionStop = Color(0xFFC62828)
+
+    // ---- Plan mode is blue (owner 2026-11-03, design page §3 version 3 "deutlich", Plan only – Navigate unchanged) ----
+    /** Plan's accent: search glass, ☰, map-button icons, the sheet's handle + top edge, the mode label – [ActionEdit]. */
+    val PlanAccent = ActionEdit
+    /** Plan's surfaces: the sheet, the search pill, ☰ and the map buttons – [ActionEdit] at ~8 % on white (Ink 10.8:1). */
+    val PlanTint = Color(0xFFEEF3F7)
+    /** The soft edge round the screen in Plan (strongest at the edge, fading inwards) – [ActionEdit] at 22 %. */
+    val PlanEdge = Color(0x382E6A9E)
 
     // ---- Message kinds (docs/design/ui-style.md): one colour = one meaning ----
     /** FRAGE: the blue left edge of a question box (MessageCard) – never a status or a failure. */

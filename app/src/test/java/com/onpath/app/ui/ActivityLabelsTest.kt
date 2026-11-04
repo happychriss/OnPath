@@ -12,7 +12,7 @@ class ActivityLabelsTest {
     @Test fun primaryButtonNamesTheActivity() {
         // owner 2026-11-02 (#16): "Let's go · ‹destination›"; no named destination → the activity
         assertEquals("Let’s go · Hike", primaryLabel(ui(Activity.HIKE, false)))
-        assertEquals("Continue navigation · Gravelbike", primaryLabel(ui(Activity.BIKE_TREKKING, true)))
+        assertEquals("Continue · Gravelbike", primaryLabel(ui(Activity.BIKE_TREKKING, true)))
     }
 
     /** "Let's go · Schloss Nordkirchen": the destination's own name; "Destination" (unnamed) or a loop → the activity. */
@@ -31,8 +31,8 @@ class ActivityLabelsTest {
 
     /** The tour's Continue names the activity, like the primary button. */
     @Test fun tourContinueNamesTheActivity() {
-        assertEquals("Continue navigation · Gravelbike", continueLabel(Activity.BIKE_TREKKING))
-        assertEquals("Continue navigation · Hike", continueLabel(Activity.HIKE))
+        assertEquals("Continue · Gravelbike", continueLabel(Activity.BIKE_TREKKING))
+        assertEquals("Continue · Hike", continueLabel(Activity.HIKE))
     }
 
     /** Problem 5: the track panel's button names the activity it navigates with. */

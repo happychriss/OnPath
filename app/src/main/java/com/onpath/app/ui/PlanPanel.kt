@@ -114,8 +114,6 @@ class PlanCallbacks(
     val onEndTour: () -> Unit = {},
     /** Save the (edited) plan – the blue tile during a tour; null = no plan to save. */
     val onSaveRoute: (() -> Unit)? = null,
-    /** Discard the changes made since "Route ändern" and go back to Navigate – the red tile during a tour. */
-    val onDiscardChanges: () -> Unit = {},
 )
 
 /** Recording status shown at the top of the plan sheet during a tour. */
@@ -193,8 +191,8 @@ data class PlanUi(
     val changedText: String? = null,
     /** "Planned in the browser with other routing – …" (a synced plan, another routing fingerprint): grey INFO, no tap. */
     val syncRoutingText: String? = null,
-    /** During a tour: the plan differs from when "Route ändern" opened – the red "Discard changes" tile is live. */
-    val tourEditChanged: Boolean = false,
+    /** A tap on the open map: "Gedrückt halten, um hier einen Punkt zu setzen." in the summary step (owner 2026-11-03). */
+    val tapHint: Boolean = false,
 ) {
     /** What Start does (the shown track has its own panel): navigate the line, wait for it, or only record. */
     val start: PlanStart get() = PlanStart.of(trackPoints = null, hasRoute = route != null, pointCount = pointCount)
@@ -231,6 +229,8 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
         onDragging = cb.onSheetDrag,
         // the rolled-up row has its own small Start; during a tour every step has the (empty) bar
         barFrom = if (tour) 0 else PlanSize.MINI.step,
+        // Plan is blue (owner 2026-11-03): a light blue sheet with a blue handle and top edge – also during a tour
+        surfaceColor = OnPathColors.PlanTint, accent = OnPathColors.PlanAccent,
         bottomBar = { PlanBar(ui, cb) },
     ) {
         // the pulled-up sheet has ONE fixed height (owner): deleting / adding / moving points (or the routing
@@ -319,18 +319,27 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     val tourMini = ui.tour != null && ui.shownSize == PlanSize.MINI
     val belowStep = if (tourMini || ui.collapsed) Modifier.clearAndSetSemantics { } else Modifier
     if (ui.tour != null) {
-        // the first step is the tile bar alone (owner 2026-11-02: Continue · Save route · Discard changes, the same bar
-        // as Navigate's, PlanBar) – the map stays free above it; no rolled-up step during a tour (PlanSize.duringTour)
+        // the first step is the tile bar alone (owner 2026-11-02: Continue · Save route · New plan, the same bar as
+        // Navigate's, PlanBar) – the map stays free above it; no rolled-up step during a tour (PlanSize.duringTour).
+        // After "Neu planen" the plan is empty: the first step shows how to begin again (owner 2026-11-03)
+        if (ui.pointCount == 0) Box(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) { FirstPointHint() }
+        else {
+            // the summary row in the first step, above the bar (owner 2026-11-03: "dass man Fahrrad und 4 Minuten sieht")
+            HeaderLine(chip = { ActivityButton(ui.activity, ui.sac, cb.onActivity) }, title = { Title(ui, ui.route, cb.onTimeDetails) })
+            if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) { TapHoldHint() }
+        }
         Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COLLAPSED.step).stepEnd(PlanSize.MINI.step) })
     }
     Box(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb) }
+        Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb, header = ui.tour == null || ui.pointCount == 0) }
         // the rolled-up row lies over the summary's first line and fades with the bar sliding in (one body, no rebuild)
         if (ui.tour == null) CollapsedRow(ui, cb, barShown, with(sheet) { Modifier.stepEnd(PlanSize.COLLAPSED.step) })
     }
     // the empty plan's hint belongs to the summary step: the sheet opens at it, so a first start sees how to begin
     // (owner 2026-11-02: "beim ersten Öffnen … sieht man es gar nicht")
     if (ui.pointCount == 0 && ui.tour == null) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { FirstPointHint() }
+    // a tap on the open map (hold-only): the same hand says how to set a point – in the step the sheet opens at
+    else if (ui.tapHint && ui.tour == null) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { TapHoldHint() }
     // without a tour the summary step ends under the summary lines
     if (ui.tour == null) Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
     var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
@@ -365,10 +374,11 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
  * (✕ Close plan · ⇅ Reverse · ↻ Round trip) from one point on.
  */
 @Composable
-private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks) {
+private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks, header: Boolean = true) {
     val route = ui.route
-    // Line 1: activity · time + distance (Undo and Redo are map buttons; a tap on the time = Time details).
-    HeaderLine(
+    // Line 1: activity · time + distance (Undo and Redo are map buttons; a tap on the time = Time details). During a tour
+    // it sits in the first step above the tile bar (PlanBody) – not twice.
+    if (header) HeaderLine(
         chip = { ActivityButton(ui.activity, ui.sac, cb.onActivity) },
         title = { Title(ui, route, cb.onTimeDetails) },
     )
@@ -405,14 +415,14 @@ private val PROFILE_HEIGHT = 120.dp
 
 /**
  * Bottom of the sheet: the one primary button; during a tour the tile bar (owner 2026-11-02, [TourEditBar]): green
- * Continue navigation · blue Save route · red Discard changes – in every step.
+ * Continue navigation · blue Save route · red New plan (owner 2026-11-03) – in every step.
  */
 @Composable
 private fun ColumnScope.PlanBar(ui: PlanUi, cb: PlanCallbacks) {
     val t = ui.tour
     if (t != null) {
         Spacer(Modifier.height(TOUR_BAR_GAP))
-        TourEditBar(t.paused, cb.onPause, cb.onContinue, cb.onSaveRoute, ui.tourEditChanged, cb.onDiscardChanges,
+        TourEditBar(t.paused, cb.onPause, cb.onContinue, cb.onSaveRoute, canNewPlan = ui.pointCount > 0, onNewPlan = cb.onClear,
             Modifier.padding(horizontal = 4.dp))
         Spacer(Modifier.height(TOUR_BAR_GAP))
     } else if (!ui.tourRunning && ui.pointCount >= 2) {
@@ -571,7 +581,7 @@ private fun ErrorLine(text: String, onShow: (() -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Outlined.Cancel, null, tint = red, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold,
+        Text(text, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold,
             color = red, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         if (onShow != null) androidx.compose.material3.TextButton(onClick = onShow) {
             Text(str(Res.string.common_show), fontWeight = FontWeight.Bold, color = red)
@@ -592,7 +602,7 @@ internal fun InfoLine(text: String, spinner: Boolean = false, onTap: (() -> Unit
         if (spinner) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = grey)
         else Icon(Icons.Outlined.Info, null, tint = grey, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = grey,
+        Text(text, style = MaterialTheme.typography.bodyLarge, color = grey,
             maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         if (onTap != null) Icon(Icons.Filled.ChevronRight, null, tint = grey, modifier = Modifier.size(20.dp))
     }
@@ -610,7 +620,7 @@ internal fun WarnLine(text: String, onTap: () -> Unit) {
         .padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Outlined.Warning, null, tint = amber, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
-        Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = amber,
+        Text(text, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = amber,
             maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         Icon(Icons.Filled.ChevronRight, null, tint = amber, modifier = Modifier.size(20.dp))
     }
@@ -662,7 +672,7 @@ private fun Title(ui: PlanUi, route: PlannedRoute?, onTimeDetails: () -> Unit) {
 @Composable
 private fun FirstPointHint() {
     Row(verticalAlignment = Alignment.Top) {
-        Icon(Icons.Filled.TouchApp, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 1.dp).size(24.dp))
+        Icon(Icons.Filled.TouchApp, null, tint = OnPathColors.PlanAccent, modifier = Modifier.padding(top = 1.dp).size(24.dp))
         Spacer(Modifier.width(10.dp))
         Text(androidx.compose.ui.text.buildAnnotatedString {
             withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)) {
@@ -671,6 +681,19 @@ private fun FirstPointHint() {
             append(" ")
             append(str(Res.string.plan_hint_first_point))
         }, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/**
+ * A tap on the open map in Plan sets nothing (hold-only gestures, owner): ✋ "Gedrückt halten, um hier einen Punkt zu
+ * setzen." (owner 2026-11-03, novice fix) – an ANZEIGE line, it stays until the user acts ([AppViewModel.tapHoldHint]).
+ */
+@Composable
+private fun TapHoldHint() {
+    Row(verticalAlignment = Alignment.Top, modifier = Modifier.semantics(mergeDescendants = true) {}) {
+        Icon(Icons.Filled.TouchApp, null, tint = OnPathColors.PlanAccent, modifier = Modifier.padding(top = 1.dp).size(24.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(str(Res.string.plan_hint_tap_hold), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -683,7 +706,7 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?, onDetails: () -> Unit = {}
         if (ui.pointCount == 0) return // the hint sits in the summary step (FirstPointHint, PlanBody)
         // "Calculating the route…" only while a request runs (not after Cancel)
         Text(PlanStatus.noRouteLine(ui.pointCount, ui.routing, ui.notRouted),
-            style = MaterialTheme.typography.bodyMedium, color = variant)
+            style = MaterialTheme.typography.bodyLarge, color = variant)
         return
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -691,7 +714,7 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?, onDetails: () -> Unit = {}
         Text(
             "↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}" +
                 (top?.let { "  ·  " + str(Res.string.plan_max_height, Format.meters(it)) } ?: ""),
-            style = MaterialTheme.typography.bodyMedium, color = variant, maxLines = 1,
+            style = MaterialTheme.typography.bodyLarge, color = variant, maxLines = 1,
             modifier = Modifier.weight(1f, fill = false),
         )
         if (!ui.routing) {
@@ -723,12 +746,12 @@ private fun PrimaryAction(ui: PlanUi, cb: PlanCallbacks) {
 
 /**
  * "Los geht's · Schloss Nordkirchen" (owner 2026-11-02, onpath.private#16: the destination's name; unnamed destination or
- * a round trip: the activity, "Los geht's · Wandern") / "Continue navigation · Gravel bike"; no point or only one:
- * "Aufnahme starten · Hike" (owner 2026-10-30: nothing to navigate – say what happens).
+ * a round trip: the activity, "Los geht's · Wandern") / "Weiter · Gravelbike"; no point or only one:
+ * "Los geht’s · ohne Route" (owner 2026-11-03, fewer terms: Planen / Unterwegs, Route / Tour).
  */
 internal fun primaryLabel(ui: PlanUi): String = when {
     ui.tourRunning -> Txt.s(Res.string.plan_continue_navigation_for, ui.activity.navName)
-    ui.start == PlanStart.RECORD_ONLY -> Txt.s(Res.string.plan_start_recording_for, ui.activity.navName)
+    ui.start == PlanStart.RECORD_ONLY -> Txt.s(Res.string.plan_start_recording_for)
     else -> Txt.s(Res.string.plan_start_navigation_for, destinationName(ui.points) ?: ui.activity.navName)
 }
 

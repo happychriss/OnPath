@@ -34,7 +34,7 @@
     <string name="nav_position_clip">Position</string>
     <string name="nav_copied">%1$s · copied ✓</string>
     <string name="nav_rec_badge">REC</string>
-    <string name="nav_status_recording">Recording</string>
+    <string name="nav_status_recording">On the way</string>
     <string name="nav_status_paused">Paused</string>
     <string name="nav_status_searching_gps">Searching GPS…</string>
     <string name="nav_moving_lower">moving %1$s</string>
@@ -95,6 +95,10 @@
     <string name="nav_yes_skip_stop">New route without %1$s</string>
     <string name="nav_notif_skip">Without stop</string>
     <string name="nav_stop_n">stop %1$d</string>
+    <string name="nav_card_stop">Stop %1$d</string>
+    <string name="nav_card_stop_named">Stop %1$d · %2$s</string>
+    <string name="nav_card_goal">Destination</string>
+    <string name="nav_card_goal_named">Destination · %1$s</string>
     <string name="nav_without_stop">without %1$s</string>
     <!-- off route, owner 2026-10-31: "You're 120 m off the route" · the new route / the way back and how much longer -->
     <string name="nav_title_off_by">You're %1$s off the route</string>
@@ -104,18 +108,18 @@
     <string name="nav_longer">%1$s longer</string>
     <!-- never on the route yet (owner 2026-10-31): "Route starts 31 km away" · Guide me / Just record -->
     <string name="nav_far_title">Route starts %1$s away</string>
-    <string name="nav_far_detail">%1$s (direct) · recording</string>
+    <string name="nav_far_detail">%1$s (direct) · on the way</string>
     <string name="nav_far_searching">Finding a way to the start…</string>
     <string name="nav_far_lead">Guide me</string>
-    <string name="nav_far_record">Just record</string>
-    <string name="nav_lead_failed">No way to the route found – recording continues</string>
+    <string name="nav_far_record">Go on without a route</string>
+    <string name="nav_lead_failed">No way to the route found – the tour goes on</string>
 
     <!-- lock screen notification while following a route -->
     <string name="nav_notif_to_go">%1$s to go</string>
     <string name="nav_notif_arrival">arrival %1$s</string>
     <string name="nav_notif_left">%1$s left</string>
     <string name="nav_notif_following">%1$s · following %2$s</string>
-    <string name="nav_notif_recorded">Recorded %1$s · %2$s</string>
+    <string name="nav_notif_recorded">On the way %1$s · %2$s</string>
     <string name="nav_pause">Pause</string>
     <string name="nav_route_fallback">Route</string>
 
@@ -126,27 +130,27 @@
     <string name="nav_channel_navigation_desc">Next turn, time to go and arrival while you follow a route – also on the lock screen. Silent.</string>
     <string name="nav_channel_off_route">Off route</string>
     <string name="nav_channel_off_route_desc">Asks when you leave the route you follow: take a new route or keep the original</string>
-    <string name="nav_rec_stopped_title">Recording stopped</string>
-    <string name="nav_rec_fail_read">Recording could not start: your saved tours cannot be read.</string>
-    <string name="nav_rec_fail_permission">Recording stopped: OnPath needs precise location. Allow it in Settings → Apps → OnPath → Permissions.</string>
-    <string name="nav_rec_fail_no_gps">Recording stopped: this device has no GPS.</string>
-    <string name="nav_rec_fail_blocked">Recording could not start – Android blocked it. Open OnPath and try again.</string>
-    <string name="nav_rec_fail_storage">Recording could not start: the tour cannot be saved (phone storage full or damaged).</string>
-    <string name="nav_rec_save_failed_title">Recording cannot be saved</string>
-    <string name="nav_rec_save_failed">The tour cannot be saved any more (phone storage full or damaged). Free up space; recording keeps trying.</string>
-    <string name="nav_rec_paused_title">Recording is paused</string>
-    <string name="nav_rec_paused_moving">You are moving – resume recording?</string>
+    <string name="nav_rec_stopped_title">Tour stopped</string>
+    <string name="nav_rec_fail_read">The tour could not start: your saved tours cannot be read.</string>
+    <string name="nav_rec_fail_permission">Tour stopped: OnPath needs precise location. Allow it in Settings → Apps → OnPath → Permissions.</string>
+    <string name="nav_rec_fail_no_gps">Tour stopped: this device has no GPS.</string>
+    <string name="nav_rec_fail_blocked">The tour could not start – Android blocked it. Open OnPath and try again.</string>
+    <string name="nav_rec_fail_storage">The tour could not start: it cannot be saved (phone storage full or damaged).</string>
+    <string name="nav_rec_save_failed_title">Tour cannot be saved</string>
+    <string name="nav_rec_save_failed">The tour cannot be saved any more (phone storage full or damaged). Free up space; OnPath keeps trying.</string>
+    <string name="nav_rec_paused_title">Paused</string>
+    <string name="nav_rec_paused_moving">You are on the way – continue?</string>
     <string name="nav_rec_rescued_title">Tour rescued</string>
-    <string name="nav_rec_rescued">The phone's storage had a problem. OnPath put your tour back together – recording goes on. Details: Settings → Diagnostics.</string>
+    <string name="nav_rec_rescued">The phone's storage had a problem. OnPath put your tour back together – it goes on. Details: Settings → Diagnostics.</string>
     <string name="nav_saver_title">Battery saver stops GPS</string>
     <string name="nav_saver_text">On this phone battery saver switches GPS off while the screen is off – your tour gets gaps. Turn battery saver off for the tour.</string>
-    <string name="nav_watchdog_title">Recording gets no GPS</string>
-    <string name="nav_watchdog_text">OnPath restarted the recording but has had no GPS position for 5 minutes. Open OnPath and check the recording.</string>
-    <string name="nav_interrupted_title">Recording interrupted</string>
-    <string name="nav_interrupted_boot">The phone restarted – open OnPath and tap Continue to record on.</string>
-    <string name="nav_interrupted_update">OnPath was updated – open OnPath and tap Continue to record on.</string>
-    <string name="nav_interrupted_boot_long">The phone restarted while “%1$s” was recording. The tour so far is saved. Open OnPath and tap Continue to record on.</string>
-    <string name="nav_interrupted_update_long">OnPath was updated while “%1$s” was recording. The tour so far is saved. Open OnPath and tap Continue to record on.</string>
+    <string name="nav_watchdog_title">Tour gets no GPS</string>
+    <string name="nav_watchdog_text">OnPath restarted the tour but has had no GPS position for 5 minutes. Open OnPath and check the tour.</string>
+    <string name="nav_interrupted_title">Tour interrupted</string>
+    <string name="nav_interrupted_boot">The phone restarted – open OnPath and tap Continue to go on.</string>
+    <string name="nav_interrupted_update">OnPath was updated – open OnPath and tap Continue to go on.</string>
+    <string name="nav_interrupted_boot_long">The phone restarted while “%1$s” was running. The tour so far is saved. Open OnPath and tap Continue to go on.</string>
+    <string name="nav_interrupted_update_long">OnPath was updated while “%1$s” was running. The tour so far is saved. Open OnPath and tap Continue to go on.</string>
 
     <!-- GPS status -->
     <string name="nav_gps_no_permission">No location permission</string>
@@ -156,27 +160,26 @@
     <string name="nav_gps_good">GPS good</string>
 
     <!-- tour card, end tour, arrival -->
-    <string name="nav_end_tour_title">End recording?</string>
+    <string name="nav_end_tour_title">End tour?</string>
     <string name="nav_recycle_bin_note">It stays in the recycle bin for %1$d days.</string>
-    <string name="nav_arrived_title">You have arrived – end recording?</string>
+    <string name="nav_arrived_title">You have arrived – end tour?</string>
     <string name="nav_keep_going">Keep going</string>
-    <string name="nav_continue">Continue navigation</string>
-    <string name="nav_continue_as">Continue navigation · %1$s</string>
-    <string name="nav_tour_running">Recording · %1$s · %2$s</string>
-    <string name="nav_tour_paused">Recording paused · %1$s · %2$s</string>
-    <string name="nav_end_tour">End recording</string>
+    <string name="nav_continue">Continue</string>
+    <string name="nav_continue_as">Continue · %1$s</string>
+    <string name="nav_tour_running">On the way · %1$s · %2$s</string>
+    <string name="nav_tour_paused">Paused · %1$s · %2$s</string>
+    <string name="nav_end_tour">End tour</string>
     <string name="nav_end_short">End</string>
     <string name="nav_straight_on">Straight on</string>
     <string name="nav_end_save_new_route">Also save the new route</string>
     <string name="nav_end_save_changed_route">Also save the changed route</string>
-    <string name="nav_save_recording">Save recording</string>
-    <string name="nav_continue_navigation">Continue navigation</string>
-    <string name="nav_discard_changes">Discard changes</string>
+    <string name="nav_save_recording">Save tour</string>
+    <string name="nav_continue_navigation">Continue</string>
     <string name="nav_action_pause">Pause</string>
     <string name="nav_route_back_title">No destination ahead any more.</string>
-    <string name="nav_route_back_text">Recording goes on. Undo brings the point back.</string>
+    <string name="nav_route_back_text">The tour goes on. Undo brings the point back.</string>
     <string name="nav_route_back">Back to the start</string>
-    <string name="nav_just_record">Just record</string>
+    <string name="nav_just_record">Go on without a route</string>
     <string name="nav_long_route_foot">%1$s on foot. Calculating and loading its maps takes long.</string>
     <string name="nav_long_route_bike">%1$s by bike. Calculating and loading its maps takes long.</string>
     <string name="nav_long_route_title">This route is very long</string>
@@ -185,7 +188,7 @@
     <!-- activity check sheet -->
     <string name="nav_check_checking">Checking the rest of the route…</string>
     <string name="nav_check_fits">✓ fits</string>
-    <string name="nav_check_recording_as">You are recording as</string>
+    <string name="nav_check_recording_as">You are on the way as</string>
     <string name="nav_check_navigating_as">You are navigating as</string>
     <string name="nav_check_switch_to">Switch to</string>
     <string name="nav_check_rest_of_route">for the rest of the route</string>
@@ -208,7 +211,7 @@
         <item quantity="one">Part of this tour looks like a ride (bus, car or lift). What should count?</item>
         <item quantity="other">%1$d parts of this tour look like rides (bus, car or lift). What should count?</item>
     </plurals>
-    <string name="nav_rides_kept_note">All recorded points are kept – you can change this later in My routes (⋮ → Edit rides).</string>
+    <string name="nav_rides_kept_note">All ridden points are kept – you can change this later in My routes (⋮ → Edit rides).</string>
     <string name="nav_row_on_foot">On foot</string>
     <string name="nav_row_by_bike">By bike</string>
     <string name="nav_row_vehicle">Bus / car</string>
@@ -223,7 +226,7 @@
     <string name="nav_ride_split_n">Split into %1$d tours</string>
     <string name="nav_ride_split_two_detail">Before and after the ride</string>
     <string name="nav_ride_split_n_detail">One tour between rides</string>
-    <string name="nav_ride_as_recorded">Save as recorded</string>
+    <string name="nav_ride_as_recorded">Save as ridden</string>
     <string name="nav_ride_as_recorded_detail">Everything counts, the rides too</string>
     <string name="nav_tour_date_name">Tour %1$s</string>
 
@@ -252,7 +255,7 @@
     <string name="nav_rest_destination">Destination</string>
     <string name="nav_rest_tap">Tap for the map</string>
     <string name="nav_rest_cd">%1$s in %2$s. Tap for the map</string>
-    <string name="nav_no_route_ahead">No route to point %1$d found. Recording goes on.</string>
-    <string name="nav_tour_record_only">Recording only · %1$s · %2$s</string>
+    <string name="nav_no_route_ahead">No route to point %1$d found. The tour goes on.</string>
+    <string name="nav_tour_record_only">No route · %1$s · %2$s</string>
     <string name="nav_turn_round">Turn round</string>
 </resources>

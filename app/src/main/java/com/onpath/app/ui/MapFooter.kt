@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,11 +81,8 @@ fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, demo: Boolea
     }
 }
 
-/** Size of one map control (48 dp = full touch target). */
-val MAP_FAB = 48.dp
-/** Navigate (owner): used while walking, so bigger and a little apart from each other. */
-val MAP_FAB_LARGE = 56.dp
-private val LARGE_GAP = 8.dp
+/** Size of one map control (owner 2026-11-03: "trifft man kaum" – 56 dp in both modes, was 48 in Plan). */
+val MAP_FAB = 56.dp
 
 fun gpsColor(status: GpsStatus): Color = when (status) {
     GpsStatus.GOOD -> OnPathColors.Good
@@ -113,8 +111,8 @@ data class CompassSpec(val headingUp: Boolean?, val bearing: Float, val onClick:
  * compass on top (always), the eye in the middle (only when there is a route,
  * track or followed line – hold to hide them, position stays), "Show whole route" under it (same lines, see
  * [WholeRoute]; the browser planner's ⛶), locate at the bottom (always, GPS dot).
- * [large] (Navigate): each control its own bigger round button with a small gap, so the wrong one is not hit
- * while walking; Plan keeps the compact pill.
+ * ONE column card with dividers in both modes (owner 2026-11-03, onpath.private#22 B – Navigate had separate round
+ * buttons): Navigate ⚙ · compass · eye · ⛶ · locate (white), Plan compass · eye · ⛶ · ↶ · ↷ · locate (blue tint).
  */
 @Composable
 fun MapControls(
@@ -131,29 +129,28 @@ fun MapControls(
     onUndo: (() -> Unit)? = null,
     /** Plan: redo the last undone edit (shown only when there is something to redo). */
     onRedo: (() -> Unit)? = null,
-    large: Boolean = false,
     /** Navigate: the navigation settings on the way – a gear on top of the controls. */
     onSettings: (() -> Unit)? = null,
+    /** Plan is blue (owner 2026-11-03): light blue pill, blue icons ([OnPathColors.PlanTint] / [OnPathColors.PlanAccent]). */
+    plan: Boolean = false,
+    /** Screenshot tests: the tooltip of this control (its index from the top) is open. */
+    tipShown: Int = -1,
 ) {
-    val size = if (large) MAP_FAB_LARGE else MAP_FAB
-    val items = buildList<@Composable () -> Unit> {
-        if (onSettings != null) add { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size) }
-        if (compass != null) add { CompassControl(compass, size) }
-        if (showEye) add { EyeControl(onPeek, peeking, size) }
-        if (onFitRoute != null) add { IconControl(Icons.Filled.FitScreen, Res.string.plan_show_whole_route, onFitRoute, size) }
-        if (onUndo != null) add { IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo, size) }
-        if (onRedo != null) add { IconControl(Icons.AutoMirrored.Filled.Redo, Res.string.plan_redo, onRedo, size) }
-        add { LocateControl(gps, following, onLocate, size) }
+    val size = MAP_FAB
+    val tint = if (plan) OnPathColors.PlanAccent else MaterialTheme.colorScheme.onSurfaceVariant
+    val bg = if (plan) OnPathColors.PlanTint else MaterialTheme.colorScheme.surface
+    // every control says its name on a long press (owner 2026-11-03, novice fix: "what does the eye do?")
+    val tips = buildList<Pair<String, @Composable () -> Unit>> {
+        if (onSettings != null) add(str(Res.string.nav_settings_cd) to { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size, tint) })
+        if (compass != null) add(compassText(compass) to { CompassControl(compass, size) })
+        if (showEye) add(str(Res.string.plan_hold_hide_route) to { EyeControl(onPeek, peeking, size, tint) })
+        if (onFitRoute != null) add(str(Res.string.plan_show_whole_route) to { IconControl(Icons.Filled.FitScreen, Res.string.plan_show_whole_route, onFitRoute, size, tint) })
+        if (onUndo != null) add(str(Res.string.plan_undo) to { IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo, size, tint) })
+        if (onRedo != null) add(str(Res.string.plan_redo) to { IconControl(Icons.AutoMirrored.Filled.Redo, Res.string.plan_redo, onRedo, size, tint) })
+        add(locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint) })
     }
-    if (large) {
-        Column(verticalArrangement = Arrangement.spacedBy(LARGE_GAP), horizontalAlignment = Alignment.CenterHorizontally) {
-            items.forEach { item ->
-                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp) { item() }
-            }
-        }
-        return
-    }
-    Surface(shape = RoundedCornerShape(MAP_FAB / 2), color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp) {
+    val items = tips.mapIndexed { i, (text, control) -> @Composable { MapTip(text, i == tipShown) { control() } } }
+    Surface(shape = RoundedCornerShape(MAP_FAB / 2), color = bg, shadowElevation = 3.dp) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             items.forEachIndexed { i, item ->
                 if (i > 0) GroupDivider()
@@ -163,14 +160,45 @@ fun MapControls(
     }
 }
 
-private fun iconSize(size: Dp): Dp = if (size > MAP_FAB) 30.dp else 24.dp
+private fun iconSize(size: Dp): Dp = 28.dp
+
+/**
+ * A map control's name on a long press (Material 3 plain tooltip, owner 2026-11-03): the signs alone (eye, ⛶, ↶ ↷)
+ * do not explain themselves to a first-time user. A tap still does what it did; the eye's hold still hides the route.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+internal fun MapTip(text: String, initiallyVisible: Boolean = false, content: @Composable () -> Unit) {
+    androidx.compose.material3.TooltipBox(
+        positionProvider = androidx.compose.material3.TooltipDefaults.rememberPlainTooltipPositionProvider(),
+        tooltip = { PlainTooltip { Text(text, style = MaterialTheme.typography.bodyMedium) } },
+        state = androidx.compose.material3.rememberTooltipState(initialIsVisible = initiallyVisible, isPersistent = initiallyVisible),
+    ) { content() }
+}
+
+/** The compass's name: what it shows now and what a tap does (the same words TalkBack hears). */
+@Composable
+private fun compassText(c: CompassSpec): String = when {
+    c.headingUp == true -> str(Res.string.plan_compass_heading)
+    kotlin.math.abs(c.bearing) > 1f -> str(Res.string.plan_compass_turned)
+    else -> str(Res.string.plan_compass_north)
+}
+
+/** The locate control's name: "Mein Standort" – or how to switch location on / allow it. */
+@Composable
+private fun locateTip(status: GpsStatus): String = when (status) {
+    GpsStatus.OFF -> str(Res.string.plan_location_off_tap)
+    GpsStatus.NO_PERMISSION -> str(Res.string.plan_location_denied_tap)
+    else -> str(Res.string.map_tip_locate)
+}
 
 /** A plain round map control: [icon] in the control colour, [desc] for TalkBack. */
 @Composable
-private fun IconControl(icon: ImageVector, desc: StringResource, onClick: () -> Unit, size: Dp) {
+private fun IconControl(icon: ImageVector, desc: StringResource, onClick: () -> Unit, size: Dp,
+                        tint: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onClick).semantics { contentDescription = Txt.s(desc) },
         contentAlignment = Alignment.Center) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(iconSize(size)))
+        Icon(icon, null, tint = tint, modifier = Modifier.size(iconSize(size)))
     }
 }
 
@@ -190,13 +218,14 @@ private fun CompassControl(c: CompassSpec, size: Dp) {
         contentAlignment = Alignment.Center,
     ) {
         if (c.headingUp == true) Icon(Icons.Filled.Navigation, null, tint = OnPathColors.Route, modifier = Modifier.size(iconSize(size)))
-        else NorthNeedle(Modifier.size(if (size > MAP_FAB) 42.dp else 34.dp).rotate(-c.bearing))
+        else NorthNeedle(Modifier.size(40.dp).rotate(-c.bearing))
     }
 }
 
 /** Hold to hide route lines and markers; release shows them again. */
 @Composable
-private fun EyeControl(onPeek: (Boolean) -> Unit, peekingPreview: Boolean, size: Dp) {
+private fun EyeControl(onPeek: (Boolean) -> Unit, peekingPreview: Boolean, size: Dp,
+                       tint: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     val peek by rememberUpdatedState(onPeek)
     var held by remember { mutableStateOf(false) }
     DisposableEffect(Unit) { onDispose { if (held) peek(false) } }
@@ -214,12 +243,13 @@ private fun EyeControl(onPeek: (Boolean) -> Unit, peekingPreview: Boolean, size:
         contentAlignment = Alignment.Center,
     ) {
         Icon(if (down) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(iconSize(size)))
+            tint = tint, modifier = Modifier.size(iconSize(size)))
     }
 }
 
 @Composable
-private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> Unit, size: Dp) {
+private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> Unit, size: Dp,
+                          tint: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     val what = when (status) {
         GpsStatus.OFF -> str(Res.string.plan_location_off_tap)
         GpsStatus.NO_PERMISSION -> str(Res.string.plan_location_denied_tap)
@@ -228,7 +258,7 @@ private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> 
     Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onClick).semantics { contentDescription = what },
         contentAlignment = Alignment.Center) {
         Icon(if (following) Icons.Filled.GpsFixed else Icons.Filled.GpsNotFixed, null,
-            tint = if (following) OnPathColors.Route else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = if (following) OnPathColors.Route else tint,
             modifier = Modifier.size(iconSize(size)))
         Box(
             Modifier.align(Alignment.TopEnd).offset(x = (-6).dp, y = 6.dp).size(12.dp)

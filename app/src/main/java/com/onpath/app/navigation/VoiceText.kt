@@ -70,13 +70,20 @@ object VoiceText {
         else -> null
     }
 
-    private fun way(w: WayKind): String = when (w) {
+    /**
+     * The way word the voice says after a turn ("auf den Radweg" / "onto the cycle path") – also the turn card's
+     * second half ([onto], owner idea 2026-11-01: the same word on screen under the arrow).
+     */
+    fun way(w: WayKind): String = when (w) {
         WayKind.PATH -> Txt.s(Res.string.voice_way_path)
         WayKind.TRACK -> Txt.s(Res.string.voice_way_track)
         WayKind.ROAD -> Txt.s(Res.string.voice_way_road)
         WayKind.CYCLEWAY -> Txt.s(Res.string.voice_way_cycleway)
         WayKind.WAY -> Txt.s(Res.string.voice_way_way)
     }
+
+    /** "Links auf den Radweg": a turn [label] with the way it goes onto, as the voice joins them (`voice_onto`). */
+    fun onto(label: String, w: WayKind): String = Txt.s(Res.string.voice_onto, label, way(w))
 
     /** "In 150 metres" – a junction's distance, in the steps one can picture (50, 100, 150, 200, 300, 500 m, then km). */
     fun inDistance(m: Double): String {

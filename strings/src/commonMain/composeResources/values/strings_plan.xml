@@ -60,6 +60,8 @@
     <string name="plan_calculating">Calculating the route…</string>
     <string name="plan_hint_first_point_question">Where to?</string>
     <string name="plan_hint_first_point">Hold your destination on the map – or find it in the search bar above.</string>
+    <string name="plan_hint_tap_hold">Hold to set a point here.</string>
+    <string name="map_tip_locate">My location</string>
     <string name="plan_hint_destination">Hold the map to set the destination.</string>
     <string name="plan_not_routed_long">Route not calculated – very long plan.</string>
     <string name="plan_not_routed_stopped">Route not calculated – calculation stopped.</string>
@@ -79,8 +81,8 @@
     <string name="plan_show_route_details">Show route details</string>
     <string name="plan_elevation_profile">Elevation profile</string>
     <string name="plan_start_navigation_for">Let’s go · %1$s</string>
-    <string name="plan_continue_navigation_for">Continue navigation · %1$s</string>
-    <string name="plan_start_recording_for">Start recording · %1$s</string>
+    <string name="plan_continue_navigation_for">Continue · %1$s</string>
+    <string name="plan_start_recording_for">Let’s go · no route</string>
     <string name="plan_save_route">Save route</string>
     <string name="plan_time_details">Time details</string>
     <string name="plan_close_plan">New plan</string>
@@ -181,6 +183,7 @@
     <string name="plan_slide_to_plan">Stop</string>
     <string name="plan_slide_to_plan_sub">Pause · Change route · End</string>
     <string name="plan_slide_change_route">Change route</string>
+    <string name="plan_mode_label">Plan</string>
     <string name="plan_slide_desc">%1$s. Switch to plan mode.</string>
     <string name="plan_switch_to_plan">Switch to plan mode</string>
     <string name="plan_stat_distance">Distance</string>
@@ -234,4 +237,8 @@
     <string name="plan_from_track_busy_text">A long tour can take a few minutes.</string>
     <string name="plan_from_track_failed">The tour could not be turned into a route – the detailed map may be missing there.</string>
     <string name="plan_from_track_wait">The map for this tour is still loading – try again in a moment.</string>
+    <!-- the time limit of a plan run (owner 2026-11-03, onpath.private#21 B) -->
+    <string name="plan_slow_title">This route is long and takes a while.</string>
+    <string name="plan_slow_text">Keep waiting?</string>
+    <string name="plan_slow_wait">Keep waiting</string>
 </resources>

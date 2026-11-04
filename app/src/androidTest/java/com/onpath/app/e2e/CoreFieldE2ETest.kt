@@ -2,7 +2,9 @@ package com.onpath.app.e2e
 
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
+import com.onpath.strings.common_cancel
 import com.onpath.strings.plan_go_here
+import com.onpath.strings.routes_load_ask_text
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
@@ -163,11 +165,11 @@ class CoreFieldE2ETest : E2EBase() {
     }
 
     /**
-     * Owner 2026-10-31: no new route during a tour. My routes → a tap on a planned route loads nothing: the plan, the
-     * followed route, the activity and the tour stay; the blue box "End the running tour first, then this route can be
-     * loaded." shows until OK (core feature C4).
+     * Owner 2026-11-03 (core feature C4): My routes → a tap on a planned route during a tour asks "Load route …? You are
+     * on the way." – nothing loads before the answer; Cancel keeps the plan, the followed route, the activity and the
+     * tour (Continue: ReleaseRundgang flow 6).
      */
-    @Test fun aSavedRouteTappedDuringATourKeepsTheTourRouteAndSaysEndTheTourFirst() {
+    @Test fun aSavedRouteTappedDuringATourAsksAndCancelKeepsTheTourRoute() {
         startPlanWithTwoPoints()
         Thread.sleep(if (realRouting) 3_000 else 1_000)
         scenario.onActivity { vm(it).startNavigation(force = true) }
@@ -193,8 +195,8 @@ class CoreFieldE2ETest : E2EBase() {
             waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
             scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED; vm(it).openRoutes() }
             clickText(name)
-            val box = "End the running tour first, then this route can be loaded."
-            assertNotNull("the box", device.wait(Until.findObject(By.text(box)), 5_000))
+            val box = Txt.s(Res.string.routes_load_ask_text)
+            assertNotNull("the question", device.wait(Until.findObject(By.text(box)), 5_000))
             Thread.sleep(1_500)
             scenario.onActivity {
                 assertEquals("the plan stays", before, vm(it).waypoints.toList())
@@ -205,11 +207,11 @@ class CoreFieldE2ETest : E2EBase() {
                 assertTrue("My routes stays open", vm(it).routesOpen)
             }
             assertTrue(guided())
-            clickText("OK")
-            waitUntil("the box is gone after OK", 5_000) { device.findObject(By.text(box)) == null }
+            clickText(Txt.s(Res.string.common_cancel))
+            waitUntil("the question is gone after Cancel", 5_000) { device.findObject(By.text(box)) == null }
             assertEquals("still recording, not ended", "active", db.getTour(tourId)?.state)
             val trace = com.onpath.app.debug.Problems.events().map { it.message }
-            val step = "Load \"$name\" during the tour: not loaded"
+            val step = "Load \"$name\" during the tour: cancel"
             assertTrue("\"$step\" traced: ${trace.take(30)}", trace.any { it.startsWith(step) })
         } finally {
             scenario.onActivity { vm(it).routesOpen = false }

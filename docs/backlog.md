@@ -23,14 +23,43 @@ the git log.
    → then A-003 Play build (next big item). Debug build + test key stay for the team's GitHub builds.
 
 ## For the roles
+- → [cloud-web] (owner 2026-11-03, comparison card 5): **Play store screenshots** in the store pattern – a short benefit
+  headline on top, the phone on OnPath green, the A-019 pictures. The owner's six headlines (final wording):
+  1 "Plane in Ruhe – auch ohne Netz" · 2 "Unterwegs umplanen – ganz einfach" · 3 "Klare Ansagen an jeder Abzweigung" ·
+  4 "Deine Daten bleiben bei dir" · 5 "Ohne Werbung. Ohne Konto. Ohne Tracking." · 6 "Am PC planen, auf dem Handy
+  losgehen". Pictures to the owner before uploading; EN versions as a proposal. Not copied from others: photos,
+  reviews, community feeds (card 6).
+- → [cloud-plan] (donald 2026-11-03): the slow-planning question is in the app (onpath.private#21 B): new shared
+  `routing/SlowPlan.kt` (in app/web-shared-files.txt), changed shared `RoutingContract.kt` (RouteLimits.rounds),
+  `RouteTimeLimit.kt`, `Planner.kt`, `BRouterEngine.kt`. The planner shows the same FRAGE box: `Planner(askAtLimit =
+  true, rounds)`, on `SlowPlan.TimeLimit` the box "Die Route ist lang, die Berechnung dauert. Weiter warten?" –
+  "Weiter warten" = run with rounds + 1, "Abbrechen" = onCancelRouting. Finished routes unchanged (no PLANNER_VERSION bump).
 - → [cloud-web] (donald 2026-11-03): pairing-help pictures app part done – `onpath.private/marketing/bilder/2026-11-03-donald/`
   (`app-a1…a4-de|en.png` + `Ergebnis.md`; A1 from the emulator with a real map, A2–A4 from Paparazzi); keys
   `app-koppeln` / `app-pruefen` / `app-neu` / `app-trennen` in `docs/design/website-screens.md`.
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
+- → [cloud-app] **Pixel is back (owner 2026-11-03 evening)** – after the running item: no tour recording → install current
+  main on the Pixel (`tools/dev/device.sh pixel`), then the [pixel] check lines at the top of Next (red tile "Neu
+  planen", Plan silent, 24 dp hold, no GPS line while still) with the owner, then the diagnostics review (127 entries).
+  Say how long the phone is busy. – captain 2026-11-03
 
 
 ## For the captain
+- ← [cloud-plan] **#21 answered by the owner: B** (2026-11-03, in my chat, entered in the issue): „Die Route ist lang, die
+  Berechnung dauert. Weiter warten?“ · „Weiter warten“ / „Abbrechen“. The app leads (cloud-app builds the question at the
+  time limit); the planner's wait box follows once that is on main. Also done today on web-spike: plan GPX keeps pins
+  (acd36cd7), "Plan a route from it" as the app's modal box with Cancel (5be2031d).
+- ← [cloud-plan] **Planner shot list done** (2026-11-03): `docs/design/website-screens.md` section "Browser planner" –
+  every planner picture of the site (web-plan / web-wandern, web-teilen / web-qr, web-handy, web-koppeln = W2, W1–W6,
+  film) with its `pair-shots.mjs` name and the planner file that changes it; the script now takes all of them
+  (web-spike 9b07f3e3). A fresh set with today's texts ("Neu planen") is in `onpath.private/marketing/bilder/2026-11-03-hp/`
+  → cloud-web can swap. Time-limit question: #21 has no answer yet – waiting.
+- (donald 2026-11-03 ~11:05) **v0.14.0 released** – release.yml green, GitHub Release v0.14.0 with onpath-0.14.0.apk +
+  SHA256SUMS (commit 2bba0137 on top of your GO 640544f0). The planner was already live with the same shared code.
+- ← [cloud worker] web-spike 2d48bae has main f154d62, Web spike green – 2026-11-03
 <!-- A role's word to the captain (roles cannot message the captain): - ← [cloud-app|cloud-plan|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
+- ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route = only the calculated way, Track = only GPX; list "Meine Touren" with tabs "Geplant | Gemacht". Every sentence written out, plus the list of texts that stay "Route": `onpath.private/auftraege/a-022-plan-tour-route.md`. No search-and-replace (der Plan / ihn). Before the release, because of the screenshots; cloud-web then does website, help and store text – 2026-11-03
+- ← [cloud-web] For **cloud-plan** (owner 2026-11-03): the planner's header link „Die App“ / “The app” (`web_link_app` → `web_url_app` = onpath.earth home) tells a first-time visitor nothing. Rename it **„Android-App testen“ / “Try the Android app”** and point it (and the sheet's „App holen“) at the sign-up page `https://onpath.earth/ausprobieren/` · EN `https://onpath.earth/try/` – new keys or a second URL key; the logo can stay on the home page. The website now links the planner in its header („Im Browser planen“, onpath.earth main) – 2026-11-03
 - ← [cloud-app] 2026-11-01: **Germany worktree removed** on donald (owner confirmed in the chat; no uncommitted work,
   all of `germany-prebuild` on origin/main, local branch deleted) – #10 closed. The run data beside it
   (`~/onpath-cells-work/germany/` state, logs, lists) is still there – remove only on the owner's word. Also new on
@@ -46,22 +75,48 @@ the git log.
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
-- [cloud-plan] Laptop off (2026-11-02 evening) – web-spike 415d3802 clean; next sitting: merge main on the captain's word, time-limit question, mirror leftovers – since 2026-11-02
-- [cloud-app] The rest of the backlog (owner 2026-11-01: no release today, everything in) – since 2026-11-01
-- [cloud-app] AppViewModel split done, build on the Pixel (16:31) – owner tests it outside, then the captain's release check – since 2026-11-01
-- [cloud-app] Release v0.14.0 – **not today (owner 2026-11-01: "kein Release heute, alle Fixes einbauen")**; cloud-app works the whole backlog first – since 2026-11-01
+- [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
 
 ## Next
-- **[captain] 09:10 release check v0.14.0: NO GO, one ✗ left** – (a) 3 shared files not yet on web-spike (search/Place.kt,
-  ui/MapGestures.kt, ui/RouteWarnings.kt) → the captain fired the planner sync (cloud) at 09:10, it merges main and pushes;
-  (b) CI: unit + E2E green on e4870f9d (last code commit; newer commits are docs only). After the planner push is green
-  the captain re-runs the check and writes the GO line here; then [cloud-app] releases. Don't release before.
-- **Night list 2026-11-02 → 03 – donald's state 2026-11-03 morning:** (1) E2E green, (2)–(3) words + "Los geht's" +
-  ☰ item, (4) plan during a tour = tile bar, (5) paved footways amber note – all on main, issues closed; (6) slow
-  planning text asked as onpath.private#21 (not blocking). **v0.14.0 not released** (donald was blocked by a chat box
-  until the owner's answer; no captain GO line) – **Rundgang on main 56ea018e (2026-11-03 08:57): 14 of 14 flows PASS**
-  (`~/onpath-cells-work/rundgang/2026-11-03_0857`) – ready for the captain's release check; the release itself after the captain's GO (`release_check.sh --go v0.14.0`). Pixel unplugged →
-  [pixel] items wait.
+- **For the cloud (donald shut down by the owner 2026-11-03 ~23:20 – no new build items for donald):** five unfinished,
+  NOT gated works saved as branches – finish each, gate, merge to main (one cloud worker each, or in this order):
+  (1) `wip/donald-2026-11-03-roundtrip-A-lead` – lead always to ①, the start question "Zu ① führen / Hier einsteigen",
+  loaded route same rule, passed rules (Navigator reached / TourSplit); contains the field-bug test RoundTripLeadTest
+  (un-ignore it – it must pass); (2) `…-roundtrip-B-reroute-circles` – re-route skip question "Über ③ / ③ auslassen"
+  + the inline numbered circle (+ turn card "② Leiteralm"); was recording screenshots; (3) `…-roundtrip-C-stop-on-the-way`
+  – a point set on the way to a round trip = stop on the way, loop kept and recognised, "Hier starten & enden" rotates
+  only the loop; tests were next; (4) `…-offline-pill` – "PLANEN · Ohne Netz ✓ / ⟳ / ⚠" in the mode pill (state of map
+  cells + routing data for the route corridor; tap explains); (5) `…-a022-plan-tour-route` – A-022 app texts (spec
+  onpath.private/auftraege/a-022-plan-tour-route.md, owner's decision) – A-022 wins over tonight's "fewer terms" where
+  it names a key. All five: the owner's decisions are in the backlog lines above / the round-trip analysis
+  https://claude.ai/artifact/UEzamgzCNMJBthSgE8onWw. Then the full Rundgang (needs an emulator – GitHub E2E or
+  donald later) and **v0.15.0 for the owner's in-app update** (owner's word 2026-11-03: "so bauen, dass ich es über die
+  Update-Funktion aufs Handy holen kann"); cloud-plan mirrors SlowPlan + A-022 planner texts.
+- **[cloud-plan] Web spike red on 5be2031d** (captain 2026-11-03 22:10) – planner not deployed since then: job "smokes (short)"
+  step "No WebGL2 → a plain message", job "smokes (lang-gpx)" step "Long-route question and GPX import" (the new
+  "Plan a route from it" box?). https://github.com/happychriss/OnPath/actions/runs/41715495112
+- **Docs pictures follow the UI by themselves (owner 2026-11-03)** – three parts:
+  (1) **[cloud-web]** make `docs/design/website-screens.md` the full shot list: every picture on onpath.earth (home,
+  help DE + EN, planner pages) and in the store listing, with key, file names DE · EN, what exactly it shows (state,
+  activity, route, scroll position, open sheet / menu, what is blurred), the fixed scenario (emulator, Demo ride Vellau →
+  Leiteralm / A-019 setup) and the app files it depends on. Planner pictures with their `ui-shots` / `pair-shots` name.
+  (2) **[cloud-app]** `tools/ci/gate.sh` prints "Bilder betroffen: <keys>" when changed files match the list's last
+  column; the unit re-shoots those keys while checking its change (`tools/dev/website_shot.sh <key>`, DE + EN) – for a
+  big round after its review – and drops the PNGs + one line each (key, app version, date) into
+  `onpath.private/marketing/bilder/aktuell/`. The same rule in `.claude/rules/ui.md`.
+  (3) **[captain]** a daily cloud run (after the 05:47 planner sync) takes new files from `bilder/aktuell/` into
+  onpath.earth (help + home, `scripts/help_shots.py`), builds, checks links, pushes, moves the used PNGs to
+  `bilder/eingebaut/<date>/` and reports in one line; set up 2026-11-03.
+- **[pixel] Check: red tile "Neu planen" in "Route ändern" (built 2026-11-03)** – saved route: plan clears without a
+  question, recording goes on ("Nur Aufnahme"), the empty-plan hint shows; new / changed plan: "Änderungen verwerfen?"
+  first; ↶ brings plan + guidance back.
+- **[pixel] Check: Plan is silent during a tour (built 2026-11-03, `recording/ModeQuiet`)** – tour → "Route ändern",
+  screen off, pass a junction / a stop: nothing said, no vibration; delete the point ahead in Plan: nothing said;
+  "Navigation fortsetzen" after a passed stop: no late "Stopp N erreicht"; arrive while in Plan → "Du bist angekommen"
+  only after continuing; app in Plan + walking on: stays silent, no switch back by itself (owner 2026-11-03).
+- **[pixel] Feel: holding beside the route (24 dp, built 2026-11-03, onpath.private#6)** – a hold about a finger's width
+  from the line inserts a stop into that leg; further away it is a new point / destination (before: 2–3 finger widths).
+  Shared place: the menu opens only when the map is over the place. Owner checks on the Pixel.
 - **[cloud-plan] Planner wait box: the time-limit question** (owner 2026-11-02, onpath.private#13): the wait box with
   Cancel is on web-spike (415d3802); when the time limit is hit it should become the question "weiter warten / abbrechen"
   – waits for [cloud-app]'s text (the app leads).
@@ -69,17 +124,10 @@ the git log.
   (owner 2026-11-02: "hat sich die mal jemand angeguckt?"): pull the diagnostics export briefly over adb (no tour
   recording, phone untouched otherwise), sort: old (fixed / old version) · new + harmless (INFO, offline) · new + a real
   bug → its own Next line with a reproducing test. A short overview to the owner; the owner then clears with the button.
-- **[cloud-app] Diagnostics list folds** (owner 2026-11-02, low prio, after v0.14.0): Settings → Diagnostics starts
-  folded – one line "127 Einträge, davon 3 Fehler ▸" – so the developer tools under it are reached without scrolling.
 - **[pixel] Field check: no GPS line while lying still (built 2026-11-02, `recording/StillSense`)** – phone flat on a
   table with a tour running: no GPS line, also in the first 2 min; phone in a pocket while sitting (threshold 0.5 m/s²
   is a guess); walking / riding without GPS → amber after the short gap; no extra battery drain. Open: the notification
   says nothing about GPS while the phone lies still (owner 2026-11-02).
-- **[cloud-app] A-003 Play build – right after v0.14.0** (owner 2026-11-02, onpath.private#3): flavours prod (Google Play:
-  no self-update, no REQUEST_INSTALL_PACKAGES, no GitHub update line in Settings → Datenschutz) / dev (as today);
-  signed AAB for prod in `release.yml` next to the APK; upload key made by the owner locally → GitHub secret, never in
-  the repo. Signing / build config → **pull request to the owner** (CLAUDE.md). Spec: `onpath.private/auftraege/a-003-play-fassung.md`,
-  steps for the owner: `onpath.private/marketing/anleitung-geschlossener-test.md` §1–5. Not before v0.14.0 is out.
 - **Bike difficulty limit S0 / S1 / S2 (owner 2026-11-01, "easy to build?"):** today only the hike has a chosen limit
   (T1–T5). Gravel (`trekking.brf`) and Bike / E-bike (`touring.brf`) already make S2 very expensive (+30) and shut S3+
   (10000); `mtb.brf` only adds a cost per S grade, no limit. Wanted: a chosen limit per bike activity ("nur S0", "bis S1"),
@@ -88,11 +136,8 @@ the git log.
   pass it (shared with the web: picker + `PlanGpx` sport type), `RoutingFingerprint` + the cells' router-class hash
   (`RouterClassCheck`) change, `ActivityLayers` maybe shows the band by S level. Most ways carry no `mtb:scale` – the
   limit acts only where mappers set it (MTB areas yes, gravel roads mostly not). After Navigation neu. [cloud-app + cloud-plan]
-- **Way type on screen (owner idea 2026-11-01, rest of it):** the voice names the way from the real way type now (Feldweg
-  only on a track, Radweg, Weg, Pfad, Straße – 44544250) and close opposite turns are one step (JogRule, 00b9f006);
-  the screen's turn card / arrow shows the same junctions now (`navigation/ScreenTurns`, 4418dc36); the Navigate Sim
-  follows a changed line (7a397432). Still open: the owner names more kinds if wanted (Nebenstraße, Landstraße,
-  Schotterweg …) and the same word on screen under the arrow. [cloud-app]
+- **Way type – more kinds (owner idea 2026-11-01, rest):** voice and turn card name the same way word now ("Links auf
+  den Radweg", 2026-11-03). Still open only if the owner wants: more kinds (Nebenstraße, Landstraße, Schotterweg …).
 - **Website screenshots per changed screen, not whole sets (owner 2026-11-01) – start right after the v0.14.0
   release.** Instead of re-shooting all pictures after every UI change, each role re-shoots only the pictures of the
   screens it changed. (1) **[cloud-app]** a list `docs/design/website-screens.md`: every website / store / help
@@ -256,6 +301,12 @@ the git log.
   7.2 km – expectation or gap?); zip import checks only sizes (cell downloads check sha256).
 
 ## Waiting for the owner
+- **A-003 Play build – pull request https://github.com/happychriss/OnPath/pull/2** (donald 2026-11-03): build type `play`
+  (all debug task names unchanged), no self-update / install permission / GitHub line, signed AAB in release.yml as a
+  run artifact – skipped with a warning until the owner adds the secrets `ONPATH_UPLOAD_KEYSTORE_B64`,
+  `ONPATH_UPLOAD_KEYSTORE_PASSWORD`, `ONPATH_UPLOAD_KEY_ALIAS`, `ONPATH_UPLOAD_KEY_PASSWORD`. Questions in the PR: same app
+  id for GitHub and Play (never both on one phone) or a separate id for the GitHub build; automatic upload to the Play
+  Console later (service account). After the merge: docs mention `bundlePlay`, the result note in onpath.private.
 <!-- Owner 2026-11-01: owner questions now live as issues (label `frage`) in happychriss/onpath.private – `tools/ask.sh`. New questions go there, not here. Moved: D1–D4 → #2–#5, metersPerPixel → #6, footways → #7, old branches → #8, CF_START_TOKEN → #9, Germany worktree → #10. -->
 - **Role setup leftovers (captain 2026-10-31)** – (1) cloud-web needs write access to `onpath.private` (Drive copy);
   (2) map data for the laptop (`/home/development/Projects/work/onpath-data/`) – and does the Germany pre-build stay

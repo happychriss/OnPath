@@ -212,6 +212,8 @@ data class RouteLimits(
     /** Upper bound for this request incl. waiting for another request to finish (ms). */
     val timeoutMs: Long,
     val cancel: RouteCancel? = null,
+    /** Time-limit periods for the search ([RouteTimeLimit] × rounds): 2+ after "Weiter warten" ([SlowPlan]). */
+    val rounds: Int = 1,
 )
 
 interface RoutingEngine {

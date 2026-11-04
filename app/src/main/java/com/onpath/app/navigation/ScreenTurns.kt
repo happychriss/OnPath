@@ -43,6 +43,18 @@ object ScreenTurns {
         return (hints + back).sortedBy { it.distanceFromStart }
     }
 
+    /**
+     * The kind of way each shown turn goes onto – exactly the word the voice says there ([VoiceGuide.ontoAt] on the same
+     * approach line), keyed by [Turn.index]; only router hints (a geometry turn or "Umdrehen" has no way word).
+     */
+    fun onto(given: List<GeoPoint>, turns: List<Turn>, hike: Boolean): Map<Int, WayKind> {
+        if (given.size < 2 || given.none { it.turn != null }) return emptyMap()
+        val line = JogRule.approach(given, hike)
+        val cum = Geo.cumulative(line)
+        return turns.filter { !it.turnRound && it.index in line.indices && line[it.index].turn != null }
+            .mapNotNull { t -> VoiceGuide.ontoAt(line, cum, t.index, bike = !hike)?.let { t.index to it } }.toMap()
+    }
+
     /** The line vertex about [dM] metres from vertex [i] (the end at most). */
     private fun near(line: List<GeoPoint>, cum: DoubleArray, i: Int, dM: Double): GeoPoint {
         var j = i

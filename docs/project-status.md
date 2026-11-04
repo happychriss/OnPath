@@ -1,15 +1,15 @@
 # OnPath – project status and decisions
 
-Current release **0.13.5** (2026-10-31). Open work: `docs/backlog.md`. Core features and their tests:
+Current release **0.14.0** (2026-11-03). Open work: `docs/backlog.md`. Core features and their tests:
 `docs/core-features.md`. What each release changed: `docs/release-notes/` and the git history – this file keeps only
 the current state.
 
 ## Where things are
 <!-- Kept by the captain every round (docs/roles/neu/captain.md 5c). -->
 - **Pixel:** main b047bf79, installed 2026-11-01 19:55 (newest handoff that names it; the night draft 63b0194d is not on it).
-- **GitHub release:** v0.13.5 (2026-10-31). Next planned: v0.14.0 (owner: not before all fixes are in).
-- **Planner (plan.onpath.earth):** web-spike 415d3802 (2026-11-02 ~23:00, green: wait box in the middle, closed-folder
-  question, test races fixed; has main up to ~21:00). Laptop off for the night.
+- **GitHub release:** v0.14.0 (2026-11-03 ~11:00, 2bba0137, Release workflow green). Next: A-003 Play build (first testers
+  via the Play internal test).
+- **Planner (plan.onpath.earth):** web-spike 2d48baed (2026-11-03 10:38, has main f154d62 = the v0.14.0 shared code; green).
 - **State:** released 0.13.2 → 0.13.5 today. main (8cf47345 or newer) also has, **not released yet**: the planner
   splice "route only around a cut stop" (38fc16c6, ~2× faster, `PLANNER_VERSION` 3); the compact plan sheet with the
   rolled-up one-row step (d2885035, interim build on the owner's phone since 21:45); faster builds (`tools/ci/gate.sh`,
@@ -30,6 +30,23 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **donald, 2026-11-03 late – shut down by the owner (~23:20); new build items go to the cloud.** On main tonight:
+  plan in blue (no top band), novice fixes, fewer terms → superseded by A-022 (open), load-route question, compact
+  bars + equal pills, map buttons one column 56 dp, slow-planning question, next stop in the turn card, way word.
+  Five unfinished works are `wip/donald-2026-11-03-*` branches – the list and order are in the backlog ("For the cloud").
+  Not released: v0.15.0 waits for those five + a Rundgang. Pixel last installed ~22:10 (main of then).
+- **donald, 2026-11-03 evening – after v0.14.0, all on main:** route hold 24 dp (#6), diagnostics list folded,
+  Plan silent during a tour (no walk-off back to Navigate – owner), red tile "Neu planen" in "Route ändern", way word
+  on the turn card ("Links auf den Radweg"), Plan in blue (version 3, Navigate unchanged, blue position sign).
+  A-003 Play build = pull request #2 (waiting for the owner + secrets). Open for the owner: slow-planning wording
+  (#21), map buttons form (issue), hook vs pushes to onpath.private. Not on the Pixel yet (unplugged) – install the
+  whole state when it is back; [pixel] check lines in the backlog.
+- **donald, 2026-11-03 – v0.14.0 released** after the captain's GO (release.yml green, APK + SHA256SUMS). Before it:
+  the night list (words Route / Tour / Aufnahme, "Los geht's", plan during a tour = tile bar, paved footways note,
+  stop bar ⏸ / ✎ / ■ without ✕, found place = pin + chip, empty-plan hint, shared places in Recent, no GPS line while
+  still), Rundgang 14/14 PASS, pairing-help pictures for cloud-web. Open for the owner: colour mockups (draft page
+  §5), slow-planning wording (#21), hook vs pushes to onpath.private. [pixel] items wait for the phone (diagnostics,
+  still-sense field check).
 - **cloud-plan (laptop), 2026-11-01/02 – end of the sitting.** `web-spike` 415d3802, everything pushed, goes live by itself
   on green CI (every green push to `web-spike` deploys – `web-spike.yml`). Done: list A 10–13, "More before the release"
   (sync H1 / M7, edit queue, storage.persist, write failures), main merged three times (last: 6f60dd01 – shared rules wired:

@@ -247,6 +247,9 @@ class VoiceGuide {
         return speak(j, i.nowMs)
     }
 
+    /** Back from Plan (owner 2026-11-03): sentences that waited are dropped – nothing from the time in Plan is said late. */
+    fun dropWaiting() { waiting.clear() }
+
     /** An app event (arrival, nothing ahead after an edit): said at once, never waits; "arrived" at most every [ARRIVED_EVERY_MS]. */
     fun event(p: Phrase, nowMs: Long): Phrase? {
         if (p == Phrase.Arrived) {

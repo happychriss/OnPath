@@ -32,18 +32,27 @@ class TourActionBarTest {
             assertTrue("$name ${contrastWithWhite(c)}", contrastWithWhite(c) >= 4.5)
     }
 
-    @Test fun compactAboutOneAndAHalfSliders() {
+    /** Owner 2026-11-03: the tiles were "echt riesig" – the bar now about the slider's own 64 dp, still ≥ 48 dp to touch. */
+    @Test fun compactAboutTheSlidersHeight() {
         val barDp = TourActions.TILE_HEIGHT.value + 2 * TourActions.BAR_PAD.value
-        assertTrue("$barDp dp vs the 64 dp slider", barDp in 88f..104f)
+        assertTrue("$barDp dp vs the 64 dp slider", barDp in 52f..66f)
+        assertTrue(TourActions.TILE_HEIGHT.value >= 48f)
         assertEquals(30_000L, TourActions.OPEN_MS)
     }
 
     /** Owner 2026-11-02: no ✕ – a tap on the map or Android's back closes the open bar (not while paused). */
     @Test fun aTapOnTheMapOrBackClosesTheBar() {
-        assertTrue("no ✕ in the bar", !bar.contains("Icons.Filled.Close"))
+        // Navigate's bar has no ✕ close button (the plan's red "Neu planen" tile uses the ✕ sign – that is not a close)
+        assertTrue("no ✕ in the bar", !bar.substringAfter("fun TourActionBar(").substringBefore("\n}\n").contains("Icons.Filled.Close"))
         val nav = File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()
         assertTrue(nav.contains("val closableBar = open && !ui.paused && ui.recordedM != null"))
         assertTrue(nav.contains("BackHandler(enabled = closableBar) { open = false }"))
         assertTrue(nav.contains("detectTapGestures { open = false }"))
+    }
+
+    /** Owner 2026-11-03: the three pills of the plan during a tour are always equally high. */
+    @Test fun pillsAreEquallyHigh() {
+        val pills = bar.substringAfter("fun ActionPills(").substringBefore("\n}\n")
+        assertTrue(pills, pills.contains(".height(IntrinsicSize.Min)") && pills.contains("Modifier.weight(1f).fillMaxHeight()"))
     }
 }

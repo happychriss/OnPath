@@ -56,6 +56,14 @@ object MapGestures {
     enum class PointAction { MAKE_START, LOOP_START, GOOGLE, DELETE }
 
     /**
+     * A quick tap on the open map in Plan sets nothing (hold-only, owner) – it shows the calm line "Gedrückt halten, um
+     * hier einen Punkt zu setzen." in the plan sheet (owner 2026-11-03, novice fix). Not on a POI / route point / the
+     * pin (their own behaviour), not with a menu open (the tap closes it) and not on an empty plan (its hint says it).
+     */
+    fun tapShowsHoldHint(editable: Boolean, press: Press, action: Action, poi: Boolean, marker: Int, planEmpty: Boolean): Boolean =
+        editable && press == Press.TAP && action == Action.None && !poi && marker < 0 && !planEmpty
+
+    /**
      * @param marker index of the marker under the finger (see [nearestMarker]) or -1
      * @param poi a POI is under the finger
      */

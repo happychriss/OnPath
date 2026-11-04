@@ -16,6 +16,7 @@ routing/RouteTimeLimit.kt
 routing/TurnDetector.kt
 routing/Junctions.kt
 routing/Planner.kt
+routing/SlowPlan.kt
 routing/WaypointInsertion.kt
 routing/PlanEdits.kt
 routing/RouteSummary.kt

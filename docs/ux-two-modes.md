@@ -11,6 +11,10 @@ Search mockups: `docs/ux-search-proposals.md` (proposal C's "Add to route" card 
 | Switch | **"Start navigation"** – normal big button (safe direction). With a tour running: **"Continue navigation"** | **Slide-to-plan switch** at the bottom: "Stop" / „Stopp“ with a small second line "Pause · End · Change route" / „Pause · Beenden · Route ändern“ (owner 2026-11-01; sliding ends nothing – Plan opens with the tour row ■ Stop · Continue; was "Tour menu" / „Tour-Menü“, "Plan" / „Planen“, "Edit route"). The small line only when it fits (large font: main line only, never cut); without a recording only "Change route" / „Route ändern“ (`ui/SlideToUnlock.kt`, `SlideLabel`) – the only way out of Navigate (protects against pocket/glove touches) |
 
 ## Rules
+0. **Plan is silent** (owner 2026-11-03: "Das Handy verhält sich dann still, Plan only"): in Plan during a tour – also with
+   the screen off – no voice, no navigation vibration and no message that comes from movement or navigation (off-route
+   box / notification, re-route proposal, "Stopp N erreicht", arrival, "Kein GPS"). The recording goes on. Back in
+   Navigate the state is checked afresh – nothing from the time in Plan is said or shown late (`recording/ModeQuiet`).
 1. **Recording never stops when switching.** Starting navigation starts (or continues) the recording; going back to
    Plan keeps recording. **Plan during a tour (owner 2026-10-31):** the sheet opens at its first step, ONE row –
    "● Tour running · 1.7 km · 0:14:38" on the left, a compact green **[Continue]** (≥ 48 dp; also resumes a paused
@@ -78,6 +82,12 @@ Undo brings it back; with unsaved changes ONE question first, "Discard changes?"
 **↻ Round trip** (greyed when it already is one). A tap on time + distance opens Time details. Save is ☰ → Save route;
 Save as copy, Export GPX and Share route are in My routes → ⋮. A real delete is only in My routes (recycle bin). The sheet shows the save state as text, not as a message: "Saved as “Name”" or
 "“Name” · changed, not saved" (a plain line, not tappable).
+- **A slow plan asks** (owner 2026-11-03, onpath.private#13 / #21 B, `routing/SlowPlan`): when a plan run in Plan
+  reaches its time limit (`RouteTimeLimit`, 15 s – 2 min by distance and profile) the one message box asks "Die Route
+  ist lang, die Berechnung dauert. Weiter warten?" – **Weiter warten** runs it again with one more time-limit period
+  (BRouter cannot resume; routed pieces come from its cache) and asks again at that limit; **Abbrechen** = Cancel while
+  calculating (the change that started it is undone). It stays until answered. The points stay, no straight lines.
+  Runs that do not ask (Navigate, browser plans, plan from a track) keep the straight "took too long" lines.
 
 **My routes** (`RoutesScreen`): one list of planned routes, recorded tours and imported GPX (type icon, name,
 type + date, distance · ascent · time), newest first. Import GPX at the top (the imported track is then shown on the
@@ -85,12 +95,14 @@ map). Per item: tap = open (planned route with via points → into the plan; tra
 and ⋮ with **Rename** (name dialog, the sheet's "Saved as" follows), **Save as copy** + **Share plan** (planned
 routes), Export (GPX share), Delete (asks "Delete “Name”?";
 the dialog stays until Cancel / Delete, a tap outside does nothing).
-**During a tour no new route is loaded** (owner 2026-10-31: "too much automation – as a hiker I wouldn't trust it";
-`RouteRules.openAsk` → `BLOCKED_DURING_TOUR`). The list looks as always (no hint under the routes – nobody reads it);
-a tap on a planned route is the action, the answer is a HINWEIS box under the tabs of My routes, over the list: **"End the
-running tour first, then this route can be loaded."** / „Erst die laufende Tour beenden, dann lässt sich diese Route
-laden.“ – **OK** (48 dp). It stays until OK or until My routes is left. Nothing changes: plan, followed route, activity
-and the recording. Tracks open as before (shown as a track; "Start navigation · …" in the track panel follows one).
+**During a tour a planned route asks first** (owner 2026-11-03 – was 2026-10-31's dead end "End the running tour first";
+`RouteRules.openAsk` → `BLOCKED_DURING_TOUR` → `ui/TourLoad`). The list looks as always; a tap on a planned route is the
+action, the answer is a FRAGE box under the tabs of My routes, over the list: **„Route „‹Name›“ laden?“ – „Du bist gerade
+unterwegs.“** / "Load route “‹name›”? – You are on the way." – **Abbrechen** · **Tour beenden und laden** · **Mit dieser
+Route weiter** (primary). Continue: the recording goes on, the tour follows the loaded route from the current position
+(as an edit during the tour), the tour keeps its activity, back to Navigate. End and load: the usual end question; the
+route loads only after the tour has ended (saved or deleted) – Cancel there loads nothing. Cancel / leaving My routes:
+nothing changes. Tracks open as before (shown as a track; "Start navigation · …" in the track panel follows one).
 While the plan belongs to a saved route, the followed route carries its name ("Back to …", tour log).
 
 **Loading over an unsaved plan:** "Replace current plan?" – **Save first** (Save's name dialog as above, then
@@ -155,7 +167,7 @@ edge), **one at a time** (a question first, the others wait) and sit **12 dp und
 - **Navigate:** under the turn card / status card – the re-route question and the activity-switch question (moved here
   from the bottom, 56 dp buttons; drawn over the map controls), "Notifications off" (OK; a tap = the setup step), an
   error. While the app is on screen the question is not a heads-up notification too (quiet channel, lock screen keeps it).
-- **My routes / Settings:** under the tabs / title, over the list – "End the running tour first …", an error.
+- **My routes / Settings:** under the tabs / title, over the list – "Load route …? You are on the way." (during a tour), an error.
 
 ## Layout rule (owner)
 Everything about **this route** lives in the route sheet; the **library and app** live at the top.

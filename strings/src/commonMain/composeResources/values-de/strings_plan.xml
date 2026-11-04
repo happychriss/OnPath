@@ -59,6 +59,8 @@
     <string name="plan_calculating">Route wird berechnet…</string>
     <string name="plan_hint_first_point_question">Wohin soll’s gehen?</string>
     <string name="plan_hint_first_point">Halte dein Ziel auf der Karte gedrückt – oder such es oben in der Suchleiste.</string>
+    <string name="plan_hint_tap_hold">Gedrückt halten, um hier einen Punkt zu setzen.</string>
+    <string name="map_tip_locate">Mein Standort</string>
     <string name="plan_hint_destination">Halte die Karte gedrückt, um das Ziel zu setzen.</string>
     <string name="plan_not_routed_long">Route nicht berechnet – sehr langer Plan.</string>
     <string name="plan_not_routed_stopped">Route nicht berechnet – Berechnung abgebrochen.</string>
@@ -78,8 +80,8 @@
     <string name="plan_show_route_details">Routendetails anzeigen</string>
     <string name="plan_elevation_profile">Höhenprofil</string>
     <string name="plan_start_navigation_for">Los geht’s · %1$s</string>
-    <string name="plan_continue_navigation_for">Navigation fortsetzen · %1$s</string>
-    <string name="plan_start_recording_for">Aufnahme starten · %1$s</string>
+    <string name="plan_continue_navigation_for">Weiter · %1$s</string>
+    <string name="plan_start_recording_for">Los geht’s · ohne Route</string>
     <string name="plan_save_route">Route speichern</string>
     <string name="plan_time_details">Zeitdetails</string>
     <string name="plan_close_plan">Neu planen</string>
@@ -180,6 +182,7 @@
     <string name="plan_slide_to_plan">Stopp</string>
     <string name="plan_slide_to_plan_sub">Pause · Route ändern · Beenden</string>
     <string name="plan_slide_change_route">Route ändern</string>
+    <string name="plan_mode_label">Planen</string>
     <string name="plan_slide_desc">%1$s. Zum Planen wechseln.</string>
     <string name="plan_switch_to_plan">Zum Planen wechseln</string>
     <string name="plan_stat_distance">Strecke</string>
@@ -233,4 +236,8 @@
     <string name="plan_from_track_busy_text">Bei einer langen Tour kann das ein paar Minuten dauern.</string>
     <string name="plan_from_track_failed">Aus der Tour ließ sich keine Route machen – dort fehlt vielleicht die Detailkarte.</string>
     <string name="plan_from_track_wait">Die Karte für diese Tour wird noch geladen – gleich noch einmal versuchen.</string>
+    <!-- the time limit of a plan run (owner 2026-11-03, onpath.private#21 B) -->
+    <string name="plan_slow_title">Die Route ist lang, die Berechnung dauert.</string>
+    <string name="plan_slow_text">Weiter warten?</string>
+    <string name="plan_slow_wait">Weiter warten</string>
 </resources>

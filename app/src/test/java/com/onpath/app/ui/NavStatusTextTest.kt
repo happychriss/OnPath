@@ -18,7 +18,7 @@ class NavStatusTextTest {
     @Test fun pausedAndOffRouteAndFreeRecordingShowIt() {
         assertEquals("Paused · moving 1:12", recordingLine(nav.copy(paused = true), 5_320.0))
         assertNull("off the route: no recording line (owner 2026-11-01)", recordingLine(nav, 5_320.0, offRoute = true))
-        assertEquals("Recording · 5.3 km · moving 1:12 · breaks 0:11", recordingLine(nav.copy(toGo = null), 5_320.0))
+        assertEquals("On the way · 5.3 km · moving 1:12 · breaks 0:11", recordingLine(nav.copy(toGo = null), 5_320.0))
     }
 
     @Test fun noGpsIsOneWarningLine() {
