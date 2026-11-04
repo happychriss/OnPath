@@ -103,12 +103,13 @@ object MapGestures {
     /**
      * Sensible options for route point [index] of [count]. Middle points of a normal route: "Start here" (drops the
      * points before). Round trip: "Start & finish here" (rotates the loop) on
-     * every point except the start/finish. "Open in Google Maps" (named place / POI only), "Delete" (always).
-     * Start and destination of a normal route get neither (⋯ → Reverse swaps them).
+     * every loop point except ①; with stops on the way before the loop ([loopStart] > 0, owner 2026-11-03) those and ①
+     * get "Start here" like a normal route's middle points. "Open in Google Maps" (named place / POI only), "Delete"
+     * (always). Start and destination of a normal route get neither (⋯ → Reverse swaps them).
      */
-    fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean = false): List<PointAction> = buildList {
+    fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean = false, loopStart: Int = 0): List<PointAction> = buildList {
         val middle = index in 1 until count - 1
-        if (roundTrip) { if (middle) add(PointAction.LOOP_START) }
+        if (roundTrip) { if (middle) add(if (index > loopStart) PointAction.LOOP_START else PointAction.MAKE_START) }
         else if (middle) add(PointAction.MAKE_START)
         if (isPlace) add(PointAction.GOOGLE)
         add(PointAction.DELETE)

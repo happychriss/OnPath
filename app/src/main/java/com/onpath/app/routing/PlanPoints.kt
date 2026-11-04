@@ -31,7 +31,8 @@ object PlanPoints {
      * "Start and finish"; not repeated when an unnamed point is already called by it.
      */
     fun roleText(r: PlanPointRow): String? = when {
-        r.loop -> Txt.s(Res.string.plan_point_start_finish)
+        // the loop's ① behind stops on the way (owner 2026-11-03) is where the tour ends: "Destination"
+        r.loop && r.role == PointRole.START -> Txt.s(Res.string.plan_point_start_finish)
         r.role == PointRole.START -> Txt.s(Res.string.plan_point_start)
         r.role == PointRole.GOAL -> Txt.s(Res.string.plan_point_destination)
         else -> null
@@ -57,7 +58,8 @@ object PlanPoints {
      */
     fun rows(plan: List<GeoPoint>, line: List<GeoPoint>?, name: (Int) -> String?): List<PlanPointRow> {
         if (plan.isEmpty()) return emptyList()
-        val loop = PlanEdits.isRoundTrip(plan)
+        val loopAt = PlanEdits.loopStart(plan)
+        val loop = loopAt != null
         val legs = legsCached(plan, line)
         val exact = legs != null
         val legM = legs ?: (listOf<Double?>(null) + (1 until plan.size).map { Geo.distance(plan[it - 1], plan[it]) })
@@ -66,6 +68,8 @@ object PlanPoints {
             val role = when {
                 i == 0 -> PointRole.START
                 !loop && i == count - 1 -> PointRole.GOAL
+                // stops on the way before a round trip: its ① is where the tour ends
+                loop && i == loopAt -> PointRole.GOAL
                 else -> PointRole.STOP
             }
             PlanPointRow(
@@ -76,8 +80,8 @@ object PlanPoints {
                     PointRole.GOAL -> Txt.s(Res.string.plan_point_destination)
                     PointRole.STOP -> Txt.s(Res.string.plan_point_stop, i + 1)
                 },
-                legM = if (loop && i == 0) legM[plan.lastIndex] else legM[i],
-                approx = !exact, loop = loop && i == 0,
+                legM = if (loop && i == loopAt) legM[plan.lastIndex] else legM[i],
+                approx = !exact, loop = loop && i == loopAt,
             )
         }
     }
@@ -128,22 +132,40 @@ object PlanPoints {
         return listOf<Double?>(null) + (1 until plan.size).map { cum[at[it]] - cum[at[it - 1]] }
     }
 
-    /** Row [from] dropped at row [to]; to = 0 makes it the start. Round trips stay closed at the new start. */
+    /**
+     * Row [from] dropped at row [to]; to = 0 makes it the start. Round trips stay closed at the new start; with stops on
+     * the way before the loop (owner 2026-11-03) the loop stays closed at its ① wherever that row goes.
+     */
     fun move(plan: List<GeoPoint>, from: Int, to: Int): List<GeoPoint> {
-        val loop = PlanEdits.isRoundTrip(plan)
-        val rows = if (loop) plan.dropLast(1) else plan
+        val loopAt = PlanEdits.loopStart(plan)
+        val rows = if (loopAt != null) plan.dropLast(1) else plan
         if (from !in rows.indices || from == to) return plan
         val moved = PlanEdits.move(rows, from, to.coerceIn(0, rows.lastIndex))
-        return if (loop) moved + moved.first() else moved
+        return when {
+            loopAt == null -> moved
+            loopAt == 0 -> moved + moved.first()
+            else -> moved + rows[loopAt]
+        }
     }
 
-    /** Row [row] deleted (Undo brings it back). In a round trip the loop closes at its start again. */
+    /**
+     * Row [row] deleted (Undo brings it back). In a round trip the loop closes at its start again – with stops on the way
+     * before it (owner 2026-11-03) at its ①, or at the next loop point when ① itself goes.
+     */
     fun delete(plan: List<GeoPoint>, row: Int): List<GeoPoint> {
-        val loop = PlanEdits.isRoundTrip(plan)
-        val rows = if (loop) plan.dropLast(1) else plan
+        val loopAt = PlanEdits.loopStart(plan)
+        val rows = if (loopAt != null) plan.dropLast(1) else plan
         if (row !in rows.indices) return plan
         val left = rows.toMutableList().apply { removeAt(row) }
-        return if (loop && left.size >= 2) left + left.first() else left
+        return when {
+            loopAt == null -> left
+            loopAt == 0 -> if (left.size >= 2) left + left.first() else left
+            // ① went: the next loop point is ① now; a stop on the way before it moves the loop one row up
+            else -> {
+                val one = if (row == loopAt) loopAt else if (row < loopAt) loopAt - 1 else loopAt
+                if (one < left.size && left.size - one >= 2) left + left[one] else left
+            }
+        }
     }
 
     /**
@@ -153,7 +175,8 @@ object PlanPoints {
      */
     fun deleteAt(plan: List<GeoPoint>, index: Int): List<GeoPoint> {
         if (index !in plan.indices) return plan
-        val row = if (index == plan.lastIndex && PlanEdits.isRoundTrip(plan)) 0 else index
+        // the closing point is the loop's ① (row 0, or behind stops on the way)
+        val row = if (index == plan.lastIndex) PlanEdits.loopStart(plan) ?: index else index
         return delete(plan, row)
     }
 

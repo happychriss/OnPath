@@ -1433,6 +1433,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val ins = insertionFor(p, lineSnapM)
         if (!ins.inTour && ins.decision.kind == WaypointInsertion.Kind.START && ins.points.size >= 2)
             Problems.trace("plan", "New point on the way there (led to a route never reached): it is the new start")
+        if (ins.decision.kind == WaypointInsertion.Kind.ON_THE_WAY)
+            Problems.trace("plan", "New point on the way to a round trip: a stop on the way, the loop stays (owner 2026-11-03)")
         change { add(ins.index.coerceIn(0, size), p) }
     }
 
@@ -1619,6 +1621,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun isRoundTrip(): Boolean = PlanEdits.isRoundTrip(waypoints)
+    /** Index of the round trip's ① (stops on the way before it), null without a loop ([PlanEdits.loopStart]). */
+    fun loopStart(): Int? = PlanEdits.loopStart(waypoints)
 
     /**
      * A point menu action was tapped: closes the menu and returns the index of the point it was opened for in the
@@ -2062,7 +2066,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 post?.routingKeys?.let { k -> mapData.routingForLine(k) }
                 routeError = RoutingDataNotice.forRoute(it.error, post?.tilesMissing == true, mapData.routingLoading)
                 // T4: the corridor – named after the plan's destination (round trip: its start) in the loading chip
-                val dest = if (com.onpath.app.routing.PlanEdits.isRoundTrip(pts)) pts.firstOrNull() else pts.lastOrNull()
+                // the last point: a round trip closes at its ① (also with stops on the way before the loop)
+                val dest = pts.lastOrNull()
                 mapData.routeComputed(it.points, post?.cells, dest)
                 if (mode == AppMode.PLAN && !followNextRoute && !planEditPending && !viaData) freshenAfterRoute(it.points, post?.cells)
                 if (viaData) routingDataRouteChanged(it)
@@ -2741,7 +2746,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun secureTourCorridor() {
         val line = route?.points?.takeIf { it.size >= 2 } ?: return
         val pts = waypoints.toList()
-        mapData.secureTourCorridor(line, if (com.onpath.app.routing.PlanEdits.isRoundTrip(pts)) pts.firstOrNull() else pts.lastOrNull())
+        mapData.secureTourCorridor(line, pts.lastOrNull()) // a round trip closes at its ①
     }
 
     /** How long Start waits for the service's first state before saying that recording did not start. */

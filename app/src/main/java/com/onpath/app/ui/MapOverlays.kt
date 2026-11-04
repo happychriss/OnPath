@@ -133,7 +133,7 @@ fun MapOverlayHost(
         if (i == null || p == null) { LaunchedEffect(t) { vm.closePointMenu("its point is no longer in the plan") }; return@let }
         val name = vm.stopName(p)
         Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { vm.closePointMenu("point left the visible map (onGone)") }) {
-            PointMenu(i, vm.waypoints.size, name, roundTrip = vm.isRoundTrip()) { a ->
+            PointMenu(i, vm.waypoints.size, name, roundTrip = vm.isRoundTrip(), loopStart = vm.loopStart() ?: 0) { a ->
                 when (a) {
                     PointAction.MAKE_START, PointAction.LOOP_START -> vm.makeStartFromMenu()
                     PointAction.GOOGLE -> vm.googleFromMenu()?.let { g ->
@@ -331,7 +331,7 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
  */
 @Composable
 fun PointMenu(index: Int, count: Int, name: String?, modifier: Modifier = Modifier, roundTrip: Boolean = false,
-              onAction: (PointAction) -> Unit) {
+              loopStart: Int = 0, onAction: (PointAction) -> Unit) {
     MenuSurface(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp)) {
@@ -343,7 +343,7 @@ fun PointMenu(index: Int, count: Int, name: String?, modifier: Modifier = Modifi
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        for (a in MapGestures.pointMenu(index, count, isPlace = !name.isNullOrBlank(), roundTrip = roundTrip)) when (a) {
+        for (a in MapGestures.pointMenu(index, count, isPlace = !name.isNullOrBlank(), roundTrip = roundTrip, loopStart = loopStart)) when (a) {
             // Say what happens: the dropped points come back with Undo.
             PointAction.MAKE_START -> HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here),
                 supporting = plural(Res.plurals.plan_removes_points, index, index)) { onAction(a) }
