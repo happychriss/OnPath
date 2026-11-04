@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddLocationAlt
+import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.MyLocation
@@ -103,7 +105,15 @@ fun MapOverlayHost(
     vm.searchMark?.let { m ->
         @Suppress("UNUSED_EXPRESSION") cameraTick // re-read the projection on every camera move
         c.toScreen(GeoPoint(m.lat, m.lon))?.let { s ->
-            PinChipAt(Offset(s.x, s.y), topPx, bottomPx) { PinChip(m.title(), onClick = vm::openPinMenu) }
+            val empty = vm.waypoints.isEmpty()
+            val blocked = MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null)
+            PinChipAt(Offset(s.x, s.y), topPx, bottomPx) {
+                // "+ Zur Route" adds the place where it fits; on an empty plan "Hierhin" (from here) – without a position
+                // the menu opens instead, it says why "Hierhin" waits (searching GPS)
+                PinChip(m.title(), str(if (empty) Res.string.plan_go_here else Res.string.plan_pin_add), emptyPlan = empty,
+                    onAction = { if (!empty) vm.addPoiPoint(m.toPoi()) else if (blocked == null) vm.poiFromMyLocation(m.toPoi()) else vm.openPinMenu() },
+                    onMore = vm::openPinMenu)
+            }
         }
     }
     vm.poiMenu?.let { poi ->
@@ -220,31 +230,52 @@ internal fun PinChipAt(anchor: Offset, topPx: Int, bottomPx: Int, content: @Comp
     }
 }
 
-/** From the pin's tip to below its name chip (gap + the chip's 48 dp touch box): where the menu goes when not above. */
-internal const val PIN_CHIP_BELOW_DP = 54f
+/** From the pin's tip to below its card (gap + the card's height): where the menu goes when not above. */
+internal const val PIN_CHIP_BELOW_DP = 112f
 
-/** Room above and below the visible pill so the touch target is ≥ 48 dp high. */
-private val PIN_CHIP_TOUCH_PAD = 8.dp
+/** Room above and below the visible pill so the touch target is ≥ 48 dp high (the card has no outer pad). */
+private val PIN_CHIP_TOUCH_PAD = 0.dp
 
 /**
- * The found place's name under its pin: "Fabriciusstraße ›" (owner 2026-11-02) – a real button, white pill, the name
- * bold, a blue ›. A tap opens the place's menu (the one a hold on the pin opens: add / start here / Google Maps / remove
- * pin). Long names end in "…" ([PinChipRules.label]).
+ * The found place under its pin (owner 2026-11-04, design B "Kleine Karte mit Aktion"): a small white card – the name,
+ * below it the most common action as a blue button ([action]: "+ Zur Route", on an empty plan "Hierhin") and "⋯ Mehr"
+ * ([onMore]: the pin's menu – the one a hold on the pin opens: start here / Google Maps / remove pin). One tap does it,
+ * nothing to look for. Both buttons are ≥ 48 dp touch targets; long names end in "…" ([PinChipRules.label]).
  */
 @Composable
-fun PinChip(name: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val desc = str(Res.string.plan_pin_chip_desc, name)
-    // TalkBack hears one button: "Fabriciusstraße: show options" (not the name and the › again)
-    Box(modifier.clickable(role = Role.Button, onClick = onClick)
-        .clearAndSetSemantics { contentDescription = desc; role = Role.Button; onClick { onClick(); true } }
-        .padding(vertical = PIN_CHIP_TOUCH_PAD), contentAlignment = Alignment.Center) {
-        Surface(shape = CircleShape, color = OnPathColors.CardWhite, contentColor = OnPathColors.Ink, shadowElevation = 3.dp) {
-            Row(Modifier.heightIn(min = 32.dp).padding(start = 12.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(PinChipRules.label(name), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
-                    color = OnPathColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Spacer(Modifier.width(4.dp))
-                Text("›", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = OnPathColors.Route)
+fun PinChip(name: String, action: String, onAction: () -> Unit, onMore: () -> Unit, modifier: Modifier = Modifier,
+            emptyPlan: Boolean = false) {
+    Surface(modifier, shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp), color = OnPathColors.CardWhite,
+        contentColor = OnPathColors.Ink, shadowElevation = 3.dp) {
+        Column(Modifier.widthIn(min = 200.dp).width(IntrinsicSize.Max).padding(start = 10.dp, end = 10.dp, top = 9.dp, bottom = 3.dp)) {
+            Text(PinChipRules.label(name), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
+                color = OnPathColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 2.dp))
+            Row(Modifier.fillMaxWidth()) {
+                PinCardButton(action, if (emptyPlan) Icons.Outlined.MyLocation else Icons.Outlined.Add, OnPathColors.ActionEdit,
+                    OnPathColors.CardWhite, str(Res.string.plan_pin_action_desc, action, name), onAction, Modifier.weight(1f))
+                Spacer(Modifier.width(6.dp))
+                PinCardButton(str(Res.string.plan_pin_more), Icons.Outlined.MoreHoriz, OnPathColors.PlanTint, OnPathColors.Ink,
+                    str(Res.string.plan_pin_chip_desc, name), onMore, Modifier.weight(1f))
             }
+        }
+    }
+}
+
+/** One of the card's two buttons: a 36 dp pill in a 48 dp touch box. */
+@Composable
+private fun PinCardButton(label: String, icon: ImageVector, bg: Color, fg: Color, desc: String, onClick: () -> Unit,
+                          modifier: Modifier = Modifier) {
+    Box(modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onClick)
+        .clearAndSetSemantics { contentDescription = desc; role = Role.Button; onClick { onClick(); true } },
+        contentAlignment = Alignment.Center) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 36.dp).clip(CircleShape).background(bg, CircleShape)
+            .padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center) {
+            Icon(icon, null, tint = fg, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = fg, maxLines = 1,
+                overflow = TextOverflow.Ellipsis)
         }
     }
 }

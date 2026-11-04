@@ -181,6 +181,9 @@
     <!-- the found place's pin (owner 2026-11-02): its menu's last line, the name chip for TalkBack -->
     <string name="plan_remove_pin">Remove pin</string>
     <string name="plan_pin_chip_desc">%1$s: show options</string>
+    <string name="plan_pin_add">Add to route</string>
+    <string name="plan_pin_more">More</string>
+    <string name="plan_pin_action_desc">%2$s: %1$s</string>
     <plurals name="plan_removes_points">
         <item quantity="one">Removes the %1$d point before it</item>
         <item quantity="other">Removes the %1$d points before it</item>

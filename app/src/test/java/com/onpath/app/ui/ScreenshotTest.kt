@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.strings.*
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -842,7 +843,7 @@ class ScreenshotTest {
                 }
             }
             PinChipAt(a, topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }) {
-                PinChip(shared.title(), onClick = {})
+                PinChip(shared.title(), str(if (empty) Res.string.plan_go_here else Res.string.plan_pin_add), onAction = {}, onMore = {}, emptyPlan = empty)
             }
         }
         // the pin's menu above the pin's head, else under its name chip (MapOverlayHost: lift / drop)
