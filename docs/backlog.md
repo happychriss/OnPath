@@ -116,6 +116,7 @@ the git log.
 - ✓ [cloud worker 2026-11-04] (4) offline-pill on main ("PLANEN · Ohne Netz ✓ / ⟳ / ⚠", tap explains in the plan sheet)
 - ✓ [cloud worker 2026-11-04] (5) A-022 app texts on main (all spec rows checked by script, 150+ screenshots re-recorded) → cloud-web: website / help / store text can follow; cloud-plan: planner texts (web keys in the spec)
 - ✓ [cloud worker 2026-11-04] (6) found place: card under the pin with "+ Zur Route" / "Hierhin" and "⋯ Mehr" on main (design B, screenshots DE + EN)
+- ◐ [cloud worker 2026-11-04] (7) long bike routes: step 1 measured (113 km Bike: an edit re-routes all, 645 ms vs 50 ms for the one leg on the JVM) – `docs/design/long-bike-routes.md`; leg cache + legs as they come NOT built (changes every plan's routing, shared, PLANNER_VERSION 4) → a day session
 - **Docs pictures follow the UI by themselves (owner 2026-11-03)** – three parts:
   (1) **[cloud-web]** make `docs/design/website-screens.md` the full shot list: every picture on onpath.earth (home,
   help DE + EN, planner pages) and in the store listing, with key, file names DE · EN, what exactly it shows (state,

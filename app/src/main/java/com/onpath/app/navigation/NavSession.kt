@@ -70,14 +70,14 @@ data class NavSession(
 
     companion object {
         /** A stop counts as reached this close (owner 2026-11-01: was 40 m; phone GPS outside is good to 3–10 m) … */
-        const val VISITED_HIKE_M = 25.0
-        const val VISITED_BIKE_M = 40.0
+        const val VISITED_HIKE_M = VisitRadius.HIKE_M
+        const val VISITED_BIKE_M = VisitRadius.BIKE_M
         /** … and only from a fix at least this good (indoor jumps of 50–190 m with "20 m" accuracy stay out). */
         const val VISITED_MAX_ACCURACY_M = 20.0
         /** … and said at the closest approach: within this, or inside the radius and this much farther again. */
         const val VISITED_NOW_M = 10.0
         const val VISITED_AWAY_M = 3.0
-        fun visitedM(a: Activity): Double = if (a == Activity.HIKE) VISITED_HIKE_M else VISITED_BIKE_M
+        fun visitedM(a: Activity): Double = VisitRadius.of(a)
         const val FILE = "nav-session.json"
 
         /**

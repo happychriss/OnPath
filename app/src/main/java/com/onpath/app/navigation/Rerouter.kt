@@ -267,12 +267,12 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
     }
 
     /**
-     * The line reaches the first stop (within the "reached" radius, [NavSession.visitedM]) before the second one – the
+     * The line reaches the first stop (within the "reached" radius, [VisitRadius]) before the second one – the
      * tour is entered at point ① (owner 2026-11-03). A plan of fewer than two stops always counts as entered at its start.
      */
     internal fun entersAtFirst(line: List<GeoPoint>, stops: List<NavStop>, activity: Activity): Boolean {
         if (stops.size < 2) return true
-        val r = NavSession.visitedM(activity)
+        val r = VisitRadius.of(activity)
         val at1 = line.indexOfFirst { Geo.distance(it, stops[0].point) <= r }
         if (at1 < 0) return false
         val at2 = line.indexOfFirst { Geo.distance(it, stops[1].point) <= r }
