@@ -81,6 +81,15 @@ the git log.
 - [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
 
 ## Next
+- **[cloud-app] + [cloud-plan] Long bike routes faster (owner 2026-11-04, A)** – today every edit routes the whole plan
+  in one request (owner rule: same points = same route), so one point between ① and ② of a 100 km ride reroutes all of
+  it. (1) **Measure** a 100 km Bike plan (Planner.describeTries / event log: load rd5 vs routing, per request) – numbers
+  to the owner. (2) **Leg cache:** route leg by leg (point → point), cache each leg by (from, to, activity, T level,
+  RoutingFingerprint) – same points still give the same route, an inserted point routes only its two new legs. Keep the
+  cut-stop splice / spur rule at leg joins (no stray there-and-back); `PLANNER_VERSION` + fingerprint change → release
+  together with the planner (shared code, `PlanResult`). (3) **Show legs as they come** (the route grows on the map
+  instead of an empty wait). (4) Optional after the numbers: preload rd5 for the area at the first point; a lighter first
+  pass. Numbers before / after in the handoff. Not part of tonight's five.
 - **[cloud-app] Found place: the sign under the pin becomes a small card with an action (owner 2026-11-04, B)** – today
   `PinChip` (white 32 dp pill "Name ›") does not look tappable. New: a small white card under the pin: the name, below it
   two buttons – blue "+ Zur Route" (empty plan: "Hierhin") and "⋯ Mehr" (today's pin menu: Hier starten, Google Maps,
