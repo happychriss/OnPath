@@ -91,11 +91,11 @@
     <string name="nav_back_to_route">Zurück zur Route</string>
     <!-- re-route and the next stop (owner 2026-11-01: one question shape): "You're 120 m off the route" – Keep original / New route without stop 3 / New route (navigation/StopSkip) -->
     <string name="nav_via_stop">Über %1$s: %2$s</string>
-    <string name="nav_yes_skip_stop">Neue Route ohne %1$s</string>
+    <string name="nav_via_stop_button">Über %1$s</string>
+    <string name="nav_skip_stop_button">%1$s auslassen</string>
+    <string name="nav_stop_start">Start</string>
     <string name="nav_notif_skip">Ohne Stopp</string>
     <string name="nav_stop_n">Stopp %1$d</string>
-    <string name="nav_card_stop">Stopp %1$d</string>
-    <string name="nav_card_stop_named">Stopp %1$d · %2$s</string>
     <string name="nav_card_goal">Ziel</string>
     <string name="nav_card_goal_named">Ziel · %1$s</string>
     <string name="nav_without_stop">ohne %1$s</string>
@@ -111,6 +111,10 @@
     <string name="nav_far_searching">Weg zum Start wird gesucht…</string>
     <string name="nav_far_lead">Hinführen</string>
     <string name="nav_far_record">Ohne Route weiter</string>
+    <string name="nav_mid_title">Du stehst mitten auf der Route.</string>
+    <string name="nav_mid_text">Die Tour beginnt bei ①.</string>
+    <string name="nav_mid_lead">Zu ① führen</string>
+    <string name="nav_mid_join">Hier einsteigen</string>
     <string name="nav_lead_failed">Kein Weg zur Route gefunden – die Tour läuft weiter</string>
 
     <!-- lock screen notification while following a route -->
@@ -170,8 +174,8 @@
     <string name="nav_end_tour">Tour beenden</string>
     <string name="nav_end_short">Beenden</string>
     <string name="nav_straight_on">Geradeaus</string>
-    <string name="nav_end_save_new_route">Neue Route auch speichern</string>
-    <string name="nav_end_save_changed_route">Geänderte Route auch speichern</string>
+    <string name="nav_end_save_new_route">Geänderten Plan auch speichern</string>
+    <string name="nav_end_save_changed_route">Geänderten Plan auch speichern</string>
     <string name="nav_save_recording">Tour speichern</string>
     <string name="nav_continue_navigation">Weiter</string>
     <string name="nav_action_pause">Pause</string>
@@ -210,7 +214,7 @@
         <item quantity="one">Ein Teil dieser Tour sieht nach einer Fahrt aus (Bus, Auto oder Lift). Was soll zählen?</item>
         <item quantity="other">%1$d Teile dieser Tour sehen nach Fahrten aus (Bus, Auto oder Lift). Was soll zählen?</item>
     </plurals>
-    <string name="nav_rides_kept_note">Alle gefahrenen Punkte bleiben erhalten – du kannst das später in Meine Routen ändern (⋮ → Fahrten bearbeiten).</string>
+    <string name="nav_rides_kept_note">Alle gefahrenen Punkte bleiben erhalten – du kannst das später in Meine Touren ändern (⋮ → Fahrten bearbeiten).</string>
     <string name="nav_row_on_foot">Zu Fuß</string>
     <string name="nav_row_by_bike">Mit dem Rad</string>
     <string name="nav_row_vehicle">Bus / Auto</string>

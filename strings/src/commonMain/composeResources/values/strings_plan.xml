@@ -61,6 +61,15 @@
     <string name="plan_hint_first_point_question">Where to?</string>
     <string name="plan_hint_first_point">Hold your destination on the map – or find it in the search bar above.</string>
     <string name="plan_hint_tap_hold">Hold to set a point here.</string>
+    <string name="plan_offline_pill">Offline</string>
+    <string name="plan_offline_ready">Map and ways for this route are on the phone – it works without a network too.</string>
+    <string name="plan_offline_loading_mb">Map and ways for this route are loading (%1$s).</string>
+    <string name="plan_offline_loading">Map and ways for this route are loading.</string>
+    <string name="plan_offline_missing_map">The map is missing for %1$s of this route – it loads when there is a network.</string>
+    <string name="plan_offline_missing_ways">Ways for this route are not all on the phone yet – they load when there is a network.</string>
+    <string name="plan_offline_desc_ready">Offline: ready</string>
+    <string name="plan_offline_desc_loading">Offline: loading</string>
+    <string name="plan_offline_desc_missing">Offline: something missing</string>
     <string name="map_tip_locate">My location</string>
     <string name="plan_hint_destination">Hold the map to set the destination.</string>
     <string name="plan_not_routed_long">Route not calculated – very long plan.</string>
@@ -76,14 +85,14 @@
     <string name="plan_more">%1$s (+%2$d more)</string>
     <string name="plan_saved_as">Saved as “%1$s”</string>
     <string name="plan_changed_not_saved">“%1$s” · changed, not saved</string>
-    <string name="plan_plan_a_route">Plan a route</string>
+    <string name="plan_plan_a_route">New plan</string>
     <string name="plan_max_height">max %1$s</string>
     <string name="plan_show_route_details">Show route details</string>
     <string name="plan_elevation_profile">Elevation profile</string>
     <string name="plan_start_navigation_for">Let’s go · %1$s</string>
     <string name="plan_continue_navigation_for">Continue · %1$s</string>
     <string name="plan_start_recording_for">Let’s go · no route</string>
-    <string name="plan_save_route">Save route</string>
+    <string name="plan_save_route">Save plan</string>
     <string name="plan_time_details">Time details</string>
     <string name="plan_close_plan">New plan</string>
     <string name="plan_start_short">Start</string>
@@ -149,7 +158,7 @@
     <string name="plan_fix_route">Fix the route</string>
     <string name="plan_search_hint">Search places or addresses</string>
     <string name="plan_menu">Menu</string>
-    <string name="plan_menu_my_routes">My routes</string>
+    <string name="plan_menu_my_routes">My tours</string>
     <string name="plan_menu_check_updates">Check for updates</string>
     <string name="plan_map_credits">Show map credits</string>
     <string name="plan_undo">Undo</string>
@@ -165,13 +174,16 @@
     <string name="plan_no_location_permission">No location permission</string>
     <string name="plan_location_off">Location off</string>
     <string name="plan_searching_gps">Searching GPS…</string>
-    <string name="plan_new_route">New route</string>
+    <string name="plan_new_route">New plan</string>
     <string name="plan_start_here">Start here</string>
     <string name="plan_go_here">Go here</string>
     <string name="plan_open_google_maps">Open in Google Maps</string>
     <!-- the found place's pin (owner 2026-11-02): its menu's last line, the name chip for TalkBack -->
     <string name="plan_remove_pin">Remove pin</string>
     <string name="plan_pin_chip_desc">%1$s: show options</string>
+    <string name="plan_pin_add">Add to route</string>
+    <string name="plan_pin_more">More</string>
+    <string name="plan_pin_action_desc">%2$s: %1$s</string>
     <plurals name="plan_removes_points">
         <item quantity="one">Removes the %1$d point before it</item>
         <item quantity="other">Removes the %1$d points before it</item>
@@ -181,8 +193,8 @@
     <string name="plan_finding_shared_place">Finding the shared place…</string>
     <string name="plan_resize_panel">Resize panel</string>
     <string name="plan_slide_to_plan">Stop</string>
-    <string name="plan_slide_to_plan_sub">Pause · Change route · End</string>
-    <string name="plan_slide_change_route">Change route</string>
+    <string name="plan_slide_to_plan_sub">Pause · Change plan · End</string>
+    <string name="plan_slide_change_route">Change plan</string>
     <string name="plan_mode_label">Plan</string>
     <string name="plan_slide_desc">%1$s. Switch to plan mode.</string>
     <string name="plan_switch_to_plan">Switch to plan mode</string>
@@ -231,11 +243,11 @@
     <string name="plan_leg_took_too_long">took too long</string>
     <string name="plan_leg_too_long">too long – add a point between</string>
     <string name="plan_leg_no_path">no path found</string>
-    <string name="plan_share_plan">Share route</string>
-    <string name="plan_from_track">Plan a route from it</string>
-    <string name="plan_from_track_busy_title">Planning a route from the tour…</string>
+    <string name="plan_share_plan">Share plan</string>
+    <string name="plan_from_track">Make a plan from it</string>
+    <string name="plan_from_track_busy_title">Making a plan from the tour…</string>
     <string name="plan_from_track_busy_text">A long tour can take a few minutes.</string>
-    <string name="plan_from_track_failed">The tour could not be turned into a route – the detailed map may be missing there.</string>
+    <string name="plan_from_track_failed">The tour could not be turned into a plan – the detailed map may be missing there.</string>
     <string name="plan_from_track_wait">The map for this tour is still loading – try again in a moment.</string>
     <!-- the time limit of a plan run (owner 2026-11-03, onpath.private#21 B) -->
     <string name="plan_slow_title">This route is long and takes a while.</string>

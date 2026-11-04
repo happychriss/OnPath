@@ -28,17 +28,17 @@
     <string name="routes_sac_5_name">Demanding alpine hiking</string>
     <string name="routes_sac_5_text">Often without path; easy climbing (up to grade II); very exposed terrain. Mountaineering experience needed.</string>
 
-    <string name="routes_title">My routes</string>
+    <string name="routes_title">My tours</string>
     <string name="routes_importing">Importing…</string>
     <string name="routes_import_gpx">Import GPX</string>
-    <string name="routes_tab_planned">Routes</string>
-    <string name="routes_tab_done">Tours</string>
-    <string name="routes_empty_planned">No planned routes yet.\nSave a planned route or import a GPX file.</string>
+    <string name="routes_tab_planned">Planned</string>
+    <string name="routes_tab_done">Done</string>
+    <string name="routes_empty_planned">No plans yet.\nSave a plan or import a GPX file.</string>
     <string name="routes_empty_done">No tours yet.</string>
-    <string name="routes_kind_planned">Planned route</string>
+    <string name="routes_kind_planned">Plan</string>
     <string name="routes_kind_recorded">Tour</string>
     <string name="routes_kind_imported">Imported GPX</string>
-    <string name="routes_rename_planned">Rename planned route</string>
+    <string name="routes_rename_planned">Rename plan</string>
     <string name="routes_rename_recorded">Rename tour</string>
     <string name="routes_rename_imported">Rename imported GPX</string>
     <string name="routes_recording_now">On the way</string>
@@ -46,8 +46,8 @@
     <string name="routes_options_desc">Options for “%1$s”</string>
     <string name="routes_edit_rides">Edit rides</string>
     <string name="routes_delete_title">Delete “%1$s”?</string>
-    <string name="routes_replace_title">Replace current route?</string>
-    <string name="routes_replace_text">Your current route is not saved. Save it first, or replace it with the route you picked.</string>
+    <string name="routes_replace_title">Replace current plan?</string>
+    <string name="routes_replace_text">Your current plan is not saved. Save it first, or replace it with the plan you picked.</string>
     <string name="routes_save_first">Save first</string>
     <string name="routes_name_label">Name</string>
 
@@ -61,11 +61,11 @@
     <string name="routes_gpx_empty">The file is empty or not a GPX file.</string>
     <string name="routes_gpx_nothing">No track, route or waypoint found in this file.</string>
     <string name="routes_gpx_too_large">The file is larger than %1$d MB.</string>
-    <string name="routes_replace_text_link">Your current route is not saved. Save it first, or replace it with the route from the link.</string>
+    <string name="routes_replace_text_link">Your current plan is not saved. Save it first, or replace it with the plan from the link.</string>
     <string name="routes_tag_new">New</string>
     <string name="routes_tag_changed">Changed</string>
-    <string name="routes_load_ask_title">Load route “%1$s”?</string>
+    <string name="routes_load_ask_title">Load plan “%1$s”?</string>
     <string name="routes_load_ask_text">You are on the way.</string>
-    <string name="routes_load_continue">Continue with this route</string>
+    <string name="routes_load_continue">Continue with this plan</string>
     <string name="routes_load_end">End tour and load</string>
 </resources>

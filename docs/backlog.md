@@ -45,6 +45,9 @@ the git log.
 
 
 ## For the captain
+- ← [cloud worker 2026-11-04] **v0.15.0 released** (main, Release workflow) with the planner web-spike 6343ec37 (main's
+  shared code merged; red smokes fixed: pin test, two quick clicks clicked 56 px off, 'Route · date' row). Open for
+  cloud-plan: the web's 'Weiter warten?' box (SlowPlan shared, web still askAtLimit = false).
 - ← [cloud-plan] **#21 answered by the owner: B** (2026-11-03, in my chat, entered in the issue): „Die Route ist lang, die
   Berechnung dauert. Weiter warten?“ · „Weiter warten“ / „Abbrechen“. The app leads (cloud-app builds the question at the
   time limit); the planner's wait box follows once that is on main. Also done today on web-spike: plan GPX keeps pins
@@ -78,6 +81,21 @@ the git log.
 - [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
 
 ## Next
+- **[cloud-app] + [cloud-plan] Long bike routes faster (owner 2026-11-04, A)** – today every edit routes the whole plan
+  in one request (owner rule: same points = same route), so one point between ① and ② of a 100 km ride reroutes all of
+  it. (1) **Measure** a 100 km Bike plan (Planner.describeTries / event log: load rd5 vs routing, per request) – numbers
+  to the owner. (2) **Leg cache:** route leg by leg (point → point), cache each leg by (from, to, activity, T level,
+  RoutingFingerprint) – same points still give the same route, an inserted point routes only its two new legs. Keep the
+  cut-stop splice / spur rule at leg joins (no stray there-and-back); `PLANNER_VERSION` + fingerprint change → release
+  together with the planner (shared code, `PlanResult`). (3) **Show legs as they come** (the route grows on the map
+  instead of an empty wait). (4) Optional after the numbers: preload rd5 for the area at the first point; a lighter first
+  pass. Numbers before / after in the handoff. Not part of tonight's five.
+- **[cloud-app] Found place: the sign under the pin becomes a small card with an action (owner 2026-11-04, B)** – today
+  `PinChip` (white 32 dp pill "Name ›") does not look tappable. New: a small white card under the pin: the name, below it
+  two buttons – blue "+ Zur Route" (empty plan: "Hierhin") and "⋯ Mehr" (today's pin menu: Hier starten, Google Maps,
+  Pin entfernen); touch targets ≥ 48 dp, long names "…" (`PinChipRules`). Colour rule: blue = edit. Screenshots DE + EN to
+  the owner first; the planner mirrors it (cloud-plan). Sketch: https://claude.ai/artifact/JsSPg6eB6X7qm9taECjFUo
+  (not part of tonight's five – after them).
 - **For the cloud (donald shut down by the owner 2026-11-03 ~23:20 – no new build items for donald):** five unfinished,
   NOT gated works saved as branches – finish each, gate, merge to main (one cloud worker each, or in this order):
   (1) `wip/donald-2026-11-03-roundtrip-A-lead` – lead always to ①, the start question "Zu ① führen / Hier einsteigen",
@@ -92,9 +110,13 @@ the git log.
   https://claude.ai/artifact/UEzamgzCNMJBthSgE8onWw. Then the full Rundgang (needs an emulator – GitHub E2E or
   donald later) and **v0.15.0 for the owner's in-app update** (owner's word 2026-11-03: "so bauen, dass ich es über die
   Update-Funktion aufs Handy holen kann"); cloud-plan mirrors SlowPlan + A-022 planner texts.
-- **[cloud-plan] Web spike red on 5be2031d** (captain 2026-11-03 22:10) – planner not deployed since then: job "smokes (short)"
-  step "No WebGL2 → a plain message", job "smokes (lang-gpx)" step "Long-route question and GPX import" (the new
-  "Plan a route from it" box?). https://github.com/happychriss/OnPath/actions/runs/41715495112
+- ✓ [cloud worker 2026-11-04] (1) roundtrip-A-lead on main (gated; `StartAtPointOneTest` test engine fixed, `RoundTripLeadTest` passes)
+- ✓ [cloud worker 2026-11-04] (2) roundtrip-C-stop-on-the-way on main (tests added: add button text, ↻ keeps the loop, Points list roles)
+- ✓ [cloud worker 2026-11-04] (3) roundtrip-B-reroute-circles on main (screenshots re-recorded)
+- ✓ [cloud worker 2026-11-04] (4) offline-pill on main ("PLANEN · Ohne Netz ✓ / ⟳ / ⚠", tap explains in the plan sheet)
+- ✓ [cloud worker 2026-11-04] (5) A-022 app texts on main (all spec rows checked by script, 150+ screenshots re-recorded) → cloud-web: website / help / store text can follow; cloud-plan: planner texts (web keys in the spec)
+- ✓ [cloud worker 2026-11-04] (6) found place: card under the pin with "+ Zur Route" / "Hierhin" and "⋯ Mehr" on main (design B, screenshots DE + EN)
+- ◐ [cloud worker 2026-11-04] (7) long bike routes: step 1 measured (113 km Bike: an edit re-routes all, 645 ms vs 50 ms for the one leg on the JVM) – `docs/design/long-bike-routes.md`; leg cache + legs as they come NOT built (changes every plan's routing, shared, PLANNER_VERSION 4) → a day session
 - **Docs pictures follow the UI by themselves (owner 2026-11-03)** – three parts:
   (1) **[cloud-web]** make `docs/design/website-screens.md` the full shot list: every picture on onpath.earth (home,
   help DE + EN, planner pages) and in the store listing, with key, file names DE · EN, what exactly it shows (state,

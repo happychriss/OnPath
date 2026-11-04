@@ -7,11 +7,11 @@ E-MTB	E-MTB	Activity: E-MTB in the picker and on buttons (owner review 2026-10-2
 Hike	Wandern	Activity; in a sentence "Wandern T3"; on the plan sheet chip only "T3" next to the hiking icon – Owner 2026-10-26
 SAC T1–T5	SAC T1–T5	Swiss hiking scale; stays as is (T1 … T5)
 activity	Aktivität
-route	Route	Something planned, saved or not: "Save route", "Share route", "Route links" – never "plan" for the thing in the UI (UX review 10, 2026-11-01). Owner 2026-11-02 / 2026-11-03: Route = planned; My routes tab "Routen" / "Routes"
-tour	Tour	A ridden / walked trip, also while it runs (owner 2026-11-03, fewer terms): "Tour 1. Nov.", "Tour beenden?", "Tour speichern", "Tour unterbrochen", My routes tab "Touren" / "Tours"; never "Track" or "Aufnahme" for it
+route	Route	Only the CALCULATED WAY on the map (owner 2026-11-03, A-022): "Abseits der Route", "Neue Route gefunden", "Ganze Route zeigen", "Keine Route gefunden", "Ohne Route weiter"; the saved / planned thing is a plan
+tour	Tour	What you are doing or did, also while it runs (owner 2026-11-03, A-022): "Tour beenden?", "Tour speichern", "Unterbrochene Tour"; list "Meine Touren" tab "Gemacht" / "Done"; never "Track" or "Aufnahme" for it
 on the way (state)	Unterwegs	The state while a tour runs (owner 2026-11-03, fewer terms: Planen / Unterwegs, Route / Tour): "Unterwegs · 7,4 km", "Ohne Route", "Weiter"; "Aufnahme" and "Navigation" are no everyday words any more (only Settings page names / Android channel names)
-track (GPX)	Track	Only for GPX exchange: "GPX-Track importieren", imported GPX tracks (owner 2026-11-02, onpath.private#14)
-plan (mode)	Planen	Mode name and the editing state ("Close plan", "the plan line"); the saved thing is a route
+track (GPX)	Track	Only for GPX files (owner 2026-11-03, A-022): "GPX-Track", imported tracks; imported GPX stays in the tab "Geplant" with its "GPX" tag
+plan (mode)	Planen	Mode name ("PLANEN"); the thing you plan and save is a Plan (owner 2026-11-03, A-022): "Plan speichern", "Plan teilen", "Plan-Link", "Neuer Plan", "Plan ändern"; EN plan
 Navigate (mode)	Unterwegs	Shown as "Unterwegs" (owner 2026-11-03); "Navigation" only as the Settings page name and the Android channel name; start button "Los geht’s · ‹Ziel›", back to it "Weiter"
 point (route point)	Punkt	Start, via points, destination
 via point	Zwischenpunkt	A point between start and destination (bitte prüfen: alternative "Via-Punkt")
@@ -39,7 +39,7 @@ track (GPX)	Track	The GPS line itself ("your track so far is saved") and importe
 off route	abseits der Route	Navigation status
 re-route / new route	neue Route berechnen	Only after asking (owner rule)
 arrived	angekommen	"You have arrived" = "Du bist angekommen"
-My routes	Meine Routen	Saved routes and tours
+My routes	Meine Touren	The list of plans and tours (owner 2026-11-03, A-022): EN "My tours", tabs "Geplant | Gemacht" / "Planned | Done"; entries are "Plan" or "Tour"
 offline maps	Offline-Karten	Settings topic
 map area	Kartengebiet	Downloaded part of the map ("cells" is never shown to users)
 detailed map	Detailkarte

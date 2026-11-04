@@ -211,6 +211,8 @@ fun NavigateOverlay(
     /** "Route starts 31 km away" (never on the route yet): Guide me / Just record; OK on "no way to the route". */
     onLeadThere: (Int) -> Unit = {},
     onJustRecord: (Int) -> Unit = {},
+    /** "Hier einsteigen" on the mid-route question (owner 2026-11-03); "Zu ① führen" is [onLeadThere]. */
+    onJoinHere: (Int) -> Unit = {},
     onLeadFailedOk: (Int) -> Unit = {},
     onActivity: () -> Unit = {},
     onChooseActivity: (Activity) -> Unit = {},
@@ -284,10 +286,13 @@ fun NavigateOverlay(
         // never on the route yet (owner 2026-10-31): the calm far-start question; "Guide me" found nothing → red note
         val far = ui.offRoute?.prompt as? NavPrompt.FarStart
         val leadFailed = ui.offRoute?.prompt as? NavPrompt.LeadFailed
+        // reached beside a later part (owner 2026-11-03): "Du stehst mitten auf der Route" · Hier einsteigen / Zu ① führen
+        val mid = ui.offRoute?.prompt as? NavPrompt.MidStart
         val message = Messages.pick(listOf(
             question?.let { q -> rerouteMessage(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) }, onVia = { onTakeVia(q.id) }) },
             ui.offRoute?.takeIf { it.prompt == NavPrompt.Searching }?.let { o -> searchingMessage(o, onKeep = { onKeepRoute(-1) }) },
             far?.let { p -> farStartMessage(p, onLead = { onLeadThere(p.id) }, onJustRecord = { onJustRecord(p.id) }) },
+            mid?.let { p -> midStartMessage(p, onLead = { onLeadThere(p.id) }, onJoin = { onJoinHere(p.id) }) },
             leadFailed?.let { e -> errorMessage(NavText.title(e)) { onLeadFailedOk(e.id) } },
             error?.let { errorMessage(it, onErrorOk) },
             if (ui.notificationsOff) notificationsOffMessage(onNotifications, onNotificationsOk) else null,
@@ -306,8 +311,9 @@ fun NavigateOverlay(
 /** Next turn, the most prominent thing on screen (like Google Maps' green maneuver card): arrow, distance, direction. */
 @Composable
 private fun TurnCard(t: TurnHint) {
-    val text = if (t.distanceM < 15 && !t.straight && t.stop == null) str(Res.string.nav_turn_now, t.label)
-        else str(Res.string.nav_turn_in, t.label, turnDistance(t.distanceM))
+    val spoken = StopTokens.plain(t.label)
+    val text = if (t.distanceM < 15 && !t.straight && t.stop == null) str(Res.string.nav_turn_now, spoken)
+        else str(Res.string.nav_turn_in, spoken, turnDistance(t.distanceM))
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primary,
         contentColor = MaterialTheme.colorScheme.onPrimary, shadowElevation = 4.dp,
         modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = text }) {
@@ -320,8 +326,8 @@ private fun TurnCard(t: TurnHint) {
             // label ends in "…" (owner: nothing jumps)
             Column(Modifier.weight(1f)) {
                 Text(turnDistance(t.distanceM), style = MaterialTheme.typography.headlineMedium)
-                Text(t.label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                StopText(t.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
         }
     }
@@ -676,8 +682,8 @@ private fun OffRouteCard(o: OffRouteUi) {
 /**
  * The off-route question (owner: ask every time, never re-route silently) as a FRAGE box under the status card: stays
  * until one of the big buttons is pressed or the user is back on the route. Buttons 56 dp – fine with gloves. With a
- * stop in question (StopSkip, owner 2026-11-01: one question shape): "You're 120 m off the route" – Keep original · New
- * route without stop 3 · New route (via it).
+ * stop in question (StopSkip, owner 2026-11-01 / 2026-11-03): "You're 120 m off the route" – Keep original · ③ auslassen ·
+ * Über ③ (primary; ③ = the map's numbered circle, [StopText]).
  * The activity switch ("New route for MTB") is the same question with the activity's icon.
  */
 @Composable
@@ -686,9 +692,14 @@ internal fun rerouteMessage(q: NavPrompt.Question, onTake: () -> Unit, onKeep: (
     val maxName = if (large) NavText.NAME_MAX_LARGE else NavText.NAME_MAX
     // turn round: the U-turn sign, so a way back on the same road is not mistaken for "nothing happened"
     val icon = q.switch?.activity?.icon ?: if (q.turnRound) Icons.Filled.UTurnLeft else Icons.Outlined.AltRoute
-    val buttons = if (q.via != null) listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.skipButton(q, maxName), onTake),
-        MessageButton(NavText.TAKE, onVia))
-        else listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.TAKE, onTake))
+    // a stop in question (owner 2026-11-03): never left out by "Yes" alone – "Über ③" (primary) · "③ auslassen"
+    val buttons = when {
+        q.via != null -> listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.skipButton(q), onTake),
+            MessageButton(NavText.viaButton(q), onVia))
+        // no way via the stop was found: leaving it out is still said on the button, never hidden behind "New route"
+        q.skipStop != null -> listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.skipButton(q), onTake))
+        else -> listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.TAKE, onTake))
+    }
     return Message(MessageKind.FRAGE, NavText.title(q), NavText.question(q, maxName), buttons, icon = icon, navigate = true)
 }
 
@@ -710,6 +721,18 @@ internal fun searchingMessage(o: OffRouteUi, onKeep: () -> Unit): Message =
 internal fun farStartMessage(p: NavPrompt.FarStart, onLead: () -> Unit, onJustRecord: () -> Unit): Message {
     val buttons = if (p.searching) listOf(MessageButton(NavText.JUST_RECORD, onJustRecord))
         else listOf(MessageButton(NavText.JUST_RECORD, onJustRecord), MessageButton(NavText.LEAD, onLead))
+    return Message(MessageKind.FRAGE, NavText.title(p), NavText.state(p), buttons, icon = Icons.Outlined.Flag, navigate = true)
+}
+
+/**
+ * The route reached beside a later part of it, not at point 1 (owner 2026-11-03: "every tour starts at point 1 and skips
+ * nothing"): "Du stehst mitten auf der Route." · "Die Tour beginnt bei ①." · Hier einsteigen / **Zu ① führen** (the
+ * primary). Calm (no vibration); stays until answered or the user is at the start. "Hier einsteigen" = the points before
+ * count as passed (grey, not deleted). While the way to ① is computed only "Hier einsteigen" stays.
+ */
+internal fun midStartMessage(p: NavPrompt.MidStart, onLead: () -> Unit, onJoin: () -> Unit): Message {
+    val buttons = if (p.searching) listOf(MessageButton(NavText.MID_JOIN, onJoin))
+        else listOf(MessageButton(NavText.MID_JOIN, onJoin), MessageButton(NavText.MID_LEAD, onLead))
     return Message(MessageKind.FRAGE, NavText.title(p), NavText.state(p), buttons, icon = Icons.Outlined.Flag, navigate = true)
 }
 
@@ -876,7 +899,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
             onPause = vm::pauseRecording, onEnd = { vm.askEndTour() },
             onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute, onTakeVia = vm::takeViaRoute,
-            onLeadThere = vm::leadToStart, onJustRecord = vm::justRecord, onLeadFailedOk = vm::leadFailedOk,
+            onLeadThere = vm::leadToStart, onJustRecord = vm::justRecord, onJoinHere = vm::joinHere, onLeadFailedOk = vm::leadFailedOk,
             onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
             onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,
             download = bg, onDownload = { vm.downloadDetailsOpen = true },

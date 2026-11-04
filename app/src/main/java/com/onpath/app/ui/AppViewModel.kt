@@ -646,6 +646,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         tapHoldHint = true
         if (planSize == PlanSize.COLLAPSED) planSize = PlanSize.MINI // the line sits in the summary step
     }
+    /**
+     * The plan's route offline ("Ohne Netz ✓ / ⟳ / ⚠" in the mode pill, owner 2026-11-03, [OfflineReady]); null = no
+     * route / unknown. Recomputed by MapScreen off the main thread when the route changes, and now and then while loading.
+     */
+    var offlineReady by mutableStateOf<OfflineReady.Result?>(null)
+    /** The pill was tapped: the plan sheet explains the offline state in one line, until the plan changes / tapped again. */
+    var offlineInfo by mutableStateOf(false)
+    fun toggleOfflineInfo() {
+        offlineInfo = !offlineInfo && offlineReady != null
+        if (offlineInfo) {
+            com.onpath.app.debug.Problems.trace("plan", "Offline state explained: ${offlineReady?.state}")
+            if (planSize == PlanSize.COLLAPSED) planSize = PlanSize.MINI // the line sits in the summary step
+        }
+    }
+    /** Blocking: what [OfflineReady] says for [line] (MapScreen calls it on Dispatchers.IO). */
+    fun computeOfflineReady(line: List<GeoPoint>): OfflineReady.Result? = mapData.offlineReady(line)
+
     /** The route point whose point menu is open (hold on its marker, MapGestures): index when opened + position. */
     var pointMenuTarget by mutableStateOf<PointMenuTarget?>(null)
         private set
@@ -1344,10 +1361,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val passedPoints = HashSet<GeoPoint>()
     private var passedTourId: Long? = null
 
+    /** The next plan change loads a saved route during a tour ([openTour] duringTour): a whole new plan ([splitOf]). */
+    private var loadedOnTheWay = false
+
     /** [TourSplit.outcome] of the edit [before] → [after] during a tour, kept for [followEditedPlan]. */
     private fun splitOf(before: List<GeoPoint>, after: List<GeoPoint>): TourSplit.Outcome? {
         splitRequests.invalidate()
-        val passed = tourPassed(before)
+        // a route loaded on the way ("Mit dieser Route weiter", owner 2026-11-03) is a new plan, not an edit: followed as
+        // a whole from its point ① (a way there / the mid-route question like at a tour start), nothing of it passed
+        val fresh = loadedOnTheWay; loadedOnTheWay = false
+        val passed = if (fresh) emptySet() else tourPassed(before)
         val o = if (passed.isEmpty()) null else TourSplit.outcome(before, after, passed)
         pendingSplit = o; splitBefore = before
         if (o != null) Problems.trace("plan", "Edit during the tour: ${passed.size} of ${before.size} points passed → " +
@@ -1427,6 +1450,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val ins = insertionFor(p, lineSnapM)
         if (!ins.inTour && ins.decision.kind == WaypointInsertion.Kind.START && ins.points.size >= 2)
             Problems.trace("plan", "New point on the way there (led to a route never reached): it is the new start")
+        if (ins.decision.kind == WaypointInsertion.Kind.ON_THE_WAY)
+            Problems.trace("plan", "New point on the way to a round trip: a stop on the way, the loop stays (owner 2026-11-03)")
         change { add(ins.index.coerceIn(0, size), p) }
     }
 
@@ -1613,6 +1638,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun isRoundTrip(): Boolean = PlanEdits.isRoundTrip(waypoints)
+    /** Index of the round trip's ① (stops on the way before it), null without a loop ([PlanEdits.loopStart]). */
+    fun loopStart(): Int? = PlanEdits.loopStart(waypoints)
 
     /**
      * A point menu action was tapped: closes the menu and returns the index of the point it was opened for in the
@@ -2056,7 +2083,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 post?.routingKeys?.let { k -> mapData.routingForLine(k) }
                 routeError = RoutingDataNotice.forRoute(it.error, post?.tilesMissing == true, mapData.routingLoading)
                 // T4: the corridor – named after the plan's destination (round trip: its start) in the loading chip
-                val dest = if (com.onpath.app.routing.PlanEdits.isRoundTrip(pts)) pts.firstOrNull() else pts.lastOrNull()
+                // the last point: a round trip closes at its ① (also with stops on the way before the loop)
+                val dest = pts.lastOrNull()
                 mapData.routeComputed(it.points, post?.cells, dest)
                 if (mode == AppMode.PLAN && !followNextRoute && !planEditPending && !viaData) freshenAfterRoute(it.points, post?.cells)
                 if (viaData) routingDataRouteChanged(it)
@@ -2683,6 +2711,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val was = mode
         mode = m
         tapHoldHint = false
+        offlineInfo = false
         saveAsk = null // Save's dialog does not stay open behind another mode
         // the start zoom of Navigate, once per start (owner); the map takes it when it follows
         if (m == AppMode.NAVIGATE && was != AppMode.NAVIGATE) navStartZoom = AppMode.navStartZoom(activity)
@@ -2735,7 +2764,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun secureTourCorridor() {
         val line = route?.points?.takeIf { it.size >= 2 } ?: return
         val pts = waypoints.toList()
-        mapData.secureTourCorridor(line, if (com.onpath.app.routing.PlanEdits.isRoundTrip(pts)) pts.firstOrNull() else pts.lastOrNull())
+        mapData.secureTourCorridor(line, pts.lastOrNull()) // a round trip closes at its ①
     }
 
     /** How long Start waits for the service's first state before saying that recording did not start. */
@@ -2806,6 +2835,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** "Route starts 31 km away" – Just record: quiet until the route is reached. */
     fun justRecord(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_JUST_RECORD) {
+        putExtra(RecordingService.EXTRA_QUESTION, questionId)
+    }
+
+    /** "Du stehst mitten auf der Route" – Hier einsteigen: start here, the points before count as passed (owner 2026-11-03). */
+    fun joinHere(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_JOIN_HERE) {
         putExtra(RecordingService.EXTRA_QUESTION, questionId)
     }
 
@@ -3364,6 +3398,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // stop names and POI pins saved with the plan come back too – the pins
                 // before the points, so the first route already passes them exactly (recalc reads them at once)
                 t.pinned.mapNotNull { pts.getOrNull(it) }.takeIf { it.isNotEmpty() }?.let { pinned += it; prefs.planPinned = pinned }
+                // during a tour: the loaded route is followed from its point ① (owner 2026-11-03), not from the position
+                loadedOnTheWay = duringTour && recState.value != null
                 change { clear(); addAll(pts) }
                 t.waypoints.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
                 setSaved(t.name, t.id, pts)

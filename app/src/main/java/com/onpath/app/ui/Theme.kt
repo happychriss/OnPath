@@ -91,6 +91,10 @@ object OnPathColors {
     val PlanTint = Color(0xFFEEF3F7)
     /** The soft edge round the screen in Plan (strongest at the edge, fading inwards) – [ActionEdit] at 22 %. */
     val PlanEdge = Color(0x382E6A9E)
+    /** The "Ohne Netz ✓" sign on the plan's mode pill ([PlanAccent]): a light green, ≥ 4.5:1 on it (OfflineReady). */
+    val OnPlanGood = Color(0xFFB9F6CA)
+    /** The "Ohne Netz ⚠" sign on the plan's mode pill: a light amber, ≥ 4.5:1 on [PlanAccent]. */
+    val OnPlanWarn = Color(0xFFFFE082)
 
     // ---- Message kinds (docs/design/ui-style.md): one colour = one meaning ----
     /** FRAGE: the blue left edge of a question box (MessageCard) – never a status or a failure. */

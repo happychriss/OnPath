@@ -15,13 +15,16 @@ import com.onpath.app.data.Geo
  *
  * 4. Led to a far route that was never reached ("Guide me" during a tour, [here] = the position, Bug 02): the way
  *    there counts as a leg too – a point that fits best between here and the start becomes the new START (a stop on the
- *    way there), not a destination after the route's end.
+ *    way there), not a destination after the route's end. For a round trip it is a **stop on the way** ([Kind.ON_THE_WAY],
+ *    owner 2026-11-03): it goes before the loop, the loop 1 → 2 → 3 → 1 stays unchanged and the lead goes via it to ①.
+ * 5. A round trip never gets a point behind its closing point (owner 2026-11-03: "Rundtour bleibt Rundtour"): instead
+ *    of a new destination the point goes into the loop where it fits best. Deleting the closing point opens the loop.
  *
  * The UI shows what happened ("Added as stop 2") with one-tap alternatives, so the user stays in control.
  */
 object WaypointInsertion {
 
-    enum class Kind { START, DESTINATION, VIA_ON_LINE, VIA_BEST_FIT }
+    enum class Kind { START, DESTINATION, VIA_ON_LINE, VIA_BEST_FIT, ON_THE_WAY }
 
     data class Decision(val index: Int, val kind: Kind)
 
@@ -54,11 +57,14 @@ object WaypointInsertion {
             val cost = Geo.distance(a, p) + Geo.distance(p, b) - Geo.distance(a, b)
             if (cost < bestCost) { bestCost = cost; bestLeg = i }
         }
-        val appendCost = Geo.distance(waypoints.last(), p)
-        // Rule 4: on the way there (here → start) – the new start
+        val loop = PlanEdits.isRoundTrip(waypoints)
+        // Rule 5: a round trip stays closed – nothing goes behind its closing point
+        val appendCost = if (loop) Double.MAX_VALUE else Geo.distance(waypoints.last(), p)
+        // Rule 4: on the way there (here → start) – the new start; for a round trip a stop on the way before the loop
         val first = waypoints.first()
         val wayThereCost = here?.let { Geo.distance(it, p) + Geo.distance(p, first) - Geo.distance(it, first) }
-        if (wayThereCost != null && wayThereCost < bestCost && wayThereCost < appendCost) return Decision(0, Kind.START)
+        if (wayThereCost != null && wayThereCost < bestCost && wayThereCost < appendCost)
+            return Decision(0, if (loop) Kind.ON_THE_WAY else Kind.START)
         return if (bestCost < appendCost) Decision(bestLeg + 1, Kind.VIA_BEST_FIT)
         else Decision(waypoints.size, Kind.DESTINATION)
     }

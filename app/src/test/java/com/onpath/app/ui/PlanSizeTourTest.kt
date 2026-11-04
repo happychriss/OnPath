@@ -45,8 +45,9 @@ class PlanSizeTourTest {
         assertEquals(true, vm.contains("var planSize by mutableStateOf(PlanSize.MINI)"))
         // nothing but the user (and an emptied plan) opens a rolled-up sheet: no route update sets the size
         val sets = Regex("planSize = PlanSize\\.([A-Z_]+)\\b").findAll(vm).map { it.groupValues[1] }.toList()
-        // Points list row tap → COMPACT; clearPlan → MINI; a tap on the open map → MINI (the "hold to set a point" line, owner 2026-11-03)
-        assertEquals(listOf("COMPACT", "MINI", "MINI"), sets.sorted())
+        // Points list row tap → COMPACT; clearPlan → MINI; a tap on the open map → MINI (the "hold to set a point" line, owner 2026-11-03);
+        // a tap on the "Ohne Netz" pill → MINI (its line sits in the summary step, owner 2026-11-03)
+        assertEquals(listOf("COMPACT", "MINI", "MINI", "MINI"), sets.sorted())
     }
 
     @Test fun statusBreaksOnlyAfterADot() {

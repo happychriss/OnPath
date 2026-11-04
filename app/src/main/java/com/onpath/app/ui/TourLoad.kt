@@ -16,7 +16,10 @@ object TourLoad {
     }
 
     enum class Step {
-        /** The recording goes on and the tour follows the loaded route from the current position (as a tour edit). */
+        /**
+         * The recording goes on and the tour follows the loaded route as a new plan from its point ① (owner 2026-11-03,
+         * "every tour starts at point 1"): the way there, or "Du stehst mitten auf der Route" when beside a later part.
+         */
         FOLLOW_NOW,
         /** The usual end question; only after the tour has ended (saved or deleted) the route loads – Cancel there loads nothing. */
         END_THEN_LOAD,

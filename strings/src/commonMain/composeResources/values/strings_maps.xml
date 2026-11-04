@@ -27,8 +27,8 @@
     <string name="maps_cleanup_all_in_use">Every downloaded area is in use.</string>
     <string name="maps_clear_all_title">Clear all map areas?</string>
     <plurals name="maps_clear_all_text">
-        <item quantity="one">All %1$d downloaded area (%2$s) are removed, also those of your current route and saved routes. The world overview stays; areas load again when needed. Tours and routes are kept.</item>
-        <item quantity="other">All %1$d downloaded areas (%2$s) are removed, also those of your current route and saved routes. The world overview stays; areas load again when needed. Tours and routes are kept.</item>
+        <item quantity="one">All %1$d downloaded area (%2$s) are removed, also those of your current plan and saved plans. The world overview stays; areas load again when needed. Tours and plans are kept.</item>
+        <item quantity="other">All %1$d downloaded areas (%2$s) are removed, also those of your current plan and saved plans. The world overview stays; areas load again when needed. Tours and plans are kept.</item>
     </plurals>
     <string name="maps_result_none">No map areas to remove</string>
     <plurals name="maps_result_removed">

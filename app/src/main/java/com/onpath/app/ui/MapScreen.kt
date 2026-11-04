@@ -292,7 +292,20 @@ private fun PlanMode(
             ),
             modifier = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding(),
             editing = rec != null,
+            offline = vm.offlineReady?.state,
+            onOffline = vm::toggleOfflineInfo,
         )
+        // "Ohne Netz ✓ / ⟳ / ⚠" (owner 2026-11-03): recomputed off the main thread when the route changes, every 3 s
+        // while loading, else every 20 s (a map region joined, the network back) – file checks only, no downloads
+        val offlineLine = vm.route?.points
+        LaunchedEffect(offlineLine) {
+            vm.offlineInfo = false
+            while (true) {
+                val r = offlineLine?.let { l -> withContext(Dispatchers.IO) { vm.computeOfflineReady(l) } }
+                vm.offlineReady = r
+                delay(if (r?.state == OfflineReady.State.LOADING) 3_000 else 20_000)
+            }
+        }
         // background downloads (corridor, refresh, routing data): small blue chip under ☰ after 10 s, until all is done;
         // tap → details with "Cancel all" (own composable: its per-second progress recomposes only the chip, not PlanMode)
         PlanMessageHost(vm, rec, onRequestLocation, pairCamera)
@@ -468,7 +481,8 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused, vm.guidanceEndedByEmptyPlan) },
             points = rows,
             routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText(), warnCount = vm.warningCount(),
-            changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote, tapHint = vm.tapHoldHint),
+            changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote, tapHint = vm.tapHoldHint,
+            offlineInfo = vm.offlineReady?.takeIf { vm.offlineInfo }?.let { OfflineReady.explain(it) }),
         PlanCallbacks(
             onSheetDrag = { if (it) vm.tapHoldHint = false; vm.mapGesture(it) }, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,

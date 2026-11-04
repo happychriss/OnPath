@@ -18,6 +18,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Search
@@ -94,6 +99,10 @@ fun PlanTopBar(
     menuInitiallyOpen: Boolean = false,
     /** During a tour ("Route ändern"): the mode label says so instead of "Planen". */
     editing: Boolean = false,
+    /** The route's offline state ("Ohne Netz ✓ / ⟳ / ⚠" in the label, owner 2026-11-03); null = no route. */
+    offline: OfflineReady.State? = null,
+    /** A tap on the label: explain the offline state (a line in the plan sheet). */
+    onOffline: () -> Unit = {},
 ) {
     Box(modifier) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -105,18 +114,45 @@ fun PlanTopBar(
         }
         // Plan is blue (owner 2026-11-03, design §3 version 3): a small blue label on the pill's top edge – "PLANEN",
         // during a tour "ROUTE ÄNDERN"; the word helps in the sun and with colour blindness
-        PlanModeLabel(editing, Modifier.align(Alignment.TopStart).padding(start = 28.dp))
+        PlanModeLabel(editing, Modifier.align(Alignment.TopStart).padding(start = 28.dp), offline, onOffline)
     }
 }
 
-/** "PLANEN" / "ROUTE ÄNDERN" in white on [OnPathColors.PlanAccent] (white 5.7:1), over the search pill's top edge. */
+/**
+ * "PLANEN" / "ROUTE ÄNDERN" in white on [OnPathColors.PlanAccent] (white 5.7:1), over the search pill's top edge. With a
+ * route it also says whether it works without a network (owner 2026-11-03, comparison card 3): "PLANEN · Ohne Netz ✓"
+ * (green), "⟳" (loading), "⚠" (amber: something missing, nothing loading) – a tap explains it ([OfflineReady.explain]).
+ */
 @Composable
-internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier) {
-    Text(str(if (editing) Res.string.plan_slide_change_route else Res.string.plan_mode_label).uppercase(),
-        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite,
-        maxLines = 1,
-        modifier = modifier.clearAndSetSemantics { }.background(OnPathColors.PlanAccent, CircleShape)
-            .padding(horizontal = 8.dp, vertical = 2.dp))
+internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier, offline: OfflineReady.State? = null,
+                           onOffline: () -> Unit = {}) {
+    val mode = str(if (editing) Res.string.plan_slide_change_route else Res.string.plan_mode_label).uppercase()
+    val style = MaterialTheme.typography.labelSmall
+    if (offline == null) {
+        Text(mode, style = style, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite, maxLines = 1,
+            modifier = modifier.clearAndSetSemantics { }.background(OnPathColors.PlanAccent, CircleShape)
+                .padding(horizontal = 8.dp, vertical = 2.dp))
+        return
+    }
+    val desc = str(when (offline) {
+        OfflineReady.State.READY -> Res.string.plan_offline_desc_ready
+        OfflineReady.State.LOADING -> Res.string.plan_offline_desc_loading
+        OfflineReady.State.MISSING -> Res.string.plan_offline_desc_missing
+    })
+    Row(modifier.clip(CircleShape).background(OnPathColors.PlanAccent, CircleShape)
+        .clickable(role = Role.Button, onClick = onOffline)
+        .clearAndSetSemantics { contentDescription = "$mode · $desc"; role = Role.Button }
+        .padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("$mode · ${OfflineReady.pillWord}", style = style, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite,
+            maxLines = 1)
+        Spacer(Modifier.width(3.dp))
+        val (icon, tint) = when (offline) {
+            OfflineReady.State.READY -> Icons.Filled.Check to OnPathColors.OnPlanGood
+            OfflineReady.State.LOADING -> Icons.Filled.Sync to OnPathColors.CardWhite
+            OfflineReady.State.MISSING -> Icons.Filled.Warning to OnPathColors.OnPlanWarn
+        }
+        Icon(icon, null, tint = tint, modifier = Modifier.size(12.dp))
+    }
 }
 
 @Composable

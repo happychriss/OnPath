@@ -10,7 +10,7 @@
     <string name="msg_routing_data_busy">Downloading routing data…</string>
     <string name="msg_maps_remove_failed">The map areas could not be removed. Your maps are unchanged as far as possible – try again later.</string>
     <string name="msg_cleanup_keeps_plan">your current plan</string>
-    <string name="msg_cleanup_keeps_saved">saved routes</string>
+    <string name="msg_cleanup_keeps_saved">saved plans</string>
     <string name="msg_cleanup_keeps_tour">running tour</string>
     <string name="msg_cleanup_keeps_position">where you are now</string>
     <string name="msg_cleanup_not_possible">Clean up is not possible right now – nothing was removed.</string>
@@ -18,7 +18,7 @@
     <string name="msg_clear_all_blocked">Not during a tour – the map stays as it is until you end it.</string>
     <string name="msg_maps_already_checking">The map areas are already being checked.</string>
     <string name="msg_track_save_failing">The tour cannot be saved any more (phone storage full or damaged). Free up space – OnPath keeps trying.</string>
-    <string name="msg_track_delete_failed_here">The tour could not be deleted here. You can delete it in My routes.</string>
+    <string name="msg_track_delete_failed_here">The tour could not be deleted here. You can delete it in My tours.</string>
     <string name="msg_package_mixed">Map files from another package: %1$s – the map has gaps there. Import every part of the map package (for South Tyrol: both zips).</string>
     <string name="msg_update_check_failed">Could not check for updates. Check the internet connection and try again.</string>
     <string name="msg_update_allow_install">Allow OnPath to install updates, then tap Install again.</string>
@@ -35,11 +35,11 @@
     <string name="msg_shared_place_search">Search</string>
     <string name="msg_routing_failed">Routing failed.</string>
     <string name="msg_no_new_route">No new route found – still following the old one.</string>
-    <string name="msg_route_save_failed">The route could not be saved. Your route is still here – please try again.</string>
-    <string name="msg_route_rename_failed">The route could not be renamed. Please try again.</string>
+    <string name="msg_route_save_failed">The plan could not be saved. Your plan is still here – please try again.</string>
+    <string name="msg_route_rename_failed">The plan could not be renamed. Please try again.</string>
     <string name="msg_tour_delete_failed">“%1$s” could not be deleted. Please try again.</string>
     <string name="msg_tour_restore_failed">“%1$s” could not be restored. Please try again.</string>
-    <string name="msg_name_route">Route</string>
+    <string name="msg_name_route">Plan</string>
     <string name="msg_name_import">Import</string>
     <string name="msg_name_date_pattern">d MMM, HH:mm</string>
     <string name="msg_date_pattern_area">d MMM yyyy</string>
@@ -51,19 +51,19 @@
     <string name="msg_check_no_route">No route found for it</string>
     <string name="msg_rides_read_failed">The rides of this tour could not be read.</string>
     <string name="msg_rides_change_failed">The rides could not be changed. Please try again.</string>
-    <string name="msg_track_delete_failed">The tour could not be deleted – it is in My routes, delete it there.</string>
+    <string name="msg_track_delete_failed">The tour could not be deleted – it is in My tours, delete it there.</string>
     <string name="msg_track_recording_now">This tour is running – end it first.</string>
     <string name="msg_gpx_parts_skipped">Some parts of the file were skipped.</string>
     <string name="msg_export_all_chooser">Export all</string>
     <string name="msg_export_reason">Export: %1$s.</string>
-    <string name="msg_export_failed">Export failed – the phone's storage may be full. Your tours and routes are unchanged.</string>
-    <string name="msg_backup_failed">%1$s. Your tours and routes are still on this phone – see Settings → Backup.</string>
+    <string name="msg_export_failed">Export failed – the phone's storage may be full. Your tours and plans are unchanged.</string>
+    <string name="msg_backup_failed">%1$s. Your tours and plans are still on this phone – see Settings → Backup.</string>
     <string name="msg_restore_looking">Looking for backups…</string>
     <string name="msg_restore_folder_unreadable">The backup folder could not be read. Please try again.</string>
     <string name="msg_gpx_import_failed_reason">Could not import this file: %1$s</string>
     <string name="msg_gpx_import_failed">Could not import this file – it could not be opened or read.</string>
-    <string name="msg_route_updated_newer_data">Route updated with newer map data – please check it.</string>
-    <string name="msg_no_storage_permission">Without storage access OnPath cannot copy tours and routes to Documents/OnPath. Choose another folder in Settings → Backup.</string>
+    <string name="msg_route_updated_newer_data">Plan recalculated with newer map data – please check the route.</string>
+    <string name="msg_no_storage_permission">Without storage access OnPath cannot copy tours and plans to Documents/OnPath. Choose another folder in Settings → Backup.</string>
     <string name="msg_no_folder_picker">This phone has no folder picker – restore and folder choice are not possible.</string>
     <string name="msg_something_wrong">Something went wrong. It was noted in Settings → Diagnostics.</string>
     <string name="msg_rides_title">Rides in “%1$s”</string>
@@ -85,6 +85,6 @@
         <item quantity="other">Checking %1$d map areas for a newer version. Settings: “Download maps only on Wi-Fi”.</item>
     </plurals>
     <string name="msg_route_changed_elsewhere">Changed in the browser meanwhile – saved as “%1$s”, the other version stays.</string>
-    <string name="msg_plan_link_unreadable">This route link can't be read. Share or copy the whole link again.</string>
-    <string name="msg_plan_link_after_tour">Route links open after the tour – end the tour, then open the link again.</string>
+    <string name="msg_plan_link_unreadable">This plan link can't be read. Share or copy the whole link again.</string>
+    <string name="msg_plan_link_after_tour">Plan links open after the tour – end the tour, then open the link again.</string>
 </resources>

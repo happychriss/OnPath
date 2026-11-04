@@ -66,6 +66,16 @@ Example plan 1 → 2 → 3 → 4, the user between 2 and 3 (1, 2 passed).
   ("Wohin soll’s gehen? …") above the tiles; Undo brings the plan and the guidance back. Greyed only while the plan is
   already empty. "✕ Neu planen" in the pill row and ☰ → Save route are hidden during a tour (the tiles do it).
 
+### 4a. A round trip stays a round trip (owner 2026-11-03, decision 4)
+- Led to a round trip ("Guide me", the loop not reached yet), a point set on the way is a **stop on the way** (the
+  bakery): it goes before the loop – plan `[B, 1, 2, 3, 1]` – the loop 1 → 2 → 3 → 1 stays and the lead goes via B to
+  ① (`WaypointInsertion` rule 4, `Kind.ON_THE_WAY`). A plain route keeps rule 4's "new start".
+- Nothing goes behind a round trip's closing point (rule 5): a point beyond the loop goes into the loop where it fits.
+- Recognised by `PlanEdits.loopStart`: 0 = classic round trip, > 0 = stops on the way before the loop (a loop needs
+  three points). The plan stays a plain list – saved routes, GPX, share links and browser sync unchanged.
+- "Hier starten" on a loop point rotates only the loop (a round trip taken over from someone else); on a stop on the
+  way or ① it drops the points before it. The Points list keeps the loop closed at its ① (`PlanPoints`).
+
 ## 5. Messages (FRAGE / HINWEIS / ANZEIGE, `docs/design/ui-style.md`)
 What the map shows is not said again. Undo stays on the map in every case.
 

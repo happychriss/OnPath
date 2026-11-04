@@ -9,7 +9,7 @@
     <string name="msg_routing_data_busy">Routing-Daten werden geladen…</string>
     <string name="msg_maps_remove_failed">Die Kartengebiete konnten nicht entfernt werden. Deine Karten sind so weit wie möglich unverändert – versuche es später noch einmal.</string>
     <string name="msg_cleanup_keeps_plan">dein aktueller Plan</string>
-    <string name="msg_cleanup_keeps_saved">gespeicherte Routen</string>
+    <string name="msg_cleanup_keeps_saved">gespeicherte Pläne</string>
     <string name="msg_cleanup_keeps_tour">laufende Tour</string>
     <string name="msg_cleanup_keeps_position">dein Standort</string>
     <string name="msg_cleanup_not_possible">Aufräumen ist gerade nicht möglich – es wurde nichts entfernt.</string>
@@ -17,7 +17,7 @@
     <string name="msg_clear_all_blocked">Nicht während einer Tour – die Karte bleibt, wie sie ist, bis du die Tour beendest.</string>
     <string name="msg_maps_already_checking">Die Kartengebiete werden bereits geprüft.</string>
     <string name="msg_track_save_failing">Die Tour kann nicht mehr gespeichert werden (Speicher voll oder beschädigt). Gib Speicher frei – OnPath versucht es weiter.</string>
-    <string name="msg_track_delete_failed_here">Die Tour konnte hier nicht gelöscht werden. Du kannst sie in „Meine Routen“ löschen.</string>
+    <string name="msg_track_delete_failed_here">Die Tour konnte hier nicht gelöscht werden. Du kannst sie in „Meine Touren“ löschen.</string>
     <string name="msg_package_mixed">Kartendateien aus einem anderen Paket: %1$s – dort hat die Karte Lücken. Importiere alle Teile des Kartenpakets (für Südtirol: beide ZIP-Dateien).</string>
     <string name="msg_update_check_failed">Updates konnten nicht geprüft werden. Prüfe die Internetverbindung und versuche es noch einmal.</string>
     <string name="msg_update_allow_install">Erlaube OnPath, Updates zu installieren, und tippe dann noch einmal auf „Installieren“.</string>
@@ -34,11 +34,11 @@
     <string name="msg_shared_place_search">Suchen</string>
     <string name="msg_routing_failed">Routenberechnung fehlgeschlagen.</string>
     <string name="msg_no_new_route">Keine neue Route gefunden – du folgst weiter der bisherigen.</string>
-    <string name="msg_route_save_failed">Die Route konnte nicht gespeichert werden. Deine Route ist noch da – versuche es bitte noch einmal.</string>
-    <string name="msg_route_rename_failed">Die Route konnte nicht umbenannt werden. Versuche es bitte noch einmal.</string>
+    <string name="msg_route_save_failed">Der Plan konnte nicht gespeichert werden. Dein Plan ist noch da – versuche es bitte noch einmal.</string>
+    <string name="msg_route_rename_failed">Der Plan konnte nicht umbenannt werden. Versuche es bitte noch einmal.</string>
     <string name="msg_tour_delete_failed">„%1$s“ konnte nicht gelöscht werden. Versuche es bitte noch einmal.</string>
     <string name="msg_tour_restore_failed">„%1$s“ konnte nicht wiederhergestellt werden. Versuche es bitte noch einmal.</string>
-    <string name="msg_name_route">Route</string>
+    <string name="msg_name_route">Plan</string>
     <string name="msg_name_import">Import</string>
     <string name="msg_name_date_pattern">d. MMM, HH:mm</string>
     <string name="msg_date_pattern_area">d. MMM yyyy</string>
@@ -50,19 +50,19 @@
     <string name="msg_check_no_route">Keine Route dafür gefunden</string>
     <string name="msg_rides_read_failed">Die Fahrten dieser Tour konnten nicht gelesen werden.</string>
     <string name="msg_rides_change_failed">Die Fahrten konnten nicht geändert werden. Versuche es bitte noch einmal.</string>
-    <string name="msg_track_delete_failed">Die Tour konnte nicht gelöscht werden – sie ist in „Meine Routen“, lösche sie dort.</string>
+    <string name="msg_track_delete_failed">Die Tour konnte nicht gelöscht werden – sie ist in „Meine Touren“, lösche sie dort.</string>
     <string name="msg_track_recording_now">Diese Tour läuft gerade – beende sie zuerst.</string>
     <string name="msg_gpx_parts_skipped">Einige Teile der Datei wurden übersprungen.</string>
     <string name="msg_export_all_chooser">Alle exportieren</string>
     <string name="msg_export_reason">Export: %1$s.</string>
-    <string name="msg_export_failed">Export fehlgeschlagen – vielleicht ist der Speicher voll. Deine Touren und Routen sind unverändert.</string>
-    <string name="msg_backup_failed">%1$s. Deine Touren und Routen sind weiter auf diesem Handy – siehe Einstellungen → Sicherung.</string>
+    <string name="msg_export_failed">Export fehlgeschlagen – vielleicht ist der Speicher voll. Deine Touren und Pläne sind unverändert.</string>
+    <string name="msg_backup_failed">%1$s. Deine Touren und Pläne sind weiter auf diesem Handy – siehe Einstellungen → Sicherung.</string>
     <string name="msg_restore_looking">Sicherungen werden gesucht…</string>
     <string name="msg_restore_folder_unreadable">Der Sicherungsordner konnte nicht gelesen werden. Versuche es bitte noch einmal.</string>
     <string name="msg_gpx_import_failed_reason">Diese Datei konnte nicht importiert werden: %1$s</string>
     <string name="msg_gpx_import_failed">Diese Datei konnte nicht importiert werden – sie ließ sich nicht öffnen oder lesen.</string>
-    <string name="msg_route_updated_newer_data">Route mit neueren Kartendaten aktualisiert – bitte prüfe sie.</string>
-    <string name="msg_no_storage_permission">Ohne Speicherzugriff kann OnPath Touren und Routen nicht nach Documents/OnPath kopieren. Wähle einen anderen Ordner unter Einstellungen → Sicherung.</string>
+    <string name="msg_route_updated_newer_data">Plan mit neueren Kartendaten neu berechnet – bitte prüfe die Route.</string>
+    <string name="msg_no_storage_permission">Ohne Speicherzugriff kann OnPath Touren und Pläne nicht nach Documents/OnPath kopieren. Wähle einen anderen Ordner unter Einstellungen → Sicherung.</string>
     <string name="msg_no_folder_picker">Dieses Handy hat keine Ordnerauswahl – Wiederherstellen und Ordnerwahl sind nicht möglich.</string>
     <string name="msg_something_wrong">Etwas ist schiefgegangen. Es wurde unter Einstellungen → Diagnose notiert.</string>
     <string name="msg_rides_title">Fahrten in „%1$s“</string>
@@ -84,6 +84,6 @@
         <item quantity="other">%1$d Kartengebiete werden auf eine neuere Version geprüft. Einstellung: „Karten nur über WLAN laden“.</item>
     </plurals>
     <string name="msg_route_changed_elsewhere">Inzwischen im Browser geändert – als „%1$s“ gespeichert, die andere Fassung bleibt.</string>
-    <string name="msg_plan_link_unreadable">Dieser Routen-Link ist nicht lesbar. Teile oder kopiere den ganzen Link noch einmal.</string>
-    <string name="msg_plan_link_after_tour">Routen-Links öffnen sich nach der Tour – beende die Tour und öffne den Link dann noch einmal.</string>
+    <string name="msg_plan_link_unreadable">Dieser Plan-Link ist nicht lesbar. Teile oder kopiere den ganzen Link noch einmal.</string>
+    <string name="msg_plan_link_after_tour">Plan-Links öffnen sich nach der Tour – beende die Tour und öffne den Link dann noch einmal.</string>
 </resources>

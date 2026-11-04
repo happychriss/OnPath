@@ -166,8 +166,8 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
             Problems.trace("routing", "Way back: next stop $n via ${(bestScore - restAfter).toInt()} s, " +
                 "past it ${(bestPastScore - restAfter).toInt()} s, plan ${planS.toInt()} s → $decision")
             when (decision) {
-                StopSkip.Decision.SKIP -> return build(past, n)
-                StopSkip.Decision.ASK -> return build(past, n, ask = via?.let { build(it, null) })
+                // a stop is never left out by "Yes" alone (owner 2026-11-03): SKIP asks like ASK – "Über ③" / "③ auslassen"
+                StopSkip.Decision.SKIP, StopSkip.Decision.ASK -> return build(past, n, ask = via?.let { build(it, null) })
                 StopSkip.Decision.VIA -> Unit
             }
         }
@@ -219,23 +219,31 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
             "plan ${planS.toInt()} s → $decision")
         return when (decision) {
             StopSkip.Decision.VIA -> found(r, null)
-            StopSkip.Decision.SKIP -> found(past, n)
-            StopSkip.Decision.ASK -> found(past, n, ask = found(r, null))
+            // never left out unasked (owner 2026-11-03): the way via the stop goes with it – "Über ③" / "③ auslassen"
+            StopSkip.Decision.SKIP, StopSkip.Decision.ASK -> found(past, n, ask = found(r, null))
         }
     }
 
     /**
      * "Guide me" (never on the route yet): a plan → a fresh route here → the start → ALL points → the destination; a
      * track, or when that is not found → the way to the start and then the whole line as planned. Nothing is skipped.
+     * Owner 2026-11-03 (field, a round trip from home: "die Rundtour ist aufgelöst"): every tour starts at point ①. A
+     * router meets an off-street point 1 at the nearest way – coming from the other side that is the corner towards
+     * point 2, and the fresh line entered the loop between 1 and 2 (point 1 only at the end). So the fresh line is taken
+     * only when it reaches point 1 ([entersAtFirst]) before point 2; else the way to the start + the whole planned line.
      */
     private fun leadThere(req: Request, t0: Long, cancel: RouteCancel?): Outcome {
         val deadline = t0 + req.totalMs
         val total = req.original.lengthM
         if (req.stops.size >= 2) {
             freshRoute(req, req.stops.indices.toList(), deadline, cancel)?.let { r ->
-                val len = Geo.length(r.points)
-                return Found(r.points, len, total, len - total, Double.NaN, Geo.distance(req.position, r.points.first()),
-                    targetStop = 0, skippedStops = emptySet(), tried = 1, tookMs = clock() - t0)
+                if (entersAtFirst(r.points, req.stops, req.activity)) {
+                    val len = Geo.length(r.points)
+                    return Found(r.points, len, total, len - total, Double.NaN, Geo.distance(req.position, r.points.first()),
+                        targetStop = 0, skippedStops = emptySet(), tried = 1, tookMs = clock() - t0)
+                }
+                Problems.info("routing", "Guide me: the fresh line reaches point 1 only after point 2 – leading to point 1 " +
+                    "first, then the whole planned line")
             }
             if (cancel?.isCancelled == true) return Failed(Reason.CANCELLED, "Cancelled", clock() - t0)
         }
@@ -256,6 +264,19 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
             Geo.distance(req.position, leg.points.first()), targetStop = null, skippedStops = emptySet(),
             tried = if (req.stops.size >= 2) 2 else 1,
             tookMs = clock() - t0)
+    }
+
+    /**
+     * The line reaches the first stop (within the "reached" radius, [VisitRadius]) before the second one – the
+     * tour is entered at point ① (owner 2026-11-03). A plan of fewer than two stops always counts as entered at its start.
+     */
+    internal fun entersAtFirst(line: List<GeoPoint>, stops: List<NavStop>, activity: Activity): Boolean {
+        if (stops.size < 2) return true
+        val r = VisitRadius.of(activity)
+        val at1 = line.indexOfFirst { Geo.distance(it, stops[0].point) <= r }
+        if (at1 < 0) return false
+        val at2 = line.indexOfFirst { Geo.distance(it, stops[1].point) <= r }
+        return at2 < 0 || at1 <= at2
     }
 
     /** One fresh route request position → [stops]; null = none (logged; the caller falls back). */
