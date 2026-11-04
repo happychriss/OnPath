@@ -108,10 +108,13 @@ private fun StopCircle(t: StopTokens.Token) {
         StopTokens.Kind.START -> OnPathColors.PointStart
         StopTokens.Kind.GOAL -> OnPathColors.PointGoal
     }
-    Box(Modifier.fillMaxSize().background(OnPathColors.CardWhite, CircleShape).padding(1.5.dp).background(fill, CircleShape),
-        contentAlignment = Alignment.Center) {
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().background(OnPathColors.CardWhite, CircleShape)
+        .padding(1.5.dp).background(fill, CircleShape), contentAlignment = Alignment.Center) {
+        // the number scales with the circle (an em size inside inline content rendered as a dot – no number)
+        val num = with(androidx.compose.ui.platform.LocalDensity.current) { (maxHeight * 0.68f).toSp() }
         if (t.kind == StopTokens.Kind.GOAL) Icon(Icons.Filled.Flag, null, tint = OnPathColors.CardWhite, modifier = Modifier.fillMaxSize().padding(3.dp))
-        else Text(t.number.toString(), color = OnPathColors.CardWhite, fontWeight = FontWeight.Bold,
-            style = TextStyle(fontSize = 0.75.em, textAlign = TextAlign.Center))
+        else Text(t.number.toString(), color = OnPathColors.CardWhite, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
+            style = TextStyle(fontSize = num, lineHeight = num, textAlign = TextAlign.Center,
+                platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)))
     }
 }
