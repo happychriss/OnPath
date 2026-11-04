@@ -81,6 +81,12 @@ the git log.
 - [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
 
 ## Next
+- **[cloud-app] Found place: the sign under the pin becomes a small card with an action (owner 2026-11-04, B)** – today
+  `PinChip` (white 32 dp pill "Name ›") does not look tappable. New: a small white card under the pin: the name, below it
+  two buttons – blue "+ Zur Route" (empty plan: "Hierhin") and "⋯ Mehr" (today's pin menu: Hier starten, Google Maps,
+  Pin entfernen); touch targets ≥ 48 dp, long names "…" (`PinChipRules`). Colour rule: blue = edit. Screenshots DE + EN to
+  the owner first; the planner mirrors it (cloud-plan). Sketch: https://claude.ai/artifact/JsSPg6eB6X7qm9taECjFUo
+  (not part of tonight's five – after them).
 - **For the cloud (donald shut down by the owner 2026-11-03 ~23:20 – no new build items for donald):** five unfinished,
   NOT gated works saved as branches – finish each, gate, merge to main (one cloud worker each, or in this order):
   (1) `wip/donald-2026-11-03-roundtrip-A-lead` – lead always to ①, the start question "Zu ① führen / Hier einsteigen",
