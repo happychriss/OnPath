@@ -77,8 +77,12 @@ const p1 = [11.1440, 46.7040], p2 = [11.1380, 46.7110]; // beyond the destinatio
 await again.click('#activityChip'); await again.click('[data-act=BIKE_TOURING]');
 // the menu closed – then the camera stands; both clicks queue behind the new plan
 await again.waitForFunction(() => ![...document.querySelectorAll('[data-act]')].some((e) => e.offsetParent !== null), null, { timeout: 10_000 }).catch(() => {});
+// a fixed close view: the reopened route is fitted whole, where p1 and p2 (~450 m past the goal) lie close to the goal
+await again.evaluate(() => window.__map.jumpTo({ center: [11.141, 46.7075], zoom: 14 }));
 // projected only now: the camera may still move while the activity menu closes (CI: both clicks landed beside p1 / p2)
-const px = await again.evaluate((ps) => ps.map(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }), [p1, p2]);
+// project() gives canvas pixels; the mouse clicks page pixels – the canvas starts below the top bar (was off by 56 px)
+const px = await again.evaluate((ps) => { const r = window.__map.getCanvas().getBoundingClientRect();
+  return ps.map(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x + r.left, q.y + r.top]; }); }, [p1, p2]);
 await again.mouse.click(px[0][0], px[0][1]); await again.mouse.click(px[1][0], px[1][1]);
 await again.waitForFunction(() => window.__state.points.length === 4, null, { timeout: 60_000 }).catch(() => {});
 const order = await again.evaluate(() => window.__state.points.map(([la, lo]) => [Number(lo.toFixed(3)), Number(la.toFixed(3))]));
