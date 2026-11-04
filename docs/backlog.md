@@ -110,6 +110,7 @@ the git log.
   https://claude.ai/artifact/UEzamgzCNMJBthSgE8onWw. Then the full Rundgang (needs an emulator – GitHub E2E or
   donald later) and **v0.15.0 for the owner's in-app update** (owner's word 2026-11-03: "so bauen, dass ich es über die
   Update-Funktion aufs Handy holen kann"); cloud-plan mirrors SlowPlan + A-022 planner texts.
+- ✓ [cloud worker 2026-11-04] (1) roundtrip-A-lead on main (gated; `StartAtPointOneTest` test engine fixed, `RoundTripLeadTest` passes)
 - **Docs pictures follow the UI by themselves (owner 2026-11-03)** – three parts:
   (1) **[cloud-web]** make `docs/design/website-screens.md` the full shot list: every picture on onpath.earth (home,
   help DE + EN, planner pages) and in the store listing, with key, file names DE · EN, what exactly it shows (state,

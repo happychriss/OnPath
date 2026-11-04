@@ -10,7 +10,6 @@ import com.onpath.app.routing.RouteLimits
 import com.onpath.app.routing.RouteResult
 import com.onpath.app.routing.RoutingEngine
 import org.junit.Assert.assertTrue
-import org.junit.Ignore
 import org.junit.Test
 
 /**
@@ -72,7 +71,6 @@ class RoundTripLeadTest {
     /** Index of the first line point within [m] of [p]; −1 = never. */
     private fun firstNear(line: List<GeoPoint>, p: GeoPoint, m: Double = 15.0) = line.indexOfFirst { Geo.distance(it, p) <= m }
 
-    @Ignore("reproduces the 2026-11-03 field bug – fix after the owner's word (page \"Rundtour bleibt Rundtour\")")
     @Test fun guideMeOnARoundTripReachesPointOneBeforePointTwoAndClosesThere() {
         val nav = Navigator(NavSession.start(NavKind.PLAN, "Route 3. Nov., 22:20", Activity.BIKE_TOURING, 1, loop,
             listOf(p1, p2, p3, p1)))

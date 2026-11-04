@@ -211,6 +211,8 @@ fun NavigateOverlay(
     /** "Route starts 31 km away" (never on the route yet): Guide me / Just record; OK on "no way to the route". */
     onLeadThere: (Int) -> Unit = {},
     onJustRecord: (Int) -> Unit = {},
+    /** "Hier einsteigen" on the mid-route question (owner 2026-11-03); "Zu ① führen" is [onLeadThere]. */
+    onJoinHere: (Int) -> Unit = {},
     onLeadFailedOk: (Int) -> Unit = {},
     onActivity: () -> Unit = {},
     onChooseActivity: (Activity) -> Unit = {},
@@ -284,10 +286,13 @@ fun NavigateOverlay(
         // never on the route yet (owner 2026-10-31): the calm far-start question; "Guide me" found nothing → red note
         val far = ui.offRoute?.prompt as? NavPrompt.FarStart
         val leadFailed = ui.offRoute?.prompt as? NavPrompt.LeadFailed
+        // reached beside a later part (owner 2026-11-03): "Du stehst mitten auf der Route" · Hier einsteigen / Zu ① führen
+        val mid = ui.offRoute?.prompt as? NavPrompt.MidStart
         val message = Messages.pick(listOf(
             question?.let { q -> rerouteMessage(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) }, onVia = { onTakeVia(q.id) }) },
             ui.offRoute?.takeIf { it.prompt == NavPrompt.Searching }?.let { o -> searchingMessage(o, onKeep = { onKeepRoute(-1) }) },
             far?.let { p -> farStartMessage(p, onLead = { onLeadThere(p.id) }, onJustRecord = { onJustRecord(p.id) }) },
+            mid?.let { p -> midStartMessage(p, onLead = { onLeadThere(p.id) }, onJoin = { onJoinHere(p.id) }) },
             leadFailed?.let { e -> errorMessage(NavText.title(e)) { onLeadFailedOk(e.id) } },
             error?.let { errorMessage(it, onErrorOk) },
             if (ui.notificationsOff) notificationsOffMessage(onNotifications, onNotificationsOk) else null,
@@ -714,6 +719,18 @@ internal fun farStartMessage(p: NavPrompt.FarStart, onLead: () -> Unit, onJustRe
 }
 
 /**
+ * The route reached beside a later part of it, not at point 1 (owner 2026-11-03: "every tour starts at point 1 and skips
+ * nothing"): "Du stehst mitten auf der Route." · "Die Tour beginnt bei ①." · Hier einsteigen / **Zu ① führen** (the
+ * primary). Calm (no vibration); stays until answered or the user is at the start. "Hier einsteigen" = the points before
+ * count as passed (grey, not deleted). While the way to ① is computed only "Hier einsteigen" stays.
+ */
+internal fun midStartMessage(p: NavPrompt.MidStart, onLead: () -> Unit, onJoin: () -> Unit): Message {
+    val buttons = if (p.searching) listOf(MessageButton(NavText.MID_JOIN, onJoin))
+        else listOf(MessageButton(NavText.MID_JOIN, onJoin), MessageButton(NavText.MID_LEAD, onLead))
+    return Message(MessageKind.FRAGE, NavText.title(p), NavText.state(p), buttons, icon = Icons.Outlined.Flag, navigate = true)
+}
+
+/**
  * A tour runs with OnPath's notifications off ([com.onpath.app.navigation.NotificationsOff]): "⚠ Notifications off / No
  * turns … on the lock screen" + OK (HINWEIS_WARN). Tap on the text → the phone setup step; OK → gone for this tour.
  * Never goes by itself (owner: no self-dismissing messages).
@@ -876,7 +893,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
             onPause = vm::pauseRecording, onEnd = { vm.askEndTour() },
             onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute, onTakeVia = vm::takeViaRoute,
-            onLeadThere = vm::leadToStart, onJustRecord = vm::justRecord, onLeadFailedOk = vm::leadFailedOk,
+            onLeadThere = vm::leadToStart, onJustRecord = vm::justRecord, onJoinHere = vm::joinHere, onLeadFailedOk = vm::leadFailedOk,
             onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
             onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,
             download = bg, onDownload = { vm.downloadDetailsOpen = true },

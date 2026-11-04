@@ -36,6 +36,10 @@ object NavText {
     val LEAD: String get() = Txt.s(Res.string.nav_far_lead)
     val JUST_RECORD: String get() = Txt.s(Res.string.nav_far_record)
 
+    /** "Zu ① führen" / "Hier einsteigen" – the mid-route question's answers (owner 2026-11-03). */
+    val MID_LEAD: String get() = Txt.s(Res.string.nav_mid_lead)
+    val MID_JOIN: String get() = Txt.s(Res.string.nav_mid_join)
+
     fun title(p: NavPrompt): String = when (p) {
         NavPrompt.Searching -> Txt.s(Res.string.nav_title_searching)
         is NavPrompt.Question -> p.switch?.let { switchTitle(it) }
@@ -46,6 +50,8 @@ object NavText {
         // "Route starts 31 km away"
         is NavPrompt.FarStart -> Txt.s(Res.string.nav_far_title, farDistance(p.distanceM))
         is NavPrompt.LeadFailed -> Txt.s(Res.string.nav_lead_failed)
+        // "Du stehst mitten auf der Route." (owner 2026-11-03)
+        is NavPrompt.MidStart -> Txt.s(Res.string.nav_mid_title)
         is NavPrompt.NoWay -> when (p.reason) {
             Rerouter.Reason.NO_DATA -> Txt.s(Res.string.nav_title_no_data)
             Rerouter.Reason.UNAVAILABLE -> Txt.s(Res.string.nav_title_unavailable)
@@ -72,6 +78,7 @@ object NavText {
         is NavPrompt.FarStart -> if (p.searching) Txt.s(Res.string.nav_far_searching)
             else Txt.s(Res.string.nav_far_detail, compass(p.bearingDeg))
         is NavPrompt.LeadFailed -> Txt.s(Res.string.nav_lead_failed)
+        is NavPrompt.MidStart -> Txt.s(if (p.searching) Res.string.nav_far_searching else Res.string.nav_mid_text)
     }
 
     /** The far start's distance: whole kilometres from 10 km ("31 km"), else as everywhere ("4.2 km", "350 m"). */

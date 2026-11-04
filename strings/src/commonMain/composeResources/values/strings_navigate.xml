@@ -112,6 +112,10 @@
     <string name="nav_far_searching">Finding a way to the start…</string>
     <string name="nav_far_lead">Guide me</string>
     <string name="nav_far_record">Go on without a route</string>
+    <string name="nav_mid_title">You are in the middle of the route.</string>
+    <string name="nav_mid_text">The tour starts at ①.</string>
+    <string name="nav_mid_lead">Lead to ①</string>
+    <string name="nav_mid_join">Join here</string>
     <string name="nav_lead_failed">No way to the route found – the tour goes on</string>
 
     <!-- lock screen notification while following a route -->

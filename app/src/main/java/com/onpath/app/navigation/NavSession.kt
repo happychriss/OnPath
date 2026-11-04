@@ -103,6 +103,10 @@ data class NavSession(
          */
         fun afterPlanEdit(old: NavSession?, fresh: NavSession): NavSession {
             if (old == null || old.kind != NavKind.PLAN || fresh.kind != NavKind.PLAN || fresh.rerouted) return fresh
+            // a different plan (none of its points was in the old one – a route loaded on the way, owner 2026-11-03):
+            // not an edit – it starts afresh at its point ① (the way there / the mid-route question), nothing carried
+            if (old.stops.isNotEmpty() && fresh.stops.isNotEmpty() &&
+                fresh.stops.none { f -> old.stops.any { o -> com.onpath.app.data.Geo.distance(o.point, f.point) < 1.0 } }) return fresh
             return when {
                 old.reached -> if (fresh.reached) fresh else fresh.copy(reached = true)
                 old.lead && !fresh.reached && !fresh.lead -> fresh.copy(lead = true)

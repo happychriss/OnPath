@@ -48,14 +48,22 @@ object TourSplit {
         if (plan.isEmpty()) return emptySet()
         val last = if (PlanEdits.isRoundTrip(plan)) plan.size - 2 else plan.size - 1
         val near = if (t.bike) NEAR_BIKE_M else NEAR_HIKE_M
+        fun hit(p: GeoPoint) = p in t.visited || known.any { sameSpot(it, p) } || nearTrack(p, t.track, near)
+        // owner 2026-11-03 ("every tour starts at point 1 and skips nothing – shortening = the user deletes points"): the
+        // passed points are the ones visited in plan order. A later point hit by chance (the way there passing it, a round
+        // trip begun beside its end) no longer makes all points before it passed; only a point the track went by a little
+        // further off ([BRIDGE] × the radius – owner 2026-11-01: "2 lay 40–50 m beside the track") is bridged by a later hit.
         var lastPassed = -1
         for (i in 0..last) {
-            val p = plan[i]
-            val hit = p in t.visited || known.any { sameSpot(it, p) } || nearTrack(p, t.track, near)
-            if (hit) lastPassed = i
+            if (hit(plan[i])) { lastPassed = i; continue }
+            val later = (i + 1..last).firstOrNull { hit(plan[it]) } ?: break
+            if (!(i until later).all { nearTrack(plan[it], t.track, near * BRIDGE) || hit(plan[it]) }) break
         }
         return (0..lastPassed).toSet()
     }
+
+    /** A point the track went by within this many times the "passed" radius is bridged by a later passed point. */
+    const val BRIDGE = 2.0
 
     /** The points ahead: after the last passed one, in plan order. */
     fun ahead(plan: List<GeoPoint>, passed: Set<Int>): List<GeoPoint> {

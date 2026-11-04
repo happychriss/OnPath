@@ -1344,10 +1344,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val passedPoints = HashSet<GeoPoint>()
     private var passedTourId: Long? = null
 
+    /** The next plan change loads a saved route during a tour ([openTour] duringTour): a whole new plan ([splitOf]). */
+    private var loadedOnTheWay = false
+
     /** [TourSplit.outcome] of the edit [before] → [after] during a tour, kept for [followEditedPlan]. */
     private fun splitOf(before: List<GeoPoint>, after: List<GeoPoint>): TourSplit.Outcome? {
         splitRequests.invalidate()
-        val passed = tourPassed(before)
+        // a route loaded on the way ("Mit dieser Route weiter", owner 2026-11-03) is a new plan, not an edit: followed as
+        // a whole from its point ① (a way there / the mid-route question like at a tour start), nothing of it passed
+        val fresh = loadedOnTheWay; loadedOnTheWay = false
+        val passed = if (fresh) emptySet() else tourPassed(before)
         val o = if (passed.isEmpty()) null else TourSplit.outcome(before, after, passed)
         pendingSplit = o; splitBefore = before
         if (o != null) Problems.trace("plan", "Edit during the tour: ${passed.size} of ${before.size} points passed → " +
@@ -2809,6 +2815,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         putExtra(RecordingService.EXTRA_QUESTION, questionId)
     }
 
+    /** "Du stehst mitten auf der Route" – Hier einsteigen: start here, the points before count as passed (owner 2026-11-03). */
+    fun joinHere(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_JOIN_HERE) {
+        putExtra(RecordingService.EXTRA_QUESTION, questionId)
+    }
+
     /** OK on "No way to the route found – recording continues". */
     fun leadFailedOk(questionId: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_LEAD_FAILED_OK) {
         putExtra(RecordingService.EXTRA_QUESTION, questionId)
@@ -3364,6 +3375,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // stop names and POI pins saved with the plan come back too – the pins
                 // before the points, so the first route already passes them exactly (recalc reads them at once)
                 t.pinned.mapNotNull { pts.getOrNull(it) }.takeIf { it.isNotEmpty() }?.let { pinned += it; prefs.planPinned = pinned }
+                // during a tour: the loaded route is followed from its point ① (owner 2026-11-03), not from the position
+                loadedOnTheWay = duringTour && recState.value != null
                 change { clear(); addAll(pts) }
                 t.waypoints.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
                 setSaved(t.name, t.id, pts)

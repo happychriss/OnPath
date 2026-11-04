@@ -111,6 +111,10 @@
     <string name="nav_far_searching">Weg zum Start wird gesucht…</string>
     <string name="nav_far_lead">Hinführen</string>
     <string name="nav_far_record">Ohne Route weiter</string>
+    <string name="nav_mid_title">Du stehst mitten auf der Route.</string>
+    <string name="nav_mid_text">Die Tour beginnt bei ①.</string>
+    <string name="nav_mid_lead">Zu ① führen</string>
+    <string name="nav_mid_join">Hier einsteigen</string>
     <string name="nav_lead_failed">Kein Weg zur Route gefunden – die Tour läuft weiter</string>
 
     <!-- lock screen notification while following a route -->

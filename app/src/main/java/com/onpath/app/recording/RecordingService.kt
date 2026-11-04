@@ -243,7 +243,7 @@ class RecordingService : Service() {
     private fun startCommand(intent: Intent?, startId: Int): Int {
         val control = intent?.action in setOf(ACTION_PAUSE, ACTION_RESUME, ACTION_STOP, ACTION_FOLLOW_CHANGED, ACTION_NAVIGATING,
             ACTION_SETTINGS, ACTION_TAKE_ROUTE, ACTION_TAKE_VIA, ACTION_KEEP_ROUTE, ACTION_CHECK_NOW, ACTION_PROPOSE_SWITCH,
-            ACTION_LEAD_THERE, ACTION_JUST_RECORD, ACTION_LEAD_FAILED_OK)
+            ACTION_LEAD_THERE, ACTION_JUST_RECORD, ACTION_LEAD_FAILED_OK, ACTION_JOIN_HERE)
         if (control && tourId < 0) { stopSelf(startId); return START_NOT_STICKY } // nothing is recording
         when (intent?.action) {
             ACTION_PAUSE -> { setPaused(true); return START_STICKY }
@@ -306,6 +306,10 @@ class RecordingService : Service() {
             }
             ACTION_LEAD_FAILED_OK -> {
                 navigator?.let { handle(it.leadFailedOk(intent.getIntExtra(EXTRA_QUESTION, -1))) }
+                return START_STICKY
+            }
+            ACTION_JOIN_HERE -> {
+                navigator?.let { handle(it.joinHere(intent.getIntExtra(EXTRA_QUESTION, -1))) }
                 return START_STICKY
             }
             ACTION_PROPOSE_SWITCH -> {
@@ -1100,6 +1104,7 @@ class RecordingService : Service() {
             is NavPrompt.Question -> "q${pr.id}"
             is NavPrompt.FarStart -> "f${pr.id}${if (pr.searching) "s" else ""}"
             is NavPrompt.LeadFailed -> "e${pr.id}"
+            is NavPrompt.MidStart -> "m${pr.id}${if (pr.searching) "s" else ""}"
             else -> pr.javaClass.simpleName
         } + "@" + channel
         val now = SystemClock.elapsedRealtime()
@@ -1108,7 +1113,7 @@ class RecordingService : Service() {
         try {
             val text = when (pr) {
                 is NavPrompt.Question -> NavText.question(pr)
-                is NavPrompt.FarStart, is NavPrompt.LeadFailed -> NavText.state(pr)
+                is NavPrompt.FarStart, is NavPrompt.LeadFailed, is NavPrompt.MidStart -> NavText.state(pr)
                 else -> hint ?: follow?.first?.let { Txt.s(Res.string.nav_back_to, it) } ?: Txt.s(Res.string.nav_back_to_route)
             }
             val b = NotificationCompat.Builder(this, channel)
@@ -1129,6 +1134,10 @@ class RecordingService : Service() {
             if (pr is NavPrompt.FarStart && !pr.searching) {
                 b.addAction(0, NavText.LEAD, actionIntent(ACTION_LEAD_THERE, 13) { putExtra(EXTRA_QUESTION, pr.id) })
                 b.addAction(0, NavText.JUST_RECORD, actionIntent(ACTION_JUST_RECORD, 14) { putExtra(EXTRA_QUESTION, pr.id) })
+            } else if (pr is NavPrompt.MidStart && !pr.searching) {
+                // "Zu ① führen" / "Hier einsteigen" (owner 2026-11-03), answerable on the lock screen like the far start
+                b.addAction(0, NavText.MID_LEAD, actionIntent(ACTION_LEAD_THERE, 16) { putExtra(EXTRA_QUESTION, pr.id) })
+                b.addAction(0, NavText.MID_JOIN, actionIntent(ACTION_JOIN_HERE, 17) { putExtra(EXTRA_QUESTION, pr.id) })
             } else if (pr is NavPrompt.LeadFailed) {
                 b.addAction(0, Txt.s(Res.string.common_ok), actionIntent(ACTION_LEAD_FAILED_OK, 15) { putExtra(EXTRA_QUESTION, pr.id) })
             } else if (pr is NavPrompt.Question && pr.via != null) {
@@ -1480,6 +1489,7 @@ class RecordingService : Service() {
         const val ACTION_LEAD_THERE = "com.onpath.app.LEAD_THERE"
         const val ACTION_JUST_RECORD = "com.onpath.app.JUST_RECORD"
         const val ACTION_LEAD_FAILED_OK = "com.onpath.app.LEAD_FAILED_OK"
+        const val ACTION_JOIN_HERE = "com.onpath.app.JOIN_HERE"
         const val EXTRA_QUESTION = "question"
         /** Activity check: a proposed session for another activity is in ActivityCheck.PROPOSAL_FILE ([EXTRA_TIME_S] = its time). */
         const val ACTION_PROPOSE_SWITCH = "com.onpath.app.PROPOSE_SWITCH"
