@@ -45,6 +45,9 @@ the git log.
 
 
 ## For the captain
+- ← [cloud worker 2026-11-04] **v0.15.0 released** (main, Release workflow) with the planner web-spike 6343ec37 (main's
+  shared code merged; red smokes fixed: pin test, two quick clicks clicked 56 px off, 'Route · date' row). Open for
+  cloud-plan: the web's 'Weiter warten?' box (SlowPlan shared, web still askAtLimit = false).
 - ← [cloud-plan] **#21 answered by the owner: B** (2026-11-03, in my chat, entered in the issue): „Die Route ist lang, die
   Berechnung dauert. Weiter warten?“ · „Weiter warten“ / „Abbrechen“. The app leads (cloud-app builds the question at the
   time limit); the planner's wait box follows once that is on main. Also done today on web-spike: plan GPX keeps pins
@@ -92,9 +95,6 @@ the git log.
   https://claude.ai/artifact/UEzamgzCNMJBthSgE8onWw. Then the full Rundgang (needs an emulator – GitHub E2E or
   donald later) and **v0.15.0 for the owner's in-app update** (owner's word 2026-11-03: "so bauen, dass ich es über die
   Update-Funktion aufs Handy holen kann"); cloud-plan mirrors SlowPlan + A-022 planner texts.
-- **[cloud-plan] Web spike red on 5be2031d** (captain 2026-11-03 22:10) – planner not deployed since then: job "smokes (short)"
-  step "No WebGL2 → a plain message", job "smokes (lang-gpx)" step "Long-route question and GPX import" (the new
-  "Plan a route from it" box?). https://github.com/happychriss/OnPath/actions/runs/41715495112
 - **Docs pictures follow the UI by themselves (owner 2026-11-03)** – three parts:
   (1) **[cloud-web]** make `docs/design/website-screens.md` the full shot list: every picture on onpath.earth (home,
   help DE + EN, planner pages) and in the store listing, with key, file names DE · EN, what exactly it shows (state,
