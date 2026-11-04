@@ -56,6 +56,8 @@ class TurnCardWayTest {
     @Test fun theCardDoesNotGrow() {
         val card = File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()
             .substringAfter("private fun TurnCard(").substringBefore("\n}\n")
-        assertTrue(card, card.contains("Text(t.label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1"))
+        // "② Leiteralm": the label may carry the stop's circle (StopText, owner 2026-11-03) – still one line, "…" at the end
+        assertTrue(card, card.contains("StopText(t.label, style = MaterialTheme.typography.bodyLarge"))
+        assertTrue(card, card.contains("fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis"))
     }
 }

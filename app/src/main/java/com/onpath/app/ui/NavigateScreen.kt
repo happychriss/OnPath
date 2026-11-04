@@ -311,8 +311,9 @@ fun NavigateOverlay(
 /** Next turn, the most prominent thing on screen (like Google Maps' green maneuver card): arrow, distance, direction. */
 @Composable
 private fun TurnCard(t: TurnHint) {
-    val text = if (t.distanceM < 15 && !t.straight && t.stop == null) str(Res.string.nav_turn_now, t.label)
-        else str(Res.string.nav_turn_in, t.label, turnDistance(t.distanceM))
+    val spoken = StopTokens.plain(t.label)
+    val text = if (t.distanceM < 15 && !t.straight && t.stop == null) str(Res.string.nav_turn_now, spoken)
+        else str(Res.string.nav_turn_in, spoken, turnDistance(t.distanceM))
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primary,
         contentColor = MaterialTheme.colorScheme.onPrimary, shadowElevation = 4.dp,
         modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = text }) {
@@ -325,8 +326,8 @@ private fun TurnCard(t: TurnHint) {
             // label ends in "…" (owner: nothing jumps)
             Column(Modifier.weight(1f)) {
                 Text(turnDistance(t.distanceM), style = MaterialTheme.typography.headlineMedium)
-                Text(t.label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                StopText(t.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
         }
     }
@@ -681,8 +682,8 @@ private fun OffRouteCard(o: OffRouteUi) {
 /**
  * The off-route question (owner: ask every time, never re-route silently) as a FRAGE box under the status card: stays
  * until one of the big buttons is pressed or the user is back on the route. Buttons 56 dp – fine with gloves. With a
- * stop in question (StopSkip, owner 2026-11-01: one question shape): "You're 120 m off the route" – Keep original · New
- * route without stop 3 · New route (via it).
+ * stop in question (StopSkip, owner 2026-11-01 / 2026-11-03): "You're 120 m off the route" – Keep original · ③ auslassen ·
+ * Über ③ (primary; ③ = the map's numbered circle, [StopText]).
  * The activity switch ("New route for MTB") is the same question with the activity's icon.
  */
 @Composable
@@ -691,9 +692,14 @@ internal fun rerouteMessage(q: NavPrompt.Question, onTake: () -> Unit, onKeep: (
     val maxName = if (large) NavText.NAME_MAX_LARGE else NavText.NAME_MAX
     // turn round: the U-turn sign, so a way back on the same road is not mistaken for "nothing happened"
     val icon = q.switch?.activity?.icon ?: if (q.turnRound) Icons.Filled.UTurnLeft else Icons.Outlined.AltRoute
-    val buttons = if (q.via != null) listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.skipButton(q, maxName), onTake),
-        MessageButton(NavText.TAKE, onVia))
-        else listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.TAKE, onTake))
+    // a stop in question (owner 2026-11-03): never left out by "Yes" alone – "Über ③" (primary) · "③ auslassen"
+    val buttons = when {
+        q.via != null -> listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.skipButton(q), onTake),
+            MessageButton(NavText.viaButton(q), onVia))
+        // no way via the stop was found: leaving it out is still said on the button, never hidden behind "New route"
+        q.skipStop != null -> listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.skipButton(q), onTake))
+        else -> listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.TAKE, onTake))
+    }
     return Message(MessageKind.FRAGE, NavText.title(q), NavText.question(q, maxName), buttons, icon = icon, navigate = true)
 }
 

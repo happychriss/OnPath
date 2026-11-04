@@ -12,8 +12,8 @@ object NavText {
     val TAKE: String get() = Txt.s(Res.string.nav_take_new_route)
     val KEEP: String get() = Txt.s(Res.string.nav_keep_original)
     /**
-     * "Off route – re-plan?" with a stop in question (StopSkip, owner 2026-10-30): "Yes" = the new route via the stop
-     * ([NavPrompt.Question.via]), "Yes, skip stop 3" ([skipButton]) = the new route without it, Keep original.
+     * "Off route – re-plan?" with a stop in question (StopSkip, owner 2026-10-30 / 2026-11-03): "Über ③" ([viaButton]) =
+     * the new route via the stop ([NavPrompt.Question.via]), "③ auslassen" ([skipButton]) = without it, Keep original.
      */
     /**
      * The skip answer as a notification action: three actions share one row and Android cuts long labels ("Ja, Stopp 3
@@ -28,9 +28,21 @@ object NavText {
     fun stopLabel(q: NavPrompt.Question, maxName: Int = NAME_MAX): String? =
         q.skipStop?.let { i -> q.skipName?.takeIf { it.length <= maxName } ?: Txt.s(Res.string.nav_stop_n, q.skipNumber ?: (i + 1)) }
 
-    /** "New route without stop 3" / "Neue Route ohne Gasthof Hochmuth" – the card's second answer (owner 2026-11-01). */
-    fun skipButton(q: NavPrompt.Question, maxName: Int = NAME_MAX): String =
-        Txt.s(Res.string.nav_yes_skip_stop, stopLabel(q, maxName) ?: "")
+    /**
+     * A re-route that would leave out a stop asks with two explicit answers (owner 2026-11-03, round trip decision 3):
+     * "Über ③" (primary – the new route goes via the stop first) and "③ auslassen". The circle is the map's numbered
+     * plan point ([com.onpath.app.ui.StopTokens] token, drawn by the box; TalkBack hears "Stopp 3"); the question's line
+     * names the stop in words. Notifications keep their plain words ([SKIP_SHORT], [TAKE]).
+     */
+    fun viaButton(q: NavPrompt.Question): String =
+        Txt.s(Res.string.nav_via_stop_button, com.onpath.app.ui.StopTokens.stop(stopNumber(q)))
+
+    /** "③ auslassen" / "Skip ③" – the new route without the stop (see [viaButton]). */
+    fun skipButton(q: NavPrompt.Question): String =
+        Txt.s(Res.string.nav_skip_stop_button, com.onpath.app.ui.StopTokens.stop(stopNumber(q)))
+
+    /** The number the map shows for the stop in question. */
+    private fun stopNumber(q: NavPrompt.Question): Int = q.skipNumber ?: ((q.skipStop ?: 0) + 1)
 
     /** "Guide me" / "Just record" – the far-start question's answers (owner 2026-10-31). */
     val LEAD: String get() = Txt.s(Res.string.nav_far_lead)

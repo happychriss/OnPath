@@ -166,8 +166,8 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
             Problems.trace("routing", "Way back: next stop $n via ${(bestScore - restAfter).toInt()} s, " +
                 "past it ${(bestPastScore - restAfter).toInt()} s, plan ${planS.toInt()} s → $decision")
             when (decision) {
-                StopSkip.Decision.SKIP -> return build(past, n)
-                StopSkip.Decision.ASK -> return build(past, n, ask = via?.let { build(it, null) })
+                // a stop is never left out by "Yes" alone (owner 2026-11-03): SKIP asks like ASK – "Über ③" / "③ auslassen"
+                StopSkip.Decision.SKIP, StopSkip.Decision.ASK -> return build(past, n, ask = via?.let { build(it, null) })
                 StopSkip.Decision.VIA -> Unit
             }
         }
@@ -219,8 +219,8 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
             "plan ${planS.toInt()} s → $decision")
         return when (decision) {
             StopSkip.Decision.VIA -> found(r, null)
-            StopSkip.Decision.SKIP -> found(past, n)
-            StopSkip.Decision.ASK -> found(past, n, ask = found(r, null))
+            // never left out unasked (owner 2026-11-03): the way via the stop goes with it – "Über ③" / "③ auslassen"
+            StopSkip.Decision.SKIP, StopSkip.Decision.ASK -> found(past, n, ask = found(r, null))
         }
     }
 

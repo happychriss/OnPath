@@ -27,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -257,8 +258,9 @@ private fun MessageButtonView(b: MessageButton, main: Boolean, heightDp: Int, mo
             androidx.compose.material3.CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = OnPathColors.InkMuted)
             Spacer(Modifier.width(10.dp))
         }
-        Text(b.label, style = MaterialTheme.typography.labelLarge, fontWeight = if (main) FontWeight.Bold else FontWeight.Medium,
-            textAlign = TextAlign.Center, maxLines = 2)
+        // "Über ③" – a stop token is the map's numbered circle (StopText, owner 2026-11-03)
+        StopText(b.label, style = MaterialTheme.typography.labelLarge, color = LocalContentColor.current,
+            fontWeight = if (main) FontWeight.Bold else FontWeight.Medium, textAlign = TextAlign.Center, maxLines = 2)
     }
     if (main) Button(onClick = b.onClick, modifier = size, shape = shape, contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
         enabled = !b.busy,

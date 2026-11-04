@@ -80,12 +80,14 @@ class NextStopTest {
 
     @Test fun cardTexts() {
         Locale.setDefault(Locale.GERMANY)
-        assertEquals("Stopp 2 · Leiteralm", TurnHint(TurnKind.SLIGHT_RIGHT, 1_200.0, stop = StopAhead(2, "Leiteralm", false, 1_200.0)).label)
-        assertEquals("Stopp 3", StopAhead(3, null, false, 1.0).label)
+        // owner 2026-11-03: the map's circle instead of the word – {2} is drawn as ② by StopText, TalkBack says "Stopp 2"
+        assertEquals("{2} Leiteralm", TurnHint(TurnKind.SLIGHT_RIGHT, 1_200.0, stop = StopAhead(2, "Leiteralm", false, 1_200.0)).label)
+        assertEquals("Stopp 2 Leiteralm", StopTokens.plain(StopAhead(2, "Leiteralm", false, 1.0).label))
+        assertEquals("{3}", StopAhead(3, null, false, 1.0).label)
         assertEquals("Ziel · Hütte", StopAhead(4, "Hütte", true, 1.0).label)
         assertEquals("Ziel", StopAhead(4, null, true, 1.0).label)
         Locale.setDefault(Locale.UK)
-        assertEquals("Stop 2 · Leiteralm", StopAhead(2, "Leiteralm", false, 1.0).label)
+        assertEquals("{2} Leiteralm", StopAhead(2, "Leiteralm", false, 1.0).label)
         assertEquals("Destination", StopAhead(4, null, true, 1.0).label)
     }
 

@@ -112,6 +112,7 @@ the git log.
   Update-Funktion aufs Handy holen kann"); cloud-plan mirrors SlowPlan + A-022 planner texts.
 - ✓ [cloud worker 2026-11-04] (1) roundtrip-A-lead on main (gated; `StartAtPointOneTest` test engine fixed, `RoundTripLeadTest` passes)
 - ✓ [cloud worker 2026-11-04] (2) roundtrip-C-stop-on-the-way on main (tests added: add button text, ↻ keeps the loop, Points list roles)
+- ✓ [cloud worker 2026-11-04] (3) roundtrip-B-reroute-circles on main (screenshots re-recorded)
 - **Docs pictures follow the UI by themselves (owner 2026-11-03)** – three parts:
   (1) **[cloud-web]** make `docs/design/website-screens.md` the full shot list: every picture on onpath.earth (home,
   help DE + EN, planner pages) and in the store listing, with key, file names DE · EN, what exactly it shows (state,

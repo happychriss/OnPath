@@ -92,11 +92,11 @@
     <string name="nav_back_to_route">Back to the route</string>
     <!-- re-route and the next stop (owner 2026-11-01: one question shape): "You're 120 m off the route" – Keep original / New route without stop 3 / New route (navigation/StopSkip) -->
     <string name="nav_via_stop">Via %1$s: %2$s</string>
-    <string name="nav_yes_skip_stop">New route without %1$s</string>
+    <string name="nav_via_stop_button">Via %1$s</string>
+    <string name="nav_skip_stop_button">Skip %1$s</string>
+    <string name="nav_stop_start">Start</string>
     <string name="nav_notif_skip">Without stop</string>
     <string name="nav_stop_n">stop %1$d</string>
-    <string name="nav_card_stop">Stop %1$d</string>
-    <string name="nav_card_stop_named">Stop %1$d · %2$s</string>
     <string name="nav_card_goal">Destination</string>
     <string name="nav_card_goal_named">Destination · %1$s</string>
     <string name="nav_without_stop">without %1$s</string>

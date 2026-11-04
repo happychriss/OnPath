@@ -18,12 +18,16 @@ data class StopAhead(
     /** From here along the shown line. */
     val distanceM: Double,
 ) {
-    /** "Stopp 2 · Leiteralm" / "Stopp 2" / "Ziel · Hütte" / "Ziel" – a long name ends in "…" on the card. */
+    /**
+     * The card's line (owner 2026-11-03: the circle instead of the word "Stopp"): "② Leiteralm" / "②" – the map's
+     * numbered circle ([StopText] token); the destination keeps its word: "Ziel · Hütte" / "Ziel" (the big sign on the
+     * left is the red flag). A long name ends in "…".
+     */
     val label: String get() = when {
         goal && name != null -> Txt.s(Res.string.nav_card_goal_named, name)
         goal -> Txt.s(Res.string.nav_card_goal)
-        name != null -> Txt.s(Res.string.nav_card_stop_named, number, name)
-        else -> Txt.s(Res.string.nav_card_stop, number)
+        name != null -> StopTokens.stop(number) + " " + name
+        else -> StopTokens.stop(number)
     }
 }
 
