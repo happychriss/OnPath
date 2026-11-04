@@ -71,9 +71,10 @@ check(restored.hash === '#p=', 'and in the address again');
 // ---- 5: two quick clicks while the engine is busy go in the order clicked (review web H4) ----
 await again.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1', null, { timeout: 120_000 });
 const p1 = [11.1440, 46.7040], p2 = [11.1380, 46.7110]; // beyond the destination, one after the other
-const px = await again.evaluate((ps) => ps.map(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }), [p1, p2]);
 // the engine busy first (another activity → the plan again), then both clicks: both wait behind that plan
 await again.click('#activityChip'); await again.click('[data-act=BIKE_TOURING]');
+// projected only now: the camera may still move while the activity menu closes (CI: both clicks landed beside p1 / p2)
+const px = await again.evaluate((ps) => ps.map(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }), [p1, p2]);
 await again.mouse.click(px[0][0], px[0][1]); await again.mouse.click(px[1][0], px[1][1]);
 await again.waitForFunction(() => window.__state.points.length === 4, null, { timeout: 60_000 }).catch(() => {});
 const order = await again.evaluate(() => window.__state.points.map(([la, lo]) => [Number(lo.toFixed(3)), Number(la.toFixed(3))]));

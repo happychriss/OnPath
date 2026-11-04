@@ -66,7 +66,7 @@
         "web/app/src/position.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "9d23706d8d85af33597f84a19fecd4193f548889"
+      "blob": "bdb812b825c17a4e2f19ff04ffd975b071a55985"
     },
     {
       "app": "app/src/main/java/com/onpath/app/recording/LocationTracker.kt",
@@ -92,7 +92,7 @@
         "web/app/src/main.ts",
         "web/app/src/gpximport.ts"
       ],
-      "blob": "b8f143243aaa2100cd9e972420ef92415126ccc2"
+      "blob": "8d4f8f8d64eacb1414ede6427ec944870246687e"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/SettingsScreen.kt",
@@ -100,7 +100,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "d695287eaefb9c72cedc2857c1b30f2c3f61c91f"
+      "blob": "ce4dc125835fbb2b88d83458a008dd0fc01fe47c"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/OptionalSources.kt",
@@ -155,7 +155,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "949f0ae8ed5c795594b8a1272451e6900d7c11e3"
+      "blob": "62a36a1405296bb3e70fb6074bc0ff11ae706199"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -163,7 +163,7 @@
       "web": [
         "web/app/src/gpximport.ts"
       ],
-      "blob": "cc9f4c3d85caf0943d2704fe6e8797bd4f348acc"
+      "blob": "e3c5d553fbc4ac6a03e5178ef2500a7aa7811b5e"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PointsSection.kt",
@@ -230,7 +230,7 @@
       "web": [
         "web/engine/src/main/kotlin/com/onpath/web/WebPace.kt"
       ],
-      "blob": "61089288ec8a69b03fe27a8ba840ecda449f1014"
+      "blob": "b601ed0f98bf053e88008a016f46a71cfde5f0b8"
     },
     {
       "app": "app/src/main/java/com/onpath/app/data/Prefs.kt",
@@ -294,12 +294,12 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanPanel.kt",
       "why": "plan sheet layout and actions",
-      "blob": "a534f41a7d9f99eb7cbe37d338507aad53644d2e"
+      "blob": "b2d60f8c3892eafc0a1aa19fe1f98f114f08db41"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapScreen.kt",
       "why": "plan screen wiring, dialogs",
-      "blob": "315dd7c71ed434899f7dfff8c72ccb3b2456cfd4"
+      "blob": "22471062a9fbcf29fc21a5352c781e3ef3ac6607"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanGuidance.kt",
@@ -309,7 +309,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/Notices.kt",
       "why": "message rules",
-      "blob": "418828abfa0971a0f7ad97300d49ad152e2d809d"
+      "blob": "11b754e57b58fc8266925630dcb954fe66cec4ea"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/RouteSpotsList.kt",
@@ -374,7 +374,7 @@
   ],
   "shared": {
     "app/src/main/java/com/onpath/app/routing/RoutingContract.kt": {
-      "blob": "232e427cc98254c703d4eea075fc492942883a74",
+      "blob": "6d24a22367860434adf10164a037e2123b604f34",
       "perf": [
         "* [timedOut] = the router gave up for time (search budget used up, or the engine stayed busy): another try with the",
         "* same or shorter budget (leg by leg) would time out too, so the planner does not retry.",
@@ -384,6 +384,7 @@
         "/** The request took too long (also: no route within the time limit). */",
         "TIMEOUT,",
         "Problems.warn(\"routing\", \"Route cancel hook failed; the request runs until its timeout\", e)",
+        "/** Time-limit periods for the search ([RouteTimeLimit] × rounds): 2+ after \"Weiter warten\" ([SlowPlan]). */",
         "* @param sacLimit hiking difficulty limit 1..5 (SAC T1..T5), only used for HIKE."
       ]
     },
@@ -417,7 +418,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/routing/BRouterEngine.kt": {
-      "blob": "8c8b2907b43eaa206bb8a0f3923bd8a830e58c91",
+      "blob": "9b51b9b61bce9e7f50e9d2da3524d0b76f98758b",
       "perf": [
         "* request (same points, activity and SAC limit) returns instantly.",
         "* Via points are hints: BRouter snaps each to the nearest usable way (within [MAX_SNAP_M]) and,",
@@ -426,10 +427,10 @@
         "/** With a time limit (incl. waiting for a running request) and a cancel signal (BRouter `terminate()`). */",
         "cache[key] ?: run {",
         "val budget = limits?.let { (it.timeoutMs - (System.currentTimeMillis() - start)).coerceAtLeast(MIN_BUDGET_MS) }",
-        "routeLocked(waypoints, activity, sacLimit, budget, limits?.cancel)",
+        "routeLocked(waypoints, activity, sacLimit, budget, limits?.cancel, limits?.rounds ?: 1)",
         "}.also { cache[key] = it }",
         "Problems.error(\"routing\", \"BRouter ran out of memory\", e)",
-        "val limit = RouteTimeLimit.forRoute(waypoints, activity)",
+        "val limit = RouteTimeLimit.forRoute(waypoints, activity, rounds)",
         "val timeoutMs = budgetMs?.coerceAtMost(limit) ?: limit",
         "try { engine.doRun(left.coerceAtLeast(MIN_BUDGET_MS)) } finally { cancel?.onCancel(null) }",
         "if (way == null || skipWays.size >= MAX_ISLAND_SKIPS || timeoutMs - (System.currentTimeMillis() - t0) < MIN_BUDGET_MS) {",
@@ -454,7 +455,7 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/routing/RouteTimeLimit.kt": {
-      "blob": "888f0191a78ca0e42ab92cac60ed9c6003d41a64",
+      "blob": "097af462b87a65f7ff0b7b5edaf2de14ac65cdf7",
       "perf": [
         "* BRouter's search time limit for one request, by straight-line distance and profile.",
         "* A short route that is not found quickly is almost always unreachable (only via paths above the SAC limit, an island),",
@@ -463,7 +464,7 @@
         "const val MIN_MS = 15_000L",
         "/** Limit for [km] straight-line kilometres with [activity]. */",
         "return (MIN_MS + km.coerceAtLeast(0.0) * r.msPerKm).toLong().coerceIn(MIN_MS, r.capMs)",
-        "/** Limit for a request through [waypoints] (straight-line sum of the legs). */"
+        "* Limit for a request through [waypoints] (straight-line sum of the legs); [rounds] periods after \"Weiter warten\""
       ]
     },
     "app/src/main/java/com/onpath/app/routing/TurnDetector.kt": {
@@ -475,20 +476,23 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/routing/Planner.kt": {
-      "blob": "37e3c434607c53333ba01c8595db1551a95554ab",
+      "blob": "b6e5b483e88e70cf7d759fe4f614fdd6f01bc569",
       "perf": [
         "/** Wall clock in ms (tests pass their own: the short-trip retry's time budget, [retryShortDetours]). */",
+        "* A plan run the user started in Plan (owner 2026-11-03, [SlowPlan]): at the time limit [plan] throws",
+        "/** Time-limit periods of this run (2+ after \"Weiter warten\", [RouteLimits.rounds]). */",
         "/** One engine request of this planner: points, time, outcome (\"ok\", \"timeout\", \"failed\"), wait for the engine lock. */",
         "/** \"whole 4 pts 34.2 s timeout (lock 0 ms); leg 2 pts 1.2 s ok\" – short, for the event log. */",
         "/** [limitMs] = this request's own time limit (the short-trip retry, [retryShortDetours]); null = the engine's usual one. */",
         "return (if (limitMs != null) engine.route(pts, activity, sac, RouteLimits(minOf(limitMs, PLAN_LIMIT_MS), cancel))",
-        "else engine.route(pts, activity, sac, RouteLimits(PLAN_LIMIT_MS, cancel))).also { outcome = \"ok\" }",
+        "else engine.route(pts, activity, sac, RouteLimits(PLAN_LIMIT_MS * rounds.coerceAtLeast(1), cancel, rounds))).also { outcome = \"ok\" }",
         "outcome = if (e.timedOut) \"timeout\" else if (cancel?.isCancelled == true) \"cancelled\" else \"failed\"",
         "* ([replan]). A stop still cut after [MAX_SPUR_PASSES] passes stays in [PlannedRoute.skipped]; the plan sheet shows it.",
         "for (pass in 0 until MAX_SPUR_PASSES) {",
         "} ?: return replan(waypoints, from, to, activity, sac, ends, MAX_SPUR_PASSES - pass - 1)",
         "if (route.skipped.isNotEmpty()) Problems.trace(\"routing\", \"Point(s) ${route.skipped.sorted().joinToString { \"${it + 1}\" }} still cut after $MAX_SPUR_PASSES passes – shown as skipped\")",
         "if (plan.skipped.isNotEmpty()) Problems.trace(\"routing\", \"Point(s) ${plan.skipped.sorted().joinToString { \"${it + 1}\" }} still cut after $MAX_SPUR_PASSES passes – shown as skipped\")",
+        "// at the time limit in Plan: the user is asked \"Weiter warten?\" (owner 2026-11-03, SlowPlan)",
         "// Timed out: each leg would get its own limit and the wait multiplies (a 4-point plan up to 120 s) –",
         "* Time: the retries count against the time limit of the request that gave the legs ([RouteTimeLimit.forRoute] of",
         "* [waypoints], started at [t0]); each gets only what is left of it, and none starts with less than [MIN_RETRY_MS].",
@@ -502,6 +506,18 @@
         "const val MAX_SPUR_PASSES = 3",
         "/** With a cancel signal: the overall wait for the router (each request keeps its own search budget). */",
         "const val PLAN_LIMIT_MS = 10 * 60_000L"
+      ]
+    },
+    "app/src/main/java/com/onpath/app/routing/SlowPlan.kt": {
+      "blob": "2efd3f158775ca48d2d2fb32e3c5e517f5480f70",
+      "perf": [
+        "* A plan calculation that reaches its time limit ([RouteTimeLimit]) – owner 2026-11-02 / 03 (onpath.private#13, #21 B):",
+        "* - \"Weiter warten\": the calculation runs again with one more time-limit period ([RouteLimits.rounds] + 1) – BRouter",
+        "*   cannot resume a search, so the new run gets the whole longer budget; routed pieces come from the engine's cache.",
+        "*   At that limit it asks again (no maximum: the user decides).",
+        "/** What happens when a run reaches its limit: [ask] = a plan run the user started in Plan. */",
+        "/** Thrown by [Planner] (asking) when its run reached the limit of [rounds] periods; the caller shows the question. */",
+        "class TimeLimit(val rounds: Int) : Exception(\"Route calculation reached its time limit ($rounds period(s))\")"
       ]
     },
     "app/src/main/java/com/onpath/app/routing/WaypointInsertion.kt": {
@@ -600,7 +616,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/search/Place.kt": {
-      "blob": "c0aed90c2c87066b04a4b8b8bdb638a60f73bfd1",
+      "blob": "7909fa6abe70d94dfb564ed5f0590fca549a7bcf",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/search/SearchText.kt": {
@@ -698,7 +714,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/ui/MapGestures.kt": {
-      "blob": "5e4f834fbdc7c6b514717bcad6fe5080fc18d97a",
+      "blob": "3144ae2403d51cfcf7ba1232c2d6d42de24325cf",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/poi/GoogleMapsLink.kt": {
@@ -708,7 +724,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/ui/RouteWarnings.kt": {
-      "blob": "7cdb7bbe92008b5866bfafbf538fb4c516bd86f3",
+      "blob": "662237f2c79707210f21b36b74119e1dc908f1ad",
       "perf": [
         "const val MAX_ITEMS = 3",
         "steepPercent(activity)?.let { limit ->",
@@ -949,7 +965,7 @@
       "perf": []
     },
     "app/src/test/java/com/onpath/app/ui/RouteWarningsTest.kt": {
-      "blob": "aab1ec1883f4b7228b22ca085649d84d19b7c60a",
+      "blob": "95e8e0b7511f0e8ea2508f0cf34d393c34ace16d",
       "perf": []
     },
     "app/src/test/java/com/onpath/app/sync/SyncCryptoTest.kt": {
@@ -1050,7 +1066,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_backup.xml": {
-      "blob": "b543b636330f7254d657cba429be0cc9c64ffaa9",
+      "blob": "9ceddeca12aa216f769def833a3f3113491b3219",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_common.xml": {
@@ -1058,19 +1074,19 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_maps.xml": {
-      "blob": "eb68c69f364d6aff19ba1f466e540847baea37e9",
+      "blob": "9b426702c1bb8dadb32cbf072760927380675dd6",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_messages.xml": {
-      "blob": "4fa35dbcbb4e56d6c62b642118fc4bae62fc6dbe",
+      "blob": "1d3f69f62ccf3735063ab657765e2e9d367939c7",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_navigate.xml": {
-      "blob": "bc25b6b4165affb4a4f7be35677c6247f743908f",
+      "blob": "4d2c05a6b9fc176436a51d2e6049abef91ba00fc",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_plan.xml": {
-      "blob": "790c3fb50a0c4c75ed93380c7f245108322eabca",
+      "blob": "35c4efe96dcf0988d1ffd0a5f0ea00058b9f1c55",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_poi.xml": {
@@ -1078,19 +1094,19 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_routes.xml": {
-      "blob": "7080d2808c44bbccae72c1467e044e6bd719d809",
+      "blob": "bd1b8e79c21e7d266784ca81823a676e616caf27",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_search.xml": {
-      "blob": "06b4ca53c322f7d3256a6986cb58008d10b67e8a",
+      "blob": "49614508ed69380acc7082edcc06b356086e4d02",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_settings.xml": {
-      "blob": "a1a533c5fcce21f4e4360649d4f9036849f0cde3",
+      "blob": "9941e0f304b5c65b25bf2377c437d75d2bc609f1",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_setup.xml": {
-      "blob": "7337739051dd8d44a1ed685d470e4f73ee1ba892",
+      "blob": "25e79f252e18f9552752fc03d0360c6e8246b3e0",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_sync.xml": {
@@ -1098,7 +1114,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_voice.xml": {
-      "blob": "edb2d8b9505a3be465b0a42b6a0dce65f1d580d6",
+      "blob": "9af442ac6d4d67d7b14f14578664590d13457ad8",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_activity.xml": {
@@ -1106,7 +1122,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_backup.xml": {
-      "blob": "90060baba320b02820334c2e0440cc8113ba7789",
+      "blob": "2d252ad933f698a71bf644b0fcf491b3ba9b050b",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_common.xml": {
@@ -1114,19 +1130,19 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_maps.xml": {
-      "blob": "6d48d533e0d3368aad1b15f966465e2d94c4d265",
+      "blob": "3bf824d06384d92728fe7017a6a37dd8b18e55a0",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_messages.xml": {
-      "blob": "a84a5a33064531f62cf5f2a63e73eb05cd094a9a",
+      "blob": "2fe40c2158bb2234634bc78c119cb39da5d8332b",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_navigate.xml": {
-      "blob": "d68e42ebeaa1127b4ad0c3554f5017fc3b8a074d",
+      "blob": "cbebe80d182cb38bc37e98e7b096b2204e4ebc19",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_plan.xml": {
-      "blob": "83abaa0b3adbb7d1a0325932acd883a6298aeaba",
+      "blob": "0ccaefba21d04fe0f7685ab84f69d2f00f878a25",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_poi.xml": {
@@ -1134,19 +1150,19 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_routes.xml": {
-      "blob": "c10f766e9eab26cbb0b9b8132c8382fa578e5c1c",
+      "blob": "efc9e94cdb37aaaf9340044322559f3280fdc48c",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_search.xml": {
-      "blob": "12595ee4ba425041e4c67593ade1ae106cbb7d8f",
+      "blob": "6e00c46ae369c1749efbd6f79fa202c6b8d577b8",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_settings.xml": {
-      "blob": "9936a50a5662a00bd5e921f119b6efa2f3cfd13c",
+      "blob": "c046fb739847dec95291c4e13619e6694a995856",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_setup.xml": {
-      "blob": "d674e0060063dae4a032cfcfed442e6ec706acfe",
+      "blob": "fc31d7a28ec69510e87987f193ec84a3132b5bc7",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_sync.xml": {
@@ -1154,7 +1170,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_voice.xml": {
-      "blob": "55bf350b8778f6fd4c30fce9b28d1f82a5bd6a3c",
+      "blob": "2c6e80259b4f77dc1ff92e9ad0963d7f9b315f7f",
       "perf": []
     },
     "app/libs/brouter-codec-1.7.11-beta-onpath1.jar": {

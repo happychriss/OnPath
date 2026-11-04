@@ -38,7 +38,7 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 let rd5Requests = 0;
 page.on('request', (r) => { if (/\/segments\//.test(r.url()) && !/E10_N45/.test(r.url())) rd5Requests++; }); // the start view's own prefetch (E10_N45) does not count
 const pins = () => page.evaluate(() => document.querySelectorAll('.pin').length);
-const planned = () => page.waitForFunction(() => document.querySelector('#summary .big') && !document.getElementById('status').textContent.includes('Planning'), null, { timeout: 120_000 });
+const planned = () => page.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1' && !document.getElementById('status').textContent.includes('Planning'), null, { timeout: 120_000 });
 const clickAt = async (lon, lat) => {
   const p = await page.evaluate(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }, [lon, lat]);
   await page.mouse.click(p[0], p[1]);
@@ -230,8 +230,10 @@ check(await pins() === n && await page.evaluate(() => location.hash) === planHas
 // pinned points (a POI / place, passed exactly) go out as <wpt><type>pinned</type> and come back pinned (PlanGpx, 23f64bc3)
 const pinCode = await page.evaluate(() => window.__engine.encode({ points: [[46.677, 11.161], [46.6879, 11.1111]], activity: 'HIKE', sac: 2,
   pinned: [1], names: { 1: 'Leiteralm' }, title: 'Pin test' }));
-await page.goto(url + 'index.html#p=' + pinCode);
+await page.goto(url + 'index.html#p=' + pinCode); // a hash change only: the page opens the link without a reload
 await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
+// wait for the link's plan itself – the old plan's summary is still there while the new one is planned
+await page.waitForFunction(() => window.__state?.meta?.[1]?.pinned === true && document.body.dataset.planning !== '1', null, { timeout: 120_000 });
 await planned();
 await page.click('#share');
 const [dl2] = await Promise.all([page.waitForEvent('download'), page.click('dialog.share #exportGpx')]);
