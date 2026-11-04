@@ -174,7 +174,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       li.dataset.where = [here ? 'browser' : '', phone ? 'phone' : ''].filter(Boolean).join('+');
       if (paired && p.dirty) li.classList.add('waiting');
       if (p.id === host.openId() && folder === host.openFolder()) li.classList.add('current');
-      const kind = p.kind === 'track' ? t('web_kind_gpx') : t('routes_tab_planned');
+      const kind = p.kind === 'track' ? t('web_kind_gpx') : t('web_kind_route');
       const kindName = p.kind === 'track' ? t('routes_kind_imported') : t('routes_kind_planned');
       const where = (cls: string, key: string, ic: 'monitor' | 'phone') =>
         `<span class="w ${cls}" role="img" title="${esc(t(key))}" aria-label="${esc(t(key))}">${icon(ic, 18)}</span>`;

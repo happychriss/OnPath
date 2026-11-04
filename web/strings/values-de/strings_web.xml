@@ -214,6 +214,7 @@
     <string name="web_where_browser">In diesem Browser</string>
     <string name="web_where_phone">Auf dem Handy</string>
     <string name="web_kind_gpx">GPX</string>
+    <string name="web_kind_route">Route</string>
     <string name="web_phone_how_link">Wie funktioniert das?</string>
     <!-- ein neuer Punkt weit weg vom Plan (docs/design/web-planner.md §15) -->
     <string name="web_far_title">Weit weg von deiner Route</string>

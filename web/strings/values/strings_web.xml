@@ -230,6 +230,8 @@
     <string name="web_where_browser">In this browser</string>
     <string name="web_where_phone">On the phone</string>
     <string name="web_kind_gpx">GPX</string>
+    <!-- a planned route's row in My routes ("Route · date"; the app's tab is "Routes" since main 10b6561e) -->
+    <string name="web_kind_route">Route</string>
     <string name="web_phone_how_link">How does it work?</string>
     <!-- a new point far from the plan (docs/design/web-planner.md §15): "Far from your route" -->
     <string name="web_far_title">Far from your route</string>

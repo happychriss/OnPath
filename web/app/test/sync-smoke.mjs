@@ -203,7 +203,7 @@ check((await A.textContent('#savedLine')).includes('Saved as Zweitroute'), 'the 
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
 let row = await listRow(A, 'Zweitroute');
-check(row?.where === HERE && !row.bold && row.current && /^Planned · \d+ \w+ \d{4}$/.test(row.sub), `not paired: a row shows 🖥 only, not bold, the open one marked, "Planned · date" (${JSON.stringify(row)})`);
+check(row?.where === HERE && !row.bold && row.current && /^Route · \d+ \w+ \d{4}$/.test(row.sub), `not paired: a row shows 🖥 only, not bold, the open one marked, "Route · date" (${JSON.stringify(row)})`);
 const dialogText = await A.textContent('dialog.plans');
 check(!/Your planned routes|Save current route|Saved as|Without phone|Remove routes/.test(dialogText) && await A.locator('dialog.plans .rename.iconbtn, dialog.plans h3').count() === 0,
   'My routes is one plain list: no heading line, no Save box, no folder lines, no ✎ / 🗑 in the row');
@@ -367,7 +367,7 @@ await phone.round();
 check(JSON.stringify(await phone.titles()) === want, 'after Save the phone has the same two ' + JSON.stringify(await phone.titles()));
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
-check(/^Planned · /.test((await listRow(A, 'Phone name (copy)'))?.sub ?? ''), 'the copy is a row like any other');
+check(/^Route · /.test((await listRow(A, 'Phone name (copy)'))?.sub ?? ''), 'the copy is a row like any other');
 await A.click('#closePlans');
 
 // ---- 7. delete both ways ----
