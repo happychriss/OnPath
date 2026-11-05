@@ -283,8 +283,8 @@ fun NavigateOverlay(
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
             val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            // unlocked: ONE big blue "Plan ändern" where the slider was (owner 2026-11-05, Navigate C)
-            if (unlocked) ChangePlanButton({ open = false; onSlideToPlan() }, bottom)
+            // unlocked: ONE big blue "Plan" where the slider was (owner 2026-11-05, Navigate C), an open lock beside it locks again
+            if (unlocked) ChangePlanButton({ open = false; onSlideToPlan() }, bottom, onLock = if (closableBar) ({ open = false }) else null)
             else SlideToPlan({ open = true }, bottom, recording = ui.recordedM != null, startFraction = slideStartFraction)
         }
         // ONE box under the turn / status column (docs/design/ui-style.md, owner 2026-10-31 – the re-route and

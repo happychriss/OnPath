@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -87,7 +88,7 @@ private val TEXT_GAP = 20.dp
 fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Boolean = true, startFraction: Float = 0f) {
     val label = str(Res.string.nav_slide_unlock)
     val switchLabel = label
-    // TalkBack: "Entsperren. Schieben, um Pause, Tour beenden und Plan ändern freizugeben."
+    // TalkBack: "Entsperren. Schieben, um Pause, Tour beenden und Plan freizugeben."
     val desc = str(if (recording) Res.string.nav_slide_unlock_desc else Res.string.nav_slide_unlock_desc_plan)
     val slid by rememberUpdatedState(onSlid)
     val scope = rememberCoroutineScope()
@@ -139,7 +140,8 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
                 ),
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(30.dp))
+                // a closed lock on the thumb (owner 2026-11-05): the slider only unlocks
+                Icon(Icons.Filled.Lock, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
             }
         }
     }

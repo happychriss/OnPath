@@ -1260,9 +1260,15 @@
     "priority": 2,
     "confidence": "sicher"
   },
+  "nav_relock": {
+    "area": "Navigate",
+    "context": "TalkBack name of the open-lock button beside the big blue Plan button after unlocking: locks the screen again",
+    "priority": 2,
+    "confidence": "sicher"
+  },
   "nav_change_plan": {
     "area": "Navigate",
-    "context": "Big blue button where the slider was, after unlocking: opens the plan to change it; the tour goes on (the mode pill's words, A-022)",
+    "context": "Big blue button where the slider was, after unlocking: opens the plan to change it; the tour goes on (owner 2026-11-05: just 'Plan')",
     "priority": 1,
     "confidence": "sicher",
     "max": 20

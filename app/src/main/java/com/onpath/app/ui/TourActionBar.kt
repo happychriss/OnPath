@@ -16,15 +16,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
@@ -32,7 +35,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 
 /**
- * After the slide (owner 2026-11-05, Navigate C; the blue button reads "Plan ändern"): the tour's two actions directly under the route info in the status card
+ * After the slide (owner 2026-11-05, Navigate C; the blue button reads "Plan"): the tour's two actions directly under the route info in the status card
  * – "Pause" (green tonal, "Fortsetzen" while paused) and "Tour beenden" (green outlined; asks first, "Aufnahme beenden?").
  * Words, no red, ≥ 48 dp. Each closes the unlocked state ([onClose]); paused the actions stay (Fortsetzen at once).
  */
@@ -71,16 +74,23 @@ fun TourCardActions(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Un
 }
 
 /**
- * Where the slider was, after the slide: ONE big blue "Plan ändern" (owner 2026-11-05: large so nobody misses it – full
- * width, 56 dp like the green main buttons) – opens the plan; the tour goes on.
+ * Where the slider was, after the slide: ONE big blue "Plan" (owner 2026-11-05: large so nobody misses it – full
+ * width, 56 dp like the green main buttons; the word is just "Plan") – opens the plan; the tour goes on. [onLock]: an
+ * open lock left of it (owner 2026-11-05: lock / unlock as a sign) – shows the screen is unlocked, a tap locks it again;
+ * null = nothing to lock (the lock is off in the settings, or paused – then it stays open).
  */
 @Composable
-fun ChangePlanButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionEdit, contentColor = OnPathColors.CardWhite),
-        contentPadding = PaddingValues(horizontal = 24.dp), modifier = modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-        Icon(Icons.Filled.Edit, null, modifier = Modifier.size(22.dp))
-        Spacer(Modifier.width(10.dp))
-        Text(str(Res.string.nav_change_plan), style = MaterialTheme.typography.titleMedium, maxLines = 1)
+fun ChangePlanButton(onClick: () -> Unit, modifier: Modifier = Modifier, onLock: (() -> Unit)? = null) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (onLock != null) FilledTonalIconButton(onClick = onLock, modifier = Modifier.size(56.dp)) {
+            Icon(Icons.Filled.LockOpen, contentDescription = str(Res.string.nav_relock), modifier = Modifier.size(26.dp))
+        }
+        Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionEdit, contentColor = OnPathColors.CardWhite),
+            contentPadding = PaddingValues(horizontal = 24.dp), modifier = Modifier.weight(1f).heightIn(min = 56.dp)) {
+            Icon(Icons.Filled.Edit, null, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(str(Res.string.nav_change_plan), style = MaterialTheme.typography.titleMedium, maxLines = 1)
+        }
     }
 }
 

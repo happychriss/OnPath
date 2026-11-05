@@ -79,9 +79,9 @@ class PlanSizeTourTest {
     @Test fun theSliderUnlocksPauseChangeRouteAndEnd() {
         val nav = java.io.File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()
         assertEquals(true, nav.contains("onPause = vm::pauseRecording, onEnd = { vm.askEndTour() }"))
-        // owner 2026-11-05 (Navigate C): Pause / Tour beenden in the status card, "Plan ändern" where the slider was
+        // owner 2026-11-05 (Navigate C): Pause / Tour beenden in the status card, "Plan" where the slider was
         assertEquals(true, nav.contains("TourCardActions(ui.paused, onPause, onEnd, onClose = { open = false })"))
-        assertEquals(true, nav.contains("ChangePlanButton({ open = false; onSlideToPlan() }, bottom)"))
+        assertEquals(true, nav.contains("ChangePlanButton({ open = false; onSlideToPlan() }, bottom, onLock = "))
         val bar = java.io.File("src/main/java/com/onpath/app/ui/TourActionBar.kt").readText()
         for (s in listOf("Res.string.nav_action_pause", "Res.string.common_resume", "Res.string.nav_change_plan", "Res.string.nav_end_tour"))
             assertEquals(s, true, bar.contains(s))
