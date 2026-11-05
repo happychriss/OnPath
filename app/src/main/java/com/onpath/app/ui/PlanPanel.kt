@@ -480,7 +480,7 @@ private fun CollapsedRow(ui: PlanUi, cb: PlanCallbacks, barShown: () -> Float, s
                     Text("${ui.warnCount}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
                         color = OnPathColors.Amber, modifier = Modifier.padding(start = 2.dp, end = 6.dp))
                 }
-                if (ui.pointCount >= 2 || ui.tour != null) CompactGo(ui, cb, on)
+                if ((ui.pointCount >= 2 || ui.tour != null) && !(LocalBackToTourInBand.current && (ui.tour != null || ui.tourRunning))) CompactGo(ui, cb, on)
             }
         }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { ms, c ->
             val gap = 8.dp.roundToPx()
@@ -620,7 +620,7 @@ private val PROFILE_HEIGHT = 120.dp
  */
 @Composable
 private fun ColumnScope.PlanBar(ui: PlanUi, cb: PlanCallbacks) {
-    if (PlanBarRow.shown(ui)) {
+    if (PlanBarRow.shown(ui, LocalBackToTourInBand.current)) {
         Spacer(Modifier.height(PlanBarRow.GAP))
         // rolled up, the bar lies below the screen's edge: the row's own button is the one for TalkBack / tests
         Box(if (ui.collapsed) Modifier.clearAndSetSemantics { } else Modifier) { GoButton(ui, cb) }
@@ -639,9 +639,16 @@ object PlanBarRow {
     /** Above the button (the sheet's foot gives the air below). */
     val GAP = 4.dp
 
-    /** Without a tour the button starts at two points (one point only records: the rolled-up row / ☰); during a tour always. */
-    fun shown(ui: PlanUi): Boolean = ui.tour != null || (!ui.tourRunning && ui.pointCount >= 2)
+    /**
+     * Without a tour the button starts at two points (one point only records: the rolled-up row / ☰); during a tour
+     * always – unless "‹ Zur Tour" sits in the top band ([backInBand], proposal 2026-11-05): then none during a tour.
+     */
+    fun shown(ui: PlanUi, backInBand: Boolean = false): Boolean =
+        !(backInBand && (ui.tour != null || ui.tourRunning)) && (ui.tour != null || (!ui.tourRunning && ui.pointCount >= 2))
 }
+
+/** Proposal 2026-11-05 (pictures only): "‹ Zur Tour" in the top band, so the sheet has no green button during a tour. */
+val LocalBackToTourInBand = androidx.compose.runtime.staticCompositionLocalOf { false }
 
 /** The plan has no route on purpose: says why, and calculates it on request (stays until then – no timeout). */
 @Composable

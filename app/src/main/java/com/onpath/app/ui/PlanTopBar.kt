@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.Warning
@@ -112,7 +114,34 @@ fun PlanTopBar(
     offline: OfflineReady.State? = null,
     /** A tap on the label: explain the offline state (a line in the plan sheet). */
     onOffline: () -> Unit = {},
+    /**
+     * Proposal 2026-11-05 (owner OK for pictures, not built yet): during a tour "‹ Zur Tour" top left (Android's up
+     * navigation) with the mode label beside it, the search pill + ☰ in a row under it; null = today.
+     */
+    onBackToTour: (() -> Unit)? = null,
 ) {
+    if (editing && onBackToTour != null) {
+        Column(modifier.padding(horizontal = 12.dp).padding(top = 4.dp, bottom = 8.dp)) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.TextButton(onClick = onBackToTour,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 4.dp, end = 12.dp),
+                    modifier = Modifier.heightIn(min = 48.dp)) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = OnPathColors.PlanAccent, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(str(Res.string.plan_back_to_tour), style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold, color = OnPathColors.PlanAccent, maxLines = 1, softWrap = false)
+                }
+                Spacer(Modifier.weight(1f))
+                PlanModeLabel(true, Modifier, offline, onOffline)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SearchBarPill(onSearch, Modifier.weight(1f))
+                Spacer(Modifier.width(8.dp))
+                AppMenuButton(menu, menuInitiallyOpen)
+            }
+        }
+        return
+    }
     Box(modifier) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             // also while the route is changed during a tour: search + ☰ as at home (owner 2026-11-01 turned down a green
