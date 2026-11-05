@@ -86,12 +86,11 @@ the git log.
 - **[cloud-app] Navigate's slider bar: no change (owner 2026-11-05 correction)** – the slider and today's buttons stay as built;
   the action-sheet / tile ideas of today are dropped. The open design question is only the plan sheet during a tour
   (next line, in work with the captain).
-- **[cloud-app] Plan during a tour: one main button, plan actions with the plan tools (owner 2026-11-05, A taken)** – today
-  the bottom row is three equally loud pills (green Weiter · blue "Plan / speichern" wrapping · red Neu planen). New: "Speichern"
-  and "Neu planen" become blue outlined chips in the tools row next to "Umkehren" / "Rundtour" (wrap to two lines on narrow
-  phones); the bottom is ONE filled green full-width button "Navigation fortsetzen". Text, no icons as the message; no red.
-  Navigate's slider bar unchanged. Screenshots DE + EN + large font first; B / C still possible:
-  https://claude.ai/artifact/9Ju2XSLNrwiaaxmEw9pbDP. Planner unaffected (no tour in the browser).
+- **[cloud-app] Plan during a tour: three buttons in two groups (owner 2026-11-05, D – his own idea)** – today three equally
+  loud pills (green Weiter · blue "Plan / speichern" wrapping · red Neu planen). New, one row, same height: left a filled
+  green "Weiter" (short text, no icon), then a gap, then ONE blue outlined split button "Speichern | Neu planen" (two
+  halves, a thin blue divider). Filled = navigation, outlined = plan; no red; every label on one line. Navigate's slider
+  bar unchanged. Screenshots DE + EN + large font first. Sketch D: https://claude.ai/artifact/9Ju2XSLNrwiaaxmEw9pbDP
 - **[cloud-app] Far start: ask before routing the way there (owner 2026-11-05, corrected)** – a plan loaded in Meran, "Route
   starten" in Hilden → "Hinführen" routed the lead for a very long time, then "no route". No hard limit (owner: 100 km by
   bike is fine for some). Instead, before the lead is routed, when the way there is long (same idea as the plan's
