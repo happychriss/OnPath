@@ -74,7 +74,7 @@ class CorePlanLinkE2ETest : E2EBase() {
         startPlanWithTwoPoints()
         val before = points()
         open(frozenLink)
-        assertNotNull("Replace current route? – ${state()}", findFresh(By.text("Replace current route?"), 10_000))
+        assertNotNull("Replace current plan? – ${state()}", findFresh(By.text("Replace current plan?"), 10_000))
         assertEquals("nothing replaced before the answer", before, points())
         clickText("Replace")
         waitUntil("replaced by the link's plan") { points().getOrNull(1) == GeoPoint(46.6879, 11.1111) }
@@ -97,7 +97,7 @@ class CorePlanLinkE2ETest : E2EBase() {
         scenario.onActivity { vm(it).deletePointFromList(2) }
         waitUntil("point deleted") { waypointCount() == 2 }
         open(frozenLink)
-        assertNotNull("Replace current route? – ${state()}", findFresh(By.text("Replace current route?"), 10_000))
+        assertNotNull("Replace current plan? – ${state()}", findFresh(By.text("Replace current plan?"), 10_000))
     }
 
     @Test fun sharedLinkOpensTheSamePlan() {
