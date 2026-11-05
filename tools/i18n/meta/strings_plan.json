@@ -391,6 +391,27 @@
     "priority": 2,
     "confidence": "sicher"
   },
+  "plan_bar_go": {
+    "area": "Plan sheet",
+    "context": "Green button at the plan sheet's bottom left, after a ▶ sign: start the tour. Only as wide as its text, one line (TalkBack hears the full 'Let’s go · <destination>')",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "plan_bar_navigation": {
+    "area": "Plan sheet",
+    "context": "Green button at the plan sheet's bottom left during a tour, after a ‹ back sign: back to the navigation (TalkBack hears 'Continue · <activity>')",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "plan_bar_save": {
+    "area": "Plan sheet",
+    "context": "Left half of the blue outlined group 'Save | New plan' at the plan sheet's bottom: save the plan as a route (opens the name dialog). One line, short",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 12
+  },
   "plan_discard_title": {
     "area": "Plan sheet",
     "context": "Title of the question after ✕ Close plan while the plan has unsaved changes",
@@ -1232,8 +1253,18 @@
     "priority": 1,
     "confidence": "sicher"
   },
-  "plan_from_track_busy_title": {"area": "Plan from a track", "context": "Modal box title while a track is turned into a route (Cancel only)", "priority": 2, "confidence": "sicher"},
-  "plan_from_track_busy_text": {"area": "Plan from a track", "context": "Line under the spinner in that box", "priority": 2, "confidence": "sicher"},
+  "plan_from_track_busy_title": {
+    "area": "Plan from a track",
+    "context": "Modal box title while a track is turned into a route (Cancel only)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_from_track_busy_text": {
+    "area": "Plan from a track",
+    "context": "Line under the spinner in that box",
+    "priority": 2,
+    "confidence": "sicher"
+  },
   "plan_from_track_failed": {
     "area": "Track panel",
     "context": "Error line: no route could be made from the track",

@@ -478,6 +478,19 @@ class ScreenshotTest {
         }
     }
 
+    /**
+     * Design proposal 2026-11-05 (owner: compact, Material 3 + Google Maps logic): the profile step with the bottom row
+     * in [style] – without a tour ("Los geht's") or during a tour ("‹ Navigation"). Drawn by [PlanBarProposalTest].
+     */
+    fun planBarProposal(style: PlanBarStyle, tour: Boolean) = paparazzi.snapshot(name = "${style.name}_${if (tour) "tour" else "plan"}") {
+        androidx.compose.runtime.CompositionLocalProvider(LocalPlanBarStyle provides style) {
+            if (tour) Frame(editing = true) {
+                PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
+                    PlanCallbacks(onSaveRoute = {}))
+            } else Frame { PlanPanel(planUi(size = PlanSize.COMPACT), PlanCallbacks(onSaveRoute = {})) }
+        }
+    }
+
     /** "Route ändern" as it opens: only the tile bar (red New plan live – there is a plan); the map free. */
     @Test fun planTourRunningCollapsed() = paparazzi.snapshot {
         Frame(editing = true) {

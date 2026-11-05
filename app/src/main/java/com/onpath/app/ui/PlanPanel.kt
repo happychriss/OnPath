@@ -31,6 +31,14 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.BookmarkAdd
+import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.outlined.Cancel
@@ -242,7 +250,8 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
     ) {
         // the pulled-up sheet has ONE fixed height (owner): deleting / adding / moving points (or the routing
         // bar) never makes its top edge jump; the scrolling area takes what is left
-        val bodyH = (LocalConfiguration.current.screenHeightDp * FULL_SHEET_FRACTION).dp - if (tour) TOUR_BAR else PRIMARY_BAR
+        val bodyH = (LocalConfiguration.current.screenHeightDp * FULL_SHEET_FRACTION).dp -
+            if (tour && LocalPlanBarStyle.current == PlanBarStyle.TODAY) TOUR_BAR else PRIMARY_BAR
         val sheet = this
         Column(Modifier.fillMaxWidth().height(bodyH)) { PlanBody(sheet, ui, cb, scroll, state::barShown) }
     }
@@ -283,8 +292,10 @@ private fun HeaderLine(chip: @Composable () -> Unit, title: @Composable () -> Un
 private fun PlanActions(ui: PlanUi, cb: PlanCallbacks) {
     androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(),
         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly) {
-        // during a tour the tiles end the edit ("Änderungen verwerfen"), not "Neu planen" (owner 2026-11-02)
-        if (ui.tour == null) PlanAction(Icons.Filled.Close, str(Res.string.plan_close_plan), RouteRules.canClear(ui.pointCount), cb.onClear)
+        // "Neu planen" is in the bottom row's blue group (owner 2026-11-05, F); here only while that row is not shown
+        // (one point without a tour), so it is always there exactly once
+        val inBar = if (LocalPlanBarStyle.current == PlanBarStyle.TODAY) ui.tour != null else PlanBarRow.shown(ui)
+        if (!inBar) PlanAction(Icons.Filled.Close, str(Res.string.plan_close_plan), RouteRules.canClear(ui.pointCount), cb.onClear)
         PlanAction(Icons.Outlined.SwapVert, str(Res.string.plan_reverse), ui.pointCount >= 2, cb.onReverse)
         PlanAction(Icons.Outlined.Loop, str(Res.string.plan_round_trip), ui.pointCount >= 2 && !ui.roundTrip, cb.onRoundTrip)
     }
@@ -307,11 +318,11 @@ private fun PlanAction(icon: androidx.compose.ui.graphics.vector.ImageVector, la
 
 /** Share of the screen height the pulled-up plan sheet always takes (below the grab handle). */
 internal const val FULL_SHEET_FRACTION = 0.62f
-/** Height of the primary button row at the sheet's bottom (4 dp gap + 48 dp button). */
+/** Height of the bottom row at the sheet's bottom (4 dp gap + 48 dp button) – the proposals: with and without a tour. */
 private val PRIMARY_BAR = 52.dp
-/** Above and below the tile bar during a tour. */
+/** Above and below today's tile bar during a tour. */
 private val TOUR_BAR_GAP = 6.dp
-/** The bottom bar during a tour: the tiles + their gaps. */
+/** Today's bottom bar during a tour: the tiles + their gaps. */
 private val TOUR_BAR = TourActions.BAR_HEIGHT + TOUR_BAR_GAP * 2
 
 @Composable
@@ -437,11 +448,44 @@ private fun RoutingBar(progress: Pair<Int, Int>?, share: Float?, modifier: Modif
 private val PROFILE_HEIGHT = 120.dp
 
 /**
- * Bottom of the sheet: the one primary button; during a tour the tile bar (owner 2026-11-02, [TourEditBar]): green
- * Continue navigation · blue Save route · red New plan (owner 2026-11-03) – in every step.
+ * Bottom of the sheet (owner 2026-11-05, onpath.private#30 = F: "the double row takes too much plan space – make it
+ * compact"): ONE row as high as one button. Left the filled green [GoButton], only as wide as its words – "▶ Los geht's",
+ * during a tour "‹ Navigation"; right, filling the rest, ONE blue outlined group [PlanGroup] "Speichern | Neu planen".
+ * Filled = navigation, outlined = plan; no red. Every word on one line – with a large font the group moves to its own
+ * line under the button ([PlanBarRow]). Without a tour from two points on (the rolled-up step has its own Start), during
+ * a tour in every step.
  */
 @Composable
 private fun ColumnScope.PlanBar(ui: PlanUi, cb: PlanCallbacks) {
+    val style = LocalPlanBarStyle.current
+    if (style == PlanBarStyle.TODAY) { TodayBar(ui, cb); return }
+    if (PlanBarRow.shown(ui)) {
+        Spacer(Modifier.height(PlanBarRow.GAP))
+        val canNew = RouteRules.canClear(ui.pointCount)
+        // rolled up, the bar lies below the screen's edge: the row's own Start is the one for TalkBack / tests
+        Box(if (ui.tour == null && ui.collapsed) Modifier.clearAndSetSemantics { } else Modifier) {
+            when (style) {
+                PlanBarStyle.F_GROUP -> PlanBarLayout(go = { GoButton(ui, cb) }, group = {
+                    PlanGroup(onSave = cb.onSaveRoute, canNewPlan = canNew, onNewPlan = cb.onClear)
+                })
+                PlanBarStyle.MAPS_PILLS -> MapsPillsRow(ui, cb, canNew)
+                PlanBarStyle.ICON_BUTTONS -> IconButtonsRow(ui, cb, canNew)
+                PlanBarStyle.SPLIT -> SplitGoButton(ui, cb, canNew)
+                PlanBarStyle.TODAY -> Unit
+            }
+        }
+    } else Spacer(Modifier.height(8.dp))
+}
+
+/** Design proposal 2026-11-05 (owner: compact, Material 3 + Google Maps logic): the bottom row's look, set only by the screenshot test. */
+enum class PlanBarStyle { TODAY, F_GROUP, MAPS_PILLS, ICON_BUTTONS, SPLIT }
+
+/** Today's bar unless a screenshot test provides another proposal. */
+val LocalPlanBarStyle = androidx.compose.runtime.staticCompositionLocalOf { PlanBarStyle.TODAY }
+
+/** Today's bar: the one primary button; during a tour the tile bar ([TourEditBar]). */
+@Composable
+private fun ColumnScope.TodayBar(ui: PlanUi, cb: PlanCallbacks) {
     val t = ui.tour
     if (t != null) {
         Spacer(Modifier.height(TOUR_BAR_GAP))
@@ -453,6 +497,152 @@ private fun ColumnScope.PlanBar(ui: PlanUi, cb: PlanCallbacks) {
         // rolled up, the bar lies below the screen's edge: the row's own Start is the one for TalkBack / tests
         Box(if (ui.collapsed) Modifier.clearAndSetSemantics { } else Modifier) { PrimaryAction(ui, cb) }
     } else Spacer(Modifier.height(8.dp))
+}
+
+/** Today's one filled button of the sheet. */
+@Composable
+private fun PrimaryAction(ui: PlanUi, cb: PlanCallbacks) {
+    // the button names the activity (owner: a wrong activity is a disaster)
+    Button(onClick = if (ui.tourRunning) cb.onContinue else cb.onStartNavigation, enabled = ui.tourRunning || ui.canStart,
+        modifier = Modifier.fillMaxWidth().height(48.dp)) {
+        // without a line it only records: the record dot of ☰ → Start recording, not the navigation arrow
+        Icon(if (!ui.tourRunning && ui.start == PlanStart.RECORD_ONLY) Icons.Filled.FiberManualRecord else Icons.Filled.Navigation, null)
+        Spacer(Modifier.width(8.dp))
+        Text(primaryLabel(ui), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** V2 (Google Maps directions sheet): a green filled pill + two separate blue outlined pill chips, scrolls sideways. */
+@Composable
+private fun MapsPillsRow(ui: PlanUi, cb: PlanCallbacks, canNew: Boolean) {
+    val blue = OnPathColors.ActionEdit
+    val full = primaryLabel(ui)
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Button(onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 12.dp, end = 16.dp),
+            modifier = Modifier.semantics { contentDescription = full }) {
+            Icon(if (ui.tourRunning) Icons.AutoMirrored.Filled.KeyboardArrowLeft else Icons.Filled.Navigation, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(goLabel(ui), maxLines = 1, softWrap = false, modifier = Modifier.clearAndSetSemantics { })
+        }
+        PlanChip(Icons.Outlined.BookmarkAdd, str(Res.string.plan_bar_save), cb.onSaveRoute != null, blue) { cb.onSaveRoute?.invoke() }
+        PlanChip(Icons.Outlined.RestartAlt, str(Res.string.plan_close_plan), canNew, blue, cb.onClear)
+    }
+}
+
+@Composable
+private fun PlanChip(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, blue: Color,
+                     onClick: () -> Unit) {
+    androidx.compose.material3.OutlinedButton(onClick = onClick, enabled = enabled,
+        border = androidx.compose.foundation.BorderStroke(1.dp, if (enabled) blue else blue.copy(alpha = 0.3f)),
+        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = blue),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 10.dp, end = 12.dp)) {
+        Icon(icon, null, Modifier.size(18.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(label, maxLines = 1, softWrap = false)
+    }
+}
+
+/** V3: the green button with its words takes the width; Save and New plan as two round tonal blue icon buttons. */
+@Composable
+private fun IconButtonsRow(ui: PlanUi, cb: PlanCallbacks, canNew: Boolean) {
+    val full = primaryLabel(ui)
+    val tonal = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
+        containerColor = OnPathColors.ActionEdit.copy(alpha = 0.14f), contentColor = OnPathColors.ActionEdit)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Button(onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
+            modifier = Modifier.weight(1f).height(48.dp).semantics { contentDescription = full }) {
+            Icon(goIcon(ui), null, Modifier.size(20.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(goLabel(ui), style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false,
+                modifier = Modifier.clearAndSetSemantics { })
+        }
+        androidx.compose.material3.FilledTonalIconButton(onClick = { cb.onSaveRoute?.invoke() }, enabled = cb.onSaveRoute != null,
+            colors = tonal, modifier = Modifier.size(48.dp)) {
+            Icon(Icons.Outlined.BookmarkAdd, str(Res.string.plan_bar_save))
+        }
+        androidx.compose.material3.FilledTonalIconButton(onClick = cb.onClear, enabled = canNew, colors = tonal,
+            modifier = Modifier.size(48.dp)) {
+            Icon(Icons.Outlined.RestartAlt, str(Res.string.plan_close_plan))
+        }
+    }
+}
+
+/** V4 (Material 3 Expressive split button): one green "▶ Los geht's | ▾" – the menu holds Speichern / Neu planen. */
+@Composable
+private fun SplitGoButton(ui: PlanUi, cb: PlanCallbacks, canNew: Boolean) {
+    val full = primaryLabel(ui)
+    var open by remember { mutableStateOf(false) }
+    val big = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp, topEnd = 4.dp, bottomEnd = 4.dp)
+    val small = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp, topEnd = 24.dp, bottomEnd = 24.dp)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        Button(onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart, shape = big,
+            modifier = Modifier.weight(1f).height(48.dp).semantics { contentDescription = full }) {
+            Icon(goIcon(ui), null, Modifier.size(20.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(goLabel(ui), style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false,
+                modifier = Modifier.clearAndSetSemantics { })
+        }
+        Box {
+            Button(onClick = { open = true }, shape = small, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                modifier = Modifier.width(56.dp).height(48.dp)) {
+                Icon(Icons.Filled.ArrowDropDown, str(Res.string.plan_bar_save) + " · " + str(Res.string.plan_close_plan))
+            }
+            androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                androidx.compose.material3.DropdownMenuItem(text = { Text(str(Res.string.plan_save_route)) },
+                    leadingIcon = { Icon(Icons.Outlined.BookmarkAdd, null) }, enabled = cb.onSaveRoute != null,
+                    onClick = { open = false; cb.onSaveRoute?.invoke() })
+                androidx.compose.material3.DropdownMenuItem(text = { Text(str(Res.string.plan_close_plan)) },
+                    leadingIcon = { Icon(Icons.Outlined.RestartAlt, null) }, enabled = canNew,
+                    onClick = { open = false; cb.onClear() })
+            }
+        }
+    }
+}
+
+/** Start, or back to the navigation during a tour (also resumes a paused recording). */
+private fun goClick(ui: PlanUi, cb: PlanCallbacks) {
+    val tour = ui.tour
+    if (tour != null) { if (tour.paused) cb.onPause(false); cb.onContinue() }
+    else if (ui.tourRunning) cb.onContinue() else cb.onStartNavigation()
+}
+
+/** The bar's one row: [go] at its own width, [group] the rest – or, when its words do not fit there, a line of its own. */
+@Composable
+private fun PlanBarLayout(go: @Composable () -> Unit, group: @Composable () -> Unit) {
+    Layout(content = { go(); group() }) { ms, c ->
+        val gap = PlanBarRow.GAP_BETWEEN.roundToPx()
+        val line = PlanBarRow.LINE_GAP.roundToPx()
+        val max = c.maxWidth
+        val g = ms[0].measure(Constraints(maxWidth = max))
+        val groupNeeds = ms[1].maxIntrinsicWidth(Constraints.Infinity)
+        val wraps = PlanBarRow.wraps(g.width, groupNeeds, gap, max)
+        // beside it the group fills the rest; on its own line the whole width
+        val w = if (wraps) max else (max - g.width - gap).coerceAtLeast(0)
+        val pw = ms[1].measure(Constraints(minWidth = w, maxWidth = w))
+        val h = if (wraps) g.height + line + pw.height else maxOf(g.height, pw.height)
+        layout(max, h) {
+            if (wraps) { g.placeRelative(0, 0); pw.placeRelative(0, g.height + line) }
+            else { g.placeRelative(0, (h - g.height) / 2); pw.placeRelative(g.width + gap, (h - pw.height) / 2) }
+        }
+    }
+}
+
+/** Rules of the sheet's bottom row (pure). */
+object PlanBarRow {
+    /** Above the row (the sheet's foot gives the air below). */
+    val GAP = 4.dp
+    /** Between the green button and the group. */
+    val GAP_BETWEEN = 8.dp
+    /** Between the button and the group when the group has its own line (large font). */
+    val LINE_GAP = 8.dp
+
+    /** Without a tour the bar starts at two points (one point: ✕ Neu planen stays in the pill row); during a tour always. */
+    fun shown(ui: PlanUi): Boolean = ui.tour != null || (!ui.tourRunning && ui.pointCount >= 2)
+
+    /** The group's words do not fit beside the button: it goes to its own line (never cut, never two lines). */
+    fun wraps(goWidth: Int, groupWidth: Int, gap: Int, maxWidth: Int): Boolean = goWidth + gap + groupWidth > maxWidth
 }
 
 /**
@@ -767,23 +957,70 @@ internal fun stopColor(i: Int, count: Int): Color = when {
     else -> OnPathColors.Route
 }
 
-/** The one filled button of the sheet. */
+/**
+ * The one filled (green) button of the sheet, only as wide as its words (owner 2026-11-05, F): "▶ Los geht's", during a
+ * tour "‹ Navigation" (back to it; also resumes a paused recording). TalkBack hears the full [primaryLabel] – the
+ * destination or the activity ("Los geht's · Schloss Nordkirchen", "Weiter · Gravelbike"); the chip shows the activity.
+ */
 @Composable
-private fun PrimaryAction(ui: PlanUi, cb: PlanCallbacks) {
-    // the button names the activity (owner: a wrong activity is a disaster)
-    Button(onClick = if (ui.tourRunning) cb.onContinue else cb.onStartNavigation, enabled = ui.tourRunning || ui.canStart,
-        modifier = Modifier.fillMaxWidth().height(48.dp)) {
-        // without a line it only records: the record dot of ☰ → Start recording, not the navigation arrow
-        Icon(if (!ui.tourRunning && ui.start == PlanStart.RECORD_ONLY) Icons.Filled.FiberManualRecord else Icons.Filled.Navigation, null)
-        Spacer(Modifier.width(8.dp))
-        Text(primaryLabel(ui), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun GoButton(ui: PlanUi, cb: PlanCallbacks) {
+    val tour = ui.tour
+    val full = primaryLabel(ui)
+    Button(onClick = {
+        if (tour != null) { if (tour.paused) cb.onPause(false); cb.onContinue() }
+        else if (ui.tourRunning) cb.onContinue() else cb.onStartNavigation()
+    }, enabled = ui.tourRunning || ui.canStart,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 14.dp, end = 18.dp),
+        modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = full }) {
+        // without a line it only records: the record dot, not ▶
+        Icon(goIcon(ui), null, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(goLabel(ui), style = MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false,
+            modifier = Modifier.clearAndSetSemantics { })
+    }
+}
+
+/** The green button's word: "Los geht's" / during a tour "Navigation" (owner 2026-11-05, F). */
+internal fun goLabel(ui: PlanUi): String = Txt.s(if (ui.tourRunning) Res.string.plan_bar_navigation else Res.string.plan_bar_go)
+
+/** ‹ back to the navigation during a tour, ▶ to start, ● when it only records (no line to follow). */
+private fun goIcon(ui: PlanUi): androidx.compose.ui.graphics.vector.ImageVector = when {
+    ui.tourRunning -> Icons.AutoMirrored.Filled.KeyboardArrowLeft
+    ui.start == PlanStart.RECORD_ONLY -> Icons.Filled.FiberManualRecord
+    else -> Icons.Filled.PlayArrow
+}
+
+/**
+ * The plan's blue group (owner 2026-11-05, F): ONE outlined pill split in two – "Speichern" (Save's name dialog; greyed
+ * without a plan to save) | "Neu planen" (the one clear path: a saved plan clears, an unsaved one asks "Discard
+ * changes?" first; greyed when empty). Each half ≥ 48 dp, its word on one line, both halves equally wide.
+ */
+@Composable
+private fun PlanGroup(onSave: (() -> Unit)?, canNewPlan: Boolean, onNewPlan: () -> Unit) {
+    val blue = OnPathColors.ActionEdit
+    Surface(shape = CircleShape, color = Color.Transparent, border = androidx.compose.foundation.BorderStroke(1.5.dp, blue)) {
+        Row(Modifier.height(IntrinsicSize.Min)) {
+            GroupHalf(str(Res.string.plan_bar_save), onSave != null, blue, Modifier.weight(1f)) { onSave?.invoke() }
+            Box(Modifier.width(1.5.dp).fillMaxHeight().background(blue))
+            GroupHalf(str(Res.string.plan_close_plan), canNewPlan, blue, Modifier.weight(1f), onNewPlan)
+        }
+    }
+}
+
+@Composable
+private fun GroupHalf(label: String, enabled: Boolean, blue: Color, modifier: Modifier, onClick: () -> Unit) {
+    val ink = if (enabled) blue else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    Box(modifier.heightIn(min = 48.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+        .padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
+        Text(label, style = MaterialTheme.typography.labelLarge, color = ink, maxLines = 1,
+            softWrap = false)
     }
 }
 
 /**
- * "Los geht's · Schloss Nordkirchen" (owner 2026-11-02, onpath.private#16: the destination's name; unnamed destination or
- * a round trip: the activity, "Los geht's · Wandern") / "Weiter · Gravelbike"; no point or only one:
- * "Los geht’s · ohne Route" (owner 2026-11-03, fewer terms: Planen / Unterwegs, Route / Tour).
+ * TalkBack's words for the green button: "Los geht's · Schloss Nordkirchen" (owner 2026-11-02, onpath.private#16: the
+ * destination's name; unnamed destination or a round trip: the activity, "Los geht's · Wandern") / "Weiter · Gravelbike";
+ * no point or only one: "Los geht’s · ohne Route" (owner 2026-11-03, fewer terms: Planen / Unterwegs, Route / Tour).
  */
 internal fun primaryLabel(ui: PlanUi): String = when {
     ui.tourRunning -> Txt.s(Res.string.plan_continue_navigation_for, ui.activity.navName)
