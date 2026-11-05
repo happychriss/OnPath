@@ -84,6 +84,7 @@ the git log.
 - [donald] Plan sheet bottom: ONE compact row '▶ Los geht's' / '‹ Navigation' + 'Speichern | Neu planen' (owner 2026-11-05, F) – since 2026-11-05
 
 ## Next
+- **[cloud-plan] Terrain view – fixes after the owner's first look (2026-11-05 night, laptop shut mid-work)**: saved unfinished, NOT gated in `wip/laptop-2026-11-05-terrain-fixes` (diff against web-spike 06e20cf7). To do: (1) the app's steepness colours (green/yellow/orange/red, profile.ts COLOURS) in the big profile, legend and route on the map – no blue; (2) 3D clearly perspective (pitch ~60–65°, exaggeration ~1.5, fit the route with pitch, screenshot after idle) – mountains must be recognisable; (3) ⤢ button off the small profile; (4) total distance at the end of the x axis; (5) big profile open → fit the route above it. Then ui-smoke + terrain-shots, pictures DE + EN to onpath.private/marketing/bilder/ for the owner.
 - **[cloud-plan] Flaky web smokes on GitHub** (2026-11-05): robust-smoke "two quick clicks: the second is the new destination" red in 2 of 4 runs, sync-smoke "Save on the laptop → on the phone" red once – both green locally (also with CPU throttling). Find the cause, no retry loops.
 - **[cloud-app] Navigate's slider bar: no change (owner 2026-11-05 correction)** – the slider and today's buttons stay as built;
   the action-sheet / tile ideas of today are dropped. The open design question is only the plan sheet during a tour
