@@ -604,7 +604,7 @@ await R.waitForSelector(`dialog.phone[open] .removefolder[data-folder="${restPho
 check(!(await R.locator('dialog.plans[open]').count()), 'its button opens the Phone window (it lists the old phone\'s folder)');
 await R.click(`dialog.phone .removefolder[data-folder="${restPhone.device}"]`);
 await R.waitForSelector('dialog.phone .confirm', { timeout: 10_000 }).catch(() => {});
-check(((await R.textContent('dialog.phone .confirm p').catch(() => '')) ?? '').includes('1 route was never sent'), 'Remove asks (one route never sent)');
+check(((await R.textContent('dialog.phone .confirm p').catch(() => '')) ?? '').includes('1 plan was never sent'), 'Remove asks (one plan never sent)');
 await R.click('dialog.phone .confirm .danger');
 await R.waitForFunction(() => window.__sync.status.closed.length === 0, null, { timeout: 10_000 }).catch(() => {});
 check((await status(R)).closed.length === 0 && (await titles(R, restPhone.device)).length === 0 && !(await R.locator('dialog.phone .removefolder').count()),

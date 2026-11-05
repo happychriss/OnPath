@@ -44,7 +44,7 @@ await page.waitForTimeout(31_000); // the check runs at most every 30 s
 await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
 await page.waitForFunction(() => document.querySelector('#msgcards:not([hidden]) .msgcard'), null, { timeout: 10_000 }).catch(() => {});
 const b = await box();
-check(!!b && /hinweis/.test(b.kind) && b.text === 'New version of the planner | Reload to use it – your route stays.' && b.buttons.join() === 'Reload',
+check(!!b && /hinweis/.test(b.kind) && b.text === 'New version of the planner | Reload to use it – your plan stays.' && b.buttons.join() === 'Reload',
   `a newer build: one box "New version of the planner" with [Reload] (${JSON.stringify(b)})`);
 check(!!b && Math.abs(b.top - b.bar - 12) <= 1, `the box sits 12 px under the search bar (${b && (b.top - b.bar).toFixed(1)} px)`);
 check(await page.evaluate(() => window.__stays === 1), 'the page did not reload by itself');
