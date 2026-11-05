@@ -32,7 +32,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 
 /**
- * After the slide (owner 2026-11-05, Navigate C): the tour's two actions directly under the route info in the status card
+ * After the slide (owner 2026-11-05, Navigate C; the blue button reads "Plan ändern"): the tour's two actions directly under the route info in the status card
  * – "Pause" (green tonal, "Fortsetzen" while paused) and "Tour beenden" (green outlined; asks first, "Aufnahme beenden?").
  * Words, no red, ≥ 48 dp. Each closes the unlocked state ([onClose]); paused the actions stay (Fortsetzen at once).
  */
@@ -70,14 +70,17 @@ fun TourCardActions(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Un
     }
 }
 
-/** Where the slider was, after the slide: ONE centred blue "Route ändern" – opens the plan; the tour goes on. */
+/**
+ * Where the slider was, after the slide: ONE big blue "Plan ändern" (owner 2026-11-05: large so nobody misses it – full
+ * width, 56 dp like the green main buttons) – opens the plan; the tour goes on.
+ */
 @Composable
-fun ChangeRouteButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun ChangePlanButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionEdit, contentColor = OnPathColors.CardWhite),
-        contentPadding = PaddingValues(start = 20.dp, end = 24.dp), modifier = modifier.heightIn(min = 52.dp)) {
-        Icon(Icons.Filled.Edit, null, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(str(Res.string.nav_change_route), style = MaterialTheme.typography.titleMedium, maxLines = 1)
+        contentPadding = PaddingValues(horizontal = 24.dp), modifier = modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+        Icon(Icons.Filled.Edit, null, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(str(Res.string.nav_change_plan), style = MaterialTheme.typography.titleMedium, maxLines = 1)
     }
 }
 

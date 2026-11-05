@@ -914,5 +914,17 @@
     "context": "Spoken directions (docs/design/voice-guidance.md)",
     "priority": 2,
     "confidence": "bitte prüfen"
+  },
+  "settings_nav_lock": {
+    "area": "Settings",
+    "context": "Settings → Navigation: switch for the slider on the Navigate page (default on). On: the slider must be slid before Pause, End tour and Change plan appear.",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_nav_lock_sub": {
+    "area": "Settings",
+    "context": "Line under 'Lock while navigating'",
+    "priority": 2,
+    "confidence": "sicher"
   }
 }

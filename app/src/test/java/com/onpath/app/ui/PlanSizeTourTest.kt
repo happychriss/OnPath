@@ -72,18 +72,18 @@ class PlanSizeTourTest {
     }
 
     /**
-     * Owner 2026-11-01 (night draft): the slider in Navigate unlocks Pause · Route ändern · Beenden – words, no ■; End
+     * Owner 2026-11-01 (night draft): the slider in Navigate unlocks Pause · Plan ändern · Beenden – words, no ■; End
      * opens the same "Aufnahme beenden?" question as before. The plan sheet during a tour has only "Navigation
      * fortsetzen" (+ "Route speichern" with a plan) – no Pause / End there any more.
      */
     @Test fun theSliderUnlocksPauseChangeRouteAndEnd() {
         val nav = java.io.File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()
         assertEquals(true, nav.contains("onPause = vm::pauseRecording, onEnd = { vm.askEndTour() }"))
-        // owner 2026-11-05 (Navigate C): Pause / Tour beenden in the status card, "Route ändern" where the slider was
+        // owner 2026-11-05 (Navigate C): Pause / Tour beenden in the status card, "Plan ändern" where the slider was
         assertEquals(true, nav.contains("TourCardActions(ui.paused, onPause, onEnd, onClose = { open = false })"))
-        assertEquals(true, nav.contains("ChangeRouteButton({ open = false; onSlideToPlan() })"))
+        assertEquals(true, nav.contains("ChangePlanButton({ open = false; onSlideToPlan() }, bottom)"))
         val bar = java.io.File("src/main/java/com/onpath/app/ui/TourActionBar.kt").readText()
-        for (s in listOf("Res.string.nav_action_pause", "Res.string.common_resume", "Res.string.nav_change_route", "Res.string.nav_end_tour"))
+        for (s in listOf("Res.string.nav_action_pause", "Res.string.common_resume", "Res.string.nav_change_plan", "Res.string.nav_end_tour"))
             assertEquals(s, true, bar.contains(s))
         val panel = java.io.File("src/main/java/com/onpath/app/ui/PlanPanel.kt").readText()
         assertEquals(false, panel.contains("TourPauseEnd("))

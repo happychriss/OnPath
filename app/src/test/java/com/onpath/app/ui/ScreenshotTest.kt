@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -73,10 +75,12 @@ class ScreenshotTest {
                       top: @Composable () -> Unit = {},
                       footer: @Composable () -> Unit = { Footer(gps, compass = CompassSpec(null, 0f) {}, plan = true) }, // Plan: compass shown
                       menu: PlanMenu = PlanMenu(onUpdates = {}),
-                      /** "Route ändern" during a tour: the mode label and the blue position sign in the map's middle. */
+                      /** "Plan ändern" during a tour: the mode label and the blue position sign in the map's middle. */
                       editing: Boolean = false,
                       /** "Ohne Netz ✓ / ⟳ / ⚠" in the mode pill (owner 2026-11-03). */
                       offline: OfflineReady.State? = null,
+                      /** Proposal 2026-11-05: a band behind the search pill and ☰ (status bar + top bar); null = today. */
+                      band: androidx.compose.ui.graphics.Brush? = null, bandHeight: androidx.compose.ui.unit.Dp = 32.dp + TOP_BAR_BOTTOM,
                       bottom: @Composable () -> Unit) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
@@ -85,6 +89,7 @@ class ScreenshotTest {
                     Modifier.align(Alignment.Center))
                 // Plan is blue (owner 2026-11-03): band under the status bar (the 32 dp stand-in) + soft edge
                 PlanFrame()
+                band?.let { Box(Modifier.fillMaxWidth().height(bandHeight).background(it)) }
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing, offline = offline)
                     // the activity as a button on the map (owner 2026-11-05, R5) – as MapScreen places it
@@ -100,7 +105,7 @@ class ScreenshotTest {
     }
 
     @Composable
-    private fun NavFrame(ui: NavUi, slide: Float = 0f, fit: Boolean = false, actions: Boolean = false) {
+    private fun NavFrame(ui: NavUi, slide: Float = 0f, fit: Boolean = false, actions: Boolean = false, lock: Boolean = true) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
@@ -108,7 +113,7 @@ class ScreenshotTest {
                     // after "Show whole route" following is off: compass needle, locate not filled
                     NavigateOverlay(ui, footer = { Footer(following = !fit, compass = CompassSpec(ui.headingUp.takeUnless { fit }, 0f) {},
                         eye = true, large = true, fit = fit) },
-                        onSlideToPlan = {}, slideStartFraction = slide, actionsOpen = actions)
+                        onSlideToPlan = {}, slideStartFraction = slide, actionsOpen = actions, lock = lock)
                 }
             }
         }
@@ -491,6 +496,25 @@ class ScreenshotTest {
         }
     }
 
+    /**
+     * Proposal 2026-11-05 (no decision yet): Plan's top area as a band – (a) the plan blue with a white search field and
+     * white ☰, (b) a light blue band with today's pill, (c) a light blue band fading into the map. Drawn by
+     * [PlanTopBandProposalTest]; the activity button stays on the map.
+     */
+    fun planTopBand(variant: Char) = paparazzi.snapshot(name = "band_$variant") {
+        val light = androidx.compose.ui.graphics.Color(0xFFDDE7F4)
+        val (brush, look, h) = when (variant) {
+            'a' -> Triple(androidx.compose.ui.graphics.SolidColor(OnPathColors.ActionEdit),
+                TopBarLook(pill = OnPathColors.CardWhite, labelRing = OnPathColors.CardWhite), 32.dp + TOP_BAR_BOTTOM)
+            'b' -> Triple(androidx.compose.ui.graphics.SolidColor(light), TopBarLook(pill = OnPathColors.CardWhite), 32.dp + TOP_BAR_BOTTOM)
+            else -> Triple(androidx.compose.ui.graphics.Brush.verticalGradient(
+                0f to light, 0.55f to light, 1f to light.copy(alpha = 0f)), TopBarLook(pill = OnPathColors.CardWhite), 32.dp + TOP_BAR_BOTTOM + 72.dp)
+        }
+        androidx.compose.runtime.CompositionLocalProvider(LocalTopBarLook provides look) {
+            Frame(band = brush, bandHeight = h) { PlanPanel(planUi(size = PlanSize.COMPACT), PlanCallbacks()) }
+        }
+    }
+
     /** The plan during a tour as it opens (summary step): plan row, facts, "▶ Weiter geht's". */
     @Test fun planTourRunningCollapsed() = paparazzi.snapshot {
         Frame(editing = true) {
@@ -665,14 +689,17 @@ class ScreenshotTest {
 
     /** Free recording (no route), paused from the notification. */
     /** After the slide (owner 2026-11-02, #17 C): green Pause · blue Change route · red End, ✕ above on the right. */
-    /** Unlocked (owner 2026-11-05, Navigate C): Pause / Tour beenden in the status card, "Route ändern" where the slider was. */
+    /** Unlocked (owner 2026-11-05, Navigate C): Pause / Tour beenden in the status card, "Plan ändern" where the slider was. */
     @Test fun navigateActionsOpen() = paparazzi.snapshot { NavFrame(navUi, actions = true) }
 
     /** Unlocked and paused: "Fortsetzen" in the card (no second one), it stays open. */
     @Test fun navigatePausedOpen() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true)) }
 
-    /** Without a recording, unlocked: only "Route ändern". */
+    /** Without a recording, unlocked: only "Plan ändern". */
     @Test fun navigateNotRecordingOpen() = paparazzi.snapshot { NavFrame(navUi.copy(recordedM = null), actions = true) }
+
+    /** Settings → Navigation "Sperre beim Navigieren" off (owner 2026-11-05): no slider, the three actions at once. */
+    @Test fun navigateLockOff() = paparazzi.snapshot { NavFrame(navUi, lock = false) }
 
     @Test fun navigateFreePaused() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true)) }
 

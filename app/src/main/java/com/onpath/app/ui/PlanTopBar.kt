@@ -87,6 +87,15 @@ class PlanMenu(
 )
 
 /**
+ * How the plan's top bar looks: the search pill's and ☰'s fill, a ring round the mode label. The app uses the default;
+ * only the screenshot proposals (owner 2026-11-05: a band behind the top bar) set another.
+ */
+data class TopBarLook(val pill: androidx.compose.ui.graphics.Color = OnPathColors.PlanTint,
+                      val labelRing: androidx.compose.ui.graphics.Color? = null)
+
+val LocalTopBarLook = androidx.compose.runtime.staticCompositionLocalOf { TopBarLook() }
+
+/**
  * Plan mode top area: the search pill (only search) and one round ☰ app-menu button next to it: Save route (with a
  * plan) · My routes · Start recording · Pair with browser · Settings; Phone setup first while a tour needs it. The
  * activity and the route actions (Close plan · Reverse · Round trip) live in the route sheet (PlanPanel); Save is here.
@@ -97,7 +106,7 @@ fun PlanTopBar(
     menu: PlanMenu,
     modifier: Modifier = Modifier,
     menuInitiallyOpen: Boolean = false,
-    /** During a tour ("Route ändern"): the mode label says so instead of "Planen". */
+    /** During a tour ("Plan ändern"): the mode label says so instead of "Planen". */
     editing: Boolean = false,
     /** The route's offline state ("Ohne Netz ✓ / ⟳ / ⚠" in the label, owner 2026-11-03); null = no route. */
     offline: OfflineReady.State? = null,
@@ -107,7 +116,7 @@ fun PlanTopBar(
     Box(modifier) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             // also while the route is changed during a tour: search + ☰ as at home (owner 2026-11-01 turned down a green
-            // "Route ändern … Fertig" header)
+            // "Plan ändern … Fertig" header)
             SearchBarPill(onSearch, Modifier.weight(1f))
             Spacer(Modifier.width(8.dp))
             AppMenuButton(menu, menuInitiallyOpen)
@@ -130,7 +139,7 @@ internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier, offl
     val style = MaterialTheme.typography.labelSmall
     if (offline == null) {
         Text(mode, style = style, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite, maxLines = 1,
-            modifier = modifier.clearAndSetSemantics { }.background(OnPathColors.PlanAccent, CircleShape)
+            modifier = modifier.clearAndSetSemantics { }.labelRing().background(OnPathColors.PlanAccent, CircleShape)
                 .padding(horizontal = 8.dp, vertical = 2.dp))
         return
     }
@@ -139,7 +148,7 @@ internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier, offl
         OfflineReady.State.LOADING -> Res.string.plan_offline_desc_loading
         OfflineReady.State.MISSING -> Res.string.plan_offline_desc_missing
     })
-    Row(modifier.clip(CircleShape).background(OnPathColors.PlanAccent, CircleShape)
+    Row(modifier.labelRing().clip(CircleShape).background(OnPathColors.PlanAccent, CircleShape)
         .clickable(role = Role.Button, onClick = onOffline)
         .clearAndSetSemantics { contentDescription = "$mode · $desc"; role = Role.Button }
         .padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -161,7 +170,7 @@ private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
         onClick = onSearch,
         modifier = modifier.height(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_search_hint); role = Role.Button },
         shape = CircleShape,
-        color = OnPathColors.PlanTint, // Plan is blue (owner 2026-11-03)
+        color = LocalTopBarLook.current.pill, // Plan is blue (owner 2026-11-03)
         shadowElevation = 3.dp,
     ) {
         Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -177,7 +186,7 @@ private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
 private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Box {
-        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = OnPathColors.PlanTint,
+        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = LocalTopBarLook.current.pill,
             shadowElevation = 3.dp, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }) {
             Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Menu, contentDescription = null, tint = OnPathColors.PlanAccent) }
         }
@@ -186,7 +195,7 @@ private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
         val dot = if (menu.onPairBrowser != null && menu.sync.warning != null) OnPathColors.Warn
             else if (menu.unsaved && menu.onSaveRoute != null) OnPathColors.Green else null
         if (dot != null) Box(Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 6.dp)
-            .size(12.dp).background(dot, CircleShape).border(2.dp, OnPathColors.PlanTint, CircleShape))
+            .size(12.dp).background(dot, CircleShape).border(2.dp, LocalTopBarLook.current.pill, CircleShape))
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, offset = DpOffset(0.dp, 4.dp)) {
             PlanMenuItems(menu, close = { open = false })
         }
@@ -272,3 +281,8 @@ fun PlanFrame(modifier: Modifier = Modifier) {
 
 /** Width of the soft blue edge. */
 private val PLAN_EDGE = 14.dp
+
+/** The mode label's ring ([TopBarLook.labelRing]): none in the app. */
+@Composable
+private fun Modifier.labelRing(): Modifier =
+    LocalTopBarLook.current.labelRing?.let { this.border(1.5.dp, it, CircleShape) } ?: this

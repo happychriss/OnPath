@@ -113,6 +113,7 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
                 voiceOn = sp.getBoolean("voiceBike", true) || sp.getBoolean("voiceHike", true),
                 vibrationOn = JunctionVibration.of(sp.getString("junctionVibration", null), sp.getBoolean("junctionVibrate", true)) != JunctionVibration.OFF),
             positionOnRoute = sp.getBoolean("positionOnRoute", true),
+            navLock = sp.getBoolean("navLock", true),
             mapTheme = sp.getString("mapTheme", "classic") ?: "classic",
             navHeadingUp = sp.getBoolean("navHeadingUp", true),
             hikePace = pace("hikePaceLevel", "hikePace"),
@@ -133,6 +134,7 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             .putString("bikeScreen", v.bikeScreen.name)
             .putString("junctionGuide", v.junctionGuide.name)
             .putBoolean("positionOnRoute", v.positionOnRoute)
+            .putBoolean("navLock", v.navLock)
             .putString("mapTheme", v.mapTheme)
             .putBoolean("navHeadingUp", v.navHeadingUp)
             .putString("hikePaceLevel", v.hikePace.name)

@@ -249,7 +249,7 @@ class ReleaseRundgang : E2EBase() {
     }
 
     /**
-     * 7 · End the recording the Navigate way (owner 2026-11-01): slide → the bar Pause · Route ändern · Beenden →
+     * 7 · End the recording the Navigate way (owner 2026-11-01): slide → Pause / Tour beenden in the status card →
      * "Tour beenden?" → Tour speichern → it is listed in My routes → Touren.
      */
     @Test fun flow07_endTourSaveListedInDone() {
@@ -583,9 +583,9 @@ class ReleaseRundgang : E2EBase() {
         Thread.sleep(500)
     }
 
-    /** Navigate: drag the slider's thumb across → Pause / Tour beenden in the status card, "Route ändern" below (Navigate C). */
+    /** Navigate: drag the slider's thumb across → Pause / Tour beenden in the status card, "Plan ändern" below (Navigate C). */
     private fun openTourActions() {
-        // TalkBack's words: "Entsperren. Schieben, um Pause, Tour beenden und Route ändern freizugeben." (owner 2026-11-05)
+        // TalkBack's words: "Entsperren. Schieben, um Pause, Tour beenden und Plan ändern freizugeben." (owner 2026-11-05)
         val slider = findFresh(By.descContains(Txt.s(Res.string.nav_slide_unlock)), 5_000)
         assertNotNull("no slider in Navigate – ${seenDescriptions()}", slider)
         val r = slider!!.visibleBounds

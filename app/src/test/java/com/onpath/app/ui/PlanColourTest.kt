@@ -28,9 +28,9 @@ class PlanColourTest {
     @Test fun planIsBlue() {
         val map = src("MapScreen.kt")
         assertTrue("soft edge in PlanMode", map.substringAfter("private fun PlanMode(").contains("PlanFrame("))
-        assertTrue("the label says Route ändern during a tour", map.contains("editing = rec != null"))
+        assertTrue("the label says Plan ändern during a tour", map.contains("editing = rec != null"))
         val top = src("PlanTopBar.kt")
-        assertTrue(top.contains("color = OnPathColors.PlanTint") && top.contains("tint = OnPathColors.PlanAccent"))
+        assertTrue(top.contains("val pill: androidx.compose.ui.graphics.Color = OnPathColors.PlanTint") && top.contains("color = LocalTopBarLook.current.pill") && top.contains("tint = OnPathColors.PlanAccent"))
         assertTrue(src("PlanPanel.kt").contains("surfaceColor = OnPathColors.PlanTint, accent = OnPathColors.PlanAccent"))
         val footer = src("MapFooter.kt")
         assertTrue(footer.contains("if (plan) OnPathColors.PlanTint else MaterialTheme.colorScheme.surface"))

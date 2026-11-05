@@ -23,7 +23,7 @@ open class SlideLabelLargeFontTest {
     }
 
     @Test fun navigate() = shots.navigate()
-    /** Without a recording: only "Route ändern" behind it. */
+    /** Without a recording: only "Plan ändern" behind it. */
     @Test fun navigateNotRecording() = shots.navigateNotRecording()
     @Test fun navigateActionsOpen() = shots.navigateActionsOpen()
     @Test fun navigatePausedOpen() = shots.navigatePausedOpen()
@@ -49,7 +49,7 @@ open class SlideLabelMediumFontTest {
     @Test fun navigate() = shots.navigate()
 }
 
-/** The same in German: the longer "Route ändern · Pause · Beenden" no longer fits at 1.3 – main line only. */
+/** The same in German at 1.3. */
 class SlideLabelMediumFontGermanTest : SlideLabelMediumFontTest() {
     private val before = Locale.getDefault()
     @Before fun german() = Locale.setDefault(Locale.GERMANY)

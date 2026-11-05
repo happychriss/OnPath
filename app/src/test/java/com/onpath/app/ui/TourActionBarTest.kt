@@ -11,8 +11,8 @@ import java.io.File
 /**
  * Navigate after the slide (owner 2026-11-05, Navigate C): the slider only unlocks ("» Entsperren"); then "Pause"
  * (green tonal, "Fortsetzen" while paused) and "Tour beenden" (green outlined, asks first) sit directly under the route
- * info in the status card, and ONE centred blue "Route ändern" takes the slider's place. No red, words not signs.
- * Without a recording only "Route ändern". Locks again after 30 s, on a tap on the map or Android's back (not while paused).
+ * info in the status card, and ONE big blue "Plan ändern" takes the slider's place. No red, words not signs.
+ * Without a recording only "Plan ändern". Locks again after 30 s, on a tap on the map or Android's back (not while paused).
  */
 class TourActionBarTest {
     private val bar = File("src/main/java/com/onpath/app/ui/TourActionBar.kt").readText()
@@ -33,11 +33,11 @@ class TourActionBarTest {
         assertTrue(actions, actions.contains("onClick = { onClose(); onPause(!paused) }"))
         assertTrue(actions, actions.contains("onClick = { onClose(); onEnd() }") && actions.contains("Res.string.nav_end_tour"))
         assertFalse("no red", bar.contains("ActionStop") || bar.contains("OnPathColors.Error"))
-        val change = bar.substringAfter("fun ChangeRouteButton(").substringBefore("\n}\n")
-        assertTrue(change, change.contains("Res.string.nav_change_route") && change.contains("OnPathColors.ActionEdit"))
-        // in the card, directly under the route info; Route ändern centred where the slider was
+        val change = bar.substringAfter("fun ChangePlanButton(").substringBefore("\n}\n")
+        assertTrue(change, change.contains("Res.string.nav_change_plan") && change.contains("OnPathColors.ActionEdit"))
+        // in the card, directly under the route info; Plan ändern where the slider was
         assertTrue(overlay, overlay.contains("actions = if (unlocked && ui.recordedM != null) ({ TourCardActions(ui.paused, onPause, onEnd, onClose = { open = false }) })"))
-        assertTrue(overlay, overlay.contains("ChangeRouteButton({ open = false; onSlideToPlan() })"))
+        assertTrue(overlay, overlay.contains("ChangePlanButton({ open = false; onSlideToPlan() }, bottom)"))
         assertTrue(overlay, overlay.contains("else SlideToPlan({ open = true }, bottom, recording = ui.recordedM != null"))
         assertFalse("the tile bar is gone", bar.contains("fun TourActionBar(") || bar.contains("fun ActionTiles("))
     }
@@ -53,7 +53,7 @@ class TourActionBarTest {
         assertEquals(30_000L, TourActions.OPEN_MS)
         assertTrue(overlay.contains("kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false"))
         assertTrue(overlay.contains("val pausedOpen = ui.paused && ui.recordedM != null"))
-        assertTrue(overlay.contains("val closableBar = open && !pausedOpen"))
+        assertTrue(overlay.contains("val closableBar = lock && open && !pausedOpen"))
         assertTrue(overlay.contains("BackHandler(enabled = closableBar) { open = false }"))
         assertTrue(overlay.contains("detectTapGestures { open = false }"))
         // paused: "Fortsetzen" in the card's action row, not twice
@@ -67,7 +67,7 @@ class TourActionBarTest {
         assertTrue(slider.contains("str(if (recording) Res.string.nav_slide_unlock_desc else Res.string.nav_slide_unlock_desc_plan)"))
         for (dir in listOf("values", "values-de")) {
             val s = File("../strings/src/commonMain/composeResources/$dir/strings_navigate.xml").readText()
-            assertTrue(dir, s.contains("name=\"nav_slide_unlock\"") && s.contains("name=\"nav_change_route\""))
+            assertTrue(dir, s.contains("name=\"nav_slide_unlock\"") && s.contains("name=\"nav_change_plan\""))
         }
     }
 
@@ -75,4 +75,21 @@ class TourActionBarTest {
     @Test fun thePlanHasNoTourBar() {
         assertTrue(!bar.contains("fun TourEditBar(") && !bar.contains("fun ActionPills("))
     }
+
+    /**
+     * Settings → Navigation "Sperre beim Navigieren" (owner 2026-11-05): ON by default ("damit nichts Dummes passiert");
+     * off = no slider, Pause / Tour beenden and the big blue "Plan ändern" at once, never locking again.
+     */
+    @Test fun theLockIsASettingOnByDefault() {
+        assertTrue(com.onpath.app.data.AppSettings().navLock)
+        val prefs = File("src/main/java/com/onpath/app/data/Prefs.kt").readText()
+        assertTrue(prefs, prefs.contains("navLock = sp.getBoolean(\"navLock\", true)") && prefs.contains(".putBoolean(\"navLock\", v.navLock)"))
+        assertTrue(overlay, overlay.contains("val unlocked = !lock || open || pausedOpen"))
+        assertTrue("no re-lock without the lock", overlay.contains("val closableBar = lock && open && !pausedOpen")
+            && overlay.contains("if (lock && open && !actionsOpen)"))
+        assertTrue("the app passes the setting", nav.contains("lock = vm.settings.navLock"))
+        val settings = File("src/main/java/com/onpath/app/ui/SettingsScreen.kt").readText()
+        assertTrue(settings.contains("Res.string.settings_nav_lock") && settings.contains("settings.copy(navLock = it)"))
+    }
+
 }

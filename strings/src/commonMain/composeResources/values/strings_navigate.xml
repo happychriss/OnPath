@@ -175,9 +175,9 @@
     <string name="nav_end_tour">End tour</string>
     <string name="nav_end_short">End</string>
     <string name="nav_slide_unlock">Unlock</string>
-    <string name="nav_slide_unlock_desc">Unlock. Slide to enable Pause, End tour and Change route.</string>
-    <string name="nav_slide_unlock_desc_plan">Unlock. Slide to enable Change route.</string>
-    <string name="nav_change_route">Change route</string>
+    <string name="nav_slide_unlock_desc">Unlock. Slide to enable Pause, End tour and Change plan.</string>
+    <string name="nav_slide_unlock_desc_plan">Unlock. Slide to enable Change plan.</string>
+    <string name="nav_change_plan">Change plan</string>
     <string name="nav_straight_on">Straight on</string>
     <string name="nav_end_save_new_route">Also save the changed plan</string>
     <string name="nav_end_save_changed_route">Also save the changed plan</string>

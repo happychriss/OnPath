@@ -73,6 +73,20 @@ class PlanSheetLayoutTest {
         assertTrue(dialog, dialog.contains("if (onSave != null) TextButton(onClick = onSave"))
     }
 
+    /**
+     * Core feature (owner 2026-11-05, field bug on the test build: Hike needed a confirm, the T level could not be chosen):
+     * ONE tap chooses an activity and closes; Hike's T1–T5 chips choose Hike + that level in one tap and close.
+     */
+    @Test fun activityAndLevelInOneTap() {
+        val dialog = src("ui/Screens.kt").substringAfter("fun ActivityDialog(").substringBefore("\n}\n")
+        assertTrue(dialog, dialog.contains(".clickable { onSelect(a); onDismiss() }"))
+        assertTrue(dialog, dialog.contains("if (a == Activity.HIKE) SacChips(if (sel) sac else 0) { level -> onSelect(Activity.HIKE); onSac(level); onDismiss() }"))
+        assertFalse("no Done / confirm", dialog.contains("common_done"))
+        val chips = src("ui/Screens.kt").substringAfter("private fun SacChips(").substringBefore("\n}\n")
+        assertTrue(chips, chips.contains("SacScale.levels.forEach") && chips.contains("onClick = { onPick(l.level) }"))
+        assertTrue(chips, chips.contains("Res.string.routes_sac_button_desc"))
+    }
+
     /** The activity button on the map opens the activity picker (the same path as the old chip). */
     @Test fun theActivityButtonOpensThePicker() {
         val map = src("ui/MapScreen.kt")

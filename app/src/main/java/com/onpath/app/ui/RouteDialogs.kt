@@ -113,15 +113,16 @@ fun DiscardPlanDialog(onDiscard: () -> Unit, onCancel: () -> Unit, onSave: (() -
     AlertDialog(
         onDismissRequest = onCancel,
         title = { Text(str(Res.string.plan_discard_title)) },
+        // three answers: stacked, right-aligned (Material's stacked dialog buttons) – no button wraps alone onto a line
         confirmButton = {
-            Row {
-                TextButton(onClick = onDiscard, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(str(Res.string.plan_discard), color = OnPathColors.Error) }
+            androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.End) {
                 if (onSave != null) TextButton(onClick = onSave, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(str(Res.string.plan_bar_save)) }
+                TextButton(onClick = onDiscard, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(str(Res.string.plan_discard), color = OnPathColors.Error) }
+                TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) }
             }
         },
-        dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
     )
 }
 

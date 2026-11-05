@@ -203,6 +203,11 @@ fun NavigateOverlay(
     onEnd: () -> Unit = {},
     /** Screenshot tests: the bar the slider unlocks, open. */
     actionsOpen: Boolean = false,
+    /**
+     * Settings → Navigation "Sperre beim Navigieren" (owner 2026-11-05, default on): the slider unlocks. Off: no slider,
+     * Pause / Tour beenden in the status card and the big blue "Plan ändern" are shown at once and never lock.
+     */
+    lock: Boolean = true,
     slideStartFraction: Float = 0f,
     onTakeRoute: (Int) -> Unit = {},
     onKeepRoute: (Int) -> Unit = {},
@@ -243,13 +248,13 @@ fun NavigateOverlay(
     var messageBottomDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var sliderDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     // the slider only unlocks (owner 2026-11-05, Navigate C): Pause / Tour beenden in the status card (a recording) and
-    // "Route ändern" in the slider's place; paused the actions stay (Fortsetzen at once)
+    // "Plan ändern" in the slider's place; paused the actions stay (Fortsetzen at once)
     var open by remember { mutableStateOf(actionsOpen) }
-    LaunchedEffect(open) { if (open && !actionsOpen) { kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false } }
+    LaunchedEffect(open, lock) { if (lock && open && !actionsOpen) { kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false } }
     val pausedOpen = ui.paused && ui.recordedM != null
-    val unlocked = open || pausedOpen
+    val unlocked = !lock || open || pausedOpen
     // locking again without a choice (owner 2026-11-02, no ✕): a tap on the map or Android's back; paused it stays open
-    val closableBar = open && !pausedOpen
+    val closableBar = lock && open && !pausedOpen
     androidx.activity.compose.BackHandler(enabled = closableBar) { open = false }
     Box(Modifier.fillMaxSize()) {
         if (closableBar) Box(Modifier.fillMaxSize().clearAndSetSemantics { }
@@ -278,10 +283,8 @@ fun NavigateOverlay(
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
             val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            // unlocked: ONE centred blue "Route ändern" where the slider was (owner 2026-11-05, Navigate C)
-            if (unlocked) Box(bottom.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                ChangeRouteButton({ open = false; onSlideToPlan() })
-            }
+            // unlocked: ONE big blue "Plan ändern" where the slider was (owner 2026-11-05, Navigate C)
+            if (unlocked) ChangePlanButton({ open = false; onSlideToPlan() }, bottom)
             else SlideToPlan({ open = true }, bottom, recording = ui.recordedM != null, startFraction = slideStartFraction)
         }
         // ONE box under the turn / status column (docs/design/ui-style.md, owner 2026-10-31 – the re-route and
@@ -907,7 +910,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     DisposableEffect(Unit) { onDispose { vm.screenRest = false } }
     Box(Modifier.fillMaxSize()) {
         NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
-            onPause = vm::pauseRecording, onEnd = { vm.askEndTour() },
+            onPause = vm::pauseRecording, onEnd = { vm.askEndTour() }, lock = vm.settings.navLock,
             onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute, onTakeVia = vm::takeViaRoute,
             onLeadThere = vm::leadToStart, onJustRecord = vm::justRecord, onJoinHere = vm::joinHere, onLeadFailedOk = vm::leadFailedOk,
             onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,

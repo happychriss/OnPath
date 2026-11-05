@@ -76,6 +76,11 @@ data class AppSettings(
     val junctionGuide: JunctionGuide = JunctionGuide.VOICE,
     /** Navigate: the dot sits on the followed route while within ~25 m of it (owner, like Komoot; default on). */
     val positionOnRoute: Boolean = true,
+    /**
+     * Navigate: the slider locks the screen (owner 2026-11-05, default on – "damit nichts Dummes passiert"): Pause, Tour
+     * beenden and Plan ändern appear only after the slide. Off: no slider, the three are shown at once.
+     */
+    val navLock: Boolean = true,
     /** Map theme key, see map/StyleLoader. Only "classic" is bundled; others = adb overrides. */
     val mapTheme: String = "classic",
     /** Navigate: map turns so the walking direction points up (true, default) or stays north-up (false). */

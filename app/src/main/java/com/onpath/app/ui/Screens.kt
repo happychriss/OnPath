@@ -183,11 +183,11 @@ fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, on
 // ------------------------------------------------------------------ activity picker
 
 /**
- * Activity picker (plan sheet chip): each row = name + one short line ([Activity.line]). A bike activity applies and
- * closes; Hike applies and stays open with the T1–T5 row (SAC level) and the selected level's description; a level
- * applies at once (the route is planned again) and closes. Both are remembered across sessions.
+ * Activity picker (the activity button on the map, owner 2026-11-05): each row = name + one short line
+ * ([Activity.line]); ONE tap chooses and closes – no confirm. Hike has its T1–T5 chips (SAC level) right under its row:
+ * a chip = Hike with that level, closes; the Hike row itself keeps the last level. Both are remembered across sessions.
  */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun ActivityDialog(
     current: Activity,
@@ -195,20 +195,19 @@ fun ActivityDialog(
     sac: Int = com.onpath.app.data.LastActivity.DEFAULT_SAC,
     onSac: (Int) -> Unit = {},
 ) {
-    val hike = current == Activity.HIKE
     AlertDialog(
         onDismissRequest = onDismiss,
-        // picking a bike activity applies it and closes; with Hike the dialog stays for the T level
-        confirmButton = { if (hike) TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_done)) } },
+        // one tap chooses (owner 2026-11-05): no Done button, only a way out without a change
+        confirmButton = { TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
         title = { Text(str(Res.string.routes_activity_title)) },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
                 Activity.entries.forEach { a ->
                     val sel = a == current
                     Row(
                         Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(12.dp))
                             .background(if (sel) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                            .clickable { onSelect(a); if (a != Activity.HIKE) onDismiss() }.padding(horizontal = 12.dp),
+                            .clickable { onSelect(a); onDismiss() }.padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(a.icon, null, tint = if (sel) OnPathColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -219,30 +218,29 @@ fun ActivityDialog(
                             Text(a.line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                }
-                if (hike) {
-                    val level = SacScale.of(sac)
-                    Spacer(Modifier.height(12.dp))
-                    Text(str(Res.string.routes_sac_title), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
-                    androidx.compose.material3.SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                        SacScale.levels.forEachIndexed { i, l ->
-                            val desc = str(Res.string.routes_sac_button_desc, l.level, l.name)
-                            SegmentedButton(
-                                selected = l.level == level.level,
-                                onClick = { onSac(l.level); onDismiss() },
-                                shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, SacScale.levels.size),
-                                icon = {}, // no check mark: five narrow segments
-                                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = desc },
-                            ) { Text("T${l.level}", style = MaterialTheme.typography.bodyMedium) }
-                        }
-                    }
-                    Text(str(Res.string.routes_sac_line, level.level, level.name, level.text), style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp, top = 8.dp))
+                    if (a == Activity.HIKE) SacChips(if (sel) sac else 0) { level -> onSelect(Activity.HIKE); onSac(level); onDismiss() }
                 }
             }
         },
     )
+}
+
+/** Hike's T1–T5 under its row: one tap = Hike with that level, closes; [selected] 0 = none marked. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun SacChips(selected: Int, onPick: (Int) -> Unit) {
+    // one row of five equal chips (never a lone T5 on a second line)
+    Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        SacScale.levels.forEach { l ->
+            val desc = str(Res.string.routes_sac_button_desc, l.level, l.name)
+            androidx.compose.material3.FilterChip(
+                selected = l.level == selected, onClick = { onPick(l.level) },
+                label = { Text("T${l.level}", style = MaterialTheme.typography.bodyMedium, maxLines = 1,
+                    modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
+                modifier = Modifier.weight(1f).semantics { contentDescription = desc },
+            )
+        }
+    }
 }
 
 /**
