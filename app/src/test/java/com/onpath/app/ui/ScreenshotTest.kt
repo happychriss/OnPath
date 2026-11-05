@@ -482,19 +482,20 @@ class ScreenshotTest {
      * Design proposal 2026-11-05 (owner: compact, Material 3 + Google Maps logic): the profile step with the bottom row
      * in [style] – without a tour ("Los geht's") or during a tour ("‹ Navigation"). Drawn by [PlanBarProposalTest].
      */
-    fun planBarProposal(style: PlanBarStyle, tour: Boolean) = paparazzi.snapshot(name = "${style.name}_${if (tour) "tour" else "plan"}") {
+    fun planBarProposal(style: PlanBarStyle, tour: Boolean, size: PlanSize = PlanSize.COMPACT) =
+        paparazzi.snapshot(name = "${style.name}_${if (tour) "tour" else "plan"}" + if (size == PlanSize.COMPACT) "" else "_${size.name.lowercase()}") {
         androidx.compose.runtime.CompositionLocalProvider(LocalPlanBarStyle provides style) {
             // round 4: the activity as a button on the map, top left under the search pill
             val top: @Composable () -> Unit = {
-                if (style == PlanBarStyle.R4) Box(Modifier.fillMaxWidth()) { ActivityMapButton(Activity.HIKE, 2, {}) }
+                if (style == PlanBarStyle.R4 || style == PlanBarStyle.R5) Box(Modifier.fillMaxWidth()) { ActivityMapButton(Activity.HIKE, 2, {}) }
             }
             if (tour) Frame(editing = true, top = top) {
-                PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
-                    PlanCallbacks(onSaveRoute = {}))
+                PlanPanel(planUi(size = size, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false),
+                    tourCollapsible = style == PlanBarStyle.R5), PlanCallbacks(onSaveRoute = {}))
             } else Frame(top = top) {
                 // round 3 shows the unsaved dot on 🔖 in the plan state (owner: one state with the dot)
-                val r3 = style == PlanBarStyle.R3_A || style == PlanBarStyle.R3_B || style == PlanBarStyle.R4
-                PlanPanel(planUi(size = PlanSize.COMPACT).copy(unsaved = r3), PlanCallbacks(onSaveRoute = {}))
+                val r3 = style == PlanBarStyle.R3_A || style == PlanBarStyle.R3_B || style == PlanBarStyle.R4 || style == PlanBarStyle.R5
+                PlanPanel(planUi(size = size).copy(unsaved = r3), PlanCallbacks(onSaveRoute = {}))
             }
         }
     }

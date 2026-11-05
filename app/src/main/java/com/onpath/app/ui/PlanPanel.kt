@@ -208,13 +208,17 @@ data class PlanUi(
     val tapHint: Boolean = false,
     /** A tap on the plan's mode pill: the offline state explained in one line ([OfflineReady.explain]); null = none. */
     val offlineInfo: String? = null,
+    /** Proposal R5 (owner 2026-11-05): the sheet can roll up during a tour too (one row with "‹ Navigation"). */
+    val tourCollapsible: Boolean = false,
 ) {
     /** What Start does (the shown track has its own panel): navigate the line, wait for it, or only record. */
     val start: PlanStart get() = PlanStart.of(trackPoints = null, hasRoute = route != null, pointCount = pointCount)
     /** Without a point / with one point Start only records; while a route is being computed, wait for it. */
     val canStart: Boolean get() = start != PlanStart.WAIT_FOR_ROUTE
     /** The step the sheet shows: during a tour there is no rolled-up step (PlanSize.duringTour). */
-    val shownSize: PlanSize get() = PlanSize.duringTour(size, tour != null)
+    val shownSize: PlanSize get() = PlanSize.duringTour(size, tour != null && !tourCollapsible)
+    /** During a tour the tour's own first step (head above the bar) – not with R5's rolled-up row. */
+    val tourHead: Boolean get() = tour != null && !tourCollapsible
     /** Rolled up to its one row (never during a tour). */
     val collapsed: Boolean get() = shownSize == PlanSize.COLLAPSED
 }
@@ -238,12 +242,12 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
     LaunchedEffect(full) { if (!full && scroll.value > 0) scroll.animateScrollTo(0) }
     StepSheet(
         step = size.step,
-        onStep = { cb.onResize(PlanSize.duringTour(PlanSize.ofStep(it), tour)) },
+        onStep = { cb.onResize(PlanSize.duringTour(PlanSize.ofStep(it), ui.tourHead)) },
         onHandleTap = { cb.onResize(size.tapped()) },
         state = state,
         onDragging = cb.onSheetDrag,
         // the rolled-up row has its own small Start; during a tour every step has the (empty) bar
-        barFrom = if (tour) 0 else PlanSize.MINI.step,
+        barFrom = if (ui.tourHead) 0 else PlanSize.MINI.step,
         // Plan is blue (owner 2026-11-03): a light blue sheet with a blue handle and top edge – also during a tour
         surfaceColor = OnPathColors.PlanTint, accent = OnPathColors.PlanAccent,
         bottomBar = { PlanBar(ui, cb) },
@@ -399,9 +403,9 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     // compact Continue), the map stays about two thirds free; the next step adds Pause / End tour and the route below.
     // What the first step hides is not for TalkBack / tests either (it lies under the sheet's bottom edge) – the same for
     // the rolled-up row without a tour.
-    val tourMini = ui.tour != null && ui.shownSize == PlanSize.MINI
+    val tourMini = ui.tourHead && ui.shownSize == PlanSize.MINI
     val belowStep = if (tourMini || ui.collapsed) Modifier.clearAndSetSemantics { } else Modifier
-    if (ui.tour != null) {
+    if (ui.tourHead) {
         // the first step is the tile bar alone (owner 2026-11-02: Continue · Save route · New plan, the same bar as
         // Navigate's, PlanBar) – the map stays free above it; no rolled-up step during a tour (PlanSize.duringTour).
         // After "Neu planen" the plan is empty: the first step shows how to begin again (owner 2026-11-03)
@@ -417,9 +421,9 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COLLAPSED.step).stepEnd(PlanSize.MINI.step) })
     }
     Box(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb, header = ui.tour == null || ui.pointCount == 0) }
+        Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb, header = !ui.tourHead || ui.pointCount == 0) }
         // the rolled-up row lies over the summary's first line and fades with the bar sliding in (one body, no rebuild)
-        if (ui.tour == null) CollapsedRow(ui, cb, barShown, with(sheet) { Modifier.stepEnd(PlanSize.COLLAPSED.step) })
+        if (!ui.tourHead) CollapsedRow(ui, cb, barShown, with(sheet) { Modifier.stepEnd(PlanSize.COLLAPSED.step) })
     }
     // the empty plan's hint belongs to the summary step: the sheet opens at it, so a first start sees how to begin
     // (owner 2026-11-02: "beim ersten Öffnen … sieht man es gar nicht")
@@ -429,7 +433,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     if (ui.offlineInfo != null && ui.tour == null && ui.pointCount > 0)
         Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { OfflineInfoLine(ui.offlineInfo) }
     // without a tour the summary step ends under the summary lines
-    if (ui.tour == null) Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
+    if (!ui.tourHead) Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })
     var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     Column(Modifier.fillMaxWidth().weight(1f).onGloballyPositioned { viewport = it }.then(belowStep)
         .verticalScroll(scroll, enabled = full)) {
@@ -440,7 +444,8 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
                 // stable callbacks: a new PlanCallbacks (every sheet recomposition) must not recompose the profile
                 val highlight = cb.onHighlight
                 // the gradient legend lives on Route details only
-                if (LocalPlanBarStyle.current == PlanBarStyle.R4) Box {
+                if (LocalPlanBarStyle.current == PlanBarStyle.R4 ||
+                    (LocalPlanBarStyle.current == PlanBarStyle.R5 && r5FactsOneLine(route))) Box {
                     ElevationProfile(route.points, height = PROFILE_HEIGHT, gradient = true,
                         onHighlight = highlight, onRelease = remember(highlight) { { highlight(null) } })
                     // R4: the difficulty sits on the profile's top right – the facts keep one line
@@ -516,6 +521,7 @@ private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks, header: Boolean = true) 
 @Composable
 private fun R3Head(ui: PlanUi, cb: PlanCallbacks) {
     if (LocalPlanBarStyle.current == PlanBarStyle.R4) { R4Head(ui, cb); return }
+    if (LocalPlanBarStyle.current == PlanBarStyle.R5) { R5Head(ui, cb); return }
     val b = LocalPlanBarStyle.current == PlanBarStyle.R3_B
     val canClear = RouteRules.canClear(ui.pointCount)
     val two = ui.pointCount >= 2
@@ -590,6 +596,160 @@ private fun R4Head(ui: PlanUi, cb: PlanCallbacks) {
         Box(Modifier.align(Alignment.CenterVertically)) { Title(ui, route, cb.onTimeDetails) }
         Text("↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}", style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.align(Alignment.CenterVertically))
+    }
+}
+
+/**
+ * Round 5 (owner 2026-11-05): the plan row [✕ Neu planen] [⇅ Umkehren] [↻ Rundtour] in light blue with words (signs only
+ * when the words do not fit); a hairline; time · km · ↑ ↓; the difficulty on the profile's top right while the facts keep
+ * one line, else at the end of the facts' second line – never on the curve.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun R5Head(ui: PlanUi, cb: PlanCallbacks) {
+    val canClear = RouteRules.canClear(ui.pointCount)
+    val two = ui.pointCount >= 2
+    val clear = str(Res.string.plan_close_plan)
+    val rev = str(Res.string.plan_reverse)
+    val loop = str(Res.string.plan_round_trip)
+    val tm = androidx.compose.ui.text.rememberTextMeasurer()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val style = MaterialTheme.typography.labelMedium
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val wordW = with(density) { listOf(clear, rev, loop).sumOf { tm.measure(it, style).size.width }.toDp() }
+        // three pills (12 + 20 + 6 + word + 12) + room between
+        val words = 150.dp + wordW <= maxWidth
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = if (words) Arrangement.SpaceBetween else Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically) {
+            if (words) {
+                PlanAction(Icons.Filled.Close, clear, canClear, cb.onClear, PillLook.BLUE_LIGHT)
+                PlanAction(Icons.Outlined.SwapVert, rev, two, cb.onReverse, PillLook.BLUE_LIGHT)
+                PlanAction(Icons.Outlined.Loop, loop, two && !ui.roundTrip, cb.onRoundTrip, PillLook.BLUE_LIGHT)
+            } else {
+                PlanIconPill(Icons.Filled.Close, clear, canClear, cb.onClear)
+                PlanIconPill(Icons.Outlined.SwapVert, rev, two, cb.onReverse)
+                PlanIconPill(Icons.Outlined.Loop, loop, two && !ui.roundTrip, cb.onRoundTrip)
+            }
+        }
+    }
+    HorizontalDivider(Modifier.padding(top = 4.dp, bottom = 2.dp), thickness = 1.dp, color = OnPathColors.PlanAccent.copy(alpha = 0.18f))
+    val route = ui.route
+    if (route == null) { Title(ui, null, cb.onTimeDetails); return }
+    val oneLine = r5FactsOneLine(route)
+    androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(Modifier.align(Alignment.CenterVertically)) { Title(ui, route, cb.onTimeDetails) }
+        Text("↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}", style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.align(Alignment.CenterVertically))
+        // the facts wrap anyway (a large font): the difficulty goes at the end of their second line, off the profile
+        if (!oneLine && !ui.routing) DifficultyBadge(rememberRating(route, ui.activity),
+            Modifier.align(Alignment.CenterVertically)
+                .clickable(role = Role.Button, onClickLabel = str(Res.string.plan_show_route_details), onClick = cb.onDetails))
+    }
+}
+
+/** R5: time + km + ↑ ↓ fit on one line of the sheet (then the difficulty sits on the profile, else in the facts). */
+@Composable
+private fun r5FactsOneLine(route: PlannedRoute): Boolean {
+    val tm = androidx.compose.ui.text.rememberTextMeasurer()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val t = MaterialTheme.typography
+    val w = with(density) {
+        (tm.measure(Format.duration(route.durationS), t.titleLarge.copy(fontWeight = FontWeight.SemiBold)).size.width +
+            tm.measure(Format.distance(route.distanceM), t.titleMedium).size.width +
+            tm.measure("↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}", t.bodyLarge).size.width).toDp()
+    }
+    // the sheet's 16 dp sides; 8 dp inside the title, 10 dp between the pieces
+    return w + 18.dp <= (LocalConfiguration.current.screenWidthDp - 32).dp
+}
+
+/**
+ * Round 5's rolled-up row (owner 2026-11-05): `4 h 36 min · 12,5 km · ↑ 842 m ↓ 310 m  [▶ Los geht's]` – no activity
+ * sign (it is on the map), the hints' ⚠ count as before, a compact green "▶ Los geht's" / during a tour "‹ Navigation"
+ * (TalkBack: the full label). Never cut: when it does not fit, ↑ ↓ go first, then the button moves under the time.
+ */
+@Composable
+private fun R5CollapsedRow(ui: PlanUi, cb: PlanCallbacks, barShown: () -> Float, stop: Modifier) {
+    val on = ui.collapsed
+    val route = ui.route
+    val variant = MaterialTheme.colorScheme.onSurfaceVariant
+    Column(Modifier.fillMaxWidth().graphicsLayer { alpha = 1f - barShown() }
+        .background(OnPathColors.PlanTint)
+        .then(if (on) Modifier.clickable(role = Role.Button, onClickLabel = str(Res.string.plan_sheet_expand)) {
+            cb.onResize(PlanSize.MINI)
+        } else Modifier.clearAndSetSemantics { })) {
+        Layout(content = {
+            // 1: time · km, one piece
+            when {
+                route != null -> Text(androidx.compose.ui.text.buildAnnotatedString {
+                    withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.SemiBold)) {
+                        append(Format.duration(route.durationS).replace(' ', '\u00A0'))
+                    }
+                    withStyle(androidx.compose.ui.text.SpanStyle(color = variant)) {
+                        append(" · " + Format.distance(route.distanceM).replace(' ', '\u00A0'))
+                    }
+                }, style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false)
+                ui.routing -> Text(PlanStatus.CALCULATING, style = MaterialTheme.typography.bodyMedium, color = variant)
+                else -> Text(str(Res.string.plan_plan_a_route), style = MaterialTheme.typography.titleMedium)
+            }
+            // 2: ↑ ↓ (the first to go)
+            if (route != null) Text(" · ↑\u00A0${Format.meters(route.ascentM).replace(' ', '\u00A0')} ↓\u00A0${Format.meters(route.descentM).replace(' ', '\u00A0')}",
+                style = MaterialTheme.typography.bodyMedium, color = variant, maxLines = 1, softWrap = false)
+            else Box {}
+            // 3: ⚠ count + the green button
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (!ui.routing && ui.warnText != null && ui.warnCount > 0) {
+                    Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Amber, modifier = Modifier.size(20.dp))
+                    Text("${ui.warnCount}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
+                        color = OnPathColors.Amber, modifier = Modifier.padding(start = 2.dp, end = 6.dp))
+                }
+                if (ui.pointCount >= 2 || ui.tour != null) R5CompactGo(ui, cb, on)
+            }
+        }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { ms, c ->
+            val gap = 8.dp.roundToPx()
+            val max = c.maxWidth
+            val e = ms[2].measure(Constraints(maxWidth = max))
+            val tw = ms[0].maxIntrinsicWidth(Constraints.Infinity)
+            val uw = ms[1].maxIntrinsicWidth(Constraints.Infinity)
+            val withUp = tw + uw + gap + e.width <= max
+            val beside = tw + gap + e.width <= max
+            val t = ms[0].measure(Constraints(maxWidth = if (beside) max - e.width - gap else max))
+            val u = if (withUp) ms[1].measure(Constraints(maxWidth = max)) else null
+            val minH = c.minHeight
+            if (beside) {
+                val h = maxOf(t.height, e.height, minH)
+                layout(max, h) {
+                    t.placeRelative(0, (h - t.height) / 2)
+                    u?.placeRelative(t.width, (h - u.height) / 2)
+                    e.placeRelative(max - e.width, (h - e.height) / 2)
+                }
+            } else {
+                val h = maxOf(t.height + e.height, minH)
+                layout(max, h) { t.placeRelative(0, 0); e.placeRelative(max - e.width, t.height) }
+            }
+        }
+        Spacer(stop)
+    }
+}
+
+/** R5's compact green button: "▶ Los geht's" / "‹ Navigation", 48 dp; only drawn outside the rolled-up step. */
+@Composable
+private fun R5CompactGo(ui: PlanUi, cb: PlanCallbacks, active: Boolean) {
+    val content: @Composable () -> Unit = {
+        Icon(goIcon(ui), null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(goLabel(ui), style = MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false)
+    }
+    val desc = primaryLabel(ui)
+    if (active) {
+        Button(onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 12.dp, end = 16.dp),
+            modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = desc }) { content() }
+    } else {
+        Row(Modifier.heightIn(min = 48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary)
+            .padding(start = 12.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onPrimary) { content() }
+        }
     }
 }
 
@@ -703,7 +863,7 @@ private fun ColumnScope.PlanBar(ui: PlanUi, cb: PlanCallbacks) {
                 PlanBarStyle.SPLIT -> SplitGoButton(ui, cb, canNew)
                 PlanBarStyle.CLEAR_IN_PILLS, PlanBarStyle.CLEAR_IN_PILLS_PLAIN, PlanBarStyle.CLEAR_TOP_RIGHT,
                 PlanBarStyle.CLEAR_IN_PILLS_FILLED -> GoSaveRow(ui, cb)
-                PlanBarStyle.R3_A, PlanBarStyle.R3_B, PlanBarStyle.R4 -> GoFullButton(ui, cb)
+                PlanBarStyle.R3_A, PlanBarStyle.R3_B, PlanBarStyle.R4, PlanBarStyle.R5 -> GoFullButton(ui, cb)
                 PlanBarStyle.TODAY -> Unit
             }
         }
@@ -715,11 +875,13 @@ enum class PlanBarStyle { TODAY, F_GROUP, MAPS_PILLS, ICON_BUTTONS, SPLIT, CLEAR
     /** Round 3: plan settings · route facts · one button – A: one row of signs, B: two rows with words. */
     R3_A, R3_B,
     /** Round 4 (owner's own design): the activity as a map button; plan row · facts · profile · one button. */
-    R4 }
+    R4,
+    /** Round 5: R4 without 🔖, ✕ with its word, difficulty never on the curve, a new rolled-up row. */
+    R5 }
 
 /** Round 3 (owner 2026-11-05): the summary in three groups. */
 @Composable
-private fun r3(): Boolean = LocalPlanBarStyle.current.let { it == PlanBarStyle.R3_A || it == PlanBarStyle.R3_B || it == PlanBarStyle.R4 }
+private fun r3(): Boolean = LocalPlanBarStyle.current.let { it == PlanBarStyle.R3_A || it == PlanBarStyle.R3_B || it == PlanBarStyle.R4 || it == PlanBarStyle.R5 }
 
 /** V5 / V6: the green button takes the rest of the width, one blue outlined "Speichern" as wide as its words. */
 @Composable
@@ -934,6 +1096,7 @@ object PlanBarRow {
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun CollapsedRow(ui: PlanUi, cb: PlanCallbacks, barShown: () -> Float, stop: Modifier) {
+    if (LocalPlanBarStyle.current == PlanBarStyle.R5) { R5CollapsedRow(ui, cb, barShown, stop); return }
     val on = ui.collapsed
     val route = ui.route
     Column(Modifier.fillMaxWidth().graphicsLayer { alpha = 1f - barShown() }
