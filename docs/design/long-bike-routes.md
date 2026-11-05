@@ -130,3 +130,11 @@ Hilden → Nordkirchen, 75 km straight; A ≈ Essen-Kupferdreh, B ≈ Dortmund-H
   `legs =` (and `progress =` for its wait box: the same "Abschnitt n von m" bar) to `Planner(…)`; `Planner.chunkBounds /
   mergeSnapped / doubles / legLengths / cutIndices / SPLICE_REACH_M` are gone. Deploy together with the app release
   (PLANNER_VERSION 4 changes every routing fingerprint once).
+- **The bar within one leg** (owner 2026-11-05: a fresh 2-point 100 km plan is one leg): `BRouterEngine.searchProgress`
+  reads BRouter's public, synced `getOpenSet()` – the frontier node nearest the goal against the straight distance –
+  guide pass 0–20 %, exact pass 20–100 % (98 km Ruhr leg: 0.04 → 1.00 almost linearly in time, `SearchProgressTest.kt`;
+  probe: `tools/routing/phone-bench/ProgressProbe.java`). The app polls it every 250 ms off the main thread for the
+  plan's thread only; `WaitBar` = (legs done + running leg's share) / legs to route, never back. Chosen over a time
+  estimate (seconds per km learned per device): it is the router's own state, needs no learning and is right on the
+  first run. **Web:** no thread in the shared code – the planner can call `searchProgress` the same way only where its
+  engine runs off the page's thread (a Web Worker that answers a poll); else it shows legs done (cloud-plan decides).
