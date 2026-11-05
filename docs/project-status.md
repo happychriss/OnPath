@@ -29,6 +29,7 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **donald, 2026-11-05 evening (with the owner):** long bike routes faster (leg cache, tour follow line, wait bar within a leg) and the new UI round (plan sheet R5, band + '←', Navigate unlock C, V2 end sheet, clear-plan clarity, M3 dialogs, next stops) all on main, gate --full green; test APK on the Pixel. Next: Pixel measurement of the routing, cloud-plan mirrors PLANNER_VERSION 4, onboarding (proposal in chat, not yet in the backlog), then a release on the owner's word.
 - **donald, 2026-11-03 late – shut down by the owner (~23:20); new build items go to the cloud.** On main tonight:
   plan in blue (no top band), novice fixes, fewer terms → superseded by A-022 (open), load-route question, compact
   bars + equal pills, map buttons one column 56 dp, slow-planning question, next stop in the turn card, way word.
