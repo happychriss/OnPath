@@ -83,16 +83,9 @@ the git log.
 - [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
 
 ## Next
-- **[cloud-app] On the way: Pause · Tour beenden · Route ändern as an action sheet (owner 2026-11-05: "Gruppierung gut, Gestaltung
-  unprofessionell – Texte statt Symbole, UX-Standard"; no preference → A taken)** – replaces the tile bar (and the earlier
-  C / round-button idea). After the slide a Material 3 bottom sheet over a scrim: header "Tour läuft · seit 11:38"; section
-  "TOUR" (small green dot): "Pause" – "Aufnahme hält an, die Route bleibt"; "Tour beenden ›" – "Aufnahme speichern,
-  Navigation verlassen" (asks first); divider; section "PLAN" (small blue dot): "Route ändern ›" – "Ziel, Stopps oder Weg
-  anpassen"; "Schließen". Text-first, 56 dp rows, colour only as accent (label colour + dot), no icons as the message.
-  **Plan during a tour, same language:** filled green "Navigation fortsetzen", below a blue row "Plan speichern", a text row
-  "Änderungen verwerfen" – no red, no icons. Sketch + the alternatives (B compact card, C no slider: tour actions in the
-  top tour card + a blue "Route ändern" button) https://claude.ai/artifact/VyLWska92pbffaqvLUZi7J. Screenshots DE + EN,
-  large font too, to the owner before main.
+- **[cloud-app] Navigate's slider bar: no change (owner 2026-11-05 correction)** – the slider and today's buttons stay as built;
+  the action-sheet / tile ideas of today are dropped. The open design question is only the plan sheet during a tour
+  (next line, in work with the captain).
 - **[cloud-app] Far start: ask before routing the way there (owner 2026-11-05, corrected)** – a plan loaded in Meran, "Route
   starten" in Hilden → "Hinführen" routed the lead for a very long time, then "no route". No hard limit (owner: 100 km by
   bike is fine for some). Instead, before the lead is routed, when the way there is long (same idea as the plan's
