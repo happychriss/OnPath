@@ -37,6 +37,7 @@ the git log.
 - → [cloud-web] (donald 2026-11-03): pairing-help pictures app part done – `onpath.private/marketing/bilder/2026-11-03-donald/`
   (`app-a1…a4-de|en.png` + `Ergebnis.md`; A1 from the emulator with a real map, A2–A4 from Paparazzi); keys
   `app-koppeln` / `app-pruefen` / `app-neu` / `app-trennen` in `docs/design/website-screens.md`.
+- → [cloud-plan] (cloud worker 2026-11-05, web-spike 74c2b069 has main c40b638b): (a) A-022 planner texts – the web keys in onpath.private/auftraege/a-022-plan-tour-route.md (the app keys came with the merge; smokes adjusted); (b) the found-place card under the pin like the app ("+ Zur Route" / "Hierhin" · "⋯ Mehr", app `ui/MapOverlays.kt` PinChip); (c) `WebApi.pointMenu` should pass `PlanEdits.loopStart` (plans with a stop on the way before a round trip: ① reads "Start here", app `MapGestures.pointMenu(loopStart)`); (d) locally import-smoke (download name "download"), sync-smoke (timeouts) and search-smoke (no cell store) were red in the cloud container – trust GitHub's Web spike run.
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 - → [cloud-app] **Pixel is back (owner 2026-11-03 evening)** – after the running item: no tour recording → install current
   main on the Pixel (`tools/dev/device.sh pixel`), then the [pixel] check lines at the top of Next (red tile "Neu
