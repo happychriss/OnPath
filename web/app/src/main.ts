@@ -545,7 +545,7 @@ sortable($('points'), (from, to) => applyEdit('move', from, to));
 
 // ---- presses on the map: a click is the app's hold (MapGestures.decide, in the engine) ----
 let menu: maplibregl.Popup | null = null;
-let placeCard: PlaceCard = { close: () => {}, isOpen: () => false, removePin: () => {} }; // the search's place card (set up below)
+let placeCard: PlaceCard = { close: () => {}, isOpen: () => false, removePin: () => {}, planChanged: () => {} }; // the search's place card (set up below)
 function closeMenu() { menu?.remove(); menu = null; }
 function openMenu(at: maplibregl.LngLat, items: MenuItem[], head: string) {
   closeMenu();
@@ -888,6 +888,7 @@ async function cancelRouting() {
 let editBefore: Before | null = null;
 async function changed() {
   const before = editBefore; editBefore = null; dismiss('slowplan'); // a new edit answers the time-limit question
+  placeCard.planChanged(); // the pin card's "+ Zur Route" / "Hierhin" follows the plan
   await drawPoints();
   const few = state.points.length < 2;
   // fewer than two points (Clear route, a point deleted): no route – shown at once. A plan still running in the engine
@@ -1373,6 +1374,7 @@ placeCard = setupSearch({
   points: () => state.points,
   route: () => state.plan?.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon)) ?? [],
   add: (h, role) => addPlace(h, role, true),
+  goHere: (h) => { placeFit = true; void fromMe([Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))], { pinned: true, name: h.title }); },
   google: (h) => google(h.name ?? '', h.lat, h.lon, h.name ? '' : h.title),
   cardShown: (open) => document.body.classList.toggle('card-open', open),
   placeShown: (lat, lon) => areas?.wantPoint(lat, lon, 'searched'), // T2

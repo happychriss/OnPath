@@ -20,6 +20,8 @@ export interface SearchHost {
   points(): [number, number][];
   route(): [number, number][];
   add(hit: Hit, role: PlaceRole): void;
+  /** "Hierhin" on an empty plan (the pin card's action): from my position to this place (the app's poiFromMyLocation). */
+  goHere(hit: Hit): void;
   /** "Google": the app's Google Maps link-out for this place (a new tab). */
   google(hit: Hit): void;
   /** The place card opened or closed (the page makes room: on a phone it stands in for the plan sheet). */
@@ -32,7 +34,9 @@ export interface SearchHost {
 
 /** What the page can do with the place card: close it (a map click elsewhere, Escape) and ask whether it is open. */
 /** [close] closes the card only – the found place's pin stays (app 2026-11-02); [removePin] takes the pin away too. */
-export interface PlaceCard { close(): void; isOpen(): boolean; removePin(): void }
+export interface PlaceCard { close(): void; isOpen(): boolean; removePin(): void;
+  /** The plan changed: the pin card's action follows ("+ Zur Route", on an empty plan "Hierhin"). */
+  planChanged(): void }
 
 /** The elements the anchored card must not cover (wide screen). */
 const BLOCKERS = ['#topbar', '#sheet', '#trackPanel', '#mapnotes', '#footer', '.maplibregl-ctrl-bottom-right'];
@@ -67,8 +71,20 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   /** The found place's pin and its name chip (the app's CandidateMarker + MapOverlays PinChip): they outlive the card. */
   let marker: maplibregl.Marker | null = null;
   let chip: maplibregl.Marker | null = null;
+  let chipHit: Hit | null = null;
   const removePin = () => {
-    marker?.remove(); marker = null; chip?.remove(); chip = null; setJoin(host.map, null);
+    marker?.remove(); marker = null; chip?.remove(); chip = null; chipHit = null; setJoin(host.map, null);
+  };
+  /** The pin card's action button: "+ Zur Route", on an empty plan "Hierhin" (the app's MapOverlays, design B). */
+  const chipAction = () => {
+    const el = chip?.getElement(), h = chipHit;
+    if (!el || !h) return;
+    const empty = host.points().length === 0;
+    const label = t(empty ? 'plan_go_here' : 'plan_pin_add');
+    const b = el.querySelector<HTMLButtonElement>('.pinadd')!;
+    b.innerHTML = `${icon(empty ? 'gpsFixed' : 'add', 16)}<span>${esc(label)}</span>`;
+    b.setAttribute('aria-label', t('plan_pin_action_desc', label, h.title));
+    b.onclick = (e) => { e.stopPropagation(); close(); removePin(); if (empty) host.goHere(h); else host.add(h, 'SMART'); };
   };
   /** The chip picked (the app's SearchKinds.Category name), '' = none; the six chips with their labels from the engine. */
   let category = '';
@@ -135,8 +151,11 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     pinEl.addEventListener('click', (e) => { e.stopPropagation(); again(); });
     marker = new maplibregl.Marker({ element: pinEl, anchor: 'bottom', offset: [0, TIP_MARGIN] }).setLngLat([h.lon, h.lat]).addTo(host.map);
     const chipEl = pinChip(h.title);
-    chipEl.addEventListener('click', (e) => { e.stopPropagation(); again(); });
-    chip = new maplibregl.Marker({ element: chipEl, anchor: 'top', offset: [0, CHIP_GAP - CHIP_PAD] }).setLngLat([h.lon, h.lat]).addTo(host.map);
+    chipEl.addEventListener('click', (e) => e.stopPropagation()); // a click on the card itself is not a map click
+    chipEl.querySelector<HTMLButtonElement>('.pinmore')!.onclick = (e) => { e.stopPropagation(); again(); };
+    chip = new maplibregl.Marker({ element: chipEl, anchor: 'top', offset: [0, CHIP_GAP] }).setLngLat([h.lon, h.lat]).addTo(host.map);
+    chipHit = h;
+    chipAction();
     if (fly) host.placeShown?.(h.lat, h.lon);
     const pv = await host.engine.placePreview(host.points(), h.lat, h.lon);
     if (my === picked) setJoin(host.map, pv.join ? [[h.lon, h.lat], [pv.join[1], pv.join[0]]] : null);
@@ -214,7 +233,7 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   q.addEventListener('focus', () => { if (!q.value.trim() && !category) run(); }); // the chips to start from
   q.addEventListener('keydown', (e) => { if (e.key === 'Escape') { q.value = ''; run(); } });
   clear.onclick = () => { q.value = ''; run(); q.focus(); };
-  return { close, isOpen: () => !card.hidden, removePin };
+  return { close, isOpen: () => !card.hidden, removePin, planChanged: chipAction };
 }
 
 /**
@@ -248,15 +267,19 @@ export function pinChipLabel(name: string): string {
   const n = name.trim();
   return n.length <= 20 ? n : n.slice(0, 19).trimEnd() + '…';
 }
-/** Gap from the tip to the chip's visible top, and the room above / below the pill (touch target ≥ 48). */
-const CHIP_GAP = 6, CHIP_PAD = 8;
-/** "Fabriciusstraße ›" under the pin (the app's PinChip): a white pill, the name bold, a blue ›; a click opens the card. */
+/** Gap from the tip to the card's top. */
+const CHIP_GAP = 6;
+/**
+ * The found place under its pin (the app's MapOverlays.PinChip, owner 2026-11-04 design B): a small white card – the
+ * name, below it the blue action ("+ Zur Route", on an empty plan "Hierhin", set by chipAction) and "⋯ Mehr" (the place
+ * card – the web's pin menu: as start / destination, Google, remove pin). Both ≥ 48 px touch targets; long names "…".
+ */
 function pinChip(name: string): HTMLElement {
-  const b = document.createElement('button');
-  b.className = 'pinchip';
-  b.setAttribute('aria-label', t('plan_pin_chip_desc', name));
-  b.innerHTML = `<span class="pill"><b>${esc(pinChipLabel(name))}</b><span class="chev">›</span></span>`;
-  return b;
+  const d = document.createElement('div');
+  d.className = 'pinchip';
+  d.innerHTML = `<b>${esc(pinChipLabel(name))}</b><div class="pinbtns"><button class="pinadd"></button>` +
+    `<button class="pinmore" aria-label="${esc(t('plan_pin_chip_desc', name))}">${icon('more', 16)}<span>${esc(t('plan_pin_more'))}</span></button></div>`;
+  return d;
 }
 
 /**

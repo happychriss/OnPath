@@ -88,10 +88,21 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 /* the found place's pin (search.ts candidateMarker – the app's CandidateMarker): the tip on the place; its name chip below */
 .candidate { cursor: pointer; }
 .candidate svg { display: block; }
-.pinchip { border: 0; background: none; padding: 8px 0; cursor: pointer; font: inherit; }
-.pinchip .pill { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 8px 0 12px; border-radius: 16px;
-  background: #fff; color: #243C31; box-shadow: 0 1px 4px rgba(0,0,0,.3); white-space: nowrap; font-size: 14px; }
-.pinchip .chev { color: #1E3FAE; font-weight: 700; font-size: 18px; line-height: 1; }
+.pinchip { min-width: 200px; box-sizing: border-box; padding: 9px 10px 0; border-radius: 14px; background: #fff; color: #243C31;
+  box-shadow: 0 1px 4px rgba(0,0,0,.3); font-size: 14px; cursor: default; }
+.pinchip > b { display: block; padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pinchip .pinbtns { display: flex; gap: 6px; position: relative; z-index: 0; }
+/* the app's PinCardButton: a 36 px pill in a 48 px touch box – blue ActionEdit = edit, PlanTint = more */
+.pinchip .pinbtns button { flex: 1; min-height: 48px; border: 0; padding: 0 10px; background: none; font: inherit; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; position: relative; white-space: nowrap; }
+.pinchip .pinbtns button::after { content: ''; position: absolute; inset: 6px 0; border-radius: 18px; z-index: -1; }
+.pinchip .pinadd { color: #fff; }
+.pinchip .pinadd::after { background: #2E6A9E; }
+.pinchip .pinmore { color: #243C31; }
+.pinchip .pinmore::after { background: #EEF3F7; }
+.pinchip .pinbtns button:hover::after { filter: brightness(.94); }
+.pinchip .pinbtns button:focus-visible { outline: none; }
+.pinchip .pinbtns button:focus-visible::after { outline: 2px solid #243C31; outline-offset: 1px; }
 
 /* ---- menus (☰, ⋯) ---- */
 .menu { position: absolute; z-index: 5; right: 0; top: 60px; min-width: 230px; padding: 6px 0; background: var(--bg); border-radius: 6px;
