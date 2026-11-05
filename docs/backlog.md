@@ -83,6 +83,11 @@ the git log.
 - [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
 
 ## Next
+- **[cloud-app] Plan during a tour: same pattern as the bar after the slide (owner 2026-11-05, A taken)** – today three equal
+  pills (green Weiter · blue Speichern · red Neu planen). New: wide green "▶ Navigation fortsetzen", beside it two round
+  blue plan buttons "Speichern" and "Verwerfen" (undo the changes, asks only when changes would be lost). No red here:
+  navigation = green, plan = blue. Screenshots DE + EN first; B (two rows) still possible. Sketch
+  https://claude.ai/artifact/Jvu7bHQ5BaagcB3EVC9XvK. Build together with the slider bar (C) – one pattern.
 - **[cloud-app] Bar after the slide: bar + round "Planen" button (owner 2026-11-05, C)** – Pause and Beenden as one green bar
   (both green – no red / orange sign at the stop: navigation = green, plan = blue), beside it a round blue "✎ Planen"
   button like the map buttons. Beenden still asks first. Same height as today. Screenshots DE + EN to the owner first.
