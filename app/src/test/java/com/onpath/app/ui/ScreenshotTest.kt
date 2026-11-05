@@ -487,7 +487,11 @@ class ScreenshotTest {
             if (tour) Frame(editing = true) {
                 PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
                     PlanCallbacks(onSaveRoute = {}))
-            } else Frame { PlanPanel(planUi(size = PlanSize.COMPACT), PlanCallbacks(onSaveRoute = {})) }
+            } else Frame {
+                // round 3 shows the unsaved dot on 🔖 in the plan state (owner: one state with the dot)
+                val r3 = style == PlanBarStyle.R3_A || style == PlanBarStyle.R3_B
+                PlanPanel(planUi(size = PlanSize.COMPACT).copy(unsaved = r3), PlanCallbacks(onSaveRoute = {}))
+            }
         }
     }
 

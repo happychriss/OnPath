@@ -408,7 +408,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         if (ui.pointCount == 0) Box(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) { FirstPointHint() }
         else {
             // the summary row in the first step, above the bar (owner 2026-11-03: "dass man Fahrrad und 4 Minuten sieht")
-            HeaderWithClear(ui, cb) {
+            if (r3()) R3Head(ui, cb) else HeaderWithClear(ui, cb) {
                 HeaderLine(chip = { ActivityButton(ui.activity, ui.sac, cb.onActivity) }, title = { Title(ui, ui.route, cb.onTimeDetails) })
             }
             if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) { TapHoldHint() }
@@ -466,7 +466,8 @@ private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks, header: Boolean = true) 
     val route = ui.route
     // Line 1: activity · time + distance (Undo and Redo are map buttons; a tap on the time = Time details). During a tour
     // it sits in the first step above the tile bar (PlanBody) – not twice.
-    if (header) HeaderWithClear(ui, cb) {
+    if (header && r3()) R3Head(ui, cb)
+    else if (header) HeaderWithClear(ui, cb) {
         HeaderLine(
             chip = { ActivityButton(ui.activity, ui.sac, cb.onActivity) },
             title = { Title(ui, route, cb.onTimeDetails) },
@@ -497,7 +498,94 @@ private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks, header: Boolean = true) 
     if (loadingNotice) InfoLine(ui.error!!, spinner = ui.error == RoutingDataNotice.LOADING)
     ui.changedText?.takeIf { !ui.routing }?.let { InfoLine(it, onTap = cb.onRouteChanged) }
     ui.syncRoutingText?.takeIf { !ui.routing }?.let { InfoLine(it) }
-    if (ui.pointCount >= 1) PlanActions(ui, cb)
+    if (ui.pointCount >= 1 && !r3()) PlanActions(ui, cb)
+}
+
+/**
+ * Round 3 (owner 2026-11-05): group 1 = the plan's settings in light blue (activity · ✕ · ⇅ · ↻ · 🔖), a hairline, group 2
+ * = the route's facts without buttons (time big · km · ↑ ↓ · difficulty; the highest point is on the profile's axis).
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun R3Head(ui: PlanUi, cb: PlanCallbacks) {
+    val b = LocalPlanBarStyle.current == PlanBarStyle.R3_B
+    val canClear = RouteRules.canClear(ui.pointCount)
+    val two = ui.pointCount >= 2
+    val chip = @Composable { ActivityButton(ui.activity, ui.sac, cb.onActivity, container = PillBlueLight, ink = PillBlueInk) }
+    if (!b) {
+        // A: one row – the chip, then four signs; with a large font the signs move to the next line
+        // the 48 dp touch targets round 40 dp circles already keep 8 dp apart: no extra spacing
+        androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth()) {
+            chip()
+            Spacer(Modifier.width(4.dp))
+            PlanIconPill(Icons.Filled.Close, str(Res.string.plan_clear_desc), canClear, cb.onClear)
+            PlanIconPill(Icons.Outlined.SwapVert, str(Res.string.plan_reverse), two, cb.onReverse)
+            PlanIconPill(Icons.Outlined.Loop, str(Res.string.plan_round_trip), two && !ui.roundTrip, cb.onRoundTrip)
+            PlanIconPill(Icons.Outlined.BookmarkAdd, str(Res.string.plan_save_route), cb.onSaveRoute != null, { cb.onSaveRoute?.invoke() },
+                dot = ui.unsaved)
+        }
+    } else {
+        // B: the chip, ✕ and 🔖 on the right; under it ⇅ Umkehren · ↻ Rundtour with words
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            chip()
+            Spacer(Modifier.weight(1f))
+            PlanIconPill(Icons.Filled.Close, str(Res.string.plan_clear_desc), canClear, cb.onClear)
+            PlanIconPill(Icons.Outlined.BookmarkAdd, str(Res.string.plan_save_route), cb.onSaveRoute != null, { cb.onSaveRoute?.invoke() },
+                dot = ui.unsaved)
+        }
+        androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PlanAction(Icons.Outlined.SwapVert, str(Res.string.plan_reverse), two, cb.onReverse, PillLook.BLUE_LIGHT)
+            PlanAction(Icons.Outlined.Loop, str(Res.string.plan_round_trip), two && !ui.roundTrip, cb.onRoundTrip, PillLook.BLUE_LIGHT)
+        }
+    }
+    // the groups apart: a light hairline in the plan's blue
+    HorizontalDivider(Modifier.padding(top = 6.dp, bottom = 2.dp), thickness = 1.dp, color = OnPathColors.PlanAccent.copy(alpha = 0.18f))
+    R3Facts(ui, cb)
+}
+
+/** Group 2: time (big, tap = Time details) · km · ↑ ↓ · difficulty badge – one line when it fits, else it wraps. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun R3Facts(ui: PlanUi, cb: PlanCallbacks) {
+    val route = ui.route
+    if (route == null) { Title(ui, null, cb.onTimeDetails); return }
+    val variant = MaterialTheme.colorScheme.onSurfaceVariant
+    androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.align(Alignment.CenterVertically)) { Title(ui, route, cb.onTimeDetails) }
+        Text("↑ ${Format.meters(route.ascentM)} ↓ ${Format.meters(route.descentM)}", style = MaterialTheme.typography.bodyMedium,
+            color = variant, maxLines = 1, modifier = Modifier.align(Alignment.CenterVertically))
+        if (!ui.routing) DifficultyBadge(rememberRating(route, ui.activity),
+            Modifier.align(Alignment.CenterVertically)
+                .clickable(role = Role.Button, onClickLabel = str(Res.string.plan_show_route_details), onClick = cb.onDetails))
+    }
+}
+
+/** Group 1's sign-only buttons: a light blue circle (40 dp) in a 48 dp touch target, TalkBack names it; [dot] = unsaved. */
+@Composable
+private fun PlanIconPill(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, onClick: () -> Unit,
+                         dot: Boolean = false) {
+    Box(Modifier.size(48.dp).clip(CircleShape)
+        .clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick)
+        .semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(40.dp).clip(CircleShape).background(pillFill(enabled, PillLook.BLUE_LIGHT)), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = pillInk(enabled, PillLook.BLUE_LIGHT), modifier = Modifier.size(20.dp))
+        }
+        if (dot) Box(Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 6.dp).size(10.dp).clip(CircleShape)
+            .background(OnPathColors.Green))
+    }
+}
+
+/** Round 3, group 3: ONE full-width green button – "▶ Los geht's" / "‹ Navigation"; TalkBack hears the full label. */
+@Composable
+private fun GoFullButton(ui: PlanUi, cb: PlanCallbacks) {
+    val full = primaryLabel(ui)
+    Button(onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics { contentDescription = full }) {
+        Icon(goIcon(ui), null, Modifier.size(22.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(goLabel(ui), style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false,
+            modifier = Modifier.clearAndSetSemantics { })
+    }
 }
 
 /**
@@ -542,6 +630,7 @@ private fun ColumnScope.PlanBar(ui: PlanUi, cb: PlanCallbacks) {
                 PlanBarStyle.SPLIT -> SplitGoButton(ui, cb, canNew)
                 PlanBarStyle.CLEAR_IN_PILLS, PlanBarStyle.CLEAR_IN_PILLS_PLAIN, PlanBarStyle.CLEAR_TOP_RIGHT,
                 PlanBarStyle.CLEAR_IN_PILLS_FILLED -> GoSaveRow(ui, cb)
+                PlanBarStyle.R3_A, PlanBarStyle.R3_B -> GoFullButton(ui, cb)
                 PlanBarStyle.TODAY -> Unit
             }
         }
@@ -549,7 +638,13 @@ private fun ColumnScope.PlanBar(ui: PlanUi, cb: PlanCallbacks) {
 }
 
 /** Design proposal 2026-11-05 (owner: compact, Material 3 + Google Maps logic): the bottom row's look, set only by the screenshot test. */
-enum class PlanBarStyle { TODAY, F_GROUP, MAPS_PILLS, ICON_BUTTONS, SPLIT, CLEAR_IN_PILLS, CLEAR_IN_PILLS_PLAIN, CLEAR_TOP_RIGHT, CLEAR_IN_PILLS_FILLED }
+enum class PlanBarStyle { TODAY, F_GROUP, MAPS_PILLS, ICON_BUTTONS, SPLIT, CLEAR_IN_PILLS, CLEAR_IN_PILLS_PLAIN, CLEAR_TOP_RIGHT, CLEAR_IN_PILLS_FILLED,
+    /** Round 3: plan settings · route facts · one button – A: one row of signs, B: two rows with words. */
+    R3_A, R3_B }
+
+/** Round 3 (owner 2026-11-05): the summary in three groups. */
+@Composable
+private fun r3(): Boolean = LocalPlanBarStyle.current.let { it == PlanBarStyle.R3_A || it == PlanBarStyle.R3_B }
 
 /** V5 / V6: the green button takes the rest of the width, one blue outlined "Speichern" as wide as its words. */
 @Composable
@@ -1043,6 +1138,7 @@ private fun SubLine(ui: PlanUi, route: PlannedRoute?, onDetails: () -> Unit = {}
             style = MaterialTheme.typography.bodyLarge, color = variant)
         return
     }
+    if (r3()) return // round 3: the facts are group 2 (R3Facts)
     Row(verticalAlignment = Alignment.CenterVertically) {
         val top = route.points.mapNotNull { it.ele }.maxOrNull()
         Text(
@@ -1144,10 +1240,11 @@ internal fun destinationName(points: List<com.onpath.app.routing.PlanPointRow>):
 
 /** The route's activity as a small tonal icon button with ▾ (opens the activity picker). */
 @Composable
-private fun ActivityButton(activity: Activity, sac: Int, onClick: () -> Unit) {
+private fun ActivityButton(activity: Activity, sac: Int, onClick: () -> Unit, container: Color? = null, ink: Color? = null) {
     val name = com.onpath.app.data.LastActivity.chipText(activity, sac) // "Hike · T2"
     androidx.compose.material3.Surface(onClick = onClick, shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.secondaryContainer,
+        color = container ?: MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = ink ?: MaterialTheme.colorScheme.onSecondaryContainer,
         modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = Txt.s(Res.string.plan_activity_chip_desc, name) }) {
         Row(Modifier.padding(start = 8.dp, end = 0.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(activity.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(24.dp))

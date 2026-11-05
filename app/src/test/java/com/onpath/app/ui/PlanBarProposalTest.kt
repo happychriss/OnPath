@@ -46,6 +46,10 @@ open class PlanBarProposalTest {
     @Test fun v6ClearTopRightTour() = shots.planBarProposal(PlanBarStyle.CLEAR_TOP_RIGHT, tour = true)
     @Test fun v7FilledPlan() = shots.planBarProposal(PlanBarStyle.CLEAR_IN_PILLS_FILLED, tour = false)
     @Test fun v7FilledTour() = shots.planBarProposal(PlanBarStyle.CLEAR_IN_PILLS_FILLED, tour = true)
+    @Test fun r3APlan() = shots.planBarProposal(PlanBarStyle.R3_A, tour = false)
+    @Test fun r3ATour() = shots.planBarProposal(PlanBarStyle.R3_A, tour = true)
+    @Test fun r3BPlan() = shots.planBarProposal(PlanBarStyle.R3_B, tour = false)
+    @Test fun r3BTour() = shots.planBarProposal(PlanBarStyle.R3_B, tour = true)
 }
 
 /** The same at the phone's largest font (2.0). */
