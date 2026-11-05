@@ -164,7 +164,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="threeDNote" class="threednote" hidden>${escapeHtml(t('web_terrain_view_only'))}</div>
   <section id="bigProfile" class="bigprofile" aria-label="${escapeHtml(t('plan_elevation_profile'))}" hidden>
     <div class="bphead"><b>${escapeHtml(t('plan_elevation_profile'))}</b><span class="bplegend muted small">${
-      ['< 5 %', '5–10 %', '10–15 %', '> 15 %'].map((l, i) => `<span><i style="background:${i ? STEEP_COLOURS[i] : ROUTE}"></i>${escapeHtml(l)}</span>`).join('')}</span>
+      ['< 5 %', '5–10 %', '10–15 %', '> 15 %'].map((l, i) => `<span><i style="background:${STEEP_COLOURS[i]}"></i>${escapeHtml(l)}</span>`).join('')}</span>
       <button class="iconbtn bpclose" aria-label="${escapeHtml(t('common_close'))}" title="${escapeHtml(t('common_close'))}">${icon('close', 20)}</button></div>
     <div class="bpplot"></div>
   </section>
@@ -243,7 +243,15 @@ const routeProfile = new RouteProfile(map, ROUTE, $('profile'), $('bigProfile'),
   document.body.classList.toggle('bigprofile-open', open);
   if (open) fitRoute(); // the whole route above the big profile
 });
-const terrain3d = new Terrain3D(map, $<HTMLButtonElement>('terrain3d'), $('threeDNote'), () => markers.forEach((m) => m.setDraggable(!terrain3d.on)));
+const terrain3d = new Terrain3D(map, $<HTMLButtonElement>('terrain3d'), $('threeDNote'), () => markers.forEach((m) => m.setDraggable(!terrain3d.on)),
+  () => { // 3D frames the route like the fit button (clear of the sheet and the big profile)
+    const b = routeBounds();
+    if (!b) return null;
+    const p = map.getPadding();
+    if (p.top || p.bottom || p.left || p.right) map.setPadding(NO_PADDING);
+    const padding = fitPadding(), cam = map.cameraForBounds(b, { padding, maxZoom: 16 });
+    return cam?.zoom != null ? { center: b.getCenter(), zoom: cam.zoom, padding } : null;
+  });
 (window as unknown as { __terrain: Terrain3D }).__terrain = terrain3d; // for the browser tests
 (window as unknown as { __profile: RouteProfile }).__profile = routeProfile;
 // in 3D a point's pin stands on the ground: placed again once the heights under it are loaded (before that it sat at 0 m)
@@ -1338,17 +1346,23 @@ $('locate').onclick = () => { locating = true; position.locate(); locateNotice()
  *  (fitPadding: clear of the sheet in any step, the top bar, the place card and the controls). Not keepFollow – it
  *  ends position following, like every camera move made for the user (CLAUDE.md "Map camera"). */
 function fitRoute() {
-  if (!state.points.length) return; // the button needs two; the off-map line's Show also one point
+  const b = routeBounds();
+  if (!b) return; // the button needs two; the off-map line's Show also one point
+  // fitBounds adds the map's own padding to ours – a padding left by an older easeTo would shrink the room (§13 row 19)
+  const p = map.getPadding();
+  if (p.top || p.bottom || p.left || p.right) map.setPadding(NO_PADDING);
+  map.fitBounds(b, { padding: fitPadding(), maxZoom: 16 });
+}
+/** The plan's points, its route and a shown GPX track – what fitRoute and 3D frame; null without points. */
+function routeBounds(): maplibregl.LngLatBounds | null {
+  if (!state.points.length) return null;
   const b = new maplibregl.LngLatBounds();
   state.points.forEach(([la, lo]) => b.extend([lo, la]));
   state.plan?.legs.forEach((l) => l.points.forEach(([la, lo]) => b.extend([lo, la])));
   const track = gpxImport.shown;
   track?.segments.flat().forEach(([la, lo]) => b.extend([lo, la]));
   track?.waypoints.forEach((w) => b.extend([w.lon, w.lat]));
-  // fitBounds adds the map's own padding to ours – a padding left by an older easeTo would shrink the room (§13 row 19)
-  const p = map.getPadding();
-  if (p.top || p.bottom || p.left || p.right) map.setPadding(NO_PADDING);
-  map.fitBounds(b, { padding: fitPadding(), maxZoom: 16 });
+  return b;
 }
 $('fitRoute').onclick = fitRoute;
 /** Eye: hold to hide the route and the markers, release shows them again (the app's EyeControl). */

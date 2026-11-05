@@ -35,6 +35,9 @@ export class RouteProfile {
     const m = this.map;
     m.addSource(CURSOR, { type: 'geojson', data: empty() });
     m.addSource(STEEP, { type: 'geojson', data: empty() });
+    // a white edge under the steepness colours: the flat green must stay visible on the green map
+    m.addLayer({ id: STEEP + '-edge', type: 'line', source: STEEP, layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'none' },
+      paint: { 'line-color': '#fff', 'line-width': 9 } }, before);
     m.addLayer({ id: STEEP, type: 'line', source: STEEP, layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'none' },
       paint: { 'line-color': ['get', 'colour'], 'line-width': 6 } }, before);
     m.addLayer({ id: CURSOR, type: 'circle', source: CURSOR,
@@ -55,14 +58,11 @@ export class RouteProfile {
       this.sheetHost.innerHTML = `<div class="muted small noele">${escapeHtml(noElevation)}</div>`;
       this.small = null; this.setOpen(false); return;
     }
-    this.small = mountProfile(this.sheetHost, p, (m) => this.cursor(m, 'small'));
-    const b = document.createElement('button');
-    b.className = 'iconbtn profbig'; b.id = 'profileBig';
-    b.title = t('web_profile_big'); b.setAttribute('aria-label', t('web_profile_big'));
-    b.setAttribute('aria-pressed', String(this.open));
-    b.innerHTML = '<svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11V3h-8l3.29 3.29-10 10L3 13v8h8l-3.29-3.29 10-10z"/></svg>';
-    b.onclick = () => this.setOpen(!this.open);
-    this.sheetHost.querySelector('.profplot')!.append(b);
+    // ⤢ in the row above the drawing, beside the heights – never on top of the graph (owner review 2026-11-05)
+    const big = `<button class="iconbtn profbig" id="profileBig" title="${escapeHtml(t('web_profile_big'))}" aria-label="${escapeHtml(t('web_profile_big'))}"
+      aria-pressed="${this.open}"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11V3h-8l3.29 3.29-10 10L3 13v8h8l-3.29-3.29 10-10z"/></svg></button>`;
+    this.small = mountProfile(this.sheetHost, p, (m) => this.cursor(m, 'small'), undefined, big);
+    this.sheetHost.querySelector<HTMLButtonElement>('#profileBig')!.onclick = () => this.setOpen(!this.open);
     if (this.open) this.drawBig();
   }
 
@@ -79,7 +79,7 @@ export class RouteProfile {
 
   private drawBig() {
     if (!this.profile) return;
-    this.big = mountProfile(this.panel.querySelector<HTMLElement>('.bpplot')!, this.profile, (m) => this.cursor(m, 'big'), { W: 1000, H: 150, flat: this.routeColour });
+    this.big = mountProfile(this.panel.querySelector<HTMLElement>('.bpplot')!, this.profile, (m) => this.cursor(m, 'big'), { W: 1000, H: 150 });
     this.steepLine();
   }
 
@@ -90,9 +90,10 @@ export class RouteProfile {
     const on = this.open && this.profile != null;
     try {
       src.setData(on ? { type: 'FeatureCollection', features: steepRuns(this.line, this.profile!).map((r) => ({ type: 'Feature',
-        properties: { colour: r.cls === 0 ? this.routeColour : STEEP_COLOURS[r.cls] },
+        properties: { colour: STEEP_COLOURS[r.cls] ?? STEEP_COLOURS[0] },
         geometry: { type: 'LineString', coordinates: r.coords } })) } : empty());
       this.map.setLayoutProperty(STEEP, 'visibility', on ? 'visible' : 'none');
+      this.map.setLayoutProperty(STEEP + '-edge', 'visibility', on ? 'visible' : 'none');
     } catch (e) { problem('map', 'steepness line not drawn', e); }
   }
 
@@ -126,7 +127,9 @@ export class RouteProfile {
 
 export class Terrain3D {
   on = false;
-  constructor(private map: maplibregl.Map, private button: HTMLButtonElement, private note: HTMLElement, private onChange: () => void) {
+  /** [frame]: the flat camera that shows the whole route clear of the sheet (main.ts cameraForBounds), null = no route. */
+  constructor(private map: maplibregl.Map, private button: HTMLButtonElement, private note: HTMLElement, private onChange: () => void,
+    private frame: () => { center: maplibregl.LngLat; zoom: number; padding: maplibregl.PaddingOptions } | null = () => null) {
     button.onclick = () => this.set(!this.on);
     this.render();
   }
@@ -152,20 +155,26 @@ export class Terrain3D {
       if (on) {
         if (!this.possible) return;
         // the cells carry heights from zoom 10 (z10–13); further out a tile is flat (0 m) and the mountains would stand on
-        // walls – so 3D keeps the camera close (zoom ≥ 11) and the horizon away (tilt ≤ 60°)
-        m.setMaxPitch(60);
+        // walls – so 3D keeps the camera close (zoom ≥ 11); the sky and its fog hide the far edge (tilt ≤ 70°)
+        m.setMaxPitch(70);
         m.setMinZoom(MIN_ZOOM_3D);
         m.setSourceTileLodParams(1.5, 6, 'terrain'); // heights near the camera's zoom also further away (not the flat z<10)
-        m.setTerrain({ source: 'terrain', exaggeration: 1.3 });
+        m.setTerrain({ source: 'terrain', exaggeration: 1.5 });
         m.setSky({ 'sky-color': '#9fc6e8', 'horizon-color': '#e6eff5', 'fog-color': '#f2f4f0', 'sky-horizon-blend': 0.6,
           'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.75, 'atmosphere-blend': 0 });
         this.on = true;
-        m.easeTo({ pitch: 55, zoom: Math.max(m.getZoom(), 12.5), duration: 900 });
+        // clearly in perspective (owner review 2026-11-05: "barely tilted"): 62°, framed on the route when there is one –
+        // looking at it from the south-east a little, so the slopes face the viewer; tilting enlarges the near part, so a
+        // bit further out than the flat fit; the route's middle in the middle of the free room (padding = sheet, profile)
+        const f = this.frame();
+        const zoom = f ? f.zoom - 0.6 : Math.max(m.getZoom(), 12.5);
+        m.easeTo({ center: f?.center ?? m.getCenter(), zoom: Math.max(MIN_ZOOM_3D, zoom), pitch: 62,
+          bearing: f ? -20 : m.getBearing(), padding: f?.padding ?? m.getPadding(), duration: 900 });
       } else {
         this.on = false;
         m.setTerrain(null);
         m.setSky({});
-        m.jumpTo({ pitch: 0 });
+        m.jumpTo({ pitch: 0, padding: { top: 0, bottom: 0, left: 0, right: 0 } }); // the 3D frame's room for the sheet goes too
         m.setMaxPitch(0);
         m.setMinZoom(0);
         m.setSourceTileLodParams(4, 3, 'terrain'); // MapLibre's defaults

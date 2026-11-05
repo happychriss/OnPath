@@ -873,13 +873,16 @@ Code: `web/app/src/terrainview.ts` (`RouteProfile`, `Terrain3D`), `profile.ts` (
   (`ui/ElevationProfile`): pointer / finger over the profile → a line, "375 m · 2.7 km · 14 %" (height, distance, gradient
   over ~100 m like `RouteSummary.steepness`) and the app's white dot with the route ring on the map (`profile-cursor` =
   the app's `highlight-dot`). The other way round: the pointer on the route line moves the cursor in the profiles. The ⤢
-  button in the sheet's profile opens the **big profile** below the map (legend < 5 % · 5–10 % · 10–15 % · > 15 %, ✕);
-  while it is open the route is coloured by steepness (`profile-steep`; flat = the route's blue in the big profile and
-  on the map) and the camera fit keeps the route above it (`fitPadding`). Phone: the big profile takes the sheet's place.
+  button (in the row above the drawing, beside "300 – 578 m"; the x-axis reads "0 … 4,6 km" – owner review 2026-11-05)
+  opens the **big profile** below the map (legend < 5 % · 5–10 % · 10–15 % · > 15 %, ✕); while it is open the route is
+  coloured by steepness (`profile-steep` over a white edge). **One set of colours everywhere** – the app's
+  `STEEP_COLOURS` (green, yellow, orange, red) in both profiles, the legend and on the map; never the route's blue
+  (blue = edit). The camera fit keeps the route above the big profile (`fitPadding`). Phone: the big profile takes the sheet's place.
   Distance along the line: haversine over the legs' points (the app's `Geo.cumulative` rule behind `ProfileData`).
 - **C – 3D.** Toolbar button **3D** ("Gelände in 3D" / "Zurück zur flachen Karte"): `map.setTerrain` on the style's
   raster-dem source `terrain` – the cells' `terrain.pmtiles` (Terrarium, z10–13), the same files as the relief: no new
-  data, no server. Exaggeration 1.3, a sky, tilt 55° on entering (max 60°), zoom ≥ 11 while on (heights exist from z10;
+  data, no server. Exaggeration 1.5, a sky, on entering tilt 62° (max 70°), bearing −20° and framed on the route like
+  the fit button (`cameraForBounds` with `fitPadding`, 0.4 zoom further out – owner review: "barely tilted"), zoom ≥ 11 while on (heights exist from z10;
   further out a tile is flat 0 m and the mountains would stand on walls). **View only:** a click plans nothing, points
   cannot be dragged; one quiet line says so ("3D-Ansicht – nur zum Anschauen. Zum Planen 3D ausschalten."). Off: no
   terrain, tilt 0, `maxPitch` 0 again (turn yes, tilt no), min zoom 0. A failure goes to the log, the flat map comes back.

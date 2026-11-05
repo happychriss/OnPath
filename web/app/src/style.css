@@ -172,7 +172,7 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 .warnline { border: none; text-align: left; font-weight: 600; }
 .spots { list-style: none; margin: -4px 0 0; padding: 0; } .spots button { width: 100%; border: none; background: none; text-align: left; padding: 6px 8px;
   border-radius: 8px; display: flex; flex-direction: column; } .spots button:hover { background: var(--surface2); }
-#profile svg { width: 100%; height: 90px; display: block; } .axis { display: flex; justify-content: space-between; font-size: 11px; }
+#profile .profplot > svg { width: 100%; height: 90px; display: block; } .axis { display: flex; justify-content: space-between; font-size: 11px; }
 .pointshead { display: flex; align-items: center; gap: 4px; } .pointshead b { flex: 1; font-size: 15px; }
 /* the app's PlanActions: ✕ Close · ⇅ Reverse · ↻ Round trip under the summary, icon + word, spread evenly, wrapping */
 .planactions { display: flex; flex-wrap: wrap; justify-content: space-evenly; gap: 0 4px; margin: -2px 0 2px; }
@@ -532,10 +532,11 @@ kbd { display: inline-block; min-width: 1.4em; padding: 1px 6px; border: 1px sol
 /* ---- terrain view (terrainview.ts, owner 2026-11-05): the profile's cursor, the big profile, 3D ---- */
 .profplot { position: relative; touch-action: pan-y; }
 .profplot svg { cursor: crosshair; }
-.profcursor { position: absolute; top: 0; bottom: 18px; width: 0; border-left: 2px solid var(--fg); pointer-events: none; }
+.profcursor { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px solid var(--fg); pointer-events: none; }
 .proflabel { position: absolute; top: 0; padding: 1px 6px; border-radius: 6px; background: rgba(255,255,255,.92); box-shadow: 0 1px 4px var(--shadow);
   font-size: 12px; white-space: nowrap; pointer-events: none; color: #555A55; }
-.profbig { position: absolute; top: -6px; right: -8px; width: 32px; height: 32px; color: var(--muted); }
+.profhead { display: flex; align-items: center; justify-content: space-between; min-height: 18px; font-size: 11px; margin-bottom: 4px; }
+.profbig { width: 30px; height: 30px; margin: -4px -6px -4px 0; color: var(--muted); }
 .profbig[aria-pressed="true"] { color: var(--route); background: var(--chip); }
 .bigprofile { position: absolute; z-index: 2; left: calc(var(--sheet-w) + 24px); right: 72px; bottom: 56px; box-sizing: border-box;
   background: var(--bg); border-radius: 18px; box-shadow: 0 2px 14px var(--shadow); padding: 8px 16px 10px; }
@@ -544,7 +545,7 @@ kbd { display: inline-block; min-width: 1.4em; padding: 1px 6px; border: 1px sol
 .bplegend span { display: inline-flex; align-items: center; gap: 4px; }
 .bplegend i { display: inline-block; width: 12px; height: 3px; }
 .bpclose { margin-left: auto; }
-.bpplot svg { width: 100%; height: 150px; display: block; }
+.bpplot .profplot > svg { width: 100%; height: 150px; display: block; }
 .tool.three { font-weight: 700; font-size: 14px; letter-spacing: .02em; color: var(--fg); }
 .tool.three.on { background: var(--chip); color: var(--route); }
 .threednote { position: absolute; z-index: 2; right: 12px; top: 76px; padding: 6px 14px; border-radius: 16px;
@@ -552,7 +553,7 @@ kbd { display: inline-block; min-width: 1.4em; padding: 1px 6px; border: 1px sol
 body.three-d .pin { cursor: default; }
 @media (max-width: 700px) {
   .bigprofile { left: 0; right: 0; bottom: 0; border-radius: 22px 22px 0 0; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
-  .bpplot svg { height: 130px; }
+  .bpplot .profplot > svg { height: 130px; }
   body.bigprofile-open #sheet { display: none; }
   .threednote { top: auto; bottom: calc(var(--sheet-h) + 12px); right: 12px; left: 12px; white-space: normal; text-align: center; }
 }

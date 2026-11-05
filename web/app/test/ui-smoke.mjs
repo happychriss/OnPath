@@ -49,6 +49,11 @@ tcheck(await dot(), 'the dot on the map follows the profile');
 await page.mouse.move(5, 400);
 await page.waitForTimeout(200);
 tcheck(await cursorNow() == null && !(await dot()), 'pointer off the profile: cursor and dot gone');
+// ⤢ sits beside the heights, never on the drawing (owner review 2026-11-05); the total distance at the axis' right end
+const bigBtn = await page.locator('#profileBig').boundingBox();
+tcheck(bigBtn && (bigBtn.y + bigBtn.height <= small.y + 1 || bigBtn.x >= small.x + small.width), `⤢ clear of the profile drawing (${JSON.stringify(bigBtn)} vs ${JSON.stringify(small)})`);
+const axis = await page.locator('#profile .axis span').allTextContents();
+tcheck(axis.length === 2 && /km$/.test(axis[1]), `profile axis "0 … total km" (${JSON.stringify(axis)})`);
 await page.click('#profileBig');
 await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 30_000 });
 await page.waitForTimeout(400);
@@ -56,6 +61,14 @@ tcheck(await page.locator('#bigProfile').isVisible(), 'big profile opens below t
 const steep = await page.evaluate(async () => ({ vis: window.__map.getLayoutProperty('profile-steep', 'visibility'),
   n: (await window.__map.getSource('profile-steep').getData())?.features?.length ?? 0 }));
 tcheck(steep.vis === 'visible' && steep.n > 0, `route coloured by steepness while open (${JSON.stringify(steep)})`);
+// the app's steepness colours everywhere – green for flat, never the route's blue (owner review 2026-11-05)
+const colours = await page.evaluate(async () => ({
+  legend: [...document.querySelectorAll('#bigProfile .bplegend i')].map((i) => getComputedStyle(i).backgroundColor),
+  line: [...new Set((await window.__map.getSource('profile-steep').getData()).features.map((f) => f.properties.colour))],
+  fills: [...new Set([...document.querySelectorAll('#bigProfile .profplot > svg path')].map((p) => p.getAttribute('fill')))] }));
+const APP = ['#7fb77e', '#e3b23c', '#e07b39', '#c0392b'];
+tcheck(JSON.stringify(colours.legend) === JSON.stringify(['rgb(127, 183, 126)', 'rgb(227, 178, 60)', 'rgb(224, 123, 57)', 'rgb(192, 57, 43)'])
+  && colours.line.every((c) => APP.includes(c)) && colours.fills.every((c) => APP.includes(c)), `steepness colours = the app's (${JSON.stringify(colours)})`);
 // the pointer on the route (a vertex in the middle) → the big profile shows the cursor there
 const onRoute = await page.evaluate(() => {
   const legs = window.__state.plan.legs.flatMap((l) => l.points);
@@ -78,7 +91,7 @@ await page.click('#terrain3d');
 await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 30_000 });
 const on3d = await page.evaluate(() => ({ terrain: window.__map.getTerrain()?.source ?? null, pitch: window.__map.getPitch(),
   pressed: document.getElementById('terrain3d').getAttribute('aria-pressed'), note: !document.getElementById('threeDNote').hidden }));
-tcheck(on3d.terrain === 'terrain' && on3d.pitch > 30 && on3d.pressed === 'true' && on3d.note, `3D on: ${JSON.stringify(on3d)}`);
+tcheck(on3d.terrain === 'terrain' && on3d.pitch > 55 && on3d.pressed === 'true' && on3d.note, `3D on: ${JSON.stringify(on3d)}`);
 const nBefore = await page.evaluate(() => window.__state.points.length);
 const mapBox = await page.locator('#map').boundingBox();
 await page.mouse.click(mapBox.x + mapBox.width * 0.75, mapBox.y + mapBox.height * 0.5);
