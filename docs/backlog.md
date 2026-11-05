@@ -29,15 +29,9 @@ the git log.
   4 "Deine Daten bleiben bei dir" · 5 "Ohne Werbung. Ohne Konto. Ohne Tracking." · 6 "Am PC planen, auf dem Handy
   losgehen". Pictures to the owner before uploading; EN versions as a proposal. Not copied from others: photos,
   reviews, community feeds (card 6).
-- → [cloud-plan] (donald 2026-11-03): the slow-planning question is in the app (onpath.private#21 B): new shared
-  `routing/SlowPlan.kt` (in app/web-shared-files.txt), changed shared `RoutingContract.kt` (RouteLimits.rounds),
-  `RouteTimeLimit.kt`, `Planner.kt`, `BRouterEngine.kt`. The planner shows the same FRAGE box: `Planner(askAtLimit =
-  true, rounds)`, on `SlowPlan.TimeLimit` the box "Die Route ist lang, die Berechnung dauert. Weiter warten?" –
-  "Weiter warten" = run with rounds + 1, "Abbrechen" = onCancelRouting. Finished routes unchanged (no PLANNER_VERSION bump).
 - → [cloud-web] (donald 2026-11-03): pairing-help pictures app part done – `onpath.private/marketing/bilder/2026-11-03-donald/`
   (`app-a1…a4-de|en.png` + `Ergebnis.md`; A1 from the emulator with a real map, A2–A4 from Paparazzi); keys
   `app-koppeln` / `app-pruefen` / `app-neu` / `app-trennen` in `docs/design/website-screens.md`.
-- → [cloud-plan] (cloud worker 2026-11-05, web-spike 74c2b069 has main c40b638b): (a) A-022 planner texts – the web keys in onpath.private/auftraege/a-022-plan-tour-route.md (the app keys came with the merge; smokes adjusted); (b) the found-place card under the pin like the app ("+ Zur Route" / "Hierhin" · "⋯ Mehr", app `ui/MapOverlays.kt` PinChip); (c) `WebApi.pointMenu` should pass `PlanEdits.loopStart` (plans with a stop on the way before a round trip: ① reads "Start here", app `MapGestures.pointMenu(loopStart)`); (d) locally import-smoke (download name "download"), sync-smoke (timeouts) and search-smoke (no cell store) were red in the cloud container – trust GitHub's Web spike run.
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 - → [cloud-app] **Pixel is back (owner 2026-11-03 evening)** – after the running item: no tour recording → install current
   main on the Pixel (`tools/dev/device.sh pixel`), then the [pixel] check lines at the top of Next (red tile "Neu
@@ -81,7 +75,7 @@ the git log.
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [donald] Plan sheet bottom: ONE compact row '▶ Los geht's' / '‹ Navigation' + 'Speichern | Neu planen' (owner 2026-11-05, F) – since 2026-11-05
-- [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
+- [laptop] (hp, cloud-plan) Planner: wait box → 'Weiter warten?' (SlowPlan, #21 B) · A-022 web texts · pin card '+ Hinzufügen' / 'Hierhin' · '⋯ Mehr' · pointMenu loopStart · header link 'Android-App testen' – since 2026-11-05
 
 ## Next
 - **[cloud-app] Navigate's slider bar: no change (owner 2026-11-05 correction)** – the slider and today's buttons stay as built;
