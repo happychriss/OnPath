@@ -18,6 +18,7 @@ import com.onpath.app.routing.WaypointInsertion
 import com.onpath.app.routing.Rd5Parts
 import com.onpath.app.routing.RoutingException
 import com.onpath.app.routing.Share
+import com.onpath.app.routing.SlowPlan
 import com.onpath.app.time.RouteTimes
 import com.onpath.app.poi.PoiLinks
 import com.onpath.app.recording.GpsStatus
@@ -212,9 +213,11 @@ object Engine {
      * time model with the page's pace setting ([WebPace.factors]), free points snapped onto the way the router used
      * ([pinned] = POI-pinned and [names] = named stops keep their place, so does a stop the route does not reach or
      * skips), the gaps, the route warnings, the difficulty and the profile. Only the JSON is the web's.
-     * [names] = lines "index<TAB>name".
+     * [names] = lines "index<TAB>name". [rounds] = time-limit periods of this run ([SlowPlan], owner 2026-11-03,
+     * onpath.private#21 B): ≥ 1 = a plan the user started – at the limit the JSON is {"slow":rounds} and the page asks
+     * "Weiter warten?" (the app's AppViewModel.answerSlowPlan); 0 = no question, straight lines as before (compare page).
      */
-    fun plan(points: String, activity: String, sac: Int, pinned: String = "", names: String = ""): String {
+    fun plan(points: String, activity: String, sac: Int, pinned: String = "", names: String = "", rounds: Int = 0): String {
         val t0 = System.currentTimeMillis()
         return try {
             val wps = parsePoints(points)
@@ -222,8 +225,15 @@ object Engine {
             val nm = parseNames(names)
             // the same points planned before with another activity / T level: the app's "New route for … – check it"
             val before = lastResultFor(wps)?.takeIf { it.activity != act || it.sac != sac }
-            val res = PlanResult.plan(engine(), wps, act, sac, parseIndices(pinned), nm.filterValues { it.isNotBlank() }.keys,
-                WebPace.factors(act))
+            val planner = Planner(engine(), null, askAtLimit = rounds >= 1, rounds = rounds.coerceAtLeast(1))
+            val res = try {
+                PlanResult.plan(planner, wps, act, sac, parseIndices(pinned), nm.filterValues { it.isNotBlank() }.keys,
+                    WebPace.factors(act))
+            } catch (e: SlowPlan.TimeLimit) {
+                // the time limit: the page asks "Weiter warten?" – the points and the last line stay as they are
+                Problems.info("routing", "Plan reached its time limit after ${e.rounds} period(s) – asking to wait on")
+                return "{\"slow\":${e.rounds},\"legs\":[]}"
+            }
             lastResult = res
             val changed = before?.route?.takeIf { b ->
                 RouteWarnings.changedNoticeably(b.points, b.distanceM, b.ascentM, res.route.points, res.route.distanceM, res.route.ascentM)
@@ -562,8 +572,8 @@ class WebContext(private val dir: File) : android.content.Context() {
 
 @JSExport fun route(points: String, activity: String, sac: Int): String = Engine.route(points, activity, sac)
 
-@JSExport fun plan(points: String, activity: String, sac: Int, pinned: String, names: String): String =
-    Engine.plan(points, activity, sac, pinned, names)
+@JSExport fun plan(points: String, activity: String, sac: Int, pinned: String, names: String, rounds: Int): String =
+    Engine.plan(points, activity, sac, pinned, names, rounds)
 
 @JSExport fun historySnap(routed: String, snapped: String) = Engine.historySnap(routed, snapped)
 

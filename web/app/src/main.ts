@@ -887,7 +887,7 @@ async function cancelRouting() {
 /** The plan before the point edit that is being planned now (the long-route question's "Far from your route"). */
 let editBefore: Before | null = null;
 async function changed() {
-  const before = editBefore; editBefore = null;
+  const before = editBefore; editBefore = null; dismiss('slowplan'); // a new edit answers the time-limit question
   await drawPoints();
   const few = state.points.length < 2;
   // fewer than two points (Clear route, a point deleted): no route – shown at once. A plan still running in the engine
@@ -907,6 +907,25 @@ async function changed() {
   const answer = await longRouteOk(engine, state.points, state.activity, before);
   if (answer === 'cancel') { await cancelLongRoute(); return; }
   if (answer !== 'plan') { await startFresh(answer.fresh); return; }
+  await planRun(1);
+}
+
+/**
+ * The time limit was reached (owner 2026-11-03, onpath.private#21 B, the app's slowPlanMessage / answerSlowPlan –
+ * routing/SlowPlan): "Die Route ist lang, die Berechnung dauert. Weiter warten?" – Abbrechen · Weiter warten. A FRAGE,
+ * it stays until answered; the points and the last line stay. Weiter warten = the run again with one more period (the
+ * routed pieces come from the engine's cache), Abbrechen = like Cancel of the wait (PlanStatus.onCancel).
+ */
+function askSlowPlan(rounds: number) {
+  post({ id: 'slowplan', kind: 'frage', title: t('plan_slow_title'), detail: t('plan_slow_text'), at: mapMiddle, buttons: [
+    { label: t('common_cancel'), act: () => { dismiss('slowplan'); problem('routing', `slow plan: cancel after ${rounds} period(s)`); setNotRouted(t('plan_not_routed_stopped'), t('plan_calculate')); cancelLongRoute(); } },
+    { label: t('plan_slow_wait'), act: () => { dismiss('slowplan'); problem('routing', `slow plan: keep waiting after ${rounds} period(s)`); planRun(rounds + 1); } },
+  ] });
+}
+
+/** One plan run of the current points with [rounds] time-limit periods (1, more after "Weiter warten"). */
+async function planRun(rounds: number) {
+  dismiss('slowplan');
   const id = ++state.latest;
   setPlanning(true);
   render();
@@ -923,10 +942,11 @@ async function changed() {
     if (id !== state.latest) return;
     wait = pr.phase === 'download' ? `${t('maps_load_loading')} · ${t('maps_about_mb', Math.max(1, Math.round(pr.bytes / 1e6)))}` : t('plan_calculating');
     if (shown) show();
-  }, namesText());
+  }, namesText(), rounds);
   clearTimeout(waitTimer);
   if (id !== state.latest) return; // a newer request supersedes this one (or Cancel dropped it)
   setPlanning(false);
+  if (r.ok && r.plan?.slow) { askSlowPlan(r.plan.slow); render(); return; }
   if (!r.ok || !r.plan || r.plan.failed) {
     problem('routing', 'plan request failed', r.error ?? r.plan?.detail, 'error'); // plain words for the user, the detail for the diagnostics
     status(t('web_plan_failed'), 'error'); render(); return;

@@ -2,7 +2,7 @@ export type Activity = 'BIKE_TOURING' | 'BIKE_TREKKING' | 'EBIKE' | 'MTB' | 'EMT
 
 export type EngineRequest =
   | { id: number; type: 'config'; base: string; segments: string; packed?: boolean; lang?: string }
-  | { id: number; type: 'route' | 'plan'; points: string; activity: Activity; sac: number; pinned?: string; names?: string }
+  | { id: number; type: 'route' | 'plan'; points: string; activity: Activity; sac: number; pinned?: string; names?: string; rounds?: number }
   | { id: number; type: 'encode'; plan: SharedPlan }
   | { id: number; type: 'parse'; text: string }
   | { id: number; type: 'edit'; op: string; points: string; index: number; to: number }
@@ -47,6 +47,8 @@ export interface PlanResult {
   level?: 'easy' | 'moderate' | 'difficult';
   /** The engine failed unexpectedly (WebApi.plan's catch-all): no plan; [detail] only for the diagnostics. */
   failed?: boolean; detail?: string;
+  /** The time limit was reached after this many periods (SlowPlan): the page asks "Weiter warten?". */
+  slow?: number;
   /** After an activity / T level change the route differs noticeably: the app's grey "New route for … – check it". */
   changed: string | null;
   /** The app's BreakdownRules: the summary line and the bars' parts [key, label, colour, metres]. */

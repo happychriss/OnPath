@@ -108,7 +108,7 @@ cases.forEach((c, k) => {
   const names = Object.entries(c.names ?? {}).map(([i, n]) => `${i}\t${n}`).join('\n');
   ensureParts(pts);
   const t0 = Date.now();
-  const w = webSummary(JSON.parse(e.plan(pts, c.activity, c.sac, (c.pinned ?? []).join(','), names)));
+  const w = webSummary(JSON.parse(e.plan(pts, c.activity, c.sac, (c.pinned ?? []).join(','), names, 0)));
   const ms = Date.now() - t0;
   const a = app[k];
   const diffs = [];

@@ -52,9 +52,10 @@ export class EngineClient {
     return this.ask({ type: 'route', points: enc(points), activity, sac });
   }
 
-  /** [pinned] = indices of points the route passes exactly (POI / place), as in the app's Planner. */
-  plan(points: [number, number][], activity: Activity, sac: number, pinned: number[] = [], onProgress?: (p: Progress) => void, names = '') {
-    return this.ask({ type: 'plan', points: enc(points), activity, sac, pinned: pinned.join(','), names }, onProgress);
+  /** [pinned] = indices of points the route passes exactly (POI / place), as in the app's Planner;
+   *  [rounds] ≥ 1 = a plan the user started: at the time limit the reply's plan is {slow: rounds} (SlowPlan); 0 = never asks. */
+  plan(points: [number, number][], activity: Activity, sac: number, pinned: number[] = [], onProgress?: (p: Progress) => void, names = '', rounds = 0) {
+    return this.ask({ type: 'plan', points: enc(points), activity, sac, pinned: pinned.join(','), names, rounds }, onProgress);
   }
 
   /** The plan code (QR code, link) – the app's PlanCode. */

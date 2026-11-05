@@ -17,7 +17,7 @@ interface WasmEngine {
   putPart(tile: string, index: number, data: Int8Array): boolean;
   writeParts(): void;
   route(points: string, activity: string, sac: number): string;
-  plan(points: string, activity: string, sac: number, pinned: string, names: string): string;
+  plan(points: string, activity: string, sac: number, pinned: string, names: string, rounds: number): string;
   historySnap(routed: string, snapped: string): void;
   planCode(points: string, activity: string, sac: number, pinned: string, names: string, title: string): string;
   planParse(text: string): string;
@@ -348,7 +348,7 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
     const t1 = performance.now();
     e.writeParts(); // new parts into the local rd5 files (once per plan, not per part)
     const storeMs = performance.now() - t1;
-    const json = req.type === 'plan' ? e.plan(req.points, req.activity, req.sac, req.pinned ?? '', req.names ?? '') : e.route(req.points, req.activity, req.sac);
+    const json = req.type === 'plan' ? e.plan(req.points, req.activity, req.sac, req.pinned ?? '', req.names ?? '', req.rounds ?? 0) : e.route(req.points, req.activity, req.sac);
     const t2 = performance.now();
     reply({
       id: req.id, ok: true, [req.type === 'plan' ? 'plan' : 'result']: JSON.parse(json),
