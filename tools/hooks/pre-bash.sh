@@ -24,7 +24,9 @@ if [[ $cmd =~ (^|[^[:alnum:]_])git[[:space:]]+(-C[[:space:]]+[^[:space:]]+[[:spa
   [[ $cmd =~ git[[:space:]]+-C[[:space:]]+([^[:space:]]+) ]] && dir=${BASH_REMATCH[1]}
   [[ $cmd =~ (^|&&|;)[[:space:]]*cd[[:space:]]+([^[:space:]&;]+) ]] && dir=${BASH_REMATCH[2]}
   dir=${dir/#\~/$HOME}
-  if git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
+  # only in an OnPath checkout (it has the gate) – pushes to onpath.private, onpath.earth etc. are not gated
+  # (bug seen 2026-11-03: the hook refused donald's pushes to onpath.private)
+  if git -C "$dir" rev-parse --git-dir >/dev/null 2>&1 && [ -x "$(git -C "$dir" rev-parse --show-toplevel)/tools/ci/gate.sh" ]; then
     head=$(git -C "$dir" rev-parse HEAD 2>/dev/null)
     read -r s_head s_patch < "$(git -C "$dir" rev-parse --git-path onpath-gate-ok 2>/dev/null)" 2>/dev/null
     ok=0
