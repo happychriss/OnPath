@@ -83,6 +83,11 @@ the git log.
 - [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
 
 ## Next
+- **[cloud-app] Bar after the slide: two groups (owner 2026-11-05, onpath.private issue "Leiste nach dem Schieber", A taken)**
+  – today three equal tiles Pause · Route ändern · Beenden read as one list. New, same height: a green block "Tour" with
+  Pause + Beenden side by side, apart from it a light block "Plan" with "✎ Ändern" (blue). Tiny group labels. Colour rule
+  kept. Screenshots DE + EN to the owner first – he may still pick B (two rows) or C (bar + round "Planen" button),
+  sketch https://claude.ai/artifact/3PXfMdfF6ukXNqUixnivw6. Consider the same grouping in Plan during a tour.
 - **[cloud-app] Pin card button: "+ Hinzufügen" (owner 2026-11-05, onpath.private#26)** – the blue button under a found
   place reads "+ Hinzufügen" (EN "+ Add") instead of "+ Zur Route"; empty plan keeps "Hierhin". Planner mirrors it.
   Small text change for the next release.
