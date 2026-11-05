@@ -87,11 +87,13 @@ the git log.
   (both green – no red / orange sign at the stop: navigation = green, plan = blue), beside it a round blue "✎ Planen"
   button like the map buttons. Beenden still asks first. Same height as today. Screenshots DE + EN to the owner first.
   Sketch https://claude.ai/artifact/3PXfMdfF6ukXNqUixnivw6 (C). Note the colour rule changes here: the stop is green.
-- **[cloud-app] Far start: say it at once instead of routing for ages (owner 2026-11-05)** – a plan loaded in Meran, "Route
-  starten" in Hilden → the lead was routed for a very long time, then "no route". Rule (recommended, taken): straight
-  line to the start over 30 km on foot / 100 km by bike → no "Hinführen" and no routing; the far-start box says at once
-  "Der Start ist 790 km entfernt – zu weit für einen Weg dorthin" with "Nur aufzeichnen" / "Abbrechen". Field-bug rule:
-  a reproducing test first (`NavPrompt.FarStart`). Owner may change the limits.
+- **[cloud-app] Far start: ask before routing the way there (owner 2026-11-05, corrected)** – a plan loaded in Meran, "Route
+  starten" in Hilden → "Hinführen" routed the lead for a very long time, then "no route". No hard limit (owner: 100 km by
+  bike is fine for some). Instead, before the lead is routed, when the way there is long (same idea as the plan's
+  `LongRoute` question "Diese Route ist sehr lang", here for the lead – threshold e.g. straight line > 25 km, tune with
+  the measurements): a box "Der Start ist 790 km entfernt. Trotzdem einen Weg dorthin berechnen? Das kann lange dauern."
+  – Berechnen / Nur aufzeichnen. While it routes: the wait card with Abbrechen; at the time limit the slow-plan question
+  "Weiter warten?". Field-bug rule: a reproducing test first (`NavPrompt.FarStart`).
 - **[cloud-app] Pin card button: "+ Hinzufügen" (owner 2026-11-05, onpath.private#26)** – the blue button under a found
   place reads "+ Hinzufügen" (EN "+ Add") instead of "+ Zur Route"; empty plan keeps "Hierhin". Planner mirrors it.
   Small text change for the next release.
