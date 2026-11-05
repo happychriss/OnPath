@@ -86,13 +86,14 @@ the git log.
 - **[cloud-app] Navigate's slider bar: no change (owner 2026-11-05 correction)** – the slider and today's buttons stay as built;
   the action-sheet / tile ideas of today are dropped. The open design question is only the plan sheet during a tour
   (next line, in work with the captain).
-- **[cloud-app] Plan sheet bottom row: green start/back + group "Plan" (owner 2026-11-05, D refined)** – one row, same
-  height, two groups. Left the filled green navigation button with two states: Plan without a tour = **"▶ Los geht's"**
-  (start; replaces "Navigation starten · ‹Ziel›" there, see the start-button decision), Plan during a tour = **"‹ Zurück"**
-  (back to the running navigation – an arrow back, not a start). Right, apart: a small blue caption **"PLAN"** above ONE
-  blue outlined split button **"Speichern | Neu"** – both halves one line, same height (no two-line label). Without a tour
-  the right group shows what fits there today (e.g. Speichern | Neu). No red. Navigate's slider bar unchanged.
-  Screenshots DE + EN + large font first. Sketch (D refined, both states): https://claude.ai/artifact/9Ju2XSLNrwiaaxmEw9pbDP
+- **[cloud-app] Plan sheet bottom: two rows by the Material rules (owner 2026-11-05, E taken – no preference)** – Material
+  says button labels stay on one line (wrapping is a "don't"; no smaller font – it breaks with large system text anyway).
+  Row 1: a blue outlined connected button group **"Plan speichern | Neu planen"** (M3 connected button group, the word
+  "Plan" inside the labels, no lone caption). Row 2: ONE filled green full-width button that says where it goes – without a
+  tour **"▶ Los geht's"**, during a tour **"‹ Zurück zur Navigation"**. Every label one line, also at large font; no red.
+  About one button row taller; the profile gets a little flatter. Navigate's slider bar unchanged. Screenshots DE + EN +
+  large font first; alternative C (one row: green button + "Plan ▾" menu) stays possible.
+  Sketch E (both states): https://claude.ai/artifact/9Ju2XSLNrwiaaxmEw9pbDP
 - **[cloud-app] Far start: ask before routing the way there (owner 2026-11-05, corrected)** – a plan loaded in Meran, "Route
   starten" in Hilden → "Hinführen" routed the lead for a very long time, then "no route". No hard limit (owner: 100 km by
   bike is fine for some). Instead, before the lead is routed, when the way there is long (same idea as the plan's
