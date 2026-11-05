@@ -64,7 +64,9 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
   owner's word to every session (the start hook shows it; confirm once with `tools/ask.sh an-alle --von <unit>`; `#push-sperre` / `#release-sperre`
   stop pushes). Toward the owner: one question box at a time with answer options (`docs/owner-preferences.md`).
 - **Sub-agents** (owner 2026-11-01): every sub-agent that edits files works in its own git worktree on its own branch; the main session merges, pushes
-  and holds the one backlog claim. Gradle only through `gate.sh` (the others wait), devices only through `device.sh`; never start a second emulator.
+  and holds the one backlog claim. Gradle only in a slot – `tools/ci/gate.sh` or `tools/dev/gradle_slot.sh -- ./gradlew …` (two builds side by side per
+  computer, one while the emulator runs), never a bare `flock gradle.lock`; screenshots: record only the changed class
+  (`--tests`); devices only through `device.sh`; never start a second emulator.
   Parallel work across computers = separate backlog items, one per unit.
 - **Responsive chat** (owner 2026-11-01): long, self-contained work (> ~2 min) runs in a background agent – preferably a fork, it keeps the
   conversation – and the session answers at once ("läuft: …"); talk, decisions, questions and small changes it does directly; a request that needs
