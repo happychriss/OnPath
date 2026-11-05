@@ -99,3 +99,34 @@ Hilden → Nordkirchen, 75 km straight; A ≈ Essen-Kupferdreh, B ≈ Dortmund-H
   (`MEMCLASS=256` patches BRouter's node-cache limit, `STEPS=quick` skips the legs).
 - BRouter alone on the desktop and on the Pixel's own runtime (nothing installed into the app; only when no tour
   records): `ANDROID_SERIAL=<pixel> tools/dev/device.sh pixel -- tools/routing/phone-bench/run.sh <dir> both`.
+
+## Built 2026-11-05 (owner: "build both" + progress in the wait card) – PLANNER_VERSION 4
+- **Leg by leg + `LegCache`** (`routing/Planner.kt`, `routing/LegCache.kt`, shared with the web): one request per leg,
+  finished legs kept (64, in memory, key = both points to 1e-6°, activity, Hike T level); cleared with the engine when
+  routing data changes. A there-and-back at a join is trimmed as BRouter's via correction did (≤ 400 m bike / 50 m hike,
+  not at a pinned point, not when the point lies on that way). The cut-stop splice (decision 13) is gone – every point
+  is a request end. `docs/design/bike-routing.md` decision 14.
+- **Old vs new on real data** (`LegsVsWholeTest.kt` against `compare/PlannerV3.kt`, 40 random plans around the Ruhr,
+  Bike 3–6 points 3–15 km apart, Hike 0.5–4 km): median length change 0.00 %, max 0.71 % (one hike), no point missed
+  that the old line reached, no new there-and-back; `SpurSpliceJvmTest` (70.6 km hike: 70 593 m, same as before),
+  `SpurStopJvmTest`, `ShortDetourTest`, `IslandTest`, `StopSkipJvmTest` pass.
+- **The Ruhr plan, an edit** (`LongBikeRuhrTest.kt`, desktop JVM, `-Xmx192m`):
+
+  | Step | Before (whole plan) | After (leg cache) |
+  | --- | --- | --- |
+  | 2 points, 98 km | 2.9 s | 3.0 s (one leg, nothing to reuse) |
+  | + A (splits the one leg) | 2.3 s | 2.3 s (both legs new) |
+  | + B between A and goal | 2.0 s | **0.96 s** (2 new legs, 1 from the cache) |
+  | + C between A and B | 2.0 s | **0.49 s** (2 new, 2 from the cache) |
+  | same points again | 0.03 s (engine cache, 8 requests) | 0 s (all legs cached) |
+
+  On the Pixel (5–8× the desktop): an edit ~15 s → ~2.5–5 s expected; to be measured when no tour records.
+- **Tour edit**: the plan run, the follow line (position → points ahead) and browser plans share the cache – the follow
+  line routes only position → first point ahead; a newer plan run cancels a follow line still running (`followCancel`).
+- **Wait card**: two or more legs to route → a determinate bar and "Abschnitt 2 von 4 wird berechnet…" / "Calculating
+  section 2 of 4…" (only legs the router works on count); one leg → the running bar as before.
+- **For the web planner (cloud-plan)**: `LegCache.kt` is a new shared file; `PlannerSpliceTest` is replaced by
+  `PlannerLegsTest` + `LegCacheTest` in the shared tests. `WebApi` should keep one `LegCache` next to its engine and pass
+  `legs =` (and `progress =` for its wait box: the same "Abschnitt n von m" bar) to `Planner(…)`; `Planner.chunkBounds /
+  mergeSnapped / doubles / legLengths / cutIndices / SPLICE_REACH_M` are gone. Deploy together with the app release
+  (PLANNER_VERSION 4 changes every routing fingerprint once).
