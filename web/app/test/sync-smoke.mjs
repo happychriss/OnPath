@@ -461,18 +461,18 @@ await L.click('#syncBadge');
 await L.click('dialog.phone #unpair');
 await L.waitForFunction(() => window.__sync.status.folder.key === 'none' && document.querySelectorAll('dialog.phone .removefolder').length === 2, null, { timeout: 30_000 }).catch(() => {});
 check(await L.locator('dialog.phone .confirm').count() === 0 && (await status(L)).folder.key === 'none', 'Unpair: no question, the folder closes (Without phone)');
-await L.waitForFunction(() => document.getElementById('phoneStatus')?.textContent?.startsWith('Unpaired. The routes of Pixel 8'), null, { timeout: 10_000 }).catch(() => {}); // CI draws it a moment later
+await L.waitForFunction(() => document.getElementById('phoneStatus')?.textContent?.startsWith('Unpaired. The plans of Pixel 8'), null, { timeout: 10_000 }).catch(() => {}); // CI draws it a moment later
 const quiet = await L.textContent('#phoneStatus');
-check(quiet.startsWith('Unpaired. The routes of Pixel 8'), 'the quiet line says the routes stay ' + quiet);
+check(quiet.startsWith('Unpaired. The plans of Pixel 8'), 'the quiet line says the routes stay ' + quiet);
 const removes = await L.evaluate(() => [...document.querySelectorAll('dialog.phone .removefolder')].map((b) => b.textContent));
-check(removes.length === 2 && removes.every((r) => r.startsWith('Remove routes of Pixel 8 · paired')), 'the Phone window offers removing each closed folder ' + JSON.stringify(removes));
+check(removes.length === 2 && removes.every((r) => r.startsWith('Remove plans of Pixel 8 · paired')), 'the Phone window offers removing each closed folder ' + JSON.stringify(removes));
 // the first phone's folder holds a route never sent to it ("Laptop unsaved"): Remove asks first (owner 2026-11-02),
 // Cancel keeps the folder
 await L.click(`dialog.phone .removefolder[data-folder="${phone.device}"]`);
 await L.waitForSelector('dialog.phone .phonemore .confirm', { timeout: 10_000 }).catch(() => {});
 const askR = await L.evaluate(() => { const c = document.querySelector('dialog.phone .confirm');
   return c ? { text: c.querySelector('p').textContent, buttons: [...c.querySelectorAll('button')].map((b) => b.textContent) } : null; });
-check(askR?.text?.startsWith('Remove the routes of Pixel 8 · paired') && askR.text.includes('1 route was never sent to that phone – it would be lost')
+check(askR?.text?.startsWith('Remove the plans of Pixel 8 · paired') && askR.text.includes('1 plan was never sent to that phone – it would be lost')
   && JSON.stringify(askR.buttons) === '["Cancel","Remove"]', 'unsent routes in the folder: Remove asks, says how many would be lost, Cancel · Remove ' + JSON.stringify(askR));
 await L.click('dialog.phone .confirm .keep');
 await L.waitForTimeout(300);
@@ -597,7 +597,7 @@ await R.click('#closePhone');
 await menu(R, '#menuPlans');
 await R.waitForSelector('#planList li.oldphone', { timeout: 10_000 }).catch(() => {});
 const oldLine = await R.evaluate(() => document.querySelector('#planList li.oldphone')?.textContent.replace(/\s+/g, ' ').trim() ?? '');
-check(oldLine.startsWith('The routes of Rest phone are still in this browser') && !oldLine.includes('No saved routes yet'),
+check(oldLine.startsWith('The plans of Rest phone are still in this browser') && !oldLine.includes('No saved plans yet'),
   `My routes after Unpair: the old phone's routes are still here, not only "No saved routes yet" (${oldLine})`);
 await R.click('#planList li.oldphone .openphone');
 await R.waitForSelector(`dialog.phone[open] .removefolder[data-folder="${restPhone.device}"]`, { timeout: 10_000 });
@@ -612,7 +612,7 @@ check((await status(R)).closed.length === 0 && (await titles(R, restPhone.device
 await R.click('#closePhone');
 await menu(R, '#menuPlans');
 await R.waitForSelector('#planList li', { timeout: 10_000 });
-check(!(await R.locator('#planList li.oldphone').count()) && (await R.textContent('#planList')).includes('No saved routes yet'), 'no closed folder left: My routes says only "No saved routes yet"');
+check(!(await R.locator('#planList li.oldphone').count()) && (await R.textContent('#planList')).includes('No saved plans yet'), 'no closed folder left: My routes says only "No saved routes yet"');
 await ctxR.close();
 
 // ---- 15. the host's cap on new mailboxes per IP and day ----

@@ -18,7 +18,7 @@
     <string name="web_product">Planer</string>
     <string name="web_pair_phone">Handy verbinden</string>
     <string name="web_nav_help">Hilfe &amp; Quellen</string>
-    <string name="web_header_hint">Ohne Konto · Routen bleiben in diesem Browser</string>
+    <string name="web_header_hint">Ohne Konto · Pläne bleiben in diesem Browser</string>
 
     <string name="web_app_hint">Mit der App: offline unterwegs, Navigation, neue Route ohne Netz.</string>
     <string name="web_app_hint_button">App holen</string>
@@ -71,7 +71,7 @@
     <string name="web_planned_in_data">Geplant in %1$d ms · Routingdaten %2$s MB in %3$d ms</string>
     <string name="web_activities_failed">Die Aktivitäten konnten nicht geladen werden – bitte lade die Seite neu.</string>
     <string name="web_map_files_missing">Kartendateien hier nicht gefunden: %1$s</string>
-    <string name="web_plan_unreadable">Diese gespeicherte Route konnte nicht gelesen werden.</string>
+    <string name="web_plan_unreadable">Dieser gespeicherte Plan konnte nicht gelesen werden.</string>
     <string name="web_routing_other_phone">Auf dem Handy mit anderer Routenberechnung geplant – Route kann leicht abweichen</string>
     <string name="web_no_name">Kein Name vorgeschlagen – gib einen ein.</string>
 
@@ -100,7 +100,7 @@
 
     <string name="web_share_scan">Mit der OnPath-App scannen</string>
     <string name="web_share_qr">QR-Code des Plan-Links</string>
-    <string name="web_share_text">Wer den Link hat, kann die Route öffnen – sie steckt im Link, auf keinem Server wird etwas gespeichert.</string>
+    <string name="web_share_text">Wer den Link hat, kann den Plan öffnen – er steckt im Link, auf keinem Server wird etwas gespeichert.</string>
     <string name="web_share_link">Plan-Link</string>
     <string name="web_copy_link">Link kopieren</string>
     <string name="web_share_system">Teilen…</string>
@@ -110,9 +110,9 @@
     <string name="web_plans_sync_now">Jetzt abgleichen</string>
     <string name="web_sync_paired">Verbunden</string>
     <string name="web_saved_short">Gespeichert</string>
-    <string name="web_plans_none">Noch keine gespeicherten Routen.</string>
-    <string name="web_plans_open">Diese Route öffnen</string>
-    <string name="web_plans_new_name">Neuer Name der Route</string>
+    <string name="web_plans_none">Noch keine gespeicherten Pläne.</string>
+    <string name="web_plans_open">Diesen Plan öffnen</string>
+    <string name="web_plans_new_name">Neuer Name des Plans</string>
     <string name="web_delete_q">„%1$s“ löschen? Auf dem verbundenen Handy kommt sie 30 Tage in den Papierkorb – dort wiederhergestellt, ist sie auch hier wieder da.</string>
     <string name="web_keep">Behalten</string>
 
@@ -121,31 +121,31 @@
     <string name="web_pair_how">OnPath auf dem Handy öffnen → %1$s → diesen Code scannen.</string>
     <string name="web_pair_menu_path">☰ → Mit Browser verbinden</string>
     <string name="web_pair_check">Prüfe: %1$s – die App zeigt dieselben Ziffern.</string>
-    <string name="web_pair_privacy">Deine gespeicherten Routen und importierten Tracks werden in diesem Browser und auf dem Handy verschlüsselt, bevor sie zum Sync-Server gehen (Cloudflare, EU): Lesen kannst du sie nur auf deinem Handy und in deinem Browser – wir können es nicht. Aufgezeichnete Touren werden nie übertragen. Behalte den Code für dich: Wer ihn scannt, sieht deine gespeicherten Routen.</string>
+    <string name="web_pair_privacy">Deine gespeicherten Pläne und importierten Tracks werden in diesem Browser und auf dem Handy verschlüsselt, bevor sie zum Sync-Server gehen (Cloudflare, EU): Lesen kannst du sie nur auf deinem Handy und in deinem Browser – wir können es nicht. Aufgezeichnete Touren werden nie übertragen. Behalte den Code für dich: Wer ihn scannt, sieht deine gespeicherten Pläne.</string>
     <string name="web_pair_link">Verbindungslink</string>
     <string name="web_pair_waiting">Warte auf das Handy…</string>
     <string name="web_pair_done">Verbunden mit %1$s.</string>
     <string name="web_unpair">Trennen</string>
     <string name="web_join_title">Verbindungscode</string>
-    <string name="web_join_text">Dieser Link verbindet ein Gerät mit deinen gespeicherten Routen. Meist scannst du ihn mit der OnPath-App auf dem Handy (☰ → Mit Browser verbinden).</string>
-    <string name="web_join_instead">Du kannst stattdessen auch diesen Browser verbinden – dann werden deine gespeicherten Routen auch hier abgeglichen.</string>
+    <string name="web_join_text">Dieser Link verbindet ein Gerät mit deinen gespeicherten Plänen. Meist scannst du ihn mit der OnPath-App auf dem Handy (☰ → Mit Browser verbinden).</string>
+    <string name="web_join_instead">Du kannst stattdessen auch diesen Browser verbinden – dann werden deine gespeicherten Pläne auch hier abgeglichen.</string>
     <string name="web_join_ok">Diesen Browser verbinden</string>
     <string name="web_join_paired">Verbunden · Prüfziffern %1$s</string>
     <string name="web_sync_no_phone_yet">noch kein Handy</string>
     <string name="web_sync_paired_with">Verbunden mit %1$s</string>
-    <string name="web_sync_not_kept">Dieser Browser behält gespeicherte Routen nicht, wenn der Tab zu ist (Speicher blockiert).</string>
+    <string name="web_sync_not_kept">Dieser Browser behält gespeicherte Pläne nicht, wenn der Tab zu ist (Speicher blockiert).</string>
     <string name="web_sync_pair_refused">Der Sync-Server hat eine neue Verbindung abgelehnt (%1$d). Versuch es später noch einmal.</string>
     <string name="web_sync_pair_cap">Zu viele neue Verbindungen aus diesem Netz heute. Versuch es morgen noch einmal.</string>
     <string name="web_sync_pair_offline">Zum Verbinden braucht es Internet. Prüfe die Verbindung und versuch es noch einmal.</string>
     <string name="web_sync_not_a_code">Das ist kein Verbindungscode von OnPath.</string>
-    <string name="web_sync_unpaired">Getrennt. Die Routen von %1$s bleiben in diesem Browser.</string>
-    <string name="web_sync_offline">Offline – deine Routen werden abgeglichen, sobald du wieder Verbindung hast.</string>
+    <string name="web_sync_unpaired">Getrennt. Die Pläne von %1$s bleiben in diesem Browser.</string>
+    <string name="web_sync_offline">Offline – deine Pläne werden abgeglichen, sobald du wieder Verbindung hast.</string>
     <string name="web_sync_failed">Der Abgleich hat diesmal nicht geklappt – er versucht es von selbst wieder.</string>
     <string name="web_eye_hotkey">Halten, um die Route auszublenden – oder die Leertaste halten</string>
-    <string name="web_name_share">OnPath-Route</string>
+    <string name="web_name_share">OnPath-Plan</string>
     <string name="web_hide_loading">Ausblenden (die Karte lädt weiter)</string>
     <string name="web_route_changed_elsewhere">Inzwischen auf dem Handy geändert – als „%1$s“ gespeichert, die andere Fassung bleibt.</string>
-    <string name="web_route_options">Routenoptionen</string>
+    <string name="web_route_options">Optionen</string>
     <string name="web_keys_title">Tastenkürzel</string>
     <string name="web_key_space">Leertaste</string>
     <string name="web_key_ctrl">Strg</string>
@@ -154,32 +154,32 @@
     <string name="web_keys_close">Menü oder Ortskarte schließen</string>
     <string name="web_keys_map">Karte zoomen und verschieben (erst in die Karte klicken)</string>
     <string name="web_keys_this">Diese Liste</string>
-    <string name="web_save_failed">Nicht gespeichert – dieser Browser konnte die Route nicht ablegen. Versuch es noch einmal oder sichere sie mit „GPX exportieren“.</string>
+    <string name="web_save_failed">Nicht gespeichert – dieser Browser konnte den Plan nicht ablegen. Versuch es noch einmal oder sichere ihn mit „GPX exportieren“.</string>
     <string name="web_rename_failed">Nicht umbenannt – dieser Browser konnte die Änderung nicht ablegen. Bitte noch einmal versuchen.</string>
     <string name="web_delete_failed">Nicht gelöscht – dieser Browser konnte die Änderung nicht ablegen. Bitte noch einmal versuchen.</string>
     <string name="web_copy_failed">Die Kopie wurde nicht gespeichert – dieser Browser konnte sie nicht ablegen. Bitte noch einmal versuchen.</string>
     <string name="web_sync_gone">Die Verbindung wurde am Handy getrennt.</string>
     <string name="web_sync_busy">der Sync-Server ist ausgelastet – in einer Minute geht es weiter</string>
     <string name="web_sync_answered">der Sync-Server antwortete %1$d</string>
-    <string name="web_sync_unreadable">%1$d abgeglichene Routen konnten nicht gelesen werden (von einer neueren App?). Sie bleiben, wie sie sind.</string>
+    <string name="web_sync_unreadable">%1$d abgeglichene Pläne konnten nicht gelesen werden (von einer neueren App?). Sie bleiben, wie sie sind.</string>
     <string name="web_device_name">%1$s auf %2$s</string>
     <string name="web_device_browser">Browser</string>
 
     <string name="web_about_title">OnPath-Planer</string>
-    <string name="web_about_text">Der Planungscode der OnPath-App in deinem Browser. Deine Route steckt im Link und, wenn du sie speicherst, in diesem Browser (und auf deinem verbundenen Handy, Ende-zu-Ende verschlüsselt). Ohne Konto.</string>
+    <string name="web_about_text">Der Planungscode der OnPath-App in deinem Browser. Dein Plan steckt im Link und, wenn du ihn speicherst, in diesem Browser (und auf deinem verbundenen Handy, Ende-zu-Ende verschlüsselt). Ohne Konto.</string>
     <string name="web_about_how">So planst du</string>
     <string name="web_about_how_1">Klicke in die Karte für den Start, dann für Ziel und Zwischenpunkte; ein Klick auf einen Punkt öffnet sein Menü.</string>
     <string name="web_about_how_2">Suche einen Ort und füge ihn über seine Karte hinzu. Ziehe ≡ bei den Punkten, um die Reihenfolge zu ändern.</string>
     <string name="web_about_how_3">Rückgängig / Wiederholen, das Auge (halten: Route ausblenden) und Karteninhalt sind oben in der Werkzeugleiste.</string>
-    <string name="web_about_how_4">Teilen: ein QR-Code, den die OnPath-App scannt – oder verbinde das Handy einmal (Handy verbinden, oben) und speichere Routen in Meine Routen.</string>
+    <string name="web_about_how_4">Teilen: ein QR-Code, den die OnPath-App scannt – oder verbinde das Handy einmal (Handy verbinden, oben) und speichere Pläne in Meine Touren.</string>
     <string name="web_credit_photon">Online-Suche: Photon von komoot (OpenStreetMap-Daten)</string>
     <string name="web_credit_maplibre">Kartendarstellung: MapLibre GL JS (BSD-Lizenz)</string>
     <string name="web_credit_font">Schrift: Manrope, © The Manrope Project Authors,</string>
     <string name="web_phone_title">Handy</string>
-    <string name="web_phone_why">Deine geplanten Routen erscheinen auf dem Handy und hier.</string>
+    <string name="web_phone_why">Deine Pläne erscheinen auf dem Handy und hier.</string>
     <string name="web_phone_fresh">Verbunden · abgeglichen %1$s</string>
     <string name="web_phone_stale">Verbunden · Handy zuletzt %1$s</string>
-    <string name="web_phone_stale_why">Öffne OnPath auf dem Handy, dann werden die Routen abgeglichen. Änderungen von hier warten so lange.</string>
+    <string name="web_phone_stale_why">Öffne OnPath auf dem Handy, dann werden die Pläne abgeglichen. Änderungen von hier warten so lange.</string>
     <string name="web_phone_browser_synced">Verbunden · dieser Browser abgeglichen %1$s</string>
     <string name="web_ago_now">gerade eben</string>
     <string name="web_phone_how_2">Abgeglichen wird, wenn OnPath auf dem Handy offen ist – und solange diese Seite offen ist.</string>
@@ -191,18 +191,18 @@
     <string name="web_folder_none">Ohne Handy</string>
     <string name="web_folder_phone">Handy</string>
     <string name="web_folder_paired_on">%1$s · verbunden %2$s</string>
-    <string name="web_remove_folder">Routen von %1$s aus diesem Browser entfernen</string>
+    <string name="web_remove_folder">Pläne von %1$s aus diesem Browser entfernen</string>
     <!-- Remove a closed folder that holds routes never sent to its phone: the question (owner 2026-11-02) -->
-    <string name="web_remove_folder_q_one">Routen von %1$s aus diesem Browser entfernen? 1 Route ist nie an dieses Handy gegangen – sie ginge verloren.</string>
-    <string name="web_remove_folder_q">Routen von %1$s aus diesem Browser entfernen? %2$d Routen sind nie an dieses Handy gegangen – sie gingen verloren.</string>
-    <string name="web_remove_folder_q_unknown">Routen von %1$s aus diesem Browser entfernen? Routen, die nie an dieses Handy gegangen sind, gingen verloren.</string>
+    <string name="web_remove_folder_q_one">Pläne von %1$s aus diesem Browser entfernen? 1 Plan ist nie an dieses Handy gegangen – er ginge verloren.</string>
+    <string name="web_remove_folder_q">Pläne von %1$s aus diesem Browser entfernen? %2$d Pläne sind nie an dieses Handy gegangen – sie gingen verloren.</string>
+    <string name="web_remove_folder_q_unknown">Pläne von %1$s aus diesem Browser entfernen? Pläne, die nie an dieses Handy gegangen sind, gingen verloren.</string>
     <!-- My routes, the open folder empty: the closed folders' routes are still here (owner 2026-11-02) -->
-    <string name="web_plans_old_phone">Die Routen von %1$s sind noch in diesem Browser – das Fenster „Handy“ zeigt sie.</string>
+    <string name="web_plans_old_phone">Die Pläne von %1$s sind noch in diesem Browser – das Fenster „Handy“ zeigt sie.</string>
     <string name="web_plans_old_phone_open">„Handy“ öffnen</string>
     <string name="web_copy_suffix">(Kopie)</string>
     <string name="web_save_title_phone">Speichern – schickt deine Änderungen an %1$s</string>
-    <string name="web_save_title_local">Route in diesem Browser speichern</string>
-    <string name="web_sync_full_hint">Postfach voll – zu viele gespeicherte Routen. Lösch am Handy ein paar, dann noch einmal speichern.</string>
+    <string name="web_save_title_local">Plan in diesem Browser speichern</string>
+    <string name="web_sync_full_hint">Postfach voll – zu viele gespeicherte Pläne. Lösch am Handy ein paar, dann noch einmal speichern.</string>
     <string name="web_pair_other">Anderes Handy verbinden</string>
     <!-- Save, Phone, My routes as the owner wants them shown (docs/design/web-sync.md §14.6) -->
     <string name="web_save_to_phone">Aufs Handy sichern</string>
@@ -224,8 +224,8 @@
     <string name="web_far_route_unnamed">Deine Route liegt %1$s von hier entfernt.</string>
     <string name="web_far_bike">%1$s mit dem Rad</string>
     <string name="web_far_foot">%1$s zu Fuß</string>
-    <string name="web_far_new">Neue Route hier beginnen</string>
-    <string name="web_far_add">Zur Route hinzufügen</string>
+    <string name="web_far_new">Neuen Plan hier beginnen</string>
+    <string name="web_far_add">Zum Plan hinzufügen</string>
     <string name="web_route_off_map">Deine Route liegt außerhalb der Karte</string>
     <string name="web_one_point">1 Punkt · %1$s</string>
     <string name="web_no_webgl_title">Dein Browser kann die Karte nicht zeichnen</string>
@@ -233,7 +233,7 @@
     <string name="web_old_browser_title">Dieser Browser ist zu alt für den Planer</string>
     <string name="web_old_browser_text">Der Routenplaner braucht einen neueren Browser: Safari ab 18.2 (iPhone / iPad: iOS 18.2), Chrome oder Edge ab 119 oder Firefox ab 120. Bitte aktualisiere deinen Browser – deine Routen bleiben erhalten.</string>
     <string name="web_new_version">Neue Version des Planers</string>
-    <string name="web_new_version_detail">Neu laden, um sie zu nutzen – deine Route bleibt.</string>
+    <string name="web_new_version_detail">Neu laden, um sie zu nutzen – dein Plan bleibt.</string>
     <string name="web_reload">Neu laden</string>
-    <string name="web_route_default_name">Route</string>
+    <string name="web_route_default_name">Plan</string>
 </resources>
