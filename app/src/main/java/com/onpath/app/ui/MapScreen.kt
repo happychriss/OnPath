@@ -295,6 +295,11 @@ private fun PlanMode(
             offline = vm.offlineReady?.state,
             onOffline = vm::toggleOfflineInfo,
         )
+        // the activity as a round button on the map, top left under the search pill (owner 2026-11-05, R5): the plan
+        // sheet has no activity chip any more; not over a shown track / place card (their own panels)
+        if (vm.shown == null) ActivityMapButton(vm.activity, vm.sac, onActivity,
+            Modifier.align(Alignment.TopStart).modeEdge(ModeEdge.TOP).statusBarsPadding()
+                .padding(top = MessagePlacement.topDp(MessageScreen.PLAN).dp, start = 12.dp))
         // "Ohne Netz ✓ / ⟳ / ⚠" (owner 2026-11-03): recomputed off the main thread when the route changes, every 3 s
         // while loading, else every 20 s (a map region joined, the network back) – file checks only, no downloads
         val offlineLine = vm.route?.points
@@ -482,7 +487,9 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             points = rows,
             routingSlow = vm.routingSlow, routeProgress = vm.routeProgress, routeShare = vm.routeShare, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText(), warnCount = vm.warningCount(),
             changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote, tapHint = vm.tapHoldHint,
-            offlineInfo = vm.offlineReady?.takeIf { vm.offlineInfo }?.let { OfflineReady.explain(it) }),
+            offlineInfo = vm.offlineReady?.takeIf { vm.offlineInfo }?.let { OfflineReady.explain(it) },
+            // owner 2026-11-05 (R5): the sheet rolls up during a tour too – one row with "Weiter geht's"
+            tourCollapsible = true),
         PlanCallbacks(
             onSheetDrag = { if (it) vm.tapHoldHint = false; vm.mapGesture(it) }, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,

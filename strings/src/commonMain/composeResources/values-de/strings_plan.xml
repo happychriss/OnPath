@@ -97,6 +97,8 @@
     <string name="plan_close_plan">Neu planen</string>
     <string name="plan_bar_go">Los geht’s</string>
     <string name="plan_bar_navigation">Navigation</string>
+    <string name="plan_bar_carry_on">Weiter geht’s</string>
+    <string name="plan_carry_on_for">Weiter geht’s · %1$s</string>
     <string name="plan_bar_save">Speichern</string>
     <string name="plan_clear_desc">Plan löschen</string>
     <string name="plan_start_short">Start</string>

@@ -98,6 +98,8 @@
     <string name="plan_close_plan">New plan</string>
     <string name="plan_bar_go">Let’s go</string>
     <string name="plan_bar_navigation">Navigation</string>
+    <string name="plan_bar_carry_on">Carry on</string>
+    <string name="plan_carry_on_for">Carry on · %1$s</string>
     <string name="plan_bar_save">Save</string>
     <string name="plan_clear_desc">Clear plan</string>
     <string name="plan_start_short">Start</string>

@@ -405,6 +405,19 @@
     "confidence": "sicher",
     "max": 14
   },
+  "plan_bar_carry_on": {
+    "area": "Plan sheet",
+    "context": "Green button at the plan sheet's bottom during a tour, after a ▶ sign: back to the navigation, the tour goes on (owner 2026-11-05: 'Weiter geht’s')",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "plan_carry_on_for": {
+    "area": "Plan sheet",
+    "context": "TalkBack name of that button: %1$s = the activity ('Hike')",
+    "priority": 2,
+    "confidence": "sicher"
+  },
   "plan_bar_save": {
     "area": "Plan sheet",
     "context": "Left half of the blue outlined group 'Save | New plan' at the plan sheet's bottom: save the plan as a route (opens the name dialog). One line, short",

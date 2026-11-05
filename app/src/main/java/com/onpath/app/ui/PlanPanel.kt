@@ -692,7 +692,7 @@ private fun R5CollapsedRow(ui: PlanUi, cb: PlanCallbacks, barShown: () -> Float,
                 else -> Text(str(Res.string.plan_plan_a_route), style = MaterialTheme.typography.titleMedium)
             }
             // 2: ↑ ↓ (the first to go)
-            if (route != null) Text(" · ↑\u00A0${Format.meters(route.ascentM).replace(' ', '\u00A0')} ↓\u00A0${Format.meters(route.descentM).replace(' ', '\u00A0')}",
+            if (route != null) Text(" · " + CollapsedFacts.elevation(route.ascentM, route.descentM),
                 style = MaterialTheme.typography.bodyMedium, color = variant, maxLines = 1, softWrap = false)
             else Box {}
             // 3: ⚠ count + the green button
@@ -729,6 +729,13 @@ private fun R5CollapsedRow(ui: PlanUi, cb: PlanCallbacks, barShown: () -> Float,
         }
         Spacer(stop)
     }
+}
+
+/** The rolled-up row's short forms (pure). */
+object CollapsedFacts {
+    /** "↑842 ↓310" – metres without the unit, the short form the owner chose for the rolled-up row (2026-11-05). */
+    fun elevation(ascentM: Double, descentM: Double): String =
+        "↑${Math.round(ascentM)}\u00A0↓${Math.round(descentM)}"
 }
 
 /** R5's compact green button: "▶ Los geht's" / "‹ Navigation", 48 dp; only drawn outside the rolled-up step. */
@@ -921,7 +928,7 @@ private fun GoSaveRow(ui: PlanUi, cb: PlanCallbacks) {
 }
 
 /** Today's bar unless a screenshot test provides another proposal. */
-val LocalPlanBarStyle = androidx.compose.runtime.staticCompositionLocalOf { PlanBarStyle.TODAY }
+val LocalPlanBarStyle = androidx.compose.runtime.staticCompositionLocalOf { PlanBarStyle.R5 }
 
 /** Today's bar: the one primary button; during a tour the tile bar ([TourEditBar]). */
 @Composable
@@ -1423,11 +1430,10 @@ private fun GoButton(ui: PlanUi, cb: PlanCallbacks) {
 }
 
 /** The green button's word: "Los geht's" / during a tour "Navigation" (owner 2026-11-05, F). */
-internal fun goLabel(ui: PlanUi): String = Txt.s(if (ui.tourRunning) Res.string.plan_bar_navigation else Res.string.plan_bar_go)
+internal fun goLabel(ui: PlanUi): String = Txt.s(if (ui.tourRunning) Res.string.plan_bar_carry_on else Res.string.plan_bar_go)
 
 /** ‹ back to the navigation during a tour, ▶ to start, ● when it only records (no line to follow). */
 private fun goIcon(ui: PlanUi): androidx.compose.ui.graphics.vector.ImageVector = when {
-    ui.tourRunning -> Icons.AutoMirrored.Filled.KeyboardArrowLeft
     ui.start == PlanStart.RECORD_ONLY -> Icons.Filled.FiberManualRecord
     else -> Icons.Filled.PlayArrow
 }
@@ -1465,7 +1471,7 @@ private fun GroupHalf(label: String, enabled: Boolean, blue: Color, modifier: Mo
  * no point or only one: "Los geht’s · ohne Route" (owner 2026-11-03, fewer terms: Planen / Unterwegs, Route / Tour).
  */
 internal fun primaryLabel(ui: PlanUi): String = when {
-    ui.tourRunning -> Txt.s(Res.string.plan_continue_navigation_for, ui.activity.navName)
+    ui.tourRunning -> Txt.s(Res.string.plan_carry_on_for, ui.activity.navName)
     ui.start == PlanStart.RECORD_ONLY -> Txt.s(Res.string.plan_start_recording_for)
     else -> Txt.s(Res.string.plan_start_navigation_for, destinationName(ui.points) ?: ui.activity.navName)
 }
