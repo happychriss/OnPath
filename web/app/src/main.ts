@@ -130,7 +130,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <button id="menuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_menu'))}" aria-haspopup="menu" aria-expanded="false">${icon('menu')}</button>
     <nav id="mainMenu" class="nav" aria-label="${escapeHtml(t('web_product'))}">
       ${NAV.map((n) => `<button id="${n.id}" role="menuitem" title="${escapeHtml(n.label)}">${icon(n.icon, 20)}<span>${escapeHtml(n.label)}</span></button>`).join('')}
-      ${siteLink('web_url_app', t('web_link_app'), 'navlink')}
+      <a class="navlink" href="${t('web_url_try')}" target="_blank" rel="noopener" title="${escapeHtml(t('web_link_app'))}">${icon('download', 20)}<span>${escapeHtml(t('web_link_app'))}</span></a>
     </nav>
     <span class="hint muted">${escapeHtml(t('web_header_hint'))}</span>
     <span id="headActs" class="headacts">
@@ -680,7 +680,7 @@ async function firstPointMenu(at: maplibregl.LngLat) {
 async function pointMenu(i: number) {
   const n = state.points.length, name = state.meta[i]?.name;
   const [lat, lon] = state.points[i];
-  const acts: string[] = JSON.parse(await engine.call('pointMenu', i, n, !!name?.trim(), state.roundTrip));
+  const acts: string[] = JSON.parse(await engine.call('pointMenu', i, n, !!name?.trim(), state.roundTrip, enc(state.points)));
   const items: MenuItem[] = acts.map((a): MenuItem => {
     if (a === 'MAKE_START') return { icon: 'tripOrigin', label: t('plan_start_here'), sub: tp('plan_removes_points', i, i), act: () => applyEdit('startHere', i) };
     if (a === 'LOOP_START') return { icon: 'tripOrigin', label: t('plan_start_finish_here'), sub: t('plan_same_round_trip'), act: () => applyEdit('startHere', i) };

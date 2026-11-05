@@ -35,7 +35,7 @@ interface WasmEngine {
   historyStep(op: string, points: string): string;
   historyState(): string;
   gesture(menuOpen: boolean, marker: number, poi: boolean, planEmpty: boolean): string;
-  pointMenu(index: number, count: number, isPlace: boolean, roundTrip: boolean): string;
+  pointMenu(index: number, count: number, isPlace: boolean, roundTrip: boolean, points: string): string;
   fromMeBlocked(status: string, hasFix: boolean): string;
   googleMaps(name: string, lat: number, lon: number, label: string): string;
   poiMenu(kind: string, name: string, ele: string, lat: number, lon: number): string;

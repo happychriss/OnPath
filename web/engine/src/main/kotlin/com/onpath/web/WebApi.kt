@@ -475,8 +475,12 @@ object Engine {
         }
 
     /** The point menu's entries ([MapGestures.pointMenu]) as JSON names: MAKE_START, LOOP_START, GOOGLE, DELETE. */
-    fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean): String =
-        MapGestures.pointMenu(index, count, isPlace, roundTrip).joinToString(",", "[", "]") { str(it.name) }
+    fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean, points: String = ""): String {
+        // the loop's first point ([PlanEdits.loopStart]): with stops on the way before a round trip, ① of the loop reads
+        // "Start here" (drops the stops) and the later loop points "Start & finish here" – the app's MapOverlays call
+        val loopStart = if (points.isBlank()) 0 else PlanEdits.loopStart(parsePoints(points)) ?: 0
+        return MapGestures.pointMenu(index, count, isPlace, roundTrip, loopStart).joinToString(",", "[", "]") { str(it.name) }
+    }
 
     /** Why "Go here" is disabled ([MapGestures.fromMeBlocked]), or "" when the position can be used. */
     fun fromMeBlocked(status: String, hasFix: Boolean): String = MapGestures.fromMeBlocked(GpsStatus.valueOf(status), hasFix) ?: ""
@@ -617,8 +621,8 @@ class WebContext(private val dir: File) : android.content.Context() {
 @JSExport fun gesture(menuOpen: Boolean, marker: Int, poi: Boolean, planEmpty: Boolean): String =
     Engine.gesture(menuOpen, marker, poi, planEmpty)
 
-@JSExport fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean): String =
-    Engine.pointMenu(index, count, isPlace, roundTrip)
+@JSExport fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean, points: String): String =
+    Engine.pointMenu(index, count, isPlace, roundTrip, points)
 
 @JSExport fun fromMeBlocked(status: String, hasFix: Boolean): String = Engine.fromMeBlocked(status, hasFix)
 

@@ -39,6 +39,10 @@ const links = await page.evaluate(() => [...document.querySelectorAll('a[href^="
 for (const u of ['https://onpath.earth/de/', 'https://onpath.earth/de/datenschutz/', 'https://onpath.earth/de/impressum/'])
   check(links.includes(u), `website link ${u}`);
 check(!links.some((u) => /play\.google|apps\.apple/.test(u)), 'no store link');
+// the header's app link says what it is and goes to the sign-up page (cloud-web / owner 2026-11-03)
+const appLink = await page.evaluate(() => { const a = document.querySelector('a.navlink[href*="ausprobieren"]');
+  return a ? a.textContent.trim() : null; });
+check(appLink === 'Android-App testen', `header: "Android-App testen" → the try page (${appLink})`);
 check(await page.evaluate(() => document.querySelector('meta[name="robots"]')?.getAttribute('content')) === 'noindex, nofollow', 'meta robots noindex until launch');
 // the one line about the app: in the sheet, with the try page, closable; the route is not covered (sheet beside it)
 const hint = await page.$('#sheet #appHintLine');

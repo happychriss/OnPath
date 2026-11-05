@@ -352,7 +352,10 @@ dialog.pair .check b { letter-spacing: .08em; }
 @media (max-width: 700px) { .mapnotes { top: 122px; left: 12px; right: 12px; width: auto; max-width: none; } }
 
 /* ---- website links, language switch, the one line about the app (A-011; web-planner.md §18) ---- */
-.nav a.navlink { display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 6px; font-size: 15px; color: var(--site-fg); text-decoration: none; }
+.nav a.navlink { display: inline-flex; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 6px; font-size: 15px; color: var(--site-fg); text-decoration: none; }
+.nav a.navlink .ic { color: var(--green-fg); }
+/* "Try the Android app" / "Android-App testen" is the longest entry: icon only first (title = the text) */
+@media (max-width: 1279px) and (min-width: 701px) { .nav a.navlink span { display: none; } }
 .nav a.navlink:hover { background: var(--site-soft); }
 .langswitch { display: inline-flex; flex: none; margin-left: 12px; border: 1px solid var(--site-line); border-radius: 6px; overflow: hidden; }
 .langswitch button { border: none; background: none; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; padding: 5px 8px; }

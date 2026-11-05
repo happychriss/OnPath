@@ -6,7 +6,7 @@
     <string name="web_url_try">https://onpath.earth/de/ausprobieren/</string>
     <string name="web_url_privacy">https://onpath.earth/de/datenschutz/</string>
     <string name="web_url_legal">https://onpath.earth/de/impressum/</string>
-    <string name="web_link_app">Die App</string>
+    <string name="web_link_app">Android-App testen</string>
     <string name="web_link_privacy">Datenschutz</string>
     <string name="web_link_legal">Impressum</string>
     <string name="web_lang_switch">Sprache</string>

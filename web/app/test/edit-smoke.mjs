@@ -80,6 +80,14 @@ check(items.join('|') === 'Start & finish here|Delete', 'point menu of a loop po
 await page.click('.pointmenu button:first-of-type');
 await page.waitForFunction((b) => document.getElementById('points').textContent !== b, loopBefore, { timeout: 10_000 }).catch(() => {});
 check((await page.textContent('#points')) !== loopBefore, 'Start & finish here rotated the loop');
+// a stop on the way before the round trip (PlanEdits.loopStart = 1): the loop's ① reads "Start here" (drops the stop),
+// its later points "Start & finish here" – the app's MapGestures.pointMenu(loopStart)
+{
+  const way = '46.670000,11.160000;46.680000,11.150000;46.690000,11.150000;46.690000,11.170000;46.680000,11.150000';
+  const menu = (i) => page.evaluate(([i, w]) => window.__engine.call('pointMenu', i, 5, false, true, w), [i, way]).then(JSON.parse);
+  const [m1, m2] = [await menu(1), await menu(2)];
+  check(m1.join() === 'MAKE_START,DELETE' && m2.join() === 'LOOP_START,DELETE', `stop on the way: ① of the loop "Start here", ② "Start & finish here" (${m1} / ${m2})`);
+}
 await page.screenshot({ path: shot });
 
 // way types & surfaces (the app's RouteBreakdown, rules from routing/BreakdownRules): one line, a click → two bars
