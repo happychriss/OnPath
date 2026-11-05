@@ -242,11 +242,14 @@ fun NavigateOverlay(
     var topColumnDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var messageBottomDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var sliderDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    // the slider unlocks Pause · Change route · End (a recording); without one it goes to the plan at once
+    // the slider only unlocks (owner 2026-11-05, Navigate C): Pause / Tour beenden in the status card (a recording) and
+    // "Route ändern" in the slider's place; paused the actions stay (Fortsetzen at once)
     var open by remember { mutableStateOf(actionsOpen) }
     LaunchedEffect(open) { if (open && !actionsOpen) { kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false } }
-    // closing it without a choice (owner 2026-11-02, no ✕): a tap on the map or Android's back; paused it stays open
-    val closableBar = open && !ui.paused && ui.recordedM != null
+    val pausedOpen = ui.paused && ui.recordedM != null
+    val unlocked = open || pausedOpen
+    // locking again without a choice (owner 2026-11-02, no ✕): a tap on the map or Android's back; paused it stays open
+    val closableBar = open && !pausedOpen
     androidx.activity.compose.BackHandler(enabled = closableBar) { open = false }
     Box(Modifier.fillMaxSize()) {
         if (closableBar) Box(Modifier.fillMaxSize().clearAndSetSemantics { }
@@ -264,7 +267,9 @@ fun NavigateOverlay(
             if (ui.toGo != null || ui.recordedM != null) {
                 var profileOpen by rememberSaveable { mutableStateOf(false) }
                 NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity,
-                    onProfileScrub = onProfileScrub, onProfileRelease = onProfileRelease)
+                    onProfileScrub = onProfileScrub, onProfileRelease = onProfileRelease,
+                    actions = if (unlocked && ui.recordedM != null) ({ TourCardActions(ui.paused, onPause, onEnd, onClose = { open = false }) })
+                        else null)
             }
             download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
             sim?.let { Box(Modifier.align(Alignment.End)) { it() } }
@@ -273,11 +278,11 @@ fun NavigateOverlay(
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
             val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            // paused: the bar stays open – "Fortsetzen" at once, no slider (owner 2026-11-01)
-            if ((open || ui.paused) && ui.recordedM != null) TourActionBar(ui.paused, onPause, onChangeRoute = onSlideToPlan,
-                onEnd = onEnd, onClose = { open = false }, modifier = bottom)
-            else SlideToPlan({ if (ui.recordedM != null) open = true else onSlideToPlan() }, bottom,
-                recording = ui.recordedM != null, startFraction = slideStartFraction)
+            // unlocked: ONE centred blue "Route ändern" where the slider was (owner 2026-11-05, Navigate C)
+            if (unlocked) Box(bottom.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                ChangeRouteButton({ open = false; onSlideToPlan() })
+            }
+            else SlideToPlan({ open = true }, bottom, recording = ui.recordedM != null, startFraction = slideStartFraction)
         }
         // ONE box under the turn / status column (docs/design/ui-style.md, owner 2026-10-31 – the re-route and
         // activity-switch question moved here from the bottom, 56 dp buttons kept); the question wins, the rest wait.
@@ -393,7 +398,9 @@ internal fun NorthNeedle(modifier: Modifier) {
 @Composable
 internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean = false, onToggleProfile: () -> Unit = {},
                            onActivity: () -> Unit = {}, onProfileScrub: (GeoPoint) -> Unit = {},
-                           onProfileRelease: () -> Unit = {}) {
+                           onProfileRelease: () -> Unit = {},
+                           /** Unlocked (owner 2026-11-05): Pause / Tour beenden directly under the route info ([TourCardActions]). */
+                           actions: (@Composable () -> Unit)? = null) {
     val hasProfile = (ui.toGo?.profile?.size ?: 0) >= 2
     val movingLine = ui.recordedM?.let { movingLine(ui) }
     val canOpen = hasProfile || ui.position != null || (movingLine != null && ui.toGo != null)
@@ -476,7 +483,8 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                     }
                 }
             }
-            if (ui.paused && ui.recordedM != null) TextButton(onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_resume)) }
+            // paused: "Fortsetzen" – in the card's action row when it shows, else here
+            if (ui.paused && ui.recordedM != null && actions == null) TextButton(onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_resume)) }
             else if (ui.toGo != null && ui.arriveAt != null && ui.toGo.state != com.onpath.app.time.EstimateState.NOT_ON_ROUTE) Column(
                 horizontalAlignment = Alignment.End,
                 modifier = Modifier.padding(start = 8.dp).widthIn(min = targetWordWidth(ui.toGo.target))
@@ -515,6 +523,8 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
         }
+        // unlocked: Pause / Tour beenden directly under the route info (owner 2026-11-05, Navigate C)
+        actions?.invoke()
         // Chevron: elevation profile of what is left + own position (stays open until tapped again).
         if (profileOpen && canOpen) {
             if (hasProfile) ElevationProfile(ui.toGo!!.profile, height = 84.dp, gradient = true,

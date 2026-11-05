@@ -44,6 +44,8 @@ class GermanScreenshotTest {
     @Test fun navigateWholeRoute() = shots.navigateWholeRoute()
     @Test fun navigateActionsOpen() = shots.navigateActionsOpen()
     @Test fun navigateFreePaused() = shots.navigateFreePaused()
+    @Test fun navigatePausedOpen() = shots.navigatePausedOpen()
+    @Test fun navigateNotRecordingOpen() = shots.navigateNotRecordingOpen()
     @Test fun planEmpty() = shots.planEmpty()
     @Test fun planOnePoint() = shots.planOnePoint()
     @Test fun trackWithoutLine() = shots.trackWithoutLine()

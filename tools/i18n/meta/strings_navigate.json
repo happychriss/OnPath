@@ -1240,5 +1240,31 @@
     "context": "Status line of a running tour after the route guidance was ended (all points deleted / Just record); %1$s distance, %2$s time",
     "priority": 3,
     "confidence": "sicher"
+  },
+  "nav_slide_unlock": {
+    "area": "Navigate",
+    "context": "Navigate's slider (owner 2026-11-05): it only unlocks the screen for changes; shown after a '»' sign",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "nav_slide_unlock_desc": {
+    "area": "Navigate",
+    "context": "TalkBack name of the slider during a recording: what the slide unlocks",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_slide_unlock_desc_plan": {
+    "area": "Navigate",
+    "context": "TalkBack name of the slider without a recording (only Change route behind it)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_change_route": {
+    "area": "Navigate",
+    "context": "Blue button where the slider was, after unlocking: opens the plan to change the route; the tour goes on",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 20
   }
 }

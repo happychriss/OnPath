@@ -54,7 +54,8 @@ class NoviceFixesTest {
 
     @Test fun secondaryLinesOnTheWayAreReadable() {
         assertTrue("slider line on green", contrast(OnPathColors.OnGreenMuted, OnPathColors.Green) >= 4.5)
-        assertTrue(src("ui/SlideToUnlock.kt").contains("Text(sub, color = OnPathColors.OnGreenMuted"))
+        // owner 2026-11-05: the slider has no second line any more – its one line is white on green
+        assertFalse(src("ui/SlideToUnlock.kt").contains("Text(sub,"))
         assertTrue("grey info on the blue plan sheet", contrast(OnPathColors.Grey, OnPathColors.PlanTint) >= 4.5)
         assertTrue("detail lines on the blue plan sheet", contrast(OnPathColors.InkMuted, OnPathColors.PlanTint) >= 4.5)
         val sub = src("ui/PlanPanel.kt").substringAfter("private fun SubLine(").substringBefore("\n}\n")

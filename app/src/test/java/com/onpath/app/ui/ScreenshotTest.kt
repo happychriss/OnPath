@@ -665,7 +665,14 @@ class ScreenshotTest {
 
     /** Free recording (no route), paused from the notification. */
     /** After the slide (owner 2026-11-02, #17 C): green Pause · blue Change route · red End, ✕ above on the right. */
+    /** Unlocked (owner 2026-11-05, Navigate C): Pause / Tour beenden in the status card, "Route ändern" where the slider was. */
     @Test fun navigateActionsOpen() = paparazzi.snapshot { NavFrame(navUi, actions = true) }
+
+    /** Unlocked and paused: "Fortsetzen" in the card (no second one), it stays open. */
+    @Test fun navigatePausedOpen() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true)) }
+
+    /** Without a recording, unlocked: only "Route ändern". */
+    @Test fun navigateNotRecordingOpen() = paparazzi.snapshot { NavFrame(navUi.copy(recordedM = null), actions = true) }
 
     @Test fun navigateFreePaused() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true)) }
 

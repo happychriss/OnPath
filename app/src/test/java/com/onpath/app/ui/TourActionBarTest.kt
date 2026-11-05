@@ -3,54 +3,75 @@ package com.onpath.app.ui
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
 /**
- * The slider's bar (owner 2026-11-02, onpath.private#17 = C compact): three tiles in fixed colours – green Pause /
- * Resume, blue Change route, red End – white words on each (≥ 4.5:1), the colour rule as tokens, no hand colours.
+ * Navigate after the slide (owner 2026-11-05, Navigate C): the slider only unlocks ("» Entsperren"); then "Pause"
+ * (green tonal, "Fortsetzen" while paused) and "Tour beenden" (green outlined, asks first) sit directly under the route
+ * info in the status card, and ONE centred blue "Route ändern" takes the slider's place. No red, words not signs.
+ * Without a recording only "Route ändern". Locks again after 30 s, on a tap on the map or Android's back (not while paused).
  */
 class TourActionBarTest {
     private val bar = File("src/main/java/com/onpath/app/ui/TourActionBar.kt").readText()
+    private val nav = File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()
+    private val overlay = nav.substringAfter("fun NavigateOverlay(").substringBefore("\n}\n")
 
-    private fun contrastWithWhite(c: Color): Double = 1.05 / (c.luminance() + 0.05)
-
-    @Test fun greenPauseBlueChangeRedEnd() {
-        // plain signs (owner 2026-11-02): ⏸ / ▶, the pencil, ■
-        val pause = bar.indexOf("Icons.Filled.Pause, str(if (paused)").also { assertTrue("paused → ▶", bar.contains("if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause")) }
-        val change = bar.indexOf("Icons.Filled.Edit, str(Res.string.plan_slide_change_route), OnPathColors.ActionEdit")
-        val end = bar.indexOf("Icons.Filled.Stop, str(Res.string.nav_end_short), OnPathColors.ActionStop")
-        assertTrue("$pause $change $end", pause in 0 until change && change < end)
-        assertTrue(bar.substring(pause, change).contains("OnPathColors.ActionGo"))
-        assertTrue("no hand colours in the bar", !Regex("Color\\(0x").containsMatchIn(bar))
+    private fun contrast(a: Color, b: Color): Double {
+        val (l1, l2) = listOf(a.luminance() + 0.05, b.luminance() + 0.05).sortedDescending()
+        return l1 / l2
     }
 
-    @Test fun whiteWordsReadOnEveryTile() {
-        for ((name, c) in listOf("go" to OnPathColors.ActionGo, "edit" to OnPathColors.ActionEdit, "stop" to OnPathColors.ActionStop,
-            "bar" to OnPathColors.Green))
-            assertTrue("$name ${contrastWithWhite(c)}", contrastWithWhite(c) >= 4.5)
+    @Test fun pauseAndEndInTheCardChangeRouteInTheSlidersPlace() {
+        val actions = bar.substringAfter("fun TourCardActions(").substringBefore("\n}\n")
+        assertTrue(actions, actions.contains("str(if (paused) Res.string.common_resume else Res.string.nav_action_pause)"))
+        // never cut: side by side while both words fit, else stacked (large font)
+        assertTrue(TourActions.sideBySide(300f, 334f))
+        assertFalse(TourActions.sideBySide(380f, 334f))
+        assertTrue(actions, actions.contains("onClick = { onClose(); onPause(!paused) }"))
+        assertTrue(actions, actions.contains("onClick = { onClose(); onEnd() }") && actions.contains("Res.string.nav_end_tour"))
+        assertFalse("no red", bar.contains("ActionStop") || bar.contains("OnPathColors.Error"))
+        val change = bar.substringAfter("fun ChangeRouteButton(").substringBefore("\n}\n")
+        assertTrue(change, change.contains("Res.string.nav_change_route") && change.contains("OnPathColors.ActionEdit"))
+        // in the card, directly under the route info; Route ändern centred where the slider was
+        assertTrue(overlay, overlay.contains("actions = if (unlocked && ui.recordedM != null) ({ TourCardActions(ui.paused, onPause, onEnd, onClose = { open = false }) })"))
+        assertTrue(overlay, overlay.contains("ChangeRouteButton({ open = false; onSlideToPlan() })"))
+        assertTrue(overlay, overlay.contains("else SlideToPlan({ open = true }, bottom, recording = ui.recordedM != null"))
+        assertFalse("the tile bar is gone", bar.contains("fun TourActionBar(") || bar.contains("fun ActionTiles("))
     }
 
-    /** Owner 2026-11-03: the tiles were "echt riesig" – the bar now about the slider's own 64 dp, still ≥ 48 dp to touch. */
-    @Test fun compactAboutTheSlidersHeight() {
-        val barDp = TourActions.TILE_HEIGHT.value + 2 * TourActions.BAR_PAD.value
-        assertTrue("$barDp dp vs the 64 dp slider", barDp in 52f..66f)
-        assertTrue(TourActions.TILE_HEIGHT.value >= 48f)
+    @Test fun readableColours() {
+        assertTrue(contrast(TourActions.OnGoTonal, TourActions.GoTonal) >= 7.0)
+        assertTrue(contrast(OnPathColors.CardWhite, OnPathColors.ActionEdit) >= 4.5)
+        assertTrue(contrast(OnPathColors.ActionGo, OnPathColors.CardWhite) >= 4.5)
+    }
+
+    /** Locks again by itself after 30 s; a tap on the map or Android's back locks it; paused it stays open. */
+    @Test fun locksAgainAsBefore() {
         assertEquals(30_000L, TourActions.OPEN_MS)
+        assertTrue(overlay.contains("kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false"))
+        assertTrue(overlay.contains("val pausedOpen = ui.paused && ui.recordedM != null"))
+        assertTrue(overlay.contains("val closableBar = open && !pausedOpen"))
+        assertTrue(overlay.contains("BackHandler(enabled = closableBar) { open = false }"))
+        assertTrue(overlay.contains("detectTapGestures { open = false }"))
+        // paused: "Fortsetzen" in the card's action row, not twice
+        assertTrue(nav.contains("if (ui.paused && ui.recordedM != null && actions == null) TextButton(onClick = onResume"))
     }
 
-    /** Owner 2026-11-02: no ✕ – a tap on the map or Android's back closes the open bar (not while paused). */
-    @Test fun aTapOnTheMapOrBackClosesTheBar() {
-        // Navigate's bar has no ✕ close button
-        assertTrue("no ✕ in the bar", !bar.substringAfter("fun TourActionBar(").substringBefore("\n}\n").contains("Icons.Filled.Close"))
-        val nav = File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()
-        assertTrue(nav.contains("val closableBar = open && !ui.paused && ui.recordedM != null"))
-        assertTrue(nav.contains("BackHandler(enabled = closableBar) { open = false }"))
-        assertTrue(nav.contains("detectTapGestures { open = false }"))
+    @Test fun theSliderOnlyUnlocks() {
+        val slider = File("src/main/java/com/onpath/app/ui/SlideToUnlock.kt").readText()
+        assertTrue(slider.contains("val label = str(Res.string.nav_slide_unlock)"))
+        assertTrue(slider.contains("val mainText = \"»  \$label\""))
+        assertTrue(slider.contains("str(if (recording) Res.string.nav_slide_unlock_desc else Res.string.nav_slide_unlock_desc_plan)"))
+        for (dir in listOf("values", "values-de")) {
+            val s = File("../strings/src/commonMain/composeResources/$dir/strings_navigate.xml").readText()
+            assertTrue(dir, s.contains("name=\"nav_slide_unlock\"") && s.contains("name=\"nav_change_route\""))
+        }
     }
 
-    /** Owner 2026-11-05 (R5): the plan during a tour has no tile / pill bar any more – one green "Weiter geht's". */
+    /** The plan sheet during a tour has no tile / pill bar (owner 2026-11-05, R5): one green "Weiter geht's". */
     @Test fun thePlanHasNoTourBar() {
         assertTrue(!bar.contains("fun TourEditBar(") && !bar.contains("fun ActionPills("))
     }

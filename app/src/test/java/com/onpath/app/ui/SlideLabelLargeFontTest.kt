@@ -9,7 +9,7 @@ import org.junit.Test
 import java.util.Locale
 
 /**
- * The Navigate slider "Stop" + small line "Pause · End · Change route" at the phone's largest font (2.0) on a
+ * The Navigate slider "» Entsperren" and what it unlocks (owner 2026-11-05, Navigate C) at the phone's largest font (2.0) on a
  * normal phone: the small line does not fit and is left out – the main line stays whole, nothing is cut. Same
  * pictures as the [ScreenshotTest] tests of the same name, drawn with this class's Paparazzi.
  */
@@ -23,11 +23,14 @@ open class SlideLabelLargeFontTest {
     }
 
     @Test fun navigate() = shots.navigate()
-    /** Without a recording: only "Change route". */
+    /** Without a recording: only "Route ändern" behind it. */
     @Test fun navigateNotRecording() = shots.navigateNotRecording()
+    @Test fun navigateActionsOpen() = shots.navigateActionsOpen()
+    @Test fun navigatePausedOpen() = shots.navigatePausedOpen()
+    @Test fun navigateNotRecordingOpen() = shots.navigateNotRecordingOpen()
 }
 
-/** The same in German (the longest small line: "Route ändern · Pause · Beenden"). */
+/** The same in German ("Tour beenden" is the longest button word). */
 class SlideLabelLargeFontGermanTest : SlideLabelLargeFontTest() {
     private val before = Locale.getDefault()
     @Before fun german() = Locale.setDefault(Locale.GERMANY)

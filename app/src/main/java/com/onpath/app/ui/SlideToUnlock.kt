@@ -75,36 +75,25 @@ private val PAD = 4.dp
 private val TEXT_GAP = 20.dp
 
 /**
- * What the slider says (owner 2026-11-01, was "Tour menu"): "Stop" with a small line "Pause · End · Change route" under it – the
- * small line only when it fits (large font: the main line only, never cut). Without a recording only "Change route".
- */
-object SlideLabel {
-    /** The small line fits on one line beside the thumb, and both lines fit into the track's height (px). */
-    fun subFits(subWidth: Int, availWidth: Int, mainHeight: Int, subHeight: Int, availHeight: Int): Boolean =
-        subWidth <= availWidth && mainHeight + subHeight <= availHeight
-}
-
-/**
- * "→ Stop": the only way out of Navigate. The thumb has to be dragged across ≥ 85 % of
+ * "» Entsperren" (owner 2026-11-05, Navigate C): the slider only unlocks the screen for changes – then Pause / Tour beenden
+ * appear in the status card and "Route ändern" takes the slider's place (NavigateOverlay). The thumb has to be dragged across ≥ 85 % of
  * the track; released earlier it springs back, so pocket or glove touches change nothing.
  * TalkBack users get a normal action ("Switch to plan mode"). A tap (UX review B2) nudges the thumb a quarter of the way
  * and lets it spring back – it shows that the thumb slides, nothing opens.
- * [recording] false (Navigate without a recording): only "Change route" – Pause / End make no sense there.
+ * [recording] false (Navigate without a recording): only "Route ändern" behind it – Pause / End make no sense there.
  * [startFraction] places the thumb (screenshot tests only).
  */
 @Composable
 fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Boolean = true, startFraction: Float = 0f) {
-    val label = str(if (recording) Res.string.plan_slide_to_plan else Res.string.plan_slide_change_route)
-    val sub = if (recording) str(Res.string.plan_slide_to_plan_sub) else null
-    val switchLabel = str(Res.string.plan_switch_to_plan)
-    val desc = str(Res.string.plan_slide_desc, if (sub == null) label else "$label: ${sub.replace(" · ", ", ")}")
+    val label = str(Res.string.nav_slide_unlock)
+    val switchLabel = label
+    // TalkBack: "Entsperren. Schieben, um Pause, Tour beenden und Route ändern freizugeben."
+    val desc = str(if (recording) Res.string.nav_slide_unlock_desc else Res.string.nav_slide_unlock_desc_plan)
     val slid by rememberUpdatedState(onSlid)
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val measurer = rememberTextMeasurer()
     val mainStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-    val subStyle = MaterialTheme.typography.bodyMedium
-    val mainText = "→  $label"
+    val mainText = "»  $label"
     var tapped by remember { mutableIntStateOf(0) }
     BoxWithConstraints(
         modifier.fillMaxWidth().height(TRACK_HEIGHT).clip(CircleShape).background(MaterialTheme.colorScheme.primary) // the turn card's green (owner 2026-11-01)
@@ -126,13 +115,6 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
                 animate(offset, 0f, animationSpec = spring()) { v, _ -> offset = v }
             }
         }
-        // the small line only when it fits (measured at the phone's font size): never cut, never an ellipsis
-        val showSub = sub != null && with(density) {
-            val m = measurer.measure(mainText, mainStyle, maxLines = 1, softWrap = false)
-            val s = measurer.measure(sub, subStyle, maxLines = 1, softWrap = false)
-            SlideLabel.subFits(s.size.width, (maxWidth - THUMB - TEXT_GAP * 2).roundToPx(), m.size.height, s.size.height,
-                (TRACK_HEIGHT - PAD * 2).roundToPx())
-        }
 
         // Filled part behind the thumb.
         Box(Modifier.fillMaxHeight().width(with(density) { offset.toDp() } + THUMB + PAD * 2)
@@ -142,7 +124,6 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(mainText, color = Color.White, style = mainStyle, maxLines = 1, softWrap = false)
-            if (showSub && sub != null) Text(sub, color = OnPathColors.OnGreenMuted, style = subStyle, maxLines = 1, softWrap = false)
         }
         Surface(
             shape = CircleShape, color = Color.White, shadowElevation = 3.dp,
