@@ -20,6 +20,8 @@
 #      FerryHintTest.kt = routes over a Rhine ferry show the amber ferry hint (needs E5_N50.rd5), pass/fail;
 #      HintInventory.kt = candidate route hints (ford, barriers, access, ...) counted on random routes (RAW_TAP=1);
 #      SafetyTest.kt = trail safety (SAC / via_ferrata / bike limits) metres per class, SAFETY_TAG=label;
+#      LongBikeRuhrTest.kt = the owner's ~98 km bike plan Hilden → Nordkirchen: whole plan vs only the new legs per edit
+#      (needs E5_N50.rd5, docs/design/long-bike-routes.md); MEMCLASS=<MB> patches BRouter's node-cache limit (default 64);
 #      NO_VIA_CORRECTION=1 compiles the engine with BRouter's correctMisplacedViaPoints off (for comparison);
 #      TrackToPlanJvm.kt = a GPX track as a plan with few route points (TRACK_GPX=<file>, the file outside the repo);
 #      GpxCompare.kt = compare with a reference GPX line (another app's plan, a ride; see its header, needs RAW_TAP=1).
@@ -57,6 +59,11 @@ fi
 if [ -n "${NO_VIA_CORRECTION:-}" ]; then
   sed -i 's#kv\["correctMisplacedViaPoints"\] = "1"#kv["correctMisplacedViaPoints"] = "0"#' "$W/BRouterEngine.kt"
   grep -q 'correctMisplacedViaPoints"\] = "0"' "$W/BRouterEngine.kt"
+fi
+if [ -n "${MEMCLASS:-}" ]; then
+  # BRouter's node cache limit in MB (RoutingContext.memoryclass, default 64) – for the long-route measurements
+  sed -i "s#^\(\s*\)rc.keyValues = keyValues(activity, sacLimit)\$#&\n\1rc.memoryclass = $MEMCLASS#" "$W/BRouterEngine.kt"
+  grep -q "rc.memoryclass = $MEMCLASS" "$W/BRouterEngine.kt"
 fi
 rm -rf "$W/kt"; mkdir -p "$W/kt"
 # the app's texts come from the :strings module (Compose resources): a JVM stand-in with the English texts
