@@ -50,6 +50,7 @@ class GermanScreenshotTest {
     @Test fun planPointsFull() = shots.planPointsFull()
     @Test fun planSummaryBike() = shots.planSummaryBike()
     @Test fun planCollapsed() = shots.planCollapsed()
+    @Test fun planTourRolledUp() = shots.planTourRolledUp()
     @Test fun planProfileBike() = shots.planProfileBike()
     @Test fun planFerryHint() = shots.planFerryHint()
     @Test fun routeSpotsListHints() = shots.routeSpotsListHints()

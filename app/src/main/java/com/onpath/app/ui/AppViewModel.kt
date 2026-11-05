@@ -1907,12 +1907,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * ✕ Close plan in the sheet (owner 2026-10-31, was "Clear route"): the plan leaves the screen – a saved route stays in
-     * My routes; with unsaved changes ([planUnsaved]) ONE question first, "Discard changes?" Cancel · Discard.
+     * My routes; with unsaved changes ([planUnsaved]) ONE question first, "Discard changes?" Cancel · Discard · Save
+     * (owner 2026-11-05: the sheet has no Save any more – ✕ asks to save).
      */
     fun requestClear() { if (planUnsaved) discardAsk = true else clearPlan() }
 
     /** "Discard changes?" → Discard. */
     fun discardConfirmed() { discardAsk = false; clearPlan() }
+
+    /** "Discard changes?" → Save: Save's dialog, then the new plan ([askSave]'s follow-up; Cancel there keeps the plan). */
+    fun discardSaveFirst() { discardAsk = false; askSave { clearPlan() } }
+
+    /** Save is offered in "Discard changes?" only when there is something Save can store (two points or more). */
+    val canSaveBeforeClear: Boolean get() = RouteRules.saveInMenu(waypoints.size)
 
     /**
      * Resets the whole plan in one undoable step: points, route line, pinned marks (kept while

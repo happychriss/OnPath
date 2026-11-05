@@ -87,6 +87,8 @@ class ScreenshotTest {
                 PlanFrame()
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing, offline = offline)
+                    // the activity as a button on the map (owner 2026-11-05, R5) – as MapScreen places it
+                    ActivityMapButton(Activity.HIKE, 2, {}, Modifier.padding(top = MessagePlacement.topDp(MessageScreen.PLAN).dp, start = 12.dp))
                     SheetWithFooter(TOP_BAR_BOTTOM, footer = {
                         Column(Modifier.fillMaxWidth()) { aboveFooter(); footer() }
                     }, sheet = bottom)
@@ -452,59 +454,48 @@ class ScreenshotTest {
     @Test fun planDiscardAsk() = paparazzi.snapshot {
         OnPathTheme {
             Frame { PlanPanel(planUi().copy(unsaved = true), PlanCallbacks()) }
-            DiscardPlanDialog({}, {})
+            DiscardPlanDialog({}, {}, onSave = {})
         }
     }
 
     /**
-     * "Route ändern" during a tour, pulled up one step (owner 2026-11-02 / 2026-11-03): the route above, at the bottom the
-     * tile bar – green Continue navigation · blue Save route · red New plan.
+     * The plan during a tour, profile step (owner 2026-11-05, R5): plan row ✕ Neu planen · ⇅ Umkehren · ↻ Rundtour, the
+     * facts, the profile, at the bottom the green "▶ Weiter geht's".
      */
     @Test fun planTourRunning() = paparazzi.snapshot {
         Frame(editing = true) {
             PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
-                PlanCallbacks(onSaveRoute = {}))
+                PlanCallbacks())
         }
     }
 
     /**
-     * After the red "Neu planen" during a tour (owner 2026-11-03): the plan is empty, the recording goes on – the first
-     * step shows how to begin again above the tiles; Save route and New plan greyed.
+     * After "Neu planen" during a tour (owner 2026-11-03): the plan is empty, the recording goes on – the summary step
+     * shows how to begin again above "▶ Weiter geht's".
      */
     @Test fun planTourNewPlan() = paparazzi.snapshot {
         Frame(editing = true) {
             PlanPanel(planUi(n = 0, r = null, size = PlanSize.MINI, tourRunning = true)
-                .copy(tour = TourState(1_700.0, 878, paused = false, recordOnly = true)), PlanCallbacks(onSaveRoute = null))
+                .copy(tour = TourState(1_700.0, 878, paused = false, recordOnly = true)), PlanCallbacks())
         }
     }
 
     /**
-     * Design proposal 2026-11-05 (owner: compact, Material 3 + Google Maps logic): the profile step with the bottom row
-     * in [style] – without a tour ("Los geht's") or during a tour ("‹ Navigation"). Drawn by [PlanBarProposalTest].
+     * The plan during a tour rolled up (owner 2026-11-05, R5): one row "4 h 36 min · 12,5 km · ↑842 ↓310" with a compact
+     * green "▶ Weiter geht's" – the map almost free.
      */
-    fun planBarProposal(style: PlanBarStyle, tour: Boolean, size: PlanSize = PlanSize.COMPACT) =
-        paparazzi.snapshot(name = "${style.name}_${if (tour) "tour" else "plan"}" + if (size == PlanSize.COMPACT) "" else "_${size.name.lowercase()}") {
-        androidx.compose.runtime.CompositionLocalProvider(LocalPlanBarStyle provides style) {
-            // round 4: the activity as a button on the map, top left under the search pill
-            val top: @Composable () -> Unit = {
-                if (style == PlanBarStyle.R4 || style == PlanBarStyle.R5) Box(Modifier.fillMaxWidth()) { ActivityMapButton(Activity.HIKE, 2, {}) }
-            }
-            if (tour) Frame(editing = true, top = top) {
-                PlanPanel(planUi(size = size, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false),
-                    tourCollapsible = style == PlanBarStyle.R5), PlanCallbacks(onSaveRoute = {}))
-            } else Frame(top = top) {
-                // round 3 shows the unsaved dot on 🔖 in the plan state (owner: one state with the dot)
-                val r3 = style == PlanBarStyle.R3_A || style == PlanBarStyle.R3_B || style == PlanBarStyle.R4 || style == PlanBarStyle.R5
-                PlanPanel(planUi(size = size).copy(unsaved = r3), PlanCallbacks(onSaveRoute = {}))
-            }
+    @Test fun planTourRolledUp() = paparazzi.snapshot {
+        Frame(editing = true) {
+            PlanPanel(planUi(size = PlanSize.COLLAPSED, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
+                PlanCallbacks())
         }
     }
 
-    /** "Route ändern" as it opens: only the tile bar (red New plan live – there is a plan); the map free. */
+    /** The plan during a tour as it opens (summary step): plan row, facts, "▶ Weiter geht's". */
     @Test fun planTourRunningCollapsed() = paparazzi.snapshot {
         Frame(editing = true) {
             PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
-                PlanCallbacks(onSaveRoute = {}))
+                PlanCallbacks())
         }
     }
 

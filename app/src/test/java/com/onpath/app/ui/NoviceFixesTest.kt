@@ -39,7 +39,8 @@ class NoviceFixesTest {
         assertTrue("a plan change", screen.contains("LaunchedEffect(vm.waypoints.toList()) { vm.tapHoldHint = false }"))
         assertTrue("a sheet drag", screen.contains("onSheetDrag = { if (it) vm.tapHoldHint = false; vm.mapGesture(it) }"))
         val panel = src("ui/PlanPanel.kt")
-        assertTrue(panel.contains("else if (ui.tapHint && ui.tour == null)") && panel.contains("if (ui.tapHint) Box("))
+        // the summary step shows it, with and without a tour (owner 2026-11-05: one sheet layout)
+        assertTrue(panel.contains("else if (ui.tapHint) Box("))
         assertFalse("no time-out", vm.substringAfter("fun showTapHoldHint()").substringBefore("\n    }\n").contains("delay("))
     }
 

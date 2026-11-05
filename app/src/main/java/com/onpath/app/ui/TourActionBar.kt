@@ -58,54 +58,8 @@ fun TourActionBar(paused: Boolean, onPause: (Boolean) -> Unit, onChangeRoute: ()
     ), modifier)
 }
 
-/**
- * The plan during a tour ("Route ändern", owner 2026-11-02 – the same bar as Navigate's, refines onpath.private#19):
- * **green** Continue navigation (also resumes a paused recording), **blue** Save route (Save's dialog, you stay in the
- * plan; greyed without a plan to save), **red** New plan (owner 2026-11-03, was "Discard changes" – it doubled Undo):
- * the plan is emptied, the recording goes on, the sheet shows how to begin again; an unsaved plan asks first
- * ("Discard changes?", the same as ✕ New plan without a tour); greyed when the plan is already empty. Undo brings it back.
- */
-@Composable
-fun TourEditBar(paused: Boolean, onPause: (Boolean) -> Unit, onContinue: () -> Unit, onSave: (() -> Unit)?,
-                canNewPlan: Boolean, onNewPlan: () -> Unit, modifier: Modifier = Modifier) {
-    // variant B (owner 2026-11-03): one row of three filled pills on the sheet – no green bar around them
-    ActionPills(listOf(
-        ActionTileSpec(Icons.Filled.Navigation, str(Res.string.nav_continue_navigation), OnPathColors.ActionGo) {
-            if (paused) onPause(false); onContinue()
-        },
-        ActionTileSpec(Icons.Filled.Save, str(Res.string.plan_save_route), OnPathColors.ActionEdit, enabled = onSave != null) { onSave?.invoke() },
-        ActionTileSpec(Icons.Filled.Close, str(Res.string.plan_close_plan), OnPathColors.ActionStop, enabled = canNewPlan, onClick = onNewPlan),
-    ), modifier)
-}
-
 /** One tile of [ActionTiles]: icon, word, its fixed colour (green / blue / red, [OnPathColors]), greyed when not [enabled]. */
 class ActionTileSpec(val icon: ImageVector, val label: String, val color: Color, val enabled: Boolean = true, val onClick: () -> Unit)
-
-/**
- * The plan during a tour, variant B: three filled pills in their colours (like the sheet's "Neu planen · Umkehren ·
- * Rundtour" row, filled), white words, ≥ 48 dp to touch; greyed = a faint pill, the word dimmed.
- */
-@Composable
-fun ActionPills(pills: List<ActionTileSpec>, modifier: Modifier = Modifier) {
-    // all pills as high as the tallest (owner 2026-11-03: "die Pillen müssen gleich hoch sein") – one wrapped label
-    // ("Route speichern") makes the whole row taller, never one pill alone
-    Row(modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        pills.forEach { p ->
-            val bg = if (p.enabled) p.color else OnPathColors.Ink.copy(alpha = TourActions.OFF_TILE_ALPHA)
-            val ink = if (p.enabled) OnPathColors.CardWhite else OnPathColors.Ink.copy(alpha = TourActions.OFF_INK_ALPHA)
-            Surface(onClick = p.onClick, enabled = p.enabled, shape = CircleShape, color = bg, contentColor = ink,
-                shadowElevation = if (p.enabled) 2.dp else 0.dp, modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = 48.dp)) {
-                Row(Modifier.fillMaxHeight().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center) {
-                    Icon(p.icon, null, tint = ink, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(p.label, color = ink, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Start, maxLines = 2)
-                }
-            }
-        }
-    }
-}
 
 /** The green bar with its tiles – ONE look for Navigate's slider bar and the plan during a tour (owner 2026-11-02). */
 @Composable
@@ -146,8 +100,6 @@ object TourActions {
     val BAR_PAD = 4.dp
     val BAR_CORNER = 24.dp
     val TILE_CORNER = 18.dp
-    /** The whole bar's height (tiles + padding): the plan sheet's bottom bar during a tour. */
-    val BAR_HEIGHT = TILE_HEIGHT + BAR_PAD * 2
     /** A greyed tile: white at this alpha on the green bar, its word and icon at [OFF_INK_ALPHA]. */
     const val OFF_TILE_ALPHA = 0.14f
     const val OFF_INK_ALPHA = 0.55f

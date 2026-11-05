@@ -398,13 +398,6 @@
     "confidence": "sicher",
     "max": 14
   },
-  "plan_bar_navigation": {
-    "area": "Plan sheet",
-    "context": "Green button at the plan sheet's bottom left during a tour, after a ‹ back sign: back to the navigation (TalkBack hears 'Continue · <activity>')",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 14
-  },
   "plan_bar_carry_on": {
     "area": "Plan sheet",
     "context": "Green button at the plan sheet's bottom during a tour, after a ▶ sign: back to the navigation, the tour goes on (owner 2026-11-05: 'Weiter geht’s')",

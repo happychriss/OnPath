@@ -12,7 +12,7 @@ class ActivityLabelsTest {
     @Test fun primaryButtonNamesTheActivity() {
         // owner 2026-11-02 (#16): "Let's go · ‹destination›"; no named destination → the activity
         assertEquals("Let’s go · Hike", primaryLabel(ui(Activity.HIKE, false)))
-        assertEquals("Continue · Gravelbike", primaryLabel(ui(Activity.BIKE_TREKKING, true)))
+        assertEquals("Carry on · Gravelbike", primaryLabel(ui(Activity.BIKE_TREKKING, true)))
     }
 
     /** "Let's go · Schloss Nordkirchen": the destination's own name; "Destination" (unnamed) or a loop → the activity. */

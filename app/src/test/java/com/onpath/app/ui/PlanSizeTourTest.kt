@@ -34,10 +34,14 @@ class PlanSizeTourTest {
         assertEquals(PlanSize.MINI, PlanSize.ofStep(PlanSize.COLLAPSED.step + 1))
     }
 
-    @Test fun duringATourThereIsNoRolledUpStep() {
-        assertEquals(PlanSize.MINI, PlanSize.duringTour(PlanSize.COLLAPSED, tour = true))
-        assertEquals(PlanSize.COLLAPSED, PlanSize.duringTour(PlanSize.COLLAPSED, tour = false))
-        listOf(PlanSize.MINI, PlanSize.COMPACT, PlanSize.FULL).forEach { assertEquals(it, PlanSize.duringTour(it, tour = true)) }
+    /** Owner 2026-11-05 (R5): during a tour the sheet rolls up too – one row with "▶ Weiter geht's". */
+    @Test fun duringATourTheSheetRollsUpToo() {
+        val tour = PlanUi(2, null, false, null, canUndo = true, canRedo = false,
+            activity = com.onpath.app.routing.Activity.HIKE, size = PlanSize.COLLAPSED, tourRunning = true,
+            tour = TourState(1_000.0, 600, paused = false))
+        assertEquals(PlanSize.COLLAPSED, tour.shownSize)
+        assertEquals(true, tour.collapsed)
+        PlanSize.entries.forEach { assertEquals(it, tour.copy(size = it).shownSize) }
     }
 
     @Test fun aPlanOpensAtTheSummaryAndStaysRolledUp() {

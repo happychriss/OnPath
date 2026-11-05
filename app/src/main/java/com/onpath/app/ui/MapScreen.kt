@@ -283,8 +283,8 @@ private fun PlanMode(
                     else ({ vm.openSettings(SettingsPage.PHONE) }),
                 // owner 2026-10-31: "Save route" on top whenever there is a plan (the sheet has no Save any more); a dot
                 // on ☰ while it has unsaved changes
-                // during a tour the blue tile saves (owner 2026-11-02): not in ☰ then
-                onSaveRoute = if (rec == null && RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
+                // the one Save of the plan, also during a tour (owner 2026-11-05: the sheet has no Save)
+                onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
                 unsaved = RouteRules.saveAtHand(vm.waypoints.size, vm.planUnsaved),
                 onOpened = vm::refreshTours,
                 // no "Check for updates" in the ☰ menu – Settings has the Updates section (owner)
@@ -487,9 +487,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             points = rows,
             routingSlow = vm.routingSlow, routeProgress = vm.routeProgress, routeShare = vm.routeShare, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText(), warnCount = vm.warningCount(),
             changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote, tapHint = vm.tapHoldHint,
-            offlineInfo = vm.offlineReady?.takeIf { vm.offlineInfo }?.let { OfflineReady.explain(it) },
-            // owner 2026-11-05 (R5): the sheet rolls up during a tour too – one row with "Weiter geht's"
-            tourCollapsible = true),
+            offlineInfo = vm.offlineReady?.takeIf { vm.offlineInfo }?.let { OfflineReady.explain(it) }),
         PlanCallbacks(
             onSheetDrag = { if (it) vm.tapHoldHint = false; vm.mapGesture(it) }, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -503,7 +501,6 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onRouteChanged = vm::tapRouteChangedLine,
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
-            onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
             onMovePoint = vm::movePointInList, onDeletePoint = vm::deletePointFromList, onShowPoint = vm::showPointFromList,
         ),
     )

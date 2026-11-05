@@ -42,7 +42,7 @@ class TourActionBarTest {
 
     /** Owner 2026-11-02: no ✕ – a tap on the map or Android's back closes the open bar (not while paused). */
     @Test fun aTapOnTheMapOrBackClosesTheBar() {
-        // Navigate's bar has no ✕ close button (the plan's red "Neu planen" tile uses the ✕ sign – that is not a close)
+        // Navigate's bar has no ✕ close button
         assertTrue("no ✕ in the bar", !bar.substringAfter("fun TourActionBar(").substringBefore("\n}\n").contains("Icons.Filled.Close"))
         val nav = File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()
         assertTrue(nav.contains("val closableBar = open && !ui.paused && ui.recordedM != null"))
@@ -50,9 +50,8 @@ class TourActionBarTest {
         assertTrue(nav.contains("detectTapGestures { open = false }"))
     }
 
-    /** Owner 2026-11-03: the three pills of the plan during a tour are always equally high. */
-    @Test fun pillsAreEquallyHigh() {
-        val pills = bar.substringAfter("fun ActionPills(").substringBefore("\n}\n")
-        assertTrue(pills, pills.contains(".height(IntrinsicSize.Min)") && pills.contains("Modifier.weight(1f).fillMaxHeight()"))
+    /** Owner 2026-11-05 (R5): the plan during a tour has no tile / pill bar any more – one green "Weiter geht's". */
+    @Test fun thePlanHasNoTourBar() {
+        assertTrue(!bar.contains("fun TourEditBar(") && !bar.contains("fun ActionPills("))
     }
 }

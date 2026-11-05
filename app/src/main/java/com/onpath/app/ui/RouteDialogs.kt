@@ -36,7 +36,8 @@ import androidx.compose.ui.text.input.TextFieldValue
 @Composable
 fun RouteDialogs(vm: AppViewModel) {
     vm.saveAsk?.let { ask -> SaveNameDialog(ask.kind, ask.name, onSave = vm::confirmSave, onCancel = vm::cancelSave) }
-    if (vm.discardAsk) DiscardPlanDialog(onDiscard = vm::discardConfirmed, onCancel = { vm.discardAsk = false })
+    if (vm.discardAsk) DiscardPlanDialog(onDiscard = vm::discardConfirmed, onCancel = { vm.discardAsk = false },
+        onSave = if (vm.canSaveBeforeClear) vm::discardSaveFirst else null)
     vm.replaceAsk?.let { t ->
         ReplacePlanDialog(onSaveFirst = vm::replaceSaveFirst, onReplace = vm::replaceConfirmed, onCancel = { vm.replaceAsk = null },
             fromLink = t is PlanToOpen.Shared)
@@ -103,16 +104,23 @@ fun SaveNameDialog(kind: SaveAsk.Kind, name: String, onSave: (String) -> Unit, o
 }
 
 /**
- * ✕ Close plan while the plan has unsaved changes (owner 2026-10-31: a decision that can lose something): Cancel ·
- * Discard (red). A saved route itself stays in My routes either way.
+ * ✕ Neu planen while the plan has unsaved changes (owner 2026-10-31: a decision that can lose something): Cancel ·
+ * Discard (red) · Save (owner 2026-11-05: the sheet has no Save any more, so ✕ offers it – Save's dialog, then the new
+ * plan; [onSave] null = nothing to save). A saved route itself stays in My routes either way.
  */
 @Composable
-fun DiscardPlanDialog(onDiscard: () -> Unit, onCancel: () -> Unit) {
+fun DiscardPlanDialog(onDiscard: () -> Unit, onCancel: () -> Unit, onSave: (() -> Unit)? = null) {
     AlertDialog(
         onDismissRequest = onCancel,
         title = { Text(str(Res.string.plan_discard_title)) },
-        confirmButton = { TextButton(onClick = onDiscard, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text(str(Res.string.plan_discard), color = OnPathColors.Error) } },
+        confirmButton = {
+            Row {
+                TextButton(onClick = onDiscard, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(str(Res.string.plan_discard), color = OnPathColors.Error) }
+                if (onSave != null) TextButton(onClick = onSave, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(str(Res.string.plan_bar_save)) }
+            }
+        },
         dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
     )
 }
