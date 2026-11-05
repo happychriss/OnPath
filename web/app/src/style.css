@@ -528,3 +528,31 @@ dialog.phone .unpairline .textbtn.danger { color: var(--error); }
 .keystable td:first-child { white-space: nowrap; padding-right: 12px; }
 kbd { display: inline-block; min-width: 1.4em; padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px;
   font: inherit; font-size: 13px; text-align: center; background: var(--bg); }
+
+/* ---- terrain view (terrainview.ts, owner 2026-11-05): the profile's cursor, the big profile, 3D ---- */
+.profplot { position: relative; touch-action: pan-y; }
+.profplot svg { cursor: crosshair; }
+.profcursor { position: absolute; top: 0; bottom: 18px; width: 0; border-left: 2px solid var(--fg); pointer-events: none; }
+.proflabel { position: absolute; top: 0; padding: 1px 6px; border-radius: 6px; background: rgba(255,255,255,.92); box-shadow: 0 1px 4px var(--shadow);
+  font-size: 12px; white-space: nowrap; pointer-events: none; color: #555A55; }
+.profbig { position: absolute; top: -6px; right: -8px; width: 32px; height: 32px; color: var(--muted); }
+.profbig[aria-pressed="true"] { color: var(--route); background: var(--chip); }
+.bigprofile { position: absolute; z-index: 2; left: calc(var(--sheet-w) + 24px); right: 72px; bottom: 56px; box-sizing: border-box;
+  background: var(--bg); border-radius: 18px; box-shadow: 0 2px 14px var(--shadow); padding: 8px 16px 10px; }
+.bphead { display: flex; align-items: center; gap: 16px; margin-bottom: 4px; }
+.bplegend { display: flex; gap: 12px; flex-wrap: wrap; }
+.bplegend span { display: inline-flex; align-items: center; gap: 4px; }
+.bplegend i { display: inline-block; width: 12px; height: 3px; }
+.bpclose { margin-left: auto; }
+.bpplot svg { width: 100%; height: 150px; display: block; }
+.tool.three { font-weight: 700; font-size: 14px; letter-spacing: .02em; color: var(--fg); }
+.tool.three.on { background: var(--chip); color: var(--route); }
+.threednote { position: absolute; z-index: 2; right: 12px; top: 76px; padding: 6px 14px; border-radius: 16px;
+  background: rgba(255,255,255,.94); box-shadow: 0 1px 6px var(--shadow); font-size: 13px; color: var(--muted); white-space: nowrap; pointer-events: none; }
+body.three-d .pin { cursor: default; }
+@media (max-width: 700px) {
+  .bigprofile { left: 0; right: 0; bottom: 0; border-radius: 22px 22px 0 0; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .bpplot svg { height: 130px; }
+  body.bigprofile-open #sheet { display: none; }
+  .threednote { top: auto; bottom: calc(var(--sheet-h) + 12px); right: 12px; left: 12px; white-space: normal; text-align: center; }
+}

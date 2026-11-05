@@ -236,4 +236,10 @@
     <string name="web_new_version_detail">Neu laden, um sie zu nutzen – dein Plan bleibt.</string>
     <string name="web_reload">Neu laden</string>
     <string name="web_route_default_name">Plan</string>
+    <!-- terrain view (owner 2026-11-05): the big elevation profile and the 3D map (terrainview.ts) -->
+    <string name="web_profile_big">Großes Höhenprofil unter der Karte</string>
+    <string name="web_terrain_3d">3D</string>
+    <string name="web_terrain_title">Gelände in 3D</string>
+    <string name="web_terrain_off_title">Zurück zur flachen Karte</string>
+    <string name="web_terrain_view_only">3D-Ansicht – nur zum Anschauen. Zum Planen 3D ausschalten.</string>
 </resources>

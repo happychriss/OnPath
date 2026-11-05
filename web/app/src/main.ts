@@ -14,7 +14,8 @@ import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import { EngineClient } from './engine/client';
 import type { Activity, PlanResult, SharedPlan, Hit } from './engine/types';
 import { shareDialog } from './share';
-import { profileSvg } from './profile';
+import { RouteProfile, Terrain3D } from './terrainview';
+import { STEEP_COLOURS } from './profile';
 import { PACKED, usePacked, packedGlyphs } from './packed';
 import { Cells } from './cells';
 import { setupSearch, type PlaceCard, type PlaceRole } from './search';
@@ -153,12 +154,20 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <button id="compass" class="tool"></button>
     <button id="locate" class="tool"></button>
     <button id="fitRoute" class="tool" aria-label="${escapeHtml(t('web_fit_route'))}" disabled>${icon('fitScreen')}</button>
+    <button id="terrain3d" class="tool three" aria-pressed="false" disabled>${escapeHtml(t('web_terrain_3d'))}</button>
     <span class="sep"></span>
     <button id="mapContent" class="tool wide" aria-haspopup="dialog" title="${escapeHtml(t('web_map_content_title'))}">${icon('layers')}<span>${escapeHtml(t('web_map_content'))}</span>${icon('dropDown', 18)}</button>
   </div>
   </div>
   <div id="placecard" class="placecard" hidden></div>
   <div id="mapnotes" class="mapnotes" hidden></div>
+  <div id="threeDNote" class="threednote" hidden>${escapeHtml(t('web_terrain_view_only'))}</div>
+  <section id="bigProfile" class="bigprofile" aria-label="${escapeHtml(t('plan_elevation_profile'))}" hidden>
+    <div class="bphead"><b>${escapeHtml(t('plan_elevation_profile'))}</b><span class="bplegend muted small">${
+      ['< 5 %', '5–10 %', '10–15 %', '> 15 %'].map((l, i) => `<span><i style="background:${i ? STEEP_COLOURS[i] : ROUTE}"></i>${escapeHtml(l)}</span>`).join('')}</span>
+      <button class="iconbtn bpclose" aria-label="${escapeHtml(t('common_close'))}" title="${escapeHtml(t('common_close'))}">${icon('close', 20)}</button></div>
+    <div class="bpplot"></div>
+  </section>
   <div id="footer"><button id="credits" class="credit" aria-label="${escapeHtml(t('plan_map_credits'))}">© OpenStreetMap</button>
     <span class="sitelinks">${siteLink('web_url_privacy', t('web_link_privacy'))}<span aria-hidden="true">·</span>${siteLink('web_url_legal', t('web_link_legal'))}</span></div>
   <section id="sheet" aria-label="${escapeHtml(t('web_plan_sheet'))}">
@@ -229,6 +238,16 @@ const map = new maplibregl.Map({
 $('footer').prepend(new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 90 }).onAdd(map));
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right'); // zoom ± (wide screens; the compass is in the toolbar)
 if (useCells) map.on('moveend', () => cells.loadPois(map));
+// the terrain view (terrainview.ts, owner 2026-11-05): the profile linked to the map, 3D on demand
+const routeProfile = new RouteProfile(map, ROUTE, $('profile'), $('bigProfile'), (open) => {
+  document.body.classList.toggle('bigprofile-open', open);
+  if (open) fitRoute(); // the whole route above the big profile
+});
+const terrain3d = new Terrain3D(map, $<HTMLButtonElement>('terrain3d'), $('threeDNote'), () => markers.forEach((m) => m.setDraggable(!terrain3d.on)));
+(window as unknown as { __terrain: Terrain3D }).__terrain = terrain3d; // for the browser tests
+(window as unknown as { __profile: RouteProfile }).__profile = routeProfile;
+// in 3D a point's pin stands on the ground: placed again once the heights under it are loaded (before that it sat at 0 m)
+map.on('idle', () => { if (terrain3d.on) markers.forEach((m) => m.setLngLat(m.getLngLat())); });
 if (useCells) followCover(map, cells.found); // the overview hides where the cells' detailed map is
 if (useCells) cells.attach(map); // a failed cell file is tried again by reloading its source (cells.ts)
 /** The app's Diagnostics line (routing/RoutingFingerprint + the loaded rd5 dates), refreshed after each plan. */
@@ -258,6 +277,8 @@ map.on('load', () => {
     'symbol-placement': 'line', 'symbol-spacing': ['interpolate', ['linear'], ['zoom'], 12, 60, 16, 90],
     'icon-image': 'route-arrow', 'icon-size': ['interpolate', ['linear'], ['zoom'], 12, 0.55, 16, 0.8],
     'icon-rotation-alignment': 'map', 'icon-keep-upright': false, 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+  routeProfile.addLayers();
+  terrain3d.render();
   applyMapContent();
   lookReady = true; applyActivityLook();
   render();
@@ -491,7 +512,7 @@ async function drawPoints() {
     el.textContent = state.roundTrip && i === 0 ? '↺' : String(i + 1);
     el.title = t('web_marker_title', stopLabel(i, n, state.meta[i]?.name));
     el.style.visibility = hidden ? 'hidden' : '';
-    const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat([lon, lat]).addTo(map);
+    const m = new maplibregl.Marker({ element: el, draggable: !terrain3d.on }).setLngLat([lon, lat]).addTo(map); // 3D: view only
     // a dragged point is a new place: no longer pinned or named (as in the app); a loop's start moves its end too
     m.on('dragend', () => {
       draggedAt = Date.now();
@@ -570,15 +591,18 @@ map.on('mousemove', (e) => {
     const layers = map.isMoving() ? [] : map.getStyle().layers
       .filter((l) => l.id.startsWith('poi-') || l.id === 'planned-route' || l.id === 'planned-route-casing').map((l) => l.id);
     const hit = layers.length > 0 && map.queryRenderedFeatures([[pt.x - 10, pt.y - 10], [pt.x + 10, pt.y + 10]], { layers }).length > 0;
-    map.getCanvas().style.cursor = hit ? 'pointer' : '';
+    // on the route: the profile's cursor follows (terrain view A) – in 3D the pointer only shows, it does not plan
+    const onRoute = routeProfile.hover(map.isMoving() ? null : pt);
+    map.getCanvas().style.cursor = hit && !terrain3d.on ? 'pointer' : onRoute ? 'crosshair' : '';
   });
 });
-map.on('mouseout', () => { map.getCanvas().style.cursor = ''; });
+map.on('mouseout', () => { map.getCanvas().style.cursor = ''; routeProfile.hover(null); });
 
 async function press(at: maplibregl.LngLat, marker: number, pt?: maplibregl.Point) {
   const results = document.getElementById('results');
   if (results && !results.hidden) { results.hidden = true; return; } // a click beside the search results only closes them
   if (placeCard.isOpen()) { placeCard.close(); return; } // … and one beside the place card closes it (nothing added)
+  if (terrain3d.on) { closeMenu(); return; } // 3D is for looking (the note on the map says so); planning is on the flat map
   if (marker < 0 && pt) marker = markerNear(pt);
   const poi = pt && marker < 0 ? poiAt(pt) : null;
   const action = await engine.call('gesture', menu != null, marker, poi != null, state.points.length === 0);
@@ -772,17 +796,19 @@ async function loadShared(shared: SharedPlan) {
 /** Room for the top bar, the sheet (side panel or bottom sheet) and the map controls when the camera fits a plan. */
 function fitPadding(): maplibregl.PaddingOptions {
   const sheet = $('sheet').getBoundingClientRect();
+  // the big elevation profile below the map (terrain view A): the route stays above it
+  const bp = $('bigProfile'), bpH = bp.hidden ? 0 : $('stage').getBoundingClientRect().bottom - bp.getBoundingClientRect().top;
   // the sheet as it is now (its step, or the track panel); the place card on a phone stands in for it
   if (phoneWidth()) {
     const card = document.body.classList.contains('card-open') ? $('placecard').getBoundingClientRect().height : 0;
     // never more than the screen allows: at least 120 px of map stay, or fitBounds refuses to move at all
     const mapH = $('stage').getBoundingClientRect().height;
-    return { top: 130, bottom: Math.min(Math.max(sheet.height, card) + 30, Math.max(0, mapH - 130 - 120)), left: 40, right: 40 };
+    return { top: 130, bottom: Math.min(Math.max(sheet.height, card, bpH) + 30, Math.max(0, mapH - 130 - 120)), left: 40, right: 40 };
   }
   // wide: the room beside the side panel, or – when the panel is short (small step) – the larger room below it
   const stage = $('stage').getBoundingClientRect(), w = stage.width, h = stage.height;
-  const beside = { top: 90, bottom: 50, left: sheet.right - stage.left + 50, right: 90 };
-  const below = { top: sheet.bottom - stage.top + 40, bottom: 50, left: 40, right: 90 };
+  const beside = { top: 90, bottom: Math.max(50, bpH + 30), left: sheet.right - stage.left + 50, right: 90 };
+  const below = { top: sheet.bottom - stage.top + 40, bottom: Math.max(50, bpH + 30), left: 40, right: 90 };
   const room = (p: typeof beside) => Math.max(0, w - p.left - p.right) * Math.max(0, h - p.top - p.bottom);
   return room(below) > room(beside) ? below : beside;
 }
@@ -1091,7 +1117,7 @@ function render() {
       b.onclick = () => { allowLongRoute(state.points); changed(); };
       sub.append(b);
     }
-    $('profile').innerHTML = '';
+    routeProfile.update(null, '');
     notice.hidden = true;
     $('infoline').hidden = true; $('breakdown').hidden = true; $('changedLine').hidden = true;
   } else {
@@ -1099,7 +1125,7 @@ function render() {
     sub.innerHTML = `<span>${escapeHtml(p.texts.climb)}</span>` +
       `<span class="badge ${p.level ?? ''}" ${p.because ? `title="${escapeHtml(p.because)}"` : ''}>${escapeHtml(p.difficulty)}</span>`;
     // the app's ElevationProfile: "No elevation data" when ProfileData has none
-    $('profile').innerHTML = p.profile ? profileSvg(p.profile) : `<div class="muted small noele">${escapeHtml(t('plan_no_elevation'))}</div>`;
+    routeProfile.update(p, t('plan_no_elevation'));
     // one red line: an unreachable point (the app's PlanGaps, with Show) or a failed leg – PlanPanel's order
     // missing routing data is no error: the app's plain grey line (RoutingDataNotice) instead of the router's text
     const info = $('infoline');

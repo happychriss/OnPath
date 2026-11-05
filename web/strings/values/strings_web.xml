@@ -255,4 +255,10 @@
     <string name="web_reload">Reload</string>
     <!-- the name shown for a saved route without one (the app dropped plan_route_default_name with its save dialog) -->
     <string name="web_route_default_name">Plan</string>
+    <!-- terrain view (owner 2026-11-05): the big elevation profile and the 3D map (terrainview.ts) -->
+    <string name="web_profile_big">Large elevation profile below the map</string>
+    <string name="web_terrain_3d">3D</string>
+    <string name="web_terrain_title">Terrain in 3D</string>
+    <string name="web_terrain_off_title">Back to the flat map</string>
+    <string name="web_terrain_view_only">3D view – just for looking. To plan, switch 3D off.</string>
 </resources>

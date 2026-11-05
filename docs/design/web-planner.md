@@ -863,3 +863,34 @@ Until launch every answer of the host carries `X-Robots-Tag: noindex, nofollow` 
   someone watches). **Note:** the map server (doorman, `tools/cloud/worker`) has Workers Logs on (`[observability]`)
   and keeps a per-minute rate-limit row per plain IP in its D1 (`ratelimit`, overwritten each minute, not purged) –
   for the privacy text, or hash / purge it there (follow-up for the maps session).
+
+## 19. Terrain view – the profile linked to the map, 3D on demand (laptop, 2026-11-05, owner: "wir bauen A und C")
+Options looked at (perspective views of other planners, built in the browser without a server): A big profile linked to
+the map, B tilt only, C real terrain, D flyover, E route "wall", F own side view, G own 3D – the owner chose **A and C**;
+D (flyover along the route) would sit on top of C. Web only for now (the app does not tilt).
+Code: `web/app/src/terrainview.ts` (`RouteProfile`, `Terrain3D`), `profile.ts` (drawing, cursor, distance → point).
+- **A – profile and map together.** Both profiles (the sheet's and the big one) have the app's cursor
+  (`ui/ElevationProfile`): pointer / finger over the profile → a line, "375 m · 2.7 km · 14 %" (height, distance, gradient
+  over ~100 m like `RouteSummary.steepness`) and the app's white dot with the route ring on the map (`profile-cursor` =
+  the app's `highlight-dot`). The other way round: the pointer on the route line moves the cursor in the profiles. The ⤢
+  button in the sheet's profile opens the **big profile** below the map (legend < 5 % · 5–10 % · 10–15 % · > 15 %, ✕);
+  while it is open the route is coloured by steepness (`profile-steep`; flat = the route's blue in the big profile and
+  on the map) and the camera fit keeps the route above it (`fitPadding`). Phone: the big profile takes the sheet's place.
+  Distance along the line: haversine over the legs' points (the app's `Geo.cumulative` rule behind `ProfileData`).
+- **C – 3D.** Toolbar button **3D** ("Gelände in 3D" / "Zurück zur flachen Karte"): `map.setTerrain` on the style's
+  raster-dem source `terrain` – the cells' `terrain.pmtiles` (Terrarium, z10–13), the same files as the relief: no new
+  data, no server. Exaggeration 1.3, a sky, tilt 55° on entering (max 60°), zoom ≥ 11 while on (heights exist from z10;
+  further out a tile is flat 0 m and the mountains would stand on walls). **View only:** a click plans nothing, points
+  cannot be dragged; one quiet line says so ("3D-Ansicht – nur zum Anschauen. Zum Planen 3D ausschalten."). Off: no
+  terrain, tilt 0, `maxPitch` 0 again (turn yes, tilt no), min zoom 0. A failure goes to the log, the flat map comes back.
+  While on, the terrain source's level of detail stays near the camera's zoom (`setSourceTileLodParams(1.5, 6)`), so the
+  far tiles do not fall below z10.
+- **Cells built before z13** (format 1 terrain ends at z12, e.g. the 2026-10-19 Meran cells): `cells.ts` used to answer a
+  z13 terrain tile the file does not have with the flat 0 m tile – in 3D every near tile stood 0 m deep (walls), and the
+  z13 relief was flat. Now such a tile is the parent's quarter magnified (nearest pixel, so Terrarium heights stay
+  heights) – what the app's MapLibre does by the file's maxzoom.
+- **Known limit:** at the edge of the loaded map area (no cell beside it) the ground drops to 0 m – a wall in 3D. Only
+  more cells (or an outside height source) remove it.
+- Tests: ui-smoke (cursor from the sheet's profile + dot, gone again; big profile, steepness line, pointer on the route →
+  cursor; close; 3D on: terrain + tilt + note, a click adds nothing; off: flat, max tilt 0). Pictures:
+  `web/app/test/terrain-shots.mjs <segments> <map store> <out> [de|en]` (Waalweg Meran → Vellau).

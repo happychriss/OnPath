@@ -33,6 +33,63 @@ await page.waitForTimeout(1500);
 const summary = await page.textContent('#summary');
 const status = await page.textContent('#status');
 await page.screenshot({ path: shot });
+// ---- terrain view (owner 2026-11-05, terrainview.ts): A – the profile's cursor and the big profile linked to the map ----
+const terrainFails = [];
+const tcheck = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (!ok) terrainFails.push(what); };
+const cursorNow = () => page.evaluate(() => window.__profileCursor);
+const small = await page.locator('#profile .profplot > svg').boundingBox();
+await page.mouse.move(small.x + small.width * 0.5, small.y + small.height * 0.5);
+await page.waitForTimeout(200);
+const c1 = await cursorNow();
+const label1 = await page.locator('#profile .proflabel').textContent();
+tcheck(c1 && c1.at && c1.m > 0, `sheet profile: pointer → cursor on the route (${JSON.stringify(c1)})`);
+tcheck(/\d+ m · .+ · -?\d+ %/.test(label1 ?? '') && await page.locator('#profile .proflabel').isVisible(), `sheet profile label "${label1}"`);
+const dot = () => page.evaluate(async () => (await window.__map.getSource('profile-cursor').getData())?.type === 'Feature');
+tcheck(await dot(), 'the dot on the map follows the profile');
+await page.mouse.move(5, 400);
+await page.waitForTimeout(200);
+tcheck(await cursorNow() == null && !(await dot()), 'pointer off the profile: cursor and dot gone');
+await page.click('#profileBig');
+await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 30_000 });
+await page.waitForTimeout(400);
+tcheck(await page.locator('#bigProfile').isVisible(), 'big profile opens below the map');
+const steep = await page.evaluate(async () => ({ vis: window.__map.getLayoutProperty('profile-steep', 'visibility'),
+  n: (await window.__map.getSource('profile-steep').getData())?.features?.length ?? 0 }));
+tcheck(steep.vis === 'visible' && steep.n > 0, `route coloured by steepness while open (${JSON.stringify(steep)})`);
+// the pointer on the route (a vertex in the middle) → the big profile shows the cursor there
+const onRoute = await page.evaluate(() => {
+  const legs = window.__state.plan.legs.flatMap((l) => l.points);
+  const v = legs[Math.floor(legs.length / 2)];
+  const p = window.__map.project([v[1], v[0]]); const r = window.__map.getContainer().getBoundingClientRect();
+  return { x: p.x + r.left, y: p.y + r.top };
+});
+await page.mouse.move(onRoute.x, onRoute.y);
+await page.waitForTimeout(300);
+const c2 = await cursorNow();
+tcheck(c2 && c2.m > 0 && await page.locator('#bigProfile .proflabel').isVisible(), `pointer on the route → cursor in the big profile (${JSON.stringify(c2)})`);
+await page.mouse.move(5, 400);
+await page.click('#bigProfile .bpclose');
+await page.waitForTimeout(200);
+tcheck(!(await page.locator('#bigProfile').isVisible()) &&
+  await page.evaluate(() => window.__map.getLayoutProperty('profile-steep', 'visibility')) === 'none', 'big profile closes, plain route again');
+// ---- C – 3D: terrain on demand, tilted, view only; off = flat again ----
+tcheck(!(await page.locator('#terrain3d').isDisabled()), '3D button enabled (the cells\' terrain source is there)');
+await page.click('#terrain3d');
+await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 30_000 });
+const on3d = await page.evaluate(() => ({ terrain: window.__map.getTerrain()?.source ?? null, pitch: window.__map.getPitch(),
+  pressed: document.getElementById('terrain3d').getAttribute('aria-pressed'), note: !document.getElementById('threeDNote').hidden }));
+tcheck(on3d.terrain === 'terrain' && on3d.pitch > 30 && on3d.pressed === 'true' && on3d.note, `3D on: ${JSON.stringify(on3d)}`);
+const nBefore = await page.evaluate(() => window.__state.points.length);
+const mapBox = await page.locator('#map').boundingBox();
+await page.mouse.click(mapBox.x + mapBox.width * 0.75, mapBox.y + mapBox.height * 0.5);
+await page.waitForTimeout(500);
+tcheck(await page.evaluate(() => window.__state.points.length) === nBefore && await page.locator('.pointmenu').count() === 0, '3D is view only: a click adds no point');
+await page.click('#terrain3d');
+await page.waitForTimeout(300);
+const off3d = await page.evaluate(() => ({ terrain: window.__map.getTerrain(), pitch: window.__map.getPitch(), max: window.__map.getMaxPitch(),
+  note: !document.getElementById('threeDNote').hidden }));
+tcheck(!off3d.terrain && off3d.pitch === 0 && off3d.max === 0 && !off3d.note, `3D off: flat again ${JSON.stringify(off3d)}`);
+if (terrainFails.length) errors.push('terrain view: ' + terrainFails.join('; '));
 // one green (owner 2026-10-29): header, buttons and icons use the app's green (OnPathColors.Green, #245F46 since 0.13),
 // and green text keeps WCAG AA (4.5:1; icons 3:1) on its background in light and dark
 const greens = () => page.evaluate(() => {
