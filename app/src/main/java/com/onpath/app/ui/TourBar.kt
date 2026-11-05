@@ -1,6 +1,14 @@
 package com.onpath.app.ui
 
 import com.onpath.strings.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.DeleteOutline
 
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.PlayArrow
@@ -94,83 +102,165 @@ fun RecDot(paused: Boolean, modifier: Modifier = Modifier) {
     Box(modifier.size(10.dp).background(if (paused) OnPathColors.Grey else OnPathColors.Rec, CircleShape))
 }
 
+/** What the end sheet shows of the tour: distance, moving time, ascent (from the running recording). */
+data class EndStats(val distanceM: Double, val elapsedS: Long, val ascentM: Double)
+
+/** "Weiterwandern" on foot, "Weiterfahren" on any bike (owner 2026-11-05: the way back names what you do). */
+internal fun keepGoingLabel(activity: com.onpath.app.routing.Activity?): String =
+    Txt.s(if (activity == com.onpath.app.routing.Activity.HIKE) Res.string.nav_keep_hiking else Res.string.nav_keep_riding)
+
 /**
- * "End tour" (owner): always Delete (apart, left) · Cancel · Save ([DeleteApartButtons]). Save stops and keeps the tour; Delete (red) asks once
- * more, then the tour goes to the recycle bin (30 days) – for a short walk nobody wants to keep.
- * [cancelLabel]: "Cancel" from the End button, "Keep going" on arrival.
+ * "Tour beenden?" (owner 2026-11-05: V2 – "am besten, mal sehen, ob der Klick nervt"): a sheet from the bottom in
+ * sections – header (activity sign, title, activity, ✕); TOUR (green dot): distance · time · ascent and the big green
+ * "Tour speichern" where the thumb is; PLAN (blue dot, only with a changed / new plan): a switch "Geänderten Plan auch
+ * speichern" (off at first) + which plan; then outlined "Weiterwandern" / "Weiterfahren" and the quiet red "Tour löschen"
+ * with the bin note – no second question (owner 2026-11-01: "ist ja sowieso alles im Papierkorb"). Large font: it scrolls.
+ * [keepLabel]: the way back (arrival: the same activity word).
  */
 @Composable
 fun EndTourDialog(
     onSave: () -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit,
-    title: String = str(Res.string.nav_end_tour_title), cancelLabel: String = str(Res.string.common_cancel),
-    /** "Neue / Geänderte Route auch speichern" with its box (empty at first); null = no route to save. */
+    title: String = str(Res.string.nav_end_tour_title),
+    activity: com.onpath.app.routing.Activity? = null,
+    stats: EndStats? = null,
+    keepLabel: String = keepGoingLabel(activity),
+    /** "Geänderten Plan auch speichern"; null = no plan to save (no PLAN section). */
     routeLabel: String? = null, routeChecked: Boolean = false, onRouteChecked: (Boolean) -> Unit = {},
+    /** Which plan: "„Rund um den Kofel“ – mit deinen Änderungen von unterwegs" / "Wird als neuer Plan gespeichert". */
+    routeLine: String? = null,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Filled.Flag, null) },
-        title = { Text(title) },
-        // no body but the route option: the buttons say it
-        text = routeLabel?.let { label -> {
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(routeChecked, role = androidx.compose.ui.semantics.Role.Checkbox,
-                onValueChange = onRouteChecked), verticalAlignment = Alignment.CenterVertically) {
-                androidx.compose.material3.Checkbox(checked = routeChecked, onCheckedChange = null)
-                Spacer(Modifier.width(8.dp))
-                Text(label, style = MaterialTheme.typography.bodyLarge)
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = onDismiss)) {
+            Surface(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(top = 48.dp)
+                .clickable(interactionSource = null, indication = null) { /* inside: no dismiss */ },
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                Column(Modifier.verticalScroll(rememberScrollState()).navigationBarsPadding()
+                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp)) {
+                    Box(Modifier.align(Alignment.CenterHorizontally).size(width = 32.dp, height = 4.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(2.dp)))
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (activity != null) {
+                            Icon(activity.icon, null, tint = OnPathColors.ActionGo, modifier = Modifier.size(28.dp))
+                            Spacer(Modifier.width(12.dp))
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(title, style = MaterialTheme.typography.headlineSmall)
+                            if (activity != null) Text(activity.navName, style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        androidx.compose.material3.IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
+                            Icon(Icons.Filled.Close, contentDescription = keepLabel, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    EndSectionLabel(str(Res.string.nav_end_section_tour), OnPathColors.ActionGo)
+                    Spacer(Modifier.height(8.dp))
+                    if (stats != null) { EndStatsCard(stats); Spacer(Modifier.height(12.dp)) }
+                    EndSaveButton(str(Res.string.nav_save_recording), onSave)
+                    if (routeLabel != null) {
+                        Spacer(Modifier.height(20.dp))
+                        EndSectionLabel(str(Res.string.nav_end_section_plan), OnPathColors.PlanAccent)
+                        Spacer(Modifier.height(8.dp))
+                        EndPlanOption(routeLabel, routeLine, routeChecked, onRouteChecked)
+                    }
+                    Spacer(Modifier.height(20.dp))
+                    EndKeepButton(keepLabel, onDismiss)
+                    Spacer(Modifier.height(4.dp))
+                    EndDeleteArea(onDelete)
+                }
             }
-        } },
-        // "Aufnahme speichern" – not "Speichern": in the plan it read like saving the edited route (owner 2026-11-01)
-        confirmButton = { DeleteApartButtons(onDelete, cancelLabel, onDismiss, str(Res.string.nav_save_recording), onSave) },
-    )
+        }
+    }
+}
+
+@Composable
+private fun EndSectionLabel(text: String, dot: androidx.compose.ui.graphics.Color) = Row(verticalAlignment = Alignment.CenterVertically) {
+    Box(Modifier.size(8.dp).background(dot, CircleShape))
+    Spacer(Modifier.width(8.dp))
+    Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
+}
+
+/** Distance · time · ascent; at a large font one line each ("Strecke   12,5 km") instead of three squeezed columns. */
+@Composable
+private fun EndStatsCard(st: EndStats) {
+    val items = listOf(str(Res.string.nav_end_stat_distance) to Format.distance(st.distanceM),
+        str(Res.string.nav_end_stat_time) to Format.durationShort(st.elapsedS.toDouble()),
+        str(Res.string.nav_end_stat_ascent) to "↑ ${Format.meters(st.ascentM)}")
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+        if (androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.5f) Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            items.forEach { (l, v) ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(l, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                    Text(v, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                }
+            }
+        } else Row(Modifier.padding(vertical = 12.dp, horizontal = 8.dp)) {
+            items.forEach { (l, v) ->
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(v, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    Text(l, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                }
+            }
+        }
+    }
+}
+
+/** The plan option (blue = plan): the whole row toggles; a switch at the end. */
+@Composable
+private fun EndPlanOption(label: String, line: String?, checked: Boolean, onChecked: (Boolean) -> Unit) = Surface(
+    color = OnPathColors.PlanTint, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, OnPathColors.PlanEdge),
+    modifier = Modifier.fillMaxWidth()) {
+    Row(Modifier.toggleable(checked, role = androidx.compose.ui.semantics.Role.Switch, onValueChange = onChecked)
+        .heightIn(min = 56.dp).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+            line?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+        Spacer(Modifier.width(12.dp))
+        androidx.compose.material3.Switch(checked, null, colors = androidx.compose.material3.SwitchDefaults.colors(
+            checkedTrackColor = OnPathColors.PlanAccent, uncheckedBorderColor = OnPathColors.PlanAccent, uncheckedThumbColor = OnPathColors.PlanAccent))
+    }
+}
+
+/** The main action, filled green, full width, 56 dp. */
+@Composable
+private fun EndSaveButton(label: String, onClick: () -> Unit) = Button(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+    colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionGo)) {
+    Icon(Icons.Filled.Check, null); Spacer(Modifier.width(8.dp))
+    Text(label, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+}
+
+/** The way back, outlined green, full width. */
+@Composable
+private fun EndKeepButton(label: String, onClick: () -> Unit) = OutlinedButton(onClick = onClick,
+    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), border = BorderStroke(1.dp, OnPathColors.ActionGo)) {
+    Text(label, color = OnPathColors.ActionGo, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+}
+
+/** Delete: always there, quiet, apart from Save – red only on the word; the bin note under it, no second question. */
+@Composable
+private fun EndDeleteArea(onDelete: () -> Unit) = Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+    TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp),
+        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+        Icon(Icons.Outlined.DeleteOutline, null); Spacer(Modifier.width(6.dp)); Text(str(Res.string.nav_delete_tour))
+    }
+    Text(RECYCLE_BIN_NOTE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center)
 }
 
 /**
- * The buttons of the dialogs that end a tour (End tour, arrival, an interrupted recording, the ride check) – the
- * standard (owner 2026-11-01: "ich möchte immer auf Löschen drücken"): Delete red on the left, apart, never where the
- * thumb lands; on the right the way back and Save, the main action, filled. Delete still asks once more.
+ * The buttons of the other dialogs that end a tour (an interrupted recording, the ride check) – the same order as the
+ * end sheet (owner 2026-11-05, V2): filled green Save, outlined way back, then the quiet red "Tour löschen" with the bin
+ * note (owner 2026-11-01: "ich möchte immer auf Löschen drücken" – always there, apart from Save, no second question).
  */
 @Composable
 internal fun DeleteApartButtons(onDelete: (() -> Unit)?, cancelLabel: String, onCancel: () -> Unit, saveLabel: String, onSave: () -> Unit) {
-    androidx.compose.ui.layout.Layout(content = {
-        TextButton(onClick = onCancel) { Text(cancelLabel) }
-        Button(onClick = onSave) { Text(saveLabel, maxLines = 1) }
-        if (onDelete != null) {
-            TextButton(onClick = onDelete,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(str(Res.string.common_delete)) }
-            // no second question (owner 2026-11-01: "ist ja sowieso alles im Papierkorb") – the note says it, under Delete
-            Text(RECYCLE_BIN_NOTE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 12.dp))
-        }
-    }, modifier = Modifier.fillMaxWidth()) { ms, c ->
-        // one row when all fit (Delete left, apart); else Cancel + Save right-aligned (each on its own row when even
-        // that does not fit, a large font) and Delete under them on the left; the bin note under Delete
-        val loose = c.copy(minWidth = 0)
-        val cancel = ms[0].measure(loose); val save = ms[1].measure(loose)
-        val del = ms.getOrNull(2)?.measure(loose)
-        val w = c.maxWidth
-        val gap = 8.dp.roundToPx()
-        val note = ms.getOrNull(3)?.measure(loose.copy(maxWidth = w))
-        val btns = listOfNotNull(cancel, save, del)
-        val oneRow = btns.sumOf { it.width } + gap * (btns.size - 1) <= w
-        val pairFits = cancel.width + gap + save.width <= w
-        val rowH = btns.maxOf { it.height }
-        // y of each row
-        val delY = when { del == null -> 0; oneRow -> 0; pairFits -> rowH + gap; else -> 2 * (rowH + gap) }
-        val buttonsH = when { oneRow || del == null && pairFits -> rowH; pairFits -> 2 * rowH + gap
-            del == null -> 2 * rowH + gap; else -> 3 * rowH + 2 * gap }
-        val noteY = if (del != null) delY + rowH else buttonsH
-        val h = maxOf(buttonsH, if (note != null) noteY + note.height else 0)
-        layout(w, h) {
-            if (oneRow || pairFits) {
-                save.placeRelative(w - save.width, (rowH - save.height) / 2)
-                cancel.placeRelative(w - save.width - gap - cancel.width, (rowH - cancel.height) / 2)
-            } else {
-                save.placeRelative(w - save.width, 0)
-                cancel.placeRelative(w - cancel.width, rowH + gap)
-            }
-            del?.placeRelative(0, delY + (rowH - del.height) / 2)
-            note?.placeRelative(0, noteY)
-        }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        EndSaveButton(saveLabel, onSave)
+        EndKeepButton(cancelLabel, onCancel)
+        if (onDelete != null) EndDeleteArea(onDelete)
     }
 }
 
@@ -180,9 +270,10 @@ internal val RECYCLE_BIN_NOTE: String get() = Txt.s(Res.string.nav_recycle_bin_n
 /** Shown once in Navigate when the destination is reached: the same three choices. */
 @Composable
 fun ArrivalDialog(onSave: () -> Unit, onDelete: () -> Unit, onKeepGoing: () -> Unit,
-                  routeLabel: String? = null, routeChecked: Boolean = false, onRouteChecked: (Boolean) -> Unit = {}) =
-    EndTourDialog(onSave, onDelete, onKeepGoing, title = str(Res.string.nav_arrived_title), cancelLabel = str(Res.string.nav_keep_going),
-        routeLabel = routeLabel, routeChecked = routeChecked, onRouteChecked = onRouteChecked)
+                  routeLabel: String? = null, routeChecked: Boolean = false, onRouteChecked: (Boolean) -> Unit = {},
+                  activity: com.onpath.app.routing.Activity? = null, stats: EndStats? = null, routeLine: String? = null) =
+    EndTourDialog(onSave, onDelete, onKeepGoing, title = str(Res.string.nav_arrived_title), activity = activity, stats = stats,
+        routeLabel = routeLabel, routeChecked = routeChecked, onRouteChecked = onRouteChecked, routeLine = routeLine)
 
 
 /** "Continue · Gravel bike" (owner rule: the way back to Navigate names the activity). */

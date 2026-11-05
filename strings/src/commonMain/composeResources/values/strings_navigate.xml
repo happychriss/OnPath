@@ -267,4 +267,14 @@
     <string name="nav_no_route_ahead">No route to point %1$d found. The tour goes on.</string>
     <string name="nav_tour_record_only">No route · %1$s · %2$s</string>
     <string name="nav_turn_round">Turn round</string>
+    <string name="nav_keep_hiking">Keep hiking</string>
+    <string name="nav_keep_riding">Keep riding</string>
+    <string name="nav_delete_tour">Delete tour</string>
+    <string name="nav_end_section_tour">TOUR</string>
+    <string name="nav_end_section_plan">PLAN</string>
+    <string name="nav_end_stat_distance">Distance</string>
+    <string name="nav_end_stat_time">Time</string>
+    <string name="nav_end_stat_ascent">Ascent</string>
+    <string name="nav_end_plan_line">“%1$s” – with your changes on the way</string>
+    <string name="nav_end_plan_line_new">Saved as a new plan</string>
 </resources>

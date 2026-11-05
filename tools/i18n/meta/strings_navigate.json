@@ -1272,5 +1272,65 @@
     "priority": 1,
     "confidence": "sicher",
     "max": 20
+  },
+  "nav_keep_hiking": {
+    "area": "Navigate",
+    "context": "The way back from the end-of-tour sheet on foot (owner 2026-11-05: names what you do)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_keep_riding": {
+    "area": "Navigate",
+    "context": "The way back from the end-of-tour sheet on any bike",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_delete_tour": {
+    "area": "Navigate",
+    "context": "Quiet red text button in the end sheet: the tour goes to the recycle bin, no second question",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_end_section_tour": {
+    "area": "Navigate",
+    "context": "Section caption (green dot) in the end sheet: the recorded tour",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_end_section_plan": {
+    "area": "Navigate",
+    "context": "Section caption (blue dot) in the end sheet: the changed plan",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_end_stat_distance": {
+    "area": "Navigate",
+    "context": "Small label under the distance in the end sheet",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_end_stat_time": {
+    "area": "Navigate",
+    "context": "Small label under the time in the end sheet",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_end_stat_ascent": {
+    "area": "Navigate",
+    "context": "Small label under the ascent in the end sheet",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_end_plan_line": {
+    "area": "Navigate",
+    "context": "Line under \"Also save the changed plan\": which saved plan gets the changes",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_end_plan_line_new": {
+    "area": "Navigate",
+    "context": "Line under \"Also save the changed plan\" when the plan was never saved",
+    "priority": 1,
+    "confidence": "sicher"
   }
 }

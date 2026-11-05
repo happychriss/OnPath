@@ -266,4 +266,14 @@
     <string name="nav_no_route_ahead">Keine Route zu Punkt %1$d gefunden. Die Tour läuft weiter.</string>
     <string name="nav_tour_record_only">Ohne Route · %1$s · %2$s</string>
     <string name="nav_turn_round">Umdrehen</string>
+    <string name="nav_keep_hiking">Weiterwandern</string>
+    <string name="nav_keep_riding">Weiterfahren</string>
+    <string name="nav_delete_tour">Tour löschen</string>
+    <string name="nav_end_section_tour">TOUR</string>
+    <string name="nav_end_section_plan">PLAN</string>
+    <string name="nav_end_stat_distance">Strecke</string>
+    <string name="nav_end_stat_time">Zeit</string>
+    <string name="nav_end_stat_ascent">Aufstieg</string>
+    <string name="nav_end_plan_line">„%1$s“ – mit deinen Änderungen von unterwegs</string>
+    <string name="nav_end_plan_line_new">Wird als neuer Plan gespeichert</string>
 </resources>

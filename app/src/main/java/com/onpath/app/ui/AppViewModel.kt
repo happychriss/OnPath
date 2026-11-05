@@ -3068,6 +3068,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     var saveRouteAtEnd by mutableStateOf(false)
 
+    /** The line under the plan option in the end sheet: which saved plan gets the changes, or "a new plan". */
+    fun endRouteLine(): String? = when {
+        endRouteLabel() == null -> null
+        currentSaveMode() == SaveMode.OVERWRITE && !savedName.isNullOrBlank() -> Txt.s(Res.string.nav_end_plan_line, savedName!!)
+        else -> Txt.s(Res.string.nav_end_plan_line_new)
+    }
+
     /** What "End tour" shows now (null = nothing): see [askEndTour]. */
     var endAsk by mutableStateOf<EndAsk?>(null)
 

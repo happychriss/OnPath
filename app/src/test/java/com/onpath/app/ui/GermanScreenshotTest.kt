@@ -96,6 +96,7 @@ class GermanScreenshotTest {
     @Test fun navigateNotificationsOff() = shots.navigateNotificationsOff()
     @Test fun navigateNotificationsOffApproximate() = shots.navigateNotificationsOffApproximate()
     @Test fun arrival() = shots.arrival()
+    @Test fun endTourConfirm() = shots.endTourConfirm()
     @Test fun sharedPlaceMenu() = shots.sharedPlaceMenu()
     @Test fun sharedPlaceMenuEmptyPlan() = shots.sharedPlaceMenuEmptyPlan()
     @Test fun tours() = shots.tours()

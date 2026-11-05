@@ -28,6 +28,8 @@ open class SlideLabelLargeFontTest {
     @Test fun navigateActionsOpen() = shots.navigateActionsOpen()
     @Test fun navigatePausedOpen() = shots.navigatePausedOpen()
     @Test fun navigateNotRecordingOpen() = shots.navigateNotRecordingOpen()
+    /** The end sheet (owner 2026-11-05, V2): it scrolls, Save stays reachable. */
+    @Test fun endTourConfirm() = shots.endTourConfirm()
 }
 
 /** The same in German ("Tour beenden" is the longest button word). */

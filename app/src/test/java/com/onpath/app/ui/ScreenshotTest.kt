@@ -551,7 +551,9 @@ class ScreenshotTest {
                 TourRunningBar(6_400.0, 5025, paused = false, onEnd = {}, activity = Activity.BIKE_TREKKING)
                 PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true), PlanCallbacks())
             }
-            EndTourDialog({}, {}, {})
+            // V2 (owner 2026-11-05): sections TOUR / PLAN, Save under the thumb, the way back, the quiet Delete
+            EndTourDialog({}, {}, {}, activity = Activity.HIKE, stats = EndStats(12_480.0, 16_560, 842.0),
+                routeLabel = Txt.s(Res.string.nav_end_save_changed_route), routeLine = Txt.s(Res.string.nav_end_plan_line, "Rund um den Kofel"))
         }
     }
 
@@ -782,7 +784,7 @@ class ScreenshotTest {
     @Test fun arrival() = paparazzi.snapshot {
         OnPathTheme {
             NavFrame(navUi.copy(toGo = ToGo(30.0, 0.0, 60.0, 5.0)))
-            ArrivalDialog({}, {}, {})
+            ArrivalDialog({}, {}, {}, activity = Activity.HIKE, stats = EndStats(12_480.0, 16_560, 842.0))
         }
     }
 
