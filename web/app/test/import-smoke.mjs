@@ -190,7 +190,7 @@ const beforePins = await pins();
 const box = await page.evaluate(() => { document.getElementById('planFromTrack').click();
   const d = document.querySelector('dialog.trackbusy[open]'); const text = d?.textContent ?? '';
   document.getElementById('cancelTrackPlan')?.click(); return text; });
-check(/Planning a route from the tour/.test(box) && /Cancel/.test(box), `Plan a route from it: the modal box with Cancel ("${box.replace(/\s+/g, ' ').trim().slice(0, 60)}…")`);
+check(/Making a plan from the tour/.test(box) && /Cancel/.test(box), `Plan a route from it: the modal box with Cancel ("${box.replace(/\s+/g, ' ').trim().slice(0, 60)}…")`);
 await page.waitForFunction(() => !document.getElementById('planFromTrack')?.disabled, null, { timeout: 120_000 }).catch(() => {});
 await page.waitForTimeout(500);
 check(!!(await page.$('#trackPanel')) && await pins() === beforePins && !(await page.$('dialog.trackbusy')), 'Cancel: the track stays, the plan is not replaced, the box is gone');

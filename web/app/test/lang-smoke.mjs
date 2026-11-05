@@ -26,7 +26,7 @@ const text = (sel) => page.evaluate((s) => document.querySelector(s)?.textConten
 await page.goto(url + 'index.html#p=' + CODE);
 await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
 check(await page.evaluate(() => document.documentElement.lang) === 'de', 'html lang = de');
-check((await text('#header')).includes('Meine Routen') && (await text('#header')).includes('GPX importieren') && !/Aufs Handy/.test(await text('#header'))
+check((await text('#header')).includes('Meine Touren') && (await text('#header')).includes('GPX importieren') && !/Aufs Handy/.test(await text('#header'))
   && (await text('#syncBadge')).trim() === 'Handy verbinden',
   'header in German (no Send to phone; the phone entry "Handy verbinden" – owner 2026-10-30)');
 check((await text('#activityChip')).includes('Wandern'), `activity from the engine in German: ${(await text('#activityChip')).trim()}`);
@@ -82,14 +82,14 @@ await ctx3.close();
 const hash = await page.evaluate(() => location.hash);
 await Promise.all([page.waitForNavigation({ timeout: 60_000 }), page.click('#langSwitch [data-lang="en"]')]);
 await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
-check((await text('#header')).includes('My routes') && (await text('#activityChip')).includes('Hike'), 'after the switch: English page and engine texts');
+check((await text('#header')).includes('My tours') && (await text('#activityChip')).includes('Hike'), 'after the switch: English page and engine texts');
 check(await page.evaluate(() => location.hash) === hash, 'the plan stays (address)');
 check(/\d\.\d km/.test(await text('#summary')), 'decimal point in English');
 const en = await page.evaluate(() => [...document.querySelectorAll('a[href^="https://onpath.earth"]')].map((a) => a.getAttribute('href')));
 check(en.includes('https://onpath.earth/privacy/') && en.includes('https://onpath.earth/legal/') && en.includes('https://onpath.earth/'), 'English website links');
 await page.reload();
 await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
-check((await text('#header')).includes('My routes'), 'remembered after a reload (German browser, English chosen)');
+check((await text('#header')).includes('My tours'), 'remembered after a reload (German browser, English chosen)');
 
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));

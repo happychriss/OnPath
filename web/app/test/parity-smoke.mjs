@@ -51,7 +51,7 @@ await page.waitForFunction(() => document.body.dataset.engine === 'ready', null,
 // 1. first click on an empty plan: "New route" – Start here · Go here (MapGestures.FirstPointMenu)
 await clickAt(11.1600, 46.6700);
 await page.waitForSelector('.pointmenu');
-check((await page.textContent('.menuhead')).includes('New route') && (await menuItems()).join('|') === 'Start here|Go here', 'first click: New route – Start here · Go here');
+check((await page.textContent('.menuhead')).includes('New plan') && (await menuItems()).join('|') === 'Start here|Go here', 'first click: New plan – Start here · Go here');
 check(await page.isDisabled('#undo'), 'no undo before the first change (greyed in the toolbar)');
 const tb = await page.locator('#toolbar').boundingBox(), sb = await page.locator('#searchbox').boundingBox();
 const bar = await page.locator('#topbar').boundingBox();
@@ -226,7 +226,7 @@ await page.click('#menuSavePlan');
 const f1 = await answerSave(null);
 await page.waitForSelector('#savedLine:not([hidden])', { timeout: 10_000 }).catch(() => {});
 const firstSaved = await savedTitles();
-check(f1.title === 'Save route' && f1.selected && f1.value.length > 0 && JSON.stringify(firstSaved) === JSON.stringify([f1.value]) && (await page.textContent('#savedLine')).includes('Saved as ' + firstSaved[0]) && !(await page.$('#savedLine button')),
+check(f1.title === 'Save plan' && f1.selected && f1.value.length > 0 && JSON.stringify(firstSaved) === JSON.stringify([f1.value]) && (await page.textContent('#savedLine')).includes('Saved as ' + firstSaved[0]) && !(await page.$('#savedLine button')),
   `Save: the dialog proposes "${f1.value}" (selected), Save stores it; "Saved as …" is a plain line (${JSON.stringify(f1)})`);
 await page.waitForFunction(() => document.getElementById('menuSavePlan').dataset.state === 'done', null, { timeout: 10_000 }).catch(() => {});
 await page.click('#menuSavePlan'); // saved and unchanged: the dialog with its name; a new name renames the same route
@@ -242,7 +242,7 @@ const myRow = await page.evaluate(() => { const li = document.querySelector('#pl
   return { name: li.querySelector('.name').textContent, current: li.classList.contains('current'), where: [...li.querySelectorAll('.where .w')].map((w) => w.getAttribute('aria-label')).join(),
     menu: [...li.querySelectorAll('.rowmenu button')].map((b) => b.textContent.trim()) }; });
 check(myRow.name === 'Test loop' && myRow.current && myRow.where === 'In this browser' && await page.locator('#saveCurrent').count() === 0
-  && JSON.stringify(myRow.menu) === '["Rename","Save as copy","Export GPX","Share route","Delete"]',
+  && JSON.stringify(myRow.menu) === '["Rename","Save as copy","Export GPX","Share plan","Delete"]',
   `My routes: the row "Test loop", marked as open, 🖥, ⋮ as the app's (${JSON.stringify(myRow)})`);
 await page.click('#closePlans');
 if (await page.isEnabled('#undo')) { // a change → Save dark; Save overwrites; My routes ⋮ → Save as copy makes a copy
