@@ -412,6 +412,13 @@
     "confidence": "sicher",
     "max": 12
   },
+  "plan_clear_desc": {
+    "area": "Plan sheet",
+    "context": "TalkBack name of the icon-only ✕ in the plan sheet (no visible text): empties the plan; an unsaved plan asks first, a saved route stays in My routes",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 24
+  },
   "plan_discard_title": {
     "area": "Plan sheet",
     "context": "Title of the question after ✕ Close plan while the plan has unsaved changes",

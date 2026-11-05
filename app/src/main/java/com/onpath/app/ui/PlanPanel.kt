@@ -290,24 +290,89 @@ private fun HeaderLine(chip: @Composable () -> Unit, title: @Composable () -> Un
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun PlanActions(ui: PlanUi, cb: PlanCallbacks) {
+    val style = LocalPlanBarStyle.current
+    // owner 2026-11-05: the plan-edit actions as pills in the plan's blue – V5 / V6 light ("blau hell"), V7 filled ("blau voll")
+    val tonal = when (style) {
+        PlanBarStyle.CLEAR_IN_PILLS, PlanBarStyle.CLEAR_TOP_RIGHT -> PillLook.BLUE_LIGHT
+        PlanBarStyle.CLEAR_IN_PILLS_FILLED -> PillLook.BLUE_FILLED
+        else -> PillLook.PLAIN
+    }
     androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(),
         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly) {
         // "Neu planen" is in the bottom row's blue group (owner 2026-11-05, F); here only while that row is not shown
         // (one point without a tour), so it is always there exactly once
-        val inBar = if (LocalPlanBarStyle.current == PlanBarStyle.TODAY) ui.tour != null else PlanBarRow.shown(ui)
-        if (!inBar) PlanAction(Icons.Filled.Close, str(Res.string.plan_close_plan), RouteRules.canClear(ui.pointCount), cb.onClear)
-        PlanAction(Icons.Outlined.SwapVert, str(Res.string.plan_reverse), ui.pointCount >= 2, cb.onReverse)
-        PlanAction(Icons.Outlined.Loop, str(Res.string.plan_round_trip), ui.pointCount >= 2 && !ui.roundTrip, cb.onRoundTrip)
+        when (style) {
+            // V5 / V5a: ✕ as the row's first item, icon only (TalkBack "Plan löschen") – with and without a tour
+            PlanBarStyle.CLEAR_IN_PILLS, PlanBarStyle.CLEAR_IN_PILLS_PLAIN, PlanBarStyle.CLEAR_IN_PILLS_FILLED ->
+                PlanClearIcon(RouteRules.canClear(ui.pointCount), tonal, cb.onClear)
+            // V6: ✕ sits at the header line's right end
+            PlanBarStyle.CLEAR_TOP_RIGHT -> Unit
+            else -> {
+                val inBar = if (style == PlanBarStyle.TODAY) ui.tour != null else PlanBarRow.shown(ui)
+                if (!inBar) PlanAction(Icons.Filled.Close, str(Res.string.plan_close_plan), RouteRules.canClear(ui.pointCount), cb.onClear)
+            }
+        }
+        PlanAction(Icons.Outlined.SwapVert, str(Res.string.plan_reverse), ui.pointCount >= 2, cb.onReverse, tonal)
+        PlanAction(Icons.Outlined.Loop, str(Res.string.plan_round_trip), ui.pointCount >= 2 && !ui.roundTrip, cb.onRoundTrip, tonal)
+    }
+}
+
+/** How the plan-edit pills look: today a faint grey; light blue + dark blue words; plan blue + white words. */
+enum class PillLook { PLAIN, BLUE_LIGHT, BLUE_FILLED }
+
+/** The light blue of V5 / V6 and its dark blue words (sketch: --planc / #163c6b, ≥ 9:1). */
+private val PillBlueLight = Color(0xFFDDE7F4)
+private val PillBlueInk = Color(0xFF163C6B)
+
+@Composable
+private fun pillFill(enabled: Boolean, look: PillLook): Color = when (look) {
+    PillLook.PLAIN -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 0.7f else 0.35f)
+    PillLook.BLUE_LIGHT -> PillBlueLight.copy(alpha = if (enabled) 1f else 0.5f)
+    PillLook.BLUE_FILLED -> if (enabled) OnPathColors.ActionEdit else OnPathColors.ActionEdit.copy(alpha = 0.25f)
+}
+
+@Composable
+private fun pillInk(enabled: Boolean, look: PillLook): Color {
+    val c = when (look) {
+        PillLook.PLAIN -> MaterialTheme.colorScheme.onSurface
+        PillLook.BLUE_LIGHT -> PillBlueInk
+        PillLook.BLUE_FILLED -> OnPathColors.CardWhite
+    }
+    return if (enabled) c else if (look == PillLook.BLUE_FILLED) c.copy(alpha = 0.7f) else c.copy(alpha = 0.38f)
+}
+
+/** V5 / V6: ✕ without a word – a 40 dp circle in a 48 dp touch target; TalkBack hears "Plan löschen" (plan_clear_desc). */
+@Composable
+private fun PlanClearIcon(enabled: Boolean, tonal: PillLook, onClick: () -> Unit) {
+    val label = str(Res.string.plan_clear_desc)
+    Box(Modifier.size(48.dp).clip(CircleShape)
+        .clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick)
+        .semantics { contentDescription = label }
+        .padding(4.dp).clip(CircleShape)
+        .background(pillFill(enabled, tonal)),
+        contentAlignment = Alignment.Center) {
+        Icon(Icons.Filled.Close, null, tint = pillInk(enabled, tonal), modifier = Modifier.size(20.dp))
+    }
+}
+
+/** V6 (Google Maps sheet logic): the header line with a 48 dp ✕ "Plan löschen" at its right end; other styles: the line alone. */
+@Composable
+private fun HeaderWithClear(ui: PlanUi, cb: PlanCallbacks, line: @Composable () -> Unit) {
+    if (LocalPlanBarStyle.current != PlanBarStyle.CLEAR_TOP_RIGHT) { line(); return }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        Box(Modifier.weight(1f)) { line() }
+        PlanClearIcon(RouteRules.canClear(ui.pointCount), PillLook.BLUE_LIGHT, cb.onClear)
     }
 }
 
 @Composable
-private fun PlanAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
-    val tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+private fun PlanAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, onClick: () -> Unit,
+                       tonal: PillLook = PillLook.PLAIN) {
+    val tint = pillInk(enabled, tonal)
     // icon and word side by side (owner 2026-10-31: the stacked label made the row twice as high); a light pill so it
-    // reads as a button, calm like the activity field (owner 2026-11-01)
+    // reads as a button, calm like the activity field (owner 2026-11-01); 40 dp to see, 48 dp to touch
     Row(Modifier.heightIn(min = 48.dp).padding(vertical = 4.dp).clip(CircleShape)
-        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (enabled) 0.7f else 0.35f))
+        .background(pillFill(enabled, tonal))
         .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
@@ -343,7 +408,9 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         if (ui.pointCount == 0) Box(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) { FirstPointHint() }
         else {
             // the summary row in the first step, above the bar (owner 2026-11-03: "dass man Fahrrad und 4 Minuten sieht")
-            HeaderLine(chip = { ActivityButton(ui.activity, ui.sac, cb.onActivity) }, title = { Title(ui, ui.route, cb.onTimeDetails) })
+            HeaderWithClear(ui, cb) {
+                HeaderLine(chip = { ActivityButton(ui.activity, ui.sac, cb.onActivity) }, title = { Title(ui, ui.route, cb.onTimeDetails) })
+            }
             if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) { TapHoldHint() }
             ui.offlineInfo?.let { t -> Box(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) { OfflineInfoLine(t) } }
         }
@@ -399,10 +466,12 @@ private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks, header: Boolean = true) 
     val route = ui.route
     // Line 1: activity · time + distance (Undo and Redo are map buttons; a tap on the time = Time details). During a tour
     // it sits in the first step above the tile bar (PlanBody) – not twice.
-    if (header) HeaderLine(
-        chip = { ActivityButton(ui.activity, ui.sac, cb.onActivity) },
-        title = { Title(ui, route, cb.onTimeDetails) },
-    )
+    if (header) HeaderWithClear(ui, cb) {
+        HeaderLine(
+            chip = { ActivityButton(ui.activity, ui.sac, cb.onActivity) },
+            title = { Title(ui, route, cb.onTimeDetails) },
+        )
+    }
     if (ui.routing && ui.routingSlow) {
         // a long calculation can be stopped (the last change is taken back)
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -471,6 +540,8 @@ private fun ColumnScope.PlanBar(ui: PlanUi, cb: PlanCallbacks) {
                 PlanBarStyle.MAPS_PILLS -> MapsPillsRow(ui, cb, canNew)
                 PlanBarStyle.ICON_BUTTONS -> IconButtonsRow(ui, cb, canNew)
                 PlanBarStyle.SPLIT -> SplitGoButton(ui, cb, canNew)
+                PlanBarStyle.CLEAR_IN_PILLS, PlanBarStyle.CLEAR_IN_PILLS_PLAIN, PlanBarStyle.CLEAR_TOP_RIGHT,
+                PlanBarStyle.CLEAR_IN_PILLS_FILLED -> GoSaveRow(ui, cb)
                 PlanBarStyle.TODAY -> Unit
             }
         }
@@ -478,7 +549,44 @@ private fun ColumnScope.PlanBar(ui: PlanUi, cb: PlanCallbacks) {
 }
 
 /** Design proposal 2026-11-05 (owner: compact, Material 3 + Google Maps logic): the bottom row's look, set only by the screenshot test. */
-enum class PlanBarStyle { TODAY, F_GROUP, MAPS_PILLS, ICON_BUTTONS, SPLIT }
+enum class PlanBarStyle { TODAY, F_GROUP, MAPS_PILLS, ICON_BUTTONS, SPLIT, CLEAR_IN_PILLS, CLEAR_IN_PILLS_PLAIN, CLEAR_TOP_RIGHT, CLEAR_IN_PILLS_FILLED }
+
+/** V5 / V6: the green button takes the rest of the width, one blue outlined "Speichern" as wide as its words. */
+@Composable
+private fun GoSaveRow(ui: PlanUi, cb: PlanCallbacks) {
+    val blue = OnPathColors.ActionEdit
+    val full = primaryLabel(ui)
+    val go = goLabel(ui)
+    val save = str(Res.string.plan_bar_save)
+    val style = MaterialTheme.typography.labelLarge
+    val tm = androidx.compose.ui.text.rememberTextMeasurer()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // both words always whole on one line: when they do not fit with their signs (a large font), the signs go and the
+        // padding shrinks
+        val goW = with(density) { tm.measure(go, style).size.width.toDp() }
+        val saveW = with(density) { tm.measure(save, style).size.width.toDp() }
+        val compact = (16.dp + 20.dp + 6.dp + goW + 24.dp) + 8.dp + (12.dp + 18.dp + 6.dp + saveW + 16.dp) > maxWidth
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Button(onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = if (compact) 8.dp else 16.dp),
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics { contentDescription = full }) {
+                if (!compact) { Icon(goIcon(ui), null, Modifier.size(20.dp)); Spacer(Modifier.width(6.dp)) }
+                Text(go, style = style, maxLines = 1, softWrap = false, modifier = Modifier.clearAndSetSemantics { })
+            }
+            val canSave = cb.onSaveRoute != null
+            androidx.compose.material3.OutlinedButton(onClick = { cb.onSaveRoute?.invoke() }, enabled = canSave,
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, if (canSave) blue else blue.copy(alpha = 0.3f)),
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = blue),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = if (compact) 12.dp else 12.dp,
+                    end = if (compact) 12.dp else 16.dp),
+                modifier = Modifier.heightIn(min = 48.dp)) {
+                if (!compact) { Icon(Icons.Outlined.BookmarkAdd, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)) }
+                Text(save, style = style, maxLines = 1, softWrap = false)
+            }
+        }
+    }
+}
 
 /** Today's bar unless a screenshot test provides another proposal. */
 val LocalPlanBarStyle = androidx.compose.runtime.staticCompositionLocalOf { PlanBarStyle.TODAY }

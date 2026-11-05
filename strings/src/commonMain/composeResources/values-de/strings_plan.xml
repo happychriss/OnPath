@@ -98,6 +98,7 @@
     <string name="plan_bar_go">Los geht’s</string>
     <string name="plan_bar_navigation">Navigation</string>
     <string name="plan_bar_save">Speichern</string>
+    <string name="plan_clear_desc">Plan löschen</string>
     <string name="plan_start_short">Start</string>
     <string name="plan_sheet_expand">Routenübersicht zeigen</string>
     <plurals name="plan_hint_count">
