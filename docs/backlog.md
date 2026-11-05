@@ -83,6 +83,9 @@ the git log.
 - [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
 
 ## Next
+- **[cloud-app] Pin card button: "+ Hinzufügen" (owner 2026-11-05, onpath.private#26)** – the blue button under a found
+  place reads "+ Hinzufügen" (EN "+ Add") instead of "+ Zur Route"; empty plan keeps "Hierhin". Planner mirrors it.
+  Small text change for the next release.
 - **[cloud-app] + [cloud-plan] Long bike routes faster (owner 2026-11-04, A)** – today every edit routes the whole plan
   in one request (owner rule: same points = same route), so one point between ① and ② of a 100 km ride reroutes all of
   it. (1) **Measure** a 100 km Bike plan (Planner.describeTries / event log: load rd5 vs routing, per request) – numbers
