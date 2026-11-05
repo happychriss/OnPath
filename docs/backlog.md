@@ -79,6 +79,7 @@ the git log.
 - [laptop] (hp, cloud-plan) Planner: wait box → 'Weiter warten?' (SlowPlan, #21 B) · A-022 web texts · pin card '+ Hinzufügen' / 'Hierhin' · '⋯ Mehr' · pointMenu loopStart · header link 'Android-App testen' – since 2026-11-05
 
 ## Next
+- **[cloud-app] Navigate: next 2–3 stops under the profile (owner 2026-11-05, like Komoot)** – today the chevron in the status card opens the remaining elevation profile + moving time / pace + position; the turn card shows only the NEXT stop. New: under the profile the next 2–3 plan stops ahead, one row each: the stop's sign (② / goal), name, distance to go, arrival clock (same time model as the arrival clock), passed stops not listed; the stops also marked on the profile. Screenshots DE + EN + large font to the owner first; no planner counterpart.
 - **[cloud-app] Navigate's slider bar: no change (owner 2026-11-05 correction)** – the slider and today's buttons stay as built;
   the action-sheet / tile ideas of today are dropped. The open design question is only the plan sheet during a tour
   (next line, in work with the captain).
