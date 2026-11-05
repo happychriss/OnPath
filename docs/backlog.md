@@ -75,6 +75,7 @@ the git log.
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [donald] Plan sheet bottom: ONE compact row '▶ Los geht's' / '‹ Navigation' + 'Speichern | Neu planen' (owner 2026-11-05, F) – since 2026-11-05
+- [laptop] (hp, cloud-plan) Planner: terrain view – (A) big elevation profile linked to the map (hover → point on the route, route coloured by steepness), (C) button '3D': MapLibre terrain from the cells' terrain.pmtiles, tilt/turn, view only (owner 2026-11-05: "wir bauen A und C"; D flyover later; app not now) – since 2026-11-05
 - [laptop] (hp, cloud-plan) Planner: wait box → 'Weiter warten?' (SlowPlan, #21 B) · A-022 web texts · pin card '+ Hinzufügen' / 'Hierhin' · '⋯ Mehr' · pointMenu loopStart · header link 'Android-App testen' – since 2026-11-05
 
 ## Next
