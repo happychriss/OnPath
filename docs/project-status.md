@@ -33,6 +33,12 @@ the current state.
   warten?' at the time limit (SlowPlan, edit-smoke fakes the limit), A-022 web texts, pin card like the app, point menu
   loopStart, header „Android-App testen“ → try page. Smokes green locally (edit, sheet, lang, import, robust); CI flaked
   once on robust-smoke "two quick clicks" (passes locally). Next on hp: the planner terrain view (claimed).
+- **laptop (hp), 2026-11-05 evening – planner terrain view (owner: "wir bauen A und C"), web-spike:** (A) the elevation
+  profile linked to the map – the app's cursor in the sheet's profile ("375 m · 2,7 km · 14 %" + dot on the route), the
+  pointer on the route moves it, ⤢ opens a big profile below the map with the route coloured by steepness; (C) toolbar
+  "3D" – MapLibre terrain from the cells' heights, tilted, view only, off = flat again. Also fixed: old cells (terrain to
+  z12) gave flat z13 tiles – now magnified from z12. web-planner.md §19, ui-smoke checks, `test/terrain-shots.mjs`.
+  Open: walls at the edge of the loaded map area in 3D; D (flyover) and the app only on the owner's word.
 - **donald, 2026-11-03 late – shut down by the owner (~23:20); new build items go to the cloud.** On main tonight:
   plan in blue (no top band), novice fixes, fewer terms → superseded by A-022 (open), load-route question, compact
   bars + equal pills, map buttons one column 56 dp, slow-planning question, next stop in the turn card, way word.
