@@ -71,10 +71,14 @@ data class PlanResult(
                  factors: Factors): PlanResult =
             of(points, planner.plan(points, activity, sac, pins), activity, sac, pins, named, factors)
 
-        /** The same with a fresh [Planner] on [engine] ([cancel] = the Cancel signal, null = none). */
+        /**
+         * The same with a fresh [Planner] on [engine] ([cancel] = the Cancel signal, null = none; [legs] = the caller's
+         * [LegCache] – keep one per engine so an edit routes only its new legs; [progress] = legs done / to route).
+         */
         fun plan(engine: RoutingEngine, points: List<GeoPoint>, activity: Activity, sac: Int, pins: Set<Int>, named: Set<Int>,
-                 factors: Factors, cancel: RouteCancel? = null): PlanResult =
-            plan(Planner(engine, cancel), points, activity, sac, pins, named, factors)
+                 factors: Factors, cancel: RouteCancel? = null, legs: LegCache? = null,
+                 progress: ((Int, Int) -> Unit)? = null): PlanResult =
+            plan(Planner(engine, cancel, legs = legs, progress = progress), points, activity, sac, pins, named, factors)
 
         /** The result for a route [planned] (as the planner returned it) of exactly [points]. */
         fun of(points: List<GeoPoint>, planned: PlannedRoute, activity: Activity, sac: Int, pins: Set<Int>, named: Set<Int>,

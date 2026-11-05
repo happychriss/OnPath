@@ -42,8 +42,9 @@ fun main() {
         "5 points (+C between A and B)" to listOf(START, A, C, B, GOAL),
     )
     val done = HashSet<Pair<GeoPoint, GeoPoint>>() // legs a leg cache would already hold
+    val cache = LegCache() // since PLANNER_VERSION 4 the Planner routes leg by leg and keeps the legs here
     for ((name, pts) in steps) {
-        val p = Planner(e)
+        val p = Planner(e, legs = cache)
         val t0 = System.nanoTime()
         val r = p.plan(pts, act, 2)
         val whole = ms(t0)

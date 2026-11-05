@@ -325,14 +325,6 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         profilesReady = true
     }
 
-    /**
-     * Longest out-and-back spike (one way) BRouter cuts at a via point. Much shorter for hiking, where a
-     * via point on a spur is usually a deliberate goal (summit, viewpoint): 250 m cut off a point 100 m
-     * up a spur. 50 m still trims small snapping spikes.
-     */
-    private fun viaCorrectionM(activity: Activity): Double =
-        if (activity == Activity.HIKE) VIA_CORRECTION_HIKE_M else VIA_CORRECTION_M
-
     /** Profile parameter overrides; BRouter injects these as numeric `assign`s that win over the .brf. */
     private fun keyValues(activity: Activity, sacLimit: Int): MutableMap<String, String> {
         val kv = HashMap<String, String>()
@@ -472,6 +464,13 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             }
             return if (err.startsWith("no track found") && islandRetries >= BROUTER_ISLAND_RETRIES && points == 2) 0 else null
         }
+        /**
+         * Longest out-and-back spike (one way) BRouter cuts at a via point – and the Planner at a leg join (its
+         * trimSpike, PLANNER_VERSION 4). Much shorter for hiking, where a via point on a spur is usually a deliberate
+         * goal (summit, viewpoint): 250 m cut off a point 100 m up a spur. 50 m still trims small snapping spikes.
+         */
+        internal fun viaCorrectionM(activity: Activity): Double =
+            if (activity == Activity.HIKE) VIA_CORRECTION_HIKE_M else VIA_CORRECTION_M
         private const val VIA_CORRECTION_M = 400.0
         private const val VIA_CORRECTION_HIKE_M = 50.0
         private const val CACHE_SIZE = 8

@@ -16,6 +16,7 @@ routing/RouteTimeLimit.kt
 routing/TurnDetector.kt
 routing/Junctions.kt
 routing/Planner.kt
+routing/LegCache.kt
 routing/SlowPlan.kt
 routing/WaypointInsertion.kt
 routing/PlanEdits.kt
@@ -115,6 +116,7 @@ gpx/PlanGpxTest.kt
 routing/PlanPointsTest.kt
 data/RoutingDataNoticeTest.kt
 routing/BreakdownRulesTest.kt
-# the splice and its safety net (review routing H3, 644b416 on main)
-routing/PlannerSpliceTest.kt
+# leg by leg (PLANNER_VERSION 4, owner 2026-11-05): the joins and the leg cache
+routing/PlannerLegsTest.kt
+routing/LegCacheTest.kt
 routing/PlanNamesTest.kt

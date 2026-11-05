@@ -1,7 +1,6 @@
 package com.onpath.app.routing
 
 import com.onpath.app.data.Geo
-import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -126,31 +125,26 @@ class PlannerShortDetourTest {
         assertFalse(r.legs.any { it.straight })
     }
 
-    @Test fun aLegInsideALongerPlanIsRetriedAndTheWholeChunkRoutedAgain() {
+    @Test fun aLegInsideALongerPlanIsRetriedOnItsOwn() {
+        // leg by leg (PLANNER_VERSION 4): every leg is its own request – the detour leg is retried, the others not
         val e = DetourEngine(setOf(a to b))
         val r = Planner(e).plan(listOf(x, a, b), act, 2)
-        assertEquals(listOf(listOf(x, a, b), listOf(a, mid, b), listOf(x, a, mid, b)), e.calls)
+        assertEquals(listOf(listOf(x, a), listOf(a, b), listOf(a, mid, b)), e.calls)
         assertEquals(Geo.distance(x, a) + straight, r.distanceM, 1.0)
         assertEquals(listOf(x, a, b), r.snapped) // three plan points, the via is not one of them
         assertTrue(r.skipped.isEmpty())
-        assertEquals(1, r.legs.size)
-    }
-
-    @Test fun pinnedChunksAreRetriedOnTheirOwn() {
-        val e = DetourEngine(setOf(a to b))
-        val r = Planner(e).plan(listOf(x, a, b), act, 2, pinned = setOf(1))
-        assertEquals(listOf(listOf(x, a), listOf(a, b), listOf(a, mid, b)), e.calls)
-        assertEquals(Geo.distance(x, a) + straight, r.distanceM, 1.0)
-        assertEquals(listOf(x, a, b), r.snapped)
-    }
-
-    @Test fun theLegByLegFallbackRetriesToo() {
-        val e = DetourEngine(setOf(a to b)) { it == listOf(x, a, b) }
-        val r = Planner(e).plan(listOf(x, a, b), act, 2)
-        assertEquals(listOf(listOf(x, a, b), listOf(x, a), listOf(a, b), listOf(a, mid, b)), e.calls)
-        assertEquals(Geo.distance(x, a) + straight, r.distanceM, 1.0)
-        assertEquals(3, r.snapped.size)
+        assertEquals(2, r.legs.size)
         assertNull(r.error)
+    }
+
+    @Test fun theRetriedLegIsCachedAsTaken() {
+        val e = DetourEngine(setOf(a to b))
+        val cache = LegCache()
+        Planner(e, legs = cache).plan(listOf(x, a, b), act, 2)
+        e.calls.clear()
+        val r = Planner(e, legs = cache).plan(listOf(x, a, b), act, 2)
+        assertTrue("nothing routed again: ${e.calls}", e.calls.isEmpty())
+        assertEquals(Geo.distance(x, a) + straight, r.distanceM, 1.0)
     }
 
     @Test fun theRetryCountsAgainstTheRequestsTimeLimit() {
@@ -165,27 +159,6 @@ class PlannerShortDetourTest {
         Planner(e, now = { e.clock }).plan(listOf(a, b), act, 2)
         assertEquals(2, e.calls.size)
         assertEquals(limit - 5_000L, e.limits[1])
-    }
-
-    @Test fun noTimeLeftForTheWholeChunkKeepsTheFirstRoute() {
-        val limit = RouteTimeLimit.forRoute(listOf(x, a, b), act)
-        val e = DetourEngine(setOf(a to b), stepMs = limit / 2)
-        val r = Planner(e, now = { e.clock }).plan(listOf(x, a, b), act, 2)
-        assertEquals(2, e.calls.size) // whole + the leg's retry; no time for the whole chunk again
-        assertEquals(Geo.distance(x, a) + 2.8 * straight, r.distanceM, 1.0)
-    }
-
-    @Test fun legLengthsSplitAtTheFirstPass() {
-        // out and back over b: a → b → a → c, plan points a, b, c
-        val c = GeoPoint(51.0, 6.99)
-        val line = listOf(a, b, a, c)
-        val ab = Geo.distance(a, b); val ac = Geo.distance(a, c)
-        assertArrayEquals(doubleArrayOf(ab, ab + ac), Planner.legLengths(listOf(a, b, c), line, emptyList())!!, 0.01)
-        // a line passing a spot twice is split at the first pass: a → b → a → b → c with points a, b, c
-        val twice = listOf(a, b, a, b, c)
-        val l = Planner.legLengths(listOf(a, b, c), twice, emptyList())!!
-        assertEquals(ab, l[0], 0.01)
-        assertNull(Planner.legLengths(listOf(a, b), listOf(a), emptyList()))
     }
 
     @Test fun isShortDetour() {
