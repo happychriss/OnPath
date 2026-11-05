@@ -284,7 +284,7 @@ export class Cells {
   };
 
   /** One tile of [c]'s [layer]; a file in trouble is skipped (empty) until its next try is due. */
-  private async read(c: Cell, layer: Layer, z: number, x: number, y: number, abort: AbortController, empty: () => Promise<{ data: Uint8Array }>) {
+  private async read(c: Cell, layer: Layer, z: number, x: number, y: number, abort: AbortController, empty: () => Promise<{ data: Uint8Array }>): Promise<{ data: Uint8Array }> {
     const k = `${cellKey(c.z, c.x, c.y)}/${layer}`;
     const t0 = this.trouble.get(k);
     if (t0 && (t0.broken || Date.now() < t0.until)) return empty();
@@ -296,10 +296,25 @@ export class Cells {
         this.found.add(`${c.x}/${c.y}`);
         this.onChange();
       }
-      return t ? { data: new Uint8Array(t.data) } : empty();
+      if (t) return { data: new Uint8Array(t.data) };
+      // a terrain file built before z13 (format 1 ends at z12): its deepest tile, magnified – a flat 0 m tile there would
+      // put the 3D map's mountains on walls and flatten the relief (the app's MapLibre overzooms by the file's maxzoom)
+      if (layer === 'terrain' && z > CELL_Z) return await this.magnified(c, z, x, y, abort, empty);
+      return empty();
     } catch (e) {
       if (abort.signal.aborted) throw e;
       this.failed(c, layer, e);
+      return empty();
+    }
+  }
+
+  /** The terrain tile z/x/y cut from its parent's quarter (parent read the same way, so it goes up as far as needed). */
+  private async magnified(c: Cell, z: number, x: number, y: number, abort: AbortController, empty: () => Promise<{ data: Uint8Array }>): Promise<{ data: Uint8Array }> {
+    const parent = await this.read(c, 'terrain', z - 1, x >> 1, y >> 1, abort, empty);
+    try {
+      return { data: await quarter(parent.data, x & 1, y & 1) };
+    } catch (e) {
+      problem('cells', `map cell ${cellKey(c.z, c.x, c.y)}: terrain ${z}/${x}/${y} not magnified from its parent – flat there`, e);
       return empty();
     }
   }
@@ -405,6 +420,17 @@ function clearTile(): Promise<Uint8Array> {
     c.getContext('2d')!.clearRect(0, 0, 256, 256); // convertToBlob needs a context
     return new Uint8Array(await (await c.convertToBlob({ type: 'image/png' })).arrayBuffer());
   })());
+}
+
+/** One quarter ([qx], [qy] = 0 / 1) of a raster tile, blown up to the full size – nearest pixel, so Terrarium heights
+ *  stay heights (smoothing would mix the colour channels into nonsense). */
+async function quarter(data: Uint8Array, qx: number, qy: number): Promise<Uint8Array> {
+  const bmp = await createImageBitmap(new Blob([data as BlobPart]));
+  const n = bmp.width, c = new OffscreenCanvas(n, n), g = c.getContext('2d')!;
+  g.imageSmoothingEnabled = false;
+  g.drawImage(bmp, (qx * n) / 2, (qy * n) / 2, n / 2, n / 2, 0, 0, n, n);
+  bmp.close();
+  return new Uint8Array(await (await c.convertToBlob({ type: 'image/png' })).arrayBuffer());
 }
 
 let flat: Promise<Uint8Array> | null = null;
