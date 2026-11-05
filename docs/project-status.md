@@ -7,10 +7,8 @@ the current state.
 ## Where things are
 <!-- Kept by the captain every round (docs/roles/neu/captain.md 5c). -->
 - **Pixel:** main b047bf79, installed 2026-11-01 19:55 (newest handoff that names it; the night draft 63b0194d is not on it).
-- **GitHub release:** v0.15.0 (2026-11-04 17:10, e0ad10a8, Release workflow green, onpath-0.15.0.apk). Before: v0.14.0
-  (2026-11-03, 2bba0137). The five `wip/donald-2026-11-03-*` branches are not in it. Next: A-003 Play build.
-- **Planner (plan.onpath.earth):** web-spike 6343ec37 (2026-11-04, has main bf5204c9 = the v0.15.0 shared code; red
-  smokes since 5be2031d fixed). The web keeps the straight lines at the time limit – its 'Weiter warten?' box is open.
+- **GitHub release:** v0.16.0 (2026-11-05 night, 7419f1dd, cloud worker for donald): round trips start at ① and stay round trips (A, C), re-route "Über ③ / ③ auslassen" with numbered circles (B), "PLANEN · Ohne Netz ✓/⟳/⚠", the found place's card "+ Zur Route" · "⋯ Mehr", A-022 words (Meine Touren, Geplant | Gemacht). Before: v0.15.0 (2026-11-04, e0ad10a8). Not in it: the leg cache for long bike routes (measured only, `docs/design/long-bike-routes.md`). Next: A-003 Play build.
+- **Planner (plan.onpath.earth):** web-spike 74c2b069 (2026-11-05, has main c40b638b = the v0.16.0 shared code; Web spike green after one re-run of a timing flake in robust-smoke). Open for cloud-plan: A-022 web texts, the pin card, loopStart in the web point menu, the 'Weiter warten?' box.
 - **State:** released 0.13.2 → 0.13.5 today. main (8cf47345 or newer) also has, **not released yet**: the planner
   splice "route only around a cut stop" (38fc16c6, ~2× faster, `PLANNER_VERSION` 3); the compact plan sheet with the
   rolled-up one-row step (d2885035, interim build on the owner's phone since 21:45); faster builds (`tools/ci/gate.sh`,

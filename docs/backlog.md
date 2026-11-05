@@ -37,6 +37,7 @@ the git log.
 - → [cloud-web] (donald 2026-11-03): pairing-help pictures app part done – `onpath.private/marketing/bilder/2026-11-03-donald/`
   (`app-a1…a4-de|en.png` + `Ergebnis.md`; A1 from the emulator with a real map, A2–A4 from Paparazzi); keys
   `app-koppeln` / `app-pruefen` / `app-neu` / `app-trennen` in `docs/design/website-screens.md`.
+- → [cloud-plan] (cloud worker 2026-11-05, web-spike 74c2b069 has main c40b638b): (a) A-022 planner texts – the web keys in onpath.private/auftraege/a-022-plan-tour-route.md (the app keys came with the merge; smokes adjusted); (b) the found-place card under the pin like the app ("+ Zur Route" / "Hierhin" · "⋯ Mehr", app `ui/MapOverlays.kt` PinChip); (c) `WebApi.pointMenu` should pass `PlanEdits.loopStart` (plans with a stop on the way before a round trip: ① reads "Start here", app `MapGestures.pointMenu(loopStart)`); (d) locally import-smoke (download name "download"), sync-smoke (timeouts) and search-smoke (no cell store) were red in the cloud container – trust GitHub's Web spike run.
 <!-- The captain's word to computer-bound roles: - → [cloud-app|cloud-plan] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 - → [cloud-app] **Pixel is back (owner 2026-11-03 evening)** – after the running item: no tour recording → install current
   main on the Pixel (`tools/dev/device.sh pixel`), then the [pixel] check lines at the top of Next (red tile "Neu
@@ -45,6 +46,7 @@ the git log.
 
 
 ## For the captain
+- ← [cloud worker 2026-11-05] **v0.16.0 released** (7419f1dd, GO app 1c3e9f18 + planner 74c2b069): all five wip branches + the pin card on main; long bike routes only measured (113 km: an edit re-routes all, 645 ms vs 50 ms per leg on the JVM) – leg cache left for a day session. Fixed on the way: NavReplayTest (mid-route question), E2E "Replace current plan?", numbers in the stop circles, the JVM harness (SlowPlan, VisitRadius). Question #26 („Zur Route“ vs „Zum Plan“, taken: owner's wording). Cloud container needs a Gradle init script for Maven Central (429 → Google mirror, ~/.gradle/init.d).
 - ← [cloud worker 2026-11-04] **v0.15.0 released** (main, Release workflow) with the planner web-spike 6343ec37 (main's
   shared code merged; red smokes fixed: pin test, two quick clicks clicked 56 px off, 'Route · date' row). Open for
   cloud-plan: the web's 'Weiter warten?' box (SlowPlan shared, web still askAtLimit = false).
@@ -78,9 +80,30 @@ the git log.
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
+- [donald] Plan sheet bottom: ONE compact row '▶ Los geht's' / '‹ Navigation' + 'Speichern | Neu planen' (owner 2026-11-05, F) – since 2026-11-05
 - [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
 
 ## Next
+- **[cloud-app] Navigate's slider bar: no change (owner 2026-11-05 correction)** – the slider and today's buttons stay as built;
+  the action-sheet / tile ideas of today are dropped. The open design question is only the plan sheet during a tour
+  (next line, in work with the captain).
+- **[cloud-app] Plan sheet bottom: ONE compact row, two groups, one-line labels (owner 2026-11-05: "the double row takes
+  too much plan space – design good, make it compact" → F)** – same height as today, the profile keeps its room. Left a
+  filled green button only as wide as its text: without a tour **"▶ Los geht's"**, during a tour **"‹ Navigation"** (back
+  arrow + where to). Right, filling the rest: ONE blue outlined connected button group **"Speichern | Neu planen"**. Every
+  label one line (Material: no wrapped button text). Large font: when the row does not fit, the group moves to a second
+  row by itself (never wrapped / cut text). No red. Navigate's slider bar unchanged. Screenshots DE + EN + large font
+  first. Sketch F (both states): https://claude.ai/artifact/9Ju2XSLNrwiaaxmEw9pbDP
+- **[cloud-app] Far start: ask before routing the way there (owner 2026-11-05, corrected)** – a plan loaded in Meran, "Route
+  starten" in Hilden → "Hinführen" routed the lead for a very long time, then "no route". No hard limit (owner: 100 km by
+  bike is fine for some). Instead, before the lead is routed, when the way there is long (same idea as the plan's
+  `LongRoute` question "Diese Route ist sehr lang", here for the lead – threshold e.g. straight line > 25 km, tune with
+  the measurements): a box "Der Start ist 790 km entfernt. Trotzdem einen Weg dorthin berechnen? Das kann lange dauern."
+  – Berechnen / Nur aufzeichnen. While it routes: the wait card with Abbrechen; at the time limit the slow-plan question
+  "Weiter warten?". Field-bug rule: a reproducing test first (`NavPrompt.FarStart`).
+- **[cloud-app] Pin card button: "+ Hinzufügen" (owner 2026-11-05, onpath.private#26)** – the blue button under a found
+  place reads "+ Hinzufügen" (EN "+ Add") instead of "+ Zur Route"; empty plan keeps "Hierhin". Planner mirrors it.
+  Small text change for the next release.
 - **[cloud-app] + [cloud-plan] Long bike routes faster (owner 2026-11-04, A)** – today every edit routes the whole plan
   in one request (owner rule: same points = same route), so one point between ① and ② of a 100 km ride reroutes all of
   it. (1) **Measure** a 100 km Bike plan (Planner.describeTries / event log: load rd5 vs routing, per request) – numbers
