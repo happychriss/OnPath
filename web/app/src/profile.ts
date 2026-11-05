@@ -8,7 +8,7 @@ import { t, number, distance } from './i18n';
 export type Profile = NonNullable<PlanResult['profile']>;
 export const STEEP_COLOURS = ['#7fb77e', '#e3b23c', '#e07b39', '#c0392b']; // flat, moderate, steep, very steep
 
-function bars(p: Profile, W: number, H: number, flat: string): string {
+function bars(p: Profile, W: number, H: number): string {
   const { dist: d, ele, steep } = p;
   const total = d[d.length - 1] || 1;
   const lo = Math.min(...ele), hi = Math.max(...ele), span = Math.max(hi - lo, 50);
@@ -16,19 +16,24 @@ function bars(p: Profile, W: number, H: number, flat: string): string {
   let s = '';
   for (let i = 1; i < d.length; i++) {
     if (d[i] <= d[i - 1]) continue;
-    const c = steep[i - 1] ? STEEP_COLOURS[steep[i - 1]] : flat;
+    const c = STEEP_COLOURS[steep[i - 1]] ?? STEEP_COLOURS[0];
     s += `<path d="M${x(d[i - 1])},${H} L${x(d[i - 1])},${y(ele[i - 1])} L${x(d[i])},${y(ele[i])} L${x(d[i])},${H} Z" fill="${c}" stroke="${c}" stroke-width="0.4"/>`;
   }
   return s;
 }
 
-export function profileSvg(p: Profile, W = 300, H = 90, flat = STEEP_COLOURS[0]): string {
+/**
+ * The profile: heights above it ("300 – 578 m", [extra] beside them – the sheet's ⤢), the drawing, below it the
+ * distance axis "0" … total at the right end (owner review 2026-11-05: the total sat in the middle).
+ */
+export function profileSvg(p: Profile, W = 300, H = 90, extra = '', inPlot = ''): string {
   const { dist: d, ele } = p;
   if (d.length < 2) return '';
   const total = d[d.length - 1] || 1;
   const lo = Math.min(...ele), hi = Math.max(...ele);
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${t('plan_elevation_profile')}">${bars(p, W, H, flat)}</svg>
-    <div class="axis muted"><span>${Math.round(lo)} m</span><span>${number(total / 1000, 1)} km</span><span>${Math.round(hi)} m</span></div>`;
+  return `<div class="profhead muted"><span>${Math.round(lo)} – ${Math.round(hi)} m</span>${extra}</div>
+    <div class="profplot"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${t('plan_elevation_profile')}">${bars(p, W, H)}</svg>${inPlot}</div>
+    <div class="axis muted"><span>0</span><span>${number(total / 1000, 1)} km</span></div>`;
 }
 
 /** The gradient in % around kept point [i] over about 100 m (the window RouteSummary.steepness uses). */
@@ -59,11 +64,11 @@ export interface ProfileView {
  * Draws [p] into [host] with the app's cursor: pointer over / touch-drag → the line, "954 m · 3.2 km · 8 %" and
  * [onCursor] with the distance (the page puts the dot on the map there); leaving → [onCursor](null).
  */
-export function mountProfile(host: HTMLElement, p: Profile, onCursor: (m: number | null) => void, size: { W: number; H: number; flat?: string } = { W: 300, H: 90 }): ProfileView {
+export function mountProfile(host: HTMLElement, p: Profile, onCursor: (m: number | null) => void, size: { W: number; H: number } = { W: 300, H: 90 }, extra = ''): ProfileView {
   if (p.dist.length < 2) { host.innerHTML = ''; return { show: () => {} }; }
-  host.innerHTML = `<div class="profplot">${profileSvg(p, size.W, size.H, size.flat).replace('</svg>', '</svg><div class="profcursor" hidden></div><div class="proflabel" hidden></div>')}</div>`;
+  host.innerHTML = profileSvg(p, size.W, size.H, extra, '<div class="profcursor" hidden></div><div class="proflabel" hidden></div>');
   const plot = host.querySelector<HTMLElement>('.profplot')!;
-  const svg = plot.querySelector('svg')!;
+  const svg = plot.querySelector<SVGSVGElement>(':scope > svg')!;
   const line = plot.querySelector<HTMLElement>('.profcursor')!, label = plot.querySelector<HTMLElement>('.proflabel')!;
   const total = p.dist[p.dist.length - 1] || 1;
   const draw = (m: number | null) => {
