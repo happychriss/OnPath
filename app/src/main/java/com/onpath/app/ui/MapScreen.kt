@@ -4,6 +4,8 @@ import com.onpath.strings.*
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -139,9 +141,10 @@ fun MapScreen(
         // A newer version of an area the user has (checked after each route) is told by the background-download strip
         // only – one loading indicator is enough. No cell-state read here: download ticks must not recompose this screen.
         // one padding rule for every route fit (FitPaddingRule): clear of the top elements and the sheet / slider
+        val planTopBand = planTopBarDp(rec != null)
         val fitPadding = {
             FitPaddingRule.of(vm.mode, density.density, topInsetPx,
-                planTopDp = if (vm.backgroundStripShown) vm.backgroundStripBottomDp else 0, sheetPx = panelHeightPx,
+                planTopDp = maxOf(if (vm.backgroundStripShown) vm.backgroundStripBottomDp else 0, planTopBand), sheetPx = panelHeightPx,
                 navTopDp = navCover[0], navBottomDp = navCover[1], fabWidthPx = planFab[0], fabHeightPx = planFab[1])
         }
         MapSync(vm, controller, rec, location, fitPadding)
@@ -168,7 +171,7 @@ fun MapScreen(
         // hints below the search bar go below the background-download strip while it shows
         // (measured height: a message box is taller than the progress chip)
         val hintTop = if (vm.backgroundStripShown && vm.mode == AppMode.PLAN)
-            (vm.backgroundStripBottomDp + MessagePlacement.GAP_DP).coerceAtLeast(124).dp else 76.dp
+            (vm.backgroundStripBottomDp + MessagePlacement.GAP_DP).coerceAtLeast(124).dp else planTopBarDp(rec != null).dp
         // A shared place is being looked up (link + address search take a moment): say so at once.
         val sharedLookup = rememberNoFlash(if (vm.sharedLookup) Unit else null, remember { NoFlash<Unit>() }) != null
         androidx.compose.animation.AnimatedVisibility(sharedLookup,
@@ -268,6 +271,11 @@ private fun PlanMode(
         // Plan is blue (owner 2026-11-03, design §3 version 3): a soft blue edge round the screen and a light blue band
         // under the status bar – drawn only, no touches taken
         PlanFrame(Modifier.modeEdge(ModeEdge.TOP))
+        // the light blue band behind the search pill and ☰ (owner 2026-11-05, b): from the screen's top edge (status bar)
+        // to the bar's bottom; during a tour one row more ("‹ Zur Tour")
+        val topBar = planTopBarDp(rec != null)
+        Box(Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().background(PlanTopBand.Color)
+            .statusBarsPadding().height(topBar.dp))
         PlanTopBar(
             onSearch = vm::openSearch,
             menu = PlanMenu(
@@ -296,12 +304,14 @@ private fun PlanMode(
             editing = rec != null,
             offline = vm.offlineReady?.state,
             onOffline = vm::toggleOfflineInfo,
+            // during a tour: back to Navigate (owner 2026-11-05) – the same as Android's Back (MainActivity)
+            onBackToTour = if (rec != null) ({ vm.continueNavigation() }) else null,
         )
         // the activity as a round button on the map, top left under the search pill (owner 2026-11-05, R5): the plan
         // sheet has no activity chip any more; not over a shown track / place card (their own panels)
         if (vm.shown == null) ActivityMapButton(vm.activity, vm.sac, onActivity,
             Modifier.align(Alignment.TopStart).modeEdge(ModeEdge.TOP).statusBarsPadding()
-                .padding(top = MessagePlacement.topDp(MessageScreen.PLAN).dp, start = 12.dp))
+                .padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = topBar).dp, start = 12.dp))
         // "Ohne Netz ✓ / ⟳ / ⚠" (owner 2026-11-03): recomputed off the main thread when the route changes, every 3 s
         // while loading, else every 20 s (a map region joined, the network back) – file checks only, no downloads
         val offlineLine = vm.route?.points
@@ -324,7 +334,7 @@ private fun PlanMode(
             snapshotFlow { sheetHeight.intValue }.collectLatest { delay(120); panelHeight(it) }
         }
         val density = LocalDensity.current
-        val topLimit = with(density) { WindowInsets.statusBars.getTop(density).toDp() } + TOP_BAR_BOTTOM
+        val topLimit = with(density) { WindowInsets.statusBars.getTop(density).toDp() } + topBar.dp
         SheetWithFooter(topLimit, modifier = Modifier.modeEdge(ModeEdge.BOTTOM), footer = {
             Column(Modifier.fillMaxWidth()) {
                 // after Install: the download's progress (a state, no box); the question itself is a box at the top
@@ -425,7 +435,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     // the bottom below the status bar: top + measured height (hints under the search bar go below it)
     fun Modifier.measured(topDp: Int) =
         onSizeChanged { vm.backgroundStripBottomDp = topDp + with(density) { it.height.toDp().value.toInt() } }
-    val top = MessagePlacement.topDp(MessageScreen.PLAN)
+    val top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp(rec != null))
     MessageSlot(message, top, Modifier.modeEdge(ModeEdge.TOP), onBottomDp = { vm.backgroundStripBottomDp = it })
     if (pill != null) {
         MapNoticePill(pill, Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding()

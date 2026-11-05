@@ -199,6 +199,7 @@
     <string name="plan_finding_shared_place">Finding the shared place…</string>
     <string name="plan_resize_panel">Resize panel</string>
     <string name="plan_slide_change_route">Change plan</string>
+    <string name="plan_back_tour_short">Tour</string>
     <string name="plan_back_to_tour">Back to tour</string>
     <string name="plan_mode_label">Plan</string>
     <string name="plan_switch_to_plan">Switch to plan mode</string>

@@ -30,10 +30,14 @@ class PlanSheetLayoutTest {
         assertTrue(icon, icon.contains("Icons.Filled.PlayArrow"))
     }
 
-    @Test fun theButtonShowsFromTwoPointsAndAlwaysDuringATour() {
+    /** Owner 2026-11-05: from two points on; during a tour none – "‹ Zur Tour" in the top band leads back. */
+    @Test fun theButtonShowsFromTwoPointsAndNeverDuringATour() {
         assertFalse(PlanBarRow.shown(ui(1, running = false)))
         assertTrue(PlanBarRow.shown(ui(2, running = false)))
-        assertTrue(PlanBarRow.shown(ui(0, running = true)))
+        assertFalse(PlanBarRow.shown(ui(0, running = true)))
+        assertFalse(PlanBarRow.shown(ui(3, running = true)))
+        // the rolled-up row: no button during a tour either
+        assertTrue(panel.contains("if (ui.pointCount >= 2 && ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)"))
     }
 
     /** The plan row keeps its words while they fit, else three signs (a large font) – a word is never cut. */
@@ -54,9 +58,9 @@ class PlanSheetLayoutTest {
         assertEquals(CollapsedFacts.Fit.ALL, CollapsedFacts.fit(150, 80, 110, 8, 358))
         assertEquals(CollapsedFacts.Fit.NO_ELEVATION, CollapsedFacts.fit(150, 120, 110, 8, 358))
         assertEquals(CollapsedFacts.Fit.WRAP, CollapsedFacts.fit(260, 120, 150, 8, 358))
-        // during a tour too, with "Weiter geht's"
+        // during a tour too – without the button (owner 2026-11-05)
         val row = panel.substringAfter("private fun CollapsedRow(").substringBefore("\n}\n")
-        assertTrue(row, row.contains("if (ui.pointCount >= 2 || ui.tour != null) CompactGo(ui, cb, on)"))
+        assertTrue(row, row.contains("if (ui.pointCount >= 2 && ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)"))
         assertFalse("no activity sign in the row (it is on the map)", row.contains("ui.activity.icon"))
     }
 

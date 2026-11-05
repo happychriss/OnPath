@@ -1270,9 +1270,16 @@
   },
   "plan_back_to_tour": {
     "area": "Plan",
-    "context": "Proposal 2026-11-05: during a tour, top left in the plan's band with a back arrow (Android up navigation): back to the running tour's navigation",
+    "context": "During a tour in Plan: back to the running tour's navigation (top left in the band, with a back arrow; TalkBack name of the round back button)",
     "priority": 1,
     "confidence": "sicher",
     "max": 16
+  },
+  "plan_back_tour_short": {
+    "area": "Plan",
+    "context": "Proposal 2026-11-05 (R2): short chip '‹ Tour' left of the search pill during a tour – back to the running tour",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 8
   }
 }

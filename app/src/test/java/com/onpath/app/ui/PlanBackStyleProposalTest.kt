@@ -9,12 +9,8 @@ import org.junit.Rule
 import org.junit.Test
 import java.util.Locale
 
-/**
- * Proposal 2026-11-05 (owner, no decision yet): Plan's top area as a band behind the search pill and ☰ – (a) plan blue,
- * white field + ☰; (b) light blue, today's pill; (c) light blue fading into the map. Profile step, German. Pictures for
- * the owner only – remove when decided.
- */
-open class PlanTopBandProposalTest {
+/** Proposal 2026-11-05 (owner, HOLD): "back to the tour" in one row – R1 round "←", R2 "‹ Tour" chip, the two-row one. German. */
+open class PlanBackStyleProposalTest {
     @get:Rule
     open val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1024, screenHeight = 2400, xdpi = 428, ydpi = 428, density = Density.create(420)),
@@ -29,13 +25,13 @@ open class PlanTopBandProposalTest {
         it.javaClass.getDeclaredField("paparazzi").apply { isAccessible = true }.set(it, paparazzi)
     }
 
-    @Test fun bandA() = shots.planTopBand('a')
-    @Test fun bandB() = shots.planTopBand('b')
-    @Test fun bandC() = shots.planTopBand('c')
+    @Test fun r1Round() = shots.planBackStyle(BackToTourStyle.ROUND)
+    @Test fun r2Chip() = shots.planBackStyle(BackToTourStyle.CHIP)
+    @Test fun twoRows() = shots.planBackStyle(BackToTourStyle.TWO_ROWS)
 }
 
 /** The same at the phone's largest font (2.0). */
-class PlanTopBandProposalLargeFontTest : PlanTopBandProposalTest() {
+class PlanBackStyleProposalLargeFontTest : PlanBackStyleProposalTest() {
     @get:Rule
     override val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1024, screenHeight = 2400, xdpi = 428, ydpi = 428,

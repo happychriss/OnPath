@@ -480,7 +480,8 @@ private fun CollapsedRow(ui: PlanUi, cb: PlanCallbacks, barShown: () -> Float, s
                     Text("${ui.warnCount}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
                         color = OnPathColors.Amber, modifier = Modifier.padding(start = 2.dp, end = 6.dp))
                 }
-                if ((ui.pointCount >= 2 || ui.tour != null) && !(LocalBackToTourInBand.current && (ui.tour != null || ui.tourRunning))) CompactGo(ui, cb, on)
+                // during a tour no button (owner 2026-11-05): "‹ Zur Tour" in the top band leads back
+                if (ui.pointCount >= 2 && ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)
             }
         }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { ms, c ->
             val gap = 8.dp.roundToPx()
@@ -615,12 +616,12 @@ private fun RoutingBar(progress: Pair<Int, Int>?, share: Float?, modifier: Modif
 private val PROFILE_HEIGHT = 120.dp
 
 /**
- * Bottom of the sheet (owner 2026-11-05, R5): ONE full-width green button – "▶ Los geht's", during a tour "▶ Weiter
- * geht's" ([GoButton]). Without a tour from two points on (the rolled-up row has its own), during a tour always.
+ * Bottom of the sheet (owner 2026-11-05, R5): ONE full-width green button "▶ Los geht's" ([GoButton]) from two points on
+ * (the rolled-up row has its own); during a tour none – "‹ Zur Tour" in the top band leads back (owner 2026-11-05).
  */
 @Composable
 private fun ColumnScope.PlanBar(ui: PlanUi, cb: PlanCallbacks) {
-    if (PlanBarRow.shown(ui, LocalBackToTourInBand.current)) {
+    if (PlanBarRow.shown(ui)) {
         Spacer(Modifier.height(PlanBarRow.GAP))
         // rolled up, the bar lies below the screen's edge: the row's own button is the one for TalkBack / tests
         Box(if (ui.collapsed) Modifier.clearAndSetSemantics { } else Modifier) { GoButton(ui, cb) }
@@ -640,15 +641,11 @@ object PlanBarRow {
     val GAP = 4.dp
 
     /**
-     * Without a tour the button starts at two points (one point only records: the rolled-up row / ☰); during a tour
-     * always – unless "‹ Zur Tour" sits in the top band ([backInBand], proposal 2026-11-05): then none during a tour.
+     * Without a tour the button starts at two points (one point only records: the rolled-up row / ☰). During a tour
+     * none (owner 2026-11-05): "‹ Zur Tour" in the top band leads back, the profile gets the room.
      */
-    fun shown(ui: PlanUi, backInBand: Boolean = false): Boolean =
-        !(backInBand && (ui.tour != null || ui.tourRunning)) && (ui.tour != null || (!ui.tourRunning && ui.pointCount >= 2))
+    fun shown(ui: PlanUi): Boolean = ui.tour == null && !ui.tourRunning && ui.pointCount >= 2
 }
-
-/** Proposal 2026-11-05 (pictures only): "‹ Zur Tour" in the top band, so the sheet has no green button during a tour. */
-val LocalBackToTourInBand = androidx.compose.runtime.staticCompositionLocalOf { false }
 
 /** The plan has no route on purpose: says why, and calculates it on request (stays until then – no timeout). */
 @Composable

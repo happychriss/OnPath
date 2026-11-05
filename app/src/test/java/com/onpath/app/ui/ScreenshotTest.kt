@@ -79,10 +79,6 @@ class ScreenshotTest {
                       editing: Boolean = false,
                       /** "Ohne Netz ✓ / ⟳ / ⚠" in the mode pill (owner 2026-11-03). */
                       offline: OfflineReady.State? = null,
-                      /** Proposal 2026-11-05: a band behind the search pill and ☰ (status bar + top bar); null = today. */
-                      band: androidx.compose.ui.graphics.Brush? = null, bandHeight: androidx.compose.ui.unit.Dp = 32.dp + TOP_BAR_BOTTOM,
-                      /** Proposal 2026-11-05: "‹ Zur Tour" top left in the band during a tour, no green button in the sheet. */
-                      backToTour: Boolean = false,
                       bottom: @Composable () -> Unit) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
@@ -91,16 +87,17 @@ class ScreenshotTest {
                     Modifier.align(Alignment.Center))
                 // Plan is blue (owner 2026-11-03): band under the status bar (the 32 dp stand-in) + soft edge
                 PlanFrame()
-                band?.let { Box(Modifier.fillMaxWidth().height(bandHeight).background(it)) }
+                // the light blue band behind the search pill and ☰ (owner 2026-11-05) – as MapScreen draws it
+                Box(Modifier.fillMaxWidth().background(PlanTopBand.Color).padding(top = 32.dp).height(planTopBarDp(editing).dp))
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing, offline = offline,
-                        onBackToTour = if (backToTour) ({}) else null)
+                        onBackToTour = if (editing) ({}) else null)
                     // the activity as a button on the map (owner 2026-11-05, R5) – as MapScreen places it
-                    ActivityMapButton(Activity.HIKE, 2, {}, Modifier.padding(top = MessagePlacement.topDp(MessageScreen.PLAN).dp + if (backToTour) 60.dp else 0.dp, start = 12.dp))
-                    SheetWithFooter(TOP_BAR_BOTTOM, footer = {
+                    ActivityMapButton(Activity.HIKE, 2, {}, Modifier.padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp(editing)).dp, start = 12.dp))
+                    SheetWithFooter(planTopBarDp(editing).dp, footer = {
                         Column(Modifier.fillMaxWidth()) { aboveFooter(); footer() }
                     }, sheet = bottom)
-                    Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.topDp(MessageScreen.PLAN).dp,
+                    Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp(editing)).dp,
                         start = MessagePlacement.GAP_DP.dp, end = MessagePlacement.GAP_DP.dp)) { top() }
                 }
             }
@@ -500,44 +497,19 @@ class ScreenshotTest {
     }
 
     /**
-     * Proposal 2026-11-05 (no decision yet): Plan's top area as a band – (a) the plan blue with a white search field and
-     * white ☰, (b) a light blue band with today's pill, (c) a light blue band fading into the map. Drawn by
-     * [PlanTopBandProposalTest]; the activity button stays on the map.
+     * Proposal 2026-11-05 (owner: the two-row band wastes space – HOLD): "back to the tour" in ONE row – R1 a round "←"
+     * left of the search pill, R2 a "‹ Tour" chip; TWO_ROWS = the built version for comparison. Tour, profile step.
      */
-    /**
-     * Proposal 2026-11-05 (owner OK for pictures): light blue band (b); during a tour "‹ Zur Tour" top left in it and no
-     * green button in the sheet; without a tour the band and "▶ Los geht's" as now. [step]: "profile" or "rolled".
-     */
-    fun planZurTour(tour: Boolean, step: String) = paparazzi.snapshot(name = "zurtour_${if (tour) "tour" else "plan"}_$step") {
-        val light = androidx.compose.ui.graphics.Color(0xFFDDE7F4)
-        val size = if (step == "rolled") PlanSize.COLLAPSED else PlanSize.COMPACT
-        val ui = if (tour) planUi(size = size, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false))
-            else planUi(size = size)
-        // the band reaches under the search row; during a tour one 48 dp row more ("‹ Zur Tour")
-        val h = 32.dp + TOP_BAR_BOTTOM + if (tour) 52.dp else 0.dp
-        androidx.compose.runtime.CompositionLocalProvider(LocalTopBarLook provides TopBarLook(pill = OnPathColors.CardWhite),
-            LocalBackToTourInBand provides true) {
-            Frame(editing = tour, band = androidx.compose.ui.graphics.SolidColor(light), bandHeight = h, backToTour = tour) {
-                PlanPanel(ui, PlanCallbacks())
+    fun planBackStyle(style: BackToTourStyle) = paparazzi.snapshot(name = "back_${style.name.lowercase()}") {
+        androidx.compose.runtime.CompositionLocalProvider(LocalBackToTourStyle provides style) {
+            Frame(editing = true) {
+                PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
+                    PlanCallbacks())
             }
         }
     }
 
-    fun planTopBand(variant: Char) = paparazzi.snapshot(name = "band_$variant") {
-        val light = androidx.compose.ui.graphics.Color(0xFFDDE7F4)
-        val (brush, look, h) = when (variant) {
-            'a' -> Triple(androidx.compose.ui.graphics.SolidColor(OnPathColors.ActionEdit),
-                TopBarLook(pill = OnPathColors.CardWhite, labelRing = OnPathColors.CardWhite), 32.dp + TOP_BAR_BOTTOM)
-            'b' -> Triple(androidx.compose.ui.graphics.SolidColor(light), TopBarLook(pill = OnPathColors.CardWhite), 32.dp + TOP_BAR_BOTTOM)
-            else -> Triple(androidx.compose.ui.graphics.Brush.verticalGradient(
-                0f to light, 0.55f to light, 1f to light.copy(alpha = 0f)), TopBarLook(pill = OnPathColors.CardWhite), 32.dp + TOP_BAR_BOTTOM + 72.dp)
-        }
-        androidx.compose.runtime.CompositionLocalProvider(LocalTopBarLook provides look) {
-            Frame(band = brush, bandHeight = h) { PlanPanel(planUi(size = PlanSize.COMPACT), PlanCallbacks()) }
-        }
-    }
-
-    /** The plan during a tour as it opens (summary step): plan row, facts, "▶ Weiter geht's". */
+    /** The plan during a tour as it opens (summary step): "‹ Zur Tour" in the band, plan row, facts – no green button. */
     @Test fun planTourRunningCollapsed() = paparazzi.snapshot {
         Frame(editing = true) {
             PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),

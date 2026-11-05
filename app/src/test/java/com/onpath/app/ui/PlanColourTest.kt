@@ -30,7 +30,9 @@ class PlanColourTest {
         assertTrue("soft edge in PlanMode", map.substringAfter("private fun PlanMode(").contains("PlanFrame("))
         assertTrue("the label says Plan ändern during a tour", map.contains("editing = rec != null"))
         val top = src("PlanTopBar.kt")
-        assertTrue(top.contains("val pill: androidx.compose.ui.graphics.Color = OnPathColors.PlanTint") && top.contains("color = LocalTopBarLook.current.pill") && top.contains("tint = OnPathColors.PlanAccent"))
+        // owner 2026-11-05 (band b): white pill + ☰ on the light blue band, blue icons
+        assertTrue(top.contains("color = OnPathColors.CardWhite, // the band is blue") && top.contains("tint = OnPathColors.PlanAccent"))
+        assertTrue(map.contains("background(PlanTopBand.Color)"))
         assertTrue(src("PlanPanel.kt").contains("surfaceColor = OnPathColors.PlanTint, accent = OnPathColors.PlanAccent"))
         val footer = src("MapFooter.kt")
         assertTrue(footer.contains("if (plan) OnPathColors.PlanTint else MaterialTheme.colorScheme.surface"))
@@ -49,9 +51,19 @@ class PlanColourTest {
         assertTrue("blue icons on the tint", contrast(OnPathColors.PlanAccent, OnPathColors.PlanTint) >= 4.5)
     }
 
-    /** Owner 2026-11-03: the half-transparent blue band at the top goes. */
-    @Test fun noBandAtTheTop() {
+    /**
+     * Owner 2026-11-03: the half-transparent blue band went; owner 2026-11-05 (b): a light blue band again, opaque, only
+     * behind the search pill + ☰ (and "‹ Zur Tour" during a tour) – the pill and ☰ no longer float over the map.
+     */
+    @Test fun lightBandBehindTheTopBar() {
         val bar = java.io.File("src/main/java/com/onpath/app/ui/PlanTopBar.kt").readText()
-        assertTrue(!bar.contains("PlanBand") && !bar.contains("PLAN_BAND"))
+        assertTrue(bar.contains("val Color = androidx.compose.ui.graphics.Color(0xFFDDE7F4)"))
+        assertTrue(!bar.contains("PLAN_BAND") && !bar.contains("TopBarLook"))
+        assertTrue(contrast(OnPathColors.PlanAccent, PlanTopBand.Color) >= 4.5)
+    }
+
+    private fun contrast(a: Color, b: Color): Double {
+        val (hi, lo) = listOf(a.luminance(), b.luminance()).sortedDescending()
+        return (hi + 0.05) / (lo + 0.05)
     }
 }

@@ -198,6 +198,7 @@
     <string name="plan_finding_shared_place">Geteilter Ort wird gesucht…</string>
     <string name="plan_resize_panel">Größe ändern</string>
     <string name="plan_slide_change_route">Plan ändern</string>
+    <string name="plan_back_tour_short">Tour</string>
     <string name="plan_back_to_tour">Zur Tour</string>
     <string name="plan_mode_label">Planen</string>
     <string name="plan_switch_to_plan">Zum Planen wechseln</string>
