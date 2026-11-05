@@ -83,11 +83,15 @@ the git log.
 - [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
 
 ## Next
-- **[cloud-app] Bar after the slide: two groups (owner 2026-11-05, onpath.private issue "Leiste nach dem Schieber", A taken)**
-  – today three equal tiles Pause · Route ändern · Beenden read as one list. New, same height: a green block "Tour" with
-  Pause + Beenden side by side, apart from it a light block "Plan" with "✎ Ändern" (blue). Tiny group labels. Colour rule
-  kept. Screenshots DE + EN to the owner first – he may still pick B (two rows) or C (bar + round "Planen" button),
-  sketch https://claude.ai/artifact/3PXfMdfF6ukXNqUixnivw6. Consider the same grouping in Plan during a tour.
+- **[cloud-app] Bar after the slide: bar + round "Planen" button (owner 2026-11-05, C)** – Pause and Beenden as one green bar
+  (both green – no red / orange sign at the stop: navigation = green, plan = blue), beside it a round blue "✎ Planen"
+  button like the map buttons. Beenden still asks first. Same height as today. Screenshots DE + EN to the owner first.
+  Sketch https://claude.ai/artifact/3PXfMdfF6ukXNqUixnivw6 (C). Note the colour rule changes here: the stop is green.
+- **[cloud-app] Far start: say it at once instead of routing for ages (owner 2026-11-05)** – a plan loaded in Meran, "Route
+  starten" in Hilden → the lead was routed for a very long time, then "no route". Rule (recommended, taken): straight
+  line to the start over 30 km on foot / 100 km by bike → no "Hinführen" and no routing; the far-start box says at once
+  "Der Start ist 790 km entfernt – zu weit für einen Weg dorthin" with "Nur aufzeichnen" / "Abbrechen". Field-bug rule:
+  a reproducing test first (`NavPrompt.FarStart`). Owner may change the limits.
 - **[cloud-app] Pin card button: "+ Hinzufügen" (owner 2026-11-05, onpath.private#26)** – the blue button under a found
   place reads "+ Hinzufügen" (EN "+ Add") instead of "+ Zur Route"; empty plan keeps "Hierhin". Planner mirrors it.
   Small text change for the next release.
