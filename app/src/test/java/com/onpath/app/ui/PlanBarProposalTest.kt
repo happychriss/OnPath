@@ -50,6 +50,8 @@ open class PlanBarProposalTest {
     @Test fun r3ATour() = shots.planBarProposal(PlanBarStyle.R3_A, tour = true)
     @Test fun r3BPlan() = shots.planBarProposal(PlanBarStyle.R3_B, tour = false)
     @Test fun r3BTour() = shots.planBarProposal(PlanBarStyle.R3_B, tour = true)
+    @Test fun r4Plan() = shots.planBarProposal(PlanBarStyle.R4, tour = false)
+    @Test fun r4Tour() = shots.planBarProposal(PlanBarStyle.R4, tour = true)
 }
 
 /** The same at the phone's largest font (2.0). */

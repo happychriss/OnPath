@@ -484,12 +484,16 @@ class ScreenshotTest {
      */
     fun planBarProposal(style: PlanBarStyle, tour: Boolean) = paparazzi.snapshot(name = "${style.name}_${if (tour) "tour" else "plan"}") {
         androidx.compose.runtime.CompositionLocalProvider(LocalPlanBarStyle provides style) {
-            if (tour) Frame(editing = true) {
+            // round 4: the activity as a button on the map, top left under the search pill
+            val top: @Composable () -> Unit = {
+                if (style == PlanBarStyle.R4) Box(Modifier.fillMaxWidth()) { ActivityMapButton(Activity.HIKE, 2, {}) }
+            }
+            if (tour) Frame(editing = true, top = top) {
                 PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
                     PlanCallbacks(onSaveRoute = {}))
-            } else Frame {
+            } else Frame(top = top) {
                 // round 3 shows the unsaved dot on 🔖 in the plan state (owner: one state with the dot)
-                val r3 = style == PlanBarStyle.R3_A || style == PlanBarStyle.R3_B
+                val r3 = style == PlanBarStyle.R3_A || style == PlanBarStyle.R3_B || style == PlanBarStyle.R4
                 PlanPanel(planUi(size = PlanSize.COMPACT).copy(unsaved = r3), PlanCallbacks(onSaveRoute = {}))
             }
         }
