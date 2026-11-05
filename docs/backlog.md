@@ -80,6 +80,7 @@ the git log.
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
+- [donald] Plan sheet bottom: ONE compact row '▶ Los geht's' / '‹ Navigation' + 'Speichern | Neu planen' (owner 2026-11-05, F) – since 2026-11-05
 - [cloud-plan] Wait box → the time-limit question (owner chose B in #21) – after cloud-app's version is on main – since 2026-11-03
 
 ## Next
