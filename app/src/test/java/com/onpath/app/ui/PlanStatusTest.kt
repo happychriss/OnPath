@@ -113,4 +113,19 @@ class PlanStatusTest {
         assertEquals(0.25f, PlanStatus.share(1 to 4), 0.0001f)
         assertEquals(1f, PlanStatus.share(5 to 4), 0.0001f)
     }
+
+    /** The bar moves within one long leg and never goes back (owner 2026-11-05). */
+    @Test fun theWaitBarMovesWithinALegAndNeverBack() {
+        val one = WaitBar()
+        assertEquals(0f, one.next(0, 1, null), 0.0001f)
+        assertEquals(0.4f, one.next(0, 1, 0.4), 0.0001f)
+        assertEquals("a retry inside the leg starts its search again: the bar stays", 0.4f, one.next(0, 1, 0.1), 0.0001f)
+        assertEquals(1f, one.next(1, 1, null), 0.0001f)
+        val four = WaitBar()
+        assertEquals("leg 2 of 4 half done", 0.375f, four.next(1, 4, 0.5), 0.0001f)
+        assertEquals("the next leg starts: no step back", 0.5f, four.next(2, 4, 0.0), 0.0001f)
+        assertEquals(0.5f, four.next(1, 4, null), 0.0001f)
+        assertEquals(1f, four.next(4, 4, 0.7), 0.0001f)
+        assertEquals("no legs to route", 0f, WaitBar().next(0, 0, 0.5), 0.0001f)
+    }
 }

@@ -34,6 +34,7 @@ class GermanScreenshotTest {
 
     @Test fun plan() = shots.plan()
     @Test fun planRoutingSlowProgress() = shots.planRoutingSlowProgress()
+    @Test fun planRoutingSlowOneLeg() = shots.planRoutingSlowOneLeg()
     @Test fun planWholeRoute() = shots.planWholeRoute()
     @Test fun planTapHoldHint() = shots.planTapHoldHint()
     @Test fun planMapControlTip() = shots.planMapControlTip()

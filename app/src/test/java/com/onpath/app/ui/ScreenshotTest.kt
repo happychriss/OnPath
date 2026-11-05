@@ -305,7 +305,13 @@ class ScreenshotTest {
      */
     @Test fun planRoutingSlowProgress() = paparazzi.snapshot {
         Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true)
-            .copy(routingSlow = true, routeProgress = 1 to 4), PlanCallbacks()) }
+            .copy(routingSlow = true, routeProgress = 1 to 4, routeShare = 0.25f), PlanCallbacks()) }
+    }
+
+    /** One long leg (a fresh 100 km plan, owner 2026-11-05): the bar moves within the leg – "Calculating the route…", 40 %. */
+    @Test fun planRoutingSlowOneLeg() = paparazzi.snapshot {
+        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true)
+            .copy(routingSlow = true, routeProgress = 0 to 1, routeShare = 0.4f), PlanCallbacks()) }
     }
 
     /** A plan much longer than a day is asked about before it is routed. */

@@ -180,8 +180,10 @@ data class PlanUi(
     val points: List<PlanPointRow> = emptyList(),
     /** The route has been calculating for a while: show "Calculating route… Cancel". */
     val routingSlow: Boolean = false,
-    /** Legs done / legs to route while calculating (PlanStatus.calculating) – the wait card's bar; null = unknown. */
+    /** Legs done / legs to route while calculating (PlanStatus.calculating) – the wait card's text; null = unknown. */
     val routeProgress: Pair<Int, Int>? = null,
+    /** The wait bar's share 0..1 (legs done + the running leg's search, [WaitBar]); null = the running bar. */
+    val routeShare: Float? = null,
     /** The plan is left without a route on purpose (Cancel with nothing to take back): notice + "Plan anyway". */
     val notRouted: NotRouted? = null,
     /** A plan point the route does not reach (PlanGaps.text): one red line + "Show", while it holds. */
@@ -396,11 +398,11 @@ private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks, header: Boolean = true) 
             Column(Modifier.weight(1f)) {
                 Text(PlanStatus.calculating(ui.routeProgress), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                RoutingBar(ui.routeProgress, Modifier.fillMaxWidth().padding(top = 4.dp).height(3.dp).clip(CircleShape))
+                RoutingBar(ui.routeProgress, ui.routeShare, Modifier.fillMaxWidth().padding(top = 4.dp).height(3.dp).clip(CircleShape))
             }
             androidx.compose.material3.TextButton(onClick = cb.onCancelRouting) { Text(str(Res.string.common_cancel)) }
         }
-    } else if (ui.routing) RoutingBar(ui.routeProgress, Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
+    } else if (ui.routing) RoutingBar(ui.routeProgress, ui.routeShare, Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
     if (!ui.routing && route == null && ui.pointCount >= 2 && ui.notRouted != null) NotRoutedBar(ui.notRouted, cb.onPlanAnyway)
     // route state, one line per kind: ERROR, WARNING, INFO
     val loadingNotice = RoutingDataNotice.isNotice(ui.error)
@@ -419,13 +421,16 @@ private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks, header: Boolean = true) 
 }
 
 /**
- * The bar while a route is calculated (owner 2026-11-05): legs done / legs to route when two or more legs are routed
- * ([PlanStatus.hasLegs]), else the running bar.
+ * The bar while a route is calculated (owner 2026-11-05): [share] = legs done + the running leg's search ([WaitBar]) –
+ * it moves within one long leg too; without it legs done / legs to route ([PlanStatus.hasLegs]); else the running bar.
  */
 @Composable
-private fun RoutingBar(progress: Pair<Int, Int>?, modifier: Modifier) {
-    if (PlanStatus.hasLegs(progress)) LinearProgressIndicator(progress = { PlanStatus.share(progress!!) }, modifier = modifier)
-    else LinearProgressIndicator(modifier)
+private fun RoutingBar(progress: Pair<Int, Int>?, share: Float?, modifier: Modifier) {
+    when {
+        share != null -> LinearProgressIndicator(progress = { share }, modifier = modifier)
+        PlanStatus.hasLegs(progress) -> LinearProgressIndicator(progress = { PlanStatus.share(progress!!) }, modifier = modifier)
+        else -> LinearProgressIndicator(modifier)
+    }
 }
 
 /** The large profile of the profile step. */

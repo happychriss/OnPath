@@ -752,6 +752,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     var routeProgress by mutableStateOf<Pair<Int, Int>?>(null)
         private set
+    /**
+     * The wait bar's share 0..1 (owner 2026-11-05: it moves within one long leg too): legs done + the running leg's
+     * search ([com.onpath.app.routing.BRouterEngine.searchProgress]) over the legs to route, never back ([WaitBar]);
+     * null = not known yet (the bar runs).
+     */
+    var routeShare by mutableStateOf<Float?>(null)
+        private set
+    /** How often the wait bar asks the router how far it is (ms). */
+    private val WAIT_POLL_MS = 250L
     /** Estimated duration (s) of a plan longer than a day: "Plan it anyway?" (null = no question). */
     var longRouteAsk by mutableStateOf<Double?>(null)
         private set
@@ -1996,7 +2005,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         routeCancel?.cancel(); routeCancel = null
         routeJob?.cancel(); routeJob = null
         requests.invalidate()
-        route = null; routeError = null; routing = false; routingSlow = false; routeProgress = null; longRouteAsk = null; slowPlanAsk = null
+        route = null; routeError = null; routing = false; routingSlow = false; routeProgress = null; routeShare = null; longRouteAsk = null; slowPlanAsk = null
         followNextRoute = false; planEditPending = false
         notRouted = why
         mapData.corridorFollowsPlan(null)
@@ -2036,7 +2045,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val pts = waypoints.toList()
         val pins = pinnedIndices()
         routeCancel?.cancel(); routeCancel = null; routingSlow = false // an older request stops at once
-        routeProgress = null
+        routeProgress = null; routeShare = null
         followCancel?.cancel(); followCancel = null // the tour's follow line of the old plan: a new one comes with this run
         notRouted = null
         if (pts.size < 2) {
@@ -2065,6 +2074,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             delay(150) // debounce quick taps
             // the Cancel button appears only when it takes a while (no flicker for normal routes)
             val slow = launch { delay(ROUTING_SLOW_MS); if (requests.isCurrent(gen)) routingSlow = true }
+            // the wait bar within a leg (owner 2026-11-05): the router's search, polled off the main thread
+            val planThread = java.util.concurrent.atomic.AtomicReference<Thread?>(null)
+            val bar = WaitBar()
+            val poll = launch(Dispatchers.Default) {
+                while (isActive) {
+                    delay(WAIT_POLL_MS)
+                    val t = planThread.get() ?: continue
+                    val legs = routeProgress ?: continue
+                    val share = bar.next(legs.first, legs.second, (engine as? com.onpath.app.routing.BRouterEngine)?.searchProgress(t))
+                    withContext(Dispatchers.Main) { if (requests.isCurrent(gen) && routing) routeShare = share }
+                }
+            }
             var planner: Planner? = null
             val result = withContext(routingDispatcher) {
                 exceptions {
@@ -2073,14 +2094,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     // (named stops: read on the main thread when the result is taken – snapToRoute → PlanResult.withNamed)
                     // in Plan the time limit asks "Weiter warten?" (SlowPlan); a run for Navigate keeps the straight lines
                     com.onpath.app.routing.PlanResult.plan(Planner(eng, cancel, askAtLimit = askAtLimit, rounds = rounds, legs = legCache,
-                        progress = { done, total -> showProgress(gen, done, total) }).also { planner = it },
+                        progress = { done, total -> planThread.set(Thread.currentThread()); showProgress(gen, done, total) }).also { planner = it },
                         pts, act, level, pins, emptySet(), f)
                 }
             }
-            slow.cancel()
+            slow.cancel(); poll.cancel()
             // the corridor work of a result off the main thread
             val post = result.getOrNull()?.let { r -> withContext(Dispatchers.Default) { mapData.postRoute(r.route, pts) } }
-            if (requests.isCurrent(gen)) { routingSlow = false; routeProgress = null }
+            if (requests.isCurrent(gen)) { routingSlow = false; routeProgress = null; routeShare = null }
             if (!requests.isCurrent(gen) || !isActive) { // superseded or cleared
                 Problems.trace("routing", "Route #$gen for ${pts.size} points superseded – result ignored")
                 return@launch

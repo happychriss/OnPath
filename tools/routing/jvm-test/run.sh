@@ -20,6 +20,7 @@
 #      FerryHintTest.kt = routes over a Rhine ferry show the amber ferry hint (needs E5_N50.rd5), pass/fail;
 #      HintInventory.kt = candidate route hints (ford, barriers, access, ...) counted on random routes (RAW_TAP=1);
 #      SafetyTest.kt = trail safety (SAC / via_ferrata / bike limits) metres per class, SAFETY_TAG=label;
+#      SearchProgressTest.kt = the wait bar within one leg: BRouterEngine.searchProgress polled during the 98 km Ruhr leg, pass/fail;
 #      LongBikeRuhrTest.kt = the owner's ~98 km bike plan Hilden → Nordkirchen: whole plan vs only the new legs per edit
 #      (needs E5_N50.rd5, docs/design/long-bike-routes.md); MEMCLASS=<MB> patches BRouter's node-cache limit (default 64);
 #      NO_VIA_CORRECTION=1 compiles the engine with BRouter's correctMisplacedViaPoints off (for comparison);

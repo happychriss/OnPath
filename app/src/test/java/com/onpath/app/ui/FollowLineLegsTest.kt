@@ -27,6 +27,15 @@ class FollowLineLegsTest {
         assertTrue("a stopped run changes nothing", follow.contains("if (cancel.isCancelled) {") && follow.contains("return@launch"))
     }
 
+    /** The wait bar moves within one long leg (owner 2026-11-05): the router is asked off the main thread, for the plan's thread only. */
+    @Test fun theWaitBarAsksTheRouterOffTheMainThread() {
+        val run = vm.substringAfter("private fun recalc() {").substringBefore("\n    }\n")
+        assertTrue(run, run.contains("val poll = launch(Dispatchers.Default)"))
+        assertTrue(run, run.contains("searchProgress(t)") && run.contains("bar.next("))
+        assertTrue(run, run.contains("planThread.set(Thread.currentThread())"))
+        assertTrue("the poll stops with the run", run.contains("slow.cancel(); poll.cancel()"))
+    }
+
     @Test fun newRoutingDataDropsTheLegs() {
         val engine = vm.substringAfter("private fun routingEngine(): RoutingEngine =").substringBefore("\n    /**")
         assertTrue(engine, engine.contains("legCache.clear()"))
