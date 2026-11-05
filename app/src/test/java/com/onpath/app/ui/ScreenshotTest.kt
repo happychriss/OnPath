@@ -699,6 +699,27 @@ class ScreenshotTest {
 
     @Test fun navigateFreePaused() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true)) }
 
+    /** A tour without a route (owner 2026-11-05): "Freie Tour · nur Aufnahme" instead of an empty route line. */
+    @Test fun navigateFreeTour() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = false)) }
+
+    /** ✕ Neu planen during a tour (owner 2026-11-05): "Plan leeren? Deine Tour läuft weiter …" – Plan leeren / Abbrechen. */
+    @Test fun planClearDuringTour() = paparazzi.snapshot {
+        OnPathTheme {
+            Frame(editing = true) {
+                PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)), PlanCallbacks())
+            }
+            DiscardPlanDialog({}, {}, onSave = null, touring = true)
+        }
+    }
+
+    /** The empty plan during a tour: "Tour läuft weiter – setz neue Punkte oder geh ‹ Zur Tour." */
+    @Test fun planEmptyDuringTour() = paparazzi.snapshot {
+        Frame(editing = true) {
+            PlanPanel(PlanUi(0, null, false, null, canUndo = true, canRedo = false, activity = Activity.HIKE, tourRunning = true,
+                tour = TourState(1_700.0, 878, paused = false), size = PlanSize.MINI), PlanCallbacks())
+        }
+    }
+
     // --- Activity while navigating (owner: a wrong activity is a disaster) ---
     private fun fit(a: Activity, problems: List<String>, timeS: Double, extraM: Double = 0.0) =
         com.onpath.app.navigation.ActivityFit(a, 3, problems, 7_400.0 + extraM, timeS, extraM, emptyList())

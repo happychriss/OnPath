@@ -257,4 +257,8 @@
     <string name="plan_slow_title">Die Route ist lang, die Berechnung dauert.</string>
     <string name="plan_slow_text">Weiter warten?</string>
     <string name="plan_slow_wait">Weiter warten</string>
+    <string name="plan_clear_tour_title">Plan leeren?</string>
+    <string name="plan_clear_tour_text">Deine Tour läuft weiter und wird weiter aufgezeichnet.</string>
+    <string name="plan_clear_tour_confirm">Plan leeren</string>
+    <string name="plan_hint_tour_goes_on">Tour läuft weiter – setz neue Punkte oder geh ‹ Zur Tour.</string>
 </resources>

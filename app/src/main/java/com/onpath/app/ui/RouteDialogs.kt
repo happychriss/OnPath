@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,7 +38,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 fun RouteDialogs(vm: AppViewModel) {
     vm.saveAsk?.let { ask -> SaveNameDialog(ask.kind, ask.name, onSave = vm::confirmSave, onCancel = vm::cancelSave) }
     if (vm.discardAsk) DiscardPlanDialog(onDiscard = vm::discardConfirmed, onCancel = { vm.discardAsk = false },
-        onSave = if (vm.canSaveBeforeClear) vm::discardSaveFirst else null)
+        onSave = if (vm.planUnsaved && vm.canSaveBeforeClear) vm::discardSaveFirst else null, touring = vm.clearDuringTour)
     vm.replaceAsk?.let { t ->
         ReplacePlanDialog(onSaveFirst = vm::replaceSaveFirst, onReplace = vm::replaceConfirmed, onCancel = { vm.replaceAsk = null },
             fromLink = t is PlanToOpen.Shared)
@@ -109,17 +110,21 @@ fun SaveNameDialog(kind: SaveAsk.Kind, name: String, onSave: (String) -> Unit, o
  * plan; [onSave] null = nothing to save). A saved route itself stays in My routes either way.
  */
 @Composable
-fun DiscardPlanDialog(onDiscard: () -> Unit, onCancel: () -> Unit, onSave: (() -> Unit)? = null) {
+fun DiscardPlanDialog(onDiscard: () -> Unit, onCancel: () -> Unit, onSave: (() -> Unit)? = null, touring: Boolean = false) {
     AlertDialog(
         onDismissRequest = onCancel,
-        title = { Text(str(Res.string.plan_discard_title)) },
+        // during a tour (owner 2026-11-05): "Plan leeren?" and the sentence that the tour goes on
+        title = { Text(str(if (touring) Res.string.plan_clear_tour_title else Res.string.plan_discard_title)) },
+        text = if (touring) ({ Text(str(Res.string.plan_clear_tour_text), style = MaterialTheme.typography.bodyLarge) }) else null,
         // three answers: stacked, right-aligned (Material's stacked dialog buttons) – no button wraps alone onto a line
         confirmButton = {
             androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.End) {
                 if (onSave != null) TextButton(onClick = onSave, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(str(Res.string.plan_bar_save)) }
+                // without unsaved changes during a tour the one answer is "Plan leeren" (nothing is lost: the tour goes on)
                 TextButton(onClick = onDiscard, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(str(Res.string.plan_discard), color = OnPathColors.Error) }
+                    if (touring && onSave == null) Text(str(Res.string.plan_clear_tour_confirm))
+                    else Text(str(Res.string.plan_discard), color = OnPathColors.Error) }
                 TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) }
             }
         },

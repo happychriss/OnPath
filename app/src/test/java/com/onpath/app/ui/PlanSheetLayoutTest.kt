@@ -68,11 +68,11 @@ class PlanSheetLayoutTest {
     @Test fun clearAsksToSaveAnUnsavedPlan() {
         assertFalse(Regex("onSave\\w*").containsMatchIn(panel))
         val vm = src("ui/AppViewModel.kt")
-        assertTrue(vm.contains("fun requestClear() { if (planUnsaved) discardAsk = true else clearPlan() }"))
+        assertTrue(vm.contains("fun requestClear() { if (ClearAsk.asks(planUnsaved, recState.value != null, waypoints.size)) discardAsk = true else clearPlan() }"))
         assertTrue(vm.contains("fun discardSaveFirst() { discardAsk = false; askSave { clearPlan() } }"))
         assertTrue(vm.contains("val canSaveBeforeClear: Boolean get() = RouteRules.saveInMenu(waypoints.size)"))
         val dialogs = src("ui/RouteDialogs.kt")
-        assertTrue(dialogs.contains("onSave = if (vm.canSaveBeforeClear) vm::discardSaveFirst else null"))
+        assertTrue(dialogs.contains("onSave = if (vm.planUnsaved && vm.canSaveBeforeClear) vm::discardSaveFirst else null"))
         val dialog = dialogs.substringAfter("fun DiscardPlanDialog(").substringBefore("\n}\n")
         assertTrue(dialog, dialog.contains("if (onSave != null) TextButton(onClick = onSave"))
     }

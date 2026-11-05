@@ -292,7 +292,10 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     }
     // the empty plan's hint belongs to the summary step: the sheet opens at it, so a first start sees how to begin
     // (owner 2026-11-02: "beim ersten Öffnen … sieht man es gar nicht")
-    if (ui.pointCount == 0) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { FirstPointHint() }
+    if (ui.pointCount == 0) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) {
+        // during a tour (owner 2026-11-05): the tour goes on – new points, or back to it
+        if (ui.tour != null || ui.tourRunning) TourGoesOnHint() else FirstPointHint()
+    }
     // a tap on the open map (hold-only): the same hand says how to set a point – in the step the sheet opens at
     else if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { TapHoldHint() }
     if (ui.offlineInfo != null && ui.pointCount > 0)
@@ -768,6 +771,16 @@ private fun FirstPointHint() {
             append(" ")
             append(str(Res.string.plan_hint_first_point))
         }, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** The empty plan during a tour: "Tour läuft weiter – setz neue Punkte oder geh ‹ Zur Tour." */
+@Composable
+private fun TourGoesOnHint() {
+    Row(verticalAlignment = Alignment.Top) {
+        Icon(Icons.Filled.TouchApp, null, tint = OnPathColors.PlanAccent, modifier = Modifier.padding(top = 1.dp).size(24.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(str(Res.string.plan_hint_tour_goes_on), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

@@ -22,7 +22,8 @@ class PlanActionsTest {
 
     @Test fun closePlanAsksOnlyWithUnsavedChanges() {
         val body = vm.substringAfter("fun requestClear()").substringBefore("\n")
-        assertTrue(body, body.contains("if (planUnsaved) discardAsk = true else clearPlan()"))
+        // owner 2026-11-05: during a tour it asks too ("Plan leeren? Deine Tour läuft weiter …")
+        assertTrue(body, body.contains("if (ClearAsk.asks(planUnsaved, recState.value != null, waypoints.size)) discardAsk = true else clearPlan()"))
         assertTrue(vm.contains("fun discardConfirmed() { discardAsk = false; clearPlan() }"))
         // unsaved = a new plan of two points, or a saved one changed since
         assertTrue(RouteRules.isUnsaved(listOf(a, b), null))

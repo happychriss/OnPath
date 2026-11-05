@@ -1281,5 +1281,29 @@
     "priority": 1,
     "confidence": "sicher",
     "max": 8
+  },
+  "plan_clear_tour_title": {
+    "area": "Plan",
+    "context": "Question title when ✕ Neu planen is tapped during a running tour",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_clear_tour_text": {
+    "area": "Plan",
+    "context": "Body of the clear-plan question during a tour",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_clear_tour_confirm": {
+    "area": "Plan",
+    "context": "The answer that clears the plan during a tour (no unsaved changes)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_hint_tour_goes_on": {
+    "area": "Plan",
+    "context": "The empty plan sheet during a tour",
+    "priority": 1,
+    "confidence": "sicher"
   }
 }

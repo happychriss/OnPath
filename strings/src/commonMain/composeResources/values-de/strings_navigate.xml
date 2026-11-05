@@ -276,4 +276,5 @@
     <string name="nav_end_stat_ascent">Aufstieg</string>
     <string name="nav_end_plan_line">„%1$s“ – mit deinen Änderungen von unterwegs</string>
     <string name="nav_end_plan_line_new">Wird als neuer Plan gespeichert</string>
+    <string name="nav_free_tour">Freie Tour · nur Aufnahme</string>
 </resources>

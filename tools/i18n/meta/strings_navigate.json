@@ -1332,5 +1332,11 @@
     "context": "Line under \"Also save the changed plan\" when the plan was never saved",
     "priority": 1,
     "confidence": "sicher"
+  },
+  "nav_free_tour": {
+    "area": "Navigate",
+    "context": "Navigate status card during a tour without a route",
+    "priority": 1,
+    "confidence": "sicher"
   }
 }

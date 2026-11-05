@@ -258,4 +258,8 @@
     <string name="plan_slow_title">This route is long and takes a while.</string>
     <string name="plan_slow_text">Keep waiting?</string>
     <string name="plan_slow_wait">Keep waiting</string>
+    <string name="plan_clear_tour_title">Clear plan?</string>
+    <string name="plan_clear_tour_text">Your tour goes on and keeps recording.</string>
+    <string name="plan_clear_tour_confirm">Clear plan</string>
+    <string name="plan_hint_tour_goes_on">Tour goes on – set new points or go ‹ Back to tour.</string>
 </resources>

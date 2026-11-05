@@ -1910,7 +1910,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * My routes; with unsaved changes ([planUnsaved]) ONE question first, "Discard changes?" Cancel · Discard · Save
      * (owner 2026-11-05: the sheet has no Save any more – ✕ asks to save).
      */
-    fun requestClear() { if (planUnsaved) discardAsk = true else clearPlan() }
+    fun requestClear() { if (ClearAsk.asks(planUnsaved, recState.value != null, waypoints.size)) discardAsk = true else clearPlan() }
+
+    /** During a tour the question says the tour goes on (owner 2026-11-05): "Plan leeren? Deine Tour läuft weiter …". */
+    val clearDuringTour: Boolean get() = recState.value != null
 
     /** "Discard changes?" → Discard. */
     fun discardConfirmed() { discardAsk = false; clearPlan() }
@@ -1940,6 +1943,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // GPX track keeps its own line.
         val fromPlan = followFromPlan || (planLine != null && followLine == planLine) || !followIsTrack
         if (fromPlan && followLine != null && recState.value == null) clearFollow()
+        // during a tour (owner 2026-11-05): "Neu planen" ends every guidance – also a followed track, also when the plan was
+        // already empty; Navigate shows a free tour, the recording never stops. Undo brings the points (and following them).
+        if (PlanGuidance.clearEndsGuidance(recState.value != null, followLine != null)) {
+            Problems.trace("plan", "Plan cleared during the tour: route guidance ended, recording continues")
+            clearFollow()
+            guidanceEndedByEmptyPlan = true
+        }
     }
 
     fun answerLongRoute(plan: Boolean) {
