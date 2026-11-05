@@ -84,6 +84,7 @@ the git log.
 - [donald] Plan sheet bottom: ONE compact row '▶ Los geht's' / '‹ Navigation' + 'Speichern | Neu planen' (owner 2026-11-05, F) – since 2026-11-05
 
 ## Next
+- **[cloud-plan] Flaky web smokes on GitHub** (2026-11-05): robust-smoke "two quick clicks: the second is the new destination" red in 2 of 4 runs, sync-smoke "Save on the laptop → on the phone" red once – both green locally (also with CPU throttling). Find the cause, no retry loops.
 - **[cloud-app] Navigate's slider bar: no change (owner 2026-11-05 correction)** – the slider and today's buttons stay as built;
   the action-sheet / tile ideas of today are dropped. The open design question is only the plan sheet during a tour
   (next line, in work with the captain).
