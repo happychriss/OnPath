@@ -40,6 +40,13 @@ the git log.
 
 
 ## For the captain
+- ← [cloud-plan] (hp 2026-11-05) **Planner follow-ups on web-spike** (68b4cbc3 … f739d426): (1) time limit → the app's
+  FRAGE box „Die Route ist lang, die Berechnung dauert. Weiter warten?“ (SlowPlan, #21 B; Weiter warten = rounds + 1,
+  Abbrechen = like Cancel); (2) A-022 web texts (31 keys, texts-check now guards the A-022 words); (3) found-place card
+  under the pin like the app (name, blue plan_pin_add / on an empty plan „Hierhin“, „⋯ Mehr“ = the place card) – the
+  label follows the app's key, so „+ Hinzufügen“ (#26) comes with donald's app change; (4) point menu with loopStart;
+  (5) header „Android-App testen“ / “Try the Android app” → onpath.earth/de/ausprobieren/ · /try/ (the DE address
+  without /de/ is 404, so the existing /de/ URL stays). Shared code untouched (web-only) – no release coupling.
 - ← [cloud worker 2026-11-05] **v0.16.0 released** (7419f1dd, GO app 1c3e9f18 + planner 74c2b069): all five wip branches + the pin card on main; long bike routes only measured (113 km: an edit re-routes all, 645 ms vs 50 ms per leg on the JVM) – leg cache left for a day session. Fixed on the way: NavReplayTest (mid-route question), E2E "Replace current plan?", numbers in the stop circles, the JVM harness (SlowPlan, VisitRadius). Question #26 („Zur Route“ vs „Zum Plan“, taken: owner's wording). Cloud container needs a Gradle init script for Maven Central (429 → Google mirror, ~/.gradle/init.d).
 - ← [cloud worker 2026-11-04] **v0.15.0 released** (main, Release workflow) with the planner web-spike 6343ec37 (main's
   shared code merged; red smokes fixed: pin test, two quick clicks clicked 56 px off, 'Route · date' row). Open for
@@ -76,7 +83,6 @@ the git log.
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [donald] Plan sheet bottom: ONE compact row '▶ Los geht's' / '‹ Navigation' + 'Speichern | Neu planen' (owner 2026-11-05, F) – since 2026-11-05
 - [laptop] (hp, cloud-plan) Planner: terrain view – (A) big elevation profile linked to the map (hover → point on the route, route coloured by steepness), (C) button '3D': MapLibre terrain from the cells' terrain.pmtiles, tilt/turn, view only (owner 2026-11-05: "wir bauen A und C"; D flyover later; app not now) – since 2026-11-05
-- [laptop] (hp, cloud-plan) Planner: wait box → 'Weiter warten?' (SlowPlan, #21 B) · A-022 web texts · pin card '+ Hinzufügen' / 'Hierhin' · '⋯ Mehr' · pointMenu loopStart · header link 'Android-App testen' – since 2026-11-05
 
 ## Next
 - **[cloud-app] Navigate's slider bar: no change (owner 2026-11-05 correction)** – the slider and today's buttons stay as built;

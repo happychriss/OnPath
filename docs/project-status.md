@@ -29,6 +29,10 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **hp (laptop, cloud-plan), 2026-11-05 evening:** web-spike has main 7d830d25 + the planner follow-ups: 'Weiter
+  warten?' at the time limit (SlowPlan, edit-smoke fakes the limit), A-022 web texts, pin card like the app, point menu
+  loopStart, header „Android-App testen“ → try page. Smokes green locally (edit, sheet, lang, import, robust); CI flaked
+  once on robust-smoke "two quick clicks" (passes locally). Next on hp: the planner terrain view (claimed).
 - **donald, 2026-11-03 late – shut down by the owner (~23:20); new build items go to the cloud.** On main tonight:
   plan in blue (no top band), novice fixes, fewer terms → superseded by A-022 (open), load-route question, compact
   bars + equal pills, map buttons one column 56 dp, slow-planning question, next stop in the turn card, way word.
