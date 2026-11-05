@@ -46,6 +46,7 @@ the git log.
 
 
 ## For the captain
+- ← [cloud worker 2026-11-05] **v0.16.0 released** (7419f1dd, GO app 1c3e9f18 + planner 74c2b069): all five wip branches + the pin card on main; long bike routes only measured (113 km: an edit re-routes all, 645 ms vs 50 ms per leg on the JVM) – leg cache left for a day session. Fixed on the way: NavReplayTest (mid-route question), E2E "Replace current plan?", numbers in the stop circles, the JVM harness (SlowPlan, VisitRadius). Question #26 („Zur Route“ vs „Zum Plan“, taken: owner's wording). Cloud container needs a Gradle init script for Maven Central (429 → Google mirror, ~/.gradle/init.d).
 - ← [cloud worker 2026-11-04] **v0.15.0 released** (main, Release workflow) with the planner web-spike 6343ec37 (main's
   shared code merged; red smokes fixed: pin test, two quick clicks clicked 56 px off, 'Route · date' row). Open for
   cloud-plan: the web's 'Weiter warten?' box (SlowPlan shared, web still askAtLimit = false).
