@@ -73,8 +73,11 @@ class PlanSheetLayoutTest {
         assertTrue(vm.contains("val canSaveBeforeClear: Boolean get() = RouteRules.saveInMenu(waypoints.size)"))
         val dialogs = src("ui/RouteDialogs.kt")
         assertTrue(dialogs.contains("onSave = if (vm.planUnsaved && vm.canSaveBeforeClear) vm::discardSaveFirst else null"))
+        // M3 basic dialog (owner 2026-11-05): Verwerfen apart on the left, Abbrechen + filled Speichern on the right
         val dialog = dialogs.substringAfter("fun DiscardPlanDialog(").substringBefore("\n}\n")
-        assertTrue(dialog, dialog.contains("if (onSave != null) TextButton(onClick = onSave"))
+        assertTrue(dialog, dialog.contains("destructive = str(Res.string.plan_discard) to onDiscard") &&
+            dialog.contains("confirm = onSave?.let { str(Res.string.plan_bar_save) to it }"))
+        assertTrue(DecisionLayout.oneRow(300f, 312f)); assertFalse(DecisionLayout.oneRow(330f, 312f))
     }
 
     /**

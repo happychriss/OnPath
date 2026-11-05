@@ -141,7 +141,7 @@ fun MapScreen(
         // A newer version of an area the user has (checked after each route) is told by the background-download strip
         // only – one loading indicator is enough. No cell-state read here: download ticks must not recompose this screen.
         // one padding rule for every route fit (FitPaddingRule): clear of the top elements and the sheet / slider
-        val planTopBand = planTopBarDp(rec != null)
+        val planTopBand = planTopBarDp()
         val fitPadding = {
             FitPaddingRule.of(vm.mode, density.density, topInsetPx,
                 planTopDp = maxOf(if (vm.backgroundStripShown) vm.backgroundStripBottomDp else 0, planTopBand), sheetPx = panelHeightPx,
@@ -171,7 +171,7 @@ fun MapScreen(
         // hints below the search bar go below the background-download strip while it shows
         // (measured height: a message box is taller than the progress chip)
         val hintTop = if (vm.backgroundStripShown && vm.mode == AppMode.PLAN)
-            (vm.backgroundStripBottomDp + MessagePlacement.GAP_DP).coerceAtLeast(124).dp else planTopBarDp(rec != null).dp
+            (vm.backgroundStripBottomDp + MessagePlacement.GAP_DP).coerceAtLeast(124).dp else planTopBarDp().dp
         // A shared place is being looked up (link + address search take a moment): say so at once.
         val sharedLookup = rememberNoFlash(if (vm.sharedLookup) Unit else null, remember { NoFlash<Unit>() }) != null
         androidx.compose.animation.AnimatedVisibility(sharedLookup,
@@ -273,7 +273,7 @@ private fun PlanMode(
         PlanFrame(Modifier.modeEdge(ModeEdge.TOP))
         // the light blue band behind the search pill and ☰ (owner 2026-11-05, b): from the screen's top edge (status bar)
         // to the bar's bottom; during a tour one row more ("‹ Zur Tour")
-        val topBar = planTopBarDp(rec != null)
+        val topBar = planTopBarDp()
         Box(Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().background(PlanTopBand.Color)
             .statusBarsPadding().height(topBar.dp))
         PlanTopBar(
@@ -435,7 +435,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     // the bottom below the status bar: top + measured height (hints under the search bar go below it)
     fun Modifier.measured(topDp: Int) =
         onSizeChanged { vm.backgroundStripBottomDp = topDp + with(density) { it.height.toDp().value.toInt() } }
-    val top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp(rec != null))
+    val top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
     MessageSlot(message, top, Modifier.modeEdge(ModeEdge.TOP), onBottomDp = { vm.backgroundStripBottomDp = it })
     if (pill != null) {
         MapNoticePill(pill, Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding()

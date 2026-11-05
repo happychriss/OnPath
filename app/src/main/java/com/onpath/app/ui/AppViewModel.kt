@@ -1912,6 +1912,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun requestClear() { if (ClearAsk.asks(planUnsaved, recState.value != null, waypoints.size)) discardAsk = true else clearPlan() }
 
+    /** The plan's name for "Plan speichern?" – the saved route it was loaded / saved as; null = a new plan. */
+    val planNameForAsk: String? get() = savedName?.takeIf { it.isNotBlank() }
+
     /** During a tour the question says the tour goes on (owner 2026-11-05): "Plan leeren? Deine Tour läuft weiter …". */
     val clearDuringTour: Boolean get() = recState.value != null
 

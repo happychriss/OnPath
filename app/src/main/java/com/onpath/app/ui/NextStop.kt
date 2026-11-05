@@ -64,6 +64,35 @@ object NextStop {
             at[i]!! - alongM)
     }
 
+    /**
+     * Up to [max] stops ahead (owner 2026-11-05, like Komoot – under the profile in Navigate's card): the same rules as
+     * [ahead] (reached / left-out stops and the start never), nearest first; the goal comes last by itself.
+     */
+    fun aheadList(s: NavSession, alongM: Double, max: Int = 3): List<StopAhead> {
+        if (s.kind != NavKind.PLAN || s.stops.isEmpty()) return emptyList()
+        val at = alongs(s)
+        return s.stops.indices
+            .filter { it !in s.visited && it !in s.skipped && (it > 0 || s.firstNumber > 1) }
+            .filter { (at[it] ?: return@filter false) > alongM + PASSING_M }
+            .sortedBy { at[it]!! }
+            .take(max)
+            .map { i -> StopAhead(s.numberOf(i), s.stops[i].name?.takeIf { it.isNotBlank() }, i == s.stops.lastIndex, at[i]!! - alongM) }
+    }
+
+    /**
+     * Moving seconds from here to a stop in the SAME model as the arrival clock: the card's to-go time ([toGoS], the
+     * service's learned one or the plain model) shared out by the plain model's split – here → end ([plainHereS]) vs
+     * stop → end ([plainAfterS]). 0 when the plain model knows nothing.
+     */
+    fun movingS(toGoS: Double, plainHereS: Double, plainAfterS: Double): Double =
+        if (plainHereS <= 0.0) 0.0 else (toGoS * (plainHereS - plainAfterS) / plainHereS).coerceIn(0.0, toGoS)
+
     /** The stop takes the card when it comes before the turn shown ([turnM]; null = no turn). */
     fun shown(turnM: Double?, stop: StopAhead?): Boolean = stop != null && (turnM == null || stop.distanceM < turnM)
+}
+
+/** A stop row under the profile: the stop and its arrival clock ("an 14:20"; null = no time). */
+data class StopRow(val stop: StopAhead, val arriveAt: String?) {
+    /** The row's name: the stop's own name, else "Ziel" / "Stopp 3" (the sign beside it shows the number too). */
+    val title: String get() = stop.name ?: if (stop.goal) Txt.s(Res.string.nav_card_goal) else Txt.s(Res.string.nav_stop_n, stop.number)
 }

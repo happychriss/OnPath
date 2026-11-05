@@ -198,7 +198,6 @@
     <string name="plan_finding_shared_place">Geteilter Ort wird gesucht…</string>
     <string name="plan_resize_panel">Größe ändern</string>
     <string name="plan_slide_change_route">Plan ändern</string>
-    <string name="plan_back_tour_short">Tour</string>
     <string name="plan_back_to_tour">Zur Tour</string>
     <string name="plan_mode_label">Planen</string>
     <string name="plan_switch_to_plan">Zum Planen wechseln</string>
@@ -261,4 +260,8 @@
     <string name="plan_clear_tour_text">Deine Tour läuft weiter und wird weiter aufgezeichnet.</string>
     <string name="plan_clear_tour_confirm">Plan leeren</string>
     <string name="plan_hint_tour_goes_on">Tour läuft weiter – setz neue Punkte oder geh ‹ Zur Tour.</string>
+    <string name="plan_save_ask_title">Plan speichern?</string>
+    <string name="plan_save_ask_text_named">„%1$s“ hat Änderungen, die noch nicht gespeichert sind.</string>
+    <string name="plan_save_ask_text">Dein Plan hat Änderungen, die noch nicht gespeichert sind.</string>
+    <string name="plan_tour_goes_on">Deine Tour läuft weiter.</string>
 </resources>

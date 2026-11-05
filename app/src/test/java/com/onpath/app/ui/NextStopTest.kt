@@ -96,4 +96,28 @@ class NextStopTest {
         assertTrue(nav.contains("if (!h.turnRound && NextStop.shown(h.distanceM, stop))"))
         assertTrue(nav.contains("if (t.stop != null) StopSign(t.stop"))
     }
+
+    /** Owner 2026-11-05: under Navigate's profile up to 3 stops ahead, nearest first; passed / left-out ones gone; the goal last. */
+    @Test fun theNextThreeStopsUnderTheProfile() {
+        val five = session(0.0 to "Start", 1_200.0 to "Leiteralm", 3_000.0 to null, 4_000.0 to "Kapelle", 5_000.0 to "Hütte")
+        val l = NextStop.aheadList(five, 0.0)
+        assertEquals(listOf(2, 3, 4), l.map { it.number })
+        assertEquals(listOf(1_200.0, 3_000.0, 4_000.0), l.map { it.distanceM })
+        // past 2 (reached): 3, 4 and the goal – the goal last
+        val later = NextStop.aheadList(five.copy(visited = setOf(1)), 1_300.0, max = 3)
+        assertEquals(listOf(3, 4, 5), later.map { it.number })
+        assertTrue(later.last().goal)
+        val skipped = NextStop.aheadList(session(0.0 to "S", 1_200.0 to "A", 3_000.0 to null, 5_000.0 to "Hütte", skipped = setOf(2)), 1_300.0)
+        assertEquals(listOf(4), skipped.map { it.number }); assertTrue(skipped.last().goal)
+        // a followed track: nothing
+        assertTrue(NextStop.aheadList(plan.copy(kind = NavKind.TRACK), 0.0).isEmpty())
+    }
+
+    /** The stop's time: the card's to-go time shared out like the plain model – the same model as the arrival clock. */
+    @Test fun aStopsTimeComesFromTheSameModelAsTheClock() {
+        assertEquals(2.0 * 3600, NextStop.movingS(3.0 * 3600, 3.0 * 3600, 1.0 * 3600), 0.1)
+        assertEquals(4.0 * 3600 * 2 / 3, NextStop.movingS(4.0 * 3600, 3.0 * 3600, 1.0 * 3600), 0.1)
+        assertEquals(4.0 * 3600, NextStop.movingS(4.0 * 3600, 3.0 * 3600, 0.0), 0.1)
+        assertEquals(0.0, NextStop.movingS(100.0, 0.0, 0.0), 0.0)
+    }
 }

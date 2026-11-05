@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.Canvas
@@ -171,6 +172,8 @@ data class ToGo(
     val descentM: Double = 0.0,
     /** The rest of the followed line from the current position (for the elevation profile). */
     val profile: List<GeoPoint> = emptyList(),
+    /** Up to 3 plan stops ahead with their arrival clock, under the profile (owner 2026-11-05); empty = none. */
+    val stops: List<StopRow> = emptyList(),
     /**
      * Can the time be trusted now? NOT_ON_ROUTE: "— not on route" instead of a time; PAUSED: the last time greyed with
      * "estimate paused · [pausedBecause]" (owner rules 6 and 8, docs/plan-time-estimate.md).
@@ -357,6 +360,31 @@ private fun StopSign(s: StopAhead, modifier: Modifier) {
     }
 }
 
+/** One stop ahead under the profile: the map's sign (small), the name ("…"), then distance and "an 14:20" – never cut. */
+@Composable
+private fun StopAheadRow(r: StopRow) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(vertical = 2.dp).semantics(mergeDescendants = true) {},
+        verticalAlignment = Alignment.CenterVertically) {
+        // grows with a large font (the number is never cut): at least 28 dp, round while it fits
+        Box(Modifier.sizeIn(minWidth = 28.dp, minHeight = 28.dp).background(if (r.stop.goal) OnPathColors.PointGoal else OnPathColors.PointStop,
+            androidx.compose.foundation.shape.CircleShape).padding(horizontal = 6.dp, vertical = 2.dp), contentAlignment = Alignment.Center) {
+            if (r.stop.goal) Icon(Icons.Filled.Flag, null, tint = OnPathColors.CardWhite, modifier = Modifier.size(16.dp))
+            else Text(r.stop.number.toString(), color = OnPathColors.CardWhite, style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.width(10.dp))
+        Text(r.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f))
+        Spacer(Modifier.width(8.dp))
+        Column(horizontalAlignment = Alignment.End) {
+            Text(Format.distance(r.stop.distanceM), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold,
+                maxLines = 1, softWrap = false)
+            r.arriveAt?.let { Text(str(Res.string.nav_stop_arrive, it), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false) }
+        }
+    }
+}
+
 /** Rounded like a navigation display: 10 m steps below 200 m, 50 m steps above. */
 internal fun turnDistance(m: Double): String = when {
     m < 15 -> Txt.s(Res.string.nav_turn_distance_now)
@@ -535,7 +563,12 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
         if (profileOpen && canOpen) {
             if (hasProfile) ElevationProfile(ui.toGo!!.profile, height = 84.dp, gradient = true,
                 modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
-                onHighlight = { p -> p?.let(onProfileScrub) }, onRelease = onProfileRelease)
+                onHighlight = { p -> p?.let(onProfileScrub) }, onRelease = onProfileRelease,
+                marks = ui.toGo.stops.map { ProfileMark(it.stop.distanceM, it.stop.number, it.stop.goal) })
+            // the next stops ahead (owner 2026-11-05, like Komoot): sign · name · distance · "an 14:20"
+            ui.toGo?.stops?.takeIf { it.isNotEmpty() }?.let { rows ->
+                Column(Modifier.padding(start = 12.dp, end = 16.dp, bottom = 8.dp)) { rows.forEach { StopAheadRow(it) } }
+            }
             // moving time / breaks live here, then the pace in plain words (owner)
             if (ui.toGo != null) movingLine?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -841,6 +874,17 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         else remaining?.let { r ->
             ToGo(r.distanceM, r.ascentM, toGoS ?: 0.0, r.offM, r.descentM,
                 profile = line?.let { l -> l.subList(r.index.coerceIn(0, l.size - 1), l.size) } ?: emptyList(),
+                // the next 2–3 stops (owner 2026-11-05): the same rules as the turn card's stop, the same time model as the clock
+                stops = nav?.session?.let { sess ->
+                    val now = System.currentTimeMillis()
+                    val f = vm.planFactors()
+                    val plainHere = toGoSeconds(times, r.distanceM, f)
+                    NextStop.aheadList(sess, (total - r.distanceM).coerceAtLeast(0.0)).map { st ->
+                        val mv = NextStop.movingS(toGoS ?: plainHere, plainHere, toGoSeconds(times, (r.distanceM - st.distanceM).coerceAtLeast(0.0), f))
+                        StopRow(st, if (toGoS == null && times == null) null
+                            else com.onpath.app.time.TimeEstimate.clock(com.onpath.app.time.TimeEstimate.arrivalMs(now, mv)))
+                    }
+                } ?: emptyList(),
                 state = tt?.state ?: com.onpath.app.time.EstimateState.OK, pausedBecause = tt?.pausedBecause?.text, target = target)
         },
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,

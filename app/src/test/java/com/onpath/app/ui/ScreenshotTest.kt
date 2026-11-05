@@ -88,16 +88,16 @@ class ScreenshotTest {
                 // Plan is blue (owner 2026-11-03): band under the status bar (the 32 dp stand-in) + soft edge
                 PlanFrame()
                 // the light blue band behind the search pill and ☰ (owner 2026-11-05) – as MapScreen draws it
-                Box(Modifier.fillMaxWidth().background(PlanTopBand.Color).padding(top = 32.dp).height(planTopBarDp(editing).dp))
+                Box(Modifier.fillMaxWidth().background(PlanTopBand.Color).padding(top = 32.dp).height(planTopBarDp().dp))
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing, offline = offline,
                         onBackToTour = if (editing) ({}) else null)
                     // the activity as a button on the map (owner 2026-11-05, R5) – as MapScreen places it
-                    ActivityMapButton(Activity.HIKE, 2, {}, Modifier.padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp(editing)).dp, start = 12.dp))
-                    SheetWithFooter(planTopBarDp(editing).dp, footer = {
+                    ActivityMapButton(Activity.HIKE, 2, {}, Modifier.padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp()).dp, start = 12.dp))
+                    SheetWithFooter(planTopBarDp().dp, footer = {
                         Column(Modifier.fillMaxWidth()) { aboveFooter(); footer() }
                     }, sheet = bottom)
-                    Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp(editing)).dp,
+                    Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp()).dp,
                         start = MessagePlacement.GAP_DP.dp, end = MessagePlacement.GAP_DP.dp)) { top() }
                 }
             }
@@ -128,6 +128,22 @@ class ScreenshotTest {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.padding(top = 40.dp, start = 12.dp, end = 12.dp)) { NavStatusCard(navUi, onResume = {}, profileOpen = true) }
+            }
+        }
+    }
+
+    /** The opened card with the next stops (owner 2026-11-05): sign, name, distance, arrival; the signs on the profile. */
+    @Test fun navigateProfileStops() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                MapPlaceholder(Modifier.fillMaxSize())
+                Box(Modifier.padding(top = 40.dp, start = 12.dp, end = 12.dp)) {
+                    NavStatusCard(navUi.copy(toGo = navUi.toGo!!.copy(stops = listOf(
+                        StopRow(StopAhead(2, "Leiteralm", false, 1_240.0), "13:05"),
+                        StopRow(StopAhead(3, null, false, 3_480.0), "14:20"),
+                        StopRow(StopAhead(4, "Gasthof Hochmuth am Tirolersteig", true, 7_420.0), "15:55")))),
+                        onResume = {}, profileOpen = true)
+                }
             }
         }
     }
@@ -455,11 +471,19 @@ class ScreenshotTest {
         }
     }
 
-    /** ✕ Close plan with unsaved changes (owner 2026-10-31): the one question "Discard changes?" Cancel · Discard. */
+    /** ✕ Neu planen with unsaved changes (owner 2026-11-05, M3 basic dialog): "Plan speichern?" Verwerfen | Abbrechen · Speichern. */
     @Test fun planDiscardAsk() = paparazzi.snapshot {
         OnPathTheme {
             Frame { PlanPanel(planUi().copy(unsaved = true), PlanCallbacks()) }
-            DiscardPlanDialog({}, {}, onSave = {})
+            DiscardPlanDialog({}, {}, onSave = {}, name = "Rund um den Kofel")
+        }
+    }
+
+    /** The same for a new plan during a tour: "Dein Plan hat Änderungen …" + "Deine Tour läuft weiter." */
+    @Test fun planDiscardAskTour() = paparazzi.snapshot {
+        OnPathTheme {
+            Frame(editing = true) { PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)), PlanCallbacks()) }
+            DiscardPlanDialog({}, {}, onSave = {}, touring = true)
         }
     }
 
@@ -496,20 +520,7 @@ class ScreenshotTest {
         }
     }
 
-    /**
-     * Proposal 2026-11-05 (owner: the two-row band wastes space – HOLD): "back to the tour" in ONE row – R1 a round "←"
-     * left of the search pill, R2 a "‹ Tour" chip; TWO_ROWS = the built version for comparison. Tour, profile step.
-     */
-    fun planBackStyle(style: BackToTourStyle) = paparazzi.snapshot(name = "back_${style.name.lowercase()}") {
-        androidx.compose.runtime.CompositionLocalProvider(LocalBackToTourStyle provides style) {
-            Frame(editing = true) {
-                PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
-                    PlanCallbacks())
-            }
-        }
-    }
-
-    /** The plan during a tour as it opens (summary step): "‹ Zur Tour" in the band, plan row, facts – no green button. */
+    /** The plan during a tour as it opens (summary step): the round "←" left of the search pill, plan row, facts – no green button. */
     @Test fun planTourRunningCollapsed() = paparazzi.snapshot {
         Frame(editing = true) {
             PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
@@ -708,7 +719,7 @@ class ScreenshotTest {
             Frame(editing = true) {
                 PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)), PlanCallbacks())
             }
-            DiscardPlanDialog({}, {}, onSave = null, touring = true)
+            DiscardPlanDialog({}, {}, onSave = null, touring = true, unsaved = false)
         }
     }
 
