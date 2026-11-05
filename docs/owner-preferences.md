@@ -35,7 +35,7 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
 ## How sessions work
 - **The owner must notice when a session waits** (owner 2026-11-02): every question also goes to the dashboard
   (`tools/ask.sh`), and on donald / the laptop the Claude push is on (`/config`: "Push when actions required" + "Push
-  when Claude decides" – `docs/roles/neu/umstellung.md`). A question asked only in the chat is a bug.
+  when Claude decides" – `docs/roles/multi-agent-lernen.md` §2). A question asked only in the chat is a bug.
 - **Main session talks and distributes; work runs in background agents** (builds, checks, merges, installs). The
   main session keeps the overview of all agents (task → state → next step), stops stuck ones, and reports without
   being asked. **The chat stays responsive** (owner 2026-11-01): a request that takes longer than ~2 minutes and stands
@@ -61,6 +61,13 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
 - Debug builds must include the world overview: `-Ponpath.overviewAssets=<dir with overview/*.pmtiles>`; with the
   configuration cache a changed property may be ignored – use `--no-configuration-cache` and check the APK contains
   `assets/overview/*.pmtiles`.
+
+## Setup work (owner 2026-11-05, after the audit `docs/history/setup-2026-11/audit-setup-2026-11-05.md`)
+- **Research and check before building**: docs, existing solutions, the sessions' real transcripts; prove platform
+  facts with a small test. Never sell an assumption as a fact.
+- No new mechanism without a real case; unused for a week → removed. Hooks / `gate.sh` / locks hit every session at
+  once → test every combination before the push. Measure before asking the owner. One file per topic. At most one
+  setup change per day.
 
 ## Worktrees and agents
 - Sub-agents (owner 2026-11-01: split work over 3–4 when it costs little overhead): one worktree per editing agent,

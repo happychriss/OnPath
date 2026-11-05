@@ -2,7 +2,7 @@
 # PreToolUse hook for Bash (.claude/settings.json): the rules that must hold, enforced instead of asked for.
 #   git push     → only when tools/ci/gate.sh was green for this HEAD or the same own change after a rebase
 #                  (stamp .git/onpath-gate-ok: HEAD + patch-id) and no open
-#                  an-alle issue says #push-sperre (tools/ask.sh check). Pushes of wip/* (save-on-shutdown) and
+#                  an-alle issue says #push-sperre (tools/ask.sh check). Pushes of wip/* (work saved before a shutdown) and
 #                  --dry-run pass.
 #   adb install / installDebug / installRelease → only through tools/dev/device.sh (one agent per device, no
 #                  install while a tour records).

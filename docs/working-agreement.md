@@ -112,50 +112,10 @@ Never rely on chat history of another session – if it matters, it must be in t
 
 **End:** tests green → push → remove your claim → write "Last session" → push → `git status` is clean.
 
-## 8. Roles and channels (from 2026-10-31)
-
-Every session has one role; the role files in `docs/roles/` say what it owns, its branch, computer and folder. All
-sessions are cloud sessions (used from the browser, the desktop app or the phone app – the same session everywhere);
-two of them attach to the owner's computers via Remote Control:
-
-```
-                  cloud-captain
-   messages + reads transcripts of all three
-           /           |            \
-     ↓ message, ↑ "For the captain" in the backlog   (roles cannot message the captain)
-         /             |              \
-   cloud-app       cloud-plan       cloud-web
-   (donald)        (laptop)         (cloud only)
-         \             |              /
-     GitHub: backlog, handoffs, code   ·   onpath.private (marketing)
-```
-
-| Channel | For | Rule |
-| --- | --- | --- |
-| `docs/backlog.md` | claims, requests between roles, the captain's release go | tag = role name: `[cloud-app]`, `[cloud-plan]`, `[captain]` (website / marketing claims live in `onpath.private`) |
-| "Last session" in `docs/project-status.md` | handoffs | one entry per role per sitting, name the role |
-| "For the roles" in `docs/backlog.md` | the captain's lasting word to the roles: what to do next, what changed | one line per item, `→ [cloud-app]` etc.; the role reads it at the start and after every pull, does it or moves it to "In progress", then deletes the line |
-| "For the captain" in `docs/backlog.md` | a role's word to the captain: answers, blockers | one line per item, `← [cloud-plan]` etc.; the captain deletes the line once read |
-| Direct message captain → role | "must know now" | short plain text; only this direction works; never the only record – lasting things also go into the backlog; a message never counts as the owner's consent |
-| `onpath.private` | marketing, ideas, private screenshots | never into a public repo |
-| R2 TEST (`publish_cells.sh`), GitHub Releases | map cells, APKs | as before |
-
-**Computers.** donald serves `/home/development/Projects/work/onpath-app` (cloud-app, Pixel on USB), the laptop serves `/home/development/Projects/work/onpath-plan`
-(cloud-plan, map builds; big map data outside the checkout). One folder per session, never shared. The computer
-needs the Claude desktop app running with Remote Control on (or `claude remote-control` in that folder). Computer
-off → the role works on in a fresh cloud session without device / local data.
-
-**Shared code between app and planner** (`routing/PlanResult`, `sync/`, `map/ActivityLayers`, `gpx/PlanGpx`, BRouter
-profiles, `PLANNER_VERSION`): a change is announced to the other side, and releases / planner deploys that touch it
-need the captain's go (`docs/roles/cloud-captain.md`, "Release check").
-
-The older tags `[laptop]` / `[desktop]` / `[cloud]` in §1–5 still describe *where* work runs; new claims use the
-role tags.
-
-**Tested 2026-10-31 (step 6 of `docs/roles/README.md`, done):** sessions attached to a computer (cloud-app,
-cloud-plan) refuse a plain cloud session (`elevated_session_untrusted_device`). The owner cleared the captain session
-once (a card on a trusted device, asked for with the refusal's `content_digest` via `confirm_repository_trust`);
-since then the captain messages and reads all three roles. That clearance limits the captain to the owner's trusted
-devices for good – so the roles in turn cannot message the captain; they write under "For the captain" (cloud-plan's reply was refused with
-`elevated_session_untrusted_device` – not the one-way limit of `SendMessage` guessed earlier). A fresh
-captain session needs the same clearance once; it must never attach to a computer folder (it would lose the reach).
+## 8. Roles and channels
+Who works where and how: `docs/roles/README.md` (donald → `docs/roles/start.md`, captain → `docs/roles/captain.md`).
+Channels: the repo (backlog, handoffs, code) and the issues in `happychriss/onpath.private` (questions to the owner,
+the owner's word to all – `tools/ask.sh`). Sessions do not message each other; the captain can, with the owner's tap per
+call, for something urgent only. Shared code between app and planner (`app/web-shared-files.txt`): a change is
+announced to the other side in the backlog, and a release / planner deploy that touches it needs
+`tools/ci/release_check.sh` GO. The tested platform facts behind this: `docs/roles/multi-agent-lernen.md` §2.

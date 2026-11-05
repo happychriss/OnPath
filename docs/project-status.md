@@ -5,7 +5,7 @@ Current release **0.14.0** (2026-11-03). Open work: `docs/backlog.md`. Core feat
 the current state.
 
 ## Where things are
-<!-- Kept by the captain every round (docs/roles/neu/captain.md 5c). -->
+<!-- Kept by the captain every round (docs/roles/captain.md). -->
 - **Pixel:** main b047bf79, installed 2026-11-01 19:55 (newest handoff that names it; the night draft 63b0194d is not on it).
 - **GitHub release:** v0.16.0 (2026-11-05 night, 7419f1dd, cloud worker for donald): round trips start at ① and stay round trips (A, C), re-route "Über ③ / ③ auslassen" with numbered circles (B), "PLANEN · Ohne Netz ✓/⟳/⚠", the found place's card "+ Zur Route" · "⋯ Mehr", A-022 words (Meine Touren, Geplant | Gemacht). Before: v0.15.0 (2026-11-04, e0ad10a8). Not in it: the leg cache for long bike routes (measured only, `docs/design/long-bike-routes.md`). Next: A-003 Play build.
 - **Planner (plan.onpath.earth):** web-spike 74c2b069 (2026-11-05, has main c40b638b = the v0.16.0 shared code; Web spike green after one re-run of a timing flake in robust-smoke). Open for cloud-plan: A-022 web texts, the pin card, loopStart in the web point menu, the 'Weiter warten?' box.

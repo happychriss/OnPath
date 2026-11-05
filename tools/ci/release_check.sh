@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The release check (docs/roles/cloud-captain.md "Release check", as a script – setup concept 2026-11-01 §4f): may the
+# The release check (docs/roles/captain.md "Release"): may the
 # app release and the planner deploy go out together? App and planner must route and sync identically:
 #   1. routing fingerprint inputs equal: BRouter version + PLANNER_VERSION (routing/RoutingFingerprint.kt), the
 #      profiles + lookups.dat (app/src/main/assets/brouter/), the BRouter jars (app/libs/)
