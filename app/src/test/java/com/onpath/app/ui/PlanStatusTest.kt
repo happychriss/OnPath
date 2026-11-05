@@ -101,4 +101,16 @@ class PlanStatusTest {
         val leave = vm.substringAfter("private fun leaveUnrouted(").substringBefore("\n    }")
         assertTrue(leave, leave.contains("routing = false") && leave.contains("requests.invalidate()"))
     }
+
+    /** The wait card counts the legs routed (owner 2026-11-05): "Calculating section 2 of 4…", a quarter of the bar; one leg = running bar. */
+    @Test fun theWaitCardCountsTheLegsRouted() {
+        assertEquals(PlanStatus.CALCULATING, PlanStatus.calculating(null))
+        assertEquals(PlanStatus.CALCULATING, PlanStatus.calculating(0 to 1))
+        assertFalse(PlanStatus.hasLegs(0 to 1))
+        assertTrue(PlanStatus.hasLegs(0 to 2))
+        assertEquals("Calculating section 2 of 4…", PlanStatus.calculating(1 to 4))
+        assertEquals("the last leg done: still 4 of 4", "Calculating section 4 of 4…", PlanStatus.calculating(4 to 4))
+        assertEquals(0.25f, PlanStatus.share(1 to 4), 0.0001f)
+        assertEquals(1f, PlanStatus.share(5 to 4), 0.0001f)
+    }
 }

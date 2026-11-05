@@ -17,6 +17,20 @@ enum class NotRouted {
 object PlanStatus {
     val CALCULATING: String get() = Txt.s(Res.string.plan_calculating)
 
+    /**
+     * The wait card's line (owner 2026-11-05): "Abschnitt 2 von 4 wird berechnet…" while legs are routed one by
+     * one ([progress] = legs done / legs to route, only the legs the router works on), else [CALCULATING].
+     */
+    fun calculating(progress: Pair<Int, Int>?): String =
+        if (hasLegs(progress)) Txt.s(Res.string.plan_calculating_leg, minOf(progress!!.first + 1, progress.second), progress.second)
+        else CALCULATING
+
+    /** A determinate bar: two or more legs to route ([calculating]); one leg (or none known) = the running bar. */
+    fun hasLegs(progress: Pair<Int, Int>?): Boolean = progress != null && progress.second >= 2
+
+    /** The bar's share: legs done / legs to route. */
+    fun share(progress: Pair<Int, Int>): Float = (progress.first.toFloat() / progress.second).coerceIn(0f, 1f)
+
     /** What Cancel does: Undo / Redo one plan step, put the activity and T level back, or keep the points unrouted. */
     enum class OnCancel { UNDO, REDO, RESTORE_ACTIVITY, KEEP_POINTS }
 

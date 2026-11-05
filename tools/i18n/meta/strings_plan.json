@@ -222,6 +222,13 @@
     "priority": 1,
     "confidence": "sicher"
   },
+  "plan_calculating_leg": {
+    "area": "Plan sheet",
+    "context": "Plan sheet wait card while a route of several legs is calculated, above a progress bar: %1$d = the leg being routed now, %2$d = legs to route (legs already known are not counted)",
+    "priority": 1,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-05 asked for e.g. 'Route wird berechnet · Abschnitt 2 von 4'; shortened so it stays one line beside Abbrechen"
+  },
   "plan_hint_first_point": {
     "area": "Plan sheet",
     "context": "Plan sheet with no points yet (first use). \"☰ → Start recording\" names the menu path (keep it equal to plan_menu_start_recording)",

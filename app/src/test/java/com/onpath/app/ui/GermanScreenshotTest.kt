@@ -33,6 +33,7 @@ class GermanScreenshotTest {
     private val shots get() = borrow(ScreenshotTest())
 
     @Test fun plan() = shots.plan()
+    @Test fun planRoutingSlowProgress() = shots.planRoutingSlowProgress()
     @Test fun planWholeRoute() = shots.planWholeRoute()
     @Test fun planTapHoldHint() = shots.planTapHoldHint()
     @Test fun planMapControlTip() = shots.planMapControlTip()

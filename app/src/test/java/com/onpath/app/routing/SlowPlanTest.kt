@@ -66,7 +66,7 @@ class SlowPlanTest {
     @Test fun theAppAsksOnlyInPlanAndCancelIsTheUsualCancel() {
         val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
         assertTrue(vm.contains("val askAtLimit = mode == AppMode.PLAN"))
-        assertTrue(vm.contains("Planner(eng, cancel, askAtLimit = askAtLimit, rounds = rounds)"))
+        assertTrue(vm.contains("Planner(eng, cancel, askAtLimit = askAtLimit, rounds = rounds, legs = legCache"))
         val answer = vm.substringAfter("fun answerSlowPlan(").substringBefore("\n    }\n")
         assertTrue(answer, answer.contains("if (next == null) { planRounds = 1; cancelRun(NotRouted.STOPPED); return }"))
         assertTrue(answer, answer.contains("nextCause = runCause") && answer.contains("recalc()"))

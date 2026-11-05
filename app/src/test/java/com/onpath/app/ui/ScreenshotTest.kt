@@ -299,6 +299,15 @@ class ScreenshotTest {
         Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true).copy(routingSlow = true), PlanCallbacks()) }
     }
 
+    /**
+     * A long plan routed leg by leg (owner 2026-11-05): the wait card counts the legs the router works on –
+     * "Calculating section 2 of 4…" over a bar a quarter full, Cancel beside it.
+     */
+    @Test fun planRoutingSlowProgress() = paparazzi.snapshot {
+        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true)
+            .copy(routingSlow = true, routeProgress = 1 to 4), PlanCallbacks()) }
+    }
+
     /** A plan much longer than a day is asked about before it is routed. */
     @Test fun longRouteQuestion() = paparazzi.snapshot {
         OnPathTheme {

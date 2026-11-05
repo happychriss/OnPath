@@ -58,6 +58,7 @@
     <string name="plan_spots_tap">Tap a spot to see it on the map.</string>
     <string name="plan_warn_show_spots">Show the spots</string>
     <string name="plan_calculating">Calculating the route…</string>
+    <string name="plan_calculating_leg">Calculating section %1$d of %2$d…</string>
     <string name="plan_hint_first_point_question">Where to?</string>
     <string name="plan_hint_first_point">Hold your destination on the map – or find it in the search bar above.</string>
     <string name="plan_hint_tap_hold">Hold to set a point here.</string>
