@@ -97,6 +97,11 @@ the git log.
   Handy“ until the phone has it; (6) folders per phone id stay (several people, one browser: each sees only their tours –
   hidden ≠ protected, see (4)). Conflicts as today (newer wins, older „(Kopie)“). Recorded GPS tours stay phone-only for now.
   Owner scenarios as smokes: first visit, second visit, pair with saved tours, delete both ways, unpair keep/remove, friend's phone.
+- **[laptop] Idea (owner 2026-11-06, later): show how full the sync mailbox is, maybe buy more** – limits today
+  (web/host/src/sync.js LIMITS): 1000 items per phone (tombstones and „(Kopie)“ copies count), 4 MB; a plan ≈ 3 KB. Show it in
+  the browser's phone window („312 von 1000 Touren“, a thin bar, amber from 80 %) and in the app's Settings → Browser sync; the
+  host would return the mailbox's use with the pull (no new request). Paid bigger mailbox: needs payment (Play billing) tied to
+  an anonymous mailbox – a privacy and product decision for the owner first; not before real users ask.
 - **[donald] Test audit + clean-out (owner 2026-11-06)** – report `docs/design/test-audit.md` (branch donald-test-audit),
   then after the merge of the six evening branches: drop / convert per the report; build a JVM AppViewModel test and
   random-sequence invariant tests; no new source-text tests. Planner part → [laptop].
