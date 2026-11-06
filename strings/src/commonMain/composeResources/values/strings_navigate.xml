@@ -30,6 +30,8 @@
     <string name="nav_arrive">Arrive</string>
     <string name="nav_profile_show">Show elevation profile</string>
     <string name="nav_profile_hide">Hide elevation profile</string>
+    <string name="nav_card_open">expanded</string>
+    <string name="nav_card_closed">collapsed</string>
     <string name="nav_copy_position">Copy position</string>
     <string name="nav_position_clip">Position</string>
     <string name="nav_copied">%1$s · copied ✓</string>

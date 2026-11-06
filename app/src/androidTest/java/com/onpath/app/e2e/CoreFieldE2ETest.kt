@@ -14,6 +14,8 @@ import com.onpath.strings.nav_leave_title
 import com.onpath.strings.plan_go_here
 import com.onpath.strings.plan_new_during_tour
 import com.onpath.strings.plan_undo
+import com.onpath.strings.nav_profile_hide
+import com.onpath.strings.nav_profile_show
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
@@ -620,6 +622,30 @@ class CoreFieldE2ETest : E2EBase() {
         assertTrue("the recording goes on", recording())
         scenario.onActivity { vm(it).undoStep() }
         waitUntil("Undo: both points back", 10_000) { waypointList() == plan }
+    }
+
+    /**
+     * Owner 2026-11-06 23:42: Navigate's top card keeps its chevron but opens / closes like the plan sheet – a tap
+     * anywhere on the card (not the chevron) toggles it, pushing it up closes it, pulling it down opens it.
+     */
+    @Test fun theNavigateCardOpensByATapAndClosesByADragUp() {
+        startPlanWithTwoPoints()
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        val chevron = findFresh(By.desc(Txt.s(Res.string.nav_profile_show)), 10_000)
+        assertNotNull("the card with its chevron (closed)", chevron)
+        val b = chevron!!.visibleBounds
+        // a point on the card's head, well left of the chevron (the time / distance text – no button of its own)
+        val x = (b.left - b.width() * 3).coerceAtLeast(b.width())
+        val y = b.centerY()
+        device.click(x, y)
+        assertNotNull("a tap on the card opens it", findFresh(By.desc(Txt.s(Res.string.nav_profile_hide)), 5_000))
+        device.swipe(x, y, x, y - b.height() * 4, 25)
+        assertNotNull("pushing it up closes it", findFresh(By.desc(Txt.s(Res.string.nav_profile_show)), 5_000))
+        device.swipe(x, y, x, y + b.height() * 4, 25)
+        assertNotNull("pulling it down opens it", findFresh(By.desc(Txt.s(Res.string.nav_profile_hide)), 5_000))
+        assertEquals("a drag on the card is no map gesture: still Navigate", AppMode.NAVIGATE, mode())
     }
 
     private fun waypointList(): List<GeoPoint> { var l: List<GeoPoint> = emptyList(); scenario.onActivity { l = vm(it).waypoints.toList() }; return l }

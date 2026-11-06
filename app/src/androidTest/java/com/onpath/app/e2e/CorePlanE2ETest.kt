@@ -13,6 +13,9 @@ import com.onpath.strings.Txt
 import com.onpath.strings.plan_start_recording_for
 import com.onpath.strings.plan_menu_record_without_plan
 import com.onpath.strings.plan_menu
+import com.onpath.strings.plan_sheet_bigger
+import com.onpath.strings.plan_sheet_smaller
+import com.onpath.app.ui.PlanSize
 import org.maplibre.android.geometry.LatLng
 
 /**
@@ -110,4 +113,24 @@ class CorePlanE2ETest : E2EBase() {
         try { scenario.onActivity { a -> vm(a).endTourAndDelete() } } catch (_: Exception) {} // expected: app already closed
         waitUntil("the tour ended", 20_000) { var r = true; scenario.onActivity { a -> r = vm(a).recState.value != null }; !r }
     }
+
+    /**
+     * Owner 2026-11-06 23:42: the plan sheet keeps its drag handle and a tap on it steps the sheet – bigger one step,
+     * from the largest step back one; TalkBack hears what the tap does.
+     */
+    @Test fun aTapOnTheHandleStepsTheSheet() {
+        startPlanWithTwoPoints()
+        scenario.onActivity { vm(it).planSize = PlanSize.COMPACT }
+        Thread.sleep(800)
+        val bigger = findFresh(By.desc(Txt.s(Res.string.plan_sheet_bigger)), 10_000)
+        assertNotNull("the handle says what a tap does", bigger)
+        bigger!!.click()
+        waitUntil("a tap on the handle: one step bigger", 5_000) { planSize() == PlanSize.FULL }
+        val smaller = findFresh(By.desc(Txt.s(Res.string.plan_sheet_smaller)), 5_000)
+        assertNotNull("on the largest step it says smaller", smaller)
+        smaller!!.click()
+        waitUntil("a tap on the largest step: one step back", 5_000) { planSize() == PlanSize.COMPACT }
+    }
+
+    private fun planSize(): PlanSize { var s = PlanSize.MINI; scenario.onActivity { s = vm(it).planSize }; return s }
 }

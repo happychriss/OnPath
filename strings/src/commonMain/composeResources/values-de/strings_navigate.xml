@@ -29,6 +29,8 @@
     <string name="nav_arrive">Ankunft</string>
     <string name="nav_profile_show">Höhenprofil anzeigen</string>
     <string name="nav_profile_hide">Höhenprofil ausblenden</string>
+    <string name="nav_card_open">aufgeklappt</string>
+    <string name="nav_card_closed">zugeklappt</string>
     <string name="nav_copy_position">Position kopieren</string>
     <string name="nav_position_clip">Position</string>
     <string name="nav_copied">%1$s · kopiert ✓</string>

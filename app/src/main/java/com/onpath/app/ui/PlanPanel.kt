@@ -246,6 +246,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
         step = size.step,
         onStep = { cb.onResize(PlanSize.ofStep(it)) },
         onHandleTap = { cb.onResize(size.tapped()) },
+        handleLabel = str(if (ExpandGesture.handleGrows(size)) Res.string.plan_sheet_bigger else Res.string.plan_sheet_smaller),
         state = state,
         onDragging = cb.onSheetDrag,
         // the rolled-up row has its own small green button

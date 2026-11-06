@@ -1347,5 +1347,17 @@
     "priority": 2,
     "confidence": "sicher",
     "max": 30
+  },
+  "plan_sheet_bigger": {
+    "area": "Plan sheet",
+    "context": "Screen reader action of the sheet handle: a tap makes the sheet one step bigger",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_sheet_smaller": {
+    "area": "Plan sheet",
+    "context": "Screen reader action of the sheet handle: on the largest step a tap makes it smaller",
+    "priority": 3,
+    "confidence": "sicher"
   }
 }
