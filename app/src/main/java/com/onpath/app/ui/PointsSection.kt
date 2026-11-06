@@ -216,7 +216,7 @@ private fun PointRows(
             val shiftPx by animateFloatAsState(shiftRows * rowPx, label = "row shift",
                 animationSpec = if (from != null) spring(stiffness = Spring.StiffnessMediumLow) else snap())
             Surface(
-                color = if (lifted) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent,
+                color = if (lifted) MaterialTheme.colorScheme.surfaceContainerHighest else Color.Transparent,
                 shadowElevation = if (lifted) 6.dp else 0.dp,
                 shape = MaterialTheme.shapes.small,
                 modifier = Modifier.zIndex(if (lifted) 1f else 0f)

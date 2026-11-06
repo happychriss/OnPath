@@ -36,6 +36,11 @@ object OnPathColors {
     val CardWhite = Color(0xFFFFFFFF)
     /** Page background (website `#FAFAF6`). */
     val Paper = Color(0xFFFAFAF6)
+    /**
+     * Paper one shade darker (owner 2026-11-06: "überall den Papierton"): the page behind paper cards (Settings, My
+     * routes) and boxes inside a paper surface – so the cards and the facts box still stand out without any white.
+     */
+    val PaperDim = Color(0xFFF1F0E9)
     val Route = Color(0xFF1E3FAE)
     /**
      * The plan's numbered points, on the map and in the Points list (owner 2026-11-01, like Komoot): the start in the
@@ -156,11 +161,13 @@ private val scheme = lightColorScheme(
     onSecondary = Color.White,
     secondaryContainer = Color(0xFFDDE3F7),
     onSecondaryContainer = Color(0xFF0E1E57),
-    surface = OnPathColors.CardWhite,
+    // paper is the ground of every surface (owner 2026-11-06); white only for what floats over the map (search pill,
+    // pin card, message boxes, Navigate's cards) and fields one types into – set there with OnPathColors.CardWhite
+    surface = OnPathColors.Paper,
     onSurface = OnPathColors.Ink,
-    surfaceVariant = Color(0xFFF1F3EF),
+    surfaceVariant = Color(0xFFEFEEE7),
     onSurfaceVariant = OnPathColors.InkMuted,
-    background = OnPathColors.Paper,
+    background = OnPathColors.PaperDim,
     onBackground = OnPathColors.Ink,
     tertiary = OnPathColors.Warn,
     onTertiary = Color.White,
@@ -175,13 +182,13 @@ private val scheme = lightColorScheme(
     // Neutral (slightly green) containers instead of Material's default purple tint:
     // menus, sheets, cards and chips all take these.
     surfaceTint = OnPathColors.Walnut,
-    surfaceBright = Color.White,
+    surfaceBright = OnPathColors.Paper,
     surfaceDim = Color(0xFFDADDD7),
     surfaceContainerLowest = Color.White,
     surfaceContainerLow = OnPathColors.Paper,
-    surfaceContainer = Color(0xFFF1F3EF),
-    surfaceContainerHigh = Color(0xFFEBEEE9),
-    surfaceContainerHighest = Color(0xFFE5E8E3),
+    surfaceContainer = OnPathColors.Paper,       // menus
+    surfaceContainerHigh = OnPathColors.Paper,   // dialogs
+    surfaceContainerHighest = Color(0xFFEAE9E1), // filled fields, a lifted row – one step darker than paper
 )
 
 /**

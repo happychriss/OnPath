@@ -191,7 +191,7 @@ fun BackgroundDownloadChip(ui: BackgroundDownloadUi, onClick: () -> Unit, modifi
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun BackgroundDownloadSheet(ui: BackgroundDownloadUi, onCancelAll: () -> Unit, onClose: () -> Unit) {
-    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onClose, containerColor = OnPathColors.CardWhite) {
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onClose, containerColor = OnPathColors.Paper) {
         BackgroundDownloadDetailsContent(ui, onCancelAll, onClose)
     }
 }

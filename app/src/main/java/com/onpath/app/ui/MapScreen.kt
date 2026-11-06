@@ -187,7 +187,7 @@ fun MapScreen(
             modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = hintTop),
             enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
             androidx.compose.material3.Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-                shadowElevation = 3.dp, color = androidx.compose.material3.MaterialTheme.colorScheme.surface) {
+                shadowElevation = 3.dp, color = OnPathColors.CardWhite) { // over the map: white (owner 2026-11-06)
                 androidx.compose.foundation.layout.Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     androidx.compose.material3.CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)

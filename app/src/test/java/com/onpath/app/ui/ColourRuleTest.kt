@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import androidx.compose.ui.graphics.luminance
 import java.io.File
 
 /**
@@ -58,5 +59,17 @@ class ColourRuleTest {
         val screen = src("ui/MapScreen.kt")
         assertTrue("Weiter warten = plan", screen.contains("), tone = ButtonTone.EDIT) // waiting for a plan to compute"))
         assertEquals("load / follow during a tour = navigation", 2, Regex("tone = ButtonTone\\.GO\\)").findAll(src("ui/Notices.kt")).count())
+    }
+
+    /** Owner 2026-11-06: paper is the ground of every surface; white only for what floats over the map. */
+    @Test fun paperForSurfacesWhiteOverTheMap() {
+        val theme = java.io.File("src/main/java/com/onpath/app/ui/Theme.kt").readText()
+        for (role in listOf("surface = OnPathColors.Paper", "surfaceBright = OnPathColors.Paper", "surfaceContainerLow = OnPathColors.Paper",
+                "surfaceContainer = OnPathColors.Paper", "surfaceContainerHigh = OnPathColors.Paper"))
+            org.junit.Assert.assertTrue(role, theme.contains(role))
+        org.junit.Assert.assertTrue("text on paper ≥ 4.5:1", run { val (hi, lo) = listOf(OnPathColors.Ink.luminance(), OnPathColors.Paper.luminance()).sortedDescending(); (hi + 0.05) / (lo + 0.05) } >= 4.5)
+        val ui = java.io.File("src/main/java/com/onpath/app/ui")
+        for (f in listOf("SettingsScreen.kt", "Screens.kt", "BackupScreens.kt"))
+            org.junit.Assert.assertFalse("$f: a white card on a page", java.io.File(ui, f).readText().contains("RoundedCornerShape(16.dp), color = Color.White"))
     }
 }

@@ -73,7 +73,8 @@ fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = M
     val isStop = ui.routeIndex != null
     Surface(
         modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-        shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp,
+        shape = MaterialTheme.shapes.extraLarge, color = com.onpath.app.ui.OnPathColors.CardWhite, // over the map: white
+        shadowElevation = 8.dp,
     ) {
         Column(Modifier.padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
