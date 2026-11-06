@@ -5,16 +5,17 @@
 #      profiles + lookups.dat (app/src/main/assets/brouter/), the BRouter jars (app/libs/)
 #   2. sync format equal: the shared sync/ files
 #   3. every other app file the planner compiles (app/web-shared-files.txt, else appFiles in web/engine/build.gradle.kts) equal
-#   4. CI green on both heads: unit.yml on the app ref, "Web spike" on the planner ref (needs gh; else "unknown")
-# Two branches today (main = app, web-spike = planner). After web-spike is merged into main both refs are main:
-# 1–3 hold by construction and only CI is checked.
+#   4. CI green: unit.yml on the app ref, "Web planner" (web.yml) on the planner ref (needs gh; else "unknown")
+# One branch since 2026-11-06 (web-spike merged into main): both refs are main, 1–3 hold by construction and only CI
+# is checked. web.yml runs only when the planner or the app code it compiles changed – then its newest run on main
+# counts. release.yml deploys the planner itself after the app release (job "planner").
 #
 # Usage: tools/ci/release_check.sh [--app REF] [--web REF] [--no-ci] [--go vX.Y.Z]
-#   defaults: --app origin/main, --web origin/web-spike (falls back to the app ref when it does not exist)
+#   defaults: --app origin/main, --web origin/main
 #   --go vX.Y.Z  print the go line for the backlog / release issue when everything holds
 # Exit: 0 = go, 1 = not equal / red, 2 = usage or git error. Reads only – fetches, never pushes or writes.
 set -uo pipefail
-APP=origin/main WEB=origin/web-spike CI=1 GO=""
+APP=origin/main WEB=origin/main CI=1 GO=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --app) APP=${2:?}; shift ;;
@@ -57,7 +58,7 @@ for dir in app/src/main/assets/brouter app/libs; do
 done
 
 # 2 + 3. the app files the planner compiles: app/web-shared-files.txt ([files]) – the one list since 2026-11-01 –
-# else appFiles in web/engine/build.gradle.kts (web-spike before it reads the list)
+# else appFiles in web/engine/build.gradle.kts (older trees before it read the list)
 LIST=app/web-shared-files.txt BUILD=web/engine/build.gradle.kts
 shared_files() { # ref → file names below $SRC
   if git cat-file -e "$1:$LIST" 2>/dev/null; then
@@ -85,7 +86,7 @@ else
     if [ ${#sync_diff[@]} = 0 ]; then ok "sync/ files equal"; else bad "sync/ differs: ${sync_diff[*]}"; fi
     echo "3. Shared app files (${#FILES[@]})"
     if [ ${#other_diff[@]} = 0 ]; then ok "all equal"; else
-      bad "${#other_diff[@]} differ – merge $APP into $WEB first (web/parity/merge-main.sh):"
+      bad "${#other_diff[@]} differ – bring $WEB up to $APP first:"
       printf '      %s\n' "${other_diff[@]}"
     fi
   fi
@@ -100,10 +101,17 @@ run_state() { # workflow file, sha → "success" / "failure" / "in_progress" / "
     2>/dev/null || echo unknown
 }
 if [ "$CI" = 0 ]; then echo "  – skipped (--no-ci)"; else
-  for pair in "unit.yml $APP_SHA app" "web-spike.yml $WEB_SHA planner"; do
+  for pair in "unit.yml $APP_SHA app" "web.yml $WEB_SHA planner"; do
     set -- $pair
-    [ "$3" = planner ] && [ "$WEB_SHA" = "$APP_SHA" ] && ! git cat-file -e "$APP:.github/workflows/web-spike.yml" 2>/dev/null && continue
+    [ "$3" = planner ] && ! git cat-file -e "$WEB:.github/workflows/web.yml" 2>/dev/null && continue
     st=$(run_state "$1" "$2")
+    if [ "$st" = none ] && [ "$3" = planner ] && command -v gh >/dev/null; then # path filter: nothing of the planner changed
+      last=$(gh api "repos/$REPO/actions/workflows/web.yml/runs?branch=main&per_page=10" \
+        --jq '[.workflow_runs[] | select(.conclusion != "cancelled" and .event != "pull_request")][0] | "\(.head_sha) \(if .status != "completed" then .status else .conclusion end)"' 2>/dev/null || true)
+      if [ -n "$last" ] && git merge-base --is-ancestor "${last%% *}" "$WEB_SHA" 2>/dev/null; then
+        set -- "$1" "${last%% *}" planner; st=${last#* }
+      fi
+    fi
     case "$st" in
       success) ok "$1 green on ${2:0:8} ($3)" ;;
       unknown) bad "$1 on ${2:0:8}: unknown (no gh access) – check Actions by hand" ;;

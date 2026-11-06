@@ -1,4 +1,4 @@
-# OnPath web planner host – docs/design/web-planner.md §9. Deployed by .github/workflows/web-spike.yml (manual).
+# OnPath web planner host – docs/design/web-planner.md §9. Deployed by .github/workflows/web.yml (with an app release, or by hand).
 # No secrets here. The maps bucket is only read (map cells), never written.
 name = "onpath-planner"
 main = "src/index.js"

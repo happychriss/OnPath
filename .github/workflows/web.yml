@@ -1,17 +1,53 @@
-# Web planner spike (docs/design/web-planner.md §6): builds the Wasm routing engine from the app's own code with
+# Web planner (docs/design/web-planner.md §6): builds the Wasm routing engine from the app's own code with
 # TeaVM, builds the web page, and checks that 20 routes come out the same in headless Chromium as on the JVM.
-# Only for the web-spike branch – nothing here touches the app build or main.
+# On main since the one-branch merge (owner 2026-11-06, onpath.private#32): the checks run on every push / pull request
+# that touches the planner or the app code it compiles; nothing here touches the app build. The planner goes online
+# only on purpose – with an app release (release.yml calls this file with deploy) or Actions → Web planner → Run
+# workflow → deploy – so phone and browser always come from the same commit.
 #
 # Layout (web-planner.md §9 "CI"): build (engine + page, uploaded as artifact "web-build") ∥ jvm (the app's tests of
 # the shared files, JVM routes, Wasm = JVM checks, browser compare, host tests) ∥ smokes (5 machines, browser smokes
 # balanced by time; jvm and smokes set up while build runs, then wait for it) → deploy (only when every job above is
 # green) + results (one artifact as before).
 # The TeaVM build is skipped when nothing it compiles changed (cache key = hash of every file the engine build reads).
-name: Web spike
+name: Web planner
 
 on:
+  # the planner, the app code the engine compiles (same list as the engine cache key below) and this file
   push:
-    branches: [web-spike]
+    branches: [main]
+    paths:
+      - "web/**"
+      - "app/web-shared-files.txt"
+      - "app/src/main/java/**"
+      - "app/src/test/java/com/onpath/app/**"
+      - "app/libs/**"
+      - "app/src/main/assets/**"
+      - "tools/routing/jvm-test/**"
+      - "strings/**"
+      - "gradle/**"
+      - "gradlew"
+      - "gradle.properties"
+      - "settings.gradle.kts"
+      - "build.gradle.kts"
+      - ".github/workflows/web.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "app/web-shared-files.txt"
+      - "app/src/main/java/**"
+      - "app/src/test/java/com/onpath/app/**"
+      - "app/libs/**"
+      - "app/src/main/assets/**"
+      - "tools/routing/jvm-test/**"
+      - "strings/**"
+      - "gradle/**"
+      - "gradlew"
+      - "gradle.properties"
+      - "settings.gradle.kts"
+      - "build.gradle.kts"
+      - ".github/workflows/web.yml"
   workflow_dispatch:
     inputs:
       deploy:
@@ -30,12 +66,13 @@ permissions:
   contents: read
   actions: read
 
+# a deploy run is never cancelled by a later push; plain check runs of the same ref replace each other
 concurrency:
-  group: web-spike-${{ github.ref }}
-  cancel-in-progress: true
+  group: web-planner-${{ github.ref }}-${{ inputs.deploy && 'deploy' || 'check' }}
+  cancel-in-progress: ${{ !inputs.deploy }}
 
 jobs:
-  build:
+  web-build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -59,7 +96,7 @@ jobs:
           path: |
             web/engine/build/generated/teavm/wasm-gc
             web/engine/build/style
-          key: web-engine-v1-${{ runner.os }}-${{ hashFiles('web/engine/**', 'app/src/main/java/**', 'app/src/test/java/com/onpath/app/**', 'app/libs/**', 'app/src/main/assets/**', 'tools/routing/jvm-test/**', 'strings/**', 'web/strings/**', 'gradle/**', 'gradlew', 'gradle.properties', 'settings.gradle.kts', 'build.gradle.kts', '.github/workflows/web-spike.yml') }}
+          key: web-engine-v1-${{ runner.os }}-${{ hashFiles('web/engine/**', 'app/src/main/java/**', 'app/src/test/java/com/onpath/app/**', 'app/libs/**', 'app/src/main/assets/**', 'tools/routing/jvm-test/**', 'strings/**', 'web/strings/**', 'gradle/**', 'gradlew', 'gradle.properties', 'settings.gradle.kts', 'build.gradle.kts', '.github/workflows/web.yml') }}
 
       - uses: actions/setup-java@v4
         if: steps.engine.outputs.cache-hit != 'true'
@@ -182,9 +219,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for i in $(seq 1 120); do # the build job of this run ("<caller> / build" when called by another workflow)
+          for i in $(seq 1 120); do # the web-build job of this run ("<caller> / web-build" when called by another workflow)
             st=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?per_page=100" \
-              --jq '[.jobs[] | select(.name == "build" or (.name | endswith(" / build")))][0] | "\(.status) \(.conclusion)"' || echo "?")
+              --jq '[.jobs[] | select(.name == "web-build" or (.name | endswith(" / web-build")))][0] | "\(.status) \(.conclusion)"' || echo "?")
             case "$st" in
               "completed success") echo "build job done"; exit 0 ;;
               completed*) echo "::error::the build job ended: $st"; exit 1 ;;
@@ -273,9 +310,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for i in $(seq 1 120); do # the build job of this run ("<caller> / build" when called by another workflow)
+          for i in $(seq 1 120); do # the web-build job of this run ("<caller> / web-build" when called by another workflow)
             st=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?per_page=100" \
-              --jq '[.jobs[] | select(.name == "build" or (.name | endswith(" / build")))][0] | "\(.status) \(.conclusion)"' || echo "?")
+              --jq '[.jobs[] | select(.name == "web-build" or (.name | endswith(" / web-build")))][0] | "\(.status) \(.conclusion)"' || echo "?")
             case "$st" in
               "completed success") echo "build job done"; exit 0 ;;
               completed*) echo "::error::the build job ended: $st"; exit 1 ;;
@@ -389,15 +426,15 @@ jobs:
             web/engine/build/*.json
             web/engine/build/*.png
 
-  # Deploy: every green push to web-spike, or Actions → Web spike → Run workflow → deploy. Only when build, jvm and
+  # Deploy: with an app release (release.yml) or Actions → Web planner → Run workflow → deploy. Only when build, jvm and
   # every smoke group are green. Needs the repository secret CLOUDFLARE_PLANNER_TOKEN (Workers scripts, D1 edit + the
   # planner zone's routes/DNS, nothing else), the repository variables CLOUDFLARE_ACCOUNT_ID (exists), PLANNER_HOST_TEST
   # (e.g. plan.onpath.earth) and SYNC_D1_ID_TEST (the sync database, web-sync.md §10), and Cloudflare Access on that
   # host set up first (web-planner.md §9; /sync/* bypasses Access, the mailbox token guards it).
   deploy:
-    needs: [build, jvm, smokes]
-    # owner 2026-10-27: every green push to web-spike goes online (the test site is behind Cloudflare Access)
-    if: inputs.deploy || (github.event_name == 'push' && github.ref == 'refs/heads/web-spike')
+    needs: [web-build, jvm, smokes]
+    # one branch (owner 2026-11-06): no deploy on a plain push to main – only on purpose (release.yml / dispatch)
+    if: inputs.deploy
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -467,7 +504,7 @@ jobs:
 
   # The results of every job in one artifact, as before (jvm / browser results, compare summary, screenshots).
   results:
-    needs: [build, jvm, smokes]
+    needs: [web-build, jvm, smokes]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -475,6 +512,6 @@ jobs:
       - uses: actions/upload-artifact/merge@v4
         continue-on-error: true # nothing to merge when the build failed
         with:
-          name: web-spike-results
+          name: web-planner-results
           pattern: results-*
           delete-merged: true

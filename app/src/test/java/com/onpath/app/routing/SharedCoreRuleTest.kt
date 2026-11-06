@@ -53,7 +53,7 @@ class SharedCoreRuleTest {
     }
 
     /**
-     * Shared with the web planner's engine (TeaVM, `web/engine/build.gradle.kts` appFiles on web-spike – owner: plans
+     * Shared with the web planner's engine (TeaVM, `web/engine/build.gradle.kts` reads app/web-shared-files.txt – owner: plans
      * and routes identical in browser and app): besides no Android, no reflection and no java.security (TeaVM has
      * neither; hashes use sync/Sha256). Add a file here when the web is to compile it.
      */

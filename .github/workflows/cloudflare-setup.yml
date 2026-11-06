@@ -9,16 +9,11 @@
 #   CLOUDFLARE_PLANNER_TOKEN  (optional, for the deploy job) permanent narrow token: Account · Workers Scripts · Edit,
 #                         Account · D1 · Edit, Zone onpath.earth · Workers Routes · Edit, Zone onpath.earth · DNS · Edit
 # Variable: CLOUDFLARE_ACCOUNT_ID (exists).
-# Start: a workflow_dispatch needs the file on main, so a Claude session starts it through the GitHub API on
-# web-spike (or once this file is on main: Actions → Cloudflare setup → Run workflow).
+# Start: Actions → Cloudflare setup → Run workflow (the file is on main since the one-branch merge).
 # Nothing secret is printed; the logs of this public repository are public.
 name: Cloudflare setup
 
 on:
-  # a dispatch needs the file on main – from web-spike a commit to this request file starts it (dry_run=true|false)
-  push:
-    branches: [web-spike]
-    paths: [".github/cloudflare-setup.request"]
   workflow_dispatch:
     inputs:
       dry_run:
@@ -150,8 +145,8 @@ jobs:
   deploy:
     needs: setup
     if: needs.setup.outputs.deploy == 'true'
-    uses: ./.github/workflows/web-spike.yml
-    permissions: # web-spike.yml's test jobs ask the API whether its build job is done
+    uses: ./.github/workflows/web.yml
+    permissions: # web.yml's test jobs ask the API whether its web-build job is done
       contents: read
       actions: read
     with:
