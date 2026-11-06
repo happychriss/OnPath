@@ -47,6 +47,12 @@ green → prune the ci branch.
   round trip switch, start screen).
 - Disk: ~50 old agent worktrees under `.claude/worktrees/` (most fully merged) – clean up when the owner agrees.
 
+- **Test audit (owner 2026-11-06: "Test-Case-Review und -Audit, gründlich, App und Planer, dann rausschmeißen")**:
+  step 1 report running on branch `donald-test-audit` (worktree agent-…, `docs/design/test-audit.md`: KEEP / CONVERT /
+  DROP with reasons, core-feature coverage kept, gaps: a JVM test that drives the real AppViewModel + random-sequence
+  invariant tests). Step 2 AFTER the six-branch merge: delete / convert per the report on main; the planner list goes to
+  the laptop (web-spike). No new source-text tests (`File("src/main…").readText()` + contains) from now on.
+
 ## Decisions of today (so nobody re-asks)
 
 Plan blue / to navigation green / neutral Walnuss / red only delete · paper surfaces, white only for what floats over
