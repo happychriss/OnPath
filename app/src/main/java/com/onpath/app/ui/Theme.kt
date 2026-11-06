@@ -77,10 +77,22 @@ object OnPathColors {
     val OnGreenMuted = Color(0xFFDCE8E1)
 
     // ---- Actions: one colour = one kind of action (owner 2026-11-02, docs/design/ui-style.md "Colour rule") ----
-    /** Navigation: start / continue / pause-resume the guidance – a step lighter than [Green] (white 5.2:1). */
-    val ActionGo = Color(0xFF2E7A58)
+    /**
+     * Navigation: start / continue / pause / end, back to the guidance – everything that goes to the navigation is this
+     * one green (owner 2026-11-06: "alles blau, und was zur Navigation geht, grün"; white 7.5:1). It is [Green]: the big
+     * green buttons used to take the theme's primary, which is [Walnut] now.
+     */
+    val ActionGo = Color(0xFF245F46)
     /** Edit: change the route (white 5.7:1) – the owner's steel blue, calmer than the route line's [Route]. */
     val ActionEdit = Color(0xFF2E6A9E)
+    /**
+     * Neutral, the theme's primary (owner 2026-11-06, onpath.private#36 "Wir nehmen erstmal Walnuss"): every button
+     * without a meaning of its own – Cancel, OK, Close, settings – a dark earth tone, so green means only "to the
+     * navigation" and blue only "plan" (white 10.2:1; told apart from green also with red-green weakness).
+     */
+    val Walnut = Color(0xFF4A3F37)
+    /** Light walnut container (selected rows, chips): [Walnut] ink on it ≥ 8:1. */
+    val WalnutLight = Color(0xFFEDE6DF)
     /** Stop: end the process you are in (white 5.6:1) – the same red as [Error]. */
     val ActionStop = Color(0xFFC62828)
 
@@ -119,11 +131,27 @@ object OnPathColors {
     val Bad = Error
 }
 
+/**
+ * The colour of a button by what it does (owner 2026-11-06, docs/design/flow-map.md "Colour rule audit"): to the
+ * navigation green ([OnPathColors.ActionGo]), plan blue ([OnPathColors.ActionEdit]); without either the theme's walnut.
+ */
+object ActionButtons {
+    @Composable fun go() = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionGo, contentColor = Color.White)
+    @Composable fun edit() = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionEdit, contentColor = Color.White)
+    @Composable fun goText() = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = OnPathColors.ActionGo)
+    @Composable fun editText() = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = OnPathColors.ActionEdit)
+    @Composable fun editOutlined() = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = OnPathColors.ActionEdit)
+    /** Pause in the plan's tour row: the light green of Navigate's Pause ([TourActions.GoTonal]). */
+    @Composable fun goTonal() = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
+        containerColor = TourActions.GoTonal, contentColor = TourActions.OnGoTonal)
+}
+
 private val scheme = lightColorScheme(
-    primary = OnPathColors.Green,
+    // neutral walnut (#36) – navigation green and plan blue are set where a button means one of them ([ActionButtons])
+    primary = OnPathColors.Walnut,
     onPrimary = Color.White,
-    primaryContainer = OnPathColors.GreenLight,
-    onPrimaryContainer = Color(0xFF173A29),
+    primaryContainer = OnPathColors.WalnutLight,
+    onPrimaryContainer = Color(0xFF2B231D),
     secondary = OnPathColors.Route,
     onSecondary = Color.White,
     secondaryContainer = Color(0xFFDDE3F7),
@@ -141,12 +169,12 @@ private val scheme = lightColorScheme(
     error = OnPathColors.Error,
     errorContainer = OnPathColors.ErrorContainer,
     onErrorContainer = OnPathColors.OnErrorContainer,
-    inversePrimary = Color(0xFFA6CBAF),
+    inversePrimary = Color(0xFFD9C8BA),
     outline = Color(0xFF737970),
     outlineVariant = Color(0xFFC3C8C0),
     // Neutral (slightly green) containers instead of Material's default purple tint:
     // menus, sheets, cards and chips all take these.
-    surfaceTint = OnPathColors.Green,
+    surfaceTint = OnPathColors.Walnut,
     surfaceBright = Color.White,
     surfaceDim = Color(0xFFDADDD7),
     surfaceContainerLowest = Color.White,

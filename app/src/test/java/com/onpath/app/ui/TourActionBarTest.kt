@@ -63,7 +63,7 @@ class TourActionBarTest {
         assertTrue(overlay.contains("BackHandler(enabled = closableBar) { open = false }"))
         assertTrue(overlay.contains("detectTapGestures { open = false }"))
         // paused: "Fortsetzen" in the card's action row, not twice
-        assertTrue(nav.contains("if (ui.paused && ui.recordedM != null && actions == null) TextButton(onClick = onResume"))
+        assertTrue(nav.contains("if (ui.paused && ui.recordedM != null && actions == null) TextButton(colors = ActionButtons.goText(), onClick = onResume"))
     }
 
     @Test fun theSliderOnlyUnlocks() {

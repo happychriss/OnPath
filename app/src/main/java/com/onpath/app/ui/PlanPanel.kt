@@ -563,11 +563,11 @@ private fun CompactGo(ui: PlanUi, cb: PlanCallbacks, active: Boolean) {
     }
     val desc = primaryLabel(ui)
     if (active) {
-        Button(onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
+        Button(colors = ActionButtons.go(), onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
             contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 12.dp, end = 16.dp),
             modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = desc }) { content() }
     } else {
-        Row(Modifier.heightIn(min = 48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary)
+        Row(Modifier.heightIn(min = 48.dp).clip(CircleShape).background(OnPathColors.ActionGo)
             .padding(start = 12.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             androidx.compose.runtime.CompositionLocalProvider(
                 androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onPrimary) { content() }
@@ -618,7 +618,7 @@ private fun PlanIconPill(icon: androidx.compose.ui.graphics.vector.ImageVector, 
 @Composable
 private fun GoButton(ui: PlanUi, cb: PlanCallbacks) {
     val full = primaryLabel(ui)
-    Button(onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
+    Button(colors = ActionButtons.go(), onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics { contentDescription = full }) {
         Icon(goIcon(ui), null, Modifier.size(22.dp))
         Spacer(Modifier.width(8.dp))
@@ -684,7 +684,7 @@ private fun NotRoutedBar(why: NotRouted, onPlanAnyway: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(PlanStatus.notRoutedText(why), style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-        androidx.compose.material3.TextButton(onClick = onPlanAnyway) { Text(PlanStatus.notRoutedAction(why)) }
+        androidx.compose.material3.TextButton(colors = ActionButtons.editText(), onClick = onPlanAnyway) { Text(PlanStatus.notRoutedAction(why)) }
     }
 }
 

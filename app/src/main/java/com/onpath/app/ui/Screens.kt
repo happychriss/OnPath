@@ -428,8 +428,8 @@ fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: 
         icon = { Icon(Icons.Filled.Route, null) },
         title = { Text(str(Res.string.routes_replace_title)) },
         text = { DialogText(str(if (fromLink) Res.string.routes_replace_text_link else Res.string.routes_replace_text)) },
-        confirmButton = { TextButton(onClick = onReplace, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_replace)) } },
-        dismissButton = { TextButton(onClick = onSaveFirst, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.routes_save_first)) } },
+        confirmButton = { TextButton(colors = ActionButtons.editText(), onClick = onReplace, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_replace)) } },
+        dismissButton = { TextButton(colors = ActionButtons.editText(), onClick = onSaveFirst, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.routes_save_first)) } },
     )
 }
 

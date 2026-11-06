@@ -385,7 +385,7 @@ private fun PlanMode(
 @Composable
 internal fun sharedUnsureMessage(text: String, onSearch: () -> Unit): Message =
     Message(MessageKind.HINWEIS_WARN, str(Res.string.msg_shared_place_unsure), str(Res.string.msg_shared_place_unsure_detail, text),
-        listOf(MessageButton(str(Res.string.msg_shared_place_search), onSearch)))
+        listOf(MessageButton(str(Res.string.msg_shared_place_search), onSearch)), tone = ButtonTone.EDIT) // searching a place = planning
 
 /**
  * The plan run reached its time limit (owner 2026-11-03, onpath.private#21 B, [com.onpath.app.routing.SlowPlan]): "Die
@@ -398,7 +398,7 @@ internal fun slowPlanMessage(onAnswer: (com.onpath.app.routing.SlowPlan.Answer) 
         buttons = listOf(
             MessageButton(str(Res.string.common_cancel)) { onAnswer(com.onpath.app.routing.SlowPlan.Answer.CANCEL) },
             MessageButton(str(Res.string.plan_slow_wait)) { onAnswer(com.onpath.app.routing.SlowPlan.Answer.KEEP_WAITING) },
-        ))
+        ), tone = ButtonTone.EDIT) // waiting for a plan to compute = planning
 
 @Composable
 private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppViewModel, rec: RecState?,

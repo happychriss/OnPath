@@ -159,7 +159,7 @@ fun TrackPanel(
             // a track without a line (an empty recording, one point) has nothing to follow: Start only records,
             // during a tour there is nothing to switch to (PlanStart)
             val line = track.points.size >= 2
-            Button(onClick = onFollow, enabled = (!isFollowed || !recording) && (line || !recording),
+            Button(colors = ActionButtons.go(), onClick = onFollow, enabled = (!isFollowed || !recording) && (line || !recording),
                 modifier = Modifier.weight(1f).height(56.dp)) {
                 Icon(if (line || recording) Icons.Filled.Navigation else Icons.Filled.FiberManualRecord, null)
                 Spacer(Modifier.width(8.dp))

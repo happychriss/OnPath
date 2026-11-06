@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.onpath.app.search.Place
 import com.onpath.app.search.SearchKinds
 import com.onpath.strings.*
+import com.onpath.app.ui.ActionButtons
 
 /** What the card shows besides the place: its role in the route now, or what adding it would do. */
 data class PlaceCardUi(
@@ -105,7 +106,7 @@ fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = M
                     modifier = Modifier.padding(top = 4.dp, end = 8.dp), maxLines = 4, overflow = TextOverflow.Ellipsis)
             }
             Column(Modifier.fillMaxWidth().padding(top = 10.dp, end = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
+                Button(colors = ActionButtons.edit(), 
                     onClick = if (isStop) actions.onRemove else actions.onAdd,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
@@ -122,11 +123,11 @@ fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = M
                     val small = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                     val atStart = ui.routeIndex == 0
                     val atEnd = ui.routeIndex != null && ui.routeIndex == ui.waypointCount - 1 && ui.waypointCount > 1
-                    if (isStop || !ui.addIsStart) OutlinedButton(onClick = actions.onStart, enabled = !atStart, contentPadding = small,
+                    if (isStop || !ui.addIsStart) OutlinedButton(colors = ActionButtons.editOutlined(), onClick = actions.onStart, enabled = !atStart, contentPadding = small,
                         modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                         Text(str(Res.string.search_card_as_start), maxLines = 1, style = MaterialTheme.typography.labelMedium)
                     }
-                    if (isStop || !ui.addIsDestination) OutlinedButton(onClick = actions.onDestination, enabled = !atEnd, contentPadding = small,
+                    if (isStop || !ui.addIsDestination) OutlinedButton(colors = ActionButtons.editOutlined(), onClick = actions.onDestination, enabled = !atEnd, contentPadding = small,
                         modifier = Modifier.weight(1.25f).heightIn(min = 48.dp)) {
                         Text(str(Res.string.search_card_as_destination), maxLines = 1, style = MaterialTheme.typography.labelMedium)
                     }

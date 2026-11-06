@@ -132,7 +132,7 @@ fun tourLoadMessage(name: String, onAnswer: (TourLoad.Answer) -> Unit): Message 
             MessageButton(str(Res.string.common_cancel)) { onAnswer(TourLoad.Answer.CANCEL) },
             MessageButton(str(Res.string.routes_load_end)) { onAnswer(TourLoad.Answer.END_AND_LOAD) },
             MessageButton(str(Res.string.routes_load_continue)) { onAnswer(TourLoad.Answer.CONTINUE) },
-        ))
+        ), tone = ButtonTone.GO) // "Mit dieser Route weiter" goes on with the tour: green
 
 /**
  * A done tour / track tapped during a tour (My routes, owner 2026-11-06 F1 simplified): "Dieser Tour folgen? „‹name›“,
@@ -144,7 +144,7 @@ fun trackFollowMessage(name: String, length: String, onAnswer: (Boolean) -> Unit
         buttons = listOf(
             MessageButton(str(Res.string.common_cancel)) { onAnswer(false) },
             MessageButton(str(Res.string.routes_follow)) { onAnswer(true) },
-        ))
+        ), tone = ButtonTone.GO)
 
 /**
  * A message in the screen where the user acted (My routes, a Settings page): INFO = grey text with ⓘ, no box; ERROR =
