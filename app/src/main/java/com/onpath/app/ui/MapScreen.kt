@@ -306,6 +306,10 @@ private fun PlanMode(
                 onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
                 unsaved = RouteRules.saveAtHand(vm.waypoints.size, vm.planUnsaved),
                 onOpened = vm::refreshTours,
+                // owner 2026-11-06: "Neu planen" also in ☰ (the same way as the sheet's ✕ pill) and the plain recording
+                onNewPlan = if (vm.waypoints.isNotEmpty()) vm::requestClear else null,
+                onRecordWithoutPlan = if (rec == null) ({
+                    vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.startNavigation(recordOnly = true) } }) else null,
                 // no "Check for updates" in the ☰ menu – Settings has the Updates section (owner)
                 onUpdates = null,
             ),

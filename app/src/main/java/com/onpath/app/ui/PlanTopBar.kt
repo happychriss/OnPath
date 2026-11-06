@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
@@ -90,6 +92,16 @@ class PlanMenu(
      * (owner 2026-11-06, onpath.private#41 B – the green dot on ☰ said nothing to anyone).
      */
     val unsaved: Boolean = false,
+    /**
+     * "Neu planen" in ☰ (owner 2026-11-06: "habe ich oben im Menü gesucht") – the same way as the sheet's ✕ pill (which
+     * stays); null hides it (no plan points).
+     */
+    val onNewPlan: (() -> Unit)? = null,
+    /**
+     * "Ohne Plan aufzeichnen" (owner 2026-11-06, flow map H1: "Los geht's ohne Route" in the sheet was confusing – in ☰,
+     * rarely needed): a plain recording; null hides it (a tour runs).
+     */
+    val onRecordWithoutPlan: (() -> Unit)? = null,
 ) {
     /** The "Nicht gespeichert ›" sign shows: unsaved changes and Save at hand (its tap is Save route). */
     val showUnsaved: Boolean get() = unsaved && onSaveRoute != null
@@ -296,8 +308,9 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     menu.onSaveRoute?.let { save ->
         MenuItem(Icons.Outlined.Save, str(Res.string.plan_save_route), enabled = st.save) { close(); save() }
     }
-    // no "Aufzeichnung starten" here (owner 2026-11-02, onpath.private#15): the green start button in Plan records
-    // without a route ("Aufnahme starten · ‹Aktivität›", PlanStart.RECORD_ONLY)
+    // owner 2026-11-06: Meine Touren · Plan speichern · Neu planen · Ohne Plan aufzeichnen, then the rest
+    menu.onNewPlan?.let { n -> MenuItem(Icons.Filled.Close, str(Res.string.plan_close_plan)) { close(); n() } }
+    menu.onRecordWithoutPlan?.let { r -> MenuItem(Icons.Outlined.RadioButtonChecked, str(Res.string.plan_menu_record_without_plan)) { close(); r() } }
     HorizontalDivider()
     menu.onPairBrowser?.let { p -> SyncMenuItem(menu.sync, enabled = st.settings) { close(); p() } }
     MenuItem(Icons.Outlined.Settings, str(Res.string.common_settings), enabled = st.settings) { close(); menu.onSettings() }

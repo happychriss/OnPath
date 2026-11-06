@@ -11,6 +11,8 @@ import org.junit.runner.RunWith
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.plan_start_recording_for
+import com.onpath.strings.plan_menu_record_without_plan
+import com.onpath.strings.plan_menu
 import org.maplibre.android.geometry.LatLng
 
 /**
@@ -88,10 +90,15 @@ class CorePlanE2ETest : E2EBase() {
     @Test fun anEmptyPlanStartsARecordingWithoutARoute() {
         scenario.onActivity { a -> if (vm(a).waypoints.isNotEmpty()) vm(a).clearPlan() }
         waitUntil("empty plan", 5_000) { waypointCount() == 0 }
-        val label = Txt.s(Res.string.plan_start_recording_for)
-        val go = findFresh(By.desc(label), 8_000)
-        assertNotNull("the green start button on an empty plan (\"$label\")", go)
-        go!!.click()
+        // owner 2026-11-06: no start button in the sheet without a plan – the plain recording is ☰ → "Ohne Plan aufzeichnen"
+        org.junit.Assert.assertNull("no green start button on an empty plan",
+            device.findObject(By.desc(Txt.s(Res.string.plan_start_recording_for))))
+        val menu = findFresh(By.desc(Txt.s(Res.string.plan_menu)), 8_000)
+        assertNotNull("the ☰ menu button", menu)
+        menu!!.click()
+        val item = findFresh(By.text(Txt.s(Res.string.plan_menu_record_without_plan)), 5_000)
+        assertNotNull("☰ → \"Ohne Plan aufzeichnen\"", item)
+        item!!.click()
         // the phone check before the first tour may open (vibration / voice): "Later" goes on to the tour, as a user does
         repeat(3) {
             Thread.sleep(800)

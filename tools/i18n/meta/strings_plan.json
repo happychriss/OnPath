@@ -1361,5 +1361,12 @@
     "context": "Screen reader only: the 'Not saved' sign beside the mode label – what a tap does",
     "priority": 2,
     "confidence": "sicher"
+  },
+  "plan_menu_record_without_plan": {
+    "area": "Plan menu",
+    "context": "☰ menu item (owner 2026-11-06): start a plain recording without following any plan; shown only while no tour runs",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
   }
 }

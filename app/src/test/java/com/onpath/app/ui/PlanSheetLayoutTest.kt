@@ -31,20 +31,30 @@ class PlanSheetLayoutTest {
     }
 
     /**
-     * Without a tour the green button is always there (flow map H1, 2026-11-06: with 0 or 1 point a tour could not be
-     * started at all) – below two points it only records and says so; during a tour none here (C: "Navigation ›" in the foot).
+     * From two points on; during a tour none here – the green "Navigation ›" in the foot leads back (C). A plain recording
+     * without a plan is ☰ → "Ohne Plan aufzeichnen" (owner 2026-11-06: "Los geht's ohne Route" in the sheet was confusing).
      */
-    @Test fun theButtonIsAlwaysThereWithoutATourAndNeverDuringOne() {
-        assertTrue(PlanBarRow.shown(ui(0, running = false)))
-        assertTrue(PlanBarRow.shown(ui(1, running = false)))
+    @Test fun theButtonShowsFromTwoPointsAndNeverDuringATour() {
+        assertFalse(PlanBarRow.shown(ui(0, running = false)))
+        assertFalse(PlanBarRow.shown(ui(1, running = false)))
         assertTrue(PlanBarRow.shown(ui(2, running = false)))
         assertFalse(PlanBarRow.shown(ui(0, running = true)))
         assertFalse(PlanBarRow.shown(ui(3, running = true)))
-        assertEquals(PlanStart.RECORD_ONLY, ui(1, running = false).start)
-        assertEquals("Let’s go · no route", goLabel(ui(0, running = false)))
-        assertEquals("Let’s go · no route", primaryLabel(ui(1, running = false)))
-        // the rolled-up row: no button during a tour, else always
-        assertTrue(panel.contains("if (ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)"))
+        // the rolled-up row: no button below two points, none during a tour
+        assertTrue(panel.contains("if (ui.pointCount >= 2 && ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)"))
+    }
+
+    /** ☰ (owner 2026-11-06): Meine Touren · Plan speichern · Neu planen · Ohne Plan aufzeichnen, then sync and settings. */
+    @Test fun menuOrderNewPlanAndRecordWithoutPlan() {
+        val bar = File("src/main/java/com/onpath/app/ui/PlanTopBar.kt").readText()
+        val items = bar.substringAfter("internal fun PlanMenuItems(").substringBefore("\n}\n")
+        val order = listOf("plan_menu_my_routes", "plan_save_route", "plan_close_plan", "plan_menu_record_without_plan",
+            "SyncMenuItem", "common_settings").map { items.indexOf(it) }
+        assertTrue("menu order $order", order.all { it >= 0 } && order == order.sorted())
+        val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
+        assertTrue(screen.contains("onNewPlan = if (vm.waypoints.isNotEmpty()) vm::requestClear else null"))
+        assertTrue(screen.contains("onRecordWithoutPlan = if (rec == null)"))
+        assertTrue(screen.contains("vm.startNavigation(recordOnly = true)"))
     }
 
     /** The plan row keeps its words while they fit, else three signs (a large font) – a word is never cut. */
@@ -68,7 +78,7 @@ class PlanSheetLayoutTest {
         assertEquals(CollapsedFacts.Fit.WRAP, CollapsedFacts.fit(260, 120, 150, 8, 358))
         // during a tour too – without the button (owner 2026-11-05)
         val row = panel.substringAfter("private fun CollapsedRow(").substringBefore("\n}\n")
-        assertTrue(row, row.contains("if (ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)"))
+        assertTrue(row, row.contains("if (ui.pointCount >= 2 && ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)"))
         assertFalse("no activity sign in the row (it is on the map)", row.contains("ui.activity.icon"))
     }
 

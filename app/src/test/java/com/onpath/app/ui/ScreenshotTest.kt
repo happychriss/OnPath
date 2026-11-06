@@ -415,12 +415,15 @@ class ScreenshotTest {
 
     @Composable
     private fun TopMenu(state: RouteMenuState, phoneSetup: Boolean = false, sync: (() -> SyncMenuUi)? = null,
-                        unsaved: Boolean = false, bottom: @Composable () -> Unit) {
+                        unsaved: Boolean = false, newPlan: Boolean = state.save, record: Boolean = true,
+                        bottom: @Composable () -> Unit) {
         Box(Modifier.fillMaxSize()) {
             // [sync] is built inside the composition: its texts follow the test's language
             // Save route is the top item whenever there is a plan; [unsaved] = the "Nicht gespeichert ›" sign
             val menu = PlanMenu(state, onUpdates = {}, onPairBrowser = {}, onPhoneSetup = if (phoneSetup) ({}) else null,
-                sync = sync?.invoke() ?: SyncMenuUi(), onSaveRoute = if (state.save) ({}) else null, unsaved = unsaved)
+                sync = sync?.invoke() ?: SyncMenuUi(), onSaveRoute = if (state.save) ({}) else null, unsaved = unsaved,
+                // owner 2026-11-06: "Neu planen" with a plan, "Ohne Plan aufzeichnen" while no tour runs
+                onNewPlan = if (newPlan) ({}) else null, onRecordWithoutPlan = if (record) ({}) else null)
             Frame(menu = menu) { bottom() }
             OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 92.dp, end = 12.dp)) {
                 PlanMenuItems(menu) {}
@@ -484,7 +487,7 @@ class ScreenshotTest {
 
     /** ☰ while a tour runs (looked at from Plan): Start recording greyed. */
     @Test fun planMenuNavigating() = paparazzi.snapshot {
-        TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = true, recording = true)) {
+        TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = true, recording = true), record = false) {
             TourRunningBar(6_400.0, 5025, paused = false, onEnd = {}, activity = Activity.BIKE_TREKKING)
             PlanPanel(planUi(tourRunning = true), PlanCallbacks())
         }
