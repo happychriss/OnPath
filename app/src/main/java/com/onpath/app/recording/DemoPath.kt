@@ -40,6 +40,17 @@ class DemoPath private constructor(val line: List<GeoPoint>, private val cumM: D
         return moving(lo, t)
     }
 
+    /** The ride time at [alongM] metres along the line (clamped to the line). */
+    fun timeAtAlong(alongM: Double): Double {
+        if (alongM <= 0.0) return 0.0
+        if (alongM >= lengthM) return durationS
+        var lo = 0; var hi = cumM.size - 1
+        while (hi - lo > 1) { val mid = (lo + hi) ushr 1; if (cumM[mid] <= alongM) lo = mid else hi = mid }
+        val span = cumM[hi] - cumM[lo]
+        val t = if (span > 0) (alongM - cumM[lo]) / span else 0.0
+        return cumS[lo] + t * (cumS[hi] - cumS[lo])
+    }
+
     /**
      * The ride time at the point of the line nearest to [lat] / [lon] (the Navigate "Sim" goes on along a new followed
      * line from where it is, owner 2026-11-01). Flat projection per span – metres around one place.

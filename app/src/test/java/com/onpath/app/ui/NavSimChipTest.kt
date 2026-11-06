@@ -14,6 +14,7 @@ class NavSimChipTest {
         val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
         val start = vm.substringAfter("fun startNavSim(").substringBefore("\n    }\n")
         assertTrue("rides the followed line first", start.indexOf("line?.takeIf { it.size >= 2 }") in 0 until start.indexOf("demoLine()"))
-        assertTrue(start.contains("DemoLocation.startRide(path, label)"))
+        // where the tour is on the line, not at ① (NavSimStartTest; field 2026-11-06 23:35)
+        assertTrue(start.contains("DemoLocation.startRide(path, label, startAlongM = fromM)"))
     }
 }
