@@ -296,17 +296,11 @@ if (await page.isEnabled('#undo')) { // a change → Save dark; Save overwrites;
 }
 
 // 7. Go here from my position (browser location)
-// + New with unsaved changes asks first (the app's DiscardPlanDialog): Cancel keeps the plan, Discard closes it.
+// + New: no question any more (the app, owner 2026-11-06) – an unsaved plan goes under Meine Touren → Zuletzt.
 // The plan bar's + New (owner 2026-11-06) is the one way – the plan row has no ✕ any more
 check(await page.isEnabled('#newPlan') && (await page.textContent('#newPlan')).trim() === 'New', 'plan bar: + New, active with a plan on the map');
 await page.click('#newPlan');
-if (await page.locator('dialog.discard[open]').count()) {
-  await page.click('#discardCancel');
-  check(await pins() > 0, 'New plan → "Discard changes?" → Cancel: the plan stays');
-  await page.click('#newPlan');
-  check(await page.locator('dialog.discard[open] #discardOk').count() === 1, 'New asks again: Cancel · Discard');
-  await page.click('#discardOk');
-}
+check(await page.locator('dialog[open]').count() === 0, 'New plan: no question (the app: the plan goes under Recent)');
 await waitPins(0);
 check(await page.isDisabled('#newPlan'), 'plan bar: + New greyed on an empty map');
 await clickAt(11.1350, 46.6840);

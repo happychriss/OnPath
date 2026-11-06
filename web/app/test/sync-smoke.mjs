@@ -65,7 +65,7 @@ const entry = (P) => P.evaluate(() => { const b = document.getElementById('syncB
     more: !!document.getElementById('phoneMore')?.getClientRects().length }; });
 /** The header's Save (§14.6): its state (dark / done / empty / full), label, whether it is filled, and that no hint is beside it. */
 const saveBtn = (P) => P.evaluate(() => { const b = document.getElementById('menuSavePlan');
-  return { state: b.dataset.state, label: b.textContent.trim(), phone: !!b.querySelector('.savephone'), unsaved: b.classList.contains('unsaved'), filled: getComputedStyle(b).backgroundColor === 'rgb(36, 95, 70)',
+  return { state: b.dataset.state, label: b.textContent.trim(), phone: !!b.querySelector('.savephone'), unsaved: b.classList.contains('unsaved'), filled: getComputedStyle(b).backgroundColor === 'rgb(46, 106, 158)',
     disabled: b.disabled, title: b.title, hint: !!document.getElementById('saveHint') || /Not saved on the phone/.test(document.getElementById('header').textContent) }; });
 /** Pair from the Phone window: a new code each time; returns the code (the part after #pair=) and the check digits. */
 async function showCode(P, other = false) {
@@ -392,8 +392,10 @@ await A.click('#closePlans');
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
 await rowMenu(A, 'Phone name (copy)', 'del'); // ⋮ → Delete (no 🗑 in the row)
-check(/recycle bin/.test(await A.textContent('dialog.plans .confirm')), 'delete in the phone\'s folder: the question names the phone\'s recycle bin');
-await A.click('dialog.plans .confirm .danger');
+// in the phone's folder no question any more (the app, owner 2026-11-06: the phone's recycle bin is the net)
+await A.waitForFunction(() => ![...document.querySelectorAll('#planList .name')].some((n) => n.textContent === 'Phone name (copy)'), null, { timeout: 10_000 }).catch(() => {});
+check(await A.locator('dialog.plans .confirm').count() === 0 && !(await A.evaluate(() => [...document.querySelectorAll('#planList .name')].some((n) => n.textContent === 'Phone name (copy)'))),
+  'delete in the phone\'s folder: no question, the row goes (the phone\'s recycle bin is the net)');
 await A.click('#closePlans');
 await phone.round();
 check((await phone.titles()).includes('Phone name (copy)'), 'deleted in the browser, not saved yet: still on the phone');
@@ -762,6 +764,7 @@ check(!(await status(O)).full && (await saveBtn(O)).state !== 'full', 'a tour de
 await O.click('#menuSavePlan');
 await answerSave(O, 'Tour 250');
 await until(O, async () => (await window.__sync.list()).some((p) => p.title === 'Tour 250'));
+await O.waitForFunction(() => window.__sync.status.tours === 250, null, { timeout: 10_000 }).catch(() => {}); // the count follows the save a moment later
 check((await status(O)).tours === 250, 'the 250th tour may be saved');
 await ctxO.close();
 

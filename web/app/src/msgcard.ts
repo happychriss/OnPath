@@ -16,6 +16,9 @@ export interface Message {
   buttons: MessageButton[];
   /** A wait the user started (the route being calculated): a spinner before the title; its one button is the way out. */
   busy?: boolean;
+  /** The primary button's colour by what it does (the app's ButtonTone, colour rule 2026-11-06): 'edit' = it plans
+   * (blue), else walnut. The web never goes to a navigation, so there is no green. */
+  tone?: 'edit' | 'neutral';
   /** Where the box's centre goes (page pixels) instead of 12 px under the top bar – e.g. the middle of the free map. */
   at?: () => { x: number; y: number };
 }
@@ -78,7 +81,7 @@ function draw() {
   row.className = 'msgbuttons';
   m.buttons.forEach((b, k) => {
     const btn = document.createElement('button');
-    btn.className = k === m.buttons.length - 1 ? 'msgbtn primary' : 'msgbtn';
+    btn.className = k === m.buttons.length - 1 ? `msgbtn primary${m.tone === 'edit' ? ' edit' : ''}` : `msgbtn${m.tone === 'edit' ? ' edit' : ''}`;
     btn.textContent = b.label;
     btn.onclick = () => { dismiss(m.id); b.act(); };
     row.append(btn);
