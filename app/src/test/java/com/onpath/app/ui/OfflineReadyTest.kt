@@ -52,7 +52,10 @@ class OfflineReadyTest {
 
     @Test fun cellStatesMapToHereLoadingMissing() {
         assertEquals(OfflineReady.Cell.HERE, OfflineReady.cell(null, onPhone = true))
-        assertEquals(OfflineReady.Cell.HERE, OfflineReady.cell(CellState.Downloaded, onPhone = false))
+        assertEquals(OfflineReady.Cell.HERE, OfflineReady.cell(CellState.Ready("v1"), onPhone = false))
+        // owner 2026-11-06: only what is in the map counts – being joined / joined after the tour is not there yet
+        assertEquals(OfflineReady.Cell.LOADING, OfflineReady.cell(CellState.Installing, onPhone = false))
+        assertEquals(OfflineReady.Cell.LOADING, OfflineReady.cell(CellState.Downloaded, onPhone = false))
         assertEquals(OfflineReady.Cell.LOADING, OfflineReady.cell(CellState.Downloading(1, 10), onPhone = false))
         assertEquals(OfflineReady.Cell.LOADING, OfflineReady.cell(CellState.Building("base", 0.4, null), onPhone = false))
         assertEquals(OfflineReady.Cell.MISSING, OfflineReady.cell(CellState.WaitingForWifi(null), onPhone = false))

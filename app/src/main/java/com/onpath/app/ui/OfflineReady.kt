@@ -35,10 +35,16 @@ object OfflineReady {
      */
     data class Result(val state: State, val missingMapM: Double, val waysMissing: Boolean, val loadingBytes: Long)
 
-    /** A region's state as the map cells report it, [onPhone] = installed or covered by a region package. */
+    /**
+     * A region's state as the map cells report it, [onPhone] = installed or covered by a region package. Only a region
+     * that is IN the map counts (owner 2026-11-06: "Ohne Netz" only when every map of the route really is on the phone):
+     * still being joined ([CellState.Installing]) or downloaded during a tour and joined only afterwards
+     * ([CellState.Downloaded] – the map does not show it yet) is LOADING, not HERE.
+     */
     fun cell(s: CellState?, onPhone: Boolean): Cell = when {
         onPhone -> Cell.HERE
-        s is CellState.Ready || s is CellState.Installing || s is CellState.Downloaded -> Cell.HERE
+        s is CellState.Ready -> Cell.HERE
+        s is CellState.Installing || s is CellState.Downloaded -> Cell.LOADING
         s is CellState.Requested || s is CellState.Queued || s is CellState.Building || s is CellState.Downloading -> Cell.LOADING
         else -> Cell.MISSING // None, waiting for Wi-Fi, offline, failed: nothing comes by itself now
     }
