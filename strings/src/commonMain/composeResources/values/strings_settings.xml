@@ -62,7 +62,7 @@
     <string name="settings_map_vibrate">Vibrate when planning</string>
     <string name="settings_map_vibrate_sub">Short buzz when you hold the map, two buzzes on a route point</string>
     <string name="settings_nav_offroute">Off-route warning</string>
-    <string name="settings_nav_offroute_sub">Vibration and notification when you leave the followed route</string>
+    <string name="settings_nav_offroute_sub">A notification when you leave the followed route</string>
     <string name="settings_nav_warn_after">Warn after</string>
     <string name="settings_nav_meters">%1$d m</string>
     <string name="settings_nav_vibrate_off">Vibrate when off route</string>
@@ -163,4 +163,9 @@
     <string name="settings_nav_guide_off">Off</string>
     <string name="settings_nav_guide_vibration">Vibration</string>
     <string name="settings_nav_guide_voice">Voice</string>
+    <string name="settings_group_offroute">Off the route</string>
+    <string name="settings_group_junctions">Junctions</string>
+    <string name="settings_group_screen">Screen and map</string>
+    <string name="settings_group_lock">Lock during a tour</string>
+    <string name="settings_phone_missing">Missing: %1$s</string>
 </resources>

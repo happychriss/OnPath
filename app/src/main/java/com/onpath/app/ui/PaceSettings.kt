@@ -46,23 +46,13 @@ internal fun PaceSection(settings: AppSettings, onChange: (AppSettings) -> Unit,
     }
 }
 
-/** One activity: the five levels as radio rows, each with what it means ("about 4 km/h · 300 m up per hour"). */
+/**
+ * One activity as a value row (owner 2026-11-06 23:05, value rows on every settings page): the chosen level and what it
+ * means under the title; the sheet shows the five levels, each with its meaning ("about 4 km/h · 300 m up per hour").
+ */
 @Composable
-private fun PaceGroup(title: String, activity: Activity, selected: Pace, onPick: (Pace) -> Unit) {
-    Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 2.dp))
-    Column(Modifier.selectableGroup()) {
-        Pace.entries.forEach { p ->
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                .selectable(selected = selected == p, onClick = { onPick(p) }, role = Role.RadioButton)
-                .padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = selected == p, onClick = null, modifier = Modifier.padding(horizontal = 8.dp))
-                Text(p.label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(76.dp))
-                Text(p.meaning(activity), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}
+private fun PaceGroup(title: String, activity: Activity, selected: Pace, onPick: (Pace) -> Unit) =
+    ChoiceRow(title, selected.meaning(activity), Pace.entries.map { Choice(it, it.label, it.meaning(activity)) }, selected, onPick)
 
 /**
  * After a tour: "On the way 4:05 (10:12–14:17) · moving 2:52 · breaks 1:13" (older tours: "Moving 2:52 · breaks 0:41")
