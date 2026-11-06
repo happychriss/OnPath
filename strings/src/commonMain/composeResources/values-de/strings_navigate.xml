@@ -177,7 +177,6 @@
     <string name="nav_slide_unlock_desc">Entsperren. Schieben, um Pause, Tour beenden und Plan freizugeben.</string>
     <string name="nav_slide_unlock_desc_plan">Entsperren. Schieben, um den Plan freizugeben.</string>
     <string name="nav_lock">Sperren</string>
-    <string name="nav_relock">Wieder sperren</string>
     <string name="nav_change_plan">Plan</string>
     <string name="nav_straight_on">Geradeaus</string>
     <string name="nav_end_save_new_route">Geänderten Plan auch speichern</string>
@@ -271,8 +270,6 @@
     <string name="nav_keep_riding">Weiterfahren</string>
     <string name="nav_delete_tour_short">Löschen</string>
     <string name="nav_delete_tour">Tour löschen</string>
-    <string name="nav_end_section_tour">TOUR</string>
-    <string name="nav_end_section_plan">PLAN</string>
     <string name="nav_end_stat_distance">Strecke</string>
     <string name="nav_end_stat_time">Zeit</string>
     <string name="nav_end_stat_ascent">Aufstieg</string>

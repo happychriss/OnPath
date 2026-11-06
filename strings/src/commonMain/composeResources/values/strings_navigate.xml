@@ -178,7 +178,6 @@
     <string name="nav_slide_unlock_desc">Unlock. Slide to enable Pause, End tour and Plan.</string>
     <string name="nav_slide_unlock_desc_plan">Unlock. Slide to enable the plan.</string>
     <string name="nav_lock">Lock</string>
-    <string name="nav_relock">Lock again</string>
     <string name="nav_change_plan">Plan</string>
     <string name="nav_straight_on">Straight on</string>
     <string name="nav_end_save_new_route">Also save the changed plan</string>
@@ -272,8 +271,6 @@
     <string name="nav_keep_riding">Keep riding</string>
     <string name="nav_delete_tour_short">Delete</string>
     <string name="nav_delete_tour">Delete tour</string>
-    <string name="nav_end_section_tour">TOUR</string>
-    <string name="nav_end_section_plan">PLAN</string>
     <string name="nav_end_stat_distance">Distance</string>
     <string name="nav_end_stat_time">Time</string>
     <string name="nav_end_stat_ascent">Ascent</string>
