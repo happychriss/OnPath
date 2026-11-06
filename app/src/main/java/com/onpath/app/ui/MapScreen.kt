@@ -210,9 +210,15 @@ fun MapScreen(
             value = without && k!![4] > 0
         }
         val overviewOnly = rememberNoFlash(if (overviewView) Unit else null, remember { NoFlash<Unit>() }) != null
-        // not while the strip asks "Detailed map for here?" – it says the same
-        if (overviewOnly && vm.mode == AppMode.PLAN && !vm.searchOpen && !sharedLookup && vm.hereAsk == null) {
-            OverviewHint(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = hintTop, start = 16.dp, end = 16.dp))
+        // not while the strip asks "Detailed map for here?" or the load question is open – they say the same.
+        // On the activity button's row, beside it (OverviewPillPlace) – covers nothing (owner 2026-11-06).
+        if (overviewOnly && vm.mode == AppMode.PLAN && !vm.searchOpen && !sharedLookup && vm.hereAsk == null && vm.loadAsk == null) {
+            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+            OverviewPill(onLoad = { OverviewHintRule.centre(hintKey)?.let(vm::mapTapped) },
+                Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
+                    top = OverviewPillPlace.topDp(rowTop, if (vm.backgroundStripShown) vm.backgroundStripBottomDp else null).dp,
+                    start = OverviewPillPlace.startDp(activityButtonShown = vm.shown == null).dp,
+                    end = OverviewPillPlace.EDGE_DP.dp))
         }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, cameraTick,

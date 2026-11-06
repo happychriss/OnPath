@@ -107,7 +107,8 @@
     <string name="maps_row_area_south_west">Gebiet im Südwesten</string>
     <string name="maps_row_area_south">Gebiet im Süden</string>
     <string name="maps_row_area_south_east">Gebiet im Südosten</string>
-    <string name="maps_overview_hint">Nur Übersicht – für die Detailkarte hier die Karte gedrückt halten</string>
+    <string name="maps_overview_only">Nur Übersichtskarte</string>
+    <string name="maps_overview_load">Detailkarte laden</string>
     <string name="maps_update_loading">Neuere Karte wird geladen…</string>
     <string name="maps_update_preparing">Neuere Karte für dieses Gebiet wird vorbereitet</string>
     <string name="maps_update_preparing_min">Neuere Karte für dieses Gebiet wird vorbereitet · etwa %1$d min</string>

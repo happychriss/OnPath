@@ -368,13 +368,19 @@
     "priority": 3,
     "confidence": "sicher"
   },
-  "maps_overview_hint": {
+  "maps_overview_only": {
     "area": "Map (Plan)",
-    "context": "Grey pill when zoomed in where only the world overview exists; holding the map there loads the detailed map",
+    "context": "Paper pill beside the activity button when zoomed in where only the world overview exists",
     "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "Wording of the hold gesture (\"lange drücken\") and length (pill under the search bar)",
-    "max": 60
+    "confidence": "sicher",
+    "max": 30
+  },
+  "maps_overview_load": {
+    "area": "Map (Plan)",
+    "context": "Blue action in that pill: opens the question to load the detailed map for the map centre",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 25
   },
   "maps_update_loading": {
     "area": "Background downloads",

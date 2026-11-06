@@ -195,7 +195,9 @@ Boxes (FRAGE, HINWEIS) always sit **12 dp under the top element** (`MessagePlace
 | Settings | title row (64 dp) | 76 dp, over the page |
 
 While a box shows in Plan, the download chip and the quiet pill (both ANZEIGE) wait. Hints below the search bar
-(shared place lookup, "Overview only") go below the box.
+(shared place lookup) go below the box. "Nur Übersichtskarte · Detailkarte laden" (owner 2026-11-06) is a paper pill on
+the activity button's row, right of it (`OverviewPillPlace`) – it covers nothing; the whole pill opens the load question
+for the map centre.
 
 ## Rules for new UI
 - A question or must-know message → `Message` + `MessageCard` through the screen's host (Plan:

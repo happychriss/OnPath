@@ -3,11 +3,10 @@ package com.onpath.app.ui
 import com.onpath.strings.*
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -230,13 +229,53 @@ class CellCardCallbacks(
     val onAllowLocation: () -> Unit = {},
 )
 
-/** Small persistent hint on the map where only the overview exists (z ≥ 10, Plan). */
+/**
+ * "Nur Übersichtskarte · Detailkarte laden" (owner 2026-11-06, Pixel review: the old white bar "… die Karte gedrückt
+ * halten" did not fit the style and covered the activity button): a paper pill as high as the round activity button,
+ * beside it ([OverviewPillPlace]) – Walnuss text, the blue action. The whole pill is the button (48 dp target); it opens
+ * the usual "load the map here?" question for the map centre ([onLoad]). Persistent while the view is overview only.
+ */
 @Composable
-fun OverviewHint(modifier: Modifier = Modifier) = QuietPill(str(Res.string.maps_overview_hint), Icons.Outlined.Map, modifier = modifier)
+fun OverviewPill(onLoad: () -> Unit, modifier: Modifier = Modifier) {
+    val text = str(Res.string.maps_overview_only)
+    val action = str(Res.string.maps_overview_load)
+    Surface(onClick = onLoad, shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp), shadowElevation = 3.dp,
+        color = OnPathColors.Paper,
+        modifier = modifier.heightIn(min = OverviewPillPlace.HEIGHT_DP.dp)
+            .semantics(mergeDescendants = true) { contentDescription = "$text. $action" }) {
+        // no map sign: text + action fit on one line at normal font on a 390 dp phone (both lines wrap at large font)
+        Row(Modifier.padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Text(text, style = MaterialTheme.typography.bodyMedium, color = OnPathColors.Walnut,
+                modifier = Modifier.weight(1f, fill = false))
+            Spacer(Modifier.width(10.dp))
+            Text(action, style = MaterialTheme.typography.labelLarge, color = OnPathColors.ActionEdit)
+        }
+    }
+}
 
 /**
- * The quiet grey pill under the search bar: a status with nothing to decide ("Overview only – …",
- * "No detailed map – loads when online", "Waiting for GPS …"). An ANZEIGE (docs/design/ui-style.md): no button, no ×
+ * Where [OverviewPill] sits (owner 2026-11-06: it must cover nothing): on the row of the round activity button (top
+ * left under the search band, 48 dp at 12 dp from the edge), right of it – or at the left edge when that button is not
+ * shown; the map controls on the right start lower ([ControlsPlacement]), so the row is free to the right edge. Below
+ * the background-download strip while that shows. Pure, unit-tested.
+ */
+object OverviewPillPlace {
+    const val HEIGHT_DP = 48
+    const val EDGE_DP = 12
+    /** The activity button: 48 dp at [EDGE_DP], plus a gap. */
+    const val BESIDE_ACTIVITY_DP = EDGE_DP + 48 + 10
+
+    fun startDp(activityButtonShown: Boolean): Int = if (activityButtonShown) BESIDE_ACTIVITY_DP else EDGE_DP
+
+    /** [rowTopDp]: the activity button's top; [stripBottomDp]: the download strip's bottom while it shows, else null. */
+    fun topDp(rowTopDp: Int, stripBottomDp: Int?): Int =
+        if (stripBottomDp != null) maxOf(rowTopDp, stripBottomDp + MessagePlacement.GAP_DP) else rowTopDp
+}
+
+/**
+ * The quiet pill under the search bar: a status with nothing to decide ("No detailed map – loads when online",
+ * "Waiting for GPS …"). An ANZEIGE (docs/design/ui-style.md): no button, no ×
  * – it goes when the state goes. Anything that needs an OK is a [MessageCard] instead.
  */
 @Composable
@@ -273,6 +312,10 @@ object OverviewHintRule {
         (0 until GRID).flatMap { i -> (0 until GRID).map { j ->
             (south + (north - south) * (i + 0.5) / GRID) to (west + (east - west) * (j + 0.5) / GRID)
         } }
+
+    /** The centre of the visible box (south, west, north, east, …) – where "Detailkarte laden" asks; null = unknown. */
+    fun centre(box: List<Double>?): com.onpath.app.routing.GeoPoint? =
+        if (box == null || box.size < 4) null else com.onpath.app.routing.GeoPoint((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
 
     /** [detailed]: per sample point whether the detailed map covers it. */
     fun show(zoom: Double, detailed: List<Boolean>): Boolean =
