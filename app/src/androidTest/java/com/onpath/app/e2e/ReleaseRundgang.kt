@@ -38,6 +38,7 @@ import com.onpath.strings.common_ok
 import com.onpath.strings.nav_arrived_title
 import com.onpath.strings.nav_action_pause
 import com.onpath.strings.nav_end_short
+import com.onpath.strings.nav_mid_lead
 import com.onpath.strings.nav_end_tour_title
 import com.onpath.strings.nav_save_recording
 import com.onpath.strings.plan_pin_chip_desc
@@ -545,6 +546,33 @@ class ReleaseRundgang : E2EBase() {
         assertFalse("the Bike line is not followed any more", sameLine(before, nav()!!.line))
         assertFalse("no older-line drop", traced("Re-route result of an older line dropped"))
         shot("3-hike")
+    }
+
+    /**
+     * 15 · Field bug 2026-11-06 23:26 (owner, round trip, tour started in its middle: "dauernd die Meldung 'Du stehst
+     * mitten auf der Route – zu ① führen' … das darf nur einmal kommen"): the mid-route question → "Zu ① führen" → the
+     * way to ① is followed and stays, although the user stands beside the plan's own line; no second question.
+     * Unit test: MidRouteOnceTest.
+     */
+    @Test fun flow15_midRouteQuestionOnceAndTheWayToOneHolds() {
+        planned(THEATRE, STATION, THEATRE)
+        val line = read { it.route!!.points }
+        val cum = Geo.cumulative(line)
+        val mid = line[cum.indexOfFirst { it >= cum.last() * 0.4 }]
+        demoAt(mid)
+        startTour()
+        waitUntil("the mid-route question", 60_000) { nav()?.prompt is NavPrompt.MidStart }
+        assertNotNull("\"Zu ① führen\" in the box", findFresh(By.text(Txt.s(Res.string.nav_mid_lead)), 10_000))
+        shot("1-mid-route-question")
+        clickText(Txt.s(Res.string.nav_mid_lead))
+        waitUntil("the way to ① followed", 90_000) { nav()?.let { it.session?.lead == true && it.session.rerouted && it.prompt == null } == true }
+        val led = nav()!!.version
+        shot("2-led-to-one")
+        Thread.sleep(20_000) // standing beside the plan's own line: the field flipped back after ~2 s, four times
+        assertFalse("never the question again: ${nav()?.prompt}", nav()?.prompt is NavPrompt.MidStart)
+        assertTrue("the way to ① is still followed", nav()?.session?.rerouted == true)
+        assertEquals("the followed line did not change", led, nav()!!.version)
+        shot("3-still-led")
     }
 
     private fun share(text: String) {
