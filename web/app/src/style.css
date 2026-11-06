@@ -582,11 +582,18 @@ kbd { display: inline-block; min-width: 1.4em; padding: 1px 6px; border: 1px sol
 .threednote { position: absolute; z-index: 2; right: 12px; top: 76px; padding: 6px 14px; border-radius: 16px;
   background: rgba(255,255,255,.94); box-shadow: 0 1px 6px var(--shadow); font-size: 13px; color: var(--muted); white-space: nowrap; pointer-events: none; }
 body.three-d .pin { cursor: default; }
+.flybar { position: absolute; z-index: 3; right: 12px; top: 140px; display: flex; gap: 6px; }
+.flybtn { min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--bg);
+  color: var(--fg); font-size: 14px; font-weight: 600; box-shadow: 0 1px 6px var(--shadow); cursor: pointer; }
+.flybtn.main { background: var(--route); border-color: var(--route); color: #fff; }
+.flybtn.speed { min-width: 48px; }
+.flybtn:disabled { opacity: .5; cursor: default; }
 @media (max-width: 700px) {
   .bigprofile { left: 0; right: 0; bottom: 0; border-radius: 22px 22px 0 0; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
   .bpplot .profplot > svg { height: 130px; }
   body.bigprofile-open #sheet { display: none; }
   .threednote { top: auto; bottom: calc(var(--sheet-h) + 12px); right: 12px; left: 12px; white-space: normal; text-align: center; }
+  .flybar { top: auto; bottom: calc(var(--sheet-h) + 84px); right: 12px; left: 12px; justify-content: center; }
 }
 /* the smallest phones: "OnPath" alone, so Plan ▾ and the language keep their room (no header overflow at 320 px) */
 @media (max-width: 400px) { .brand .product { display: none; } }

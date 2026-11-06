@@ -15,6 +15,7 @@ import { EngineClient } from './engine/client';
 import type { Activity, PlanResult, SharedPlan, Hit } from './engine/types';
 import { shareDialog } from './share';
 import { RouteProfile, Terrain3D } from './terrainview';
+import { FlyOver } from './flyover';
 import { STEEP_COLOURS } from './profile';
 import { PACKED, usePacked, packedGlyphs } from './packed';
 import { Cells } from './cells';
@@ -267,6 +268,7 @@ const terrain3d = new Terrain3D(map, $<HTMLButtonElement>('terrain3d'), $('three
     const padding = fitPadding(), cam = map.cameraForBounds(b, { padding, maxZoom: 16 });
     return cam?.zoom != null ? { center: b.getCenter(), zoom: cam.zoom, padding } : null;
   });
+new FlyOver(map, terrain3d, routeProfile, $('stage')); // 3D: fly along the route (owner 2026-11-06, D)
 (window as unknown as { __terrain: Terrain3D }).__terrain = terrain3d; // for the browser tests
 (window as unknown as { __profile: RouteProfile }).__profile = routeProfile;
 // in 3D a point's pin stands on the ground: placed again once the heights under it are loaded (before that it sat at 0 m)

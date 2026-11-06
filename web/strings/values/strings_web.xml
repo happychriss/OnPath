@@ -265,6 +265,13 @@
     <string name="web_terrain_title">Terrain in 3D</string>
     <string name="web_terrain_off_title">Back to the flat map</string>
     <string name="web_terrain_view_only">3D view – just for looking. To plan, switch 3D off.</string>
+    <string name="web_fly_start">Fly along</string>
+    <string name="web_fly_title">Fly along the route over the 3D terrain</string>
+    <string name="web_fly_needs_route">Plan a route first to fly along it</string>
+    <string name="web_fly_pause">Pause</string>
+    <string name="web_fly_resume">Resume</string>
+    <string name="web_fly_stop">Stop</string>
+    <string name="web_fly_speed">Speed: 1× or 2×</string>
     <string name="web_terrain_turn_mouse">Turn and tilt: hold the right mouse button and drag (or Shift + arrow keys).</string>
     <string name="web_terrain_turn_touch">Turn and tilt: with two fingers.</string>
     <!-- the plan bar (owner 2026-11-06, A): everything done with the open plan in one group, top left -->

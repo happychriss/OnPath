@@ -61,12 +61,20 @@ export class RouteProfile {
 
   get isOpen() { return this.open; }
 
+  /** The route's vertices with their distance along it (the flyover follows it), empty without a plan. */
+  get routeLine(): Line { return this.line; }
+  /** Called when the route line changes (a new plan, an edit, none) – the flyover stops then. */
+  readonly lineListeners: (() => void)[] = [];
+  /** The cursor at [m] metres from outside (the flyover): the dot on the map and the line in both profiles; null = none. */
+  showAt(m: number | null) { this.cursor(m); }
+
   /** A new plan (or none): the sheet's profile, and the big one when open. Same profile object = nothing to redraw. */
   update(plan: PlanResult | null, noElevation: string) {
     const p = plan?.profile ?? null;
     if (p === this.profile && plan) return;
     this.profile = p;
     this.line = plan && p ? lineOf(plan.legs) : { pts: [], cum: [] };
+    this.lineListeners.forEach((f) => f());
     this.cursor(null);
     this.mark(null);
     if (!plan) { this.sheetHost.innerHTML = ''; this.small = null; this.setOpen(false); return; }
@@ -176,6 +184,8 @@ export class RouteProfile {
 
 export class Terrain3D {
   on = false;
+  /** Called after 3D was switched on or off (the flyover: its button, stop when 3D goes). */
+  readonly listeners: (() => void)[] = [];
   /** [frame]: the flat camera that shows the whole route clear of the sheet (main.ts cameraForBounds), null = no route. */
   constructor(private map: maplibregl.Map, private button: HTMLButtonElement, private note: HTMLElement, private onChange: () => void,
     private frame: () => { center: maplibregl.LngLat; zoom: number; padding: maplibregl.PaddingOptions } | null = () => null) {
@@ -215,10 +225,7 @@ export class Terrain3D {
         // clearly in perspective (owner review 2026-11-05: "barely tilted"): 62°, framed on the route when there is one –
         // looking at it from the south-east a little, so the slopes face the viewer; tilting enlarges the near part, so a
         // bit further out than the flat fit; the route's middle in the middle of the free room (padding = sheet, profile)
-        const f = this.frame();
-        const zoom = f ? f.zoom - 0.6 : Math.max(m.getZoom(), 12.5);
-        m.easeTo({ center: f?.center ?? m.getCenter(), zoom: Math.max(MIN_ZOOM_3D, zoom), pitch: 62,
-          bearing: f ? -20 : m.getBearing(), padding: f?.padding ?? m.getPadding(), duration: 900 });
+        this.frameRoute(900);
       } else {
         this.on = false;
         m.setTerrain(null);
@@ -235,6 +242,16 @@ export class Terrain3D {
     }
     this.render();
     this.onChange();
+    this.listeners.forEach((f) => f());
+  }
+
+  /** The 3D camera on the route (or where the map is without one): 62°, from the south-east a little. */
+  frameRoute(duration: number) {
+    const m = this.map;
+    const f = this.frame();
+    const zoom = f ? f.zoom - 0.6 : Math.max(m.getZoom(), 12.5);
+    m.easeTo({ center: f?.center ?? m.getCenter(), zoom: Math.max(MIN_ZOOM_3D, zoom), pitch: 62,
+      bearing: f ? -20 : m.getBearing(), padding: f?.padding ?? m.getPadding(), duration });
   }
 }
 

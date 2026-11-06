@@ -908,6 +908,12 @@ Code: `web/app/src/terrainview.ts` (`RouteProfile`, `Terrain3D`), `profile.ts` (
   the big one; a dragged stretch → numbers, shade, map line, a click clears; big profile, steepness line, pointer on the route →
   cursor; close; 3D on: terrain + tilt + note, a click adds nothing; off: flat, max tilt 0). Pictures:
   `web/app/test/terrain-shots.mjs <segments> <map store> <out> [de|en]` (Waalweg Meran → Vellau).
+- **D – flyover (owner 2026-11-06).** In 3D a bar under the 3D note: „▶ Abfliegen“ (greyed without a route); while
+  flying ❚❚ Pause / ▶ Weiter, ■ Stopp, 1× / 2× (`web/app/src/flyover.ts`). Time-based along the route's distance
+  (~40 s per 10 km at 1×, 20 s – 3 min), centre a little ahead, direction from a bit behind to 300–800 m ahead, eased
+  (~1 s) – no shaking in bends; pitch 55°, zoom 14.2, climbing (zoom out, ≥ 11.5) when the ground behind the centre comes
+  within 250 m of the camera. The profiles' cursor moves along. Any other camera move (drag, wheel, compass, fit) pauses;
+  leaving 3D or a new route stops; Stopp frames the route in 3D again; at the end the camera stays. ui-smoke checks it.
 
 ## 20. My routes with length and climb, a visible New plan (laptop, 2026-11-06, owner)
 

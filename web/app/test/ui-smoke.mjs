@@ -129,17 +129,47 @@ const mapBox = await page.locator('#map').boundingBox();
 await page.mouse.click(mapBox.x + mapBox.width * 0.75, mapBox.y + mapBox.height * 0.5);
 await page.waitForTimeout(500);
 tcheck(await page.evaluate(() => window.__state.points.length) === nBefore && await page.locator('.pointmenu').count() === 0, '3D is view only: a click adds no point');
+// the flyover (owner 2026-11-06, D): ▶ Abfliegen → the camera moves along the route with a calm direction and the
+// profile cursor; Pause holds the camera; Stopp frames the route in 3D again
+tcheck(await page.locator('#flyStart').isVisible() && !(await page.locator('#flyStart').isDisabled()), 'flyover: ▶ Fly along shown in 3D');
+await page.click('#flyStart');
+const flyFrom = await page.evaluate(() => ({ d: window.__fly.status.d, c: window.__map.getCenter().toArray() }));
+// slow software GL in CI: wait for the flight to get somewhere, not a fixed time
+await page.waitForFunction((d0) => window.__fly.status.d > d0 + 300 && window.__fly.trace.length >= 4, flyFrom.d, { timeout: 60_000 }).catch(() => {});
+const f1 = await page.evaluate(() => ({ ...window.__fly.status, c: window.__map.getCenter().toArray(), p: window.__map.getPitch(),
+  cur: window.__profileCursor?.m ?? null, trace: window.__fly.trace.slice() }));
+if (process.env.FLY_SHOT) await page.screenshot({ path: process.env.FLY_SHOT }).catch(() => {});
+// calm: the direction never swings faster than 90° a second between frames
+const maxTurn = Math.max(0, ...f1.trace.slice(1).map((s, i) => Math.abs(((s.b - f1.trace[i].b + 540) % 360) - 180) / Math.max(0.05, (s.t - f1.trace[i].t) / 1000)));
+tcheck(f1.state === 'flying' && f1.d > flyFrom.d + 300 && (f1.c[0] !== flyFrom.c[0] || f1.c[1] !== flyFrom.c[1]) && f1.p > 50 && maxTurn < 90
+  && f1.cur != null && Math.abs(f1.cur - f1.d) < 1, `flyover: the camera moves along, calm turns, cursor along (${JSON.stringify({ d0: flyFrom.d, d1: f1.d, maxTurn, p: f1.p, cur: f1.cur, frames: f1.trace.length })})`);
+await page.click('#flyPause');
+await page.waitForTimeout(250);
+const p0 = await page.evaluate(() => ({ ...window.__fly.status, c: window.__map.getCenter().toArray() }));
+await page.waitForTimeout(700);
+const p1 = await page.evaluate(() => ({ ...window.__fly.status, c: window.__map.getCenter().toArray() }));
+tcheck(p0.state === 'paused' && p1.d === p0.d && p1.c[0] === p0.c[0] && p1.c[1] === p0.c[1] && await page.locator('#flyResume').isVisible(),
+  `flyover: Pause holds the camera (${JSON.stringify({ p0: p0.d, p1: p1.d })})`);
+await page.click('#flyStop');
+await page.waitForTimeout(300);
+await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 30_000 });
+const stopped = await page.evaluate(() => ({ state: window.__fly.status.state, pitch: window.__map.getPitch(), cur: window.__profileCursor }));
+tcheck(stopped.state === 'idle' && stopped.pitch > 55 && stopped.cur == null && await page.locator('#flyStart').isVisible(),
+  `flyover: Stop frames the route in 3D again (${JSON.stringify(stopped)})`);
 // north up in 3D turns the view only – it stays tilted (owner 2026-11-06: "ich wollte in der 3D-Ansicht bleiben")
 await page.evaluate(() => window.__map.jumpTo({ bearing: 70 }));
 await page.click('#compass');
 await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 30_000 });
 const north3d = await page.evaluate(() => ({ bearing: window.__map.getBearing(), pitch: window.__map.getPitch(), terrain: window.__map.getTerrain()?.source ?? null }));
 tcheck(Math.abs(north3d.bearing) < 1 && north3d.pitch > 55 && north3d.terrain === 'terrain', `3D: north up keeps the tilt ${JSON.stringify(north3d)}`);
+await page.click('#flyStart'); // flying when 3D is switched off below → it stops
+await page.waitForTimeout(400);
 await page.click('#terrain3d');
 await page.waitForTimeout(300);
 const off3d = await page.evaluate(() => ({ terrain: window.__map.getTerrain(), pitch: window.__map.getPitch(), max: window.__map.getMaxPitch(),
   note: !document.getElementById('threeDNote').hidden }));
 tcheck(!off3d.terrain && off3d.pitch === 0 && off3d.max === 0 && !off3d.note, `3D off: flat again ${JSON.stringify(off3d)}`);
+tcheck(await page.evaluate(() => window.__fly.status.state) === 'idle' && await page.locator('#flyBar').isHidden(), 'flyover: leaving 3D stops it and hides its buttons');
 if (terrainFails.length) errors.push('terrain view: ' + terrainFails.join('; '));
 // one green (owner 2026-10-29): header, buttons and icons use the app's green (OnPathColors.Green, #245F46 since 0.13),
 // and green text keeps WCAG AA (4.5:1; icons 3:1) on its background in light and dark
