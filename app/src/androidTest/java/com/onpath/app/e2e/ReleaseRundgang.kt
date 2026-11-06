@@ -652,7 +652,12 @@ class ReleaseRundgang : E2EBase() {
             var target: LatLng? = null
             onMap { m ->
                 m.moveCamera(CameraUpdateFactory.newLatLngZoom(mid, zoom))
-                target = m.projection.fromScreenLocation(android.graphics.PointF(w - w * 0.45f, h - h * 0.30f))
+                // shift by where [mid] really shows – the camera target is not the view's centre when the app sets a
+                // camera padding (Plan keeps the sheet out of the map's centre since the plan/tour split)
+                val now = m.projection.toScreenLocation(mid)
+                val centre = m.projection.toScreenLocation(m.cameraPosition.target!!)
+                target = m.projection.fromScreenLocation(android.graphics.PointF(
+                    centre.x + now.x - w * 0.45f, centre.y + now.y - h * 0.30f))
                 m.moveCamera(CameraUpdateFactory.newLatLng(target!!))
             }
             Thread.sleep(1_500)
