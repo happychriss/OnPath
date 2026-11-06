@@ -50,4 +50,12 @@ class HoldRuleTest {
         assertEquals(1f, HoldRule.progress(0, holdMs = 0), 0.001f)
         assertEquals(0, HoldRule.remainingMs(0f, holdMs = 0))
     }
+
+    @Test fun theLockLineAtRestOnlyUntilTheFirstFiredHold() {
+        // owner 2026-11-07: "nur beim ersten Mal oder wenn man den Knopf kurz antippt – nicht andauernd"
+        assertTrue("first tours: the rest line explains the lock", HoldRule.pillShows(learned = false, strong = false))
+        assertFalse("learned: no line at rest", HoldRule.pillShows(learned = true, strong = false))
+        assertTrue("a short tap always says 'Gedrückt halten'", HoldRule.pillShows(learned = true, strong = true))
+        assertTrue(HoldRule.pillShows(learned = false, strong = true))
+    }
 }

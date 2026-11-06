@@ -160,6 +160,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var newPlanNote by mutableStateOf<NewPlanNote?>(null)
         private set
     fun dropNewPlanNote() { newPlanNote = null }
+
+    /** The locked bar's rest line shows until one held button fired ([HoldRule.pillShows], owner 2026-11-07). */
+    var holdLearned by mutableStateOf(prefs.holdLearned)
+        private set
+    /** A held button of the locked bar fired: from now on its rest line is gone (a short tap still says "Gedrückt halten"). */
+    fun holdFired() {
+        if (holdLearned) return
+        holdLearned = true
+        prefs.holdLearned = true
+        com.onpath.app.debug.Problems.trace("navigate", "First held button fired: the lock line no longer shows at rest")
+    }
     /** The line at the top of the open Settings page; goes when the page changes or Settings closes. */
     var settingsNote by mutableStateOf<Notice?>(null)
     private var routesShown by mutableStateOf(false)

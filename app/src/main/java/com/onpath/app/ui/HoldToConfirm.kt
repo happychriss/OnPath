@@ -71,10 +71,23 @@ object HoldRule {
 
     /** How long the band runs back from [progress]. */
     fun backMs(progress: Float): Int = (BACK_MS * progress.coerceIn(0f, 1f)).toInt()
+
+    /**
+     * Whether the small line over the locked bar shows (owner 2026-11-07: "nur beim ersten Mal oder wenn man den Knopf
+     * kurz antippt – nicht andauernd, das irritiert"): always right after a release before the end ([strong], the hint
+     * "Gedrückt halten" for [HINT_MS]); at rest only until the user has fired one held button ([learned]).
+     */
+    fun pillShows(learned: Boolean, strong: Boolean): Boolean = strong || !learned
 }
 
 /** The hold time the bar's [HoldButton]s use (Settings → Navigation, provided by Navigate; screenshot tests: the default). */
 val LocalHoldMs = androidx.compose.runtime.compositionLocalOf { HoldRule.HOLD_MS }
+
+/** The user has fired a held button before ([HoldRule.pillShows]; provided by Navigate; screenshot tests: not yet). */
+val LocalHoldLearned = androidx.compose.runtime.compositionLocalOf { false }
+
+/** Told when a held button fired (Navigate remembers it for [LocalHoldLearned]); nothing by default. */
+val LocalOnHoldFired = androidx.compose.runtime.staticCompositionLocalOf<() -> Unit> { {} }
 
 /**
  * One button of the locked bar: [light] ground with [onLight] words at rest; while held the band in [solid] grows from
@@ -100,6 +113,7 @@ fun HoldButton(
     val fire by rememberUpdatedState(onFire)
     val early by rememberUpdatedState(onEarlyRelease)
     val holdMs by rememberUpdatedState(LocalHoldMs.current)
+    val learnt by rememberUpdatedState(LocalOnHoldFired.current)
     Box(
         modifier.clip(shape).background(light)
             .then(if (outline != null) Modifier.border(BorderStroke(1.5.dp, outline), shape) else Modifier)
@@ -118,6 +132,7 @@ fun HoldButton(
                             fired = true
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             fire()
+                            learnt()
                         }
                     }
                     waitForUpOrCancellation()
