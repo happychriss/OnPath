@@ -15,6 +15,12 @@ const out = path.resolve(process.argv[4] ?? path.join(here, '../../engine/build/
 const locale = process.argv[5] === 'de' ? 'de-DE' : 'en-GB';
 fs.mkdirSync(out, { recursive: true });
 const CODE = 'AQUDAsTcuQTwjYgBqBnjPAIBB1dhYWx3ZWcCBwFWZWxsYXU'; // Hike T3, Meran → Vellau, "Waalweg"
+/** planstats.ts' key for a plan code (the same FNV-1a pair) – to give the made-up rows their numbers. */
+function planKey(s) {
+  let a = 0x811c9dc5, b = 0x01000193 ^ 0x5bd1e995;
+  for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); a = Math.imul(a ^ c, 0x01000193); b = Math.imul(b ^ c, 0x5bd1e995); }
+  return 'p' + (a >>> 0).toString(36) + (b >>> 0).toString(36);
+}
 const { server, url } = await serve({ dist: path.resolve(here, '../dist'), segments, dataDir });
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', { width: 390, height: 844 }]]) {
@@ -69,13 +75,19 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
   await fake('fresh', 2);
   await page.evaluate(() => {
     const s = window.__sync, real = s.list.bind(s), day = 86_400_000, now = Date.now();
-    const row = (id, title, kind, mine, dirty, onPhone, ago) => ({ id, kind, title, plan: '', track: '', updatedAt: now - ago * day, device: '', mine, dirty, onPhone });
+    const row = (id, title, kind, mine, dirty, onPhone, ago) => ({ id, kind, title, plan: 'shot-' + id, track: '', updatedAt: now - ago * day, device: '', mine, dirty, onPhone });
     s.list = async (f) => [...(await real(f)).map((p) => ({ ...p, onPhone: true, dirty: false })),
       row('a', 'Haus Witt → Dorothea-Erxleben-Straße', 'plan', true, true, false, 0.2),
       row('b', 'Ifinger Hütte', 'plan', false, false, true, 1),
       row('c', 'Meran 2000 & Ifinger Hütte', 'track', true, false, true, 3),
       row('d', 'Algund → Vellau (Kopie)', 'plan', true, true, true, 6)];
   });
+  // length and climb for the made-up rows (planstats.ts keys: a plan by its code's hash, a track by its id; 'b' unknown)
+  await page.evaluate((keys) => {
+    const all = JSON.parse(localStorage.getItem('onpath.planStats') ?? '{}');
+    Object.assign(all, { [keys.a]: { m: 4210, up: 38, down: 12 }, tc: { m: 2404, up: 73, down: 104 }, [keys.d]: { m: 12480, up: 842, down: 310 } });
+    localStorage.setItem('onpath.planStats', JSON.stringify(all));
+  }, { a: planKey('shot-a'), d: planKey('shot-d') });
   if (name === 'phone') await page.click('#menuBtn');
   await page.click('#menuPlans');
   await page.waitForSelector('dialog.plans[open] #planList li[data-id]');

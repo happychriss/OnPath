@@ -286,6 +286,7 @@ dialog.mapcontent::backdrop { background: rgba(0,0,0,.25); }
   .brand { font-size: 19px; } .brand .logo { width: 26px; height: 26px; }
   #menuBtn { display: grid; margin-left: auto; }
   .nav { display: none; }
+  #newPlan { display: none; } /* New plan is ☰'s first entry here (main.ts NAV) */
   .nav.open { display: flex; position: absolute; top: 48px; right: 8px; margin: 0; flex-direction: column; min-width: 230px; padding: 6px 0;
     background: var(--bg); border-radius: 8px; box-shadow: 0 6px 20px var(--shadow); }
   .nav.open button { padding: 12px 18px; gap: 16px; border-radius: 0; }
@@ -320,6 +321,15 @@ dialog.mapcontent::backdrop { background: rgba(0,0,0,.25); }
 .planlist .open:hover { background: var(--surface2); }
 .planlist .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .planlist .name { font-size: 16px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+/* length and climb (planstats.ts, owner 2026-11-06): right of the name in a wide window, a muted second line on a phone */
+.planlist .stats { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+@media (min-width: 701px) {
+  dialog.share.plans { width: min(600px, calc(100vw - 32px)); } /* room for name and numbers side by side */
+  .planlist .txt { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; }
+  .planlist .txt > .nameline { grid-column: 1; grid-row: 1; }
+  .planlist .txt > .stats { grid-column: 2; grid-row: 1; align-self: center; text-align: right; }
+  .planlist .txt > .sub { grid-column: 1 / -1; }
+}
 .status.warning { color: var(--warn); }
 dialog .confirm { margin-top: 12px; padding: 12px; border-radius: 12px; background: var(--surface2); }
 dialog .confirm p { margin: 0 0 8px; }
@@ -358,7 +368,7 @@ dialog.pair .check b { letter-spacing: .08em; }
 .nav a.navlink { display: inline-flex; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 6px; font-size: 15px; color: var(--site-fg); text-decoration: none; }
 .nav a.navlink .ic { color: var(--green-fg); }
 /* "Try the Android app" / "Android-App testen" is the longest entry: icon only first (title = the text) */
-@media (max-width: 1279px) and (min-width: 701px) { .nav a.navlink span { display: none; } }
+@media (max-width: 1500px) and (min-width: 701px) { .nav a.navlink span { display: none; } } /* room for New plan */
 .nav a.navlink:hover { background: var(--site-soft); }
 .langswitch { display: inline-flex; flex: none; margin-left: 12px; border: 1px solid var(--site-line); border-radius: 6px; overflow: hidden; }
 .langswitch button { border: none; background: none; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; padding: 5px 8px; }
@@ -366,8 +376,8 @@ dialog.pair .check b { letter-spacing: .08em; }
 .langswitch button:hover { color: var(--site-fg); }
 /* German labels are longer: one line each; the hint goes first, then the labels (icons stay, with their title) */
 .nav button, .nav a.navlink { white-space: nowrap; }
-@media (max-width: 1560px) { #header .hint { display: none; } }
-@media (max-width: 1180px) and (min-width: 701px) { .nav button span { display: none; } }
+@media (max-width: 1760px) { #header .hint { display: none; } } /* New plan (2026-11-06) needs the room */
+@media (max-width: 1260px) and (min-width: 701px) { .nav button span { display: none; } }
 .sitelinks { display: inline-flex; gap: 6px; align-items: center; background: rgba(255,255,255,.7); color: #333; font-size: 12px; padding: 2px 6px; border-radius: 4px; }
 .sitelinks a { color: #333; text-decoration: none; } .sitelinks a:hover { text-decoration: underline; }
 .apphint { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 6px 8px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 13px; }
@@ -410,6 +420,12 @@ dialog.share .scanline { margin: 0 0 8px; font-weight: 600; }
 .savebtn[data-state="done"] { border-color: var(--site-line); color: var(--site-fg); font-weight: 500; }
 .savebtn[data-state="done"] .ic { color: var(--green-fg); }
 .savebtn:disabled { border-color: var(--site-line); color: var(--muted); opacity: .6; cursor: default; }
+@media (min-width: 701px) { #menuNewPlan { display: none; } }
+/* New plan (owner 2026-11-06): outlined beside Save, greyed with nothing on the map; icon only where the header is tight */
+.newbtn:disabled { border-color: var(--site-line); color: var(--muted); opacity: .6; cursor: default; }
+@media (max-width: 1360px) and (min-width: 701px) { .newbtn .lbl { display: none; } .newbtn { padding: 0 9px; } }
+@media (max-width: 760px) and (min-width: 701px) { .phonebtn .lines { display: none; } .phonebtn { padding: 0 9px; }
+  #header { gap: 10px; } .nav button, .nav a.navlink { padding: 8px; } }
 .savebtn[data-state="full"] { background: var(--warn-bg); border-color: var(--warn); color: var(--warn); }
 /* Phone: outlined "Pair phone"; paired a pill with the name, the dot and "synced 2 min. ago" below */
 .phonebtn.paired { border-color: var(--site-line); color: var(--site-fg); padding-right: 12px; }
@@ -422,7 +438,7 @@ dialog.share .scanline { margin: 0 0 8px; font-weight: 600; }
 .syncdot[hidden] { display: none; }
 .syncdot[data-kind="stale"] { background: var(--weak); } /* paired, the phone has not synced for a day */
 @media (max-width: 900px) and (min-width: 701px) { .phonebtn .sub { display: none; } }
-@media (max-width: 780px) and (min-width: 701px) { .savebtn .lbl { display: none; } .savebtn { padding: 0 9px; } }
+@media (max-width: 960px) and (min-width: 701px) { .savebtn .lbl { display: none; } .savebtn { padding: 0 9px; } }
 @media (max-width: 700px) {
   .headacts { gap: 6px; }
   .hbtn { width: 38px; padding: 0; justify-content: center; }

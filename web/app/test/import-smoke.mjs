@@ -202,6 +202,16 @@ check(tp.includes('Activity set to Hike T2 from the file'), 'Komoot <type>hike</
 check((await page.textContent('#activityChip')).includes('T2') && (await page.getAttribute('#activityChip', 'aria-label')).includes('Hike'), 'the activity chip shows Hike · T2');
 const drawn = await page.waitForFunction(() => (window.__map.getSource('gpx-track')?.serialize().data.features.length ?? 0) >= 1, null, { timeout: 15_000 }).then(() => true).catch(() => false);
 check(drawn, 'the track is drawn (gpx-track)');
+// My routes keeps the track's length and climb for its row (owner 2026-11-06, planstats.ts – kept when imported)
+let trackStats = null;
+for (let i = 0; i < 60 && !trackStats; i++) {
+  trackStats = await page.evaluate(async () => {
+    const tr = (await window.__sync.list()).find((p) => p.kind === 'track');
+    return (tr && JSON.parse(localStorage.getItem('onpath.planStats') ?? '{}')['t' + tr.id]) ?? null;
+  });
+  if (!trackStats) await page.waitForTimeout(250);
+}
+check(!!trackStats && trackStats.m > 2300 && trackStats.m < 2500 && trackStats.up > 0, `imported track: My routes keeps its length and climb (${JSON.stringify(trackStats)})`);
 // "Plan a route from it" shows the app's modal box with Cancel; Cancel keeps the track and the plan as they were
 const beforePins = await pins();
 const box = await page.evaluate(() => { document.getElementById('planFromTrack').click();

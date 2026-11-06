@@ -898,3 +898,24 @@ Code: `web/app/src/terrainview.ts` (`RouteProfile`, `Terrain3D`), `profile.ts` (
 - Tests: ui-smoke (cursor from the sheet's profile + dot, gone again; big profile, steepness line, pointer on the route →
   cursor; close; 3D on: terrain + tilt + note, a click adds nothing; off: flat, max tilt 0). Pictures:
   `web/app/test/terrain-shots.mjs <segments> <map store> <out> [de|en]` (Waalweg Meran → Vellau).
+
+## 20. My routes with length and climb, a visible New plan (laptop, 2026-11-06, owner)
+
+Owner 2026-11-06: "Im Tour-Menü … nicht nur den Tournamen, sondern auch die Länge der Tour und hoch und runter – da ist
+genug Platz" and "Wie plane ich eine neue Tour? Fehlt da ein Button?".
+
+- **My routes rows** show `12,5 km · ↑ 842 m ↓ 310 m` (the app's Format.distance / Format.meters, as its My routes card)
+  right of the name in a wide window (the dialog is 600 px wide from 701 px on), a muted line under the name on a phone.
+  The sync record holds only the plan code, so the numbers come from `planstats.ts`: kept in this browser
+  (localStorage `onpath.planStats`, the newest 400) whenever the page has them anyway – a plan saved or opened and routed
+  here (key = a hash of its plan code, so a copy or the phone's same version has them too; only a real route: no straight
+  pieces, no gaps, routing data there), a GPX track imported or opened (key = its id). The list never routes anything:
+  a route this browser has not routed yet shows its name only, until it is opened once.
+- **New plan** (`plan_new_route`, "+ Neuer Plan"): an outlined header button before Save, greyed on an empty map, the same
+  as the plan row's ✕ Neu planen (`newPlan()` in main.ts – unsaved changes ask first). Label from 1361 px, icon only
+  below; at phone width the header has no room, so it is ☰'s first entry (`menuNewPlan`). To make room the header hint
+  shows from 1761 px only, "Android-App testen" keeps its label from 1501 px, the nav labels from 1261 px, Save's from
+  961 px; 701–760 px slightly tighter gaps – no header overflows from 390 to 1920 px (de and en, paired).
+- Tests: parity-smoke (row numbers = the sheet's distance, right of the name; New plan active / asks / greyed; phone:
+  ☰ starts with New plan), import-smoke (an imported track keeps its numbers), sheet-smoke (header entries shown),
+  ui-shots (`*-myroutes.png` with numbers).

@@ -40,6 +40,7 @@ import { appHint } from './apphint';
 import { setupSheetSteps } from './sheetstep';
 import { installDiag, addDiagSection, problem } from './diag';
 import { watchVersion, BUILD } from './version';
+import { keepStats, planKey, trackKey } from './planstats';
 import './fonts/manrope.css';
 import './style.css';
 import manropeLicence from './fonts/manrope/OFL.txt?url';
@@ -102,6 +103,8 @@ if (pairLink) history.replaceState(null, '', location.href.split('#')[0]);
 const NAV: { id: string; icon: IconName; label: string; act?: () => void }[] = [
   // owner 2026-10-30: no "Send to phone" here – sharing is the sheet's Share icon. Save and the Phone button are not
   // entries: they sit on the right of the header, also at phone width (web-sync.md §14.6)
+  // phone width only (owner 2026-11-06): the header has no room for New plan there – it is the first ☰ entry; wide it is a header button
+  { id: 'menuNewPlan', icon: 'add', label: t('plan_new_route') },
   { id: 'menuPlans', icon: 'folder', label: t('routes_title') },
   { id: 'menuImportGpx', icon: 'route', label: t('routes_import_gpx') }, // gpximport.ts (the app's My routes → Import GPX)
   { id: 'menuAbout', icon: 'help', label: t('web_nav_help') },
@@ -135,6 +138,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </nav>
     <span class="hint muted">${escapeHtml(t('web_header_hint'))}</span>
     <span id="headActs" class="headacts">
+      <button id="newPlan" class="hbtn newbtn" title="${escapeHtml(t('plan_new_route'))}" aria-label="${escapeHtml(t('plan_new_route'))}" disabled>${icon('add', 20)}<span class="lbl">${escapeHtml(t('plan_new_route'))}</span></button>
       <button id="menuSavePlan" class="hbtn savebtn" data-state="empty" disabled>${icon('save', 20)}<span class="lbl">${escapeHtml(t('common_save'))}</span></button>
       <button id="syncBadge" class="hbtn phonebtn" aria-haspopup="dialog" title="${escapeHtml(t('web_pair_phone'))}">${icon('phone', 20)}<span class="lines"><span class="l1"><span class="lbl">${escapeHtml(t('web_pair_phone'))}</span><i class="syncdot" aria-hidden="true" hidden></i></span><span class="sub" hidden></span></span></button>
     </span>
@@ -557,6 +561,7 @@ async function drawPoints() {
   $<HTMLButtonElement>('reverse').disabled = n < 2;
   $('pointsSection').hidden = n === 0;
   $('planActions').hidden = n === 0; // the app's RouteRules.canClear: something to close
+  for (const id of ['newPlan', 'menuNewPlan']) $<HTMLButtonElement>(id).disabled = n === 0; // New plan: the same rule as ✕ Neu planen
 }
 
 // Points list: click = show on the map, ✕ = delete, drag ≡ = new order (PlanEdits.move; sortable.ts)
@@ -922,6 +927,18 @@ async function cancelRouting() {
   setNotRouted(t('plan_not_routed_stopped'), t('plan_calculate'));
   await cancelLongRoute();
 }
+/** The points the shown plan was routed for (enc) – My routes keeps its numbers only for exactly these. */
+let planFor = '';
+/**
+ * My routes' length and climb (planstats.ts, owner 2026-11-06): kept for [code] when the shown plan is routed for the
+ * points shown now and is a real route (no straight pieces, no gaps, routing data there) – never a stale plan's numbers.
+ */
+function keepPlanStats(code: string) {
+  const p = state.plan;
+  if (!p || state.planning || p.error || p.failed || p.notice || p.gaps.gaps.length || planFor !== enc(state.points)) return;
+  if (p.legs.some((l) => l.straight)) return;
+  keepStats(planKey(code), { m: p.distanceM, up: p.ascentM, down: p.descentM });
+}
 /** The plan before the point edit that is being planned now (the long-route question's "Far from your route"). */
 let editBefore: Before | null = null;
 async function changed() {
@@ -995,6 +1012,7 @@ async function planRun(rounds: number) {
   // routing data not downloaded (offline a moment, server busy): straight line + the grey line; tried again by itself
   if (r.plan.notice === 'NOT_YET') setTimeout(retryMissingData, 20_000);
   if (r.plan.moved) await adoptSnapped(routed, r.plan.points);
+  planFor = enc(state.points); // the points this plan belongs to (keepPlanStats)
   planGaps.set(r.plan.gaps); // points the route does not reach or skips (the app's PlanGaps, in PlanResult)
   if (fitNextRoute) {
     fitNextRoute = false;
@@ -1487,8 +1505,10 @@ document.addEventListener('click', (e) => { if (!(e.target as HTMLElement).close
 
 $('reverse').onclick = () => applyEdit('reverse');
 $('roundTrip').onclick = () => applyEdit('roundTrip');
-// ✕ Close: with unsaved changes it asks first (the app's DiscardPlanDialog: Cancel · Discard); a saved route stays in My routes
-$('clear').onclick = async () => { if (saveState === 'save' && !(await askDiscard())) return; clearRoute(); placeCard.removePin(); };
+/** ✕ Neu planen in the plan row and the header's New plan (owner 2026-11-06): unsaved changes ask first, then empty. */
+async function newPlan() { if (saveState === 'save' && !(await askDiscard())) return; clearRoute(); placeCard.removePin(); }
+$('clear').onclick = newPlan;
+$('newPlan').onclick = newPlan;
 function forgetSaved() { state.savedId = null; state.savedTitle = null; state.savedCode = null; state.savedFolder = null; state.storedCode = null; }
 const plansHost = {
   current: async () => (state.points.length >= 2 && (await ready) ? { code: await engine.encode(sharedPlan()), title: state.title } : null),
@@ -1499,19 +1519,27 @@ const plansHost = {
   engineCall: (fn: string, ...args: (string | number)[]) => engine.call(fn, ...args),
   openFolder: () => (state.savedId && state.savedFolder) || sync.open,
   open: async (p: SavedPlan, folder: string) => {
-    if (p.kind === 'track') { gpxImport.showGpx(await sync.trackGpx(p), shownTitle(p.title, t('web_route_default_name'))); return; }
+    if (p.kind === 'track') {
+      const before = gpxImport.shown;
+      await gpxImport.showGpx(await sync.trackGpx(p), shownTitle(p.title, t('web_route_default_name')));
+      const tr = gpxImport.shown; // a new one = this track read fine (an unreadable one leaves the old one shown)
+      if (tr && tr !== before) keepStats(trackKey(p.id), { m: tr.distanceM, up: tr.ascentM, down: tr.descentM });
+      return;
+    }
     const shared = await engine.parse('p=' + p.plan);
     if (!shared) { status(t('web_plan_unreadable'), 'error'); return; }
     state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.savedFolder = folder; state.storedCode = p.plan;
     if (state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';')) {
-      state.title = p.title; state.otherRouting = !!p.otherRouting; render(); rememberInAddress(); return;
+      state.title = p.title; state.otherRouting = !!p.otherRouting; render(); rememberInAddress(); keepPlanStats(p.plan); return;
     }
     openedOtherRouting = !!p.otherRouting;
     await loadShared({ ...shared, title: p.title });
     rememberInAddress();
+    keepPlanStats(p.plan); // routed by now (loadShared waits for the plan) – My routes shows its numbers from now on
   },
   saved: (p: SavedPlan, folder: string) => {
     state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.title = p.title; state.savedFolder = folder; state.storedCode = p.plan;
+    keepPlanStats(p.plan);
     rememberInAddress();
     render(); // the sheet says "Saved as …" – no message (the app's saveRoute)
   },
@@ -1567,6 +1595,7 @@ async function suggestName(): Promise<string> {
   }
 }
 navItem('menuPlans').act = () => myPlansDialog(sync, plansHost);
+navItem('menuNewPlan').act = () => { newPlan(); };
 /** The header's Phone button (§14.6): outlined "Pair phone"; paired a pill with the phone's name, its dot (green, or
  *  amber when the phone was away for a day – phoneState) and a small second line "synced 2 min. ago" / "last 3 days
  *  ago" (the tooltip says it all where the line has no room). A click opens the Phone window. Follows sync.onChange
@@ -1616,7 +1645,13 @@ const gpxImport = setupGpxImport({
     await commit(points, names ? points.map((_, i) => ({ pinned: !!pinned?.[i], name: names[i] ?? undefined })) : undefined);
   },
   // A-017 rule 14: an imported track is kept in the open folder and goes to the phone with Save
-  imported: (tr) => { syncReady.then((ok) => { if (ok) sync.saveTrack(tr.segments, tr.waypoints, tr.activity, tr.sac, tr.name); }); },
+  imported: (tr) => {
+    syncReady.then(async (ok) => {
+      if (!ok) return;
+      const id = await sync.saveTrack(tr.segments, tr.waypoints, tr.activity, tr.sac, tr.name);
+      if (id) keepStats(trackKey(id), { m: tr.distanceM, up: tr.ascentM, down: tr.descentM }); // My routes' numbers
+    }).catch((e) => problem('sync', 'imported track not kept', e));
+  },
 });
 navItem('menuImportGpx').act = () => gpxImport.pick();
 (window as unknown as { __gpx: typeof gpxImport }).__gpx = gpxImport; // for the browser tests

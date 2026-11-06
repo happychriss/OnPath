@@ -244,6 +244,14 @@ const myRow = await page.evaluate(() => { const li = document.querySelector('#pl
 check(myRow.name === 'Test loop' && myRow.current && myRow.where === 'In this browser' && await page.locator('#saveCurrent').count() === 0
   && JSON.stringify(myRow.menu) === '["Rename","Save as copy","Export GPX","Share plan","Delete"]',
   `My routes: the row "Test loop", marked as open, 🖥, ⋮ as the app's (${JSON.stringify(myRow)})`);
+// length and climb in the row (owner 2026-11-06, planstats.ts): the sheet's distance, ↑ / ↓ in metres; right of the name
+{
+  const st = await page.evaluate(() => { const li = document.querySelector('#planList li[data-id]'), s = li.querySelector('.stats');
+    const n = li.querySelector('.name').getBoundingClientRect(), r = s?.getBoundingClientRect();
+    return { text: s?.textContent ?? null, dist: document.querySelector('#summary .dist')?.textContent ?? '', sameLine: !!r && Math.abs(r.top - n.top) < 12 && r.left > n.left }; });
+  check(st.text !== null && st.text.startsWith(st.dist + ' · ↑ ') && /↑ \d+ m ↓ \d+ m$/.test(st.text) && st.sameLine,
+    `My routes: length and climb right of the name, "${st.text}" (sheet: ${st.dist})`);
+}
 await page.click('#closePlans');
 if (await page.isEnabled('#undo')) { // a change → Save dark; Save overwrites; My routes ⋮ → Save as copy makes a copy
   await page.click('#undo');
@@ -288,16 +296,19 @@ if (await page.isEnabled('#undo')) { // a change → Save dark; Save overwrites;
 }
 
 // 7. Go here from my position (browser location)
-// ✕ Close with unsaved changes asks first (the app's DiscardPlanDialog): Cancel keeps the plan, Discard closes it
-await page.click('#clear');
+// ✕ Close with unsaved changes asks first (the app's DiscardPlanDialog): Cancel keeps the plan, Discard closes it.
+// The header's New plan (owner 2026-11-06) does the same as ✕ – first it, then ✕
+check(await page.isEnabled('#newPlan') && (await page.textContent('#newPlan')).trim() === 'New plan', 'header: New plan, active with a plan on the map');
+await page.click('#newPlan');
 if (await page.locator('dialog.discard[open]').count()) {
   await page.click('#discardCancel');
-  check(await pins() > 0, 'Close → "Discard changes?" → Cancel: the plan stays');
+  check(await pins() > 0, 'New plan → "Discard changes?" → Cancel: the plan stays');
   await page.click('#clear');
   check(await page.locator('dialog.discard[open] #discardOk').count() === 1, 'Close asks again: Cancel · Discard');
   await page.click('#discardOk');
 }
 await waitPins(0);
+check(await page.isDisabled('#newPlan'), 'header: New plan greyed on an empty map');
 await clickAt(11.1350, 46.6840);
 await page.waitForSelector('.pointmenu');
 await page.click('.pointmenu button:nth-of-type(2)'); // Go here
@@ -336,6 +347,7 @@ await page.waitForFunction(() => { const r = document.getElementById('sheet').ge
 const sheet = await page.locator('#sheet').boundingBox();
 check(sheet.y > 300 && sheet.y + sheet.height >= 855, `phone: the plan sheet sits at the bottom (top ${Math.round(sheet.y)}, bottom ${Math.round(sheet.y + sheet.height)})`);
 check(await page.isVisible('#menuBtn') && await page.isHidden('#menuPlans'), 'phone: header entries behind ☰');
+check(await page.isHidden('#newPlan') && await page.isVisible('#menuSavePlan'), 'phone: Save in the header, New plan not (no room – it is in ☰)');
 const ptb = await page.locator('#toolbar').boundingBox(), psb = await page.locator('#searchbox').boundingBox(), pbar = await page.locator('#topbar').boundingBox();
 check(ptb.y >= psb.y + psb.height - 1 && ptb.y + ptb.height <= pbar.y + pbar.height + 1 && Math.abs(psb.width - pbar.width) < 2,
   'phone: search full width, the tools as a row below it in the same bar');
@@ -343,6 +355,8 @@ check((await Promise.all(['#undo', '#redo', '#eye', '#compass', '#locate', '#map
   'phone: all tools visible (none behind a menu)');
 await page.click('#menuBtn');
 check(await page.isVisible('#menuPlans'), 'phone: ☰ shows the entries');
+check(await page.isVisible('#menuNewPlan') && (await page.textContent('#menuNewPlan')).trim() === 'New plan'
+  && await page.evaluate(() => document.querySelector('#mainMenu button:not([hidden])')?.id) === 'menuNewPlan', 'phone: ☰ starts with New plan');
 await page.keyboard.press('Escape');
 check(await page.isHidden('#points'), 'phone: Points folded away');
 await page.click('#handle');

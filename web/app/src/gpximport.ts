@@ -32,7 +32,7 @@ export interface GpxHost {
 
 export interface Track {
   name: string; activity: Activity; sac: number; switch: boolean; note: string | null; skippedNote: string | null;
-  distanceM: number; durationS: number;
+  distanceM: number; ascentM: number; descentM: number; durationS: number;
   texts: { distance: string; duration: string; climb: string; plan: string; close: string };
   segments: [number, number, number | null][][];
   waypoints: { lat: number; lon: number; name: string | null }[];

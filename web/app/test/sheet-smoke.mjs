@@ -322,7 +322,8 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   const brand = await page.evaluate(() => { const w = document.querySelector('.wordmark'), p = document.querySelector('.product');
     return { text: w.textContent.replace(/\s+/g, ' ').trim(), same: getComputedStyle(w).fontSize === getComputedStyle(p).fontSize, upper: getComputedStyle(p).textTransform }; });
   check(brand.text === 'OnPath Planner' && brand.same && brand.upper === 'none', `header: "OnPath Planner" in one size (${JSON.stringify(brand)})`);
-  const labels = () => page.$$eval('#mainMenu button:not([hidden])', (bs) => bs.map((b) => { const sp = b.querySelector('span'); return { id: b.id, label: !!sp && sp.getClientRects().length > 0, icon: !!b.querySelector('.ic'), title: b.title }; }));
+  // the shown entries (☰'s New plan is there at phone width only)
+  const labels = () => page.$$eval('#mainMenu button:not([hidden])', (bs) => bs.filter((b) => b.getClientRects().length > 0).map((b) => { const sp = b.querySelector('span'); return { id: b.id, label: !!sp && sp.getClientRects().length > 0, icon: !!b.querySelector('.ic'), title: b.title }; }));
   const right = () => page.evaluate(() => ['menuSavePlan', 'syncBadge'].map((id) => { const b = document.getElementById(id), r = b.getBoundingClientRect(), l = b.querySelector('.lbl');
     return { id, label: l.getClientRects().length > 0 ? l.textContent : '', h: Math.round(r.height), x: Math.round(r.x), w: Math.round(r.width), inNav: !!b.closest('#mainMenu') }; }));
   let l = await labels(), rb = await right();

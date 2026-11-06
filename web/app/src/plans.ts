@@ -6,6 +6,7 @@ import { NONE, shownTitle, type PlanSync, type SavedPlan, type SyncStatus } from
 import { icon } from './icons';
 import { t, locale } from './i18n';
 import { problem } from './diag';
+import { planKey, trackKey, statsOf, statsText } from './planstats';
 
 export interface PlanHost {
   /** The current plan as a plan code + its title, or null when there is nothing to save. */
@@ -179,7 +180,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       const where = (cls: string, key: string, ic: 'monitor' | 'phone') =>
         `<span class="w ${cls}" role="img" title="${esc(t(key))}" aria-label="${esc(t(key))}">${icon(ic, 18)}</span>`;
       li.innerHTML = `<button class="open" title="${esc(t('web_plans_open'))}"><span class="kindic" title="${esc(kindName)}">${icon(p.kind === 'track' ? 'fileOpen' : 'route', 22)}</span>
-        <span class="txt"><span class="nameline"><span class="name">${esc(titleOf(p))}</span>${tagOf(p)}</span><span class="muted small sub">${esc(kind + ' · ' + appDate(p.updatedAt))}</span></span></button>
+        <span class="txt"><span class="nameline"><span class="name">${esc(titleOf(p))}</span>${tagOf(p)}</span>${statsLine(p)}<span class="muted small sub">${esc(kind + ' · ' + appDate(p.updatedAt))}</span></span></button>
         <span class="where">${here ? where('browser', 'web_where_browser', 'monitor') : ''}${phone ? where('phone', 'web_where_phone', 'phone') : ''}</span>
         <button class="more iconbtn" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(t('web_route_options'))}" title="${esc(t('web_route_options'))}">${icon('moreVert', 22)}</button>
         <div class="menu rowmenu" role="menu" hidden><button class="rename" role="menuitem">${esc(t('common_rename'))}</button>${p.kind === 'plan' ? `<button class="copy" role="menuitem">${esc(t('plan_save_as_copy'))}</button>` : ''}<button class="export" role="menuitem">${esc(t('common_export_gpx'))}</button>${p.kind === 'plan' ? `<button class="sharerow" role="menuitem">${esc(t('plan_share_plan'))}</button>` : ''}<button class="del" role="menuitem">${esc(t('common_delete'))}</button></div>`;
@@ -339,6 +340,12 @@ export function phoneDialog(sync: PlanSync, page: string) {
  * The phone's mark as the app's tag (ui/RouteTag, ui-style.md "Tags", docs/handoff-web-route-tags.md): "New" / "Changed"
  * after the name – came from the phone, not opened here yet; gone when opened (sync.seen). Never cut: the name gives way.
  */
+/** Length and climb when this browser knows them (planstats.ts), else nothing – the list never waits for a route. */
+function statsLine(p: SavedPlan): string {
+  const s = statsOf(p.kind === 'track' ? trackKey(p.id) : planKey(p.plan));
+  return s ? `<span class="stats">${esc(statsText(s))}</span>` : '';
+}
+
 function tagOf(p: SavedPlan): string {
   if (!p.mark) return '';
   const word = t(p.mark === 'new' ? 'routes_tag_new' : 'routes_tag_changed');
