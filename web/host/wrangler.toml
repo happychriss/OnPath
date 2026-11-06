@@ -1,0 +1,94 @@
+# OnPath web planner host – docs/design/web-planner.md §9. Deployed by .github/workflows/web-spike.yml (manual).
+# No secrets here. The maps bucket is only read (map cells), never written.
+name = "onpath-planner"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = false        # only the custom domain, which Cloudflare Access guards
+preview_urls = false
+
+[assets]
+directory = "../app/dist"
+binding = "ASSETS"
+run_worker_first = ["/data/*", "/segments/*", "/sync/*", "/maps/*", "/.well-known/*", "/version.json"]
+
+# no plain IPs anywhere (owner, doorman 2e851ef): the per-IP limits use a daily salted hash, and no invocation logs
+[observability.logs]
+enabled = true          # the worker's own console lines (no IPs in them)
+invocation_logs = false # but no per-request invocation logs
+
+[env.test]
+name = "onpath-planner-test"
+workers_dev = false
+preview_urls = false
+routes = [{ pattern = "__PLANNER_HOST_TEST__", custom_domain = true }]
+
+[[env.test.r2_buckets]]
+binding = "MAPS"
+bucket_name = "onpath-maps-test"
+jurisdiction = "eu"
+
+# Plan sync mailbox (docs/design/web-sync.md §8): D1, EU. The deploy step fills the id from the repository variable
+# SYNC_D1_ID_TEST; create the database once with `wrangler d1 create onpath-sync-test --jurisdiction eu`.
+[[env.test.d1_databases]]
+binding = "SYNC"
+database_name = "onpath-sync-test"
+database_id = "__SYNC_D1_ID_TEST__"
+migrations_dir = "migrations"
+
+# 120 sync requests per minute per IP (a sync round is 2–5 requests)
+[[env.test.ratelimits]]
+name = "SYNC_RATE"
+namespace_id = "7301"
+simple = { limit = 120, period = 60 }
+
+# daily: delete mailboxes idle for 12 months and old map-area counters
+[env.test.triggers]
+crons = ["17 3 * * *"]
+
+# Map areas on demand (src/maps.js, docs/design/web-planner.md §17): build requests go to the doorman Worker of the same
+# account through this service binding; the app key comes from the secret MAP_KEY (the deploy step puts it from the
+# repository secret ONPATH_MAP_KEY_TEST; without it the page says the area's map is not available on the web yet).
+[[env.test.services]]
+binding = "DOORMAN"
+service = "onpath-doorman-test"
+
+# 20 map-area calls per minute per IP (a request + polling every 15 s), 120 per minute for all browsers together
+[[env.test.ratelimits]]
+name = "MAPS_RATE"
+namespace_id = "7302"
+simple = { limit = 20, period = 60 }
+
+[[env.test.ratelimits]]
+name = "MAPS_RATE_ALL"
+namespace_id = "7303"
+simple = { limit = 120, period = 60 }
+
+# Before the login goes (A-011, docs/design/web-planner.md §18): per-IP limits for the map files (/data/) and the routing
+# data (/segments/: a plan needs a few 2–10 MB parts) – generous for planning, against mass downloads. /data/: a map view
+# is ~100 tile ranges, but a fly to a search result or the position on a fast desktop passes many zooms and cells (4
+# files each), Chrome on Windows reads every range uncached (pmtiles), and a household shares one IP – 600 per minute
+# is the likely cause of the owner report 2026-10-30 (Hilden: streets missing); 2400 is still 40 ranges a second.
+[[env.test.ratelimits]]
+name = "DATA_RATE"
+namespace_id = "7304"
+simple = { limit = 2400, period = 60 }
+
+[[env.test.ratelimits]]
+name = "SEGMENTS_RATE"
+namespace_id = "7305"
+simple = { limit = 30, period = 60 }
+
+[env.test.vars]
+# Search engines: "off" = X-Robots-Tag noindex on every answer + the page's meta robots (until launch);
+# "on" at launch (the one switch: the header goes and the host removes the meta tag).
+INDEXING = "off"
+# New map areas (src/maps.js quotas, counted in the sync D1 database): per browser per day / month, per IP per day,
+# for everyone per day.
+MAPS_QUOTA_BROWSER_DAY = "15"
+MAPS_QUOTA_BROWSER_MONTH = "60"
+MAPS_QUOTA_IP_DAY = "40"
+MAPS_QUOTA_GLOBAL_DAY = "200"
+# New plan-sync mailboxes (pairings) per IP per day (src/sync.js; counted in map_quota as a daily salted hash, like
+# the map-area quota). A second device joining an existing pairing does not count. Test site: 50 (owner 2026-10-30 –
+# with A-017 every "Pair phone" claims a fresh mailbox, so testing pairing hit 5 quickly); production: decide at launch.
+SYNC_NEW_PER_IP_DAY = "50"

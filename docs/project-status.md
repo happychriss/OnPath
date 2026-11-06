@@ -44,7 +44,18 @@ the current state.
   cloud has no map key (ONPATH_APP_KEYS is a GitHub secret): it cannot download map areas; the in-app updater only sees
   GitHub releases.
 - **cloud worker as donald (no computer), 2026-11-06:** v0.17.0 released (plan sheet R5, Navigate lock, end-tour sheet, leg cache) together with the planner (main merged into web-spike, LegCache + leg progress in the web engine). Rundgang ran on GitHub's emulator instead of donald. Not on the Pixel. Next: [pixel] measure long bike routes, onboarding hints (owner thinking).
+- **laptop (cloud-plan), 2026-11-06:** flaky web smokes – import-smoke pin link: a plan link opened while the page still wrote the old plan into the address (rememberInAddress awaits the engine) was overwritten, so its hashchange saw "our own address" and dropped the link (reproduced locally, CI printed the same state) → the page no longer writes over a newer address. sync-smoke: waited for `pending === 0` that was still the count from before the Save → waits for a send round after the click. robust-smoke F: waits until the fit's animation ends (and the plan is done) instead of 1.5 s. adoptSnapped re-checks the points after its awaits. Two quick clicks: not found, diagnostics added – backlog item stays.
 - **donald, 2026-11-05 evening (with the owner):** long bike routes faster (leg cache, tour follow line, wait bar within a leg) and the new UI round (plan sheet R5, band + '←', Navigate unlock C, V2 end sheet, clear-plan clarity, M3 dialogs, next stops) all on main, gate --full green; test APK on the Pixel. Next: Pixel measurement of the routing, cloud-plan mirrors PLANNER_VERSION 4, onboarding (proposal in chat, not yet in the backlog), then a release on the owner's word.
+- **hp (laptop, cloud-plan), 2026-11-05 evening:** web-spike has main 7d830d25 + the planner follow-ups: 'Weiter
+  warten?' at the time limit (SlowPlan, edit-smoke fakes the limit), A-022 web texts, pin card like the app, point menu
+  loopStart, header „Android-App testen“ → try page. Smokes green locally (edit, sheet, lang, import, robust); CI flaked
+  once on robust-smoke "two quick clicks" (passes locally). Next on hp: the planner terrain view (claimed).
+- **laptop (hp), 2026-11-05 evening – planner terrain view (owner: "wir bauen A und C"), web-spike:** (A) the elevation
+  profile linked to the map – the app's cursor in the sheet's profile ("375 m · 2,7 km · 14 %" + dot on the route), the
+  pointer on the route moves it, ⤢ opens a big profile below the map with the route coloured by steepness; (C) toolbar
+  "3D" – MapLibre terrain from the cells' heights, tilted, view only, off = flat again. Also fixed: old cells (terrain to
+  z12) gave flat z13 tiles – now magnified from z12. web-planner.md §19, ui-smoke checks, `test/terrain-shots.mjs`.
+  Open: walls at the edge of the loaded map area in 3D; D (flyover) and the app only on the owner's word.
 - **donald, 2026-11-03 late – shut down by the owner (~23:20); new build items go to the cloud.** On main tonight:
   plan in blue (no top band), novice fixes, fewer terms → superseded by A-022 (open), load-route question, compact
   bars + equal pills, map buttons one column 56 dp, slow-planning question, next stop in the turn card, way word.

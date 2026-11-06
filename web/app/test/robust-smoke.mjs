@@ -1,0 +1,215 @@
+// Release-day robustness (review 2026-11-01, list A 10–13): (1) a failed routing-data download is not kept – the plan
+// shows the app's grey "Map loads when online" line (no "Planning failed: TypeError…") and the next plan downloads
+// again; (2) an unsaved route comes back when the planner is opened again without #p= (bookmark / typed address);
+// (3) no developer line ("Routing engine ready (N ms)") without ?debug; (4) a browser without WasmGC gets the
+// "too old" page instead of a planner that cannot plan.
+// Usage: node test/robust-smoke.mjs [segmentsDir]
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { chromium } from '@playwright/test';
+import { serve } from './serve.mjs';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const segments = path.resolve(process.argv[2] ?? '/home/user/build/routing-test/segments');
+const { server, url } = await serve({ dist: path.resolve(here, '../dist'), segments });
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const fails = [];
+const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (!ok) fails.push(what); };
+
+// ---- 1 + 3: download failure, then back ----
+const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+const page = await ctx.newPage();
+const errors = [];
+page.on('pageerror', (e) => errors.push(String(e)));
+let blockData = true, blocked = 0;
+await page.route('**/segments/**', (r) => { if (blockData) { blocked++; return r.abort('internetdisconnected'); } return r.continue(); });
+await page.goto(url + 'index.html');
+await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 120_000 });
+const statusText = () => page.textContent('#status');
+check(!/ready|bereit|\d+ ms/.test(await statusText()), `no developer line without ?debug ("${(await statusText()).trim()}")`);
+const clickAt = async (lon, lat) => {
+  const p = await page.evaluate(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }, [lon, lat]);
+  await page.mouse.click(p[0], p[1]);
+};
+await clickAt(11.1600, 46.6700);
+await page.waitForSelector('.pointmenu');
+await page.click('.pointmenu button:first-of-type'); await page.waitForTimeout(300);
+await clickAt(11.1500, 46.6950);
+const settled = () => page.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1',
+  null, { timeout: 120_000 });
+await settled();
+const offline = await page.evaluate(() => ({ info: document.getElementById('infoline').hidden ? '' : document.getElementById('infoline').textContent,
+  status: document.getElementById('status').textContent, error: document.getElementById('status').classList.contains('error'),
+  red: document.getElementById('notice')?.hidden === false ? document.getElementById('notice').textContent : '' }));
+console.log('offline plan:', JSON.stringify(offline), `(${blocked} requests blocked)`);
+check(blocked > 0, 'the routing data was asked for (and blocked)');
+check(/online/i.test(offline.info), 'download failed → the grey "Map loads when online" line');
+check(!offline.error && !/TypeError|Failed to fetch|java\.|Unexpected/.test(offline.status + offline.red), 'no "Planning failed" / raw error text');
+// back online: the next plan downloads again (the failure was not kept) – the "online" event plans again by itself
+blockData = false;
+await page.evaluate(() => dispatchEvent(new Event('online')));
+await page.waitForFunction(() => document.getElementById('infoline').hidden && document.querySelector('#summary .big') &&
+  document.body.dataset.planning !== '1', null, { timeout: 120_000 }).catch(() => {});
+const back = await page.evaluate(() => ({ info: document.getElementById('infoline').hidden ? '' : document.getElementById('infoline').textContent,
+  straight: window.__state.plan?.legs.every((l) => l.straight) }));
+console.log('back online:', JSON.stringify(back));
+check(!back.info && back.straight === false, 'back online → routed on the ways (no reload needed)');
+
+// ---- 2: unsaved route back without #p= ----
+const pts = await page.evaluate(() => window.__state.points.length);
+await page.waitForTimeout(1500); // the draft is written after the address update
+await page.close();
+const again = await ctx.newPage();
+again.on('pageerror', (e) => errors.push(String(e)));
+// no #p= (a bookmark, the address typed); waitMs: the wait box (middle of the map) stays away – on a slow machine it
+// came before the two quick clicks of step 5 and caught them (CI 2026-11-04); the box has its own test below
+await again.goto(url + 'index.html?waitMs=600000');
+await again.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 120_000 });
+await again.waitForFunction(() => window.__state?.points.length > 0, null, { timeout: 30_000 }).catch(() => {});
+await again.waitForFunction(() => location.hash.startsWith('#p='), null, { timeout: 10_000 }).catch(() => {});
+const restored = await again.evaluate(() => ({ n: window.__state.points.length, hash: location.hash.slice(0, 3) }));
+check(restored.n === pts && pts === 2, `the unsaved route is back after reopening (${restored.n} of ${pts} points)`);
+check(restored.hash === '#p=', 'and in the address again');
+// ---- 5: two quick clicks while the engine is busy go in the order clicked (review web H4) ----
+await again.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1', null, { timeout: 120_000 });
+const p1 = [11.1440, 46.7040], p2 = [11.1380, 46.7110]; // beyond the destination, one after the other
+// the engine busy first (another activity → the plan again), then both clicks: both wait behind that plan
+await again.click('#activityChip'); await again.click('[data-act=BIKE_TOURING]');
+// the menu closed – then the camera stands; both clicks queue behind the new plan
+await again.waitForFunction(() => ![...document.querySelectorAll('[data-act]')].some((e) => e.offsetParent !== null), null, { timeout: 10_000 }).catch(() => {});
+// a fixed close view: the reopened route is fitted whole, where p1 and p2 (~450 m past the goal) lie close to the goal
+await again.evaluate(() => window.__map.jumpTo({ center: [11.141, 46.7075], zoom: 14 }));
+// projected only now: the camera may still move while the activity menu closes (CI: both clicks landed beside p1 / p2)
+// project() gives canvas pixels; the mouse clicks page pixels – the canvas starts below the top bar (was off by 56 px)
+const px = await again.evaluate((ps) => { const r = window.__map.getCanvas().getBoundingClientRect();
+  return ps.map(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x + r.left, q.y + r.top]; }); }, [p1, p2]);
+// what is under each click (the map's canvas, or a box over it) – said when a click is lost (CI 2026-11-03 / 11-05)
+const under = await again.evaluate((ps) => ps.map(([x, y]) => { const e = document.elementFromPoint(x, y); return e ? `${e.tagName.toLowerCase()}.${[...e.classList].join('.')}` : '-'; }), px);
+await again.mouse.click(px[0][0], px[0][1]); await again.mouse.click(px[1][0], px[1][1]);
+await again.waitForFunction(() => window.__state.points.length === 4, null, { timeout: 60_000 }).catch(() => {});
+const order = await again.evaluate(() => window.__state.points.map(([la, lo]) => [Number(lo.toFixed(3)), Number(la.toFixed(3))]));
+console.log('after two quick clicks:', JSON.stringify(order));
+if (order.length !== 4) console.log('  under the clicks:', JSON.stringify(under), 'boxes now:', JSON.stringify(await again.evaluate(() => [...document.querySelectorAll('.msgcard')].map((c) => c.textContent.trim()))));
+// the points may be snapped onto a path – compare which click each one is closer to
+const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+check(order.length === 4 && d(order[2], p1) < d(order[2], p2) && d(order[3], p2) < d(order[3], p1), 'two quick clicks: the second is the new destination (not put before the first)');
+// ---- 5b: Space held = the eye held (owner 2026-11-01) ----
+await again.waitForFunction(() => !document.getElementById('eye').disabled, null, { timeout: 60_000 }).catch(() => {});
+await again.locator('#map canvas').focus().catch(() => {});
+const vis = () => again.evaluate(() => window.__map.getLayoutProperty('planned-route', 'visibility') ?? 'visible');
+await again.keyboard.down(' ');
+const whileHeld = await vis();
+await again.keyboard.up(' ');
+const after = await vis();
+check(whileHeld === 'none' && after === 'visible', `Space held hides the route, let go shows it (${whileHeld} → ${after})`);
+check((await again.getAttribute('#eye', 'title')).includes('Space'), 'the eye\'s tooltip names the Space bar');
+// ---- 5b2: / = search, F = whole route, ? = the list (owner 2026-11-01) ----
+// the four points' plan done first: a route arriving during the fit is a camera rule of its own, not the key's
+await again.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1', null, { timeout: 120_000 }).catch(() => {});
+await again.locator('#map canvas').focus().catch(() => {});
+await again.evaluate(() => window.__map.jumpTo({ center: [11.0, 46.5], zoom: 9 })); // away from the route
+await again.keyboard.press('f');
+// until the fit's animation has ended – a fixed 1.5 s read the camera half way on a slow CI machine (CI 2026-11-06)
+await again.waitForTimeout(100);
+await again.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 20_000 }).catch(() => {});
+const fitted = await again.evaluate(() => { const b = window.__map.getBounds(); return b.contains([11.15, 46.70]) && window.__map.getZoom() > 11; });
+check(fitted, 'F shows the whole route');
+await again.locator('#map canvas').focus().catch(() => {});
+await again.keyboard.press('/');
+check(await again.evaluate(() => document.activeElement?.id === 'q'), '/ puts the cursor into the search');
+await again.keyboard.press('Escape');
+await again.evaluate(() => document.activeElement?.blur());
+await again.keyboard.press('?');
+const keys = await again.waitForSelector('dialog.keys[open]', { timeout: 5_000 }).then(() => again.textContent('dialog.keys'), () => '');
+check(/Space/.test(keys) && /Search/.test(keys) && /Show whole route/.test(keys), `? opens the shortcut list ("${keys.replace(/\s+/g, ' ').slice(0, 60)}…")`);
+await again.click('#closeKeys');
+
+// ---- 5c: the Points rows' texts come from the app's PlanPoints (web M15) ----
+const legs = await again.evaluate(() => [...document.querySelectorAll('#points .leg')].map((l) => l.textContent.trim()).filter(Boolean));
+check(legs.length >= 2 && legs.every((l) => /^[+~↺]/.test(l) && /\d/.test(l)), `Points rows: leg texts from PlanPoints.legText (${JSON.stringify(legs)})`);
+
+// ---- 5d: Save over a route the phone changed meanwhile → a copy, the other version stays (sync/SaveRule, H3) ----
+const saveNamed = async (name) => {
+  await again.click('#menuSavePlan');
+  await again.waitForSelector('dialog.savename[open] #saveTitle', { timeout: 20_000 });
+  if (name) await again.fill('#saveTitle', name);
+  await again.click('#saveOk');
+};
+await saveNamed('Waalweg H3');
+// (waitForFunction does not await an async predicate – poll here)
+const until = async (f, arg, ms = 20_000) => { for (const end = Date.now() + ms; Date.now() < end; await again.waitForTimeout(250)) if (await again.evaluate(f, arg)) return true; return false; };
+await until(async () => (await window.__sync.list()).some((p) => p.title === 'Waalweg H3'));
+// "the phone" changes the stored route (another plan code under the same id)
+await again.evaluate(async () => {
+  const p = (await window.__sync.list()).find((x) => x.title === 'Waalweg H3');
+  const other = await window.__engine.encode({ points: [[46.67, 11.16], [46.69, 11.15]], activity: 'HIKE', sac: 2, pinned: [], names: {}, title: null });
+  await window.__sync.save(other, p.title, p.id, window.__sync.open);
+});
+await saveNamed(null); // the name dialog proposes the copy's name
+
+await until(async () => (await window.__sync.list()).filter((p) => p.title.startsWith('Waalweg H3')).length === 2);
+const h3 = await again.evaluate(async () => ({ titles: (await window.__sync.list()).map((p) => p.title).filter((x) => x.startsWith('Waalweg H3')),
+  line: document.getElementById('status').textContent }));
+check(h3.titles.length === 2 && h3.titles.includes('Waalweg H3 (2)') && /Changed on the phone/.test(h3.line),
+  `changed on the phone meanwhile → saved as a copy (${JSON.stringify(h3)})`);
+
+// ---- 6: a failed write is said, never silent (review web M11) ----
+await again.evaluate(() => { window.__sync.save = () => Promise.reject(new DOMException('quota', 'QuotaExceededError')); });
+await again.click('#menuSavePlan');
+await again.waitForSelector('dialog.savename[open] #saveOk', { timeout: 20_000 });
+await again.click('#saveOk');
+await again.waitForFunction(() => document.getElementById('status').classList.contains('error'), null, { timeout: 10_000 }).catch(() => {});
+const saveLine = await again.textContent('#status');
+check(/Not saved/.test(saveLine) && !/quota|DOMException/i.test(saveLine), `Save fails → a plain red line ("${saveLine.trim()}")`);
+await ctx.close();
+check(errors.length === 0, `no page error (${errors.join(' | ')})`);
+
+// ---- 7: the route's wait (owner 2026-11-02): after ~1 s a box in the middle of the map – spinner, text, Cancel ----
+{
+  const c = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  // a slow routing-data server, so the plan takes a few seconds
+  await c.route('**/segments/**', async (r) => { await new Promise((res) => setTimeout(res, 2500)); return r.continue(); });
+  const p = await c.newPage();
+  const CODE = 'AQUDAsTcuQTwjYgBqBnjPAIBB1dhYWx3ZWcCBwFWZWxsYXU'; // Hike T3, Meran → Vellau
+  await p.goto(url + 'index.html#p=' + CODE);
+  await p.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 120_000 });
+  const t0 = Date.now();
+  const box = await p.waitForSelector('#msgcards .msgcard.busy', { timeout: 30_000 }).then(() => true, () => false);
+  const at = Date.now() - t0;
+  const card = box ? await p.evaluate(() => { const c = document.querySelector('#msgcards .msgcard.busy'), r = c.getBoundingClientRect(),
+    sheet = document.getElementById('sheet').getBoundingClientRect();
+    return { text: c.textContent, spin: !!c.querySelector('.msgspin'), cx: r.left + r.width / 2, sheetRight: sheet.right, w: innerWidth,
+      clock: document.getElementById('status').classList.contains('busy') }; }) : null;
+  check(box && card.spin && /Cancel/.test(card.text) && /Calculating the route|Loading the map/.test(card.text),
+    `the wait box: spinner, "${card?.text}", Cancel`);
+  check(box && card.cx > card.sheetRight && !card.clock, 'in the free map beside the sheet; no small spinner in the sheet');
+  await p.click('#msgcards .msgcard.busy .msgbtn');
+  await p.waitForFunction(() => !document.querySelector('#msgcards .msgcard.busy') && document.body.dataset.planning !== '1', null, { timeout: 5_000 }).catch(() => {});
+  const after = await p.evaluate(() => ({ pts: window.__state.points.length, plan: !!window.__state.plan, line: document.getElementById('summary').textContent,
+    btn: document.getElementById('planAnyway')?.textContent }));
+  check(after.pts === 2 && !after.plan && /calculation stopped/.test(after.line) && after.btn === 'Calculate',
+    `Cancel: the points stay, "Route not calculated – calculation stopped." + Calculate (${JSON.stringify(after)})`);
+  await p.click('#planAnyway');
+  await p.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1', null, { timeout: 120_000 }).catch(() => {});
+  check(await p.evaluate(() => !!window.__state.plan && !document.querySelector('#msgcards .msgcard.busy')), 'Calculate: the route comes, the box is gone');
+  console.log(`(the box came after ${at} ms)`);
+  await c.close();
+}
+
+// ---- 4: no WasmGC ----
+for (const [locale, want] of [['de-DE', 'zu alt'], ['en-US', 'too old']]) {
+  const c = await browser.newContext({ locale });
+  await c.addInitScript(() => { // a browser without WebAssembly GC (Safari < 18.2)
+    const orig = WebAssembly.validate;
+    WebAssembly.validate = (b) => (b.byteLength === 15 ? false : orig(b));
+  });
+  const p = await c.newPage();
+  await p.goto(url + 'index.html');
+  const shown = await p.waitForSelector('.nowebgl[role=alert]', { timeout: 30_000 }).then(() => true, () => false);
+  const text = shown ? await p.textContent('.nowebgl') : '';
+  check(shown && text.includes(want) && text.includes('18.2'), `${locale}: no WasmGC → "browser too old" page ("${text.trim().slice(0, 50)}…")`);
+  check(!(await p.$('#map')), `${locale}: no planner is started`);
+  await c.close();
+}
+await browser.close(); server.close();
+process.exit(fails.length ? 1 : 0);
