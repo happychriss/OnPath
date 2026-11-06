@@ -179,7 +179,7 @@
     <string name="nav_lock">Sperren</string>
     <string name="nav_change_plan">Plan</string>
     <string name="nav_straight_on">Geradeaus</string>
-    <string name="nav_end_save_new_route">Geänderten Plan auch speichern</string>
+    <string name="nav_end_save_new_route">Plan auch speichern</string>
     <string name="nav_end_save_changed_route">Geänderten Plan auch speichern</string>
     <string name="nav_save_recording">Tour speichern</string>
     <string name="nav_continue_navigation">Weiter</string>
