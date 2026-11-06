@@ -920,6 +920,15 @@ Code: `web/app/src/terrainview.ts` (`RouteProfile`, `Terrain3D`), `profile.ts` (
   within 250 m of the camera. The profiles' cursor moves along. Any other camera move (drag, wheel, compass, fit) pauses;
   leaving 3D or a new route stops; Stopp frames the route in 3D again; at the end the camera stays. ui-smoke checks it.
 
+- **Speed (owner 2026-11-06: "3D + großes Höhenprofil – langsam?").** Measured with real terrain (Meran cells, Meran →
+  Schenna, the laptop's GPU, `test/perf-terrain.mjs`): every pointer move over the profile re-set the cursor's GeoJSON
+  source, and in 3D each such update redraws the whole terrain; a pointer move over the 3D map also ran a hit test that
+  samples the terrain per feature (nothing is clickable in 3D). Now the cursor dot is a DOM marker (`.profdot`, same look,
+  no map redraw), the hit test is skipped in 3D, a dragged range is applied at most every 40 ms. Frames per second
+  before → after, normal CPU / CPU slowed 4×: 3D + big profile sweep 31 → 60 / 18 → 60; flyover 27 → 59 / 10 → 18;
+  3D pointer over the map 59 → 60 / 41 → 60 (main thread 770 → 118 ms/s). Flat: unchanged ~60. The flyover's rest is
+  MapLibre's own 3D drawing.
+
 ## 20. My routes with length and climb, a visible New plan (laptop, 2026-11-06, owner)
 
 Owner 2026-11-06: "Im Tour-Menü … nicht nur den Tournamen, sondern auch die Länge der Tour und hoch und runter – da ist

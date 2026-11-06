@@ -624,7 +624,9 @@ map.on('mousemove', (e) => {
   if (queued) return;
   requestAnimationFrame(() => {
     const pt = hoverAt!; hoverAt = null;
-    const layers = map.isMoving() ? [] : map.getStyle().layers
+    // in 3D nothing is clickable (view only), and a hit test there samples the terrain for every feature – the costliest
+    // work of a pointer move in 3D (owner 2026-11-06: slow); skip it
+    const layers = map.isMoving() || terrain3d.on ? [] : map.getStyle().layers
       .filter((l) => l.id.startsWith('poi-') || l.id === 'planned-route' || l.id === 'planned-route-casing').map((l) => l.id);
     const hit = layers.length > 0 && map.queryRenderedFeatures([[pt.x - 10, pt.y - 10], [pt.x + 10, pt.y + 10]], { layers }).length > 0;
     // on the route: the profile's cursor follows (terrain view A) – in 3D the pointer only shows, it does not plan

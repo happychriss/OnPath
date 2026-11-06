@@ -15,7 +15,7 @@ import type { FeatureCollection } from 'geojson';
 import { t } from './i18n';
 import { problem } from './diag';
 
-const CURSOR = 'profile-cursor', STEEP = 'profile-steep', RANGE = 'profile-range';
+const STEEP = 'profile-steep', RANGE = 'profile-range';
 const MIN_ZOOM_3D = 11;
 
 export class RouteProfile {
@@ -29,6 +29,13 @@ export class RouteProfile {
   private rangeAsk = 0;
   /** Length · time · climb of a stretch of the plan – the engine's WebPace.rangeStats (the page sets it). */
   rangeStats: ((from: number, to: number) => Promise<{ text: string } | null>) | null = null;
+  /** The cursor's dot on the map: a DOM marker, not a map source – moving it never redraws the map (in 3D every source
+   * update re-drew the whole terrain: 3D + big profile ran at ~8 frames/s, owner 2026-11-06). Same look as the app's
+   * highlight-dot: white, the route's colour as a 4 px ring, 22 px across. */
+  private dot: maplibregl.Marker | null = null;
+  /** A range dragged in the big profile, applied at most every 40 ms (the map's highlighter and the engine's numbers). */
+  private pendingRange: [number, number] | null | undefined = undefined;
+  private rangeTimer = 0;
 
   constructor(private map: maplibregl.Map, private routeColour: string, private sheetHost: HTMLElement,
     private panel: HTMLElement, private onOpenChange: (open: boolean) => void) {
@@ -44,7 +51,6 @@ export class RouteProfile {
   /** On map load: the cursor dot and the steepness line (empty until used). */
   addLayers(before?: string) {
     const m = this.map;
-    m.addSource(CURSOR, { type: 'geojson', data: empty() });
     m.addSource(STEEP, { type: 'geojson', data: empty() });
     m.addSource(RANGE, { type: 'geojson', data: empty() });
     // the marked range: a wide highlighter under the route (owner 2026-11-06)
@@ -55,8 +61,9 @@ export class RouteProfile {
       paint: { 'line-color': '#fff', 'line-width': 9 } }, before);
     m.addLayer({ id: STEEP, type: 'line', source: STEEP, layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'none' },
       paint: { 'line-color': ['get', 'colour'], 'line-width': 6 } }, before);
-    m.addLayer({ id: CURSOR, type: 'circle', source: CURSOR,
-      paint: { 'circle-radius': 7, 'circle-color': '#fff', 'circle-stroke-color': this.routeColour, 'circle-stroke-width': 4 } });
+    const el = document.createElement('div');
+    el.className = 'profdot'; el.style.borderColor = this.routeColour; el.hidden = true;
+    this.dot = new maplibregl.Marker({ element: el }).setLngLat([0, 0]).addTo(m);
   }
 
   get isOpen() { return this.open; }
@@ -117,14 +124,30 @@ export class RouteProfile {
   private drawBig() {
     if (!this.profile) return;
     this.big = mountProfile(this.panel.querySelector<HTMLElement>('.bpplot')!, this.profile, (m) => this.cursor(m, 'big'), { W: 1000, H: 150 }, '',
-      (r) => this.mark(r, true));
+      (r) => this.markSoon(r));
     this.panel.querySelector<HTMLElement>('.bpplot .profplot')!.title = t('web_profile_range_hint');
     this.big.range(this.marked);
     this.steepLine();
   }
 
+  /** A range from the big profile (already shaded there): at most every 40 ms while dragging – the first at once, the
+   * newest when the time is up (a timer, not a frame: an idle map draws no frames, and the drag's end must still land). */
+  private markSoon(r: [number, number] | null) {
+    if (this.rangeTimer) { this.pendingRange = r; return; }
+    this.mark(r, true);
+    const tick = () => {
+      const next = this.pendingRange;
+      this.pendingRange = undefined;
+      if (next === undefined) { this.rangeTimer = 0; return; }
+      this.mark(next, true);
+      this.rangeTimer = window.setTimeout(tick, 40);
+    };
+    this.rangeTimer = window.setTimeout(tick, 40);
+  }
+
   /** Mark [r] (from the big profile: [fromProfile], already shaded there) or clear it: the map's highlighter, the numbers. */
   private mark(r: [number, number] | null, fromProfile = false) {
+    if (!fromProfile && this.rangeTimer) { clearTimeout(this.rangeTimer); this.rangeTimer = 0; this.pendingRange = undefined; }
     this.marked = r;
     if (!fromProfile) this.big?.range(r);
     (this.map.getSource(RANGE) as GeoJSONSource | undefined)?.setData(r ? { type: 'Feature', properties: {},
@@ -157,8 +180,10 @@ export class RouteProfile {
   /** The cursor at [m] metres: the dot on the map and the line in the profiles other than [from]. */
   private cursor(m: number | null, from?: 'small' | 'big' | 'map') {
     const at = m == null ? null : pointAt(this.line, m);
-    (this.map.getSource(CURSOR) as GeoJSONSource | undefined)?.setData(at ? { type: 'Feature', properties: {},
-      geometry: { type: 'Point', coordinates: [at[1], at[0]] } } : empty());
+    if (this.dot) {
+      if (at) this.dot.setLngLat([at[1], at[0]]);
+      this.dot.getElement().hidden = !at;
+    }
     if (from !== 'small') this.small?.show(m);
     if (from !== 'big') this.big?.show(m);
     (window as unknown as { __profileCursor: unknown }).__profileCursor = m == null ? null : { m, at }; // for the browser tests

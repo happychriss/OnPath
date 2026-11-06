@@ -44,7 +44,8 @@ const c1 = await cursorNow();
 const label1 = await page.locator('#profile .proflabel').textContent();
 tcheck(c1 && c1.at && c1.m > 0, `sheet profile: pointer → cursor on the route (${JSON.stringify(c1)})`);
 tcheck(/\d+ m · .+ · -?\d+ %/.test(label1 ?? '') && await page.locator('#profile .proflabel').isVisible(), `sheet profile label "${label1}"`);
-const dot = () => page.evaluate(async () => (await window.__map.getSource('profile-cursor').getData())?.type === 'Feature');
+// the dot is a DOM marker on the map (no map redraw per move – 3D + big profile were slow, owner 2026-11-06)
+const dot = () => page.evaluate(() => { const d = document.querySelector('.profdot'); return !!d && !d.hidden && d.getBoundingClientRect().width > 0; });
 tcheck(await dot(), 'the dot on the map follows the profile');
 await page.mouse.move(5, 400);
 await page.waitForTimeout(200);
