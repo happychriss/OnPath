@@ -66,7 +66,7 @@ const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historySt
   // the app's texts for map areas on demand and waits (WebMaps.kt)
   'mapTexts',
   // plan sync (WebSync.kt – the app's com.onpath.app.sync)
-  'syncPairNew', 'syncPairParse', 'syncKeys', 'syncNewId', 'syncNewDevice', 'syncList', 'syncDevices', 'syncState', 'syncSave',
+  'syncPairNew', 'syncPairParse', 'syncKeys', 'syncNewId', 'syncNewDevice', 'syncList', 'syncDevices', 'syncState', 'syncLimits', 'syncSave',
   'syncRename', 'syncDelete', 'syncHello', 'syncForget', 'syncApply', 'syncOutbox', 'syncAcked',
   // A-017 folders (web-sync.md §5.1): JOIN, role, tracks, push only on Save
   'syncOutboxOf', 'syncHelloAs', 'syncPeek', 'syncJoinBlob', 'syncHelloId', 'syncRebase', 'syncSaveTrack', 'syncTrackFit', 'syncTrackGpx',

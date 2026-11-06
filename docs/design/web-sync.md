@@ -219,7 +219,7 @@ Header `Authorization: Bearer <token>` on every call.
 | Call | Answer |
 | --- | --- |
 | `POST /sync/v1/<mb>` | 201 `{rev}` claimed (stores SHA-256 of the token); 200 same token; 403 other token; 410 ended |
-| `GET /sync/v1/<mb>?since=N` | 200 `{rev, more, items:[{id, rev, blob}]}` – items with rev > N, ≤ 200; `rev` = what this page covers |
+| `GET /sync/v1/<mb>?since=N` | 200 `{rev, more, items:[{id, rev, blob}], appSeen, use}` – items with rev > N, ≤ 200; `rev` = what this page covers; `use` = {items, bytes, maxItems} of the whole mailbox |
 | `PUT /sync/v1/<mb>/<id>` body = blob bytes, `x-onpath-base: B` | 200 `{rev}`; 409 `{rev}` when the item is not at B; 413 > 32 KiB; 507 limits |
 | `DELETE /sync/v1/<mb>` | 200 – all items deleted, the mailbox answers 410 from then on (cannot be claimed again) |
 | `POST` that would create a mailbox, over the daily cap | 429 `{"error": "…", "code": "new-mailbox-cap"}`, `retry-after` = seconds to the next UTC day |
@@ -229,7 +229,17 @@ Header `Authorization: Bearer <token>` on every call.
 - **Compare-and-set in one D1 batch** (one transaction): `UPDATE mailbox SET rev = rev + 1 … WHERE` the item is
   still at B, then `INSERT … SELECT … WHERE changes() = 1` – two writers on the same item: exactly one wins, the
   other gets 409.
-- **Limits:** item 32 KiB, 1000 items and 4 MiB per mailbox (tombstones and copies count), pages of 200;
+- **250 tours per phone** (owner 2026-11-07; the shared `sync/SyncLimits.MAX_TOURS`, amber from `WARN_TOURS` = 200):
+  a tour = a saved plan or imported track that exists (deleted ones and the copies' history do not count). App and
+  browser count it – the host cannot read the items. A NEW tour beyond 250 is refused before anything is stored (the
+  browser: before the name is asked – Save amber, its tooltip „250 Touren auf dem Handy – lösche erst welche.“);
+  changes, renames and deletes always work; room again after a delete (here or on the phone). Tours of Without phone
+  joining at a pairing are taken even above 250 (nothing is lost) – only new ones are refused then. The browser's Phone
+  window shows „N von 250 Touren“ with a thin bar (amber from 200); the app's Settings → Browser sync line is [cloud-app].
+  The pull's answer carries the mailbox's `use` ({items, bytes, maxItems} – all items incl. tombstones), shown as the
+  bar's tooltip; old clients ignore it.
+- **Host limits** (a safety net above the 250 tours, room for tombstones which are never purged): item 32 KiB,
+  1000 items and 4 MiB per mailbox (tombstones and copies count), pages of 200;
   **rate limit** 120 requests / min / IP (Workers rate-limit binding `SYNC_RATE`; a round is 2–5 requests).
 - **Expiry:** a daily cron (`17 3 * * *`) deletes mailboxes not used for 365 days, and ended pairings after the same
   time. `seen` is written at most once a day per mailbox.
@@ -446,7 +456,8 @@ phone sit in ONE group on the left with + Neu and Meine Touren; at phone width a
 - **Speichern** (`#menuSavePlan`): always "Speichern" / "Save" – not paired it saves in this browser, paired it saves and
   sends. **Dark** (filled app green) while anything is to save: the open route new or changed, a rename, a delete, a GPX
   import, routes waiting for the phone (below); otherwise **light with ✓** ("✓ Gespeichert" / "✓ Saved"); **greyed**
-  when there is nothing at all; **amber** when the mailbox is full (507, nothing lost). One click asks the name (the
+  when there is nothing at all; **amber** when the mailbox is full (507, nothing lost) or a NEW tour would be the 251st
+  (250 per phone, see §8 "250 tours per phone"). One click asks the name (the
   app's rule since 2026-10-31) and sends everything waiting. ▾ = Speichern unter · GPX exportieren.
 - **Paired, Save goes to the phone too** (owner 2026-11-06): the Save button carries a small 📱 on its icon, its label stays
   „Speichern“, its tooltip „Speichern – auch aufs Handy (‹phone›)“.

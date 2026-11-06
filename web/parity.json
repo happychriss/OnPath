@@ -1275,6 +1275,14 @@
     "app/src/main/assets/style/f2/onpath.json": {
       "blob": "f028cec393d74ed05bed77566f7f7b0b217bb501",
       "perf": []
+    },
+    "app/src/main/java/com/onpath/app/sync/SyncLimits.kt": {
+      "blob": "3cb012c76ff6b420b21034353224772894278f5d",
+      "perf": []
+    },
+    "app/src/test/java/com/onpath/app/sync/SyncLimitsTest.kt": {
+      "blob": "cf94734e683e08a487eeded3003be8c0d13e05c9",
+      "perf": []
     }
   }
 }

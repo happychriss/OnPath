@@ -94,6 +94,8 @@ routing/BreakdownRules.kt
 # new on main 2026-11-01 (cloud-app): pure rules the web mirrored or will use
 routing/PlanNames.kt
 sync/SaveRule.kt
+# tours per phone in sync (owner 2026-11-07: 250)
+sync/SyncLimits.kt
 
 [tests]
 routing/PlanCodeTest.kt
@@ -109,6 +111,7 @@ routing/TrackToPlanTest.kt
 ui/PlanGapsTest.kt
 # plan-sync track items (SyncItem.TRACK, TrackCode frozen bytes) + the fake mailbox it runs against
 sync/SyncTrackTest.kt
+sync/SyncLimitsTest.kt
 sync/MemoryMailbox.kt
 # the shared plan result, plan GPX and loop-aware edits (handoff-web-planresult.md, handoff-web-parity-b.md)
 routing/PlanResultTest.kt

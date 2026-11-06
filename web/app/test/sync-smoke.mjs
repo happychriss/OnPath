@@ -720,6 +720,49 @@ await sent(O);
 await ownerPhone.round();
 check(JSON.stringify((await ownerPhone.titles()).filter((x) => /Runde/.test(x))) === '["Andere Runde","Meine Runde"]' && (await O.textContent('#savedLine')).includes('Andere Runde'),
   'Save as: "Andere Runde" next to "Meine Runde" (both on the phone), the new one is open');
+
+// ---- 17. 250 tours per phone (owner 2026-11-07, the shared SyncLimits): „N of 250 tours“ in the Phone window, amber
+// from 200; a NEW tour beyond 250 is refused before the name is asked (Save amber, why in its tooltip); room again
+// after a delete. Seeded by the phone (its tours come over by sync) ----
+const fillOf = async (P) => { await phoneWin(P); await P.waitForSelector('dialog.phone #phoneFill:not([hidden])', { timeout: 10_000 }).catch(() => {});
+  const f = await P.evaluate(() => { const e = document.getElementById('phoneFill'); return e ? { text: e.textContent.trim(), kind: e.dataset.kind, width: e.querySelector('.fillbar i').style.width } : null; });
+  await P.click('#closePhone'); return f; };
+const toursAre = async (n) => { // one pull round brings them (a page is 200 items); once more if the first ran before the phone's last write
+  for (let i = 0; i < 2 && (await status(O)).tours !== n; i++) {
+    await sendMark(O); await O.evaluate(() => window.__sync.syncNow());
+    await O.waitForFunction(() => (window.__sync.status.lastSync ?? 0) > window.__sendMark, null, { timeout: 120_000 }).catch(() => {});
+  }
+};
+const seed = async (n) => { // the phone sends its outbox in batches (64 a round): rounds until nothing waits
+  for (let i = 0; i < n; i++) await ownerPhone.save(`Seed ${ownerPhone.seeded = (ownerPhone.seeded ?? 0) + 1}`);
+  for (let r = 0; r < 10; r++) { await ownerPhone.round(); if (JSON.parse(await call('syncState', ownerPhone.ledger)).pending === 0) break; }
+};
+await seed(199 - (await ownerPhone.list()).length);
+await toursAre(199);
+let fl = await fillOf(O);
+check(fl?.text === '199 of 250 tours' && fl.kind === 'ok', `250 per phone: the Phone window says "199 of 250 tours" (${JSON.stringify(fl)})`);
+await seed(1);
+await toursAre(200);
+fl = await fillOf(O);
+check(fl?.text === '200 of 250 tours' && fl.kind === 'warn' && fl.width === '80%', `from 200 (80 %) the fill is amber (${JSON.stringify(fl)})`);
+await seed(50);
+await toursAre(250);
+await O.click('#newPlan'); if (await O.locator('dialog.discard[open]').count()) await O.click('#discardOk');
+await openRoute(O, '#p=' + CODE);
+await O.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'dark', null, { timeout: 60_000 }).catch(() => {});
+await O.click('#menuSavePlan');
+await O.waitForFunction(() => window.__sync.status.full, null, { timeout: 10_000 }).catch(() => {});
+sb = await saveBtn(O);
+check(sb.state === 'full' && sb.title === '250 tours on the phone – delete some first.' && await O.locator('dialog.savename[open]').count() === 0
+  && (await ownerPhone.list()).length === 250, `the 251st tour is refused before its name is asked: Save amber, "250 tours on the phone – …" (${JSON.stringify(sb)})`);
+await ownerPhone.remove(await ownerPhone.idOf('Seed 1'));
+await ownerPhone.round();
+await toursAre(249);
+check(!(await status(O)).full && (await saveBtn(O)).state !== 'full', 'a tour deleted on the phone: room again, Save no longer amber');
+await O.click('#menuSavePlan');
+await answerSave(O, 'Tour 250');
+await until(O, async () => (await window.__sync.list()).some((p) => p.title === 'Tour 250'));
+check((await status(O)).tours === 250, 'the 250th tour may be saved');
 await ctxO.close();
 
 await browser.close(); server.close();

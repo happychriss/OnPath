@@ -1720,6 +1720,8 @@ const gpxImport = setupGpxImport({
   imported: (tr) => {
     syncReady.then(async (ok) => {
       if (!ok) return;
+      // 250 tours per phone (SyncLimits): the track still shows; it is just not kept – the amber Save says why
+      if (!(await sync.hasRoom())) { sync.refuseTour(); return; }
       const id = await sync.saveTrack(tr.segments, tr.waypoints, tr.activity, tr.sac, tr.name);
       if (id) keepStats(trackKey(id), { m: tr.distanceM, up: tr.ascentM, down: tr.descentM }); // My routes' numbers
     }).catch((e) => problem('sync', 'imported track not kept', e));

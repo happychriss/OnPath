@@ -368,6 +368,12 @@ dialog.plans > .row.end, dialog.phone > .row.end { margin-top: 16px; } /* Close,
 /* the Phone window (plans.ts phoneDialog): the state on top – grey phone (not paired), green / amber dot – then the buttons */
 dialog.phone .phonestate { position: relative; display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 12px; background: var(--surface2); }
 dialog.phone .phonestate > .ic { color: var(--muted); margin-top: 2px; }
+/* 250 tours per phone (owner 2026-11-07): „N von 250 Touren“ + a thin bar, amber from 80 %, red-free when full (amber) */
+dialog.phone .phonefill { display: flex; align-items: center; gap: 10px; margin: 8px 2px 0; color: var(--muted); }
+dialog.phone .phonefill .fillbar { flex: 1; height: 4px; border-radius: 2px; background: var(--surface2); overflow: hidden; }
+dialog.phone .phonefill .fillbar i { display: block; height: 100%; background: var(--green); }
+dialog.phone .phonefill[data-kind="warn"] .fillbar i, dialog.phone .phonefill[data-kind="full"] .fillbar i { background: var(--warn); }
+dialog.phone .phonefill[data-kind="warn"] .filltext, dialog.phone .phonefill[data-kind="full"] .filltext { color: var(--warn); }
 dialog.phone .phonestate:not([data-kind="none"]) > .ic { color: var(--fg); }
 dialog.phone .phonestate b { font-size: 16px; font-weight: 600; }
 dialog.phone .phonestate p { margin: 2px 0 0; }

@@ -84,7 +84,6 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Sync mailbox: 250 tours per phone + „N von 250 Touren“ in the phone window (owner 2026-11-07) – since 2026-11-07
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 
@@ -98,11 +97,13 @@ the git log.
   Handy“ until the phone has it; (6) folders per phone id stay (several people, one browser: each sees only their tours –
   hidden ≠ protected, see (4)). Conflicts as today (newer wins, older „(Kopie)“). Recorded GPS tours stay phone-only for now.
   Owner scenarios as smokes: first visit, second visit, pair with saved tours, delete both ways, unpair keep/remove, friend's phone.
-- **[laptop] Idea (owner 2026-11-06, later): show how full the sync mailbox is, maybe buy more** – limits today
-  (web/host/src/sync.js LIMITS): 1000 items per phone (tombstones and „(Kopie)“ copies count), 4 MB; a plan ≈ 3 KB. Show it in
-  the browser's phone window („312 von 1000 Touren“, a thin bar, amber from 80 %) and in the app's Settings → Browser sync; the
-  host would return the mailbox's use with the pull (no new request). Paid bigger mailbox: needs payment (Play billing) tied to
-  an anonymous mailbox – a privacy and product decision for the owner first; not before real users ask.
+- **[cloud-app] 250 tours per phone in the app (owner 2026-11-07; the planner side is on main)** – the shared
+  `sync/SyncLimits` (MAX_TOURS = 250, WARN_TOURS = 200, `canAdd(tours)`, `nearlyFull(tours)`): a tour = a saved plan or
+  imported track that exists (not deleted ones). While paired with a browser: (1) Settings → Browser sync shows „N von 250
+  Touren“ with a thin bar, amber from 200 (the browser's Phone window does the same, web-sync.md §8 "250 tours per phone");
+  (2) saving / importing / copying a NEW tour as the 251st is refused before the name is asked – the one message box,
+  „250 Touren auf dem Handy – lösche erst welche.“; changes, renames, deletes always work. Not paired: no limit. Tours
+  that arrive from a browser above 250 are kept (nothing lost). Paid bigger mailbox: later, owner decision.
 - **[donald] Test audit + clean-out (owner 2026-11-06)** – report `docs/design/test-audit.md` (branch donald-test-audit),
   then after the merge of the six evening branches: drop / convert per the report; build a JVM AppViewModel test and
   random-sequence invariant tests; no new source-text tests. Planner part → [laptop].

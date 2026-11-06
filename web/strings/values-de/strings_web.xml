@@ -203,6 +203,9 @@
     <string name="web_save_also_phone">Speichern – auch aufs Handy (%1$s)</string>
     <string name="web_save_title_local">Plan in diesem Browser speichern</string>
     <string name="web_sync_full_hint">Postfach voll – zu viele gespeicherte Pläne. Lösch am Handy ein paar, dann noch einmal speichern.</string>
+    <string name="web_sync_tour_cap">%1$d Touren auf dem Handy – lösche erst welche.</string>
+    <string name="web_phone_fill">%1$d von %2$d Touren</string>
+    <string name="web_phone_fill_use">Postfach: %1$d von %2$d Einträgen (gelöschte zählen mit)</string>
     <string name="web_pair_other">Anderes Handy verbinden</string>
     <!-- Save, Phone, My routes as the owner wants them shown (docs/design/web-sync.md §14.6) -->
     <string name="web_save_to_phone">Aufs Handy sichern</string>

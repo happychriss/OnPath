@@ -219,6 +219,9 @@
     <string name="web_save_also_phone">Save – to the phone too (%1$s)</string>
     <string name="web_save_title_local">Save the plan in this browser</string>
     <string name="web_sync_full_hint">Mailbox full – too many saved plans. Delete some on the phone, then save again.</string>
+    <string name="web_sync_tour_cap">%1$d tours on the phone – delete some first.</string>
+    <string name="web_phone_fill">%1$d of %2$d tours</string>
+    <string name="web_phone_fill_use">Mailbox: %1$d of %2$d entries (deleted ones count too)</string>
     <string name="web_pair_other">Pair another phone</string>
     <!-- Save, Phone, My routes as the owner wants them shown (docs/design/web-sync.md §14.6) -->
     <string name="web_save_to_phone">Save to phone</string>

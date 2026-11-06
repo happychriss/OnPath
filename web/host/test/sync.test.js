@@ -179,3 +179,15 @@ test("appSeen: when the phone app last used the mailbox (to the minute); web pla
   assert.deepEqual(Object.keys(env.SYNC.sqlite.prepare("SELECT * FROM mailbox").get()).sort(),
     ["app_seen", "created", "deleted", "id", "rev", "seen", "token_hash"], "no IP, no device column");
 });
+
+test("the pull tells the mailbox's use (all items incl. tombstones, bytes, the safety cap) – old clients ignore it", async () => {
+  const c = client(fresh());
+  await c.claim();
+  assert.deepEqual((await (await c.get()).json()).use, { items: 0, bytes: 0, maxItems: LIMITS.items }, "empty");
+  await c.put(ITEM, 0, blob(30));
+  await c.put(ITEM2, 0, blob(60));
+  const use = (await (await c.get(2)).json()).use; // also on a page with nothing new
+  assert.equal(use.items, 2);
+  assert.ok(use.bytes >= 90, `bytes counted (${use.bytes})`);
+  assert.ok(LIMITS.items > 250, "the host's cap is a safety net above the 250 tours per phone (SyncLimits.MAX_TOURS)");
+});

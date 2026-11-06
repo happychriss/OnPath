@@ -39,8 +39,14 @@ export interface SyncStatus {
   closed: FolderInfo[];
   /** A new pairing waits for the phone (its code is shown). */
   waiting: boolean;
-  /** The mailbox refused the last Save as full (507): amber hint beside Save, nothing lost. */
+  /** The mailbox refused the last Save as full (507), or a NEW tour beyond [maxTours]: amber hint beside Save, nothing lost. */
   full: boolean;
+  /** Live tours (saved plans + imported tracks) of the open phone folder – the phone window's „N von 250 Touren“. */
+  tours: number;
+  /** Tours per phone and the amber mark (the shared SyncLimits: 250 / 200). */
+  maxTours: number; warnTours: number;
+  /** The mailbox's use as the host saw it on the last pull (all items incl. deleted ones, bytes, its safety cap); null = not known. */
+  use: { items: number; bytes: number; maxItems: number } | null;
   /** A plain-language line about the last sync (empty when all is well). */
   message: string; kind: 'info' | 'warning' | 'error';
 }
@@ -103,6 +109,8 @@ class Store {
 
 class Gone extends Error {}
 class Full extends Error {}
+/** A NEW tour beyond the 250 per phone (SyncLimits.MAX_TOURS) – refused before anything is stored. */
+export class TourCap extends Error {}
 
 /** The host's cap on new mailboxes per network and day (web/host/src/sync.js, web-sync.md §8): 429 code "new-mailbox-cap". */
 async function capped(r: Response): Promise<boolean> {
@@ -125,7 +133,10 @@ export class PlanSync {
   private folderListeners = new Set<(from: string, to: string) => void>();
   private dir: Dir = { open: NONE, list: [] };
   status: SyncStatus = { paired: false, check: null, devices: [], pending: 0, lastSync: null, phoneSeen: null,
-    folder: { key: NONE, name: '' }, phone: null, closed: [], waiting: false, full: false, message: '', kind: 'info' };
+    folder: { key: NONE, name: '' }, phone: null, closed: [], waiting: false, full: false, message: '', kind: 'info',
+    tours: 0, maxTours: 250, warnTours: 200, use: null };
+  /** [status.full] came from the tour cap (not a 507): it goes again as soon as there is room. */
+  private tourCapped = false;
 
   /**
    * The other tabs of this browser (incident 2026-10-31: a tab kept the folders it read at its start – paired in one
@@ -156,6 +167,8 @@ export class PlanSync {
   onFolder(f: (from: string, to: string) => void) { this.folderListeners.add(f); return () => this.folderListeners.delete(f); }
 
   async init() {
+    const lim = JSON.parse(await this.call('syncLimits')) as { max: number; warn: number };
+    this.status.maxTours = lim.max; this.status.warnTours = lim.warn;
     if (!(await this.store.get('device'))) await this.store.set('device', await this.call('syncNewDevice', rand(8)));
     await this.migrate();
     this.dir = await this.readDir();
@@ -184,8 +197,29 @@ export class PlanSync {
   /** How many routes and tracks [folder] holds. */
   async count(folder: string): Promise<number> { return (await this.list(folder)).length; }
 
-  /** Saves [plan] (a plan code) as a new plan, or as a new version of [id], in [folder]. Returns the plan's id. Never sends. */
+  /**
+   * True = one more NEW tour may go into [folder]: a phone's folder keeps [SyncStatus.maxTours] (the shared SyncLimits,
+   * owner 2026-11-07); Without phone has no limit (its tours join the phone at pairing). Changes to existing tours always work.
+   */
+  async hasRoom(folder = this.dir.open): Promise<boolean> {
+    return folder === NONE || (await this.count(folder)) < this.status.maxTours;
+  }
+
+  /** A NEW tour was refused: Save turns amber with the line why (like a full mailbox), nothing is stored. */
+  refuseTour(): TourCap {
+    this.tourCapped = true;
+    this.status.full = true;
+    const m = t('web_sync_tour_cap', this.status.maxTours);
+    this.say(m, 'warning');
+    return new TourCap(m);
+  }
+
+  /**
+   * Saves [plan] (a plan code) as a new plan, or as a new version of [id], in [folder]. Returns the plan's id. Never sends.
+   * A NEW plan into a phone's full folder throws [TourCap] (the page checks [hasRoom] first).
+   */
   async save(plan: string, title: string | null, id?: string, folder = this.dir.open): Promise<string> {
+    if (!id && !(await this.hasRoom(folder))) throw this.refuseTour();
     const key = await this.locked(async () => {
       const k = id ?? await this.call('syncNewId', rand(16));
       // the page's Save: with this engine's routing fingerprint and rd5 dates (sync fields 7 / 8, web-sync.md §5.2)
@@ -204,6 +238,7 @@ export class PlanSync {
     const track = await this.call('syncTrackFit', segs, wpts, activity, sac);
     if (!track) return null;
     const folder = this.dir.open;
+    if (!(await this.hasRoom(folder))) throw this.refuseTour();
     const key = await this.locked(async () => {
       const k = await this.call('syncNewId', rand(16));
       await this.setLedgerOf(folder, await this.call('syncSaveTrack', await this.ledgerOf(folder), k, track, title, Date.now(), await this.device()));
@@ -346,7 +381,7 @@ export class PlanSync {
           return;
         }
         this.status.lastSync = Date.now();
-        this.status.full = false;
+        if (!this.tourCapped) this.status.full = false; // a 507 cleared by a good round; the tour cap clears in refresh()
         await this.refresh(); // the pairing / folders as this round left them (also another tab's change)
         this.say('', 'info');
       } catch (e) {
@@ -598,7 +633,9 @@ export class PlanSync {
       r = await this.fetch(`${k.mailbox}?since=${since}`, {}, k.token);
     }
     if (!r.ok) await this.refused(r);
-    const body = await r.json() as { rev: number; more: boolean; items: { id: string; rev: number; blob: string }[]; appSeen?: number | null };
+    const body = await r.json() as { rev: number; more: boolean; items: { id: string; rev: number; blob: string }[]; appSeen?: number | null;
+      use?: { items: number; bytes: number; maxItems: number } };
+    if (body.use) this.status.use = body.use; // the host's count (incl. deleted ones) – a hint beside the tours
     return { ...body, claimed };
   }
 
@@ -633,6 +670,11 @@ export class PlanSync {
     this.status.pending = this.status.paired ? st.unsaved : 0;
     this.status.closed = this.dir.list.filter((x) => x.key !== this.dir.open).map((x) => ({ key: x.key, name: this.folderName(x) }));
     this.status.waiting = !!(await this.store.get('pending'));
+    this.status.tours = this.status.paired ? await this.count(this.dir.open) : 0;
+    if (this.tourCapped && this.status.tours < this.status.maxTours) { // a tour was deleted (here or on the phone): room again
+      this.tourCapped = false; this.status.full = false;
+      if (this.status.message === t('web_sync_tour_cap', this.status.maxTours)) { this.status.message = ''; this.status.kind = 'info'; }
+    }
     if (f && this.status.phoneSeen != null) f.seen = this.status.phoneSeen;
     this.changed();
   }
