@@ -60,4 +60,13 @@ class PlanGpsTest {
         assertEquals(row + OverviewPillPlace.HEIGHT_DP + MessagePlacement.GAP_DP, PlanGps.noteTopDp(row, stripBottomDp = null))
         assertTrue("under the download strip too", PlanGps.noteTopDp(row, stripBottomDp = 200) > 200)
     }
+
+    @Test fun anEditWithoutAPositionIsANeutralNoteThatStaysLongerThanATapNote() {
+        // were red boxes during a tour (route back / one point left without a position) – Plan is quiet about GPS
+        for (n in listOf(PlanGps.Note.ROUTE_BACK_NO_POSITION, PlanGps.Note.ONE_POINT_NO_POSITION)) {
+            assertTrue("$n: two sentences need longer than a tap note", PlanGps.noteMs(n) > PlanGps.noteMs(PlanGps.Note.SEARCHING))
+            assertTrue("$n goes when a position comes", PlanGps.noteGone(n, GpsStatus.GOOD, hasFix = true))
+        }
+        assertEquals(PlanGps.NOTE_MS, PlanGps.noteMs(PlanGps.Note.TURN_NEEDS_POSITION))
+    }
 }

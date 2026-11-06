@@ -319,6 +319,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var planGpsNoteTick by mutableStateOf(0)
         private set
 
+    /**
+     * An edit during a tour needs my position and there is none: in Plan the neutral note (Plan is quiet about GPS, owner
+     * 2026-11-06 23:35), elsewhere the error box as before.
+     */
+    private fun noPositionForEdit(note: PlanGps.Note, text: org.jetbrains.compose.resources.StringResource) {
+        if (mode == AppMode.PLAN) showPlanGpsNote(note) else sayError(Txt.s(text), NoticePlace.MAP)
+    }
+
     fun showPlanGpsNote(note: PlanGps.Note) {
         Problems.trace("gps", "Plan: neutral note ${note.name} after a tap (no GPS warning in Plan)")
         planGpsNote = note; planGpsNoteTick++
@@ -1491,7 +1499,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             recalc()
             return
         }
-        if (yes) sayError(Txt.s(Res.string.msg_route_back_no_position), NoticePlace.MAP)
+        if (yes) noPositionForEdit(PlanGps.Note.ROUTE_BACK_NO_POSITION, Res.string.msg_route_back_no_position)
         Problems.trace("plan", "Route back to the start: " + (if (yes) "yes, but no position" else "no") +
             " – route guidance ended, recording continues (Undo brings it back)")
         if (followLine != null && !followIsTrack) { clearFollow(); guidanceEndedByEmptyPlan = true }
@@ -1538,7 +1546,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             pendingSplit = null
             clearFollow()
             guidanceEndedByEmptyPlan = true
-            sayError(Txt.s(Res.string.msg_one_point_no_position), NoticePlace.MAP)
+            noPositionForEdit(PlanGps.Note.ONE_POINT_NO_POSITION, Res.string.msg_one_point_no_position)
             return
         }
         pendingSplit = null // a whole new plan from here, nothing of it passed

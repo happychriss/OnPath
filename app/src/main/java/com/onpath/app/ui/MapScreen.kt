@@ -102,7 +102,7 @@ fun MapScreen(
     }
     // the neutral note goes after a few seconds, or at once when a position is there
     LaunchedEffect(vm.planGpsNoteTick) {
-        if (vm.planGpsNote != null) { delay(PlanGps.NOTE_MS); vm.planGpsNote = null }
+        vm.planGpsNote?.let { delay(PlanGps.noteMs(it)); vm.planGpsNote = null }
     }
     LaunchedEffect(gps, hasFix) { if (PlanGps.noteGone(vm.planGpsNote, gps, hasFix)) vm.planGpsNote = null }
     // One grouped control: compass (always: Plan = needle, tap north up; Navigate = orientation toggle), locate (always,
@@ -237,6 +237,8 @@ fun MapScreen(
             QuietPill(when (note) {
                     PlanGps.Note.SEARCHING -> str(Res.string.plan_searching_gps)
                     PlanGps.Note.TURN_NEEDS_POSITION -> str(Res.string.msg_no_position_turn)
+                    PlanGps.Note.ROUTE_BACK_NO_POSITION -> str(Res.string.msg_route_back_no_position)
+                    PlanGps.Note.ONE_POINT_NO_POSITION -> str(Res.string.msg_one_point_no_position)
                 }, androidx.compose.material.icons.Icons.Outlined.LocationSearching,
                 Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                     top = PlanGps.noteTopDp(rowTop, if (vm.backgroundStripShown) vm.backgroundStripBottomDp else null).dp,

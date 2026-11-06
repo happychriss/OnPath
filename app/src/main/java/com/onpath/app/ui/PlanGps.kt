@@ -41,8 +41,21 @@ object PlanGps {
         else -> if (plan && !located(status, hasFix)) Tap.WAIT_AND_NOTE else Tap.CENTRE
     }
 
-    /** The neutral notes Plan may show – only after a tap of the user's, never by itself. */
-    enum class Note { SEARCHING, TURN_NEEDS_POSITION }
+    /**
+     * The neutral notes Plan may show – only after an action of the user's, never by itself. [ROUTE_BACK_NO_POSITION] /
+     * [ONE_POINT_NO_POSITION]: an edit during a tour that needs my position to route, without one (were red boxes – Plan
+     * is quiet about GPS, owner 2026-11-06 23:35; the tour records on, the note says why there is no route).
+     */
+    enum class Note { SEARCHING, TURN_NEEDS_POSITION, ROUTE_BACK_NO_POSITION, ONE_POINT_NO_POSITION }
+
+    /** How long a note stays: the two-sentence edit notes longer than the short tap notes. */
+    fun noteMs(note: Note): Long = when (note) {
+        Note.SEARCHING, Note.TURN_NEEDS_POSITION -> NOTE_MS
+        Note.ROUTE_BACK_NO_POSITION, Note.ONE_POINT_NO_POSITION -> LONG_NOTE_MS
+    }
+
+    /** The edit notes (two sentences) stay this long. */
+    const val LONG_NOTE_MS = 8_000L
 
     /** The compass tap that needs a position (walking direction up) without one: Plan a neutral note, Navigate the error box. */
     fun compassWithoutFix(plan: Boolean): Note? = if (plan) Note.TURN_NEEDS_POSITION else null
