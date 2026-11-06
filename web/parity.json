@@ -7,7 +7,7 @@
       "web": [
         "web/app/src/activity.ts"
       ],
-      "blob": "01a14e28d51f23a9bcb82eebcea3f18368170c81"
+      "blob": "62f5322b01a02100584bfe58e51513b0b92ff93d"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
@@ -16,7 +16,7 @@
         "web/app/src/main.ts",
         "web/app/src/menus.ts"
       ],
-      "blob": "f0a44f7846ab787c773fa6d1cd530bdeeb39e160"
+      "blob": "6520e132b56fed9e09361a32a1c32fd44674c897"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanStatus.kt",
@@ -57,7 +57,7 @@
       "web": [
         "web/app/src/plans.ts"
       ],
-      "blob": "7db3c1797378507b86d24d696729aca85e7fc808"
+      "blob": "d5eca3cc90ae0705f70a96dded5c04bf509583b1"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapFooter.kt",
@@ -142,7 +142,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebPlanRules.kt",
         "web/app/src/longroute.ts"
       ],
-      "blob": "99d922eb9706a98c7c760b34ec06a2f064c72c01"
+      "blob": "a455d7eb55445bbd5ee13b4214342ef42fab1d60"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/AppViewModel.kt",
@@ -155,7 +155,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "e30318e297caa0cf75cdc41c774902b9975f1c49"
+      "blob": "46dabce1d53d106a03cae001d73bf8bd464cf07b"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -359,7 +359,7 @@
     {
       "app": "tools/make_style.py",
       "why": "map style (the web copies the generated style)",
-      "blob": "13e3ff07a4242c732fddcdffb5a22ec1e909ff28"
+      "blob": "e86dafc0ec97abab8027d311a02b46d9dde99b38"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapLoad.kt",
@@ -1137,11 +1137,11 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_navigate.xml": {
-      "blob": "873110000d2ed3248220e125c4f7acceab8f97cc",
+      "blob": "5a4411fd69f41663c5660c9e1f8e872a1fb8481b",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_plan.xml": {
-      "blob": "11b79fdb62e972b15c5aebcc7be1f283742638fc",
+      "blob": "896e6a165acf34823652fef869d45f8bf1a8d19c",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_poi.xml": {
@@ -1149,7 +1149,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_routes.xml": {
-      "blob": "0be4f1b0b231d69f9ceab847e5b73424566ffa4c",
+      "blob": "028bbe5a2f382ba1b48a55891b82e9b044eeaf94",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_search.xml": {
@@ -1169,7 +1169,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_voice.xml": {
-      "blob": "9af442ac6d4d67d7b14f14578664590d13457ad8",
+      "blob": "aedfa0fb46ceb607d7e1d2a42d082095638438b2",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_activity.xml": {
@@ -1193,11 +1193,11 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_navigate.xml": {
-      "blob": "56dc06343f746bd9fd1e32f232002d1f26684e43",
+      "blob": "02833ee950ba0fc706713868febb6780092f1bdc",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_plan.xml": {
-      "blob": "d1015013a547e01fc6b2577eae803537ec6bb7f2",
+      "blob": "2d0448a64060c8ff1cdd97a1da8924024a0d14b5",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_poi.xml": {
@@ -1205,7 +1205,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_routes.xml": {
-      "blob": "fc64b457f4c2930fe907a262be41fa61db750ff1",
+      "blob": "0978072527d852d6b27bff13cce4f5cd58664b47",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_search.xml": {
@@ -1225,7 +1225,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_voice.xml": {
-      "blob": "2c6e80259b4f77dc1ff92e9ad0963d7f9b315f7f",
+      "blob": "c20db5d70eb064047a5555c9859e702bcca37cca",
       "perf": []
     },
     "app/libs/brouter-codec-1.7.11-beta-onpath1.jar": {
@@ -1273,7 +1273,7 @@
       "perf": []
     },
     "app/src/main/assets/style/f2/onpath.json": {
-      "blob": "a149db14f415f91c5a8bb0caa3c8a1ef484be2dc",
+      "blob": "f028cec393d74ed05bed77566f7f7b0b217bb501",
       "perf": []
     }
   }
