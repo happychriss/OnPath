@@ -68,6 +68,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -450,10 +453,7 @@ internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) ->
             onChange(settings.copy(keepScreenOn = it))
         }
         BikeScreenRow(settings, onChange)
-        // the slider on Navigate (owner 2026-11-05: default on; off = Pause / Tour beenden / Plan ändern at once)
-        SwitchRow(str(Res.string.settings_nav_lock), str(Res.string.settings_nav_lock_sub), settings.navLock) {
-            onChange(settings.copy(navLock = it))
-        }
+        HoldTimeRow(settings, onChange)
         // what the phone must allow (location, notifications, vibration, battery): one row to Phone setup
         Row(Modifier.fillMaxWidth().clickable(onClick = onPhoneSetup).heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -462,6 +462,37 @@ internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) ->
         }
     }
 }
+
+/**
+ * "Knöpfe während der Tour halten" (owner 2026-11-06 22:50, replaces the lock switch): a slider 0 · 0,5 · 1 · 1,5 · 2 s
+ * ([com.onpath.app.data.HoldSetting]) – how long a button of the tour's bar must be held; "Aus" = a plain tap. The value
+ * beside the title, one line under it.
+ */
+@Composable
+private fun HoldTimeRow(settings: AppSettings, onChange: (AppSettings) -> Unit) {
+    val hs = com.onpath.app.data.HoldSetting
+    val value = hs.seconds(settings.navHoldMs, str(Res.string.settings_nav_lock_decimal).firstOrNull() ?: ',')
+        ?.let { str(Res.string.settings_nav_lock_seconds, it) } ?: str(Res.string.settings_nav_lock_off)
+    val title = str(Res.string.settings_nav_lock)
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Text(value, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text(str(Res.string.settings_nav_lock_sub), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        androidx.compose.material3.Slider(
+            value = settings.navHoldMs.toFloat(),
+            onValueChange = { v -> val ms = hs.snap(v); if (ms != settings.navHoldMs) onChange(settings.copy(navHoldMs = ms)) },
+            valueRange = 0f..hs.MAX_MS.toFloat(), steps = hs.SLIDER_STEPS,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .holdSliderSemantics(title, value))
+    }
+}
+
+/** TalkBack reads the title and the chosen time on the slider ("Knöpfe während der Tour halten, 1 s"). */
+private fun Modifier.holdSliderSemantics(title: String, value: String): Modifier =
+    this.then(Modifier.semantics { contentDescription = title; stateDescription = value })
 
 /** "Screen while cycling: Always on / Smart / Like the phone" (owner 2026-10-30), the chosen one explained in one line. */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)

@@ -981,7 +981,8 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val rest = restWanted && restTarget != null
     LaunchedEffect(rest) { vm.screenRest = rest }
     DisposableEffect(Unit) { onDispose { vm.screenRest = false } }
-    Box(Modifier.fillMaxSize()) {
+    // the hold time of the locked bar (Settings → Navigation, owner 2026-11-06 22:50: 0–2 s in 0,5 s steps)
+    Box(Modifier.fillMaxSize()) { androidx.compose.runtime.CompositionLocalProvider(LocalHoldMs provides vm.settings.navHoldMs) {
         NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
             onLeaveApp = { com.onpath.app.debug.Problems.trace("app", "Back in Navigate: left the app, the tour records on"); activity?.moveTaskToBack(true) },
             onPause = vm::pauseRecording, onEnd = { vm.askEndTour() }, lock = vm.settings.navLock,
@@ -1000,6 +1001,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
                     onStop = { com.onpath.app.recording.DemoLocation.stop("stopped on the Navigate page") },
                     onPause = com.onpath.app.recording.DemoLocation::setPaused)
             } })
+        }
         RestLayer(restTarget?.takeIf { rest }?.let { RestUi(it.event, it.distanceM, ui.toGo?.timeS, ui.arriveAt) },
             onTap = ScreenTouch::note)
     }

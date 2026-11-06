@@ -37,24 +37,29 @@ import kotlinx.coroutines.launch
 /**
  * The lock as "hold to confirm" (owner 2026-11-06 22:20, variant A of https://claude.ai/artifact/3noAFaW5cjWVYBDHReLUrN,
  * replaces the slider): while Navigate is locked the bottom bar's buttons are light; a finger held on one fills it with
- * its full colour from the left in [HOLD_MS] – only when full it fires (+ a short buzz). Let go earlier: the band runs
+ * its full colour from the left in the chosen time ([LocalHoldMs], default [HoldRule.HOLD_MS]) – only when full it fires (+ a short buzz). Let go earlier: the band runs
  * back and nothing happens; the line "Gedrückt halten" shows for [HINT_MS] so a short tap is never silent. Pure rules
  * here (`HoldRuleTest`); the drawing and the finger in [HoldButton].
  */
 object HoldRule {
-    /** How long the finger holds until the button fires (owner: "1 oder 2 Sekunden"; 1 s – a stop at the lights). */
-    const val HOLD_MS = 1_000
+    /**
+     * How long the finger holds until the button fires by default (owner: "1 oder 2 Sekunden"; 1 s – a stop at the
+     * lights); the user's time comes from Settings → Navigation ([com.onpath.app.data.HoldSetting], [LocalHoldMs]).
+     */
+    const val HOLD_MS = com.onpath.app.data.HoldSetting.DEFAULT_MS
     /** How long "Gedrückt halten" shows after a release before the end. */
     const val HINT_MS = 2_000L
     /** The band runs back from full in this long (shorter from less). */
     const val BACK_MS = 300
 
-    /** How full the band is after [heldMs] of holding, starting at [from] (0..1). */
-    fun progress(heldMs: Long, from: Float = 0f): Float =
-        (from.coerceIn(0f, 1f) + heldMs.coerceAtLeast(0) / HOLD_MS.toFloat()).coerceIn(0f, 1f)
+    /** How full the band is after [heldMs] of holding, starting at [from] (0..1), for a hold of [holdMs]. */
+    fun progress(heldMs: Long, from: Float = 0f, holdMs: Int = HOLD_MS): Float =
+        if (holdMs <= 0) 1f
+        else (from.coerceIn(0f, 1f) + heldMs.coerceAtLeast(0) / holdMs.toFloat()).coerceIn(0f, 1f)
 
-    /** The rest of the hold from a band already at [from] (a second touch while it still runs back). */
-    fun remainingMs(from: Float): Int = ((1f - from.coerceIn(0f, 1f)) * HOLD_MS).toInt()
+    /** The rest of a hold of [holdMs] from a band already at [from] (a second touch while it still runs back). */
+    fun remainingMs(from: Float, holdMs: Int = HOLD_MS): Int =
+        ((1f - from.coerceIn(0f, 1f)) * holdMs.coerceAtLeast(0)).toInt()
 
     /** The button fires when the band is full – the finger may still be down. */
     fun fires(progress: Float): Boolean = progress >= 1f
@@ -67,6 +72,9 @@ object HoldRule {
     /** How long the band runs back from [progress]. */
     fun backMs(progress: Float): Int = (BACK_MS * progress.coerceIn(0f, 1f)).toInt()
 }
+
+/** The hold time the bar's [HoldButton]s use (Settings → Navigation, provided by Navigate; screenshot tests: the default). */
+val LocalHoldMs = androidx.compose.runtime.compositionLocalOf { HoldRule.HOLD_MS }
 
 /**
  * One button of the locked bar: [light] ground with [onLight] words at rest; while held the band in [solid] grows from
@@ -91,6 +99,7 @@ fun HoldButton(
     val haptic = LocalHapticFeedback.current
     val fire by rememberUpdatedState(onFire)
     val early by rememberUpdatedState(onEarlyRelease)
+    val holdMs by rememberUpdatedState(LocalHoldMs.current)
     Box(
         modifier.clip(shape).background(light)
             .then(if (outline != null) Modifier.border(BorderStroke(1.5.dp, outline), shape) else Modifier)
@@ -104,7 +113,7 @@ fun HoldButton(
                     awaitFirstDown(requireUnconsumed = false)
                     var fired = false
                     val run = scope.launch {
-                        band.animateTo(1f, tween(HoldRule.remainingMs(band.value), easing = LinearEasing))
+                        band.animateTo(1f, tween(HoldRule.remainingMs(band.value, holdMs), easing = LinearEasing))
                         if (HoldRule.fires(band.value)) {
                             fired = true
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)

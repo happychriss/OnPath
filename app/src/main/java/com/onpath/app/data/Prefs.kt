@@ -97,6 +97,19 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         return now
     }
 
+    /**
+     * The hold time of the tour's bar ([HoldSetting]); without the new key the old lock switch decides (off → 0, on → 1 s).
+     * A value of the wrong type never crashes: the default, reported.
+     */
+    private fun navHoldMs(): Int = try {
+        HoldSetting.fromPrefs(
+            storedMs = if (sp.contains("navHoldMs")) sp.getInt("navHoldMs", HoldSetting.DEFAULT_MS) else null,
+            oldLock = if (sp.contains("navLock")) sp.getBoolean("navLock", true) else null)
+    } catch (e: ClassCastException) {
+        Problems.warn("settings", "Setting navHoldMs / navLock unreadable, using ${HoldSetting.DEFAULT_MS} ms", e)
+        HoldSetting.DEFAULT_MS
+    }
+
     var settings: AppSettings
         get() = AppSettings(
             hiddenPoiKinds = hiddenPoiKinds(),
@@ -113,7 +126,7 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
                 voiceOn = sp.getBoolean("voiceBike", true) || sp.getBoolean("voiceHike", true),
                 vibrationOn = JunctionVibration.of(sp.getString("junctionVibration", null), sp.getBoolean("junctionVibrate", true)) != JunctionVibration.OFF),
             positionOnRoute = sp.getBoolean("positionOnRoute", true),
-            navLock = sp.getBoolean("navLock", true),
+            navHoldMs = navHoldMs(),
             mapTheme = sp.getString("mapTheme", "classic") ?: "classic",
             navHeadingUp = sp.getBoolean("navHeadingUp", true),
             hikePace = pace("hikePaceLevel", "hikePace"),
@@ -134,7 +147,7 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             .putString("bikeScreen", v.bikeScreen.name)
             .putString("junctionGuide", v.junctionGuide.name)
             .putBoolean("positionOnRoute", v.positionOnRoute)
-            .putBoolean("navLock", v.navLock)
+            .putInt("navHoldMs", v.navHoldMs).remove("navLock") // the old on/off switch, migrated by [navHoldMs]
             .putString("mapTheme", v.mapTheme)
             .putBoolean("navHeadingUp", v.navHeadingUp)
             .putString("hikePaceLevel", v.hikePace.name)

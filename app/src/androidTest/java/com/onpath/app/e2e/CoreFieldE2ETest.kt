@@ -522,7 +522,7 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun lockOffPauseThenEndOpensTheEndSheet() {
         var before: com.onpath.app.data.AppSettings? = null
-        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navLock = false)) }
+        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = 0)) }
         try {
             startPlanWithTwoPoints()
             Thread.sleep(if (realRouting) 3_000 else 1_000)
@@ -547,7 +547,7 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun lockOnHoldPauseThenHoldEnd() {
         var before: com.onpath.app.data.AppSettings? = null
-        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navLock = true)) }
+        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = com.onpath.app.data.HoldSetting.DEFAULT_MS)) }
         try {
             startPlanWithTwoPoints()
             Thread.sleep(if (realRouting) 3_000 else 1_000)
