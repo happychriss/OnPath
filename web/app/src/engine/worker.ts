@@ -49,6 +49,7 @@ interface WasmEngine {
   paceSet(hike: string, bike: string): string;
   paceChoices(activity: string): string;
   planTime(points: string, activity: string, sac: number): string;
+  rangeStats(points: string, activity: string, sac: number, fromM: number, toM: number): string;
   mapTexts(): string;
 }
 
@@ -59,7 +60,7 @@ const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historySt
   // the app's map look per activity (map/ActivityLayers.kt): layer visibility + hiking band filter
   'activityLayers',
   // the app's pace setting (WebPace.kt): set the two levels, the drop-down's pace section, the last plan's time again
-  'paceSet', 'paceChoices', 'planTime',
+  'paceSet', 'paceChoices', 'planTime', 'rangeStats',
   // the app's plan rules before routing (WebPlanRules.kt): long-route question, what Cancel does
   'longRoute', 'planCancel',
   // the app's texts for map areas on demand and waits (WebMaps.kt)

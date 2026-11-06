@@ -238,6 +238,10 @@
     <string name="web_route_default_name">Plan</string>
     <!-- terrain view (owner 2026-11-05): the big elevation profile and the 3D map (terrainview.ts) -->
     <string name="web_profile_big">Großes Höhenprofil unter der Karte</string>
+    <string name="web_profile_big_open">Großes Profil</string>
+    <string name="web_profile_big_close">Profil schließen</string>
+    <string name="web_profile_big_title">Großes Höhenprofil öffnen</string>
+    <string name="web_profile_range_hint">Gedrückt halten und ziehen: einen Abschnitt markieren – Länge, Zeit und Höhenmeter. Klick: Markierung weg.</string>
     <string name="web_terrain_3d">3D</string>
     <string name="web_terrain_title">Gelände in 3D</string>
     <string name="web_terrain_off_title">Zurück zur flachen Karte</string>

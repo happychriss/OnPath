@@ -54,6 +54,15 @@ const bigBtn = await page.locator('#profileBig').boundingBox();
 tcheck(bigBtn && (bigBtn.y + bigBtn.height <= small.y + 1 || bigBtn.x >= small.x + small.width), `⤢ clear of the profile drawing (${JSON.stringify(bigBtn)} vs ${JSON.stringify(small)})`);
 const axis = await page.locator('#profile .axis span').allTextContents();
 tcheck(axis.length === 2 && /km$/.test(axis[1]), `profile axis "0 … total km" (${JSON.stringify(axis)})`);
+// „⤢ Großes Profil“: a labelled button (owner 2026-11-06), ≥ 40 px high; a click on the small profile opens the big one too
+const bigLook = await page.evaluate(() => { const b = document.getElementById('profileBig'); return { text: b.textContent.trim(), h: b.getBoundingClientRect().height }; });
+tcheck(/Large profile|Großes Profil/.test(bigLook.text) && bigLook.h >= 40, `the big-profile button has a word and is ≥ 40 px (${JSON.stringify(bigLook)})`);
+await page.mouse.click(small.x + small.width * 0.3, small.y + small.height * 0.5);
+await page.waitForTimeout(300);
+tcheck(await page.locator('#bigProfile').isVisible(), 'a click on the small profile opens the big one');
+tcheck(/Close profile|Profil schließen/.test(await page.locator('#profileBig').textContent()), 'while open the button reads "Close profile"');
+await page.click('#bigProfile .bpclose');
+await page.waitForTimeout(200);
 await page.click('#profileBig');
 await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 30_000 });
 await page.waitForTimeout(400);
@@ -69,6 +78,28 @@ const colours = await page.evaluate(async () => ({
 const APP = ['#7fb77e', '#e3b23c', '#e07b39', '#c0392b'];
 tcheck(JSON.stringify(colours.legend) === JSON.stringify(['rgb(127, 183, 126)', 'rgb(227, 178, 60)', 'rgb(224, 123, 57)', 'rgb(192, 57, 43)'])
   && colours.line.every((c) => APP.includes(c)) && colours.fills.every((c) => APP.includes(c)), `steepness colours = the app's (${JSON.stringify(colours)})`);
+// a marked range (owner 2026-11-06): press and drag in the big profile → length · time · climb, the stretch on the map;
+// a click clears it
+const bigSvg = await page.locator('#bigProfile .profplot > svg').boundingBox();
+await page.mouse.move(bigSvg.x + bigSvg.width * 0.2, bigSvg.y + bigSvg.height * 0.5);
+await page.mouse.down();
+await page.mouse.move(bigSvg.x + bigSvg.width * 0.45, bigSvg.y + bigSvg.height * 0.5, { steps: 5 });
+await page.mouse.move(bigSvg.x + bigSvg.width * 0.7, bigSvg.y + bigSvg.height * 0.5, { steps: 5 });
+await page.mouse.up();
+await page.waitForFunction(() => !document.querySelector('#bigProfile .bprange')?.hidden, null, { timeout: 10_000 }).catch(() => {});
+const marked = await page.evaluate(async () => ({ text: document.querySelector('#bigProfile .bprange')?.textContent ?? '',
+  shade: !document.querySelector('#bigProfile .profrange')?.hidden, total: window.__state.plan.distanceM, r: window.__profileRange,
+  line: (await window.__map.getSource('profile-range').getData())?.geometry?.coordinates?.length ?? 0 }));
+const m = /^([\d.,]+) (k?m) · (.+) · ↑ (\d+) m ↓ (\d+) m$/.exec(marked.text);
+tcheck(!!m && parseFloat(m[1].replace(',', '.')) > 0 && /\d/.test(m[3]) && marked.shade && marked.line >= 2 && marked.r
+  && Math.abs(Math.abs(marked.r[1] - marked.r[0]) - marked.total * 0.5) < marked.total * 0.05,
+  `marked range: "${marked.text}", shaded, on the map (${JSON.stringify({ ...marked, text: undefined })})`);
+await page.mouse.click(bigSvg.x + bigSvg.width * 0.5, bigSvg.y + bigSvg.height * 0.5);
+await page.waitForTimeout(200);
+const cleared = await page.evaluate(async () => ({ label: document.querySelector('#bigProfile .bprange')?.hidden,
+  shade: document.querySelector('#bigProfile .profrange')?.hidden, line: (await window.__map.getSource('profile-range').getData())?.features?.length ?? -1 }));
+tcheck(cleared.label && cleared.shade && cleared.line === 0, `a click clears the mark (${JSON.stringify(cleared)})`);
+await page.screenshot({ path: process.env.RANGE_SHOT || shot.replace(/\.png$/, '-range.png') }).catch(() => {});
 // the pointer on the route (a vertex in the middle) → the big profile shows the cursor there
 const onRoute = await page.evaluate(() => {
   const legs = window.__state.plan.legs.flatMap((l) => l.points);

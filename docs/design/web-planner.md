@@ -880,6 +880,15 @@ Code: `web/app/src/terrainview.ts` (`RouteProfile`, `Terrain3D`), `profile.ts` (
   `STEEP_COLOURS` (green, yellow, orange, red) in both profiles, the legend and on the map; never the route's blue
   (blue = edit). The camera fit keeps the route above the big profile (`fitPadding`). Phone: the big profile takes the sheet's place.
   Distance along the line: haversine over the legs' points (the app's `Geo.cumulative` rule behind `ProfileData`).
+- **Big profile easier to find (owner 2026-11-06):** the ⤢ alone was not seen – now a labelled outlined button
+  „⤢ Großes Profil“ (plan blue, 40 px, top right of the sheet's profile; while open „Profil schließen“), and a click
+  anywhere on the small profile opens the big one too (cursor zoom-in, tooltip „Großes Höhenprofil öffnen“).
+- **A marked stretch (owner 2026-11-06):** in the big profile press and drag (touch: hold ~0.5 s, then drag) → the stretch
+  is shaded, highlighted on the map (`profile-range`, a yellow marker under the route) and its numbers stand in the
+  profile's head: „1,6 km · 30 min · ↑ 59 m ↓ 0 m“. They come from the engine (`rangeStats` → `WebPace.rangeStats`):
+  the time from the plan's own `RouteTimes` with the pace factors and `TimeEstimate.round` (the same model as the plan's
+  total), the climb with the plan's hysteresis (`Planner.climb` / `Geo.routeClimb`, 10 m). A click (no drag) or Escape
+  clears it; a new plan or closing the big profile too.
 - **C – 3D.** Toolbar button **3D** ("Gelände in 3D" / "Zurück zur flachen Karte"): `map.setTerrain` on the style's
   raster-dem source `terrain` – the cells' `terrain.pmtiles` (Terrarium, z10–13), the same files as the relief: no new
   data, no server. Exaggeration 1.5, a sky, on entering tilt 62° (max 70°), bearing −20° and framed on the route like
@@ -895,7 +904,8 @@ Code: `web/app/src/terrainview.ts` (`RouteProfile`, `Terrain3D`), `profile.ts` (
   heights) – what the app's MapLibre does by the file's maxzoom.
 - **Known limit:** at the edge of the loaded map area (no cell beside it) the ground drops to 0 m – a wall in 3D. Only
   more cells (or an outside height source) remove it.
-- Tests: ui-smoke (cursor from the sheet's profile + dot, gone again; big profile, steepness line, pointer on the route →
+- Tests: ui-smoke (cursor from the sheet's profile + dot, gone again; the labelled button, a click on the small profile opens
+  the big one; a dragged stretch → numbers, shade, map line, a click clears; big profile, steepness line, pointer on the route →
   cursor; close; 3D on: terrain + tilt + note, a click adds nothing; off: flat, max tilt 0). Pictures:
   `web/app/test/terrain-shots.mjs <segments> <map store> <out> [de|en]` (Waalweg Meran → Vellau).
 

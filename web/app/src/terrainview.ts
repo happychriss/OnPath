@@ -10,12 +10,12 @@
 import * as maplibregl from 'maplibre-gl';
 import type { GeoJSONSource } from 'maplibre-gl';
 import type { PlanResult } from './engine/types';
-import { mountProfile, lineOf, pointAt, steepRuns, STEEP_COLOURS, type Line, type Profile, type ProfileView } from './profile';
+import { mountProfile, lineOf, pointAt, steepRuns, lineBetween, STEEP_COLOURS, type Line, type Profile, type ProfileView } from './profile';
 import type { FeatureCollection } from 'geojson';
 import { t } from './i18n';
 import { problem } from './diag';
 
-const CURSOR = 'profile-cursor', STEEP = 'profile-steep';
+const CURSOR = 'profile-cursor', STEEP = 'profile-steep', RANGE = 'profile-range';
 const MIN_ZOOM_3D = 11;
 
 export class RouteProfile {
@@ -24,10 +24,21 @@ export class RouteProfile {
   private small: ProfileView | null = null;
   private big: ProfileView | null = null;
   private open = false;
+  /** The marked range in the big profile [from, to] metres (owner 2026-11-06), null = none. */
+  private marked: [number, number] | null = null;
+  private rangeAsk = 0;
+  /** Length · time · climb of a stretch of the plan – the engine's WebPace.rangeStats (the page sets it). */
+  rangeStats: ((from: number, to: number) => Promise<{ text: string } | null>) | null = null;
 
   constructor(private map: maplibregl.Map, private routeColour: string, private sheetHost: HTMLElement,
     private panel: HTMLElement, private onOpenChange: (open: boolean) => void) {
     panel.querySelector<HTMLButtonElement>('.bpclose')!.onclick = () => this.setOpen(false);
+    // the range's numbers in the big profile's head, beside the title
+    const head = panel.querySelector<HTMLElement>('.bphead')!;
+    const lbl = document.createElement('span');
+    lbl.className = 'bprange'; lbl.hidden = true; lbl.setAttribute('aria-live', 'polite');
+    head.querySelector('.bplegend')?.before(lbl);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.marked) this.mark(null); });
   }
 
   /** On map load: the cursor dot and the steepness line (empty until used). */
@@ -35,6 +46,10 @@ export class RouteProfile {
     const m = this.map;
     m.addSource(CURSOR, { type: 'geojson', data: empty() });
     m.addSource(STEEP, { type: 'geojson', data: empty() });
+    m.addSource(RANGE, { type: 'geojson', data: empty() });
+    // the marked range: a wide highlighter under the route (owner 2026-11-06)
+    m.addLayer({ id: RANGE, type: 'line', source: RANGE, layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': '#FFD54F', 'line-width': 18, 'line-opacity': 0.85 } }, before);
     // a white edge under the steepness colours: the flat green must stay visible on the green map
     m.addLayer({ id: STEEP + '-edge', type: 'line', source: STEEP, layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'none' },
       paint: { 'line-color': '#fff', 'line-width': 9 } }, before);
@@ -53,16 +68,21 @@ export class RouteProfile {
     this.profile = p;
     this.line = plan && p ? lineOf(plan.legs) : { pts: [], cum: [] };
     this.cursor(null);
+    this.mark(null);
     if (!plan) { this.sheetHost.innerHTML = ''; this.small = null; this.setOpen(false); return; }
     if (!p || p.dist.length < 2) {
       this.sheetHost.innerHTML = `<div class="muted small noele">${escapeHtml(noElevation)}</div>`;
       this.small = null; this.setOpen(false); return;
     }
-    // ⤢ in the row above the drawing, beside the heights – never on top of the graph (owner review 2026-11-05)
-    const big = `<button class="iconbtn profbig" id="profileBig" title="${escapeHtml(t('web_profile_big'))}" aria-label="${escapeHtml(t('web_profile_big'))}"
-      aria-pressed="${this.open}"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11V3h-8l3.29 3.29-10 10L3 13v8h8l-3.29-3.29 10-10z"/></svg></button>`;
+    // a labelled button in the row above the drawing, beside the heights – never on top of the graph (owner review
+    // 2026-11-05); the ⤢ alone was not seen (owner 2026-11-06): „⤢ Großes Profil“, and a click on the small profile opens it too
+    const big = `<button class="profbig" id="profileBig" title="${escapeHtml(t('web_profile_big'))}" aria-pressed="${this.open}"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11V3h-8l3.29 3.29-10 10L3 13v8h8l-3.29-3.29 10-10z"/></svg><span></span></button>`;
     this.small = mountProfile(this.sheetHost, p, (m) => this.cursor(m, 'small'), undefined, big);
     this.sheetHost.querySelector<HTMLButtonElement>('#profileBig')!.onclick = () => this.setOpen(!this.open);
+    const plot = this.sheetHost.querySelector<HTMLElement>('.profplot')!;
+    plot.classList.add('opens'); plot.title = t('web_profile_big_title');
+    plot.addEventListener('click', () => { if (!this.open) this.setOpen(true); });
+    this.bigButton();
     if (this.open) this.drawBig();
   }
 
@@ -71,16 +91,45 @@ export class RouteProfile {
     if (open === this.open && (!open || this.big)) return;
     this.open = open;
     this.panel.hidden = !open;
-    document.getElementById('profileBig')?.setAttribute('aria-pressed', String(open));
-    if (open) this.drawBig(); else { this.big = null; this.panel.querySelector('.bpplot')!.innerHTML = ''; }
+    this.bigButton();
+    if (open) this.drawBig(); else { this.mark(null); this.big = null; this.panel.querySelector('.bpplot')!.innerHTML = ''; }
     this.steepLine();
     this.onOpenChange(open);
   }
 
+  /** The sheet's button: „⤢ Großes Profil“, while open „Profil schließen“. */
+  private bigButton() {
+    const b = document.getElementById('profileBig');
+    if (!b) return;
+    b.setAttribute('aria-pressed', String(this.open));
+    b.querySelector('span')!.textContent = t(this.open ? 'web_profile_big_close' : 'web_profile_big_open');
+    b.title = this.open ? t('web_profile_big_close') : t('web_profile_big');
+  }
+
   private drawBig() {
     if (!this.profile) return;
-    this.big = mountProfile(this.panel.querySelector<HTMLElement>('.bpplot')!, this.profile, (m) => this.cursor(m, 'big'), { W: 1000, H: 150 });
+    this.big = mountProfile(this.panel.querySelector<HTMLElement>('.bpplot')!, this.profile, (m) => this.cursor(m, 'big'), { W: 1000, H: 150 }, '',
+      (r) => this.mark(r, true));
+    this.panel.querySelector<HTMLElement>('.bpplot .profplot')!.title = t('web_profile_range_hint');
+    this.big.range(this.marked);
     this.steepLine();
+  }
+
+  /** Mark [r] (from the big profile: [fromProfile], already shaded there) or clear it: the map's highlighter, the numbers. */
+  private mark(r: [number, number] | null, fromProfile = false) {
+    this.marked = r;
+    if (!fromProfile) this.big?.range(r);
+    (this.map.getSource(RANGE) as GeoJSONSource | undefined)?.setData(r ? { type: 'Feature', properties: {},
+      geometry: { type: 'LineString', coordinates: lineBetween(this.line, r[0], r[1]) } } : empty());
+    const lbl = this.panel.querySelector<HTMLElement>('.bprange');
+    const ask = ++this.rangeAsk;
+    if (!lbl) return;
+    if (!r || !this.rangeStats) { lbl.hidden = true; lbl.textContent = ''; return; }
+    this.rangeStats(r[0], r[1]).then((st) => {
+      if (ask !== this.rangeAsk) return; // a newer range or none meanwhile
+      lbl.hidden = !st; lbl.textContent = st?.text ?? '';
+    }, (e) => problem('plan', 'range numbers not computed', e));
+    (window as unknown as { __profileRange: unknown }).__profileRange = r; // for the browser tests
   }
 
   /** The route coloured by steepness under the big profile (the app's gradient profile colours), else hidden. */

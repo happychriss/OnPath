@@ -257,6 +257,10 @@
     <string name="web_route_default_name">Plan</string>
     <!-- terrain view (owner 2026-11-05): the big elevation profile and the 3D map (terrainview.ts) -->
     <string name="web_profile_big">Large elevation profile below the map</string>
+    <string name="web_profile_big_open">Large profile</string>
+    <string name="web_profile_big_close">Close profile</string>
+    <string name="web_profile_big_title">Open the large elevation profile</string>
+    <string name="web_profile_range_hint">Press and drag: mark a stretch – length, time and climb. Click: clear the mark.</string>
     <string name="web_terrain_3d">3D</string>
     <string name="web_terrain_title">Terrain in 3D</string>
     <string name="web_terrain_off_title">Back to the flat map</string>

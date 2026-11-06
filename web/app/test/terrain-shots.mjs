@@ -34,6 +34,14 @@ const box = await page.locator('#bigProfile .bpplot svg').boundingBox();
 await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.5);
 await page.waitForTimeout(800);
 await page.screenshot({ path: path.join(out, `terrain-profil-${lang}.png`) });
+// a marked stretch (owner 2026-11-06): drag from 25 % to 60 % – length · time · climb, the stretch on the map
+await page.mouse.move(box.x + box.width * 0.25, box.y + box.height * 0.5);
+await page.mouse.down();
+await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.5, { steps: 8 });
+await page.mouse.up();
+await page.waitForTimeout(1200);
+await page.screenshot({ path: path.join(out, `terrain-abschnitt-${lang}.png`) });
+await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
 await page.mouse.move(5, 300);
 await page.click('#terrain3d'); // the button's own camera: tilted, framed on the route
 await page.waitForTimeout(1500);

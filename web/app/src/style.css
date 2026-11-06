@@ -557,8 +557,18 @@ kbd { display: inline-block; min-width: 1.4em; padding: 1px 6px; border: 1px sol
 .proflabel { position: absolute; top: 0; padding: 1px 6px; border-radius: 6px; background: rgba(255,255,255,.92); box-shadow: 0 1px 4px var(--shadow);
   font-size: 12px; white-space: nowrap; pointer-events: none; color: #555A55; }
 .profhead { display: flex; align-items: center; justify-content: space-between; min-height: 18px; font-size: 11px; margin-bottom: 4px; }
-.profbig { width: 30px; height: 30px; margin: -4px -6px -4px 0; color: var(--muted); }
-.profbig[aria-pressed="true"] { color: var(--route); background: var(--chip); }
+/* „⤢ Großes Profil“ (owner 2026-11-06: the ⤢ alone was not seen) – outlined plan blue, top right of the small profile */
+.profbig { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; margin: -6px -4px -2px 8px;
+  border: 1.5px solid #2E6A9E; border-radius: 20px; background: none; color: #2E6A9E; font: inherit; font-size: 13px; font-weight: 600;
+  white-space: nowrap; cursor: pointer; }
+.profbig:hover { background: #E3EDF6; }
+.profbig .ic { fill: currentColor; }
+.profbig[aria-pressed="true"] { background: #E3EDF6; }
+#profile .profplot.opens svg { cursor: zoom-in; }
+/* the marked range in the big profile (owner 2026-11-06) */
+.profrange { position: absolute; top: 0; bottom: 0; background: rgba(255, 213, 79, .45); border-left: 2px solid #E0A800; border-right: 2px solid #E0A800; pointer-events: none; }
+.bpplot svg.marking { cursor: col-resize; }
+.bprange { font-weight: 700; font-size: 14px; color: var(--fg); background: #FFF3C4; border-radius: 8px; padding: 2px 8px; white-space: nowrap; }
 .bigprofile { position: absolute; z-index: 2; left: calc(var(--sheet-w) + 24px); right: 72px; bottom: 56px; box-sizing: border-box;
   background: var(--bg); border-radius: 18px; box-shadow: 0 2px 14px var(--shadow); padding: 8px 16px 10px; }
 .bphead { display: flex; align-items: center; gap: 16px; margin-bottom: 4px; }

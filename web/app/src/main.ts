@@ -256,6 +256,8 @@ const routeProfile = new RouteProfile(map, ROUTE, $('profile'), $('bigProfile'),
   document.body.classList.toggle('bigprofile-open', open);
   if (open) fitRoute(); // the whole route above the big profile
 });
+// the big profile's marked range: length · time · climb from the engine (the plan's own time model, WebPace.rangeStats)
+routeProfile.rangeStats = async (a, b) => JSON.parse((await engine.call('rangeStats', enc(state.points), state.activity, state.sac, a, b)) || 'null');
 const terrain3d = new Terrain3D(map, $<HTMLButtonElement>('terrain3d'), $('threeDNote'), () => markers.forEach((m) => m.setDraggable(!terrain3d.on)),
   () => { // 3D frames the route like the fit button (clear of the sheet and the big profile)
     const b = routeBounds();

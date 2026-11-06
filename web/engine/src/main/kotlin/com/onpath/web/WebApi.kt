@@ -742,6 +742,8 @@ external fun planProgress(text: String)
 @JSExport fun paceSet(hike: String, bike: String): String = WebPace.set(hike, bike)
 @JSExport fun paceChoices(activity: String): String = WebPace.choices(activity)
 @JSExport fun planTime(points: String, activity: String, sac: Int): String = WebPace.planTime(points, activity, sac)
+/** The big profile's marked range: length, time and climb of the last plan between two distances (WebPace.rangeStats). */
+@JSExport fun rangeStats(points: String, activity: String, sac: Int, fromM: Double, toM: Double): String = WebPace.rangeStats(points, activity, sac, fromM, toM)
 @JSExport fun poiFilter(original: String, hidden: String): String = WebUi.poiFilter(original, hidden)
 /**
  * The map look for the activity (the app's map/ActivityLayers, as MapController.setOverlay / setSacLimit apply it):

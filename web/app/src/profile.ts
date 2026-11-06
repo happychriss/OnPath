@@ -60,15 +60,18 @@ export function indexAt(p: Profile, m: number): number {
 export interface ProfileView {
   /** Show the cursor at [m] metres along the line (from the map), or hide it (null). Reports nothing back. */
   show(m: number | null): void;
+  /** Shade the marked range [from, to] metres (or none). */
+  range(r: [number, number] | null): void;
 }
 
 /**
  * Draws [p] into [host] with the app's cursor: pointer over / touch-drag → the line, "954 m · 3.2 km · 8 %" and
  * [onCursor] with the distance (the page puts the dot on the map there); leaving → [onCursor](null).
  */
-export function mountProfile(host: HTMLElement, p: Profile, onCursor: (m: number | null) => void, size: { W: number; H: number } = { W: 300, H: 90 }, extra = ''): ProfileView {
-  if (p.dist.length < 2) { host.innerHTML = ''; return { show: () => {} }; }
-  host.innerHTML = profileSvg(p, size.W, size.H, extra, '<div class="profcursor" hidden></div><div class="proflabel" hidden></div>');
+export function mountProfile(host: HTMLElement, p: Profile, onCursor: (m: number | null) => void, size: { W: number; H: number } = { W: 300, H: 90 }, extra = '',
+  onRange?: (r: [number, number] | null) => void): ProfileView {
+  if (p.dist.length < 2) { host.innerHTML = ''; return { show: () => {}, range: () => {} }; }
+  host.innerHTML = profileSvg(p, size.W, size.H, extra, '<div class="profrange" hidden></div><div class="profcursor" hidden></div><div class="proflabel" hidden></div>');
   const plot = host.querySelector<HTMLElement>('.profplot')!;
   const svg = plot.querySelector<SVGSVGElement>(':scope > svg')!;
   const line = plot.querySelector<HTMLElement>('.profcursor')!, label = plot.querySelector<HTMLElement>('.proflabel')!;
@@ -93,12 +96,50 @@ export function mountProfile(host: HTMLElement, p: Profile, onCursor: (m: number
     onCursor(p.dist[i]);
   };
   const off = () => { draw(null); onCursor(null); };
-  svg.addEventListener('pointermove', at);
-  svg.addEventListener('pointerdown', (e) => { at(e); if (e.pointerType !== 'mouse') svg.setPointerCapture(e.pointerId); });
-  svg.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') off(); });
-  svg.addEventListener('pointerup', (e) => { if (e.pointerType !== 'mouse') off(); });
-  svg.addEventListener('pointercancel', off);
-  return { show: draw };
+  // the marked range (big profile, owner 2026-11-06): press and drag (mouse), hold then drag (touch); a click clears
+  const shade = plot.querySelector<HTMLElement>('.profrange')!;
+  const paint = (r: [number, number] | null) => {
+    shade.hidden = r == null;
+    if (!r) return;
+    const a = Math.min(r[0], r[1]) / total, b = Math.max(r[0], r[1]) / total;
+    shade.style.left = `${(a * 100).toFixed(2)}%`; shade.style.width = `${((b - a) * 100).toFixed(2)}%`;
+  };
+  const mAt = (e: PointerEvent) => {
+    const r = svg.getBoundingClientRect();
+    return r.width > 0 ? Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * total : 0;
+  };
+  let press: { m: number; x: number; id: number; held: boolean; timer: number } | null = null;
+  let marking = false;
+  const startMark = () => { marking = true; svg.classList.add('marking'); };
+  svg.addEventListener('pointermove', (e) => {
+    if (press && onRange && e.pointerId === press.id) {
+      if (!marking && e.pointerType === 'mouse' && Math.abs(e.clientX - press.x) > 4) startMark();
+      if (!marking && e.pointerType !== 'mouse' && !press.held && Math.abs(e.clientX - press.x) > 8) { clearTimeout(press.timer); press = null; }
+      if (marking && press) { paint([press.m, mAt(e)]); onRange([press.m, mAt(e)]); }
+    }
+    at(e);
+  });
+  svg.addEventListener('pointerdown', (e) => {
+    at(e);
+    if (e.pointerType !== 'mouse') svg.setPointerCapture(e.pointerId);
+    if (!onRange || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (e.pointerType === 'mouse') svg.setPointerCapture(e.pointerId);
+    const pr = { m: mAt(e), x: e.clientX, id: e.pointerId, held: false, timer: 0 };
+    if (e.pointerType !== 'mouse') pr.timer = window.setTimeout(() => { pr.held = true; startMark(); }, 450);
+    press = pr;
+  });
+  const end = (e: PointerEvent) => {
+    if (press && e.pointerId === press.id) {
+      clearTimeout(press.timer);
+      if (marking) { const r: [number, number] = [press.m, mAt(e)]; paint(r); onRange?.(Math.abs(r[1] - r[0]) > 1 ? r : null); }
+      else if (onRange && e.type === 'pointerup') { paint(null); onRange(null); } // a plain click clears the range
+      press = null; marking = false; svg.classList.remove('marking');
+    }
+  };
+  svg.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !press) off(); });
+  svg.addEventListener('pointerup', (e) => { end(e); if (e.pointerType !== 'mouse') off(); });
+  svg.addEventListener('pointercancel', (e) => { if (press) { clearTimeout(press.timer); press = null; marking = false; svg.classList.remove('marking'); } off(); });
+  return { show: draw, range: paint };
 }
 
 /** Route vertices [lat, lon] with their distance along the whole line (the app's Geo.cumulative, haversine). */
@@ -152,4 +193,15 @@ export function steepRuns(line: Line, p: Profile): { cls: number; coords: [numbe
     }
   });
   return runs.filter((r) => r.coords.length > 1);
+}
+
+/** The piece of [line] between [a] and [b] metres along it, as GeoJSON [lon, lat] coordinates (the marked range on the map). */
+export function lineBetween(line: Line, a: number, b: number): [number, number][] {
+  const from = Math.min(a, b), to = Math.max(a, b);
+  const s = pointAt(line, from), e = pointAt(line, to);
+  if (!s || !e) return [];
+  const out: [number, number][] = [[s[1], s[0]]];
+  line.pts.forEach(([la, lo], j) => { if (line.cum[j] > from && line.cum[j] < to) out.push([lo, la]); });
+  out.push([e[1], e[0]]);
+  return out;
 }
