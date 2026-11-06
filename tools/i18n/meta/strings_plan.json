@@ -1342,5 +1342,11 @@
     "context": "Added line in \"Save plan?\" during a running tour",
     "priority": 1,
     "confidence": "sicher"
+  },
+  "plan_round_trip_on_desc": {
+    "area": "Plan sheet",
+    "context": "Screen reader only: the Round trip button while the plan is a round trip (a switch that is on); a tap takes the way back to the start out again",
+    "priority": 2,
+    "confidence": "sicher"
   }
 }

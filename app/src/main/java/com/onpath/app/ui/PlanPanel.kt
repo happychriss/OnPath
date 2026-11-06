@@ -10,6 +10,10 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.selected
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -175,8 +179,15 @@ data class PlanUi(
     val savedName: String? = null,
     /** The plan differs from [savedName]'s points (RouteRules.isUnsaved). */
     val unsaved: Boolean = false,
-    /** The route already ends at its start: "Round trip" is greyed out (smart menu, no message). */
+    /**
+     * The plan is a round trip: "↻ Rundtour" shows on (filled, ✓) and a tap takes the way back out again (owner
+     * 2026-11-06, onpath.private#40 – a switch, not a greyed-out button).
+     */
     val roundTrip: Boolean = false,
+    /** "↻ Rundtour" can be switched now (on: ≥ 2 points not ending at the start; off: [roundTrip]). */
+    val canRoundTrip: Boolean = true,
+    /** "⇅ Umkehren" changes the plan – false for an out-and-back over one point (A → B → A): greyed out (#40). */
+    val canReverse: Boolean = true,
     /** A tour records: its status + Continue / Pause / End sit at the top of this sheet (one surface). */
     val tour: TourState? = null,
     /** Rows of the Points section (full sheet), see PlanPoints.rows. */
@@ -263,15 +274,21 @@ private fun pillFill(enabled: Boolean): Color = PillBlueLight.copy(alpha = if (e
 private fun pillInk(enabled: Boolean): Color = if (enabled) PillBlueInk else PillBlueInk.copy(alpha = 0.38f)
 
 @Composable
-private fun PlanAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
-    val tint = pillInk(enabled)
+private fun PlanAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, onClick: () -> Unit,
+                       on: Boolean = false, onDesc: String? = null) {
+    val tint = if (on) OnPathColors.CardWhite else pillInk(enabled)
     // icon and word side by side (owner 2026-10-31: the stacked label made the row twice as high); a light pill so it
-    // reads as a button, calm like the activity field (owner 2026-11-01); 40 dp to see, 48 dp to touch
+    // reads as a button, calm like the activity field (owner 2026-11-01); 40 dp to see, 48 dp to touch. [on]: a switch
+    // that is on (Material 3 filter chip: filled, the sign becomes ✓) – "↻ Rundtour" on a round trip (#40)
     Row(Modifier.heightIn(min = 48.dp).padding(vertical = 4.dp).clip(CircleShape)
-        .background(pillFill(enabled))
-        .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 12.dp),
+        .background(if (on) OnPathColors.PlanAccent else pillFill(enabled))
+        .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+        .then(if (on && onDesc != null) Modifier.clearAndSetSemantics {
+            contentDescription = onDesc; role = Role.Button; selected = true; onClick { onClick(); true }
+        } else Modifier)
+        .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
+        Icon(if (on) Icons.Filled.Check else icon, null, tint = tint, modifier = Modifier.size(20.dp))
         Text(label, style = MaterialTheme.typography.labelMedium, color = tint, maxLines = 1,
             modifier = Modifier.padding(start = 6.dp))
     }
@@ -385,6 +402,7 @@ private fun PlanHead(ui: PlanUi, cb: PlanCallbacks) {
     val clear = str(Res.string.plan_close_plan)
     val rev = str(Res.string.plan_reverse)
     val loop = str(Res.string.plan_round_trip)
+    val loopOn = str(Res.string.plan_round_trip_on_desc)
     val tm = androidx.compose.ui.text.rememberTextMeasurer()
     val density = androidx.compose.ui.platform.LocalDensity.current
     val style = MaterialTheme.typography.labelMedium
@@ -396,12 +414,13 @@ private fun PlanHead(ui: PlanUi, cb: PlanCallbacks) {
             verticalAlignment = Alignment.CenterVertically) {
             if (words) {
                 PlanAction(Icons.Filled.Close, clear, canClear, cb.onClear)
-                PlanAction(Icons.Outlined.SwapVert, rev, two, cb.onReverse)
-                PlanAction(Icons.Outlined.Loop, loop, two && !ui.roundTrip, cb.onRoundTrip)
+                PlanAction(Icons.Outlined.SwapVert, rev, two && ui.canReverse, cb.onReverse)
+                PlanAction(Icons.Outlined.Loop, loop, ui.roundTrip || (two && ui.canRoundTrip), cb.onRoundTrip, on = ui.roundTrip, onDesc = loopOn)
             } else {
                 PlanIconPill(Icons.Filled.Close, clear, canClear, cb.onClear)
-                PlanIconPill(Icons.Outlined.SwapVert, rev, two, cb.onReverse)
-                PlanIconPill(Icons.Outlined.Loop, loop, two && !ui.roundTrip, cb.onRoundTrip)
+                PlanIconPill(Icons.Outlined.SwapVert, rev, two && ui.canReverse, cb.onReverse)
+                PlanIconPill(Icons.Outlined.Loop, if (ui.roundTrip) loopOn else loop, ui.roundTrip || (two && ui.canRoundTrip), cb.onRoundTrip,
+                    on = ui.roundTrip)
             }
         }
     }
@@ -582,12 +601,15 @@ fun ActivityMapButton(activity: Activity, sac: Int, onClick: () -> Unit, modifie
 
 /** The plan row's sign-only buttons (a large font): a light blue circle (40 dp) in a 48 dp touch target, TalkBack names it. */
 @Composable
-private fun PlanIconPill(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
+private fun PlanIconPill(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, onClick: () -> Unit,
+                         on: Boolean = false) {
     Box(Modifier.size(48.dp).clip(CircleShape)
         .clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick)
-        .semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
-        Box(Modifier.size(40.dp).clip(CircleShape).background(pillFill(enabled)), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = pillInk(enabled), modifier = Modifier.size(20.dp))
+        .semantics { contentDescription = label; if (on) selected = true }, contentAlignment = Alignment.Center) {
+        // a switch that is on: filled plan blue, white sign (the round trip sign stays – a ✓ alone would not say what)
+        Box(Modifier.size(40.dp).clip(CircleShape).background(if (on) OnPathColors.PlanAccent else pillFill(enabled)),
+            contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = if (on) OnPathColors.CardWhite else pillInk(enabled), modifier = Modifier.size(20.dp))
         }
     }
 }

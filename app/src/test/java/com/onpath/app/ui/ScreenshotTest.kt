@@ -360,11 +360,24 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi(n = 2, r = null).copy(notRouted = NotRouted.LONG), PlanCallbacks()) }
     }
 
-    /** Round trip: start = goal shown once with ↺ and the way back; Round trip greyed out. */
+    /**
+     * Round trip: start = goal shown once with ↺ and the way back; "↻ Rundtour" is on (filled, ✓ – owner 2026-11-06,
+     * #40: a switch, a tap takes the way back out).
+     */
     @Test fun planPointsRoundTrip() = paparazzi.snapshot {
         val loop = stops.take(3) + stops[0]
         Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(loop, null), r = null, roundTrip = true)
             .copy(pointCount = 4), PlanCallbacks()) }
+    }
+
+    /** A round trip in the summary step (owner 2026-11-06, #40): "↻ Rundtour" on – filled plan blue with ✓. */
+    @Test fun planRoundTripOn() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(roundTrip = true, canRoundTrip = true), PlanCallbacks()) }
+    }
+
+    /** Out and back over one point (A → B → A): Rundtour on, "⇅ Umkehren" greyed out – backwards is the same (#40). */
+    @Test fun planOutAndBack() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(roundTrip = true, canReverse = false), PlanCallbacks()) }
     }
 
     /** One point only: Start, Reverse / Round trip disabled. */

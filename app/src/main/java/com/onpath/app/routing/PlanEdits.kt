@@ -16,6 +16,27 @@ object PlanEdits {
         return if (Geo.distance(w.first(), w.last()) <= sameM || loopStart(w, sameM) != null) w else w + w.first()
     }
 
+    /**
+     * "Round trip" switched off again (owner 2026-11-06, onpath.private#40 – the pill is a switch): the closing point that
+     * leads back to the start / the loop's start goes – A → B → A becomes A → B; with stops on the way before the loop
+     * only that closing point. Not a round trip: unchanged.
+     */
+    fun unRoundTrip(w: List<GeoPoint>, sameM: Double = 15.0): List<GeoPoint> =
+        if (loopStart(w, sameM) != null) w.dropLast(1) else w
+
+    /** "Round trip" would change the plan: ≥ 2 points that do not end at the start / in a loop yet. */
+    fun canRoundTrip(w: List<GeoPoint>, sameM: Double = 15.0): Boolean = roundTrip(w, sameM).size != w.size
+
+    /**
+     * "Reverse" changes the plan (owner 2026-11-06, Pixel: "ich drücke Umkehren und nix passiert"): false when the points
+     * backwards are the same points ([sameM] apart at most) – an out-and-back over one point A → B → A, or A → A.
+     */
+    fun reverseChanges(w: List<GeoPoint>, sameM: Double = 15.0): Boolean {
+        if (w.size < 2) return false
+        val r = reverse(w)
+        return w.indices.any { Geo.distance(w[it], r[it]) > sameM }
+    }
+
     /** Moves the point at [from] to position [to] (index in the resulting list). */
     fun move(w: List<GeoPoint>, from: Int, to: Int): List<GeoPoint> {
         if (from !in w.indices) return w

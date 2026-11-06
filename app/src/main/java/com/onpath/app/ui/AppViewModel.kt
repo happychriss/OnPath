@@ -1923,11 +1923,29 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // the last row; a round trip stays closed at its start (as dragging the row to the end of the Points list)
         if (index in waypoints.indices && index != waypoints.lastIndex) set(com.onpath.app.routing.PlanPoints.move(waypoints, index, waypoints.size - 1))
     }
-    fun reverseRoute() { if (waypoints.size >= 2) set(PlanEdits.reverse(waypoints)) }
+    /** "⇅ Umkehren" changes the plan (greyed out for an out-and-back over one point, owner 2026-11-06 #40). */
+    fun canReverse(): Boolean = PlanEdits.reverseChanges(waypoints)
+    fun reverseRoute() {
+        if (!PlanEdits.reverseChanges(waypoints)) {
+            Problems.trace("plan", "Reverse: nothing to reverse (plan ${waypoints.size} points, the same backwards)"); return
+        }
+        Problems.trace("plan", "Reverse: plan ${waypoints.size} points")
+        set(PlanEdits.reverse(waypoints))
+    }
+
+    /** "↻ Rundtour" can be switched: on (adds the way back to the start) or off (the plan is a round trip). */
+    fun canRoundTrip(): Boolean = PlanEdits.isRoundTrip(waypoints) || PlanEdits.canRoundTrip(waypoints)
+
+    /**
+     * "↻ Rundtour" is a switch (owner 2026-11-06, onpath.private#40): on → the start becomes the final destination; on a
+     * round trip a tap takes it back – the closing point goes (A → B → A → A → B). One Undo step either way.
+     */
     fun roundTrip() {
-        val w = PlanEdits.roundTrip(waypoints)
-        // the sheet offers Round trip only when the route does not end at the start yet (PlanPanel canRoundTrip)
-        if (w.size != waypoints.size) set(w) else Problems.trace("plan", "Round trip: the route already ends at the start")
+        val on = PlanEdits.isRoundTrip(waypoints)
+        val w = if (on) PlanEdits.unRoundTrip(waypoints) else PlanEdits.roundTrip(waypoints)
+        if (w.size == waypoints.size) { Problems.trace("plan", "Round trip: nothing to change (plan ${waypoints.size} points)"); return }
+        Problems.trace("plan", "Round trip ${if (on) "off" else "on"}: plan ${waypoints.size} → ${w.size} points")
+        set(w)
     }
 
     fun undoStep() = step(history.undo(waypoints), "Undo")

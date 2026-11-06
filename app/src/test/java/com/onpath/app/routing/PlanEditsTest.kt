@@ -19,6 +19,37 @@ class PlanEditsTest {
         assertEquals(listOf(a), PlanEdits.roundTrip(listOf(a)))
     }
 
+    /** Owner 2026-11-06 (#40): "↻ Rundtour" is a switch – a tap on a round trip takes the way back out again. */
+    @Test fun unRoundTripTakesTheWayBackOut() {
+        assertEquals(listOf(a, b), PlanEdits.unRoundTrip(listOf(a, b, a)))                 // out and back → A → B
+        assertEquals(listOf(a, b, c), PlanEdits.unRoundTrip(PlanEdits.roundTrip(listOf(a, b, c))))
+        // stops on the way before the loop stay, only the closing point goes
+        val d = GeoPoint(46.80, 11.30)
+        val withStop = listOf(d, a, b, c, a)
+        assertEquals(1, PlanEdits.loopStart(withStop))
+        assertEquals(listOf(d, a, b, c), PlanEdits.unRoundTrip(withStop))
+        // not a round trip: unchanged (A → A with two points is not one either)
+        assertEquals(listOf(a, b, c), PlanEdits.unRoundTrip(listOf(a, b, c)))
+        assertEquals(listOf(a, a), PlanEdits.unRoundTrip(listOf(a, a)))
+    }
+
+    @Test fun canRoundTripOnlyWhenItChangesThePlan() {
+        assertTrue(PlanEdits.canRoundTrip(listOf(a, b)))
+        assertFalse(PlanEdits.canRoundTrip(listOf(a)))
+        assertFalse(PlanEdits.canRoundTrip(listOf(a, b, a)))   // already a round trip
+        assertFalse(PlanEdits.canRoundTrip(listOf(a, a)))      // start = goal already: nothing to add, nothing to take out
+    }
+
+    /** Owner 2026-11-06, Pixel 18:07: "ich drücke Umkehren und nix passiert" – A → B → A backwards is A → B → A. */
+    @Test fun reverseChangesNothingOnAnOutAndBack() {
+        assertFalse(PlanEdits.reverseChanges(listOf(a, b, a)))
+        assertFalse(PlanEdits.reverseChanges(listOf(a, a)))
+        assertFalse(PlanEdits.reverseChanges(listOf(a)))
+        assertFalse(PlanEdits.reverseChanges(listOf(a, b, GeoPoint(46.67005, 11.10005))))   // back within 15 m
+        assertTrue(PlanEdits.reverseChanges(listOf(a, b)))
+        assertTrue(PlanEdits.reverseChanges(listOf(a, b, c, a)))   // a real loop: the other way round
+    }
+
     @Test fun moveKeepsOthersInOrder() {
         assertEquals(listOf(b, c, a), PlanEdits.move(listOf(a, b, c), 0, 2))
         assertEquals(listOf(c, a, b), PlanEdits.move(listOf(a, b, c), 2, 0))

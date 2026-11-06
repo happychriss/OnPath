@@ -112,6 +112,7 @@
     <string name="plan_activity_chip_desc">Activity: %1$s. Tap to change</string>
     <string name="plan_points">Points</string>
     <string name="plan_reverse">Reverse</string>
+    <string name="plan_round_trip_on_desc">Round trip on – tap to turn it off</string>
     <string name="plan_round_trip">Round trip</string>
     <string name="plan_no_points">No points yet – hold the map to add one.</string>
     <string name="plan_point_move_desc">Move point %1$d (hold and drag)</string>

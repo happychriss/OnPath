@@ -111,6 +111,7 @@
     <string name="plan_activity_chip_desc">Aktivität: %1$s. Tippen zum Ändern</string>
     <string name="plan_points">Punkte</string>
     <string name="plan_reverse">Umkehren</string>
+    <string name="plan_round_trip_on_desc">Rundtour an – tippen zum Aufheben</string>
     <string name="plan_round_trip">Rundtour</string>
     <string name="plan_no_points">Noch keine Punkte – halte die Karte gedrückt, um einen zu setzen.</string>
     <string name="plan_point_move_desc">Punkt %1$d verschieben (halten und ziehen)</string>

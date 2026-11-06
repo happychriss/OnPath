@@ -42,6 +42,8 @@ open class PlanChipLargeFontTest {
     @Test fun planCollapsed() = shots.planCollapsed()
     @Test fun planCollapsedGap() = shots.planCollapsedGap()
     @Test fun planPointsFull() = shots.planPointsFull()
+    @Test fun planRoundTripOn() = shots.planRoundTripOn()
+    @Test fun planOutAndBack() = shots.planOutAndBack()
 }
 
 /** The same in German. */
