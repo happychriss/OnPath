@@ -13,6 +13,12 @@ object PlanGuidance {
         planPoints == 0 && recording && following && !followIsTrack
 
     /**
+     * ✕ Neu planen during a tour (owner 2026-11-05): every guidance ends – the plan's route and a followed GPX track
+     * alike; Navigate is a free tour, the recording goes on.
+     */
+    fun clearEndsGuidance(recording: Boolean, following: Boolean): Boolean = recording && following
+
+    /**
      * A route for the plan is ready: follow it again? Yes when the guidance was ended by emptying the plan and points
      * are back (Undo, or a new plan) while the tour still records.
      */
@@ -27,4 +33,13 @@ object PlanGuidance {
     fun planReplacesTrack(followIsTrack: Boolean, plan: List<com.onpath.app.routing.GeoPoint>,
                           planAtTrackFollow: List<com.onpath.app.routing.GeoPoint>?): Boolean =
         followIsTrack && plan.size >= 2 && planAtTrackFollow != null && plan != planAtTrackFollow
+}
+
+/**
+ * ✕ Neu planen asks first (owner 2026-11-05): with unsaved changes ("Änderungen verwerfen?" with Save), and during a tour
+ * always when there is a plan – "Plan leeren? Deine Tour läuft weiter und wird weiter aufgezeichnet." Otherwise it clears
+ * at once (one Undo brings it back).
+ */
+object ClearAsk {
+    fun asks(unsaved: Boolean, touring: Boolean, planPoints: Int): Boolean = unsaved || (touring && planPoints > 0)
 }

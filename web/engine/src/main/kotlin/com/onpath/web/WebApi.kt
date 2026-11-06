@@ -19,6 +19,8 @@ import com.onpath.app.routing.Rd5Parts
 import com.onpath.app.routing.RoutingException
 import com.onpath.app.routing.Share
 import com.onpath.app.routing.SlowPlan
+import com.onpath.app.routing.LegCache
+import com.onpath.app.ui.PlanStatus
 import com.onpath.app.time.RouteTimes
 import com.onpath.app.poi.PoiLinks
 import com.onpath.app.recording.GpsStatus
@@ -26,6 +28,7 @@ import com.onpath.app.ui.MapGestures
 import com.onpath.app.ui.PlanHistory
 import com.onpath.app.ui.RouteWarnings
 import com.onpath.strings.*
+import org.teavm.jso.JSBody
 import org.teavm.jso.JSExport
 import org.teavm.jso.typedarrays.Int8Array
 import java.io.File
@@ -41,11 +44,19 @@ object Engine {
     private var root = File("/onpath")
     private var engine: BRouterEngine? = null
 
+    /**
+     * The legs of earlier plan runs (the app's [LegCache], PLANNER_VERSION 4, docs/design/long-bike-routes.md): one per
+     * engine, as the app keeps one beside its router – an edit routes only the legs it changed. Only routed legs are kept,
+     * so a leg that failed while its routing data was still loading is routed again.
+     */
+    private val legCache = LegCache()
+
     fun init(rootDir: String) {
         root = File(rootDir)
         android.content.res.AssetManager.root = File(root, "assets")
         engine = null
         fingerprint = null // of the profiles handed over to this root
+        legCache.clear() // other profiles / routing data: every leg is routed again
     }
 
     fun putFile(relPath: String, bytes: ByteArray) {
@@ -80,6 +91,9 @@ object Engine {
     fun putLayout(tile: String, index: ByteArray, tail: ByteArray) {
         val ix = Rd5Parts.Index(index)
         ix.check()
+        val before = layouts[tile]?.second
+        // a newer build of the tile (the page's copy is at most a day old): the same points may route differently now
+        if (before != null && Rd5Parts.creationTime(before) != Rd5Parts.creationTime(tail)) legCache.clear()
         layouts[tile] = ix to tail
     }
 
@@ -225,7 +239,9 @@ object Engine {
             val nm = parseNames(names)
             // the same points planned before with another activity / T level: the app's "New route for … – check it"
             val before = lastResultFor(wps)?.takeIf { it.activity != act || it.sac != sac }
-            val planner = Planner(engine(), null, askAtLimit = rounds >= 1, rounds = rounds.coerceAtLeast(1))
+            // the wait box's "Leg 2 of 5 is being calculated…" – the app's PlanStatus text, only for two or more legs
+            val planner = Planner(engine(), null, askAtLimit = rounds >= 1, rounds = rounds.coerceAtLeast(1), legs = legCache,
+                progress = { done, total -> if (PlanStatus.hasLegs(done to total)) planProgress(PlanStatus.calculating(done to total)) })
             val res = try {
                 PlanResult.plan(planner, wps, act, sac, parseIndices(pinned), nm.filterValues { it.isNotBlank() }.keys,
                     WebPace.factors(act))
@@ -557,6 +573,13 @@ class WebContext(private val dir: File) : android.content.Context() {
 }
 
 // ---- Exports for the browser (TeaVM) ----
+
+/**
+ * A plan's progress text to the page, while [Engine.plan] runs: the worker sets `onpathPlanProgress` for the request it
+ * answers (worker.ts) – the engine runs on the worker's thread, so this is the only way out before the answer.
+ */
+@JSBody(params = ["text"], script = "if (typeof globalThis.onpathPlanProgress === 'function') globalThis.onpathPlanProgress(text);")
+external fun planProgress(text: String)
 
 @JSExport fun init(rootDir: String) = Engine.init(rootDir)
 

@@ -23,9 +23,10 @@ object RoutingFingerprint {
     /**
      * Our routing code's version: raise it with every change that can give another route for the same points,
      * activity and data (Planner passes and splits, WaypointSnap rules, BRouterEngine's profile parameters / via
-     * handling). Not raised for refactors that keep every route the same.
+     * handling). Not raised for refactors that keep every route the same. 4 (2026-11-05): leg by leg + LegCache, the
+     * via correction at leg joins in the Planner (docs/design/long-bike-routes.md).
      */
-    const val PLANNER_VERSION = 3
+    const val PLANNER_VERSION = 4
 
     /** The files BRouter routes with (assets/brouter), in hash order. */
     val FILES = listOf("lookups.dat", "hiking-mountain.brf", "mtb.brf", "touring.brf", "trekking.brf")

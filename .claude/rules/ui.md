@@ -34,4 +34,7 @@ paths:
   T limit (E-bike / E-MTB change only power, speed and mass). In a sentence the activity reads "Hike T3"
   (`LastActivity.name`), on the chip "Hike · T3".
 
+- **Record only the screen you changed** (owner 2026-11-05 – full records made agents queue for minutes):
+  `tools/dev/gradle_slot.sh -- ./gradlew :app:recordPaparazziDebug --tests 'com.onpath.app.ui.<Class>'`; the full
+  check runs once, in `tools/ci/gate.sh`, before the push.
 - Screenshot tests: `./gradlew :app:recordPaparazziDebug` / `verifyPaparazziDebug` (map replaced by a placeholder), images in `app/src/test/snapshots/images/` – the way to check layouts without a device. `gate.sh` runs the check when ui / texts / snapshots changed.

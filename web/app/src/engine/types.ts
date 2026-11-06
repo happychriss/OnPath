@@ -70,7 +70,9 @@ export interface EngineReply { id: number; ok: boolean; result?: RouteResult; pl
   /** config only: the engine cannot run in this browser (no WasmGC / Wasm exceptions – a CompileError / LinkError). */
   unsupported?: boolean }
 /** What a plan waits for: the routing data under it ([bytes] still to download), then the router. */
-export type Progress = { phase: 'download'; bytes: number } | { phase: 'route' };
+export type Progress = { phase: 'download'; bytes: number } | { phase: 'route' }
+  /** the legs the router works on: the engine's own text ("Leg 2 of 5 is being calculated…", PlanStatus.calculating) */
+  | { phase: 'legs'; text: string };
 
 /** One row of the Points list (the app's PlanPoints.rows). */
 export interface PointRow { i: number; role: 'START' | 'STOP' | 'GOAL'; name: string; legM: number | null; approx: boolean; loop: boolean;

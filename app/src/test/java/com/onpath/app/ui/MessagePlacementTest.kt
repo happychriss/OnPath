@@ -52,7 +52,7 @@ class MessagePlacementTest {
 
     /** Every screen uses the one rule; the Navigate question sits at the top now, under the measured column. */
     @Test fun everyHostUsesTheRule() {
-        assertTrue(src("MapScreen.kt").contains("MessagePlacement.topDp(MessageScreen.PLAN)"))
+        assertTrue(src("MapScreen.kt").contains("MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())"))
         val nav = src("NavigateScreen.kt").substringAfter("fun NavigateOverlay(").substringBefore("\n}\n")
         assertTrue(nav.contains("MessagePlacement.topDp(MessageScreen.NAVIGATE, topColumnDp)"))
         assertTrue(nav.indexOf(".onSizeChanged { topColumnDp =") in 0 until nav.indexOf("TurnCard(it)"))

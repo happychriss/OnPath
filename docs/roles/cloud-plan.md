@@ -14,7 +14,7 @@ build in the backlog as open; don't fall back to slow cloud builds without askin
 - Your word to the captain (answers, blockers) goes under "For the captain" in `docs/backlog.md`
   (`← [cloud-plan] …`) – you cannot message the captain.
 - Before a big build: claim it in the backlog (`[cloud-plan] build cells Meran/Bozen on the laptop`).
-- Keep the shared code in step with `main` (list under "Shared code" in cloud-app.md); after a merge from `main`, run the
+- Keep the shared code in step with `main` (`app/web-shared-files.txt`); after a merge from `main`, run the
   shared-code tests on `web-spike`.
 - Planner deploys that change shared behaviour: only after the captain's go.
 

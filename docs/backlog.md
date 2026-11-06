@@ -81,20 +81,19 @@ the git log.
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
-- [donald] Plan sheet bottom: ONE compact row '▶ Los geht's' / '‹ Navigation' + 'Speichern | Neu planen' (owner 2026-11-05, F) – since 2026-11-05
 
 ## Next
 - **[cloud-plan] Flaky web smokes on GitHub** (2026-11-05): robust-smoke "two quick clicks: the second is the new destination" red in 2 of 4 runs, sync-smoke "Save on the laptop → on the phone" red once – both green locally (also with CPU throttling). Find the cause, no retry loops.
-- **[cloud-app] Navigate's slider bar: no change (owner 2026-11-05 correction)** – the slider and today's buttons stay as built;
-  the action-sheet / tile ideas of today are dropped. The open design question is only the plan sheet during a tour
-  (next line, in work with the captain).
-- **[cloud-app] Plan sheet bottom: ONE compact row, two groups, one-line labels (owner 2026-11-05: "the double row takes
-  too much plan space – design good, make it compact" → F)** – same height as today, the profile keeps its room. Left a
-  filled green button only as wide as its text: without a tour **"▶ Los geht's"**, during a tour **"‹ Navigation"** (back
-  arrow + where to). Right, filling the rest: ONE blue outlined connected button group **"Speichern | Neu planen"**. Every
-  label one line (Material: no wrapped button text). Large font: when the row does not fit, the group moves to a second
-  row by itself (never wrapped / cut text). No red. Navigate's slider bar unchanged. Screenshots DE + EN + large font
-  first. Sketch F (both states): https://claude.ai/artifact/9Ju2XSLNrwiaaxmEw9pbDP
+- **[donald] Onboarding – first-use hints (proposal 2026-11-05 in chat, owner thinking – NOT approved yet; drawings first)** – no intro carousel; three in-place hints (ANZEIGE kind, no box), each once, gone when the user did the step (even unseen): (1) empty map: pulsing finger + 'Lange auf die Karte drücken → „Hierhin“ – die Route kommt von selbst' (search is self-explaining); (2) only after „Hier starten“: 'Jetzt das Ziel: wieder lange drücken → Hierhin'; „Hierhin“ / search → straight to (3) arrow to the green button 'Fertig? ▶ Los geht's startet die Führung'. Never during a tour or over a question; Settings 'Tipps wieder zeigen'; no saving hint (✕ asks, ☰ dot, end-of-tour sheet cover it). Check first what 'Hierhin' does without a GPS fix (then hint 'Standort fehlt – erst „Hier starten“'). One line after an update only when a way of use changed (e.g. 'Neu: zum Ändern entsperren').
+- ✓ [donald] 2026-11-05 evening on main (7b3e7f13, gate --full green): plan sheet R5 (activity button on the map, light blue plan row ✕ Neu planen · ⇅ Umkehren · ↻ Rundtour, one green button 'Los geht's', no Save in the sheet), light blue band + round '←' back to the tour (R1, no green button during a tour), Navigate C (slider '» Entsperren' with lock, Pause / Tour beenden in the status card, big blue 'Plan', lock setting default on), activity in one tap (Hike T1–T5), end tour = V2 sheet, clear plan during a tour (guidance ends, recording goes on, 'Freie Tour · nur Aufnahme'), M3 dialogs 'Plan speichern?' / 'Plan leeren?', next 2–3 stops under Navigate's profile. Not released. **[pixel] owner check** of the test build; release with the planner (leg cache, cloud-plan line below).
+- **[captain] „Ein Branch“ entscheiden (Setup-Audit 2026-11-05):** der Owner hat am 2026-11-01 „web-spike nach v0.14.0 in
+  `main` zusammenlegen“ entschieden; `web-spike` ist heute 562 Commits voraus und der tägliche Abgleich (05:47) läuft
+  weiter. Mit dem Owner klären (eine Fragebox): jetzt umsetzen (eine ruhige Sitzung, Workflow-PR) oder bewusst
+  verwerfen. Hintergrund: `docs/history/setup-2026-11/audit-setup-2026-11-05.md` §4.9.
+- ✓ [donald] `wip/`-Branches geprüft (2026-11-05): alle sechs (`wip/donald-2026-11-01-nacht`, die fünf `wip/donald-2026-11-03-*`) stecken in `main` (nacht: gleiche Patches; die fünf von Cloud-Arbeitern am 4.11. fertig gebaut, ✓-Zeilen unten, Stichproben: Offline-Pille, RoundTripLeadTest, „③ auslassen“) – der Owner kann sie löschen; `wip/voice-guidance` gibt es auf origin nicht mehr.
+- **[cloud-plan] Web: the app's UI round of 2026-11-05 where the planner has the same thing** (cloud worker 2026-11-06, parity recorded without a web change): activity picker in one tap with Hike's T1–T5 chips under its row (app `Screens.kt` ActivityPicker, no Done button); ✕ / clear asks Verwerfen · Abbrechen · Speichern (`ClearAsk`, `discardSaveFirst`). Within-a-leg wait bar (`WaitBar`, `searchProgress`) needs the engine polled while it routes – the web shows legs only.
+- ✓ [cloud worker 2026-11-06] Planner leg by leg (PLANNER_VERSION 4) on web-spike for v0.17.0: main merged, one `LegCache` in `WebApi` (cleared on init and when a tile's rd5 build changes), "Abschnitt n von m wird berechnet…" from the app's `PlanStatus` through the worker (`onpathPlanProgress`, progress phase `legs`), parity recorded.
+- **[pixel] Measure long bike routes on the Pixel (leg cache built 2026-11-05)** – when no tour records: `tools/routing/phone-bench/run.sh` (docs/design/long-bike-routes.md) + a 98 km Bike plan in the app: first route, + point, + point; numbers before/after to the owner.
 - **[cloud-app] Far start: ask before routing the way there (owner 2026-11-05, corrected)** – a plan loaded in Meran, "Route
   starten" in Hilden → "Hinführen" routed the lead for a very long time, then "no route". No hard limit (owner: 100 km by
   bike is fine for some). Instead, before the lead is routed, when the way there is long (same idea as the plan's

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # PreToolUse hook for Bash (.claude/settings.json): the rules that must hold, enforced instead of asked for.
-#   git push     → only when tools/ci/gate.sh was green for this HEAD (stamp .git/onpath-gate-ok) and no open
-#                  an-alle issue says #push-sperre (tools/ask.sh check). Pushes of wip/* (save-on-shutdown) and
+#   git push     → only when tools/ci/gate.sh was green for this HEAD or the same own change after a rebase
+#                  (stamp .git/onpath-gate-ok: HEAD + patch-id) and no open
+#                  an-alle issue says #push-sperre (tools/ask.sh check). Pushes of wip/* (work saved before a shutdown) and
 #                  --dry-run pass.
 #   adb install / installDebug / installRelease → only through tools/dev/device.sh (one agent per device, no
 #                  install while a tour records).
@@ -23,11 +24,21 @@ if [[ $cmd =~ (^|[^[:alnum:]_])git[[:space:]]+(-C[[:space:]]+[^[:space:]]+[[:spa
   [[ $cmd =~ git[[:space:]]+-C[[:space:]]+([^[:space:]]+) ]] && dir=${BASH_REMATCH[1]}
   [[ $cmd =~ (^|&&|;)[[:space:]]*cd[[:space:]]+([^[:space:]&;]+) ]] && dir=${BASH_REMATCH[2]}
   dir=${dir/#\~/$HOME}
-  if git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
+  # only in an OnPath checkout (it has the gate) – pushes to onpath.private, onpath.earth etc. are not gated
+  # (bug seen 2026-11-03: the hook refused donald's pushes to onpath.private)
+  if git -C "$dir" rev-parse --git-dir >/dev/null 2>&1 && [ -x "$(git -C "$dir" rev-parse --show-toplevel)/tools/ci/gate.sh" ]; then
     head=$(git -C "$dir" rev-parse HEAD 2>/dev/null)
-    stamp=$(cat "$(git -C "$dir" rev-parse --git-path onpath-gate-ok 2>/dev/null)" 2>/dev/null)
-    [ -n "$head" ] && [ "$stamp" = "$head" ] ||
-      deny "git push refused – tools/ci/gate.sh has not run green for HEAD ${head:0:8} (last green: ${stamp:0:8}). Run tools/ci/gate.sh, then push."
+    read -r s_head s_patch < "$(git -C "$dir" rev-parse --git-path onpath-gate-ok 2>/dev/null)" 2>/dev/null
+    ok=0
+    [ -n "$head" ] && [ "${s_head:-}" = "$head" ] && ok=1
+    # same own change after a rebase onto a newer main → no second gate run (unit.yml checks the combination)
+    if [ "$ok" = 0 ] && [ -n "${s_patch:-}" ]; then
+      base=$(git -C "$dir" merge-base origin/main HEAD 2>/dev/null)
+      now=$(git -C "$dir" diff "$base" HEAD 2>/dev/null | git patch-id --stable 2>/dev/null | cut -d' ' -f1)
+      [ -n "$now" ] && [ "$now" = "$s_patch" ] && ok=1
+    fi
+    [ "$ok" = 1 ] ||
+      deny "git push refused – tools/ci/gate.sh has not run green for this change (HEAD ${head:0:8}, last green ${s_head:0:8}). Run tools/ci/gate.sh, then push."
     if [ -x "$ASK" ]; then
       out=$("$ASK" check 2>&1); rc=$?
       [ "$rc" = 3 ] && deny "git push refused – an open an-alle issue says #push-sperre: $out"

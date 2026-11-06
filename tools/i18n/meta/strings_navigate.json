@@ -1240,5 +1240,110 @@
     "context": "Status line of a running tour after the route guidance was ended (all points deleted / Just record); %1$s distance, %2$s time",
     "priority": 3,
     "confidence": "sicher"
+  },
+  "nav_slide_unlock": {
+    "area": "Navigate",
+    "context": "Navigate's slider (owner 2026-11-05): it only unlocks the screen for changes; shown after a '»' sign",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "nav_slide_unlock_desc": {
+    "area": "Navigate",
+    "context": "TalkBack name of the slider during a recording: what the slide unlocks",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_slide_unlock_desc_plan": {
+    "area": "Navigate",
+    "context": "TalkBack name of the slider without a recording (only Change plan behind it)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_relock": {
+    "area": "Navigate",
+    "context": "TalkBack name of the open-lock button beside the big blue Plan button after unlocking: locks the screen again",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_change_plan": {
+    "area": "Navigate",
+    "context": "Big blue button where the slider was, after unlocking: opens the plan to change it; the tour goes on (owner 2026-11-05: just 'Plan')",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 20
+  },
+  "nav_keep_hiking": {
+    "area": "Navigate",
+    "context": "The way back from the end-of-tour sheet on foot (owner 2026-11-05: names what you do)",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_keep_riding": {
+    "area": "Navigate",
+    "context": "The way back from the end-of-tour sheet on any bike",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_delete_tour": {
+    "area": "Navigate",
+    "context": "Quiet red text button in the end sheet: the tour goes to the recycle bin, no second question",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_end_section_tour": {
+    "area": "Navigate",
+    "context": "Section caption (green dot) in the end sheet: the recorded tour",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_end_section_plan": {
+    "area": "Navigate",
+    "context": "Section caption (blue dot) in the end sheet: the changed plan",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_end_stat_distance": {
+    "area": "Navigate",
+    "context": "Small label under the distance in the end sheet",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_end_stat_time": {
+    "area": "Navigate",
+    "context": "Small label under the time in the end sheet",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_end_stat_ascent": {
+    "area": "Navigate",
+    "context": "Small label under the ascent in the end sheet",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_end_plan_line": {
+    "area": "Navigate",
+    "context": "Line under \"Also save the changed plan\": which saved plan gets the changes",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_end_plan_line_new": {
+    "area": "Navigate",
+    "context": "Line under \"Also save the changed plan\" when the plan was never saved",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_free_tour": {
+    "area": "Navigate",
+    "context": "Navigate status card during a tour without a route",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_stop_arrive": {
+    "area": "Navigate",
+    "context": "Arrival clock of a stop ahead under the profile (owner 2026-11-05), e.g. 'an 14:20'",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 12
   }
 }

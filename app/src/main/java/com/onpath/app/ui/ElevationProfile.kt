@@ -60,6 +60,8 @@ fun ElevationProfile(
     onHighlight: (GeoPoint?) -> Unit = {},
     /** The finger left the profile (drag end / tap release). */
     onRelease: () -> Unit = {},
+    /** Small stop signs on the line (Navigate, owner 2026-11-05): numbered dark circles, the goal dark red. */
+    marks: List<ProfileMark> = emptyList(),
 ) {
     RecomposeProbe.hit("profile")
     val data = remember(points) { ProfileData.of(points) }
@@ -80,6 +82,9 @@ fun ElevationProfile(
     val release by androidx.compose.runtime.rememberUpdatedState(onRelease)
     val measurer = rememberTextMeasurer()
     val labelStyle = remember { TextStyle(fontSize = 12.sp, color = Color(0xFF555A55)) }
+    // the sign's number is sized with the sign (map furniture), not with the font setting
+    val fs = androidx.compose.ui.platform.LocalDensity.current.fontScale
+    val markStyle = remember(fs) { TextStyle(fontSize = (9f / fs).sp, color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) }
 
     fun indexAt(x: Float, width: Float, left: Float): Int {
         val d = cur
@@ -135,6 +140,18 @@ fun ElevationProfile(
         drawPath(g.area, g.areaBrush)
         if (g.byClass == null) drawPath(g.line, color, style = g.lineStroke)
         else g.byClass.forEachIndexed { k, p -> if (!p.isEmpty) drawPath(p, steepColor(STEEP_ORDER[k], color), style = g.lineStroke) }
+
+        // stop signs on the line: where each stop lies (distance from the profile's start), small, white ring
+        for (m in marks) {
+            if (m.distanceM < 0 || m.distanceM > data.total) continue
+            val cx = g.x(m.distanceM); val cy = g.y(eleAt(data, m.distanceM))
+            drawCircle(Color.White, 8.dp.toPx(), Offset(cx, cy))
+            drawCircle(if (m.goal) OnPathColors.PointGoal else OnPathColors.PointStop, 6.5.dp.toPx(), Offset(cx, cy))
+            if (!m.goal) {
+                val t = measurer.measure(m.number.toString(), markStyle)
+                drawText(t, topLeft = Offset(cx - t.size.width / 2f, cy - t.size.height / 2f))
+            }
+        }
 
         cursor?.let { i ->
             val cx = g.x(data.dist[i]); val cy = g.y(data.ele[i])
@@ -263,4 +280,18 @@ internal fun columnIndices(dist: DoubleArray, ele: DoubleArray, total: Double, c
         i = j + 1
     }
     return out.toIntArray()
+}
+
+/** A stop on the profile: metres from the profile's start, its number, the goal. */
+data class ProfileMark(val distanceM: Double, val number: Int, val goal: Boolean)
+
+/** The profile's elevation at [d] metres from its start (linear between the kept points). */
+internal fun eleAt(data: com.onpath.app.routing.ProfileData, d: Double): Double {
+    val dist = data.dist
+    if (d <= dist.first()) return data.ele.first()
+    if (d >= dist.last()) return data.ele.last()
+    var lo = 0; var hi = dist.size - 1
+    while (hi - lo > 1) { val mid = (lo + hi) / 2; if (dist[mid] <= d) lo = mid else hi = mid }
+    val t = (d - dist[lo]) / (dist[hi] - dist[lo]).coerceAtLeast(1e-9)
+    return data.ele[lo] + t * (data.ele[hi] - data.ele[lo])
 }

@@ -58,6 +58,7 @@
     <string name="plan_spots_tap">Tap a spot to see it on the map.</string>
     <string name="plan_warn_show_spots">Show the spots</string>
     <string name="plan_calculating">Calculating the route…</string>
+    <string name="plan_calculating_leg">Calculating section %1$d of %2$d…</string>
     <string name="plan_hint_first_point_question">Where to?</string>
     <string name="plan_hint_first_point">Hold your destination on the map – or find it in the search bar above.</string>
     <string name="plan_hint_tap_hold">Hold to set a point here.</string>
@@ -95,6 +96,11 @@
     <string name="plan_save_route">Save plan</string>
     <string name="plan_time_details">Time details</string>
     <string name="plan_close_plan">New plan</string>
+    <string name="plan_bar_go">Let’s go</string>
+    <string name="plan_bar_carry_on">Carry on</string>
+    <string name="plan_carry_on_for">Carry on · %1$s</string>
+    <string name="plan_bar_save">Save</string>
+    <string name="plan_clear_desc">Clear plan</string>
     <string name="plan_start_short">Start</string>
     <string name="plan_sheet_expand">Show route summary</string>
     <plurals name="plan_hint_count">
@@ -192,11 +198,9 @@
     <string name="plan_same_round_trip">Same round trip, starts here</string>
     <string name="plan_finding_shared_place">Finding the shared place…</string>
     <string name="plan_resize_panel">Resize panel</string>
-    <string name="plan_slide_to_plan">Stop</string>
-    <string name="plan_slide_to_plan_sub">Pause · Change plan · End</string>
     <string name="plan_slide_change_route">Change plan</string>
+    <string name="plan_back_to_tour">Back to tour</string>
     <string name="plan_mode_label">Plan</string>
-    <string name="plan_slide_desc">%1$s. Switch to plan mode.</string>
     <string name="plan_switch_to_plan">Switch to plan mode</string>
     <string name="plan_stat_distance">Distance</string>
     <string name="plan_stat_ascent">Ascent</string>
@@ -253,4 +257,12 @@
     <string name="plan_slow_title">This route is long and takes a while.</string>
     <string name="plan_slow_text">Keep waiting?</string>
     <string name="plan_slow_wait">Keep waiting</string>
+    <string name="plan_clear_tour_title">Clear plan?</string>
+    <string name="plan_clear_tour_text">Your tour goes on and keeps recording.</string>
+    <string name="plan_clear_tour_confirm">Clear plan</string>
+    <string name="plan_hint_tour_goes_on">Tour goes on – set new points or go ‹ Back to tour.</string>
+    <string name="plan_save_ask_title">Save plan?</string>
+    <string name="plan_save_ask_text_named">“%1$s” has changes that are not saved yet.</string>
+    <string name="plan_save_ask_text">Your plan has changes that are not saved yet.</string>
+    <string name="plan_tour_goes_on">Your tour goes on.</string>
 </resources>

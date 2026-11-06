@@ -22,7 +22,8 @@ class PlanActionsTest {
 
     @Test fun closePlanAsksOnlyWithUnsavedChanges() {
         val body = vm.substringAfter("fun requestClear()").substringBefore("\n")
-        assertTrue(body, body.contains("if (planUnsaved) discardAsk = true else clearPlan()"))
+        // owner 2026-11-05: during a tour it asks too ("Plan leeren? Deine Tour läuft weiter …")
+        assertTrue(body, body.contains("if (ClearAsk.asks(planUnsaved, recState.value != null, waypoints.size)) discardAsk = true else clearPlan()"))
         assertTrue(vm.contains("fun discardConfirmed() { discardAsk = false; clearPlan() }"))
         // unsaved = a new plan of two points, or a saved one changed since
         assertTrue(RouteRules.isUnsaved(listOf(a, b), null))
@@ -34,10 +35,9 @@ class PlanActionsTest {
     @Test fun theSheetHasTheActionRowAndNoMenu() {
         for (gone in listOf("SheetOverflow", "SheetMenuItems", "MoreHoriz", "SaveButton", "plan_clear_route"))
             assertFalse("$gone gone from the sheet", panel.contains(gone))
-        // the one save in the sheet is the tour's blue tile "Route speichern" (owner 2026-11-02)
-        assertTrue("save only during a tour", Regex("onSave\\w*").findAll(panel).all { it.value == "onSaveRoute" })
-        assertTrue(panel.contains("TourEditBar(t.paused, cb.onPause, cb.onContinue, cb.onSaveRoute, canNewPlan = ui.pointCount > 0, onNewPlan = cb.onClear"))
-        val row = panel.substringAfter("private fun PlanActions(").substringBefore("\n}\n")
+        // no Save in the sheet (owner 2026-11-05: ☰ → Save route; ✕ offers Save for an unsaved plan)
+        assertFalse(Regex("onSave\\w*").containsMatchIn(panel))
+        val row = panel.substringAfter("private fun PlanHead(").substringBefore("\n}\n")
         for (item in listOf("Res.string.plan_close_plan", "Res.string.plan_reverse", "Res.string.plan_round_trip"))
             assertTrue(item, row.contains(item))
         val action = panel.substringAfter("private fun PlanAction(").substringBefore("\n}\n")

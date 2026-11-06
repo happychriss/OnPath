@@ -53,9 +53,13 @@ class TourEndPathsTest {
             assertTrue(it, dlg.contains(it))
         }
         assertFalse(dlg, dlg.contains("askDelete"))
-        val buttons = File("src/main/java/com/onpath/app/ui/TourBar.kt").readText()
-            .substringAfter("internal fun DeleteApartButtons(").substringBefore("\n}\n")
-        assertTrue(buttons, buttons.contains("Res.string.common_delete") && buttons.contains("Text(RECYCLE_BIN_NOTE"))
+        val bar = File("src/main/java/com/onpath/app/ui/TourBar.kt").readText()
+        val buttons = bar.substringAfter("internal fun DeleteApartButtons(").substringBefore("\n}\n")
+        // V2 order (owner 2026-11-05): Save filled, the way back outlined, the quiet Delete with the bin note
+        assertTrue(buttons, buttons.indexOf("EndSaveButton(") in 0 until buttons.indexOf("EndKeepButton(") &&
+            buttons.indexOf("EndKeepButton(") < buttons.indexOf("EndDeleteArea("))
+        val delete = bar.substringAfter("private fun EndDeleteArea(").substringBefore("\n}\n")
+        assertTrue(delete, delete.contains("Res.string.nav_delete_tour") && delete.contains("Text(RECYCLE_BIN_NOTE"))
         val del = body(vm, "fun deleteUnfinished(")
         // done first: from the recycle bin it comes back as a normal tour, never as "unfinished" again
         assertTrue(del, del.indexOf("\"done\"") in 0 until del.indexOf("setDeleted"))

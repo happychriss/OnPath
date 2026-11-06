@@ -450,6 +450,10 @@ internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) ->
             onChange(settings.copy(keepScreenOn = it))
         }
         BikeScreenRow(settings, onChange)
+        // the slider on Navigate (owner 2026-11-05: default on; off = Pause / Tour beenden / Plan ändern at once)
+        SwitchRow(str(Res.string.settings_nav_lock), str(Res.string.settings_nav_lock_sub), settings.navLock) {
+            onChange(settings.copy(navLock = it))
+        }
         // what the phone must allow (location, notifications, vibration, battery): one row to Phone setup
         Row(Modifier.fillMaxWidth().clickable(onClick = onPhoneSetup).heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {

@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -73,7 +75,7 @@ class ScreenshotTest {
                       top: @Composable () -> Unit = {},
                       footer: @Composable () -> Unit = { Footer(gps, compass = CompassSpec(null, 0f) {}, plan = true) }, // Plan: compass shown
                       menu: PlanMenu = PlanMenu(onUpdates = {}),
-                      /** "Route ändern" during a tour: the mode label and the blue position sign in the map's middle. */
+                      /** "Plan ändern" during a tour: the mode label and the blue position sign in the map's middle. */
                       editing: Boolean = false,
                       /** "Ohne Netz ✓ / ⟳ / ⚠" in the mode pill (owner 2026-11-03). */
                       offline: OfflineReady.State? = null,
@@ -85,12 +87,17 @@ class ScreenshotTest {
                     Modifier.align(Alignment.Center))
                 // Plan is blue (owner 2026-11-03): band under the status bar (the 32 dp stand-in) + soft edge
                 PlanFrame()
+                // the light blue band behind the search pill and ☰ (owner 2026-11-05) – as MapScreen draws it
+                Box(Modifier.fillMaxWidth().background(PlanTopBand.Color).padding(top = 32.dp).height(planTopBarDp().dp))
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing, offline = offline)
-                    SheetWithFooter(TOP_BAR_BOTTOM, footer = {
+                    PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing, offline = offline,
+                        onBackToTour = if (editing) ({}) else null)
+                    // the activity as a button on the map (owner 2026-11-05, R5) – as MapScreen places it
+                    ActivityMapButton(Activity.HIKE, 2, {}, Modifier.padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp()).dp, start = 12.dp))
+                    SheetWithFooter(planTopBarDp().dp, footer = {
                         Column(Modifier.fillMaxWidth()) { aboveFooter(); footer() }
                     }, sheet = bottom)
-                    Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.topDp(MessageScreen.PLAN).dp,
+                    Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp()).dp,
                         start = MessagePlacement.GAP_DP.dp, end = MessagePlacement.GAP_DP.dp)) { top() }
                 }
             }
@@ -98,7 +105,7 @@ class ScreenshotTest {
     }
 
     @Composable
-    private fun NavFrame(ui: NavUi, slide: Float = 0f, fit: Boolean = false, actions: Boolean = false) {
+    private fun NavFrame(ui: NavUi, slide: Float = 0f, fit: Boolean = false, actions: Boolean = false, lock: Boolean = true) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
@@ -106,7 +113,7 @@ class ScreenshotTest {
                     // after "Show whole route" following is off: compass needle, locate not filled
                     NavigateOverlay(ui, footer = { Footer(following = !fit, compass = CompassSpec(ui.headingUp.takeUnless { fit }, 0f) {},
                         eye = true, large = true, fit = fit) },
-                        onSlideToPlan = {}, slideStartFraction = slide, actionsOpen = actions)
+                        onSlideToPlan = {}, slideStartFraction = slide, actionsOpen = actions, lock = lock)
                 }
             }
         }
@@ -121,6 +128,22 @@ class ScreenshotTest {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.padding(top = 40.dp, start = 12.dp, end = 12.dp)) { NavStatusCard(navUi, onResume = {}, profileOpen = true) }
+            }
+        }
+    }
+
+    /** The opened card with the next stops (owner 2026-11-05): sign, name, distance, arrival; the signs on the profile. */
+    @Test fun navigateProfileStops() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                MapPlaceholder(Modifier.fillMaxSize())
+                Box(Modifier.padding(top = 40.dp, start = 12.dp, end = 12.dp)) {
+                    NavStatusCard(navUi.copy(toGo = navUi.toGo!!.copy(stops = listOf(
+                        StopRow(StopAhead(2, "Leiteralm", false, 1_240.0), "13:05"),
+                        StopRow(StopAhead(3, null, false, 3_480.0), "14:20"),
+                        StopRow(StopAhead(4, "Gasthof Hochmuth am Tirolersteig", true, 7_420.0), "15:55")))),
+                        onResume = {}, profileOpen = true)
+                }
             }
         }
     }
@@ -299,6 +322,21 @@ class ScreenshotTest {
         Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true).copy(routingSlow = true), PlanCallbacks()) }
     }
 
+    /**
+     * A long plan routed leg by leg (owner 2026-11-05): the wait card counts the legs the router works on –
+     * "Calculating section 2 of 4…" over a bar a quarter full, Cancel beside it.
+     */
+    @Test fun planRoutingSlowProgress() = paparazzi.snapshot {
+        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true)
+            .copy(routingSlow = true, routeProgress = 1 to 4, routeShare = 0.25f), PlanCallbacks()) }
+    }
+
+    /** One long leg (a fresh 100 km plan, owner 2026-11-05): the bar moves within the leg – "Calculating the route…", 40 %. */
+    @Test fun planRoutingSlowOneLeg() = paparazzi.snapshot {
+        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true)
+            .copy(routingSlow = true, routeProgress = 0 to 1, routeShare = 0.4f), PlanCallbacks()) }
+    }
+
     /** A plan much longer than a day is asked about before it is routed. */
     @Test fun longRouteQuestion() = paparazzi.snapshot {
         OnPathTheme {
@@ -433,41 +471,60 @@ class ScreenshotTest {
         }
     }
 
-    /** ✕ Close plan with unsaved changes (owner 2026-10-31): the one question "Discard changes?" Cancel · Discard. */
+    /** ✕ Neu planen with unsaved changes (owner 2026-11-05, M3 basic dialog): "Plan speichern?" Verwerfen | Abbrechen · Speichern. */
     @Test fun planDiscardAsk() = paparazzi.snapshot {
         OnPathTheme {
             Frame { PlanPanel(planUi().copy(unsaved = true), PlanCallbacks()) }
-            DiscardPlanDialog({}, {})
+            DiscardPlanDialog({}, {}, onSave = {}, name = "Rund um den Kofel")
+        }
+    }
+
+    /** The same for a new plan during a tour: "Dein Plan hat Änderungen …" + "Deine Tour läuft weiter." */
+    @Test fun planDiscardAskTour() = paparazzi.snapshot {
+        OnPathTheme {
+            Frame(editing = true) { PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)), PlanCallbacks()) }
+            DiscardPlanDialog({}, {}, onSave = {}, touring = true)
         }
     }
 
     /**
-     * "Route ändern" during a tour, pulled up one step (owner 2026-11-02 / 2026-11-03): the route above, at the bottom the
-     * tile bar – green Continue navigation · blue Save route · red New plan.
+     * The plan during a tour, profile step (owner 2026-11-05, R5): plan row ✕ Neu planen · ⇅ Umkehren · ↻ Rundtour, the
+     * facts, the profile, at the bottom the green "▶ Weiter geht's".
      */
     @Test fun planTourRunning() = paparazzi.snapshot {
         Frame(editing = true) {
             PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
-                PlanCallbacks(onSaveRoute = {}))
+                PlanCallbacks())
         }
     }
 
     /**
-     * After the red "Neu planen" during a tour (owner 2026-11-03): the plan is empty, the recording goes on – the first
-     * step shows how to begin again above the tiles; Save route and New plan greyed.
+     * After "Neu planen" during a tour (owner 2026-11-03): the plan is empty, the recording goes on – the summary step
+     * shows how to begin again above "▶ Weiter geht's".
      */
     @Test fun planTourNewPlan() = paparazzi.snapshot {
         Frame(editing = true) {
             PlanPanel(planUi(n = 0, r = null, size = PlanSize.MINI, tourRunning = true)
-                .copy(tour = TourState(1_700.0, 878, paused = false, recordOnly = true)), PlanCallbacks(onSaveRoute = null))
+                .copy(tour = TourState(1_700.0, 878, paused = false, recordOnly = true)), PlanCallbacks())
         }
     }
 
-    /** "Route ändern" as it opens: only the tile bar (red New plan live – there is a plan); the map free. */
+    /**
+     * The plan during a tour rolled up (owner 2026-11-05, R5): one row "4 h 36 min · 12,5 km · ↑842 ↓310" with a compact
+     * green "▶ Weiter geht's" – the map almost free.
+     */
+    @Test fun planTourRolledUp() = paparazzi.snapshot {
+        Frame(editing = true) {
+            PlanPanel(planUi(size = PlanSize.COLLAPSED, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
+                PlanCallbacks())
+        }
+    }
+
+    /** The plan during a tour as it opens (summary step): the round "←" left of the search pill, plan row, facts – no green button. */
     @Test fun planTourRunningCollapsed() = paparazzi.snapshot {
         Frame(editing = true) {
             PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
-                PlanCallbacks(onSaveRoute = {}))
+                PlanCallbacks())
         }
     }
 
@@ -477,7 +534,9 @@ class ScreenshotTest {
                 TourRunningBar(6_400.0, 5025, paused = false, onEnd = {}, activity = Activity.BIKE_TREKKING)
                 PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true), PlanCallbacks())
             }
-            EndTourDialog({}, {}, {})
+            // V2 (owner 2026-11-05): sections TOUR / PLAN, Save under the thumb, the way back, the quiet Delete
+            EndTourDialog({}, {}, {}, activity = Activity.HIKE, stats = EndStats(12_480.0, 16_560, 842.0),
+                routeLabel = Txt.s(Res.string.nav_end_save_changed_route), routeLine = Txt.s(Res.string.nav_end_plan_line, "Rund um den Kofel"))
         }
     }
 
@@ -637,9 +696,40 @@ class ScreenshotTest {
 
     /** Free recording (no route), paused from the notification. */
     /** After the slide (owner 2026-11-02, #17 C): green Pause · blue Change route · red End, ✕ above on the right. */
+    /** Unlocked (owner 2026-11-05, Navigate C): Pause / Tour beenden in the status card, "Plan ändern" where the slider was. */
     @Test fun navigateActionsOpen() = paparazzi.snapshot { NavFrame(navUi, actions = true) }
 
+    /** Unlocked and paused: "Fortsetzen" in the card (no second one), it stays open. */
+    @Test fun navigatePausedOpen() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true)) }
+
+    /** Without a recording, unlocked: only "Plan ändern". */
+    @Test fun navigateNotRecordingOpen() = paparazzi.snapshot { NavFrame(navUi.copy(recordedM = null), actions = true) }
+
+    /** Settings → Navigation "Sperre beim Navigieren" off (owner 2026-11-05): no slider, the three actions at once. */
+    @Test fun navigateLockOff() = paparazzi.snapshot { NavFrame(navUi, lock = false) }
+
     @Test fun navigateFreePaused() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true)) }
+
+    /** A tour without a route (owner 2026-11-05): "Freie Tour · nur Aufnahme" instead of an empty route line. */
+    @Test fun navigateFreeTour() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = false)) }
+
+    /** ✕ Neu planen during a tour (owner 2026-11-05): "Plan leeren? Deine Tour läuft weiter …" – Plan leeren / Abbrechen. */
+    @Test fun planClearDuringTour() = paparazzi.snapshot {
+        OnPathTheme {
+            Frame(editing = true) {
+                PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)), PlanCallbacks())
+            }
+            DiscardPlanDialog({}, {}, onSave = null, touring = true, unsaved = false)
+        }
+    }
+
+    /** The empty plan during a tour: "Tour läuft weiter – setz neue Punkte oder geh ‹ Zur Tour." */
+    @Test fun planEmptyDuringTour() = paparazzi.snapshot {
+        Frame(editing = true) {
+            PlanPanel(PlanUi(0, null, false, null, canUndo = true, canRedo = false, activity = Activity.HIKE, tourRunning = true,
+                tour = TourState(1_700.0, 878, paused = false), size = PlanSize.MINI), PlanCallbacks())
+        }
+    }
 
     // --- Activity while navigating (owner: a wrong activity is a disaster) ---
     private fun fit(a: Activity, problems: List<String>, timeS: Double, extraM: Double = 0.0) =
@@ -698,7 +788,7 @@ class ScreenshotTest {
     @Test fun arrival() = paparazzi.snapshot {
         OnPathTheme {
             NavFrame(navUi.copy(toGo = ToGo(30.0, 0.0, 60.0, 5.0)))
-            ArrivalDialog({}, {}, {})
+            ArrivalDialog({}, {}, {}, activity = Activity.HIKE, stats = EndStats(12_480.0, 16_560, 842.0))
         }
     }
 

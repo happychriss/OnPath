@@ -348,7 +348,13 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
     const t1 = performance.now();
     e.writeParts(); // new parts into the local rd5 files (once per plan, not per part)
     const storeMs = performance.now() - t1;
-    const json = req.type === 'plan' ? e.plan(req.points, req.activity, req.sac, req.pinned ?? '', req.names ?? '', req.rounds ?? 0) : e.route(req.points, req.activity, req.sac);
+    // the engine's "Leg 2 of 5 is being calculated…" (WebApi planProgress, the app's PlanStatus text) while it plans
+    const g = globalThis as unknown as { onpathPlanProgress?: (text: string) => void };
+    g.onpathPlanProgress = req.type === 'plan' ? (text) => reply({ id: req.id, ok: true, progress: { phase: 'legs', text } }) : undefined;
+    let json: string;
+    try {
+      json = req.type === 'plan' ? e.plan(req.points, req.activity, req.sac, req.pinned ?? '', req.names ?? '', req.rounds ?? 0) : e.route(req.points, req.activity, req.sac);
+    } finally { g.onpathPlanProgress = undefined; }
     const t2 = performance.now();
     reply({
       id: req.id, ok: true, [req.type === 'plan' ? 'plan' : 'result']: JSON.parse(json),

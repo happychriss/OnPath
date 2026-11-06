@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.Canvas
@@ -171,6 +172,8 @@ data class ToGo(
     val descentM: Double = 0.0,
     /** The rest of the followed line from the current position (for the elevation profile). */
     val profile: List<GeoPoint> = emptyList(),
+    /** Up to 3 plan stops ahead with their arrival clock, under the profile (owner 2026-11-05); empty = none. */
+    val stops: List<StopRow> = emptyList(),
     /**
      * Can the time be trusted now? NOT_ON_ROUTE: "— not on route" instead of a time; PAUSED: the last time greyed with
      * "estimate paused · [pausedBecause]" (owner rules 6 and 8, docs/plan-time-estimate.md).
@@ -203,6 +206,11 @@ fun NavigateOverlay(
     onEnd: () -> Unit = {},
     /** Screenshot tests: the bar the slider unlocks, open. */
     actionsOpen: Boolean = false,
+    /**
+     * Settings → Navigation "Sperre beim Navigieren" (owner 2026-11-05, default on): the slider unlocks. Off: no slider,
+     * Pause / Tour beenden in the status card and the big blue "Plan ändern" are shown at once and never lock.
+     */
+    lock: Boolean = true,
     slideStartFraction: Float = 0f,
     onTakeRoute: (Int) -> Unit = {},
     onKeepRoute: (Int) -> Unit = {},
@@ -242,11 +250,14 @@ fun NavigateOverlay(
     var topColumnDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var messageBottomDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var sliderDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    // the slider unlocks Pause · Change route · End (a recording); without one it goes to the plan at once
+    // the slider only unlocks (owner 2026-11-05, Navigate C): Pause / Tour beenden in the status card (a recording) and
+    // "Plan ändern" in the slider's place; paused the actions stay (Fortsetzen at once)
     var open by remember { mutableStateOf(actionsOpen) }
-    LaunchedEffect(open) { if (open && !actionsOpen) { kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false } }
-    // closing it without a choice (owner 2026-11-02, no ✕): a tap on the map or Android's back; paused it stays open
-    val closableBar = open && !ui.paused && ui.recordedM != null
+    LaunchedEffect(open, lock) { if (lock && open && !actionsOpen) { kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false } }
+    val pausedOpen = ui.paused && ui.recordedM != null
+    val unlocked = !lock || open || pausedOpen
+    // locking again without a choice (owner 2026-11-02, no ✕): a tap on the map or Android's back; paused it stays open
+    val closableBar = lock && open && !pausedOpen
     androidx.activity.compose.BackHandler(enabled = closableBar) { open = false }
     Box(Modifier.fillMaxSize()) {
         if (closableBar) Box(Modifier.fillMaxSize().clearAndSetSemantics { }
@@ -264,7 +275,9 @@ fun NavigateOverlay(
             if (ui.toGo != null || ui.recordedM != null) {
                 var profileOpen by rememberSaveable { mutableStateOf(false) }
                 NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity,
-                    onProfileScrub = onProfileScrub, onProfileRelease = onProfileRelease)
+                    onProfileScrub = onProfileScrub, onProfileRelease = onProfileRelease,
+                    actions = if (unlocked && ui.recordedM != null) ({ TourCardActions(ui.paused, onPause, onEnd, onClose = { open = false }) })
+                        else null)
             }
             download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
             sim?.let { Box(Modifier.align(Alignment.End)) { it() } }
@@ -273,11 +286,9 @@ fun NavigateOverlay(
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
             val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            // paused: the bar stays open – "Fortsetzen" at once, no slider (owner 2026-11-01)
-            if ((open || ui.paused) && ui.recordedM != null) TourActionBar(ui.paused, onPause, onChangeRoute = onSlideToPlan,
-                onEnd = onEnd, onClose = { open = false }, modifier = bottom)
-            else SlideToPlan({ if (ui.recordedM != null) open = true else onSlideToPlan() }, bottom,
-                recording = ui.recordedM != null, startFraction = slideStartFraction)
+            // unlocked: ONE big blue "Plan" where the slider was (owner 2026-11-05, Navigate C), an open lock beside it locks again
+            if (unlocked) ChangePlanButton({ open = false; onSlideToPlan() }, bottom, onLock = if (closableBar) ({ open = false }) else null)
+            else SlideToPlan({ open = true }, bottom, recording = ui.recordedM != null, startFraction = slideStartFraction)
         }
         // ONE box under the turn / status column (docs/design/ui-style.md, owner 2026-10-31 – the re-route and
         // activity-switch question moved here from the bottom, 56 dp buttons kept); the question wins, the rest wait.
@@ -349,6 +360,31 @@ private fun StopSign(s: StopAhead, modifier: Modifier) {
     }
 }
 
+/** One stop ahead under the profile: the map's sign (small), the name ("…"), then distance and "an 14:20" – never cut. */
+@Composable
+private fun StopAheadRow(r: StopRow) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(vertical = 2.dp).semantics(mergeDescendants = true) {},
+        verticalAlignment = Alignment.CenterVertically) {
+        // grows with a large font (the number is never cut): at least 28 dp, round while it fits
+        Box(Modifier.sizeIn(minWidth = 28.dp, minHeight = 28.dp).background(if (r.stop.goal) OnPathColors.PointGoal else OnPathColors.PointStop,
+            androidx.compose.foundation.shape.CircleShape).padding(horizontal = 6.dp, vertical = 2.dp), contentAlignment = Alignment.Center) {
+            if (r.stop.goal) Icon(Icons.Filled.Flag, null, tint = OnPathColors.CardWhite, modifier = Modifier.size(16.dp))
+            else Text(r.stop.number.toString(), color = OnPathColors.CardWhite, style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.width(10.dp))
+        Text(r.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f))
+        Spacer(Modifier.width(8.dp))
+        Column(horizontalAlignment = Alignment.End) {
+            Text(Format.distance(r.stop.distanceM), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold,
+                maxLines = 1, softWrap = false)
+            r.arriveAt?.let { Text(str(Res.string.nav_stop_arrive, it), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false) }
+        }
+    }
+}
+
 /** Rounded like a navigation display: 10 m steps below 200 m, 50 m steps above. */
 internal fun turnDistance(m: Double): String = when {
     m < 15 -> Txt.s(Res.string.nav_turn_distance_now)
@@ -393,7 +429,9 @@ internal fun NorthNeedle(modifier: Modifier) {
 @Composable
 internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean = false, onToggleProfile: () -> Unit = {},
                            onActivity: () -> Unit = {}, onProfileScrub: (GeoPoint) -> Unit = {},
-                           onProfileRelease: () -> Unit = {}) {
+                           onProfileRelease: () -> Unit = {},
+                           /** Unlocked (owner 2026-11-05): Pause / Tour beenden directly under the route info ([TourCardActions]). */
+                           actions: (@Composable () -> Unit)? = null) {
     val hasProfile = (ui.toGo?.profile?.size ?: 0) >= 2
     val movingLine = ui.recordedM?.let { movingLine(ui) }
     val canOpen = hasProfile || ui.position != null || (movingLine != null && ui.toGo != null)
@@ -422,6 +460,9 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 Spacer(Modifier.width(10.dp))
             }
             Column(Modifier.weight(1f)) {
+                // a tour without a route (owner 2026-11-05): say so plainly instead of an empty route line
+                if (ui.toGo == null && ui.recordedM != null) Text(str(Res.string.nav_free_tour), style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold, maxLines = 2)
                 ui.toGo?.let { g ->
                     if (g.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE) {
                         // never a stale time (owner rule 6): what is left counts again once back on the route. While the
@@ -470,13 +511,14 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         Row(Modifier.padding(top = if (ui.toGo != null) 2.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (ui.activity == null) { RecDot(ui.paused, Modifier.size(8.dp)); Spacer(Modifier.width(8.dp)) }
                             Text(line,
-                                style = if (ui.toGo == null || offCard) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+                                style = if (offCard) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
             }
-            if (ui.paused && ui.recordedM != null) TextButton(onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_resume)) }
+            // paused: "Fortsetzen" – in the card's action row when it shows, else here
+            if (ui.paused && ui.recordedM != null && actions == null) TextButton(onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_resume)) }
             else if (ui.toGo != null && ui.arriveAt != null && ui.toGo.state != com.onpath.app.time.EstimateState.NOT_ON_ROUTE) Column(
                 horizontalAlignment = Alignment.End,
                 modifier = Modifier.padding(start = 8.dp).widthIn(min = targetWordWidth(ui.toGo.target))
@@ -515,11 +557,18 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
         }
+        // unlocked: Pause / Tour beenden directly under the route info (owner 2026-11-05, Navigate C)
+        actions?.invoke()
         // Chevron: elevation profile of what is left + own position (stays open until tapped again).
         if (profileOpen && canOpen) {
             if (hasProfile) ElevationProfile(ui.toGo!!.profile, height = 84.dp, gradient = true,
                 modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
-                onHighlight = { p -> p?.let(onProfileScrub) }, onRelease = onProfileRelease)
+                onHighlight = { p -> p?.let(onProfileScrub) }, onRelease = onProfileRelease,
+                marks = ui.toGo.stops.map { ProfileMark(it.stop.distanceM, it.stop.number, it.stop.goal) })
+            // the next stops ahead (owner 2026-11-05, like Komoot): sign · name · distance · "an 14:20"
+            ui.toGo?.stops?.takeIf { it.isNotEmpty() }?.let { rows ->
+                Column(Modifier.padding(start = 12.dp, end = 16.dp, bottom = 8.dp)) { rows.forEach { StopAheadRow(it) } }
+            }
             // moving time / breaks live here, then the pace in plain words (owner)
             if (ui.toGo != null) movingLine?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -825,6 +874,17 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         else remaining?.let { r ->
             ToGo(r.distanceM, r.ascentM, toGoS ?: 0.0, r.offM, r.descentM,
                 profile = line?.let { l -> l.subList(r.index.coerceIn(0, l.size - 1), l.size) } ?: emptyList(),
+                // the next 2–3 stops (owner 2026-11-05): the same rules as the turn card's stop, the same time model as the clock
+                stops = nav?.session?.let { sess ->
+                    val now = System.currentTimeMillis()
+                    val f = vm.planFactors()
+                    val plainHere = toGoSeconds(times, r.distanceM, f)
+                    NextStop.aheadList(sess, (total - r.distanceM).coerceAtLeast(0.0)).map { st ->
+                        val mv = NextStop.movingS(toGoS ?: plainHere, plainHere, toGoSeconds(times, (r.distanceM - st.distanceM).coerceAtLeast(0.0), f))
+                        StopRow(st, if (toGoS == null && times == null) null
+                            else com.onpath.app.time.TimeEstimate.clock(com.onpath.app.time.TimeEstimate.arrivalMs(now, mv)))
+                    }
+                } ?: emptyList(),
                 state = tt?.state ?: com.onpath.app.time.EstimateState.OK, pausedBecause = tt?.pausedBecause?.text, target = target)
         },
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,
@@ -897,7 +957,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     DisposableEffect(Unit) { onDispose { vm.screenRest = false } }
     Box(Modifier.fillMaxSize()) {
         NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
-            onPause = vm::pauseRecording, onEnd = { vm.askEndTour() },
+            onPause = vm::pauseRecording, onEnd = { vm.askEndTour() }, lock = vm.settings.navLock,
             onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute, onTakeVia = vm::takeViaRoute,
             onLeadThere = vm::leadToStart, onJustRecord = vm::justRecord, onJoinHere = vm::joinHere, onLeadFailedOk = vm::leadFailedOk,
             onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,

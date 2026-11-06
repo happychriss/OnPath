@@ -4,6 +4,8 @@ import com.onpath.strings.*
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -139,9 +141,10 @@ fun MapScreen(
         // A newer version of an area the user has (checked after each route) is told by the background-download strip
         // only – one loading indicator is enough. No cell-state read here: download ticks must not recompose this screen.
         // one padding rule for every route fit (FitPaddingRule): clear of the top elements and the sheet / slider
+        val planTopBand = planTopBarDp()
         val fitPadding = {
             FitPaddingRule.of(vm.mode, density.density, topInsetPx,
-                planTopDp = if (vm.backgroundStripShown) vm.backgroundStripBottomDp else 0, sheetPx = panelHeightPx,
+                planTopDp = maxOf(if (vm.backgroundStripShown) vm.backgroundStripBottomDp else 0, planTopBand), sheetPx = panelHeightPx,
                 navTopDp = navCover[0], navBottomDp = navCover[1], fabWidthPx = planFab[0], fabHeightPx = planFab[1])
         }
         MapSync(vm, controller, rec, location, fitPadding)
@@ -168,7 +171,7 @@ fun MapScreen(
         // hints below the search bar go below the background-download strip while it shows
         // (measured height: a message box is taller than the progress chip)
         val hintTop = if (vm.backgroundStripShown && vm.mode == AppMode.PLAN)
-            (vm.backgroundStripBottomDp + MessagePlacement.GAP_DP).coerceAtLeast(124).dp else 76.dp
+            (vm.backgroundStripBottomDp + MessagePlacement.GAP_DP).coerceAtLeast(124).dp else planTopBarDp().dp
         // A shared place is being looked up (link + address search take a moment): say so at once.
         val sharedLookup = rememberNoFlash(if (vm.sharedLookup) Unit else null, remember { NoFlash<Unit>() }) != null
         androidx.compose.animation.AnimatedVisibility(sharedLookup,
@@ -222,8 +225,9 @@ fun MapScreen(
     vm.longRouteAsk?.let { s -> LongRouteDialog(s, vm.activity, onPlan = { vm.answerLongRoute(true) }, onCancel = { vm.answerLongRoute(false) }) }
     when (val ask = vm.endAsk) {
         EndAsk.Plain -> EndTourDialog(onSave = { vm.endTour() }, onDelete = { vm.saveRouteAtEnd = false; vm.endTourAndDelete() },
-            onDismiss = { vm.dismissEndAsk() },
-            routeLabel = vm.endRouteLabel(), routeChecked = vm.saveRouteAtEnd, onRouteChecked = { vm.saveRouteAtEnd = it })
+            onDismiss = { vm.dismissEndAsk() }, activity = vm.activity, stats = rec?.let { EndStats(it.distanceM, it.elapsedS, it.ascentM) },
+            routeLabel = vm.endRouteLabel(), routeChecked = vm.saveRouteAtEnd, onRouteChecked = { vm.saveRouteAtEnd = it },
+            routeLine = vm.endRouteLine())
         is EndAsk.Rides -> RideSummaryDialog(ask.summary, onSave = { vm.endTourWith(ask, it) },
             onDelete = { vm.endTourAndDelete() }, onDismiss = { vm.dismissEndAsk() })
         null -> {}
@@ -233,7 +237,8 @@ fun MapScreen(
     // Plan is silent (owner 2026-11-03): "Du bist angekommen" waits for Navigate
     if (vm.arrivalAsk && rec != null && vm.mode == AppMode.NAVIGATE) ArrivalDialog(onSave = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
         onKeepGoing = { vm.saveRouteAtEnd = false; vm.arrivalAsk = false },
-        routeLabel = vm.endRouteLabel(), routeChecked = vm.saveRouteAtEnd, onRouteChecked = { vm.saveRouteAtEnd = it })
+        routeLabel = vm.endRouteLabel(), routeChecked = vm.saveRouteAtEnd, onRouteChecked = { vm.saveRouteAtEnd = it },
+        activity = vm.activity, stats = rec?.let { EndStats(it.distanceM, it.elapsedS, it.ascentM) }, routeLine = vm.endRouteLine())
     if (vm.navSettingsOpen) {
         // Navigate → ⚙: the Navigation settings page on the way (owner); everything else stays in Plan → Settings
         androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.navSettingsOpen = false }) {
@@ -266,6 +271,11 @@ private fun PlanMode(
         // Plan is blue (owner 2026-11-03, design §3 version 3): a soft blue edge round the screen and a light blue band
         // under the status bar – drawn only, no touches taken
         PlanFrame(Modifier.modeEdge(ModeEdge.TOP))
+        // the light blue band behind the search pill and ☰ (owner 2026-11-05, b): from the screen's top edge (status bar)
+        // to the bar's bottom; during a tour one row more ("‹ Zur Tour")
+        val topBar = planTopBarDp()
+        Box(Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().background(PlanTopBand.Color)
+            .statusBarsPadding().height(topBar.dp))
         PlanTopBar(
             onSearch = vm::openSearch,
             menu = PlanMenu(
@@ -283,8 +293,8 @@ private fun PlanMode(
                     else ({ vm.openSettings(SettingsPage.PHONE) }),
                 // owner 2026-10-31: "Save route" on top whenever there is a plan (the sheet has no Save any more); a dot
                 // on ☰ while it has unsaved changes
-                // during a tour the blue tile saves (owner 2026-11-02): not in ☰ then
-                onSaveRoute = if (rec == null && RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
+                // the one Save of the plan, also during a tour (owner 2026-11-05: the sheet has no Save)
+                onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
                 unsaved = RouteRules.saveAtHand(vm.waypoints.size, vm.planUnsaved),
                 onOpened = vm::refreshTours,
                 // no "Check for updates" in the ☰ menu – Settings has the Updates section (owner)
@@ -294,7 +304,14 @@ private fun PlanMode(
             editing = rec != null,
             offline = vm.offlineReady?.state,
             onOffline = vm::toggleOfflineInfo,
+            // during a tour: back to Navigate (owner 2026-11-05) – the same as Android's Back (MainActivity)
+            onBackToTour = if (rec != null) ({ vm.continueNavigation() }) else null,
         )
+        // the activity as a round button on the map, top left under the search pill (owner 2026-11-05, R5): the plan
+        // sheet has no activity chip any more; not over a shown track / place card (their own panels)
+        if (vm.shown == null) ActivityMapButton(vm.activity, vm.sac, onActivity,
+            Modifier.align(Alignment.TopStart).modeEdge(ModeEdge.TOP).statusBarsPadding()
+                .padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = topBar).dp, start = 12.dp))
         // "Ohne Netz ✓ / ⟳ / ⚠" (owner 2026-11-03): recomputed off the main thread when the route changes, every 3 s
         // while loading, else every 20 s (a map region joined, the network back) – file checks only, no downloads
         val offlineLine = vm.route?.points
@@ -317,7 +334,7 @@ private fun PlanMode(
             snapshotFlow { sheetHeight.intValue }.collectLatest { delay(120); panelHeight(it) }
         }
         val density = LocalDensity.current
-        val topLimit = with(density) { WindowInsets.statusBars.getTop(density).toDp() } + TOP_BAR_BOTTOM
+        val topLimit = with(density) { WindowInsets.statusBars.getTop(density).toDp() } + topBar.dp
         SheetWithFooter(topLimit, modifier = Modifier.modeEdge(ModeEdge.BOTTOM), footer = {
             Column(Modifier.fillMaxWidth()) {
                 // after Install: the download's progress (a state, no box); the question itself is a box at the top
@@ -418,7 +435,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     // the bottom below the status bar: top + measured height (hints under the search bar go below it)
     fun Modifier.measured(topDp: Int) =
         onSizeChanged { vm.backgroundStripBottomDp = topDp + with(density) { it.height.toDp().value.toInt() } }
-    val top = MessagePlacement.topDp(MessageScreen.PLAN)
+    val top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
     MessageSlot(message, top, Modifier.modeEdge(ModeEdge.TOP), onBottomDp = { vm.backgroundStripBottomDp = it })
     if (pill != null) {
         MapNoticePill(pill, Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding()
@@ -480,7 +497,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             roundTrip = vm.isRoundTrip(),
             tour = rec?.let { TourState(it.distanceM, it.elapsedS, it.paused, vm.guidanceEndedByEmptyPlan) },
             points = rows,
-            routingSlow = vm.routingSlow, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText(), warnCount = vm.warningCount(),
+            routingSlow = vm.routingSlow, routeProgress = vm.routeProgress, routeShare = vm.routeShare, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText(), warnCount = vm.warningCount(),
             changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote, tapHint = vm.tapHoldHint,
             offlineInfo = vm.offlineReady?.takeIf { vm.offlineInfo }?.let { OfflineReady.explain(it) }),
         PlanCallbacks(
@@ -496,7 +513,6 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onRouteChanged = vm::tapRouteChangedLine,
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
-            onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
             onMovePoint = vm::movePointInList, onDeletePoint = vm::deletePointFromList, onShowPoint = vm::showPointFromList,
         ),
     )

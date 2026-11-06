@@ -746,6 +746,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The route has been calculating for a while: the plan sheet offers Cancel. */
     var routingSlow by mutableStateOf(false)
         private set
+    /**
+     * The wait card's progress (owner 2026-11-05): legs done / legs to route in the running plan run – only legs the
+     * router works on count (legs from the cache are there at once); null = none known yet (the bar runs).
+     */
+    var routeProgress by mutableStateOf<Pair<Int, Int>?>(null)
+        private set
+    /**
+     * The wait bar's share 0..1 (owner 2026-11-05: it moves within one long leg too): legs done + the running leg's
+     * search ([com.onpath.app.routing.BRouterEngine.searchProgress]) over the legs to route, never back ([WaitBar]);
+     * null = not known yet (the bar runs).
+     */
+    var routeShare by mutableStateOf<Float?>(null)
+        private set
+    /** How often the wait bar asks the router how far it is (ms). */
+    private val WAIT_POLL_MS = 250L
     /** Estimated duration (s) of a plan longer than a day: "Plan it anyway?" (null = no question). */
     var longRouteAsk by mutableStateOf<Double?>(null)
         private set
@@ -919,7 +934,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The router (on [routingDispatcher]); only a real one is kept, so a failed start is retried next time. */
     @Synchronized // two routing threads ([backgroundRouting]): one engine
     private fun routingEngine(): RoutingEngine =
-        engine ?: EngineProvider.create(getApplication(), dataFiles.segmentsDir).also { if (EngineProvider.isRealRouter) engine = it }
+        engine ?: EngineProvider.create(getApplication(), dataFiles.segmentsDir).also {
+            // a new engine = new routing data (or a failed start): the legs of the old one are routed again
+            if (EngineProvider.isRealRouter) { engine = it; legCache.clear() }
+        }
+
+    /**
+     * Legs of earlier plan runs (owner 2026-11-05, docs/design/long-bike-routes.md): an edit routes only the legs it
+     * changed; the plan, the tour's follow line and browser plans share it. Cleared with the engine ([routingEngine]).
+     */
+    private val legCache = com.onpath.app.routing.LegCache()
+    /** The tour's follow line being routed ([followAhead]): a newer edit stops it, so the plan never waits behind it. */
+    @Volatile private var followCancel: com.onpath.app.routing.RouteCancel? = null
 
     private var routeJob: Job? = null
     private val requests = RouteRequests()
@@ -1881,12 +1907,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * ✕ Close plan in the sheet (owner 2026-10-31, was "Clear route"): the plan leaves the screen – a saved route stays in
-     * My routes; with unsaved changes ([planUnsaved]) ONE question first, "Discard changes?" Cancel · Discard.
+     * My routes; with unsaved changes ([planUnsaved]) ONE question first, "Discard changes?" Cancel · Discard · Save
+     * (owner 2026-11-05: the sheet has no Save any more – ✕ asks to save).
      */
-    fun requestClear() { if (planUnsaved) discardAsk = true else clearPlan() }
+    fun requestClear() { if (ClearAsk.asks(planUnsaved, recState.value != null, waypoints.size)) discardAsk = true else clearPlan() }
+
+    /** The plan's name for "Plan speichern?" – the saved route it was loaded / saved as; null = a new plan. */
+    val planNameForAsk: String? get() = savedName?.takeIf { it.isNotBlank() }
+
+    /** During a tour the question says the tour goes on (owner 2026-11-05): "Plan leeren? Deine Tour läuft weiter …". */
+    val clearDuringTour: Boolean get() = recState.value != null
 
     /** "Discard changes?" → Discard. */
     fun discardConfirmed() { discardAsk = false; clearPlan() }
+
+    /** "Discard changes?" → Save: Save's dialog, then the new plan ([askSave]'s follow-up; Cancel there keeps the plan). */
+    fun discardSaveFirst() { discardAsk = false; askSave { clearPlan() } }
+
+    /** Save is offered in "Discard changes?" only when there is something Save can store (two points or more). */
+    val canSaveBeforeClear: Boolean get() = RouteRules.saveInMenu(waypoints.size)
 
     /**
      * Resets the whole plan in one undoable step: points, route line, pinned marks (kept while
@@ -1907,6 +1946,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // GPX track keeps its own line.
         val fromPlan = followFromPlan || (planLine != null && followLine == planLine) || !followIsTrack
         if (fromPlan && followLine != null && recState.value == null) clearFollow()
+        // during a tour (owner 2026-11-05): "Neu planen" ends every guidance – also a followed track, also when the plan was
+        // already empty; Navigate shows a free tour, the recording never stops. Undo brings the points (and following them).
+        if (PlanGuidance.clearEndsGuidance(recState.value != null, followLine != null)) {
+            Problems.trace("plan", "Plan cleared during the tour: route guidance ended, recording continues")
+            clearFollow()
+            guidanceEndedByEmptyPlan = true
+        }
     }
 
     fun answerLongRoute(plan: Boolean) {
@@ -1979,7 +2025,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         routeCancel?.cancel(); routeCancel = null
         routeJob?.cancel(); routeJob = null
         requests.invalidate()
-        route = null; routeError = null; routing = false; routingSlow = false; longRouteAsk = null; slowPlanAsk = null
+        route = null; routeError = null; routing = false; routingSlow = false; routeProgress = null; routeShare = null; longRouteAsk = null; slowPlanAsk = null
         followNextRoute = false; planEditPending = false
         notRouted = why
         mapData.corridorFollowsPlan(null)
@@ -1994,6 +2040,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (!routing) return
         Problems.info("routing", "Route calculation cancelled by the user")
         cancelRun(NotRouted.STOPPED)
+    }
+
+    /**
+     * From the planning thread ([Planner]'s progress): the wait card's legs done / to route ([routeProgress]) – only while
+     * the run [gen] is the current one.
+     */
+    private fun showProgress(gen: Int, done: Int, total: Int) {
+        viewModelScope.launch(Dispatchers.Main) { if (requests.isCurrent(gen) && routing) routeProgress = done to total }
     }
 
     private fun recalc() {
@@ -2011,6 +2065,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val pts = waypoints.toList()
         val pins = pinnedIndices()
         routeCancel?.cancel(); routeCancel = null; routingSlow = false // an older request stops at once
+        routeProgress = null; routeShare = null
+        followCancel?.cancel(); followCancel = null // the tour's follow line of the old plan: a new one comes with this run
         notRouted = null
         if (pts.size < 2) {
             requests.invalidate(); route = null; routeError = null; routing = false; followNextRoute = false
@@ -2038,6 +2094,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             delay(150) // debounce quick taps
             // the Cancel button appears only when it takes a while (no flicker for normal routes)
             val slow = launch { delay(ROUTING_SLOW_MS); if (requests.isCurrent(gen)) routingSlow = true }
+            // the wait bar within a leg (owner 2026-11-05): the router's search, polled off the main thread
+            val planThread = java.util.concurrent.atomic.AtomicReference<Thread?>(null)
+            val bar = WaitBar()
+            val poll = launch(Dispatchers.Default) {
+                while (isActive) {
+                    delay(WAIT_POLL_MS)
+                    val t = planThread.get() ?: continue
+                    val legs = routeProgress ?: continue
+                    val share = bar.next(legs.first, legs.second, (engine as? com.onpath.app.routing.BRouterEngine)?.searchProgress(t))
+                    withContext(Dispatchers.Main) { if (requests.isCurrent(gen) && routing) routeShare = share }
+                }
+            }
             var planner: Planner? = null
             val result = withContext(routingDispatcher) {
                 exceptions {
@@ -2045,14 +2113,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     // route, model time, snapped points, gaps, warnings: the one computation the web planner shares
                     // (named stops: read on the main thread when the result is taken – snapToRoute → PlanResult.withNamed)
                     // in Plan the time limit asks "Weiter warten?" (SlowPlan); a run for Navigate keeps the straight lines
-                    com.onpath.app.routing.PlanResult.plan(Planner(eng, cancel, askAtLimit = askAtLimit, rounds = rounds).also { planner = it },
+                    com.onpath.app.routing.PlanResult.plan(Planner(eng, cancel, askAtLimit = askAtLimit, rounds = rounds, legs = legCache,
+                        progress = { done, total -> planThread.set(Thread.currentThread()); showProgress(gen, done, total) }).also { planner = it },
                         pts, act, level, pins, emptySet(), f)
                 }
             }
-            slow.cancel()
+            slow.cancel(); poll.cancel()
             // the corridor work of a result off the main thread
             val post = result.getOrNull()?.let { r -> withContext(Dispatchers.Default) { mapData.postRoute(r.route, pts) } }
-            if (requests.isCurrent(gen)) routingSlow = false
+            if (requests.isCurrent(gen)) { routingSlow = false; routeProgress = null; routeShare = null }
             if (!requests.isCurrent(gen) || !isActive) { // superseded or cleared
                 Problems.trace("routing", "Route #$gen for ${pts.size} points superseded – result ignored")
                 return@launch
@@ -3012,6 +3081,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     var saveRouteAtEnd by mutableStateOf(false)
 
+    /** The line under the plan option in the end sheet: which saved plan gets the changes, or "a new plan". */
+    fun endRouteLine(): String? = when {
+        endRouteLabel() == null -> null
+        currentSaveMode() == SaveMode.OVERWRITE && !savedName.isNullOrBlank() -> Txt.s(Res.string.nav_end_plan_line, savedName!!)
+        else -> Txt.s(Res.string.nav_end_plan_line_new)
+    }
+
     /** What "End tour" shows now (null = nothing): see [askEndTour]. */
     var endAsk by mutableStateOf<EndAsk?>(null)
 
@@ -3193,12 +3269,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val pins = ahead.indices.filter { ahead[it] in pinned }.map { it + off }.toSet()
         val name = savedName ?: defaultName(Txt.s(Res.string.msg_name_route))
         val firstAhead = waypoints.indexOf(ahead.first()) + 1
+        // a newer edit stops this run ([recalc]); the legs ahead come from the plan's run just before (LegCache) – only
+        // position → first point ahead is new
+        followCancel?.cancel()
+        val cancel = com.onpath.app.routing.RouteCancel().also { followCancel = it }
         viewModelScope.launch {
             val res = withContext(routingDispatcher) {
                 exceptions {
-                    com.onpath.app.routing.PlanResult.plan(Planner(routingEngine(), com.onpath.app.routing.RouteCancel()), pts, act, level,
+                    com.onpath.app.routing.PlanResult.plan(Planner(routingEngine(), cancel, legs = legCache), pts, act, level,
                         pins, emptySet(), f)
                 }
+            }
+            if (followCancel === cancel) followCancel = null
+            if (cancel.isCancelled) {
+                Problems.trace("tour", "Follow line to the ${ahead.size} points ahead stopped – a newer edit came")
+                return@launch
             }
             if (!splitRequests.isCurrent(gen, waypoints.toList()) || recState.value == null) return@launch
             val line = res.getOrNull()?.route?.takeIf { it.error == null && it.points.size >= 2 }?.points
@@ -3615,7 +3700,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     try {
                         val eng = routingEngine()
                         if (eng is com.onpath.app.routing.StraightLineEngine) null
-                        else withModelTime(Planner(eng, com.onpath.app.routing.RouteCancel()).plan(pts, act, t.sac, t.pinned), act, f)
+                        else withModelTime(Planner(eng, com.onpath.app.routing.RouteCancel(), legs = legCache).plan(pts, act, t.sac, t.pinned), act, f)
                     } catch (e: Exception) {
                         Problems.warn("sync", "A route from the browser could not be routed; it keeps its points until opened", e); null
                     }

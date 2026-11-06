@@ -1,21 +1,23 @@
-# Multi-Agent-Betrieb: Was wir gelernt haben (OnPath, Stand 2026-11-02)
+# Multi-Agent-Betrieb: Was wir gelernt haben (OnPath, Stand 2026-11-05, nach dem Aufräumen)
 
 Ein Owner, ein mittelgroßes Projekt (Android-App + Web-Planer + Website), zwei Rechner, mehrere Claude-Sitzungen.
 Diese Datei hält fest, was **geprüft** funktioniert, was nicht, und welche Regeln daraus folgen – als Grundlage für
-ein sauberes Setup, auch für andere Projekte (später ins eigene Repo `leitstand`, siehe
-`docs/roles/setup-vorschlag-2026-11-01.md` §7b). Herkunft: Setup-Review 2026-11-01/02, Tests auf donald, Laptop und
+ein sauberes Setup, auch für andere Projekte. Die Geschichte der Setup-Arbeit (Konzepte, Analyse, Audit) liegt in
+`docs/history/setup-2026-11/` – **das Audit dort zuerst lesen**. Herkunft: Setup-Review 2026-11-01/02, Tests auf donald, Laptop und
 in der Cloud. „Geprüft“ heißt: selbst ausprobiert, mit Datum.
 
 ## 1. Das Setup, das wir fahren („Leicht mit Captain“)
 - **Je Rechner eine arbeitende Sitzung**, benannt nach dem Rechner (donald, laptop). Sie läuft in einem
-  **Gastgeber** (`claude remote-control`, Worktree-Modus), weckt sich **stündlich selbst** und schaut **alle 10 Minuten**
-  nach Eiligem (`[sofort]`). Parallelität über Hintergrund-Agenten/Forks in eigenen Worktrees.
-- **Ein Captain** in der Cloud: Überblick (Builds, App ⇄ Planer, CI, Fragen), ordnet das Backlog, Push an den Owner.
-  Schreibt keinen Code.
+  **Gastgeber** (`claude remote-control`, Worktree-Modus) und weckt sich **stündlich selbst**. Eiliges sagt der Owner
+  der Sitzung direkt. Parallelität über Hintergrund-Agenten/Forks in eigenen Worktrees, zwei Gradle-Plätze je Rechner.
+- **Ein Captain** in der Cloud: Überblick (Builds, App ⇄ Planer, CI, Fragen), ordnet das Backlog. Schreibt keinen Code.
+  Er hat seit 11-03 die Freigabe-Karte: darf Rechner-Sitzungen erreichen (jeder Aufruf braucht den Tipp des Owners),
+  weckt sich aber nicht selbst.
 - **Das Repo ist das Gedächtnis**, nicht der Chat. **GitHub-Issues** sind der Kanal zum Owner (Fragen, „an alle“).
 - **Regeln werden erzwungen**, nicht erbeten: Hooks, Deny-Regeln, Skripte.
-Verworfen: Leitstand-Sitzung je Rechner, die nur Arbeiter startet (zu viele Teile); Rollen je Aufgabe (App/Planer)
-statt je Rechner; Backlog als Nachrichtenkanal.
+Verworfen bzw. entfernt (Audit 2026-11-05): Leitstand-Sitzung je Rechner; 10-Minuten-Schleife; `[sofort]` mit
+Wecker-Hook (nie benutzt); Autostart- und Sichern-Dienst (nie installiert); Rollen je Aufgabe statt je Rechner;
+Backlog als Nachrichtenkanal.
 
 ## 2. Plattform-Fakten (geprüft)
 | Fakt | Geprüft | Folge |
@@ -48,15 +50,15 @@ statt je Rechner; Backlog als Nachrichtenkanal.
 1. **Das Repo ist das Gedächtnis.** Was nur im Chat steht, ist beim nächsten Neustart weg (gestern: die Design-Review
    steckte nur im alten Chat). Übergaben, Backlog, Entscheidungen ins Repo.
 2. **Nie Arbeit ungesichert lassen.** Pushen in kleinen Schritten; vor einer blockierenden Frage pushen; beim
-   Ausschalten sichert ein Dienst Ungepushtes auf `wip/<rechner>-<datum>` (`tools/dev/save-on-shutdown.sh`). Der Vorfall
-   vom 11-01 abends (versehentlich alles beendet) war genau das.
+   Ausschalten Halbfertiges auf einen `wip/<rechner>-<datum>-<thema>`-Branch pushen (so haben es die Rechner ab 11-03
+   gemacht; ein Dienst dafür wurde gebaut und nie gebraucht).
 3. **Prosa ist teuer und unverbindlich.** Jede Regel in `CLAUDE.md` liest jede Sitzung bei jedem Start; befolgt wird sie
    nur, wenn die Sitzung daran denkt. Was gelten **muss**, gehört in einen Hook, eine Deny-Regel oder ein Skript
    (Push nur nach grünem Tor, Handy nur über die Geräte-Sperre, kein Force-Push).
 4. **Wenige bewegliche Teile.** Ein Koordinator (Captain), die Rechner arbeiten selbst. Jeder zusätzliche Koordinator
    kostet Weckrufe, Token und Fehlerquellen.
 5. **Namen nach Rechner, Arbeit nach Kürzeln.** `[pixel]`/`[emu]` → donald, `[karten]`/`[ram]` → laptop, ohne Kürzel →
-   wer frei ist, `[sofort]` → innerhalb 10 Minuten. **Der Owner verteilt nie selbst**: Er sagt es dem Captain (oder der
+   wer frei ist; Eiliges sagt der Owner der Sitzung direkt. **Der Owner verteilt nie selbst**: Er sagt es dem Captain (oder der
    Sitzung, mit der er spricht), es landet im Backlog, der passende Rechner nimmt es.
 6. **Fragen an den Owner: ein Ort + ein Push.** Jede Frage als Issue (`tools/ask.sh`, festes Format: wer, Hintergrund,
    Optionen, Empfehlung); blockierende zusätzlich als Fragebox im Chat (gelber Punkt + Push). Eine Frage nur im Chat
@@ -87,12 +89,11 @@ statt je Rechner; Backlog als Nachrichtenkanal.
 | Zwei Sitzungen mit gleichem Namen, Verwechslung | Alte Sitzung erst umbenennen/archivieren |
 
 ## 5. Offen / nächste Schritte
-- Branch-Merge `web-spike` → `main`, dann Laptop als Einheit wie donald (`docs/roles/neu/umstellung.md` D).
-- Autostart + Sichern-Dienst auf beiden Rechnern (`tools/dev/unit.sh install <name>`).
-- Skills (`/runde`, `/frage`, `/release`) und Agenten-Vorlagen (`.claude/agents/`) – Analyse Schritt 5.
-- Backlog als GitHub-Issues statt Markdown (kein Commit-Rauschen, auf dem Handy sichtbar).
-- Push für Cloud-Sitzungen (ntfy über einen `Notification`-Hook), falls etwas durchrutscht.
-- Für weitere Projekte: Skripte und diese Datei in ein eigenes Repo `leitstand` mit einer `.leitstand`-Datei je Projekt.
+- „Ein Branch“: `web-spike` → `main` (Entscheidung des Owners vom 11-01) umsetzen oder bewusst verwerfen – Backlog.
+- Die `wip/`-Branches von 11-01/03 prüfen und abbauen – Backlog.
+- In einer Woche messen, ob die Gradle-Plätze und der Stempel nach Rebase die Wartezeiten wirklich senken.
+- Nur bei belegtem Bedarf: Push für Cloud-Sitzungen (ntfy), Backlog als Issues, eigener Linux-Benutzer, gemieteter
+  Rechner mit KVM (Google Cloud mit „nested virtualization“; Hetzner Cloud kann es nicht).
 
 ## 5b. Vergleich: firstmate (github.com/kunchenguid/firstmate, angesehen 2026-11-02)
 Ein „Agent-Distro“: man redet mit einem **First Mate**, der eine Crew in Worktrees startet und überwacht.
@@ -107,10 +108,8 @@ Ein „Agent-Distro“: man redet mit einem **First Mate**, der eine Crew in Wor
 - **Docker für uns:** schlecht passend (Pixel per USB, Emulator mit KVM, Android-SDK müssten durchgereicht werden);
   wir sichern stattdessen mit Auto-Modus + Deny-Regeln + Push-Hook. Leichter Zusatzschritt, falls gewünscht: eigener
   Linux-Benutzer für Claude auf donald (eigener `gh`-Zugang nur für OnPath, keine SSH-Schlüssel des Owners).
-- **Übernommen 2026-11-02:** (1) **Stop-Hook mit `asyncRewake`** als Wecker (`tools/hooks/stop-wake.sh`): wartet nach
-  jeder Antwort im Hintergrund ohne Token, der Chat bleibt frei, weckt nur bei Neuem – ersetzt die 10-Minuten-Schleife;
-  (2) **`/fragen`** (wie `/ahoy`): offene Fragen eine nach der anderen, wichtigste zuerst, als Fragebox. Offen: `/lage`
-  (wie `/bearings`). **Nicht übernehmen:** das Gesamtsystem.
+- **Übernommen:** `/fragen` (wie `/ahoy`). Der Wecker-Hook (`asyncRewake`) wurde gebaut und am 11-05 wieder
+  entfernt – er wartete nach jeder Antwort, aber es gab nie etwas zu wecken. **Nicht übernehmen:** das Gesamtsystem.
 
 ## 5c. Irgendwann vielleicht: eigener Linux-Benutzer für Claude (owner 2026-11-02: „ganz weit in die Zukunft“)
 Mehr Abstand ohne Docker: `sudo adduser claude-onpath` (Gruppen `plugdev` für das Pixel, `kvm` für den Emulator), dort
@@ -120,13 +119,23 @@ Haken: nur **ein** `adb`-Server pro Rechner – Owner und Claude-Benutzer kommen
 Rechner. Gewinn: kein Zugriff auf die SSH-Schlüssel, andere Projekte und das volle GitHub-Konto des Owners. Nicht
 geplant; heute schützen Auto-Modus, Deny-Regeln und der Push-Hook.
 
-## 6. Wo was liegt
+## 6. Regeln für jede Setup-Arbeit (owner 2026-11-05, nach dem Audit)
+1. **Erst recherchieren und prüfen, dann bauen.** Doku, vorhandene Lösungen (z. B. firstmate) und die echten Verläufe
+   ansehen; die Plattform-Fakten mit einem Mini-Test belegen. Keine Annahme als Tatsache verkaufen.
+2. **Kein Mechanismus ohne belegten Bedarf** (ein echter Fall im Backlog oder im Verlauf). Was eine Woche lang nicht
+   benutzt wird, fliegt raus.
+3. **Hooks, `gate.sh`, Sperren treffen alle Sitzungen zugleich:** vor dem Push in allen Kombinationen testen (Worktree,
+   Rebase, anderes Repo, Rundgang, Emulator).
+4. **Erst messen, dann den Owner fragen.** Eine Frage nur, wenn Daten sie nicht beantworten können.
+5. **Eine Datei je Thema, überschreiben statt anhängen.** Konzept-Fassungen gehören in den Chat, nicht auf `main`.
+6. **Höchstens eine Setup-Änderung pro Tag**, damit die Sitzungen nicht stündlich neue Regeln lesen.
+
+## 7. Wo was liegt
 | Thema | Datei |
 | --- | --- |
-| Arbeitsweise der Rechner-Sitzungen | `docs/roles/neu/start.md` |
-| Captain | `docs/roles/neu/captain.md` |
-| Umstellung, Tests, Einrichtung je Rechner | `docs/roles/neu/umstellung.md` |
-| Entscheidungen des Owners zum Setup | `docs/roles/setup-vorschlag-2026-11-01.md` §7 |
-| Kosten, Claude-Code-Mittel, Schritte | `docs/roles/setup-analyse-2026-11-01.md` |
-| Skripte | `tools/ask.sh`, `tools/ci/gate.sh`, `tools/ci/release_check.sh`, `tools/dev/{unit,save-on-shutdown,device,new_items}.sh`, `tools/hooks/` |
+| Wer arbeitet wo | `docs/roles/README.md` |
+| Arbeitsweise der Rechner-Sitzungen | `docs/roles/start.md` |
+| Captain | `docs/roles/captain.md` |
+| Geschichte, Audit, Entscheidungen des Owners zum Setup | `docs/history/setup-2026-11/` |
+| Skripte | `tools/ask.sh`, `tools/ci/gate.sh`, `tools/ci/release_check.sh`, `tools/dev/{unit,device,gradle_slot}.sh`, `tools/hooks/` |
 | Erzwungene Regeln | `.claude/settings.json` (Hooks, Deny), `.claude/rules/` |

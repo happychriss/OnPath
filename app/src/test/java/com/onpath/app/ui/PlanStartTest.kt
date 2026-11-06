@@ -59,8 +59,8 @@ class PlanStartTest {
     }
 
     @Test fun aRunningTourContinues() {
-        assertEquals("Continue · Hike", primaryLabel(ui(0, null, running = true)))
-        assertEquals("Continue · Hike", primaryLabel(ui(2, routed, running = true)))
+        assertEquals("Carry on · Hike", primaryLabel(ui(0, null, running = true)))
+        assertEquals("Carry on · Hike", primaryLabel(ui(2, routed, running = true)))
     }
 
     /** The view model's start (AppViewModel.startNavigation) follows the same rule; a shown track is followed first. */

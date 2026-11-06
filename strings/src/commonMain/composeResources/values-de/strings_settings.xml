@@ -68,6 +68,8 @@
     <string name="settings_nav_vibrate_off_sub">Spürbar in der Tasche, auch bei ausgeschaltetem Bildschirm</string>
     <string name="settings_nav_on_route">Position auf der Route</string>
     <string name="settings_nav_on_route_sub">Solange du nah an der Route bist, sitzt der Punkt auf ihr</string>
+    <string name="settings_nav_lock">Sperre beim Navigieren</string>
+    <string name="settings_nav_lock_sub">Zum Ändern erst entsperren – verhindert versehentliches Tippen.</string>
     <string name="settings_nav_screen_on">Bildschirm beim Wandern anlassen</string>
     <string name="settings_nav_screen_on_sub">Nur beim Folgen einer Route; in der Tasche aus</string>
     <string name="settings_nav_bike_screen">Bildschirm beim Radfahren</string>

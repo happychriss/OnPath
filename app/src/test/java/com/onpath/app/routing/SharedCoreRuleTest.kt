@@ -59,7 +59,7 @@ class SharedCoreRuleTest {
      */
     private val webShared = listOf("gpx/PlanGpx.kt", "gpx/GpxWriter.kt", "gpx/SportType.kt", "routing/PlanPoints.kt",
         "routing/PlanEdits.kt", "routing/RoutingFingerprint.kt", "sync/SyncCrypto.kt", "data/RoutingDataNotice.kt",
-        "routing/BreakdownRules.kt",
+        "routing/BreakdownRules.kt", "routing/LegCache.kt",
         // the BRouter adapter and its helper in BRouter's package (island retry without reflection, docs/handoff-web-island.md)
         "routing/BRouterEngine.kt", "../../../btools/router/OnPathHints.java")
     private val notInTeaVm = Regex(

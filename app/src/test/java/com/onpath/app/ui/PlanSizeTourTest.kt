@@ -34,10 +34,14 @@ class PlanSizeTourTest {
         assertEquals(PlanSize.MINI, PlanSize.ofStep(PlanSize.COLLAPSED.step + 1))
     }
 
-    @Test fun duringATourThereIsNoRolledUpStep() {
-        assertEquals(PlanSize.MINI, PlanSize.duringTour(PlanSize.COLLAPSED, tour = true))
-        assertEquals(PlanSize.COLLAPSED, PlanSize.duringTour(PlanSize.COLLAPSED, tour = false))
-        listOf(PlanSize.MINI, PlanSize.COMPACT, PlanSize.FULL).forEach { assertEquals(it, PlanSize.duringTour(it, tour = true)) }
+    /** Owner 2026-11-05 (R5): during a tour the sheet rolls up too – one row with "▶ Weiter geht's". */
+    @Test fun duringATourTheSheetRollsUpToo() {
+        val tour = PlanUi(2, null, false, null, canUndo = true, canRedo = false,
+            activity = com.onpath.app.routing.Activity.HIKE, size = PlanSize.COLLAPSED, tourRunning = true,
+            tour = TourState(1_000.0, 600, paused = false))
+        assertEquals(PlanSize.COLLAPSED, tour.shownSize)
+        assertEquals(true, tour.collapsed)
+        PlanSize.entries.forEach { assertEquals(it, tour.copy(size = it).shownSize) }
     }
 
     @Test fun aPlanOpensAtTheSummaryAndStaysRolledUp() {
@@ -68,16 +72,18 @@ class PlanSizeTourTest {
     }
 
     /**
-     * Owner 2026-11-01 (night draft): the slider in Navigate unlocks Pause · Route ändern · Beenden – words, no ■; End
+     * Owner 2026-11-01 (night draft): the slider in Navigate unlocks Pause · Plan ändern · Beenden – words, no ■; End
      * opens the same "Aufnahme beenden?" question as before. The plan sheet during a tour has only "Navigation
      * fortsetzen" (+ "Route speichern" with a plan) – no Pause / End there any more.
      */
     @Test fun theSliderUnlocksPauseChangeRouteAndEnd() {
         val nav = java.io.File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()
         assertEquals(true, nav.contains("onPause = vm::pauseRecording, onEnd = { vm.askEndTour() }"))
-        assertEquals(true, nav.contains("TourActionBar(ui.paused, onPause, onChangeRoute = onSlideToPlan"))
+        // owner 2026-11-05 (Navigate C): Pause / Tour beenden in the status card, "Plan" where the slider was
+        assertEquals(true, nav.contains("TourCardActions(ui.paused, onPause, onEnd, onClose = { open = false })"))
+        assertEquals(true, nav.contains("ChangePlanButton({ open = false; onSlideToPlan() }, bottom, onLock = "))
         val bar = java.io.File("src/main/java/com/onpath/app/ui/TourActionBar.kt").readText()
-        for (s in listOf("Res.string.nav_action_pause", "Res.string.common_resume", "Res.string.plan_slide_change_route", "Res.string.nav_end_short"))
+        for (s in listOf("Res.string.nav_action_pause", "Res.string.common_resume", "Res.string.nav_change_plan", "Res.string.nav_end_tour"))
             assertEquals(s, true, bar.contains(s))
         val panel = java.io.File("src/main/java/com/onpath/app/ui/PlanPanel.kt").readText()
         assertEquals(false, panel.contains("TourPauseEnd("))

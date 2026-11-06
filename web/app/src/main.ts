@@ -975,7 +975,8 @@ async function planRun(rounds: number) {
   const routed = state.points;
   const r = await engine.plan(routed, state.activity, state.sac, sharedPlan().pinned, (pr) => {
     if (id !== state.latest) return;
-    wait = pr.phase === 'download' ? `${t('maps_load_loading')} · ${t('maps_about_mb', Math.max(1, Math.round(pr.bytes / 1e6)))}` : t('plan_calculating');
+    wait = pr.phase === 'download' ? `${t('maps_load_loading')} · ${t('maps_about_mb', Math.max(1, Math.round(pr.bytes / 1e6)))}`
+      : pr.phase === 'legs' ? pr.text : t('plan_calculating');
     if (shown) show();
   }, namesText(), rounds);
   clearTimeout(waitTimer);

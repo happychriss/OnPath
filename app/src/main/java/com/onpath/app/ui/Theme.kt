@@ -71,7 +71,7 @@ object OnPathColors {
      */
     val OnDarkMuted = RestInk
     /**
-     * Small secondary text on the green slider ("Pause · Route ändern · Beenden", owner 2026-11-03 novice fix): a pale
+     * Small secondary text on the green slider (was "Pause · Route ändern · Beenden", owner 2026-11-03 novice fix): a pale
      * green-white, ≥ 5.5:1 on [Green] – [OnDarkMuted] was made for the old dark track and reads only 3.6:1 on green.
      */
     val OnGreenMuted = Color(0xFFDCE8E1)

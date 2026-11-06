@@ -7,7 +7,7 @@
       "web": [
         "web/app/src/activity.ts"
       ],
-      "blob": "6f23d0844e6cb1b699b856ce0942648b22086909"
+      "blob": "01a14e28d51f23a9bcb82eebcea3f18368170c81"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
@@ -24,7 +24,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "a4dec1feb98a716449ac445605dadac1476d7374"
+      "blob": "87e855a5fe5f4b517037f3d6bbcd3d5d8a05b8b2"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/search/SearchSession.kt",
@@ -100,7 +100,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "ce4dc125835fbb2b88d83458a008dd0fc01fe47c"
+      "blob": "e665724001ee0d2ffada82c0103095f20bf520e3"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/OptionalSources.kt",
@@ -133,7 +133,7 @@
       "web": [
         "web/app/src/profile.ts"
       ],
-      "blob": "f0cebcf8a10d4fd1f0c000576f532c90022ccffa"
+      "blob": "350724936304e51665556164829c4a4b6e8a2cef"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/TourBar.kt",
@@ -142,7 +142,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebPlanRules.kt",
         "web/app/src/longroute.ts"
       ],
-      "blob": "ffa33dd2a94e6c0bd0f1ccdec03d6aa05a9a3505"
+      "blob": "99d922eb9706a98c7c760b34ec06a2f064c72c01"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/AppViewModel.kt",
@@ -155,7 +155,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "ac050c3d02786e9046a84d64a1a41646a2959247"
+      "blob": "e30318e297caa0cf75cdc41c774902b9975f1c49"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -230,7 +230,7 @@
       "web": [
         "web/engine/src/main/kotlin/com/onpath/web/WebPace.kt"
       ],
-      "blob": "24d0d1f58fc9c7b5ed7bed8cf0c12e8b5de7da09"
+      "blob": "7c4cc9905fa95f02dfb8d72eb2bf7479dd3fd83a"
     },
     {
       "app": "app/src/main/java/com/onpath/app/data/Prefs.kt",
@@ -238,7 +238,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "f086a2d2ca840497034ab6df9e652346b9e9a356"
+      "blob": "4d79089a9da0f8c77dc560974e31c8f7290ebe6a"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/Overview.kt",
@@ -294,17 +294,17 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanPanel.kt",
       "why": "plan sheet layout and actions",
-      "blob": "b2d60f8c3892eafc0a1aa19fe1f98f114f08db41"
+      "blob": "1ba1a7df2d13b6cfc5472ff45ca84ba5cbf9cbc4"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapScreen.kt",
       "why": "plan screen wiring, dialogs",
-      "blob": "22471062a9fbcf29fc21a5352c781e3ef3ac6607"
+      "blob": "fa3a142186cbd30bae73b938ff429f05fa900df1"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanGuidance.kt",
       "why": "plan ⇄ navigation (web: plan only)",
-      "blob": "094e3f9dbd3eea8cf31447ce17fa690fff9213e3"
+      "blob": "c412a329a7f56a0ae072c8fc676c5ccafa229be1"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Notices.kt",
@@ -418,10 +418,11 @@
       ]
     },
     "app/src/main/java/com/onpath/app/routing/BRouterEngine.kt": {
-      "blob": "9b51b9b61bce9e7f50e9d2da3524d0b76f98758b",
+      "blob": "abb8d8cc77d73f34fc5390086584be27a9a24d6d",
       "perf": [
         "* request (same points, activity and SAC limit) returns instantly.",
         "* Via points are hints: BRouter snaps each to the nearest usable way (within [MAX_SNAP_M]) and,",
+        "var nearest = Double.MAX_VALUE",
         "private val cache = object : LinkedHashMap<CacheKey, RouteResult>(CACHE_SIZE + 1, 0.75f, true) {",
         "override fun removeEldestEntry(eldest: MutableMap.MutableEntry<CacheKey, RouteResult>?) = size > CACHE_SIZE",
         "/** With a time limit (incl. waiting for a running request) and a cancel signal (BRouter `terminate()`). */",
@@ -432,7 +433,7 @@
         "Problems.error(\"routing\", \"BRouter ran out of memory\", e)",
         "val limit = RouteTimeLimit.forRoute(waypoints, activity, rounds)",
         "val timeoutMs = budgetMs?.coerceAtMost(limit) ?: limit",
-        "try { engine.doRun(left.coerceAtLeast(MIN_BUDGET_MS)) } finally { cancel?.onCancel(null) }",
+        "try { engine.doRun(left.coerceAtLeast(MIN_BUDGET_MS)) } finally { cancel?.onCancel(null); running = null }",
         "if (way == null || skipWays.size >= MAX_ISLAND_SKIPS || timeoutMs - (System.currentTimeMillis() - t0) < MIN_BUDGET_MS) {",
         "val limit = if (i == 0 || i == waypoints.size - 1) MAX_SNAP_M else MAX_SNAP_M + viaCorrectionM(activity)",
         "if (d > limit) {",
@@ -476,36 +477,45 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/routing/Planner.kt": {
-      "blob": "b6e5b483e88e70cf7d759fe4f614fdd6f01bc569",
+      "blob": "accfc1b2376472292b055879bb79756e767ce7c1",
       "perf": [
-        "/** Wall clock in ms (tests pass their own: the short-trip retry's time budget, [retryShortDetours]). */",
+        "* points = same legs = same route: the cache saves time, never changes a line.",
+        "* A leg without a route becomes a straight dashed line (R-12/R-13); after a timeout the legs still to route are straight",
+        "* at once (each would wait its own limit) – or, in Plan, the user is asked \"Weiter warten?\" ([SlowPlan]).",
+        "/** Wall clock in ms (tests pass their own: the short-trip retry's time budget, [retryShortDetour]). */",
         "* A plan run the user started in Plan (owner 2026-11-03, [SlowPlan]): at the time limit [plan] throws",
         "/** Time-limit periods of this run (2+ after \"Weiter warten\", [RouteLimits.rounds]). */",
+        "* comes from the cache. On the planning thread.",
         "/** One engine request of this planner: points, time, outcome (\"ok\", \"timeout\", \"failed\"), wait for the engine lock. */",
-        "/** \"whole 4 pts 34.2 s timeout (lock 0 ms); leg 2 pts 1.2 s ok\" – short, for the event log. */",
-        "/** [limitMs] = this request's own time limit (the short-trip retry, [retryShortDetours]); null = the engine's usual one. */",
+        "/** \"2 pts 1.2 s ok; 3 pts 0.4 s ok (2 legs from the cache)\" – short, for the event log. */",
+        "} + if (cachedLegs > 0) \"${if (tries.isEmpty()) \"\" else \"; \"}$cachedLegs legs from the cache\" else \"\"",
+        "/** [limitMs] = this request's own time limit (the short-trip retry, [retryShortDetour]); null = the engine's usual one. */",
         "return (if (limitMs != null) engine.route(pts, activity, sac, RouteLimits(minOf(limitMs, PLAN_LIMIT_MS), cancel))",
         "else engine.route(pts, activity, sac, RouteLimits(PLAN_LIMIT_MS * rounds.coerceAtLeast(1), cancel, rounds))).also { outcome = \"ok\" }",
         "outcome = if (e.timedOut) \"timeout\" else if (cancel?.isCancelled == true) \"cancelled\" else \"failed\"",
-        "* ([replan]). A stop still cut after [MAX_SPUR_PASSES] passes stays in [PlannedRoute.skipped]; the plan sheet shows it.",
-        "for (pass in 0 until MAX_SPUR_PASSES) {",
-        "} ?: return replan(waypoints, from, to, activity, sac, ends, MAX_SPUR_PASSES - pass - 1)",
-        "if (route.skipped.isNotEmpty()) Problems.trace(\"routing\", \"Point(s) ${route.skipped.sorted().joinToString { \"${it + 1}\" }} still cut after $MAX_SPUR_PASSES passes – shown as skipped\")",
-        "if (plan.skipped.isNotEmpty()) Problems.trace(\"routing\", \"Point(s) ${plan.skipped.sorted().joinToString { \"${it + 1}\" }} still cut after $MAX_SPUR_PASSES passes – shown as skipped\")",
-        "// at the time limit in Plan: the user is asked \"Weiter warten?\" (owner 2026-11-03, SlowPlan)",
-        "// Timed out: each leg would get its own limit and the wait multiplies (a 4-point plan up to 120 s) –",
-        "* Time: the retries count against the time limit of the request that gave the legs ([RouteTimeLimit.forRoute] of",
-        "* [waypoints], started at [t0]); each gets only what is left of it, and none starts with less than [MIN_RETRY_MS].",
-        "val budget = RouteTimeLimit.forRoute(waypoints, activity)",
-        "fun left() = budget - (now() - t0)",
-        "if (left() < MIN_RETRY_MS) { Problems.trace(\"routing\", \"$leg → no time left to retry via the midpoint\"); continue }",
+        "// at the time limit in Plan: the user is asked \"Weiter warten?\" (owner 2026-11-03, SlowPlan) – the legs",
+        "// done so far are in the cache, the next run starts after them",
+        "// each leg would get its own limit and the wait multiplies: the rest straight at once",
+        "* Time: the retry counts against the leg's time limit ([RouteTimeLimit.forRoute], started at [t0]); it gets only what",
+        "* is left of it and does not start with less than [MIN_RETRY_MS]. Returns [r] when nothing was taken.",
+        "if (left < MIN_RETRY_MS) { Problems.trace(\"routing\", \"$leg → no time left to retry via the midpoint\"); return r }",
         "// expected: RoutingException = no route via the midpoint (an island, a timeout) – the first route stays",
-        "if (left() < MIN_RETRY_MS) { Problems.trace(\"routing\", \"Short-trip retry: no time left for the whole request – kept the first route\"); return r }",
-        "/** A retry does not start with less than this left of its request's time limit (ms). */",
+        "/** The legs still to route after a timeout (straight lines at once). */",
+        "/** A retry does not start with less than this left of its leg's time limit (ms). */",
         "const val MIN_RETRY_MS = 1_000L",
-        "const val MAX_SPUR_PASSES = 3",
         "/** With a cancel signal: the overall wait for the router (each request keeps its own search budget). */",
         "const val PLAN_LIMIT_MS = 10 * 60_000L"
+      ]
+    },
+    "app/src/main/java/com/onpath/app/routing/LegCache.kt": {
+      "blob": "94d265f233d4454ca22d517d58a92c0c391f587f",
+      "perf": [
+        "* from here at once). Same points = same legs = same route: the cache only saves time, a fresh start gives the identical",
+        "* Kept in memory for the process, one per routing engine (the app: AppViewModel; the web planner: its page) – a router or",
+        "class LegCache(private val capacity: Int = CAPACITY) {",
+        "private val map = object : LinkedHashMap<Key, RouteResult>(capacity + 1, 0.75f, true) {",
+        "override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Key, RouteResult>?) = size > capacity",
+        "/** The T level counts only for Hike (the bike profiles ignore it – same as BRouterEngine's own cache key). */"
       ]
     },
     "app/src/main/java/com/onpath/app/routing/SlowPlan.kt": {
@@ -521,14 +531,15 @@
       ]
     },
     "app/src/main/java/com/onpath/app/routing/WaypointInsertion.kt": {
-      "blob": "ea1d941392aa466f6fca878b423c711f82059aad",
+      "blob": "bb51a945e4b6ca59a1e863fe9d2e9f2a37edc859",
       "perf": [
         "var bestCost = Double.MAX_VALUE",
+        "val appendCost = if (loop) Double.MAX_VALUE else Geo.distance(waypoints.last(), p)",
         "var bestD = Double.MAX_VALUE"
       ]
     },
     "app/src/main/java/com/onpath/app/routing/PlanEdits.kt": {
-      "blob": "d3214987dc8b39658c2d41d8309535f9cb12cff4",
+      "blob": "65bbe12215ddcf81a7d19ca300d7ce4cc55bab37",
       "perf": [
         "var bestCost = Double.MAX_VALUE"
       ]
@@ -675,7 +686,7 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/search/AddPreview.kt": {
-      "blob": "309c7bdb6910112a2ee1c1d54c7bcbac7b4b19de",
+      "blob": "c13451ed2eaec72adc68d2eea55dbbc62f3657c2",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/search/PlaceIndex.kt": {
@@ -714,7 +725,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/ui/MapGestures.kt": {
-      "blob": "3144ae2403d51cfcf7ba1232c2d6d42de24325cf",
+      "blob": "f79265d3220f3125d7b2db9a5dcffadbbeb7fa3c",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/poi/GoogleMapsLink.kt": {
@@ -857,8 +868,10 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/ui/PlanStatus.kt": {
-      "blob": "a4dec1feb98a716449ac445605dadac1476d7374",
-      "perf": []
+      "blob": "87e855a5fe5f4b517037f3d6bbcd3d5d8a05b8b2",
+      "perf": [
+        "* route. Keeps the highest value it gave – a new search inside the same leg (a retry) or a leg from the cache never"
+      ]
     },
     "app/src/main/java/com/onpath/app/ui/PlanGaps.kt": {
       "blob": "92a2e12105c6186a00c7e98a488446d6ad5c2a64",
@@ -895,7 +908,7 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/data/AppSettings.kt": {
-      "blob": "8815bb2447fc5a778128d59214ab90d6491f3c12",
+      "blob": "022559f6b65eb2d8b719cb44544c3e19accde763",
       "perf": [
         "* turn and on a tap; [PHONE] = no keep-screen-on, the phone's own timeout."
       ]
@@ -913,7 +926,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/routing/PlanResult.kt": {
-      "blob": "cd304159858d9353a5126048488df6837d8f2af2",
+      "blob": "8cddbb716c42e96978cffe7dab20eecde8fa0f9d",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/routing/ProfileData.kt": {
@@ -928,7 +941,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/routing/RoutingFingerprint.kt": {
-      "blob": "3700c798e1ee05a5d5c09d554ae3d9aa674b9bee",
+      "blob": "0b2b0c7d5cbe1f9d8f4321489e6fc670826991e0",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/data/RoutingDataNotice.kt": {
@@ -1049,9 +1062,51 @@
       "blob": "50090800c2848bdf0aa0012cc1ca9cc242bfba8d",
       "perf": []
     },
-    "app/src/test/java/com/onpath/app/routing/PlannerSpliceTest.kt": {
-      "blob": "a247cdaa718483374e1ac2dad823b192dddeab36",
+    "app/src/test/java/com/onpath/app/routing/PlannerLegsTest.kt": {
+      "blob": "3a5cdb535c729bfc6a4067279c36c41923be26dd",
       "perf": []
+    },
+    "app/src/test/java/com/onpath/app/routing/LegCacheTest.kt": {
+      "blob": "22137e9c7d0397ea498af02e38dfa9b113cb4c17",
+      "perf": [
+        "* The leg cache (owner 2026-11-05, \"long bike routes faster\"): an edit routes only the legs it changed, same points give",
+        "* the same route, the wait card's progress counts only the legs routed, Cancel and the time-limit question keep what",
+        "private fun run(e: Engine, cache: LegCache, vararg pts: GeoPoint, activity: Activity = act, sac: Int = 2) =",
+        "Planner(e, legs = cache).plan(pts.toList(), activity, sac)",
+        "val e = Engine(); val cache = LegCache()",
+        "val first = run(e, cache, p[0], p[2], p[4])",
+        "val again = run(e, cache, p[0], p[2], p[4])",
+        "run(e, cache, p[0], p[2], p[4])",
+        "run(e, cache, p[0], p[1], p[2], p[4])",
+        "run(e, cache, p[0], p[2], p[4], p[6])",
+        "run(e, cache, p[0], p[3], p[4], p[6])",
+        "run(e, cache, p[0], p[4], p[6])",
+        "run(e, cache, p[4], p[2], p[0])",
+        "run(e, cache, p[0], p[1])",
+        "run(e, cache, p[0], p[1], activity = Activity.MTB)",
+        "run(e, cache, p[0], p[1], sac = 4) // a bike ignores the T level",
+        "run(e, cache, p[0], p[1], activity = Activity.HIKE, sac = 2)",
+        "run(e, cache, p[0], p[1], activity = Activity.HIKE, sac = 3)",
+        "val e = Engine(fail = { broken && it == listOf(p[1], p[2]) }); val cache = LegCache()",
+        "val r = run(e, cache, p[0], p[1], p[2])",
+        "val again = run(e, cache, p[0], p[1], p[2])",
+        "run(e, cache, p[0], p[1], p[2])",
+        "cache.clear()",
+        "val cache = LegCache(capacity = 2)",
+        "run(e, cache, p[0], p[1], p[2], p[3]) // 3 legs, room for 2: 0 → 1 dropped",
+        "assertEquals(2, cache.size)",
+        "run(e, cache, p[0], p[1], p[2], p[3])",
+        "Planner(e, legs = cache, progress = { d, t -> seen += d to t }).plan(listOf(p[0], p[1], p[2], p[3], p[4]), act, 2)",
+        "Planner(e, legs = cache, progress = { d, t -> seen += d to t }).plan(listOf(p[0], p[1], p[2], p[4], p[5]), act, 2)",
+        "assertEquals(\"p4 → p5 is new, the rest from the cache\", listOf(0 to 1, 1 to 1), seen)",
+        "val pl = Planner(e, legs = cache, progress = { d, t -> seen += d to t })",
+        "assertTrue(\"everything from the cache: no progress at all\", seen.isEmpty())",
+        "assertEquals(\"4 legs from the cache\", pl.describeTries())",
+        "Planner(e, cancel, legs = cache).plan(listOf(p[0], p[1], p[2], p[3]), act, 2)",
+        "val e = Engine(slow = { slow && it == listOf(p[1], p[2]) }); val cache = LegCache()",
+        "Planner(e, RouteCancel(), askAtLimit = true, legs = cache).plan(listOf(p[0], p[1], p[2]), act, 2)",
+        "Planner(e, RouteCancel(), askAtLimit = true, rounds = 2, legs = cache).plan(listOf(p[0], p[1], p[2]), act, 2)"
+      ]
     },
     "app/src/test/java/com/onpath/app/routing/PlanNamesTest.kt": {
       "blob": "3398fc398aaeab22e9105a48cbbaebd9588a35bf",
@@ -1066,7 +1121,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_backup.xml": {
-      "blob": "9ceddeca12aa216f769def833a3f3113491b3219",
+      "blob": "d14539001dcecf56dfc5bc046fb6c30f8e171b62",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_common.xml": {
@@ -1074,19 +1129,19 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_maps.xml": {
-      "blob": "9b426702c1bb8dadb32cbf072760927380675dd6",
+      "blob": "6b57894b600873d2c9c633b7b418646e6c2a3649",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_messages.xml": {
-      "blob": "1d3f69f62ccf3735063ab657765e2e9d367939c7",
+      "blob": "325d14ebee8d90a31910fca9c08c200dba5e24b5",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_navigate.xml": {
-      "blob": "4d2c05a6b9fc176436a51d2e6049abef91ba00fc",
+      "blob": "873110000d2ed3248220e125c4f7acceab8f97cc",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_plan.xml": {
-      "blob": "35c4efe96dcf0988d1ffd0a5f0ea00058b9f1c55",
+      "blob": "11b79fdb62e972b15c5aebcc7be1f283742638fc",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_poi.xml": {
@@ -1094,15 +1149,15 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_routes.xml": {
-      "blob": "bd1b8e79c21e7d266784ca81823a676e616caf27",
+      "blob": "0be4f1b0b231d69f9ceab847e5b73424566ffa4c",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_search.xml": {
-      "blob": "49614508ed69380acc7082edcc06b356086e4d02",
+      "blob": "36f44c5aa8a666ac8cf31576585ae09c20b8d073",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_settings.xml": {
-      "blob": "9941e0f304b5c65b25bf2377c437d75d2bc609f1",
+      "blob": "c44e87f5c53c3c79e925d39d1e597dc965879bd0",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_setup.xml": {
@@ -1110,7 +1165,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_sync.xml": {
-      "blob": "d69dff3eefabaf9afda8754a86e0c6b3ffdcef39",
+      "blob": "84a97edb61ee064cdd2eb0515f8a8673466a062b",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_voice.xml": {
@@ -1122,7 +1177,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_backup.xml": {
-      "blob": "2d252ad933f698a71bf644b0fcf491b3ba9b050b",
+      "blob": "5ef4396261411a6eaa4dbda253ef4f15cfb8172b",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_common.xml": {
@@ -1130,19 +1185,19 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_maps.xml": {
-      "blob": "3bf824d06384d92728fe7017a6a37dd8b18e55a0",
+      "blob": "fb2042c8174e08763471caf1775cc55cafd86280",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_messages.xml": {
-      "blob": "2fe40c2158bb2234634bc78c119cb39da5d8332b",
+      "blob": "dc3ea2b9019ceca350e2084781865138a109c573",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_navigate.xml": {
-      "blob": "cbebe80d182cb38bc37e98e7b096b2204e4ebc19",
+      "blob": "56dc06343f746bd9fd1e32f232002d1f26684e43",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_plan.xml": {
-      "blob": "0ccaefba21d04fe0f7685ab84f69d2f00f878a25",
+      "blob": "d1015013a547e01fc6b2577eae803537ec6bb7f2",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_poi.xml": {
@@ -1150,15 +1205,15 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_routes.xml": {
-      "blob": "efc9e94cdb37aaaf9340044322559f3280fdc48c",
+      "blob": "fc64b457f4c2930fe907a262be41fa61db750ff1",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_search.xml": {
-      "blob": "6e00c46ae369c1749efbd6f79fa202c6b8d577b8",
+      "blob": "364f8cb981c7ce03673ad31c194ffd4dfce59a67",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_settings.xml": {
-      "blob": "c046fb739847dec95291c4e13619e6694a995856",
+      "blob": "c355e12721e4235b7bd135ab546fa3e6dc6fbf23",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_setup.xml": {
@@ -1166,7 +1221,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_sync.xml": {
-      "blob": "e02bc07ed275f3b07acb80d8f9e824b8a3f14707",
+      "blob": "c6a46167b36d620f8a8d183ab187ea196cc2094a",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_voice.xml": {

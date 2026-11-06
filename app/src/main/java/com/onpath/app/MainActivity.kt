@@ -326,6 +326,12 @@ class MainActivity : ComponentActivity() {
                         BackHandler { vm.timeDetails = null }
                         com.onpath.app.ui.TimeDetailsScreen(td, onBack = { vm.timeDetails = null })
                     }
+                    // Back in Plan during a tour (owner 2026-11-05): the same as "‹ Zur Tour" – back to Navigate. Composed
+                    // first, so a map overlay / shown track (below) and every open screen still close first.
+                    val touring = vm.recState.collectAsState().value != null
+                    BackHandler(enabled = touring && vm.mode == AppMode.PLAN && !vm.routesOpen && !vm.showSettings &&
+                        vm.shown == null && !vm.mapOverlayOpen && !vm.searchOpen && !vm.setupOpen && vm.timeDetails == null &&
+                        !vm.routeDetailsOpen && vm.recycleBin == null) { vm.continueNavigation() }
                     // Back in Plan closes a map overlay / place card or a shown track. Navigate is left only by the slide switch.
                     BackHandler(enabled = !vm.routesOpen && !vm.showSettings && vm.mode == AppMode.PLAN &&
                         (vm.shown != null || vm.mapOverlayOpen)) {

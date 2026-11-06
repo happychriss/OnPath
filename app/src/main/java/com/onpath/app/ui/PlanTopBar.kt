@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.Warning
@@ -87,9 +89,36 @@ class PlanMenu(
 )
 
 /**
- * Plan mode top area: the search pill (only search) and one round ☰ app-menu button next to it: Save route (with a
- * plan) · My routes · Start recording · Pair with browser · Settings; Phone setup first while a tour needs it. The
- * activity and the route actions (Close plan · Reverse · Round trip) live in the route sheet (PlanPanel); Save is here.
+ * Plan's top band (owner 2026-11-05, band b + "‹ Zur Tour"): a light blue band behind the search pill and ☰, so they do
+ * not float over the map; during a tour one row more on top – "‹ Zur Tour" (back to Navigate) and the mode label; at a
+ * large font the mode label gets its own line above the pill instead of covering its text.
+ */
+object PlanTopBand {
+    /** The band's colour (light plan blue, the plan pills' tint). */
+    val Color = androidx.compose.ui.graphics.Color(0xFFDDE7F4)
+    /** The mode label's own line at a large font: its text line (labelSmall, 16 sp line) + 8 dp. */
+    fun labelRow(fontScale: Float): androidx.compose.ui.unit.Dp = (16f * fontScale + 8f).dp
+
+    /** From this font scale on the mode label would cover the search text: it gets its own line. */
+    fun largeLabel(fontScale: Float): Boolean = fontScale >= 1.3f
+
+    /** Bottom of the top bar below the status bar: one row (also during a tour), + the label line at a large font. */
+    fun bottom(fontScale: Float): androidx.compose.ui.unit.Dp =
+        TOP_BAR_BOTTOM + if (largeLabel(fontScale)) labelRow(fontScale) else 0.dp
+
+    /** Where the mode label starts: over the search pill's left part – right of the round "←" during a tour. */
+    fun labelStart(back: Boolean): androidx.compose.ui.unit.Dp = if (back) 84.dp else 28.dp
+}
+
+/** [PlanTopBand.bottom] in dp for the current font. */
+@Composable
+fun planTopBarDp(): Int = PlanTopBand.bottom(androidx.compose.ui.platform.LocalDensity.current.fontScale).value.toInt()
+
+/**
+ * Plan mode top area on the light blue band: the search pill (only search) and one round ☰ app-menu button next to it:
+ * Save route (with a plan) · My routes · Pair with browser · Settings; Phone setup first while a tour needs it. During a
+ * tour a round light blue "←" left of the pill leads back to the tour (owner 2026-11-05, R1). The activity is a button
+ * on the map, the route actions (✕ Neu planen · Umkehren · Rundtour) live in the plan sheet (PlanPanel).
  */
 @Composable
 fun PlanTopBar(
@@ -97,24 +126,51 @@ fun PlanTopBar(
     menu: PlanMenu,
     modifier: Modifier = Modifier,
     menuInitiallyOpen: Boolean = false,
-    /** During a tour ("Route ändern"): the mode label says so instead of "Planen". */
+    /** During a tour ("Plan ändern"): the mode label says so instead of "Planen". */
     editing: Boolean = false,
     /** The route's offline state ("Ohne Netz ✓ / ⟳ / ⚠" in the label, owner 2026-11-03); null = no route. */
     offline: OfflineReady.State? = null,
     /** A tap on the label: explain the offline state (a line in the plan sheet). */
     onOffline: () -> Unit = {},
+    /**
+     * During a tour (owner 2026-11-05, R1): the round "←" left of the search pill – leave the plan back to Navigate
+     * (Android's Back does the same; TalkBack "Zur Tour"). null = no tour.
+     */
+    onBackToTour: (() -> Unit)? = null,
 ) {
-    Box(modifier) {
+    val back = editing && onBackToTour != null
+    val row = @Composable {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            // also while the route is changed during a tour: search + ☰ as at home (owner 2026-11-01 turned down a green
-            // "Route ändern … Fertig" header)
+            if (back) {
+                androidx.compose.material3.FilledTonalIconButton(onClick = onBackToTour!!, modifier = Modifier.size(48.dp).semantics {
+                    contentDescription = Txt.s(Res.string.plan_back_to_tour) },
+                    colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(containerColor = OnPathColors.PlanTint,
+                        contentColor = OnPathColors.PlanAccent)) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null, modifier = Modifier.size(24.dp))
+                }
+                Spacer(Modifier.width(8.dp))
+            }
+            // also while the plan is changed during a tour: search + ☰ as at home (owner 2026-11-01 turned down a green
+            // "Plan ändern … Fertig" header)
             SearchBarPill(onSearch, Modifier.weight(1f))
             Spacer(Modifier.width(8.dp))
             AppMenuButton(menu, menuInitiallyOpen)
         }
+    }
+    val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
+    // large font: the label in its own line above the pill (on the pill's edge it covered "Orte oder …")
+    if (PlanTopBand.largeLabel(fontScale)) {
+        Column(modifier.height(PlanTopBand.bottom(fontScale))) {
+            PlanModeLabel(editing, Modifier.padding(start = PlanTopBand.labelStart(back), top = 6.dp), offline, onOffline)
+            row()
+        }
+        return
+    }
+    Box(modifier) {
+        row()
         // Plan is blue (owner 2026-11-03, design §3 version 3): a small blue label on the pill's top edge – "PLANEN",
-        // during a tour "ROUTE ÄNDERN"; the word helps in the sun and with colour blindness
-        PlanModeLabel(editing, Modifier.align(Alignment.TopStart).padding(start = 28.dp), offline, onOffline)
+        // during a tour "PLAN ÄNDERN"; the word helps in the sun and with colour blindness
+        PlanModeLabel(editing, Modifier.align(Alignment.TopStart).padding(start = PlanTopBand.labelStart(back)), offline, onOffline)
     }
 }
 
@@ -161,7 +217,7 @@ private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
         onClick = onSearch,
         modifier = modifier.height(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_search_hint); role = Role.Button },
         shape = CircleShape,
-        color = OnPathColors.PlanTint, // Plan is blue (owner 2026-11-03)
+        color = OnPathColors.CardWhite, // the band is blue (owner 2026-11-05, b): the pill white on it
         shadowElevation = 3.dp,
     ) {
         Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -177,7 +233,7 @@ private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
 private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Box {
-        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = OnPathColors.PlanTint,
+        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = OnPathColors.CardWhite,
             shadowElevation = 3.dp, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }) {
             Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Menu, contentDescription = null, tint = OnPathColors.PlanAccent) }
         }
@@ -186,7 +242,7 @@ private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
         val dot = if (menu.onPairBrowser != null && menu.sync.warning != null) OnPathColors.Warn
             else if (menu.unsaved && menu.onSaveRoute != null) OnPathColors.Green else null
         if (dot != null) Box(Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 6.dp)
-            .size(12.dp).background(dot, CircleShape).border(2.dp, OnPathColors.PlanTint, CircleShape))
+            .size(12.dp).background(dot, CircleShape).border(2.dp, OnPathColors.CardWhite, CircleShape))
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, offset = DpOffset(0.dp, 4.dp)) {
             PlanMenuItems(menu, close = { open = false })
         }

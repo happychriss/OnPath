@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Questions to the owner and the owner's word to every session – as GitHub issues in the private repo
-# happychriss/onpath.private (owner 2026-11-01, docs/roles/setup-vorschlag-2026-11-01.md §4b). One place, on the phone.
+# happychriss/onpath.private (owner 2026-11-01, docs/roles/start.md). One place, on the phone.
 #
 #   label `frage`   – a session asks the owner. One question per issue, always the same shape (who, 2–3 lines of
 #                     background, the question, options with the recommendation first, a link). The owner answers

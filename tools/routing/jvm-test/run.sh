@@ -20,6 +20,9 @@
 #      FerryHintTest.kt = routes over a Rhine ferry show the amber ferry hint (needs E5_N50.rd5), pass/fail;
 #      HintInventory.kt = candidate route hints (ford, barriers, access, ...) counted on random routes (RAW_TAP=1);
 #      SafetyTest.kt = trail safety (SAC / via_ferrata / bike limits) metres per class, SAFETY_TAG=label;
+#      SearchProgressTest.kt = the wait bar within one leg: BRouterEngine.searchProgress polled during the 98 km Ruhr leg, pass/fail;
+#      LongBikeRuhrTest.kt = the owner's ~98 km bike plan Hilden → Nordkirchen: whole plan vs only the new legs per edit
+#      (needs E5_N50.rd5, docs/design/long-bike-routes.md); MEMCLASS=<MB> patches BRouter's node-cache limit (default 64);
 #      NO_VIA_CORRECTION=1 compiles the engine with BRouter's correctMisplacedViaPoints off (for comparison);
 #      TrackToPlanJvm.kt = a GPX track as a plan with few route points (TRACK_GPX=<file>, the file outside the repo);
 #      GpxCompare.kt = compare with a reference GPX line (another app's plan, a ride; see its header, needs RAW_TAP=1).
@@ -58,13 +61,20 @@ if [ -n "${NO_VIA_CORRECTION:-}" ]; then
   sed -i 's#kv\["correctMisplacedViaPoints"\] = "1"#kv["correctMisplacedViaPoints"] = "0"#' "$W/BRouterEngine.kt"
   grep -q 'correctMisplacedViaPoints"\] = "0"' "$W/BRouterEngine.kt"
 fi
+if [ -n "${MEMCLASS:-}" ]; then
+  # BRouter's node cache limit in MB (RoutingContext.memoryclass, default 64) – for the long-route measurements
+  sed -i "s#^\(\s*\)rc.keyValues = keyValues(activity, sacLimit)\$#&\n\1rc.memoryclass = $MEMCLASS#" "$W/BRouterEngine.kt"
+  grep -q "rc.memoryclass = $MEMCLASS" "$W/BRouterEngine.kt"
+fi
 rm -rf "$W/kt"; mkdir -p "$W/kt"
 # the app's texts come from the :strings module (Compose resources): a JVM stand-in with the English texts
 python3 "$HERE/strings_stub.py" "$ROOT" "$W/StringsStub.kt" > /dev/null
 EXTRA+=("$W/StringsStub.kt" "$W/StringsStubRes.kt")
+# EXTRA_KT="<file.kt> …" compiles more sources with the test (e.g. compare/PlannerV3.kt for LegsVsWholeTest.kt)
+for f in ${EXTRA_KT:-}; do EXTRA+=("$f"); done
 java -cp "$KCP" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler -no-stdlib -no-reflect -jvm-target 17 \
   -cp "$STD:$W/stub:$LIBS" -d "$W/kt" "$R/RoutingContract.kt" "$R/Rd5Parts.kt" "$R/BRouterWayStats.kt" "$R/WaypointSnap.kt" "$W/BRouterEngine.kt" \
   "$R/StraightLineEngine.kt" "$R/RouteTimeLimit.kt" "$R/SlowPlan.kt" "$R/TrackToPlan.kt" "$R/TurnDetector.kt" "$R/Junctions.kt" "$N/JunctionCues.kt" "$N/CueRule.kt" "$N/JogRule.kt" "$N/SpeedWindow.kt" "$N/VoiceGuide.kt" "$N/VoiceText.kt" "$N/ScreenTurns.kt" "$D/Geo.kt" "$ROOT/app/src/main/java/com/onpath/app/time/PaceModel.kt" "$ROOT/app/src/main/java/com/onpath/app/time/RouteTimes.kt" "$N/NavLine.kt" "$N/StopSkip.kt" "$N/RerouteTargets.kt" "$N/Rerouter.kt" "$N/VisitRadius.kt" \
-  "$R/Planner.kt" "$R/RouteSummary.kt" "$ROOT/app/src/main/java/com/onpath/app/ui/RouteWarnings.kt" "$D/LastActivity.kt" \
+  "$R/Planner.kt" "$R/LegCache.kt" "$R/RouteSummary.kt" "$ROOT/app/src/main/java/com/onpath/app/ui/RouteWarnings.kt" "$D/LastActivity.kt" \
   "$HERE/ProblemsStub.kt" "$HERE/TimeEstimateStub.kt" ${EXTRA[@]+"${EXTRA[@]}"} "$W/$TN.kt"
 java -Xmx${JAVA_XMX:-192m} -cp "$STD:$W/stub:$LIBS:$W/kt" "${TN}Kt"

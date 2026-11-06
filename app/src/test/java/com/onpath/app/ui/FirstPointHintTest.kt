@@ -15,8 +15,8 @@ class FirstPointHintTest {
     @Test fun emptyPlanShowsTheHandAndTheQuestion() {
         // in the summary step the sheet opens at (MINI), not one step lower (owner 2026-11-02: hidden at the start)
         val body = panel.substringAfter("private fun ColumnScope.PlanBody(")
-        val hintAt = body.indexOf("{ FirstPointHint() }")
-        assertTrue("hint before the summary step's end", hintAt in 0 until body.indexOf("if (ui.tour == null) Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })"))
+        val hintAt = body.indexOf("else FirstPointHint()") // during a tour TourGoesOnHint() in its place (owner 2026-11-05)
+        assertTrue("hint before the summary step's end", hintAt in 0 until body.indexOf("    Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })"))
         assertTrue("bigger: bodyLarge", panel.substringAfter("private fun FirstPointHint()").substringBefore("\n}\n").contains("typography.bodyLarge"))
         val hint = panel.substringAfter("private fun FirstPointHint()").substringBefore("\n}\n")
         assertTrue(hint, hint.contains("Icons.Filled.TouchApp") && hint.contains("FontWeight.Bold")

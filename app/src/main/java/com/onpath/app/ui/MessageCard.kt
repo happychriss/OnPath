@@ -131,8 +131,8 @@ object MessagePlacement {
     val planTopRowDp: Int get() = TOP_BAR_BOTTOM.value.toInt()
 
     /** The box's top below the status bar. [navigateColumnDp]: Navigate's measured top column (turn + status cards). */
-    fun topDp(screen: MessageScreen, navigateColumnDp: Int = 0): Int = GAP_DP + when (screen) {
-        MessageScreen.PLAN -> planTopRowDp
+    fun topDp(screen: MessageScreen, navigateColumnDp: Int = 0, planTopDp: Int = planTopRowDp): Int = GAP_DP + when (screen) {
+        MessageScreen.PLAN -> planTopDp
         MessageScreen.NAVIGATE -> navigateColumnDp.coerceAtLeast(0)
         MessageScreen.ROUTES -> ROUTES_HEADER_DP
         MessageScreen.SETTINGS -> SETTINGS_HEADER_DP

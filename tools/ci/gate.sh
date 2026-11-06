@@ -9,8 +9,8 @@
 # Gradle at all. A release (only the version line + notes) runs nothing when unit.yml is green on the base on GitHub
 # (release.yml tests again before it publishes). The full suite + screenshots still run in CI after every push (unit.yml).
 #
-# Gradle runs under the machine-wide lock (~/onpath-cells-work/gradle.lock, donald: one build at a time) with
-# --max-workers=2, nice + ionice. The daemon stays warm and ends itself after 10 idle minutes (gradle.properties) –
+# Gradle runs in a machine-wide slot (tools/dev/gradle_slot.sh: two builds side by side, one while the emulator runs)
+# with --max-workers=2, nice + ionice. The daemon stays warm and ends itself after 10 idle minutes (gradle.properties) –
 # no `./gradlew --stop` afterwards.
 #
 # Usage: tools/ci/gate.sh [--full] [--base REF] [--no-ci-skip] [--dry-run] [-- extra Gradle args/tasks]
@@ -42,9 +42,11 @@ for a in "${EXTRA[@]}"; do case "$a" in -*) ;; *) EXTRA_TASKS=1 ;; esac; done
 
 ROOT=$(git rev-parse --show-toplevel) || exit 2
 cd "$ROOT" || exit 2
-# Green → a stamp with this HEAD in .git/onpath-gate-ok (per work tree); the pre-push hook (tools/hooks/pre-bash.sh)
-# lets `git push` through only when the stamp matches HEAD – so "gate before push" is enforced, not asked for.
-trap '[ $? = 0 ] && [ "$DRY" = 0 ] && git rev-parse HEAD > "$(git rev-parse --git-path onpath-gate-ok)" 2>/dev/null' EXIT
+# Green → a stamp in .git/onpath-gate-ok (per work tree): HEAD + the patch-id of the own change against origin/main.
+# The pre-push hook (tools/hooks/pre-bash.sh) lets `git push` through when HEAD or the patch-id matches – so a rebase
+# onto a newer main (another agent pushed) needs no second run; the combination is checked by unit.yml after the push.
+own_patch_id() { local b; b=$(git merge-base origin/main HEAD 2>/dev/null) || return 0; git diff "$b" HEAD | git patch-id --stable 2>/dev/null | cut -d' ' -f1; }
+trap '[ $? = 0 ] && [ "$DRY" = 0 ] && printf "%s %s\n" "$(git rev-parse HEAD)" "$(own_patch_id)" > "$(git rev-parse --git-path onpath-gate-ok)" 2>/dev/null' EXIT
 BASE_SHA=$(git merge-base "$BASE" HEAD) || { echo "gate: no merge base with $BASE" >&2; exit 2; }
 T0=$(date +%s)
 
@@ -135,26 +137,21 @@ WRAP=()
 command -v nice >/dev/null && WRAP+=(nice -n 19)
 command -v ionice >/dev/null && WRAP+=(ionice -c3)
 CMD=("${WRAP[@]}" ./gradlew --max-workers=2 "${TASKS[@]}")
-LOCK=${ONPATH_GRADLE_LOCK:-$HOME/onpath-cells-work/gradle.lock}
-[ -d "$(dirname "$LOCK")" ] && command -v flock >/dev/null || LOCK=""
+# Gradle slots (tools/dev/gradle_slot.sh): two builds side by side per computer, one while the emulator runs
+WORK=${WORK:-$HOME/onpath-cells-work}
+[ -n "${ONPATH_GRADLE_LOCK:-}" ] && WORK=$(dirname "$ONPATH_GRADLE_LOCK")
+# shellcheck source=../dev/gradle_slot.sh
+source tools/dev/gradle_slot.sh
 
 echo "gate: screenshots $([ "$paparazzi" = 1 ] && echo "checked (verifyPaparazziDebug)" || echo "not affected – skipped")"
-echo "gate: running ${CMD[*]}${LOCK:+ (under the lock $LOCK)}"
+echo "gate: running ${CMD[*]} (in a Gradle slot of $WORK, $(_gradle_slot_count) free at most)"
 [ "$DRY" = 1 ] && exit $rc
 
-# One Gradle build at a time on the machine: the lock is held on fd 9 while Gradle runs
-WAIT=0
-if [ -n "$LOCK" ]; then
-  exec 9>>"$LOCK"
-  if ! flock -n 9; then
-    echo "gate: waiting for the Gradle lock (another build runs)…"
-    w0=$(date +%s); flock 9; WAIT=$(( $(date +%s) - w0 ))
-  fi
-fi
+gradle_slot_take; WAIT=$GRADLE_SLOT_WAIT
 G0=$(date +%s)
 "${CMD[@]}"; grc=$?
 G=$(( $(date +%s) - G0 ))
-[ -n "$LOCK" ] && exec 9>&-
+gradle_slot_release
 [ "$grc" = 0 ] || rc=$grc
 n=$(cat app/build/test-results/testDebugUnitTest/*.xml 2>/dev/null | grep -o '<testsuite [^>]*tests="[0-9]*"' | grep -o 'tests="[0-9]*"' | tr -dc '0-9\n' | awk '{s+=$1} END {print s+0}')
 echo "gate: $([ "$rc" = 0 ] && echo PASSED || echo FAILED) · $mode · $n app tests · screenshots $([ "$paparazzi" = 1 ] && echo checked || echo skipped) · Gradle ${G} s, lock wait ${WAIT} s, total $(( $(date +%s) - T0 )) s"
