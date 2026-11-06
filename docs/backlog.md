@@ -82,6 +82,7 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
+- [laptop] Web planner: Meine Pläne with length + ↑/↓, visible „Neuer Plan“ (owner 2026-11-06, points 1+2) – since 2026-11-06
 - [donald] Pixel review 2026-11-06 follow-ups: the bugs below, one by one; owner decisions F1 / switch text / second "Tour gespeichert" box – since 2026-11-06
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 
