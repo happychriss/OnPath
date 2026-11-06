@@ -172,8 +172,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
     var mode by mutableStateOf(AppMode.PLAN)
         private set
-    /** Navigate → ⚙: the navigation settings sheet is open. */
-    var navSettingsOpen by mutableStateOf(false)
     /**
      * Zoom the map takes when Navigate starts or locate is tapped in Navigate ([AppMode.navStartZoom],
      * [AppMode.locateZoom]); null once taken (then the user's zoom stays).
@@ -206,7 +204,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var settingsShown by mutableStateOf(false)
     var showSettings: Boolean
         get() = settingsShown
-        set(v) { if (!v) settingsNote = null; settingsShown = v } // the line lasts until Settings is left
+        set(v) { if (!v) { settingsNote = null; settingsOnTheWay = false }; settingsShown = v } // the line lasts until Settings is left
+    /**
+     * Settings opened from Navigate's ⚙ (owner 2026-11-07): the on-the-way list (Navigation page + the topics for the
+     * way + "Alle Einstellungen"); the tour and the mode are not touched. False after "Alle Einstellungen" or closing.
+     */
+    var settingsOnTheWay by mutableStateOf(false)
+        private set
     /** Open topic of Settings (list of topics → pages); null = the list. */
     private var page by mutableStateOf<SettingsPage?>(null)
     var settingsPage: SettingsPage?
@@ -268,6 +272,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Opens Settings, at [page] if given (map credits → About). */
     fun openSettings(page: SettingsPage? = null) { settingsPage = page; showSettings = true }
+
+    /** Navigate → ⚙ (owner 2026-11-07): Settings in the on-the-way list; back returns to Navigate, the tour runs on. */
+    fun openSettingsOnTheWay() {
+        Problems.trace("ui", "Navigate ⚙: settings on the way")
+        settingsPage = null; showSettings = true; settingsOnTheWay = true
+    }
+
+    /** On-the-way list → "Alle Einstellungen": the whole topic list (back from it closes Settings). */
+    fun showAllSettings() { settingsOnTheWay = false; settingsPage = null }
 
     /** Back in Settings: a topic page returns to the list, the list closes Settings. */
     fun settingsBack() { if (settingsPage != null) settingsPage = null else showSettings = false }

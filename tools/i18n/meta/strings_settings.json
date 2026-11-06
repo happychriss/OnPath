@@ -85,6 +85,20 @@
     "confidence": "sicher",
     "max": 30
   },
+  "settings_group_on_the_way": {
+    "area": "Settings on the way (Navigate ⚙)",
+    "context": "Heading under the Navigation settings, above Map, POIs, Pace, Offline maps",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "settings_all": {
+    "area": "Settings on the way (Navigate ⚙)",
+    "context": "Last row: opens the whole list of settings topics",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
   "settings_sum_pace": {
     "area": "Settings list",
     "context": "Summary under \"Your pace\". %1$s = pace level name (e.g. Average)",

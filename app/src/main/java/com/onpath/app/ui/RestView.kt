@@ -132,7 +132,7 @@ object ScreenTouch {
  * navigation states (off route, arrival question, GPS) are added by NavigateMode.
  */
 internal fun AppViewModel.restBlocked(): Boolean = arrivalAsk || endAsk != null || routeBackAsk || longRouteAsk != null ||
-    navSettingsOpen || selectedPoi != null || activityCheck != null || downloadDetailsOpen || errorCard != null ||
+    selectedPoi != null || activityCheck != null || downloadDetailsOpen || errorCard != null ||
     askUpdateDuringTour || unfinished != null || finishedTour != null || setupOpen || showSettings || routesOpen ||
     timeDetails != null
 

@@ -221,6 +221,8 @@ class MainActivity : ComponentActivity() {
                         SettingsScreen(
                             page = vm.settingsPage,
                             onPage = { vm.settingsPage = it },
+                            onTheWay = vm.settingsOnTheWay,
+                            onAllSettings = vm::showAllSettings,
                             settings = vm.settings,
                             onChange = vm::updateSettings,
                             activity = vm.activity,

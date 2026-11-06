@@ -10,6 +10,8 @@ import com.onpath.strings.nav_end_tour_title
 import com.onpath.strings.nav_hold_hint
 import com.onpath.strings.nav_leave_go
 import com.onpath.strings.nav_leave_stay
+import com.onpath.strings.nav_settings_cd
+import com.onpath.strings.settings_group_offroute
 import com.onpath.strings.nav_leave_title
 import com.onpath.strings.plan_go_here
 import com.onpath.strings.plan_new_during_tour
@@ -524,6 +526,36 @@ class CoreFieldE2ETest : E2EBase() {
      * Owner 2026-11-06: the tour's ONE bottom bar – with the lock off (with the lock on the same, held): "Pause |
      * Planen"; ending only out of a pause ("Weiter · Beenden · ✎"); "Beenden" asks first (the end sheet).
      */
+    /**
+     * Owner 2026-11-07: Navigate's ⚙ opens the settings in the new look "on the way" – the Navigation page first – and
+     * Android's back returns to Navigate with the tour still recording (no "App verlassen?", no switch to Plan).
+     */
+    @Test fun navigateGearOpensSettingsOnTheWayAndBackReturns() {
+        var before: com.onpath.app.data.AppSettings? = null
+        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = 0)) }
+        try {
+            startPlanWithTwoPoints()
+            Thread.sleep(if (realRouting) 3_000 else 1_000)
+            scenario.onActivity { vm(it).startNavigation(force = true) }
+            waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+            val gear = findFresh(By.desc(Txt.s(Res.string.nav_settings_cd)), 10_000)
+            assertNotNull("⚙ in Navigate's map controls", gear)
+            gear!!.click()
+            assertNotNull("the Navigation page's first group", findFresh(By.text(Txt.s(Res.string.settings_group_offroute).uppercase()), 10_000))
+            var onTheWay = false
+            scenario.onActivity { onTheWay = vm(it).showSettings && vm(it).settingsOnTheWay }
+            assertTrue("settings on the way", onTheWay)
+            assertTrue("the tour records on", recording())
+            device.pressBack()
+            waitUntil("settings closed", 5_000) { var s = true; scenario.onActivity { s = vm(it).showSettings }; !s }
+            assertTrue("back in Navigate", mode() == AppMode.NAVIGATE)
+            assertTrue("no 'App verlassen?' on that back", goneFresh(By.text(Txt.s(Res.string.nav_leave_title)), 2_000))
+            assertTrue("still recording", recording())
+        } finally {
+            scenario.onActivity { vm(it).updateSettings(before!!) }
+        }
+    }
+
     @Test fun lockOffPauseThenEndOpensTheEndSheet() {
         var before: com.onpath.app.data.AppSettings? = null
         scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = 0)) }

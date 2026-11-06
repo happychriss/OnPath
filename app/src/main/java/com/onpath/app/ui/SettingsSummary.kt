@@ -154,6 +154,14 @@ object SettingsSummary {
             .filter { it.second.isNotEmpty() }
     }
 
+    /**
+     * Navigate → ⚙ "on the way" (owner 2026-11-07): the Navigation page first, then only the topics that make sense
+     * while riding, in this order – the rest behind "Alle Einstellungen". [available] = the topics this phone shows.
+     */
+    val ON_THE_WAY = listOf(SettingsPage.MAP, SettingsPage.POI, SettingsPage.PACE, SettingsPage.OFFLINE_MAPS)
+
+    fun onTheWay(available: List<SettingsPage>): List<SettingsPage> = ON_THE_WAY.filter { it in available }
+
     val privacy: Summary get() = Summary(Txt.s(Res.string.settings_sum_privacy))
 
     val about: Summary get() = Summary(Txt.s(Res.string.settings_sum_about))

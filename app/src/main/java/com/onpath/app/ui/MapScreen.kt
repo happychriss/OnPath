@@ -115,7 +115,7 @@ fun MapScreen(
                     gps = gps, following = vm.followMe, onLocate = onLocate,
                     onUndo = if (MapControlsEnabled.undo(ctl)) vm::undoStep else null,
                     onRedo = if (MapControlsEnabled.redo(ctl)) vm::redoStep else null,
-                    onSettings = if (mode == AppMode.NAVIGATE) { { vm.navSettingsOpen = true } } else null,
+                    onSettings = if (mode == AppMode.NAVIGATE) vm::openSettingsOnTheWay else null,
                     plan = mode == AppMode.PLAN, // Plan is blue (owner 2026-11-03), Navigate unchanged
                 )
             }
@@ -251,19 +251,7 @@ fun MapScreen(
     if (vm.arrivalAsk && rec != null && vm.mode == AppMode.NAVIGATE) ArrivalDialog(onSave = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
         onKeepGoing = { vm.arrivalAsk = false },
         activity = vm.activity, stats = rec?.let { EndStats(it.distanceM, it.elapsedS, it.ascentM) })
-    if (vm.navSettingsOpen) {
-        // Navigate → ⚙: the Navigation settings page on the way (owner); everything else stays in Plan → Settings
-        androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.navSettingsOpen = false }) {
-            androidx.compose.foundation.lazy.LazyColumn(Modifier.padding(bottom = 24.dp)) {
-                item {
-                    NavigationSection(vm.settings, vm::updateSettings,
-                        onPhoneSetup = { vm.navSettingsOpen = false; vm.openSetup(com.onpath.app.setup.Purpose.SETTINGS) },
-                        onTestVibration = { vm.navSettingsOpen = false; vm.openSetupStep(com.onpath.app.setup.CheckId.VIBRATION) },
-                        onTestVoice = { vm.navSettingsOpen = false; vm.openSetupStep(com.onpath.app.setup.CheckId.VOICE) })
-                }
-            }
-        }
-    }
+    // Navigate → ⚙ opens Settings "on the way" (owner 2026-11-07) – MainActivity draws it like Plan's Settings
     vm.selectedPoi?.let { poi ->
         // Read-only details (Navigate, or a shown track): no "add to route" here.
         androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.selectedPoi = null }) {

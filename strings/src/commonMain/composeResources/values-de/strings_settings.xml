@@ -12,6 +12,8 @@
     <string name="settings_page_about">Über OnPath</string>
     <string name="settings_group_yours">Deine Einstellungen</string>
     <string name="settings_group_app">App</string>
+    <string name="settings_group_on_the_way">Auch unterwegs</string>
+    <string name="settings_all">Alle Einstellungen</string>
     <string name="settings_sum_pace">%1$s · lernt bei jeder Tour</string>
     <string name="settings_sum_poi_all_shown">Alle angezeigt</string>
     <string name="settings_sum_poi_all_hidden">Alle ausgeblendet</string>
