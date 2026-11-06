@@ -20,11 +20,20 @@ class SlideThresholdTest {
         assertEquals(1f, SlideThreshold.fraction(5000f, 1000f))
     }
 
-    /** Owner 2026-11-05 (Navigate C): one short word, "» Entsperren" – no second line, nothing to drop. */
-    @Test fun oneShortLine() {
+    /**
+     * Owner 2026-11-06 (flow map N2): under "» Entsperren" a small line says what is behind it – "Pause · Beenden · Plan"
+     * with a recording, "Plan" without – only when it fits (never cut).
+     */
+    @Test fun smallLineSaysWhatIsBehindAndOnlyWhenItFits() {
         val slider = java.io.File("src/main/java/com/onpath/app/ui/SlideToUnlock.kt").readText()
-        assertFalse(slider.contains("object SlideLabel"))
-        assertTrue(slider.contains("Text(mainText, color = Color.White, style = mainStyle, maxLines = 1, softWrap = false)"))
+        assertTrue(slider.contains("if (recording) Res.string.nav_slide_unlock_sub else Res.string.nav_slide_unlock_sub_plan"))
+        assertTrue(slider.contains("if (showSub) Text(sub"))
+        val de = java.io.File("../strings/src/commonMain/composeResources/values-de/strings_navigate.xml").readText()
+        assertTrue(de.contains("<string name=\"nav_slide_unlock_sub\">Pause · Beenden · Plan</string>"))
+        assertTrue(de.contains("<string name=\"nav_slide_unlock_sub_plan\">Plan</string>"))
+        assertTrue(SlideLabel.subFits(100, 120, 40, 30, 80))
+        assertFalse("too wide", SlideLabel.subFits(130, 120, 40, 30, 80))
+        assertFalse("too high (large font)", SlideLabel.subFits(100, 120, 50, 40, 80))
     }
 
     @Test fun noTrackNeverCompletes() {

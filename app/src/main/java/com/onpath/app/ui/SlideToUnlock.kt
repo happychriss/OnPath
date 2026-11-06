@@ -57,6 +57,15 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
+/**
+ * The slider's small second line (owner 2026-11-06, flow map N2: "Pause and Tour beenden are hidden behind Entsperren" –
+ * the words were only in TalkBack): shown only when it fits beside the thumb and both lines fit into the track, never cut.
+ */
+object SlideLabel {
+    fun subFits(subWidth: Int, availWidth: Int, mainHeight: Int, subHeight: Int, availHeight: Int): Boolean =
+        subWidth <= availWidth && mainHeight + subHeight <= availHeight
+}
+
 /** Threshold logic of the slide switch. Offsets are thumb travel in px. */
 object SlideThreshold {
     /** The thumb must travel at least this share of the track before release counts. */
@@ -95,6 +104,10 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
     val density = LocalDensity.current
     val mainStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
     val mainText = "»  $label"
+    // what is behind the slider, in plain words: with a recording Pause · Beenden · Plan, without one only Plan
+    val sub = str(if (recording) Res.string.nav_slide_unlock_sub else Res.string.nav_slide_unlock_sub_plan)
+    val subStyle = MaterialTheme.typography.bodyMedium
+    val measurer = rememberTextMeasurer()
     var tapped by remember { mutableIntStateOf(0) }
     BoxWithConstraints(
         modifier.fillMaxWidth().height(TRACK_HEIGHT).clip(CircleShape).background(MaterialTheme.colorScheme.primary) // the turn card's green (owner 2026-11-01)
@@ -117,6 +130,13 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
             }
         }
 
+        // the small line only when it fits (measured at the phone's font size): never cut, never an ellipsis
+        val showSub = with(density) {
+            val m = measurer.measure(mainText, mainStyle, maxLines = 1, softWrap = false)
+            val s = measurer.measure(sub, subStyle, maxLines = 1, softWrap = false)
+            SlideLabel.subFits(s.size.width, (maxWidth - THUMB - TEXT_GAP * 2).roundToPx(), m.size.height, s.size.height,
+                (TRACK_HEIGHT - PAD * 2).roundToPx())
+        }
         // Filled part behind the thumb.
         Box(Modifier.fillMaxHeight().width(with(density) { offset.toDp() } + THUMB + PAD * 2)
             .clip(CircleShape).background(Color.White.copy(alpha = 0.22f)))
@@ -125,6 +145,7 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(mainText, color = Color.White, style = mainStyle, maxLines = 1, softWrap = false)
+            if (showSub) Text(sub, color = OnPathColors.OnGreenMuted, style = subStyle, maxLines = 1, softWrap = false)
         }
         Surface(
             shape = CircleShape, color = Color.White, shadowElevation = 3.dp,

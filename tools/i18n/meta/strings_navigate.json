@@ -531,7 +531,13 @@
     "priority": 1,
     "confidence": "sicher"
   },
-  "nav_notif_paused_in_plan": {"area": "Notification", "context": "Recording notification while the app is in Plan during a tour that follows a route: the guidance is quiet, the recording goes on; a tap opens the app", "priority": 1, "confidence": "sicher", "max": 60},
+  "nav_notif_paused_in_plan": {
+    "area": "Notification",
+    "context": "Recording notification while the app is in Plan during a tour that follows a route: the guidance is quiet, the recording goes on; a tap opens the app",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 60
+  },
   "nav_notif_following": {
     "area": "Notification",
     "context": "Recording notification text: %1$s = status ('Recording'), %2$s = name of the followed route",
@@ -1260,6 +1266,20 @@
     "context": "TalkBack name of the slider without a recording (only Change plan behind it)",
     "priority": 2,
     "confidence": "sicher"
+  },
+  "nav_slide_unlock_sub": {
+    "area": "Navigate",
+    "context": "Navigate's slider, small second line under 'Entsperren' (owner 2026-11-06, flow map N2): what the slider unlocks while a tour records; dropped when it does not fit",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "nav_slide_unlock_sub_plan": {
+    "area": "Navigate",
+    "context": "Navigate's slider without a recording, small second line under 'Entsperren': only the plan is behind it",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 16
   },
   "nav_relock": {
     "area": "Navigate",
