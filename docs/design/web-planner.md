@@ -987,3 +987,24 @@ zusammen"; chosen layout A. The header is now: brand · **plan bar** · (hint �
   plan arrives; second visit → Open → search → open → change → Save sends; Save ▾ → Save as), sheet-smoke (bar order,
   labels, widths, Plan ▾), parity-smoke (Plan ▾ entries), import-smoke (Open → Import GPX), lang-smoke (German bar),
   ui-shots (`*-myroutes-search.png`, `desktop-savemenu.png`, `phone-menu.png`).
+
+## 22. The app's colour rule, paper and „Zuletzt“ (laptop, 2026-11-07 – parity with main's 2026-11-06 app)
+- **Colours** (`style.css` `:root`, the app's `Theme.kt` / `ActionButtons`, onpath.private#36): walnut `#4A3F37` for every
+  button without a meaning of its own (the old `--green*` tokens point to it), plan blue `#2E6A9E` for plan actions (Save,
+  the place card's Add / As start / As destination, Plan anyway, the wait for a plan, „⤢ Großes Profil“, the plan row's
+  switches, spinners while a route is calculated – `Message.tone: 'edit'` = the app's `ButtonTone.EDIT`), the navigation
+  green only for the brand's word (the web never navigates). Surfaces are paper `#FAFAF6`; white (`--card`) only for what
+  floats over the map: search pill, results, place / pin card, message boxes, the map strip, the fly buttons. A lifted
+  point row is `#EAE9E1` (the app's surfaceContainerHighest).
+- **„Zuletzt“** (`recent.ts`, the app's drafts – `RouteRules.kt Drafts`, `AppViewModel.keepAsDraft`): no „Plan speichern?“
+  any more. A plan with ≥ 2 points that leaves the map not saved as it is (+ Neu, another plan / link / GPX opened, „Plan
+  aus dem Track“) is kept under Meine Touren → ZULETZT, named like the Save proposal; same points twice = one entry; the
+  newest 25; this browser only (the app's drafts are not synced either). ZULETZT shows the newest 3 + „Alle N anzeigen ›“,
+  a pale route sign, Speichern (blue) · Löschen (red, no question) on the card; GESPEICHERT below. A plan opened from
+  Zuletzt still belongs to its entry; saved, it leaves Zuletzt and shows „✓ Gerade gespeichert“.
+- **Delete** in Meine Touren: in a phone's folder at once (the phone's recycle bin is the net – the app asks nothing);
+  without a phone it still asks, since this browser has no recycle bin.
+- Phone-only in the same app round (nothing to do here): plan auto-saved at „Los geht's“ (`PlanAutoSave`), the end
+  sheet without the plan switch, „Weiter“ wording, the tour's T1–T5 sheet, „Ohne Plan aufzeichnen“, Plan in front after
+  the app start (the web fits a restored plan anyway), the map column always 6 high (the web's toolbar was already
+  greyed-not-hidden).

@@ -113,7 +113,6 @@
     <string name="web_plans_none">Noch keine gespeicherten Pläne.</string>
     <string name="web_plans_open">Diesen Plan öffnen</string>
     <string name="web_plans_new_name">Neuer Name des Plans</string>
-    <string name="web_delete_q">„%1$s“ löschen? Auf dem verbundenen Handy kommt sie 30 Tage in den Papierkorb – dort wiederhergestellt, ist sie auch hier wieder da.</string>
     <string name="web_keep">Behalten</string>
 
     <string name="web_pair_preparing">Wird vorbereitet…</string>

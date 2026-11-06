@@ -127,7 +127,6 @@
     <string name="web_plans_none">No saved plans yet.</string>
     <string name="web_plans_open">Open this plan</string>
     <string name="web_plans_new_name">New name of the plan</string>
-    <string name="web_delete_q">Delete “%1$s”? On the paired phone it goes to the recycle bin for 30 days – restore it there and it comes back here too.</string>
     <string name="web_keep">Keep</string>
     <string name="web_delete_q_local">Delete “%1$s” from this browser?</string>
 
