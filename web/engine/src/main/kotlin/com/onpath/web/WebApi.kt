@@ -692,6 +692,7 @@ external fun planProgress(text: String)
 @JSExport fun syncDevices(ledger: String, device: String): String = WebSync.devices(ledger, device)
 @JSExport fun syncPhoneGone(ledger: String, phone: String): Boolean = WebSync.phoneGone(ledger, phone)
 @JSExport fun syncState(ledger: String): String = WebSync.state(ledger)
+@JSExport fun syncLimits(): String = WebSync.limits()
 @JSExport fun syncSave(ledger: String, id: String, plan: String, title: String, now: Double, device: String,
                        routing: String, routingData: String): String =
     WebSync.save(ledger, id, plan, title, now, device, routing, routingData)

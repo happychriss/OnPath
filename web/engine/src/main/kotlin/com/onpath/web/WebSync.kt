@@ -6,6 +6,7 @@ import com.onpath.app.sync.SyncItem
 import com.onpath.app.sync.SyncKeys
 import com.onpath.app.sync.SyncJoin
 import com.onpath.app.sync.SyncLedger
+import com.onpath.app.sync.SyncLimits
 import com.onpath.app.sync.SyncTrack
 import com.onpath.app.sync.TrackCode
 import com.onpath.app.sync.TrackMark
@@ -66,6 +67,9 @@ object WebSync {
     fun devices(ledger: String, device: String): String = SyncLedger.read(ledger).devices(device).joinToString(",", "[", "]") {
         "{\"name\":" + str(it.name ?: "") + ",\"device\":" + str(it.device) + ",\"updatedAt\":" + it.updatedAt + "}"
     }
+
+    /** Tours per phone (the shared [SyncLimits]): {"max":250,"warn":200}. */
+    fun limits(): String = "{\"max\":" + SyncLimits.MAX_TOURS + ",\"warn\":" + SyncLimits.WARN_TOURS + "}"
 
     /**
      * {pending, unsaved, since, unreadable}: [pending] items wait for upload, [unsaved] of them are the user's (plans,

@@ -306,6 +306,7 @@ export function phoneDialog(sync: PlanSync, page: string) {
     <h2>${esc(t('web_phone_title'))}</h2>
     <div id="phoneState" class="phonestate">${icon('phone', 28)}<i class="pdot" aria-hidden="true"></i>
       <div><b id="phoneHead"></b><p id="phoneWhy" class="muted small"></p></div></div>
+    <div id="phoneFill" class="phonefill" hidden><span class="filltext small"></span><span class="fillbar" aria-hidden="true"><i></i></span></div>
     <div id="phoneStatus" class="status" role="status"></div>
     <div class="row wrap" id="phoneRow"><button id="pairPhone" class="primary" hidden>${esc(t('web_pair_phone'))}</button><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button></div>
     <button id="howToggle" class="textbtn quiet howtoggle" aria-expanded="false" aria-controls="howBox">${esc(t('web_phone_how_link'))}</button>
@@ -328,6 +329,15 @@ export function phoneDialog(sync: PlanSync, page: string) {
     $('phoneStatus').classList.toggle('error', s.kind === 'error' && !!s.message);
     $('phoneStatus').classList.toggle('warning', s.kind === 'warning' && !!s.message);
     $('phoneStatus').classList.toggle('muted', !s.message || s.kind === 'info');
+    // 250 tours per phone (SyncLimits, owner 2026-11-07): „N von 250 Touren“, a thin bar, amber from 200
+    $('phoneFill').hidden = !s.paired;
+    if (s.paired) {
+      const fill = $('phoneFill');
+      fill.querySelector('.filltext')!.textContent = t('web_phone_fill', s.tours, s.maxTours);
+      fill.querySelector<HTMLElement>('.fillbar i')!.style.width = `${Math.min(100, (100 * s.tours) / s.maxTours)}%`;
+      fill.dataset.kind = s.tours >= s.maxTours ? 'full' : s.tours >= s.warnTours ? 'warn' : 'ok';
+      fill.title = s.use ? t('web_phone_fill_use', s.use.items, s.use.maxItems) : '';
+    }
     $('syncNow').hidden = !s.paired;
     $('unpair').hidden = !s.paired;
     $('pairPhone').hidden = s.paired;
@@ -467,6 +477,17 @@ const NAME_WAIT_MS = 5_000;
  * "Route 31 Oct, 10:12") and a new route, the open one from then on. Cancel saves nothing. [then] runs after a save
  * (paired: everything waiting goes to the phone).
  */
+/**
+ * Room for one more NEW tour in [folder] (250 per phone, the shared SyncLimits – owner 2026-11-07)? If not: Save turns
+ * amber and the line says why („250 Touren auf dem Handy – lösche erst welche.“), before any name is asked.
+ */
+async function roomFor(sync: PlanSync, host: PlanHost, folder: string): Promise<boolean> {
+  if (await sync.hasRoom(folder)) return true;
+  sync.refuseTour();
+  host.note(t('web_sync_tour_cap', sync.status.maxTours));
+  return false;
+}
+
 export async function saveRoute(sync: PlanSync, host: PlanHost, then?: () => void) {
   if (saving) return; // one click, one route (owner 2026-10-28: saving made duplicates)
   saving = true;
@@ -479,6 +500,7 @@ export async function saveRoute(sync: PlanSync, host: PlanHost, then?: () => voi
     // sync/SaveRule (review sync H3, shared): the stored route changed meanwhile (the phone's edit came in) – an
     // overwrite would lose that edit, so the work is saved as a copy; the other version stays
     if (existing && (await host.engineCall('saveKeepsOtherEdit', host.openedCode() ?? '', existing.plan)) === 'true') {
+      if (!(await roomFor(sync, host, folder))) return;
       const first = await copyName(host, titleOf(existing), plans.map((p) => titleOf(p)));
       const input = await nameDialog(false, first);
       if (input == null) return;
@@ -496,6 +518,7 @@ export async function saveRoute(sync: PlanSync, host: PlanHost, then?: () => voi
       askPersist();
       host.saved({ ...existing, title, plan: cur.code, updatedAt: Date.now(), mine: true }, folder);
     } else { // NEW_ROUTE
+      if (!(await roomFor(sync, host, sync.open))) return;
       const dated = datedName(), taken = plans.map((p) => titleOf(p)), link = host.linkTitle();
       const first = await newRouteName(host, link, dated, taken);
       // the app's proposeName: the link's title while unchanged, else the place proposal (waited for 5 s at most)
@@ -525,6 +548,7 @@ export async function saveRouteAs(sync: PlanSync, host: PlanHost, then?: () => v
     const cur = await host.current();
     if (!cur) return;
     const folder = sync.open;
+    if (!(await roomFor(sync, host, folder))) return;
     const plans = (await sync.list(folder)).filter((p) => p.kind === 'plan');
     const taken = plans.map((p) => titleOf(p)), open = host.openId() ? plans.find((p) => p.id === host.openId()) : undefined;
     const first = open ? await copyName(host, titleOf(open), taken) : await newRouteName(host, host.linkTitle(), datedName(), taken);
@@ -548,6 +572,7 @@ async function copyRoute(sync: PlanSync, host: PlanHost, p: SavedPlan, folder: s
   if (saving || p.kind !== 'plan') return false;
   saving = true;
   try {
+    if (!(await roomFor(sync, host, folder))) return false;
     const taken = (await sync.list(folder)).filter((x) => x.kind === 'plan').map((x) => titleOf(x));
     const first = await copyName(host, titleOf(p), taken);
     const input = await nameDialog(true, first);

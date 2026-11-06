@@ -356,7 +356,7 @@ check((await Promise.all(['#undo', '#redo', '#eye', '#compass', '#locate', '#map
 await page.click('#menuBtn');
 const pm = await page.$$eval('#mainMenu .pb', (bs) => bs.filter((b) => b.getClientRects().length > 0).map((b) => b.id || 'link'));
 check(JSON.stringify(pm) === JSON.stringify(['newPlan', 'menuPlans', 'menuImportGpx', 'menuSavePlan', 'menuSaveAs', 'menuExportGpx', 'syncBadge', 'menuPhone', 'menuAboutP', 'link']),
-  'phone: Plan ▾ lists New · Open · Import GPX · Save · Save as · Export GPX · To phone · Phone connection · Help · the app ' + JSON.stringify(pm));
+  'phone: Plan ▾ lists New · My tours · Import GPX · Save · Save as · Export GPX · To phone · Phone connection · Help · the app ' + JSON.stringify(pm));
 await page.keyboard.press('Escape');
 check(await page.isHidden('#points'), 'phone: Points folded away');
 await page.click('#handle');

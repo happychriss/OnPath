@@ -913,11 +913,16 @@ Code: `web/app/src/terrainview.ts` (`RouteProfile`, `Terrain3D`), `profile.ts` (
   the big one; a dragged stretch → numbers, shade, map line, a click clears; big profile, steepness line, pointer on the route →
   cursor; close; 3D on: terrain + tilt + note, a click adds nothing; off: flat, max tilt 0). Pictures:
   `web/app/test/terrain-shots.mjs <segments> <map store> <out> [de|en]` (Waalweg Meran → Vellau).
-- **D – flyover (owner 2026-11-06).** In 3D a bar under the 3D note: „▶ Abfliegen“ (greyed without a route); while
-  flying ❚❚ Pause / ▶ Weiter, ■ Stopp, 1× / 2× (`web/app/src/flyover.ts`). Time-based along the route's distance
-  (~40 s per 10 km at 1×, 20 s – 3 min), centre a little ahead, direction from a bit behind to 300–800 m ahead, eased
-  (~1 s) – no shaking in bends; pitch 55°, zoom 14.2, climbing (zoom out, ≥ 11.5) when the ground behind the centre comes
-  within 250 m of the camera. The profiles' cursor moves along. Any other camera move (drag, wheel, compass, fit) pauses;
+- **D – flyover (owner 2026-11-06).** In 3D „▶ Abfliegen“ right beside the toolbar's **3D** (greyed without a route);
+  while flying ❚❚ Pause / ▶ Weiter, ■ Stopp, 1× / 2× in the same place (owner 2026-11-07: the controls where the fly
+  button is – they were on the right before; below 961 px Pause / Stop show their sign only, the title keeps the word;
+  at phone width the group floats just under the top bar) (`web/app/src/flyover.ts`). Time-based along the route's
+  distance (~50 s per 10 km at 1×, 25 s – 3 min 20 s). **Calm** (owner 2026-11-07: „ruhiger, entspannter“): the centre
+  follows a smoothed path (the route averaged over ±half the look-ahead, triangle weights, then eased ~0.7 s – hairpins
+  become one soft curve), the direction runs along that path from a bit behind to 600–1600 m ahead, eased ~2.2 s and never
+  faster than 20°/s; height changes eased ~2.5 s. Measured on Meran → Schenna (real map, `test/fly-calm.mjs`): camera turn
+  max 105 → 30 °/s, 95 % of frames 34 → 12 °/s, mean 10 → 5 °/s; the centre's course swing max 179 → 31 °/s. Pitch 55°,
+  zoom 14.2, climbing (zoom out, ≥ 11.5) when the ground behind the centre comes within 250 m of the camera. The profiles' cursor moves along. Any other camera move (drag, wheel, compass, fit) pauses;
   leaving 3D or a new route stops; Stopp frames the route in 3D again; at the end the camera stays. ui-smoke checks it.
 
 - **Speed (owner 2026-11-06: "3D + großes Höhenprofil – langsam?").** Measured with real terrain (Meran cells, Meran →
@@ -960,14 +965,20 @@ zusammen"; chosen layout A. The header is now: brand · **plan bar** · (hint �
   "Gespeichert" when all is saved, dark / amber as web-sync.md §14.6; paired it also sends; ▾ `#saveMore` → **Speichern
   unter …** (`saveRouteAs`: a NEW saved plan under a name – "<open name> (2)" or the proposal –, open from then on) ·
   **GPX exportieren** of the shown plan) · `📱 Aufs Handy ▾` (`#syncBadge`: not paired → the pairing window directly, and
-  once paired and closed the plan follows (`pairDialog(…, then)` → Save); paired → Save + send, the dot and "Pixel 8 ·
-  synced 2 min. ago" below; ▾ `#phoneMore` → the Phone window: state, Sync now, pair another, Unpair).
+  once paired and closed the plan follows (`pairDialog(…, then)` → Save); ▾ `#phoneMore` → the Phone window: state, Sync
+  now, pair another, Unpair). **Paired** (owner 2026-11-06: everything saved goes to the phone anyway): Save carries a small
+  📱 (`.savephone`, tooltip „Speichern – auch aufs Handy (‹phone›)“, `web_save_also_phone`) and Aufs Handy becomes the
+  phone's status, big enough to see (owner 2026-11-07: „wichtiges Symbol, soll zeigen, wann zuletzt synchronisiert“):
+  „📱 Pixel 8 🟢“ with „abgeglichen vor 2 Min.“ below (🟡 „zuletzt vor 3 Tagen“), a click opens the Phone window, no ▾;
+  narrower the second line goes (< 1181 px), then the name (< 861 px) – icon and dot stay; at phone width a 📱 with the
+  dot stays in the header beside Plan ▾ (`#phoneMini`, same title, opens the Phone window)).
 - **Meine Touren** (was „Öffnen“) = My routes with the app's **search** (`routes_search_hint`, ✕ `search_clear_query`, none → `routes_search_none`;
   `searchPlans` = `RoutesTab.search`: every word in the name, case and accents ignored, ß = ss; the field shows once
   there is anything to search) and **GPX importieren** at its bottom left.
-- **Narrow:** labels of New / Open go below 1001 px, Help's word and the phone line below 1181 px, the To phone label below
-  861 px; **phone width (≤ 700 px)** the bar is one **Plan ▾** button, its drop-down lists New · Open · Import GPX · Save
-  (a dot while unsaved) · Save as · Export GPX · To phone · Phone · Help · the app; "Planner" in the brand goes below 401 px.
+- **Narrow:** labels of New / Meine Touren go below 1001 px, Help's word and the phone line below 1181 px, the To phone label below
+  861 px; **phone width (≤ 700 px)** the bar is one **Plan ▾** button, its drop-down lists New · Meine Touren · Import GPX · Save
+  (a dot while unsaved) · Save as · Export GPX · To phone · Phone · Help · the app (paired: the phone's name + dot instead of
+  To phone · Phone); "Planner" in the brand goes below 401 px.
   No header overflow from 320 to 1920 px (sheet-smoke measures 320, 390, 720, 860, 1000, 1180, 1440).
 - The plan sheet keeps ⇅ Umkehren · ↻ Rundtour and Teilen; ✕ Neu planen left it (owner 2026-11-06, §14.2 point 5).
 - Plans without a phone live only in this browser's storage (IndexedDB / localStorage, no cookie) – a private window or

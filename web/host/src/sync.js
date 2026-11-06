@@ -26,7 +26,10 @@ import { ipHash } from "./maps.js";
 
 export const LIMITS = {
   blobBytes: 32 * 1024,       // one item (a plan of 500 points is ~3 KB)
-  items: 1000,                // per mailbox, tombstones and conflict copies included
+  // per mailbox, tombstones and conflict copies included – only a safety net: the user-facing limit is 250 tours per
+  // phone (the shared SyncLimits.MAX_TOURS, owner 2026-11-07), counted by app and browser, which can read the items.
+  // Deleted tours stay here as tombstones (never purged), so the cap leaves room for them.
+  items: 1000,
   mailboxBytes: 4 * 1024 * 1024,
   page: 200,
   idleDays: 365,              // a mailbox nobody used for this long is deleted (scheduled job)
@@ -112,7 +115,10 @@ export async function handleSync(request, env, now = Date.now()) {
     const more = results.length > LIMITS.page;
     const items = results.slice(0, LIMITS.page);
     await touch(db, box, now, row);
-    return json(200, { rev: more ? items[items.length - 1].rev : row.rev, more, items, appSeen: await appSeen(db, box, now, row, request) });
+    // the mailbox's use (all items incl. tombstones, bytes) – shown as a hint beside the tours count; old clients ignore it
+    const use = await db.prepare("SELECT COUNT(*) AS items, COALESCE(SUM(length(blob)), 0) AS bytes FROM item WHERE mailbox = ?1").bind(box).first();
+    return json(200, { rev: more ? items[items.length - 1].rev : row.rev, more, items, appSeen: await appSeen(db, box, now, row, request),
+      use: { items: use.items, bytes: use.bytes, maxItems: LIMITS.items } });
   }
 
   if (request.method === "PUT" && item) {

@@ -339,21 +339,27 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   await page.evaluate(() => clearInterval(window.__sync.timer));
   await page.waitForTimeout(1500); // a sync already started ends
   await page.waitForFunction(() => { const s = window.__sync; if (!s.status.paired) { s.status = { ...s.status, paired: true, phone: 'Pixel 8', lastSync: Date.now() }; s.changed(); }
-    return document.querySelector('#syncBadge .sub')?.textContent?.startsWith('Pixel 8'); }, null, { timeout: 10_000, polling: 200 }).catch(() => {});
-  check((await page.textContent('#syncBadge .lbl')) === 'To phone' && await page.isVisible('#syncBadge .syncdot') && (await page.textContent('#syncBadge .sub')) === 'Pixel 8 · synced just now',
-    'header: paired, "To phone" with the green dot and "Pixel 8 · synced just now" below');
+    return document.querySelector('#syncBadge.paired .lbl')?.textContent === 'Pixel 8'; }, null, { timeout: 10_000, polling: 200 }).catch(() => {});
+  check(await page.isVisible('#syncBadge .lbl') && (await page.textContent('#syncBadge .lbl')) === 'Pixel 8' && await page.isVisible('#syncBadge .syncdot')
+    && (await page.textContent('#syncBadge .sub')) === 'synced just now' && await page.isVisible('#syncBadge .sub')
+    && (await page.getAttribute('#syncBadge', 'title')).startsWith('Pixel 8 · synced just now') && await page.isHidden('#phoneMore'),
+    'header: paired, To phone is the phone\'s status "📱 Pixel 8 🟢 / synced just now" (owner 2026-11-07: big enough to see), no ▾');
+  check(await page.locator('#menuSavePlan .savephone').count() === 1, 'header: paired, Save carries a small phone (it sends too)');
   check((await page.textContent('#menuSavePlan')).trim() === 'Save', 'header: paired, Save still says "Save" (it sends too)');
   await page.setViewportSize({ width: 1000, height: 800 });
   l = await bar();
   const lb = Object.fromEntries(l.map((x) => [x.id, x]));
-  check(!lb.newPlan.label && lb.newPlan.title && !lb.menuPlans.label && lb.menuPlans.title && lb.menuSavePlan.label === 'Save' && lb.syncBadge.label === 'To phone' && await over() <= 0,
-    `header at 1000 px: New and My tours icons only (each with its title), Save and To phone keep their text, nothing overflows (${JSON.stringify(l.map((x) => [x.id, x.label]))})`);
+  check(!lb.newPlan.label && lb.newPlan.title && !lb.menuPlans.label && lb.menuPlans.title && lb.menuSavePlan.label === 'Save' && lb.syncBadge.label === 'Pixel 8' && lb.syncBadge.title && await over() <= 0,
+    `header at 1000 px: New and My tours icons only (each with its title), Save keeps its text, the paired 📱 status keeps the phone's name (the second line goes), nothing overflows (${JSON.stringify(l.map((x) => [x.id, x.label]))})`);
   for (const w of [720, 860, 1180]) { await page.setViewportSize({ width: w, height: 800 }); check(await over() <= 0, `header at ${w} px: nothing overflows`); }
   await page.setViewportSize({ width: 390, height: 844 });
   check(await page.isVisible('#menuBtn') && await page.isHidden('#menuPlans') && await page.isHidden('#syncBadge') && await over() <= 0,
     'phone width: the plan bar is one "Plan ▾" button, nothing overflows');
+  check(await page.isVisible('#phoneMini') && await page.isVisible('#phoneMini .syncdot') && (await page.getAttribute('#phoneMini', 'title')).startsWith('Pixel 8 · synced'),
+    'phone width, paired: the phone status stays in the header – 📱 with its dot, the title "Pixel 8 · synced …" (owner 2026-11-07)');
   await page.click('#menuBtn');
-  check(await page.isVisible('#syncBadge .syncdot') && await page.isVisible('#menuSavePlan') && await page.isVisible('#menuPhone'), 'phone width: Plan ▾ holds Save and To phone (with its dot) and the Phone window');
+  check(await page.isVisible('#syncBadge .syncdot') && (await page.textContent('#syncBadge .lbl')).trim() === 'Pixel 8' && await page.isVisible('#menuSavePlan') && await page.isHidden('#menuPhone'),
+    'phone width, paired: Plan ▾ holds Save and the phone (its name and dot – it opens the Phone window), no second Phone entry');
   await page.keyboard.press('Escape');
   check(await page.isHidden('#syncBadge'), 'phone width: Escape closes Plan ▾');
   await page.setViewportSize({ width: 320, height: 700 });
