@@ -531,7 +531,13 @@
     "priority": 1,
     "confidence": "sicher"
   },
-  "nav_notif_paused_in_plan": {"area": "Notification", "context": "Recording notification while the app is in Plan during a tour that follows a route: the guidance is quiet, the recording goes on; a tap opens the app", "priority": 1, "confidence": "sicher", "max": 60},
+  "nav_notif_paused_in_plan": {
+    "area": "Notification",
+    "context": "Recording notification while the app is in Plan during a tour that follows a route: the guidance is quiet, the recording goes on; a tap opens the app",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 60
+  },
   "nav_notif_following": {
     "area": "Notification",
     "context": "Recording notification text: %1$s = status ('Recording'), %2$s = name of the followed route",
@@ -1319,18 +1325,6 @@
   "nav_end_stat_ascent": {
     "area": "Navigate",
     "context": "Small label under the ascent in the end sheet",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "nav_end_plan_line": {
-    "area": "Navigate",
-    "context": "Line under \"Also save the changed plan\": which saved plan gets the changes",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "nav_end_plan_line_new": {
-    "area": "Navigate",
-    "context": "Line under \"Also save the changed plan\" when the plan was never saved",
     "priority": 1,
     "confidence": "sicher"
   },

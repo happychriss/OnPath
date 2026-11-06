@@ -7,6 +7,13 @@ Tests that pin today's behaviour of the paths without a test before: `app/src/te
 (`AppViewModel.change`, :1337), read at start (:618). Saved plans, tours and imports are rows in `TourDb`; only those go
 to the backup folder (`Backups.tourChanged`), "Export all" (`Backups.exportZip`, `Backups.kt:214`) and browser sync.
 
+**Since 2026-11-06 (owner: the tour and the plan are two things – like Komoot / Strava):** "Los geht's" saves a plan
+that was never saved under the proposed name (`saveNewPlanAtStart`, rule `PlanAutoSave`); a saved plan changed before
+the start is not overwritten (the "Nicht gespeichert ›" sign shows it). The end / arrival sheet asks only about the tour
+(Tour speichern · Weiterfahren · Löschen) – no plan switch, no Save dialog after; ending, saving or deleting the tour
+leaves the plan on the map as it is. "Tour beenden und laden" loads the asked route after the tour through the same
+"Plan speichern?" as every replace (P3). Paths 1 and 2 below and P1 / P2 are history.
+
 ## The paths
 
 | # | Path | What happens (code) | Test | Risk |

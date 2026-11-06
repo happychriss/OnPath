@@ -184,8 +184,11 @@ enum class OpenAsk { NONE, REPLACE_PLAN, BLOCKED_DURING_TOUR, FOLLOW_DURING_TOUR
 /** What happens with a plan from a link ([RouteRules.linkOpen]). */
 enum class LinkOpen { AFTER_TOUR, ASK_FIRST, NOW }
 
-/** The end sheet's "Plan auch speichern" when it opens (owner 2026-11-06; pure). */
-object EndPlanSave {
-    /** [offered]: there is a plan to save; [savedBefore]: it changes a saved plan. A plan never saved: ON. */
-    fun preset(offered: Boolean, savedBefore: Boolean): Boolean = offered && !savedBefore
+/**
+ * The plan at "Los geht's" (owner 2026-11-06: the tour and the plan are two things – the end of a tour never asks about
+ * the plan; pure). A plan never saved is saved at the start; a saved plan changed since is not overwritten silently.
+ */
+object PlanAutoSave {
+    /** [points]: plan points; [unsaved]: the plan differs from what is stored; [changesASavedPlan]: it belongs to a saved route. */
+    fun atStart(points: Int, unsaved: Boolean, changesASavedPlan: Boolean): Boolean = points >= 2 && unsaved && !changesASavedPlan
 }

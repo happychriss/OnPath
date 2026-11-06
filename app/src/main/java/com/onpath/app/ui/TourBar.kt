@@ -113,8 +113,8 @@ internal fun keepGoingLabel(activity: com.onpath.app.routing.Activity?): String 
 /**
  * "Tour beenden?" (owner 2026-11-05: V2 – "am besten, mal sehen, ob der Klick nervt"): a sheet from the bottom in
  * sections – header (activity sign, title, activity, ✕); TOUR (green dot): distance · time · ascent and the big green
- * "Tour speichern" where the thumb is; PLAN (blue dot, only with a changed / new plan): a switch "Geänderten Plan auch
- * speichern" (off at first) + which plan; then outlined "Weiterwandern" / "Weiterfahren" and the quiet red "Tour löschen"
+ * "Tour speichern" where the thumb is – nothing about the plan (owner 2026-11-06: the tour and the plan are two things;
+ * a plan never saved was saved at "Los geht's", changes made on the way show "Nicht gespeichert ›" in Plan); then outlined "Weiterwandern" / "Weiterfahren" and the quiet red "Tour löschen"
  * with the bin note – no second question (owner 2026-11-01: "ist ja sowieso alles im Papierkorb"). Large font: it scrolls.
  * [keepLabel]: the way back (arrival: the same activity word).
  */
@@ -126,15 +126,11 @@ fun EndTourDialog(
     activity: com.onpath.app.routing.Activity? = null,
     stats: EndStats? = null,
     keepLabel: String = keepGoingLabel(activity),
-    /** "Geänderten Plan auch speichern"; null = no plan to save (no PLAN section). */
-    routeLabel: String? = null, routeChecked: Boolean = false, onRouteChecked: (Boolean) -> Unit = {},
-    /** Which plan: "„Rund um den Kofel“ – mit deinen Änderungen von unterwegs" / "Wird als neuer Plan gespeichert". */
-    routeLine: String? = null,
     /** Screenshot tests: the sheet drawn at the bottom of the screen itself (Paparazzi draws no sheet window). */
     inline: Boolean = false,
 ) {
     val content: @Composable () -> Unit = {
-        EndTourContent(onSave, onDelete, onDismiss, title, activity, stats, keepLabel, routeLabel, routeChecked, onRouteChecked, routeLine)
+        EndTourContent(onSave, onDelete, onDismiss, title, activity, stats, keepLabel)
     }
     if (inline) {
         Box(Modifier.fillMaxSize()) {
@@ -161,7 +157,6 @@ fun EndTourDialog(
 private fun EndTourContent(
     onSave: () -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit, title: String,
     activity: com.onpath.app.routing.Activity?, stats: EndStats?, keepLabel: String,
-    routeLabel: String?, routeChecked: Boolean, onRouteChecked: (Boolean) -> Unit, routeLine: String?,
 ) {
                 Column(Modifier.verticalScroll(rememberScrollState())
                     .padding(start = 20.dp, end = 20.dp, top = 0.dp, bottom = 16.dp)) {
@@ -181,15 +176,11 @@ private fun EndTourContent(
                         }
                     }
                     // Variant A (owner 2026-11-06, "fertig und keinen Bock mehr" – much used): everything on one screen
-                    // without scrolling – the numbers in one line, the plan option only with a plan to save, the big green
+                    // without scrolling – the numbers in one line, the big green
                     // Save, then Weiterfahren | Löschen side by side (stacked with a large font); Löschen = the bin, no
                     // second question (owner 2026-11-01)
                     if (stats != null) { Spacer(Modifier.height(8.dp)); EndStatsLine(stats) }
                     Spacer(Modifier.height(16.dp))
-                    if (routeLabel != null) {
-                        EndPlanOption(routeLabel, routeLine, routeChecked, onRouteChecked)
-                        Spacer(Modifier.height(12.dp))
-                    }
                     EndSaveButton(str(Res.string.nav_save_recording), onSave)
                     Spacer(Modifier.height(12.dp))
                     EndKeepAndDelete(keepLabel, onDismiss, onDelete)
@@ -232,23 +223,6 @@ private fun EndKeepAndDelete(keepLabel: String, onKeep: () -> Unit, onDelete: ()
         Spacer(Modifier.height(6.dp))
         Text(RECYCLE_BIN_NOTE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-    }
-}
-
-/** The plan option (blue = plan): the whole row toggles; a switch at the end. */
-@Composable
-private fun EndPlanOption(label: String, line: String?, checked: Boolean, onChecked: (Boolean) -> Unit) = Surface(
-    color = OnPathColors.PlanTint, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, OnPathColors.PlanEdge),
-    modifier = Modifier.fillMaxWidth()) {
-    Row(Modifier.toggleable(checked, role = androidx.compose.ui.semantics.Role.Switch, onValueChange = onChecked)
-        .heightIn(min = 56.dp).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-            line?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        }
-        Spacer(Modifier.width(12.dp))
-        androidx.compose.material3.Switch(checked, null, colors = androidx.compose.material3.SwitchDefaults.colors(
-            checkedTrackColor = OnPathColors.PlanAccent, uncheckedBorderColor = OnPathColors.PlanAccent, uncheckedThumbColor = OnPathColors.PlanAccent))
     }
 }
 
@@ -298,11 +272,9 @@ internal val RECYCLE_BIN_NOTE: String get() = Txt.s(Res.string.nav_recycle_bin_n
 /** Shown once in Navigate when the destination is reached: the same three choices. */
 @Composable
 fun ArrivalDialog(onSave: () -> Unit, onDelete: () -> Unit, onKeepGoing: () -> Unit,
-                  routeLabel: String? = null, routeChecked: Boolean = false, onRouteChecked: (Boolean) -> Unit = {},
-                  activity: com.onpath.app.routing.Activity? = null, stats: EndStats? = null, routeLine: String? = null,
-                  inline: Boolean = false) =
+                  activity: com.onpath.app.routing.Activity? = null, stats: EndStats? = null, inline: Boolean = false) =
     EndTourDialog(onSave, onDelete, onKeepGoing, title = str(Res.string.nav_arrived_title), activity = activity, stats = stats,
-        routeLabel = routeLabel, routeChecked = routeChecked, onRouteChecked = onRouteChecked, routeLine = routeLine, inline = inline)
+        inline = inline)
 
 
 /** "Continue · Gravel bike" (owner rule: the way back to Navigate names the activity). */

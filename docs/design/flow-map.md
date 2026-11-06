@@ -43,9 +43,7 @@ stateDiagram-v2
     N --> END: unlock → Tour beenden / arrival
     TP --> END: (only in TS) Tour beenden
     END --> N: Weiterfahren / ✕
-    END --> SAVE: Tour speichern + plan switch ON
-    END --> P0: Tour speichern (switch OFF) / Löschen
-    SAVE --> P0: Speichern / Abbrechen
+    END --> P2: Tour speichern / Löschen (the plan stays, 2026-11-06)
     NU --> N: Continue
     NU --> P0: Delete / Save
 ```
@@ -71,8 +69,8 @@ search, pin card, activity sheet).
 | N2 | Navigate · unlocked (30 s, a map tap or back locks) | status card: Pause, Tour beenden; bottom: Sperren · blue "Plan" → S6 |
 | N3 | Navigate · paused | stays unlocked; "Fortsetzen"; Tour beenden; Plan |
 | N4 | Navigate · free tour ("Freie Tour · nur Aufnahme") | as N1/N2 without turn card |
-| N5 | Arrival sheet (Navigate only; in Plan it waits) | Tour speichern (switch "… Plan auch speichern" when the plan is unsaved) / Weiterfahren / ✕ / Löschen |
-| N6 | End sheet "Tour beenden?" | Tour speichern → (rides found: ride summary) → plan switch ON → Save dialog (plan kept until answered, fixed 894ab407) → "Tour gespeichert" box (Löschen · GPX · Fertig) → S1; Weiterfahren / ✕ → back; **Löschen → tour to the bin and the plan leaves, switch ignored** (H2) |
+| N5 | Arrival sheet (Navigate only; in Plan it waits) | Tour speichern / Weiterfahren / ✕ / Löschen – nothing about the plan (2026-11-06) |
+| N6 | End sheet "Tour beenden?" | **Owner 2026-11-06, the tour and the plan are two things:** Tour speichern → (rides found: ride summary) → "Tour gespeichert" box (OK) → Plan with the plan still on the map; Löschen → the tour to the bin, the plan stays; Weiterfahren / ✕ → back. A plan never saved was saved at "Los geht's" (`PlanAutoSave`); changes made on the way show "Nicht gespeichert ›". (Was: a plan switch + Save dialog after – H2, easy to miss.) |
 | N7 | Unfinished tour (after a restart / kill) | Continue · Delete · Save |
 
 16 states (S1–S9, N1–N7) plus 5 dialogs / boxes reached from them (Save, "Plan leeren?", "Plan ersetzen?", tour-load box,

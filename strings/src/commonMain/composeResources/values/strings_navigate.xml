@@ -181,8 +181,6 @@
     <string name="nav_lock">Lock</string>
     <string name="nav_change_plan">Plan</string>
     <string name="nav_straight_on">Straight on</string>
-    <string name="nav_end_save_new_route">Also save the plan</string>
-    <string name="nav_end_save_changed_route">Also save the changed plan</string>
     <string name="nav_save_recording">Save tour</string>
     <string name="nav_continue_navigation">Continue</string>
     <string name="nav_action_pause">Pause</string>
@@ -275,8 +273,6 @@
     <string name="nav_end_stat_distance">Distance</string>
     <string name="nav_end_stat_time">Time</string>
     <string name="nav_end_stat_ascent">Ascent</string>
-    <string name="nav_end_plan_line">“%1$s” – with your changes on the way</string>
-    <string name="nav_end_plan_line_new">Saved as a new plan</string>
     <string name="nav_free_tour">Free tour · recording only</string>
     <string name="nav_stop_arrive">at %1$s</string>
 </resources>

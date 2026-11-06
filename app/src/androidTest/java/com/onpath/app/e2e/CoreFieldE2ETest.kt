@@ -220,56 +220,57 @@ class CoreFieldE2ETest : E2EBase() {
         }
     }
 
-    /**
-     * Field bug (owner 2026-11-06, "a plan made on the phone was gone after the tour"): Tour beenden with "Plan auch
-     * speichern" ON opens Save's dialog; the end of the tour cleared the plan (and closed the dialog) before Save was
-     * tapped – nothing reached My routes. Now: the plan stays while the dialog is open, Save stores it, then it leaves.
-     */
-    @Test fun endTourWithSavePlanOnPutsThePlanInMyRoutes() {
+    /** The planned routes in My routes now (id set). */
+    private fun plannedIds(): Set<Long> {
+        var ids: Set<Long> = emptySet()
+        scenario.onActivity { ids = vm(it).tours.filter { t -> t.kind == TourKind.PLANNED }.map { t -> t.id }.toSet() }
+        return ids
+    }
+
+    /** Starts a tour on a new (never saved) two-point plan; returns the planned route saved at "Los geht's". */
+    private fun startOnANewPlan(): Long {
         startPlanWithTwoPoints()
         Thread.sleep(if (realRouting) 3_000 else 1_000)
+        val before = plannedIds()
+        scenario.onActivity { assertTrue("a new plan is not saved yet", vm(it).planUnsaved) }
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
-        var before: List<GeoPoint> = emptyList()
-        scenario.onActivity { before = vm(it).waypoints.toList(); vm(it).saveRouteAtEnd = true; vm(it).endTour() }
-        waitUntil("the tour has ended", 20_000) { !recording() }
-        Thread.sleep(1_500) // the service's "finished" has run
-        var askOpen = false
-        scenario.onActivity { askOpen = vm(it).saveAsk != null }
-        assertTrue("Save's dialog is still open after the tour ended", askOpen)
-        assertEquals("the plan stays while Save's dialog is open", before, waypointList())
-        val name = "E2E end save ${System.currentTimeMillis() % 100_000}"
-        scenario.onActivity { vm(it).confirmSave(name) }
-        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
-        waitUntil("the plan is in My routes", 15_000) { var ok = false; scenario.onActivity { ok = vm(it).tours.any { t -> t.name == name && t.kind == TourKind.PLANNED } }; ok }
-        waitUntil("then the plan leaves the map", 10_000) { waypointCount() == 0 }
-        scenario.onActivity { vm(it).tours.filter { t -> t.name == name }.forEach { t -> db.deleteTour(t.id) } }
+        waitUntil("Los geht's saved the new plan in My routes → Planned", 15_000) { (plannedIds() - before).size == 1 }
+        scenario.onActivity { assertFalse("the plan counts as saved now", vm(it).planUnsaved) }
+        return (plannedIds() - before).single()
     }
 
     /**
-     * Flow map H2 (2026-11-06): Löschen in the end sheet with "Plan auch speichern" ON threw the unsaved plan away without
-     * a word. Now Löschen bins only the tour; the plan goes through Save's dialog into My routes.
+     * Owner 2026-11-06 (the tour and the plan are two things, like Komoot – was: a field bug where the end sheet's "Plan
+     * auch speichern" lost the plan, then a Save dialog after the tour that was easy to miss): "Los geht's" saves a new
+     * plan; "Tour speichern" asks nothing about the plan and leaves it on the map – still in My routes.
      */
-    @Test fun endTourDeleteWithSavePlanOnKeepsThePlan() {
-        startPlanWithTwoPoints()
-        Thread.sleep(if (realRouting) 3_000 else 1_000)
-        scenario.onActivity { vm(it).startNavigation(force = true) }
-        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
-        var before: List<GeoPoint> = emptyList()
+    @Test fun endTourKeepsThePlanSavedAtTheStart() {
+        val planId = startOnANewPlan()
+        val before = waypointList()
+        scenario.onActivity { vm(it).endTour() }
+        waitUntil("the tour has ended", 20_000) { !recording() }
+        Thread.sleep(1_500) // the service's "finished" has run
+        scenario.onActivity { assertTrue("no Save dialog after the tour", vm(it).saveAsk == null) }
+        assertEquals("the plan stays on the map", before, waypointList())
+        assertTrue("the plan is still in My routes", planId in plannedIds())
+        TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).deleteTour(planId)
+    }
+
+    /** The same for "Löschen" (flow map H2): only the tour goes to the bin, the plan stays – on the map and in My routes. */
+    @Test fun endTourDeleteBinsOnlyTheTour() {
+        val planId = startOnANewPlan()
+        val before = waypointList()
         var tourId = -1L
-        scenario.onActivity { before = vm(it).waypoints.toList(); tourId = vm(it).recState.value!!.tourId; vm(it).saveRouteAtEnd = true; vm(it).endTourAndDelete() }
+        scenario.onActivity { tourId = vm(it).recState.value!!.tourId; vm(it).endTourAndDelete() }
         waitUntil("the tour has ended", 20_000) { !recording() }
         Thread.sleep(1_500)
-        var askOpen = false
-        scenario.onActivity { askOpen = vm(it).saveAsk != null }
-        assertTrue("Save's dialog for the plan is open", askOpen)
-        assertEquals("the plan stays while Save's dialog is open", before, waypointList())
-        val name = "E2E delete keeps plan ${System.currentTimeMillis() % 100_000}"
-        scenario.onActivity { vm(it).confirmSave(name) }
+        scenario.onActivity { assertTrue("no Save dialog after Löschen", vm(it).saveAsk == null) }
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
-        waitUntil("the plan is in My routes", 15_000) { var ok = false; scenario.onActivity { ok = vm(it).tours.any { t -> t.name == name && t.kind == TourKind.PLANNED } }; ok }
         assertTrue("the tour is in the bin", (db.getTour(tourId)?.deletedMs ?: 0L) > 0L)
-        scenario.onActivity { vm(it).tours.filter { t -> t.name == name }.forEach { t -> db.deleteTour(t.id) } }
+        assertEquals("the plan stays on the map", before, waypointList())
+        assertTrue("the plan is still in My routes", planId in plannedIds())
+        db.deleteTour(planId)
     }
 
     /**
@@ -324,18 +325,23 @@ class CoreFieldE2ETest : E2EBase() {
 
     private fun tourWith(id: Long) = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).getTour(id)!!
 
-    /** A tour following a plan built on the way (two points, never saved). */
-    private fun tourWithAnUnsavedPlan() {
-        startPlanWithTwoPoints()
-        Thread.sleep(if (realRouting) 3_000 else 1_000)
-        scenario.onActivity { vm(it).startNavigation(force = true) }
-        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+    /**
+     * A tour following a plan changed on the way (owner 2026-11-06: "Los geht's" saved the two-point plan – a third point
+     * set during the tour makes it unsaved again: "Nicht gespeichert ›"). Returns the planned route saved at the start.
+     */
+    private fun tourWithAnUnsavedPlan(): Long {
+        val planId = startOnANewPlan()
         waitUntil("the plan is followed", 20_000) { guided() }
         scenario.onActivity { vm(it).switchToPlan() }
         waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+        val (w, h) = mapSize()
+        hold(w * 0.50f, h * 0.62f)
+        waitUntil("a third point set on the way", 10_000) { waypointCount() == 3 }
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
         var unsaved = false
         scenario.onActivity { unsaved = vm(it).planUnsaved }
-        assertTrue("the plan made on the way is not saved", unsaved)
+        assertTrue("the plan changed on the way is not saved", unsaved)
+        return planId
     }
 
     private fun followName(): String? { var n: String? = null; scenario.onActivity { n = vm(it).followName }; return n }
@@ -347,27 +353,28 @@ class CoreFieldE2ETest : E2EBase() {
      * the plan leaves the map (Undo brings it back) and the tour follows the track.
      */
     @Test fun followingATrackDuringATourAsksForTheUnsavedPlanThenTheTrackAlone() {
-        tourWithAnUnsavedPlan()
+        val planId = tourWithAnUnsavedPlan()
         val name = "E2E done tour ${System.currentTimeMillis() % 100_000}"
         val id = insertDoneTour(name)
         try {
             scenario.onActivity { vm(it).requestOpen(tourWith(id)); vm(it).answerTrackFollow(true) }
             waitUntil("'Plan speichern?' before the track takes the plan's place", 5_000) { askOpen() }
-            assertEquals("nothing changed while it asks", 2, waypointCount())
+            assertEquals("nothing changed while it asks", 3, waypointCount())
             scenario.onActivity { vm(it).answerReplaceUnsaved(ReplaceAsk.Answer.DISCARD) }
             waitUntil("the plan has left the map", 10_000) { waypointCount() == 0 }
             waitUntil("the tour follows the track", 10_000) { followName() == name }
             assertTrue("the recording goes on", recording())
             scenario.onActivity { vm(it).undoStep() }
-            waitUntil("Undo brings the plan back", 10_000) { waypointCount() == 2 }
+            waitUntil("Undo brings the plan back", 10_000) { waypointCount() == 3 }
         } finally {
             TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).deleteTour(id)
+            TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).deleteTour(planId)
         }
     }
 
     /** M1: Abbrechen in "Plan speichern?" changes nothing – the plan stays and is still followed, no track. */
     @Test fun followingATrackDuringATourCancelKeepsThePlan() {
-        tourWithAnUnsavedPlan()
+        val planId = tourWithAnUnsavedPlan()
         val before = followName()
         val name = "E2E done tour ${System.currentTimeMillis() % 100_000}"
         val id = insertDoneTour(name)
@@ -376,17 +383,18 @@ class CoreFieldE2ETest : E2EBase() {
             waitUntil("asked", 5_000) { askOpen() }
             scenario.onActivity { vm(it).answerReplaceUnsaved(ReplaceAsk.Answer.CANCEL) }
             Thread.sleep(1_500)
-            assertEquals("the plan stays", 2, waypointCount())
+            assertEquals("the plan stays", 3, waypointCount())
             assertEquals("the plan is still followed", before, followName())
             assertTrue(guided())
         } finally {
             TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).deleteTour(id)
+            TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).deleteTour(planId)
         }
     }
 
     /** M1: a saved plan asks nothing – it stays in My routes, leaves the map, the tour follows the track. */
     @Test fun followingATrackDuringATourWithASavedPlanGoesAtOnce() {
-        tourWithAnUnsavedPlan()
+        val planId = tourWithAnUnsavedPlan()
         val planName = "E2E saved plan ${System.currentTimeMillis() % 100_000}"
         scenario.onActivity { vm(it).requestSave() }
         waitUntil("Save's dialog", 5_000) { var a = false; scenario.onActivity { a = vm(it).saveAsk != null }; a }
@@ -402,6 +410,7 @@ class CoreFieldE2ETest : E2EBase() {
             waitUntil("the plan has left the map", 10_000) { waypointCount() == 0 }
         } finally {
             db.deleteTour(id)
+            db.deleteTour(planId) // saved at the start, overwritten (renamed) by the Save above
             scenario.onActivity { vm(it).tours.filter { t -> t.name == planName }.forEach { t -> db.deleteTour(t.id) } }
         }
     }

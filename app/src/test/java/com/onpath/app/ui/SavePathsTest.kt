@@ -11,8 +11,7 @@ import java.io.File
 /**
  * Every way a plan / tour is saved, overwritten, exported or imported, walked once (owner 2026-11-06: "einmal die Abläufe
  * durchsuchen"). The table and the proposals: docs/design/save-paths.md. These tests pin TODAY's behaviour of the paths
- * that had no test; the one path that loses a plan is reproduced in [endOfTourSaveKeepsThePlan] – fixed 2026-11-06 (P1: the plan stays
- * while Save's dialog is open); [theEndOfTourKeepsThePlanWhileSavesDialogIsOpen] pins the code facts.
+ * that had no test. The end of a tour no longer touches the plan (owner 2026-11-06: two things) – [theEndOfATourNeverDropsThePlan].
  */
 class SavePathsTest {
     private val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
@@ -22,64 +21,20 @@ class SavePathsTest {
     private val b = GeoPoint(51.20, 6.77)
 
     /**
-     * End tour with "Plan auch speichern" ON, as AppViewModel does it: [endTour] stops the service and opens Save's name
-     * dialog; the service's "finished" (milliseconds later) clears the plan ("the plan leaves the map, saved or not");
-     * the dialog's Save then reads the plan's points NOW (saveRoute: `waypoints.toList()`, < 2 points → return).
+     * Way 1 (owner 2026-11-06, the tour and the plan are two things – replaces P1 and the end sheet's plan switch): a plan
+     * never saved is saved at "Los geht's"; ending, saving or deleting the tour leaves the plan on the map and asks nothing
+     * about it (PlanAutoSaveTest pins the rule; E2E: CoreFieldE2ETest.endTourKeepsThePlanSavedAtTheStart).
      */
-    private class EndFlow(var plan: List<GeoPoint>) {
-        var switchOn = true
-        var dialogOpen = false
-        val myRoutes = mutableListOf<List<GeoPoint>>()
-        var undo: List<GeoPoint>? = null
-
-        /** [AppViewModel.endTour]: stopRecording(); if (withRoute) requestSave(). */
-        fun endTour() { dialogOpen = switchOn && RouteRules.isUnsaved(plan, null) }
-
-        var clearAfterSave = false
-        private fun clear() { if (plan.isNotEmpty()) { undo = plan; plan = emptyList() } }
-
-        /** RecordingService.finished collector: the plan leaves (one Undo step) – unless Save's dialog is open. */
-        fun serviceFinished() { if (dialogOpen && plan.size >= 2) clearAfterSave = true else clear() }
-
-        /** Save's dialog → Save: saveRoute reads the plan now, then (on success) the end of the tour clears it. */
-        fun confirmSave() {
-            dialogOpen = false; val end = clearAfterSave; clearAfterSave = false
-            val pts = plan; if (pts.size < 2) return; myRoutes += pts; if (end) clear()
-        }
-
-        /** Save's dialog → Cancel: nothing saved, the plan leaves as after every tour. */
-        fun cancel() { dialogOpen = false; if (clearAfterSave) { clearAfterSave = false; clear() } }
-    }
-
-    @Test fun theEndOfTourKeepsThePlanWhileSavesDialogIsOpen() {
-        // the code facts the model above stands on (fixed 2026-11-06; E2E: CoreFieldE2ETest.endTourWithSavePlanOnPutsThePlanInMyRoutes)
-        val end = body("fun endTour() {")
-        assertTrue(end, end.indexOf("stopRecording()") in 0 until end.indexOf("requestSave()"))
+    @Test fun theEndOfATourNeverDropsThePlan() {
         val finished = vm.substringAfter("RecordingService.finished.collect { id ->").substringBefore("fun initialCamera()")
-        assertTrue(finished, finished.contains("val pendingSave = saveAsk") &&
-            finished.contains("if (waypoints.isNotEmpty() && pendingSave == null) clearPlan()") &&
-            finished.contains("saveAsk = pendingSave; clearPlanAfterSave = true"))
-        val confirm = body("fun confirmSave(input: String) {")
-        assertTrue(confirm, confirm.contains("finishEndOfTourSave()") && confirm.contains("clearPlanAfterSave = false"))
-        assertTrue(vm.contains("fun cancelSave() { saveAsk = null; if (clearPlanAfterSave)"))
-        assertTrue("a mode switch closes the dialog the same way", vm.contains("if (saveAsk != null) cancelSave()"))
+        assertFalse(finished, finished.contains("clearPlan()"))
+        assertFalse(body("fun endTourAndDelete() {").contains("requestSave"))
+        assertTrue(PlanAutoSave.atStart(points = 2, unsaved = true, changesASavedPlan = false))
+        assertTrue("a mode switch still closes Save's dialog", vm.contains("if (saveAsk != null) cancelSave()"))
     }
 
-    @Test fun endOfTourSaveKeepsThePlan() {
-        val f = EndFlow(listOf(a, b))
-        f.endTour(); f.serviceFinished(); f.confirmSave()
-        assertEquals(listOf(listOf(a, b)), f.myRoutes)
-        assertTrue("then the plan leaves the map", f.plan.isEmpty())
-    }
-
-    @Test fun endOfTourCancelClearsThePlanLikeEveryTourEnd() {
-        val f = EndFlow(listOf(a, b))
-        f.endTour(); f.serviceFinished(); f.cancel()
-        assertTrue(f.myRoutes.isEmpty()); assertTrue(f.plan.isEmpty()); assertEquals(listOf(a, b), f.undo)
-    }
-
-    /** End tour with rides found (bus, lift …): the ride summary has no plan switch, and none is preset. */
-    @Test fun todayTheRideSummaryOffersNoPlanSave() {
+    /** Way 2: the ride summary has no plan part – nor does any end sheet now. */
+    @Test fun theRideSummaryOffersNoPlanSave() {
         val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
         val rides = screen.substringAfter("is EndAsk.Rides -> RideSummaryDialog(").substringBefore("null -> {}")
         assertFalse(rides, rides.contains("routeLabel") || rides.contains("saveRouteAtEnd"))

@@ -180,8 +180,6 @@
     <string name="nav_lock">Sperren</string>
     <string name="nav_change_plan">Plan</string>
     <string name="nav_straight_on">Geradeaus</string>
-    <string name="nav_end_save_new_route">Plan auch speichern</string>
-    <string name="nav_end_save_changed_route">Geänderten Plan auch speichern</string>
     <string name="nav_save_recording">Tour speichern</string>
     <string name="nav_continue_navigation">Weiter</string>
     <string name="nav_action_pause">Pause</string>
@@ -274,8 +272,6 @@
     <string name="nav_end_stat_distance">Strecke</string>
     <string name="nav_end_stat_time">Zeit</string>
     <string name="nav_end_stat_ascent">Aufstieg</string>
-    <string name="nav_end_plan_line">„%1$s“ – mit deinen Änderungen von unterwegs</string>
-    <string name="nav_end_plan_line_new">Wird als neuer Plan gespeichert</string>
     <string name="nav_free_tour">Freie Tour · nur Aufnahme</string>
     <string name="nav_stop_arrive">an %1$s</string>
 </resources>

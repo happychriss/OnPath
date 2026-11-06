@@ -235,9 +235,7 @@ fun MapScreen(
     vm.longRouteAsk?.let { s -> LongRouteDialog(s, vm.activity, onPlan = { vm.answerLongRoute(true) }, onCancel = { vm.answerLongRoute(false) }) }
     when (val ask = vm.endAsk) {
         EndAsk.Plain -> EndTourDialog(onSave = { vm.endTour() }, onDelete = { vm.endTourAndDelete() },
-            onDismiss = { vm.dismissEndAsk() }, activity = vm.activity, stats = rec?.let { EndStats(it.distanceM, it.elapsedS, it.ascentM) },
-            routeLabel = vm.endRouteLabel(), routeChecked = vm.saveRouteAtEnd, onRouteChecked = { vm.saveRouteAtEnd = it },
-            routeLine = vm.endRouteLine())
+            onDismiss = { vm.dismissEndAsk() }, activity = vm.activity, stats = rec?.let { EndStats(it.distanceM, it.elapsedS, it.ascentM) })
         is EndAsk.Rides -> RideSummaryDialog(ask.summary, onSave = { vm.endTourWith(ask, it) },
             onDelete = { vm.endTourAndDelete() }, onDismiss = { vm.dismissEndAsk() })
         null -> {}
@@ -246,9 +244,8 @@ fun MapScreen(
     // arrival Save goes the End tour way: a bus / car / lift found → the ride summary
     // Plan is silent (owner 2026-11-03): "Du bist angekommen" waits for Navigate
     if (vm.arrivalAsk && rec != null && vm.mode == AppMode.NAVIGATE) ArrivalDialog(onSave = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
-        onKeepGoing = { vm.saveRouteAtEnd = false; vm.arrivalAsk = false },
-        routeLabel = vm.endRouteLabel(), routeChecked = vm.saveRouteAtEnd, onRouteChecked = { vm.saveRouteAtEnd = it },
-        activity = vm.activity, stats = rec?.let { EndStats(it.distanceM, it.elapsedS, it.ascentM) }, routeLine = vm.endRouteLine())
+        onKeepGoing = { vm.arrivalAsk = false },
+        activity = vm.activity, stats = rec?.let { EndStats(it.distanceM, it.elapsedS, it.ascentM) })
     if (vm.navSettingsOpen) {
         // Navigate → ⚙: the Navigation settings page on the way (owner); everything else stays in Plan → Settings
         androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.navSettingsOpen = false }) {
