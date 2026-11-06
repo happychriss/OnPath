@@ -100,6 +100,10 @@ the git log.
   minute, flat profile axis, N1 notification "Navigation pausiert – tippen zum Weiterfahren", "Dein Plan ist noch nicht
   gespeichert." Earlier today: end sheet as bottom sheet, plan kept at tour end (save + delete), one point during a tour
   (#39), 'Ohne Netz' strict, all 256 glyph ranges, pin card "+ Hinzufügen". Not yet on the Pixel (a tour was recording).
+- **[laptop] Planner follows the app's plan rules of 2026-11-06 (owner 2026-11-06: HP gets its own packages)** – also
+  mirror, once on main: base colour Walnuss #4A3F37 + colour rule (plan blue, to navigation green, neutral walnut),
+  paper tone surfaces, "Zuletzt" (drafts are NOT synced – the browser shows only saved plans), words (Planen, Weiter,
+  Los geht's / Weiter geht's), round trip switch, start screen "Wohin soll's gehen?". Earlier list (was [cloud-plan]):
 - **[cloud-plan] Planner follows the app's plan rules of 2026-11-06 (owner: "die gleiche Logik beim Planer")** – left: (4) base
   colour Walnuss #4A3F37 for plain buttons, plan blue / to navigation green (#36) – once the app has it on main. Done on the
   planner (laptop 2026-11-06): ✓ (1) "↻ Rundtour" a switch, "⇅ Umkehren" grey for A→B→A (#40, b3e69378); ✓ (2) pin card

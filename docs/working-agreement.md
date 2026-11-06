@@ -122,3 +122,16 @@ the owner's word to all – `tools/ask.sh`). Sessions do not message each other;
 call, for something urgent only. Shared code between app and planner (`app/web-shared-files.txt`): a change is
 announced to the other side in the backlog, and a release / planner deploy that touches it needs
 `tools/ci/release_check.sh` GO. The tested platform facts behind this: `docs/roles/multi-agent-lernen.md` §2.
+
+## E2E: local probe, big runs on GitHub (owner 2026-11-06, "mehr rausholen")
+
+donald has one emulator and every agent queued on it. Since 2026-11-06: **agents run only the test(s) their change is
+about** on the local emulator (`FLOWS=Class#method tools/dev/device.sh emulator -- tools/ci/release_rundgang.sh`, the
+red-before / green-after proof of a field bug). **The big runs** (whole E2E classes, the Release-Rundgang) run on
+GitHub's free runners: the merging session pushes the combined state to a short-lived branch `ci/<unit>-<topic>`,
+runs `tools/ci/e2e_github.sh --ref ci/<unit>-<topic> --tests … --wait` in the background (one queue per ref, so
+several refs run in parallel) and meanwhile installs the test APK on the Pixel; it pushes to `main` when the run is
+green and removes the `ci/` branch with `tools/dev/prune_branches.sh` (no owner question needed for `ci/` branches the
+session created itself – they are in `main` by then). Gradle: up to three builds per computer while no emulator runs
+(`tools/dev/gradle_slot.sh`).
+

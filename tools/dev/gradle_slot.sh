@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # Gradle slots per computer (owner 2026-11-05: "the agents block each other although they need not").
-# Two Gradle builds may run side by side (each ~6 GB with its Kotlin daemon; donald has 30 GB), but only ONE while the
-# emulator runs (tools/dev/device.sh holds ~/onpath-cells-work/emulator.lock then). Slot 1 is the old
+# Three Gradle builds may run side by side (each ~6 GB with its Kotlin daemon; donald has 30 GB and 32 cores – owner
+# 2026-11-06: "mehr rausholen"), but only ONE while the emulator runs (tools/dev/device.sh holds ~/onpath-cells-work/emulator.lock then). Slot 1 is the old
 # ~/onpath-cells-work/gradle.lock, so scripts that still `flock gradle.lock` keep working and count as one slot.
 #   tools/dev/gradle_slot.sh -- ./gradlew :app:recordPaparazziDebug --tests 'com.onpath.app.ui.XScreenshotTest'
 #   source tools/dev/gradle_slot.sh; gradle_slot_take   # → fd 9 holds a slot, $GRADLE_SLOT_WAIT = seconds waited
-# Env: ONPATH_GRADLE_SLOTS (default 2), WORK (default ~/onpath-cells-work). No lock dir or no flock → no slots at all
+# Env: ONPATH_GRADLE_SLOTS (default 3), WORK (default ~/onpath-cells-work). No lock dir or no flock → no slots at all
 # (cloud sessions, CI). Exit: the command's.
 WORK=${WORK:-$HOME/onpath-cells-work}
 
 _gradle_slot_count() {
-  local n=${ONPATH_GRADLE_SLOTS:-2}
+  local n=${ONPATH_GRADLE_SLOTS:-3}
   # the emulator is running (its lock is held) → one slot only: emulator + two builds do not fit in RAM
   if [ -f "$WORK/emulator.lock" ] && ! flock -n "$WORK/emulator.lock" true 2>/dev/null; then n=1; fi
   echo "$n"
