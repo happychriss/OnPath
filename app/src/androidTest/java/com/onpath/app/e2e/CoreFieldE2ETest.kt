@@ -17,6 +17,7 @@ import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.ui.AppMode
 import com.onpath.app.ui.RoutesTab
+import com.onpath.app.ui.ReplaceAsk
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -313,6 +314,98 @@ class CoreFieldE2ETest : E2EBase() {
         val trace = com.onpath.app.debug.Problems.events().map { it.message }
         assertTrue("traced: ${trace.take(30)}", trace.any { it.startsWith("One point left during the tour") })
     }
+
+    /** A done tour (a recorded line) near the walker, for the follow-a-track cases below. */
+    private fun insertDoneTour(name: String): Long {
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
+        val line = (0..20).map { i -> TrackPoint(lat + 0.0003 * i, lon + 0.0002 * i) }
+        return db.insertTour(TourKind.RECORDED, name, Activity.BIKE_TOURING.name, 2, 600.0, 0.0, 0.0, 300.0, listOf(line), emptyList())
+    }
+
+    private fun tourWith(id: Long) = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).getTour(id)!!
+
+    /** A tour following a plan built on the way (two points, never saved). */
+    private fun tourWithAnUnsavedPlan() {
+        startPlanWithTwoPoints()
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the plan is followed", 20_000) { guided() }
+        scenario.onActivity { vm(it).switchToPlan() }
+        waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+        var unsaved = false
+        scenario.onActivity { unsaved = vm(it).planUnsaved }
+        assertTrue("the plan made on the way is not saved", unsaved)
+    }
+
+    private fun followName(): String? { var n: String? = null; scenario.onActivity { n = vm(it).followName }; return n }
+    private fun askOpen(): Boolean { var a = false; scenario.onActivity { a = vm(it).replaceUnsavedAsk }; return a }
+
+    /**
+     * Flow map M1 (2026-11-06): "Folgen" on a done tour during a tour kept the plan built on the way – two routes, and an
+     * edit to the plan switched the guidance silently back. Now: an unsaved plan asks "Plan speichern?" first; Verwerfen →
+     * the plan leaves the map (Undo brings it back) and the tour follows the track.
+     */
+    @Test fun followingATrackDuringATourAsksForTheUnsavedPlanThenTheTrackAlone() {
+        tourWithAnUnsavedPlan()
+        val name = "E2E done tour ${System.currentTimeMillis() % 100_000}"
+        val id = insertDoneTour(name)
+        try {
+            scenario.onActivity { vm(it).requestOpen(tourWith(id)); vm(it).answerTrackFollow(true) }
+            waitUntil("'Plan speichern?' before the track takes the plan's place", 5_000) { askOpen() }
+            assertEquals("nothing changed while it asks", 2, waypointCount())
+            scenario.onActivity { vm(it).answerReplaceUnsaved(ReplaceAsk.Answer.DISCARD) }
+            waitUntil("the plan has left the map", 10_000) { waypointCount() == 0 }
+            waitUntil("the tour follows the track", 10_000) { followName() == name }
+            assertTrue("the recording goes on", recording())
+            scenario.onActivity { vm(it).undoStep() }
+            waitUntil("Undo brings the plan back", 10_000) { waypointCount() == 2 }
+        } finally {
+            TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).deleteTour(id)
+        }
+    }
+
+    /** M1: Abbrechen in "Plan speichern?" changes nothing – the plan stays and is still followed, no track. */
+    @Test fun followingATrackDuringATourCancelKeepsThePlan() {
+        tourWithAnUnsavedPlan()
+        val before = followName()
+        val name = "E2E done tour ${System.currentTimeMillis() % 100_000}"
+        val id = insertDoneTour(name)
+        try {
+            scenario.onActivity { vm(it).requestOpen(tourWith(id)); vm(it).answerTrackFollow(true) }
+            waitUntil("asked", 5_000) { askOpen() }
+            scenario.onActivity { vm(it).answerReplaceUnsaved(ReplaceAsk.Answer.CANCEL) }
+            Thread.sleep(1_500)
+            assertEquals("the plan stays", 2, waypointCount())
+            assertEquals("the plan is still followed", before, followName())
+            assertTrue(guided())
+        } finally {
+            TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).deleteTour(id)
+        }
+    }
+
+    /** M1: a saved plan asks nothing – it stays in My routes, leaves the map, the tour follows the track. */
+    @Test fun followingATrackDuringATourWithASavedPlanGoesAtOnce() {
+        tourWithAnUnsavedPlan()
+        val planName = "E2E saved plan ${System.currentTimeMillis() % 100_000}"
+        scenario.onActivity { vm(it).requestSave() }
+        waitUntil("Save's dialog", 5_000) { var a = false; scenario.onActivity { a = vm(it).saveAsk != null }; a }
+        scenario.onActivity { vm(it).confirmSave(planName) }
+        waitUntil("the plan is saved", 10_000) { var s = true; scenario.onActivity { s = vm(it).planUnsaved }; !s }
+        val name = "E2E done tour ${System.currentTimeMillis() % 100_000}"
+        val id = insertDoneTour(name)
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
+        try {
+            scenario.onActivity { vm(it).requestOpen(tourWith(id)); vm(it).answerTrackFollow(true) }
+            waitUntil("the tour follows the track", 10_000) { followName() == name }
+            assertFalse("no question for a saved plan", askOpen())
+            waitUntil("the plan has left the map", 10_000) { waypointCount() == 0 }
+        } finally {
+            db.deleteTour(id)
+            scenario.onActivity { vm(it).tours.filter { t -> t.name == planName }.forEach { t -> db.deleteTour(t.id) } }
+        }
+    }
+
 
     private fun waypointList(): List<GeoPoint> { var l: List<GeoPoint> = emptyList(); scenario.onActivity { l = vm(it).waypoints.toList() }; return l }
 }

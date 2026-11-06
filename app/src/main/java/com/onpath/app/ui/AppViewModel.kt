@@ -2774,11 +2774,55 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val t = trackFollowAsk ?: return
         trackFollowAsk = null
         Problems.trace("tour", "Track \"${t.name}\" during the tour: ${if (follow) "follow" else "cancel"}")
-        if (follow) openTour(t, trackThen = TrackThen.FOLLOW)
+        if (follow) unlessUnsaved("Follow \"${t.name}\" during the tour") { openTour(t, trackThen = TrackThen.FOLLOW) }
     }
 
     /** My routes ⋮ → "Als Plan übernehmen" (a done tour / track, owner 2026-11-06 F1): opened, then made a plan of it. */
-    fun planFromTour(t: Tour) = openTour(t, trackThen = TrackThen.PLAN)
+    fun planFromTour(t: Tour) = unlessUnsaved("\"${t.name}\" as the plan") { openTour(t, trackThen = TrackThen.PLAN) }
+
+    /**
+     * "Plan speichern?" before something else takes an unsaved plan's place ([ReplaceAsk], flow map M1 / save paths P3):
+     * open while [afterReplaceUnsaved] waits for the answer.
+     */
+    var replaceUnsavedAsk by mutableStateOf(false)
+        private set
+    private var afterReplaceUnsaved: (() -> Unit)? = null
+
+    /** Runs [go] at once – or first asks "Plan speichern?" when it would replace a plan that is not saved. */
+    private fun unlessUnsaved(what: String, go: () -> Unit) {
+        if (!ReplaceAsk.asks(planUnsaved, waypoints.size)) { go(); return }
+        Problems.trace("plan", "$what: the plan is not saved – asked (save / discard / cancel)")
+        afterReplaceUnsaved = go
+        replaceUnsavedAsk = true
+    }
+
+    /** The answer to [replaceUnsavedAsk]: Save → Save's dialog, then [go]; Discard → [go]; Cancel → nothing changes. */
+    fun answerReplaceUnsaved(a: ReplaceAsk.Answer) {
+        val go = afterReplaceUnsaved ?: return
+        afterReplaceUnsaved = null; replaceUnsavedAsk = false
+        Problems.trace("plan", "Unsaved plan before it is replaced: ${a.name.lowercase()}")
+        when (a) {
+            ReplaceAsk.Answer.SAVE -> askSave { go() }
+            ReplaceAsk.Answer.DISCARD -> go()
+            ReplaceAsk.Answer.CANCEL -> Unit
+        }
+    }
+
+    /**
+     * A shown track followed during a tour (the track sheet's "Tour nachfahren", F1's "Folgen" – flow map M1, owner rule
+     * "what Plan shows = what Navigate follows"): the plan leaves the map (one Undo step, like ✕ Neu planen), the tour
+     * follows the track, Navigate. An unsaved plan asks first ([unlessUnsaved]).
+     */
+    fun followShownDuringTour() = unlessUnsaved("Follow the shown track during the tour") { followShownNow() }
+
+    private fun followShownNow() {
+        if (recState.value == null) return
+        if (waypoints.isNotEmpty()) {
+            Problems.trace("plan", "Track followed during the tour: the plan (${waypoints.size} points) leaves the map (Undo brings it back)")
+            clearPlan()
+        }
+        followShown(); closeShown(); continueNavigation()
+    }
 
     /** The answer to [tourLoadAsk] (owner 2026-11-03). */
     fun answerTourLoad(a: TourLoad.Answer) {
@@ -2788,7 +2832,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         when (TourLoad.step(a)) {
             // the tour follows the loaded route from here – like changing the route during the tour (TourSplit /
             // followEditedPlan); the tour keeps its activity; back to Navigate
-            TourLoad.Step.FOLLOW_NOW -> openTour(t, duringTour = true)
+            TourLoad.Step.FOLLOW_NOW -> unlessUnsaved("Load \"${t.name}\" during the tour") { openTour(t, duringTour = true) }
             // the usual end question first; the route loads once the tour has ended (saved or deleted)
             TourLoad.Step.END_THEN_LOAD -> { loadAfterTour = t; routesOpen = false; askEndTour() }
             TourLoad.Step.NOTHING -> Unit
@@ -3637,8 +3681,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     note = choice.note))
                 when (trackThen) {
                     // "Dieser Tour folgen?" → Folgen: exactly what the track sheet's "Tour nachfahren" did, without the sheet
-                    TrackThen.FOLLOW -> if (recState.value != null) { followShown(); closeShown(); continueNavigation() }
-                    TrackThen.PLAN -> planFromShown()
+                    TrackThen.FOLLOW -> followShownNow()
+                    TrackThen.PLAN -> planFromShownNow()
                     TrackThen.SHOW -> Unit
                 }
             }
@@ -4004,7 +4048,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * Shown track → a plannable route with few route points (owner; routing/TrackToPlan): our router and the
      * current activity re-trace the track; the result replaces the plan (Undo brings the old one back).
      */
-    fun planFromShown() {
+    /** The track sheet's "Als Plan übernehmen": an unsaved plan asks first ([unlessUnsaved], save paths P3). */
+    fun planFromShown() = unlessUnsaved("Track → plan") { planFromShownNow() }
+
+    private fun planFromShownNow() {
         val sh = shown ?: return
         if (planFromTrackBusy) return
         val track = sh.segments.flatten()

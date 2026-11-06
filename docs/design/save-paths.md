@@ -34,7 +34,7 @@ to the backup folder (`Backups.tourChanged`), "Export all" (`Backups.exportZip`,
   un-ignore `SavePathsTest.endOfTourSaveKeepsThePlan`. Simpler alternative: with the switch ON save at once under the
   proposed name, no name dialog (rename later in My routes).
 - **P2 (2):** the ride summary gets the same "Plan auch speichern" switch as the plain end sheet (preset `EndPlanSave`).
-- **P3 (6, 8):** before replacing an unsaved plan, the same "Replace current plan? · Save first" as in 5.
+- **P3 (6, 8):** before replacing an unsaved plan, the same "Replace current plan? · Save first" as in 5. **Done 2026-11-06:** ways 6 and 8 (and following a track during a tour, flow map M1) ask "Plan speichern?" (Speichern · Verwerfen · Abbrechen) before they replace an unsaved plan – `ReplaceAsk`, `SavePathsTest.replacingAnUnsavedPlanAsksFirst`, E2E `CoreFieldE2ETest.followingATrack*`.
 - **P4 (9, 12):** an unsaved plan worth keeping is auto-saved as a draft ("Entwurf") before it is cleared after a tour
   – then Undo is no longer the only way back, also after a restart.
 

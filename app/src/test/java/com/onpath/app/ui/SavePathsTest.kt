@@ -88,19 +88,32 @@ class SavePathsTest {
     }
 
     /** A saved route loaded during a tour → "Mit dieser Route weiter": an unsaved plan is replaced without a question. */
-    @Test fun todayContinueWithALoadedRouteReplacesAnUnsavedPlanWithoutAsking() {
+    /**
+     * Ways 6 + 8 (P3, done 2026-11-06 with flow map M1): "Mit dieser Route weiter", "Als Plan übernehmen" and following a
+     * track during a tour ask "Plan speichern?" first when they would replace a plan that is not saved ([ReplaceAsk]).
+     */
+    @Test fun replacingAnUnsavedPlanAsksFirst() {
         val unsaved = listOf(a, b)
         assertTrue(RouteRules.isUnsaved(unsaved, null))
+        assertTrue(ReplaceAsk.asks(unsaved = true, planPoints = 2))
+        assertTrue(ReplaceAsk.asks(unsaved = true, planPoints = 1))
+        assertFalse("a saved plan stays in My routes", ReplaceAsk.asks(unsaved = false, planPoints = 2))
+        assertFalse("no plan, nothing to lose", ReplaceAsk.asks(unsaved = true, planPoints = 0))
         assertEquals(OpenAsk.BLOCKED_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 2, navigating = true, unsaved, null))
-        assertEquals(TourLoad.Step.FOLLOW_NOW, TourLoad.step(TourLoad.Answer.CONTINUE))
-        assertTrue(body("fun openTour(t: Tour, duringTour: Boolean = false, trackThen: TrackThen = TrackThen.SHOW) {").contains("change { clear(); addAll(pts) }"))
+        assertTrue(body("fun answerTourLoad(").contains("TourLoad.Step.FOLLOW_NOW -> unlessUnsaved("))
+        assertTrue(vm.contains("fun planFromShown() = unlessUnsaved(\"Track → plan\") { planFromShownNow() }"))
+        assertTrue(vm.contains("fun planFromTour(t: Tour) = unlessUnsaved("))
+        assertTrue(vm.contains("fun followShownDuringTour() = unlessUnsaved("))
+        val ask = body("private fun unlessUnsaved(what: String, go: () -> Unit) {")
+        assertTrue(ask, ask.contains("ReplaceAsk.asks(planUnsaved, waypoints.size)"))
+        val answer = body("fun answerReplaceUnsaved(a: ReplaceAsk.Answer) {")
+        assertTrue(answer, answer.contains("ReplaceAsk.Answer.SAVE -> askSave { go() }") && answer.contains("ReplaceAsk.Answer.CANCEL -> Unit"))
     }
 
-    /** "Als Plan nutzen" on a shown track replaces the plan at once (Undo only), also an unsaved one. */
-    @Test fun todayPlanFromATrackReplacesThePlanWithoutAsking() {
-        val from = body("fun planFromShown() {")
+    /** Making a plan of a track still replaces the plan in one Undo step (after the question above). */
+    @Test fun planFromATrackIsOneUndoStep() {
+        val from = body("private fun planFromShownNow() {")
         assertTrue(from.contains("change { clear(); addAll(pts) }") && from.contains("change { clear(); addAll(r.points) }"))
-        assertFalse(from.contains("replaceAsk") || from.contains("planUnsaved"))
     }
 
     /** Process death / app update mid-plan: every edit writes the points, the next start reads them. */
@@ -122,7 +135,7 @@ class SavePathsTest {
         val imp = body("fun importGpx(uri: Uri) {")
         assertTrue(imp.contains("db.insertTour(TourKind.IMPORTED,"))
         assertFalse(imp.contains("TourKind.PLANNED"))
-        assertTrue(body("fun planFromShown() {").contains("PlanGpx.stopsOf(track, sh.waypoints)"))
+        assertTrue(body("private fun planFromShownNow() {").contains("PlanGpx.stopsOf(track, sh.waypoints)"))
     }
 
     /**

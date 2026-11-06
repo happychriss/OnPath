@@ -53,3 +53,13 @@ object PlanGuidance {
 object ClearAsk {
     fun asks(unsaved: Boolean, touring: Boolean, planPoints: Int): Boolean = unsaved || (touring && planPoints > 0)
 }
+
+/**
+ * Before something else takes the plan's place (flow map M1 + save paths P3, 2026-11-06): following a track during a tour,
+ * "Mit dieser Route weiter", "Als Plan übernehmen". A plan that is not saved asks first – the same "Plan speichern?" as
+ * ✕ (Speichern · Verwerfen · Abbrechen); a saved plan stays in My routes, no plan has nothing to lose.
+ */
+object ReplaceAsk {
+    enum class Answer { SAVE, DISCARD, CANCEL }
+    fun asks(unsaved: Boolean, planPoints: Int): Boolean = unsaved && planPoints > 0
+}

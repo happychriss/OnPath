@@ -44,6 +44,11 @@ fun RouteDialogs(vm: AppViewModel) {
     if (vm.discardAsk) DiscardPlanDialog(onDiscard = vm::discardConfirmed, onCancel = { vm.discardAsk = false },
         onSave = if (vm.planUnsaved && vm.canSaveBeforeClear) vm::discardSaveFirst else null, touring = vm.clearDuringTour,
         unsaved = vm.planUnsaved, name = vm.planNameForAsk)
+    // flow map M1 / save paths P3: an unsaved plan before a track / route takes its place
+    if (vm.replaceUnsavedAsk) DiscardPlanDialog(onDiscard = { vm.answerReplaceUnsaved(ReplaceAsk.Answer.DISCARD) },
+        onCancel = { vm.answerReplaceUnsaved(ReplaceAsk.Answer.CANCEL) },
+        onSave = if (vm.canSaveBeforeClear) ({ vm.answerReplaceUnsaved(ReplaceAsk.Answer.SAVE) }) else null,
+        touring = vm.clearDuringTour, unsaved = true, name = vm.planNameForAsk)
     vm.replaceAsk?.let { t ->
         ReplacePlanDialog(onSaveFirst = vm::replaceSaveFirst, onReplace = vm::replaceConfirmed, onCancel = { vm.replaceAsk = null },
             fromLink = t is PlanToOpen.Shared)

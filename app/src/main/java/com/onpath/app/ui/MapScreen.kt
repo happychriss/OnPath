@@ -480,7 +480,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             shown, isFollowed = vm.followName == shown.name, recording = rec != null, activity = vm.activity,
             onFollow = {
                 if (rec == null) onStartNavigation()
-                else { vm.followShown(); vm.closeShown(); vm.continueNavigation() }
+                else vm.followShownDuringTour()
             },
             onClose = vm::closeShown, onHighlight = { vm.highlight = it },
             onPlan = vm::planFromShown, planBusy = vm.planFromTrackBusy,
