@@ -411,7 +411,7 @@ class ScreenshotTest {
                         unsaved: Boolean = false, bottom: @Composable () -> Unit) {
         Box(Modifier.fillMaxSize()) {
             // [sync] is built inside the composition: its texts follow the test's language
-            // Save route is the top item whenever there is a plan; [unsaved] = the green dot on ☰
+            // Save route is the top item whenever there is a plan; [unsaved] = the "Nicht gespeichert ›" sign
             val menu = PlanMenu(state, onUpdates = {}, onPairBrowser = {}, onPhoneSetup = if (phoneSetup) ({}) else null,
                 sync = sync?.invoke() ?: SyncMenuUi(), onSaveRoute = if (state.save) ({}) else null, unsaved = unsaved)
             Frame(menu = menu) { bottom() }
@@ -428,7 +428,7 @@ class ScreenshotTest {
         }
     }
 
-    /** ☰ while the plan has unsaved changes: "Save route" on top (the one Save), a green dot on ☰; the sheet has no Save. */
+    /** ☰ while the plan has unsaved changes: "Save route" on top (the one Save); the sign beside the label, no dot on ☰. */
     @Test fun planMenuUnsaved() = paparazzi.snapshot {
         TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false), unsaved = true) {
             PlanPanel(planUi().copy(unsaved = true), PlanCallbacks())
@@ -1284,13 +1284,17 @@ class ScreenshotTest {
     }
 
     /** A new route, not saved yet (owner 2026-10-30): green "Save" beside ⋯ in the sheet's first line. */
+    /** Unsaved (owner 2026-11-06, #41 B): "💾 Nicht gespeichert ›" beside "PLANEN · Ohne Netz ✓", no dot on ☰. */
     @Test fun planUnsaved() = paparazzi.snapshot {
-        Frame { PlanPanel(planUi().copy(unsaved = true), PlanCallbacks()) }
+        Frame(menu = unsavedMenu, offline = OfflineReady.State.READY) { PlanPanel(planUi().copy(unsaved = true), PlanCallbacks()) }
     }
+
+    /** The unsaved plan's ☰ menu: Save route on top (the sign's tap does the same). */
+    private val unsavedMenu get() = PlanMenu(onUpdates = {}, onSaveRoute = {}, unsaved = true)
 
     /** A saved route changed since: "Save" beside ⋯ again, "… changed, not saved" below. */
     @Test fun planChangedNotSaved() = paparazzi.snapshot {
-        Frame { PlanPanel(planUi().copy(savedName = "Route Meran – Hirzer", unsaved = true), PlanCallbacks()) }
+        Frame(menu = unsavedMenu) { PlanPanel(planUi().copy(savedName = "Route Meran – Hirzer", unsaved = true), PlanCallbacks()) }
     }
 
     /** Save beside ⋯ on a long day hike: time and distance still in full (their own line when they do not fit). */
@@ -1315,7 +1319,7 @@ class ScreenshotTest {
     }
 
     @Test fun planUnsavedLongHike() = paparazzi.snapshot {
-        Frame { PlanPanel(planUi(r = route.copy(distanceM = 28_740.0, durationS = 10.4 * 3600)).copy(sac = 3, unsaved = true),
+        Frame(menu = unsavedMenu, offline = OfflineReady.State.READY) { PlanPanel(planUi(r = route.copy(distanceM = 28_740.0, durationS = 10.4 * 3600)).copy(sac = 3, unsaved = true),
             PlanCallbacks()) }
     }
 

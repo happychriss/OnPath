@@ -1348,5 +1348,18 @@
     "context": "Screen reader only: the Round trip button while the plan is a round trip (a switch that is on); a tap takes the way back to the start out again",
     "priority": 2,
     "confidence": "sicher"
+  },
+  "plan_unsaved_chip": {
+    "area": "Plan top bar",
+    "context": "Amber sign beside the blue mode label (PLANEN …) while the plan has unsaved changes; followed by ' ›'; a tap opens Save's dialog",
+    "max": 20,
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_unsaved_chip_desc": {
+    "area": "Plan top bar",
+    "context": "Screen reader only: the 'Not saved' sign beside the mode label – what a tap does",
+    "priority": 2,
+    "confidence": "sicher"
   }
 }

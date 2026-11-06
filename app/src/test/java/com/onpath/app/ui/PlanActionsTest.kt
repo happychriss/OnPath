@@ -9,7 +9,7 @@ import java.io.File
 /**
  * Owner 2026-10-31 (0.13.5): the plan sheet's ⋯ menu is gone. The sheet has a row of three small icons with a label
  * under each – ✕ Close plan (was "Clear route"; asks "Discard changes?" only with unsaved changes), ⇅ Reverse, ↻ Round
- * trip. Save is ☰ → Save route (under My routes whenever there is a plan; a dot on ☰ while unsaved); Save as copy, Export GPX
+ * trip. Save is ☰ → Save route (under My routes whenever there is a plan; while unsaved also the "Nicht gespeichert ›" sign beside the mode label); Save as copy, Export GPX
  * and Share plan are in My routes → ⋮; Time details = a tap on the time.
  */
 class PlanActionsTest {
@@ -57,7 +57,9 @@ class PlanActionsTest {
         assertFalse("no Start recording in ☰", items.contains("plan_menu_start_recording") || items.contains("onStartRecording"))
         assertTrue("☰: My routes · Save route · Pair with browser · Settings $order",
             order.all { it >= 0 } && order == order.sorted())
-        assertTrue(src("ui/PlanTopBar.kt").contains("menu.unsaved && menu.onSaveRoute != null) OnPathColors.Green"))
+        // owner 2026-11-06 (#41 B): unsaved = the "Nicht gespeichert ›" sign beside the mode label, no green dot on ☰
+        assertTrue(PlanMenu(onSaveRoute = {}, unsaved = true).showUnsaved)
+        assertFalse("no dot for unsaved", PlanMenu(onSaveRoute = {}, unsaved = true).dotWarn)
     }
 
     @Test fun copyAndShareLiveInMyRoutes() {

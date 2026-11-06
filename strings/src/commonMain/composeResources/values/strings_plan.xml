@@ -271,4 +271,6 @@
     <string name="plan_save_ask_text_named">“%1$s” has changes that are not saved yet.</string>
     <string name="plan_save_ask_text">Your plan has changes that are not saved yet.</string>
     <string name="plan_tour_goes_on">Your tour goes on.</string>
+    <string name="plan_unsaved_chip">Not saved</string>
+    <string name="plan_unsaved_chip_desc">Plan not saved – tap to save</string>
 </resources>

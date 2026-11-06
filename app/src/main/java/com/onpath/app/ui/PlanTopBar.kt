@@ -24,6 +24,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Search
@@ -56,6 +57,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.layout
 
 /**
  * App-level actions in the ☰ menu next to the search bar (owner: the search bar only searches; everything about
@@ -83,9 +85,18 @@ class PlanMenu(
      * (RouteRules.saveInMenu); it opens Save's name dialog. Null hides it.
      */
     val onSaveRoute: (() -> Unit)? = null,
-    /** The plan has unsaved changes (RouteRules.saveAtHand): a small green dot on ☰ (an amber sync dot wins). */
+    /**
+     * The plan has unsaved changes (RouteRules.saveAtHand): the amber "Nicht gespeichert ›" sign beside the mode label
+     * (owner 2026-11-06, onpath.private#41 B – the green dot on ☰ said nothing to anyone).
+     */
     val unsaved: Boolean = false,
-)
+) {
+    /** The "Nicht gespeichert ›" sign shows: unsaved changes and Save at hand (its tap is Save route). */
+    val showUnsaved: Boolean get() = unsaved && onSaveRoute != null
+
+    /** The dot on ☰: only the browser sync's amber warning (unsaved has its own sign now). */
+    val dotWarn: Boolean get() = onPairBrowser != null && sync.warning != null
+}
 
 /**
  * Plan's top band (owner 2026-11-05, band b): a light blue band behind the search pill and ☰, so they do not float over
@@ -143,9 +154,21 @@ fun PlanTopBar(
     }
     val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
     // large font: the label in its own line above the pill (on the pill's edge it covered "Orte oder …")
+    // the mode label, and beside it "Nicht gespeichert ›" while the plan has unsaved changes (owner 2026-11-06, #41 B);
+    // drawn over the bar so the sign's 48 dp touch area (reaching down over the search pill's edge) moves nothing
+    val labels = @Composable { m: Modifier ->
+        Row(m, verticalAlignment = Alignment.Top) {
+            PlanModeLabel(editing, Modifier, offline, onOffline)
+            if (menu.showUnsaved) {
+                Spacer(Modifier.width(6.dp))
+                // large font: the label line is full with "PLANEN · Ohne Netz ✓" – the sign keeps 💾 › (TalkBack the sentence)
+                UnsavedSign(menu.onSaveRoute!!, wordless = PlanTopBand.largeLabel(fontScale))
+            }
+        }
+    }
     if (PlanTopBand.largeLabel(fontScale)) {
         Column(modifier.height(PlanTopBand.bottom(fontScale))) {
-            PlanModeLabel(editing, Modifier.padding(start = PlanTopBand.LABEL_START, top = 6.dp), offline, onOffline)
+            labels(Modifier.padding(start = PlanTopBand.LABEL_START, top = 6.dp))
             row()
         }
         return
@@ -154,7 +177,7 @@ fun PlanTopBar(
         row()
         // Plan is blue (owner 2026-11-03, design §3 version 3): a small blue label on the pill's top edge – "PLANEN",
         // during a tour "PLAN ÄNDERN"; the word helps in the sun and with colour blindness
-        PlanModeLabel(editing, Modifier.align(Alignment.TopStart).padding(start = PlanTopBand.LABEL_START), offline, onOffline)
+        labels(Modifier.align(Alignment.TopStart).padding(start = PlanTopBand.LABEL_START))
     }
 }
 
@@ -195,6 +218,34 @@ internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier, offl
     }
 }
 
+/**
+ * "💾 Nicht gespeichert ›" in the amber of a notice (owner 2026-11-06, onpath.private#41 B): beside the mode label while
+ * the plan has unsaved changes – a tap opens Save's dialog (the ☰ item's way). The sign is as small as the label; its
+ * touch area is 48 dp high, reaching down over the search pill's edge (TalkBack hears what a tap does).
+ */
+@Composable
+private fun UnsavedSign(onSave: () -> Unit, wordless: Boolean = false) {
+    val desc = str(Res.string.plan_unsaved_chip_desc)
+    // the sign takes only its own height in the layout (the label's line stays as it was); its 48 dp touch box hangs
+    // below it, over the search pill's edge
+    Box(Modifier.layout { m, c ->
+            // height 0 for the row it sits in: the label's line keeps its height; drawn and touchable below that
+            val p = m.measure(c.copy(minHeight = 0, maxHeight = androidx.compose.ui.unit.Constraints.Infinity))
+            layout(p.width, 0) { p.place(0, 0) }
+        }
+        .heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onSave)
+        .clearAndSetSemantics { contentDescription = desc; role = Role.Button }, contentAlignment = Alignment.TopStart) {
+        Row(Modifier.clip(CircleShape).background(OnPathColors.WarnContainer, CircleShape)
+            .border(1.dp, OnPathColors.Warn, CircleShape).padding(horizontal = 8.dp, vertical = 1.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Save, null, tint = OnPathColors.Warn, modifier = Modifier.size(12.dp))
+            Spacer(Modifier.width(3.dp))
+            Text(if (wordless) "›" else str(Res.string.plan_unsaved_chip) + " ›", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
+                color = OnPathColors.OnWarnContainer, maxLines = 1, softWrap = false)
+        }
+    }
+}
+
 @Composable
 private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
     Surface(
@@ -221,10 +272,9 @@ private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
             shadowElevation = 3.dp, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }) {
             Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Menu, contentDescription = null, tint = OnPathColors.PlanAccent) }
         }
-        // amber dot: the browser sync needs a look (never for plain offline) – the ☰ item says why; else a green dot while
-        // the plan has unsaved changes (Save route is the top item)
-        val dot = if (menu.onPairBrowser != null && menu.sync.warning != null) OnPathColors.Warn
-            else if (menu.unsaved && menu.onSaveRoute != null) OnPathColors.Green else null
+        // amber dot: the browser sync needs a look (never for plain offline) – the ☰ item says why. Unsaved changes have
+        // their own sign beside the mode label (owner 2026-11-06, #41 B), no dot
+        val dot = if (menu.dotWarn) OnPathColors.Warn else null
         if (dot != null) Box(Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 6.dp)
             .size(12.dp).background(dot, CircleShape).border(2.dp, OnPathColors.CardWhite, CircleShape))
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, offset = DpOffset(0.dp, 4.dp)) {
