@@ -13,6 +13,7 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
   push messages name a question, issue, commit or item by a short description ("die Frage zum Startknopf"), never by
   its number alone. Numbers stay in issues, the backlog and commit messages for the sessions; the owner may answer
   with a word ("Startknopf: A").
+- **Planner deploys in the test phase** (owner 2026-11-06): the planner goes online right after the affected local tests – GitHub's full run continues behind it; a red run is fixed and deployed again (`docs/roles/cloud-plan.md`).
 - **Fragenregister** (owner 2026-11-06): every question the owner asks a session in its chat goes onto the page
   https://claude.ai/artifact/MyNqN2MaaxNzrex7wVccwX (`ArtifactData`, collection `fragen`), so no answer gets lost in the
   scroll. When the question comes: `set` doc `<unit>-<YYYYMMDD>-<n>` with `sitzung` (your unit), `frage` (short, his words),

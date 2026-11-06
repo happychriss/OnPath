@@ -22,6 +22,10 @@ build in the backlog as open; don't fall back to slow cloud builds without askin
 - The web follows the app (`docs/design/web-planner.md` §14): when an app change touches a mirrored file
   (`web/parity.json`), adopt it in the web and `node web/parity/check.mjs --update`; `web/parity/check-web.sh` runs
   the planner's checks locally.
+- **Test phase (owner 2026-11-06: „erstmal veröffentlichen und GitHub weiterlaufen lassen – wir sind noch nicht im
+  richtigen Betrieb“):** after a planner change, run only the affected tests locally; when they are green, push and deploy
+  at once – Actions → Web planner → Run workflow → deploy + quick (PR #5; until it is merged: deploy alone, which waits for
+  the checks). GitHub's full run continues; a red one is fixed first and deployed again. Ends when the owner says so.
 - The planner goes online with an app release (release.yml, job "planner") or by hand (Actions → Web planner → Run
   workflow → deploy); a deploy by hand that changes shared behaviour only after the captain's go.
 
