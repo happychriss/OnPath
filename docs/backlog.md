@@ -88,6 +88,14 @@ the git log.
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 
 ## Next
+- ✓ [donald] 2026-11-06 evening on main (9f2c7b5a, gate --full + 19 E2E flows green on the emulator): C green "Navigation ›"
+  button at the bottom of Plan during a tour (no "←"), F1 = one question "Dieser Tour folgen?" for a done tour tapped during
+  a tour ("Als Plan übernehmen" in ⋮), slim "Tour gespeichert" box (OK only), "↻ Rundtour" switch + "Umkehren" grey when
+  it changes nothing (#40), amber "Nicht gespeichert ›" sign beside the mode pill instead of the ☰ dot (#41), fixed map
+  controls column (#43), tour names ("In X" instead of "Rundtour ab X" for short rides), Navigate stop times tick every
+  minute, flat profile axis, N1 notification "Navigation pausiert – tippen zum Weiterfahren", "Dein Plan ist noch nicht
+  gespeichert." Earlier today: end sheet as bottom sheet, plan kept at tour end (save + delete), one point during a tour
+  (#39), 'Ohne Netz' strict, all 256 glyph ranges, pin card "+ Hinzufügen". Not yet on the Pixel (a tour was recording).
 - **[cloud-plan] Planner follows the app's plan rules of 2026-11-06 (owner: "die gleiche Logik beim Planer")** – (1) "↻ Rundtour"
   as a toggle: filled with ✓ while the plan is a round trip, a tap removes the way back (A→B→A → A→B); "⇅ Umkehren" grey
   when reversing changes nothing (out and back over one point) – onpath.private#40, app branch in progress (donald),
