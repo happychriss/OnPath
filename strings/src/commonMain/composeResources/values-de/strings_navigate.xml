@@ -32,7 +32,6 @@
     <string name="nav_copy_position">Position kopieren</string>
     <string name="nav_position_clip">Position</string>
     <string name="nav_copied">%1$s · kopiert ✓</string>
-    <string name="nav_rec_badge">REC</string>
     <string name="nav_status_recording">Unterwegs</string>
     <string name="nav_status_paused">Pausiert</string>
     <string name="nav_status_searching_gps">GPS wird gesucht…</string>
@@ -151,10 +150,10 @@
     <string name="nav_watchdog_title">Tour bekommt kein GPS</string>
     <string name="nav_watchdog_text">OnPath hat die Tour neu gestartet, aber seit 5 Minuten keine GPS-Position. Öffne OnPath und prüfe die Tour.</string>
     <string name="nav_interrupted_title">Tour unterbrochen</string>
-    <string name="nav_interrupted_boot">Das Handy wurde neu gestartet – öffne OnPath und tippe auf „Fortsetzen“, um weiterzumachen.</string>
-    <string name="nav_interrupted_update">OnPath wurde aktualisiert – öffne OnPath und tippe auf „Fortsetzen“, um weiterzumachen.</string>
-    <string name="nav_interrupted_boot_long">Das Handy wurde neu gestartet, während „%1$s“ lief. Die Tour bis hierhin ist gespeichert. Öffne OnPath und tippe auf „Fortsetzen“, um weiterzumachen.</string>
-    <string name="nav_interrupted_update_long">OnPath wurde aktualisiert, während „%1$s“ lief. Die Tour bis hierhin ist gespeichert. Öffne OnPath und tippe auf „Fortsetzen“, um weiterzumachen.</string>
+    <string name="nav_interrupted_boot">Das Handy wurde neu gestartet – öffne OnPath und tippe auf „Weiter“, um weiterzumachen.</string>
+    <string name="nav_interrupted_update">OnPath wurde aktualisiert – öffne OnPath und tippe auf „Weiter“, um weiterzumachen.</string>
+    <string name="nav_interrupted_boot_long">Das Handy wurde neu gestartet, während „%1$s“ lief. Die Tour bis hierhin ist gespeichert. Öffne OnPath und tippe auf „Weiter“, um weiterzumachen.</string>
+    <string name="nav_interrupted_update_long">OnPath wurde aktualisiert, während „%1$s“ lief. Die Tour bis hierhin ist gespeichert. Öffne OnPath und tippe auf „Weiter“, um weiterzumachen.</string>
 
     <!-- GPS status -->
     <string name="nav_gps_no_permission">Keine Standortberechtigung</string>
@@ -177,15 +176,15 @@
     <string name="nav_slide_unlock">Entsperren</string>
     <string name="nav_slide_unlock_desc">Entsperren. Schieben, um Pause, Tour beenden und Plan freizugeben.</string>
     <string name="nav_slide_unlock_desc_plan">Entsperren. Schieben, um den Plan freizugeben.</string>
-    <string name="nav_slide_unlock_sub">Pause · Beenden · Plan</string>
-    <string name="nav_slide_unlock_sub_plan">Plan</string>
-    <string name="nav_slide_unlock_sub_paused">Fortsetzen · Beenden · Plan</string>
+    <string name="nav_slide_unlock_sub">Pause · Beenden · Planen</string>
+    <string name="nav_slide_unlock_sub_plan">Planen</string>
+    <string name="nav_slide_unlock_sub_paused">Weiter · Beenden · Planen</string>
     <string name="nav_leave_title">App verlassen?</string>
     <string name="nav_leave_text">Deine Tour wird weiter aufgezeichnet.</string>
     <string name="nav_leave_stay">Bleiben</string>
     <string name="nav_leave_go">Verlassen</string>
     <string name="nav_lock">Sperren</string>
-    <string name="nav_change_plan">Plan</string>
+    <string name="nav_change_plan">Planen</string>
     <string name="nav_straight_on">Geradeaus</string>
     <string name="nav_save_recording">Tour speichern</string>
     <string name="nav_continue_navigation">Weiter</string>

@@ -254,7 +254,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
         surfaceColor = OnPathColors.PlanTint, accent = OnPathColors.PlanAccent,
         // during a tour (owner 2026-11-06, C): the green way back to Navigate sits where "Los geht's" sits without one,
         // in every step – the sheet rests on it
-        foot = if (ui.tour != null || ui.tourRunning) ({ BackToNavigationButton(ui.tour, ui.activity, { goClick(ui, cb) }) }) else null,
+        foot = if (ui.tour != null || ui.tourRunning) ({ BackToNavigationButton({ goClick(ui, cb) }) }) else null,
         bottomBar = { PlanBar(ui, cb) },
     ) {
         // the pulled-up sheet has ONE fixed height (owner): deleting / adding / moving points (or the routing
@@ -522,7 +522,7 @@ private fun CollapsedRow(ui: PlanUi, cb: PlanCallbacks, barShown: () -> Float, s
                     }
                 }, style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false)
                 ui.routing -> Text(PlanStatus.CALCULATING, style = MaterialTheme.typography.bodyMedium, color = variant)
-                else -> Text(str(Res.string.plan_plan_a_route), style = MaterialTheme.typography.titleMedium)
+                else -> Text(str(EmptyPlanTitle.of(ui)), style = MaterialTheme.typography.titleMedium)
             }
             // 2: ↑ ↓ (the first to go)
             if (route != null) Text(" · " + CollapsedFacts.elevation(route.ascentM, route.descentM),
@@ -799,7 +799,7 @@ private fun SavedLine(ui: PlanUi) {
 @Composable
 private fun Title(ui: PlanUi, route: PlannedRoute?, onTimeDetails: () -> Unit) {
     if (route == null) {
-        Text(str(Res.string.plan_plan_a_route), style = MaterialTheme.typography.titleLarge, maxLines = 1)
+        Text(str(EmptyPlanTitle.of(ui)), style = MaterialTheme.typography.titleLarge, maxLines = 1)
         return
     }
     Row(Modifier.heightIn(min = 48.dp).clip(MaterialTheme.shapes.small)
@@ -815,26 +815,32 @@ private fun Title(ui: PlanUi, route: PlannedRoute?, onTimeDetails: () -> Unit) {
 }
 
 /**
- * The empty plan (owner 2026-11-02, for a first start): ✋ "Wohin soll’s gehen? Halte dein Ziel auf der Karte gedrückt –
- * oder such es oben in der Suchleiste." – the question bold, both ways in one sentence, as high as the old line. The
- * hand is the one sign for "hold the map".
+ * The title of a plan without a route (owner 2026-11-06, start screen): an empty plan with no tour asks
+ * "Wohin soll’s gehen?" – the question is the title, "Neuer Plan" was a label nobody needed; otherwise (one point,
+ * during a tour) "Neuer Plan" as before.
+ */
+internal object EmptyPlanTitle {
+    fun asks(pointCount: Int, touring: Boolean): Boolean = pointCount == 0 && !touring
+    fun of(ui: PlanUi) = if (asks(ui.pointCount, ui.tour != null || ui.tourRunning)) Res.string.plan_hint_first_point_question
+        else Res.string.plan_plan_a_route
+}
+
+/**
+ * The empty plan (owner 2026-11-02, for a first start; 2026-11-06 the question moved up into the title): ✋ "Halte dein
+ * Ziel auf der Karte gedrückt – oder such es oben in der Suchleiste." – both ways in one sentence. The hand is the one
+ * sign for "hold the map".
  */
 @Composable
 private fun FirstPointHint() {
     Row(verticalAlignment = Alignment.Top) {
         Icon(Icons.Filled.TouchApp, null, tint = OnPathColors.PlanAccent, modifier = Modifier.padding(top = 1.dp).size(24.dp))
         Spacer(Modifier.width(10.dp))
-        Text(androidx.compose.ui.text.buildAnnotatedString {
-            withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)) {
-                append(str(Res.string.plan_hint_first_point_question))
-            }
-            append(" ")
-            append(str(Res.string.plan_hint_first_point))
-        }, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(str(Res.string.plan_hint_first_point), style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
-/** The empty plan during a tour: "Tour läuft weiter – setz neue Punkte oder tippe unten auf Navigation." */
+/** The empty plan during a tour: "Tour läuft weiter – setz neue Punkte oder tippe unten auf Weiter geht’s." */
 @Composable
 private fun TourGoesOnHint() {
     Row(verticalAlignment = Alignment.Top) {

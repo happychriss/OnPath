@@ -2,15 +2,13 @@ package com.onpath.app.ui
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
 /**
  * Core feature (owner 2026-11-06, C – replaces the round "←" of 2026-11-05, R1): during a tour the way from the plan back
- * to Navigate is a green full-width button "● 1,7 km · 0:14  ▲ Navigation ›" at the bottom, where "▶ Los geht's" is
+ * to Navigate is a green full-width button "▲ Weiter geht's" (plain: no red dot, no numbers – owner 2026-11-06) at the bottom, where "▶ Los geht's" is
  * without a tour – in every step of the plan sheet (its foot), under a shown tour and under a place card; Android's Back
  * does the same. The tour goes on, the plan's points stay, a paused recording goes on.
  */
@@ -19,7 +17,7 @@ class BackToNavigationTest {
 
     @Test fun theGreenButtonSitsInThePlanSheetsFootDuringATour() {
         val panel = src("ui/PlanPanel.kt")
-        assertTrue(panel.contains("foot = if (ui.tour != null || ui.tourRunning) ({ BackToNavigationButton(ui.tour, ui.activity, { goClick(ui, cb) }) }) else null"))
+        assertTrue(panel.contains("foot = if (ui.tour != null || ui.tourRunning) ({ BackToNavigationButton({ goClick(ui, cb) }) }) else null"))
         // the foot shows in every step (also rolled up): StepSheet places it with the navigation bar's padding
         val sheet = src("ui/StepSheet.kt")
         assertTrue(sheet.contains("if (foot != null) Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp), content = foot)"))
@@ -38,7 +36,7 @@ class BackToNavigationTest {
     @Test fun underAShownTourAndAPlaceCardToo() {
         val map = src("ui/MapScreen.kt")
         assertFalse(map.contains("TourRunningBar("))
-        assertTrue(map.contains("backToNavigation = rec?.let { r -> { BackToNavigationButton(tourStateOf(r, vm), vm.activity, { backToNavigation(vm, r) }) } }"))
+        assertTrue(map.contains("backToNavigation = rec?.let { r -> { BackToNavigationButton({ backToNavigation(vm, r) }) } }"))
         assertTrue(map.contains("com.onpath.app.ui.search.PlaceCardHost(vm)\n                    rec?.let { r ->\n                        BackToNavigationButton("))
         val back = map.substringAfter("private fun backToNavigation(").substringBefore("\n}\n")
         assertTrue(back, back.contains("if (r.paused) vm.pauseRecording(false)") && back.contains("vm.continueNavigation()"))
@@ -57,26 +55,24 @@ class BackToNavigationTest {
         }
     }
 
-    /** Green = it goes to the navigation (owner's colour rule): the same filled Button as "Los geht's", no own colour. */
+    /** The same form as "Los geht's" (filled, full width, 48 dp min, 22 dp sign + titleMedium word), green = navigation. */
     @Test fun sameFormAsLosGehts() {
         val b = src("ui/BackToNavigation.kt").substringAfter("fun BackToNavigationButton(").substringBefore("\n}\n")
-        assertTrue(b, b.contains("Button(colors = ActionButtons.go(), onClick = onClick, modifier = modifier.fillMaxWidth().heightIn(min = 48.dp)"))
+        assertTrue(b, b.contains("modifier = modifier.fillMaxWidth().heightIn(min = 48.dp)") && b.contains("Button(colors = ActionButtons.go(), onClick = onClick,"))
+        assertTrue(b, b.contains("Icons.Filled.Navigation, null, Modifier.size(22.dp)") && b.contains("Res.string.plan_back_nav)"))
         val go = src("ui/PlanPanel.kt").substringAfter("private fun GoButton(").substringBefore("\n}\n")
         assertTrue(go, go.contains("modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)"))
         assertTrue("the same green as Los geht's (colour rule)", go.contains("colors = ActionButtons.go()"))
     }
 
-    /** The small numbers before "Navigation": gone at a large font, "Navigation ›" stays whole. */
-    @Test fun numbers() {
-        val running = TourState(1_700.0, 878, paused = false)
-        val n = BackToNavigation.numbers(running, 1f)
-        assertNotNull(n); assertTrue(n!!, n.contains("km") && n.contains("0:14"))
-        assertNull(BackToNavigation.numbers(running, BackToNavigation.LARGE_FONT))
-        assertNull(BackToNavigation.numbers(null, 1f))
-        val paused = BackToNavigation.numbers(running.copy(paused = true), 1f)!!
-        assertFalse(paused, paused.contains("0:14"))
-        val free = BackToNavigation.numbers(running.copy(recordOnly = true), 1f)!!
-        assertFalse(free, free.contains("0:14"))
+    /** Plain (owner 2026-11-06: "Den roten Punkt brauchen wir nicht" – "ein einfaches, cooles Wort"): "Weiter geht's". */
+    @Test fun plainWeiterGehts() {
+        val b = src("ui/BackToNavigation.kt")
+        assertFalse(b, b.contains("numbers") || b.contains("RecOnGreen") || b.contains("KeyboardArrowRight") || b.contains("TourState"))
+        val de = File("../strings/src/commonMain/composeResources/values-de/strings_plan.xml").readText()
+        assertTrue(de.contains("<string name=\"plan_back_nav\">Weiter geht’s</string>"))
+        assertTrue(de.contains("oder tippe unten auf Weiter geht’s."))
+        assertFalse(de.contains("plan_back_nav_paused") || de.contains("plan_back_nav_record_only"))
     }
 
     /** The band is one row; at a large font the mode label gets its own line (no overlap). */

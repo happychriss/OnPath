@@ -81,22 +81,6 @@ fun TourRunningBar(
     }
 }
 
-/**
- * The recording sign on the activity icon (owner 2026-11-01: "ein kleines REC-Schild" instead of the small dot): a red
- * pill "● REC" – grey while paused.
- */
-@Composable
-fun RecBadge(paused: Boolean, modifier: Modifier = Modifier) {
-    val bg = if (paused) OnPathColors.Grey else OnPathColors.Error
-    Row(modifier.background(bg, RoundedCornerShape(50)).padding(horizontal = 4.dp, vertical = 1.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-        Box(Modifier.size(5.dp).background(OnPathColors.CardWhite, CircleShape))
-        Spacer(Modifier.width(2.dp))
-        Text(str(Res.string.nav_rec_badge), color = OnPathColors.CardWhite, style = MaterialTheme.typography.labelSmall,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, maxLines = 1)
-    }
-}
-
 /** Recording state dot: orange while recording, grey while paused. */
 @Composable
 fun RecDot(paused: Boolean, modifier: Modifier = Modifier) {
@@ -107,8 +91,8 @@ fun RecDot(paused: Boolean, modifier: Modifier = Modifier) {
 data class EndStats(val distanceM: Double, val elapsedS: Long, val ascentM: Double)
 
 /** "Weiterwandern" on foot, "Weiterfahren" on any bike (owner 2026-11-05: the way back names what you do). */
-internal fun keepGoingLabel(activity: com.onpath.app.routing.Activity?): String =
-    Txt.s(if (activity == com.onpath.app.routing.Activity.HIKE) Res.string.nav_keep_hiking else Res.string.nav_keep_riding)
+internal fun keepGoingLabel(@Suppress("UNUSED_PARAMETER") activity: com.onpath.app.routing.Activity?): String =
+    Txt.s(Res.string.nav_continue) // owner 2026-11-06: one word for going on after a pause / at the end – "Weiter"
 
 /**
  * "Tour beenden?" (owner 2026-11-05: V2 – "am besten, mal sehen, ob der Klick nervt"): a sheet from the bottom in

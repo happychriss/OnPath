@@ -3,6 +3,11 @@ package com.onpath.app.e2e
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.common_cancel
+import com.onpath.strings.common_resume
+import com.onpath.strings.nav_action_pause
+import com.onpath.strings.nav_end_short
+import com.onpath.strings.nav_end_tour_title
+import com.onpath.strings.nav_slide_unlock
 import com.onpath.strings.nav_leave_go
 import com.onpath.strings.nav_leave_stay
 import com.onpath.strings.nav_leave_title
@@ -509,6 +514,62 @@ class CoreFieldE2ETest : E2EBase() {
         assertTrue("the recording service still runs", com.onpath.app.recording.RecordingService.state.value != null)
         val trace = com.onpath.app.debug.Problems.events().map { it.message }
         assertTrue(trace.any { it.startsWith("Back in Navigate: left the app") })
+    }
+
+    /**
+     * Owner 2026-11-06: the tour's ONE bottom bar – with the lock off and, after the slide, with the lock on: "Pause |
+     * Planen"; ending only out of a pause ("Weiter · Beenden · ✎"); "Beenden" asks first (the end sheet).
+     */
+    @Test fun lockOffPauseThenEndOpensTheEndSheet() {
+        var before: com.onpath.app.data.AppSettings? = null
+        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navLock = false)) }
+        try {
+            startPlanWithTwoPoints()
+            Thread.sleep(if (realRouting) 3_000 else 1_000)
+            scenario.onActivity { vm(it).startNavigation(force = true) }
+            waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+            assertNotNull("Pause at the bottom, no slider", findFresh(By.text(Txt.s(Res.string.nav_action_pause)), 10_000))
+            assertTrue("no Beenden before a pause", goneFresh(By.text(Txt.s(Res.string.nav_end_short)), 2_000))
+            clickText(Txt.s(Res.string.nav_action_pause))
+            waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
+            assertNotNull("Weiter at the bottom", findFresh(By.text(Txt.s(Res.string.common_resume)), 5_000))
+            clickText(Txt.s(Res.string.nav_end_short))
+            assertNotNull("the end sheet", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
+            assertTrue("asking does not end the tour", recording())
+        } finally {
+            scenario.onActivity { vm(it).updateSettings(before!!) }
+        }
+    }
+
+    @Test fun lockOnSlidePauseLockAgainSlideEnd() {
+        var before: com.onpath.app.data.AppSettings? = null
+        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navLock = true)) }
+        try {
+            startPlanWithTwoPoints()
+            Thread.sleep(if (realRouting) 3_000 else 1_000)
+            scenario.onActivity { vm(it).startNavigation(force = true) }
+            waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+            slide()
+            assertNotNull("after the slide: Pause at the bottom", findFresh(By.text(Txt.s(Res.string.nav_action_pause)), 5_000))
+            clickText(Txt.s(Res.string.nav_action_pause))
+            waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
+            // lock again (a tap on the map locks, as after 30 s): the pause changes nothing about the lock
+            device.pressBack()
+            assertNotNull("locked + paused: the slider again", findFresh(By.descContains(Txt.s(Res.string.nav_slide_unlock)), 5_000))
+            slide()
+            assertNotNull("after the slide, paused: Beenden", findFresh(By.text(Txt.s(Res.string.nav_end_short)), 5_000))
+            clickText(Txt.s(Res.string.nav_end_short))
+            assertNotNull("the end sheet", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
+        } finally {
+            scenario.onActivity { vm(it).updateSettings(before!!) }
+        }
+    }
+
+    private fun slide() {
+        val slider = findFresh(By.descContains(Txt.s(Res.string.nav_slide_unlock)), 5_000)
+        assertNotNull("no slider in Navigate", slider)
+        val r = slider!!.visibleBounds
+        device.swipe(r.left + r.height() / 2, r.centerY(), r.right - 4, r.centerY(), 40)
     }
 
     private fun waypointList(): List<GeoPoint> { var l: List<GeoPoint> = emptyList(); scenario.onActivity { l = vm(it).waypoints.toList() }; return l }

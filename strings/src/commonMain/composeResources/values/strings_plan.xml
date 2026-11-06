@@ -201,10 +201,8 @@
     <string name="plan_resize_panel">Resize panel</string>
     <string name="plan_slide_change_route">Change plan</string>
     <!-- the green way back to Navigate during a tour, at the bottom of the plan (owner 2026-11-06, C) -->
-    <string name="plan_back_nav">Navigation</string>
-    <string name="plan_back_nav_desc">Back to navigation · %1$s</string>
-    <string name="plan_back_nav_paused">Paused · %1$s</string>
-    <string name="plan_back_nav_record_only">Recording only</string>
+    <string name="plan_back_nav">Let’s go on</string>
+    <string name="plan_back_nav_desc">Let’s go on – back to navigation</string>
     <!-- after "Save tour": a line instead of the box "Tour saved" (owner 2026-11-06, onpath.private#35) -->
     <string name="plan_mode_label">Plan</string>
     <string name="plan_switch_to_plan">Switch to plan mode</string>
@@ -266,7 +264,7 @@
     <string name="plan_clear_tour_title">Clear plan?</string>
     <string name="plan_clear_tour_text">Your tour goes on and keeps recording.</string>
     <string name="plan_clear_tour_confirm">Clear plan</string>
-    <string name="plan_hint_tour_goes_on">Tour goes on – set new points or tap Navigation below.</string>
+    <string name="plan_hint_tour_goes_on">Tour goes on – set new points or tap Let’s go on below.</string>
     <string name="plan_save_ask_title">Save plan?</string>
     <string name="plan_save_ask_text_named">“%1$s” has changes that are not saved yet.</string>
     <string name="plan_save_ask_text">Your plan is not saved yet.</string>

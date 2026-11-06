@@ -29,8 +29,9 @@ class SlideThresholdTest {
         assertTrue(slider.contains("!recording -> Res.string.nav_slide_unlock_sub_plan; paused -> Res.string.nav_slide_unlock_sub_paused"))
         assertTrue(slider.contains("if (showSub) Text(sub"))
         val de = java.io.File("../strings/src/commonMain/composeResources/values-de/strings_navigate.xml").readText()
-        assertTrue(de.contains("<string name=\"nav_slide_unlock_sub\">Pause · Beenden · Plan</string>"))
-        assertTrue(de.contains("<string name=\"nav_slide_unlock_sub_plan\">Plan</string>"))
+        // owner 2026-11-06: the blue button and the line say "Planen"
+        assertTrue(de.contains("<string name=\"nav_slide_unlock_sub\">Pause · Beenden · Planen</string>"))
+        assertTrue(de.contains("<string name=\"nav_slide_unlock_sub_plan\">Planen</string>"))
         assertTrue(SlideLabel.subFits(100, 120, 40, 30, 80))
         assertFalse("too wide", SlideLabel.subFits(130, 120, 40, 30, 80))
         assertFalse("too high (large font)", SlideLabel.subFits(100, 120, 50, 40, 80))

@@ -188,7 +188,8 @@ fun PlanTopBar(
 @Composable
 internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier, offline: OfflineReady.State? = null,
                            onOffline: () -> Unit = {}) {
-    val mode = str(if (editing) Res.string.plan_slide_change_route else Res.string.plan_mode_label).uppercase()
+    // always "PLANEN", also during a tour (owner 2026-11-06: one word for the plan mode; was "PLAN ÄNDERN")
+    val mode = str(Res.string.plan_mode_label).uppercase()
     val style = MaterialTheme.typography.labelSmall
     if (offline == null) {
         Text(mode, style = style, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite, maxLines = 1,

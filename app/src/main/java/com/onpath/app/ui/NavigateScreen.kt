@@ -254,15 +254,18 @@ fun NavigateOverlay(
     var topColumnDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var messageBottomDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var sliderDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    // the slider only unlocks (owner 2026-11-05, Navigate C): Pause / Tour beenden in the status card (a recording) and
-    // "Sperren | Plan" in the slider's place. The pause changes nothing about the lock (owner 2026-11-06): paused, the
-    // bottom stays "Sperren | Plan", it locks again after the same 30 s (counted again from the pause), and locked +
-    // paused shows the slider ("Fortsetzen · Beenden · Plan") – "Fortsetzen" is in the status card after the slide.
+    // the slider only unlocks (owner 2026-11-05, Navigate C). Unlocked – or the lock off in the settings – the bottom is
+    // ONE bar for both (owner 2026-11-06: "Stopp und Pause an der Stelle ist logischer"): "⏸ Pause | ✎ Planen", paused
+    // "Weiter · Beenden · round ✎" ([TourBottomBar]); the status card has no buttons and there is no "Sperren" button –
+    // it locks again after 30 s (counted again from a pause), with a tap on the map and with Back. The pause changes
+    // nothing about the lock: locked + paused shows the slider ("Weiter · Beenden · Planen").
     var open by remember { mutableStateOf(actionsOpen) }
     LaunchedEffect(open, lock, ui.paused) { if (lock && open && !actionsOpen) { kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false } }
     val unlocked = !lock || open
     // locking again without a choice (owner 2026-11-02, no ✕): a tap on the map or Android's back – paused the same
     val closableBar = lock && open
+    // a tour records and the screen is unlocked (or the lock is off): Pause | Planen at the bottom, ending only out of a pause
+    val tourBar = unlocked && ui.recordedM != null
     androidx.activity.compose.BackHandler(enabled = closableBar) { open = false }
     // Android's back while a tour records (owner 2026-11-06, flow map N4): ask instead of leaving the app – a novice took
     // "app gone" for "tour gone" and might start a second one. A second back closes the question (= Bleiben).
@@ -288,8 +291,8 @@ fun NavigateOverlay(
                 var profileOpen by rememberSaveable { mutableStateOf(false) }
                 NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity,
                     onProfileScrub = onProfileScrub, onProfileRelease = onProfileRelease,
-                    actions = if (unlocked && ui.recordedM != null) ({ TourCardActions(ui.paused, onPause, onEnd, onClose = { open = false }) })
-                        else null)
+                    // the lock off (owner 2026-11-06): no buttons in the card – Pause | Planen at the bottom ([TourBottomBar])
+                    actions = null)
             }
             download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
             sim?.let { Box(Modifier.align(Alignment.End)) { it() } }
@@ -299,7 +302,8 @@ fun NavigateOverlay(
             val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
             // unlocked: ONE big blue "Plan" where the slider was (owner 2026-11-05, Navigate C), an open lock beside it locks again
-            if (unlocked) ChangePlanButton({ open = false; onSlideToPlan() }, bottom, onLock = if (closableBar) ({ open = false }) else null)
+            if (tourBar) TourBottomBar(ui.paused, onPause, onEnd = { open = false; onEnd() }, onPlan = { open = false; onSlideToPlan() }, bottom)
+            else if (unlocked) ChangePlanButton({ open = false; onSlideToPlan() }, bottom)
             else SlideToPlan({ open = true }, bottom, recording = ui.recordedM != null, startFraction = slideStartFraction,
                 paused = ui.paused && ui.recordedM != null)
         }
@@ -444,7 +448,7 @@ internal fun NorthNeedle(modifier: Modifier) {
 internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean = false, onToggleProfile: () -> Unit = {},
                            onActivity: () -> Unit = {}, onProfileScrub: (GeoPoint) -> Unit = {},
                            onProfileRelease: () -> Unit = {},
-                           /** Unlocked (owner 2026-11-05): Pause / Tour beenden directly under the route info ([TourCardActions]). */
+                           /** Extra content under the route info (none since 2026-11-06: the tour's buttons are the bottom bar, [TourBottomBar]). */
                            actions: (@Composable () -> Unit)? = null) {
     val hasProfile = (ui.toGo?.profile?.size ?: 0) >= 2
     val movingLine = ui.recordedM?.let { movingLine(ui) }
@@ -465,11 +469,10 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         contentDescription = Txt.s(Res.string.nav_activity_cd, NavText.activityName(a, ui.sac))
                     }) {
                     Box(contentAlignment = Alignment.Center) {
-                        val rec = ui.recordedM != null
-                        Icon(a.icon, null, tint = OnPathColors.Green,
-                            modifier = Modifier.size(if (rec) 24.dp else 28.dp).then(if (rec) Modifier.align(Alignment.TopCenter).padding(top = 4.dp) else Modifier))
-                        // recording: a small "● REC" sign on the icon instead of a line (owner 2026-11-01)
-                        if (rec) RecBadge(ui.paused, Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp))
+                        // no "● REC" sign any more (owner 2026-11-06: the running time shows the recording); paused the
+                        // icon is grey and the card's line says "Pausiert"
+                        Icon(a.icon, null, tint = if (ui.paused && ui.recordedM != null) OnPathColors.Grey else OnPathColors.Green,
+                            modifier = Modifier.size(28.dp))
                     }
                 }
                 Spacer(Modifier.width(10.dp))

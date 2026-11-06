@@ -361,7 +361,7 @@ private fun PlanMode(
                 if (vm.cardPlace != null) {
                     com.onpath.app.ui.search.PlaceCardHost(vm)
                     rec?.let { r ->
-                        BackToNavigationButton(tourStateOf(r, vm), vm.activity, { backToNavigation(vm, r) },
+                        BackToNavigationButton({ backToNavigation(vm, r) },
                             Modifier.navigationBarsPadding().padding(horizontal = 12.dp, vertical = 6.dp))
                     }
                 }
@@ -462,10 +462,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     BackgroundDownloadDetails(vm, bg)
 }
 
-/** The recording as the plan sheet shows it ([TourState]). */
-private fun tourStateOf(r: RecState, vm: AppViewModel) = TourState(r.distanceM, r.elapsedS, r.paused, vm.guidanceEndedByEmptyPlan)
-
-/** The green "Navigation ›" (owner 2026-11-06, C): back to Navigate; a paused recording goes on (as "Weiter" did). */
+/** The green "Weiter geht's" (owner 2026-11-06, C): back to Navigate; a paused recording goes on (as "Weiter" did). */
 private fun backToNavigation(vm: AppViewModel, r: RecState) {
     if (r.paused) vm.pauseRecording(false)
     vm.continueNavigation()
@@ -486,7 +483,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onClose = vm::closeShown, onHighlight = { vm.highlight = it },
             onPlan = vm::planFromShown, planBusy = vm.planFromTrackBusy,
             // during a tour (owner 2026-11-06, F1 + C): the way back to Navigate under the track's two buttons
-            backToNavigation = rec?.let { r -> { BackToNavigationButton(tourStateOf(r, vm), vm.activity, { backToNavigation(vm, r) }) } },
+            backToNavigation = rec?.let { r -> { BackToNavigationButton({ backToNavigation(vm, r) }) } },
         )
         return
     }
