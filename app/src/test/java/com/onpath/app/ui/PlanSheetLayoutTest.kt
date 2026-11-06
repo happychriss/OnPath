@@ -30,14 +30,21 @@ class PlanSheetLayoutTest {
         assertTrue(icon, icon.contains("Icons.Filled.PlayArrow"))
     }
 
-    /** Owner 2026-11-05: from two points on; during a tour none here – the green "Navigation ›" in the foot leads back (C). */
-    @Test fun theButtonShowsFromTwoPointsAndNeverDuringATour() {
-        assertFalse(PlanBarRow.shown(ui(1, running = false)))
+    /**
+     * Without a tour the green button is always there (flow map H1, 2026-11-06: with 0 or 1 point a tour could not be
+     * started at all) – below two points it only records and says so; during a tour none here (C: "Navigation ›" in the foot).
+     */
+    @Test fun theButtonIsAlwaysThereWithoutATourAndNeverDuringOne() {
+        assertTrue(PlanBarRow.shown(ui(0, running = false)))
+        assertTrue(PlanBarRow.shown(ui(1, running = false)))
         assertTrue(PlanBarRow.shown(ui(2, running = false)))
         assertFalse(PlanBarRow.shown(ui(0, running = true)))
         assertFalse(PlanBarRow.shown(ui(3, running = true)))
-        // the rolled-up row: no button during a tour either
-        assertTrue(panel.contains("if (ui.pointCount >= 2 && ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)"))
+        assertEquals(PlanStart.RECORD_ONLY, ui(1, running = false).start)
+        assertEquals("Let’s go · no route", goLabel(ui(0, running = false)))
+        assertEquals("Let’s go · no route", primaryLabel(ui(1, running = false)))
+        // the rolled-up row: no button during a tour, else always
+        assertTrue(panel.contains("if (ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)"))
     }
 
     /** The plan row keeps its words while they fit, else three signs (a large font) – a word is never cut. */
@@ -60,7 +67,7 @@ class PlanSheetLayoutTest {
         assertEquals(CollapsedFacts.Fit.WRAP, CollapsedFacts.fit(260, 120, 150, 8, 358))
         // during a tour too – without the button (owner 2026-11-05)
         val row = panel.substringAfter("private fun CollapsedRow(").substringBefore("\n}\n")
-        assertTrue(row, row.contains("if (ui.pointCount >= 2 && ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)"))
+        assertTrue(row, row.contains("if (ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)"))
         assertFalse("no activity sign in the row (it is on the map)", row.contains("ui.activity.icon"))
     }
 

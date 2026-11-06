@@ -58,8 +58,8 @@ search, pin card, activity sheet).
 
 | # | State | Buttons and gestures → result (saved / dropped) |
 |---|-------|-------------------------------------------------|
-| S1 | Plan · empty · no tour | hold → first-point menu (Start here → S2 / Go here → S3, disabled without GPS fix with the reason); tap → "hold to set a point" line; search → S9; ☰ → My tours (S8) / Settings / Pair; activity button → activity dialog; **no start button in any sheet step** (H1) |
-| S2 | Plan · 1 point · no tour | hold → second point (S3); hold the point → point menu (Delete…); Undo; **no start button** (H1) |
+| S1 | Plan · empty · no tour | hold → first-point menu (Start here → S2 / Go here → S3, disabled without GPS fix with the reason); tap → "hold to set a point" line; search → S9; ☰ → My tours (S8) / Settings / Pair; activity button → activity dialog; green "● Los geht's · ohne Route" in every sheet step → plain recording (H1, fixed 2026-11-06) |
+| S2 | Plan · 1 point · no tour | hold → second point (S3); hold the point → point menu (Delete…); Undo; green "● Los geht's · ohne Route" → plain recording, the point stays (H1, fixed) |
 | S3 | Plan · 2+ points · no tour | green "Los geht's" (sheet foot / rolled-up row) → straight legs? "Navigate anyway?" → N1; ✕ Neu planen → unsaved: "Plan leeren?" (Save · Verwerfen · Abbrechen) else clears (Undo); ⇅ Umkehren (greyed out when backwards is the same, e.g. A → B → A – #40); ↻ Rundtour = a switch (#40: on a round trip filled ✓, a tap takes the way back out: A → B → A → A → B, one Undo step); hold map → smart insert / append as new goal; hold point → point menu; Undo / Redo; ☰ Save route → Save dialog; ☰ My tours → S8 |
 | S4 | Plan · shown track (My tours / import) · no tour | ✕ → back to the plan; "Als Plan übernehmen" → plan replaced, no question (save-paths 8); green "Los geht's · <activity>" → follows the track, recording starts (N1) |
 | S5 | Plan · place card (search / pin) · no tour | Hierhin / + Hinzufügen / Start / Ziel / Google / ✕ |
@@ -83,7 +83,7 @@ ride summary); 39 transitions written out above (gestures that only move the map
 | Goal | Inputs | Steps |
 |------|--------|-------|
 | New plan and go (GPS fix) | **3** | hold → Hierhin → Los geht's (+1 when straight legs ask) |
-| Record without a plan | **impossible** (H1) | – |
+| Record without a plan | 1 tap: "● Los geht's · ohne Route" (H1 fixed 2026-11-06) | – |
 | Pause / resume (locked Navigate) | **2 / 1** | slide → Pause / Fortsetzen |
 | End and save the tour | **3–5** | slide → Tour beenden → Tour speichern (→ Save dialog Speichern when the switch is on) → "Tour gespeichert" Fertig |
 | Change the destination on the way | **6** | slide → Plan → hold new spot (appended; the old goal becomes a stop) → hold old goal → Delete → ‹ Zur Tour (M3) |
@@ -98,7 +98,7 @@ ride summary); 39 transitions written out above (gestures that only move the map
 
 | # | Finding | Code | Emulator | Proposal (one sentence to decide) |
 |---|---------|------|----------|-----------------------------------|
-| H1 | **A tour without a plan cannot be started.** With 0 or 1 plan points there is no start button in any sheet step (`PlanBarRow.shown` and `CompactGo` need 2 points since R5, 2026-11-05) and ☰ has no "Aufnahme starten" (removed 2026-11-02, #15, because "the green button records without a route"). The label "Los geht's · ohne Route" (`PlanStart.RECORD_ONLY`) is unreachable; the comment in `PlanBarRow` still says "one point only records: the rolled-up row / ☰". | `PlanPanel.kt:487`, `:650`; `PlanTopBar.kt:264` | **yes** – 0 and 1 point, every sheet step; ☰ = My tours · Pair · Settings | With an empty or one-point plan the sheet shows the green "▶ Los geht's · ohne Route" again (recording only) – yes / no? |
+| H1 | **FIXED 2026-11-06 (donald, E2E CorePlanE2ETest.anEmptyPlanStartsARecordingWithoutARoute – red before, green after).** **A tour without a plan cannot be started.** With 0 or 1 plan points there is no start button in any sheet step (`PlanBarRow.shown` and `CompactGo` need 2 points since R5, 2026-11-05) and ☰ has no "Aufnahme starten" (removed 2026-11-02, #15, because "the green button records without a route"). The label "Los geht's · ohne Route" (`PlanStart.RECORD_ONLY`) is unreachable; the comment in `PlanBarRow` still says "one point only records: the rolled-up row / ☰". | `PlanPanel.kt:487`, `:650`; `PlanTopBar.kt:264` | **yes** – 0 and 1 point, every sheet step; ☰ = My tours · Pair · Settings | With an empty or one-point plan the sheet shows the green "▶ Los geht's · ohne Route" again (recording only) – yes / no? |
 | H2 | **"Löschen" in the end / arrival sheet also drops the unsaved plan, although the switch "… Plan auch speichern" is ON.** `onDelete` sets the switch off and ends the tour; `RecordingService.finished` clears the plan; no question, Undo only. The switch sits right above, so "delete the tour, keep the plan" is what the sheet suggests. | `MapScreen.kt:227`, `:239`; `AppViewModel.kt` finished collector | **yes** – plan 0 points after, nothing in Planned, no question | "Löschen" with the switch ON saves the plan first (same Save dialog as "Tour speichern") – yes / no? |
 
 ### Medium

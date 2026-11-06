@@ -505,8 +505,8 @@ private fun CollapsedRow(ui: PlanUi, cb: PlanCallbacks, barShown: () -> Float, s
                     Text("${ui.warnCount}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
                         color = OnPathColors.Amber, modifier = Modifier.padding(start = 2.dp, end = 6.dp))
                 }
-                // during a tour no button (owner 2026-11-05): "‹ Zur Tour" in the top band leads back
-                if (ui.pointCount >= 2 && ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)
+                // during a tour no button (owner 2026-11-05/06: the green "Navigation ›" in the foot leads back); else always (H1)
+                if (ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)
             }
         }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { ms, c ->
             val gap = 8.dp.roundToPx()
@@ -670,10 +670,12 @@ object PlanBarRow {
     val GAP = 4.dp
 
     /**
-     * Without a tour the button starts at two points (one point only records: the rolled-up row / ☰). During a tour
-     * none: the green "Navigation ›" in the sheet's foot leads back (owner 2026-11-06, C).
+     * Without a tour the button is always there (flow map H1, 2026-11-06: with no point or one there was no way to start
+     * a tour at all): from two points it navigates the plan, below that it says "Los geht's · ohne Route" and only
+     * records ([PlanStart.RECORD_ONLY]). During a tour none: the green "Navigation ›" in the sheet's foot leads back
+     * (owner 2026-11-06, C).
      */
-    fun shown(ui: PlanUi): Boolean = ui.tour == null && !ui.tourRunning && ui.pointCount >= 2
+    fun shown(ui: PlanUi): Boolean = ui.tour == null && !ui.tourRunning
 }
 
 /** The plan has no route on purpose: says why, and calculates it on request (stays until then – no timeout). */
@@ -853,8 +855,15 @@ internal fun stopColor(i: Int, count: Int): Color = when {
     else -> OnPathColors.Route
 }
 
-/** The green button's word: "Los geht's" / during a tour "Navigation" (owner 2026-11-05, F). */
-internal fun goLabel(ui: PlanUi): String = Txt.s(if (ui.tourRunning) Res.string.plan_bar_carry_on else Res.string.plan_bar_go)
+/**
+ * The green button's word: "Los geht's" / during a tour "Navigation" (owner 2026-11-05, F) / without a route "Los geht's ·
+ * ohne Route" (H1: a plain recording must say that nothing is followed).
+ */
+internal fun goLabel(ui: PlanUi): String = Txt.s(when {
+    ui.tourRunning -> Res.string.plan_bar_carry_on
+    ui.start == PlanStart.RECORD_ONLY -> Res.string.plan_start_recording_for
+    else -> Res.string.plan_bar_go
+})
 
 /** ‹ back to the navigation during a tour, ▶ to start, ● when it only records (no line to follow). */
 private fun goIcon(ui: PlanUi): androidx.compose.ui.graphics.vector.ImageVector = when {
