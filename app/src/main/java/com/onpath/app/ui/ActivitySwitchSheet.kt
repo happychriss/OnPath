@@ -165,8 +165,8 @@ private fun ActivityRowItem(row: ActivityRow, onClick: () -> Unit) {
         }
         when (s) {
             ActivityRowState.Checking -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.5.dp)
-            is ActivityRowState.Ready -> Text(Format.duration(s.fit.timeS), style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold)
+            is ActivityRowState.Ready -> Text(instrument(Format.duration(s.fit.timeS), MaterialTheme.typography.titleSmall),
+                style = MaterialTheme.typography.titleSmall)
             else -> Unit
         }
     }

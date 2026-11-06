@@ -573,14 +573,28 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     val trackSize = rec?.track?.sumOf { it.size } ?: 0
     LaunchedEffect(vm.waypoints.toList(), trackSize / 20, vm.followLine, rec != null) { passed = vm.tourPassed() }
     // Planned line only while the plan can be edited (Plan mode, no track shown); markers only in Plan (planLayers).
+    val view = androidx.compose.ui.platform.LocalView.current
     LaunchedEffect(c) {
+        // a new route draws itself (owner 2026-11-06, polish 2 – RouteReveal); the first drawing after the map (re)loaded
+        // and the same route shown again (back from Navigate, a marker change) appear at once
+        var firstDraw = true
+        var lastShown: com.onpath.app.routing.PlannedRoute? = null
         // canEditMap is part of the key on its own: Navigate → Plan while the plan is followed must redraw the markers
         snapshotFlow {
             val (line, markers) = planLayers(vm.canEditMap, navigateWithPlan = vm.mode == AppMode.NAVIGATE && vm.planGuides)
             PlanDrawing(vm.route, line, markers, vm.waypoints.toList(), vm.planGaps, passed)
         }
             .collect { d ->
-                c.setPlanned(if (d.showLine) d.route else null)
+                val r = if (d.showLine) d.route else null
+                val animate = r != null && com.onpath.app.map.RouteReveal.shouldAnimate(firstDraw, r === lastShown,
+                    vm.mode == AppMode.PLAN, r.points.size, android.animation.ValueAnimator.areAnimatorsEnabled())
+                firstDraw = false
+                if (r != null) lastShown = r
+                if (animate) c.revealPlanned(r!!) {
+                    // a short tick when the line has arrived (the phone's touch-feedback setting applies)
+                    view.performHapticFeedback(if (android.os.Build.VERSION.SDK_INT >= 30)
+                        android.view.HapticFeedbackConstants.CONFIRM else android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                } else c.setPlanned(r)
                 // unreachable points: grey dashed missing piece + grey hollow marker
                 val gaps = if (d.showLine && d.showMarkers) d.gaps else emptyList()
                 c.setPlanGaps(gaps)

@@ -226,6 +226,77 @@ val OnPathType: Typography = Typography().let { t ->
     )
 }
 
+/**
+ * Numbers like an instrument (owner 2026-11-06, polish 3): in a value the digits are big and semi-bold, the unit one
+ * step of the type scale smaller ([unitSize]), every digit the same width ("tnum") – so Navigate's time and distance
+ * never jiggle while they count, and **2,9** km · **↑ 82** m · **50** min reads at a glance. The text itself is not
+ * changed (screen readers, tests and copy read the same words); only spans are laid over it. Pure, unit-tested.
+ */
+object Instrument {
+    /** One run of a value text: [number] = digits (with their , . : inside) and a leading ↑ / ↓ / + / −. */
+    data class Run(val start: Int, val end: Int, val number: Boolean)
+
+    private fun digit(c: Char) = c in '0'..'9'
+
+    /** The text cut into number and unit runs, covering it whole and in order. */
+    fun runs(text: String): List<Run> {
+        if (text.isEmpty()) return emptyList()
+        fun isNum(i: Int): Boolean {
+            val c = text[i]
+            if (digit(c)) return true
+            // a separator inside a number: 2,9 · 2.9 · 2:50
+            if ((c == ',' || c == '.' || c == ':') && i > 0 && i + 1 < text.length && digit(text[i - 1]) && digit(text[i + 1])) return true
+            // a sign right before the number ("↑ 82", "↑82", "+1,2"): belongs to it
+            if (c == '↑' || c == '↓' || c == '+' || c == '−') {
+                var j = i + 1
+                while (j < text.length && text[j] == ' ') j++
+                return j < text.length && digit(text[j])
+            }
+            // the space between a sign and its digits
+            if (c == ' ' && i > 0 && text[i - 1] in "↑↓" && i + 1 < text.length && digit(text[i + 1])) return true
+            return false
+        }
+        val out = mutableListOf<Run>()
+        var start = 0
+        var num = isNum(0)
+        for (i in 1 until text.length) {
+            val n = isNum(i)
+            if (n != num) { out += Run(start, i, num); start = i; num = n }
+        }
+        out += Run(start, text.length, num)
+        return out
+    }
+
+    /** The unit's size: one step down the scale (30 → 22, 22 → 16, 16 → 14); 14 and 12 stay (nothing below 14 to read). */
+    fun unitSize(base: androidx.compose.ui.unit.TextUnit): androidx.compose.ui.unit.TextUnit = when {
+        base == androidx.compose.ui.unit.TextUnit.Unspecified -> base
+        base.value >= 30f -> 22.sp
+        base.value >= 22f -> 16.sp
+        base.value >= 16f -> 14.sp
+        else -> base
+    }
+
+    /**
+     * [text] (a formatted value or a line of them: "4 h 36 min", "12,5 km · ↑ 842 m") with big digits and small units
+     * for a Text whose style is [base]. [unitColor] dims the units (Unspecified = the text's colour).
+     */
+    fun styled(text: String, base: androidx.compose.ui.text.TextStyle, unitColor: Color = Color.Unspecified,
+               numberWeight: FontWeight = FontWeight.SemiBold): androidx.compose.ui.text.AnnotatedString =
+        androidx.compose.ui.text.buildAnnotatedString {
+            append(text)
+            // a bold style (the display step) keeps its weight; lighter ones get [numberWeight]
+            val w = base.fontWeight?.takeIf { it.weight > numberWeight.weight } ?: numberWeight
+            val num = androidx.compose.ui.text.SpanStyle(fontWeight = w, fontFeatureSettings = "tnum")
+            val unit = androidx.compose.ui.text.SpanStyle(fontSize = unitSize(base.fontSize), fontWeight = FontWeight.Normal,
+                color = unitColor)
+            for (r in runs(text)) addStyle(if (r.number) num else unit, r.start, r.end)
+        }
+}
+
+/** [Instrument.styled] with the current theme's type scale – for `Text(instrument(…, style), style = style)`. */
+fun instrument(text: String, base: androidx.compose.ui.text.TextStyle, unitColor: Color = Color.Unspecified) =
+    Instrument.styled(text, base, unitColor)
+
 @Composable
 fun OnPathTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = scheme, typography = OnPathType, shapes = OnPathShapes.material, content = content)

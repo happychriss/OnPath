@@ -184,10 +184,11 @@ private fun EndTourContent(
 /** "821 m · 4 min · ↑ 3 m" – the tour's numbers in one line under the title (wraps with a large font, never cut). */
 @Composable
 private fun EndStatsLine(st: EndStats) = Text(
-    // a value never breaks inside ("842 m" whole): no-break spaces within, the line wraps only between the values
-    listOf(Format.distance(st.distanceM), Format.durationShort(st.elapsedS.toDouble()), "↑ ${Format.meters(st.ascentM)}")
-        .joinToString("  ·  ") { it.replace(' ', '\u00A0') },
-    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    // a value never breaks inside ("842 m" whole): no-break spaces within, the line wraps only between the values;
+    // instrument numbers (owner 2026-11-06): big digits, small units
+    instrument(listOf(Format.distance(st.distanceM), Format.durationShort(st.elapsedS.toDouble()), "↑ ${Format.meters(st.ascentM)}")
+        .joinToString("  ·  ") { it.replace(' ', '\u00A0') }, MaterialTheme.typography.titleMedium),
+    style = MaterialTheme.typography.titleMedium)
 
 /**
  * Weiterfahren | Löschen as equals under Save (owner 2026-11-06, variant A): both outlined, 56 dp, Löschen red on the

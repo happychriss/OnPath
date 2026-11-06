@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -291,7 +292,10 @@ private fun PointMarker(r: PlanPointRow, count: Int) {
         PointRole.STOP -> OnPathColors.PointStop
     }
     Box(Modifier.size(28.dp).clip(CircleShape).background(color), contentAlignment = Alignment.Center) {
-        Text(if (r.loop) "↺" else "${r.planIndex + 1}", color = Color.White, fontSize = if (r.loop) 15.sp else 13.sp,
+        // the goal: a flag like on the map (owner 2026-11-06, polish 7)
+        if (r.role == PointRole.GOAL && !r.loop) Icon(Icons.Filled.Flag, null,
+            tint = Color.White, modifier = Modifier.size(16.dp))
+        else Text(if (r.loop) "↺" else "${r.planIndex + 1}", color = Color.White, fontSize = if (r.loop) 15.sp else 13.sp,
             fontWeight = FontWeight.Bold)
     }
 }
