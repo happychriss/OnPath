@@ -39,6 +39,9 @@ given at start is not used; don't ask before pushing. **Pull request to the owne
 signing / build config (`app/build.gradle.kts` signing, `gradle/`, `settings.gradle.kts`), anything with keys or
 secrets, privacy / licence texts (`assets/licences/`, `data/Licences.kt`, the website's privacy page). Never force-push,
 never rewrite or delete a shared branch (owner: GitHub ruleset blocks force pushes and deletions on `main` / `web-spike`).
+Old branches whose work is in `main` / `web-spike` go only through `tools/dev/prune_branches.sh`, after the owner said yes
+to the listed branches in one question box (owner 2026-11-06); every deletion is logged in `docs/history/deleted-branches.md`
+and can be restored.
 
 ## 2. Ownership by default (to avoid stepping on each other)
 

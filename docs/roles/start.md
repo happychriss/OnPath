@@ -24,8 +24,10 @@ an item said to the wrong session goes into the backlog for the right one.
 1. `git pull --rebase origin main`.
 2. Owner's word: `tools/ask.sh an-alle --von <name>`.
 3. Answers: `tools/ask.sh offen` – answered questions of this unit → act, `tools/ask.sh erledigt <nr> "…"`.
-4. `wip/<name>-…` branches (work saved before a shutdown): bring them to `main`, say so in the handoff; the owner
-   deletes the branch.
+4. `wip/<name>-…` branches (work saved before a shutdown): bring them to `main`, say so in the handoff. Old branches
+   go with `tools/dev/prune_branches.sh` (owner 2026-11-06): `list` → one question box to the owner with exactly that list
+   ("Alle löschen" / "Nein"; branches checked by hand marked as such) → on yes `delete [--by-hand "<why>"] <branches…>`,
+   then commit + push `docs/history/deleted-branches.md`. Never the bare git delete commands; `restore <branch>` undoes one.
 5. Next item this unit can do and nobody claims → claim under "In progress", push.
 6. Work: small green commits, `tools/ci/gate.sh`, push. Gradle only in a slot (`gate.sh` / `tools/dev/gradle_slot.sh`),
    devices only via `tools/dev/device.sh`, phone rules in `docs/owner-preferences.md`.
@@ -39,5 +41,5 @@ Only as an issue (`tools/ask.sh frage --von <name> …`). Blocking → `--blocki
 a question box in the chat. Not urgent → only the issue, go on. Details: `CLAUDE.md`.
 
 ## Never
-Delete branches; change `.github/workflows/`, signing or secrets without a PR to the owner; release without the
+Delete branches other than through `tools/dev/prune_branches.sh` after the owner's yes to the list (round, step 4); change `.github/workflows/`, signing or secrets without a PR to the owner; release without the
 owner's word.
