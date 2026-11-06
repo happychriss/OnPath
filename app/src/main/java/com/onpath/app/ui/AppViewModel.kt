@@ -1113,11 +1113,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     clearFollow()
                     arrivalAsk = false
                     // owner: after Save or Delete the tour is done – the plan leaves the map, saved or not
-                    // (one Undo step brings it back)
-                    if (waypoints.isNotEmpty()) clearPlan()
+                    // (one Undo step brings it back). With "Plan auch speichern" ON, Save's dialog is open now: the plan
+                    // stays until it is answered (field bug 2026-11-06: Save read the already cleared plan – lost)
+                    val pendingSave = saveAsk?.takeIf { waypoints.size >= 2 }
+                    if (waypoints.isNotEmpty() && pendingSave == null) clearPlan()
                     enter(AppMode.PLAN)
-                    // "Tour beenden und laden" (owner 2026-11-03): the route asked for loads now
-                    loadAfterTour?.let { t -> loadAfterTour = null; openTour(t) }
+                    if (pendingSave != null) { saveAsk = pendingSave; clearPlanAfterSave = true }
+                    // "Tour beenden und laden" (owner 2026-11-03): the route asked for loads now – after Save's dialog
+                    if (pendingSave == null) loadAfterTour?.let { t -> loadAfterTour = null; openTour(t) }
                 }
             }
         }
@@ -2486,7 +2489,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Save's dialog → Cancel / Back / a tap outside: nothing is saved, "Save first" does not load. */
-    fun cancelSave() { saveAsk = null }
+    fun cancelSave() { saveAsk = null; if (clearPlanAfterSave) { clearPlanAfterSave = false; finishEndOfTourSave() } }
+
+    /**
+     * Save's dialog opened by the end of a tour ("Plan auch speichern"): the plan stays on the map until the dialog is
+     * answered, then it leaves as after every tour (one Undo step) and a route asked for at the end loads.
+     */
+    private var clearPlanAfterSave = false
+
+    private fun finishEndOfTourSave() {
+        if (recState.value != null) return // a new tour started meanwhile: its plan stays
+        if (waypoints.isNotEmpty()) clearPlan()
+        loadAfterTour?.let { t -> loadAfterTour = null; openTour(t) }
+    }
 
     /**
      * Save's dialog → Save with [input]: a blank name keeps the proposal / old name ([RouteRules.cleanName]). A new
@@ -2496,10 +2511,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val ask = saveAsk ?: return
         saveAsk = null
         val name = RouteRules.cleanName(input, ask.name)
+        // end of a tour: the plan leaves only once it is saved – a failed save keeps it on the map (and forgets the end)
+        val endOfTour = clearPlanAfterSave; clearPlanAfterSave = false
+        val then: (() -> Unit)? = if (endOfTour && ask.kind != SaveAsk.Kind.COPY) {
+            { ask.then?.invoke(); finishEndOfTourSave() }
+        } else ask.then
         when {
             ask.kind == SaveAsk.Kind.COPY -> copyRoute(ask.routeId, name)
-            ask.kind == SaveAsk.Kind.OVERWRITE && ask.routeId == savedId -> overwriteSaved(name, ask.then)
-            else -> saveRoute(name, ask.then)
+            ask.kind == SaveAsk.Kind.OVERWRITE && ask.routeId == savedId -> overwriteSaved(name, then)
+            else -> saveRoute(name, then)
         }
     }
 
@@ -2781,7 +2801,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         mode = m
         tapHoldHint = false
         offlineInfo = false
-        saveAsk = null // Save's dialog does not stay open behind another mode
+        if (saveAsk != null) cancelSave() // Save's dialog does not stay open behind another mode
         // the start zoom of Navigate, once per start (owner); the map takes it when it follows
         if (m == AppMode.NAVIGATE && was != AppMode.NAVIGATE) navStartZoom = AppMode.navStartZoom(activity)
         else if (m != AppMode.NAVIGATE) navStartZoom = null

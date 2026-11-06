@@ -75,11 +75,20 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [donald] Walk every save path once (owner 2026-11-06) + tidy the unused strings nav_relock / nav_end_section_* – since 2026-11-06
+- [donald] Pixel review of every new screen (owner 2026-11-06: "alle Bilder nochmal auf dem Handy reviewen") – since 2026-11-06
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [laptop] (hp, cloud-plan) Planner: wait box → 'Weiter warten?' (SlowPlan, #21 B) · A-022 web texts · pin card '+ Hinzufügen' / 'Hierhin' · '⋯ Mehr' · pointMenu loopStart · header link 'Android-App testen' – since 2026-11-05
 
 ## Next
+- **[donald → owner] Save-path proposals (docs/design/save-paths.md, 2026-11-06)** – P2 ride summary gets the "Plan auch
+  speichern" switch; P3 "Plan ersetzen? · Erst speichern" before "Mit dieser Route weiter" / "Als Plan übernehmen" replace
+  an unsaved plan; P4 an unsaved plan saved as a draft before it leaves after a tour. Flow "follow a saved tour during a
+  tour" (owner's screen 14:37: 7 inputs, 5 buttons): F1 status line only + green "Dieser Tour folgen" / blue "Als Plan
+  übernehmen", F2 Meine Touren in the band, F3 ▶ on each row. Ask the owner one by one after the Pixel review.
+- ✓ [donald] 2026-11-06 on main: every save path walked (docs/design/save-paths.md, SavePathsTest); **field bug fixed:**
+  Tour beenden with "Plan auch speichern" ON lost the plan (the end of the tour cleared it and closed Save's dialog) – now
+  the plan stays until the dialog is answered (E2E CoreFieldE2ETest.endTourWithSavePlanOnPutsThePlanInMyRoutes, red
+  without the fix); Sperren with a white fill; unused strings removed; tools/dev/prune_branches.sh.
 - **[pixel] Owner's points of 2026-11-06 – check on the phone (v0.17.1 + main)**, none seen on a device yet:
   (1) activity switch during a tour (Bike → Hike → "Neue Route": guided as Hike and stays; fix 301db9b5 = the switched
   session keeps the running session's token, Rundgang flow 14); (2) the dot leaves the line beyond 6 m (was 25 m;
@@ -97,11 +106,10 @@ the git log.
   150 m force a turn-round). Check with the owner's real tour: Settings → Diagnostics export ("Junction cue:" lines) or the
   plan; the owner offered to say which sentences were wrong. Scratch replay tool used: a copy of
   tools/routing/jvm-test/HildenVoiceTest.kt that routes through a GPX track and prints HINT / SCREEN / SAY lines (needs E5_N50.rd5).
-- **[donald] Walk every save path once (owner 2026-11-06: "einmal die Abläufe durchsuchen")** – plan made on the phone →
+- ✓ (done 2026-11-06, see above) **[donald] Walk every save path once (owner 2026-11-06: "einmal die Abläufe durchsuchen")** – plan made on the phone →
   tour → end (switch ON now) → in Meine Touren?; saved plan changed during the tour → overwrite question; GPX export of a
   planned item = the plan GPX (line + route points, PlanGpx) and of a done tour = the track (owner asked "exportiere ich
   immer die Route und nie den Plan?" – answered: planned → plan); import of both. Write down where a plan can still get lost.
-- **[any] Tidy:** strings nav_relock, nav_end_section_tour / _plan are unused since 2026-11-06 (Sperren | Plan, end sheet A).
 - **[cloud-plan] Map style to the planner:** shelters moved to POI tier 1 (6f9d500c, tools/make_style.py) – reaches the
   planner with the next merge of main into web-spike; nothing else of 2026-11-06 is shared code.
 - ✓ [cloud worker as donald 2026-11-06] On main for v0.17.1: activity switch during a tour taken (session token), dot on the route only within 6 m, "Weiter geht's" after a plan change, a turn announced only after the one before is ridden, Sperren | Plan, Tour beenden on one screen (variant A), "Plan auch speichern" ON for a never-saved plan, search in Meine Touren. Not seen on the Pixel yet.
