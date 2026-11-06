@@ -95,14 +95,12 @@ map). Per item: tap = open (planned route with via points → into the plan; tra
 and ⋮ with **Rename** (name dialog, the sheet's "Saved as" follows), **Save as copy** + **Share plan** (planned
 routes), Export (GPX share), Delete (asks "Delete “Name”?";
 the dialog stays until Cancel / Delete, a tap outside does nothing).
-**During a tour a planned route asks first** (owner 2026-11-03 – was 2026-10-31's dead end "End the running tour first";
-`RouteRules.openAsk` → `BLOCKED_DURING_TOUR` → `ui/TourLoad`). The list looks as always; a tap on a planned route is the
-action, the answer is a FRAGE box under the tabs of My routes, over the list: **„Route „‹Name›“ laden?“ – „Du bist gerade
-unterwegs.“** / "Load route “‹name›”? – You are on the way." – **Abbrechen** · **Tour beenden und laden** · **Mit dieser
-Route weiter** (primary). Continue: the recording goes on, the tour follows the loaded route from the current position
-(as an edit during the tour), the tour keeps its activity, back to Navigate. End and load: the usual end question; the
-route loads only after the tour has ended (saved or deleted) – Cancel there loads nothing. Cancel / leaving My routes:
-nothing changes. Tracks open as before (shown as a track; "Start navigation · …" in the track panel follows one).
+**During a tour a tap on a planned route or a done tour follows it at once** (owner 2026-11-06 22:05 – the question
+"Route „‹Name›“ laden? Du bist gerade unterwegs." with Abbrechen · Tour beenden und laden · Mit dieser Route weiter was
+"super verwirrend"; `RouteRules.openAsk` → `FOLLOW_PLAN_DURING_TOUR` / `FOLLOW_DURING_TOUR`): the recording goes on, the
+tour follows it (a plan from its point ①, as at a tour start), keeps its activity, back to Navigate. Navigate says
+**„Neuer Plan – deine Aufnahme läuft weiter“** for 8 s above the bottom bar (`NewPlanLine`); **Rückgängig** there brings
+the plan from before back (one Undo step; it is also under My routes → Zuletzt). Ending the tour stays in the pause.
 While the plan belongs to a saved route, the followed route carries its name ("Back to …", tour log).
 
 **Loading over an unsaved plan:** "Replace current plan?" – **Save first** (Save's name dialog as above, then

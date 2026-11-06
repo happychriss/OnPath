@@ -12,7 +12,8 @@ import com.onpath.strings.nav_leave_go
 import com.onpath.strings.nav_leave_stay
 import com.onpath.strings.nav_leave_title
 import com.onpath.strings.plan_go_here
-import com.onpath.strings.routes_load_ask_text
+import com.onpath.strings.plan_new_during_tour
+import com.onpath.strings.plan_undo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
@@ -173,11 +174,12 @@ class CoreFieldE2ETest : E2EBase() {
     }
 
     /**
-     * Owner 2026-11-03 (core feature C4): My routes → a tap on a planned route during a tour asks "Load route …? You are
-     * on the way." – nothing loads before the answer; Cancel keeps the plan, the followed route, the activity and the
-     * tour (Continue: ReleaseRundgang flow 6).
+     * Owner 2026-11-06 22:05 (core feature C4; was the question "Plan laden? Du bist gerade unterwegs."): My routes → a tap
+     * on a planned route during a tour follows it at once – no question, Navigate, the same tour records on, its activity
+     * stays; Navigate says "Neuer Plan – deine Aufnahme läuft weiter" and its "Rückgängig" brings the plan from before back,
+     * which the tour follows again.
      */
-    @Test fun aSavedRouteTappedDuringATourAsksAndCancelKeepsTheTourRoute() {
+    @Test fun aSavedRouteTappedDuringATourIsFollowedAtOnceAndUndoBringsThePlanBack() {
         startPlanWithTwoPoints()
         Thread.sleep(if (realRouting) 3_000 else 1_000)
         scenario.onActivity { vm(it).startNavigation(force = true) }
@@ -185,12 +187,9 @@ class CoreFieldE2ETest : E2EBase() {
         waitUntil("the route is followed", 20_000) { guided() }
         var tourId = -1L
         var before: List<GeoPoint> = emptyList()
-        var followedBefore: String? = null
-        var lineBefore: List<GeoPoint>? = null
         var activityBefore: Activity? = null
         scenario.onActivity {
-            tourId = vm(it).recState.value!!.tourId; before = vm(it).waypoints.toList(); followedBefore = vm(it).followName
-            lineBefore = vm(it).followLine; activityBefore = vm(it).activity
+            tourId = vm(it).recState.value!!.tourId; before = vm(it).waypoints.toList(); activityBefore = vm(it).activity
         }
         // a saved route nearby, for another activity
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
@@ -203,24 +202,29 @@ class CoreFieldE2ETest : E2EBase() {
             waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
             scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED; vm(it).openRoutes() }
             clickText(name)
-            val box = Txt.s(Res.string.routes_load_ask_text)
-            assertNotNull("the question", device.wait(Until.findObject(By.text(box)), 5_000))
-            Thread.sleep(1_500)
+            waitUntil("Navigate at once, no question", 10_000) { mode() == AppMode.NAVIGATE }
+            val loaded = pts.map { GeoPoint(it.lat, it.lon) }
+            waitUntil("the saved route is the plan", 10_000) { var w: List<GeoPoint> = emptyList(); scenario.onActivity { w = vm(it).waypoints.toList() }; w == loaded }
+            val line = Txt.s(Res.string.plan_new_during_tour)
+            assertNotNull("\"$line\" on Navigate", device.wait(Until.findObject(By.text(line)), 5_000))
             scenario.onActivity {
-                assertEquals("the plan stays", before, vm(it).waypoints.toList())
-                assertEquals("the followed route stays", followedBefore, vm(it).followName)
-                assertEquals("the followed line stays", lineBefore, vm(it).followLine)
+                assertFalse("My routes closed", vm(it).routesOpen)
                 assertEquals("the activity stays", activityBefore, vm(it).activity)
                 assertEquals("the same tour records on", tourId, vm(it).recState.value?.tourId)
-                assertTrue("My routes stays open", vm(it).routesOpen)
             }
-            assertTrue(guided())
-            clickText(Txt.s(Res.string.common_cancel))
-            waitUntil("the question is gone after Cancel", 5_000) { device.findObject(By.text(box)) == null }
+            waitUntil("the loaded route is followed", 20_000) { guided() }
+            clickText(Txt.s(Res.string.plan_undo))
+            waitUntil("Rückgängig: the plan from before is back", 10_000) {
+                var w: List<GeoPoint> = emptyList(); scenario.onActivity { w = vm(it).waypoints.toList() }; w == before
+            }
+            waitUntil("the line is gone", 5_000) { device.findObject(By.text(line)) == null }
+            waitUntil("the plan from before is followed again", 20_000) { guided() }
+            assertEquals("still Navigate", AppMode.NAVIGATE, mode())
             assertEquals("still recording, not ended", "active", db.getTour(tourId)?.state)
             val trace = com.onpath.app.debug.Problems.events().map { it.message }
-            val step = "Load \"$name\" during the tour: cancel"
-            assertTrue("\"$step\" traced: ${trace.take(30)}", trace.any { it.startsWith(step) })
+            for (step in listOf("Plan \"$name\" tapped during the tour: followed at once", "Rückgängig on \"Neuer Plan\"")) {
+                assertTrue("\"$step\" traced: ${trace.take(30)}", trace.any { it.startsWith(step) })
+            }
         } finally {
             scenario.onActivity { vm(it).routesOpen = false }
             db.deleteTour(savedId)
@@ -356,7 +360,7 @@ class CoreFieldE2ETest : E2EBase() {
         TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).listTours().filter { it.draft }
 
     /**
-     * Flow map M1 + owner 2026-11-06 ("Zuletzt"): "Folgen" on a done tour during a tour – no question; the plan built on the
+     * Flow map M1 + owner 2026-11-06 ("Zuletzt"): a done tour tapped during a tour is followed – no question; the plan built on the
      * way leaves the map, kept under My routes → Zuletzt, and the tour follows the track alone. Undo brings the plan back.
      */
     @Test fun followingATrackDuringATourKeepsTheUnsavedPlanUnderZuletzt() {
@@ -365,7 +369,7 @@ class CoreFieldE2ETest : E2EBase() {
         val id = insertDoneTour(name)
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         try {
-            scenario.onActivity { vm(it).requestOpen(tourWith(id)); vm(it).answerTrackFollow(true) }
+            scenario.onActivity { vm(it).requestOpen(tourWith(id)) }
             waitUntil("the plan has left the map", 10_000) { waypointCount() == 0 }
             waitUntil("the tour follows the track", 10_000) { followName() == name }
             assertTrue("the recording goes on", recording())
@@ -439,7 +443,7 @@ class CoreFieldE2ETest : E2EBase() {
         val id = insertDoneTour(name)
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         try {
-            scenario.onActivity { vm(it).requestOpen(tourWith(id)); vm(it).answerTrackFollow(true) }
+            scenario.onActivity { vm(it).requestOpen(tourWith(id)) }
             waitUntil("the tour follows the track", 10_000) { followName() == name }
             waitUntil("the plan has left the map", 10_000) { waypointCount() == 0 }
         } finally {

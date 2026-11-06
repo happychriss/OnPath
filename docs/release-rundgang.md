@@ -51,7 +51,7 @@ Meran (Theatre → station, ~1.4 km), one assertion per step, a screenshot per k
 | 3b | Leaves the route | The off-route question → "Keep original": the original line stays, nothing re-routed |
 | 4 | Starts far from the route → "Guide me" → in Plan holds a point near him → Undo (Bug 02) | The held point becomes the new start and the lead is redone; Undo brings the lead back exactly; no junction cue while far away (wiring of `FarStartTest.bug02*`, `WaypointInsertionTest.bug02*`, `FollowHistoryTest.bug02*`, `RoutingSpotTest.bug02*`) |
 | 5 | Round trip: deletes its start from the map menu | The loop stays closed (start = end) |
-| 6 | During a tour taps a saved route in My routes → "Mit dieser Route weiter" | The question "Load route …? You are on the way."; nothing loaded before the answer; then the same tour records on, follows the loaded route, back in Navigate, the tour's activity stays |
+| 6 | During a tour taps a saved route in My routes | No question (owner 2026-11-06): the same tour records on, follows the loaded route, back in Navigate with "Neuer Plan – deine Aufnahme läuft weiter", the tour's activity stays |
 | 7 | Navigate: slide → Pause · Change route · End → End → "Save recording" | The tour is listed in My routes → Done |
 | 8 | Pairs with the browser; a plan is saved there | It arrives in My routes → Planned with the tag "New" (mailbox in memory, no network) |
 | 9 | Types a POI name, then a partial town, word by word in the search | The exact hit stays on top; the list does not jump while offline index and online results come in (`SearchStableListTest`) |

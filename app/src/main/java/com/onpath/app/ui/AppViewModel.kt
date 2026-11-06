@@ -153,25 +153,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The line at the top of My routes; goes when My routes is left. */
     var routesNote by mutableStateOf<Notice?>(null)
     /**
-     * A planned route was tapped during a tour ([requestOpen], owner 2026-11-03 – was a dead end "End the tour first"):
-     * the question "Route „‹name›“ laden? Du bist gerade unterwegs." at the top of My routes ([TourLoad]); until answered
-     * or until My routes is left.
+     * A plan or a done tour was tapped in My routes during a tour and is followed now – no question (owner 2026-11-06
+     * 22:05, "super verwirrend"): Navigate says "Neuer Plan – deine Aufnahme läuft weiter" at the bottom for a few
+     * seconds ([NewPlanLine]), with "Rückgängig" when a plan was replaced ([undoNewPlan]). Null = no line.
      */
-    var tourLoadAsk by mutableStateOf<Tour?>(null)
-    /**
-     * A done tour / track tapped in My routes during a tour (owner 2026-11-06, F1 simplified): "Dieser Tour folgen? …
-     * Deine Aufnahme läuft weiter." – Abbrechen · Folgen ([answerTrackFollow]); no track sheet in between.
-     */
-    var trackFollowAsk by mutableStateOf<Tour?>(null)
-    /** "Tour beenden und laden": this route loads once the tour has ended (saved or deleted); null on Cancel. */
-    private var loadAfterTour: Tour? = null
+    var newPlanNote by mutableStateOf<NewPlanNote?>(null)
+        private set
+    fun dropNewPlanNote() { newPlanNote = null }
     /** The line at the top of the open Settings page; goes when the page changes or Settings closes. */
     var settingsNote by mutableStateOf<Notice?>(null)
     private var routesShown by mutableStateOf(false)
     /** My routes list (☰ → My routes) is open. */
     var routesOpen: Boolean
         get() = routesShown
-        set(v) { if (!v) { routesNote = null; tourLoadAsk = null; trackFollowAsk = null; justSavedId = -1L }; routesShown = v } // line / box last until My routes is left
+        set(v) { if (!v) { routesNote = null; justSavedId = -1L }; routesShown = v } // line / box last until My routes is left
     /** My routes' last chosen tab (Planned / Done); kept while the app runs, Planned after a restart. */
     var routesTab by mutableStateOf(RoutesTab.PLANNED)
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
@@ -1133,9 +1128,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     // geht's"), changes made on the way show "Nicht gespeichert ›" (was: the plan left the map, and the
                     // end sheet's switch "Plan auch speichern" was easy to miss)
                     enter(AppMode.PLAN)
-                    // "Tour beenden und laden" (owner 2026-11-03): the route asked for loads now – an unsaved plan asks
-                    // first, as everywhere a plan is replaced (save-paths P3)
-                    loadAfterTour?.let { t -> loadAfterTour = null; unlessUnsaved("Load \"${t.name}\" after the tour") { openTour(t) } }
+                    newPlanNote = null
                 }
             }
         }
@@ -1413,7 +1406,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** [TourSplit.outcome] of the edit [before] → [after] during a tour, kept for [followEditedPlan]. */
     private fun splitOf(before: List<GeoPoint>, after: List<GeoPoint>): TourSplit.Outcome? {
         splitRequests.invalidate()
-        // a route loaded on the way ("Mit dieser Route weiter", owner 2026-11-03) is a new plan, not an edit: followed as
+        // a route loaded on the way (a tap in My routes during a tour, owner 2026-11-03 / 2026-11-06) is a new plan, not an edit: followed as
         // a whole from its point ① (a way there / the mid-route question like at a tour start), nothing of it passed
         val fresh = loadedOnTheWay; loadedOnTheWay = false
         val passed = if (fresh) emptySet() else tourPassed(before)
@@ -2826,43 +2819,52 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openRoutes() { refreshTours(); routesOpen = true }
 
     /**
-     * Open / load from My routes ([RouteRules.openAsk]): during a tour a planned route first asks ([tourLoadAsk], owner
-     * 2026-11-03: "Mit dieser Route weiter" · "Tour beenden und laden" · "Abbrechen" – [TourLoad]) and a done tour / track
-     * asks "Dieser Tour folgen?" ([trackFollowAsk], owner 2026-11-06 F1); else "Replace current plan?" when that would lose
-     * changes; tracks open at once.
+     * Open / load from My routes ([RouteRules.openAsk]). During a tour no question (owner 2026-11-06 22:05 – the three
+     * answers "Abbrechen · Tour beenden und laden · Mit diesem Plan weiter" were "super verwirrend"; plan and tour are two
+     * things): a planned route is followed at once from its point ① ([OpenAsk.FOLLOW_PLAN_DURING_TOUR]), a done tour /
+     * track too ([OpenAsk.FOLLOW_DURING_TOUR]); the recording goes on, Navigate says so ([newPlanNote]) and "Rückgängig"
+     * brings the plan from before ([undoNewPlan]; it is also under Zuletzt). Ending the tour stays in the pause. Without a
+     * tour the current plan goes under "Zuletzt" (owner 2026-11-06) – no "Replace current plan?" any more.
      */
     fun requestOpen(t: Tour) {
-        when (RouteRules.openAsk(t.kind, t.waypoints.size, navigating(recState.value != null), waypoints, savedPoints,
-                hasLine = t.distanceM > 0.0)) {
-            OpenAsk.BLOCKED_DURING_TOUR -> {
-                Problems.trace("tour", "Load \"${t.name}\" during the tour: asked (continue with it / end the tour and load / cancel)")
-                tourLoadAsk = t
+        val ask = RouteRules.openAsk(t.kind, t.waypoints.size, navigating(recState.value != null), waypoints, savedPoints,
+            hasLine = t.distanceM > 0.0)
+        val hadPlan = waypoints.isNotEmpty()
+        when (ask) {
+            OpenAsk.FOLLOW_PLAN_DURING_TOUR -> {
+                Problems.trace("tour", "Plan \"${t.name}\" tapped during the tour: followed at once (no question), the recording goes on")
+                newPlanNote = NewPlanNote(undo = hadPlan, id = ++newPlanNotes)
+                unlessUnsaved("Load \"${t.name}\" during the tour") { openTour(t, duringTour = true) }
             }
             OpenAsk.FOLLOW_DURING_TOUR -> {
-                Problems.trace("tour", "Track \"${t.name}\" tapped during the tour: asked (follow / cancel)")
-                trackFollowAsk = t
+                Problems.trace("tour", "Track \"${t.name}\" tapped during the tour: followed at once (no question), the recording goes on")
+                newPlanNote = NewPlanNote(undo = hadPlan, id = ++newPlanNotes)
+                unlessUnsaved("Follow \"${t.name}\" during the tour") { openTour(t, trackThen = TrackThen.FOLLOW) }
             }
-            // the current plan goes under "Zuletzt" (owner 2026-11-06) – no "Replace current plan?" any more
             OpenAsk.REPLACE_PLAN, OpenAsk.NONE -> openTour(t)
         }
     }
+    private var newPlanNotes = 0L
 
     /**
-     * The answer to [trackFollowAsk]: Folgen → the running tour follows the track from here, as "Tour nachfahren" did
-     * (its activity and recording go on), back to Navigate; Abbrechen → nothing loads, My routes stays.
+     * "Rückgängig" on [newPlanNote]: the plan from before comes back in one Undo step (loading the new plan / clearing the
+     * plan for a followed track was one step) and the tour follows it again – a followed track gives way to it as at
+     * "Weiter geht's" ([continueNavigation]). Only offered when there was a plan before.
      */
-    fun answerTrackFollow(follow: Boolean) {
-        val t = trackFollowAsk ?: return
-        trackFollowAsk = null
-        Problems.trace("tour", "Track \"${t.name}\" during the tour: ${if (follow) "follow" else "cancel"}")
-        if (follow) unlessUnsaved("Follow \"${t.name}\" during the tour") { openTour(t, trackThen = TrackThen.FOLLOW) }
+    fun undoNewPlan() {
+        val note = newPlanNote ?: return
+        newPlanNote = null
+        if (!note.undo) return
+        Problems.trace("plan", "Rückgängig on \"Neuer Plan\": the plan from before comes back, the tour follows it")
+        undoStep()
+        if (followIsTrack && recState.value != null) continueNavigation()
     }
 
     /** My routes ⋮ → "Als Plan übernehmen" (a done tour / track, owner 2026-11-06 F1): opened, then made a plan of it. */
     fun planFromTour(t: Tour) = unlessUnsaved("\"${t.name}\" as the plan") { openTour(t, trackThen = TrackThen.PLAN) }
 
     /**
-     * Something else takes the plan's place (a track followed during a tour, "Mit dieser Route weiter", "Als Plan
+     * Something else takes the plan's place (a track or a plan followed during a tour, "Als Plan
      * übernehmen"): no question any more (owner 2026-11-06) – the replaced plan goes under Zuletzt ([keepAsDraft]).
      */
     private fun unlessUnsaved(what: String, go: () -> Unit) { Problems.trace("plan", "$what: the plan on the map goes under Zuletzt if not saved"); go() }
@@ -2883,26 +2885,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         followShown(); closeShown(); continueNavigation()
     }
 
-    /** The answer to [tourLoadAsk] (owner 2026-11-03). */
-    fun answerTourLoad(a: TourLoad.Answer) {
-        val t = tourLoadAsk ?: return
-        tourLoadAsk = null
-        Problems.trace("tour", "Load \"${t.name}\" during the tour: ${a.name.lowercase()}")
-        when (TourLoad.step(a)) {
-            // the tour follows the loaded route from here – like changing the route during the tour (TourSplit /
-            // followEditedPlan); the tour keeps its activity; back to Navigate
-            TourLoad.Step.FOLLOW_NOW -> unlessUnsaved("Load \"${t.name}\" during the tour") { openTour(t, duringTour = true) }
-            // the usual end question first; the route loads once the tour has ended (saved or deleted)
-            TourLoad.Step.END_THEN_LOAD -> { loadAfterTour = t; routesOpen = false; askEndTour() }
-            TourLoad.Step.NOTHING -> Unit
-        }
-    }
-
-    /** The end question closed without ending the tour: nothing loads ([loadAfterTour] dropped). */
-    fun dismissEndAsk() {
-        endAsk = null
-        loadAfterTour?.let { Problems.trace("tour", "End tour cancelled: \"${it.name}\" not loaded"); loadAfterTour = null }
-    }
+    /** The end question closed without ending the tour. */
+    fun dismissEndAsk() { endAsk = null }
 
     /**
      * Proposed name of a new route: a plan from a link keeps its title while its points are unchanged, else
@@ -3719,7 +3703,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * [duringTour] ("Mit dieser Route weiter", owner 2026-11-03): the running tour follows the loaded route – its
+     * [duringTour] (a plan tapped in My routes during a tour, owner 2026-11-03 / 2026-11-06 without a question): the running tour follows the loaded route – its
      * activity stays, the plan is replaced like an edit during the tour (followEditedPlan), and the app goes to Navigate.
      */
     fun openTour(t: Tour, duringTour: Boolean = false, trackThen: TrackThen = TrackThen.SHOW) {
@@ -3767,7 +3751,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 showTrack(ShownTrack(t.id, t.name, kept, t.waypoints, t.distanceM, t.ascentM, t.descentM, t.durationS, rides,
                     note = choice.note))
                 when (trackThen) {
-                    // "Dieser Tour folgen?" → Folgen: exactly what the track sheet's "Tour nachfahren" did, without the sheet
+                    // a done tour tapped during a tour (owner 2026-11-06, no question): exactly what the track sheet's "Tour nachfahren" did, without the sheet
                     TrackThen.FOLLOW -> followShownNow()
                     TrackThen.PLAN -> planFromShownNow()
                     TrackThen.SHOW -> Unit

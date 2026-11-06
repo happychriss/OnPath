@@ -119,7 +119,8 @@ class ScreenshotTest {
     }
 
     @Composable
-    private fun NavFrame(ui: NavUi, slide: Float = 0f, fit: Boolean = false, actions: Boolean = false, lock: Boolean = true) {
+    private fun NavFrame(ui: NavUi, slide: Float = 0f, fit: Boolean = false, actions: Boolean = false, lock: Boolean = true,
+                         newPlan: NewPlanNote? = null) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
@@ -127,7 +128,7 @@ class ScreenshotTest {
                     // after "Show whole route" following is off: compass needle, locate not filled
                     NavigateOverlay(ui, footer = { Footer(following = !fit, compass = CompassSpec(ui.headingUp.takeUnless { fit }, 0f) {},
                         eye = true, large = true, fit = fit) },
-                        onSlideToPlan = {}, slideStartFraction = slide, actionsOpen = actions, lock = lock)
+                        onSlideToPlan = {}, slideStartFraction = slide, actionsOpen = actions, lock = lock, newPlan = newPlan)
                 }
             }
         }
@@ -1108,19 +1109,6 @@ class ScreenshotTest {
         }
     }
 
-    /**
-     * My routes during a tour → a done tour / track tapped (owner 2026-11-06, F1 simplified): "Dieser Tour folgen? „‹name›“,
-     * 3,0 km. Deine Aufnahme läuft weiter." – Abbrechen · **Folgen** (green: it goes to the navigation); no track sheet.
-     */
-    @Test fun routesFollowAsk() = paparazzi.snapshot {
-        OnPathTheme {
-            Box(Modifier.fillMaxSize()) {
-                RoutesScreen(tourList, {}, {}, {}, {}, {}, initialTab = RoutesTab.DONE)
-                MessageSlot(trackFollowMessage("Demo · BREW - ESPRESSO ROOM → Grimlinghausen", com.onpath.app.data.Format.distance(3_000.0)) {},
-                    MessagePlacement.topDp(MessageScreen.ROUTES))
-            }
-        }
-    }
 
     /**
      * After "Tour speichern" (owner 2026-11-06, onpath.private#35): the slim box "Tour gespeichert" – name, numbers, moving
@@ -1257,17 +1245,10 @@ class ScreenshotTest {
     }
 
     /**
-     * My routes during a tour → a planned route tapped (owner 2026-11-03): the question "Load route “‹name›”? You are on
-     * the way." – Cancel · End tour and load · **Continue with this route** – under the tabs, over the list (FRAGE).
+     * A plan tapped in My routes during a tour is followed at once (owner 2026-11-06 22:05, no question any more):
+     * Navigate says "New plan – your recording goes on" above the bottom bar, "Undo" brings the plan from before.
      */
-    @Test fun routesTourLoadAsk() = paparazzi.snapshot {
-        OnPathTheme {
-            Box(Modifier.fillMaxSize()) {
-                RoutesScreen(tourList, {}, {}, {}, {}, {})
-                MessageSlot(tourLoadMessage(tourList[0].name) {}, MessagePlacement.topDp(MessageScreen.ROUTES))
-            }
-        }
-    }
+    @Test fun navigateNewPlan() = paparazzi.snapshot { NavFrame(navUi, newPlan = NewPlanNote(undo = true, id = 1)) }
 
 
     /** My routes → ⋮ → Rename: name dialog prefilled with the current name. */

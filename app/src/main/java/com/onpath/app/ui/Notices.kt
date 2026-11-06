@@ -102,9 +102,8 @@ object NoticeRouting {
 }
 
 /**
- * My routes and Settings: the one box over the screen (MessageCard, [MessagePlacement]) – My routes: "Route „‹name›“
- * laden?" during a tour (FRAGE, [TourLoad]) or an error without a line of its own (HINWEIS_ERROR, [AppViewModel.errorCard]);
- * Settings: that error. Plan and Navigate have their own hosts (PlanMessageHost, NavigateOverlay) with the same error box.
+ * My routes and Settings: the one box over the screen (MessageCard, [MessagePlacement]) – an error without a line of its
+ * own (HINWEIS_ERROR, [AppViewModel.errorCard]); a tap on a plan during a tour asks nothing (owner 2026-11-06). Plan and Navigate have their own hosts (PlanMessageHost, NavigateOverlay) with the same error box.
  */
 @Composable
 fun androidx.compose.foundation.layout.BoxScope.ScreenMessageHost(vm: AppViewModel) {
@@ -114,37 +113,8 @@ fun androidx.compose.foundation.layout.BoxScope.ScreenMessageHost(vm: AppViewMod
         else -> return
     }
     val error = vm.errorCard?.let { errorMessage(it) { vm.errorCard = null } }
-    val load = vm.tourLoadAsk?.takeIf { screen == MessageScreen.ROUTES }?.let { t -> tourLoadMessage(t.name, vm::answerTourLoad) }
-    val follow = vm.trackFollowAsk?.takeIf { screen == MessageScreen.ROUTES }?.let { t ->
-        trackFollowMessage(t.name, com.onpath.app.data.Format.distance(t.distanceM), vm::answerTrackFollow)
-    }
-    MessageSlot(Messages.pick(listOf(error, load, follow)), MessagePlacement.topDp(screen))
+    MessageSlot(Messages.pick(listOf(error)), MessagePlacement.topDp(screen))
 }
-
-/**
- * A planned route tapped during a tour (My routes, owner 2026-11-03): "Route „‹name›“ laden? Du bist gerade unterwegs."
- * – Abbrechen · Tour beenden und laden · **Mit dieser Route weiter** (the last button is the filled primary).
- */
-@Composable
-fun tourLoadMessage(name: String, onAnswer: (TourLoad.Answer) -> Unit): Message =
-    Message(MessageKind.FRAGE, str(Res.string.routes_load_ask_title, name), str(Res.string.routes_load_ask_text),
-        buttons = listOf(
-            MessageButton(str(Res.string.common_cancel)) { onAnswer(TourLoad.Answer.CANCEL) },
-            MessageButton(str(Res.string.routes_load_end)) { onAnswer(TourLoad.Answer.END_AND_LOAD) },
-            MessageButton(str(Res.string.routes_load_continue)) { onAnswer(TourLoad.Answer.CONTINUE) },
-        ), tone = ButtonTone.GO) // "Mit dieser Route weiter" goes on with the tour: green
-
-/**
- * A done tour / track tapped during a tour (My routes, owner 2026-11-06 F1 simplified): "Dieser Tour folgen? „‹name›“,
- * 3,0 km. Deine Aufnahme läuft weiter." – Abbrechen · **Folgen** (the filled primary: it goes to the navigation, green).
- */
-@Composable
-fun trackFollowMessage(name: String, length: String, onAnswer: (Boolean) -> Unit): Message =
-    Message(MessageKind.FRAGE, str(Res.string.routes_follow_ask_title), str(Res.string.routes_follow_ask_text, name, length),
-        buttons = listOf(
-            MessageButton(str(Res.string.common_cancel)) { onAnswer(false) },
-            MessageButton(str(Res.string.routes_follow)) { onAnswer(true) },
-        ), tone = ButtonTone.GO)
 
 /**
  * A message in the screen where the user acted (My routes, a Settings page): INFO = grey text with ⓘ, no box; ERROR =

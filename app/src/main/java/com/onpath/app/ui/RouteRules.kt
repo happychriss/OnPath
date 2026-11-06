@@ -122,18 +122,18 @@ object RouteRules {
     fun replacesPlan(kind: TourKind, waypointCount: Int): Boolean = kind == TourKind.PLANNED && waypointCount >= 2
 
     /**
-     * What a tap on an item in My routes does first ([AppViewModel.requestOpen]). While [navigating] (a tour) a planned
-     * route is blocked: nothing loads, a box says "End the running tour first, then this route can be loaded." (owner
-     * 2026-10-31: no new route during a tour – too much automation, a hiker would not trust it). Without a tour an unsaved
-     * plan asks "Replace current route?" ([askBeforeLoading]). Tracks open beside the plan; during a tour a done tour / track
-     * with a line ([hasLine]) asks "Dieser Tour folgen?" instead (owner 2026-11-06, F1 – no track sheet during a tour).
+     * What a tap on an item in My routes does ([AppViewModel.requestOpen]). While [navigating] (a tour) a planned route is
+     * followed at once ([OpenAsk.FOLLOW_PLAN_DURING_TOUR]) and so is a done tour / track with a line ([hasLine],
+     * [OpenAsk.FOLLOW_DURING_TOUR]) – no question, the recording goes on (owner 2026-11-06 22:05; was "Plan laden? Du bist
+     * gerade unterwegs." with three answers and "Dieser Tour folgen?"). Without a tour tracks open beside the plan and a
+     * plan opens at once ([OpenAsk.REPLACE_PLAN]: the plan on the map goes under Zuletzt).
      */
     fun openAsk(kind: TourKind, waypointCount: Int, navigating: Boolean, points: List<GeoPoint>, saved: List<GeoPoint>?,
                 hasLine: Boolean = true): OpenAsk =
         when {
             !replacesPlan(kind, waypointCount) ->
                 if (navigating && kind != TourKind.PLANNED && hasLine) OpenAsk.FOLLOW_DURING_TOUR else OpenAsk.NONE
-            navigating -> OpenAsk.BLOCKED_DURING_TOUR
+            navigating -> OpenAsk.FOLLOW_PLAN_DURING_TOUR
             askBeforeLoading(kind, waypointCount, points, saved) -> OpenAsk.REPLACE_PLAN
             else -> OpenAsk.NONE
         }
@@ -178,8 +178,11 @@ object RouteRules {
         }
 }
 
-/** What comes before an item of My routes opens ([RouteRules.openAsk]); NONE = it opens at once. */
-enum class OpenAsk { NONE, REPLACE_PLAN, BLOCKED_DURING_TOUR, FOLLOW_DURING_TOUR }
+/** What a tap on an item of My routes does ([RouteRules.openAsk]); NONE = it opens at once. */
+enum class OpenAsk { NONE, REPLACE_PLAN, FOLLOW_PLAN_DURING_TOUR, FOLLOW_DURING_TOUR }
+
+/** "Neuer Plan – deine Aufnahme läuft weiter" on Navigate ([AppViewModel.newPlanNote]); [undo]: "Rückgängig" is offered. */
+data class NewPlanNote(val undo: Boolean, val id: Long)
 
 /** What happens with a plan from a link ([RouteRules.linkOpen]). */
 enum class LinkOpen { AFTER_TOUR, ASK_FIRST, NOW }

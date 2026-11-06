@@ -49,10 +49,4 @@ class PlanAutoSaveTest {
         val sheet = File("src/main/java/com/onpath/app/ui/TourBar.kt").readText()
         assertFalse("the end sheet asks nothing about the plan", sheet.contains("EndPlanOption") || sheet.contains("routeLabel"))
     }
-
-    /** "Tour beenden und laden": the route asked for loads after the tour – the old plan goes under Zuletzt, no question. */
-    @Test fun loadingAfterTheTourAsksForAnUnsavedPlan() {
-        val finished = vm.substringAfter("RecordingService.finished.collect { id ->").substringBefore("fun initialCamera()")
-        assertTrue(finished, finished.contains("unlessUnsaved(\"Load \\\"\${t.name}\\\" after the tour\") { openTour(t) }"))
-    }
 }

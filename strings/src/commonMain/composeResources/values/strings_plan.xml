@@ -169,6 +169,7 @@
     <string name="plan_menu_check_updates">Check for updates</string>
     <string name="plan_map_credits">Show map credits</string>
     <string name="plan_undo">Undo</string>
+    <string name="plan_new_during_tour">New plan – your recording goes on</string>
     <string name="plan_redo">Redo</string>
     <string name="plan_compass_heading">Map turns with your direction of travel. Tap for north up</string>
     <string name="plan_compass_turned">Map is turned. Tap for north up</string>
