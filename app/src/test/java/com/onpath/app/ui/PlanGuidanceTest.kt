@@ -93,6 +93,40 @@ class PlanGuidanceTest {
     }
 
     /** Owner 2026-11-06 (onpath.private#39): one point left during a tour = "Hierhin" (position → that point). */
+    /**
+     * Field bug 2026-11-06 21:18 ("es gibt keinen Punkt 1 mehr"): the point left right where I stand → the plan empties
+     * (no "position → point" that comes back after every delete); the rule's own position start left alone → empty
+     * too, never "Route back to the start?"; far enough → position → point as before.
+     */
+    @Test fun onePointLeftNearOrTheRulesOwnStartEmptiesThePlan() {
+        fun of(d: Double?, auto: Boolean = false, back: Boolean = false) =
+            PlanGuidance.oneLeft(2, 1, recording = true, following = true, followIsTrack = false, routeBackAsk = back,
+                leftIsAutoStart = auto, distanceToLeftM = d)
+        assertEquals(PlanGuidance.OneLeft.FROM_HERE, of(640.0))
+        assertEquals(PlanGuidance.OneLeft.FROM_HERE, of(PlanGuidance.ONE_LEFT_NEAR_M))
+        assertEquals(PlanGuidance.OneLeft.EMPTY, of(11.0))
+        assertEquals(PlanGuidance.OneLeft.EMPTY, of(0.0))
+        // the start the rule put in (my position then) is no point of mine: left alone it goes, wherever I am now
+        assertEquals(PlanGuidance.OneLeft.EMPTY, of(300.0, auto = true))
+        assertEquals(PlanGuidance.OneLeft.EMPTY, of(300.0, auto = true, back = true))
+        // the goal deleted far from the start: "Route back to the start?" as before
+        assertEquals(PlanGuidance.OneLeft.NONE, of(300.0, back = true))
+        // no position: the view model's "no position" path (guidance ends with a line)
+        assertEquals(PlanGuidance.OneLeft.FROM_HERE, of(null))
+        // not during a tour on the plan: untouched
+        assertEquals(PlanGuidance.OneLeft.NONE, PlanGuidance.oneLeft(2, 1, false, false, false, false, false, 11.0))
+        assertEquals(PlanGuidance.OneLeft.NONE, PlanGuidance.oneLeft(2, 1, true, true, true, false, false, 11.0))
+        assertEquals(PlanGuidance.OneLeft.NONE, PlanGuidance.oneLeft(3, 2, true, true, false, false, false, 11.0))
+        // one rule with "Route back to the start?": closer than this there is nothing to go to
+        assertEquals(RouteBack.AT_START_M, PlanGuidance.ONE_LEFT_NEAR_M, 0.0)
+    }
+
+    /** A leg of a few metres (the goal right beside the start) is no "no path found" (field bug 2026-11-06 21:18). */
+    @Test fun aMiniLegIsNoError() {
+        assertTrue(com.onpath.app.routing.Planner.isMiniLeg(11.0))
+        assertFalse(com.onpath.app.routing.Planner.isMiniLeg(com.onpath.app.routing.Planner.MINI_LEG_M + 1.0))
+    }
+
     @Test fun onePointLeftDuringATourGoesFromHere() {
         // the field case: start of start → goal deleted while the tour follows the plan
         assertTrue(PlanGuidance.oneLeftGoesFromHere(2, 1, recording = true, following = true, followIsTrack = false, routeBackAsk = false))
@@ -107,7 +141,8 @@ class PlanGuidanceTest {
         assertFalse(PlanGuidance.oneLeftGoesFromHere(3, 2, true, true, false, false))
         // the view model asks after every edit and every Undo / Redo
         val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        assertTrue(vm.substringAfter("private fun change(").substringBefore("\n    }\n").contains("oneLeftGoesFromHere(before)"))
+        // an edit may empty the plan (field bug 2026-11-06), Undo / Redo never does
+        assertTrue(vm.substringAfter("private fun change(").substringBefore("\n    }\n").contains("oneLeftGoesFromHere(before, mayEmpty = true)"))
         assertTrue(vm.substringAfter("private fun step(").substringBefore("\n    }\n").contains("oneLeftGoesFromHere(before)"))
     }
 }

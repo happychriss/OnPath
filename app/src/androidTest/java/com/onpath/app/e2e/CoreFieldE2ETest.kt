@@ -572,5 +572,54 @@ class CoreFieldE2ETest : E2EBase() {
         device.swipe(r.left + r.height() / 2, r.centerY(), r.right - 4, r.centerY(), 40)
     }
 
+    /**
+     * Field bug (owner, Pixel 2026-11-06 21:18, "es gibt keinen Punkt 1 mehr"): during a tour the one-point rule (#39)
+     * rebuilt position → point after every delete – deleting point 2 of "position → point" over and over never emptied
+     * the plan, and a goal 11 m away gave "Punkt 1 → 2: kein Weg gefunden". Now: deleting the goal of the rule's own
+     * "position → point" empties the plan (guidance ends, the recording goes on).
+     */
+    @Test fun deletingTheGoalAgainAfterOnePointLeftEmptiesThePlan() {
+        // the field: "Start here" where I stand, a goal far off; on the way point 2 is deleted in the Points list
+        val start = GeoPoint(lat, lon)
+        val goal = GeoPoint(lat + 0.0050, lon + 0.0030)    // ~640 m away
+        scenario.onActivity { vm(it).addPoint(start); vm(it).addPoint(goal) }
+        waitUntil("two points", 10_000) { waypointCount() == 2 }
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the route is followed", 20_000) { guided() }
+        scenario.onActivity { vm(it).switchToPlan() }
+        waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+        val plan = waypointList()
+        scenario.onActivity { vm(it).deletePointFromList(1) }
+        // the point left is where I stand: no "position → point" (that looped: delete point 2, it came back, again …)
+        waitUntil("the plan is empty", 15_000) { waypointCount() == 0 }
+        waitUntil("no route followed any more", 15_000) { !guided() }
+        assertTrue("the recording goes on", recording())
+        scenario.onActivity { vm(it).undoStep() }
+        waitUntil("Undo: both points back", 10_000) { waypointList() == plan }
+    }
+
+    /** The same field bug, other side: the one point left is right at the position (11 m) – no "position → point". */
+    @Test fun onePointLeftRightHereEmptiesThePlan() {
+        val start = GeoPoint(lat + 0.0030, lon - 0.0020)   // ~380 m away
+        val near = GeoPoint(lat + 0.0001, lon)             // ~11 m away
+        scenario.onActivity { vm(it).addPoint(start); vm(it).addPoint(near) }
+        waitUntil("two points", 10_000) { waypointCount() == 2 }
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the route is followed", 20_000) { guided() }
+        scenario.onActivity { vm(it).switchToPlan() }
+        waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+        val plan = waypointList()
+        scenario.onActivity { vm(it).deletePointFromList(0) }
+        waitUntil("the plan is empty (the point left is where I stand)", 15_000) { waypointCount() == 0 }
+        waitUntil("no route followed any more", 15_000) { !guided() }
+        assertTrue("the recording goes on", recording())
+        scenario.onActivity { vm(it).undoStep() }
+        waitUntil("Undo: both points back", 10_000) { waypointList() == plan }
+    }
+
     private fun waypointList(): List<GeoPoint> { var l: List<GeoPoint> = emptyList(); scenario.onActivity { l = vm(it).waypoints.toList() }; return l }
 }

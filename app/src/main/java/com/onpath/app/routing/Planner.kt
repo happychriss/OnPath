@@ -152,7 +152,7 @@ class Planner(
                     // each leg would get its own limit and the wait multiplies: the rest straight at once
                     timedOut = true
                     if (error == null) error = if (n == 1) legError(1, 2, e) else TOOK_TOO_LONG
-                } else if (error == null) error = legError(i + 1, i + 2, e)
+                } else if (error == null && !isMiniLeg(Geo.distance(waypoints[i], waypoints[i + 1]))) error = legError(i + 1, i + 2, e)
                 null
             }
             done++
@@ -351,6 +351,14 @@ class Planner(
             }
             return Txt.s(Res.string.plan_leg_error, from, to, why)
         }
+
+        /**
+         * A leg shorter than this (straight, metres) that the router cannot do is no "no path found" (field bug
+         * 2026-11-06: the goal 11 m from the start): the straight line between two points this close is the way.
+         */
+        const val MINI_LEG_M = 20.0
+
+        fun isMiniLeg(straightM: Double): Boolean = straightM < MINI_LEG_M
 
         /** Short-trip detour retry ([retryShortDetour]): legs shorter than this (straight, metres) … */
         const val SHORT_LEG_M = 2_000.0
