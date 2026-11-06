@@ -416,16 +416,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Navigate → "▶ Sim" (developer tools, [NavSimChip]): rides [line] – the line followed now – from its start, else
-     * [demoLine]; a ride already on goes first.
+     * Navigate → "▶ Sim" (developer tools, [NavSimChip]): rides [line] – the line followed now – from where the tour is
+     * on it ([NavSimStart]), else [demoLine] from its start; a ride already on goes first.
      */
     fun startNavSim(line: List<GeoPoint>?) {
-        val (label, l) = line?.takeIf { it.size >= 2 }?.let { "followed route" to it } ?: demoLine()
+        val followed = line?.takeIf { it.size >= 2 }
+        val (label, l) = followed?.let { "followed route" to it } ?: demoLine()
             ?: run { sayError("Nothing to simulate: no followed route or plan.", NoticePlace.MAP); return }
         val path = com.onpath.app.recording.DemoPath.timed(l, activity, planFactors())
             ?: run { sayError("This line is too short for a demo ride.", NoticePlace.MAP); return }
-        Problems.trace("demo", "Tour simulation started on the Navigate page ($label)")
-        com.onpath.app.recording.DemoLocation.startRide(path, label)
+        val nav = recState.value?.nav
+        val fromM = NavSimStart.alongM(sameLine = followed != null && nav?.line == followed,
+            reached = nav?.session?.reached == true, shownAlongM = nav?.shownAlongM, progressM = nav?.progressM)
+        Problems.trace("demo", "Tour simulation started on the Navigate page ($label) at ${fromM.toInt()} m of ${path.lengthM.toInt()} m")
+        com.onpath.app.recording.DemoLocation.startRide(path, label, startAlongM = fromM)
         navSimLine = l
     }
 

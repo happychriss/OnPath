@@ -207,4 +207,24 @@ class DemoLocationTest {
             assertEquals(0.0, Geo.distance(end.point, line.last()), 1.0)
         }
     }
+
+    /**
+     * Field 2026-11-06 23:35 (Pixel, Hilden round trip whose first and last ~100 m are the same street): "▶ Sim" during
+     * a tour 2.7 km along started the ride at ① again – a jump back that the navigator, keeping its progress, read as the
+     * last metres of the loop walked backwards, so the next left turn of the way out was never said. A ride started
+     * during a tour begins where the tour is along the line ([DemoLocation.startRide] startAlongM).
+     */
+    @Test fun aSimStartedDuringATourBeginsWhereTheTourIs() {
+        val a = sink()
+        val path = DemoPath.constant(line, 1.2)!!
+        DemoLocation.startRide(path, "followed route", nowMs = t0, autoTick = false, startAlongM = 2_700.0)
+        val first = a.fixes.first().first
+        assertEquals("the first fix where the tour is, not at the start", 2_700.0, first.alongM, 5.0)
+        assertEquals(2_700.0, DemoLocation.state.value!!.alongM, 5.0)
+        DemoLocation.tick(1_000L)
+        assertTrue("it goes on from there", a.fixes.last().first.alongM > 2_700.0)
+        DemoLocation.stop()
+        DemoLocation.startRide(path, "followed route", nowMs = t0, autoTick = false)
+        assertEquals("without a tour: from the start as before", 0.0, a.fixes.last().first.alongM, 1e-6)
+    }
 }

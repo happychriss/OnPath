@@ -51,3 +51,19 @@ private fun SimPill(text: String, label: String, onClick: () -> Unit) {
         }
     }
 }
+
+/**
+ * Where Navigate's "▶ Sim" begins on the followed line (field 2026-11-06 23:35, Hilden round trip whose first and last
+ * ~100 m are the same street: the Sim began at ① while the tour was 2.7 km along; the navigator kept its progress and
+ * read the jump as the loop's last metres walked backwards – the way out's next left turn was never said, the turn card
+ * showed the way back's "80 m Geradeaus"). During a tour on that line: where the tour is ([shownAlongM], else the
+ * progress once the route was reached); otherwise the start. Pure.
+ */
+object NavSimStart {
+    fun alongM(sameLine: Boolean, reached: Boolean, shownAlongM: Double?, progressM: Double?): Double = when {
+        !sameLine -> 0.0
+        shownAlongM != null -> shownAlongM.coerceAtLeast(0.0)
+        reached && progressM != null -> progressM.coerceAtLeast(0.0)
+        else -> 0.0
+    }
+}
