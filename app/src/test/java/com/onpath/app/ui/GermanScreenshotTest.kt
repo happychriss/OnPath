@@ -116,6 +116,8 @@ class GermanScreenshotTest {
     @Test fun sharedPlaceMenuEmptyPlan() = shots.sharedPlaceMenuEmptyPlan()
     @Test fun tours() = shots.tours()
     @Test fun toursRecent() = shots.toursRecent()
+    @Test fun routesOverview() = shots.routesOverview()
+    @Test fun routesOverviewTouring() = shots.routesOverviewTouring()
     @Test fun toursDone() = shots.toursDone()
     @Test fun toursFromBrowser() = shots.toursFromBrowser()
     @Test fun toursEmptyPlanned() = shots.toursEmptyPlanned()

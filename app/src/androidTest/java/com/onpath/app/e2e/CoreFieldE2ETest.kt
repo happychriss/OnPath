@@ -3,6 +3,7 @@ package com.onpath.app.e2e
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.common_cancel
+import com.onpath.strings.routes_overview_follow
 import com.onpath.strings.common_resume
 import com.onpath.strings.nav_action_pause
 import com.onpath.strings.nav_end_short
@@ -202,6 +203,8 @@ class CoreFieldE2ETest : E2EBase() {
             waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
             scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED; vm(it).openRoutes() }
             clickText(name)
+            // a row opens its overview first (owner 2026-11-07); during the tour its primary is "Folgen"
+            clickText(Txt.s(Res.string.routes_overview_follow))
             waitUntil("Navigate at once, no question", 10_000) { mode() == AppMode.NAVIGATE }
             val loaded = pts.map { GeoPoint(it.lat, it.lon) }
             waitUntil("the saved route is the plan", 10_000) { var w: List<GeoPoint> = emptyList(); scenario.onActivity { w = vm(it).waypoints.toList() }; w == loaded }

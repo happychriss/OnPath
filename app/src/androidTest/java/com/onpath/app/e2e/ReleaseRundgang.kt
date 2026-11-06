@@ -34,6 +34,7 @@ import com.onpath.app.ui.RoutesTab
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.common_delete
+import com.onpath.strings.routes_overview_follow
 import com.onpath.strings.common_ok
 import com.onpath.strings.nav_arrived_title
 import com.onpath.strings.nav_action_pause
@@ -236,6 +237,8 @@ class ReleaseRundgang : E2EBase() {
             waitUntil("Plan during the tour", 10_000) { mode() == AppMode.PLAN }
             scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED; vm(it).openRoutes() }
             clickText(name)
+            // a row opens its overview first (owner 2026-11-07); during the tour its primary is "Folgen"
+            clickText(Txt.s(Res.string.routes_overview_follow))
             waitUntil("the loaded route is the plan", 15_000) { read { it.waypoints.size == 2 && it.waypoints.first().lat == pts.first().lat } }
             waitUntil("back in Navigate", 10_000) { mode() == AppMode.NAVIGATE }
             assertNotNull("\"Neuer Plan\" line", findFresh(By.text(Txt.s(Res.string.plan_new_during_tour)), 5_000))

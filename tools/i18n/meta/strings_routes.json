@@ -456,5 +456,29 @@
     "context": "Line on a plan just moved from Recent to Saved, until My routes closes",
     "priority": 2,
     "confidence": "sicher"
+  },
+  "routes_overview_show": {
+    "area": "My routes",
+    "context": "TalkBack label of the small route preview tile at the start of each row; a tap on the row opens the large overview.",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_overview_plan": {
+    "area": "My routes – route overview",
+    "context": "Primary button of the large route overview (map fitted to the route): open this route in Plan mode.",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "routes_overview_follow": {
+    "area": "My routes – route overview",
+    "context": "Primary button of the route overview during a running tour: follow this route at once, the recording goes on.",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "routes_overview_loading": {
+    "area": "My routes – route overview",
+    "context": "Small grey line while the map picture of the overview is drawn (the route shape is already shown).",
+    "priority": 3,
+    "confidence": "sicher"
   }
 }

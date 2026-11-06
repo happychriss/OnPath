@@ -15,6 +15,9 @@ import com.onpath.strings.plan_menu_record_without_plan
 import com.onpath.strings.plan_menu
 import com.onpath.strings.plan_menu_my_routes
 import com.onpath.strings.routes_tag_live
+import com.onpath.strings.routes_overview_plan
+import com.onpath.strings.routes_overview_show
+import com.onpath.strings.common_cancel
 import org.maplibre.android.geometry.LatLng
 
 /**
@@ -103,6 +106,52 @@ class CorePlanE2ETest : E2EBase() {
         var after = emptyList<com.onpath.app.routing.GeoPoint>()
         scenario.onActivity { a -> after = vm(a).waypoints.toList() }
         org.junit.Assert.assertEquals("the same plan on the map", before, after)
+    }
+
+    /**
+     * My routes (owner 2026-11-07): every row has its small route preview; a row tap opens the large overview first –
+     * "Abbrechen" changes nothing, "Planen" puts the route on the map in Plan.
+     */
+    @Test fun aRowTapOpensTheOverviewAndPlanenLoadsIt() {
+        startPlanWithTwoPoints()
+        var before = emptyList<com.onpath.app.routing.GeoPoint>()
+        var centre = LatLng(0.0, 0.0)
+        scenario.onActivity { a -> before = vm(a).waypoints.toList(); centre = LatLng(before[0].lat, before[0].lon) }
+        val db = com.onpath.app.data.TourDb.get(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext)
+        val pts = listOf(com.onpath.app.gpx.GpxWaypoint(centre.latitude + 0.003, centre.longitude, "E2E A"),
+            com.onpath.app.gpx.GpxWaypoint(centre.latitude + 0.005, centre.longitude + 0.003, "E2E B"))
+        val name = "E2E overview route"
+        val id = db.insertTour(com.onpath.app.data.TourKind.PLANNED, name, com.onpath.app.routing.Activity.HIKE.name, 2, 420.0, 0.0, 0.0,
+            300.0, listOf(pts.map { com.onpath.app.gpx.TrackPoint(it.lat, it.lon) }), pts)
+        try {
+            scenario.onActivity { a -> vm(a).routesTab = com.onpath.app.ui.RoutesTab.PLANNED; vm(a).openRoutes() }
+            val row = findFresh(By.text(name), 8_000)
+            assertNotNull("the saved route in My routes", row)
+            assertTrue("rows show their route preview",
+                device.wait(Until.hasObject(By.descContains(Txt.s(Res.string.routes_overview_show))), 5_000))
+            shot("1-routes-with-previews")
+            row!!.click()
+            val plan = findFresh(By.text(Txt.s(Res.string.routes_overview_plan)), 8_000)
+            shot("2-overview")
+            assertNotNull("the overview with \"Planen\" – ${state()}", plan)
+            findFresh(By.text(Txt.s(Res.string.common_cancel)), 3_000)!!.click()
+            waitUntil("overview closed, still in My routes", 5_000) {
+                device.findObject(By.text(Txt.s(Res.string.routes_overview_plan))) == null &&
+                    run { var open = false; scenario.onActivity { a -> open = vm(a).routesOpen }; open }
+            }
+            var still = emptyList<com.onpath.app.routing.GeoPoint>()
+            scenario.onActivity { a -> still = vm(a).waypoints.toList() }
+            org.junit.Assert.assertEquals("Abbrechen changed nothing", before, still)
+            findFresh(By.text(name), 5_000)!!.click()
+            findFresh(By.text(Txt.s(Res.string.routes_overview_plan)), 5_000)!!.click()
+            waitUntil("My routes closed", 8_000) { var open = true; scenario.onActivity { a -> open = vm(a).routesOpen }; !open }
+            val loaded = pts.map { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }
+            waitUntil("the route is the plan", 10_000) {
+                var w = emptyList<com.onpath.app.routing.GeoPoint>(); scenario.onActivity { a -> w = vm(a).waypoints.toList() }; w == loaded
+            }
+        } finally {
+            db.deleteTour(id)
+        }
     }
 
     /**

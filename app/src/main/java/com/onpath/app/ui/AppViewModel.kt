@@ -2714,6 +2714,39 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 key = waypoints.map { it.lat to it.lon }, unsaved = planUnsaved)
         }
 
+    /**
+     * The line of a tour in My routes for its preview and overview (owner 2026-11-07): the stored points (a plan's route,
+     * a recorded track, an imported GPX), else its via points / GPX waypoints. Empty when nothing can be read (reported).
+     */
+    suspend fun tourLine(t: Tour): List<List<GeoPoint>> = withContext(Dispatchers.IO) {
+        if (t.id == LivePlanRows.LIVE_ID) return@withContext listOf(route?.points ?: waypoints.toList())
+        val segs = runCatching { db.loadSegments(t.id) }
+            .onFailure { Problems.warn("routes", "The line of tour ${t.id} for its preview could not be read", it) }
+            .getOrDefault(emptyList())
+            .map { s -> s.map { GeoPoint(it.lat, it.lon) } }.filter { it.isNotEmpty() }
+        segs.ifEmpty { listOf(t.waypoints.map { GeoPoint(it.lat, it.lon) }) }
+    }
+
+    /**
+     * The overview's map picture ([com.onpath.app.map.RouteSnapshot]): the app's own style (offline cells, overview map
+     * where there is no detail) with the line fitted. Null when the map cannot be drawn (reported) – the overview then
+     * keeps the drawn shape.
+     */
+    suspend fun routeSnapshot(segments: List<List<GeoPoint>>, tint: RouteShape.Tint, widthPx: Int, heightPx: Int,
+                              paddingPx: Int): android.graphics.Bitmap? {
+        val app = getApplication<Application>()
+        val dataDir = dataFiles.dir; val theme = settings.mapTheme; val mapDir = dataFiles.mapDir()
+        val cover = detailedAreas(); val dev = devToolsShown; val packages = packageAreas()
+        val json = withContext(Dispatchers.IO) {
+            runCatching { com.onpath.app.map.StyleLoader.load(app, dataDir, theme, mapDir, cover, dev, packages) }
+                .onFailure { Problems.warn("routes", "Overview: map style could not be built – the shape is shown alone", it) }
+                .getOrNull()
+        } ?: return null
+        val color = android.graphics.Color.argb(255, (tint.color().red * 255).toInt(), (tint.color().green * 255).toInt(),
+            (tint.color().blue * 255).toInt())
+        return com.onpath.app.map.RouteSnapshot.make(app, json, segments, color, widthPx, heightPx, paddingPx)
+    }
+
     /** My routes → the plan "In Bearbeitung" tapped: back to it on the map – nothing is loaded again. */
     fun backToLivePlan() {
         Problems.trace("routes", "My routes → the plan in progress (${waypoints.size} points, linked ${savedId}): back to the map, nothing reloaded")

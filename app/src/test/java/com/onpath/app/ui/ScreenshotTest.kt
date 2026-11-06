@@ -1147,6 +1147,20 @@ class ScreenshotTest {
         Tour(4, TourKind.RECORDED, "Demo · Algund", 1_760_500_000_000, "HIKE", 2, 5_300.0, 120.0, 120.0, 1.4 * 3600, "done", emptyList()),
     )
 
+    /**
+     * Lines for My routes' small previews (owner 2026-11-07), put into the cache the rows read: a loop per tour, shaped by
+     * its id; tour 4 (a demo without points) keeps the kind's sign – the quiet placeholder.
+     */
+    private fun previewLines(tours: List<Tour>) = tours.forEach { t ->
+        RouteLineCache.put(t, if (t.id == 4L) emptyList() else listOf(sampleLine(t.id)))
+    }
+
+    private fun sampleLine(id: Long): List<com.onpath.app.routing.GeoPoint> = (0..80).map { i ->
+        val a = i / 80.0 * 1.7 * Math.PI
+        val r = 1 + 0.25 * Math.sin(3 * a + id)
+        com.onpath.app.routing.GeoPoint(46.67 + 0.012 * r * Math.sin(a) * (1 + id % 3) / 2, 11.16 + 0.016 * r * Math.cos(a))
+    }
+
     /** My routes, tab Planned (default): planned routes + imported GPX, Import GPX, per item ⋮ (Rename, Export GPX, Delete). */
     /**
      * My routes → Planned with "Zuletzt" (owner 2026-11-06): the newest three plans kept by themselves – pale route sign,
@@ -1162,11 +1176,30 @@ class ScreenshotTest {
         // the plan on the map first under Zuletzt with "In Bearbeitung" (owner 2026-11-06 23:00), Speichern only
         val live = LivePlan(name = null, points = 3, distanceM = 4_200.0, ascentM = 180.0, durationS = 4_500.0, linkedId = -1L,
             key = listOf(46.67 to 11.16, 46.68 to 11.15, 46.69 to 11.14), unsaved = true)
+        previewLines(drafts + tourList)
+        RouteLineCache.put(Tour(LivePlanRows.LIVE_ID, TourKind.PLANNED, "", t0, null, 0, 4_200.0, 180.0, 0.0, 4_500.0, "done",
+            emptyList()), listOf(sampleLine(9)))
         OnPathTheme { RoutesScreen(drafts + tourList, {}, {}, {}, {}, {}, justSavedId = 1L, live = live, liveNowMs = t0) }
     }
 
     @Test fun tours() = paparazzi.snapshot {
+        previewLines(tourList)
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}) }
+    }
+
+    /**
+     * A row tapped in My routes (owner 2026-11-07 00:30): the large overview first – name, facts, the route fitted (here
+     * the drawn shape; on the phone the map picture under it) – "Abbrechen" | "Planen".
+     */
+    @Test fun routesOverview() = paparazzi.snapshot {
+        OnPathTheme { RouteOverview(tourList[0], listOf(sampleLine(1)), touring = false, snapshot = null, onPrimary = {},
+            onCancel = {}) }
+    }
+
+    /** The same during a tour: "Folgen" (green) – followed at once, the recording goes on (owner 2026-11-06 22:05). */
+    @Test fun routesOverviewTouring() = paparazzi.snapshot {
+        OnPathTheme { RouteOverview(tourList[2], listOf(sampleLine(3)), touring = true, snapshot = null, onPrimary = {},
+            onCancel = {}) }
     }
 
     /**
@@ -1176,6 +1209,7 @@ class ScreenshotTest {
     @Test fun toursFromBrowser() = paparazzi.snapshot {
         val list = tourList.mapIndexed { i, t -> t.copy(uuid = "u-$i") } +
             Tour(5, TourKind.PLANNED, "Meran → Vellau → Leiter Alm → Hochganghaus", 1_760_600_000_000, "MTB", 2, 11_300.0, 690.0, 40.0, 1.9 * 3600, "done", viaPts, uuid = "u-new")
+        previewLines(list)
         OnPathTheme {
             RoutesScreen(list.sortedByDescending { it.createdMs }, {}, {}, {}, {}, {},
                 marks = mapOf("u-new" to com.onpath.app.plansync.SyncMark.NEW, "u-2" to com.onpath.app.plansync.SyncMark.CHANGED))
@@ -1184,26 +1218,31 @@ class ScreenshotTest {
 
     /** My routes, tab Done: recorded tours (a demo tour too); no Import GPX here. */
     @Test fun toursDone() = paparazzi.snapshot {
+        previewLines(tourList)
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialTab = RoutesTab.DONE) }
     }
 
     /** Meine Touren with a search (owner 2026-11-06): only the matching tours of the tab. */
     @Test fun routesSearch() = paparazzi.snapshot {
+        previewLines(tourList)
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialQuery = tourList.first { it.kind != TourKind.RECORDED }.name.take(4)) }
     }
 
     /** A search that finds nothing: "Nichts mit „…“ hier". */
     @Test fun routesSearchNothing() = paparazzi.snapshot {
+        previewLines(tourList)
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialQuery = "Zugspitze") }
     }
 
     /** Planned tab with nothing planned yet (recorded tours exist). */
     @Test fun toursEmptyPlanned() = paparazzi.snapshot {
+        previewLines(tourList)
         OnPathTheme { RoutesScreen(tourList.filter { it.kind == TourKind.RECORDED }, {}, {}, {}, {}, {}) }
     }
 
     /** Done tab with nothing recorded yet. */
     @Test fun toursEmptyDone() = paparazzi.snapshot {
+        previewLines(tourList)
         OnPathTheme { RoutesScreen(tourList.filter { it.kind != TourKind.RECORDED }, {}, {}, {}, {}, {}, initialTab = RoutesTab.DONE) }
     }
 
@@ -1255,6 +1294,7 @@ class ScreenshotTest {
 
     /** My routes → ⋮ → Rename: name dialog prefilled with the current name. */
     @Test fun routesRename() = paparazzi.snapshot {
+        previewLines(tourList)
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialRename = tourList[0]) }
     }
 
@@ -1291,7 +1331,8 @@ class ScreenshotTest {
     /** My routes → ⋮ of a planned route (owner 2026-10-31): Rename, Save as copy, Export GPX, Share plan, Delete. */
     @Test fun routesItemMenuPlanned() = paparazzi.snapshot {
         Box(Modifier.fillMaxSize()) {
-            OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}) }
+            previewLines(tourList)
+        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}) }
             OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 200.dp, end = 12.dp)) {
                 TourMenuItems(tourList.first { it.kind == com.onpath.app.data.TourKind.PLANNED }, {}, {}, {}, null, {}, {}) {}
             } }
