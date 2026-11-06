@@ -269,6 +269,7 @@
     <string name="nav_turn_round">Umdrehen</string>
     <string name="nav_keep_hiking">Weiterwandern</string>
     <string name="nav_keep_riding">Weiterfahren</string>
+    <string name="nav_delete_tour_short">Löschen</string>
     <string name="nav_delete_tour">Tour löschen</string>
     <string name="nav_end_section_tour">TOUR</string>
     <string name="nav_end_section_plan">PLAN</string>

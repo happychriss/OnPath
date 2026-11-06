@@ -3081,6 +3081,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     var saveRouteAtEnd by mutableStateOf(false)
 
+    /**
+     * The end sheet's plan switch as it opens (owner 2026-11-06: a plan made on the phone was gone after the tour): ON for
+     * a plan never saved – otherwise it is lost with the next new plan; OFF for changes to a saved plan (overwriting it is
+     * the user's choice).
+     */
+    private fun presetPlanSave() {
+        saveRouteAtEnd = EndPlanSave.preset(endRouteLabel() != null, currentSaveMode() == SaveMode.OVERWRITE)
+    }
+
     /** The line under the plan option in the end sheet: which saved plan gets the changes, or "a new plan". */
     fun endRouteLine(): String? = when {
         endRouteLabel() == null -> null
@@ -3099,7 +3108,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun askEndTour(saveIfNoRides: Boolean = false) {
         arrivalAsk = false
-        val id = recState.value?.tourId ?: run { if (saveIfNoRides) endTour() else endAsk = EndAsk.Plain; return }
+        val id = recState.value?.tourId ?: run { if (saveIfNoRides) endTour() else { presetPlanSave(); endAsk = EndAsk.Plain }; return }
         val navActivity = recState.value?.nav?.session?.activity
         viewModelScope.launch {
             val s = withContext(Dispatchers.IO) {
@@ -3113,7 +3122,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             when {
                 s != null -> endAsk = EndAsk.Rides(id, s)
                 saveIfNoRides -> endTour()
-                else -> endAsk = EndAsk.Plain
+                else -> { presetPlanSave(); endAsk = EndAsk.Plain }
             }
         }
     }
@@ -3170,7 +3179,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * it says "arrived" itself): the arrival question once per arrival this app instance sees.
      */
     private fun onArrived(arrived: Boolean) {
-        if (arrived && !arrivalSeen) { arrivalSeen = true; arrivalAsk = true }
+        if (arrived && !arrivalSeen) { arrivalSeen = true; presetPlanSave(); arrivalAsk = true }
         if (!arrived) arrivalSeen = false
     }
     private var arrivalSeen = false

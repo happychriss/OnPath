@@ -270,6 +270,7 @@
     <string name="nav_turn_round">Turn round</string>
     <string name="nav_keep_hiking">Keep hiking</string>
     <string name="nav_keep_riding">Keep riding</string>
+    <string name="nav_delete_tour_short">Delete</string>
     <string name="nav_delete_tour">Delete tour</string>
     <string name="nav_end_section_tour">TOUR</string>
     <string name="nav_end_section_plan">PLAN</string>

@@ -180,3 +180,9 @@ enum class OpenAsk { NONE, REPLACE_PLAN, BLOCKED_DURING_TOUR }
 
 /** What happens with a plan from a link ([RouteRules.linkOpen]). */
 enum class LinkOpen { AFTER_TOUR, ASK_FIRST, NOW }
+
+/** The end sheet's "Plan auch speichern" when it opens (owner 2026-11-06; pure). */
+object EndPlanSave {
+    /** [offered]: there is a plan to save; [savedBefore]: it changes a saved plan. A plan never saved: ON. */
+    fun preset(offered: Boolean, savedBefore: Boolean): Boolean = offered && !savedBefore
+}

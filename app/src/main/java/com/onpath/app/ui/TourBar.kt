@@ -154,56 +154,61 @@ fun EndTourDialog(
                             Icon(Icons.Filled.Close, contentDescription = keepLabel, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
+                    // Variant A (owner 2026-11-06, "fertig und keinen Bock mehr" – much used): everything on one screen
+                    // without scrolling – the numbers in one line, the plan option only with a plan to save, the big green
+                    // Save, then Weiterfahren | Löschen side by side (stacked with a large font); Löschen = the bin, no
+                    // second question (owner 2026-11-01)
+                    if (stats != null) { Spacer(Modifier.height(8.dp)); EndStatsLine(stats) }
                     Spacer(Modifier.height(16.dp))
-                    EndSectionLabel(str(Res.string.nav_end_section_tour), OnPathColors.ActionGo)
-                    Spacer(Modifier.height(8.dp))
-                    if (stats != null) { EndStatsCard(stats); Spacer(Modifier.height(12.dp)) }
-                    EndSaveButton(str(Res.string.nav_save_recording), onSave)
                     if (routeLabel != null) {
-                        Spacer(Modifier.height(20.dp))
-                        EndSectionLabel(str(Res.string.nav_end_section_plan), OnPathColors.PlanAccent)
-                        Spacer(Modifier.height(8.dp))
                         EndPlanOption(routeLabel, routeLine, routeChecked, onRouteChecked)
+                        Spacer(Modifier.height(12.dp))
                     }
-                    Spacer(Modifier.height(20.dp))
-                    EndKeepButton(keepLabel, onDismiss)
-                    Spacer(Modifier.height(4.dp))
-                    EndDeleteArea(onDelete)
+                    EndSaveButton(str(Res.string.nav_save_recording), onSave)
+                    Spacer(Modifier.height(12.dp))
+                    EndKeepAndDelete(keepLabel, onDismiss, onDelete)
                 }
             }
         }
     }
 }
 
+/** "821 m · 4 min · ↑ 3 m" – the tour's numbers in one line under the title (wraps with a large font, never cut). */
 @Composable
-private fun EndSectionLabel(text: String, dot: androidx.compose.ui.graphics.Color) = Row(verticalAlignment = Alignment.CenterVertically) {
-    Box(Modifier.size(8.dp).background(dot, CircleShape))
-    Spacer(Modifier.width(8.dp))
-    Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
-}
+private fun EndStatsLine(st: EndStats) = Text(
+    // a value never breaks inside ("842 m" whole): no-break spaces within, the line wraps only between the values
+    listOf(Format.distance(st.distanceM), Format.durationShort(st.elapsedS.toDouble()), "↑ ${Format.meters(st.ascentM)}")
+        .joinToString("  ·  ") { it.replace(' ', '\u00A0') },
+    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
 
-/** Distance · time · ascent; at a large font one line each ("Strecke   12,5 km") instead of three squeezed columns. */
+/**
+ * Weiterfahren | Löschen as equals under Save (owner 2026-11-06, variant A): both outlined, 56 dp, Löschen red on the
+ * word; side by side, stacked with a large font. The bin note under them.
+ */
 @Composable
-private fun EndStatsCard(st: EndStats) {
-    val items = listOf(str(Res.string.nav_end_stat_distance) to Format.distance(st.distanceM),
-        str(Res.string.nav_end_stat_time) to Format.durationShort(st.elapsedS.toDouble()),
-        str(Res.string.nav_end_stat_ascent) to "↑ ${Format.meters(st.ascentM)}")
-    Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-        if (androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.5f) Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-            items.forEach { (l, v) ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(l, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-                    Text(v, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                }
-            }
-        } else Row(Modifier.padding(vertical = 12.dp, horizontal = 8.dp)) {
-            items.forEach { (l, v) ->
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(v, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                    Text(l, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                }
-            }
+private fun EndKeepAndDelete(keepLabel: String, onKeep: () -> Unit, onDelete: () -> Unit) {
+    val stacked = androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.3f
+    val keep: @Composable (Modifier) -> Unit = { m ->
+        OutlinedButton(onClick = onKeep, modifier = m.heightIn(min = 56.dp), border = BorderStroke(1.dp, OnPathColors.ActionGo)) {
+            Text(keepLabel, color = OnPathColors.ActionGo, style = MaterialTheme.typography.titleMedium, maxLines = 1)
         }
+    }
+    val delete: @Composable (Modifier) -> Unit = { m ->
+        OutlinedButton(onClick = onDelete, modifier = m.heightIn(min = 56.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+            Icon(Icons.Outlined.DeleteOutline, null); Spacer(Modifier.width(6.dp))
+            Text(str(Res.string.nav_delete_tour_short), style = MaterialTheme.typography.titleMedium, maxLines = 1)
+        }
+    }
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        if (stacked) {
+            keep(Modifier.fillMaxWidth()); Spacer(Modifier.height(8.dp)); delete(Modifier.fillMaxWidth())
+        } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            keep(Modifier.weight(1f)); delete(Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(RECYCLE_BIN_NOTE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
 
