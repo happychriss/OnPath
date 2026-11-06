@@ -90,8 +90,8 @@ the git log.
 - **[cloud-plan] Planner follows the app's plan rules of 2026-11-06 (owner: "die gleiche Logik beim Planer")** – (1) "↻ Rundtour"
   as a toggle: filled with ✓ while the plan is a round trip, a tap removes the way back (A→B→A → A→B); "⇅ Umkehren" grey
   when reversing changes nothing (out and back over one point) – onpath.private#40, app branch in progress (donald),
-  mirror once it is on main; (2) pin card "+ Hinzufügen" (#26, app 8123d06a); (3) map glyphs: all 256 ranges per font
-  (app 60470cba – if the planner serves its own glyphs, the same rule); (4) base colour Walnuss #4A3F37 for plain buttons,
+  mirror once it is on main; (2) pin card "+ Hinzufügen" (#26, app 8123d06a); (3) ✓ map glyphs: all 256 ranges per font
+  (planner copies the app's fonts at build time; the build now stops if a range is missing, e7802e1e – live after the next deploy); (4) base colour Walnuss #4A3F37 for plain buttons,
   plan blue / to navigation green (#36, app follows soon). Phone-only (no planner change): end sheet, one point during a
   tour, F1 / C, offline pill.
 - **[laptop] Web planner – owner's points 2026-11-06 (chat):** (1) **Meine Pläne list:** besides the name show the length and
