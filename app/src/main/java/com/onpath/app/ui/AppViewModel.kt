@@ -1356,9 +1356,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         prunePinned()
         planEditPending = true
         val split = splitOf(before, waypoints.toList())
-        routeBackAsk = split == TourSplit.Outcome.NothingAhead ||
-            (RouteBack.asks(before, waypoints, recState.value != null, followLine != null, followIsTrack, myPosition()) &&
-                waypoints.singleOrNull() != oneLeftStart)
+        val left = waypoints.singleOrNull()
+        val pos = myPosition()
+        // the one point left is where I stand (or only the start the one-point rule put in): nothing to ask about – the
+        // plan empties in oneLeftGoesFromHere (field bug 2026-11-06; standing on point 1 also counts it as passed, so the
+        // split says NothingAhead)
+        val leftIsHere = left != null && PlanGuidance.leftIsHere(left == oneLeftStart,
+            if (pos != null) com.onpath.app.data.Geo.distance(pos, left) else null)
+        routeBackAsk = !leftIsHere && (split == TourSplit.Outcome.NothingAhead ||
+            RouteBack.asks(before, waypoints, recState.value != null, followLine != null, followIsTrack, pos))
         if (routeBackAsk) {
             Problems.trace("plan", "Edit during the tour left no point ahead: asking \"No destination ahead\"")
             sayEvent(RecordingService.SAY_NO_DESTINATION)

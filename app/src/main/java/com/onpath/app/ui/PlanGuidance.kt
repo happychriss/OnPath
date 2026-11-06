@@ -38,6 +38,14 @@ object PlanGuidance {
     enum class OneLeft { NONE, FROM_HERE, EMPTY }
 
     /**
+     * The one point left after an edit during a tour is "here": the start the one-point rule itself put in
+     * ([leftIsAutoStart]) or closer than [ONE_LEFT_NEAR_M] to me ([distanceToLeftM], null = no position). Then neither
+     * "Route back to the start?" nor "No destination ahead" is asked – the plan empties ([oneLeft] → [OneLeft.EMPTY]).
+     */
+    fun leftIsHere(leftIsAutoStart: Boolean, distanceToLeftM: Double?): Boolean =
+        leftIsAutoStart || (distanceToLeftM != null && distanceToLeftM < ONE_LEFT_NEAR_M)
+
+    /**
      * What an edit during a tour that left one point does (owner 2026-11-06, #39 + field bug 21:18 "es gibt keinen Punkt
      * 1 mehr"): [OneLeft.FROM_HERE] = plan position → that point (like Hierhin); [OneLeft.EMPTY] = the plan empties like
      * "all points deleted" (guidance ends, recording goes on, Undo brings it back) – when the point left is the start the

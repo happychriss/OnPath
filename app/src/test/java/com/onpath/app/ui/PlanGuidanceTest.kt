@@ -121,6 +121,17 @@ class PlanGuidanceTest {
         assertEquals(RouteBack.AT_START_M, PlanGuidance.ONE_LEFT_NEAR_M, 0.0)
     }
 
+    /** Standing on point 1 counts it as passed (split NothingAhead): no question for a point left where I stand. */
+    @Test fun aPointLeftWhereIStandIsHere() {
+        assertTrue(PlanGuidance.leftIsHere(leftIsAutoStart = false, distanceToLeftM = 0.0))
+        assertTrue(PlanGuidance.leftIsHere(false, 49.0))
+        assertTrue(PlanGuidance.leftIsHere(leftIsAutoStart = true, distanceToLeftM = 600.0))
+        assertTrue(PlanGuidance.leftIsHere(true, null))
+        assertFalse(PlanGuidance.leftIsHere(false, 50.0))
+        assertFalse(PlanGuidance.leftIsHere(false, 640.0))
+        assertFalse("no position: ask as before", PlanGuidance.leftIsHere(false, null))
+    }
+
     /** A leg of a few metres (the goal right beside the start) is no "no path found" (field bug 2026-11-06 21:18). */
     @Test fun aMiniLegIsNoError() {
         assertTrue(com.onpath.app.routing.Planner.isMiniLeg(11.0))
