@@ -69,12 +69,12 @@ fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, demo: Boolea
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // short credit on the map; a tap opens the full credits (Settings → About)
                 Text("© OpenStreetMap", style = MaterialTheme.typography.labelSmall, color = Color(0xFF333333), maxLines = 1,
-                    modifier = Modifier.padding(top = 4.dp).clip(RoundedCornerShape(4.dp))
+                    modifier = Modifier.padding(top = 4.dp).clip(OnPathShapes.Small)
                         .clickable(onClickLabel = str(Res.string.plan_map_credits), onClick = onCredits)
                         .background(Color(0xB3FFFFFF)).padding(horizontal = 5.dp, vertical = 3.dp))
                 // simulated GPS (Developer tools → Demo): said honestly, also in screenshots
                 if (demo) Text("DEMO", style = MaterialTheme.typography.labelSmall, color = Color.White, maxLines = 1,
-                    modifier = Modifier.padding(start = 6.dp, top = 4.dp).clip(RoundedCornerShape(4.dp))
+                    modifier = Modifier.padding(start = 6.dp, top = 4.dp).clip(OnPathShapes.Small)
                         .background(OnPathColors.Warn).padding(horizontal = 5.dp, vertical = 3.dp))
             }
         }
@@ -94,7 +94,7 @@ fun gpsColor(status: GpsStatus): Color = when (status) {
 
 @Composable
 private fun ScaleBar(label: String, width: Dp) {
-    Column(Modifier.background(Color(0x99FFFFFF), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp)) {
+    Column(Modifier.background(Color(0x99FFFFFF), OnPathShapes.Small).padding(horizontal = 4.dp, vertical = 2.dp)) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = Color(0xFF222222))
         Box(Modifier.width(width).height(2.dp).background(Color(0xFF222222)))
     }
@@ -165,7 +165,7 @@ fun MapControls(
         if (!plan) add(locate) // Navigate: locate at the bottom, as before
     }
     val items = tips.mapIndexed { i, (text, control) -> @Composable { MapTip(text, i == tipShown) { control() } } }
-    Surface(shape = RoundedCornerShape(MAP_FAB / 2), color = bg, shadowElevation = 3.dp) {
+    Surface(shape = RoundedCornerShape(MAP_FAB / 2), color = bg, modifier = Modifier.warmShadow(OnPathShadow.LOW, RoundedCornerShape(MAP_FAB / 2))) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             items.forEachIndexed { i, item ->
                 if (i > 0) GroupDivider()

@@ -233,7 +233,7 @@ private fun DoneLine(what: String) {
 
 @Composable
 private fun NoteBox(text: String) {
-    Surface(shape = RoundedCornerShape(12.dp), color = OnPathColors.WarnContainer, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+    Surface(shape = com.onpath.app.ui.OnPathShapes.Small, color = OnPathColors.WarnContainer, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
         Text(text, style = MaterialTheme.typography.bodyMedium, color = OnPathColors.Ink, modifier = Modifier.padding(12.dp))
     }
 }

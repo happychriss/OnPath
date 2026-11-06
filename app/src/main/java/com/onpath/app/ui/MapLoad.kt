@@ -268,8 +268,8 @@ fun MapLoadModal(ui: MapLoadUi?, cb: MapLoadCallbacks) {
 @Composable
 fun MapLoadPanel(ui: MapLoadUi, cb: MapLoadCallbacks) {
     val variant = MaterialTheme.colorScheme.onSurfaceVariant
-    Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp,
-        modifier = Modifier.fillMaxWidth()) {
+    Surface(shape = OnPathShapes.Card, color = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.fillMaxWidth().warmShadow(OnPathShadow.HIGH, OnPathShapes.Card)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             val (icon, tint) = when (ui.kind) {
                 MapLoadUi.Kind.FAILED -> Icons.Outlined.Warning to OnPathColors.Warn

@@ -74,8 +74,8 @@ fun TourRunningBar(
     distanceM: Double, elapsedS: Long, paused: Boolean, onEnd: () -> Unit, modifier: Modifier = Modifier,
     onPause: (Boolean) -> Unit = {}, onContinue: () -> Unit = {}, activity: com.onpath.app.routing.Activity? = null,
 ) {
-    Surface(modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh, shadowElevation = 2.dp) {
+    Surface(modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).warmShadow(OnPathShadow.LOW, MaterialTheme.shapes.large), shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh) {
         Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp)) {
             TourControls(distanceM, elapsedS, paused, onPause, onContinue, onEnd, activity)
         }

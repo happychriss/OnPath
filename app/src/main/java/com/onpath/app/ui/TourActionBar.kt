@@ -82,7 +82,7 @@ private fun HoldBar(modifier: Modifier, bar: @Composable (onEarly: () -> Unit) -
     LaunchedEffect(strongAt) { if (strongAt != 0L) { kotlinx.coroutines.delay(HoldRule.HINT_MS); strongAt = 0L } }
     Column(modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.Center) {
-            Surface(shape = RoundedCornerShape(50), color = if (strong) OnPathColors.Walnut else OnPathColors.Paper, shadowElevation = 2.dp) {
+            Surface(shape = OnPathShapes.Pill, color = if (strong) OnPathColors.Walnut else OnPathColors.Paper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Pill)) {
                 Row(Modifier.padding(horizontal = 14.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(if (strong) Icons.Filled.TouchApp else Icons.Filled.Lock, null, Modifier.size(18.dp),
                         tint = if (strong) OnPathColors.CardWhite else OnPathColors.Walnut)
@@ -215,7 +215,7 @@ object TourActions {
     val GoTonal = Color(0xFFD5EADF)
     val OnGoTonal = Color(0xFF0D3A27)
     /** Planen's light blue while locked and its dark blue words (≥ 7:1; owner 2026-11-06, variant A of the hold lock). */
-    val EditTonal = Color(0xFFD7E5F2)
-    val OnEditTonal = Color(0xFF123A5C)
+    val EditTonal = OnPathColors.EditTonal
+    val OnEditTonal = OnPathColors.OnEditTonal
 
 }

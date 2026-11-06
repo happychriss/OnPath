@@ -239,10 +239,10 @@ class CellCardCallbacks(
 fun OverviewPill(onLoad: () -> Unit, modifier: Modifier = Modifier) {
     val text = str(Res.string.maps_overview_only)
     val action = str(Res.string.maps_overview_load)
-    Surface(onClick = onLoad, shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp), shadowElevation = 3.dp,
+    Surface(onClick = onLoad, shape = OnPathShapes.Pill,
         color = OnPathColors.Paper,
         modifier = modifier.heightIn(min = OverviewPillPlace.HEIGHT_DP.dp)
-            .semantics(mergeDescendants = true) { contentDescription = "$text. $action" }) {
+            .semantics(mergeDescendants = true) { contentDescription = "$text. $action" }.warmShadow(OnPathShadow.LOW, OnPathShapes.Pill)) {
         // no map sign: text + action fit on one line at normal font on a 390 dp phone (both lines wrap at large font)
         Row(Modifier.padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -280,9 +280,9 @@ object OverviewPillPlace {
  */
 @Composable
 fun QuietPill(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
-    Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp), shadowElevation = 2.dp,
+    Surface(shape = OnPathShapes.Pill,
         color = OnPathColors.Paper.copy(alpha = 0.94f), // over the map: paper (owner 2026-11-06)
-        modifier = modifier.androidxSemantics(text)) {
+        modifier = modifier.androidxSemantics(text).warmShadow(OnPathShadow.LOW, OnPathShapes.Pill)) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))

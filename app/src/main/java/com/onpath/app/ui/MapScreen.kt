@@ -187,8 +187,7 @@ fun MapScreen(
         androidx.compose.animation.AnimatedVisibility(sharedLookup,
             modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = hintTop),
             enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
-            androidx.compose.material3.Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-                shadowElevation = 3.dp, color = OnPathColors.Paper) { // over the map: paper (owner 2026-11-06)
+            androidx.compose.material3.Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) { // over the map: paper (owner 2026-11-06)
                 androidx.compose.foundation.layout.Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     androidx.compose.material3.CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
@@ -281,11 +280,9 @@ private fun PlanMode(
     onPanelHeight: (Int) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
-        // Plan is blue (owner 2026-11-03, design §3 version 3): a soft blue edge round the screen and a light blue band
-        // under the status bar – drawn only, no touches taken
-        PlanFrame(Modifier.modeEdge(ModeEdge.TOP))
-        // the light blue band behind the search pill and ☰ (owner 2026-11-05, b): from the screen's top edge (status bar)
-        // to the bar's bottom; during a tour one row more ("‹ Zur Tour")
+        // the paper band behind the search pill and ☰ (owner 2026-11-05 b; paper since 2026-11-06 variant C – no blue
+        // surfaces, no blue glow round the screen): from the screen's top edge (status bar) to the bar's bottom; during a
+        // tour one row more ("‹ Zur Tour")
         val topBar = planTopBarDp()
         Box(Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().background(PlanTopBand.Color)
             .statusBarsPadding().height(topBar.dp))
@@ -607,6 +604,8 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     val planPuck = rememberPlanPuck(vm.activity)
     val changingRoute = vm.mode == AppMode.PLAN && rec != null
     LaunchedEffect(c, changingRoute, planPuck) { c.setPlanPuck(planPuck.takeIf { changingRoute }) }
+    // the GPS accuracy circle only in Navigate (owner 2026-11-06: in Plan it only gets in the way)
+    LaunchedEffect(c, vm.mode) { c.setNavigateMode(vm.mode == AppMode.NAVIGATE) }
     LaunchedEffect(c, vm.settings) { c.layers.apply(vm.settings) }
     // Re-routing: thin grey original while a new route is followed, dashed proposal while asking, dashed guide to
     // the route when no way was found / the original was kept (see NavigateScreen, navigation/Navigator).

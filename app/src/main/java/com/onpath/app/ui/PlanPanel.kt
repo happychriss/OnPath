@@ -265,9 +265,9 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
     }
 }
 
-/** The plan row's light blue and its dark blue words (owner 2026-11-05; ≥ 9:1). */
-internal val PillBlueLight = Color(0xFFDDE7F4)
-internal val PillBlueInk = Color(0xFF163C6B)
+/** The plan row's pills: one paper shade darker, ink blue words (owner 2026-11-06 variant C – no light blue; ≥ 7:1). */
+internal val PillBlueLight = OnPathColors.PaperDim
+internal val PillBlueInk = OnPathColors.ActionEdit
 
 @Composable
 private fun pillFill(enabled: Boolean): Color = PillBlueLight.copy(alpha = if (enabled) 1f else 0.5f)
@@ -616,14 +616,14 @@ fun ActivityMapButton(activity: Activity, sac: Int, onClick: () -> Unit, modifie
     val name = com.onpath.app.data.LastActivity.chipText(activity, sac)
     Column(modifier.semantics(mergeDescendants = true) { contentDescription = Txt.s(Res.string.plan_activity_chip_desc, name) },
         horizontalAlignment = Alignment.CenterHorizontally) {
-        Surface(onClick = onClick, shape = CircleShape, color = OnPathColors.PlanTint, shadowElevation = 3.dp,
-            modifier = Modifier.size(48.dp)) {
+        Surface(onClick = onClick, shape = CircleShape, color = OnPathColors.PlanTint,
+            modifier = Modifier.size(48.dp).warmShadow(OnPathShadow.LOW, CircleShape)) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(activity.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(26.dp))
             }
         }
-        if (activity == Activity.HIKE) Surface(shape = CircleShape, color = OnPathColors.PlanTint, shadowElevation = 2.dp,
-            modifier = Modifier.padding(top = 3.dp)) {
+        if (activity == Activity.HIKE) Surface(shape = CircleShape, color = OnPathColors.PlanTint,
+            modifier = Modifier.padding(top = 3.dp).warmShadow(OnPathShadow.LOW, CircleShape)) {
             Text("T$sac", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = PillBlueInk,
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp))
         }

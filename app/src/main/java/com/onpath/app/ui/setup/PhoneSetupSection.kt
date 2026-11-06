@@ -1,5 +1,8 @@
 package com.onpath.app.ui.setup
 
+import com.onpath.app.ui.warmShadow
+import com.onpath.app.ui.OnPathShadow
+import com.onpath.app.ui.OnPathShapes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,7 +56,7 @@ fun PhoneSetupSection(checks: List<Check>, phone: PhoneState, onFix: (CheckId) -
             if (group.isEmpty()) continue
             Text(str(label), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 6.dp))
-            Surface(shape = RoundedCornerShape(16.dp), color = OnPathColors.Paper, shadowElevation = 1.dp) {
+            Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
                 Column {
                     group.forEachIndexed { i, c ->
                         if (i > 0) HorizontalDivider(Modifier.padding(start = 56.dp))

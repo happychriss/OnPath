@@ -245,8 +245,8 @@ private val PIN_CHIP_TOUCH_PAD = 0.dp
 @Composable
 fun PinChip(name: String, action: String, onAction: () -> Unit, onMore: () -> Unit, modifier: Modifier = Modifier,
             emptyPlan: Boolean = false) {
-    Surface(modifier, shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp), color = OnPathColors.Paper,
-        contentColor = OnPathColors.Ink, shadowElevation = 3.dp) {
+    Surface(modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card), shape = OnPathShapes.Card, color = OnPathColors.Paper,
+        contentColor = OnPathColors.Ink) {
         Column(Modifier.widthIn(min = 200.dp).width(IntrinsicSize.Max).padding(start = 10.dp, end = 10.dp, top = 9.dp, bottom = 3.dp)) {
             Text(PinChipRules.label(name), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
                 color = OnPathColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -255,7 +255,7 @@ fun PinChip(name: String, action: String, onAction: () -> Unit, onMore: () -> Un
                 PinCardButton(action, if (emptyPlan) Icons.Outlined.MyLocation else Icons.Outlined.Add, OnPathColors.ActionEdit,
                     OnPathColors.CardWhite, str(Res.string.plan_pin_action_desc, action, name), onAction, Modifier.weight(1f))
                 Spacer(Modifier.width(6.dp))
-                PinCardButton(str(Res.string.plan_pin_more), Icons.Outlined.MoreHoriz, OnPathColors.PlanTint, OnPathColors.Ink,
+                PinCardButton(str(Res.string.plan_pin_more), Icons.Outlined.MoreHoriz, OnPathColors.PaperDim, OnPathColors.Ink,
                     str(Res.string.plan_pin_chip_desc, name), onMore, Modifier.weight(1f))
             }
         }
@@ -413,10 +413,9 @@ private fun HoldMenuItem(
 @Composable
 private fun MenuSurface(modifier: Modifier, content: @Composable () -> Unit) {
     Surface(
-        modifier.widthIn(min = 220.dp),
+        modifier.widthIn(min = 220.dp).warmShadow(OnPathShadow.HIGH, MaterialTheme.shapes.large),
         shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shadowElevation = 8.dp,
-    ) {
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Column(Modifier.width(IntrinsicSize.Max).padding(bottom = 4.dp)) { content() }
     }
 }

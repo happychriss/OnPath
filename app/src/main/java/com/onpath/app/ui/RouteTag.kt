@@ -46,7 +46,7 @@ enum class RouteTag(val text: StringResource) {
 fun Tag(text: String, modifier: Modifier = Modifier) {
     Text(text, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = OnPathColors.TagInk,
         maxLines = 1, softWrap = false,
-        modifier = modifier.background(OnPathColors.TagContainer, RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 3.dp))
+        modifier = modifier.background(OnPathColors.TagContainer, OnPathShapes.Pill).padding(horizontal = 8.dp, vertical = 3.dp))
 }
 
 /**
