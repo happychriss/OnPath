@@ -1,42 +1,55 @@
 package com.onpath.app.ui
 
-import com.onpath.app.routing.RouteSummary.Steepness
-import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The profile's fill (owner 2026-11-06, polish 8): steeper is stronger, a short bump paints no stripe. */
+/** The profile's fill (owner 2026-11-06, polish 8): stronger where steep, shading instead of stripes. */
 class ProfileFillTest {
-    private fun dist(n: Int, stepM: Double) = DoubleArray(n) { it * stepM }
+    private val top = ProfileFill.LEVELS - 1
 
-    @Test fun eachSteepnessIsItsLevel() {
-        val s = List(40) { Steepness.FLAT } + List(40) { Steepness.STEEP }
-        val l = ProfileFill.levels(s, dist(81, 10.0))
-        assertEquals(0, l[0]); assertEquals(Steepness.STEEP.ordinal, l[79])
+    /** Points every [step] m with the given slope (%) per stretch. */
+    private fun profile(step: Double, vararg stretches: Pair<Int, Double>): Pair<DoubleArray, DoubleArray> {
+        val d = ArrayList<Double>(); val e = ArrayList<Double>()
+        var x = 0.0; var h = 500.0
+        d += x; e += h
+        for ((count, pct) in stretches) repeat(count) { x += step; h += step * pct / 100; d += x; e += h }
+        return d.toDoubleArray() to e.toDoubleArray()
     }
 
-    @Test fun aShortSteepBumpTakesItsNeighboursLevel() {
-        // 30 m very steep between two long flat stretches: no stripe
-        val s = List(30) { Steepness.FLAT } + List(3) { Steepness.VERY_STEEP } + List(30) { Steepness.FLAT }
-        val l = ProfileFill.levels(s, dist(64, 10.0))
-        assertArrayEquals(IntArray(63), l)
+    @Test fun flatIsNothingExtra() {
+        val (d, e) = profile(10.0, 100 to 2.0)
+        assertTrue(ProfileFill.levels(d, e).all { it == 0 })
     }
 
-    @Test fun aShortFlatDipBetweenSteepPartsTakesTheLowerLevel() {
-        val s = List(20) { Steepness.MODERATE } + List(2) { Steepness.FLAT } + List(20) { Steepness.STEEP }
-        val l = ProfileFill.levels(s, dist(43, 10.0))
-        // the 20 m flat run is short: it takes the lower neighbour (MODERATE), never invents steepness
-        assertEquals(Steepness.MODERATE.ordinal, l[20]); assertEquals(Steepness.MODERATE.ordinal, l[21])
+    @Test fun aLongSteepClimbIsTheStrongest() {
+        val (d, e) = profile(10.0, 100 to 20.0)
+        assertTrue(ProfileFill.levels(d, e).all { it == top })
     }
 
-    @Test fun aLongRunStays() {
-        val s = List(20) { Steepness.FLAT } + List(15) { Steepness.VERY_STEEP } + List(20) { Steepness.FLAT }
-        val l = ProfileFill.levels(s, dist(56, 10.0))
-        assertEquals(Steepness.VERY_STEEP.ordinal, l[25])
+    @Test fun inBetweenIsInBetween() {
+        val (d, e) = profile(10.0, 100 to 10.0)
+        val l = ProfileFill.levels(d, e)
+        assertTrue(l.all { it in 1 until top })
     }
 
-    @Test fun emptyAndTinyProfilesNeverThrow() {
-        assertEquals(0, ProfileFill.levels(emptyList(), DoubleArray(0)).size)
-        assertEquals(1, ProfileFill.levels(listOf(Steepness.STEEP), doubleArrayOf(0.0, 5.0)).size)
+    @Test fun aShortRampPaintsNoStripe() {
+        // 30 m at 25 % in a long flat way: over the 300 m window it is a gentle bump
+        val (d, e) = profile(10.0, 50 to 1.0, 3 to 25.0, 50 to 1.0)
+        assertTrue(ProfileFill.levels(d, e).all { it <= 1 })
     }
+
+    @Test fun neighbouringPointsDifferByAtMostOneStepOnAnEvenClimb() {
+        val (d, e) = profile(10.0, 60 to 3.0, 60 to 9.0, 60 to 16.0)
+        val l = ProfileFill.levels(d, e)
+        l.toList().zipWithNext().forEach { (a, b) -> assertTrue("$a → $b", kotlin.math.abs(a - b) <= 1) }
+    }
+
+    @Test fun tinyProfilesNeverThrow() {
+        assertEquals(0, ProfileFill.levels(DoubleArray(0), DoubleArray(0)).size)
+        assertEquals(0, ProfileFill.levels(doubleArrayOf(0.0), doubleArrayOf(5.0))[0])
+        ProfileFill.levels(doubleArrayOf(0.0, 0.0, 0.0), doubleArrayOf(1.0, 2.0, 3.0))
+    }
+
+    @Test fun theStrongestStepIsTheMaxExtra() = assertEquals(ProfileFill.MAX_EXTRA_ALPHA, ProfileFill.alpha(top), 1e-6f)
 }

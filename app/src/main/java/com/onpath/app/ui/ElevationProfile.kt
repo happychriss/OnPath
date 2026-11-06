@@ -141,11 +141,13 @@ fun ElevationProfile(
         drawText(measurer.measure("0", labelStyle), topLeft = Offset(left, bottom + 1.dp.toPx()))
 
         // area + line (cached paths): the fill fades from the line's colour to nothing, steeper stretches a bit stronger
-        // (owner 2026-11-06, polish 8 – smoothed over ~100 m, [ProfileFill])
+        // (owner 2026-11-06, polish 8 – [ProfileFill]: a wide window, fine steps, so it shades instead of striping)
         drawPath(g.area, g.areaBrush)
         g.steepFill?.forEachIndexed { k, p ->
-            if (k > 0 && !p.isEmpty) drawPath(p, Brush.verticalGradient(
-                listOf(color.copy(alpha = ProfileFill.EXTRA_ALPHA * k), color.copy(alpha = 0f)), top, bottom))
+            if (k > 0 && !p.isEmpty) {
+                val a = ProfileFill.alpha(k)
+                drawPath(p, Brush.verticalGradient(listOf(color.copy(alpha = a), color.copy(alpha = a * 0.4f)), top, bottom))
+            }
         }
         if (g.byClass == null) drawPath(g.line, color, style = g.lineStroke)
         else g.byClass.forEachIndexed { k, p -> if (!p.isEmpty) drawPath(p, steepColor(STEEP_ORDER[k], color), style = g.lineStroke) }
@@ -238,25 +240,22 @@ internal class ProfileCache(private val data: ProfileData, private val steep: Li
             }
             paths
         }
-        // the fill's extra strength per kept span: the strongest smoothed level of the segments in it; equal neighbours
-        // join into one shape (no seams, no stripes)
-        val steepFill = steep?.let { s ->
-            val level = ProfileFill.levels(s, data.dist)
+        // the fill's extra strength per kept span (its points' smoothed level); equal neighbours join into one shape
+        val steepFill = steep?.let {
+            val level = ProfileFill.levels(data.dist, data.ele)
             val paths = List(ProfileFill.LEVELS) { Path() }
+            fun spanLevel(q: Int): Int = maxOf(level[keep[q]], level[keep[q + 1]])
             var j = 0
             while (j < keep.size - 1) {
-                fun spanLevel(q: Int): Int {
-                    var k = 0
-                    for (i in keep[q] until minOf(keep[q + 1], level.size)) if (level[i] > k) k = level[i]
-                    return k
-                }
                 val k = spanLevel(j)
                 var e = j + 1
                 while (e < keep.size - 1 && spanLevel(e) == k) e++
                 if (k > 0) paths[k].apply {
-                    moveTo(x(data.dist[keep[j]]), bottom)
-                    for (q in j..e) lineTo(x(data.dist[keep[q]]), y(data.ele[keep[q]]))
-                    lineTo(x(data.dist[keep[e]]), bottom); close()
+                    // the step edges on whole pixels: two steps meet without a light seam or a dark double line
+                    val x0 = kotlin.math.round(x(data.dist[keep[j]])); val x1 = kotlin.math.round(x(data.dist[keep[e]]))
+                    moveTo(x0, bottom); lineTo(x0, y(data.ele[keep[j]]))
+                    for (q in j + 1 until e) lineTo(x(data.dist[keep[q]]), y(data.ele[keep[q]]))
+                    lineTo(x1, y(data.ele[keep[e]])); lineTo(x1, bottom); close()
                 }
                 j = e
             }
@@ -345,35 +344,40 @@ internal object ProfileAxis {
 }
 
 /**
- * The profile's fill (owner 2026-11-06, polish 8): [BASE_ALPHA] of the line's colour at the top fading to nothing, plus
- * [EXTRA_ALPHA] per steepness level (5–10 %, 10–15 %, > 15 %) where it is steep. The levels come from the 100 m windowed
- * steepness ([RouteSummary.steepness]) and a run shorter than [MIN_RUN_M] takes its neighbour's level – so a short
- * DEM bump never paints a stripe. Pure, unit-tested.
+ * The profile's fill (owner 2026-11-06, polish 8): [BASE_ALPHA] of the line's colour at the top fading to nothing, and
+ * where the way is steep up to [MAX_EXTRA_ALPHA] more. The slope is taken over [WINDOW_M] around each point (so a DEM
+ * bump or a short ramp does not paint a stripe) and turned into [LEVELS] fine steps from 5 % (nothing) to 15 % and more
+ * (all) – neighbouring steps differ by a few per cent of colour, the fill shades along the way. Pure, unit-tested.
  */
 internal object ProfileFill {
     const val BASE_ALPHA = 0.30f
-    const val EXTRA_ALPHA = 0.08f
-    const val LEVELS = 4
-    const val MIN_RUN_M = 100.0
+    const val MAX_EXTRA_ALPHA = 0.22f
+    const val LEVELS = 8
+    const val WINDOW_M = 300.0
+    private const val FROM_PCT = 5.0
+    private const val TO_PCT = 15.0
 
-    /** Per segment (i → i + 1) its level 0..3, short runs smoothed away. */
-    fun levels(steep: List<RouteSummary.Steepness>, dist: DoubleArray): IntArray {
-        val n = minOf(steep.size, dist.size - 1).coerceAtLeast(0)
-        val out = IntArray(n) { steep[it].ordinal }
-        if (n == 0) return out
-        // runs of equal level: [start, end)
-        val runs = mutableListOf<IntArray>()
-        var a = 0
-        for (i in 1..n) if (i == n || out[i] != out[a]) { runs += intArrayOf(a, i); a = i }
-        if (runs.size < 2) return out
-        for ((r, run) in runs.withIndex()) {
-            val len = dist[run[1]] - dist[run[0]]
-            if (len >= MIN_RUN_M) continue
-            // a short run takes the lower of its neighbours' levels (never invents steepness)
-            val prev = runs.getOrNull(r - 1)?.let { out[it[0]] }
-            val next = runs.getOrNull(r + 1)?.let { out[it[0]] }
-            val to = listOfNotNull(prev, next).minOrNull() ?: continue
-            for (i in run[0] until run[1]) out[i] = to
+    fun alpha(level: Int): Float = MAX_EXTRA_ALPHA * level / (LEVELS - 1)
+
+    /** Per point its level 0..[LEVELS]-1: the absolute slope over [WINDOW_M] centred on it, 5 % → 0, ≥ 15 % → top. */
+    fun levels(dist: DoubleArray, ele: DoubleArray): IntArray {
+        val n = minOf(dist.size, ele.size)
+        val out = IntArray(n)
+        if (n < 2) return out
+        var a = 0; var b = 0
+        for (i in 0 until n) {
+            // the window [dist[i] - W/2, dist[i] + W/2], clamped to the profile
+            while (dist[a] < dist[i] - WINDOW_M / 2 && a < i) a++
+            while (b + 1 < n && dist[b + 1] <= dist[i] + WINDOW_M / 2) b++
+            if (b < i) b = i
+            var lo = a; var hi = b
+            // at the ends the window is too short: widen it to the full width where the profile allows
+            while (dist[hi] - dist[lo] < WINDOW_M && (lo > 0 || hi < n - 1)) { if (lo > 0) lo--; if (hi < n - 1) hi++ }
+            val run = dist[hi] - dist[lo]
+            if (run <= 0) continue
+            val pct = kotlin.math.abs(ele[hi] - ele[lo]) / run * 100
+            val share = ((pct - FROM_PCT) / (TO_PCT - FROM_PCT)).coerceIn(0.0, 1.0)
+            out[i] = Math.round(share * (LEVELS - 1)).toInt()
         }
         return out
     }
