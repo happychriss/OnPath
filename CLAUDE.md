@@ -39,7 +39,7 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
 ## Build and test
 - JDK 17+ (21 used), Android SDK 35 (`local.properties` → `sdk.dir`, not committed). `./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`; `./gradlew testDebugUnitTest` (UTC).
 - **Before every push: `tools/ci/gate.sh`** – tests picked from the changed files, screenshots when ui / texts changed, docs-only → no Gradle, `--full` = everything; takes the machine's Gradle lock (one build per computer). The push hook checks it ran green. Details: `.claude/rules/release.md`.
-- Emulator and Pixel only via `tools/dev/device.sh emulator|pixel -- <command>` (one agent per device; emulator on donald first, GitHub's E2E only without a computer). Screenshot tests, JVM routing tests, style checks: see the area rules.
+- Emulator and Pixel only via `tools/dev/device.sh emulator|pixel -- <command>` (one agent per device; emulator on donald first, GitHub's E2E only without a computer: `tools/ci/e2e_github.sh`; a cloud session sets itself up with `tools/cloud/session_setup.sh`). Screenshot tests, JVM routing tests, style checks: see the area rules.
 
 ## Conventions
 - **Kotlin**, Compose + Material 3, package `com.onpath.app`, minSdk 26, target/compileSdk 35.

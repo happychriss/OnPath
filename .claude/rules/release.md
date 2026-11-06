@@ -31,3 +31,6 @@ paths:
   texts / snapshots changed, docs-only → no Gradle; a release (version line + notes) skips it when `unit.yml` is green.
   It takes the Gradle lock and `--max-workers=2` itself; `--full` runs everything. No `./gradlew --stop` afterwards –
   the daemon ends itself after 10 idle minutes. The full suite + screenshots still run in CI (`unit.yml`) on every push.
+- **Cloud session (no computer):** `tools/cloud/session_setup.sh` once (Android SDK, local.properties, Maven Central mirror –
+  the environment's setup script runs it at start), then `tools/ci/gate.sh` as usual; E2E on GitHub's emulator:
+  `tools/ci/e2e_github.sh --tests <Class> --wait` (dispatch, wait, report + failed tests; no gh → MCP `actions_run_trigger`).
