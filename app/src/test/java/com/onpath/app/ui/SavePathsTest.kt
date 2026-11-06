@@ -116,6 +116,23 @@ class SavePathsTest {
         assertTrue(body("fun planFromShown() {").contains("PlanGpx.stopsOf(track, sh.waypoints)"))
     }
 
+    /**
+     * The owner's screen 2026-11-06 14:37 (docs/design/save-paths.md "Flow: follow a saved tour while a tour runs"): over
+     * a shown track the full tour card (Weiter · Pause · red Tour beenden) stands above the track sheet (Als Plan
+     * übernehmen · Tour nachfahren) – 5 buttons, two green full-width ones; "Weiter" keeps the OLD guidance.
+     */
+    @Test fun todayATrackShownDuringATourHasFiveButtons() {
+        val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
+        assertTrue(screen.contains("if (vm.cardPlace != null || vm.shown != null) rec?.let {"))
+        assertTrue(screen.contains("onContinue = vm::continueNavigation, activity = vm.activity)"))
+        assertTrue(screen.contains("else { vm.followShown(); vm.closeShown(); vm.continueNavigation() }"))
+        val bar = File("src/main/java/com/onpath/app/ui/TourBar.kt").readText()
+        assertTrue("End tour is red in Plan's tour card", bar.contains("border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)"))
+        val panel = File("src/main/java/com/onpath/app/ui/Panels.kt").readText().substringAfter("fun TrackPanel(")
+            .substringBefore("internal fun trackFollowLabel")
+        assertTrue(panel.contains("OutlinedButton(onClick = onPlan") && panel.contains("Button(onClick = onFollow"))
+    }
+
     /** Export: a planned item = the plan GPX (line + route points + pins), a tour = its track. */
     @Test fun exportPlannedIsThePlanGpxTourIsTheTrack() {
         val exp = body("fun exportTour(t: Tour) {")

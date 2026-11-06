@@ -37,3 +37,54 @@ to the backup folder (`Backups.tourChanged`), "Export all" (`Backups.exportZip`,
 - **P3 (6, 8):** before replacing an unsaved plan, the same "Replace current plan? · Save first" as in 5.
 - **P4 (9, 12):** an unsaved plan worth keeping is auto-saved as a draft ("Entwurf") before it is cleared after a tour
   – then Undo is no longer the only way back, also after a restart.
+
+## Flow: follow a saved tour while a tour runs (owner 2026-11-06: "einfach zu viele Nutzereingaben")
+
+The owner's screen (Pixel, 14:37, v0.17.1) and how it came about (events.log 14:31–14:38): app start → Planned tab →
+"Rundtour ab Hilden (2)" → Los geht's (tour 132) → Navigate → Plan → Plan leeren (guidance ends, recording goes on) →
+new point by a hold → POI "shelter" added → one more point (a new unsaved plan, followed) → Navigate ⇄ Plan twice →
+My routes → "Demo" (a recorded tour) → **this screen** → "Tour nachfahren" → Navigate follows the GPX line (v5), 12 s later
+a re-route "Neue Route. In 150 Metern rechts." (v6). The unsaved plan made on the way stays in the plan and meets path 1
+at the end of the tour.
+
+**Inputs for the goal "follow a saved tour" (from the code):**
+
+| Step | During a tour (from locked Navigate) | Without a tour (from Plan) |
+|------|--------------------------------------|----------------------------|
+| 1 | slide "» Entsperren" (`SlideToUnlock`) | – |
+| 2 | blue "Plan" (`ChangePlanButton`) | – |
+| 3 | ☰ | ☰ |
+| 4 | "Meine Touren" | "Meine Touren" |
+| 5 | tab "Gemacht" (kept only while the app runs, `AppViewModel.routesTab`; Planned again after an app start – here the owner had used Planned) | tab "Gemacht" (same) |
+| 6 | tap "Demo" (`requestOpen` → RECORDED → no question, `openTour` → `TrackPanel`) | tap "Demo" |
+| 7 | "Tour nachfahren · Fahrrad" (`MapScreen.PlanBottom` onFollow: `followShown`, `closeShown`, `continueNavigation`) | "Los geht's · Fahrrad" (`startNavigation` → FOLLOW_TRACK, recording starts) |
+| **Total** | **7 inputs, 0 questions** | **5 inputs, 0 questions** |
+
+For comparison, a *planned* route tapped during a tour asks a box instead ("Mit dieser Route weiter / Tour beenden und
+laden / Abbrechen", `TourLoad`) – also 7 inputs, but a different way for the same goal.
+
+**The screen – 5 buttons + ✕ + ← for one decision:**
+
+| Button | Where | What it does | Verdict |
+|--------|-------|--------------|---------|
+| "Weiter · Fahrrad" (green, full width) | tour card over the sheet (`TourRunningBar`, shown because `vm.shown != null`) | `continueNavigation` – back to Navigate with the **old** guidance (the plan), not this track | **double** with ← in the band, and competes with the other green button for the opposite meaning |
+| "Pausieren" | tour card | pause | **double** – lives in Navigate's unlocked state |
+| "Tour beenden" (red outline) | tour card (`TourPauseEnd`) | end question | **double**, and red – owner #27: Pause and End green, no red sign |
+| "Als Plan übernehmen" (outlined) | track sheet | `planFromShown` – replaces the plan at once (path 8, an unsaved plan goes without a question) | keep, but blue (plan = blue) |
+| "Tour nachfahren · Fahrrad" (green, full width) | track sheet | follow this track, back to Navigate | **the** main action |
+| ✕ / ← | sheet / band | close the track / back to the tour | ok |
+
+**Proposals (≤ 3, nothing changed):**
+
+- **F1 – one main action on this screen (recommended):** over a shown track during a tour the tour card shows only its
+  status line ("Unterwegs · 73 m · 0:04:56", no buttons – ← goes back, Pause / End are in Navigate). The sheet keeps
+  green "Dieser Tour folgen · Fahrrad" and blue outlined "Als Plan übernehmen" (asks "Plan ersetzen?" when the plan is
+  unsaved, P3). 5 buttons → 2, no two greens. Same rule for the place card over the sheet (it shows the same tour card).
+- **F2 – fewer steps to the list:** during a tour the band gets "Meine Touren" next to ← (or the ☰ item comes first), and
+  My routes remembers its tab across app starts (Prefs). 7 → 5 inputs (slide, Plan, Meine Touren, Demo, Folgen).
+- **F3 – one way for planned and done:** in My routes during a tour, every item (planned or done) gets a green ▶ on its
+  row = "follow this now" (the planned route's question box answered in place, the done tour's sheet skipped). With F2:
+  slide, Plan, Meine Touren, ▶ = 4 inputs; a tap on the row itself still opens it to look at.
+
+Seen on the way (not save paths): the re-route right after "Tour nachfahren" (v5 → v6 in 12 s, "Neue Route") – the
+owner was beside the start of the track; worth a look with the voice items.
