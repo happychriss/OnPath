@@ -126,10 +126,14 @@ fun ElevationProfile(
         if (bottom - top < 12.dp.toPx() || size.width - left < 24.dp.toPx()) return@Canvas
         val g = cache.geometry(size.width, left, top, bottom, 2.dp.toPx(), 2.5.dp.toPx())
 
-        // grid + labels
+        // grid + labels; on a flat profile the two heights lie on top of each other ("47 m" over "46 m", owner's Pixel
+        // 2026-11-06): then only the top one is written
+        val maxT = measurer.measure("${data.max.toInt()} m", labelStyle)
+        val labelled = ProfileAxis.labels(data.min, data.max, g.y(data.min), g.y(data.max), maxT.size.height.toFloat())
         for (e in listOf(data.min, data.max)) {
             drawLine(GRID, Offset(left, g.y(e)), Offset(size.width, g.y(e)), 1f)
-            val t = measurer.measure("${e.toInt()} m", labelStyle)
+            if (e !in labelled) continue
+            val t = if (e == data.max) maxT else measurer.measure("${e.toInt()} m", labelStyle)
             drawText(t, topLeft = Offset(0f, (g.y(e) - t.size.height / 2).coerceIn(0f, (bottom - t.size.height).coerceAtLeast(0f))))
         }
         val endLabel = measurer.measure(Format.distance(data.total), labelStyle)
@@ -294,4 +298,14 @@ internal fun eleAt(data: com.onpath.app.routing.ProfileData, d: Double): Double 
     while (hi - lo > 1) { val mid = (lo + hi) / 2; if (dist[mid] <= d) lo = mid else hi = mid }
     val t = (d - dist[lo]) / (dist[hi] - dist[lo]).coerceAtLeast(1e-9)
     return data.ele[lo] + t * (data.ele[hi] - data.ele[lo])
+}
+
+/** Which heights the profile's left axis writes (pure, `ProfileAxisTest`). */
+internal object ProfileAxis {
+    /**
+     * [min] and [max] at the drawn heights [yMin] / [yMax] (pixels, y down) with labels [textH] high: both when they
+     * keep a label's height and a bit apart and differ as written (whole metres), else only [max].
+     */
+    fun labels(min: Double, max: Double, yMin: Float, yMax: Float, textH: Float): List<Double> =
+        if (min.toInt() != max.toInt() && kotlin.math.abs(yMin - yMax) >= textH * 1.2f) listOf(min, max) else listOf(max)
 }
