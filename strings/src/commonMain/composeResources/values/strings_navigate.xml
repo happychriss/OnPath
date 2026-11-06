@@ -177,6 +177,7 @@
     <string name="nav_slide_unlock">Unlock</string>
     <string name="nav_slide_unlock_desc">Unlock. Slide to enable Pause, End tour and Plan.</string>
     <string name="nav_slide_unlock_desc_plan">Unlock. Slide to enable the plan.</string>
+    <string name="nav_lock">Lock</string>
     <string name="nav_relock">Lock again</string>
     <string name="nav_change_plan">Plan</string>
     <string name="nav_straight_on">Straight on</string>
