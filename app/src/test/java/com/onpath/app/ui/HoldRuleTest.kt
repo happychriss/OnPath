@@ -37,4 +37,17 @@ class HoldRuleTest {
         assertEquals(HoldRule.BACK_MS / 2, HoldRule.backMs(0.5f))
         assertEquals(0, HoldRule.backMs(0f))
     }
+
+    @Test fun theChosenTimeSetsTheBand() {
+        // Settings → Navigation 2 s (owner 2026-11-06 22:50): half full after 1 s, full after 2 s
+        assertEquals(0.5f, HoldRule.progress(1_000, holdMs = 2_000), 0.001f)
+        assertFalse(HoldRule.fires(HoldRule.progress(1_999, holdMs = 2_000)))
+        assertTrue(HoldRule.fires(HoldRule.progress(2_000, holdMs = 2_000)))
+        assertEquals(1_000, HoldRule.remainingMs(0.5f, holdMs = 2_000))
+        // 0,5 s
+        assertTrue(HoldRule.fires(HoldRule.progress(500, holdMs = 500)))
+        // 0 never divides by zero: full at once
+        assertEquals(1f, HoldRule.progress(0, holdMs = 0), 0.001f)
+        assertEquals(0, HoldRule.remainingMs(0f, holdMs = 0))
+    }
 }

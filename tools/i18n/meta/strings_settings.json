@@ -917,14 +917,32 @@
   },
   "settings_nav_lock": {
     "area": "Settings",
-    "context": "Settings → Navigation: switch for the slider on the Navigate page (default on). On: the slider must be slid before Pause, End tour and Change plan appear.",
+    "context": "Settings → Navigation: title of the slider 0–2 s (0.5 s steps) – how long a button of the tour's bottom bar (Pause, Plan, Resume, End) must be held until it fires; 0 = off, a plain tap (owner 2026-11-06).",
     "priority": 2,
     "confidence": "sicher"
   },
   "settings_nav_lock_sub": {
     "area": "Settings",
-    "context": "Line under 'Lock while navigating'",
+    "context": "Line under 'Hold buttons during a tour'",
     "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_nav_lock_off": {
+    "area": "Settings",
+    "context": "Value beside 'Hold buttons during a tour' when the slider is at 0: no holding, a plain tap",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_nav_lock_seconds": {
+    "area": "Settings",
+    "context": "Value beside 'Hold buttons during a tour': the hold time, %1$s = '0,5' / '1' / '1,5' / '2'",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_nav_lock_decimal": {
+    "area": "Settings",
+    "context": "The decimal separator of the hold time ('0,5 s' in German, '0.5 s' in English) – one character",
+    "priority": 3,
     "confidence": "sicher"
   }
 }
