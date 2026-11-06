@@ -6,6 +6,10 @@
     <string name="voice_start_dest">Los geht's. %1$s bis %2$s.</string>
     <string name="voice_start_time">Los geht's. %1$s, etwa %2$s.</string>
     <string name="voice_start_dest_time">Los geht's. %1$s bis %2$s, etwa %3$s.</string>
+    <string name="voice_carry_on">Weiter geht's. %1$s.</string>
+    <string name="voice_carry_on_dest">Weiter geht's. %1$s bis %2$s.</string>
+    <string name="voice_carry_on_time">Weiter geht's. %1$s, etwa %2$s.</string>
+    <string name="voice_carry_on_dest_time">Weiter geht's. %1$s bis %2$s, etwa %3$s.</string>
     <string name="voice_in">%1$s %2$s</string>
     <string name="voice_soon">Gleich %1$s</string>
     <string name="voice_in_m">In %1$s Metern</string>

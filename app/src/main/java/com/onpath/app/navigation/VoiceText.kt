@@ -15,7 +15,12 @@ object VoiceText {
         is Phrase.Start -> {
             val dist = distance(p.distanceM)
             val time = p.durationS?.let { duration(it) }
-            when {
+            if (p.carryOn) when {
+                p.destination != null && time != null -> Txt.s(Res.string.voice_carry_on_dest_time, dist, p.destination, time)
+                p.destination != null -> Txt.s(Res.string.voice_carry_on_dest, dist, p.destination)
+                time != null -> Txt.s(Res.string.voice_carry_on_time, dist, time)
+                else -> Txt.s(Res.string.voice_carry_on, dist)
+            } else when {
                 p.destination != null && time != null -> Txt.s(Res.string.voice_start_dest_time, dist, p.destination, time)
                 p.destination != null -> Txt.s(Res.string.voice_start_dest, dist, p.destination)
                 time != null -> Txt.s(Res.string.voice_start_time, dist, time)

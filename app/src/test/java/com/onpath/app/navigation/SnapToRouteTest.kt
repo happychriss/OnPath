@@ -11,9 +11,11 @@ class SnapToRouteTest {
     private val l = NavLine(line(0.0 to 0.0, 1000.0 to 0.0))
 
     @Test fun closeToTheRouteTheDotIsOnIt() {
-        val p = SnapToRoute.position(true, l, 300.0, 12.0, null)!!
+        val p = SnapToRoute.position(true, l, 300.0, 5.0, null)!!
         assertEquals(pt(300.0, 0.0).lat, p.lat, 1e-5); assertEquals(pt(300.0, 0.0).lon, p.lon, 2e-5) // ±1 m
     }
+    /** Owner 2026-11-06: riding the road 10–15 m beside the cycle path – the dot stays on the road (the real fix). */
+    @Test fun aParallelRoadTenMetresAwayIsNotTheRoute() = assertNull(SnapToRoute.position(true, l, 300.0, 10.0, null))
     @Test fun offTheRouteTheRealFix() = assertNull(SnapToRoute.position(true, l, 300.0, 40.0, null))
     @Test fun switchedOff() = assertNull(SnapToRoute.position(false, l, 300.0, 5.0, null))
     @Test fun notMatched() = assertNull(SnapToRoute.position(true, l, null, 5.0, null))

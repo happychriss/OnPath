@@ -6,6 +6,10 @@
     <string name="voice_start_dest">Off we go. %1$s to %2$s.</string>
     <string name="voice_start_time">Off we go. %1$s, about %2$s.</string>
     <string name="voice_start_dest_time">Off we go. %1$s to %2$s, about %3$s.</string>
+    <string name="voice_carry_on">On we go. %1$s.</string>
+    <string name="voice_carry_on_dest">On we go. %1$s to %2$s.</string>
+    <string name="voice_carry_on_time">On we go. %1$s, about %2$s.</string>
+    <string name="voice_carry_on_dest_time">On we go. %1$s to %2$s, about %3$s.</string>
     <string name="voice_in">%1$s, %2$s</string>
     <string name="voice_soon">Now %1$s</string>
     <string name="voice_in_m">In %1$s meters</string>

@@ -9,8 +9,11 @@ import com.onpath.app.routing.JunctionCue
  * language never touches these: all words are in `strings_voice.xml`.
  */
 sealed interface Phrase {
-    /** The tour starts with a route: [distanceM] to go, [durationS] (null = not known yet), [destination] name. */
-    data class Start(val distanceM: Double, val durationS: Double?, val destination: String?) : Phrase
+    /**
+     * The tour starts with a route: [distanceM] to go, [durationS] (null = not known yet), [destination] name.
+     * [carryOn]: the plan was changed during the tour and the new line is ridden – "Weiter geht's" (owner 2026-11-06).
+     */
+    data class Start(val distanceM: Double, val durationS: Double?, val destination: String?, val carryOn: Boolean = false) : Phrase
     /**
      * A junction [inM] ahead (under [VoiceGuide.SOON_M]: "now"); [onto] = the kind of way it turns onto when that
      * changes; [then] = a second turn right after it (said together); [straightM] = the quiet stretch after it.
@@ -161,12 +164,16 @@ class VoiceGuide {
     }
 
     /** The app chose a new line (plan edited): an open off-route question of the old line is gone – no "back on". */
-    fun lineFromApp() { lastOffRoute = false; offRouteSpoken = false }
+    fun lineFromApp() { lastOffRoute = false; offRouteSpoken = false; if (started) carryOnPending = true }
+
+    /** The plan was changed during the tour: "Weiter geht's …" once the new line is on (owner 2026-11-06). */
+    private var carryOnPending = false
 
     /** A new tour: everything is said afresh. */
     fun newTour() {
         version = Int.MIN_VALUE; size = -1; said.clear(); early.clear(); lineLength = 0.0
         started = false; offRouteSaidMs = null; noGpsSaidMs = null; arrivedSaidMs = null; offRouteSpoken = false
+        carryOnPending = false
         lastSpokenMs = Long.MIN_VALUE / 2; lastOffRoute = false; lastRerouted = false; lastVisited = null
         gpsLostSince = null; gpsSaid = false; gpsGoodSince = null; waiting.clear()
     }
@@ -217,6 +224,10 @@ class VoiceGuide {
             started = true
             val dest = i.stops.lastOrNull()?.name
             queue(Phrase.Start((lineLength - i.alongM).coerceAtLeast(0.0), i.toGoS, dest), i.nowMs)
+        } else if (carryOnPending && started && i.line.size >= 2 && i.alongM != null && i.onRoute) {
+            // the changed plan's line is ridden: its length and destination, like the start sentence
+            carryOnPending = false
+            queue(Phrase.Start((lineLength - i.alongM).coerceAtLeast(0.0), i.toGoS, i.stops.lastOrNull()?.name, carryOn = true), i.nowMs)
         }
         // stops reached (not the start, not the destination – the arrival is its own event)
         // another list of stops (a plan edited during the tour, the plan followed again after deleting a point): its

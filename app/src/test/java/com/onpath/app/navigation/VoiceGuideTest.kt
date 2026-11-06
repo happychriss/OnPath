@@ -435,6 +435,31 @@ class VoiceGuideTest {
         assertTrue("$said", said.none { it == Phrase.BackOnRoute })
     }
 
+    /** Owner 2026-11-06: the plan changed during the tour, the new line ridden – "Weiter geht's" with its length, once. */
+    @Test fun aChangedPlanDuringTheTourSaysCarryOnOnce() {
+        val l = line(3000, emptyMap())
+        val g = VoiceGuide()
+        val base = VoiceGuide.Input(0, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
+        val first = (0..5).mapNotNull { g.update(base.copy(nowMs = it * 1000L)) }
+        assertTrue("$first", first.any { it is Phrase.Start && !it.carryOn })
+        g.lineFromApp()
+        val l2 = line(2000, emptyMap())
+        val after = (1..30).mapNotNull { g.update(base.copy(nowMs = 60_000L + it * 1000L, line = l2, version = 2, alongM = 50.0 + it * 5)) }
+        val carry = after.filterIsInstance<Phrase.Start>()
+        assertEquals("$after", 1, carry.size)
+        assertTrue(carry.single().carryOn)
+        assertEquals(1950.0, carry.single().distanceM, 10.0)
+    }
+
+    /** Before the start sentence a line from the app is the start, not "Weiter geht's". */
+    @Test fun aLineFromTheAppBeforeTheStartIsTheStart() {
+        val l = line(3000, emptyMap())
+        val g = VoiceGuide()
+        g.lineFromApp()
+        val said = (0..5).mapNotNull { g.update(VoiceGuide.Input(it * 1000L, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)) }
+        assertEquals("$said", listOf(false), said.filterIsInstance<Phrase.Start>().map { it.carryOn })
+    }
+
     /** Owner 2026-11-01: on the way, short GPS gaps (a bridge, a few trees) never say anything. */
     @Test fun shortGapsOnTheWaySayNothing() {
         val l = line(3000, emptyMap())
