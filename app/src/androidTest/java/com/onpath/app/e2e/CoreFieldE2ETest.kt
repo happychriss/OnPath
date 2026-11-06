@@ -326,7 +326,7 @@ class CoreFieldE2ETest : E2EBase() {
 
     /**
      * A tour following a plan changed on the way (owner 2026-11-06: "Los geht's" saved the two-point plan – a third point
-     * set during the tour makes it unsaved again: "Nicht gespeichert ›"). Returns the planned route saved at the start.
+     * set during the tour makes it unsaved again – it goes under Zuletzt when it leaves the map). Returns the planned route saved at the start.
      */
     private fun tourWithAnUnsavedPlan(): Long {
         val planId = startOnANewPlan()
@@ -396,6 +396,26 @@ class CoreFieldE2ETest : E2EBase() {
             db.deleteTour(draft.id); db.deleteTour(second.id)
         } finally {
             drafts().forEach { db.deleteTour(it.id) }
+        }
+    }
+
+    /**
+     * Owner 2026-11-06: ✕ Neu planen during a tour asks nothing ("Plan leeren? Deine Tour läuft weiter" gone) – the plan
+     * changed on the way goes under Zuletzt, the recording goes on, Undo brings the plan back.
+     */
+    @Test fun clearingThePlanDuringATourAsksNothing() {
+        val planId = tourWithAnUnsavedPlan()
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
+        try {
+            scenario.onActivity { vm(it).requestClear() }
+            waitUntil("cleared at once, no question", 5_000) { waypointCount() == 0 }
+            assertTrue("the recording goes on", recording())
+            waitUntil("the changed plan under Zuletzt", 10_000) { drafts().size == 1 }
+            scenario.onActivity { vm(it).undoStep() }
+            waitUntil("Undo: the plan is back", 10_000) { waypointCount() == 3 }
+        } finally {
+            drafts().forEach { db.deleteTour(it.id) }
+            db.deleteTour(planId)
         }
     }
 
