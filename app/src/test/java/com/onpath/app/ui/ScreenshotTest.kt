@@ -906,6 +906,20 @@ class ScreenshotTest {
             warnText = "1.2 km pushing · steps · 2 steep sections"), PlanCallbacks()) }
     }
 
+    /**
+     * Owner 2026-11-06 (Pixel): Reverse / Round trip – while the route is calculated the sheet keeps its height: the old
+     * profile and the lines stay faded, the bar runs in the plan row's hairline. [planRecalculating] and
+     * [planRecalculatingBefore] must have their sheet edge on the same pixel row.
+     */
+    @Test fun planRecalculatingBefore() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi().copy(warnText = "1.2 km pushing · steps",
+            changedText = RouteWarnings.changedText(com.onpath.app.routing.Activity.HIKE, 2)), PlanCallbacks()) }
+    }
+    @Test fun planRecalculating() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(routing = true).copy(warnText = "1.2 km pushing · steps", routeShare = 0.4f,
+            changedText = RouteWarnings.changedText(com.onpath.app.routing.Activity.HIKE, 2)), PlanCallbacks()) }
+    }
+
     /** The grey INFO line after an activity change. */
     @Test fun planRouteChanged() = paparazzi.snapshot {
         Frame { PlanPanel(planUi().copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,

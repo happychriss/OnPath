@@ -55,7 +55,8 @@ class PlanSheetLayoutTest {
         assertTrue(PlanRow.factsOneLine(320f, 390f))
         assertFalse(PlanRow.factsOneLine(360f, 390f))
         val head = panel.substringAfter("private fun PlanHead(").substringBefore("\n}\n")
-        assertTrue(head, head.contains("if (!oneLine && !ui.routing) DifficultyBadge("))
+        // the difficulty stays while a route is calculated (faded – PlanCalculatingTest)
+        assertTrue(head, head.contains("if (!oneLine) DifficultyBadge("))
         assertTrue(panel.contains("if (factsOneLine(route)) Box {"))
     }
 

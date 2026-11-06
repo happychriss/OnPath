@@ -36,6 +36,8 @@ open class PlanChipLargeFontTest {
     @Test fun planSaveDialog() = shots.planSaveDialog()
     @Test fun planUnsavedLongHike() = shots.planUnsavedLongHike()
     @Test fun planTourRunning() = shots.planTourRunning()
+    @Test fun planRecalculatingBefore() = shots.planRecalculatingBefore()
+    @Test fun planRecalculating() = shots.planRecalculating()
     @Test fun planTourRunningCollapsed() = shots.planTourRunningCollapsed()
     @Test fun planTourRolledUp() = shots.planTourRolledUp()
     @Test fun planSummaryBike() = shots.planSummaryBike()

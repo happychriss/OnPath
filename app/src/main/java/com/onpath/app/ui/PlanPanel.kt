@@ -66,6 +66,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -327,8 +328,11 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         .verticalScroll(scroll, enabled = full)) {
         SubLine(ui, route)
         if (route != null) SavedLine(ui)
-        if (route != null && !ui.routing) {
-            Column(Modifier.fillMaxWidth().padding(top = 8.dp).semantics { contentDescription = Txt.s(Res.string.plan_elevation_profile) }) {
+        // while a route is calculated the old profile stays where it is, faded and still (owner 2026-11-06: the sheet
+        // went down and up on Reverse / Round trip – the profile, the badge and the lines vanished and came back)
+        if (route != null) {
+            Column(Modifier.fillMaxWidth().padding(top = 8.dp).calculating(ui.routing)
+                .semantics { contentDescription = Txt.s(Res.string.plan_elevation_profile) }) {
                 // stable callbacks: a new PlanCallbacks (every sheet recomposition) must not recompose the profile
                 val highlight = cb.onHighlight
                 // the gradient legend lives on Route details only
@@ -336,9 +340,9 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
                     ElevationProfile(route.points, height = PROFILE_HEIGHT, gradient = true,
                         onHighlight = highlight, onRelease = remember(highlight) { { highlight(null) } })
                     // the difficulty sits on the profile's top right while the facts keep one line (else it ends them)
-                    if (!ui.routing) DifficultyBadge(rememberRating(route, ui.activity),
+                    DifficultyBadge(rememberRating(route, ui.activity),
                         Modifier.align(Alignment.TopEnd)
-                            .clickable(role = Role.Button, onClickLabel = str(Res.string.plan_show_route_details), onClick = cb.onDetails))
+                            .clickable(enabled = !ui.routing, role = Role.Button, onClickLabel = str(Res.string.plan_show_route_details), onClick = cb.onDetails))
                 } else ElevationProfile(route.points, height = PROFILE_HEIGHT, gradient = true,
                     onHighlight = highlight, onRelease = remember(highlight) { { highlight(null) } })
             }
@@ -371,7 +375,7 @@ private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks) {
             }
             androidx.compose.material3.TextButton(onClick = cb.onCancelRouting) { Text(str(Res.string.common_cancel)) }
         }
-    } else if (ui.routing) RoutingBar(ui.routeProgress, ui.routeShare, Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(CircleShape))
+    }
     if (!ui.routing && route == null && ui.pointCount >= 2 && ui.notRouted != null) NotRoutedBar(ui.notRouted, cb.onPlanAnyway)
     // route state, one line per kind: ERROR, WARNING, INFO
     val loadingNotice = RoutingDataNotice.isNotice(ui.error)
@@ -382,10 +386,10 @@ private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks) {
             onShow = cb.onShowGap)
         routeError != null -> ErrorLine(routeError)
     }
-    ui.warnText?.takeIf { !ui.routing }?.let { WarnLine(it, cb.onWarnings) }
+    ui.warnText?.let { Box(Modifier.calculating(ui.routing)) { WarnLine(it, cb.onWarnings) } }
     if (loadingNotice) InfoLine(ui.error!!, spinner = ui.error == RoutingDataNotice.LOADING)
-    ui.changedText?.takeIf { !ui.routing }?.let { InfoLine(it, onTap = cb.onRouteChanged) }
-    ui.syncRoutingText?.takeIf { !ui.routing }?.let { InfoLine(it) }
+    ui.changedText?.let { Box(Modifier.calculating(ui.routing)) { InfoLine(it, onTap = cb.onRouteChanged) } }
+    ui.syncRoutingText?.let { Box(Modifier.calculating(ui.routing)) { InfoLine(it) } }
 }
 
 /**
@@ -424,8 +428,12 @@ private fun PlanHead(ui: PlanUi, cb: PlanCallbacks) {
             }
         }
     }
-    if (ui.pointCount >= 1) HorizontalDivider(Modifier.padding(top = 4.dp, bottom = 2.dp), thickness = 1.dp,
-        color = OnPathColors.PlanAccent.copy(alpha = 0.18f))
+    // the hairline under the plan row; while a route is calculated the bar runs in its place (same 7 dp – nothing moves)
+    if (ui.pointCount >= 1) Box(Modifier.fillMaxWidth().padding(top = 3.dp, bottom = 1.dp).height(3.dp), contentAlignment = Alignment.Center) {
+        if (PlanCalculating.barInHairline(ui.routing, ui.routingSlow))
+            RoutingBar(ui.routeProgress, ui.routeShare, Modifier.fillMaxWidth().height(3.dp).clip(CircleShape))
+        else HorizontalDivider(thickness = 1.dp, color = OnPathColors.PlanAccent.copy(alpha = 0.18f))
+    }
     val route = ui.route
     if (route == null) { Title(ui, null, cb.onTimeDetails); return }
     val oneLine = factsOneLine(route)
@@ -434,9 +442,9 @@ private fun PlanHead(ui: PlanUi, cb: PlanCallbacks) {
         Text("↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}", style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.align(Alignment.CenterVertically))
         // the facts wrap anyway (a large font): the difficulty goes at the end of their second line, off the profile
-        if (!oneLine && !ui.routing) DifficultyBadge(rememberRating(route, ui.activity),
-            Modifier.align(Alignment.CenterVertically)
-                .clickable(role = Role.Button, onClickLabel = str(Res.string.plan_show_route_details), onClick = cb.onDetails))
+        if (!oneLine) DifficultyBadge(rememberRating(route, ui.activity),
+            Modifier.align(Alignment.CenterVertically).calculating(ui.routing)
+                .clickable(enabled = !ui.routing, role = Role.Button, onClickLabel = str(Res.string.plan_show_route_details), onClick = cb.onDetails))
     }
 }
 
@@ -454,6 +462,28 @@ private fun factsOneLine(route: PlannedRoute): Boolean {
     // the sheet's 16 dp sides; 8 dp inside the title, 10 dp between the pieces
     return PlanRow.factsOneLine(w.value, LocalConfiguration.current.screenWidthDp.toFloat())
 }
+
+/**
+ * While a route is calculated the sheet keeps its height (owner 2026-11-06, Pixel: on Reverse / Round trip the sheet went
+ * down and up): what is there stays, faded and not touchable; the bar runs in the plan row's hairline. Only the slow case
+ * (text + Cancel, after seconds) takes room of its own.
+ */
+object PlanCalculating {
+    const val FADED = 0.4f
+    /** The bar sits in the hairline's place – unless the slow line (with its own bar) shows. */
+    fun barInHairline(routing: Boolean, slow: Boolean): Boolean = routing && !slow
+    /** Lines and profile stay while calculating (never hidden by it): what shows is the same in both states. */
+    fun shows(hasThing: Boolean, @Suppress("UNUSED_PARAMETER") routing: Boolean): Boolean = hasThing
+}
+
+/** Faded and not touchable while a route is calculated ([PlanCalculating]); the layout stays the same. */
+private fun Modifier.calculating(on: Boolean): Modifier = if (!on) this else this
+    .graphicsLayer { alpha = PlanCalculating.FADED }
+    .pointerInput(Unit) {
+        awaitPointerEventScope {
+            while (true) awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial).changes.forEach { it.consume() }
+        }
+    }
 
 /** The plan head's fit rules (pure, dp). */
 object PlanRow {
@@ -633,10 +663,12 @@ private fun GoButton(ui: PlanUi, cb: PlanCallbacks) {
  */
 @Composable
 private fun RoutingBar(progress: Pair<Int, Int>?, share: Float?, modifier: Modifier) {
+    // planning is blue (owner's colour rule 2026-11-06) – not the walnut base colour
+    val c = OnPathColors.ActionEdit; val t = OnPathColors.ActionEdit.copy(alpha = 0.18f)
     when {
-        share != null -> LinearProgressIndicator(progress = { share }, modifier = modifier)
-        PlanStatus.hasLegs(progress) -> LinearProgressIndicator(progress = { PlanStatus.share(progress!!) }, modifier = modifier)
-        else -> LinearProgressIndicator(modifier)
+        share != null -> LinearProgressIndicator(progress = { share }, modifier = modifier, color = c, trackColor = t)
+        PlanStatus.hasLegs(progress) -> LinearProgressIndicator(progress = { PlanStatus.share(progress!!) }, modifier = modifier, color = c, trackColor = t)
+        else -> LinearProgressIndicator(modifier, color = c, trackColor = t)
     }
 }
 

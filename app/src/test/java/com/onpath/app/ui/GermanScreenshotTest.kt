@@ -84,6 +84,8 @@ class GermanScreenshotTest {
     @Test fun routesTourLoadAsk() = shots.routesTourLoadAsk()
     @Test fun planSlowAsk() = shots.planSlowAsk()
     @Test fun planTourRunning() = shots.planTourRunning()
+    @Test fun planRecalculatingBefore() = shots.planRecalculatingBefore()
+    @Test fun planRecalculating() = shots.planRecalculating()
     @Test fun planTourRunningCollapsed() = shots.planTourRunningCollapsed()
     @Test fun planTourNewPlan() = shots.planTourNewPlan()
     @Test fun routesFollowAsk() = shots.routesFollowAsk()
