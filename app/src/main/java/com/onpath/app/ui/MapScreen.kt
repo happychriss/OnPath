@@ -94,8 +94,8 @@ fun MapScreen(
             else -> vm.locate()
         }
     }
-    // One grouped control: compass (always: Plan = needle, tap north up; Navigate = orientation toggle), eye
-    // (only with something route-like on the map), locate (always, with the GPS dot).
+    // One grouped control: compass (always: Plan = needle, tap north up; Navigate = orientation toggle), locate (always,
+    // with the GPS dot), eye and whole route (always – grey without something route-like on the map, owner 2026-11-06).
     // [mode] = the layer the footer sits in (not vm.mode: the leaving layer keeps its look while it animates out)
     val controls = @Composable { mode: AppMode ->
         // the points step leaves little map: only Undo + locate (the compass would sit over ☰)
