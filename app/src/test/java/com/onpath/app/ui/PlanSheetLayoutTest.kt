@@ -82,15 +82,12 @@ class PlanSheetLayoutTest {
         assertFalse("no activity sign in the row (it is on the map)", row.contains("ui.activity.icon"))
     }
 
-    /** No Save in the sheet; ✕ asks only during a tour ("Plan leeren?", M3 basic dialog) – a plan not saved goes under Zuletzt. */
-    @Test fun clearAsksOnlyDuringATour() {
+    /** No Save in the sheet; ✕ never asks (owner 2026-11-06) – a plan not saved goes under My routes → Zuletzt. */
+    @Test fun clearNeverAsks() {
         assertFalse(Regex("onSave\\w*").containsMatchIn(panel))
         val vm = src("ui/AppViewModel.kt")
-        assertTrue(vm.contains("fun requestClear() { if (ClearAsk.asks(recState.value != null, waypoints.size)) discardAsk = true else clearPlan() }"))
-        assertFalse(vm.contains("discardSaveFirst") || vm.contains("canSaveBeforeClear"))
-        val dialogs = src("ui/RouteDialogs.kt")
-        val dialog = dialogs.substringAfter("fun DiscardPlanDialog(").substringBefore("\n}\n")
-        assertTrue(dialog, dialog.contains("confirm = str(Res.string.plan_clear_tour_confirm) to onDiscard"))
+        assertTrue(vm.contains("fun requestClear() = clearPlan()"))
+        assertFalse(vm.contains("discardSaveFirst") || vm.contains("canSaveBeforeClear") || vm.contains("discardAsk"))
         assertTrue(DecisionLayout.oneRow(300f, 312f)); assertFalse(DecisionLayout.oneRow(330f, 312f))
     }
 

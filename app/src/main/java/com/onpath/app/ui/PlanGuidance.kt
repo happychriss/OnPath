@@ -44,13 +44,3 @@ object PlanGuidance {
                           planAtTrackFollow: List<com.onpath.app.routing.GeoPoint>?): Boolean =
         followIsTrack && plan.size >= 2 && planAtTrackFollow != null && plan != planAtTrackFollow
 }
-
-/**
- * ✕ Neu planen asks first only during a tour with a plan (owner 2026-11-05) – "Plan leeren? Deine Tour läuft weiter und
- * wird weiter aufgezeichnet." (the guidance ends). Otherwise it clears at once: nothing to save any more (owner 2026-11-06,
- * a plan not saved goes under My routes → Zuletzt), one Undo brings it back.
- */
-object ClearAsk {
-    fun asks(touring: Boolean, planPoints: Int): Boolean = touring && planPoints > 0
-}
-

@@ -293,7 +293,6 @@ fun RoutesScreen(
     onCopy: (Tour) -> Unit = {},
     /** ⋮ → Share plan (planned routes): the route as a plan.onpath.earth link (A-005). */
     onShare: (Tour) -> Unit = {},
-    initialConfirmDelete: Tour? = null,
     initialRename: Tour? = null,
     /** ⋮ → Export all (one ZIP of GPX files). */
     onExportAll: () -> Unit = {},
@@ -326,7 +325,6 @@ fun RoutesScreen(
     /** All plans under Zuletzt shown at the start (screenshots); else the newest [RECENT_SHOWN]. */
     initialAllRecent: Boolean = false,
 ) {
-    var confirmDelete by remember { mutableStateOf(initialConfirmDelete) }
     var tab by remember { mutableStateOf(initialTab) }
     // the search box (owner 2026-11-06): kept across the tabs, filters the list of the tab shown
     var query by remember { mutableStateOf(initialQuery) }
@@ -401,16 +399,14 @@ fun RoutesScreen(
                             onRename = { rename = t }, onExport = { onExport(t) },
                             onCopy = if (t.kind == TourKind.PLANNED) ({ onCopy(t) }) else null,
                             onShare = if (t.kind == TourKind.PLANNED && t.waypoints.size >= 2) ({ onShare(t) }) else null,
-                            onDelete = if (t.id == recordingId) null else ({ confirmDelete = t }),
+                            // straight to the recycle bin, no question (owner 2026-11-06: the bin is the net)
+                            onDelete = if (t.id == recordingId) null else ({ onDelete(t) }),
                             onEditRides = if (t.rides?.rides.isNullOrEmpty() || t.id == recordingId) null else ({ onEditRides(t) }),
                             onPlanFrom = if (t.kind == TourKind.PLANNED || t.distanceM <= 0.0 || t.id == recordingId) null else ({ onPlanFrom(t) }))
                     }
                 }
             }
         }
-    }
-    confirmDelete?.let { t ->
-        DeleteRouteDialog(t, onDelete = { confirmDelete = null; onDelete(t) }, onCancel = { confirmDelete = null })
     }
     rename?.let { t ->
         NameDialog(str(when (t.kind) {
@@ -435,19 +431,6 @@ private fun RoutesSearchField(query: String, onQuery: (String) -> Unit, modifier
         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search))
 }
 
-/** Stays until answered: a tap outside does nothing, Back = Cancel. Deletes only on "Delete". */
-@Composable
-fun DeleteRouteDialog(t: Tour, onDelete: () -> Unit, onCancel: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onCancel,
-        properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = false),
-        icon = { Icon(Icons.Filled.Delete, null) },
-        title = { Text(str(Res.string.routes_delete_title, t.name)) },
-        text = { DialogText(RECYCLE_BIN_NOTE) },
-        confirmButton = { TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_delete), color = OnPathColors.Bad) } },
-        dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
-    )
-}
 
 
 @Composable

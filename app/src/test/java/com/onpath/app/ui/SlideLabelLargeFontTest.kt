@@ -33,7 +33,6 @@ open class SlideLabelLargeFontTest {
     /** The next stops at a large font: numbers never cut, a long name ends with an ellipsis. */
     @Test fun navigateProfileStops() = shots.navigateProfileStops()
     /** Save plan? at a large font: the stacked full-width buttons. */
-    @Test fun planClearDuringTour() = shots.planClearDuringTour()
     /** My routes with Zuletzt: the draft's Speichern · Löschen stay whole with a large font. */
     @Test fun toursRecent() = shots.toursRecent()
     /** The green "Navigation ›" at a large font: the numbers go, the word stays whole (owner 2026-11-06, C). */

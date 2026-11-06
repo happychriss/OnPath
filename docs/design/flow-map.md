@@ -61,7 +61,7 @@ search, pin card, activity sheet).
 | S3 | Plan · 2+ points · no tour | green "Los geht's" (sheet foot / rolled-up row) → straight legs? "Navigate anyway?" → N1; ✕ Neu planen → unsaved: "Plan leeren?" (Save · Verwerfen · Abbrechen) else clears (Undo); ⇅ Umkehren (greyed out when backwards is the same, e.g. A → B → A – #40); ↻ Rundtour = a switch (#40: on a round trip filled ✓, a tap takes the way back out: A → B → A → A → B, one Undo step); hold map → smart insert / append as new goal; hold point → point menu; Undo / Redo; ☰ Save route → Save dialog; ☰ My tours → S8 |
 | S4 | Plan · shown track (My tours / import) · no tour | ✕ → back to the plan; "Als Plan übernehmen" → plan replaced, no question (save-paths 8); green "Los geht's · <activity>" → follows the track, recording starts (N1) |
 | S5 | Plan · place card (search / pin) · no tour | Hierhin / + Hinzufügen / Start / Ziel / Google / ✕ |
-| S6 | Plan · during a tour (TP) | band "‹ Zur Tour" (= Android back) → Navigate (pause kept); ✕ Neu planen → "Plan leeren? Deine Tour läuft weiter" → free tour; plan edits → the tour follows the new plan; an edit that leaves **one point** (start of start → goal deleted, Undo / Redo to one point) → plan = position → that point, the tour follows it (like Hierhin; no GPS: guidance ends as for an empty plan; owner 2026-11-06, onpath.private#39 – was: old line incl. the deleted start followed, sheet "Neuer Plan"); the goal deleted → "Route back to the start?" as before; rolled-up row and foot have **no** green button; **no Pause / End here** (only in S7) |
+| S6 | Plan · during a tour (TP) | band "‹ Zur Tour" (= Android back) → Navigate (pause kept); ✕ Neu planen → clears at once (owner 2026-11-06: no question; a plan not saved goes under Zuletzt, Undo; the sheet says "Tour läuft weiter") → free tour; plan edits → the tour follows the new plan; an edit that leaves **one point** (start of start → goal deleted, Undo / Redo to one point) → plan = position → that point, the tour follows it (like Hierhin; no GPS: guidance ends as for an empty plan; owner 2026-11-06, onpath.private#39 – was: old line incl. the deleted start followed, sheet "Neuer Plan"); the goal deleted → "Route back to the start?" as before; rolled-up row and foot have **no** green button; **no Pause / End here** (only in S7) |
 | S7 | Plan · during a tour · shown track or place card (TS) | tour card on top: green "Weiter · <activity>" (resumes a pause, back to the OLD guidance), "Pausieren", red "Tour beenden"; track sheet: "Als Plan übernehmen", green "Tour nachfahren" → follows the track, **old plan stays in Plan** (M1); place card: its own primary button (F1 in save-paths.md) |
 | S8 | My tours (overlay) | Geplant / Gemacht / Tracks tabs, search; tap planned → no tour: "Plan ersetzen?" when unsaved / during a tour: box "Mit dieser Route weiter · Tour beenden und laden · Abbrechen"; tap done / imported → S4 / S7 (no question); ⋮ → export, copy, delete (bin) |
 | S9 | Search (full screen) | result → S5 (pin + card); back → Plan |
@@ -70,7 +70,7 @@ search, pin card, activity sheet).
 | N3 | Navigate · paused | stays unlocked; "Fortsetzen"; Tour beenden; Plan |
 | N4 | Navigate · free tour ("Freie Tour · nur Aufnahme") | as N1/N2 without turn card |
 | N5 | Arrival sheet (Navigate only; in Plan it waits) | Tour speichern / Weiterfahren / ✕ / Löschen – nothing about the plan (2026-11-06) |
-| N6 | End sheet "Tour beenden?" | **Owner 2026-11-06, the tour and the plan are two things:** Tour speichern → (rides found: ride summary) → "Tour gespeichert" box (OK) → Plan with the plan still on the map; Löschen → the tour to the bin, the plan stays; Weiterfahren / ✕ → back. A plan never saved was saved at "Los geht's" (`PlanAutoSave`); changes made on the way show "Nicht gespeichert ›". (Was: a plan switch + Save dialog after – H2, easy to miss.) |
+| N6 | End sheet "Tour beenden?" | **Owner 2026-11-06, the tour and the plan are two things** (and "Zuletzt": nothing asks to save, see save-paths.md): Tour speichern → (rides found: ride summary) → "Tour gespeichert" box (OK) → Plan with the plan still on the map; Löschen → the tour to the bin, the plan stays; Weiterfahren / ✕ → back. A plan never saved was saved at "Los geht's" (`PlanAutoSave`); changes made on the way are kept as a draft under Zuletzt when the plan leaves the map. (Was: a plan switch + Save dialog after – H2, easy to miss.) |
 | N7 | Unfinished tour (after a restart / kill) | Continue · Delete · Save |
 
 16 states (S1–S9, N1–N7) plus 5 dialogs / boxes reached from them (Save, "Plan leeren?", "Plan ersetzen?", tour-load box,
@@ -93,6 +93,10 @@ without a plan the own position as before; a finger on the map meanwhile or a sh
 | Follow a done tour during a tour | **7** | see save-paths.md "Flow" (F1–F3 there) |
 | Clear the plan on the way and start a new one | **7** | slide → Plan → ✕ → Plan leeren (or Speichern first) → hold → Hierhin → ‹ Zur Tour |
 | From Plan back to Navigate (during a tour) | **1**, but top left | the round blue "‹" in the band (or Android back) – far from the thumb; **being built:** C, a green "Navigation" button at the very bottom instead (owner 2026-11-06) |
+
+**2026-11-06 evening – "Zuletzt" (owner):** S3 ✕ Neu planen and every replace (S4, S6, S8, links) ask nothing any more – a
+plan not saved goes under My routes → Geplant → ZULETZT (Speichern · Löschen there, newest 25); delete in My routes goes
+straight to the recycle bin; the "Nicht gespeichert ›" sign is gone (save-paths.md, rule at the top).
 
 ## Findings
 

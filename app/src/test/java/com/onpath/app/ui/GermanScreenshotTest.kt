@@ -106,7 +106,6 @@ class GermanScreenshotTest {
     @Test fun endTourConfirm() = shots.endTourConfirm()
     @Test fun navigateFreeTour() = shots.navigateFreeTour()
     @Test fun navigateProfileStops() = shots.navigateProfileStops()
-    @Test fun planClearDuringTour() = shots.planClearDuringTour()
     @Test fun planEmptyDuringTour() = shots.planEmptyDuringTour()
     @Test fun sharedPlaceMenu() = shots.sharedPlaceMenu()
     @Test fun sharedPlaceMenuEmptyPlan() = shots.sharedPlaceMenuEmptyPlan()

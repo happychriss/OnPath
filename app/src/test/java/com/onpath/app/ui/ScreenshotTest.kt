@@ -728,16 +728,6 @@ class ScreenshotTest {
     /** A tour without a route (owner 2026-11-05): "Freie Tour · nur Aufnahme" instead of an empty route line. */
     @Test fun navigateFreeTour() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = false)) }
 
-    /** ✕ Neu planen during a tour (owner 2026-11-05): "Plan leeren? Deine Tour läuft weiter …" – Plan leeren / Abbrechen. */
-    @Test fun planClearDuringTour() = paparazzi.snapshot {
-        OnPathTheme {
-            Frame(editing = true) {
-                PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)), PlanCallbacks())
-            }
-            DiscardPlanDialog({}, {})
-        }
-    }
-
     /** The empty plan during a tour: "Tour läuft weiter – setz neue Punkte oder geh ‹ Zur Tour." */
     @Test fun planEmptyDuringTour() = paparazzi.snapshot {
         Frame(editing = true) {
@@ -1200,11 +1190,6 @@ class ScreenshotTest {
     /** Done tab with nothing recorded yet. */
     @Test fun toursEmptyDone() = paparazzi.snapshot {
         OnPathTheme { RoutesScreen(tourList.filter { it.kind != TourKind.RECORDED }, {}, {}, {}, {}, {}, initialTab = RoutesTab.DONE) }
-    }
-
-    /** Delete asks first and stays until answered. */
-    @Test fun routesDeleteConfirm() = paparazzi.snapshot {
-        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialConfirmDelete = tourList[0]) }
     }
 
     /** Recycle bin (C11): deleted entries with days left, Restore / Delete now. */

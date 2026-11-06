@@ -41,9 +41,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 @Composable
 fun RouteDialogs(vm: AppViewModel) {
     vm.saveAsk?.let { ask -> SaveNameDialog(ask.kind, ask.name, onSave = vm::confirmSave, onCancel = vm::cancelSave) }
-    // only during a tour (owner 2026-11-05): "Plan leeren? Deine Tour läuft weiter …" – no Save (a plan leaving the map goes
-    // under My routes → Zuletzt, owner 2026-11-06)
-    if (vm.discardAsk) DiscardPlanDialog(onDiscard = vm::discardConfirmed, onCancel = { vm.discardAsk = false })
     if (vm.straightAsk) StraightLegsDialog(onNavigate = vm::straightConfirmed, onCancel = { vm.straightAsk = false })
     vm.routesProblem?.let { msg ->
         AlertDialog(
@@ -104,16 +101,6 @@ fun SaveNameDialog(kind: SaveAsk.Kind, name: String, onSave: (String) -> Unit, o
         dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
     )
 }
-
-/**
- * ✕ / Neu planen during a tour (owner 2026-11-05): "Plan leeren? Deine Tour läuft weiter und wird weiter aufgezeichnet."
- * Abbrechen · Plan leeren – the guidance ends, the recording goes on. No Save any more (owner 2026-11-06: a plan not saved
- * goes under My routes → Zuletzt by itself).
- */
-@Composable
-fun DiscardPlanDialog(onDiscard: () -> Unit, onCancel: () -> Unit) =
-    DecisionDialog(str(Res.string.plan_clear_tour_title), str(Res.string.plan_clear_tour_text), onDismiss = onCancel,
-        dismiss = str(Res.string.common_cancel) to onCancel, confirm = str(Res.string.plan_clear_tour_confirm) to onDiscard)
 
 /**
  * The Material 3 basic dialog (owner 2026-11-05): 24 dp inner padding, 280–560 dp wide (16 dp from the screen's edges), headline + supporting text, the

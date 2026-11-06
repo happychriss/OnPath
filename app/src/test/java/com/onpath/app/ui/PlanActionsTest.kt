@@ -20,18 +20,14 @@ class PlanActionsTest {
     private val vm = src("ui/AppViewModel.kt")
     private val panel = src("ui/PlanPanel.kt")
 
-    /** Owner 2026-11-06: ✕ asks nothing to save any more (the plan goes under Zuletzt); only during a tour "Plan leeren?". */
-    @Test fun closePlanAsksOnlyDuringATour() {
-        val body = vm.substringAfter("fun requestClear()").substringBefore("\n")
-        assertTrue(body, body.contains("if (ClearAsk.asks(recState.value != null, waypoints.size)) discardAsk = true else clearPlan()"))
+    /** Owner 2026-11-06: ✕ asks nothing any more (also during a tour) – the plan goes under Zuletzt, one Undo brings it back. */
+    @Test fun closePlanAsksNothing() {
+        assertTrue(vm.contains("fun requestClear() = clearPlan()"))
         assertTrue(vm.substringAfter("fun clearPlan() {").substringBefore("\n    }\n").contains("keepAsDraft("))
-        assertTrue(vm.contains("fun discardConfirmed() { discardAsk = false; clearPlan() }"))
-        // unsaved = a new plan of two points, or a saved one changed since
+        // unsaved = a new plan of two points, or a saved one changed since (it decides what goes under Zuletzt)
         assertTrue(RouteRules.isUnsaved(listOf(a, b), null))
         assertFalse(RouteRules.isUnsaved(listOf(a, b), listOf(a, b)))
-        val dialogs = src("ui/RouteDialogs.kt")
-        assertTrue(dialogs.contains("if (vm.discardAsk) DiscardPlanDialog(onDiscard = vm::discardConfirmed"))
-        assertFalse("no Save in the clear question", dialogs.contains("discardSaveFirst"))
+        assertFalse(src("ui/RouteDialogs.kt").contains("DiscardPlanDialog"))
     }
 
     @Test fun theSheetHasTheActionRowAndNoMenu() {

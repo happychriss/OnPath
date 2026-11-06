@@ -1967,18 +1967,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Clear the plan right away (owner): one Undo step brings it back, so no question. */
-    /** "Plan leeren? Deine Tour läuft weiter …" is open (✕ / Neu planen during a tour). */
-    var discardAsk by mutableStateOf(false)
-
     /**
-     * ✕ / ☰ Neu planen: the plan leaves the map. Nothing is lost and nothing asks to save (owner 2026-11-06): a plan not saved
-     * as it is goes under My routes → Zuletzt ([keepAsDraft]); one Undo step brings it back. Only during a tour ONE
-     * question first (owner 2026-11-05) – it ends the guidance: "Plan leeren? Deine Tour läuft weiter …" ([ClearAsk]).
+     * ✕ / ☰ Neu planen: the plan leaves the map at once – no question, also during a tour (owner 2026-11-06): a plan not
+     * saved as it is goes under My routes → Zuletzt ([keepAsDraft]), one Undo step brings it back, and during a tour the
+     * empty sheet says "Tour läuft weiter – …" (the recording goes on, the guidance ends).
      */
-    fun requestClear() { if (ClearAsk.asks(recState.value != null, waypoints.size)) discardAsk = true else clearPlan() }
-
-    /** "Plan leeren?" during a tour → Plan leeren. */
-    fun discardConfirmed() { discardAsk = false; clearPlan() }
+    fun requestClear() = clearPlan()
 
     /**
      * Resets the whole plan in one undoable step: points, route line, pinned marks (kept while
