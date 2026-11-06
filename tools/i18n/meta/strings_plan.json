@@ -1270,30 +1270,16 @@
   },
   "plan_back_nav": {
     "area": "Plan",
-    "context": "Word on the green full-width button at the bottom of the plan during a tour: back to the navigation screen (owner 2026-11-06)",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 14
-  },
-  "plan_back_nav_desc": {
-    "area": "Plan",
-    "context": "Screen reader name of that green button. %1$s = activity (\"Bike\")",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "plan_back_nav_paused": {
-    "area": "Plan",
-    "context": "Small text before \"Navigation\" on that button while the recording is paused. %1$s = distance so far",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 22
-  },
-  "plan_back_nav_record_only": {
-    "area": "Plan",
-    "context": "Small text before \"Navigation\" on that button when no route is followed (the tour only records)",
+    "context": "Word on the green full-width button at the bottom of the plan during a tour: back to the navigation screen, like \"Los geht’s\" (owner 2026-11-06: \"Weiter geht’s\")",
     "priority": 1,
     "confidence": "sicher",
     "max": 16
+  },
+  "plan_back_nav_desc": {
+    "area": "Plan",
+    "context": "Screen reader name of that green button",
+    "priority": 1,
+    "confidence": "sicher"
   },
   "plan_clear_tour_title": {
     "area": "Plan",

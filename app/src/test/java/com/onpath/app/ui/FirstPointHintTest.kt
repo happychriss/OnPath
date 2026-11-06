@@ -5,8 +5,8 @@ import org.junit.Test
 import java.io.File
 
 /**
- * The empty plan (owner 2026-11-02): ✋ + "Wohin soll’s gehen?" bold + "Halte dein Ziel auf der Karte gedrückt – oder
- * such es oben in der Suchleiste." in one block, as high as the old line; the owner's words, EN + DE.
+ * The empty plan (owner 2026-11-02; 2026-11-06 the question is the title): "Wohin soll’s gehen?" as the sheet's title,
+ * under it ✋ "Halte dein Ziel auf der Karte gedrückt – oder such es oben in der Suchleiste."; the owner's words, EN + DE.
  */
 class FirstPointHintTest {
     private val panel = File("src/main/java/com/onpath/app/ui/PlanPanel.kt").readText()
@@ -19,8 +19,10 @@ class FirstPointHintTest {
         assertTrue("hint before the summary step's end", hintAt in 0 until body.indexOf("    Spacer(with(sheet) { Modifier.stepEnd(PlanSize.MINI.step) })"))
         assertTrue("bigger: bodyLarge", panel.substringAfter("private fun FirstPointHint()").substringBefore("\n}\n").contains("typography.bodyLarge"))
         val hint = panel.substringAfter("private fun FirstPointHint()").substringBefore("\n}\n")
-        assertTrue(hint, hint.contains("Icons.Filled.TouchApp") && hint.contains("FontWeight.Bold")
-            && hint.contains("Res.string.plan_hint_first_point_question") && hint.contains("Res.string.plan_hint_first_point)"))
+        // owner 2026-11-06: the question is the sheet's title ("Wohin soll’s gehen?", EmptyPlanTitle); the hint keeps the way
+        assertTrue(hint, hint.contains("Icons.Filled.TouchApp") && hint.contains("Res.string.plan_hint_first_point)")
+            && !hint.contains("plan_hint_first_point_question"))
+        assertTrue(panel.contains("Res.string.plan_hint_first_point_question") && panel.contains("str(EmptyPlanTitle.of(ui))"))
     }
 
     @Test fun theOwnersWords() {

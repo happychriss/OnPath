@@ -79,11 +79,11 @@ class PlanSizeTourTest {
     @Test fun theSliderUnlocksPauseChangeRouteAndEnd() {
         val nav = java.io.File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()
         assertEquals(true, nav.contains("onPause = vm::pauseRecording, onEnd = { vm.askEndTour() }"))
-        // owner 2026-11-05 (Navigate C): Pause / Tour beenden in the status card, "Plan" where the slider was
-        assertEquals(true, nav.contains("TourCardActions(ui.paused, onPause, onEnd, onClose = { open = false })"))
-        assertEquals(true, nav.contains("ChangePlanButton({ open = false; onSlideToPlan() }, bottom, onLock = "))
+        // owner 2026-11-06: one bottom bar where the slider was – Pause | Planen, paused Weiter · Beenden · ✎
+        assertEquals(true, nav.contains("TourBottomBar(ui.paused, onPause, onEnd = { open = false; onEnd() }"))
+        assertEquals(true, nav.contains("ChangePlanButton({ open = false; onSlideToPlan() }, bottom)"))
         val bar = java.io.File("src/main/java/com/onpath/app/ui/TourActionBar.kt").readText()
-        for (s in listOf("Res.string.nav_action_pause", "Res.string.common_resume", "Res.string.nav_change_plan", "Res.string.nav_end_tour"))
+        for (s in listOf("Res.string.nav_action_pause", "Res.string.common_resume", "Res.string.nav_change_plan", "Res.string.nav_end_short"))
             assertEquals(s, true, bar.contains(s))
         val panel = java.io.File("src/main/java/com/onpath/app/ui/PlanPanel.kt").readText()
         assertEquals(false, panel.contains("TourPauseEnd("))

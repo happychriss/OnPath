@@ -253,7 +253,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
         surfaceColor = OnPathColors.PlanTint, accent = OnPathColors.PlanAccent,
         // during a tour (owner 2026-11-06, C): the green way back to Navigate sits where "Los geht's" sits without one,
         // in every step – the sheet rests on it
-        foot = if (ui.tour != null || ui.tourRunning) ({ BackToNavigationButton(ui.tour, ui.activity, { goClick(ui, cb) }) }) else null,
+        foot = if (ui.tour != null || ui.tourRunning) ({ BackToNavigationButton({ goClick(ui, cb) }) }) else null,
         bottomBar = { PlanBar(ui, cb) },
     ) {
         // the pulled-up sheet has ONE fixed height (owner): deleting / adding / moving points (or the routing
@@ -806,7 +806,7 @@ private fun FirstPointHint() {
     }
 }
 
-/** The empty plan during a tour: "Tour läuft weiter – setz neue Punkte oder tippe unten auf Navigation." */
+/** The empty plan during a tour: "Tour läuft weiter – setz neue Punkte oder tippe unten auf Weiter geht’s." */
 @Composable
 private fun TourGoesOnHint() {
     Row(verticalAlignment = Alignment.Top) {

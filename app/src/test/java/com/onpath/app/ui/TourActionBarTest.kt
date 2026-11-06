@@ -9,10 +9,10 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Navigate after the slide (owner 2026-11-05, Navigate C): the slider only unlocks ("» Entsperren"); then "Pause"
- * (green tonal, "Fortsetzen" while paused) and "Tour beenden" (green outlined, asks first) sit directly under the route
- * info in the status card, and ONE big blue "Plan ändern" takes the slider's place. No red, words not signs.
- * Without a recording only "Plan ändern". Locks again after 30 s, on a tap on the map or Android's back (not while paused).
+ * Navigate after the slide (owner 2026-11-05, Navigate C; 2026-11-06 one bottom bar): the slider only unlocks
+ * ("» Entsperren"); then the tour's bottom bar "⏸ Pause | ✎ Planen" (paused "Weiter · Beenden · ✎") takes the slider's
+ * place – the same as with the lock off. Without a recording only "Planen". Locks again after 30 s, on a tap on the map or
+ * Android's back (also paused).
  */
 class TourActionBarTest {
     private val bar = File("src/main/java/com/onpath/app/ui/TourActionBar.kt").readText()
@@ -24,27 +24,22 @@ class TourActionBarTest {
         return l1 / l2
     }
 
-    @Test fun pauseAndEndInTheCardChangeRouteInTheSlidersPlace() {
-        val actions = bar.substringAfter("fun TourCardActions(").substringBefore("\n}\n")
-        assertTrue(actions, actions.contains("str(if (paused) Res.string.common_resume else Res.string.nav_action_pause)"))
-        // never cut: side by side while both words fit, else stacked (large font)
-        assertTrue(TourActions.sideBySide(300f, 334f))
-        assertFalse(TourActions.sideBySide(380f, 334f))
-        // Pause / Fortsetzen keeps the bar open (owner 2026-11-06: the pause changes nothing about the lock)
-        assertTrue(actions, actions.contains("onClick = { onPause(!paused) }"))
-        assertTrue(actions, actions.contains("onClick = { onClose(); onEnd() }") && actions.contains("Res.string.nav_end_tour"))
-        assertFalse("no red", bar.contains("ActionStop") || bar.contains("OnPathColors.Error"))
+    /**
+     * Owner 2026-11-06 ("Stopp und Pause an der Stelle ist logischer"): unlocked or with the lock off, the tour has ONE
+     * bottom bar ([TourBottomBar], TourBottomBarTest) – no buttons in the status card, no "Sperren" button; without a
+     * recording the unlocked bottom is one blue "Planen".
+     */
+    @Test fun oneBottomBarNoCardButtonsNoLockButton() {
+        assertTrue(overlay, overlay.contains("val tourBar = unlocked && ui.recordedM != null"))
+        assertTrue(overlay, overlay.contains("if (tourBar) TourBottomBar(ui.paused, onPause, onEnd = { open = false; onEnd() }, onPlan = { open = false; onSlideToPlan() }, bottom)"))
+        assertTrue(overlay, overlay.contains("else if (unlocked) ChangePlanButton({ open = false; onSlideToPlan() }, bottom)"))
+        assertTrue("no buttons in the status card", overlay.contains("actions = null)"))
+        assertFalse("the card actions are gone", bar.contains("fun TourCardActions("))
         val change = bar.substringAfter("fun ChangePlanButton(").substringBefore("\n}\n")
         assertTrue(change, change.contains("Res.string.nav_change_plan") && change.contains("OnPathColors.ActionEdit"))
-        // in the card, directly under the route info; Plan ändern where the slider was
-        // (with the lock off the card has no buttons – LockOffBarTest)
-        assertTrue(overlay, overlay.contains("actions = if (unlocked && ui.recordedM != null && !lockOffBar) ({ TourCardActions(ui.paused, onPause, onEnd, onClose = { open = false }) })"))
-        assertTrue(overlay, overlay.contains("ChangePlanButton({ open = false; onSlideToPlan() }, bottom, onLock = if (closableBar) ({ open = false }) else null)"))
-        // lock / unlock (owner 2026-11-05): a closed lock on the slider's thumb; after unlocking "🔒 Sperren" as a full button
-        // beside "Plan", equally wide (owner 2026-11-06: equal partners)
-        assertTrue(change, change.contains("OutlinedButton(onClick = onLock") && change.contains("Res.string.nav_lock"))
-        assertTrue(change, change.split("Modifier.weight(1f)").size == 3)
-        val slide = java.io.File("src/main/java/com/onpath/app/ui/SlideToUnlock.kt").readText()
+        assertFalse("no Sperren button", change.contains("nav_lock") || change.contains("onLock"))
+        assertFalse("no red", bar.contains("ActionStop") || bar.contains("OnPathColors.Error"))
+        val slide = File("src/main/java/com/onpath/app/ui/SlideToUnlock.kt").readText()
         assertTrue(slide.contains("Icon(Icons.Filled.Lock, null"))
         assertTrue(overlay, overlay.contains("else SlideToPlan({ open = true }, bottom, recording = ui.recordedM != null"))
         assertFalse("the tile bar is gone", bar.contains("fun TourActionBar(") || bar.contains("fun ActionTiles("))
@@ -69,9 +64,9 @@ class TourActionBarTest {
         assertTrue("no pause exception any more", !overlay.contains("pausedOpen"))
         assertTrue(overlay.contains("BackHandler(enabled = closableBar) { open = false }"))
         assertTrue(overlay.contains("detectTapGestures { open = false }"))
-        // Pause keeps the bar open (no onClose before onPause)
-        assertTrue(bar.contains("FilledTonalButton(onClick = { onPause(!paused) },"))
-        // locked + paused: no "Fortsetzen" past the lock; the slider says what is behind it
+        // Pause / Weiter keep the bar open (no onClose before onPause)
+        assertTrue(bar.contains("onClick = { onPause(true) }") && bar.contains("onClick = { onPause(false) }"))
+        // locked + paused: no "Weiter" past the lock; the slider says what is behind it
         assertTrue(!nav.contains("actions == null) TextButton(onClick = onResume"))
         assertTrue(overlay.contains("paused = ui.paused && ui.recordedM != null)"))
         val slider = File("src/main/java/com/onpath/app/ui/SlideToUnlock.kt").readText()
