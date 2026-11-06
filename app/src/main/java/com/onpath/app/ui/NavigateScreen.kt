@@ -301,11 +301,13 @@ fun NavigateOverlay(
             if (ui.recordedM != null) TourBottomBar(ui.paused, onPause, onEnd = onEnd, onPlan = onSlideToPlan, bottom, hold = hold)
             else ChangePlanButton(onSlideToPlan, bottom, hold = hold)
         }
-        // "Neuer Plan – deine Aufnahme läuft weiter" just above the bottom bar, over the map (nothing moves under it)
+        // "Neuer Plan – deine Aufnahme läuft weiter" just above the bottom bar, over the map (nothing moves under it), left
+        // of the map controls' column (it covered "locate" across the full width – merge review 2026-11-06)
         newPlan?.let { n ->
             LaunchedEffect(n.id) { kotlinx.coroutines.delay(NEW_PLAN_LINE_MS); onNewPlanGone() }
             NewPlanLine(if (n.undo) onNewPlanUndo else null,
-                Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = (sliderDp + 8).dp))
+                Modifier.align(Alignment.BottomStart)
+                    .padding(start = 16.dp, end = NEW_PLAN_LINE_END, bottom = (sliderDp + 8).dp))
         }
         // ONE box under the turn / status column (docs/design/ui-style.md, owner 2026-10-31 – the re-route and
         // activity-switch question moved here from the bottom, 56 dp buttons kept); the question wins, the rest wait.
@@ -339,6 +341,9 @@ fun NavigateOverlay(
 
 /** How long [NewPlanLine] stays (ms): long enough to read it and reach "Rückgängig" with gloves. */
 internal const val NEW_PLAN_LINE_MS = 8_000L
+
+/** [NewPlanLine]'s right edge: clear of the map controls' column (16 dp margin + one [MAP_FAB] + 8 dp air). */
+internal val NEW_PLAN_LINE_END = 16.dp + MAP_FAB + 8.dp
 
 /**
  * A plan or a done tour tapped in My routes during a tour is followed at once, without a question (owner 2026-11-06

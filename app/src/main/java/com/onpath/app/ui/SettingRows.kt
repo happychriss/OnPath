@@ -98,7 +98,7 @@ internal fun SettingsGroupHeader(text: String) = Text(text.uppercase(), style = 
 /** A paper card for one group of settings rows. */
 @Composable
 internal fun SettingsCard(content: @Composable () -> Unit) =
-    Surface(shape = RoundedCornerShape(16.dp), color = OnPathColors.Paper, shadowElevation = 1.dp) {
+    Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
         Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) { content() }
     }
 
@@ -154,8 +154,8 @@ internal fun <T> ChoiceSheet(title: String, options: List<Choice<T>>, selected: 
         }
     }
     if (inline) {
-        Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), color = OnPathColors.Paper,
-            shadowElevation = 3.dp) {
+        val sheet = RoundedCornerShape(topStart = OnPathShapes.SHEET_DP.dp, topEnd = OnPathShapes.SHEET_DP.dp)
+        Surface(Modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, sheet), shape = sheet, color = OnPathColors.Paper) {
             Column {
                 androidx.compose.material3.BottomSheetDefaults.DragHandle(Modifier.align(Alignment.CenterHorizontally))
                 content()
