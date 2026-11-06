@@ -28,6 +28,7 @@ the current state.
   within ~60 dp instead of 24 dp; the fix changes hold behaviour). Smaller open items: `docs/backlog.md`.
 
 ## Last session
+- **laptop, 2026-11-06 evening – planner My routes + New plan (ed3219e9, not deployed):** My routes rows show length and ↑/↓ (kept in the browser by `planstats.ts` whenever the page routed the plan / read the track – the list never routes), dialog 600 px wide; '+ Neuer Plan' in the header before Save (☰'s first entry at phone width), same as ✕ Neu planen; header breakpoints moved, no overflow 390–1920 px. web-planner.md §20. Left: the novice walkthrough (backlog).
 - **laptop, 2026-11-06 – one branch + flaky web smokes:** web smokes: plan link overwritten by the old plan's address fixed in the page, sync/robust smokes wait for the real end state (6ffd5f00; "two quick clicks" not reproduced, diagnostics added). `web-spike` merged into `main` by PR #3 (f37d5bb9): web.yml with path filter, planner deploy with the app release or by hand, docs/roles updated; daily sync task paused; web-spike frozen. Owner's planner points (tour list details, „Neuer Plan“, novice walkthrough) in the backlog.
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
 - **cloud worker as donald (no computer), 2026-11-06 day – HANDOFF to the session with the Pixel:** released v0.17.0

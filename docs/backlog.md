@@ -83,7 +83,6 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Web planner: Meine Pläne with length + ↑/↓, visible „Neuer Plan“ (owner 2026-11-06, points 1+2) – since 2026-11-06
 - [donald] 2026-11-06 evening (owner away, "mach alles fertig, entscheide selber"): branch donald-f1-c-box (F1 question, C green Navigation button, slim saved box, round trip switch #40, pill B #41, fixed map controls #43) → main + test APK; review bugs (tour name, past ETA, flat profile axis, N1 notification, new-plan text); then Walnuss #36 + colour rule, H1 – since 2026-11-06
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 
@@ -103,10 +102,7 @@ the git log.
   (planner copies the app's fonts at build time; the build now stops if a range is missing, e7802e1e – live after the next deploy); (4) base colour Walnuss #4A3F37 for plain buttons,
   plan blue / to navigation green (#36, app follows soon). Phone-only (no planner change): end sheet, one point during a
   tour, F1 / C, offline pill.
-- **[laptop] Web planner – owner's points 2026-11-06 (chat):** (1) **Meine Pläne list:** besides the name show the length and
-  the climb ↑ / descent ↓ – there is room in the browser. (2) **New plan is hard to find:** today only a click on the empty map or
-  „✕ Neu planen“ in the plan row (looks like "close"); add a visible „Neuer Plan“ (`plan_new_route` exists), e.g. in the header
-  beside Save, asks Verwerfen · Abbrechen · Speichern like ✕. (3) **Novice walkthrough for the planner** like the app's
+- **[laptop] Web planner – novice walkthrough (owner 2026-11-06, chat; points 1+2 done ed3219e9):** like the app's
   `docs/design/flow-map.md` (new plan, open / rename, send to phone, GPX, add a stop, undo) with real browser shots – to find
   what else is missing; owner asked "haben wir sonst noch wichtige Elemente vergessen?".
 - **[donald] Flow map + novice walkthrough (docs/design/flow-map.md, 2026-11-06) – open:** H1 no way to start a tour
