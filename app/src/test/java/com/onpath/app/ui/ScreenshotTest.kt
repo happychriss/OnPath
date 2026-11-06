@@ -536,7 +536,7 @@ class ScreenshotTest {
             }
             // variant A (owner 2026-11-06): numbers in one line, the plan option, Save, Weiterfahren | Löschen – no scrolling
             EndTourDialog({}, {}, {}, activity = Activity.HIKE, stats = EndStats(12_480.0, 16_560, 842.0),
-                routeLabel = Txt.s(Res.string.nav_end_save_changed_route), routeLine = Txt.s(Res.string.nav_end_plan_line, "Rund um den Kofel"))
+                routeLabel = Txt.s(Res.string.nav_end_save_changed_route), routeLine = Txt.s(Res.string.nav_end_plan_line, "Rund um den Kofel"), inline = true)
         }
     }
 
@@ -788,7 +788,7 @@ class ScreenshotTest {
     @Test fun arrival() = paparazzi.snapshot {
         OnPathTheme {
             NavFrame(navUi.copy(toGo = ToGo(30.0, 0.0, 60.0, 5.0)))
-            ArrivalDialog({}, {}, {}, activity = Activity.HIKE, stats = EndStats(12_480.0, 16_560, 842.0))
+            ArrivalDialog({}, {}, {}, activity = Activity.HIKE, stats = EndStats(12_480.0, 16_560, 842.0), inline = true)
         }
     }
 

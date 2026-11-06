@@ -28,6 +28,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -117,6 +118,7 @@ internal fun keepGoingLabel(activity: com.onpath.app.routing.Activity?): String 
  * with the bin note – no second question (owner 2026-11-01: "ist ja sowieso alles im Papierkorb"). Large font: it scrolls.
  * [keepLabel]: the way back (arrival: the same activity word).
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun EndTourDialog(
     onSave: () -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit,
@@ -128,21 +130,45 @@ fun EndTourDialog(
     routeLabel: String? = null, routeChecked: Boolean = false, onRouteChecked: (Boolean) -> Unit = {},
     /** Which plan: "„Rund um den Kofel“ – mit deinen Änderungen von unterwegs" / "Wird als neuer Plan gespeichert". */
     routeLine: String? = null,
+    /** Screenshot tests: the sheet drawn at the bottom of the screen itself (Paparazzi draws no sheet window). */
+    inline: Boolean = false,
 ) {
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss,
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = onDismiss)) {
-            Surface(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(top = 48.dp)
-                .clickable(interactionSource = null, indication = null) { /* inside: no dismiss */ },
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
-                Column(Modifier.verticalScroll(rememberScrollState()).navigationBarsPadding()
-                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp)) {
-                    Box(Modifier.align(Alignment.CenterHorizontally).size(width = 32.dp, height = 4.dp)
-                        .background(MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(2.dp)))
-                    Spacer(Modifier.height(12.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+    val content: @Composable () -> Unit = {
+        EndTourContent(onSave, onDelete, onDismiss, title, activity, stats, keepLabel, routeLabel, routeChecked, onRouteChecked, routeLine)
+    }
+    if (inline) {
+        Box(Modifier.fillMaxSize()) {
+            Surface(Modifier.align(Alignment.BottomCenter).fillMaxWidth(), shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                Column {
+                    androidx.compose.material3.BottomSheetDefaults.DragHandle(Modifier.align(Alignment.CenterHorizontally))
+                    content()
+                }
+            }
+        }
+        return
+    }
+    // A real bottom sheet (owner 2026-11-06 on the Pixel: Weiterfahren | Löschen were cut off at the bottom – the
+    // full-screen Dialog window started under the status bar but was laid out a full screen high, so its lowest
+    // ~50 dp were below the glass). ModalBottomSheet knows the status and gesture bars; opened fully, never half.
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss,
+        sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow) { content() }
+}
+
+/** The end sheet's inside: title, numbers, plan option, Save, Weiterfahren | Löschen, bin note. */
+@Composable
+private fun EndTourContent(
+    onSave: () -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit, title: String,
+    activity: com.onpath.app.routing.Activity?, stats: EndStats?, keepLabel: String,
+    routeLabel: String?, routeChecked: Boolean, onRouteChecked: (Boolean) -> Unit, routeLine: String?,
+) {
+                Column(Modifier.verticalScroll(rememberScrollState())
+                    .padding(start = 20.dp, end = 20.dp, top = 0.dp, bottom = 16.dp)) {
+                    // icon and ✕ at the title's first line: a long title wraps under itself, nothing floats between lines
+                    Row(verticalAlignment = Alignment.Top) {
                         if (activity != null) {
-                            Icon(activity.icon, null, tint = OnPathColors.ActionGo, modifier = Modifier.size(28.dp))
+                            Icon(activity.icon, null, tint = OnPathColors.ActionGo, modifier = Modifier.padding(top = 2.dp).size(28.dp))
                             Spacer(Modifier.width(12.dp))
                         }
                         Column(Modifier.weight(1f)) {
@@ -150,7 +176,7 @@ fun EndTourDialog(
                             if (activity != null) Text(activity.navName, style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        androidx.compose.material3.IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
+                        androidx.compose.material3.IconButton(onClick = onDismiss, modifier = Modifier.offset(y = (-8).dp).size(48.dp)) {
                             Icon(Icons.Filled.Close, contentDescription = keepLabel, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
@@ -168,9 +194,6 @@ fun EndTourDialog(
                     Spacer(Modifier.height(12.dp))
                     EndKeepAndDelete(keepLabel, onDismiss, onDelete)
                 }
-            }
-        }
-    }
 }
 
 /** "821 m · 4 min · ↑ 3 m" – the tour's numbers in one line under the title (wraps with a large font, never cut). */
@@ -276,9 +299,10 @@ internal val RECYCLE_BIN_NOTE: String get() = Txt.s(Res.string.nav_recycle_bin_n
 @Composable
 fun ArrivalDialog(onSave: () -> Unit, onDelete: () -> Unit, onKeepGoing: () -> Unit,
                   routeLabel: String? = null, routeChecked: Boolean = false, onRouteChecked: (Boolean) -> Unit = {},
-                  activity: com.onpath.app.routing.Activity? = null, stats: EndStats? = null, routeLine: String? = null) =
+                  activity: com.onpath.app.routing.Activity? = null, stats: EndStats? = null, routeLine: String? = null,
+                  inline: Boolean = false) =
     EndTourDialog(onSave, onDelete, onKeepGoing, title = str(Res.string.nav_arrived_title), activity = activity, stats = stats,
-        routeLabel = routeLabel, routeChecked = routeChecked, onRouteChecked = onRouteChecked, routeLine = routeLine)
+        routeLabel = routeLabel, routeChecked = routeChecked, onRouteChecked = onRouteChecked, routeLine = routeLine, inline = inline)
 
 
 /** "Continue · Gravel bike" (owner rule: the way back to Navigate names the activity). */
