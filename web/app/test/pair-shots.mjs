@@ -165,7 +165,7 @@ for (const [lang, locale] of [['de', 'de-DE'], ['en', 'en-GB']]) {
 
   // W6: the Phone window paired – the phone's name and dot, Sync now, red Unpair at the bottom
   await seen();
-  await page.click('#phoneMore');
+  await page.click('#syncBadge'); // paired: the 📱 status opens the Phone window (owner 2026-11-06)
   await page.waitForSelector('dialog.phone[open] #unpair:not([hidden])');
   await shot(6);
   await ctx.close();

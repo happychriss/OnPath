@@ -52,14 +52,20 @@ const status = (P) => P.evaluate(() => ({ ...window.__sync.status }));
 /** A plan bar entry: inline on a wide screen, behind Plan ▾ at phone width. */
 const menu = async (P, id) => { if (await P.isVisible('#menuBtn')) await P.click('#menuBtn'); await P.click(id); };
 /** The Phone window: Aufs Handy ▾ on a wide screen, Plan ▾ → Phone at phone width. */
-const phoneWin = async (P) => { if (await P.isVisible('#menuBtn')) { await P.click('#menuBtn'); await P.click('#menuPhone'); } else await P.click('#phoneMore'); };
+// the Phone window: To phone ▾ (not paired) or the 📱 status itself (paired, owner 2026-11-06); phone width through Plan ▾
+const phoneWin = async (P) => {
+  if (await P.isVisible('#menuBtn')) { await P.click('#menuBtn'); await P.click(await P.isVisible('#menuPhone') ? '#menuPhone' : '#syncBadge'); }
+  else await P.click(await P.isVisible('#phoneMore') ? '#phoneMore' : '#syncBadge');
+};
 /** "To phone" (the plan bar): its label, the second line ("Pixel 8 · synced …"), the phone's name in it, title, dot. */
 const entry = (P) => P.evaluate(() => { const b = document.getElementById('syncBadge'), d = b.querySelector('.syncdot'), sub = b.querySelector('.sub');
   const line = sub.hidden ? '' : sub.textContent;
-  return { label: b.querySelector('.lbl').textContent.trim(), sub: line, phone: line.split(' · ')[0], title: b.title, dot: !d.hidden, kind: d.dataset.kind }; });
+  const l = b.querySelector('.lbl');
+  return { label: l.textContent.trim(), shown: l.getClientRects().length > 0, sub: line, phone: line.split(' · ')[0], title: b.title, dot: !d.hidden, kind: d.dataset.kind,
+    more: !!document.getElementById('phoneMore')?.getClientRects().length }; });
 /** The header's Save (§14.6): its state (dark / done / empty / full), label, whether it is filled, and that no hint is beside it. */
 const saveBtn = (P) => P.evaluate(() => { const b = document.getElementById('menuSavePlan');
-  return { state: b.dataset.state, label: b.textContent.trim(), unsaved: b.classList.contains('unsaved'), filled: getComputedStyle(b).backgroundColor === 'rgb(36, 95, 70)',
+  return { state: b.dataset.state, label: b.textContent.trim(), phone: !!b.querySelector('.savephone'), unsaved: b.classList.contains('unsaved'), filled: getComputedStyle(b).backgroundColor === 'rgb(36, 95, 70)',
     disabled: b.disabled, title: b.title, hint: !!document.getElementById('saveHint') || /Not saved on the phone/.test(document.getElementById('header').textContent) }; });
 /** Pair from the Phone window: a new code each time; returns the code (the part after #pair=) and the check digits. */
 async function showCode(P, other = false) {
@@ -237,8 +243,9 @@ check((await A.textContent('#points')).includes('Vellau'), 'the open route stays
 await A.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'dark', null, { timeout: 30_000 }).catch(() => {});
 sb = await saveBtn(A);
 check(sb.state === 'dark' && sb.filled && sb.label === 'Save' && st.pending === 2, `paired, two routes waiting: "Save", dark (${JSON.stringify(sb)}, pending ${st.pending})`);
+check(sb.phone && sb.title === 'Save – to the phone too (Pixel 8)', `paired: Save carries a small phone, its tooltip says it goes to the phone too (owner 2026-11-06) (${JSON.stringify(sb)})`);
 e = await entry(A);
-check(e.label === 'To phone' && e.phone === 'Pixel 8' && e.dot && e.kind === 'fresh' && /^Pixel 8 · synced /.test(e.sub), `paired: "To phone" with the green dot and "Pixel 8 · synced …" below (${JSON.stringify(e)})`);
+check(!e.shown && !e.more && e.phone === 'Pixel 8' && e.dot && e.kind === 'fresh' && /^Pixel 8 · synced /.test(e.title), `paired: To phone is an icon-only 📱 status with the green dot, its tooltip "Pixel 8 · synced …", no ▾ (owner 2026-11-06) (${JSON.stringify(e)})`);
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
 for (const n of ['Altroute', 'Zweitroute']) {
@@ -674,7 +681,7 @@ await sent(O);
 await ownerPhone.round();
 check((await ownerPhone.titles()).includes('Meine Runde') && await O.locator('dialog[open]').count() === 0, 'scenario 1: To phone paired the phone and "Meine Runde" arrived on it, no extra question ' + JSON.stringify(await ownerPhone.titles()));
 const e2 = await entry(O);
-check(e2.label === 'To phone' && e2.dot && e2.phone === 'Owner phone', `paired: "To phone" with the dot and "Owner phone · …" below (${JSON.stringify(e2)})`);
+check(!e2.shown && e2.dot && e2.phone === 'Owner phone', `paired: the 📱 status with the dot, "Owner phone · …" (${JSON.stringify(e2)})`);
 // (2) second visit
 await O.close();
 O = await open(ctxO);

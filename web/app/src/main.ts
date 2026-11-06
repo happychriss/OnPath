@@ -1282,14 +1282,16 @@ function saveEntry(st: 'empty' | 'save' | 'saved') {
   const paired = !!s?.paired, waiting = paired && s!.pending > 0;
   const shown = paired && s!.full ? 'full' : st === 'save' || waiting ? 'dark' : st === 'saved' ? 'done' : 'empty';
   const label = shown === 'done' ? t('web_saved_short') : t('common_save');
-  const tip = shown === 'full' ? s!.message : shown === 'dark' ? (paired ? t('web_save_title_phone', s!.phone ?? '') : t('web_save_title_local'))
+  // paired (owner 2026-11-06): everything saved goes to the phone too – the Save button carries a small phone
+  const tip = shown === 'full' ? s!.message : shown === 'dark' ? (paired ? t('web_save_also_phone', s!.phone ?? '') : t('web_save_title_local'))
     : shown === 'done' ? (paired ? t('web_saved_title_phone', s!.phone ?? '') : t('web_saved_title_here')) : t('web_share_needs_two');
   b.disabled = shown === 'empty';
   b.dataset.state = shown;
   b.classList.toggle('unsaved', shown === 'dark');
   b.title = tip;
   b.setAttribute('aria-label', label + ' – ' + tip);
-  b.innerHTML = `${icon(shown === 'done' ? 'check' : 'save', 20)}<span class="lbl">${escapeHtml(label)}</span>`;
+  b.classList.toggle('tophone', paired);
+  b.innerHTML = `<span class="saveic">${icon(shown === 'done' ? 'check' : 'save', 20)}${paired ? `<span class="savephone" aria-hidden="true">${icon('phone', 12)}</span>` : ''}</span><span class="lbl">${escapeHtml(label)}</span>`;
 }
 // "Speichern" in "Plan speichern?" (✕ Neu planen with unsaved changes): the header's Save; true once the plan is saved
 setDiscardSave(async () => {
@@ -1543,7 +1545,7 @@ const ACTS: Record<string, () => void> = {
   menuSavePlan: () => { headerSave(); },
   menuSaveAs: () => { saveAs(); }, saveAsItem: () => { saveAs(); },
   menuExportGpx: () => { exportGpx(); }, exportGpxItem: () => { exportGpx(); },
-  syncBadge: () => { toPhone(); },
+  syncBadge: () => { if (sync.status.paired) phoneWindow(); else toPhone(); },
   phoneMore: () => { phoneWindow(); }, menuPhone: () => { phoneWindow(); },
   menuAbout: () => credits(), menuAboutP: () => credits(),
 };
@@ -1651,9 +1653,10 @@ async function suggestName(): Promise<string> {
     return '';
   }
 }
-/** "📱 Aufs Handy" in the plan bar (owner 2026-11-06, A; was the Phone button of §14.6): always that label; paired its
- *  dot (green, or amber when the phone was away for a day – phoneState) and a small second line "Pixel 8 · synced 2 min.
- *  ago" (the tooltip says it all where the line has no room). Follows sync.onChange live; the "… ago" moves every 30 s. */
+/** "📱 Aufs Handy" in the plan bar (owner 2026-11-06, A): not paired that label – a click pairs, then the plan goes over.
+ *  Paired (owner 2026-11-06: Save sends anyway) it is no second Save: an icon-only phone status – 📱 with its dot (green,
+ *  or amber when the phone was away for a day – phoneState), the tooltip "Pixel 8 · synced 2 min. ago"; a click opens
+ *  the Phone window. In the phone-width Plan ▾ it shows the phone's name. Follows sync.onChange; "… ago" moves every 30 s. */
 function syncBadge() {
   const b = $('syncBadge'), s = sync.status, pill = phonePill(s);
   const dot = b.querySelector<HTMLElement>('.syncdot')!;
@@ -1664,12 +1667,15 @@ function syncBadge() {
   const sub = b.querySelector<HTMLElement>('.sub')!;
   sub.textContent = s.paired ? [pill.name, pill.sub].filter(Boolean).join(' · ') : '';
   sub.hidden = !s.paired;
-  b.title = s.paired ? [t('web_to_phone_title', pill.name), pill.sub, s.message].filter(Boolean).join(' · ') : t('web_to_phone_pair') + ' – ' + t('web_phone_why');
-  b.setAttribute('aria-label', t('web_to_phone') + ' – ' + b.title);
+  b.querySelector<HTMLElement>('.lbl')!.textContent = s.paired ? pill.name : t('web_to_phone');
+  b.title = s.paired ? [pill.name, pill.sub, s.message].filter(Boolean).join(' · ') : t('web_to_phone_pair') + ' – ' + t('web_phone_why');
+  b.setAttribute('aria-label', s.paired ? t('web_phone_title') + ' – ' + b.title : t('web_to_phone') + ' – ' + b.title);
+  $('phoneMore').hidden = s.paired; // paired the button itself opens the Phone window
+  $('menuPhone').hidden = s.paired;
 }
 window.setInterval(() => syncBadge(), 30_000);
 /**
- * Aufs Handy: not paired → the pairing window (QR code); once paired and closed, the open plan goes to the phone (Save
+ * Aufs Handy, not paired → the pairing window (QR code); once paired and closed, the open plan goes to the phone (Save
  * – its name dialog for a new plan – then everything waiting is sent). Paired → the same as Save (save + send).
  */
 async function toPhone() {

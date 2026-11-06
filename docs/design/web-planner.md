@@ -960,14 +960,17 @@ zusammen"; chosen layout A. The header is now: brand · **plan bar** · (hint �
   "Gespeichert" when all is saved, dark / amber as web-sync.md §14.6; paired it also sends; ▾ `#saveMore` → **Speichern
   unter …** (`saveRouteAs`: a NEW saved plan under a name – "<open name> (2)" or the proposal –, open from then on) ·
   **GPX exportieren** of the shown plan) · `📱 Aufs Handy ▾` (`#syncBadge`: not paired → the pairing window directly, and
-  once paired and closed the plan follows (`pairDialog(…, then)` → Save); paired → Save + send, the dot and "Pixel 8 ·
-  synced 2 min. ago" below; ▾ `#phoneMore` → the Phone window: state, Sync now, pair another, Unpair).
+  once paired and closed the plan follows (`pairDialog(…, then)` → Save); ▾ `#phoneMore` → the Phone window: state, Sync
+  now, pair another, Unpair). **Paired** (owner 2026-11-06: everything saved goes to the phone anyway): Save carries a small
+  📱 (`.savephone`, tooltip „Speichern – auch aufs Handy (‹phone›)“, `web_save_also_phone`) and Aufs Handy shrinks to an
+  icon-only phone status – 📱 + dot, tooltip „Pixel 8 · synced 2 min. ago“, a click opens the Phone window, no ▾).
 - **Meine Touren** (was „Öffnen“) = My routes with the app's **search** (`routes_search_hint`, ✕ `search_clear_query`, none → `routes_search_none`;
   `searchPlans` = `RoutesTab.search`: every word in the name, case and accents ignored, ß = ss; the field shows once
   there is anything to search) and **GPX importieren** at its bottom left.
-- **Narrow:** labels of New / Open go below 1001 px, Help's word and the phone line below 1181 px, the To phone label below
-  861 px; **phone width (≤ 700 px)** the bar is one **Plan ▾** button, its drop-down lists New · Open · Import GPX · Save
-  (a dot while unsaved) · Save as · Export GPX · To phone · Phone · Help · the app; "Planner" in the brand goes below 401 px.
+- **Narrow:** labels of New / Meine Touren go below 1001 px, Help's word and the phone line below 1181 px, the To phone label below
+  861 px; **phone width (≤ 700 px)** the bar is one **Plan ▾** button, its drop-down lists New · Meine Touren · Import GPX · Save
+  (a dot while unsaved) · Save as · Export GPX · To phone · Phone · Help · the app (paired: the phone's name + dot instead of
+  To phone · Phone); "Planner" in the brand goes below 401 px.
   No header overflow from 320 to 1920 px (sheet-smoke measures 320, 390, 720, 860, 1000, 1180, 1440).
 - The plan sheet keeps ⇅ Umkehren · ↻ Rundtour and Teilen; ✕ Neu planen left it (owner 2026-11-06, §14.2 point 5).
 - Plans without a phone live only in this browser's storage (IndexedDB / localStorage, no cookie) – a private window or

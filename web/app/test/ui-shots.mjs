@@ -62,7 +62,7 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
   for (const st of ['none', 'fresh', 'stale']) {
     if (name === 'phone' && st !== 'stale') continue;
     await fake(st);
-    if (name === 'phone') { await page.click('#menuBtn'); await page.click('#menuPhone'); } else await page.click('#phoneMore');
+    if (name === 'phone') { await page.click('#menuBtn'); await page.click(await page.isVisible('#menuPhone') ? '#menuPhone' : '#syncBadge'); } else await page.click(await page.isVisible('#phoneMore') ? '#phoneMore' : '#syncBadge');
     await page.waitForSelector('dialog.phone[open]');
     await page.screenshot({ path: path.join(out, `${name}-phone-${st}.png`) });
     if (st === 'fresh') {

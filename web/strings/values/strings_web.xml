@@ -216,7 +216,7 @@
     <string name="web_plans_old_phone">The plans of %1$s are still in this browser – the Phone window lists them.</string>
     <string name="web_plans_old_phone_open">Open Phone window</string>
     <string name="web_copy_suffix">(copy)</string>
-    <string name="web_save_title_phone">Save – sends your changes to %1$s</string>
+    <string name="web_save_also_phone">Save – to the phone too (%1$s)</string>
     <string name="web_save_title_local">Save the plan in this browser</string>
     <string name="web_sync_full_hint">Mailbox full – too many saved plans. Delete some on the phone, then save again.</string>
     <string name="web_pair_other">Pair another phone</string>
@@ -280,7 +280,6 @@
     <string name="web_save_more">More ways to save</string>
     <string name="web_save_as">Save as …</string>
     <string name="web_to_phone">To phone</string>
-    <string name="web_to_phone_title">Save and send to %1$s</string>
     <string name="web_to_phone_pair">Pair your phone, then the plan goes onto it</string>
     <string name="web_phone_menu">Phone connection …</string>
 </resources>

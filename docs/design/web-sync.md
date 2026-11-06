@@ -448,9 +448,12 @@ phone sit in ONE group on the left with + Neu and Meine Touren; at phone width a
   import, routes waiting for the phone (below); otherwise **light with ✓** ("✓ Gespeichert" / "✓ Saved"); **greyed**
   when there is nothing at all; **amber** when the mailbox is full (507, nothing lost). One click asks the name (the
   app's rule since 2026-10-31) and sends everything waiting. ▾ = Speichern unter · GPX exportieren.
-- **Aufs Handy** (`#syncBadge`): always that label. Not paired → the pairing window at once; once paired and closed the
-  open plan follows (Save). Paired → the same as Save, with the dot (🟢, 🟡 when the phone was away > 24 h) and a small
-  second line "Pixel 8 · abgeglichen vor 2 Min.". ▾ → the Phone window.
+- **Paired, Save goes to the phone too** (owner 2026-11-06): the Save button carries a small 📱 on its icon, its label stays
+  „Speichern“, its tooltip „Speichern – auch aufs Handy (‹phone›)“.
+- **Aufs Handy** (`#syncBadge`): not paired „📱 Aufs Handy“ → the pairing window at once; once paired and closed the open
+  plan follows (Save); ▾ → the Phone window. **Paired** it is no second Save: an icon-only phone status – 📱 with the dot
+  (🟢, 🟡 when the phone was away > 24 h), tooltip „Pixel 8 · abgeglichen vor 2 Min.“; a click opens the Phone window (no
+  ▾). Phone width: Plan ▾ shows the phone's name with the dot in its place (no second Phone entry).
 
 **My routes – one plain list** (title, rows, Close):
 ```

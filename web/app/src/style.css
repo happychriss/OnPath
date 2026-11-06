@@ -409,6 +409,14 @@ dialog.share .scanline { margin: 0 0 8px; font-weight: 600; }
 .phonebtn .l1 { display: inline-flex; align-items: center; gap: 6px; }
 .phonebtn .sub { font-size: 11px; font-weight: 500; color: var(--muted); max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
 .phonebtn .sub[hidden] { display: none; }
+/* paired (owner 2026-11-06): Save carries a small phone – it sends too; Aufs Handy shrinks to 📱 + dot (the phone status) */
+.saveic { position: relative; display: inline-flex; }
+.savephone { position: absolute; right: -6px; bottom: -5px; display: inline-flex; padding: 1px; border-radius: 50%; background: var(--bg); line-height: 0; }
+.savebtn.unsaved .savephone { background: var(--green); color: #fff; }
+.phonebtn.paired .lbl, .phonebtn.paired .sub { display: none; }
+.phonebtn.paired { padding: 0 10px; }
+.split > .pb.phonebtn.paired:first-child { border-radius: 18px; padding-right: 10px; }
+.pb[hidden], .splitmore[hidden] { display: none !important; }
 .syncdot { width: 9px; height: 9px; border-radius: 50%; background: var(--good); flex: none; }
 .syncdot[hidden] { display: none; }
 .syncdot[data-kind="stale"] { background: var(--weak); } /* paired, the phone has not synced for a day */
@@ -443,6 +451,7 @@ a.quietbtn { padding: 0 8px; }
   .planbar.open .pb:hover:not(:disabled) { background: var(--site-soft); }
   .planbar.open .savebtn.unsaved .lbl::after { content: ''; display: inline-block; width: 8px; height: 8px; margin-left: 8px; border-radius: 50%; background: var(--green); vertical-align: middle; }
   .planbar.open .savebtn[data-state="full"] { color: var(--warn); }
+  .planbar.open .phonebtn.paired .lbl { display: inline; }
   .planbar.open .pb[hidden] { display: none; }
   .planbar.open .sep { display: block; height: 1px; margin: 6px 0; background: var(--line); }
   .planbar.open .phonebtn .lines { display: flex; }
