@@ -557,8 +557,15 @@ async function drawPoints() {
       ${row.legText ? `<span class="leg muted">${escapeHtml(row.legText)}</span>` : '<span class="leg"></span>'}
       <button class="del iconbtn" aria-label="${escapeHtml(t('web_delete_point', row.name))}">${icon('close', 20)}</button></li>`;
   }).join('');
-  $<HTMLButtonElement>('roundTrip').disabled = n < 2 || state.roundTrip;
-  $<HTMLButtonElement>('reverse').disabled = n < 2;
+  // "↻ Rundtour" is a switch (the app's PlanAction on=, owner 2026-11-06, onpath.private#40): filled with ✓ on a round
+  // trip, a click takes the way back out; "⇅ Umkehren" grey when backwards is the same plan (A → B → A)
+  const loop = $<HTMLButtonElement>('roundTrip');
+  loop.disabled = !(state.roundTrip || (n >= 2 && (r.canRoundTrip ?? true)));
+  loop.classList.toggle('on', state.roundTrip);
+  loop.setAttribute('aria-pressed', String(state.roundTrip));
+  loop.title = state.roundTrip ? t('plan_round_trip_on_desc') : '';
+  loop.innerHTML = `${icon(state.roundTrip ? 'check' : 'loop', 18)}${escapeHtml(t('plan_round_trip'))}`;
+  $<HTMLButtonElement>('reverse').disabled = n < 2 || !(r.canReverse ?? true);
   $('pointsSection').hidden = n === 0;
   $('planActions').hidden = n === 0; // the app's RouteRules.canClear: something to close
   for (const id of ['newPlan', 'menuNewPlan']) $<HTMLButtonElement>(id).disabled = n === 0; // New plan: the same rule as ✕ Neu planen

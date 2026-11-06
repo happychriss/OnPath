@@ -69,7 +69,9 @@ await page.click('#roundTrip');
 await planned(bike);
 check((await page.textContent('#points')).includes('↺'), 'round trip: start shown with ↺ (PlanPoints rows)');
 check(await page.evaluate(() => document.querySelectorAll('.pin').length) === 3, 'round trip: 3 markers (closing point not drawn twice)');
-check(await page.isDisabled('#roundTrip'), 'Round trip greyed out once it is one');
+check(!(await page.isDisabled('#roundTrip')) && await page.evaluate(() => document.getElementById('roundTrip').classList.contains('on'))
+  && await page.getAttribute('#roundTrip', 'aria-pressed') === 'true',
+  'Round trip is a switch: on (filled, ✓) once it is one, still clickable (onpath.private#40)');
 
 // point menu on point 2 → "Start & finish here" rotates the loop
 const loopBefore = await page.textContent('#points');
@@ -123,11 +125,29 @@ await page.click('#points li:first-child .del');
 await page.waitForFunction((h) => location.hash !== h, hashBefore, { timeout: 10_000 }).catch(() => {});
 await page.waitForTimeout(500);
 const pinsAfter = await page.evaluate(() => document.querySelectorAll('.pin').length);
-check(pinsAfter === pinsBefore - 1 && (await page.textContent('#points')).includes('↺') && await page.isDisabled('#roundTrip'),
+check(pinsAfter === pinsBefore - 1 && (await page.textContent('#points')).includes('↺') && await page.getAttribute('#roundTrip', 'aria-pressed') === 'true',
   `✕ on a round trip's start: the loop stays closed (${pinsBefore} → ${pinsAfter} markers, ↺ still there)`);
 await page.click('#undo');
 await page.waitForFunction((h) => location.hash === h, hashBefore, { timeout: 10_000 }).catch(() => {});
 check(await page.evaluate(() => location.hash) === hashBefore, 'undo brings the deleted start back');
+
+// the round trip switched off again (#40): the way back goes (A → B → C → A → A → B → C), the button is plain again
+const loopN = await page.evaluate(() => document.querySelectorAll('.pin').length);
+const hashLoop = await page.evaluate(() => location.hash);
+await page.click('#roundTrip');
+await page.waitForFunction((h) => location.hash !== h, hashLoop, { timeout: 10_000 }).catch(() => {});
+await page.waitForFunction(() => document.getElementById('roundTrip').getAttribute('aria-pressed') === 'false', null, { timeout: 10_000 }).catch(() => {});
+check(await page.getAttribute('#roundTrip', 'aria-pressed') === 'false' && !(await page.textContent('#points')).includes('↺')
+  && await page.evaluate(() => document.querySelectorAll('.pin').length) === loopN && !(await page.isDisabled('#roundTrip')),
+  'Round trip off: no ↺ any more, the same markers (the closing point went), the switch is off and can go on again');
+// reverse greyed out when backwards is the same plan (the engine's flags, the app's PlanEdits.reverseChanges)
+const flags = await page.evaluate(async () => {
+  const e = window.__engine, a = [46.67, 11.16], b = [46.68, 11.17];
+  const [same, diff] = [await e.rows([a, b, a], ''), await e.rows([a, b], '')];
+  return { same: same.canReverse, diff: diff.canReverse, loop: same.canRoundTrip };
+});
+check(flags.same === false && flags.diff === true && flags.loop === true,
+  `Reverse greyed out for A → B → A only, Round trip switchable (${JSON.stringify(flags)})`);
 
 // reverse
 const beforeRev = await page.evaluate(() => location.hash);

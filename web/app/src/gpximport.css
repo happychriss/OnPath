@@ -7,7 +7,11 @@
 #trackPanel .trackerror { color: var(--error); font-size: 14px; }
 #trackPanel .trackprofile svg { display: block; width: 100%; height: auto; }
 #trackPanel button.primary { height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-#trackPanel button.primary.busy::before { content: ""; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
+/* "Plan from it" is planning = blue (the app's TrackPanel: an outlined ActionEdit button, owner's colour rule 2026-11-06 F1) */
+#trackPanel #planFromTrack { background: none; color: #2E6A9E; border: 1.5px solid #2E6A9E; }
+#trackPanel #planFromTrack.busy svg { display: none; } /* the spinner takes the sign's place, as in the app */
+#trackPanel #planFromTrack:disabled { color: rgba(46,106,158,.38); border-color: rgba(46,106,158,.38); }
+#trackPanel button.primary.busy::before { content: ""; width: 16px; height: 16px; border: 2px solid rgba(46,106,158,.3); border-top-color: #2E6A9E;
   border-radius: 50%; animation: gpxspin 0.8s linear infinite; }
 @keyframes gpxspin { to { transform: rotate(360deg); } }
 #map.gpxdrop { outline: 4px dashed #8E24AA; outline-offset: -8px; }

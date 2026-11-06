@@ -78,7 +78,8 @@ export type Progress = { phase: 'download'; bytes: number } | { phase: 'route' }
 export interface PointRow { i: number; role: 'START' | 'STOP' | 'GOAL'; name: string; legM: number | null; approx: boolean; loop: boolean;
   /** The app's PlanPoints.roleText / legText: the role under the name (null = none) and "+2.3 km" / "~850 m" / "↺ 1.2 km". */
   roleText: string | null; legText: string | null }
-export interface PointRows { roundTrip: boolean; rows: PointRow[] }
+/** roundTrip: the plan is one; canRoundTrip / canReverse: the plan row's switches as the app's PlanUi (onpath.private#40). */
+export interface PointRows { roundTrip: boolean; canRoundTrip?: boolean; canReverse?: boolean; rows: PointRow[] }
 
 /** One search result (the app's SearchHit, with the app's row texts). */
 export interface Hit {

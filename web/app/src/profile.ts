@@ -31,7 +31,9 @@ export function profileSvg(p: Profile, W = 300, H = 90, extra = '', inPlot = '')
   if (d.length < 2) return '';
   const total = d[d.length - 1] || 1;
   const lo = Math.min(...ele), hi = Math.max(...ele);
-  return `<div class="profhead muted"><span>${Math.round(lo)} – ${Math.round(hi)} m</span>${extra}</div>
+  // the app's ProfileAxis.labels (owner's Pixel 2026-11-06, "47 m" over "46 m"): heights that read the same → only the top
+  const range = Math.round(lo) === Math.round(hi) ? `${Math.round(hi)} m` : `${Math.round(lo)} – ${Math.round(hi)} m`;
+  return `<div class="profhead muted"><span>${range}</span>${extra}</div>
     <div class="profplot"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${t('plan_elevation_profile')}">${bars(p, W, H)}</svg>${inPlot}</div>
     <div class="axis muted"><span>0</span><span>${number(total / 1000, 1)} km</span></div>`;
 }

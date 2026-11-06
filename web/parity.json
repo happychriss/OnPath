@@ -7,7 +7,7 @@
       "web": [
         "web/app/src/activity.ts"
       ],
-      "blob": "62f5322b01a02100584bfe58e51513b0b92ff93d"
+      "blob": "fe142ad2c006dba589109df3500e10e5b9bb4fc7"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
@@ -57,7 +57,7 @@
       "web": [
         "web/app/src/plans.ts"
       ],
-      "blob": "d5eca3cc90ae0705f70a96dded5c04bf509583b1"
+      "blob": "679e72fe85faffd5fac610d59a22e230d00b28bf"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapFooter.kt",
@@ -66,7 +66,7 @@
         "web/app/src/position.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "bdb812b825c17a4e2f19ff04ffd975b071a55985"
+      "blob": "e2638a348e2cd51dca77c2bb62ce8259e701c747"
     },
     {
       "app": "app/src/main/java/com/onpath/app/recording/LocationTracker.kt",
@@ -133,7 +133,7 @@
       "web": [
         "web/app/src/profile.ts"
       ],
-      "blob": "350724936304e51665556164829c4a4b6e8a2cef"
+      "blob": "3bb053824f0563a2456a6232a160b2b7a0029176"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/TourBar.kt",
@@ -155,7 +155,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "6f968431ebdf8648bf40b3878c030de116c0dfb0"
+      "blob": "137aa12d173edcc8635009d5d733a1d2e8b5bf0e"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -163,7 +163,7 @@
       "web": [
         "web/app/src/gpximport.ts"
       ],
-      "blob": "e3c5d553fbc4ac6a03e5178ef2500a7aa7811b5e"
+      "blob": "28fe3efe067d604f8e1f545ecff465ed1da65373"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PointsSection.kt",

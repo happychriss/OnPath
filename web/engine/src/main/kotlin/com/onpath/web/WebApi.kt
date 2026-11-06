@@ -381,8 +381,10 @@ object Engine {
     fun edit(op: String, points: String, index: Int, to: Int): String {
         val w = parsePoints(points)
         val out = when (op) {
-            "reverse" -> PlanEdits.reverse(w)
-            "roundTrip" -> PlanEdits.roundTrip(w)
+            // the app's AppViewModel.reverseRoute / roundTrip (owner 2026-11-06, onpath.private#40): Reverse only when it
+            // changes the plan; Round trip is a switch – on a round trip it takes the way back out (A → B → A → A → B)
+            "reverse" -> if (PlanEdits.reverseChanges(w)) PlanEdits.reverse(w) else w
+            "roundTrip" -> if (PlanEdits.isRoundTrip(w)) PlanEdits.unRoundTrip(w) else PlanEdits.roundTrip(w)
             "startHere" -> PlanEdits.startHere(w, index)
             // the app's loop-aware edits (routing/PlanPoints): a round trip stays closed – map menu Delete and the
             // Points list ✕ ([index] = plan index; the closing point is the start's row), the Points list drag (rows)
@@ -407,7 +409,12 @@ object Engine {
                 // the row texts (the app's PointsSection, shared since 1d35cc5b – web review M15): the page only renders them
                 ",\"roleText\":" + (PlanPoints.roleText(r)?.let { str(it) } ?: "null") +
                 ",\"legText\":" + (PlanPoints.legText(r)?.let { str(it) } ?: "null") + "}"
-        } .let { "{\"roundTrip\":" + PlanEdits.isRoundTrip(w) + ",\"rows\":" + it + "}" }
+        } .let {
+            // the plan row's switches as the app's PlanUi (#40): canRoundTrip = on, or ≥ 2 points not ending in a loop yet;
+            // canReverse = backwards is a different plan (not A → B → A)
+            "{\"roundTrip\":" + PlanEdits.isRoundTrip(w) + ",\"canRoundTrip\":" + (PlanEdits.isRoundTrip(w) || PlanEdits.canRoundTrip(w)) +
+                ",\"canReverse\":" + PlanEdits.reverseChanges(w) + ",\"rows\":" + it + "}"
+        }
     }
 
     /**
