@@ -129,9 +129,9 @@ fun MapControls(
     peeking: Boolean = false,
     /** "Show whole route" (shown only when there is a line to show, [WholeRoute.shows]). */
     onFitRoute: (() -> Unit)? = null,
-    /** Plan: undo the last edit (shown only when there is something to undo). */
+    /** Plan: undo the last edit (null = nothing to undo: the button stays, greyed). */
     onUndo: (() -> Unit)? = null,
-    /** Plan: redo the last undone edit (shown only when there is something to redo). */
+    /** Plan: redo the last undone edit (null = nothing to redo: the button stays, greyed). */
     onRedo: (() -> Unit)? = null,
     /** Navigate: the navigation settings on the way – a gear on top of the controls. */
     onSettings: (() -> Unit)? = null,
@@ -154,8 +154,14 @@ fun MapControls(
         add(str(Res.string.plan_hold_hide_route) to { EyeControl(onPeek, peeking, size, tint, enabled = showEye) })
         add(str(Res.string.plan_show_whole_route) to { IconControl(Icons.Filled.FitScreen, Res.string.plan_show_whole_route,
             onFitRoute ?: {}, size, tint, enabled = onFitRoute != null) })
-        if (onUndo != null) add(str(Res.string.plan_undo) to { IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo, size, tint) })
-        if (onRedo != null) add(str(Res.string.plan_redo) to { IconControl(Icons.AutoMirrored.Filled.Redo, Res.string.plan_redo, onRedo, size, tint) })
+        // Plan: undo and redo always there, greyed when there is nothing to undo / redo (owner 2026-11-06: "das gibt
+        // Vertrauen, dass man immer alles neu machen und wiederholen kann") – the column always has the same height
+        if (plan) {
+            add(str(Res.string.plan_undo) to { IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo ?: {}, size, tint,
+                enabled = onUndo != null) })
+            add(str(Res.string.plan_redo) to { IconControl(Icons.AutoMirrored.Filled.Redo, Res.string.plan_redo, onRedo ?: {}, size, tint,
+                enabled = onRedo != null) })
+        }
         if (!plan) add(locate) // Navigate: locate at the bottom, as before
     }
     val items = tips.mapIndexed { i, (text, control) -> @Composable { MapTip(text, i == tipShown) { control() } } }

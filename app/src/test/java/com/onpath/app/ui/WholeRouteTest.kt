@@ -131,7 +131,8 @@ class WholeRouteTest {
         // Navigate only: where you are counts
         assertTrue(body.contains("takeIf { mode == AppMode.NAVIGATE }"))
         val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertTrue(screen.contains("onFitRoute = if (vm.wholeRouteShown(mode, pointsOpen)) vm::showWholeRoute else null"))
+        // the same rule, through MapControlsEnabled (greyed instead of hidden, owner 2026-11-06)
+        assertTrue(screen.contains("onFitRoute = if (MapControlsEnabled.wholeRoute(ctl)) vm::showWholeRoute else null"))
         assertTrue(screen.contains("is UiEvent.Fit -> c.fitTo(e.points, fitPadding(), e.northUp)"))
     }
 

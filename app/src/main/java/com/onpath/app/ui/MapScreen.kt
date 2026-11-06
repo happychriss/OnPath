@@ -101,19 +101,20 @@ fun MapScreen(
         // the points step leaves little map: only Undo + locate (the compass would sit over ☰)
         val pointsOpen = mode == AppMode.PLAN && vm.planSize == PlanSize.FULL && vm.shown == null && vm.cardPlace == null
             // measured, no state: a fit reads it when it happens
+            val ctl = vm.controlsIn(mode, pointsOpen)
             Box(if (mode == AppMode.PLAN) Modifier.onSizeChanged { planFab[0] = it.width; planFab[1] = it.height } else Modifier) {
                 MapControls(
                     // same cycle in both modes: turned by hand → north up → walking direction up → north up (AppViewModel.onCompass)
                     compass = if (pointsOpen) null
                         else CompassSpec(vm.headingUp && vm.followMe, bearing) { vm.onCompass(kotlin.math.abs(bearing) > 1f) },
-                    showEye = !pointsOpen && (vm.route != null || vm.shown != null || vm.followLine != null),
+                    // eye, whole route, undo, redo: always there, greyed when they cannot act (MapControlsEnabled)
+                    showEye = MapControlsEnabled.eye(ctl),
                     onPeek = { vm.routePeek = it },
                     // under the eye: the whole line + its points (Navigate: + where you are), following stops
-                    onFitRoute = if (vm.wholeRouteShown(mode, pointsOpen)) vm::showWholeRoute else null,
+                    onFitRoute = if (MapControlsEnabled.wholeRoute(ctl)) vm::showWholeRoute else null,
                     gps = gps, following = vm.followMe, onLocate = onLocate,
-                    onUndo = if (mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
-                    // Undo and Redo side by side as map buttons; Redo only when there is something to redo
-                    onRedo = if (mode == AppMode.PLAN && vm.canRedo && vm.shown == null) vm::redoStep else null,
+                    onUndo = if (MapControlsEnabled.undo(ctl)) vm::undoStep else null,
+                    onRedo = if (MapControlsEnabled.redo(ctl)) vm::redoStep else null,
                     onSettings = if (mode == AppMode.NAVIGATE) { { vm.navSettingsOpen = true } } else null,
                     plan = mode == AppMode.PLAN, // Plan is blue (owner 2026-11-03), Navigate unchanged
                 )

@@ -2450,6 +2450,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun wholeRouteShown(layer: AppMode, pointsOpen: Boolean): Boolean =
         WholeRoute.shows(layer, pointsOpen, hasPlanLine(), hasShownLine(), hasFollowLine())
 
+    /** What the map column's greyed buttons need to know ([MapControlsEnabled]). */
+    internal fun controlsIn(layer: AppMode, pointsOpen: Boolean) = MapControlsEnabled.In(layer, pointsOpen,
+        planLine = hasPlanLine(), shownLine = hasShownLine(), shownOpen = shown != null, followLine = hasFollowLine(),
+        canUndo = canUndo, canRedo = canRedo)
+
     private fun hasPlanLine() = (route?.points?.size ?: 0) >= 2
     private fun hasShownLine() = (shown?.segments?.sumOf { it.size } ?: 0) >= 2
     private fun hasFollowLine() = (followLine?.size ?: 0) >= 2
