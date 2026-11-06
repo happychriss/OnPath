@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+: the system's own start surface (shown only until the first frame – no artificial delay) on paper,
+         the app icon in the middle and the wordmark "OnPath" at the bottom (owner 2026-11-07, branding image 200x80 dp). -->
+    <style name="Theme.OnPath" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@color/onpath_paper</item>
+        <item name="android:windowSplashScreenBackground">@color/onpath_paper</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="android:windowSplashScreenBrandingImage">@drawable/splash_wordmark</item>
+    </style>
+</resources>

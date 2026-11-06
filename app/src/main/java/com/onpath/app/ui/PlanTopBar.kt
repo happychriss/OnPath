@@ -258,6 +258,9 @@ private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
 @Composable
 internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     val st = menu.state
+    // the menu head: logo + name, no line under it (owner 2026-11-07 – "sonst weiß keiner, womit er arbeitet")
+    OnPathWordmark(28.dp, MaterialTheme.typography.titleLarge,
+        Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 14.dp))
     menu.onPhoneSetup?.let { p ->
         MenuItem(Icons.Outlined.WarningAmber, str(Res.string.settings_page_phone), enabled = st.settings, tint = OnPathColors.Error) { close(); p() }
         HorizontalDivider()

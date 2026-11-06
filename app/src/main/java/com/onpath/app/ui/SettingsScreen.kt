@@ -835,8 +835,16 @@ private fun AboutSection(version: String, devTools: Boolean = true, onUnlockDevT
     var taps by remember { mutableStateOf(0) }
     Section(SettingsPage.ABOUT.title) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            // big logo + name on top (owner 2026-11-07)
+            Column(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                OnPathLogo(80.dp)
+                Spacer(Modifier.height(12.dp))
+                Text(Brand.NAME, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold,
+                    letterSpacing = Brand.Tracking), color = OnPathColors.Walnut)
+            }
             // tapped 7 times: Developer tools in Diagnostics (the Android convention); remembered
-            Text("OnPath $version", fontWeight = FontWeight.SemiBold,
+            Text("${Brand.NAME} $version", textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).wrapContentHeight(Alignment.CenterVertically)
                     .clickable(enabled = !devTools, indication = null,
                         interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) {
