@@ -271,5 +271,48 @@ class CoreFieldE2ETest : E2EBase() {
         scenario.onActivity { vm(it).tours.filter { t -> t.name == name }.forEach { t -> db.deleteTour(t.id) } }
     }
 
+    /**
+     * Field bug (owner 2026-11-06, onpath.private#39): during a tour the START of a start → goal plan was deleted (hold →
+     * Delete) – the plan had one point left, the sheet said "Neuer Plan", but the tour still followed the OLD line with
+     * the deleted start. Owner: one point left during a tour = "Hierhin": the plan becomes position → that point, the
+     * sheet shows that route and the tour follows exactly it. Undo brings the plan and its guidance back.
+     */
+    @Test fun deletingTheStartDuringATourRoutesFromHereToTheOnePointLeft() {
+        startPlanWithTwoPoints()
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the route is followed", 20_000) { guided() }
+        var plan: List<GeoPoint> = emptyList()
+        var oldLine: List<GeoPoint>? = null
+        scenario.onActivity { plan = vm(it).waypoints.toList(); oldLine = vm(it).followLine }
+        val goal = plan[1]
+        scenario.onActivity { vm(it).switchToPlan() }
+        waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+        // as in the field: hold on point 1 → Delete
+        scenario.onActivity { vm(it).openPointMenu(0, via = "e2e"); vm(it).deletePointFromMenu() }
+        waitUntil("the plan is position → the point left", 20_000) {
+            val w = waypointList(); w.size == 2 && w[1] == goal && w[0] != plan[0]
+        }
+        waitUntil("the sheet has a route for it", 30_000) { var ok = false; scenario.onActivity { ok = (vm(it).route?.points?.size ?: 0) >= 2 }; ok }
+        waitUntil("the tour follows position → the point left, not the old line", 30_000) {
+            var ok = false
+            scenario.onActivity {
+                val l = vm(it).followLine
+                val here = vm(it).tracker.location.value?.let { p -> GeoPoint(p.latitude, p.longitude) }
+                ok = l != null && l != oldLine && here != null &&
+                    com.onpath.app.data.Geo.distance(l.first(), here) < 150.0 &&
+                    com.onpath.app.data.Geo.distance(l.last(), goal) < 150.0
+            }
+            ok
+        }
+        assertTrue("the recording goes on", recording())
+        scenario.onActivity { vm(it).undoStep() }
+        waitUntil("Undo: the two points from before", 10_000) { waypointList() == plan }
+        waitUntil("Undo: the old guidance again", 30_000) { var ok = false; scenario.onActivity { ok = vm(it).followLine == oldLine }; ok }
+        val trace = com.onpath.app.debug.Problems.events().map { it.message }
+        assertTrue("traced: ${trace.take(30)}", trace.any { it.startsWith("One point left during the tour") })
+    }
+
     private fun waypointList(): List<GeoPoint> { var l: List<GeoPoint> = emptyList(); scenario.onActivity { l = vm(it).waypoints.toList() }; return l }
 }

@@ -1347,6 +1347,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Problems.trace("plan", "Edit during the tour left no point ahead: asking \"No destination ahead\"")
             sayEvent(RecordingService.SAY_NO_DESTINATION)
         }
+        oneLeftGoesFromHere(before)
         planChanged()
         endGuidanceIfPlanEmpty()
         nextCause = PlanStatus.Cause.PointEdit
@@ -1458,6 +1459,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.trace("plan", "All points deleted during the tour: route guidance ended, recording continues (Undo brings it back)")
         clearFollow()
         guidanceEndedByEmptyPlan = true
+    }
+
+    /**
+     * One point left after an edit during a tour ([PlanGuidance.oneLeftGoesFromHere], owner 2026-11-06,
+     * onpath.private#39): "Hierhin" – the plan becomes position → that point in the same Undo step (one Undo brings the
+     * plan from before), the sheet shows that route and the tour follows it as a whole new plan ([followEditedPlan]).
+     * Without a position the guidance ends as for an empty plan and a line says why; the recording goes on.
+     */
+    private fun oneLeftGoesFromHere(before: List<GeoPoint>) {
+        if (!PlanGuidance.oneLeftGoesFromHere(before.size, waypoints.size, recState.value != null, followLine != null,
+                followIsTrack, routeBackAsk)) return
+        val goal = waypoints.single()
+        val pos = myPosition()
+        if (pos == null) {
+            Problems.trace("plan", "One point left during the tour, no position: route guidance ended, recording continues")
+            pendingSplit = null
+            clearFollow()
+            guidanceEndedByEmptyPlan = true
+            sayError(Txt.s(Res.string.msg_one_point_no_position), NoticePlace.MAP)
+            return
+        }
+        pendingSplit = null // a whole new plan from here, nothing of it passed
+        waypoints.clear(); waypoints.addAll(listOf(pos, goal))
+        cellsForNewPoints(before, waypoints)
+        prefs.planWaypoints = waypoints.toList()
+        Problems.trace("plan", "One point left during the tour: plan = position → that point (like Hierhin)")
     }
 
     /** Forget pinned points that are neither planned nor reachable by undo/redo. */
@@ -1890,11 +1917,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun step(prev: List<GeoPoint>?, what: String) {
         if (prev == null) { Problems.trace("plan", "$what: nothing to ${what.lowercase()}"); return }
         Problems.trace("plan", "$what: plan ${waypoints.size} → ${prev.size} points")
-        routingSpot = RoutingSpot.of(waypoints.toList(), prev)
-        val split = splitOf(waypoints.toList(), prev)
+        val before = waypoints.toList()
+        routingSpot = RoutingSpot.of(before, prev)
+        val split = splitOf(before, prev)
         waypoints.clear(); waypoints.addAll(prev)
         canUndo = history.canUndo; canRedo = history.canRedo
         routeBackAsk = split == TourSplit.Outcome.NothingAhead // the plan an open question was about is gone
+        oneLeftGoesFromHere(before)
         closePointMenu("undo / redo"); firstPointMenu = null
         prefs.planWaypoints = waypoints.toList()
         planEditPending = true

@@ -91,4 +91,23 @@ class PlanGuidanceTest {
         val shown = vm.substringAfter("fun followShown(").substringBefore("\n    }")
         assertTrue(shown, shown.contains("planAtTrackFollow = waypoints.toList()"))
     }
+
+    /** Owner 2026-11-06 (onpath.private#39): one point left during a tour = "Hierhin" (position → that point). */
+    @Test fun onePointLeftDuringATourGoesFromHere() {
+        // the field case: start of start → goal deleted while the tour follows the plan
+        assertTrue(PlanGuidance.oneLeftGoesFromHere(2, 1, recording = true, following = true, followIsTrack = false, routeBackAsk = false))
+        assertTrue(PlanGuidance.oneLeftGoesFromHere(3, 1, true, true, false, false))
+        // the goal deleted: "Route back to the start?" is asked instead
+        assertFalse(PlanGuidance.oneLeftGoesFromHere(2, 1, true, true, false, routeBackAsk = true))
+        // no tour, no followed plan, a followed track, a first point set on an empty plan, two points left: untouched
+        assertFalse(PlanGuidance.oneLeftGoesFromHere(2, 1, recording = false, following = false, followIsTrack = false, routeBackAsk = false))
+        assertFalse(PlanGuidance.oneLeftGoesFromHere(2, 1, true, following = false, followIsTrack = false, routeBackAsk = false))
+        assertFalse(PlanGuidance.oneLeftGoesFromHere(2, 1, true, true, followIsTrack = true, routeBackAsk = false))
+        assertFalse(PlanGuidance.oneLeftGoesFromHere(0, 1, true, true, false, false))
+        assertFalse(PlanGuidance.oneLeftGoesFromHere(3, 2, true, true, false, false))
+        // the view model asks after every edit and every Undo / Redo
+        val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        assertTrue(vm.substringAfter("private fun change(").substringBefore("\n    }\n").contains("oneLeftGoesFromHere(before)"))
+        assertTrue(vm.substringAfter("private fun step(").substringBefore("\n    }\n").contains("oneLeftGoesFromHere(before)"))
+    }
 }

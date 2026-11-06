@@ -19,6 +19,16 @@ object PlanGuidance {
     fun clearEndsGuidance(recording: Boolean, following: Boolean): Boolean = recording && following
 
     /**
+     * One point left during a tour (owner 2026-11-06, onpath.private#39 – the start of start → goal deleted on the way):
+     * it means "Hierhin" – the plan becomes position → that point and the tour follows it. Only after an edit that
+     * left exactly one of two or more points while a tour follows the planned route; not while "Route back to the
+     * start?" ([routeBackAsk], the goal was deleted) is open. A followed GPX track and a free recording are untouched.
+     */
+    fun oneLeftGoesFromHere(pointsBefore: Int, pointsAfter: Int, recording: Boolean, following: Boolean,
+                            followIsTrack: Boolean, routeBackAsk: Boolean): Boolean =
+        pointsBefore >= 2 && pointsAfter == 1 && recording && following && !followIsTrack && !routeBackAsk
+
+    /**
      * A route for the plan is ready: follow it again? Yes when the guidance was ended by emptying the plan and points
      * are back (Undo, or a new plan) while the tour still records.
      */
