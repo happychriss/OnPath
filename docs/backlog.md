@@ -83,17 +83,10 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Planer: 3D flyover along the route (owner 2026-11-06, D) – since 2026-11-06
 - [donald] 2026-11-06 evening (owner away, "mach alles fertig, entscheide selber"): branch donald-f1-c-box (F1 question, C green Navigation button, slim saved box, round trip switch #40, pill B #41, fixed map controls #43) → main + test APK; review bugs (tour name, past ETA, flat profile axis, N1 notification, new-plan text); then Walnuss #36 + colour rule, H1 – since 2026-11-06
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 
 ## Next
-- **[laptop] Planer: 3D flyover along the route (owner 2026-11-06, variant D of web-planner.md §19)** – after the plan bar and the
-  profile range selection (same files). In 3D: „▶ Abfliegen“ with pause / stop and speed 1× / 2×; the camera follows the route
-  looking ahead (smoothed bearing over a look-ahead window, no jitter in bends), pitch ~55° and enough height so it never dips
-  into a slope; the profile cursor (and the big profile's) moves along. Slow net: tiles load late – keep flying, no flat
-  fallback. Weak devices: lower speed / detail. No new data, no server. Smoke: start → camera moves along, pause holds, stop
-  returns to the framed 3D view.
 - ✓ [donald] 2026-11-06 evening on main (9f2c7b5a, gate --full + 19 E2E flows green on the emulator): C green "Navigation ›"
   button at the bottom of Plan during a tour (no "←"), F1 = one question "Dieser Tour folgen?" for a done tour tapped during
   a tour ("Als Plan übernehmen" in ⋮), slim "Tour gespeichert" box (OK only), "↻ Rundtour" switch + "Umkehren" grey when
