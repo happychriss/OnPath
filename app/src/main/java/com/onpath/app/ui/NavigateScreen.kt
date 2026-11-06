@@ -455,16 +455,16 @@ internal fun turnIcon(k: TurnKind): ImageVector = when (k) {
     TurnKind.U_TURN_RIGHT -> Icons.Filled.UTurnRight
 }
 
-/** Compass needle: red half pointing north with an "N" above it, grey half south. */
+/** Compass needle: ink-blue half pointing north with a walnut "N" above it, walnut-grey half south (owner 2026-11-07, no red). */
 @Composable
 internal fun NorthNeedle(modifier: Modifier) {
     val measurer = rememberTextMeasurer()
     Canvas(modifier) {
         val w = size.width; val h = size.height
         val cx = w / 2; val top = h * 0.36f; val bottom = h * 0.98f; val mid = (top + bottom) / 2; val half = w * 0.16f
-        drawPath(Path().apply { moveTo(cx, top); lineTo(cx + half, mid); lineTo(cx - half, mid); close() }, OnPathColors.Bad)
-        drawPath(Path().apply { moveTo(cx, bottom); lineTo(cx + half, mid); lineTo(cx - half, mid); close() }, Color(0xFF9E9E9E))
-        val label = measurer.measure("N", TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF333333)))
+        drawPath(Path().apply { moveTo(cx, top); lineTo(cx + half, mid); lineTo(cx - half, mid); close() }, OnPathColors.CompassNorth)
+        drawPath(Path().apply { moveTo(cx, bottom); lineTo(cx + half, mid); lineTo(cx - half, mid); close() }, OnPathColors.CompassSouth)
+        val label = measurer.measure("N", TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = OnPathColors.Walnut))
         drawText(label, topLeft = Offset(cx - label.size.width / 2f, top - label.size.height + 1f))
     }
 }
