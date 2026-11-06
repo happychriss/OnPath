@@ -88,10 +88,6 @@ the git log.
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 
 ## Next
-- **[laptop] Planer: „✕ Neu planen“ out of the plan row** (owner 2026-11-06: „wenn oben Neu in der Menüleiste ist, brauchen wir
-  das nicht mehr in der Box mit Umkehren und Rundtour“ – not urgent, with the next planner change). The row keeps ⇅ Umkehren ·
-  ↻ Rundtour; „+ Neu“ in the plan bar (phone: Plan ▾) is the one way. A deliberate difference to the app (its row keeps ✕) –
-  note it in web-planner.md §14 so the parity check does not bring it back; adjust the smokes that click `#clear`.
 - ✓ [donald] 2026-11-06 evening on main (9f2c7b5a, gate --full + 19 E2E flows green on the emulator): C green "Navigation ›"
   button at the bottom of Plan during a tour (no "←"), F1 = one question "Dieser Tour folgen?" for a done tour tapped during
   a tour ("Als Plan übernehmen" in ⋮), slim "Tour gespeichert" box (OK only), "↻ Rundtour" switch + "Umkehren" grey when
