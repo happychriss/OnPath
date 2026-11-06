@@ -263,6 +263,8 @@ fun NavigateOverlay(
     val unlocked = !lock || open
     // locking again without a choice (owner 2026-11-02, no ✕): a tap on the map or Android's back – paused the same
     val closableBar = lock && open
+    // the lock is off in the settings and a tour records: Pause | Planen at the bottom, ending only out of a pause
+    val lockOffBar = !lock && ui.recordedM != null
     androidx.activity.compose.BackHandler(enabled = closableBar) { open = false }
     // Android's back while a tour records (owner 2026-11-06, flow map N4): ask instead of leaving the app – a novice took
     // "app gone" for "tour gone" and might start a second one. A second back closes the question (= Bleiben).
@@ -288,7 +290,8 @@ fun NavigateOverlay(
                 var profileOpen by rememberSaveable { mutableStateOf(false) }
                 NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity,
                     onProfileScrub = onProfileScrub, onProfileRelease = onProfileRelease,
-                    actions = if (unlocked && ui.recordedM != null) ({ TourCardActions(ui.paused, onPause, onEnd, onClose = { open = false }) })
+                    // the lock off (owner 2026-11-06): no buttons in the card – Pause | Planen at the bottom ([LockOffBar])
+                    actions = if (unlocked && ui.recordedM != null && !lockOffBar) ({ TourCardActions(ui.paused, onPause, onEnd, onClose = { open = false }) })
                         else null)
             }
             download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
@@ -299,7 +302,8 @@ fun NavigateOverlay(
             val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
             // unlocked: ONE big blue "Plan" where the slider was (owner 2026-11-05, Navigate C), an open lock beside it locks again
-            if (unlocked) ChangePlanButton({ open = false; onSlideToPlan() }, bottom, onLock = if (closableBar) ({ open = false }) else null)
+            if (lockOffBar) LockOffBar(ui.paused, onPause, onEnd, onPlan = { open = false; onSlideToPlan() }, bottom)
+            else if (unlocked) ChangePlanButton({ open = false; onSlideToPlan() }, bottom, onLock = if (closableBar) ({ open = false }) else null)
             else SlideToPlan({ open = true }, bottom, recording = ui.recordedM != null, startFraction = slideStartFraction,
                 paused = ui.paused && ui.recordedM != null)
         }

@@ -37,7 +37,8 @@ class TourActionBarTest {
         val change = bar.substringAfter("fun ChangePlanButton(").substringBefore("\n}\n")
         assertTrue(change, change.contains("Res.string.nav_change_plan") && change.contains("OnPathColors.ActionEdit"))
         // in the card, directly under the route info; Plan ändern where the slider was
-        assertTrue(overlay, overlay.contains("actions = if (unlocked && ui.recordedM != null) ({ TourCardActions(ui.paused, onPause, onEnd, onClose = { open = false }) })"))
+        // (with the lock off the card has no buttons – LockOffBarTest)
+        assertTrue(overlay, overlay.contains("actions = if (unlocked && ui.recordedM != null && !lockOffBar) ({ TourCardActions(ui.paused, onPause, onEnd, onClose = { open = false }) })"))
         assertTrue(overlay, overlay.contains("ChangePlanButton({ open = false; onSlideToPlan() }, bottom, onLock = if (closableBar) ({ open = false }) else null)"))
         // lock / unlock (owner 2026-11-05): a closed lock on the slider's thumb; after unlocking "🔒 Sperren" as a full button
         // beside "Plan", equally wide (owner 2026-11-06: equal partners)

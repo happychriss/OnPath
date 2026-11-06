@@ -741,7 +741,10 @@ class ScreenshotTest {
     @Test fun navigateNotRecordingOpen() = paparazzi.snapshot { NavFrame(navUi.copy(recordedM = null), actions = true) }
 
     /** Settings → Navigation "Sperre beim Navigieren" off (owner 2026-11-05): no slider, the three actions at once. */
+    /** The lock off (owner 2026-11-06, variant 2): no buttons in the card, "⏸ Pause | ✎ Planen" at the bottom. */
     @Test fun navigateLockOff() = paparazzi.snapshot { NavFrame(navUi, lock = false) }
+    /** The lock off, paused: "Weiter · Beenden · round Planen" – ending only out of a pause. */
+    @Test fun navigateLockOffPaused() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true), lock = false) }
 
     @Test fun navigateFreePaused() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true)) }
 

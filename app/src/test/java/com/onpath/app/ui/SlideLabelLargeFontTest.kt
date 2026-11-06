@@ -30,6 +30,9 @@ open class SlideLabelLargeFontTest {
     @Test fun navigateActivitySheet() = shots.navigateActivitySheet()
     /** Without a recording: only "Plan ändern" behind it. */
     @Test fun navigateNotRecording() = shots.navigateNotRecording()
+    @Test fun navigateLockOff() = shots.navigateLockOff()
+    @Test fun navigateLockOffPaused() = shots.navigateLockOffPaused()
+    @Test fun planEmpty() = shots.planEmpty()
     @Test fun navigateActionsOpen() = shots.navigateActionsOpen()
     @Test fun navigatePausedOpen() = shots.navigatePausedOpen()
     @Test fun navigatePausedLocked() = shots.navigatePausedLocked()
