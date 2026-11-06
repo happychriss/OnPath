@@ -494,6 +494,35 @@ class ReleaseRundgang : E2EBase() {
         }
     }
 
+    /**
+     * 14 · Field bug 2026-11-06 (owner: Bike → Hike during a tour, the question came, "New route" – the navigation stayed
+     * as it was): the activity check → Hike → "New route" → the tour is navigated as Hike on the new line, and stays so.
+     * Unit test: ActivityCheckTest.aTakenSwitchKeepsTheRunningSessionsTokenSoTheServiceSavesIt.
+     */
+    @Test fun flow14_activitySwitchDuringATourIsTaken() {
+        planned(THEATRE, STATION)
+        startTour()
+        waitUntil("on the route", 30_000) { nav()?.shownAlongM != null }
+        val before = nav()!!.line
+        scenario.onActivity { vm(it).openActivityCheck() }
+        waitUntil("Hike checked", 90_000) {
+            read { vm -> vm.activityCheck?.rows?.firstOrNull { it.activity == Activity.HIKE }?.state } is com.onpath.app.ui.ActivityRowState.Ready
+        }
+        shot("1-check-sheet")
+        scenario.onActivity { vm(it).chooseActivity(Activity.HIKE) }
+        waitUntil("the switch question", 20_000) { (nav()?.prompt as? NavPrompt.Question)?.switch?.activity == Activity.HIKE }
+        assertNotNull("\"${NavText.TAKE}\" in the box", findFresh(By.text(NavText.TAKE), 10_000))
+        shot("2-switch-question")
+        clickText(NavText.TAKE)
+        waitUntil("navigated as Hike", 20_000) { nav()?.let { it.prompt == null && it.session?.activity == Activity.HIKE } == true }
+        Thread.sleep(3_000) // the service must not load the old session back (the bug did at once)
+        assertEquals("still Hike in the service", Activity.HIKE, nav()?.session?.activity)
+        assertEquals("the app follows", Activity.HIKE, read { it.activity })
+        assertFalse("the Bike line is not followed any more", sameLine(before, nav()!!.line))
+        assertFalse("no older-line drop", traced("Re-route result of an older line dropped"))
+        shot("3-hike")
+    }
+
     private fun share(text: String) {
         scenario.onActivity { a ->
             a.startActivity(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)

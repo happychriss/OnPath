@@ -147,6 +147,24 @@ class ActivityCheckTest {
         assertEquals(q.line, nav.state.line)
     }
 
+    /**
+     * Field bug 2026-11-06 (owner: Bike → Hike during a tour, "Take new route" – the navigation stayed as it was): the
+     * proposal comes from the app without a session token, the service then saw the taken switch as a re-route of an
+     * older line (NavSession.mayOverwrite) and loaded the old session back. The switch keeps the running session's token.
+     */
+    @Test fun aTakenSwitchKeepsTheRunningSessionsTokenSoTheServiceSavesIt() {
+        val running = session().copy(token = 1_762_000_000_000L)
+        val nav = Navigator(running)
+        walk(0.0 to 0.0, 600.0 to 0.0).forEach { nav.onFix(it) }
+        nav.proposeSwitch(proposal(600.0 to 0.0), 1800.0)
+        val q = nav.prompt as NavPrompt.Question
+        assertTrue(nav.take(q.id).activityChanged)
+        assertEquals(Activity.BIKE_TREKKING, nav.session.activity)
+        assertEquals(running.token, nav.session.token)
+        // what RecordingService.handle asks before it writes nav-session.json (the file holds the running session)
+        assertTrue(NavSession.mayOverwrite(running.token, nav.session.token))
+    }
+
     @Test fun keepClosesTheSwitchQuestionAndNothingChanges() {
         val nav = Navigator(session())
         walk(0.0 to 0.0, 600.0 to 0.0).forEach { nav.onFix(it) }

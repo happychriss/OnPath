@@ -330,8 +330,11 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val q = prompt as? NavPrompt.Question ?: return Step()
         if (q.id != id) return Step()
         q.switch?.let { sw ->
-            // a new tour line for the new activity: it becomes the original (the old one was for the wrong activity)
-            session = sw.session.copy(version = session.version + 1, reached = true)
+            // a new tour line for the new activity: it becomes the original (the old one was for the wrong activity).
+            // The running session's token stays: the proposal comes without one, and the service writes a session only
+            // over its own token (NavSession.mayOverwrite) – with the proposal's the switch was dropped as an old
+            // re-route and the old line came back (field bug 2026-11-06)
+            session = sw.session.copy(version = session.version + 1, reached = true, token = session.token)
             original = NavLine(session.original)
             leftAtM = 0.0
             detector.setLine(original, 0.0, assumeOnRoute = true)

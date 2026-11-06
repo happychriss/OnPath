@@ -1,7 +1,7 @@
 # Release-Rundgang (release walkthrough)
 
 Owner 2026-10-31: a fixed list of real user flows played automatically in the emulator with the demo ride – about
-6 minutes on donald (13 flows), no human. Pushing a build to the phone needs no extra test (as before).
+6 minutes on donald (14 flows), no human. Pushing a build to the phone needs no extra test (as before).
 
 **Rule: the Rundgang is OPTIONAL** (owner 2026-10-31 evening, "it takes too long"; replaces "mit donald = Rundgang")
 - A **normal release** = the unit + screenshot gate (`tools/ci/gate.sh` – skips itself on a CI-green base) + GitHub's smoke test.
@@ -59,3 +59,4 @@ Meran (Theatre → station, ~1.4 km), one assertion per step, a screenshot per k
 | 11 | During a tour deletes a point ahead (field bug Hilden 2026-10-31) | The tour follows position → the rest at once, no question; the passed start stays in the plan (`TourSplitTest`) |
 | 12 | Rides past points 1 and 2, deletes the destination → Back to the start → Undo | "No destination ahead any more." → the tour follows position → start; Undo brings the destination back |
 | 13 | Pairs with the browser while a tour records (field bug 2026-10-31: "the phone says paired and the planner says nothing") | The phone's hello reaches the browser at once (a one-off handshake), the phone sees the browser (connected); no route goes up; Browser sync says "Routes sync after the tour" (`CorePlanSyncTest.pairingDuringATourSaysHelloButTheRoutesWaitForTheTourEnd`; mailbox in memory as in 8) |
+| 14 | During a tour (Bike) opens the activity check → Hike → "New route" (field bug 2026-11-06: the question came, the navigation stayed Bike) | The tour is navigated as Hike on the new line and stays so; the service never drops the switch as an older line (`ActivityCheckTest.aTakenSwitchKeepsTheRunningSessionsTokenSoTheServiceSavesIt`) |
