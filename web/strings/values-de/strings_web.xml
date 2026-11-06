@@ -258,7 +258,6 @@
     <!-- die Plan-Leiste (Owner 2026-11-06, A) -->
     <string name="web_plan_menu">Plan</string>
     <string name="web_plan_new">Neu</string>
-    <string name="web_plan_open">Öffnen</string>
     <string name="web_save_more">Weitere Arten zu speichern</string>
     <string name="web_save_as">Speichern unter …</string>
     <string name="web_to_phone">Aufs Handy</string>

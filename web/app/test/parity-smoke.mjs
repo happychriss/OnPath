@@ -138,8 +138,8 @@ check(await pins() === 2, 'Points list ✕ deletes the point');
 
 // 6. Export GPX (the app's GpxWriter) – in Share since the sheet has no ⋯ (owner 2026-10-31)
 await planned();
-check(await page.locator('#sheetMenuBtn').count() === 0 && await page.isVisible('#planActions #clear') && await page.isVisible('#planActions #reverse') && await page.isVisible('#planActions #roundTrip'),
-  'plan sheet without ⋯: ✕ Close · ⇅ Reverse · ↻ Round trip under the summary (the app\'s PlanActions)');
+check(await page.locator('#sheetMenuBtn').count() === 0 && await page.locator('#planActions #clear').count() === 0 && await page.isVisible('#planActions #reverse') && await page.isVisible('#planActions #roundTrip'),
+  'plan sheet without ⋯: ⇅ Reverse · ↻ Round trip under the summary (no ✕ – the plan bar\'s + New, owner 2026-11-06)');
 await page.click('#share');
 const [dl] = await Promise.all([page.waitForEvent('download'), page.click('dialog.share #exportGpx')]);
 await page.click('#closeShare');
@@ -296,15 +296,15 @@ if (await page.isEnabled('#undo')) { // a change → Save dark; Save overwrites;
 }
 
 // 7. Go here from my position (browser location)
-// ✕ Close with unsaved changes asks first (the app's DiscardPlanDialog): Cancel keeps the plan, Discard closes it.
-// The plan bar's + New (owner 2026-11-06) does the same as ✕ – first it, then ✕
+// + New with unsaved changes asks first (the app's DiscardPlanDialog): Cancel keeps the plan, Discard closes it.
+// The plan bar's + New (owner 2026-11-06) is the one way – the plan row has no ✕ any more
 check(await page.isEnabled('#newPlan') && (await page.textContent('#newPlan')).trim() === 'New', 'plan bar: + New, active with a plan on the map');
 await page.click('#newPlan');
 if (await page.locator('dialog.discard[open]').count()) {
   await page.click('#discardCancel');
   check(await pins() > 0, 'New plan → "Discard changes?" → Cancel: the plan stays');
-  await page.click('#clear');
-  check(await page.locator('dialog.discard[open] #discardOk').count() === 1, 'Close asks again: Cancel · Discard');
+  await page.click('#newPlan');
+  check(await page.locator('dialog.discard[open] #discardOk').count() === 1, 'New asks again: Cancel · Discard');
   await page.click('#discardOk');
 }
 await waitPins(0);

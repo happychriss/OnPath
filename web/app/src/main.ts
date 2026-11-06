@@ -130,7 +130,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <button id="menuBtn" class="pb planmenubtn" aria-haspopup="menu" aria-expanded="false" aria-controls="mainMenu">${icon('route', 20)}<span class="lbl">${escapeHtml(t('web_plan_menu'))}</span>${icon('dropDown', 20)}</button>
     <nav id="mainMenu" class="planbar" aria-label="${escapeHtml(t('web_plan_menu'))}">
       ${hb('newPlan', 'add', t('web_plan_new'), '', 'disabled')}
-      ${hb('menuPlans', 'folder', t('web_plan_open'))}
+      ${hb('menuPlans', 'folder', t('routes_title'))}
       ${hb('menuImportGpx', 'fileOpen', t('routes_import_gpx'), 'ponly')}
       <span class="split">${hb('menuSavePlan', 'save', t('common_save'), 'savebtn', 'data-state="empty" disabled')}${more('saveMore', 'saveMenu', t('web_save_more'))}</span>
       ${hb('menuSaveAs', 'edit', t('web_save_as'), 'ponly', 'disabled')}
@@ -194,7 +194,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </div>
     <!-- the app's PlanActions (owner 2026-10-31, no ⋯): icon + word side by side; Save is the header's, GPX is in Share -->
     <div id="planActions" class="planactions" role="group" hidden>
-      <button id="clear" class="textbtn">${icon('close', 18)}${escapeHtml(t('plan_close_plan'))}</button>
+      <!-- no ✕ Neu planen here (owner 2026-11-06): the plan bar's + Neu is the one way – a deliberate difference to the app -->
       <button id="reverse" class="textbtn">${icon('swap', 18)}${escapeHtml(t('plan_reverse'))}</button>
       <button id="roundTrip" class="textbtn">${icon('loop', 18)}${escapeHtml(t('plan_round_trip'))}</button>
     </div>
@@ -1563,7 +1563,6 @@ $('reverse').onclick = () => applyEdit('reverse');
 $('roundTrip').onclick = () => applyEdit('roundTrip');
 /** ✕ Neu planen in the plan row and the header's New plan (owner 2026-11-06): unsaved changes ask first, then empty. */
 async function newPlan() { if (saveState === 'save' && !(await askDiscard())) return; clearRoute(); placeCard.removePin(); }
-$('clear').onclick = newPlan;
 function forgetSaved() { state.savedId = null; state.savedTitle = null; state.savedCode = null; state.savedFolder = null; state.storedCode = null; }
 const plansHost = {
   current: async () => (state.points.length >= 2 && (await ready) ? { code: await engine.encode(sharedPlan()), title: state.title } : null),

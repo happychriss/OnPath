@@ -277,7 +277,6 @@
     <!-- the plan bar (owner 2026-11-06, A): everything done with the open plan in one group, top left -->
     <string name="web_plan_menu">Plan</string>
     <string name="web_plan_new">New</string>
-    <string name="web_plan_open">Open</string>
     <string name="web_save_more">More ways to save</string>
     <string name="web_save_as">Save as …</string>
     <string name="web_to_phone">To phone</string>

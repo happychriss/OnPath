@@ -1,5 +1,5 @@
 // The plan sheet's three steps on both widths (owner 2026-10-30, option A; docs/design/web-planner.md §11.3 – the app's
-// PlanSize): small = summary row (chip, time, distance, ↑/↓, badge, chevron, a compact Share) + ✕ Close · ⇅ Reverse · ↻ Round trip, profile = + profile,
+// PlanSize): small = summary row (chip, time, distance, ↑/↓, badge, chevron, a compact Share) + ⇅ Reverse · ↻ Round trip, profile = + profile,
 // points = + Points. Grab handle (the app's handle tap), chevron (Show more / Show less), a click on the summary, Arrow
 // keys; remembered after a reload; the camera fit leaves the sheet free (also the toolbar's "Show whole route" after a
 // pan / zoom away, in the small and Points step, with a GPX track); the place card, the GPX track panel and the
@@ -121,7 +121,7 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   check(s['#share'] && !(await page.isDisabled('#share')) && await page.getAttribute('#share', 'aria-label') === 'Share' &&await page.getAttribute('#share', 'title') === 'Share' && !(await page.$('#sheet button.primary')),
     `${P} small: Share is the icon next to the chevron, active with two points (label + tooltip), no big green button`);
   const sh = await page.locator('#sheet').boundingBox();
-  // the app's summary step holds the action row ✕ Close · ⇅ Reverse · ↻ Round trip too (owner 2026-10-31)
+  // the app's summary step holds the action row ⇅ Reverse · ↻ Round trip too (owner 2026-10-31; ✕ left it 2026-11-06)
   check(sh.height < 230, `${P} small step is compact (${Math.round(sh.height)} px)`);
   check(await page.getAttribute('#sheetStep', 'aria-label') === 'Show more' && await page.getAttribute('#sheetStep', 'title') === 'Show more', `${P} chevron says "Show more" (label + tooltip)`);
   await page.screenshot({ path: path.join(shots, `${name}-small.png`) });
@@ -317,7 +317,7 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     'empty plan: Share says "Set a start and destination first"');
   check(await page.isVisible('#fitRoute') && await page.isDisabled('#fitRoute') && await page.getAttribute('#fitRoute', 'title') === 'Set a start and destination first'
     && await page.getAttribute('#fitRoute', 'aria-label') === 'Show whole route', 'empty plan: "Show whole route" greyed, its tooltip says why');
-  // header (owner 2026-11-06, A): "OnPath Planner" as one name; on the left ONE plan bar + New · Open · Save ▾ · To phone ▾
+  // header (owner 2026-11-06, A): "OnPath Planner" as one name; on the left ONE plan bar + New · My tours · Save ▾ · To phone ▾
   // (every icon with its text on a wide screen), on the right Help, the app and the language; phone width: "Plan ▾"
   const brand = await page.evaluate(() => { const w = document.querySelector('.wordmark'), p = document.querySelector('.product');
     return { text: w.textContent.replace(/\s+/g, ' ').trim(), same: getComputedStyle(w).fontSize === getComputedStyle(p).fontSize, upper: getComputedStyle(p).textTransform }; });
@@ -327,8 +327,8 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   const over = () => page.evaluate(() => document.getElementById('header').scrollWidth - document.getElementById('header').clientWidth);
   let l = await bar();
   check(l.map((x) => x.id).join() === 'newPlan,menuPlans,menuSavePlan,saveMore,syncBadge,phoneMore'
-    && l.filter((x) => !x.id.endsWith('More')).map((x) => x.label).join() === 'New,Open,Save,To phone' && l.every((x) => x.icon && x.h === 36) && l.at(-1).x + l.at(-1).w < 1440 / 2,
-    `header at 1440 px: the plan bar on the left – New · Open · Save ▾ · To phone ▾, 36 px, every icon with its text (${JSON.stringify(l.map((x) => [x.id, x.label, x.x]))})`);
+    && l.filter((x) => !x.id.endsWith('More')).map((x) => x.label).join() === 'New,My tours,Save,To phone' && l.every((x) => x.icon && x.h === 36) && l.at(-1).x + l.at(-1).w < 1440 / 2,
+    `header at 1440 px: the plan bar on the left – New · My tours · Save ▾ · To phone ▾ (the app's words), 36 px, every icon with its text (${JSON.stringify(l.map((x) => [x.id, x.label, x.x]))})`);
   const help = await page.locator('#menuAbout').boundingBox();
   check(help && help.x > 1000 && await page.isVisible('#langSwitch') && await page.isVisible('#headRight a.navlink'), 'header at 1440 px: Help, the app and the language on the right');
   check(await page.isDisabled('#menuSavePlan') && await page.getAttribute('#menuSavePlan', 'data-state') === 'empty' && await page.isDisabled('#newPlan'), 'header: Save and New greyed on an empty route');
@@ -347,7 +347,7 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   l = await bar();
   const lb = Object.fromEntries(l.map((x) => [x.id, x]));
   check(!lb.newPlan.label && lb.newPlan.title && !lb.menuPlans.label && lb.menuPlans.title && lb.menuSavePlan.label === 'Save' && lb.syncBadge.label === 'To phone' && await over() <= 0,
-    `header at 1000 px: New and Open icons only (each with its title), Save and To phone keep their text, nothing overflows (${JSON.stringify(l.map((x) => [x.id, x.label]))})`);
+    `header at 1000 px: New and My tours icons only (each with its title), Save and To phone keep their text, nothing overflows (${JSON.stringify(l.map((x) => [x.id, x.label]))})`);
   for (const w of [720, 860, 1180]) { await page.setViewportSize({ width: w, height: 800 }); check(await over() <= 0, `header at ${w} px: nothing overflows`); }
   await page.setViewportSize({ width: 390, height: 844 });
   check(await page.isVisible('#menuBtn') && await page.isHidden('#menuPlans') && await page.isHidden('#syncBadge') && await over() <= 0,

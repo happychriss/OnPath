@@ -595,6 +595,11 @@ resources, web-sync.md §0); every file below "shared" is compiled from `app/` a
 4. **Watch list:** app files with plan behaviour the web neither compiles nor mirrors (PlanPanel, MapScreen, Notices …):
    a change is a warning, so the laptop can propose the web side.
 
+5. **Deliberate differences (owner's word – a mirror check must not bring them back):** the plan row has no
+   „✕ Neu planen“ (owner 2026-11-06: „+ Neu“ in the plan bar is the one way; the app's PlanActions keeps ✕).
+   Labels of the plan bar use the app's strings for the same thing (owner 2026-11-06: „genauso wie auf dem Handy“):
+   the list is „Meine Touren“ (`routes_title`), not „Öffnen“.
+
 ### 14.3 Open items
 
 - `PlanStatus.noRouteLine` texts are still mirrored in `main.ts`; the engine now compiles `PlanStatus` – the page could
@@ -928,7 +933,7 @@ genug Platz" and "Wie plane ich eine neue Tour? Fehlt da ein Button?".
   pieces, no gaps, routing data there), a GPX track imported or opened (key = its id). The list never routes anything:
   a route this browser has not routed yet shows its name only, until it is opened once.
 - **New plan** (now the plan bar's "+ Neu", §21): an outlined header button before Save, greyed on an empty map, the same
-  as the plan row's ✕ Neu planen (`newPlan()` in main.ts – unsaved changes ask first). Label from 1361 px, icon only
+  as the plan row's former ✕ Neu planen (`newPlan()` in main.ts – unsaved changes ask first). Label from 1361 px, icon only
   below; at phone width the header has no room, so it is ☰'s first entry (`menuNewPlan`). To make room the header hint
   shows from 1761 px only, "Android-App testen" keeps its label from 1501 px, the nav labels from 1261 px, Save's from
   961 px; 701–760 px slightly tighter gaps – no header overflows from 390 to 1920 px (de and en, paired).
@@ -942,20 +947,20 @@ Owner 2026-11-06: "alles, was ich mit einer Tour mache – speichern, neu, abbre
 zusammen"; chosen layout A. The header is now: brand · **plan bar** · (hint ≥ 1501 px) · Help · the app (icon) · language.
 
 - **Plan bar** (`#mainMenu.planbar`, one `ACTS` table in main.ts): `+ Neu` (`#newPlan`, greyed on an empty map, asks
-  like ✕) · `📂 Öffnen` (`#menuPlans` = My routes) · `💾 Speichern ▾` (`#menuSavePlan`, always "Speichern" – ✓
+  like ✕) · `📂 Meine Touren` (`#menuPlans`, the app's `routes_title` – owner 2026-11-06, was „Öffnen“) · `💾 Speichern ▾` (`#menuSavePlan`, always "Speichern" – ✓
   "Gespeichert" when all is saved, dark / amber as web-sync.md §14.6; paired it also sends; ▾ `#saveMore` → **Speichern
   unter …** (`saveRouteAs`: a NEW saved plan under a name – "<open name> (2)" or the proposal –, open from then on) ·
   **GPX exportieren** of the shown plan) · `📱 Aufs Handy ▾` (`#syncBadge`: not paired → the pairing window directly, and
   once paired and closed the plan follows (`pairDialog(…, then)` → Save); paired → Save + send, the dot and "Pixel 8 ·
   synced 2 min. ago" below; ▾ `#phoneMore` → the Phone window: state, Sync now, pair another, Unpair).
-- **Öffnen** = My routes with the app's **search** (`routes_search_hint`, ✕ `search_clear_query`, none → `routes_search_none`;
+- **Meine Touren** (was „Öffnen“) = My routes with the app's **search** (`routes_search_hint`, ✕ `search_clear_query`, none → `routes_search_none`;
   `searchPlans` = `RoutesTab.search`: every word in the name, case and accents ignored, ß = ss; the field shows once
   there is anything to search) and **GPX importieren** at its bottom left.
 - **Narrow:** labels of New / Open go below 1001 px, Help's word and the phone line below 1181 px, the To phone label below
   861 px; **phone width (≤ 700 px)** the bar is one **Plan ▾** button, its drop-down lists New · Open · Import GPX · Save
   (a dot while unsaved) · Save as · Export GPX · To phone · Phone · Help · the app; "Planner" in the brand goes below 401 px.
   No header overflow from 320 to 1920 px (sheet-smoke measures 320, 390, 720, 860, 1000, 1180, 1440).
-- The plan sheet keeps ✕ Neu planen · ⇅ Umkehren · ↻ Rundtour and Teilen (the app's sheet).
+- The plan sheet keeps ⇅ Umkehren · ↻ Rundtour and Teilen; ✕ Neu planen left it (owner 2026-11-06, §14.2 point 5).
 - Plans without a phone live only in this browser's storage (IndexedDB / localStorage, no cookie) – a private window or
   cleared site data loses them; pairing moves them to the phone (web-sync.md §14.6 rule 2).
 - Tests: sync-smoke 16 (the owner's two scenarios: first visit → Save → reload → Open lists it → To phone pairs and the

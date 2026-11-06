@@ -70,7 +70,7 @@ check(!(await page.$('dialog.longroute')), 'Plan anyway: routed without asking a
 // 1b'. Clear route while that long plan may still run in the engine's one worker: the page answers at once (as the app
 // cancels its plan) and the plan's late end brings no route back
 const clearAt = Date.now();
-await page.click('#clear'); if (await page.locator('dialog.discard[open]').count()) await page.click('#discardOk');
+await page.click('#newPlan'); if (await page.locator('dialog.discard[open]').count()) await page.click('#discardOk');
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0 && document.body.dataset.planning !== '1', null, { timeout: 5_000 }).catch(() => {});
 const clearMs = Date.now() - clearAt;
 check(await pins() === 0 && clearMs < 5_000, `Clear route during a long plan: the points go at once (${clearMs} ms)`);
@@ -161,12 +161,12 @@ check(/Your route near Vellau is about \d+ (hours|days) on foot from here\./.tes
 await page.click('#lrPlan');
 await page.waitForFunction(() => !document.querySelector('dialog.longroute') && (/failed|Planning|Calculating/.test(document.getElementById('status').textContent) || !!document.querySelector('#summary .big')), null, { timeout: 120_000 }).catch(() => {});
 check(!(await page.$('dialog.longroute')) && await pins() === 3, 'Add to the route: three points, planned without asking again');
-// (d) ✕ Close in the summary's action row (the app's PlanActions, owner 2026-10-31): an unsaved plan asks "Discard
-// changes?" first; Discard closes it, undo brings it back
+// (d) + New in the plan bar (owner 2026-11-06: the one way – the plan row has no ✕ any more): an unsaved plan asks
+// "Save plan?" first; Discard closes it, undo brings it back
 await page.goto(url + 'index.html#p=' + CODE);
 await planned();
-check(await page.isVisible('#planActions #clear') && (await page.textContent('#planActions #clear')).trim() === 'New plan', 'action row: ✕ New plan');
-await page.click('#clear');
+check(await page.locator('#planActions #clear').count() === 0 && await page.isEnabled('#newPlan'), 'plan row without ✕ New plan; the plan bar\'s + New is active');
+await page.click('#newPlan');
 check(await page.locator('dialog.discard[open]').count() === 1, 'an unsaved plan: Close asks "Discard changes?"');
 { // the app's DiscardPlanDialog with Save (owner 2026-11-05): "Save plan?", Discard apart on the left, Cancel · Save on the right
   const d = await page.evaluate(() => {
@@ -175,7 +175,7 @@ check(await page.locator('dialog.discard[open]').count() === 1, 'an unsaved plan
       apart: bs[0].getBoundingClientRect().right < bs[1].getBoundingClientRect().left - 24 };
   });
   check(d.title === 'Save plan?' && d.buttons.join('|') === 'Discard|Cancel|Save' && d.apart,
-    `✕ New plan asks "Save plan?" – Discard apart · Cancel · Save (${JSON.stringify(d)})`);
+    `+ New asks "Save plan?" – Discard apart · Cancel · Save (${JSON.stringify(d)})`);
 }
 await page.click('#discardOk');
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 }).catch(() => {});
@@ -184,7 +184,7 @@ await page.click('#undo');
 await planned().catch(() => {});
 check(await pins() === 2 && !!(await page.$('#summary .big')), 'undo: the route is back');
 // "Save" in that question: the name dialog, then the plan is saved and the map is empty (the app's discardSaveFirst)
-await page.click('#clear');
+await page.click('#newPlan');
 await page.click('dialog.discard[open] #discardSave');
 await page.waitForSelector('dialog.savename[open]', { timeout: 10_000 });
 await page.click('#saveOk');

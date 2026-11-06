@@ -442,7 +442,7 @@ unchanged.
 The machinery of §14.1–14.3 stays; the page no longer shows it ("überladen", owner). No new dialogs.
 
 **The plan bar** (owner 2026-11-06, A – replaces "Header, right: two real buttons"; web-planner.md §21): Save and the
-phone sit in ONE group on the left with + Neu and Öffnen; at phone width all of it is behind "Plan ▾".
+phone sit in ONE group on the left with + Neu and Meine Touren; at phone width all of it is behind "Plan ▾".
 - **Speichern** (`#menuSavePlan`): always "Speichern" / "Save" – not paired it saves in this browser, paired it saves and
   sends. **Dark** (filled app green) while anything is to save: the open route new or changed, a rename, a delete, a GPX
   import, routes waiting for the phone (below); otherwise **light with ✓** ("✓ Gespeichert" / "✓ Saved"); **greyed**
