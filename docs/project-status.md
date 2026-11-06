@@ -1,13 +1,13 @@
 # OnPath – project status and decisions
 
-Current release **0.17.0** (2026-11-06). Open work: `docs/backlog.md`. Core features and their tests:
+Current release **0.17.1** (2026-11-06). Open work: `docs/backlog.md`. Core features and their tests:
 `docs/core-features.md`. What each release changed: `docs/release-notes/` and the git history – this file keeps only
 the current state.
 
 ## Where things are
 <!-- Kept by the captain every round (docs/roles/captain.md). -->
-- **Pixel:** main b047bf79, installed 2026-11-01 19:55 (newest handoff that names it; the night draft 63b0194d is not on it).
-- **GitHub release:** v0.17.0 (2026-11-06, 1c887c92, cloud worker as donald): plan sheet R5, Navigate lock (C), end-tour sheet, clear plan during a tour, next stops on the profile, plan leg by leg with a leg cache (PLANNER_VERSION 4) and the 'Abschnitt n von m' wait bar. Rundgang on GitHub's emulator.
+- **Pixel:** owner installed the side-loaded 0.17.0-test1 (2026-11-06 ~10:35, built in the cloud, no map key) and was told to update to v0.17.1 via Settings → Updates – which one is on it now: ask / check About.
+- **GitHub release:** v0.17.1 (2026-11-06 13:04, 84c837bb, cloud worker as donald): activity switch during a tour taken, dot on the route only within 6 m, "Weiter geht's" after a plan change, a turn announced only after the one before is ridden, Sperren | Plan, Tour beenden on one screen, "Plan auch speichern" ON for a never-saved plan, search in Meine Touren. Release-Rundgang (14 flows) green on GitHub before it. **On main, not released:** shelters in POI tier 1 (6f9d500c) → v0.17.2.
 - **Planner (plan.onpath.earth):** web-spike 10e2f3db (2026-11-06, has main 2976acf4 = the v0.17.0 shared code, PLANNER_VERSION 4). Open for cloud-plan: the app's one-tap activity picker and the ✕ / clear question (web-spike backlog), lang-gpx pin-link flake.
 - **State:** released 0.13.2 → 0.13.5 today. main (8cf47345 or newer) also has, **not released yet**: the planner
   splice "route only around a cut stop" (38fc16c6, ~2× faster, `PLANNER_VERSION` 3); the compact plan sheet with the
@@ -29,6 +29,20 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud worker as donald (no computer), 2026-11-06 day – HANDOFF to the session with the Pixel:** released v0.17.0
+  (with the planner, PLANNER_VERSION 4 on web-spike 10e2f3db) and v0.17.1; on main after it: shelters (6f9d500c). Main
+  6f9d500c is green everywhere (Unit, full E2E 346, Maps deploy). **Nothing of today is seen on a phone** – the [pixel]
+  check line at the top of "Next" lists what to look at. Open owner points are all in the backlog ("Next", tagged
+  2026-11-06). **Next release v0.17.2:** shelters only (map style + PoiTiles, no navigation change → no Rundgang needed):
+  bump `appVersion` in app/build.gradle.kts to 0.17.2 + add docs/release-notes/v0.17.2.md (EN like v0.17.1), gate, push
+  to main – release.yml does the rest; add whatever the Pixel check finds first if the owner wants it in.
+  How this cloud session worked (no donald): Android SDK from dl.google.com into the scratchpad (local.properties
+  sdk.dir), Maven Central via ~/.gradle/init.d mirror (only `beforeSettings` repos – an `allprojects { repositories }`
+  line breaks this project's settings), Release-Rundgang on GitHub = Actions → E2E → Run with tests
+  `com.onpath.app.e2e.ReleaseRundgang` (one class works; a dispatched run cancels the pending push E2E runs),
+  onpath.private (an-alle / #release-sperre) not readable from the cloud – checked nothing there. A test APK built in the
+  cloud has no map key (ONPATH_APP_KEYS is a GitHub secret): it cannot download map areas; the in-app updater only sees
+  GitHub releases.
 - **cloud worker as donald (no computer), 2026-11-06:** v0.17.0 released (plan sheet R5, Navigate lock, end-tour sheet, leg cache) together with the planner (main merged into web-spike, LegCache + leg progress in the web engine). Rundgang ran on GitHub's emulator instead of donald. Not on the Pixel. Next: [pixel] measure long bike routes, onboarding hints (owner thinking).
 - **donald, 2026-11-05 evening (with the owner):** long bike routes faster (leg cache, tour follow line, wait bar within a leg) and the new UI round (plan sheet R5, band + '←', Navigate unlock C, V2 end sheet, clear-plan clarity, M3 dialogs, next stops) all on main, gate --full green; test APK on the Pixel. Next: Pixel measurement of the routing, cloud-plan mirrors PLANNER_VERSION 4, onboarding (proposal in chat, not yet in the backlog), then a release on the owner's word.
 - **donald, 2026-11-03 late – shut down by the owner (~23:20); new build items go to the cloud.** On main tonight:

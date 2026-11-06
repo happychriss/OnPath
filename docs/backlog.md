@@ -78,6 +78,30 @@ the git log.
 - [laptop] (hp, cloud-plan) Planner: wait box → 'Weiter warten?' (SlowPlan, #21 B) · A-022 web texts · pin card '+ Hinzufügen' / 'Hierhin' · '⋯ Mehr' · pointMenu loopStart · header link 'Android-App testen' – since 2026-11-05
 
 ## Next
+- **[pixel] Owner's points of 2026-11-06 – check on the phone (v0.17.1 + main)**, none seen on a device yet:
+  (1) activity switch during a tour (Bike → Hike → "Neue Route": guided as Hike and stays; fix 301db9b5 = the switched
+  session keeps the running session's token, Rundgang flow 14); (2) the dot leaves the line beyond 6 m (was 25 m;
+  SnapToRoute.MAX_OFF_M) – on a parallel road it must stay on the road; watch whether it now wobbles off the line on the
+  route itself (GPS noise > 6 m) and tell the owner; (3) "Weiter geht's. … bis …, etwa …" once after a plan change during a
+  tour (VoiceGuide carryOn); (4) a turn is announced only after the one before is ridden (VoiceGuide.nextJunction) –
+  replay of the owner's demo ride Düsseldorf → Grimlinghausen: "Jetzt rechts halten, danach links" then nothing until the
+  left is ridden, then "Jetzt rechts abbiegen"; (5) Sperren | Plan after unlocking; (6) Tour beenden on one screen
+  (numbers in one line, Tour speichern, Weiterfahren | Löschen, bin note) – no scrolling on the Pixel, ✕ not hidden under the
+  volume bar; (7) "Plan auch speichern" ON for a plan never saved; the plan is in Meine Touren after the tour; (8) search in
+  Meine Touren; (9) after v0.17.2: shelters (Unterstände) stay while zooming from z12.
+- **[donald] Voice: the roundabout sentence on the owner's demo ride (2026-11-06)** – rebuilt from the GPX (route via the
+  track, not the owner's real plan) it said "Jetzt im Kreisverkehr die erste Ausfahrt, danach im Kreisverkehr die vierte
+  Ausfahrt" at ~950 m (51.1965, 6.7697, two roundabouts 80 m apart). May be an artefact of the rebuild (via points every
+  150 m force a turn-round). Check with the owner's real tour: Settings → Diagnostics export ("Junction cue:" lines) or the
+  plan; the owner offered to say which sentences were wrong. Scratch replay tool used: a copy of
+  tools/routing/jvm-test/HildenVoiceTest.kt that routes through a GPX track and prints HINT / SCREEN / SAY lines (needs E5_N50.rd5).
+- **[donald] Walk every save path once (owner 2026-11-06: "einmal die Abläufe durchsuchen")** – plan made on the phone →
+  tour → end (switch ON now) → in Meine Touren?; saved plan changed during the tour → overwrite question; GPX export of a
+  planned item = the plan GPX (line + route points, PlanGpx) and of a done tour = the track (owner asked "exportiere ich
+  immer die Route und nie den Plan?" – answered: planned → plan); import of both. Write down where a plan can still get lost.
+- **[any] Tidy:** strings nav_relock, nav_end_section_tour / _plan are unused since 2026-11-06 (Sperren | Plan, end sheet A).
+- **[cloud-plan] Map style to the planner:** shelters moved to POI tier 1 (6f9d500c, tools/make_style.py) – reaches the
+  planner with the next merge of main into web-spike; nothing else of 2026-11-06 is shared code.
 - ✓ [cloud worker as donald 2026-11-06] On main for v0.17.1: activity switch during a tour taken (session token), dot on the route only within 6 m, "Weiter geht's" after a plan change, a turn announced only after the one before is ridden, Sperren | Plan, Tour beenden on one screen (variant A), "Plan auch speichern" ON for a never-saved plan, search in Meine Touren. Not seen on the Pixel yet.
 - **[donald] Onboarding – first-use hints (proposal 2026-11-05 in chat, owner thinking – NOT approved yet; drawings first)** – no intro carousel; three in-place hints (ANZEIGE kind, no box), each once, gone when the user did the step (even unseen): (1) empty map: pulsing finger + 'Lange auf die Karte drücken → „Hierhin“ – die Route kommt von selbst' (search is self-explaining); (2) only after „Hier starten“: 'Jetzt das Ziel: wieder lange drücken → Hierhin'; „Hierhin“ / search → straight to (3) arrow to the green button 'Fertig? ▶ Los geht's startet die Führung'. Never during a tour or over a question; Settings 'Tipps wieder zeigen'; no saving hint (✕ asks, ☰ dot, end-of-tour sheet cover it). Check first what 'Hierhin' does without a GPS fix (then hint 'Standort fehlt – erst „Hier starten“'). One line after an update only when a way of use changed (e.g. 'Neu: zum Ändern entsperren').
 - ✓ [donald] 2026-11-05 evening on main (7b3e7f13, gate --full green): plan sheet R5 (activity button on the map, light blue plan row ✕ Neu planen · ⇅ Umkehren · ↻ Rundtour, one green button 'Los geht's', no Save in the sheet), light blue band + round '←' back to the tour (R1, no green button during a tour), Navigate C (slider '» Entsperren' with lock, Pause / Tour beenden in the status card, big blue 'Plan', lock setting default on), activity in one tap (Hike T1–T5), end tour = V2 sheet, clear plan during a tour (guidance ends, recording goes on, 'Freie Tour · nur Aufnahme'), M3 dialogs 'Plan speichern?' / 'Plan leeren?', next 2–3 stops under Navigate's profile. Not released. **[pixel] owner check** of the test build; release with the planner (leg cache, cloud-plan line below).
