@@ -3,6 +3,9 @@ package com.onpath.app.e2e
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.common_cancel
+import com.onpath.strings.nav_leave_go
+import com.onpath.strings.nav_leave_stay
+import com.onpath.strings.nav_leave_title
 import com.onpath.strings.plan_go_here
 import com.onpath.strings.routes_load_ask_text
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -474,6 +477,38 @@ class CoreFieldE2ETest : E2EBase() {
             scenario.onActivity { if (vm(it).recState.value != null) vm(it).stopRecording() }
             db.deleteTour(id)
         }
+    }
+
+    /**
+     * Flow map N4 (owner 2026-11-06): Android's back in Navigate while a tour records asks "App verlassen? Deine Tour wird
+     * weiter aufgezeichnet." – Bleiben keeps Navigate; Verlassen sends the app to the background and the tour records on.
+     */
+    @Test fun backInNavigateDuringATourAsksAndLeavingKeepsTheTour() {
+        startPlanWithTwoPoints()
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        Thread.sleep(1_000)
+        var tourId = -1L
+        scenario.onActivity { tourId = vm(it).recState.value!!.tourId }
+        val title = Txt.s(Res.string.nav_leave_title)
+        device.pressBack()
+        assertNotNull("the question after back", findFresh(By.text(title), 5_000))
+        clickText(Txt.s(Res.string.nav_leave_stay))
+        // UiAutomator's node cache keeps the old tree on Android 14 – look afresh (E2EBase.goneFresh)
+        assertTrue("the question is gone after Bleiben", goneFresh(By.text(title), 5_000))
+        assertEquals("still in Navigate", AppMode.NAVIGATE, mode())
+        assertEquals("the app is still in front", androidx.lifecycle.Lifecycle.State.RESUMED, scenario.state)
+        device.pressBack()
+        assertNotNull("the question again", findFresh(By.text(title), 5_000))
+        clickText(Txt.s(Res.string.nav_leave_go))
+        waitUntil("the app went to the background", 10_000) { scenario.state != androidx.lifecycle.Lifecycle.State.RESUMED }
+        Thread.sleep(1_500)
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
+        assertEquals("the tour records on", "active", db.getTour(tourId)?.state)
+        assertTrue("the recording service still runs", com.onpath.app.recording.RecordingService.state.value != null)
+        val trace = com.onpath.app.debug.Problems.events().map { it.message }
+        assertTrue(trace.any { it.startsWith("Back in Navigate: left the app") })
     }
 
     private fun waypointList(): List<GeoPoint> { var l: List<GeoPoint> = emptyList(); scenario.onActivity { l = vm(it).waypoints.toList() }; return l }

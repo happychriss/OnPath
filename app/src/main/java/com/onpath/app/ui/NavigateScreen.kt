@@ -225,6 +225,8 @@ fun NavigateOverlay(
     onActivity: () -> Unit = {},
     onChooseActivity: (Activity) -> Unit = {},
     onKeepActivity: () -> Unit = {},
+    /** Hike's T chip in the activity sheet (K1). */
+    onHikeLevel: (Int) -> Unit = {},
     /** Finger on the elevation profile: that spot on the route (null never sent) / finger left. */
     onProfileScrub: (GeoPoint) -> Unit = {},
     onProfileRelease: () -> Unit = {},
@@ -244,6 +246,8 @@ fun NavigateOverlay(
     onCover: (topDp: Int, bottomDp: Int) -> Unit = { _, _ -> },
     /** Developer tools unlocked: the "Tour-Sim" chip ([NavSimChip]) under the status; null = none (everyone else). */
     sim: (@Composable () -> Unit)? = null,
+    /** "App verlassen?" answered with Verlassen: the app goes to the background, the recording goes on (N4). */
+    onLeaveApp: () -> Unit = {},
 ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     // the top column's height (turn card, status, chips) below the status bar: the one box goes 12 dp below it
@@ -251,14 +255,22 @@ fun NavigateOverlay(
     var messageBottomDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var sliderDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     // the slider only unlocks (owner 2026-11-05, Navigate C): Pause / Tour beenden in the status card (a recording) and
-    // "Plan ändern" in the slider's place; paused the actions stay (Fortsetzen at once)
+    // "Sperren | Plan" in the slider's place. The pause changes nothing about the lock (owner 2026-11-06): paused, the
+    // bottom stays "Sperren | Plan", it locks again after the same 30 s (counted again from the pause), and locked +
+    // paused shows the slider ("Fortsetzen · Beenden · Plan") – "Fortsetzen" is in the status card after the slide.
     var open by remember { mutableStateOf(actionsOpen) }
-    LaunchedEffect(open, lock) { if (lock && open && !actionsOpen) { kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false } }
-    val pausedOpen = ui.paused && ui.recordedM != null
-    val unlocked = !lock || open || pausedOpen
-    // locking again without a choice (owner 2026-11-02, no ✕): a tap on the map or Android's back; paused it stays open
-    val closableBar = lock && open && !pausedOpen
+    LaunchedEffect(open, lock, ui.paused) { if (lock && open && !actionsOpen) { kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false } }
+    val unlocked = !lock || open
+    // locking again without a choice (owner 2026-11-02, no ✕): a tap on the map or Android's back – paused the same
+    val closableBar = lock && open
     androidx.activity.compose.BackHandler(enabled = closableBar) { open = false }
+    // Android's back while a tour records (owner 2026-11-06, flow map N4): ask instead of leaving the app – a novice took
+    // "app gone" for "tour gone" and might start a second one. A second back closes the question (= Bleiben).
+    var leaveAsk by remember { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = LeaveAppRule.backAsks(recording = ui.recordedM != null,
+        barOpen = closableBar, sheetOpen = ui.activityCheck != null)) { leaveAsk = !leaveAsk }
+    val recordingNow = ui.recordedM != null
+    LaunchedEffect(recordingNow) { if (!recordingNow) leaveAsk = false }
     Box(Modifier.fillMaxSize()) {
         if (closableBar) Box(Modifier.fillMaxSize().clearAndSetSemantics { }
             .pointerInput(Unit) { detectTapGestures { open = false } })
@@ -288,7 +300,8 @@ fun NavigateOverlay(
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
             // unlocked: ONE big blue "Plan" where the slider was (owner 2026-11-05, Navigate C), an open lock beside it locks again
             if (unlocked) ChangePlanButton({ open = false; onSlideToPlan() }, bottom, onLock = if (closableBar) ({ open = false }) else null)
-            else SlideToPlan({ open = true }, bottom, recording = ui.recordedM != null, startFraction = slideStartFraction)
+            else SlideToPlan({ open = true }, bottom, recording = ui.recordedM != null, startFraction = slideStartFraction,
+                paused = ui.paused && ui.recordedM != null)
         }
         // ONE box under the turn / status column (docs/design/ui-style.md, owner 2026-10-31 – the re-route and
         // activity-switch question moved here from the bottom, 56 dp buttons kept); the question wins, the rest wait.
@@ -300,6 +313,7 @@ fun NavigateOverlay(
         // reached beside a later part (owner 2026-11-03): "Du stehst mitten auf der Route" · Hier einsteigen / Zu ① führen
         val mid = ui.offRoute?.prompt as? NavPrompt.MidStart
         val message = Messages.pick(listOf(
+            if (leaveAsk) leaveAppMessage(onStay = { leaveAsk = false }, onLeave = { leaveAsk = false; onLeaveApp() }) else null,
             question?.let { q -> rerouteMessage(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) }, onVia = { onTakeVia(q.id) }) },
             ui.offRoute?.takeIf { it.prompt == NavPrompt.Searching }?.let { o -> searchingMessage(o, onKeep = { onKeepRoute(-1) }) },
             far?.let { p -> farStartMessage(p, onLead = { onLeadThere(p.id) }, onJustRecord = { onJustRecord(p.id) }) },
@@ -315,7 +329,7 @@ fun NavigateOverlay(
         val cover by androidx.compose.runtime.rememberUpdatedState(onCover)
         androidx.compose.runtime.SideEffect { cover(maxOf(topColumnDp, shownMessageBottom), sliderDp) }
         // over the controls: nothing else is touched by accident while choosing; no tap-outside dismiss
-        ui.activityCheck?.let { ActivitySwitchSheet(it, onChooseActivity, onKeepActivity, Modifier.align(Alignment.BottomCenter)) }
+        ui.activityCheck?.let { ActivitySwitchSheet(it, onChooseActivity, onKeepActivity, Modifier.align(Alignment.BottomCenter), onHikeLevel = onHikeLevel) }
     }
 }
 
@@ -518,9 +532,8 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                     }
                 }
             }
-            // paused: "Fortsetzen" – in the card's action row when it shows, else here
-            if (ui.paused && ui.recordedM != null && actions == null) TextButton(colors = ActionButtons.goText(), onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_resume)) }
-            else if (ui.toGo != null && ui.arriveAt != null && ui.toGo.state != com.onpath.app.time.EstimateState.NOT_ON_ROUTE) Column(
+            // paused: "Fortsetzen" is in the card's action row once unlocked (owner 2026-11-06: locked + paused = the slider)
+            if (ui.toGo != null && ui.arriveAt != null && ui.toGo.state != com.onpath.app.time.EstimateState.NOT_ON_ROUTE) Column(
                 horizontalAlignment = Alignment.End,
                 modifier = Modifier.padding(start = 8.dp).widthIn(min = targetWordWidth(ui.toGo.target))
                     .width(IntrinsicSize.Max).semantics(mergeDescendants = true) {}) {
@@ -787,6 +800,20 @@ internal fun midStartMessage(p: NavPrompt.MidStart, onLead: () -> Unit, onJoin: 
 }
 
 /**
+ * Back in Navigate while a tour records (owner 2026-11-06, flow map N4): "App verlassen? Deine Tour wird weiter
+ * aufgezeichnet." · Bleiben / Verlassen. Neither is a navigation or plan action (colour rule: neutral).
+ */
+internal fun leaveAppMessage(onStay: () -> Unit, onLeave: () -> Unit): Message =
+    Message(MessageKind.FRAGE, Txt.s(Res.string.nav_leave_title), Txt.s(Res.string.nav_leave_text),
+        listOf(MessageButton(Txt.s(Res.string.nav_leave_stay), onStay), MessageButton(Txt.s(Res.string.nav_leave_go), onLeave)))
+
+/** When Android's back asks "App verlassen?" in Navigate (N4) – pure, unit-tested. */
+object LeaveAppRule {
+    /** Only while a tour records; the unlocked bar and the activity sheet close first with back. */
+    fun backAsks(recording: Boolean, barOpen: Boolean, sheetOpen: Boolean): Boolean = recording && !barOpen && !sheetOpen
+}
+
+/**
  * A tour runs with OnPath's notifications off ([com.onpath.app.navigation.NotificationsOff]): "⚠ Notifications off / No
  * turns … on the lock screen" + OK (HINWEIS_WARN). Tap on the text → the phone setup step; OK → gone for this tour.
  * Never goes by itself (owner: no self-dismissing messages).
@@ -963,10 +990,12 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     DisposableEffect(Unit) { onDispose { vm.screenRest = false } }
     Box(Modifier.fillMaxSize()) {
         NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
+            onLeaveApp = { com.onpath.app.debug.Problems.trace("app", "Back in Navigate: left the app, the tour records on"); activity?.moveTaskToBack(true) },
             onPause = vm::pauseRecording, onEnd = { vm.askEndTour() }, lock = vm.settings.navLock,
             onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute, onTakeVia = vm::takeViaRoute,
             onLeadThere = vm::leadToStart, onJustRecord = vm::justRecord, onJoinHere = vm::joinHere, onLeadFailedOk = vm::leadFailedOk,
             onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
+            onHikeLevel = vm::chooseHikeLevel,
             onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,
             download = bg, onDownload = { vm.downloadDetailsOpen = true },
             onNotifications = { vm.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },

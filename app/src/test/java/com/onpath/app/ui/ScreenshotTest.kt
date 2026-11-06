@@ -558,6 +558,16 @@ class ScreenshotTest {
     /** Navigate: what is left on top, recording chip, slide-to-plan at the bottom. */
     @Test fun navigate() = paparazzi.snapshot { NavFrame(navUi) }
 
+    /** Back while a tour records (owner 2026-11-06, flow map N4): "App verlassen?" · Bleiben / Verlassen in Navigate's one box. */
+    @Test fun navigateLeaveAsk() = paparazzi.snapshot {
+        OnPathTheme {
+            NavFrame(navUi)
+            Box(Modifier.fillMaxSize()) {
+                MessageSlot(leaveAppMessage({}, {}), MessagePlacement.topDp(MessageScreen.NAVIGATE, 150))
+            }
+        }
+    }
+
     /** Navigate without a recording (e.g. an unfinished tour being asked about): the slider says only "Change route". */
     @Test fun navigateNotRecording() = paparazzi.snapshot { NavFrame(navUi.copy(recordedM = null)) }
 
@@ -714,8 +724,11 @@ class ScreenshotTest {
     /** Unlocked (owner 2026-11-05, Navigate C): Pause / Tour beenden in the status card, "Plan ändern" where the slider was. */
     @Test fun navigateActionsOpen() = paparazzi.snapshot { NavFrame(navUi, actions = true) }
 
-    /** Unlocked and paused: "Fortsetzen" in the card (no second one), it stays open. */
-    @Test fun navigatePausedOpen() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true)) }
+    /** Unlocked and paused: "Fortsetzen" in the card, "Sperren | Plan" at the bottom as without a pause (owner 2026-11-06). */
+    @Test fun navigatePausedOpen() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true), actions = true) }
+
+    /** Locked and paused (owner 2026-11-06): the slider, its small line "Fortsetzen · Beenden · Plan". */
+    @Test fun navigatePausedLocked() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true)) }
 
     /** Without a recording, unlocked: only "Plan ändern". */
     @Test fun navigateNotRecordingOpen() = paparazzi.snapshot { NavFrame(navUi.copy(recordedM = null), actions = true) }
@@ -752,6 +765,15 @@ class ScreenshotTest {
 
     /** Tap the activity icon: what the rest of the route means for each other activity (fits / problems / checking). */
     @Test fun navigateActivitySheet() = paparazzi.snapshot { NavFrame(navUi.copy(activityCheck = checkUi)) }
+
+    /** Riding a bike during a tour: Hike's T1–T5 under its row (owner 2026-11-06, flow map K1). */
+    @Test fun navigateActivitySheetHikeLevels() = paparazzi.snapshot {
+        NavFrame(navUi.copy(activity = Activity.BIKE_TREKKING, activityCheck = ActivityCheckUi(Activity.BIKE_TREKKING, 3, listOf(
+            ActivityRow(Activity.BIKE_TOURING, 3, ActivityRowState.Ready(fit(Activity.BIKE_TOURING, emptyList(), 1.3 * 3600))),
+            ActivityRow(Activity.MTB, 3, ActivityRowState.Ready(fit(Activity.MTB, emptyList(), 38 * 60.0))),
+            ActivityRow(Activity.HIKE, 3, ActivityRowState.Ready(fit(Activity.HIKE, listOf("0.4 km above T3"), 3.1 * 3600, -800.0))),
+        ))))
+    }
 
     /** Opened a moment ago: every row still being checked. */
     @Test fun navigateActivitySheetChecking() = paparazzi.snapshot {

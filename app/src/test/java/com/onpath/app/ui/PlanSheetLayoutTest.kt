@@ -100,7 +100,7 @@ class PlanSheetLayoutTest {
         assertTrue(dialog, dialog.contains(".clickable { onSelect(a); onDismiss() }"))
         assertTrue(dialog, dialog.contains("if (a == Activity.HIKE) SacChips(if (sel) sac else 0) { level -> onSelect(Activity.HIKE); onSac(level); onDismiss() }"))
         assertFalse("no Done / confirm", dialog.contains("common_done"))
-        val chips = src("ui/Screens.kt").substringAfter("private fun SacChips(").substringBefore("\n}\n")
+        val chips = src("ui/Screens.kt").substringAfter("internal fun SacChips(").substringBefore("\n}\n")
         assertTrue(chips, chips.contains("SacScale.levels.forEach") && chips.contains("onClick = { onPick(l.level) }"))
         assertTrue(chips, chips.contains("Res.string.routes_sac_button_desc"))
     }

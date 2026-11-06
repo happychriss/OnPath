@@ -53,7 +53,8 @@ fun TourCardActions(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Un
                 (tm.measure(pauseWord, style).size.width + tm.measure(endWord, style).size.width).toDp()
             } + 24.dp * 4 + 8.dp
             val pause = @Composable { m: Modifier ->
-                FilledTonalButton(onClick = { onClose(); onPause(!paused) },
+                // Pause / Fortsetzen keeps the bar open (owner 2026-11-06: the pause changes nothing about the lock)
+                FilledTonalButton(onClick = { onPause(!paused) },
                     colors = ButtonDefaults.filledTonalButtonColors(containerColor = TourActions.GoTonal, contentColor = TourActions.OnGoTonal),
                     modifier = m.heightIn(min = 48.dp)) { Text(pauseWord, maxLines = 1, softWrap = false) }
             }
@@ -76,7 +77,7 @@ fun TourCardActions(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Un
  * Where the slider was, after the slide: ONE big blue "Plan" (owner 2026-11-05: large so nobody misses it – full
  * width, 56 dp like the green main buttons; the word is just "Plan") – opens the plan; the tour goes on. [onLock]: an
  * open lock left of it (owner 2026-11-05: lock / unlock as a sign) – shows the screen is unlocked, a tap locks it again;
- * null = nothing to lock (the lock is off in the settings, or paused – then it stays open).
+ * null = nothing to lock (the lock is off in the settings).
  */
 @Composable
 fun ChangePlanButton(onClick: () -> Unit, modifier: Modifier = Modifier, onLock: (() -> Unit)? = null) {

@@ -3143,7 +3143,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun planFollowed(planLine: List<GeoPoint>?): Boolean =
         planLine != null && (planLine == followOriginal || planLine == planBaseline)
 
-    private fun sacFor(a: Activity) = if (a == Activity.HIKE) sac else checkSession?.sac ?: sac
+    private fun sacFor(a: Activity) = if (a == Activity.HIKE) checkHikeSac ?: sac else checkSession?.sac ?: sac
+
+    /** The T level the check sheet's Hike chips chose (K1); null = the remembered level. Cleared with the sheet. */
+    private var checkHikeSac: Int? = null
 
     /**
      * Opens the sheet: for every other activity the rest of the followed tour is routed offline (one after the other,
@@ -3182,26 +3185,64 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             updateCheck(null) { it }
             for (a in others) {
                 if (!isActive || cancel.isCancelled) return@launch
-                val st = withContext(routingDispatcher) {
-                    try {
-                        val eng = routingEngine()
-                        if (eng is com.onpath.app.routing.StraightLineEngine) {
-                            ActivityRowState.Failed(Txt.s(Res.string.msg_check_cannot_route))
-                        } else {
-                            val r = eng.route(rest.waypoints, a, sacFor(a),
-                                com.onpath.app.routing.RouteLimits(com.onpath.app.navigation.ActivityCheck.TIMEOUT_MS, cancel))
-                            if (r.points.size < 2) ActivityRowState.Failed(Txt.s(Res.string.msg_check_no_route))
-                            else ActivityRowState.Ready(com.onpath.app.navigation.ActivityCheck.evaluate(rest.line, a, sacFor(a), r, planFactors(a)))
-                        }
-                    } catch (e: Exception) {
-                        Problems.warn("routing", "Activity check: routing for another activity failed", e)
-                        val none = Txt.s(Res.string.msg_check_no_route)
-                        ActivityRowState.Failed(com.onpath.app.debug.UserText.of(e, none).takeIf { it.length < 90 } ?: none)
-                    }
-                }
+                val st = checkRow(rest, a, sacFor(a), cancel)
                 if (!isActive || cancel.isCancelled) return@launch
                 updateCheck(a) { st }
             }
+        }
+    }
+
+    /** How the rest of the tour fits [a] at T level [level] (routed offline, off the main thread). */
+    private suspend fun checkRow(rest: com.onpath.app.navigation.ActivityCheck.Rest, a: Activity, level: Int,
+                                 cancel: com.onpath.app.routing.RouteCancel): ActivityRowState = withContext(routingDispatcher) {
+        try {
+            val eng = routingEngine()
+            if (eng is com.onpath.app.routing.StraightLineEngine) {
+                ActivityRowState.Failed(Txt.s(Res.string.msg_check_cannot_route))
+            } else {
+                val r = eng.route(rest.waypoints, a, level,
+                    com.onpath.app.routing.RouteLimits(com.onpath.app.navigation.ActivityCheck.TIMEOUT_MS, cancel))
+                if (r.points.size < 2) ActivityRowState.Failed(Txt.s(Res.string.msg_check_no_route))
+                else ActivityRowState.Ready(com.onpath.app.navigation.ActivityCheck.evaluate(rest.line, a, level, r, planFactors(a)))
+            }
+        } catch (e: Exception) {
+            Problems.warn("routing", "Activity check: routing for another activity failed", e)
+            val none = Txt.s(Res.string.msg_check_no_route)
+            ActivityRowState.Failed(com.onpath.app.debug.UserText.of(e, none).takeIf { it.length < 90 } ?: none)
+        }
+    }
+
+    /**
+     * The check sheet's T1–T5 chips under Hike (owner 2026-11-06, flow map K1: during a tour Hike could only be taken with
+     * the remembered level). Free recording: Hike with that level at once, as in the plan's activity dialog. A followed
+     * route: the Hike row is checked again for that level ([ActivityCheckRules.withHikeLevel]) – a tap on the row then
+     * switches as before (the Take new route / Keep question). Hiking already: the row appears for the new level.
+     */
+    fun chooseHikeLevel(level: Int) {
+        val ui = activityCheck ?: return
+        val l = level.coerceIn(1, 5)
+        if (ui.current == Activity.HIKE && l == ui.sac && ui.rows.none { it.activity == Activity.HIKE }) return
+        Problems.trace("navigation", "Activity check: Hike T$l chosen (was ${if (ui.current == Activity.HIKE) "Hike T${ui.sac}" else ui.current.name})")
+        val session = checkSession
+        if (session == null) {
+            closeActivityCheck()
+            selectActivity(Activity.HIKE, userChange = false)
+            selectSac(l)
+            recState.value?.tourId?.let { id -> viewModelScope.launch(Dispatchers.IO) {
+                runCatching { db.updateActivity(id, Activity.HIKE.name, l) }
+                    .onFailure { Problems.error("db", "Activity of the recorded tour not updated in the database", it) }
+            } }
+            return
+        }
+        checkHikeSac = l
+        activityCheck = ActivityCheckRules.withHikeLevel(ui, l)
+        if (activityCheck?.rows?.none { it.activity == Activity.HIKE } == true) return // hiking at that level already
+        val rest = checkRest ?: return
+        val cancel = checkCancel ?: return
+        viewModelScope.launch {
+            val st = checkRow(rest, Activity.HIKE, l, cancel)
+            if (cancel.isCancelled || checkHikeSac != l) return@launch
+            updateCheck(Activity.HIKE) { st }
         }
     }
 
@@ -3250,6 +3291,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun closeActivityCheck() {
         checkCancel?.cancel(); checkCancel = null
         checkJob?.cancel(); checkJob = null
+        checkHikeSac = null
         activityCheck = null
     }
 

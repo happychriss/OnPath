@@ -1267,6 +1267,55 @@
     "priority": 2,
     "confidence": "sicher"
   },
+  "nav_slide_unlock_sub": {
+    "area": "Navigate",
+    "context": "Navigate's slider, small second line under 'Entsperren' (owner 2026-11-06, flow map N2): what the slider unlocks while a tour records; dropped when it does not fit",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "nav_slide_unlock_sub_plan": {
+    "area": "Navigate",
+    "context": "Navigate's slider without a recording, small second line under 'Entsperren': only the plan is behind it",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "nav_slide_unlock_sub_paused": {
+    "area": "Navigate",
+    "context": "Navigate's slider while the tour is paused and the screen locked (owner 2026-11-06): small second line under 'Entsperren' – what the slider unlocks",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "nav_leave_title": {
+    "area": "Navigate",
+    "context": "Question box in Navigate when Android's back is pressed while a tour records (owner 2026-11-06, flow map N4): title",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "nav_leave_text": {
+    "area": "Navigate",
+    "context": "Question box in Navigate when Android's back is pressed while a tour records (owner 2026-11-06, flow map N4): the line under it – the recording goes on in the background",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 60
+  },
+  "nav_leave_stay": {
+    "area": "Navigate",
+    "context": "Question box in Navigate when Android's back is pressed while a tour records (owner 2026-11-06, flow map N4): button, stay in the app",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "nav_leave_go": {
+    "area": "Navigate",
+    "context": "Question box in Navigate when Android's back is pressed while a tour records (owner 2026-11-06, flow map N4): button, the app goes to the background",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
   "nav_relock": {
     "area": "Navigate",
     "context": "TalkBack name of the open-lock button beside the big blue Plan button after unlocking: locks the screen again",

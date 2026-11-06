@@ -33,6 +33,10 @@ class GermanScreenshotTest {
     private val shots get() = borrow(ScreenshotTest())
 
     @Test fun plan() = shots.plan()
+    @Test fun navigateLeaveAsk() = shots.navigateLeaveAsk()
+    @Test fun navigatePausedLocked() = shots.navigatePausedLocked()
+    @Test fun navigateActivitySheet() = shots.navigateActivitySheet()
+    @Test fun navigateActivitySheetHikeLevels() = shots.navigateActivitySheetHikeLevels()
     @Test fun planRoundTripOn() = shots.planRoundTripOn()
     @Test fun planOutAndBack() = shots.planOutAndBack()
     @Test fun planRoutingSlowProgress() = shots.planRoutingSlowProgress()
