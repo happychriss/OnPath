@@ -245,5 +245,31 @@ class CoreFieldE2ETest : E2EBase() {
         scenario.onActivity { vm(it).tours.filter { t -> t.name == name }.forEach { t -> db.deleteTour(t.id) } }
     }
 
+    /**
+     * Flow map H2 (2026-11-06): Löschen in the end sheet with "Plan auch speichern" ON threw the unsaved plan away without
+     * a word. Now Löschen bins only the tour; the plan goes through Save's dialog into My routes.
+     */
+    @Test fun endTourDeleteWithSavePlanOnKeepsThePlan() {
+        startPlanWithTwoPoints()
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        var before: List<GeoPoint> = emptyList()
+        var tourId = -1L
+        scenario.onActivity { before = vm(it).waypoints.toList(); tourId = vm(it).recState.value!!.tourId; vm(it).saveRouteAtEnd = true; vm(it).endTourAndDelete() }
+        waitUntil("the tour has ended", 20_000) { !recording() }
+        Thread.sleep(1_500)
+        var askOpen = false
+        scenario.onActivity { askOpen = vm(it).saveAsk != null }
+        assertTrue("Save's dialog for the plan is open", askOpen)
+        assertEquals("the plan stays while Save's dialog is open", before, waypointList())
+        val name = "E2E delete keeps plan ${System.currentTimeMillis() % 100_000}"
+        scenario.onActivity { vm(it).confirmSave(name) }
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
+        waitUntil("the plan is in My routes", 15_000) { var ok = false; scenario.onActivity { ok = vm(it).tours.any { t -> t.name == name && t.kind == TourKind.PLANNED } }; ok }
+        assertTrue("the tour is in the bin", (db.getTour(tourId)?.deletedMs ?: 0L) > 0L)
+        scenario.onActivity { vm(it).tours.filter { t -> t.name == name }.forEach { t -> db.deleteTour(t.id) } }
+    }
+
     private fun waypointList(): List<GeoPoint> { var l: List<GeoPoint> = emptyList(); scenario.onActivity { l = vm(it).waypoints.toList() }; return l }
 }
