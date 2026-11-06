@@ -1,14 +1,14 @@
 # OnPath – project status and decisions
 
-Current release **0.14.0** (2026-11-03). Open work: `docs/backlog.md`. Core features and their tests:
+Current release **0.17.0** (2026-11-06). Open work: `docs/backlog.md`. Core features and their tests:
 `docs/core-features.md`. What each release changed: `docs/release-notes/` and the git history – this file keeps only
 the current state.
 
 ## Where things are
 <!-- Kept by the captain every round (docs/roles/captain.md). -->
 - **Pixel:** main b047bf79, installed 2026-11-01 19:55 (newest handoff that names it; the night draft 63b0194d is not on it).
-- **GitHub release:** v0.16.0 (2026-11-05 night, 7419f1dd, cloud worker for donald): round trips start at ① and stay round trips (A, C), re-route "Über ③ / ③ auslassen" with numbered circles (B), "PLANEN · Ohne Netz ✓/⟳/⚠", the found place's card "+ Zur Route" · "⋯ Mehr", A-022 words (Meine Touren, Geplant | Gemacht). Before: v0.15.0 (2026-11-04, e0ad10a8). Not in it: the leg cache for long bike routes (measured only, `docs/design/long-bike-routes.md`). Next: A-003 Play build.
-- **Planner (plan.onpath.earth):** web-spike 74c2b069 (2026-11-05, has main c40b638b = the v0.16.0 shared code; Web spike green after one re-run of a timing flake in robust-smoke). Open for cloud-plan: A-022 web texts, the pin card, loopStart in the web point menu, the 'Weiter warten?' box.
+- **GitHub release:** v0.17.0 (2026-11-06, 1c887c92, cloud worker as donald): plan sheet R5, Navigate lock (C), end-tour sheet, clear plan during a tour, next stops on the profile, plan leg by leg with a leg cache (PLANNER_VERSION 4) and the 'Abschnitt n von m' wait bar. Rundgang on GitHub's emulator.
+- **Planner (plan.onpath.earth):** web-spike 10e2f3db (2026-11-06, has main 2976acf4 = the v0.17.0 shared code, PLANNER_VERSION 4). Open for cloud-plan: the app's one-tap activity picker and the ✕ / clear question (web-spike backlog), lang-gpx pin-link flake.
 - **State:** released 0.13.2 → 0.13.5 today. main (8cf47345 or newer) also has, **not released yet**: the planner
   splice "route only around a cut stop" (38fc16c6, ~2× faster, `PLANNER_VERSION` 3); the compact plan sheet with the
   rolled-up one-row step (d2885035, interim build on the owner's phone since 21:45); faster builds (`tools/ci/gate.sh`,
@@ -29,6 +29,7 @@ the current state.
 
 ## Last session
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **cloud worker as donald (no computer), 2026-11-06:** v0.17.0 released (plan sheet R5, Navigate lock, end-tour sheet, leg cache) together with the planner (main merged into web-spike, LegCache + leg progress in the web engine). Rundgang ran on GitHub's emulator instead of donald. Not on the Pixel. Next: [pixel] measure long bike routes, onboarding hints (owner thinking).
 - **donald, 2026-11-05 evening (with the owner):** long bike routes faster (leg cache, tour follow line, wait bar within a leg) and the new UI round (plan sheet R5, band + '←', Navigate unlock C, V2 end sheet, clear-plan clarity, M3 dialogs, next stops) all on main, gate --full green; test APK on the Pixel. Next: Pixel measurement of the routing, cloud-plan mirrors PLANNER_VERSION 4, onboarding (proposal in chat, not yet in the backlog), then a release on the owner's word.
 - **donald, 2026-11-03 late – shut down by the owner (~23:20); new build items go to the cloud.** On main tonight:
   plan in blue (no top band), novice fixes, fewer terms → superseded by A-022 (open), load-route question, compact
