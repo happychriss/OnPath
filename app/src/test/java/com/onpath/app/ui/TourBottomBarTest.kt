@@ -15,13 +15,6 @@ class TourBottomBarTest {
     private val bar = File("src/main/java/com/onpath/app/ui/TourActionBar.kt").readText()
     private fun xml(dir: String, file: String) = File("../strings/src/commonMain/composeResources/$dir/$file").readText()
 
-    @Test fun theSameBarWithAndWithoutTheLock() {
-        assertTrue(nav, nav.contains("val unlocked = !lock || open"))
-        assertTrue(nav, nav.contains("val tourBar = unlocked && ui.recordedM != null"))
-        assertTrue(nav.contains("if (tourBar) TourBottomBar(ui.paused, onPause"))
-        assertTrue("the card has no tour buttons", !nav.contains("TourCardActions("))
-    }
-
     @Test fun runningIsPauseAndPlan_pausedIsWeiterBeendenAndRoundPlan() {
         val f = bar.substringAfter("fun TourBottomBar(").substringBefore("/** Layout rules of [TourBottomBar]")
         assertTrue(f.contains("onPause(true)") && f.contains("Res.string.nav_action_pause") && f.contains("Res.string.nav_change_plan"))

@@ -7,7 +7,7 @@ import com.onpath.strings.common_resume
 import com.onpath.strings.nav_action_pause
 import com.onpath.strings.nav_end_short
 import com.onpath.strings.nav_end_tour_title
-import com.onpath.strings.nav_slide_unlock
+import com.onpath.strings.nav_hold_hint
 import com.onpath.strings.nav_leave_go
 import com.onpath.strings.nav_leave_stay
 import com.onpath.strings.nav_leave_title
@@ -521,7 +521,7 @@ class CoreFieldE2ETest : E2EBase() {
     }
 
     /**
-     * Owner 2026-11-06: the tour's ONE bottom bar – with the lock off and, after the slide, with the lock on: "Pause |
+     * Owner 2026-11-06: the tour's ONE bottom bar – with the lock off (with the lock on the same, held): "Pause |
      * Planen"; ending only out of a pause ("Weiter · Beenden · ✎"); "Beenden" asks first (the end sheet).
      */
     @Test fun lockOffPauseThenEndOpensTheEndSheet() {
@@ -545,7 +545,11 @@ class CoreFieldE2ETest : E2EBase() {
         }
     }
 
-    @Test fun lockOnSlidePauseLockAgainSlideEnd() {
+    /**
+     * Owner 2026-11-06 22:20 (variant A): locked, the same bar's buttons fire only when held ~1 s – a short tap does
+     * nothing but show "Gedrückt halten"; held Pause pauses, held Beenden opens the end sheet (asks first).
+     */
+    @Test fun lockOnHoldPauseThenHoldEnd() {
         var before: com.onpath.app.data.AppSettings? = null
         scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navLock = true)) }
         try {
@@ -553,27 +557,20 @@ class CoreFieldE2ETest : E2EBase() {
             Thread.sleep(if (realRouting) 3_000 else 1_000)
             scenario.onActivity { vm(it).startNavigation(force = true) }
             waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
-            slide()
-            assertNotNull("after the slide: Pause at the bottom", findFresh(By.text(Txt.s(Res.string.nav_action_pause)), 5_000))
-            clickText(Txt.s(Res.string.nav_action_pause))
+            val pause = findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 10_000)
+            assertNotNull("locked: Pause at the bottom, no slider", pause)
+            pause!!.click() // a short tap: the band starts and falls back
+            assertNotNull("a short tap shows the hint", findFresh(By.text(Txt.s(Res.string.nav_hold_hint)), 3_000))
+            Thread.sleep(1_500)
+            assertTrue("a short tap does not pause", com.onpath.app.recording.RecordingService.state.value?.paused != true)
+            holdButton(Txt.s(Res.string.nav_action_pause))
             waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
-            // lock again (a tap on the map locks, as after 30 s): the pause changes nothing about the lock
-            device.pressBack()
-            assertNotNull("locked + paused: the slider again", findFresh(By.descContains(Txt.s(Res.string.nav_slide_unlock)), 5_000))
-            slide()
-            assertNotNull("after the slide, paused: Beenden", findFresh(By.text(Txt.s(Res.string.nav_end_short)), 5_000))
-            clickText(Txt.s(Res.string.nav_end_short))
+            holdButton(Txt.s(Res.string.nav_end_short))
             assertNotNull("the end sheet", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
+            assertTrue("asking does not end the tour", recording())
         } finally {
             scenario.onActivity { vm(it).updateSettings(before!!) }
         }
-    }
-
-    private fun slide() {
-        val slider = findFresh(By.descContains(Txt.s(Res.string.nav_slide_unlock)), 5_000)
-        assertNotNull("no slider in Navigate", slider)
-        val r = slider!!.visibleBounds
-        device.swipe(r.left + r.height() / 2, r.centerY(), r.right - 4, r.centerY(), 40)
     }
 
     /**

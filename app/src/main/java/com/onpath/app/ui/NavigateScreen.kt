@@ -258,19 +258,13 @@ fun NavigateOverlay(
     var topColumnDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var messageBottomDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var sliderDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    // the slider only unlocks (owner 2026-11-05, Navigate C). Unlocked – or the lock off in the settings – the bottom is
-    // ONE bar for both (owner 2026-11-06: "Stopp und Pause an der Stelle ist logischer"): "⏸ Pause | ✎ Planen", paused
-    // "Weiter · Beenden · round ✎" ([TourBottomBar]); the status card has no buttons and there is no "Sperren" button –
-    // it locks again after 30 s (counted again from a pause), with a tap on the map and with Back. The pause changes
-    // nothing about the lock: locked + paused shows the slider ("Weiter · Beenden · Planen").
-    var open by remember { mutableStateOf(actionsOpen) }
-    LaunchedEffect(open, lock, ui.paused) { if (lock && open && !actionsOpen) { kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false } }
-    val unlocked = !lock || open
-    // locking again without a choice (owner 2026-11-02, no ✕): a tap on the map or Android's back – paused the same
-    val closableBar = lock && open
-    // a tour records and the screen is unlocked (or the lock is off): Pause | Planen at the bottom, ending only out of a pause
-    val tourBar = unlocked && ui.recordedM != null
-    androidx.activity.compose.BackHandler(enabled = closableBar) { open = false }
+    // ONE bar at the bottom with and without the lock (owner 2026-11-06: "Stopp und Pause an der Stelle ist logischer"):
+    // "⏸ Pause | ✎ Planen", paused "Weiter · Beenden · round ✎" ([TourBottomBar]); the status card has no buttons.
+    // Locked (owner 2026-11-06 22:20, variant A of the hold lock – replaces the slider and its unlocked state): the same
+    // buttons light, each fires only when held ~1 s ([HoldButton]); the lock off in the settings: a plain tap.
+    // [actionsOpen] (screenshot tests) draws the plain-tap look.
+    val hold = lock && !actionsOpen
+    val closableBar = false
     // Android's back while a tour records (owner 2026-11-06, flow map N4): ask instead of leaving the app – a novice took
     // "app gone" for "tour gone" and might start a second one. A second back closes the question (= Bleiben).
     var leaveAsk by remember { mutableStateOf(false) }
@@ -279,8 +273,6 @@ fun NavigateOverlay(
     val recordingNow = ui.recordedM != null
     LaunchedEffect(recordingNow) { if (!recordingNow) leaveAsk = false }
     Box(Modifier.fillMaxSize()) {
-        if (closableBar) Box(Modifier.fillMaxSize().clearAndSetSemantics { }
-            .pointerInput(Unit) { detectTapGestures { open = false } })
         Column(
             Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding()
                 .onSizeChanged { topColumnDp = with(density) { it.height.toDp().value.toInt() } }
@@ -305,11 +297,9 @@ fun NavigateOverlay(
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
             val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            // unlocked: ONE big blue "Plan" where the slider was (owner 2026-11-05, Navigate C), an open lock beside it locks again
-            if (tourBar) TourBottomBar(ui.paused, onPause, onEnd = { open = false; onEnd() }, onPlan = { open = false; onSlideToPlan() }, bottom)
-            else if (unlocked) ChangePlanButton({ open = false; onSlideToPlan() }, bottom)
-            else SlideToPlan({ open = true }, bottom, recording = ui.recordedM != null, startFraction = slideStartFraction,
-                paused = ui.paused && ui.recordedM != null)
+            // a tour: Pause | Planen (paused Weiter · Beenden · ✎); no tour: one big blue Planen – held while locked
+            if (ui.recordedM != null) TourBottomBar(ui.paused, onPause, onEnd = onEnd, onPlan = onSlideToPlan, bottom, hold = hold)
+            else ChangePlanButton(onSlideToPlan, bottom, hold = hold)
         }
         // "Neuer Plan – deine Aufnahme läuft weiter" just above the bottom bar, over the map (nothing moves under it)
         newPlan?.let { n ->

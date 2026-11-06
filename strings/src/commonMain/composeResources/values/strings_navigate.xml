@@ -281,4 +281,6 @@
     <string name="nav_end_stat_ascent">Ascent</string>
     <string name="nav_free_tour">Free tour · recording only</string>
     <string name="nav_stop_arrive">at %1$s</string>
+    <string name="nav_hold_hint_rest">Locked · press and hold a button</string>
+    <string name="nav_hold_hint">Press and hold</string>
 </resources>
