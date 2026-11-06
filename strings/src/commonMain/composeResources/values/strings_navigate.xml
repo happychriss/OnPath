@@ -122,6 +122,7 @@
     <string name="nav_notif_to_go">%1$s to go</string>
     <string name="nav_notif_arrival">arrival %1$s</string>
     <string name="nav_notif_left">%1$s left</string>
+    <string name="nav_notif_paused_in_plan">Navigation paused – tap to continue</string>
     <string name="nav_notif_following">%1$s · following %2$s</string>
     <string name="nav_notif_recorded">On the way %1$s · %2$s</string>
     <string name="nav_pause">Pause</string>

@@ -257,6 +257,7 @@ class RecordingService : Service() {
                 // back in Navigate: sentences that waited are dropped – the state is checked afresh (owner 2026-11-03)
                 if (navigating) voice.dropWaiting()
                 navigator?.let { handle(it.setNavigating(navigatingApplied)) } ?: run { updateAlert(); publish() }
+                publish(force = true) // the notification says at once whether the guidance is on (RecNotifText)
                 return START_STICKY
             }
             ACTION_FOLLOW_CHANGED -> {
@@ -1280,9 +1281,9 @@ class RecordingService : Service() {
         // Battery: the clock runs by itself in the notification (chronometer); re-post only when what it says
         // changes (status, shown distance), at most every 5 s, and once a minute to keep the clock in step.
         val now = SystemClock.elapsedRealtime()
-        navText = navNotification()
+        navText = if (RecNotifText.showRouteLines(planQuiet())) navNotification() else null
         val key = notifStatus() + Format.distance(distance) + (follow?.first ?: "") + (navText?.let { it.title + it.text } ?: "") +
-            tourPost().channel
+            tourPost().channel + planQuiet()
         // following: what the lock screen shows (next junction, time to go) changes often – at most every 10 s
         val minGap = if (navText != null) 10_000 else 5000
         if (force || (now - lastNotify > minGap && key != lastNotifyKey) || now - lastNotify > 60_000) {
@@ -1445,7 +1446,8 @@ class RecordingService : Service() {
             .setShowWhen(!paused)
             .setUsesChronometer(!paused)
             .setWhen(System.currentTimeMillis() - elapsedS * 1000)
-            .setContentText(follow?.let { Txt.s(Res.string.nav_notif_following, status, it.first) } ?: status)
+            .setContentText(RecNotifText.line(status, follow?.first, planQuiet(),
+                { s, name -> Txt.s(Res.string.nav_notif_following, s, name) }, Txt.s(Res.string.nav_notif_paused_in_plan)))
             // readable on the lock screen (owner); no button here ends a tour
             .setOngoing(true)
             .setOnlyAlertOnce(true)

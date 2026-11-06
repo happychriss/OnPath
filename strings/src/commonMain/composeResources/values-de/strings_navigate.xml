@@ -121,6 +121,7 @@
     <string name="nav_notif_to_go">noch %1$s</string>
     <string name="nav_notif_arrival">Ankunft %1$s</string>
     <string name="nav_notif_left">noch %1$s</string>
+    <string name="nav_notif_paused_in_plan">Navigation pausiert – tippen zum Weiterfahren</string>
     <string name="nav_notif_following">%1$s · Route: %2$s</string>
     <string name="nav_notif_recorded">Unterwegs %1$s · %2$s</string>
     <string name="nav_pause">Pausieren</string>
