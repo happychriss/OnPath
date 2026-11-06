@@ -429,7 +429,7 @@ class ScreenshotTest {
             // [sync] is built inside the composition: its texts follow the test's language
             // Save route is the top item whenever there is a plan; [unsaved] = the "Nicht gespeichert ›" sign
             val menu = PlanMenu(state, onUpdates = {}, onPairBrowser = {}, onPhoneSetup = if (phoneSetup) ({}) else null,
-                sync = sync?.invoke() ?: SyncMenuUi(), onSaveRoute = if (state.save) ({}) else null, unsaved = unsaved,
+                sync = sync?.invoke() ?: SyncMenuUi(), onSaveRoute = if (state.save) ({}) else null,
                 // owner 2026-11-06: "Neu planen" with a plan, "Ohne Plan aufzeichnen" while no tour runs
                 onNewPlan = if (newPlan) ({}) else null, onRecordWithoutPlan = if (record) ({}) else null)
             Frame(menu = menu) { bottom() }
@@ -501,22 +501,6 @@ class ScreenshotTest {
         }
     }
 
-    /** ✕ Neu planen with unsaved changes (owner 2026-11-05, M3 basic dialog): "Plan speichern?" Verwerfen | Abbrechen · Speichern. */
-    @Test fun planDiscardAsk() = paparazzi.snapshot {
-        OnPathTheme {
-            Frame { PlanPanel(planUi().copy(unsaved = true), PlanCallbacks()) }
-            DiscardPlanDialog({}, {}, onSave = {}, name = "Rund um den Kofel")
-        }
-    }
-
-    /** The same for a new plan during a tour: "Dein Plan hat Änderungen …" + "Deine Tour läuft weiter." */
-    @Test fun planDiscardAskTour() = paparazzi.snapshot {
-        OnPathTheme {
-            Frame(editing = true) { PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)), PlanCallbacks()) }
-            DiscardPlanDialog({}, {}, onSave = {}, touring = true)
-        }
-    }
-
     /**
      * The plan during a tour, profile step (owner 2026-11-05, R5): plan row ✕ Neu planen · ⇅ Umkehren · ↻ Rundtour, the
      * facts, the profile, at the bottom the green "▶ Weiter geht's".
@@ -563,13 +547,11 @@ class ScreenshotTest {
 
     @Test fun endTourConfirm() = paparazzi.snapshot {
         OnPathTheme {
-            Frame {
-                TourRunningBar(6_400.0, 5025, paused = false, onEnd = {}, activity = Activity.BIKE_TREKKING)
-                PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true), PlanCallbacks())
-            }
-            // variant A (owner 2026-11-06): numbers in one line, the plan option, Save, Weiterfahren | Löschen – no scrolling
-            EndTourDialog({}, {}, {}, activity = Activity.HIKE, stats = EndStats(12_480.0, 16_560, 842.0),
-                routeLabel = Txt.s(Res.string.nav_end_save_changed_route), routeLine = Txt.s(Res.string.nav_end_plan_line, "Rund um den Kofel"), inline = true)
+            // the sheet opens from Navigate ("Tour beenden" in the unlocked status card)
+            NavFrame(navUi, actions = true, lock = true)
+            // variant A (owner 2026-11-06): numbers in one line, Save, Weiterfahren | Löschen – no scrolling; nothing about
+            // the plan (owner 2026-11-06: the tour and the plan are two things)
+            EndTourDialog({}, {}, {}, activity = Activity.HIKE, stats = EndStats(12_480.0, 16_560, 842.0), inline = true)
         }
     }
 
@@ -745,16 +727,6 @@ class ScreenshotTest {
 
     /** A tour without a route (owner 2026-11-05): "Freie Tour · nur Aufnahme" instead of an empty route line. */
     @Test fun navigateFreeTour() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = false)) }
-
-    /** ✕ Neu planen during a tour (owner 2026-11-05): "Plan leeren? Deine Tour läuft weiter …" – Plan leeren / Abbrechen. */
-    @Test fun planClearDuringTour() = paparazzi.snapshot {
-        OnPathTheme {
-            Frame(editing = true) {
-                PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)), PlanCallbacks())
-            }
-            DiscardPlanDialog({}, {}, onSave = null, touring = true, unsaved = false)
-        }
-    }
 
     /** The empty plan during a tour: "Tour läuft weiter – setz neue Punkte oder geh ‹ Zur Tour." */
     @Test fun planEmptyDuringTour() = paparazzi.snapshot {
@@ -1165,6 +1137,19 @@ class ScreenshotTest {
     )
 
     /** My routes, tab Planned (default): planned routes + imported GPX, Import GPX, per item ⋮ (Rename, Export GPX, Delete). */
+    /**
+     * My routes → Planned with "Zuletzt" (owner 2026-11-06): the newest three plans kept by themselves – pale route sign,
+     * "Plan · date", Speichern / Löschen on the card – "Alle 4 anzeigen ›", then "Gespeichert" with one just saved.
+     */
+    @Test fun toursRecent() = paparazzi.snapshot {
+        val t0 = 1_761_000_000_000L
+        val drafts = listOf("Algund → Meran", "Plan 6. Nov., 14:34", "In Lana", "Vellau → Leiteralm").mapIndexed { i, n ->
+            Tour(100L + i, TourKind.PLANNED, n, t0 - i * 3_600_000L, "HIKE", 2, 2_000.0 + 900 * i, 40.0 * i, 30.0 * i, 1800.0 + 600 * i,
+                "done", viaPts, draft = true)
+        }
+        OnPathTheme { RoutesScreen(drafts + tourList, {}, {}, {}, {}, {}, justSavedId = 1L) }
+    }
+
     @Test fun tours() = paparazzi.snapshot {
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}) }
     }
@@ -1207,11 +1192,6 @@ class ScreenshotTest {
         OnPathTheme { RoutesScreen(tourList.filter { it.kind != TourKind.RECORDED }, {}, {}, {}, {}, {}, initialTab = RoutesTab.DONE) }
     }
 
-    /** Delete asks first and stays until answered. */
-    @Test fun routesDeleteConfirm() = paparazzi.snapshot {
-        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialConfirmDelete = tourList[0]) }
-    }
-
     /** Recycle bin (C11): deleted entries with days left, Restore / Delete now. */
     @Test fun recycleBin() = paparazzi.snapshot {
         val now = 1_761_000_000_000
@@ -1249,11 +1229,6 @@ class ScreenshotTest {
     /** First start on an empty phone: restore offer. */
     @Test fun restoreOffer() = paparazzi.snapshot {
         OnPathTheme { Frame(route = false) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }; RestoreOfferDialog({}, {}) }
-    }
-
-    /** Loading over an unsaved plan: Save first / Replace (tap outside = cancel). */
-    @Test fun replacePlanAsk() = paparazzi.snapshot {
-        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}); ReplacePlanDialog({}, {}, {}) }
     }
 
     /**
@@ -1322,7 +1297,7 @@ class ScreenshotTest {
     }
 
     /** The unsaved plan's ☰ menu: Save route on top (the sign's tap does the same). */
-    private val unsavedMenu get() = PlanMenu(onUpdates = {}, onSaveRoute = {}, unsaved = true)
+    private val unsavedMenu get() = PlanMenu(onUpdates = {}, onSaveRoute = {})
 
     /** A saved route changed since: "Save" beside ⋯ again, "… changed, not saved" below. */
     @Test fun planChangedNotSaved() = paparazzi.snapshot {

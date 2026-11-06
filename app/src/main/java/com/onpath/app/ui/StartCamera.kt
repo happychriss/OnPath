@@ -15,17 +15,20 @@ object StartCamera {
     /** A position at most this old counts as "the first fix" (seconds). */
     const val FRESH_AGE_S = 60L
 
-    enum class Step { WAIT, CENTRE, GIVE_UP }
+    /** [SHOW_PLAN]: Plan holds a plan – the map shows the whole plan, not the position (owner 2026-11-06, [PlanCamera]). */
+    enum class Step { WAIT, CENTRE, SHOW_PLAN, GIVE_UP }
 
     /**
      * @param modeKnown the start mode (Plan / Navigate) has been decided (database check done)
      * @param plan the app is in Plan with no tour running
      * @param fixAgeS age of the newest known position in seconds, null = none
+     * @param hasPlan the plan has at least one point: it is shown instead of the position (no fix needed)
      */
-    fun decide(elapsedMs: Long, modeKnown: Boolean, plan: Boolean, userMoved: Boolean, fixAgeS: Long?): Step = when {
+    fun decide(elapsedMs: Long, modeKnown: Boolean, plan: Boolean, userMoved: Boolean, fixAgeS: Long?, hasPlan: Boolean = false): Step = when {
         userMoved -> Step.GIVE_UP
         modeKnown && !plan -> Step.GIVE_UP
         !modeKnown -> if (elapsedMs >= ANY_WAIT_MS) Step.GIVE_UP else Step.WAIT
+        hasPlan -> Step.SHOW_PLAN
         fixAgeS != null && (fixAgeS <= FRESH_AGE_S || elapsedMs >= FRESH_WAIT_MS) -> Step.CENTRE
         else -> Step.WAIT // no position yet: keep waiting (no time limit)
     }

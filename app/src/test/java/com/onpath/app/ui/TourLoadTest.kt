@@ -216,8 +216,8 @@ class TourLoadTest {
         val openTour = body("fun openTour(")
         assertTrue(openTour, openTour.contains("if (!duringTour) {"))
         assertTrue(openTour, openTour.contains("if (duringTour && recState.value != null) enter(AppMode.NAVIGATE)"))
-        // the route waiting for the end loads after Save / Delete, not after Cancel
-        assertTrue(vmSrc.contains("loadAfterTour?.let { t -> loadAfterTour = null; openTour(t) }"))
+        // the route waiting for the end loads after Save / Delete, not after Cancel – an unsaved plan asks first (2026-11-06)
+        assertTrue(vmSrc.contains("loadAfterTour?.let { t -> loadAfterTour = null; unlessUnsaved("))
         assertTrue(body("fun dismissEndAsk(").contains("loadAfterTour = null"))
         val map = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
         assertFalse("every end-question dismiss goes through dismissEndAsk", map.contains("vm.endAsk = null"))

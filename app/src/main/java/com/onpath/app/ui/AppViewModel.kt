@@ -97,12 +97,6 @@ sealed interface EndAsk {
     data class Rides(val tourId: Long, val summary: com.onpath.app.rides.RideView.Summary) : EndAsk
 }
 
-/** What "Replace current route?" / "Save first" loads afterwards: a saved route or a plan from a link (A-005). */
-sealed interface PlanToOpen {
-    data class Saved(val tour: Tour) : PlanToOpen
-    data class Shared(val plan: com.onpath.app.routing.SharedPlan) : PlanToOpen
-}
-
 /** One-off things the UI must do with an Activity context. */
 sealed interface UiEvent {
     data class Share(val intent: Intent) : UiEvent
@@ -177,7 +171,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** My routes list (☰ → My routes) is open. */
     var routesOpen: Boolean
         get() = routesShown
-        set(v) { if (!v) { routesNote = null; tourLoadAsk = null; trackFollowAsk = null }; routesShown = v } // line / box last until My routes is left
+        set(v) { if (!v) { routesNote = null; tourLoadAsk = null; trackFollowAsk = null; justSavedId = -1L }; routesShown = v } // line / box last until My routes is left
     /** My routes' last chosen tab (Planned / Done); kept while the app runs, Planned after a restart. */
     var routesTab by mutableStateOf(RoutesTab.PLANNED)
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
@@ -802,8 +796,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     /** A save runs (the DB write): a second tap on Save does not make a second route. */
     private var saving = false
-    /** "Replace current plan?" is open for this route (a saved one or one from a plan link). */
-    var replaceAsk by mutableStateOf<PlanToOpen?>(null)
     /** A save failed: shown in a dialog until OK (no message that disappears by itself). */
     var routesProblem by mutableStateOf<String?>(null)
 
@@ -886,7 +878,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun onAppStart() {
         val away = if (backgroundSince == 0L) Long.MAX_VALUE else android.os.SystemClock.elapsedRealtime() - backgroundSince
-        if (away < 10 * 60_000L || recState.value != null || mode != AppMode.PLAN) return
+        if (away < 10 * 60_000L) return
+        // back after a while with a plan: the plan in front, also during a tour (owner 2026-11-06, PlanCamera)
+        if (backgroundSince != 0L && mode == AppMode.PLAN && waypoints.isNotEmpty()) {
+            showPlanWhole(PlanCamera.Moment.BACK_IN_APP); return
+        }
+        if (recState.value != null || mode != AppMode.PLAN) return
         // A place was just shared into the app: the map shows it, not the position.
         if (android.os.SystemClock.elapsedRealtime() < searchFlow.keepCameraUntil) return
         startCameraDone = false; userMovedMap = false; followMe = false; startCameraGen++
@@ -1131,15 +1128,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     refreshTours()
                     clearFollow()
                     arrivalAsk = false
-                    // owner: after Save or Delete the tour is done – the plan leaves the map, saved or not
-                    // (one Undo step brings it back). With "Plan auch speichern" ON, Save's dialog is open now: the plan
-                    // stays until it is answered (field bug 2026-11-06: Save read the already cleared plan – lost)
-                    val pendingSave = saveAsk?.takeIf { waypoints.size >= 2 }
-                    if (waypoints.isNotEmpty() && pendingSave == null) clearPlan()
+                    // the tour and the plan are two things (owner 2026-11-06, Komoot / Strava): ending, saving or deleting
+                    // the TOUR leaves the plan on the map as it is – a plan never saved was saved at the start ("Los
+                    // geht's"), changes made on the way show "Nicht gespeichert ›" (was: the plan left the map, and the
+                    // end sheet's switch "Plan auch speichern" was easy to miss)
                     enter(AppMode.PLAN)
-                    if (pendingSave != null) { saveAsk = pendingSave; clearPlanAfterSave = true }
-                    // "Tour beenden und laden" (owner 2026-11-03): the route asked for loads now – after Save's dialog
-                    if (pendingSave == null) loadAfterTour?.let { t -> loadAfterTour = null; openTour(t) }
+                    // "Tour beenden und laden" (owner 2026-11-03): the route asked for loads now – an unsaved plan asks
+                    // first, as everywhere a plan is replaced (save-paths P3)
+                    loadAfterTour?.let { t -> loadAfterTour = null; unlessUnsaved("Load \"${t.name}\" after the tour") { openTour(t) } }
                 }
             }
         }
@@ -1971,30 +1967,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Clear the plan right away (owner): one Undo step brings it back, so no question. */
-    /** "Discard changes?" is open (✕ Close plan with unsaved changes). */
-    var discardAsk by mutableStateOf(false)
-
     /**
-     * ✕ Close plan in the sheet (owner 2026-10-31, was "Clear route"): the plan leaves the screen – a saved route stays in
-     * My routes; with unsaved changes ([planUnsaved]) ONE question first, "Discard changes?" Cancel · Discard · Save
-     * (owner 2026-11-05: the sheet has no Save any more – ✕ asks to save).
+     * ✕ / ☰ Neu planen: the plan leaves the map at once – no question, also during a tour (owner 2026-11-06): a plan not
+     * saved as it is goes under My routes → Zuletzt ([keepAsDraft]), one Undo step brings it back, and during a tour the
+     * empty sheet says "Tour läuft weiter – …" (the recording goes on, the guidance ends).
      */
-    fun requestClear() { if (ClearAsk.asks(planUnsaved, recState.value != null, waypoints.size)) discardAsk = true else clearPlan() }
-
-    /** The plan's name for "Plan speichern?" – the saved route it was loaded / saved as; null = a new plan. */
-    val planNameForAsk: String? get() = savedName?.takeIf { it.isNotBlank() }
-
-    /** During a tour the question says the tour goes on (owner 2026-11-05): "Plan leeren? Deine Tour läuft weiter …". */
-    val clearDuringTour: Boolean get() = recState.value != null
-
-    /** "Discard changes?" → Discard. */
-    fun discardConfirmed() { discardAsk = false; clearPlan() }
-
-    /** "Discard changes?" → Save: Save's dialog, then the new plan ([askSave]'s follow-up; Cancel there keeps the plan). */
-    fun discardSaveFirst() { discardAsk = false; askSave { clearPlan() } }
-
-    /** Save is offered in "Discard changes?" only when there is something Save can store (two points or more). */
-    val canSaveBeforeClear: Boolean get() = RouteRules.saveInMenu(waypoints.size)
+    fun requestClear() = clearPlan()
 
     /**
      * Resets the whole plan in one undoable step: points, route line, pinned marks (kept while
@@ -2003,6 +1981,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * A followed copy of this plan goes too, unless a recording is using it right now.
      */
     fun clearPlan() {
+        keepAsDraft("cleared")
         Problems.trace("plan", "Clear route: plan ${waypoints.size} → 0 points" + if (recState.value != null) " (tour running)" else "")
         val planLine = route?.points
         if (waypoints.isNotEmpty()) change { clear() } else recalc()
@@ -2479,6 +2458,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * The whole plan in front at a [PlanCamera.Moment] (owner 2026-11-06): once the sheet has settled, the fit of "Show
+     * whole route" over the route line and the points (one point: centred) – not when a finger touched the map meanwhile,
+     * Plan was left or a track is shown. Following stops first (CLAUDE.md "Map camera").
+     */
+    fun showPlanWhole(moment: PlanCamera.Moment) {
+        val asked = android.os.SystemClock.uptimeMillis()
+        viewModelScope.launch {
+            delay(WholeRoute.SETTLE_MS)
+            val pts = waypoints.toList()
+            val what = if (mode != AppMode.PLAN) PlanCamera.Show.NOTHING
+                else PlanCamera.show(pts.size, touchedSince = lastMapTouchMs > asked, trackShown = shown != null)
+            if (what == PlanCamera.Show.NOTHING) {
+                Problems.trace("map", "Plan not shown whole (${moment.name.lowercase()}): the map was touched, Plan left or nothing to show")
+                return@launch
+            }
+            followMe = false
+            freeLookAt = null
+            events += if (what == PlanCamera.Show.ONE_POINT) UiEvent.CenterOn(pts[0], PlanCamera.ONE_POINT_ZOOM)
+                else UiEvent.Fit(WholeRoute.bounds(listOfNotNull(route?.points), pts, null), northUp = true)
+            Problems.trace("map", "Plan shown whole (${moment.name.lowercase()}, ${pts.size} points)")
+        }
+    }
+
+    /**
      * The next computed route is fitted ([WholeRoute.firstRoute], a plan link, a place added from the card / candidate
      * menu – [WholeRoute.fitAfterPlace]): the whole line shows (field A-019).
      */
@@ -2560,19 +2563,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Save's dialog → Cancel / Back / a tap outside: nothing is saved, "Save first" does not load. */
-    fun cancelSave() { saveAsk = null; if (clearPlanAfterSave) { clearPlanAfterSave = false; finishEndOfTourSave() } }
-
-    /**
-     * Save's dialog opened by the end of a tour ("Plan auch speichern"): the plan stays on the map until the dialog is
-     * answered, then it leaves as after every tour (one Undo step) and a route asked for at the end loads.
-     */
-    private var clearPlanAfterSave = false
-
-    private fun finishEndOfTourSave() {
-        if (recState.value != null) return // a new tour started meanwhile: its plan stays
-        if (waypoints.isNotEmpty()) clearPlan()
-        loadAfterTour?.let { t -> loadAfterTour = null; openTour(t) }
-    }
+    fun cancelSave() { saveAsk = null }
 
     /**
      * Save's dialog → Save with [input]: a blank name keeps the proposal / old name ([RouteRules.cleanName]). A new
@@ -2582,11 +2573,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val ask = saveAsk ?: return
         saveAsk = null
         val name = RouteRules.cleanName(input, ask.name)
-        // end of a tour: the plan leaves only once it is saved – a failed save keeps it on the map (and forgets the end)
-        val endOfTour = clearPlanAfterSave; clearPlanAfterSave = false
-        val then: (() -> Unit)? = if (endOfTour && ask.kind != SaveAsk.Kind.COPY) {
-            { ask.then?.invoke(); finishEndOfTourSave() }
-        } else ask.then
+        val then = ask.then
         when {
             ask.kind == SaveAsk.Kind.COPY -> copyRoute(ask.routeId, name)
             ask.kind == SaveAsk.Kind.OVERWRITE && ask.routeId == savedId -> overwriteSaved(name, then)
@@ -2619,10 +2606,73 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** How long the dialog waits for the place proposal of a new route's name (it shows the date name meanwhile). */
     private val NAME_WAIT_MS = 5_000L
 
+    // a plan from "Zuletzt" is no saved route: Save makes a new one (and the draft goes – [insertPlanned])
     private fun currentSaveMode() =
-        RouteRules.saveMode(savedId, savedName, tours.filter { it.kind == TourKind.PLANNED }.map { it.id })
+        RouteRules.saveMode(savedId, savedName, tours.filter { it.kind == TourKind.PLANNED && !it.draft }.map { it.id })
 
-    private fun plannedNames() = tours.filter { it.kind == TourKind.PLANNED }.map { it.name }
+    private fun plannedNames() = tours.filter { it.kind == TourKind.PLANNED && !it.draft }.map { it.name }
+
+    /** The plan on the map was loaded from "Zuletzt" (a draft) and still belongs to it. */
+    private val linkedDraft: Tour? get() = if (planLinked && linkId >= 0) tours.firstOrNull { it.id == linkId && it.draft } else null
+
+    // ---------------- "Zuletzt" (owner 2026-11-06: no "Nicht gespeichert", like Komoot + recent plans) ----------------
+
+    /**
+     * A plan worth keeping that leaves the map unsaved ([planUnsaved]: never saved, or a saved plan changed – its original
+     * stays as it is) goes under My routes → Zuletzt, no question ([Drafts]). The same points twice (Undo, clear again)
+     * make no second entry; only the newest [Drafts.MAX] are kept.
+     */
+    private fun keepAsDraft(why: String) {
+        val pts = waypoints.toList()
+        if (!Drafts.keeps(pts.size, planUnsaved)) return
+        val r = route
+        val act = activity; val level = sac
+        val stops = savedStops(pts); val pins = pinnedIndices()
+        val dated = defaultName(Txt.s(Res.string.msg_name_route))
+        val key = pts.map { it.lat to it.lon }
+        viewModelScope.launch {
+            val name = withTimeoutOrNull(NAME_WAIT_MS) { proposeName(pts, r) } ?: dated
+            val id = withContext(Dispatchers.IO) {
+                runCatching {
+                    if (db.listTours().any { it.draft && it.waypoints.map { w -> w.lat to w.lon } == key }) return@runCatching null
+                    db.insertTour(TourKind.PLANNED, name, act.name, level,
+                        r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
+                        listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }), stops, pinned = pins, draft = true,
+                    ).also { storePlanTimes(it, r, act); db.pruneDrafts(Drafts.MAX) }
+                }.onFailure { Problems.error("db", "The plan could not be kept under Zuletzt", it) }.getOrNull()
+            }
+            if (id != null) { Problems.trace("plan", "Plan kept under Zuletzt ($why): \"$name\", ${pts.size} points"); refreshTours() }
+        }
+    }
+
+    /** My routes → Zuletzt → Speichern: the plan becomes saved (backup, browser sync); it shows "✓ Gerade gespeichert". */
+    fun saveDraft(t: Tour) {
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching { db.setDraft(t.id, false) }.onFailure { Problems.error("db", "A plan under Zuletzt could not be saved", it) }.getOrDefault(false)
+            }
+            if (!ok) { routesProblem = Txt.s(Res.string.msg_route_save_failed); return@launch }
+            Problems.trace("plan", "Zuletzt → saved: \"${t.name}\"")
+            justSavedId = t.id
+            Backups.tourChanged(getApplication(), t.id)
+            sync.changed("plan saved from Zuletzt")
+            refreshTours()
+        }
+    }
+
+    /** My routes → Zuletzt → Löschen: to the recycle bin at once, no question (owner 2026-11-06). */
+    fun deleteDraft(t: Tour) {
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching { db.setDeleted(t.id, System.currentTimeMillis()) }
+                    .onFailure { Problems.error("db", "A plan under Zuletzt could not be moved to the recycle bin", it) }.getOrDefault(false)
+            }
+            if (ok) { Problems.trace("plan", "Zuletzt → recycle bin: \"${t.name}\""); refreshTours() }
+        }
+    }
+
+    /** The plan just moved from Zuletzt to saved: "✓ Gerade gespeichert" on it until My routes closes. */
+    var justSavedId by mutableStateOf(-1L)
 
     /**
      * Saves the plan as a new planned route named [name]. The sheet then shows "Saved as …" (no message). Without a
@@ -2639,6 +2689,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun insertPlanned(name: String, pts: List<GeoPoint>, r: PlannedRoute?, then: (() -> Unit)?) {
         val title = name.trim().ifBlank { defaultName(Txt.s(Res.string.msg_name_route)) }
+        // saved from a plan under "Zuletzt": the saved route takes its place there (no second entry)
+        val fromDraft = linkedDraft
         val act = activity; val level = sac
         val stops = savedStops(pts); val pins = pinnedIndices()
         val id = withContext(Dispatchers.IO) {
@@ -2652,6 +2704,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }.onFailure { Problems.error("db", "Saving a planned route failed", it) }.getOrNull()
         }
         if (id == null) { routesProblem = Txt.s(Res.string.msg_route_save_failed); return }
+        fromDraft?.let { d -> withContext(Dispatchers.IO) {
+            runCatching { db.deleteTour(d.id) }.onFailure { Problems.warn("db", "The plan under Zuletzt stays after it was saved", it) }
+        } }
         Backups.tourChanged(getApplication(), id)
         sync.changed("route saved")
         setSaved(title, id, pts)
@@ -2766,8 +2821,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 Problems.trace("tour", "Track \"${t.name}\" tapped during the tour: asked (follow / cancel)")
                 trackFollowAsk = t
             }
-            OpenAsk.REPLACE_PLAN -> replaceAsk = PlanToOpen.Saved(t)
-            OpenAsk.NONE -> openTour(t)
+            // the current plan goes under "Zuletzt" (owner 2026-11-06) – no "Replace current plan?" any more
+            OpenAsk.REPLACE_PLAN, OpenAsk.NONE -> openTour(t)
         }
     }
 
@@ -2786,32 +2841,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun planFromTour(t: Tour) = unlessUnsaved("\"${t.name}\" as the plan") { openTour(t, trackThen = TrackThen.PLAN) }
 
     /**
-     * "Plan speichern?" before something else takes an unsaved plan's place ([ReplaceAsk], flow map M1 / save paths P3):
-     * open while [afterReplaceUnsaved] waits for the answer.
+     * Something else takes the plan's place (a track followed during a tour, "Mit dieser Route weiter", "Als Plan
+     * übernehmen"): no question any more (owner 2026-11-06) – the replaced plan goes under Zuletzt ([keepAsDraft]).
      */
-    var replaceUnsavedAsk by mutableStateOf(false)
-        private set
-    private var afterReplaceUnsaved: (() -> Unit)? = null
-
-    /** Runs [go] at once – or first asks "Plan speichern?" when it would replace a plan that is not saved. */
-    private fun unlessUnsaved(what: String, go: () -> Unit) {
-        if (!ReplaceAsk.asks(planUnsaved, waypoints.size)) { go(); return }
-        Problems.trace("plan", "$what: the plan is not saved – asked (save / discard / cancel)")
-        afterReplaceUnsaved = go
-        replaceUnsavedAsk = true
-    }
-
-    /** The answer to [replaceUnsavedAsk]: Save → Save's dialog, then [go]; Discard → [go]; Cancel → nothing changes. */
-    fun answerReplaceUnsaved(a: ReplaceAsk.Answer) {
-        val go = afterReplaceUnsaved ?: return
-        afterReplaceUnsaved = null; replaceUnsavedAsk = false
-        Problems.trace("plan", "Unsaved plan before it is replaced: ${a.name.lowercase()}")
-        when (a) {
-            ReplaceAsk.Answer.SAVE -> askSave { go() }
-            ReplaceAsk.Answer.DISCARD -> go()
-            ReplaceAsk.Answer.CANCEL -> Unit
-        }
-    }
+    private fun unlessUnsaved(what: String, go: () -> Unit) { Problems.trace("plan", "$what: the plan on the map goes under Zuletzt if not saved"); go() }
 
     /**
      * A shown track followed during a tour (the track sheet's "Tour nachfahren", F1's "Folgen" – flow map M1, owner rule
@@ -2846,26 +2879,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** The end question closed without ending the tour: nothing loads ([loadAfterTour] dropped). */
     fun dismissEndAsk() {
-        saveRouteAtEnd = false; endAsk = null
+        endAsk = null
         loadAfterTour?.let { Problems.trace("tour", "End tour cancelled: \"${it.name}\" not loaded"); loadAfterTour = null }
-    }
-
-    fun replaceConfirmed() { val t = replaceAsk ?: return; replaceAsk = null; open(t) }
-
-    /** Loads what "Replace current plan?" / "Save first" was about. */
-    private fun open(t: PlanToOpen) = when (t) {
-        is PlanToOpen.Saved -> openTour(t.tour)
-        is PlanToOpen.Shared -> openSharedPlan(t.plan)
-    }
-
-    /**
-     * "Replace current plan?" → Save first: Save's name dialog like every Save (overwrite its saved route, else a new
-     * one), then [replaceAsk] loads; Cancel in the dialog loads nothing.
-     */
-    fun replaceSaveFirst() {
-        val t = replaceAsk ?: return
-        replaceAsk = null
-        askSave { open(t) }
     }
 
     /**
@@ -2946,6 +2961,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         else followMe = headingUp && followMe && tracker.location.value != null
         // Plan during a tour: the sheet is one row (tour status + Continue), the map free for holds (owner 2026-10-31)
         if (m == AppMode.PLAN && was == AppMode.NAVIGATE) planSize = PlanSize.backInPlan(planSize, recState.value != null)
+        // Navigate → Plan (also the end of a tour): the plan in front, not the position (owner 2026-11-06, PlanCamera)
+        if (m == AppMode.PLAN && was == AppMode.NAVIGATE && waypoints.isNotEmpty())
+            showPlanWhole(if (recState.value == null) PlanCamera.Moment.TOUR_END else PlanCamera.Moment.FROM_NAVIGATE)
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_NAVIGATING) {
             putExtra(RecordingService.EXTRA_ON, m == AppMode.NAVIGATE)
         }
@@ -2966,7 +2984,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // PlanStart: the sheet's button says "Start recording" exactly when nothing is followed here
         when (if (recordOnly) PlanStart.RECORD_ONLY else PlanStart.of(trackPoints = s?.points?.size, hasRoute = route != null, pointCount = waypoints.size)) {
             PlanStart.FOLLOW_TRACK -> { followShown(); shown = null }
-            PlanStart.NAVIGATE_PLAN -> { followPlanned(); secureTourCorridor() }
+            PlanStart.NAVIGATE_PLAN -> { followPlanned(); secureTourCorridor(); saveNewPlanAtStart() }
             // the button waits for the line; reached anyway: record (a tour is never refused), nothing followed.
             // A shown track without a line closes, like ☰ → Start recording.
             PlanStart.WAIT_FOR_ROUTE, PlanStart.RECORD_ONLY -> { clearFollow(); shown = null }
@@ -2983,6 +3001,37 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private var startJob: Job? = null
+
+    /**
+     * "Los geht's" with a plan that was never saved (owner 2026-11-06: the tour and the plan are two things – like Komoot,
+     * the plan is in My routes → Planned from the start, so the end of the tour never has to ask about it): saved at once
+     * under the name the Save dialog would propose, no dialog. A saved plan changed since is NOT overwritten silently –
+     * "Nicht gespeichert ›" shows it, the user saves. Renaming / deleting: My routes.
+     */
+    private fun saveNewPlanAtStart() {
+        val pts = waypoints.toList()
+        val draft = linkedDraft
+        val how = PlanAutoSave.atStart(pts.size, planUnsaved, currentSaveMode() == SaveMode.OVERWRITE, draft != null)
+        if (how == PlanAutoSave.AtStart.NOTHING || saving) return
+        saving = true
+        val r = route
+        val dated = defaultName(Txt.s(Res.string.msg_name_route))
+        val taken = plannedNames()
+        val copyOf = savedName
+        viewModelScope.launch {
+            try {
+                val name = when (how) {
+                    // a saved plan changed before the start is never overwritten silently: the ridden version is "Name (2)"
+                    PlanAutoSave.AtStart.SAVE_COPY -> RouteRules.copyName(copyOf ?: dated, taken)
+                    // a plan from Zuletzt keeps its name
+                    else -> draft?.name?.let { RouteRules.newRouteName(it, dated, taken) }
+                        ?: RouteRules.newRouteName(withTimeoutOrNull(NAME_WAIT_MS) { proposeName(pts, r) }, dated, taken)
+                }
+                Problems.trace("plan", "Plan saved at the tour start as \"$name\" (${how.name.lowercase()}, ${pts.size} points)")
+                insertPlanned(name, pts, r, null)
+            } finally { saving = false }
+        }
+    }
 
     /**
      * A tour starts on the plan's route (F-OFF-02 "started route", owner: "new route – even without signal"): map areas
@@ -3222,38 +3271,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** "End tour" in Plan (after confirmation) or "End & save" on arrival: stop and save. */
     fun endTour() {
         Problems.trace("tour", "End tour (save)"); endAsk = null; arrivalAsk = false; deleteFinished = false
-        val withRoute = saveRouteAtEnd && endRouteLabel() != null
-        saveRouteAtEnd = false
-        stopRecording()
-        if (withRoute) requestSave() // Save's dialog (name / overwrite) right after
-    }
-
-    /**
-     * "Aufnahme beenden?" – also save the route (owner 2026-11-01: the recording and the plan are two things; offered only
-     * when there is something to save, the box empty at first): "Neue Route auch speichern" (never saved) / "Geänderte
-     * Route auch speichern" (a saved route changed on the way); null = nothing to save.
-     */
-    fun endRouteLabel(): String? = when {
-        waypoints.size < 2 || !planUnsaved -> null
-        currentSaveMode() == SaveMode.OVERWRITE -> Txt.s(Res.string.nav_end_save_changed_route)
-        else -> Txt.s(Res.string.nav_end_save_new_route)
-    }
-    var saveRouteAtEnd by mutableStateOf(false)
-
-    /**
-     * The end sheet's plan switch as it opens (owner 2026-11-06: a plan made on the phone was gone after the tour): ON for
-     * a plan never saved – otherwise it is lost with the next new plan; OFF for changes to a saved plan (overwriting it is
-     * the user's choice).
-     */
-    private fun presetPlanSave() {
-        saveRouteAtEnd = EndPlanSave.preset(endRouteLabel() != null, currentSaveMode() == SaveMode.OVERWRITE)
-    }
-
-    /** The line under the plan option in the end sheet: which saved plan gets the changes, or "a new plan". */
-    fun endRouteLine(): String? = when {
-        endRouteLabel() == null -> null
-        currentSaveMode() == SaveMode.OVERWRITE && !savedName.isNullOrBlank() -> Txt.s(Res.string.nav_end_plan_line, savedName!!)
-        else -> Txt.s(Res.string.nav_end_plan_line_new)
+        stopRecording() // the plan is not touched (owner 2026-11-06: two things)
     }
 
     /** What "End tour" shows now (null = nothing): see [askEndTour]. */
@@ -3267,7 +3285,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun askEndTour(saveIfNoRides: Boolean = false) {
         arrivalAsk = false
-        val id = recState.value?.tourId ?: run { if (saveIfNoRides) endTour() else { presetPlanSave(); endAsk = EndAsk.Plain }; return }
+        val id = recState.value?.tourId ?: run { if (saveIfNoRides) endTour() else endAsk = EndAsk.Plain; return }
         val navActivity = recState.value?.nav?.session?.activity
         viewModelScope.launch {
             val s = withContext(Dispatchers.IO) {
@@ -3281,7 +3299,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             when {
                 s != null -> endAsk = EndAsk.Rides(id, s)
                 saveIfNoRides -> endTour()
-                else -> { presetPlanSave(); endAsk = EndAsk.Plain }
+                else -> endAsk = EndAsk.Plain
             }
         }
     }
@@ -3329,17 +3347,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** End tour → Delete (owner): stop, then the tour goes straight to the recycle bin, no summary. */
     /**
-     * End sheet / arrival → Löschen: the TOUR goes to the bin. The plan switch still counts (flow map H2, owner rule "never
-     * lose"): ON → Save's dialog for the plan opens like after "Tour speichern" (the plan stays until it is answered).
+     * End sheet / arrival → Löschen: the TOUR goes straight to the recycle bin, no summary. The plan stays on the map as
+     * it is (owner 2026-11-06: the tour and the plan are two things – it was saved at the start).
      */
     fun endTourAndDelete() {
         Problems.trace("tour", "End tour (delete)"); endAsk = null; arrivalAsk = false; deleteFinished = true
-        val withRoute = saveRouteAtEnd && endRouteLabel() != null
-        saveRouteAtEnd = false
         stopRecording()
-        if (withRoute) requestSave()
     }
     private var deleteFinished = false
 
@@ -3348,7 +3362,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * it says "arrived" itself): the arrival question once per arrival this app instance sees.
      */
     private fun onArrived(arrived: Boolean) {
-        if (arrived && !arrivalSeen) { arrivalSeen = true; presetPlanSave(); arrivalAsk = true }
+        if (arrived && !arrivalSeen) { arrivalSeen = true; arrivalAsk = true }
         if (!arrived) arrivalSeen = false
     }
     private var arrivalSeen = false
@@ -3663,6 +3677,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 t.pinned.mapNotNull { pts.getOrNull(it) }.takeIf { it.isNotEmpty() }?.let { pinned += it; prefs.planPinned = pinned }
                 // during a tour: the loaded route is followed from its point ① (owner 2026-11-03), not from the position
                 loadedOnTheWay = duringTour && recState.value != null
+                keepAsDraft("replaced by \"${t.name}\"")
                 change { clear(); addAll(pts) }
                 t.waypoints.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
                 setSaved(t.name, t.id, pts)
@@ -3951,12 +3966,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     Problems.info("plan", "Plan link ($via, ${plan.points.size} points) not opened: a tour is running")
                     sayError(Txt.s(Res.string.msg_plan_link_after_tour), NoticePlace.MAP)
                 }
-                LinkOpen.ASK_FIRST -> {
-                    if (shown != null) closeShown()
-                    Problems.trace("plan", "Plan link ($via, ${plan.points.size} points): asking to replace the unsaved plan first")
-                    replaceAsk = PlanToOpen.Shared(plan)
-                }
-                LinkOpen.NOW -> openSharedPlan(plan, via)
+                // the current plan goes under "Zuletzt" (owner 2026-11-06) – no question any more
+                LinkOpen.ASK_FIRST, LinkOpen.NOW -> { if (shown != null) closeShown(); openSharedPlan(plan, via) }
             }
         }
     }
@@ -3978,6 +3989,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         sac = plan.sac.coerceIn(1, 5); prefs.sac = sac
         // pins before the points: the first route already passes them exactly (recalc reads them at once)
         if (load.pinned.isNotEmpty()) { pinned += load.pinned; prefs.planPinned = pinned }
+        keepAsDraft("replaced by a plan link")
         change { clear(); addAll(load.points) }
         load.names.forEach { (p, n) -> rememberPlaceName(p, n) }
         setSaved(null, -1, null) // not in My routes yet: Save asks for a name
@@ -4073,6 +4085,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             // pinned route points come back pinned (review routing L1)
             com.onpath.app.gpx.PlanGpx.pinnedOf(stops).forEach { pinned += pts[it] }
             prefs.planPinned = pinned
+            keepAsDraft("replaced by a track's plan")
             change { clear(); addAll(pts) }
             stops.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
             return
@@ -4107,6 +4120,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 "${(r.follows * 100).toInt()} %, ${r.calls} routing calls, ${r.failedLegs} legs without a route, " +
                 "${android.os.SystemClock.elapsedRealtime() - t0} ms")
             closeShown()
+            keepAsDraft("replaced by a track's plan")
             change { clear(); addAll(r.points) }
         }
     }

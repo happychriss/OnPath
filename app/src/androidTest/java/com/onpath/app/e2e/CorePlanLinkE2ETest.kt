@@ -65,23 +65,28 @@ class CorePlanLinkE2ETest : E2EBase() {
         scenario.onActivity { a ->
             // no place for it (the link came from outside): the light error card
             assertEquals(Txt.s(Res.string.msg_plan_link_unreadable), vm(a).errorCard)
-            assertNull(vm(a).replaceAsk)
         }
         assertEquals(before, points())
     }
 
-    @Test fun unsavedPlanAsksFirst() {
+    /** Owner 2026-11-06 ("Zuletzt"): a link replaces an unsaved plan without a question – the old one goes under Zuletzt. */
+    @Test fun unsavedPlanGoesUnderZuletzt() {
         startPlanWithTwoPoints()
+        Thread.sleep(1_500)
         val before = points()
         open(frozenLink)
-        assertNotNull("Replace current plan? – ${state()}", findFresh(By.text("Replace current plan?"), 10_000))
-        assertEquals("nothing replaced before the answer", before, points())
-        clickText("Replace")
-        waitUntil("replaced by the link's plan") { points().getOrNull(1) == GeoPoint(46.6879, 11.1111) }
+        waitUntil("replaced by the link's plan, no question") { points().getOrNull(1) == GeoPoint(46.6879, 11.1111) }
         scenario.onActivity { assertEquals(Activity.HIKE, vm(it).activity) }
+        waitUntil("the old plan is under Zuletzt") { drafts().any { it.waypoints.size == before.size } }
+        cleanDrafts()
     }
 
-    /** The next QR code replaces an unchanged link plan silently; a changed one asks (owner). */
+    private fun drafts(): List<com.onpath.app.data.Tour> =
+        com.onpath.app.data.TourDb.get(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext).listTours().filter { it.draft }
+    private fun cleanDrafts() { val db = com.onpath.app.data.TourDb.get(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext)
+        drafts().forEach { db.deleteTour(it.id) } }
+
+    /** The next QR code replaces a link plan silently; a changed one goes under Zuletzt (owner 2026-11-06). */
     @Test fun secondLinkReplacesAnUnchangedLinkPlanWithoutAsking() {
         val second = PlanLinks.link(com.onpath.app.routing.SharedPlan(
             listOf(GeoPoint(46.68012, 11.1264), GeoPoint(46.6879, 11.1111), GeoPoint(46.6923, 11.0986)), Activity.MTB,
@@ -91,13 +96,15 @@ class CorePlanLinkE2ETest : E2EBase() {
         Thread.sleep(1_500) // routed and snapped – still "unchanged"
         open(second)
         waitUntil("second link's plan, no question – ${state()}") { waypointCount() == 3 }
-        scenario.onActivity { assertNull(vm(it).replaceAsk); assertEquals(Activity.MTB, vm(it).activity) }
-        // changed on the phone → the next link asks
+        scenario.onActivity { assertEquals(Activity.MTB, vm(it).activity) }
+        // changed on the phone → the next link replaces it too, the changed plan is kept under Zuletzt
         Thread.sleep(1_500)
         scenario.onActivity { vm(it).deletePointFromList(2) }
         waitUntil("point deleted") { waypointCount() == 2 }
         open(frozenLink)
-        assertNotNull("Replace current plan? – ${state()}", findFresh(By.text("Replace current plan?"), 10_000))
+        waitUntil("first link's plan again, no question – ${state()}") { points().getOrNull(1) == GeoPoint(46.6879, 11.1111) }
+        waitUntil("the changed plan is under Zuletzt") { drafts().isNotEmpty() }
+        cleanDrafts()
     }
 
     @Test fun sharedLinkOpensTheSamePlan() {

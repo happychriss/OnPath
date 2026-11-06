@@ -187,6 +187,9 @@ class MainActivity : ComponentActivity() {
                                 initialTab = vm.routesTab,
                                 onTab = { vm.routesTab = it },
                                 marks = vm.syncMarks.collectAsState().value,
+                                onSaveDraft = { vm.saveDraft(it) },
+                                onDeleteDraft = { vm.deleteDraft(it) },
+                                justSavedId = vm.justSavedId,
                             )
                         }
                         vm.editRides?.let { (t, s) ->

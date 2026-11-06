@@ -88,11 +88,6 @@ class PlanMenu(
      */
     val onSaveRoute: (() -> Unit)? = null,
     /**
-     * The plan has unsaved changes (RouteRules.saveAtHand): the amber "Nicht gespeichert ›" sign beside the mode label
-     * (owner 2026-11-06, onpath.private#41 B – the green dot on ☰ said nothing to anyone).
-     */
-    val unsaved: Boolean = false,
-    /**
      * "Neu planen" in ☰ (owner 2026-11-06: "habe ich oben im Menü gesucht") – the same way as the sheet's ✕ pill (which
      * stays); null hides it (no plan points).
      */
@@ -103,10 +98,10 @@ class PlanMenu(
      */
     val onRecordWithoutPlan: (() -> Unit)? = null,
 ) {
-    /** The "Nicht gespeichert ›" sign shows: unsaved changes and Save at hand (its tap is Save route). */
-    val showUnsaved: Boolean get() = unsaved && onSaveRoute != null
-
-    /** The dot on ☰: only the browser sync's amber warning (unsaved has its own sign now). */
+    /**
+     * The dot on ☰: only the browser sync's amber warning. Unsaved has no sign any more (owner 2026-11-06: nothing is
+     * lost – a plan leaving the map goes under My routes → Zuletzt).
+     */
     val dotWarn: Boolean get() = onPairBrowser != null && sync.warning != null
 }
 
@@ -166,17 +161,9 @@ fun PlanTopBar(
     }
     val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
     // large font: the label in its own line above the pill (on the pill's edge it covered "Orte oder …")
-    // the mode label, and beside it "Nicht gespeichert ›" while the plan has unsaved changes (owner 2026-11-06, #41 B);
-    // drawn over the bar so the sign's 48 dp touch area (reaching down over the search pill's edge) moves nothing
+    // the mode label (owner 2026-11-06: no "Nicht gespeichert" sign beside it any more – Zuletzt keeps every plan)
     val labels = @Composable { m: Modifier ->
-        Row(m, verticalAlignment = Alignment.Top) {
-            PlanModeLabel(editing, Modifier, offline, onOffline)
-            if (menu.showUnsaved) {
-                Spacer(Modifier.width(6.dp))
-                // large font: the label line is full with "PLANEN · Ohne Netz ✓" – the sign keeps 💾 › (TalkBack the sentence)
-                UnsavedSign(menu.onSaveRoute!!, wordless = PlanTopBand.largeLabel(fontScale))
-            }
-        }
+        Row(m, verticalAlignment = Alignment.Top) { PlanModeLabel(editing, Modifier, offline, onOffline) }
     }
     if (PlanTopBand.largeLabel(fontScale)) {
         Column(modifier.height(PlanTopBand.bottom(fontScale))) {
@@ -227,36 +214,6 @@ internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier, offl
             OfflineReady.State.MISSING -> Icons.Filled.Warning to OnPathColors.OnPlanWarn
         }
         Icon(icon, null, tint = tint, modifier = Modifier.size(12.dp))
-    }
-}
-
-/**
- * "💾 Nicht gespeichert ›" in the amber of a notice (owner 2026-11-06, onpath.private#41 B): beside the mode label while
- * the plan has unsaved changes – a tap opens Save's dialog (the ☰ item's way). The sign is as small as the label; its
- * touch area is 48 dp high, reaching down over the search pill's edge (TalkBack hears what a tap does).
- */
-@Composable
-private fun UnsavedSign(onSave: () -> Unit, wordless: Boolean = false) {
-    val desc = str(Res.string.plan_unsaved_chip_desc)
-    // the sign takes only its own height in the layout (the label's line stays as it was); its 48 dp touch box hangs
-    // below it, over the search pill's edge
-    Box(Modifier.layout { m, c ->
-            // height 0 for the row it sits in: the label's line keeps its height; drawn and touchable below that
-            val p = m.measure(c.copy(minHeight = 0, maxHeight = androidx.compose.ui.unit.Constraints.Infinity))
-            layout(p.width, 0) { p.place(0, 0) }
-        }
-        .heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onSave)
-        .clearAndSetSemantics { contentDescription = desc; role = Role.Button }, contentAlignment = Alignment.TopStart) {
-        // the plan pills' style (owner 2026-11-06: keep to the colour standard – plan is blue; the light fill of
-        // "✕ Neu planen", a fine blue edge so it stands off the band of the same blue), the menu's Save sign
-        Row(Modifier.clip(CircleShape).background(PillBlueLight, CircleShape)
-            .border(1.dp, UnsavedSignStyle.EDGE, CircleShape).padding(horizontal = 8.dp, vertical = 1.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Save, null, tint = PillBlueInk, modifier = Modifier.size(12.dp))
-            Spacer(Modifier.width(3.dp))
-            Text(if (wordless) "›" else str(Res.string.plan_unsaved_chip) + " ›", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                color = PillBlueInk, maxLines = 1, softWrap = false)
-        }
     }
 }
 
@@ -377,6 +334,3 @@ fun PlanFrame(modifier: Modifier = Modifier) {
 
 /** Width of the soft blue edge. */
 private val PLAN_EDGE = 14.dp
-
-/** The "Nicht gespeichert ›" sign's edge: the plan accent, fine (owner 2026-11-06, the plan pills' style). */
-object UnsavedSignStyle { val EDGE = OnPathColors.PlanAccent.copy(alpha = 0.55f) }

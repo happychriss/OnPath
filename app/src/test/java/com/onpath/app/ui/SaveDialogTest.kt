@@ -179,7 +179,7 @@ class SaveDialogTest {
 
     @Test fun everySaveEntryPointOpensTheDialog() {
         assertTrue(vmSrc.contains("fun requestSave() = askSave(null)"))
-        assertTrue("Replace current plan? → Save first", body("fun replaceSaveFirst(").contains("askSave { open(t) }"))
+        assertFalse("no Replace current plan? any more (owner 2026-11-06, Zuletzt)", vmSrc.contains("fun replaceSaveFirst("))
         val map = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
         assertTrue("☰ Save route – the one Save of the plan", map.contains("onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null"))
         val main = File("src/main/java/com/onpath/app/MainActivity.kt").readText()

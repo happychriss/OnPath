@@ -47,6 +47,8 @@ data class Tour(
     val deletedMs: Long? = null,
     /** Recorded: bus / car / lift rides found and what the user chose (rides/); null = none, read as recorded. */
     val rides: com.onpath.app.rides.RideRecord? = null,
+    /** Planned: kept automatically under "Zuletzt" when it left the map (owner 2026-11-06), not saved by the user. */
+    val draft: Boolean = false,
 )
 
 /**
@@ -94,6 +96,8 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
      * 2 → 3: GPS accuracy per recorded point (`points.acc`, metres, null = unknown / imported), so a later analysis
      * can tell weak fixes from no fix.
      * 3 → 4 (vehicle detection): `tours.rides` (JSON, [com.onpath.app.rides.RideRecord]); points untouched.
+     * 4 → 5 (owner 2026-11-06, "Zuletzt"): `tours.draft` – 1 = a plan kept automatically when it left the map (My routes →
+     * Zuletzt), 0 = saved; every existing tour stays saved.
      */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
@@ -139,6 +143,8 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         uuid: String = newUuid(),
         createdMs: Long = System.currentTimeMillis(),
         rides: com.onpath.app.rides.RideRecord? = null,
+        /** A plan kept under "Zuletzt" (not saved by the user; no backup, no browser sync). */
+        draft: Boolean = false,
     ): Long {
         val db = writableDatabase
         db.beginTransaction()
@@ -150,6 +156,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
                 put("activity", activity); put("sac", sac); put("distance", distance); put("ascent", ascent)
                 put("descent", descent); put("duration", duration); put("state", state)
                 put("waypoints", waypointsToJson(waypoints))
+                put("draft", if (draft) 1 else 0)
             })
             var seq = 0
             segments.forEachIndexed { segIdx, seg -> seg.forEach { insertPoint(db, id, seq++, segIdx, it) } }
@@ -176,6 +183,22 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
     /** uuids of every tour on the phone, recycle bin included (restore skips these). */
     fun allUuids(): Set<String> = readableDatabase.rawQuery("SELECT uuid FROM tours WHERE uuid IS NOT NULL", null).use { c ->
         buildSet { while (c.moveToNext()) add(c.getString(0)) }
+    }
+
+    /** A plan under "Zuletzt" becomes saved ([draft] false) or the other way. False when the tour is gone. */
+    fun setDraft(id: Long, draft: Boolean): Boolean = writableDatabase.update("tours", ContentValues().apply {
+        put("draft", if (draft) 1 else 0)
+    }, "id=?", arrayOf(id.toString())) > 0
+
+    /**
+     * Keeps the newest [max] plans under "Zuletzt" (not in the recycle bin); older ones are removed for good – they were
+     * never saved, the user saw them under Zuletzt. Returns how many went.
+     */
+    fun pruneDrafts(max: Int): Int {
+        val old = readableDatabase.rawQuery("SELECT id FROM tours WHERE draft=1 AND deleted_at IS NULL ORDER BY created DESC",
+            null).use { c -> buildList { while (c.moveToNext()) add(c.getLong(0)) } }.drop(max)
+        old.forEach { deleteTour(it) }
+        return old.size
     }
 
     /** Moves a tour to the recycle bin ([deletedMs]) or back (null). False when the tour is gone. */
@@ -393,6 +416,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
             pinned = opt(c, "pinned")?.let { jsonToPinned(c.getString(it)) } ?: emptySet(),
             deletedMs = opt(c, "deleted_at")?.let { c.getLong(it) },
             rides = opt(c, "rides")?.let { com.onpath.app.rides.RideRecord.fromJson(c.getString(it)) },
+            draft = opt(c, "draft")?.let { c.getInt(it) == 1 } ?: false,
         )
     }
 
@@ -445,8 +469,8 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
 
 /** The tour database's tables (kept apart so the migration is JVM tested: TourSchemaTest with sqlite-jdbc). */
 object TourSchema {
-    /** 1, 2 = backup columns; 3 = `points.acc` (GPS accuracy); 4 = `tours.rides` (vehicle detection). */
-    const val VERSION = 4
+    /** 1, 2 = backup columns; 3 = `points.acc` (GPS accuracy); 4 = `tours.rides` (vehicle detection); 5 = `tours.draft` (Zuletzt). */
+    const val VERSION = 5
 
     val CREATE = listOf(
         """CREATE TABLE tours(
@@ -456,7 +480,7 @@ object TourSchema {
             distance REAL NOT NULL DEFAULT 0, ascent REAL NOT NULL DEFAULT 0,
             descent REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0,
             state TEXT NOT NULL DEFAULT 'done', waypoints TEXT,
-            uuid TEXT, pinned TEXT, deleted_at INTEGER, rides TEXT)""",
+            uuid TEXT, pinned TEXT, deleted_at INTEGER, rides TEXT, draft INTEGER NOT NULL DEFAULT 0)""",
         "CREATE INDEX tours_uuid ON tours(uuid)",
         """CREATE TABLE points(
             tour_id INTEGER NOT NULL, seq INTEGER NOT NULL, seg INTEGER NOT NULL,
@@ -470,6 +494,9 @@ object TourSchema {
     /** 3 → 4: how to read the rides of a recorded tour (bus / car / lift); every point stays as it is. */
     const val ADD_RIDES = "ALTER TABLE tours ADD COLUMN rides TEXT"
 
+    /** 4 → 5: plans kept under "Zuletzt" (owner 2026-11-06); every existing tour is saved (0). */
+    const val ADD_DRAFT = "ALTER TABLE tours ADD COLUMN draft INTEGER NOT NULL DEFAULT 0"
+
     class Step(val table: String, val column: String, val sql: String)
 
     /**
@@ -480,5 +507,6 @@ object TourSchema {
     fun stepsFrom(old: Int): List<Step> = buildList {
         if (old < 4) add(Step("points", "acc", ADD_ACC))
         if (old < 4) add(Step("tours", "rides", ADD_RIDES))
+        if (old < 5) add(Step("tours", "draft", ADD_DRAFT))
     }
 }

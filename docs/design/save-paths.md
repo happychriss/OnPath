@@ -7,7 +7,28 @@ Tests that pin today's behaviour of the paths without a test before: `app/src/te
 (`AppViewModel.change`, :1337), read at start (:618). Saved plans, tours and imports are rows in `TourDb`; only those go
 to the backup folder (`Backups.tourChanged`), "Export all" (`Backups.exportZip`, `Backups.kt:214`) and browser sync.
 
-## The paths
+**The rule since 2026-11-06 (owner: "Zuletzt" instead of "Nicht gespeichert", like Komoot plus recent plans):**
+nothing asks to save, nothing is lost.
+
+| Path | What happens | Test |
+|------|--------------|------|
+| ✕ / ☰ **Neu planen** (also during a tour), a route / plan link / track **replaces** the plan, a track is **followed** during a tour | The plan leaves the map at once, no question. If it is not saved as it is (`planUnsaved`, ≥ 2 points) it is kept as a **draft** under My routes → Geplant → ZULETZT (`keepAsDraft`, rule `Drafts`); the same points twice make no second entry; at most 25 (`TourDb.pruneDrafts`). One Undo step brings the plan back. During a tour the empty sheet says "Tour läuft weiter – …". | `SavePathsTest.replacingAPlanKeepsItUnderZuletzt`, `ClearPlanDuringTourTest`, E2E `CoreFieldE2ETest.aClearedPlanIsUnderZuletztSavedOrDeletedThere`, `…followingATrackDuringATourKeepsTheUnsavedPlanUnderZuletzt`, `CorePlanLinkE2ETest.unsavedPlanGoesUnderZuletzt` |
+| **Los geht's** | A plan never saved is saved under the proposed name; a draft keeps its name and becomes saved; a saved plan changed before the start is saved as a copy "Name (2)" – never overwritten silently (`PlanAutoSave.atStart`). | `PlanAutoSaveTest` |
+| End / arrival sheet | About the tour only: Tour speichern · Weiterfahren · Löschen. The plan stays on the map as it is. | `TourEndPathsTest`, E2E `CoreFieldE2ETest` |
+| My routes → ZULETZT | Each draft: **Speichern** (becomes saved: backup, browser sync; "✓ Gerade gespeichert" under GESPEICHERT) · **Löschen** (recycle bin, no question). Pale route sign, "Plan · date". | `TourSchemaTest` (schema 5, `tours.draft`), screenshots `toursRecent` |
+| ☰ → Plan speichern | The name dialog; a saved plan changed → overwrite (its own question, the user started it). A draft saved this way replaces its draft. | `SaveDialogTest` |
+| Delete in My routes (⋮) | Straight to the recycle bin, no question (owner 2026-11-06: the bin is the net, 30 days). | `BackupTest.recycleBinKeeps30Days` |
+| Backup folder / Export all / browser sync | Saved items only – **no drafts** (`Backups` `!it.draft`, `DbTourStore` `!it.draft`). | `SavePathsTest.draftsAreInNoBackupAndNoSync` |
+| App killed | The plan on the map lives in `Prefs` (every edit) and comes back; drafts are rows in `TourDb`. | `thePlanSurvivesTheProcess` |
+| GPX export / import | Unchanged: planned item = plan GPX, recorded = track; an import is a track until "Als Plan nutzen". | `PlanGpxTest`, `todayEveryImportIsATrack` |
+
+Gone with this rule: the "Nicht gespeichert ›" sign, "Plan speichern?" / "Plan leeren?" / "Plan ersetzen?" /
+`ReplaceAsk` / `ClearAsk` / `DiscardPlanDialog` / `ReplacePlanDialog`, the delete question in My routes. The walk of
+2026-11-06 below (paths 1–14, P1–P4) is history – it led here.
+
+## History: the walk of 2026-11-06 morning
+
+### The paths (then)
 
 | # | Path | What happens (code) | Test | Risk |
 |---|------|---------------------|------|------|
@@ -26,7 +47,7 @@ to the backup folder (`Backups.tourChanged`), "Export all" (`Backups.exportZip`,
 | 13 | **Browser sync** | Only stored routes travel; the open plan is never sent or replaced. Phone save over a route changed in the browser → copy. | `PlanSyncTest`, `CorePlanSyncTest` | ok |
 | 14 | **Delete** in My routes / recycle bin | Bin 30 days, restore, delete now; deleting the open plan's route keeps the plan (Save becomes a new route). | `BackupTest.recycleBinKeeps30Days` | ok |
 
-## Proposals for the owner (no behaviour changed yet)
+### Proposals (then) – all settled by the rule above
 
 - **P1 (fixes 1, recommended):** the end-of-tour Save keeps the plan until the dialog is answered – either the Save
   dialog gets the plan's points when it opens (`SaveAsk` carries points, route line, pins, activity) and saves those,

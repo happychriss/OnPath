@@ -216,7 +216,7 @@ object Backups {
         val out = File(dir.apply { mkdirs() }, "OnPath tours $dateText.zip")
         val names = ArrayList<String>()
         ZipOutputStream(out.outputStream().buffered()).use { zip ->
-            for (t in db.listTours().filter { it.state == "done" }) {
+            for (t in db.listTours().filter { it.state == "done" && !it.draft }) {
                 val segs = db.loadSegments(t.id)
                 val meta = BackupMeta.of(t, segs)
                 val name = BackupNames.fileName(meta, names)
@@ -231,8 +231,9 @@ object Backups {
     }
 
     private class DbSource(private val db: TourDb) : BackupSource {
-        override fun tour(id: Long): Tour? = db.getTour(id)
+        // plans under "Zuletzt" (drafts) are no backup: never saved by the user, they come and go (owner 2026-11-06)
+        override fun tour(id: Long): Tour? = db.getTour(id)?.takeIf { !it.draft }
         override fun segments(id: Long): List<List<TrackPoint>> = db.loadSegments(id)
-        override fun all(): List<Tour> = db.listTours() + db.listDeleted()
+        override fun all(): List<Tour> = (db.listTours() + db.listDeleted()).filter { !it.draft }
     }
 }
