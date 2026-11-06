@@ -33,6 +33,10 @@ the current state.
 - **laptop, 2026-11-06 evening – planner My routes + New plan (ed3219e9, not deployed):** My routes rows show length and ↑/↓ (kept in the browser by `planstats.ts` whenever the page routed the plan / read the track – the list never routes), dialog 600 px wide; '+ Neuer Plan' in the header before Save (☰'s first entry at phone width), same as ✕ Neu planen; header breakpoints moved, no overflow 390–1920 px. web-planner.md §20. Left: the novice walkthrough (backlog).
 - **laptop, 2026-11-06 – one branch + flaky web smokes:** web smokes: plan link overwritten by the old plan's address fixed in the page, sync/robust smokes wait for the real end state (6ffd5f00; "two quick clicks" not reproduced, diagnostics added). `web-spike` merged into `main` by PR #3 (f37d5bb9): web.yml with path filter, planner deploy with the app release or by hand, docs/roles updated; daily sync task paused; web-spike frozen. Owner's planner points (tour list details, „Neuer Plan“, novice walkthrough) in the backlog.
 <!-- Overwrite at the end of every session: who (laptop/desktop/cloud), date, what changed, what's half done, next. -->
+- **donald, 2026-11-06 evening (with the owner, context full) – READ `docs/history/handoff-donald-2026-11-06.md`.**
+  Six branches are built but NOT on main (Walnuss + colour rule – owner approved; plan/tour split + "Zuletzt";
+  N2/N4/K1; one Navigate bar "Pause | Planen" + words; one-point loop fix; 3D spike – needs the owner's word). The
+  handoff gives the worktrees, the merge order, the Pixel-first + GitHub-E2E procedure and every open item.
 - **cloud worker as donald (no computer), 2026-11-06 day – HANDOFF to the session with the Pixel:** released v0.17.0
   (with the planner, PLANNER_VERSION 4 on web-spike 10e2f3db) and v0.17.1; on main after it: shelters (6f9d500c). Main
   6f9d500c is green everywhere (Unit, full E2E 346, Maps deploy). **Nothing of today is seen on a phone** – the [pixel]
