@@ -26,7 +26,7 @@ class SlideThresholdTest {
      */
     @Test fun smallLineSaysWhatIsBehindAndOnlyWhenItFits() {
         val slider = java.io.File("src/main/java/com/onpath/app/ui/SlideToUnlock.kt").readText()
-        assertTrue(slider.contains("if (recording) Res.string.nav_slide_unlock_sub else Res.string.nav_slide_unlock_sub_plan"))
+        assertTrue(slider.contains("!recording -> Res.string.nav_slide_unlock_sub_plan; paused -> Res.string.nav_slide_unlock_sub_paused"))
         assertTrue(slider.contains("if (showSub) Text(sub"))
         val de = java.io.File("../strings/src/commonMain/composeResources/values-de/strings_navigate.xml").readText()
         assertTrue(de.contains("<string name=\"nav_slide_unlock_sub\">Pause · Beenden · Plan</string>"))

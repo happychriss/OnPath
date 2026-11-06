@@ -731,8 +731,11 @@ class ScreenshotTest {
     /** Unlocked (owner 2026-11-05, Navigate C): Pause / Tour beenden in the status card, "Plan ändern" where the slider was. */
     @Test fun navigateActionsOpen() = paparazzi.snapshot { NavFrame(navUi, actions = true) }
 
-    /** Unlocked and paused: "Fortsetzen" in the card (no second one), it stays open. */
-    @Test fun navigatePausedOpen() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true)) }
+    /** Unlocked and paused: "Fortsetzen" in the card, "Sperren | Plan" at the bottom as without a pause (owner 2026-11-06). */
+    @Test fun navigatePausedOpen() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true), actions = true) }
+
+    /** Locked and paused (owner 2026-11-06): the slider, its small line "Fortsetzen · Beenden · Plan". */
+    @Test fun navigatePausedLocked() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true)) }
 
     /** Without a recording, unlocked: only "Plan ändern". */
     @Test fun navigateNotRecordingOpen() = paparazzi.snapshot { NavFrame(navUi.copy(recordedM = null), actions = true) }

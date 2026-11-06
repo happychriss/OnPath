@@ -34,6 +34,7 @@ class GermanScreenshotTest {
 
     @Test fun plan() = shots.plan()
     @Test fun navigateLeaveAsk() = shots.navigateLeaveAsk()
+    @Test fun navigatePausedLocked() = shots.navigatePausedLocked()
     @Test fun navigateActivitySheet() = shots.navigateActivitySheet()
     @Test fun navigateActivitySheetHikeLevels() = shots.navigateActivitySheetHikeLevels()
     @Test fun planRoundTripOn() = shots.planRoundTripOn()

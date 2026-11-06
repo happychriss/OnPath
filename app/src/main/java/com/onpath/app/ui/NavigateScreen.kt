@@ -255,13 +255,14 @@ fun NavigateOverlay(
     var messageBottomDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var sliderDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     // the slider only unlocks (owner 2026-11-05, Navigate C): Pause / Tour beenden in the status card (a recording) and
-    // "Plan ändern" in the slider's place; paused the actions stay (Fortsetzen at once)
+    // "Sperren | Plan" in the slider's place. The pause changes nothing about the lock (owner 2026-11-06): paused, the
+    // bottom stays "Sperren | Plan", it locks again after the same 30 s (counted again from the pause), and locked +
+    // paused shows the slider ("Fortsetzen · Beenden · Plan") – "Fortsetzen" is in the status card after the slide.
     var open by remember { mutableStateOf(actionsOpen) }
-    LaunchedEffect(open, lock) { if (lock && open && !actionsOpen) { kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false } }
-    val pausedOpen = ui.paused && ui.recordedM != null
-    val unlocked = !lock || open || pausedOpen
-    // locking again without a choice (owner 2026-11-02, no ✕): a tap on the map or Android's back; paused it stays open
-    val closableBar = lock && open && !pausedOpen
+    LaunchedEffect(open, lock, ui.paused) { if (lock && open && !actionsOpen) { kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false } }
+    val unlocked = !lock || open
+    // locking again without a choice (owner 2026-11-02, no ✕): a tap on the map or Android's back – paused the same
+    val closableBar = lock && open
     androidx.activity.compose.BackHandler(enabled = closableBar) { open = false }
     // Android's back while a tour records (owner 2026-11-06, flow map N4): ask instead of leaving the app – a novice took
     // "app gone" for "tour gone" and might start a second one. A second back closes the question (= Bleiben).
@@ -299,7 +300,8 @@ fun NavigateOverlay(
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
             // unlocked: ONE big blue "Plan" where the slider was (owner 2026-11-05, Navigate C), an open lock beside it locks again
             if (unlocked) ChangePlanButton({ open = false; onSlideToPlan() }, bottom, onLock = if (closableBar) ({ open = false }) else null)
-            else SlideToPlan({ open = true }, bottom, recording = ui.recordedM != null, startFraction = slideStartFraction)
+            else SlideToPlan({ open = true }, bottom, recording = ui.recordedM != null, startFraction = slideStartFraction,
+                paused = ui.paused && ui.recordedM != null)
         }
         // ONE box under the turn / status column (docs/design/ui-style.md, owner 2026-10-31 – the re-route and
         // activity-switch question moved here from the bottom, 56 dp buttons kept); the question wins, the rest wait.
@@ -529,9 +531,8 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                     }
                 }
             }
-            // paused: "Fortsetzen" – in the card's action row when it shows, else here
-            if (ui.paused && ui.recordedM != null && actions == null) TextButton(onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_resume)) }
-            else if (ui.toGo != null && ui.arriveAt != null && ui.toGo.state != com.onpath.app.time.EstimateState.NOT_ON_ROUTE) Column(
+            // paused: "Fortsetzen" is in the card's action row once unlocked (owner 2026-11-06: locked + paused = the slider)
+            if (ui.toGo != null && ui.arriveAt != null && ui.toGo.state != com.onpath.app.time.EstimateState.NOT_ON_ROUTE) Column(
                 horizontalAlignment = Alignment.End,
                 modifier = Modifier.padding(start = 8.dp).widthIn(min = targetWordWidth(ui.toGo.target))
                     .width(IntrinsicSize.Max).semantics(mergeDescendants = true) {}) {

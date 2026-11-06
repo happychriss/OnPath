@@ -1281,6 +1281,13 @@
     "confidence": "sicher",
     "max": 16
   },
+  "nav_slide_unlock_sub_paused": {
+    "area": "Navigate",
+    "context": "Navigate's slider while the tour is paused and the screen locked (owner 2026-11-06): small second line under 'Entsperren' – what the slider unlocks",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 30
+  },
   "nav_leave_title": {
     "area": "Navigate",
     "context": "Question box in Navigate when Android's back is pressed while a tour records (owner 2026-11-06, flow map N4): title",

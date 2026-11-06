@@ -94,7 +94,8 @@ private val TEXT_GAP = 20.dp
  * [startFraction] places the thumb (screenshot tests only).
  */
 @Composable
-fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Boolean = true, startFraction: Float = 0f) {
+fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Boolean = true, startFraction: Float = 0f,
+                paused: Boolean = false) {
     val label = str(Res.string.nav_slide_unlock)
     val switchLabel = label
     // TalkBack: "Entsperren. Schieben, um Pause, Tour beenden und Plan freizugeben."
@@ -105,7 +106,8 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
     val mainStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
     val mainText = "»  $label"
     // what is behind the slider, in plain words: with a recording Pause · Beenden · Plan, without one only Plan
-    val sub = str(if (recording) Res.string.nav_slide_unlock_sub else Res.string.nav_slide_unlock_sub_plan)
+    val sub = str(when { !recording -> Res.string.nav_slide_unlock_sub_plan; paused -> Res.string.nav_slide_unlock_sub_paused
+        else -> Res.string.nav_slide_unlock_sub })
     val subStyle = MaterialTheme.typography.bodyMedium
     val measurer = rememberTextMeasurer()
     var tapped by remember { mutableIntStateOf(0) }

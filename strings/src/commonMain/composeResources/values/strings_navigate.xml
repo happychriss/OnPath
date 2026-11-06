@@ -180,6 +180,7 @@
     <string name="nav_slide_unlock_desc_plan">Unlock. Slide to enable the plan.</string>
     <string name="nav_slide_unlock_sub">Pause · End · Plan</string>
     <string name="nav_slide_unlock_sub_plan">Plan</string>
+    <string name="nav_slide_unlock_sub_paused">Resume · End · Plan</string>
     <string name="nav_leave_title">Leave the app?</string>
     <string name="nav_leave_text">Your tour keeps recording.</string>
     <string name="nav_leave_stay">Stay</string>

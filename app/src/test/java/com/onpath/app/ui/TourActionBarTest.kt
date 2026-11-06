@@ -30,7 +30,8 @@ class TourActionBarTest {
         // never cut: side by side while both words fit, else stacked (large font)
         assertTrue(TourActions.sideBySide(300f, 334f))
         assertFalse(TourActions.sideBySide(380f, 334f))
-        assertTrue(actions, actions.contains("onClick = { onClose(); onPause(!paused) }"))
+        // Pause / Fortsetzen keeps the bar open (owner 2026-11-06: the pause changes nothing about the lock)
+        assertTrue(actions, actions.contains("onClick = { onPause(!paused) }"))
         assertTrue(actions, actions.contains("onClick = { onClose(); onEnd() }") && actions.contains("Res.string.nav_end_tour"))
         assertFalse("no red", bar.contains("ActionStop") || bar.contains("OnPathColors.Error"))
         val change = bar.substringAfter("fun ChangePlanButton(").substringBefore("\n}\n")
@@ -54,16 +55,26 @@ class TourActionBarTest {
         assertTrue(contrast(OnPathColors.ActionGo, OnPathColors.CardWhite) >= 4.5)
     }
 
-    /** Locks again by itself after 30 s; a tap on the map or Android's back locks it; paused it stays open. */
-    @Test fun locksAgainAsBefore() {
+    /**
+     * Locks again by itself after 30 s; a tap on the map or Android's back locks it. The pause changes nothing about the
+     * lock (owner 2026-11-06): "Sperren | Plan" stays after Pause, the 30 s count again from the pause, locked + paused
+     * shows the slider ("Fortsetzen · Beenden · Plan"), and "Fortsetzen" is only in the card after the slide.
+     */
+    @Test fun locksAgainAsBeforeAlsoPaused() {
         assertEquals(30_000L, TourActions.OPEN_MS)
-        assertTrue(overlay.contains("kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false"))
-        assertTrue(overlay.contains("val pausedOpen = ui.paused && ui.recordedM != null"))
-        assertTrue(overlay.contains("val closableBar = lock && open && !pausedOpen"))
+        assertTrue(overlay.contains("LaunchedEffect(open, lock, ui.paused) { if (lock && open && !actionsOpen) { kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false } }"))
+        assertTrue(overlay.contains("val unlocked = !lock || open\n"))
+        assertTrue(overlay.contains("val closableBar = lock && open\n"))
+        assertTrue("no pause exception any more", !overlay.contains("pausedOpen"))
         assertTrue(overlay.contains("BackHandler(enabled = closableBar) { open = false }"))
         assertTrue(overlay.contains("detectTapGestures { open = false }"))
-        // paused: "Fortsetzen" in the card's action row, not twice
-        assertTrue(nav.contains("if (ui.paused && ui.recordedM != null && actions == null) TextButton(onClick = onResume"))
+        // Pause keeps the bar open (no onClose before onPause)
+        assertTrue(bar.contains("FilledTonalButton(onClick = { onPause(!paused) },"))
+        // locked + paused: no "Fortsetzen" past the lock; the slider says what is behind it
+        assertTrue(!nav.contains("actions == null) TextButton(onClick = onResume"))
+        assertTrue(overlay.contains("paused = ui.paused && ui.recordedM != null)"))
+        val slider = File("src/main/java/com/onpath/app/ui/SlideToUnlock.kt").readText()
+        assertTrue(slider.contains("paused -> Res.string.nav_slide_unlock_sub_paused"))
     }
 
     @Test fun theSliderOnlyUnlocks() {
@@ -90,8 +101,8 @@ class TourActionBarTest {
         assertTrue(com.onpath.app.data.AppSettings().navLock)
         val prefs = File("src/main/java/com/onpath/app/data/Prefs.kt").readText()
         assertTrue(prefs, prefs.contains("navLock = sp.getBoolean(\"navLock\", true)") && prefs.contains(".putBoolean(\"navLock\", v.navLock)"))
-        assertTrue(overlay, overlay.contains("val unlocked = !lock || open || pausedOpen"))
-        assertTrue("no re-lock without the lock", overlay.contains("val closableBar = lock && open && !pausedOpen")
+        assertTrue(overlay, overlay.contains("val unlocked = !lock || open\n"))
+        assertTrue("no re-lock without the lock", overlay.contains("val closableBar = lock && open\n")
             && overlay.contains("if (lock && open && !actionsOpen)"))
         assertTrue("the app passes the setting", nav.contains("lock = vm.settings.navLock"))
         val settings = File("src/main/java/com/onpath/app/ui/SettingsScreen.kt").readText()
