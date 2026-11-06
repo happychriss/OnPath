@@ -49,8 +49,18 @@ class TourBottomBarTest {
         assertTrue(de.contains("<string name=\"nav_slide_unlock_sub\">Pause · Beenden · Planen</string>"))
         assertTrue(de.contains("<string name=\"nav_slide_unlock_sub_paused\">Weiter · Beenden · Planen</string>"))
         assertTrue(xml("values-de", "strings_common.xml").contains("<string name=\"common_resume\">Weiter</string>"))
-        // the interrupted tour after a restart keeps its own word (another case)
-        assertTrue(xml("values-de", "strings_routes.xml").contains("<string name=\"routes_unfinished_continue\">Fortsetzen</string>"))
+        // owner 2026-11-06 (consistency): "Weiter" also after a restart, at the end sheet's way back – one word for going on
+        assertTrue(xml("values-de", "strings_routes.xml").contains("<string name=\"routes_unfinished_continue\">Weiter</string>"))
+        assertTrue(!de.contains("„Fortsetzen“"))
+        val tourBar = File("src/main/java/com/onpath/app/ui/TourBar.kt").readText()
+        assertTrue(tourBar.contains("Txt.s(Res.string.nav_continue) // owner 2026-11-06"))
+    }
+
+    @Test fun pillSaysPlanenAndNoRecBadge() {
+        val top = File("src/main/java/com/onpath/app/ui/PlanTopBar.kt").readText()
+        assertTrue(top.contains("val mode = str(Res.string.plan_mode_label).uppercase()"))
+        assertTrue(!nav.contains("RecBadge(") && !File("src/main/java/com/onpath/app/ui/TourBar.kt").readText().contains("fun RecBadge("))
+        assertTrue("paused: the icon is grey", nav.contains("tint = if (ui.paused && ui.recordedM != null) OnPathColors.Grey else OnPathColors.Green"))
     }
 
     @Test fun startScreenAsksWhereTo() {

@@ -54,7 +54,7 @@
 
     <string name="routes_unfinished_title">Unterbrochene Tour</string>
     <string name="routes_unfinished_text">Eine Tour wurde unterbrochen (%1$s, %2$s). Es ist nichts verloren gegangen.</string>
-    <string name="routes_unfinished_continue">Fortsetzen</string>
+    <string name="routes_unfinished_continue">Weiter</string>
 
     <string name="routes_activity_from_file">Aktivität aus der Datei übernommen: %1$s</string>
     <string name="routes_activity_from_tour">Aktivität aus der Tour übernommen: %1$s</string>

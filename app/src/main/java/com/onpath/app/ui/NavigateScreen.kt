@@ -468,11 +468,10 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         contentDescription = Txt.s(Res.string.nav_activity_cd, NavText.activityName(a, ui.sac))
                     }) {
                     Box(contentAlignment = Alignment.Center) {
-                        val rec = ui.recordedM != null
-                        Icon(a.icon, null, tint = OnPathColors.Green,
-                            modifier = Modifier.size(if (rec) 24.dp else 28.dp).then(if (rec) Modifier.align(Alignment.TopCenter).padding(top = 4.dp) else Modifier))
-                        // recording: a small "● REC" sign on the icon instead of a line (owner 2026-11-01)
-                        if (rec) RecBadge(ui.paused, Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp))
+                        // no "● REC" sign any more (owner 2026-11-06: the running time shows the recording); paused the
+                        // icon is grey and the card's line says "Pausiert"
+                        Icon(a.icon, null, tint = if (ui.paused && ui.recordedM != null) OnPathColors.Grey else OnPathColors.Green,
+                            modifier = Modifier.size(28.dp))
                     }
                 }
                 Spacer(Modifier.width(10.dp))
