@@ -105,6 +105,13 @@ object OnPathColors {
      * navigation" and blue only "plan" (white 10.2:1; told apart from green also with red-green weakness).
      */
     val Walnut = Color(0xFF4A3F37)
+    /**
+     * The map compass's needle (owner 2026-11-07 00:50: "die rote Nadel ist unstylisch – ein blauer Kompass"): north half ink
+     * blue ([ActionEdit], 8.5:1 on paper), south half a walnut-tinted grey (3.6:1 on paper, ≥ 3:1 for a graphic) – no red
+     * (red only deletes). The "N" above it in [Walnut], the calmer of the two.
+     */
+    val CompassNorth = ActionEdit
+    val CompassSouth = Color(0xFF8C827A)
     /** Light walnut container (selected rows, chips): [Walnut] ink on it ≥ 8:1. */
     val WalnutLight = Color(0xFFEDE6DF)
     /** Stop: end the process you are in (white 5.6:1) – the same red as [Error]. */
