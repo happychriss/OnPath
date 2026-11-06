@@ -61,8 +61,18 @@ class RouteNamerTest {
         // starts and ends in Algund but ~1 km apart, Mutspitze at the far end
         val line = listOf(inAlgund, p(46.7300, 11.1300), p(46.674, 11.120))
         assertEquals("Algund – Mutspitze – Algund", RouteNamer.name(line, places))
+        // out about 1.3 km and back to Algund 1 km from the start: not a loop, not out and back – a ride in Algund
         val noTop = listOf(inAlgund, p(46.676, 11.112), p(46.674, 11.120))
-        assertEquals("Round trip from Algund", RouteNamer.name(noTop, places))
+        assertEquals("In Algund", RouteNamer.name(noTop, places))
+        // out 3 km and back into Algund (1 km from the start): a round trip
+        val outAndBack = listOf(inAlgund, p(46.705, 11.140), p(46.674, 11.120))
+        assertEquals("Round trip from Algund", RouteNamer.name(outAndBack, places))
+    }
+
+    /** Owner's Pixel 2026-11-06: a short ride that ends near its start is no round trip ("Rundtour ab Hilden" for 554 m). */
+    @Test fun shortRideNearTheStartIsNoRoundTrip() {
+        val tiny = listOf(inAlgund, p(46.6835, 11.1285), p(46.6826, 11.1272))
+        assertEquals("In Algund", RouteNamer.name(tiny, places))
     }
 
     @Test fun nothingCloseUsesNear() {

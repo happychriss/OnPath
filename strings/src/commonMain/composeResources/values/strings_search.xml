@@ -59,6 +59,7 @@
     <string name="search_route_round_to">Round trip to %1$s</string>
     <string name="search_route_round_from">Round trip from %1$s</string>
     <string name="search_route_from">From %1$s</string>
+    <string name="search_route_in">In %1$s</string>
     <string name="search_route_to">To %1$s</string>
     <string name="search_route_via">%1$s (via %2$s)</string>
 </resources>

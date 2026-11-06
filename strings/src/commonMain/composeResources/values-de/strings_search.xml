@@ -58,6 +58,7 @@
     <string name="search_route_round_to">Rundtour zu %1$s</string>
     <string name="search_route_round_from">Rundtour ab %1$s</string>
     <string name="search_route_from">Von %1$s</string>
+    <string name="search_route_in">In %1$s</string>
     <string name="search_route_to">Nach %1$s</string>
     <string name="search_route_via">%1$s (über %2$s)</string>
 </resources>

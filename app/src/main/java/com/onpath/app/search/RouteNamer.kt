@@ -20,6 +20,11 @@ object RouteNamer {
     const val MAX_LEN = 40
     /** End within this distance of the start: a round trip. */
     const val LOOP_M = 200.0
+    /**
+     * A round trip goes somewhere: its farthest point is at least this far from the start (a 300 m test ride that ends
+     * where it began is no "Rundtour", owner's Pixel 2026-11-06).
+     */
+    const val OUT_M = 500.0
     const val LANDMARK_M = 150.0
     const val INN_M = 100.0
     const val NEAR_M = 8000.0
@@ -60,12 +65,17 @@ object RouteNamer {
         val s = startName?.trim()?.takeIf { it.isNotEmpty() } ?: label(start, near)
         val e = endName?.trim()?.takeIf { it.isNotEmpty() } ?: label(end, near)
         val via = viaNames.map { it.trim() }.firstOrNull { it.isNotEmpty() && it != s && it != e }
-        val loop = Geo.distance(start, end) <= LOOP_M
+        val gap = Geo.distance(start, end)
+        val far = line.maxOf { Geo.distance(start, it) }
+        val loop = gap <= LOOP_M && far >= OUT_M
         if (loop || (s != null && s == e)) {
             val top = via ?: farthestLandmark(line, near)?.takeIf { it != s }
             if (s == null) return top?.let { fit(Txt.s(Res.string.search_route_round_to, it)) }
             if (!loop && top != null) "$s – $top – $s".takeIf { it.length <= MAX_LEN }?.let { return it }
-            return fit(Txt.s(Res.string.search_route_round_from, s))
+            // start and end in the same place but no loop (owner's Pixel 2026-11-06: a 554 m ride across Hilden was
+            // "Rundtour ab Hilden"): a round trip only when it went out and came back – else "In Hilden"
+            if (loop || far >= maxOf(2 * OUT_M, 2 * gap)) return fit(Txt.s(Res.string.search_route_round_from, s))
+            return fit(Txt.s(Res.string.search_route_in, s))
         }
         return when {
             s != null && e != null -> {
