@@ -104,13 +104,13 @@ the git log.
   minute, flat profile axis, N1 notification "Navigation pausiert – tippen zum Weiterfahren", "Dein Plan ist noch nicht
   gespeichert." Earlier today: end sheet as bottom sheet, plan kept at tour end (save + delete), one point during a tour
   (#39), 'Ohne Netz' strict, all 256 glyph ranges, pin card "+ Hinzufügen". Not yet on the Pixel (a tour was recording).
-- **[cloud-plan] Planner follows the app's plan rules of 2026-11-06 (owner: "die gleiche Logik beim Planer")** – (1) "↻ Rundtour"
-  as a toggle: filled with ✓ while the plan is a round trip, a tap removes the way back (A→B→A → A→B); "⇅ Umkehren" grey
-  when reversing changes nothing (out and back over one point) – onpath.private#40, app branch in progress (donald),
-  mirror once it is on main; (2) pin card "+ Hinzufügen" (#26, app 8123d06a); (3) ✓ map glyphs: all 256 ranges per font
-  (planner copies the app's fonts at build time; the build now stops if a range is missing, e7802e1e – live after the next deploy); (4) base colour Walnuss #4A3F37 for plain buttons,
-  plan blue / to navigation green (#36, app follows soon). Phone-only (no planner change): end sheet, one point during a
-  tour, F1 / C, offline pill.
+- **[cloud-plan] Planner follows the app's plan rules of 2026-11-06 (owner: "die gleiche Logik beim Planer")** – left: (4) base
+  colour Walnuss #4A3F37 for plain buttons, plan blue / to navigation green (#36) – once the app has it on main. Done on the
+  planner (laptop 2026-11-06): ✓ (1) "↻ Rundtour" a switch, "⇅ Umkehren" grey for A→B→A (#40, b3e69378); ✓ (2) pin card
+  "+ Hinzufügen"; ✓ (3) glyphs, all 256 ranges (e7802e1e, live after the next deploy); ✓ flat profile one height, "Plan from it"
+  outlined blue (b3e69378); ✓ "Plan from it" over an unsaved plan asks "Plan speichern?" (save paths P3, 8f8db60d).
+  Phone-only (no planner change): end sheet / saved-tour box, one point during a tour, F1 / C, follow a track during a tour,
+  Als Plan übernehmen for done tours, map button column, offline pill.
 - **[laptop] Web planner – novice walkthrough (owner 2026-11-06, chat; points 1+2 done ed3219e9):** like the app's
   `docs/design/flow-map.md` (new plan, open / rename, send to phone, GPX, add a stop, undo) with real browser shots – to find
   what else is missing; owner asked "haben wir sonst noch wichtige Elemente vergessen?".
