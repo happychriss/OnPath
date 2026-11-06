@@ -23,7 +23,7 @@ on:
       - "app/src/test/java/com/onpath/app/**"
       - "app/libs/**"
       - "app/src/main/assets/**"
-      - "tools/routing/jvm-test/**"
+      - "tools/routing/jvm-test/stubs/**"
       - "strings/**"
       - "gradle/**"
       - "gradlew"
@@ -40,7 +40,7 @@ on:
       - "app/src/test/java/com/onpath/app/**"
       - "app/libs/**"
       - "app/src/main/assets/**"
-      - "tools/routing/jvm-test/**"
+      - "tools/routing/jvm-test/stubs/**"
       - "strings/**"
       - "gradle/**"
       - "gradlew"
@@ -103,7 +103,7 @@ jobs:
           path: |
             web/engine/build/generated/teavm/wasm-gc
             web/engine/build/style
-          key: web-engine-v1-${{ runner.os }}-${{ hashFiles('web/engine/**', 'app/src/main/java/**', 'app/src/test/java/com/onpath/app/**', 'app/libs/**', 'app/src/main/assets/**', 'tools/routing/jvm-test/**', 'strings/**', 'web/strings/**', 'gradle/**', 'gradlew', 'gradle.properties', 'settings.gradle.kts', 'build.gradle.kts', '.github/workflows/web.yml') }}
+          key: web-engine-v1-${{ runner.os }}-${{ hashFiles('web/engine/**', 'app/src/main/java/**', 'app/src/test/java/com/onpath/app/**', 'app/libs/**', 'app/src/main/assets/**', 'tools/routing/jvm-test/stubs/**', 'strings/**', 'web/strings/**', 'gradle/**', 'gradlew', 'gradle.properties', 'settings.gradle.kts', 'build.gradle.kts', '.github/workflows/web.yml') }}
 
       - uses: actions/setup-java@v4
         if: steps.engine.outputs.cache-hit != 'true'
