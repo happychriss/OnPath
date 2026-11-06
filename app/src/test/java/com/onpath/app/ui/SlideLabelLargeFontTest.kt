@@ -25,6 +25,9 @@ open class SlideLabelLargeFontTest {
     @Test fun navigate() = shots.navigate()
     /** "App verlassen?" at a large font (N4): the two buttons stacked, nothing cut. */
     @Test fun navigateLeaveAsk() = shots.navigateLeaveAsk()
+    /** The activity sheet with Hike's T1–T5 at a large font (K1): five chips in one row, nothing cut. */
+    @Test fun navigateActivitySheetHikeLevels() = shots.navigateActivitySheetHikeLevels()
+    @Test fun navigateActivitySheet() = shots.navigateActivitySheet()
     /** Without a recording: only "Plan ändern" behind it. */
     @Test fun navigateNotRecording() = shots.navigateNotRecording()
     @Test fun navigateActionsOpen() = shots.navigateActionsOpen()

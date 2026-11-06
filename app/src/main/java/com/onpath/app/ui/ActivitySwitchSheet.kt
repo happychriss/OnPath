@@ -60,6 +60,27 @@ data class ActivityCheckUi(
     val note: String? = null,
 )
 
+/** The check sheet's pure rules (unit-tested, ActivityCheckRulesTest). */
+object ActivityCheckRules {
+    /**
+     * Hike's T chip [level] chosen while a route is followed (K1): the Hike row now stands for that level and is checked
+     * again (Checking); hiking at that very level already → no Hike row (nothing to switch to). Hiking at another level →
+     * a Hike row for the new level, first in the list.
+     */
+    fun withHikeLevel(ui: ActivityCheckUi, level: Int): ActivityCheckUi {
+        val others = ui.rows.filter { it.activity != Activity.HIKE }
+        if (ui.current == Activity.HIKE && level == ui.sac) return ui.copy(rows = others)
+        val row = ActivityRow(Activity.HIKE, level, ActivityRowState.Checking)
+        val old = ui.rows.indexOfFirst { it.activity == Activity.HIKE }
+        val rows = if (old >= 0) ui.rows.toMutableList().also { it[old] = row } else listOf(row) + others
+        return ui.copy(rows = rows)
+    }
+
+    /** The T level the chips show as chosen: the Hike row's level, else the current level while hiking, else none. */
+    fun chipLevel(ui: ActivityCheckUi): Int =
+        ui.rows.firstOrNull { it.activity == Activity.HIKE }?.sac ?: if (ui.current == Activity.HIKE) ui.sac else 0
+}
+
 /** "✓ fits" / "⚠ 1.4 km not suited for gravelbikes, steps 40 m · +1.2 km" / "Checking…" (pure, for tests). */
 internal fun activityRowStatus(s: ActivityRowState): String = when (s) {
     ActivityRowState.Checking -> Txt.s(Res.string.nav_check_checking)
@@ -79,7 +100,8 @@ internal fun activityRowStatus(s: ActivityRowState): String = when (s) {
  * "Take new route / Keep original" question with the new route as the dashed proposal. Rows ≥ 56 dp, button 56 dp.
  */
 @Composable
-fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKeep: () -> Unit, modifier: Modifier = Modifier) {
+fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKeep: () -> Unit, modifier: Modifier = Modifier,
+                        onHikeLevel: (Int) -> Unit = {}) {
     val free = ui.rows.any { it.state == ActivityRowState.Plain }
     Surface(shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp), color = MaterialTheme.colorScheme.surface,
         shadowElevation = 8.dp, modifier = modifier.fillMaxWidth()) {
@@ -92,6 +114,8 @@ fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKee
                 Spacer(Modifier.width(10.dp))
                 Text(NavText.activityName(ui.current, ui.sac), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             }
+            // hiking: the T level can change on its own (K1) – the chips under the current activity
+            if (ui.current == Activity.HIKE) androidx.compose.foundation.layout.Box(Modifier.padding(top = 8.dp)) { SacChips(ActivityCheckRules.chipLevel(ui), onHikeLevel) }
             Row(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 4.dp), verticalAlignment = Alignment.Bottom) {
                 Text(str(Res.string.nav_check_switch_to), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                 if (!free) Text(str(Res.string.nav_check_rest_of_route), style = MaterialTheme.typography.bodySmall,
@@ -104,6 +128,8 @@ fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKee
             ui.rows.forEachIndexed { i, row ->
                 if (i > 0) HorizontalDivider()
                 ActivityRowItem(row) { onChoose(row.activity) }
+                // Hike's T1–T5 under its row, as in the plan's activity dialog (owner 2026-11-06, K1)
+                if (row.activity == Activity.HIKE && ui.current != Activity.HIKE) SacChips(ActivityCheckRules.chipLevel(ui), onHikeLevel)
             }
             Spacer(Modifier.size(12.dp))
             Button(onClick = onKeep, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {

@@ -1,0 +1,48 @@
+package com.onpath.app.ui
+
+import com.onpath.app.routing.Activity
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import java.io.File
+
+/**
+ * Flow map K1 (owner 2026-11-06): during a tour the activity sheet offers Hike's T1–T5 like the plan's activity dialog –
+ * before, Hike could only be taken with the remembered level.
+ */
+class ActivityCheckRulesTest {
+    private val fits = ActivityRowState.Ready(com.onpath.app.navigation.ActivityFit(Activity.HIKE, 2, emptyList(), 5_000.0, 3600.0, 0.0, emptyList()))
+    private fun rows(vararg a: Activity) = a.map { ActivityRow(it, if (it == Activity.HIKE) 2 else 2, fits) }
+
+    @Test fun aChipChecksTheHikeRowAgainForThatLevel() {
+        val ui = ActivityCheckUi(Activity.BIKE_TOURING, 2, rows(Activity.BIKE_TREKKING, Activity.HIKE))
+        val after = ActivityCheckRules.withHikeLevel(ui, 4)
+        val hike = after.rows.single { it.activity == Activity.HIKE }
+        assertEquals(4, hike.sac)
+        assertEquals(ActivityRowState.Checking, hike.state)
+        assertEquals("the other rows stay", fits, after.rows.single { it.activity == Activity.BIKE_TREKKING }.state)
+        assertEquals("the chips show the row's level", 4, ActivityCheckRules.chipLevel(after))
+    }
+
+    @Test fun hikingAlreadyAnotherLevelAddsAHikeRowFirst() {
+        val ui = ActivityCheckUi(Activity.HIKE, 2, rows(Activity.BIKE_TOURING, Activity.MTB))
+        assertEquals("the current level is marked", 2, ActivityCheckRules.chipLevel(ui))
+        val after = ActivityCheckRules.withHikeLevel(ui, 3)
+        assertEquals(Activity.HIKE, after.rows.first().activity)
+        assertEquals(3, after.rows.first().sac)
+        val back = ActivityCheckRules.withHikeLevel(after, 2)
+        assertTrue("the same level as now: nothing to switch to", back.rows.none { it.activity == Activity.HIKE })
+        assertEquals(2, ActivityCheckRules.chipLevel(back))
+    }
+
+    @Test fun theSheetShowsTheChipsAndFreeRecordingSwitchesAtOnce() {
+        val sheet = File("src/main/java/com/onpath/app/ui/ActivitySwitchSheet.kt").readText()
+        assertTrue(sheet.contains("if (row.activity == Activity.HIKE && ui.current != Activity.HIKE) SacChips("))
+        assertTrue(sheet.contains("if (ui.current == Activity.HIKE)"))
+        val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        val choose = vm.substringAfter("fun chooseHikeLevel(level: Int) {").substringBefore("\n    }\n")
+        assertTrue(choose, choose.contains("selectActivity(Activity.HIKE, userChange = false)") && choose.contains("selectSac(l)"))
+        assertTrue("both sheets get the chips", File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText().contains("onHikeLevel = vm::chooseHikeLevel"))
+        assertTrue(File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText().contains("onHikeLevel = vm::chooseHikeLevel"))
+    }
+}

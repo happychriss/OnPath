@@ -225,6 +225,8 @@ fun NavigateOverlay(
     onActivity: () -> Unit = {},
     onChooseActivity: (Activity) -> Unit = {},
     onKeepActivity: () -> Unit = {},
+    /** Hike's T chip in the activity sheet (K1). */
+    onHikeLevel: (Int) -> Unit = {},
     /** Finger on the elevation profile: that spot on the route (null never sent) / finger left. */
     onProfileScrub: (GeoPoint) -> Unit = {},
     onProfileRelease: () -> Unit = {},
@@ -325,7 +327,7 @@ fun NavigateOverlay(
         val cover by androidx.compose.runtime.rememberUpdatedState(onCover)
         androidx.compose.runtime.SideEffect { cover(maxOf(topColumnDp, shownMessageBottom), sliderDp) }
         // over the controls: nothing else is touched by accident while choosing; no tap-outside dismiss
-        ui.activityCheck?.let { ActivitySwitchSheet(it, onChooseActivity, onKeepActivity, Modifier.align(Alignment.BottomCenter)) }
+        ui.activityCheck?.let { ActivitySwitchSheet(it, onChooseActivity, onKeepActivity, Modifier.align(Alignment.BottomCenter), onHikeLevel = onHikeLevel) }
     }
 }
 
@@ -991,6 +993,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
             onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute, onTakeVia = vm::takeViaRoute,
             onLeadThere = vm::leadToStart, onJustRecord = vm::justRecord, onJoinHere = vm::joinHere, onLeadFailedOk = vm::leadFailedOk,
             onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
+            onHikeLevel = vm::chooseHikeLevel,
             onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,
             download = bg, onDownload = { vm.downloadDetailsOpen = true },
             onNotifications = { vm.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },

@@ -230,7 +230,7 @@ fun ActivityDialog(
 /** Hike's T1–T5 under its row: one tap = Hike with that level, closes; [selected] 0 = none marked. */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun SacChips(selected: Int, onPick: (Int) -> Unit) {
+internal fun SacChips(selected: Int, onPick: (Int) -> Unit) {
     // one row of five equal chips (never a lone T5 on a second line)
     Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         SacScale.levels.forEach { l ->

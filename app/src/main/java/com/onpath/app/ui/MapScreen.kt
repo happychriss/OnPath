@@ -220,7 +220,7 @@ fun MapScreen(
         // Plan during a tour: the activity check-and-switch sheet over the plan sheet (Navigate draws its own)
         if (vm.mode == AppMode.PLAN) vm.activityCheck?.let {
             androidx.activity.compose.BackHandler { vm.closeActivityCheck() }
-            ActivitySwitchSheet(it, vm::chooseActivity, vm::closeActivityCheck, Modifier.align(Alignment.BottomCenter))
+            ActivitySwitchSheet(it, vm::chooseActivity, vm::closeActivityCheck, Modifier.align(Alignment.BottomCenter), onHikeLevel = vm::chooseHikeLevel)
         }
     }
 

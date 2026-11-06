@@ -34,6 +34,8 @@ class GermanScreenshotTest {
 
     @Test fun plan() = shots.plan()
     @Test fun navigateLeaveAsk() = shots.navigateLeaveAsk()
+    @Test fun navigateActivitySheet() = shots.navigateActivitySheet()
+    @Test fun navigateActivitySheetHikeLevels() = shots.navigateActivitySheetHikeLevels()
     @Test fun planRoundTripOn() = shots.planRoundTripOn()
     @Test fun planOutAndBack() = shots.planOutAndBack()
     @Test fun planRoutingSlowProgress() = shots.planRoutingSlowProgress()

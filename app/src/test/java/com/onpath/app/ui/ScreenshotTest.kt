@@ -780,6 +780,15 @@ class ScreenshotTest {
     /** Tap the activity icon: what the rest of the route means for each other activity (fits / problems / checking). */
     @Test fun navigateActivitySheet() = paparazzi.snapshot { NavFrame(navUi.copy(activityCheck = checkUi)) }
 
+    /** Riding a bike during a tour: Hike's T1–T5 under its row (owner 2026-11-06, flow map K1). */
+    @Test fun navigateActivitySheetHikeLevels() = paparazzi.snapshot {
+        NavFrame(navUi.copy(activity = Activity.BIKE_TREKKING, activityCheck = ActivityCheckUi(Activity.BIKE_TREKKING, 3, listOf(
+            ActivityRow(Activity.BIKE_TOURING, 3, ActivityRowState.Ready(fit(Activity.BIKE_TOURING, emptyList(), 1.3 * 3600))),
+            ActivityRow(Activity.MTB, 3, ActivityRowState.Ready(fit(Activity.MTB, emptyList(), 38 * 60.0))),
+            ActivityRow(Activity.HIKE, 3, ActivityRowState.Ready(fit(Activity.HIKE, listOf("0.4 km above T3"), 3.1 * 3600, -800.0))),
+        ))))
+    }
+
     /** Opened a moment ago: every row still being checked. */
     @Test fun navigateActivitySheetChecking() = paparazzi.snapshot {
         NavFrame(navUi.copy(activity = Activity.BIKE_TREKKING, activityCheck = ActivityCheckUi(Activity.BIKE_TREKKING, 3,
