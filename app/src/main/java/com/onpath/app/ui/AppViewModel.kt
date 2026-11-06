@@ -922,15 +922,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var finishedTimes by mutableStateOf<com.onpath.app.time.TourTimes?>(null)
         private set
 
-    /** The box "Tour gespeichert" → "In Meine Touren ›": the box goes, the tour opens as from My routes. */
+    /**
+     * The box "Tour gespeichert" → "In Meine Touren ›": the box goes and My routes opens on Gemacht with the tour marked
+     * "✓ Gerade gespeichert" – what the button says (field bug 2026-11-06 22:30: it opened the 0 m tour on the map, with
+     * "Als Plan übernehmen" for a tour without any line).
+     */
     fun openSavedTour() {
         val t = finishedTour ?: return
         finishedTour = null; finishedTimes = null
-        requestOpen(t)
+        Problems.trace("tour", "Saved box: In Meine Touren → My routes → Gemacht, tour ${t.id} marked")
+        routesTab = RoutesTab.DONE
+        openRoutes()
+        justSavedId = t.id // after openRoutes: opening clears nothing, closing My routes clears it
     }
 
     /** The box "Tour gespeichert" → OK. */
-    fun closeSavedTour() { finishedTour = null; finishedTimes = null }
+    fun closeSavedTour() {
+        finishedTour?.let { Problems.trace("tour", "Saved box: OK (tour ${it.id})") }
+        finishedTour = null; finishedTimes = null
+    }
     var tours by mutableStateOf<List<Tour>>(emptyList())
         private set
     var events = mutableStateListOf<UiEvent>()
@@ -2831,7 +2841,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * asks "Dieser Tour folgen?" ([trackFollowAsk], owner 2026-11-06 F1); else "Replace current plan?" when that would lose
      * changes; tracks open at once.
      */
-    fun requestOpen(t: Tour) {
+    fun requestOpen(t: Tour, why: String = "My routes tapped") {
+        Problems.trace("routes", "Open tour ${t.id} \"${t.name}\" (${t.kind}, ${t.distanceM.toInt()} m): $why")
         when (RouteRules.openAsk(t.kind, t.waypoints.size, navigating(recState.value != null), waypoints, savedPoints,
                 hasLine = t.distanceM > 0.0)) {
             OpenAsk.BLOCKED_DURING_TOUR -> {
@@ -3723,6 +3734,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * activity stays, the plan is replaced like an edit during the tour (followEditedPlan), and the app goes to Navigate.
      */
     fun openTour(t: Tour, duringTour: Boolean = false, trackThen: TrackThen = TrackThen.SHOW) {
+        Problems.trace("routes", "Tour ${t.id} on the map (${if (duringTour) "during the tour, " else ""}then $trackThen)")
         syncMarkSeen(t)
         viewModelScope.launch {
             val segs = withContext(Dispatchers.IO) { db.loadSegments(t.id) }

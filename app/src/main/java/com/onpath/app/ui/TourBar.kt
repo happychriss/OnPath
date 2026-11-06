@@ -42,6 +42,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import com.onpath.app.debug.Problems
 import androidx.compose.runtime.setValue
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Save
@@ -142,6 +143,14 @@ private fun EndTourContent(
     onSave: () -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit, title: String,
     activity: com.onpath.app.routing.Activity?, stats: EndStats?, keepLabel: String,
 ) {
+                // the thumb that just held "Beenden" (hold lock) must not save (field bug 2026-11-06 22:30): every button
+                // here ignores a press that began within EndSheetGuard.GUARD_MS of the sheet appearing
+                val shownAt = remember { android.os.SystemClock.uptimeMillis() }
+                androidx.compose.runtime.LaunchedEffect(Unit) { Problems.trace("tour", "End sheet shown: \"$title\"") }
+                val save = guardedTap("Tour speichern", shownAt, onSave)
+                val keep = guardedTap("$keepLabel (keep going)", shownAt, onDismiss)
+                val close = guardedTap("✕ (keep going)", shownAt, onDismiss)
+                val delete = guardedTap("Tour löschen", shownAt, onDelete)
                 Column(Modifier.verticalScroll(rememberScrollState())
                     .padding(start = 20.dp, end = 20.dp, top = 0.dp, bottom = 16.dp)) {
                     // icon and ✕ at the title's first line: a long title wraps under itself, nothing floats between lines
@@ -155,7 +164,8 @@ private fun EndTourContent(
                             if (activity != null) Text(activity.navName, style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        androidx.compose.material3.IconButton(onClick = onDismiss, modifier = Modifier.offset(y = (-8).dp).size(48.dp)) {
+                        androidx.compose.material3.IconButton(onClick = close.onClick, interactionSource = close.source,
+                            modifier = Modifier.offset(y = (-8).dp).size(48.dp)) {
                             Icon(Icons.Filled.Close, contentDescription = keepLabel, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
@@ -165,9 +175,9 @@ private fun EndTourContent(
                     // second question (owner 2026-11-01)
                     if (stats != null) { Spacer(Modifier.height(8.dp)); EndStatsLine(stats) }
                     Spacer(Modifier.height(16.dp))
-                    EndSaveButton(str(Res.string.nav_save_recording), onSave)
+                    EndSaveButton(str(Res.string.nav_save_recording), save)
                     Spacer(Modifier.height(12.dp))
-                    EndKeepAndDelete(keepLabel, onDismiss, onDelete)
+                    EndKeepAndDelete(keepLabel, keep, delete)
                 }
 }
 
@@ -184,15 +194,16 @@ private fun EndStatsLine(st: EndStats) = Text(
  * word; side by side, stacked with a large font. The bin note under them.
  */
 @Composable
-private fun EndKeepAndDelete(keepLabel: String, onKeep: () -> Unit, onDelete: () -> Unit) {
+private fun EndKeepAndDelete(keepLabel: String, onKeep: GuardedTap, onDelete: GuardedTap) {
     val stacked = androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.3f
     val keep: @Composable (Modifier) -> Unit = { m ->
-        OutlinedButton(onClick = onKeep, modifier = m.heightIn(min = 56.dp), border = BorderStroke(1.dp, OnPathColors.ActionGo)) {
+        OutlinedButton(onClick = onKeep.onClick, interactionSource = onKeep.source, modifier = m.heightIn(min = 56.dp),
+            border = BorderStroke(1.dp, OnPathColors.ActionGo)) {
             Text(keepLabel, color = OnPathColors.ActionGo, style = MaterialTheme.typography.titleMedium, maxLines = 1)
         }
     }
     val delete: @Composable (Modifier) -> Unit = { m ->
-        OutlinedButton(onClick = onDelete, modifier = m.heightIn(min = 56.dp),
+        OutlinedButton(onClick = onDelete.onClick, interactionSource = onDelete.source, modifier = m.heightIn(min = 56.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
             Icon(Icons.Outlined.DeleteOutline, null); Spacer(Modifier.width(6.dp))
             Text(str(Res.string.nav_delete_tour_short), style = MaterialTheme.typography.titleMedium, maxLines = 1)
@@ -212,23 +223,53 @@ private fun EndKeepAndDelete(keepLabel: String, onKeep: () -> Unit, onDelete: ()
 
 /** The main action, filled green, full width, 56 dp. */
 @Composable
-private fun EndSaveButton(label: String, onClick: () -> Unit) = Button(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+private fun EndSaveButton(label: String, tap: GuardedTap) = Button(onClick = tap.onClick, interactionSource = tap.source,
+    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
     colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionGo)) {
     Icon(Icons.Filled.Check, null); Spacer(Modifier.width(8.dp))
     Text(label, style = MaterialTheme.typography.titleMedium, maxLines = 1)
 }
 
+/** A button's press source and its click, guarded by [EndSheetGuard] (the end sheet). */
+internal class GuardedTap(val source: androidx.compose.foundation.interaction.MutableInteractionSource, val onClick: () -> Unit)
+
+/**
+ * [onClick] runs only when the finger went down [EndSheetGuard.GUARD_MS] or more after [shownAt]; a click without a
+ * press (TalkBack) counts from the click. Every tap – done or ignored – goes into the problem log.
+ */
+@Composable
+internal fun guardedTap(what: String, shownAt: Long, onClick: () -> Unit): GuardedTap {
+    val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressedAt = remember { longArrayOf(0L) }
+    androidx.compose.runtime.LaunchedEffect(source) {
+        source.interactions.collect {
+            if (it is androidx.compose.foundation.interaction.PressInteraction.Press) pressedAt[0] = android.os.SystemClock.uptimeMillis()
+        }
+    }
+    val click = androidx.compose.runtime.rememberUpdatedState(onClick)
+    return remember(source, shownAt) {
+        GuardedTap(source) {
+            val now = android.os.SystemClock.uptimeMillis()
+            val pressed = if (pressedAt[0] in shownAt..now) pressedAt[0] else now
+            if (EndSheetGuard.accepts(shownAt, pressed)) {
+                Problems.trace("tour", "End sheet: $what (pressed ${pressed - shownAt} ms after it appeared)")
+                click.value()
+            } else Problems.trace("tour", "End sheet: $what ignored – pressed ${pressed - shownAt} ms after the sheet appeared")
+        }
+    }
+}
+
 /** The way back, outlined green, full width. */
 @Composable
-private fun EndKeepButton(label: String, onClick: () -> Unit) = OutlinedButton(onClick = onClick,
+private fun EndKeepButton(label: String, tap: GuardedTap) = OutlinedButton(onClick = tap.onClick, interactionSource = tap.source,
     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), border = BorderStroke(1.dp, OnPathColors.ActionGo)) {
     Text(label, color = OnPathColors.ActionGo, style = MaterialTheme.typography.labelLarge, maxLines = 1)
 }
 
 /** Delete: always there, quiet, apart from Save – red only on the word; the bin note under it, no second question. */
 @Composable
-private fun EndDeleteArea(onDelete: () -> Unit) = Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-    TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp),
+private fun EndDeleteArea(onDelete: GuardedTap) = Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+    TextButton(onClick = onDelete.onClick, interactionSource = onDelete.source, modifier = Modifier.heightIn(min = 48.dp),
         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
         Icon(Icons.Outlined.DeleteOutline, null); Spacer(Modifier.width(6.dp)); Text(str(Res.string.nav_delete_tour))
     }
@@ -243,10 +284,15 @@ private fun EndDeleteArea(onDelete: () -> Unit) = Column(Modifier.fillMaxWidth()
  */
 @Composable
 internal fun DeleteApartButtons(onDelete: (() -> Unit)?, cancelLabel: String, onCancel: () -> Unit, saveLabel: String, onSave: () -> Unit) {
+    // the ride check also opens straight from a held "Beenden": the same guard as the end sheet
+    val shownAt = remember { android.os.SystemClock.uptimeMillis() }
+    val save = guardedTap(saveLabel, shownAt, onSave)
+    val cancel = guardedTap("$cancelLabel (keep going)", shownAt, onCancel)
+    val delete = onDelete?.let { guardedTap("Tour löschen", shownAt, it) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        EndSaveButton(saveLabel, onSave)
-        EndKeepButton(cancelLabel, onCancel)
-        if (onDelete != null) EndDeleteArea(onDelete)
+        EndSaveButton(saveLabel, save)
+        EndKeepButton(cancelLabel, cancel)
+        if (delete != null) EndDeleteArea(delete)
     }
 }
 

@@ -253,6 +253,7 @@
     <string name="plan_leg_no_path">no path found</string>
     <string name="plan_share_plan">Share plan</string>
     <string name="plan_from_track">Make a plan from it</string>
+    <string name="plan_no_track_recorded">No track recorded</string>
     <string name="plan_from_track_busy_title">Making a plan from the tour…</string>
     <string name="plan_from_track_busy_text">A long tour can take a few minutes.</string>
     <string name="plan_from_track_failed">The tour could not be turned into a plan – the detailed map may be missing there.</string>
