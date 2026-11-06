@@ -1361,12 +1361,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         planEditPending = true
         val split = splitOf(before, waypoints.toList())
         routeBackAsk = split == TourSplit.Outcome.NothingAhead ||
-            RouteBack.asks(before, waypoints, recState.value != null, followLine != null, followIsTrack, myPosition())
+            (RouteBack.asks(before, waypoints, recState.value != null, followLine != null, followIsTrack, myPosition()) &&
+                waypoints.singleOrNull() != oneLeftStart)
         if (routeBackAsk) {
             Problems.trace("plan", "Edit during the tour left no point ahead: asking \"No destination ahead\"")
             sayEvent(RecordingService.SAY_NO_DESTINATION)
         }
-        oneLeftGoesFromHere(before)
+        oneLeftGoesFromHere(before, mayEmpty = true)
         planChanged()
         endGuidanceIfPlanEmpty()
         nextCause = PlanStatus.Cause.PointEdit
@@ -1486,11 +1487,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * plan from before), the sheet shows that route and the tour follows it as a whole new plan ([followEditedPlan]).
      * Without a position the guidance ends as for an empty plan and a line says why; the recording goes on.
      */
-    private fun oneLeftGoesFromHere(before: List<GeoPoint>) {
-        if (!PlanGuidance.oneLeftGoesFromHere(before.size, waypoints.size, recState.value != null, followLine != null,
-                followIsTrack, routeBackAsk)) return
-        val goal = waypoints.single()
+    private fun oneLeftGoesFromHere(before: List<GeoPoint>, mayEmpty: Boolean = false) {
+        val left = waypoints.singleOrNull()
         val pos = myPosition()
+        val auto = left != null && left == oneLeftStart
+        val outcome = PlanGuidance.oneLeft(before.size, waypoints.size, recState.value != null, followLine != null,
+            followIsTrack, routeBackAsk, auto, if (left != null && pos != null) com.onpath.app.data.Geo.distance(pos, left) else null)
+        if (outcome == PlanGuidance.OneLeft.NONE) return
+        if (outcome == PlanGuidance.OneLeft.EMPTY) {
+            if (!mayEmpty) return // Undo / Redo brings a plan back – it never empties it
+            Problems.trace("plan", "One point left during the tour, " +
+                (if (auto) "only the start this rule put in" else "right where I stand") + ": the plan empties (field bug 2026-11-06)")
+            routeBackAsk = false
+            oneLeftStart = null
+            waypoints.clear()
+            prefs.planWaypoints = emptyList()
+            return // endGuidanceIfPlanEmpty: the guidance ends, the recording goes on
+        }
+        val goal = left!!
         if (pos == null) {
             Problems.trace("plan", "One point left during the tour, no position: route guidance ended, recording continues")
             pendingSplit = null
@@ -1500,11 +1514,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         pendingSplit = null // a whole new plan from here, nothing of it passed
+        oneLeftStart = pos
         waypoints.clear(); waypoints.addAll(listOf(pos, goal))
         cellsForNewPoints(before, waypoints)
         prefs.planWaypoints = waypoints.toList()
         Problems.trace("plan", "One point left during the tour: plan = position → that point (like Hierhin)")
     }
+
+    /**
+     * The start [oneLeftGoesFromHere] put in (my position then): no point of the user's – deleting the goal of that
+     * plan empties it instead of building "position → that start" again or asking "Route back to the start?".
+     */
+    private var oneLeftStart: GeoPoint? = null
 
     /** Forget pinned points that are neither planned nor reachable by undo/redo. */
     private fun prunePinned() {
