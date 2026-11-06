@@ -25,6 +25,12 @@ const a = path.join(repo, 'app/src/main/assets');
 fs.mkdirSync(path.join(pub, 'style'), { recursive: true });
 fs.copyFileSync(path.join(a, 'style/f2/onpath.json'), path.join(pub, 'style/onpath.json'));
 fs.cpSync(path.join(a, 'fonts'), path.join(pub, 'fonts'), { recursive: true });
+// every font needs all 256 glyph ranges (app 60470cba): a missing range makes MapLibre drop the tiles that use it
+for (const f of fs.readdirSync(path.join(pub, 'fonts'), { withFileTypes: true }).filter((d) => d.isDirectory())) {
+  const missing = [...Array(256).keys()].map((i) => `${i * 256}-${i * 256 + 255}.pbf`)
+    .filter((r) => !fs.existsSync(path.join(pub, 'fonts', f.name, r)));
+  if (missing.length) { console.error(`fonts/${f.name}: ${missing.length} glyph ranges missing, e.g. ${missing[0]}`); process.exit(1); }
+}
 fs.cpSync(path.join(a, 'sprites'), path.join(pub, 'sprites'), { recursive: true });
 
 // The world overview below the cells (docs/design/web-planner.md §16): the style with the app's Overview.merge applied
