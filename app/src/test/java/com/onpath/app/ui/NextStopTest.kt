@@ -120,4 +120,18 @@ class NextStopTest {
         assertEquals(4.0 * 3600, NextStop.movingS(4.0 * 3600, 3.0 * 3600, 0.0), 0.1)
         assertEquals(0.0, NextStop.movingS(100.0, 0.0, 0.0), 0.0)
     }
+
+    /**
+     * Owner's Pixel 2026-11-06: "Stopp 2 · an 16:35" stood there at 16:36 – the times are "now + time to go" and nothing
+     * recomposed without a new position. Navigate recomposes at every full minute and never counts from before now.
+     */
+    @Test fun stopTimesFollowTheClock() {
+        assertEquals(60_000L, MinuteClock.untilNextMs(1_800_000_000_000L - 1_800_000_000_000L % 60_000L))
+        assertEquals(1L, MinuteClock.untilNextMs(1_800_000_000_000L - 1_800_000_000_000L % 60_000L + 59_999L))
+        assertEquals(30_000L, MinuteClock.untilNextMs(30_000L))
+        val src = File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()
+        val mode = src.substringAfter("internal fun NavigateMode(")
+        assertTrue("Navigate ticks every minute", mode.contains("MinuteClock.untilNextMs("))
+        assertTrue("the stop times count from now", mode.contains("val now = maxOf(System.currentTimeMillis(), minute)"))
+    }
 }

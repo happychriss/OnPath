@@ -91,6 +91,12 @@ object NextStop {
     fun shown(turnM: Double?, stop: StopAhead?): Boolean = stop != null && (turnM == null || stop.distanceM < turnM)
 }
 
+/** When Navigate's clock times are worked out again: at every full minute (a stop's "an 14:20" never lags the clock). */
+object MinuteClock {
+    /** Milliseconds from [nowMs] to the next full minute (1 ms … 60 s). */
+    fun untilNextMs(nowMs: Long): Long = 60_000L - Math.floorMod(nowMs, 60_000L)
+}
+
 /** A stop row under the profile: the stop and its arrival clock ("an 14:20"; null = no time). */
 data class StopRow(val stop: StopAhead, val arriveAt: String?) {
     /** The row's name: the stop's own name, else "Ziel" / "Stopp 3" (the sign beside it shows the number too). */

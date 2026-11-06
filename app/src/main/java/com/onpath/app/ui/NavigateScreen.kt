@@ -806,6 +806,11 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val nav = rec?.nav?.takeIf { it.line.size >= 2 }
     val line = nav?.line ?: vm.followLine
     val progress = remember(line) { line?.let { FollowProgress(it) } }
+    // the clock times ("an 16:35", arrival) are "now + time to go": without a new position nothing recomposed, and a
+    // stop's time fell behind the clock (owner's Pixel 2026-11-06: "an 16:35" at 16:36) – recompose at every minute
+    val minute by androidx.compose.runtime.produceState(System.currentTimeMillis()) {
+        while (true) { kotlinx.coroutines.delay(MinuteClock.untilNextMs(System.currentTimeMillis())); value = System.currentTimeMillis() }
+    }
     // turns on the followed line, once per line: the junctions the phone vibrates for and the voice names
     // (ScreenTurns: BRouter's hints + JogRule; a GPX track without hints: the geometry, TurnDetector)
     val hike = (rec?.nav?.session?.activity ?: vm.activity) == com.onpath.app.routing.Activity.HIKE
@@ -876,7 +881,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
                 profile = line?.let { l -> l.subList(r.index.coerceIn(0, l.size - 1), l.size) } ?: emptyList(),
                 // the next 2–3 stops (owner 2026-11-05): the same rules as the turn card's stop, the same time model as the clock
                 stops = nav?.session?.let { sess ->
-                    val now = System.currentTimeMillis()
+                    val now = maxOf(System.currentTimeMillis(), minute)
                     val f = vm.planFactors()
                     val plainHere = toGoSeconds(times, r.distanceM, f)
                     NextStop.aheadList(sess, (total - r.distanceM).coerceAtLeast(0.0)).map { st ->
