@@ -72,8 +72,9 @@ fun ChangePlanButton(onClick: () -> Unit, modifier: Modifier = Modifier, hold: B
 }
 
 /**
- * The locked bar's frame: the small line over the buttons – at rest "🔒 Gesperrt · Knopf gedrückt halten", after a
- * release before the end "Gedrückt halten" in walnut for [HoldRule.HINT_MS] (a short tap is never silent).
+ * The locked bar's frame: the small line over the buttons – at rest "🔒 Gesperrt · Knopf gedrückt halten" only until the
+ * user has fired one held button (owner 2026-11-07, [HoldRule.pillShows]; the light buttons say "locked" by themselves),
+ * after a release before the end "Gedrückt halten" in walnut for [HoldRule.HINT_MS] (a short tap is never silent).
  */
 @Composable
 private fun HoldBar(modifier: Modifier, bar: @Composable (onEarly: () -> Unit) -> Unit) {
@@ -81,7 +82,7 @@ private fun HoldBar(modifier: Modifier, bar: @Composable (onEarly: () -> Unit) -
     val strong = strongAt != 0L
     LaunchedEffect(strongAt) { if (strongAt != 0L) { kotlinx.coroutines.delay(HoldRule.HINT_MS); strongAt = 0L } }
     Column(modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.Center) {
+        if (HoldRule.pillShows(LocalHoldLearned.current, strong)) Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.Center) {
             Surface(shape = OnPathShapes.Pill, color = if (strong) OnPathColors.Walnut else OnPathColors.Paper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Pill)) {
                 Row(Modifier.padding(horizontal = 14.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(if (strong) Icons.Filled.TouchApp else Icons.Filled.Lock, null, Modifier.size(18.dp),

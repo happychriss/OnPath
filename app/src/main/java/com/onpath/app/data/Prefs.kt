@@ -248,6 +248,14 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         get() = sp.getBoolean("pairHintSeen", false)
         set(v) = sp.edit().putBoolean("pairHintSeen", v).apply()
 
+    /**
+     * The user has fired one held button of the locked Navigate bar (owner 2026-11-07: the line "Gesperrt · Knopf
+     * gedrückt halten" only until then, not all the time – [com.onpath.app.ui.HoldRule.pillShows]); stays.
+     */
+    var holdLearned: Boolean
+        get() = sp.getBoolean("holdLearned", false)
+        set(v) = sp.edit().putBoolean("holdLearned", v).apply()
+
     /** Developer tools unlocked by 7 taps on the version in Settings → About (owner); stays. */
     var devToolsUnlocked: Boolean
         get() = sp.getBoolean("devToolsUnlocked", false)

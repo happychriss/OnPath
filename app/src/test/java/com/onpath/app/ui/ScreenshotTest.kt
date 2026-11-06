@@ -729,6 +729,14 @@ class ScreenshotTest {
     /** Locked and paused (owner 2026-11-06): the slider, its small line "Fortsetzen · Beenden · Plan". */
     @Test fun navigatePausedLocked() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true)) }
 
+    /**
+     * Locked after the first fired hold (owner 2026-11-07): no "Gesperrt · Knopf gedrückt halten" line at rest – the light
+     * buttons say "locked"; a short tap still shows "Gedrückt halten". (The other locked frames show the first-use line.)
+     */
+    @Test fun navigateLockedLearned() = paparazzi.snapshot {
+        androidx.compose.runtime.CompositionLocalProvider(LocalHoldLearned provides true) { NavFrame(navUi) }
+    }
+
     /** Without a recording, unlocked: only "Plan ändern". */
     @Test fun navigateNotRecordingOpen() = paparazzi.snapshot { NavFrame(navUi.copy(recordedM = null), actions = true) }
 
