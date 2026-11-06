@@ -217,7 +217,6 @@ private fun PointRows(
                 animationSpec = if (from != null) spring(stiffness = Spring.StiffnessMediumLow) else snap())
             Surface(
                 color = if (lifted) MaterialTheme.colorScheme.surfaceContainerHighest else Color.Transparent,
-                shadowElevation = if (lifted) 6.dp else 0.dp,
                 shape = MaterialTheme.shapes.small,
                 modifier = Modifier.zIndex(if (lifted) 1f else 0f)
                     .graphicsLayer {
@@ -226,8 +225,7 @@ private fun PointRows(
                             settleRow == i -> settle.value
                             else -> shiftPx
                         }
-                    },
-            ) {
+                    }.warmShadow(OnPathShadow.level(if (lifted) 6.dp else 0.dp), MaterialTheme.shapes.small)) {
                 val ri = e.rowIndex
                 if (ri == null) DeletedRow(r) else PointRow(ri, r, rowsNow.size, calmDelete, calmShow)
             }

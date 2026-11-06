@@ -348,7 +348,7 @@ internal const val NEW_PLAN_LINE_MS = 8_000L
  */
 @Composable
 internal fun NewPlanLine(onUndo: (() -> Unit)?, modifier: Modifier = Modifier) {
-    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.Paper, shadowElevation = 3.dp, modifier = modifier.fillMaxWidth()) {
+    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.Paper, modifier = modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, MaterialTheme.shapes.large)) {
         Row(Modifier.heightIn(min = 56.dp).padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(str(Res.string.plan_new_during_tour), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f).padding(vertical = 8.dp))
@@ -369,8 +369,8 @@ private fun TurnCard(t: TurnHint) {
     val text = if (t.distanceM < 15 && !t.straight && t.stop == null) str(Res.string.nav_turn_now, spoken)
         else str(Res.string.nav_turn_in, spoken, turnDistance(t.distanceM))
     Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.ActionGo,
-        contentColor = OnPathColors.CardWhite, shadowElevation = 4.dp,
-        modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = text }) {
+        contentColor = OnPathColors.CardWhite,
+        modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = text }.warmShadow(OnPathShadow.HIGH, MaterialTheme.shapes.large)) {
         Row(Modifier.heightIn(min = 76.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             if (t.stop != null) StopSign(t.stop, Modifier.size(48.dp))
             else if (t.roundabout != null) RoundaboutSign(t.roundabout, t.roundaboutAngle, Modifier.size(48.dp))
@@ -481,9 +481,9 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
     // the amber off-route card says where the route is – not repeated here (the question card at the bottom does not)
     val offCard = ui.offRoute?.amber == true
     // over the map: paper like every surface (owner 2026-11-06), the shadow lifts it off the map
-    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.Paper, shadowElevation = 3.dp,
+    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.Paper,
         // only the activity icon and the chevron are buttons (gloves: no tap target as big as the card)
-        modifier = Modifier.fillMaxWidth()) {
+        modifier = Modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, MaterialTheme.shapes.large)) {
       Column {
         Row(Modifier.heightIn(min = 56.dp).padding(start = if (ui.activity != null) 8.dp else 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -740,10 +740,10 @@ private fun OffRouteCard(o: OffRouteUi) {
     val state = NavText.state(o.prompt)
     val offRoute = str(Res.string.nav_off_route)
     Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.WarnContainer,
-        contentColor = OnPathColors.OnWarnContainer, shadowElevation = 3.dp,
+        contentColor = OnPathColors.OnWarnContainer,
         modifier = Modifier.fillMaxWidth().clearAndSetSemantics {
             contentDescription = listOfNotNull(offRoute, hint, state).joinToString(". ")
-        }) {
+        }.warmShadow(OnPathShadow.LOW, MaterialTheme.shapes.large)) {
         Row(Modifier.heightIn(min = 76.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                 when {

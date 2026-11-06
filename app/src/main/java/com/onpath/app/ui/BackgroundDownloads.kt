@@ -164,8 +164,7 @@ fun BackgroundDownloadChip(ui: BackgroundDownloadUi, onClick: () -> Unit, modifi
     val maxW = (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp * 0.5f).dp
     Box(modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = str(Res.string.maps_bg_chip_click), onClick = onClick)
         .semantics { contentDescription = text }, contentAlignment = Alignment.Center) {
-        Surface(shape = RoundedCornerShape(50), color = OnPathColors.TagContainer, contentColor = OnPathColors.TagInk,
-            shadowElevation = 2.dp) {
+        Surface(shape = OnPathShapes.Pill, color = OnPathColors.TagContainer, contentColor = OnPathColors.TagInk, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Pill)) {
             Row(Modifier.widthIn(max = maxW).padding(start = 7.dp, end = 10.dp, top = 5.dp, bottom = 5.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 // the ring as tall as the text (grows with the phone's font size)

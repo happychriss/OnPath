@@ -97,9 +97,7 @@ class ScreenshotTest {
                 MapPlaceholder(Modifier.fillMaxSize())
                 if (editing) androidx.compose.foundation.Image(rememberPlanPuck(Activity.HIKE).asImageBitmap(), null,
                     Modifier.align(Alignment.Center))
-                // Plan is blue (owner 2026-11-03): band under the status bar (the 32 dp stand-in) + soft edge
-                PlanFrame()
-                // the light blue band behind the search pill and ☰ (owner 2026-11-05) – as MapScreen draws it
+                // the paper band behind the search pill and ☰ (owner 2026-11-05; paper since 2026-11-06 C) – as MapScreen draws it
                 Box(Modifier.fillMaxWidth().background(PlanTopBand.Color).padding(top = 32.dp).height(planTopBarDp().dp))
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing, offline = offline)

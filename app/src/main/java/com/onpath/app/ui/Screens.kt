@@ -112,7 +112,7 @@ fun MissingDataScreen(
             Text(str(Res.string.routes_missing_title), style = MaterialTheme.typography.titleLarge)
             Text(str(Res.string.routes_missing_body),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Surface(shape = RoundedCornerShape(16.dp), color = OnPathColors.Paper, shadowElevation = 1.dp) {
+            Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
                 Column(Modifier.padding(vertical = 6.dp)) {
                     checks.forEach { c ->
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -134,7 +134,7 @@ fun MissingDataScreen(
                 busy = busy, onImport = onImport, onDownloadRouting = onDownloadRouting,
             )
             Text(str(Res.string.routes_missing_adb), style = MaterialTheme.typography.bodyMedium)
-            Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFF1E2421)) {
+            Surface(shape = OnPathShapes.Small, color = Color(0xFF1E2421)) {
                 Row(Modifier.padding(start = 14.dp, top = 6.dp, bottom = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f)) {
                         SelectionContainer {
@@ -148,10 +148,10 @@ fun MissingDataScreen(
             }
             Text(str(Res.string.routes_missing_target, dataDir), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
-            Button(onClick = onRetry, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+            Button(onClick = onRetry, modifier = Modifier.fillMaxWidth().height(56.dp), shape = OnPathShapes.Pill) {
                 Text(str(Res.string.routes_missing_check_again), style = MaterialTheme.typography.bodyLarge)
             }
-            OutlinedButton(onClick = onContinue, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+            OutlinedButton(onClick = onContinue, modifier = Modifier.fillMaxWidth().height(56.dp), shape = OnPathShapes.Pill) {
                 Text(str(Res.string.routes_missing_continue))
             }
         }
@@ -166,12 +166,12 @@ fun MissingDataScreen(
 fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, onDownloadRouting: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Button(onClick = onImport, enabled = busy == null, modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp)) {
+            shape = OnPathShapes.Pill) {
             Text(str(Res.string.routes_data_import), style = MaterialTheme.typography.bodyLarge)
         }
         if (routingMissing) {
             OutlinedButton(onClick = onDownloadRouting, enabled = busy == null,
-                modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                modifier = Modifier.fillMaxWidth().height(56.dp), shape = OnPathShapes.Pill) {
                 Text(str(Res.string.routes_data_download_paths))
             }
         }
@@ -210,7 +210,7 @@ fun ActivityDialog(
                 Activity.entries.forEach { a ->
                     val sel = a == current
                     Row(
-                        Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(12.dp))
+                        Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(OnPathShapes.Small)
                             .background(if (sel) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
                             .clickable { onSelect(a); onDismiss() }.padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -427,7 +427,7 @@ private fun RoutesSearchField(query: String, onQuery: (String) -> Unit, modifier
         trailingIcon = if (query.isNotEmpty()) ({
             IconButton(onClick = { onQuery("") }, Modifier.size(48.dp)) { Icon(Icons.Filled.Close, str(Res.string.search_clear_query)) }
         }) else null,
-        shape = RoundedCornerShape(28.dp),
+        shape = OnPathShapes.Pill,
         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search))
 }
 
@@ -450,8 +450,7 @@ private fun TourCard(
     }
     // a plan under Zuletzt: the route sign pale – only a draft (owner 2026-11-06), the words the same ("Plan · date")
     val pale = DraftLook.of(t.draft)
-    Surface(onClick = { onOpen?.invoke() }, enabled = onOpen != null, shape = RoundedCornerShape(16.dp), color = OnPathColors.Paper,
-        shadowElevation = 1.dp, modifier = Modifier.heightIn(min = 72.dp)) {
+    Surface(onClick = { onOpen?.invoke() }, enabled = onOpen != null, shape = OnPathShapes.Card, color = OnPathColors.Paper, modifier = Modifier.heightIn(min = 72.dp).warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
         Column {
         Row(Modifier.fillMaxWidth().padding(start = 14.dp, top = 12.dp, bottom = 10.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(44.dp).clip(CircleShape).background(color.copy(alpha = pale.circle)), contentAlignment = Alignment.Center) {
@@ -499,7 +498,7 @@ private fun SectionHeader(text: String) = Text(text.uppercase(), style = Materia
 private fun DraftActions(onSave: () -> Unit, onDelete: () -> Unit) {
     val save = @Composable { m: Modifier ->
         androidx.compose.material3.FilledTonalButton(onSave, modifier = m.heightIn(min = 48.dp),
-            colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(containerColor = OnPathColors.PlanTint, contentColor = OnPathColors.ActionEdit)) {
+            colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(containerColor = OnPathColors.EditTonal, contentColor = OnPathColors.OnEditTonal)) {
             Icon(Icons.Outlined.Save, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(str(Res.string.common_save), maxLines = 1) }
     }
     val delete = @Composable { m: Modifier ->

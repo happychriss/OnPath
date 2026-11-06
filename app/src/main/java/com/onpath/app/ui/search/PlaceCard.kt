@@ -1,5 +1,6 @@
 package com.onpath.app.ui.search
 
+import com.onpath.app.ui.warmShadow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -72,9 +73,9 @@ fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = M
     val color = Color(SearchKinds.argb(p.kind))
     val isStop = ui.routeIndex != null
     Surface(
-        modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
+            .warmShadow(com.onpath.app.ui.OnPathShadow.HIGH, MaterialTheme.shapes.extraLarge),
         shape = MaterialTheme.shapes.extraLarge, color = com.onpath.app.ui.OnPathColors.Paper, // over the map: paper
-        shadowElevation = 8.dp,
     ) {
         Column(Modifier.padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

@@ -111,8 +111,8 @@ class PlanMenu(
  * the way back to Navigate is the green "Navigation ›" at the bottom of the plan (owner 2026-11-06, C).
  */
 object PlanTopBand {
-    /** The band's colour (light plan blue, the plan pills' tint). */
-    val Color = androidx.compose.ui.graphics.Color(0xFFDDE7F4)
+    /** The band's colour: paper (owner 2026-11-06 variant C – no light blue surfaces; was the plan pills' light blue). */
+    val Color = OnPathColors.Paper
     /** The mode label's own line at a large font: its text line (labelSmall, 16 sp line) + 8 dp. */
     fun labelRow(fontScale: Float): androidx.compose.ui.unit.Dp = (16f * fontScale + 8f).dp
 
@@ -222,10 +222,10 @@ internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier, offl
 private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
     Surface(
         onClick = onSearch,
-        modifier = modifier.height(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_search_hint); role = Role.Button },
+        modifier = modifier.height(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_search_hint); role = Role.Button }
+            .warmShadow(OnPathShadow.LOW, CircleShape),
         shape = CircleShape,
-        color = OnPathColors.Paper, // the band is blue (owner 2026-11-05, b): the pill paper on it
-        shadowElevation = 3.dp,
+        color = OnPathColors.Paper, // paper on the paper band – the warm shadow lifts it (owner 2026-11-06 variant C)
     ) {
         Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.Search, contentDescription = null, tint = OnPathColors.PlanAccent)
@@ -240,8 +240,7 @@ private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
 private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Box {
-        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = OnPathColors.Paper,
-            shadowElevation = 3.dp, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }) {
+        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = OnPathColors.Paper, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }.warmShadow(OnPathShadow.LOW, CircleShape)) {
             Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Menu, contentDescription = null, tint = OnPathColors.PlanAccent) }
         }
         // amber dot: the browser sync needs a look (never for plain offline) – the ☰ item says why. Unsaved changes have
@@ -312,26 +311,3 @@ internal fun MenuItem(icon: ImageVector, label: String, enabled: Boolean = true,
 }
 
 
-/**
- * Plan is blue (owner 2026-11-03, design page §3 version 3 "deutlich" – Plan only, Navigate unchanged): a soft blue edge
- * at the screen's left, right and bottom ([OnPathColors.PlanEdge]); no band at the top (owner 2026-11-03: "die
- * dunkelblaue Leiste oben … kann wieder weg"). Only drawn – no pointer input, the map under it takes every touch.
- */
-@Composable
-fun PlanFrame(modifier: Modifier = Modifier) {
-    androidx.compose.foundation.Canvas(modifier.fillMaxSize()) {
-        val edge = PLAN_EDGE.toPx()
-        val clear = androidx.compose.ui.graphics.Color.Transparent
-        val e = OnPathColors.PlanEdge
-        // the soft edge: from the screen's left, right and bottom edges inwards (nothing at the top)
-        drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(e, clear), 0f, edge),
-            size = androidx.compose.ui.geometry.Size(edge, size.height))
-        drawRect(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(clear, e), size.width - edge, size.width),
-            topLeft = androidx.compose.ui.geometry.Offset(size.width - edge, 0f), size = androidx.compose.ui.geometry.Size(edge, size.height))
-        drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(clear, e), size.height - edge, size.height),
-            topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - edge), size = androidx.compose.ui.geometry.Size(size.width, edge))
-    }
-}
-
-/** Width of the soft blue edge. */
-private val PLAN_EDGE = 14.dp
