@@ -51,6 +51,9 @@ object Engine {
      */
     private val legCache = LegCache()
 
+    /** Where a plan's progress text goes: the page in the Wasm build ([planProgress]); null on the JVM (JvmRun, tests). */
+    internal var progressSink: ((String) -> Unit)? = null
+
     fun init(rootDir: String) {
         root = File(rootDir)
         android.content.res.AssetManager.root = File(root, "assets")
@@ -241,7 +244,7 @@ object Engine {
             val before = lastResultFor(wps)?.takeIf { it.activity != act || it.sac != sac }
             // the wait box's "Leg 2 of 5 is being calculated…" – the app's PlanStatus text, only for two or more legs
             val planner = Planner(engine(), null, askAtLimit = rounds >= 1, rounds = rounds.coerceAtLeast(1), legs = legCache,
-                progress = { done, total -> if (PlanStatus.hasLegs(done to total)) planProgress(PlanStatus.calculating(done to total)) })
+                progress = { done, total -> if (PlanStatus.hasLegs(done to total)) progressSink?.invoke(PlanStatus.calculating(done to total)) })
             val res = try {
                 PlanResult.plan(planner, wps, act, sac, parseIndices(pinned), nm.filterValues { it.isNotBlank() }.keys,
                     WebPace.factors(act))
@@ -599,8 +602,11 @@ external fun planProgress(text: String)
 
 @JSExport fun route(points: String, activity: String, sac: Int): String = Engine.route(points, activity, sac)
 
-@JSExport fun plan(points: String, activity: String, sac: Int, pinned: String, names: String, rounds: Int): String =
-    Engine.plan(points, activity, sac, pinned, names, rounds)
+@JSExport fun plan(points: String, activity: String, sac: Int, pinned: String, names: String, rounds: Int): String {
+    // only the Wasm build reaches this export – the JVM run calls Engine.plan, where planProgress does not exist
+    Engine.progressSink = ::planProgress
+    return try { Engine.plan(points, activity, sac, pinned, names, rounds) } finally { Engine.progressSink = null }
+}
 
 @JSExport fun historySnap(routed: String, snapped: String) = Engine.historySnap(routed, snapped)
 
