@@ -38,8 +38,10 @@ class TourActionBarTest {
         // in the card, directly under the route info; Plan ändern where the slider was
         assertTrue(overlay, overlay.contains("actions = if (unlocked && ui.recordedM != null) ({ TourCardActions(ui.paused, onPause, onEnd, onClose = { open = false }) })"))
         assertTrue(overlay, overlay.contains("ChangePlanButton({ open = false; onSlideToPlan() }, bottom, onLock = if (closableBar) ({ open = false }) else null)"))
-        // lock / unlock as a sign (owner 2026-11-05): a closed lock on the slider's thumb, an open lock beside "Plan" locks again
-        assertTrue(change, change.contains("Icons.Filled.LockOpen") && change.contains("Res.string.nav_relock"))
+        // lock / unlock (owner 2026-11-05): a closed lock on the slider's thumb; after unlocking "🔒 Sperren" as a full button
+        // beside "Plan", equally wide (owner 2026-11-06: equal partners)
+        assertTrue(change, change.contains("OutlinedButton(onClick = onLock") && change.contains("Res.string.nav_lock"))
+        assertTrue(change, change.split("Modifier.weight(1f)").size == 3)
         val slide = java.io.File("src/main/java/com/onpath/app/ui/SlideToUnlock.kt").readText()
         assertTrue(slide.contains("Icon(Icons.Filled.Lock, null"))
         assertTrue(overlay, overlay.contains("else SlideToPlan({ open = true }, bottom, recording = ui.recordedM != null"))
