@@ -68,6 +68,20 @@ class VoiceGuideTest {
         assertEquals(Turn.RIGHT, j[1].then)   // 90 m on: "Gleich links, danach rechts."
     }
 
+    /**
+     * Owner 2026-11-06 (demo ride Düsseldorf → Grimlinghausen): bear right, 70 m later left, 60 m later right. "Gleich rechts
+     * halten, danach links" – and then "In 100 Metern rechts" while the left was still 55 m ahead: it sounded as if the
+     * left was skipped. A turn is announced only once the one before it is ridden.
+     */
+    @Test fun aTurnIsAnnouncedOnlyAfterThePreviousOneIsRidden() {
+        val l = line(3200, mapOf(2730 to JunctionCue.RIGHT, 2800 to JunctionCue.LEFT, 2860 to JunctionCue.RIGHT))
+        val said = startless(ride(VoiceGuide(), l, bike = true, speed = 5.0))
+        // the right turn at 2860 (the one at 2730 is said before 2730)
+        val right = said.filter { (m, p) -> m > 2730 && p is Phrase.Junction && p.turn == Turn.RIGHT }
+        assertTrue("$said", right.isNotEmpty())
+        assertTrue("the right turn announced before the left was ridden: $said", right.all { it.first >= 2800 })
+    }
+
     /** Rosellen replay: the second turn 80 m after the first must not be lost in the pause between sentences. */
     @Test fun bikeAJunctionJustAheadIsSaidDuringThePause() {
         val l = line(2000, mapOf(500 to JunctionCue.SHARP_RIGHT, 620 to JunctionCue.LEFT))

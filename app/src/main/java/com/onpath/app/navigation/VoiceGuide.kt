@@ -289,6 +289,9 @@ class VoiceGuide {
         val lead = if (bike) (speed * BIKE_FINAL_S).coerceIn(BIKE_FINAL_MIN_M, BIKE_FINAL_MAX_M)
             else (speed * HIKE_LEAD_S).coerceIn(HIKE_MIN_M, HIKE_MAX_M)
         val k = alongs.indices.firstOrNull { needed[it] && it !in said && alongs[it] >= along - JunctionCues.PASSED_M } ?: return null
+        // a turn is announced only once the one before it is ridden (owner 2026-11-06): a turn said as "danach" is still
+        // ahead – "In 100 Metern rechts" then sounded as if that left was skipped
+        if (alongs.indices.any { it < k && needed[it] && alongs[it] > along }) return null
         val d = alongs[k] - along
         if (bike && !finalOnly && d > lead && k !in early) {
             // the early sentence with its distance – only when there is time for both
