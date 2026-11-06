@@ -242,4 +242,6 @@
     <string name="web_terrain_title">Gelände in 3D</string>
     <string name="web_terrain_off_title">Zurück zur flachen Karte</string>
     <string name="web_terrain_view_only">3D-Ansicht – nur zum Anschauen. Zum Planen 3D ausschalten.</string>
+    <string name="web_terrain_turn_mouse">Drehen und kippen: rechte Maustaste gedrückt halten und ziehen (oder Shift + Pfeiltasten).</string>
+    <string name="web_terrain_turn_touch">Drehen und kippen: mit zwei Fingern.</string>
 </resources>

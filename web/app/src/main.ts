@@ -165,7 +165,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   </div>
   <div id="placecard" class="placecard" hidden></div>
   <div id="mapnotes" class="mapnotes" hidden></div>
-  <div id="threeDNote" class="threednote" hidden>${escapeHtml(t('web_terrain_view_only'))}</div>
+  <div id="threeDNote" class="threednote" hidden>${escapeHtml(t('web_terrain_view_only'))}<br><span class="turnhint">${
+    escapeHtml(t(matchMedia('(pointer: coarse)').matches ? 'web_terrain_turn_touch' : 'web_terrain_turn_mouse'))}</span></div>
   <section id="bigProfile" class="bigprofile" aria-label="${escapeHtml(t('plan_elevation_profile'))}" hidden>
     <div class="bphead"><b>${escapeHtml(t('plan_elevation_profile'))}</b><span class="bplegend muted small">${
       ['< 5 %', '5–10 %', '10–15 %', '> 15 %'].map((l, i) => `<span><i style="background:${STEEP_COLOURS[i]}"></i>${escapeHtml(l)}</span>`).join('')}</span>

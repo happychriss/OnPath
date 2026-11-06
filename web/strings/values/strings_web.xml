@@ -261,4 +261,6 @@
     <string name="web_terrain_title">Terrain in 3D</string>
     <string name="web_terrain_off_title">Back to the flat map</string>
     <string name="web_terrain_view_only">3D view – just for looking. To plan, switch 3D off.</string>
+    <string name="web_terrain_turn_mouse">Turn and tilt: hold the right mouse button and drag (or Shift + arrow keys).</string>
+    <string name="web_terrain_turn_touch">Turn and tilt: with two fingers.</string>
 </resources>

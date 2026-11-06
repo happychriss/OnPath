@@ -92,6 +92,7 @@ await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 30_0
 const on3d = await page.evaluate(() => ({ terrain: window.__map.getTerrain()?.source ?? null, pitch: window.__map.getPitch(),
   pressed: document.getElementById('terrain3d').getAttribute('aria-pressed'), note: !document.getElementById('threeDNote').hidden }));
 tcheck(on3d.terrain === 'terrain' && on3d.pitch > 55 && on3d.pressed === 'true' && on3d.note, `3D on: ${JSON.stringify(on3d)}`);
+tcheck(/rechte Maustaste|right mouse button/.test(await page.locator('#threeDNote .turnhint').innerText()), '3D note says how to turn and tilt (mouse)');
 const nBefore = await page.evaluate(() => window.__state.points.length);
 const mapBox = await page.locator('#map').boundingBox();
 await page.mouse.click(mapBox.x + mapBox.width * 0.75, mapBox.y + mapBox.height * 0.5);
