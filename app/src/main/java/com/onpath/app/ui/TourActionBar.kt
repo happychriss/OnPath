@@ -84,7 +84,11 @@ fun ChangePlanButton(onClick: () -> Unit, modifier: Modifier = Modifier, onLock:
         // "Sperren" as a full button beside "Plan" (owner 2026-11-06: equal partners, not a small lock icon), where the
         // slider was – the way back to the locked state is as easy to hit as the way into Plan; equal widths, so
         // "Sperren" stays whole with large font (1.4 : 1 cut it to "Sperre")
+        // White fill (owner 2026-11-06: it sits right on the map – without a fill the map showed through) and the green
+        // edge of "Tour beenden": navigation = green
         if (onLock != null) OutlinedButton(onClick = onLock, contentPadding = PaddingValues(horizontal = 12.dp),
+            border = BorderStroke(1.5.dp, OnPathColors.ActionGo),
+            colors = ButtonDefaults.outlinedButtonColors(containerColor = OnPathColors.CardWhite, contentColor = OnPathColors.ActionGo),
             modifier = Modifier.weight(1f).heightIn(min = 56.dp)) {
             Icon(Icons.Filled.Lock, null, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(8.dp))

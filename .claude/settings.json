@@ -11,6 +11,7 @@
       "Bash(tools/ci/gate.sh *)",
       "Bash(tools/ci/release_check.sh *)",
       "Bash(tools/dev/device.sh *)",
+      "Bash(tools/dev/prune_branches.sh *)",
       "Bash(git status *)",
       "Bash(git log *)",
       "Bash(git diff *)",
