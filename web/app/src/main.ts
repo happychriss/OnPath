@@ -1379,7 +1379,8 @@ function renderFabs() {
   f.title = f.disabled ? t('web_share_needs_two') : t('web_fit_route');
 }
 map.on('rotate', () => renderFabs());
-$('compass').onclick = () => map.easeTo({ bearing: 0, pitch: 0 }, { keepFollow: true }); // north up keeps following
+// north up keeps following; in 3D only the direction turns – the view stays tilted (owner 2026-11-06)
+$('compass').onclick = () => map.easeTo(terrain3d.on ? { bearing: 0 } : { bearing: 0, pitch: 0 }, { keepFollow: true });
 $('undo').onclick = () => step('undo');
 $('redo').onclick = () => step('redo');
 $('locate').onclick = () => { locating = true; position.locate(); locateNotice(); };

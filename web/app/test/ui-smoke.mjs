@@ -97,6 +97,12 @@ const mapBox = await page.locator('#map').boundingBox();
 await page.mouse.click(mapBox.x + mapBox.width * 0.75, mapBox.y + mapBox.height * 0.5);
 await page.waitForTimeout(500);
 tcheck(await page.evaluate(() => window.__state.points.length) === nBefore && await page.locator('.pointmenu').count() === 0, '3D is view only: a click adds no point');
+// north up in 3D turns the view only – it stays tilted (owner 2026-11-06: "ich wollte in der 3D-Ansicht bleiben")
+await page.evaluate(() => window.__map.jumpTo({ bearing: 70 }));
+await page.click('#compass');
+await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 30_000 });
+const north3d = await page.evaluate(() => ({ bearing: window.__map.getBearing(), pitch: window.__map.getPitch(), terrain: window.__map.getTerrain()?.source ?? null }));
+tcheck(Math.abs(north3d.bearing) < 1 && north3d.pitch > 55 && north3d.terrain === 'terrain', `3D: north up keeps the tilt ${JSON.stringify(north3d)}`);
 await page.click('#terrain3d');
 await page.waitForTimeout(300);
 const off3d = await page.evaluate(() => ({ terrain: window.__map.getTerrain(), pitch: window.__map.getPitch(), max: window.__map.getMaxPitch(),
