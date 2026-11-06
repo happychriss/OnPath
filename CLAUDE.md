@@ -27,5 +27,7 @@ the phone → simple. Requirements with stable IDs: `docs/requirements.md` (new 
   request only for `.github/workflows/`, signing / build config, keys, privacy / licence texts. Never commit map data,
   APKs or `local.properties`.
 - Questions to the owner only as a `frage` issue via `tools/ask.sh` (see `--help`); the owner's word to all = `an-alle`.
+- Every question the owner asks you in the chat goes into his Fragenregister page, with your answer under it
+  (how: `docs/owner-preferences.md` "Fragenregister").
 - Sub-agents that edit files work in their own git worktree; the main session merges, pushes and holds the claim.
 - Work longer than ~2 minutes runs in a background agent; the chat stays responsive.

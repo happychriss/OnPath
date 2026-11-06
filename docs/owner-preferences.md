@@ -13,6 +13,12 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
   push messages name a question, issue, commit or item by a short description ("die Frage zum Startknopf"), never by
   its number alone. Numbers stay in issues, the backlog and commit messages for the sessions; the owner may answer
   with a word ("Startknopf: A").
+- **Fragenregister** (owner 2026-11-06): every question the owner asks a session in its chat goes onto the page
+  https://claude.ai/artifact/MyNqN2MaaxNzrex7wVccwX (`ArtifactData`, collection `fragen`), so no answer gets lost in the
+  scroll. When the question comes: `set` doc `<unit>-<YYYYMMDD>-<n>` with `sitzung` (your unit), `frage` (short, his words),
+  `gefragt_am` (ISO UTC), `status` `in_arbeit` (or `beantwortet` at once), `arbeit` (one line: what you are doing),
+  `gelesen` false. When answered: `update` (pass `if_version`) `status` `beantwortet`, `antwort` (2–5 plain lines, the
+  details stay in the chat), `beantwortet_am`, `arbeit` removed. Small talk and "ok / ja" are not questions.
 - Plain words, short updates, outcome first. No diffs or file dumps in the terminal; quiet tool calls, one-line results.
 - Never name internals toward the owner as product words ("cells", "routing data") – it's "map areas", "the map".
 - Komoot is the UX reference (the owner is a long-time Komoot user).
