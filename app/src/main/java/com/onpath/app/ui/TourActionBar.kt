@@ -96,7 +96,7 @@ fun TourBottomBar(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Unit
             }
             val end = @Composable { m: Modifier ->
                 OutlinedButton(onClick = onEnd, border = BorderStroke(1.5.dp, OnPathColors.ActionGo),
-                    colors = ButtonDefaults.outlinedButtonColors(containerColor = OnPathColors.CardWhite, contentColor = OnPathColors.ActionGo),
+                    colors = ButtonDefaults.outlinedButtonColors(containerColor = OnPathColors.Paper, contentColor = OnPathColors.ActionGo),
                     contentPadding = PaddingValues(horizontal = 16.dp), modifier = m.heightIn(min = 56.dp)) {
                     Text(endWord, style = style, maxLines = 1, softWrap = false)
                 }

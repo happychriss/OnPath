@@ -90,7 +90,7 @@ open class BackgroundDownloadScreenshotTest {
                 Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.32f)))
                 androidx.compose.material3.Surface(Modifier.fillMaxWidth().align(Alignment.BottomCenter),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                    color = OnPathColors.CardWhite) {
+                    color = OnPathColors.Paper) {
                     Column {
                         androidx.compose.material3.BottomSheetDefaults.DragHandle(Modifier.align(Alignment.CenterHorizontally))
                         BackgroundDownloadDetailsContent(u, onCancelAll = {}, onClose = {})

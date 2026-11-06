@@ -41,7 +41,7 @@ fun updateMessage(version: String, onInstall: () -> Unit, onLater: () -> Unit): 
 @Composable
 fun UpdateDownloadingCard(state: UpdateState, modifier: Modifier = Modifier) {
     val s = state as? UpdateState.Downloading ?: return
-    Surface(modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), color = OnPathColors.CardWhite, shadowElevation = 3.dp) {
+    Surface(modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), color = OnPathColors.Paper, shadowElevation = 3.dp) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.SystemUpdate, null, tint = OnPathColors.Green, modifier = Modifier.size(22.dp))

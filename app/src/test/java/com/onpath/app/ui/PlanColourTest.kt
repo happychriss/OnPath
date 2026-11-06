@@ -30,12 +30,12 @@ class PlanColourTest {
         assertTrue("soft edge in PlanMode", map.substringAfter("private fun PlanMode(").contains("PlanFrame("))
         assertTrue("the label says Plan ändern during a tour", map.contains("editing = rec != null"))
         val top = src("PlanTopBar.kt")
-        // owner 2026-11-05 (band b): white pill + ☰ on the light blue band, blue icons
-        assertTrue(top.contains("color = OnPathColors.CardWhite, // the band is blue") && top.contains("tint = OnPathColors.PlanAccent"))
+        // owner 2026-11-05 (band b): paper pill + ☰ (owner 2026-11-06: paper also over the map) on the light blue band, blue icons
+        assertTrue(top.contains("color = OnPathColors.Paper, // the band is blue") && top.contains("tint = OnPathColors.PlanAccent"))
         assertTrue(map.contains("background(PlanTopBand.Color)"))
         assertTrue(src("PlanPanel.kt").contains("surfaceColor = OnPathColors.PlanTint, accent = OnPathColors.PlanAccent"))
         val footer = src("MapFooter.kt")
-        assertTrue(footer.contains("if (plan) OnPathColors.PlanTint else OnPathColors.CardWhite"))
+        assertTrue(footer.contains("if (plan) OnPathColors.PlanTint else OnPathColors.Paper"))
         assertTrue("the position sign while changing the route is blue",
             src("PlanPuck.kt").contains("val blue = OnPathColors.PlanAccent") && !src("PlanPuck.kt").contains("OnPathColors.Green"))
     }

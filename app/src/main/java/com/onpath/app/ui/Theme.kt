@@ -32,7 +32,7 @@ object OnPathColors {
     val Ink = Color(0xFF243C31)
     /** Secondary text: detail lines, explanations (Material `onSurfaceVariant`). */
     val InkMuted = Color(0xFF4A4F4A)
-    /** Cards over the map (message boxes, sheets) and text on [Green]. */
+    /** White: fields one types into, rings around point signs and text / icons on a coloured button – no surfaces. */
     val CardWhite = Color(0xFFFFFFFF)
     /** Page background (website `#FAFAF6`). */
     val Paper = Color(0xFFFAFAF6)
@@ -161,8 +161,8 @@ private val scheme = lightColorScheme(
     onSecondary = Color.White,
     secondaryContainer = Color(0xFFDDE3F7),
     onSecondaryContainer = Color(0xFF0E1E57),
-    // paper is the ground of every surface (owner 2026-11-06); white only for what floats over the map (search pill,
-    // pin card, message boxes, Navigate's cards) and fields one types into – set there with OnPathColors.CardWhite
+    // paper is the ground of every surface (owner 2026-11-06), also what floats over the map (search pill, pin card,
+    // message boxes, Navigate's cards – the shadow lifts them off the map); white only for fields one types into
     surface = OnPathColors.Paper,
     onSurface = OnPathColors.Ink,
     surfaceVariant = Color(0xFFEFEEE7),

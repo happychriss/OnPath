@@ -245,7 +245,7 @@ private val PIN_CHIP_TOUCH_PAD = 0.dp
 @Composable
 fun PinChip(name: String, action: String, onAction: () -> Unit, onMore: () -> Unit, modifier: Modifier = Modifier,
             emptyPlan: Boolean = false) {
-    Surface(modifier, shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp), color = OnPathColors.CardWhite,
+    Surface(modifier, shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp), color = OnPathColors.Paper,
         contentColor = OnPathColors.Ink, shadowElevation = 3.dp) {
         Column(Modifier.widthIn(min = 200.dp).width(IntrinsicSize.Max).padding(start = 10.dp, end = 10.dp, top = 9.dp, bottom = 3.dp)) {
             Text(PinChipRules.label(name), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
