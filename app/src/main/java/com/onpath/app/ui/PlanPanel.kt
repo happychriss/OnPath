@@ -121,6 +121,8 @@ class PlanCallbacks(
     /** Tour controls at the top of the sheet (only while a tour records). */
     val onPause: (Boolean) -> Unit = {},
     val onEndTour: () -> Unit = {},
+    /** Tap on "Tour gespeichert – in Meine Touren": the saved tour opens. */
+    val onOpenSavedTour: () -> Unit = {},
 )
 
 /** Recording status shown at the top of the plan sheet during a tour. */
@@ -203,6 +205,13 @@ data class PlanUi(
     val tapHint: Boolean = false,
     /** A tap on the plan's mode pill: the offline state explained in one line ([OfflineReady.explain]); null = none. */
     val offlineInfo: String? = null,
+    /**
+     * Just after "Tour speichern" (owner 2026-11-06, onpath.private#35 – no box any more): "Tour gespeichert – in Meine
+     * Touren", an ANZEIGE line, tap = the tour opens; it goes when the user does something new. null = none.
+     */
+    val savedTourText: String? = null,
+    /** Moving time, breaks, planned vs. needed of that tour (were in the box "Tour gespeichert"); null = not known. */
+    val savedTourTimes: com.onpath.app.time.TourTimes? = null,
 ) {
     /** What Start does (the shown track has its own panel): navigate the line, wait for it, or only record. */
     val start: PlanStart get() = PlanStart.of(trackPoints = null, hasRoute = route != null, pointCount = pointCount)
@@ -240,6 +249,9 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
         barFrom = PlanSize.MINI.step,
         // Plan is blue (owner 2026-11-03): a light blue sheet with a blue handle and top edge – also during a tour
         surfaceColor = OnPathColors.PlanTint, accent = OnPathColors.PlanAccent,
+        // during a tour (owner 2026-11-06, C): the green way back to Navigate sits where "Los geht's" sits without one,
+        // in every step – the sheet rests on it
+        foot = if (ui.tour != null || ui.tourRunning) ({ BackToNavigationButton(ui.tour, ui.activity, { goClick(ui, cb) }) }) else null,
         bottomBar = { PlanBar(ui, cb) },
     ) {
         // the pulled-up sheet has ONE fixed height (owner): deleting / adding / moving points (or the routing
@@ -289,6 +301,11 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb) }
         // the rolled-up row lies over the summary's first line and fades with the bar sliding in (one body, no rebuild)
         CollapsedRow(ui, cb, barShown, with(sheet) { Modifier.stepEnd(PlanSize.COLLAPSED.step) })
+    }
+    // the tour just saved (owner 2026-11-06, #35): one line where the user looks next, tap = the tour
+    if (ui.savedTourText != null) Column(Modifier.fillMaxWidth().padding(top = 2.dp).then(belowStep)) {
+        SavedTourLine(ui.savedTourText, cb.onOpenSavedTour)
+        ui.savedTourTimes?.let { Box(Modifier.padding(start = 28.dp, bottom = 4.dp)) { TourTimesText(it) } }
     }
     // the empty plan's hint belongs to the summary step: the sheet opens at it, so a first start sees how to begin
     // (owner 2026-11-02: "beim ersten Öffnen … sieht man es gar nicht")
@@ -620,7 +637,8 @@ private val PROFILE_HEIGHT = 120.dp
 
 /**
  * Bottom of the sheet (owner 2026-11-05, R5): ONE full-width green button "▶ Los geht's" ([GoButton]) from two points on
- * (the rolled-up row has its own); during a tour none – "‹ Zur Tour" in the top band leads back (owner 2026-11-05).
+ * (the rolled-up row has its own); during a tour none here – the sheet's foot carries the green "Navigation ›"
+ * ([BackToNavigationButton], owner 2026-11-06, C) in every step.
  */
 @Composable
 private fun ColumnScope.PlanBar(ui: PlanUi, cb: PlanCallbacks) {
@@ -645,7 +663,7 @@ object PlanBarRow {
 
     /**
      * Without a tour the button starts at two points (one point only records: the rolled-up row / ☰). During a tour
-     * none (owner 2026-11-05): "‹ Zur Tour" in the top band leads back, the profile gets the room.
+     * none: the green "Navigation ›" in the sheet's foot leads back (owner 2026-11-06, C).
      */
     fun shown(ui: PlanUi): Boolean = ui.tour == null && !ui.tourRunning && ui.pointCount >= 2
 }
@@ -774,7 +792,20 @@ private fun FirstPointHint() {
     }
 }
 
-/** The empty plan during a tour: "Tour läuft weiter – setz neue Punkte oder geh ‹ Zur Tour." */
+/** "✓ Tour gespeichert – in Meine Touren ›" – ANZEIGE (no box): green tick, tap opens the tour. */
+@Composable
+private fun SavedTourLine(text: String, onTap: () -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(MaterialTheme.shapes.small)
+        .clickable(role = Role.Button, onClick = onTap), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Outlined.CheckCircle, null, tint = OnPathColors.ActionGo, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(text, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold,
+            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+    }
+}
+
+/** The empty plan during a tour: "Tour läuft weiter – setz neue Punkte oder tippe unten auf Navigation." */
 @Composable
 private fun TourGoesOnHint() {
     Row(verticalAlignment = Alignment.Top) {

@@ -1268,12 +1268,39 @@
     "priority": 1,
     "confidence": "sicher"
   },
-  "plan_back_to_tour": {
+  "plan_back_nav": {
     "area": "Plan",
-    "context": "TalkBack name of the round '←' left of the search pill during a tour: back to the running tour's navigation; also in the empty-plan line",
+    "context": "Word on the green full-width button at the bottom of the plan during a tour: back to the navigation screen (owner 2026-11-06)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "plan_back_nav_desc": {
+    "area": "Plan",
+    "context": "Screen reader name of that green button. %1$s = activity (\"Bike\")",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_back_nav_paused": {
+    "area": "Plan",
+    "context": "Small text before \"Navigation\" on that button while the recording is paused. %1$s = distance so far",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 22
+  },
+  "plan_back_nav_record_only": {
+    "area": "Plan",
+    "context": "Small text before \"Navigation\" on that button when no route is followed (the tour only records)",
     "priority": 1,
     "confidence": "sicher",
     "max": 16
+  },
+  "plan_tour_saved_line": {
+    "area": "Plan",
+    "context": "One line in the plan sheet right after a tour was saved (no dialog any more); a tap opens the tour. Name the list as its title (My tours)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 40
   },
   "plan_clear_tour_title": {
     "area": "Plan",
@@ -1295,7 +1322,7 @@
   },
   "plan_hint_tour_goes_on": {
     "area": "Plan",
-    "context": "The empty plan sheet during a tour",
+    "context": "The empty plan sheet during a tour: set new points, or tap the green \"Navigation\" button at the bottom",
     "priority": 1,
     "confidence": "sicher"
   },

@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.Warning
@@ -89,9 +88,9 @@ class PlanMenu(
 )
 
 /**
- * Plan's top band (owner 2026-11-05, band b + "‹ Zur Tour"): a light blue band behind the search pill and ☰, so they do
- * not float over the map; during a tour one row more on top – "‹ Zur Tour" (back to Navigate) and the mode label; at a
- * large font the mode label gets its own line above the pill instead of covering its text.
+ * Plan's top band (owner 2026-11-05, band b): a light blue band behind the search pill and ☰, so they do not float over
+ * the map; at a large font the mode label gets its own line above the pill instead of covering its text. During a tour
+ * the way back to Navigate is the green "Navigation ›" at the bottom of the plan (owner 2026-11-06, C).
  */
 object PlanTopBand {
     /** The band's colour (light plan blue, the plan pills' tint). */
@@ -106,8 +105,8 @@ object PlanTopBand {
     fun bottom(fontScale: Float): androidx.compose.ui.unit.Dp =
         TOP_BAR_BOTTOM + if (largeLabel(fontScale)) labelRow(fontScale) else 0.dp
 
-    /** Where the mode label starts: over the search pill's left part – right of the round "←" during a tour. */
-    fun labelStart(back: Boolean): androidx.compose.ui.unit.Dp = if (back) 84.dp else 28.dp
+    /** Where the mode label starts: over the search pill's left part. */
+    val LABEL_START = 28.dp
 }
 
 /** [PlanTopBand.bottom] in dp for the current font. */
@@ -116,9 +115,8 @@ fun planTopBarDp(): Int = PlanTopBand.bottom(androidx.compose.ui.platform.LocalD
 
 /**
  * Plan mode top area on the light blue band: the search pill (only search) and one round ☰ app-menu button next to it:
- * Save route (with a plan) · My routes · Pair with browser · Settings; Phone setup first while a tour needs it. During a
- * tour a round light blue "←" left of the pill leads back to the tour (owner 2026-11-05, R1). The activity is a button
- * on the map, the route actions (✕ Neu planen · Umkehren · Rundtour) live in the plan sheet (PlanPanel).
+ * Save route (with a plan) · My routes · Pair with browser · Settings; Phone setup first while a tour needs it. The
+ * activity is a button on the map, the route actions (✕ Neu planen · Umkehren · Rundtour) live in the plan sheet (PlanPanel).
  */
 @Composable
 fun PlanTopBar(
@@ -132,24 +130,10 @@ fun PlanTopBar(
     offline: OfflineReady.State? = null,
     /** A tap on the label: explain the offline state (a line in the plan sheet). */
     onOffline: () -> Unit = {},
-    /**
-     * During a tour (owner 2026-11-05, R1): the round "←" left of the search pill – leave the plan back to Navigate
-     * (Android's Back does the same; TalkBack "Zur Tour"). null = no tour.
-     */
-    onBackToTour: (() -> Unit)? = null,
 ) {
-    val back = editing && onBackToTour != null
+    // during a tour the way back to Navigate is the green "Navigation ›" at the bottom (owner 2026-11-06, C) – no "←" here
     val row = @Composable {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (back) {
-                androidx.compose.material3.FilledTonalIconButton(onClick = onBackToTour!!, modifier = Modifier.size(48.dp).semantics {
-                    contentDescription = Txt.s(Res.string.plan_back_to_tour) },
-                    colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(containerColor = OnPathColors.PlanTint,
-                        contentColor = OnPathColors.PlanAccent)) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null, modifier = Modifier.size(24.dp))
-                }
-                Spacer(Modifier.width(8.dp))
-            }
             // also while the plan is changed during a tour: search + ☰ as at home (owner 2026-11-01 turned down a green
             // "Plan ändern … Fertig" header)
             SearchBarPill(onSearch, Modifier.weight(1f))
@@ -161,7 +145,7 @@ fun PlanTopBar(
     // large font: the label in its own line above the pill (on the pill's edge it covered "Orte oder …")
     if (PlanTopBand.largeLabel(fontScale)) {
         Column(modifier.height(PlanTopBand.bottom(fontScale))) {
-            PlanModeLabel(editing, Modifier.padding(start = PlanTopBand.labelStart(back), top = 6.dp), offline, onOffline)
+            PlanModeLabel(editing, Modifier.padding(start = PlanTopBand.LABEL_START, top = 6.dp), offline, onOffline)
             row()
         }
         return
@@ -170,7 +154,7 @@ fun PlanTopBar(
         row()
         // Plan is blue (owner 2026-11-03, design §3 version 3): a small blue label on the pill's top edge – "PLANEN",
         // during a tour "PLAN ÄNDERN"; the word helps in the sun and with colour blindness
-        PlanModeLabel(editing, Modifier.align(Alignment.TopStart).padding(start = PlanTopBand.labelStart(back)), offline, onOffline)
+        PlanModeLabel(editing, Modifier.align(Alignment.TopStart).padding(start = PlanTopBand.LABEL_START), offline, onOffline)
     }
 }
 

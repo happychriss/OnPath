@@ -540,38 +540,3 @@ fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit, onDele
     )
 }
 
-/**
- * "Tour saved" after End tour; its Delete asks first ([DeleteRouteDialog], stays until answered) – Cancel goes
- * back to "Tour saved", nothing is lost by a slip of the finger. The plan has already left the map by then (Undo
- * brings it back), so there is no "Clear route from map" here.
- */
-@Composable
-fun FinishedTourDialogs(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: () -> Unit, initialConfirm: Boolean = false,
-                        times: com.onpath.app.time.TourTimes? = null) {
-    var confirm by remember(t.id) { mutableStateOf(initialConfirm) }
-    if (confirm) DeleteRouteDialog(t, onDelete = { confirm = false; onDelete() }, onCancel = { confirm = false })
-    else FinishedDialog(t, onExport, onDelete = { confirm = true }, onDone, times)
-}
-
-@Composable
-fun FinishedDialog(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: () -> Unit,
-                   times: com.onpath.app.time.TourTimes? = null) {
-    AlertDialog(
-        onDismissRequest = onDone,
-        title = { Text(str(Res.string.routes_track_saved)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(t.name, fontWeight = FontWeight.SemiBold)
-                StatsRow(t.distanceM, t.ascentM, t.descentM, t.durationS)
-                times?.let { TourTimesText(it) } // moving time, breaks, planned vs. needed (PaceSettings.kt)
-            }
-        },
-        confirmButton = { TextButton(onClick = onDone) { Text(str(Res.string.common_done)) } },
-        dismissButton = {
-            Row {
-                TextButton(onClick = onDelete) { Text(str(Res.string.common_delete), color = OnPathColors.Bad) }
-                TextButton(onClick = onExport) { Icon(Icons.Filled.Share, null); Spacer(Modifier.width(4.dp)); Text(str(Res.string.common_export_gpx)) }
-            }
-        },
-    )
-}

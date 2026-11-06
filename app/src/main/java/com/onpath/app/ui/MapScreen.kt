@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
@@ -304,8 +305,6 @@ private fun PlanMode(
             editing = rec != null,
             offline = vm.offlineReady?.state,
             onOffline = vm::toggleOfflineInfo,
-            // during a tour: back to Navigate (owner 2026-11-05) – the same as Android's Back (MainActivity)
-            onBackToTour = if (rec != null) ({ vm.continueNavigation() }) else null,
         )
         // the activity as a round button on the map, top left under the search pill (owner 2026-11-05, R5): the plan
         // sheet has no activity chip any more; not over a shown track / place card (their own panels)
@@ -343,14 +342,17 @@ private fun PlanMode(
             }
         }, sheet = {
             Column(Modifier.fillMaxWidth().onSizeChanged { sheetHeight.intValue = it.height }) {
-                // The tour controls sit at the top of the plan sheet; a separate card only when the sheet is replaced
-                // (place card or shown track).
-                if (vm.cardPlace != null || vm.shown != null) rec?.let {
-                    TourRunningBar(it.distanceM, it.elapsedS, it.paused, onEnd = onEndTour, onPause = vm::pauseRecording,
-                        onContinue = vm::continueNavigation, activity = vm.activity)
-                }
+                // During a tour the way back to Navigate is the green "Navigation ›" at the bottom, in the plan sheet's foot
+                // and under a place card / shown tour too (owner 2026-11-06, C + F1: no status card with Weiter / Pause /
+                // Beenden over them any more – those are in Navigate).
                 // The place card (tapped POI / search result, ui/search) takes the sheet's place while open.
-                if (vm.cardPlace != null) com.onpath.app.ui.search.PlaceCardHost(vm)
+                if (vm.cardPlace != null) {
+                    com.onpath.app.ui.search.PlaceCardHost(vm)
+                    rec?.let { r ->
+                        BackToNavigationButton(tourStateOf(r, vm), vm.activity, { backToNavigation(vm, r) },
+                            Modifier.navigationBarsPadding().padding(horizontal = 12.dp, vertical = 6.dp))
+                    }
+                }
                 else PlanBottom(vm, rec, onStartNavigation, onActivity, onEndTour, onRequestLocation)
             }
         })
@@ -448,6 +450,15 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     BackgroundDownloadDetails(vm, bg)
 }
 
+/** The recording as the plan sheet shows it ([TourState]). */
+private fun tourStateOf(r: RecState, vm: AppViewModel) = TourState(r.distanceM, r.elapsedS, r.paused, vm.guidanceEndedByEmptyPlan)
+
+/** The green "Navigation ›" (owner 2026-11-06, C): back to Navigate; a paused recording goes on (as "Weiter" did). */
+private fun backToNavigation(vm: AppViewModel, r: RecState) {
+    if (r.paused) vm.pauseRecording(false)
+    vm.continueNavigation()
+}
+
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -> Unit, onActivity: () -> Unit, onEndTour: () -> Unit,
@@ -462,6 +473,8 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             },
             onClose = vm::closeShown, onHighlight = { vm.highlight = it },
             onPlan = vm::planFromShown, planBusy = vm.planFromTrackBusy,
+            // during a tour (owner 2026-11-06, F1 + C): the way back to Navigate under the track's two buttons
+            backToNavigation = rec?.let { r -> { BackToNavigationButton(tourStateOf(r, vm), vm.activity, { backToNavigation(vm, r) }) } },
         )
         return
     }
@@ -499,7 +512,10 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             points = rows,
             routingSlow = vm.routingSlow, routeProgress = vm.routeProgress, routeShare = vm.routeShare, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText(), warnCount = vm.warningCount(),
             changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote, tapHint = vm.tapHoldHint,
-            offlineInfo = vm.offlineReady?.takeIf { vm.offlineInfo }?.let { OfflineReady.explain(it) }),
+            offlineInfo = vm.offlineReady?.takeIf { vm.offlineInfo }?.let { OfflineReady.explain(it) },
+            // "Tour gespeichert – in Meine Touren" after the end sheet (owner 2026-11-06, #35: no box)
+            savedTourText = vm.finishedTour?.takeIf { rec == null }?.let { str(Res.string.plan_tour_saved_line) },
+            savedTourTimes = vm.finishedTimes?.takeIf { vm.finishedTour != null && rec == null }),
         PlanCallbacks(
             onSheetDrag = { if (it) vm.tapHoldHint = false; vm.mapGesture(it) }, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -513,6 +529,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onRouteChanged = vm::tapRouteChangedLine,
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
+            onOpenSavedTour = vm::openSavedTour,
             onMovePoint = vm::movePointInList, onDeletePoint = vm::deletePointFromList, onShowPoint = vm::showPointFromList,
         ),
     )

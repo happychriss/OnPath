@@ -126,20 +126,20 @@ class SavePathsTest {
     }
 
     /**
-     * The owner's screen 2026-11-06 14:37 (docs/design/save-paths.md "Flow: follow a saved tour while a tour runs"): over
-     * a shown track the full tour card (Weiter · Pause · red Tour beenden) stands above the track sheet (Als Plan
-     * übernehmen · Tour nachfahren) – 5 buttons, two green full-width ones; "Weiter" keeps the OLD guidance.
+     * The owner's screen 2026-11-06 14:37 (docs/design/save-paths.md "Flow: follow a saved tour while a tour runs") had 5
+     * buttons over a shown track. F1 (onpath.private#33, "nur 2 Knöpfe"): no tour card (Weiter · Pause · red Beenden)
+     * over it any more; the track sheet keeps green "Tour nachfahren" (it goes to the navigation) and blue "Als Plan
+     * übernehmen" (planning) – plus, during a tour, the green way back "Navigation ›" at the bottom (C).
      */
-    @Test fun todayATrackShownDuringATourHasFiveButtons() {
+    @Test fun aTrackShownDuringATourHasItsTwoButtons() {
         val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertTrue(screen.contains("if (vm.cardPlace != null || vm.shown != null) rec?.let {"))
-        assertTrue(screen.contains("onContinue = vm::continueNavigation, activity = vm.activity)"))
+        assertFalse(screen.contains("TourRunningBar("))
         assertTrue(screen.contains("else { vm.followShown(); vm.closeShown(); vm.continueNavigation() }"))
-        val bar = File("src/main/java/com/onpath/app/ui/TourBar.kt").readText()
-        assertTrue("End tour is red in Plan's tour card", bar.contains("border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)"))
         val panel = File("src/main/java/com/onpath/app/ui/Panels.kt").readText().substringAfter("fun TrackPanel(")
             .substringBefore("internal fun trackFollowLabel")
         assertTrue(panel.contains("OutlinedButton(onClick = onPlan") && panel.contains("Button(onClick = onFollow"))
+        assertTrue("Als Plan übernehmen is blue", panel.contains("colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = OnPathColors.ActionEdit)"))
+        assertTrue(panel.contains("if (backToNavigation != null) {"))
     }
 
     /** Export: a planned item = the plan GPX (line + route points + pins), a tour = its track. */

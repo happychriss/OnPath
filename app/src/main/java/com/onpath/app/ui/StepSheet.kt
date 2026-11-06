@@ -172,6 +172,11 @@ fun StepSheet(
     surfaceColor: Color? = null,
     /** Handle + a top edge in this colour (Plan: [OnPathColors.PlanAccent]); null = the grey handle, no edge. */
     accent: Color? = null,
+    /**
+     * Content of the sheet's foot (above the navigation bar), shown in EVERY step – also rolled up, the sheet sits on it
+     * (owner 2026-11-06, C: during a tour the green way back to Navigate, where "Los geht's" is without one); null = none.
+     */
+    foot: (@Composable ColumnScope.() -> Unit)? = null,
     bottomBar: @Composable ColumnScope.() -> Unit,
     body: @Composable StepSheetScope.() -> Unit,
 ) {
@@ -293,10 +298,12 @@ fun StepSheet(
                     .padding(horizontal = 16.dp), content = bottomBar)
             },
             {
-                // the foot: navigation bar + a little air, opaque in every step (the bar slides out behind it)
-                Box(Modifier.fillMaxWidth().background(surface)
+                // the foot: [foot] + navigation bar + a little air, opaque in every step (the bar slides out behind it)
+                Column(Modifier.fillMaxWidth().background(surface)
                     .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } }
-                    .navigationBarsPadding().padding(bottom = FOOT_AIR))
+                    .navigationBarsPadding().padding(bottom = FOOT_AIR)) {
+                    if (foot != null) Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp), content = foot)
+                }
             },
         ),
         modifier = modifier.fillMaxWidth()

@@ -35,6 +35,9 @@ open class SlideLabelLargeFontTest {
     /** Save plan? at a large font: the stacked full-width buttons. */
     @Test fun planDiscardAsk() = shots.planDiscardAsk()
     @Test fun planClearDuringTour() = shots.planClearDuringTour()
+    /** The green "Navigation ›" at a large font: the numbers go, the word stays whole (owner 2026-11-06, C). */
+    @Test fun planTourRunningCollapsed() = shots.planTourRunningCollapsed()
+    @Test fun trackDuringATour() = shots.trackDuringATour()
 }
 
 /** The same in German ("Tour beenden" is the longest button word). */

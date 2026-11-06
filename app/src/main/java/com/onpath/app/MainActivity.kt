@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
 import com.onpath.app.ui.AppViewModel
-import com.onpath.app.ui.FinishedTourDialogs
 import com.onpath.app.ui.MapScreen
 import com.onpath.app.ui.MissingDataScreen
 import com.onpath.app.ui.AppMode
@@ -368,13 +367,8 @@ class MainActivity : ComponentActivity() {
                     com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.saveUnfinished(t, it) }, onDelete = { vm.deleteUnfinished(t) },
                         onDismiss = { vm.backToUnfinished() }, title = str(Res.string.msg_unfinished_save_title))
                 }
-                vm.finishedTour?.let { t ->
-                    FinishedTourDialogs(t,
-                        times = vm.finishedTimes,
-                        onExport = { vm.exportTour(t) },
-                        onDelete = { vm.deleteTour(t); vm.finishedTour = null },
-                        onDone = { vm.finishedTour = null })
-                }
+                // no box "Tour gespeichert" after the end sheet any more (owner 2026-11-06, onpath.private#35): the plan
+                // sheet says it in one line (vm.finishedTour), export and delete are in My routes
             }
         }
         if (!vm.prefs.setupWelcomeSeen) {

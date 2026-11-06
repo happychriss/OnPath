@@ -90,8 +90,7 @@ class ScreenshotTest {
                 // the light blue band behind the search pill and ☰ (owner 2026-11-05) – as MapScreen draws it
                 Box(Modifier.fillMaxWidth().background(PlanTopBand.Color).padding(top = 32.dp).height(planTopBarDp().dp))
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing, offline = offline,
-                        onBackToTour = if (editing) ({}) else null)
+                    PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing, offline = offline)
                     // the activity as a button on the map (owner 2026-11-05, R5) – as MapScreen places it
                     ActivityMapButton(Activity.HIKE, 2, {}, Modifier.padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp()).dp, start = 12.dp))
                     SheetWithFooter(planTopBarDp().dp, footer = {
@@ -520,7 +519,10 @@ class ScreenshotTest {
         }
     }
 
-    /** The plan during a tour as it opens (summary step): the round "←" left of the search pill, plan row, facts – no green button. */
+    /**
+     * The plan during a tour as it opens (summary step): plan row, facts – and at the bottom, where "Los geht's" is
+     * without a tour, the green "● 1,7 km · 0:14  ▲ Navigation ›" back to Navigate (owner 2026-11-06, C; no "←" in the band).
+     */
     @Test fun planTourRunningCollapsed() = paparazzi.snapshot {
         Frame(editing = true) {
             PlanPanel(planUi(size = PlanSize.MINI, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)),
@@ -1064,6 +1066,18 @@ class ScreenshotTest {
         }
     }
 
+    /**
+     * F1 (owner 2026-11-06, onpath.private#33 – the screen of 14:37 had 5 buttons): a saved tour opened during a tour – no
+     * tour card over it; green "Tour nachfahren", blue "Als Plan übernehmen", and the green way back "Navigation ›" (C).
+     */
+    @Test fun trackDuringATour() = paparazzi.snapshot {
+        Frame(editing = true) {
+            TrackPanel(ShownTrack(1, "Demo · BREW - ESPRESSO ROOM → Grimlinghausen", listOf(routePts), emptyList(), 3_000.0, 0.0, 6.0, 180.0),
+                isFollowed = false, recording = true, activity = Activity.BIKE_TOURING, {}, {}, onPlan = {}, onHighlight = {},
+                backToNavigation = { BackToNavigationButton(TourState(73.0, 296, paused = false), Activity.BIKE_TOURING, {}) })
+        }
+    }
+
     /** A recorded tour ended before its first point (owner 2026-10-30): nothing to follow – "Start recording · Hike". */
     @Test fun trackWithoutLine() = paparazzi.snapshot {
         Frame {
@@ -1208,13 +1222,6 @@ class ScreenshotTest {
         }
     }
 
-    /** After End tour → "Tour saved" → Delete: asks first, stays until answered. */
-    @Test fun finishedTourDeleteAsk() = paparazzi.snapshot {
-        OnPathTheme {
-            Frame { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
-            FinishedTourDialogs(tourList[1], {}, {}, {}, initialConfirm = true)
-        }
-    }
 
     /** The sheet shows the save state instead of a message – a plain line (renamed in Save's dialog / My routes). */
     @Test fun planSaved() = paparazzi.snapshot {

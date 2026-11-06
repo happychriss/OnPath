@@ -84,6 +84,7 @@ class GermanScreenshotTest {
     @Test fun planTourRunning() = shots.planTourRunning()
     @Test fun planTourRunningCollapsed() = shots.planTourRunningCollapsed()
     @Test fun planTourNewPlan() = shots.planTourNewPlan()
+    @Test fun trackDuringATour() = shots.trackDuringATour()
     @Test fun navigate() = shots.navigate()
     @Test fun navigateTurnOnto() = shots.navigateTurnOnto()
     @Test fun navigateNextStop() = shots.navigateNextStop()

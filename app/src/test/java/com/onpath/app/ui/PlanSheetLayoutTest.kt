@@ -30,7 +30,7 @@ class PlanSheetLayoutTest {
         assertTrue(icon, icon.contains("Icons.Filled.PlayArrow"))
     }
 
-    /** Owner 2026-11-05: from two points on; during a tour none – "‹ Zur Tour" in the top band leads back. */
+    /** Owner 2026-11-05: from two points on; during a tour none here – the green "Navigation ›" in the foot leads back (C). */
     @Test fun theButtonShowsFromTwoPointsAndNeverDuringATour() {
         assertFalse(PlanBarRow.shown(ui(1, running = false)))
         assertTrue(PlanBarRow.shown(ui(2, running = false)))

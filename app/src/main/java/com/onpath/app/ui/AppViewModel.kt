@@ -911,10 +911,28 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var unfinished by mutableStateOf<Tour?>(null)
     /** The track of [unfinished], drawn on the map while its question shows (no service runs then). */
     var unfinishedTrack by mutableStateOf<List<List<GeoPoint>>>(emptyList())
+    /**
+     * The tour just saved by "Tour speichern": the plan sheet's line "Tour gespeichert – in Meine Touren" while it is set
+     * (owner 2026-11-06, onpath.private#35 – no box "Tour gespeichert" any more). It goes when the user does something new
+     * ([movedOn]: a point set, My routes / search opened, a new start) or taps it ([openSavedTour]).
+     */
     var finishedTour by mutableStateOf<Tour?>(null)
     /** Moving time / breaks / planned vs. needed of [finishedTour] (null = not known). */
     var finishedTimes by mutableStateOf<com.onpath.app.time.TourTimes?>(null)
         private set
+
+    /** The saved tour's line → the tour opens as from My routes. */
+    fun openSavedTour() {
+        val t = finishedTour ?: return
+        movedOn()
+        requestOpen(t)
+    }
+
+    /** The user does something new: the line of the tour just saved goes. */
+    private fun movedOn() {
+        if (finishedTour == null) return
+        finishedTour = null; finishedTimes = null
+    }
     var tours by mutableStateOf<List<Tour>>(emptyList())
         private set
     var events = mutableStateListOf<UiEvent>()
@@ -1333,6 +1351,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         history.record(waypoints)
         val before = waypoints.toList()
         waypoints.block()
+        // a point set / a plan loaded is something new (the end of a tour only takes points away)
+        if (waypoints.size > before.size) movedOn()
         if (WholeRoute.firstRoute(before.size, waypoints.size)) fitNextRoute = true
         routingSpot = RoutingSpot.of(before, waypoints)
         cellsForNewPoints(before, waypoints)
@@ -1815,7 +1835,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var searchMark: com.onpath.app.search.Place?
         get() = searchFlow.searchMark
         set(v) { searchFlow.searchMark = v }
-    fun openSearch() = searchFlow.openSearch()
+    fun openSearch() { movedOn(); searchFlow.openSearch() }
     fun closeSearch() = searchFlow.closeSearch()
     fun pickSearchResult(place: com.onpath.app.search.Place) = searchFlow.pickSearchResult(place)
     /** [poi] is the found place's pin (its menu then ends with "Nadel entfernen"). */
@@ -2705,7 +2725,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun menuState(recording: Boolean): RouteMenuState =
         RouteRules.menu(route != null, waypoints.size, tours.size, navigating(recording), recording)
 
-    fun openRoutes() { refreshTours(); routesOpen = true }
+    fun openRoutes() { movedOn(); refreshTours(); routesOpen = true }
 
     /**
      * Open / load from My routes ([RouteRules.openAsk]): during a tour a planned route first asks ([tourLoadAsk], owner
@@ -2851,6 +2871,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun startNavigation(force: Boolean = false) {
         if (recState.value != null) { continueNavigation(force); return }
+        movedOn()
         val s = shown
         if (s == null && !force && planHasStraightLegs()) { straightAsk = true; return }
         // PlanStart: the sheet's button says "Start recording" exactly when nothing is followed here
@@ -3423,6 +3444,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun startRecording() {
+        movedOn()
         Problems.trace("tour", "Tour start (${activity.name}, plan ${waypoints.size} points, " +
             (if (followLine != null) "following ${followName ?: "a route"}" else "nothing followed") + ")")
         RecordingService.send(getApplication(), RecordingService.ACTION_START) {

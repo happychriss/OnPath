@@ -116,6 +116,11 @@ fun TrackPanel(
     /** "Plan from it": the track as a plannable route with few points; null = not offered. */
     onPlan: (() -> Unit)? = null,
     planBusy: Boolean = false,
+    /**
+     * During a tour (owner 2026-11-06, F1 + C): the green "Navigation ›" under the two buttons – the way back to Navigate
+     * (no status card with Weiter / Pause / Beenden over the panel any more); null = no tour.
+     */
+    backToNavigation: (@Composable () -> Unit)? = null,
 ) {
     BottomPanel {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -137,10 +142,12 @@ fun TrackPanel(
         Spacer(Modifier.height(8.dp))
         ElevationProfile(track.points, color = OnPathColors.Gpx, onHighlight = onHighlight)
         Spacer(Modifier.height(12.dp))
-        // no export here, it lives in My routes (owner); the two ways to use a track: follow it as it is, or make a plan
-        // of it to edit
+        // no export here, it lives in My routes (owner); the two ways to use a track: follow it as it is (green: it goes
+        // to the navigation), or make a plan of it to edit (blue: planning – owner's colour rule, 2026-11-06 F1)
         if (onPlan != null) {
-            OutlinedButton(onClick = onPlan, enabled = !planBusy, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+            OutlinedButton(onClick = onPlan, enabled = !planBusy, modifier = Modifier.fillMaxWidth().height(48.dp),
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, if (planBusy) OnPathColors.ActionEdit.copy(alpha = 0.38f) else OnPathColors.ActionEdit),
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = OnPathColors.ActionEdit)) {
                 if (planBusy) androidx.compose.material3.CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 else Icon(Icons.Filled.Edit, null)
                 Spacer(Modifier.width(8.dp))
@@ -158,6 +165,10 @@ fun TrackPanel(
                 Spacer(Modifier.width(8.dp))
                 Text(trackFollowLabel(recording, activity, line), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+        }
+        if (backToNavigation != null) {
+            Spacer(Modifier.height(8.dp))
+            backToNavigation()
         }
     }
 }

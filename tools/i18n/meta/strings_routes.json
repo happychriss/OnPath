@@ -338,13 +338,6 @@
     "priority": 3,
     "confidence": "sicher"
   },
-  "routes_track_saved": {
-    "area": "Dialogs",
-    "context": "Title of the dialog after End tour (stats, Export GPX, Delete, Done)",
-    "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "'Track gespeichert' – or 'Tour gespeichert' (glossary: recorded trip = Tour)"
-  },
   "routes_activity_from_file": {
     "area": "Messages",
     "context": "Grey line in the track panel after a GPX import changed the activity. %1$s = activity in a sentence ('Hike T3'); German word order changed so the name stands at the end",

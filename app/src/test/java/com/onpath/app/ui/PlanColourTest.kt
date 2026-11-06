@@ -53,7 +53,7 @@ class PlanColourTest {
 
     /**
      * Owner 2026-11-03: the half-transparent blue band went; owner 2026-11-05 (b): a light blue band again, opaque, only
-     * behind the search pill + ☰ (and "‹ Zur Tour" during a tour) – the pill and ☰ no longer float over the map.
+     * behind the search pill + ☰ – the pill and ☰ no longer float over the map.
      */
     @Test fun lightBandBehindTheTopBar() {
         val bar = java.io.File("src/main/java/com/onpath/app/ui/PlanTopBar.kt").readText()
