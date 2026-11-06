@@ -187,8 +187,7 @@ fun MapScreen(
         androidx.compose.animation.AnimatedVisibility(sharedLookup,
             modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = hintTop),
             enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
-            androidx.compose.material3.Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-                shadowElevation = 3.dp, color = OnPathColors.Paper) { // over the map: paper (owner 2026-11-06)
+            androidx.compose.material3.Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) { // over the map: paper (owner 2026-11-06)
                 androidx.compose.foundation.layout.Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     androidx.compose.material3.CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
@@ -281,11 +280,9 @@ private fun PlanMode(
     onPanelHeight: (Int) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
-        // Plan is blue (owner 2026-11-03, design §3 version 3): a soft blue edge round the screen and a light blue band
-        // under the status bar – drawn only, no touches taken
-        PlanFrame(Modifier.modeEdge(ModeEdge.TOP))
-        // the light blue band behind the search pill and ☰ (owner 2026-11-05, b): from the screen's top edge (status bar)
-        // to the bar's bottom; during a tour one row more ("‹ Zur Tour")
+        // the paper band behind the search pill and ☰ (owner 2026-11-05 b; paper since 2026-11-06 variant C – no blue
+        // surfaces, no blue glow round the screen): from the screen's top edge (status bar) to the bar's bottom; during a
+        // tour one row more ("‹ Zur Tour")
         val topBar = planTopBarDp()
         Box(Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().background(PlanTopBand.Color)
             .statusBarsPadding().height(topBar.dp))
@@ -576,14 +573,28 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     val trackSize = rec?.track?.sumOf { it.size } ?: 0
     LaunchedEffect(vm.waypoints.toList(), trackSize / 20, vm.followLine, rec != null) { passed = vm.tourPassed() }
     // Planned line only while the plan can be edited (Plan mode, no track shown); markers only in Plan (planLayers).
+    val view = androidx.compose.ui.platform.LocalView.current
     LaunchedEffect(c) {
+        // a new route draws itself (owner 2026-11-06, polish 2 – RouteReveal); the first drawing after the map (re)loaded
+        // and the same route shown again (back from Navigate, a marker change) appear at once
+        var firstDraw = true
+        var lastShown: com.onpath.app.routing.PlannedRoute? = null
         // canEditMap is part of the key on its own: Navigate → Plan while the plan is followed must redraw the markers
         snapshotFlow {
             val (line, markers) = planLayers(vm.canEditMap, navigateWithPlan = vm.mode == AppMode.NAVIGATE && vm.planGuides)
             PlanDrawing(vm.route, line, markers, vm.waypoints.toList(), vm.planGaps, passed)
         }
             .collect { d ->
-                c.setPlanned(if (d.showLine) d.route else null)
+                val r = if (d.showLine) d.route else null
+                val animate = r != null && com.onpath.app.map.RouteReveal.shouldAnimate(firstDraw, r === lastShown,
+                    vm.mode == AppMode.PLAN, r.points.size, android.animation.ValueAnimator.areAnimatorsEnabled())
+                firstDraw = false
+                if (r != null) lastShown = r
+                if (animate) c.revealPlanned(r!!) {
+                    // a short tick when the line has arrived (the phone's touch-feedback setting applies)
+                    view.performHapticFeedback(if (android.os.Build.VERSION.SDK_INT >= 30)
+                        android.view.HapticFeedbackConstants.CONFIRM else android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                } else c.setPlanned(r)
                 // unreachable points: grey dashed missing piece + grey hollow marker
                 val gaps = if (d.showLine && d.showMarkers) d.gaps else emptyList()
                 c.setPlanGaps(gaps)
@@ -607,6 +618,8 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     val planPuck = rememberPlanPuck(vm.activity)
     val changingRoute = vm.mode == AppMode.PLAN && rec != null
     LaunchedEffect(c, changingRoute, planPuck) { c.setPlanPuck(planPuck.takeIf { changingRoute }) }
+    // the GPS accuracy circle only in Navigate (owner 2026-11-06: in Plan it only gets in the way)
+    LaunchedEffect(c, vm.mode) { c.setNavigateMode(vm.mode == AppMode.NAVIGATE) }
     LaunchedEffect(c, vm.settings) { c.layers.apply(vm.settings) }
     // Re-routing: thin grey original while a new route is followed, dashed proposal while asking, dashed guide to
     // the route when no way was found / the original was kept (see NavigateScreen, navigation/Navigator).

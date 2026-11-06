@@ -103,8 +103,7 @@ internal fun activityRowStatus(s: ActivityRowState): String = when (s) {
 fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKeep: () -> Unit, modifier: Modifier = Modifier,
                         onHikeLevel: (Int) -> Unit = {}) {
     val free = ui.rows.any { it.state == ActivityRowState.Plain }
-    Surface(shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp), color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 8.dp, modifier = modifier.fillMaxWidth()) {
+    Surface(shape = RoundedCornerShape(topStart = OnPathShapes.SHEET_DP.dp, topEnd = OnPathShapes.SHEET_DP.dp), color = MaterialTheme.colorScheme.surface, modifier = modifier.fillMaxWidth().warmShadow(OnPathShadow.HIGH, RoundedCornerShape(topStart = OnPathShapes.SHEET_DP.dp, topEnd = OnPathShapes.SHEET_DP.dp))) {
         Column(Modifier.navigationBarsPadding().verticalScroll(rememberScrollState())
             .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp)) {
             Text(str(if (free) Res.string.nav_check_recording_as else Res.string.nav_check_navigating_as), style = MaterialTheme.typography.bodyMedium,
@@ -166,8 +165,8 @@ private fun ActivityRowItem(row: ActivityRow, onClick: () -> Unit) {
         }
         when (s) {
             ActivityRowState.Checking -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.5.dp)
-            is ActivityRowState.Ready -> Text(Format.duration(s.fit.timeS), style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold)
+            is ActivityRowState.Ready -> Text(instrument(Format.duration(s.fit.timeS), MaterialTheme.typography.titleSmall),
+                style = MaterialTheme.typography.titleSmall)
             else -> Unit
         }
     }

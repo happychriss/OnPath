@@ -61,7 +61,7 @@
     <string name="settings_map_vibrate">Vibration beim Planen</string>
     <string name="settings_map_vibrate_sub">Kurzes Vibrieren, wenn du die Karte gedrückt hältst, zweimal auf einem Routenpunkt</string>
     <string name="settings_nav_offroute">Warnung abseits der Route</string>
-    <string name="settings_nav_offroute_sub">Vibration und Benachrichtigung, wenn du die gefolgte Route verlässt</string>
+    <string name="settings_nav_offroute_sub">Benachrichtigung, wenn du die gefolgte Route verlässt</string>
     <string name="settings_nav_warn_after">Warnen nach</string>
     <string name="settings_nav_meters">%1$d m</string>
     <string name="settings_nav_vibrate_off">Vibrieren abseits der Route</string>
@@ -162,4 +162,9 @@
     <string name="settings_nav_guide_off">Aus</string>
     <string name="settings_nav_guide_vibration">Vibration</string>
     <string name="settings_nav_guide_voice">Stimme</string>
+    <string name="settings_group_offroute">Abseits der Route</string>
+    <string name="settings_group_junctions">Abzweigungen</string>
+    <string name="settings_group_screen">Bildschirm und Karte</string>
+    <string name="settings_group_lock">Sperre während der Tour</string>
+    <string name="settings_phone_missing">Fehlt: %1$s</string>
 </resources>

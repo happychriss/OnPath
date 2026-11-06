@@ -150,7 +150,7 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
             if (showSub) Text(sub, color = OnPathColors.OnGreenMuted, style = subStyle, maxLines = 1, softWrap = false)
         }
         Surface(
-            shape = CircleShape, color = Color.White, shadowElevation = 3.dp,
+            shape = CircleShape, color = Color.White,
             modifier = Modifier.padding(PAD).size(THUMB).offset { IntOffset(offset.roundToInt(), 0) }
                 .draggable(
                     state = rememberDraggableState { d -> offset = SlideThreshold.clamp(offset + d, maxPx) },
@@ -160,8 +160,7 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
                         if (SlideThreshold.isComplete(offset, maxPx)) { offset = 0f; slid() }
                         else scope.launch { animate(offset, 0f, animationSpec = spring()) { v, _ -> offset = v } }
                     },
-                ),
-        ) {
+                ).warmShadow(OnPathShadow.LOW, CircleShape)) {
             Box(contentAlignment = Alignment.Center) {
                 // a closed lock on the thumb (owner 2026-11-05): the slider only unlocks
                 Icon(Icons.Filled.Lock, null, tint = OnPathColors.ActionGo, modifier = Modifier.size(28.dp))

@@ -190,6 +190,9 @@ class MainActivity : ComponentActivity() {
                                 onSaveDraft = { vm.saveDraft(it) },
                                 onDeleteDraft = { vm.deleteDraft(it) },
                                 justSavedId = vm.justSavedId,
+                                live = vm.livePlan,
+                                onLiveOpen = { vm.backToLivePlan() },
+                                onLiveSave = { vm.saveLivePlan() },
                             )
                         }
                         vm.editRides?.let { (t, s) ->

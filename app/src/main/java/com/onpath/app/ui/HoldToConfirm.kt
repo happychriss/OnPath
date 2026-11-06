@@ -90,7 +90,7 @@ fun HoldButton(
     onFire: () -> Unit,
     onEarlyRelease: () -> Unit,
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(50),
+    shape: Shape = OnPathShapes.Pill,
     outline: Color? = null,
     content: @Composable (Color) -> Unit,
 ) {

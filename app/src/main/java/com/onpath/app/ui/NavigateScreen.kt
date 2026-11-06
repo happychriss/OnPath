@@ -301,11 +301,13 @@ fun NavigateOverlay(
             if (ui.recordedM != null) TourBottomBar(ui.paused, onPause, onEnd = onEnd, onPlan = onSlideToPlan, bottom, hold = hold)
             else ChangePlanButton(onSlideToPlan, bottom, hold = hold)
         }
-        // "Neuer Plan – deine Aufnahme läuft weiter" just above the bottom bar, over the map (nothing moves under it)
+        // "Neuer Plan – deine Aufnahme läuft weiter" just above the bottom bar, over the map (nothing moves under it), left
+        // of the map controls' column (it covered "locate" across the full width – merge review 2026-11-06)
         newPlan?.let { n ->
             LaunchedEffect(n.id) { kotlinx.coroutines.delay(NEW_PLAN_LINE_MS); onNewPlanGone() }
             NewPlanLine(if (n.undo) onNewPlanUndo else null,
-                Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = (sliderDp + 8).dp))
+                Modifier.align(Alignment.BottomStart)
+                    .padding(start = 16.dp, end = NEW_PLAN_LINE_END, bottom = (sliderDp + 8).dp))
         }
         // ONE box under the turn / status column (docs/design/ui-style.md, owner 2026-10-31 – the re-route and
         // activity-switch question moved here from the bottom, 56 dp buttons kept); the question wins, the rest wait.
@@ -340,6 +342,9 @@ fun NavigateOverlay(
 /** How long [NewPlanLine] stays (ms): long enough to read it and reach "Rückgängig" with gloves. */
 internal const val NEW_PLAN_LINE_MS = 8_000L
 
+/** [NewPlanLine]'s right edge: clear of the map controls' column (16 dp margin + one [MAP_FAB] + 8 dp air). */
+internal val NEW_PLAN_LINE_END = 16.dp + MAP_FAB + 8.dp
+
 /**
  * A plan or a done tour tapped in My routes during a tour is followed at once, without a question (owner 2026-11-06
  * 22:05): this light card above the bottom bar says "Neuer Plan – deine Aufnahme läuft weiter" for [NEW_PLAN_LINE_MS]
@@ -348,7 +353,7 @@ internal const val NEW_PLAN_LINE_MS = 8_000L
  */
 @Composable
 internal fun NewPlanLine(onUndo: (() -> Unit)?, modifier: Modifier = Modifier) {
-    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.Paper, shadowElevation = 3.dp, modifier = modifier.fillMaxWidth()) {
+    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.Paper, modifier = modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, MaterialTheme.shapes.large)) {
         Row(Modifier.heightIn(min = 56.dp).padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(str(Res.string.plan_new_during_tour), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f).padding(vertical = 8.dp))
@@ -369,8 +374,8 @@ private fun TurnCard(t: TurnHint) {
     val text = if (t.distanceM < 15 && !t.straight && t.stop == null) str(Res.string.nav_turn_now, spoken)
         else str(Res.string.nav_turn_in, spoken, turnDistance(t.distanceM))
     Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.ActionGo,
-        contentColor = OnPathColors.CardWhite, shadowElevation = 4.dp,
-        modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = text }) {
+        contentColor = OnPathColors.CardWhite,
+        modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = text }.warmShadow(OnPathShadow.HIGH, MaterialTheme.shapes.large)) {
         Row(Modifier.heightIn(min = 76.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             if (t.stop != null) StopSign(t.stop, Modifier.size(48.dp))
             else if (t.roundabout != null) RoundaboutSign(t.roundabout, t.roundaboutAngle, Modifier.size(48.dp))
@@ -379,7 +384,8 @@ private fun TurnCard(t: TurnHint) {
             // the way word goes on the same line as the direction ("Links auf den Radweg"): the card never grows, a long
             // label ends in "…" (owner: nothing jumps)
             Column(Modifier.weight(1f)) {
-                Text(turnDistance(t.distanceM), style = MaterialTheme.typography.headlineMedium)
+                Text(instrument(turnDistance(t.distanceM), MaterialTheme.typography.headlineMedium),
+                    style = MaterialTheme.typography.headlineMedium)
                 StopText(t.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
@@ -420,8 +426,8 @@ private fun StopAheadRow(r: StopRow) {
             modifier = Modifier.weight(1f))
         Spacer(Modifier.width(8.dp))
         Column(horizontalAlignment = Alignment.End) {
-            Text(Format.distance(r.stop.distanceM), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold,
-                maxLines = 1, softWrap = false)
+            Text(instrument(Format.distance(r.stop.distanceM), MaterialTheme.typography.bodyLarge),
+                style = MaterialTheme.typography.bodyLarge, maxLines = 1, softWrap = false)
             r.arriveAt?.let { Text(str(Res.string.nav_stop_arrive, it), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false) }
         }
@@ -481,9 +487,9 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
     // the amber off-route card says where the route is – not repeated here (the question card at the bottom does not)
     val offCard = ui.offRoute?.amber == true
     // over the map: paper like every surface (owner 2026-11-06), the shadow lifts it off the map
-    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.Paper, shadowElevation = 3.dp,
+    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.Paper,
         // only the activity icon and the chevron are buttons (gloves: no tap target as big as the card)
-        modifier = Modifier.fillMaxWidth()) {
+        modifier = Modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, MaterialTheme.shapes.large)) {
       Column {
         Row(Modifier.heightIn(min = 56.dp).padding(start = if (ui.activity != null) 8.dp else 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -524,16 +530,17 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         // (small phone, long values) the distance wraps under the time – same size, never smaller.
                         val dim = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(Format.durationShort(g.timeS), style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false,
+                            // instrument numbers (owner 2026-11-06): equal-width digits, nothing jiggles while counting
+                            Text(instrument(Format.durationShort(g.timeS), MaterialTheme.typography.titleLarge),
+                                style = MaterialTheme.typography.titleLarge, maxLines = 1, softWrap = false,
                                 color = if (paused) dim else Color.Unspecified)
-                            Text(Format.distance(g.distanceM), style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false,
+                            Text(instrument(Format.distance(g.distanceM), MaterialTheme.typography.titleLarge),
+                                style = MaterialTheme.typography.titleLarge, maxLines = 1, softWrap = false,
                                 color = if (paused) dim else Color.Unspecified)
                         }
                         if (paused) Text(timePausedText(g, ui.waitingGps), style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        else Text("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}",
+                        else Text(instrument("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}", MaterialTheme.typography.bodyLarge),
                             style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
@@ -740,10 +747,10 @@ private fun OffRouteCard(o: OffRouteUi) {
     val state = NavText.state(o.prompt)
     val offRoute = str(Res.string.nav_off_route)
     Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.WarnContainer,
-        contentColor = OnPathColors.OnWarnContainer, shadowElevation = 3.dp,
+        contentColor = OnPathColors.OnWarnContainer,
         modifier = Modifier.fillMaxWidth().clearAndSetSemantics {
             contentDescription = listOfNotNull(offRoute, hint, state).joinToString(". ")
-        }) {
+        }.warmShadow(OnPathShadow.LOW, MaterialTheme.shapes.large)) {
         Row(Modifier.heightIn(min = 76.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                 when {

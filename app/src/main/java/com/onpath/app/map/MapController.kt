@@ -377,9 +377,23 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     }
     private var planBadge: android.graphics.Bitmap? = null
 
+    /** Navigate (true) or Plan (false, the start): the GPS accuracy circle shows only in Navigate ([PositionDot.accuracyAlpha]). */
+    private var navigateMode = false
+
+    /** The mode for the position dot's look (accuracy circle only in Navigate). Never throws. */
+    fun setNavigateMode(navigate: Boolean) {
+        if (navigate == navigateMode) return
+        navigateMode = navigate
+        try {
+            if (live() && locationReady) map.locationComponent.applyStyle(puckOptions(heading.arrowGrey))
+        } catch (e: Exception) {
+            Problems.warn("map", "Position dot look (accuracy circle) not changed for the mode", e)
+        }
+    }
+
     /** Position dot look; [grey] = the "where I face" image grey (compass unsure, map/CompassTrust). */
     private fun puckOptions(grey: Boolean): LocationComponentOptions = LocationComponentOptions.builder(context)
-        .accuracyAlpha(if (planBadge != null) 0f else 0.18f)
+        .accuracyAlpha(PositionDot.accuracyAlpha(navigate = navigateMode && planBadge == null))
         .enableStaleState(true)
         .staleStateTimeout(30_000)
         // HeadingEngine turns smoothly at display rate itself
@@ -422,7 +436,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             // No frame cap on the position dot (owner: while you look at the app it must run smooth;
             // power is saved with the screen off / in the pocket, where nothing is drawn).
             lc.isLocationComponentEnabled = true
-            // Both modes: small blue dot with accuracy circle and a small direction triangle at its edge
+            // Both modes: small blue dot (accuracy circle only in Navigate) and a small direction triangle at its edge
             // (owner; not the big white GPS-mode navigation puck). The direction comes from
             // HeadingEngine (compass standing, GPS bearing while moving).
             lc.renderMode = PUCK_MODE
@@ -753,14 +767,61 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     }
 
     fun setPlanned(route: PlannedRoute?) = guarded("planned route") {
+        // the same route redrawn while it draws itself (a marker or gap change in the same moment): let it finish
+        if (route == null || route !== revealRoute || reveal == null) {
+            stopReveal()
+            drawPlanned(route?.legs?.map { it.points }, route?.legs?.map { it.straight })
+        }
+    }
+
+    private fun drawPlanned(legs: List<List<GeoPoint>>?, straight: List<Boolean>?) {
         val src = source(SRC_PLANNED) ?: return
-        if (route == null) { src.setGeoJson(FeatureCollection.fromFeatures(emptyList())); return }
-        val features = route.legs.filter { it.points.size >= 2 }.map { leg ->
-            Feature.fromGeometry(LineString.fromLngLats(leg.points.map { Point.fromLngLat(it.lon, it.lat) })).apply {
-                addBooleanProperty("straight", leg.straight)
+        if (legs == null) { src.setGeoJson(FeatureCollection.fromFeatures(emptyList())); return }
+        val features = legs.indices.filter { legs[it].size >= 2 }.map { i ->
+            Feature.fromGeometry(LineString.fromLngLats(legs[i].map { Point.fromLngLat(it.lon, it.lat) })).apply {
+                addBooleanProperty("straight", straight?.getOrNull(i) ?: false)
             }
         }
         src.setGeoJson(FeatureCollection.fromFeatures(features))
+    }
+
+    private var reveal: android.animation.ValueAnimator? = null
+    private var revealRoute: PlannedRoute? = null
+
+    private fun stopReveal() {
+        reveal?.let { it.removeAllListeners(); it.removeAllUpdateListeners(); it.cancel() }
+        reveal = null
+        revealRoute = null
+    }
+
+    /**
+     * A new route draws itself from start to goal ([RouteReveal], owner 2026-11-06): the source gets the first part of
+     * the legs each frame for [RouteReveal.DURATION_MS], then the whole route; [onDone] after the last frame (the haptic).
+     * Any other [setPlanned] stops it at once (the newer state wins). Never throws.
+     */
+    fun revealPlanned(route: PlannedRoute, onDone: () -> Unit) = guarded("route reveal") {
+        stopReveal()
+        val legs = route.legs.map { it.points }
+        val straight = route.legs.map { it.straight }
+        val line = RouteReveal.Line(legs)
+        drawPlanned(emptyList(), straight)
+        val anim = android.animation.ValueAnimator.ofFloat(0f, 1f).setDuration(RouteReveal.DURATION_MS)
+        anim.addUpdateListener { a ->
+            runCatching { drawPlanned(line.cut(RouteReveal.ease(a.animatedFraction).toDouble()), straight) }
+                .onFailure { e -> if (live()) Problems.warn("map", "Route reveal frame failed – the route is drawn whole", e) }
+        }
+        anim.addListener(object : android.animation.AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: android.animation.Animator) {
+                reveal = null
+                revealRoute = null
+                runCatching { drawPlanned(legs, straight) }
+                    .onFailure { e -> if (live()) Problems.warn("map", "Route not drawn after the reveal", e) }
+                onDone()
+            }
+        })
+        reveal = anim
+        revealRoute = route
+        anim.start()
     }
 
     fun setTrack(sourceId: String, segments: List<List<GeoPoint>>) = guarded("track $sourceId") {
@@ -978,7 +1039,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             val n = markerImages + 1
             style.addImage("wp-s-$n", marker(n, POINT_START_COLOR))
             style.addImage("wp-v-$n", marker(n, POINT_STOP_COLOR))
-            style.addImage("wp-e-$n", marker(n, POINT_GOAL_COLOR))
+            style.addImage("wp-e-$n", marker(n, POINT_GOAL_COLOR, flag = true)) // the goal: a flag (owner 2026-11-06)
             style.addImage("wp-g-$n", marker(n, GAP_COLOR, hollow = true))
             style.addImage("wp-p-$n", marker(n, NAV_ORIGINAL_COLOR)) // passed: grey, no tick (owner 2026-11-01)
             markerImages++
@@ -986,9 +1047,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     }
 
     /**
-     * A numbered route point; [hollow] = white inside, ring and number in [color] (a point the route does not reach).
+     * A numbered route point; [hollow] = white inside, ring and number in [color] (a point the route does not reach);
+     * [flag] = the goal: a white flag instead of the number (owner 2026-11-06, polish 7 – no ring, as decided 2026-11-01).
      */
-    private fun marker(n: Int, color: String, hollow: Boolean = false): Bitmap {
+    private fun marker(n: Int, color: String, hollow: Boolean = false, flag: Boolean = false): Bitmap {
         val sizeDp = 30
         val px = (sizeDp * density).toInt()
         val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
@@ -1004,6 +1066,21 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             c.drawCircle(px / 2f, px / 2f, px / 2f - 6 * density, p)
         }
         p.color = if (hollow) android.graphics.Color.parseColor(color) else android.graphics.Color.WHITE
+        if (flag) {
+            // the same outline as the profile's and Navigate's flag (Material "flag", ui/GoalFlag)
+            val o = com.onpath.app.ui.GoalFlag.OUTLINE
+            val size = 17 * density
+            val k = size / 17f
+            val ox = px / 2f - 12.5f * k; val oy = px / 2f - 12.5f * k
+            val path = android.graphics.Path()
+            for (i in o.indices step 2) {
+                val x = ox + o[i] * k; val y = oy + o[i + 1] * k
+                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            path.close()
+            c.drawPath(path, p)
+            return bmp
+        }
         p.textSize = 14 * density
         p.typeface = Typeface.DEFAULT_BOLD
         p.textAlign = Paint.Align.CENTER

@@ -117,7 +117,7 @@ fun PoiDetails(poi: Poi, onClose: () -> Unit, modifier: Modifier = Modifier) {
         Button(
             onClick = { PoiIntents.openInGoogleMaps(context, poi) },
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-            shape = RoundedCornerShape(14.dp),
+            shape = com.onpath.app.ui.OnPathShapes.Pill,
             colors = ButtonDefaults.buttonColors(),
         ) {
             Icon(Icons.Outlined.Map, contentDescription = null)

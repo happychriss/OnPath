@@ -18,7 +18,7 @@ class ColourRuleTest {
     @Test fun primaryIsWalnutAndTheTwoActionColoursStay() {
         assertEquals(Color(0xFF4A3F37), OnPathColors.Walnut)
         assertEquals(Color(0xFF245F46), OnPathColors.ActionGo)
-        assertEquals(Color(0xFF2E6A9E), OnPathColors.ActionEdit)
+        assertEquals(Color(0xFF2B4C6F), OnPathColors.ActionEdit) // ink blue, owner 2026-11-06 variant C
         val theme = src("ui/Theme.kt")
         assertTrue(theme.contains("primary = OnPathColors.Walnut,"))
         assertTrue(theme.contains("surfaceTint = OnPathColors.Walnut,"))
@@ -48,7 +48,7 @@ class ColourRuleTest {
         assertTrue("Fix the route", dialogs.contains("TextButton(colors = ActionButtons.editText(), onClick = onCancel"))
         // "Replace current plan?" is gone (owner 2026-11-06, Zuletzt); a draft's Speichern in My routes is plan blue
         assertTrue("Zuletzt → Speichern", src("ui/Screens.kt").substringAfter("private fun DraftActions(").substringBefore("\n}\n")
-            .contains("filledTonalButtonColors(containerColor = OnPathColors.PlanTint, contentColor = OnPathColors.ActionEdit)"))
+            .contains("filledTonalButtonColors(containerColor = OnPathColors.EditTonal, contentColor = OnPathColors.OnEditTonal)"))
         assertTrue("the routing ring", src("ui/MapOverlays.kt").contains("val color = com.onpath.app.ui.OnPathColors.PlanAccent"))
     }
 

@@ -55,7 +55,7 @@ fun RouteBreakdown(
     var expanded by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(initiallyExpanded) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+            Modifier.fillMaxWidth().clip(OnPathShapes.Small)
                 .clickable { expanded = !expanded }
                 .padding(vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -86,7 +86,7 @@ private fun BreakdownBar(title: String, shares: List<Share>, kind: BreakdownRule
     Column {
         Text(title, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(3.dp))
-        Row(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp))) {
+        Row(Modifier.fillMaxWidth().height(8.dp).clip(OnPathShapes.Pill)) {
             parts.forEach { s ->
                 Box(Modifier.weight(s.meters.toFloat().coerceAtLeast(1f)).height(8.dp).background(Color(BreakdownRules.entry(kind, s.key).argb)))
             }
@@ -113,7 +113,7 @@ fun DifficultyBadge(r: RouteSummary.Rating, modifier: Modifier = Modifier) {
         RouteSummary.Difficulty.MODERATE -> OnPathColors.WarnContainer to OnPathColors.Warn
         RouteSummary.Difficulty.DIFFICULT -> OnPathColors.ErrorContainer to OnPathColors.Error
     }
-    Text(r.text, modifier.clip(RoundedCornerShape(10.dp)).background(bg).padding(horizontal = 10.dp, vertical = 3.dp),
+    Text(r.text, modifier.clip(OnPathShapes.Pill).background(bg).padding(horizontal = 10.dp, vertical = 3.dp),
         color = fg, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
 }
 

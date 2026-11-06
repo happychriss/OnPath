@@ -265,9 +265,9 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
     }
 }
 
-/** The plan row's light blue and its dark blue words (owner 2026-11-05; ≥ 9:1). */
-internal val PillBlueLight = Color(0xFFDDE7F4)
-internal val PillBlueInk = Color(0xFF163C6B)
+/** The plan row's pills: one paper shade darker, ink blue words (owner 2026-11-06 variant C – no light blue; ≥ 7:1). */
+internal val PillBlueLight = OnPathColors.PaperDim
+internal val PillBlueInk = OnPathColors.ActionEdit
 
 @Composable
 private fun pillFill(enabled: Boolean): Color = PillBlueLight.copy(alpha = if (enabled) 1f else 0.5f)
@@ -439,7 +439,8 @@ private fun PlanHead(ui: PlanUi, cb: PlanCallbacks) {
     val oneLine = factsOneLine(route)
     androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Box(Modifier.align(Alignment.CenterVertically)) { Title(ui, route, cb.onTimeDetails) }
-        Text("↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}", style = MaterialTheme.typography.bodyLarge,
+        Text(instrument("↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}", MaterialTheme.typography.bodyLarge),
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.align(Alignment.CenterVertically))
         // the facts wrap anyway (a large font): the difficulty goes at the end of their second line, off the profile
         if (!oneLine) DifficultyBadge(rememberRating(route, ui.activity),
@@ -455,9 +456,10 @@ private fun factsOneLine(route: PlannedRoute): Boolean {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val t = MaterialTheme.typography
     val w = with(density) {
-        (tm.measure(Format.duration(route.durationS), t.titleLarge.copy(fontWeight = FontWeight.SemiBold)).size.width +
-            tm.measure(Format.distance(route.distanceM), t.titleMedium).size.width +
-            tm.measure("↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}", t.bodyLarge).size.width).toDp()
+        // measured as drawn: big digits, small units (Instrument)
+        (tm.measure(instrument(Format.duration(route.durationS), t.titleLarge), t.titleLarge).size.width +
+            tm.measure(instrument(Format.distance(route.distanceM), t.titleMedium), t.titleMedium).size.width +
+            tm.measure(instrument("↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}", t.bodyLarge), t.bodyLarge).size.width).toDp()
     }
     // the sheet's 16 dp sides; 8 dp inside the title, 10 dp between the pieces
     return PlanRow.factsOneLine(w.value, LocalConfiguration.current.screenWidthDp.toFloat())
@@ -514,18 +516,19 @@ private fun CollapsedRow(ui: PlanUi, cb: PlanCallbacks, barShown: () -> Float, s
             // 1: time · km, one piece
             when {
                 route != null -> Text(androidx.compose.ui.text.buildAnnotatedString {
-                    withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.SemiBold)) {
-                        append(Format.duration(route.durationS).replace(' ', '\u00A0'))
-                    }
+                    val st = MaterialTheme.typography.titleMedium
+                    append(instrument(Format.duration(route.durationS).replace(' ', '\u00A0'), st))
                     withStyle(androidx.compose.ui.text.SpanStyle(color = variant)) {
-                        append(" · " + Format.distance(route.distanceM).replace(' ', '\u00A0'))
+                        append(Instrument.styled(" · " + Format.distance(route.distanceM).replace(' ', '\u00A0'), st,
+                            numberWeight = FontWeight.Normal))
                     }
                 }, style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false)
                 ui.routing -> Text(PlanStatus.CALCULATING, style = MaterialTheme.typography.bodyMedium, color = variant)
                 else -> Text(str(EmptyPlanTitle.of(ui)), style = MaterialTheme.typography.titleMedium)
             }
             // 2: ↑ ↓ (the first to go)
-            if (route != null) Text(" · " + CollapsedFacts.elevation(route.ascentM, route.descentM),
+            if (route != null) Text(Instrument.styled(" · " + CollapsedFacts.elevation(route.ascentM, route.descentM),
+                MaterialTheme.typography.bodyMedium, numberWeight = FontWeight.Normal),
                 style = MaterialTheme.typography.bodyMedium, color = variant, maxLines = 1, softWrap = false)
             else Box {}
             // 3: ⚠ count + the green button
@@ -616,14 +619,14 @@ fun ActivityMapButton(activity: Activity, sac: Int, onClick: () -> Unit, modifie
     val name = com.onpath.app.data.LastActivity.chipText(activity, sac)
     Column(modifier.semantics(mergeDescendants = true) { contentDescription = Txt.s(Res.string.plan_activity_chip_desc, name) },
         horizontalAlignment = Alignment.CenterHorizontally) {
-        Surface(onClick = onClick, shape = CircleShape, color = OnPathColors.PlanTint, shadowElevation = 3.dp,
-            modifier = Modifier.size(48.dp)) {
+        Surface(onClick = onClick, shape = CircleShape, color = OnPathColors.PlanTint,
+            modifier = Modifier.size(48.dp).warmShadow(OnPathShadow.LOW, CircleShape)) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(activity.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(26.dp))
             }
         }
-        if (activity == Activity.HIKE) Surface(shape = CircleShape, color = OnPathColors.PlanTint, shadowElevation = 2.dp,
-            modifier = Modifier.padding(top = 3.dp)) {
+        if (activity == Activity.HIKE) Surface(shape = CircleShape, color = OnPathColors.PlanTint,
+            modifier = Modifier.padding(top = 3.dp).warmShadow(OnPathShadow.LOW, CircleShape)) {
             Text("T$sac", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = PillBlueInk,
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp))
         }
@@ -805,10 +808,10 @@ private fun Title(ui: PlanUi, route: PlannedRoute?, onTimeDetails: () -> Unit) {
     Row(Modifier.heightIn(min = 48.dp).clip(MaterialTheme.shapes.small)
         .clickable(role = Role.Button, onClickLabel = str(Res.string.plan_time_details), onClick = onTimeDetails),
         verticalAlignment = Alignment.CenterVertically) {
-        Text(Format.duration(route.durationS), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
-            maxLines = 1)
+        Text(instrument(Format.duration(route.durationS), MaterialTheme.typography.titleLarge),
+            style = MaterialTheme.typography.titleLarge, maxLines = 1)
         Spacer(Modifier.width(8.dp))
-        Text(Format.distance(route.distanceM),
+        Text(instrument(Format.distance(route.distanceM), MaterialTheme.typography.titleMedium),
             style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
             overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(bottom = 1.dp))
     }

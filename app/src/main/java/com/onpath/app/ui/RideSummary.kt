@@ -154,7 +154,7 @@ private fun TimelineRow(r: RideView.Row, zone: ZoneId) {
 @Composable
 private fun RideMap(lines: List<RideView.Line>, modifier: Modifier) {
     val bg = MaterialTheme.colorScheme.surfaceVariant
-    Canvas(modifier.background(bg, RoundedCornerShape(8.dp)).padding(10.dp)) {
+    Canvas(modifier.background(bg, OnPathShapes.Small).padding(10.dp)) {
         val all = lines.flatMap { it.points }
         if (all.size < 2) return@Canvas
         val lat0 = all.minOf { it.lat }; val lat1 = all.maxOf { it.lat }

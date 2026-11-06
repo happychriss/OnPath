@@ -97,9 +97,7 @@ class ScreenshotTest {
                 MapPlaceholder(Modifier.fillMaxSize())
                 if (editing) androidx.compose.foundation.Image(rememberPlanPuck(Activity.HIKE).asImageBitmap(), null,
                     Modifier.align(Alignment.Center))
-                // Plan is blue (owner 2026-11-03): band under the status bar (the 32 dp stand-in) + soft edge
-                PlanFrame()
-                // the light blue band behind the search pill and ☰ (owner 2026-11-05) – as MapScreen draws it
+                // the paper band behind the search pill and ☰ (owner 2026-11-05; paper since 2026-11-06 C) – as MapScreen draws it
                 Box(Modifier.fillMaxWidth().background(PlanTopBand.Color).padding(top = 32.dp).height(planTopBarDp().dp))
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing, offline = offline)
@@ -1152,7 +1150,8 @@ class ScreenshotTest {
     /** My routes, tab Planned (default): planned routes + imported GPX, Import GPX, per item ⋮ (Rename, Export GPX, Delete). */
     /**
      * My routes → Planned with "Zuletzt" (owner 2026-11-06): the newest three plans kept by themselves – pale route sign,
-     * "Plan · date", Speichern / Löschen on the card – "Alle 4 anzeigen ›", then "Gespeichert" with one just saved.
+     * "Plan · date", Speichern / Löschen on the card – "Alle 4 anzeigen ›", then "Gespeichert" with one just saved; on top
+     * the plan on the map, "Aktueller Plan · In Bearbeitung" with Speichern (owner 2026-11-06 23:00).
      */
     @Test fun toursRecent() = paparazzi.snapshot {
         val t0 = 1_761_000_000_000L
@@ -1160,7 +1159,10 @@ class ScreenshotTest {
             Tour(100L + i, TourKind.PLANNED, n, t0 - i * 3_600_000L, "HIKE", 2, 2_000.0 + 900 * i, 40.0 * i, 30.0 * i, 1800.0 + 600 * i,
                 "done", viaPts, draft = true)
         }
-        OnPathTheme { RoutesScreen(drafts + tourList, {}, {}, {}, {}, {}, justSavedId = 1L) }
+        // the plan on the map first under Zuletzt with "In Bearbeitung" (owner 2026-11-06 23:00), Speichern only
+        val live = LivePlan(name = null, points = 3, distanceM = 4_200.0, ascentM = 180.0, durationS = 4_500.0, linkedId = -1L,
+            key = listOf(46.67 to 11.16, 46.68 to 11.15, 46.69 to 11.14), unsaved = true)
+        OnPathTheme { RoutesScreen(drafts + tourList, {}, {}, {}, {}, {}, justSavedId = 1L, live = live, liveNowMs = t0) }
     }
 
     @Test fun tours() = paparazzi.snapshot {

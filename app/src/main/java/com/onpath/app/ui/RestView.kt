@@ -81,7 +81,7 @@ fun RestView(ui: RestUi, onTap: () -> Unit, modifier: Modifier = Modifier) {
                 RestSign(ui.event, Modifier.size(150.dp))
             }
             Spacer(Modifier.height(12.dp))
-            Text(distance, style = MaterialTheme.typography.headlineMedium, color = OnPathColors.RestInk, maxLines = 1)
+            Text(instrument(distance, MaterialTheme.typography.headlineMedium), style = MaterialTheme.typography.headlineMedium, color = OnPathColors.RestInk, maxLines = 1)
             Text(label, style = MaterialTheme.typography.titleLarge, color = OnPathColors.RestDim, textAlign = TextAlign.Center,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
@@ -90,7 +90,7 @@ fun RestView(ui: RestUi, onTap: () -> Unit, modifier: Modifier = Modifier) {
             val time = ui.toGoS?.let { Format.durationShort(it) }
             val arrive = ui.arriveAt?.let { str(Res.string.nav_arrive) + " " + it }
             if (time != null || arrive != null) Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                time?.let { Text(it, style = MaterialTheme.typography.titleLarge, color = OnPathColors.RestDim, maxLines = 1) }
+                time?.let { Text(instrument(it, MaterialTheme.typography.titleLarge), style = MaterialTheme.typography.titleLarge, color = OnPathColors.RestDim, maxLines = 1) }
                 arrive?.let { Text(it, style = MaterialTheme.typography.titleLarge, color = OnPathColors.RestDim, maxLines = 1) }
             }
             Text(tapLabel, style = MaterialTheme.typography.bodyMedium, color = OnPathColors.RestDim)

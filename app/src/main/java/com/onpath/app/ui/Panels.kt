@@ -54,11 +54,9 @@ fun BottomPanel(
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().warmShadow(OnPathShadow.HIGH, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 8.dp,
-    ) {
+        color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.animateContentSize().navigationBarsPadding()
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
             // Material drag handle (32 × 4 dp)
@@ -73,7 +71,8 @@ fun BottomPanel(
 @Composable
 fun Stat(value: String, label: String, modifier: Modifier = Modifier, big: Boolean = false) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, style = if (big) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        val st = if (big) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge
+        Text(instrument(value, st), style = st, maxLines = 1)
         Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -129,12 +128,13 @@ fun TrackPanel(
             ActionButtonSmall(Icons.Filled.Close, str(Res.string.plan_close_track), onClose)
         }
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(Format.distance(track.distanceM), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text(instrument(Format.distance(track.distanceM), MaterialTheme.typography.titleLarge), style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.width(8.dp))
-            Text(Format.duration(track.durationS), style = MaterialTheme.typography.titleMedium,
+            Text(instrument(Format.duration(track.durationS), MaterialTheme.typography.titleMedium), style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 1.dp))
         }
-        Text("↑ ${Format.meters(track.ascentM)}  ↓ ${Format.meters(track.descentM)}", style = MaterialTheme.typography.bodyMedium,
+        Text(instrument("↑ ${Format.meters(track.ascentM)}  ↓ ${Format.meters(track.descentM)}", MaterialTheme.typography.bodyMedium),
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
         // "Activity set to MTB from the file": an import changed the activity – said, never silent
         track.note?.let { InfoLine(it) }

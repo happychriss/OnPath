@@ -136,12 +136,19 @@ fun ElevationProfile(
             val t = if (e == data.max) maxT else measurer.measure("${e.toInt()} m", labelStyle)
             drawText(t, topLeft = Offset(0f, (g.y(e) - t.size.height / 2).coerceIn(0f, (bottom - t.size.height).coerceAtLeast(0f))))
         }
-        val endLabel = measurer.measure(Format.distance(data.total), labelStyle)
+        val endLabel = measurer.measure(instrument(Format.distance(data.total), labelStyle), labelStyle)
         drawText(endLabel, topLeft = Offset(size.width - endLabel.size.width, bottom + 1.dp.toPx()))
         drawText(measurer.measure("0", labelStyle), topLeft = Offset(left, bottom + 1.dp.toPx()))
 
-        // area + line (cached paths)
+        // area + line (cached paths): the fill fades from the line's colour to nothing, steeper stretches a bit stronger
+        // (owner 2026-11-06, polish 8 – [ProfileFill]: a wide window, fine steps, so it shades instead of striping)
         drawPath(g.area, g.areaBrush)
+        g.steepFill?.forEachIndexed { k, p ->
+            if (k > 0 && !p.isEmpty) {
+                val a = ProfileFill.alpha(k)
+                drawPath(p, Brush.verticalGradient(listOf(color.copy(alpha = a), color.copy(alpha = a * 0.4f)), top, bottom))
+            }
+        }
         if (g.byClass == null) drawPath(g.line, color, style = g.lineStroke)
         else g.byClass.forEachIndexed { k, p -> if (!p.isEmpty) drawPath(p, steepColor(STEEP_ORDER[k], color), style = g.lineStroke) }
 
@@ -151,7 +158,9 @@ fun ElevationProfile(
             val cx = g.x(m.distanceM); val cy = g.y(eleAt(data, m.distanceM))
             drawCircle(Color.White, 8.dp.toPx(), Offset(cx, cy))
             drawCircle(if (m.goal) OnPathColors.PointGoal else OnPathColors.PointStop, 6.5.dp.toPx(), Offset(cx, cy))
-            if (!m.goal) {
+            // the goal: a small flag like on the map and in Navigate (owner 2026-11-06, polish 7)
+            if (m.goal) drawPath(GoalFlag.path(cx, cy, 9.dp.toPx()), Color.White)
+            else {
                 val t = measurer.measure(m.number.toString(), markStyle)
                 drawText(t, topLeft = Offset(cx - t.size.width / 2f, cy - t.size.height / 2f))
             }
@@ -162,7 +171,7 @@ fun ElevationProfile(
             drawLine(Color(0xFF333333), Offset(cx, top), Offset(cx, bottom), 1.5f)
             drawCircle(Color.White, 6.dp.toPx(), Offset(cx, cy))
             drawCircle(color, 4.dp.toPx(), Offset(cx, cy))
-            val t = measurer.measure("${data.ele[i].toInt()} m · ${Format.distance(data.dist[i])}", labelStyle)
+            val t = measurer.measure(instrument("${data.ele[i].toInt()} m · ${Format.distance(data.dist[i])}", labelStyle), labelStyle)
             val tx = (cx - t.size.width / 2).coerceIn(left, (size.width - t.size.width).coerceAtLeast(left))
             drawRect(Color(0xEEFFFFFF), Offset(tx - 4, top), androidx.compose.ui.geometry.Size(t.size.width + 8f, t.size.height.toFloat()))
             drawText(t, topLeft = Offset(tx, top))
@@ -183,6 +192,8 @@ internal class ProfileCache(private val data: ProfileData, private val steep: Li
         val line: Path, val area: Path, val areaBrush: Brush,
         /** Steepness classes (FLAT, MODERATE, STEEP, VERY_STEEP) as one path each; null = one colour. */
         val byClass: List<Path>?, val lineStroke: Stroke,
+        /** The fill under the line per [ProfileFill] level (0 = none extra); null without steepness. */
+        val steepFill: List<Path>? = null,
     )
     private var key: List<Float>? = null
     private var geometry: Geometry? = null
@@ -229,10 +240,32 @@ internal class ProfileCache(private val data: ProfileData, private val steep: Li
             }
             paths
         }
+        // the fill's extra strength per kept span (its points' smoothed level); equal neighbours join into one shape
+        val steepFill = steep?.let {
+            val level = ProfileFill.levels(data.dist, data.ele)
+            val paths = List(ProfileFill.LEVELS) { Path() }
+            fun spanLevel(q: Int): Int = maxOf(level[keep[q]], level[keep[q + 1]])
+            var j = 0
+            while (j < keep.size - 1) {
+                val k = spanLevel(j)
+                var e = j + 1
+                while (e < keep.size - 1 && spanLevel(e) == k) e++
+                if (k > 0) paths[k].apply {
+                    // the step edges on whole pixels: two steps meet without a light seam or a dark double line
+                    val x0 = kotlin.math.round(x(data.dist[keep[j]])); val x1 = kotlin.math.round(x(data.dist[keep[e]]))
+                    moveTo(x0, bottom); lineTo(x0, y(data.ele[keep[j]]))
+                    for (q in j + 1 until e) lineTo(x(data.dist[keep[q]]), y(data.ele[keep[q]]))
+                    lineTo(x1, y(data.ele[keep[e]])); lineTo(x1, bottom); close()
+                }
+                j = e
+            }
+            paths
+        }
         val g = Geometry(x, y, line, area,
-            Brush.verticalGradient(listOf(color.copy(alpha = 0.35f), color.copy(alpha = 0.05f)), top, bottom),
+            Brush.verticalGradient(listOf(color.copy(alpha = ProfileFill.BASE_ALPHA), color.copy(alpha = 0f)), top, bottom),
             byClass,
-            if (byClass == null) Stroke(width = lineW) else Stroke(width = steepW, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            if (byClass == null) Stroke(width = lineW) else Stroke(width = steepW, cap = StrokeCap.Round, join = StrokeJoin.Round),
+            steepFill)
         key = k
         geometry = g
         return g
@@ -308,4 +341,62 @@ internal object ProfileAxis {
      */
     fun labels(min: Double, max: Double, yMin: Float, yMax: Float, textH: Float): List<Double> =
         if (min.toInt() != max.toInt() && kotlin.math.abs(yMin - yMax) >= textH * 1.2f) listOf(min, max) else listOf(max)
+}
+
+/**
+ * The profile's fill (owner 2026-11-06, polish 8): [BASE_ALPHA] of the line's colour at the top fading to nothing, and
+ * where the way is steep up to [MAX_EXTRA_ALPHA] more. The slope is taken over [WINDOW_M] around each point (so a DEM
+ * bump or a short ramp does not paint a stripe) and turned into [LEVELS] fine steps from 5 % (nothing) to 15 % and more
+ * (all) – neighbouring steps differ by a few per cent of colour, the fill shades along the way. Pure, unit-tested.
+ */
+internal object ProfileFill {
+    const val BASE_ALPHA = 0.30f
+    const val MAX_EXTRA_ALPHA = 0.22f
+    const val LEVELS = 8
+    const val WINDOW_M = 300.0
+    private const val FROM_PCT = 5.0
+    private const val TO_PCT = 15.0
+
+    fun alpha(level: Int): Float = MAX_EXTRA_ALPHA * level / (LEVELS - 1)
+
+    /** Per point its level 0..[LEVELS]-1: the absolute slope over [WINDOW_M] centred on it, 5 % → 0, ≥ 15 % → top. */
+    fun levels(dist: DoubleArray, ele: DoubleArray): IntArray {
+        val n = minOf(dist.size, ele.size)
+        val out = IntArray(n)
+        if (n < 2) return out
+        var a = 0; var b = 0
+        for (i in 0 until n) {
+            // the window [dist[i] - W/2, dist[i] + W/2], clamped to the profile
+            while (dist[a] < dist[i] - WINDOW_M / 2 && a < i) a++
+            while (b + 1 < n && dist[b + 1] <= dist[i] + WINDOW_M / 2) b++
+            if (b < i) b = i
+            var lo = a; var hi = b
+            // at the ends the window is too short: widen it to the full width where the profile allows
+            while (dist[hi] - dist[lo] < WINDOW_M && (lo > 0 || hi < n - 1)) { if (lo > 0) lo--; if (hi < n - 1) hi++ }
+            val run = dist[hi] - dist[lo]
+            if (run <= 0) continue
+            val pct = kotlin.math.abs(ele[hi] - ele[lo]) / run * 100
+            val share = ((pct - FROM_PCT) / (TO_PCT - FROM_PCT)).coerceIn(0.0, 1.0)
+            out[i] = Math.round(share * (LEVELS - 1)).toInt()
+        }
+        return out
+    }
+}
+
+/** The goal's flag (Material "flag", 24-unit grid) centred on (cx, cy), [size] px high – profile and map draw the same. */
+internal object GoalFlag {
+    /** The outline as (x, y) pairs on the 24 grid. */
+    val OUTLINE = floatArrayOf(14.4f, 6f, 14f, 4f, 5f, 4f, 5f, 21f, 7f, 21f, 7f, 14f, 12.6f, 14f, 13f, 16f, 20f, 16f, 20f, 6f)
+
+    fun path(cx: Float, cy: Float, size: Float): Path {
+        val k = size / 17f // the flag spans 4..21 on the grid
+        val ox = cx - 12.5f * k; val oy = cy - 12.5f * k
+        return Path().apply {
+            for (i in OUTLINE.indices step 2) {
+                val px = ox + OUTLINE[i] * k; val py = oy + OUTLINE[i + 1] * k
+                if (i == 0) moveTo(px, py) else lineTo(px, py)
+            }
+            close()
+        }
+    }
 }

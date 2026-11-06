@@ -441,7 +441,8 @@
     "context": "Line under the switch",
     "priority": 2,
     "confidence": "sicher",
-    "max": 90
+    "max": 90,
+    "decided": "donald 2026-11-06: no \"Vibration\" here – the vibration has its own switch under it"
   },
   "settings_nav_warn_after": {
     "area": "Settings · Navigation",
@@ -944,5 +945,40 @@
     "context": "The decimal separator of the hold time ('0,5 s' in German, '0.5 s' in English) – one character",
     "priority": 3,
     "confidence": "sicher"
+  },
+  "settings_group_offroute": {
+    "area": "Settings · Navigation",
+    "context": "Group heading on the Navigation page (owner 2026-11-06 value rows): off-route warning, distance, vibration",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_group_junctions": {
+    "area": "Settings · Navigation",
+    "context": "Group heading on the Navigation page: the cue before junctions + its test",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_group_screen": {
+    "area": "Settings · Navigation",
+    "context": "Group heading on the Navigation page: screen while hiking / cycling, position on the route",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_group_lock": {
+    "area": "Settings · Navigation",
+    "context": "Group heading on the Navigation page: the hold time of the tour buttons",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_phone_missing": {
+    "area": "Settings · Navigation",
+    "context": "Under \"Phone setup\" at the top of the Navigation page while something is missing; %1$s = the missing checks, comma-separated",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 60
   }
 }

@@ -191,8 +191,7 @@ fun MessageCard(message: Message, modifier: Modifier = Modifier) {
     val edge = message.kind.edge()
     val large = LocalDensity.current.fontScale > LARGE_FONT
     val beside = message.buttons.size == 1 && !large && !message.navigate
-    Surface(shape = RoundedCornerShape(16.dp), color = OnPathColors.Paper, contentColor = OnPathColors.Ink,
-        shadowElevation = 6.dp, modifier = modifier.fillMaxWidth()) {
+    Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper, contentColor = OnPathColors.Ink, modifier = modifier.fillMaxWidth().warmShadow(OnPathShadow.HIGH, OnPathShapes.Card)) {
         Box(Modifier.drawBehind { drawRect(edge, size = Size(EDGE_DP.dp.toPx(), size.height)) }) {
             Column(Modifier.padding(start = 18.dp, end = 12.dp, top = 12.dp, bottom = if (beside) 12.dp else 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -265,7 +264,7 @@ private fun MessageButtonView(b: MessageButton, main: Boolean, heightDp: Int, to
     val fill = when (tone) { ButtonTone.GO -> OnPathColors.ActionGo; ButtonTone.EDIT -> OnPathColors.ActionEdit; ButtonTone.NEUTRAL -> OnPathColors.Walnut }
     val ink = if (tone == ButtonTone.GO) OnPathColors.ActionGo else OnPathColors.Walnut
     val size = modifier.heightIn(min = heightDp.dp).widthIn(min = 64.dp)
-    val shape = RoundedCornerShape(16.dp)
+    val shape = OnPathShapes.Card
     val content: @Composable () -> Unit = {
         if (b.busy) {
             androidx.compose.material3.CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = OnPathColors.InkMuted)

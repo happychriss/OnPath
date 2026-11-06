@@ -45,8 +45,7 @@ fun NavSimChip(state: DemoLocation.State?, onStart: () -> Unit, onFactor: (Int) 
 private fun SimPill(text: String, label: String, onClick: () -> Unit) {
     Box(Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center) {
-        Surface(shape = RoundedCornerShape(50), color = OnPathColors.TagContainer, contentColor = OnPathColors.TagInk,
-            shadowElevation = 2.dp) {
+        Surface(shape = OnPathShapes.Pill, color = OnPathColors.TagContainer, contentColor = OnPathColors.TagInk, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Pill)) {
             Text(text, Modifier.padding(horizontal = 10.dp, vertical = 5.dp), color = OnPathColors.TagInk,
                 style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1)
         }

@@ -44,15 +44,15 @@ fun RouteDetailsScreen(route: PlannedRoute, activity: Activity, onBack: () -> Un
             Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text(Format.duration(route.durationS), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text(instrument(Format.duration(route.durationS), MaterialTheme.typography.titleLarge), style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.width(8.dp))
-                    Text(Format.distance(route.distanceM), style = MaterialTheme.typography.titleMedium,
+                    Text(instrument(Format.distance(route.distanceM), MaterialTheme.typography.titleMedium), style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val top = route.points.mapNotNull { it.ele }.maxOrNull()
-                    Text("↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}" +
-                        (top?.let { "  ·  " + str(Res.string.plan_max_height, Format.meters(it)) } ?: ""),
+                    Text(instrument("↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}" +
+                        (top?.let { "  ·  " + str(Res.string.plan_max_height, Format.meters(it)) } ?: ""), MaterialTheme.typography.bodyMedium),
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f, fill = false))
                     Spacer(Modifier.width(8.dp))

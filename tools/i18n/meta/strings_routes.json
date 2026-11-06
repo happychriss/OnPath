@@ -388,6 +388,18 @@
     "priority": 2,
     "confidence": "sicher"
   },
+  "routes_tag_live": {
+    "area": "My routes",
+    "context": "Small blue tag after the name of the plan that is on the map right now – the first row under \"Recent\" in My routes → Planned (or on the saved route it belongs to). Shows the plan is always kept while it is being edited.",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_live_name": {
+    "area": "My routes",
+    "context": "Name shown for the plan on the map in My routes when it was never saved and has no name yet.",
+    "priority": 2,
+    "confidence": "sicher"
+  },
   "routes_follow_ask_title": {
     "area": "Messages",
     "context": "Question box in My routes when a done tour / track is tapped during a running tour (owner 2026-11-06, F1)",

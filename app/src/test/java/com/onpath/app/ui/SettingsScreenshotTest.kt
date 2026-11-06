@@ -17,6 +17,7 @@ import com.onpath.app.data.DataFiles
 import com.onpath.app.debug.Problems
 import com.onpath.app.poi.PoiGroup
 import com.onpath.app.poi.PoiKinds
+import com.onpath.strings.*
 import org.junit.Rule
 import org.junit.Test
 
@@ -93,6 +94,28 @@ class SettingsScreenshotTest {
     @Test fun poi() = paparazzi.snapshot { Screen(SettingsPage.POI) }
     @Test fun map() = paparazzi.snapshot { Screen(SettingsPage.MAP) }
     @Test fun navigation() = paparazzi.snapshot { Screen(SettingsPage.NAVIGATION) }
+    /** Location off (a tour needs it) + battery restricted: "Handy einrichten" at the top, red, "Fehlt: …" (owner 2026-11-06). */
+    @Test fun navigationPhoneMissing() = paparazzi.snapshot {
+        Screen(SettingsPage.NAVIGATION, phone = phoneOk.copy(locationOn = false, backgroundRestricted = true))
+    }
+    /** A value row's choice as a bottom sheet (drawn in place – Paparazzi draws no sheet window): screen while cycling. */
+    @Test fun navigationChoiceSheet() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                Box(Modifier.align(androidx.compose.ui.Alignment.BottomCenter)) {
+                    val b = listOf(
+                        Choice(com.onpath.app.data.BikeScreen.ALWAYS, str(Res.string.settings_nav_bike_screen_always),
+                            str(Res.string.settings_nav_bike_screen_always_sub)),
+                        Choice(com.onpath.app.data.BikeScreen.SMART, str(Res.string.settings_nav_bike_screen_smart),
+                            str(Res.string.settings_nav_bike_screen_smart_sub)),
+                        Choice(com.onpath.app.data.BikeScreen.PHONE, str(Res.string.settings_nav_bike_screen_phone),
+                            str(Res.string.settings_nav_bike_screen_phone_sub)))
+                    ChoiceSheet(str(Res.string.settings_nav_bike_screen), b, com.onpath.app.data.BikeScreen.SMART,
+                        onPick = {}, onDismiss = {}, inline = true)
+                }
+            }
+        }
+    }
     @Test fun offlineMaps() = paparazzi.snapshot { Screen(SettingsPage.OFFLINE_MAPS) }
     @Test fun backup() = paparazzi.snapshot { Screen(SettingsPage.BACKUP) }
     @Test fun privacy() = paparazzi.snapshot { Screen(SettingsPage.PRIVACY) }
