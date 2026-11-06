@@ -89,6 +89,14 @@ the git log.
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 
 ## Next
+- **[donald] Navigate's ⚙ in the new settings look (owner 2026-11-07, via laptop: „das Einstellungsmenü im Planmodus haben wir
+  so schön umgearbeitet – das gleiche müssen wir auch im Navigationsmodus machen“)** – today Navigate → ⚙ (`MapScreen`
+  `navSettingsOpen`) opens a ModalBottomSheet with the old `NavigationSection` list, while Plan → ☰ → Einstellungen is the new
+  topic list → one page per topic (`SettingsPage` / `SettingsSummary`, paper cards, walnut). Proposal (laptop): the ⚙ on the way
+  opens the same settings screen look, filtered to what matters while riding – the Navigation page first (voice, vibration,
+  hold time, screen / rest view), then the topics that make sense on the way as rows (Karte / POIs, Tempo, Offline-Karten),
+  „Alle Einstellungen“ at the bottom; back returns to Navigate, the tour keeps running (recording never touched). Same
+  components, no second settings design. Owner check with shots (normal + large font) before release.
 - **[donald] Navigate's lock line only when needed (owner 2026-11-07, via laptop: „Gesperrt · Knopf gedrückt halten“ nur beim
   ersten Mal oder wenn man den Knopf kurz antippt – nicht andauernd, das irritiert)** – `TourActionBar.HoldBar`: today the pill
   shows `nav_hold_hint_rest` at rest all the time. New: at rest no pill (or only on the first tours until the user has held
