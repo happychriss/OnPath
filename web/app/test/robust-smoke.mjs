@@ -77,19 +77,29 @@ const p1 = [11.1440, 46.7040], p2 = [11.1380, 46.7110]; // beyond the destinatio
 await again.click('#activityChip'); await again.click('[data-act=BIKE_TOURING]');
 // the menu closed – then the camera stands; both clicks queue behind the new plan
 await again.waitForFunction(() => ![...document.querySelectorAll('[data-act]')].some((e) => e.offsetParent !== null), null, { timeout: 10_000 }).catch(() => {});
-// a fixed close view: the reopened route is fitted whole, where p1 and p2 (~450 m past the goal) lie close to the goal
-await again.evaluate(() => window.__map.jumpTo({ center: [11.141, 46.7075], zoom: 14 }));
+// the user takes the map first (a short drag), as a person does before clicking: it cancels the reopened route's
+// pending whole-route fit (WholeRoute.SETTLE_MS after its plan – lastMapTouch). Without it that fit could start between
+// the projection below and the clicks (CI 5be2031d: both clicks landed beside p1 / p2; 8f8db60d, 045e8ebf: p2's pixel
+// lay outside the window – elementFromPoint gave nothing – and its click was lost).
+{ const r = await again.locator('#map').boundingBox(), x = r.x + r.width * 0.6, y = r.y + r.height * 0.4;
+  await again.mouse.move(x, y); await again.mouse.down(); await again.mouse.move(x + 40, y + 20, { steps: 5 }); await again.mouse.up(); }
+// a fixed close view: the reopened route is fitted whole, where p1 and p2 (~450 m past the goal) lie close to the goal;
+// no padding left by an earlier camera move (it shifts where the centre is drawn)
+await again.evaluate(() => window.__map.jumpTo({ center: [11.141, 46.7075], zoom: 14, bearing: 0, pitch: 0, padding: { top: 0, bottom: 0, left: 0, right: 0 } }));
+await again.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 10_000 }).catch(() => {});
 // projected only now: the camera may still move while the activity menu closes (CI: both clicks landed beside p1 / p2)
 // project() gives canvas pixels; the mouse clicks page pixels – the canvas starts below the top bar (was off by 56 px)
 const px = await again.evaluate((ps) => { const r = window.__map.getCanvas().getBoundingClientRect();
   return ps.map(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x + r.left, q.y + r.top]; }); }, [p1, p2]);
 // what is under each click (the map's canvas, or a box over it) – said when a click is lost (CI 2026-11-03 / 11-05)
 const under = await again.evaluate((ps) => ps.map(([x, y]) => { const e = document.elementFromPoint(x, y); return e ? `${e.tagName.toLowerCase()}.${[...e.classList].join('.')}` : '-'; }), px);
+const camBefore = await again.evaluate(() => JSON.stringify([window.__map.getCenter(), window.__map.getZoom()]));
 await again.mouse.click(px[0][0], px[0][1]); await again.mouse.click(px[1][0], px[1][1]);
+const camAfter = await again.evaluate(() => JSON.stringify([window.__map.getCenter(), window.__map.getZoom()]));
 await again.waitForFunction(() => window.__state.points.length === 4, null, { timeout: 60_000 }).catch(() => {});
 const order = await again.evaluate(() => window.__state.points.map(([la, lo]) => [Number(lo.toFixed(3)), Number(la.toFixed(3))]));
 console.log('after two quick clicks:', JSON.stringify(order));
-if (order.length !== 4) console.log('  under the clicks:', JSON.stringify(under), 'boxes now:', JSON.stringify(await again.evaluate(() => [...document.querySelectorAll('.msgcard')].map((c) => c.textContent.trim()))));
+if (order.length !== 4 || camBefore !== camAfter) console.log('  clicks at', JSON.stringify(px), 'camera', camBefore, '→', camAfter, 'under the clicks:', JSON.stringify(under), 'boxes now:', JSON.stringify(await again.evaluate(() => [...document.querySelectorAll('.msgcard')].map((c) => c.textContent.trim()))));
 // the points may be snapped onto a path – compare which click each one is closer to
 const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 check(order.length === 4 && d(order[2], p1) < d(order[2], p2) && d(order[3], p2) < d(order[3], p1), 'two quick clicks: the second is the new destination (not put before the first)');
