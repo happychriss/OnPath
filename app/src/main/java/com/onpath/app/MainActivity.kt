@@ -31,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
 import com.onpath.app.ui.AppViewModel
@@ -193,6 +194,16 @@ class MainActivity : ComponentActivity() {
                                 live = vm.livePlan,
                                 onLiveOpen = { vm.backToLivePlan() },
                                 onLiveSave = { vm.saveLivePlan() },
+                                loadLine = { vm.tourLine(it) },
+                                snapshot = run {
+                                    val pad = with(androidx.compose.ui.platform.LocalDensity.current) {
+                                        com.onpath.app.ui.FitPaddingRule.SIDE_DP.dp.roundToPx()
+                                    }
+                                    val snap: suspend (List<List<com.onpath.app.routing.GeoPoint>>, com.onpath.app.ui.RouteShape.Tint, Int, Int) -> androidx.compose.ui.graphics.ImageBitmap? =
+                                        { segs, tint, w, h -> vm.routeSnapshot(segs, tint, w, h, pad)?.asImageBitmap() }
+                                    snap
+                                },
+                                touring = recNow != null,
                             )
                         }
                         vm.editRides?.let { (t, s) ->

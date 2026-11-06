@@ -332,13 +332,25 @@ fun RoutesScreen(
     onLiveSave: () -> Unit = {},
     /** "Plan · <today>" on its row (screenshots pass a fixed day). */
     liveNowMs: Long = System.currentTimeMillis(),
+    /** A row's line for its small preview and the overview (owner 2026-11-07); empty = the kind's sign. */
+    loadLine: suspend (Tour) -> List<List<com.onpath.app.routing.GeoPoint>> = { emptyList() },
+    /** The overview's map picture (MapLibre snapshot); null = the drawn shape only (screenshots). */
+    snapshot: (suspend (List<List<com.onpath.app.routing.GeoPoint>>, RouteShape.Tint, Int, Int) -> androidx.compose.ui.graphics.ImageBitmap?)? = null,
+    /** A tour records: the overview's primary is "Folgen" (follows at once, the recording goes on – owner 22:05). */
+    touring: Boolean = false,
+    /** The overview open at the start (screenshots). */
+    initialOverview: Tour? = null,
 ) {
     var tab by remember { mutableStateOf(initialTab) }
+    // a row tap opens the large overview first (owner 2026-11-07 00:30) – "Planen" / "Folgen" there opens it as before
+    var overview by remember { mutableStateOf(initialOverview) }
+    val line: @Composable (Tour) -> List<List<com.onpath.app.routing.GeoPoint>>? = { t -> rememberRouteLine(t, loadLine) }
     // the search box (owner 2026-11-06): kept across the tabs, filters the list of the tab shown
     var query by remember { mutableStateOf(initialQuery) }
     val shown = remember(tours, tab, query) { RoutesTab.search(RoutesTab.filter(tours, tab), query) }
     var rename by remember { mutableStateOf(initialRename) }
     var allRecent by remember { mutableStateOf(initialAllRecent) }
+    Box(Modifier.fillMaxSize()) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.systemBarsPadding()) {
             // the title never breaks inside a word: at a large font Import GPX becomes its icon (TopBarLayout)
@@ -403,11 +415,13 @@ fun RoutesScreen(
                         item(key = "h-recent") { SectionHeader(str(Res.string.routes_section_recent)) }
                         liveTour?.let { lt -> item(key = "live") {
                             TourCard(lt, tag = RouteTag.LIVE, onOpen = onLiveOpen, onRename = {}, onExport = {}, onDelete = {},
-                                menu = false, footer = if (live?.canSave == true) ({ DraftActions(onLiveSave, null) }) else null)
+                                menu = false, footer = if (live?.canSave == true) ({ DraftActions(onLiveSave, null) }) else null,
+                                line = line(lt))
                         } }
                         items(if (allRecent) drafts else drafts.take(RECENT_SHOWN), key = { it.id }) { t ->
-                            TourCard(t, tag = null, onOpen = { onOpen(t) }, onRename = { rename = t }, onExport = { onExport(t) },
-                                onDelete = { onDeleteDraft(t) }, footer = { DraftActions({ onSaveDraft(t) }, { onDeleteDraft(t) }) })
+                            TourCard(t, tag = null, onOpen = { overview = t }, onRename = { rename = t }, onExport = { onExport(t) },
+                                onDelete = { onDeleteDraft(t) }, footer = { DraftActions({ onSaveDraft(t) }, { onDeleteDraft(t) }) },
+                                line = line(t))
                         }
                         if (!allRecent && drafts.size > RECENT_SHOWN) item(key = "all-recent") {
                             TextButton({ allRecent = true }, modifier = Modifier.heightIn(min = 48.dp)) {
@@ -419,7 +433,7 @@ fun RoutesScreen(
                     items(saved, key = { it.id }) { t ->
                         val isLive = t.id == liveRows.markedSavedId
                         TourCard(t, tag = if (isLive) RouteTag.LIVE else RouteTag.of(t, marks),
-                            onOpen = if (isLive) onLiveOpen else ({ onOpen(t) }), justSaved = t.id == justSavedId,
+                            onOpen = if (isLive) onLiveOpen else ({ overview = t }), justSaved = t.id == justSavedId, line = line(t),
                             footer = if (isLive && live?.unsaved == true && live.canSave) ({ DraftActions(onLiveSave, null) }) else null,
                             onRename = { rename = t }, onExport = { onExport(t) },
                             onCopy = if (t.kind == TourKind.PLANNED) ({ onCopy(t) }) else null,
@@ -432,6 +446,15 @@ fun RoutesScreen(
                 }
             }
         }
+    }
+    // drawn in place over the list, not in a dialog window (a full-screen Dialog got no navigation-bar inset: its
+    // buttons lay under the gesture bar on the emulator 2026-11-07, as EndTourDialog's once did); Back closes it
+    overview?.let { t ->
+        androidx.activity.compose.BackHandler { overview = null }
+        val segs = rememberRouteLine(t, loadLine)
+        RouteOverview(t, segs, touring, snapshot,
+            onPrimary = { overview = null; onOpen(t) }, onCancel = { overview = null })
+    }
     }
     rename?.let { t ->
         NameDialog(str(when (t.kind) {
@@ -469,6 +492,8 @@ private fun TourCard(
     justSaved: Boolean = false,
     /** The ⋮ menu (rename, export …); off for the plan on the map – it is no stored route. */
     menu: Boolean = true,
+    /** Its line for the small preview (owner 2026-11-07); null / too short = the kind's sign as before. */
+    line: List<List<com.onpath.app.routing.GeoPoint>>? = null,
 ) {
     val (icon, color) = when (t.kind) {
         TourKind.PLANNED -> Icons.Filled.Route to OnPathColors.Route
@@ -480,9 +505,12 @@ private fun TourCard(
     Surface(onClick = { onOpen?.invoke() }, enabled = onOpen != null, shape = OnPathShapes.Card, color = OnPathColors.Paper, modifier = Modifier.heightIn(min = 72.dp).warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
         Column {
         Row(Modifier.fillMaxWidth().padding(start = 14.dp, top = 12.dp, bottom = 10.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).clip(CircleShape).background(color.copy(alpha = pale.circle)), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = t.kind.label, tint = color.copy(alpha = pale.icon))
-            }
+            // the route's shape on paper (owner 2026-11-07); without a line the kind's sign as before
+            RoutePreviewTile(line, RouteShape.tint(t.kind), pale = t.draft, placeholder = {
+                Box(Modifier.size(44.dp).clip(CircleShape).background(color.copy(alpha = pale.circle)), contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = t.kind.label, tint = color.copy(alpha = pale.icon))
+                }
+            })
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 // from the browser and not opened yet (owner 2026-10-31): a "New" / "Changed" tag after the name, until opened
