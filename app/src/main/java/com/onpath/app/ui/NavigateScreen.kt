@@ -353,12 +353,12 @@ internal const val NEW_PLAN_LINE_MS = 8_000L
 /**
  * A plan or a done tour tapped in My routes during a tour is followed at once, without a question (owner 2026-11-06
  * 22:05): this light card above the bottom bar says "Neuer Plan – deine Aufnahme läuft weiter" for [NEW_PLAN_LINE_MS]
- * (no dark message bar – owner; white, it floats over the map) and, when a plan was replaced, "Rückgängig" (blue: it
+ * (no dark message bar – owner; paper like every floating card, owner 2026-11-06) and, when a plan was replaced, "Rückgängig" (blue: it
  * plans) brings that plan back ([AppViewModel.undoNewPlan]; it is also under My routes → Zuletzt).
  */
 @Composable
 internal fun NewPlanLine(onUndo: (() -> Unit)?, modifier: Modifier = Modifier) {
-    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.CardWhite, shadowElevation = 3.dp, modifier = modifier.fillMaxWidth()) {
+    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.Paper, shadowElevation = 3.dp, modifier = modifier.fillMaxWidth()) {
         Row(Modifier.heightIn(min = 56.dp).padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(str(Res.string.plan_new_during_tour), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f).padding(vertical = 8.dp))
