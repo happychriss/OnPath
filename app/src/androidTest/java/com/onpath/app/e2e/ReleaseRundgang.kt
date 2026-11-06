@@ -266,10 +266,20 @@ class ReleaseRundgang : E2EBase() {
         shot("1-end-tour")
         clickText(Txt.s(Res.string.nav_save_recording))
         waitUntil("tour saved", 30_000) { RecordingServiceState.idle() && db.getTour(tourId)?.state == "done" }
-        Thread.sleep(2_000) // the automatic name
-        val name = db.getTour(tourId)!!.name
+        // the automatic place name ("Demo · In Meran", RouteNamer since 3bb6ba43) comes in the background after the date
+        // name: wait until it settled, and look for the name the tour has when the list shows it
+        var name = db.getTour(tourId)!!.name
+        val until = System.currentTimeMillis() + 15_000
+        while (System.currentTimeMillis() < until) {
+            Thread.sleep(1_000)
+            val now = db.getTour(tourId)!!.name
+            if (now == name && !now.removePrefix(DemoLocation.TOUR_PREFIX).startsWith("Tour ")) break
+            name = now
+        }
         scenario.onActivity { vm(it).finishedTour = null; vm(it).routesTab = RoutesTab.DONE; vm(it).openRoutes() }
-        assertNotNull("\"$name\" listed in Done", findFresh(By.text(name), 15_000))
+        var listed = findFresh(By.text(name), 10_000)
+        if (listed == null) { name = db.getTour(tourId)!!.name; listed = findFresh(By.text(name), 10_000) }
+        assertNotNull("\"$name\" listed in Done", listed)
         shot("2-listed-in-done")
         scenario.onActivity { vm(it).routesOpen = false }
     }
