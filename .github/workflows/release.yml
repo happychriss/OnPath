@@ -181,3 +181,17 @@ jobs:
           files: |
             dist/onpath-${{ env.VERSION }}.apk
             dist/SHA256SUMS
+
+  # The planner goes online with the app (one branch, owner 2026-11-06): the same commit, so phone and browser route and
+  # sync alike (tools/ci/release_check.sh). Runs web.yml's checks again and deploys plan.onpath.earth only when they are
+  # green; a red planner run leaves the published app release as it is – deploy by hand later (Actions → Web planner →
+  # Run workflow → deploy).
+  planner:
+    needs: publish
+    uses: ./.github/workflows/web.yml
+    permissions: # web.yml's test jobs ask the API whether its web-build job is done
+      contents: read
+      actions: read
+    with:
+      deploy: true
+    secrets: inherit

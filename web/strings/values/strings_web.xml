@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The web planner's own texts (docs/design/web-planner.md §18) – only what the app has no text for; the page uses the
+     app's strings/ for everything the app also shows. Same format as the app's Compose resources: values/ = English,
+     values-<lang>/ = that language (a new language = one new folder). Placeholders %1$s / %1$d only. Keys start with web_. -->
+<resources>
+    <!-- website pages for this language (onpath.earth) -->
+    <string name="web_url_app">https://onpath.earth/</string>
+    <string name="web_url_try">https://onpath.earth/try/</string>
+    <string name="web_url_privacy">https://onpath.earth/privacy/</string>
+    <string name="web_url_legal">https://onpath.earth/legal/</string>
+    <string name="web_link_app">Try the Android app</string>
+    <string name="web_link_privacy">Privacy</string>
+    <string name="web_link_legal">Legal notice</string>
+    <string name="web_lang_switch">Language</string>
+    <string name="web_lang_name_en">English</string>
+    <string name="web_lang_name_de">Deutsch</string>
+
+    <!-- header -->
+    <string name="web_page_title">OnPath Planner</string>
+    <string name="web_brand_title">onpath.earth (new tab)</string>
+    <string name="web_product">Planner</string>
+    <string name="web_pair_phone">Pair phone</string>
+    <string name="web_nav_help">Help &amp; credits</string>
+    <string name="web_header_hint">No account · plans stay in this browser</string>
+
+    <!-- the one moment for the app (in the Share dialog, on a shared link) -->
+    <string name="web_app_hint">With the app: offline on the way, navigation, new route without signal.</string>
+    <string name="web_app_hint_button">Get the app</string>
+
+    <!-- map, toolbar, sheet -->
+    <string name="web_map_tools">Map tools</string>
+    <string name="web_undo_title">Undo (Ctrl+Z)</string>
+    <string name="web_redo_title">Redo (Ctrl+Shift+Z)</string>
+    <string name="web_map_content">Map content</string>
+    <string name="web_map_content_title">Points of interest, contour lines, hill shading</string>
+    <string name="web_plan_sheet">Plan</string>
+    <string name="web_sheet_more">Show more</string>
+    <string name="web_sheet_less">Show less</string>
+    <string name="web_share">Share</string>
+    <string name="web_share_needs_two">Set a start and destination first</string>
+    <string name="web_hint_first_point">Click the map where you want to start or go.</string>
+    <string name="web_hint_destination">Click the map to set the destination.</string>
+    <string name="web_marker_title">%1$s – click for options, drag to move</string>
+    <string name="web_grip_title">Drag to change the order (or Arrow up / down)</string>
+    <string name="web_grip_move">Move %1$s</string>
+    <string name="web_delete_point">Delete %1$s</string>
+    <string name="web_activity_chip_desc">Activity: %1$s. Change</string>
+    <string name="web_compass_turned">Map is turned. Click for north up</string>
+    <string name="web_compass_north">Map is north up. Turn it with the right mouse button or two fingers</string>
+    <string name="web_saved_as">Saved as %1$s</string>
+    <string name="web_saved_as_changed">%1$s · changed, not saved</string>
+    <string name="web_hide">Hide</string>
+    <string name="web_google_title">Open in Google Maps (new tab)</string>
+    <string name="web_google_failed">Google Maps could not be opened – please try again.</string>
+
+    <!-- position -->
+    <string name="web_fit_route">Show whole route</string>
+    <string name="web_locate_title">Centre on my position</string>
+    <string name="web_locate_off_title">Location is off or not available here</string>
+    <string name="web_locate_denied_title">Location not allowed in this browser</string>
+    <string name="web_locate_finding">Finding your position…</string>
+    <string name="web_locate_allow">Please allow location when the browser asks at the top of the window.</string>
+    <string name="web_locate_still">Still finding your position – the browser has not found it yet…</string>
+    <string name="web_locate_denied">Location is not allowed for this page. To allow it, click the icon left of the address, turn on Location, then click Locate again.</string>
+    <string name="web_locate_off">Your position is not available – location is off or this device cannot find it.</string>
+    <string name="web_position_unavailable">Your position is not available. Set the start on the map.</string>
+    <string name="web_from_position">From your position</string>
+    <string name="web_from_position_ask">From your position – asks for it</string>
+
+    <!-- engine and planning (status line) -->
+    <string name="web_engine_loading">Loading the routing engine…</string>
+    <string name="web_engine_ready">Routing engine ready (%1$d ms)</string>
+    <string name="web_engine_failed">The routing engine could not be loaded – please reload the page.</string>
+    <string name="web_engine_stopped">The planner stopped unexpectedly – please reload the page.</string>
+    <string name="web_engine_no_answer">The planner did not answer – please reload the page.</string>
+    <string name="web_plan_failed">The route could not be planned. Move a point or try again.</string>
+    <string name="web_planned_in">Planned in %1$d ms</string>
+    <string name="web_planned_in_data">Planned in %1$d ms · routing data %2$s MB in %3$d ms</string>
+    <string name="web_activities_failed">The activities could not be loaded – please reload the page.</string>
+    <string name="web_map_files_missing">Map files not found here: %1$s</string>
+    <string name="web_plan_unreadable">This saved plan could not be read.</string>
+    <!-- a plan from the phone whose routing fingerprint (sync field 7) differs from this page's: one grey line, web-sync.md §5.2 -->
+    <string name="web_routing_other_phone">Planned on the phone with other routing – the route may differ slightly</string>
+    <string name="web_no_name">No name could be proposed – type one.</string>
+
+    <!-- map areas (the strip) -->
+    <string name="web_maps_overview_only">Overview only – set a point here to load the detailed map.</string>
+    <string name="web_maps_not_on_web">The detailed map for this area is not available on the web yet – the overview map is shown.</string>
+    <string name="web_maps_cell_failed">The detailed map for this area could not be loaded – the overview map is shown. Reload the page to try again.</string>
+    <string name="web_maps_quota">Enough new map areas for today in this browser. The OnPath app loads every area – or try again tomorrow.</string>
+    <string name="web_maps_quota_all">The planner has prepared many new map areas today. Try again tomorrow – the OnPath app loads every area.</string>
+
+    <!-- search -->
+    <string name="web_search_type">Type a name or address.</string>
+    <string name="web_search_nothing">Nothing found in the map areas in view.</string>
+    <string name="web_search_online_credit">Online results © OpenStreetMap (Photon)</string>
+    <string name="web_search_unavailable">Online search unavailable.</string>
+
+    <!-- GPX import -->
+    <string name="web_gpx_importing">Importing %1$s…</string>
+    <string name="web_gpx_unreadable">Could not import this file – it could not be opened or read.</string>
+    <string name="web_gpx_imported">Imported “%1$s”</string>
+
+    <!-- Map content -->
+    <string name="web_mc_map">Map</string>
+    <string name="web_mc_find">Find a kind (e.g. water, hut)</string>
+    <string name="web_mc_find_label">Find a kind</string>
+    <string name="web_mc_of">%1$d of %2$d</string>
+    <string name="web_mc_no_match">No kind matches.</string>
+    <string name="web_mc_not_loaded">The map content settings could not be loaded.</string>
+    <string name="web_mc_filter_failed">A map content filter could not be applied.</string>
+
+    <!-- Share (QR code + link) -->
+    <string name="web_share_scan">Scan with the OnPath app</string>
+    <string name="web_share_qr">QR code of the plan link</string>
+    <string name="web_share_text">Anyone with the link can open the plan – it is inside the link, nothing is stored on a server.</string>
+    <string name="web_share_link">Plan link</string>
+    <string name="web_copy_link">Copy link</string>
+    <string name="web_share_system">Share…</string>
+    <string name="web_link_copied">Link copied.</string>
+    <string name="web_copy_by_hand">Press Ctrl+C to copy the selected link.</string>
+
+    <!-- My plans -->
+    <string name="web_plans_sync_now">Sync now</string>
+    <string name="web_sync_paired">Paired</string>
+    <string name="web_saved_short">Saved</string>
+    <string name="web_plans_none">No saved plans yet.</string>
+    <string name="web_plans_open">Open this plan</string>
+    <string name="web_plans_new_name">New name of the plan</string>
+    <string name="web_delete_q">Delete “%1$s”? On the paired phone it goes to the recycle bin for 30 days – restore it there and it comes back here too.</string>
+    <string name="web_keep">Keep</string>
+    <string name="web_delete_q_local">Delete “%1$s” from this browser?</string>
+
+    <!-- Pair phone, sync -->
+    <string name="web_pair_preparing">Preparing…</string>
+    <string name="web_pair_qr">QR code for pairing</string>
+    <string name="web_pair_how">Open OnPath on the phone → %1$s → scan this code.</string>
+    <string name="web_pair_menu_path">☰ → Pair with browser</string>
+    <string name="web_pair_check">Check: %1$s – the app shows the same digits.</string>
+    <string name="web_pair_privacy">Your saved plans and imported tracks are encrypted in this browser and on the phone before they go to the sync server (Cloudflare, EU): only your phone and your browser can read them – we can't. Recorded tours are never sent. Keep this code to yourself: whoever scans it sees your saved plans.</string>
+    <string name="web_pair_link">Pairing link</string>
+    <string name="web_pair_waiting">Waiting for the phone…</string>
+    <string name="web_pair_done">Paired with %1$s.</string>
+    <string name="web_unpair">Unpair</string>
+    <string name="web_join_title">Pairing code</string>
+    <string name="web_join_text">This link pairs a device with your saved plans. Usually you scan it with the OnPath app on your phone (☰ → Pair with browser).</string>
+    <string name="web_join_instead">You can also pair this browser instead – then your saved plans sync here too.</string>
+    <string name="web_join_ok">Pair this browser</string>
+    <string name="web_join_paired">Paired · check digits %1$s</string>
+    <string name="web_sync_no_phone_yet">no phone yet</string>
+    <string name="web_sync_paired_with">Paired with %1$s</string>
+    <string name="web_sync_not_kept">This browser does not keep saved plans after the tab is closed (storage blocked).</string>
+    <string name="web_sync_pair_refused">The sync server refused a new pairing (%1$d). Try again later.</string>
+    <string name="web_sync_pair_cap">Too many new pairings from this network today. Try again tomorrow.</string>
+    <string name="web_sync_pair_offline">Pairing needs the internet. Check the connection and try again.</string>
+    <string name="web_sync_not_a_code">This is not a pairing code of OnPath.</string>
+    <string name="web_sync_unpaired">Unpaired. The plans of %1$s stay in this browser.</string>
+    <string name="web_sync_offline">Offline – your plans sync when the connection is back.</string>
+    <string name="web_sync_failed">Sync did not work this time – it tries again by itself.</string>
+    <string name="web_eye_hotkey">Hold to hide the route – or hold the Space bar</string>
+    <string name="web_name_share">OnPath plan</string>
+    <string name="web_hide_loading">Hide (the map keeps loading)</string>
+    <string name="web_route_changed_elsewhere">Changed on the phone meanwhile – saved as “%1$s”, the other version stays.</string>
+    <string name="web_route_options">Options</string>
+    <string name="web_keys_title">Keyboard shortcuts</string>
+    <string name="web_key_space">Space</string>
+    <string name="web_key_ctrl">Ctrl</string>
+    <string name="web_keys_hide">Hold: hide the route (like the eye)</string>
+    <string name="web_keys_search">Search</string>
+    <string name="web_keys_close">Close a menu or the place card</string>
+    <string name="web_keys_map">Zoom and move the map (click the map first)</string>
+    <string name="web_keys_this">This list</string>
+    <string name="web_save_failed">Not saved – this browser could not store the plan. Try again, or keep it with “Export GPX”.</string>
+    <string name="web_rename_failed">Not renamed – this browser could not store the change. Please try again.</string>
+    <string name="web_delete_failed">Not deleted – this browser could not store the change. Please try again.</string>
+    <string name="web_copy_failed">The copy was not saved – this browser could not store it. Please try again.</string>
+    <string name="web_sync_gone">The connection was ended on the phone.</string>
+    <string name="web_sync_busy">the sync server is busy – it tries again in a minute</string>
+    <string name="web_sync_answered">the sync server answered %1$d</string>
+    <string name="web_sync_unreadable">%1$d synced plans could not be read (made by a newer app?). They are left as they are.</string>
+    <string name="web_device_name">%1$s on %2$s</string>
+    <string name="web_device_browser">Browser</string>
+
+    <!-- Help & credits -->
+    <string name="web_about_title">OnPath planner</string>
+    <string name="web_about_text">The OnPath app's own planning code in your browser. Your plan stays in the link and, once saved, in this browser (and on your paired phone, end-to-end encrypted). No account.</string>
+    <string name="web_about_how">How to plan</string>
+    <string name="web_about_how_1">Click the map to set the start, then the destination and stops; click a point for its menu.</string>
+    <string name="web_about_how_2">Search a place, then add it from its card. Drag ≡ in Points to change the order.</string>
+    <string name="web_about_how_3">Undo / redo, the eye (hold: hide the route) and Map content are in the toolbar at the top.</string>
+    <string name="web_about_how_4">Share: a QR code the OnPath app scans – or pair the phone once (Pair phone, at the top) and save plans in My tours.</string>
+    <string name="web_credit_photon">Search online: Photon by komoot (OpenStreetMap data)</string>
+    <string name="web_credit_maplibre">Map renderer: MapLibre GL JS (BSD licence)</string>
+    <string name="web_credit_font">Typeface: Manrope, © The Manrope Project Authors,</string>
+    <string name="web_phone_title">Phone</string>
+    <string name="web_phone_why">Your plans appear on the phone and here.</string>
+    <string name="web_phone_fresh">Paired · synced %1$s</string>
+    <string name="web_phone_stale">Paired · phone last %1$s</string>
+    <string name="web_phone_stale_why">Open OnPath on the phone, then the plans sync. Changes from here wait until then.</string>
+    <string name="web_phone_browser_synced">Paired · this browser synced %1$s</string>
+    <string name="web_ago_now">just now</string>
+    <string name="web_phone_how_2">They sync while OnPath is open on the phone – and while this page is open.</string>
+    <string name="web_phone_how_3">On a conflict the newer change wins; the older one stays as a copy.</string>
+    <string name="web_phone_privacy">End-to-end encrypted, no account – the server sees no content.</string>
+    <string name="web_phone_more">More</string>
+    <!-- folders, one per phone (owner order A-017) -->
+    <string name="web_folder_none">Without phone</string>
+    <string name="web_folder_phone">Phone</string>
+    <string name="web_folder_paired_on">%1$s · paired %2$s</string>
+    <string name="web_remove_folder">Remove plans of %1$s from this browser</string>
+    <!-- Remove a closed folder that holds routes never sent to its phone: the question (owner 2026-11-02) -->
+    <string name="web_remove_folder_q_one">Remove the plans of %1$s from this browser? 1 plan was never sent to that phone – it would be lost.</string>
+    <string name="web_remove_folder_q">Remove the plans of %1$s from this browser? %2$d plans were never sent to that phone – they would be lost.</string>
+    <string name="web_remove_folder_q_unknown">Remove the plans of %1$s from this browser? Plans never sent to that phone would be lost.</string>
+    <!-- My routes, the open folder empty: the closed folders' routes are still here (owner 2026-11-02) -->
+    <string name="web_plans_old_phone">The plans of %1$s are still in this browser – the Phone window lists them.</string>
+    <string name="web_plans_old_phone_open">Open Phone window</string>
+    <string name="web_copy_suffix">(copy)</string>
+    <string name="web_save_title_phone">Save – sends your changes to %1$s</string>
+    <string name="web_save_title_local">Save the plan in this browser</string>
+    <string name="web_sync_full_hint">Mailbox full – too many saved plans. Delete some on the phone, then save again.</string>
+    <string name="web_pair_other">Pair another phone</string>
+    <!-- Save, Phone, My routes as the owner wants them shown (docs/design/web-sync.md §14.6) -->
+    <string name="web_save_to_phone">Save to phone</string>
+    <string name="web_saved_on_phone">On the phone</string>
+    <string name="web_saved_title_here">Everything is saved in this browser</string>
+    <string name="web_saved_title_phone">Everything is on %1$s</string>
+    <string name="web_phone_synced_ago">synced %1$s</string>
+    <string name="web_phone_last_ago">last %1$s</string>
+    <string name="web_where_browser">In this browser</string>
+    <string name="web_where_phone">On the phone</string>
+    <string name="web_kind_gpx">GPX</string>
+    <!-- a planned route's row in My routes ("Route · date"; the app's tab is "Routes" since main 10b6561e) -->
+    <string name="web_kind_route">Route</string>
+    <string name="web_phone_how_link">How does it work?</string>
+    <!-- a new point far from the plan (docs/design/web-planner.md §15): "Far from your route" -->
+    <string name="web_far_title">Far from your route</string>
+    <string name="web_far_point">Your point %1$s is %2$s from here.</string>
+    <string name="web_far_point_unnamed">Your point is %1$s from here.</string>
+    <string name="web_far_route">Your route near %1$s is %2$s from here.</string>
+    <string name="web_far_route_unnamed">Your route is %1$s from here.</string>
+    <string name="web_far_bike">%1$s by bike</string>
+    <string name="web_far_foot">%1$s on foot</string>
+    <string name="web_far_new">Start a new plan here</string>
+    <string name="web_far_add">Add to the plan</string>
+    <string name="web_route_off_map">Your route is outside the map</string>
+    <string name="web_one_point">1 point · %1$s</string>
+    <string name="web_no_webgl_title">Your browser cannot draw the map</string>
+    <string name="web_no_webgl_text">WebGL2 is missing. Please use a current Chrome, Firefox or Edge and switch on hardware acceleration in its settings.</string>
+    <string name="web_old_browser_title">This browser is too old for the planner</string>
+    <string name="web_old_browser_text">The route planner needs a newer browser: Safari 18.2 or later (iPhone / iPad: iOS 18.2), Chrome or Edge 119, or Firefox 120. Please update your browser – your routes are kept.</string>
+    <!-- a newer planner was deployed while the tab was open (version.ts): one box, the user reloads -->
+    <string name="web_new_version">New version of the planner</string>
+    <string name="web_new_version_detail">Reload to use it – your plan stays.</string>
+    <string name="web_reload">Reload</string>
+    <!-- the name shown for a saved route without one (the app dropped plan_route_default_name with its save dialog) -->
+    <string name="web_route_default_name">Plan</string>
+    <!-- terrain view (owner 2026-11-05): the big elevation profile and the 3D map (terrainview.ts) -->
+    <string name="web_profile_big">Large elevation profile below the map</string>
+    <string name="web_terrain_3d">3D</string>
+    <string name="web_terrain_title">Terrain in 3D</string>
+    <string name="web_terrain_off_title">Back to the flat map</string>
+    <string name="web_terrain_view_only">3D view – just for looking. To plan, switch 3D off.</string>
+</resources>

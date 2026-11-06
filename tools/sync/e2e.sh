@@ -2,13 +2,13 @@
 # End-to-end test of the app's plan sync (plansync/: HTTP client, pass, routes ⇄ items) against the real mailbox
 # (web/host/src/sync.js + its D1 migrations) running in Node on this machine – no phone, no Cloudflare.
 #
-#   tools/sync/e2e.sh [ref]      ref = where sync.js comes from when web/host is not in this checkout (default origin/web-spike)
+#   tools/sync/e2e.sh [ref]      ref = where sync.js comes from when web/host is not in this checkout (default origin/main)
 #
 # Copies sync.js and the migrations to app/build/sync-e2e/, then runs SyncMailboxE2ETest (it starts
 # tools/sync/mailbox-server.mjs with Node ≥ 22.5 – node:sqlite – and skips itself when Node or sync.js is missing).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-ref=${1:-origin/web-spike}
+ref=${1:-origin/main}
 out=app/build/sync-e2e
 rm -rf "$out"; mkdir -p "$out/src" "$out/migrations"
 # every host module (sync.js imports helpers such as maps.js), plus the migrations

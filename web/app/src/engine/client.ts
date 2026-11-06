@@ -1,0 +1,143 @@
+// Promise API around the engine worker. Newer requests supersede older ones in the UI (the caller keeps the last id).
+import type { Activity, EngineReply, EngineRequest, Hit, PlacePreview, PointRows, Progress, SharedPlan } from './types';
+import { t } from '../i18n';
+
+type NoId<T> = T extends unknown ? Omit<T, 'id'> : never;
+
+export class EngineClient {
+  private worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+  private next = 1;
+  private waiting = new Map<number, (r: EngineReply) => void>();
+  private progress = new Map<number, (p: Progress) => void>();
+
+  constructor() {
+    this.worker.onmessage = (ev: MessageEvent<EngineReply>) => {
+      if (ev.data.progress) { this.progress.get(ev.data.id)?.(ev.data.progress); return; } // not the answer yet
+      this.waiting.get(ev.data.id)?.(ev.data);
+      this.waiting.delete(ev.data.id);
+      this.progress.delete(ev.data.id);
+    };
+    // robust first: a crashed worker (failed engine load, a trap the worker could not catch) must never leave the
+    // page waiting forever – every open request gets a plain failure the caller already shows
+    const failAll = (why: string) => {
+      console.error('[engine] ' + why); // reported like the app's Problems log (console in the browser)
+      for (const [id, resolve] of this.waiting) resolve({ id, ok: false, error: t('web_engine_stopped') });
+      this.waiting.clear();
+    };
+    this.worker.onerror = (e) => failAll('worker error: ' + (e.message || 'unknown'));
+    this.worker.onmessageerror = () => failAll('worker message could not be read');
+  }
+
+  /** No answer at all after this long (routing has its own, shorter time limit in the engine) = the worker hangs. */
+  private static readonly NO_ANSWER_MS = 180_000;
+
+  private ask(req: NoId<EngineRequest>, onProgress?: (p: Progress) => void): Promise<EngineReply> {
+    const id = this.next++;
+    if (onProgress) this.progress.set(id, onProgress);
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        if (!this.waiting.delete(id)) return;
+        console.error(`[engine] no answer to "${req.type}" in ${EngineClient.NO_ANSWER_MS / 1000} s`);
+        resolve({ id, ok: false, error: t('web_engine_no_answer') });
+      }, EngineClient.NO_ANSWER_MS);
+      this.waiting.set(id, (r) => { clearTimeout(timer); resolve(r); });
+      this.worker.postMessage({ ...req, id } as EngineRequest);
+    });
+  }
+
+  /** [base] = where engine/ and brouter/ are served; [segments] = rd5 files with HTTP range support. */
+  configure(base: string, segments: string, packed = false, lang = 'en') { return this.ask({ type: 'config', base, segments, packed, lang }); }
+
+  route(points: [number, number][], activity: Activity, sac: number) {
+    return this.ask({ type: 'route', points: enc(points), activity, sac });
+  }
+
+  /** [pinned] = indices of points the route passes exactly (POI / place), as in the app's Planner;
+   *  [rounds] ≥ 1 = a plan the user started: at the time limit the reply's plan is {slow: rounds} (SlowPlan); 0 = never asks. */
+  plan(points: [number, number][], activity: Activity, sac: number, pinned: number[] = [], onProgress?: (p: Progress) => void, names = '', rounds = 0) {
+    return this.ask({ type: 'plan', points: enc(points), activity, sac, pinned: pinned.join(','), names, rounds }, onProgress);
+  }
+
+  /** The plan code (QR code, link) – the app's PlanCode. */
+  async encode(plan: SharedPlan): Promise<string> {
+    const r = await this.ask({ type: 'encode', plan });
+    if (!r.ok || r.code == null) throw new Error(r.error ?? 'no plan code');
+    return r.code;
+  }
+
+  /** One of the app's plan edits (PlanEdits): the new point list. */
+  async edit(op: string, points: [number, number][], index = 0, to = 0): Promise<[number, number][]> {
+    const r = await this.ask({ type: 'edit', op, points: enc(points), index, to });
+    if (!r.ok || r.text == null) return points;
+    return dec(r.text);
+  }
+
+  /** The Points list rows (the app's PlanPoints.rows); [names] = lines "index<TAB>name". */
+  async rows(points: [number, number][], names: string): Promise<PointRows> {
+    const r = await this.ask({ type: 'rows', points: enc(points), names });
+    return r.ok && r.text ? JSON.parse(r.text) : { roundTrip: false, rows: [] };
+  }
+
+  /** Indexes the map areas (cells) not indexed yet; [dir] = folder URL with pois.geojson, base/overlays.pmtiles. */
+  async searchAreas(areas: { key: string; dir: string }[]): Promise<void> { await this.ask({ type: 'searchAreas', areas }); }
+
+  /** Offline hits (the app's index + ranking). */
+  async search(text: string, lat: number, lon: number, route: [number, number][], category = ''): Promise<Hit[]> {
+    const r = await this.ask({ type: 'search', text, lat, lon, route: enc(route), category });
+    return r.ok && r.text ? JSON.parse(r.text) : [];
+  }
+
+  /** Offline + online hits for the last query, given Photon's answer (the app's merge). */
+  async searchOnline(text: string, photon: string, category = ''): Promise<Hit[] | null> {
+    const r = await this.ask({ type: 'searchOnline', text, photon, category });
+    return r.ok && r.text ? JSON.parse(r.text) : null;
+  }
+
+  async placePreview(points: [number, number][], lat: number, lon: number): Promise<PlacePreview> {
+    const r = await this.ask({ type: 'placePreview', points: enc(points), lat, lon });
+    return r.ok && r.text ? JSON.parse(r.text) : { subtitle: '' };
+  }
+
+  /** The plan in a link or code, or null when there is none. */
+  async parse(text: string): Promise<SharedPlan | null> {
+    const r = await this.ask({ type: 'parse', text });
+    return r.ok ? r.shared ?? null : null;
+  }
+
+  /** One of the app's small UI rules by name (worker CALLS): undo / redo, gestures, menus, Google link. */
+  async call(fn: string, ...args: (string | number | boolean)[]): Promise<string> {
+    const r = await this.ask({ type: 'call', fn, args });
+    if (!r.ok) throw new Error(r.error ?? fn + ' failed');
+    return r.text ?? '';
+  }
+
+  /** Downloads the routing data around [lat],[lon] ahead of the first plan; resolves with the bytes fetched. */
+  async prefetch(lat: number, lon: number): Promise<number> {
+    const r = await this.ask({ type: 'prefetch', lat, lon });
+    return r.stats?.bytesFetched ?? 0;
+  }
+
+  /** A GPX file read with the app's GpxParser + SportType (WebImport.kt): the track panel's JSON, or {error}. */
+  async gpxRead(data: Uint8Array, fileName: string, activity: Activity, sac: number): Promise<string> {
+    const r = await this.ask({ type: 'gpxRead', data, fileName, activity, sac });
+    if (!r.ok || r.text == null) throw new Error(r.error ?? 'GPX not read');
+    return r.text;
+  }
+
+  /** The app's TrackToPlan for [track] (routing data along it fetched first): {points} or {error}. */
+  async planFromTrack(track: [number, number][], activity: Activity, sac: number): Promise<string> {
+    const r = await this.ask({ type: 'planFromTrack', points: enc(track), activity, sac });
+    if (!r.ok || r.text == null) throw new Error(r.error ?? 'track not planned');
+    return r.text;
+  }
+
+  /** Index where a clicked point goes (the app's WaypointInsertion rule). */
+  async insertIndex(points: [number, number][], lat: number, lon: number, lineSnapM: number): Promise<number> {
+    const r = await this.ask({ type: 'insert', points: enc(points), lat, lon, lineSnapM });
+    return r.index ?? points.length;
+  }
+}
+
+const enc = (points: [number, number][]) => points.map(([lat, lon]) => `${lat.toFixed(6)},${lon.toFixed(6)}`).join(';');
+const dec = (text: string): [number, number][] =>
+  text ? text.split(';').map((p) => p.split(',').map(Number) as [number, number]) : [];

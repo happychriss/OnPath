@@ -1,4 +1,4 @@
-# The app files the web planner compiles as they are (web/engine/build.gradle.kts on web-spike, tools/routing/jvm-test)
+# The app files the web planner compiles as they are (web/engine/build.gradle.kts, tools/routing/jvm-test)
 # and the app's unit tests the web build runs for them – ONE list for both builds (review Arch 5, owner 2026-11-01).
 # Paths below app/src/main/java/com/onpath/app/ (files) and app/src/test/java/com/onpath/app/ (tests).
 # The app's SharedFilesRuleTest checks on every gate: each file exists, imports only what the web build provides
