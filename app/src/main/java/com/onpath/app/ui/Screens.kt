@@ -29,6 +29,8 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.ContentCopy
@@ -305,10 +307,14 @@ fun RoutesScreen(
     onTab: (RoutesTab) -> Unit = {},
     /** Routes from the browser not opened yet (tour uuid → mark): a "New" / "Changed" tag after the name (plansync/SyncMarks). */
     marks: Map<String, SyncMark> = emptyMap(),
+    /** The search box's text at the start (screenshots). */
+    initialQuery: String = "",
 ) {
     var confirmDelete by remember { mutableStateOf(initialConfirmDelete) }
     var tab by remember { mutableStateOf(initialTab) }
-    val shown = remember(tours, tab) { RoutesTab.filter(tours, tab) }
+    // the search box (owner 2026-11-06): kept across the tabs, filters the list of the tab shown
+    var query by remember { mutableStateOf(initialQuery) }
+    val shown = remember(tours, tab, query) { RoutesTab.search(RoutesTab.filter(tours, tab), query) }
     var rename by remember { mutableStateOf(initialRename) }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.systemBarsPadding()) {
@@ -343,12 +349,14 @@ fun RoutesScreen(
                     ) { Text(str(if (t == RoutesTab.PLANNED) Res.string.routes_tab_planned else Res.string.routes_tab_done)) }
                 }
             }
+            if (tours.isNotEmpty()) RoutesSearchField(query, { query = it }, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
             if (busy == Busy.EXPORT) Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 20.dp),
                 verticalAlignment = Alignment.CenterVertically) { BusyContent(Busy.EXPORT.text) }
             note?.let { NoticeLine(it, Modifier.padding(horizontal = 20.dp)) }
             if (shown.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text(str(if (tab == RoutesTab.PLANNED) Res.string.routes_empty_planned else Res.string.routes_empty_done),
+                    Text(if (query.isNotBlank()) str(Res.string.routes_search_none, query.trim())
+                        else str(if (tab == RoutesTab.PLANNED) Res.string.routes_empty_planned else Res.string.routes_empty_done),
                         color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
             } else {
@@ -377,6 +385,19 @@ fun RoutesScreen(
         }), t.name, confirmLabel = str(Res.string.common_rename),
             onDone = { rename = null; onRename(t, it) }, onDismiss = { rename = null })
     }
+}
+
+/** Meine Touren's search box: one line, a magnifier, ✕ clears (owner 2026-11-06). */
+@Composable
+private fun RoutesSearchField(query: String, onQuery: (String) -> Unit, modifier: Modifier = Modifier) {
+    OutlinedTextField(value = query, onValueChange = onQuery, singleLine = true, modifier = modifier.fillMaxWidth(),
+        placeholder = { Text(str(Res.string.routes_search_hint), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        leadingIcon = { Icon(Icons.Filled.Search, null) },
+        trailingIcon = if (query.isNotEmpty()) ({
+            IconButton(onClick = { onQuery("") }, Modifier.size(48.dp)) { Icon(Icons.Filled.Close, str(Res.string.search_clear_query)) }
+        }) else null,
+        shape = RoundedCornerShape(28.dp),
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search))
 }
 
 /** Stays until answered: a tap outside does nothing, Back = Cancel. Deletes only on "Delete". */

@@ -69,6 +69,8 @@ class GermanScreenshotTest {
     @Test fun planSaveDialog() = shots.planSaveDialog()
     @Test fun planSaveCopyDialog() = shots.planSaveCopyDialog()
     @Test fun routesItemMenuPlanned() = shots.routesItemMenuPlanned()
+    @Test fun routesSearch() = shots.routesSearch()
+    @Test fun routesSearchNothing() = shots.routesSearchNothing()
     @Test fun planDiscardAsk() = shots.planDiscardAsk()
     @Test fun planChangedNotSaved() = shots.planChangedNotSaved()
     @Test fun planUnsavedLongHike() = shots.planUnsavedLongHike()

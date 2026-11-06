@@ -1112,6 +1112,16 @@ class ScreenshotTest {
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialTab = RoutesTab.DONE) }
     }
 
+    /** Meine Touren with a search (owner 2026-11-06): only the matching tours of the tab. */
+    @Test fun routesSearch() = paparazzi.snapshot {
+        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialQuery = tourList.first { it.kind != TourKind.RECORDED }.name.take(4)) }
+    }
+
+    /** A search that finds nothing: "Nichts mit „…“ hier". */
+    @Test fun routesSearchNothing() = paparazzi.snapshot {
+        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialQuery = "Zugspitze") }
+    }
+
     /** Planned tab with nothing planned yet (recorded tours exist). */
     @Test fun toursEmptyPlanned() = paparazzi.snapshot {
         OnPathTheme { RoutesScreen(tourList.filter { it.kind == TourKind.RECORDED }, {}, {}, {}, {}, {}) }

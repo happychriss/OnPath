@@ -30,6 +30,8 @@
     <string name="routes_title">Meine Touren</string>
     <string name="routes_importing">Wird importiert…</string>
     <string name="routes_import_gpx">GPX importieren</string>
+    <string name="routes_search_hint">Touren durchsuchen</string>
+    <string name="routes_search_none">Nichts mit „%1$s“ hier</string>
     <string name="routes_tab_planned">Geplant</string>
     <string name="routes_tab_done">Gemacht</string>
     <string name="routes_empty_planned">Noch keine Pläne.\nSpeichere einen Plan oder importiere eine GPX-Datei.</string>
