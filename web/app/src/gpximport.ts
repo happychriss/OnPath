@@ -24,6 +24,11 @@ export interface GpxHost {
   /** The track's route points become the plan (one undo step); [names] = point index → name (a plan GPX's <wpt>). */
   /** [pinned] per point: passed exactly (an exported plan's <type>pinned</type>, PlanGpx.pinnedOf). */
   plan(points: LatLon[], title: string, names?: (string | null)[], pinned?: boolean[]): Promise<void>;
+  /**
+   * Before the track replaces the plan: an unsaved plan asks "Plan speichern?" first (the app's planFromShown →
+   * unlessUnsaved, save paths P3, 2026-11-06); false = cancelled, nothing changes.
+   */
+  mayReplacePlan?(): Promise<boolean>;
   status(msg: string, kind?: 'info' | 'error'): void;
   /** A file was imported and shown (not a synced track opened again): the page keeps it in My routes. */
   imported?(t: Track): void;
@@ -154,6 +159,7 @@ export function setupGpxImport(h: GpxHost) {
     const planBtn = p.querySelector<HTMLButtonElement>('#planFromTrack');
     if (planBtn) planBtn.onclick = async () => {
       if (planBtn.disabled) return;
+      if (h.mayReplacePlan && !(await h.mayReplacePlan())) return;
       // a plan GPX (exported by OnPath, app or web): the plan comes back exactly, with its names – no fitting
       // (the app's planFromShown with PlanGpx.stopsOf)
       if (t.stops) { close(); await h.plan(t.stops.map((w) => [w.lat, w.lon] as LatLon), t.name, t.stops.map((w) => w.name), t.stops.map((w) => !!w.pinned)); return; }

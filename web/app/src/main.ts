@@ -1651,6 +1651,7 @@ const gpxImport = setupGpxImport({
     state.title = title; forgetSaved();
     await commit(points, names ? points.map((_, i) => ({ pinned: !!pinned?.[i], name: names[i] ?? undefined })) : undefined);
   },
+  mayReplacePlan: async () => state.points.length === 0 || saveState !== 'save' || await askDiscard(), // the app's unlessUnsaved (save paths P3)
   // A-017 rule 14: an imported track is kept in the open folder and goes to the phone with Save
   imported: (tr) => {
     syncReady.then(async (ok) => {

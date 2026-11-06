@@ -214,15 +214,24 @@ for (let i = 0; i < 60 && !trackStats; i++) {
 check(!!trackStats && trackStats.m > 2300 && trackStats.m < 2500 && trackStats.up > 0, `imported track: My routes keeps its length and climb (${JSON.stringify(trackStats)})`);
 // "Plan a route from it" shows the app's modal box with Cancel; Cancel keeps the track and the plan as they were
 const beforePins = await pins();
-const box = await page.evaluate(() => { document.getElementById('planFromTrack').click();
-  const d = document.querySelector('dialog.trackbusy[open]'); const text = d?.textContent ?? '';
+const box = await page.evaluate(async () => {
+  document.getElementById('planFromTrack').click();
+  document.querySelector('dialog.discard[open] #discardOk')?.click(); // Discard: the plan may go
+  let d = null;
+  for (let i = 0; i < 200 && !d; i++) { d = document.querySelector('dialog.trackbusy[open]'); if (!d) await new Promise((r) => setTimeout(r, 0)); }
+  const text = d?.textContent ?? '';
   document.getElementById('cancelTrackPlan')?.click(); return text; });
 check(/Making a plan from the tour/.test(box) && /Cancel/.test(box), `Plan a route from it: the modal box with Cancel ("${box.replace(/\s+/g, ' ').trim().slice(0, 60)}…")`);
 await page.waitForFunction(() => !document.getElementById('planFromTrack')?.disabled, null, { timeout: 120_000 }).catch(() => {});
 await page.waitForTimeout(500);
 check(!!(await page.$('#trackPanel')) && await pins() === beforePins && !(await page.$('dialog.trackbusy')), 'Cancel: the track stays, the plan is not replaced, the box is gone');
-// … "Plan a route from it": the app's TrackToPlan
-await page.click('#planFromTrack');
+// … "Plan a route from it": the app's TrackToPlan (Discard when "Save plan?" asks)
+const planFrom = async () => {
+  await page.click('#planFromTrack');
+  const a = await page.waitForSelector('dialog.discard[open]', { timeout: 1_500 }).catch(() => null);
+  if (a) await page.click('dialog.discard #discardOk');
+};
+await planFrom();
 await page.waitForFunction(() => !document.getElementById('trackPanel'), null, { timeout: 120_000 });
 await planned();
 const n = await pins();
@@ -249,8 +258,17 @@ await page.evaluate(async (text) => {
 await page.waitForSelector('#trackPanel');
 const tp2 = await page.textContent('#trackPanel');
 check(tp2.includes(planDist) && !tp2.includes('Activity set to'), `re-import of the export: same ${planDist}, activity unchanged (no grey line)`);
-// "Plan a route from it" on an OnPath plan GPX: its <wpt> come back as the plan, exactly (PlanGpx.stopsOf) – no fitting
+// over the plan made from the track (not saved), "Plan a route from it" asks "Save plan?" first (the app's planFromShown
+// → unlessUnsaved, save paths P3, 2026-11-06); Cancel changes nothing, Discard goes on
+const pinsUnsaved = await pins();
 await page.click('#planFromTrack');
+const ask = await page.waitForSelector('dialog.discard[open]', { timeout: 5_000 }).catch(() => null);
+check(!!ask && (await ask.textContent()).includes('Save plan?'), 'Plan a route from it over an unsaved plan: "Save plan?" first (save paths P3)');
+if (ask) await page.click('dialog.discard #discardCancel');
+check(!!(await page.$('#trackPanel')) && await pins() === pinsUnsaved && await page.evaluate(() => location.hash) === planHash,
+  'Save plan? → Cancel: the track panel and the plan stay');
+// "Plan a route from it" on an OnPath plan GPX: its <wpt> come back as the plan, exactly (PlanGpx.stopsOf) – no fitting
+await planFrom();
 await page.waitForFunction(() => !document.getElementById('trackPanel'), null, { timeout: 60_000 });
 await planned();
 check(await pins() === n && await page.evaluate(() => location.hash) === planHash, `re-import → plan: the same ${n} route points (the plan GPX's <wpt>, no fitting)`);
@@ -275,7 +293,7 @@ const gpx2 = fs.readFileSync(await dl2.path(), 'utf8');
 check((gpx2.match(/<type>pinned<\/type>/g) ?? []).length === 1, 'Export GPX: the pinned point as <wpt><type>pinned</type>');
 await page.evaluate(async (text) => { await window.__gpx.importFile(new File([text], 'pins.gpx', { type: 'application/gpx+xml' })); }, gpx2);
 await page.waitForSelector('#trackPanel');
-await page.click('#planFromTrack');
+await planFrom();
 await page.waitForFunction(() => !document.getElementById('trackPanel'), null, { timeout: 60_000 });
 await planned();
 const pinsBack = await page.evaluate(() => window.__state.meta.map((m) => !!m.pinned));
