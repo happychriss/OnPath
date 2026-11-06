@@ -379,7 +379,8 @@ private fun TurnCard(t: TurnHint) {
             // the way word goes on the same line as the direction ("Links auf den Radweg"): the card never grows, a long
             // label ends in "…" (owner: nothing jumps)
             Column(Modifier.weight(1f)) {
-                Text(turnDistance(t.distanceM), style = MaterialTheme.typography.headlineMedium)
+                Text(instrument(turnDistance(t.distanceM), MaterialTheme.typography.headlineMedium),
+                    style = MaterialTheme.typography.headlineMedium)
                 StopText(t.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
@@ -420,8 +421,8 @@ private fun StopAheadRow(r: StopRow) {
             modifier = Modifier.weight(1f))
         Spacer(Modifier.width(8.dp))
         Column(horizontalAlignment = Alignment.End) {
-            Text(Format.distance(r.stop.distanceM), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold,
-                maxLines = 1, softWrap = false)
+            Text(instrument(Format.distance(r.stop.distanceM), MaterialTheme.typography.bodyLarge),
+                style = MaterialTheme.typography.bodyLarge, maxLines = 1, softWrap = false)
             r.arriveAt?.let { Text(str(Res.string.nav_stop_arrive, it), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false) }
         }
@@ -524,16 +525,17 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         // (small phone, long values) the distance wraps under the time – same size, never smaller.
                         val dim = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(Format.durationShort(g.timeS), style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false,
+                            // instrument numbers (owner 2026-11-06): equal-width digits, nothing jiggles while counting
+                            Text(instrument(Format.durationShort(g.timeS), MaterialTheme.typography.titleLarge),
+                                style = MaterialTheme.typography.titleLarge, maxLines = 1, softWrap = false,
                                 color = if (paused) dim else Color.Unspecified)
-                            Text(Format.distance(g.distanceM), style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false,
+                            Text(instrument(Format.distance(g.distanceM), MaterialTheme.typography.titleLarge),
+                                style = MaterialTheme.typography.titleLarge, maxLines = 1, softWrap = false,
                                 color = if (paused) dim else Color.Unspecified)
                         }
                         if (paused) Text(timePausedText(g, ui.waitingGps), style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        else Text("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}",
+                        else Text(instrument("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}", MaterialTheme.typography.bodyLarge),
                             style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }

@@ -136,12 +136,17 @@ fun ElevationProfile(
             val t = if (e == data.max) maxT else measurer.measure("${e.toInt()} m", labelStyle)
             drawText(t, topLeft = Offset(0f, (g.y(e) - t.size.height / 2).coerceIn(0f, (bottom - t.size.height).coerceAtLeast(0f))))
         }
-        val endLabel = measurer.measure(Format.distance(data.total), labelStyle)
+        val endLabel = measurer.measure(instrument(Format.distance(data.total), labelStyle), labelStyle)
         drawText(endLabel, topLeft = Offset(size.width - endLabel.size.width, bottom + 1.dp.toPx()))
         drawText(measurer.measure("0", labelStyle), topLeft = Offset(left, bottom + 1.dp.toPx()))
 
-        // area + line (cached paths)
+        // area + line (cached paths): the fill fades from the line's colour to nothing, steeper stretches a bit stronger
+        // (owner 2026-11-06, polish 8 – smoothed over ~100 m, [ProfileFill])
         drawPath(g.area, g.areaBrush)
+        g.steepFill?.forEachIndexed { k, p ->
+            if (k > 0 && !p.isEmpty) drawPath(p, Brush.verticalGradient(
+                listOf(color.copy(alpha = ProfileFill.EXTRA_ALPHA * k), color.copy(alpha = 0f)), top, bottom))
+        }
         if (g.byClass == null) drawPath(g.line, color, style = g.lineStroke)
         else g.byClass.forEachIndexed { k, p -> if (!p.isEmpty) drawPath(p, steepColor(STEEP_ORDER[k], color), style = g.lineStroke) }
 
@@ -151,7 +156,9 @@ fun ElevationProfile(
             val cx = g.x(m.distanceM); val cy = g.y(eleAt(data, m.distanceM))
             drawCircle(Color.White, 8.dp.toPx(), Offset(cx, cy))
             drawCircle(if (m.goal) OnPathColors.PointGoal else OnPathColors.PointStop, 6.5.dp.toPx(), Offset(cx, cy))
-            if (!m.goal) {
+            // the goal: a small flag like on the map and in Navigate (owner 2026-11-06, polish 7)
+            if (m.goal) drawPath(GoalFlag.path(cx, cy, 9.dp.toPx()), Color.White)
+            else {
                 val t = measurer.measure(m.number.toString(), markStyle)
                 drawText(t, topLeft = Offset(cx - t.size.width / 2f, cy - t.size.height / 2f))
             }
@@ -162,7 +169,7 @@ fun ElevationProfile(
             drawLine(Color(0xFF333333), Offset(cx, top), Offset(cx, bottom), 1.5f)
             drawCircle(Color.White, 6.dp.toPx(), Offset(cx, cy))
             drawCircle(color, 4.dp.toPx(), Offset(cx, cy))
-            val t = measurer.measure("${data.ele[i].toInt()} m · ${Format.distance(data.dist[i])}", labelStyle)
+            val t = measurer.measure(instrument("${data.ele[i].toInt()} m · ${Format.distance(data.dist[i])}", labelStyle), labelStyle)
             val tx = (cx - t.size.width / 2).coerceIn(left, (size.width - t.size.width).coerceAtLeast(left))
             drawRect(Color(0xEEFFFFFF), Offset(tx - 4, top), androidx.compose.ui.geometry.Size(t.size.width + 8f, t.size.height.toFloat()))
             drawText(t, topLeft = Offset(tx, top))
@@ -183,6 +190,8 @@ internal class ProfileCache(private val data: ProfileData, private val steep: Li
         val line: Path, val area: Path, val areaBrush: Brush,
         /** Steepness classes (FLAT, MODERATE, STEEP, VERY_STEEP) as one path each; null = one colour. */
         val byClass: List<Path>?, val lineStroke: Stroke,
+        /** The fill under the line per [ProfileFill] level (0 = none extra); null without steepness. */
+        val steepFill: List<Path>? = null,
     )
     private var key: List<Float>? = null
     private var geometry: Geometry? = null
@@ -229,10 +238,35 @@ internal class ProfileCache(private val data: ProfileData, private val steep: Li
             }
             paths
         }
+        // the fill's extra strength per kept span: the strongest smoothed level of the segments in it; equal neighbours
+        // join into one shape (no seams, no stripes)
+        val steepFill = steep?.let { s ->
+            val level = ProfileFill.levels(s, data.dist)
+            val paths = List(ProfileFill.LEVELS) { Path() }
+            var j = 0
+            while (j < keep.size - 1) {
+                fun spanLevel(q: Int): Int {
+                    var k = 0
+                    for (i in keep[q] until minOf(keep[q + 1], level.size)) if (level[i] > k) k = level[i]
+                    return k
+                }
+                val k = spanLevel(j)
+                var e = j + 1
+                while (e < keep.size - 1 && spanLevel(e) == k) e++
+                if (k > 0) paths[k].apply {
+                    moveTo(x(data.dist[keep[j]]), bottom)
+                    for (q in j..e) lineTo(x(data.dist[keep[q]]), y(data.ele[keep[q]]))
+                    lineTo(x(data.dist[keep[e]]), bottom); close()
+                }
+                j = e
+            }
+            paths
+        }
         val g = Geometry(x, y, line, area,
-            Brush.verticalGradient(listOf(color.copy(alpha = 0.35f), color.copy(alpha = 0.05f)), top, bottom),
+            Brush.verticalGradient(listOf(color.copy(alpha = ProfileFill.BASE_ALPHA), color.copy(alpha = 0f)), top, bottom),
             byClass,
-            if (byClass == null) Stroke(width = lineW) else Stroke(width = steepW, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            if (byClass == null) Stroke(width = lineW) else Stroke(width = steepW, cap = StrokeCap.Round, join = StrokeJoin.Round),
+            steepFill)
         key = k
         geometry = g
         return g
@@ -308,4 +342,57 @@ internal object ProfileAxis {
      */
     fun labels(min: Double, max: Double, yMin: Float, yMax: Float, textH: Float): List<Double> =
         if (min.toInt() != max.toInt() && kotlin.math.abs(yMin - yMax) >= textH * 1.2f) listOf(min, max) else listOf(max)
+}
+
+/**
+ * The profile's fill (owner 2026-11-06, polish 8): [BASE_ALPHA] of the line's colour at the top fading to nothing, plus
+ * [EXTRA_ALPHA] per steepness level (5–10 %, 10–15 %, > 15 %) where it is steep. The levels come from the 100 m windowed
+ * steepness ([RouteSummary.steepness]) and a run shorter than [MIN_RUN_M] takes its neighbour's level – so a short
+ * DEM bump never paints a stripe. Pure, unit-tested.
+ */
+internal object ProfileFill {
+    const val BASE_ALPHA = 0.30f
+    const val EXTRA_ALPHA = 0.08f
+    const val LEVELS = 4
+    const val MIN_RUN_M = 100.0
+
+    /** Per segment (i → i + 1) its level 0..3, short runs smoothed away. */
+    fun levels(steep: List<RouteSummary.Steepness>, dist: DoubleArray): IntArray {
+        val n = minOf(steep.size, dist.size - 1).coerceAtLeast(0)
+        val out = IntArray(n) { steep[it].ordinal }
+        if (n == 0) return out
+        // runs of equal level: [start, end)
+        val runs = mutableListOf<IntArray>()
+        var a = 0
+        for (i in 1..n) if (i == n || out[i] != out[a]) { runs += intArrayOf(a, i); a = i }
+        if (runs.size < 2) return out
+        for ((r, run) in runs.withIndex()) {
+            val len = dist[run[1]] - dist[run[0]]
+            if (len >= MIN_RUN_M) continue
+            // a short run takes the lower of its neighbours' levels (never invents steepness)
+            val prev = runs.getOrNull(r - 1)?.let { out[it[0]] }
+            val next = runs.getOrNull(r + 1)?.let { out[it[0]] }
+            val to = listOfNotNull(prev, next).minOrNull() ?: continue
+            for (i in run[0] until run[1]) out[i] = to
+        }
+        return out
+    }
+}
+
+/** The goal's flag (Material "flag", 24-unit grid) centred on (cx, cy), [size] px high – profile and map draw the same. */
+internal object GoalFlag {
+    /** The outline as (x, y) pairs on the 24 grid. */
+    val OUTLINE = floatArrayOf(14.4f, 6f, 14f, 4f, 5f, 4f, 5f, 21f, 7f, 21f, 7f, 14f, 12.6f, 14f, 13f, 16f, 20f, 16f, 20f, 6f)
+
+    fun path(cx: Float, cy: Float, size: Float): Path {
+        val k = size / 17f // the flag spans 4..21 on the grid
+        val ox = cx - 12.5f * k; val oy = cy - 12.5f * k
+        return Path().apply {
+            for (i in OUTLINE.indices step 2) {
+                val px = ox + OUTLINE[i] * k; val py = oy + OUTLINE[i + 1] * k
+                if (i == 0) moveTo(px, py) else lineTo(px, py)
+            }
+            close()
+        }
+    }
 }
