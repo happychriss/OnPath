@@ -83,10 +83,13 @@ await again.evaluate(() => window.__map.jumpTo({ center: [11.141, 46.7075], zoom
 // project() gives canvas pixels; the mouse clicks page pixels – the canvas starts below the top bar (was off by 56 px)
 const px = await again.evaluate((ps) => { const r = window.__map.getCanvas().getBoundingClientRect();
   return ps.map(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x + r.left, q.y + r.top]; }); }, [p1, p2]);
+// what is under each click (the map's canvas, or a box over it) – said when a click is lost (CI 2026-11-03 / 11-05)
+const under = await again.evaluate((ps) => ps.map(([x, y]) => { const e = document.elementFromPoint(x, y); return e ? `${e.tagName.toLowerCase()}.${[...e.classList].join('.')}` : '-'; }), px);
 await again.mouse.click(px[0][0], px[0][1]); await again.mouse.click(px[1][0], px[1][1]);
 await again.waitForFunction(() => window.__state.points.length === 4, null, { timeout: 60_000 }).catch(() => {});
 const order = await again.evaluate(() => window.__state.points.map(([la, lo]) => [Number(lo.toFixed(3)), Number(la.toFixed(3))]));
 console.log('after two quick clicks:', JSON.stringify(order));
+if (order.length !== 4) console.log('  under the clicks:', JSON.stringify(under), 'boxes now:', JSON.stringify(await again.evaluate(() => [...document.querySelectorAll('.msgcard')].map((c) => c.textContent.trim()))));
 // the points may be snapped onto a path – compare which click each one is closer to
 const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 check(order.length === 4 && d(order[2], p1) < d(order[2], p2) && d(order[3], p2) < d(order[3], p1), 'two quick clicks: the second is the new destination (not put before the first)');
@@ -101,10 +104,14 @@ const after = await vis();
 check(whileHeld === 'none' && after === 'visible', `Space held hides the route, let go shows it (${whileHeld} → ${after})`);
 check((await again.getAttribute('#eye', 'title')).includes('Space'), 'the eye\'s tooltip names the Space bar');
 // ---- 5b2: / = search, F = whole route, ? = the list (owner 2026-11-01) ----
+// the four points' plan done first: a route arriving during the fit is a camera rule of its own, not the key's
+await again.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1', null, { timeout: 120_000 }).catch(() => {});
 await again.locator('#map canvas').focus().catch(() => {});
 await again.evaluate(() => window.__map.jumpTo({ center: [11.0, 46.5], zoom: 9 })); // away from the route
 await again.keyboard.press('f');
-await again.waitForTimeout(1500);
+// until the fit's animation has ended – a fixed 1.5 s read the camera half way on a slow CI machine (CI 2026-11-06)
+await again.waitForTimeout(100);
+await again.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 20_000 }).catch(() => {});
 const fitted = await again.evaluate(() => { const b = window.__map.getBounds(); return b.contains([11.15, 46.70]) && window.__map.getZoom() > 11; });
 check(fitted, 'F shows the whole route');
 await again.locator('#map canvas').focus().catch(() => {});

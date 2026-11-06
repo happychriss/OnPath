@@ -235,7 +235,7 @@ await page.waitForFunction(() => document.body.dataset.engine === 'ready', null,
 // wait for the link's plan itself – the old plan's summary is still there while the new one is planned
 await page.waitForFunction(() => window.__state?.meta?.[1]?.pinned === true && document.body.dataset.planning !== '1', null, { timeout: 120_000 })
   .catch(async (e) => { // what the page shows when the link's plan does not arrive (CI only, 2026-11-06)
-    console.log('state at timeout:', JSON.stringify(await page.evaluate(() => ({ meta: window.__state?.meta, points: window.__state?.points,
+    console.log('state at timeout:', JSON.stringify(await page.evaluate(() => ({ hash: location.hash, meta: window.__state?.meta, points: window.__state?.points,
       planning: document.body.dataset.planning, status: document.getElementById('status')?.textContent, wait: document.querySelector('.wait-card, #waitCard')?.textContent }))));
     console.log('page errors so far:', JSON.stringify(errors));
     throw e;

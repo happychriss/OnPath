@@ -834,8 +834,12 @@ async function rememberInAddress() {
   if (!linkChecked) return;
   const page = location.href.split('#')[0];
   if (!state.points.length) { if (location.hash) history.replaceState(null, '', page); storeDraft(''); return; }
+  const asked = location.href;
   if (!(await ready)) return;
   const code = await engine.encode(sharedPlan());
+  // the address changed while the engine encoded (a plan link opened, the hash typed): that newer address wins – writing
+  // the old plan over it would make its hashchange see "our own address update" and drop the link (CI 2026-11-06)
+  if (location.href !== asked) return;
   history.replaceState(null, '', page + '#p=' + code);
   storeDraft(code);
 }
@@ -1028,6 +1032,9 @@ addEventListener('online', () => { dataRetryFor = ''; retryMissingData(); });
 async function adoptSnapped(routed: LatLon[], snapped: LatLon[]) {
   if (snapped.length !== routed.length || state.points !== routed) return;
   const wasSaved = state.savedCode != null && (await untitled(sharedPlan())) === (await savedUntitled(state.savedCode));
+  // asked again after the engine answered: an edit queued behind this plan (a second quick click) may have set newer
+  // points meanwhile – the old snapped list over them would drop that point (robust-smoke, CI 2026-11-03 / 11-05)
+  if (state.points !== routed) return;
   state.points = snapped.map(([la, lo]) => [la, lo] as LatLon);
   state.points.forEach((p, i) => known.set(key(p), state.meta[i]));
   if (linkTitle && linkTitle.at === enc(routed)) linkTitle = { ...linkTitle, at: enc(state.points) };

@@ -78,6 +78,11 @@ async function renameOpen(P, name) {
   await until(P, async (n) => (await window.__sync.list()).some((p) => p.title === n), name);
 }
 /** The shown (new) route saved as [name]: Save, the dialog, [name], Save (paired, that also sends). */
+/** Save → the phone is done: a sync round ended after [sendMark] and nothing waits any more. Waiting for pending === 0
+ *  alone passed too early – the page's status still showed the count from before the save (CI 2026-11-05). */
+const sendMark = (P) => P.evaluate(() => { window.__sendMark = window.__sync.status.lastSync ?? 0; });
+const sent = (P) => P.waitForFunction(() => (window.__sync.status.lastSync ?? 0) > window.__sendMark && window.__sync.status.pending === 0
+  && !window.__sync.status.full, null, { timeout: 30_000 }).catch(async () => console.log('  (no send round seen after Save:', JSON.stringify(await P.evaluate(() => window.__sync.status)) + ')'));
 async function saveAs(P, name) {
   const n = (await P.evaluate(async () => (await window.__sync.list()).length));
   await P.click('#menuSavePlan');
@@ -240,9 +245,10 @@ for (const n of ['Altroute', 'Zweitroute']) {
 row = await listRow(A, 'Handweg');
 check(row?.where === PHONE && !row.bold && !/New from the phone/.test(row.text), `the phone's route: 📱 only, not bold, no "New from the phone" mark (${JSON.stringify(row)})`);
 await A.click('#closePlans');
+await sendMark(A);
 await A.click('#menuSavePlan'); // one click sends everything waiting – no field (nothing new on the shown route)
 check(await A.locator('dialog.savename[open]').count() === 0, 'only waiting routes: Save sends at once, no name dialog');
-await A.waitForFunction(() => window.__sync.status.pending === 0, null, { timeout: 30_000 }).catch(() => {});
+await sent(A);
 await phone.round();
 check(JSON.stringify(await phone.titles()) === '["Altroute","Handweg","Zweitroute"]', 'one click on "Save to phone": both routes are on the phone ' + JSON.stringify(await phone.titles()));
 await A.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'done', null, { timeout: 30_000 }).catch(() => {});
@@ -336,8 +342,9 @@ await A.waitForFunction(() => [...document.querySelectorAll('#planList .name')].
 row = await listRow(A, 'Handweg hier');
 check(row?.where === BOTH && row.bold && (await saveBtn(A)).state === 'dark', `⋮ → Rename: bold, 🖥 📱, Save dark (${JSON.stringify(row)})`);
 await A.click('#closePlans');
+await sendMark(A);
 await A.click('#menuSavePlan');
-await A.waitForFunction(() => window.__sync.status.pending === 0, null, { timeout: 30_000 }).catch(() => {});
+await sent(A);
 await phone.round();
 check((await phone.titles()).includes('Handweg hier'), 'Save to phone sent the new name back');
 await menu(A, '#menuPlans');
@@ -361,8 +368,9 @@ await A.evaluate((i) => window.__sync.rename(i, 'Browser name'), wid);
 await syncNow(A);
 const want = '["Browser name","Handweg hier","Phone name (copy)","Vom Handy","Zweitroute"]';
 check(JSON.stringify(await titles(A)) === want, 'conflict: the newer wins, the older stays as a copy ' + JSON.stringify(await titles(A)));
+await sendMark(A);
 await A.click('#menuSavePlan');
-await A.waitForFunction(() => window.__sync.status.pending === 0, null, { timeout: 30_000 }).catch(() => {});
+await sent(A);
 await phone.round();
 check(JSON.stringify(await phone.titles()) === want, 'after Save the phone has the same two ' + JSON.stringify(await phone.titles()));
 await menu(A, '#menuPlans');
@@ -379,8 +387,9 @@ await A.click('dialog.plans .confirm .danger');
 await A.click('#closePlans');
 await phone.round();
 check((await phone.titles()).includes('Phone name (copy)'), 'deleted in the browser, not saved yet: still on the phone');
+await sendMark(A);
 await A.click('#menuSavePlan');
-await A.waitForFunction(() => window.__sync.status.pending === 0, null, { timeout: 30_000 }).catch(() => {});
+await sent(A);
 await phone.round();
 check(!(await phone.titles()).includes('Phone name (copy)'), 'deleted + Save → gone on the phone (its app moves it to the recycle bin)');
 await phone.remove(await phone.idOf('Vom Handy'));
@@ -407,8 +416,9 @@ const file = await dl;
 const gpx = file ? fs.readFileSync(await file.path(), 'utf8') : '';
 const dlName = await A.evaluate(() => window.__dlName);
 check(dlName === 'Meran 2000 _ Ifinger Hütte.gpx' && /<trkpt /.test(gpx), `⋮ → Export GPX: the track as a GPX file, named as the app names it (${dlName}, ${gpx.length} bytes)`);
+await sendMark(A);
 await A.click('#menuSavePlan');
-await A.waitForFunction(() => window.__sync.status.pending === 0, null, { timeout: 30_000 }).catch(() => {});
+await sent(A);
 await phone.round();
 check((await phone.list()).some((x) => x.kind === 'track' && x.title === 'Meran 2000 & Ifinger Hütte' && x.track.length > 100), 'Save sent the track (kind TRACK) to the phone');
 
@@ -428,8 +438,9 @@ check((await box('GET', kL.mailbox, kL.token, { since: 0 })).status === 410, 'th
 check(st.check === (await phone.keys()).check, 'the laptop now uses the phone\'s pairing');
 await L.evaluate(() => { location.hash = '#p=AQUDAsTcuQTwjYgBqBnjPAIBB1dhYWx3ZWcCBwFWZWxsYXU'; });
 await L.waitForFunction(() => document.getElementById('points')?.textContent?.includes('Vellau'), null, { timeout: 30_000 });
+await sendMark(L);
 await saveAs(L, 'Laptopweg'); // paired: the field's Save also sends
-await L.waitForFunction(() => window.__sync.status.pending === 0, null, { timeout: 30_000 }).catch(() => {});
+await sent(L);
 await phone.round();
 check((await phone.titles()).includes('Laptopweg'), 'Save on the laptop → on the phone');
 await syncNow(A);
@@ -504,8 +515,9 @@ await L.waitForFunction(() => window.__sync.status.full, null, { timeout: 30_000
 sb = await saveBtn(L);
 check(sb.state === 'full' && sb.title.startsWith('Mailbox full') && !sb.hint && (await status(L)).pending >= 1, `507: Save amber, tooltip "Mailbox full – …", the change kept (${JSON.stringify(sb)})`);
 LIMITS.items = 1000;
+await sendMark(L);
 await L.click('#menuSavePlan');
-await L.waitForFunction(() => !window.__sync.status.full && window.__sync.status.pending === 0, null, { timeout: 30_000 }).catch(() => {});
+await sent(L);
 await phone.round();
 check((await phone.titles()).includes('Laptop unsaved') && (await saveBtn(L)).state !== 'full', 'room again: Save sends it, no longer amber');
 
