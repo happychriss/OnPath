@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#1F6E43</color>
+    <!-- Paper (OnPathColors.Paper): the window behind the app and the system start surface (owner 2026-11-07) -->
+    <color name="onpath_paper">#FAFAF6</color>
 </resources>

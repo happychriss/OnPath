@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Paper behind the app from the first frame (owner 2026-11-07: the start in the paper tone, no extra wait) -->
     <style name="Theme.OnPath" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowBackground">@color/onpath_paper</item>
     </style>
 </resources>
