@@ -377,9 +377,23 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     }
     private var planBadge: android.graphics.Bitmap? = null
 
+    /** Navigate (true) or Plan (false, the start): the GPS accuracy circle shows only in Navigate ([PositionDot.accuracyAlpha]). */
+    private var navigateMode = false
+
+    /** The mode for the position dot's look (accuracy circle only in Navigate). Never throws. */
+    fun setNavigateMode(navigate: Boolean) {
+        if (navigate == navigateMode) return
+        navigateMode = navigate
+        try {
+            if (live() && locationReady) map.locationComponent.applyStyle(puckOptions(heading.arrowGrey))
+        } catch (e: Exception) {
+            Problems.warn("map", "Position dot look (accuracy circle) not changed for the mode", e)
+        }
+    }
+
     /** Position dot look; [grey] = the "where I face" image grey (compass unsure, map/CompassTrust). */
     private fun puckOptions(grey: Boolean): LocationComponentOptions = LocationComponentOptions.builder(context)
-        .accuracyAlpha(if (planBadge != null) 0f else 0.18f)
+        .accuracyAlpha(PositionDot.accuracyAlpha(navigate = navigateMode && planBadge == null))
         .enableStaleState(true)
         .staleStateTimeout(30_000)
         // HeadingEngine turns smoothly at display rate itself
@@ -422,7 +436,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             // No frame cap on the position dot (owner: while you look at the app it must run smooth;
             // power is saved with the screen off / in the pocket, where nothing is drawn).
             lc.isLocationComponentEnabled = true
-            // Both modes: small blue dot with accuracy circle and a small direction triangle at its edge
+            // Both modes: small blue dot (accuracy circle only in Navigate) and a small direction triangle at its edge
             // (owner; not the big white GPS-mode navigation puck). The direction comes from
             // HeadingEngine (compass standing, GPS bearing while moving).
             lc.renderMode = PUCK_MODE

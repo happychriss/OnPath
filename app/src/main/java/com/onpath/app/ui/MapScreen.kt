@@ -607,6 +607,8 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     val planPuck = rememberPlanPuck(vm.activity)
     val changingRoute = vm.mode == AppMode.PLAN && rec != null
     LaunchedEffect(c, changingRoute, planPuck) { c.setPlanPuck(planPuck.takeIf { changingRoute }) }
+    // the GPS accuracy circle only in Navigate (owner 2026-11-06: in Plan it only gets in the way)
+    LaunchedEffect(c, vm.mode) { c.setNavigateMode(vm.mode == AppMode.NAVIGATE) }
     LaunchedEffect(c, vm.settings) { c.layers.apply(vm.settings) }
     // Re-routing: thin grey original while a new route is followed, dashed proposal while asking, dashed guide to
     // the route when no way was found / the original was kept (see NavigateScreen, navigation/Navigator).
