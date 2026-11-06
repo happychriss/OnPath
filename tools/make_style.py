@@ -1536,9 +1536,11 @@ def labels():
 POI_TIERS = [
     # tier, icon minzoom, label minzoom, kinds
     # restaurants and cafés with huts and lifts from z12 (owner): a hike is planned around where you can eat
-    (1, 12, 14, ["hut", "bivouac", "restaurant", "cafe", "viewpoint", "spring", "waterfall", "lift", "castle"]),
+    # shelters right after huts (owner 2026-11-06: "Unterstände verschwinden zwischendurch beim Zoomen" – in tier 2 they
+    # lost the collision to every tier-1 POI, water, bars and snack bars; a roof in the rain matters on foot and by bike)
+    (1, 12, 14, ["hut", "bivouac", "shelter", "restaurant", "cafe", "viewpoint", "spring", "waterfall", "lift", "castle"]),
     # bars / snack bars and bus stops from z14
-    (2, 14, 15, ["water", "bar", "fast_food", "shelter", "camping", "church", "ruins", "cave", "museum", "chapel"]),
+    (2, 14, 15, ["water", "bar", "fast_food", "camping", "church", "ruins", "cave", "museum", "chapel"]),
     (3, 15, 16, ["picnic", "toilets", "info", "bike_shop", "charging", "shop", "parking"]),
 ]
 # Bus stops have their own two layers (see pois()): zoomed out one symbol per stop name (the pair of stops on both
