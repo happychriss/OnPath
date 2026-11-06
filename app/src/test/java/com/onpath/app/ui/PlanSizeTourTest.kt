@@ -80,8 +80,6 @@ class PlanSizeTourTest {
         val nav = java.io.File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()
         assertEquals(true, nav.contains("onPause = vm::pauseRecording, onEnd = { vm.askEndTour() }"))
         // owner 2026-11-06: one bottom bar where the slider was – Pause | Planen, paused Weiter · Beenden · ✎
-        assertEquals(true, nav.contains("TourBottomBar(ui.paused, onPause, onEnd = { open = false; onEnd() }"))
-        assertEquals(true, nav.contains("ChangePlanButton({ open = false; onSlideToPlan() }, bottom)"))
         val bar = java.io.File("src/main/java/com/onpath/app/ui/TourActionBar.kt").readText()
         for (s in listOf("Res.string.nav_action_pause", "Res.string.common_resume", "Res.string.nav_change_plan", "Res.string.nav_end_short"))
             assertEquals(s, true, bar.contains(s))

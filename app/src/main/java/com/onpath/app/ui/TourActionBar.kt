@@ -9,14 +9,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.ui.semantics.contentDescription
@@ -26,39 +32,101 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 
 /**
- * Navigate without a recording, unlocked: ONE big blue "Planen" where the slider was (56 dp, full width) – opens the plan.
- * No "Sperren" button (owner 2026-11-06): it locks again after 30 s, with a tap on the map and with Back.
+ * Navigate without a recording: ONE big blue "Planen" (56 dp, full width) – opens the plan. Locked ([hold]): held ~1 s
+ * it fills and fires ([HoldButton], owner 2026-11-06 variant A of the hold lock); the lock off: a plain tap.
  */
 @Composable
-fun ChangePlanButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionEdit, contentColor = OnPathColors.CardWhite),
-        contentPadding = PaddingValues(horizontal = 24.dp), modifier = modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-        Icon(Icons.Filled.Edit, null, modifier = Modifier.size(22.dp))
-        Spacer(Modifier.width(10.dp))
-        Text(str(Res.string.nav_change_plan), style = MaterialTheme.typography.titleMedium, maxLines = 1)
+fun ChangePlanButton(onClick: () -> Unit, modifier: Modifier = Modifier, hold: Boolean = false) {
+    val word = str(Res.string.nav_change_plan)
+    if (!hold) {
+        Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionEdit, contentColor = OnPathColors.CardWhite),
+            contentPadding = PaddingValues(horizontal = 24.dp), modifier = modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+            Icon(Icons.Filled.Edit, null, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(word, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+        }
+        return
+    }
+    HoldBar(modifier) { hint ->
+        HoldButton(word, OnPathColors.ActionEdit, TourActions.EditTonal, TourActions.OnEditTonal, onClick, hint,
+            Modifier.fillMaxWidth().height(56.dp)) { c -> HoldLabel(Icons.Filled.Edit, word, c) }
     }
 }
 
 /**
- * The tour's ONE bottom bar in Navigate, unlocked or with the lock off (owner 2026-11-06, variant 2 of
- * https://claude.ai/artifact/VhoxV9qrd4nNfz9FzgAULi; "Stopp und Pause an der Stelle ist logischer" – the same with the
- * lock): the status card carries no buttons; at the bottom green "⏸ Pause" | blue "✎ Planen" (56 dp, equally wide).
- * Pause works at once; paused the row is green "Weiter" · green outlined "Beenden" (asks first, like everywhere) · a
- * round blue 56 dp pen = Planen – ending is offered only out of a pause, as in sports apps. A large font drops the
- * icons and, paused, puts Planen in a second full-width line – never a cut word ([TourBottomBarRules]).
+ * The locked bar's frame: the small line over the buttons – at rest "🔒 Gesperrt · Knopf gedrückt halten", after a
+ * release before the end "Gedrückt halten" in walnut for [HoldRule.HINT_MS] (a short tap is never silent).
  */
 @Composable
-fun TourBottomBar(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Unit, onPlan: () -> Unit, modifier: Modifier = Modifier) {
+private fun HoldBar(modifier: Modifier, bar: @Composable (onEarly: () -> Unit) -> Unit) {
+    var strongAt by remember { mutableLongStateOf(0L) }
+    val strong = strongAt != 0L
+    LaunchedEffect(strongAt) { if (strongAt != 0L) { kotlinx.coroutines.delay(HoldRule.HINT_MS); strongAt = 0L } }
+    Column(modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.Center) {
+            Surface(shape = RoundedCornerShape(50), color = if (strong) OnPathColors.Walnut else OnPathColors.CardWhite, shadowElevation = 2.dp) {
+                Row(Modifier.padding(horizontal = 14.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(if (strong) Icons.Filled.TouchApp else Icons.Filled.Lock, null, Modifier.size(18.dp),
+                        tint = if (strong) OnPathColors.CardWhite else OnPathColors.Walnut)
+                    Spacer(Modifier.width(6.dp))
+                    Text(str(if (strong) Res.string.nav_hold_hint else Res.string.nav_hold_hint_rest),
+                        style = MaterialTheme.typography.bodyMedium, fontWeight = if (strong) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (strong) OnPathColors.CardWhite else OnPathColors.Walnut)
+                }
+            }
+        }
+        bar { strongAt = System.nanoTime() }
+    }
+}
+
+@Composable
+private fun HoldLabel(icon: ImageVector?, text: String?, color: Color) {
+    Row(Modifier.fillMaxSize().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        if (icon != null) Icon(icon, null, Modifier.size(if (text == null) 24.dp else 22.dp), tint = color)
+        if (icon != null && text != null) Spacer(Modifier.width(8.dp))
+        if (text != null) Text(text, style = MaterialTheme.typography.titleMedium, color = color, maxLines = 1, softWrap = false)
+    }
+}
+
+/**
+ * The tour's ONE bottom bar in Navigate, with and without the lock (owner 2026-11-06, variant 2 of
+ * https://claude.ai/artifact/VhoxV9qrd4nNfz9FzgAULi; "Stopp und Pause an der Stelle ist logischer"): the status card
+ * carries no buttons; at the bottom green "⏸ Pause" | blue "✎ Planen" (56 dp, equally wide). Paused the row is green
+ * "Weiter" · green outlined "Beenden" (asks first, like everywhere) · a round blue 56 dp pen = Planen – ending is offered
+ * only out of a pause, as in sports apps. A large font drops the icons and, paused, puts Planen in a second full-width
+ * line – never a cut word ([TourBottomBarRules]). Locked ([hold], owner 2026-11-06 22:20, variant A of
+ * https://claude.ai/artifact/3noAFaW5cjWVYBDHReLUrN – replaces the slider): the same buttons light, each fires only
+ * when held ~1 s ([HoldButton]); the lock off: a plain tap.
+ */
+@Composable
+fun TourBottomBar(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Unit, onPlan: () -> Unit, modifier: Modifier = Modifier,
+                  hold: Boolean = false) {
+    if (hold) HoldBar(modifier) { hint -> TourBottomBarRow(paused, onPause, onEnd, onPlan, Modifier, hint) }
+    else TourBottomBarRow(paused, onPause, onEnd, onPlan, modifier, null)
+}
+
+/** [TourBottomBar]'s buttons; [holdHint] non-null = locked (held buttons, the hint on an early release). */
+@Composable
+private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Unit, onPlan: () -> Unit, modifier: Modifier,
+                             holdHint: (() -> Unit)?) {
     val pauseWord = str(Res.string.nav_action_pause)
     val resumeWord = str(Res.string.common_resume)
     val endWord = str(Res.string.nav_end_short)
@@ -68,34 +136,40 @@ fun TourBottomBar(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Unit
     val density = LocalDensity.current
     val green = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionGo, contentColor = OnPathColors.CardWhite)
     val blue = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionEdit, contentColor = OnPathColors.CardWhite)
+    val go = @Composable { word: String, icon: ImageVector?, m: Modifier, act: () -> Unit ->
+        if (holdHint != null) HoldButton(word, OnPathColors.ActionGo, TourActions.GoTonal, TourActions.OnGoTonal, act, holdHint,
+            m.height(56.dp)) { c -> HoldLabel(icon, word, c) }
+        else Button(onClick = act, colors = green, contentPadding = if (icon == null) PaddingValues(horizontal = 16.dp) else ButtonDefaults.ContentPadding,
+            modifier = m.heightIn(min = 56.dp)) {
+            if (icon != null) { Icon(icon, null, modifier = Modifier.size(22.dp)); Spacer(Modifier.width(8.dp)) }
+            Text(word, style = style, maxLines = 1, softWrap = false)
+        }
+    }
+    val edit = @Composable { icons: Boolean, m: Modifier ->
+        if (holdHint != null) HoldButton(planWord, OnPathColors.ActionEdit, TourActions.EditTonal, TourActions.OnEditTonal, onPlan, holdHint,
+            m.height(56.dp)) { c -> HoldLabel(if (icons) Icons.Filled.Edit else null, planWord, c) }
+        else Button(onClick = onPlan, colors = blue, modifier = m.heightIn(min = 56.dp)) {
+            if (icons) { Icon(Icons.Filled.Edit, null, modifier = Modifier.size(22.dp)); Spacer(Modifier.width(8.dp)) }
+            Text(planWord, style = style, maxLines = 1, softWrap = false)
+        }
+    }
     BoxWithConstraints(modifier.fillMaxWidth()) {
         fun w(t: String) = with(density) { tm.measure(t, style).size.width.toDp().value }
         val width = maxWidth.value
         if (!paused) {
             val icons = TourBottomBarRules.runningWithIcons(w(pauseWord), w(planWord), width)
             val row = TourBottomBarRules.runningInOneRow(w(pauseWord), w(planWord), width)
-            val pause = @Composable { m: Modifier ->
-                Button(onClick = { onPause(true) }, colors = green, modifier = m.heightIn(min = 56.dp)) {
-                    if (icons) { Icon(Icons.Filled.Pause, null, modifier = Modifier.size(22.dp)); Spacer(Modifier.width(8.dp)) }
-                    Text(pauseWord, style = style, maxLines = 1, softWrap = false)
-                }
-            }
-            val plan = @Composable { m: Modifier ->
-                Button(onClick = onPlan, colors = blue, modifier = m.heightIn(min = 56.dp)) {
-                    if (icons) { Icon(Icons.Filled.Edit, null, modifier = Modifier.size(22.dp)); Spacer(Modifier.width(8.dp)) }
-                    Text(planWord, style = style, maxLines = 1, softWrap = false)
-                }
-            }
+            val pause = @Composable { m: Modifier -> go(pauseWord, if (icons) Icons.Filled.Pause else null, m) { onPause(true) } }
+            val plan = @Composable { m: Modifier -> edit(icons, m) }
             if (row) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { pause(Modifier.weight(1f)); plan(Modifier.weight(1f)) }
             else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) { pause(Modifier.fillMaxWidth()); plan(Modifier.fillMaxWidth()) }
         } else {
             val oneRow = TourBottomBarRules.pausedInOneRow(w(resumeWord), w(endWord), width)
-            val resume = @Composable { m: Modifier ->
-                Button(onClick = { onPause(false) }, colors = green, contentPadding = PaddingValues(horizontal = 16.dp),
-                    modifier = m.heightIn(min = 56.dp)) { Text(resumeWord, style = style, maxLines = 1, softWrap = false) }
-            }
+            val resume = @Composable { m: Modifier -> go(resumeWord, null, m) { onPause(false) } }
             val end = @Composable { m: Modifier ->
-                OutlinedButton(onClick = onEnd, border = BorderStroke(1.5.dp, OnPathColors.ActionGo),
+                if (holdHint != null) HoldButton(endWord, OnPathColors.ActionGo, OnPathColors.CardWhite, OnPathColors.ActionGo, onEnd, holdHint,
+                    m.height(56.dp), outline = OnPathColors.ActionGo) { c -> HoldLabel(null, endWord, c) }
+                else OutlinedButton(onClick = onEnd, border = BorderStroke(1.5.dp, OnPathColors.ActionGo),
                     colors = ButtonDefaults.outlinedButtonColors(containerColor = OnPathColors.CardWhite, contentColor = OnPathColors.ActionGo),
                     contentPadding = PaddingValues(horizontal = 16.dp), modifier = m.heightIn(min = 56.dp)) {
                     Text(endWord, style = style, maxLines = 1, softWrap = false)
@@ -103,16 +177,15 @@ fun TourBottomBar(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Unit
             }
             if (oneRow) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 resume(Modifier.weight(1f)); end(Modifier.weight(1f))
-                FilledIconButton(onClick = onPlan, modifier = Modifier.size(56.dp).semantics { contentDescription = planWord },
+                if (holdHint != null) HoldButton(planWord, OnPathColors.ActionEdit, TourActions.EditTonal, TourActions.OnEditTonal, onPlan, holdHint,
+                    Modifier.size(56.dp), shape = CircleShape) { c -> HoldLabel(Icons.Filled.Edit, null, c) }
+                else FilledIconButton(onClick = onPlan, modifier = Modifier.size(56.dp).semantics { contentDescription = planWord },
                     colors = IconButtonDefaults.filledIconButtonColors(containerColor = OnPathColors.ActionEdit, contentColor = OnPathColors.CardWhite)) {
                     Icon(Icons.Filled.Edit, null, modifier = Modifier.size(24.dp))
                 }
             } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { resume(Modifier.weight(1f)); end(Modifier.weight(1f)) }
-                Button(onClick = onPlan, colors = blue, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-                    Icon(Icons.Filled.Edit, null, modifier = Modifier.size(22.dp)); Spacer(Modifier.width(8.dp))
-                    Text(planWord, style = style, maxLines = 1, softWrap = false)
-                }
+                edit(true, Modifier.fillMaxWidth())
             }
         }
     }
@@ -141,5 +214,8 @@ object TourActions {
     /** Pause's light green and its dark green words (≥ 7:1). */
     val GoTonal = Color(0xFFD5EADF)
     val OnGoTonal = Color(0xFF0D3A27)
+    /** Planen's light blue while locked and its dark blue words (≥ 7:1; owner 2026-11-06, variant A of the hold lock). */
+    val EditTonal = Color(0xFFD7E5F2)
+    val OnEditTonal = Color(0xFF123A5C)
 
 }

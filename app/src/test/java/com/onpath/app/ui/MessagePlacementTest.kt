@@ -57,7 +57,7 @@ class MessagePlacementTest {
         assertTrue(nav.contains("MessagePlacement.topDp(MessageScreen.NAVIGATE, topColumnDp)"))
         assertTrue(nav.indexOf(".onSizeChanged { topColumnDp =") in 0 until nav.indexOf("TurnCard(it)"))
         // the question is no longer at the bottom, above the slide switch; it is drawn over the map controls
-        val bottom = nav.substringAfter("Modifier.align(Alignment.BottomCenter)").substringBefore("SlideToPlan(")
+        val bottom = nav.substringAfter("Modifier.align(Alignment.BottomCenter)").substringBefore("TourBottomBar(")
         assertFalse(bottom.contains("rerouteMessage("))
         val host = src("Notices.kt").substringAfter("fun androidx.compose.foundation.layout.BoxScope.ScreenMessageHost(")
             .substringBefore("\n}\n")
