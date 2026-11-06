@@ -2,9 +2,9 @@
 
 **Several sessions work on this repo (laptop, desktop "donald", cloud): follow `docs/working-agreement.md` – pull first, claim in
 `docs/backlog.md`, push small green commits, leave a handoff.**
-**Every session reads its role file at the start:** donald → `docs/roles/start.md`, captain → `docs/roles/captain.md`;
-until `web-spike` is merged the laptop is cloud-plan (`docs/roles/cloud-plan.md`) and cloud-web keeps `cloud-web.md`
-(`[cloud-app]` backlog lines are donald's). Why it is built this way: `docs/roles/multi-agent-lernen.md`.
+**Every session reads its role file at the start:** donald and the laptop → `docs/roles/start.md` (the laptop also
+`docs/roles/cloud-plan.md` for the planner and map cells), captain → `docs/roles/captain.md`, cloud-web → `cloud-web.md`
+(`[cloud-app]` backlog lines are donald's, `[cloud-plan]` the laptop's). One branch since 2026-11-06: app and planner on `main`. Why it is built this way: `docs/roles/multi-agent-lernen.md`.
 
 Read this first, then `docs/owner-preferences.md` (how the owner likes to work), `docs/project-status.md` (where we are, decisions, next steps) and
 `docs/requirements.md` (full requirements with IDs like F-PLAN-04, R-07). **Rules per area live in `.claude/rules/`** (ui, routing, map,
@@ -34,7 +34,7 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
 | `tools/` | data pipeline, map cells (`tools/cells/`, `tools/cloud/`), dev loop (`tools/dev/`), CI gate (`tools/ci/`), hooks (`tools/hooks/`), `ask.sh` | data-pipeline, release |
 | `strings/` | user texts EN + DE (Compose Multiplatform resources, `docs/i18n.md`) | ui |
 | `docs/` | requirements, status, backlog, design (`docs/design/ui-style.md`), roles (`docs/roles/`) | |
-| *(other repos)* | website `happychriss/onpath.earth`; private notes + the owner's question dashboard `happychriss/onpath.private`; the browser planner is `web/` on branch `web-spike` (served at plan.onpath.earth) | sync-web |
+| *(other repos)* | website `happychriss/onpath.earth`; private notes + the owner's question dashboard `happychriss/onpath.private`; the browser planner is `web/` (served at plan.onpath.earth; `web-spike` is frozen since the merge 2026-11-06) | sync-web |
 
 ## Build and test
 - JDK 17+ (21 used), Android SDK 35 (`local.properties` → `sdk.dir`, not committed). `./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`; `./gradlew testDebugUnitTest` (UTC).
@@ -50,7 +50,7 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
   (`Problems.warn/error(area, plain message, e)`; INFO for expected situations like offline) – never `catch (_: …) {}`
   without an `// expected:` reason. Problems dedupes, persists, shows in Settings → Diagnostics, announces new ERRORs
   once, and goes into the diagnostics export; MapLibre's native warnings/errors and crashes are captured too (`OnPathApp`).
-- **Git**: small commits with clear messages, pushed **straight to `main`** (planner: `web-spike`) after `tools/ci/gate.sh` –
+- **Git**: small commits with clear messages, pushed **straight to `main`** (app and planner alike) after `tools/ci/gate.sh` –
   standing permission of the owner, no pull request, don't use or ask about the session's `claude/…` branch. A pull
   request to the owner only for `.github/workflows/`, signing / build config, keys / secrets, privacy / licence texts.
   Never force-push or delete a shared branch (`docs/working-agreement.md` §1 "Where to push"); never commit map data,

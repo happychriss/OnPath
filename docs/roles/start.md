@@ -1,8 +1,8 @@
 # Start – how a session on donald or the laptop works
 
-The session on a computer is named after it: **donald** (Pixel, emulator), **laptop** (32 GB, map data). Until
-`web-spike` is merged into `main`, the laptop session still works as **cloud-plan** (`cloud-plan.md`) and cloud-web
-as before (`cloud-web.md`). The captain: `captain.md`. Why it is built this way and what was tested:
+The session on a computer is named after it: **donald** (Pixel, emulator), **laptop** (32 GB, map data). Since the
+one-branch merge (2026-11-06) both work on `main`; the laptop keeps the planner and map cells (`cloud-plan.md` – what
+it owns) and cloud-web works as before (`cloud-web.md`). The captain: `captain.md`. Why it is built this way and what was tested:
 `multi-agent-lernen.md`.
 
 **Start sentence** (the owner types it once): „Du bist die Einheit **donald** (OnPath). Lies `docs/roles/start.md`.“

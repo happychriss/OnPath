@@ -33,12 +33,12 @@ message each other directly for things that must be known now – see §8.
    `docs/project-status.md`: who, what changed, what's half done, what's next. Push. No uncommitted files left.
 
 ### Where to push
-**Push straight to the role's branch** (owner 2026-10-31, standing permission): `main` (cloud-planner: `web-spike`,
+**Push straight to the role's branch** (owner 2026-10-31, standing permission): `main` (app and planner – one branch since 2026-11-06,
 website: its own repo's `main`) – after `tools/ci/gate.sh`, no pull request. The `claude/…` branch a cloud session is
 given at start is not used; don't ask before pushing. **Pull request to the owner only** for: `.github/workflows/`,
 signing / build config (`app/build.gradle.kts` signing, `gradle/`, `settings.gradle.kts`), anything with keys or
 secrets, privacy / licence texts (`assets/licences/`, `data/Licences.kt`, the website's privacy page). Never force-push,
-never rewrite or delete a shared branch (owner: GitHub ruleset blocks force pushes and deletions on `main` / `web-spike`).
+never rewrite or delete a shared branch (owner: GitHub ruleset blocks force pushes and deletions on `main` / `web-spike`; `web-spike` is frozen since the one-branch merge – nobody pushes to it).
 Old branches whose work is in `main` / `web-spike` go only through `tools/dev/prune_branches.sh`, after the owner said yes
 to the listed branches in one question box (owner 2026-11-06); every deletion is logged in `docs/history/deleted-branches.md`
 and can be restored.

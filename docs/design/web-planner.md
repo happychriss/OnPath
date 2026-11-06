@@ -263,7 +263,7 @@ in the browser.
 3. API token (My Profile → API Tokens → Create → Custom): Account · Workers Scripts · Edit; Zone onpath.earth ·
    Workers Routes · Edit and DNS · Edit. In GitHub: secret `CLOUDFLARE_PLANNER_TOKEN`, variable
    `PLANNER_HOST_TEST` = `plan.onpath.earth` (`CLOUDFLARE_ACCOUNT_ID` exists).
-4. Actions → Web spike → Run workflow (branch web-spike) → tick *deploy*.
+4. Actions → Web planner → Run workflow (branch main) → tick *deploy* (also done by every app release, release.yml job "planner").
 5. **Map areas on demand (§17), once:** GitHub → Settings → Secrets and variables → Actions → *New repository secret*
    `ONPATH_MAP_KEY_TEST` = the newest entry of the environment "test" secret `ONPATH_APP_KEYS` (the part after the last
    comma; the same key the test APKs carry – `onpath.mapKey.test` in `~/.gradle/gradle.properties`). The web deploy has
@@ -280,14 +280,14 @@ in the browser.
    deploy (read-only; red when one fails). Without the secrets the step only notes that it was skipped. The token only
    opens this Access app; delete it in Zero Trust to revoke.
 
-**CI** (`.github/workflows/web-spike.yml`, owner 2026-10-30: faster, no test dropped, every test a gate before the
-deploy). Jobs: `build` (parity check, TeaVM engine + overview style, texts check, the page with the overview files →
+**CI** (`.github/workflows/web.yml` – "Web planner", on `main` since 2026-11-06, owner 2026-10-30: faster, no test dropped, every test a gate before the
+deploy). Jobs: `web-build` (parity check, TeaVM engine + overview style, texts check, the page with the overview files →
 artifact `web-build` = `web/app/dist` + the engine files) ∥ `jvm` (the app's tests of the shared files +
 `WebImportTest`, JVM routes, the three Wasm = JVM Node checks, host tests, browser compare) ∥ `smokes` (a matrix of 5
 machines – `cells`, `sheet-sync`, `areas-parity`, `lang-gpx`, `short` – balanced by the smokes' times, each smoke its
 own step with its own log). `jvm` and `smokes` have no `needs`: they set up (Gradle tests, Chromium, routing data)
-while `build` runs, then wait for it through the API (`actions: read`) before downloading `web-build` → `deploy` (`needs` all of them, same condition as before: `inputs.deploy` or a push to web-spike) and
-`results` (merges every job's `results-*` into the one artifact `web-spike-results`). A new smoke goes into the
+while `web-build` runs, then wait for it through the API (`actions: read`) before downloading `web-build` → `deploy` (`needs` all of them, only on `inputs.deploy` – a release or a dispatch, never a plain push) and
+`results` (merges every job's `results-*` into the one artifact `web-planner-results`). A new smoke goes into the
 shortest group. **Engine cache:** the TeaVM step is skipped when its key matches – `hashFiles` of `web/engine/**`,
 `app/src/main/java/**`, `app/src/test/java/com/onpath/app/**`, `app/libs/**`, `app/src/main/assets/**`,
 `tools/routing/jvm-test/**`, `strings/**`, `web/strings/**`, the Gradle wrapper / root Gradle files and the workflow
@@ -574,15 +574,16 @@ resources, web-sync.md §0); every file below "shared" is compiled from `app/` a
 
 ### 14.2 How the web stays in sync
 
-1. **Shared code updates itself:** web-spike merges main (`web/parity/merge-main.sh`: fetch, merge, build the engine,
-   all JVM / Wasm / browser tests, the parity check; exit codes say why it stopped). Scheduled GitHub workflows only
-   run from the default branch, so the daily run is a **scheduled Claude task** (prompt in the task report): it runs
-   the script, pushes when green (CI = the gate, a green push deploys). **The app leads** (owner 2026-10-30): when a
-   mirrored app file changed (texts, buttons, menus, colours, plan behaviour), the task adopts the change in the web
-   itself, tests, `--update`s and pushes – it does not wait for the owner. Only a change with no web counterpart yet
-   (a new screen, phone-only hardware) goes to the owner as a proposal, and even then the merge with everything else is
-   pushed, so shared code never stays behind. (30 Oct: one open question about the POI button kept 100 app commits
-   – incl. 0.13's "Set as destination / Add as stop 2" buttons – off the web for a day.)
+1. **Shared code updates itself:** since the one-branch merge (owner 2026-11-06, onpath.private#32) app and planner
+   live on `main`; the engine compiles the app's files in place, so a shared change reaches the web with the commit
+   itself. `.github/workflows/web.yml` ("Web planner") runs on every push / pull request that touches `web/` or the
+   app code the engine compiles; locally `web/parity/check-web.sh` runs the same checks. The planner goes online only
+   on purpose: with an app release (`release.yml`, job "planner", after its own green checks) or Actions → Web planner
+   → Run workflow → deploy – phone and browser always come from one commit. **The app leads** (owner 2026-10-30): when a
+   mirrored app file changed (texts, buttons, menus, colours, plan behaviour), the laptop (or a scheduled task) adopts
+   the change in the web itself, tests, `--update`s and pushes – it does not wait for the owner. Only a change with no
+   web counterpart yet (a new screen, phone-only hardware) goes to the owner as a proposal. (Until 2026-11-06 the
+   planner lived on `web-spike` and a daily task merged `main` into it – `web-spike` is frozen since.)
 2. **Mirrors cannot drift silently:** `web/parity.json` stores, per mirrored app file, the git blob hash it was last
    checked at. `web/parity/check.mjs` (first step of the web CI) **fails** when such a file changed – look at the
    change, adjust the web, then `node web/parity/check.mjs --update <app file>`.
@@ -592,7 +593,7 @@ resources, web-sync.md §0); every file below "shared" is compiled from `app/` a
    line by line ("PERF/MEMORY-relevant change …") – then check the web side too (Wasm heap, worker, prefetch sizes,
    `RouteTimeLimit` vs browser speed). The run's summary page carries the report.
 4. **Watch list:** app files with plan behaviour the web neither compiles nor mirrors (PlanPanel, MapScreen, Notices …):
-   a change is a warning, so the daily task can propose the web side.
+   a change is a warning, so the laptop can propose the web side.
 
 ### 14.3 Open items
 

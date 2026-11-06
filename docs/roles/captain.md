@@ -20,7 +20,7 @@ questions, tells the owner what is new. It writes no product code and decides no
 ## When the owner writes
 1. `git pull` in `OnPath` and `onpath.private`; `tools/ask.sh an-alle`, `tools/ask.sh offen`.
 2. Sessions: `list_sessions` – who works, who waits (`needs_action`). A wait without an issue → create the issue.
-3. CI: `unit.yml`, `e2e.yml`, `release.yml`, "Web spike" (REST `actions/runs`). Red → a line at the top of "Next" for
+3. CI: `unit.yml`, `e2e.yml`, `release.yml`, "Web planner" (`web.yml`, REST `actions/runs`). Red → a line at the top of "Next" for
    the unit that can fix it.
 4. App ⇄ planner: `tools/ci/release_check.sh --no-ci`. Differs → a line for the side that must follow (the app leads).
 5. Builds: keep "Where things are" at the top of `docs/project-status.md` current (Pixel, release, planner).
