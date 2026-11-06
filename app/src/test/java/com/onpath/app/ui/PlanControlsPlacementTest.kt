@@ -45,11 +45,12 @@ class PlanControlsPlacementTest {
         val i = { s: String -> src.indexOf(s).also { assertTrue("$s in MapControls", it >= 0) } }
         // compass, then (Plan) locate, then eye, whole route, undo, redo; Navigate keeps locate last
         assertTrue(i("if (compass != null)") < i("if (plan) add(locate)"))
-        assertTrue(i("if (plan) add(locate)") < i("if (showEye)"))
-        assertTrue(i("if (showEye)") < i("if (onFitRoute != null)"))
-        assertTrue(i("if (onFitRoute != null)") < i("if (onUndo != null)"))
-        assertTrue(i("if (onUndo != null)") < i("if (onRedo != null)"))
-        assertTrue(i("if (onRedo != null)") < i("if (!plan) add(locate)"))
+        // eye and whole route always there, greyed without a route (owner 2026-11-06, MapControlsAlwaysThereTest)
+        assertTrue(i("if (plan) add(locate)") < i("EyeControl(onPeek"))
+        assertTrue(i("EyeControl(onPeek") < i("enabled = onFitRoute != null"))
+        assertTrue(i("enabled = onFitRoute != null") < i("enabled = onUndo != null"))
+        assertTrue(i("enabled = onUndo != null") < i("enabled = onRedo != null"))
+        assertTrue(i("enabled = onRedo != null") < i("if (!plan) add(locate)"))
     }
 
     @Test fun planModeDrawsTheColumnUnderTheBoxesAndTheSheet() {

@@ -109,7 +109,7 @@ fun MissingDataScreen(
             Text(str(Res.string.routes_missing_title), style = MaterialTheme.typography.titleLarge)
             Text(str(Res.string.routes_missing_body),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
+            Surface(shape = RoundedCornerShape(16.dp), color = OnPathColors.Paper, shadowElevation = 1.dp) {
                 Column(Modifier.padding(vertical = 6.dp)) {
                     checks.forEach { c ->
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -428,8 +428,8 @@ fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: 
         icon = { Icon(Icons.Filled.Route, null) },
         title = { Text(str(Res.string.routes_replace_title)) },
         text = { DialogText(str(if (fromLink) Res.string.routes_replace_text_link else Res.string.routes_replace_text)) },
-        confirmButton = { TextButton(onClick = onReplace, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_replace)) } },
-        dismissButton = { TextButton(onClick = onSaveFirst, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.routes_save_first)) } },
+        confirmButton = { TextButton(colors = ActionButtons.editText(), onClick = onReplace, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_replace)) } },
+        dismissButton = { TextButton(colors = ActionButtons.editText(), onClick = onSaveFirst, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.routes_save_first)) } },
     )
 }
 
@@ -444,7 +444,7 @@ private fun TourCard(
         TourKind.RECORDED -> Icons.Filled.FiberManualRecord to OnPathColors.Rec
         TourKind.IMPORTED -> Icons.Filled.FileOpen to OnPathColors.Gpx
     }
-    Surface(onClick = { onOpen?.invoke() }, enabled = onOpen != null, shape = RoundedCornerShape(16.dp), color = Color.White,
+    Surface(onClick = { onOpen?.invoke() }, enabled = onOpen != null, shape = RoundedCornerShape(16.dp), color = OnPathColors.Paper,
         shadowElevation = 1.dp, modifier = Modifier.heightIn(min = 72.dp)) {
         Row(Modifier.fillMaxWidth().padding(start = 14.dp, top = 12.dp, bottom = 10.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(44.dp).clip(CircleShape).background(color.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {

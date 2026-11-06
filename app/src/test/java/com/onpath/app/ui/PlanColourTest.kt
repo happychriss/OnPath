@@ -35,7 +35,7 @@ class PlanColourTest {
         assertTrue(map.contains("background(PlanTopBand.Color)"))
         assertTrue(src("PlanPanel.kt").contains("surfaceColor = OnPathColors.PlanTint, accent = OnPathColors.PlanAccent"))
         val footer = src("MapFooter.kt")
-        assertTrue(footer.contains("if (plan) OnPathColors.PlanTint else MaterialTheme.colorScheme.surface"))
+        assertTrue(footer.contains("if (plan) OnPathColors.PlanTint else OnPathColors.CardWhite"))
         assertTrue("the position sign while changing the route is blue",
             src("PlanPuck.kt").contains("val blue = OnPathColors.PlanAccent") && !src("PlanPuck.kt").contains("OnPathColors.Green"))
     }

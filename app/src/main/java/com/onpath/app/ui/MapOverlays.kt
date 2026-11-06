@@ -169,7 +169,7 @@ fun RoutingRing(center: Offset, stillProgress: Float? = null) {
         .offset { androidx.compose.ui.unit.IntOffset(center.x.toInt() - r, center.y.toInt() - r) }
         .size(42.dp)
         .semantics { contentDescription = label }
-    val color = MaterialTheme.colorScheme.primary
+    val color = com.onpath.app.ui.OnPathColors.PlanAccent // computing a route is planning: blue
     val track = Color.White.copy(alpha = 0.85f)
     Box(Modifier.fillMaxSize()) {
         // [stillProgress]: a fixed arc for screenshots (the turning ring has no arc in its first frame)

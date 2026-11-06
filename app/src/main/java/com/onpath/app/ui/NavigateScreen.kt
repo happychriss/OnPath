@@ -325,8 +325,8 @@ private fun TurnCard(t: TurnHint) {
     val spoken = StopTokens.plain(t.label)
     val text = if (t.distanceM < 15 && !t.straight && t.stop == null) str(Res.string.nav_turn_now, spoken)
         else str(Res.string.nav_turn_in, spoken, turnDistance(t.distanceM))
-    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary, shadowElevation = 4.dp,
+    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.ActionGo,
+        contentColor = OnPathColors.CardWhite, shadowElevation = 4.dp,
         modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = text }) {
         Row(Modifier.heightIn(min = 76.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             if (t.stop != null) StopSign(t.stop, Modifier.size(48.dp))
@@ -437,7 +437,8 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
     val canOpen = hasProfile || ui.position != null || (movingLine != null && ui.toGo != null)
     // the amber off-route card says where the route is – not repeated here (the question card at the bottom does not)
     val offCard = ui.offRoute?.amber == true
-    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp,
+    // over the map: white (owner 2026-11-06 – paper is for surfaces, white for what floats over the map)
+    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.CardWhite, shadowElevation = 3.dp,
         // only the activity icon and the chevron are buttons (gloves: no tap target as big as the card)
         modifier = Modifier.fillMaxWidth()) {
       Column {
@@ -518,7 +519,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 }
             }
             // paused: "Fortsetzen" – in the card's action row when it shows, else here
-            if (ui.paused && ui.recordedM != null && actions == null) TextButton(onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_resume)) }
+            if (ui.paused && ui.recordedM != null && actions == null) TextButton(colors = ActionButtons.goText(), onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_resume)) }
             else if (ui.toGo != null && ui.arriveAt != null && ui.toGo.state != com.onpath.app.time.EstimateState.NOT_ON_ROUTE) Column(
                 horizontalAlignment = Alignment.End,
                 modifier = Modifier.padding(start = 8.dp).widthIn(min = targetWordWidth(ui.toGo.target))

@@ -60,10 +60,10 @@ class BackToNavigationTest {
     /** Green = it goes to the navigation (owner's colour rule): the same filled Button as "Los geht's", no own colour. */
     @Test fun sameFormAsLosGehts() {
         val b = src("ui/BackToNavigation.kt").substringAfter("fun BackToNavigationButton(").substringBefore("\n}\n")
-        assertTrue(b, b.contains("Button(onClick = onClick, modifier = modifier.fillMaxWidth().heightIn(min = 48.dp)"))
+        assertTrue(b, b.contains("Button(colors = ActionButtons.go(), onClick = onClick, modifier = modifier.fillMaxWidth().heightIn(min = 48.dp)"))
         val go = src("ui/PlanPanel.kt").substringAfter("private fun GoButton(").substringBefore("\n}\n")
         assertTrue(go, go.contains("modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)"))
-        assertFalse(b, b.contains("ButtonDefaults.buttonColors"))
+        assertTrue("the same green as Los geht's (colour rule)", go.contains("colors = ActionButtons.go()"))
     }
 
     /** The small numbers before "Navigation": gone at a large font, "Navigation ›" stays whole. */

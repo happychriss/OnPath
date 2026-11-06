@@ -2450,6 +2450,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun wholeRouteShown(layer: AppMode, pointsOpen: Boolean): Boolean =
         WholeRoute.shows(layer, pointsOpen, hasPlanLine(), hasShownLine(), hasFollowLine())
 
+    /** What the map column's greyed buttons need to know ([MapControlsEnabled]). */
+    internal fun controlsIn(layer: AppMode, pointsOpen: Boolean) = MapControlsEnabled.In(layer, pointsOpen,
+        planLine = hasPlanLine(), shownLine = hasShownLine(), shownOpen = shown != null, followLine = hasFollowLine(),
+        canUndo = canUndo, canRedo = canRedo)
+
     private fun hasPlanLine() = (route?.points?.size ?: 0) >= 2
     private fun hasShownLine() = (shown?.segments?.sumOf { it.size } ?: 0) >= 2
     private fun hasFollowLine() = (followLine?.size ?: 0) >= 2
@@ -2950,12 +2955,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * Plan's primary action (location permission is checked by the caller). Follows the shown track, else the planned
      * route, else nothing (free recording – the button then reads "Start recording · …", [PlanStart]), and starts recording.
      */
-    fun startNavigation(force: Boolean = false) {
+    /**
+     * [recordOnly]: ☰ → "Ohne Plan aufzeichnen" (owner 2026-11-06, flow map H1): a plain recording whatever the plan holds –
+     * nothing is followed, the plan stays as it is.
+     */
+    fun startNavigation(force: Boolean = false, recordOnly: Boolean = false) {
         if (recState.value != null) { continueNavigation(force); return }
         val s = shown
-        if (s == null && !force && planHasStraightLegs()) { straightAsk = true; return }
+        if (!recordOnly && s == null && !force && planHasStraightLegs()) { straightAsk = true; return }
         // PlanStart: the sheet's button says "Start recording" exactly when nothing is followed here
-        when (PlanStart.of(trackPoints = s?.points?.size, hasRoute = route != null, pointCount = waypoints.size)) {
+        when (if (recordOnly) PlanStart.RECORD_ONLY else PlanStart.of(trackPoints = s?.points?.size, hasRoute = route != null, pointCount = waypoints.size)) {
             PlanStart.FOLLOW_TRACK -> { followShown(); shown = null }
             PlanStart.NAVIGATE_PLAN -> { followPlanned(); secureTourCorridor() }
             // the button waits for the line; reached anyway: record (a tour is never refused), nothing followed.

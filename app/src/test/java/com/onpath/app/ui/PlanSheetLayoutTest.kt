@@ -30,14 +30,31 @@ class PlanSheetLayoutTest {
         assertTrue(icon, icon.contains("Icons.Filled.PlayArrow"))
     }
 
-    /** Owner 2026-11-05: from two points on; during a tour none here – the green "Navigation ›" in the foot leads back (C). */
+    /**
+     * From two points on; during a tour none here – the green "Navigation ›" in the foot leads back (C). A plain recording
+     * without a plan is ☰ → "Ohne Plan aufzeichnen" (owner 2026-11-06: "Los geht's ohne Route" in the sheet was confusing).
+     */
     @Test fun theButtonShowsFromTwoPointsAndNeverDuringATour() {
+        assertFalse(PlanBarRow.shown(ui(0, running = false)))
         assertFalse(PlanBarRow.shown(ui(1, running = false)))
         assertTrue(PlanBarRow.shown(ui(2, running = false)))
         assertFalse(PlanBarRow.shown(ui(0, running = true)))
         assertFalse(PlanBarRow.shown(ui(3, running = true)))
-        // the rolled-up row: no button during a tour either
+        // the rolled-up row: no button below two points, none during a tour
         assertTrue(panel.contains("if (ui.pointCount >= 2 && ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)"))
+    }
+
+    /** ☰ (owner 2026-11-06): Meine Touren · Plan speichern · Neu planen · Ohne Plan aufzeichnen, then sync and settings. */
+    @Test fun menuOrderNewPlanAndRecordWithoutPlan() {
+        val bar = File("src/main/java/com/onpath/app/ui/PlanTopBar.kt").readText()
+        val items = bar.substringAfter("internal fun PlanMenuItems(").substringBefore("\n}\n")
+        val order = listOf("plan_menu_my_routes", "plan_save_route", "plan_close_plan", "plan_menu_record_without_plan",
+            "SyncMenuItem", "common_settings").map { items.indexOf(it) }
+        assertTrue("menu order $order", order.all { it >= 0 } && order == order.sorted())
+        val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
+        assertTrue(screen.contains("onNewPlan = if (vm.waypoints.isNotEmpty()) vm::requestClear else null"))
+        assertTrue(screen.contains("onRecordWithoutPlan = if (rec == null)"))
+        assertTrue(screen.contains("vm.startNavigation(recordOnly = true)"))
     }
 
     /** The plan row keeps its words while they fit, else three signs (a large font) – a word is never cut. */
@@ -48,7 +65,8 @@ class PlanSheetLayoutTest {
         assertTrue(PlanRow.factsOneLine(320f, 390f))
         assertFalse(PlanRow.factsOneLine(360f, 390f))
         val head = panel.substringAfter("private fun PlanHead(").substringBefore("\n}\n")
-        assertTrue(head, head.contains("if (!oneLine && !ui.routing) DifficultyBadge("))
+        // the difficulty stays while a route is calculated (faded – PlanCalculatingTest)
+        assertTrue(head, head.contains("if (!oneLine) DifficultyBadge("))
         assertTrue(panel.contains("if (factsOneLine(route)) Box {"))
     }
 

@@ -8,6 +8,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import com.onpath.strings.Res
+import com.onpath.strings.Txt
+import com.onpath.strings.plan_start_recording_for
+import com.onpath.strings.plan_menu_record_without_plan
+import com.onpath.strings.plan_menu
 import org.maplibre.android.geometry.LatLng
 
 /**
@@ -75,5 +80,34 @@ class CorePlanE2ETest : E2EBase() {
         Thread.sleep(500)
         holdOnWaypoint(0)
         assertNotNull("point menu on a turned map", device.wait(Until.findObject(By.text("Delete")), 5_000))
+    }
+
+    /**
+     * Flow map H1 (2026-11-06, confirmed on the emulator): with no plan point there was no way to start a tour – no
+     * green button on any sheet step, none in ☰. Now the sheet's green button says "Los geht's · ohne Route" and starts a
+     * plain recording (PlanStart.RECORD_ONLY).
+     */
+    @Test fun anEmptyPlanStartsARecordingWithoutARoute() {
+        scenario.onActivity { a -> if (vm(a).waypoints.isNotEmpty()) vm(a).clearPlan() }
+        waitUntil("empty plan", 5_000) { waypointCount() == 0 }
+        // owner 2026-11-06: no start button in the sheet without a plan – the plain recording is ☰ → "Ohne Plan aufzeichnen"
+        org.junit.Assert.assertNull("no green start button on an empty plan",
+            device.findObject(By.desc(Txt.s(Res.string.plan_start_recording_for))))
+        val menu = findFresh(By.desc(Txt.s(Res.string.plan_menu)), 8_000)
+        assertNotNull("the ☰ menu button", menu)
+        menu!!.click()
+        val item = findFresh(By.text(Txt.s(Res.string.plan_menu_record_without_plan)), 5_000)
+        assertNotNull("☰ → \"Ohne Plan aufzeichnen\"", item)
+        item!!.click()
+        // the phone check before the first tour may open (vibration / voice): "Later" goes on to the tour, as a user does
+        repeat(3) {
+            Thread.sleep(800)
+            var open = false
+            scenario.onActivity { a -> open = vm(a).setupGuide != null }
+            if (open) device.wait(Until.findObject(By.text(java.util.regex.Pattern.compile("Later|Continue|Später|Weiter"))), 5_000)?.click()
+        }
+        waitUntil("a tour records", 20_000) { var r = false; scenario.onActivity { a -> r = vm(a).recState.value != null }; r }
+        try { scenario.onActivity { a -> vm(a).endTourAndDelete() } } catch (_: Exception) {} // expected: app already closed
+        waitUntil("the tour ended", 20_000) { var r = true; scenario.onActivity { a -> r = vm(a).recState.value != null }; !r }
     }
 }

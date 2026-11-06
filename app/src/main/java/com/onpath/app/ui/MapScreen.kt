@@ -94,26 +94,27 @@ fun MapScreen(
             else -> vm.locate()
         }
     }
-    // One grouped control: compass (always: Plan = needle, tap north up; Navigate = orientation toggle), eye
-    // (only with something route-like on the map), locate (always, with the GPS dot).
+    // One grouped control: compass (always: Plan = needle, tap north up; Navigate = orientation toggle), locate (always,
+    // with the GPS dot), eye and whole route (always – grey without something route-like on the map, owner 2026-11-06).
     // [mode] = the layer the footer sits in (not vm.mode: the leaving layer keeps its look while it animates out)
     val controls = @Composable { mode: AppMode ->
         // the points step leaves little map: only Undo + locate (the compass would sit over ☰)
         val pointsOpen = mode == AppMode.PLAN && vm.planSize == PlanSize.FULL && vm.shown == null && vm.cardPlace == null
             // measured, no state: a fit reads it when it happens
+            val ctl = vm.controlsIn(mode, pointsOpen)
             Box(if (mode == AppMode.PLAN) Modifier.onSizeChanged { planFab[0] = it.width; planFab[1] = it.height } else Modifier) {
                 MapControls(
                     // same cycle in both modes: turned by hand → north up → walking direction up → north up (AppViewModel.onCompass)
                     compass = if (pointsOpen) null
                         else CompassSpec(vm.headingUp && vm.followMe, bearing) { vm.onCompass(kotlin.math.abs(bearing) > 1f) },
-                    showEye = !pointsOpen && (vm.route != null || vm.shown != null || vm.followLine != null),
+                    // eye, whole route, undo, redo: always there, greyed when they cannot act (MapControlsEnabled)
+                    showEye = MapControlsEnabled.eye(ctl),
                     onPeek = { vm.routePeek = it },
                     // under the eye: the whole line + its points (Navigate: + where you are), following stops
-                    onFitRoute = if (vm.wholeRouteShown(mode, pointsOpen)) vm::showWholeRoute else null,
+                    onFitRoute = if (MapControlsEnabled.wholeRoute(ctl)) vm::showWholeRoute else null,
                     gps = gps, following = vm.followMe, onLocate = onLocate,
-                    onUndo = if (mode == AppMode.PLAN && vm.canUndo && vm.shown == null) vm::undoStep else null,
-                    // Undo and Redo side by side as map buttons; Redo only when there is something to redo
-                    onRedo = if (mode == AppMode.PLAN && vm.canRedo && vm.shown == null) vm::redoStep else null,
+                    onUndo = if (MapControlsEnabled.undo(ctl)) vm::undoStep else null,
+                    onRedo = if (MapControlsEnabled.redo(ctl)) vm::redoStep else null,
                     onSettings = if (mode == AppMode.NAVIGATE) { { vm.navSettingsOpen = true } } else null,
                     plan = mode == AppMode.PLAN, // Plan is blue (owner 2026-11-03), Navigate unchanged
                 )
@@ -187,7 +188,7 @@ fun MapScreen(
             modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = hintTop),
             enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
             androidx.compose.material3.Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-                shadowElevation = 3.dp, color = androidx.compose.material3.MaterialTheme.colorScheme.surface) {
+                shadowElevation = 3.dp, color = OnPathColors.CardWhite) { // over the map: white (owner 2026-11-06)
                 androidx.compose.foundation.layout.Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     androidx.compose.material3.CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
@@ -306,6 +307,10 @@ private fun PlanMode(
                 onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
                 unsaved = RouteRules.saveAtHand(vm.waypoints.size, vm.planUnsaved),
                 onOpened = vm::refreshTours,
+                // owner 2026-11-06: "Neu planen" also in ☰ (the same way as the sheet's ✕ pill) and the plain recording
+                onNewPlan = if (vm.waypoints.isNotEmpty()) vm::requestClear else null,
+                onRecordWithoutPlan = if (rec == null) ({
+                    vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.startNavigation(recordOnly = true) } }) else null,
                 // no "Check for updates" in the ☰ menu – Settings has the Updates section (owner)
                 onUpdates = null,
             ),
@@ -385,7 +390,7 @@ private fun PlanMode(
 @Composable
 internal fun sharedUnsureMessage(text: String, onSearch: () -> Unit): Message =
     Message(MessageKind.HINWEIS_WARN, str(Res.string.msg_shared_place_unsure), str(Res.string.msg_shared_place_unsure_detail, text),
-        listOf(MessageButton(str(Res.string.msg_shared_place_search), onSearch)))
+        listOf(MessageButton(str(Res.string.msg_shared_place_search), onSearch)), tone = ButtonTone.EDIT) // searching a place = planning
 
 /**
  * The plan run reached its time limit (owner 2026-11-03, onpath.private#21 B, [com.onpath.app.routing.SlowPlan]): "Die
@@ -398,7 +403,7 @@ internal fun slowPlanMessage(onAnswer: (com.onpath.app.routing.SlowPlan.Answer) 
         buttons = listOf(
             MessageButton(str(Res.string.common_cancel)) { onAnswer(com.onpath.app.routing.SlowPlan.Answer.CANCEL) },
             MessageButton(str(Res.string.plan_slow_wait)) { onAnswer(com.onpath.app.routing.SlowPlan.Answer.KEEP_WAITING) },
-        ))
+        ), tone = ButtonTone.EDIT) // waiting for a plan to compute = planning
 
 @Composable
 private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppViewModel, rec: RecState?,

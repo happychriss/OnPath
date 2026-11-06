@@ -76,8 +76,8 @@ fun StraightLegsDialog(onNavigate: () -> Unit, onCancel: () -> Unit) {
         text = {
             DialogText(str(Res.string.plan_straight_text))
         },
-        confirmButton = { TextButton(onClick = onNavigate, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.plan_navigate_anyway)) } },
-        dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.plan_fix_route)) } },
+        confirmButton = { TextButton(colors = ActionButtons.goText(), onClick = onNavigate, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.plan_navigate_anyway)) } },
+        dismissButton = { TextButton(colors = ActionButtons.editText(), onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.plan_fix_route)) } },
     )
 }
 
@@ -109,7 +109,7 @@ fun SaveNameDialog(kind: SaveAsk.Kind, name: String, onSave: (String) -> Unit, o
                 try { focus.requestFocus() } catch (e: IllegalStateException) { com.onpath.app.debug.Problems.trace("ui", "Save dialog: no focus ($e)") }
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(text.text) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_save)) } },
+        confirmButton = { TextButton(colors = ActionButtons.editText(), onClick = { onSave(text.text) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_save)) } },
         dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
     )
 }

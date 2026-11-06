@@ -323,7 +323,7 @@ fun TourControls(
 ) {
     TourStatus(tourStatusText(distanceM, elapsedS, paused, recordOnly), paused)
     Spacer(Modifier.height(8.dp))
-    Button(onClick = { if (paused) onPause(false); onContinue() }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+    Button(colors = ActionButtons.go(), onClick = { if (paused) onPause(false); onContinue() }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
         contentPadding = PaddingValues(horizontal = 8.dp)) {
         Icon(Icons.Filled.Navigation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
         Text(continueLabel(activity), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
@@ -386,7 +386,7 @@ fun TourStatusRow(
                 }
                 Spacer(Modifier.width(8.dp))
             }
-            Button(onClick = { if (paused) onPause(false); onContinue() },
+            Button(colors = ActionButtons.go(), onClick = { if (paused) onPause(false); onContinue() },
                 modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = described },
                 contentPadding = PaddingValues(start = 14.dp, end = 18.dp)) {
                 Icon(Icons.Filled.Navigation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
@@ -429,15 +429,16 @@ internal object TourRowFit {
 @Composable
 fun TourPauseEnd(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Unit, modifier: Modifier = Modifier) {
     Layout(content = {
-        FilledTonalButton(onClick = { onPause(!paused) }, modifier = Modifier.heightIn(min = 48.dp),
+        FilledTonalButton(colors = ActionButtons.goTonal(), onClick = { onPause(!paused) }, modifier = Modifier.heightIn(min = 48.dp),
             contentPadding = PaddingValues(horizontal = 8.dp)) {
             Icon(if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
             Text(str(if (paused) Res.string.common_resume else Res.string.nav_pause), maxLines = 1)
         }
+        // Tour beenden is navigation: green, no red at the stop (owner 2026-11-05, onpath.private#27)
         OutlinedButton(onClick = onEnd, modifier = Modifier.heightIn(min = 48.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)) {
-            Icon(Icons.Filled.Stop, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error); Spacer(Modifier.width(6.dp))
-            Text(str(Res.string.nav_end_tour), color = MaterialTheme.colorScheme.error, maxLines = 1)
+            contentPadding = PaddingValues(horizontal = 8.dp), border = BorderStroke(1.5.dp, OnPathColors.ActionGo)) {
+            Icon(Icons.Filled.Stop, null, Modifier.size(18.dp), tint = OnPathColors.ActionGo); Spacer(Modifier.width(6.dp))
+            Text(str(Res.string.nav_end_tour), color = OnPathColors.ActionGo, maxLines = 1)
         }
     }, modifier = modifier.fillMaxWidth()) { ms, c ->
         val gap = 8.dp.roundToPx()
@@ -465,7 +466,7 @@ fun RouteBackDialog(onYes: () -> Unit, onNo: () -> Unit) {
         icon = { Icon(Icons.Filled.Flag, null) },
         title = { Text(str(Res.string.nav_route_back_title)) },
         text = { DialogText(str(Res.string.nav_route_back_text)) },
-        confirmButton = { TextButton(onClick = onYes) { Text(str(Res.string.nav_route_back)) } },
+        confirmButton = { TextButton(colors = ActionButtons.goText(), onClick = onYes) { Text(str(Res.string.nav_route_back)) } },
         dismissButton = { TextButton(onClick = onNo) { Text(str(Res.string.nav_just_record)) } },
         properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
     )
@@ -489,7 +490,7 @@ fun LongRouteDialog(seconds: Double, activity: com.onpath.app.routing.Activity, 
         icon = { Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Warn) },
         title = { Text(str(Res.string.nav_long_route_title)) },
         text = { DialogText(longRouteText(seconds, activity)) },
-        confirmButton = { TextButton(onClick = onPlan) { Text(str(Res.string.nav_plan_anyway)) } },
+        confirmButton = { TextButton(colors = ActionButtons.editText(), onClick = onPlan) { Text(str(Res.string.nav_plan_anyway)) } },
         dismissButton = { TextButton(onClick = onCancel) { Text(str(Res.string.common_cancel)) } },
         properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
     )

@@ -60,7 +60,9 @@ class ScreenshotTest {
 
     @Composable
     private fun Footer(gps: GpsStatus = GpsStatus.GOOD, following: Boolean = false, compass: CompassSpec? = null,
-                       eye: Boolean = false, peeking: Boolean = false, large: Boolean = false, fit: Boolean = false,
+                       eye: Boolean = false, peeking: Boolean = false, large: Boolean = false,
+                       /** whole route: with a line (= the eye) unless a test says otherwise – the greying rule (MapControlsEnabled) */
+                       fit: Boolean = eye,
                        plan: Boolean = false) =
         MapFooter("500 m" to 64.dp) {
             MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking,
@@ -74,9 +76,15 @@ class ScreenshotTest {
     @Composable
     private fun Frame(gps: GpsStatus = GpsStatus.GOOD, aboveFooter: @Composable () -> Unit = {},
                       top: @Composable () -> Unit = {},
+                      /**
+                       * The plan has a route (owner 2026-11-06: the pictures show the greying rule): eye, whole route and
+                       * undo can act; false = an empty / unrouted plan – they are greyed ([MapControlsEnabled]).
+                       */
+                      route: Boolean = true,
                       /** Plan's map controls – at their fixed place (onpath.private#43, PlanControlsLayer), not on the sheet's edge. */
                       controls: @Composable () -> Unit = {
-                          MapControls(CompassSpec(null, 0f) {}, showEye = false, onPeek = {}, gps = gps, following = false, onLocate = {}, plan = true)
+                          MapControls(CompassSpec(null, 0f) {}, showEye = route, onPeek = {}, gps = gps, following = false, onLocate = {},
+                              onFitRoute = if (route) ({}) else null, onUndo = if (route) ({}) else null, plan = true)
                       },
                       menu: PlanMenu = PlanMenu(onUpdates = {}),
                       /** "Plan ändern" during a tour: the mode label and the blue position sign in the map's middle. */
@@ -203,12 +211,12 @@ class ScreenshotTest {
 
     /** App start without a plan: Plan is home; no points, no primary button (free recording = the green start button, ☰ has no Start recording since 2026-11-02). GPS searching. */
     @Test fun planEmpty() = paparazzi.snapshot {
-        Frame(gps = GpsStatus.SEARCHING) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
+        Frame(route = false, gps = GpsStatus.SEARCHING) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
     }
 
     /** Only a start point (owner 2026-10-30): no line to follow, no "Start navigation" (free recording = the green start button, ☰ has no Start recording since 2026-11-02). */
     @Test fun planOnePoint() = paparazzi.snapshot {
-        Frame { PlanPanel(planUi(n = 1, r = null), PlanCallbacks()) }
+        Frame(route = false) { PlanPanel(planUi(n = 1, r = null), PlanCallbacks()) }
     }
 
     @Test fun plan() = paparazzi.snapshot {
@@ -320,12 +328,12 @@ class ScreenshotTest {
 
     /** Full while the route is calculated: the Points list right away, straight-line distances (~). */
     @Test fun planPointsFullRouting() = paparazzi.snapshot {
-        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true), PlanCallbacks()) }
+        Frame(route = false) { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true), PlanCallbacks()) }
     }
 
     /** A long calculation shows "Calculating the route… Cancel". */
     @Test fun planRoutingSlowCancel() = paparazzi.snapshot {
-        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true).copy(routingSlow = true), PlanCallbacks()) }
+        Frame(route = false) { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true).copy(routingSlow = true), PlanCallbacks()) }
     }
 
     /**
@@ -333,13 +341,13 @@ class ScreenshotTest {
      * "Calculating section 2 of 4…" over a bar a quarter full, Cancel beside it.
      */
     @Test fun planRoutingSlowProgress() = paparazzi.snapshot {
-        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true)
+        Frame(route = false) { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true)
             .copy(routingSlow = true, routeProgress = 1 to 4, routeShare = 0.25f), PlanCallbacks()) }
     }
 
     /** One long leg (a fresh 100 km plan, owner 2026-11-05): the bar moves within the leg – "Calculating the route…", 40 %. */
     @Test fun planRoutingSlowOneLeg() = paparazzi.snapshot {
-        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true)
+        Frame(route = false) { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true)
             .copy(routingSlow = true, routeProgress = 0 to 1, routeShare = 0.4f), PlanCallbacks()) }
     }
 
@@ -364,7 +372,7 @@ class ScreenshotTest {
      * forever. Now: the points stay, a plain notice says the route is not calculated, with "Plan anyway".
      */
     @Test fun planNotRoutedLong() = paparazzi.snapshot {
-        Frame { PlanPanel(planUi(n = 2, r = null).copy(notRouted = NotRouted.LONG), PlanCallbacks()) }
+        Frame(route = false) { PlanPanel(planUi(n = 2, r = null).copy(notRouted = NotRouted.LONG), PlanCallbacks()) }
     }
 
     /**
@@ -373,7 +381,7 @@ class ScreenshotTest {
      */
     @Test fun planPointsRoundTrip() = paparazzi.snapshot {
         val loop = stops.take(3) + stops[0]
-        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(loop, null), r = null, roundTrip = true)
+        Frame(route = false) { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(loop, null), r = null, roundTrip = true)
             .copy(pointCount = 4), PlanCallbacks()) }
     }
 
@@ -389,7 +397,7 @@ class ScreenshotTest {
 
     /** One point only: Start, Reverse / Round trip disabled. */
     @Test fun planPointsOne() = paparazzi.snapshot {
-        Frame { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(stops.take(1), null), r = null), PlanCallbacks()) }
+        Frame(route = false) { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(stops.take(1), null), r = null), PlanCallbacks()) }
     }
 
     /** Route details (tap the profile or the difficulty badge): summary, large profile, way types / surfaces. */
@@ -415,12 +423,15 @@ class ScreenshotTest {
 
     @Composable
     private fun TopMenu(state: RouteMenuState, phoneSetup: Boolean = false, sync: (() -> SyncMenuUi)? = null,
-                        unsaved: Boolean = false, bottom: @Composable () -> Unit) {
+                        unsaved: Boolean = false, newPlan: Boolean = state.save, record: Boolean = true,
+                        bottom: @Composable () -> Unit) {
         Box(Modifier.fillMaxSize()) {
             // [sync] is built inside the composition: its texts follow the test's language
             // Save route is the top item whenever there is a plan; [unsaved] = the "Nicht gespeichert ›" sign
             val menu = PlanMenu(state, onUpdates = {}, onPairBrowser = {}, onPhoneSetup = if (phoneSetup) ({}) else null,
-                sync = sync?.invoke() ?: SyncMenuUi(), onSaveRoute = if (state.save) ({}) else null, unsaved = unsaved)
+                sync = sync?.invoke() ?: SyncMenuUi(), onSaveRoute = if (state.save) ({}) else null, unsaved = unsaved,
+                // owner 2026-11-06: "Neu planen" with a plan, "Ohne Plan aufzeichnen" while no tour runs
+                onNewPlan = if (newPlan) ({}) else null, onRecordWithoutPlan = if (record) ({}) else null)
             Frame(menu = menu) { bottom() }
             OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 92.dp, end = 12.dp)) {
                 PlanMenuItems(menu) {}
@@ -484,7 +495,7 @@ class ScreenshotTest {
 
     /** ☰ while a tour runs (looked at from Plan): Start recording greyed. */
     @Test fun planMenuNavigating() = paparazzi.snapshot {
-        TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = true, recording = true)) {
+        TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = true, recording = true), record = false) {
             TourRunningBar(6_400.0, 5025, paused = false, onEnd = {}, activity = Activity.BIKE_TREKKING)
             PlanPanel(planUi(tourRunning = true), PlanCallbacks())
         }
@@ -906,6 +917,20 @@ class ScreenshotTest {
             warnText = "1.2 km pushing · steps · 2 steep sections"), PlanCallbacks()) }
     }
 
+    /**
+     * Owner 2026-11-06 (Pixel): Reverse / Round trip – while the route is calculated the sheet keeps its height: the old
+     * profile and the lines stay faded, the bar runs in the plan row's hairline. [planRecalculating] and
+     * [planRecalculatingBefore] must have their sheet edge on the same pixel row.
+     */
+    @Test fun planRecalculatingBefore() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi().copy(warnText = "1.2 km pushing · steps",
+            changedText = RouteWarnings.changedText(com.onpath.app.routing.Activity.HIKE, 2)), PlanCallbacks()) }
+    }
+    @Test fun planRecalculating() = paparazzi.snapshot {
+        Frame { PlanPanel(planUi(routing = true).copy(warnText = "1.2 km pushing · steps", routeShare = 0.4f,
+            changedText = RouteWarnings.changedText(com.onpath.app.routing.Activity.HIKE, 2)), PlanCallbacks()) }
+    }
+
     /** The grey INFO line after an activity change. */
     @Test fun planRouteChanged() = paparazzi.snapshot {
         Frame { PlanPanel(planUi().copy(activity = com.onpath.app.routing.Activity.BIKE_TREKKING,
@@ -939,7 +964,7 @@ class ScreenshotTest {
     @Composable
     private fun OverlayFrame(dotColor: androidx.compose.ui.graphics.Color?, anchorDp: androidx.compose.ui.unit.DpOffset, empty: Boolean = false,
                              ring: Boolean = false, content: @Composable () -> Unit) {
-        Frame { PlanPanel(if (empty) planUi(n = 0, r = null) else planUi(), PlanCallbacks()) }
+        Frame(route = false) { PlanPanel(if (empty) planUi(n = 0, r = null) else planUi(), PlanCallbacks()) }
         val d = androidx.compose.ui.platform.LocalDensity.current
         val a = with(d) { androidx.compose.ui.geometry.Offset(anchorDp.x.toPx(), anchorDp.y.toPx()) }
         if (dotColor != null) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
@@ -1223,7 +1248,7 @@ class ScreenshotTest {
 
     /** First start on an empty phone: restore offer. */
     @Test fun restoreOffer() = paparazzi.snapshot {
-        OnPathTheme { Frame { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }; RestoreOfferDialog({}, {}) }
+        OnPathTheme { Frame(route = false) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }; RestoreOfferDialog({}, {}) }
     }
 
     /** Loading over an unsaved plan: Save first / Replace (tap outside = cancel). */
@@ -1253,7 +1278,7 @@ class ScreenshotTest {
     /** Interrupted recording at start: Continue · Delete · Save like End tour. */
     @Test fun unfinishedTour() = paparazzi.snapshot {
         OnPathTheme {
-            Frame { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
+            Frame(route = false) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
             UnfinishedDialog(tourList[1], {}, {}, {})
         }
     }
@@ -1378,7 +1403,7 @@ class ScreenshotTest {
     /** What the map needs from the user shows at the top (a box, or the grey pill for a state), not as a card in the sheet. */
     @Composable
     private fun CardFrame(card: CellCardUi?, ui: PlanUi, gps: GpsStatus = GpsStatus.GOOD) =
-        Frame(gps = gps, top = {
+        Frame(gps = gps, route = ui.route != null, top = {
             mapNotice(card)?.let { n -> mapNoticeMessage(n, CellCardCallbacks())?.let { MessageCard(it) } ?: MapNoticePill(n) }
         }) { PlanPanel(ui, PlanCallbacks()) }
 
@@ -1392,7 +1417,7 @@ class ScreenshotTest {
 
     /** The app opened where there is no detailed map – the box asks, nothing loads by itself. */
     @Test fun hereAsk() = paparazzi.snapshot {
-        Frame(top = { MessageCard(hereAskMessage(21L * 1_048_576, {}, {})) }) { PlanPanel(planWithCard(n = 0), PlanCallbacks()) }
+        Frame(route = false, top = { MessageCard(hereAskMessage(21L * 1_048_576, {}, {})) }) { PlanPanel(planWithCard(n = 0), PlanCallbacks()) }
     }
 
     /** T1: a start point set outside the detailed map – the server builds the cells. */
@@ -1468,7 +1493,7 @@ class ScreenshotTest {
     /** Zoomed in (z ≥ 10) where only the overview map exists: a small hint below the search bar. */
     @Test fun overviewHint() = paparazzi.snapshot {
         Box {
-            Frame(gps = GpsStatus.SEARCHING) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
+            Frame(route = false, gps = GpsStatus.SEARCHING) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
             OnPathTheme {
                 Box(Modifier.fillMaxSize().padding(top = 32.dp + 76.dp, start = 16.dp, end = 16.dp), contentAlignment = Alignment.TopCenter) {
                     OverviewHint()

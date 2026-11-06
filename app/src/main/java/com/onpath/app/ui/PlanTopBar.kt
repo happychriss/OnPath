@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
@@ -90,6 +92,16 @@ class PlanMenu(
      * (owner 2026-11-06, onpath.private#41 B – the green dot on ☰ said nothing to anyone).
      */
     val unsaved: Boolean = false,
+    /**
+     * "Neu planen" in ☰ (owner 2026-11-06: "habe ich oben im Menü gesucht") – the same way as the sheet's ✕ pill (which
+     * stays); null hides it (no plan points).
+     */
+    val onNewPlan: (() -> Unit)? = null,
+    /**
+     * "Ohne Plan aufzeichnen" (owner 2026-11-06, flow map H1: "Los geht's ohne Route" in the sheet was confusing – in ☰,
+     * rarely needed): a plain recording; null hides it (a tour runs).
+     */
+    val onRecordWithoutPlan: (() -> Unit)? = null,
 ) {
     /** The "Nicht gespeichert ›" sign shows: unsaved changes and Save at hand (its tap is Save route). */
     val showUnsaved: Boolean get() = unsaved && onSaveRoute != null
@@ -235,13 +247,15 @@ private fun UnsavedSign(onSave: () -> Unit, wordless: Boolean = false) {
         }
         .heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onSave)
         .clearAndSetSemantics { contentDescription = desc; role = Role.Button }, contentAlignment = Alignment.TopStart) {
-        Row(Modifier.clip(CircleShape).background(OnPathColors.WarnContainer, CircleShape)
-            .border(1.dp, OnPathColors.Warn, CircleShape).padding(horizontal = 8.dp, vertical = 1.dp),
+        // the plan pills' style (owner 2026-11-06: keep to the colour standard – plan is blue; the light fill of
+        // "✕ Neu planen", a fine blue edge so it stands off the band of the same blue), the menu's Save sign
+        Row(Modifier.clip(CircleShape).background(PillBlueLight, CircleShape)
+            .border(1.dp, UnsavedSignStyle.EDGE, CircleShape).padding(horizontal = 8.dp, vertical = 1.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.Save, null, tint = OnPathColors.Warn, modifier = Modifier.size(12.dp))
+            Icon(Icons.Outlined.Save, null, tint = PillBlueInk, modifier = Modifier.size(12.dp))
             Spacer(Modifier.width(3.dp))
             Text(if (wordless) "›" else str(Res.string.plan_unsaved_chip) + " ›", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                color = OnPathColors.OnWarnContainer, maxLines = 1, softWrap = false)
+                color = PillBlueInk, maxLines = 1, softWrap = false)
         }
     }
 }
@@ -296,8 +310,9 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     menu.onSaveRoute?.let { save ->
         MenuItem(Icons.Outlined.Save, str(Res.string.plan_save_route), enabled = st.save) { close(); save() }
     }
-    // no "Aufzeichnung starten" here (owner 2026-11-02, onpath.private#15): the green start button in Plan records
-    // without a route ("Aufnahme starten · ‹Aktivität›", PlanStart.RECORD_ONLY)
+    // owner 2026-11-06: Meine Touren · Plan speichern · Neu planen · Ohne Plan aufzeichnen, then the rest
+    menu.onNewPlan?.let { n -> MenuItem(Icons.Filled.Close, str(Res.string.plan_close_plan)) { close(); n() } }
+    menu.onRecordWithoutPlan?.let { r -> MenuItem(Icons.Outlined.RadioButtonChecked, str(Res.string.plan_menu_record_without_plan)) { close(); r() } }
     HorizontalDivider()
     menu.onPairBrowser?.let { p -> SyncMenuItem(menu.sync, enabled = st.settings) { close(); p() } }
     MenuItem(Icons.Outlined.Settings, str(Res.string.common_settings), enabled = st.settings) { close(); menu.onSettings() }
@@ -362,3 +377,6 @@ fun PlanFrame(modifier: Modifier = Modifier) {
 
 /** Width of the soft blue edge. */
 private val PLAN_EDGE = 14.dp
+
+/** The "Nicht gespeichert ›" sign's edge: the plan accent, fine (owner 2026-11-06, the plan pills' style). */
+object UnsavedSignStyle { val EDGE = OnPathColors.PlanAccent.copy(alpha = 0.55f) }

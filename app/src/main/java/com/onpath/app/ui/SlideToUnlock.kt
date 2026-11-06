@@ -97,7 +97,7 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
     val mainText = "»  $label"
     var tapped by remember { mutableIntStateOf(0) }
     BoxWithConstraints(
-        modifier.fillMaxWidth().height(TRACK_HEIGHT).clip(CircleShape).background(MaterialTheme.colorScheme.primary) // the turn card's green (owner 2026-11-01)
+        modifier.fillMaxWidth().height(TRACK_HEIGHT).clip(CircleShape).background(OnPathColors.ActionGo) // the turn card's green (owner 2026-11-01)
             .pointerInput(Unit) { detectTapGestures { tapped++ } }
             .clearAndSetSemantics {
                 contentDescription = desc
@@ -141,7 +141,7 @@ fun SlideToPlan(onSlid: () -> Unit, modifier: Modifier = Modifier, recording: Bo
         ) {
             Box(contentAlignment = Alignment.Center) {
                 // a closed lock on the thumb (owner 2026-11-05): the slider only unlocks
-                Icon(Icons.Filled.Lock, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                Icon(Icons.Filled.Lock, null, tint = OnPathColors.ActionGo, modifier = Modifier.size(28.dp))
             }
         }
     }

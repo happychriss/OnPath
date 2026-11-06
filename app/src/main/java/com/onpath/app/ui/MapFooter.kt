@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -128,9 +129,9 @@ fun MapControls(
     peeking: Boolean = false,
     /** "Show whole route" (shown only when there is a line to show, [WholeRoute.shows]). */
     onFitRoute: (() -> Unit)? = null,
-    /** Plan: undo the last edit (shown only when there is something to undo). */
+    /** Plan: undo the last edit (null = nothing to undo: the button stays, greyed). */
     onUndo: (() -> Unit)? = null,
-    /** Plan: redo the last undone edit (shown only when there is something to redo). */
+    /** Plan: redo the last undone edit (null = nothing to redo: the button stays, greyed). */
     onRedo: (() -> Unit)? = null,
     /** Navigate: the navigation settings on the way – a gear on top of the controls. */
     onSettings: (() -> Unit)? = null,
@@ -141,17 +142,26 @@ fun MapControls(
 ) {
     val size = MAP_FAB
     val tint = if (plan) OnPathColors.PlanAccent else MaterialTheme.colorScheme.onSurfaceVariant
-    val bg = if (plan) OnPathColors.PlanTint else MaterialTheme.colorScheme.surface
+    val bg = if (plan) OnPathColors.PlanTint else OnPathColors.CardWhite // Navigate: white over the map (owner 2026-11-06)
     // every control says its name on a long press (owner 2026-11-03, novice fix: "what does the eye do?")
     val tips = buildList<Pair<String, @Composable () -> Unit>> {
         val locate: Pair<String, @Composable () -> Unit> = locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint) }
         if (onSettings != null) add(str(Res.string.nav_settings_cd) to { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size, tint) })
         if (compass != null) add(compassText(compass) to { CompassControl(compass, size) })
         if (plan) add(locate) // Plan: the always-there buttons first – the column grows only downwards
-        if (showEye) add(str(Res.string.plan_hold_hide_route) to { EyeControl(onPeek, peeking, size, tint) })
-        if (onFitRoute != null) add(str(Res.string.plan_show_whole_route) to { IconControl(Icons.Filled.FitScreen, Res.string.plan_show_whole_route, onFitRoute, size, tint) })
-        if (onUndo != null) add(str(Res.string.plan_undo) to { IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo, size, tint) })
-        if (onRedo != null) add(str(Res.string.plan_redo) to { IconControl(Icons.AutoMirrored.Filled.Redo, Res.string.plan_redo, onRedo, size, tint) })
+        // eye and whole route are always there (owner 2026-11-06: "ausgrauen statt ausblenden – dann springt nichts und
+        // man sieht, was man tun könnte"): grey without a route, the long press still says what they do
+        add(str(Res.string.plan_hold_hide_route) to { EyeControl(onPeek, peeking, size, tint, enabled = showEye) })
+        add(str(Res.string.plan_show_whole_route) to { IconControl(Icons.Filled.FitScreen, Res.string.plan_show_whole_route,
+            onFitRoute ?: {}, size, tint, enabled = onFitRoute != null) })
+        // Plan: undo and redo always there, greyed when there is nothing to undo / redo (owner 2026-11-06: "das gibt
+        // Vertrauen, dass man immer alles neu machen und wiederholen kann") – the column always has the same height
+        if (plan) {
+            add(str(Res.string.plan_undo) to { IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo ?: {}, size, tint,
+                enabled = onUndo != null) })
+            add(str(Res.string.plan_redo) to { IconControl(Icons.AutoMirrored.Filled.Redo, Res.string.plan_redo, onRedo ?: {}, size, tint,
+                enabled = onRedo != null) })
+        }
         if (!plan) add(locate) // Navigate: locate at the bottom, as before
     }
     val items = tips.mapIndexed { i, (text, control) -> @Composable { MapTip(text, i == tipShown) { control() } } }
@@ -200,11 +210,18 @@ private fun locateTip(status: GpsStatus): String = when (status) {
 /** A plain round map control: [icon] in the control colour, [desc] for TalkBack. */
 @Composable
 private fun IconControl(icon: ImageVector, desc: StringResource, onClick: () -> Unit, size: Dp,
-                        tint: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
-    Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onClick).semantics { contentDescription = Txt.s(desc) },
+                        tint: Color = MaterialTheme.colorScheme.onSurfaceVariant, enabled: Boolean = true) {
+    Box(Modifier.size(size).clip(CircleShape).clickable(enabled = enabled, onClick = onClick)
+        .semantics { contentDescription = Txt.s(desc); if (!enabled) disabled() },
         contentAlignment = Alignment.Center) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(iconSize(size)))
+        Icon(icon, null, tint = MapControlState.tint(tint, enabled), modifier = Modifier.size(iconSize(size)))
     }
+}
+
+/** A map control that is there but cannot act now (no route yet): its sign greyed (owner 2026-11-06). */
+object MapControlState {
+    const val DISABLED_ALPHA = 0.38f
+    fun tint(tint: Color, enabled: Boolean): Color = if (enabled) tint else tint.copy(alpha = DISABLED_ALPHA)
 }
 
 @Composable
@@ -230,7 +247,7 @@ private fun CompassControl(c: CompassSpec, size: Dp) {
 /** Hold to hide route lines and markers; release shows them again. */
 @Composable
 private fun EyeControl(onPeek: (Boolean) -> Unit, peekingPreview: Boolean, size: Dp,
-                       tint: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
+                       tint: Color = MaterialTheme.colorScheme.onSurfaceVariant, enabled: Boolean = true) {
     val peek by rememberUpdatedState(onPeek)
     var held by remember { mutableStateOf(false) }
     DisposableEffect(Unit) { onDispose { if (held) peek(false) } }
@@ -238,9 +255,9 @@ private fun EyeControl(onPeek: (Boolean) -> Unit, peekingPreview: Boolean, size:
     Box(
         Modifier.size(size).clip(CircleShape)
             .background(if (down) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-            .semantics { contentDescription = Txt.s(Res.string.plan_hold_hide_route) }
-            .pointerInput(Unit) {
-                detectTapGestures(onPress = {
+            .semantics { contentDescription = Txt.s(Res.string.plan_hold_hide_route); if (!enabled) disabled() }
+            .pointerInput(enabled) {
+                if (enabled) detectTapGestures(onPress = {
                     held = true; peek(true)
                     try { tryAwaitRelease() } finally { held = false; peek(false) }
                 })
@@ -248,7 +265,7 @@ private fun EyeControl(onPeek: (Boolean) -> Unit, peekingPreview: Boolean, size:
         contentAlignment = Alignment.Center,
     ) {
         Icon(if (down) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null,
-            tint = tint, modifier = Modifier.size(iconSize(size)))
+            tint = MapControlState.tint(tint, enabled), modifier = Modifier.size(iconSize(size)))
     }
 }
 
@@ -267,7 +284,7 @@ private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> 
             modifier = Modifier.size(iconSize(size)))
         Box(
             Modifier.align(Alignment.TopEnd).offset(x = (-6).dp, y = 6.dp).size(12.dp)
-                .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape).padding(2.dp).background(gpsColor(status), CircleShape),
+                .border(2.dp, OnPathColors.CardWhite, CircleShape).padding(2.dp).background(gpsColor(status), CircleShape),
         )
     }
 }

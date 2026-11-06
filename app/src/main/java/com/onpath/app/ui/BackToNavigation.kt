@@ -39,7 +39,7 @@ fun BackToNavigationButton(tour: TourState?, activity: com.onpath.app.routing.Ac
                            modifier: Modifier = Modifier) {
     val numbers = BackToNavigation.numbers(tour, LocalDensity.current.fontScale)
     val desc = Txt.s(Res.string.plan_back_nav_desc, activity.navName)
-    Button(onClick = onClick, modifier = modifier.fillMaxWidth().heightIn(min = 48.dp).semantics { contentDescription = desc }) {
+    Button(colors = ActionButtons.go(), onClick = onClick, modifier = modifier.fillMaxWidth().heightIn(min = 48.dp).semantics { contentDescription = desc }) {
         if (numbers != null) {
             // the recording sign: a small light red dot (the red REC of Navigate, readable on green)
             Box(Modifier.size(8.dp).background(if (tour?.paused == true) OnPathColors.OnGreenMuted else RecOnGreen, CircleShape))
