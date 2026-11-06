@@ -230,6 +230,9 @@ dialog.share .qr svg { display: block; width: 100%; height: auto; }
 dialog.share input { width: 100%; box-sizing: border-box; font: inherit; font-size: .85rem; padding: 6px 8px; margin: 4px 0 10px; }
 dialog.share .row button { padding: 8px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--bg); }
 dialog.share .row button.primary { border: none; background: var(--green); }
+/* the app's DecisionDialog: Verwerfen apart on the left (error text), Abbrechen · Speichern (filled, plan blue) right */
+dialog.discard .row button.danger { margin-right: auto; color: var(--error); }
+dialog.discard .row button.primary { background: #2E6A9E; }
 /* Save's name dialog (the app's SaveNameDialog): the label over a full-width field, the name a normal size */
 dialog.savename .field { display: block; }
 dialog.savename .field input { font-size: 1rem; padding: 8px 10px; margin: 2px 0 14px; }

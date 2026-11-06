@@ -162,12 +162,29 @@ await planned();
 check(await page.isVisible('#planActions #clear') && (await page.textContent('#planActions #clear')).trim() === 'New plan', 'action row: ✕ New plan');
 await page.click('#clear');
 check(await page.locator('dialog.discard[open]').count() === 1, 'an unsaved plan: Close asks "Discard changes?"');
+{ // the app's DiscardPlanDialog with Save (owner 2026-11-05): "Save plan?", Discard apart on the left, Cancel · Save on the right
+  const d = await page.evaluate(() => {
+    const dlg = document.querySelector('dialog.discard[open]'), bs = [...dlg.querySelectorAll('.row button')];
+    return { title: dlg.querySelector('h2').textContent, buttons: bs.map((b) => b.textContent.trim()),
+      apart: bs[0].getBoundingClientRect().right < bs[1].getBoundingClientRect().left - 24 };
+  });
+  check(d.title === 'Save plan?' && d.buttons.join('|') === 'Discard|Cancel|Save' && d.apart,
+    `✕ New plan asks "Save plan?" – Discard apart · Cancel · Save (${JSON.stringify(d)})`);
+}
 await page.click('#discardOk');
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 }).catch(() => {});
 check(await pins() === 0 && !(await page.$('dialog[open]')), 'Discard: the route is gone');
 await page.click('#undo');
 await planned().catch(() => {});
 check(await pins() === 2 && !!(await page.$('#summary .big')), 'undo: the route is back');
+// "Save" in that question: the name dialog, then the plan is saved and the map is empty (the app's discardSaveFirst)
+await page.click('#clear');
+await page.click('dialog.discard[open] #discardSave');
+await page.waitForSelector('dialog.savename[open]', { timeout: 10_000 });
+await page.click('#saveOk');
+await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 }).catch(() => {});
+const savedN = await page.evaluate(async () => (await window.__sync.list()).filter((p) => p.kind === 'plan').length);
+check(await pins() === 0 && savedN >= 1 && !(await page.$('dialog[open]')), `Save in "Save plan?": saved (${savedN}), then a new plan`);
 
 // 2. ☰ → Import GPX (Komoot hike) while the activity is Bike
 await page.evaluate(() => { localStorage.setItem('onpath.activity', 'BIKE_TOURING'); });

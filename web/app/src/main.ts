@@ -25,7 +25,7 @@ import { ActivityPicker, type ActivityRow, type PaceChoices } from './activity';
 import { holdMenu, type MenuItem } from './menus';
 import { Position } from './position';
 import { PlanSync, shownTitle, type SavedPlan } from './sync';
-import { myPlansDialog, joinDialog, saveRoute, askDiscard, phoneDialog, phonePill, appDate } from './plans';
+import { myPlansDialog, joinDialog, saveRoute, askDiscard, setDiscardSave, phoneDialog, phonePill, appDate } from './plans';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
 import { longRouteOk, allowLongRoute, notRoutedTexts, setNotRouted, type Before } from './longroute';
@@ -1248,6 +1248,14 @@ function saveEntry(st: 'empty' | 'save' | 'saved') {
   b.setAttribute('aria-label', label + ' – ' + tip);
   b.innerHTML = `${icon(shown === 'done' ? 'check' : paired ? 'phone' : 'save', 20)}<span class="lbl">${escapeHtml(label)}</span>`;
 }
+// "Speichern" in "Plan speichern?" (✕ Neu planen with unsaved changes): the header's Save; true once the plan is saved
+setDiscardSave(async () => {
+  if (!(await syncReady)) return false;
+  let saved = false;
+  try { await saveRoute(sync, plansHost, () => { saved = true; if (sync.status.paired) sync.sendAll(); }); }
+  catch (e) { problem('sync', 'route not saved', e, 'error'); status(t('web_save_failed'), 'error'); }
+  return saved;
+}, () => state.title);
 /**
  * A click on Save (the app's Save since 2026-10-31, "wie Word"; web-sync.md §14.6 rule 5 now): the shown route new or
  * changed – or saved, with nothing waiting – is saved at once (plans.ts saveRoute: overwrite the open saved route, else

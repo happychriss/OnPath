@@ -396,19 +396,34 @@ function nameDialog(copy: boolean, name: string, later?: MaybeName): MaybeName {
   });
 }
 
+/** Where "Speichern" in [askDiscard] saves (main.ts: the header's Save; resolves true once saved) and the plan's name. */
+let discardSave: { save: () => Promise<boolean>; name: () => string | null } | null = null;
+export function setDiscardSave(save: () => Promise<boolean>, name: () => string | null) { discardSave = { save, name }; }
+
 /**
- * ✕ Close while the plan has unsaved changes (the app's DiscardPlanDialog, owner 2026-10-31 – a decision that can lose
- * something): "Discard changes?", Cancel · Discard (red). Resolves true for Discard.
+ * ✕ Neu planen / Neuer Plan while the plan has unsaved changes – the app's DiscardPlanDialog with Save (owner 2026-11-05,
+ * ClearAsk / discardSaveFirst): "Plan speichern?" + "… has changes that are not saved yet."; Verwerfen apart on the left
+ * (red), Abbrechen · Speichern (plan blue) on the right. Resolves true when the plan may go: Discard, or Save that saved;
+ * Cancel – or a Save whose name dialog is cancelled – keeps it.
  */
 export function askDiscard(): Promise<boolean> {
   return new Promise((resolve) => {
-    const d = dialog('discard', `<h2>${esc(t('plan_discard_title'))}</h2>
-      <div class="row end"><button id="discardCancel">${esc(t('common_cancel'))}</button><button id="discardOk" class="danger">${esc(t('plan_discard'))}</button></div>`);
-    let yes = false;
+    const name = discardSave?.name()?.trim();
+    const text = name ? t('plan_save_ask_text_named', name) : t('plan_save_ask_text');
+    const d = dialog('discard', `<h2>${esc(t(discardSave ? 'plan_save_ask_title' : 'plan_discard_title'))}</h2>
+      <p class="muted">${esc(text)}</p>
+      <div class="row end"><button id="discardOk" class="danger">${esc(t('plan_discard'))}</button><button id="discardCancel">${esc(t('common_cancel'))}</button>${
+        discardSave ? `<button id="discardSave" class="primary">${esc(t('plan_bar_save'))}</button>` : ''}</div>`);
+    let answer: 'discard' | 'save' | null = null;
     d.querySelector<HTMLButtonElement>('#discardCancel')!.onclick = () => d.close();
-    d.querySelector<HTMLButtonElement>('#discardOk')!.onclick = () => { yes = true; d.close(); };
-    d.querySelector<HTMLButtonElement>('#discardCancel')!.focus();
-    d.addEventListener('close', () => resolve(yes));
+    d.querySelector<HTMLButtonElement>('#discardOk')!.onclick = () => { answer = 'discard'; d.close(); };
+    const save = d.querySelector<HTMLButtonElement>('#discardSave');
+    if (save) save.onclick = () => { answer = 'save'; d.close(); };
+    (save ?? d.querySelector<HTMLButtonElement>('#discardCancel')!).focus();
+    d.addEventListener('close', () => {
+      if (answer !== 'save' || !discardSave) { resolve(answer === 'discard'); return; }
+      discardSave.save().then(resolve, () => resolve(false));
+    });
   });
 }
 
