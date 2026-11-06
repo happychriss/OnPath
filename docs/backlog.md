@@ -89,6 +89,12 @@ the git log.
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 
 ## Next
+- **[donald] Navigate's lock line only when needed (owner 2026-11-07, via laptop: „Gesperrt · Knopf gedrückt halten“ nur beim
+  ersten Mal oder wenn man den Knopf kurz antippt – nicht andauernd, das irritiert)** – `TourActionBar.HoldBar`: today the pill
+  shows `nav_hold_hint_rest` at rest all the time. New: at rest no pill (or only on the first tours until the user has held
+  a button once – remembered in Prefs, e.g. `holdLearned`); a short tap shows the strong „Gedrückt halten“ for
+  `HoldRule.HINT_MS` as today. Keep the lock icon somewhere quiet if the owner wants to see that it is locked (ask with the
+  shots). Screenshot + test.
 - **[laptop] Planer: gekoppelt = eine Liste, alles synchron (owner 2026-11-06)** – after the release with flyover / Meine Touren /
   Save-with-phone. Rules: (1) paired: save, rename, delete go to the phone at once (no separate send; Save shows the small phone
   symbol); (2) delete anywhere: browser delete → phone recycle bin, phone delete → gone here; (3) pairing: every tour of
