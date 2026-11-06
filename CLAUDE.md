@@ -10,7 +10,7 @@ Read this first, then `docs/owner-preferences.md` (how the owner likes to work),
 `docs/requirements.md` (full requirements with IDs like F-PLAN-04, R-07). **Rules per area live in `.claude/rules/`** (ui, routing, map,
 recording, sync-web, data-pipeline, release) – they load by themselves when you touch files there; read one on purpose when you plan work in that area.
 **Hooks** (`.claude/settings.json`, `tools/hooks/`): every session starts with the owner's word to all, open questions, saved `wip/` work and the
-backlog top in its context; `git push` is refused without a green `tools/ci/gate.sh` for this HEAD or while a `#push-sperre` is open; `adb install`
+backlog top in its context; `git push` is refused without a green `tools/ci/gate.sh` for these changes or while a `#push-sperre` is open; `adb install`
 only through `tools/dev/device.sh`.
 
 ## What OnPath is
@@ -38,8 +38,9 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
 
 ## Build and test
 - JDK 17+ (21 used), Android SDK 35 (`local.properties` → `sdk.dir`, not committed). `./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`; `./gradlew testDebugUnitTest` (UTC).
-- **Before every push: `tools/ci/gate.sh`** – tests picked from the changed files, screenshots when ui / texts changed, docs-only → no Gradle, `--full` = everything; takes the machine's Gradle lock (one build per computer). The push hook checks it ran green. Details: `.claude/rules/release.md`.
-- Emulator and Pixel only via `tools/dev/device.sh emulator|pixel -- <command>` (one agent per device; emulator on donald first, GitHub's E2E only without a computer: `tools/ci/e2e_github.sh`; a cloud session sets itself up with `tools/cloud/session_setup.sh`). Screenshot tests, JVM routing tests, style checks: see the area rules.
+- **Before every push: `tools/ci/gate.sh`** – tests picked from the changed files, screenshots when ui / texts changed, docs-only → no Gradle, `--full` = everything; builds in a Gradle slot (`tools/dev/gradle_slot.sh`). The push hook checks it ran green. Details: `.claude/rules/release.md`.
+- Emulator and Pixel only via `tools/dev/device.sh emulator|pixel -- <command>` (one agent per device; emulator on donald first). Screenshot tests, JVM routing tests, style checks: see the area rules.
+- **Cloud session** (no computer): `tools/cloud/session_setup.sh` once (SDK + Maven mirror, ~90 s), then build as above; E2E on GitHub's emulator with `tools/ci/e2e_github.sh --tests <class> --wait`.
 
 ## Conventions
 - **Kotlin**, Compose + Material 3, package `com.onpath.app`, minSdk 26, target/compileSdk 35.
@@ -48,27 +49,23 @@ data/GPS/network) → **offline by design** → **everything on the phone** → 
   a field bug in one first gets a test that reproduces it, then the fix (owner).
 - **No silent errors:** every `catch` / `runCatching` that recovers reports to `debug/Problems`
   (`Problems.warn/error(area, plain message, e)`; INFO for expected situations like offline) – never `catch (_: …) {}`
-  without an `// expected:` reason. Problems dedupes, persists, shows in Settings → Diagnostics, announces new ERRORs
-  once, and goes into the diagnostics export; MapLibre's native warnings/errors and crashes are captured too (`OnPathApp`).
+  without an `// expected:` reason (how Problems works: `.claude/rules/recording.md`).
 - **Git**: small commits with clear messages, pushed **straight to `main`** (planner: `web-spike`) after `tools/ci/gate.sh` –
   standing permission of the owner, no pull request, don't use or ask about the session's `claude/…` branch. A pull
   request to the owner only for `.github/workflows/`, signing / build config, keys / secrets, privacy / licence texts.
   Never force-push or delete a shared branch (`docs/working-agreement.md` §1 "Where to push"); never commit map data,
   APKs or `local.properties`.
-- **Questions to the owner + the owner's word to all** (owner 2026-11-01): GitHub issues in `happychriss/onpath.private` via `tools/ask.sh` (REST).
-  A question exists **only** as an issue with label `frage` (`tools/ask.sh frage --von <unit> …`: who, 2–3 lines background, the question, options
-  with the recommendation first, a link). **Blocking** (nothing goes on without the answer) → `--blockiert`, push your state first, then ask the same
-  question in the chat as a question box and wait (the owner sees the yellow dot); a chat answer goes into the issue (`tools/ask.sh antwort`).
-  **Not urgent** → only the issue, keep working. Act, then `tools/ask.sh erledigt <nr> "…"` – the owner never closes an issue. Label `an-alle` = the
-  owner's word to every session (the start hook shows it; confirm once with `tools/ask.sh an-alle --von <unit>`; `#push-sperre` / `#release-sperre`
-  stop pushes). Toward the owner: one question box at a time with answer options (`docs/owner-preferences.md`).
+- **Questions to the owner + the owner's word to all** (owner 2026-11-01): issues in `happychriss/onpath.private` via `tools/ask.sh` (REST,
+  `--help`). A question exists **only** as a `frage` issue (`tools/ask.sh frage --von <unit> …`); **blocking** → `--blockiert`, push your state, ask
+  the same in the chat and wait (else keep working); a chat answer goes into the issue (`ask.sh antwort`). Act, then `ask.sh erledigt <nr> "…"` – the session closes
+  a `frage`, never the owner. Label `an-alle` = the owner's word to every session (confirm once: `ask.sh an-alle --von <unit>`; `#push-sperre` /
+  `#release-sperre` stop pushes). How to ask: `docs/owner-preferences.md`.
 - **Sub-agents** (owner 2026-11-01): every sub-agent that edits files works in its own git worktree on its own branch; the main session merges, pushes
   and holds the one backlog claim. Gradle only in a slot – `tools/ci/gate.sh` or `tools/dev/gradle_slot.sh -- ./gradlew …` (two builds side by side per
   computer, one while the emulator runs), never a bare `flock gradle.lock`; screenshots: record only the changed class
-  (`--tests`); devices only through `device.sh`; never start a second emulator.
+  (`--tests`); never start a second emulator.
   Parallel work across computers = separate backlog items, one per unit.
-- **Responsive chat** (owner 2026-11-01): long, self-contained work (> ~2 min) runs in a background agent – preferably a fork, it keeps the
-  conversation – and the session answers at once ("läuft: …"); talk, decisions, questions and small changes it does directly; a request that needs
-  the same files, Gradle or device as a running agent waits ("wartet auf X"). Details: `docs/owner-preferences.md`.
+- **Responsive chat** (owner 2026-11-01): work longer than ~2 min runs in a background agent (preferably a fork), the session answers at once
+  ("läuft: …"); details: `docs/owner-preferences.md`.
 - **Requirements** live in `docs/requirements.md` (exported from the shared Claude doc); keep IDs stable,
   add new ones at the end of a section.
