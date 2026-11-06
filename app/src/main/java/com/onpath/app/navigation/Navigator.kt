@@ -182,6 +182,11 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private var quiet = false
     /** Fixes in a row away from the line while the route was never reached. */
     private var farFixes = 0
+    /**
+     * The mid-route question was asked for this plan (a new plan = a new Navigator). Field bug 2026-11-06 23:26: it is
+     * asked once – after an answer ("Zu ① führen", OK on a failed way there) it never comes back in the middle.
+     */
+    private var midAsked = false
 
     init {
         // new session or restart (R-07): NO_GPS, the first fixes match the whole line (earliest part: round trips);
@@ -238,7 +243,10 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             if (!detector.reached) return step + farStart(f, st, farNow)
             // owner 2026-11-03: every tour starts at point 1 – reached beside a later part of the line is not "reached":
             // the question "Du stehst mitten auf der Route" waits for the user (Hier einsteigen / Zu ① führen)
-            if (!session.rerouted && detector.progressM > MID_START_M) return step + midStart()
+            // hysteresis (field bug 2026-11-06): an open question ends only well before the 150 m line – a fix 10 m on
+            // either side of it never toggles it
+            val midLimit = if (prompt is NavPrompt.MidStart) MID_START_M - MID_START_HYST_M else MID_START_M
+            if (!session.rerouted && detector.progressM > midLimit) return step + midStart()
             if (prompt is NavPrompt.MidStart) step += clearPrompt() // walked to the start by oneself
             // reached for the first time: saved (a restart keeps it); a far-start question has nothing left to ask.
             // Bug 02: on the way there ("Guide me") only the plan's own line counts – the lead is not the route; and
@@ -396,6 +404,10 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private fun midStart(): Step {
         if (prompt is NavPrompt.MidStart) return Step()
         if (prompt != null && prompt !is NavPrompt.FarStart && prompt !is NavPrompt.LeadFailed) return Step()
+        // asked once (field bug 2026-11-06 23:26: four times "Du stehst mitten auf der Route") – answered, the user walks
+        // on: recording only, reached at point 1 as usual
+        if (midAsked) return Step()
+        midAsked = true
         prompt = NavPrompt.MidStart(++questionId, detector.progressM)
         toRoute = null
         return Step()
@@ -610,7 +622,11 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (st.state == OffRouteDetector.State.ON_ROUTE && detector.progressM >= session.spliceAtM + REST_REACHED_M) {
             return session.resumeAlongM + (detector.progressM - session.spliceAtM)
         }
-        // walked (back) onto the original near where it was left
+        // walked (back) onto the original near where it was left – only after the route was reached: on the way to ①
+        // ("Guide me" / "Zu ① führen") the user may stand beside a later part of the plan's own line (the middle of a
+        // round trip) – that is not "back on the original" (field bug 2026-11-06 23:26: the way to ① was dropped after
+        // three fixes, the mid-route question came again, four times); the way there ends at point 1 ([onOriginalStart])
+        if (!session.reached) { origHits = 0; return null }
         val m = original.match(f.point, leftAtM - OffRouteDetector.BACK_M, leftAtM + OffRouteDetector.AHEAD_M, preferAlongM = leftAtM)
         if (m != null && m.distanceM <= detector.offDistance(f.accuracyM) / 2) {
             if (++origHits >= OffRouteDetector.REJOIN_FIXES) return m.alongM
@@ -710,6 +726,8 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
          * mid-route question (owner 2026-11-03, [NavPrompt.MidStart]). A street or two from point 1's snapped spot.
          */
         const val MID_START_M = 150.0
+        /** An open mid-route question ends by walking back only closer than [MID_START_M] − this (no toggling at the line). */
+        const val MID_START_HYST_M = 50.0
         /**
          * "Guide me" may route far (30 km to the start and the whole plan): the user asked and waits with a spinner,
          * so more time than a way back ([Rerouter.PER_REQUEST_MS] / [Rerouter.TOTAL_MS]).
