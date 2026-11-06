@@ -64,15 +64,8 @@
     <string name="routes_replace_text_link">Dein aktueller Plan ist nicht gespeichert. Speichere ihn zuerst oder ersetze ihn durch den Plan aus dem Link.</string>
     <string name="routes_tag_new">Neu</string>
     <string name="routes_tag_changed">Geändert</string>
-    <string name="routes_load_ask_title">Plan „%1$s“ laden?</string>
-    <string name="routes_load_ask_text">Du bist gerade unterwegs.</string>
-    <string name="routes_load_continue">Mit diesem Plan weiter</string>
-    <string name="routes_follow_ask_title">Dieser Tour folgen?</string>
-    <string name="routes_follow_ask_text">„%1$s“, %2$s. Deine Aufnahme läuft weiter.</string>
-    <string name="routes_follow">Folgen</string>
     <string name="routes_track_saved">Tour gespeichert</string>
     <string name="routes_saved_open">In Meine Touren ›</string>
-    <string name="routes_load_end">Tour beenden und laden</string>
     <string name="routes_section_recent">Zuletzt</string>
     <string name="routes_section_saved">Gespeichert</string>
     <string name="routes_recent_all">Alle %1$d anzeigen ›</string>

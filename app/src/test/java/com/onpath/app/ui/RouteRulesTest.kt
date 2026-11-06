@@ -63,13 +63,13 @@ class RouteRulesTest {
         assertTrue(RouteRules.canClear(3))
     }
 
-    @Test fun aPlannedRouteDuringATourIsBlocked() {
-        // owner 2026-10-31: no new route during a tour – "end the running tour first" (too much automation), also over a
-        // saved plan; nothing is loaded
-        assertEquals(OpenAsk.BLOCKED_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 3, navigating = true, listOf(a, b), listOf(a, b)))
-        assertEquals(OpenAsk.BLOCKED_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 2, navigating = true, listOf(a, b), null))
-        assertEquals(OpenAsk.BLOCKED_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 2, navigating = true, emptyList(), null))
-        // a track during a tour asks "Dieser Tour folgen?" (owner 2026-11-06, F1); without a tour it opens beside the plan;
+    @Test fun aPlannedRouteDuringATourIsFollowedAtOnce() {
+        // owner 2026-11-06 22:05: a planned route tapped during a tour is followed at once – no question (was "Plan laden?
+        // Du bist gerade unterwegs." with three answers), also over a saved plan
+        assertEquals(OpenAsk.FOLLOW_PLAN_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 3, navigating = true, listOf(a, b), listOf(a, b)))
+        assertEquals(OpenAsk.FOLLOW_PLAN_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 2, navigating = true, listOf(a, b), null))
+        assertEquals(OpenAsk.FOLLOW_PLAN_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 2, navigating = true, emptyList(), null))
+        // a track during a tour is followed at once too (no "Dieser Tour folgen?" any more); without a tour it opens beside the plan;
         // a track without a line has nothing to follow
         assertEquals(OpenAsk.FOLLOW_DURING_TOUR, RouteRules.openAsk(TourKind.RECORDED, 0, navigating = true, listOf(a, b), null))
         assertEquals(OpenAsk.FOLLOW_DURING_TOUR, RouteRules.openAsk(TourKind.IMPORTED, 4, navigating = true, listOf(a, b), null))

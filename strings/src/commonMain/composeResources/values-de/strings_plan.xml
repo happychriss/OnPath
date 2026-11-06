@@ -168,6 +168,7 @@
     <string name="plan_menu_check_updates">Nach Updates suchen</string>
     <string name="plan_map_credits">Kartenquellen anzeigen</string>
     <string name="plan_undo">Rückgängig</string>
+    <string name="plan_new_during_tour">Neuer Plan – deine Aufnahme läuft weiter</string>
     <string name="plan_redo">Wiederholen</string>
     <string name="plan_compass_heading">Karte dreht sich mit deiner Bewegungsrichtung. Tippen für Norden oben</string>
     <string name="plan_compass_turned">Karte ist gedreht. Tippen für Norden oben</string>

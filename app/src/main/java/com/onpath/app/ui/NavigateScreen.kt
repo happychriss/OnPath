@@ -248,6 +248,10 @@ fun NavigateOverlay(
     sim: (@Composable () -> Unit)? = null,
     /** "App verlassen?" answered with Verlassen: the app goes to the background, the recording goes on (N4). */
     onLeaveApp: () -> Unit = {},
+    /** A plan / done tour tapped in My routes during the tour is followed now ([NewPlanLine]); null = no line. */
+    newPlan: NewPlanNote? = null,
+    onNewPlanUndo: () -> Unit = {},
+    onNewPlanGone: () -> Unit = {},
 ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     // the top column's height (turn card, status, chips) below the status bar: the one box goes 12 dp below it
@@ -307,6 +311,12 @@ fun NavigateOverlay(
             else SlideToPlan({ open = true }, bottom, recording = ui.recordedM != null, startFraction = slideStartFraction,
                 paused = ui.paused && ui.recordedM != null)
         }
+        // "Neuer Plan – deine Aufnahme läuft weiter" just above the bottom bar, over the map (nothing moves under it)
+        newPlan?.let { n ->
+            LaunchedEffect(n.id) { kotlinx.coroutines.delay(NEW_PLAN_LINE_MS); onNewPlanGone() }
+            NewPlanLine(if (n.undo) onNewPlanUndo else null,
+                Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = (sliderDp + 8).dp))
+        }
         // ONE box under the turn / status column (docs/design/ui-style.md, owner 2026-10-31 – the re-route and
         // activity-switch question moved here from the bottom, 56 dp buttons kept); the question wins, the rest wait.
         // Drawn over the map controls: a tall question (three answers, large font) is never hidden under a button.
@@ -334,6 +344,31 @@ fun NavigateOverlay(
         androidx.compose.runtime.SideEffect { cover(maxOf(topColumnDp, shownMessageBottom), sliderDp) }
         // over the controls: nothing else is touched by accident while choosing; no tap-outside dismiss
         ui.activityCheck?.let { ActivitySwitchSheet(it, onChooseActivity, onKeepActivity, Modifier.align(Alignment.BottomCenter), onHikeLevel = onHikeLevel) }
+    }
+}
+
+/** How long [NewPlanLine] stays (ms): long enough to read it and reach "Rückgängig" with gloves. */
+internal const val NEW_PLAN_LINE_MS = 8_000L
+
+/**
+ * A plan or a done tour tapped in My routes during a tour is followed at once, without a question (owner 2026-11-06
+ * 22:05): this light card above the bottom bar says "Neuer Plan – deine Aufnahme läuft weiter" for [NEW_PLAN_LINE_MS]
+ * (no dark message bar – owner; white, it floats over the map) and, when a plan was replaced, "Rückgängig" (blue: it
+ * plans) brings that plan back ([AppViewModel.undoNewPlan]; it is also under My routes → Zuletzt).
+ */
+@Composable
+internal fun NewPlanLine(onUndo: (() -> Unit)?, modifier: Modifier = Modifier) {
+    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.CardWhite, shadowElevation = 3.dp, modifier = modifier.fillMaxWidth()) {
+        Row(Modifier.heightIn(min = 56.dp).padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(str(Res.string.plan_new_during_tour), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f).padding(vertical = 8.dp))
+            onUndo?.let {
+                androidx.compose.material3.TextButton(onClick = it, modifier = Modifier.heightIn(min = 48.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = OnPathColors.ActionEdit)) {
+                    Text(str(Res.string.plan_undo), style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
     }
 }
 
@@ -994,6 +1029,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     Box(Modifier.fillMaxSize()) {
         NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
             onLeaveApp = { com.onpath.app.debug.Problems.trace("app", "Back in Navigate: left the app, the tour records on"); activity?.moveTaskToBack(true) },
+            newPlan = vm.newPlanNote, onNewPlanUndo = vm::undoNewPlan, onNewPlanGone = vm::dropNewPlanNote,
             onPause = vm::pauseRecording, onEnd = { vm.askEndTour() }, lock = vm.settings.navLock,
             onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute, onTakeVia = vm::takeViaRoute,
             onLeadThere = vm::leadToStart, onJustRecord = vm::justRecord, onJoinHere = vm::joinHere, onLeadFailedOk = vm::leadFailedOk,

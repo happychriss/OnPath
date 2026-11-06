@@ -65,15 +65,8 @@
     <string name="routes_replace_text_link">Your current plan is not saved. Save it first, or replace it with the plan from the link.</string>
     <string name="routes_tag_new">New</string>
     <string name="routes_tag_changed">Changed</string>
-    <string name="routes_load_ask_title">Load plan “%1$s”?</string>
-    <string name="routes_load_ask_text">You are on the way.</string>
-    <string name="routes_load_continue">Continue with this plan</string>
-    <string name="routes_follow_ask_title">Follow this tour?</string>
-    <string name="routes_follow_ask_text">“%1$s”, %2$s. Your recording goes on.</string>
-    <string name="routes_follow">Follow</string>
     <string name="routes_track_saved">Tour saved</string>
     <string name="routes_saved_open">In My tours ›</string>
-    <string name="routes_load_end">End tour and load</string>
     <string name="routes_section_recent">Recent</string>
     <string name="routes_section_saved">Saved</string>
     <string name="routes_recent_all">Show all %1$d ›</string>

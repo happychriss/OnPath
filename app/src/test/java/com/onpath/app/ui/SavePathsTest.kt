@@ -50,7 +50,6 @@ class SavePathsTest {
         assertTrue(Drafts.keeps(points = 2, unsaved = true))
         assertFalse("a saved plan as it is stays in My routes", Drafts.keeps(points = 2, unsaved = false))
         assertFalse("one point is no plan worth keeping", Drafts.keeps(points = 1, unsaved = true))
-        assertTrue(body("fun answerTourLoad(").contains("TourLoad.Step.FOLLOW_NOW -> unlessUnsaved("))
         assertTrue(vm.contains("fun followShownDuringTour() = unlessUnsaved("))
         assertFalse(vm.contains("ReplaceAsk") || vm.contains("replaceUnsavedAsk") || vm.contains("replaceAsk"))
         assertTrue(body("fun clearPlan() {").contains("keepAsDraft(\"cleared\")"))
@@ -92,7 +91,7 @@ class SavePathsTest {
     /**
      * The owner's screen 2026-11-06 14:37 (docs/design/save-paths.md "Flow: follow a saved tour while a tour runs") had 5
      * buttons over a shown track. F1 as decided after the pictures (onpath.private#33, "zu kompliziert"): during a tour a
-     * done tour / track tapped in My routes only asks "Dieser Tour folgen?" (Abbrechen · Folgen) – no track sheet, the plan
+     * done tour / track tapped in My routes is followed at once (owner 2026-11-06 22:05, was "Dieser Tour folgen?") – no track sheet, the plan
      * sheet never shows a foreign tour as a status; "Als Plan übernehmen" lives in the row's ⋮. Without a tour the track
      * sheet keeps green "Tour nachfahren" and blue "Als Plan übernehmen".
      */

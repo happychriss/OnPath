@@ -60,7 +60,6 @@ class ColourRuleTest {
         assertTrue(card.contains("ButtonTone.GO -> OnPathColors.ActionGo; ButtonTone.EDIT -> OnPathColors.ActionEdit; ButtonTone.NEUTRAL -> OnPathColors.Walnut"))
         val screen = src("ui/MapScreen.kt")
         assertTrue("Weiter warten = plan", screen.contains("), tone = ButtonTone.EDIT) // waiting for a plan to compute"))
-        assertEquals("load / follow during a tour = navigation", 2, Regex("tone = ButtonTone\\.GO\\)").findAll(src("ui/Notices.kt")).count())
     }
 
     /** Owner 2026-11-06: paper is the ground of every surface; white only for what floats over the map. */

@@ -46,8 +46,8 @@ open class SlideLabelLargeFontTest {
     @Test fun toursRecent() = shots.toursRecent()
     /** The green "Navigation ›" at a large font: the numbers go, the word stays whole (owner 2026-11-06, C). */
     @Test fun planTourRunningCollapsed() = shots.planTourRunningCollapsed()
-    /** "Dieser Tour folgen?" and the slim "Tour gespeichert" box at a large font (owner 2026-11-06, F1 / #35). */
-    @Test fun routesFollowAsk() = shots.routesFollowAsk()
+    /** "Neuer Plan – deine Aufnahme läuft weiter" · Rückgängig (owner 2026-11-06) and the slim "Tour gespeichert" box at a large font. */
+    @Test fun navigateNewPlan() = shots.navigateNewPlan()
     @Test fun savedTourBox() = shots.savedTourBox()
 }
 

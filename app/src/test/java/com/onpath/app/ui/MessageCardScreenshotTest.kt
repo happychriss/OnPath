@@ -52,7 +52,6 @@ open class MessageCardScreenshotTest {
                 val q = com.onpath.app.navigation.NavPrompt.Question(1, 350.0, 600.0, 20.0, emptyList(), 900.0, 2_000.0, offM = 118.0)
                 MessageCard(rerouteMessage(q, {}, {}))
                 MessageCard(syncNoteMessage(SyncNote.PAIRED, onOk = {}))
-                MessageCard(tourLoadMessage("Meran loop") {})
                 mapNoticeMessage(CellCardUi.NotAvailable, CellCardCallbacks())?.let { MessageCard(it) }
                 mapNoticeMessage(CellCardUi.NeedPosition(permission = false), CellCardCallbacks())?.let { MessageCard(it) }
                 MessageCard(notificationsOffMessage(onSetUp = {}, onOk = {}))
