@@ -398,6 +398,9 @@ dialog.share .scanline { margin: 0 0 8px; font-weight: 600; }
 .pb:disabled { border-color: var(--site-line); color: var(--muted); opacity: .6; cursor: default; }
 .planbar .ponly, .planbar .sep { display: none; }
 #menuBtn { display: none; }
+.phonemini { display: none !important; position: relative; color: var(--green-fg); }
+.phonemini .syncdot { position: absolute; right: 6px; top: 7px; border: 2px solid var(--bg); box-sizing: content-box; }
+.phonemini .syncdot[data-kind="stale"] { background: var(--weak); }
 /* a split button: the action and its ▾ share one outline */
 .split { display: inline-flex; flex: none; }
 .split > .pb:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; padding-right: 10px; }
@@ -415,13 +418,13 @@ dialog.share .scanline { margin: 0 0 8px; font-weight: 600; }
 .phonebtn .l1 { display: inline-flex; align-items: center; gap: 6px; }
 .phonebtn .sub { font-size: 11px; font-weight: 500; color: var(--muted); max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
 .phonebtn .sub[hidden] { display: none; }
-/* paired (owner 2026-11-06): Save carries a small phone – it sends too; Aufs Handy shrinks to 📱 + dot (the phone status) */
+/* paired (owner 2026-11-06): Save carries a small phone – it sends too; Aufs Handy becomes the phone status
+   „📱 Pixel 8 🟢 / abgeglichen vor 2 Min.“ (owner 2026-11-07: big enough to see, no save of its own) */
 .saveic { position: relative; display: inline-flex; }
 .savephone { position: absolute; right: -6px; bottom: -5px; display: inline-flex; padding: 1px; border-radius: 50%; background: var(--bg); line-height: 0; }
 .savebtn.unsaved .savephone { background: var(--green); color: #fff; }
-.phonebtn.paired .lbl, .phonebtn.paired .sub { display: none; }
-.phonebtn.paired { padding: 0 10px; }
-.split > .pb.phonebtn.paired:first-child { border-radius: 18px; padding-right: 10px; }
+.phonebtn.paired .lbl { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.split > .pb.phonebtn.paired:first-child { border-radius: 18px; padding-right: 14px; }
 .pb[hidden], .splitmore[hidden] { display: none !important; }
 .syncdot { width: 9px; height: 9px; border-radius: 50%; background: var(--good); flex: none; }
 .syncdot[hidden] { display: none; }
@@ -441,9 +444,10 @@ a.quietbtn { padding: 0 8px; }
 @media (max-width: 1500px) { #header .hint { display: none; } }
 @media (max-width: 1180px) and (min-width: 701px) { #menuAbout .lbl { display: none; } #menuAbout { padding: 0 8px; } .phonebtn .sub { display: none; } }
 @media (max-width: 1000px) and (min-width: 701px) { #newPlan .lbl, #menuPlans .lbl { display: none; } #newPlan, #menuPlans { padding: 0 9px; } }
-@media (max-width: 860px) and (min-width: 701px) { .phonebtn .lines { display: none; } .phonebtn { padding: 0 9px; } #header { gap: 10px; } }
+@media (max-width: 860px) and (min-width: 701px) { .phonebtn .lbl, .phonebtn .sub { display: none; } .phonebtn { padding: 0 9px; } #header { gap: 10px; } }
 @media (max-width: 700px) {
   #menuBtn { display: inline-flex; margin-left: 4px; padding: 0 6px 0 10px; }
+  .phonemini:not([hidden]) { display: inline-flex !important; order: 0; }
   .planbar { display: none; }
   .planbar.open { display: flex; position: absolute; top: 48px; left: 8px; margin: 0; flex-direction: column; align-items: stretch; gap: 0; min-width: 250px;
     padding: 6px 0; background: var(--bg); border-radius: 8px; box-shadow: 0 6px 20px var(--shadow); z-index: 30; }
@@ -601,9 +605,15 @@ kbd { display: inline-block; min-width: 1.4em; padding: 1px 6px; border: 1px sol
 .threednote { position: absolute; z-index: 2; right: 12px; top: 76px; padding: 6px 14px; border-radius: 16px;
   background: rgba(255,255,255,.94); box-shadow: 0 1px 6px var(--shadow); font-size: 13px; color: var(--muted); white-space: nowrap; pointer-events: none; }
 body.three-d .pin { cursor: default; }
-.flybar { position: absolute; z-index: 3; right: 12px; top: 140px; display: flex; gap: 6px; }
-.flybtn { min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--bg);
-  color: var(--fg); font-size: 14px; font-weight: 600; box-shadow: 0 1px 6px var(--shadow); cursor: pointer; }
+/* the fly button and its controls right beside the toolbar's 3D (owner 2026-11-07: where the fly button is) */
+body.three-d .topbar { width: min(1120px, calc(100% - 24px)); } /* room for the fly group; the search may shrink */
+body.three-d #searchbox { min-width: 150px; }
+@media (max-width: 1240px) and (min-width: 701px) { body.three-d #mapContent span, body.three-d #mapContent .ic:last-child { display: none; } body.three-d #mapContent { padding: 0 8px; } }
+@media (max-width: 960px) and (min-width: 701px) { .flybtn:not(.start) .lbl { display: none; } .flybtn { padding: 0 10px; } }
+.flybar { display: inline-flex; align-items: center; gap: 4px; margin: 0 2px; flex: none; }
+.flybar[hidden] { display: none; }
+.flybtn { height: 36px; padding: 0 12px; border-radius: 18px; border: 1px solid var(--line); background: var(--bg); white-space: nowrap;
+  color: var(--fg); font-size: 14px; font-weight: 600; cursor: pointer; }
 .flybtn.main { background: var(--route); border-color: var(--route); color: #fff; }
 .flybtn.speed { min-width: 48px; }
 .flybtn:disabled { opacity: .5; cursor: default; }
@@ -612,10 +622,13 @@ body.three-d .pin { cursor: default; }
   .bpplot .profplot > svg { height: 130px; }
   body.bigprofile-open #sheet { display: none; }
   .threednote { top: auto; bottom: calc(var(--sheet-h) + 12px); right: 12px; left: 12px; white-space: normal; text-align: center; }
-  .flybar { top: auto; bottom: calc(var(--sheet-h) + 84px); right: 12px; left: 12px; justify-content: center; }
+  /* phone width: no room in the toolbar – the same group floats over the map, centred under the toolbar's 3D */
+  .flybar { position: absolute; z-index: 3; top: calc(100% + 8px); left: 0; right: 0; justify-content: center; } /* under the topbar */
+  .flybtn { height: 40px; box-shadow: 0 1px 6px var(--shadow); }
 }
 /* the smallest phones: "OnPath" alone, so Plan ▾ and the language keep their room (no header overflow at 320 px) */
 @media (max-width: 400px) { .brand .product { display: none; } }
+@media (max-width: 350px) { #header { gap: 4px; } .phonemini { width: 32px !important; } .phonemini .syncdot { right: 2px; } }
 /* Öffnen (My routes): the app's search box over the list, Import GPX bottom left, Close bottom right */
 dialog.plans .plansearch:not([hidden]) { display: flex; align-items: center; gap: 4px; margin: 0 0 8px; padding: 0 4px 0 12px; height: 44px;
   border: 1px solid var(--line); border-radius: 22px; background: var(--bg); }

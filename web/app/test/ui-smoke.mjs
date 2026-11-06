@@ -140,10 +140,14 @@ await page.waitForFunction((d0) => window.__fly.status.d > d0 + 300 && window.__
 const f1 = await page.evaluate(() => ({ ...window.__fly.status, c: window.__map.getCenter().toArray(), p: window.__map.getPitch(),
   cur: window.__profileCursor?.m ?? null, trace: window.__fly.trace.slice() }));
 if (process.env.FLY_SHOT) await page.screenshot({ path: process.env.FLY_SHOT }).catch(() => {});
-// calm: the direction never swings faster than 90° a second between frames
+// calm (owner 2026-11-07: "ruhiger"): the direction never turns faster than 20° a second (MAX_TURN; 25 leaves room for rounding)
 const maxTurn = Math.max(0, ...f1.trace.slice(1).map((s, i) => Math.abs(((s.b - f1.trace[i].b + 540) % 360) - 180) / Math.max(0.05, (s.t - f1.trace[i].t) / 1000)));
-tcheck(f1.state === 'flying' && f1.d > flyFrom.d + 300 && (f1.c[0] !== flyFrom.c[0] || f1.c[1] !== flyFrom.c[1]) && f1.p > 50 && maxTurn < 90
+tcheck(f1.state === 'flying' && f1.d > flyFrom.d + 300 && (f1.c[0] !== flyFrom.c[0] || f1.c[1] !== flyFrom.c[1]) && f1.p > 50 && maxTurn < 25
   && f1.cur != null && Math.abs(f1.cur - f1.d) < 1, `flyover: the camera moves along, calm turns, cursor along (${JSON.stringify({ d0: flyFrom.d, d1: f1.d, maxTurn, p: f1.p, cur: f1.cur, frames: f1.trace.length })})`);
+// the controls appear where the fly button was – right beside the toolbar's 3D (owner 2026-11-07)
+const near = await page.evaluate(() => { const a = document.getElementById('terrain3d').getBoundingClientRect(), b = document.getElementById('flyPause').getBoundingClientRect();
+  return { dx: Math.round(b.left - a.right), dy: Math.round(Math.abs((b.top + b.bottom) / 2 - (a.top + a.bottom) / 2)), inBar: !!document.getElementById('flyBar').closest('#toolbar') }; });
+tcheck(near.inBar && near.dx >= 0 && near.dx < 24 && near.dy < 6, `flyover: Pause / Stop / 1× sit right beside 3D in the toolbar ${JSON.stringify(near)}`);
 await page.click('#flyPause');
 await page.waitForTimeout(250);
 const p0 = await page.evaluate(() => ({ ...window.__fly.status, c: window.__map.getCenter().toArray() }));

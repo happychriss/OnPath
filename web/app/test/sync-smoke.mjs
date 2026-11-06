@@ -57,11 +57,11 @@ const phoneWin = async (P) => {
   if (await P.isVisible('#menuBtn')) { await P.click('#menuBtn'); await P.click(await P.isVisible('#menuPhone') ? '#menuPhone' : '#syncBadge'); }
   else await P.click(await P.isVisible('#phoneMore') ? '#phoneMore' : '#syncBadge');
 };
-/** "To phone" (the plan bar): its label, the second line ("Pixel 8 · synced …"), the phone's name in it, title, dot. */
+/** "To phone" (the plan bar): its label (paired: the phone's name), the second line ("synced …"), title, dot. */
 const entry = (P) => P.evaluate(() => { const b = document.getElementById('syncBadge'), d = b.querySelector('.syncdot'), sub = b.querySelector('.sub');
   const line = sub.hidden ? '' : sub.textContent;
   const l = b.querySelector('.lbl');
-  return { label: l.textContent.trim(), shown: l.getClientRects().length > 0, sub: line, phone: line.split(' · ')[0], title: b.title, dot: !d.hidden, kind: d.dataset.kind,
+  return { label: l.textContent.trim(), shown: l.getClientRects().length > 0, sub: line, phone: b.classList.contains('paired') ? l.textContent.trim() : '', title: b.title, dot: !d.hidden, kind: d.dataset.kind,
     more: !!document.getElementById('phoneMore')?.getClientRects().length }; });
 /** The header's Save (§14.6): its state (dark / done / empty / full), label, whether it is filled, and that no hint is beside it. */
 const saveBtn = (P) => P.evaluate(() => { const b = document.getElementById('menuSavePlan');
@@ -245,7 +245,7 @@ sb = await saveBtn(A);
 check(sb.state === 'dark' && sb.filled && sb.label === 'Save' && st.pending === 2, `paired, two routes waiting: "Save", dark (${JSON.stringify(sb)}, pending ${st.pending})`);
 check(sb.phone && sb.title === 'Save – to the phone too (Pixel 8)', `paired: Save carries a small phone, its tooltip says it goes to the phone too (owner 2026-11-06) (${JSON.stringify(sb)})`);
 e = await entry(A);
-check(!e.shown && !e.more && e.phone === 'Pixel 8' && e.dot && e.kind === 'fresh' && /^Pixel 8 · synced /.test(e.title), `paired: To phone is an icon-only 📱 status with the green dot, its tooltip "Pixel 8 · synced …", no ▾ (owner 2026-11-06) (${JSON.stringify(e)})`);
+check(e.shown && !e.more && e.phone === 'Pixel 8' && /^synced /.test(e.sub) && e.dot && e.kind === 'fresh' && /^Pixel 8 · synced /.test(e.title), `paired: To phone is the phone's status "📱 Pixel 8 🟢 / synced …" (owner 2026-11-07: big enough to see), no ▾ (${JSON.stringify(e)})`);
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
 for (const n of ['Altroute', 'Zweitroute']) {
@@ -291,7 +291,7 @@ await A.click('#closePhone');
 await box('GET', (await phone.keys()).mailbox, (await phone.keys()).token, { since: 0 }, Date.now() - 3 * 86_400_000);
 await syncNow(A);
 e = await entry(A);
-check(e.kind === 'stale' && e.sub === 'Pixel 8 · last 3 days ago', `phone last seen 3 days ago: amber dot, "last 3 days ago" (${JSON.stringify(e)})`);
+check(e.kind === 'stale' && e.sub === 'last 3 days ago' && e.phone === 'Pixel 8', `phone last seen 3 days ago: amber dot, "last 3 days ago" (${JSON.stringify(e)})`);
 await phone.round();
 await syncNow(A);
 check((await entry(A)).kind === 'fresh', 'the phone syncs again → green');
@@ -565,7 +565,7 @@ await T1.waitForFunction((d) => window.__sync.status.folder.key === d, tabPhone.
 await T1.click('#closePair').catch(() => {});
 await T2.waitForFunction((d) => window.__sync.status.folder.key === d && window.__sync.status.paired, tabPhone.device, { timeout: 10_000 }).catch(() => {});
 // the header's pill draws a moment after the status (CI is slower than the status check)
-await T2.waitForFunction(() => document.querySelector('#syncBadge .sub')?.textContent?.startsWith('Tab phone'), null, { timeout: 10_000 }).catch(() => {});
+await T2.waitForFunction(() => document.querySelector('#syncBadge.paired .lbl')?.textContent?.startsWith('Tab phone'), null, { timeout: 10_000 }).catch(() => {});
 const t2 = await status(T2);
 check(t2.paired && t2.folder.key === tabPhone.device && (await entry(T2)).phone === 'Tab phone',
   `paired in tab 1 → tab 2 shows it without a reload (${JSON.stringify(t2.folder)}, "${(await entry(T2)).sub}")`);
@@ -681,7 +681,7 @@ await sent(O);
 await ownerPhone.round();
 check((await ownerPhone.titles()).includes('Meine Runde') && await O.locator('dialog[open]').count() === 0, 'scenario 1: To phone paired the phone and "Meine Runde" arrived on it, no extra question ' + JSON.stringify(await ownerPhone.titles()));
 const e2 = await entry(O);
-check(!e2.shown && e2.dot && e2.phone === 'Owner phone', `paired: the 📱 status with the dot, "Owner phone · …" (${JSON.stringify(e2)})`);
+check(e2.dot && e2.phone === 'Owner phone', `paired: the 📱 status with the dot and the phone's name (${JSON.stringify(e2)})`);
 // (2) second visit
 await O.close();
 O = await open(ctxO);

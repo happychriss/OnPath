@@ -128,6 +128,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <header id="header">
     <a class="brand" href="${t('web_url_app')}" target="_blank" rel="noopener" title="${escapeHtml(t('web_brand_title'))}">${logo(30)}<span class="wordmark">OnPath <span class="product">${escapeHtml(t('web_product'))}</span></span></a>
     <button id="menuBtn" class="pb planmenubtn" aria-haspopup="menu" aria-expanded="false" aria-controls="mainMenu">${icon('route', 20)}<span class="lbl">${escapeHtml(t('web_plan_menu'))}</span>${icon('dropDown', 20)}</button>
+    <button id="phoneMini" class="iconbtn phonemini" aria-haspopup="dialog" hidden>${icon('phone', 22)}<i class="syncdot" aria-hidden="true"></i></button>
     <nav id="mainMenu" class="planbar" aria-label="${escapeHtml(t('web_plan_menu'))}">
       ${hb('newPlan', 'add', t('web_plan_new'), '', 'disabled')}
       ${hb('menuPlans', 'folder', t('routes_title'))}
@@ -268,7 +269,7 @@ const terrain3d = new Terrain3D(map, $<HTMLButtonElement>('terrain3d'), $('three
     const padding = fitPadding(), cam = map.cameraForBounds(b, { padding, maxZoom: 16 });
     return cam?.zoom != null ? { center: b.getCenter(), zoom: cam.zoom, padding } : null;
   });
-new FlyOver(map, terrain3d, routeProfile, $('stage')); // 3D: fly along the route (owner 2026-11-06, D)
+new FlyOver(map, terrain3d, routeProfile, $('terrain3d')); // 3D: fly along the route (owner 2026-11-06, D)
 (window as unknown as { __terrain: Terrain3D }).__terrain = terrain3d; // for the browser tests
 (window as unknown as { __profile: RouteProfile }).__profile = routeProfile;
 // in 3D a point's pin stands on the ground: placed again once the heights under it are loaded (before that it sat at 0 m)
@@ -1549,6 +1550,7 @@ const ACTS: Record<string, () => void> = {
   phoneMore: () => { phoneWindow(); }, menuPhone: () => { phoneWindow(); },
   menuAbout: () => credits(), menuAboutP: () => credits(),
 };
+$('phoneMini').onclick = () => { closeMenus(); phoneWindow(); };
 for (const box of ['mainMenu', 'saveMenu', 'headRight']) {
   $(box).addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest('button');
@@ -1654,9 +1656,11 @@ async function suggestName(): Promise<string> {
   }
 }
 /** "📱 Aufs Handy" in the plan bar (owner 2026-11-06, A): not paired that label – a click pairs, then the plan goes over.
- *  Paired (owner 2026-11-06: Save sends anyway) it is no second Save: an icon-only phone status – 📱 with its dot (green,
- *  or amber when the phone was away for a day – phoneState), the tooltip "Pixel 8 · synced 2 min. ago"; a click opens
- *  the Phone window. In the phone-width Plan ▾ it shows the phone's name. Follows sync.onChange; "… ago" moves every 30 s. */
+ *  Paired (owner 2026-11-06: Save sends anyway) it is no second Save but the phone's status, big enough to see (owner
+ *  2026-11-07: "wichtiges Symbol, soll zeigen, wann zuletzt synchronisiert"): "📱 Pixel 8 🟢" and below it "synced 2 min.
+ *  ago" (amber dot + "last seen 3 days ago" when the phone was away for a day – phoneState); a click opens the Phone
+ *  window. Narrower headers drop the second line, then the name (icon + dot stay). Follows sync.onChange; "… ago" moves
+ *  every 30 s. */
 function syncBadge() {
   const b = $('syncBadge'), s = sync.status, pill = phonePill(s);
   const dot = b.querySelector<HTMLElement>('.syncdot')!;
@@ -1665,11 +1669,16 @@ function syncBadge() {
   b.classList.toggle('paired', s.paired);
   b.dataset.kind = pill.kind;
   const sub = b.querySelector<HTMLElement>('.sub')!;
-  sub.textContent = s.paired ? [pill.name, pill.sub].filter(Boolean).join(' · ') : '';
-  sub.hidden = !s.paired;
+  sub.textContent = s.paired ? pill.sub : '';
+  sub.hidden = !s.paired || !pill.sub;
   b.querySelector<HTMLElement>('.lbl')!.textContent = s.paired ? pill.name : t('web_to_phone');
   b.title = s.paired ? [pill.name, pill.sub, s.message].filter(Boolean).join(' · ') : t('web_to_phone_pair') + ' – ' + t('web_phone_why');
   b.setAttribute('aria-label', s.paired ? t('web_phone_title') + ' – ' + b.title : t('web_to_phone') + ' – ' + b.title);
+  // phone width: the plan bar is behind Plan ▾ – the paired phone's status stays in the header (📱 + dot, the same title)
+  const mini = $('phoneMini');
+  mini.hidden = !s.paired;
+  mini.title = b.title; mini.setAttribute('aria-label', t('web_phone_title') + ' – ' + b.title);
+  mini.querySelector<HTMLElement>('.syncdot')!.dataset.kind = pill.kind;
   $('phoneMore').hidden = s.paired; // paired the button itself opens the Phone window
   $('menuPhone').hidden = s.paired;
 }

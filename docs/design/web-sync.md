@@ -462,9 +462,11 @@ phone sit in ONE group on the left with + Neu and Meine Touren; at phone width a
 - **Paired, Save goes to the phone too** (owner 2026-11-06): the Save button carries a small 📱 on its icon, its label stays
   „Speichern“, its tooltip „Speichern – auch aufs Handy (‹phone›)“.
 - **Aufs Handy** (`#syncBadge`): not paired „📱 Aufs Handy“ → the pairing window at once; once paired and closed the open
-  plan follows (Save); ▾ → the Phone window. **Paired** it is no second Save: an icon-only phone status – 📱 with the dot
-  (🟢, 🟡 when the phone was away > 24 h), tooltip „Pixel 8 · abgeglichen vor 2 Min.“; a click opens the Phone window (no
-  ▾). Phone width: Plan ▾ shows the phone's name with the dot in its place (no second Phone entry).
+  plan follows (Save); ▾ → the Phone window. **Paired** it is no second Save but the phone's status, big enough to see
+  (owner 2026-11-07): „📱 Pixel 8 🟢“ and below „abgeglichen vor 2 Min.“ (🟡 + „zuletzt vor 3 Tagen“ when the phone was
+  away > 24 h); a click opens the Phone window (no ▾). Narrower headers drop the second line, then the name (icon + dot
+  stay). Phone width: a 📱 with the dot stays in the header beside Plan ▾ (`#phoneMini`), and Plan ▾ shows the phone's
+  name with the dot in its place (no second Phone entry).
 
 **My routes – one plain list** (title, rows, Close):
 ```
