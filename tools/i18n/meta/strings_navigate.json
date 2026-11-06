@@ -1389,5 +1389,17 @@
     "priority": 1,
     "confidence": "sicher",
     "max": 12
+  },
+  "nav_card_open": {
+    "area": "Navigate",
+    "context": "Screen reader state of the top status card when it is opened (profile, stops)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_card_closed": {
+    "area": "Navigate",
+    "context": "Screen reader state of the top status card when it is closed",
+    "priority": 3,
+    "confidence": "sicher"
   }
 }

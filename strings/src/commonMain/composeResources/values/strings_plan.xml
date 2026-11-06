@@ -200,6 +200,8 @@
     <string name="plan_same_round_trip">Same round trip, starts here</string>
     <string name="plan_finding_shared_place">Finding the shared place…</string>
     <string name="plan_resize_panel">Resize panel</string>
+    <string name="plan_sheet_bigger">Make the panel bigger</string>
+    <string name="plan_sheet_smaller">Make the panel smaller</string>
     <string name="plan_slide_change_route">Change plan</string>
     <!-- the green way back to Navigate during a tour, at the bottom of the plan (owner 2026-11-06, C) -->
     <string name="plan_back_nav">Let’s go on</string>

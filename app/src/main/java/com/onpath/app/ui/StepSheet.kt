@@ -177,6 +177,11 @@ fun StepSheet(
      * (owner 2026-11-06, C: during a tour the green way back to Navigate, where "Los geht's" is without one); null = none.
      */
     foot: (@Composable ColumnScope.() -> Unit)? = null,
+    /**
+     * What a tap on the handle does, for TalkBack ("Blatt vergrößern" / "Blatt verkleinern"; owner 2026-11-06 23:42:
+     * tap AND drag); null = "Größe ändern".
+     */
+    handleLabel: String? = null,
     bottomBar: @Composable ColumnScope.() -> Unit,
     body: @Composable StepSheetScope.() -> Unit,
 ) {
@@ -279,10 +284,12 @@ fun StepSheet(
                 Column(Modifier.fillMaxWidth().onPlaced { state.bodyCoords = it; state.updateStops() }
                     .padding(horizontal = 16.dp)) {
                     // Material drag handle (32 × 4 dp) in a full-width 24 dp tall strip (owner 2026-10-31: less air; the
-                    // whole sheet can be dragged, and the rolled-up row is one big tap target)
+                    // whole sheet can be dragged, and the rolled-up row is one big tap target). A tap steps the sheet
+                    // (owner 2026-11-06 23:42: tap AND drag); TalkBack hears a button with what the tap does.
+                    val handleSays = handleLabel ?: str(Res.string.plan_resize_panel)
                     Box(Modifier.fillMaxWidth().height(HANDLE_HEIGHT)
-                        .clickable(onClickLabel = str(Res.string.plan_resize_panel), onClick = onHandleTap)
-                        .semantics { contentDescription = Txt.s(Res.string.plan_resize_panel) },
+                        .clickable(onClickLabel = handleSays, role = androidx.compose.ui.semantics.Role.Button, onClick = onHandleTap)
+                        .semantics { contentDescription = handleSays },
                         contentAlignment = Alignment.Center) {
                         Box(Modifier.width(32.dp).height(4.dp).clip(CircleShape)
                             .background(accent ?: MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)))

@@ -199,6 +199,8 @@
     <string name="plan_same_round_trip">Gleiche Rundtour, startet hier</string>
     <string name="plan_finding_shared_place">Geteilter Ort wird gesucht…</string>
     <string name="plan_resize_panel">Größe ändern</string>
+    <string name="plan_sheet_bigger">Blatt vergrößern</string>
+    <string name="plan_sheet_smaller">Blatt verkleinern</string>
     <string name="plan_slide_change_route">Plan ändern</string>
     <!-- the green way back to Navigate during a tour, at the bottom of the plan (owner 2026-11-06, C) -->
     <string name="plan_back_nav">Weiter geht’s</string>

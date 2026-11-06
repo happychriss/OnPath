@@ -7,7 +7,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.clickable
 import android.location.Location
 import androidx.compose.foundation.layout.Arrangement
@@ -486,10 +488,31 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
     val canOpen = hasProfile || ui.position != null || (movingLine != null && ui.toGo != null)
     // the amber off-route card says where the route is – not repeated here (the question card at the bottom does not)
     val offCard = ui.offRoute?.amber == true
+    // tap AND drag (owner 2026-11-06 23:42, like the plan sheet's handle): a tap anywhere on the card toggles it, pulling
+    // it down opens, pushing it up closes; the activity icon, the chevron, the profile and the position line keep their
+    // own touches (they consume them first). The card is a Surface: a drag on it never reaches the map below.
+    val toggle by androidx.compose.runtime.rememberUpdatedState(onToggleProfile)
+    val openNow by androidx.compose.runtime.rememberUpdatedState(profileOpen)
+    val dragPx = with(androidx.compose.ui.platform.LocalDensity.current) { ExpandGesture.CARD_DRAG_DP.dp.toPx() }
+    val cardTouch = if (!canOpen) Modifier else Modifier
+        .pointerInput(Unit) {
+            var dy = 0f
+            detectVerticalDragGestures(
+                onDragStart = { dy = 0f },
+                onDragEnd = { if (ExpandGesture.cardAfterDrag(openNow, dy, dragPx) != openNow) toggle() },
+                onDragCancel = { dy = 0f },
+                onVerticalDrag = { change, d -> change.consume(); dy += d },
+            )
+        }
+        .clickable(onClickLabel = str(if (profileOpen) Res.string.nav_profile_hide else Res.string.nav_profile_show),
+            role = androidx.compose.ui.semantics.Role.Button, onClick = onToggleProfile)
+        .semantics {
+            stateDescription = Txt.s(if (profileOpen) Res.string.nav_card_open else Res.string.nav_card_closed)
+        }
     // over the map: paper like every surface (owner 2026-11-06), the shadow lifts it off the map
+    // only the activity icon and the chevron are own buttons; the whole card toggles by tap and drag (owner 23:42)
     Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.Paper,
-        // only the activity icon and the chevron are buttons (gloves: no tap target as big as the card)
-        modifier = Modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, MaterialTheme.shapes.large)) {
+        modifier = Modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, MaterialTheme.shapes.large).then(cardTouch)) {
       Column {
         Row(Modifier.heightIn(min = 56.dp).padding(start = if (ui.activity != null) 8.dp else 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -587,9 +610,12 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 }
             }
             if (canOpen) androidx.compose.material3.IconButton(onClick = onToggleProfile, modifier = Modifier.size(48.dp)) {
-                Icon(if (profileOpen) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                // the chevron turns with the card (open: it points up)
+                val turn by androidx.compose.animation.core.animateFloatAsState(if (profileOpen) 180f else 0f, label = "chevron")
+                Icon(Icons.Filled.ExpandMore,
                     contentDescription = str(if (profileOpen) Res.string.nav_profile_hide else Res.string.nav_profile_show),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.graphicsLayer { rotationZ = turn })
             }
         }
         if (ui.recordedM != null) ui.approx?.let {
