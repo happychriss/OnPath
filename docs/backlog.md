@@ -86,6 +86,13 @@ the git log.
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 
 ## Next
+- **[cloud-plan] Planner follows the app's plan rules of 2026-11-06 (owner: "die gleiche Logik beim Planer")** – (1) "↻ Rundtour"
+  as a toggle: filled with ✓ while the plan is a round trip, a tap removes the way back (A→B→A → A→B); "⇅ Umkehren" grey
+  when reversing changes nothing (out and back over one point) – onpath.private#40, app branch in progress (donald),
+  mirror once it is on main; (2) pin card "+ Hinzufügen" (#26, app 8123d06a); (3) map glyphs: all 256 ranges per font
+  (app 60470cba – if the planner serves its own glyphs, the same rule); (4) base colour Walnuss #4A3F37 for plain buttons,
+  plan blue / to navigation green (#36, app follows soon). Phone-only (no planner change): end sheet, one point during a
+  tour, F1 / C, offline pill.
 - **[laptop] Web planner – owner's points 2026-11-06 (chat):** (1) **Meine Pläne list:** besides the name show the length and
   the climb ↑ / descent ↓ – there is room in the browser. (2) **New plan is hard to find:** today only a click on the empty map or
   „✕ Neu planen“ in the plan row (looks like "close"); add a visible „Neuer Plan“ (`plan_new_route` exists), e.g. in the header
