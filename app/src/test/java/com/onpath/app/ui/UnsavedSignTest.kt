@@ -31,4 +31,14 @@ class UnsavedSignTest {
         assertTrue(sign.contains("plan_unsaved_chip_desc"))
         assertTrue("large font: 💾 › only (the label line is full)", bar.contains("wordless = PlanTopBand.largeLabel(fontScale)"))
     }
+
+    /** Owner 2026-11-06: the colour standard – plan blue in the plan pills' style, no new amber pair; the menu's Save sign. */
+    @Test fun theSignIsInThePlanPillsBlue() {
+        val sign = bar.substringAfter("private fun UnsavedSign(").substringBefore("\n}\n")
+        assertTrue(sign.contains("background(PillBlueLight, CircleShape)"))
+        assertTrue(sign.contains("Icons.Outlined.Save"))
+        assertFalse(sign, sign.contains("WarnContainer") || sign.contains("OnPathColors.Warn"))
+        val menu = bar.substringAfter("internal fun PlanMenuItems(").substringBefore("\n}\n")
+        assertTrue("the same sign as ☰ → Plan speichern", menu.contains("MenuItem(Icons.Outlined.Save, str(Res.string.plan_save_route)"))
+    }
 }

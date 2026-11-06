@@ -266,8 +266,8 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
 }
 
 /** The plan row's light blue and its dark blue words (owner 2026-11-05; ≥ 9:1). */
-private val PillBlueLight = Color(0xFFDDE7F4)
-private val PillBlueInk = Color(0xFF163C6B)
+internal val PillBlueLight = Color(0xFFDDE7F4)
+internal val PillBlueInk = Color(0xFF163C6B)
 
 @Composable
 private fun pillFill(enabled: Boolean): Color = PillBlueLight.copy(alpha = if (enabled) 1f else 0.5f)

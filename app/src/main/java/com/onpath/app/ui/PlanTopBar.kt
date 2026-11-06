@@ -247,13 +247,15 @@ private fun UnsavedSign(onSave: () -> Unit, wordless: Boolean = false) {
         }
         .heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onSave)
         .clearAndSetSemantics { contentDescription = desc; role = Role.Button }, contentAlignment = Alignment.TopStart) {
-        Row(Modifier.clip(CircleShape).background(OnPathColors.WarnContainer, CircleShape)
-            .border(1.dp, OnPathColors.Warn, CircleShape).padding(horizontal = 8.dp, vertical = 1.dp),
+        // the plan pills' style (owner 2026-11-06: keep to the colour standard – plan is blue; the light fill of
+        // "✕ Neu planen", a fine blue edge so it stands off the band of the same blue), the menu's Save sign
+        Row(Modifier.clip(CircleShape).background(PillBlueLight, CircleShape)
+            .border(1.dp, UnsavedSignStyle.EDGE, CircleShape).padding(horizontal = 8.dp, vertical = 1.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.Save, null, tint = OnPathColors.Warn, modifier = Modifier.size(12.dp))
+            Icon(Icons.Outlined.Save, null, tint = PillBlueInk, modifier = Modifier.size(12.dp))
             Spacer(Modifier.width(3.dp))
             Text(if (wordless) "›" else str(Res.string.plan_unsaved_chip) + " ›", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                color = OnPathColors.OnWarnContainer, maxLines = 1, softWrap = false)
+                color = PillBlueInk, maxLines = 1, softWrap = false)
         }
     }
 }
@@ -375,3 +377,6 @@ fun PlanFrame(modifier: Modifier = Modifier) {
 
 /** Width of the soft blue edge. */
 private val PLAN_EDGE = 14.dp
+
+/** The "Nicht gespeichert ›" sign's edge: the plan accent, fine (owner 2026-11-06, the plan pills' style). */
+object UnsavedSignStyle { val EDGE = OnPathColors.PlanAccent.copy(alpha = 0.55f) }
