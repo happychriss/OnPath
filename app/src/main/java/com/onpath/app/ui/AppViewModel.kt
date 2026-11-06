@@ -3191,7 +3191,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** End tour → Delete (owner): stop, then the tour goes straight to the recycle bin, no summary. */
-    fun endTourAndDelete() { Problems.trace("tour", "End tour (delete)"); endAsk = null; arrivalAsk = false; deleteFinished = true; stopRecording() }
+    /**
+     * End sheet / arrival → Löschen: the TOUR goes to the bin. The plan switch still counts (flow map H2, owner rule "never
+     * lose"): ON → Save's dialog for the plan opens like after "Tour speichern" (the plan stays until it is answered).
+     */
+    fun endTourAndDelete() {
+        Problems.trace("tour", "End tour (delete)"); endAsk = null; arrivalAsk = false; deleteFinished = true
+        val withRoute = saveRouteAtEnd && endRouteLabel() != null
+        saveRouteAtEnd = false
+        stopRecording()
+        if (withRoute) requestSave()
+    }
     private var deleteFinished = false
 
     /**

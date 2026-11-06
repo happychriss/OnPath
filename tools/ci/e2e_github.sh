@@ -1,24 +1,26 @@
 #!/usr/bin/env bash
 # Run the E2E tests on GitHub's emulator from any session (cloud sessions have no KVM; donald runs them locally with
 # tools/dev/device.sh). Dispatches .github/workflows/e2e.yml by REST (`gh issue`/GraphQL is blocked in cloud sessions).
-#   tools/ci/e2e_github.sh [--tests Class[,Class#method]] [--ref main] [--wait] [--out DIR]
+#   tools/ci/e2e_github.sh [--tests Class[,Class#method]] [--ref main] [--wait] [--out DIR] [--force]
 #     --tests  only these classes (empty = all but the Release-Rundgang, ~20 min; the Rundgang: com.onpath.app.e2e.ReleaseRundgang)
 #     --wait   poll every 60 s until the run ends, then download the report "e2e-report" into --out
 #              (default ${TMPDIR:-/tmp}/e2e-<run id>) and list the failed tests
+#     --force  dispatch even when an E2E run already waits on the ref (that waiting run is then cancelled)
 # Exit: 0 dispatched / green, 1 red or cancelled, 2 usage or GitHub error.
 # Note: one E2E queue per ref (concurrency group): a new run waits for the running one and cancels a still pending one
-# – a dispatched run can cancel a waiting push run and vice versa (docs/project-status.md).
+# – a dispatched run would cancel a waiting push run (seen 2026-11-06), so the script refuses then without --force.
 # Without gh: the GitHub MCP tool actions_run_trigger (workflow e2e.yml, ref main, inputs {"tests": "…"}) does the same.
 set -uo pipefail
 REPO=${ONPATH_REPO:-happychriss/OnPath}
-TESTS="" REF=main WAIT=0 OUT=""
+TESTS="" REF=main WAIT=0 OUT="" FORCE=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --tests) TESTS=${2:?}; shift ;;
     --ref) REF=${2:?}; shift ;;
     --wait) WAIT=1 ;;
+    --force) FORCE=1 ;;
     --out) OUT=${2:?}; shift ;;
-    -h|--help) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "e2e_github: unknown option $1" >&2; exit 2 ;;
   esac
   shift
@@ -26,6 +28,12 @@ done
 command -v gh >/dev/null || { echo "e2e_github: no gh – use the GitHub MCP tool actions_run_trigger (see --help)" >&2; exit 2; }
 api() { gh api "$@" 2>&1; }
 
+waiting=$(gh api "repos/$REPO/actions/workflows/e2e.yml/runs?branch=$REF&per_page=20" \
+  --jq '[.workflow_runs[] | select(.status == "queued" or .status == "pending" or .status == "waiting")] | map("\(.id) \(.event)") | join(", ")' 2>/dev/null)
+if [ -n "$waiting" ] && [ "$FORCE" = 0 ]; then
+  echo "e2e_github: an E2E run already waits on $REF ($waiting) – a new run would cancel it; try again later or --force" >&2
+  exit 2
+fi
 since=$(date -u -d '-30 seconds' +%FT%TZ)
 if ! err=$(api -X POST "repos/$REPO/actions/workflows/e2e.yml/dispatches" -f ref="$REF" -f "inputs[tests]=$TESTS"); then
   echo "e2e_github: dispatch refused: $err" >&2; exit 2

@@ -224,7 +224,7 @@ fun MapScreen(
     if (vm.routeBackAsk && rec != null) RouteBackDialog(onYes = { vm.answerRouteBack(true) }, onNo = { vm.answerRouteBack(false) })
     vm.longRouteAsk?.let { s -> LongRouteDialog(s, vm.activity, onPlan = { vm.answerLongRoute(true) }, onCancel = { vm.answerLongRoute(false) }) }
     when (val ask = vm.endAsk) {
-        EndAsk.Plain -> EndTourDialog(onSave = { vm.endTour() }, onDelete = { vm.saveRouteAtEnd = false; vm.endTourAndDelete() },
+        EndAsk.Plain -> EndTourDialog(onSave = { vm.endTour() }, onDelete = { vm.endTourAndDelete() },
             onDismiss = { vm.dismissEndAsk() }, activity = vm.activity, stats = rec?.let { EndStats(it.distanceM, it.elapsedS, it.ascentM) },
             routeLabel = vm.endRouteLabel(), routeChecked = vm.saveRouteAtEnd, onRouteChecked = { vm.saveRouteAtEnd = it },
             routeLine = vm.endRouteLine())

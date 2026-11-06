@@ -23,5 +23,7 @@ paths:
 - **Robustness rules** (requirements section 4): never crash on missing files – show a clear screen;
   write every recorded point to SQLite immediately; long work off the main thread; show plain-language
   errors (no stack traces) to the user.
+- **Problems log** (`debug/Problems`): dedupes, persists, shows in Settings → Diagnostics, announces new ERRORs once and goes
+  into the diagnostics export; MapLibre's native warnings/errors and crashes are captured too (`OnPathApp`).
 
 - Emulator (core features end to end): `./gradlew connectedDebugAndroidTest -Ponpath.e2e=true` (x86_64 emulator; on donald only through `tools/dev/device.sh emulator -- …`; CI `.github/workflows/e2e.yml` on every push to main – a red run is fixed at once). `-Ponpath.e2e=true` adds x86_64 libs – never for a released APK. Release-Rundgang: `tools/ci/release_rundgang.sh`, flows in `docs/release-rundgang.md`; every field bug adds one.
