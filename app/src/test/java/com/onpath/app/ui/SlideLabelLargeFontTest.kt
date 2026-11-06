@@ -23,6 +23,8 @@ open class SlideLabelLargeFontTest {
     }
 
     @Test fun navigate() = shots.navigate()
+    /** "App verlassen?" at a large font (N4): the two buttons stacked, nothing cut. */
+    @Test fun navigateLeaveAsk() = shots.navigateLeaveAsk()
     /** Without a recording: only "Plan ändern" behind it. */
     @Test fun navigateNotRecording() = shots.navigateNotRecording()
     @Test fun navigateActionsOpen() = shots.navigateActionsOpen()

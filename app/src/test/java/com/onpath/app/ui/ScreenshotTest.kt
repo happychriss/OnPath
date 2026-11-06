@@ -565,6 +565,16 @@ class ScreenshotTest {
     /** Navigate: what is left on top, recording chip, slide-to-plan at the bottom. */
     @Test fun navigate() = paparazzi.snapshot { NavFrame(navUi) }
 
+    /** Back while a tour records (owner 2026-11-06, flow map N4): "App verlassen?" · Bleiben / Verlassen in Navigate's one box. */
+    @Test fun navigateLeaveAsk() = paparazzi.snapshot {
+        OnPathTheme {
+            NavFrame(navUi)
+            Box(Modifier.fillMaxSize()) {
+                MessageSlot(leaveAppMessage({}, {}), MessagePlacement.topDp(MessageScreen.NAVIGATE, 150))
+            }
+        }
+    }
+
     /** Navigate without a recording (e.g. an unfinished tour being asked about): the slider says only "Change route". */
     @Test fun navigateNotRecording() = paparazzi.snapshot { NavFrame(navUi.copy(recordedM = null)) }
 

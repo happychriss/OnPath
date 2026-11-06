@@ -179,6 +179,10 @@
     <string name="nav_slide_unlock_desc_plan">Entsperren. Schieben, um den Plan freizugeben.</string>
     <string name="nav_slide_unlock_sub">Pause · Beenden · Plan</string>
     <string name="nav_slide_unlock_sub_plan">Plan</string>
+    <string name="nav_leave_title">App verlassen?</string>
+    <string name="nav_leave_text">Deine Tour wird weiter aufgezeichnet.</string>
+    <string name="nav_leave_stay">Bleiben</string>
+    <string name="nav_leave_go">Verlassen</string>
     <string name="nav_lock">Sperren</string>
     <string name="nav_change_plan">Plan</string>
     <string name="nav_straight_on">Geradeaus</string>
