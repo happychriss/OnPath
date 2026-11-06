@@ -84,15 +84,16 @@ fun TourCardActions(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Un
 fun ChangePlanButton(onClick: () -> Unit, modifier: Modifier = Modifier, onLock: (() -> Unit)? = null) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         // "Sperren" as a full button beside "Plan" (owner 2026-11-06: equal partners, not a small lock icon), where the
-        // slider was – the way back to the locked state is as easy to hit as the way into Plan
-        if (onLock != null) OutlinedButton(onClick = onLock, contentPadding = PaddingValues(horizontal = 16.dp),
+        // slider was – the way back to the locked state is as easy to hit as the way into Plan; equal widths, so
+        // "Sperren" stays whole with large font (1.4 : 1 cut it to "Sperre")
+        if (onLock != null) OutlinedButton(onClick = onLock, contentPadding = PaddingValues(horizontal = 12.dp),
             modifier = Modifier.weight(1f).heightIn(min = 56.dp)) {
             Icon(Icons.Filled.Lock, null, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(8.dp))
             Text(str(Res.string.nav_lock), style = MaterialTheme.typography.titleMedium, maxLines = 1)
         }
         Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionEdit, contentColor = OnPathColors.CardWhite),
-            contentPadding = PaddingValues(horizontal = 24.dp), modifier = Modifier.weight(if (onLock != null) 1.4f else 1f).heightIn(min = 56.dp)) {
+            contentPadding = PaddingValues(horizontal = 24.dp), modifier = Modifier.weight(1f).heightIn(min = 56.dp)) {
             Icon(Icons.Filled.Edit, null, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(10.dp))
             Text(str(Res.string.nav_change_plan), style = MaterialTheme.typography.titleMedium, maxLines = 1)
