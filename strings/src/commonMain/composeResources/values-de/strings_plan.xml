@@ -270,7 +270,5 @@
     <string name="plan_save_ask_text_named">„%1$s“ hat Änderungen, die noch nicht gespeichert sind.</string>
     <string name="plan_save_ask_text">Dein Plan ist noch nicht gespeichert.</string>
     <string name="plan_tour_goes_on">Deine Tour läuft weiter.</string>
-    <string name="plan_unsaved_chip">Nicht gespeichert</string>
-    <string name="plan_unsaved_chip_desc">Plan nicht gespeichert – tippen zum Speichern</string>
     <string name="plan_menu_record_without_plan">Ohne Plan aufzeichnen</string>
 </resources>

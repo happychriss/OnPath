@@ -1349,19 +1349,6 @@
     "priority": 2,
     "confidence": "sicher"
   },
-  "plan_unsaved_chip": {
-    "area": "Plan top bar",
-    "context": "Amber sign beside the blue mode label (PLANEN …) while the plan has unsaved changes; followed by ' ›'; a tap opens Save's dialog",
-    "max": 20,
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "plan_unsaved_chip_desc": {
-    "area": "Plan top bar",
-    "context": "Screen reader only: the 'Not saved' sign beside the mode label – what a tap does",
-    "priority": 2,
-    "confidence": "sicher"
-  },
   "plan_menu_record_without_plan": {
     "area": "Plan menu",
     "context": "☰ menu item (owner 2026-11-06): start a plain recording without following any plan; shown only while no tour runs",

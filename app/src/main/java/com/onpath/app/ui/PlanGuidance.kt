@@ -46,20 +46,11 @@ object PlanGuidance {
 }
 
 /**
- * ✕ Neu planen asks first (owner 2026-11-05): with unsaved changes ("Änderungen verwerfen?" with Save), and during a tour
- * always when there is a plan – "Plan leeren? Deine Tour läuft weiter und wird weiter aufgezeichnet." Otherwise it clears
- * at once (one Undo brings it back).
+ * ✕ Neu planen asks first only during a tour with a plan (owner 2026-11-05) – "Plan leeren? Deine Tour läuft weiter und
+ * wird weiter aufgezeichnet." (the guidance ends). Otherwise it clears at once: nothing to save any more (owner 2026-11-06,
+ * a plan not saved goes under My routes → Zuletzt), one Undo brings it back.
  */
 object ClearAsk {
-    fun asks(unsaved: Boolean, touring: Boolean, planPoints: Int): Boolean = unsaved || (touring && planPoints > 0)
+    fun asks(touring: Boolean, planPoints: Int): Boolean = touring && planPoints > 0
 }
 
-/**
- * Before something else takes the plan's place (flow map M1 + save paths P3, 2026-11-06): following a track during a tour,
- * "Mit dieser Route weiter", "Als Plan übernehmen". A plan that is not saved asks first – the same "Plan speichern?" as
- * ✕ (Speichern · Verwerfen · Abbrechen); a saved plan stays in My routes, no plan has nothing to lose.
- */
-object ReplaceAsk {
-    enum class Answer { SAVE, DISCARD, CANCEL }
-    fun asks(unsaved: Boolean, planPoints: Int): Boolean = unsaved && planPoints > 0
-}

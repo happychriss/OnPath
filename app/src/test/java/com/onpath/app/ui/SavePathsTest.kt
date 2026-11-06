@@ -29,7 +29,7 @@ class SavePathsTest {
         val finished = vm.substringAfter("RecordingService.finished.collect { id ->").substringBefore("fun initialCamera()")
         assertFalse(finished, finished.contains("clearPlan()"))
         assertFalse(body("fun endTourAndDelete() {").contains("requestSave"))
-        assertTrue(PlanAutoSave.atStart(points = 2, unsaved = true, changesASavedPlan = false))
+        assertEquals(PlanAutoSave.AtStart.SAVE_NEW, PlanAutoSave.atStart(points = 2, unsaved = true, changesASavedPlan = false))
         assertTrue("a mode switch still closes Save's dialog", vm.contains("if (saveAsk != null) cancelSave()"))
     }
 
@@ -42,27 +42,20 @@ class SavePathsTest {
         assertTrue(ask.contains("s != null -> endAsk = EndAsk.Rides(id, s)"))
     }
 
-    /** A saved route loaded during a tour → "Mit dieser Route weiter": an unsaved plan is replaced without a question. */
     /**
-     * Ways 6 + 8 (P3, done 2026-11-06 with flow map M1): "Mit dieser Route weiter", "Als Plan übernehmen" and following a
-     * track during a tour ask "Plan speichern?" first when they would replace a plan that is not saved ([ReplaceAsk]).
+     * Ways 6 + 8 and following a track during a tour (owner 2026-11-06, "Zuletzt"): nothing asks to save any more – the
+     * plan they replace goes under My routes → Zuletzt ([AppViewModel.keepAsDraft]) when it is not saved as it is.
      */
-    @Test fun replacingAnUnsavedPlanAsksFirst() {
-        val unsaved = listOf(a, b)
-        assertTrue(RouteRules.isUnsaved(unsaved, null))
-        assertTrue(ReplaceAsk.asks(unsaved = true, planPoints = 2))
-        assertTrue(ReplaceAsk.asks(unsaved = true, planPoints = 1))
-        assertFalse("a saved plan stays in My routes", ReplaceAsk.asks(unsaved = false, planPoints = 2))
-        assertFalse("no plan, nothing to lose", ReplaceAsk.asks(unsaved = true, planPoints = 0))
-        assertEquals(OpenAsk.BLOCKED_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 2, navigating = true, unsaved, null))
+    @Test fun replacingAPlanKeepsItUnderZuletzt() {
+        assertTrue(Drafts.keeps(points = 2, unsaved = true))
+        assertFalse("a saved plan as it is stays in My routes", Drafts.keeps(points = 2, unsaved = false))
+        assertFalse("one point is no plan worth keeping", Drafts.keeps(points = 1, unsaved = true))
         assertTrue(body("fun answerTourLoad(").contains("TourLoad.Step.FOLLOW_NOW -> unlessUnsaved("))
-        assertTrue(vm.contains("fun planFromShown() = unlessUnsaved(\"Track → plan\") { planFromShownNow() }"))
-        assertTrue(vm.contains("fun planFromTour(t: Tour) = unlessUnsaved("))
         assertTrue(vm.contains("fun followShownDuringTour() = unlessUnsaved("))
-        val ask = body("private fun unlessUnsaved(what: String, go: () -> Unit) {")
-        assertTrue(ask, ask.contains("ReplaceAsk.asks(planUnsaved, waypoints.size)"))
-        val answer = body("fun answerReplaceUnsaved(a: ReplaceAsk.Answer) {")
-        assertTrue(answer, answer.contains("ReplaceAsk.Answer.SAVE -> askSave { go() }") && answer.contains("ReplaceAsk.Answer.CANCEL -> Unit"))
+        assertFalse(vm.contains("ReplaceAsk") || vm.contains("replaceUnsavedAsk") || vm.contains("replaceAsk"))
+        assertTrue(body("fun clearPlan() {").contains("keepAsDraft(\"cleared\")"))
+        // every way a plan is replaced: a route opened, a plan link, a track made a plan
+        assertTrue(vm.split("keepAsDraft(\"replaced by").size - 1 >= 3)
     }
 
     /** Making a plan of a track still replaces the plan in one Undo step (after the question above). */
@@ -78,11 +71,14 @@ class SavePathsTest {
         assertTrue(vm.contains("private var savedPoints by mutableStateOf(prefs.planSavedPoints)"))
     }
 
-    /** Backups, "Export all" and sync carry saved items only – an unsaved plan lives in the app's prefs alone. */
-    @Test fun todayAnUnsavedPlanIsInNoBackup() {
+    /** Backups, "Export all" and the browser sync carry saved items only – no plan under Zuletzt (owner 2026-11-06). */
+    @Test fun draftsAreInNoBackupAndNoSync() {
         val backups = File("src/main/java/com/onpath/app/backup/Backups.kt").readText()
         assertFalse(backups.contains("planWaypoints"))
-        assertTrue(backups.contains("for (t in db.listTours().filter { it.state == \"done\" })"))
+        assertTrue(backups.contains("for (t in db.listTours().filter { it.state == \"done\" && !it.draft })"))
+        assertTrue(backups.contains("(db.listTours() + db.listDeleted()).filter { !it.draft }"))
+        val sync = File("src/main/java/com/onpath/app/plansync/DbTourStore.kt").readText()
+        assertTrue(sync.contains("&& !it.draft }"))
     }
 
     /** GPX import always makes an imported track; a plan GPX becomes a plan again only via "Als Plan nutzen". */

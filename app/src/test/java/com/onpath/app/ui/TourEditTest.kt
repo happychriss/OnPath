@@ -31,7 +31,7 @@ class TourEditTest {
             .contains("if (tour.paused) cb.onPause(false); cb.onContinue()"))
         // the same path as without a tour: requestClear (unsaved → "Discard changes?"; during a tour always "Plan leeren?")
         assertTrue(src("ui/MapScreen.kt").contains("onClear = vm::requestClear"))
-        assertTrue(vm.contains("fun requestClear() { if (ClearAsk.asks(planUnsaved, recState.value != null, waypoints.size)) discardAsk = true else clearPlan() }"))
+        assertTrue(vm.contains("fun requestClear() { if (ClearAsk.asks(recState.value != null, waypoints.size)) discardAsk = true else clearPlan() }"))
         // no second, separate discard path any more
         assertFalse(vm.contains("discardTourEdits"))
         assertFalse(File("src/main/java/com/onpath/app/ui/TourEdit.kt").exists())

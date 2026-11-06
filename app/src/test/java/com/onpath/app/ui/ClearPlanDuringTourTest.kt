@@ -37,12 +37,12 @@ class ClearPlanDuringTourTest {
     }
 
     @Test fun theQuestionSaysTheTourGoesOn() {
-        assertTrue(ClearAsk.asks(unsaved = false, touring = true, planPoints = 3))
-        assertTrue(ClearAsk.asks(unsaved = true, touring = false, planPoints = 3))
-        assertFalse(ClearAsk.asks(unsaved = false, touring = false, planPoints = 3))
-        assertFalse("nothing to clear", ClearAsk.asks(unsaved = false, touring = true, planPoints = 0))
+        assertTrue(ClearAsk.asks(touring = true, planPoints = 3))
+        // owner 2026-11-06: without a tour nothing asks – a plan not saved goes under My routes → Zuletzt
+        assertFalse(ClearAsk.asks(touring = false, planPoints = 3))
+        assertFalse("nothing to clear", ClearAsk.asks(touring = true, planPoints = 0))
         val dialogs = File("src/main/java/com/onpath/app/ui/RouteDialogs.kt").readText()
-        assertTrue(dialogs.contains("touring = vm.clearDuringTour"))
+        assertTrue(dialogs.contains("if (vm.discardAsk) DiscardPlanDialog(onDiscard = vm::discardConfirmed, onCancel = { vm.discardAsk = false })"))
         assertTrue(dialogs.contains("Res.string.plan_clear_tour_title") && dialogs.contains("Res.string.plan_clear_tour_text") &&
             dialogs.contains("Res.string.plan_clear_tour_confirm"))
     }

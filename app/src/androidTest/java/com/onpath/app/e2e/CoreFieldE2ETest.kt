@@ -17,7 +17,6 @@ import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.ui.AppMode
 import com.onpath.app.ui.RoutesTab
-import com.onpath.app.ui.ReplaceAsk
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -345,50 +344,58 @@ class CoreFieldE2ETest : E2EBase() {
     }
 
     private fun followName(): String? { var n: String? = null; scenario.onActivity { n = vm(it).followName }; return n }
-    private fun askOpen(): Boolean { var a = false; scenario.onActivity { a = vm(it).replaceUnsavedAsk }; return a }
+    private fun drafts(): List<com.onpath.app.data.Tour> =
+        TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).listTours().filter { it.draft }
 
     /**
-     * Flow map M1 (2026-11-06): "Folgen" on a done tour during a tour kept the plan built on the way – two routes, and an
-     * edit to the plan switched the guidance silently back. Now: an unsaved plan asks "Plan speichern?" first; Verwerfen →
-     * the plan leaves the map (Undo brings it back) and the tour follows the track.
+     * Flow map M1 + owner 2026-11-06 ("Zuletzt"): "Folgen" on a done tour during a tour – no question; the plan built on the
+     * way leaves the map, kept under My routes → Zuletzt, and the tour follows the track alone. Undo brings the plan back.
      */
-    @Test fun followingATrackDuringATourAsksForTheUnsavedPlanThenTheTrackAlone() {
+    @Test fun followingATrackDuringATourKeepsTheUnsavedPlanUnderZuletzt() {
         val planId = tourWithAnUnsavedPlan()
         val name = "E2E done tour ${System.currentTimeMillis() % 100_000}"
         val id = insertDoneTour(name)
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         try {
             scenario.onActivity { vm(it).requestOpen(tourWith(id)); vm(it).answerTrackFollow(true) }
-            waitUntil("'Plan speichern?' before the track takes the plan's place", 5_000) { askOpen() }
-            assertEquals("nothing changed while it asks", 3, waypointCount())
-            scenario.onActivity { vm(it).answerReplaceUnsaved(ReplaceAsk.Answer.DISCARD) }
             waitUntil("the plan has left the map", 10_000) { waypointCount() == 0 }
             waitUntil("the tour follows the track", 10_000) { followName() == name }
             assertTrue("the recording goes on", recording())
+            waitUntil("the plan is under Zuletzt", 10_000) { drafts().any { it.waypoints.size == 3 } }
             scenario.onActivity { vm(it).undoStep() }
             waitUntil("Undo brings the plan back", 10_000) { waypointCount() == 3 }
         } finally {
-            TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).deleteTour(id)
-            TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).deleteTour(planId)
+            db.deleteTour(id); db.deleteTour(planId); drafts().forEach { db.deleteTour(it.id) }
         }
     }
 
-    /** M1: Abbrechen in "Plan speichern?" changes nothing – the plan stays and is still followed, no track. */
-    @Test fun followingATrackDuringATourCancelKeepsThePlan() {
-        val planId = tourWithAnUnsavedPlan()
-        val before = followName()
-        val name = "E2E done tour ${System.currentTimeMillis() % 100_000}"
-        val id = insertDoneTour(name)
+    /**
+     * Owner 2026-11-06 ("Zuletzt" in My routes): a new plan cleared → kept under Zuletzt, no question; Speichern there makes
+     * it a saved plan; Löschen moves another one to the recycle bin; "Los geht's" saves the plan it starts with.
+     */
+    @Test fun aClearedPlanIsUnderZuletztSavedOrDeletedThere() {
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         try {
-            scenario.onActivity { vm(it).requestOpen(tourWith(id)); vm(it).answerTrackFollow(true) }
-            waitUntil("asked", 5_000) { askOpen() }
-            scenario.onActivity { vm(it).answerReplaceUnsaved(ReplaceAsk.Answer.CANCEL) }
-            Thread.sleep(1_500)
-            assertEquals("the plan stays", 3, waypointCount())
-            assertEquals("the plan is still followed", before, followName())
-            assertTrue(guided())
+            startPlanWithTwoPoints()
+            Thread.sleep(if (realRouting) 3_000 else 1_000)
+            scenario.onActivity { vm(it).requestClear() }
+            waitUntil("cleared at once, no question", 5_000) { waypointCount() == 0 }
+            waitUntil("kept under Zuletzt", 10_000) { drafts().size == 1 }
+            val draft = drafts().single()
+            scenario.onActivity { vm(it).saveDraft(draft) }
+            waitUntil("saved: no longer a draft", 10_000) { db.getTour(draft.id)?.draft == false }
+            scenario.onActivity { assertEquals(draft.id, vm(it).justSavedId) }
+            // a second one, deleted from Zuletzt → recycle bin
+            startPlanWithTwoPoints()
+            Thread.sleep(if (realRouting) 3_000 else 1_000)
+            scenario.onActivity { vm(it).requestClear() }
+            waitUntil("the second one under Zuletzt", 10_000) { drafts().size == 1 }
+            val second = drafts().single()
+            scenario.onActivity { vm(it).deleteDraft(second) }
+            waitUntil("in the recycle bin", 10_000) { (db.getTour(second.id)?.deletedMs ?: 0L) > 0L }
+            db.deleteTour(draft.id); db.deleteTour(second.id)
         } finally {
-            TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).deleteTour(id)
-            TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).deleteTour(planId)
+            drafts().forEach { db.deleteTour(it.id) }
         }
     }
 
@@ -406,7 +413,6 @@ class CoreFieldE2ETest : E2EBase() {
         try {
             scenario.onActivity { vm(it).requestOpen(tourWith(id)); vm(it).answerTrackFollow(true) }
             waitUntil("the tour follows the track", 10_000) { followName() == name }
-            assertFalse("no question for a saved plan", askOpen())
             waitUntil("the plan has left the map", 10_000) { waypointCount() == 0 }
         } finally {
             db.deleteTour(id)

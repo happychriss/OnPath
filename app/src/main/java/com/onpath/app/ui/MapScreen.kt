@@ -302,7 +302,6 @@ private fun PlanMode(
                 // on ☰ while it has unsaved changes
                 // the one Save of the plan, also during a tour (owner 2026-11-05: the sheet has no Save)
                 onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null,
-                unsaved = RouteRules.saveAtHand(vm.waypoints.size, vm.planUnsaved),
                 onOpened = vm::refreshTours,
                 // owner 2026-11-06: "Neu planen" also in ☰ (the same way as the sheet's ✕ pill) and the plain recording
                 onNewPlan = if (vm.waypoints.isNotEmpty()) vm::requestClear else null,

@@ -38,7 +38,7 @@ class ColourRuleTest {
         assertTrue("the turn card", src("ui/NavigateScreen.kt").contains("Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.ActionGo,"))
     }
 
-    /** Plan actions are blue: the search card's add / start / goal, Save's name dialog, Replace / Save first, Plan anyway. */
+    /** Plan actions are blue: the search card's add / start / goal, Save's name dialog, a draft's Speichern, Plan anyway. */
     @Test fun planActionsAreBlue() {
         val card = src("ui/search/PlaceCard.kt")
         assertTrue(card.contains("Button(colors = ActionButtons.edit(),"))
@@ -46,7 +46,9 @@ class ColourRuleTest {
         val dialogs = src("ui/RouteDialogs.kt")
         assertTrue("Save", dialogs.contains("TextButton(colors = ActionButtons.editText(), onClick = { onSave(text.text) }"))
         assertTrue("Fix the route", dialogs.contains("TextButton(colors = ActionButtons.editText(), onClick = onCancel"))
-        assertEquals("Replace / Save first", 2, Regex("TextButton\\(colors = ActionButtons\\.editText\\(\\), onClick = on(Replace|SaveFirst)").findAll(src("ui/Screens.kt")).count())
+        // "Replace current plan?" is gone (owner 2026-11-06, Zuletzt); a draft's Speichern in My routes is plan blue
+        assertTrue("Zuletzt → Speichern", src("ui/Screens.kt").substringAfter("private fun DraftActions(").substringBefore("\n}\n")
+            .contains("filledTonalButtonColors(containerColor = OnPathColors.PlanTint, contentColor = OnPathColors.ActionEdit)"))
         assertTrue("the routing ring", src("ui/MapOverlays.kt").contains("val color = com.onpath.app.ui.OnPathColors.PlanAccent"))
     }
 

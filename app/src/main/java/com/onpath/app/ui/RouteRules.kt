@@ -189,6 +189,28 @@ enum class LinkOpen { AFTER_TOUR, ASK_FIRST, NOW }
  * the plan; pure). A plan never saved is saved at the start; a saved plan changed since is not overwritten silently.
  */
 object PlanAutoSave {
-    /** [points]: plan points; [unsaved]: the plan differs from what is stored; [changesASavedPlan]: it belongs to a saved route. */
-    fun atStart(points: Int, unsaved: Boolean, changesASavedPlan: Boolean): Boolean = points >= 2 && unsaved && !changesASavedPlan
+    enum class AtStart { NOTHING, SAVE_NEW, SAVE_COPY }
+
+    /**
+     * "Los geht's" (owner 2026-11-06, like Komoot: what you ride is under Planned): [points] plan points; [unsaved] the plan
+     * differs from what is stored; [changesASavedPlan] it belongs to a saved route; [fromDraft] it was loaded from
+     * "Zuletzt". A plan from Zuletzt is saved (changed or not); a never-saved plan is saved; a saved plan changed since is
+     * saved as a copy "Name (2)" – never overwritten silently; a saved plan as it is: nothing.
+     */
+    fun atStart(points: Int, unsaved: Boolean, changesASavedPlan: Boolean, fromDraft: Boolean = false): AtStart = when {
+        points < 2 -> AtStart.NOTHING
+        fromDraft -> AtStart.SAVE_NEW
+        !unsaved -> AtStart.NOTHING
+        changesASavedPlan -> AtStart.SAVE_COPY
+        else -> AtStart.SAVE_NEW
+    }
+}
+
+/**
+ * "Zuletzt" in My routes (owner 2026-11-06: "Nicht gespeichert" goes – nothing is lost, nothing asks): a plan worth
+ * keeping ([points] ≥ 2) that leaves the map and is not saved as it is ([unsaved]) is kept as a draft; the newest [MAX].
+ */
+object Drafts {
+    const val MAX = 25
+    fun keeps(points: Int, unsaved: Boolean): Boolean = points >= 2 && unsaved
 }

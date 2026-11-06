@@ -420,5 +420,29 @@
     "priority": 1,
     "confidence": "sicher",
     "max": 22
+  },
+  "routes_section_recent": {
+    "area": "My routes",
+    "context": "Section header in My routes → Planned: plans kept by themselves when they left the map (owner 2026-11-06); shown in capitals",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_section_saved": {
+    "area": "My routes",
+    "context": "Section header in My routes → Planned: plans the user saved (or rode); shown in capitals",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_recent_all": {
+    "area": "My routes",
+    "context": "Under the first three recent plans: shows the whole list (%1$d = how many)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_just_saved": {
+    "area": "My routes",
+    "context": "Line on a plan just moved from Recent to Saved, until My routes closes",
+    "priority": 2,
+    "confidence": "sicher"
   }
 }

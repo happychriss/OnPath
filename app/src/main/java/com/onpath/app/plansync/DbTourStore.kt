@@ -21,7 +21,8 @@ class DbTourStore(
     private val factors: (Activity) -> com.onpath.app.time.Factors,
 ) : TourStore {
     override fun tours(): List<Tour> =
-        (db.listTours() + db.listDeleted()).filter { it.kind == TourKind.PLANNED || it.kind == TourKind.IMPORTED }
+        // plans under "Zuletzt" stay on the phone (owner 2026-11-06: the browser shows only what is saved)
+        (db.listTours() + db.listDeleted()).filter { (it.kind == TourKind.PLANNED || it.kind == TourKind.IMPORTED) && !it.draft }
 
     override fun segments(id: Long): List<List<TrackPoint>> = db.loadSegments(id)
 

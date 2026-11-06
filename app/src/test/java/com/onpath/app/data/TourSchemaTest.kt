@@ -35,6 +35,9 @@ class TourSchemaTest {
 
     private fun Connection.assertUpgraded() {
         assertTrue("rides" in columns("tours"))
+        // 4 → 5 (Zuletzt): every existing tour stays saved
+        assertTrue("draft" in columns("tours"))
+        assertEquals(1, count("SELECT COUNT(*) FROM tours WHERE name='Waalweg' AND draft=0"))
         assertTrue("acc" in columns("points"))
         assertEquals(1, count("SELECT COUNT(*) FROM tours WHERE name='Waalweg' AND distance=5230.5 AND uuid='u1' AND rides IS NULL"))
         assertEquals(50, count("SELECT COUNT(*) FROM points WHERE tour_id=1 AND acc IS NULL"))
@@ -56,12 +59,18 @@ class TourSchemaTest {
         db().use { c -> c.oldSchema(rides = true); c.upgrade(3); c.assertUpgraded() }
     }
 
+    /** A version 4 database (rides + acc) gets the draft column; its tours stay saved. */
+    @Test fun upgradeFrom4AddsDraft() {
+        db().use { c -> c.oldSchema(acc = true, rides = true); c.upgrade(4); c.assertUpgraded() }
+    }
+
     @Test fun freshDatabaseHasTheColumns() {
         db().use { c ->
             TourSchema.CREATE.forEach { c.exec(it) }
             assertTrue("rides" in c.columns("tours"))
             assertTrue("acc" in c.columns("points"))
-            assertEquals(4, TourSchema.VERSION)
+            assertTrue("draft" in c.columns("tours"))
+            assertEquals(5, TourSchema.VERSION)
             assertEquals(TourSchema.VERSION, TourDb.VERSION)
         }
     }

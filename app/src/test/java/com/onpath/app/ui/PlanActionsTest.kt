@@ -20,16 +20,18 @@ class PlanActionsTest {
     private val vm = src("ui/AppViewModel.kt")
     private val panel = src("ui/PlanPanel.kt")
 
-    @Test fun closePlanAsksOnlyWithUnsavedChanges() {
+    /** Owner 2026-11-06: ✕ asks nothing to save any more (the plan goes under Zuletzt); only during a tour "Plan leeren?". */
+    @Test fun closePlanAsksOnlyDuringATour() {
         val body = vm.substringAfter("fun requestClear()").substringBefore("\n")
-        // owner 2026-11-05: during a tour it asks too ("Plan leeren? Deine Tour läuft weiter …")
-        assertTrue(body, body.contains("if (ClearAsk.asks(planUnsaved, recState.value != null, waypoints.size)) discardAsk = true else clearPlan()"))
+        assertTrue(body, body.contains("if (ClearAsk.asks(recState.value != null, waypoints.size)) discardAsk = true else clearPlan()"))
+        assertTrue(vm.substringAfter("fun clearPlan() {").substringBefore("\n    }\n").contains("keepAsDraft("))
         assertTrue(vm.contains("fun discardConfirmed() { discardAsk = false; clearPlan() }"))
         // unsaved = a new plan of two points, or a saved one changed since
         assertTrue(RouteRules.isUnsaved(listOf(a, b), null))
         assertFalse(RouteRules.isUnsaved(listOf(a, b), listOf(a, b)))
         val dialogs = src("ui/RouteDialogs.kt")
         assertTrue(dialogs.contains("if (vm.discardAsk) DiscardPlanDialog(onDiscard = vm::discardConfirmed"))
+        assertFalse("no Save in the clear question", dialogs.contains("discardSaveFirst"))
     }
 
     @Test fun theSheetHasTheActionRowAndNoMenu() {
@@ -57,9 +59,9 @@ class PlanActionsTest {
         assertFalse("no Start recording in ☰", items.contains("plan_menu_start_recording") || items.contains("onStartRecording"))
         assertTrue("☰: My routes · Save route · Pair with browser · Settings $order",
             order.all { it >= 0 } && order == order.sorted())
-        // owner 2026-11-06 (#41 B): unsaved = the "Nicht gespeichert ›" sign beside the mode label, no green dot on ☰
-        assertTrue(PlanMenu(onSaveRoute = {}, unsaved = true).showUnsaved)
-        assertFalse("no dot for unsaved", PlanMenu(onSaveRoute = {}, unsaved = true).dotWarn)
+        // owner 2026-11-06 (Zuletzt): no sign and no dot for an unsaved plan – nothing is lost
+        assertFalse("no dot for unsaved", PlanMenu(onSaveRoute = {}).dotWarn)
+        assertFalse(File("src/main/java/com/onpath/app/ui/PlanTopBar.kt").readText().contains("UnsavedSign"))
     }
 
     @Test fun copyAndShareLiveInMyRoutes() {

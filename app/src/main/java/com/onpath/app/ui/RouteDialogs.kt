@@ -41,18 +41,9 @@ import androidx.compose.ui.text.input.TextFieldValue
 @Composable
 fun RouteDialogs(vm: AppViewModel) {
     vm.saveAsk?.let { ask -> SaveNameDialog(ask.kind, ask.name, onSave = vm::confirmSave, onCancel = vm::cancelSave) }
-    if (vm.discardAsk) DiscardPlanDialog(onDiscard = vm::discardConfirmed, onCancel = { vm.discardAsk = false },
-        onSave = if (vm.planUnsaved && vm.canSaveBeforeClear) vm::discardSaveFirst else null, touring = vm.clearDuringTour,
-        unsaved = vm.planUnsaved, name = vm.planNameForAsk)
-    // flow map M1 / save paths P3: an unsaved plan before a track / route takes its place
-    if (vm.replaceUnsavedAsk) DiscardPlanDialog(onDiscard = { vm.answerReplaceUnsaved(ReplaceAsk.Answer.DISCARD) },
-        onCancel = { vm.answerReplaceUnsaved(ReplaceAsk.Answer.CANCEL) },
-        onSave = if (vm.canSaveBeforeClear) ({ vm.answerReplaceUnsaved(ReplaceAsk.Answer.SAVE) }) else null,
-        touring = vm.clearDuringTour, unsaved = true, name = vm.planNameForAsk)
-    vm.replaceAsk?.let { t ->
-        ReplacePlanDialog(onSaveFirst = vm::replaceSaveFirst, onReplace = vm::replaceConfirmed, onCancel = { vm.replaceAsk = null },
-            fromLink = t is PlanToOpen.Shared)
-    }
+    // only during a tour (owner 2026-11-05): "Plan leeren? Deine Tour läuft weiter …" – no Save (a plan leaving the map goes
+    // under My routes → Zuletzt, owner 2026-11-06)
+    if (vm.discardAsk) DiscardPlanDialog(onDiscard = vm::discardConfirmed, onCancel = { vm.discardAsk = false })
     if (vm.straightAsk) StraightLegsDialog(onNavigate = vm::straightConfirmed, onCancel = { vm.straightAsk = false })
     vm.routesProblem?.let { msg ->
         AlertDialog(
@@ -115,28 +106,14 @@ fun SaveNameDialog(kind: SaveAsk.Kind, name: String, onSave: (String) -> Unit, o
 }
 
 /**
- * ✕ Neu planen (owner 2026-11-05: "Android standard, real care"): a Material 3 basic dialog ([DecisionDialog]).
- * - Unsaved changes: "Plan speichern?" – „Name“ / your plan has changes not saved yet (during a tour + "Deine Tour läuft
- *   weiter."); Verwerfen (red, apart on the left) | Abbrechen · Speichern (filled, plan blue). [onSave] null = nothing
- *   Save could store (one point): Verwerfen | Abbrechen.
- * - During a tour without unsaved changes ([unsaved] false): "Plan leeren?" – "Deine Tour läuft weiter und wird weiter
- *   aufgezeichnet." – Abbrechen · Plan leeren.
- * Without a tour and without unsaved changes there is no question (cleared at once, Undo brings it back).
+ * ✕ / Neu planen during a tour (owner 2026-11-05): "Plan leeren? Deine Tour läuft weiter und wird weiter aufgezeichnet."
+ * Abbrechen · Plan leeren – the guidance ends, the recording goes on. No Save any more (owner 2026-11-06: a plan not saved
+ * goes under My routes → Zuletzt by itself).
  */
 @Composable
-fun DiscardPlanDialog(onDiscard: () -> Unit, onCancel: () -> Unit, onSave: (() -> Unit)? = null, touring: Boolean = false,
-                      unsaved: Boolean = true, name: String? = null) {
-    if (!unsaved) {
-        DecisionDialog(str(Res.string.plan_clear_tour_title), str(Res.string.plan_clear_tour_text), onDismiss = onCancel,
-            dismiss = str(Res.string.common_cancel) to onCancel, confirm = str(Res.string.plan_clear_tour_confirm) to onDiscard)
-        return
-    }
-    val text = (if (name.isNullOrBlank()) str(Res.string.plan_save_ask_text) else str(Res.string.plan_save_ask_text_named, name)) +
-        if (touring) "\n" + str(Res.string.plan_tour_goes_on) else ""
-    DecisionDialog(if (onSave != null) str(Res.string.plan_save_ask_title) else str(Res.string.plan_discard_title), text, onDismiss = onCancel,
-        destructive = str(Res.string.plan_discard) to onDiscard, dismiss = str(Res.string.common_cancel) to onCancel,
-        confirm = onSave?.let { str(Res.string.plan_bar_save) to it })
-}
+fun DiscardPlanDialog(onDiscard: () -> Unit, onCancel: () -> Unit) =
+    DecisionDialog(str(Res.string.plan_clear_tour_title), str(Res.string.plan_clear_tour_text), onDismiss = onCancel,
+        dismiss = str(Res.string.common_cancel) to onCancel, confirm = str(Res.string.plan_clear_tour_confirm) to onDiscard)
 
 /**
  * The Material 3 basic dialog (owner 2026-11-05): 24 dp inner padding, 280–560 dp wide (16 dp from the screen's edges), headline + supporting text, the
