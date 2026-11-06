@@ -51,6 +51,23 @@ green → prune the ci branch.
   groups https://claude.ai/artifact/52sgsWj1GSPuUJY7GYRaC3 (rec. A), 3D A vs B (fly-over liked: "sehr, sehr cool").
 - Seen on the way: theme `secondaryContainer` #DDE3F7 tints every FilterChip light blue app-wide → Walnuss.
 
+## Owner decisions 2026-11-06 ~23:10 – the next package (build after `donald-merge2-1106` is on main)
+
+- Blue = **C**: ink blue #2B4C6F, no blue surfaces (PlanTint, head band, pill row), no PlanEdge glow; Plan is recognised
+  by the PLANEN pill, the sheet's blue top edge and blue buttons (sketch `donald-blue-sketch` a69a7510).
+- Zuletzt: the plan on the map is the first entry with the tag "In Bearbeitung"; tap = back to the plan; Speichern there.
+- Polish (one by one): 1 map colours NO · 2 route draws itself ~0.5 s + short haptic YES · 3 numbers like an instrument
+  (big number, small unit, tabular figures) everywhere YES · 4 contour pattern NO · 5 Literata NO · 6 warm walnut shadows
+  in two levels + corner family (pills full, cards 20 dp, small 12 dp) YES · 7 only the goal flag (no ring, 1.11. stays)
+  · 8 profile gradient + steepness (smoothed ~100 m) YES. Sketch `donald-polish-sketch`.
+- Settings: **value rows** (variant C of https://claude.ai/artifact/52sgsWj1GSPuUJY7GYRaC3: title + current value,
+  the choice on tap) on ALL settings pages – but NOT T1–T5 for hiking (stay buttons). "Handy einrichten" on the
+  Navigation page: at the top with ⚠ + what is missing when location / vibration / battery is not set up (menu and topic
+  list already do this). FilterChips' light blue (`secondaryContainer` #DDE3F7) → Walnuss.
+- Plan mode: no GPS accuracy circle (Navigate keeps it).
+- 3D probe: fly-over camera good, stutter → async tile reads + pinch zoom + fps line (41180e5c) on the Pixel; owner
+  reports the fps.
+
 ## After the merge – open items (owner decided, not built yet)
 
 - Remove dead `TourRunningBar` / `TourControls` (TourBar.kt) and redraw the screenshot tests that still show the old
