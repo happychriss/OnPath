@@ -402,7 +402,7 @@ fun RoutesScreen(
                             // straight to the recycle bin, no question (owner 2026-11-06: the bin is the net)
                             onDelete = if (t.id == recordingId) null else ({ onDelete(t) }),
                             onEditRides = if (t.rides?.rides.isNullOrEmpty() || t.id == recordingId) null else ({ onEditRides(t) }),
-                            onPlanFrom = if (t.kind == TourKind.PLANNED || t.distanceM <= 0.0 || t.id == recordingId) null else ({ onPlanFrom(t) }))
+                            onPlanFrom = if (t.kind == TourKind.PLANNED || !TrackLine.hasDistance(t.distanceM) || t.id == recordingId) null else ({ onPlanFrom(t) }))
                     }
                 }
             }

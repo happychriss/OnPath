@@ -253,6 +253,7 @@
     <string name="plan_leg_no_path">kein Weg gefunden</string>
     <string name="plan_share_plan">Plan teilen</string>
     <string name="plan_from_track">Als Plan übernehmen</string>
+    <string name="plan_no_track_recorded">Keine Strecke aufgezeichnet</string>
     <string name="plan_from_track_busy_title">Plan wird aus der Tour erstellt …</string>
     <string name="plan_from_track_busy_text">Bei einer langen Tour kann das ein paar Minuten dauern.</string>
     <string name="plan_from_track_failed">Aus der Tour ließ sich kein Plan machen – dort fehlt vielleicht die Detailkarte.</string>

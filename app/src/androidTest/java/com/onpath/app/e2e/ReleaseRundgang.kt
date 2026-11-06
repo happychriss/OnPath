@@ -48,6 +48,9 @@ import com.onpath.strings.plan_start_here
 import com.onpath.strings.plan_undo
 import com.onpath.strings.plan_new_during_tour
 import com.onpath.strings.routes_tag_new
+import com.onpath.strings.routes_just_saved
+import com.onpath.strings.routes_saved_open
+import com.onpath.strings.routes_track_saved
 import com.onpath.strings.sync_pair
 import com.onpath.strings.sync_during_tour
 import org.junit.After
@@ -117,6 +120,7 @@ class ReleaseRundgang : E2EBase() {
         waitUntil("the arrival question", 180_000) { read { it.arrivalAsk } }
         assertNotNull("\"You have arrived\" shown", findFresh(By.text(Txt.s(Res.string.nav_arrived_title)), 10_000))
         shot("3-arrived")
+        Thread.sleep(com.onpath.app.ui.EndSheetGuard.GUARD_MS) // the sheet ignores a press in its first half second
         clickText(Txt.s(Res.string.nav_save_recording))
         waitUntil("tour saved", 30_000) { RecordingServiceState.idle() && db.getTour(tourId)?.state == "done" }
         shot("4-saved")
@@ -263,8 +267,11 @@ class ReleaseRundgang : E2EBase() {
         holdButton(Txt.s(Res.string.nav_end_short))
         assertNotNull("\"End recording?\"", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
         shot("1-end-tour")
+        // the sheet ignores a press in its first half second (field bug 2026-11-06 22:30, EndSheetGuard): a person looks first
+        Thread.sleep(com.onpath.app.ui.EndSheetGuard.GUARD_MS)
         clickText(Txt.s(Res.string.nav_save_recording))
         waitUntil("tour saved", 30_000) { RecordingServiceState.idle() && db.getTour(tourId)?.state == "done" }
+        assertNotNull("the box \"Tour gespeichert\"", findFresh(By.text(Txt.s(Res.string.routes_track_saved)), 10_000))
         // the automatic place name ("Demo · In Meran", RouteNamer since 3bb6ba43) comes in the background after the date
         // name: wait until it settled, and look for the name the tour has when the list shows it
         var name = db.getTour(tourId)!!.name
@@ -275,10 +282,15 @@ class ReleaseRundgang : E2EBase() {
             if (now == name && !now.removePrefix(DemoLocation.TOUR_PREFIX).startsWith("Tour ")) break
             name = now
         }
-        scenario.onActivity { vm(it).finishedTour = null; vm(it).routesTab = RoutesTab.DONE; vm(it).openRoutes() }
+        // "In Meine Touren ›" opens My routes on Gemacht with the tour marked – not the tour on the map (field bug
+        // 2026-11-06 22:30: a 0 m tour opened with "Als Plan übernehmen")
+        scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED } // the tab it must switch away from
+        clickText(Txt.s(Res.string.routes_saved_open))
+        waitUntil("My routes open on Gemacht", 10_000) { read { it.routesOpen && it.routesTab == RoutesTab.DONE && it.shown == null } }
         var listed = findFresh(By.text(name), 10_000)
         if (listed == null) { name = db.getTour(tourId)!!.name; listed = findFresh(By.text(name), 10_000) }
         assertNotNull("\"$name\" listed in Done", listed)
+        assertNotNull("marked as just saved", findFresh(By.text(Txt.s(Res.string.routes_just_saved)), 5_000))
         shot("2-listed-in-done")
         scenario.onActivity { vm(it).routesOpen = false }
     }

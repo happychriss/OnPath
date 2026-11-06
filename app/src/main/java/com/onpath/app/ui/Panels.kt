@@ -139,12 +139,17 @@ fun TrackPanel(
         // "Activity set to MTB from the file": an import changed the activity – said, never silent
         track.note?.let { InfoLine(it) }
         track.skippedNote?.let { InfoLine(it) }
-        Spacer(Modifier.height(8.dp))
-        ElevationProfile(track.points, color = OnPathColors.Gpx, onHighlight = onHighlight)
+        // a tour without a line (field bug 2026-11-06 22:30: 0 m, "welche Route? Es ist ja gar keine Route da"): one quiet
+        // line instead of the profile, and nothing to make a plan of
+        val line = TrackLine.has(track.points.size, track.distanceM)
+        if (line) {
+            Spacer(Modifier.height(8.dp))
+            ElevationProfile(track.points, color = OnPathColors.Gpx, onHighlight = onHighlight)
+        } else InfoLine(str(Res.string.plan_no_track_recorded))
         Spacer(Modifier.height(12.dp))
         // no export here, it lives in My routes (owner); the two ways to use a track: follow it as it is (green: it goes
         // to the navigation), or make a plan of it to edit (blue: planning – owner's colour rule, 2026-11-06 F1)
-        if (onPlan != null) {
+        if (onPlan != null && line) {
             OutlinedButton(onClick = onPlan, enabled = !planBusy, modifier = Modifier.fillMaxWidth().height(48.dp),
                 border = androidx.compose.foundation.BorderStroke(1.5.dp, if (planBusy) OnPathColors.ActionEdit.copy(alpha = 0.38f) else OnPathColors.ActionEdit),
                 colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = OnPathColors.ActionEdit)) {
@@ -156,14 +161,15 @@ fun TrackPanel(
             Spacer(Modifier.height(8.dp))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // a track without a line (an empty recording, one point) has nothing to follow: Start only records,
-            // during a tour there is nothing to switch to (PlanStart)
-            val line = track.points.size >= 2
-            Button(colors = ActionButtons.go(), onClick = onFollow, enabled = (!isFollowed || !recording) && (line || !recording),
+            // a track without a line (an empty recording, one point) has nothing to follow: Start only records
+            // ("Los geht’s · ohne Route", owner 2026-11-03), during a tour there is nothing to switch to (PlanStart –
+            // two points, as the start decides; a few metres can still be followed)
+            val follow = track.points.size >= 2
+            Button(colors = ActionButtons.go(), onClick = onFollow, enabled = (!isFollowed || !recording) && (follow || !recording),
                 modifier = Modifier.weight(1f).height(56.dp)) {
-                Icon(if (line || recording) Icons.Filled.Navigation else Icons.Filled.FiberManualRecord, null)
+                Icon(if (follow || recording) Icons.Filled.Navigation else Icons.Filled.FiberManualRecord, null)
                 Spacer(Modifier.width(8.dp))
-                Text(trackFollowLabel(recording, activity, line), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(trackFollowLabel(recording, activity, follow), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         if (backToNavigation != null) {

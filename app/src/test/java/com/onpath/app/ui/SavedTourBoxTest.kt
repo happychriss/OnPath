@@ -14,7 +14,6 @@ import java.io.File
 class SavedTourBoxTest {
     private fun src(f: String) = File("src/main/java/com/onpath/app/$f").readText()
     private val vm = src("ui/AppViewModel.kt")
-    private fun body(start: String) = vm.substringAfter(start).substringBefore("\n    }\n")
 
     @Test fun theBoxAfterTheEndSheet() {
         val main = src("MainActivity.kt")
@@ -30,11 +29,8 @@ class SavedTourBoxTest {
         assertTrue(finished.contains("parts.forEach { p -> withContext(Dispatchers.IO) { db.getTour(p) }?.let { nameRecordedTour(it) } }"))
     }
 
-    @Test fun inMyToursOpensTheTourOkCloses() {
-        val open = body("fun openSavedTour() {")
-        assertTrue(open, open.contains("finishedTour = null") && open.contains("requestOpen(t)"))
-        assertTrue(vm.contains("fun closeSavedTour() { finishedTour = null; finishedTimes = null }"))
-    }
+    // "In Meine Touren ›" opens My routes → Gemacht with the tour marked (field bug 2026-11-06 22:30) – checked for real in
+    // ReleaseRundgang.flow07_endTourSaveListedInDone, no source-text test (test audit 2026-11-06)
 
     @Test fun nothingInThePlanSheet() {
         assertFalse(src("ui/PlanPanel.kt").contains("savedTour"))
