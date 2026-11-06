@@ -314,6 +314,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * Compass button, same in both modes (owner): map turned by hand → north up; north up → walking direction up
      * (follows the position); walking direction up → north up. Without a position fix the third state is skipped.
      */
+    /** Plan's neutral GPS note after a tap of the user's ([PlanGps]); null = none. [planGpsNoteTick] restarts its time. */
+    var planGpsNote by mutableStateOf<PlanGps.Note?>(null)
+    var planGpsNoteTick by mutableStateOf(0)
+        private set
+
+    fun showPlanGpsNote(note: PlanGps.Note) {
+        Problems.trace("gps", "Plan: neutral note ${note.name} after a tap (no GPS warning in Plan)")
+        planGpsNote = note; planGpsNoteTick++
+    }
+
     fun onCompass(mapTurned: Boolean) {
         val turningWithMe = headingUp && followMe
         val hasFix = tracker.location.value != null
@@ -326,7 +336,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // make MapLibre drop the following again (it ends tracking on every app camera move).
                 if (mode == AppMode.NAVIGATE && hasFix) followMe = true else northTick++
             }
-            !hasFix -> sayError(Txt.s(Res.string.msg_no_position_turn), NoticePlace.MAP) // a tap must not do nothing
+            // a tap must not do nothing; Plan says it neutrally, no red box (owner 2026-11-06 23:35 – PlanGps)
+            !hasFix -> PlanGps.compassWithoutFix(mode == AppMode.PLAN)?.let { showPlanGpsNote(it) }
+                ?: sayError(Txt.s(Res.string.msg_no_position_turn), NoticePlace.MAP)
             else -> { setHeadingUp(true); followMe = true; recentreTick++ }
         }
     }

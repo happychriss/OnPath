@@ -76,10 +76,15 @@ class StillSenseTest {
         assertEquals(true, d.still(10_000))
     }
 
-    /** Owner 2026-11-02: lying still = the notification does not say "GPS wird gesucht" either. */
-    @Test fun theNotificationStaysQuietWhileStill() {
-        val svc = java.io.File("src/main/java/com/onpath/app/recording/RecordingService.kt").readText()
-        val status = svc.substringAfter("private fun notifStatus()").substringBefore("\n    }\n")
-        org.junit.Assert.assertTrue(status, status.contains("gpsLost() && noGpsLine() != NoGpsShow.Line.NONE -> Txt.s(Res.string.nav_status_searching_gps)"))
+    /**
+     * Owner 2026-11-02: lying still = the notification does not say "GPS wird gesucht" either; owner 2026-11-06 23:35:
+     * nor while the app is in Plan during the tour (Navigate says it again). Was a source-text check – now the rule.
+     */
+    @Test fun theNotificationStaysQuietWhileStillOrInPlan() {
+        assertTrue("moving, no GPS, Navigate", NoGpsShow.notifSearching(gpsLost = true, line = NoGpsShow.Line.WARN, planQuiet = false))
+        assertTrue("short gap, Navigate", NoGpsShow.notifSearching(gpsLost = true, line = NoGpsShow.Line.QUIET, planQuiet = false))
+        assertFalse("lying still", NoGpsShow.notifSearching(gpsLost = true, line = NoGpsShow.Line.NONE, planQuiet = false))
+        assertFalse("in Plan", NoGpsShow.notifSearching(gpsLost = true, line = NoGpsShow.Line.WARN, planQuiet = true))
+        assertFalse("GPS there", NoGpsShow.notifSearching(gpsLost = false, line = NoGpsShow.Line.WARN, planQuiet = false))
     }
 }
