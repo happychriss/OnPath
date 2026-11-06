@@ -39,8 +39,11 @@ let rd5Requests = 0;
 page.on('request', (r) => { if (/\/segments\//.test(r.url()) && !/E10_N45/.test(r.url())) rd5Requests++; }); // the start view's own prefetch (E10_N45) does not count
 const pins = () => page.evaluate(() => document.querySelectorAll('.pin').length);
 const planned = () => page.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1' && !document.getElementById('status').textContent.includes('Planning'), null, { timeout: 120_000 });
+// project() gives canvas pixels, the mouse clicks page pixels – the canvas starts below the header (the plan bar
+// changed its height; robust-smoke had the same 56 px miss)
 const clickAt = async (lon, lat) => {
-  const p = await page.evaluate(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }, [lon, lat]);
+  const p = await page.evaluate(([lo, la]) => { const r = window.__map.getCanvas().getBoundingClientRect();
+    const q = window.__map.project([lo, la]); return [q.x + r.left, q.y + r.top]; }, [lon, lat]);
   await page.mouse.click(p[0], p[1]);
 };
 
@@ -79,9 +82,12 @@ check(await pins() === 0 && !(await page.$('#summary .big')), 'the long plan\'s 
 await page.goto(url + 'index.html#p=' + CODE);
 await planned();
 check(await pins() === 2, 'short plan from a link: 2 points, routed, no question');
-await page.waitForTimeout(900); // the first route's fit (WholeRoute: 500 ms after it is there) – then the test moves the map
-await page.evaluate(() => window.__map.jumpTo({ center: [11.16, 51.2], zoom: 5.5 }));
-await page.waitForTimeout(500);
+// the user takes the map first (a short drag), as a person does: it cancels the route's pending whole-route fit
+// (WholeRoute, 500 ms after its plan) that could otherwise move the map between the projection and the click
+{ const r = await page.locator('#map').boundingBox(), x = r.x + r.width * 0.6, y = r.y + r.height * 0.4;
+  await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(x + 40, y + 20, { steps: 5 }); await page.mouse.up(); }
+await page.evaluate(() => window.__map.jumpTo({ center: [11.16, 51.2], zoom: 5.5, bearing: 0, pitch: 0, padding: { top: 0, bottom: 0, left: 0, right: 0 } }));
+await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 10_000 }).catch(() => {});
 await clickAt(11.16, 52.05);
 await page.waitForSelector('dialog.longroute', { timeout: 30_000 });
 await page.click('#lrCancel');
