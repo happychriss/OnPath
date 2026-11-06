@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.outlined.LocationSearching
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -80,20 +81,30 @@ fun MapScreen(
         .collectAsState(com.onpath.app.recording.DemoLocation.active)
 
     // GPS status for the dot on the locate button, refreshed every second (age of the last fix matters).
-    val gps by produceState(GpsStatus.SEARCHING, vm.tracker) {
-        while (true) { value = vm.tracker.status(); delay(1000) }
+    val gpsNow by produceState(GpsStatus.SEARCHING to false, vm.tracker) {
+        while (true) { value = vm.tracker.status() to (vm.tracker.location.value != null); delay(1000) }
     }
+    val gps = gpsNow.first
+    val hasFix = gpsNow.second
     val onLocate = {
-        when {
-            gps == GpsStatus.OFF -> {
+        when (PlanGps.tap(vm.mode == AppMode.PLAN, gps, hasFix)) {
+            PlanGps.Tap.OPEN_SETTINGS -> {
                 runCatching { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }
                     .onFailure { Problems.warn("ui", "Location settings screen could not be opened", it) }
                 Unit
             }
-            gps == GpsStatus.NO_PERMISSION -> onRequestLocation()
-            else -> vm.locate()
+            PlanGps.Tap.ASK_PERMISSION -> onRequestLocation()
+            // Plan without a position (owner 2026-11-06 23:35: no GPS warning in Plan): follow it as soon as it comes,
+            // and a short neutral note says why nothing moves yet – only because the user tapped
+            PlanGps.Tap.WAIT_AND_NOTE -> { vm.locate(); vm.showPlanGpsNote(PlanGps.Note.SEARCHING) }
+            PlanGps.Tap.CENTRE -> vm.locate()
         }
     }
+    // the neutral note goes after a few seconds, or at once when a position is there
+    LaunchedEffect(vm.planGpsNoteTick) {
+        if (vm.planGpsNote != null) { delay(PlanGps.NOTE_MS); vm.planGpsNote = null }
+    }
+    LaunchedEffect(gps, hasFix) { if (PlanGps.noteGone(vm.planGpsNote, gps, hasFix)) vm.planGpsNote = null }
     // One grouped control: compass (always: Plan = needle, tap north up; Navigate = orientation toggle), locate (always,
     // with the GPS dot), eye and whole route (always – grey without something route-like on the map, owner 2026-11-06).
     // [mode] = the layer the footer sits in (not vm.mode: the leaving layer keeps its look while it animates out)
@@ -113,6 +124,7 @@ fun MapScreen(
                     // under the eye: the whole line + its points (Navigate: + where you are), following stops
                     onFitRoute = if (MapControlsEnabled.wholeRoute(ctl)) vm::showWholeRoute else null,
                     gps = gps, following = vm.followMe, onLocate = onLocate,
+                    locateGreyed = PlanGps.locateGreyed(mode == AppMode.PLAN, gps, hasFix),
                     onUndo = if (MapControlsEnabled.undo(ctl)) vm::undoStep else null,
                     onRedo = if (MapControlsEnabled.redo(ctl)) vm::redoStep else null,
                     onSettings = if (mode == AppMode.NAVIGATE) { { vm.navSettingsOpen = true } } else null,
@@ -219,6 +231,17 @@ fun MapScreen(
                     top = OverviewPillPlace.topDp(rowTop, if (vm.backgroundStripShown) vm.backgroundStripBottomDp else null).dp,
                     start = OverviewPillPlace.startDp(activityButtonShown = vm.shown == null).dp,
                     end = OverviewPillPlace.EDGE_DP.dp))
+        }
+        // Plan's only GPS words: a short neutral note after the user's own tap (owner 2026-11-06 23:35, PlanGps)
+        vm.planGpsNote?.takeIf { vm.mode == AppMode.PLAN && !vm.searchOpen }?.let { note ->
+            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+            QuietPill(when (note) {
+                    PlanGps.Note.SEARCHING -> str(Res.string.plan_searching_gps)
+                    PlanGps.Note.TURN_NEEDS_POSITION -> str(Res.string.msg_no_position_turn)
+                }, androidx.compose.material.icons.Icons.Outlined.LocationSearching,
+                Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
+                    top = PlanGps.noteTopDp(rowTop, if (vm.backgroundStripShown) vm.backgroundStripBottomDp else null).dp,
+                    start = OverviewPillPlace.EDGE_DP.dp, end = OverviewPillPlace.EDGE_DP.dp))
         }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, cameraTick,

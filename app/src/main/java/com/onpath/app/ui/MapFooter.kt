@@ -137,6 +137,8 @@ fun MapControls(
     onSettings: (() -> Unit)? = null,
     /** Plan is blue (owner 2026-11-03): light blue pill, blue icons ([OnPathColors.PlanTint] / [OnPathColors.PlanAccent]). */
     plan: Boolean = false,
+    /** Plan without a position: locate looks greyed (still tappable – it follows the position when it comes). */
+    locateGreyed: Boolean = false,
     /** Screenshot tests: the tooltip of this control (its index from the top) is open. */
     tipShown: Int = -1,
 ) {
@@ -145,7 +147,7 @@ fun MapControls(
     val bg = if (plan) OnPathColors.PlanTint else OnPathColors.Paper // Navigate: paper over the map (owner 2026-11-06)
     // every control says its name on a long press (owner 2026-11-03, novice fix: "what does the eye do?")
     val tips = buildList<Pair<String, @Composable () -> Unit>> {
-        val locate: Pair<String, @Composable () -> Unit> = locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint) }
+        val locate: Pair<String, @Composable () -> Unit> = locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint, dot = PlanGps.showDot(plan), greyed = locateGreyed) }
         if (onSettings != null) add(str(Res.string.nav_settings_cd) to { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size, tint) })
         if (compass != null) add(compassText(compass) to { CompassControl(compass, size) })
         if (plan) add(locate) // Plan: the always-there buttons first – the column grows only downwards
@@ -271,7 +273,9 @@ private fun EyeControl(onPeek: (Boolean) -> Unit, peekingPreview: Boolean, size:
 
 @Composable
 private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> Unit, size: Dp,
-                          tint: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
+                          tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+                          /** The GPS colour dot – Navigate only; Plan is quiet about GPS (owner 2026-11-06 23:35, [PlanGps]). */
+                          dot: Boolean = true, greyed: Boolean = false) {
     val what = when (status) {
         GpsStatus.OFF -> str(Res.string.plan_location_off_tap)
         GpsStatus.NO_PERMISSION -> str(Res.string.plan_location_denied_tap)
@@ -280,9 +284,13 @@ private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> 
     Box(Modifier.size(size).clip(CircleShape).clickable(onClick = onClick).semantics { contentDescription = what },
         contentAlignment = Alignment.Center) {
         Icon(if (following) Icons.Filled.GpsFixed else Icons.Filled.GpsNotFixed, null,
-            tint = if (following) OnPathColors.Route else tint,
+            tint = when {
+                greyed -> MapControlState.tint(tint, enabled = false)
+                following -> OnPathColors.Route
+                else -> tint
+            },
             modifier = Modifier.size(iconSize(size)))
-        Box(
+        if (dot) Box(
             Modifier.align(Alignment.TopEnd).offset(x = (-6).dp, y = 6.dp).size(12.dp)
                 .border(2.dp, OnPathColors.CardWhite, CircleShape).padding(2.dp).background(gpsColor(status), CircleShape),
         )

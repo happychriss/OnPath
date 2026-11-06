@@ -27,6 +27,12 @@ object NoGpsShow {
         else -> Line.WARN
     }
 
+    /**
+     * The notification's status word says "Searching GPS": GPS lost and worth a line – but never while the app is in Plan
+     * during the tour ([planQuiet]; owner 2026-11-06 23:35: "beim Planen keine GPS-Warnung" – it says "Recording").
+     */
+    fun notifSearching(gpsLost: Boolean, line: Line, planQuiet: Boolean): Boolean = gpsLost && line != Line.NONE && !planQuiet
+
     /** Standing still for the voice and the off-route checks: the sensor's word when it has one, else [MoveWatch]. */
     fun standingStill(sensorStill: Boolean?, moveWatchMoving: Boolean): Boolean = sensorStill ?: !moveWatchMoving
 }
