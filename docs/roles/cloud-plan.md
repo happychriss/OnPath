@@ -6,6 +6,8 @@
 `main` (`.github/workflows/web.yml`, also after an app change to shared or mirrored code) is yours to fix first.
 **Computer:** the laptop (32 GB), folder `/home/development/Projects/work/onpath-plan` (own checkout, shared via Remote Control). Big map data
 (OSM extracts, rd5, built cells) lives on the laptop outside the checkout, e.g. `/home/development/Projects/work/onpath-data/` – never in git.
+Local test store (2026-11-06, NRW + Meran, published cells only): `onpath-data/store` (R2 layout) + `onpath-data/segments`; refresh /
+add an area with `python3 -I tools/dev/fetch_area.py --store … --bbox w,s,e,n|--centre lat,lon --radius-km R --packages --segments …`.
 Finished cells go out the usual way (`tools/dev/publish_cells.sh` → R2 TEST). Laptop off → work on code, put the
 build in the backlog as open; don't fall back to slow cloud builds without asking the owner.
 
