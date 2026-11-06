@@ -559,8 +559,16 @@ class CoreFieldE2ETest : E2EBase() {
             waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
             val pause = findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 10_000)
             assertNotNull("locked: Pause at the bottom, no slider", pause)
-            pause!!.click() // a short tap: the band starts and falls back
-            assertNotNull("a short tap shows the hint", findFresh(By.text(Txt.s(Res.string.nav_hold_hint)), 3_000))
+            // a short tap: the band starts and falls back. Right after the switch to Navigate (a janky first frame on the
+            // emulator, GitHub run 2026-11-06 22:46) a tap can land before the bar takes touches – tap again then; a short
+            // tap never acts, so a second one is harmless
+            var hintSeen: androidx.test.uiautomator.UiObject2? = null
+            for (attempt in 1..3) {
+                findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 5_000)!!.click()
+                hintSeen = findFresh(By.text(Txt.s(Res.string.nav_hold_hint)), 3_000)
+                if (hintSeen != null) break
+            }
+            assertNotNull("a short tap shows the hint", hintSeen)
             Thread.sleep(1_500)
             assertTrue("a short tap does not pause", com.onpath.app.recording.RecordingService.state.value?.paused != true)
             holdButton(Txt.s(Res.string.nav_action_pause))
