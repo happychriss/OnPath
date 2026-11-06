@@ -54,7 +54,7 @@ class UxReviewFixesTest {
         assertTrue(nav.contains("error?.let { errorMessage(it, onErrorOk) }"))
         assertTrue(nav.contains("error = vm.errorCard, onErrorOk = { vm.errorCard = null }"))
         val screens = File(ui + "Notices.kt").readText().substringAfter("ScreenMessageHost(vm: AppViewModel)").substringBefore("\n}\n")
-        assertTrue(screens.contains("Messages.pick(listOf(error, load))"))
+        assertTrue(screens.contains("Messages.pick(listOf(error, load, follow))"))
         val main = File("src/main/java/com/onpath/app/MainActivity.kt").readText()
         assertTrue(main.contains("ScreenMessageHost(vm)"))
     }

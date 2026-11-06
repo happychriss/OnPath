@@ -298,6 +298,11 @@ fun RoutesScreen(
     onRecycleBin: () -> Unit = {},
     /** ⋮ per recorded tour with rides (bus / car / lift) → Edit rides. */
     onEditRides: (Tour) -> Unit = {},
+    /**
+     * ⋮ per done tour / track → "Als Plan übernehmen" (owner 2026-11-06, F1: during a tour a tap only asks "Dieser Tour
+     * folgen?" – making a plan of it lives here).
+     */
+    onPlanFrom: (Tour) -> Unit = {},
     /** Import / Export all running: a spinner on the Import button / a line under the title. */
     busy: Busy? = null,
     /** The result of something done here (restored, export / import failed …): a line under the title. */
@@ -368,7 +373,8 @@ fun RoutesScreen(
                             onCopy = if (t.kind == TourKind.PLANNED) ({ onCopy(t) }) else null,
                             onShare = if (t.kind == TourKind.PLANNED && t.waypoints.size >= 2) ({ onShare(t) }) else null,
                             onDelete = if (t.id == recordingId) null else ({ confirmDelete = t }),
-                            onEditRides = if (t.rides?.rides.isNullOrEmpty() || t.id == recordingId) null else ({ onEditRides(t) }))
+                            onEditRides = if (t.rides?.rides.isNullOrEmpty() || t.id == recordingId) null else ({ onEditRides(t) }),
+                            onPlanFrom = if (t.kind == TourKind.PLANNED || t.distanceM <= 0.0 || t.id == recordingId) null else ({ onPlanFrom(t) }))
                     }
                 }
             }
@@ -431,6 +437,7 @@ fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: 
 private fun TourCard(
     t: Tour, tag: RouteTag?, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?,
     onEditRides: (() -> Unit)? = null, onCopy: (() -> Unit)? = null, onShare: (() -> Unit)? = null,
+    onPlanFrom: (() -> Unit)? = null,
 ) {
     val (icon, color) = when (t.kind) {
         TourKind.PLANNED -> Icons.Filled.Route to OnPathColors.Route
@@ -452,7 +459,7 @@ private fun TourCard(
                 Text("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}", style = MaterialTheme.typography.bodySmall)
                 if (onDelete == null) Text(str(Res.string.routes_recording_now), style = MaterialTheme.typography.bodySmall, color = OnPathColors.Rec)
             }
-            TourItemMenu(t, onRename, onExport, onDelete, onEditRides, onCopy, onShare)
+            TourItemMenu(t, onRename, onExport, onDelete, onEditRides, onCopy, onShare, onPlanFrom)
         }
     }
 }
@@ -478,14 +485,14 @@ private fun RoutesMenu(onExportAll: () -> Unit, onRecycleBin: () -> Unit, canExp
  */
 @Composable
 private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?, onEditRides: (() -> Unit)? = null,
-                         onCopy: (() -> Unit)? = null, onShare: (() -> Unit)? = null) {
+                         onCopy: (() -> Unit)? = null, onShare: (() -> Unit)? = null, onPlanFrom: (() -> Unit)? = null) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }, Modifier.size(48.dp)) {
             Icon(Icons.Filled.MoreVert, str(Res.string.routes_options_desc, t.name), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            TourMenuItems(t, onRename, onExport, onDelete, onEditRides, onCopy, onShare) { open = false }
+            TourMenuItems(t, onRename, onExport, onDelete, onEditRides, onCopy, onShare, onPlanFrom) { open = false }
         }
     }
 }
@@ -493,8 +500,12 @@ private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, on
 /** The items of a My routes ⋮ (also drawn on their own by the screenshot tests). */
 @Composable
 internal fun TourMenuItems(t: Tour, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?, onEditRides: (() -> Unit)?,
-                           onCopy: (() -> Unit)?, onShare: (() -> Unit)?, close: () -> Unit) {
+                           onCopy: (() -> Unit)?, onShare: (() -> Unit)?, onPlanFrom: (() -> Unit)? = null, close: () -> Unit) {
     fun on(a: () -> Unit): () -> Unit = { close(); a() }
+    // a done tour / track as a plan to edit (owner 2026-11-06, F1): planning = blue
+    if (onPlanFrom != null) DropdownMenuItem(text = { Text(str(Res.string.plan_from_track), color = OnPathColors.ActionEdit) },
+        leadingIcon = { Icon(Icons.Filled.Route, null, tint = OnPathColors.ActionEdit) },
+        onClick = on(onPlanFrom), modifier = Modifier.heightIn(min = 48.dp))
     DropdownMenuItem(text = { Text(str(Res.string.common_rename)) }, leadingIcon = { Icon(Icons.Filled.Edit, null) },
         onClick = on(onRename), modifier = Modifier.heightIn(min = 48.dp))
     if (onCopy != null) DropdownMenuItem(text = { Text(str(Res.string.plan_save_as_copy)) },
@@ -540,3 +551,47 @@ fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit, onDele
     )
 }
 
+/**
+ * "Tour gespeichert" after "Tour speichern" (owner 2026-11-06, onpath.private#35: the box is clearer than a line in the
+ * plan sheet – slim this time): the name, the numbers, moving time / breaks / planned vs. needed, "In Meine Touren ›"
+ * and ONE button OK. No delete (the end sheet just offered it), no export (My routes ⋮).
+ */
+@Composable
+fun SavedTourDialog(t: Tour, times: com.onpath.app.time.TourTimes?, onOpen: () -> Unit, onOk: () -> Unit) {
+    val neutral = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = OnPathColors.Ink)
+    AlertDialog(
+        onDismissRequest = onOk,
+        icon = { Icon(Icons.Filled.CheckCircle, null, tint = OnPathColors.ActionGo) },
+        title = { Text(str(Res.string.routes_track_saved)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(t.name, fontWeight = FontWeight.SemiBold)
+                StatsRow(t.distanceM, t.ascentM, t.descentM, t.durationS)
+                times?.let { TourTimesText(it) } // moving time, breaks, planned vs. needed (PaceSettings.kt)
+            }
+        },
+        // M3: one row ("In Meine Touren ›" · OK); a large font that does not fit: equal full-width buttons, never ragged
+        confirmButton = { SavedTourActions(str(Res.string.routes_saved_open), onOpen, str(Res.string.common_ok), onOk, neutral) },
+    )
+}
+
+@Composable
+private fun SavedTourActions(open: String, onOpen: () -> Unit, ok: String, onOk: () -> Unit,
+                             neutral: androidx.compose.material3.ButtonColors) {
+    val tm = androidx.compose.ui.text.rememberTextMeasurer()
+    val style = MaterialTheme.typography.labelLarge
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // each text button: its word + 12 dp padding each side; 8 dp between
+        val need = with(density) { listOf(open, ok).sumOf { tm.measure(it, style).size.width.toDp().value.toDouble() + 24 } }.toFloat() + 8f
+        if (DecisionLayout.oneRow(need, maxWidth.value)) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onOpen, colors = neutral, modifier = Modifier.heightIn(min = 48.dp)) { Text(open, maxLines = 1, softWrap = false) }
+            Spacer(Modifier.width(8.dp))
+            TextButton(onClick = onOk, colors = neutral, modifier = Modifier.heightIn(min = 48.dp)) { Text(ok, maxLines = 1, softWrap = false) }
+        } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.material3.OutlinedButton(onClick = onOk, colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = OnPathColors.Ink),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(ok) }
+            TextButton(onClick = onOpen, colors = neutral, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(open) }
+        }
+    }
+}

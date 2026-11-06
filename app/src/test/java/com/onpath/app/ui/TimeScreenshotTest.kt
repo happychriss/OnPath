@@ -1,8 +1,5 @@
 package com.onpath.app.ui
 
-import com.onpath.strings.Res
-import com.onpath.strings.Txt
-import com.onpath.strings.plan_tour_saved_line
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -120,21 +117,13 @@ class TimeScreenshotTest {
         }
     }
 
-    /**
-     * After "Tour speichern" (owner 2026-11-06, onpath.private#35 – no box): the plan sheet's line "Tour gespeichert – in
-     * Meine Touren" with moving time, breaks, planned vs. needed under it; a tap opens the tour.
-     */
+    /** After a tour: moving time, breaks, planned vs. needed – in the slim box "Tour gespeichert" (owner 2026-11-06, #35). */
     @Test fun finishedWithTimes() = paparazzi.snapshot {
         OnPathTheme {
-            Box(Modifier.fillMaxSize()) {
-                MapPlaceholder(Modifier.fillMaxSize())
-                Box(Modifier.align(androidx.compose.ui.Alignment.BottomCenter)) {
-                    PlanPanel(PlanUi(0, null, false, null, canUndo = true, canRedo = false, activity = Activity.HIKE, size = PlanSize.MINI,
-                        savedTourText = Txt.s(Res.string.plan_tour_saved_line),
-                        savedTourTimes = TourTimes(172 * 60.0, 41 * 60.0, 190 * 60.0, 172 * 60.0, startMs = 1_793_527_920_000L,
-                            endMs = 1_793_527_920_000L + 245 * 60_000L)), PlanCallbacks())
-                }
-            }
+            Box(Modifier.fillMaxSize()) { MapPlaceholder(Modifier.fillMaxSize()) }
+            SavedTourDialog(Tour(2, TourKind.RECORDED, "Tour 18 Oct 2026, 09:14", 1_760_200_000_000, "HIKE", 3, 12_800.0, 840.0, 830.0,
+                3.55 * 3600, "done", emptyList()), TourTimes(172 * 60.0, 41 * 60.0, 190 * 60.0, 172 * 60.0, startMs = 1_793_527_920_000L,
+                endMs = 1_793_527_920_000L + 245 * 60_000L), {}, {})
         }
     }
 }

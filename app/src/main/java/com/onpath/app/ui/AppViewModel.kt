@@ -164,6 +164,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * or until My routes is left.
      */
     var tourLoadAsk by mutableStateOf<Tour?>(null)
+    /**
+     * A done tour / track tapped in My routes during a tour (owner 2026-11-06, F1 simplified): "Dieser Tour folgen? …
+     * Deine Aufnahme läuft weiter." – Abbrechen · Folgen ([answerTrackFollow]); no track sheet in between.
+     */
+    var trackFollowAsk by mutableStateOf<Tour?>(null)
     /** "Tour beenden und laden": this route loads once the tour has ended (saved or deleted); null on Cancel. */
     private var loadAfterTour: Tour? = null
     /** The line at the top of the open Settings page; goes when the page changes or Settings closes. */
@@ -172,7 +177,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** My routes list (☰ → My routes) is open. */
     var routesOpen: Boolean
         get() = routesShown
-        set(v) { if (!v) { routesNote = null; tourLoadAsk = null }; routesShown = v } // line / box last until My routes is left
+        set(v) { if (!v) { routesNote = null; tourLoadAsk = null; trackFollowAsk = null }; routesShown = v } // line / box last until My routes is left
     /** My routes' last chosen tab (Planned / Done); kept while the app runs, Planned after a restart. */
     var routesTab by mutableStateOf(RoutesTab.PLANNED)
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
@@ -912,27 +917,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The track of [unfinished], drawn on the map while its question shows (no service runs then). */
     var unfinishedTrack by mutableStateOf<List<List<GeoPoint>>>(emptyList())
     /**
-     * The tour just saved by "Tour speichern": the plan sheet's line "Tour gespeichert – in Meine Touren" while it is set
-     * (owner 2026-11-06, onpath.private#35 – no box "Tour gespeichert" any more). It goes when the user does something new
-     * ([movedOn]: a point set, My routes / search opened, a new start) or taps it ([openSavedTour]).
+     * The tour just saved by "Tour speichern": the slim box "Tour gespeichert" while it is set (owner 2026-11-06,
+     * onpath.private#35: the box is clearer than a line in the plan sheet – name, numbers, "In Meine Touren ›", OK).
      */
     var finishedTour by mutableStateOf<Tour?>(null)
     /** Moving time / breaks / planned vs. needed of [finishedTour] (null = not known). */
     var finishedTimes by mutableStateOf<com.onpath.app.time.TourTimes?>(null)
         private set
 
-    /** The saved tour's line → the tour opens as from My routes. */
+    /** The box "Tour gespeichert" → "In Meine Touren ›": the box goes, the tour opens as from My routes. */
     fun openSavedTour() {
         val t = finishedTour ?: return
-        movedOn()
+        finishedTour = null; finishedTimes = null
         requestOpen(t)
     }
 
-    /** The user does something new: the line of the tour just saved goes. */
-    private fun movedOn() {
-        if (finishedTour == null) return
-        finishedTour = null; finishedTimes = null
-    }
+    /** The box "Tour gespeichert" → OK. */
+    fun closeSavedTour() { finishedTour = null; finishedTimes = null }
     var tours by mutableStateOf<List<Tour>>(emptyList())
         private set
     var events = mutableStateListOf<UiEvent>()
@@ -1351,8 +1352,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         history.record(waypoints)
         val before = waypoints.toList()
         waypoints.block()
-        // a point set / a plan loaded is something new (the end of a tour only takes points away)
-        if (waypoints.size > before.size) movedOn()
         if (WholeRoute.firstRoute(before.size, waypoints.size)) fitNextRoute = true
         routingSpot = RoutingSpot.of(before, waypoints)
         cellsForNewPoints(before, waypoints)
@@ -1835,7 +1834,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var searchMark: com.onpath.app.search.Place?
         get() = searchFlow.searchMark
         set(v) { searchFlow.searchMark = v }
-    fun openSearch() { movedOn(); searchFlow.openSearch() }
+    fun openSearch() = searchFlow.openSearch()
     fun closeSearch() = searchFlow.closeSearch()
     fun pickSearchResult(place: com.onpath.app.search.Place) = searchFlow.pickSearchResult(place)
     /** [poi] is the found place's pin (its menu then ends with "Nadel entfernen"). */
@@ -2725,23 +2724,43 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun menuState(recording: Boolean): RouteMenuState =
         RouteRules.menu(route != null, waypoints.size, tours.size, navigating(recording), recording)
 
-    fun openRoutes() { movedOn(); refreshTours(); routesOpen = true }
+    fun openRoutes() { refreshTours(); routesOpen = true }
 
     /**
      * Open / load from My routes ([RouteRules.openAsk]): during a tour a planned route first asks ([tourLoadAsk], owner
-     * 2026-11-03: "Mit dieser Route weiter" · "Tour beenden und laden" · "Abbrechen" – [TourLoad]); else "Replace
-     * current plan?" when that would lose changes; tracks open at once.
+     * 2026-11-03: "Mit dieser Route weiter" · "Tour beenden und laden" · "Abbrechen" – [TourLoad]) and a done tour / track
+     * asks "Dieser Tour folgen?" ([trackFollowAsk], owner 2026-11-06 F1); else "Replace current plan?" when that would lose
+     * changes; tracks open at once.
      */
     fun requestOpen(t: Tour) {
-        when (RouteRules.openAsk(t.kind, t.waypoints.size, navigating(recState.value != null), waypoints, savedPoints)) {
+        when (RouteRules.openAsk(t.kind, t.waypoints.size, navigating(recState.value != null), waypoints, savedPoints,
+                hasLine = t.distanceM > 0.0)) {
             OpenAsk.BLOCKED_DURING_TOUR -> {
                 Problems.trace("tour", "Load \"${t.name}\" during the tour: asked (continue with it / end the tour and load / cancel)")
                 tourLoadAsk = t
+            }
+            OpenAsk.FOLLOW_DURING_TOUR -> {
+                Problems.trace("tour", "Track \"${t.name}\" tapped during the tour: asked (follow / cancel)")
+                trackFollowAsk = t
             }
             OpenAsk.REPLACE_PLAN -> replaceAsk = PlanToOpen.Saved(t)
             OpenAsk.NONE -> openTour(t)
         }
     }
+
+    /**
+     * The answer to [trackFollowAsk]: Folgen → the running tour follows the track from here, as "Tour nachfahren" did
+     * (its activity and recording go on), back to Navigate; Abbrechen → nothing loads, My routes stays.
+     */
+    fun answerTrackFollow(follow: Boolean) {
+        val t = trackFollowAsk ?: return
+        trackFollowAsk = null
+        Problems.trace("tour", "Track \"${t.name}\" during the tour: ${if (follow) "follow" else "cancel"}")
+        if (follow) openTour(t, trackThen = TrackThen.FOLLOW)
+    }
+
+    /** My routes ⋮ → "Als Plan übernehmen" (a done tour / track, owner 2026-11-06 F1): opened, then made a plan of it. */
+    fun planFromTour(t: Tour) = openTour(t, trackThen = TrackThen.PLAN)
 
     /** The answer to [tourLoadAsk] (owner 2026-11-03). */
     fun answerTourLoad(a: TourLoad.Answer) {
@@ -2871,7 +2890,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun startNavigation(force: Boolean = false) {
         if (recState.value != null) { continueNavigation(force); return }
-        movedOn()
         val s = shown
         if (s == null && !force && planHasStraightLegs()) { straightAsk = true; return }
         // PlanStart: the sheet's button says "Start recording" exactly when nothing is followed here
@@ -3444,7 +3462,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun startRecording() {
-        movedOn()
         Problems.trace("tour", "Tour start (${activity.name}, plan ${waypoints.size} points, " +
             (if (followLine != null) "following ${followName ?: "a route"}" else "nothing followed") + ")")
         RecordingService.send(getApplication(), RecordingService.ACTION_START) {
@@ -3557,7 +3574,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * [duringTour] ("Mit dieser Route weiter", owner 2026-11-03): the running tour follows the loaded route – its
      * activity stays, the plan is replaced like an edit during the tour (followEditedPlan), and the app goes to Navigate.
      */
-    fun openTour(t: Tour, duringTour: Boolean = false) {
+    fun openTour(t: Tour, duringTour: Boolean = false, trackThen: TrackThen = TrackThen.SHOW) {
         syncMarkSeen(t)
         viewModelScope.launch {
             val segs = withContext(Dispatchers.IO) { db.loadSegments(t.id) }
@@ -3600,6 +3617,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 showTrack(ShownTrack(t.id, t.name, kept, t.waypoints, t.distanceM, t.ascentM, t.descentM, t.durationS, rides,
                     note = choice.note))
+                when (trackThen) {
+                    // "Dieser Tour folgen?" → Folgen: exactly what the track sheet's "Tour nachfahren" did, without the sheet
+                    TrackThen.FOLLOW -> if (recState.value != null) { followShown(); closeShown(); continueNavigation() }
+                    TrackThen.PLAN -> planFromShown()
+                    TrackThen.SHOW -> Unit
+                }
             }
         }
     }
@@ -4464,3 +4487,6 @@ private const val ROUTING_CHECK_MS = 12 * 3600_000L
 private const val ROUTING_MAX_AGE_DAYS = 35
 /** Free look in Navigate ends after walking this far from where the map was turned / moved by hand. */
 private const val FREE_LOOK_BACK_M = 25.0
+
+/** What [AppViewModel.openTour] does with a done tour / track once it is shown. */
+enum class TrackThen { SHOW, FOLLOW, PLAN }

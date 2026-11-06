@@ -74,17 +74,21 @@ laden / Abbrechen", `TourLoad`) – also 7 inputs, but a different way for the s
 | "Tour nachfahren · Fahrrad" (green, full width) | track sheet | follow this track, back to Navigate | **the** main action |
 | ✕ / ← | sheet / band | close the track / back to the tour | ok |
 
-**Proposals (≤ 3, nothing changed):**
+**Decided and built (owner 2026-11-06, onpath.private#33 – after the first F1 pictures: "zu kompliziert … unser Planblatt
+nicht als Statusanzeige verwenden"):**
 
-- **F1 – one main action on this screen (recommended):** over a shown track during a tour the tour card shows only its
-  status line ("Unterwegs · 73 m · 0:04:56", no buttons – ← goes back, Pause / End are in Navigate). The sheet keeps
-  green "Dieser Tour folgen · Fahrrad" and blue outlined "Als Plan übernehmen" (asks "Plan ersetzen?" when the plan is
-  unsaved, P3). 5 buttons → 2, no two greens. Same rule for the place card over the sheet (it shows the same tour card).
-- **F2 – fewer steps to the list:** during a tour the band gets "Meine Touren" next to ← (or the ☰ item comes first), and
-  My routes remembers its tab across app starts (Prefs). 7 → 5 inputs (slide, Plan, Meine Touren, Demo, Folgen).
-- **F3 – one way for planned and done:** in My routes during a tour, every item (planned or done) gets a green ▶ on its
-  row = "follow this now" (the planned route's question box answered in place, the done tour's sheet skipped). With F2:
-  slide, Plan, Meine Touren, ▶ = 4 inputs; a tap on the row itself still opens it to look at.
+- During a tour a done tour / track tapped in My routes opens **no sheet**: a FRAGE box asks "Dieser Tour folgen?
+  „‹name›“, 3,0 km. Deine Aufnahme läuft weiter." – Abbrechen · **Folgen** (green). Folgen = what "Tour nachfahren" did
+  (`AppViewModel.answerTrackFollow` → `openTour(…, TrackThen.FOLLOW)`: `followShown`, `closeShown`, `continueNavigation`);
+  Abbrechen = nothing loads, My routes stays (`RouteRules.openAsk` → `OpenAsk.FOLLOW_DURING_TOUR`, tests `TourLoadTest`,
+  `RouteRulesTest`). Inputs during a tour: slide, Plan, ☰, Meine Touren, Gemacht, the tour, Folgen = 7 – but no screen to
+  read in between and the same pattern as a planned route (one tap, one question).
+- "Als Plan übernehmen" for a done tour / track lives in the row's ⋮ in My routes (blue, `TourMenuItems` onPlanFrom →
+  `planFromTour`); the track sheet without a tour keeps "Tour nachfahren" / "Als Plan übernehmen".
+- The way back to Navigate is the green "Navigation ›" at the bottom of the plan sheet (C); no tour card over a sheet.
+- Still open (flow map M1): after "Folgen" the plan made on the way stays in Plan mode – an edit there switches the
+  guidance back to the plan silently (`planAtTrackFollow`). The question does not change that.
+- Not taken: F2 (Meine Touren in the band) and F3 (▶ per row).
 
 Seen on the way (not save paths): the re-route right after "Tour nachfahren" (v5 → v6 in 12 s, "Neue Route") – the
 owner was beside the start of the track; worth a look with the voice items.

@@ -387,5 +387,38 @@
     "context": "Small blue tag (one short word) after the name of a route in My routes → Planned that was changed (or renamed) in the paired browser and not opened since. Gone once the user opens it.",
     "priority": 2,
     "confidence": "sicher"
+  },
+  "routes_follow_ask_title": {
+    "area": "Messages",
+    "context": "Question box in My routes when a done tour / track is tapped during a running tour (owner 2026-11-06, F1)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "routes_follow_ask_text": {
+    "area": "Messages",
+    "context": "Under 'Follow this tour?': %1$s = the tour's name, %2$s = its length ('3.0 km'); the recording goes on",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "routes_follow": {
+    "area": "Messages",
+    "context": "Primary button of 'Follow this tour?': the running tour follows that tour from now (goes to the navigation)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "routes_track_saved": {
+    "area": "Dialogs",
+    "context": "Title of the slim box after 'Save tour' at the end of a tour (numbers, 'In My tours', OK) – owner 2026-11-06",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "routes_saved_open": {
+    "area": "Dialogs",
+    "context": "Text button in the 'Tour saved' box: opens the tour just saved as from My tours (name the list as its title)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 22
   }
 }

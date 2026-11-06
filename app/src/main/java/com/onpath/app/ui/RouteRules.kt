@@ -125,11 +125,14 @@ object RouteRules {
      * What a tap on an item in My routes does first ([AppViewModel.requestOpen]). While [navigating] (a tour) a planned
      * route is blocked: nothing loads, a box says "End the running tour first, then this route can be loaded." (owner
      * 2026-10-31: no new route during a tour – too much automation, a hiker would not trust it). Without a tour an unsaved
-     * plan asks "Replace current route?" ([askBeforeLoading]). Tracks open beside the plan, also during a tour.
+     * plan asks "Replace current route?" ([askBeforeLoading]). Tracks open beside the plan; during a tour a done tour / track
+     * with a line ([hasLine]) asks "Dieser Tour folgen?" instead (owner 2026-11-06, F1 – no track sheet during a tour).
      */
-    fun openAsk(kind: TourKind, waypointCount: Int, navigating: Boolean, points: List<GeoPoint>, saved: List<GeoPoint>?): OpenAsk =
+    fun openAsk(kind: TourKind, waypointCount: Int, navigating: Boolean, points: List<GeoPoint>, saved: List<GeoPoint>?,
+                hasLine: Boolean = true): OpenAsk =
         when {
-            !replacesPlan(kind, waypointCount) -> OpenAsk.NONE
+            !replacesPlan(kind, waypointCount) ->
+                if (navigating && kind != TourKind.PLANNED && hasLine) OpenAsk.FOLLOW_DURING_TOUR else OpenAsk.NONE
             navigating -> OpenAsk.BLOCKED_DURING_TOUR
             askBeforeLoading(kind, waypointCount, points, saved) -> OpenAsk.REPLACE_PLAN
             else -> OpenAsk.NONE
@@ -176,7 +179,7 @@ object RouteRules {
 }
 
 /** What comes before an item of My routes opens ([RouteRules.openAsk]); NONE = it opens at once. */
-enum class OpenAsk { NONE, REPLACE_PLAN, BLOCKED_DURING_TOUR }
+enum class OpenAsk { NONE, REPLACE_PLAN, BLOCKED_DURING_TOUR, FOLLOW_DURING_TOUR }
 
 /** What happens with a plan from a link ([RouteRules.linkOpen]). */
 enum class LinkOpen { AFTER_TOUR, ASK_FIRST, NOW }

@@ -1067,14 +1067,30 @@ class ScreenshotTest {
     }
 
     /**
-     * F1 (owner 2026-11-06, onpath.private#33 – the screen of 14:37 had 5 buttons): a saved tour opened during a tour – no
-     * tour card over it; green "Tour nachfahren", blue "Als Plan übernehmen", and the green way back "Navigation ›" (C).
+     * My routes during a tour → a done tour / track tapped (owner 2026-11-06, F1 simplified): "Dieser Tour folgen? „‹name›“,
+     * 3,0 km. Deine Aufnahme läuft weiter." – Abbrechen · **Folgen** (green: it goes to the navigation); no track sheet.
      */
-    @Test fun trackDuringATour() = paparazzi.snapshot {
-        Frame(editing = true) {
-            TrackPanel(ShownTrack(1, "Demo · BREW - ESPRESSO ROOM → Grimlinghausen", listOf(routePts), emptyList(), 3_000.0, 0.0, 6.0, 180.0),
-                isFollowed = false, recording = true, activity = Activity.BIKE_TOURING, {}, {}, onPlan = {}, onHighlight = {},
-                backToNavigation = { BackToNavigationButton(TourState(73.0, 296, paused = false), Activity.BIKE_TOURING, {}) })
+    @Test fun routesFollowAsk() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                RoutesScreen(tourList, {}, {}, {}, {}, {}, initialTab = RoutesTab.DONE)
+                MessageSlot(trackFollowMessage("Demo · BREW - ESPRESSO ROOM → Grimlinghausen", com.onpath.app.data.Format.distance(3_000.0)) {},
+                    MessagePlacement.topDp(MessageScreen.ROUTES))
+            }
+        }
+    }
+
+    /**
+     * After "Tour speichern" (owner 2026-11-06, onpath.private#35): the slim box "Tour gespeichert" – name, numbers, moving
+     * time / breaks / planned vs. needed, "In Meine Touren ›", OK. No delete, no export.
+     */
+    @Test fun savedTourBox() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) { MapPlaceholder(Modifier.fillMaxSize()) }
+            SavedTourDialog(Tour(2, TourKind.RECORDED, "Algund → Meran", 1_760_200_000_000, "HIKE", 3, 12_800.0, 840.0, 830.0,
+                3.55 * 3600, "done", emptyList()),
+                com.onpath.app.time.TourTimes(172 * 60.0, 41 * 60.0, 190 * 60.0, 172 * 60.0, startMs = 1_793_527_920_000L,
+                    endMs = 1_793_527_920_000L + 245 * 60_000L), {}, {})
         }
     }
 

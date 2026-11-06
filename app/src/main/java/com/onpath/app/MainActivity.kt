@@ -183,6 +183,7 @@ class MainActivity : ComponentActivity() {
                                 note = vm.routesNote,
                                 onRecycleBin = { vm.openRecycleBin() },
                                 onEditRides = { vm.openEditRides(it) },
+                                onPlanFrom = { vm.planFromTour(it) },
                                 initialTab = vm.routesTab,
                                 onTab = { vm.routesTab = it },
                                 marks = vm.syncMarks.collectAsState().value,
@@ -367,8 +368,11 @@ class MainActivity : ComponentActivity() {
                     com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.saveUnfinished(t, it) }, onDelete = { vm.deleteUnfinished(t) },
                         onDismiss = { vm.backToUnfinished() }, title = str(Res.string.msg_unfinished_save_title))
                 }
-                // no box "Tour gespeichert" after the end sheet any more (owner 2026-11-06, onpath.private#35): the plan
-                // sheet says it in one line (vm.finishedTour), export and delete are in My routes
+                // "Tour gespeichert" after the end sheet (owner 2026-11-06, onpath.private#35): slim – the numbers,
+                // "In Meine Touren ›" and OK; export and delete are in My routes
+                vm.finishedTour?.let { t ->
+                    com.onpath.app.ui.SavedTourDialog(t, vm.finishedTimes, onOpen = vm::openSavedTour, onOk = vm::closeSavedTour)
+                }
             }
         }
         if (!vm.prefs.setupWelcomeSeen) {

@@ -1295,13 +1295,6 @@
     "confidence": "sicher",
     "max": 16
   },
-  "plan_tour_saved_line": {
-    "area": "Plan",
-    "context": "One line in the plan sheet right after a tour was saved (no dialog any more); a tap opens the tour. Name the list as its title (My tours)",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 40
-  },
   "plan_clear_tour_title": {
     "area": "Plan",
     "context": "Question title when ✕ Neu planen is tapped during a running tour",

@@ -13,7 +13,8 @@ import java.io.File
  * Owner 2026-11-03 (was 2026-10-31's dead end "End the running tour first"): a planned route opened from My routes while
  * a tour runs asks "Route „‹name›“ laden? Du bist gerade unterwegs." – **Mit dieser Route weiter** (the recording goes on,
  * the tour follows the loaded route, back to Navigate) · **Tour beenden und laden** (the usual end question, the route
- * loads only after the tour has ended) · **Abbrechen** (nothing changes). Tracks open as before.
+ * loads only after the tour has ended) · **Abbrechen** (nothing changes). A done tour / track asks "Dieser Tour folgen?"
+ * (owner 2026-11-06, F1: Folgen · Abbrechen – no track sheet during a tour); without a tour tracks open as before.
  *
  * The steps as a model of AppViewModel (RouteRules.openAsk + TourLoad), plus the app's code for the same path. On the
  * emulator: `ReleaseRundgang.flow06_savedRouteDuringATourAsksAndContinuesWithTheRoute`,
@@ -30,21 +31,30 @@ class TourLoadTest {
         var saved: List<GeoPoint>? = plan
         var followed: List<GeoPoint>? = plan.takeIf { touring }
         var ask: List<GeoPoint>? = null
+        var followAsk: List<GeoPoint>? = null
         var replaceAsk: List<GeoPoint>? = null
         var shownTrack: String? = null
         var endQuestion = false
         var loadAfter: List<GeoPoint>? = null
         var navigate = false
         var routesOpen = true
-            set(v) { if (!v) ask = null; field = v }
+            set(v) { if (!v) { ask = null; followAsk = null }; field = v }
 
         /** [AppViewModel.requestOpen]. */
         fun tap(kind: TourKind, name: String, points: List<GeoPoint>) =
-            when (RouteRules.openAsk(kind, points.size, touring, plan, saved)) {
+            when (RouteRules.openAsk(kind, points.size, touring, plan, saved, hasLine = points.size >= 2)) {
                 OpenAsk.BLOCKED_DURING_TOUR -> ask = points
+                OpenAsk.FOLLOW_DURING_TOUR -> followAsk = points
                 OpenAsk.REPLACE_PLAN -> replaceAsk = points
                 OpenAsk.NONE -> if (RouteRules.replacesPlan(kind, points.size)) { plan = points; saved = points } else shownTrack = name
             }
+
+        /** [AppViewModel.answerTrackFollow]: Folgen → the tour follows the track, back to Navigate; Abbrechen → nothing. */
+        fun answerFollow(follow: Boolean) {
+            val t = followAsk ?: return
+            followAsk = null
+            if (follow) { followed = t; routesOpen = false; navigate = true }
+        }
 
         /** [AppViewModel.answerTourLoad]. */
         fun answer(a: TourLoad.Answer) {
@@ -123,11 +133,67 @@ class TourLoadTest {
         assertNull(vm.ask)
     }
 
-    @Test fun tracksStillOpenDuringATour() {
+    /** Owner 2026-11-06 (F1 simplified): a track tapped during a tour asks "Dieser Tour folgen?" – no sheet in between. */
+    @Test fun aTrackTappedDuringATourAsksToFollow() {
+        for (kind in listOf(TourKind.IMPORTED, TourKind.RECORDED)) {
+            val vm = Vm(listOf(a1, a2))
+            vm.tap(kind, "Waalweg", listOf(b1, b2))
+            assertEquals("$kind: the follow question", listOf(b1, b2), vm.followAsk)
+            assertNull("$kind: no track sheet during a tour", vm.shownTrack)
+            assertNull("$kind: not the plan question", vm.ask)
+        }
+    }
+
+    @Test fun followFollowsTheTrackAndTheTourGoesOn() {
+        val vm = Vm(listOf(a1, a2))
+        vm.tap(TourKind.RECORDED, "Waalweg", listOf(b1, b2))
+        vm.answerFollow(true)
+        assertEquals(listOf(b1, b2), vm.followed)
+        assertTrue("back to Navigate", vm.navigate)
+        assertTrue("the tour goes on", vm.touring)
+        assertFalse(vm.routesOpen)
+    }
+
+    @Test fun cancelLoadsNothingAndStaysInMyRoutes() {
         val vm = Vm(listOf(a1, a2))
         vm.tap(TourKind.IMPORTED, "Waalweg", listOf(b1, b2))
-        assertNull(vm.ask)
+        vm.answerFollow(false)
+        assertNull(vm.followAsk)
+        assertEquals("the followed plan stays", listOf(a1, a2), vm.followed)
+        assertNull(vm.shownTrack)
+        assertTrue("My routes stays open", vm.routesOpen)
+        assertFalse(vm.navigate)
+        // leaving My routes drops an open question
+        vm.tap(TourKind.IMPORTED, "Waalweg", listOf(b1, b2))
+        vm.routesOpen = false
+        assertNull(vm.followAsk)
+    }
+
+    @Test fun withoutATourTracksOpenAtOnce() {
+        val vm = Vm(listOf(a1, a2), touring = false)
+        vm.tap(TourKind.IMPORTED, "Waalweg", listOf(b1, b2))
+        assertNull(vm.followAsk)
         assertEquals("Waalweg", vm.shownTrack)
+    }
+
+    /** A track without a line (an empty recording) has nothing to follow: no question, it opens as before. */
+    @Test fun aTrackWithoutALineDoesNotAsk() {
+        assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.RECORDED, 0, navigating = true, listOf(a1, a2), null, hasLine = false))
+    }
+
+    @Test fun theAppAsksToFollowAndActs() {
+        val open = body("fun requestOpen(")
+        assertTrue(open, open.contains("hasLine = t.distanceM > 0.0") && open.contains("OpenAsk.FOLLOW_DURING_TOUR ->") && open.contains("trackFollowAsk = t"))
+        val ans = body("fun answerTrackFollow(follow: Boolean) {")
+        assertTrue(ans, ans.contains("if (follow) openTour(t, trackThen = TrackThen.FOLLOW)"))
+        // Folgen does what the sheet's "Tour nachfahren" did, without showing the sheet
+        val open2 = vmSrc.substringAfter("fun openTour(t: Tour, duringTour: Boolean = false, trackThen: TrackThen = TrackThen.SHOW) {")
+            .substringBefore("// ---------------- plan sync")
+        assertTrue(open2, open2.contains("TrackThen.FOLLOW -> if (recState.value != null) { followShown(); closeShown(); continueNavigation() }"))
+        assertTrue(vmSrc.contains("tourLoadAsk = null; trackFollowAsk = null"))
+        val notices = File("src/main/java/com/onpath/app/ui/Notices.kt").readText()
+        assertTrue(notices.contains("vm.trackFollowAsk?.takeIf { screen == MessageScreen.ROUTES }"))
+        assertTrue(notices.contains("MessageButton(str(Res.string.routes_follow)) { onAnswer(true) }"))
     }
 
     // ---- the app's code

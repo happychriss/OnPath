@@ -115,7 +115,10 @@ fun androidx.compose.foundation.layout.BoxScope.ScreenMessageHost(vm: AppViewMod
     }
     val error = vm.errorCard?.let { errorMessage(it) { vm.errorCard = null } }
     val load = vm.tourLoadAsk?.takeIf { screen == MessageScreen.ROUTES }?.let { t -> tourLoadMessage(t.name, vm::answerTourLoad) }
-    MessageSlot(Messages.pick(listOf(error, load)), MessagePlacement.topDp(screen))
+    val follow = vm.trackFollowAsk?.takeIf { screen == MessageScreen.ROUTES }?.let { t ->
+        trackFollowMessage(t.name, com.onpath.app.data.Format.distance(t.distanceM), vm::answerTrackFollow)
+    }
+    MessageSlot(Messages.pick(listOf(error, load, follow)), MessagePlacement.topDp(screen))
 }
 
 /**
@@ -129,6 +132,18 @@ fun tourLoadMessage(name: String, onAnswer: (TourLoad.Answer) -> Unit): Message 
             MessageButton(str(Res.string.common_cancel)) { onAnswer(TourLoad.Answer.CANCEL) },
             MessageButton(str(Res.string.routes_load_end)) { onAnswer(TourLoad.Answer.END_AND_LOAD) },
             MessageButton(str(Res.string.routes_load_continue)) { onAnswer(TourLoad.Answer.CONTINUE) },
+        ))
+
+/**
+ * A done tour / track tapped during a tour (My routes, owner 2026-11-06 F1 simplified): "Dieser Tour folgen? „‹name›“,
+ * 3,0 km. Deine Aufnahme läuft weiter." – Abbrechen · **Folgen** (the filled primary: it goes to the navigation, green).
+ */
+@Composable
+fun trackFollowMessage(name: String, length: String, onAnswer: (Boolean) -> Unit): Message =
+    Message(MessageKind.FRAGE, str(Res.string.routes_follow_ask_title), str(Res.string.routes_follow_ask_text, name, length),
+        buttons = listOf(
+            MessageButton(str(Res.string.common_cancel)) { onAnswer(false) },
+            MessageButton(str(Res.string.routes_follow)) { onAnswer(true) },
         ))
 
 /**

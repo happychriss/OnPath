@@ -93,7 +93,7 @@ class SavePathsTest {
         assertTrue(RouteRules.isUnsaved(unsaved, null))
         assertEquals(OpenAsk.BLOCKED_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 2, navigating = true, unsaved, null))
         assertEquals(TourLoad.Step.FOLLOW_NOW, TourLoad.step(TourLoad.Answer.CONTINUE))
-        assertTrue(body("fun openTour(t: Tour, duringTour: Boolean = false) {").contains("change { clear(); addAll(pts) }"))
+        assertTrue(body("fun openTour(t: Tour, duringTour: Boolean = false, trackThen: TrackThen = TrackThen.SHOW) {").contains("change { clear(); addAll(pts) }"))
     }
 
     /** "Als Plan nutzen" on a shown track replaces the plan at once (Undo only), also an unsaved one. */
@@ -127,19 +127,22 @@ class SavePathsTest {
 
     /**
      * The owner's screen 2026-11-06 14:37 (docs/design/save-paths.md "Flow: follow a saved tour while a tour runs") had 5
-     * buttons over a shown track. F1 (onpath.private#33, "nur 2 Knöpfe"): no tour card (Weiter · Pause · red Beenden)
-     * over it any more; the track sheet keeps green "Tour nachfahren" (it goes to the navigation) and blue "Als Plan
-     * übernehmen" (planning) – plus, during a tour, the green way back "Navigation ›" at the bottom (C).
+     * buttons over a shown track. F1 as decided after the pictures (onpath.private#33, "zu kompliziert"): during a tour a
+     * done tour / track tapped in My routes only asks "Dieser Tour folgen?" (Abbrechen · Folgen) – no track sheet, the plan
+     * sheet never shows a foreign tour as a status; "Als Plan übernehmen" lives in the row's ⋮. Without a tour the track
+     * sheet keeps green "Tour nachfahren" and blue "Als Plan übernehmen".
      */
-    @Test fun aTrackShownDuringATourHasItsTwoButtons() {
+    @Test fun aTrackTappedDuringATourOnlyAsksToFollow() {
+        assertEquals(OpenAsk.FOLLOW_DURING_TOUR, RouteRules.openAsk(TourKind.RECORDED, 0, navigating = true, listOf(a, b), null))
+        assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.RECORDED, 0, navigating = false, listOf(a, b), null))
         val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
         assertFalse(screen.contains("TourRunningBar("))
-        assertTrue(screen.contains("else { vm.followShown(); vm.closeShown(); vm.continueNavigation() }"))
         val panel = File("src/main/java/com/onpath/app/ui/Panels.kt").readText().substringAfter("fun TrackPanel(")
             .substringBefore("internal fun trackFollowLabel")
         assertTrue(panel.contains("OutlinedButton(onClick = onPlan") && panel.contains("Button(onClick = onFollow"))
         assertTrue("Als Plan übernehmen is blue", panel.contains("colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = OnPathColors.ActionEdit)"))
-        assertTrue(panel.contains("if (backToNavigation != null) {"))
+        val menu = File("src/main/java/com/onpath/app/ui/Screens.kt").readText().substringAfter("internal fun TourMenuItems(")
+        assertTrue(menu.contains("if (onPlanFrom != null) DropdownMenuItem(text = { Text(str(Res.string.plan_from_track), color = OnPathColors.ActionEdit) }"))
     }
 
     /** Export: a planned item = the plan GPX (line + route points + pins), a tour = its track. */

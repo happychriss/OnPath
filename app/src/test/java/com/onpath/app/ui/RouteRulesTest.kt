@@ -69,9 +69,12 @@ class RouteRulesTest {
         assertEquals(OpenAsk.BLOCKED_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 3, navigating = true, listOf(a, b), listOf(a, b)))
         assertEquals(OpenAsk.BLOCKED_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 2, navigating = true, listOf(a, b), null))
         assertEquals(OpenAsk.BLOCKED_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 2, navigating = true, emptyList(), null))
-        // tracks open beside the plan as before (shown as a track), also during a tour
-        assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.RECORDED, 0, navigating = true, listOf(a, b), null))
-        assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.IMPORTED, 4, navigating = true, listOf(a, b), null))
+        // a track during a tour asks "Dieser Tour folgen?" (owner 2026-11-06, F1); without a tour it opens beside the plan;
+        // a track without a line has nothing to follow
+        assertEquals(OpenAsk.FOLLOW_DURING_TOUR, RouteRules.openAsk(TourKind.RECORDED, 0, navigating = true, listOf(a, b), null))
+        assertEquals(OpenAsk.FOLLOW_DURING_TOUR, RouteRules.openAsk(TourKind.IMPORTED, 4, navigating = true, listOf(a, b), null))
+        assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.IMPORTED, 4, navigating = false, listOf(a, b), null))
+        assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.RECORDED, 0, navigating = true, listOf(a, b), null, hasLine = false))
         // a planned route without via points is only shown as a track
         assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.PLANNED, 1, navigating = true, listOf(a, b), null))
     }

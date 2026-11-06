@@ -204,7 +204,6 @@
     <string name="plan_back_nav_paused">Pause · %1$s</string>
     <string name="plan_back_nav_record_only">Nur Aufnahme</string>
     <!-- after "Tour speichern": a line instead of the box "Tour gespeichert" (owner 2026-11-06, onpath.private#35) -->
-    <string name="plan_tour_saved_line">Tour gespeichert – in Meine Touren</string>
     <string name="plan_mode_label">Planen</string>
     <string name="plan_switch_to_plan">Zum Planen wechseln</string>
     <string name="plan_stat_distance">Strecke</string>

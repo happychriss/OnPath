@@ -205,7 +205,6 @@
     <string name="plan_back_nav_paused">Paused · %1$s</string>
     <string name="plan_back_nav_record_only">Recording only</string>
     <!-- after "Save tour": a line instead of the box "Tour saved" (owner 2026-11-06, onpath.private#35) -->
-    <string name="plan_tour_saved_line">Tour saved – in My tours</string>
     <string name="plan_mode_label">Plan</string>
     <string name="plan_switch_to_plan">Switch to plan mode</string>
     <string name="plan_stat_distance">Distance</string>
