@@ -75,11 +75,18 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [donald] Pixel review of every new screen (owner 2026-11-06: "alle Bilder nochmal auf dem Handy reviewen") – since 2026-11-06
+- [donald] Pixel review 2026-11-06 follow-ups: the bugs below, one by one; owner decisions F1 / switch text / second "Tour gespeichert" box – since 2026-11-06
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 - [laptop] (hp, cloud-plan) Planner: wait box → 'Weiter warten?' (SlowPlan, #21 B) · A-022 web texts · pin card '+ Hinzufügen' / 'Hierhin' · '⋯ Mehr' · pointMenu loopStart · header link 'Android-App testen' – since 2026-11-05
 
 ## Next
+- **[donald] Pixel review 2026-11-06 – open bugs** (page https://claude.ai/artifact/9nYPmLp8VrePMfBhCN3sur; done on main:
+  end sheet cut off → ModalBottomSheet 6d742b95, plan lost at tour end 894ab407, Sperren fill 4432d315). Medium: recorded
+  tour named after an old plan ("Demo · Rundtour ab Hilden", nameRecordedTour); past arrival time in Navigate's stop list
+  ("an 16:35" at 16:36); map position triangle drawn over the activity sheet; pin card still "+ Zur Route" (#26) and its
+  buttons ~41 dp (≥ 48); "DEMO" / "Sim" stay after the sim ride (MapScreen.kt:78, MapFooter.kt:75). Small: "PLAN ÄNDERN"
+  with an empty plan; elevation axis labels overlap on a flat profile; "Mittel" badge in the profile corner; "Dein Plan hat
+  Änderungen" for a brand-new plan; bike marker hides point "1"; My routes forgets tab and search.
 - **[donald → owner] Save-path proposals (docs/design/save-paths.md, 2026-11-06)** – P2 ride summary gets the "Plan auch
   speichern" switch; P3 "Plan ersetzen? · Erst speichern" before "Mit dieser Route weiter" / "Als Plan übernehmen" replace
   an unsaved plan; P4 an unsaved plan saved as a draft before it leaves after a tour. Flow "follow a saved tour during a
