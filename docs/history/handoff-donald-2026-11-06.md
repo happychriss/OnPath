@@ -30,6 +30,27 @@ classes). Then: build APK → **Pixel first** (check `RecordingService` – no i
 `ci/donald-merge-1106` and `tools/ci/e2e_github.sh --ref ci/donald-merge-1106 --tests <classes> --wait` → main when
 green → prune the ci branch.
 
+## Update 2026-11-06 ~23:00 (state of the merge)
+
+- #5 one-point loop is on main (ee33b909); the test audit report too (a471e15a).
+- **Integration branch `donald-merge-1106`** (worktree agent-a3645d10e6e85a387) = main + #1–#4 + flow07 fix + bcb01089
+  (a point left where I stand = "here": no "No destination ahead"). Pushed as `ci/donald-merge-1106` (+ `-link`,
+  `-rundgang` refs, one class per ref – e2e.yml runs only the FIRST class of a comma list: fix by PR to the owner).
+  GitHub: CoreFieldE2ETest 17/17, CorePlanE2ETest 5/5, CorePlanLinkE2ETest 5/5 green; StartSmokeE2ETest 3/3 local;
+  ReleaseRundgang 14/15 – **flow04 red (hold → a point, also locally) – agent fixing it on donald-merge-1106**. Then main,
+  then prune the three ci refs.
+- Built on top of `donald-merge-1106` (local branches, gate --full green each, owner saw them on the Pixel), to main after it:
+  `donald-load-no-question` (no question when a plan/tour is tapped during a tour, owner 22:05),
+  `donald-paper-float` (paper for everything floating, owner "sieht gut aus"), `donald-overview-pill`
+  ("Nur Übersichtskarte · Detailkarte laden"), `donald-hold-lock` (hold-to-confirm lock, variant A, slider gone) →
+  `donald-hold-setting` (Settings slider Aus · 0,5–2 s) and `donald-tour-end-fixes` (0 m tour without "Als Plan
+  übernehmen", end-sheet 500 ms guard, "In Meine Touren ›" opens Gemacht, logs).
+- `donald-pixel-1106` = all of the above + `spike/3d-webview` (Meran demo, fly-over) – Pixel test build only, never main.
+- Waiting for the owner: blue A/B/C https://claude.ai/artifact/R3w2uLnjDmENdtmCqY39sQ (rec. C ink blue #2B4C6F, no
+  blue surfaces), polish 1–8 https://claude.ai/artifact/AdSGgKD15W3GZCfu6Ngx7M (rec. 2, 3, 5), Settings → Navigation
+  groups https://claude.ai/artifact/52sgsWj1GSPuUJY7GYRaC3 (rec. A), 3D A vs B (fly-over liked: "sehr, sehr cool").
+- Seen on the way: theme `secondaryContainer` #DDE3F7 tints every FilterChip light blue app-wide → Walnuss.
+
 ## After the merge – open items (owner decided, not built yet)
 
 - Remove dead `TourRunningBar` / `TourControls` (TourBar.kt) and redraw the screenshot tests that still show the old
