@@ -44,4 +44,28 @@ class OverviewHintRuleTest {
     @Test fun belowZoomTenNeverAHint() = assertFalse(OverviewHintRule.show(9.9, List(25) { false }))
 
     @Test fun noDetailedMapAtAllShowsTheHint() = assertTrue(OverviewHintRule.show(12.0, List(25) { false }))
+
+    // "Detailkarte laden" asks for the map centre (owner 2026-11-06)
+    @Test fun loadAsksForTheCentreOfTheVisibleBox() {
+        val c = OverviewHintRule.centre(listOf(51.0, 6.0, 52.0, 7.0, 1.0))!!
+        assertEquals(51.5, c.lat, 1e-9); assertEquals(6.5, c.lon, 1e-9)
+    }
+
+    @Test fun noVisibleBoxNoLoad() {
+        assertEquals(null, OverviewHintRule.centre(null))
+        assertEquals(null, OverviewHintRule.centre(listOf(51.0, 6.0)))
+    }
+
+    // the pill covers nothing: right of the 48 dp activity button (at 12 dp), on its row, below the download strip
+    @Test fun pillSitsBesideTheActivityButton() {
+        assertTrue(OverviewPillPlace.startDp(activityButtonShown = true) >= 12 + 48 + 8)
+        assertEquals(OverviewPillPlace.EDGE_DP, OverviewPillPlace.startDp(activityButtonShown = false))
+        assertEquals(OverviewPillPlace.HEIGHT_DP, 48) // as high as the activity button: one row
+    }
+
+    @Test fun pillGoesBelowTheDownloadStrip() {
+        assertEquals(120, OverviewPillPlace.topDp(rowTopDp = 120, stripBottomDp = null))
+        assertEquals(150 + MessagePlacement.GAP_DP, OverviewPillPlace.topDp(rowTopDp = 120, stripBottomDp = 150))
+        assertEquals(120, OverviewPillPlace.topDp(rowTopDp = 120, stripBottomDp = 90)) // a short strip: the row stays
+    }
 }

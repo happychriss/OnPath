@@ -1471,13 +1471,18 @@ class ScreenshotTest {
         CardFrame(CellCardUi.NeedPosition(permission = true), planWithCard(n = 0), gps = GpsStatus.SEARCHING)
     }
 
-    /** Zoomed in (z ≥ 10) where only the overview map exists: a small hint below the search bar. */
+    /**
+     * Zoomed in (z ≥ 10) where only the overview map exists: the paper pill "Nur Übersichtskarte · Detailkarte laden"
+     * beside the round activity button – as MapScreen places it (OverviewPillPlace), covering nothing.
+     */
     @Test fun overviewHint() = paparazzi.snapshot {
         Box {
             Frame(route = false, gps = GpsStatus.SEARCHING) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
             OnPathTheme {
-                Box(Modifier.fillMaxSize().padding(top = 32.dp + 76.dp, start = 16.dp, end = 16.dp), contentAlignment = Alignment.TopCenter) {
-                    OverviewHint()
+                val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+                Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
+                    OverviewPill({}, Modifier.padding(top = OverviewPillPlace.topDp(rowTop, null).dp,
+                        start = OverviewPillPlace.startDp(activityButtonShown = true).dp, end = OverviewPillPlace.EDGE_DP.dp))
                 }
             }
         }

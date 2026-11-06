@@ -16,7 +16,7 @@ object WebMaps {
         Res.string.maps_card_offline, Res.string.maps_row_ready, Res.string.maps_row_your_position, Res.string.maps_row_your_point,
         Res.string.maps_row_area_n, Res.string.maps_row_area_east, Res.string.maps_row_area_north_east, Res.string.maps_row_area_north,
         Res.string.maps_row_area_north_west, Res.string.maps_row_area_west, Res.string.maps_row_area_south_west,
-        Res.string.maps_row_area_south, Res.string.maps_row_area_south_east, Res.string.maps_overview_hint,
+        Res.string.maps_row_area_south, Res.string.maps_row_area_south_east, Res.string.maps_overview_only, Res.string.maps_overview_load,
         Res.string.maps_state_waiting, Res.string.maps_state_waiting_min, Res.string.maps_state_building,
         Res.string.maps_state_building_min, Res.string.maps_err_unreachable, Res.string.maps_err_area_failed,
         Res.string.maps_err_no_connection, Res.string.maps_load_loading, Res.string.maps_load_preparing, Res.string.maps_about_mb,

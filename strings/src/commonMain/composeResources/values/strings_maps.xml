@@ -109,7 +109,8 @@
     <string name="maps_row_area_south_west">Area to the south-west</string>
     <string name="maps_row_area_south">Area to the south</string>
     <string name="maps_row_area_south_east">Area to the south-east</string>
-    <string name="maps_overview_hint">Overview only – hold the map here to get the detailed map</string>
+    <string name="maps_overview_only">Overview map only</string>
+    <string name="maps_overview_load">Load detailed map</string>
     <string name="maps_update_loading">Loading the newer map…</string>
     <string name="maps_update_preparing">Newer map for this area being prepared</string>
     <string name="maps_update_preparing_min">Newer map for this area being prepared · about %1$d min</string>
