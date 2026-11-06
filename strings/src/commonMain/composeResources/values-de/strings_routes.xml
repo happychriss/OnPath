@@ -64,6 +64,8 @@
     <string name="routes_replace_text_link">Dein aktueller Plan ist nicht gespeichert. Speichere ihn zuerst oder ersetze ihn durch den Plan aus dem Link.</string>
     <string name="routes_tag_new">Neu</string>
     <string name="routes_tag_changed">Geändert</string>
+    <string name="routes_tag_live">In Bearbeitung</string>
+    <string name="routes_live_name">Aktueller Plan</string>
     <string name="routes_track_saved">Tour gespeichert</string>
     <string name="routes_saved_open">In Meine Touren ›</string>
     <string name="routes_section_recent">Zuletzt</string>

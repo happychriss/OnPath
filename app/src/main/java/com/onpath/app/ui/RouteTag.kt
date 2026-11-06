@@ -16,6 +16,7 @@ import com.onpath.app.data.Tour
 import com.onpath.app.plansync.SyncMark
 import com.onpath.strings.Res
 import com.onpath.strings.routes_tag_changed
+import com.onpath.strings.routes_tag_live
 import com.onpath.strings.routes_tag_new
 import com.onpath.strings.str
 import org.jetbrains.compose.resources.StringResource
@@ -28,7 +29,9 @@ import org.jetbrains.compose.resources.StringResource
  */
 enum class RouteTag(val text: StringResource) {
     NEW(Res.string.routes_tag_new),
-    CHANGED(Res.string.routes_tag_changed);
+    CHANGED(Res.string.routes_tag_changed),
+    /** The plan on the map right now (owner 2026-11-06 23:00, [LivePlanRows]) – not a sync mark. */
+    LIVE(Res.string.routes_tag_live);
 
     companion object {
         fun of(mark: SyncMark?): RouteTag? = when (mark) {

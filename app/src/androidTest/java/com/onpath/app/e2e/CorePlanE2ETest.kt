@@ -13,6 +13,8 @@ import com.onpath.strings.Txt
 import com.onpath.strings.plan_start_recording_for
 import com.onpath.strings.plan_menu_record_without_plan
 import com.onpath.strings.plan_menu
+import com.onpath.strings.plan_menu_my_routes
+import com.onpath.strings.routes_tag_live
 import org.maplibre.android.geometry.LatLng
 
 /**
@@ -80,6 +82,27 @@ class CorePlanE2ETest : E2EBase() {
         Thread.sleep(500)
         holdOnWaypoint(0)
         assertNotNull("point menu on a turned map", device.wait(Until.findObject(By.text("Delete")), 5_000))
+    }
+
+    /**
+     * Owner 2026-11-06 23:00 ("unter Zuletzt ‚gerade in Bearbeitung', dann weiß ich, dass immer gespeichert wird"): the plan
+     * on the map is the first row of My routes → Planned with the tag "In Bearbeitung"; a tap on it brings back the very
+     * same plan on the map – nothing reloaded, nothing lost.
+     */
+    @Test fun myRoutesShowsThePlanInProgressAndATapGoesBackToIt() {
+        startPlanWithTwoPoints()
+        var before = emptyList<com.onpath.app.routing.GeoPoint>()
+        scenario.onActivity { a -> before = vm(a).waypoints.toList() }
+        findFresh(By.desc(Txt.s(Res.string.plan_menu)), 8_000)!!.click()
+        findFresh(By.text(Txt.s(Res.string.plan_menu_my_routes)), 5_000)!!.click()
+        val tag = findFresh(By.text(Txt.s(Res.string.routes_tag_live)), 8_000)
+        assertNotNull("My routes shows the plan \"In Bearbeitung\"", tag)
+        assertTrue("only once", device.findObjects(By.text(Txt.s(Res.string.routes_tag_live))).size == 1)
+        tag!!.click()
+        waitUntil("My routes closed", 5_000) { var open = true; scenario.onActivity { a -> open = vm(a).routesOpen }; !open }
+        var after = emptyList<com.onpath.app.routing.GeoPoint>()
+        scenario.onActivity { a -> after = vm(a).waypoints.toList() }
+        org.junit.Assert.assertEquals("the same plan on the map", before, after)
     }
 
     /**
