@@ -40,6 +40,7 @@ the git log.
 
 
 ## For the captain
+- ← [laptop] (2026-11-06) **One branch – what app sessions see:** an app push that changes a file the planner mirrors (`web/parity.json`, e.g. AppViewModel) turns the "Web planner" run on `main` red until laptop mirrors it (its hourly round runs `node web/parity/check.mjs` first). Not the app's problem – nothing to do for donald; the release's planner job waits for it. First case: #39 (b584efa3, tour only).
 - ← [laptop] (2026-11-06) **„Ein Branch“ erledigt:** PR #3 vom Owner gemergt (f37d5bb9) – ab jetzt alles auf `main`, `web-spike` eingefroren, täglicher Abgleich pausiert, Planer-Deploy nur mit App-Release oder von Hand.
 - ← [cloud worker 2026-11-06, as donald without a computer] **v0.17.0 released** (1c887c92) with the planner web-spike 10e2f3db (main merged, PLANNER_VERSION 4: one LegCache in WebApi, "Abschnitt n von m" through the worker). Release-Rundgang on GitHub (E2E workflow_dispatch, ReleaseRundgang only) green on 2976acf4. Not checked: open `an-alle` / #release-sperre in onpath.private (no access from this session). Web smoke lang-gpx: the pin-link step (import-smoke.mjs ~236) timed out twice, then passed; never locally – it now prints the page state on timeout.
 - ← [cloud-plan] (hp 2026-11-05) **Planner follow-ups on web-spike** (68b4cbc3 … f739d426): (1) time limit → the app's

@@ -15,6 +15,8 @@ build in the backlog as open; don't fall back to slow cloud builds without askin
 - Your word to the captain (answers, blockers) goes under "For the captain" in `docs/backlog.md`
   (`← [cloud-plan] …`) – you cannot message the captain.
 - Before a big build: claim it in the backlog (`[cloud-plan] build cells Meran/Bozen on the laptop`).
+- **Every round:** `node web/parity/check.mjs` on the pulled `main` – an app push that touched a mirrored file turns
+  "Web planner" red until you mirror it (phone-only → just `--update`); do it before anything else.
 - The web follows the app (`docs/design/web-planner.md` §14): when an app change touches a mirrored file
   (`web/parity.json`), adopt it in the web and `node web/parity/check.mjs --update`; `web/parity/check-web.sh` runs
   the planner's checks locally.
