@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.dp
@@ -73,7 +74,10 @@ class ScreenshotTest {
     @Composable
     private fun Frame(gps: GpsStatus = GpsStatus.GOOD, aboveFooter: @Composable () -> Unit = {},
                       top: @Composable () -> Unit = {},
-                      footer: @Composable () -> Unit = { Footer(gps, compass = CompassSpec(null, 0f) {}, plan = true) }, // Plan: compass shown
+                      /** Plan's map controls – at their fixed place (onpath.private#43, PlanControlsLayer), not on the sheet's edge. */
+                      controls: @Composable () -> Unit = {
+                          MapControls(CompassSpec(null, 0f) {}, showEye = false, onPeek = {}, gps = gps, following = false, onLocate = {}, plan = true)
+                      },
                       menu: PlanMenu = PlanMenu(onUpdates = {}),
                       /** "Plan ändern" during a tour: the mode label and the blue position sign in the map's middle. */
                       editing: Boolean = false,
@@ -93,9 +97,12 @@ class ScreenshotTest {
                     PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing, offline = offline)
                     // the activity as a button on the map (owner 2026-11-05, R5) – as MapScreen places it
                     ActivityMapButton(Activity.HIKE, 2, {}, Modifier.padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp()).dp, start = 12.dp))
+                    // as PlanMode: the controls under the sheet and the boxes, the sheet's height read while placing
+                    val sheetHeight = androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+                    PlanControlsLayer({ sheetHeight.intValue }, planTopBarDp().dp, controls = controls)
                     SheetWithFooter(planTopBarDp().dp, footer = {
-                        Column(Modifier.fillMaxWidth()) { aboveFooter(); footer() }
-                    }, sheet = bottom)
+                        Column(Modifier.fillMaxWidth()) { aboveFooter(); MapFooter("500 m" to 64.dp) {} }
+                    }, sheet = { Column(Modifier.fillMaxWidth().onSizeChanged { sheetHeight.intValue = it.height }) { bottom() } })
                     Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp()).dp,
                         start = MessagePlacement.GAP_DP.dp, end = MessagePlacement.GAP_DP.dp)) { top() }
                 }
@@ -233,18 +240,18 @@ class ScreenshotTest {
 
     /** A long press on a map control names it (owner 2026-11-03): the eye's tooltip open. */
     @Test fun planMapControlTip() = paparazzi.snapshot {
-        Frame(footer = {
-            MapFooter("500 m" to 64.dp) {
+        Frame(controls = {
+            run {
                 MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false, plan = true,
-                    onLocate = {}, onFitRoute = {}, onUndo = {}, tipShown = 1)
+                    onLocate = {}, onFitRoute = {}, onUndo = {}, tipShown = 2) // Plan order: compass · locate · eye (2) · …
             }
         }) { PlanPanel(planUi(), PlanCallbacks()) }
     }
 
     /** "Show whole route" (⛶) under the eye: compass · eye · whole route · Undo · locate on the sheet's edge. */
     @Test fun planWholeRoute() = paparazzi.snapshot {
-        Frame(footer = {
-            MapFooter("500 m" to 64.dp) {
+        Frame(controls = {
+            run {
                 MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false, plan = true,
                     onLocate = {}, onFitRoute = {}, onUndo = {})
             }
@@ -279,8 +286,8 @@ class ScreenshotTest {
      * between the top bar and the sheet – they stay below the top bar and fade under the sheet instead of covering ☰.
      */
     @Test fun planPointsFullControlsNeverOverTheTopBar() = paparazzi.snapshot {
-        Frame(footer = {
-            MapFooter("500 m" to 64.dp) {
+        Frame(controls = {
+            run {
                 MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false, plan = true,
                     onLocate = {}, onUndo = {})
             }
@@ -289,8 +296,8 @@ class ScreenshotTest {
 
     /** What the app shows with the points open: the controls collapse to Undo + locate (MapScreen), below the sheet's edge. */
     @Test fun planPointsFullCollapsedControls() = paparazzi.snapshot {
-        Frame(footer = {
-            MapFooter("500 m" to 64.dp) {
+        Frame(controls = {
+            run {
                 MapControls(null, showEye = false, onPeek = {}, gps = GpsStatus.GOOD, following = false, onLocate = {}, onUndo = {}, onRedo = {}, plan = true)
             }
         }) { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) }

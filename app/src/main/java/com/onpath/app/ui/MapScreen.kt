@@ -97,10 +97,9 @@ fun MapScreen(
     // One grouped control: compass (always: Plan = needle, tap north up; Navigate = orientation toggle), eye
     // (only with something route-like on the map), locate (always, with the GPS dot).
     // [mode] = the layer the footer sits in (not vm.mode: the leaving layer keeps its look while it animates out)
-    val footer = @Composable { mode: AppMode ->
+    val controls = @Composable { mode: AppMode ->
         // the points step leaves little map: only Undo + locate (the compass would sit over ☰)
         val pointsOpen = mode == AppMode.PLAN && vm.planSize == PlanSize.FULL && vm.shown == null && vm.cardPlace == null
-        MapFooter(scale, onCredits = { vm.openSettings(SettingsPage.ABOUT) }, demo = demoOn) {
             // measured, no state: a fit reads it when it happens
             Box(if (mode == AppMode.PLAN) Modifier.onSizeChanged { planFab[0] = it.width; planFab[1] = it.height } else Modifier) {
                 MapControls(
@@ -119,6 +118,12 @@ fun MapScreen(
                     plan = mode == AppMode.PLAN, // Plan is blue (owner 2026-11-03), Navigate unchanged
                 )
             }
+    }
+    // Navigate: scale, © and the controls above the slider as before. Plan (owner 2026-11-06, onpath.private#43): scale
+    // and © stay on the sheet's edge, the controls stand at one fixed place (PlanControlsLayer in PlanMode)
+    val footer = @Composable { mode: AppMode ->
+        MapFooter(scale, onCredits = { vm.openSettings(SettingsPage.ABOUT) }, demo = demoOn) {
+            if (mode == AppMode.NAVIGATE) controls(mode)
         }
     }
 
@@ -146,7 +151,10 @@ fun MapScreen(
         val fitPadding = {
             FitPaddingRule.of(vm.mode, density.density, topInsetPx,
                 planTopDp = maxOf(if (vm.backgroundStripShown) vm.backgroundStripBottomDp else 0, planTopBand), sheetPx = panelHeightPx,
-                navTopDp = navCover[0], navBottomDp = navCover[1], fabWidthPx = planFab[0], fabHeightPx = planFab[1])
+                navTopDp = navCover[0], navBottomDp = navCover[1], fabWidthPx = planFab[0],
+                // the column stands at a fixed place above the middle (onpath.private#43), not on the sheet: the fit keeps
+                // beside it; the old "above the column" room (fabHeightPx) no longer exists
+                fabHeightPx = 0)
         }
         MapSync(vm, controller, rec, location, fitPadding)
         // hike: keep-on + pocket logic; bike: Settings → "Screen while cycling", pocket after 5 s covered (ScreenPolicy,
@@ -159,7 +167,7 @@ fun MapScreen(
         // Plan ⇄ Navigate: the control layers slide / fade (≈250 ms, ModeSwitch); the map above is not touched.
         ModeSwitch(vm.mode,
             plan = {
-                PlanMode(vm, rec, { footer(AppMode.PLAN) }, onStartNavigation, onRequestLocation, pairCamera,
+                PlanMode(vm, rec, { footer(AppMode.PLAN) }, { controls(AppMode.PLAN) }, onStartNavigation, onRequestLocation, pairCamera,
                     // during a tour the same check-and-switch sheet as Navigate: Take new route / Keep
                     onActivity = { if (rec != null) vm.openActivityCheck() else showActivity = true }, onEndTour = { vm.askEndTour() },
                     onPanelHeight = { panelHeightPx = it })
@@ -264,7 +272,7 @@ fun MapScreen(
 /** Plan mode: top bar, POI card, tour bar and the plan (or shown track) panel. */
 @Composable
 private fun PlanMode(
-    vm: AppViewModel, rec: RecState?, footer: @Composable () -> Unit, onStartNavigation: () -> Unit,
+    vm: AppViewModel, rec: RecState?, footer: @Composable () -> Unit, controls: @Composable () -> Unit, onStartNavigation: () -> Unit,
     onRequestLocation: () -> Unit, pairCamera: (String) -> Unit, onActivity: () -> Unit, onEndTour: () -> Unit,
     onPanelHeight: (Int) -> Unit,
 ) {
@@ -322,18 +330,21 @@ private fun PlanMode(
                 delay(if (r?.state == OfflineReady.State.LOADING) 3_000 else 20_000)
             }
         }
-        // background downloads (corridor, refresh, routing data): small blue chip under ☰ after 10 s, until all is done;
-        // tap → details with "Cancel all" (own composable: its per-second progress recomposes only the chip, not PlanMode)
-        PlanMessageHost(vm, rec, onRequestLocation, pairCamera)
         // The sheet's height changes every frame while it moves; the map only hears the height once it rests (a state
         // read by MapScreen would recompose the whole screen per frame and the sheet stutters).
         val sheetHeight = remember { mutableIntStateOf(0) }
+        val density = LocalDensity.current
+        val topLimit = with(density) { WindowInsets.statusBars.getTop(density).toDp() } + topBar.dp
+        // the map controls at their fixed place (owner 2026-11-06, onpath.private#43) – under the boxes and the sheet;
+        // the sheet's height is read while placing only (no recomposition while it moves)
+        PlanControlsLayer({ sheetHeight.intValue }, topLimit, Modifier.modeEdge(ModeEdge.BOTTOM), controls)
+        // background downloads (corridor, refresh, routing data): small blue chip under ☰ after 10 s, until all is done;
+        // tap → details with "Cancel all" (own composable: its per-second progress recomposes only the chip, not PlanMode)
+        PlanMessageHost(vm, rec, onRequestLocation, pairCamera)
         val panelHeight by rememberUpdatedState(onPanelHeight)
         LaunchedEffect(Unit) {
             snapshotFlow { sheetHeight.intValue }.collectLatest { delay(120); panelHeight(it) }
         }
-        val density = LocalDensity.current
-        val topLimit = with(density) { WindowInsets.statusBars.getTop(density).toDp() } + topBar.dp
         SheetWithFooter(topLimit, modifier = Modifier.modeEdge(ModeEdge.BOTTOM), footer = {
             Column(Modifier.fillMaxWidth()) {
                 // after Install: the download's progress (a state, no box); the question itself is a box at the top

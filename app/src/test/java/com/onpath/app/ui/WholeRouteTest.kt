@@ -115,7 +115,9 @@ class WholeRouteTest {
         val fit = ctl.substringAfter("fun fitTo(").substringBefore("\n    }\n")
         assertTrue(fit.contains("FitPaddingRule.pick(room)"))
         val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertTrue(screen.contains("fabWidthPx = planFab[0], fabHeightPx = planFab[1]"))
+        // since onpath.private#43 (2026-11-06) the column stands at a fixed place above the middle, not on the sheet: the
+        // fit keeps beside it; the "above the column, full width" room no longer exists in the app (pick() still serves it)
+        assertTrue(screen.contains("fabWidthPx = planFab[0],") && screen.contains("fabHeightPx = 0)"))
         assertTrue(screen.contains("sheetPx = panelHeightPx"))
     }
 

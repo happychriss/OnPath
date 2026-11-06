@@ -112,7 +112,10 @@ data class CompassSpec(val headingUp: Boolean?, val bearing: Float, val onClick:
  * track or followed line – hold to hide them, position stays), "Show whole route" under it (same lines, see
  * [WholeRoute]; the browser planner's ⛶), locate at the bottom (always, GPS dot).
  * ONE column card with dividers in both modes (owner 2026-11-03, onpath.private#22 B – Navigate had separate round
- * buttons): Navigate ⚙ · compass · eye · ⛶ · locate (white), Plan compass · eye · ⛶ · ↶ · ↷ · locate (blue tint).
+ * buttons): Navigate ⚙ · compass · eye · ⛶ · locate (white). Plan (owner 2026-11-06, onpath.private#43 – the column
+ * stands at one fixed place, [PlanControlsLayer], and only grows downwards, so no button changes its height): what is
+ * always there first, compass · locate, then eye · ⛶ (with a route), then ↶ · ↷ (when there is something to undo /
+ * redo) – blue tint.
  */
 @Composable
 fun MapControls(
@@ -141,13 +144,15 @@ fun MapControls(
     val bg = if (plan) OnPathColors.PlanTint else MaterialTheme.colorScheme.surface
     // every control says its name on a long press (owner 2026-11-03, novice fix: "what does the eye do?")
     val tips = buildList<Pair<String, @Composable () -> Unit>> {
+        val locate: Pair<String, @Composable () -> Unit> = locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint) }
         if (onSettings != null) add(str(Res.string.nav_settings_cd) to { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size, tint) })
         if (compass != null) add(compassText(compass) to { CompassControl(compass, size) })
+        if (plan) add(locate) // Plan: the always-there buttons first – the column grows only downwards
         if (showEye) add(str(Res.string.plan_hold_hide_route) to { EyeControl(onPeek, peeking, size, tint) })
         if (onFitRoute != null) add(str(Res.string.plan_show_whole_route) to { IconControl(Icons.Filled.FitScreen, Res.string.plan_show_whole_route, onFitRoute, size, tint) })
         if (onUndo != null) add(str(Res.string.plan_undo) to { IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo, size, tint) })
         if (onRedo != null) add(str(Res.string.plan_redo) to { IconControl(Icons.AutoMirrored.Filled.Redo, Res.string.plan_redo, onRedo, size, tint) })
-        add(locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint) })
+        if (!plan) add(locate) // Navigate: locate at the bottom, as before
     }
     val items = tips.mapIndexed { i, (text, control) -> @Composable { MapTip(text, i == tipShown) { control() } } }
     Surface(shape = RoundedCornerShape(MAP_FAB / 2), color = bg, shadowElevation = 3.dp) {
