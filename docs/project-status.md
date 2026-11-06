@@ -28,6 +28,15 @@ the current state.
   within ~60 dp instead of 24 dp; the fix changes hold behaviour). Smaller open items: `docs/backlog.md`.
 
 ## Last session
+- **laptop, 2026-11-06/07 – one branch + planner round (owner in the chat all day):** web-spike merged into main (PR #3),
+  daily sync task paused; PR #5 deploy+quick (test phase: deploy after the affected local tests, owner). Live on
+  plan.onpath.earth (78f5a4a6): plan bar (+ Neu · Meine Touren with the app's search · Speichern ▾ with the phone badge when
+  paired · 📱 phone status with „abgeglichen vor …“), list km / ↑↓, round-trip toggle, all glyph ranges, 3D north keeps the
+  tilt + turn hint, big profile range („1,6 km · 30 min · ↑ 59 m“) + „⤢ Großes Profil“, 3D flyover (calm, controls beside 3D),
+  3D perf 31 → 60 fps, 250 tours per phone (shared SyncLimits, fill line in the Phone window). Flaky smokes fixed (test-side
+  camera races). Laptop map store NRW + Meran (`tools/dev/fetch_area.py`, /home/development/Projects/work/onpath-data). Open:
+  the backlog's „Next laptop session – start here“ (red parity + wip branch, plan sheet A, one synced list); app items handed
+  to donald (lock line, Navigate ⚙ settings look, 250 in the app). Owner questions in the Fragenregister (laptop-2026110x-*).
 - **laptop, 2026-11-07 – 250 tours per phone (owner):** shared `sync/SyncLimits` (250, amber from 200, JVM test); the planner refuses a NEW tour beyond 250 before the name is asked (Save amber + why), the Phone window shows „N von 250 Touren“ with a bar; the host returns the mailbox use with the pull, its 1000 items stay a safety net. sync-smoke part 17. App side → [cloud-app] item. Not deployed yet.
 - **laptop, 2026-11-06 night – planner 3D flyover (owner, D):** a2e5597d – in 3D „▶ Abfliegen“ with pause / stop / 1×–2×, `web/app/src/flyover.ts`; time-based, eased look-ahead direction, climbs over slopes, profile cursor along; any other camera move pauses, leaving 3D / a new route stops. ui-smoke checks it (local run without map data). Not deployed.
 - **laptop, 2026-11-06 night – planner plan bar (owner A, 76bee166, not deployed):** header = brand · `+ Neu · 📂 Öffnen · 💾 Speichern ▾ · 📱 Aufs Handy ▾` · Help · app · language; Öffnen = My routes with the app's search + GPX importieren; Speichern always 'Speichern' (paired it sends), ▾ Speichern unter / GPX exportieren; Aufs Handy pairs directly when not paired, then the plan follows; paired = save + send, ▾ = Phone window. Phone width: one 'Plan ▾'. No header overflow 320–1920 px. sync-smoke 16 runs the owner's two scenarios. web-planner.md §21. Seen once locally: robust-smoke 'two quick clicks' red (the order case), green on rerun.

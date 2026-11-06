@@ -84,11 +84,23 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Planer: Plankarte neu – A (Punkte zuerst) + Profil dauerhaft unten (owner 2026-11-07, https://claude.ai/artifact/F1rCK7xXXmUhWcQRj3o1mR) – since 2026-11-07
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 
 ## Next
+- **[laptop] Next laptop session – start here (2026-11-07, laptop shut mid-work):** (1) **"Web planner" is red** (parity): 12
+  mirrored app files changed by donald's colour rule b873458a / paper 02c98980 / 50adb466 and later (Screens, MapOverlays,
+  PlaceCard, RouteRules, MapFooter, SettingsScreen, TourBar, AppViewModel, Panels, Theme, Prefs, CellCard). Two unpushed-to-main
+  commits adopt most of it: branch **`wip/laptop-2026-11-07-parity-colours`** (e8e9997d walnut / plan blue / paper colour rule,
+  'Zuletzt', delete to the phone's bin without a question; c9d59a96 paper over the map, GPX track without a line) – NOT
+  smoke-tested, based on 402f4520: rebase on main, `node web/parity/check.mjs` (Prefs.kt pace keys etc. may be new), run the
+  affected smokes, push, deploy (test phase: deploy+quick after green local smokes). `wip/laptop-2026-11-07-parity` is an
+  empty mistake (= main) – the owner can delete it. (2) Then **the plan sheet: A (points first) + profile along the bottom**
+  (owner 2026-11-07; proposals page https://claude.ai/artifact/F1rCK7xXXmUhWcQRj3o1mR, section „Aus der App übernehmen“):
+  wide = stops list on top with handles and „+ Ziel hinzufügen“, facts, the elevation profile permanently wide along the map's
+  bottom (cursor, steepness, range, stops), no steps; phone = two steps, „⤢ Höhenprofil groß“ row under the small profile;
+  app look (walnut, paper, light blue plan row, facts row with difficulty, 'Nicht gespeichert ›' blue, height kept while
+  recalculating). Not started. Add the „Gebaut“ section with shots to that page. (3) Then „gekoppelt = eine Liste“ (item below).
 - **[donald] Navigate's ⚙ in the new settings look (owner 2026-11-07, via laptop: „das Einstellungsmenü im Planmodus haben wir
   so schön umgearbeitet – das gleiche müssen wir auch im Navigationsmodus machen“)** – today Navigate → ⚙ (`MapScreen`
   `navSettingsOpen`) opens a ModalBottomSheet with the old `NavigationSection` list, while Plan → ☰ → Einstellungen is the new
