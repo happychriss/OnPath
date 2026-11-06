@@ -54,10 +54,17 @@ on:
         description: "Deploy the planner host to Cloudflare (test) after the checks"
         type: boolean
         default: false
+      quick:
+        description: "Deploy right after the build – the checks keep running (owner 2026-11-06, test phase)"
+        type: boolean
+        default: false
   # called by cloudflare-setup.yml after the one-time setup (a dispatch needs the file on main; a call does not)
   workflow_call:
     inputs:
       deploy:
+        type: boolean
+        default: false
+      quick: # release.yml leaves it off: a release deploys only after every check is green
         type: boolean
         default: false
 
@@ -431,76 +438,43 @@ jobs:
   # planner zone's routes/DNS, nothing else), the repository variables CLOUDFLARE_ACCOUNT_ID (exists), PLANNER_HOST_TEST
   # (e.g. plan.onpath.earth) and SYNC_D1_ID_TEST (the sync database, web-sync.md §10), and Cloudflare Access on that
   # host set up first (web-planner.md §9; /sync/* bypasses Access, the mailbox token guards it).
+  # The deploy steps live in .github/actions/deploy-planner (one copy for both jobs below).
   deploy:
     needs: [web-build, jvm, smokes]
     # one branch (owner 2026-11-06): no deploy on a plain push to main – only on purpose (release.yml / dispatch)
-    if: inputs.deploy
+    if: inputs.deploy && !inputs.quick
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/deploy-planner
         with:
-          node-version: "22"
+          cloudflare-token: ${{ secrets.CLOUDFLARE_PLANNER_TOKEN }}
+          cloudflare-account: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          host: ${{ vars.PLANNER_HOST_TEST || 'plan.onpath.earth' }}
+          sync-d1: ${{ vars.SYNC_D1_ID_TEST }}
+          map-key: ${{ secrets.ONPATH_MAP_KEY_TEST }}
+          access-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          access-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
 
-      - uses: actions/download-artifact@v4
+  # Test phase (owner 2026-11-06: „erstmal veröffentlichen und GitHub weiterlaufen lassen“): deploy + quick goes online
+  # right after the build; jvm and the smokes keep running in the same run – a red one is fixed and deployed again.
+  deploy-quick:
+    needs: [web-build]
+    if: inputs.deploy && inputs.quick
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/deploy-planner
         with:
-          name: web-build
-          path: web
-
-      - name: Deploy the planner host (test)
-        working-directory: web/host
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PLANNER_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          HOST: ${{ vars.PLANNER_HOST_TEST || 'plan.onpath.earth' }}
-          SYNC_D1: ${{ vars.SYNC_D1_ID_TEST }}
-        run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::error::CLOUDFLARE_PLANNER_TOKEN / CLOUDFLARE_ACCOUNT_ID missing – see web-planner.md §9, web-sync.md §10"; exit 1
-          fi
-          [ -s ../app/dist/index.html ] || { echo "::error::no built page in web/app/dist"; exit 1; }
-          if [ -z "$SYNC_D1" ]; then # no variable: find the database by its name (cloudflare-setup.yml creates it)
-            SYNC_D1=$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database?name=onpath-sync-test" \
-              | jq -r '[.result[]? | select(.name == "onpath-sync-test")][0].uuid // empty')
-            [ -n "$SYNC_D1" ] || { echo "::error::D1 database onpath-sync-test not found – run the Cloudflare setup workflow first"; exit 1; }
-          fi
-          sed -i "s/__PLANNER_HOST_TEST__/$HOST/; s/__SYNC_D1_ID_TEST__/$SYNC_D1/" wrangler.toml
-          npx --yes wrangler@4.141.0 d1 migrations apply onpath-sync-test --env test --remote
-          npx --yes wrangler@4.141.0 deploy --env test
-
-      # Map areas on demand (web-planner.md §17): the host adds the doorman's app key to the two build calls, so the
-      # browser never holds it. Owner step, once: repository secret ONPATH_MAP_KEY_TEST = the newest entry of the
-      # environment "test" secret ONPATH_APP_KEYS (an environment secret is not readable here). Without it the page says
-      # the area's map is not available on the web yet. The key goes from the secret straight into wrangler's stdin.
-      - name: Map key for the planner host (map areas on demand)
-        working-directory: web/host
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PLANNER_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          MAP_KEY: ${{ secrets.ONPATH_MAP_KEY_TEST }}
-        run: |
-          if [ -z "$MAP_KEY" ]; then
-            echo "::notice::ONPATH_MAP_KEY_TEST not set – map areas cannot be requested from the web yet (web-planner.md §9, owner step 5)"; exit 0
-          fi
-          printf '%s' "$MAP_KEY" | npx --yes wrangler@4.141.0 secret put MAP_KEY --env test >/dev/null
-          echo "MAP_KEY set on the planner host"
-
-      # Live check after the deploy (web-planner.md §9, owner step 6 – optional): only when the Cloudflare Access service
-      # token exists (repository secrets CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET, policy "Service Auth" on the
-      # planner app). Reads the page, the engine, the overview, routing data and the map-area proxy – nothing is changed.
-      - name: Live smoke test of the deployed planner (needs the Access service token)
-        env:
-          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-          HOST: ${{ vars.PLANNER_HOST_TEST || 'plan.onpath.earth' }}
-        run: |
-          if [ -z "$CF_ACCESS_CLIENT_ID" ] || [ -z "$CF_ACCESS_CLIENT_SECRET" ]; then
-            echo "::notice::no Access service token (CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET) – live smoke test skipped"; exit 0
-          fi
-          node web/host/live-smoke.mjs "https://$HOST/"
+          cloudflare-token: ${{ secrets.CLOUDFLARE_PLANNER_TOKEN }}
+          cloudflare-account: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          host: ${{ vars.PLANNER_HOST_TEST || 'plan.onpath.earth' }}
+          sync-d1: ${{ vars.SYNC_D1_ID_TEST }}
+          map-key: ${{ secrets.ONPATH_MAP_KEY_TEST }}
+          access-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          access-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
 
   # The results of every job in one artifact, as before (jvm / browser results, compare summary, screenshots).
   results:
