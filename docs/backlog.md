@@ -82,11 +82,21 @@ the git log.
 
 ## In progress
 <!-- - [laptop|desktop|cloud] short description – since YYYY-MM-DD -->
-- [laptop] Ein Branch: web-spike in main zusammenlegen (onpath.private#32) – Branch one-branch, PR an den Owner – since 2026-11-06
+- [laptop] Ein Branch: web-spike in main zusammenlegen (onpath.private#32) – fertig und geprüft auf dem Laptop (Branch `one-branch` 0f69fbf1, Worktree im Scratchpad der laptop-Sitzung; gate --full grün, check-web.sh grün bis auf search-smoke ohne Karten). **Push blockiert:** gh auf dem Laptop ohne Recht `workflow` → onpath.private#37 (Owner: `gh auth refresh -h github.com -s workflow`), dann Push + PR – since 2026-11-06
 - [donald] Pixel review 2026-11-06 follow-ups: the bugs below, one by one; owner decisions F1 / switch text / second "Tour gespeichert" box – since 2026-11-06
 - [cloud-app] Owner's field day 2026-11-01 (hikes, tours 61–63, data in ~/onpath-cells-work/field/2026-11-01-wanderungen): (1) route vanishes when replanning during a tour, (2) plan points in Navigate (passed with a small ✓), (3) round trip said "Ziel erreicht" too early, (4) re-route: no word / no sign to turn round and where, (5) voice: new concept after looking at other apps; owner: route stays blue, no grey – since 2026-11-01
 
 ## Next
+- **[donald] Flow map + novice walkthrough (docs/design/flow-map.md, 2026-11-06) – open:** H1 no way to start a tour
+  without a plan (0–1 points: no green start on any sheet step, none in ☰; "Los geht's · ohne Route" unreachable –
+  PlanPanel.kt:487/:650; after the F1/C build); M1 "Tour nachfahren" during a tour keeps the old plan – an edit switches the
+  guidance back silently; M3/N3 new goal on the way = old goal silently becomes a stop (proposal: hold menu "Neues Ziel");
+  M4 back from a pause: one rule with C; N1 Plan mode during a tour is silent – notification should say "Navigation
+  pausiert – tippen zum Weiterfahren"; N2 "» Entsperren" hides Pause/Beenden (second line "Pause · Beenden · Plan"); N4
+  back key in locked Navigate leaves the app; N5 bin hard to find; N6/N7 words "Original behalten / Neue Route",
+  "Hinführen" (owner's words? ask); N8 undo icon only; N9 grey 12 sp lines in the sun. **Colour rule** C1–C17 (theme
+  primary is green → every plain button green): owner thinks about an earth tone as the base colour (page
+  https://claude.ai/artifact/P6SCbUKQhHuuPqJ9SmePq6, recommendation Torf #3B352F / Walnuss #4A3F37). H2 done (844c8401).
 - **[donald] Pixel review 2026-11-06 – open bugs** (page https://claude.ai/artifact/9nYPmLp8VrePMfBhCN3sur; done on main:
   end sheet cut off → ModalBottomSheet 6d742b95, plan lost at tour end 894ab407, Sperren fill 4432d315). Medium: recorded
   tour named after an old plan ("Demo · Rundtour ab Hilden", nameRecordedTour); past arrival time in Navigate's stop list

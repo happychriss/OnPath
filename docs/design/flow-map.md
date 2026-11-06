@@ -176,6 +176,67 @@ decision dialog (`RouteDialogs.kt:166`). Red only for deleting: end sheet "Lösc
 Navigate, grey for cancel) and stop relying on the green theme `primary` – yes / no? Settings pages (C17) neutral grey –
 yes / no?
 
+## Novice walkthrough
+
+Owner 2026-11-06: "nicht nur versehentliches Löschen … sondern auch komplizierte Rückwege oder komplizierte Handlungen,
+die einen technisch unbedarften Rentner oder Wanderer unter Umständen überfordern." A cognitive walkthrough of main
+844c8401 (code + the German screenshots in `app/src/test/snapshots/images`, `…GermanScreenshotTest_<name>.png`).
+
+**Persona:** 70, hikes and rides, uses the phone for WhatsApp and photos; does not know "Modus", "Sheet", "Track", "GPX";
+does not like reading; outdoors in sun, with a glove or one hand; under stress (wrong turn, rain) presses "Zurück".
+Each step is checked with the four questions: **want** (does he want to do this here?), **see** (is there a visible
+button, or a hidden gesture: hold, slide, drag the sheet, 7 taps?), **understand** (does the word / sign say it does
+this?), **feedback** (does he notice it worked, or does something change silently?). Plus: the way back from each
+state, Android's back key, timers, targets < 48 dp, sun, words.
+
+What already helps (kept): the empty sheet says "Wohin soll's gehen? Halte dein Ziel auf der Karte gedrückt – oder such
+es oben in der Suchleiste." (`planEmpty`); a plain tap on the map says "hold" (`planTapHoldHint`); "Hierhin" without a
+GPS fix is greyed with the reason; a tap on the slider nudges the thumb ("this slides", `SlideToUnlock.kt:82`); no
+message goes away by itself (owner rule – the only timer is the 30 s re-lock of unlocked Navigate, and paused it stays
+open); every target is ≥ 48 dp (round pills 40 dp in a 48 dp box, `PlanPanel.kt:582`; the pin card's 107 px are 48 dp on
+the Pixel's 356 dpi); taking the phone out of the pocket in Navigate jumps back to the own position
+(`AppViewModel.onReturnToApp`, :354); the bike rest view says "Tippen für die Karte"; the end sheet keeps a ✕ and
+"Weiterfahren".
+
+### The goals step by step
+
+| Goal | Steps a novice takes | Where he stumbles |
+|------|----------------------|-------------------|
+| First use, no explanation | map opens → reads the sheet line → holds the map → "Hierhin" → "Los geht's · <Ziel>" | **see:** holding is the only way besides the search – the sheet line says it, fine. With 0–1 points there is no start button at all (H1) – "just record" is impossible. |
+| Plan and go | hold → Hierhin → Los geht's | fine (3 inputs). |
+| Pause / continue (lunch) | Navigate shows "» Entsperren" only → ? | **see / understand:** nothing visible says that Pause and Tour beenden are behind "Entsperren" (only TalkBack hears it) → **N2**. |
+| End and save | slide → Tour beenden → Tour speichern | **see:** same as N2; afterwards fine (the second "Tour gespeichert" box goes away, being built). |
+| Change the destination on the way | slide → Plan → hold the new place → (old goal stays, the new one is put in silently) → hold the old goal → Löschen → back to the tour | **feedback / understand:** the old goal silently stays as a stop and the route makes a detour through it → **N3** (M3). |
+| Back from Plan to the guidance | the round "‹" top left (being built: C, green "Navigation" at the bottom) | **see:** far from the thumb (C fixes it). **feedback:** if he puts the phone away in Plan, the guidance is silent and nothing outside the app says so → **N1**. |
+| Clear the plan on the way, start anew | slide → Plan → ✕ Neu planen → Plan leeren → hold → Hierhin → back | fine with C; the empty sheet's hint "geh ‹ Zur Tour" changes with C. |
+| Follow a saved plan | ☰ → Meine Touren → Geplant → tap → (Plan ersetzen?) → Los geht's | **see:** ☰ is a sign only – known from other apps, acceptable. |
+| Ride a done tour again | ☰ → Meine Touren → Gemacht → tap → Tour nachfahren | fine without a tour; during a tour 7 inputs and 5 buttons (F1, being built). |
+| Phone out of the pocket – "where am I?" | Navigate: map back on the own position; bike rest view: "Tippen für die Karte" | fine in Navigate. **Left in Plan:** the map stays where he edited, the plan screen shows no tour, the guidance is silent → **N1**. |
+| A slip – get back to a known state | Plan: Undo round button; a deleted tour: bin; back key | **see:** Undo is a sign only (↶) → **N8**; the bin is 3 hidden taps away → **N5**; back in locked Navigate leaves the app → **N4**. |
+| Under stress: off the route | box "Du bist 120 m von der Route weg" · "Original behalten" / "Neue Route" | **understand:** "Original" is a technical word; "Neue Route" can read as "plan something new" → **N6**. |
+
+### Findings
+
+Severity for the novice: **high** = he does not get on or loses something; **medium** = he needs help or guesses;
+**small** = cumbersome. Known findings are only referenced: H1 (no start without a plan), M1–M4, K1, C1–C17; the Pixel
+review's open bugs; being built: F1, C, no second "Tour gespeichert" box.
+
+| # | Sev. | Finding | Code | Screenshot | Emulator | Proposal (one sentence to decide) |
+|---|------|---------|------|------------|----------|-----------------------------------|
+| N1 | high | **Plan during a tour silences the guidance, and nothing outside the app says so.** Owner rule 2026-11-03 "Plan bleibt still" (no voice, no turn vibration, no off-route question, also with the screen off) – right in the restaurant, but a novice who changed the plan and put the phone away without "‹ Zur Tour" walks on without guidance. The tour notification still reads "Aufnahme · Route: …", and taking the phone out shows Plan (no jump to the position – `onReturnToApp` recentres only in Navigate). | `StopQuiet.kt:3`, `RecordingService.kt:1448` (`buildNotification`), `AppViewModel.kt:354` | `planTourRunningCollapsed` | no (code is clear) | While Plan keeps the tour quiet, the tour notification says "Navigation pausiert – tippen zum Weiterfahren" and a tap opens Navigate (the quiet rule stays) – yes / no? |
+| N2 | high | **Pause and Tour beenden are hidden behind "» Entsperren".** The slider's visible word names the lock, not what is behind it; the words "Pause, Tour beenden und Plan" exist only in the TalkBack text. A novice who wants to stop for lunch or end the tour does not know he has to slide. | `SlideToUnlock.kt:100`; `strings_navigate.xml:176`–`177` (DE) | `navigate` | no (screenshot) | The slider gets a small second line "Pause · Beenden · Plan" under "Entsperren" (as the old slider had "Pause · Route ändern · Beenden") – yes / no? |
+| N3 | high | **Changing the destination on the way leaves the old goal in.** A hold puts the new place in silently where it fits (`WaypointInsertion`) – the old goal stays and the route makes a detour through it; removing it needs a hold on a marker → menu → Löschen. A novice ends up walking to the old goal. (Novice view of M3.) | `MapHost.kt:233`, `AppViewModel.kt:1473` | `navigateNextGoal` | no | M3's proposal: during a tour the hold menu offers "Neues Ziel" (replaces the goal) beside adding a stop – yes / no? |
+| N4 | medium | **Android back in locked Navigate leaves the app.** No back handler there (`MainActivity.kt:332` covers Plan only), so under stress "Zurück" sends OnPath away; the recording goes on (notification), but the novice thinks the app closed and may start a second tour. | `NavigateScreen.kt:261` (back only closes the unlocked bar), `MainActivity.kt:332` | `navigate` | no (Android default) | Back in locked Navigate nudges the slider like a tap instead of leaving the app – yes / no? |
+| N5 | medium | **A deleted tour is 3 hidden taps from coming back.** The end sheet says "Kommt für 30 Tage in den Papierkorb." but not where; the bin is ☰ → Meine Touren → ⋮ → Papierkorb. | `Screens.kt:469`; `TourBar.kt` `EndKeepAndDelete` | `endTourConfirm` | no | After "Löschen" the map shows a line "Tour im Papierkorb · Zurückholen" (like the "Tour gespeichert" line being built) – yes / no? |
+| N6 | medium | **The off-route box speaks in system words under stress.** "Du bist 120 m von der Route weg" with "Original behalten" / "Neue Route": "Original" is technical, "Neue Route" can read as "plan something new". (App texts the owner may have chosen – ask, do not reword.) | `strings_navigate.xml` `nav_keep_original`, `nav_take_new_route`; `NavigateScreen.kt:746` | `navigateRerouteQuestion` | no | Rename to "Zurück zur Route" / "Von hier neu" – yes / no / own words? |
+| N7 | medium | **Far start and mid start use guide words.** "Hinführen" / "Ohne Route weiter" and "Zu ① führen" / "Hier einsteigen" – understandable with the title, but "Hinführen" is unusual German. | `strings_navigate.xml` `nav_far_lead`, `nav_mid_lead` | `navigateFarStart` | no | "Hinführen" → "Weg zum Start" – yes / no? |
+| N8 | small | **Undo is a sign only.** The round ↶ appears only after an edit; a novice who deleted a point by mistake does not read it as "Rückgängig". | `MapFooter` map controls (content description "Rückgängig") | `planChangedNotSaved` | no | After a delete or "Neu planen" the sheet's line says once "Gelöscht · Rückgängig" (an ANZEIGE line, gone with the next edit) – yes / no? |
+| N9 | small | **Grey 12 sp lines carry things he must read in the sun:** the bin note, "Wird als neuer Plan gespeichert", the stop times "an 16:35", "In Bewegung 0:00". | `TourBar.kt` (bin note, plan line), `NavigateScreen.kt:382` (stop rows) | `endTourConfirm`, `navigateProfileStops` | no | Lines that decide something (bin, which plan is saved) at 14 sp in the normal text colour – yes / no? |
+
+**The three that matter most** (few, simple, no intro carousel): N1 – the notification says when the guidance is
+paused, and a tap goes back (keeps the owner's quiet rule); N2 – "Pause · Beenden · Plan" under "Entsperren";
+N3 / M3 – "Neues Ziel" in the hold menu during a tour.
+
 ## How the probes ran
 
 `app/src/androidTest/java/com/onpath/app/e2e/FlowMapProbeE2ETest.kt` on the donald emulator via
