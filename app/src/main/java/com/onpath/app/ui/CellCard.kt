@@ -242,7 +242,7 @@ fun OverviewHint(modifier: Modifier = Modifier) = QuietPill(str(Res.string.maps_
 @Composable
 fun QuietPill(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
     Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp), shadowElevation = 2.dp,
-        color = OnPathColors.CardWhite.copy(alpha = 0.94f), // over the map: white
+        color = OnPathColors.Paper.copy(alpha = 0.94f), // over the map: paper (owner 2026-11-06)
         modifier = modifier.androidxSemantics(text)) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically) {

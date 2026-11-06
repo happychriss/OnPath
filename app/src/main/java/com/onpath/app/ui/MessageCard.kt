@@ -191,7 +191,7 @@ fun MessageCard(message: Message, modifier: Modifier = Modifier) {
     val edge = message.kind.edge()
     val large = LocalDensity.current.fontScale > LARGE_FONT
     val beside = message.buttons.size == 1 && !large && !message.navigate
-    Surface(shape = RoundedCornerShape(16.dp), color = OnPathColors.CardWhite, contentColor = OnPathColors.Ink,
+    Surface(shape = RoundedCornerShape(16.dp), color = OnPathColors.Paper, contentColor = OnPathColors.Ink,
         shadowElevation = 6.dp, modifier = modifier.fillMaxWidth()) {
         Box(Modifier.drawBehind { drawRect(edge, size = Size(EDGE_DP.dp.toPx(), size.height)) }) {
             Column(Modifier.padding(start = 18.dp, end = 12.dp, top = 12.dp, bottom = if (beside) 12.dp else 10.dp)) {

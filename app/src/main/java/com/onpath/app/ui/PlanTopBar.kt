@@ -224,7 +224,7 @@ private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
         onClick = onSearch,
         modifier = modifier.height(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_search_hint); role = Role.Button },
         shape = CircleShape,
-        color = OnPathColors.CardWhite, // the band is blue (owner 2026-11-05, b): the pill white on it
+        color = OnPathColors.Paper, // the band is blue (owner 2026-11-05, b): the pill paper on it
         shadowElevation = 3.dp,
     ) {
         Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -240,7 +240,7 @@ private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
 private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Box {
-        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = OnPathColors.CardWhite,
+        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = OnPathColors.Paper,
             shadowElevation = 3.dp, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }) {
             Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Menu, contentDescription = null, tint = OnPathColors.PlanAccent) }
         }
