@@ -62,7 +62,7 @@ class FoundPlacePinTest {
     }
 
     /**
-     * Owner 2026-11-04 (design B): the card under the pin carries the most common action – "+ Zur Route" adds the place
+     * Owner 2026-11-04 (design B): the card under the pin carries the most common action – "+ Hinzufügen" (owner 2026-11-05, #26: neither route nor plan) adds the place
      * like the menu's add; on an empty plan "Hierhin" goes there from here (without a position the menu opens, it says
      * why); "⋯ Mehr" opens the pin's menu.
      */
@@ -75,7 +75,9 @@ class FoundPlacePinTest {
             for (k in listOf("plan_pin_add", "plan_pin_more", "plan_pin_action_desc")) assertTrue("$dir $k", xml.contains("name=\"$k\""))
         }
         assertTrue(File("../strings/src/commonMain/composeResources/values-de/strings_plan.xml").readText()
-            .contains("<string name=\"plan_pin_add\">Zur Route</string>"))
+            .contains("<string name=\"plan_pin_add\">Hinzufügen</string>"))
+        assertTrue(File("../strings/src/commonMain/composeResources/values/strings_plan.xml").readText()
+            .contains("<string name=\"plan_pin_add\">Add</string>"))
     }
 
     /** Rule 5: pin hidden in Navigate; the chip only where the plan can be edited. */

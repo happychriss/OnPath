@@ -108,7 +108,7 @@ fun MapOverlayHost(
             val empty = vm.waypoints.isEmpty()
             val blocked = MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null)
             PinChipAt(Offset(s.x, s.y), topPx, bottomPx) {
-                // "+ Zur Route" adds the place where it fits; on an empty plan "Hierhin" (from here) – without a position
+                // "+ Hinzufügen" adds the place where it fits; on an empty plan "Hierhin" (from here) – without a position
                 // the menu opens instead, it says why "Hierhin" waits (searching GPS)
                 PinChip(m.title(), str(if (empty) Res.string.plan_go_here else Res.string.plan_pin_add), emptyPlan = empty,
                     onAction = { if (!empty) vm.addPoiPoint(m.toPoi()) else if (blocked == null) vm.poiFromMyLocation(m.toPoi()) else vm.openPinMenu() },
@@ -238,7 +238,7 @@ private val PIN_CHIP_TOUCH_PAD = 0.dp
 
 /**
  * The found place under its pin (owner 2026-11-04, design B "Kleine Karte mit Aktion"): a small white card – the name,
- * below it the most common action as a blue button ([action]: "+ Zur Route", on an empty plan "Hierhin") and "⋯ Mehr"
+ * below it the most common action as a blue button ([action]: "+ Hinzufügen" – owner 2026-11-05, #26; on an empty plan "Hierhin") and "⋯ Mehr"
  * ([onMore]: the pin's menu – the one a hold on the pin opens: start here / Google Maps / remove pin). One tap does it,
  * nothing to look for. Both buttons are ≥ 48 dp touch targets; long names end in "…" ([PinChipRules.label]).
  */

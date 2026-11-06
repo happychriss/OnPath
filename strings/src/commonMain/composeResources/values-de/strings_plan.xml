@@ -186,7 +186,7 @@
     <!-- the found place's pin (owner 2026-11-02): its menu's last line, the name chip for TalkBack -->
     <string name="plan_remove_pin">Nadel entfernen</string>
     <string name="plan_pin_chip_desc">%1$s: Möglichkeiten zeigen</string>
-    <string name="plan_pin_add">Zur Route</string>
+    <string name="plan_pin_add">Hinzufügen</string>
     <string name="plan_pin_more">Mehr</string>
     <string name="plan_pin_action_desc">%2$s: %1$s</string>
     <plurals name="plan_removes_points">
