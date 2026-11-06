@@ -36,7 +36,8 @@ import com.onpath.strings.Txt
 import com.onpath.strings.common_delete
 import com.onpath.strings.common_ok
 import com.onpath.strings.nav_arrived_title
-import com.onpath.strings.nav_end_tour
+import com.onpath.strings.nav_action_pause
+import com.onpath.strings.nav_end_short
 import com.onpath.strings.nav_end_tour_title
 import com.onpath.strings.nav_save_recording
 import com.onpath.strings.plan_pin_chip_desc
@@ -249,8 +250,8 @@ class ReleaseRundgang : E2EBase() {
     }
 
     /**
-     * 7 · End the recording the Navigate way (owner 2026-11-01): slide → Pause / Tour beenden in the status card →
-     * "Tour beenden?" → Tour speichern → it is listed in My routes → Touren.
+     * 7 · End the recording the Navigate way (owner 2026-11-01; 2026-11-06 one bottom bar): slide → "Pause" → "Beenden"
+     * (ending only out of a pause) → "Tour beenden?" → Tour speichern → it is listed in My routes → Touren.
      */
     @Test fun flow07_endTourSaveListedInDone() {
         planned(THEATRE, STATION)
@@ -258,7 +259,9 @@ class ReleaseRundgang : E2EBase() {
         rideRoute(factor = 5)
         waitUntil("some metres recorded", 60_000) { (com.onpath.app.recording.RecordingService.state.value?.distanceM ?: 0.0) > 100 }
         openTourActions()
-        clickText(Txt.s(Res.string.nav_end_tour))
+        clickText(Txt.s(Res.string.nav_action_pause))
+        assertNotNull("paused: Beenden at the bottom", findFresh(By.text(Txt.s(Res.string.nav_end_short)), 5_000))
+        clickText(Txt.s(Res.string.nav_end_short))
         assertNotNull("\"End recording?\"", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
         shot("1-end-tour")
         clickText(Txt.s(Res.string.nav_save_recording))
@@ -612,14 +615,14 @@ class ReleaseRundgang : E2EBase() {
         Thread.sleep(500)
     }
 
-    /** Navigate: drag the slider's thumb across → Pause / Tour beenden in the status card, "Plan ändern" below (Navigate C). */
+    /** Navigate: drag the slider's thumb across → the bottom bar "Pause | Planen" (owner 2026-11-06). */
     private fun openTourActions() {
         // TalkBack's words: "Entsperren. Schieben, um Pause, Tour beenden und Plan ändern freizugeben." (owner 2026-11-05)
         val slider = findFresh(By.descContains(Txt.s(Res.string.nav_slide_unlock)), 5_000)
         assertNotNull("no slider in Navigate – ${seenDescriptions()}", slider)
         val r = slider!!.visibleBounds
         device.swipe(r.left + r.height() / 2, r.centerY(), r.right - 4, r.centerY(), 40)
-        assertNotNull("the actions after the slide", findFresh(By.text(Txt.s(Res.string.nav_end_tour)), 5_000))
+        assertNotNull("the bar after the slide", findFresh(By.text(Txt.s(Res.string.nav_action_pause)), 5_000))
         shot("0-bar-unlocked")
     }
 
