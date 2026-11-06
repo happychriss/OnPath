@@ -2701,6 +2701,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * The plan on the map for My routes (owner 2026-11-06 23:00: "unter Zuletzt ‚gerade in Bearbeitung', dann weiß ich, dass
+     * immer gespeichert wird"): [LivePlanRows] puts it first under Zuletzt or tags the saved route it is. Null = empty map.
+     */
+    val livePlan: LivePlan?
+        get() {
+            if (waypoints.isEmpty()) return null
+            val r = route
+            return LivePlan(name = savedName, points = waypoints.size, distanceM = r?.distanceM ?: 0.0,
+                ascentM = r?.ascentM ?: 0.0, durationS = r?.durationS ?: 0.0, linkedId = savedId,
+                key = waypoints.map { it.lat to it.lon }, unsaved = planUnsaved)
+        }
+
+    /** My routes → the plan "In Bearbeitung" tapped: back to it on the map – nothing is loaded again. */
+    fun backToLivePlan() {
+        Problems.trace("routes", "My routes → the plan in progress (${waypoints.size} points, linked ${savedId}): back to the map, nothing reloaded")
+        routesOpen = false
+    }
+
+    /** My routes → the plan "In Bearbeitung" → Speichern: the same as ☰ Plan speichern (the name dialog). */
+    fun saveLivePlan() {
+        Problems.trace("routes", "My routes → the plan in progress → Speichern (${waypoints.size} points)")
+        requestSave()
+    }
+
     /** The plan just moved from Zuletzt to saved: "✓ Gerade gespeichert" on it until My routes closes. */
     var justSavedId by mutableStateOf(-1L)
 

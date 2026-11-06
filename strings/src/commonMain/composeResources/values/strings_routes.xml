@@ -65,6 +65,8 @@
     <string name="routes_replace_text_link">Your current plan is not saved. Save it first, or replace it with the plan from the link.</string>
     <string name="routes_tag_new">New</string>
     <string name="routes_tag_changed">Changed</string>
+    <string name="routes_tag_live">In progress</string>
+    <string name="routes_live_name">Current plan</string>
     <string name="routes_track_saved">Tour saved</string>
     <string name="routes_saved_open">In My tours ›</string>
     <string name="routes_section_recent">Recent</string>
