@@ -68,6 +68,25 @@ green → prune the ci branch.
 - 3D probe: fly-over camera good, stutter → async tile reads + pinch zoom + fps line (41180e5c) on the Pixel; owner
   reports the fps.
 
+## NIGHT 2026-11-07 – owner's word before leaving (00:10, the Pixel is unreachable, no owner feedback until morning)
+
+Owner: "Feierabend, donald bleibt an: alle offenen Aufgaben gründlich zu Ende bauen, dann den Code clean machen (strenges
+Audit: keine verschluckten Fehler – alles ins Log, kein doppelter Code, klare Architektur, kein historischer Ballast,
+Android-Richtlinien, später evtl. iPhone), voller Testlauf in der Cloud, morgen früh ein Release." Answers (question box):
+- **Release v0.17.2: donald publishes it himself** when gate --full, every E2E class on GitHub and the Release-Rundgang are
+  green (no Pixel check possible). Anything red → no release, write down why.
+- **Cleanup: yes, all** – `ci/donald-*` via prune_branches.sh once older than 12 h (`--by-hand "owner yes 2026-11-07 00:10"`),
+  old local worktrees under `.claude/worktrees` that are merged; today's spike/sketch branches stay.
+- **Audit: big refactors allowed tonight** (e.g. split AppViewModel, a pure core for a later iPhone app) if all tests stay green.
+- Captain's big cleanup (docs/tools/hooks/.claude) runs in parallel: donald leaves those alone until "Aufräumen fertig";
+  the code part of the captain's list (backlog "→ [donald] after the captain's cleanup") is donald's.
+
+Order: (A) queue to main: pkg-all (theme/settings/zuletzt/polish), midroute-once, expand-gestures, plan-quiet-gps (+ its
+two red "no position" boxes → neutral), turn-cue (sim starts where the tour is); then build: logo 1/2/5 + paper splash,
+Navigate ⚙ in the new settings look, lock line only when needed, captain's dead-code list, unused strings, MapOverlays
+"Neuer Plan", Pixel review leftovers. (B) audit + clean-up + test audit step 2. (C) full GitHub E2E (one class per ref) +
+Rundgang → release v0.17.2. Not in the release: spike/3d-webview.
+
 ## After the merge – open items (owner decided, not built yet)
 
 - Remove dead `TourRunningBar` / `TourControls` (TourBar.kt) and redraw the screenshot tests that still show the old
