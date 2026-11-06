@@ -25,7 +25,7 @@ import { ActivityPicker, type ActivityRow, type PaceChoices } from './activity';
 import { holdMenu, type MenuItem } from './menus';
 import { Position } from './position';
 import { PlanSync, shownTitle, type SavedPlan } from './sync';
-import { myPlansDialog, joinDialog, saveRoute, askDiscard, setDiscardSave, phoneDialog, phonePill, appDate } from './plans';
+import { myPlansDialog, joinDialog, saveRoute, saveRouteAs, askDiscard, setDiscardSave, phoneDialog, pairDialog, phonePill, appDate } from './plans';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
 import { longRouteOk, allowLongRoute, notRoutedTexts, setNotRouted, type Before } from './longroute';
@@ -96,23 +96,18 @@ const pairLink = /[#&]pair=/.test(location.hash) ? location.href : null;
 if (pairLink) history.replaceState(null, '', location.href.split('#')[0]);
 
 /**
- * The header's entries (owner 2026-10-28: a top line like komoot's web header, in onpath.earth's look). One list for
- * both places: inline in the header on a wide screen, the ☰ drop-down on a phone. Add an entry here (id, icon, label,
- * what it does); `act` is set further down, once the page's parts exist.
+ * The header (owner 2026-11-06, A – "everything I do with a plan belongs together"): left after the brand ONE plan bar
+ * like a file menu – [+ Neu] [📂 Öffnen] [💾 Speichern ▾] [📱 Aufs Handy ▾]; right only Help, the app link and the
+ * language. Phone width: the bar is one "Plan ▾" drop-down (the same buttons as rows, the ▾ entries spelled out, Help and
+ * the app link at its end). `.wonly` = only in the wide bar, `.ponly` = only in the phone drop-down.
  */
-const NAV: { id: string; icon: IconName; label: string; act?: () => void }[] = [
-  // owner 2026-10-30: no "Send to phone" here – sharing is the sheet's Share icon. Save and the Phone button are not
-  // entries: they sit on the right of the header, also at phone width (web-sync.md §14.6)
-  // phone width only (owner 2026-11-06): the header has no room for New plan there – it is the first ☰ entry; wide it is a header button
-  { id: 'menuNewPlan', icon: 'add', label: t('plan_new_route') },
-  { id: 'menuPlans', icon: 'folder', label: t('routes_title') },
-  { id: 'menuImportGpx', icon: 'route', label: t('routes_import_gpx') }, // gpximport.ts (the app's My routes → Import GPX)
-  { id: 'menuAbout', icon: 'help', label: t('web_nav_help') },
-];
+const hb = (id: string, ic: IconName, label: string, cls = '', extra = '') =>
+  `<button id="${id}" class="pb ${cls}" role="menuitem" title="${escapeHtml(label)}" ${extra}>${icon(ic, 20)}<span class="lbl">${escapeHtml(label)}</span></button>`;
+const more = (id: string, menu: string, label: string) =>
+  `<button id="${id}" class="pb splitmore wonly" aria-haspopup="menu" aria-expanded="false" aria-controls="${menu}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${icon('dropDown', 20)}</button>`;
 /** The website's pages for this language (web/strings: the app, privacy, legal notice) – calm links, new tab. */
 const siteLink = (key: string, label: string, cls = '') =>
   `<a class="${cls}" href="${t(key)}" target="_blank" rel="noopener">${escapeHtml(label)}</a>`;
-const navItem = (id: string) => NAV.find((n) => n.id === id)!;
 
 document.title = t('web_page_title');
 // No WebGL2 (old browser, hardware acceleration off, some headless browsers): maplibre cannot draw and the page would
@@ -131,19 +126,32 @@ if (!hasWasmGc()) {
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <header id="header">
     <a class="brand" href="${t('web_url_app')}" target="_blank" rel="noopener" title="${escapeHtml(t('web_brand_title'))}">${logo(30)}<span class="wordmark">OnPath <span class="product">${escapeHtml(t('web_product'))}</span></span></a>
-    <button id="menuBtn" class="iconbtn" aria-label="${escapeHtml(t('plan_menu'))}" aria-haspopup="menu" aria-expanded="false">${icon('menu')}</button>
-    <nav id="mainMenu" class="nav" aria-label="${escapeHtml(t('web_product'))}">
-      ${NAV.map((n) => `<button id="${n.id}" role="menuitem" title="${escapeHtml(n.label)}">${icon(n.icon, 20)}<span>${escapeHtml(n.label)}</span></button>`).join('')}
-      <a class="navlink" href="${t('web_url_try')}" target="_blank" rel="noopener" title="${escapeHtml(t('web_link_app'))}">${icon('download', 20)}<span>${escapeHtml(t('web_link_app'))}</span></a>
+    <button id="menuBtn" class="pb planmenubtn" aria-haspopup="menu" aria-expanded="false" aria-controls="mainMenu">${icon('route', 20)}<span class="lbl">${escapeHtml(t('web_plan_menu'))}</span>${icon('dropDown', 20)}</button>
+    <nav id="mainMenu" class="planbar" aria-label="${escapeHtml(t('web_plan_menu'))}">
+      ${hb('newPlan', 'add', t('web_plan_new'), '', 'disabled')}
+      ${hb('menuPlans', 'folder', t('web_plan_open'))}
+      ${hb('menuImportGpx', 'fileOpen', t('routes_import_gpx'), 'ponly')}
+      <span class="split">${hb('menuSavePlan', 'save', t('common_save'), 'savebtn', 'data-state="empty" disabled')}${more('saveMore', 'saveMenu', t('web_save_more'))}</span>
+      ${hb('menuSaveAs', 'edit', t('web_save_as'), 'ponly', 'disabled')}
+      ${hb('menuExportGpx', 'download', t('common_export_gpx'), 'ponly', 'disabled')}
+      <span class="split">${hb('syncBadge', 'phone', t('web_to_phone'), 'phonebtn', 'aria-haspopup="dialog"').replace('<span class="lbl">' + escapeHtml(t('web_to_phone')) + '</span>',
+        `<span class="lines"><span class="l1"><span class="lbl">${escapeHtml(t('web_to_phone'))}</span><i class="syncdot" aria-hidden="true" hidden></i></span><span class="sub" hidden></span></span>`)}${more('phoneMore', 'phoneMenu', t('web_phone_title'))}</span>
+      ${hb('menuPhone', 'sync', t('web_phone_menu'), 'ponly')}
+      <span class="sep ponly" aria-hidden="true"></span>
+      ${hb('menuAboutP', 'help', t('web_nav_help'), 'ponly')}
+      <a class="pb navlink ponly" role="menuitem" href="${t('web_url_try')}" target="_blank" rel="noopener">${icon('download', 20)}<span class="lbl">${escapeHtml(t('web_link_app'))}</span></a>
     </nav>
+    <div id="saveMenu" class="menu headmenu" role="menu" hidden>
+      <button id="saveAsItem" role="menuitem">${icon('edit', 20)}<span>${escapeHtml(t('web_save_as'))}</span></button>
+      <button id="exportGpxItem" role="menuitem">${icon('download', 20)}<span>${escapeHtml(t('common_export_gpx'))}</span></button>
+    </div>
     <span class="hint muted">${escapeHtml(t('web_header_hint'))}</span>
-    <span id="headActs" class="headacts">
-      <button id="newPlan" class="hbtn newbtn" title="${escapeHtml(t('plan_new_route'))}" aria-label="${escapeHtml(t('plan_new_route'))}" disabled>${icon('add', 20)}<span class="lbl">${escapeHtml(t('plan_new_route'))}</span></button>
-      <button id="menuSavePlan" class="hbtn savebtn" data-state="empty" disabled>${icon('save', 20)}<span class="lbl">${escapeHtml(t('common_save'))}</span></button>
-      <button id="syncBadge" class="hbtn phonebtn" aria-haspopup="dialog" title="${escapeHtml(t('web_pair_phone'))}">${icon('phone', 20)}<span class="lines"><span class="l1"><span class="lbl">${escapeHtml(t('web_pair_phone'))}</span><i class="syncdot" aria-hidden="true" hidden></i></span><span class="sub" hidden></span></span></button>
+    <span id="headRight" class="headright">
+      <button id="menuAbout" class="pb quietbtn" title="${escapeHtml(t('web_nav_help'))}">${icon('help', 20)}<span class="lbl">${escapeHtml(t('web_nav_help'))}</span></button>
+      <a class="pb quietbtn navlink" href="${t('web_url_try')}" target="_blank" rel="noopener" title="${escapeHtml(t('web_link_app'))}" aria-label="${escapeHtml(t('web_link_app'))}">${icon('download', 20)}</a>
+      <span id="langSwitch" class="langswitch" role="group" aria-label="${escapeHtml(t('web_lang_switch'))}">${languages.map((l) =>
+        `<button data-lang="${l}" lang="${l}" aria-pressed="${l === lang}" title="${escapeHtml(t('web_lang_name_' + l))}">${l.toUpperCase()}</button>`).join('')}</span>
     </span>
-    <span id="langSwitch" class="langswitch" role="group" aria-label="${escapeHtml(t('web_lang_switch'))}">${languages.map((l) =>
-      `<button data-lang="${l}" lang="${l}" aria-pressed="${l === lang}" title="${escapeHtml(t('web_lang_name_' + l))}">${l.toUpperCase()}</button>`).join('')}</span>
   </header>
   <div id="stage">
   <div id="map"></div>
@@ -569,7 +577,10 @@ async function drawPoints() {
   $<HTMLButtonElement>('reverse').disabled = n < 2 || !(r.canReverse ?? true);
   $('pointsSection').hidden = n === 0;
   $('planActions').hidden = n === 0; // the app's RouteRules.canClear: something to close
-  for (const id of ['newPlan', 'menuNewPlan']) $<HTMLButtonElement>(id).disabled = n === 0; // New plan: the same rule as ✕ Neu planen
+  $<HTMLButtonElement>('newPlan').disabled = n === 0; // New plan: the same rule as ✕ Neu planen
+  // Speichern ▾ → Save as / Export GPX: need a route (two points; GPX the planned line)
+  for (const id of ['menuSaveAs', 'saveAsItem']) $<HTMLButtonElement>(id).disabled = n < 2;
+  for (const id of ['menuExportGpx', 'exportGpxItem']) $<HTMLButtonElement>(id).disabled = n < 2 || !state.plan;
 }
 
 // Points list: click = show on the map, ✕ = delete, drag ≡ = new order (PlanEdits.move; sortable.ts)
@@ -1253,10 +1264,10 @@ const km = (m: number, _total: number) => (m >= 1000 ? `${number(m / 1000, 1)} k
 /** The shown route: empty (fewer than two points), save (new, or changed since it was saved), saved (and unchanged). */
 let saveState: 'empty' | 'save' | 'saved' = 'empty';
 /**
- * The header's Save (web-sync.md §14.6): not paired 💾 "Save" (in this browser), paired 📱 "Save to phone". Dark (the
- * app green) while anything is to save – the shown route new or changed, or (paired) the folder's unsent changes:
- * renames, deletes, GPX imports, the routes waiting for the phone; light with ✓ "Saved" / "On the phone" when all is
- * saved; greyed when there is nothing at all; amber when the mailbox is full (507, nothing lost). No hint beside it.
+ * Speichern in the plan bar (web-sync.md §14.6; owner 2026-11-06, A: always "Speichern" – paired it also sends, "Aufs
+ * Handy" beside it says where): dark (the app green) while anything is to save – the shown route new or changed, or
+ * (paired) the folder's unsent changes: renames, deletes, GPX imports, the routes waiting for the phone; light with ✓
+ * "Gespeichert" when all is saved; greyed when there is nothing at all; amber when the mailbox is full (507, nothing lost).
  */
 function saveEntry(st: 'empty' | 'save' | 'saved') {
   saveState = st;
@@ -1264,7 +1275,7 @@ function saveEntry(st: 'empty' | 'save' | 'saved') {
   const s = syncRef?.status;
   const paired = !!s?.paired, waiting = paired && s!.pending > 0;
   const shown = paired && s!.full ? 'full' : st === 'save' || waiting ? 'dark' : st === 'saved' ? 'done' : 'empty';
-  const label = shown === 'done' ? t(paired ? 'web_saved_on_phone' : 'web_saved_short') : paired ? t('web_save_to_phone') : t('common_save');
+  const label = shown === 'done' ? t('web_saved_short') : t('common_save');
   const tip = shown === 'full' ? s!.message : shown === 'dark' ? (paired ? t('web_save_title_phone', s!.phone ?? '') : t('web_save_title_local'))
     : shown === 'done' ? (paired ? t('web_saved_title_phone', s!.phone ?? '') : t('web_saved_title_here')) : t('web_share_needs_two');
   b.disabled = shown === 'empty';
@@ -1272,7 +1283,7 @@ function saveEntry(st: 'empty' | 'save' | 'saved') {
   b.classList.toggle('unsaved', shown === 'dark');
   b.title = tip;
   b.setAttribute('aria-label', label + ' – ' + tip);
-  b.innerHTML = `${icon(shown === 'done' ? 'check' : paired ? 'phone' : 'save', 20)}<span class="lbl">${escapeHtml(label)}</span>`;
+  b.innerHTML = `${icon(shown === 'done' ? 'check' : 'save', 20)}<span class="lbl">${escapeHtml(label)}</span>`;
 }
 // "Speichern" in "Plan speichern?" (✕ Neu planen with unsaved changes): the header's Save; true once the plan is saved
 setDiscardSave(async () => {
@@ -1496,28 +1507,59 @@ async function addPlace(h: Hit, role: PlaceRole, fit = false) {
 // ---- menus, sheet, dialogs ----
 function closeMenus() {
   $('mainMenu').classList.remove('open'); $('menuBtn').setAttribute('aria-expanded', 'false');
+  $('saveMenu').hidden = true; $('saveMore').setAttribute('aria-expanded', 'false');
 }
-// ☰ (phone width): the header's entries as a drop-down
+// Plan ▾ (phone width): the plan bar as a drop-down
 $('menuBtn').onclick = (e) => {
   e.stopPropagation();
   const open = !$('mainMenu').classList.contains('open');
   closeMenus(); picker.close();
   $('mainMenu').classList.toggle('open', open); $('menuBtn').setAttribute('aria-expanded', String(open));
 };
-$('mainMenu').addEventListener('click', (e) => {
-  const b = (e.target as HTMLElement).closest('button');
-  if (!b) return;
-  e.stopPropagation(); closeMenus();
-  NAV.find((n) => n.id === b.id)?.act?.();
+// Speichern ▾ (wide): Save as · Export GPX under the Save button
+$('saveMore').onclick = (e) => {
+  e.stopPropagation();
+  const open = $('saveMenu').hidden;
+  closeMenus(); picker.close();
+  if (!open) return;
+  const r = $('saveMore').parentElement!.getBoundingClientRect(), m = $('saveMenu');
+  m.hidden = false;
+  m.style.left = Math.max(8, Math.min(r.left, innerWidth - m.offsetWidth - 8)) + 'px';
+  m.style.top = r.bottom + 6 + 'px';
+  $('saveMore').setAttribute('aria-expanded', 'true');
+  m.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
+};
+/** What each entry of the plan bar / its menus does (one table: the wide bar, the phone drop-down, Speichern ▾). */
+const ACTS: Record<string, () => void> = {
+  newPlan: () => { newPlan(); },
+  menuPlans: () => myPlansDialog(sync, plansHost),
+  menuImportGpx: () => gpxImport.pick(),
+  menuSavePlan: () => { headerSave(); },
+  menuSaveAs: () => { saveAs(); }, saveAsItem: () => { saveAs(); },
+  menuExportGpx: () => { exportGpx(); }, exportGpxItem: () => { exportGpx(); },
+  syncBadge: () => { toPhone(); },
+  phoneMore: () => { phoneWindow(); }, menuPhone: () => { phoneWindow(); },
+  menuAbout: () => credits(), menuAboutP: () => credits(),
+};
+for (const box of ['mainMenu', 'saveMenu', 'headRight']) {
+  $(box).addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest('button');
+    if (!b || b.id === 'saveMore' || !(b.id in ACTS)) return;
+    e.stopPropagation(); closeMenus();
+    ACTS[b.id]();
+  });
+}
+document.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.menu, .planbar')) closeMenus(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (!$('saveMenu').hidden) { closeMenus(); $('saveMore').focus(); } else if ($('mainMenu').classList.contains('open')) { closeMenus(); $('menuBtn').focus(); }
 });
-document.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.menu, .nav')) closeMenus(); });
 
 $('reverse').onclick = () => applyEdit('reverse');
 $('roundTrip').onclick = () => applyEdit('roundTrip');
 /** ✕ Neu planen in the plan row and the header's New plan (owner 2026-11-06): unsaved changes ask first, then empty. */
 async function newPlan() { if (saveState === 'save' && !(await askDiscard())) return; clearRoute(); placeCard.removePin(); }
 $('clear').onclick = newPlan;
-$('newPlan').onclick = newPlan;
 function forgetSaved() { state.savedId = null; state.savedTitle = null; state.savedCode = null; state.savedFolder = null; state.storedCode = null; }
 const plansHost = {
   current: async () => (state.points.length >= 2 && (await ready) ? { code: await engine.encode(sharedPlan()), title: state.title } : null),
@@ -1553,6 +1595,7 @@ const plansHost = {
     render(); // the sheet says "Saved as …" – no message (the app's saveRoute)
   },
   suggestName,
+  importGpx: () => gpxImport.pick(),
   share: async (p: SavedPlan) => {
     // the stored code carries the name it was saved with; a later rename is the name now
     const shared = await engine.parse('p=' + p.plan);
@@ -1603,12 +1646,9 @@ async function suggestName(): Promise<string> {
     return '';
   }
 }
-navItem('menuPlans').act = () => myPlansDialog(sync, plansHost);
-navItem('menuNewPlan').act = () => { newPlan(); };
-/** The header's Phone button (§14.6): outlined "Pair phone"; paired a pill with the phone's name, its dot (green, or
- *  amber when the phone was away for a day – phoneState) and a small second line "synced 2 min. ago" / "last 3 days
- *  ago" (the tooltip says it all where the line has no room). A click opens the Phone window. Follows sync.onChange
- *  live, and the "… ago" moves on every 30 s. */
+/** "📱 Aufs Handy" in the plan bar (owner 2026-11-06, A; was the Phone button of §14.6): always that label; paired its
+ *  dot (green, or amber when the phone was away for a day – phoneState) and a small second line "Pixel 8 · synced 2 min.
+ *  ago" (the tooltip says it all where the line has no room). Follows sync.onChange live; the "… ago" moves every 30 s. */
 function syncBadge() {
   const b = $('syncBadge'), s = sync.status, pill = phonePill(s);
   const dot = b.querySelector<HTMLElement>('.syncdot')!;
@@ -1616,22 +1656,34 @@ function syncBadge() {
   dot.dataset.kind = pill.kind;
   b.classList.toggle('paired', s.paired);
   b.dataset.kind = pill.kind;
-  b.querySelector('.lbl')!.textContent = pill.name;
   const sub = b.querySelector<HTMLElement>('.sub')!;
-  sub.textContent = pill.sub;
-  sub.hidden = !pill.sub;
-  b.title = s.paired ? [pill.name, pill.sub, s.message].filter(Boolean).join(' · ') : t('web_pair_phone') + ' – ' + t('web_phone_why');
-  b.setAttribute('aria-label', b.title);
+  sub.textContent = s.paired ? [pill.name, pill.sub].filter(Boolean).join(' · ') : '';
+  sub.hidden = !s.paired;
+  b.title = s.paired ? [t('web_to_phone_title', pill.name), pill.sub, s.message].filter(Boolean).join(' · ') : t('web_to_phone_pair') + ' – ' + t('web_phone_why');
+  b.setAttribute('aria-label', t('web_to_phone') + ' – ' + b.title);
 }
 window.setInterval(() => syncBadge(), 30_000);
-$('syncBadge').onclick = async () => {
-  closeMenus();
+/**
+ * Aufs Handy: not paired → the pairing window (QR code); once paired and closed, the open plan goes to the phone (Save
+ * – its name dialog for a new plan – then everything waiting is sent). Paired → the same as Save (save + send).
+ */
+async function toPhone() {
   if (!(await syncReady)) return; // the engine did not start – the status line says so
+  if (sync.status.paired) { await headerSave(); return; }
+  pairDialog(sync, location.href, () => { if (sync.status.paired) headerSave(); });
+}
+/** Aufs Handy ▾ / the drop-down's Phone entry: the Phone window (state, Sync now, pair another, Unpair). */
+async function phoneWindow() {
+  if (!(await syncReady)) return;
   phoneDialog(sync, location.href);
-};
-// Save: the header's button (§14.6, sends to the phone when paired) opens Save's name dialog (plans.ts saveRoute); a copy
-// is My routes → ⋮ → Save as copy (the app since 2026-10-31)
-$('menuSavePlan').onclick = () => { closeMenus(); headerSave(); };
+}
+/** Speichern ▾ → Speichern unter: the shown route as a NEW saved plan under a name (the open one stays as it was). */
+async function saveAs() {
+  if (!(await syncReady) || state.points.length < 2) return;
+  await draftsRestored;
+  try { await saveRouteAs(sync, plansHost, () => { if (sync.status.paired) sync.sendAll(); }); }
+  catch (e) { problem('sync', 'route not saved as', e, 'error'); status(t('web_save_failed'), 'error'); }
+}
 const share = async () => {
   closeMenus();
   if (state.points.length < 2) { status(t('plan_err_set_start_dest')); return; }
@@ -1639,7 +1691,6 @@ const share = async () => {
   shareDialog(location.href.split('#')[0] + '#p=' + await engine.encode(sharedPlan()), state.title, appHint, state.plan ? exportGpx : undefined);
 };
 $('share').onclick = share;
-navItem('menuAbout').act = () => credits();
 // Map content (toolbar): the app's POI and map settings in one large panel, applied live (mapcontent.ts)
 const mapContent = new MapContentPanel(map, engine, (t) => status(t, 'error'));
 function applyMapContent() { mapContent.apply(); }
@@ -1663,7 +1714,6 @@ const gpxImport = setupGpxImport({
     }).catch((e) => problem('sync', 'imported track not kept', e));
   },
 });
-navItem('menuImportGpx').act = () => gpxImport.pick();
 (window as unknown as { __gpx: typeof gpxImport }).__gpx = gpxImport; // for the browser tests
 $('credits').onclick = () => credits();
 $('changedLine').onclick = () => { changedSeen = state.plan; $('changedLine').hidden = true; fitRoute(); }; // the app's tapRouteChangedLine

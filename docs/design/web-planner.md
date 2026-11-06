@@ -911,7 +911,7 @@ genug Platz" and "Wie plane ich eine neue Tour? Fehlt da ein Button?".
   here (key = a hash of its plan code, so a copy or the phone's same version has them too; only a real route: no straight
   pieces, no gaps, routing data there), a GPX track imported or opened (key = its id). The list never routes anything:
   a route this browser has not routed yet shows its name only, until it is opened once.
-- **New plan** (`plan_new_route`, "+ Neuer Plan"): an outlined header button before Save, greyed on an empty map, the same
+- **New plan** (now the plan bar's "+ Neu", §21): an outlined header button before Save, greyed on an empty map, the same
   as the plan row's ✕ Neu planen (`newPlan()` in main.ts – unsaved changes ask first). Label from 1361 px, icon only
   below; at phone width the header has no room, so it is ☰'s first entry (`menuNewPlan`). To make room the header hint
   shows from 1761 px only, "Android-App testen" keeps its label from 1501 px, the nav labels from 1261 px, Save's from
@@ -919,3 +919,30 @@ genug Platz" and "Wie plane ich eine neue Tour? Fehlt da ein Button?".
 - Tests: parity-smoke (row numbers = the sheet's distance, right of the name; New plan active / asks / greyed; phone:
   ☰ starts with New plan), import-smoke (an imported track keeps its numbers), sheet-smoke (header entries shown),
   ui-shots (`*-myroutes.png` with numbers).
+
+## 21. The plan bar – everything done with the open plan in one place (laptop, 2026-11-06, owner A)
+
+Owner 2026-11-06: "alles, was ich mit einer Tour mache – speichern, neu, abbrechen, aufs Handy schicken – gehört
+zusammen"; chosen layout A. The header is now: brand · **plan bar** · (hint ≥ 1501 px) · Help · the app (icon) · language.
+
+- **Plan bar** (`#mainMenu.planbar`, one `ACTS` table in main.ts): `+ Neu` (`#newPlan`, greyed on an empty map, asks
+  like ✕) · `📂 Öffnen` (`#menuPlans` = My routes) · `💾 Speichern ▾` (`#menuSavePlan`, always "Speichern" – ✓
+  "Gespeichert" when all is saved, dark / amber as web-sync.md §14.6; paired it also sends; ▾ `#saveMore` → **Speichern
+  unter …** (`saveRouteAs`: a NEW saved plan under a name – "<open name> (2)" or the proposal –, open from then on) ·
+  **GPX exportieren** of the shown plan) · `📱 Aufs Handy ▾` (`#syncBadge`: not paired → the pairing window directly, and
+  once paired and closed the plan follows (`pairDialog(…, then)` → Save); paired → Save + send, the dot and "Pixel 8 ·
+  synced 2 min. ago" below; ▾ `#phoneMore` → the Phone window: state, Sync now, pair another, Unpair).
+- **Öffnen** = My routes with the app's **search** (`routes_search_hint`, ✕ `search_clear_query`, none → `routes_search_none`;
+  `searchPlans` = `RoutesTab.search`: every word in the name, case and accents ignored, ß = ss; the field shows once
+  there is anything to search) and **GPX importieren** at its bottom left.
+- **Narrow:** labels of New / Open go below 1001 px, Help's word and the phone line below 1181 px, the To phone label below
+  861 px; **phone width (≤ 700 px)** the bar is one **Plan ▾** button, its drop-down lists New · Open · Import GPX · Save
+  (a dot while unsaved) · Save as · Export GPX · To phone · Phone · Help · the app; "Planner" in the brand goes below 401 px.
+  No header overflow from 320 to 1920 px (sheet-smoke measures 320, 390, 720, 860, 1000, 1180, 1440).
+- The plan sheet keeps ✕ Neu planen · ⇅ Umkehren · ↻ Rundtour and Teilen (the app's sheet).
+- Plans without a phone live only in this browser's storage (IndexedDB / localStorage, no cookie) – a private window or
+  cleared site data loses them; pairing moves them to the phone (web-sync.md §14.6 rule 2).
+- Tests: sync-smoke 16 (the owner's two scenarios: first visit → Save → reload → Open lists it → To phone pairs and the
+  plan arrives; second visit → Open → search → open → change → Save sends; Save ▾ → Save as), sheet-smoke (bar order,
+  labels, widths, Plan ▾), parity-smoke (Plan ▾ entries), import-smoke (Open → Import GPX), lang-smoke (German bar),
+  ui-shots (`*-myroutes-search.png`, `desktop-savemenu.png`, `phone-menu.png`).

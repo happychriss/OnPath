@@ -27,16 +27,6 @@ html, body { margin: 0; height: 100%; font: 14px/1.4 Manrope, system-ui, -apple-
 /* "OnPath Planner" as one product name (owner 2026-10-30): same font and size, "Planner" in the green, a little lighter */
 .wordmark { white-space: nowrap; }
 .product { font-weight: 600; color: var(--green-fg); }
-.nav { display: flex; gap: 2px; margin-left: 8px; }
-.nav button { border: none; background: none; display: inline-flex; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 6px;
-  font-size: 15px; color: var(--site-fg); }
-.nav button .ic { color: var(--green-fg); }
-.nav button:hover { background: var(--site-soft); }
-.nav button:disabled { opacity: .45; cursor: default; background: none; }
-#header .hint { margin-left: auto; font-size: 13px; white-space: nowrap; }
-#menuBtn { display: none; color: var(--site-fg); }
-@media (max-width: 1020px) { #header .hint { display: none; } }
-@media (max-width: 860px) and (min-width: 701px) { .nav button span { display: none; } }
 .muted { color: var(--muted); } .small { font-size: 12px; }
 button { font: inherit; color: inherit; cursor: pointer; }
 button:disabled { opacity: .45; cursor: default; }
@@ -287,12 +277,6 @@ dialog.mapcontent::backdrop { background: rgba(0,0,0,.25); }
 @media (max-width: 700px) {
   #header { height: 48px; padding: 0 4px 0 12px; gap: 10px; }
   .brand { font-size: 19px; } .brand .logo { width: 26px; height: 26px; }
-  #menuBtn { display: grid; margin-left: auto; }
-  .nav { display: none; }
-  #newPlan { display: none; } /* New plan is ☰'s first entry here (main.ts NAV) */
-  .nav.open { display: flex; position: absolute; top: 48px; right: 8px; margin: 0; flex-direction: column; min-width: 230px; padding: 6px 0;
-    background: var(--bg); border-radius: 8px; box-shadow: 0 6px 20px var(--shadow); }
-  .nav.open button { padding: 12px 18px; gap: 16px; border-radius: 0; }
   /* the bar keeps one unit: search full width, the tools as a row directly below it (all visible) */
   .topbar { right: 12px; width: auto; height: auto; flex-direction: column; align-items: stretch; border-radius: 22px; }
   .barsep { width: auto; height: 1px; margin: 0 14px; }
@@ -368,29 +352,16 @@ dialog.pair .check b { letter-spacing: .08em; }
 @media (max-width: 700px) { .mapnotes { top: 122px; left: 12px; right: 12px; width: auto; max-width: none; } }
 
 /* ---- website links, language switch, the one line about the app (A-011; web-planner.md §18) ---- */
-.nav a.navlink { display: inline-flex; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 6px; font-size: 15px; color: var(--site-fg); text-decoration: none; }
-.nav a.navlink .ic { color: var(--green-fg); }
-/* "Try the Android app" / "Android-App testen" is the longest entry: icon only first (title = the text) */
-@media (max-width: 1500px) and (min-width: 701px) { .nav a.navlink span { display: none; } } /* room for New plan */
-.nav a.navlink:hover { background: var(--site-soft); }
 .langswitch { display: inline-flex; flex: none; margin-left: 12px; border: 1px solid var(--site-line); border-radius: 6px; overflow: hidden; }
 .langswitch button { border: none; background: none; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; padding: 5px 8px; }
 .langswitch button[aria-pressed="true"] { background: var(--site-soft); color: var(--site-fg); }
 .langswitch button:hover { color: var(--site-fg); }
-/* German labels are longer: one line each; the hint goes first, then the labels (icons stay, with their title) */
-.nav button, .nav a.navlink { white-space: nowrap; }
-@media (max-width: 1760px) { #header .hint { display: none; } } /* New plan (2026-11-06) needs the room */
-@media (max-width: 1260px) and (min-width: 701px) { .nav button span { display: none; } }
 .sitelinks { display: inline-flex; gap: 6px; align-items: center; background: rgba(255,255,255,.7); color: #333; font-size: 12px; padding: 2px 6px; border-radius: 4px; }
 .sitelinks a { color: #333; text-decoration: none; } .sitelinks a:hover { text-decoration: underline; }
 .apphint { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 6px 8px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 13px; }
 .apphint .txt { flex: 1; color: var(--muted); }
 .apphint a.outline { flex: none; border: 1px solid var(--muted); color: var(--green-fg); border-radius: 18px; padding: 5px 12px; font-weight: 600; text-decoration: none; white-space: nowrap; }
 .apphint .x { flex: none; width: 32px; height: 32px; font-size: 18px; color: var(--muted); }
-@media (max-width: 700px) {
-  .headacts { order: 1; } .langswitch { order: 2; margin-left: 2px; } #menuBtn { order: 3; margin-left: 0; }
-  .nav.open a.navlink { padding: 12px 18px; border-radius: 0; }
-}
 
 /* ---- My routes → "Pair with phone" (pairing lives here, owner 2026-10-30); Share → "Scan with the OnPath app" ---- */
 dialog.plans > .row.end, dialog.phone > .row.end { margin-top: 16px; } /* Close, alone at the bottom right */
@@ -411,44 +382,72 @@ dialog.phone ul.how li { margin: 2px 0; }
 dialog.phone .privacy { margin: 8px 0 0; }
 dialog.phone .privacy a { color: var(--green-fg); }
 dialog.share .scanline { margin: 0 0 8px; font-weight: 600; }
-/* ---- the header's right: Save and the Phone button, two real buttons side by side (web-sync.md §14.6) ---- */
-.headacts { flex: none; display: flex; gap: 8px; align-items: center; margin-left: auto; }
-@media (min-width: 1561px) { .headacts { margin-left: 12px; } } /* the hint takes the free room */
-.hbtn { position: relative; height: 36px; box-sizing: border-box; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px 0 11px;
-  border-radius: 18px; border: 1.5px solid var(--green); background: var(--site-bg); color: var(--green-fg); font-weight: 600; font-size: 14px; white-space: nowrap; }
-.hbtn:hover:not(:disabled) { background: var(--green-light); }
-/* Save: dark while anything is to save, light with ✓ when all is saved, greyed with nothing at all, amber when full */
-.savebtn.unsaved { background: var(--green); border-color: var(--green); color: #fff; }
-.savebtn.unsaved:hover:not(:disabled) { background: var(--green); filter: brightness(1.15); }
+/* ---- the plan bar (owner 2026-11-06, A): + Neu · Öffnen · Speichern ▾ · Aufs Handy ▾ – one group left, Help + language right.
+   Phone width: one "Plan ▾" drop-down with the same entries as rows. .wonly = wide bar only, .ponly = drop-down only. ---- */
+.planbar { display: flex; gap: 6px; align-items: center; margin-left: 4px; min-width: 0; }
+.pb { position: relative; height: 36px; box-sizing: border-box; display: inline-flex; align-items: center; gap: 7px; padding: 0 13px 0 10px;
+  border-radius: 18px; border: 1.5px solid var(--green); background: var(--site-bg); color: var(--green-fg); font-weight: 600; font-size: 14px;
+  white-space: nowrap; text-decoration: none; flex: none; }
+.pb:hover:not(:disabled) { background: var(--green-light); }
+.pb:disabled { border-color: var(--site-line); color: var(--muted); opacity: .6; cursor: default; }
+.planbar .ponly, .planbar .sep { display: none; }
+#menuBtn { display: none; }
+/* a split button: the action and its ▾ share one outline */
+.split { display: inline-flex; flex: none; }
+.split > .pb:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; padding-right: 10px; }
+.split > .splitmore { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left-width: 0; padding: 0 6px 0 4px; }
+.split > .splitmore::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 1px; background: currentColor; opacity: .35; }
+/* Speichern: dark while anything is to save, light with ✓ when all is saved, greyed with nothing at all, amber when full */
+.savebtn.unsaved, .savebtn.unsaved + .splitmore { background: var(--green); border-color: var(--green); color: #fff; }
+.savebtn.unsaved:hover:not(:disabled), .savebtn.unsaved + .splitmore:hover { background: var(--green); filter: brightness(1.15); }
 .savebtn[data-state="done"] { border-color: var(--site-line); color: var(--site-fg); font-weight: 500; }
 .savebtn[data-state="done"] .ic { color: var(--green-fg); }
-.savebtn:disabled { border-color: var(--site-line); color: var(--muted); opacity: .6; cursor: default; }
-@media (min-width: 701px) { #menuNewPlan { display: none; } }
-/* New plan (owner 2026-11-06): outlined beside Save, greyed with nothing on the map; icon only where the header is tight */
-.newbtn:disabled { border-color: var(--site-line); color: var(--muted); opacity: .6; cursor: default; }
-@media (max-width: 1360px) and (min-width: 701px) { .newbtn .lbl { display: none; } .newbtn { padding: 0 9px; } }
-@media (max-width: 760px) and (min-width: 701px) { .phonebtn .lines { display: none; } .phonebtn { padding: 0 9px; }
-  #header { gap: 10px; } .nav button, .nav a.navlink { padding: 8px; } }
-.savebtn[data-state="full"] { background: var(--warn-bg); border-color: var(--warn); color: var(--warn); }
-/* Phone: outlined "Pair phone"; paired a pill with the name, the dot and "synced 2 min. ago" below */
-.phonebtn.paired { border-color: var(--site-line); color: var(--site-fg); padding-right: 12px; }
-.phonebtn.paired > .ic { color: var(--site-fg); }
+.savebtn:disabled + .splitmore, .savebtn[data-state="done"] + .splitmore { border-color: var(--site-line); }
+.savebtn[data-state="full"], .savebtn[data-state="full"] + .splitmore { background: var(--warn-bg); border-color: var(--warn); color: var(--warn); }
+/* Aufs Handy: outlined; paired its dot and "Pixel 8 · synced 2 min. ago" below */
 .phonebtn .lines { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
 .phonebtn .l1 { display: inline-flex; align-items: center; gap: 6px; }
-.phonebtn .sub { font-size: 11px; font-weight: 500; color: var(--muted); }
+.phonebtn .sub { font-size: 11px; font-weight: 500; color: var(--muted); max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
 .phonebtn .sub[hidden] { display: none; }
 .syncdot { width: 9px; height: 9px; border-radius: 50%; background: var(--good); flex: none; }
 .syncdot[hidden] { display: none; }
 .syncdot[data-kind="stale"] { background: var(--weak); } /* paired, the phone has not synced for a day */
-@media (max-width: 900px) and (min-width: 701px) { .phonebtn .sub { display: none; } }
-@media (max-width: 960px) and (min-width: 701px) { .savebtn .lbl { display: none; } .savebtn { padding: 0 9px; } }
+/* Speichern ▾ menu (fixed under the split button) */
+.headmenu { position: fixed; z-index: 30; min-width: 220px; }
+/* right: Help, the app link (icon), the language */
+#header .hint { margin-left: auto; font-size: 13px; white-space: nowrap; }
+.headright { display: flex; gap: 6px; align-items: center; flex: none; margin-left: auto; }
+@media (min-width: 1501px) { #header .hint + .headright { margin-left: 12px; } } /* the hint takes the free room */
+.quietbtn { border-color: transparent; color: var(--site-fg); font-weight: 500; }
+.quietbtn .ic { color: var(--green-fg); }
+.quietbtn:hover { background: var(--site-soft) !important; }
+a.quietbtn { padding: 0 8px; }
+.langswitch { margin-left: 4px; }
+/* the room gets tight: first the hint, then Help's word, then the bar's words (icons stay, the title has the text) */
+@media (max-width: 1500px) { #header .hint { display: none; } }
+@media (max-width: 1180px) and (min-width: 701px) { #menuAbout .lbl { display: none; } #menuAbout { padding: 0 8px; } .phonebtn .sub { display: none; } }
+@media (max-width: 1000px) and (min-width: 701px) { #newPlan .lbl, #menuPlans .lbl { display: none; } #newPlan, #menuPlans { padding: 0 9px; } }
+@media (max-width: 860px) and (min-width: 701px) { .phonebtn .lines { display: none; } .phonebtn { padding: 0 9px; } #header { gap: 10px; } }
 @media (max-width: 700px) {
-  .headacts { gap: 6px; }
-  .hbtn { width: 38px; padding: 0; justify-content: center; }
-  .hbtn .lbl, .phonebtn .lines { display: none; }
-  .phonebtn .lines:has(.syncdot:not([hidden])) { display: block; position: absolute; top: 3px; right: 3px; }
-  .phonebtn .lines:has(.syncdot:not([hidden])) .sub { display: none; }
-  .phonebtn .syncdot { border: 2px solid var(--site-bg); }
+  #menuBtn { display: inline-flex; margin-left: 4px; padding: 0 6px 0 10px; }
+  .planbar { display: none; }
+  .planbar.open { display: flex; position: absolute; top: 48px; left: 8px; margin: 0; flex-direction: column; align-items: stretch; gap: 0; min-width: 250px;
+    padding: 6px 0; background: var(--bg); border-radius: 8px; box-shadow: 0 6px 20px var(--shadow); z-index: 30; }
+  .planbar.open .ponly { display: flex; }
+  .planbar.open .wonly { display: none; }
+  .planbar.open .split { display: flex; }
+  .planbar.open .pb { height: auto; width: 100%; border: none; border-radius: 0; padding: 12px 18px; gap: 16px; background: none; color: var(--fg);
+    font-weight: 500; font-size: 15px; justify-content: flex-start; filter: none; }
+  .planbar.open .pb .ic { color: var(--green-fg); }
+  .planbar.open .pb:disabled { color: var(--muted); }
+  .planbar.open .pb:hover:not(:disabled) { background: var(--site-soft); }
+  .planbar.open .savebtn.unsaved .lbl::after { content: ''; display: inline-block; width: 8px; height: 8px; margin-left: 8px; border-radius: 50%; background: var(--green); vertical-align: middle; }
+  .planbar.open .savebtn[data-state="full"] { color: var(--warn); }
+  .planbar.open .pb[hidden] { display: none; }
+  .planbar.open .sep { display: block; height: 1px; margin: 6px 0; background: var(--line); }
+  .planbar.open .phonebtn .lines { display: flex; }
+  .headright { gap: 2px; }
+  #menuAbout, .headright a.navlink { display: none; }
 }
 /* the Save field under the button (§14.6 rule 5, "as in Word"): the name, selected, and one button – no dialog */
 .savepop { position: fixed; z-index: 20; width: 340px; max-width: calc(100vw - 16px); box-sizing: border-box; padding: 10px 12px 12px;
@@ -579,3 +578,17 @@ body.three-d .pin { cursor: default; }
   body.bigprofile-open #sheet { display: none; }
   .threednote { top: auto; bottom: calc(var(--sheet-h) + 12px); right: 12px; left: 12px; white-space: normal; text-align: center; }
 }
+/* the smallest phones: "OnPath" alone, so Plan ▾ and the language keep their room (no header overflow at 320 px) */
+@media (max-width: 400px) { .brand .product { display: none; } }
+/* Öffnen (My routes): the app's search box over the list, Import GPX bottom left, Close bottom right */
+dialog.plans .plansearch:not([hidden]) { display: flex; align-items: center; gap: 4px; margin: 0 0 8px; padding: 0 4px 0 12px; height: 44px;
+  border: 1px solid var(--line); border-radius: 22px; background: var(--bg); }
+dialog.plans .plansearch:focus-within { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+dialog.plans .plansearch .sic { display: inline-flex; color: var(--muted); }
+dialog.plans .plansearch input { flex: 1; min-width: 0; border: none; outline: none; background: none; font: inherit; font-size: 15px; padding: 0 4px; margin: 0; box-shadow: none; }
+dialog.plans .plansearch input::-webkit-search-cancel-button { display: none; }
+dialog.plans .plansearch .iconbtn { width: 36px; height: 36px; }
+dialog.plans .plansearch .iconbtn[hidden] { display: none; }
+.row.spread { justify-content: space-between; align-items: center; }
+dialog.plans > .row.spread { margin-top: 16px; }
+.headmenu { right: auto; }

@@ -297,8 +297,8 @@ if (await page.isEnabled('#undo')) { // a change → Save dark; Save overwrites;
 
 // 7. Go here from my position (browser location)
 // ✕ Close with unsaved changes asks first (the app's DiscardPlanDialog): Cancel keeps the plan, Discard closes it.
-// The header's New plan (owner 2026-11-06) does the same as ✕ – first it, then ✕
-check(await page.isEnabled('#newPlan') && (await page.textContent('#newPlan')).trim() === 'New plan', 'header: New plan, active with a plan on the map');
+// The plan bar's + New (owner 2026-11-06) does the same as ✕ – first it, then ✕
+check(await page.isEnabled('#newPlan') && (await page.textContent('#newPlan')).trim() === 'New', 'plan bar: + New, active with a plan on the map');
 await page.click('#newPlan');
 if (await page.locator('dialog.discard[open]').count()) {
   await page.click('#discardCancel');
@@ -308,7 +308,7 @@ if (await page.locator('dialog.discard[open]').count()) {
   await page.click('#discardOk');
 }
 await waitPins(0);
-check(await page.isDisabled('#newPlan'), 'header: New plan greyed on an empty map');
+check(await page.isDisabled('#newPlan'), 'plan bar: + New greyed on an empty map');
 await clickAt(11.1350, 46.6840);
 await page.waitForSelector('.pointmenu');
 await page.click('.pointmenu button:nth-of-type(2)'); // Go here
@@ -346,17 +346,17 @@ await page.waitForFunction(() => { const r = document.getElementById('sheet').ge
   null, { timeout: 5000 }).catch(() => {});
 const sheet = await page.locator('#sheet').boundingBox();
 check(sheet.y > 300 && sheet.y + sheet.height >= 855, `phone: the plan sheet sits at the bottom (top ${Math.round(sheet.y)}, bottom ${Math.round(sheet.y + sheet.height)})`);
-check(await page.isVisible('#menuBtn') && await page.isHidden('#menuPlans'), 'phone: header entries behind ☰');
-check(await page.isHidden('#newPlan') && await page.isVisible('#menuSavePlan'), 'phone: Save in the header, New plan not (no room – it is in ☰)');
+check(await page.isVisible('#menuBtn') && (await page.textContent('#menuBtn')).trim() === 'Plan' && await page.isHidden('#menuPlans') && await page.isHidden('#menuSavePlan'),
+  'phone: the plan bar is one "Plan ▾" button');
 const ptb = await page.locator('#toolbar').boundingBox(), psb = await page.locator('#searchbox').boundingBox(), pbar = await page.locator('#topbar').boundingBox();
 check(ptb.y >= psb.y + psb.height - 1 && ptb.y + ptb.height <= pbar.y + pbar.height + 1 && Math.abs(psb.width - pbar.width) < 2,
   'phone: search full width, the tools as a row below it in the same bar');
 check((await Promise.all(['#undo', '#redo', '#eye', '#compass', '#locate', '#mapContent'].map((s) => page.isVisible(s)))).every(Boolean),
   'phone: all tools visible (none behind a menu)');
 await page.click('#menuBtn');
-check(await page.isVisible('#menuPlans'), 'phone: ☰ shows the entries');
-check(await page.isVisible('#menuNewPlan') && (await page.textContent('#menuNewPlan')).trim() === 'New plan'
-  && await page.evaluate(() => document.querySelector('#mainMenu button:not([hidden])')?.id) === 'menuNewPlan', 'phone: ☰ starts with New plan');
+const pm = await page.$$eval('#mainMenu .pb', (bs) => bs.filter((b) => b.getClientRects().length > 0).map((b) => b.id || 'link'));
+check(JSON.stringify(pm) === JSON.stringify(['newPlan', 'menuPlans', 'menuImportGpx', 'menuSavePlan', 'menuSaveAs', 'menuExportGpx', 'syncBadge', 'menuPhone', 'menuAboutP', 'link']),
+  'phone: Plan ▾ lists New · Open · Import GPX · Save · Save as · Export GPX · To phone · Phone connection · Help · the app ' + JSON.stringify(pm));
 await page.keyboard.press('Escape');
 check(await page.isHidden('#points'), 'phone: Points folded away');
 await page.click('#handle');

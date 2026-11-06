@@ -190,9 +190,11 @@ check(await pins() === 0 && savedN >= 1 && !(await page.$('dialog[open]')), `Sav
 await page.evaluate(() => { localStorage.setItem('onpath.activity', 'BIKE_TOURING'); });
 await emptyPlan();
 await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
-if (await page.isVisible('#menuBtn')) await page.click('#menuBtn'); // phone width: ☰; wide: the header line
-check(await page.isVisible('#menuImportGpx') && (await page.textContent('#menuImportGpx')).includes('Import GPX'), 'header / ☰ has Import GPX');
-const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.click('#menuImportGpx')]);
+// the plan bar (owner 2026-11-06, A): wide Open → its Import GPX; phone width Plan ▾ → Import GPX
+let importBtn = '#menuImportGpx';
+if (await page.isVisible('#menuBtn')) await page.click('#menuBtn'); else { await page.click('#menuPlans'); importBtn = '#plansImportGpx'; }
+check(await page.isVisible(importBtn) && (await page.textContent(importBtn)).includes('Import GPX'), 'Open (wide) / Plan ▾ (phone) has Import GPX');
+const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.click(importBtn)]);
 await chooser.setFiles(fixture('komoot-hike.gpx'));
 await page.waitForSelector('#trackPanel', { timeout: 30_000 });
 const tp = await page.textContent('#trackPanel');

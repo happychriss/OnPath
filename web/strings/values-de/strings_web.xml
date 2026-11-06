@@ -244,4 +244,14 @@
     <string name="web_terrain_view_only">3D-Ansicht – nur zum Anschauen. Zum Planen 3D ausschalten.</string>
     <string name="web_terrain_turn_mouse">Drehen und kippen: rechte Maustaste gedrückt halten und ziehen (oder Shift + Pfeiltasten).</string>
     <string name="web_terrain_turn_touch">Drehen und kippen: mit zwei Fingern.</string>
+    <!-- die Plan-Leiste (Owner 2026-11-06, A) -->
+    <string name="web_plan_menu">Plan</string>
+    <string name="web_plan_new">Neu</string>
+    <string name="web_plan_open">Öffnen</string>
+    <string name="web_save_more">Weitere Arten zu speichern</string>
+    <string name="web_save_as">Speichern unter …</string>
+    <string name="web_to_phone">Aufs Handy</string>
+    <string name="web_to_phone_title">Speichern und an %1$s senden</string>
+    <string name="web_to_phone_pair">Handy verbinden, dann kommt der Plan darauf</string>
+    <string name="web_phone_menu">Handy-Verbindung …</string>
 </resources>

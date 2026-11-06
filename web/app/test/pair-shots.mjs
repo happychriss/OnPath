@@ -103,7 +103,7 @@ for (const [lang, locale] of [['de', 'de-DE'], ['en', 'en-GB']]) {
   await pp.screenshot({ path: path.join(out, `web-teilen-${lang}.png`) });
   await pp.click('#closeShare');
   // web-handy: the Phone window, not paired, "How does it work?" open
-  await pp.click('#syncBadge');
+  await pp.click('#phoneMore'); // To phone ▾: the Phone window
   await pp.waitForSelector('dialog.phone[open] #howToggle');
   await pp.click('#howToggle');
   await pp.waitForTimeout(400);
@@ -119,11 +119,11 @@ for (const [lang, locale] of [['de', 'de-DE'], ['en', 'en-GB']]) {
   // the page's own timer off – the pictures choose when it syncs (Save / Sync now still work)
   await page.evaluate(() => clearInterval(window.__sync.timer));
 
-  // W1: not paired – "Save" (dark, the route is new here) + "Pair phone"
+  // W1: not paired – the plan bar: "Save" (dark, the route is new here) + "To phone"
   await shot(1);
 
   // W2: Pair phone → the QR code and the check digits; the code (QR + link) blurred
-  await page.click('#syncBadge');
+  await page.click('#phoneMore');
   await page.waitForSelector('dialog.phone[open] #pairPhone');
   await page.click('#pairPhone');
   await page.waitForSelector('dialog.pair[open] #pairLink', { timeout: 30_000 });
@@ -137,13 +137,13 @@ for (const [lang, locale] of [['de', 'de-DE'], ['en', 'en-GB']]) {
   await page.waitForFunction(() => document.getElementById('pairBody')?.textContent?.includes('Pixel 8'), null, { timeout: 30_000 });
   await page.click('#closePair');
 
-  // W3: paired, the route not on the phone yet – "Save to phone" dark; the phone pill "synced 2 min ago"
+  // W3: paired, the route not on the phone yet – "Save" dark; "To phone" with "Pixel 8 · synced 2 min ago"
   const seen = () => page.evaluate(() => { const s = window.__sync; s.status.phoneSeen = Date.now() - 2 * 60_000; s.changed(); });
   await page.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'dark', null, { timeout: 30_000 });
   await seen();
   await shot(3);
 
-  // W4: the click – Save's name dialog, Save → "✓ On the phone"
+  // W4: the click – Save's name dialog, Save → "✓ Saved" (and sent)
   await page.click('#menuSavePlan');
   await page.waitForSelector('dialog.savename[open] #saveOk');
   await page.waitForTimeout(1500); // the place proposal "Vellau … → Leiteralm"
@@ -165,7 +165,7 @@ for (const [lang, locale] of [['de', 'de-DE'], ['en', 'en-GB']]) {
 
   // W6: the Phone window paired – the phone's name and dot, Sync now, red Unpair at the bottom
   await seen();
-  await page.click('#syncBadge');
+  await page.click('#phoneMore');
   await page.waitForSelector('dialog.phone[open] #unpair:not([hidden])');
   await shot(6);
   await ctx.close();

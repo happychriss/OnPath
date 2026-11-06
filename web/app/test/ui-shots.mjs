@@ -62,7 +62,7 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
   for (const st of ['none', 'fresh', 'stale']) {
     if (name === 'phone' && st !== 'stale') continue;
     await fake(st);
-    await page.click('#syncBadge');
+    if (name === 'phone') { await page.click('#menuBtn'); await page.click('#menuPhone'); } else await page.click('#phoneMore');
     await page.waitForSelector('dialog.phone[open]');
     await page.screenshot({ path: path.join(out, `${name}-phone-${st}.png`) });
     if (st === 'fresh') {
@@ -94,7 +94,16 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
   await page.screenshot({ path: path.join(out, `${name}-myroutes.png`) });
   await page.click('#planList li[data-id="b"] .more');
   await page.screenshot({ path: path.join(out, `${name}-myroutes-menu.png`) });
+  await page.fill('#planSearch', name === 'phone' ? 'ifinger' : 'Ifinger hutte'); // the app's search: every word, no accents
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(out, `${name}-myroutes-search.png`) });
   await page.click('#closePlans');
+  if (name === 'desktop') { // Speichern ▾: Save as · Export GPX
+    await page.click('#saveMore');
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: path.join(out, `${name}-savemenu.png`), clip: { x: 0, y: 0, width: 900, height: 200 } });
+    await page.keyboard.press('Escape');
+  }
   await page.evaluate(() => { delete window.__sync.list; });
   await fake('none');
   // the sheet's three steps (sheetstep.ts): the chevron goes one step more until Points, then back to small

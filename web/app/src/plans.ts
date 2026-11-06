@@ -33,6 +33,8 @@ export interface PlanHost {
   exportGpx(p: SavedPlan, folder: string): void;
   /** My routes → ⋮ → Share plan: [p]'s link and QR code (the sheet's Share dialog). */
   share(p: SavedPlan): void;
+  /** Öffnen → GPX importieren: the file picker (gpximport.ts). */
+  importGpx(): void;
 }
 
 let openDialog: HTMLDialogElement | null = null;
@@ -142,6 +144,15 @@ export function phonePill(s: SyncStatus, now = Date.now()): { kind: PhoneState['
   return { kind, name, sub };
 }
 
+/** Lower case without accents, ß → ss – the app's RoutesTab.fold ("koln" finds "Köln", "strasse" finds "Straße"). */
+export const foldName = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Mn}+/gu, '').replace(/ß/g, 'ss');
+/** The app's RoutesTab.search: every word of [query] is in the name; blank = everything (the list's order kept). */
+export function searchPlans<T extends { title: string | null }>(plans: T[], query: string): T[] {
+  const words = foldName(query).split(' ').filter((w) => w.trim());
+  if (!words.length) return plans;
+  return plans.filter((p) => { const n = foldName(titleOf(p)); return words.every((w) => n.includes(w)); });
+}
+
 /**
  * My routes – one plain list (web-sync.md §14.6): title, the rows, Close. A row: the kind in a circle as in the app
  * (planned route blue, imported GPX purple), the name, "Planned · 30 Oct 2026" / "GPX · …"; on the right where it lies
@@ -152,20 +163,31 @@ export function phonePill(s: SyncStatus, now = Date.now()): { kind: PhoneState['
 export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
   const d = dialog('plans', `
     <h2 id="plansTitle">${esc(t('routes_title'))}</h2>
+    <label class="plansearch" hidden><span class="sic">${icon('search', 20)}</span><input id="planSearch" type="search" autocomplete="off"
+      placeholder="${esc(t('routes_search_hint'))}" aria-label="${esc(t('routes_search_hint'))}"><button id="planSearchClear" class="iconbtn" hidden
+      aria-label="${esc(t('search_clear_query'))}" title="${esc(t('search_clear_query'))}">${icon('close', 20)}</button></label>
     <ul id="planList" class="planlist" aria-labelledby="plansTitle"></ul>
-    <div class="row end"><button id="closePlans">${esc(t('common_close'))}</button></div>`);
+    <div class="row spread"><button id="plansImportGpx" class="textbtn">${icon('fileOpen', 18)}${esc(t('routes_import_gpx'))}</button><button id="closePlans">${esc(t('common_close'))}</button></div>`);
   const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
   const closeMenus = () => d.querySelectorAll<HTMLElement>('.rowmenu').forEach((m) => { m.hidden = true; m.previousElementSibling?.setAttribute('aria-expanded', 'false'); });
   d.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.rowmenu, .more')) closeMenus(); });
   $('planList').addEventListener('scroll', closeMenus); // the menu stays fixed: it goes when its row moves
 
+  // the app's search box of Meine Touren (RoutesTab.search, owner 2026-11-06): shown once there is anything to search
+  let query = '';
+  const search = $<HTMLInputElement>('planSearch');
+  search.addEventListener('input', () => { query = search.value; $('planSearchClear').hidden = !query; render(); });
+  $('planSearchClear').onclick = (e) => { e.preventDefault(); search.value = ''; query = ''; $('planSearchClear').hidden = true; search.focus(); render(); };
+  $('plansImportGpx').onclick = () => { d.close(); host.importGpx(); };
   const render = async () => {
     const folder = sync.open, paired = sync.status.paired;
-    const plans = await sync.list(folder);
+    const all = await sync.list(folder);
+    const plans = searchPlans(all, query);
     const ul = $('planList');
     if (ul.querySelector('.confirm')) return; // a delete question is open: keep the list as it is
-    ul.innerHTML = plans.length ? '' : `<li class="muted">${esc(t('web_plans_none'))}</li>`;
-    if (!plans.length) await oldPhoneLine(ul);
+    search.closest<HTMLElement>('.plansearch')!.hidden = !all.length;
+    ul.innerHTML = plans.length ? '' : `<li class="muted">${esc(all.length && query.trim() ? t('routes_search_none', query.trim()) : t('web_plans_none'))}</li>`;
+    if (!all.length) await oldPhoneLine(ul);
     for (const p of plans) {
       const li = document.createElement('li');
       li.dataset.id = p.id;
@@ -384,9 +406,9 @@ export const cleanName = (input: string, old: string) => input.trim() || old;
  * (blank kept as blank – [cleanName] decides) or null on Cancel.
  */
 type MaybeName = Promise<string | null>;
-function nameDialog(copy: boolean, name: string, later?: MaybeName): MaybeName {
+function nameDialog(kind: boolean | 'as', name: string, later?: MaybeName): MaybeName {
   return new Promise((resolve) => {
-    const d = dialog('savename', `<h2>${esc(t(copy ? 'plan_save_as_copy' : 'plan_save_route'))}</h2>
+    const d = dialog('savename', `<h2>${esc(t(kind === 'as' ? 'web_save_as' : kind ? 'plan_save_as_copy' : 'plan_save_route'))}</h2>
       <label class="field"><span class="muted small">${esc(t('routes_name_label'))}</span><input id="saveTitle" maxlength="100" autocomplete="off"></label>
       <div class="row end"><button id="saveCancel">${esc(t('common_cancel'))}</button><button id="saveOk" class="primary">${esc(t('common_save'))}</button></div>`);
     const input = d.querySelector<HTMLInputElement>('#saveTitle')!;
@@ -493,6 +515,32 @@ export async function saveRoute(sync: PlanSync, host: PlanHost, then?: () => voi
 let saving = false;
 
 /**
+ * Speichern ▾ → Speichern unter (owner 2026-11-06, A): the shown route as a NEW saved plan – the name dialog with a free
+ * name (the open plan's "<name> (2)", else the proposal); the new one is the open plan from then on, the old one stays.
+ */
+export async function saveRouteAs(sync: PlanSync, host: PlanHost, then?: () => void) {
+  if (saving) return;
+  saving = true;
+  try {
+    const cur = await host.current();
+    if (!cur) return;
+    const folder = sync.open;
+    const plans = (await sync.list(folder)).filter((p) => p.kind === 'plan');
+    const taken = plans.map((p) => titleOf(p)), open = host.openId() ? plans.find((p) => p.id === host.openId()) : undefined;
+    const first = open ? await copyName(host, titleOf(open), taken) : await newRouteName(host, host.linkTitle(), datedName(), taken);
+    const later = open || host.linkTitle() ? undefined : Promise.race([host.suggestName().catch(() => ''), new Promise<string>((r) => setTimeout(() => r(''), NAME_WAIT_MS))])
+      .then((p) => (p ? newRouteName(host, p, datedName(), taken) : null));
+    const input = await nameDialog('as', first, later);
+    if (input == null) return;
+    const title = storedTitle(cleanName(input, first));
+    const newId = await sync.save(cur.code, title, undefined, folder);
+    askPersist();
+    host.saved({ id: newId, kind: 'plan', title, plan: cur.code, track: '', updatedAt: Date.now(), device: '', mine: true, dirty: true, onPhone: false }, folder);
+    then?.();
+  } finally { saving = false; }
+}
+
+/**
  * My routes → ⋮ → Save as copy (planned routes; the app's requestCopyRoute, owner 2026-10-31 – was the plan sheet's ⋯):
  * the name dialog with "<name> (2)" ([copyName]); Save stores a copy of the saved route – the shown plan stays as it is.
  */
@@ -514,7 +562,7 @@ async function copyRoute(sync: PlanSync, host: PlanHost, p: SavedPlan, folder: s
  * phone answered (its hello, or – already paired with another browser – its JOIN), "Paired with …".
  * Unpair lives in the Phone window only (owner 2026-10-30: not three "Unpair").
  */
-export async function pairDialog(sync: PlanSync, page: string) {
+export async function pairDialog(sync: PlanSync, page: string, then?: () => void) {
   const d = dialog('pair', `<h2>${esc(t('web_pair_phone'))}</h2><div id="pairBody"><p class="muted">${esc(t('web_pair_preparing'))}</p></div>
     <div id="pairStatus" class="status muted"></div>
     <div class="row end" id="pairButtons"><button id="closePair">${esc(t('common_close'))}</button></div>`);
@@ -522,6 +570,7 @@ export async function pairDialog(sync: PlanSync, page: string) {
   $('closePair').onclick = () => d.close();
   let poll = 0, shown = false;
   d.addEventListener('close', () => clearInterval(poll));
+  if (then) d.addEventListener('close', () => { if (sync.status.paired) then(); }); // Aufs Handy: the plan follows the pairing
 
   const render = () => {
     const s = sync.status;

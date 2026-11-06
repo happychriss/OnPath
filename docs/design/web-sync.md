@@ -441,16 +441,16 @@ unchanged.
 
 The machinery of §14.1–14.3 stays; the page no longer shows it ("überladen", owner). No new dialogs.
 
-**Header, right: two real buttons side by side** (the other entries – My routes, Import GPX, Help, The app – stay on
-the left; at phone width Save and Phone stay in the header, the rest goes behind ☰).
-- **Save:** not paired "💾 Speichern" / "Save" (saves in this browser); paired "📱 Aufs Handy sichern" / "Save to
-  phone" (saves in this browser and sends to the phone). **Dark** (filled app green) while anything is to save: the
-  open route new or changed, a rename, a delete, a GPX import, routes waiting for the phone (below); otherwise
-  **light with ✓** ("✓ Gespeichert" / "✓ Auf dem Handy"); **greyed** when there is nothing at all; **amber** when the
-  mailbox is full (507, nothing lost). One click saves the open route (name proposed Start → Destination as today)
-  and sends everything waiting – no question. No hint text beside it.
-- **Phone:** not paired "Handy verbinden" (outlined, app green); paired "📱 ‹phone name› 🟢" with a small second line
-  "abgeglichen vor 2 Min."; phone away > 24 h: 🟡 + "zuletzt vor 3 Tagen". Click → the phone window.
+**The plan bar** (owner 2026-11-06, A – replaces "Header, right: two real buttons"; web-planner.md §21): Save and the
+phone sit in ONE group on the left with + Neu and Öffnen; at phone width all of it is behind "Plan ▾".
+- **Speichern** (`#menuSavePlan`): always "Speichern" / "Save" – not paired it saves in this browser, paired it saves and
+  sends. **Dark** (filled app green) while anything is to save: the open route new or changed, a rename, a delete, a GPX
+  import, routes waiting for the phone (below); otherwise **light with ✓** ("✓ Gespeichert" / "✓ Saved"); **greyed**
+  when there is nothing at all; **amber** when the mailbox is full (507, nothing lost). One click asks the name (the
+  app's rule since 2026-10-31) and sends everything waiting. ▾ = Speichern unter · GPX exportieren.
+- **Aufs Handy** (`#syncBadge`): always that label. Not paired → the pairing window at once; once paired and closed the
+  open plan follows (Save). Paired → the same as Save, with the dot (🟢, 🟡 when the phone was away > 24 h) and a small
+  second line "Pixel 8 · abgeglichen vor 2 Min.". ▾ → the Phone window.
 
 **My routes – one plain list** (title, rows, Close):
 ```

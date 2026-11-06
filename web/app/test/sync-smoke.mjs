@@ -2,8 +2,8 @@
 // browser contexts (A = desktop, L = laptop) and fake phones against the host's real mailbox code (web/host/src/sync.js)
 // on a fake D1 (Node's SQLite). A fake phone is the app's own shared sync code (com.onpath.app.sync in the Wasm engine
 // of a third, idle page) driven from Node with the real crypto: its hello says role 1, it writes routes, renames,
-// deletes, the JOIN redirect (§5.1) and "Unpair?" (DELETE) – what the phone app does. Proves: the header's Save is
-// "Save" before pairing and "Save to phone" after, dark while anything is to save, light ✓ when all is saved; routes
+// deletes, the JOIN redirect (§5.1) and "Unpair?" (DELETE) – what the phone app does. Proves: the plan bar's Save is
+// always "Save" (paired it also sends), dark while anything is to save, light ✓ "Saved" when all is saved; routes
 // planned without a phone join the next paired phone as waiting (bold, Save dark, nothing sent until the click → 🖥 📱);
 // unsaved edits survive a reload and are not sent; My routes is one plain list (🖥 / 📱, ⋮ Rename / Export GPX /
 // Delete, the open route light green, the phone's "New" / "Changed" tags, no heading, no Save box); a conflict keeps "(copy)"; delete both ways;
@@ -49,18 +49,21 @@ async function until(P, fn, arg = null, opts = {}) {
 const titles = (P, folder) => P.evaluate(async (f) => (await window.__sync.list(f ?? undefined)).map((x) => x.title).sort(), folder ?? null);
 const syncNow = (P) => P.evaluate(() => window.__sync.syncNow());
 const status = (P) => P.evaluate(() => ({ ...window.__sync.status }));
-/** A header entry: inline on a wide screen, behind ☰ at phone width. */
+/** A plan bar entry: inline on a wide screen, behind Plan ▾ at phone width. */
 const menu = async (P, id) => { if (await P.isVisible('#menuBtn')) await P.click('#menuBtn'); await P.click(id); };
-/** The header's Phone button: its name, the second line, title, whether the dot shows and its colour. */
+/** The Phone window: Aufs Handy ▾ on a wide screen, Plan ▾ → Phone at phone width. */
+const phoneWin = async (P) => { if (await P.isVisible('#menuBtn')) { await P.click('#menuBtn'); await P.click('#menuPhone'); } else await P.click('#phoneMore'); };
+/** "To phone" (the plan bar): its label, the second line ("Pixel 8 · synced …"), the phone's name in it, title, dot. */
 const entry = (P) => P.evaluate(() => { const b = document.getElementById('syncBadge'), d = b.querySelector('.syncdot'), sub = b.querySelector('.sub');
-  return { label: b.querySelector('.lbl').textContent.trim(), sub: sub.hidden ? '' : sub.textContent, title: b.title, dot: !d.hidden, kind: d.dataset.kind }; });
+  const line = sub.hidden ? '' : sub.textContent;
+  return { label: b.querySelector('.lbl').textContent.trim(), sub: line, phone: line.split(' · ')[0], title: b.title, dot: !d.hidden, kind: d.dataset.kind }; });
 /** The header's Save (§14.6): its state (dark / done / empty / full), label, whether it is filled, and that no hint is beside it. */
 const saveBtn = (P) => P.evaluate(() => { const b = document.getElementById('menuSavePlan');
   return { state: b.dataset.state, label: b.textContent.trim(), unsaved: b.classList.contains('unsaved'), filled: getComputedStyle(b).backgroundColor === 'rgb(36, 95, 70)',
     disabled: b.disabled, title: b.title, hint: !!document.getElementById('saveHint') || /Not saved on the phone/.test(document.getElementById('header').textContent) }; });
 /** Pair from the Phone window: a new code each time; returns the code (the part after #pair=) and the check digits. */
 async function showCode(P, other = false) {
-  await menu(P, '#syncBadge');
+  await phoneWin(P);
   await P.click(other ? 'dialog.phone #pairOther' : 'dialog.phone #pairPhone');
   await P.waitForSelector('dialog.pair[open] #pairLink', { timeout: 30_000 });
   return { code: (await P.inputValue('#pairLink')).split('#pair=')[1], check: await P.textContent('#checkDigits') };
@@ -169,7 +172,7 @@ const ctxA = await browser.newContext({ viewport: { width: 1280, height: 800 } }
 const A = await open(ctxA, '#p=' + CODE);
 await A.waitForFunction(() => document.getElementById('points')?.textContent?.includes('Vellau'), null, { timeout: 60_000 });
 let e = await entry(A);
-check(e.label === 'Pair phone' && !e.dot && e.sub === '', `not paired: the Phone button says "Pair phone", no dot (${JSON.stringify(e)})`);
+check(e.label === 'To phone' && !e.dot && e.sub === '' && e.title.startsWith('Pair your phone'), `not paired: "To phone" without dot and second line, its title says it pairs (${JSON.stringify(e)})`);
 await A.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'dark', null, { timeout: 30_000 }).catch(() => {});
 let sb = await saveBtn(A);
 check(sb.state === 'dark' && sb.filled && sb.label === 'Save' && !sb.hint, `not paired, a new route: "Save", dark (filled), no hint beside it (${JSON.stringify(sb)})`);
@@ -233,9 +236,9 @@ check(JSON.stringify(await phone.titles()) === '["Handweg"]', 'nothing went to t
 check((await A.textContent('#points')).includes('Vellau'), 'the open route stays open (it joined the phone\'s folder too)');
 await A.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'dark', null, { timeout: 30_000 }).catch(() => {});
 sb = await saveBtn(A);
-check(sb.state === 'dark' && sb.filled && sb.label === 'Save to phone' && st.pending === 2, `paired, two routes waiting: "Save to phone", dark (${JSON.stringify(sb)}, pending ${st.pending})`);
+check(sb.state === 'dark' && sb.filled && sb.label === 'Save' && st.pending === 2, `paired, two routes waiting: "Save", dark (${JSON.stringify(sb)}, pending ${st.pending})`);
 e = await entry(A);
-check(e.label === 'Pixel 8' && e.dot && e.kind === 'fresh' && /^synced /.test(e.sub), `paired: the Phone button "Pixel 8" with the green dot and "synced …" below (${JSON.stringify(e)})`);
+check(e.label === 'To phone' && e.phone === 'Pixel 8' && e.dot && e.kind === 'fresh' && /^Pixel 8 · synced /.test(e.sub), `paired: "To phone" with the green dot and "Pixel 8 · synced …" below (${JSON.stringify(e)})`);
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
 for (const n of ['Altroute', 'Zweitroute']) {
@@ -253,7 +256,7 @@ await phone.round();
 check(JSON.stringify(await phone.titles()) === '["Altroute","Handweg","Zweitroute"]', 'one click on "Save to phone": both routes are on the phone ' + JSON.stringify(await phone.titles()));
 await A.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'done', null, { timeout: 30_000 }).catch(() => {});
 sb = await saveBtn(A);
-check(sb.state === 'done' && !sb.filled && sb.label === 'On the phone', `all on the phone: light "✓ On the phone" (${JSON.stringify(sb)})`);
+check(sb.state === 'done' && !sb.filled && sb.label === 'Saved', `all on the phone: light "✓ Saved" (${JSON.stringify(sb)})`);
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
 for (const n of ['Altroute', 'Zweitroute']) {
@@ -263,7 +266,7 @@ for (const n of ['Altroute', 'Zweitroute']) {
 await A.click('#closePlans');
 
 // ---- 3. the Phone window: state + one sentence, Sync now · Unpair (no question), "How does it work?", small lines ----
-await A.click('#syncBadge');
+await phoneWin(A);
 await A.waitForSelector('dialog.phone[open] #unpair:not([hidden])');
 const buttons = await A.evaluate(() => [...document.querySelectorAll('#phoneRow button')].filter((b) => !b.hidden).map((b) => b.textContent));
 check(buttons.join() === 'Sync now', 'the Phone window: Sync now in the button row ' + JSON.stringify(buttons));
@@ -281,7 +284,7 @@ await A.click('#closePhone');
 await box('GET', (await phone.keys()).mailbox, (await phone.keys()).token, { since: 0 }, Date.now() - 3 * 86_400_000);
 await syncNow(A);
 e = await entry(A);
-check(e.kind === 'stale' && e.sub === 'last 3 days ago', `phone last seen 3 days ago: amber dot, "last 3 days ago" (${JSON.stringify(e)})`);
+check(e.kind === 'stale' && e.sub === 'Pixel 8 · last 3 days ago', `phone last seen 3 days ago: amber dot, "last 3 days ago" (${JSON.stringify(e)})`);
 await phone.round();
 await syncNow(A);
 check((await entry(A)).kind === 'fresh', 'the phone syncs again → green');
@@ -468,7 +471,7 @@ await phone.round();
 check(!(await phone.titles()).includes('Laptop unsaved') && !(await phone.titles()).includes('Freundesweg'), 'nothing crossed to the first phone');
 check(st.closed.length === 1 && /^Pixel 8 · paired /.test(st.closed[0].name) && /^Pixel 8 · paired /.test(st.phone), 'two phones named "Pixel 8": the pairing date is added ' + JSON.stringify([st.phone, st.closed]));
 // unpair in the browser: no question, the folder closes, the quiet "Remove routes of …" lines
-await L.click('#syncBadge');
+await phoneWin(L);
 await L.click('dialog.phone #unpair');
 await L.waitForFunction(() => window.__sync.status.folder.key === 'none' && document.querySelectorAll('dialog.phone .removefolder').length === 2, null, { timeout: 30_000 }).catch(() => {});
 check(await L.locator('dialog.phone .confirm').count() === 0 && (await status(L)).folder.key === 'none', 'Unpair: no question, the folder closes (Without phone)');
@@ -536,7 +539,7 @@ for (const [P, n] of [[A, 'desktop'], [L, 'laptop']]) {
     `${n}: the folder closed, the routes stay, "The connection was ended on the phone." (${s.message})`);
 }
 e = await entry(A);
-check(e.label === 'Pair phone' && !e.dot, 'the header follows: "Pair phone"');
+check(!e.dot && e.sub === '', 'the plan bar follows: "To phone" without the phone\'s line');
 await A.reload();
 await A.waitForFunction(() => document.getElementById('syncBadge')?.dataset.ready === '1', null, { timeout: 60_000 });
 check((await titles(A, 'none')).length === 0 && (await titles(A, phone.device)).includes('Zweitroute') && (await saveBtn(A)).state !== 'dark',
@@ -555,17 +558,17 @@ await T1.waitForFunction((d) => window.__sync.status.folder.key === d, tabPhone.
 await T1.click('#closePair').catch(() => {});
 await T2.waitForFunction((d) => window.__sync.status.folder.key === d && window.__sync.status.paired, tabPhone.device, { timeout: 10_000 }).catch(() => {});
 // the header's pill draws a moment after the status (CI is slower than the status check)
-await T2.waitForFunction(() => document.querySelector('#syncBadge .lbl')?.textContent?.trim() === 'Tab phone', null, { timeout: 10_000 }).catch(() => {});
+await T2.waitForFunction(() => document.querySelector('#syncBadge .sub')?.textContent?.startsWith('Tab phone'), null, { timeout: 10_000 }).catch(() => {});
 const t2 = await status(T2);
-check(t2.paired && t2.folder.key === tabPhone.device && (await entry(T2)).label === 'Tab phone',
-  `paired in tab 1 → tab 2 shows it without a reload (${JSON.stringify(t2.folder)}, "${(await entry(T2)).label}")`);
-await menu(T1, '#syncBadge');
+check(t2.paired && t2.folder.key === tabPhone.device && (await entry(T2)).phone === 'Tab phone',
+  `paired in tab 1 → tab 2 shows it without a reload (${JSON.stringify(t2.folder)}, "${(await entry(T2)).sub}")`);
+await phoneWin(T1);
 await T1.click('dialog.phone #unpair');
 await T1.waitForFunction(() => window.__sync.status.folder.key === 'none', null, { timeout: 30_000 }).catch(() => {});
 await T1.click('#closePhone').catch(() => {});
 await T2.waitForFunction(() => window.__sync.status.folder.key === 'none' && !window.__sync.status.paired, null, { timeout: 10_000 }).catch(() => {});
-await T2.waitForFunction(() => document.querySelector('#syncBadge .lbl')?.textContent?.trim() === 'Pair phone', null, { timeout: 10_000 }).catch(() => {});
-check(!(await status(T2)).paired && (await entry(T2)).label === 'Pair phone', 'unpaired in tab 1 → tab 2 shows "Pair phone" without a reload');
+await T2.waitForFunction(() => document.querySelector('#syncBadge .sub')?.hidden, null, { timeout: 10_000 }).catch(() => {});
+check(!(await status(T2)).paired && !(await entry(T2)).dot && (await entry(T2)).sub === '', 'unpaired in tab 1 → tab 2 shows "To phone" without the phone, without a reload');
 await openRoute(T2, '#p=' + CODE);
 await T2.evaluate(() => window.__sync.save(location.hash.slice(3), 'Zweiter Tab'));
 await syncNow(T2);
@@ -586,8 +589,8 @@ helloPhone.ledger = await call('syncDelete', helloPhone.ledger, await call('sync
 await helloPhone.round();
 await syncNow(H1);
 const hs = await status(H1);
-check(!hs.paired && hs.folder.key === 'none' && hs.message === 'The connection was ended on the phone.' && (await entry(H1)).label === 'Pair phone',
-  `the phone's hello deleted: the folder closes, "The connection was ended on the phone.", "Pair phone" (${hs.message})`);
+check(!hs.paired && hs.folder.key === 'none' && hs.message === 'The connection was ended on the phone.' && !(await entry(H1)).dot,
+  `the phone's hello deleted: the folder closes, "The connection was ended on the phone.", no phone dot (${hs.message})`);
 await ctxH.close();
 
 // ---- 14d. after Unpair (owner 2026-11-02): My routes says the old phone's routes are still here (way: the Phone window);
@@ -602,7 +605,7 @@ await R.waitForFunction((d) => window.__sync.status.folder.key === d, restPhone.
 await R.click('#closePair').catch(() => {});
 await until(R, async () => (await window.__sync.list()).some((p) => p.title === 'Handyroute'));
 await R.evaluate((c) => window.__sync.save(c, 'Nie gesendet'), CODE); // saved here, never sent (no Save to the phone)
-await menu(R, '#syncBadge');
+await phoneWin(R);
 await R.click('dialog.phone #unpair');
 await R.waitForFunction(() => window.__sync.status.folder.key === 'none' && window.__sync.status.closed.length === 1, null, { timeout: 30_000 }).catch(() => {});
 await R.click('#closePhone');
@@ -629,10 +632,88 @@ await ctxR.close();
 
 // ---- 15. the host's cap on new mailboxes per IP and day ----
 env.SYNC_NEW_PER_IP_DAY = '1';
-await menu(A, '#syncBadge');
+await phoneWin(A);
 await A.click('dialog.phone #pairPhone');
 await A.waitForSelector('#pairBody .status.error', { timeout: 30_000 }).catch(() => {});
 check(((await A.textContent('#pairBody').catch(() => '')) ?? '').includes('Too many new pairings from this network today'), 'over the new-mailbox cap: the page says so');
+
+// ---- 16. the owner's two scenarios with the plan bar (owner 2026-11-06, A): + Neu · Öffnen · Speichern ▾ · Aufs Handy ----
+// (1) first visit: empty, not paired → a plan → Speichern keeps it in this browser → after a reload Öffnen lists it →
+//     Aufs Handy pairs the phone and, once paired, the plan goes onto it; (2) second visit: Öffnen → the search finds
+//     it → open → change → Speichern sends; Speichern ▾ → Speichern unter makes a second plan
+env.SYNC_NEW_PER_IP_DAY = '1000';
+const ownerPhone = await new Phone('Owner phone').init();
+const ctxO = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+let O = await open(ctxO);
+check(await O.isDisabled('#newPlan') && await O.isDisabled('#menuSavePlan') && await O.isEnabled('#menuPlans') && await O.isEnabled('#syncBadge'),
+  'scenario 1: an empty first visit – New and Save greyed, Open and To phone ready');
+await openRoute(O, '#p=' + CODE);
+// the route planned (and its points snapped) before saving – a snap after Save would read as "changed"
+await O.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1', null, { timeout: 120_000 }).catch(() => {});
+await O.waitForTimeout(1500);
+await O.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'dark', null, { timeout: 30_000 }).catch(() => {});
+await O.click('#menuSavePlan');
+await answerSave(O, 'Meine Runde');
+await until(O, async () => (await window.__sync.list()).some((p) => p.title === 'Meine Runde'));
+await O.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'done', null, { timeout: 30_000 }).catch(() => {});
+check((await O.getAttribute('#menuSavePlan', 'data-state')) === 'done' && (await O.textContent('#menuSavePlan')).trim() === 'Saved', 'scenario 1: Save keeps it in this browser – "✓ Saved"');
+await O.reload();
+await O.waitForFunction(() => document.getElementById('syncBadge')?.dataset.ready === '1', null, { timeout: 60_000 });
+await O.click('#menuPlans');
+await O.waitForSelector('#planList li[data-id]', { timeout: 10_000 }).catch(() => {});
+check(!!(await listRow(O, 'Meine Runde')) && await O.isVisible('#planSearch') && await O.isVisible('#plansImportGpx'),
+  'scenario 1: after a reload Open lists "Meine Runde" (with the search field and Import GPX)');
+await O.click('#closePlans');
+await O.click('#syncBadge'); // not paired: the pairing window at once
+await O.waitForSelector('dialog.pair[open] #pairLink', { timeout: 30_000 });
+await ownerPhone.pairDirect((await O.inputValue('#pairLink')).split('#pair=')[1]);
+await O.waitForFunction(() => document.getElementById('pairBody')?.textContent?.includes('Paired with Owner phone'), null, { timeout: 30_000 }).catch(() => {});
+await sendMark(O);
+await O.click('#closePair'); // OK: the plan follows the pairing (Save sends what waits)
+await sent(O);
+await ownerPhone.round();
+check((await ownerPhone.titles()).includes('Meine Runde') && await O.locator('dialog[open]').count() === 0, 'scenario 1: To phone paired the phone and "Meine Runde" arrived on it, no extra question ' + JSON.stringify(await ownerPhone.titles()));
+const e2 = await entry(O);
+check(e2.label === 'To phone' && e2.dot && e2.phone === 'Owner phone', `paired: "To phone" with the dot and "Owner phone · …" below (${JSON.stringify(e2)})`);
+// (2) second visit
+await O.close();
+O = await open(ctxO);
+await O.click('#menuPlans');
+await O.waitForSelector('#planList li[data-id]', { timeout: 10_000 });
+await O.fill('#planSearch', 'xyz');
+await O.waitForFunction(() => document.getElementById('planList')?.textContent?.includes('Nothing called'), null, { timeout: 5_000 }).catch(() => {});
+check((await O.textContent('#planList')).trim() === 'Nothing called “xyz” here', 'scenario 2: the search says when nothing fits (' + (await O.textContent('#planList')).trim() + ')');
+await O.fill('#planSearch', 'MEINE runde');
+await O.waitForFunction(() => document.querySelectorAll('#planList li[data-id]').length === 1, null, { timeout: 5_000 }).catch(() => {});
+check(await O.locator('#planList li[data-id]').count() === 1 && !!(await listRow(O, 'Meine Runde')), 'scenario 2: the search finds "Meine Runde" (every word, any case)');
+await O.click('#planSearchClear');
+check((await O.inputValue('#planSearch')) === '' && await O.locator('#planList li[data-id]').count() >= 1, 'the search\'s ✕ clears it, the whole list again');
+await O.fill('#planSearch', 'runde');
+await O.click('#planList li:has(.name:text-is("Meine Runde")) .open');
+await O.waitForFunction(() => document.getElementById('savedLine')?.textContent?.includes('Meine Runde'), null, { timeout: 30_000 }).catch(() => {});
+const before = (await ownerPhone.list()).find((x) => x.title === 'Meine Runde');
+await O.click('#reverse');
+await O.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'dark', null, { timeout: 30_000 }).catch(() => {});
+await sendMark(O);
+await O.click('#menuSavePlan');
+await answerSave(O, null);
+await sent(O);
+await ownerPhone.round();
+const after = (await ownerPhone.list()).find((x) => x.title === 'Meine Runde');
+check(!!after && JSON.stringify(after) !== JSON.stringify(before) && (await ownerPhone.titles()).filter((x) => x === 'Meine Runde').length === 1,
+  'scenario 2: opened, changed, Save – the changed "Meine Runde" is on the phone (still one)');
+// Speichern ▾ → Speichern unter: a second plan under a new name, the open one from then on
+await O.click('#saveMore');
+await O.click('#saveAsItem');
+await O.waitForSelector('dialog.savename[open] #saveTitle');
+check((await O.textContent('dialog.savename h2')) === 'Save as …' && (await O.inputValue('#saveTitle')) === 'Meine Runde (2)', 'Save ▾ → Save as: its own dialog, "Meine Runde (2)" proposed');
+await sendMark(O);
+await answerSave(O, 'Andere Runde');
+await sent(O);
+await ownerPhone.round();
+check(JSON.stringify((await ownerPhone.titles()).filter((x) => /Runde/.test(x))) === '["Andere Runde","Meine Runde"]' && (await O.textContent('#savedLine')).includes('Andere Runde'),
+  'Save as: "Andere Runde" next to "Meine Runde" (both on the phone), the new one is open');
+await ctxO.close();
 
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of (404|409|410|429|507)/.test(e) && !/ERR_INTERNET_DISCONNECTED|Failed to fetch/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));

@@ -108,8 +108,8 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   check(await step(page) === (phone ? 'profile' : 'points'), `${P} first step without storage = ${phone ? 'profile' : 'points'}`);
   check(await page.isVisible('#handle') && await page.isVisible('#sheetStep'), `${P} grab handle and chevron visible`);
   const header = await page.textContent('#header');
-  check(!/Send to phone/.test(header) && /Import GPX/.test(phone ? await page.textContent('#mainMenu') : header) && /Pair phone/.test(header),
-    `${P} header without Send to phone, with the phone entry "Pair phone" (owner 2026-10-30)`);
+  check(!/Send to phone/.test(header) && /Import GPX/.test(await page.textContent('#mainMenu')) && /To phone/.test(header),
+    `${P} header without Send to phone, with "To phone" (owner 2026-11-06)`);
 
   // the three steps, every control
   if (await step(page) !== 'small') { // reach small with the chevron (Show more … until Points, then Show less → small)
@@ -317,42 +317,47 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     'empty plan: Share says "Set a start and destination first"');
   check(await page.isVisible('#fitRoute') && await page.isDisabled('#fitRoute') && await page.getAttribute('#fitRoute', 'title') === 'Set a start and destination first'
     && await page.getAttribute('#fitRoute', 'aria-label') === 'Show whole route', 'empty plan: "Show whole route" greyed, its tooltip says why');
-  // header (owner 2026-10-30, web-sync.md §14.6): "OnPath Planner" as one name; on the left the entries, every icon
-  // with its text; on the right Save (greyed on an empty route) and the Phone button – two real buttons side by side
+  // header (owner 2026-11-06, A): "OnPath Planner" as one name; on the left ONE plan bar + New · Open · Save ▾ · To phone ▾
+  // (every icon with its text on a wide screen), on the right Help, the app and the language; phone width: "Plan ▾"
   const brand = await page.evaluate(() => { const w = document.querySelector('.wordmark'), p = document.querySelector('.product');
     return { text: w.textContent.replace(/\s+/g, ' ').trim(), same: getComputedStyle(w).fontSize === getComputedStyle(p).fontSize, upper: getComputedStyle(p).textTransform }; });
   check(brand.text === 'OnPath Planner' && brand.same && brand.upper === 'none', `header: "OnPath Planner" in one size (${JSON.stringify(brand)})`);
-  // the shown entries (☰'s New plan is there at phone width only)
-  const labels = () => page.$$eval('#mainMenu button:not([hidden])', (bs) => bs.filter((b) => b.getClientRects().length > 0).map((b) => { const sp = b.querySelector('span'); return { id: b.id, label: !!sp && sp.getClientRects().length > 0, icon: !!b.querySelector('.ic'), title: b.title }; }));
-  const right = () => page.evaluate(() => ['menuSavePlan', 'syncBadge'].map((id) => { const b = document.getElementById(id), r = b.getBoundingClientRect(), l = b.querySelector('.lbl');
-    return { id, label: l.getClientRects().length > 0 ? l.textContent : '', h: Math.round(r.height), x: Math.round(r.x), w: Math.round(r.width), inNav: !!b.closest('#mainMenu') }; }));
-  let l = await labels(), rb = await right();
-  check(l.map((x) => x.id).join() === 'menuPlans,menuImportGpx,menuAbout' && l.every((x) => x.icon && x.label), `header at 1440 px: 3 entries on the left, every icon has its text (${l.map((x) => x.id).join(', ')}; without: ${JSON.stringify(l.filter((x) => !x.icon || !x.label))})`);
-  check(rb[0].label === 'Save' && rb[1].label === 'Pair phone' && rb.every((b) => b.h === 36 && !b.inNav) && rb[1].x > rb[0].x && rb[1].x - (rb[0].x + rb[0].w) <= 12 && rb[0].x > 1440 / 2,
-    `header at 1440 px: Save and "Pair phone" side by side on the right, 36 px buttons (${JSON.stringify(rb)})`);
-  check(await page.isDisabled('#menuSavePlan') && await page.getAttribute('#menuSavePlan', 'data-state') === 'empty', 'header: Save greyed on an empty route');
-  check(await page.isHidden('#syncBadge .syncdot') && await page.isHidden('#syncBadge .sub'), 'header: not paired, "Pair phone" has no dot and no second line');
+  const bar = () => page.$$eval('#mainMenu .pb', (bs) => bs.filter((b) => b.getClientRects().length > 0).map((b) => { const l = b.querySelector('.lbl'), r = b.getBoundingClientRect();
+    return { id: b.id, label: l && l.getClientRects().length > 0 ? l.textContent : '', icon: !!b.querySelector('.ic'), title: b.title, h: Math.round(r.height), x: Math.round(r.x), w: Math.round(r.width) }; }));
+  const over = () => page.evaluate(() => document.getElementById('header').scrollWidth - document.getElementById('header').clientWidth);
+  let l = await bar();
+  check(l.map((x) => x.id).join() === 'newPlan,menuPlans,menuSavePlan,saveMore,syncBadge,phoneMore'
+    && l.filter((x) => !x.id.endsWith('More')).map((x) => x.label).join() === 'New,Open,Save,To phone' && l.every((x) => x.icon && x.h === 36) && l.at(-1).x + l.at(-1).w < 1440 / 2,
+    `header at 1440 px: the plan bar on the left – New · Open · Save ▾ · To phone ▾, 36 px, every icon with its text (${JSON.stringify(l.map((x) => [x.id, x.label, x.x]))})`);
+  const help = await page.locator('#menuAbout').boundingBox();
+  check(help && help.x > 1000 && await page.isVisible('#langSwitch') && await page.isVisible('#headRight a.navlink'), 'header at 1440 px: Help, the app and the language on the right');
+  check(await page.isDisabled('#menuSavePlan') && await page.getAttribute('#menuSavePlan', 'data-state') === 'empty' && await page.isDisabled('#newPlan'), 'header: Save and New greyed on an empty route');
+  check(await page.isHidden('#syncBadge .syncdot') && await page.isHidden('#syncBadge .sub'), 'header: not paired, "To phone" has no dot and no second line');
   await page.waitForSelector('#syncBadge[data-ready]', { state: 'attached', timeout: 60_000 }); // sync ready, the button follows it
   // the paired status, for the look only: the page's own first sync (sync.init → syncSoon → refresh) may still set
   // "not paired" from its store, so stop its timer and set the status until the button shows it
   await page.evaluate(() => clearInterval(window.__sync.timer));
   await page.waitForTimeout(1500); // a sync already started ends
   await page.waitForFunction(() => { const s = window.__sync; if (!s.status.paired) { s.status = { ...s.status, paired: true, phone: 'Pixel 8', lastSync: Date.now() }; s.changed(); }
-    return document.querySelector('#syncBadge .lbl')?.textContent === 'Pixel 8'; }, null, { timeout: 10_000, polling: 200 }).catch(() => {});
-  check((await page.textContent('#syncBadge .lbl')) === 'Pixel 8' && await page.isVisible('#syncBadge .syncdot') && (await page.textContent('#syncBadge .sub')) === 'synced just now',
-    'header: paired, the Phone button shows "Pixel 8", the green dot and "synced just now" below');
-  check((await page.textContent('#menuSavePlan')).trim() === 'Save to phone', 'header: paired, Save says "Save to phone"');
-  l = await labels();
-  check(l.length === 3 && l.every((x) => x.icon && x.label), 'header at 1440 px, paired: 3 entries, every icon has its text');
+    return document.querySelector('#syncBadge .sub')?.textContent?.startsWith('Pixel 8'); }, null, { timeout: 10_000, polling: 200 }).catch(() => {});
+  check((await page.textContent('#syncBadge .lbl')) === 'To phone' && await page.isVisible('#syncBadge .syncdot') && (await page.textContent('#syncBadge .sub')) === 'Pixel 8 · synced just now',
+    'header: paired, "To phone" with the green dot and "Pixel 8 · synced just now" below');
+  check((await page.textContent('#menuSavePlan')).trim() === 'Save', 'header: paired, Save still says "Save" (it sends too)');
   await page.setViewportSize({ width: 1000, height: 800 });
-  l = await labels(); rb = await right();
-  check(l.every((x) => x.icon && !x.label && x.title) && rb[0].label === 'Save to phone' && rb[1].label === 'Pixel 8',
-    `header at 1000 px: the entries icons only (each with its title), Save and the Phone button keep their text (${JSON.stringify(rb)})`);
+  l = await bar();
+  const lb = Object.fromEntries(l.map((x) => [x.id, x]));
+  check(!lb.newPlan.label && lb.newPlan.title && !lb.menuPlans.label && lb.menuPlans.title && lb.menuSavePlan.label === 'Save' && lb.syncBadge.label === 'To phone' && await over() <= 0,
+    `header at 1000 px: New and Open icons only (each with its title), Save and To phone keep their text, nothing overflows (${JSON.stringify(l.map((x) => [x.id, x.label]))})`);
+  for (const w of [720, 860, 1180]) { await page.setViewportSize({ width: w, height: 800 }); check(await over() <= 0, `header at ${w} px: nothing overflows`); }
   await page.setViewportSize({ width: 390, height: 844 });
-  rb = await right();
-  check(rb.every((b) => !b.inNav && b.w > 0 && b.w <= 40 && b.x + b.w <= 390) && await page.isVisible('#menuBtn') && await page.isHidden('#menuPlans'),
-    `phone width: Save and Phone stay in the header as symbols, the rest behind ☰ (${JSON.stringify(rb)})`);
-  check(await page.isVisible('#syncBadge .syncdot'), 'phone width: the phone symbol keeps its dot');
+  check(await page.isVisible('#menuBtn') && await page.isHidden('#menuPlans') && await page.isHidden('#syncBadge') && await over() <= 0,
+    'phone width: the plan bar is one "Plan ▾" button, nothing overflows');
+  await page.click('#menuBtn');
+  check(await page.isVisible('#syncBadge .syncdot') && await page.isVisible('#menuSavePlan') && await page.isVisible('#menuPhone'), 'phone width: Plan ▾ holds Save and To phone (with its dot) and the Phone window');
+  await page.keyboard.press('Escape');
+  check(await page.isHidden('#syncBadge'), 'phone width: Escape closes Plan ▾');
+  await page.setViewportSize({ width: 320, height: 700 });
+  check(await over() <= 0, 'header at 320 px: nothing overflows');
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.waitForFunction(() => document.querySelector('#summary .title')?.getBoundingClientRect().height > 0, null, { timeout: 30_000 }).catch(() => {});
   const title = await page.evaluate(() => { const e = document.querySelector('#summary .title');

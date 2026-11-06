@@ -263,4 +263,14 @@
     <string name="web_terrain_view_only">3D view – just for looking. To plan, switch 3D off.</string>
     <string name="web_terrain_turn_mouse">Turn and tilt: hold the right mouse button and drag (or Shift + arrow keys).</string>
     <string name="web_terrain_turn_touch">Turn and tilt: with two fingers.</string>
+    <!-- the plan bar (owner 2026-11-06, A): everything done with the open plan in one group, top left -->
+    <string name="web_plan_menu">Plan</string>
+    <string name="web_plan_new">New</string>
+    <string name="web_plan_open">Open</string>
+    <string name="web_save_more">More ways to save</string>
+    <string name="web_save_as">Save as …</string>
+    <string name="web_to_phone">To phone</string>
+    <string name="web_to_phone_title">Save and send to %1$s</string>
+    <string name="web_to_phone_pair">Pair your phone, then the plan goes onto it</string>
+    <string name="web_phone_menu">Phone connection …</string>
 </resources>

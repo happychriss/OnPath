@@ -117,7 +117,7 @@ const greens = () => page.evaluate(() => {
   const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
   const bgOf = (el) => { for (let e = el; e; e = e.parentElement) { const c = rgb(getComputedStyle(e).backgroundColor); if (c.length >= 3 && (c[3] ?? 1) > 0.9) return c; } return [255, 255, 255]; };
   const out = [];
-  for (const [sel, min] of [['.product', 4.5], ['.textbtn', 4.5], ['button.primary', 4.5], ['.badge', 4.5], ['.chip .ic', 3], ['.nav button .ic', 3]]) {
+  for (const [sel, min] of [['.product', 4.5], ['.textbtn', 4.5], ['button.primary', 4.5], ['.badge', 4.5], ['.chip .ic', 3], ['#menuPlans .ic', 3]]) {
     const el = [...document.querySelectorAll(sel)].find((e) => e.getClientRects().length);
     if (!el) continue;
     const fg = rgb(getComputedStyle(el).color), bg = bgOf(el);
@@ -129,7 +129,7 @@ const greens = () => page.evaluate(() => {
 const contrastFails = [];
 const light = await greens();
 const appGreen = 'rgb(36, 95, 70)';
-for (const sel of ['.product', '.nav button .ic', '.chip .ic']) {
+for (const sel of ['.product', '#menuPlans .ic', '.chip .ic']) {
   const g = light.find((x) => x.sel === sel);
   if (g && g.color !== appGreen) contrastFails.push(`${sel} is ${g.color}, not the app's green`);
 }
