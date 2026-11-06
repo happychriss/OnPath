@@ -261,6 +261,17 @@ abstract class E2EBase {
         return "$s; events (newest first): $events; problems: $problems"
     }
 
+    /**
+     * Navigate locked (owner 2026-11-06, the hold lock): hold the bar's button named [word] (its TalkBack name) for [ms]
+     * – longer than HoldRule.HOLD_MS, so the band fills and it fires.
+     */
+    protected fun holdButton(word: String, ms: Int = 1_600) {
+        val b = findFresh(By.desc(word), 5_000)
+        org.junit.Assert.assertNotNull("no button \"$word\" to hold – ${seenDescriptions()}", b)
+        val r = b!!.visibleBounds
+        hold(r.exactCenterX(), r.exactCenterY(), ms)
+    }
+
     /** A finger resting [ms] at a screen point (the app's hold is 0.3 s; MapLibre's long press ~0.5 s). */
     protected fun hold(x: Float, y: Float, ms: Int = 900) {
         dismissSystemDialogs()
