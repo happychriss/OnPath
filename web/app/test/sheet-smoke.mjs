@@ -244,13 +244,13 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     orange: !!document.querySelector('.searchring') }));
   check(cand.pin && cand.chip === 'Ifinger' && cand.chipBelow && !cand.orange && await joinCount() === 1, `${P} found place: blue pin, the name chip below, a dashed line to the route (${JSON.stringify(cand)})`);
   await page.screenshot({ path: path.join(shots, `${name}-card.png`) });
-  // the pin card (owner 2026-11-04, design B – the app's PinChip): the name, a blue "+ Add to route" and "⋯ More", both ≥ 48 px
+  // the pin card (owner 2026-11-04, design B – the app's PinChip): the name, a blue "+ Add" (owner 2026-11-05, onpath.private#26) and "⋯ More", both ≥ 48 px
   const pc = await page.evaluate(() => { const r = (s) => document.querySelector(s)?.getBoundingClientRect();
     return { add: document.querySelector('.pinchip .pinadd')?.textContent, more: document.querySelector('.pinchip .pinmore')?.textContent,
       h: Math.min(r('.pinchip .pinadd')?.height ?? 0, r('.pinchip .pinmore')?.height ?? 0),
       blue: getComputedStyle(document.querySelector('.pinchip .pinadd'), '::after').backgroundColor }; });
-  check(pc.add === 'Add to route' && pc.more === 'More' && pc.h >= 48 && pc.blue === 'rgb(46, 106, 158)',
-    `${P} the pin card: "+ Add to route" (blue) · "⋯ More", touch targets ≥ 48 px (${JSON.stringify(pc)})`);
+  check(pc.add === 'Add' && pc.more === 'More' && pc.h >= 48 && pc.blue === 'rgb(46, 106, 158)',
+    `${P} the pin card: "+ Add" (blue) · "⋯ More", touch targets ≥ 48 px (${JSON.stringify(pc)})`);
   // closing the card keeps the pin (the app 2026-11-02); its chip opens the card again; "Remove pin" takes it away
   await page.click('#cclose');
   check(await page.isHidden('#placecard') && await page.isVisible('.candidate') && await page.isVisible('.pinchip'), `${P} the card closed, the pin and its chip stay`);
@@ -259,14 +259,14 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   check(await page.isVisible('#placecard') && await page.isVisible('#cunpin'), `${P} "⋯ More" opens the place card again (with "Remove pin")`);
   await page.click('#cunpin');
   check(await page.isHidden('#placecard') && await page.locator('.candidate').count() === 0 && await page.locator('.pinchip').count() === 0, `${P} "Remove pin": card, pin and chip gone`);
-  // "+ Add to route" on the pin card adds the place where it fits (the card's main button), pin and card go
+  // "+ Add" on the pin card adds the place where it fits (the card's main button), pin and card go
   {
     const before = await page.locator('.pin').count();
     await pick('Ifinger');
     await page.click('#cclose');
     await page.click('.pinchip .pinadd');
     await page.waitForFunction((n) => document.querySelectorAll('.pin').length === n + 1, before, { timeout: 20_000 }).catch(() => {});
-    check(await page.locator('.pin').count() === before + 1 && await page.locator('.pinchip').count() === 0, `${P} "+ Add to route" adds the place, the pin card goes`);
+    check(await page.locator('.pin').count() === before + 1 && await page.locator('.pinchip').count() === 0, `${P} "+ Add" adds the place, the pin card goes`);
     await page.click('#undo');
     await page.waitForFunction((n) => document.querySelectorAll('.pin').length === n, before, { timeout: 20_000 }).catch(() => {});
   }
