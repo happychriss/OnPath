@@ -143,6 +143,9 @@ export function setupGpxImport(h: GpxHost) {
     const p = document.createElement('div');
     p.id = 'trackPanel';
     const track = t.segments.flat().map(([la, lo]) => [la, lo] as LatLon);
+    // a track without a line (the app's TrackLine.has: < 2 points or < 20 m – field bug 2026-11-06): one quiet line
+    // instead of the profile, and nothing to make a plan of
+    const line = track.length >= 2 && t.distanceM >= 20;
     p.innerHTML = `<div class="trackhead"><span class="trackname">${esc(t.name)}</span>
         <button class="iconbtn" id="closeTrack" aria-label="${esc(t.texts.close)}" title="${esc(t.texts.close)}">
           <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button></div>
@@ -150,9 +153,9 @@ export function setupGpxImport(h: GpxHost) {
       <div class="muted">${esc(t.texts.climb)}</div>
       ${t.note ? `<div class="infoline">${esc(t.note)}</div>` : ''}
       ${t.skippedNote ? `<div class="infoline">${esc(t.skippedNote)}</div>` : ''}
-      <div class="trackprofile">${t.profile ? profileSvg(t.profile) : `<div class="muted small noele">${esc(text('plan_no_elevation'))}</div>`}</div>
+      <div class="trackprofile">${!line ? `<div class="infoline">${esc(text('plan_no_track_recorded'))}</div>` : t.profile ? profileSvg(t.profile) : `<div class="muted small noele">${esc(text('plan_no_elevation'))}</div>`}</div>
       <div class="trackerror" id="trackError" hidden></div>
-      ${track.length >= 2 || t.stops ? `<button class="primary" id="planFromTrack"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>${esc(t.texts.plan)}</button>` : ''}`;
+      ${(line || t.stops) ? `<button class="primary" id="planFromTrack"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>${esc(t.texts.plan)}</button>` : ''}`;
     sheet.prepend(p);
     sheet.classList.add('track');
     p.querySelector<HTMLButtonElement>('#closeTrack')!.onclick = close;

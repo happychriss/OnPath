@@ -914,9 +914,11 @@ Problems found while making the browser plan exactly like the phone, and the spe
   button without a meaning of its own (the old `--green*` tokens point to it), plan blue `#2E6A9E` for plan actions (Save,
   the place card's Add / As start / As destination, Plan anyway, the wait for a plan, „⤢ Großes Profil“, the plan row's
   switches, spinners while a route is calculated – `Message.tone: 'edit'` = the app's `ButtonTone.EDIT`), the navigation
-  green only for the brand's word (the web never navigates). Surfaces are paper `#FAFAF6`; white (`--card`) only for what
-  floats over the map: search pill, results, place / pin card, message boxes, the map strip, the fly buttons. A lifted
-  point row is `#EAE9E1` (the app's surfaceContainerHighest).
+  green only for the brand's word (the web never navigates). Every surface is paper `#FAFAF6`, also what floats over the
+  map (`--card`: search pill, results, place / pin card, message boxes, the map strip, the fly buttons – the shadow lifts
+  them off the map; app 2026-11-06 evening); white only for fields one types into. A lifted point row is `#EAE9E1`.
+- A GPX track without a line (< 2 points or < 20 m, the app's `TrackLine.has`): one quiet line „plan_no_track_recorded“
+  instead of the profile, no „Plan aus dem Track“.
 - **„Zuletzt“** (`recent.ts`, the app's drafts – `RouteRules.kt Drafts`, `AppViewModel.keepAsDraft`): no „Plan speichern?“
   any more. A plan with ≥ 2 points that leaves the map not saved as it is (+ Neu, another plan / link / GPX opened, „Plan
   aus dem Track“) is kept under Meine Touren → ZULETZT, named like the Save proposal; same points twice = one entry; the
@@ -928,4 +930,6 @@ Problems found while making the browser plan exactly like the phone, and the spe
 - Phone-only in the same app round (nothing to do here): plan auto-saved at „Los geht's“ (`PlanAutoSave`), the end
   sheet without the plan switch, „Weiter“ wording, the tour's T1–T5 sheet, „Ohne Plan aufzeichnen“, Plan in front after
   the app start (the web fits a restored plan anyway), the map column always 6 high (the web's toolbar was already
-  greyed-not-hidden).
+  greyed-not-hidden); the second app round of the evening: a plan / tour tapped during a tour is followed without a
+  question, the hold-time slider instead of the lock switch, the end sheet's tap guard, the overview pill with „Detailkarte
+  laden“ (the web loads map areas by itself, §17; its strip keeps its own overview line).
