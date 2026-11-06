@@ -233,7 +233,13 @@ const pinCode = await page.evaluate(() => window.__engine.encode({ points: [[46.
 await page.goto(url + 'index.html#p=' + pinCode); // a hash change only: the page opens the link without a reload
 await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
 // wait for the link's plan itself – the old plan's summary is still there while the new one is planned
-await page.waitForFunction(() => window.__state?.meta?.[1]?.pinned === true && document.body.dataset.planning !== '1', null, { timeout: 120_000 });
+await page.waitForFunction(() => window.__state?.meta?.[1]?.pinned === true && document.body.dataset.planning !== '1', null, { timeout: 120_000 })
+  .catch(async (e) => { // what the page shows when the link's plan does not arrive (CI only, 2026-11-06)
+    console.log('state at timeout:', JSON.stringify(await page.evaluate(() => ({ meta: window.__state?.meta, points: window.__state?.points,
+      planning: document.body.dataset.planning, status: document.getElementById('status')?.textContent, wait: document.querySelector('.wait-card, #waitCard')?.textContent }))));
+    console.log('page errors so far:', JSON.stringify(errors));
+    throw e;
+  });
 await planned();
 await page.click('#share');
 const [dl2] = await Promise.all([page.waitForEvent('download'), page.click('dialog.share #exportGpx')]);
