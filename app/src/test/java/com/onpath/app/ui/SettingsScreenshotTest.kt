@@ -48,7 +48,8 @@ class SettingsScreenshotTest {
     private fun Screen(page: SettingsPage?, offline: OfflineMapsUi = OfflineMapsUi(true, areas, wifiOnly = false,
         waiting = WaitingDownloads(2, 0, 60L * 1_048_576)), devTools: Boolean = false, seenMs: Long = now,
         demo: DemoUi? = null, sync: SyncUi = SyncUi(paired = true, peer = "Chrome on Linux", lastOkMs = now - 60_000),
-        phone: com.onpath.app.setup.PhoneState? = null, licencesOpen: Boolean = false, problemsOpen: Boolean = false) = OnPathTheme {
+        phone: com.onpath.app.setup.PhoneState? = null, licencesOpen: Boolean = false, problemsOpen: Boolean = false,
+        onTheWay: Boolean = false) = OnPathTheme {
         SettingsScreen(
             AppSettings(hiddenPoiKinds = PoiKinds.defaultHidden, offRouteM = 40), {},
             listOf(DataFiles.Check("base.pmtiles", true, "Base map"), DataFiles.Check("pois.geojson", false, "Points of interest")),
@@ -75,8 +76,14 @@ class SettingsScreenshotTest {
                 "org.jetbrains.kotlin:kotlin-stdlib:2.2.10", "com.squareup.okhttp3:okhttp:4.12.0")),
             licencesOpen = licencesOpen,
             now = now,
+            onTheWay = onTheWay,
         )
     }
+
+    /** Navigate → ⚙ (owner 2026-11-07): the Navigation page, then Karte · POIs · Tempo · Offline-Karten, "Alle Einstellungen ›". */
+    @Test fun onTheWay() = paparazzi.snapshot { Screen(null, phone = phoneOk, onTheWay = true) }
+    /** The same with the location off: "Handy einrichten" at the top of the Navigation page (red, "Fehlt: …"). */
+    @Test fun onTheWayPhoneMissing() = paparazzi.snapshot { Screen(null, phone = phoneOk.copy(locationOn = false), onTheWay = true) }
 
     @Test fun list() = paparazzi.snapshot { Screen(null) }
     /** A serious problem not looked at yet: the Diagnostics line is red until the page is opened (owner). */

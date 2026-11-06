@@ -28,6 +28,7 @@ open class SettingsLargeFontTest {
     }
 
     @Test fun navigation() = shots.navigation()
+    @Test fun onTheWay() = shots.onTheWay()
     @Test fun navigationPhoneMissing() = shots.navigationPhoneMissing()
     @Test fun navigationChoiceSheet() = shots.navigationChoiceSheet()
     @Test fun pace() = shots.pace()

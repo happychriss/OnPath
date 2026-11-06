@@ -75,7 +75,7 @@ class NoticesTest {
         val vm = src.getValue("AppViewModel.kt")
         // the lines last until their screen is left
         assertTrue(vm.contains("set(v) { if (!v) { routesNote = null; justSavedId = -1L }; routesShown = v }"))
-        assertTrue(vm.contains("set(v) { if (!v) settingsNote = null; settingsShown = v }"))
+        assertTrue(vm.contains("set(v) { if (!v) { settingsNote = null; settingsOnTheWay = false }; settingsShown = v }"))
         // results that are visible anyway are not said (owner example: "Track saved to My routes.")
         assertTrue("msg_track_saved" !in vm && "msg_track_to_bin" !in vm && "msg_round_trip_already" !in vm)
         // newer routing data changed the route: the plan sheet's grey line, a tap shows the route

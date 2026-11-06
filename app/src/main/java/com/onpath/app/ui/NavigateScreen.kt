@@ -128,6 +128,8 @@ data class NavUi(
     val sac: Int = 3,
     /** The check-and-switch sheet is open (stays until a choice is made). */
     val activityCheck: ActivityCheckUi? = null,
+    /** Settings (⚙ on the way) lie over Navigate: Android's back goes to them, not to "App verlassen?". */
+    val settingsOpen: Boolean = false,
     /** "46.54120 N 10.90320 E · ±8 m · 1234 m" (emergency calls) in the opened card; null = no fix yet. */
     val position: String? = null,
     /** "46.54120, 10.90320" – copied when the position line is tapped. */
@@ -271,7 +273,7 @@ fun NavigateOverlay(
     // "app gone" for "tour gone" and might start a second one. A second back closes the question (= Bleiben).
     var leaveAsk by remember { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(enabled = LeaveAppRule.backAsks(recording = ui.recordedM != null,
-        barOpen = closableBar, sheetOpen = ui.activityCheck != null)) { leaveAsk = !leaveAsk }
+        barOpen = closableBar, sheetOpen = ui.activityCheck != null || ui.settingsOpen)) { leaveAsk = !leaveAsk }
     val recordingNow = ui.recordedM != null
     LaunchedEffect(recordingNow) { if (!recordingNow) leaveAsk = false }
     Box(Modifier.fillMaxSize()) {
@@ -1017,6 +1019,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         activity = rec?.nav?.session?.activity ?: vm.activity,
         sac = rec?.nav?.session?.sac ?: vm.sac,
         activityCheck = vm.activityCheck,
+        settingsOpen = vm.showSettings,
         position = location?.let { l ->
             NavText.position(l.latitude, l.longitude, l.accuracy.takeIf { l.hasAccuracy() }, l.altitude.takeIf { l.hasAltitude() },
                 com.onpath.app.recording.LocationTracker.ageSeconds(l))

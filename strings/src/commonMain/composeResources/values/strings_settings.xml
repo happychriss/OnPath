@@ -13,6 +13,8 @@
     <string name="settings_page_about">About</string>
     <string name="settings_group_yours">Your settings</string>
     <string name="settings_group_app">App</string>
+    <string name="settings_group_on_the_way">Also on the way</string>
+    <string name="settings_all">All settings</string>
     <string name="settings_sum_pace">%1$s · learns during each tour</string>
     <string name="settings_sum_poi_all_shown">All shown</string>
     <string name="settings_sum_poi_all_hidden">All hidden</string>

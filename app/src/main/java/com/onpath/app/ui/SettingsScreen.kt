@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Navigation
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.SaveAlt
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Timer
@@ -180,6 +181,12 @@ fun SettingsScreen(
     /** About → Licences open from the start (screenshots). */
     licencesOpen: Boolean = false,
     now: Long = System.currentTimeMillis(),
+    /**
+     * Opened from Navigate's ⚙ (owner 2026-11-07): the list is the Navigation page itself, then only the topics for
+     * the way ([SettingsSummary.onTheWay]) and "Alle Einstellungen ›" ([onAllSettings]); the tour is not touched.
+     */
+    onTheWay: Boolean = false,
+    onAllSettings: () -> Unit = {},
 ) {
     val topics = SettingsPage.entries.filter {
         when (it) {
@@ -201,7 +208,29 @@ fun SettingsScreen(
                 Text(page?.title ?: str(Res.string.common_settings), style = MaterialTheme.typography.titleLarge)
             }
             note?.let { NoticeLine(it, Modifier.padding(horizontal = 24.dp)) }
-            if (page == null) {
+            if (page == null && onTheWay) CompositionLocalProvider(LocalSectionTitle provides false) {
+                LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    item {
+                        NavigationSection(settings, onChange, onPhoneSetup = { onPage(SettingsPage.PHONE) },
+                            onTestVibration = { onPhoneFix(com.onpath.app.setup.CheckId.VIBRATION) },
+                            onTestVoice = { onPhoneFix(com.onpath.app.setup.CheckId.VOICE) },
+                            phoneChecks = phoneChecks, phone = phone)
+                    }
+                    val more = SettingsSummary.onTheWay(topics)
+                    item { SettingsGroupHeader(str(Res.string.settings_group_on_the_way)) }
+                    item {
+                        SettingsCard {
+                            more.forEachIndexed { i, t ->
+                                if (i > 0) HorizontalDivider(Modifier.padding(start = 64.dp))
+                                TopicRow(t, topicSummary(t, settings, activity, offlineMaps)) { onPage(t) }
+                            }
+                            if (more.isNotEmpty()) HorizontalDivider(Modifier.padding(start = 64.dp))
+                            AllSettingsRow(onAllSettings)
+                        }
+                    }
+                }
+            } else if (page == null) {
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp)) {
                     // two groups (owner): what the user sets, then the smaller "App" group; Phone setup on top (no
                     // heading) while a tour needs something from the phone (owner 2026-10-30)
@@ -277,6 +306,28 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+}
+
+/** The summary line of a topic on the on-the-way list ([SettingsSummary.ON_THE_WAY]). */
+private fun topicSummary(t: SettingsPage, settings: AppSettings, activity: com.onpath.app.routing.Activity, offlineMaps: OfflineMapsUi?): Summary =
+    when (t) {
+        SettingsPage.PACE -> SettingsSummary.pace(settings, activity)
+        SettingsPage.POI -> SettingsSummary.poi(settings.hiddenPoiKinds)
+        SettingsPage.MAP -> SettingsSummary.map(settings)
+        SettingsPage.OFFLINE_MAPS -> offlineMaps?.let { SettingsSummary.offlineMaps(it) } ?: SettingsSummary.navigation(settings)
+        else -> SettingsSummary.navigation(settings)
+    }
+
+/** "Alle Einstellungen ›" at the end of the on-the-way list: the whole topic list. */
+@Composable
+private fun AllSettingsRow(onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClick = onClick)
+        .padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Outlined.Settings, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(24.dp))
+        Text(str(Res.string.settings_all), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
