@@ -886,7 +886,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun onAppStart() {
         val away = if (backgroundSince == 0L) Long.MAX_VALUE else android.os.SystemClock.elapsedRealtime() - backgroundSince
-        if (away < 10 * 60_000L || recState.value != null || mode != AppMode.PLAN) return
+        if (away < 10 * 60_000L) return
+        // back after a while with a plan: the plan in front, also during a tour (owner 2026-11-06, PlanCamera)
+        if (backgroundSince != 0L && mode == AppMode.PLAN && waypoints.isNotEmpty()) {
+            showPlanWhole(PlanCamera.Moment.BACK_IN_APP); return
+        }
+        if (recState.value != null || mode != AppMode.PLAN) return
         // A place was just shared into the app: the map shows it, not the position.
         if (android.os.SystemClock.elapsedRealtime() < searchFlow.keepCameraUntil) return
         startCameraDone = false; userMovedMap = false; followMe = false; startCameraGen++
@@ -2478,6 +2483,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * The whole plan in front at a [PlanCamera.Moment] (owner 2026-11-06): once the sheet has settled, the fit of "Show
+     * whole route" over the route line and the points (one point: centred) – not when a finger touched the map meanwhile,
+     * Plan was left or a track is shown. Following stops first (CLAUDE.md "Map camera").
+     */
+    fun showPlanWhole(moment: PlanCamera.Moment) {
+        val asked = android.os.SystemClock.uptimeMillis()
+        viewModelScope.launch {
+            delay(WholeRoute.SETTLE_MS)
+            val pts = waypoints.toList()
+            val what = if (mode != AppMode.PLAN) PlanCamera.Show.NOTHING
+                else PlanCamera.show(pts.size, touchedSince = lastMapTouchMs > asked, trackShown = shown != null)
+            if (what == PlanCamera.Show.NOTHING) {
+                Problems.trace("map", "Plan not shown whole (${moment.name.lowercase()}): the map was touched, Plan left or nothing to show")
+                return@launch
+            }
+            followMe = false
+            freeLookAt = null
+            events += if (what == PlanCamera.Show.ONE_POINT) UiEvent.CenterOn(pts[0], PlanCamera.ONE_POINT_ZOOM)
+                else UiEvent.Fit(WholeRoute.bounds(listOfNotNull(route?.points), pts, null), northUp = true)
+            Problems.trace("map", "Plan shown whole (${moment.name.lowercase()}, ${pts.size} points)")
+        }
+    }
+
+    /**
      * The next computed route is fitted ([WholeRoute.firstRoute], a plan link, a place added from the card / candidate
      * menu – [WholeRoute.fitAfterPlace]): the whole line shows (field A-019).
      */
@@ -2929,6 +2958,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         else followMe = headingUp && followMe && tracker.location.value != null
         // Plan during a tour: the sheet is one row (tour status + Continue), the map free for holds (owner 2026-10-31)
         if (m == AppMode.PLAN && was == AppMode.NAVIGATE) planSize = PlanSize.backInPlan(planSize, recState.value != null)
+        // Navigate → Plan (also the end of a tour): the plan in front, not the position (owner 2026-11-06, PlanCamera)
+        if (m == AppMode.PLAN && was == AppMode.NAVIGATE && waypoints.isNotEmpty())
+            showPlanWhole(if (recState.value == null) PlanCamera.Moment.TOUR_END else PlanCamera.Moment.FROM_NAVIGATE)
         if (recState.value != null) RecordingService.send(getApplication(), RecordingService.ACTION_NAVIGATING) {
             putExtra(RecordingService.EXTRA_ON, m == AppMode.NAVIGATE)
         }

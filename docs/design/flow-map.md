@@ -76,6 +76,10 @@ search, pin card, activity sheet).
 16 states (S1–S9, N1–N7) plus 5 dialogs / boxes reached from them (Save, "Plan leeren?", "Plan ersetzen?", tour-load box,
 ride summary); 39 transitions written out above (gestures that only move the map not counted).
 
+**Camera in Plan (owner 2026-11-06, `PlanCamera`):** with a plan, Plan shows the whole plan – at the app start
+(StartCamera `SHOW_PLAN`), back in the app after 10 min, Navigate → Plan (also during a tour) and at the end of a tour;
+without a plan the own position as before; a finger on the map meanwhile or a shown track keep the map.
+
 ## Inputs for the common goals (from the code)
 
 | Goal | Inputs | Steps |

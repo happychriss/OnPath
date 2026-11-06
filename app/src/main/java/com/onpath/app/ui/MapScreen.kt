@@ -687,9 +687,11 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
                 plan = vm.mode == AppMode.PLAN && vm.recState.value == null && !vm.followMe,
                 userMoved = vm.userMovedMap,
                 fixAgeS = loc?.let { com.onpath.app.recording.LocationTracker.ageSeconds(it) },
+                hasPlan = vm.waypoints.isNotEmpty(),
             )
             when (step) {
                 StartCamera.Step.WAIT -> delay(250)
+                StartCamera.Step.SHOW_PLAN -> { vm.showPlanWhole(PlanCamera.Moment.APP_START); vm.startCameraDone = true }
                 StartCamera.Step.CENTRE -> { loc?.let { c.centreOn(it.latitude, it.longitude) }; vm.startCameraDone = true }
                 StartCamera.Step.GIVE_UP -> vm.startCameraDone = true
             }

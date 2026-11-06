@@ -416,5 +416,39 @@ class CoreFieldE2ETest : E2EBase() {
     }
 
 
+    /**
+     * Owner 2026-11-06 ("Ich bin in Hilden, Plan in Köln – im Planmodus steht mein Standort, wo ist mein Plan?"): with
+     * a plan, Navigate → Plan shows the whole plan, not the own position (PlanCamera).
+     */
+    @Test fun backInPlanTheMapShowsThePlanNotThePosition() {
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
+        // a saved plan about 25 km north of the walker
+        val far = listOf(GpxWaypoint(lat + 0.22, lon - 0.01, "E2E far start"), GpxWaypoint(lat + 0.24, lon + 0.02, "E2E far goal"))
+        val name = "E2E far plan ${System.currentTimeMillis() % 100_000}"
+        val id = db.insertTour(TourKind.PLANNED, name, Activity.HIKE.name, 2, 3_000.0, 0.0, 0.0, 3600.0,
+            listOf(far.map { TrackPoint(it.lat, it.lon) }), far)
+        try {
+            var t: com.onpath.app.data.Tour? = null
+            scenario.onActivity { vm(it).refreshTours(); t = db.getTour(id); vm(it).openTour(t!!) }
+            waitUntil("the far plan is on the map", 10_000) { waypointCount() == 2 }
+            // Navigate follows the own position
+            scenario.onActivity { vm(it).startNavigation(force = true) }
+            waitUntil("Navigate", 20_000) { mode() == AppMode.NAVIGATE }
+            Thread.sleep(2_500)
+            scenario.onActivity { vm(it).switchToPlan() }
+            waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+            Thread.sleep(3_000) // settle + fit animation
+            var at: org.maplibre.android.geometry.LatLng? = null
+            onMap { m -> at = m.cameraPosition.target }
+            val c = at!!
+            val toPlan = com.onpath.app.data.Geo.distance(c.latitude, c.longitude, lat + 0.23, lon + 0.005)
+            val toMe = com.onpath.app.data.Geo.distance(c.latitude, c.longitude, lat, lon)
+            assertTrue("the map shows the plan (${toPlan.toInt()} m from it), not the position (${toMe.toInt()} m)", toPlan < toMe && toPlan < 5_000)
+        } finally {
+            scenario.onActivity { if (vm(it).recState.value != null) vm(it).stopRecording() }
+            db.deleteTour(id)
+        }
+    }
+
     private fun waypointList(): List<GeoPoint> { var l: List<GeoPoint> = emptyList(); scenario.onActivity { l = vm(it).waypoints.toList() }; return l }
 }

@@ -5,8 +5,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class StartCameraTest {
-    private fun d(ms: Long, known: Boolean = true, plan: Boolean = true, moved: Boolean = false, age: Long? = null) =
-        StartCamera.decide(ms, known, plan, moved, age)
+    private fun d(ms: Long, known: Boolean = true, plan: Boolean = true, moved: Boolean = false, age: Long? = null, hasPlan: Boolean = false) =
+        StartCamera.decide(ms, known, plan, moved, age, hasPlan)
 
     @Test fun freshFixCentresAtOnce() = assertEquals(Step.CENTRE, d(300, age = 2))
     @Test fun oldLastKnownWaitsForAFreshFixFirst() {
@@ -21,4 +21,12 @@ class StartCameraTest {
     @Test fun userPannedNeverJumps() = assertEquals(Step.GIVE_UP, d(500, moved = true, age = 1))
     @Test fun navigateOrTourRunningDoesNothing() = assertEquals(Step.GIVE_UP, d(500, plan = false, age = 1))
     @Test fun waitsUntilTheStartModeIsKnown() = assertEquals(Step.WAIT, d(500, known = false, plan = false, age = 1))
+
+    /** Owner 2026-11-06 ("Plan in Köln, ich in Hilden"): with a plan the start shows the plan, no fix needed. */
+    @Test fun aPlanIsShownInsteadOfThePosition() {
+        assertEquals(Step.SHOW_PLAN, d(100, hasPlan = true))
+        assertEquals(Step.SHOW_PLAN, d(100, hasPlan = true, age = 1))
+        assertEquals(Step.GIVE_UP, d(100, hasPlan = true, moved = true))
+        assertEquals(Step.WAIT, d(100, known = false, hasPlan = true))
+    }
 }
