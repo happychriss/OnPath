@@ -205,6 +205,50 @@ class VoiceGuideTest {
         assertEquals(Phrase.BackOnRoute, g.update(base.copy(nowMs = 70_000)))
     }
 
+    /**
+     * Two steps, both said (owner 2026-11-07): the opening says "Abseits der Route. Bitte aufs Handy schauen."; when the
+     * question asks again (where the phone would vibrate: the first reminder, a way found after none, asked again after
+     * Keep) it is said again – with the voice on nothing vibrates, so it was silent. Never on the route (no episode),
+     * never twice within the gap, never while quiet; back on the route as before.
+     */
+    @Test fun theQuestionAskingAgainIsSaid() {
+        val g = VoiceGuide()
+        val base = VoiceGuide.Input(0, line(3000, emptyMap()), 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
+        g.update(base)
+        assertNull("no question open: nothing", g.questionAgain(1_000, quiet = false))
+        assertEquals(Phrase.OffRoute, g.update(base.copy(nowMs = 2_000, onRoute = false, offRoute = true)))
+        assertNull("the opening was just said", g.questionAgain(3_000, quiet = false))
+        assertNull(g.update(base.copy(nowMs = 30_000, onRoute = false, offRoute = true)))
+        assertNull("standing still: quiet", g.questionAgain(40_000, quiet = true))
+        assertEquals(Phrase.OffRoute, g.questionAgain(45_000, quiet = false))
+        assertNull(g.update(base.copy(nowMs = 50_000, onRoute = false, offRoute = true)))
+        assertEquals(Phrase.BackOnRoute, g.update(base.copy(nowMs = 70_000)))
+        assertNull("back on the route: nothing", g.questionAgain(90_000, quiet = false))
+    }
+
+    /**
+     * Field log owner 2026-11-07 13:42–13:45 (tour 221, on foot, voice on): four off-route questions in 2½ minutes, each
+     * answered with "Neue Route" (lines v7, v8, v9, v10) – but "Abseits der Route. Bitte aufs Handy schauen." only at
+     * 13:42:43 and 13:45:08: the 2-minute guard against flapping fixes silenced the 2nd and 3rd question, and with the
+     * voice on nothing vibrates. A question answered with a new route is no flapping: the next one is said.
+     */
+    @Test fun aQuestionAfterATakenNewRouteIsSaidAgain() {
+        val g = VoiceGuide()
+        val v1 = line(3000, emptyMap())
+        val base = VoiceGuide.Input(0, v1, 1, 100.0, onRoute = true, speedMps = 1.3, bike = false)
+        g.update(base)
+        assertEquals(Phrase.OffRoute, g.update(base.copy(nowMs = 160_000, onRoute = false, offRoute = true)))
+        // "Neue Route" taken 3 s later: the new line, the question closed
+        val v2 = VoiceGuide.Input(163_000, line(2900, emptyMap()), 2, 0.0, onRoute = true, speedMps = 1.3, bike = false, rerouted = true)
+        assertNull(g.update(v2))
+        assertTrue(g.update(v2.copy(nowMs = 175_000, alongM = 10.0)) is Phrase.NewRoute)
+        // off the new line 24 s after it was taken: said again (was: silent until 2 minutes after the first)
+        assertEquals(Phrase.OffRoute, g.update(v2.copy(nowMs = 187_000, alongM = null, onRoute = false, offRoute = true)))
+        // flapping (back by itself, off again at once) stays said once
+        g.update(v2.copy(nowMs = 190_000, alongM = 12.0))
+        assertNull(g.update(v2.copy(nowMs = 200_000, alongM = null, onRoute = false, offRoute = true)))
+    }
+
     @Test fun aTakenNewRouteSaysSoWithItsFirstJunction() {
         val g = VoiceGuide()
         val old = line(3000, emptyMap())
