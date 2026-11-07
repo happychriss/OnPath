@@ -17,7 +17,7 @@ release's notes) and the git history – this file keeps only the current state 
 - **Pixel:** not checked after v0.17.2 – ask the owner / check About.
 - **Google Play internal test (owner 2026-11-07): live.** App `com.onpath.app`, Play App Signing (Google holds the app key),
   upload key only on donald in `.secrets/` (gitignored), `tools/dev/play_bundle.sh` → `dist/onpath-<version>.aab`,
-  uploaded by hand (`docs/play-build.md`); first release 0.17.3 (versionCode 1703), 3–4 testers by email list. Every new
+  uploaded by hand (`docs/play-build.md`); first release 0.17.3 (versionCode 1703), 0.17.4 (1704) live 2026-11-07, 3–4 testers by email list. Every new
   upload needs a higher versionCode. The owner's Pixel stays on donald's debug builds (Play over GitHub/debug = uninstall).
 - **Owner decisions 2026-11-07:** "on the line" = 24 dp (the `metersPerPixel` fix has been on main since 46e93b09);
   offline corridor 10 km on foot, 20 km for bike activities (donald). Smaller open items: `docs/backlog.md`; open questions: backlog "Waiting for the owner"; the owner's own questions: the Fragenregister.
