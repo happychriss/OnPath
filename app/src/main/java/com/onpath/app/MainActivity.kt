@@ -388,7 +388,7 @@ class MainActivity : ComponentActivity() {
                 RouteDialogs(vm)
                 if (vm.setupOpen) {
                     BackHandler { vm.closeSetup() }
-                    com.onpath.app.ui.setup.SetupGuideScreen(vm.setupGuide, vm.setupWelcome, vm.phone, vm.phoneTaken, setupCallbacks())
+                    com.onpath.app.ui.setup.SetupGuideScreen(vm.setupGuide, vm.setupWelcome, vm.phone, vm.phoneTaken, setupCallbacks(), vm.voiceTest)
                 }
                 vm.restoreProgress?.let { com.onpath.app.ui.RestoreProgressDialog(it) }
                 // "Allow all the time" is never asked (owner) – only the quiet hint in Settings → Navigation
@@ -519,6 +519,7 @@ class MainActivity : ComponentActivity() {
         if (stoodDown) return
         refreshPhone() // the user may come back from a settings screen of the guide
         readUnusedReset()
+        recheckVoice()
     }
 
     override fun onStop() {
@@ -746,9 +747,9 @@ class MainActivity : ComponentActivity() {
         },
         onVibrationAnswer = vm::setupVibrationAnswer,
         onTestVoice = ::testVoice,
-        onLoadVoice = {
-            open(Intent(android.speech.tts.TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA), "voice download")
-        },
+        onLoadVoice = ::loadVoice,
+        onTtsSettings = ::openTtsSettings,
+        onGoogleSpeech = ::openGoogleSpeech,
         onSoundSettings = { open(Intent(Settings.ACTION_SOUND_SETTINGS), "sound settings") },
         onAppSettings = ::openAppSettings,
         onMoreHelp = { b -> open(Intent(Intent.ACTION_VIEW, Uri.parse("https://dontkillmyapp.com/${b.helpPage}")), "brand help page") },
@@ -795,18 +796,65 @@ class MainActivity : ComponentActivity() {
     /** The voice step's test: the phone's speech output says the test sentence; what it found goes to the phone check. */
     private var voiceTest: com.onpath.app.recording.Speaker? = null
 
+    /**
+     * Field report 2026-11-07 (Samsung S10): the test once found "no voice", and every later tap went to the same
+     * speaker, which never looked again and returned without a word – silent. Now every tap answers on the screen
+     * ([com.onpath.app.setup.VoiceSetup.Outcome]), and a speaker without a voice checks the engines again.
+     */
     private fun testVoice() {
-        val s = voiceTest ?: com.onpath.app.recording.Speaker(applicationContext).also { voiceTest = it }
-        s.onState = { st ->
-            runOnUiThread {
-                vm.setupVoiceStatus(com.onpath.app.recording.Speaker.status(st))
-                if (st == com.onpath.app.recording.Speaker.State.READY) vm.setupVibrationPlayed()
+        val s = voiceSpeaker()
+        s.sayTest(com.onpath.app.navigation.VoiceText.test()) { t -> runOnUiThread { vm.setupVoiceTest(t) } }
+    }
+
+    private fun voiceSpeaker(): com.onpath.app.recording.Speaker =
+        voiceTest ?: com.onpath.app.recording.Speaker(applicationContext).also { s ->
+            voiceTest = s
+            s.onState = { st ->
+                runOnUiThread {
+                    com.onpath.app.recording.Speaker.remember(vm.prefs, s)
+                    vm.setupVoiceStatus(com.onpath.app.recording.Speaker.status(st, s.online), s.result?.let(com.onpath.app.setup.VoiceSetup::fix))
+                }
             }
         }
-        val ready = s.state == com.onpath.app.recording.Speaker.State.READY
+
+    /**
+     * Back in the app while the voice step shows a missing voice (the user may have loaded one): check the engines again,
+     * quietly – the step turns to "Test" by itself (principle 5, docs/design/onboarding-phone-check.md).
+     */
+    private fun recheckVoice() {
+        if (vm.setupGuide?.current != com.onpath.app.setup.CheckId.VOICE) return
+        if (vm.phone.voice == com.onpath.app.setup.VoiceStatus.READY) return
+        val s = voiceSpeaker()
+        if (s.state == com.onpath.app.recording.Speaker.State.READY && !s.online) return
+        if (s.state == com.onpath.app.recording.Speaker.State.READY) s.stop() // an online voice: an offline one may be there now
         s.start()
-        s.say(com.onpath.app.navigation.VoiceText.test())
-        if (ready) vm.setupVibrationPlayed()
+    }
+
+    /** "Load voice": the voice download of the engine OnPath would speak with (Google's when the phone's own has none). */
+    private fun loadVoice() {
+        val pkg = vm.phone.voiceFix?.enginePkg
+        val intent = Intent(android.speech.tts.TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)
+        if (pkg != null) intent.setPackage(pkg)
+        try { startActivity(intent) } catch (e: Exception) {
+            com.onpath.app.debug.Problems.warn("voice", "Voice download of ${pkg ?: "the phone's engine"} could not be opened; speech settings instead", e)
+            openTtsSettings()
+        }
+    }
+
+    /** The phone's speech output settings (preferred engine, its voices); else the phone's settings. */
+    private fun openTtsSettings() {
+        try { startActivity(Intent("com.android.settings.TTS_SETTINGS")) } catch (e: Exception) {
+            com.onpath.app.debug.Problems.warn("voice", "Speech output settings could not be opened; phone settings instead", e)
+            open(Intent(Settings.ACTION_SETTINGS), "phone settings")
+        }
+    }
+
+    /** "Speech Services by Google" in the Play Store (app or web). */
+    private fun openGoogleSpeech() {
+        try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(com.onpath.app.recording.Speaker.GOOGLE_STORE))) } catch (e: Exception) {
+            com.onpath.app.debug.Problems.warn("voice", "Play Store not opened for Google's speech services; the web page instead", e)
+            open(Intent(Intent.ACTION_VIEW, Uri.parse(com.onpath.app.recording.Speaker.GOOGLE_WEB)), "Google speech services page")
+        }
     }
 
     private fun openNotificationSettings() =

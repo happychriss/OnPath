@@ -53,13 +53,13 @@ class PhoneSetupState(private val prefs: Prefs, private val settingsNow: () -> A
         if (g == null || g.finished && then != null && setupReady(purpose)) { then?.invoke(); return }
         Problems.trace("setup", "Phone setup guide ($purpose): ${g.steps.joinToString()}")
         setupThen = then
-        setupGuide = g
+        setupGuide = g; voiceTest = null
     }
 
     /** Settings → Phone setup → a row: that one step. */
     fun openSetupStep(id: com.onpath.app.setup.CheckId) {
         setupThen = null
-        setupGuide = com.onpath.app.setup.SetupGuide.single(id)
+        setupGuide = com.onpath.app.setup.SetupGuide.single(id); voiceTest = null
     }
 
     fun setupWelcomeNow() {
@@ -73,7 +73,7 @@ class PhoneSetupState(private val prefs: Prefs, private val settingsNow: () -> A
         val id = g.current
         if (id != null && g.purpose == com.onpath.app.setup.Purpose.BEFORE_TOUR &&
             com.onpath.app.setup.PhoneCheck.need(id) != com.onpath.app.setup.Need.REQUIRED) prefs.snooze(id, System.currentTimeMillis())
-        setupGuide = g.putOff().refresh(phone, vibrationUsed, voiceUsed)
+        setupGuide = g.putOff().refresh(phone, vibrationUsed, voiceUsed); voiceTest = null
         finishSetupIfDone()
     }
 
@@ -102,11 +102,22 @@ class PhoneSetupState(private val prefs: Prefs, private val settingsNow: () -> A
     /** Spoken directions switched on for bike or hike: the voice step applies only then. */
     val voiceUsed: Boolean get() = settings.junctionGuide == com.onpath.app.data.JunctionGuide.VOICE
 
-    /** The voice test found the phone's speech output in this [status] (recording/Speaker). */
-    fun setupVoiceStatus(status: com.onpath.app.setup.VoiceStatus) {
+    /** The voice test found the phone's speech output in this [status] (recording/Speaker), [fix] = which engine lacks what. */
+    fun setupVoiceStatus(status: com.onpath.app.setup.VoiceStatus, fix: com.onpath.app.setup.VoiceSetup.Fix? = phone.voiceFix) {
         prefs.voiceStatus = status
-        Problems.trace("setup", "Voice test: speech output $status")
-        updatePhone(phone.copy(voice = status))
+        prefs.voiceFix = fix
+        Problems.trace("setup", "Voice test: speech output $status${fix?.let { " (${it.enginePkg})" } ?: ""}")
+        updatePhone(phone.copy(voice = status, voiceFix = fix))
+    }
+
+    /** What the last tap on the voice step's Test did (shown under the step: never a silent test); null = not tapped. */
+    var voiceTest by mutableStateOf<com.onpath.app.setup.VoiceSetup.VoiceTest?>(null)
+        private set
+
+    fun setupVoiceTest(t: com.onpath.app.setup.VoiceSetup.VoiceTest?) {
+        voiceTest = t
+        if (t != null && t.outcome != com.onpath.app.setup.VoiceSetup.Outcome.CHECKING) Problems.trace("setup", "Voice test: ${t.outcome}${t.code?.let { " ($it)" } ?: ""}")
+        if (t?.played == true) setupVibrationPlayed()
     }
 
     fun setupBrandDone() {
@@ -117,7 +128,7 @@ class PhoneSetupState(private val prefs: Prefs, private val settingsNow: () -> A
     /** Closes the welcome / guide (Back, Close, Later on the welcome). */
     fun closeSetup() {
         if (setupWelcome) { setupWelcome = false; prefs.setupWelcomeSeen = true }
-        setupGuide = null
+        setupGuide = null; voiceTest = null
         setupThen = null
     }
 

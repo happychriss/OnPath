@@ -218,6 +218,16 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             ?: com.onpath.app.setup.VoiceStatus.UNKNOWN
         set(v) = sp.edit().putString("voiceStatus", v.name).apply()
 
+    /** Which engine lacks the voice and whether Google's is there (the voice step's text), as last found. */
+    var voiceFix: com.onpath.app.setup.VoiceSetup.Fix?
+        get() = com.onpath.app.setup.VoiceSetup.decode(sp.getString("voiceFix", null))
+        set(v) = sp.edit().putString("voiceFix", com.onpath.app.setup.VoiceSetup.encode(v)).apply()
+
+    /** The last check of the speech engines as one line (diagnostics export: engine, version, voices). */
+    var voiceDetail: String
+        get() = sp.getString("voiceDetail", null) ?: "voice not checked yet"
+        set(v) = sp.edit().putString("voiceDetail", v).apply()
+
     /** The user's answer to the vibration test ("Did you feel it?"). */
     var vibrationFelt: com.onpath.app.setup.Felt
         get() = com.onpath.app.debug.enumOrNull<com.onpath.app.setup.Felt>(sp.getString("vibrationFelt", null), "settings")

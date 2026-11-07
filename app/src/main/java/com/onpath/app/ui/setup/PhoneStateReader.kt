@@ -63,6 +63,7 @@ object PhoneStateReader {
             vibrationFelt = prefs.vibrationFelt,
             voice = prefs.voiceStatus,
             voiceHeard = prefs.voiceHeard,
+            voiceFix = prefs.voiceFix,
             backgroundRestricted = guard(false, "background restriction") {
                 sdk >= 28 && ctx.getSystemService(ActivityManager::class.java).isBackgroundRestricted
             },

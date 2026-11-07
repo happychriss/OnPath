@@ -24,6 +24,14 @@
 
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
+    <!-- Spoken directions: see the phone's speech engines (Android 11+ package visibility) – to list them, use Google's
+         directly when the phone's own has no voice (recording/Speaker, setup/VoiceSetup) and name them in the voice step. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
     <application
         android:name=".OnPathApp"
         android:allowBackup="true"

@@ -287,3 +287,23 @@ A recommended step "Spoken directions" after the vibration test (only while spok
 hike): the test sentence through the phone's offline voice → "Did you hear it?"; no offline voice for the app
 language → "Load voice" (`TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA`); no speech output at all → a note, Continue.
 The voice speaks on a tour only once the answer was yes (`docs/design/voice-guidance.md`).
+
+## Addendum 2026-11-07: Voice on any engine (field report Samsung Galaxy S10)
+Play internal test, SM-G973F, Android 12: the phone's engine was Samsung's (`com.samsung.SMT`) without an offline German
+voice → "Load voice" → Samsung's language menu and back → every later tap on Test silent, no message. Cause (code + the
+phone's log: one engine bind, "speech output MISSING", then nothing): the test reused the speaker that had found no
+voice; `Speaker.start()` returned because the engine was bound, `say()` returned on NO_VOICE without a word.
+Now (`setup/VoiceSetup` pure + `VoiceSetupTest`, `recording/Speaker`):
+- Every tap answers on the screen, right above the buttons: "Checking …", then the sentence (→ "Did you hear it?"), or
+  why not (no voice yet, media volume 0, a call, the engine's error code, or "took it but never spoke" after 6 s). A tap
+  after "no voice" checks the engines again; so does coming back to the app while the voice step shows.
+- Engine choice: the phone's default engine when it has an installed offline voice; else Google's speech services
+  directly when installed (`TextToSpeech(ctx, l, "com.google.android.tts")` – no setting to change, its download works
+  the same everywhere); else an installed voice that needs the internet (status ONLINE: it speaks, the step keeps asking
+  for an offline voice, a tour vibrates when it fails without a network); else MISSING (load it – into Google's when
+  installed) or NO_LANGUAGE (the engine does not speak it). A tour whose voice cannot speak vibrates the turns.
+- The step names the engine ("Your phone speaks with “Samsung TTS” …") and offers Load voice, Speech Services by Google
+  (Play Store, `market://` then https) and the speech output settings (`com.android.settings.TTS_SETTINGS`, else Settings).
+- Manifest `<queries>` TTS_SERVICE (Android 11+ package visibility: without it the engines cannot be listed).
+- Diagnostics: `voice` = engines, default, versions, per-language voice counts (offline / installed), the voice in use;
+  the problem log has the same line at every check.

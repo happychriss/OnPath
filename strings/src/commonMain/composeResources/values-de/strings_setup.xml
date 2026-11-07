@@ -94,4 +94,17 @@
     <string name="setup_voice_missing">Auf deinem Handy fehlt noch die Stimme für diese Sprache. Tippe auf Stimme laden, wähle die Sprache und lade sie herunter – danach geht es ohne Internet.</string>
     <string name="setup_voice_load">Stimme laden</string>
     <string name="setup_voice_none">Dieses Handy hat keine Sprachausgabe. OnPath führt dich mit Vibration und auf dem Bildschirm.</string>
+    <string name="setup_voice_in_google">Die Sprachausgabe deines Handys („%1$s“) hat keine Stimme für %2$s. Darum nimmt OnPath die Sprachdienste von Google – lade die Stimme dort.</string>
+    <string name="setup_voice_or_google">Dein Handy spricht mit „%1$s“. Klappt das Laden dort nicht, ist es am einfachsten, die Sprachdienste von Google zu installieren – OnPath nimmt sie dann von selbst.</string>
+    <string name="setup_voice_install_google">Die Sprachausgabe deines Handys („%1$s“) hat keine Stimme für %2$s. Am einfachsten: die Sprachdienste von Google installieren – OnPath nimmt sie dann von selbst, auch ohne Internet.</string>
+    <string name="setup_voice_no_language">Noch keine Sprachausgabe auf deinem Handy hat eine Stimme für %1$s. In den Einstellungen der Sprachausgabe kannst du eine wählen und eine Stimme laden.</string>
+    <string name="setup_voice_online">Dein Handy hat eine Stimme für %1$s nur mit Internet. OnPath spricht vorerst damit – ohne Netz vibrieren die Abzweigungen stattdessen. Für Touren ohne Netz lade eine Offline-Stimme.</string>
+    <string name="setup_voice_google">Sprachdienste von Google</string>
+    <string name="setup_voice_tts_settings">Einstellungen Sprachausgabe</string>
+    <string name="setup_voice_checking">Sprachausgabe wird geprüft …</string>
+    <string name="setup_voice_test_none">Eben getestet: noch keine Stimme für %1$s auf diesem Handy. Was hilft, steht oben.</string>
+    <string name="setup_voice_test_muted">Der Satz läuft, aber die Medienlautstärke steht auf null. Drück die Lauter-Taste und teste nochmal.</string>
+    <string name="setup_voice_test_call">Während eines Telefonats bleibt die Stimme still. Teste nach dem Gespräch nochmal.</string>
+    <string name="setup_voice_test_failed">Die Sprachausgabe hat den Satz nicht abgespielt (Fehler %1$s). Teste nochmal – bleibt sie still, wähle in den Einstellungen der Sprachausgabe eine andere.</string>
+    <string name="setup_voice_test_silent">Die Sprachausgabe hat den Satz angenommen, aber nicht gesprochen. Teste nochmal – bleibt sie still, wähle in den Einstellungen der Sprachausgabe eine andere.</string>
 </resources>
