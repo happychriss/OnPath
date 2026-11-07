@@ -501,6 +501,7 @@ class MainActivity : ComponentActivity() {
         if (phoneRead) vm.prefs.lastSeen = com.onpath.app.setup.LastSeen(com.onpath.app.setup.PhoneCheck.okNow(vm.phone),
             System.currentTimeMillis())
         vm.onAppStop()
+        vm.prefs.flushLazy() // camera + last seen to disk now, on a background thread – onStop never waits for it
         com.onpath.app.debug.Health.detach(window)
         vm.tracker.stop()
         super.onStop()

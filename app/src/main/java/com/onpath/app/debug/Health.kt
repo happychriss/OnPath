@@ -187,13 +187,14 @@ object Health {
                     Thread.sleep(STALL_MS)
                     if (answered == 0L) {
                         val where = mainThreadTop()
+                        val stack = mainThreadStack() // the first frames: the cause is often below our own code
                         // wait for the answer (at most 30 s) to know how long it was blocked
                         var waited = 0
                         while (answered == 0L && waited < 30_000) { Thread.sleep(50); waited += 50 }
                         val blocked = (if (answered != 0L) answered else SystemClock.uptimeMillis()) - posted
                         if (blocked > STALL_MS) {
                             Problems.warn("perf", "Main thread blocked (in: $where)")
-                            Problems.trace("perf", "Main thread blocked $blocked ms (in: $where)")
+                            Problems.trace("perf", "Main thread blocked $blocked ms (in: $where) – stack: $stack")
                         }
                     }
                     Thread.sleep(PING_MS - STALL_MS)
@@ -206,6 +207,20 @@ object Health {
             }
         }, "onpath-watchdog").apply { isDaemon = true; priority = Thread.MIN_PRIORITY; start() }
     }
+
+    /**
+     * The main thread's first [STACK_FRAMES] frames while it is blocked, top first ("Object.wait ← GLThread.onPause ←
+     * MapView.onStop …"): the frame that waits is often Android's or MapLibre's, below our own code (2026-11-07: stalls
+     * "in Object.wait" / "Matrix.translate" at onStop and on return to the screen without an app frame to blame).
+     */
+    private fun mainThreadStack(): String = try {
+        Looper.getMainLooper().thread.stackTrace.take(STACK_FRAMES)
+            .joinToString(" ← ") { "${it.className.substringAfterLast('.')}.${it.methodName}" }
+    } catch (e: Exception) {
+        Problems.info("perf", "Main thread stack not readable", e); "?"
+    }
+
+    private const val STACK_FRAMES = 12
 
     /** The main thread's top app frame (else its top frame) while it is blocked. */
     private fun mainThreadTop(): String = try {
