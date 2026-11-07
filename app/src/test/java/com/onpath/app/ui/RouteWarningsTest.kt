@@ -318,7 +318,10 @@ class RouteWarningsTest {
         assertTrue("own change while navigating", RouteWarnings.saysChanged(own = true, inPlan = false, touring = true))
         assertTrue("change from elsewhere in Plan", RouteWarnings.saysChanged(own = false, inPlan = true, touring = false))
         // the wiring: both activity and T level ask the rule; the newer-data lines do not (they always say a changed way)
-        val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        val vmFile = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt")
+        // expected: the web planner's build runs this shared test in web/engine, without the app's view model
+        if (!vmFile.exists()) return
+        val vm = vmFile.readText()
         assertTrue(vm.contains("noteActivityChange(own = userChange)") && vm.contains("noteActivityChange(own = true)"))
         assertTrue(vm.contains("if (!RouteWarnings.saysChanged(own, inPlan = mode == AppMode.PLAN, touring = recState.value != null))"))
         assertEquals(2, Regex("""differs\([^)]*\)\)\s*routeChangedNotice = Txt\.s\(Res\.string\.msg_route_updated_newer_data\)""")
