@@ -35,7 +35,8 @@ data class ActivitySwitch(val activity: Activity, val sac: Int, val session: Nav
 /**
  * Pure logic of the activity check (owner: "a wrong activity is a disaster").
  *
- * Approach: for every other activity the **rest of the tour is routed offline** (BRouter, position → remaining stops;
+ * Approach: for the activity the user picks (owner 2026-11-07: only that one, never all up front) the **rest of the tour
+ * is routed offline** (BRouter, position → remaining stops – from the route's start while it was never reached, [rest];
  * a followed track keeps its shape through vias every [TRACK_VIA_M]). The followed line carries no per-way tags, so
  * "does it fit" is read from what the router does for that activity:
  * - parts of the followed rest the new route does not use ([avoidedM]) = not suited for that activity (no access,
@@ -47,7 +48,7 @@ data class ActivitySwitch(val activity: Activity, val sac: Int, val session: Nav
 object ActivityCheck {
     /** File the app writes a proposed session to before telling the service (lines are too big for an Intent). */
     const val PROPOSAL_FILE = "nav-proposal.json"
-    /** Per activity request; the rows compute one after the other (BRouter runs one request at a time). */
+    /** The one request of a picked row (a new tap or closing the sheet cancels it). */
     const val TIMEOUT_MS = 15_000L
     /** Followed tracks (no stops): vias this far apart keep the route on the track where the activity allows it. */
     const val TRACK_VIA_M = 2_000.0
@@ -71,8 +72,15 @@ object ActivityCheck {
      * The rest of the tour from [position]: [activeProgressM] = progress on the navigated line (service). Stops passed
      * or visited are dropped (like "Continue navigation"); after a new route was taken, stops it skipped stay skipped.
      * Null = nothing left (destination reached / no usable line).
+     *
+     * Never on the route yet ([NavSession.reached] false – the far start, or led there by "Guide me"): the rest is the
+     * route from its start, or from the first stop not yet visited – never from where the user stands ([fromStart];
+     * field bug 2026-11-07, tour 207: at home in Hilden with a plan in Meran 700 km away every activity was routed
+     * Hilden → Meran and timed out). [position] is only needed once the route was reached.
      */
-    fun rest(session: NavSession, activeProgressM: Double, position: GeoPoint): Rest? {
+    fun rest(session: NavSession, activeProgressM: Double, position: GeoPoint?): Rest? {
+        if (!session.reached) return fromStart(session)
+        requireNotNull(position) { "the rest of a reached route starts at the position" }
         val active = NavLine(session.active)
         if (!active.isUsable) return null
         val progress = activeProgressM.coerceIn(0.0, active.lengthM)
@@ -97,6 +105,30 @@ object ActivityCheck {
         val left = session.stops.filterIndexed { i, _ -> i !in passed }
         if (left.isEmpty()) return null
         return Rest(listOf(position) + left.map { it.point }, line, left)
+    }
+
+    /**
+     * The rest of a route never reached ([rest]): the plan's own line ([NavSession.original] – not a way there) from its
+     * start, or from the first stop not yet visited; a followed track from its start, through vias. Only the destination
+     * left: from the stop before it (one point is nothing to route).
+     */
+    fun fromStart(session: NavSession): Rest? {
+        val orig = NavLine(session.original)
+        if (!orig.isUsable || orig.lengthM < MIN_REST_M) return null
+        if (session.stops.isEmpty()) {
+            val step = max(TRACK_VIA_M, orig.lengthM / (MAX_TRACK_VIAS + 1))
+            val vias = ArrayList<GeoPoint>()
+            var a = step
+            while (a < orig.lengthM - step / 2 && vias.size < MAX_TRACK_VIAS) { vias += orig.pointAt(a); a += step }
+            return Rest(listOf(orig.points.first()) + vias + orig.points.last(), session.original, emptyList())
+        }
+        val first = session.stops.indices.firstOrNull { it !in session.visited } ?: return null
+        var left = session.stops.filterIndexed { i, _ -> i >= first && i !in session.visited }
+        if (left.size < 2) left = listOfNotNull(session.stops.getOrNull(first - 1)) + left
+        if (left.size < 2) return null
+        val fromM = left.first().alongM.coerceIn(0.0, orig.lengthM)
+        if (orig.lengthM - fromM < MIN_REST_M) return null
+        return Rest(left.map { it.point }, orig.restFrom(fromM), left)
     }
 
     /** Fit of the followed rest [restLine] for [activity], from the route [r] the router found for it. */

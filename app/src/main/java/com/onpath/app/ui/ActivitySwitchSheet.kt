@@ -38,6 +38,11 @@ import kotlin.math.abs
 
 /** One row of the activity check sheet. */
 sealed interface ActivityRowState {
+    /**
+     * Not routed yet (owner 2026-11-07: "erst dann, wenn ich wirklich eine Routenart ausgewählt habe"): a tap routes
+     * the rest of the route for this activity only, then switches when a route is found.
+     */
+    data object Idle : ActivityRowState
     /** The rest of the route is being routed for this activity (spinner). */
     data object Checking : ActivityRowState
     data class Ready(val fit: ActivityFit) : ActivityRowState
@@ -48,7 +53,7 @@ sealed interface ActivityRowState {
 }
 
 data class ActivityRow(val activity: Activity, val sac: Int, val state: ActivityRowState) {
-    val choosable: Boolean get() = state is ActivityRowState.Ready || state == ActivityRowState.Plain
+    val choosable: Boolean get() = state is ActivityRowState.Ready || state == ActivityRowState.Plain || state == ActivityRowState.Idle
 }
 
 /** The check-and-switch sheet (Navigate → tap the activity icon). Stays until a row or "Keep …" is chosen. */
@@ -63,8 +68,8 @@ data class ActivityCheckUi(
 /** The check sheet's pure rules (unit-tested, ActivityCheckRulesTest). */
 object ActivityCheckRules {
     /**
-     * Hike's T chip [level] chosen while a route is followed (K1): the Hike row now stands for that level and is checked
-     * again (Checking); hiking at that very level already → no Hike row (nothing to switch to). Hiking at another level →
+     * Hike's T chip [level] chosen while a route is followed (K1): the Hike row now stands for that level and is routed
+     * for it (Checking – only this row, owner 2026-11-07); hiking at that very level already → no Hike row (nothing to switch to). Hiking at another level →
      * a Hike row for the new level, first in the list.
      */
     fun withHikeLevel(ui: ActivityCheckUi, level: Int): ActivityCheckUi {
@@ -76,6 +81,24 @@ object ActivityCheckRules {
         return ui.copy(rows = rows)
     }
 
+    /**
+     * Row [a] was chosen at [level] (owner 2026-11-07: only what is chosen is computed): that row alone is routed
+     * (Checking); a row still routing from an earlier tap is cancelled and plain again; found / failed rows stay.
+     */
+    fun checking(ui: ActivityCheckUi, a: Activity, level: Int): ActivityCheckUi = ui.copy(rows = ui.rows.map {
+        when {
+            it.activity == a -> it.copy(sac = level, state = ActivityRowState.Checking)
+            it.state == ActivityRowState.Checking -> it.copy(state = ActivityRowState.Idle)
+            else -> it
+        }
+    })
+
+    /**
+     * The header's grey note goes under "Wechseln zu" when title, gap and note do not fit on one line of [rowW] – the
+     * title never breaks inside a word (large German font: "Wechs / eln zu"). Widths in one unit (px or dp).
+     */
+    fun noteStacked(rowW: Float, titleW: Float, noteW: Float, gap: Float): Boolean = titleW + gap + noteW > rowW
+
     /** The T level the chips show as chosen: the Hike row's level, else the current level while hiking, else none. */
     fun chipLevel(ui: ActivityCheckUi): Int =
         ui.rows.firstOrNull { it.activity == Activity.HIKE }?.sac ?: if (ui.current == Activity.HIKE) ui.sac else 0
@@ -84,7 +107,7 @@ object ActivityCheckRules {
 /** "✓ fits" / "⚠ 1.4 km not suited for gravelbikes, steps 40 m · +1.2 km" / "Checking…" (pure, for tests). */
 internal fun activityRowStatus(s: ActivityRowState): String = when (s) {
     ActivityRowState.Checking -> Txt.s(Res.string.nav_check_checking)
-    ActivityRowState.Plain -> ""
+    ActivityRowState.Plain, ActivityRowState.Idle -> ""
     is ActivityRowState.Failed -> s.message
     is ActivityRowState.Ready -> buildString {
         val f = s.fit
@@ -95,9 +118,10 @@ internal fun activityRowStatus(s: ActivityRowState): String = when (s) {
 }
 
 /**
- * "You are navigating as: Hike T3" and, for every other activity, how the rest of the followed route fits it
- * (fits / problems + its time), computed offline in the background (spinner per row). Choosing a row asks the usual
- * "Take new route / Keep original" question with the new route as the dashed proposal. Rows ≥ 56 dp, button 56 dp.
+ * "You are navigating as: Hike T3" and every other activity. A tap on a row (or a Hike T chip) routes the rest of the
+ * followed route for that one only, offline in the background (spinner on that row – owner 2026-11-07: nothing is
+ * computed before a choice); found → the usual "Take new route / Keep original" question with the new route as the
+ * dashed proposal, none → "No route found for it" on the row and the sheet stays. Rows ≥ 56 dp, button 56 dp.
  */
 @Composable
 fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKeep: () -> Unit, modifier: Modifier = Modifier,
@@ -115,11 +139,7 @@ fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKee
             }
             // hiking: the T level can change on its own (K1) – the chips under the current activity
             if (ui.current == Activity.HIKE) androidx.compose.foundation.layout.Box(Modifier.padding(top = 8.dp)) { SacChips(ActivityCheckRules.chipLevel(ui), onHikeLevel) }
-            Row(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 4.dp), verticalAlignment = Alignment.Bottom) {
-                Text(str(Res.string.nav_check_switch_to), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                if (!free) Text(str(Res.string.nav_check_rest_of_route), style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            SwitchToHeader(if (free) null else str(Res.string.nav_check_rest_of_route))
             ui.note?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 4.dp))
@@ -132,8 +152,34 @@ fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKee
             }
             Spacer(Modifier.size(12.dp))
             Button(colors = ActionButtons.go(), onClick = onKeep, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-                Text(str(Res.string.nav_check_keep, NavText.activityName(ui.current, ui.sac)), style = MaterialTheme.typography.titleMedium)
+                Text(str(Res.string.nav_check_keep, NavText.activityName(ui.current, ui.sac)), style = MaterialTheme.typography.titleMedium,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             }
+        }
+    }
+}
+
+/**
+ * "Wechseln zu" with the grey "für den Rest der Route" beside it – or under it when both do not fit on one line
+ * ([ActivityCheckRules.noteStacked]; large German font broke the title as "Wechs / eln zu"), like a value row in Settings.
+ */
+@Composable
+private fun SwitchToHeader(note: String?) {
+    val title = str(Res.string.nav_check_switch_to)
+    val titleStyle = MaterialTheme.typography.titleSmall
+    val noteStyle = MaterialTheme.typography.bodySmall
+    val measure = androidx.compose.ui.text.rememberTextMeasurer()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 4.dp)) {
+        val stacked = note != null && ActivityCheckRules.noteStacked(
+            with(density) { maxWidth.toPx() }, measure.measure(title, titleStyle).size.width.toFloat(),
+            measure.measure(note, noteStyle).size.width.toFloat(), with(density) { 12.dp.toPx() })
+        if (stacked) Column {
+            Text(title, style = titleStyle)
+            note?.let { Text(it, style = noteStyle, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        } else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            Text(title, style = titleStyle, modifier = Modifier.weight(1f))
+            if (note != null) Text(note, style = noteStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

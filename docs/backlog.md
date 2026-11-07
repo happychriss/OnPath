@@ -40,6 +40,10 @@ and the commit history.
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
+- **[donald] ▶ Sim restarted on the same line: progress stays put (field 2026-11-07 12:06)** – in the 3rd demo run
+  (from 3 m) neither voice nor vibration fired; the events log has no "Junction cue:" and the shown progress did not
+  move. VoiceGuide's memory is ruled out (`VoiceGuideTest.aSimulationRestartedOnTheSameLineSaysItsTurnsAgain` green).
+  Suspect: OffRouteDetector / `shownAlongM` when switching demo ↔ real GPS (`NavSimStart`). Test first.
 - **[laptop] Web: Meine Touren like the app's (app 01b38ffa / cb791053 / ce27c111 / e570e467, 2026-11-07)** – the plan on the
   map first under Zuletzt with „In Bearbeitung“, a small route preview per row, a row tap opens the large overview (route
   picture + Planen), rows as tile + name + facts + › with every action in ⋮ (Zuletzt keeps Speichern · Löschen); the route
