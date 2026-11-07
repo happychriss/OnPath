@@ -291,11 +291,20 @@ fun NavigateOverlay(
         val shut = androidx.lifecycle.LifecycleEventObserver { _, e ->
             if (e == androidx.lifecycle.Lifecycle.Event.ON_STOP && unlockedUntil != UnlockWindow.LOCKED) {
                 com.onpath.app.debug.Problems.trace("navigate", "Bar locked again: the screen went off / the app went to the background")
-                unlockedUntil = UnlockWindow.LOCKED
+                unlockedUntil = UnlockWindow.afterScreenOff()
             }
         }
         lifecycle.addObserver(shut)
         onDispose { lifecycle.removeObserver(shut) }
+    }
+    // in the pocket the proximity sensor turns the screen off without stopping the activity (owner 2026-11-07 10:45:
+    // "Pause drücken, dann in die Tasche – danach soll wieder gesperrt sein")
+    val inPocket by PocketState.inPocket.collectAsState()
+    LaunchedEffect(inPocket) {
+        if (inPocket && unlockedUntil != UnlockWindow.LOCKED) {
+            com.onpath.app.debug.Problems.trace("navigate", "Bar locked again: in the pocket (proximity sensor, screen off)")
+            unlockedUntil = UnlockWindow.afterScreenOff()
+        }
     }
     val barOpen = windowOpen || actionsOpen
     val planHeld = UnlockWindow.needsHold(UnlockWindow.BarButton.PLAN, lock, barOpen)

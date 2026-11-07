@@ -31,6 +31,13 @@ object UnlockWindow {
     /** A plain tap at [now]: an open window starts again; a shut one stays shut (a tap never unlocks). */
     fun afterTap(until: Long, now: Long, openMs: Long = this.openMs): Long = if (isOpen(until, now)) now + openMs else until
 
+    /**
+     * The screen went off – power button, timeout, the app in the background (ON_STOP) or the proximity sensor in the
+     * pocket ([PocketLogic.inPocket]; owner 2026-11-07 10:45: "Pause drücken, dann in die Tasche – danach soll wieder
+     * gesperrt sein"): the window shuts at once, whatever was left of it.
+     */
+    fun afterScreenOff(): Long = LOCKED
+
     /** The bar wants held buttons: the lock is on ([lockOn] – hold time not Aus) and the window is not open. */
     fun locked(lockOn: Boolean, until: Long, now: Long): Boolean = lockOn && !isOpen(until, now)
 

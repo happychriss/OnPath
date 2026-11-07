@@ -33,11 +33,15 @@ class UnlockWindowTest {
         assertEquals("a tap after it shut does not open it", until, UnlockWindow.afterTap(until, t0 + 60_000))
     }
 
-    @Test fun screenOffOrBackgroundShutsIt() {
-        val until = UnlockWindow.afterFire(t0)
+    @Test fun screenOffOrPocketShutsItAtOnce() {
+        // owner 2026-11-07 10:45: "Pause drücken, dann in die Tasche – danach soll wieder gesperrt sein"
+        val until = UnlockWindow.afterFire(t0)                // held Pause: open for 20 s
         assertFalse(UnlockWindow.locked(true, until, t0 + 1_000))
-        // ON_STOP (screen off, app in the background) sets the window to LOCKED
-        assertTrue(UnlockWindow.locked(true, UnlockWindow.LOCKED, t0 + 1_000))
+        val shut = UnlockWindow.afterScreenOff()              // 2 s later into the pocket / power button / background
+        assertTrue("locked although 18 s of the window were left", UnlockWindow.locked(true, shut, t0 + 2_000))
+        assertTrue("every button held again", UnlockWindow.needsHold(B.END, lockOn = true,
+            windowOpen = UnlockWindow.isOpen(shut, t0 + 2_000)))
+        assertEquals("a tap after it does not open it again", shut, UnlockWindow.afterTap(shut, t0 + 3_000))
     }
 
     @Test fun holdTimeAusHasNothingToUnlock() {
