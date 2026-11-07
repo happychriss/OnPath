@@ -37,6 +37,11 @@ and the commit history.
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
+- **[donald] Saved long routes load without routing again (owner idea 2026-11-07, chat)** – the S10 took 67 s for a
+  723 km plan, and loading a saved route routes it again. Proposal: reuse the stored line per leg on load; route again
+  only edited legs or legs whose routing data is newer (the app already knows "routed with newer data"). The owner's
+  idea – invisible shape points as keys to the planned route, read once on load – as a later fallback when data is
+  newer: a hint with tolerance, never forced (a closed way must not force a detour). Waiting for the owner's yes.
 - **[donald] (low) Vellau → Leiteralm routes over the Gamplweg (website pictures 2026-11-07)** – Wandern T2 takes the
   bow east instead of the path along the Korblift (seen by A-019 and again in 0.17.3). Owner: "merkt eh keiner" – the
   pictures stay. Later: is the lift path above T2, cut in the data, or a profile cost? JVM harness, no new pictures.
