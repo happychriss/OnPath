@@ -470,6 +470,57 @@ class CoreFieldE2ETest : E2EBase() {
 
 
     /**
+     * Owner 2026-11-07: one map orientation for the session ("bleibt immer in der eingestellten Richtung"). North up:
+     * whole route, Navigate, back in Plan and locate all end north up, also after a hand rotation. Walking direction:
+     * the map is never snapped north by a fit or by leaving Navigate.
+     */
+    @Test fun oneOrientationNorthStaysNorthAndTravelKeepsTheBearing() {
+        var before: com.onpath.app.data.AppSettings? = null
+        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHeadingUp = false)) }
+        fun bearing(): Double { var b = -1.0; onMap { m -> b = m.cameraPosition.bearing }; return b }
+        fun turnByHand() = onMap { m ->
+            m.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.newCameraPosition(
+                org.maplibre.android.camera.CameraPosition.Builder(m.cameraPosition).bearing(137.0).build()))
+        }
+        fun near(want: Double, got: Double) = kotlin.math.abs(((got - want + 540) % 360) - 180) < 2.0
+        try {
+            startPlanWithTwoPoints()
+            Thread.sleep(if (realRouting) 3_000 else 1_000)
+            // NORTH: a hand rotation, then "whole route" → north up
+            turnByHand(); Thread.sleep(500)
+            scenario.onActivity { vm(it).showWholeRoute() }
+            Thread.sleep(1_500)
+            assertTrue("north: whole route turns north (${bearing()})", near(0.0, bearing()))
+            scenario.onActivity { vm(it).startNavigation(force = true) }
+            waitUntil("Navigate", 20_000) { mode() == AppMode.NAVIGATE }
+            Thread.sleep(2_000)
+            assertTrue("north: Navigate north up (${bearing()})", near(0.0, bearing()))
+            scenario.onActivity { vm(it).switchToPlan() }
+            waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+            Thread.sleep(2_000)
+            assertTrue("north: back in Plan north up (${bearing()})", near(0.0, bearing()))
+            scenario.onActivity { vm(it).locate() }
+            Thread.sleep(1_500)
+            assertTrue("north: locate in Plan north up (${bearing()})", near(0.0, bearing()))
+            // TRAVEL: Navigate, looked around by hand, back in Plan – the bearing stays; a fit keeps it too
+            scenario.onActivity { vm(it).updateSettings(vm(it).settings.copy(navHeadingUp = true)) }
+            scenario.onActivity { vm(it).continueNavigation(force = true) }
+            waitUntil("Navigate again", 20_000) { mode() == AppMode.NAVIGATE }
+            Thread.sleep(2_000)
+            turnByHand(); Thread.sleep(800)
+            scenario.onActivity { vm(it).switchToPlan() }
+            waitUntil("back in Plan again", 10_000) { mode() == AppMode.PLAN }
+            Thread.sleep(2_000)
+            assertTrue("travel: leaving Navigate keeps the bearing (${bearing()})", near(137.0, bearing()))
+            scenario.onActivity { vm(it).showWholeRoute() }
+            Thread.sleep(1_500)
+            assertTrue("travel: whole route keeps the bearing (${bearing()})", near(137.0, bearing()))
+        } finally {
+            scenario.onActivity { if (vm(it).recState.value != null) vm(it).stopRecording(); before?.let { s -> vm(it).updateSettings(s) } }
+        }
+    }
+
+    /**
      * Owner 2026-11-06 ("Ich bin in Hilden, Plan in Köln – im Planmodus steht mein Standort, wo ist mein Plan?"): with
      * a plan, Navigate → Plan shows the whole plan, not the own position (PlanCamera).
      */
