@@ -34,4 +34,25 @@ class ActivityCheckRulesTest {
         assertEquals(2, ActivityCheckRules.chipLevel(back))
     }
 
+    /**
+     * Field bug 2026-11-07, tour 207 (owner: "erst dann, wenn ich wirklich eine Routenart ausgewählt habe"): the sheet
+     * opened with every row being routed, 15 s each. Rows start plain and choosable; a tap routes that row alone.
+     */
+    @Test fun onlyTheChosenRowIsRoutedAndANewTapLeavesTheEarlierOne() {
+        val idle = listOf(Activity.BIKE_TOURING, Activity.MTB, Activity.HIKE).map { ActivityRow(it, 1, ActivityRowState.Idle) }
+        val ui = ActivityCheckUi(Activity.BIKE_TREKKING, 1, idle)
+        assertTrue("plain rows can be chosen", ui.rows.all { it.choosable })
+        assertEquals("no pre-check text", "", activityRowStatus(ActivityRowState.Idle))
+        val mtb = ActivityCheckRules.checking(ui, Activity.MTB, 1)
+        assertEquals(listOf(ActivityRowState.Idle, ActivityRowState.Checking, ActivityRowState.Idle), mtb.rows.map { it.state })
+        assertTrue("a row being routed is not chosen twice", !mtb.rows[1].choosable)
+        val failed = mtb.copy(rows = mtb.rows.map { if (it.activity == Activity.MTB) it.copy(state = ActivityRowState.Failed("none")) else it })
+        val hike = ActivityCheckRules.checking(failed, Activity.HIKE, 5)
+        assertEquals(listOf(ActivityRowState.Idle, ActivityRowState.Failed("none"), ActivityRowState.Checking), hike.rows.map { it.state })
+        assertEquals("the T chip's level", 5, hike.rows.last().sac)
+        // a tap while Hike routes: Hike is plain again (its request is cancelled), only Bike spins
+        val bike = ActivityCheckRules.checking(hike, Activity.BIKE_TOURING, 1)
+        assertEquals(listOf(ActivityRowState.Checking, ActivityRowState.Failed("none"), ActivityRowState.Idle), bike.rows.map { it.state })
+    }
+
 }
