@@ -142,6 +142,17 @@ object DemoLocation {
         }
     }
 
+    /**
+     * The tour ended: a demo ride (Navigate's Sim, Developer tools → Demo ride) ends with it – back to real GPS, the
+     * "DEMO" mark and the Sim chip go (Pixel review 2026-11-06: they stayed after the sim ride). A demo standing at a
+     * place (screenshots) is no ride and stays. True when a ride was stopped.
+     */
+    fun endWithTour(): Boolean {
+        if (_state.value?.kind != Kind.RIDE) return false
+        stop("the tour ended")
+        return true
+    }
+
     /** One step of [realDtMs] real milliseconds: moves on (×factor unless paused / at the end) and sends the fix. */
     fun tick(realDtMs: Long) {
         val st = _state.value ?: return

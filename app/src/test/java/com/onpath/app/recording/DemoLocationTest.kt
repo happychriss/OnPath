@@ -74,6 +74,24 @@ class DemoLocationTest {
         assertTrue(sink().fixes.isEmpty())
     }
 
+    /**
+     * Pixel review 2026-11-06: "DEMO" / "Sim ×1 · end" stayed on screen after the sim ride. A demo ride ends with its tour
+     * (back to real GPS, the marks go); a demo standing at a place (screenshots) is no ride and stays.
+     */
+    @Test fun aDemoRideEndsWithTheTourAStandingDemoStays() {
+        val a = sink()
+        DemoLocation.startRide(DemoPath.constant(line, 1.2)!!, "followed route", nowMs = t0, autoTick = false)
+        repeat(5_000) { DemoLocation.tick(1000) } // at the end, standing
+        assertTrue(DemoLocation.state.value!!.ended)
+        assertTrue(DemoLocation.endWithTour())
+        assertNull("the ride is over: no DEMO, no Sim chip", DemoLocation.state.value)
+        assertEquals(1, a.ended); assertTrue(DemoLocation.takesRealFix())
+        assertFalse("nothing running: nothing to end", DemoLocation.endWithTour())
+        DemoLocation.jumpTo(46.67, 11.16, null, "map centre", nowMs = t0, autoTick = false)
+        assertFalse(DemoLocation.endWithTour())
+        assertNotNull("a standing demo stays", DemoLocation.state.value)
+    }
+
     @Test fun speedFactorMovesFasterOnASimulatedClock() {
         val a = sink()
         val p = DemoPath.constant(line, 1.0)!!

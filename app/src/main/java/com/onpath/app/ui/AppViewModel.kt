@@ -1267,6 +1267,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     }
                     refreshTours()
                     clearFollow()
+                    // a demo ride ends with its tour: no "DEMO" / "Sim" left on the map (the recording is closed – no jump into it)
+                    if (com.onpath.app.recording.DemoLocation.endWithTour()) navSimLine = null
                     enter(AppMode.PLAN)
                     tour.afterFinished() // no arrival box, no "Neuer Plan" line of the old tour
                     afterTourEnded()

@@ -59,6 +59,12 @@ class SavePathsTest {
         assertTrue("the place name follows as a rename", keep.contains("routes.renameDraft("))
     }
 
+    /** Pixel review 2026-11-06: the demo ride ends with its tour – "DEMO" / "Sim" do not stay (DemoLocationTest). */
+    @Test fun theDemoRideEndsWithTheTour() {
+        val finished = vm.substringAfter("RecordingService.finished.collect { id ->").substringBefore("fun initialCamera()")
+        assertTrue(finished, finished.contains("DemoLocation.endWithTour()"))
+    }
+
     /** Way 2: the ride summary has no plan part – nor does any end sheet now. */
     @Test fun theRideSummaryOffersNoPlanSave() {
         val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
