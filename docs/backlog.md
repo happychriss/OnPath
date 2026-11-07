@@ -49,9 +49,7 @@ and the commit history.
   keeps a saved route's legs in files (stand-in line on newer routing data); the planner re-routes a plan from Meine Touren
   each time (in-memory LegCache only). Web analog: keep a saved plan's legs in IndexedDB (try/catch, size cap), drawn at once,
   re-routed only when the routing fingerprint changed. Not urgent – planner routes are fast on a PC.
-- **[donald] Bugs seen while taking the Meran 0.17 pictures (2026-11-07, emulator, 0.17.3)** – (1) G02: with a stop
-  (Gasthof Hochmuth) the off-route box offered only "Neue Route bis zum Ziel: 3,8 km" – the new route silently drops
-  the stop; StopSkip should ask "Über ②" / "② auslassen"; (2) after "Weiter" on "Unterbrochene Tour" the "Tour
+- **[donald] Bugs seen while taking the Meran 0.17 pictures (2026-11-07, emulator, 0.17.3)** – (1) done (8c3e02c3: the shortcut rule never jumps past a stop ahead); (2) after "Weiter" on "Unterbrochene Tour" the "Tour
   interrupted" notification stays; (3) H01: stale "Neue Route · vorher 14:25" after the stop was removed, and "Ankunft
   11:15" at 11:03 with 4 min / 30 m left; (4) D04: "Halte die Karte gedrückt …" hidden behind the navigation bar at
   the low sheet; (5) EN starts lowercase: "ford · 5 steep sections"; (6) after an activity change in Plan a "New route
