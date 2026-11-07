@@ -389,7 +389,9 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
     const folder = sync.open, paired = sync.status.paired;
     const all = await sync.list(folder);
     const live = host.live();
-    const liveMarkedId = live && live.savedId && (live.savedFolder ?? folder) === folder && all.some((p) => p.id === live.savedId) ? live.savedId : null;
+    // the plan on the map is that saved row whenever its id is in this folder's list (a pairing moves Without phone's
+    // routes into the phone's folder with the same id – the page's savedFolder may still name the old one)
+    const liveMarkedId = live && live.savedId && all.some((p) => p.id === live.savedId) ? live.savedId : null;
     const plans = searchPlans(all, query);
     const recentAll = recentPlans().filter((r) => !live || (r.id !== live.recentId && r.points !== live.pointsKey));
     const recent = searchPlans(recentAll, query);
@@ -495,7 +497,7 @@ export function phoneDialog(sync: PlanSync, page: string) {
       <ul class="how"><li>${esc(t('web_phone_why'))}</li><li>${esc(t('web_phone_how_2'))}</li><li>${esc(t('web_phone_how_3'))}</li></ul>
       <p class="muted small privacy">${esc(t('web_phone_privacy'))} <a href="${esc(t('web_url_privacy'))}" target="_blank" rel="noopener">${esc(t('web_phone_more'))}</a></p>
     </div>
-    <div id="phoneMore" class="phonemore"><button id="pairOther" class="textbtn quiet" hidden>${esc(t('web_pair_other'))}</button></div>
+    <div id="phoneWinMore" class="phonemore"><button id="pairOther" class="textbtn quiet" hidden>${esc(t('web_pair_other'))}</button></div>
     <!-- Unpair away from "Sync now" (incident 2026-10-31: right beside it, one slip ended the pairing): a red text button
          at the bottom, never the focused one; still no question (A-017 rule 3) -->
     <div class="unpairline"><button id="unpair" class="textbtn danger" hidden>${esc(t('web_unpair'))}</button></div>
@@ -523,8 +525,8 @@ export function phoneDialog(sync: PlanSync, page: string) {
     $('unpair').hidden = !s.paired;
     $('pairPhone').hidden = s.paired;
     $('pairOther').hidden = !s.paired;
-    removeLines($('phoneMore'), sync);
-    $('phoneMore').hidden = !s.paired && !s.closed.length;
+    removeLines($('phoneWinMore'), sync);
+    $('phoneWinMore').hidden = !s.paired && !s.closed.length;
   };
   const off = sync.onChange(() => { if (d.open) render(); });
   const tick = window.setInterval(render, 30_000);
