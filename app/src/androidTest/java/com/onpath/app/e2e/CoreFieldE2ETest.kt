@@ -16,7 +16,7 @@ import com.onpath.strings.nav_arrived_title
 import com.onpath.strings.nav_keep_recording
 import com.onpath.strings.plan_guide_find_title
 import com.onpath.strings.nav_hold_hint
-import com.onpath.strings.nav_stopped_line
+import com.onpath.strings.nav_status_paused
 import com.onpath.strings.nav_leave_go
 import com.onpath.strings.nav_leave_stay
 import com.onpath.strings.nav_settings_cd
@@ -1114,8 +1114,11 @@ class CoreFieldE2ETest : E2EBase() {
             clickText(Txt.s(Res.string.nav_action_pause))
             waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
             assertNotNull("Weiter at the bottom", findFresh(By.text(Txt.s(Res.string.common_resume)), 5_000))
-            // the pause band (owner 2026-11-07, variant C): what stands still, over the buttons
-            assertNotNull("the stopped head says what rests", findFresh(By.text(Txt.s(Res.string.nav_stopped_line)), 5_000))
+            // the stopped head in the status card (owner 2026-11-07, "Anhalten" variant 5): "Angehalten seit 14:32" – or
+            // "Angehalten" over "seit 14:32" at large font. Its line "… ruhen" shows only where it fits on one line beside the
+            // activity and the arrival (not on a 1080 px emulator), so the head is what is checked.
+            assertNotNull("the stopped head in the card",
+                findFresh(By.textStartsWith(Txt.s(Res.string.nav_status_paused)), 5_000))
             clickText(Txt.s(Res.string.nav_end_tour))
             assertNotNull("the end sheet", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())
@@ -1163,7 +1166,8 @@ class CoreFieldE2ETest : E2EBase() {
             assertTrue("a short tap does not pause", com.onpath.app.recording.RecordingService.state.value?.paused != true)
             holdButton(Txt.s(Res.string.nav_action_pause), ms = holdMs + 1_000)
             waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
-            assertNotNull("the stopped head in the card", findFresh(By.text(Txt.s(Res.string.nav_stopped_line)), 5_000))
+            assertNotNull("the stopped head in the card",
+                findFresh(By.textStartsWith(Txt.s(Res.string.nav_status_paused)), 5_000))
             // the unlock window (owner 2026-11-07, 20 s; here 1.5 s) is over: the bar is locked again. Checked by its look,
             // not by another tap: a held button carries its word as a description, an open one as plain text – Beenden
             // (Weiter is held in the window too, so it tells nothing here)
