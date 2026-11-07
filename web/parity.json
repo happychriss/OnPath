@@ -137,16 +137,15 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/TourBar.kt",
-      "what": "longRouteText, LongRouteDialog (Cancel / Plan anyway, no outside dismiss)",
+      "what": "LongRouteDialog (Cancel / Plan anyway, no outside dismiss); the text is the shared LongRoute.text",
       "web": [
-        "web/engine/src/main/kotlin/com/onpath/web/WebPlanRules.kt",
         "web/app/src/longroute.ts"
       ],
       "blob": "a455d7eb55445bbd5ee13b4214342ef42fab1d60"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/AppViewModel.kt",
-      "what": "recalc long-route ask / answerLongRoute / cancelRun; importGpx, importedNote, planFromShown; withModelTime; addPlace; requestSave; suggestName",
+      "what": "recalc long-route ask / answerLongRoute / cancelRun; importGpx (its note is the shared GpxData.skippedNote), planFromShown; withModelTime; addPlace; requestSave; suggestName",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/longroute.ts",
@@ -223,14 +222,6 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebPace.kt"
       ],
       "blob": "9bc647bc4c9da68cf70c46e761f1c125c74780df"
-    },
-    {
-      "app": "app/src/main/java/com/onpath/app/ui/Theme.kt",
-      "what": "Activity.navName (\"Cycling · Trekking bike\")",
-      "web": [
-        "web/engine/src/main/kotlin/com/onpath/web/WebPace.kt"
-      ],
-      "blob": "7c4cc9905fa95f02dfb8d72eb2bf7479dd3fd83a"
     },
     {
       "app": "app/src/main/java/com/onpath/app/data/Prefs.kt",

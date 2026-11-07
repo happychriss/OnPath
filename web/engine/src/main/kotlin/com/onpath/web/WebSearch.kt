@@ -123,7 +123,7 @@ object WebSearch {
 
     private fun json(hits: List<SearchHit>): String = hits.joinToString(",", "[", "]") { h ->
         val p = h.place
-        "{\"id\":" + s(p.id) + ",\"title\":" + s(p.title(false)) + ",\"name\":" + (p.name?.let { s(it) } ?: "null") +
+        "{\"id\":" + s(p.id) + ",\"title\":" + s(p.title()) + ",\"name\":" + (p.name?.let { s(it) } ?: "null") +
             ",\"kind\":" + s(p.kind) + ",\"lat\":" + p.lat + ",\"lon\":" + p.lon +
             ",\"subtitle\":" + s(subtitle(h)) + ",\"address\":" + (p.address?.let { s(it) } ?: "null") +
             ",\"glyph\":" + s(p.kindInfo.glyph) + ",\"color\":" + s(color(p.kind)) +
@@ -132,7 +132,7 @@ object WebSearch {
 
     /** The app's result line (ui/search/SearchScreen.resultSubtitle – a Compose file, so the same pieces here). */
     private fun subtitle(h: SearchHit): String = buildString {
-        append(h.place.kindInfo.label(false))
+        append(h.place.kindInfo.label)
         h.place.ele?.let { append(" · $it m") }
         h.place.municipality?.let { append(" · ").append(it) }
         append(" · ").append(Format.distance(h.distanceM))

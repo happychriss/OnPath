@@ -336,12 +336,11 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
             /** The found place's pin: its menu ends with "Nadel entfernen" (owner 2026-11-02); null = a map POI. */
             onRemovePin: (() -> Unit)? = null) {
     val place = Place.fromPoi(poi)
-    val de = Poi.isGerman()
     MenuSurface(modifier) {
         Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)) {
-            Text(place.title(de), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+            Text(place.title(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(place.kindInfo.label(de) + (place.ele?.let { " · $it m" } ?: ""), style = MaterialTheme.typography.bodySmall,
+            Text(place.kindInfo.label + (place.ele?.let { " · $it m" } ?: ""), style = MaterialTheme.typography.bodySmall,
                 color = Color(SearchKinds.argb(place.kind)), maxLines = 1)
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

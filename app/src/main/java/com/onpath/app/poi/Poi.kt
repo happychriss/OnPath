@@ -19,9 +19,8 @@ data class Poi(
 ) {
     val kindInfo: PoiKind get() = PoiKinds.of(kind)
 
-    /** Name, or the kind label (app language) when unnamed; [german] is ignored (the app's language decides). */
-    @Suppress("UNUSED_PARAMETER")
-    fun title(german: Boolean = isGerman()): String = name ?: kindInfo.label
+    /** Name, or the kind label in the app's language when unnamed. */
+    fun title(): String = name ?: kindInfo.label
 
     /** "pizza;regional" -> "Pizza, Regional". */
     val cuisineLabel: String?

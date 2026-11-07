@@ -84,7 +84,7 @@ class CellDownloadTest {
         server.cutAfter = null
         api().download(f, part)
         assertEquals(f.size, part.length())
-        assertEquals(f.sha256, CellApi.sha256(part))
+        assertEquals(f.sha256, com.onpath.app.net.HttpDownload.sha256Of(part))
         assertTrue(server.log.any { it.contains("Range:bytes=") })
     }
 
@@ -96,7 +96,7 @@ class CellDownloadTest {
         try { api().download(f, part); fail() } catch (e: CellApi.ChecksumException) { assertTrue(e.message!!.startsWith("Map download damaged")) }
         assertFalse(part.exists())
         api().download(f, part)
-        assertEquals(f.sha256, CellApi.sha256(part))
+        assertEquals(f.sha256, com.onpath.app.net.HttpDownload.sha256Of(part))
     }
 
     // ------------------------------------------------------------------------------------------- MapCells

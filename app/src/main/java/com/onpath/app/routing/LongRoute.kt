@@ -19,6 +19,12 @@ object LongRoute {
 
     fun needsAsk(points: List<GeoPoint>, activity: Activity): Boolean = estimateS(points, activity) > ASK_ABOVE_S
 
+    /** "About 29 days on foot. Calculating and loading its maps takes long." – the question's text (app + planner). */
+    fun text(seconds: Double, activity: Activity): String {
+        val how = if (activity == Activity.HIKE) Res.string.nav_long_route_foot else Res.string.nav_long_route_bike
+        return Txt.s(how, describe(seconds)).replaceFirstChar { it.uppercase() }
+    }
+
     /** "about 29 days" / "about 30 hours" (plain words for the question). */
     fun describe(seconds: Double): String {
         val h = seconds / 3600.0

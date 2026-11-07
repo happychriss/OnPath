@@ -43,7 +43,7 @@ object WebImport {
             append(",\"activity\":").append(Engine.str(pick.activity.name)).append(",\"sac\":").append(pick.sac)
             append(",\"switch\":").append(choice.switch)
             append(",\"note\":").append(choice.note?.let { Engine.str(it) } ?: "null")
-            append(",\"skippedNote\":").append(importedNote(data.warnings)?.let { Engine.str(it) } ?: "null")
+            append(",\"skippedNote\":").append(data.skippedNote?.let { Engine.str(it) } ?: "null")
             append(",\"distanceM\":").append(Engine.num(dist, 1)).append(",\"ascentM\":").append(Engine.num(up, 1))
             append(",\"descentM\":").append(Engine.num(down, 1)).append(",\"durationS\":").append(Engine.num(dur, 0))
             // the track panel's lines (ui/Panels.kt TrackPanel)
@@ -74,9 +74,6 @@ object WebImport {
         "{\"error\":" + Engine.str(if (own.isNotEmpty()) Txt.s(Res.string.msg_gpx_import_failed_reason, own)
             else Txt.s(Res.string.msg_gpx_import_failed)) + "}"
     }
-
-    /** Mirror of AppViewModel.importedNote (web/parity.json): one grey line when the parser skipped something. */
-    internal fun importedNote(warnings: List<String>): String? = if (warnings.isEmpty()) null else Txt.s(Res.string.msg_gpx_parts_skipped)
 
     /**
      * Shown track → a plannable route with few route points (AppViewModel.planFromShown): the routing data along

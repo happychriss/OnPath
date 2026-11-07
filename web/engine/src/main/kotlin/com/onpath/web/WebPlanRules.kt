@@ -22,17 +22,11 @@ object WebPlanRules {
         val s = LongRoute.estimateS(pts, act)
         return "{\"ask\":true,\"seconds\":" + Engine.num(s, 0) +
             ",\"title\":" + Engine.str(Txt.s(Res.string.nav_long_route_title)) +
-            ",\"text\":" + Engine.str(longRouteText(s, act)) +
+            ",\"text\":" + Engine.str(LongRoute.text(s, act)) +
             ",\"plan\":" + Engine.str(Txt.s(Res.string.nav_plan_anyway)) +
             ",\"cancel\":" + Engine.str(Txt.s(Res.string.common_cancel)) +
             ",\"notRouted\":" + Engine.str(PlanStatus.notRoutedText(com.onpath.app.ui.NotRouted.LONG)) +
             ",\"again\":" + Engine.str(PlanStatus.notRoutedAction(com.onpath.app.ui.NotRouted.LONG)) + "}"
-    }
-
-    /** Mirror of the app's ui/TourBar.kt `longRouteText` (a Compose file the engine cannot compile; web/parity.json). */
-    internal fun longRouteText(seconds: Double, activity: Activity): String {
-        val how = if (activity == Activity.HIKE) Res.string.nav_long_route_foot else Res.string.nav_long_route_bike
-        return Txt.s(how, LongRoute.describe(seconds)).replaceFirstChar { it.uppercase() }
     }
 
     /**

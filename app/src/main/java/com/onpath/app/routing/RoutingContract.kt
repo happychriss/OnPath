@@ -27,6 +27,18 @@ enum class Activity(private val labelRes: StringResource, private val lineRes: S
     val label: String get() = Txt.s(labelRes)
     val line: String get() = Txt.s(lineRes)
     val chip: String get() = Txt.s(chipRes)
+    /**
+     * Name on buttons and in "Cycling · Trekking bike": German uses the short MTB / E-MTB there (the long name gets
+     * cut); the picker keeps the full names ([label]). Shared with the web planner.
+     */
+    val navName: String get() = Txt.s(when (this) {
+        BIKE_TOURING -> Res.string.activity_bike_touring_button
+        BIKE_TREKKING -> Res.string.activity_bike_trekking_button
+        EBIKE -> Res.string.activity_ebike_button
+        MTB -> Res.string.activity_mtb_button
+        EMTB -> Res.string.activity_emtb_button
+        HIKE -> Res.string.activity_hike_button
+    })
 }
 
 /**

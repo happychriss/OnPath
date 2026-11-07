@@ -151,7 +151,6 @@ class MapCells(
 
     /** States of region packages (kept apart from [states]: the UI's card / modal never show them). */
     private val _packageStates = MutableStateFlow<Map<CellId, CellState>>(emptyMap())
-    val packageStates: StateFlow<Map<CellId, CellState>> = _packageStates
 
     private val _packages = MutableStateFlow<List<CellStore.InstalledCell>>(emptyList())
     /** Installed region packages (map-cells.md §20) – diagnostics; the map style gets their boxes ([packageAreas]). */
@@ -967,7 +966,7 @@ class MapCells(
             set(c, CellState.Downloading(0, m.totalSize))
             for (f in m.files) {
                 val dest = File(part, f.name)
-                if (!(dest.isFile && dest.length() == f.size && CellApi.sha256(dest) == f.sha256)) {
+                if (!(dest.isFile && dest.length() == f.size && com.onpath.app.net.HttpDownload.sha256Of(dest) == f.sha256)) {
                     dest.delete()
                     val tmp = File(part, f.name + ".part")
                     val base = before

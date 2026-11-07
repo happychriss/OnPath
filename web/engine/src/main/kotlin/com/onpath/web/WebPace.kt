@@ -39,7 +39,7 @@ object WebPace {
     fun choices(activity: String): String {
         val a = Activity.valueOf(activity)
         val bike = TimeEstimate.isBike(a)
-        val group = if (bike) Txt.s(Res.string.settings_pace_cycling, navName(a)) else Txt.s(Res.string.settings_pace_hiking)
+        val group = if (bike) Txt.s(Res.string.settings_pace_cycling, a.navName) else Txt.s(Res.string.settings_pace_hiking)
         val on = TimeEstimate.pace(a, settings)
         return buildString {
             append("{\"title\":").append(Engine.str(Txt.s(Res.string.settings_page_pace)))
@@ -111,14 +111,4 @@ object WebPace {
         val span = cum[hi] - cum[lo]
         return if (span > 0) a + (b - a) * (m - cum[lo]) / span else a
     }
-
-    /** Mirror of ui/Theme.kt `Activity.navName` (web/parity.json): the short name in "Cycling · Trekking bike". */
-    internal fun navName(a: Activity): String = Txt.s(when (a) {
-        Activity.BIKE_TOURING -> Res.string.activity_bike_touring_button
-        Activity.BIKE_TREKKING -> Res.string.activity_bike_trekking_button
-        Activity.EBIKE -> Res.string.activity_ebike_button
-        Activity.MTB -> Res.string.activity_mtb_button
-        Activity.EMTB -> Res.string.activity_emtb_button
-        Activity.HIKE -> Res.string.activity_hike_button
-    })
 }

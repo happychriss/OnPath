@@ -523,7 +523,7 @@ object Engine {
         val poi = com.onpath.app.poi.Poi.fromProperties(mapOf("kind" to kind, "name" to name, "ele" to ele), lat, lon) ?: return "null"
         val place = com.onpath.app.search.Place.fromPoi(poi)
         val color = com.onpath.app.search.SearchKinds.argb(place.kind) and 0xFFFFFFL
-        return "{\"title\":" + str(place.title(false)) + ",\"sub\":" + str(place.kindInfo.label(false) + (place.ele?.let { " · $it m" } ?: "")) +
+        return "{\"title\":" + str(place.title()) + ",\"sub\":" + str(place.kindInfo.label + (place.ele?.let { " · $it m" } ?: "")) +
             ",\"color\":" + str("#" + color.toString(16).padStart(6, '0')) + ",\"google\":" + str(PoiLinks.googleMaps(poi).webUrl) + "}"
     }
 

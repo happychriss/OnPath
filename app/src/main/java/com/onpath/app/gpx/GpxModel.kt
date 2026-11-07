@@ -1,6 +1,7 @@
 package com.onpath.app.gpx
 
 import com.onpath.app.routing.GeoPoint
+import com.onpath.strings.*
 
 /** One recorded/imported point. [timeMs] is UTC epoch millis, null if unknown. */
 data class TrackPoint(
@@ -28,6 +29,10 @@ data class GpxData(
     /** Human-readable notes about things that were skipped or repaired. */
     val warnings: List<String> = emptyList(),
 ) {
+    /** "Some parts of the file were skipped." – one grey line for the user when the parser skipped something (app +
+     *  planner; the warnings themselves are in Diagnostics). */
+    val skippedNote: String? get() = if (warnings.isEmpty()) null else Txt.s(Res.string.msg_gpx_parts_skipped)
+
     /**
      * The line(s) to draw / measure / follow. A file with a track draws only its tracks: a planned-route export (OsmAnd,
      * BaseCamp …) holds the same way twice, as `<rte>` control points and as `<trk>` geometry, which made one line
