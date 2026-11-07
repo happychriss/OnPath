@@ -395,7 +395,12 @@ class CoreFieldE2ETest : E2EBase() {
     @Test fun aClearedPlanIsUnderZuletztSavedOrDeletedThere() {
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         try {
+            // each plan gets an own third point: a plan with the points of a saved route (another test saved these two
+            // at "Los geht's", and the first plan below is saved too) is no draft – RoutesState.keepsDraft
+            val (w, h) = mapSize()
             startPlanWithTwoPoints()
+            hold(w * 0.50f, h * 0.30f)
+            waitUntil("a third point", 8_000) { waypointCount() == 3 }
             Thread.sleep(if (realRouting) 3_000 else 1_000)
             scenario.onActivity { vm(it).requestClear() }
             waitUntil("cleared at once, no question", 5_000) { waypointCount() == 0 }
@@ -404,12 +409,10 @@ class CoreFieldE2ETest : E2EBase() {
             scenario.onActivity { vm(it).saveDraft(draft) }
             waitUntil("saved: no longer a draft", 10_000) { db.getTour(draft.id)?.draft == false }
             scenario.onActivity { assertEquals(draft.id, vm(it).justSavedId) }
-            // a second one, deleted from Zuletzt → recycle bin – with a third point: the same two points again are the
-            // saved route above, and a plan with a saved route's points is no draft (RoutesState.keepsDraft)
+            // a second one, deleted from Zuletzt → recycle bin
             startPlanWithTwoPoints()
-            val (w, h) = mapSize()
-            hold(w * 0.50f, h * 0.30f)
-            waitUntil("a third point", 8_000) { waypointCount() == 3 }
+            hold(w * 0.45f, h * 0.65f)
+            waitUntil("another third point", 8_000) { waypointCount() == 3 }
             Thread.sleep(if (realRouting) 3_000 else 1_000)
             scenario.onActivity { vm(it).requestClear() }
             waitUntil("the second one under Zuletzt", 10_000) { drafts().size == 1 }
