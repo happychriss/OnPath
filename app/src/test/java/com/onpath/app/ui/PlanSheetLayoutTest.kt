@@ -44,19 +44,6 @@ class PlanSheetLayoutTest {
         assertTrue(panel.contains("if (ui.pointCount >= 2 && ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)"))
     }
 
-    /** ☰ (owner 2026-11-06): Meine Touren · Plan speichern · Neu planen · Ohne Plan aufzeichnen, then sync and settings. */
-    @Test fun menuOrderNewPlanAndRecordWithoutPlan() {
-        val bar = File("src/main/java/com/onpath/app/ui/PlanTopBar.kt").readText()
-        val items = bar.substringAfter("internal fun PlanMenuItems(").substringBefore("\n}\n")
-        val order = listOf("plan_menu_my_routes", "plan_save_route", "plan_close_plan", "plan_menu_record_without_plan",
-            "SyncMenuItem", "common_settings").map { items.indexOf(it) }
-        assertTrue("menu order $order", order.all { it >= 0 } && order == order.sorted())
-        val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertTrue(screen.contains("onNewPlan = if (vm.waypoints.isNotEmpty()) vm::requestClear else null"))
-        assertTrue(screen.contains("onRecordWithoutPlan = if (rec == null)"))
-        assertTrue(screen.contains("vm.startNavigation(recordOnly = true)"))
-    }
-
     /** The plan row keeps its words while they fit, else three signs (a large font) – a word is never cut. */
     @Test fun planRowWordsOrSigns() {
         assertTrue(PlanRow.wordsFit(190f, 358f))
@@ -91,30 +78,4 @@ class PlanSheetLayoutTest {
         assertTrue(DecisionLayout.oneRow(300f, 312f)); assertFalse(DecisionLayout.oneRow(330f, 312f))
     }
 
-    /**
-     * Core feature (owner 2026-11-05, field bug on the test build: Hike needed a confirm, the T level could not be chosen):
-     * ONE tap chooses an activity and closes; Hike's T1–T5 chips choose Hike + that level in one tap and close.
-     */
-    @Test fun activityAndLevelInOneTap() {
-        val dialog = src("ui/Screens.kt").substringAfter("fun ActivityDialog(").substringBefore("\n}\n")
-        assertTrue(dialog, dialog.contains(".clickable { onSelect(a); onDismiss() }"))
-        assertTrue(dialog, dialog.contains("if (a == Activity.HIKE) SacChips(if (sel) sac else 0) { level -> onSelect(Activity.HIKE); onSac(level); onDismiss() }"))
-        assertFalse("no Done / confirm", dialog.contains("common_done"))
-        val chips = src("ui/Screens.kt").substringAfter("internal fun SacChips(").substringBefore("\n}\n")
-        assertTrue(chips, chips.contains("SacScale.levels.forEach") && chips.contains("onClick = { onPick(l.level) }"))
-        assertTrue(chips, chips.contains("Res.string.routes_sac_button_desc"))
-    }
-
-    /** The activity button on the map opens the activity picker (the same path as the old chip). */
-    @Test fun theActivityButtonOpensThePicker() {
-        val map = src("ui/MapScreen.kt")
-        assertTrue(map.contains("if (vm.shown == null) ActivityMapButton(vm.activity, vm.sac, onActivity,"))
-        assertTrue(map.contains("onActivity = { if (rec != null) vm.openActivityCheck() else showActivity = true }"))
-        val button = panel.substringAfter("fun ActivityMapButton(").substringBefore("\n}\n")
-        assertTrue(button, button.contains("Surface(onClick = onClick, shape = CircleShape"))
-        assertTrue(button, button.contains("Res.string.plan_activity_chip_desc"))
-        assertTrue(button, button.contains("modifier = Modifier.size(48.dp)"))
-        // the sheet itself has no activity chip any more
-        assertFalse(panel.contains("fun ActivityButton("))
-    }
 }

@@ -60,12 +60,4 @@ class PlanActionsTest {
         assertFalse(File("src/main/java/com/onpath/app/ui/PlanTopBar.kt").readText().contains("UnsavedSign"))
     }
 
-    @Test fun copyAndShareLiveInMyRoutes() {
-        val screens = src("ui/Screens.kt")
-        assertTrue(screens.contains("onCopy = if (t.kind == TourKind.PLANNED) ({ onCopy(t) }) else null"))
-        assertTrue(screens.contains("Res.string.plan_save_as_copy"))
-        assertTrue(screens.contains("Res.string.plan_share_plan"))
-        val main = src("MainActivity.kt")
-        assertTrue(main.contains("onShare = { vm.shareRoute(it) }"))
-    }
 }

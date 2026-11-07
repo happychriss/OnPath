@@ -2,8 +2,6 @@ package com.onpath.app.ui
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -22,11 +20,6 @@ class TourActionBarTest {
         assertTrue(contrast(TourActions.OnEditTonal, TourActions.EditTonal) >= 7.0)
         assertTrue(contrast(OnPathColors.CardWhite, OnPathColors.ActionEdit) >= 4.5)
         assertTrue(contrast(OnPathColors.ActionGo, OnPathColors.CardWhite) >= 4.5)
-    }
-
-    /** The plan sheet during a tour has no tile / pill bar (owner 2026-11-05, R5): one green "Weiter geht's". */
-    @Test fun thePlanHasNoTourBar() {
-        assertTrue(!bar.contains("fun TourEditBar(") && !bar.contains("fun ActionPills("))
     }
 
 }

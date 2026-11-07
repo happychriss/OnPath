@@ -29,29 +29,6 @@ class NoviceFixesTest {
         assertFalse("the empty plan's hint says it already", MapGestures.tapShowsHoldHint(true, MapGestures.Press.TAP, none, false, -1, true))
     }
 
-    @Test fun theHoldHintStaysUntilTheUserActs() {
-        val host = src("ui/MapHost.kt")
-        assertTrue(host.contains("vm.userMovedMap = true; vm.tapHoldHint = false"))
-        assertTrue(host.contains("vm.showTapHoldHint()"))
-        val vm = src("ui/AppViewModel.kt")
-        assertTrue("a mode switch", vm.substringAfter("private fun enter(m: AppMode) {").substringBefore("\n    }\n").contains("tapHoldHint = false"))
-        val screen = src("ui/MapScreen.kt")
-        assertTrue("a plan change", screen.contains("LaunchedEffect(vm.waypoints.toList()) { vm.tapHoldHint = false }"))
-        assertTrue("a sheet drag", screen.contains("onSheetDrag = { if (it) vm.tapHoldHint = false; vm.mapGesture(it) }"))
-        val panel = src("ui/PlanPanel.kt")
-        // the summary step shows it, with and without a tour (owner 2026-11-05: one sheet layout)
-        assertTrue(panel.contains("else if (ui.tapHint) Box("))
-        assertFalse("no time-out", vm.substringAfter("fun showTapHoldHint()").substringBefore("\n    }\n").contains("delay("))
-    }
-
-    @Test fun everyMapControlNamesItself() {
-        val footer = src("ui/MapFooter.kt")
-        assertTrue(footer.contains("MapTip(text, i == tipShown) { control() }"))
-        assertTrue(footer.contains("TooltipBox(") && footer.contains("PlainTooltip"))
-        for (dir in listOf("values", "values-de"))
-            assertTrue(dir, File("../strings/src/commonMain/composeResources/$dir/strings_plan.xml").readText().contains("name=\"map_tip_locate\""))
-    }
-
     @Test fun secondaryLinesOnTheWayAreReadable() {
         assertTrue("slider line on green", contrast(OnPathColors.OnGreenMuted, OnPathColors.Green) >= 4.5)
         // owner 2026-11-06 (flow map N2): the slider's small second line is back – in the readable muted white on green

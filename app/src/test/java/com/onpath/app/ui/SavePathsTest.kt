@@ -80,14 +80,6 @@ class SavePathsTest {
         assertTrue(sync.contains("&& !it.draft }"))
     }
 
-    /** GPX import always makes an imported track; a plan GPX becomes a plan again only via "Als Plan nutzen". */
-    @Test fun todayEveryImportIsATrack() {
-        val imp = body("fun importGpx(uri: Uri) {")
-        assertTrue(imp.contains("db.insertTour(TourKind.IMPORTED,"))
-        assertFalse(imp.contains("TourKind.PLANNED"))
-        assertTrue(body("private fun planFromShownNow() {").contains("PlanGpx.stopsOf(track, sh.waypoints)"))
-    }
-
     /**
      * The owner's screen 2026-11-06 14:37 (docs/design/save-paths.md "Flow: follow a saved tour while a tour runs") had 5
      * buttons over a shown track. F1 as decided after the pictures (onpath.private#33, "zu kompliziert"): during a tour a

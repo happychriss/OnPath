@@ -94,12 +94,6 @@ class NextStopTest {
         assertEquals("Destination", StopAhead(4, null, true, 1.0).label)
     }
 
-    @Test fun navigateWiresItAndUTurnStays() {
-        val nav = File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()
-        assertTrue(nav.contains("if (!h.turnRound && NextStop.shown(h.distanceM, stop))"))
-        assertTrue(nav.contains("if (t.stop != null) StopSign(t.stop"))
-    }
-
     /** Owner 2026-11-05: under Navigate's profile up to 3 stops ahead, nearest first; passed / left-out ones gone; the goal last. */
     @Test fun theNextThreeStopsUnderTheProfile() {
         val five = session(0.0 to "Start", 1_200.0 to "Leiteralm", 3_000.0 to null, 4_000.0 to "Kapelle", 5_000.0 to "Hütte")

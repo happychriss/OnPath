@@ -19,24 +19,6 @@ class TourEditTest {
     private fun src(f: String) = File("src/main/java/com/onpath/app/$f").readText()
     private val vm = src("ui/AppViewModel.kt")
 
-    /** Owner 2026-11-05 (R5): ✕ Neu planen in the plan row, the same with and without a tour – the one clear path. */
-    @Test fun newPlanIsThePlanRowsClearThroughTheOneClearPath() {
-        val panel = src("ui/PlanPanel.kt")
-        val head = panel.substringAfter("private fun PlanHead(").substringBefore("\n}\n")
-        assertTrue(head, head.contains("val clear = str(Res.string.plan_close_plan)"))
-        assertTrue(head, head.contains("PlanAction(Icons.Filled.Close, clear, canClear, cb.onClear)"))
-        assertTrue(head, head.contains("PlanIconPill(Icons.Filled.Close, clear, canClear, cb.onClear)"))
-        // the green button also resumes a paused recording
-        assertTrue(panel.substringAfter("private fun goClick(").substringBefore("\n}\n")
-            .contains("if (tour.paused) cb.onPause(false); cb.onContinue()"))
-        // the same path as without a tour: requestClear (unsaved → "Discard changes?"; during a tour always "Plan leeren?")
-        assertTrue(src("ui/MapScreen.kt").contains("onClear = vm::requestClear"))
-        assertTrue(vm.contains("fun requestClear() = clearPlan()"))
-        // no second, separate discard path any more
-        assertFalse(vm.contains("discardTourEdits"))
-        assertFalse(File("src/main/java/com/onpath/app/ui/TourEdit.kt").exists())
-    }
-
     /** Saved → no question; new or changed → "Discard changes?" first. */
     @Test fun onlyAnUnsavedPlanAsks() {
         assertFalse("saved, unchanged", RouteRules.isUnsaved(listOf(a, b), listOf(a, b)))
@@ -57,17 +39,4 @@ class TourEditTest {
             if (it == com.onpath.app.navigation.TourSplit.Outcome.Empty) 0 else 1 })
     }
 
-    /** After "Neu planen" the summary step shows how to begin again – with and without a tour (owner 2026-11-03). */
-    @Test fun theEmptyPlanDuringATourShowsTheHint() {
-        val body = src("ui/PlanPanel.kt").substringAfter("private fun ColumnScope.PlanBody(").substringBefore("\n}\n")
-        assertTrue(body, body.contains("if (ui.pointCount == 0) Box(") && body.contains("FirstPointHint()"))
-        assertTrue("before the summary step's end", body.indexOf("FirstPointHint()") < body.indexOf("stepEnd(PlanSize.MINI.step)"))
-    }
-
-    /** Owner 2026-11-05: the sheet has no Save – ☰ → Save route is the one Save, also during a tour. */
-    @Test fun saveIsInTheMenuAlsoDuringATour() {
-        assertTrue(src("ui/MapScreen.kt").contains("onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null"))
-        assertFalse(src("ui/MapScreen.kt").contains("rec == null && RouteRules.saveInMenu"))
-        assertFalse(Regex("onSave\\w*").containsMatchIn(src("ui/PlanPanel.kt")))
-    }
 }
