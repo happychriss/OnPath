@@ -646,6 +646,16 @@ class CoreFieldE2ETest : E2EBase() {
         TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).listTours().filter { it.draft }
 
     /**
+     * The draft of exactly these plan points (null = none yet). Counting all drafts is not enough: since the end of a
+     * tour clears the plan the "Neu planen" way (owner 2026-11-07), a test that edits the plan on the way and ends its
+     * tour in @After leaves its own plan under Zuletzt (GitHub run 2026-11-07: "kept under Zuletzt" saw two).
+     */
+    private fun draftOf(pts: List<GeoPoint>): com.onpath.app.data.Tour? = drafts().firstOrNull { d ->
+        d.waypoints.size == pts.size &&
+            d.waypoints.zip(pts).all { (a, b) -> kotlin.math.abs(a.lat - b.lat) < 1e-6 && kotlin.math.abs(a.lon - b.lon) < 1e-6 }
+    }
+
+    /**
      * Flow map M1 + owner 2026-11-06 ("Zuletzt"): a done tour tapped during a tour is followed – no question; the plan built on the
      * way leaves the map, kept under My routes → Zuletzt, and the tour follows the track alone. Undo brings the plan back.
      */
@@ -681,10 +691,11 @@ class CoreFieldE2ETest : E2EBase() {
             hold(w * 0.50f, h * 0.30f)
             waitUntil("a third point", 8_000) { waypointCount() == 3 }
             routeSettled()
+            val first = waypointList()
             scenario.onActivity { vm(it).requestClear() }
             waitUntil("cleared at once, no question", 5_000) { waypointCount() == 0 }
-            waitUntil("kept under Zuletzt", 10_000) { drafts().size == 1 }
-            val draft = drafts().single()
+            waitUntil("kept under Zuletzt", 10_000) { draftOf(first) != null }
+            val draft = draftOf(first)!!
             scenario.onActivity { vm(it).saveDraft(draft) }
             waitUntil("saved: no longer a draft", 10_000) { db.getTour(draft.id)?.draft == false }
             scenario.onActivity { assertEquals(draft.id, vm(it).justSavedId) }
@@ -693,9 +704,10 @@ class CoreFieldE2ETest : E2EBase() {
             hold(w * 0.45f, h * 0.65f)
             waitUntil("another third point", 8_000) { waypointCount() == 3 }
             routeSettled()
+            val secondPts = waypointList()
             scenario.onActivity { vm(it).requestClear() }
-            waitUntil("the second one under Zuletzt", 10_000) { drafts().size == 1 }
-            val second = drafts().single()
+            waitUntil("the second one under Zuletzt", 10_000) { draftOf(secondPts) != null }
+            val second = draftOf(secondPts)!!
             scenario.onActivity { vm(it).deleteDraft(second) }
             waitUntil("in the recycle bin", 10_000) { (db.getTour(second.id)?.deletedMs ?: 0L) > 0L }
             db.deleteTour(draft.id); db.deleteTour(second.id)
@@ -712,10 +724,11 @@ class CoreFieldE2ETest : E2EBase() {
         val planId = tourWithAnUnsavedPlan()
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         try {
+            val changed = waypointList()
             scenario.onActivity { vm(it).requestClear() }
             waitUntil("cleared at once, no question", 5_000) { waypointCount() == 0 }
             assertTrue("the recording goes on", recording())
-            waitUntil("the changed plan under Zuletzt", 10_000) { drafts().size == 1 }
+            waitUntil("the changed plan under Zuletzt", 10_000) { draftOf(changed) != null }
             scenario.onActivity { vm(it).undoStep() }
             waitUntil("Undo: the plan is back", 10_000) { waypointCount() == 3 }
         } finally {
