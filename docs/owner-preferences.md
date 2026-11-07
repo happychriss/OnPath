@@ -69,7 +69,7 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
   configuration cache a changed property may be ignored – use `--no-configuration-cache` and check the APK contains
   `assets/overview/*.pmtiles`.
 
-## Setup work (owner 2026-11-05, after the audit `docs/history/setup-2026-11/audit-setup-2026-11-05.md`)
+## Setup work (owner 2026-11-05, after the setup audit – lessons in `docs/roles/multi-agent-lernen.md` §4)
 - **Research and check before building**: docs, existing solutions, the sessions' real transcripts; prove platform
   facts with a small test. Never sell an assumption as a fact.
 - No new mechanism without a real case; unused for a week → removed. Hooks / `gate.sh` / locks hit every session at

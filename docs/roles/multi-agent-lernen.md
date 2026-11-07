@@ -1,15 +1,16 @@
-# Multi-Agent-Betrieb: Was wir gelernt haben (OnPath, Stand 2026-11-05, nach dem Aufräumen)
+# Multi-Agent-Betrieb: Was wir gelernt haben (OnPath, Stand 2026-11-07)
 
 Ein Owner, ein mittelgroßes Projekt (Android-App + Web-Planer + Website), zwei Rechner, mehrere Claude-Sitzungen.
 Diese Datei hält fest, was **geprüft** funktioniert, was nicht, und welche Regeln daraus folgen – als Grundlage für
-ein sauberes Setup, auch für andere Projekte. Die Geschichte der Setup-Arbeit (Konzepte, Analyse, Audit) liegt in
-`docs/history/setup-2026-11/` – **das Audit dort zuerst lesen**. Herkunft: Setup-Review 2026-11-01/02, Tests auf donald, Laptop und
-in der Cloud. „Geprüft“ heißt: selbst ausprobiert, mit Datum.
+ein sauberes Setup, auch für andere Projekte. Herkunft: Setup-Review 2026-11-01/02, Audit 2026-11-05, Tests auf
+donald, Laptop und in der Cloud (die Konzept- und Audit-Dateien selbst sind gelöscht – siehe Versionsgeschichte).
+„Geprüft“ heißt: selbst ausprobiert, mit Datum.
 
 ## 1. Das Setup, das wir fahren („Leicht mit Captain“)
 - **Je Rechner eine arbeitende Sitzung**, benannt nach dem Rechner (donald, laptop). Sie läuft in einem
   **Gastgeber** (`claude remote-control`, Worktree-Modus) und weckt sich **stündlich selbst**. Eiliges sagt der Owner
-  der Sitzung direkt. Parallelität über Hintergrund-Agenten/Forks in eigenen Worktrees, zwei Gradle-Plätze je Rechner.
+  der Sitzung direkt. Parallelität über Hintergrund-Agenten/Forks in eigenen Worktrees, drei Gradle-Plätze je Rechner (einer, solange der
+  Emulator läuft – `tools/dev/gradle_slot.sh`).
 - **Ein Captain** in der Cloud: Überblick (Builds, App ⇄ Planer, CI, Fragen), ordnet das Backlog. Schreibt keinen Code.
   Er hat seit 11-03 die Freigabe-Karte: darf Rechner-Sitzungen erreichen (jeder Aufruf braucht den Tipp des Owners),
   weckt sich aber nicht selbst.
@@ -30,7 +31,11 @@ Backlog als Nachrichtenkanal.
 | Eine Sitzung **auf dem Rechner** darf weitere Sitzungen in ihrem Gastgeber starten (`create_session`) | 11-01, spawn-test-2 | Verteilen geht nur vom Rechner aus |
 | Eine **Cloud-Sitzung darf das nicht** (`elevated_session_untrusted_device`) | 11-01 | Captain kann keine Rechner-Sitzungen starten |
 | Eine Cloud-Sitzung darf einen Weckruf, der eine Rechner-Sitzung weckt, **nicht auslösen** – nur die Sitzung selbst oder ein Mensch | 11-02 | Captain kann donald nicht anstoßen → 10-Minuten-Blick in donald |
-| **Freigabe-Karte** (trusted device) für eine Cloud-Sitzung: sie erreicht dann Rechner-Sitzungen, **verliert aber das Selbst-Wecken** (Weckruf → `ACCESS_DENIED`, jede Nacht) | 10-31/11-02 | Captain **ohne** Karte |
+| **Freigabe-Karte** (trusted device) für eine Cloud-Sitzung: sie erreicht dann Rechner-Sitzungen, **verliert aber das Selbst-Wecken** (Weckruf → `ACCESS_DENIED`, jede Nacht); die Karte bindet die Sitzung **für immer** an vertraute Geräte | 10-31/11-02 | der Owner gab dem Captain am 11-03 trotzdem die Karte – erreichen wichtiger als selbst wecken |
+| **Karten-Test** (Captain → donald): Sitzung **starten** ✓ (eigener Worktree `.claude/worktrees/bridge-cse_…`, „Capacity 2/32“), **anschreiben** ✓, **mitlesen** ✓ (`list_events`, `get_session`) – aber **jeder Aufruf** an eine andere Sitzung fragt den Owner einzeln („Einmal erlauben“, kein „immer“), auch die Antwort der gestarteten Sitzung | 11-03 | nur für Eiliges direkt, sonst Backlog |
+| `create_session` auf einen Rechner bleibt **PENDING**, bis dort der Gastgeber läuft (`tools/dev/unit.sh run <name>`) | 11-01/11-03 | erst Gastgeber, dann Auftrag |
+| Jeder Aufruf von `claude remote-control` legt eine **eigene Umgebung** an (`hp:onpath-plan:4225`, `:dbef`) – daher Doppelte | 11-01 | einen Gastgeber je Ordner laufen lassen, nicht neu starten |
+| Die Sitzungsliste zeigt je Sitzung „wartet“ und einen Kurztext der Frage (`needs_action`), ohne Transkript und ohne Karte | 11-01 | Captain sieht Wartende über `list_sessions` |
 | Cloud-Sitzung **ohne** Karte kann sich selbst wecken (`send_later`) | 11-01 | Captain-Weckruf stündlich |
 | Rechner- und Cloud-Sitzungen können sich **gegenseitig nicht anschreiben** (ohne Karte) | 10-31 | Kanal = Repo + Issues |
 | `/loop` läuft nur, solange die Sitzung lebt **und gerade nicht arbeitet**; **stirbt beim Neustart**; max. 7 Tage | 11-01 (Test 5/6) | stündlicher Weckruf richtet die Schleife wieder ein |
@@ -68,8 +73,8 @@ Backlog als Nachrichtenkanal.
 8. **Chat bleibt ansprechbar – maßvoll.** Lange, abgeschlossene Arbeit in Hintergrund-Forks (die den Chat-Kontext
    behalten); Gespräch, Entscheidungen, Kleinkram direkt. „Alles in den Hintergrund“ kostet Kontext und macht
    Kleinkram langsamer. Ein freier Chat ist außerdem Voraussetzung, dass Schleifen und Weckrufe überhaupt ankommen.
-9. **Parallelität braucht Sperren.** Eigener Worktree je Agent, eine Gradle-Sperre pro Rechner (RAM), eine Sperre je
-   Gerät (Pixel, Emulator – `tools/dev/device.sh`).
+9. **Parallelität braucht Sperren.** Eigener Worktree je Agent, Gradle-Plätze pro Rechner (RAM, `tools/dev/gradle_slot.sh`),
+   eine Sperre je Gerät (Pixel, Emulator – `tools/dev/device.sh`).
 10. **Token beim Start zählen.** Jede Sitzung liest die Grund-Doku. `CLAUDE.md` von 3 851 auf 1 125 Wörter gekürzt,
     Details in Regeln nach Bereich. `project-status` und `backlog` werden zu Geschichtsbüchern, wenn niemand kürzt.
 11. **Backlog als Nachrichtenkanal erzeugt Rauschen:** 37 von 66 Commits an einem Tag waren Notizen.
@@ -87,11 +92,14 @@ Backlog als Nachrichtenkanal.
 | Fragen nur im Chat, Owner merkt nichts (11-02) | Push-Schalter je Rechner; Frage nur im Chat = Fehler |
 | Wichtiger Inhalt (Design-Review) nur im Chat einer alten Sitzung | Ergebnisse immer als Datei ins Repo |
 | Zwei Sitzungen mit gleichem Namen, Verwechslung | Alte Sitzung erst umbenennen/archivieren |
+| Push-Stempel an den Commit gebunden: nach jedem `pull --rebase` ein neuer Torlauf am einzigen Gradle-Schloss (11-01 bis 11-05) | Stempel überlebt den Rebase; mehrere Gradle-Plätze |
+| Push-Hook sperrte Pushes ins private Repo (11-01 bis 11-05) | Hooks in allen Kombinationen testen (anderes Repo, Worktree, Rebase) |
+| `device.sh emulator -- release_rundgang.sh` wartete ewig auf sich selbst; ein in der Sperre gestarteter adb-Server hielt sie danach fest (11-02) | jede Sperre mit dem Rundgang zusammen testen |
+| **Auf Vorrat gebaut, nie benutzt** (Audit 11-05): `[sofort]` + Wecker-Hook (wartete nach jeder Antwort eine Stunde, weckte nie), `new_items.sh`, Autostart + Sichern-Dienst (nie installiert – die Rechner sicherten von Hand auf `wip/`-Branches), Leitstand-Sitzung, 10-Minuten-Schleife (eine Stunde gelebt) | kein Mechanismus ohne echten Fall; eine Woche unbenutzt → weg |
+| Zielbild in fünf Tagen viermal umgeworfen, 13 000 Wörter Setup-Doku, die sich widersprach (11-01 bis 11-05) | höchstens eine Setup-Änderung pro Tag; eine Datei je Thema |
+| Eine Plattform-Annahme als Tatsache verkauft („Karte geht schon“) – der Preis (ein Tipp je Aufruf) kam erst im Test | erst ein Mini-Test, dann die Behauptung |
 
 ## 5. Offen / nächste Schritte
-- „Ein Branch“: `web-spike` → `main` (Entscheidung des Owners vom 11-01) umsetzen oder bewusst verwerfen – Backlog.
-- Die `wip/`-Branches von 11-01/03 prüfen und abbauen – Backlog.
-- In einer Woche messen, ob die Gradle-Plätze und der Stempel nach Rebase die Wartezeiten wirklich senken.
 - Nur bei belegtem Bedarf: Push für Cloud-Sitzungen (ntfy), Backlog als Issues, eigener Linux-Benutzer, gemieteter
   Rechner mit KVM (Google Cloud mit „nested virtualization“; Hetzner Cloud kann es nicht).
 
@@ -134,8 +142,8 @@ geplant; heute schützen Auto-Modus, Deny-Regeln und der Push-Hook.
 | Thema | Datei |
 | --- | --- |
 | Wer arbeitet wo | `docs/roles/README.md` |
+| Zusammenarbeit (Claim, Übergabe, Konflikte, E2E) | `docs/working-agreement.md` |
 | Arbeitsweise der Rechner-Sitzungen | `docs/roles/start.md` |
 | Captain | `docs/roles/captain.md` |
-| Geschichte, Audit, Entscheidungen des Owners zum Setup | `docs/history/setup-2026-11/` |
 | Skripte | `tools/ask.sh`, `tools/ci/gate.sh`, `tools/ci/release_check.sh`, `tools/dev/{unit,device,gradle_slot}.sh`, `tools/hooks/` |
 | Erzwungene Regeln | `.claude/settings.json` (Hooks, Deny), `.claude/rules/` |
