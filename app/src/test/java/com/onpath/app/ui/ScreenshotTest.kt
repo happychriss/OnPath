@@ -726,7 +726,10 @@ class ScreenshotTest {
     /** Unlocked (owner 2026-11-05, Navigate C): Pause / Tour beenden in the status card, "Plan ändern" where the slider was. */
     fun navigateActionsOpen() = paparazzi.snapshot { NavFrame(navUi, actions = true) }
 
-    /** Unlocked and paused: "Fortsetzen" in the card, "Sperren | Plan" at the bottom as without a pause (owner 2026-11-06). */
+    /**
+     * Paused inside the unlock window (owner 2026-11-07 09:05: one held Pause unlocks the bar for 20 s): "Weiter · Beenden
+     * · ✎" in full colour, plain taps – the light locked look comes back after 20 s idle ([com.onpath.app.domain.tour.UnlockWindow]).
+     */
     fun navigatePausedOpen() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true), actions = true) }
 
     /** Locked and paused (owner 2026-11-06): the slider, its small line "Fortsetzen · Beenden · Plan". */

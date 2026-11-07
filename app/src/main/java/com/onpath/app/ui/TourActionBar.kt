@@ -208,10 +208,8 @@ object TourBottomBarRules {
         maxOf(resumeW, endW) + 2 * 16f <= (width - 56f - 2 * GAP) / 2
 }
 
-/** Rules of the unlocked state (pure). */
+/** The tour bar's tonal colours (the unlock window's rule: [com.onpath.app.domain.tour.UnlockWindow]). */
 object TourActions {
-    /** The unlocked state locks again by itself after this long without a tap (phone back in the pocket). */
-    const val OPEN_MS = 30_000L
     /** Pause's light green and its dark green words (≥ 7:1). */
     val GoTonal = Color(0xFFD5EADF)
     val OnGoTonal = Color(0xFF0D3A27)

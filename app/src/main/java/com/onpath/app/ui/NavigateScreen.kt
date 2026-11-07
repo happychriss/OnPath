@@ -98,6 +98,7 @@ import com.onpath.app.domain.tour.ScreenPolicy
 import com.onpath.app.domain.tour.SmartScreen
 import com.onpath.app.domain.tour.StopAhead
 import com.onpath.app.domain.tour.StopRow
+import com.onpath.app.domain.tour.UnlockWindow
 
 /** What the Navigate screen shows (stateless, so screenshot tests can build it). */
 data class NavUi(
@@ -274,7 +275,41 @@ fun NavigateOverlay(
     // Locked (owner 2026-11-06 22:20, variant A of the hold lock – replaces the slider and its unlocked state): the same
     // buttons light, each fires only when held ~1 s ([HoldButton]); the lock off in the settings: a plain tap.
     // [actionsOpen] (screenshot tests) draws the plain-tap look.
-    val hold = lock && !actionsOpen
+    // One fired hold unlocks the whole bar for 20 s (owner 2026-11-07 09:05, [UnlockWindow]): plain taps and full colours,
+    // every tap starts the window again; shut after 20 s idle, on screen off / background (ON_STOP) and when Aus.
+    var unlockedUntil by remember { androidx.compose.runtime.mutableLongStateOf(UnlockWindow.LOCKED) }
+    var windowOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(unlockedUntil) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        windowOpen = UnlockWindow.isOpen(unlockedUntil, now)
+        if (windowOpen) { kotlinx.coroutines.delay(unlockedUntil - now); windowOpen = false }
+    }
+    LaunchedEffect(lock) { if (!lock) unlockedUntil = UnlockWindow.LOCKED }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    androidx.compose.runtime.DisposableEffect(lifecycle) {
+        val shut = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_STOP && unlockedUntil != UnlockWindow.LOCKED) {
+                com.onpath.app.debug.Problems.trace("navigate", "Bar locked again: the screen went off / the app went to the background")
+                unlockedUntil = UnlockWindow.LOCKED
+            }
+        }
+        lifecycle.addObserver(shut)
+        onDispose { lifecycle.removeObserver(shut) }
+    }
+    val hold = lock && !actionsOpen && !windowOpen
+    // a tap while the window is open starts it again (a shut window stays shut – a tap never unlocks)
+    val touched = { unlockedUntil = UnlockWindow.afterTap(unlockedUntil, android.os.SystemClock.elapsedRealtime()) }
+    val barPause: (Boolean) -> Unit = { p -> touched(); onPause(p) }
+    val barEnd: () -> Unit = { touched(); onEnd() }
+    val barPlan: () -> Unit = { touched(); onSlideToPlan() }
+    val heldFired = LocalOnHoldFired.current
+    val unlockOnFire: () -> Unit = {
+        heldFired()
+        if (lock) {
+            unlockedUntil = UnlockWindow.afterFire(android.os.SystemClock.elapsedRealtime())
+            com.onpath.app.debug.Problems.trace("navigate", "Held button fired: the bar is open for ${UnlockWindow.openMs / 1000} s")
+        }
+    }
     val closableBar = false
     // Android's back while a tour records (owner 2026-11-06, flow map N4): ask instead of leaving the app – a novice took
     // "app gone" for "tour gone" and might start a second one. A second back closes the question (= Bleiben).
@@ -309,8 +344,10 @@ fun NavigateOverlay(
             val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
             // a tour: Pause | Planen (paused Weiter · Beenden · ✎); no tour: one big blue Planen – held while locked
-            if (ui.recordedM != null) TourBottomBar(ui.paused, onPause, onEnd = onEnd, onPlan = onSlideToPlan, bottom, hold = hold)
-            else ChangePlanButton(onSlideToPlan, bottom, hold = hold)
+            androidx.compose.runtime.CompositionLocalProvider(LocalOnHoldFired provides unlockOnFire) {
+                if (ui.recordedM != null) TourBottomBar(ui.paused, barPause, onEnd = barEnd, onPlan = barPlan, bottom, hold = hold)
+                else ChangePlanButton(barPlan, bottom, hold = hold)
+            }
         }
         // "Neuer Plan – deine Aufnahme läuft weiter" just above the bottom bar, over the map (nothing moves under it), left
         // of the map controls' column (it covered "locate" across the full width – merge review 2026-11-06)

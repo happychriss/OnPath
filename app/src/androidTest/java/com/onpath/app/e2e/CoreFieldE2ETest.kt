@@ -23,6 +23,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
 import androidx.test.platform.app.InstrumentationRegistry
+import com.onpath.app.domain.tour.UnlockWindow
 import com.onpath.app.data.TourDb
 import com.onpath.app.data.TourKind
 import com.onpath.app.gpx.GpxWaypoint
@@ -598,6 +599,7 @@ class CoreFieldE2ETest : E2EBase() {
         // the longest hold (2 s): on a loaded CI emulator the main thread blocks 0.5–0.8 s, a "short" tap's up event came
         // late and the 1 s hold fired (GitHub 2026-11-07 04:14, "First held button fired" on the tap) – 2 s keeps a tap a tap
         val holdMs = com.onpath.app.data.HoldSetting.MAX_MS
+        UnlockWindow.openMsForTests = 1_500 // the 20 s unlock window, short – no test waits 20 s
         scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
         try {
             startPlanWithTwoPoints()
@@ -623,8 +625,47 @@ class CoreFieldE2ETest : E2EBase() {
             assertTrue("a short tap does not pause", com.onpath.app.recording.RecordingService.state.value?.paused != true)
             holdButton(Txt.s(Res.string.nav_action_pause), ms = holdMs + 1_000)
             waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
+            // the unlock window (owner 2026-11-07, 20 s; here 1.5 s) is over: the bar is locked again – a short tap on
+            // Weiter only shows the hint, the tour stays paused
+            Thread.sleep(UnlockWindow.openMs + 1_000)
+            var hintAgain: androidx.test.uiautomator.UiObject2? = null
+            for (attempt in 1..3) {
+                val resume = findFresh(By.desc(Txt.s(Res.string.common_resume)), 5_000)
+                assertNotNull("Weiter on the locked bar again (short tap $attempt)", resume)
+                runCatching { resume!!.click() } // expected: a stale node right after a redraw – the next attempt finds it again
+                hintAgain = findFresh(By.text(Txt.s(Res.string.nav_hold_hint)), 3_000)
+                if (hintAgain != null) break
+            }
+            assertNotNull("locked again after the window: a short tap shows the hint", hintAgain)
+            assertTrue("… and does not resume", com.onpath.app.recording.RecordingService.state.value?.paused == true)
             holdButton(Txt.s(Res.string.nav_end_short), ms = holdMs + 1_000)
             assertNotNull("the end sheet", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
+            assertTrue("asking does not end the tour", recording())
+        } finally {
+            UnlockWindow.openMsForTests = null
+            scenario.onActivity { vm(it).updateSettings(before!!) }
+        }
+    }
+
+    /**
+     * Owner 2026-11-07 09:05 ("nur einmal entriegeln"): one held Pause unlocks the bar – Beenden then acts on a plain
+     * tap (no second hold) and opens the end sheet, which still asks.
+     */
+    @Test fun lockOnOneHoldUnlocksTheBarForAPlainTapOnBeenden() {
+        var before: com.onpath.app.data.AppSettings? = null
+        val holdMs = com.onpath.app.data.HoldSetting.MAX_MS // see lockOnHoldPauseThenHoldEnd: 2 s keeps a CI tap a tap
+        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
+        try {
+            startPlanWithTwoPoints()
+            Thread.sleep(if (realRouting) 3_000 else 1_000)
+            scenario.onActivity { vm(it).startNavigation(force = true) }
+            waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+            assertNotNull("locked: Pause at the bottom", findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 10_000))
+            holdButton(Txt.s(Res.string.nav_action_pause), ms = holdMs + 1_000)
+            waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
+            // the bar is open now: Beenden is a plain button with its text – a tap, no hold
+            clickText(Txt.s(Res.string.nav_end_short))
+            assertNotNull("the end sheet after a plain tap", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())
         } finally {
             scenario.onActivity { vm(it).updateSettings(before!!) }
