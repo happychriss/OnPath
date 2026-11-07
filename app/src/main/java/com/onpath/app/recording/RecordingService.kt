@@ -317,12 +317,13 @@ class RecordingService : Service() {
     private fun startCommand(intent: Intent?, startId: Int): Int {
         val control = intent?.action in setOf(ACTION_PAUSE, ACTION_RESUME, ACTION_STOP, ACTION_FOLLOW_CHANGED, ACTION_NAVIGATING,
             ACTION_SETTINGS, ACTION_TAKE_ROUTE, ACTION_TAKE_VIA, ACTION_KEEP_ROUTE, ACTION_CHECK_NOW, ACTION_PROPOSE_SWITCH,
-            ACTION_LEAD_THERE, ACTION_JUST_RECORD, ACTION_LEAD_FAILED_OK, ACTION_JOIN_HERE)
+            ACTION_LEAD_THERE, ACTION_JUST_RECORD, ACTION_LEAD_FAILED_OK, ACTION_JOIN_HERE, ACTION_SAY)
+        // (a SAY sent just before End reaches a service that finish() now keeps for a newer start: it must stop too)
         if (control && tourId < 0) { stopSelf(startId); return START_NOT_STICKY } // nothing is recording
         when (intent?.action) {
             ACTION_PAUSE -> { setPaused(true); return START_STICKY }
             ACTION_RESUME -> { setPaused(false); return START_STICKY }
-            ACTION_STOP -> { finish(); return START_NOT_STICKY }
+            ACTION_STOP -> { finish(startId); return START_NOT_STICKY }
             ACTION_NAVIGATING -> {
                 // Plan mode: no new questions; a pending one stays (owner: nothing disappears by itself)
                 navigating = intent.getBooleanExtra(EXTRA_ON, true)
@@ -1345,7 +1346,12 @@ class RecordingService : Service() {
         publish(force = true)
     }
 
-    private fun finish() {
+    /**
+     * Ends the tour. [startId] = the STOP command's: the service stops only when no newer start came since – End and
+     * Los geht's within milliseconds queue the new START before this runs, and a plain stopSelf() then ended the
+     * service that had just begun the new tour (its GPS off until Continue; CoreFieldE2ETest.endAndANewStart…).
+     */
+    private fun finish(startId: Int) {
         try { com.onpath.app.cells.AppCells.get(this).apply { tourInBackground = false; holdUpdates = false } } catch (e: Exception) {
             Problems.warn("cells", "Map areas loaded during the tour not released; they join at the next app start", e)
         }
@@ -1381,7 +1387,7 @@ class RecordingService : Service() {
         _state.value = null
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         wakeLock?.let { if (it.isHeld) it.release() }
-        stopSelf()
+        stopSelf(startId)
     }
 
     override fun onDestroy() {
