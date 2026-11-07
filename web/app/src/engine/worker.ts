@@ -34,6 +34,8 @@ interface WasmEngine {
   historyRecord(points: string): void;
   historyStep(op: string, points: string): string;
   historyState(): string;
+  historyExport(): string;
+  historyImport(text: string): void;
   gesture(menuOpen: boolean, marker: number, poi: boolean, planEmpty: boolean): string;
   pointMenu(index: number, count: number, isPlace: boolean, roundTrip: boolean, points: string): string;
   fromMeBlocked(status: string, hasFix: boolean): string;
@@ -54,7 +56,7 @@ interface WasmEngine {
 }
 
 /** Small synchronous calls the page may make by name (the app's pure UI rules – see client.ts). */
-const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyState', 'gesture', 'pointMenu', 'placeMenu', 'locateLabel', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
+const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyState', 'historyImport', 'gesture', 'pointMenu', 'placeMenu', 'locateLabel', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
   // web UI rules (WebUi.kt): route name proposal (Save), POI kind filters (Map content)
   'routeName', 'poiKinds', 'poiFilter',
   // the app's map look per activity (map/ActivityLayers.kt): layer visibility + hiking band filter
@@ -277,8 +279,14 @@ function indexArea(e: WasmEngine, key: string, dir: string): Promise<void> {
   return p;
 }
 
+/** Plans the page dropped (a newer edit, Neu, Abbrechen) while they still waited for routing data: never routed. */
+const dropped = new Set<number>();
+/** The calls that change the undo / redo history: their reply carries it, for a fresh worker (client.ts restart). */
+const HISTORY = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyImport']);
+
 self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
   const req = ev.data;
+  if (req.type === 'drop') { dropped.add(req.target); return; } // no answer: the page already stopped waiting
   try {
     if (req.type === 'config') {
       base = req.base; segments = req.segments; packed = !!req.packed; lang = req.lang ?? 'en';
@@ -319,7 +327,7 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       if (!CALLS.has(req.fn)) throw new Error(`unknown engine call ${req.fn}`);
       const fn = (e as unknown as Record<string, (...a: unknown[]) => unknown>)[req.fn];
       const out = fn(...req.args);
-      reply({ id: req.id, ok: true, text: out == null ? '' : String(out) });
+      reply({ id: req.id, ok: true, text: out == null ? '' : String(out), history: HISTORY.has(req.fn) ? e.historyExport() : undefined });
       return;
     }
     if (req.type === 'prefetch') {
@@ -339,6 +347,7 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
     }
     const t0 = performance.now();
     const fetched = await ensureParts(e, req.points, req.activity ?? '', (bytes) => reply({ id: req.id, ok: true, progress: { phase: 'download', bytes } }));
+    if (dropped.delete(req.id)) { reply({ id: req.id, ok: false, error: 'dropped', cancelled: true }); return; } // superseded while downloading
     if (req.type === 'plan') reply({ id: req.id, ok: true, progress: { phase: 'route' } });
     if (req.type === 'planFromTrack') {
       // a shown track → plan (the app's TrackToPlan): the routing data along the whole track first, like the app

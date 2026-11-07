@@ -5,44 +5,123 @@ import { t } from '../i18n';
 type NoId<T> = T extends unknown ? Omit<T, 'id'> : never;
 
 export class EngineClient {
-  private worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+  private worker!: Worker;
   private next = 1;
   private waiting = new Map<number, (r: EngineReply) => void>();
   private progress = new Map<number, (p: Progress) => void>();
+  /** Every unanswered request as sent – a fresh worker gets them again in their order ([restart]). */
+  private sent = new Map<number, EngineRequest>();
+  /** Running plans: id → when it started routing (0 = still waiting for routing data). */
+  private plans = new Map<number, number>();
+  /** What a fresh worker must be told first: the page's config, the pace levels, the undo / redo history. */
+  private cfg: NoId<EngineRequest> | null = null;
+  private pace: (string | number | boolean)[] | null = null;
+  private history = '';
+  /** For the tests and the diagnostics: how often a long plan was stopped, and how long the last fresh worker took. */
+  readonly restarts = { count: 0, lastMs: 0 };
 
-  constructor() {
-    this.worker.onmessage = (ev: MessageEvent<EngineReply>) => {
-      if (ev.data.progress) { this.progress.get(ev.data.id)?.(ev.data.progress); return; } // not the answer yet
-      this.waiting.get(ev.data.id)?.(ev.data);
-      this.waiting.delete(ev.data.id);
-      this.progress.delete(ev.data.id);
+  constructor() { this.spawn(); }
+
+  private spawn() {
+    const w = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+    this.worker = w;
+    w.onmessage = (ev: MessageEvent<EngineReply>) => {
+      if (w !== this.worker) return; // a stopped worker's last words
+      const r = ev.data;
+      if (r.progress) {
+        if (r.progress.phase !== 'download' && this.plans.get(r.id) === 0) this.plans.set(r.id, performance.now());
+        this.progress.get(r.id)?.(r.progress); return; // not the answer yet
+      }
+      if (r.history != null) this.history = r.history;
+      this.waiting.get(r.id)?.(r);
+      this.waiting.delete(r.id);
+      this.progress.delete(r.id);
+      this.sent.delete(r.id);
+      this.plans.delete(r.id);
     };
     // robust first: a crashed worker (failed engine load, a trap the worker could not catch) must never leave the
     // page waiting forever – every open request gets a plain failure the caller already shows
     const failAll = (why: string) => {
+      if (w !== this.worker) return;
       console.error('[engine] ' + why); // reported like the app's Problems log (console in the browser)
       for (const [id, resolve] of this.waiting) resolve({ id, ok: false, error: t('web_engine_stopped') });
-      this.waiting.clear();
+      this.waiting.clear(); this.sent.clear(); this.plans.clear(); this.progress.clear();
     };
-    this.worker.onerror = (e) => failAll('worker error: ' + (e.message || 'unknown'));
-    this.worker.onmessageerror = () => failAll('worker message could not be read');
+    w.onerror = (e) => failAll('worker error: ' + (e.message || 'unknown'));
+    w.onmessageerror = () => failAll('worker message could not be read');
   }
 
   /** No answer at all after this long (routing has its own, shorter time limit in the engine) = the worker hangs. */
   private static readonly NO_ANSWER_MS = 180_000;
+  /** A dropped plan still routing this long after the drop blocks the one worker: it is stopped ([restart]). */
+  static readonly DROP_GRACE_MS = 1000;
 
   private ask(req: NoId<EngineRequest>, onProgress?: (p: Progress) => void): Promise<EngineReply> {
     const id = this.next++;
     if (onProgress) this.progress.set(id, onProgress);
+    if (req.type === 'config') this.cfg = req;
+    if (req.type === 'call' && req.fn === 'paceSet') this.pace = req.args;
+    if (req.type === 'plan') this.plans.set(id, 0);
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         if (!this.waiting.delete(id)) return;
+        this.sent.delete(id); this.plans.delete(id);
         console.error(`[engine] no answer to "${req.type}" in ${EngineClient.NO_ANSWER_MS / 1000} s`);
         resolve({ id, ok: false, error: t('web_engine_no_answer') });
       }, EngineClient.NO_ANSWER_MS);
       this.waiting.set(id, (r) => { clearTimeout(timer); resolve(r); });
-      this.worker.postMessage({ ...req, id } as EngineRequest);
+      const full = { ...req, id } as EngineRequest;
+      this.sent.set(id, full);
+      this.worker.postMessage(full);
     });
+  }
+
+  /**
+   * The page dropped every running plan (a newer edit, Neu, Abbrechen – the app's cancelRun). BRouter in the worker
+   * cannot be stopped mid-way and the one worker answers in order, so a long dropped plan (Meran → Hilden: minutes)
+   * would hold every later call. A plan still waiting for routing data is skipped by the worker; one still routing
+   * [DROP_GRACE_MS] after the drop is stopped by starting a fresh worker ([restart]). Its promise answers
+   * {cancelled: true} – the page ignores it as it ignores every superseded plan.
+   */
+  dropPlans() {
+    const ids = [...this.plans.keys()];
+    if (!ids.length) return;
+    for (const target of ids) this.worker.postMessage({ type: 'drop', id: 0, target } as EngineRequest);
+    const blocking = () => ids.some((i) => { const at = this.plans.get(i) ?? 0; return at > 0 && performance.now() - at >= EngineClient.DROP_GRACE_MS; });
+    // routing for a while already: stopped at once; just started: a moment to finish by itself (a short route)
+    if (blocking()) { this.restart(ids.filter((i) => this.plans.has(i))); return; }
+    setTimeout(() => {
+      if (ids.some((i) => (this.plans.get(i) ?? 0) > 0)) this.restart(ids.filter((i) => this.plans.has(i)));
+    }, EngineClient.DROP_GRACE_MS);
+  }
+
+  /**
+   * A fresh worker in place of one blocked by the dropped plans [ids]: those answer {cancelled}, the new worker is told
+   * the config, the pace levels and the undo / redo history first, then every other open request again, in its order.
+   * The routing data it needs is read again (the browser's cache); the plan's leg cache is rebuilt by the next plan.
+   */
+  private restart(ids: number[]) {
+    const t0 = performance.now();
+    this.worker.terminate();
+    for (const id of ids) {
+      this.waiting.get(id)?.({ id, ok: false, error: 'dropped', cancelled: true });
+      this.waiting.delete(id); this.sent.delete(id); this.plans.delete(id); this.progress.delete(id);
+    }
+    this.spawn();
+    this.restarts.count++;
+    console.info(`[engine] a dropped plan blocked the engine – fresh worker (${this.restarts.count})`);
+    const internal = (req: NoId<EngineRequest>, after?: (r: EngineReply) => void) => {
+      const id = this.next++;
+      this.waiting.set(id, (r) => after?.(r));
+      this.worker.postMessage({ ...req, id } as EngineRequest);
+    };
+    if (this.cfg) internal(this.cfg, () => {
+      this.restarts.lastMs = Math.round(performance.now() - t0);
+      console.info(`[engine] fresh worker ready in ${this.restarts.lastMs} ms`);
+    });
+    if (this.history) internal({ type: 'call', fn: 'historyImport', args: [this.history] });
+    if (this.pace) internal({ type: 'call', fn: 'paceSet', args: this.pace });
+    for (const id of [...this.sent.keys()].sort((a, b) => a - b)) this.worker.postMessage(this.sent.get(id)!);
   }
 
   /** [base] = where engine/ and brouter/ are served; [segments] = rd5 files with HTTP range support. */
@@ -55,6 +134,7 @@ export class EngineClient {
   /** [pinned] = indices of points the route passes exactly (POI / place), as in the app's Planner;
    *  [rounds] ≥ 1 = a plan the user started: at the time limit the reply's plan is {slow: rounds} (SlowPlan); 0 = never asks. */
   plan(points: [number, number][], activity: Activity, sac: number, pinned: number[] = [], onProgress?: (p: Progress) => void, names = '', rounds = 0) {
+    this.dropPlans(); // a new plan supersedes every running one (the page keeps the newest)
     return this.ask({ type: 'plan', points: enc(points), activity, sac, pinned: pinned.join(','), names, rounds }, onProgress);
   }
 

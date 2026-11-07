@@ -995,3 +995,19 @@ section „Gebaut“ with the shots). The owner chose A („Punkte zuerst“, li
 - Tests: import-smoke (live row, draft row + menu, overview, Planen, the reveal, the saved row's ⋮), sync-smoke (the app's
   words, „In Bearbeitung“, opening through the overview), `test/tours-shots.mjs` (shots wide + phone, before / after).
 
+
+## 26. A dropped long plan never holds the planner (laptop, 2026-11-07)
+BRouter runs in one engine worker and cannot be interrupted mid-call; the worker answers in order. A long plan the page
+has dropped (a newer edit, „+ Neu“, a loaded plan, Abbrechen – the app's cancelRun) used to keep routing for minutes
+(Meran → Hilden with NRW data) and every later call – Neu, rows, the next plan – waited behind it.
+Now (`engine/client.ts` `dropPlans` / `restart`): a dropped plan still waiting for routing data is skipped by the worker
+(`drop` message); one that has been routing ≥ 1 s (`DROP_GRACE_MS`, at once if it already ran that long) is stopped by
+terminating the worker and starting a fresh one. The fresh worker gets the config, the pace levels and the undo / redo
+history first (`historyExport` → `historyImport`, the app's `PlanHistory.snapshot` / `restore`; every history call's
+reply carries the history), then every other open request again in its order; the dropped plan answers `{cancelled}`,
+which the page ignores like any superseded plan. Routing data is read again from the browser's cache; the leg cache
+fills again with the next plan. Measured on the laptop (Chrome, Meran → Hilden routing, then „+ Neu“): map empty
+after ~120 ms, fresh worker ready in ~70 ms, a short plan right after in ~0.7 s. `test/stop-smoke.mjs` (needs E10_N45 +
+E5_N50; skips otherwise – in `web/parity/check-web.sh`, not in GitHub's smokes: no NRW data there).
+Also (owner 2026-11-07, app f37793d0 `RouteWarnings.saysChanged`): the user's own activity / T change in Plan says no
+„New route for … – check it“ – in the planner the change is always the user's own, so the line never shows.

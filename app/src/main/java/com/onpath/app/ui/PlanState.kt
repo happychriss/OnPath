@@ -42,6 +42,17 @@ class PlanHistory(private val limit: Int = 100) {
         }
     }
 
+    /**
+     * The snapshots as they are ([undo] oldest first, [redo] oldest first) – the browser planner hands them to a fresh
+     * engine worker after it stopped a long plan that blocked the old one (web-planner.md §26); the app never needs it.
+     */
+    fun snapshot(): Pair<List<List<GeoPoint>>, List<List<GeoPoint>>> = undo.toList() to redo.toList()
+
+    /** Takes [snapshot]'s lists back as they were (no step, nothing trimmed). */
+    fun restore(undoSteps: List<List<GeoPoint>>, redoSteps: List<List<GeoPoint>>) {
+        undo.clear(); undo.addAll(undoSteps.takeLast(limit)); redo.clear(); redo.addAll(redoSteps)
+    }
+
     /** Every point reachable by undo or redo (to keep their "pinned" marks alive). */
     fun allPoints(): Set<GeoPoint> = HashSet<GeoPoint>().apply { undo.forEach { addAll(it) }; redo.forEach { addAll(it) } }
 }

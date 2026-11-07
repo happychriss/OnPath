@@ -248,8 +248,11 @@ object Engine {
             val wps = parsePoints(points)
             val act = Activity.valueOf(activity)
             val nm = parseNames(names)
-            // the same points planned before with another activity / T level: the app's "New route for … – check it"
-            val before = lastResultFor(wps)?.takeIf { it.activity != act || it.sac != sac }
+            // the same points planned before with another activity / T level: the app's "New route for … – check it" –
+            // never here (owner 2026-11-07, RouteWarnings.saysChanged): in the planner the change is always the user's
+            // own, in Plan, with no tour running
+            val before = lastResultFor(wps)?.takeIf { (it.activity != act || it.sac != sac) &&
+                RouteWarnings.saysChanged(own = true, inPlan = true, touring = false) }
             // the wait box's "Leg 2 of 5 is being calculated…" – the app's PlanStatus text, only for two or more legs
             val planner = Planner(engine(), null, askAtLimit = rounds >= 1, rounds = rounds.coerceAtLeast(1), legs = legCache,
                 progress = { done, total -> if (PlanStatus.hasLegs(done to total)) progressSink?.invoke(PlanStatus.calculating(done to total)) })
@@ -509,6 +512,23 @@ object Engine {
 
     fun historyState(): String = "{\"canUndo\":" + history.canUndo + ",\"canRedo\":" + history.canRedo + "}"
 
+    /**
+     * The undo / redo snapshots as text, for a fresh engine worker (web-planner.md §26: the page stops a long plan that
+     * blocks the one worker by starting a new one): "undo#redo", steps split by "|", an empty point list as "~".
+     */
+    fun historyExport(): String {
+        val (u, r) = history.snapshot()
+        fun list(l: List<List<GeoPoint>>) = l.joinToString("|") { s -> if (s.isEmpty()) "~" else s.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) } }
+        return list(u) + "#" + list(r)
+    }
+
+    /** [historyExport]'s text back into this engine's history (replaces it). */
+    fun historyImport(text: String) {
+        val parts = text.split("#")
+        fun list(s: String?) = if (s.isNullOrEmpty()) emptyList() else s.split("|").map { if (it == "~") emptyList() else parsePoints(it) }
+        history.restore(list(parts.getOrNull(0)), list(parts.getOrNull(1)))
+    }
+
     // ---- map gestures: the app's MapGestures (hold rules, point menu) ----
 
     /**
@@ -700,6 +720,10 @@ external fun planProgress(text: String)
 @JSExport fun historyStep(op: String, points: String): String = Engine.historyStep(op, points)
 
 @JSExport fun historyState(): String = Engine.historyState()
+
+@JSExport fun historyExport(): String = Engine.historyExport()
+
+@JSExport fun historyImport(text: String) = Engine.historyImport(text)
 
 @JSExport fun gesture(menuOpen: Boolean, marker: Int, poi: Boolean, planEmpty: Boolean): String =
     Engine.gesture(menuOpen, marker, poi, planEmpty)
