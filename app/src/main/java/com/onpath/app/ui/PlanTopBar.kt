@@ -93,7 +93,7 @@ class PlanMenu(
      */
     val onNewPlan: (() -> Unit)? = null,
     /**
-     * "Ohne Plan aufzeichnen" (owner 2026-11-06, flow map H1: "Los geht's ohne Route" in the sheet was confusing – in ☰,
+     * "Nur aufzeichnen" (owner 2026-11-06, flow map H1: "Los geht's ohne Route" in the sheet was confusing – in ☰,
      * rarely needed): a plain recording; null hides it (a tour runs).
      */
     val onRecordWithoutPlan: (() -> Unit)? = null,
@@ -270,7 +270,7 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     menu.onSaveRoute?.let { save ->
         MenuItem(Icons.Outlined.Save, str(Res.string.plan_save_route), enabled = st.save) { close(); save() }
     }
-    // owner 2026-11-06: Meine Touren · Plan speichern · Neu planen · Ohne Plan aufzeichnen, then the rest
+    // owner 2026-11-06: Meine Touren · Plan speichern · Neu planen · Nur aufzeichnen, then the rest
     menu.onNewPlan?.let { n -> MenuItem(Icons.Filled.Close, str(Res.string.plan_close_plan)) { close(); n() } }
     menu.onRecordWithoutPlan?.let { r -> MenuItem(Icons.Outlined.RadioButtonChecked, str(Res.string.plan_menu_record_without_plan)) { close(); r() } }
     HorizontalDivider()

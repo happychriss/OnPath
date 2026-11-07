@@ -32,7 +32,7 @@ class PlanSheetLayoutTest {
 
     /**
      * From two points on; during a tour none here – the green "Navigation ›" in the foot leads back (C). A plain recording
-     * without a plan is ☰ → "Ohne Plan aufzeichnen" (owner 2026-11-06: "Los geht's ohne Route" in the sheet was confusing).
+     * without a plan is ☰ → "Nur aufzeichnen" (owner 2026-11-06: "Los geht's ohne Route" in the sheet was confusing).
      */
     @Test fun theButtonShowsFromTwoPointsAndNeverDuringATour() {
         assertFalse(PlanBarRow.shown(ui(0, running = false)))

@@ -165,14 +165,14 @@ class CorePlanE2ETest : E2EBase() {
     @Test fun anEmptyPlanStartsARecordingWithoutARoute() {
         scenario.onActivity { a -> if (vm(a).waypoints.isNotEmpty()) vm(a).clearPlan() }
         waitUntil("empty plan", 5_000) { waypointCount() == 0 }
-        // owner 2026-11-06: no start button in the sheet without a plan – the plain recording is ☰ → "Ohne Plan aufzeichnen"
+        // owner 2026-11-06: no start button in the sheet without a plan – the plain recording is ☰ → "Nur aufzeichnen"
         org.junit.Assert.assertNull("no green start button on an empty plan",
             device.findObject(By.desc(Txt.s(Res.string.plan_start_recording_for))))
         val menu = findFresh(By.desc(Txt.s(Res.string.plan_menu)), 8_000)
         assertNotNull("the ☰ menu button", menu)
         menu!!.click()
         val item = findFresh(By.text(Txt.s(Res.string.plan_menu_record_without_plan)), 5_000)
-        assertNotNull("☰ → \"Ohne Plan aufzeichnen\"", item)
+        assertNotNull("☰ → \"Nur aufzeichnen\"", item)
         item!!.click()
         // the phone check before the first tour may open (vibration / voice): "Later" goes on to the tour, as a user does
         repeat(3) {

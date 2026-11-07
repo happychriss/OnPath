@@ -705,7 +705,7 @@ object PlanBarRow {
     val GAP = 4.dp
 
     /**
-     * Without a tour the button starts at two points; a plain recording without a plan is ☰ → "Ohne Plan aufzeichnen"
+     * Without a tour the button starts at two points; a plain recording without a plan is ☰ → "Nur aufzeichnen"
      * (flow map H1, owner 2026-11-06: "Los geht's ohne Route" in the sheet was confusing – hidden in the menu, rarely
      * needed). During a tour none: the green "Navigation ›" in the sheet's foot leads back (owner 2026-11-06, C).
      */
