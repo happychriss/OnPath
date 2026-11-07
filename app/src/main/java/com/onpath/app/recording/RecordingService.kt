@@ -957,7 +957,9 @@ class RecordingService : Service() {
             is NavPrompt.FarStart -> "f${p.id}${p.searching}"
             is NavPrompt.MidStart -> "m${p.id}${p.searching}"
             is NavPrompt.LeadFailed -> "e${p.id}"
-            else -> p.javaClass.simpleName
+            NavPrompt.Searching -> "searching"
+            NavPrompt.Kept -> "kept"
+            is NavPrompt.NoWay -> "noway${p.reason}"
         }
         if (key == tracedStep) return
         val was = tracedStep
