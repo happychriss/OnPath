@@ -79,7 +79,8 @@ class ActivityLayersTest {
         }
         for (id in listOf("routes-hike", "routes-bike")) {
             val on = enabled && id == want
-            for (suffix in listOf("", "-over", "-major-low", "-major", "-major-label", "-low", "-regional")) {
+            // + "-over-label" (owner 2026-11-07): the grey band's "T3" goes with the band
+            for (suffix in listOf("", "-over", "-over-label", "-major-low", "-major", "-major-label", "-low", "-regional")) {
                 getLayer("$id$suffix")?.let { vis[it] = on }
             }
         }
@@ -94,7 +95,9 @@ class ActivityLayersTest {
         val t = Expression.literal(limit.coerceIn(1, 6))
         val within = Expression.all(Expression.lte(sac, t), Expression.not(Expression.has("hx")))
         val over = Expression.any(Expression.gt(sac, t), Expression.has("hx"))
-        return linkedMapOf("routes-hike" to Expression.all(hike, piece, within), "routes-hike-over" to Expression.all(hike, piece, over))
+        // + the grey band's level label on exactly the grey pieces (owner 2026-11-07)
+        return linkedMapOf("routes-hike" to Expression.all(hike, piece, within), "routes-hike-over" to Expression.all(hike, piece, over),
+            "routes-hike-over-label" to Expression.all(hike, piece, over))
     }
 
     /** Numbers as numbers (the JSON converter reads 3 as 3.0): structure and values compared, not their spelling. */

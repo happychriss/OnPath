@@ -76,15 +76,26 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         Problems.warn("settings", "Setting $key unreadable, using Average pace", e); com.onpath.app.time.Pace.DEFAULT
     }
 
-    /** Last camera: lat, lon, zoom. */
+    /** Writes that may lag (camera, last seen): background, coalesced, never waited for in onStop ([LazyPrefs]). */
+    private val later = LazyPrefs.of(sp)
+
+    /** Writes the lagging values now, on the background thread (the screen stops; the caller does not wait). */
+    fun flushLazy() = later.flush()
+
+    /** Last camera: lat, lon, zoom. Saved at every camera idle – through [later], not apply() (stalls at onStop). */
     var camera: Triple<Double, Double, Double>?
-        get() = if (!sp.contains("camLat")) null else Triple(
-            sp.getFloat("camLat", 0f).toDouble(), sp.getFloat("camLon", 0f).toDouble(), sp.getFloat("camZoom", 12f).toDouble()
-        )
+        get() {
+            @Suppress("UNCHECKED_CAST")
+            (later.peek("camera") as? Triple<Double, Double, Double>)?.let { return it }
+            return if (!sp.contains("camLat")) null else Triple(
+                sp.getFloat("camLat", 0f).toDouble(), sp.getFloat("camLon", 0f).toDouble(), sp.getFloat("camZoom", 12f).toDouble()
+            )
+        }
         set(v) {
             if (v == null) return
-            sp.edit().putFloat("camLat", v.first.toFloat()).putFloat("camLon", v.second.toFloat())
-                .putFloat("camZoom", v.third.toFloat()).apply()
+            later.put("camera", v) { e ->
+                e.putFloat("camLat", v.first.toFloat()).putFloat("camLon", v.second.toFloat()).putFloat("camZoom", v.third.toFloat())
+            }
         }
 
     /** Hidden POI kinds; a set stored under older defaults is upgraded once ([com.onpath.app.poi.PoiKinds.upgradeHidden]). */
@@ -236,12 +247,14 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
     /** What was fine when OnPath was last open, and when (for "your phone removed …"). */
     var lastSeen: com.onpath.app.setup.LastSeen?
         get() {
+            (later.peek("lastSeen") as? com.onpath.app.setup.LastSeen)?.let { return it }
             val at = sp.getLong("lastSeenAt", 0L).takeIf { it > 0 } ?: return null
             val ok = sp.getString("lastSeenOk", "").orEmpty().split(',').filter { it.isNotEmpty() }.mapNotNull { n ->
                 com.onpath.app.debug.enumOrNull<com.onpath.app.setup.CheckId>(n, "settings") }.toSet()
             return com.onpath.app.setup.LastSeen(ok, at)
         }
-        set(v) { if (v != null) sp.edit().putLong("lastSeenAt", v.atMs).putString("lastSeenOk", v.ok.joinToString(",") { it.name }).apply() }
+        // written in Activity.onStop – through [later], so onStop never waits for the disk
+        set(v) { if (v != null) later.put("lastSeen", v) { e -> e.putLong("lastSeenAt", v.atMs).putString("lastSeenOk", v.ok.joinToString(",") { it.name }) } }
 
     /** ☰ → Pair with browser opened the camera once: the step line before it is not shown again (PairEntry). */
     var pairHintSeen: Boolean

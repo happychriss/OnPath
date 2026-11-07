@@ -16,11 +16,12 @@ sealed interface Phrase {
     data class Start(val distanceM: Double, val durationS: Double?, val destination: String?, val carryOn: Boolean = false) : Phrase
     /**
      * A junction [inM] ahead (under [VoiceGuide.SOON_M]: "now"); [onto] = the kind of way it turns onto when that
-     * changes; [then] = a second turn right after it (said together); [straightM] = the quiet stretch after it.
+     * changes; [then] = a second turn right after it (said together), [thenOnto] the kind of way that one turns onto;
+     * [straightM] = the quiet stretch after it.
      */
     data class Junction(
         val inM: Double, val turn: Turn, val exit: Int = 0, val onto: WayKind? = null,
-        val then: Turn? = null, val thenExit: Int = 0, val straightM: Double? = null,
+        val then: Turn? = null, val thenExit: Int = 0, val straightM: Double? = null, val thenOnto: WayKind? = null,
     ) : Phrase
     data object OffRoute : Phrase
     data object BackOnRoute : Phrase
@@ -318,7 +319,8 @@ class VoiceGuide {
         val straight = (after - alongs[last]).takeIf { it >= (if (bike) BIKE_STRAIGHT_M else HIKE_STRAIGHT_M) }
         // the bike's second stage has no number ("Gleich links."); on foot it is close anyway
         val inM = if (bike) 0.0 else d.coerceAtLeast(0.0)
-        return Phrase.Junction(inM, turns[k], exits[k], onto[k], j?.let { turns[it] }, j?.let { exits[it] } ?: 0, straight)
+        return Phrase.Junction(inM, turns[k], exits[k], onto[k], j?.let { turns[it] }, j?.let { exits[it] } ?: 0, straight,
+            thenOnto = j?.let { onto[it] })
     }
 
     /**
@@ -350,8 +352,13 @@ class VoiceGuide {
         alongs = DoubleArray(idx.size) { cum[idx[it]] }
         turns = idx.map { Turn.of(line[it].turn!!) }
         exits = IntArray(idx.size) { line[idx[it]].exit }
-        onto = Array(idx.size) { ontoAt(line, cum, idx[it], isBike) }
         needed = JogRule.needed(line, cum, idx, hike = !isBike)
+        // the way word never reads past the next turn said (owner 2026-11-07, Hilden: right onto a road, 19 m on left
+        // onto a footway – the right said "auf den Weg"); that turn names its own way ([Phrase.Junction.thenOnto])
+        onto = Array(idx.size) { k ->
+            val next = (k + 1 until idx.size).firstOrNull { needed[it] }?.let { cum[idx[it]] }
+            ontoAt(line, cum, idx[k], isBike, untilM = next)
+        }
         reversals = if (line.size >= 3) Reversals.of(line, cum).map { cum[it] }.toDoubleArray() else DoubleArray(0)
         said.clear(); early.clear(); lastAlong = Double.NEGATIVE_INFINITY
         return !first
@@ -403,14 +410,21 @@ class VoiceGuide {
         /** The way type is read this far before / after the junction: a crossing or a short link piece is not "the way". */
         const val WAY_SAMPLE_M = 20.0
 
+        /** The way type after a junction is read at most this share of the way to the next turn said. */
+        const val WAY_SAMPLE_NEXT = 0.9
+
         /**
          * The kind of way the route turns onto at line point [i] – only when it is another kind than the way it comes on.
          * From the line's way types [WAY_SAMPLE_M] before and after the junction (Hilden: the crossing into the park is
          * not "the way", the park path behind it is); without way types from the router's classes ([wayKind]).
+         * [untilM] = where the next turn said is (metres along the line): the reading after the junction stops before it
+         * ([WAY_SAMPLE_NEXT]) – that turn's way is its own word (owner 2026-11-07, Hilden: 19 m along a road, then a
+         * footway – the right onto the road said "auf den Weg").
          */
-        fun ontoAt(line: List<GeoPoint>, cum: DoubleArray, i: Int, bike: Boolean): WayKind? {
+        fun ontoAt(line: List<GeoPoint>, cum: DoubleArray, i: Int, bike: Boolean, untilM: Double? = null): WayKind? {
+            val ahead = untilM?.let { (it - cum[i]) * WAY_SAMPLE_NEXT }?.takeIf { it > 0 }?.coerceAtMost(WAY_SAMPLE_M) ?: WAY_SAMPLE_M
             val inType = wayTypeAt(line, cum, cum[i] - WAY_SAMPLE_M)
-            val outType = wayTypeAt(line, cum, cum[i] + WAY_SAMPLE_M)
+            val outType = wayTypeAt(line, cum, cum[i] + ahead)
             if (inType == null && outType == null) return wayKind(line[i], bike)
             val out = outType?.let { kindOfType(it, bike) } ?: return null
             return out.takeIf { it != inType?.let { t -> kindOfType(t, bike) } }

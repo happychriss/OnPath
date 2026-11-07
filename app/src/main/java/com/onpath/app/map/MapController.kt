@@ -770,7 +770,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
      */
     fun setSacLimit(limit: Int) {
         for ((id, json) in ActivityLayers.hikeRouteFilters(limit)) {
-            runCatching { (style.getLayer(id) as? LineLayer)?.setFilter(Expression.Converter.convert(json)) }
+            runCatching {
+                val e = Expression.Converter.convert(json)
+                when (val l = style.getLayer(id)) { is LineLayer -> l.setFilter(e); is SymbolLayer -> l.setFilter(e); else -> {} }
+            }
                 .onFailure { if (live()) Problems.warn("map", "Route layer $id not set to T$limit", it) }
         }
     }

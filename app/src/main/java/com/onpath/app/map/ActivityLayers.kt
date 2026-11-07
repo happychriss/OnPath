@@ -21,10 +21,10 @@ object ActivityLayers {
     const val TOWN = "-town"
 
     /** Route band layers: the band plus its major-route / overview / regional parts (a style may lack some). */
-    val ROUTE_SUFFIXES = listOf("", "-over", "-major-low", "-major", "-major-label", "-low", "-regional")
+    val ROUTE_SUFFIXES = listOf("", "-over", "-over-label", "-major-low", "-major", "-major-label", "-low", "-regional")
 
-    /** The hiking band's two layers whose filter follows the T level ([hikeRouteFilters]). */
-    val HIKE_BAND_LAYERS = listOf("routes-hike", "routes-hike-over")
+    /** The hiking band's layers whose filter follows the T level ([hikeRouteFilters]): band, grey band, its "T3" label. */
+    val HIKE_BAND_LAYERS = listOf("routes-hike", "routes-hike-over", "routes-hike-over-label")
 
     /** Format 2 styles have one forbidden-way layer set per BRouter profile family; format 1 only foot / bike. */
     const val PER_PROFILE_MARKER = "access-no-dash-touring"
@@ -111,7 +111,9 @@ object ActivityLayers {
         val head = """["all",["==",["get","kind"],"hike"],["!",["has","majoronly"]],"""
         return linkedMapOf(
             "routes-hike" to """$head["all",["<=",$sac,$t],["!",["has","hx"]]]]""",
-            "routes-hike-over" to """$head["any",[">",$sac,$t],["has","hx"]]]""")
+            "routes-hike-over" to """$head["any",[">",$sac,$t],["has","hx"]]]""",
+            // the grey band's level label ("T3") stands on exactly the grey pieces
+            "routes-hike-over-label" to """$head["any",[">",$sac,$t],["has","hx"]]]""")
     }
 
     /**

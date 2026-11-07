@@ -19,6 +19,7 @@ release's notes) and the git history – this file keeps only the current state 
   offline corridor 10 km on foot, 20 km for bike activities (donald). Smaller open items: `docs/backlog.md`; open questions: backlog "Waiting for the owner"; the owner's own questions: the Fragenregister.
 
 ## Last session
+- **laptop, 2026-11-07 – planner PlanReach (donald's note):** a stop the route does not reach says what does („② erst ab T2 erreichbar“, the app's PlanReach, run in the engine after the route), Show draws the reaching way amber; parity MapController / AppViewModel / PlanReach (718d1e86), deployed.
 - **laptop, 2026-11-07 – planner parity + plan sheet A (both live):** "Web planner" green again – the app's colour rule,
   blue #335A85, paper B, warm shadows, corner family, blue compass, goal flag, quiet locate (d5aace4c, 8ca0d359). Plan sheet A
   (a239a275, order like the phone 480b646d): wide = facts, plan row, lines, then the points with „+ Ziel hinzufügen“, no

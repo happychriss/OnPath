@@ -16,7 +16,7 @@
         "web/app/src/main.ts",
         "web/app/src/menus.ts"
       ],
-      "blob": "f02d1f044a7125823b4afe6cc2e36f526b038a11"
+      "blob": "cc8ed3aaaea5b343477cf5f4363a4eeb9e766b0d"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanStatus.kt",
@@ -66,7 +66,7 @@
         "web/app/src/position.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "c4f1ca117c7ef2dbd2042b6e16626a35b84e19c2"
+      "blob": "9bb86fa3ece29c0ba1f48f18c933aad39eb21673"
     },
     {
       "app": "app/src/main/java/com/onpath/app/recording/LocationTracker.kt",
@@ -92,7 +92,7 @@
         "web/app/src/main.ts",
         "web/app/src/gpximport.ts"
       ],
-      "blob": "95f74259c4da89a19865ef23c28ac5fce81d5a26"
+      "blob": "a9397a4de6f6a85794464c4e4c94095b14111037"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/SettingsScreen.kt",
@@ -125,7 +125,7 @@
       "web": [
         "web/app/src/cells.ts"
       ],
-      "blob": "47cdbd4692784fc470bdac820d5340e6f929a602"
+      "blob": "5dde7651b7225d3d2a7e34ee4cd1dfcb560a86bd"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/ElevationProfile.kt",
@@ -154,7 +154,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "4ed05b59c9d154e4e040d5a4fc17488ffd441d42"
+      "blob": "e6149656d123d497c36e6e2fdc8d465438e8790b"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -229,7 +229,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "51d4302ebc41eabcefc2528875c44cddbb343916"
+      "blob": "062074d2bf211ea1cd7c25bed43b80da31879b66"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/Overview.kt",
@@ -262,7 +262,7 @@
         "web/app/src/areas.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "e8d4077e94cd4d5d0219adebcca33f8e01d00524"
+      "blob": "0a7aafad67ff648db456e427b66584733514f4dd"
     },
     {
       "app": "app/src/main/java/com/onpath/app/data/Format.kt",
@@ -285,22 +285,22 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanPanel.kt",
       "why": "plan sheet layout and actions",
-      "blob": "1ba1a7df2d13b6cfc5472ff45ca84ba5cbf9cbc4"
+      "blob": "bc241c50124d8c31209059ee84aab0c08565c255"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapScreen.kt",
       "why": "plan screen wiring, dialogs",
-      "blob": "fa3a142186cbd30bae73b938ff429f05fa900df1"
+      "blob": "ff7c50ce2c46e21080d682fe8094846a88798983"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanGuidance.kt",
       "why": "plan ⇄ navigation (web: plan only)",
-      "blob": "c412a329a7f56a0ae072c8fc676c5ccafa229be1"
+      "blob": "915b3bc54fc191669a0c5ef2ba1b6fd947ef6365"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Notices.kt",
       "why": "message rules",
-      "blob": "11b754e57b58fc8266925630dcb954fe66cec4ea"
+      "blob": "bb0b2da229004ed8fb70beb00ab7db1ca67f39f6"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/RouteSpotsList.kt",
@@ -310,12 +310,12 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/RouteBreakdown.kt",
       "why": "way type / surface bars",
-      "blob": "ffdc3acb42ecd2ccf40aa1ea590b86061c30d99e"
+      "blob": "d1f6b1d565b756ec31776488749545f076529338"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/ActivitySwitchSheet.kt",
       "why": "activity picker",
-      "blob": "303114ce0fd0327017438b82e2d55e0822f941c0"
+      "blob": "82cabf5a76b5d8bf569ec38e1928c2a4ee55dfd0"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PointsDeleteGuard.kt",
@@ -340,7 +340,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/data/RoutingDataLoader.kt",
       "why": "routing data loading (web: worker.ts ensureParts)",
-      "blob": "89332150cc3d9a31212ce1e423483cdfcf8a1885"
+      "blob": "9ed480a48fd83cbeef8bdd50bd95d52a4cb617e2"
     },
     {
       "app": "app/src/main/java/com/onpath/app/data/Rd5PartStore.kt",
@@ -350,22 +350,22 @@
     {
       "app": "tools/make_style.py",
       "why": "map style (the web copies the generated style)",
-      "blob": "e86dafc0ec97abab8027d311a02b46d9dde99b38"
+      "blob": "67cb97f28babf4cd96eff8c29abcb159abf25dc9"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapLoad.kt",
       "why": "the loading modal's texts and when it closes (web: the map strip, areas.ts)",
-      "blob": "064f483c4e2fdf96962d334b1ea860c1ebb6cbfa"
+      "blob": "fa902ddea7dee848cced119187f7923ace17c498"
     },
     {
       "app": "app/src/main/java/com/onpath/app/cells/CellApi.kt",
       "why": "doorman request / status shapes the web proxy and areas.ts use (web/host/src/maps.js)",
-      "blob": "dba39ae6f5a9f325e1da10fc92e0b73eff7e6eab"
+      "blob": "a484b612d6ab3b9315d78eca1dc088208a0e76d1"
     }
   ],
   "shared": {
     "app/src/main/java/com/onpath/app/routing/RoutingContract.kt": {
-      "blob": "6d24a22367860434adf10164a037e2123b604f34",
+      "blob": "ebf536c8c9a2fa3bac6eb37fc3af0a8a2549c0e7",
       "perf": [
         "* [timedOut] = the router gave up for time (search budget used up, or the engine stayed busy): another try with the",
         "* same or shorter budget (leg by leg) would time out too, so the planner does not retry.",
@@ -380,9 +380,10 @@
       ]
     },
     "app/src/main/java/com/onpath/app/routing/Rd5Parts.kt": {
-      "blob": "3cb9185381eaf341627d330350f211d066adcc7f",
+      "blob": "b7ec78d4b0a0439e5adc700d340e002bd16c0711",
       "perf": [
         "const val INDEX_BYTES = 200",
+        "const val CORRIDOR_MARGIN_M = OfflineCorridor.MAX_M",
         "val raw: ByteArray = raw.copyOf(INDEX_BYTES)",
         "require(raw.size >= INDEX_BYTES) { \"rd5 index needs $INDEX_BYTES bytes, got ${raw.size}\" }",
         "val b = ByteBuffer.wrap(raw, 0, INDEX_BYTES)",
@@ -393,6 +394,14 @@
         "val b = ByteArray(INDEX_BYTES)"
       ]
     },
+    "app/src/main/java/com/onpath/app/routing/OfflineCorridor.kt": {
+      "blob": "3c1fbeadd00e7223fd88bbc464937716ea5211e3",
+      "perf": [
+        "const val MAX_M = BIKE_M",
+        "/** Corridor either side of a route for [activity]; null (not known) → [MAX_M]. */",
+        "null -> MAX_M"
+      ]
+    },
     "app/src/main/java/com/onpath/app/routing/BRouterWayStats.kt": {
       "blob": "f4e62015fea9f66c3b2b4a63b6ea7a74d274958f",
       "perf": [
@@ -401,11 +410,10 @@
       ]
     },
     "app/src/main/java/com/onpath/app/routing/WaypointSnap.kt": {
-      "blob": "2b603e83faf73d9b551fc2f76366815131224313",
+      "blob": "16d81f9b8796e1ec97be181021cb80cf3ed67e7b",
       "perf": [
         "const val MAX_MOVE_M = 1000.0",
-        "maxM: Double = MAX_MOVE_M,",
-        "var best = line[0]; var bestD = Double.MAX_VALUE"
+        "maxM: Double = MAX_MOVE_M,"
       ]
     },
     "app/src/main/java/com/onpath/app/routing/BRouterEngine.kt": {
@@ -460,7 +468,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/routing/TurnDetector.kt": {
-      "blob": "0fc06beb1c070a289fedd71ac43572da39c8c723",
+      "blob": "dc8e79c9ed4e1918a463c784395a5d7d6ce11874",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/routing/Junctions.kt": {
@@ -468,7 +476,7 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/routing/Planner.kt": {
-      "blob": "accfc1b2376472292b055879bb79756e767ce7c1",
+      "blob": "4a2af6e426ff985a22850d9876e02b211534e27c",
       "perf": [
         "* points = same legs = same route: the cache saves time, never changes a line.",
         "* A leg without a route becomes a straight dashed line (R-12/R-13); after a timeout the legs still to route are straight",
@@ -522,15 +530,15 @@
       ]
     },
     "app/src/main/java/com/onpath/app/routing/WaypointInsertion.kt": {
-      "blob": "bb51a945e4b6ca59a1e863fe9d2e9f2a37edc859",
+      "blob": "65e1a772d4f33af8081e1c1053acf674b948d8e8",
       "perf": [
         "var bestCost = Double.MAX_VALUE",
-        "val appendCost = if (loop) Double.MAX_VALUE else Geo.distance(waypoints.last(), p)",
+        "val appendCost = if (loop || stopOnly) Double.MAX_VALUE else Geo.distance(waypoints.last(), p)",
         "var bestD = Double.MAX_VALUE"
       ]
     },
     "app/src/main/java/com/onpath/app/routing/PlanEdits.kt": {
-      "blob": "65bbe12215ddcf81a7d19ca300d7ce4cc55bab37",
+      "blob": "19d389b3b011ab0c2bc128e4e9563d3c11da3ada",
       "perf": [
         "var bestCost = Double.MAX_VALUE"
       ]
@@ -540,7 +548,7 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/navigation/JunctionCues.kt": {
-      "blob": "51fa382b4ac1a2aeb29873ff8e2feff1ccae47a7",
+      "blob": "809c29fb28025e18cd17d6aef7a80b0961de20c7",
       "perf": [
         "* - Cue once, a time before the junction at the current speed: bike [LEAD_S] ([MIN_LEAD_M]…[MAX_LEAD_M]), on foot",
         "const val MAX_LEAD_M = 100.0",
@@ -556,7 +564,7 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/navigation/JogRule.kt": {
-      "blob": "208b0ac3ea6854011340300d7e0623f08444e06a",
+      "blob": "37d32e72601298c3073d704989c47959cfebb21d",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/navigation/SpeedWindow.kt": {
@@ -566,14 +574,6 @@
         "const val WINDOW_MS = 10_000L"
       ]
     },
-    "app/src/main/java/com/onpath/app/data/Format.kt": {
-      "blob": "aa590937851fe361f89c1d15951e621121a1146d",
-      "perf": []
-    },
-    "app/src/main/java/com/onpath/app/data/HoldSetting.kt": {
-      "blob": "cfe0fde808fa366ee70021cba419f619f983124c",
-      "perf": []
-    },
     "app/src/main/java/com/onpath/app/data/Geo.kt": {
       "blob": "7c6d06a651f334fa025981c201f7c6a3fc674000",
       "perf": [
@@ -581,6 +581,10 @@
         "if (line.isEmpty()) return Double.MAX_VALUE",
         "var best = Double.MAX_VALUE"
       ]
+    },
+    "app/src/main/java/com/onpath/app/data/Format.kt": {
+      "blob": "aa590937851fe361f89c1d15951e621121a1146d",
+      "perf": []
     },
     "app/src/main/java/com/onpath/app/time/PaceModel.kt": {
       "blob": "b0a07a016005d1261804f39dadcd63b176382cc0",
@@ -627,7 +631,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/search/Place.kt": {
-      "blob": "7909fa6abe70d94dfb564ed5f0590fca549a7bcf",
+      "blob": "f3b3191bf1121f3fe593f68dacb9b4867c9f833b",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/search/SearchText.kt": {
@@ -686,7 +690,7 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/search/AddPreview.kt": {
-      "blob": "c13451ed2eaec72adc68d2eea55dbbc62f3657c2",
+      "blob": "52985c65da9b1f5a417ab9238d00236715bf2af4",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/search/PlaceIndex.kt": {
@@ -697,15 +701,15 @@
       ]
     },
     "app/src/main/java/com/onpath/app/poi/Poi.kt": {
-      "blob": "e41724de9f124c48dec3fdc30d9c7065ac299f07",
+      "blob": "13f90ac3e37e02a2723e677336c504170d410bec",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/poi/PoiKinds.kt": {
-      "blob": "20b17cfe118608a0808081e3936eae6a5c3b19b9",
+      "blob": "6dffc68f99b5f3ee5c3bc0bcc5f06fa2fffa7d20",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/search/RouteNamer.kt": {
-      "blob": "216928bfab5140ce211c77c34578ff2e874908a8",
+      "blob": "1bfff7ef95bf5f0e22dc4e814d9cefcb278f0ea3",
       "perf": [
         "const val MAX_LEN = 40",
         "if (!loop && top != null) \"$s – $top – $s\".takeIf { it.length <= MAX_LEN }?.let { return it }",
@@ -725,7 +729,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/ui/MapGestures.kt": {
-      "blob": "f79265d3220f3125d7b2db9a5dcffadbbeb7fa3c",
+      "blob": "025051eed2b6ba455cf936235f3f196cac09ad98",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/poi/GoogleMapsLink.kt": {
@@ -745,8 +749,18 @@
         "return items.take(MAX_ITEMS).joinToString(\" · \") + if (more > 0) \" +$more\" else \"\""
       ]
     },
+    "app/src/main/java/com/onpath/app/ui/PlaceAddMenu.kt": {
+      "blob": "a5d1b1c38fcce73bd56cdb6cf7f819fff182e026",
+      "perf": [
+        "var detour = Double.MAX_VALUE"
+      ]
+    },
+    "app/src/main/java/com/onpath/app/ui/LocateDistance.kt": {
+      "blob": "21fab9ce93c326906b7de930684a0318860d4db1",
+      "perf": []
+    },
     "app/src/main/java/com/onpath/app/gpx/GpxModel.kt": {
-      "blob": "e839dd9b9b34520f985b847be0dece9767f38eae",
+      "blob": "02902d35f3a30dd29c34a56b5304211c4b11d909",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/gpx/GpxWriter.kt": {
@@ -835,7 +849,7 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/sync/TrackCode.kt": {
-      "blob": "f2629a51db75ecd15523bd3098464d9765d99c9d",
+      "blob": "017fff5885189c234de4c193359f05c1508e9138",
       "perf": [
         "const val MAX_POINTS = 200_000",
         "const val MAX_SEGMENTS = 2_000",
@@ -864,7 +878,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/routing/LongRoute.kt": {
-      "blob": "609dd792a5a5d9328b100b38d26df5215cdce967",
+      "blob": "34084104a7bf35caac8aa4fa2ceb5d6dfbbee16d",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/ui/PlanStatus.kt": {
@@ -874,8 +888,15 @@
       ]
     },
     "app/src/main/java/com/onpath/app/ui/PlanGaps.kt": {
-      "blob": "92a2e12105c6186a00c7e98a488446d6ad5c2a64",
+      "blob": "77533931de50e2846030e22908aeffeee811bb0b",
       "perf": []
+    },
+    "app/src/main/java/com/onpath/app/routing/PlanReach.kt": {
+      "blob": "625278794eb50c42ba10a59d720d9c2ecd4848da",
+      "perf": [
+        "const val TRY_TIMEOUT_MS = 5_000L",
+        "eng.route(ask, a, level, RouteLimits(TRY_TIMEOUT_MS, cancel))"
+      ]
     },
     "app/src/main/java/com/onpath/app/gpx/GpxParser.kt": {
       "blob": "e5e37dc1f72c2d14f5fe0867a57fd404b966da8d",
@@ -908,9 +929,23 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/data/AppSettings.kt": {
-      "blob": "022559f6b65eb2d8b719cb44544c3e19accde763",
+      "blob": "a825d21d7b897c244a5e7ae549354371f9db88e9",
       "perf": [
-        "* turn and on a tap; [PHONE] = no keep-screen-on, the phone's own timeout."
+        "* turn and on a tap; [PHONE] = no keep-screen-on, the phone's own timeout.",
+        "val navHoldMs: Int = HoldSetting.DEFAULT_MS,"
+      ]
+    },
+    "app/src/main/java/com/onpath/app/data/HoldSetting.kt": {
+      "blob": "cfe0fde808fa366ee70021cba419f619f983124c",
+      "perf": [
+        "const val STEP_MS = 500",
+        "const val MAX_MS = 2_000",
+        "const val DEFAULT_MS = 1_000",
+        "val STEPS_MS: List<Int> = (0..MAX_MS step STEP_MS).toList()",
+        "val SLIDER_STEPS = STEPS_MS.size - 2",
+        "fun snap(ms: Float): Int = ((ms.coerceIn(0f, MAX_MS.toFloat()) / STEP_MS).roundToInt() * STEP_MS)",
+        "* on or never set → [DEFAULT_MS].",
+        "else -> DEFAULT_MS"
       ]
     },
     "app/src/main/java/com/onpath/app/map/Overview.kt": {
@@ -918,7 +953,7 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/map/ActivityLayers.kt": {
-      "blob": "2ad1ee2df36720fe94a8ed72f1d19d8f2daeb103",
+      "blob": "16858035b5db488dc4d791bc8da6d8e2e81a847c",
       "perf": [
         "* Filters of the hiking band for the T level [limit] (SAC T1–T5): [HIKE_BAND_LAYERS] id → MapLibre style",
         "fun hikeRouteFilters(limit: Int): Map<String, String> {",
@@ -926,7 +961,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/routing/PlanResult.kt": {
-      "blob": "8cddbb716c42e96978cffe7dab20eecde8fa0f9d",
+      "blob": "45c8ade9fe11dc54066c79e05a21cf961cbcd905",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/routing/ProfileData.kt": {
@@ -945,11 +980,11 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/data/RoutingDataNotice.kt": {
-      "blob": "a0513c803211908c77997ed6d325a7c42bff83a1",
+      "blob": "6f7664a5f685f21e589f9ee209068c2eeab16bec",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/routing/BreakdownRules.kt": {
-      "blob": "bdc296d0349101a1c5071a797ff7bae35d247f7d",
+      "blob": "c0b32eb2d2cac99324fa3b853a04a641f9f6d82e",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/routing/PlanNames.kt": {
@@ -959,6 +994,21 @@
     "app/src/main/java/com/onpath/app/sync/SaveRule.kt": {
       "blob": "7bb98ba5026d477bc2ff90438075932a70100a6f",
       "perf": []
+    },
+    "app/src/main/java/com/onpath/app/sync/SyncLimits.kt": {
+      "blob": "3cb012c76ff6b420b21034353224772894278f5d",
+      "perf": [
+        "* deleted ones (tombstones) and the history of copies do not count. Saving a NEW tour beyond [MAX_TOURS] is refused on",
+        "const val MAX_TOURS = 250",
+        "const val WARN_TOURS = MAX_TOURS * 4 / 5",
+        "fun canAdd(tours: Int): Boolean = tours < MAX_TOURS"
+      ]
+    },
+    "app/src/test/java/com/onpath/app/routing/OfflineCorridorTest.kt": {
+      "blob": "d106d511aeffa606325dace25a9e3d9c84fac957",
+      "perf": [
+        "assertEquals(Activity.entries.maxOf { OfflineCorridor.marginM(it) }, OfflineCorridor.MAX_M, 0.0)"
+      ]
     },
     "app/src/test/java/com/onpath/app/routing/PlanCodeTest.kt": {
       "blob": "6d4aeb37388478b3dd4b1862c450c3335d081e53",
@@ -979,6 +1029,14 @@
     },
     "app/src/test/java/com/onpath/app/ui/RouteWarningsTest.kt": {
       "blob": "95e8e0b7511f0e8ea2508f0cf34d393c34ace16d",
+      "perf": []
+    },
+    "app/src/test/java/com/onpath/app/ui/PlaceAddMenuTest.kt": {
+      "blob": "78bc16b68fb29ad122daf577ef732ab07d287c15",
+      "perf": []
+    },
+    "app/src/test/java/com/onpath/app/ui/LocateDistanceTest.kt": {
+      "blob": "0c016f1b94e3333d2aa38908679255fbbc8c243f",
       "perf": []
     },
     "app/src/test/java/com/onpath/app/sync/SyncCryptoTest.kt": {
@@ -1034,6 +1092,12 @@
         "// the item with it fits the blob limit",
         "assertTrue(SyncFormat.seal(keys, item, ByteArray(12)).size < SyncFormat.MAX_BLOB)",
         "assertTrue(b.size <= SyncFormat.MAX_TRACK)"
+      ]
+    },
+    "app/src/test/java/com/onpath/app/sync/SyncLimitsTest.kt": {
+      "blob": "cf94734e683e08a487eeded3003be8c0d13e05c9",
+      "perf": [
+        "assertEquals(250, SyncLimits.MAX_TOURS)"
       ]
     },
     "app/src/test/java/com/onpath/app/sync/MemoryMailbox.kt": {
@@ -1125,23 +1189,23 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_common.xml": {
-      "blob": "d35b3a7774445e38d9134ca5fbe896151228f81a",
+      "blob": "09444e55f4db9e7599005c4641d6b6d2bd34f6dc",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_maps.xml": {
-      "blob": "6b57894b600873d2c9c633b7b418646e6c2a3649",
+      "blob": "bde06a8006ef19f117d31bc8cf915edaa4c92713",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_messages.xml": {
-      "blob": "325d14ebee8d90a31910fca9c08c200dba5e24b5",
+      "blob": "ef8128b32801c5774cbf1c8577ba2fbf80f72734",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_navigate.xml": {
-      "blob": "5a4411fd69f41663c5660c9e1f8e872a1fb8481b",
+      "blob": "d1a891cd49e0856f94caae881275bf00e44e60c3",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_plan.xml": {
-      "blob": "896e6a165acf34823652fef869d45f8bf1a8d19c",
+      "blob": "50a925a733759ef577b84a6b33de67acb887ff3b",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_poi.xml": {
@@ -1149,15 +1213,15 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_routes.xml": {
-      "blob": "028bbe5a2f382ba1b48a55891b82e9b044eeaf94",
+      "blob": "744186ba962e69861addebe50b73f8f01de7d12a",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_search.xml": {
-      "blob": "36f44c5aa8a666ac8cf31576585ae09c20b8d073",
+      "blob": "616e2dc019d59a056b1630d82d1310ea54707345",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_settings.xml": {
-      "blob": "c44e87f5c53c3c79e925d39d1e597dc965879bd0",
+      "blob": "c6518c89ba536ab137566a5f6ebf15aeed8d384d",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_setup.xml": {
@@ -1165,7 +1229,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_sync.xml": {
-      "blob": "84a97edb61ee064cdd2eb0515f8a8673466a062b",
+      "blob": "640c550148c226533552e2c95eba6f0255cff4c6",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_voice.xml": {
@@ -1181,23 +1245,23 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_common.xml": {
-      "blob": "45b55dfaaec8ff36fa6e0fe840b3d5d153803ae9",
+      "blob": "835eb11f2c272c2a9489e477b48a847ea5ea1794",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_maps.xml": {
-      "blob": "fb2042c8174e08763471caf1775cc55cafd86280",
+      "blob": "40ef42223015c28ef32cdd8d3d780bcb75d68ede",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_messages.xml": {
-      "blob": "dc3ea2b9019ceca350e2084781865138a109c573",
+      "blob": "e8caa405551355ab51531b0b90743f50b178862c",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_navigate.xml": {
-      "blob": "02833ee950ba0fc706713868febb6780092f1bdc",
+      "blob": "d20ae55d002064faed863e13a4bb468ec436e501",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_plan.xml": {
-      "blob": "2d0448a64060c8ff1cdd97a1da8924024a0d14b5",
+      "blob": "c74087ca0105c0b75822d382148c2321e903a9a5",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_poi.xml": {
@@ -1205,15 +1269,15 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_routes.xml": {
-      "blob": "0978072527d852d6b27bff13cce4f5cd58664b47",
+      "blob": "9c4a064ade01541fabd94c8708aa5083bf6dc9ee",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_search.xml": {
-      "blob": "364f8cb981c7ce03673ad31c194ffd4dfce59a67",
+      "blob": "d6ed7ec94bf2c1447c706b0b404df523d9b14eb4",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_settings.xml": {
-      "blob": "c355e12721e4235b7bd135ab546fa3e6dc6fbf23",
+      "blob": "126d444625361a586c30b3f469a1b355a616af2f",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_setup.xml": {
@@ -1221,7 +1285,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_sync.xml": {
-      "blob": "c6a46167b36d620f8a8d183ab187ea196cc2094a",
+      "blob": "e30c78f2d83a732f5f0c51fd66f77d96dff17ecf",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_voice.xml": {
@@ -1273,15 +1337,7 @@
       "perf": []
     },
     "app/src/main/assets/style/f2/onpath.json": {
-      "blob": "f028cec393d74ed05bed77566f7f7b0b217bb501",
-      "perf": []
-    },
-    "app/src/main/java/com/onpath/app/sync/SyncLimits.kt": {
-      "blob": "3cb012c76ff6b420b21034353224772894278f5d",
-      "perf": []
-    },
-    "app/src/test/java/com/onpath/app/sync/SyncLimitsTest.kt": {
-      "blob": "cf94734e683e08a487eeded3003be8c0d13e05c9",
+      "blob": "b61221e0d0ba480eac690fa553f8e46857fadf9e",
       "perf": []
     }
   }

@@ -20,6 +20,7 @@ import com.onpath.app.routing.RoutingException
 import com.onpath.app.routing.Share
 import com.onpath.app.routing.SlowPlan
 import com.onpath.app.routing.LegCache
+import com.onpath.app.routing.OfflineCorridor
 import com.onpath.app.ui.PlanStatus
 import com.onpath.app.time.RouteTimes
 import com.onpath.app.poi.PoiLinks
@@ -82,9 +83,16 @@ object Engine {
      * The 1° parts a plan needs – the phone's rule ([Rd5Parts.forCorridor]): JSON `[["E10_N45.rd5", 6], …]`.
      * Parts already in place are left out.
      */
-    fun partsNeeded(points: String): String =
-        Rd5Parts.forCorridor(parsePoints(points)).filter { it !in have }
+    /**
+     * The routing parts [points] need that are not loaded yet – in the phone's corridor for [activity] (an Activity name;
+     * "" = not known → the largest corridor): OfflineCorridor, 10 km on foot, 20 km by bike (owner 2026-11-07, app 501db30d).
+     */
+    fun partsNeeded(points: String, activity: String = ""): String =
+        Rd5Parts.forCorridor(parsePoints(points), OfflineCorridor.marginM(activityOrNull(activity))).filter { it !in have }
             .joinToString(",", "[", "]") { "[" + str(it.tile) + "," + it.index + "]" }
+
+    /** An Activity name, or null when empty / unknown (never throws: a wrong name means "not known"). */
+    private fun activityOrNull(name: String): Activity? = Activity.entries.firstOrNull { it.name == name }
 
     private val have = HashSet<Rd5Parts.Part>()
     private val layouts = HashMap<String, Pair<Rd5Parts.Index, ByteArray>>()
@@ -254,10 +262,22 @@ object Engine {
                 return "{\"slow\":${e.rounds},\"legs\":[]}"
             }
             lastResult = res
+            // a stop the route does not reach: what does reach it ("② erst ab T2 erreichbar", the app's PlanReach, owner
+            // 2026-11-07) – only the missing piece is routed (~40 ms a try), as AppViewModel.findReach does
+            val reach = res.gaps.firstOrNull()?.takeIf { !it.skipped }?.let { g ->
+                try {
+                    com.onpath.app.routing.PlanReach.find(engine(), g, act, sac).also { r ->
+                        Problems.trace("routing", "Point ${g.index + 1} not reached at ${act.name} T$sac: ${r?.fix ?: "not worked out"}")
+                    }
+                } catch (e: Exception) {
+                    Problems.warn("routing", "What reaches point ${g.index + 1} could not be worked out; the sheet says the missing metres", e)
+                    null
+                }
+            }
             val changed = before?.route?.takeIf { b ->
                 RouteWarnings.changedNoticeably(b.points, b.distanceM, b.ascentM, res.route.points, res.route.distanceM, res.route.ascentM)
             }?.let { RouteWarnings.changedText(act, sac) }
-            planJson(res, nm, System.currentTimeMillis() - t0, changed)
+            planJson(res, nm, System.currentTimeMillis() - t0, changed, reach)
         } catch (e: Exception) {
             Problems.error("web", "Plan request failed", e)
             // never the exception text for the user (CLAUDE.md robustness): the page shows its plain line, the detail
@@ -267,7 +287,8 @@ object Engine {
     }
 
     /** The page's JSON of a [PlanResult] (texts from the app's Format, RouteWarnings and PlanGaps). */
-    internal fun planJson(res: PlanResult, names: Map<Int, String>, ms: Long, changed: String? = null): String = buildString {
+    internal fun planJson(res: PlanResult, names: Map<Int, String>, ms: Long, changed: String? = null,
+                           reach: com.onpath.app.routing.PlanReach? = null): String = buildString {
         val p = res.route
         val sac = res.sac
         append("{\"distanceM\":").append(num(p.distanceM))
@@ -300,12 +321,12 @@ object Engine {
         // the plan points after snapping (same order as the request; the page takes them when moved)
         append(",\"moved\":").append(res.moved)
         append(",\"points\":").append(res.points.joinToString(",", "[", "]") { "[" + num(it.lat, 6) + "," + num(it.lon, 6) + "]" })
-        append(",\"gaps\":").append(WebPlanRules.gapsJson(res, names))
+        append(",\"gaps\":").append(WebPlanRules.gapsJson(res, names, reach))
         // after an activity / T level change the route differs noticeably (RouteWarnings.changedNoticeably): the grey line
         append(",\"changed\":").append(changed?.let { str(it) } ?: "null")
         // the routing-data notice (the app's data/RoutingDataNotice): a part under the plan still missing (fetch failed –
         // offline) or the router's "no routing data" → the plain grey line instead of the router's text
-        val missing = partsNeeded(res.routed.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) }) != "[]"
+        val missing = partsNeeded(res.routed.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) }, res.activity.name) != "[]"
         val notice = com.onpath.app.data.RoutingDataNotice.kindForRoute(p.error, missing, loading = false)
         append(",\"notice\":").append(notice?.let { str(it.name) } ?: "null")
         append(",\"noticeText\":").append(notice?.let { str(it.text) } ?: "null")
@@ -501,6 +522,30 @@ object Engine {
         }
 
     /** The point menu's entries ([MapGestures.pointMenu]) as JSON names: MAKE_START, LOOP_START, GOOGLE, DELETE. */
+    /**
+     * A held place's add entries – the app's PlaceAddMenu (owner 2026-11-07): `{"main":[…],"more":[…],"stop":i}`, items
+     * START_HERE / GO_HERE / SET_DESTINATION / ADD_STOP / NEW_DESTINATION; [stop] = where „Als Zwischenstopp“ puts it
+     * (WaypointInsertion stopOnly: the best place on the route, never behind the goal). The planner has no tour: the
+     * route ahead is the whole plan.
+     */
+    fun placeMenu(points: String, lat: Double, lon: Double, roundTrip: Boolean): String {
+        val w = parsePoints(points)
+        val p = GeoPoint(lat, lon)
+        val zone = if (w.size < 2) null else com.onpath.app.ui.PlaceAddMenu.zone(w, p, loop = roundTrip)
+        val m = com.onpath.app.ui.PlaceAddMenu.menu(w.size, touring = false, zone = zone)
+        val stop = if (w.size < 2) w.size else WaypointInsertion.decide(w, p, lastPlanFor(w)?.points, 30.0, stopOnly = true).index
+        fun list(items: List<com.onpath.app.ui.PlaceAddMenu.Item>) = items.joinToString(",", "[", "]") { str(it.name) }
+        return "{\"main\":" + list(m.main) + ",\"more\":" + list(m.more) + ",\"stop\":" + stop + "}"
+    }
+
+    /**
+     * The locate button's distance while my position is off the visible map (the app's LocateDistance, owner 2026-11-07):
+     * "790 km", or "" (in view / no position). The planner is always "Plan".
+     */
+    fun locateLabel(located: Boolean, lat: Double, lon: Double, south: Double, west: Double, north: Double, east: Double): String =
+        com.onpath.app.ui.LocateDistance.label(plan = true, located = located, me = if (located) GeoPoint(lat, lon) else null,
+            view = com.onpath.app.ui.LocateDistance.View(south, west, north, east)) ?: ""
+
     fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean, points: String = ""): String {
         // the loop's first point ([PlanEdits.loopStart]): with stops on the way before a round trip, ① of the loop reads
         // "Start here" (drops the stops) and the later loop points "Start & finish here" – the app's MapOverlays call
@@ -598,7 +643,7 @@ external fun planProgress(text: String)
 
 @JSExport fun putFile(relPath: String, data: Int8Array) = Engine.putFile(relPath, data.copyToJavaArray())
 
-@JSExport fun partsNeeded(points: String): String = Engine.partsNeeded(points)
+@JSExport fun partsNeeded(points: String, activity: String): String = Engine.partsNeeded(points, activity)
 
 @JSExport fun putLayout(tile: String, index: Int8Array, tail: Int8Array) =
     Engine.putLayout(tile, index.copyToJavaArray(), tail.copyToJavaArray())
@@ -630,6 +675,8 @@ external fun planProgress(text: String)
 @JSExport fun rows(points: String, names: String): String = Engine.rows(points, names)
 
 @JSExport fun placePreview(points: String, lat: Double, lon: Double): String = Engine.placePreview(points, lat, lon)
+@JSExport fun placeMenu(points: String, lat: Double, lon: Double, roundTrip: Boolean): String = Engine.placeMenu(points, lat, lon, roundTrip)
+@JSExport fun locateLabel(located: Boolean, lat: Double, lon: Double, south: Double, west: Double, north: Double, east: Double): String = Engine.locateLabel(located, lat, lon, south, west, north, east)
 
 @JSExport fun searchAddArea(key: String, dir: String): Int = WebSearch.addArea(key, dir)
 

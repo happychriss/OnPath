@@ -35,15 +35,22 @@ object WebPlanRules {
      * although it lies on a way, Bug 01): the sheet's red line, combined with a failed leg like PlanPanel does (one line,
      * "+N more"), and the grey dashed pieces. [names] = index → name. JSON {text, gaps}.
      */
-    fun gapsJson(res: PlanResult, names: Map<Int, String>): String {
+    fun gapsJson(res: PlanResult, names: Map<Int, String>, reach: com.onpath.app.routing.PlanReach? = null): String {
         val gaps = res.gaps
+        // what reaches the first gap's point (PlanReach, owner 2026-11-07) says it instead of the missing metres
+        val reachText = com.onpath.app.ui.PlanGaps.reachText(gaps, reach)
         val gapText = com.onpath.app.ui.PlanGaps.text(gaps, res.activity) { names[it]?.takeIf { n -> n.isNotBlank() } }
         val text = when {
+            reachText != null -> reachText // as the app's planGapText: the reach line as it is
             gapText == null -> null
             res.route.error != null && !com.onpath.app.ui.PlanGaps.hasMore(gapText) -> com.onpath.app.ui.PlanGaps.withMore(gapText, 1)
             else -> gapText
         }
-        return "{\"text\":" + (text?.let { Engine.str(it) } ?: "null") + ",\"gaps\":" + gaps.joinToString(",", "[", "]") { g ->
+        // the way that reaches it (a tap shows it like a steep section: amber on the map, fitted)
+        val way = reach?.takeIf { reachText != null }?.way?.let { w -> w + gaps.first().point }
+        return "{\"text\":" + (text?.let { Engine.str(it) } ?: "null") + ",\"way\":" +
+            (way?.joinToString(",", "[", "]") { "[" + Engine.num(it.lat, 6) + "," + Engine.num(it.lon, 6) + "]" } ?: "null") +
+            ",\"gaps\":" + gaps.joinToString(",", "[", "]") { g ->
             val (at, zoom) = com.onpath.app.ui.PlanGaps.showTarget(g)
             "{\"index\":" + g.index + ",\"point\":[" + Engine.num(g.point.lat, 6) + "," + Engine.num(g.point.lon, 6) + "],\"end\":[" +
                 Engine.num(g.routeEnd.lat, 6) + "," + Engine.num(g.routeEnd.lon, 6) + "],\"show\":[" + Engine.num(at.lat, 6) + "," +

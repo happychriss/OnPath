@@ -334,8 +334,16 @@ await planned();
 await page.waitForFunction(() => !document.getElementById('notice').hidden, null, { timeout: 30_000 }).catch(() => {});
 const red = await page.textContent('#notice');
 console.log('red line:', red);
-check(/Last \d+ m to “Ifinger”: no way for Hike/.test(red) && await page.isVisible('#showGap'), 'unreachable summit at T2: the app\'s red line + Show');
+// since 2026-11-07 (the app's PlanReach, owner "Meran → Mutkopf"): the line says what reaches it – "② only reachable from
+// T3" / "② not reachable" – else the missing metres as before
+const reachLine = /② (only reachable from T[3-5]|not reachable)/.test(red);
+check((reachLine || /Last \d+ m to “Ifinger”: no way for Hike/.test(red)) && await page.isVisible('#showGap'), `unreachable summit at T2: the app's red line + Show (${reachLine ? 'what reaches it' : 'missing metres'})`);
 check(await page.evaluate(() => window.__map.getSource('plan-gaps').serialize().data.features.length) === 1, 'the missing piece is drawn grey dashed');
+// Show: like a steep section – the way that reaches the point drawn amber (PlanReach.way), the map fitted on it
+await page.click('#showGap');
+await page.waitForTimeout(800);
+const reachDrawn = await page.evaluate(() => window.__map.getSource('plan-reach')?.serialize().data.features.length ?? -1);
+check(reachLine ? reachDrawn === 1 : reachDrawn === 0, `Show draws the reaching way amber only with a reach line (${reachDrawn})`);
 
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE|ERROR) /.test(e));

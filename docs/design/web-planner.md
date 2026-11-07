@@ -432,12 +432,15 @@ compiled from `app/` as it is.
 | Plan time (one time model, pace setting, e-bike flat cap, rounding) | `time/PaceModel`, `RouteTimes`, `TimeEstimate.planSeconds` / `planFactors` | same since 2026-10-29 | shared; the pace choice (Settings → Pace) in the activity drop-down (§13 #14, `WebPace.kt`; `PaceSettings.PaceSection`, `Theme.navName`, Prefs keys mirrored) |
 | Very long plan asked first (> 24 h estimate) and what Cancel does | `routing/LongRoute`, `ui/PlanStatus`, `AppViewModel.recalc / answerLongRoute / cancelRun` | same (§15) | shared rule + texts; dialog flow mirrored (`longroute.ts`, `main.ts`) |
 | Point the route does not reach (red line + Show, grey dashed piece) | `ui/PlanGaps`, `MapController.setPlanGaps`, `PlanPanel` | same since 2026-10-29 | shared rule + text; drawing mirrored (`plangaps.ts`); hollow grey point not drawn yet |
+| What reaches it („② erst ab T2 erreichbar“, Show = the reaching way amber + fitted) | `routing/PlanReach`, `PlanGaps.reachText`, `AppViewModel.findReach` / `showPlanGap` | same since 2026-11-07 | engine `plan` runs `PlanReach.find` after the route (only the missing piece), `gapsJson` gives the line and `way`; `plangaps.ts` draws `plan-reach` in the app's SPOT_COLOR on Show (`WebPlanReachTest`, import-smoke 5) |
 | Plan link / QR | `routing/PlanCode` | same | shared |
 | GPX import, Komoot sport → activity + T level, track → plan | `gpx/GpxParser`, `gpx/SportType`, `routing/TrackToPlan`, `time/TimeEstimate`, `AppViewModel.importGpx / planFromShown` | same (§15) | shared; flow + panel mirrored (`gpximport.ts`, `WebImport.kt`) |
 | GPX export with sport type | `gpx/GpxWriter`, `SportType` | same | shared |
 | Search: index, ranking, Photon, add preview; route name proposal | `search/*`, `search/RouteNamer` | same | shared; Photon URL + debounce mirrored (`search.ts`) |
 | POI kinds and filters | `poi/PoiKinds`, `poi/PoiFilter` | same | shared; visibility rules mirrored (`mapcontent.ts`, `LayerSettings`) |
-| Routing data per corridor (1° parts) | `routing/Rd5Parts` | same | shared; download loop in `worker.ts` (app: `RoutingDataLoader`, `Rd5PartStore`) |
+| Routing data per corridor (1° parts) | `routing/Rd5Parts`, `routing/OfflineCorridor` | same | shared; the plan's activity picks the corridor (10 km on foot, 20 km by bike, 2026-11-07; `partsNeeded(points, activity)`, a prefetch without a plan the largest); download loop in `worker.ts` (app: `RoutingDataLoader`, `Rd5PartStore`) |
+| A held place's add entries („Als Zwischenstopp“ / „Als neues Ziel“, „⋯ Mehr“) | `ui/PlaceAddMenu` | same | shared; engine `placeMenu` (no tour: the route ahead = the plan), `poiMenu` in `main.ts` |
+| Locate off the map: the distance under the icon, a tap frames plan + me | `ui/LocateDistance` | same | shared; engine `locateLabel` on `moveend` / a new fix (`updateLocateLabel` in `main.ts`) |
 | Plan sync | `sync/*` | same | shared |
 | World overview below z10 | `map/Overview.merge` | same (§16) | shared, run at build time; cover + URLs in `overview.ts` |
 | Optional map sources stripped | `map/OptionalSources` | mirrored | `cells.ts` |
@@ -958,6 +961,13 @@ section „Gebaut“ with the shots). The owner chose A („Punkte zuerst“, li
 - **Phone: two steps.** small = head + facts + lines, the chevron says „2 Punkte ⌃“; open = everything, the small profile
   with a full-width „⤢ Höhenprofil groß“ (the big one as before). The step is remembered (`onpath.sheetStep`, an old
   'profile' = open). A click on a point row on the phone folds the sheet (map and point visible).
+- **Owner's second look (2026-11-07 noon):** „Routenlänge und Höhen ↑/↓ als oberstes“, „großes Profil prominent“, „beim Start
+  Punkte und Profil zeigen, man kann ihn zuklappen“. Now, at every width: the first line of the sheet is **length · ↑ · ↓**
+  (24 px), below it the time, max and the difficulty – above the activity chip. The sheet is **open on start** (points and
+  profile), the chevron (wide) / handle + chevron (phone) collapse it to the facts; remembered in `onpath.sheetStep`,
+  nothing stored = open. Wide: the bottom profile has a **✕** that hides it (remembered, `onpath.profileHidden`); then the
+  panel shows the small profile with an outlined „⤢ Großes Profil“ (≥ 44 px) that brings it back. Phone: the full-width
+  „⤢ Höhenprofil groß“ row (44 px) under the facts in the open sheet.
 - Tests: sheet-smoke (wide order points → + Ziel → facts, pinned profile, blue route, + Ziel → search; phone two steps,
   label „2 points“, keys), ui-smoke (the bottom profile's cursor and range), edit / import / pair / ui shots without steps
   on wide. Shots: `test/sheet-a-shots.mjs <segments> <cellStore> <outDir>`.

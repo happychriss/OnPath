@@ -384,6 +384,69 @@ class CoreFieldE2ETest : E2EBase() {
     }
 
     /**
+     * Field bug 2026-11-07, tour 207 (owner, Pixel): at home in Hilden with the plan "Meran → Mutkopf" ~700 km away, Los
+     * geht's, then Hike T1 → T5 in the activity sheet: every row was routed Hilden → Meran (15 s timeout each, ~90 s of
+     * spinners) and T5 never came. Now nothing is routed before a choice; the T5 chip routes Hike T5 alone from the
+     * plan's start, and – the route never reached – the whole plan is planned again as T5 and followed: the line reaches
+     * point 2, which T1 cannot (its line ends ~550 m short – the path up is above T1). Unit tests: ActivityCheckTest
+     * (farFromARouteNeverReached…), ActivityCheckRulesTest.onlyTheChosenRowIsRouted….
+     */
+    @Test fun farFromThePlanTheT5ChipPlansItAgainAndReachesThePointT1CouldNot() {
+        org.junit.Assume.assumeTrue("needs the real routing data (E10_N45.rd5)", realRouting)
+        val meran = GeoPoint(46.67135, 11.16464)
+        val mutkopf = GeoPoint(46.71077, 11.13787)
+        fun dist(a: GeoPoint, b: GeoPoint) = com.onpath.app.data.Geo.distance(a, b)
+        // at home, 700 km away
+        lat = 51.16926; lon = 6.92544
+        waitUntil("the position at home", 20_000) {
+            var ok = false
+            scenario.onActivity { ok = vm(it).tracker.location.value?.let { p -> p.latitude > 51.0 } == true }
+            ok
+        }
+        scenario.onActivity { vm(it).selectActivity(Activity.HIKE); vm(it).selectSac(1) }
+        scenario.onActivity { vm(it).addPoint(meran); vm(it).addPoint(mutkopf) }
+        waitUntil("two points", 10_000) { waypointCount() == 2 }
+        waitUntil("the T1 plan routed", 60_000) { var ok = false; scenario.onActivity { ok = !vm(it).routing && vm(it).route != null }; ok }
+        var t1End: GeoPoint? = null
+        scenario.onActivity { t1End = vm(it).route?.points?.lastOrNull() }
+        assertTrue("T1 cannot reach point 2 (ends ${dist(t1End!!, mutkopf).toInt()} m from it)", dist(t1End!!, mutkopf) > 200.0)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the plan is followed", 20_000) { guided() }
+        var reached = true
+        scenario.onActivity { reached = vm(it).recState.value?.nav?.session?.reached ?: true }
+        assertFalse("700 km away the route was never reached", reached)
+
+        scenario.onActivity { vm(it).openActivityCheck() }
+        var rows: List<com.onpath.app.ui.ActivityRowState> = emptyList()
+        scenario.onActivity { rows = vm(it).activityCheck?.rows?.map { r -> r.state }.orEmpty() }
+        assertTrue("nothing routed before a choice: $rows", rows.isNotEmpty() && rows.all { it == com.onpath.app.ui.ActivityRowState.Idle })
+        val t0 = System.currentTimeMillis()
+        scenario.onActivity { vm(it).chooseHikeLevel(5) }
+        waitUntil("the tour follows Hike T5 to point 2", 60_000) {
+            var ok = false
+            scenario.onActivity {
+                val s = vm(it).recState.value?.nav?.session
+                val l = vm(it).followLine
+                ok = s != null && s.activity == Activity.HIKE && s.sac == 5 && l != null && dist(l.last(), mutkopf) < 60.0
+            }
+            ok
+        }
+        val took = System.currentTimeMillis() - t0
+        scenario.onActivity {
+            assertEquals("the plan is Hike T5 now", 5, vm(it).sac)
+            assertTrue("the plan line reaches point 2", vm(it).route?.points?.lastOrNull()?.let { p -> dist(p, mutkopf) < 60.0 } == true)
+            assertTrue("the sheet closed", vm(it).activityCheck == null)
+        }
+        assertTrue("recording goes on", recording())
+        assertTrue("one routing of the plan, not six 15 s timeouts ($took ms)", took < 40_000)
+        val trace = com.onpath.app.debug.Problems.events().map { it.message }
+        assertTrue("routed from the route's start: ${trace.takeLast(30)}",
+            trace.any { it.startsWith("Activity check: routing the rest for HIKE T5 from the route's start") })
+        assertFalse("never routed from the position", trace.any { it.startsWith("Activity check: routing the rest") && it.endsWith("from the position") })
+    }
+
+    /**
      * Field 2026-11-07 10:45 (Pixel, tour "Gewerbepark Süd → Unterstand"): a held place during a tour offered "Als Start
      * setzen" instead of joining the route the tour follows. Now: the POI menu says what really happens (the same
      * insertion as the add), a place beside the route is stop 2 between the points, and the tour follows the new route.
@@ -814,8 +877,10 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun lockOnHoldPauseThenHoldEnd() {
         var before: com.onpath.app.data.AppSettings? = null
-        // the longest hold (2 s): on a loaded CI emulator the main thread blocks 0.5–0.8 s, a "short" tap's up event came
-        // late and the 1 s hold fired (GitHub 2026-11-07 04:14, "First held button fired" on the tap) – 2 s keeps a tap a tap
+        // the longest hold (2 s). The short taps that "fired the hold" on GitHub (2026-11-07, runs 42361613981,
+        // 42362929806, 42363890364: "Pause on the locked bar (short tap 2)") were an app bug, not the tap: CI runs with
+        // animations off and the band was a tween, full on its first frame – "Held button fired" 50 ms after a 21 ms tap.
+        // The band now fills by the frame clock (HoldRule.fill, HoldFillTest); this test runs with animations off on CI.
         val holdMs = com.onpath.app.data.HoldSetting.MAX_MS
         UnlockWindow.openMsForTests = 1_500 // the 20 s unlock window, short – no test waits 20 s
         scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
@@ -869,7 +934,10 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun lockOnOneHoldUnlocksTheBarForAPlainTapOnBeenden() {
         var before: com.onpath.app.data.AppSettings? = null
-        val holdMs = com.onpath.app.data.HoldSetting.MAX_MS // see lockOnHoldPauseThenHoldEnd: 2 s keeps a CI tap a tap
+        val holdMs = com.onpath.app.data.HoldSetting.MAX_MS // see lockOnHoldPauseThenHoldEnd (a short tap on Weiter resumed: HoldFillTest)
+        // the window long: this test checks that ONE hold opens the bar for a plain tap, not the window's length
+        // (UnlockWindowTest) – a loaded GitHub emulator took 13 s from the fired hold to the next step (run 42363890364)
+        UnlockWindow.openMsForTests = 60_000
         scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
         try {
             startPlanWithTwoPoints()
@@ -896,6 +964,7 @@ class CoreFieldE2ETest : E2EBase() {
             assertNotNull("the end sheet after a plain tap", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())
         } finally {
+            UnlockWindow.openMsForTests = null
             scenario.onActivity { vm(it).updateSettings(before!!) }
         }
     }

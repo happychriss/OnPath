@@ -20,17 +20,19 @@ class JogRuleTest {
     private val lon0 = 6.9274
 
     /** [legs] = (heading in degrees, metres, the hint at the leg's start or null). */
-    private fun line(vararg legs: Triple<Double, Int, JunctionCue?>, angles: List<Float> = emptyList()): List<GeoPoint> {
+    private fun line(vararg legs: Triple<Double, Int, JunctionCue?>, angles: List<Float> = emptyList(),
+                     shapes: List<JunctionShape?> = emptyList()): List<GeoPoint> {
         val out = ArrayList<GeoPoint>()
         var lat = lat0; var lon = lon0
         var hint = 0
         out += GeoPoint(lat, lon)
         legs.forEachIndexed { k, (deg, m, cue) ->
             if (cue != null) {
-                val a = angles.getOrElse(hint++) { 0f }
+                val a = angles.getOrElse(hint) { 0f }
                 // a T-junction shape: another street of the same class goes on – CueRule says "worth a cue"
                 out[out.size - 1] = out.last().copy(turn = cue, turnAngle = a,
-                    shape = JunctionShape(a, 6, 6, listOf(Branch(if (a > 0) -90f else 90f, 6))))
+                    shape = shapes.getOrNull(hint) ?: JunctionShape(a, 6, 6, listOf(Branch(if (a > 0) -90f else 90f, 6))))
+                hint++
             }
             val r = Math.toRadians(deg)
             repeat(m) {
@@ -65,10 +67,48 @@ class JogRuleTest {
     }
 
     @Test fun onFootTheStepIsShorter() {
+        // the piece between the turns is a crossing (class 4): on the bike the step reaches 20 m
         val l = line(Triple(0.0, 60, null), Triple(90.0, 15, JunctionCue.RIGHT), Triple(0.0, 60, JunctionCue.LEFT),
-            angles = listOf(90f, -90f))
+            angles = listOf(90f, -90f), shapes = crossing(90f, -90f))
         assertEquals("bike: 15 m = one step, straight", listOf(false, false), needed(l))
         assertEquals("on foot: 15 m apart = two turns", listOf(true, true), needed(l, hike = true))
+    }
+
+    /** Right onto a crossing / footway piece (class 4), left off it onto a street (class 6). */
+    private fun crossing(right: Float, left: Float) = listOf(
+        JunctionShape(right, 6, 4, listOf(Branch(-90f, 6))), JunctionShape(left, 4, 6, listOf(Branch(90f, 6), Branch(0f, 4))))
+
+    /**
+     * Field bug (owner 2026-11-07, Hilden bike plan: "warum keine Ansage, ich bin auf einer anderen Straße"): right by
+     * 82.5° from a quiet street (class 6) onto a road (class 24), 19 m along it, left by 88.2° onto a footway (class 4) –
+     * heading 55° before and after. Riding 19 m along a street is two turns, not a step across the road: both said.
+     */
+    @Test fun anOffsetAlongAStreetIsTwoTurns() {
+        val l = line(Triple(55.0, 60, null), Triple(137.5, 19, JunctionCue.RIGHT), Triple(55.0, 60, JunctionCue.LEFT),
+            angles = listOf(82.5f, -88.2f),
+            shapes = listOf(JunctionShape(79f, 6, 24, listOf(Branch(-103f, 24))),
+                JunctionShape(-88f, 24, 4, listOf(Branch(1f, 24), Branch(84f, 4)))))
+        assertEquals(listOf(true, true), needed(l))
+        assertEquals("on foot as before: two turns", listOf(true, true), needed(l, hike = true))
+    }
+
+    /** The guard of the narrowed rule: an 18 m crossing piece (class ≤ 4) between the turns stays one straight step. */
+    @Test fun aLongCrossingPieceIsStillAStep() {
+        val l = line(Triple(0.0, 60, null), Triple(90.0, 18, JunctionCue.RIGHT), Triple(0.0, 60, JunctionCue.LEFT),
+            angles = listOf(90f, -90f), shapes = crossing(90f, -90f))
+        assertEquals(listOf(false, false), needed(l))
+        // along a street (class 6) the same 18 m are two turns; under 12 m still a step
+        assertEquals(listOf(true, true), needed(line(Triple(0.0, 60, null), Triple(90.0, 18, JunctionCue.RIGHT),
+            Triple(0.0, 60, JunctionCue.LEFT), angles = listOf(90f, -90f))))
+        assertEquals(listOf(false, false), needed(line(Triple(0.0, 60, null), Triple(90.0, 10, JunctionCue.RIGHT),
+            Triple(0.0, 60, JunctionCue.LEFT), angles = listOf(90f, -90f))))
+    }
+
+    /** A line without junction shapes (an old session file, the web) keeps the 20 m step. */
+    @Test fun withoutAShapeTheStepKeeps20m() {
+        val l = line(Triple(0.0, 60, null), Triple(90.0, 18, JunctionCue.RIGHT), Triple(0.0, 60, JunctionCue.LEFT),
+            angles = listOf(90f, -90f)).map { it.copy(shape = null) }
+        assertEquals(listOf(false, false), needed(l))
     }
 
     @Test fun twoTurnsTheSameWayAreLeftToTheMerge() {
