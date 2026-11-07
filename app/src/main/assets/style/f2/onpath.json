@@ -8211,6 +8211,103 @@
    }
   },
   {
+   "id": "routes-hike-over-label",
+   "type": "symbol",
+   "source": "overlays",
+   "source-layer": "routes",
+   "minzoom": 14.5,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "hike"
+    ],
+    [
+     "!",
+     [
+      "has",
+      "majoronly"
+     ]
+    ],
+    [
+     "any",
+     [
+      ">",
+      [
+       "coalesce",
+       [
+        "get",
+        "sac"
+       ],
+       0
+      ],
+      3
+     ],
+     [
+      "has",
+      "hx"
+     ]
+    ]
+   ],
+   "layout": {
+    "symbol-placement": "line",
+    "symbol-spacing": 130,
+    "text-field": [
+     "case",
+     [
+      "has",
+      "hx"
+     ],
+     "×",
+     [
+      "concat",
+      "T",
+      [
+       "to-string",
+       [
+        "coalesce",
+        [
+         "get",
+         "sac"
+        ],
+        ""
+       ]
+      ]
+     ]
+    ],
+    "text-font": [
+     "Noto Sans Medium"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "exponential",
+      1
+     ],
+     [
+      "zoom"
+     ],
+     14.5,
+     15,
+     17,
+     18
+    ],
+    "text-max-angle": 70,
+    "text-padding": 2,
+    "text-keep-upright": true,
+    "visibility": "visible"
+   },
+   "paint": {
+    "text-color": "#B3261E",
+    "text-halo-color": "#FFFFFF",
+    "text-halo-width": 2.2
+   }
+  },
+  {
    "id": "routes-hike-major-low-halo-hikeview",
    "type": "line",
    "source": "overlays",

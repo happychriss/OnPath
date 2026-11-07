@@ -88,6 +88,10 @@
     <string name="plan_gap_last">Letzte %1$s bis %2$s: kein Weg für %3$s</string>
     <string name="plan_gap_skipped">Route verfehlt %2$s um %1$s</string>
     <string name="plan_gap_point">Punkt %1$d</string>
+    <string name="plan_reach_level">%1$s erst ab T%2$d erreichbar</string>
+    <string name="plan_reach_activity">%1$s nur mit %2$s erreichbar</string>
+    <string name="plan_reach_on_foot">%1$s mit dem Rad nicht erreichbar – zu Fuß T%2$d</string>
+    <string name="plan_reach_none">%1$s nicht erreichbar</string>
     <string name="plan_quoted">„%1$s“</string>
     <string name="plan_more">%1$s (+%2$d weitere)</string>
     <string name="plan_saved_as">Gespeichert als „%1$s“</string>

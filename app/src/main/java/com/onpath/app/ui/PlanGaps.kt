@@ -5,6 +5,7 @@ import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.PlanReach
 
 /**
  * A plan point the route does not reach: the router only gets to [routeEnd] (its nearest allowed way, up to 1 km away –
@@ -67,6 +68,29 @@ object PlanGaps {
             ?: Txt.s(Res.string.plan_gap_point, g.index + 1)
         val line = if (g.skipped) Txt.s(Res.string.plan_gap_skipped, d, target)
             else Txt.s(if (g.index == 0) Res.string.plan_gap_first else Res.string.plan_gap_last, d, target, activityWords(activity))
+        return if (gaps.size > 1) withMore(line, gaps.size - 1) else line
+    }
+
+    /** A plan point's sign in a sentence: its number as a circled digit ("②", 1–20), else "point 21". */
+    fun pointSign(index: Int): String =
+        if (index in 0..19) (0x2460 + index).toChar().toString() else Txt.s(Res.string.plan_gap_point, index + 1)
+
+    /**
+     * The red line when the first gap's point is reached another way ([PlanReach], owner 2026-11-07, replaces
+     * "Letzte 550 m … kein Weg für Wandern"): "② erst ab T2 erreichbar", "② nur mit Gravelbike erreichbar", "② mit
+     * dem Rad nicht erreichbar – zu Fuß T2", "② nicht erreichbar"; more gaps: " (+1 more)". Null when [reach] is not
+     * about the first gap (an older result, a skipped stop) – then [text] says it.
+     */
+    fun reachText(gaps: List<PlanGap>, reach: PlanReach?): String? {
+        val g = gaps.firstOrNull() ?: return null
+        if (reach == null || g.skipped || reach.index != g.index) return null
+        val p = pointSign(g.index)
+        val line = when (val f = reach.fix) {
+            is PlanReach.Fix.Level -> Txt.s(Res.string.plan_reach_level, p, f.sac)
+            is PlanReach.Fix.Bike -> Txt.s(Res.string.plan_reach_activity, p, f.activity.navName)
+            is PlanReach.Fix.OnFoot -> Txt.s(Res.string.plan_reach_on_foot, p, f.sac)
+            PlanReach.Fix.None -> Txt.s(Res.string.plan_reach_none, p)
+        }.replaceFirstChar { it.uppercase() }
         return if (gaps.size > 1) withMore(line, gaps.size - 1) else line
     }
 
