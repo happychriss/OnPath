@@ -28,6 +28,7 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
+- [laptop] Web planner parity (17 mirrors, wip/laptop-2026-11-07-parity-colours) → then plan sheet A + profile along the bottom – since 2026-11-07
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
