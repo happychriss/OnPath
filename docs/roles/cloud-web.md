@@ -9,7 +9,8 @@
   stay private.
 - Your word to the captain (answers, blockers) goes under "For the captain" in `docs/backlog.md`
   (`← [cloud-web] …`) – you cannot message the captain.
-- Take app facts (features, versions) from `OnPath` release notes; ask the captain when unsure what is released.
+- Take app facts (features, versions) from the release notes: GitHub Releases of `OnPath` (`docs/release-notes/` holds
+  only the current one); ask the captain when unsure what is released.
 
 **Don't**
 - Copy anything from `onpath.private` into a public repo. `OnPath` and `onpath.earth` are public.
