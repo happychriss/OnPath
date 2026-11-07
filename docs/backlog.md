@@ -31,6 +31,20 @@ and the commit history.
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
+- **[donald] Website pictures, round "Meran 0.17" (owner 2026-11-07, via cloud-web)** – every app picture new from 0.17.3,
+  all in Meran: `docs/design/website-screens.md`, table "App pictures", every row except **gone**, DE + EN, with
+  `tools/dev/website_shot.sh` and the scenario there (Meran, flight mode on the way, no DEMO, never the owner's position).
+  First fix the hike (Wandern T2 from Meran, 2–3 h, one or two steep parts, an inn on the way) and put its **plan link**
+  as the first line of `onpath.private/marketing/bilder/aktuell/liste.md` – every picture and the planner use that one
+  plan; plus the bike route Meran → Etschradweg → Algund / Naturns. PNGs `<key>-de|en.png` into `bilder/aktuell/`, one
+  line each (key · app version · date). Plausible numbers. Then the film recordings `film-handy`, `film-unterwegs`,
+  `film-umplanen`, `film-ankunft` (section "Film") as MP4 – not into a repo (R2 / donald), only their place in `liste.md`.
+- **[laptop] Planner pictures, round "Meran 0.17" (owner 2026-11-07, via cloud-web)** – `docs/design/website-screens.md`,
+  table "Browser planner", DE + EN, 1440 × 900, with the Meran plan link from the first line of
+  `onpath.private/marketing/bilder/aktuell/liste.md` (wait for donald's line). New: `web-3d` (the route in 3D, "▶ Abfliegen"
+  visible), `web-profil` ("⤢ Großes Profil"), `web-touren` (Meine Touren with route pictures); pairing code blurred. For
+  the film `web-film-plan` (2560 × 1440): open the link, the route draws itself, then 3D + Abfliegen 8–10 s. Same drop as
+  above.
 - **[donald] Follow-ups from v0.17.3 (2026-11-07)** – (2) `RoutingDataFreshInstallE2ETest` needs `routingDownload=true`,
   which `e2e_github.sh` can't pass – add the flag or run it by hand; (5) `e2e.yml` runs only the first class / method
   of a comma list (needs a PR).
