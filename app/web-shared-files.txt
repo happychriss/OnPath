@@ -73,6 +73,7 @@ gpx/GpxParser.kt
 routing/TrackToPlan.kt
 time/TimeEstimate.kt
 data/AppSettings.kt
+data/HoldSetting.kt
 # the world overview below the cells (web-planner.md §16): the app's style merge (org.json, as on Android; run on
 # the JVM at build time – task overviewStyle – so it adds nothing to the Wasm)
 map/Overview.kt
