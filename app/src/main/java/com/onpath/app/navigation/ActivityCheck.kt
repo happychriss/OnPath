@@ -100,7 +100,7 @@ object ActivityCheck {
             // still on the way back: it leads to the rest of the original (stops before it were skipped)
             else -> session.resumeAlongM - RerouteTargets.PASSED_SLACK_M - 5.0
         }
-        val base = RerouteTargets.base(NavLine(session.original), position, onOriginal)
+        val base = RerouteTargets.base(NavLine(session.original), position, onOriginal, session.stops, session.visited)
         val passed = RerouteTargets.passed(session.stops, base, session.visited)
         val left = session.stops.filterIndexed { i, _ -> i !in passed }
         if (left.isEmpty()) return null
