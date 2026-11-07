@@ -18,8 +18,25 @@ class TourSchemaTest {
         createStatement().use { s -> s.executeQuery("PRAGMA table_info($table)").use { r -> buildList { while (r.next()) add(r.getString("name")) } } }
     private fun Connection.count(sql: String): Int = createStatement().use { s -> s.executeQuery(sql).use { r -> r.next(); r.getInt(1) } }
 
-    private fun Connection.upgrade(from: Int) =
+    private fun Connection.upgrade(from: Int) {
         TourSchema.stepsFrom(from).forEach { if (it.column !in columns(it.table)) exec(it.sql) }
+        TourSchema.tablesFrom(from).forEach { exec(it) }
+    }
+
+    private fun Connection.tables(): List<String> =
+        createStatement().use { s -> s.executeQuery("SELECT name FROM sqlite_master WHERE type='table'").use { r -> buildList { while (r.next()) add(r.getString(1)) } } }
+
+    /** [TourDb.setTourPlan]: the same statement and arguments. */
+    private fun Connection.setPlan(tourId: Long, p: TourPlan) = prepareStatement(TourSchema.PLAN_UPSERT).use { st ->
+        TourSchema.planArgs(tourId, p).forEachIndexed { i, v -> st.setObject(i + 1, v) }
+        st.executeUpdate()
+    }
+    private fun Connection.planWaypoints(tourId: Long): String? = createStatement().use { s ->
+        s.executeQuery("SELECT waypoints FROM tour_plan WHERE tour_id=$tourId").use { r -> if (r.next()) r.getString(1) else null }
+    }
+    private val plan = TourPlan("Waalweg", "HIKE", 2, listOf(com.onpath.app.gpx.GpxWaypoint(46.67, 11.13, "Algund"),
+        com.onpath.app.gpx.GpxWaypoint(46.68, 11.15, null)), setOf(1),
+        listOf(com.onpath.app.gpx.TrackPoint(46.67, 11.13, 400.0), com.onpath.app.gpx.TrackPoint(46.68, 11.15, 410.0)), 4200.0)
 
     /** Version 2; [acc] / [rides] = the columns a version 3 had. */
     private fun Connection.oldSchema(acc: Boolean = false, rides: Boolean = false) {
@@ -41,6 +58,9 @@ class TourSchemaTest {
         assertTrue("acc" in columns("points"))
         assertEquals(1, count("SELECT COUNT(*) FROM tours WHERE name='Waalweg' AND distance=5230.5 AND uuid='u1' AND rides IS NULL"))
         assertEquals(50, count("SELECT COUNT(*) FROM points WHERE tour_id=1 AND acc IS NULL"))
+        // 5 → 6: the table of the followed plans; the old tour has none
+        assertTrue("tour_plan" in tables())
+        assertEquals(0, count("SELECT ${TourSchema.HAS_PLAN} FROM tours WHERE id=1"))
         exec("UPDATE tours SET rides='{}' WHERE id=1")
         exec("INSERT INTO points VALUES (1, 50, 0, 46.6, 11.1, 600, 50000, 12.5)")
         assertEquals(1, count("SELECT COUNT(*) FROM points WHERE acc=12.5"))
@@ -64,13 +84,48 @@ class TourSchemaTest {
         db().use { c -> c.oldSchema(acc = true, rides = true); c.upgrade(4); c.assertUpgraded() }
     }
 
+    /** A version 5 database (Zuletzt) gets the plan copies' table; every tour and point stays. */
+    @Test fun upgradeFrom5AddsTheFollowedPlans() {
+        db().use { c ->
+            c.oldSchema(acc = true, rides = true); c.exec(TourSchema.ADD_DRAFT); c.upgrade(5); c.assertUpgraded()
+            c.upgrade(5) // twice (a half-done upgrade): nothing breaks
+        }
+    }
+
+    /**
+     * Owner 2026-11-07: the copy is a copy – the planned route deleted (or changed) later, the tour still has the plan it
+     * followed; a newer version replaces the older (the last version counts); the tour removed for good takes it along.
+     */
+    @Test fun theFollowedPlanIsACopyThatOutlivesThePlannedRoute() {
+        db().use { c ->
+            TourSchema.CREATE.forEach { c.exec(it) }
+            c.exec("INSERT INTO tours(id, kind, name, created) VALUES (1, 'PLANNED', 'Waalweg', 1)")
+            c.exec("INSERT INTO tours(id, kind, name, created) VALUES (2, 'RECORDED', 'Tour', 2)")
+            c.setPlan(2, plan)
+            c.setPlan(2, plan.copy(waypoints = plan.waypoints + com.onpath.app.gpx.GpxWaypoint(46.69, 11.17, "Meran")))
+            assertEquals(1, c.count("SELECT COUNT(*) FROM tour_plan WHERE tour_id=2"))
+            assertTrue("the last version", c.planWaypoints(2)!!.contains("Meran"))
+            assertEquals(1, c.count("SELECT ${TourSchema.HAS_PLAN} FROM tours WHERE id=2"))
+            assertEquals(0, c.count("SELECT ${TourSchema.HAS_PLAN} FROM tours WHERE id=1"))
+            // the planned route deleted for good (TourDb.deleteTour)
+            c.exec("DELETE FROM points WHERE tour_id=1"); c.exec("DELETE FROM tours WHERE id=1")
+            c.prepareStatement(TourSchema.PLAN_DELETE).use { it.setLong(1, 1); it.executeUpdate() }
+            assertTrue(c.planWaypoints(2)!!.contains("Algund"))
+            // the tour removed for good: its copy goes with it
+            c.exec("DELETE FROM tours WHERE id=2")
+            c.prepareStatement(TourSchema.PLAN_DELETE).use { it.setLong(1, 2); it.executeUpdate() }
+            assertEquals(0, c.count("SELECT COUNT(*) FROM tour_plan"))
+        }
+    }
+
     @Test fun freshDatabaseHasTheColumns() {
         db().use { c ->
             TourSchema.CREATE.forEach { c.exec(it) }
             assertTrue("rides" in c.columns("tours"))
             assertTrue("acc" in c.columns("points"))
             assertTrue("draft" in c.columns("tours"))
-            assertEquals(5, TourSchema.VERSION)
+            assertTrue("tour_plan" in c.tables())
+            assertEquals(6, TourSchema.VERSION)
             assertEquals(TourSchema.VERSION, TourDb.VERSION)
         }
     }

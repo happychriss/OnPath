@@ -31,6 +31,14 @@ class Speaker(private val context: Context) {
     @Volatile var voiceInfo: String = "–"
         private set
 
+    /**
+     * How long the engine takes from the call to the first sound (ms, a running mean of what it measured; owner field ride
+     * 2026-11-07: 0.1–0.9 s, 1.5 s at the first sentence) – the voice says a turn that much earlier.
+     */
+    @Volatile var startMs: Long = com.onpath.app.navigation.VoiceGuide.SPEECH_START_MS
+        private set
+    private val asked = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
     private var tts: TextToSpeech? = null
     private var pending: String? = null
     private val audio get() = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -77,9 +85,12 @@ class Speaker(private val context: Context) {
             t.voice = voice
             voiceInfo = "${voice.name} (${voice.locale.toLanguageTag()}, offline, quality ${voice.quality})"
             t.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                override fun onStart(id: String?) {}
-                override fun onDone(id: String?) = release()
+                override fun onStart(id: String?) { started(id) }
+                override fun onDone(id: String?) { id?.let { asked.remove(it) }; release() }
+                // cut by the next sentence (QUEUE_FLUSH) – the next one takes the focus over
+                override fun onStop(id: String?, interrupted: Boolean) { id?.let { asked.remove(it) } }
                 @Deprecated("Deprecated in Java") override fun onError(id: String?) {
+                    id?.let { asked.remove(it) }
                     Problems.warn("voice", "A spoken direction could not be played"); release()
                 }
             })
@@ -104,12 +115,23 @@ class Speaker(private val context: Context) {
         try {
             if (inCall()) { Problems.trace("voice", "Not said (phone call): $text"); return }
             requestFocus()
-            val r = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, Bundle(), "onpath-${System.nanoTime()}")
-            if (r != TextToSpeech.SUCCESS) { Problems.warn("voice", "Text-to-speech refused a direction (code $r)"); release() }
+            val id = "onpath-${System.nanoTime()}"
+            // QUEUE_FLUSH: a turn that is due cuts what is still being said (owner 2026-11-07: never swallowed)
+            asked[id] = android.os.SystemClock.elapsedRealtime()
+            val r = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, Bundle(), id)
+            if (r != TextToSpeech.SUCCESS) { asked.remove(id); Problems.warn("voice", "Text-to-speech refused a direction (code $r)"); release() }
             else Problems.trace("voice", "Said: $text")
         } catch (e: Exception) {
             Problems.warn("voice", "A spoken direction failed", e)
         }
+    }
+
+    /** The engine started sentence [id]: its start-up goes into [startMs] (and the trace, for the next field ride). */
+    private fun started(id: String?) {
+        val at = id?.let { asked.remove(it) } ?: return
+        val ms = (android.os.SystemClock.elapsedRealtime() - at).coerceIn(0, START_CAP_MS)
+        startMs = (startMs * 2 + ms) / 3
+        Problems.trace("voice", "Speech started after $ms ms (planned with $startMs ms)")
     }
 
     fun stop() {
@@ -139,6 +161,8 @@ class Speaker(private val context: Context) {
     companion object {
         /** A little slower than the engine's default: older users (owner). */
         const val SPEECH_RATE = 0.9f
+        /** A start-up measured longer than this (a call, the engine woken) counts as this. */
+        const val START_CAP_MS = 2_500L
 
         /** What the phone check stores for [s]. */
         fun status(s: State): com.onpath.app.setup.VoiceStatus = when (s) {

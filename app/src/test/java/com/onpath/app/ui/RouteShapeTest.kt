@@ -33,6 +33,18 @@ class RouteShapeTest {
         assertEquals(36f, xs.max() - xs.min(), 0.5f)
     }
 
+    /** A recorded tour's followed plan under its track (owner 2026-11-07): one frame for both, start and goal the track's. */
+    @Test fun theFollowedPlanIsDrawnUnderTheTrackInTheSameFrame() {
+        val track = line(50)
+        val plan = line(30, dLat = 0.02, dLon = 0.02) // reaches further north than the track
+        val s = RouteShape.of(listOf(track), 100f, 100f, 8f, under = plan)!!
+        val u = s.under!!
+        (s.lines.flatMap { it.toList() } + u.toList()).forEach { v -> assertTrue("$v inside 8..92", v in 7.99f..92.01f) }
+        assertEquals("both start at the same spot", s.startX, u[0], 0.01f)
+        assertTrue("the plan's north end is the frame's top", u.filterIndexed { i, _ -> i % 2 == 1 }.min() < s.lines[0].filterIndexed { i, _ -> i % 2 == 1 }.min())
+        assertNull("no plan, no under line", RouteShape.of(listOf(track), 100f, 100f, 8f)!!.under)
+    }
+
     @Test fun northIsUpAndTheAspectIsKept() {
         // a line going north-east: x grows, y shrinks (screen y down); a square in metres stays square
         val k = Math.cos(Math.toRadians(46.6))

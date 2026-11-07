@@ -10,6 +10,8 @@ interface BackupSource {
     fun segments(id: Long): List<List<TrackPoint>>
     /** Every tour incl. the recycle bin. */
     fun all(): List<Tour>
+    /** The plan a recorded tour followed ([com.onpath.app.data.TourPlan]); null = none. */
+    fun plan(id: Long): com.onpath.app.data.TourPlan? = null
 }
 
 /**
@@ -65,7 +67,7 @@ class BackupQueue(
 
     private fun saveTour(b: TourBackup, t: Tour): String {
         val segs = source.segments(t.id)
-        return b.save(BackupMeta.of(t, segs, now()), segs)
+        return b.save(BackupMeta.of(t, segs, now(), if (t.hasPlan) source.plan(t.id) else null), segs)
     }
 
     private inline fun guarded(block: () -> Unit): Boolean = try { block(); true } catch (e: BackupException) {

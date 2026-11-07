@@ -180,7 +180,11 @@ object Backups {
             val m = f.entry.meta
             try {
                 db.insertTour(m.kind, m.name, m.activity, m.sac, m.distanceM, m.ascentM, m.descentM, m.durationS,
-                    f.entry.segments, m.waypoints, "done", m.pinned, m.uuid, m.createdMs, m.rides)
+                    f.entry.segments, m.waypoints, "done", m.pinned, m.uuid, m.createdMs, m.rides).also { id ->
+                    // the plan the tour followed (owner 2026-11-07): a failure keeps the tour, without its plan
+                    m.plan?.let { p -> runCatching { db.setTourPlan(id, p) }
+                        .onFailure { e -> Problems.warn("backup", "Restoring the followed plan of ${f.fileName} failed – the tour is restored without it", e) } }
+                }
                 if (BackupRestore.isPlan(m.kind)) plans++ else tours++
                 if (adopt && f.fileName.indexOf('/') < 0) TourBackup(current, index!!).adopt(m.uuid, f.handle, f.fileName)
             } catch (e: Exception) { failed++; Problems.error("backup", "Restoring ${f.fileName} failed", e) }
@@ -218,7 +222,7 @@ object Backups {
         ZipOutputStream(out.outputStream().buffered()).use { zip ->
             for (t in db.listTours().filter { it.state == "done" && !it.draft }) {
                 val segs = db.loadSegments(t.id)
-                val meta = BackupMeta.of(t, segs)
+                val meta = BackupMeta.of(t, segs, plan = if (t.hasPlan) db.getTourPlan(t.id) else null)
                 val name = BackupNames.fileName(meta, names)
                 names += name
                 zip.putNextEntry(ZipEntry(name))
@@ -235,5 +239,6 @@ object Backups {
         override fun tour(id: Long): Tour? = db.getTour(id)?.takeIf { !it.draft }
         override fun segments(id: Long): List<List<TrackPoint>> = db.loadSegments(id)
         override fun all(): List<Tour> = (db.listTours() + db.listDeleted()).filter { !it.draft }
+        override fun plan(id: Long): com.onpath.app.data.TourPlan? = db.getTourPlan(id)
     }
 }
