@@ -222,6 +222,12 @@ class RecordingService : Service() {
     private var navigatingApplied: Boolean
         get() = tourRun.navigatingApplied
         set(v) { tourRun.navigatingApplied = v }
+    private var offRouteShown: Boolean
+        get() = tourRun.offRouteShown
+        set(v) { tourRun.offRouteShown = v }
+    private var tracedStep: String?
+        get() = tourRun.tracedStep
+        set(v) { tourRun.tracedStep = v }
     private val track: GrowingTrack get() = tourRun.track
     private val climb: AscentCounter get() = tourRun.climb
     private val gapWatch: PointFilter.GapWatch get() = tourRun.gapWatch
@@ -971,12 +977,6 @@ class RecordingService : Service() {
         traceStep(nav.prompt)
         if (publishNow || step.lineChanged || offChanged) publish(force = step.lineChanged || offChanged)
     }
-
-    /** The off-route state the tour notification shows now ([handle]). */
-    private var offRouteShown = false
-
-    /** The navigation box last traced ([traceStep]). */
-    private var tracedStep: String? = null
 
     /**
      * What Navigate shows about the route now goes to the event log when it changes (field log owner 2026-11-07, tour 221:

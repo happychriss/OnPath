@@ -68,6 +68,11 @@ internal class TourRun {
     /** Line version whose junction count was traced. */
     var junctionsTracedVersion = Int.MIN_VALUE
 
+    /** The off-route state the tour notification shows now (the service's handle()). */
+    var offRouteShown = false
+    /** The navigation box last traced (the service's traceStep()). */
+    var tracedStep: String? = null
+
     /** Where the map areas ahead were last asked for (T5). */
     var t5LastAt: GeoPoint? = null
     var estimatePaused: com.onpath.app.time.PauseReason? = null

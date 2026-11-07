@@ -36,6 +36,7 @@ class TourRunTest {
         run.saveFailed = true
         run.arrived = true; run.arrivedToken = 7L; run.lineLength = 3 to 999.0
         run.junctionsTracedVersion = 4; run.t5LastAt = GeoPoint(51.0, 6.9)
+        run.offRouteShown = true; run.tracedStep = "q3"
         run.navigating = false; run.navigatingApplied = false; run.stopQuiet.set(stopped = true)
         run.firstFixElapsed = 5_000L; run.lastGoodFixElapsed = 6_000L; run.lastFixDemo = true; run.saverWarned = true
     }
@@ -61,6 +62,7 @@ class TourRunTest {
         assertFalse(tourTwo.saveFailed)
         assertFalse(tourTwo.arrived); assertNull(tourTwo.arrivedToken); assertNull(tourTwo.lineLength)
         assertEquals(Int.MIN_VALUE, tourTwo.junctionsTracedVersion); assertNull(tourTwo.t5LastAt)
+        assertFalse(tourTwo.offRouteShown); assertNull(tourTwo.tracedStep)
         assertTrue("a tour starts in Navigate, not in tour 1's Navigation Stopp", tourTwo.navigating)
         assertTrue(tourTwo.navigatingApplied); assertFalse(tourTwo.stopQuiet.quiet)
         assertEquals(0L, tourTwo.firstFixElapsed); assertEquals(0L, tourTwo.lastGoodFixElapsed)
