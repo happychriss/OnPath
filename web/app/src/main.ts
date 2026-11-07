@@ -190,13 +190,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <span class="sitelinks">${siteLink('web_url_privacy', t('web_link_privacy'))}<span aria-hidden="true">·</span>${siteLink('web_url_legal', t('web_link_legal'))}</span></div>
   <section id="sheet" aria-label="${escapeHtml(t('web_plan_sheet'))}">
     <button id="handle" aria-label="${escapeHtml(t('plan_resize_panel'))}" title="${escapeHtml(t('plan_resize_panel'))}" aria-controls="sheet"><span></span></button>
+    <!-- the facts first of all (owner 2026-11-07: „Routenlänge und Höhen ↑/↓ als oberstes – das ist immer das Wichtigste“):
+         length · ↑ · ↓ big, then the time, max and the difficulty -->
+    <div id="summary"><div class="headline"></div><div class="subline"></div></div>
     <div class="sheethead">
       <button id="activityChip" class="chip" aria-haspopup="menu" aria-expanded="false"></button>
       <button id="share" class="sharebtn" aria-label="${escapeHtml(t('web_share_needs_two'))}" title="${escapeHtml(t('web_share_needs_two'))}" disabled>${icon('share', 18)}<span>${escapeHtml(t('web_share'))}</span></button>
       <button id="sheetStep" class="iconbtn" aria-controls="sheet"></button>
     </div>
-    <!-- the facts first, like the phone (owner 2026-11-07): the app's facts row: time · distance · ↑ ↓ · difficulty -->
-    <div id="summary"><div class="headline"></div><div class="subline muted"></div></div>
     <!-- the app's PlanActions (owner 2026-10-31, no ⋯): icon + word side by side; Save is the header's, GPX is in Share -->
     <div id="planActions" class="planactions" role="group" hidden>
       <!-- no ✕ Neu planen here (owner 2026-11-06): the plan bar's + Neu is the one way – a deliberate difference to the app -->
@@ -1216,6 +1217,7 @@ function render() {
   const head = document.querySelector<HTMLDivElement>('#summary .headline')!;
   const sub = document.querySelector<HTMLDivElement>('#summary .subline')!;
   const notice = $('notice');
+  sub.classList.toggle('muted', !p);
   if (!p) {
     head.innerHTML = `<span class="title">${escapeHtml(t('plan_plan_a_route'))}</span>`;
     const n = state.points.length;
@@ -1234,8 +1236,11 @@ function render() {
     notice.hidden = true;
     $('infoline').hidden = true; $('breakdown').hidden = true; $('changedLine').hidden = true;
   } else {
-    head.innerHTML = `<span class="big">${escapeHtml(p.texts.time)}</span><span class="dist">${escapeHtml(p.texts.distance)}</span>`;
-    sub.innerHTML = `<span>${escapeHtml(p.texts.climb)}</span>` +
+    // the app's Format texts: "12.5 km", "↑ 842 m  ↓ 310 m  ·  max 954 m", "4 h 36 min" – length and ↑ ↓ big and first
+    const [updown, ...rest] = p.texts.climb.split('·');
+    head.innerHTML = `<span class="big dist">${escapeHtml(p.texts.distance)}</span><span class="big updown">${escapeHtml(updown.trim())}</span>`;
+    sub.innerHTML = `<span class="time">${escapeHtml(p.texts.time)}</span>` +
+      (rest.length ? `<span class="muted">${escapeHtml(rest.join('·').trim())}</span>` : '') +
       `<span class="badge ${p.level ?? ''}" ${p.because ? `title="${escapeHtml(p.because)}"` : ''}>${escapeHtml(p.difficulty)}</span>`;
     // the app's ElevationProfile: "No elevation data" when ProfileData has none
     routeProfile.update(p, t('plan_no_elevation'));

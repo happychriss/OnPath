@@ -960,6 +960,13 @@ section „Gebaut“ with the shots). The owner chose A („Punkte zuerst“, li
 - **Phone: two steps.** small = head + facts + lines, the chevron says „2 Punkte ⌃“; open = everything, the small profile
   with a full-width „⤢ Höhenprofil groß“ (the big one as before). The step is remembered (`onpath.sheetStep`, an old
   'profile' = open). A click on a point row on the phone folds the sheet (map and point visible).
+- **Owner's second look (2026-11-07 noon):** „Routenlänge und Höhen ↑/↓ als oberstes“, „großes Profil prominent“, „beim Start
+  Punkte und Profil zeigen, man kann ihn zuklappen“. Now, at every width: the first line of the sheet is **length · ↑ · ↓**
+  (24 px), below it the time, max and the difficulty – above the activity chip. The sheet is **open on start** (points and
+  profile), the chevron (wide) / handle + chevron (phone) collapse it to the facts; remembered in `onpath.sheetStep`,
+  nothing stored = open. Wide: the bottom profile has a **✕** that hides it (remembered, `onpath.profileHidden`); then the
+  panel shows the small profile with an outlined „⤢ Großes Profil“ (≥ 44 px) that brings it back. Phone: the full-width
+  „⤢ Höhenprofil groß“ row (44 px) under the facts in the open sheet.
 - Tests: sheet-smoke (wide order points → + Ziel → facts, pinned profile, blue route, + Ziel → search; phone two steps,
   label „2 points“, keys), ui-smoke (the bottom profile's cursor and range), edit / import / pair / ui shots without steps
   on wide. Shots: `test/sheet-a-shots.mjs <segments> <cellStore> <outDir>`.

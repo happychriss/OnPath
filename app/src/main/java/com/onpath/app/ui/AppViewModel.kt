@@ -768,6 +768,28 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             planResult?.takeIf { it.route.snapped === r.snapped && it.route.skipped === r.skipped && it.points == w }?.gaps
                 ?: PlanGaps.of(w, r.snapped, r.skipped)
         } ?: emptyList()
+    /**
+     * What reaches the first plan point the route does not reach ([com.onpath.app.routing.PlanReach], owner
+     * 2026-11-07): the red line says "② erst ab T2 erreichbar". Set with the route of exactly these points; null = all
+     * reached, a skipped stop, or not known (then the line says the missing metres as before).
+     */
+    var planReach by mutableStateOf<com.onpath.app.routing.PlanReach?>(null)
+        private set
+
+    /** [com.onpath.app.routing.PlanReach.find] for [g] (routing thread); null when it could not be worked out. */
+    private fun findReach(g: PlanGap, act: Activity, level: Int, cancel: com.onpath.app.routing.RouteCancel): com.onpath.app.routing.PlanReach? {
+        val t0 = android.os.SystemClock.elapsedRealtime()
+        return try {
+            com.onpath.app.routing.PlanReach.find(routingEngine(), g, act, level, cancel).also { r ->
+                Problems.trace("routing", "Point ${g.index + 1} not reached at ${act.name} T$level: " +
+                    "${r?.fix ?: "search cancelled / not done"} after ${android.os.SystemClock.elapsedRealtime() - t0} ms")
+            }
+        } catch (e: Exception) {
+            Problems.warn("routing", "What reaches point ${g.index + 1} could not be worked out; the sheet says the missing metres", e)
+            null
+        }
+    }
+
     /** The last route result applied ([recalc]; routing/PlanResult – the same computation as the web planner's). */
     private var planResult: com.onpath.app.routing.PlanResult? = null
 
@@ -2276,6 +2298,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val pts = waypoints.toList()
         val pins = pinnedIndices()
         routeCancel?.cancel(); routeCancel = null; routingSlow = false // an older request stops at once
+        planReach = null
         routeProgress = null; routeShare = null
         followCancel?.cancel(); followCancel = null // the tour's follow line of the old plan: a new one comes with this run
         notRouted = null
@@ -2318,6 +2341,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             var planner: Planner? = null
+            var reach: com.onpath.app.routing.PlanReach? = null
             val result = withContext(routingDispatcher) {
                 exceptions {
                     val eng = routingEngine()
@@ -2327,6 +2351,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     com.onpath.app.routing.PlanResult.plan(Planner(eng, cancel, askAtLimit = askAtLimit, rounds = rounds, legs = legCache,
                         progress = { done, total -> planThread.set(Thread.currentThread()); showProgress(gen, done, total) }).also { planner = it },
                         pts, act, level, pins, emptySet(), f)
+                }.also { r ->
+                    // a stop not reached: what does reach it ("② erst ab T2 erreichbar") – only the missing piece,
+                    // after the plan route, on the same thread; the next edit cancels it with the route ([cancel])
+                    r.getOrNull()?.gaps?.firstOrNull()?.let { g -> reach = findReach(g, act, level, cancel) }
                 }
             }
             slow.cancel(); poll.cancel()
@@ -2349,7 +2377,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             result.onSuccess { res ->
                 val it = res.route
                 baseline = adoptPlanBaseline
-                route = it; snapToRoute(pts, res)
+                route = it; planReach = reach; snapToRoute(pts, res)
                 if (fitNextRoute) { fitNextRoute = false; fitFirstRoute(it.points, pts) }
                 // the route warnings of this result (computed with it, off the main thread): routeSpots reads them
                 spotsMemo = Triple(it.points, act, level) to res.spots
@@ -2526,6 +2554,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun planGapText(gaps: List<PlanGap> = planGaps): String? {
         if (gaps.isEmpty()) return null
+        PlanGaps.reachText(gaps, planReach)?.let { return it }
         val pts = waypoints.toList()
         return PlanGaps.text(gaps, activity) { i -> pts.getOrNull(i)?.let { stopName(it) ?: nearbyNames[it] } }
     }
@@ -2679,21 +2708,28 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** A spot in the list tapped: the list closes, following stops, the map shows that piece (drawn amber). */
     fun showSpot(s: RouteSpot) {
-        spotsOpen = false
         val pts = route?.points ?: return
-        val piece = RouteWarnings.showPoints(pts, s)
-        followMe = false
-        spotLine = piece
-        val c = RouteWarnings.centerFor(pts, s)
-        events += if (c != null) UiEvent.CenterOn(c.first, c.second) else UiEvent.Fit(piece)
+        showPiece(RouteWarnings.showPoints(pts, s), RouteWarnings.centerFor(pts, s))
     }
 
-    /** "Show" of that line: stop following, then the map shows the missing piece of the first gap. */
+    /** One section on the map (a spot of the list, the way to a point not reached): drawn amber, the map goes there. */
+    private fun showPiece(piece: List<GeoPoint>, center: Pair<GeoPoint, Double>?) {
+        spotsOpen = false
+        followMe = false
+        spotLine = piece
+        events += if (center != null) UiEvent.CenterOn(center.first, center.second) else UiEvent.Fit(piece)
+    }
+
+    /**
+     * Tap on the red line of a point the route does not reach – like a steep section (owner 2026-11-07): the section
+     * is drawn amber and the map shows it – the way that reaches the point ([planReach], e.g. the T2 path), else the
+     * missing piece.
+     */
     fun showPlanGap() {
         val g = planGaps.firstOrNull() ?: return
-        followMe = false
-        val (at, zoom) = PlanGaps.showTarget(g)
-        events += UiEvent.CenterOn(at, zoom)
+        val way = planReach?.takeIf { it.index == g.index && !g.skipped }?.way
+        if (way != null) showPiece(way + g.point, null)
+        else showPiece(listOf(g.routeEnd, g.point), PlanGaps.showTarget(g))
     }
 
     /**

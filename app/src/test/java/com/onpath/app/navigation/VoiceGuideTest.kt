@@ -506,4 +506,81 @@ class VoiceGuideTest {
         }
         assertTrue("$said", said.none { it == Phrase.NoGps })
     }
+
+    /**
+     * Field bug (owner 2026-11-07, Hilden bike plan: "warum keine Ansage, ich bin auf einer anderen Straße"): right by
+     * 82.5° from a quiet street (class 6) onto a road (class 24), 19 m along it, left by 88.2° onto a footway (class 4).
+     * One sentence for both – and the "onto" belongs to the left: the right turn goes onto the road, not "auf den Weg".
+     */
+    @Test fun anOffsetAlongAStreetIsSaidAsTwoTurns() {
+        val pts = ArrayList<GeoPoint>()
+        var lat = 51.1690; var lon = 6.9250
+        fun leg(deg: Double, m: Int, type: String) {
+            val r = Math.toRadians(deg)
+            repeat(m) {
+                pts[pts.size - 1] = pts.last().copy(way = com.onpath.app.routing.WayAttrs(type, "asphalt"))
+                lat += kotlin.math.cos(r) / 111_320.0
+                lon += kotlin.math.sin(r) / (111_320.0 * kotlin.math.cos(Math.toRadians(lat)))
+                pts += GeoPoint(lat, lon)
+            }
+        }
+        fun hint(cue: JunctionCue, angle: Float, shape: JunctionShape) {
+            pts[pts.size - 1] = pts.last().copy(turn = cue, turnAngle = angle, shape = shape)
+        }
+        pts += GeoPoint(lat, lon)
+        leg(55.0, 400, "quiet_road")
+        hint(JunctionCue.RIGHT, 82.5f, JunctionShape(79f, 6, 24, listOf(JunctionShape.Branch(-103f, 24))))
+        leg(137.5, 19, "road")
+        hint(JunctionCue.LEFT, -88.2f, JunctionShape(-88f, 24, 4, listOf(JunctionShape.Branch(1f, 24), JunctionShape.Branch(84f, 4))))
+        leg(55.0, 300, "footway")
+        val g = VoiceGuide()
+        var t = 0L
+        val said = (0..127).mapNotNull { k -> t += 1000; g.update(VoiceGuide.Input(t, pts, 1, k * 5.5, true, 5.5, true)) }
+            .filterIsInstance<Phrase.Junction>()
+        val now = said.single { it.inM == 0.0 }
+        assertEquals(Turn.RIGHT, now.turn)
+        assertEquals(Turn.LEFT, now.then)
+        assertNull("the right turn goes onto the road – not \"auf den Weg\"", now.onto)
+        assertEquals("the left goes onto the footway", WayKind.WAY, now.thenOnto)
+        val saved = java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale.GERMANY)
+            assertEquals("Gleich rechts, danach gleich links auf den Weg.", VoiceText.of(now))
+        } finally { java.util.Locale.setDefault(saved) }
+        // the early sentence names the right only
+        assertTrue("$said", said.any { it.inM > 0 && it.turn == Turn.RIGHT && it.onto == null })
+    }
+
+    /**
+     * Possible field bug (owner 2026-11-07, 3rd demo run on the same line from 3 m: the right at 238 m never said): a
+     * simulation restarted from the start of the same line – after runs that ended part-way, with a few unmatched fixes
+     * between – says its turns again.
+     */
+    @Test fun aSimulationRestartedOnTheSameLineSaysItsTurnsAgain() {
+        val l = line(800, mapOf(240 to JunctionCue.RIGHT, 530 to JunctionCue.LEFT))
+        val g = VoiceGuide()
+        var t = 0L
+        val speed = 7.5
+        fun run(from: Double, to: Double): List<Phrase.Junction> {
+            val out = ArrayList<Phrase.Junction>()
+            var m = from
+            while (m <= to) {
+                t += 1000
+                g.update(VoiceGuide.Input(t, l, 1, m, onRoute = true, speedMps = speed, bike = true))?.let { if (it is Phrase.Junction) out += it }
+                m += speed
+            }
+            // the demo ends: two fixes elsewhere (not matched)
+            repeat(2) { t += 1000; g.update(VoiceGuide.Input(t, l, 1, null, onRoute = false, speedMps = 0.0, bike = true)) }
+            return out
+        }
+        run(0.0, 105.0)   // run 1 ends before the right
+        run(0.0, 50.0)    // run 2: from the start, 7 s
+        val third = run(3.0, 800.0)
+        assertTrue("$third", third.any { it.inM == 0.0 && it.turn == Turn.RIGHT })
+        assertTrue("$third", third.any { it.inM == 0.0 && it.turn == Turn.LEFT })
+        // a run that got past the right before the restart: said again too
+        run(0.0, 300.0)
+        val again = run(0.0, 800.0)
+        assertTrue("$again", again.any { it.inM == 0.0 && it.turn == Turn.RIGHT })
+    }
 }

@@ -73,6 +73,8 @@ sync/SyncRound.kt
 routing/LongRoute.kt
 ui/PlanStatus.kt
 ui/PlanGaps.kt
+# what reaches a stop the route does not reach ("② erst ab T2 erreichbar", owner 2026-11-07) – PlanGaps.reachText reads it
+routing/PlanReach.kt
 # GPX import (web-planner.md §15): the app's tolerant parser (SAX → onpathweb stand-ins in Wasm), track → plan, time
 gpx/GpxParser.kt
 routing/TrackToPlan.kt

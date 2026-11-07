@@ -104,11 +104,15 @@ const shown = async (page) => Object.fromEntries(await Promise.all(['#summary .b
 for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false], ['phone', { width: 390, height: 844 }, true]]) {
   const { ctx, page } = await open(vp, phone);
   const P = `${name}:`;
-  // plan sheet A (owner 2026-11-07, „Punkte zuerst“): wide = no steps (points on top, + Ziel hinzufügen, facts, the
-  // profile along the map's bottom edge); phone = two steps, small first, the chevron says „2 Punkte“
-  check(await step(page) === (phone ? 'small' : 'points'), `${P} first step without storage = ${phone ? 'small' : 'everything (wide)'}`);
-  check(phone ? await page.isVisible('#handle') && await page.isVisible('#sheetStep') : !(await page.isVisible('#handle')) && !(await page.isVisible('#sheetStep')),
-    `${P} ${phone ? 'grab handle and chevron visible' : 'no handle, no chevron – no steps on a wide screen'}`);
+  // plan sheet A (owner 2026-11-07): open on start at every width (points and profile – „beim Start Punkte und Profil
+  // zeigen, man kann ihn zuklappen“); the chevron collapses it, remembered; wide = the profile along the map's bottom edge
+  check(await step(page) === 'points', `${P} first step without storage = open (points and profile)`);
+  check(phone ? await page.isVisible('#handle') && await page.isVisible('#sheetStep') : !(await page.isVisible('#handle')) && await page.isVisible('#sheetStep'),
+    `${P} ${phone ? 'grab handle and chevron visible' : 'the chevron collapses the side panel (no handle)'}`);
+  // the facts first of all (owner 2026-11-07: „Routenlänge und Höhen ↑/↓ als oberstes“): length · ↑ ↓ above the chip
+  const facts = await page.evaluate(() => ({ head: document.querySelector('#summary .headline')?.textContent ?? '',
+    above: document.getElementById('summary').getBoundingClientRect().bottom <= document.getElementById('activityChip').getBoundingClientRect().top + 1 }));
+  check(/^\s*[\d.,]+ km\s*↑ [\d.,]+ m\s+↓ [\d.,]+ m/.test(facts.head) && facts.above, `${P} first line = length · ↑ · ↓, above the activity (${facts.head.trim()})`);
   const header = await page.textContent('#header');
   check(!/Send to phone/.test(header) && /Import GPX/.test(await page.textContent('#mainMenu')) && /To phone/.test(header),
     `${P} header without Send to phone, with "To phone" (owner 2026-11-06)`);
@@ -119,14 +123,39 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
       return [top('summary'), top('planActions'), top('points'), top('addDest')]; });
     check(s['#points'] && await page.isVisible('#addDest') && order.every((v, i) => i === 0 || v > order[i - 1]),
       `${P} the phone's order: facts, plan row, then the points and „+ Add destination“ (${order.map(Math.round)})`);
-    check(!s['#profile svg'] && await page.isVisible('#bigProfile .bpplot svg') && !(await page.isVisible('#bigProfile .bpclose')),
-      `${P} the profile lies along the map's bottom edge for good (no ✕), not in the panel`);
+    check(!s['#profile svg'] && await page.isVisible('#bigProfile .bpplot svg') && await page.isVisible('#bigProfile .bpclose'),
+      `${P} the profile lies along the map's bottom edge (with ✕ to hide it), not in the panel`);
     const route = await page.evaluate(() => window.__map.getLayoutProperty('profile-steep', 'visibility') ?? 'none');
     check(route !== 'visible', `${P} the route stays plan blue while the bottom profile is there (${route})`);
     await page.click('#addDest');
     check(await page.evaluate(() => document.activeElement?.id === 'q'), `${P} „+ Add destination“ puts the cursor in the search`);
     await page.screenshot({ path: path.join(shots, `${name}-sheet-a.png`) });
+    // ✕ hides the bottom profile (remembered); the panel then shows the small one with a clear „⤢ Large profile“
+    await page.click('#bigProfile .bpclose');
+    const big = await page.locator('#profileBig').boundingBox().catch(() => null);
+    check(!(await page.isVisible('#bigProfile')) && await page.isVisible('#profile svg') && big && big.height >= 44,
+      `${P} ✕ hides the bottom profile; the panel's profile with „⤢ Large profile“ (${big ? Math.round(big.height) : '-'} px)`);
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
+    check(!(await page.isVisible('#bigProfile')) && await page.isVisible('#profileBig'), `${P} the hidden profile stays hidden after a reload`);
+    await page.click('#profileBig');
+    check(await page.isVisible('#bigProfile .bpplot svg') && !(await page.isVisible('#profile svg')), `${P} „⤢ Large profile“ brings the bottom profile back`);
+    // the chevron collapses the side panel to the facts, remembered; again → open
+    await page.click('#sheetStep');
+    s = await shown(page);
+    check(await step(page) === 'small' && s['#summary .big'] && !s['#points'] && await page.evaluate(() => localStorage.getItem('onpath.sheetStep')) === 'small',
+      `${P} chevron → collapsed to the facts (remembered)`);
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
+    check(await step(page) === 'small', `${P} collapsed stays collapsed after a reload`);
+    await page.click('#sheetStep');
+    check(await step(page) === 'points', `${P} chevron again → open`);
   } else {
+    s = await shown(page);
+    const pb = await page.locator('#profileBig').boundingBox().catch(() => null);
+    check(s['#points'] && s['#profile svg'] && await page.isVisible('#addDest') && pb && pb.height >= 44,
+      `${P} open on start: points, + Add destination, profile with a clear „Large elevation profile“ row`);
+    await page.click('#handle');
     s = await shown(page);
     check(await step(page) === 'small' && s['#summary .big'] && s['#sheet .subline'] && !s['#profile svg'] && !s['#points'],
       `${P} small: time, distance, ↑/↓ + badge; no profile, no Points`);
