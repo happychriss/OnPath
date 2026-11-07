@@ -5,6 +5,20 @@ on `main` yet**. Nothing below is lost: every branch is in a local worktree on d
 Owner's word for the evening: "mach alles fertig, entscheide selber, push auf main, aufs Handy nur zum Testen (kein
 Release)". Owner wants new builds **on the Pixel first** (before the long checks), then main.
 
+## 2026-11-07 ~20:40 – Galaxy S10 measured (release 0.17.3 from Play, `dumpsys gfxinfo`, owner's hands)
+| Run (about 20 s each) | Frames | Janky | p50 | p90 | p99 | Slow draw |
+| --- | --- | --- | --- | --- | --- | --- |
+| Plan map pan/zoom, Relief + Höhenlinien on | 3372 | 46 % | 19 ms | 31 ms | 48 ms | 1427 |
+| Navigate (a tour + one map load), both on | 4163 | 37 % | 19 ms | 32 ms | 53 ms | 1297 |
+| Meine Touren (few tours), both on | 884 | 24 % | 14 ms | 34 ms | 81 ms | 97 |
+| Plan map pan/zoom, both off | 979 | 8 % | 12 ms | 18 ms | 46 ms | 36 |
+| Plan map pan/zoom, Höhenlinien only | 180 | 14 % | 14 ms | 28 ms | 48 ms | 8 |
+
+The live hillshade (Relief) is the cost – it loads the GPU so much that the Compose frames miss too. Owner's choice: the
+app notices it itself and switches Relief off once with a hint (branch donald-relief-auto). Also found on the S10:
+App Links failed (state 1024) – the Play App Signing key was missing in `assetlinks.json` (fixed, f36343d1); the Samsung
+TTS voice step (de5e7939); a far destination lost at the long-plan Cancel (752d69b3).
+
 ## 2026-11-07 ~16:50 – v0.17.3 released and on the Pixel (read this first)
 - **Released** v0.17.3 (https://github.com/happychriss/OnPath/releases/tag/v0.17.3, main dc93139b) on the owner's word
   ("Release mit allen Schikanen und aufs Pixel"): gate --full 2871, all 12 GitHub E2E classes green
