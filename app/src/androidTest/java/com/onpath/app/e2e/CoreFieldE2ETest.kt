@@ -404,8 +404,12 @@ class CoreFieldE2ETest : E2EBase() {
             scenario.onActivity { vm(it).saveDraft(draft) }
             waitUntil("saved: no longer a draft", 10_000) { db.getTour(draft.id)?.draft == false }
             scenario.onActivity { assertEquals(draft.id, vm(it).justSavedId) }
-            // a second one, deleted from Zuletzt → recycle bin
+            // a second one, deleted from Zuletzt → recycle bin – with a third point: the same two points again are the
+            // saved route above, and a plan with a saved route's points is no draft (RoutesState.keepsDraft)
             startPlanWithTwoPoints()
+            val (w, h) = mapSize()
+            hold(w * 0.50f, h * 0.30f)
+            waitUntil("a third point", 8_000) { waypointCount() == 3 }
             Thread.sleep(if (realRouting) 3_000 else 1_000)
             scenario.onActivity { vm(it).requestClear() }
             waitUntil("the second one under Zuletzt", 10_000) { drafts().size == 1 }
