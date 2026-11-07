@@ -1,6 +1,8 @@
 package com.onpath.app.cells
 
+import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.OfflineCorridor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -141,7 +143,7 @@ class CellTriggersTest {
 
     /**
      * "New route – even without signal" (field 0.13.3, emulator shoot A-019): a route ~1.5 km from an area border
-     * brings the neighbouring area too – the margin of [CellTriggers.CORRIDOR_M] either side, start and destination
+     * brings the neighbouring area too – the margin of [OfflineCorridor.HIKE_M] either side (a hike), start and destination
      * included – so a hut or a detour just over the border routes offline later.
      */
     @Test fun t4RouteNearAnAreaBorderAsksTheNeighbourWithinTheMargin() {
@@ -149,7 +151,7 @@ class CellTriggersTest {
         // ≈ 1.5 km west of Meran's east border (lon 11.25), the whole route inside Meran
         val line = listOf(GeoPoint(46.70, 11.20), GeoPoint(46.69, 11.23))
         assertEquals(meran, CellId.at(line[0])); assertEquals(meran, CellId.at(line[1]))
-        val job = CellTriggers(f).routeComputed(line)!!
+        val job = CellTriggers(f).routeComputed(line, activity = Activity.HIKE)!!
         assertTrue("the eastern neighbour is within the margin", east in f.queued)
         assertEquals(CellReason.CORRIDOR to false, f.queued[east])
         // the route itself has the detailed map: the neighbour loads quietly (download chip), no "No detailed map" card
@@ -167,8 +169,8 @@ class CellTriggersTest {
         val t = CellTriggers(f)
         val vellau = GeoPoint(46.6956, 11.10935); val leiteralm = GeoPoint(46.70605, 11.11125)
         val hochmuth = GeoPoint(46.7035, 11.1515)
-        assertNull("one area covers the planned route and its margin", t.routeComputed(listOf(vellau, leiteralm)))
-        val job = t.routeComputed(listOf(vellau, leiteralm, hochmuth))!!
+        assertNull("one area covers the planned hike and its margin", t.routeComputed(listOf(vellau, leiteralm), activity = Activity.HIKE))
+        val job = t.routeComputed(listOf(vellau, leiteralm, hochmuth), activity = Activity.HIKE)!!
         assertEquals(listOf(east), job.margin)
         assertTrue("Hochmuth has the detailed map: no card", job.cells.isEmpty())
     }
@@ -190,20 +192,25 @@ class CellTriggersTest {
         val f = FakeCells(installed = mutableSetOf(meran))
         val t = CellTriggers(f)
         val line = listOf(GeoPoint(46.70, 11.20), GeoPoint(46.69, 11.23))
-        t.routeComputed(line)
+        t.routeComputed(line, activity = Activity.HIKE)
         f.queued.clear() // cancelled / failed: dropped from the queue
-        assertEquals(listOf(east), t.tourStarted(line))
+        assertEquals(listOf(east), t.tourStarted(line, activity = Activity.HIKE))
         assertEquals(Triple(listOf(east), CellReason.CORRIDOR, false), f.requests.last())
         // everything there or asked for: nothing new; no key / no line: nothing
-        assertEquals(emptyList<CellId>(), t.tourStarted(line))
+        assertEquals(emptyList<CellId>(), t.tourStarted(line, activity = Activity.HIKE))
         assertEquals(emptyList<CellId>(), CellTriggers(FakeCells(downloadsAvailable = false)).tourStarted(line))
         assertEquals(emptyList<CellId>(), t.tourStarted(listOf(middle)))
     }
 
     @Test fun t4FullyCoveredRouteAsksNothing() {
-        val f = FakeCells(installed = CellId.alongLine(listOf(middle, GeoPoint(46.67, 11.20)), 10_000.0).toMutableSet())
-        assertNull(CellTriggers(f).routeComputed(listOf(middle, GeoPoint(46.67, 11.20))))
-        assertTrue(f.requests.isEmpty())
+        for (a in listOf(Activity.HIKE, Activity.MTB, null)) {
+            val f = FakeCells(installed = CellId.alongLine(listOf(middle, GeoPoint(46.67, 11.20)), OfflineCorridor.marginM(a)).toMutableSet())
+            assertNull("$a", CellTriggers(f).routeComputed(listOf(middle, GeoPoint(46.67, 11.20)), activity = a))
+            assertTrue("$a", f.requests.isEmpty())
+        }
+        // a hike's corridor installed is not enough for a bike plan: the wider margin loads
+        val f = FakeCells(installed = CellId.alongLine(listOf(middle, GeoPoint(46.67, 11.20)), OfflineCorridor.HIKE_M).toMutableSet())
+        assertTrue(CellTriggers(f).routeComputed(listOf(middle, GeoPoint(46.67, 11.20)), activity = Activity.MTB)!!.margin.isNotEmpty())
     }
 
     @Test fun t5NearTheEdgeAsksTheNextCellWithOwnPointRuleAndNotAgainAtOnce() {
@@ -261,7 +268,7 @@ class CellTriggersTest {
         val t = CellTriggers(f)
         val east2 = listOf(middle, GeoPoint(46.67, 11.70)) // Meran → two cells east
         t.routeComputed(east2)!!
-        val far = CellId.alongLine(east2, CellTriggers.CORRIDOR_M) - CellId.alongLine(listOf(middle, GeoPoint(46.67, 11.20)), CellTriggers.CORRIDOR_M).toSet()
+        val far = CellId.alongLine(east2, OfflineCorridor.MAX_M) - CellId.alongLine(listOf(middle, GeoPoint(46.67, 11.20)), OfflineCorridor.MAX_M).toSet()
         assertTrue(far.isNotEmpty() && far.all { it in f.queued })
         // undo: the route is short again → the far cells go
         t.routeComputed(listOf(middle, GeoPoint(46.67, 11.20)))
@@ -285,9 +292,60 @@ class CellTriggersTest {
         val f = FakeCells()
         // Meran → Hamburg, ~900 km straight: far more corridor cells than the cap
         val line = (0..90).map { GeoPoint(46.67 + it * 0.0894, 11.16 - it * 0.0127) }
-        assertTrue(CellId.alongLine(line, CellTriggers.CORRIDOR_M).size > CellTriggers.CORRIDOR_MAX_CELLS)
+        assertTrue(CellId.alongLine(line, OfflineCorridor.MAX_M).size > CellTriggers.CORRIDOR_MAX_CELLS)
         val job = CellTriggers(f).routeComputed(line)!!
         assertEquals(CellTriggers.CORRIDOR_MAX_CELLS, (job.cells + job.margin).size)
         assertTrue("the stretch at the start loads first", CellId.at(line.first()) in job.cells)
+    }
+
+    /**
+     * Owner 2026-11-07 (F-OFF-02): the corridor is 10 km on foot and 20 km for every bike activity. The Vellau → Leiteralm
+     * line has areas 10–20 km away: a bike plan asks for them (quietly, as margin), a hike plan does not, a plan whose
+     * activity is not known gets the bike's corridor (robust first).
+     */
+    @Test fun t4CorridorWidthFollowsTheActivity() {
+        val line = listOf(GeoPoint(46.6956, 11.10935), GeoPoint(46.70605, 11.11125))
+        val band = CellId.alongLine(line, 20_000.0) - CellId.alongLine(line, 10_000.0).toSet()
+        assertTrue("areas between 10 and 20 km", band.isNotEmpty())
+        val hike = FakeCells(installed = mutableSetOf(meran))
+        assertNull(CellTriggers(hike).routeComputed(line, activity = Activity.HIKE))
+        assertTrue(band.none { it in hike.queued })
+        for (a in Activity.entries.filter { it != Activity.HIKE } + listOf(null)) {
+            val bike = FakeCells(installed = mutableSetOf(meran))
+            val job = CellTriggers(bike).routeComputed(line, activity = a)!!
+            assertTrue("$a", band.all { it in bike.queued })
+            // the route itself has the detailed map: the wider margin is quiet, never "No detailed map"
+            assertTrue("$a", job.cells.isEmpty())
+            assertEquals("$a", job.margin.toSet(), bike.queued.keys)
+        }
+        // the same corridor through corridorOf (the precomputed one the ViewModel passes)
+        assertEquals(CellId.alongLine(line, 20_000.0), CellTriggers(FakeCells()).corridorOf(line, Activity.MTB))
+        assertEquals(CellId.alongLine(line, 10_000.0), CellTriggers(FakeCells()).corridorOf(line, Activity.HIKE))
+    }
+
+    /** The activity changes on a plan (bike → hike): the next computed route's corridor drops the bike's wider margin. */
+    @Test fun t4ActivityChangeNarrowsTheCorridorOnTheNextRoute() {
+        val line = listOf(GeoPoint(46.6956, 11.10935), GeoPoint(46.70605, 11.11125))
+        val band = CellId.alongLine(line, 20_000.0) - CellId.alongLine(line, 10_000.0).toSet()
+        val f = FakeCells(installed = mutableSetOf(meran))
+        val t = CellTriggers(f)
+        t.routeComputed(line, activity = Activity.EBIKE)
+        assertTrue(band.all { it in f.queued })
+        t.routeComputed(line, activity = Activity.HIKE)
+        assertTrue(band.none { it in f.queued })
+        // the plan settles without a new route but with its line: the hike corridor is kept, the bike's band stays gone
+        t.routeComputed(line, activity = Activity.MTB)
+        t.planRoute(line, Activity.HIKE)
+        assertTrue(band.none { it in f.queued })
+    }
+
+    /** A tour started on a bike route secures the 20 km corridor; on foot 10 km. */
+    @Test fun tourStartedUsesTheActivityCorridor() {
+        val line = listOf(GeoPoint(46.6956, 11.10935), GeoPoint(46.70605, 11.11125))
+        val band = CellId.alongLine(line, 20_000.0) - CellId.alongLine(line, 10_000.0).toSet()
+        val hike = FakeCells(installed = mutableSetOf(meran))
+        assertTrue(CellTriggers(hike).tourStarted(line, activity = Activity.HIKE).none { it in band })
+        val bike = FakeCells(installed = mutableSetOf(meran))
+        assertTrue(CellTriggers(bike).tourStarted(line, activity = Activity.BIKE_TREKKING).containsAll(band))
     }
 }

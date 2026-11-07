@@ -69,7 +69,7 @@ How we work together: `docs/owner-preferences.md`.
 | Activities | Exactly six: Bike, Gravelbike, E-bike, MTB, E-MTB, Hike T1–T5 |
 | Voice | Built (v0.14.0): Android text-to-speech, offline voices, only where we vibrate (`docs/design/voice-guidance.md`) |
 | Komoot GPX | Imports correctly; `<trk><type>` preselects the activity, export writes it |
-| Offline corridor | Map areas and routing data follow the plan (~10 km corridor, at most 30 areas) |
+| Offline corridor | Map areas and routing data follow the plan (corridor 10 km hike / 20 km bike – `OfflineCorridor`, at most 30 areas) |
 | Search | Offline OSM index + Photon (rough position only, ~1 km); no Google Places |
 | Google | Never store or draw Google content; link out only (exception: a place the user shared from Google Maps into OnPath – shown with the pin, and kept in "Recent" with a share sign, owner 2026-11-02) |
 | Place shared from Google Maps | The map flies there, shows the found-place pin with its name chip ("Name ›", preview line to the route) and opens its menu by itself, once per share; a search hit gets the same pin + chip, its menu opens with a tap on the chip (owner 2026-11-02) |

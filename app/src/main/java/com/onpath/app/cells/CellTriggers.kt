@@ -1,11 +1,13 @@
 package com.onpath.app.cells
 
+import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.OfflineCorridor
 
 /** What the trigger rules need from [MapCells] (an interface so the rules are unit-tested with a fake). */
 interface CellSource {
     fun cellsAround(p: GeoPoint, radiusM: Double = 5000.0): List<CellId>
-    fun cellsAlong(line: List<GeoPoint>, corridorM: Double = 10_000.0): List<CellId>
+    fun cellsAlong(line: List<GeoPoint>, corridorM: Double): List<CellId>
     /** Of [cells]: neither installed nor queued. */
     fun missing(cells: List<CellId>): List<CellId>
     /** An installed cell or the region package covers [p]. */
@@ -103,20 +105,23 @@ class CellTriggers(
     }
 
     /**
-     * The corridor cells of [line] (~10 km) – pure geometry (~8 ms for 250 km), so compute it off the main thread once
-     * and pass it to [routeComputed] and [freshenAlong].
+     * The corridor cells of [line] for the plan's [activity] ([OfflineCorridor]: hike 10 km, bike 20 km, unknown the
+     * largest) – pure geometry (~8 ms for 250 km), so compute it off the main thread once and pass it to [routeComputed]
+     * and [freshenAlong].
      */
-    fun corridorOf(line: List<GeoPoint>): List<CellId> = if (line.size < 2) emptyList() else cells.cellsAlong(line, CORRIDOR_M)
+    fun corridorOf(line: List<GeoPoint>, activity: Activity?): List<CellId> =
+        if (line.size < 2) emptyList() else cells.cellsAlong(line, OfflineCorridor.marginM(activity))
 
     /**
-     * T4: a route was computed – every missing cell of the corridor (~10 km either side, start and destination included,
-     * F-OFF-02), so a hut or a detour beside the route routes offline later. Marks its cells used (T6). The returned job's
+     * T4: a route was computed – every missing cell of the corridor ([corridorOf]: 10 km either side on foot, 20 km by
+     * bike, start and destination included, F-OFF-02), so a hut or a detour beside the route routes offline later. A
+     * changed activity changes the corridor on the next computed route, like a plan change. Marks its cells used (T6). The returned job's
      * [CellJob.cells] are the asked-for cells the route itself crosses (within [ROUTE_M]) – the card / loading window;
      * the rest of the corridor is [CellJob.margin]: quiet, never "No detailed map" for a route that has it (field 0.13.3).
      */
-    fun routeComputed(line: List<GeoPoint>, corridorCells: List<CellId>? = null): CellJob? {
+    fun routeComputed(line: List<GeoPoint>, corridorCells: List<CellId>? = null, activity: Activity? = null): CellJob? {
         if (line.size < 2) { planRoute(null); return null }
-        val corridor = corridorCells ?: cells.cellsAlong(line, CORRIDOR_M)
+        val corridor = corridorCells ?: corridorOf(line, activity)
         cells.keepCorridor(corridor) // the corridor of an older route goes
         cells.markUsed(corridor)
         val all = needed(corridor)
@@ -139,9 +144,9 @@ class CellTriggers(
      * again (quiet; the background-download chip shows it, the mobile-data rule applies as for T4). The first
      * [CORRIDOR_MAX_CELLS] only; beyond them T5 loads ahead on the way. Returns the cells asked for.
      */
-    fun tourStarted(line: List<GeoPoint>, corridorCells: List<CellId>? = null): List<CellId> {
+    fun tourStarted(line: List<GeoPoint>, corridorCells: List<CellId>? = null, activity: Activity? = null): List<CellId> {
         if (!cells.downloadsAvailable || line.size < 2) return emptyList()
-        val corridor = corridorCells ?: cells.cellsAlong(line, CORRIDOR_M)
+        val corridor = corridorCells ?: corridorOf(line, activity)
         cells.markUsed(corridor)
         val want = needed(corridor).take(CORRIDOR_MAX_CELLS)
         return if (want.isEmpty()) emptyList() else cells.request(want, CellReason.CORRIDOR, ownPoint = false)
@@ -152,8 +157,8 @@ class CellTriggers(
      * routed, routing failed) or with [line]: corridor requests outside it are dropped – nothing new is requested.
      * Returns the dropped cells.
      */
-    fun planRoute(line: List<GeoPoint>?): List<CellId> =
-        cells.keepCorridor(if (line == null || line.size < 2) emptyList() else cells.cellsAlong(line, CORRIDOR_M))
+    fun planRoute(line: List<GeoPoint>?, activity: Activity? = null): List<CellId> =
+        cells.keepCorridor(if (line == null || line.size < 2) emptyList() else corridorOf(line, activity))
 
     /**
      * T5: on tour, the position [p] is within [AHEAD_M] of the edge of the detailed map → the next cells (NEAR, own-point
@@ -178,10 +183,10 @@ class CellTriggers(
      * while it loads); to be built → the old map stays until the new one is ready. Each cell at most every
      * [FRESH_CHECK_MS]. Quiet: no card. Returns the cells asked for.
      */
-    fun freshenAlong(line: List<GeoPoint>, corridorCells: List<CellId>? = null): List<CellId> {
+    fun freshenAlong(line: List<GeoPoint>, corridorCells: List<CellId>? = null, activity: Activity? = null): List<CellId> {
         if (!cells.downloadsAvailable || line.size < 2) return emptyList()
         val t = now()
-        val inst = cells.installedAmong(corridorCells ?: cells.cellsAlong(line, CORRIDOR_M))
+        val inst = cells.installedAmong(corridorCells ?: corridorOf(line, activity))
             .filter { c -> lastFresh[c]?.let { t - it >= FRESH_CHECK_MS } ?: true }
         if (inst.isEmpty()) return emptyList()
         inst.forEach { lastFresh[it] = t }
@@ -210,8 +215,6 @@ class CellTriggers(
         fun nearAny(c: CellId, points: List<GeoPoint>): Boolean = points.any { c in CellId.near(it, NEAR_M) }
 
         const val NEAR_M = 5_000.0
-        /** Corridor either side of a route (F-OFF-02 default 10 km; measured to the area's border). */
-        const val CORRIDOR_M = 10_000.0
         /** Corridor cells this close to the route line are "under the route" (card / loading window), the rest margin. */
         const val ROUTE_M = 1_000.0
         /** At most this many corridor regions load for one route (≈ 300 km of route, ~300 MB). */
