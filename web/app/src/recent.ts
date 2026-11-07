@@ -57,3 +57,8 @@ export function keepRecent(code: string, title: string, points: string, replaces
 export function dropRecent(id: string) { write(read().filter((r) => r.id !== id)); }
 
 export function recentById(id: string): RecentPlan | null { return read().find((r) => r.id === id) ?? null; }
+
+/** Zuletzt → ⋮ → Umbenennen: the entry keeps its place, only its name changes. */
+export function renameRecent(id: string, title: string) {
+  write(read().map((r) => (r.id === id ? { ...r, title } : r)));
+}

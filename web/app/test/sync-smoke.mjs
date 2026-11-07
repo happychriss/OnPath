@@ -210,14 +210,14 @@ check(await A.inputValue('#saveTitle') === 'Altroute (2)', 'My routes ⋮ → Sa
 await answerSave(A, 'Zweitroute');
 await until(A, async () => (await window.__sync.list()).length === 2);
 await A.waitForSelector('dialog.plans[open] #planList li[data-id]');
-await A.click('#planList li:has(.name:text-is("Zweitroute")) .open');
+await A.click('#planList li:has(.name:text-is("Zweitroute")) .open'); await A.locator('dialog.overview .ovplan').click({ timeout: 3_000 }).catch(() => {}); // a row tap opens the overview first (owner 2026-11-07), Planen loads it – the plan on the map has none
 await A.waitForFunction(() => document.getElementById('savedLine')?.textContent?.includes('Saved as Zweitroute'), null, { timeout: 30_000 }).catch(() => {});
 check((await status(A)).folder.key === 'none' && JSON.stringify(await titles(A)) === '["Altroute","Zweitroute"]', 'the copy "Zweitroute" is a second route, "Altroute" stays (Without phone)');
 check((await A.textContent('#savedLine')).includes('Saved as Zweitroute'), 'the copy opened: the open route');
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
 let row = await listRow(A, 'Zweitroute');
-check(row?.where === HERE && !row.bold && row.current && /^Route · \d+ \w+ \d{4}$/.test(row.sub), `not paired: a row shows 🖥 only, not bold, the open one marked, "Route · date" (${JSON.stringify(row)})`);
+check(row?.where === HERE && !row.bold && row.current && row.tag === 'In progress' && /^Plan · \d+ \w+ \d{4}$/.test(row.sub), `not paired: a row shows 🖥 only, not bold, the open one marked „In progress“, "Plan · date" (the app's words) (${JSON.stringify(row)})`);
 const dialogText = await A.textContent('dialog.plans');
 check(!/Your planned routes|Save current route|Saved as|Without phone|Remove routes/.test(dialogText) && await A.locator('dialog.plans .rename.iconbtn, dialog.plans h3').count() === 0,
   'My routes is one plain list: no heading line, no Save box, no folder lines, no ✎ / 🗑 in the row');
@@ -358,12 +358,12 @@ await sent(A);
 await phone.round();
 check((await phone.titles()).includes('Handweg hier'), 'Save to phone sent the new name back');
 await menu(A, '#menuPlans');
-await A.click('#planList li:has-text("Vom Handy") .open');
+await A.click('#planList li:has-text("Vom Handy") .open'); await A.locator('dialog.overview .ovplan').click({ timeout: 3_000 }).catch(() => {}); // a row tap opens the overview first (owner 2026-11-07), Planen loads it – the plan on the map has none
 await A.waitForFunction(() => document.getElementById('points')?.textContent?.includes('Vellau'), null, { timeout: 30_000 }).catch(() => {});
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
 row = await listRow(A, 'Vom Handy');
-check(row?.current && row.tag === '', `a click on a row opens it: the open route is marked (light green), its tag gone (${JSON.stringify(row)})`);
+check(row?.current && row.tag === 'In progress', `a click on a row opens it (overview → Plan): the open route is marked „In progress“ (the app's LivePlanRows), its New / Changed tag gone (${JSON.stringify(row)})`);
 await A.click('#closePlans');
 const note = await A.evaluate(() => { const n = document.getElementById('routingNote'); return n && !n.hidden ? n.textContent : ''; });
 check(note === 'Planned on the phone with other routing – the route may differ slightly',
@@ -385,7 +385,7 @@ await phone.round();
 check(JSON.stringify(await phone.titles()) === want, 'after Save the phone has the same two ' + JSON.stringify(await phone.titles()));
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
-check(/^Route · /.test((await listRow(A, 'Phone name (copy)'))?.sub ?? ''), 'the copy is a row like any other');
+check(/^Plan · /.test((await listRow(A, 'Phone name (copy)'))?.sub ?? ''), 'the copy is a row like any other');
 await A.click('#closePlans');
 
 // ---- 7. delete both ways ----
@@ -419,7 +419,7 @@ await A.click('#closeTrack');
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-kind="track"]');
 let tr = await listRow(A, 'Meran 2000 & Ifinger Hütte');
-check(tr?.kind === 'track' && /^GPX · /.test(tr.sub) && tr.bold && tr.where === HERE, `the track's row: "GPX · date", bold, 🖥 (${JSON.stringify(tr)})`);
+check(tr?.kind === 'track' && /^Imported GPX · /.test(tr.sub) && tr.bold && tr.where === HERE, `the track's row: "Imported GPX · date" (the app's words), bold, 🖥 (${JSON.stringify(tr)})`);
 const dl = A.waitForEvent('download', { timeout: 30_000 }).catch(() => null);
 // the name the page gives (headless Chromium reports non-ASCII download names as "download")
 await A.evaluate(() => { const c = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { window.__dlName = this.download; return c.call(this); }; });
@@ -698,7 +698,7 @@ check(await O.locator('#planList li[data-id]').count() === 1 && !!(await listRow
 await O.click('#planSearchClear');
 check((await O.inputValue('#planSearch')) === '' && await O.locator('#planList li[data-id]').count() >= 1, 'the search\'s ✕ clears it, the whole list again');
 await O.fill('#planSearch', 'runde');
-await O.click('#planList li:has(.name:text-is("Meine Runde")) .open');
+await O.click('#planList li:has(.name:text-is("Meine Runde")) .open'); await O.locator('dialog.overview .ovplan').click({ timeout: 3_000 }).catch(() => {}); // a row tap opens the overview first (owner 2026-11-07), Planen loads it – the plan on the map has none
 await O.waitForFunction(() => document.getElementById('savedLine')?.textContent?.includes('Meine Runde'), null, { timeout: 30_000 }).catch(() => {});
 const before = (await ownerPhone.list()).find((x) => x.title === 'Meine Runde');
 await O.click('#reverse');

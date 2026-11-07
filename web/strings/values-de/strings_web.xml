@@ -266,4 +266,5 @@
     <string name="web_to_phone">Aufs Handy</string>
     <string name="web_to_phone_pair">Handy verbinden, dann kommt der Plan darauf</string>
     <string name="web_phone_menu">Handy-Verbindung …</string>
+    <string name="web_overview_no_line">Die Linie erscheint hier, sobald der Plan in diesem Browser einmal geöffnet wurde.</string>
 </resources>
