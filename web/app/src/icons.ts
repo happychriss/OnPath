@@ -61,8 +61,9 @@ export function activityIcon(key: string, size = 24): string {
 }
 
 /** North needle of the compass control (red north, grey south, "N" above), turned against the map's bearing. */
+/** The compass (the app's CompassNorth / CompassSouth, owner 2026-11-07: ink blue north, walnut grey south, no red). */
 export function needle(bearing: number): string {
   return `<svg class="needle" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true" style="transform:rotate(${-bearing}deg)">
     <text x="17" y="9" text-anchor="middle" font-size="9" font-weight="700" fill="currentColor">N</text>
-    <path d="M17 11 L21 21 L13 21 Z" fill="#D32F2F"/><path d="M17 31 L21 21 L13 21 Z" fill="#9E9E9E"/></svg>`;
+    <path d="M17 11 L21 21 L13 21 Z" fill="#2B4C6F"/><path d="M17 31 L21 21 L13 21 Z" fill="#8C827A"/></svg>`;
 }

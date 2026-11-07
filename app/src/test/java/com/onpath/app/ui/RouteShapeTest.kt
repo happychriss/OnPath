@@ -69,4 +69,43 @@ class RouteShapeTest {
         val big = OverviewRegion.of(line(10, dLat = 0.1, dLon = 0.2))!!
         assertEquals("a big route keeps its own bounds", 46.6, big[0], 1e-9)
     }
+
+    // ⤢ badge (owner 2026-11-07): 20 px of the 26 px badge lie inside the 52 px tile, plus the goal dot's ring
+    private val inside = 20f
+    private val corner = RouteShape.cornerFor(inside, 5f)
+    private fun noPointUnderTheBadge(s: RouteShape.Shape) {
+        val x0 = 52f - inside; val y0 = 52f - inside
+        assertTrue("the goal is not under the badge", !(s.endX > x0 && s.endY > y0))
+        assertTrue("the start is not under the badge", !(s.startX > x0 && s.startY > y0))
+        s.lines.forEach { l ->
+            var i = 0
+            while (i < l.size) { assertTrue("point (${l[i]}, ${l[i + 1]}) under the badge", !(l[i] > x0 && l[i + 1] > y0)); i += 2 }
+        }
+    }
+
+    @Test fun aGoalInTheBadgeCornerIsDrawnBesideIt() {
+        // north-west -> south-east: without the corner the goal lands right in the badge's corner
+        val diag = (0..40).map { GeoPoint(46.61 - 0.01 * it / 40, 11.10 + 0.014 * it / 40) }
+        val plain = RouteShape.of(listOf(diag), 52f, 52f, 8f)!!
+        assertTrue("the test line reaches the corner", RouteShape.hits(plain, 52f - inside, 52f - inside))
+        val s = RouteShape.of(listOf(diag), 52f, 52f, 8f, corner = corner)!!
+        noPointUnderTheBadge(s)
+    }
+
+    @Test fun aLineAwayFromTheCornerKeepsItsSize() {
+        // south-west -> north-east: the badge corner (bottom right) stays free, the fit is the same as without it
+        val arc = (0..40).map { GeoPoint(46.60 + 0.01 * it / 40, 11.10 + 0.014 * it / 40) }
+        val plain = RouteShape.of(listOf(arc), 52f, 52f, 8f)!!
+        val s = RouteShape.of(listOf(arc), 52f, 52f, 8f, corner = corner)!!
+        noPointUnderTheBadge(s)
+        assertEquals(plain.endX, s.endX, 0.01f); assertEquals(plain.endY, s.endY, 0.01f)
+    }
+
+    @Test fun manyShapesNeverUnderTheBadge() {
+        val r = java.util.Random(7)
+        repeat(200) {
+            val pts = (0..30).map { GeoPoint(46.6 + r.nextGaussian() * 0.01, 11.1 + r.nextGaussian() * 0.01) }
+            noPointUnderTheBadge(RouteShape.of(listOf(pts), 52f, 52f, 8f, corner = corner)!!)
+        }
+    }
 }

@@ -1358,7 +1358,7 @@ class RecordingService : Service() {
                 .put("started", m.started).putOpt("offRoute", m.offRouteSaidMs).putOpt("noGps", m.noGpsSaidMs)
                 .putOpt("arrived", m.arrivedSaidMs))
             val f = File(filesDir, TRIP_FILE)
-            AtomicFiles.writeText(f, o.toString(), File(f.path + ".tmp"))
+            AtomicFiles.writeText(f, o.toString())
             voiceSaved = m
         } catch (e: Exception) { Problems.error("time", "Trip pace file could not be saved (break time may be lost on restart)", e) }
     }

@@ -125,7 +125,7 @@ class NavSessionStore(private val file: File) {
     fun save(s: NavSession?) {
         try {
             if (s == null) { file.delete(); return }
-            AtomicFiles.writeText(file, toJson(s).toString(), File(file.path + ".tmp"))
+            AtomicFiles.writeText(file, toJson(s).toString())
         } catch (e: Exception) {
             Problems.error("navigation", "Navigation session file could not be saved; a restart may lose the route", e)
         }

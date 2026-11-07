@@ -47,7 +47,7 @@ class SettingsScreenshotTest {
     @Composable
     private fun Screen(page: SettingsPage?, offline: OfflineMapsUi = OfflineMapsUi(true, areas, wifiOnly = false,
         waiting = WaitingDownloads(2, 0, 60L * 1_048_576)), devTools: Boolean = false, seenMs: Long = now,
-        demo: DemoUi? = null, sync: SyncUi = SyncUi(paired = true, peer = "Chrome on Linux", lastOkMs = now - 60_000),
+        demo: DemoUi? = null, sync: SyncUi = SyncUi(paired = true, peer = "Chrome on Linux", lastOkMs = now - 60_000, sinceMs = now - 3 * 86_400_000L),
         phone: com.onpath.app.setup.PhoneState? = null, licencesOpen: Boolean = false, problemsOpen: Boolean = false,
         onTheWay: Boolean = false) = OnPathTheme {
         SettingsScreen(
