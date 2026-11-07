@@ -3091,6 +3091,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun setSaved(name: String?, id: Long, points: List<GeoPoint>?) {
         linkName = name; linkId = id; savedPoints = points
         prefs.planSavedName = name; prefs.planSavedId = id; prefs.planSavedPoints = points
+        // saved at the tour start / on the way: the tour's copy knows its route and name now
+        if (recState.value != null && followFromPlan && followLine != null && !followIsTrack) recopyFollowedPlan()
     }
 
     /** Navigate mode or a tour recording: no loading into the plan, no Clear. */
@@ -3887,10 +3889,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         if (recState.value == null || followLine == null || followIsTrack) return
-        // the plan the tour follows changed (also an edit of passed points only): its copy follows – as the activity the
-        // tour follows (an activity taken on the route is the session's, not yet the plan's)
-        val followed = recState.value?.nav?.session?.takeIf { it.kind == com.onpath.app.navigation.NavKind.PLAN }
-        copyFollowedPlan(followed?.activity ?: activity, followed?.sac ?: sac)
+        // the plan the tour follows changed (also an edit of passed points only): its copy follows
+        recopyFollowedPlan()
         val split = pendingSplit; pendingSplit = null
         when (split) {
             // only passed points edited: the guidance ahead stays, the plan line counts as followed
@@ -3960,6 +3960,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * The tour follows the plan (its newest version): a copy goes with the recorded tour ([TourPlanCopy], owner
      * 2026-11-07) – before the start it waits for the tour. [act] / [level] = what the tour follows it as.
      */
+    /** The followed plan copied again as the activity the tour follows (one taken on the route is the session's, not the plan's). */
+    private fun recopyFollowedPlan() {
+        val followed = recState.value?.nav?.session?.takeIf { it.kind == com.onpath.app.navigation.NavKind.PLAN }
+        copyFollowedPlan(followed?.activity ?: activity, followed?.sac ?: sac)
+    }
+
     private fun copyFollowedPlan(act: Activity, level: Int) {
         val p = tourPlanNow(act, level) ?: return
         planCopy { followed(p) }

@@ -124,6 +124,9 @@ class GermanScreenshotTest {
     @Test fun tours() = shots.tours()
     @Test fun toursRecent() = shots.toursRecent()
     @Test fun routesOverview() = shots.routesOverview()
+    /** Gemacht: a recorded tour's followed plan (owner 2026-11-07) – its overview and its ⋮. */
+    @Test fun routesOverviewDoneWithPlan() = shots.routesOverviewDoneWithPlan()
+    @Test fun routesItemMenuDoneWithPlan() = shots.routesItemMenuDoneWithPlan()
     @Test fun routesOverviewTouring() = shots.routesOverviewTouring()
     @Test fun toursDone() = shots.toursDone()
     @Test fun toursFromBrowser() = shots.toursFromBrowser()

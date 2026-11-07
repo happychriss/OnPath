@@ -4,6 +4,9 @@ import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.common_cancel
 import com.onpath.strings.routes_overview_follow
+import com.onpath.strings.routes_overview_plan
+import com.onpath.strings.routes_options_desc
+import com.onpath.strings.plan_bar_go
 import com.onpath.strings.common_resume
 import com.onpath.strings.nav_action_pause
 import com.onpath.strings.nav_end_short
@@ -364,6 +367,65 @@ class CoreFieldE2ETest : E2EBase() {
         assertEquals("the plan stays on the map", before, waypointList())
         assertTrue("the plan is still in My routes", planId in plannedIds())
         db.deleteTour(planId)
+    }
+
+    /**
+     * Owner 2026-11-07: from a recorded tour under Gemacht back to the plan it followed, to ride it again. Plan → Los geht's
+     * → walk (GPS mock) → End tour; the saved route is then deleted and the map cleared – the tour's copy is a copy: the
+     * row's ⋮ → "Planen" loads the same plan points on the map ("Los geht's" beside it, both on top).
+     */
+    @Test fun aDoneTourBringsBackThePlanItFollowed() {
+        val planId = startOnANewPlan()
+        waitUntil("the route is followed", 20_000) { guided() }
+        val followed = waypointList()
+        var tourId = -1L
+        scenario.onActivity { tourId = vm(it).recState.value!!.tourId }
+        Thread.sleep(4_000) // walking along (the GPS mock moves every 0.5 s)
+        scenario.onActivity { vm(it).endTour() }
+        waitUntil("the tour has ended", 20_000) { !recording() }
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
+        waitUntil("the tour carries the plan it followed", 10_000) { db.getTour(tourId)?.hasPlan == true }
+        val copied = db.getTourPlan(tourId)!!.waypoints.map { GeoPoint(it.lat, it.lon) }
+        assertTrue("the copy holds the plan's points: $copied vs $followed", copied.size == followed.size &&
+            copied.zip(followed).all { (a, b) -> com.onpath.app.data.Geo.distance(a, b) < 5.0 })
+        // the place name for the tour comes by itself: once it has settled, a name of our own to find the row
+        var last = ""; var stableSince = System.currentTimeMillis()
+        waitUntil("the tour's name settled", 20_000) {
+            val n = db.getTour(tourId)?.name ?: ""
+            if (n != last) { last = n; stableSince = System.currentTimeMillis() }
+            System.currentTimeMillis() - stableSince > 3_000
+        }
+        val name = "E2E tour with its plan"
+        db.rename(tourId, name)
+        // the copy outlives the planned route and the plan on the map
+        db.deleteTour(planId)
+        scenario.onActivity { vm(it).clearPlan() }
+        waitUntil("the map is empty", 10_000) { waypointCount() == 0 }
+        try {
+            scenario.onActivity { vm(it).routesTab = RoutesTab.DONE; vm(it).openRoutes() }
+            waitUntil("My routes lists \"$name\"", 20_000) {
+                var listed = false; scenario.onActivity { listed = vm(it).tours.any { t -> t.id == tourId && t.name == name && t.hasPlan } }; listed
+            }
+            val more = findFresh(By.desc(Txt.s(Res.string.routes_options_desc, name)), 8_000)
+            assertNotNull("the row's ⋮ – ${state()}", more)
+            more!!.click()
+            assertNotNull("\"Los geht's\" in ⋮", device.wait(Until.findObject(By.text(Txt.s(Res.string.plan_bar_go))), 5_000))
+            shot("1-gemacht-menu-plan-go")
+            clickText(Txt.s(Res.string.routes_overview_plan))
+            waitUntil("the plan it followed is on the map again", 15_000) {
+                val w = waypointList()
+                w.size == followed.size && w.zip(followed).all { (a, b) -> com.onpath.app.data.Geo.distance(a, b) < 5.0 }
+            }
+            scenario.onActivity {
+                assertFalse("My routes closed", vm(it).routesOpen)
+                assertFalse("nothing records", vm(it).recState.value != null)
+            }
+            val trace = com.onpath.app.debug.Problems.events().map { it.message }
+            assertTrue("traced: ${trace.takeLast(20)}", trace.any { it.startsWith("Planen on tour \"$name\": its followed plan from the tour's copy") })
+        } finally {
+            scenario.onActivity { vm(it).routesOpen = false }
+            db.deleteTour(tourId)
+        }
     }
 
     /**

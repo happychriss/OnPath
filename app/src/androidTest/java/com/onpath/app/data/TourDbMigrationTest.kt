@@ -13,8 +13,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Schema upgrades: 3 = `points.acc` (GPS accuracy per point), 4 = `tours.rides`, 5 = `tours.draft` (Zuletzt, 2026-11-06).
- * An existing version-2, -3 or -4 database keeps every tour and point; old points read back as unknown accuracy, new
+ * Schema upgrades: 3 = `points.acc` (GPS accuracy per point), 4 = `tours.rides`, 5 = `tours.draft` (Zuletzt, 2026-11-06),
+ * 6 = `tour_plan` (the plan a recorded tour followed, 2026-11-07). An existing version-2 … -5 database keeps every tour and point; old points read back as unknown accuracy, new
  * ones store it, the tour has no rides and is no draft (a saved route stays saved), and a draft can be marked.
  */
 @RunWith(AndroidJUnit4::class)
@@ -31,7 +31,7 @@ class TourDbMigrationTest {
             db.execSQL("""CREATE TABLE tours(id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, name TEXT NOT NULL,
                 created INTEGER NOT NULL, activity TEXT, sac INTEGER NOT NULL DEFAULT 3, distance REAL NOT NULL DEFAULT 0,
                 ascent REAL NOT NULL DEFAULT 0, descent REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0,
-                state TEXT NOT NULL DEFAULT 'done', waypoints TEXT, uuid TEXT, pinned TEXT, deleted_at INTEGER${if (version >= 4) ", rides TEXT" else ""})""")
+                state TEXT NOT NULL DEFAULT 'done', waypoints TEXT, uuid TEXT, pinned TEXT, deleted_at INTEGER${if (version >= 4) ", rides TEXT" else ""}${if (version >= 5) ", draft INTEGER NOT NULL DEFAULT 0" else ""})""")
             db.execSQL("""CREATE TABLE points(tour_id INTEGER NOT NULL, seq INTEGER NOT NULL, seg INTEGER NOT NULL,
                 lat REAL NOT NULL, lon REAL NOT NULL, ele REAL, time INTEGER${if (version >= 3) ", acc REAL" else ""})""")
             db.execSQL("INSERT INTO tours(id, kind, name, created, state, uuid) VALUES (1, 'RECORDED', 'Old', 0, 'active', 'u1')")
@@ -52,7 +52,7 @@ class TourDbMigrationTest {
             assertEquals(12.5, acc[1]!!, 0.01)
             assertNull(acc[2])
             assertEquals(TourSchema.VERSION, tdb.readableDatabase.version)
-            assertEquals(5, TourSchema.VERSION) // a new schema version gets its own case here
+            assertEquals(6, TourSchema.VERSION) // a new schema version gets its own case here
             val t = tdb.getTour(1)!!
             assertEquals("u1", t.uuid)
             assertNull(t.rides)
@@ -66,6 +66,23 @@ class TourDbMigrationTest {
             assertEquals(0, tdb.pruneDrafts(25))
             assertEquals("a new draft row inserts on the upgraded schema", true,
                 tdb.getTour(tdb.insertTour(TourKind.PLANNED, "Draft", "HIKE", 2, 1.0, 0.0, 0.0, 1.0, emptyList(), draft = true))!!.draft)
+            // 6: the followed plan – an old tour has none; a copy is stored, replaced by a newer version, outlives the planned
+            // route and goes with its tour
+            assertFalse(tdb.getTour(1)!!.hasPlan)
+            assertNull(tdb.getTourPlan(1))
+            val plan = TourPlan("Saved route", "HIKE", 3, listOf(com.onpath.app.gpx.GpxWaypoint(46.70, 11.22, "Hütte"),
+                com.onpath.app.gpx.GpxWaypoint(46.71, 11.23, null)), setOf(1),
+                listOf(TrackPoint(46.70, 11.22, 1500.0), TrackPoint(46.71, 11.23, 1510.0)), 1200.0, sourceUuid = "u2")
+            tdb.setTourPlan(1, plan)
+            tdb.setTourPlan(1, plan.copy(sac = 4))
+            assertEquals(plan.copy(sac = 4), tdb.getTourPlan(1))
+            assertTrue(tdb.listTours().single { it.id == 1L }.hasPlan)
+            assertEquals(1, tdb.setTourPlanActivity(1, "MTB", 3))
+            assertEquals("MTB", tdb.getTourPlan(1)!!.activity)
+            tdb.deleteTour(2)
+            assertEquals("Hütte", tdb.getTourPlan(1)!!.waypoints[0].name)
+            tdb.deleteTour(1)
+            assertNull(tdb.getTourPlan(1))
         } finally { tdb.close() }
     }
 
@@ -74,4 +91,6 @@ class TourDbMigrationTest {
     @Test fun version3DatabaseGetsRidesAndKeepsPoints() { writeOld(3); checkUpgraded() }
 
     @Test fun version4DatabaseGetsDraftsAndKeepsToursAndPoints() { writeOld(4); checkUpgraded() }
+
+    @Test fun version5DatabaseGetsTheFollowedPlansAndKeepsToursAndPoints() { writeOld(5); checkUpgraded() }
 }
