@@ -1619,10 +1619,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun addPoint(p: GeoPoint, lineSnapM: Double = 30.0, onPoi: Boolean = false) {
         if (onPoi) { pinned += p; prefs.planPinned = pinned }
         val ins = insertionFor(p, lineSnapM)
-        if (!ins.inTour && ins.decision.kind == WaypointInsertion.Kind.START && ins.points.size >= 2)
-            Problems.trace("plan", "New point on the way there (led to a route never reached): it is the new start")
         if (ins.decision.kind == WaypointInsertion.Kind.ON_THE_WAY)
-            Problems.trace("plan", "New point on the way to a round trip: a stop on the way, the loop stays (owner 2026-11-03)")
+            Problems.trace("plan", "New point on the way there (led to a route never reached): a stop before ①, the tour " +
+                "is led via it (a round trip's loop stays, owner 2026-11-03)")
         change { add(ins.index.coerceIn(0, size), p) }
     }
 
@@ -1772,10 +1771,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** POI menu → "Add to route": a pinned, named route point; when it already is a stop, its point menu opens. */
     /** The POI menu's add item, saying what it does ("Set as destination", "Add as stop 2", …) – same rule as [addPoint]. */
+    /**
+     * What the POI menu's add action says – the SAME decision [addPoint] then takes ([insertionFor]: during a tour only
+     * the points ahead count, from the position), so the label never promises something else (field 2026-11-07: the
+     * label was decided on the whole plan and read "Als Start setzen" while the tour ran).
+     */
     fun poiAddLabel(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0): String {
-        val w = waypoints.toList()
-        return com.onpath.app.search.AddPreview.label(
-            WaypointInsertion.decide(w, GeoPoint(poi.lat, poi.lon), if (routing) null else route?.points, lineSnapM, wayThereFrom()), w.size)
+        val ins = insertionFor(GeoPoint(poi.lat, poi.lon), lineSnapM)
+        return com.onpath.app.search.AddPreview.label(WaypointInsertion.Decision(ins.index, ins.decision.kind), waypoints.size)
     }
 
     fun addPoiPoint(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) {
@@ -1963,8 +1966,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             com.onpath.app.search.AddPreview.existingRole(idx, waypoints.size))
         val pv = com.onpath.app.search.AddPreview.of(waypoints.toList(), GeoPoint(place.lat, place.lon), if (routing) null else r?.points,
             r?.takeIf { it.durationS > 0 }?.let { it.distanceM / it.durationS }, here = wayThereFrom())
-        val k = pv.decision.kind
-        return com.onpath.app.ui.search.PlaceCardUi(place, null, waypoints.size, pv.subtitle, pv.label,
+        // during a tour the add goes among the points ahead ([insertionFor]) – say what really happens
+        val ins = insertionFor(GeoPoint(place.lat, place.lon), 30.0)
+        val k = ins.decision.kind
+        val label = if (ins.inTour) com.onpath.app.search.AddPreview.label(WaypointInsertion.Decision(ins.index, k), waypoints.size)
+            else pv.label
+        return com.onpath.app.ui.search.PlaceCardUi(place, null, waypoints.size, if (ins.inTour) "" else pv.subtitle, label,
             addIsStart = k == WaypointInsertion.Kind.START,
             addIsDestination = k == WaypointInsertion.Kind.DESTINATION && waypoints.size <= 1)
     }

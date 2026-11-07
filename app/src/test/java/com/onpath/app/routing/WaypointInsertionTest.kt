@@ -74,9 +74,12 @@ class WaypointInsertionTest {
         assertEquals(WaypointInsertion.Decision(4, Kind.DESTINATION), WaypointInsertion.decide(far, nearHome, null, 30.0))
     }
 
-    /** Led to the plan and never on it: a hold on the way there is the new start (a stop on the way), no question. */
-    @Test fun bug02FarHoldOnTheWayThereBecomesTheNewStart() {
-        assertEquals(WaypointInsertion.Decision(0, Kind.START), WaypointInsertion.decide(far, nearHome, null, 30.0, here = here))
+    /**
+     * Led to the plan and never on it: a hold on the way there goes before ① as a stop on the way, no question – never
+     * "Set as start" (field 2026-11-07, HoldDuringTourTest).
+     */
+    @Test fun bug02FarHoldOnTheWayThereIsAStopBeforeTheStart() {
+        assertEquals(WaypointInsertion.Decision(0, Kind.ON_THE_WAY), WaypointInsertion.decide(far, nearHome, null, 30.0, here = here))
     }
 
     /** Even while led there: a point beyond the plan's end still extends the route (rule 3 as before). */

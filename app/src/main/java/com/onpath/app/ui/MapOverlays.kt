@@ -32,6 +32,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -88,6 +89,8 @@ fun MapOverlayHost(
     val c = controller ?: return
     if (!vm.canEditMap) return
     val ctx = LocalContext.current
+    // during a tour a held spot is never a new start ("Hier starten"), only where to go (field 2026-11-07)
+    val startHere = MapGestures.offersStartHere(touring = vm.recState.collectAsState().value != null)
     // the route for the point just added / moved is computed: a spinner around it (Bug 02), after a short delay
     RoutingSpot.shown(vm.routing, vm.routingSpot, vm.waypoints)?.let { p ->
         var late by remember(p) { mutableStateOf(false) }
@@ -98,7 +101,7 @@ fun MapOverlayHost(
     vm.firstPointMenu?.let { p ->
         Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { com.onpath.app.debug.Problems.trace("plan", "First-point menu closed: held spot left the visible map (onGone)"); vm.firstPointMenu = null }) {
             FirstPointMenu(MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
-                onStartHere = { vm.startHere(p) }, onFromMe = { vm.routeFromMyLocation(p) })
+                onStartHere = { vm.startHere(p) }, onFromMe = { vm.routeFromMyLocation(p) }, startHere = startHere)
         }
     }
     // the found place's name chip under its pin (owner 2026-11-02): only where the plan can be edited – this host draws
@@ -126,6 +129,7 @@ fun MapOverlayHost(
         Anchored(c, GeoPoint(poi.lat, poi.lon), cameraTick, topPx, bottomPx, liftPx = lift, dropPx = drop, onGone = { com.onpath.app.debug.Problems.trace("plan", "POI menu closed: POI left the visible map (onGone)"); vm.poiMenu = null }) {
             PoiMenu(poi,
                 emptyPlan = vm.waypoints.isEmpty(),
+                startHere = startHere,
                 fromMeBlocked = MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
                 onFromMe = { vm.poiFromMyLocation(poi) },
                 onAdd = { vm.addPoiPoint(poi) },
@@ -313,12 +317,14 @@ fun AnchoredOverlay(anchor: Offset, topPx: Int, bottomPx: Int, onGone: () -> Uni
  * one is disabled with a short reason ([fromMeBlocked], e.g. "Searching GPS…") while there is no usable position.
  */
 @Composable
-fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: () -> Unit, modifier: Modifier = Modifier) {
+fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: () -> Unit, modifier: Modifier = Modifier,
+                   /** false during a tour ([MapGestures.offersStartHere]): only "Hierhin". */
+                   startHere: Boolean = true) {
     MenuSurface(modifier) {
         Text(str(Res.string.plan_new_route), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere)
+        if (startHere) HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere)
         HoldMenuItem(Icons.Outlined.MyLocation, str(Res.string.plan_go_here), enabled = fromMeBlocked == null,
             supporting = fromMeBlocked, onClick = onFromMe)
     }
@@ -332,6 +338,8 @@ fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: ()
 @Composable
 fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifier = Modifier,
             emptyPlan: Boolean = false, fromMeBlocked: String? = null, onFromMe: () -> Unit = {},
+            /** false during a tour ([MapGestures.offersStartHere]): an empty plan offers only "Hierhin". */
+            startHere: Boolean = true,
             addLabel: String = str(Res.string.search_card_set_destination),
             /** The found place's pin: its menu ends with "Nadel entfernen" (owner 2026-11-02); null = a map POI. */
             onRemovePin: (() -> Unit)? = null) {
@@ -345,7 +353,7 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         if (emptyPlan) {
-            HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onAdd)
+            if (startHere) HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onAdd)
             HoldMenuItem(Icons.Outlined.MyLocation, str(Res.string.plan_go_here), enabled = fromMeBlocked == null,
                 supporting = fromMeBlocked, onClick = onFromMe)
         } else {

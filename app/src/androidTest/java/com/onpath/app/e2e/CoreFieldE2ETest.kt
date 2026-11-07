@@ -18,6 +18,7 @@ import com.onpath.strings.nav_leave_title
 import com.onpath.strings.plan_go_here
 import com.onpath.strings.plan_new_during_tour
 import com.onpath.strings.plan_undo
+import com.onpath.strings.search_card_set_start
 import com.onpath.strings.nav_profile_hide
 import com.onpath.strings.nav_profile_show
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -333,6 +334,43 @@ class CoreFieldE2ETest : E2EBase() {
         waitUntil("Undo: the old guidance again", 30_000) { var ok = false; scenario.onActivity { ok = vm(it).followLine == oldLine }; ok }
         val trace = com.onpath.app.debug.Problems.events().map { it.message }
         assertTrue("traced: ${trace.take(30)}", trace.any { it.startsWith("One point left during the tour") })
+    }
+
+    /**
+     * Field 2026-11-07 10:45 (Pixel, tour "Gewerbepark Süd → Unterstand"): a held place during a tour offered "Als Start
+     * setzen" instead of joining the route the tour follows. Now: the POI menu says what really happens (the same
+     * insertion as the add), a place beside the route is stop 2 between the points, and the tour follows the new route.
+     */
+    @Test fun aPlaceAddedDuringATourIsAStopBetweenNotANewStart() {
+        startPlanWithTwoPoints()
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the route is followed", 20_000) { guided() }
+        var plan: List<GeoPoint> = emptyList()
+        var oldLine: List<GeoPoint>? = null
+        scenario.onActivity { plan = vm(it).waypoints.toList(); oldLine = vm(it).followLine }
+        scenario.onActivity { vm(it).switchToPlan() }
+        waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+        // a place a little beside the middle of the route (a POI menu adds it this way)
+        val mid = GeoPoint((plan[0].lat + plan[1].lat) / 2 + 0.0003, (plan[0].lon + plan[1].lon) / 2)
+        val poi = com.onpath.app.poi.Poi("e2e-shelter", "shelter", "Unterstand E2E", mid.lat, mid.lon)
+        var label = ""
+        scenario.onActivity { label = vm(it).poiAddLabel(poi) }
+        assertFalse("never a new start during a tour: \"$label\"", label == Txt.s(Res.string.search_card_set_start))
+        assertTrue("the menu promises stop 2: \"$label\"", label.contains("2"))
+        scenario.onActivity { vm(it).addPoiPoint(poi) }
+        waitUntil("3 points, the place between start and goal", 10_000) {
+            val w = waypointList()
+            w.size == 3 && w[0] == plan[0] && w[2] == plan[1] &&
+                com.onpath.app.data.Geo.distance(w[1], mid) < 5.0
+        }
+        waitUntil("the tour follows the new route", 30_000) {
+            var ok = false
+            scenario.onActivity { val l = vm(it).followLine; ok = l != null && l != oldLine }
+            ok
+        }
+        assertTrue("the recording goes on", recording())
     }
 
     /** A done tour (a recorded line) near the walker, for the follow-a-track cases below. */
