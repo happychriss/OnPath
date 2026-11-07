@@ -262,10 +262,22 @@ object Engine {
                 return "{\"slow\":${e.rounds},\"legs\":[]}"
             }
             lastResult = res
+            // a stop the route does not reach: what does reach it ("② erst ab T2 erreichbar", the app's PlanReach, owner
+            // 2026-11-07) – only the missing piece is routed (~40 ms a try), as AppViewModel.findReach does
+            val reach = res.gaps.firstOrNull()?.takeIf { !it.skipped }?.let { g ->
+                try {
+                    com.onpath.app.routing.PlanReach.find(engine(), g, act, sac).also { r ->
+                        Problems.trace("routing", "Point ${g.index + 1} not reached at ${act.name} T$sac: ${r?.fix ?: "not worked out"}")
+                    }
+                } catch (e: Exception) {
+                    Problems.warn("routing", "What reaches point ${g.index + 1} could not be worked out; the sheet says the missing metres", e)
+                    null
+                }
+            }
             val changed = before?.route?.takeIf { b ->
                 RouteWarnings.changedNoticeably(b.points, b.distanceM, b.ascentM, res.route.points, res.route.distanceM, res.route.ascentM)
             }?.let { RouteWarnings.changedText(act, sac) }
-            planJson(res, nm, System.currentTimeMillis() - t0, changed)
+            planJson(res, nm, System.currentTimeMillis() - t0, changed, reach)
         } catch (e: Exception) {
             Problems.error("web", "Plan request failed", e)
             // never the exception text for the user (CLAUDE.md robustness): the page shows its plain line, the detail
@@ -275,7 +287,8 @@ object Engine {
     }
 
     /** The page's JSON of a [PlanResult] (texts from the app's Format, RouteWarnings and PlanGaps). */
-    internal fun planJson(res: PlanResult, names: Map<Int, String>, ms: Long, changed: String? = null): String = buildString {
+    internal fun planJson(res: PlanResult, names: Map<Int, String>, ms: Long, changed: String? = null,
+                           reach: com.onpath.app.routing.PlanReach? = null): String = buildString {
         val p = res.route
         val sac = res.sac
         append("{\"distanceM\":").append(num(p.distanceM))
@@ -308,7 +321,7 @@ object Engine {
         // the plan points after snapping (same order as the request; the page takes them when moved)
         append(",\"moved\":").append(res.moved)
         append(",\"points\":").append(res.points.joinToString(",", "[", "]") { "[" + num(it.lat, 6) + "," + num(it.lon, 6) + "]" })
-        append(",\"gaps\":").append(WebPlanRules.gapsJson(res, names))
+        append(",\"gaps\":").append(WebPlanRules.gapsJson(res, names, reach))
         // after an activity / T level change the route differs noticeably (RouteWarnings.changedNoticeably): the grey line
         append(",\"changed\":").append(changed?.let { str(it) } ?: "null")
         // the routing-data notice (the app's data/RoutingDataNotice): a part under the plan still missing (fetch failed –

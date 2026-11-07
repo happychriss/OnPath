@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -161,7 +163,8 @@ private fun DrawScope.drawShape(shape: RouteShape.Shape, color: Color, width: Fl
  * The large overview of a route (owner 2026-11-07, 00:30: a row tap in My routes opens this first, not Plan): the real
  * map fitted to the whole route ([snapshot], MapLibre's snapshotter – a still picture: light, no second live map), the
  * route's shape drawn at once while the map picture is made (and instead of it when there is none), name + facts, and
- * two buttons: [primary] ("Planen", or "Folgen" during a tour) and "Abbrechen" (nothing changed). Never touches the plan
+ * two buttons: [primary] ("Planen", or "Folgen" during a tour) and "Abbrechen" (nothing changed) – for a planned route
+ * without a tour three ([onGo], owner 2026-11-07): "Los geht's", "Planen", "Abbrechen" ([OverviewFoot]). Never touches the plan
  * on the map or a running tour by itself. Drawn in place over My routes (full screen, system bars kept free) – a
  * full-screen Dialog window got no navigation-bar inset (its buttons lay under the gesture bar, emulator 2026-11-07).
  */
@@ -170,6 +173,8 @@ internal fun RouteOverview(
     t: Tour, segments: List<List<GeoPoint>>?, touring: Boolean,
     snapshot: OverviewSnapshot?,
     onPrimary: () -> Unit, onCancel: () -> Unit,
+    /** "Los geht's" (load and start the tour); null = not offered (a done tour, or during a tour: "Folgen" is the primary). */
+    onGo: (() -> Unit)? = null,
 ) {
     val tint = RouteShape.tint(t.kind)
     run {
@@ -207,7 +212,8 @@ internal fun RouteOverview(
                     if (shape == null && image == null && !loading) Text(str(Res.string.plan_no_track_recorded),
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                OverviewButtons(primary = str(if (touring) Res.string.routes_overview_follow else Res.string.routes_overview_plan),
+                if (onGo != null) OverviewFoot(onPlan = onPrimary, onGo = onGo, onCancel = onCancel)
+                else OverviewButtons(primary = str(if (touring) Res.string.routes_overview_follow else Res.string.routes_overview_plan),
                     go = touring, onPrimary = onPrimary, onCancel = onCancel)
             }
         }
@@ -224,6 +230,42 @@ private fun GoalFlag(x: Float, y: Float, density: androidx.compose.ui.unit.Densi
             top = with(density) { (y.toInt() - half).coerceAtLeast(0).toDp() })
             .size(size).clip(CircleShape).background(OnPathColors.PointGoal), contentAlignment = Alignment.Center) {
             Icon(Icons.Filled.Flag, null, tint = Color.White, modifier = Modifier.size(15.dp))
+        }
+    }
+}
+
+/**
+ * The overview's foot for a planned route (owner 2026-11-07): "▶ Los geht's" full width green – the plan sheet's foot –
+ * and under it Abbrechen (text) | Planen (tonal blue), equal halves; at a large font all three full width, one under the
+ * other (Los geht's, Planen, Abbrechen – M3, never ragged).
+ */
+@Composable
+private fun OverviewFoot(onPlan: () -> Unit, onGo: () -> Unit, onCancel: () -> Unit) {
+    val stacked = LocalDensity.current.fontScale >= DraftLook.STACK_FONT_SCALE
+    val go = @Composable { m: Modifier ->
+        Button(onGo, colors = ActionButtons.go(), modifier = m.heightIn(min = 56.dp)) {
+            Icon(Icons.Filled.PlayArrow, null, Modifier.size(22.dp)); androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
+            Text(str(Res.string.plan_bar_go), style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false)
+        }
+    }
+    val plan = @Composable { m: Modifier ->
+        androidx.compose.material3.FilledTonalButton(onPlan, modifier = m.heightIn(min = 56.dp),
+            colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(containerColor = OnPathColors.EditTonal,
+                contentColor = OnPathColors.OnEditTonal)) {
+            Icon(Icons.Filled.Route, null, Modifier.size(20.dp)); androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
+            Text(str(Res.string.routes_overview_plan), fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+        }
+    }
+    val cancel = @Composable { m: Modifier ->
+        androidx.compose.material3.TextButton(onCancel, modifier = m.heightIn(min = 56.dp),
+            colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = OnPathColors.Ink)) {
+            Text(str(Res.string.common_cancel), maxLines = 1, softWrap = false) }
+    }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        go(Modifier.fillMaxWidth())
+        if (stacked) { plan(Modifier.fillMaxWidth()); cancel(Modifier.fillMaxWidth()) }
+        else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            cancel(Modifier.weight(1f)); plan(Modifier.weight(1f))
         }
     }
 }

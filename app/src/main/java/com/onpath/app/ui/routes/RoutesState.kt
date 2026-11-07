@@ -60,8 +60,17 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
     /** Reads the list from the store (blocking – call it off the main thread); [map] adds the model times. */
     fun load(map: (Tour) -> Tour = { it }): List<Tour> = store.listTours().filter { it.state == "done" }.map(map)
 
-    /** Shows a list read by [load]. */
-    fun show(list: List<Tour>) { tours = list }
+    private val loads = java.util.concurrent.atomic.AtomicInteger()
+
+    /** A read of the list starts: its number for [show]. */
+    fun beginLoad(): Int = loads.incrementAndGet()
+
+    /**
+     * Shows a list read by [load] – unless a later read started meanwhile ([beginLoad]): two reads overlap (the tour
+     * start's save, then My routes opened after a new row – E2E 2026-11-07) and the older one ending last must not hide
+     * the newer rows.
+     */
+    fun show(list: List<Tour>, load: Int = loads.get()) { if (load == loads.get()) tours = list }
 
     /** The saved box → "In Meine Touren ›": My routes on Gemacht with that tour marked (owner 2026-11-06 22:30). */
     fun showSaved(tourId: Long) {

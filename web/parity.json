@@ -7,7 +7,7 @@
       "web": [
         "web/app/src/activity.ts"
       ],
-      "blob": "ff4907879926bb5eb8f2f890b13861ef327ae67a"
+      "blob": "d54de5f32b9350a1882b4273d08bd17fd7e91207"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
@@ -92,7 +92,7 @@
         "web/app/src/main.ts",
         "web/app/src/gpximport.ts"
       ],
-      "blob": "95f74259c4da89a19865ef23c28ac5fce81d5a26"
+      "blob": "a9397a4de6f6a85794464c4e4c94095b14111037"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/SettingsScreen.kt",
@@ -154,7 +154,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "1dce5cdf4446da8ba295e5cd50ae8b86882724da"
+      "blob": "071de964938e6dd5f65b1f3959556e3e2b2bd102"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -229,7 +229,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "51d4302ebc41eabcefc2528875c44cddbb343916"
+      "blob": "062074d2bf211ea1cd7c25bed43b80da31879b66"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/Overview.kt",
@@ -285,7 +285,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanPanel.kt",
       "why": "plan sheet layout and actions",
-      "blob": "1e7987817d0d450280078e8903da94d20c57031e"
+      "blob": "bc241c50124d8c31209059ee84aab0c08565c255"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapScreen.kt",
@@ -315,7 +315,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/ActivitySwitchSheet.kt",
       "why": "activity picker",
-      "blob": "81e72496b016207d793438fd0435224a62d35ca4"
+      "blob": "82cabf5a76b5d8bf569ec38e1928c2a4ee55dfd0"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PointsDeleteGuard.kt",
@@ -350,7 +350,7 @@
     {
       "app": "tools/make_style.py",
       "why": "map style (the web copies the generated style)",
-      "blob": "e86dafc0ec97abab8027d311a02b46d9dde99b38"
+      "blob": "67cb97f28babf4cd96eff8c29abcb159abf25dc9"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapLoad.kt",
@@ -548,7 +548,7 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/navigation/JunctionCues.kt": {
-      "blob": "51fa382b4ac1a2aeb29873ff8e2feff1ccae47a7",
+      "blob": "809c29fb28025e18cd17d6aef7a80b0961de20c7",
       "perf": [
         "* - Cue once, a time before the junction at the current speed: bike [LEAD_S] ([MIN_LEAD_M]…[MAX_LEAD_M]), on foot",
         "const val MAX_LEAD_M = 100.0",
@@ -564,7 +564,7 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/navigation/JogRule.kt": {
-      "blob": "8103b78ff4cdb912b19467b80e1db50b6f4e5a8c",
+      "blob": "37d32e72601298c3073d704989c47959cfebb21d",
       "perf": []
     },
     "app/src/main/java/com/onpath/app/navigation/SpeedWindow.kt": {
@@ -888,8 +888,15 @@
       ]
     },
     "app/src/main/java/com/onpath/app/ui/PlanGaps.kt": {
-      "blob": "92a2e12105c6186a00c7e98a488446d6ad5c2a64",
+      "blob": "77533931de50e2846030e22908aeffeee811bb0b",
       "perf": []
+    },
+    "app/src/main/java/com/onpath/app/routing/PlanReach.kt": {
+      "blob": "625278794eb50c42ba10a59d720d9c2ecd4848da",
+      "perf": [
+        "const val TRY_TIMEOUT_MS = 5_000L",
+        "eng.route(ask, a, level, RouteLimits(TRY_TIMEOUT_MS, cancel))"
+      ]
     },
     "app/src/main/java/com/onpath/app/gpx/GpxParser.kt": {
       "blob": "e5e37dc1f72c2d14f5fe0867a57fd404b966da8d",
@@ -946,7 +953,7 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/map/ActivityLayers.kt": {
-      "blob": "2ad1ee2df36720fe94a8ed72f1d19d8f2daeb103",
+      "blob": "16858035b5db488dc4d791bc8da6d8e2e81a847c",
       "perf": [
         "* Filters of the hiking band for the T level [limit] (SAC T1–T5): [HIKE_BAND_LAYERS] id → MapLibre style",
         "fun hikeRouteFilters(limit: Int): Map<String, String> {",
@@ -1198,7 +1205,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_plan.xml": {
-      "blob": "51c9e567cd7b20b479037401b5e965323b91ef51",
+      "blob": "50a925a733759ef577b84a6b33de67acb887ff3b",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_poi.xml": {
@@ -1254,7 +1261,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_plan.xml": {
-      "blob": "29080e1be2fee68be2a40958622052d52eb942df",
+      "blob": "c74087ca0105c0b75822d382148c2321e903a9a5",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_poi.xml": {
@@ -1330,7 +1337,7 @@
       "perf": []
     },
     "app/src/main/assets/style/f2/onpath.json": {
-      "blob": "f028cec393d74ed05bed77566f7f7b0b217bb501",
+      "blob": "b61221e0d0ba480eac690fa553f8e46857fadf9e",
       "perf": []
     }
   }

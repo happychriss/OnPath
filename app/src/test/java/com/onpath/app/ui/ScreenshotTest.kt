@@ -798,35 +798,32 @@ class ScreenshotTest {
     }
 
     // --- Activity while navigating (owner: a wrong activity is a disaster) ---
-    private fun fit(a: Activity, problems: List<String>, timeS: Double, extraM: Double = 0.0) =
-        com.onpath.app.navigation.ActivityFit(a, 3, problems, 7_400.0 + extraM, timeS, extraM, emptyList())
-
+    // owner 2026-11-07: nothing is routed before a row is chosen – E-bike tapped (no route found), then MTB (routing)
     private val checkUi = ActivityCheckUi(Activity.HIKE, 3, listOf(
-        ActivityRow(Activity.BIKE_TOURING, 3, ActivityRowState.Ready(fit(Activity.BIKE_TOURING,
-            listOf("2.3 km not suited for bikes", "1.1 km unpaved"), 1.6 * 3600, 3_100.0))),
-        ActivityRow(Activity.BIKE_TREKKING, 3, ActivityRowState.Ready(fit(Activity.BIKE_TREKKING,
-            listOf("1.4 km not suited for gravel bikes", "steps 40 m"), 1.4 * 3600, 900.0))),
-        ActivityRow(Activity.EBIKE, 3, ActivityRowState.Failed("No route found for it")),
-        ActivityRow(Activity.MTB, 3, ActivityRowState.Ready(fit(Activity.MTB, emptyList(), 38 * 60.0))),
-        ActivityRow(Activity.EMTB, 3, ActivityRowState.Checking),
+        ActivityRow(Activity.BIKE_TOURING, 3, ActivityRowState.Idle),
+        ActivityRow(Activity.BIKE_TREKKING, 3, ActivityRowState.Idle),
+        ActivityRow(Activity.EBIKE, 3, ActivityRowState.Failed(Txt.s(Res.string.msg_check_no_route))),
+        ActivityRow(Activity.MTB, 3, ActivityRowState.Checking),
+        ActivityRow(Activity.EMTB, 3, ActivityRowState.Idle),
     ))
 
-    /** Tap the activity icon: what the rest of the route means for each other activity (fits / problems / checking). */
+    /** Tap the activity icon, then a row: only the tapped row is routed (spinner); one found no route. */
     fun navigateActivitySheet() = paparazzi.snapshot { NavFrame(navUi.copy(activityCheck = checkUi)) }
 
     /** Riding a bike during a tour: Hike's T1–T5 under its row (owner 2026-11-06, flow map K1). */
     fun navigateActivitySheetHikeLevels() = paparazzi.snapshot {
+        // T3 tapped: the Hike row alone is routed for it
         NavFrame(navUi.copy(activity = Activity.BIKE_TREKKING, activityCheck = ActivityCheckUi(Activity.BIKE_TREKKING, 3, listOf(
-            ActivityRow(Activity.BIKE_TOURING, 3, ActivityRowState.Ready(fit(Activity.BIKE_TOURING, emptyList(), 1.3 * 3600))),
-            ActivityRow(Activity.MTB, 3, ActivityRowState.Ready(fit(Activity.MTB, emptyList(), 38 * 60.0))),
-            ActivityRow(Activity.HIKE, 3, ActivityRowState.Ready(fit(Activity.HIKE, listOf("0.4 km above T3"), 3.1 * 3600, -800.0))),
+            ActivityRow(Activity.BIKE_TOURING, 3, ActivityRowState.Idle),
+            ActivityRow(Activity.MTB, 3, ActivityRowState.Idle),
+            ActivityRow(Activity.HIKE, 3, ActivityRowState.Checking),
         ))))
     }
 
-    /** Opened a moment ago: every row still being checked. */
+    /** Opened a moment ago: nothing routed yet (owner 2026-11-07), every row plain until one is chosen. */
     @Test fun navigateActivitySheetChecking() = paparazzi.snapshot {
         NavFrame(navUi.copy(activity = Activity.BIKE_TREKKING, activityCheck = ActivityCheckUi(Activity.BIKE_TREKKING, 3,
-            Activity.entries.filter { it != Activity.BIKE_TREKKING }.map { ActivityRow(it, 3, ActivityRowState.Checking) },
+            Activity.entries.filter { it != Activity.BIKE_TREKKING }.map { ActivityRow(it, 3, ActivityRowState.Idle) },
             note = "Waiting for GPS…")))
     }
 
@@ -1240,7 +1237,7 @@ class ScreenshotTest {
      * "Plan · date", Speichern / Löschen on the card – "Alle 4 anzeigen ›", then "Gespeichert" with one just saved; on top
      * the plan on the map, "Aktueller Plan · In Bearbeitung" with Speichern (owner 2026-11-06 23:00).
      */
-    fun toursRecent() = paparazzi.snapshot {
+    @Test fun toursRecent() = paparazzi.snapshot {
         val t0 = 1_761_000_000_000L
         val drafts = listOf("Algund → Meran", "Plan 6. Nov., 14:34", "In Lana", "Vellau → Leiteralm").mapIndexed { i, n ->
             Tour(100L + i, TourKind.PLANNED, n, t0 - i * 3_600_000L, "HIKE", 2, 2_000.0 + 900 * i, 40.0 * i, 30.0 * i, 1800.0 + 600 * i,
@@ -1262,11 +1259,12 @@ class ScreenshotTest {
 
     /**
      * A row tapped in My routes (owner 2026-11-07 00:30): the large overview first – name, facts, the route fitted (here
-     * the drawn shape; on the phone the map picture under it) – "Abbrechen" | "Planen".
+     * the drawn shape; on the phone the map picture under it) – a planned route (owner 2026-11-07): "▶ Los geht's" full
+     * width green, under it "Abbrechen" | "Planen".
      */
-    fun routesOverview() = paparazzi.snapshot {
+    @Test fun routesOverview() = paparazzi.snapshot {
         OnPathTheme { RouteOverview(tourList[0], listOf(sampleLine(1)), touring = false, snapshot = null, onPrimary = {},
-            onCancel = {}) }
+            onCancel = {}, onGo = {}) }
     }
 
     /** The same during a tour: "Folgen" (green) – followed at once, the recording goes on (owner 2026-11-06 22:05). */
@@ -1401,13 +1399,17 @@ class ScreenshotTest {
         }
     }
 
-    /** My routes → ⋮ of a planned route (owner 2026-10-31): Rename, Save as copy, Export GPX, Share plan, Delete. */
-    fun routesItemMenuPlanned() = paparazzi.snapshot {
+    /**
+     * My routes → ⋮ of a planned route (owner 2026-10-31): "Planen" (blue) and "Los geht's" (green) on top (owner
+     * 2026-11-07), then Rename, Save as copy, Export GPX, Share plan, Delete.
+     */
+    @Test fun routesItemMenuPlanned() = paparazzi.snapshot {
         Box(Modifier.fillMaxSize()) {
             previewLines(tourList)
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}) }
             OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 200.dp, end = 12.dp)) {
-                TourMenuItems(tourList.first { it.kind == com.onpath.app.data.TourKind.PLANNED }, {}, {}, {}, null, {}, {}) {}
+                TourMenuItems(tourList.first { it.kind == com.onpath.app.data.TourKind.PLANNED }, {}, {}, {}, null, {}, {},
+                    onPlan = {}, onGo = {}) {}
             } }
         }
     }

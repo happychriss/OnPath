@@ -1051,6 +1051,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * (BRouterEngine.LOCK), so a plan edit waits at most for one search of this work, not all of it.
      */
     private val backgroundRouting = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+    /**
+     * The activity check's one row request (Navigate → activity icon): its own thread, so a plan edit never queues behind
+     * it (field bug 2026-11-07: six 15 s checks on [routingDispatcher] held the plan up to ~90 s). BRouter's LOCK still
+     * runs one search at a time; a new tap or closing the sheet terminates the check's search.
+     */
+    private val checkRouting = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
     @Volatile private var engine: RoutingEngine? = null
 
     /** The router (on [routingDispatcher]); only a real one is kept, so a failed start is retried next time. */
@@ -3107,6 +3113,35 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (followIsTrack && recState.value != null) continueNavigation()
     }
 
+    /**
+     * "Los geht's" in My routes (owner 2026-11-07, [com.onpath.app.ui.routes.RoutesGo]): [t] is loaded as the plan like
+     * "Planen" (an unsaved plan on the map goes under Zuletzt – no question), then, once its line is calculated, [start]
+     * runs – the plan sheet's own Los geht's (phone check → [startNavigation]: the plan is followed, Hinführen when the
+     * start is far). During a tour it is "Folgen" ([requestOpen]).
+     */
+    fun goFromRoutes(t: Tour, start: () -> Unit) {
+        if (recState.value != null) { requestOpen(t, "Los geht's in My routes during a tour"); return }
+        Problems.trace("routes", "Los geht's on \"${t.name}\" in My routes: loaded as the plan, the tour starts once its line is there")
+        goJob?.cancel()
+        openTour(t) {
+            val loaded = waypoints.toList()
+            goJob = viewModelScope.launchSafe("app", "goFromRoutes") {
+                val step = withTimeoutOrNull(com.onpath.app.ui.routes.RoutesGo.MAX_WAIT_MS) {
+                    androidx.compose.runtime.snapshotFlow {
+                        com.onpath.app.ui.routes.RoutesGo.step(loaded, waypoints.toList(), routing, route != null, recState.value != null)
+                    }.first { it != com.onpath.app.ui.routes.RoutesGo.Step.WAIT }
+                } ?: com.onpath.app.ui.routes.RoutesGo.Step.DROP
+                if (step == com.onpath.app.ui.routes.RoutesGo.Step.START) {
+                    Problems.trace("routes", "Los geht's from My routes: the line of \"${t.name}\" is there – the normal start")
+                    start()
+                } else Problems.trace("routes", "Los geht's from My routes: no tour started for \"${t.name}\" (changed meanwhile, " +
+                    "no line, or waited too long) – the plan sheet's Los geht's stays")
+            }
+        }
+    }
+
+    private var goJob: Job? = null
+
     /** My routes ⋮ → "Als Plan übernehmen" (a done tour / track, owner 2026-11-06 F1): opened, then made a plan of it. */
     fun planFromTour(t: Tour) = unlessUnsaved("\"${t.name}\" as the plan") { openTour(t, trackThen = TrackThen.PLAN) }
 
@@ -3436,8 +3471,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var checkHikeSac: Int? = null
 
     /**
-     * Opens the sheet: for every other activity the rest of the followed tour is routed offline (one after the other,
-     * spinner per row) and checked ([com.onpath.app.navigation.ActivityCheck]). Free recording: plain choices.
+     * Opens the sheet with every other activity, nothing routed yet (owner 2026-11-07: "erst dann, wenn ich wirklich eine
+     * Routenart ausgewählt habe" – field bug tour 207: all six rows routed at once, 15 s each, from 700 km away). A tap on
+     * a row routes that one ([chooseActivity]). Free recording: plain choices.
      */
     fun openActivityCheck() {
         closeActivityCheck()
@@ -3452,36 +3488,59 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 note = Txt.s(Res.string.msg_check_no_route_followed))
             return
         }
-        activityCheck = ActivityCheckUi(cur, curSac, others.map { ActivityRow(it, sacFor(it), ActivityRowState.Checking) },
-            note = if (tracker.location.value == null) Txt.s(Res.string.msg_check_waiting_gps) else null)
+        // the position is needed only once the route was reached (never reached: from the route's start, ActivityCheck.rest)
+        activityCheck = ActivityCheckUi(cur, curSac, others.map { ActivityRow(it, sacFor(it), ActivityRowState.Idle) },
+            note = if (session.reached && tracker.location.value == null) Txt.s(Res.string.msg_check_waiting_gps) else null)
+    }
+
+    /**
+     * Routes the rest of the followed route for [a] at [level] – this row only (spinner on it); a running check of
+     * another row is cancelled (its row is plain again). Found → [applySwitch] as a tap on a checked row; none → the
+     * row says so and the sheet stays open. Runs on its own thread ([checkRouting]), so plan edits never queue behind it.
+     */
+    private fun startCheck(a: Activity, level: Int) {
+        val session = checkSession ?: return
+        val ui = activityCheck ?: return
+        cancelCheck()
         val cancel = com.onpath.app.routing.RouteCancel()
         checkCancel = cancel
-        checkJob = viewModelScope.launchSafe("app", "openActivityCheck") {
-            val loc = tracker.location.value ?: tracker.location.filterNotNull().first()
-            val pos = GeoPoint(loc.latitude, loc.longitude, if (loc.hasAltitude()) loc.altitude else null)
-            val progress = recState.value?.nav?.progressM ?: nav.progressM
-            val rest = withContext(Dispatchers.Default) {
-                runCatching { com.onpath.app.navigation.ActivityCheck.rest(session, progress, pos) }
-                    .onFailure { Problems.warn("navigation", "Activity check: rest of the route could not be computed", it) }.getOrNull()
+        activityCheck = ActivityCheckRules.checking(ui, a, level)
+        Problems.trace("navigation", "Activity check: routing the rest for ${a.name}" + (if (a == Activity.HIKE) " T$level" else "") +
+            (if (session.reached) " from the position" else " from the route's start (never reached)"))
+        checkJob = viewModelScope.launchSafe("app", "activityCheck") {
+            val rest = checkRest ?: run {
+                val pos = if (!session.reached) null else {
+                    val loc = tracker.location.value ?: tracker.location.filterNotNull().first()
+                    GeoPoint(loc.latitude, loc.longitude, if (loc.hasAltitude()) loc.altitude else null)
+                }
+                val progress = recState.value?.nav?.progressM ?: 0.0
+                withContext(Dispatchers.Default) {
+                    runCatching { com.onpath.app.navigation.ActivityCheck.rest(session, progress, pos) }
+                        .onFailure { Problems.warn("navigation", "Activity check: rest of the route could not be computed", it) }.getOrNull()
+                }.also { checkRest = it }
             }
-            checkRest = rest
+            if (!isActive || cancel.isCancelled) return@launchSafe
             if (rest == null) {
                 updateCheck(null) { ActivityRowState.Failed(Txt.s(Res.string.msg_check_nothing_left)) }
                 return@launchSafe
             }
-            updateCheck(null) { it }
-            for (a in others) {
-                if (!isActive || cancel.isCancelled) return@launchSafe
-                val st = checkRow(rest, a, sacFor(a), cancel)
-                if (!isActive || cancel.isCancelled) return@launchSafe
-                updateCheck(a) { st }
-            }
+            val st = checkRow(rest, a, level, cancel)
+            if (!isActive || cancel.isCancelled) return@launchSafe
+            if (checkCancel === cancel) checkCancel = null
+            updateCheck(a) { st }
+            if (st is ActivityRowState.Ready) applySwitch(st.fit)
         }
     }
 
-    /** How the rest of the tour fits [a] at T level [level] (routed offline, off the main thread). */
+    /** Stops a running row check (a new tap, Keep, Back): BRouter is terminated, nothing is applied. */
+    private fun cancelCheck() {
+        checkCancel?.cancel(); checkCancel = null
+        checkJob?.cancel(); checkJob = null
+    }
+
+    /** How the rest of the tour fits [a] at T level [level] (routed offline on [checkRouting]). */
     private suspend fun checkRow(rest: com.onpath.app.navigation.ActivityCheck.Rest, a: Activity, level: Int,
-                                 cancel: com.onpath.app.routing.RouteCancel): ActivityRowState = withContext(routingDispatcher) {
+                                 cancel: com.onpath.app.routing.RouteCancel): ActivityRowState = withContext(checkRouting) {
         try {
             val eng = routingEngine()
             if (eng is com.onpath.app.routing.StraightLineEngine) {
@@ -3493,17 +3552,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 else ActivityRowState.Ready(com.onpath.app.navigation.ActivityCheck.evaluate(rest.line, a, level, r, planFactors(a)))
             }
         } catch (e: Exception) {
-            Problems.warn("routing", "Activity check: routing for another activity failed", e)
-            val none = Txt.s(Res.string.msg_check_no_route)
-            ActivityRowState.Failed(com.onpath.app.debug.UserText.of(e, none).takeIf { it.length < 90 } ?: none)
+            if (cancel.isCancelled) Problems.trace("routing", "Activity check for ${a.name} cancelled (a new tap or the sheet closed)")
+            else Problems.warn("routing", "Activity check: routing for another activity failed", e)
+            ActivityRowState.Failed(Txt.s(Res.string.msg_check_no_route))
         }
     }
 
     /**
      * The check sheet's T1–T5 chips under Hike (owner 2026-11-06, flow map K1: during a tour Hike could only be taken with
      * the remembered level). Free recording: Hike with that level at once, as in the plan's activity dialog. A followed
-     * route: the Hike row is checked again for that level ([ActivityCheckRules.withHikeLevel]) – a tap on the row then
-     * switches as before (the Take new route / Keep question). Hiking already: the row appears for the new level.
+     * route: a chip is a tap on the Hike row at that level ([ActivityCheckRules.withHikeLevel]) – routed for it alone and
+     * switched when found. Hiking already at that level: nothing to switch to (a running Hike check stops).
      */
     fun chooseHikeLevel(level: Int) {
         val ui = activityCheck ?: return
@@ -3522,15 +3581,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         checkHikeSac = l
+        val hikingRunning = ui.rows.any { it.activity == Activity.HIKE && it.state == ActivityRowState.Checking }
         activityCheck = ActivityCheckRules.withHikeLevel(ui, l)
-        if (activityCheck?.rows?.none { it.activity == Activity.HIKE } == true) return // hiking at that level already
-        val rest = checkRest ?: return
-        val cancel = checkCancel ?: return
-        viewModelScope.launchSafe("app", "chooseHikeLevel") {
-            val st = checkRow(rest, Activity.HIKE, l, cancel)
-            if (cancel.isCancelled || checkHikeSac != l) return@launchSafe
-            updateCheck(Activity.HIKE) { st }
+        if (activityCheck?.rows?.none { it.activity == Activity.HIKE } == true) { // hiking at that level already
+            if (hikingRunning) cancelCheck()
+            return
         }
+        startCheck(Activity.HIKE, l)
     }
 
     /** Clears the note; [a] null = every row, else only that row. */
@@ -3540,17 +3597,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * A row was chosen: free recording → switch at once; navigating → the rest of the tour for that activity becomes
-     * the dashed proposal with the usual question (Take new route / Keep original), asked by the service.
+     * A row was chosen: free recording → switch at once; navigating → that activity alone is routed ([startCheck]) and,
+     * when found, switched ([applySwitch]). A row already checked switches at once.
      */
     fun chooseActivity(a: Activity) {
         val ui = activityCheck ?: return
         val row = ui.rows.firstOrNull { it.activity == a }?.takeIf { it.choosable } ?: return
         val st = row.state
         val session = checkSession
-        val rest = checkRest
-        closeActivityCheck()
         if (st == ActivityRowState.Plain || session == null) {
+            closeActivityCheck()
             selectActivity(a, userChange = false)
             recState.value?.tourId?.let { id -> viewModelScope.launchSafe("app", "chooseActivity", Dispatchers.IO) {
                 runCatching { db.updateActivity(id, a.name, sacFor(a)) }
@@ -3558,13 +3614,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             } }
             return
         }
-        val fit = (st as? ActivityRowState.Ready)?.fit ?: return
+        if (st is ActivityRowState.Ready) applySwitch(st.fit) else startCheck(a, row.sac)
+    }
+
+    /**
+     * A route was found for the chosen activity ([fit]): on the route → the rest of the tour for it becomes the dashed
+     * proposal with the usual question (Take new route / Keep original), asked by the service. Never on the route yet and
+     * following the plan → the whole plan is planned again for it, like the plan's activity picker ([switchPlanActivity]).
+     */
+    private fun applySwitch(fit: com.onpath.app.navigation.ActivityFit) {
+        val session = checkSession ?: return
+        val rest = checkRest
+        val a = fit.activity
+        closeActivityCheck()
+        if (!session.reached && session.kind == NavKind.PLAN && followFromPlan && waypoints.size >= 2) {
+            switchPlanActivity(a, fit.sac)
+            return
+        }
         val left = rest?.stops.orEmpty()
+        // on the route the new line starts at the position (an extra first stop); never reached it starts at a stop
+        val here = if (session.reached) 1 else 0
         val proposed = runCatching {
             if (session.kind == NavKind.PLAN && left.isNotEmpty()) {
                 NavSession.start(NavKind.PLAN, session.name, a, fit.sac, fit.line,
-                    stops = listOf(fit.line.first()) + left.map { it.point }, names = listOf(null) + left.map { it.name },
-                    pinned = left.indices.filter { left[it].pinned }.map { it + 1 }.toSet())
+                    stops = (if (here == 1) listOf(fit.line.first()) else emptyList()) + left.map { it.point },
+                    names = (if (here == 1) listOf(null) else emptyList()) + left.map { it.name },
+                    pinned = left.indices.filter { left[it].pinned }.map { it + here }.toSet())
             } else NavSession.start(session.kind, session.name, a, fit.sac, fit.line)
         }.onFailure { Problems.error("navigation", "Proposed route for the new activity could not be started", it) }.getOrNull() ?: return
         val app = getApplication<Application>()
@@ -3574,10 +3649,29 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (mode == AppMode.PLAN) enter(AppMode.NAVIGATE)
     }
 
+    /**
+     * Never on the route yet (owner 2026-11-07, tour 207: at home, the T1 line ended 552 m short of point 2): the switch
+     * plans the whole plan again with [a] / [level] – the plan path of the activity picker, so the plan line and its gap
+     * update – and the tour follows the new plan (a way there is led to again, NavSession.afterPlanEdit). No question:
+     * nothing of the route was walked yet.
+     */
+    private fun switchPlanActivity(a: Activity, level: Int) {
+        Problems.trace("navigation", "Activity check: route never reached – the plan is planned again as ${a.name}" +
+            (if (a == Activity.HIKE) " T$level" else "") + " and followed")
+        if (a == Activity.HIKE) { sac = level.coerceIn(1, 5); prefs.sac = sac }
+        followNextRoute = true // the plan's result is followed at once (recalc → followPlanned)
+        selectActivity(a, userChange = false)
+        val storedSac = if (a == Activity.HIKE) sac else level
+        recState.value?.tourId?.let { id -> viewModelScope.launchSafe("app", "switchPlanActivity", Dispatchers.IO) {
+            runCatching { db.updateActivity(id, a.name, storedSac) }
+                .onFailure { Problems.error("db", "Activity of the recorded tour not updated in the database", it) }
+        } }
+    }
+
     /** "Keep <activity>" (or Back): close the sheet, stop the checks. Nothing changes. */
     fun closeActivityCheck() {
-        checkCancel?.cancel(); checkCancel = null
-        checkJob?.cancel(); checkJob = null
+        cancelCheck() // the running row check stops (BRouter terminated): nothing waits behind it
+        checkRest = null
         checkHikeSac = null
         activityCheck = null
     }
@@ -3972,9 +4066,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- tours ----------------
 
     fun refreshTours() {
+        // the newest read wins: an older one ending late must not hide a row added since (RoutesState.show)
+        val load = routes.beginLoad()
         viewModelScope.launchSafe("app", "refreshTours", Dispatchers.IO) {
             val list = routes.load { withModelTime(it) }
-            withContext(Dispatchers.Main) { routes.show(list) }
+            withContext(Dispatchers.Main) { routes.show(list, load) }
         }
     }
 
@@ -3982,7 +4078,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * [duringTour] (a plan tapped in My routes during a tour, owner 2026-11-03 / 2026-11-06 without a question): the running tour follows the loaded route – its
      * activity stays, the plan is replaced like an edit during the tour (followEditedPlan), and the app goes to Navigate.
      */
-    fun openTour(t: Tour, duringTour: Boolean = false, trackThen: TrackThen = TrackThen.SHOW) {
+    fun openTour(t: Tour, duringTour: Boolean = false, trackThen: TrackThen = TrackThen.SHOW, planned: (() -> Unit)? = null) {
         Problems.trace("routes", "Tour ${t.id} on the map (${if (duringTour) "during the tour, " else ""}then $trackThen)")
         syncMarkSeen(t)
         viewModelScope.launchSafe("app", "openTour") {
@@ -4008,6 +4104,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 events += UiEvent.Fit(segs.flatten().map { it.toGeo() })
                 syncRoutingCheck(t, pts)
                 if (duringTour && recState.value != null) enter(AppMode.NAVIGATE)
+                planned?.invoke()
             } else {
                 // a recorded or imported tour brings its activity, like the import: the T level stays inside the
                 // tour's band, not during a tour (the followed route keeps its activity), a change is said in the
@@ -4878,6 +4975,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         sync.stop()
         routingDispatcher.close()
         backgroundRouting.close()
+        checkRouting.close()
         super.onCleared()
     }
 }

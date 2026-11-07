@@ -51,8 +51,15 @@ object ScreenTurns {
         if (given.size < 2 || given.none { it.turn != null }) return emptyMap()
         val line = JogRule.approach(given, hike)
         val cum = Geo.cumulative(line)
+        // as the voice: never read past the next turn said ([VoiceGuide.ontoAt] untilM)
+        val idx = line.indices.filter { line[it].turn != null }
+        val needed = JogRule.needed(line, cum, idx, hike)
+        val said = idx.filterIndexed { k, _ -> needed[k] }
         return turns.filter { !it.turnRound && it.index in line.indices && line[it.index].turn != null }
-            .mapNotNull { t -> VoiceGuide.ontoAt(line, cum, t.index, bike = !hike)?.let { t.index to it } }.toMap()
+            .mapNotNull { t ->
+                val next = said.firstOrNull { it > t.index }?.let { cum[it] }
+                VoiceGuide.ontoAt(line, cum, t.index, bike = !hike, untilM = next)?.let { t.index to it }
+            }.toMap()
     }
 
     /** The line vertex about [dM] metres from vertex [i] (the end at most). */

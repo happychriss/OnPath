@@ -19,14 +19,6 @@ and the commit history.
 - → [donald|cloud-web] (captain 2026-11-07, owner's word): no more question issues – ask the owner in your chat;
   unanswered at the end → "Waiting for the owner" here; the owner's word to all comes as a line here. Pull main and
   read CLAUDE.md once. Delete this line when read (each role removes its tag).
-- → [laptop] (donald 2026-11-07): a stop the route does not reach now says what does (owner, "Meran → Mutkopf" at
-  T1): new shared `routing/PlanReach.kt` (in `app/web-shared-files.txt`; `web/parity.json` needs `--update` for it) +
-  `PlanGaps.reachText` → "② erst ab T2 erreichbar" / "② nur mit Gravelbike erreichbar" / "② nicht erreichbar". For the
-  same line in the planner: after the plan route, when `PlanResult.gaps` has a first gap, call
-  `PlanReach.find(engine, gap, activity, sac)` (only the missing piece, ~40 ms a try) and show `reachText` instead of
-  `PlanGaps.text`; a tap shows `PlanReach.way` like a steep spot. The grey band's red "T3" label
-  (`routes-hike-over-label`) comes with the f2 style; its filter is in `ActivityLayers.hikeRouteFilters` (the planner
-  sets it already – it guards with `getLayer`). MapController / AppViewModel changes do not touch their mirrored parts.
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
@@ -40,10 +32,14 @@ and the commit history.
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
+- **[donald] ▶ Sim restarted on the same line: progress stays put (field 2026-11-07 12:06)** – in the 3rd demo run
+  (from 3 m) neither voice nor vibration fired; the events log has no "Junction cue:" and the shown progress did not
+  move. VoiceGuide's memory is ruled out (`VoiceGuideTest.aSimulationRestartedOnTheSameLineSaysItsTurnsAgain` green).
+  Suspect: OffRouteDetector / `shownAlongM` when switching demo ↔ real GPS (`NavSimStart`). Test first.
 - **[laptop] Web: Meine Touren like the app's (app 01b38ffa / cb791053 / ce27c111 / e570e467, 2026-11-07)** – the plan on the
   map first under Zuletzt with „In Bearbeitung“, a small route preview per row, a row tap opens the large overview (route
   picture + Planen), rows as tile + name + facts + › with every action in ⋮ (Zuletzt keeps Speichern · Löschen); the route
-  drawing itself in 0.5 s (RouteReveal). Parity recorded, web not built yet (web-planner.md §23).
+  drawing itself in 0.5 s (RouteReveal). Parity recorded, web not built yet (web-planner.md §23). Also (app, recorded 2026-11-07): a row's inline „Planen“ for drafts and ⋮ / overview „Los geht's“ (phone only – the web has no tour start), `RouteRowActions.of(…, waypoints, touring)`.
 - **[donald] Navigation neu – the rest of the owner's field day 2026-11-01** (tours 61–63, data in
   `~/onpath-cells-work/field/2026-11-01-wanderungen/` on donald): round trip "Ziel erreicht" too early, re-route with a
   word / sign to turn round and where, the new voice – concept and what is built: `docs/design/navigation-v2.md`; build
@@ -321,6 +317,10 @@ and the commit history.
   id for GitHub and Play (never both on one phone) or a separate id for the GitHub build; automatic upload to the Play
   Console later (service account). After the merge: docs mention `bundlePlay`, the result note in onpath.private.
 <!-- Owner 2026-11-07: open questions to the owner live here (who, date, question, recommendation first); asked in the session's chat; whoever acts on the answer deletes the line. -->
+- **[donald] Undo in the full points sheet? (donald 2026-11-07)** – with the plan sheet at full height the map column
+  is not drawn (ControlsPlacement, 2de9218f), so after deleting a point in the list there is no Undo on screen until
+  the sheet is made smaller; C9 says "Undo on the map". Recommendation: show Undo in the sheet's points step while
+  the map controls are hidden. Other option: keep it, the sheet one step smaller brings Undo back.
 - **Role setup leftovers (captain 2026-10-31)** – (1) does the Germany pre-build stay on donald (item "[donald] Germany
   pre-built") or move to the laptop?; (2) git on the laptop: `gh auth setup-git` + `user.name` / `user.email` (check
   whether still needed). Old branches go only through `tools/dev/prune_branches.sh` after the owner's yes to the list.

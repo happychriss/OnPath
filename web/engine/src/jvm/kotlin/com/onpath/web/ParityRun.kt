@@ -48,7 +48,9 @@ fun main(args: Array<String>) {
         val names = (c.optJSONObject("names") ?: JSONObject()).let { o -> o.keySet().associate { it.toInt() to o.getString(it) } }
         val t0 = System.currentTimeMillis()
         val res = PlanResult.plan(engine, pts, act, sac, pins, names.keys, TimeEstimate.planFactors(act, AppSettings()))
-        val r = summary(res, names)
+        // the app's planGapText: what reaches the first gap's point says it (PlanReach, owner 2026-11-07; AppViewModel.findReach)
+        val reach = res.gaps.firstOrNull()?.let { g -> com.onpath.app.routing.PlanReach.find(engine, g, act, sac) }
+        val r = summary(res, names, reach)
         println("${c.getString("name")}: ${r.optString("error").ifEmpty { "${r.getDouble("distanceM")} m, ${r.getDouble("timeS")} s, moved ${r.getBoolean("moved")}, gaps ${r.getJSONArray("gaps")}" }} (${System.currentTimeMillis() - t0} ms)")
         out.put(r)
     }
@@ -56,7 +58,7 @@ fun main(args: Array<String>) {
 }
 
 /** The plan in the comparison's terms (plan-parity.mjs reads the web's plan JSON into the same shape). */
-private fun summary(res: PlanResult, names: Map<Int, String>): JSONObject = JSONObject().apply {
+private fun summary(res: PlanResult, names: Map<Int, String>, reach: com.onpath.app.routing.PlanReach? = null): JSONObject = JSONObject().apply {
     val p = res.route
     put("error", p.error ?: JSONObject.NULL)
     put("distanceM", p.distanceM); put("ascentM", p.ascentM); put("descentM", p.descentM); put("timeS", p.durationS)
@@ -66,7 +68,7 @@ private fun summary(res: PlanResult, names: Map<Int, String>): JSONObject = JSON
     put("line", JSONArray(p.legs.flatMap { it.points }.map { JSONArray(listOf(it.lat, it.lon)) }))
     put("straight", JSONArray(p.legs.map { it.straight }))
     put("gaps", JSONArray(res.gaps.map { it.index }))
-    put("gapText", PlanGaps.text(res.gaps, res.activity) { names[it] } ?: JSONObject.NULL)
+    put("gapText", PlanGaps.reachText(res.gaps, reach) ?: PlanGaps.text(res.gaps, res.activity) { names[it] } ?: JSONObject.NULL)
     put("warning", RouteWarnings.text(res.spots, res.sac) ?: JSONObject.NULL)
     put("spots", JSONArray(res.spots.map { RouteWarnings.rowTitle(it, res.sac) }))
     // the plan sheet's way-type / surface line and routing-data notice (routing/BreakdownRules, data/RoutingDataNotice;

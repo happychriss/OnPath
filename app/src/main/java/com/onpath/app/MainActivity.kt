@@ -181,6 +181,10 @@ class MainActivity : ComponentActivity() {
                                 onBack = { vm.routesOpen = false },
                                 onImport = { launchImport() },
                                 onOpen = { vm.requestOpen(it) },
+                                // Los geht's (owner 2026-11-07): loaded as the plan, then the plan sheet's own start (phone check first)
+                                onGo = { t -> vm.goFromRoutes(t) {
+                                    vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.startNavigation() }
+                                } },
                                 onExport = { vm.exportTour(it) },
                                 onDelete = { vm.deleteTour(it) },
                                 onRename = { t, name -> vm.renameTour(t, name) },
@@ -517,6 +521,7 @@ class MainActivity : ComponentActivity() {
         if (phoneRead) vm.prefs.lastSeen = com.onpath.app.setup.LastSeen(com.onpath.app.setup.PhoneCheck.okNow(vm.phone),
             System.currentTimeMillis())
         vm.onAppStop()
+        vm.prefs.flushLazy() // camera + last seen to disk now, on a background thread – onStop never waits for it
         com.onpath.app.debug.Health.detach(window)
         vm.tracker.stop()
         super.onStop()
