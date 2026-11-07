@@ -3,7 +3,7 @@
 name = "onpath-planner"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
-workers_dev = false        # only the custom domain, which Cloudflare Access guards
+workers_dev = false        # only the custom domain (public since web-planner.md §18.5 – Access is off)
 preview_urls = false
 
 [assets]

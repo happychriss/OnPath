@@ -19,6 +19,11 @@ and the commit history.
 - → [donald|cloud-web] (captain 2026-11-07, owner's word): no more question issues – ask the owner in your chat;
   unanswered at the end → "Waiting for the owner" here; the owner's word to all comes as a line here. Pull main and
   read CLAUDE.md once. Delete this line when read (each role removes its tag).
+- → [cloud-web] (owner 2026-11-07, in donald's chat, for the website privacy text `legal_content.py`): Cloudflare –
+  **Bot Fight Mode is off, Web Analytics is off** (matches "optional host features … not part of this code"); the
+  **email of the domain runs over Cloudflare** ("E-Mail-Domain geht auf cloudflare.de" – donald reads it as Cloudflare
+  Email Routing for info@onpath.earth; confirm with the owner). The section "E-Mail und freiwillige Rückmeldungen" says
+  only "email providers may participate" – name Cloudflare Email Routing (forwarding, no mailbox) there, DE + EN.
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
@@ -28,9 +33,25 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
+- [laptop] Planner parity (4 mirrors) + privacy link / Access comments; planner pictures flow B + C01/C02/C06 + film 1 (Meran 0.17) – since 2026-11-07 · ✓ pictures done 2026-11-07 (onpath.private 754d5f0, `web/app/test/flows-shots.mjs`; film as WebM on the laptop – no ffmpeg)
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
+- **[donald] In-app privacy texts say more than the code does (cloud-web privacy check 2026-11-07)** – website fixed in
+  happychriss/onpath.earth#17; the app's own texts: `settings_privacy_lead` / `settings_sum_privacy` "Nichts wird verfolgt"
+  overreaches (services see the IP, map requests show the region) → e.g. "Kein Konto, keine Analyse, keine Werbung, kein
+  Tracking-Dienst."; `settings_privacy_maps_what` "nicht deine Position" – the loaded areas show the region;
+  `settings_privacy_sync_text` "alles sofort" – the empty mailbox stays 12 months, deleted routes stay as encrypted
+  markers; brouter.de (direct from the phone) and Photon (sent automatically while typing, ~1 km position) should be
+  named; online search has no off switch (consider one). DE + EN.
+- **[donald] Pictures as flows, round "Meran 0.17" (owner 2026-11-07, via cloud-web)** – every app picture new from
+  0.17.3, all in Meran, **flow by flow in step order**: `docs/design/website-screens.md` flows A, C (app steps), D–L,
+  file names as listed (`D05-handy-route-fertig-los-gehts-de.png` …), DE + EN, `tools/dev/website_shot.sh`, the Meran
+  scenario there (flight mode on the way, no DEMO, never the owner's position). The hike is fixed (owner): **Vellau (Korblift) → Leiteralm, Wandern T2**, the A-019 plan link
+  (`onpath.private/marketing/bilder/a019/Ergebnis.md`), inn on the way Gasthof Hochmuth – check first that 0.17 routes it
+  well (A-019 saw a detour over the Gamplweg); plus the bike route Meran →
+  Etschradweg → Algund / Naturns. PNGs into `bilder/aktuell/`, one line each (file · app version · date). Plausible
+  numbers. Then the film recordings of scenes 2–5 (section "Film") as MP4 – not into a repo, only their place in `liste.md`.
 - **[donald] Follow-ups from v0.17.3 (2026-11-07)** – (2) `RoutingDataFreshInstallE2ETest` needs `routingDownload=true`,
   which `e2e_github.sh` can't pass – add the flag or run it by hand; (5) `e2e.yml` runs only the first class / method
   of a comma list (needs a PR).

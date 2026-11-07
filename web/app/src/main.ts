@@ -27,7 +27,7 @@ import { holdMenu, type MenuItem } from './menus';
 import { Position } from './position';
 import { PlanSync, shownTitle, type SavedPlan } from './sync';
 import { myPlansDialog, joinDialog, saveRoute, saveRouteAs, phoneDialog, pairDialog, phonePill, appDate, datedName } from './plans';
-import { keepRecent, dropRecent, type RecentPlan } from './recent';
+import { keepRecent, dropRecent, renameRecentIf, type RecentPlan } from './recent';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
 import { longRouteOk, allowLongRoute, notRoutedTexts, setNotRouted, type Before } from './longroute';
@@ -190,7 +190,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <button class="iconbtn bpclose" aria-label="${escapeHtml(t('common_close'))}" title="${escapeHtml(t('common_close'))}">${icon('close', 20)}</button></div>
     <div class="bpplot"></div>
   </section>
-  <div id="footer"><button id="credits" class="credit" aria-label="${escapeHtml(t('plan_map_credits'))}">© OpenStreetMap</button>
+  <div id="footer"><button id="credits" class="credit" aria-label="${escapeHtml(t('plan_map_credits'))}">© OpenStreetMap · OpenMapTiles</button>
     <span class="sitelinks">${siteLink('web_url_privacy', t('web_link_privacy'))}<span aria-hidden="true">·</span>${siteLink('web_url_legal', t('web_link_legal'))}</span></div>
   <section id="sheet" aria-label="${escapeHtml(t('web_plan_sheet'))}">
     <button id="handle" aria-label="${escapeHtml(t('plan_resize_panel'))}" title="${escapeHtml(t('plan_resize_panel'))}" aria-controls="sheet"><span></span></button>
@@ -1679,13 +1679,15 @@ async function keepAsRecent(why: string) {
   if (state.points.length < 2 || saveState !== 'save' || !(await ready)) return;
   const pts = enc(state.points), code = await engine.encode(sharedPlan());
   const own = state.title || plansHost.linkTitle();
-  const id = keepRecent(code, own || datedName(), pts, fromRecent);
+  const dated = datedName();
+  const id = keepRecent(code, own || dated, pts, fromRecent);
   if (!id) return;
   keepPlanStats(code); // Zuletzt's numbers and line (Meine Touren's preview) – the plan is still the routed one here
   console.info(`[Problems] TRACE plan: kept under Zuletzt (${why}), ${state.points.length} points`);
   if (own) return;
   void Promise.race([suggestName(), new Promise<string>((r) => setTimeout(() => r(''), 5_000))]).then((name) => {
-    if (name) keepRecent(code, name, pts, id);
+    // the place name follows as a rename (app 21b4a7b1) – never over a rename, a save or a delete meanwhile
+    if (name && renameRecentIf(id, dated, name)) console.info(`[Problems] TRACE plan: Zuletzt "${dated}" → "${name}"`);
   }).catch((e) => problem('routes', 'no name for the plan under Zuletzt', e));
 }
 /** The saved plan just made from a Zuletzt entry: Meine Touren shows „✓ Gerade gespeichert“ on it. */
@@ -1909,7 +1911,7 @@ $('spots').addEventListener('click', (e) => {
   map.fitBounds(b, { padding: fitPadding(), maxZoom: 17 });
 });
 
-/** Full credits (the app's Settings → About, MAP_CREDITS); the map shows only "© OpenStreetMap". */
+/** Full credits (the app's Settings → About, MAP_CREDITS); the map shows "© OpenStreetMap · OpenMapTiles" (the app's MAP_CREDIT). */
 /** "?" (and Help → Keyboard shortcuts): every key the page knows, one dialog. */
 function keysDialog() {
   if (document.querySelector('dialog.keys')) return;

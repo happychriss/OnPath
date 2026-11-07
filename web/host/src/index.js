@@ -1,11 +1,11 @@
 // The web planner's host (docs/design/web-planner.md §9): one hostname for everything the page reads, so the browser
-// needs no CORS and no app key. Cloudflare Access (e-mail code) guards the whole hostname during the test; the
-// workers.dev and preview addresses are off (wrangler.toml), so there is no way around it.
+// needs no CORS and no app key. The planner is public (Cloudflare Access is off since web-planner.md §18.5); the
+// workers.dev and preview addresses stay off (wrangler.toml), so the custom domain is the one address.
 //   /data/<key>       map cells straight from the maps R2 bucket – the same files and code as the app's /v1/files
 //   /segments/<rd5>   BRouter's rd5 files from brouter.de, passed through with Range (brouter.de sends no CORS
 //                     header, so the browser cannot read it directly; the app downloads from there too)
-//   /sync/v1/…        the plan sync mailbox (src/sync.js, docs/design/web-sync.md) – encrypted blobs only; Access
-//                     lets this path through (the phone app cannot log in), the mailbox token guards it
+//   /sync/v1/…        the plan sync mailbox (src/sync.js, docs/design/web-sync.md) – encrypted blobs only; the
+//                     mailbox token guards it (no login – the phone app has none)
 //   /maps/v1/cells/… map areas on demand: request + status passed to the doorman with the app key added here
 //                     (src/maps.js, web-planner.md §17) – the browser never holds the key
 //   /.well-known/assetlinks.json  Android App Links: plan links (#p=) and pairing links (#pair=) open OnPath (A-016)
