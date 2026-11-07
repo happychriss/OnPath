@@ -320,6 +320,37 @@ class CoreFieldE2ETest : E2EBase() {
     }
 
     /**
+     * End and Los geht's within milliseconds (follow-up of v0.17.3, TourRun cfe0d6f2): the old tour's stop reaches the
+     * service after the new start was already queued to it. A plain `stopSelf()` then stopped the service that had
+     * just begun the new tour – its GPS was off until Continue. The service stops only when no newer start came.
+     */
+    @Test fun endAndANewStartWithinMillisecondsKeepTheNewTourRecording() {
+        val planId = startOnANewPlan()
+        val ctx = InstrumentationRegistry.getInstrumentation().targetContext
+        var oldId = -1L
+        // both on the main thread in one go: the service gets STOP and then START before it handles either
+        scenario.onActivity {
+            oldId = vm(it).recState.value!!.tourId
+            com.onpath.app.recording.RecordingService.send(ctx, com.onpath.app.recording.RecordingService.ACTION_STOP)
+            com.onpath.app.recording.RecordingService.send(ctx, com.onpath.app.recording.RecordingService.ACTION_START) {
+                putExtra(com.onpath.app.recording.RecordingService.EXTRA_ACTIVITY, Activity.HIKE.name)
+                putExtra(com.onpath.app.recording.RecordingService.EXTRA_SAC, 2)
+            }
+        }
+        waitUntil("the new tour records", 10_000) { com.onpath.app.recording.RecordingService.state.value?.tourId.let { it != null && it != oldId } }
+        Thread.sleep(3_000) // a stop meant for the old tour would have ended the service by now
+        val st = com.onpath.app.recording.RecordingService.state.value
+        assertNotNull("the service still records the new tour (not stopped by the old tour's end)", st)
+        assertTrue("a new tour, not the ended one", st!!.tourId != oldId)
+        val db = TourDb.get(ctx)
+        assertEquals("the old tour is saved", "done", db.getTour(oldId)?.state)
+        // its GPS goes on: the walker's points still come in
+        val d0 = st.distanceM
+        waitUntil("the new tour gets points", 30_000) { (com.onpath.app.recording.RecordingService.state.value?.distanceM ?: 0.0) > d0 + 5 }
+        db.deleteTour(planId)
+    }
+
+    /**
      * Owner 2026-11-07: a saved plan changed and started again with "Los geht's" updates THAT route (like ☰ Plan
      * speichern) – no "Name (2)" copy; the version before is kept under Zuletzt.
      */
