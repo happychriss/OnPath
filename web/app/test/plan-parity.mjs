@@ -67,7 +67,7 @@ const layout = (tile) => {
   return layouts.get(tile);
 };
 const ensureParts = (pts) => {
-  for (const [tile, i] of JSON.parse(e.partsNeeded(pts))) {
+  for (const [tile, i] of JSON.parse(e.partsNeeded(pts, ''))) {
     const ends = layout(tile);
     if (!ends) continue;
     const start = i === 0 ? 200 : ends[i - 1];

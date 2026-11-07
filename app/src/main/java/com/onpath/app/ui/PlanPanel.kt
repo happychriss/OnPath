@@ -567,7 +567,7 @@ object CollapsedFacts {
 
 /**
  * The activity as a round button on the map (owner 2026-11-05, R5), top left under the search pill: the plan's light blue
- * like the map buttons, a green activity sign, for Hike a small "T2" under it; tap = the activity picker. TalkBack:
+ * like the map buttons, a green activity sign, for Hike a bold "T2" badge under it; tap = the activity picker. TalkBack:
  * "Aktivität: Wandern · T2. Tippen zum Ändern".
  */
 @Composable
@@ -583,8 +583,9 @@ fun ActivityMapButton(activity: Activity, sac: Int, onClick: () -> Unit, modifie
         }
         if (activity == Activity.HIKE) Surface(shape = CircleShape, color = OnPathColors.PlanTint,
             modifier = Modifier.padding(top = 3.dp).warmShadow(OnPathShadow.LOW, CircleShape)) {
-            Text("T$sac", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = PillBlueInk,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp))
+            // the T level reads at a glance (owner 2026-11-07: ≈ 1.5×, bold) – it decides which ways the route may take
+            Text("T$sac", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = PillBlueInk,
+                modifier = Modifier.padding(horizontal = 9.dp, vertical = 2.dp))
         }
     }
 }
@@ -678,21 +679,22 @@ private fun NotRoutedBar(why: NotRouted, onPlanAnyway: () -> Unit) {
 }
 
 /**
- * ERROR line: the route does not do what was asked – a plan point it does not reach or a leg the router could not do
- * ("Point 1 → 2: no path found"). Red ✕ + bold red text, in the summary (visible in the small step), no OK and never
- * self-dismissing – it goes when the plan changes. "Show" = the map goes there.
+ * ERROR line: the route does not do what was asked – a plan point it does not reach ("② erst ab T2 erreichbar") or a
+ * leg the router could not do ("Point 1 → 2: no path found"). Red ✕ + bold red text, in the summary (visible in the
+ * small step), no OK and never self-dismissing – it goes when the plan changes. With [onShow] the whole line is the
+ * tap target with a › like the amber line (owner 2026-11-07): the map shows the section.
  */
 @Composable
 private fun ErrorLine(text: String, onShow: (() -> Unit)? = null) {
     val red = OnPathColors.Error
-    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(top = 4.dp).clip(MaterialTheme.shapes.small)
+        .then(if (onShow != null) Modifier.clickable(role = Role.Button, onClickLabel = str(Res.string.common_show)) { onShow() } else Modifier)
+        .padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Outlined.Cancel, null, tint = red, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
         Text(text, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold,
-            color = red, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        if (onShow != null) androidx.compose.material3.TextButton(onClick = onShow) {
-            Text(str(Res.string.common_show), fontWeight = FontWeight.Bold, color = red)
-        }
+            color = red, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        if (onShow != null) Icon(Icons.Filled.ChevronRight, null, tint = red, modifier = Modifier.size(20.dp))
     }
 }
 

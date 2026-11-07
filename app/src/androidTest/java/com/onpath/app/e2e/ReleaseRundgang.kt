@@ -535,12 +535,14 @@ class ReleaseRundgang : E2EBase() {
         waitUntil("on the route", 30_000) { nav()?.shownAlongM != null }
         val before = nav()!!.line
         scenario.onActivity { vm(it).openActivityCheck() }
-        waitUntil("Hike checked", 90_000) {
-            read { vm -> vm.activityCheck?.rows?.firstOrNull { it.activity == Activity.HIKE }?.state } is com.onpath.app.ui.ActivityRowState.Ready
+        // owner 2026-11-07: nothing is routed before a row is chosen – every row plain
+        waitUntil("the sheet with plain rows", 10_000) {
+            read { vm -> vm.activityCheck?.rows?.all { it.state == com.onpath.app.ui.ActivityRowState.Idle } } == true
         }
         shot("1-check-sheet")
+        // a tap routes Hike alone and, found, asks the switch question
         scenario.onActivity { vm(it).chooseActivity(Activity.HIKE) }
-        waitUntil("the switch question", 20_000) { (nav()?.prompt as? NavPrompt.Question)?.switch?.activity == Activity.HIKE }
+        waitUntil("the switch question", 60_000) { (nav()?.prompt as? NavPrompt.Question)?.switch?.activity == Activity.HIKE }
         assertNotNull("\"${NavText.TAKE}\" in the box", findFresh(By.text(NavText.TAKE), 10_000))
         shot("2-switch-question")
         clickText(NavText.TAKE)

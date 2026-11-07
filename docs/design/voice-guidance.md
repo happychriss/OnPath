@@ -33,8 +33,14 @@ same voice; "smart, clever sentences, not too much". Built after the feature sto
    "auf die Straße". Without way types: "Weg", never "Feldweg". No street names, no guessed landmarks.
 4b. **A sideways step is straight on** (`navigation/JogRule`, shared): two opposite turns closer than 20 m (on foot
    12 m) – onto a pedestrian crossing and off it, round an offset crossroads – are one manoeuvre; within 30° of
-   straight on nothing is said or felt, else only the turn of the step's way. Regression: the owner's Hilden park tour
-   (`tools/routing/jvm-test/HildenVoiceTest.kt`, real data).
+   straight on nothing is said or felt, else only the turn of the step's way. **Narrowed on the bike** (owner field bug
+   2026-11-07, Hilden: right from a quiet street onto a road, 19 m along it, left onto a footway – nothing said, felt or
+   shown: "warum keine Ansage, ich bin auf einer anderen Straße"): the 20 m hold only across a crossing or footway piece
+   (the router's class ≤ 4 between the turns, or no class known); along a street (class ≥ 5) the step is 12 m, as on
+   foot – farther apart they are two turns, said together ("Gleich rechts, danach gleich links auf den Weg."). The way
+   word after a turn is read at most 0.9 × the way to the next turn said, and that turn names its own way ("danach …
+   auf den Radweg"). Regression: the owner's Hilden park tour (`tools/routing/jvm-test/HildenVoiceTest.kt`) and the
+   2026-11-07 bike plan (`JogHildenTest.kt`), real data; `JogRuleTest`, `VoiceGuideTest`.
 5. **Comfort after a turn when the next one is far:** "…, dann 3 Kilometer geradeaus." (bike ≥ 2 km, on foot ≥ 1 km).
    One clause, so the user knows it is quiet now and need not look.
 6. **Short:** at most ~8 words, one idea, the direction first, rounded numbers (50 / 100 / 150 / 200 / 300 / 500 m,

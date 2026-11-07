@@ -22,6 +22,7 @@ import com.onpath.strings.routes_overview_plan
 import com.onpath.strings.routes_overview_show
 import com.onpath.strings.routes_overview_loading
 import com.onpath.strings.common_cancel
+import com.onpath.strings.plan_reach_level
 import org.maplibre.android.geometry.LatLng
 
 /**
@@ -208,4 +209,37 @@ class CorePlanE2ETest : E2EBase() {
     }
 
     private fun planSize(): PlanSize { var s = PlanSize.MINI; scenario.onActivity { s = vm(it).planSize }; return s }
+
+    /**
+     * Owner 2026-11-07 (Pixel, "Meran → Mutkopf" at Hike T1): the route stops 552 m short of ② – the path up is above
+     * T1 – and the sheet only said "kein Weg für Wandern". Now the red line says what reaches it, "② erst ab T2
+     * erreichbar", and a tap on it shows that section on the map (drawn amber, like a steep section). Real routing data.
+     */
+    @Test fun aStopOnlyT2ReachesSaysSoAndATapShowsTheSection() {
+        org.junit.Assume.assumeTrue("real routing data needed (E10_N45.rd5 in /data/local/tmp)", realRouting)
+        val meran = com.onpath.app.routing.GeoPoint(46.67135, 11.16464)
+        val mutkopf = com.onpath.app.routing.GeoPoint(46.71077, 11.13787)
+        scenario.onActivity { vm(it).selectActivity(com.onpath.app.routing.Activity.HIKE); vm(it).selectSac(1) }
+        scenario.onActivity { vm(it).addPoint(meran); vm(it).addPoint(mutkopf) }
+        waitUntil("the plan is routed", 120_000) { var ok = false; scenario.onActivity { ok = !vm(it).routing && vm(it).route != null }; ok }
+        val line = Txt.s(Res.string.plan_reach_level, "②", 2)
+        var said: String? = null
+        waitUntil("the red line says T2 reaches ②", 10_000) { scenario.onActivity { said = vm(it).planGapText() }; said == line }
+        scenario.onActivity { vm(it).planSize = PlanSize.MINI }
+        val row = findFresh(By.text(line), 10_000)
+        assertNotNull("\"$line\" in the plan sheet", row)
+        shot("reach-line")
+        row!!.click()
+        // the section: drawn (amber, like a steep section) and the map went there – from the route's end up to ②
+        waitUntil("the section is drawn", 5_000) { var s: List<com.onpath.app.routing.GeoPoint>? = null; scenario.onActivity { s = vm(it).spotLine }; (s?.size ?: 0) >= 2 }
+        var piece: List<com.onpath.app.routing.GeoPoint> = emptyList()
+        scenario.onActivity { piece = vm(it).spotLine.orEmpty() }
+        assertTrue("the section ends at ②", com.onpath.app.data.Geo.distance(piece.last(), mutkopf) < 150)
+        Thread.sleep(2_500) // the camera flies there
+        var centre: LatLng? = null
+        onMap { m -> centre = m.cameraPosition.target }
+        val c = com.onpath.app.routing.GeoPoint(centre!!.latitude, centre!!.longitude)
+        assertTrue("the map shows the section (centre ${c.lat}, ${c.lon})", piece.any { com.onpath.app.data.Geo.distance(it, c) < 1_500 })
+        shot("reach-section")
+    }
 }

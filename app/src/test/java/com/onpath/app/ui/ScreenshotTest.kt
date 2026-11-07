@@ -95,6 +95,8 @@ class ScreenshotTest {
                       editing: Boolean = false,
                       /** "Ohne Netz ✓ / ⟳ / ⚠" in the mode pill (owner 2026-11-03). */
                       offline: OfflineReady.State? = null,
+                      /** The activity button on the map: activity + T level (the plan's). */
+                      act: Activity = Activity.HIKE, sac: Int = 2,
                       bottom: @Composable () -> Unit) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
@@ -106,7 +108,7 @@ class ScreenshotTest {
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing, offline = offline)
                     // the activity as a button on the map (owner 2026-11-05, R5) – as MapScreen places it
-                    ActivityMapButton(Activity.HIKE, 2, {}, Modifier.padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp()).dp, start = 12.dp))
+                    ActivityMapButton(act, sac, {}, Modifier.padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp()).dp, start = 12.dp))
                     // as PlanMode: the controls under the sheet and the boxes, the sheet's height read while placing
                     val sheetHeight = androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
                     PlanControlsLayer({ sheetHeight.intValue }, planTopBarDp().dp, controls = controls)
@@ -796,35 +798,32 @@ class ScreenshotTest {
     }
 
     // --- Activity while navigating (owner: a wrong activity is a disaster) ---
-    private fun fit(a: Activity, problems: List<String>, timeS: Double, extraM: Double = 0.0) =
-        com.onpath.app.navigation.ActivityFit(a, 3, problems, 7_400.0 + extraM, timeS, extraM, emptyList())
-
+    // owner 2026-11-07: nothing is routed before a row is chosen – E-bike tapped (no route found), then MTB (routing)
     private val checkUi = ActivityCheckUi(Activity.HIKE, 3, listOf(
-        ActivityRow(Activity.BIKE_TOURING, 3, ActivityRowState.Ready(fit(Activity.BIKE_TOURING,
-            listOf("2.3 km not suited for bikes", "1.1 km unpaved"), 1.6 * 3600, 3_100.0))),
-        ActivityRow(Activity.BIKE_TREKKING, 3, ActivityRowState.Ready(fit(Activity.BIKE_TREKKING,
-            listOf("1.4 km not suited for gravel bikes", "steps 40 m"), 1.4 * 3600, 900.0))),
-        ActivityRow(Activity.EBIKE, 3, ActivityRowState.Failed("No route found for it")),
-        ActivityRow(Activity.MTB, 3, ActivityRowState.Ready(fit(Activity.MTB, emptyList(), 38 * 60.0))),
-        ActivityRow(Activity.EMTB, 3, ActivityRowState.Checking),
+        ActivityRow(Activity.BIKE_TOURING, 3, ActivityRowState.Idle),
+        ActivityRow(Activity.BIKE_TREKKING, 3, ActivityRowState.Idle),
+        ActivityRow(Activity.EBIKE, 3, ActivityRowState.Failed(Txt.s(Res.string.msg_check_no_route))),
+        ActivityRow(Activity.MTB, 3, ActivityRowState.Checking),
+        ActivityRow(Activity.EMTB, 3, ActivityRowState.Idle),
     ))
 
-    /** Tap the activity icon: what the rest of the route means for each other activity (fits / problems / checking). */
+    /** Tap the activity icon, then a row: only the tapped row is routed (spinner); one found no route. */
     fun navigateActivitySheet() = paparazzi.snapshot { NavFrame(navUi.copy(activityCheck = checkUi)) }
 
     /** Riding a bike during a tour: Hike's T1–T5 under its row (owner 2026-11-06, flow map K1). */
     fun navigateActivitySheetHikeLevels() = paparazzi.snapshot {
+        // T3 tapped: the Hike row alone is routed for it
         NavFrame(navUi.copy(activity = Activity.BIKE_TREKKING, activityCheck = ActivityCheckUi(Activity.BIKE_TREKKING, 3, listOf(
-            ActivityRow(Activity.BIKE_TOURING, 3, ActivityRowState.Ready(fit(Activity.BIKE_TOURING, emptyList(), 1.3 * 3600))),
-            ActivityRow(Activity.MTB, 3, ActivityRowState.Ready(fit(Activity.MTB, emptyList(), 38 * 60.0))),
-            ActivityRow(Activity.HIKE, 3, ActivityRowState.Ready(fit(Activity.HIKE, listOf("0.4 km above T3"), 3.1 * 3600, -800.0))),
+            ActivityRow(Activity.BIKE_TOURING, 3, ActivityRowState.Idle),
+            ActivityRow(Activity.MTB, 3, ActivityRowState.Idle),
+            ActivityRow(Activity.HIKE, 3, ActivityRowState.Checking),
         ))))
     }
 
-    /** Opened a moment ago: every row still being checked. */
+    /** Opened a moment ago: nothing routed yet (owner 2026-11-07), every row plain until one is chosen. */
     @Test fun navigateActivitySheetChecking() = paparazzi.snapshot {
         NavFrame(navUi.copy(activity = Activity.BIKE_TREKKING, activityCheck = ActivityCheckUi(Activity.BIKE_TREKKING, 3,
-            Activity.entries.filter { it != Activity.BIKE_TREKKING }.map { ActivityRow(it, 3, ActivityRowState.Checking) },
+            Activity.entries.filter { it != Activity.BIKE_TREKKING }.map { ActivityRow(it, 3, ActivityRowState.Idle) },
             note = "Waiting for GPS…")))
     }
 
@@ -916,6 +915,23 @@ class ScreenshotTest {
 
     /** The profile step and the points step of the same bike plan. */
     fun planProfileBike() = paparazzi.snapshot { Frame { PlanPanel(bikePlan(PlanSize.COMPACT), PlanCallbacks()) } }
+
+    /**
+     * A point the route does not reach, and what does (owner 2026-11-07, "Meran → Mutkopf" at Hike T1): the red line
+     * "② erst ab T2 erreichbar" with a › (tap = the map shows the section), no button. Texts from [PlanGaps.reachText].
+     */
+    private fun reachPlan(fix: com.onpath.app.routing.PlanReach.Fix, a: Activity, more: Boolean = false): PlanUi {
+        val g = PlanGap(1, GeoPoint(46.71077, 11.13787), GeoPoint(46.7058, 11.1374), 552.0)
+        val gaps = if (more) listOf(g, g.copy(index = 2)) else listOf(g)
+        return planUi(n = 2, size = PlanSize.MINI).copy(activity = a, sac = 1,
+            gapText = PlanGaps.reachText(gaps, com.onpath.app.routing.PlanReach(1, fix, emptyList())))
+    }
+    private fun reachShot(fix: com.onpath.app.routing.PlanReach.Fix, a: Activity, more: Boolean = false) =
+        paparazzi.snapshot { Frame(act = a, sac = 1) { PlanPanel(reachPlan(fix, a, more), PlanCallbacks()) } }
+    @Test fun planReachHike() = reachShot(com.onpath.app.routing.PlanReach.Fix.Level(2), Activity.HIKE)
+    /** The longest text: a bike plan only walking reaches; with a second gap "(+1 more)". */
+    @Test fun planReachOnFoot() = reachShot(com.onpath.app.routing.PlanReach.Fix.OnFoot(2), Activity.MTB, more = true)
+    @Test fun planReachBike() = reachShot(com.onpath.app.routing.PlanReach.Fix.Bike(Activity.BIKE_TREKKING), Activity.BIKE_TOURING)
 
     /** A point the route does not reach – one red bold line in the small sheet (no message box). */
     @Test fun planGapSmall() = paparazzi.snapshot {

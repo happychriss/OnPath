@@ -38,14 +38,19 @@ export class RouteProfile {
   private rangeTimer = 0;
 
   /**
-   * Wide screens (owner 2026-11-07, plan sheet A + the profile along the bottom): the big profile is always there while a
-   * plan has heights – no ✕, no „⤢ Großes Profil“ (main.ts sets it with the width).
+   * Wide screens (owner 2026-11-07, plan sheet A + the profile along the bottom): the big profile is there while a plan has
+   * heights – the user may hide it (✕, remembered: [hiddenByUser]); then the sheet shows the small profile with a clear
+   * „⤢ Großes Profil“ that brings it back (owner 2026-11-07: „großes Profil ist ein wichtiges Feature – prominent“).
    */
   private pinnedOn = false;
+  private hiddenByUser = readHidden();
 
   constructor(private map: maplibregl.Map, private routeColour: string, private sheetHost: HTMLElement,
     private panel: HTMLElement, private onOpenChange: (open: boolean, auto: boolean) => void) {
-    panel.querySelector<HTMLButtonElement>('.bpclose')!.onclick = () => this.setOpen(false);
+    panel.querySelector<HTMLButtonElement>('.bpclose')!.onclick = () => {
+      if (this.pinnedOn) this.setHidden(true);
+      this.setOpen(false, false, true);
+    };
     // the range's numbers in the big profile's head, beside the title
     const head = panel.querySelector<HTMLElement>('.bphead')!;
     const lbl = document.createElement('span');
@@ -99,13 +104,16 @@ export class RouteProfile {
     // 2026-11-05); the ⤢ alone was not seen (owner 2026-11-06): „⤢ Großes Profil“, and a click on the small profile opens it too
     const big = `<button class="profbig" id="profileBig" title="${escapeHtml(t('web_profile_big'))}" aria-pressed="${this.open}"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11V3h-8l3.29 3.29-10 10L3 13v8h8l-3.29-3.29 10-10z"/></svg><span></span></button>`;
     this.small = mountProfile(this.sheetHost, p, (m) => this.cursor(m, 'small'), undefined, big);
-    this.sheetHost.querySelector<HTMLButtonElement>('#profileBig')!.onclick = () => this.setOpen(!this.open);
+    this.sheetHost.querySelector<HTMLButtonElement>('#profileBig')!.onclick = () => {
+      if (!this.open) this.setHidden(false);
+      this.setOpen(!this.open, false, true);
+    };
     const plot = this.sheetHost.querySelector<HTMLElement>('.profplot')!;
     plot.classList.add('opens'); plot.title = t('web_profile_big_title');
-    plot.addEventListener('click', () => { if (!this.open) this.setOpen(true); });
+    plot.addEventListener('click', () => { if (!this.open) { this.setHidden(false); this.setOpen(true); } });
     this.bigButton();
     if (this.open) this.drawBig();
-    else if (this.pinnedOn) this.setOpen(true, true);
+    else if (this.pinnedOn && !this.hiddenByUser) this.setOpen(true, true);
   }
 
   /** Pinned (wide) or not (phone): pinned opens the big profile whenever a plan has heights. */
@@ -113,13 +121,22 @@ export class RouteProfile {
     if (on === this.pinnedOn) return;
     this.pinnedOn = on;
     this.panel.classList.toggle('pinned', on);
-    if (on) this.setOpen(true, true); else this.setOpen(false, true);
+    if (on) this.setOpen(!this.hiddenByUser, true, true); else this.setOpen(false, true, true);
   }
   get pinned(): boolean { return this.pinnedOn; }
+  /** Wide: the user hid the profile along the bottom (✕) – remembered across loads. */
+  get hidden(): boolean { return this.hiddenByUser; }
 
-  setOpen(open: boolean, auto = false) {
+  private setHidden(h: boolean) {
+    if (h === this.hiddenByUser) return;
+    this.hiddenByUser = h;
+    try { localStorage.setItem(HIDDEN_KEY, h ? '1' : '0'); } catch { /* expected: storage blocked – for this page only */ }
+  }
+
+  /** [byUser]: the ✕ / the button / a hide on purpose – may close the pinned profile too. */
+  setOpen(open: boolean, auto = false, byUser = false) {
     if (open && !this.profile) open = false;
-    if (!open && this.pinnedOn && this.profile) return; // pinned: stays while there are heights
+    if (!open && this.pinnedOn && this.profile && !byUser && !this.hiddenByUser) return; // pinned: stays while there are heights
     if (open === this.open && (!open || this.big)) return;
     this.open = open;
     this.panel.hidden = !open;
@@ -302,3 +319,9 @@ export class Terrain3D {
 
 function empty(): FeatureCollection { return { type: 'FeatureCollection', features: [] }; }
 function escapeHtml(s: string) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!)); }
+
+const HIDDEN_KEY = 'onpath.profileHidden';
+/** The profile along the bottom hidden by the user (wide screens), remembered; storage blocked → shown. */
+function readHidden(): boolean {
+  try { return localStorage.getItem(HIDDEN_KEY) === '1'; } catch { return false; /* expected: storage blocked – the default */ }
+}

@@ -44,6 +44,8 @@ abstract class PlanChipLargeFontTest {
     @Test fun planSummaryBike() = shots.planSummaryBike()
     @Test fun planCollapsed() = shots.planCollapsed()
     @Test fun planCollapsedGap() = shots.planCollapsedGap()
+    @Test fun planReachHike() = shots.planReachHike()
+    @Test fun planReachOnFoot() = shots.planReachOnFoot()
     @Test fun planPointsFull() = shots.planPointsFull()
     @Test fun planRoundTripOn() = shots.planRoundTripOn()
     @Test fun planOutAndBack() = shots.planOutAndBack()

@@ -37,10 +37,10 @@ await page.screenshot({ path: shot });
 const terrainFails = [];
 const tcheck = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (!ok) terrainFails.push(what); };
 const cursorNow = () => page.evaluate(() => window.__profileCursor);
-// wide screens (plan sheet A, owner 2026-11-07): the profile lies along the map's bottom edge for good – no ⤢, no ✕;
+// wide screens (plan sheet A, owner 2026-11-07): the profile lies along the map's bottom edge (a ✕ hides it, sheet-smoke);
 // the route stays plan blue (the steepness is read in the profile)
-tcheck(await page.locator('#bigProfile').isVisible() && !(await page.locator('#bigProfile .bpclose').isVisible()) && !(await page.locator('#profile .profplot').isVisible()),
-  'the profile lies along the bottom of the map for good (no ✕), not in the panel');
+tcheck(await page.locator('#bigProfile').isVisible() && await page.locator('#bigProfile .bpclose').isVisible() && !(await page.locator('#profile .profplot').isVisible()),
+  'the profile lies along the bottom of the map (✕ to hide it), not in the panel');
 const small = await page.locator('#bigProfile .profplot > svg').boundingBox();
 await page.mouse.move(small.x + small.width * 0.5, small.y + small.height * 0.5);
 await page.waitForTimeout(200);

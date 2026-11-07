@@ -51,7 +51,11 @@ object VoiceText {
         p.onto?.let { action = Txt.s(Res.string.voice_onto, action, way(it)) }
         var s = if (p.inM < VoiceGuide.SOON_M) Txt.s(Res.string.voice_soon, action)
             else Txt.s(Res.string.voice_in, inDistance(p.inM), action)
-        p.then?.let { s = Txt.s(Res.string.voice_then, s, action(it, p.thenExit)) }
+        p.then?.let { t ->
+            var then = action(t, p.thenExit)
+            p.thenOnto?.let { then = Txt.s(Res.string.voice_onto, then, way(it)) }
+            s = Txt.s(Res.string.voice_then, s, then)
+        }
         p.straightM?.let { s = Txt.s(Res.string.voice_then_straight, s, distance(it)) }
         return Txt.s(Res.string.voice_sentence, s)
     }

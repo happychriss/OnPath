@@ -21,7 +21,7 @@ class UxReviewFixesTest {
         assertTrue(plan, plan.contains("onActivity = { if (rec != null) vm.openActivityCheck() else showActivity = true }"))
         assertTrue(map.contains("ActivitySwitchSheet(it, vm::chooseActivity, vm::closeActivityCheck"))
         // a proposal is answered in Navigate (Take new route / Keep)
-        val choose = body(vm, "fun chooseActivity(")
+        val choose = body(vm, "fun chooseActivity(") + body(vm, "private fun applySwitch(")
         assertTrue(choose, choose.contains("if (mode == AppMode.PLAN) enter(AppMode.NAVIGATE)"))
         assertFalse(choose, choose.contains("selectActivity(a)\n"))
     }
