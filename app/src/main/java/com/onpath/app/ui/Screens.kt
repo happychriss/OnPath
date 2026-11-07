@@ -120,7 +120,7 @@ fun MissingDataScreen(
             Text(str(Res.string.routes_missing_title), style = MaterialTheme.typography.titleLarge)
             Text(str(Res.string.routes_missing_body),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
+            Surface(shape = OnPathShapes.Card, color = OnPathColors.CardPaper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
                 Column(Modifier.padding(vertical = 6.dp)) {
                     checks.forEach { c ->
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -524,7 +524,7 @@ private fun TourCard(
     // a plan under Zuletzt: the route sign pale – only a draft (owner 2026-11-06), the words the same ("Plan · date")
     val pale = DraftLook.of(t.draft)
     val openLabel = str(Res.string.routes_open_row, t.name)
-    Surface(onClick = { onOpen?.invoke() }, enabled = onOpen != null, shape = OnPathShapes.Card, color = OnPathColors.Paper,
+    Surface(onClick = { onOpen?.invoke() }, enabled = onOpen != null, shape = OnPathShapes.Card, color = OnPathColors.CardPaper,
         modifier = Modifier.heightIn(min = 72.dp).warmShadow(OnPathShadow.LOW, OnPathShapes.Card)
             .semantics { onClick(label = openLabel) { onOpen?.invoke(); onOpen != null } }) {
         Column {
