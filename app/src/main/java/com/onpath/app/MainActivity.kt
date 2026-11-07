@@ -199,8 +199,13 @@ class MainActivity : ComponentActivity() {
                                     val pad = with(androidx.compose.ui.platform.LocalDensity.current) {
                                         com.onpath.app.ui.FitPaddingRule.SIDE_DP.dp.roundToPx()
                                     }
-                                    val snap: suspend (List<List<com.onpath.app.routing.GeoPoint>>, com.onpath.app.ui.RouteShape.Tint, Int, Int) -> androidx.compose.ui.graphics.ImageBitmap? =
-                                        { segs, tint, w, h -> vm.routeSnapshot(segs, tint, w, h, pad)?.asImageBitmap() }
+                                    val snap: com.onpath.app.ui.OverviewSnapshot = { segs, tint, w, h ->
+                                        vm.routeSnapshot(segs, tint, w, h, pad)?.let {
+                                            com.onpath.app.ui.OverviewPicture(it.bitmap.asImageBitmap(),
+                                                androidx.compose.ui.geometry.Offset(it.startX, it.startY),
+                                                androidx.compose.ui.geometry.Offset(it.goalX, it.goalY))
+                                        }
+                                    }
                                     snap
                                 },
                                 touring = recNow != null,
