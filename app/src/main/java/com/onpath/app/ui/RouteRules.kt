@@ -181,22 +181,23 @@ enum class LinkOpen { AFTER_TOUR, ASK_FIRST, NOW }
 
 /**
  * The plan at "Los geht's" (owner 2026-11-06: the tour and the plan are two things – the end of a tour never asks about
- * the plan; pure). A plan never saved is saved at the start; a saved plan changed since is not overwritten silently.
+ * the plan; pure). A plan never saved is saved at the start; a saved plan changed since is updated in place.
  */
 object PlanAutoSave {
-    enum class AtStart { NOTHING, SAVE_NEW, SAVE_COPY }
+    enum class AtStart { NOTHING, SAVE_NEW, SAVE_OVERWRITE }
 
     /**
      * "Los geht's" (owner 2026-11-06, like Komoot: what you ride is under Planned): [points] plan points; [unsaved] the plan
      * differs from what is stored; [changesASavedPlan] it belongs to a saved route; [fromDraft] it was loaded from
-     * "Zuletzt". A plan from Zuletzt is saved (changed or not); a never-saved plan is saved; a saved plan changed since is
-     * saved as a copy "Name (2)" – never overwritten silently; a saved plan as it is: nothing.
+     * "Zuletzt". A plan from Zuletzt is saved (changed or not); a never-saved plan is saved; a saved plan changed since
+     * updates that route in place like ☰ Plan speichern (owner 2026-11-07: no "Name (2)" copies) – its version before
+     * goes under Zuletzt ([com.onpath.app.ui.routes.RoutesState.keepReplaced]); a saved plan as it is: nothing.
      */
     fun atStart(points: Int, unsaved: Boolean, changesASavedPlan: Boolean, fromDraft: Boolean = false): AtStart = when {
         points < 2 -> AtStart.NOTHING
         fromDraft -> AtStart.SAVE_NEW
         !unsaved -> AtStart.NOTHING
-        changesASavedPlan -> AtStart.SAVE_COPY
+        changesASavedPlan -> AtStart.SAVE_OVERWRITE
         else -> AtStart.SAVE_NEW
     }
 }

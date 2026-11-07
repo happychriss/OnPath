@@ -2919,6 +2919,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         ).also {
                             if (it) { plannedTimes.remove(id); storePlanTimes(id, r, act) }
                             if (it && name != old) db.rename(id, name)
+                            // a draft with the route's new points goes (RoutesState: never a draft with a saved route's points)
+                            if (it) routes.afterSaved(-1L, pts.map { p -> p.lat to p.lon })
                         }
                     }
                 }
@@ -3158,31 +3160,64 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * "Los geht's" with a plan that was never saved (owner 2026-11-06: the tour and the plan are two things – like Komoot,
      * the plan is in My routes → Planned from the start, so the end of the tour never has to ask about it): saved at once
-     * under the name the Save dialog would propose, no dialog. A saved plan changed since is NOT overwritten silently –
-     * "Nicht gespeichert ›" shows it, the user saves. Renaming / deleting: My routes.
+     * under the name the Save dialog would propose, no dialog. A saved plan changed since updates that route in place, like
+     * ☰ Plan speichern (owner 2026-11-07: no "Name (2)" copies) – its version before goes under Zuletzt
+     * ([updateSavedAtStart]). Renaming / deleting: My routes.
      */
     private fun saveNewPlanAtStart() {
         val pts = waypoints.toList()
         val draft = linkedDraft
         val how = PlanAutoSave.atStart(pts.size, planUnsaved, currentSaveMode() == SaveMode.OVERWRITE, draft != null)
         if (how == PlanAutoSave.AtStart.NOTHING || saving) return
+        if (how == PlanAutoSave.AtStart.SAVE_OVERWRITE) { updateSavedAtStart(pts); return }
         saving = true
         val r = route
         val dated = defaultName(Txt.s(Res.string.msg_name_route))
         val taken = plannedNames()
-        val copyOf = savedName
         viewModelScope.launchSafe("app", "saveNewPlanAtStart") {
             try {
-                val name = when (how) {
-                    // a saved plan changed before the start is never overwritten silently: the ridden version is "Name (2)"
-                    PlanAutoSave.AtStart.SAVE_COPY -> RouteRules.copyName(copyOf ?: dated, taken)
-                    // a plan from Zuletzt keeps its name
-                    else -> draft?.name?.let { RouteRules.newRouteName(it, dated, taken) }
-                        ?: RouteRules.newRouteName(withTimeoutOrNull(NAME_WAIT_MS) { proposeName(pts, r) }, dated, taken)
-                }
+                // a plan from Zuletzt keeps its name
+                val name = draft?.name?.let { RouteRules.newRouteName(it, dated, taken) }
+                    ?: RouteRules.newRouteName(withTimeoutOrNull(NAME_WAIT_MS) { proposeName(pts, r) }, dated, taken)
                 Problems.trace("plan", "Plan saved at the tour start as \"$name\" (${how.name.lowercase()}, ${pts.size} points)")
                 insertPlanned(name, pts, r, null)
             } finally { saving = false }
+        }
+    }
+
+    /**
+     * "Los geht's" with a loaded saved route changed since (owner 2026-11-07): the route is updated in place under its
+     * name ([overwriteSaved], the same write as ☰ Plan speichern), then its version before – read first – is kept under
+     * Zuletzt ([com.onpath.app.ui.routes.RoutesState.keepReplaced]), so nothing is lost and no "Name (2)" appears.
+     */
+    private fun updateSavedAtStart(pts: List<GeoPoint>) {
+        val id = savedId
+        val name = savedName ?: return
+        viewModelScope.launchSafe("app", "updateSavedAtStart") {
+            val before = withContext(Dispatchers.IO) {
+                runCatching { db.getTour(id)?.let { it to db.loadSegments(id) } }
+                    .onFailure { Problems.warn("db", "The saved route's version before the tour start not read – not kept under Zuletzt", it) }
+                    .getOrNull()
+            }
+            Problems.trace("plan", "Plan saved at the tour start as \"$name\" (save_overwrite, ${pts.size} points)")
+            overwriteSaved(name) { before?.let { (old, segments) -> keepReplacedVersion(old, segments) } }
+        }
+    }
+
+    /** The version of a saved route that a tour start just replaced: under Zuletzt with its name, line and points. */
+    private fun keepReplacedVersion(old: Tour, segments: List<List<TrackPoint>>) {
+        val key = com.onpath.app.ui.routes.RoutesState.keyOf(old)
+        viewModelScope.launchSafe("app", "keepReplacedVersion") {
+            val id = withContext(Dispatchers.IO) {
+                runCatching {
+                    routes.keepReplaced(key) {
+                        db.insertTour(TourKind.PLANNED, old.name, old.activity, old.sac, old.distanceM, old.ascentM, old.descentM,
+                            old.durationS, segments, old.waypoints, pinned = old.pinned, draft = true)
+                    }
+                }.onFailure { Problems.error("db", "The saved route's version before the tour start could not be kept under Zuletzt", it) }
+                    .getOrNull()
+            }
+            if (id != null) { Problems.trace("plan", "Version before the tour start kept under Zuletzt: \"${old.name}\", ${key.size} points"); refreshTours() }
         }
     }
 
