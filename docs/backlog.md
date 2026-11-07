@@ -39,7 +39,7 @@ and the commit history.
 - **[laptop] Web: Meine Touren like the app's (app 01b38ffa / cb791053 / ce27c111 / e570e467, 2026-11-07)** – the plan on the
   map first under Zuletzt with „In Bearbeitung“, a small route preview per row, a row tap opens the large overview (route
   picture + Planen), rows as tile + name + facts + › with every action in ⋮ (Zuletzt keeps Speichern · Löschen); the route
-  drawing itself in 0.5 s (RouteReveal). Parity recorded, web not built yet (web-planner.md §23).
+  drawing itself in 0.5 s (RouteReveal). Parity recorded, web not built yet (web-planner.md §23). Also (app, recorded 2026-11-07): a row's inline „Planen“ for drafts and ⋮ / overview „Los geht's“ (phone only – the web has no tour start), `RouteRowActions.of(…, waypoints, touring)`.
 - **[donald] Navigation neu – the rest of the owner's field day 2026-11-01** (tours 61–63, data in
   `~/onpath-cells-work/field/2026-11-01-wanderungen/` on donald): round trip "Ziel erreicht" too early, re-route with a
   word / sign to turn round and where, the new voice – concept and what is built: `docs/design/navigation-v2.md`; build
@@ -115,7 +115,7 @@ and the commit history.
   150 m force a turn-round). Check with the owner's real tour: Settings → Diagnostics export ("Junction cue:" lines) or the
   plan; the owner offered to say which sentences were wrong. Scratch replay tool used: a copy of
   tools/routing/jvm-test/HildenVoiceTest.kt that routes through a GPX track and prints HINT / SCREEN / SAY lines (needs E5_N50.rd5).
-- **[cloud-plan] Flaky web smokes on GitHub – the rest** (laptop 2026-11-06; +2026-11-07: follow-smoke „compass north up keeps following“ red once on GitHub (run 42369080471, f3beb21d), green 3× locally; import-smoke „+ New … kept under Recent“ red once locally, green on the re-run): robust-smoke "two quick clicks" **solved
+- **[cloud-plan] Flaky web smokes on GitHub – the rest** (laptop 2026-11-06; +2026-11-07: follow-smoke „compass north up keeps following“ **solved** (test side: the position lay off the map after the test's fly, so the locate tap framed plan + me (LocateDistance, 1c96f5b5) instead of following, depending on whether the far label was drawn yet – the test brings the position into view first and checks the far tap on its own); import-smoke „+ New … kept under Recent“ red once locally, green on the re-run): robust-smoke "two quick clicks" **solved
   (f636903c, test only)** – in every red run (5be2031d, b5328dae, 8f8db60d, 045e8ebf) the page kept the click order; the
   second click was lost because its pixel lay outside the window, or both clicks landed beside p1/p2 – the camera moved
   between the test's projection and its clicks (the reopened route's pending whole-route fit, a left-over padding). The test
@@ -317,6 +317,10 @@ and the commit history.
   id for GitHub and Play (never both on one phone) or a separate id for the GitHub build; automatic upload to the Play
   Console later (service account). After the merge: docs mention `bundlePlay`, the result note in onpath.private.
 <!-- Owner 2026-11-07: open questions to the owner live here (who, date, question, recommendation first); asked in the session's chat; whoever acts on the answer deletes the line. -->
+- **[donald] Undo in the full points sheet? (donald 2026-11-07)** – with the plan sheet at full height the map column
+  is not drawn (ControlsPlacement, 2de9218f), so after deleting a point in the list there is no Undo on screen until
+  the sheet is made smaller; C9 says "Undo on the map". Recommendation: show Undo in the sheet's points step while
+  the map controls are hidden. Other option: keep it, the sheet one step smaller brings Undo back.
 - **Role setup leftovers (captain 2026-10-31)** – (1) does the Germany pre-build stay on donald (item "[donald] Germany
   pre-built") or move to the laptop?; (2) git on the laptop: `gh auth setup-git` + `user.name` / `user.email` (check
   whether still needed). Old branches go only through `tools/dev/prune_branches.sh` after the owner's yes to the list.
