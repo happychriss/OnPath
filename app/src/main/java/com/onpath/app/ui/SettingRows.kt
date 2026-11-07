@@ -98,7 +98,7 @@ internal fun SettingsGroupHeader(text: String) = Text(text.uppercase(), style = 
 /** A paper card for one group of settings rows. */
 @Composable
 internal fun SettingsCard(content: @Composable () -> Unit) =
-    Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
+    Surface(shape = OnPathShapes.Card, color = OnPathColors.CardPaper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
         Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) { content() }
     }
 

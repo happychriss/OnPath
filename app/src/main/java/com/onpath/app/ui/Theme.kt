@@ -36,8 +36,15 @@ object OnPathColors {
     val InkMuted = Color(0xFF4A4F4A)
     /** White: fields one types into, rings around point signs and text / icons on a coloured button – no surfaces. */
     val CardWhite = Color(0xFFFFFFFF)
-    /** Page background (website `#FAFAF6`). */
-    val Paper = Color(0xFFFAFAF6)
+    /**
+     * The paper of every surface – menus, dialogs, sheets and what floats over the map (owner 2026-11-07 11:20, tone B of
+     * the paper page: a touch warmer than the website's #FAFAF6, so a menu or sheet reads as paper and not as white).
+     */
+    val Paper = Color(0xFFF5F3EB)
+    /** Cards in lists (Settings, Meine Touren): one step lighter than [Paper] (the website's #FAFAF6), so they still lift. */
+    val CardPaper = Color(0xFFFAFAF6)
+    /** One step below [Paper] for groups inside a paper surface (the plan sheet's pill row): 1.1:1 against it. */
+    val PaperDeep = Color(0xFFEAE9E1)
     /**
      * Paper one shade darker (owner 2026-11-06: "überall den Papierton"): the page behind paper cards (Settings, My
      * routes) and boxes inside a paper surface – so the cards and the facts box still stand out without any white.

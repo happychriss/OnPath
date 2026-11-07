@@ -271,7 +271,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
 }
 
 /** The plan row's pills: one paper shade darker, ink blue words (owner 2026-11-06 variant C – no light blue; ≥ 7:1). */
-internal val PillBlueLight = OnPathColors.PaperDim
+internal val PillBlueLight = OnPathColors.PaperDeep
 internal val PillBlueInk = OnPathColors.ActionEdit
 
 @Composable
