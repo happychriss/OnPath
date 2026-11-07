@@ -751,7 +751,9 @@ class MapCells(
     /**
      * Finished downloads are joined into the map together: when nothing more is about to download and either nothing is
      * still being built or [batchMs] passed since the last one finished (at most [maxBatchMs] after the first), never
-     * while [userBusy]. Null = nothing waits to be joined; else ms until it should be checked again.
+     * while [userBusy]. Region packages ready on the server (or not asked yet, briefly) are waited for too: every
+     * generation rewrites the whole store (map-cells.md §19.9). Null = nothing waits to be joined; else ms until it
+     * should be checked again.
      */
     private fun joinIfDue(): Long? {
         val done = synchronized(finished) { finished.values.toList() }
@@ -763,13 +765,20 @@ class MapCells(
             return null
         }
         val t = now()
-        // region packages build for minutes at refresh priority: finished cells never wait for them
-        val pend = synchronized(queue) { queue.values.filter { it.confirmed && !it.id.isPackage } }
-        val more = pend.any { p -> state(p.id) is CellState.Downloading && allowed(p) }
-        val building = pend.any { p -> state(p.id).let { s -> s is CellState.Queued || s is CellState.Building || s == CellState.Requested } }
+        val all = synchronized(queue) { queue.values.filter { it.confirmed } }
+        // region packages build for minutes at refresh priority: finished cells never wait for one being built …
+        val pend = all.filter { !it.id.isPackage }
+        // … but one ready on the server (~2 MB, a second) joins this generation instead of rewriting the whole store
+        // alone right after it (field, Galaxy S10 0.17.3: +4 cells, then +1 package – 20 s and 495 MB each)
+        val more = all.any { p -> state(p.id) is CellState.Downloading && allowed(p) }
         val quiet = t - lastFinishedAt
-        val due = t - firstFinishedAt >= maxBatchMs || (!more && (!building || quiet >= batchMs))
-        if (!due) return if (more) 0L else (batchMs - quiet).coerceAtLeast(1L)
+        // a package not asked yet: this round's [stepQueue] asks (one call) – only when it asks now, and only briefly
+        // (a failing call must not hold the join or repeat in a tight loop)
+        val asking = quiet < ASK_WAIT_MS && (foreground || tourInBackground || loadInBackground) && network.connected() &&
+            all.any { it.id.isPackage && state(it.id) == CellState.Requested }
+        val building = pend.any { p -> state(p.id).let { s -> s is CellState.Queued || s is CellState.Building || s == CellState.Requested } }
+        val due = t - firstFinishedAt >= maxBatchMs || (!more && !asking && (!building || quiet >= batchMs))
+        if (!due) return if (more) 0L else if (asking) ASK_RECHECK_MS else (batchMs - quiet).coerceAtLeast(1L)
         if (userBusy) return BUSY_RECHECK_MS
         join(done)
         return null
@@ -1103,6 +1112,9 @@ class MapCells(
         /** A developer build of a cell ([CellApi.isDevVersion]) is not replaced by a refresh for this long. */
         const val DEV_KEEP_MS = 24L * 3600 * 1000
         private const val BUSY_RECHECK_MS = 1_000L
+        /** A finished cell waits at most this long for the status of region packages not asked yet ([joinIfDue]). */
+        private const val ASK_WAIT_MS = 5_000L
+        private const val ASK_RECHECK_MS = 300L
         /** Package calls failed while no cell waits: asked again after this. */
         private const val PACKAGE_RETRY_MS = 5 * 60_000L
         /** An installed region package is asked for again (newer version?) when it is older than this. */

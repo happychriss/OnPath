@@ -130,6 +130,66 @@ class CellStoreTest {
         assertTrue("new generation ${g.number} above the leftovers", g.number > 6)
     }
 
+    /**
+     * Field (Galaxy S10, 0.17.3): the map read the store on the main thread while the worker's clean-up deleted an old
+     * generation – the reader listed g000013, then its store.json was gone → a false "unreadable" ERROR (red notice).
+     * A generation that vanishes between listing and reading is expected: no ERROR, the newest readable one wins.
+     */
+    @Test fun generationDeletedWhileReadingRaisesNoError() {
+        com.onpath.app.debug.Problems.clear()
+        val data = tmp.newFolder("data")
+        val writer = CellStore(data)
+        writer.apply(add = listOf(download(writer, a, "v1")))
+        val g2 = writer.apply(add = listOf(download(writer, b, "v1")))
+        val g3 = writer.apply(add = listOf(download(writer, a, "v2")))
+        assertTrue(g2.dir.isDirectory)
+        var once = true
+        // another instance (DataFiles.mapDir builds its own) lists g2 + g3, then the writer's clean-up removes g2
+        val reader = CellStore(data).apply { afterList = { if (once) { once = false; writer.confirmLoaded(g3.number) } } }
+        CellStore.forget(reader.storeDir)
+        val cur = reader.current()
+        assertFalse("clean-up ran between listing and reading", once)
+        assertFalse(g2.dir.exists())
+        assertEquals(g3.number, cur!!.number)
+        assertEquals(g3.dir, reader.mapDir())
+        assertTrue(com.onpath.app.debug.Problems.snapshot().none { it.area == "cells" && it.level >= com.onpath.app.debug.Problems.Level.WARN })
+    }
+
+    /** A generation folder that is there but broken stays an ERROR (once per run, not at every read); the older one is used. */
+    @Test fun brokenGenerationStillReportsAnError() {
+        com.onpath.app.debug.Problems.clear()
+        val data = tmp.newFolder("data")
+        val store = CellStore(data)
+        val g1 = store.apply(add = listOf(download(store, a, "v1")))
+        File(store.storeDir, "g000002").apply { mkdirs(); File(this, "store.json").writeText("{broken") }
+        assertEquals(g1.number, store.current()!!.number)
+        assertEquals(g1.number, CellStore(data).current()!!.number)
+        val errors = com.onpath.app.debug.Problems.snapshot().filter { it.area == "cells" && it.level == com.onpath.app.debug.Problems.Level.ERROR }
+        assertEquals(1, errors.size)
+        assertTrue(errors.single().message, errors.single().message.contains("g000002 unreadable"))
+    }
+
+    /**
+     * The current generation is kept in memory (the map asks for it on the main thread): a new generation, a removal
+     * and a rollback followed by a new generation with the SAME number are all seen by every instance at once.
+     */
+    @Test fun cachedGenerationFollowsEveryChange() {
+        val data = tmp.newFolder("data")
+        val store = CellStore(data)
+        val g1 = store.apply(add = listOf(download(store, a, "v1")))
+        assertEquals(g1.number, CellStore(data).current()!!.number)
+        val g2 = store.apply(add = listOf(download(store, b, "v1")))
+        assertEquals(setOf(a, b), CellStore(data).current()!!.cellIds)
+        assertTrue(store.rollback(g2.number))
+        assertEquals(g1.number, CellStore(data).current()!!.number)
+        val again = store.apply(add = listOf(download(store, b, "v2")))
+        assertEquals(g2.number, again.number) // the set-aside number is used again
+        assertEquals("v2", CellStore(data).current()!!.cell(b)!!.version)
+        // a generation removed behind the store's back (not by this process) is noticed too
+        again.dir.deleteRecursively()
+        assertEquals(g1.number, CellStore(data).current()!!.number)
+    }
+
     @Test fun lowStorageChangesNothing() {
         val data = tmp.newFolder("data")
         var free = Long.MAX_VALUE
