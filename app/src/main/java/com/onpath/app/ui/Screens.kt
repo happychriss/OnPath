@@ -1,6 +1,9 @@
 package com.onpath.app.ui
 
+import com.onpath.app.ui.routes.RouteRowActions
+
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.foundation.background
@@ -32,6 +35,7 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CheckCircle
@@ -418,13 +422,16 @@ fun RoutesScreen(
                     if (drafts.isNotEmpty() || liveTour != null) {
                         item(key = "h-recent") { SectionHeader(str(Res.string.routes_section_recent)) }
                         liveTour?.let { lt -> item(key = "live") {
-                            TourCard(lt, tag = RouteTag.LIVE, onOpen = onLiveOpen, onRename = {}, onExport = {}, onDelete = {},
-                                menu = false, footer = if (live?.canSave == true) ({ DraftActions(onLiveSave, null) }) else null,
+                            val row = RouteRowActions.of(RouteRowActions.Section.LIVE, lt.kind, canSaveLive = live?.canSave == true)
+                            TourCard(lt, tag = RouteTag.LIVE, row = row, onOpen = onLiveOpen, onRename = {}, onExport = {}, onDelete = null,
+                                menu = false, footer = if (RouteRowActions.Action.SAVE in row.inline) ({ DraftActions(onLiveSave, null) }) else null,
                                 line = line(lt))
                         } }
                         items(if (allRecent) drafts else drafts.take(RECENT_SHOWN), key = { it.id }) { t ->
-                            TourCard(t, tag = null, onOpen = { overview = t }, onRename = { rename = t }, onExport = { onExport(t) },
-                                onDelete = { onDeleteDraft(t) }, footer = { DraftActions({ onSaveDraft(t) }, { onDeleteDraft(t) }) },
+                            // Zuletzt (owner 2026-11-07 09:40): Speichern · Löschen on the row for a fast clean-up – not again in ⋮
+                            val row = RouteRowActions.of(RouteRowActions.Section.DRAFT, t.kind)
+                            TourCard(t, tag = null, row = row, onOpen = { overview = t }, onRename = { rename = t }, onExport = { onExport(t) },
+                                onDelete = null, footer = { DraftActions({ onSaveDraft(t) }, { onDeleteDraft(t) }) },
                                 line = line(t))
                         }
                         if (!allRecent && drafts.size > RECENT_SHOWN) item(key = "all-recent") {
@@ -436,16 +443,22 @@ fun RoutesScreen(
                     }
                     items(saved, key = { it.id }) { t ->
                         val isLive = t.id == liveRows.markedSavedId
-                        TourCard(t, tag = if (isLive) RouteTag.LIVE else RouteTag.of(t, marks),
+                        // Gespeichert / Gemacht (owner 2026-11-07 09:40, variant A): tile + name + facts + ›, every action in ⋮
+                        val row = RouteRowActions.of(RouteRowActions.Section.SAVED, t.kind, recording = t.id == recordingId,
+                            hasRides = !t.rides?.rides.isNullOrEmpty(), hasDistance = TrackLine.hasDistance(t.distanceM),
+                            waypoints = t.waypoints.size, liveMarked = isLive, canSaveLive = live?.unsaved == true && live.canSave)
+                        fun has(a: RouteRowActions.Action) = a in row.menu
+                        TourCard(t, tag = if (isLive) RouteTag.LIVE else RouteTag.of(t, marks), row = row,
                             onOpen = if (isLive) onLiveOpen else ({ overview = t }), justSaved = t.id == justSavedId, line = line(t),
-                            footer = if (isLive && live?.unsaved == true && live.canSave) ({ DraftActions(onLiveSave, null) }) else null,
+                            footer = if (RouteRowActions.Action.SAVE in row.inline) ({ DraftActions(onLiveSave, null) }) else null,
+                            recording = t.id == recordingId,
                             onRename = { rename = t }, onExport = { onExport(t) },
-                            onCopy = if (t.kind == TourKind.PLANNED) ({ onCopy(t) }) else null,
-                            onShare = if (t.kind == TourKind.PLANNED && t.waypoints.size >= 2) ({ onShare(t) }) else null,
+                            onCopy = if (has(RouteRowActions.Action.COPY)) ({ onCopy(t) }) else null,
+                            onShare = if (has(RouteRowActions.Action.SHARE)) ({ onShare(t) }) else null,
                             // straight to the recycle bin, no question (owner 2026-11-06: the bin is the net)
-                            onDelete = if (t.id == recordingId) null else ({ onDelete(t) }),
-                            onEditRides = if (t.rides?.rides.isNullOrEmpty() || t.id == recordingId) null else ({ onEditRides(t) }),
-                            onPlanFrom = if (t.kind == TourKind.PLANNED || !TrackLine.hasDistance(t.distanceM) || t.id == recordingId) null else ({ onPlanFrom(t) }))
+                            onDelete = if (has(RouteRowActions.Action.DELETE)) ({ onDelete(t) }) else null,
+                            onEditRides = if (has(RouteRowActions.Action.EDIT_RIDES)) ({ onEditRides(t) }) else null,
+                            onPlanFrom = if (has(RouteRowActions.Action.PLAN_FROM)) ({ onPlanFrom(t) }) else null)
                     }
                 }
             }
@@ -487,7 +500,9 @@ private fun RoutesSearchField(query: String, onQuery: (String) -> Unit, modifier
 
 @Composable
 private fun TourCard(
-    t: Tour, tag: RouteTag?, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?,
+    t: Tour, tag: RouteTag?, row: RouteRowActions.Row, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit,
+    /** ⋮ → Löschen; null = not in ⋮ (a draft deletes on its row, the tour being recorded never). */
+    onDelete: (() -> Unit)?,
     onEditRides: (() -> Unit)? = null, onCopy: (() -> Unit)? = null, onShare: (() -> Unit)? = null,
     onPlanFrom: (() -> Unit)? = null,
     /** Under the card's text, over its full width (a draft's Speichern · Löschen). */
@@ -498,6 +513,8 @@ private fun TourCard(
     menu: Boolean = true,
     /** Its line for the small preview (owner 2026-11-07); null / too short = the kind's sign as before. */
     line: List<List<com.onpath.app.routing.GeoPoint>>? = null,
+    /** The tour being recorded right now: "Wird gerade aufgezeichnet" under the numbers. */
+    recording: Boolean = false,
 ) {
     val (icon, color) = when (t.kind) {
         TourKind.PLANNED -> Icons.Filled.Route to OnPathColors.Route
@@ -506,27 +523,33 @@ private fun TourCard(
     }
     // a plan under Zuletzt: the route sign pale – only a draft (owner 2026-11-06), the words the same ("Plan · date")
     val pale = DraftLook.of(t.draft)
-    Surface(onClick = { onOpen?.invoke() }, enabled = onOpen != null, shape = OnPathShapes.Card, color = OnPathColors.Paper, modifier = Modifier.heightIn(min = 72.dp).warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
+    val openLabel = str(Res.string.routes_open_row, t.name)
+    Surface(onClick = { onOpen?.invoke() }, enabled = onOpen != null, shape = OnPathShapes.Card, color = OnPathColors.Paper,
+        modifier = Modifier.heightIn(min = 72.dp).warmShadow(OnPathShadow.LOW, OnPathShapes.Card)
+            .semantics { onClick(label = openLabel) { onOpen?.invoke(); onOpen != null } }) {
         Column {
         Row(Modifier.fillMaxWidth().padding(start = 14.dp, top = 12.dp, bottom = 10.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            // the route's shape on paper (owner 2026-11-07); without a line the kind's sign as before
+            // the route's shape on paper (owner 2026-11-07); without a line the kind's sign as before. ⤢ on it: a tap there
+            // (like on the row) opens the large overview (owner 2026-11-07 09:40 "deutlich, wo man tippen muss")
             RoutePreviewTile(line, RouteShape.tint(t.kind), pale = t.draft, placeholder = {
                 Box(Modifier.size(44.dp).clip(CircleShape).background(color.copy(alpha = pale.circle)), contentAlignment = Alignment.Center) {
                     Icon(icon, contentDescription = t.kind.label, tint = color.copy(alpha = pale.icon))
                 }
-            })
+            }, onEnlarge = if (row.opensOverview) onOpen else null)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 // from the browser and not opened yet (owner 2026-10-31): a "New" / "Changed" tag after the name, until opened
                 RouteTitle(t.name, tag)
-                Text("${t.kind.label} · " + SimpleDateFormat(str(Res.string.common_date), Locale.getDefault()).format(Date(t.createdMs)),
+                Text("${t.kind.label} · " + SimpleDateFormat(str(Res.string.common_date), Locale.getDefault()).format(Date(t.createdMs)).replace(' ', '\u00A0'),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(instrument("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}",
+                Text(instrument(RouteRowActions.facts(Format.distance(t.distanceM), Format.meters(t.ascentM), Format.duration(t.durationS)),
                     MaterialTheme.typography.bodySmall, MaterialTheme.colorScheme.onSurfaceVariant), style = MaterialTheme.typography.bodySmall)
-                if (onDelete == null) Text(str(Res.string.routes_recording_now), style = MaterialTheme.typography.bodySmall, color = OnPathColors.Rec)
+                if (recording) Text(str(Res.string.routes_recording_now), style = MaterialTheme.typography.bodySmall, color = OnPathColors.Rec)
                 if (justSaved) Text(str(Res.string.routes_just_saved), style = MaterialTheme.typography.labelLarge,
                     color = OnPathColors.ActionEdit, modifier = Modifier.padding(top = 2.dp))
             }
+            if (row.chevron) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
             if (menu) TourItemMenu(t, onRename, onExport, onDelete, onEditRides, onCopy, onShare, onPlanFrom)
             else Spacer(Modifier.width(8.dp))
         }
