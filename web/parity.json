@@ -92,7 +92,7 @@
         "web/app/src/main.ts",
         "web/app/src/gpximport.ts"
       ],
-      "blob": "a00c7c4674ea95f3a48910667cfe0054acb91431"
+      "blob": "95f74259c4da89a19865ef23c28ac5fce81d5a26"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/SettingsScreen.kt",
@@ -154,7 +154,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "ef4e528658032cf3095dd4753fe489054d76380a"
+      "blob": "4ed05b59c9d154e4e040d5a4fc17488ffd441d42"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
