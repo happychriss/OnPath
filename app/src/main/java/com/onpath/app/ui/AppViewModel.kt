@@ -161,6 +161,28 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     val blockingMissing: List<DataFiles.Check> get() = DataFiles.blocking(missing, overviewBundled, cells.downloadsAvailable)
 
+    // --- the tour's lifecycle state (audit package 4 stage 2: a focused state holder, the VM forwards) ---
+    /** End sheet, arrival box, saved box, interrupted tour, "Neuer Plan" line, hold lock – see [TourController]. */
+    val tour = com.onpath.app.ui.tour.TourController(
+        object : com.onpath.app.ui.tour.TourRecorder {
+            override fun start(activity: String, sac: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_START) {
+                putExtra(RecordingService.EXTRA_ACTIVITY, activity)
+                putExtra(RecordingService.EXTRA_SAC, sac)
+            }
+            override fun continueTour(tourId: Long) = RecordingService.send(getApplication(), RecordingService.ACTION_START) {
+                putExtra(RecordingService.EXTRA_CONTINUE_ID, tourId)
+            }
+            override fun pause(pause: Boolean) =
+                RecordingService.send(getApplication(), if (pause) RecordingService.ACTION_PAUSE else RecordingService.ACTION_RESUME)
+            override fun stop() = RecordingService.send(getApplication(), RecordingService.ACTION_STOP)
+        },
+        object : com.onpath.app.ui.tour.HoldStore {
+            override var holdLearned: Boolean
+                get() = prefs.holdLearned
+                set(v) { prefs.holdLearned = v }
+        },
+    )
+
     // --- screens and mode ---
     // messages (declared before routesOpen / showSettings, whose setters clear their lines) – see [say]
     /** The red error box (MessageCard HINWEIS_ERROR: ⚠, red edge, OK) on the screen shown; null = none. Never cleared by itself. */
@@ -172,20 +194,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * 22:05, "super verwirrend"): Navigate says "Neuer Plan – deine Aufnahme läuft weiter" at the bottom for a few
      * seconds ([NewPlanLine]), with "Rückgängig" when a plan was replaced ([undoNewPlan]). Null = no line.
      */
-    var newPlanNote by mutableStateOf<NewPlanNote?>(null)
-        private set
-    fun dropNewPlanNote() { newPlanNote = null }
+    val newPlanNote: NewPlanNote? get() = tour.newPlanNote
+    fun dropNewPlanNote() = tour.dropNewPlanNote()
 
     /** The locked bar's rest line shows until one held button fired ([HoldRule.pillShows], owner 2026-11-07). */
-    var holdLearned by mutableStateOf(prefs.holdLearned)
-        private set
+    val holdLearned: Boolean get() = tour.holdLearned
     /** A held button of the locked bar fired: from now on its rest line is gone (a short tap still says "Gedrückt halten"). */
-    fun holdFired() {
-        if (holdLearned) return
-        holdLearned = true
-        prefs.holdLearned = true
-        com.onpath.app.debug.Problems.trace("navigate", "First held button fired: the lock line no longer shows at rest")
-    }
+    fun holdFired() = tour.holdFired()
     /** The line at the top of the open Settings page; goes when the page changes or Settings closes. */
     var settingsNote by mutableStateOf<Notice?>(null)
     private var routesShown by mutableStateOf(false)
@@ -206,7 +221,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Map taps may add, move or insert points (Plan with no track shown). */
     val canEditMap: Boolean get() = mode == AppMode.PLAN && shown == null
     /** "You have arrived – end tour?" is open. */
-    var arrivalAsk by mutableStateOf(false)
+    var arrivalAsk: Boolean
+        get() = tour.arrivalAsk
+        set(v) { tour.arrivalAsk = v }
     /** POI whose details sheet is open (F-MAP-09). */
     var selectedPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
 
@@ -964,17 +981,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Work the user started that takes a moment: a spinner where it was started. */
     var busy by mutableStateOf<Busy?>(null)
-    var unfinished by mutableStateOf<Tour?>(null)
+    val unfinished: Tour? get() = tour.unfinished
     /** The track of [unfinished], drawn on the map while its question shows (no service runs then). */
-    var unfinishedTrack by mutableStateOf<List<List<GeoPoint>>>(emptyList())
+    val unfinishedTrack: List<List<GeoPoint>> get() = tour.unfinishedTrack
     /**
      * The tour just saved by "Tour speichern": the slim box "Tour gespeichert" while it is set (owner 2026-11-06,
      * onpath.private#35: the box is clearer than a line in the plan sheet – name, numbers, "In Meine Touren ›", OK).
      */
-    var finishedTour by mutableStateOf<Tour?>(null)
+    val finishedTour: Tour? get() = tour.finishedTour
     /** Moving time / breaks / planned vs. needed of [finishedTour] (null = not known). */
-    var finishedTimes by mutableStateOf<com.onpath.app.time.TourTimes?>(null)
-        private set
+    val finishedTimes: com.onpath.app.time.TourTimes? get() = tour.finishedTimes
 
     /**
      * The box "Tour gespeichert" → "In Meine Touren ›": the box goes and My routes opens on Gemacht with the tour marked
@@ -982,8 +998,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * "Als Plan übernehmen" for a tour without any line).
      */
     fun openSavedTour() {
-        val t = finishedTour ?: return
-        finishedTour = null; finishedTimes = null
+        val t = tour.closeFinished() ?: return
         Problems.trace("tour", "Saved box: In Meine Touren → My routes → Gemacht, tour ${t.id} marked")
         routesTab = RoutesTab.DONE
         openRoutes()
@@ -992,8 +1007,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** The box "Tour gespeichert" → OK. */
     fun closeSavedTour() {
-        finishedTour?.let { Problems.trace("tour", "Saved box: OK (tour ${it.id})") }
-        finishedTour = null; finishedTimes = null
+        tour.closeFinished()?.let { Problems.trace("tour", "Saved box: OK (tour ${it.id})") }
     }
     var tours by mutableStateOf<List<Tour>>(emptyList())
         private set
@@ -1136,7 +1150,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     val line = runCatching { db.loadSegments(active.id).map { seg -> seg.map { GeoPoint(it.lat, it.lon) } } }
                         .onFailure { Problems.warn("db", "Track of the unfinished tour could not be read – not drawn", it) }
                         .getOrDefault(emptyList())
-                    withContext(Dispatchers.Main) { unfinishedTrack = line; unfinished = active }
+                    withContext(Dispatchers.Main) { tour.showUnfinished(active, line) }
                 }
             }
         }
@@ -1172,32 +1186,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             RecordingService.finished.collect { id ->
                 if (id != null) {
                     RecordingService.finished.value = null
-                    val discard = deleteFinished; deleteFinished = false
+                    val discard = tour.takeDeleteFinished()
                     if (discard) {
                         val ok = withContext(Dispatchers.IO) {
                             runCatching { db.setDeleted(id, System.currentTimeMillis()) }
                                 .onFailure { Problems.error("db", "The ended tour could not be moved to the recycle bin; it stays in My routes", it) }
                                 .getOrDefault(false).also { if (it) Backups.tourChanged(getApplication(), id) }
                         }
-                        finishedTour = null; finishedTimes = null
+                        tour.closeFinished()
                         if (!ok) sayError(Txt.s(Res.string.msg_track_delete_failed_here), NoticePlace.MAP)
                     } else {
-                        finishedTour = withContext(Dispatchers.IO) { db.getTour(id) }
-                        finishedTimes = withContext(Dispatchers.IO) { finishedTour?.let { tourTimes(it) } }
-                        finishedTour?.let { nameRecordedTour(it) }
+                        val done = withContext(Dispatchers.IO) { db.getTour(id) }
+                        tour.showFinished(done, withContext(Dispatchers.IO) { done?.let { tourTimes(it) } })
+                        done?.let { nameRecordedTour(it) }
                         // "Split into two tours": the parts after the rides get a place name too
                         val parts = RecordingService.finishedParts; RecordingService.finishedParts = emptyList()
                         parts.forEach { p -> withContext(Dispatchers.IO) { db.getTour(p) }?.let { nameRecordedTour(it) } }
                     }
                     refreshTours()
                     clearFollow()
-                    arrivalAsk = false
                     // the tour and the plan are two things (owner 2026-11-06, Komoot / Strava): ending, saving or deleting
                     // the TOUR leaves the plan on the map as it is – a plan never saved was saved at the start ("Los
                     // geht's"), changes made on the way show "Nicht gespeichert ›" (was: the plan left the map, and the
                     // end sheet's switch "Plan auch speichern" was easy to miss)
                     enter(AppMode.PLAN)
-                    newPlanNote = null
+                    tour.afterFinished() // no arrival box, no "Neuer Plan" line of the old tour
                 }
             }
         }
@@ -2961,18 +2974,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         when (ask) {
             OpenAsk.FOLLOW_PLAN_DURING_TOUR -> {
                 Problems.trace("tour", "Plan \"${t.name}\" tapped during the tour: followed at once (no question), the recording goes on")
-                newPlanNote = NewPlanNote(undo = hadPlan, id = ++newPlanNotes)
+                tour.noteNewPlan(undo = hadPlan)
                 unlessUnsaved("Load \"${t.name}\" during the tour") { openTour(t, duringTour = true) }
             }
             OpenAsk.FOLLOW_DURING_TOUR -> {
                 Problems.trace("tour", "Track \"${t.name}\" tapped during the tour: followed at once (no question), the recording goes on")
-                newPlanNote = NewPlanNote(undo = hadPlan, id = ++newPlanNotes)
+                tour.noteNewPlan(undo = hadPlan)
                 unlessUnsaved("Follow \"${t.name}\" during the tour") { openTour(t, trackThen = TrackThen.FOLLOW) }
             }
             OpenAsk.REPLACE_PLAN, OpenAsk.NONE -> openTour(t)
         }
     }
-    private var newPlanNotes = 0L
 
     /**
      * "Rückgängig" on [newPlanNote]: the plan from before comes back in one Undo step (loading the new plan / clearing the
@@ -2980,8 +2992,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * "Weiter geht's" ([continueNavigation]). Only offered when there was a plan before.
      */
     fun undoNewPlan() {
-        val note = newPlanNote ?: return
-        newPlanNote = null
+        val note = tour.newPlanNote ?: return
+        tour.dropNewPlanNote()
         if (!note.undo) return
         Problems.trace("plan", "Rückgängig on \"Neuer Plan\": the plan from before comes back, the tour follows it")
         undoStep()
@@ -3014,7 +3026,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** The end question closed without ending the tour. */
-    fun dismissEndAsk() { endAsk = null }
+    fun dismissEndAsk() = tour.dismissEndAsk()
 
     /**
      * Proposed name of a new route: a plan from a link keeps its title while its points are unchanged, else
@@ -3067,7 +3079,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             if (!ok) return@launchSafe
             Backups.tourChanged(getApplication(), t.id) // the file follows the new name
-            finishedTour?.let { if (it.id == t.id) finishedTour = it.copy(name = name) }
+            tour.finishedTour?.let { if (it.id == t.id) tour.finishedTour = it.copy(name = name) }
             refreshTours()
         }
     }
@@ -3445,12 +3457,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** "End tour" in Plan (after confirmation) or "End & save" on arrival: stop and save. */
     fun endTour() {
-        Problems.trace("tour", "End tour (save)"); endAsk = null; arrivalAsk = false; deleteFinished = false
+        tour.end(delete = false)
         stopRecording() // the plan is not touched (owner 2026-11-06: two things)
     }
 
     /** What "End tour" shows now (null = nothing): see [askEndTour]. */
-    var endAsk by mutableStateOf<EndAsk?>(null)
+    var endAsk: EndAsk?
+        get() = tour.endAsk
+        set(v) { tour.endAsk = v }
 
     /**
      * "End tour" tapped: rides in the track so far (docs/design/vehicle-detection.md) → the summary with four choices,
@@ -3527,20 +3541,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * it is (owner 2026-11-06: the tour and the plan are two things – it was saved at the start).
      */
     fun endTourAndDelete() {
-        Problems.trace("tour", "End tour (delete)"); endAsk = null; arrivalAsk = false; deleteFinished = true
+        tour.end(delete = true)
         stopRecording()
     }
-    private var deleteFinished = false
 
     /**
      * The service found the end of the followed line (RecState.arrived, review H2 – also with the phone in the pocket;
      * it says "arrived" itself): the arrival question once per arrival this app instance sees.
      */
-    private fun onArrived(arrived: Boolean) {
-        if (arrived && !arrivalSeen) { arrivalSeen = true; arrivalAsk = true }
-        if (!arrived) arrivalSeen = false
-    }
-    private var arrivalSeen = false
+    private fun onArrived(arrived: Boolean) = tour.onArrived(arrived)
 
     // ---------------- follow / record ----------------
 
@@ -3724,30 +3733,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun startRecording() {
         Problems.trace("tour", "Tour start (${activity.name}, plan ${waypoints.size} points, " +
             (if (followLine != null) "following ${followName ?: "a route"}" else "nothing followed") + ")")
-        RecordingService.send(getApplication(), RecordingService.ACTION_START) {
-            putExtra(RecordingService.EXTRA_ACTIVITY, activity.name)
-            putExtra(RecordingService.EXTRA_SAC, sac)
-        }
+        tour.start(activity.name, sac)
         followMe = true
     }
 
     fun continueRecording(t: Tour) {
         com.onpath.app.recording.InterruptedLog.chose(t.name, com.onpath.app.recording.InterruptedLog.Choice.CONTINUE)
-        unfinished = null
-        RecordingService.send(getApplication(), RecordingService.ACTION_START) {
-            putExtra(RecordingService.EXTRA_CONTINUE_ID, t.id)
-        }
+        tour.continueTour(t)
     }
 
     /** "Unfinished tour" → Save with a bus / car / lift found: the ride summary for it (null = none). */
-    var unfinishedRides by mutableStateOf<Pair<Tour, com.onpath.app.rides.RideView.Summary>?>(null)
+    val unfinishedRides: Pair<Tour, com.onpath.app.rides.RideView.Summary>? get() = tour.unfinishedRides
 
     /**
      * "Unfinished tour" → Save: like End tour – rides found → the summary with the four
      * choices ([unfinishedRides]), else saved at once. Detection failing = saved as recorded (reported).
      */
     fun askSaveUnfinished(t: Tour) {
-        unfinished = null
+        tour.unfinished = null
         if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
         viewModelScope.launchSafe("app", "askSaveUnfinished") {
             val s = withContext(Dispatchers.IO) {
@@ -3758,23 +3761,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }.onFailure { Problems.warn("rides", "Ride check of the unfinished tour failed – saved without it", it) }.getOrNull()
             }
             when (com.onpath.app.domain.tour.TourEndFlow.unfinishedSave(s != null)) {
-                com.onpath.app.domain.tour.TourEndFlow.Next.RIDES -> unfinishedRides = t to s!!
+                com.onpath.app.domain.tour.TourEndFlow.Next.RIDES -> tour.unfinishedRides = t to s!!
                 else -> saveUnfinished(t)
             }
         }
     }
 
     /** Ride summary of the unfinished tour → Cancel: back to its question (Continue · Delete · Save). */
-    fun backToUnfinished() { unfinishedRides?.let { unfinished = it.first }; unfinishedRides = null }
+    fun backToUnfinished() = tour.backToUnfinished()
 
     /**
      * Saves the interrupted tour; [choice] from the ride summary is applied like at the end of a recording
      * (RideApply.finish – without a choice the rides are only marked, Edit rides can change it later).
      */
     fun saveUnfinished(t: Tour, choice: com.onpath.app.rides.RideChoice? = null) {
-        val rides = unfinishedRides?.second?.rides
+        val rides = tour.unfinishedRides?.second?.rides
         com.onpath.app.recording.InterruptedLog.chose(t.name, com.onpath.app.recording.InterruptedLog.Choice.SAVE)
-        unfinished = null; unfinishedRides = null
+        tour.closeUnfinished()
         // the sticky service came back meanwhile and records this tour: it is not unfinished, leave it alone
         if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
         enter(AppMode.PLAN)
@@ -3796,7 +3799,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** "Unfinished tour" → Delete (asked again in the dialog): saved as done, then into the recycle bin (30 days). */
     fun deleteUnfinished(t: Tour) {
         com.onpath.app.recording.InterruptedLog.chose(t.name, com.onpath.app.recording.InterruptedLog.Choice.DELETE)
-        unfinished = null; unfinishedRides = null
+        tour.closeUnfinished()
         if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
         Problems.trace("tour", "Unfinished tour ${t.id} deleted (recycle bin)")
         enter(AppMode.PLAN)
@@ -3815,13 +3818,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun pauseRecording(pause: Boolean) =
-        RecordingService.send(getApplication(), if (pause) RecordingService.ACTION_PAUSE else RecordingService.ACTION_RESUME)
+    fun pauseRecording(pause: Boolean) = tour.pause(pause)
 
     fun stopRecording() {
         routeBackAsk = false // a question about this tour's plan never reaches the next tour
         planSize = PlanSize.afterTour(planSize)
-        RecordingService.send(getApplication(), RecordingService.ACTION_STOP)
+        tour.stop()
     }
 
     // ---------------- tours ----------------
@@ -4316,7 +4318,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (!ok) { routesProblem = Txt.s(Res.string.msg_tour_delete_failed, t.name); return@withContext }
                 if (shown?.tourId == t.id) shown = null
                 if (linkId == t.id) setSaved(null, -1, null) // the plan is no longer saved anywhere
-                if (finishedTour?.id == t.id) finishedTour = null
+                if (tour.finishedTour?.id == t.id) tour.closeFinished()
                 refreshTours()
             }
         }
