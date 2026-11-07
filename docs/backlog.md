@@ -45,11 +45,6 @@ and the commit history.
   the low sheet; (5) EN starts lowercase: "ford · 5 steep sections"; (6) after an activity change in Plan a "New route
   for Hike T2 – check it" line appears; (7) D10: T1 + Mutkopf gives a 30 km detour (text right, numbers odd); (8) the
   ride summary keeps German rows after a live language switch. Pictures: onpath.private/marketing/bilder/aktuell/.
-- **[donald] Saved long routes load without routing again (owner idea 2026-11-07, chat)** – the S10 took 67 s for a
-  723 km plan, and loading a saved route routes it again. Proposal: reuse the stored line per leg on load; route again
-  only edited legs or legs whose routing data is newer (the app already knows "routed with newer data"). The owner's
-  idea – invisible shape points as keys to the planned route, read once on load – as a later fallback when data is
-  newer: a hint with tolerance, never forced (a closed way must not force a detour). Waiting for the owner's yes.
 - **[donald] (low) Vellau → Leiteralm routes over the Gamplweg (website pictures 2026-11-07)** – Wandern T2 takes the
   bow east instead of the path along the Korblift (seen by A-019 and again in 0.17.3). Owner: "merkt eh keiner" – the
   pictures stay. Later: is the lift path above T2, cut in the data, or a profile cost? JVM harness, no new pictures.
