@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.app.map.MapController.TrackLook
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -28,6 +29,36 @@ class PlanLayersTest {
         assertEquals(listOf("TRACK", "FOLLOW"), com.onpath.app.map.MapController.TrackLook.entries.map { it.name })
         val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
         val look = vm.substringAfter("fun trackLook()").substringBefore("\n\n")
-        assertEquals(true, look.contains("TrackLook.FOLLOW") && look.contains("shown != null"))
+        assertEquals(true, look.contains("gpxLine("))
+        assertEquals(TrackLook.FOLLOW, gpxLine(navigate = false, shown = null, follow = ahead).look)
+        assertEquals(TrackLook.TRACK, gpxLine(navigate = false, shown = listOf(ahead), follow = null).look)
+    }
+
+    /**
+     * Field bug 2026-11-07 (owner's S10, Play 0.17.3, "Wir haben Punkte ohne Route"): during the tour he opened a done
+     * tour of 0 m from My routes (no line – it is only shown, not followed) and went back to Navigate. The map line
+     * showed that track's (empty) segments instead of the followed line: Navigate drew the plan points ⑦ ⑧ ⑨ around
+     * Bonn and no route, while the guidance ran on (587 km to go). Navigate always draws the followed line.
+     */
+    @Test fun navigateDrawsTheFollowedLineWhileAnEmptyDoneTourIsShown() {
+        val line = gpxLine(navigate = true, shown = emptyList(), follow = ahead)
+        assertEquals(listOf(ahead), line.lines)
+        assertEquals(TrackLook.FOLLOW, line.look)
+        assertEquals(false, line.track)
+    }
+
+    @Test fun navigateDrawsTheFollowedLineNotAShownTrack() {
+        val track = (20..25).map(::g)
+        val line = gpxLine(navigate = true, shown = listOf(track), follow = ahead)
+        assertEquals(listOf(ahead), line.lines)
+        assertEquals(TrackLook.FOLLOW, line.look)
+    }
+
+    /** Plan: a shown track (its sheet is open) is drawn in its own colour, as before; with nothing followed Navigate too. */
+    @Test fun aShownTrackIsDrawnInPlanAndWhenNothingIsFollowed() {
+        val track = (20..25).map(::g)
+        assertEquals(GpxLine(listOf(track), TrackLook.TRACK, true), gpxLine(navigate = false, shown = listOf(track), follow = ahead))
+        assertEquals(GpxLine(listOf(track), TrackLook.TRACK, true), gpxLine(navigate = true, shown = listOf(track), follow = null))
+        assertEquals(GpxLine(emptyList(), TrackLook.FOLLOW, false), gpxLine(navigate = true, shown = null, follow = null))
     }
 }

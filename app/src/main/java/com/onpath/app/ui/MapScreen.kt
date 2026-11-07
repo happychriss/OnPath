@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.material.icons.outlined.LocationSearching
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -125,6 +126,8 @@ fun MapScreen(
         vm.planGpsNote?.let { delay(PlanGps.noteMs(it)); vm.planGpsNote = null }
     }
     LaunchedEffect(gps, hasFix) { if (PlanGps.noteGone(vm.planGpsNote, gps, hasFix)) vm.planGpsNote = null }
+    // the map's quiet INFO line goes by itself (MapNote.MS), counted from when it was said
+    LaunchedEffect(vm.mapNoteTick) { vm.mapNote?.let { delay(MapNote.MS); vm.mapNote = null } }
     // One grouped control: compass (always, both modes: the session's one orientation – MapOrientation.tap), locate (always,
     // with the GPS dot), eye and whole route (always – grey without something route-like on the map, owner 2026-11-06).
     // [mode] = the layer the footer sits in (not vm.mode: the leaving layer keeps its look while it animates out)
@@ -267,7 +270,17 @@ fun MapScreen(
                 }, androidx.compose.material.icons.Icons.Outlined.LocationSearching,
                 Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                     top = PlanGps.noteTopDp(rowTop, if (vm.backgroundStripShown) vm.backgroundStripBottomDp else null).dp,
-                    start = OverviewPillPlace.EDGE_DP.dp, end = OverviewPillPlace.EDGE_DP.dp))
+                    start = PlanGps.noteStartDp(activityButtonShown = vm.shown == null).dp, end = OverviewPillPlace.EDGE_DP.dp))
+        }
+        // A short INFO for the map (vm.say → NoticeSurface.MAP_LINE, e.g. "Relief off – the map runs smoother"): the quiet
+        // pill at the GPS note's place (PlanGps.noteTopDp / noteStartDp), after the GPS note (a tap of the user's) – goes
+        // by itself after MapNote.MS
+        vm.mapNote?.takeIf { vm.mode == AppMode.PLAN && !vm.searchOpen && vm.planGpsNote == null }?.let { note ->
+            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+            QuietPill(note.text, androidx.compose.material.icons.Icons.Outlined.Info,
+                Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
+                    top = PlanGps.noteTopDp(rowTop, if (vm.backgroundStripShown) vm.backgroundStripBottomDp else null).dp,
+                    start = PlanGps.noteStartDp(activityButtonShown = vm.shown == null).dp, end = OverviewPillPlace.EDGE_DP.dp))
         }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, cameraTick,
@@ -643,9 +656,12 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
                     if (d.showMarkers) d.passed else emptySet())
             }
     }
-    LaunchedEffect(c, vm.shown, vm.followLine) {
-        c.setTrack(MapController.SRC_GPX, vm.shown?.segments ?: listOfNotNull(vm.followLine))
-        val rides = vm.shown?.rides.orEmpty()
+    // Navigate draws the followed line, never a track only shown (field bug 2026-11-07: a 0 m done tour opened during the
+    // tour left Navigate with the plan's points and no route – gpxLine)
+    val gpx = gpxLine(vm.mode == AppMode.NAVIGATE, vm.shown?.segments, vm.followLine)
+    LaunchedEffect(c, gpx) {
+        c.setTrack(MapController.SRC_GPX, gpx.lines)
+        val rides = if (gpx.track) vm.shown?.rides.orEmpty() else emptyList()
         c.setTrack(MapController.SRC_RIDES, rides.filter { it.second == com.onpath.app.rides.RideKind.VEHICLE }.map { it.first })
         c.setTrack(MapController.SRC_LIFTS, rides.filter { it.second == com.onpath.app.rides.RideKind.LIFT }.map { it.first })
     }
@@ -796,6 +812,25 @@ private const val ROUTE_UP_MAX_OFF_M = 30.0
  */
 internal fun paleLines(plan: Boolean, navOriginal: List<com.onpath.app.routing.GeoPoint>?): List<List<com.onpath.app.routing.GeoPoint>> =
     if (plan) emptyList() else listOfNotNull(navOriginal)
+
+/** What the [MapController.SRC_GPX] line draws ([gpxLine]); [track] = a shown track (its rides go with it). */
+internal data class GpxLine(
+    val lines: List<List<com.onpath.app.routing.GeoPoint>>,
+    val look: MapController.TrackLook,
+    val track: Boolean,
+)
+
+/**
+ * The one map line for a followed route or a shown track. A shown track (a done tour opened from My routes, a GPX
+ * import) takes the line in Plan, where its sheet is open, and wherever nothing is followed; in Navigate the followed
+ * line always stays. Field bug 2026-11-07 (owner's S10, "Wir haben Punkte ohne Route"): during the tour a 0 m done tour
+ * opened from My routes (no line to follow – only shown) replaced the followed line; back in Navigate the plan's points
+ * showed and no route, while the guidance ran on along it.
+ */
+internal fun gpxLine(navigate: Boolean, shown: List<List<com.onpath.app.routing.GeoPoint>>?,
+                     follow: List<com.onpath.app.routing.GeoPoint>?): GpxLine =
+    if (shown != null && !(navigate && follow != null)) GpxLine(shown, MapController.TrackLook.TRACK, true)
+    else GpxLine(listOfNotNull(follow), MapController.TrackLook.FOLLOW, false)
 
 /**
  * Which parts of the plan the map draws: (planned line, numbered point markers) – both whenever the plan can be edited

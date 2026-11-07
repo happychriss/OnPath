@@ -89,6 +89,8 @@ object Diagnostics {
             .put("data", safe { data(context) })
             .put("style", safe { style(context) })
             .put("map", mapPart)
+            // janky share (frames > 16 ms) per map gesture kind and relief state since the app started (ReliefAuto)
+            .put("mapJank", safe { MapJank.tally.json() })
             .put("state", extra)
         ZipOutputStream(out.outputStream().buffered()).use { z ->
             fun put(name: String, text: String) {
@@ -120,7 +122,12 @@ object Diagnostics {
         return JSONObject().put("all", s.toString())
             .put("hiddenPoiKinds", JSONArray(s.hiddenPoiKinds.toList()))
             .put("mapTheme", s.mapTheme).put("contours", s.contours).put("hillshade", s.hillshade)
+            .put("relief", relief(Prefs(context).reliefAuto, s.hillshade))
     }
+
+    /** Relief now, whether the app switched it off on a slow phone (map/ReliefAuto) or the user set it by hand. */
+    internal fun relief(st: com.onpath.app.map.ReliefAuto.State, on: Boolean): JSONObject =
+        JSONObject().put("on", on).put("autoSwitchedOff", st.autoOff).put("setByUser", st.byUser)
 
     private fun data(context: Context): JSONObject {
         val df = DataFiles(context)

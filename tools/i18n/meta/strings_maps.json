@@ -1060,5 +1060,12 @@
     "context": "Result / error after importing map data from a file (Missing map data screen, Developer tools): %1$s = file name",
     "priority": 3,
     "confidence": "sicher"
+  },
+  "maps_relief_auto_off": {
+    "area": "Map (Plan)",
+    "context": "Short quiet line on the map, once: the app switched the hill shading (Relief) off by itself because the map stuttered on this phone; Settings -> Map switches it back on. Owner's own wording (2026-11-07)",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 45
   }
 }

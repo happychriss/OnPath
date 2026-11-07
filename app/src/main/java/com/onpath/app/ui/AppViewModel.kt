@@ -686,6 +686,35 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** The user drags the map (true) / the map came to rest (false): new map areas are not joined meanwhile. */
+    /** The quiet line on the Plan map ([NoticeSurface.MAP_LINE], goes after [MapNote.MS]); [mapNoteTick] restarts its time. */
+    var mapNote by mutableStateOf<Notice?>(null)
+    var mapNoteTick by mutableStateOf(0)
+        private set
+
+    /** Relief switched off by the app once / set by hand ([com.onpath.app.map.ReliefAuto]). */
+    private var reliefAuto = prefs.reliefAuto
+
+    /**
+     * One map gesture is over (finger down → map at rest, fling included) with its frame times (MapHost, FrameJankMeter):
+     * into the events log and the problem report's tally; on a phone that stutters with relief, relief goes off once,
+     * by itself, with a short line on the map (owner 2026-11-07, [com.onpath.app.map.ReliefAuto]). Decided only in Plan
+     * (where the line can show); Navigate's gestures count towards it.
+     */
+    fun mapGestureMeasured(kind: com.onpath.app.map.ReliefAuto.Kind, stats: com.onpath.app.debug.FrameStats) {
+        val relief = settings.hillshade
+        Problems.trace("map", stats.line("Map ${kind.label}") + ", relief ${if (relief) "on" else "off"}")
+        val tally = com.onpath.app.debug.MapJank.tally
+        tally.add(com.onpath.app.map.ReliefAuto.Gesture(kind, stats.frames, stats.over16, relief))
+        if (mode != AppMode.PLAN || searchOpen) return
+        val v = com.onpath.app.map.ReliefAuto.decide(tally.recent(), relief, reliefAuto) ?: return
+        reliefAuto = com.onpath.app.map.ReliefAuto.switchedOff(reliefAuto); prefs.reliefAuto = reliefAuto
+        settings = settings.copy(hillshade = false); prefs.settings = settings // not by hand: updateSettings would mark it
+        Problems.trace("map", "Relief switched off by the app: ${v.janky} of ${v.frames} frames > 16 ms (${v.percent} %) " +
+            "over ${v.gestures} map gestures with relief on (limit ${(com.onpath.app.map.ReliefAuto.JANK_SHARE * 100).toInt()} %); " +
+            "Settings → Map switches it back on")
+        sayInfo(Txt.s(Res.string.maps_relief_auto_off), NoticePlace.MAP)
+    }
+
     fun mapGesture(on: Boolean) {
         // the map moved by hand during the flight to a shared place: its menu no longer opens by itself
         if (on) searchFlow.mapMovedByHand()
@@ -998,9 +1027,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * place only in the problem log. Routing: [NoticeRouting].
      */
     fun say(text: String, kind: NoticeKind, place: NoticePlace) {
-        when (NoticeRouting.surface(kind, place, routesOpen, showSettings)) {
+        when (NoticeRouting.surface(kind, place, routesOpen, showSettings, mapShown = mode == AppMode.PLAN && !searchOpen)) {
             NoticeSurface.ROUTES_LINE -> routesNote = Notice(text, kind)
             NoticeSurface.SETTINGS_LINE -> settingsNote = Notice(text, kind)
+            NoticeSurface.MAP_LINE -> { mapNote = Notice(text, kind); mapNoteTick++ }
             NoticeSurface.ERROR_CARD -> errorCard = text
             NoticeSurface.LOG_ONLY -> Problems.trace("ui", "${kind.name} for ${place.name.lowercase()} not shown (place closed): $text")
         }
@@ -1496,6 +1526,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun updateSettings(s: AppSettings) {
         val paceChanged = s.hikePace != settings.hikePace || s.bikePace != settings.bikePace
+        // Relief set by hand (Settings → Map): the user's choice wins, the app never switches it off again (ReliefAuto)
+        if (s.hillshade != settings.hillshade) {
+            reliefAuto = com.onpath.app.map.ReliefAuto.userSet(reliefAuto); prefs.reliefAuto = reliefAuto
+            Problems.trace("map", "Relief ${if (s.hillshade) "on" else "off"} by hand – the app no longer switches it by itself")
+        }
         settings = s; prefs.settings = s
         cells.wifiOnly = s.mapsWifiOnly
         if (paceChanged) retime()
@@ -3580,9 +3615,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** A tour is guided along the plan (not a followed GPX track): Navigate shows the plan's points (owner 2026-11-01). */
     val planGuides: Boolean get() = followLine != null && !followIsTrack && waypoints.isNotEmpty()
 
-    /** Look of the followed / shown line on the map (see MapController.setTrackLook): a shown track its own colour, else route blue. */
+    /**
+     * Look of the followed / shown line on the map (see MapController.setTrackLook): a shown track its own colour, else
+     * route blue – in Navigate the followed line stays blue while a track is shown ([gpxLine]).
+     */
     fun trackLook(): com.onpath.app.map.MapController.TrackLook =
-        if (shown != null) com.onpath.app.map.MapController.TrackLook.TRACK else com.onpath.app.map.MapController.TrackLook.FOLLOW
+        gpxLine(mode == AppMode.NAVIGATE, shown?.segments, followLine).look
 
     private fun checkNow() {
         if (recState.value != null && followLine != null) RecordingService.send(getApplication(), RecordingService.ACTION_CHECK_NOW)
