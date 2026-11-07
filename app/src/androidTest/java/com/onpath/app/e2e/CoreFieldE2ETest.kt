@@ -360,7 +360,9 @@ class CoreFieldE2ETest : E2EBase() {
         var saved: List<Long> = emptyList()
         scenario.onActivity { saved = vm(it).tours.filter { t -> t.kind == TourKind.PLANNED && !t.draft }.map { t -> t.id } }
         assertEquals("no new saved route – no \"Name (2)\"", idsBefore.filter { it in saved }.toSet(), saved.toSet())
-        scenario.onActivity { assertFalse("the plan counts as saved now", vm(it).planUnsaved) }
+        // the plan's "saved" mark follows the DB write on the main thread (overwriteSaved → setSaved); when an earlier
+        // test's route already holds the old points the Zuletzt wait above passes at once, before that (GitHub 2026-11-07)
+        waitUntil("the plan counts as saved now", 10_000) { var u = true; scenario.onActivity { u = vm(it).planUnsaved }; !u }
         scenario.onActivity { vm(it).endTour() }
         waitUntil("the tour has ended", 20_000) { !recording() }
         scenario.onActivity { vm(it).tours.filter { t -> t.draft && t.waypoints.map { w -> w.lat to w.lon } == key(old) }.forEach { t -> db.deleteTour(t.id) } }
