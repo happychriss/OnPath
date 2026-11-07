@@ -125,8 +125,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
      * import) MapLibre throws on any access to the old one, and the app's effects can still hold this controller
      * for a moment – every update below is a no-op then instead of a crash (R-01).
      */
-    // expected: the old style throws while a new one loads → "not live", updates skipped
-    private fun live(): Boolean = try { style.isFullyLoaded } catch (_: Exception) { false }
+    private fun live(): Boolean = try { style.isFullyLoaded } catch (_: Exception) {
+        false // expected: the old style throws while a new one loads → "not live", the update is skipped (no report: every
+        // effect asks this on each style change, a report would flood the log with the same harmless line)
+    }
 
     /** GeoJSON source [id], or null when the style is gone or being replaced (the caller then does nothing). */
     private fun source(id: String): GeoJsonSource? =
@@ -987,8 +989,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     } catch (e: Exception) { Problems.warn("map", "Marker tap test failed, tap treated as no marker", e); -1 }
 
     /** Screen position of [p] in pixels of the map view, or null (projection not ready). */
-    // expected: the projection is not ready before the first layout
-    fun toScreen(p: GeoPoint): PointF? = try { map.projection.toScreenLocation(LatLng(p.lat, p.lon)) } catch (_: Exception) { null }
+    fun toScreen(p: GeoPoint): PointF? = try { map.projection.toScreenLocation(LatLng(p.lat, p.lon)) } catch (_: Exception) {
+        null // expected: the projection is not ready before the first layout – the caller draws no overlay this frame
+        // (no report: overlays ask this every frame, and null is their normal "not yet")
+    }
 
     private var lastPanMs = 0L
 
