@@ -120,6 +120,13 @@ class MainActivity : ComponentActivity() {
         com.onpath.app.data.AppLanguage.apply(this) // texts in the chosen language (Developer tools override)
         super.onCreate(savedInstanceState)
         traceCreated(savedInstanceState != null)
+        // only one OnPath screen: a launcher start that landed as a second, non-root screen stands down at once
+        if (ScreenLifecycle.standsDown(isTaskRoot, intent?.action, intent?.categories)) {
+            stoodDown = true
+            com.onpath.app.debug.Problems.trace("app", ScreenLifecycle.stoodDownLine(screenNo))
+            finish()
+            return
+        }
         incoming(intent, if (savedInstanceState == null) IncomingIntent.Delivery.CREATE else IncomingIntent.Delivery.RESTORED)
 
         announceLastCrash()
@@ -407,6 +414,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (stoodDown) return
         com.onpath.app.debug.Problems.trace("app", ScreenLifecycle.newIntentLine(screenNo, describe(intent)))
         incoming(intent, IncomingIntent.Delivery.NEW_INTENT)
     }
@@ -420,6 +428,9 @@ class MainActivity : ComponentActivity() {
 
     /** Number of this screen in the process (event log; two at once can happen at start – [ScreenLifecycle]). */
     private var screenNo = 0
+
+    /** This screen finished at once in onCreate ([ScreenLifecycle.standsDown]): no view model, no lifecycle work. */
+    private var stoodDown = false
 
     private fun traceCreated(restored: Boolean) {
         val (n, others) = ScreenLifecycle.created()
@@ -485,6 +496,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         com.onpath.app.data.AppLanguage.apply(this)
         super.onStart()
+        if (stoodDown) return // finishing: no view model, no tracker
         vm.tracker.start()
         vm.recheckData()
         vm.onAppStart() // owner: the app always opens at the current location (when nothing is running)
@@ -493,11 +505,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (stoodDown) return
         refreshPhone() // the user may come back from a settings screen of the guide
         readUnusedReset()
     }
 
     override fun onStop() {
+        if (stoodDown) { super.onStop(); return }
         if (phoneRead) vm.prefs.lastSeen = com.onpath.app.setup.LastSeen(com.onpath.app.setup.PhoneCheck.okNow(vm.phone),
             System.currentTimeMillis())
         vm.onAppStop()

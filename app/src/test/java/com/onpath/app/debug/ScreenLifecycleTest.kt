@@ -24,6 +24,19 @@ class ScreenLifecycleTest {
         assertEquals("Screen #2 destroyed (by the system)", ScreenLifecycle.destroyedLine(2, false, false, 0))
     }
 
+    /** Field 2026-11-06/07 (Pixel, after each install): a launcher start created as a non-root screen beside the task's root. */
+    @Test fun aNonRootLauncherStartStandsDown() {
+        val launcher = setOf("android.intent.category.LAUNCHER")
+        assertTrue(ScreenLifecycle.standsDown(taskRoot = false, "android.intent.action.MAIN", launcher))
+        // the task root is the one screen – it never stands down
+        assertFalse(ScreenLifecycle.standsDown(taskRoot = true, "android.intent.action.MAIN", launcher))
+        // a start that carries something (a link, a GPX, a share) is never dropped
+        assertFalse(ScreenLifecycle.standsDown(false, "android.intent.action.VIEW", null))
+        assertFalse(ScreenLifecycle.standsDown(false, "android.intent.action.SEND", null))
+        assertFalse(ScreenLifecycle.standsDown(false, "android.intent.action.MAIN", null))
+        assertFalse(ScreenLifecycle.standsDown(false, null, launcher))
+    }
+
     @Test fun intentTextShowsLaunchDetailsButNoContent() {
         val t = ScreenLifecycle.intentText("android.intent.action.MAIN", null, null,
             setOf("android.intent.category.LAUNCHER"), 0x10200000, fromHistory = false, sender = "com.android.shell")
