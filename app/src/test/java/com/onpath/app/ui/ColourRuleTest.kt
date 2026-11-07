@@ -27,7 +27,7 @@ class ColourRuleTest {
     /** Every button that goes to the navigation names its green – it no longer comes from the theme. */
     @Test fun buttonsToTheNavigationAreGreen() {
         val panel = src("ui/PlanPanel.kt")
-        assertTrue("Los geht's (sheet + rolled-up row)", Regex("Button\\(colors = ActionButtons\\.go\\(\\), onClick = \\{ goClick\\(ui, cb\\) \\}").findAll(panel).count() == 2)
+        assertTrue("Los geht's (the sheet's foot, every step)", Regex("Button\\(colors = ActionButtons\\.go\\(\\), onClick = \\{ goClick\\(ui, cb\\) \\}").findAll(panel).count() == 1)
         assertTrue(src("ui/BackToNavigation.kt").contains("Button(colors = ActionButtons.go(),"))
         assertTrue("Tour nachfahren", src("ui/Panels.kt").contains("Button(colors = ActionButtons.go(), onClick = onFollow"))
         // Navigate's bottom bar: Pause / Weiter green, Beenden green outlined – no red at the stop (#27)

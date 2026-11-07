@@ -109,7 +109,10 @@ internal fun RoutePreviewTile(segments: List<List<GeoPoint>>?, tint: RouteShape.
         Box(Modifier.size(PREVIEW_TILE).clip(OnPathShapes.Small).background(OnPathColors.PaperDim), contentAlignment = Alignment.Center) {
             val density = LocalDensity.current
             val px = with(density) { PREVIEW_TILE.toPx() }
-            val shape = remember(segments, px) { segments?.let { RouteShape.of(it, px, px, with(density) { 8.dp.toPx() }) } }
+            // with the ⤢ badge: nothing is drawn under it (the line, start or goal fitted beside / above its corner)
+            val corner = if (onEnlarge == null) 0f
+                else with(density) { RouteShape.cornerFor((ENLARGE_BADGE - ENLARGE_OUT).toPx(), (3.dp * 1.6f).toPx()) }
+            val shape = remember(segments, px, corner) { segments?.let { RouteShape.of(it, px, px, with(density) { 8.dp.toPx() }, corner = corner) } }
             if (shape == null) placeholder()
             else RouteCanvas(shape, tint.color().copy(alpha = if (pale) 0.45f else 1f), 2.5.dp, 3.dp, Modifier.size(PREVIEW_TILE))
         }

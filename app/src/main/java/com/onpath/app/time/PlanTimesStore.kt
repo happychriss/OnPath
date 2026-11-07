@@ -31,7 +31,7 @@ class PlanTimesStore(private val file: File) {
             o.put(tourId.toString(), JSONObject().put("d", distanceM).put("g", JSONArray().apply { groups.forEach { put(it) } }))
             val keys = o.keys().asSequence().mapNotNull { it.toLongOrNull() }.sorted().toList()
             keys.take((keys.size - MAX).coerceAtLeast(0)).forEach { o.remove(it.toString()) }
-            AtomicFiles.writeText(file, o.toString(), File(file.path + ".tmp"))
+            AtomicFiles.writeText(file, o.toString())
         } catch (e: Exception) {
             Problems.error("time", "Plan times file (plan-times.json) could not be saved", e)
         }

@@ -249,7 +249,7 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     return { add: document.querySelector('.pinchip .pinadd')?.textContent, more: document.querySelector('.pinchip .pinmore')?.textContent,
       h: Math.min(r('.pinchip .pinadd')?.height ?? 0, r('.pinchip .pinmore')?.height ?? 0),
       blue: getComputedStyle(document.querySelector('.pinchip .pinadd'), '::after').backgroundColor }; });
-  check(pc.add === 'Add' && pc.more === 'More' && pc.h >= 48 && pc.blue === 'rgb(46, 106, 158)',
+  check(pc.add === 'Add' && pc.more === 'More' && pc.h >= 48 && pc.blue === 'rgb(43, 76, 111)',
     `${P} the pin card: "+ Add" (blue) · "⋯ More", touch targets ≥ 48 px (${JSON.stringify(pc)})`);
   // closing the card keeps the pin (the app 2026-11-02); its chip opens the card again; "Remove pin" takes it away
   await page.click('#cclose');

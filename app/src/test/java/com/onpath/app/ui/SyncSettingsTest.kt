@@ -217,4 +217,49 @@ class SyncSettingsTest {
             assertEquals("Pläne gleichen sich nach der Tour ab", SyncMenuUi.of(ok.copy(afterTour = true), "Pixel 8", now).line)
         } finally { java.util.Locale.setDefault(before) }
     }
+
+    /**
+     * The ☰ item is one plain line (owner 2026-11-07): "Browser-Kopplung" while paired here (also waiting for the browser
+     * or with a problem), "Mit Browser koppeln" when not paired or the browser unpaired itself; the state only in the icon.
+     */
+    @Test fun menuLabelIsOnePlainLine() {
+        val now = 1_000_000_000_000L
+        val ok = PlanSync.State(paired = true, peer = "Chrome", lastOkMs = now - 60_000, checkedMs = now, sinceMs = now - 3_600_000)
+        assertTrue(SyncMenuUi.of(ok, "Pixel 8", now).labelPaired)
+        assertTrue(SyncMenuUi.of(ok.copy(browser = BrowserLink.WAITING), "Pixel 8", now).labelPaired)
+        assertTrue(SyncMenuUi.of(ok.copy(problem = PlanSync.Problem.Storage), "Pixel 8", now).labelPaired)
+        assertEquals(false, SyncMenuUi.of(PlanSync.State(), "Pixel 8", now).labelPaired)
+        assertEquals(false, SyncMenuUi.of(ok.copy(browser = BrowserLink.UNPAIRED), "Pixel 8", now).labelPaired)
+        // the pairing ended in the browser: "pair" again, but amber (the reason is read out, not shown)
+        val ended = SyncMenuUi.of(PlanSync.State(ended = true), "Pixel 8", now)
+        assertEquals(false, ended.labelPaired)
+        assertEquals(SyncAttention.ENDED, ended.warning)
+    }
+
+    /** "Verbunden seit …" (owner 2026-11-07): today with its time, yesterday with its time, else whole calendar days. */
+    @Test fun pairedSince() {
+        val zone = java.util.TimeZone.getTimeZone("Europe/Berlin")
+        fun at(d: Int, h: Int, m: Int) = java.time.ZonedDateTime.of(2026, 11, d, h, m, 0, 0, zone.toZoneId()).toInstant().toEpochMilli()
+        val now = at(7, 10, 12)
+        assertNull(SyncStatusText.since(0, now, zone))
+        assertEquals(SyncStatusText.Since.Today("09:12"), SyncStatusText.since(at(7, 9, 12), now, zone))
+        assertEquals(SyncStatusText.Since.Today("00:05"), SyncStatusText.since(at(7, 0, 5), now, zone))
+        assertEquals(SyncStatusText.Since.Yesterday("23:50"), SyncStatusText.since(at(6, 23, 50), now, zone))
+        assertEquals(SyncStatusText.Since.Days(3), SyncStatusText.since(at(4, 18, 0), now, zone))
+        // a clock that went back: never "in the future" – today
+        assertEquals(SyncStatusText.Since.Today("11:00"), SyncStatusText.since(at(7, 11, 0), now, zone))
+        val before = java.util.Locale.getDefault()
+        java.util.Locale.setDefault(java.util.Locale.GERMANY)
+        try {
+            assertEquals("Verbunden seit heute 09:12", SyncStatusText.sinceText(SyncStatusText.Since.Today("09:12")))
+            assertEquals("Verbunden seit gestern 23:50", SyncStatusText.sinceText(SyncStatusText.Since.Yesterday("23:50")))
+            assertEquals("Verbunden seit 1 Tag", SyncStatusText.sinceText(SyncStatusText.Since.Days(1)))
+            assertEquals("Verbunden seit 3 Tagen", SyncStatusText.sinceText(SyncStatusText.Since.Days(3)))
+            // the last pass: a clock time today, "noch nie" before the first one
+            assertEquals("10:02", SyncStatusText.last(at(7, 10, 2), now, zone))
+            assertEquals("noch nie", SyncStatusText.last(0, now, zone))
+            assertTrue(SyncStatusText.last(at(6, 9, 12), now, zone).startsWith("gestern"))
+        } finally { java.util.Locale.setDefault(before) }
+        assertEquals("plan.onpath.earth", SyncStatusText.plannerHost)
+    }
 }

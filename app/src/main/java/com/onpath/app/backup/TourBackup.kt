@@ -76,7 +76,7 @@ class BackupIndex(private val file: File?) {
             map.forEach { (k, e) ->
                 o.put(k, JSONObject().put("store", e.store).put("handle", e.handle).put("file", e.fileName).put("deleted", e.deleted))
             }
-            AtomicFiles.writeText(f, o.toString(), File(f.path + ".tmp"))
+            AtomicFiles.writeText(f, o.toString())
         } catch (e: Exception) {
             Problems.warn("backup", "Backup index not saved – a tour may be written twice next time", e)
         }
