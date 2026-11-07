@@ -554,6 +554,7 @@ class RecordingService : Service() {
         motion.listen(tourId >= 0 && !paused && gpsLost())
         if (gpsLost()) navigator?.onGpsLost() // no alarms without GPS (R-04)
         if (gpsLost()) navigator?.state?.let { voiceStep(it, now) } // "No GPS signal" comes without fixes
+        arrivalVoiceTick(now)
         if (gpsWatchdog.due(now, paused)) notifyNoGpsAfterRestart()
         if (now - lastStats >= 10_000) {
             lastStats = now
@@ -751,6 +752,19 @@ class RecordingService : Service() {
         publish(force = true)
     }
 
+    /**
+     * "Ziel erreicht." waiting on the bike ([com.onpath.app.navigation.VoiceGuide.arrivalTick]) is said by the clock when
+     * no fix comes (a GPS gap at the goal, a demo ride's end) – never only by the next fix (field S10 2026-11-07).
+     */
+    private fun arrivalVoiceTick(now: Long) {
+        if (!voice.arrivalPending() || paused || !GuidanceGate.voiceSpeaks(planQuiet()) || !voiceOn()) return
+        try {
+            voice.arrivalTick(now, lastGoodFixElapsed.takeIf { it > 0 })?.let { say(it); saveVoice() }
+        } catch (e: Exception) {
+            Problems.warn("voice", "Arrival sentence not checked on the clock; checked again with the next fix or tick", e)
+        }
+    }
+
     private fun notifyNoGpsAfterRestart() {
         Problems.error("recording", "Service restarted by itself and got no GPS fix for 5 min – user told")
         try {
@@ -928,9 +942,8 @@ class RecordingService : Service() {
         navigator = session?.let { Navigator(it).apply { setNavigating(navigatingApplied); old?.let { o -> detector.adoptHeading(o.detector) } } }
         applySettings()
         timeLine()
-        // arrived belongs to one followed line: a re-route keeps the token, the app's new line clears it
-        arrived = arrivedToken != null && navigator?.session?.token == arrivedToken
-        if (!arrived) arrivalGate.reset()
+        // arrived belongs to one followed line: a re-route keeps the token, the app's new line clears it ("been away" stays)
+        tourRun.followLoaded(navigator?.session?.token)
         voice.lineFromApp() // a plan edited while off route: no false "back on the route" (review recording L1)
         alertKey = null; nm().cancel(ALERT_ID)
         navigator?.let { n ->
@@ -1517,6 +1530,7 @@ class RecordingService : Service() {
         try {
             val m = voice.memory()
             val o = org.json.JSONObject().put("tour", tourId).put("trip", trip.toJson()).putOpt("arrivedToken", arrivedToken)
+                .put("arrivalAway", arrivalGate.away)
                 .put("voice", org.json.JSONObject()
                 .put("started", m.started).putOpt("offRoute", m.offRouteSaidMs).putOpt("noGps", m.noGpsSaidMs)
                 .putOpt("arrived", m.arrivedSaidMs))
@@ -1531,6 +1545,7 @@ class RecordingService : Service() {
             val o = org.json.JSONObject(File(filesDir, TRIP_FILE).readText())
             if (o.optLong("tour", -1) == tourId) {
                 arrivedToken = if (o.has("arrivedToken")) o.optLong("arrivedToken") else null
+                arrivalGate.restoreAway(o.optBoolean("arrivalAway"))
                 o.optJSONObject("voice")?.let { v ->
                     fun ms(k: String) = if (v.has(k)) v.optLong(k) else null
                     val m = com.onpath.app.navigation.VoiceGuide.Memory(v.optBoolean("started"), ms("offRoute"), ms("noGps"), ms("arrived"))

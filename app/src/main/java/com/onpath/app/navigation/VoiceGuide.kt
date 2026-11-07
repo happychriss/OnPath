@@ -88,7 +88,7 @@ enum class WayKind { PATH, TRACK, ROAD, CYCLEWAY, WAY }
  *   speed spike right after it was said (said once more when riding on); only a turn really passed stays quiet.
  * - Arrival ([arrive]): on the bike "Ziel erreicht." when really there (≤ [ARRIVE_SAY_BIKE_M]), turns before it still
  *   said; the goal's side when it is not straight ahead ([GoalSide]); "Ziel in 50 Metern, schräg rechts." after the last
- *   turn ([Phrase.GoalAhead]).
+ *   turn ([Phrase.GoalAhead]); never waiting for fixes that do not come ([arrivalTick]).
  * - Two close turns in one sentence (the merge distance of [JunctionCues]); the kind of way when it changes; a quiet
  *   stretch after it ≥ [BIKE_STRAIGHT_M] / [HIKE_STRAIGHT_M] is said ("then 3 km straight on").
  * - At least [GAP_MS] between sentences; off route / arrival / no destination never wait. A sentence that had to wait
@@ -162,6 +162,8 @@ class VoiceGuide {
     private var arrivalSince: Long? = null
     /** The closest the rider came to the goal while the arrival waits (passing it says it at once). */
     private var arrivalClosestM = Double.MAX_VALUE
+    /** The last fix's input while the arrival waits – [arrivalTick] says it from there when no fix comes. */
+    private var arrivalLast: Input? = null
     private var lineLength = 0.0
     /** The progress of the last fix with one ([rewind]). */
     private var lastAlong = Double.NEGATIVE_INFINITY
@@ -390,17 +392,33 @@ class VoiceGuide {
     /** "Ziel erreicht." still waits for the rider to be really there ([arrive]); the service keeps feeding [update]. */
     fun arrivalPending(): Boolean = arrivalSince != null
 
-    private fun arrivalNow(i: Input): Phrase? {
+    /**
+     * The service's clock (every second) while "Ziel erreicht." waits: said without another fix once [ARRIVE_WAIT_MS] went
+     * by since the gate fired, or no fix came for [ARRIVE_NO_FIX_MS] since [lastFixMs] (the gate fired within 50 m of the
+     * goal; a GPS gap there, the phone put away, a demo ride's end – the arrival never waits for fixes, field S10
+     * 2026-11-07). From the last fix's position and heading; null = nothing to say now.
+     */
+    fun arrivalTick(nowMs: Long, lastFixMs: Long?): Phrase? {
         val since = arrivalSince ?: return null
+        val i = arrivalLast ?: return null
+        val noFix = lastFixMs != null && lastFixMs <= nowMs && nowMs - lastFixMs >= ARRIVE_NO_FIX_MS
+        if (!noFix && !(since <= nowMs && nowMs - since >= ARRIVE_WAIT_MS)) return null
+        return arrivalNow(i.copy(nowMs = nowMs), force = true)
+    }
+
+    private fun arrivalNow(i: Input, force: Boolean = false): Phrase? {
+        val since = arrivalSince ?: return null
+        arrivalLast = i
         val goal = i.stops.lastOrNull()?.point ?: i.line.lastOrNull()
         val toGoal = if (i.here != null && goal != null) Geo.distance(i.here, goal) else null
         val toEnd = i.alongM?.let { (lineLength - it).coerceAtLeast(0.0) }
         toGoal?.let { arrivalClosestM = minOf(arrivalClosestM, it) }
         val there = minOf(toGoal ?: Double.MAX_VALUE, toEnd ?: Double.MAX_VALUE) <= ARRIVE_SAY_BIKE_M
         val passed = toGoal != null && toGoal > arrivalClosestM + ARRIVE_PASSED_M
-        val sayNow = !bike || toEnd == null || there || passed || i.quiet || i.nowMs - since >= ARRIVE_WAIT_MS
+        val sayNow = force || !bike || toEnd == null || there || passed || i.quiet || i.nowMs - since >= ARRIVE_WAIT_MS
         if (!sayNow) return null
         arrivalSince = null
+        arrivalLast = null
         arrivedSaidMs = i.nowMs
         waiting.clear()
         val side = GoalSide.of(i.here, i.headingDeg, goal)
@@ -581,6 +599,8 @@ class VoiceGuide {
         const val ARRIVE_PASSED_M = 8.0
         /** … or after this long (the goal in a yard the line does not reach). */
         const val ARRIVE_WAIT_MS = 20_000L
+        /** … or when no fix came for this long ([arrivalTick]: a GPS gap at the goal, the end of a demo ride). */
+        const val ARRIVE_NO_FIX_MS = 5_000L
         /** "Ziel in 50 Metern": this many seconds ahead (bike / on foot), within [GOAL_AHEAD_MIN_M] … the max. */
         const val GOAL_AHEAD_BIKE_S = 12.0
         const val GOAL_AHEAD_HIKE_S = 30.0

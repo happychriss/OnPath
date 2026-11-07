@@ -97,6 +97,54 @@ class VoiceNowTest {
         assertTrue(!g.arrivalPending())
     }
 
+    /**
+     * Field S10 2026-11-07: "Ziel erreicht." waited on the bike for the next fix (within 15 m, a stop, the goal passed,
+     * 20 s – all measured on fixes). Fixes stopping 20–40 m before the goal (a GPS gap, the phone put away) must not keep
+     * it back: the service's clock says it once no fix came for [VoiceGuide.ARRIVE_NO_FIX_MS], from the last position.
+     */
+    @Test fun onTheBikeArrivedComesWithoutAnotherFix() {
+        for (lastM in listOf(660.0, 670.0, 680.0)) { // 40, 30, 20 m before the goal
+            val l = line(700)
+            val goal = at(700.0, 10.0)
+            val stops = listOf(NavStop(l.first(), 0.0), NavStop(goal, 700.0))
+            val g = VoiceGuide()
+            val base = VoiceGuide.Input(0, l, 1, 600.0, onRoute = true, speedMps = 5.0, bike = true, stops = stops)
+            g.update(base)
+            val lastFix = 30_000L
+            assertNull("$lastM: waits – not there yet", g.arrive(base.copy(nowMs = lastFix, alongM = lastM, here = at(lastM), headingDeg = 0.0)))
+            assertTrue(g.arrivalPending())
+            // no fix any more: the clock ticks every second
+            assertNull("$lastM: a second without a fix is no gap", g.arrivalTick(lastFix + 1_000, lastFix))
+            assertNull(g.arrivalTick(lastFix + VoiceGuide.ARRIVE_NO_FIX_MS - 1_000, lastFix))
+            val said = g.arrivalTick(lastFix + VoiceGuide.ARRIVE_NO_FIX_MS, lastFix)
+            assertTrue("$lastM: said without a fix: $said", said == Phrase.Arrived || said is Phrase.ArrivedSide)
+            assertTrue(!g.arrivalPending())
+            assertNull("once", g.arrivalTick(lastFix + 10_000, lastFix))
+        }
+    }
+
+    /** Fixes going on but never "there" (a goal in a yard): the clock says it [VoiceGuide.ARRIVE_WAIT_MS] after the gate. */
+    @Test fun onTheBikeTheClockSaysTheArrivalAfterTheWaitAlsoWithFixes() {
+        val l = line(700)
+        val g = VoiceGuide()
+        val base = VoiceGuide.Input(0, l, 1, 600.0, onRoute = true, speedMps = 4.0, bike = true)
+        g.update(base)
+        assertNull(g.arrive(base.copy(nowMs = 30_000, alongM = 660.0)))
+        assertNull(g.arrivalTick(40_000, lastFixMs = 39_500))
+        assertEquals(Phrase.Arrived, g.arrivalTick(30_000 + VoiceGuide.ARRIVE_WAIT_MS, lastFixMs = 49_800))
+    }
+
+    /** The end of a demo ride (▶ Sim): it stands exactly at the line's end and goes on sending that fix – said there. */
+    @Test fun aDemoRideEndingAtTheLineEndSaysTheArrival() {
+        val l = line(700)
+        val g = VoiceGuide()
+        val base = VoiceGuide.Input(0, l, 1, 600.0, onRoute = true, speedMps = 6.0, bike = true)
+        g.update(base)
+        assertNull(g.arrive(base.copy(nowMs = 30_000, alongM = 655.0, here = at(655.0))))
+        assertEquals(Phrase.Arrived, g.update(base.copy(nowMs = 37_000, alongM = 700.0, here = at(700.0), speedMps = 0.0)))
+        assertNull(g.arrivalTick(60_000, 59_000))
+    }
+
     /** On foot the arrival is said when the gate fires, as before. */
     @Test fun onFootArrivedAtOnce() {
         val l = line(700)
