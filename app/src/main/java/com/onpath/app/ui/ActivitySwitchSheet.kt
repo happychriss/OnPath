@@ -152,7 +152,8 @@ fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKee
             }
             Spacer(Modifier.size(12.dp))
             Button(colors = ActionButtons.go(), onClick = onKeep, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-                Text(str(Res.string.nav_check_keep, NavText.activityName(ui.current, ui.sac)), style = MaterialTheme.typography.titleMedium)
+                Text(str(Res.string.nav_check_keep, NavText.activityName(ui.current, ui.sac)), style = MaterialTheme.typography.titleMedium,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             }
         }
     }
