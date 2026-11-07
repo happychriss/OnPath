@@ -107,6 +107,8 @@ data class NavUi(
     val recordedM: Double? = null,
     val elapsedS: Long = 0,
     val paused: Boolean = false,
+    /** When the pause began (wall clock ms, [com.onpath.app.recording.RecState.pausedSinceMs]) – the pause band's clock. */
+    val pausedSinceMs: Long? = null,
     val waitingGps: Boolean = false,
     /** No GPS while standing still or only briefly (owner 2026-11-01): a quiet grey state, not the amber ⚠ warning. */
     val quietGps: Boolean = false,
@@ -308,8 +310,10 @@ fun NavigateOverlay(
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
             val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            // a tour: Pause | Planen (paused Weiter · Beenden · ✎); no tour: one big blue Planen – held while locked
-            if (ui.recordedM != null) TourBottomBar(ui.paused, onPause, onEnd = onEnd, onPlan = onSlideToPlan, bottom, hold = hold)
+            // a tour: Pause | Planen (paused: the pause band over ▶ Weiter · Beenden · ✎); no tour: one big blue Planen –
+            // held while locked
+            if (ui.recordedM != null) TourBottomBar(ui.paused, onPause, onEnd = onEnd, onPlan = onSlideToPlan, bottom, hold = hold,
+                pausedSinceMs = ui.pausedSinceMs, free = ui.toGo == null)
             else ChangePlanButton(onSlideToPlan, bottom, hold = hold)
         }
         // "Neuer Plan – deine Aufnahme läuft weiter" just above the bottom bar, over the map (nothing moves under it), left
@@ -991,6 +995,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
                 state = tt?.state ?: com.onpath.app.time.EstimateState.OK, pausedBecause = tt?.pausedBecause?.text, target = target)
         },
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,
+        pausedSinceMs = rec?.pausedSinceMs?.takeIf { rec.paused },
         waitingGps = rec?.gpsLost == true && prov == null,
         quietGps = rec?.gpsQuiet == true,
         stillGps = rec?.gpsStill == true,
@@ -1060,8 +1065,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     LaunchedEffect(rest) { vm.screenRest = rest }
     DisposableEffect(Unit) { onDispose { vm.screenRest = false } }
     // the hold time of the locked bar (Settings → Navigation, owner 2026-11-06 22:50: 0–2 s in 0,5 s steps)
-    Box(Modifier.fillMaxSize()) { androidx.compose.runtime.CompositionLocalProvider(LocalHoldMs provides vm.settings.navHoldMs,
-        LocalHoldLearned provides vm.holdLearned, LocalOnHoldFired provides vm::holdFired) {
+    Box(Modifier.fillMaxSize()) { androidx.compose.runtime.CompositionLocalProvider(LocalHoldMs provides vm.settings.navHoldMs) {
         NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
             onLeaveApp = { com.onpath.app.debug.Problems.trace("app", "Back in Navigate: left the app, the tour records on"); activity?.moveTaskToBack(true) },
             newPlan = vm.newPlanNote, onNewPlanUndo = vm::undoNewPlan, onNewPlanGone = vm::dropNewPlanNote,

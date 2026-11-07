@@ -22,22 +22,16 @@ interface TourRecorder {
     fun stop()
 }
 
-/** Where "the user has fired one held button" is remembered (Prefs.holdLearned; a field in tests). */
-interface HoldStore {
-    var holdLearned: Boolean
-}
-
 /**
  * The tour's lifecycle state in the UI (audit package 4, stage 2 – out of AppViewModel, Google's "state holder"):
  * the end sheet ([endAsk]), the arrival box ([arrivalAsk]), the saved box ([finishedTour]), the interrupted tour after
- * a restart ([unfinished], its track and its ride summary), the "Neuer Plan" line ([newPlanNote]), the hold lock's
- * learned state ([holdLearned]) and whether the tour that is ending goes to the recycle bin. Android-free: the service
+ * a restart ([unfinished], its track and its ride summary), the "Neuer Plan" line ([newPlanNote]) and whether the tour that is ending goes to the recycle bin. Android-free: the service
  * sits behind [TourRecorder], so the whole flow is testable on the JVM (TourFlowPropertyTest).
  *
  * The plan is not here: the tour and the plan are two things (owner 2026-11-06); the view model joins them
  * (followEditedPlan, the guidance end when the plan empties) and keeps its public names as thin forwarders.
  */
-class TourController(private val recorder: TourRecorder, private val holdStore: HoldStore) {
+class TourController(private val recorder: TourRecorder) {
 
     /** What "End tour" shows now (null = nothing): the plain end sheet or the ride summary. */
     var endAsk by mutableStateOf<EndAsk?>(null)
@@ -58,9 +52,6 @@ class TourController(private val recorder: TourRecorder, private val holdStore: 
      * 22:05): "Neuer Plan – deine Aufnahme läuft weiter" with "Rückgängig" when a plan was replaced. Null = no line.
      */
     var newPlanNote by mutableStateOf<NewPlanNote?>(null)
-        private set
-    /** The locked bar's rest line shows until one held button fired (HoldRule.pillShows, owner 2026-11-07). */
-    var holdLearned by mutableStateOf(holdStore.holdLearned)
         private set
 
     private var newPlanNotes = 0L
@@ -130,14 +121,4 @@ class TourController(private val recorder: TourRecorder, private val holdStore: 
     fun noteNewPlan(undo: Boolean) { newPlanNote = NewPlanNote(undo = undo, id = ++newPlanNotes) }
 
     fun dropNewPlanNote() { newPlanNote = null }
-
-    // ---- hold lock ----
-
-    /** A held button of the locked bar fired: from now on its rest line is gone (a short tap still says "Gedrückt halten"). */
-    fun holdFired() {
-        if (holdLearned) return
-        holdLearned = true
-        holdStore.holdLearned = true
-        Problems.trace("navigate", "First held button fired: the lock line no longer shows at rest")
-    }
 }

@@ -113,6 +113,12 @@ data class RecState(
      * is quiet from then on (no off-route alarms on the way to the car park); recording goes on. The app asks once.
      */
     val arrived: Boolean = false,
+    /**
+     * When the pause began (wall clock, ms; null while recording): Navigate's pause band counts from here (owner
+     * 2026-11-07, variant C of https://claude.ai/artifact/24XVQ4goVZixT53fnQDn7H) – the service holds it, so the band
+     * keeps its time when the app is reopened.
+     */
+    val pausedSinceMs: Long? = null,
 )
 
 /**
@@ -141,6 +147,8 @@ class RecordingService : Service() {
     private var seq = 0
     private var seg = 0
     private var paused = false
+    /** Wall-clock start of the current pause ([RecState.pausedSinceMs]); null while recording. */
+    private var pausedSinceMs: Long? = null
     private var distance = 0.0
     private var ascent = 0.0
     private var descent = 0.0
@@ -1174,6 +1182,7 @@ class RecordingService : Service() {
         if (tourId < 0) return
         if (paused == p) return
         paused = p
+        pausedSinceMs = if (p) System.currentTimeMillis() else null
         if (!p) { seg++; last = null; moveWatch.start(SystemClock.elapsedRealtime()); gpsWatchdog.resumed(SystemClock.elapsedRealtime()) } // resume = new segment, distance not bridged
         // Battery: a pause records nothing – GPS runs slowly (never off (owner): walking on with the pause still on
         // is noticed by PauseWatch), the wake lock rests until Resume.
@@ -1265,7 +1274,7 @@ class RecordingService : Service() {
             navigator?.state?.offM, navigator?.prompt != null, follow?.first, trackSnapshot,
             navigator?.state, tripTime(), saveFailed, hadGpsFix = lastGoodFixElapsed > 0, gpsQuiet = gpsQuiet(),
             gpsStill = gpsLost() && noGpsLine() == NoGpsShow.Line.NONE,
-            arrived = arrived,
+            arrived = arrived, pausedSinceMs = pausedSinceMs,
         )
         // Battery: the clock runs by itself in the notification (chronometer); re-post only when what it says
         // changes (status, shown distance), at most every 5 s, and once a minute to keep the clock in step.
