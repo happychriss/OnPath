@@ -336,7 +336,7 @@ class RecordingService : Service() {
                 }
                 // Plan is silent (owner 2026-11-03): "kein Ziel mehr" after an edit in Plan is not said
                 if (phrase != null && GuidanceGate.appEventVoice(hasPhrase = true, voiceOn(), planQuiet())) {
-                    voice.event(phrase, SystemClock.elapsedRealtime())?.let { voiceSpeaker()?.say(com.onpath.app.navigation.VoiceText.of(it)) }
+                    voice.event(phrase, SystemClock.elapsedRealtime())?.let { say(it) }
                     saveVoice()
                 }
                 return START_STICKY
@@ -345,15 +345,18 @@ class RecordingService : Service() {
                 settings = null; applySettings(); trip.setPrior(priorFor(timeActivity())); updateAlert(); publish(); return START_STICKY
             }
             ACTION_TAKE_ROUTE -> {
+                Problems.trace("navigation", "Off-route question ${intent.getIntExtra(EXTRA_QUESTION, -1)} answered: new route")
                 navigator?.let { handle(it.take(intent.getIntExtra(EXTRA_QUESTION, -1))) }
                 return START_STICKY
             }
             ACTION_TAKE_VIA -> {
                 // "Off route – re-plan?" – Yes: the new route via the stop in question
+                Problems.trace("navigation", "Off-route question ${intent.getIntExtra(EXTRA_QUESTION, -1)} answered: new route via the stop")
                 navigator?.let { handle(it.takeVia(intent.getIntExtra(EXTRA_QUESTION, -1))) }
                 return START_STICKY
             }
             ACTION_KEEP_ROUTE -> {
+                Problems.trace("navigation", "Off-route question ${intent.getIntExtra(EXTRA_QUESTION, -1)} answered: keep original")
                 navigator?.let { handle(it.keep(intent.getIntExtra(EXTRA_QUESTION, -1))) }
                 return START_STICKY
             }
@@ -928,8 +931,11 @@ class RecordingService : Service() {
         // turn hints are either / or for every activity (owner 2026-11-01): with the voice on, the off-route warning is
         // spoken, not vibrated too (the vibration stays while the voice was never heard – the phone setup check)
         // a re-route that finishes while in Plan does not vibrate (owner 2026-11-03: Plan is silent)
-        if (GuidanceGate.rerouteVibrates(step.vibrate, planQuiet()) &&
-            (settings ?: Prefs(this).settings).offRouteVibrate && !voiceOn()) vibrate()
+        if (GuidanceGate.rerouteVibrates(step.vibrate, planQuiet())) {
+            // the question asks again (reminder, a way found after none, after Keep): said instead (owner 2026-11-07)
+            if (voiceOn()) voiceQuestionAgain()
+            else if ((settings ?: Prefs(this).settings).offRouteVibrate) vibrate()
+        }
         if (step.cancelJob) cancelReroute()
         step.job?.let { startReroute(it) }
         // the app chose a new line meanwhile (its FOLLOW_CHANGED is on the way): this result belongs to the old session
@@ -952,10 +958,74 @@ class RecordingService : Service() {
             try { db.updateActivity(tourId, nav.session.activity.name, nav.session.sac) } catch (e: Exception) {
                 Problems.error("db", "Activity switch could not be saved to the recorded tour", e)
             }
+            // the copy of the followed plan (TourPlan, owner 2026-11-07) is for the new activity now
+            safeDb("plan activity") { db.setTourPlanActivity(tourId, nav.session.activity.name, nav.session.sac) }
             Prefs(this).activity = nav.session.activity
         }
         updateAlert()
-        if (publishNow || step.lineChanged) publish(force = step.lineChanged)
+        // step 1 of leaving the route (owner 2026-11-07): the lock screen's status line "Abseits der Route" comes and goes
+        // at once, not with the next 10 s notification update
+        val offNow = nav.prompt?.offRoute == true
+        val offChanged = offNow != offRouteShown
+        offRouteShown = offNow
+        traceStep(nav.prompt)
+        if (publishNow || step.lineChanged || offChanged) publish(force = step.lineChanged || offChanged)
+    }
+
+    /** The off-route state the tour notification shows now ([handle]). */
+    private var offRouteShown = false
+
+    /** The navigation box last traced ([traceStep]). */
+    private var tracedStep: String? = null
+
+    /**
+     * What Navigate shows about the route now goes to the event log when it changes (field log owner 2026-11-07, tour 221:
+     * the voice said "Abseits der Route", the log could not say what the screen showed): step 1 "off route" + step 2 the
+     * question, no way, kept, back on the route; the far start / mid start / activity switch boxes.
+     */
+    private fun traceStep(p: NavPrompt?) {
+        val key = when (p) {
+            null -> null
+            is NavPrompt.Question -> "q${p.id}"
+            is NavPrompt.FarStart -> "f${p.id}${p.searching}"
+            is NavPrompt.MidStart -> "m${p.id}${p.searching}"
+            is NavPrompt.LeadFailed -> "e${p.id}"
+            NavPrompt.Searching -> "searching"
+            NavPrompt.Kept -> "kept"
+            is NavPrompt.NoWay -> "noway${p.reason}"
+        }
+        if (key == tracedStep) return
+        val was = tracedStep
+        tracedStep = key
+        try {
+            Problems.trace("navigation", when {
+                p == null -> if (was != null) "Navigate: no navigation box any more (back on the route or answered)" else return
+                com.onpath.app.navigation.OffRouteSteps.question(p) ->
+                    "Navigate: off the route (step 1) + question \"${NavText.title(p)}\" (step 2)" + ((p as? NavPrompt.Question)?.let { " q${it.id}" } ?: "")
+                com.onpath.app.navigation.OffRouteSteps.card(p) -> "Navigate: off the route (step 1), ${NavText.state(p)}"
+                else -> "Navigate: \"${NavText.title(p)}\""
+            })
+        } catch (e: Exception) {
+            Problems.warn("navigation", "Navigation box not traced", e)
+        }
+    }
+
+    /** [com.onpath.app.navigation.VoiceGuide.questionAgain]: the open off-route question asks again – said, not vibrated. */
+    private fun voiceQuestionAgain() {
+        if (!GuidanceGate.voiceSteps(voiceOn(), arrived) || paused) return
+        try {
+            voice.questionAgain(SystemClock.elapsedRealtime(), standingStill())?.let { say(it) }
+            saveVoice()
+        } catch (e: Exception) {
+            Problems.warn("voice", "Off-route question not said again", e)
+        }
+    }
+
+    /** Says [phrase] (traced: the problem log shows what the voice was asked to say, also without an offline voice). */
+    private fun say(phrase: com.onpath.app.navigation.Phrase) {
+        val text = com.onpath.app.navigation.VoiceText.of(phrase)
+        Problems.trace("voice", "To say: $text")
+        voiceSpeaker()?.say(text)
     }
 
     private fun startReroute(job: Navigator.Job) {
@@ -1067,7 +1137,7 @@ class RecordingService : Service() {
                 turnRound = st.uTurnAt != null,
             ))
             saveVoice()
-            if (phrase != null && speak) voiceSpeaker()?.say(com.onpath.app.navigation.VoiceText.of(phrase))
+            if (phrase != null && speak) say(phrase)
         } catch (e: Exception) {
             Problems.warn("voice", "Spoken direction skipped", e)
         }
@@ -1440,7 +1510,8 @@ class RecordingService : Service() {
 
     private fun navNotification(): com.onpath.app.navigation.NavNotification.Text? = try {
         val st = navigator?.state
-        if (st == null || st.line.size < 2) null else {
+        if (arrived && st != null) com.onpath.app.navigation.NavNotification.arrived()
+        else if (st == null || st.line.size < 2) null else {
             val along = st.shownAlongM
             val toGo = along?.let { (com.onpath.app.data.Geo.length(st.line) - it).coerceAtLeast(0.0) }
             val t = _state.value?.time

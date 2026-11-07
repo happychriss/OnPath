@@ -25,7 +25,10 @@ import kotlin.random.Random
  * 3. the tour follows the plan shown or nothing (the stand-in follows what the view model would: the plan at the start
  *    and after every edit during the tour; nothing after the end);
  * 4. the end sheet never saves or deletes from a press within [EndSheetGuard.GUARD_MS] of appearing;
- * 5. pause / resume never changes the plan.
+ * 5. pause / resume never changes the plan;
+ * 6. after an end (save or delete) the map is back at the start – the plan empty (owner 2026-11-07, "Tour beenden" as
+ *    "✕ Neu planen") – and the plan from before is in My routes: saved as it was (at "Los geht's") or under Zuletzt
+ *    when it was changed on the way; one Undo brings it back on the map.
  * A failing flow prints its seed and steps, so it can be replayed.
  */
 class TourFlowPropertyTest {
@@ -57,6 +60,13 @@ class TourFlowPropertyTest {
         val session = PlanSession(mutableListOf())
         var followed: List<GeoPoint>? = null
         val explicitDeletes = HashSet<Long>()
+        /** My routes → Planned (saved) and Zuletzt (drafts), as point lists. */
+        val saved = ArrayList<List<GeoPoint>>()
+        val drafts = ArrayList<List<GeoPoint>>()
+        /** The plan saved / loaded last: the plan counts as unsaved while it differs (AppViewModel.planUnsaved). */
+        var savedPoints: List<GeoPoint>? = null
+        /** The plan on the map right before the end that happened in this step (null = no end in this step). */
+        var planBeforeEnd: List<GeoPoint>? = null
         var shownAt = 0L
         var now = 0L
         var earlyActions = 0
@@ -72,6 +82,11 @@ class TourFlowPropertyTest {
             else c.showFinished(tour(id).copy(state = "done"), null)
             followed = null
             c.afterFinished()
+            // afterTourEnded → clearPlan: an unsaved plan goes under Zuletzt first (keepAsDraft), then one undoable clear
+            val pts = session.points.toList()
+            planBeforeEnd = pts
+            if (com.onpath.app.ui.Drafts.keeps(pts.size, pts != savedPoints)) drafts += pts
+            if (pts.isNotEmpty()) session.edit { clear() }
         }
 
         fun step(op: Op) {
@@ -79,6 +94,10 @@ class TourFlowPropertyTest {
             when (op) {
                 Op.START -> if (c.unfinished == null && service.running == null) {
                     c.start("HIKE", 2); followed = session.points.toList().ifEmpty { null }
+                    // "Los geht's" saves a plan not saved as it is (PlanAutoSave)
+                    if (session.points.size >= 2 && session.points.toList() != savedPoints) {
+                        savedPoints = session.points.toList(); saved += session.points.toList()
+                    }
                 }
                 Op.PAUSE -> { val before = session.points.toList(); c.pause(true); assertEquals("pause changed the plan", before, session.points.toList()) }
                 Op.RESUME -> { val before = session.points.toList(); c.pause(false); assertEquals("resume changed the plan", before, session.points.toList()) }
@@ -120,7 +139,10 @@ class TourFlowPropertyTest {
                 }
                 Op.NEW_PLAN -> if (service.running != null) {
                     c.noteNewPlan(undo = session.points.isNotEmpty())
-                    session.replace(listOf(GeoPoint(51.2, 7.0), GeoPoint(51.3, 7.1))); followed = session.points.toList()
+                    val route = listOf(GeoPoint(51.2, 7.0), GeoPoint(51.3, 7.1)) // a saved route from My routes
+                    session.points.toList().let { old -> if (com.onpath.app.ui.Drafts.keeps(old.size, old != savedPoints)) drafts += old }
+                    session.replace(route); followed = session.points.toList()
+                    savedPoints = route; if (route !in saved) saved += route
                 }
             }
         }
@@ -141,6 +163,13 @@ class TourFlowPropertyTest {
             if (service.running == null) assertNull("$where: 'Neuer Plan' line without a tour", c.newPlanNote)
             // 3 – the tour follows the plan shown or nothing
             if (service.running != null && followed != null) assertEquals("$where: tour follows another plan", session.points.toList(), followed)
+            // 6 – after an end: the start screen, nothing of the plan lost
+            planBeforeEnd?.let { before ->
+                planBeforeEnd = null
+                assertTrue("$where: the plan left on the map after the end", session.points.isEmpty())
+                if (before.size >= 2) assertTrue("$where: the plan from before the end is not in My routes",
+                    before in saved || before in drafts)
+            }
             // 4 – no early save / delete
             assertEquals("$where: end sheet acted on a press within ${EndSheetGuard.GUARD_MS} ms", 0, earlyActions)
         }
@@ -193,6 +222,32 @@ class TourFlowPropertyTest {
         assertTrue("delete is taken once", c.takeDeleteFinished()); assertFalse("the next tour saves", c.takeDeleteFinished())
         c.afterFinished()
         assertNull(c.endAsk); assertFalse(c.arrivalAsk); assertNull(c.newPlanNote); assertNull(s.running)
+    }
+
+    /** Owner 2026-11-07: "Tour beenden" → the tour saved, the plan in My routes, the map empty – Undo brings the plan. */
+    @Test fun endingGoesBackToTheStartAndKeepsThePlan() {
+        for (delete in listOf(false, true)) for (changedOnTheWay in listOf(false, true)) {
+            val f = Flow(0)
+            f.session.edit { add(GeoPoint(51.0, 6.9)); add(GeoPoint(51.1, 7.0)) }
+            f.step(Op.START)
+            val atStart = f.session.points.toList()
+            assertEquals("Los geht's saved the plan", listOf(atStart), f.saved)
+            if (changedOnTheWay) f.session.edit { add(GeoPoint(51.2, 7.1)) }
+            val before = f.session.points.toList()
+            val id = f.service.running!!
+            f.c.arrivalAsk = true // "Du bist angekommen." → Tour beenden / Löschen
+            if (delete) f.explicitDeletes += id
+            f.c.end(delete = delete); f.service.stop(); f.serviceFinished()
+            assertEquals(if (delete) "bin" else "done", f.service.db[id])
+            if (!delete) assertEquals("the saved box", id, f.c.finishedTour?.id)
+            assertFalse(f.c.arrivalAsk)
+            assertTrue("the map is back at the start", f.session.points.isEmpty())
+            if (changedOnTheWay) assertEquals("changed on the way → Zuletzt", listOf(before), f.drafts)
+            else assertTrue("saved as it was → no draft", f.drafts.isEmpty())
+            assertTrue(before in f.saved || before in f.drafts)
+            f.session.undo()?.let { f.session.replace(it) } // as AppViewModel.undoStep applies it
+            assertEquals("one Undo brings the plan back", before, f.session.points.toList())
+        }
     }
 
     @Test fun theArrivalBoxComesOncePerArrival() {

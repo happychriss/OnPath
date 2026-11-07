@@ -278,6 +278,32 @@ class OffRouteDetectorTest {
         assertEquals(State.ON_ROUTE, d.state)
     }
 
+    /**
+     * Field bug (owner 2026-11-07, cycling: "Sie sind von der Route weg" was said, but nothing on the phone): the bike
+     * takes a fork ~35° off the route onto a way 22–35 m beside it. Direction and speed confirm "off route" at ~20 m –
+     * but "back on the route" was within half the off distance ((40 + accuracy) / 2 ≈ 22 m; 75 m setting: ~40 m), so
+     * three fixes later the rider, still on the other way, counted as back: the question box lived 3 s, the voice had
+     * spoken. Back on the route needs to be clearly nearer than where the leaving was told ([OffRouteDetector.EARLY_REJOIN_M]).
+     */
+    @Test fun bikeLeftByDirectionIsNotBackAtTheSameDistance() {
+        for (setting in listOf(40.0, 75.0)) for (acc in listOf(5.0, 10.0)) for (off in listOf(22.0, 28.0, 35.0)) {
+            val d = OffRouteDetector(setting).apply { headingRule = true; setLine(NavLine(corner)) }
+            val s = run(d, walk(0.0 to 0.0, 300.0 to 0.0, 300.0 + off * 1.4 to -off, 900.0 to -off, speed = 6.0, acc = acc))
+            val c = s.indexOfFirst { it.confirmedNow }
+            if (c < 0) continue // not told by direction (a wide setting, a small offset): the plain rule, never confirmed here
+            assertTrue("setting $setting, ±$acc, $off m: rejoined on the other way ${s.drop(c).firstOrNull { it.rejoinedNow }?.distanceM}",
+                s.drop(c).none { it.rejoinedNow })
+            assertEquals("setting $setting, ±$acc, $off m", State.OFF_ROUTE, d.state)
+        }
+        // the 40 m setting: told at 22 m – the case of the field
+        val d = OffRouteDetector(40.0).apply { headingRule = true; setLine(NavLine(corner)) }
+        assertTrue(run(d, walk(0.0 to 0.0, 300.0 to 0.0, 330.8 to -22.0, 900.0 to -22.0, speed = 6.0, acc = 5.0)).any { it.confirmedNow })
+        // riding back onto the route: back on it as before
+        val back = run(d, walk(900.0 to -22.0, 930.0 to 0.0, 1000.0 to 0.0, 1000.0 to 100.0, speed = 6.0, acc = 5.0, t0Ms = 1_000_000))
+        assertTrue(back.any { it.rejoinedNow })
+        assertEquals(State.ON_ROUTE, d.state)
+    }
+
     /** Bike standing / pushing slowly away (below 9 km/h): the old rule. */
     @Test fun bikeSlowIsTheOldRule() {
         val d = OffRouteDetector(40.0).apply { headingRule = true; setLine(NavLine(corner)) }

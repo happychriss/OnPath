@@ -27,7 +27,8 @@ import kotlin.math.min
  * - Off-route distance = setting + accuracy margin (min(accuracy, [MAX_MARGIN_M])).
  * - Confirmed only after [CONFIRM_MS] off **and** having moved [MOVE_M] (+ margin) since leaving: a break with GPS
  *   drift or a single jump never triggers.
- * - Back on route (hysteresis): within half the off distance for [REJOIN_FIXES] fixes in a row.
+ * - Back on route (hysteresis): within half the off distance for [REJOIN_FIXES] fixes in a row – after a leaving told by
+ *   direction ([headingRule]) within [EARLY_REJOIN_M] (never back at the distance it was told at).
  * - **Bike: direction and speed** ([headingRule], owner 2026-11-01, replay of the Rosellen ride: "von der Fahrtrichtung
  *   her ist doch klar, dass ich mich von der Route wegbewege"): riding at least [EARLY_MIN_MPS], at least [EARLY_M] from
  *   the line and getting away from it (over the last [HEADING_M] the distance grew by [EARLY_AWAY] of the way ridden,
@@ -84,6 +85,8 @@ class OffRouteDetector(
     var headingRule = false
     /** The leaving was started by [headingRule]. */
     private var leaveEarly = false
+    /** The confirmed off-route state was told by [headingRule]: back on the route only within [EARLY_REJOIN_M]. */
+    private var offEarly = false
 
     /** Off distance of the last fix (its accuracy margin included). */
     private var lastOffM = offRouteM
@@ -123,6 +126,7 @@ class OffRouteDetector(
         highM = this.progressM
         state = if (assumeOnRoute && newLine != null) State.ON_ROUTE else State.NO_GPS
         noGpsGood = 0; rejoinCount = 0; gap = false; jumpFrom = null; provisional = false; backward = false; leaveEarly = false
+        offEarly = false
         onLine = assumeOnRoute && newLine != null
         leaveStart = null; leaveMoved = 0.0; lastDistanceM = null
     }
@@ -198,7 +202,7 @@ class OffRouteDetector(
                 if (within) {
                     progressM = m.alongM
                     if (walkedBackwards(l, h)) {
-                        state = State.OFF_ROUTE; backward = true; rejoinCount = 0; lowM = progressM
+                        state = State.OFF_ROUTE; backward = true; rejoinCount = 0; lowM = progressM; offEarly = false
                         return Status(state, m.distanceM, progressM, confirmedNow = true)
                     }
                 } else startLeaving(f, early)
@@ -210,7 +214,7 @@ class OffRouteDetector(
                     leaveStart?.let { leaveMoved = max(leaveMoved, Geo.distance(it, p)) }
                     val needMove = MOVE_M + min(f.accuracyM, MAX_MARGIN_M)
                     if (f.timeMs - leaveStartMs >= (if (leaveEarly) EARLY_CONFIRM_MS else CONFIRM_MS) && leaveMoved >= needMove) {
-                        state = State.OFF_ROUTE; rejoinCount = 0; backward = false
+                        state = State.OFF_ROUTE; rejoinCount = 0; backward = false; offEarly = leaveEarly
                         return Status(state, m.distanceM, progressM, confirmedNow = true)
                     }
                 }
@@ -229,7 +233,7 @@ class OffRouteDetector(
                             }
                         } else rejoinCount = 0
                     }
-                } else if (m.distanceM <= dOn) {
+                } else if (m.distanceM <= if (offEarly) min(dOn, EARLY_REJOIN_M) else dOn) {
                     rejoinCount++
                     if (rejoinCount >= REJOIN_FIXES) {
                         progressM = m.alongM; state = State.ON_ROUTE; rejoinCount = 0; gap = false; highM = progressM
@@ -259,7 +263,7 @@ class OffRouteDetector(
         }
         onLine = false
         if (!reached) return false // never on the route: not "off" it (the navigator asks about the start)
-        state = State.OFF_ROUTE; rejoinCount = 0; noGpsGood = 0; backward = false
+        state = State.OFF_ROUTE; rejoinCount = 0; noGpsGood = 0; backward = false; offEarly = false
         return true
     }
 
@@ -417,6 +421,12 @@ class OffRouteDetector(
         /** … from a fix this good; confirmed after this long (and [MOVE_M]). */
         const val EARLY_MAX_ACCURACY_M = 15.0
         const val EARLY_CONFIRM_MS = 4_000L
+        /**
+         * Told off by direction and speed (from [EARLY_M]): back on the route only this near, not at half the off
+         * distance – field bug owner 2026-11-07 (cycling): confirmed at 22 m on a fork, "back" three fixes later at the
+         * same 22 m (half of 40 m + accuracy), the question box gone before the rider looked after the voice.
+         */
+        const val EARLY_REJOIN_M = 15.0
         const val MOVE_M = 25.0
         const val MAX_MARGIN_M = 20.0
         const val REJOIN_FIXES = 3

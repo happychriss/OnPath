@@ -64,8 +64,11 @@ import com.onpath.strings.*
  */
 class OverviewPicture(val image: ImageBitmap, val start: Offset, val goal: Offset)
 
-/** Makes the overview's map picture for (segments, colour, width px, height px); null = none (the shape stays). */
-typealias OverviewSnapshot = suspend (List<List<GeoPoint>>, RouteShape.Tint, Int, Int) -> OverviewPicture?
+/**
+ * Makes the overview's map picture for (segments, colour, width px, height px, the followed plan drawn thin under them –
+ * empty = none); null = none (the shape stays).
+ */
+typealias OverviewSnapshot = suspend (List<List<GeoPoint>>, RouteShape.Tint, Int, Int, List<GeoPoint>) -> OverviewPicture?
 
 /**
  * The lines of My routes' rows, kept while the app runs (scrolling back must not read the database again). Keyed by the
@@ -134,7 +137,22 @@ internal val ENLARGE_OUT = 6.dp
 
 @Composable
 private fun RouteCanvas(shape: RouteShape.Shape, color: Color, width: Dp, dot: Dp, modifier: Modifier) {
-    Canvas(modifier) { drawShape(shape, color, width.toPx(), dot.toPx()) }
+    Canvas(modifier) {
+        // a recorded tour's followed plan: thin, plan blue, faint, under the track (owner 2026-11-07)
+        shape.under?.let { u -> drawLine(u, OnPathColors.ActionEdit.copy(alpha = com.onpath.app.map.RouteLook.PLAN_UNDER_OPACITY),
+            com.onpath.app.map.RouteLook.PLAN_UNDER_DP.dp.toPx()) }
+        drawShape(shape, color, width.toPx(), dot.toPx())
+    }
+}
+
+private fun DrawScope.drawLine(l: FloatArray, color: Color, width: Float) {
+    if (l.size < 4) return
+    val path = Path().apply {
+        moveTo(l[0], l[1])
+        var i = 2
+        while (i < l.size) { lineTo(l[i], l[i + 1]); i += 2 }
+    }
+    drawPath(path, color, style = Stroke(width = width, cap = StrokeCap.Round, join = StrokeJoin.Round))
 }
 
 /** The route's start: a dot in the line's colour on a paper ring (preview, drawn shape, map picture alike). */
@@ -175,6 +193,8 @@ internal fun RouteOverview(
     onPrimary: () -> Unit, onCancel: () -> Unit,
     /** "Los geht's" (load and start the tour); null = not offered (a done tour, or during a tour: "Folgen" is the primary). */
     onGo: (() -> Unit)? = null,
+    /** A recorded tour's followed plan, drawn thin in plan blue under the track (owner 2026-11-07); null / empty = none. */
+    planLine: List<GeoPoint>? = null,
 ) {
     val tint = RouteShape.tint(t.kind)
     run {
@@ -190,13 +210,15 @@ internal fun RouteOverview(
                     .background(OnPathColors.PaperDim), contentAlignment = Alignment.Center) {
                     val density = LocalDensity.current
                     val wPx = with(density) { maxWidth.roundToPx() }; val hPx = with(density) { maxHeight.roundToPx() }
-                    var image by remember(segments) { mutableStateOf<OverviewPicture?>(null) }
-                    var loading by remember(segments) { mutableStateOf(snapshot != null) }
-                    if (segments != null && snapshot != null) LaunchedEffect(segments, wPx, hPx) {
-                        image = snapshot(segments, tint, wPx, hPx); loading = false
+                    val under = planLine.orEmpty()
+                    var image by remember(segments, under) { mutableStateOf<OverviewPicture?>(null) }
+                    var loading by remember(segments, under) { mutableStateOf(snapshot != null) }
+                    if (segments != null && snapshot != null) LaunchedEffect(segments, under, wPx, hPx) {
+                        image = snapshot(segments, tint, wPx, hPx, under); loading = false
                     }
-                    val shape = remember(segments, wPx, hPx) {
-                        segments?.let { RouteShape.of(it, wPx.toFloat(), hPx.toFloat(), with(density) { FitPaddingRule.SIDE_DP.dp.toPx() }) }
+                    val shape = remember(segments, under, wPx, hPx) {
+                        segments?.let { RouteShape.of(it, wPx.toFloat(), hPx.toFloat(), with(density) { FitPaddingRule.SIDE_DP.dp.toPx() },
+                            under = under) }
                     }
                     image?.let { pic ->
                         Image(pic.image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)

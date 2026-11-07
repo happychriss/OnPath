@@ -11,7 +11,8 @@ import java.io.File
 /**
  * Every way a plan / tour is saved, overwritten, exported or imported, walked once (owner 2026-11-06: "einmal die Abläufe
  * durchsuchen"). The table and the proposals: docs/design/save-paths.md. These tests pin TODAY's behaviour of the paths
- * that had no test. The end of a tour no longer touches the plan (owner 2026-11-06: two things) – [theEndOfATourNeverDropsThePlan].
+ * that had no test. The end of a tour asks nothing about the plan and clears it the "Neu planen" way (owner 2026-11-07) –
+ * [theEndOfATourGoesBackToTheStartTheNeuPlanenWay].
  */
 class SavePathsTest {
     private val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
@@ -21,15 +22,26 @@ class SavePathsTest {
     private val b = GeoPoint(51.20, 6.77)
 
     /**
-     * Way 1 (owner 2026-11-06, the tour and the plan are two things – replaces P1 and the end sheet's plan switch): a plan
-     * never saved is saved at "Los geht's"; ending, saving or deleting the tour leaves the plan on the map and asks nothing
-     * about it (PlanAutoSaveTest pins the rule; E2E: CoreFieldE2ETest.endTourKeepsThePlanSavedAtTheStart).
+     * Way 1 (owner 2026-11-06, the tour and the plan are two things; owner 2026-11-07 "Tour beenden" → back to the start
+     * as after "✕ Neu planen"): a plan never saved is saved at "Los geht's"; ending, saving or deleting the tour asks
+     * nothing about the plan and then clears it the ONE clear way – [AppViewModel.clearPlan]: kept under Zuletzt when
+     * changed on the way, one Undo brings it back (E2E: CoreFieldE2ETest.endTourSavesTheTourKeepsThePlanAndClearsTheMap,
+     * .arrivalEndTourBringsTheStartScreen).
      */
-    @Test fun theEndOfATourNeverDropsThePlan() {
+    @Test fun theEndOfATourGoesBackToTheStartTheNeuPlanenWay() {
         val finished = vm.substringAfter("RecordingService.finished.collect { id ->").substringBefore("fun initialCamera()")
-        assertFalse(finished, finished.contains("clearPlan()"))
+        assertTrue(finished, finished.contains("afterTourEnded()"))
+        // after the tour bookkeeping (saved box / bin, the list refreshed, Plan entered) – never before the tour is stored
+        assertTrue(finished.indexOf("refreshTours()") < finished.indexOf("afterTourEnded()"))
+        assertTrue(finished.indexOf("tour.showFinished(") < finished.indexOf("afterTourEnded()"))
+        val after = body("private fun afterTourEnded() {")
+        assertTrue("no parallel path: the Neu planen clear", after.contains("clearPlan()"))
+        assertFalse("nothing asked about the plan", after.contains("requestSave") || after.contains("saveAsk"))
+        assertTrue("clearPlan keeps an unsaved plan under Zuletzt first", body("fun clearPlan() {").trimStart().startsWith("keepAsDraft(\"cleared\")"))
         assertFalse(body("fun endTourAndDelete() {").contains("requestSave"))
         assertEquals(PlanAutoSave.AtStart.SAVE_NEW, PlanAutoSave.atStart(points = 2, unsaved = true, changesASavedPlan = false))
+        // the plan saved at Los geht's and unchanged is no draft (it is in My routes); changed on the way → Zuletzt
+        assertFalse(Drafts.keeps(points = 2, unsaved = false)); assertTrue(Drafts.keeps(points = 2, unsaved = true))
         assertTrue("a mode switch still closes Save's dialog", vm.contains("if (saveAsk != null) cancelSave()"))
     }
 

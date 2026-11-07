@@ -25,24 +25,30 @@ object RouteShape {
      * The shape fitted into a [w] × [h] tile with [pad] on every side, the aspect kept (lon scaled by cos(latitude)),
      * centred. [lines]: one FloatArray per segment, x/y interleaved; [start] / [end]: the first / last point.
      */
-    class Shape(val lines: List<FloatArray>, val startX: Float, val startY: Float, val endX: Float, val endY: Float)
+    class Shape(val lines: List<FloatArray>, val startX: Float, val startY: Float, val endX: Float, val endY: Float,
+                /** [of]'s `under` line in the same frame (x/y interleaved), null = none. */
+                val under: FloatArray? = null)
 
+    /**
+     * [under]: a second line drawn beneath (a recorded tour's followed plan, owner 2026-11-07) – the frame fits both, the
+     * start and goal stay the route's.
+     */
     fun of(segments: List<List<GeoPoint>>, w: Float, h: Float, pad: Float, maxPoints: Int = MAX_POINTS,
-           corner: Float = 0f): Shape? {
+           corner: Float = 0f, under: List<GeoPoint> = emptyList()): Shape? {
         val segs = segments.filter { it.isNotEmpty() }
         val all = segs.flatten()
         if (all.size < MIN_POINTS) return null
         var s = 90.0; var n = -90.0; var west = 180.0; var e = -180.0
-        for (p in all) { s = min(s, p.lat); n = max(n, p.lat); west = min(west, p.lon); e = max(e, p.lon) }
+        for (p in all + under) { s = min(s, p.lat); n = max(n, p.lat); west = min(west, p.lon); e = max(e, p.lon) }
         if (n - s < MIN_EXTENT_DEG && e - west < MIN_EXTENT_DEG) return null
         val box = Box(s, n, west, e)
         val stride = max(1, ceil(all.size / maxPoints.toDouble()).toInt())
-        val full = fit(segs, all, box, stride, pad, pad, w - pad, h - pad)
+        val full = fit(segs, all, box, stride, pad, pad, w - pad, h - pad, under)
         if (corner <= 0f || !hits(full, w - corner, h - corner)) return full
         // the drawing reaches into the reserved corner (the ⤢ badge, owner 2026-11-07): fit it beside or above the
         // corner instead – whichever keeps it larger; no point is then drawn under the badge
-        val beside = fit(segs, all, box, stride, pad, pad, w - max(pad, corner), h - pad)
-        val above = fit(segs, all, box, stride, pad, pad, w - pad, h - max(pad, corner))
+        val beside = fit(segs, all, box, stride, pad, pad, w - max(pad, corner), h - pad, under)
+        val above = fit(segs, all, box, stride, pad, pad, w - pad, h - max(pad, corner), under)
         return if (spanOf(beside) >= spanOf(above)) beside else above
     }
 
@@ -56,7 +62,7 @@ object RouteShape {
 
     /** [all] fitted into the area [left]..[right] × [top]..[bottom], the aspect kept, centred in it. */
     private fun fit(segs: List<List<GeoPoint>>, all: List<GeoPoint>, b: Box, stride: Int,
-                    left: Float, top: Float, right: Float, bottom: Float): Shape {
+                    left: Float, top: Float, right: Float, bottom: Float, under: List<GeoPoint> = emptyList()): Shape {
         val k = cos(Math.toRadians((b.s + b.n) / 2))
         val ex = (b.e - b.west) * k
         val ey = b.n - b.s
@@ -72,7 +78,12 @@ object RouteShape {
             if (kept.size < 2) null else FloatArray(kept.size * 2) { i -> if (i % 2 == 0) x(kept[i / 2]) else y(kept[i / 2]) }
         }
         val first = all.first(); val last = all.last()
-        return Shape(lines, x(first), y(first), x(last), y(last))
+        val u = if (under.size < 2) null else {
+            val us = max(1, ceil(under.size / MAX_POINTS.toDouble()).toInt())
+            val kept = under.filterIndexed { i, _ -> i % us == 0 || i == under.lastIndex }
+            FloatArray(kept.size * 2) { i -> if (i % 2 == 0) x(kept[i / 2]) else y(kept[i / 2]) }
+        }
+        return Shape(lines, x(first), y(first), x(last), y(last), u)
     }
 
     /** True when a drawn point, the start or the goal lies right of [x0] and below [y0] (the badge's corner). */

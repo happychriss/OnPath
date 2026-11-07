@@ -31,8 +31,9 @@ Search mockups: `docs/ux-search-proposals.md` (proposal C's "Add to route" card 
    is the same route again (e.g. Undo to it) keeps the running session. A followed GPX track and a free recording are
    not changed by plan edits; a plan with fewer than two points changes nothing. A saved route cannot be loaded during
    the tour (owner 2026-10-31, see "My routes").
-3. **Ending a tour:** (a) on arrival (within ~50 m of the destination) the app asks "You have arrived – end tour?"
-   (End & save / Keep going), or (b) in Plan mode via "End tour" (with confirmation). Never from Navigate directly.
+3. **Ending a tour:** (a) on arrival (within ~50 m of the destination) the app asks "You have arrived." (Keep recording /
+   End tour, owner 2026-11-07), or (b) via "End tour" (with confirmation). Never by a stray touch. After the end the
+   app is back at the start as after "✕ Neu planen" (empty plan, the guide; the plan stays in My routes, Undo brings it).
 4. **Navigate without a route** = free recording (position + track only).
 5. **App start:** opens in Plan; if a tour is still running (e.g. after a phone restart) it opens in Navigate.
    In Plan the map centres once on the position (`ui/StartCamera.kt`): a fresh fix at once, else after 4 s the last

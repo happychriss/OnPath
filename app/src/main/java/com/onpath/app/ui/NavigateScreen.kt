@@ -192,8 +192,12 @@ data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: I
  * already taken off), null without a direction. Nothing here times out: it stays until answered or back on route.
  */
 data class OffRouteUi(val prompt: NavPrompt, val toRoute: RouteHint? = null, val arrowDeg: Float? = null) {
-    /** The ONE amber off-route card on top (searching, no way, kept) – not the questions below, not the far start. */
-    val amber: Boolean get() = prompt is NavPrompt.NoWay || prompt == NavPrompt.Kept
+    /**
+     * The ONE amber off-route card on top – step 1 of leaving the route ([com.onpath.app.navigation.OffRouteSteps], owner
+     * 2026-11-07): the whole off-route state (searching, the question open below, no way, kept); not the far start, not
+     * the activity switch.
+     */
+    val amber: Boolean get() = com.onpath.app.navigation.OffRouteSteps.card(prompt)
 }
 
 data class ToGo(
@@ -358,7 +362,8 @@ fun NavigateOverlay(
         ) {
             // cards glide in and out instead of popping and pushing the status card
             Appearing(ui.turn) { TurnCard(it) }
-            // ONE amber card while off route (owner): "Off route", distance + direction, the state
+            // ONE amber card while off route (owner): "Off route", distance + direction, the state; step 1 of leaving the
+            // route – it stays while the question (step 2) is open below it (owner 2026-11-07)
             Appearing(ui.offRoute?.takeIf { it.amber }) { OffRouteCard(it) }
             if (ui.toGo != null || ui.recordedM != null) {
                 var profileOpen by rememberSaveable { mutableStateOf(false) }
@@ -844,13 +849,14 @@ internal fun timePausedText(g: ToGo, waitingGps: Boolean): String =
 
 /**
  * The ONE off-route card (owner, WARNING look): amber container, big arrow to the route, "Off route"
- * (22 sp bold), "120 m north-east (direct)" (16 sp) and the state in small text ("Looking for a way back…", "No way
- * back found", "Following the original route", "No map here to find a way back").
+ * (22 sp bold), "120 m north-east (direct)" (16 sp) and, when no question box is open below it, the state in small
+ * text ("No way back found", "Following the original route", "No map here to find a way back").
  */
 @Composable
 private fun OffRouteCard(o: OffRouteUi) {
     val hint = NavText.toRoute(o.toRoute)
-    val state = NavText.state(o.prompt)
+    // the state line only where no question box says it (no way found, original kept)
+    val state = NavText.state(o.prompt).takeIf { com.onpath.app.navigation.OffRouteSteps.cardState(o.prompt) }
     val offRoute = str(Res.string.nav_off_route)
     Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.WarnContainer,
         contentColor = OnPathColors.OnWarnContainer,
@@ -871,13 +877,7 @@ private fun OffRouteCard(o: OffRouteUi) {
             Column {
                 Text(offRoute, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 hint?.let { Text(it, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium) }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (o.prompt == NavPrompt.Searching && o.arrowDeg != null) {
-                        CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = OnPathColors.OnWarnContainer)
-                        Spacer(Modifier.width(6.dp))
-                    }
-                    Text(state, style = MaterialTheme.typography.bodyMedium)
-                }
+                state?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
             }
         }
     }

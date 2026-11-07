@@ -168,7 +168,10 @@
     <!-- tour card, end tour, arrival -->
     <string name="nav_end_tour_title">End tour?</string>
     <string name="nav_recycle_bin_note">It stays in the recycle bin for %1$d days.</string>
-    <string name="nav_arrived_title">You have arrived – end tour?</string>
+    <string name="nav_arrived_title">You have arrived.</string>
+    <string name="nav_keep_recording">Keep recording</string>
+    <string name="nav_end_tour">End tour</string>
+    <string name="nav_notif_arrived">Still recording · end the tour in the app</string>
     <string name="nav_continue">Continue</string>
     <string name="nav_end_short">End</string>
     <string name="nav_leave_title">Leave the app?</string>

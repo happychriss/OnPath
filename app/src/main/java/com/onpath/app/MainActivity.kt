@@ -185,6 +185,12 @@ class MainActivity : ComponentActivity() {
                                 onGo = { t -> vm.goFromRoutes(t) {
                                     vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.startNavigation() }
                                 } },
+                                // a recorded tour's followed plan (owner 2026-11-07): Planen / Los geht's load it
+                                onPlanFollowed = { vm.planFollowedPlan(it) },
+                                onGoFollowed = { t -> vm.goFollowedPlan(t) {
+                                    vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.startNavigation() }
+                                } },
+                                loadPlanLine = { vm.followedPlanLine(it) },
                                 onExport = { vm.exportTour(it) },
                                 onDelete = { vm.deleteTour(it) },
                                 onRename = { t, name -> vm.renameTour(t, name) },
@@ -210,8 +216,8 @@ class MainActivity : ComponentActivity() {
                                     val pad = with(androidx.compose.ui.platform.LocalDensity.current) {
                                         com.onpath.app.ui.FitPaddingRule.SIDE_DP.dp.roundToPx()
                                     }
-                                    val snap: com.onpath.app.ui.OverviewSnapshot = { segs, tint, w, h ->
-                                        vm.routeSnapshot(segs, tint, w, h, pad)?.let {
+                                    val snap: com.onpath.app.ui.OverviewSnapshot = { segs, tint, w, h, under ->
+                                        vm.routeSnapshot(segs, tint, w, h, pad, under)?.let {
                                             com.onpath.app.ui.OverviewPicture(it.bitmap.asImageBitmap(),
                                                 androidx.compose.ui.geometry.Offset(it.startX, it.startY),
                                                 androidx.compose.ui.geometry.Offset(it.goalX, it.goalY))

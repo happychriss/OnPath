@@ -42,5 +42,7 @@ class PlanAutoSaveTest {
     @Test fun losGehtsSavesTheNewPlan() =
         assertTrue(vm.contains("PlanStart.NAVIGATE_PLAN -> { followPlanned(); secureTourCorridor(); saveNewPlanAtStart() }"))
 
-    // the end of a tour leaves the plan alone: E2E CoreFieldE2ETest.endTourKeepsThePlanSavedAtTheStart / endTourDeleteBinsOnlyTheTour
+    // the end of a tour asks nothing about the plan and clears it the "Neu planen" way (owner 2026-11-07): E2E
+    // CoreFieldE2ETest.endTourSavesTheTourKeepsThePlanAndClearsTheMap / endTourDeleteBinsTheTourAndKeepsThePlan /
+    // arrivalEndTourBringsTheStartScreen
 }
