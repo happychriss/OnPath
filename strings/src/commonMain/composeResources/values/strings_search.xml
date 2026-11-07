@@ -45,7 +45,6 @@
     <string name="search_card_on_the_way">Add as a stop on the way</string>
     <string name="search_card_set_destination">Set as destination</string>
     <string name="search_card_new_destination">Add as new destination</string>
-    <string name="search_card_add_stop">Add as stop %1$d</string>
     <string name="search_add_on_route">on your route</string>
     <string name="search_add_fits_best">fits best there</string>
     <string name="search_card_as_start">As start</string>

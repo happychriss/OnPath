@@ -1,5 +1,6 @@
 package com.onpath.app.cells
 
+import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -65,5 +66,46 @@ class MapCleanupTest {
         val p = MapCleanup.plan(installed.take(1), MapCleanup.Inputs(position = meran))
         assertTrue(p.nothingToDo)
         assertEquals(0L, p.removeBytes)
+    }
+
+    /**
+     * Owner 2026-11-07: a bike route's corridor is 20 km, a hike's 10 km – Clean up keeps what the route's own corridor
+     * loaded (no download churn), and an unknown activity keeps the largest (robust first).
+     */
+    @Test fun keptCorridorFollowsTheActivity() {
+        val line = listOf(GeoPoint(46.6956, 11.10935), GeoPoint(46.70605, 11.11125))
+        val band = CellId.alongLine(line, 20_000.0) - CellId.alongLine(line, 10_000.0).toSet()
+        assertTrue(band.isNotEmpty())
+        fun kept(i: MapCleanup.Inputs) = MapCleanup.keep(i)
+        assertTrue(band.none { it in kept(MapCleanup.Inputs(plan = line, planActivity = Activity.HIKE)) })
+        assertTrue(band.all { it in kept(MapCleanup.Inputs(plan = line, planActivity = Activity.MTB)) })
+        assertTrue(band.all { it in kept(MapCleanup.Inputs(plan = line)) })
+        // saved routes: each with its own activity, a missing one = unknown = the largest
+        assertTrue(band.none { it in kept(MapCleanup.Inputs(savedRoutes = listOf(line), savedActivities = listOf(Activity.HIKE))) })
+        assertTrue(band.all { it in kept(MapCleanup.Inputs(savedRoutes = listOf(line), savedActivities = listOf(Activity.EBIKE))) })
+        assertTrue(band.all { it in kept(MapCleanup.Inputs(savedRoutes = listOf(line), savedActivities = listOf(null))) })
+        assertTrue(band.all { it in kept(MapCleanup.Inputs(savedRoutes = listOf(line))) })
+        // a running tour: by its activity, unknown = the largest
+        assertTrue(band.none { it in kept(MapCleanup.Inputs(tour = listOf(line), followed = line, tourActivity = Activity.HIKE)) })
+        assertTrue(band.all { it in kept(MapCleanup.Inputs(tour = listOf(line))) })
+        assertTrue(band.all { it in kept(MapCleanup.Inputs(followed = line)) })
+    }
+
+    /** The cleanup keeps exactly what the download corridor asks for (CellTriggers.corridorOf) – per activity. */
+    @Test fun keepsWhatTheDownloadCorridorLoads() {
+        val line = listOf(GeoPoint(46.6956, 11.10935), GeoPoint(46.70605, 11.11125))
+        val src = object : CellSource {
+            override fun cellsAround(p: GeoPoint, radiusM: Double) = CellId.near(p, radiusM)
+            override fun cellsAlong(line: List<GeoPoint>, corridorM: Double) = CellId.alongLine(line, corridorM)
+            override fun missing(cells: List<CellId>) = cells
+            override fun hasDetailedMap(p: GeoPoint) = false
+            override fun request(cells: List<CellId>, reason: CellReason, ownPoint: Boolean) = cells
+            override fun markUsed(cells: Collection<CellId>) {}
+            override val downloadsAvailable = true
+        }
+        for (a in Activity.entries + listOf(null)) {
+            val loaded = CellTriggers(src).corridorOf(line, a)
+            assertTrue("$a", MapCleanup.keep(MapCleanup.Inputs(plan = line, planActivity = a)).containsAll(loaded))
+        }
     }
 }

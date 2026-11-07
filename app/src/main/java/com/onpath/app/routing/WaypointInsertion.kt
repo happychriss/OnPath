@@ -14,9 +14,10 @@ import com.onpath.app.data.Geo
  *    Example: A→B, tap beside the middle → via between A and B; tap beyond B → new destination.
  *
  * 4. Led to a far route that was never reached ("Guide me" during a tour, [here] = the position, Bug 02): the way
- *    there counts as a leg too – a point that fits best between here and the start becomes the new START (a stop on the
- *    way there), not a destination after the route's end. For a round trip it is a **stop on the way** ([Kind.ON_THE_WAY],
- *    owner 2026-11-03): it goes before the loop, the loop 1 → 2 → 3 → 1 stays unchanged and the lead goes via it to ①.
+ *    there counts as a leg too – a point that fits best between here and the start is a **stop on the way**
+ *    ([Kind.ON_THE_WAY]): it goes before ①, the tour is led via it to ① (a round trip's loop 1 → 2 → 3 → 1 stays
+ *    unchanged, owner 2026-11-03), not a destination after the route's end. It is never offered as "Set as start"
+ *    (field 2026-11-07: during a tour the owner expects a stop on the route he follows, not a new start).
  * 5. A round trip never gets a point behind its closing point (owner 2026-11-03: "Rundtour bleibt Rundtour"): instead
  *    of a new destination the point goes into the loop where it fits best. Deleting the closing point opens the loop.
  *
@@ -35,8 +36,11 @@ object WaypointInsertion {
      * @param lineSnapM distance to the route line that counts as "tapped on the line"
      *        (callers pass ~ 24 dp converted to metres at the current zoom)
      * @param here the position while a tour is led to this plan and has never reached it (rule 4); else null
+     * @param stopOnly "Als Zwischenstopp" (owner 2026-11-07): never a new destination – the point goes where it fits
+     *        best among the legs (or before ① on the way there), the goal stays
      */
-    fun decide(waypoints: List<GeoPoint>, p: GeoPoint, route: List<GeoPoint>?, lineSnapM: Double, here: GeoPoint? = null): Decision {
+    fun decide(waypoints: List<GeoPoint>, p: GeoPoint, route: List<GeoPoint>?, lineSnapM: Double, here: GeoPoint? = null,
+               stopOnly: Boolean = false): Decision {
         if (waypoints.isEmpty()) return Decision(0, Kind.START)
         if (waypoints.size == 1) return Decision(1, Kind.DESTINATION)
 
@@ -59,12 +63,12 @@ object WaypointInsertion {
         }
         val loop = PlanEdits.isRoundTrip(waypoints)
         // Rule 5: a round trip stays closed – nothing goes behind its closing point
-        val appendCost = if (loop) Double.MAX_VALUE else Geo.distance(waypoints.last(), p)
+        val appendCost = if (loop || stopOnly) Double.MAX_VALUE else Geo.distance(waypoints.last(), p)
         // Rule 4: on the way there (here → start) – the new start; for a round trip a stop on the way before the loop
         val first = waypoints.first()
         val wayThereCost = here?.let { Geo.distance(it, p) + Geo.distance(p, first) - Geo.distance(it, first) }
         if (wayThereCost != null && wayThereCost < bestCost && wayThereCost < appendCost)
-            return Decision(0, if (loop) Kind.ON_THE_WAY else Kind.START)
+            return Decision(0, Kind.ON_THE_WAY)
         return if (bestCost < appendCost) Decision(bestLeg + 1, Kind.VIA_BEST_FIT)
         else Decision(waypoints.size, Kind.DESTINATION)
     }

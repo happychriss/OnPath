@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddLocationAlt
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.TripOrigin
@@ -32,6 +33,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -88,6 +90,8 @@ fun MapOverlayHost(
     val c = controller ?: return
     if (!vm.canEditMap) return
     val ctx = LocalContext.current
+    // during a tour a held spot is never a new start ("Hier starten"), only where to go (field 2026-11-07)
+    val startHere = MapGestures.offersStartHere(touring = vm.recState.collectAsState().value != null)
     // the route for the point just added / moved is computed: a spinner around it (Bug 02), after a short delay
     RoutingSpot.shown(vm.routing, vm.routingSpot, vm.waypoints)?.let { p ->
         var late by remember(p) { mutableStateOf(false) }
@@ -98,7 +102,7 @@ fun MapOverlayHost(
     vm.firstPointMenu?.let { p ->
         Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { com.onpath.app.debug.Problems.trace("plan", "First-point menu closed: held spot left the visible map (onGone)"); vm.firstPointMenu = null }) {
             FirstPointMenu(MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
-                onStartHere = { vm.startHere(p) }, onFromMe = { vm.routeFromMyLocation(p) })
+                onStartHere = { vm.startHere(p) }, onFromMe = { vm.routeFromMyLocation(p) }, startHere = startHere)
         }
     }
     // the found place's name chip under its pin (owner 2026-11-02): only where the plan can be edited – this host draws
@@ -126,10 +130,14 @@ fun MapOverlayHost(
         Anchored(c, GeoPoint(poi.lat, poi.lon), cameraTick, topPx, bottomPx, liftPx = lift, dropPx = drop, onGone = { com.onpath.app.debug.Problems.trace("plan", "POI menu closed: POI left the visible map (onGone)"); vm.poiMenu = null }) {
             PoiMenu(poi,
                 emptyPlan = vm.waypoints.isEmpty(),
+                startHere = startHere,
                 fromMeBlocked = MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
                 onFromMe = { vm.poiFromMyLocation(poi) },
                 onAdd = { vm.addPoiPoint(poi) },
                 addLabel = vm.poiAddLabel(poi),
+                menu = vm.placeMenu(poi),
+                onAddStop = { vm.addPoiAsStop(poi) },
+                onNewDestination = { vm.poiAsNewDestination(poi) },
                 onGoogle = {
                     vm.closeMapOverlays()
                     com.onpath.app.poi.PoiIntents.openInGoogleMaps(ctx, poi)
@@ -313,29 +321,41 @@ fun AnchoredOverlay(anchor: Offset, topPx: Int, bottomPx: Int, onGone: () -> Uni
  * one is disabled with a short reason ([fromMeBlocked], e.g. "Searching GPS…") while there is no usable position.
  */
 @Composable
-fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: () -> Unit, modifier: Modifier = Modifier) {
+fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: () -> Unit, modifier: Modifier = Modifier,
+                   /** false during a tour ([MapGestures.offersStartHere]): only "Hierhin". */
+                   startHere: Boolean = true) {
     MenuSurface(modifier) {
         Text(str(Res.string.plan_new_route), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere)
+        if (startHere) HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere)
         HoldMenuItem(Icons.Outlined.MyLocation, str(Res.string.plan_go_here), enabled = fromMeBlocked == null,
             supporting = fromMeBlocked, onClick = onFromMe)
     }
 }
 
 /**
- * Menu of a held POI that is not a route point: its name + what adding it does ("Set as destination", "Add as
- * stop 2", …) · "Open in Google Maps". On an empty plan
- * it asks like the first-point menu (owner): "Start here" · "Go here" · "Open in Google Maps".
+ * Menu of a held POI that is not a route point: its name + how to add it · "Open in Google Maps". With 2+ points the
+ * entries of [menu] ([PlaceAddMenu], owner 2026-11-07): "Als Zwischenstopp" and/or "Als neues Ziel" in the order of the
+ * geometry, a clear case's alternative behind "⋯ Mehr". With one point [addLabel] ("Set as destination"). On an empty
+ * plan it asks like the first-point menu (owner): "Start here" · "Go here" · "Open in Google Maps".
  */
 @Composable
 fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifier = Modifier,
             emptyPlan: Boolean = false, fromMeBlocked: String? = null, onFromMe: () -> Unit = {},
+            /** false during a tour ([MapGestures.offersStartHere]): an empty plan offers only "Hierhin". */
+            startHere: Boolean = true,
             addLabel: String = str(Res.string.search_card_set_destination),
             /** The found place's pin: its menu ends with "Nadel entfernen" (owner 2026-11-02); null = a map POI. */
-            onRemovePin: (() -> Unit)? = null) {
+            onRemovePin: (() -> Unit)? = null,
+            menu: PlaceAddMenu.Menu? = null, onAddStop: () -> Unit = {}, onNewDestination: () -> Unit = {}) {
     val place = Place.fromPoi(poi)
+    var more by remember(poi) { mutableStateOf(false) }
+    @Composable fun row(item: PlaceAddMenu.Item) = when (item) {
+        PlaceAddMenu.Item.ADD_STOP -> HoldMenuItem(Icons.Outlined.AddLocationAlt, str(Res.string.plan_add_as_stop), onClick = onAddStop)
+        PlaceAddMenu.Item.NEW_DESTINATION -> HoldMenuItem(Icons.Outlined.Flag, str(Res.string.plan_make_destination), onClick = onNewDestination)
+        else -> HoldMenuItem(Icons.Outlined.AddLocationAlt, addLabel, onClick = onAdd)
+    }
     MenuSurface(modifier) {
         Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)) {
             Text(place.title(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
@@ -345,14 +365,21 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         if (emptyPlan) {
-            HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onAdd)
+            if (startHere) HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onAdd)
             HoldMenuItem(Icons.Outlined.MyLocation, str(Res.string.plan_go_here), enabled = fromMeBlocked == null,
                 supporting = fromMeBlocked, onClick = onFromMe)
-        } else {
+        } else if (menu == null) {
             HoldMenuItem(Icons.Outlined.AddLocationAlt, addLabel, onClick = onAdd)
+        } else {
+            for (item in menu.main) row(item)
         }
         HoldMenuItem(Icons.Outlined.Map, str(Res.string.plan_open_google_maps), onClick = onGoogle)
         onRemovePin?.let { HoldMenuItem(Icons.Outlined.WrongLocation, str(Res.string.plan_remove_pin), onClick = it) }
+        // the alternative a clear case hides is never lost (owner 11:30: "solange wir auf der sicheren Seite sind")
+        if (!emptyPlan && menu != null && menu.more.isNotEmpty()) {
+            if (more) for (item in menu.more) row(item)
+            else HoldMenuItem(Icons.Outlined.MoreHoriz, str(Res.string.common_more), onClick = { more = true })
+        }
     }
 }
 

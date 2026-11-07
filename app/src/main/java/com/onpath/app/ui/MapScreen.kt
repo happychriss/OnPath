@@ -87,8 +87,23 @@ fun MapScreen(
     }
     val gps = gpsNow.first
     val hasFix = gpsNow.second
+    // Plan, my position off the map (owner 2026-11-07, variant 3): the distance under the locate icon, throttled – the
+    // position it is made from moves on only after ≥ 50 m / 5 % ([LocateDistance.moved]); the view comes with the camera
+    val meNow by vm.tracker.location.collectAsState()
+    var labelMe by remember { mutableStateOf<com.onpath.app.routing.GeoPoint?>(null) }
+    var labelMetres by remember { mutableStateOf<Double?>(null) }
+    LaunchedEffect(meNow) {
+        val p = meNow?.let { com.onpath.app.routing.GeoPoint(it.latitude, it.longitude) }
+        if (p == null) labelMe = null else if (LocateDistance.moved(labelMe, p, labelMetres)) labelMe = p
+    }
+    val farMetres = remember(hintKey, labelMe, gps, hasFix) {
+        LocateDistance.metres(plan = true, located = PlanGps.located(gps, hasFix), me = labelMe, view = LocateDistance.View.of(hintKey))
+    }
+    LaunchedEffect(farMetres) { labelMetres = farMetres }
+    val locateLabel = farMetres?.let(LocateDistance::text)
     val onLocate = {
-        when (PlanGps.tap(vm.mode == AppMode.PLAN, gps, hasFix)) {
+        if (vm.mode == AppMode.PLAN && LocateDistance.tap(locateLabel != null) == LocateDistance.Tap.FRAME_BOTH) vm.showPlanAndMe()
+        else when (PlanGps.tap(vm.mode == AppMode.PLAN, gps, hasFix)) {
             PlanGps.Tap.OPEN_SETTINGS -> {
                 runCatching { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }
                     .onFailure { Problems.warn("ui", "Location settings screen could not be opened", it) }
@@ -106,7 +121,7 @@ fun MapScreen(
         vm.planGpsNote?.let { delay(PlanGps.noteMs(it)); vm.planGpsNote = null }
     }
     LaunchedEffect(gps, hasFix) { if (PlanGps.noteGone(vm.planGpsNote, gps, hasFix)) vm.planGpsNote = null }
-    // One grouped control: compass (always: Plan = needle, tap north up; Navigate = orientation toggle), locate (always,
+    // One grouped control: compass (always, both modes: the session's one orientation – MapOrientation.tap), locate (always,
     // with the GPS dot), eye and whole route (always – grey without something route-like on the map, owner 2026-11-06).
     // [mode] = the layer the footer sits in (not vm.mode: the leaving layer keeps its look while it animates out)
     val controls = @Composable { mode: AppMode ->
@@ -116,7 +131,7 @@ fun MapScreen(
             val ctl = vm.controlsIn(mode, pointsOpen)
             Box(if (mode == AppMode.PLAN) Modifier.onSizeChanged { planFab[0] = it.width; planFab[1] = it.height } else Modifier) {
                 MapControls(
-                    // same cycle in both modes: turned by hand → north up → walking direction up → north up (AppViewModel.onCompass)
+                    // same in both modes (MapOrientation.tap): north + turned by hand → north; north → walking direction; walking direction → north
                     compass = if (pointsOpen) null
                         else CompassSpec(vm.headingUp && vm.followMe, bearing) { vm.onCompass(kotlin.math.abs(bearing) > 1f) },
                     // eye, whole route, undo, redo: always there, greyed when they cannot act (MapControlsEnabled)
@@ -126,6 +141,7 @@ fun MapScreen(
                     onFitRoute = if (MapControlsEnabled.wholeRoute(ctl)) vm::showWholeRoute else null,
                     gps = gps, following = vm.followMe, onLocate = onLocate,
                     locateGreyed = PlanGps.locateGreyed(mode == AppMode.PLAN, gps, hasFix),
+                    locateLabel = if (mode == AppMode.PLAN) locateLabel else null,
                     onUndo = if (MapControlsEnabled.undo(ctl)) vm::undoStep else null,
                     onRedo = if (MapControlsEnabled.redo(ctl)) vm::redoStep else null,
                     onSettings = if (mode == AppMode.NAVIGATE) vm::openSettingsOnTheWay else null,
@@ -553,6 +569,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
             onMovePoint = vm::movePointInList, onDeletePoint = vm::deletePointFromList, onShowPoint = vm::showPointFromList,
+            onSearch = vm::openSearch, onMyRoutes = vm::openRoutes,
         ),
     )
     if (vm.spotsOpen) {
@@ -741,7 +758,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         vm.events.clear()
         pending.forEach { e ->
             when (e) {
-                is UiEvent.Fit -> c.fitTo(e.points, fitPadding(), e.northUp)
+                is UiEvent.Fit -> c.fitTo(e.points, fitPadding())
                 is UiEvent.CenterOn -> c.flyTo(e.point, e.zoom, fitPadding())
                 is UiEvent.PanTo -> c.panTo(e.point)
                 is UiEvent.Share -> runCatching { context.startActivity(e.intent) }

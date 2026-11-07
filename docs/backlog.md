@@ -16,6 +16,13 @@ and the commit history.
 - → [cloud-web] (donald 2026-11-03): pairing-help pictures app part done – `onpath.private/marketing/bilder/2026-11-03-donald/`
   (`app-a1…a4-de|en.png` + `Ergebnis.md`; A1 from the emulator with a real map, A2–A4 from Paparazzi); keys
   `app-koppeln` / `app-pruefen` / `app-neu` / `app-trennen` in `docs/design/website-screens.md`.
+- → [donald|laptop|cloud-web] (captain 2026-11-07, owner's word): no more question issues – ask the owner in your chat;
+  unanswered at the end → "Waiting for the owner" here; the owner's word to all comes as a line here. Pull main and
+  read CLAUDE.md once. Delete this line when read (each role removes its tag).
+- → [laptop] (donald 2026-11-07): offline corridor now follows the activity (owner: 10 km on foot, 20 km by bike;
+  app 501db30d, shared `routing/OfflineCorridor.kt`). `WebApi.partsNeeded` still calls `Rd5Parts.forCorridor(points)`
+  without an activity, so the browser now loads routing parts in 20 km for every plan: pass
+  `OfflineCorridor.marginM(activity)` there to match the phone.
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
@@ -26,23 +33,13 @@ and the commit history.
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 - [donald] The owner's Pixel points of 2026-11-07 morning (pause band, unlock 20 s, Weiter always held, pause = quiet, Meine Touren rows + ⤢, overview line, Los geht's wide, plan blue #335A85, "Nur aufzeichnen", browser item, sync file race, Los geht's updates the saved route) – since 2026-11-07
-- [laptop] Web planner parity (17 mirrors, wip/laptop-2026-11-07-parity-colours) → then plan sheet A + profile along the bottom – since 2026-11-07
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
-- **[laptop] Next laptop session – start here (2026-11-07, laptop shut mid-work):** (1) **"Web planner" is red** (parity): 12
-  mirrored app files changed by donald's colour rule b873458a / paper 02c98980 / 50adb466 and later (Screens, MapOverlays,
-  PlaceCard, RouteRules, MapFooter, SettingsScreen, TourBar, AppViewModel, Panels, Theme, Prefs, CellCard). Two unpushed-to-main
-  commits adopt most of it: branch **`wip/laptop-2026-11-07-parity-colours`** (e8e9997d walnut / plan blue / paper colour rule,
-  'Zuletzt', delete to the phone's bin without a question; c9d59a96 paper over the map, GPX track without a line) – NOT
-  smoke-tested, based on 402f4520: rebase on main, `node web/parity/check.mjs` (Prefs.kt pace keys etc. may be new), run the
-  affected smokes, push, deploy (test phase: deploy+quick after green local smokes). `wip/laptop-2026-11-07-parity` is an
-  empty mistake (= main) – the owner can delete it. (2) Then **the plan sheet: A (points first) + profile along the bottom**
-  (owner 2026-11-07; proposals page https://claude.ai/artifact/F1rCK7xXXmUhWcQRj3o1mR, section „Aus der App übernehmen“):
-  wide = stops list on top with handles and „+ Ziel hinzufügen“, facts, the elevation profile permanently wide along the map's
-  bottom (cursor, steepness, range, stops), no steps; phone = two steps, „⤢ Höhenprofil groß“ row under the small profile;
-  app look (walnut, paper, light blue plan row, facts row with difficulty, 'Nicht gespeichert ›' blue, height kept while
-  recalculating). Not started. Add the „Gebaut“ section with shots to that page. (3) Then „gekoppelt = eine Liste“ (item below).
+- **[laptop] Web: Meine Touren like the app's (app 01b38ffa / cb791053 / ce27c111 / e570e467, 2026-11-07)** – the plan on the
+  map first under Zuletzt with „In Bearbeitung“, a small route preview per row, a row tap opens the large overview (route
+  picture + Planen), rows as tile + name + facts + › with every action in ⋮ (Zuletzt keeps Speichern · Löschen); the route
+  drawing itself in 0.5 s (RouteReveal). Parity recorded, web not built yet (web-planner.md §23).
 - **[donald] Navigation neu – the rest of the owner's field day 2026-11-01** (tours 61–63, data in
   `~/onpath-cells-work/field/2026-11-01-wanderungen/` on donald): round trip "Ziel erreicht" too early, re-route with a
   word / sign to turn round and where, the new voice – concept and what is built: `docs/design/navigation-v2.md`; build
@@ -319,12 +316,10 @@ and the commit history.
   `ONPATH_UPLOAD_KEYSTORE_PASSWORD`, `ONPATH_UPLOAD_KEY_ALIAS`, `ONPATH_UPLOAD_KEY_PASSWORD`. Questions in the PR: same app
   id for GitHub and Play (never both on one phone) or a separate id for the GitHub build; automatic upload to the Play
   Console later (service account). After the merge: docs mention `bundlePlay`, the result note in onpath.private.
-<!-- Owner 2026-11-01: owner questions now live as issues (label `frage`) in happychriss/onpath.private – `tools/ask.sh`. New questions go there, not here. Moved: D1–D4 → #2–#5, metersPerPixel → #6, footways → #7, old branches → #8, CF_START_TOKEN → #9, Germany worktree → #10. -->
+<!-- Owner 2026-11-07: open questions to the owner live here (who, date, question, recommendation first); asked in the session's chat; whoever acts on the answer deletes the line. -->
 - **Role setup leftovers (captain 2026-10-31)** – (1) does the Germany pre-build stay on donald (item "[donald] Germany
   pre-built") or move to the laptop?; (2) git on the laptop: `gh auth setup-git` + `user.name` / `user.email` (check
   whether still needed). Old branches go only through `tools/dev/prune_branches.sh` after the owner's yes to the list.
-- **`MapController.metersPerPixel()` density mix-up** – map taps count "on the line" within ~60 dp instead of 24 dp,
-  and the shared-place "arrived" check is loose. Owner decision needed: the fix changes hold behaviour.
 - **`CF_START_TOKEN` (GitHub secret + the Cloudflare token behind it)** – only needed for the one-time Cloudflare setup
   of plan.onpath.earth (A-008); owner 2026-10-30: keep for now, delete later (GitHub: `gh secret delete CF_START_TOKEN`;
   Cloudflare dashboard → My Profile → API Tokens). The branch `marketing` is already gone.

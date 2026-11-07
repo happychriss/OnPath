@@ -15,11 +15,15 @@ release's notes) and the git history – this file keeps only the current state 
   the new app look; the laptop's catch-up is on branch `wip/laptop-2026-11-07-parity-colours` (backlog "Next laptop
   session – start here"), then Actions → Web planner → Run workflow → deploy.
 - **Pixel:** not checked after v0.17.2 – ask the owner / check About.
-- **Owner decisions still open:** `metersPerPixel` density fix (taps count "on the line" within ~60 dp instead of 24 dp;
-  the fix changes hold behaviour); Rundgang margin for offline (10 km kept; 5 km would save ~25 % download). Smaller
-  open items: `docs/backlog.md`; questions: issues `frage` in `onpath.private` + the Fragenregister.
+- **Owner decisions 2026-11-07:** "on the line" = 24 dp (the `metersPerPixel` fix has been on main since 46e93b09);
+  offline corridor 10 km on foot, 20 km for bike activities (donald). Smaller open items: `docs/backlog.md`; open questions: backlog "Waiting for the owner"; the owner's own questions: the Fragenregister.
 
 ## Last session
+- **laptop, 2026-11-07 – planner parity + plan sheet A (both live):** "Web planner" green again – the app's colour rule,
+  blue #335A85, paper B, warm shadows, corner family, blue compass, goal flag, quiet locate (d5aace4c, 8ca0d359). Plan sheet A
+  (a239a275, order like the phone 480b646d): wide = facts, plan row, lines, then the points with „+ Ziel hinzufügen“, no
+  steps, the profile along the map's bottom for good; phone = two steps („2 Punkte ⌃“, „⤢ Höhenprofil groß“). Shots on https://claude.ai/artifact/F1rCK7xXXmUhWcQRj3o1mR
+  („Gebaut“). Open: Meine Touren like the app's (backlog), „gekoppelt = eine Liste“.
 <!-- Newest first; keep the newest 2–3 entries – older ones go (git history has them). Who (donald / laptop / captain / cloud-web), date, what changed, what's half done, next. -->
 - **donald, 2026-11-06 evening → 2026-11-07 morning – READ `docs/history/handoff-donald-2026-11-06.md`** (section
   "MORNING 2026-11-07" first): the six evening branches merged, code audit (launchSafe, geo math in one place,
@@ -64,7 +68,7 @@ How we work together: `docs/owner-preferences.md`.
 | Activities | Exactly six: Bike, Gravelbike, E-bike, MTB, E-MTB, Hike T1–T5 |
 | Voice | Built (v0.14.0): Android text-to-speech, offline voices, only where we vibrate (`docs/design/voice-guidance.md`) |
 | Komoot GPX | Imports correctly; `<trk><type>` preselects the activity, export writes it |
-| Offline corridor | Map areas and routing data follow the plan (~10 km corridor, at most 30 areas) |
+| Offline corridor | Map areas and routing data follow the plan (corridor 10 km hike / 20 km bike – `OfflineCorridor`, at most 30 areas) |
 | Search | Offline OSM index + Photon (rough position only, ~1 km); no Google Places |
 | Google | Never store or draw Google content; link out only (exception: a place the user shared from Google Maps into OnPath – shown with the pin, and kept in "Recent" with a share sign, owner 2026-11-02) |
 | Place shared from Google Maps | The map flies there, shows the found-place pin with its name chip ("Name ›", preview line to the route) and opens its menu by itself, once per share; a search hit gets the same pin + chip, its menu opens with a tap on the chip (owner 2026-11-02) |

@@ -76,7 +76,7 @@ async function planPage(ctx, step) {
   await page.goto(url + 'index.html' + page0 + '#p=' + PLAN);
   await page.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1'
     && document.getElementById('syncBadge')?.dataset.ready === '1', null, { timeout: 180_000 });
-  for (let i = 0; i < 3 && (await page.getAttribute('#sheet', 'data-step')) !== step; i++) { await page.click('#sheetStep'); await page.waitForTimeout(300); }
+  for (let i = 0; i < 2 && await page.isVisible('#sheetStep') && (await page.getAttribute('#sheet', 'data-step')) !== step; i++) { await page.click('#sheetStep'); await page.waitForTimeout(300); }
   await page.click('#fitRoute');
   await page.waitForTimeout(2500); // the camera and the map tiles
   await page.evaluate(() => clearInterval(window.__sync.timer));
@@ -87,7 +87,7 @@ for (const [lang, locale] of [['de', 'de-DE'], ['en', 'en-GB']]) {
   // the film picture (marketing/video-aufnahmen-uebergabe.md §2): 2560 × 1440, the profile step, no dialog
   const big = await browser.newContext({ viewport: { width: 2560, height: 1440 }, locale });
   await big.route('https://photon.komoot.io/**', (r) => r.abort());
-  const film = await planPage(big, 'profile');
+  const film = await planPage(big, 'points');
   await film.screenshot({ path: path.join(out, `web-plan-vellau-leiteralm-${lang}.png`) });
   await big.close();
 

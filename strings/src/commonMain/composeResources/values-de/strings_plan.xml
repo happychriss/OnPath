@@ -60,6 +60,13 @@
     <string name="plan_calculating_leg">Abschnitt %1$d von %2$d wird berechnet…</string>
     <string name="plan_hint_first_point_question">Wohin soll’s gehen?</string>
     <string name="plan_hint_first_point">Halte dein Ziel auf der Karte gedrückt – oder such es oben in der Suchleiste.</string>
+    <string name="plan_guide_find_title">Ziel finden</string>
+    <string name="plan_guide_find_line">Suchen oder auf der Karte gedrückt halten</string>
+    <string name="plan_guide_adjust_title">Route anpassen</string>
+    <string name="plan_guide_adjust_line">Punkte dazu, Rundtour, Höhenprofil</string>
+    <string name="plan_guide_go_title">Los geht’s</string>
+    <string name="plan_guide_go_line">Die Navigation führt dich – auch ohne Netz</string>
+    <string name="plan_guide_my_routes">Meine Touren öffnen</string>
     <string name="plan_hint_tap_hold">Gedrückt halten, um hier einen Punkt zu setzen.</string>
     <string name="plan_offline_pill">Ohne Netz</string>
     <string name="plan_offline_ready">Karte und Wege für diese Route sind auf dem Handy – es geht auch ohne Netz.</string>
@@ -171,6 +178,7 @@
     <string name="plan_location_off_tap">Standort ist aus, tippen zum Einschalten</string>
     <string name="plan_location_denied_tap">Standort nicht erlaubt, tippen zum Erlauben</string>
     <string name="plan_centre_on_me">Auf meinen Standort zentrieren. %1$s</string>
+    <string name="plan_locate_far_cd">Du bist %1$s entfernt. Plan und Standort zusammen zeigen.</string>
     <string name="plan_no_location_permission">Keine Standortberechtigung</string>
     <string name="plan_location_off">Standort aus</string>
     <string name="plan_searching_gps">GPS wird gesucht…</string>
@@ -182,6 +190,8 @@
     <string name="plan_remove_pin">Nadel entfernen</string>
     <string name="plan_pin_chip_desc">%1$s: Möglichkeiten zeigen</string>
     <string name="plan_pin_add">Hinzufügen</string>
+    <string name="plan_add_as_stop">Als Zwischenstopp</string>
+    <string name="plan_make_destination">Als neues Ziel</string>
     <string name="plan_pin_more">Mehr</string>
     <string name="plan_pin_action_desc">%2$s: %1$s</string>
     <plurals name="plan_removes_points">

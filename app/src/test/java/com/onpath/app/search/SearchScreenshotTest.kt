@@ -89,7 +89,7 @@ class SearchScreenshotTest {
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     PlanTopBar({}, com.onpath.app.ui.PlanMenu(), Modifier.fillMaxWidth())
                     Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 24.dp)) {
-                        PlaceCard(PlaceCardUi(hut, null, 3, "fits best there · about +0.9 km, +15 min", "Add as stop 2"),
+                        PlaceCard(PlaceCardUi(hut, null, 3, "fits best there · about +0.9 km, +15 min", "Add as a stop"),
                             com.onpath.app.ui.search.PlaceCardActions())
                         PlaceCard(PlaceCardUi(Place("o:N1", "Laubengasse 10", "address", 46.67, 11.16, address = "39012 Meran",
                             source = Place.Source.ONLINE), 2, 3, "is the destination"), com.onpath.app.ui.search.PlaceCardActions())

@@ -124,10 +124,12 @@ check(!(await page.$('dialog.longroute')) && await pins() === 1 && (await summar
 const algund = await page.evaluate(() => window.__engine.encode({ points: [[46.6773, 11.1302]], activity: 'BIKE_TOURING', sac: 2, pinned: [0], names: { 0: 'Algund' }, title: null }));
 await page.goto(url + 'index.html#p=' + algund);
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 1, null, { timeout: 60_000 });
-await page.click('#sheetStep').catch(() => {}); // points → small: the one point is still named there
-await page.waitForFunction(() => document.getElementById('sheet').dataset.step === 'small', null, { timeout: 5000 }).catch(() => {});
-check(await page.evaluate(() => document.getElementById('sheet').dataset.step) === 'small' && (await summaryText()).includes('1 point · Algund') &&
-  await page.isVisible('#summary .onepoint'), 'one point: "1 point · Algund" also in the small step');
+// wide: no steps any more (plan sheet A) – the facts name the one point
+// (the old step click here waited by accident; wait for the facts and the camera instead)
+await page.waitForFunction(() => /1 point · Algund/.test(document.querySelector('#summary .subline')?.textContent ?? ''), null, { timeout: 30_000 }).catch(() => {});
+await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 15_000 }).catch(() => {});
+await page.waitForTimeout(600);
+check((await summaryText()).includes('1 point · Algund') && await page.isVisible('#summary .onepoint'), 'one point: "1 point · Algund" in the facts');
 check(!(await page.isVisible('#offmap')), 'the point in view: no off-map line');
 await toHilden();
 await page.waitForSelector('#offmap:not([hidden])', { timeout: 5000 }).catch(() => {});
@@ -135,7 +137,6 @@ check((await page.textContent('#offmap')).includes('Your route is outside the ma
 await page.click('#showPlan');
 await page.waitForFunction(() => window.__map.getBounds().contains([11.1302, 46.6773]) && !window.__map.isMoving(), null, { timeout: 15_000 }).catch(() => {});
 check(await page.evaluate(() => window.__map.getBounds().contains([11.1302, 46.6773])) && !(await page.isVisible('#offmap')), 'Show: the plan in view, the line gone');
-await page.click('#sheetStep').catch(() => {}); // back to a bigger step for the rest
 await toHilden();
 await hildenAs('#cstart');
 await page.waitForSelector('dialog.longroute.far', { timeout: 30_000 });

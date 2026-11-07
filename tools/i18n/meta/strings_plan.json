@@ -231,7 +231,7 @@
   },
   "plan_hint_first_point": {
     "area": "Plan sheet",
-    "context": "Plan sheet with no points yet (first use). \"☰ → Start recording\" names the menu path (keep it equal to plan_menu_start_recording)",
+    "context": "Plan sheet with no points yet (first use). \"☰ → Start recording\" names the menu path (keep it equal to plan_menu_start_recording) – since 2026-11-07 no longer shown in the empty sheet (the guide replaced it); still the no-route line text and the web planner mirror",
     "priority": 1,
     "confidence": "sicher",
     "decided": "Owner answer 2026-10-26: kept exactly as the owner wrote it"
@@ -845,6 +845,12 @@
     "priority": 3,
     "confidence": "sicher"
   },
+  "plan_locate_far_cd": {
+    "area": "Map (Plan)",
+    "context": "Accessibility of the locate button while my position is off the map (owner 2026-11-07). %1$s = distance (\"790 km\")",
+    "priority": 3,
+    "confidence": "sicher"
+  },
   "plan_no_location_permission": {
     "area": "Map (Plan)",
     "context": "Why \"Go here\" is greyed out in the first-point menu",
@@ -1306,5 +1312,68 @@
     "context": "Screen reader action of the sheet handle: on the largest step a tap makes it smaller",
     "priority": 3,
     "confidence": "sicher"
+  },
+  "plan_add_as_stop": {
+    "area": "Plan place menu",
+    "context": "Menu entry of a held place (POI / found pin) with a plan of 2+ points: insert it at the best place on the route ahead, the goal stays. No number (owner 2026-11-07).",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "plan_make_destination": {
+    "area": "Plan place menu",
+    "context": "Menu entry of a held place with a plan of 2+ points: the route ends there, the old goal is dropped (Undo brings it back). Owner 2026-11-07.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "plan_guide_find_title": {
+    "area": "Plan sheet",
+    "context": "Empty start sheet guide, step 1 title (tappable: opens the search)",
+    "priority": 1,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
+  },
+  "plan_guide_find_line": {
+    "area": "Plan sheet",
+    "context": "Empty start sheet guide, step 1 line",
+    "priority": 1,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
+  },
+  "plan_guide_adjust_title": {
+    "area": "Plan sheet",
+    "context": "Empty start sheet guide, step 2 title",
+    "priority": 1,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
+  },
+  "plan_guide_adjust_line": {
+    "area": "Plan sheet",
+    "context": "Empty start sheet guide, step 2 line",
+    "priority": 1,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
+  },
+  "plan_guide_go_title": {
+    "area": "Plan sheet",
+    "context": "Empty start sheet guide, step 3 title (plain text, not a button; same word as the start button)",
+    "priority": 1,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
+  },
+  "plan_guide_go_line": {
+    "area": "Plan sheet",
+    "context": "Empty start sheet guide, step 3 line",
+    "priority": 1,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
+  },
+  "plan_guide_my_routes": {
+    "area": "Plan sheet",
+    "context": "Empty start sheet guide, small link under the steps: opens My tours",
+    "priority": 1,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
   }
 }
