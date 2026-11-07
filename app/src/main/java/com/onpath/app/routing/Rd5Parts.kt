@@ -33,8 +33,8 @@ object Rd5Parts {
     /** Margin around a single point (first start, tapped point): a route starting there stays near it. */
     const val POINT_MARGIN_M = 2_000.0
 
-    /** Corridor around a route or a straight leg (owner: "~10 km"). */
-    const val CORRIDOR_MARGIN_M = 10_000.0
+    /** Corridor around a route or a straight leg when the activity is not known – [OfflineCorridor.marginM] per activity. */
+    const val CORRIDOR_MARGIN_M = OfflineCorridor.MAX_M
 
     /** One 1° × 1° part: [lon] / [lat] = its south-west corner in whole degrees. */
     data class Part(val lon: Int, val lat: Int) : Comparable<Part> {

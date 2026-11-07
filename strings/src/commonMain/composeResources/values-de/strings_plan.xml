@@ -178,6 +178,7 @@
     <string name="plan_location_off_tap">Standort ist aus, tippen zum Einschalten</string>
     <string name="plan_location_denied_tap">Standort nicht erlaubt, tippen zum Erlauben</string>
     <string name="plan_centre_on_me">Auf meinen Standort zentrieren. %1$s</string>
+    <string name="plan_locate_far_cd">Du bist %1$s entfernt. Plan und Standort zusammen zeigen.</string>
     <string name="plan_no_location_permission">Keine Standortberechtigung</string>
     <string name="plan_location_off">Standort aus</string>
     <string name="plan_searching_gps">GPS wird gesucht…</string>
@@ -189,6 +190,8 @@
     <string name="plan_remove_pin">Nadel entfernen</string>
     <string name="plan_pin_chip_desc">%1$s: Möglichkeiten zeigen</string>
     <string name="plan_pin_add">Hinzufügen</string>
+    <string name="plan_add_as_stop">Als Zwischenstopp</string>
+    <string name="plan_make_destination">Als neues Ziel</string>
     <string name="plan_pin_more">Mehr</string>
     <string name="plan_pin_action_desc">%2$s: %1$s</string>
     <plurals name="plan_removes_points">

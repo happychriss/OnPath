@@ -91,6 +91,12 @@ object MapGestures {
         GpsStatus.WEAK, GpsStatus.GOOD -> if (hasFix) null else Txt.s(Res.string.plan_searching_gps)
     }
 
+    /**
+     * Whether the hold menus on an empty plan (first-point menu, POI menu) offer "Hier starten": not during a tour – the
+     * tour already runs from here, a held spot is where to go ("Hierhin"), never a new start (field 2026-11-07).
+     */
+    fun offersStartHere(touring: Boolean): Boolean = !touring
+
     /** How the armed hold feels (decided at finger-down, same targets as [decide]); [Buzz.NONE] = no ring either. */
     fun buzz(editable: Boolean, menuOpen: Boolean, marker: Int, poi: Boolean): Buzz = when {
         !editable -> Buzz.NONE

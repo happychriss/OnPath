@@ -241,6 +241,14 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi(), PlanCallbacks()) }
     }
 
+    /** Plan far away, my position off the map (owner 2026-11-07, variant 3): the distance under the locate icon. */
+    fun planLocateFar() = paparazzi.snapshot {
+        Frame(controls = {
+            MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false, onLocate = {},
+                onFitRoute = {}, onUndo = {}, plan = true, locateLabel = "790 km")
+        }) { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
     /** A tap on the open map (owner 2026-11-03): "Hold to set a point here." in the summary step the sheet opens at. */
     fun planTapHoldHint() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(tapHint = true), PlanCallbacks()) }
@@ -1040,12 +1048,22 @@ class ScreenshotTest {
         }
     }
 
-    /** Hold on a POI in Plan: its menu "Add as stop 2 · Open in Google Maps". */
+    /** Hold on a POI in Plan, a doubtful case (owner 2026-11-07): "Add as a stop · Make it the destination · Open in Google Maps". */
     @Test fun poiMenu() = paparazzi.snapshot {
         OnPathTheme {
             OverlayFrame(OnPathColors.Rec, androidx.compose.ui.unit.DpOffset(110.dp, 400.dp)) {
                 PoiMenu(com.onpath.app.poi.Poi("n1", "hut", "Meraner Hütte", 46.68, 11.25, ele = 1960), onAdd = {}, onGoogle = {},
-                    addLabel = "Add as stop 2")
+                    menu = PlaceAddMenu.Menu(listOf(PlaceAddMenu.Item.ADD_STOP, PlaceAddMenu.Item.NEW_DESTINATION)))
+            }
+        }
+    }
+
+    /** A clear new goal (far beyond the route): only "Make it the destination", the stop waits under "More". */
+    @Test fun poiMenuClearGoal() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(OnPathColors.Rec, androidx.compose.ui.unit.DpOffset(110.dp, 400.dp)) {
+                PoiMenu(com.onpath.app.poi.Poi("n1", "hut", "Meraner Hütte", 46.68, 11.25, ele = 1960), onAdd = {}, onGoogle = {},
+                    menu = PlaceAddMenu.Menu(listOf(PlaceAddMenu.Item.NEW_DESTINATION), listOf(PlaceAddMenu.Item.ADD_STOP)))
             }
         }
     }

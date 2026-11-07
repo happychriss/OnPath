@@ -52,7 +52,8 @@ object AddPreview {
         WaypointInsertion.Kind.ON_THE_WAY -> Txt.s(Res.string.search_card_on_the_way)
         WaypointInsertion.Kind.DESTINATION -> if (n <= 1) Txt.s(Res.string.search_card_set_destination)
             else Txt.s(Res.string.search_card_new_destination)
-        WaypointInsertion.Kind.VIA_ON_LINE, WaypointInsertion.Kind.VIA_BEST_FIT -> Txt.s(Res.string.search_card_add_stop, d.index + 1)
+        // no stop number: "Stopp 2" confused the owner (2026-11-07) – the same words as the place menu
+        WaypointInsertion.Kind.VIA_ON_LINE, WaypointInsertion.Kind.VIA_BEST_FIT -> Txt.s(Res.string.plan_add_as_stop)
     }
 
     /** " · about +0.9 km, +15 min" */
