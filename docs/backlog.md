@@ -16,13 +16,9 @@ and the commit history.
 - → [cloud-web] (donald 2026-11-03): pairing-help pictures app part done – `onpath.private/marketing/bilder/2026-11-03-donald/`
   (`app-a1…a4-de|en.png` + `Ergebnis.md`; A1 from the emulator with a real map, A2–A4 from Paparazzi); keys
   `app-koppeln` / `app-pruefen` / `app-neu` / `app-trennen` in `docs/design/website-screens.md`.
-- → [donald|laptop|cloud-web] (captain 2026-11-07, owner's word): no more question issues – ask the owner in your chat;
+- → [donald|cloud-web] (captain 2026-11-07, owner's word): no more question issues – ask the owner in your chat;
   unanswered at the end → "Waiting for the owner" here; the owner's word to all comes as a line here. Pull main and
   read CLAUDE.md once. Delete this line when read (each role removes its tag).
-- → [laptop] (donald 2026-11-07): offline corridor now follows the activity (owner: 10 km on foot, 20 km by bike;
-  app 501db30d, shared `routing/OfflineCorridor.kt`). `WebApi.partsNeeded` still calls `Rd5Parts.forCorridor(points)`
-  without an activity, so the browser now loads routing parts in 20 km for every plan: pass
-  `OfflineCorridor.marginM(activity)` there to match the phone.
 - → [laptop] (donald 2026-11-07): a stop the route does not reach now says what does (owner, "Meran → Mutkopf" at
   T1): new shared `routing/PlanReach.kt` (in `app/web-shared-files.txt`; `web/parity.json` needs `--update` for it) +
   `PlanGaps.reachText` → "② erst ab T2 erreichbar" / "② nur mit Gravelbike erreichbar" / "② nicht erreichbar". For the
@@ -123,7 +119,7 @@ and the commit history.
   150 m force a turn-round). Check with the owner's real tour: Settings → Diagnostics export ("Junction cue:" lines) or the
   plan; the owner offered to say which sentences were wrong. Scratch replay tool used: a copy of
   tools/routing/jvm-test/HildenVoiceTest.kt that routes through a GPX track and prints HINT / SCREEN / SAY lines (needs E5_N50.rd5).
-- **[cloud-plan] Flaky web smokes on GitHub – the rest** (laptop 2026-11-06): robust-smoke "two quick clicks" **solved
+- **[cloud-plan] Flaky web smokes on GitHub – the rest** (laptop 2026-11-06; +2026-11-07: follow-smoke „compass north up keeps following“ red once on GitHub (run 42369080471, f3beb21d), green 3× locally; import-smoke „+ New … kept under Recent“ red once locally, green on the re-run): robust-smoke "two quick clicks" **solved
   (f636903c, test only)** – in every red run (5be2031d, b5328dae, 8f8db60d, 045e8ebf) the page kept the click order; the
   second click was lost because its pixel lay outside the window, or both clicks landed beside p1/p2 – the camera moved
   between the test's projection and its clicks (the reopened route's pending whole-route fit, a left-over padding). The test

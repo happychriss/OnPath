@@ -194,6 +194,8 @@
     <string name="plan_remove_pin">Nadel entfernen</string>
     <string name="plan_pin_chip_desc">%1$s: Möglichkeiten zeigen</string>
     <string name="plan_pin_add">Hinzufügen</string>
+    <string name="plan_add_as_stop">Als Zwischenstopp</string>
+    <string name="plan_make_destination">Als neues Ziel</string>
     <string name="plan_pin_more">Mehr</string>
     <string name="plan_pin_action_desc">%2$s: %1$s</string>
     <plurals name="plan_removes_points">

@@ -12,7 +12,7 @@ interface WasmEngine {
   init(root: string): void;
   setLanguage(lang: string): string;
   putFile(path: string, data: Int8Array): void;
-  partsNeeded(points: string): string;
+  partsNeeded(points: string, activity: string): string;
   putLayout(tile: string, index: Int8Array, tail: Int8Array): void;
   putPart(tile: string, index: number, data: Int8Array): boolean;
   writeParts(): void;
@@ -54,7 +54,7 @@ interface WasmEngine {
 }
 
 /** Small synchronous calls the page may make by name (the app's pure UI rules – see client.ts). */
-const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyState', 'gesture', 'pointMenu', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
+const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyState', 'gesture', 'pointMenu', 'placeMenu', 'locateLabel', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
   // web UI rules (WebUi.kt): route name proposal (Save), POI kind filters (Map content)
   'routeName', 'poiKinds', 'poiFilter',
   // the app's map look per activity (map/ActivityLayers.kt): layer visibility + hiking band filter
@@ -204,8 +204,9 @@ function layout(e: WasmEngine, tile: string): Promise<number[] | null> {
  * Fetches the parts [points] need that the engine does not have yet (each part once, also when a prefetch and a plan
  * ask at the same time). Returns bytes downloaded by this call.
  */
-async function ensureParts(e: WasmEngine, points: string, onNeed?: (bytes: number) => void): Promise<number> {
-  const need: [string, number][] = JSON.parse(e.partsNeeded(points));
+async function ensureParts(e: WasmEngine, points: string, activity: string, onNeed?: (bytes: number) => void): Promise<number> {
+  // the phone's corridor for the activity (OfflineCorridor: 10 km on foot, 20 km by bike; '' = not known → the largest)
+  const need: [string, number][] = JSON.parse(e.partsNeeded(points, activity));
   if (onNeed) {
     // what is still to download (the layouts are small and fetched first), so the page can say "about 9 MB"
     const ends = await Promise.all(need.map(([tile]) => layout(e, tile).catch(() => null)));
@@ -323,7 +324,7 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
     }
     if (req.type === 'prefetch') {
       // the routing data around the map view, while the user looks at the map (the first plan then starts at once)
-      const bytes = await ensureParts(e, `${req.lat.toFixed(6)},${req.lon.toFixed(6)}`);
+      const bytes = await ensureParts(e, `${req.lat.toFixed(6)},${req.lon.toFixed(6)}`, ''); // no plan yet: the largest corridor
       reply({ id: req.id, ok: true, stats: { bytesFetched: bytes } as RouteStats });
       return;
     }
@@ -337,7 +338,7 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       return;
     }
     const t0 = performance.now();
-    const fetched = await ensureParts(e, req.points, (bytes) => reply({ id: req.id, ok: true, progress: { phase: 'download', bytes } }));
+    const fetched = await ensureParts(e, req.points, req.activity ?? '', (bytes) => reply({ id: req.id, ok: true, progress: { phase: 'download', bytes } }));
     if (req.type === 'plan') reply({ id: req.id, ok: true, progress: { phase: 'route' } });
     if (req.type === 'planFromTrack') {
       // a shown track → plan (the app's TrackToPlan): the routing data along the whole track first, like the app

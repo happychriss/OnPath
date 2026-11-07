@@ -160,9 +160,9 @@ check(await page.isHidden('#activityMenu') && (await page.textContent('#activity
 // 6c. pace (the app's Settings → Pace) in the same list: a setting – the list stays open, the sheet's time follows
 // the sheet shows the engine's time for these points + Hike T4 (the plans of the two picks above may still arrive)
 const engineTime = () => page.evaluate(async () => { const s = window.__state; const t = await window.__engine.call('planTime', s.points.map(([a, o]) => a.toFixed(6) + ',' + o.toFixed(6)).join(';'), s.activity, s.sac); return t && t !== 'null' ? JSON.parse(t).time : null; });
-const settled = async () => { for (let i = 0; i < 240; i++) { const t = await engineTime(); if (t && t === await page.textContent('#summary .big').catch(() => '')) return t; await page.waitForTimeout(500); } return null; };
+const settled = async () => { for (let i = 0; i < 240; i++) { const t = await engineTime(); if (t && t === await page.textContent('#summary .time').catch(() => '')) return t; await page.waitForTimeout(500); } return null; };
 await settled();
-const bigTime = () => page.textContent('#summary .big');
+const bigTime = () => page.textContent('#summary .time');
 const avgTime = await bigTime();
 await page.click('#activityChip');
 await page.waitForSelector('#paceRow [data-pace]', { timeout: 10_000 }).catch(() => {});
@@ -171,13 +171,13 @@ check(levels.join('|') === 'Relaxed|Easy|Average|Fit|Very fit' && (await page.te
   await page.getAttribute('#paceRow [data-pace=AVERAGE]', 'aria-checked') === 'true', `pace section: the app's five levels, Hiking, Average chosen (${levels.join(', ')})`);
 check((await page.textContent('#paceMeaning')).includes('4 km/h · 300 m up per hour'), "pace: what Average means (the app's DIN line)");
 await page.click('#activityMenu [data-pace=VERY_FIT]');
-await page.waitForFunction((t) => document.querySelector('#summary .big')?.textContent !== t, avgTime, { timeout: 10_000 }).catch(() => {});
+await page.waitForFunction((t) => document.querySelector('#summary .time')?.textContent !== t, avgTime, { timeout: 10_000 }).catch(() => {});
 const fitTime = await bigTime();
 check(await page.isVisible('#activityMenu') && fitTime === await engineTime() && fitTime !== avgTime &&
   await page.evaluate(() => localStorage.getItem('onpath.hikePaceLevel')) === 'VERY_FIT',
   `Very fit: list stays open, the time is the engine's (${avgTime} → ${fitTime}), remembered in this browser`);
 await page.click('#activityMenu [data-pace=AVERAGE]');
-await page.waitForFunction((t) => document.querySelector('#summary .big')?.textContent === t, avgTime, { timeout: 10_000 }).catch(() => {});
+await page.waitForFunction((t) => document.querySelector('#summary .time')?.textContent === t, avgTime, { timeout: 10_000 }).catch(() => {});
 check(await bigTime() === avgTime, 'back to Average: the first time again');
 await page.keyboard.press('Escape');
 await planned();
@@ -340,10 +340,11 @@ check(await page.locator('#spots li').count() > 0, 'click → the spots on this 
 // 10. phone width: bottom sheet; the handle shows the Points
 await page.setViewportSize({ width: 412, height: 860 });
 // the sheet moves to the bottom with a transition – wait until it has settled (CI: once read mid-way after 300 ms)
-await page.waitForFunction(() => { const r = document.getElementById('sheet').getBoundingClientRect(); return r.top > 300 && r.bottom >= 855; },
+// (open on start since 2026-11-07: points and profile shown – the sheet reaches up to below the search bar)
+await page.waitForFunction(() => { const r = document.getElementById('sheet').getBoundingClientRect(); return r.top > 120 && r.bottom >= 855; },
   null, { timeout: 5000 }).catch(() => {});
 const sheet = await page.locator('#sheet').boundingBox();
-check(sheet.y > 300 && sheet.y + sheet.height >= 855, `phone: the plan sheet sits at the bottom (top ${Math.round(sheet.y)}, bottom ${Math.round(sheet.y + sheet.height)})`);
+check(sheet.y > 120 && sheet.y + sheet.height >= 855, `phone: the plan sheet sits at the bottom (top ${Math.round(sheet.y)}, bottom ${Math.round(sheet.y + sheet.height)})`);
 check(await page.isVisible('#menuBtn') && (await page.textContent('#menuBtn')).trim() === 'Plan' && await page.isHidden('#menuPlans') && await page.isHidden('#menuSavePlan'),
   'phone: the plan bar is one "Plan ▾" button');
 const ptb = await page.locator('#toolbar').boundingBox(), psb = await page.locator('#searchbox').boundingBox(), pbar = await page.locator('#topbar').boundingBox();
@@ -356,9 +357,12 @@ const pm = await page.$$eval('#mainMenu .pb', (bs) => bs.filter((b) => b.getClie
 check(JSON.stringify(pm) === JSON.stringify(['newPlan', 'menuPlans', 'menuImportGpx', 'menuSavePlan', 'menuSaveAs', 'menuExportGpx', 'syncBadge', 'menuPhone', 'menuAboutP', 'link']),
   'phone: Plan ▾ lists New · My tours · Import GPX · Save · Save as · Export GPX · To phone · Phone connection · Help · the app ' + JSON.stringify(pm));
 await page.keyboard.press('Escape');
-check(await page.isHidden('#points'), 'phone: Points folded away');
+// open on start (owner 2026-11-07: points and profile shown, the sheet can be folded)
+check(await page.isVisible('#points'), 'phone: the Points shown on start');
 await page.click('#handle');
-check(await page.isVisible('#points'), 'phone: the handle shows the Points');
+check(await page.isHidden('#points'), 'phone: the handle folds them away');
+await page.click('#handle');
+check(await page.isVisible('#points'), 'phone: the handle shows the Points again');
 
 // pace remembered across a reload (localStorage, like the app's Prefs hikePaceLevel)
 await page.evaluate(() => { localStorage.setItem('onpath.hikePaceLevel', 'FIT'); localStorage.setItem('onpath.bikePaceLevel', 'FIT'); });

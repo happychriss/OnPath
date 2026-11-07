@@ -44,7 +44,6 @@
     <string name="search_card_on_the_way">Als Halt auf dem Hinweg</string>
     <string name="search_card_set_destination">Als Ziel setzen</string>
     <string name="search_card_new_destination">Als neues Ziel anhängen</string>
-    <string name="search_card_add_stop">Als Stopp %1$d einfügen</string>
     <string name="search_add_on_route">liegt auf deiner Route</string>
     <string name="search_add_fits_best">passt dort am besten</string>
     <string name="search_card_as_start">Als Start</string>

@@ -195,6 +195,8 @@
     <string name="plan_remove_pin">Remove pin</string>
     <string name="plan_pin_chip_desc">%1$s: show options</string>
     <string name="plan_pin_add">Add</string>
+    <string name="plan_add_as_stop">Add as a stop</string>
+    <string name="plan_make_destination">Make it the destination</string>
     <string name="plan_pin_more">More</string>
     <string name="plan_pin_action_desc">%2$s: %1$s</string>
     <plurals name="plan_removes_points">

@@ -19,6 +19,7 @@ import com.onpath.strings.plan_go_here
 import com.onpath.strings.plan_locate_far_cd
 import com.onpath.strings.plan_new_during_tour
 import com.onpath.strings.plan_undo
+import com.onpath.strings.search_card_set_start
 import com.onpath.strings.nav_profile_hide
 import com.onpath.strings.nav_profile_show
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -382,6 +383,78 @@ class CoreFieldE2ETest : E2EBase() {
         assertTrue("traced: ${trace.take(30)}", trace.any { it.startsWith("One point left during the tour") })
     }
 
+    /**
+     * Field 2026-11-07 10:45 (Pixel, tour "Gewerbepark Süd → Unterstand"): a held place during a tour offered "Als Start
+     * setzen" instead of joining the route the tour follows. Now: the POI menu says what really happens (the same
+     * insertion as the add), a place beside the route is stop 2 between the points, and the tour follows the new route.
+     */
+    @Test fun aPlaceAddedDuringATourIsAStopBetweenNotANewStart() {
+        startPlanWithTwoPoints()
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the route is followed", 20_000) { guided() }
+        var plan: List<GeoPoint> = emptyList()
+        var oldLine: List<GeoPoint>? = null
+        scenario.onActivity { plan = vm(it).waypoints.toList(); oldLine = vm(it).followLine }
+        scenario.onActivity { vm(it).switchToPlan() }
+        waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+        // a place a little beside the middle of the route (a POI menu adds it this way)
+        val mid = GeoPoint((plan[0].lat + plan[1].lat) / 2 + 0.0003, (plan[0].lon + plan[1].lon) / 2)
+        val poi = com.onpath.app.poi.Poi("e2e-shelter", "shelter", "Unterstand E2E", mid.lat, mid.lon)
+        var label = ""
+        var menu: com.onpath.app.ui.PlaceAddMenu.Menu? = null
+        scenario.onActivity { label = vm(it).poiAddLabel(poi); menu = vm(it).placeMenu(poi) }
+        assertFalse("never a new start during a tour: \"$label\"", label == Txt.s(Res.string.search_card_set_start))
+        // beside the middle: a clear stop – the menu offers "Als Zwischenstopp" (owner 2026-11-07), no start
+        assertEquals("the menu: $menu", listOf(com.onpath.app.ui.PlaceAddMenu.Item.ADD_STOP), menu?.main)
+        scenario.onActivity { vm(it).addPoiAsStop(poi) }
+        waitUntil("3 points, the place between start and goal", 10_000) {
+            val w = waypointList()
+            w.size == 3 && w[0] == plan[0] && w[2] == plan[1] &&
+                com.onpath.app.data.Geo.distance(w[1], mid) < 5.0
+        }
+        waitUntil("the tour follows the new route", 30_000) {
+            var ok = false
+            scenario.onActivity { val l = vm(it).followLine; ok = l != null && l != oldLine }
+            ok
+        }
+        assertTrue("the recording goes on", recording())
+    }
+
+    /**
+     * Owner 2026-11-07 11:20: during a tour, a place past the goal → its menu says "Als neues Ziel" first; tapped, the plan
+     * ends there (the old goal is dropped), one Undo brings the old goal back. The recording goes on throughout.
+     */
+    @Test fun aPlaceMadeTheDestinationDuringATourEndsThePlanThereUndoBringsTheGoalBack() {
+        startPlanWithTwoPoints()
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the route is followed", 20_000) { guided() }
+        var plan: List<GeoPoint> = emptyList()
+        scenario.onActivity { plan = vm(it).waypoints.toList() }
+        scenario.onActivity { vm(it).switchToPlan() }
+        waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+        // half the route again beyond the goal, in its direction
+        val past = GeoPoint(plan[1].lat + (plan[1].lat - plan[0].lat) / 2, plan[1].lon + (plan[1].lon - plan[0].lon) / 2)
+        val poi = com.onpath.app.poi.Poi("e2e-church", "place_of_worship", "Kirche E2E", past.lat, past.lon)
+        var menu: com.onpath.app.ui.PlaceAddMenu.Menu? = null
+        scenario.onActivity { menu = vm(it).placeMenu(poi) }
+        assertEquals("the menu: $menu", com.onpath.app.ui.PlaceAddMenu.Item.NEW_DESTINATION, menu?.main?.firstOrNull())
+        assertTrue("the stop stays reachable: $menu",
+            com.onpath.app.ui.PlaceAddMenu.Item.ADD_STOP in menu!!.main + menu!!.more)
+        scenario.onActivity { vm(it).poiAsNewDestination(poi) }
+        waitUntil("the plan ends at the place, the old goal dropped", 10_000) {
+            val w = waypointList()
+            w.size == 2 && w[0] == plan[0] && com.onpath.app.data.Geo.distance(w[1], past) < 5.0
+        }
+        assertTrue("the recording goes on", recording())
+        scenario.onActivity { vm(it).undoStep() }
+        waitUntil("Undo: the old goal is back", 10_000) { waypointList() == plan }
+        assertTrue("the recording goes on after Undo", recording())
+    }
+
     /** A done tour (a recorded line) near the walker, for the follow-a-track cases below. */
     private fun insertDoneTour(name: String): Long {
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
@@ -741,8 +814,10 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun lockOnHoldPauseThenHoldEnd() {
         var before: com.onpath.app.data.AppSettings? = null
-        // the longest hold (2 s): on a loaded CI emulator the main thread blocks 0.5–0.8 s, a "short" tap's up event came
-        // late and the 1 s hold fired (GitHub 2026-11-07 04:14, "First held button fired" on the tap) – 2 s keeps a tap a tap
+        // the longest hold (2 s). The short taps that "fired the hold" on GitHub (2026-11-07, runs 42361613981,
+        // 42362929806, 42363890364: "Pause on the locked bar (short tap 2)") were an app bug, not the tap: CI runs with
+        // animations off and the band was a tween, full on its first frame – "Held button fired" 50 ms after a 21 ms tap.
+        // The band now fills by the frame clock (HoldRule.fill, HoldFillTest); this test runs with animations off on CI.
         val holdMs = com.onpath.app.data.HoldSetting.MAX_MS
         UnlockWindow.openMsForTests = 1_500 // the 20 s unlock window, short – no test waits 20 s
         scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
@@ -796,7 +871,10 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun lockOnOneHoldUnlocksTheBarForAPlainTapOnBeenden() {
         var before: com.onpath.app.data.AppSettings? = null
-        val holdMs = com.onpath.app.data.HoldSetting.MAX_MS // see lockOnHoldPauseThenHoldEnd: 2 s keeps a CI tap a tap
+        val holdMs = com.onpath.app.data.HoldSetting.MAX_MS // see lockOnHoldPauseThenHoldEnd (a short tap on Weiter resumed: HoldFillTest)
+        // the window long: this test checks that ONE hold opens the bar for a plain tap, not the window's length
+        // (UnlockWindowTest) – a loaded GitHub emulator took 13 s from the fired hold to the next step (run 42363890364)
+        UnlockWindow.openMsForTests = 60_000
         scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
         try {
             startPlanWithTwoPoints()
@@ -823,6 +901,7 @@ class CoreFieldE2ETest : E2EBase() {
             assertNotNull("the end sheet after a plain tap", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())
         } finally {
+            UnlockWindow.openMsForTests = null
             scenario.onActivity { vm(it).updateSettings(before!!) }
         }
     }

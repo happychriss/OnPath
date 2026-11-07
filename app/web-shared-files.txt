@@ -53,6 +53,9 @@ ui/PlanState.kt
 ui/MapGestures.kt
 poi/GoogleMapsLink.kt
 ui/RouteWarnings.kt
+# a held place's add entries („Als Zwischenstopp“ / „Als neues Ziel“) and the locate distance off the map (owner 2026-11-07)
+ui/PlaceAddMenu.kt
+ui/LocateDistance.kt
 gpx/GpxModel.kt
 gpx/GpxWriter.kt
 gpx/SportType.kt
@@ -109,6 +112,8 @@ routing/PlanCodeTest.kt
 ui/PlanStateTest.kt
 ui/MapGesturesTest.kt
 ui/RouteWarningsTest.kt
+ui/PlaceAddMenuTest.kt
+ui/LocateDistanceTest.kt
 sync/SyncCryptoTest.kt
 sync/PlanSyncTest.kt
 routing/LongRouteTest.kt
