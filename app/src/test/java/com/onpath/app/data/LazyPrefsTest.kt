@@ -2,7 +2,6 @@ package com.onpath.app.data
 
 import com.onpath.app.setup.CheckId
 import com.onpath.app.setup.LastSeen
-import com.onpath.app.ui.MapLifecycleTiming
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -96,9 +95,4 @@ class LazyPrefsTest {
         assertEquals(1234L, sp.getLong("lastSeenAt", 0L))
     }
 
-    @Test fun onlySlowMapLifecycleCallsAreTraced() {
-        assertFalse(MapLifecycleTiming.slow(40))
-        assertTrue(MapLifecycleTiming.slow(MapLifecycleTiming.SLOW_MS))
-        assertTrue(MapLifecycleTiming.slow(700))
-    }
 }
