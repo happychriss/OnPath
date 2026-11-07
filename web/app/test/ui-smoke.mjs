@@ -75,6 +75,8 @@ await page.mouse.move(bigSvg.x + bigSvg.width * 0.45, bigSvg.y + bigSvg.height *
 await page.mouse.move(bigSvg.x + bigSvg.width * 0.7, bigSvg.y + bigSvg.height * 0.5, { steps: 5 });
 await page.mouse.up();
 await page.waitForFunction(() => !document.querySelector('#bigProfile .bprange')?.hidden, null, { timeout: 10_000 }).catch(() => {});
+// the range lands every 40 ms while dragging (markSoon): wait for the drag's last one, not an earlier
+await page.waitForFunction(() => { const r = window.__profileRange, t = window.__state.plan?.distanceM ?? 0; return !!r && Math.max(r[0], r[1]) > t * 0.65; }, null, { timeout: 10_000 }).catch(() => {});
 const marked = await page.evaluate(async () => ({ text: document.querySelector('#bigProfile .bprange')?.textContent ?? '',
   shade: !document.querySelector('#bigProfile .profrange')?.hidden, total: window.__state.plan.distanceM, r: window.__profileRange,
   line: (await window.__map.getSource('profile-range').getData())?.geometry?.coordinates?.length ?? 0 }));

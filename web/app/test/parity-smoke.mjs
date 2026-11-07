@@ -290,7 +290,11 @@ if (await page.isEnabled('#undo')) { // a change → Save dark; Save overwrites;
   check(plain === '' && onPoi === 'pointer', `cursor: pointer over a POI (${JSON.stringify(onPoi)}), none of ours on the plain map (${JSON.stringify(plain)})`);
   const line = await page.evaluate(() => { const m = window.__map, f = m.queryRenderedFeatures({ layers: ['planned-route'] })[0];
     if (!f) return null; const c = f.geometry.type === 'LineString' ? f.geometry.coordinates : f.geometry.coordinates[0];
-    const p = m.project(c[Math.floor(c.length / 2)]), r = m.getContainer().getBoundingClientRect(); return [p.x + r.left, p.y + r.top]; });
+    // a vertex the map itself shows (on a wide screen the elevation profile lies along the map's bottom edge – plan sheet A)
+    const r = m.getContainer().getBoundingClientRect(), order = c.map((_, i) => (Math.floor(c.length / 2) + i) % c.length);
+    for (const i of order) { const p = m.project(c[i]), x = p.x + r.left, y = p.y + r.top;
+      if (document.elementFromPoint(x, y)?.classList.contains('maplibregl-canvas')) return [x, y]; }
+    return null; });
   check(line && await cursor(line[0], line[1]) === 'pointer', 'cursor: pointer over the route line');
   await page.evaluate(() => window.__map.getSource('pois').setData({ type: 'FeatureCollection', features: [] }));
 }
