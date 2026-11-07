@@ -1,13 +1,14 @@
 package com.onpath.app.ui
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
 /**
- * The tour's bottom bar in Navigate, unlocked or with the lock OFF (owner 2026-11-06, variant 2): no buttons in the status card; "⏸ Pause | ✎ Planen" at the
- * bottom; paused "Weiter · Beenden · round Planen" – ending only out of a pause; never a cut word. Plus the words
+ * The tour's bottom bar in Navigate, unlocked or with the lock OFF (owner 2026-11-06, variant 2): no buttons in the status card; "⏸ Anhalten | ✎ Planen" at the
+ * bottom; stopped "▶ Weiter · ■ Tour beenden · ✎ Planen" – ending only out of a stop; never a cut word. Plus the words
  * "Planen" and "Weiter" and the start screen's question as the title.
  */
 class TourBottomBarTest {
@@ -21,9 +22,24 @@ class TourBottomBarTest {
         assertFalse(TourBottomBarRules.runningWithIcons(120f, 120f, 358f))
         assertTrue(TourBottomBarRules.runningInOneRow(120f, 120f, 358f))
         assertFalse(TourBottomBarRules.runningInOneRow(140f, 140f, 358f))
-        // paused: Weiter / Beenden (~50 / ~68 dp) fit beside the round 56 dp button; a word of 130 dp does not
-        assertTrue(TourBottomBarRules.pausedInOneRow(50f, 68f, 358f))
-        assertFalse(TourBottomBarRules.pausedInOneRow(75f, 130f, 358f))
+    }
+
+    /**
+     * Stopped (owner 2026-11-07, "Anhalten" variant 5): "▶ Weiter" · "■ Tour beenden" · "✎ Planen" with icons, today's
+     * height; one row only when Weiter stays the widest, else Weiter full width over the two, a large font stacks all.
+     */
+    @Test fun stoppedRowWeiterIsTheWidest() {
+        val r = TourBottomBarRules
+        // EN "Resume" ~58 dp, "End tour" ~60 dp, "Plan" ~34 dp: one row on a 358 dp bar
+        assertEquals(TourBottomBarRules.Stopped.ONE_ROW, r.stopped(r.stoppedNeed(58f), r.stoppedSide(60f, 34f), 358f))
+        // DE "Weiter" ~48 dp, "Tour beenden" ~100 dp: the two sides leave Weiter too little → two rows
+        assertEquals(TourBottomBarRules.Stopped.TWO_ROWS, r.stopped(r.stoppedNeed(48f), r.stoppedSide(100f, 52f), 358f))
+        // a large font always stacks the three full width
+        assertEquals(TourBottomBarRules.Stopped.STACK, r.stopped(r.stoppedNeed(96f), r.stoppedSide(110f, 100f), 358f, fontScale = 2f))
+        // a word too long even for half the bar stacks too – never a cut word
+        assertEquals(TourBottomBarRules.Stopped.STACK, r.stopped(r.stoppedNeed(48f), r.stoppedSide(200f, 52f), 358f))
+        // short words still make a balanced group: the two side buttons are at least 96 dp
+        assertEquals(96f, r.stoppedSide(20f, 20f), 0.01f)
     }
 
     @Test fun startScreenAsksWhereTo() {

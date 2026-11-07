@@ -10,14 +10,13 @@ import com.onpath.strings.plan_bar_go
 import com.onpath.strings.common_ok
 import com.onpath.strings.common_resume
 import com.onpath.strings.nav_action_pause
-import com.onpath.strings.nav_end_short
+import com.onpath.strings.nav_end_tour
 import com.onpath.strings.nav_end_tour_title
 import com.onpath.strings.nav_arrived_title
-import com.onpath.strings.nav_end_tour
 import com.onpath.strings.nav_keep_recording
 import com.onpath.strings.plan_guide_find_title
 import com.onpath.strings.nav_hold_hint
-import com.onpath.strings.nav_pause_band_line
+import com.onpath.strings.nav_stopped_line
 import com.onpath.strings.nav_leave_go
 import com.onpath.strings.nav_leave_stay
 import com.onpath.strings.nav_settings_cd
@@ -1110,14 +1109,14 @@ class CoreFieldE2ETest : E2EBase() {
             routeSettled()
             scenario.onActivity { vm(it).startNavigation(force = true) }
             waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
-            assertNotNull("Pause at the bottom, no slider", findFresh(By.text(Txt.s(Res.string.nav_action_pause)), 10_000))
-            assertTrue("no Beenden before a pause", goneFresh(By.text(Txt.s(Res.string.nav_end_short)), 2_000))
+            assertNotNull("Anhalten at the bottom, no slider", findFresh(By.text(Txt.s(Res.string.nav_action_pause)), 10_000))
+            assertTrue("no Tour beenden before a stop", goneFresh(By.text(Txt.s(Res.string.nav_end_tour)), 2_000))
             clickText(Txt.s(Res.string.nav_action_pause))
             waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
             assertNotNull("Weiter at the bottom", findFresh(By.text(Txt.s(Res.string.common_resume)), 5_000))
             // the pause band (owner 2026-11-07, variant C): what stands still, over the buttons
-            assertNotNull("the pause band says what stands still", findFresh(By.text(Txt.s(Res.string.nav_pause_band_line)), 5_000))
-            clickText(Txt.s(Res.string.nav_end_short))
+            assertNotNull("the stopped head says what rests", findFresh(By.text(Txt.s(Res.string.nav_stopped_line)), 5_000))
+            clickText(Txt.s(Res.string.nav_end_tour))
             assertNotNull("the end sheet", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())
         } finally {
@@ -1144,7 +1143,7 @@ class CoreFieldE2ETest : E2EBase() {
             scenario.onActivity { vm(it).startNavigation(force = true) }
             waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
             val pause = findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 10_000)
-            assertNotNull("locked: Pause at the bottom, no slider", pause)
+            assertNotNull("locked: Anhalten at the bottom, no slider", pause)
             // owner 2026-11-07 09:30: nothing over the light buttons at rest – the hint only after a short tap
             assertTrue("no hint at rest", goneFresh(By.text(Txt.s(Res.string.nav_hold_hint)), 2_000))
             // a short tap: the band starts and falls back. Right after the switch to Navigate (a janky first frame on the
@@ -1154,7 +1153,7 @@ class CoreFieldE2ETest : E2EBase() {
             for (attempt in 1..3) {
                 // the bar can be redrawn between the find and the click: find it again each time, never `!!`
                 val button = findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 5_000)
-                assertNotNull("Pause on the locked bar (short tap $attempt)", button)
+                assertNotNull("Anhalten on the locked bar (short tap $attempt)", button)
                 quickTap(button) // a real short tap – UiAutomator's click() became a hold on a loaded CI emulator
                 hintSeen = findFresh(By.text(Txt.s(Res.string.nav_hold_hint)), 3_000)
                 if (hintSeen != null) break
@@ -1164,16 +1163,16 @@ class CoreFieldE2ETest : E2EBase() {
             assertTrue("a short tap does not pause", com.onpath.app.recording.RecordingService.state.value?.paused != true)
             holdButton(Txt.s(Res.string.nav_action_pause), ms = holdMs + 1_000)
             waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
-            assertNotNull("the pause band over the bar", findFresh(By.text(Txt.s(Res.string.nav_pause_band_line)), 5_000))
+            assertNotNull("the stopped head in the card", findFresh(By.text(Txt.s(Res.string.nav_stopped_line)), 5_000))
             // the unlock window (owner 2026-11-07, 20 s; here 1.5 s) is over: the bar is locked again. Checked by its look,
             // not by another tap: a held button carries its word as a description, an open one as plain text – Beenden
             // (Weiter is held in the window too, so it tells nothing here)
-            val end = Txt.s(Res.string.nav_end_short)
-            waitUntil("locked again after the window: Beenden is a held button", UnlockWindow.openMs + 10_000) {
+            val end = Txt.s(Res.string.nav_end_tour)
+            waitUntil("locked again after the window: Tour beenden is a held button", UnlockWindow.openMs + 10_000) {
                 findFresh(By.desc(end), 500) != null && findFresh(By.text(end), 500) == null
             }
             assertTrue("still paused", com.onpath.app.recording.RecordingService.state.value?.paused == true)
-            holdButton(Txt.s(Res.string.nav_end_short), ms = holdMs + 1_000)
+            holdButton(Txt.s(Res.string.nav_end_tour), ms = holdMs + 1_000)
             assertNotNull("the end sheet", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())
         } finally {
@@ -1198,7 +1197,7 @@ class CoreFieldE2ETest : E2EBase() {
             routeSettled()
             scenario.onActivity { vm(it).startNavigation(force = true) }
             waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
-            assertNotNull("locked: Pause at the bottom", findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 10_000))
+            assertNotNull("locked: Anhalten at the bottom", findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 10_000))
             holdButton(Txt.s(Res.string.nav_action_pause), ms = holdMs + 1_000)
             waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
             // the bar is open now – but "Weiter" still wants a hold (owner 10:15): a short tap shows the hint, no resume
@@ -1214,7 +1213,7 @@ class CoreFieldE2ETest : E2EBase() {
             Thread.sleep(1_000)
             assertTrue("a short tap on Weiter never resumes", com.onpath.app.recording.RecordingService.state.value?.paused == true)
             // Beenden is a plain button with its text in the window – a tap, no hold
-            clickText(Txt.s(Res.string.nav_end_short))
+            clickText(Txt.s(Res.string.nav_end_tour))
             assertNotNull("the end sheet after a plain tap", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())
         } finally {

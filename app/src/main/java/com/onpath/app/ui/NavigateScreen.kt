@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -108,7 +109,7 @@ data class NavUi(
     val recordedM: Double? = null,
     val elapsedS: Long = 0,
     val paused: Boolean = false,
-    /** When the pause began (wall clock ms, [com.onpath.app.recording.RecState.pausedSinceMs]) – the pause band's clock. */
+    /** When the pause began (wall clock ms, [com.onpath.app.recording.RecState.pausedSinceMs]) – "Angehalten seit 14:32" in the status card ([StoppedHead]). */
     val pausedSinceMs: Long? = null,
     val waitingGps: Boolean = false,
     /** No GPS while standing still or only briefly (owner 2026-11-01): a quiet grey state, not the amber ⚠ warning. */
@@ -153,7 +154,7 @@ data class NavUi(
     val approx: String? = null,
     /** OnPath's notifications are off during this tour: the amber box under the status card ([notificationsOffMessage]). */
     val notificationsOff: Boolean = false,
-    /** Paused and calm ([PauseQuiet.calm]): the status card says only what the pause band does not – no "not on the route". */
+    /** Paused and calm ([PauseQuiet.calm]): the status card says only what its stopped head does not – no "not on the route". */
     val calm: Boolean = false,
 )
 
@@ -287,7 +288,7 @@ fun NavigateOverlay(
     onNewPlanGone: () -> Unit = {},
 ) {
     // "Pause heißt Ruhe" (owner 2026-11-07): while paused no navigation question, no turn card, no GPS warning – the
-    // pause band says what stands still; the questions come back after Weiter ([PauseQuiet])
+    // stopped head says what rests; the questions come back after Weiter ([PauseQuiet])
     val ui = PauseQuiet.calm(shown)
     val density = androidx.compose.ui.platform.LocalDensity.current
     // the top column's height (turn card, status, chips) below the status bar: the one box goes 12 dp below it
@@ -295,7 +296,7 @@ fun NavigateOverlay(
     var messageBottomDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var sliderDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     // ONE bar at the bottom with and without the lock (owner 2026-11-06: "Stopp und Pause an der Stelle ist logischer"):
-    // "⏸ Pause | ✎ Planen", paused "Weiter · Beenden · round ✎" ([TourBottomBar]); the status card has no buttons.
+    // "⏸ Anhalten | ✎ Planen", stopped "▶ Weiter · ■ Tour beenden · ✎ Planen" ([TourBottomBar]); the status card has no buttons.
     // Locked (owner 2026-11-06 22:20, variant A of the hold lock – replaces the slider and its unlocked state): the same
     // buttons light, each fires only when held ~1 s ([HoldButton]); the lock off in the settings: a plain tap.
     // One fired hold unlocks the bar for 20 s (owner 2026-11-07 09:05, [UnlockWindow]): plain taps and full colours –
@@ -383,7 +384,7 @@ fun NavigateOverlay(
             // held while locked, plain inside the unlock window (Weiter always held)
             androidx.compose.runtime.CompositionLocalProvider(LocalOnHoldFired provides unlockOnFire) {
                 if (ui.recordedM != null) TourBottomBar(ui.paused, barPause, onEnd = barEnd, onPlan = barPlan, bottom, hold = lock,
-                    pausedSinceMs = ui.pausedSinceMs, free = ui.toGo == null, windowOpen = barOpen)
+                    windowOpen = barOpen)
                 else ChangePlanButton(barPlan, bottom, hold = planHeld)
             }
         }
@@ -607,8 +608,8 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         contentDescription = Txt.s(Res.string.nav_activity_cd, NavText.activityName(a, ui.sac))
                     }) {
                     Box(contentAlignment = Alignment.Center) {
-                        // no "● REC" sign any more (owner 2026-11-06: the running time shows the recording); paused the
-                        // icon is grey and the card's line says "Pausiert"
+                        // no "● REC" sign any more (owner 2026-11-06: the running time shows the recording); stopped the
+                        // icon is grey and the card's head says "Angehalten seit 14:32" ([StoppedHead])
                         Icon(a.icon, null, tint = if (ui.paused && ui.recordedM != null) OnPathColors.Grey else OnPathColors.Green,
                             modifier = Modifier.size(28.dp))
                     }
@@ -616,6 +617,8 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 Spacer(Modifier.width(10.dp))
             }
             Column(Modifier.weight(1f)) {
+                // stopped (owner 2026-11-07, "Anhalten" variant 5): no band at the bottom – the card's head says it
+                if (ui.paused && ui.recordedM != null) StoppedHead(ui.pausedSinceMs, free = ui.toGo == null)
                 // a tour without a route (owner 2026-11-05): say so plainly instead of an empty route line
                 if (ui.toGo == null && ui.recordedM != null) Text(str(Res.string.nav_free_tour), style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold, maxLines = 2)
@@ -623,7 +626,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                     if (g.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE) {
                         // never a stale time (owner rule 6): what is left counts again once back on the route. While the
                         // amber off-route card shows, it says it (one place, one distance). Paused (calm): nothing –
-                        // the card's line says "Pausiert", the pause band the rest (owner 2026-11-07 "Pause heißt Ruhe")
+                        // the card's head says "Angehalten seit …" (owner 2026-11-07 "Pause heißt Ruhe")
                         if (!offCard && !ui.calm) {
                             // never reached: "Not on the route yet · Start 31 km away" (the far-start box's number)
                             val (title, line2) = NavText.notOnRoute(g.startM, g.offM)
@@ -668,8 +671,9 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                     recordingLine(ui, d, offCard)?.let { line ->
                         Row(Modifier.padding(top = if (ui.toGo != null) 2.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (ui.activity == null) { RecDot(ui.paused, Modifier.size(8.dp)); Spacer(Modifier.width(8.dp)) }
-                            Text(line,
-                                style = if (offCard) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+                            val lineStyle = if (offCard) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium
+                            if (ui.paused) SplitLine(line, lineStyle)
+                            else Text(line, style = lineStyle,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
@@ -805,23 +809,28 @@ private fun PositionLine(text: String, copy: String?) {
 
 /**
  * The recording line of the status card, only when it matters (owner): a free recording (it is the card's
- * content): "Recording · 2.1 km · moving 0:28 · breaks 0:05"; paused: "Paused · moving 1:12"; off route (the card has
- * nothing else then): "Recording · 2.1 km". Normal navigation → null (the orange dot on the activity icon says it).
- * No GPS is the amber [noGpsLine] instead. Without moving time: the elapsed clock.
+ * content): "Recording · 2.1 km · moving 0:28 · breaks 0:05"; off route (the card has nothing else then):
+ * "Recording · 2.1 km". Stopped (owner 2026-11-07, "Anhalten" variant 5: the head says "Angehalten seit …"): a labelled
+ * line without seconds, "So far 5.3 km · moving 1:12", without a moving time "So far 5.3 km · 1:23 h on the way".
+ * Normal navigation → null (the orange dot on the activity icon says it). No GPS is the amber [noGpsLine] instead.
+ * Without moving time: the elapsed clock.
  */
 internal fun recordingLine(ui: NavUi, distanceM: Double, offRoute: Boolean = false): String? {
     val free = ui.toGo == null
     // off the route no recording line either (owner 2026-11-01: "überflüssig – der rote Punkt am Rad zeigt es")
     if (!free && !ui.paused) return null
-    val status = Txt.s(if (ui.paused) Res.string.nav_status_paused else Res.string.nav_status_recording)
-    val moving = ui.movingS ?: return "$status · ${Format.distance(distanceM)} · ${Format.clock(ui.elapsedS)}"
-    val parts = mutableListOf(status)
-    if (free) parts += Format.distance(distanceM)
-    if (free || ui.paused) {
-        parts += Txt.s(Res.string.nav_moving_lower, com.onpath.app.time.TimeEstimate.hm(moving))
-        val b = ui.breakS ?: 0.0
-        if (free && b >= 60) parts += Txt.s(Res.string.nav_breaks, com.onpath.app.time.TimeEstimate.hm(b))
+    if (ui.paused) {
+        val soFar = Txt.s(Res.string.nav_so_far, Format.distance(distanceM))
+        val time = ui.movingS?.let { Txt.s(Res.string.nav_moving_lower, com.onpath.app.time.TimeEstimate.hm(it)) }
+            ?: Txt.s(Res.string.nav_on_the_way_for, com.onpath.app.time.TimeEstimate.hm(ui.elapsedS.toDouble()))
+        return "$soFar · $time"
     }
+    val status = Txt.s(Res.string.nav_status_recording)
+    val moving = ui.movingS ?: return "$status · ${Format.distance(distanceM)} · ${Format.clock(ui.elapsedS)}"
+    val parts = mutableListOf(status, Format.distance(distanceM))
+    parts += Txt.s(Res.string.nav_moving_lower, com.onpath.app.time.TimeEstimate.hm(moving))
+    val b = ui.breakS ?: 0.0
+    if (b >= 60) parts += Txt.s(Res.string.nav_breaks, com.onpath.app.time.TimeEstimate.hm(b))
     return parts.joinToString(" · ")
 }
 
@@ -1222,4 +1231,51 @@ fun <T : Any> Appearing(value: T?, content: @Composable (T) -> Unit) {
         exit = androidx.compose.animation.shrinkVertically(androidx.compose.animation.core.tween(200, easing = androidx.compose.animation.core.FastOutSlowInEasing)) +
             androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160)),
     ) { last?.let { content(it) } }
+}
+
+/**
+ * The status card's head while a tour is stopped (owner 2026-11-07, "Anhalten" variant 5 – replaces the bottom pause
+ * band): a walnut ⏸ beside the (grey) activity, "Angehalten seit 14:32" (the clock time the stop began, [StoppedText]),
+ * the calm line "Aufzeichnung und Navigation ruhen" (free tour: "Aufzeichnung ruht") only where it fits on one line,
+ * then a thin line over the tour numbers. Too long for one line (large font): "Angehalten" over "seit 14:32".
+ */
+@Composable
+private fun StoppedHead(sinceMs: Long?, free: Boolean) {
+    val headStyle = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum", fontWeight = FontWeight.SemiBold)
+    val word = str(Res.string.nav_status_paused)
+    val clock = sinceMs?.let { StoppedText.since(it) }
+    val head = clock?.let { str(Res.string.nav_stopped_since_head, it) } ?: word
+    val since = clock?.let { str(Res.string.nav_stopped_since, it) }
+    val line = str(if (StoppedText.freeLine(free)) Res.string.nav_stopped_line_free else Res.string.nav_stopped_line)
+    val lineStyle = MaterialTheme.typography.bodyMedium
+    val tm = rememberTextMeasurer()
+    val iconPx = with(androidx.compose.ui.platform.LocalDensity.current) { 28.dp.roundToPx() } // the icon + its gap
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        fun fits(t: String, st: androidx.compose.ui.text.TextStyle, extra: Int = 0) =
+            tm.measure(t, st, maxLines = 1, softWrap = false).size.width + extra <= constraints.maxWidth
+        val oneLine = fits(head, headStyle, iconPx)
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Pause, null, tint = OnPathColors.Walnut, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(if (oneLine) head else word, style = headStyle, color = OnPathColors.Walnut, maxLines = 1)
+            }
+            if (!oneLine && since != null) Text(since, style = headStyle, color = OnPathColors.Walnut, maxLines = 1,
+                modifier = Modifier.padding(start = 28.dp))
+            if (fits(line, lineStyle)) Text(line, style = lineStyle, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            androidx.compose.material3.HorizontalDivider(Modifier.padding(vertical = 6.dp), thickness = 1.dp,
+                color = OnPathColors.Walnut.copy(alpha = 0.15f))
+        }
+    }
+}
+
+/** A " · " line that, too long for one line (large font), breaks at its " · " – never inside a phrase. */
+@Composable
+private fun SplitLine(line: String, style: androidx.compose.ui.text.TextStyle) {
+    val tm = rememberTextMeasurer()
+    androidx.compose.foundation.layout.BoxWithConstraints {
+        val fits = tm.measure(line, style, maxLines = 1, softWrap = false).size.width <= constraints.maxWidth
+        Text(if (fits) line else line.replace(" · ", "\n"), style = style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
 }

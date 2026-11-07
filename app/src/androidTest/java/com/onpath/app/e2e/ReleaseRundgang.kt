@@ -36,12 +36,11 @@ import com.onpath.strings.Txt
 import com.onpath.strings.common_delete
 import com.onpath.strings.routes_overview_follow
 import com.onpath.strings.common_ok
-import com.onpath.strings.nav_pause_band_line
+import com.onpath.strings.nav_stopped_line
 import com.onpath.strings.nav_arrived_title
 import com.onpath.strings.nav_end_tour
 import com.onpath.strings.nav_keep_recording
 import com.onpath.strings.nav_action_pause
-import com.onpath.strings.nav_end_short
 import com.onpath.strings.nav_mid_lead
 import com.onpath.strings.nav_end_tour_title
 import com.onpath.strings.nav_save_recording
@@ -273,8 +272,8 @@ class ReleaseRundgang : E2EBase() {
         // so Beenden is then a plain tap
         shot("0-bar-locked")
         holdButton(Txt.s(Res.string.nav_action_pause))
-        assertNotNull("paused: Beenden at the bottom, open", findFresh(By.text(Txt.s(Res.string.nav_end_short)), 5_000))
-        clickText(Txt.s(Res.string.nav_end_short))
+        assertNotNull("stopped: Tour beenden at the bottom, open", findFresh(By.text(Txt.s(Res.string.nav_end_tour)), 5_000))
+        clickText(Txt.s(Res.string.nav_end_tour))
         assertNotNull("\"End recording?\"", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
         shot("1-end-tour")
         // the sheet ignores a press in its first half second (field bug 2026-11-06 22:30, EndSheetGuard): a person looks first
@@ -603,14 +602,14 @@ class ReleaseRundgang : E2EBase() {
         shot("1-far-start")
         scenario.onActivity { vm(it).pauseRecording(true) }
         waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
-        assertNotNull("the pause band", findFresh(By.text(Txt.s(Res.string.nav_pause_band_line)), 10_000))
+        assertNotNull("the stopped head", findFresh(By.text(Txt.s(Res.string.nav_stopped_line)), 10_000))
         assertTrue("paused: the question is hidden", goneFresh(By.text(NavText.LEAD), 5_000))
         assertTrue("…but not answered or dropped", (nav()?.prompt as? NavPrompt.FarStart)?.id == asked)
         shot("2-paused-calm")
         scenario.onActivity { vm(it).pauseRecording(false) }
         waitUntil("recording again", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == false }
         assertNotNull("Weiter: the question is back", findFresh(By.text(NavText.LEAD), 10_000))
-        assertTrue("the band is gone", goneFresh(By.text(Txt.s(Res.string.nav_pause_band_line)), 5_000))
+        assertTrue("the stopped head is gone", goneFresh(By.text(Txt.s(Res.string.nav_stopped_line)), 5_000))
         shot("3-asked-again")
     }
 

@@ -127,8 +127,7 @@ class ScreenshotTest {
     @Composable
     private fun NavFrame(ui: NavUi, slide: Float = 0f, fit: Boolean = false, actions: Boolean = false, lock: Boolean = true,
                          newPlan: NewPlanNote? = null) {
-        // the pause band counts from a fixed "now" (a running clock would make every frame differ)
-        OnPathTheme { androidx.compose.runtime.CompositionLocalProvider(LocalPauseClock provides PAUSE_NOW) {
+        OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
@@ -138,12 +137,15 @@ class ScreenshotTest {
                         onSlideToPlan = {}, slideStartFraction = slide, actionsOpen = actions, lock = lock, newPlan = newPlan)
                 }
             }
-        } }
+        }
     }
 
-    /** The paused frames: "Pause · 12:04" (the pause began 12 min 4 s before [PAUSE_NOW]). */
-    private val PAUSE_NOW = 1_794_000_000_000L
-    private val pausedUi get() = navUi.copy(paused = true, pausedSinceMs = PAUSE_NOW - 724_000L)
+    /**
+     * The stopped frames (owner 2026-11-07, "Anhalten" v5): "Angehalten seit 14:32" (the stop began at 14:32 – unit tests
+     * run in UTC) and, as on a phone, a moving time: "Bisher 5,3 km · in Bewegung 1:12".
+     */
+    private val STOPPED_AT = 1_794_061_920_000L
+    private val pausedUi get() = navUi.copy(paused = true, pausedSinceMs = STOPPED_AT, movingS = 4_320.0)
 
     private val navUi = NavUi(toGo = ToGo(7_420.0, 512.0, 2.9 * 3600, 12.0, descentM = 310.0, profile = routePts),
         recordedM = 5_320.0, elapsedS = 5025, activity = Activity.HIKE)
@@ -759,20 +761,21 @@ class ScreenshotTest {
     fun navigateActionsOpen() = paparazzi.snapshot { NavFrame(navUi, actions = true) }
 
     /**
-     * Paused inside the unlock window (owner 2026-11-07: one held Pause opens the bar for 20 s): the pause band, Beenden
-     * and ✎ in full colour on a plain tap, "▶ Weiter" stays a light held button (10:15 – a stray tap never resumes;
+     * Stopped inside the unlock window (owner 2026-11-07: one held Anhalten opens the bar for 20 s): "■ Tour beenden"
+     * and "✎ Planen" in full colour on a plain tap, "▶ Weiter" stays a light held button (10:15 – a stray tap never resumes;
      * [com.onpath.app.domain.tour.UnlockWindow.needsHold]).
      */
     fun navigatePausedOpen() = paparazzi.snapshot { NavFrame(pausedUi, actions = true) }
 
     /**
-     * Locked and paused (owner 2026-11-07, variant C): the pause band "⏸ Pause · 12:04 – Aufnahme und Navigation
-     * angehalten" over the light held buttons "▶ Weiter · Beenden · ✎".
+     * Locked and stopped (owner 2026-11-07, "Anhalten" variant 5): the card's head "⏸ Angehalten seit 14:32 –
+     * Aufzeichnung und Navigation ruhen", a thin line, the numbers, "Bisher 5,3 km · in Bewegung 1:12"; at the bottom the
+     * light held buttons "▶ Weiter" over "■ Tour beenden | ✎ Planen" (EN in one row).
      */
-    fun navigatePausedLocked() = paparazzi.snapshot { NavFrame(pausedUi) }
+    @Test fun navigatePausedLocked() = paparazzi.snapshot { NavFrame(pausedUi) }
 
     /**
-     * Locked, right after a short tap on "Pause" (owner 2026-11-07, 09:30): "Gedrückt halten" in a strong walnut pill
+     * Locked, right after a short tap on "Anhalten" (owner 2026-11-07, 09:30): "Gedrückt halten" in a strong walnut pill
      * right above the tapped button (+ a tick on the phone). At rest nothing is over the light buttons (the other frames).
      */
     fun navigateLockedHint() = paparazzi.snapshot {
@@ -783,14 +786,14 @@ class ScreenshotTest {
     fun navigateNotRecordingOpen() = paparazzi.snapshot { NavFrame(navUi.copy(recordedM = null), actions = true) }
 
     /** Settings → Navigation "Sperre beim Navigieren" off (owner 2026-11-05): no slider, the three actions at once. */
-    /** The lock off (owner 2026-11-06, variant 2): no buttons in the card, "⏸ Pause | ✎ Planen" at the bottom. */
+    /** The lock off (owner 2026-11-06, variant 2): no buttons in the card, "⏸ Anhalten | ✎ Planen" at the bottom. */
     fun navigateLockOff() = paparazzi.snapshot { NavFrame(navUi, lock = false) }
-    /** The lock off, paused: "Weiter · Beenden · round Planen" – ending only out of a pause. */
+    /** The lock off, stopped: "▶ Weiter · ■ Tour beenden · ✎ Planen" as plain buttons – ending only out of a stop. */
     fun navigateLockOffPaused() = paparazzi.snapshot { NavFrame(pausedUi, lock = false) }
 
-    /** A free tour paused: the band says only "Aufnahme angehalten" (no route to stand still). */
+    /** A free tour stopped: "Aufzeichnung ruht" (no route to stand still); no moving time → "seit 0:30 h unterwegs". */
     fun navigateFreePaused() = paparazzi.snapshot {
-        NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true, pausedSinceMs = PAUSE_NOW - 724_000L))
+        NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true, pausedSinceMs = STOPPED_AT))
     }
 
     /** A tour without a route (owner 2026-11-05): "Freie Tour · nur Aufnahme" instead of an empty route line. */

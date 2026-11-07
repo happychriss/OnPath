@@ -16,7 +16,10 @@ class NavStatusTextTest {
     }
 
     @Test fun pausedAndOffRouteAndFreeRecordingShowIt() {
-        assertEquals("Paused · moving 1:12", recordingLine(nav.copy(paused = true), 5_320.0))
+        // stopped (owner 2026-11-07, "Anhalten" v5): the head says "Stopped since …"; here a labelled line without seconds
+        assertEquals("So far 5.3 km · moving 1:12", recordingLine(nav.copy(paused = true), 5_320.0))
+        assertEquals("So far 5.3 km · 1:23 h on the way",
+            recordingLine(nav.copy(paused = true, movingS = null, elapsedS = 83 * 60 + 20), 5_320.0))
         assertNull("off the route: no recording line (owner 2026-11-01)", recordingLine(nav, 5_320.0, offRoute = true))
         assertEquals("On the way · 5.3 km · moving 1:12 · breaks 0:11", recordingLine(nav.copy(toGo = null), 5_320.0))
     }

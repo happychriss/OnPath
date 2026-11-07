@@ -30,10 +30,10 @@ class ColourRuleTest {
         assertTrue("Los geht's (the sheet's foot, every step)", Regex("Button\\(colors = ActionButtons\\.go\\(\\), onClick = \\{ goClick\\(ui, cb\\) \\}").findAll(panel).count() == 1)
         assertTrue(src("ui/BackToNavigation.kt").contains("Button(colors = ActionButtons.go(),"))
         assertTrue("Tour nachfahren", src("ui/Panels.kt").contains("Button(colors = ActionButtons.go(), onClick = onFollow"))
-        // Navigate's bottom bar: Pause / Weiter green, Beenden green outlined – no red at the stop (#27)
+        // Navigate's bottom bar: Anhalten / Weiter green, "■ Tour beenden" light green with green as its full colour – no red at the stop (#27)
         val bar = src("ui/TourActionBar.kt")
-        assertTrue("Pause / Weiter", bar.contains("buttonColors(containerColor = OnPathColors.ActionGo"))
-        assertTrue("Beenden green, no red (#27)", bar.contains("border = BorderStroke(1.5.dp, OnPathColors.ActionGo)"))
+        assertTrue("Anhalten / Weiter", bar.contains("buttonColors(containerColor = OnPathColors.ActionGo"))
+        assertTrue("Tour beenden green, no red (#27)", bar.contains("one(endWord, Icons.Filled.Stop, OnPathColors.ActionGo, TourActions.GoTonal,"))
         assertTrue("the turn card", src("ui/NavigateScreen.kt").contains("Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.ActionGo,"))
     }
 

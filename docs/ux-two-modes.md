@@ -23,6 +23,9 @@ Search mockups: `docs/ux-search-proposals.md` (proposal C's "Add to route" card 
    End tour is never deeper than one drag + one tap. Large font: Continue moves under the status, Pause / End stack
    (never cut). Back in Plan from Navigate the sheet starts at that row again; after the tour it shows the profile
    step (`PlanSize.backInPlan` / `afterTour`, `TourStatusRow`, `TourPauseEnd`).
+   **Anhalten** (owner 2026-11-07): in Navigate the tour stops with "⏸ Anhalten" (never "Pause" – the word says both,
+   stop for now and end); stopped, the status card's head says "⏸ Angehalten seit 14:32 · Aufzeichnung und Navigation
+   ruhen", the bottom offers ▶ Weiter · ■ Tour beenden (asks first) · ✎ Planen (`ui/TourActionBar.kt`, `StoppedHead`).
 2. **Continue = smart re-route:** the route is recalculated from the current position to the remaining stops
    (stops already passed are dropped; a new point was placed by `WaypointInsertion`).
    **Plan edited during a tour (owner):** round trip, Undo, points added / removed, reverse – the tour

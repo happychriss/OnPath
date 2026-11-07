@@ -35,7 +35,7 @@
     <string name="nav_position_clip">Position</string>
     <string name="nav_copied">%1$s · kopiert ✓</string>
     <string name="nav_status_recording">Unterwegs</string>
-    <string name="nav_status_paused">Pausiert</string>
+    <string name="nav_status_paused">Angehalten</string>
     <string name="nav_status_searching_gps">GPS wird gesucht…</string>
     <string name="nav_moving_lower">in Bewegung %1$s</string>
     <string name="nav_moving">In Bewegung %1$s</string>
@@ -125,7 +125,7 @@
     <string name="nav_notif_paused_in_plan">Navigation pausiert – tippen zum Weiterfahren</string>
     <string name="nav_notif_following">%1$s · Route: %2$s</string>
     <string name="nav_notif_recorded">Unterwegs %1$s · %2$s</string>
-    <string name="nav_pause">Pausieren</string>
+    <string name="nav_pause">Anhalten</string>
     <string name="nav_route_fallback">Route</string>
 
     <!-- recording notifications and problems -->
@@ -143,7 +143,7 @@
     <string name="nav_rec_fail_storage">Die Tour konnte nicht starten: Sie kann nicht gespeichert werden (Speicher voll oder beschädigt).</string>
     <string name="nav_rec_save_failed_title">Tour kann nicht gespeichert werden</string>
     <string name="nav_rec_save_failed">Die Tour kann nicht mehr gespeichert werden (Speicher voll oder beschädigt). Gib Speicher frei – OnPath versucht es weiter.</string>
-    <string name="nav_rec_paused_title">Pause</string>
+    <string name="nav_rec_paused_title">Angehalten</string>
     <string name="nav_rec_paused_moving">Du bist unterwegs – weiter?</string>
     <string name="nav_rec_rescued_title">Tour gerettet</string>
     <string name="nav_rec_rescued">Der Speicher des Handys hatte ein Problem. OnPath hat deine Tour wiederhergestellt – sie läuft weiter. Details: Einstellungen → Diagnose.</string>
@@ -172,7 +172,6 @@
     <string name="nav_end_tour">Tour beenden</string>
     <string name="nav_notif_arrived">Aufnahme läuft · Tour beenden in der App</string>
     <string name="nav_continue">Weiter</string>
-    <string name="nav_end_short">Beenden</string>
     <string name="nav_leave_title">App verlassen?</string>
     <string name="nav_leave_text">Deine Tour wird weiter aufgezeichnet.</string>
     <string name="nav_leave_stay">Bleiben</string>
@@ -180,7 +179,7 @@
     <string name="nav_change_plan">Planen</string>
     <string name="nav_straight_on">Geradeaus</string>
     <string name="nav_save_recording">Tour speichern</string>
-    <string name="nav_action_pause">Pause</string>
+    <string name="nav_action_pause">Anhalten</string>
     <string name="nav_route_back_title">Kein Ziel mehr vor dir.</string>
     <string name="nav_route_back_text">Die Tour läuft weiter. Rückgängig holt den Punkt zurück.</string>
     <string name="nav_route_back">Zurück zum Start</string>
@@ -267,7 +266,10 @@
     <string name="nav_free_tour">Freie Tour · nur Aufnahme</string>
     <string name="nav_stop_arrive">an %1$s</string>
     <string name="nav_hold_hint">Gedrückt halten</string>
-    <string name="nav_pause_band">Pause · %1$s</string>
-    <string name="nav_pause_band_line">Aufnahme und Navigation angehalten</string>
-    <string name="nav_pause_band_line_free">Aufnahme angehalten</string>
+    <string name="nav_stopped_since_head">Angehalten seit %1$s</string>
+    <string name="nav_stopped_since">seit %1$s</string>
+    <string name="nav_stopped_line">Aufzeichnung und Navigation ruhen</string>
+    <string name="nav_stopped_line_free">Aufzeichnung ruht</string>
+    <string name="nav_so_far">Bisher %1$s</string>
+    <string name="nav_on_the_way_for">seit %1$s h unterwegs</string>
 </resources>

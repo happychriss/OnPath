@@ -172,7 +172,7 @@
   },
   "nav_status_paused": {
     "area": "Navigate",
-    "context": "Status word: recording paused (status card, notification)",
+    "context": "Status word: recording paused (status card, notification) Owner 2026-11-07: the stop state is 'Anhalten' / 'Angehalten', never 'Pause'.",
     "priority": 1,
     "confidence": "sicher",
     "max": 14
@@ -554,7 +554,7 @@
   },
   "nav_pause": {
     "area": "Tour card (Plan)",
-    "context": "Button on the tour card and notification action: pause the recording",
+    "context": "Button on the tour card and notification action: pause the recording Owner 2026-11-07: the stop state is 'Anhalten' / 'Angehalten', never 'Pause'.",
     "priority": 1,
     "confidence": "bitte prüfen",
     "doubt": "'Pausieren' (verb) – or 'Pause'",
@@ -641,7 +641,7 @@
   },
   "nav_rec_paused_title": {
     "area": "Notification",
-    "context": "Notification when you walk away while paused",
+    "context": "Notification when you walk away while paused Owner 2026-11-07: the stop state is 'Anhalten' / 'Angehalten', never 'Pause'.",
     "priority": 2,
     "confidence": "sicher"
   },
@@ -1289,25 +1289,46 @@
     "priority": 3,
     "confidence": "sicher"
   },
-  "nav_pause_band": {
-    "area": "Navigate (paused)",
-    "context": "Title of the calm paper band over the bottom bar while a tour is paused (owner 2026-11-07, variant C). %1$s = how long the pause lasts, ticking: '12:04' (mm:ss) or '1:02:30' (h:mm:ss).",
+  "nav_stopped_since_head": {
+    "area": "Navigate (stopped)",
+    "context": "Head line of Navigate's status card while a tour is stopped (owner 2026-11-07, 'Anhalten' variant 5), after a pause icon. %1$s = the clock time the stop began, '14:32'.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 26
+  },
+  "nav_stopped_since": {
+    "area": "Navigate (stopped)",
+    "context": "Second line of the stopped head at a large font, under 'nav_status_paused' ('Angehalten' / 'seit 14:32'). %1$s = the clock time the stop began.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "nav_stopped_line": {
+    "area": "Navigate (stopped)",
+    "context": "Calm line under the stopped head in the status card: what stands still while a tour with a route is stopped. Dropped where it does not fit on one line.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 36
+  },
+  "nav_stopped_line_free": {
+    "area": "Navigate (stopped)",
+    "context": "The same for a free tour (no route followed): only the recording rests.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 36
+  },
+  "nav_so_far": {
+    "area": "Navigate (stopped)",
+    "context": "Last line of the stopped status card: the distance recorded so far, %1$s = '5.3 km'. Followed by ' · moving 1:12'.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 18
+  },
+  "nav_on_the_way_for": {
+    "area": "Navigate (stopped)",
+    "context": "Fallback after 'nav_so_far' when no moving time is known: %1$s = time since the start, '1:23' (h:mm).",
     "priority": 1,
     "confidence": "sicher",
     "max": 24
-  },
-  "nav_pause_band_line": {
-    "area": "Navigate (paused)",
-    "context": "Second line of the pause band when a route is followed: both the track recording and the route guidance stand still until 'Weiter'.",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 40
-  },
-  "nav_pause_band_line_free": {
-    "area": "Navigate (paused)",
-    "context": "Second line of the pause band on a free tour (no route followed): only the recording stands still.",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 40
   }
 }
