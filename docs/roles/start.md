@@ -22,8 +22,10 @@ an item said to the wrong session goes into the backlog for the right one.
 
 ## The round (every wake-up and whenever the owner writes – the start hook already shows 2–4)
 1. `git pull --rebase origin main`.
-2. Owner's word: `tools/ask.sh an-alle --von <name>`.
-3. Answers: `tools/ask.sh offen` – answered questions of this unit → act, `tools/ask.sh erledigt <nr> "…"`.
+2. Owner's word: `docs/backlog.md` "For the roles" – a line with your tag → do it, then remove your tag (the line
+   when no tag is left).
+3. Answers: `docs/backlog.md` "Waiting for the owner" – a question of this unit the owner has answered (in a chat) →
+   act, delete the line.
 4. `wip/<name>-…` branches (work saved before a shutdown): bring them to `main`, say so in the handoff. Old branches
    go with `tools/dev/prune_branches.sh` (owner 2026-11-06): `list` → one question box to the owner with exactly that list
    ("Alle löschen" / "Nein"; branches checked by hand marked as such) → on yes `delete [--by-hand "<why>"] <branches…>`,
@@ -37,8 +39,9 @@ an item said to the wrong session goes into the backlog for the right one.
 branch.
 
 ## Questions to the owner
-Only as an issue (`tools/ask.sh frage --von <name> …`). Blocking → `--blockiert`, push first, then the same question as
-a question box in the chat. Not urgent → only the issue, go on. Rules: `docs/owner-preferences.md`.
+In your own chat as a question box (rules: `docs/owner-preferences.md`). Push first if the answer blocks you. Still
+open when you stop → one line under "Waiting for the owner" in `docs/backlog.md` (who, date, question, recommendation).
+Not urgent → take the recommendation, note it, go on.
 
 ## Never
 Delete branches other than through `tools/dev/prune_branches.sh` after the owner's yes to the list (round, step 4); change `.github/workflows/`, signing or secrets without a PR to the owner; release without the

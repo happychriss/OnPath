@@ -17,7 +17,7 @@ release's notes) and the git history – this file keeps only the current state 
 - **Pixel:** not checked after v0.17.2 – ask the owner / check About.
 - **Owner decisions still open:** `metersPerPixel` density fix (taps count "on the line" within ~60 dp instead of 24 dp;
   the fix changes hold behaviour); Rundgang margin for offline (10 km kept; 5 km would save ~25 % download). Smaller
-  open items: `docs/backlog.md`; questions: issues `frage` in `onpath.private` + the Fragenregister.
+  open items: `docs/backlog.md`; open questions: backlog "Waiting for the owner"; the owner's own questions: the Fragenregister.
 
 ## Last session
 - **laptop, 2026-11-07 – planner parity + plan sheet A (both live):** "Web planner" green again – the app's colour rule,
