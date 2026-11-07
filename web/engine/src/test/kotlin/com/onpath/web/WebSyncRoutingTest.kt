@@ -17,7 +17,7 @@ import java.nio.ByteBuffer
 import java.nio.file.Files
 
 /**
- * Sync fields 7 / 8 on the browser's side (docs/design/web-sync.md §5.2, docs/handoff-web-sync-fingerprint.md): the
+ * Sync fields 7 / 8 on the browser's side (docs/design/web-sync.md §5.2, docs/design/routing-fingerprint.md): the
  * page's Save writes the engine's routing fingerprint (= the app's for the same profiles) and the creation day of the rd5
  * it loaded under the plan's points; a move into another folder keeps what the item had; the grey line only for a plan
  * from the phone whose comparable fingerprint differs.

@@ -80,15 +80,15 @@ map/Overview.kt
 # the map look per activity (owner 2026-10-31: identical in browser and app): which style layers show, the hiking
 # band's T-level filter – the app's MapController applies the same table
 map/ActivityLayers.kt
-# one plan computation for app and web (docs/handoff-web-planresult.md): route + model time, snapped points, gaps,
+# one plan computation for app and web (docs/design/web-planner.md §22): route + model time, snapped points, gaps,
 # warnings, rating, profile – Engine.plan calls PlanResult.plan like AppViewModel.recalc
 routing/PlanResult.kt
 routing/ProfileData.kt
-# the app's plan GPX (docs/handoff-web-parity-b.md §2): line + route points as <wpt>, "<name> - plan.gpx", re-import
+# the app's plan GPX (docs/design/web-planner.md §22): line + route points as <wpt>, "<name> - plan.gpx", re-import
 gpx/PlanGpx.kt
-# the routing fingerprint (docs/handoff-web-parity-b.md §4, routing-fingerprint.md): diagnostics + sync field 7
+# the routing fingerprint (docs/design/routing-fingerprint.md): diagnostics + sync field 7
 routing/RoutingFingerprint.kt
-# the plan sheet's routing-data notice and way-type / surface line (docs/handoff-web-notice-breakdown.md)
+# the plan sheet's routing-data notice and way-type / surface line (docs/design/web-planner.md §22)
 data/RoutingDataNotice.kt
 routing/BreakdownRules.kt
 # The app's own unit tests for the shared files the web adds (the app's Gradle build needs an Android SDK; these run on
@@ -115,7 +115,7 @@ ui/PlanGapsTest.kt
 sync/SyncTrackTest.kt
 sync/SyncLimitsTest.kt
 sync/MemoryMailbox.kt
-# the shared plan result, plan GPX and loop-aware edits (handoff-web-planresult.md, handoff-web-parity-b.md)
+# the shared plan result, plan GPX and loop-aware edits (docs/design/web-planner.md §22)
 routing/PlanResultTest.kt
 gpx/PlanGpxTest.kt
 routing/PlanPointsTest.kt
