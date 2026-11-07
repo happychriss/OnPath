@@ -143,41 +143,104 @@ class RecordingService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
 
     private var tourId = -1L
-    private var seq = 0
-    private var seg = 0
-    private var paused = false
-    /** Wall-clock start of the current pause ([RecState.pausedSinceMs]); null while recording. */
-    private var pausedSinceMs: Long? = null
-    private var distance = 0.0
-    private var ascent = 0.0
-    private var descent = 0.0
-    /** Ascent / descent from the terrain under the points, GPS altitude where there is none ([AscentCounter]). */
-    private val climb = AscentCounter()
+    /**
+     * This tour's track, totals and per-tour memories ([TourRun]): a new one at every tour start, so nothing of the
+     * tour before carries over when Android hands the next start to this instance. The properties below only
+     * forward to it.
+     */
+    private var tourRun = TourRun()
+    private var seq: Int
+        get() = tourRun.seq
+        set(v) { tourRun.seq = v }
+    private var seg: Int
+        get() = tourRun.seg
+        set(v) { tourRun.seg = v }
+    @set:JvmName("putPaused") // setPaused() is the service's pause action
+    private var paused: Boolean
+        get() = tourRun.paused
+        set(v) { tourRun.paused = v }
+    private var pausedSinceMs: Long?
+        get() = tourRun.pausedSinceMs
+        set(v) { tourRun.pausedSinceMs = v }
+    private var distance: Double
+        get() = tourRun.distance
+        set(v) { tourRun.distance = v }
+    private var ascent: Double
+        get() = tourRun.ascent
+        set(v) { tourRun.ascent = v }
+    private var descent: Double
+        get() = tourRun.descent
+        set(v) { tourRun.descent = v }
+    private var elapsedS: Long
+        get() = tourRun.elapsedS
+        set(v) { tourRun.elapsedS = v }
+    private var tickRestMs: Long
+        get() = tourRun.tickRestMs
+        set(v) { tourRun.tickRestMs = v }
+    private var last: TrackPoint?
+        get() = tourRun.last
+        set(v) { tourRun.last = v }
+    private var lastGoodFixElapsed: Long
+        get() = tourRun.lastGoodFixElapsed
+        set(v) { tourRun.lastGoodFixElapsed = v }
+    private var trackSeg: Int
+        get() = tourRun.trackSeg
+        set(v) { tourRun.trackSeg = v }
+    private var saveFailed: Boolean
+        get() = tourRun.saveFailed
+        set(v) { tourRun.saveFailed = v }
+    private var firstFixElapsed: Long
+        get() = tourRun.firstFixElapsed
+        set(v) { tourRun.firstFixElapsed = v }
+    private var lastFixDemo: Boolean
+        get() = tourRun.lastFixDemo
+        set(v) { tourRun.lastFixDemo = v }
+    private var saverWarned: Boolean
+        get() = tourRun.saverWarned
+        set(v) { tourRun.saverWarned = v }
+    private var arrived: Boolean
+        get() = tourRun.arrived
+        set(v) { tourRun.arrived = v }
+    private var arrivedToken: Long?
+        get() = tourRun.arrivedToken
+        set(v) { tourRun.arrivedToken = v }
+    private var lineLength: Pair<Int, Double>?
+        get() = tourRun.lineLength
+        set(v) { tourRun.lineLength = v }
+    private var junctionsTracedVersion: Int
+        get() = tourRun.junctionsTracedVersion
+        set(v) { tourRun.junctionsTracedVersion = v }
+    private var t5LastAt: GeoPoint?
+        get() = tourRun.t5LastAt
+        set(v) { tourRun.t5LastAt = v }
+    private var estimatePaused: com.onpath.app.time.PauseReason?
+        get() = tourRun.estimatePaused
+        set(v) { tourRun.estimatePaused = v }
+    private var navigating: Boolean
+        get() = tourRun.navigating
+        set(v) { tourRun.navigating = v }
+    private var navigatingApplied: Boolean
+        get() = tourRun.navigatingApplied
+        set(v) { tourRun.navigatingApplied = v }
+    private val track: GrowingTrack get() = tourRun.track
+    private val climb: AscentCounter get() = tourRun.climb
+    private val gapWatch: PointFilter.GapWatch get() = tourRun.gapWatch
+    private val moveWatch: MoveWatch get() = tourRun.moveWatch
+    private val pauseWatch: PauseWatch get() = tourRun.pauseWatch
+    private val arrivalGate: com.onpath.app.routing.ArrivalGate get() = tourRun.arrivalGate
+    private val junctions: com.onpath.app.navigation.JunctionCues get() = tourRun.junctions
+    private val junctionSpeeds: com.onpath.app.navigation.SpeedWindow get() = tourRun.junctionSpeeds
+    private val stopQuiet: StopQuiet get() = tourRun.stopQuiet
     private var terrain: com.onpath.app.data.TerrainHeights? = null
-    private var elapsedS = 0L
-    private var last: TrackPoint? = null
-    private var lastGoodFixElapsed = 0L
-    /** Fixes dropped for accuracy since the last good one: says why a GPS gap had no usable fix. */
-    private val gapWatch = PointFilter.GapWatch()
-    /** Append-only; its snapshot for [RecState] costs O(pieces), not a copy of every point ([GrowingTrack]). */
-    private val track = GrowingTrack()
-    private var trackSeg = -1
-    /** A database write failed; cleared by the next successful point write. */
-    private var saveFailed = false
 
     private var follow: Pair<String, List<GeoPoint>>? = null
     /** Navigation session + off-route flow; null for free recording. */
     private var navigator: Navigator? = null
-    /** Vibration before junctions of the followed line + the next junction for the lock screen (owner). */
-    private val junctions = com.onpath.app.navigation.JunctionCues()
     /** Spoken directions (docs/design/voice-guidance.md): what to say ([voice]), the phone's speech output ([speaker]). */
     private val voice = com.onpath.app.navigation.VoiceGuide()
     /** The voice memory last written to [TRIP_FILE] (written again when it changes). */
     private var voiceSaved: com.onpath.app.navigation.VoiceGuide.Memory? = null
     private var speaker: Speaker? = null
-    private val junctionSpeeds = com.onpath.app.navigation.SpeedWindow()
-    /** Line version whose junction count was traced (a missing junction vibration is explained in the trace). */
-    private var junctionsTracedVersion = Int.MIN_VALUE
     private val sessionStore by lazy { NavSessionStore(File(filesDir, NavSession.FILE)) }
     private val routeExec = Executors.newSingleThreadExecutor()
     private val routeDispatcher = routeExec.asCoroutineDispatcher()
@@ -189,12 +252,6 @@ class RecordingService : Service() {
     private var alertPosted = 0L
     /** Off-route settings, re-read when the app sends ACTION_SETTINGS / ACTION_FOLLOW_CHANGED. */
     private var settings: com.onpath.app.data.AppSettings? = null
-    /** False while the app is in Plan mode ("Navigation Stopp"): the phone is quiet then (recording goes on). */
-    private var navigating = true
-    /** What the navigator was last told: Navigate or Plan ([StopQuiet]). */
-    private var navigatingApplied = true
-    /** "Navigation Stopp" = quiet, also with the screen off (owner 2026-11-01); only Continue ends it (owner 2026-11-03). */
-    private val stopQuiet = StopQuiet()
 
     /** The app is in Plan during the tour: silent ([ModeQuiet]). */
     private fun planQuiet(): Boolean = tourId >= 0 && stopQuiet.quiet
@@ -218,8 +275,6 @@ class RecordingService : Service() {
     private var tripSaved = 0L
     /** This tour carries the "Demo · " name (Developer tools → Demo fed it simulated fixes). */
     private var demoMarked = false
-    /** The last fix was simulated: a switch between demo and real GPS starts a new track piece (never a jump). */
-    private var lastFixDemo = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -355,21 +410,17 @@ class RecordingService : Service() {
 
         try {
             if (existing != null) {
+                // its totals and points from the database, everything else fresh – also on an instance whose tour
+                // ended a moment ago (TourRun); the next point goes into a new piece, no straight jump
+                val (nextSeq, lastSeg) = db.recordingCursor(existing.id)
+                val segs = db.loadSegments(existing.id).map { s -> s.map { it.toGeo() } }
+                tourRun = TourRun.resumed(existing.distanceM, existing.ascentM, existing.descentM,
+                    existing.durationS.toLong(), nextSeq, lastSeg, segs)
                 tourId = existing.id
                 tourMeta = Triple(existing.name, existing.createdMs, existing.sac)
-                distance = existing.distanceM; ascent = existing.ascentM; descent = existing.descentM
-                elapsedS = existing.durationS.toLong()
-                val (nextSeq, lastSeg) = db.recordingCursor(tourId)
-                seq = nextSeq; seg = lastSeg + 1 // resume in a new segment, no straight jump
-                val segs = db.loadSegments(tourId)
-                segs.forEach { s -> track.newSegment(); s.forEach { track.add(it.toGeo()) } }
-                trackSeg = lastSeg
-                climb.restart()
-                last = null
                 recActivity = activityOf(existing.activity)
                 demoMarked = existing.name.startsWith(DemoLocation.TOUR_PREFIX)
                 voice.newTour()
-                arrivedToken = null
                 loadTrip() // also the tour's voice memory: a sticky restart never says "Los geht's" again
             } else {
                 // a tour started during a demo is marked as such (easy to find and delete)
@@ -380,15 +431,16 @@ class RecordingService : Service() {
                 // follows it
                 val sac = newTourSac(intent?.getIntExtra(EXTRA_SAC, 0) ?: 0, Prefs(this).sac)
                 val created = System.currentTimeMillis()
-                tourId = db.insertTour(TourKind.RECORDED, name, intent?.getStringExtra(EXTRA_ACTIVITY), sac,
+                val id = db.insertTour(TourKind.RECORDED, name, intent?.getStringExtra(EXTRA_ACTIVITY), sac,
                     0.0, 0.0, 0.0, 0.0, emptyList(), state = "active", createdMs = created)
+                // a new tour starts from zero: track, distance, time, point numbers, pause, arrival, junction memory
+                // (TourRun) – before its first stats write below, also on an instance whose tour ended a moment ago
+                tourRun = TourRun()
+                tourId = id
                 tourMeta = Triple(name, created, sac)
                 recActivity = activityOf(intent?.getStringExtra(EXTRA_ACTIVITY))
-                firstFixElapsed = 0L // a new tour: its first heights settle again (SeaLevel)
-                climb.restart()
                 trip = com.onpath.app.time.TripPace(priorFor(recActivity))
                 voice.newTour(); voiceSaved = null
-                arrived = false; arrivedToken = null; arrivalGate.reset()
                 saveTrip()
             }
         } catch (e: Exception) {
@@ -411,7 +463,6 @@ class RecordingService : Service() {
         acquireWakeLock()
         restWatch.reset(); tracker.setInterval(RestWatch.NORMAL_MS) // never start a tour at the standing-still rate
         moveWatch.start(SystemClock.elapsedRealtime())
-        saverWarned = false
         if (!saverRegistered) try {
             ContextCompat.registerReceiver(this, saverReceiver,
                 android.content.IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)
@@ -463,8 +514,6 @@ class RecordingService : Service() {
     }
 
     private var lastTick = 0L
-    /** The part of a second not counted yet ([tick]). */
-    private var tickRestMs = 0L
     private var lastStats = 0L
     private var pausedBefore = false
 
@@ -501,9 +550,6 @@ class RecordingService : Service() {
     }
 
     private fun gpsLost() = SystemClock.elapsedRealtime() - lastGoodFixElapsed > RestWatch.lostAfterMs(restWatch.resting)
-
-    /** Quiet while standing still (owner 2026-11-01): moving = a point accepted within the last 2 min ([MoveWatch]). */
-    private val moveWatch = MoveWatch()
 
     /** The phone's motion sensor while there is no fix (owner 2026-11-02): lying still = nothing about GPS. */
     private val motion by lazy { MotionSense(this) }
@@ -603,8 +649,7 @@ class RecordingService : Service() {
         val (verdict, moved) = PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost || bridged)
         if (verdict != PointFilter.Verdict.ACCEPT) return             // GPS jump or standing still
         moveWatch.moved(nowEl)
-        distance += moved
-        if (wasLost && prev != null && !bridged) seg++                // long GPS gap: new segment
+        tourRun.count(moved, newPiece = wasLost && prev != null && !bridged) // a long GPS gap: new segment
         // ascent from the terrain under the point (the point keeps its GPS altitude); never costs the track
         try {
             val ground = terrain?.heightAt(p.lat, p.lon)
@@ -617,16 +662,13 @@ class RecordingService : Service() {
         if (writePoints()) {
             if (saveFailed) { saveFailed = false; nm().cancel(SAVE_FAIL_ID) }
         }
-        last = p
-        if (track.isEmpty() || trackSeg != seg) { track.newSegment(); trackSeg = seg }
-        track.add(p.toGeo())
+        tourRun.show(p)
         publish()
     }
 
     private val gpsWatchdog = GpsWatchdog()
 
-    /** Battery saver that stops GPS with the screen off, said once per tour (review M5). */
-    private var saverWarned = false
+    /** Battery saver that stops GPS with the screen off, said once per tour (review M5; [saverWarned]). */
     private var saverRegistered = false
     private val saverReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) { checkBatterySaver() }
@@ -654,12 +696,6 @@ class RecordingService : Service() {
     }
 
     /** Arrival at the end of the followed line ([com.onpath.app.routing.ArrivalGate], review H2). */
-    private val arrivalGate = com.onpath.app.routing.ArrivalGate()
-    private var arrived = false
-    /** The session token the arrival belongs to (kept in [TRIP_FILE]: a restart keeps "arrived", a new line clears it). */
-    private var arrivedToken: Long? = null
-    private var lineLength: Pair<Int, Double>? = null
-
     private fun checkArrived(pos: GeoPoint, accuracyM: Double) {
         val nav = navigator ?: return
         // Plan is silent (owner 2026-11-03): not checked there – the next fix after "Navigation fortsetzen" checks again
@@ -955,7 +991,6 @@ class RecordingService : Service() {
         rerouteJob?.cancel(); rerouteJob = null
     }
 
-    private var t5LastAt: GeoPoint? = null
     private val tourCells by lazy { com.onpath.app.cells.CellTriggers(com.onpath.app.cells.AppCells.get(this)) }
 
     /**
@@ -1044,7 +1079,6 @@ class RecordingService : Service() {
     // ---- heights above sea level ([SeaLevel]) ----
     @Volatile private var geoid: SeaLevel.Offset? = null
     @Volatile private var geoidJob = false
-    private var firstFixElapsed = 0L
     private val geoidExec by lazy { Executors.newSingleThreadExecutor() }
 
     private fun seaLevelHeight(loc: Location, nowEl: Long): Double? {
@@ -1149,7 +1183,6 @@ class RecordingService : Service() {
         }
     }
 
-    private val pauseWatch = PauseWatch()
 
     /** Paused but walking away: vibrate and ask (Resume in the notification); never resumes by itself. */
     private fun notifyWalkingWhilePaused() {
@@ -1297,8 +1330,6 @@ class RecordingService : Service() {
         Problems.error("time", "Trip time snapshot failed; showing elapsed time only", e)
         com.onpath.app.time.TripTime(elapsedS.toDouble(), 0.0)
     }
-
-    private var estimatePaused: com.onpath.app.time.PauseReason? = null
 
     /** "Estimate paused" is never silent (owner): reported once per pause in Settings → Diagnostics. */
     private fun reportEstimate(t: com.onpath.app.time.TripTime) {
