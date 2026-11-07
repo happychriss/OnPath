@@ -7,8 +7,9 @@
 # push tags or create releases). It can also be started by hand: Actions → Release → Run workflow.
 #
 # Release notes: docs/release-notes/vX.Y.Z.md if present.
-# Signing: the fixed test key in keystore/ (updates install in place). The Google Play bundle (A-003, build type
-# "play": no own updater) is signed with the owner's upload key from repository secrets – see "Build Play bundle".
+# Signing: the fixed test key in keystore/ (updates install in place). The Google Play bundle (build type "play", A-003)
+# is not built here: the owner makes it on his machine with the upload key there (tools/dev/play_bundle.sh,
+# docs/play-build.md) and uploads it by hand.
 # Map key: the APK talks to the TEST map server (Cloudflare doorman + Cloud Run builder). Its app key is the
 # newest entry of the GitHub environment "test" secret ONPATH_APP_KEYS ("old,new" during rotation) – the same
 # secret maps-deploy.yml gives the doorman. Masked in logs; never written to the repository.
@@ -80,7 +81,7 @@ jobs:
       - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         if: steps.ver.outputs.skip != 'true'
         with:
-          packages: "platforms;android-35 build-tools;35.0.0 platform-tools"
+          packages: "platforms;android-36 build-tools;35.0.0 platform-tools"
 
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
         if: steps.ver.outputs.skip != 'true'
@@ -128,46 +129,11 @@ jobs:
           if [ -n "$KEY" ]; then echo "::add-mask::$KEY"; else echo "::warning::ONPATH_APP_KEYS (environment test) is empty – this APK cannot download maps"; fi
           ONPATH_MAP_KEY_TEST="$KEY" ./gradlew --no-daemon assembleDebug -PappVersion="$VERSION"
 
-      # Google Play (A-003): the same app as the APK without its own updater (build type "play", app/build.gradle.kts),
-      # as a signed App Bundle for the Play Console's closed test. Signed with the owner's upload key from the secrets
-      # ONPATH_UPLOAD_KEYSTORE_B64 (the .jks file, base64), ONPATH_UPLOAD_KEYSTORE_PASSWORD, ONPATH_UPLOAD_KEY_ALIAS,
-      # ONPATH_UPLOAD_KEY_PASSWORD – never in the repository. Missing → skipped with a warning; the APK release goes on.
-      # The merged manifest is checked: no REQUEST_INSTALL_PACKAGES (Play forbids self-updating apps).
-      - name: Build Play bundle (AAB)
-        id: aab
-        if: steps.ver.outputs.skip != 'true'
-        env:
-          APP_KEYS: ${{ secrets.ONPATH_APP_KEYS }}
-          UPLOAD_B64: ${{ secrets.ONPATH_UPLOAD_KEYSTORE_B64 }}
-          ONPATH_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.ONPATH_UPLOAD_KEYSTORE_PASSWORD }}
-          ONPATH_UPLOAD_KEY_ALIAS: ${{ secrets.ONPATH_UPLOAD_KEY_ALIAS }}
-          ONPATH_UPLOAD_KEY_PASSWORD: ${{ secrets.ONPATH_UPLOAD_KEY_PASSWORD }}
-        run: |
-          if [ -z "$UPLOAD_B64" ] || [ -z "$ONPATH_UPLOAD_KEYSTORE_PASSWORD" ] || [ -z "$ONPATH_UPLOAD_KEY_ALIAS" ] || [ -z "$ONPATH_UPLOAD_KEY_PASSWORD" ]; then
-            echo "::warning::Play upload key secrets not set (ONPATH_UPLOAD_KEYSTORE_B64 / _PASSWORD / ONPATH_UPLOAD_KEY_ALIAS / _PASSWORD) – no Play bundle this time; the APK release goes on"
-            echo "built=false" >> "$GITHUB_OUTPUT"; exit 0
-          fi
-          KEY="${APP_KEYS##*,}"; KEY="$(echo "$KEY" | tr -d '[:space:]')"
-          [ -n "$KEY" ] && echo "::add-mask::$KEY"
-          export ONPATH_UPLOAD_KEYSTORE="$RUNNER_TEMP/upload.jks"
-          echo "$UPLOAD_B64" | base64 -d > "$ONPATH_UPLOAD_KEYSTORE"
-          ONPATH_MAP_KEY_TEST="$KEY" ./gradlew --no-daemon bundlePlay -PappVersion="$VERSION"
-          rm -f "$ONPATH_UPLOAD_KEYSTORE"
-          M=$(find app/build/intermediates -path '*play*' -name AndroidManifest.xml -path '*merged_manifest*' | head -1)
-          [ -n "$M" ] || { echo "::error::merged manifest of the play build not found"; exit 1; }
-          if grep -q 'REQUEST_INSTALL_PACKAGES' "$M"; then echo "::error::play build asks for REQUEST_INSTALL_PACKAGES ($M)"; exit 1; fi
-          echo "Play manifest checked: no REQUEST_INSTALL_PACKAGES ($M)"
-          echo "built=true" >> "$GITHUB_OUTPUT"
-
       - name: Prepare release files
         if: steps.ver.outputs.skip != 'true'
         run: |
           mkdir -p dist
           cp app/build/outputs/apk/debug/app-debug.apk "dist/onpath-$VERSION.apk"
-          # the Play bundle is for the Play Console, not for the GitHub release page: a separate artifact below
-          if [ "${{ steps.aab.outputs.built }}" = true ]; then
-            mkdir -p play && cp app/build/outputs/bundle/play/app-play.aab "play/onpath-$VERSION-play.aab"
-          fi
           (cd dist && sha256sum * > SHA256SUMS)
           NOTES="docs/release-notes/v$VERSION.md"
           if [ -f "$NOTES" ]; then cp "$NOTES" dist/notes.md; else echo "OnPath $VERSION" > dist/notes.md; fi
@@ -187,15 +153,6 @@ jobs:
           name: release-dist
           path: dist/
           retention-days: 3
-
-      # The owner downloads it from the run (Actions → Release → Artifacts) and uploads it in the Play Console.
-      - name: Keep the Play bundle
-        if: steps.ver.outputs.skip != 'true' && steps.aab.outputs.built == 'true'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: play-bundle
-          path: play/
-          retention-days: 30
 
   # Publishes only when the start test on the emulator and the unit tests + APK build are all green.
   publish:

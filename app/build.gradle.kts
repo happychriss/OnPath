@@ -20,12 +20,13 @@ fun quoted(s: String) = "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "
 
 android {
     namespace = "com.onpath.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.onpath.app"
         minSdk = 26
-        targetSdk = 35
+        // Google Play: since 2026-08-31 new apps and updates must target Android 16 (API 36) – A-003 Play build.
+        targetSdk = 36
         // One source of truth for the version: "-PappVersion=0.4.1" (the release workflow passes the git
         // tag) or the default below. versionCode is derived (major*10000 + minor*100 + patch), so every
         // newer version installs as an update.
@@ -56,17 +57,26 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
-        // Google Play upload key (A-003): made by the owner locally, never in the repository. release.yml decodes the
-        // secret ONPATH_UPLOAD_KEYSTORE_B64 to a file and passes its path + passwords as environment variables;
-        // locally the same names work as -P… properties or in local.properties. Not set → the play build is signed
-        // with the test key (local checks only – never uploaded).
-        val uploadStore = mapSetting("onpath.upload.keystore", "ONPATH_UPLOAD_KEYSTORE", "")
-        if (uploadStore.isNotBlank() && file(uploadStore).isFile) create("upload") {
-            storeFile = file(uploadStore)
-            storePassword = mapSetting("onpath.upload.storePassword", "ONPATH_UPLOAD_KEYSTORE_PASSWORD", "")
-            keyAlias = mapSetting("onpath.upload.keyAlias", "ONPATH_UPLOAD_KEY_ALIAS", "")
-            keyPassword = mapSetting("onpath.upload.keyPassword", "ONPATH_UPLOAD_KEY_PASSWORD", "")
-        }
+    }
+
+    // Google Play upload key (A-003, like the owner's app "Have I been here"): only on the owner's machine, in
+    // .secrets/upload-keystore.jks with its passwords in .secrets/upload-keystore.properties (storeFile – relative to
+    // .secrets/ –, storePassword, keyAlias, keyPassword); ONPATH_SECRETS=<dir> points elsewhere. .secrets/ is gitignored.
+    // This is the UPLOAD key: Play App Signing holds the key the app ships under. Without the file the play build is
+    // unsigned – still a build, it just cannot go to Play. tools/dev/play_bundle.sh builds and checks it (docs/play-build.md).
+    val secretsDir = rootProject.file(System.getenv("ONPATH_SECRETS") ?: ".secrets")
+    val uploadProps = Properties().apply {
+        secretsDir.resolve("upload-keystore.properties").takeIf { it.isFile }?.inputStream()?.use { load(it) }
+    }
+    fun upload(name: String) = uploadProps.getProperty(name)?.trim()?.trim('"', '\'').orEmpty()
+    val uploadKeystore = secretsDir.resolve(upload("storeFile").ifEmpty { "upload-keystore.jks" })
+    if (uploadKeystore.isFile) signingConfigs.create("upload") {
+        storeFile = uploadKeystore
+        storePassword = upload("storePassword")
+        keyAlias = upload("keyAlias")
+        keyPassword = upload("keyPassword")
+    } else if (gradle.startParameter.taskNames.any { it.contains("Play") }) {
+        logger.warn("OnPath: no Play upload key in $secretsDir (upload-keystore.properties + .jks) – the play build is UNSIGNED")
     }
 
     buildTypes {
@@ -78,16 +88,18 @@ android {
         }
         // The Google Play build (A-003, closed test): the app as the GitHub APK, but no own updater
         // (SELF_UPDATE = false, src/play/AndroidManifest.xml drops REQUEST_INSTALL_PACKAGES), not debuggable, signed
-        // with the upload key. A build type, not a product flavour: every debug task the tools and workflows use
+        // with the upload key from .secrets/. A build type, not a product flavour: every debug task the tools and workflows use
         // (assembleDebug, installDebug, testDebugUnitTest, recordPaparazziDebug, connectedDebugAndroidTest) keeps its
         // name. Map server: the TEST server like the GitHub APK – the first testers stay there (owner 2026-11-02,
-        // onpath.private#5 A); production comes with the public Play release. `./gradlew bundlePlay` → app-play.aab.
+        // onpath.private#5 A); production comes with the public Play release. tools/dev/play_bundle.sh → dist/onpath-<version>.aab.
         create("play") {
             initWith(getByName("release"))
             isDebuggable = false
             isMinifyEnabled = false
             matchingFallbacks += listOf("release")
-            signingConfig = signingConfigs.findByName("upload") ?: signingConfigs.getByName("debug")
+            // the upload key from .secrets/ (above); none → unsigned. Unminified for the first Play upload, like the
+            // GitHub APK: R8 could strip what MapLibre / BRouter reach by reflection – shrinking is its own step later.
+            signingConfig = signingConfigs.findByName("upload")
             buildConfigField("boolean", "SELF_UPDATE", "false")
             buildConfigField("String", "MAP_SERVER_ENV", quoted("test"))
             buildConfigField("String", "MAP_SERVER_URL", quoted(mapSetting("onpath.mapServer.test",

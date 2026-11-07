@@ -4,7 +4,7 @@ The shared interface is `app/src/main/java/com/onpath/app/routing/RoutingContrac
 care, every engine and fake implements it.
 
 ## Package and SDK
-- applicationId / package: `com.onpath.app`, minSdk 26, target/compileSdk 35, Kotlin, Jetpack Compose (Material 3).
+- applicationId / package: `com.onpath.app`, minSdk 26, target/compileSdk 36 (Google Play minimum since 2026-08-31), Kotlin, Jetpack Compose (Material 3).
 - Map: MapLibre Native Android `org.maplibre.gl:android-sdk:13.7.1` (supports `pmtiles://` sources).
 - Android SDK: `/home/user/android-sdk`.
 

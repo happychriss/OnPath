@@ -92,11 +92,11 @@
     <issue
         id="OldTargetApi"
         message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details."
-        errorLine1="        targetSdk = 35"
+        errorLine1="        targetSdk = 36"
         errorLine2="        ~~~~~~~~~~~~~~">
         <location
             file="build.gradle.kts"
-            line="28"
+            line="29"
             column="9"/>
     </issue>
 
@@ -195,7 +195,7 @@
         errorLine2="                          ~~~~~~~~~~~~~~~~~~~">
         <location
             file="build.gradle.kts"
-            line="40"
+            line="44"
             column="27"/>
     </issue>
 

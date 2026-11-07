@@ -8,7 +8,7 @@ import java.io.File
 /**
  * A-003 – the Google Play build (build type "play"): no own updater (Play forbids an app that updates itself past the
  * store), no REQUEST_INSTALL_PACKAGES, no GitHub update row in Settings → Privacy. The GitHub build (debug, what
- * release.yml publishes as the APK) stays as it is. release.yml checks the merged manifest of the play build too.
+ * release.yml publishes as the APK) stays as it is. tools/dev/play_bundle.sh checks the built bundle too.
  */
 class PlayBuildTest {
     private fun src(p: String) = File(p).readText()
@@ -41,8 +41,14 @@ class PlayBuildTest {
     }
 
     @Test fun theUploadKeyNeverLivesInTheRepository() {
-        assertTrue(gradle.contains("\"ONPATH_UPLOAD_KEYSTORE\""))
-        val tracked = File("..").walkTopDown().onEnter { it.name !in setOf("build", ".git", ".gradle", ".claude", "snapshots", "node_modules") }
+        // the upload key + its passwords live in .secrets/ on the owner's machine (docs/play-build.md), gitignored
+        assertTrue(gradle.contains("System.getenv(\"ONPATH_SECRETS\") ?: \".secrets\""))
+        assertTrue(gradle.contains("signingConfig = signingConfigs.findByName(\"upload\")"))
+        val ignore = File("../.gitignore").readLines().map { it.trim().removePrefix("/") }
+        assertTrue(".secrets/ in .gitignore", ".secrets/" in ignore)
+        assertTrue("dist/ in .gitignore", "dist/" in ignore)
+        val tracked = File("..").walkTopDown()
+            .onEnter { it.name !in setOf("build", ".git", ".gradle", ".claude", ".secrets", "dist", "snapshots", "node_modules") }
             .filter { it.isFile && (it.extension == "jks" || it.extension == "keystore") }.map { it.name }.toList()
         assertEquals("only the test key", listOf("onpath-test.keystore"), tracked.distinct())
     }
