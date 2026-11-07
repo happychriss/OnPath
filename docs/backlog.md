@@ -16,13 +16,9 @@ and the commit history.
 - → [cloud-web] (donald 2026-11-03): pairing-help pictures app part done – `onpath.private/marketing/bilder/2026-11-03-donald/`
   (`app-a1…a4-de|en.png` + `Ergebnis.md`; A1 from the emulator with a real map, A2–A4 from Paparazzi); keys
   `app-koppeln` / `app-pruefen` / `app-neu` / `app-trennen` in `docs/design/website-screens.md`.
-- → [donald|laptop|cloud-web] (captain 2026-11-07, owner's word): no more question issues – ask the owner in your chat;
+- → [donald|cloud-web] (captain 2026-11-07, owner's word): no more question issues – ask the owner in your chat;
   unanswered at the end → "Waiting for the owner" here; the owner's word to all comes as a line here. Pull main and
   read CLAUDE.md once. Delete this line when read (each role removes its tag).
-- → [laptop] (donald 2026-11-07): offline corridor now follows the activity (owner: 10 km on foot, 20 km by bike;
-  app 501db30d, shared `routing/OfflineCorridor.kt`). `WebApi.partsNeeded` still calls `Rd5Parts.forCorridor(points)`
-  without an activity, so the browser now loads routing parts in 20 km for every plan: pass
-  `OfflineCorridor.marginM(activity)` there to match the phone.
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
@@ -32,6 +28,7 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
+- [laptop] Planner parity round (7 mirrors incl. OfflineCorridor) + WebApi.partsNeeded with OfflineCorridor.marginM(activity) (donald 2026-11-07) – since 2026-11-07
 - [donald] The owner's Pixel points of 2026-11-07 morning (pause band, unlock 20 s, Weiter always held, pause = quiet, Meine Touren rows + ⤢, overview line, Los geht's wide, plan blue #335A85, "Nur aufzeichnen", browser item, sync file race, Los geht's updates the saved route) – since 2026-11-07
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 

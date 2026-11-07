@@ -49,6 +49,22 @@ class NavigatorTest {
         assertNotNull(r.nav.state.toRoute)
     }
 
+    /**
+     * Field bug (owner 2026-11-06, Fragenregister donald-20261106-51): a round trip whose first and last 100 m are the
+     * same street, ridden twice – the second lap is followed from its start: no vibration, no question, no way back.
+     */
+    @Test fun aRoundTripRiddenTwiceIsFollowedOnTheSecondLap() {
+        val loop = line(0.0 to 0.0, 100.0 to 0.0, 600.0 to 0.0, 600.0 to 500.0, 100.0 to 500.0, 100.0 to 0.0, 0.0 to 0.0)
+        val r = Run(Navigator(NavSession.start(NavKind.PLAN, "Runde", Activity.BIKE_TOURING, 3, loop,
+            listOf(pt(0.0, 0.0), pt(600.0, 500.0), pt(0.0, 0.0)))))
+        r.feed(walk(0.0 to 0.0, 100.0 to 0.0, 600.0 to 0.0, 600.0 to 500.0, 100.0 to 500.0, 100.0 to 0.0, 0.0 to 0.0, speed = 5.0))
+        r.feed(walk(0.0 to 0.0, 100.0 to 0.0, 600.0 to 0.0, 600.0 to 300.0, speed = 5.0, t0Ms = 10_000_000))
+        assertTrue(r.steps.none { it.vibrate })
+        assertTrue(r.jobs.isEmpty())
+        assertNull(r.nav.prompt)
+        assertEquals(900.0, r.nav.state.shownAlongM!!, 25.0)
+    }
+
     /** Rode past the corner: the way back starts westwards, against the ride – "turn round" + the sign. */
     @Test fun wayBackAgainstTheRideIsATurnRoundWithASign() {
         val r = Run(Navigator(session()))

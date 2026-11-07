@@ -3,8 +3,6 @@ package com.onpath.app.ui
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -355,7 +353,8 @@ private fun HoldRing(at: Offset?, onArmed: () -> Unit) {
     LaunchedEffect(at) {
         progress.snapTo(0f)
         if (at != null) {
-            progress.animateTo(1f, tween(HOLD_MS.toInt(), easing = LinearEasing))
+            // by the frame clock, not a tween: with animations off a tween ends on its first frame and every pan buzzed
+            HoldRule.fill(0f, HOLD_MS.toInt()) { progress.snapTo(it) }
             onArmed()
         }
     }

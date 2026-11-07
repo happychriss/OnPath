@@ -89,6 +89,23 @@ class VoiceGuideTest {
         assertTrue("$said", said.any { it.turn == Turn.LEFT || it.then == Turn.LEFT })
     }
 
+    /**
+     * Field bug (owner 2026-11-06, Fragenregister donald-20261106-51: "hier biegen wir links ab, aber das Navi sagt
+     * nichts"): a round trip ridden a second time – the same line from its start again – says its turns again.
+     */
+    @Test fun aRoundTripRiddenTwiceSaysItsTurnsAgain() {
+        val l = line(2000, mapOf(500 to JunctionCue.LEFT, 1500 to JunctionCue.RIGHT))
+        for (bike in listOf(false, true)) {
+            val speed = if (bike) 6.0 else 1.4
+            val g = VoiceGuide()
+            val lap1 = startless(ride(g, l, bike = bike, speed = speed)).map { (it.second as Phrase.Junction).turn }
+            val lap2 = startless(ride(g, l, bike = bike, speed = speed) { _, i -> i.copy(nowMs = i.nowMs + 10_000_000L) })
+                .map { (it.second as Phrase.Junction).turn }
+            assertTrue("bike=$bike lap 1: $lap1", lap1.containsAll(listOf(Turn.LEFT, Turn.RIGHT)))
+            assertEquals("bike=$bike lap 2", lap1, lap2)
+        }
+    }
+
     /** Owner 2026-11-01: on foot "Gleich links." about 10 m before, no distance ("50 m kann man nicht abschätzen"). */
     @Test fun onFoot_shortlyBeforeWithoutADistance() {
         val l = line(1000, mapOf(500 to JunctionCue.LEFT))
