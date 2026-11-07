@@ -19,6 +19,11 @@ and the commit history.
 - → [donald|cloud-web] (captain 2026-11-07, owner's word): no more question issues – ask the owner in your chat;
   unanswered at the end → "Waiting for the owner" here; the owner's word to all comes as a line here. Pull main and
   read CLAUDE.md once. Delete this line when read (each role removes its tag).
+- → [cloud-web] (owner 2026-11-07, in donald's chat, for the website privacy text `legal_content.py`): Cloudflare –
+  **Bot Fight Mode is off, Web Analytics is off** (matches "optional host features … not part of this code"); the
+  **email of the domain runs over Cloudflare** ("E-Mail-Domain geht auf cloudflare.de" – donald reads it as Cloudflare
+  Email Routing for info@onpath.earth; confirm with the owner). The section "E-Mail und freiwillige Rückmeldungen" says
+  only "email providers may participate" – name Cloudflare Email Routing (forwarding, no mailbox) there, DE + EN.
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
