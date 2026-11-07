@@ -1,7 +1,8 @@
 # How the owner likes to work (for every Claude session)
 
-Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, texts) are in `CLAUDE.md` and the
-`docs/backlog.md` owner decisions; this file is about **how we work together**.
+Shared by every session (donald, laptop, captain, cloud-web). Product rules (UX, texts, what the app does) are in
+`docs/project-status.md` "Decisions"; this file is about **how we work together**. It is the home of the rules for
+**questions to the owner** – other files link here.
 
 ## Talking with the owner
 - **One question at a time**, with a short table of options and a recommendation first; the owner answers tersely.
@@ -24,20 +25,10 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
 - Never name internals toward the owner as product words ("cells", "routing data") – it's "map areas", "the map".
 - Komoot is the UX reference (the owner is a long-time Komoot user).
 
-## Product rules seen again and again (details in CLAUDE.md / backlog)
-- **No messages that disappear by themselves** – everything stays until answered or the situation is gone
-  ("we are a hiking app – it can rain, stress…"). Nothing may flash.
-- **The owner's chosen words stay** (owner 2026-11-01, "Hierhin" had become "Von meinem Standort hierhin" in a UX
-  review): a review or polish pass never rewords a UI text the owner picked – it proposes the change as a question.
-- **Hold-only gestures in Plan**, no quick-tap actions, no dragging points (delete + add).
-- **Re-routing only after asking**; skip passed stops; show the original route grey.
-- **Core features**: a field bug first gets a reproducing test, then the fix.
-- **Public texts** (README, pitch, store): factual and calm, like telling a friend or a magazine review – what
-  happens, no slogans, no superlatives, no exclamation marks, no competitor bashing; Komoot only as dated, sourced
-  facts with credit where it is stronger. Everyday usability first; internals are basic requirements. Show drafts
-  to the owner before anything goes public.
-- **Marketing material is private**: it lives in the owner's local Gitea repo `cneuhaus/Marketing`, folder `OnPath/`
-  (zo.fritz.box:3000) – never in this public GitHub repo.
+## Product rules
+One place: `docs/project-status.md` "Decisions" (no disappearing messages, the owner's chosen words stay, hold-only
+gestures, re-routing only after asking, core-feature bugs test first, public text tone, private material in
+`happychriss/onpath.private`).
 
 ## How sessions work
 - **The owner must notice when a session waits** (owner 2026-11-02): every question also goes to the dashboard
@@ -50,9 +41,11 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
   answers at once "läuft: …"; talk, decisions, questions and small changes are done directly (a fresh agent would lose
   the context, and for small things it is slower). A request that needs the same files, Gradle or the same device as a
   running agent waits: "wartet auf X". Not "everything in the background" – that costs context.
-- **Keep the owner's computer usable:** heavy jobs `nice -n 19 ionice -c3`, ≤ 4 workers (`--max-workers=4`,
-  Docker `--cpus=2`, `OMP_NUM_THREADS=1`); prefer the cloud build for big map jobs. Emulator runs locally on donald
-  (owner 2026-11-01: GitHub's E2E is slow – only when no computer is on), one at a time via `tools/dev/device.sh`.
+- **Keep the owner's computer usable:** Gradle only through `tools/ci/gate.sh` or `tools/dev/gradle_slot.sh` (three
+  builds per computer, one while the emulator runs; `gate.sh` uses `--max-workers=2`, nice + ionice); other heavy jobs
+  `nice -n 19 ionice -c3`, Docker `--cpus=2`, `OMP_NUM_THREADS=1`. E2E (owner 2026-11-06): the local emulator on donald
+  only for the test(s) a change is about, one at a time via `tools/dev/device.sh`; whole E2E classes and the
+  Release-Rundgang run on GitHub (`tools/ci/e2e_github.sh`) – `docs/working-agreement.md` "E2E".
 - **Code first for bugs:** when diagnostics exist, find the cause by reading the code and reproduce it in a JVM test.
   Use the phone only briefly to confirm, say how long, say when it is free again, and restore the owner's app state
   before handing it back (a long trial-and-error session on the phone at bedtime was not OK).
@@ -78,8 +71,8 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
 
 ## Worktrees and agents
 - Sub-agents (owner 2026-11-01: split work over 3–4 when it costs little overhead): one worktree per editing agent,
-  one agent per device (`tools/dev/device.sh`), builds take one of the two Gradle slots per computer – rules in `CLAUDE.md`.
+  one agent per device (`tools/dev/device.sh`), builds take one of the Gradle slots per computer (`tools/dev/gradle_slot.sh`).
 - Remove an agent's worktree only after its completion notice AND when no message to it is pending (twice a resumed
   agent lost its work).
-- Temporary folders (`/tmp/…/scratchpad`) are wiped on restart – anything worth keeping goes to the repo, the
-  Marketing repo, or a project folder (research files were lost this way).
+- Temporary folders (`/tmp/…/scratchpad`) are wiped on restart – anything worth keeping goes to the repo,
+  `onpath.private`, or a project folder (research files were lost this way).
