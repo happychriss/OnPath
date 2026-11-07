@@ -37,6 +37,12 @@ and the commit history.
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
+- **[laptop] Planner profile calmer, like the app's (owner 2026-11-07: „mehr wie in der App, nicht ganz so bunt“ – with the next
+  planner change)** – the app (`ui/ElevationProfile.kt`, ProfileFill, owner polish 2026-11-06): the area is filled in the
+  ROUTE colour fading to nothing, steeper stretches only a bit stronger in the same colour (shading, no stripes); steepness
+  colours (amber / orange / red, < 5 % = route colour) only on the thin line; stop signs on the line. The planner's profiles
+  (small, big, bottom) fill the area in green / yellow / orange / red – switch to the app's look, keep the legend only for
+  the line colours (or drop it), the map's steepness line while the big profile is open stays.
 - **[donald] Design round after 0.17.4 (owner 2026-11-07, from an outside design review of the Meran pictures)** – owner
   picked three: (1) G02 off route = three stacked cards with two distances (70 m air line vs 60 m) and a half-empty
   status card → one card, one distance, step 1 as its head and the question under it; (2) the right tool column: six
