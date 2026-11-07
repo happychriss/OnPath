@@ -814,8 +814,10 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun lockOnHoldPauseThenHoldEnd() {
         var before: com.onpath.app.data.AppSettings? = null
-        // the longest hold (2 s): on a loaded CI emulator the main thread blocks 0.5–0.8 s, a "short" tap's up event came
-        // late and the 1 s hold fired (GitHub 2026-11-07 04:14, "First held button fired" on the tap) – 2 s keeps a tap a tap
+        // the longest hold (2 s). The short taps that "fired the hold" on GitHub (2026-11-07, runs 42361613981,
+        // 42362929806, 42363890364: "Pause on the locked bar (short tap 2)") were an app bug, not the tap: CI runs with
+        // animations off and the band was a tween, full on its first frame – "Held button fired" 50 ms after a 21 ms tap.
+        // The band now fills by the frame clock (HoldRule.fill, HoldFillTest); this test runs with animations off on CI.
         val holdMs = com.onpath.app.data.HoldSetting.MAX_MS
         UnlockWindow.openMsForTests = 1_500 // the 20 s unlock window, short – no test waits 20 s
         scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
@@ -869,7 +871,10 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun lockOnOneHoldUnlocksTheBarForAPlainTapOnBeenden() {
         var before: com.onpath.app.data.AppSettings? = null
-        val holdMs = com.onpath.app.data.HoldSetting.MAX_MS // see lockOnHoldPauseThenHoldEnd: 2 s keeps a CI tap a tap
+        val holdMs = com.onpath.app.data.HoldSetting.MAX_MS // see lockOnHoldPauseThenHoldEnd (a short tap on Weiter resumed: HoldFillTest)
+        // the window long: this test checks that ONE hold opens the bar for a plain tap, not the window's length
+        // (UnlockWindowTest) – a loaded GitHub emulator took 13 s from the fired hold to the next step (run 42363890364)
+        UnlockWindow.openMsForTests = 60_000
         scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
         try {
             startPlanWithTwoPoints()
@@ -896,6 +901,7 @@ class CoreFieldE2ETest : E2EBase() {
             assertNotNull("the end sheet after a plain tap", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())
         } finally {
+            UnlockWindow.openMsForTests = null
             scenario.onActivity { vm(it).updateSettings(before!!) }
         }
     }

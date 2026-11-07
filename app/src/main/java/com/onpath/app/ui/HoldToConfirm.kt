@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -84,6 +85,22 @@ object HoldRule {
      */
     fun hintLeft(buttonCenter: Float, hintWidth: Float, barWidth: Float): Float =
         (buttonCenter - hintWidth / 2f).coerceIn(0f, (barWidth - hintWidth).coerceAtLeast(0f))
+
+    /**
+     * Fills the band from [from] to full in a hold of [holdMs], by the frame clock – each frame's value goes to [show];
+     * returns when full (= the button fires). Never a tween: Compose stretches a tween by the phone's animation scale –
+     * with animations off (Accessibility → "Remove animations", every CI emulator) the band was full on its first frame
+     * and a short tap fired the hold (GitHub 2026-11-07: "Held button fired" 50 ms after a 21 ms tap on a 2 s hold;
+     * `HoldFillTest`).
+     */
+    suspend fun fill(from: Float, holdMs: Int, show: suspend (Float) -> Unit) {
+        val startMs = withFrameMillis { it }
+        while (true) {
+            val p = withFrameMillis { progress(it - startMs, from, holdMs) }
+            show(p)
+            if (fires(p)) return
+        }
+    }
 }
 
 /** The hold time the bar's [HoldButton]s use (Settings → Navigation, provided by Navigate; screenshot tests: the default). */
@@ -133,13 +150,11 @@ fun HoldButton(
                     awaitFirstDown(requireUnconsumed = false)
                     var fired = false
                     val run = scope.launch {
-                        band.animateTo(1f, tween(HoldRule.remainingMs(band.value, holdMs), easing = LinearEasing))
-                        if (HoldRule.fires(band.value)) {
-                            fired = true
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            fire()
-                            learnt()
-                        }
+                        HoldRule.fill(band.value, holdMs) { band.snapTo(it) }
+                        fired = true
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        fire()
+                        learnt()
                     }
                     waitForUpOrCancellation()
                     if (!fired && HoldRule.release(band.value) == HoldRule.Release.BACK_WITH_HINT) {

@@ -95,6 +95,8 @@ class ScreenshotTest {
                       editing: Boolean = false,
                       /** "Ohne Netz ✓ / ⟳ / ⚠" in the mode pill (owner 2026-11-03). */
                       offline: OfflineReady.State? = null,
+                      /** The activity button on the map: activity + T level (the plan's). */
+                      act: Activity = Activity.HIKE, sac: Int = 2,
                       bottom: @Composable () -> Unit) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
@@ -106,7 +108,7 @@ class ScreenshotTest {
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing, offline = offline)
                     // the activity as a button on the map (owner 2026-11-05, R5) – as MapScreen places it
-                    ActivityMapButton(Activity.HIKE, 2, {}, Modifier.padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp()).dp, start = 12.dp))
+                    ActivityMapButton(act, sac, {}, Modifier.padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp()).dp, start = 12.dp))
                     // as PlanMode: the controls under the sheet and the boxes, the sheet's height read while placing
                     val sheetHeight = androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
                     PlanControlsLayer({ sheetHeight.intValue }, planTopBarDp().dp, controls = controls)
@@ -916,6 +918,23 @@ class ScreenshotTest {
 
     /** The profile step and the points step of the same bike plan. */
     fun planProfileBike() = paparazzi.snapshot { Frame { PlanPanel(bikePlan(PlanSize.COMPACT), PlanCallbacks()) } }
+
+    /**
+     * A point the route does not reach, and what does (owner 2026-11-07, "Meran → Mutkopf" at Hike T1): the red line
+     * "② erst ab T2 erreichbar" with a › (tap = the map shows the section), no button. Texts from [PlanGaps.reachText].
+     */
+    private fun reachPlan(fix: com.onpath.app.routing.PlanReach.Fix, a: Activity, more: Boolean = false): PlanUi {
+        val g = PlanGap(1, GeoPoint(46.71077, 11.13787), GeoPoint(46.7058, 11.1374), 552.0)
+        val gaps = if (more) listOf(g, g.copy(index = 2)) else listOf(g)
+        return planUi(n = 2, size = PlanSize.MINI).copy(activity = a, sac = 1,
+            gapText = PlanGaps.reachText(gaps, com.onpath.app.routing.PlanReach(1, fix, emptyList())))
+    }
+    private fun reachShot(fix: com.onpath.app.routing.PlanReach.Fix, a: Activity, more: Boolean = false) =
+        paparazzi.snapshot { Frame(act = a, sac = 1) { PlanPanel(reachPlan(fix, a, more), PlanCallbacks()) } }
+    @Test fun planReachHike() = reachShot(com.onpath.app.routing.PlanReach.Fix.Level(2), Activity.HIKE)
+    /** The longest text: a bike plan only walking reaches; with a second gap "(+1 more)". */
+    @Test fun planReachOnFoot() = reachShot(com.onpath.app.routing.PlanReach.Fix.OnFoot(2), Activity.MTB, more = true)
+    @Test fun planReachBike() = reachShot(com.onpath.app.routing.PlanReach.Fix.Bike(Activity.BIKE_TREKKING), Activity.BIKE_TOURING)
 
     /** A point the route does not reach – one red bold line in the small sheet (no message box). */
     @Test fun planGapSmall() = paparazzi.snapshot {

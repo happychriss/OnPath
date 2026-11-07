@@ -30,7 +30,7 @@ check((await text('#header')).includes('Meine Touren')
   && (await text('#header')).includes('GPX importieren') && (await text('#syncBadge .lbl')).trim() === 'Aufs Handy' && (await text('#newPlan')).trim() === 'Neu',
   'header in German: the plan bar Neu · Meine Touren · Speichern · Aufs Handy (owner 2026-11-06, the app\'s words)');
 check((await text('#activityChip')).includes('Wandern'), `activity from the engine in German: ${(await text('#activityChip')).trim()}`);
-check(/\d,\d km/.test(await text('#summary')), `distance with a decimal comma: ${(await text('#summary .dist')).trim()}`);
+check(/\d,\d km/.test(await text('#summary')), `distance with a decimal comma: ${(await text('#summary .big')).trim()}`);
 // the badge's colour comes from the level, not the German word ("Mittel" was red like "Schwer")
 const badge = await page.evaluate(() => { const b = document.querySelector('#summary .badge'); return { text: b?.textContent, cls: b?.className }; });
 check(/badge (easy|moderate|difficult)$/.test(badge.cls ?? ''), `German badge "${badge.text}" has its level class (${badge.cls})`);
