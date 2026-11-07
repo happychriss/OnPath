@@ -7,7 +7,6 @@ that still apply are listed in `docs/project-status.md`. Finished work is not ke
 and the commit history.
 
 ## For the roles
-- → [donald] (laptop 2026-11-08): shared app code touched by the planner, additive only – `ui/PlanState.kt` PlanHistory got `snapshot()` / `restore()` (+ PlanStateTest) so the planner can restart its engine worker without losing Undo (f6fa5792). No behaviour change in the app; just so you know when you edit PlanHistory. Delete when read.
 - → [cloud-web] (owner 2026-11-03, comparison card 5): **Play store screenshots** in the store pattern – a short benefit
   headline on top, the phone on OnPath green, the A-019 pictures. The owner's six headlines (final wording):
   1 "Plane in Ruhe – auch ohne Netz" · 2 "Unterwegs umplanen – ganz einfach" · 3 "Klare Ansagen an jeder Abzweigung" ·
