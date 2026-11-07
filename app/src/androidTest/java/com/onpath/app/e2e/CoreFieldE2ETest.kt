@@ -595,7 +595,10 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun lockOnHoldPauseThenHoldEnd() {
         var before: com.onpath.app.data.AppSettings? = null
-        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = com.onpath.app.data.HoldSetting.DEFAULT_MS)) }
+        // the longest hold (2 s): on a loaded CI emulator the main thread blocks 0.5–0.8 s, a "short" tap's up event came
+        // late and the 1 s hold fired (GitHub 2026-11-07 04:14, "First held button fired" on the tap) – 2 s keeps a tap a tap
+        val holdMs = com.onpath.app.data.HoldSetting.MAX_MS
+        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
         try {
             startPlanWithTwoPoints()
             Thread.sleep(if (realRouting) 3_000 else 1_000)
@@ -618,9 +621,9 @@ class CoreFieldE2ETest : E2EBase() {
             assertNotNull("a short tap shows the hint", hintSeen)
             Thread.sleep(1_500)
             assertTrue("a short tap does not pause", com.onpath.app.recording.RecordingService.state.value?.paused != true)
-            holdButton(Txt.s(Res.string.nav_action_pause))
+            holdButton(Txt.s(Res.string.nav_action_pause), ms = holdMs + 1_000)
             waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
-            holdButton(Txt.s(Res.string.nav_end_short))
+            holdButton(Txt.s(Res.string.nav_end_short), ms = holdMs + 1_000)
             assertNotNull("the end sheet", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())
         } finally {
