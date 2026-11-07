@@ -933,12 +933,30 @@ Problems found while making the browser plan exactly like the phone, and the spe
   greyed-not-hidden); the second app round of the evening: a plan / tour tapped during a tour is followed without a
   question, the hold-time slider instead of the lock switch, the end sheet's tap guard, the overview pill with „Detailkarte
   laden“ (the web loads map areas by itself, §17; its strip keeps its own overview line).
-- **Second app round (2026-11-07, parity of 17 mirrors):** ink blue `#2B4C6F` for plan actions (variant C: no light blue
-  surfaces; tonal `#DCE3EC` / ink `#1B2F45` also for tags), warm walnut shadows (`--shadow-low` / `--shadow-high`), one corner
+- **Second app round (2026-11-07, parity of 17 mirrors):** ink blue `#335A85` (app 2026-11-07; first `#2B4C6F`) for plan actions (variant C: no light blue
+  surfaces; tonal `#DDE5EE` / ink `#1E3550` also for tags), warm walnut shadows (`--shadow-low` / `--shadow-high`), one corner
   family (cards 20 px, small 12 px, pills round), the compass ink blue / walnut grey (no red), the goal as a white flag on the
   map, in the points list and the point menu, locate without the GPS dot and greyed without a position (the app's PlanGps),
   the pin card's „Mehr“ on PaperDim. Not yet (backlog): Meine Touren's „In Bearbeitung“ row, the small route preview per row
   and the large overview, rows as tile + name + facts + › with every action in ⋮ (app 01b38ffa / cb791053 / ce27c111 / e570e467), the route drawing itself in 0.5 s (RouteReveal), the
-  profile's fill (ProfileFill) – the last comes with the plan sheet rebuild. Phone-only: Navigate's ⚙ settings, lock line,
+  profile's fill (ProfileFill) – the planner keeps its steepness bars (owner 2026-11-05). Paper tone B `#F5F3EB` for
+  surfaces, `#FAFAF6` for cards in lists (CardPaper). Phone-only: Navigate's ⚙ settings, lock line,
   tour controller / RoutesState refactors, accuracy circle only in Navigate, Prefs.
 
+
+## 24. Plan sheet A – points first, the profile along the bottom (laptop, 2026-11-07, owner: A + B's profile)
+Proposals page https://claude.ai/artifact/F1rCK7xXXmUhWcQRj3o1mR (today's sheet, three proposals, „Aus der App übernehmen“;
+section „Gebaut“ with the shots). The owner chose A („Punkte zuerst“, like Google Maps' route panel) with B's profile.
+- **Wide (> 700 px): no steps.** The side panel always shows: activity chip · Teilen; the plan row ⇅ Umkehren · ↻ Rundtour;
+  the points with ⋮⋮ handles (hover = plan tonal), the goal as a flag; **„+ Ziel hinzufügen“** (puts the cursor in the
+  search – the place card's „Hinzufügen“ adds it); the facts in one row (time · km · ↑ ↓ · max · difficulty, tabular
+  digits); the route's lines; Wegtypen & Untergrund (folded). No handle, no chevron (`sheetstep.ts`).
+- **The elevation profile lies along the map's bottom edge for good** (`RouteProfile.pinned`): cursor ⇄ dot, steepness
+  colours, the marked range („1,6 km · 30 min · ↑ 59 m“) – no ✕, no „⤢ Großes Profil“. The route on the map stays plan blue
+  while pinned (the steepness is read in the profile). The camera fit keeps the route above it (`fitPadding`).
+- **Phone: two steps.** small = head + facts + lines, the chevron says „2 Punkte ⌃“; open = everything, the small profile
+  with a full-width „⤢ Höhenprofil groß“ (the big one as before). The step is remembered (`onpath.sheetStep`, an old
+  'profile' = open). A click on a point row on the phone folds the sheet (map and point visible).
+- Tests: sheet-smoke (wide order points → + Ziel → facts, pinned profile, blue route, + Ziel → search; phone two steps,
+  label „2 points“, keys), ui-smoke (the bottom profile's cursor and range), edit / import / pair / ui shots without steps
+  on wide. Shots: `test/sheet-a-shots.mjs <segments> <cellStore> <outDir>`.

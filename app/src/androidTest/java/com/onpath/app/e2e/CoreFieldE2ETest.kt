@@ -277,6 +277,51 @@ class CoreFieldE2ETest : E2EBase() {
         TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).deleteTour(planId)
     }
 
+    /**
+     * Owner 2026-11-07: a saved plan changed and started again with "Los geht's" updates THAT route (like ☰ Plan
+     * speichern) – no "Name (2)" copy; the version before is kept under Zuletzt.
+     */
+    @Test fun losGehtsWithAChangedSavedPlanUpdatesItAndKeepsTheOldUnderZuletzt() {
+        val planId = startOnANewPlan()
+        val old = waypointList()
+        scenario.onActivity { vm(it).endTour() }
+        waitUntil("the tour has ended", 20_000) { !recording() }
+        Thread.sleep(1_500)
+        // change the saved plan: one more point beyond the goal
+        val goal = old.last()
+        scenario.onActivity { vm(it).addPoint(GeoPoint(goal.lat + 0.004, goal.lon + 0.004)) }
+        waitUntil("the plan has three points", 10_000) { waypointList().size == 3 }
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        val changed = waypointList()
+        scenario.onActivity { assertTrue("the changed saved plan counts as unsaved", vm(it).planUnsaved) }
+        val idsBefore = plannedIds()
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
+        fun key(points: List<GeoPoint>) = points.map { it.lat to it.lon }
+        waitUntil("the saved route holds the changed plan", 15_000) {
+            db.getTour(planId)?.waypoints?.map { it.lat to it.lon } == key(changed)
+        }
+        // under Zuletzt – or, when another saved route already has exactly these points (an earlier test's), there: the
+        // draft rules never duplicate a saved route, and the version is not lost either way
+        waitUntil("the version before is still in My routes (Zuletzt)", 15_000) {
+            var others: List<List<Pair<Double, Double>>> = emptyList()
+            scenario.onActivity {
+                others = vm(it).tours.filter { t -> t.kind == TourKind.PLANNED && t.id != planId }
+                    .map { t -> t.waypoints.map { w -> w.lat to w.lon } }
+            }
+            key(old) in others
+        }
+        var saved: List<Long> = emptyList()
+        scenario.onActivity { saved = vm(it).tours.filter { t -> t.kind == TourKind.PLANNED && !t.draft }.map { t -> t.id } }
+        assertEquals("no new saved route – no \"Name (2)\"", idsBefore.filter { it in saved }.toSet(), saved.toSet())
+        scenario.onActivity { assertFalse("the plan counts as saved now", vm(it).planUnsaved) }
+        scenario.onActivity { vm(it).endTour() }
+        waitUntil("the tour has ended", 20_000) { !recording() }
+        scenario.onActivity { vm(it).tours.filter { t -> t.draft && t.waypoints.map { w -> w.lat to w.lon } == key(old) }.forEach { t -> db.deleteTour(t.id) } }
+        db.deleteTour(planId)
+    }
+
     /** The same for "Löschen" (flow map H2): only the tour goes to the bin, the plan stays – on the map and in My routes. */
     @Test fun endTourDeleteBinsOnlyTheTour() {
         val planId = startOnANewPlan()

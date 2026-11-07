@@ -61,6 +61,13 @@
     <string name="plan_calculating_leg">Calculating section %1$d of %2$d…</string>
     <string name="plan_hint_first_point_question">Where to?</string>
     <string name="plan_hint_first_point">Hold your destination on the map – or find it in the search bar above.</string>
+    <string name="plan_guide_find_title">Find your destination</string>
+    <string name="plan_guide_find_line">Search, or press and hold on the map</string>
+    <string name="plan_guide_adjust_title">Adjust the route</string>
+    <string name="plan_guide_adjust_line">Add points, round trip, elevation profile</string>
+    <string name="plan_guide_go_title">Let’s go</string>
+    <string name="plan_guide_go_line">Navigation guides you – even offline</string>
+    <string name="plan_guide_my_routes">Open My tours</string>
     <string name="plan_hint_tap_hold">Hold to set a point here.</string>
     <string name="plan_offline_pill">Offline</string>
     <string name="plan_offline_ready">Map and ways for this route are on the phone – it works without a network too.</string>

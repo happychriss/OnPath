@@ -7,7 +7,7 @@
       "web": [
         "web/app/src/activity.ts"
       ],
-      "blob": "3852cf639e7398c4ce892bf74bdb6e67e73f5cee"
+      "blob": "ff4907879926bb5eb8f2f890b13861ef327ae67a"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
@@ -57,7 +57,7 @@
       "web": [
         "web/app/src/plans.ts"
       ],
-      "blob": "94ce1ead8517b38dd420d609077f21228282a0b3"
+      "blob": "b517fe93c91ee4855569673b38e1c0ba7e25d9e7"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapFooter.kt",
@@ -100,7 +100,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "c3d5309c6f5b95371d0f17d8e8c3db693c78b8e7"
+      "blob": "076c5be0783cdd0e44d0a324d21327582d5fb026"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/OptionalSources.kt",
@@ -154,7 +154,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "084eb889afa0fe92dde87508a46b8636104e68af"
+      "blob": "ef4e528658032cf3095dd4753fe489054d76380a"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -229,7 +229,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "2f5ffa039385ecaf70ede97c18b573b19f3b18ab"
+      "blob": "51d4302ebc41eabcefc2528875c44cddbb343916"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/Overview.kt",
