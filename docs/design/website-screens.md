@@ -16,13 +16,15 @@ cloud-web builds them into the website.
 ## The Meran scenario (the same for every flow)
 
 - **App:** emulator AVD `OnPath_Play36` (1080 × 2400, density 356, Android 16), `tools/dev/website_shot.sh`, status bar
-  demo mode (09:30, Wi-Fi, full battery), DE then EN. Map areas of Meran, Dorf Tirol and Algund on the phone. Flight
+  demo mode (09:30, Wi-Fi, full battery), DE then EN. Map areas of Meran, Algund and Vellau on the phone. Flight
   mode on for everything "on the way" (✈ visible). No DEMO mark, no Sim chip, never the owner's real position.
 - **Planner:** 1440 × 900 (film 2560 × 1440), `web/app/test/pair-shots.mjs`, DE then EN; pairing codes blurred.
-- **The hike (Wandern T2):** from Meran town, 2–3 h, one or two steep parts, an inn on the way. Suggestion: Meran
-  (Pulverturm / Tappeinerweg) → Dorf Tirol → towards Schloss Tirol / Hochmuth. Whoever takes the first picture fixes it
-  and writes its **plan link** as the first line of `bilder/aktuell/liste.md` – every flow uses that one plan.
-- **The inn on the way:** a café / inn near the route, found offline, added "Als Zwischenstopp".
+- **The hike (Wandern T2), fixed (owner 2026-11-07): Vellau (Korblift-Talstation) → Leiteralm**, above Algund / Meran –
+  the A-019 plan link (`onpath.private/marketing/bilder/a019/Ergebnis.md`, "Plan-Link"); maps already on the emulator.
+  Check first that 0.17 routes it well (A-019 found a detour east and over the Gamplweg instead of the way along the
+  Korblift) – if not, say so in `liste.md` before taking pictures.
+- **The inn on the way:** Gasthof Hochmuth on the Meraner Höhenweg, found offline and added "Als Zwischenstopp" (F).
+- **The lift (H03):** the Korblift / chairlift Algund → Vellau before the start, so the ride check shows a real ride.
 - **The bike route (E-Bike):** Meran → Etschradweg → Algund / Naturns.
 - **Plausible numbers** (no 19-minute tour with 710 hm). Every picture DE + EN.
 
