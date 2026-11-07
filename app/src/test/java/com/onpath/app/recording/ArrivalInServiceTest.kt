@@ -5,29 +5,31 @@ import com.onpath.app.routing.GeoPoint
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Review H2: arrival only worked with the app on screen; in the pocket the rider walked on to the car park and got
- * off-route alarms and re-routes. The service checks it on every GPS fix, then guidance is quiet, recording goes on.
+ * off-route alarms and re-routes. The service checks it on every GPS fix ([GuidanceGate.arrivalCheck]), then guidance is
+ * quiet, recording goes on (E2E: Rundgang flow 2 – a tour to the end, the arrival question).
  */
 class ArrivalInServiceTest {
-    private val svc = File("src/main/java/com/onpath/app/recording/RecordingService.kt").readText()
-    private val onFix = svc.substringAfter("private fun onFix(loc: Location)").substringBefore("\n    }\n")
-
-    @Test fun theServiceChecksArrivalOnEveryFix() {
-        assertTrue(onFix.contains("checkArrived(p.toGeo(), loc.accuracy.toDouble())"))
-        // after the arrival: no off-route checks, no junction cues, no voice – the track is still recorded
-        assertTrue(onFix.contains("moveWatch.moving(nowEl) && !arrived"))
-        assertTrue(onFix.contains("if (!arrived) try { junctionCue(loc, nowEl) }"))
-        assertTrue(svc.contains("if (!voiceOn() || arrived) return"))
-        assertTrue(svc.contains("arrived = arrived,"))
+    @Test fun afterTheArrivalTheGuidanceIsQuiet() {
+        // before: off-route checks while moving, junction cues, the voice
+        assertTrue(GuidanceGate.offRouteCheck(moving = true, arrived = false))
+        assertTrue(GuidanceGate.junctionCue(arrived = false))
+        assertTrue(GuidanceGate.voiceSteps(voiceOn = true, arrived = false))
+        // after: none of them – the track is still recorded (the gate has no say over points)
+        assertFalse(GuidanceGate.offRouteCheck(moving = true, arrived = true))
+        assertFalse(GuidanceGate.junctionCue(arrived = true))
+        assertFalse(GuidanceGate.voiceSteps(voiceOn = true, arrived = true))
+        // standing still: no off-route check either (the navigator waits as without GPS)
+        assertFalse(GuidanceGate.offRouteCheck(moving = false, arrived = false))
     }
 
-    @Test fun theAppAsksFromTheServiceStateOnly() {
-        val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        assertFalse("no second gate in the app", vm.contains("ArrivalGate()"))
-        assertTrue(vm.contains("onArrived(st?.arrived == true)"))
+    @Test fun arrivalIsCheckedOnceNotPausedNotInPlan() {
+        assertTrue(GuidanceGate.arrivalCheck(arrived = false, paused = false, planQuiet = false))
+        assertFalse("asked once", GuidanceGate.arrivalCheck(arrived = true, paused = false, planQuiet = false))
+        assertFalse("paused", GuidanceGate.arrivalCheck(arrived = false, paused = true, planQuiet = false))
+        assertFalse("Plan is silent", GuidanceGate.arrivalCheck(arrived = false, paused = false, planQuiet = true))
     }
 
     /** The gate the service uses: away first, then near the end with little left. */

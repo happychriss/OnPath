@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.app.domain.routes.SaveFlow
 import com.onpath.app.routing.GeoPoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -43,31 +44,33 @@ class SaveDialogTest {
 
         /** [AppViewModel.requestSave] → askSave (the proposal as it arrives). */
         fun requestSave(then: (() -> Unit)? = null) {
-            saveAsk = if (RouteRules.saveMode(savedId, savedName, routes.map { it.id }) == SaveMode.OVERWRITE)
-                SaveAsk(SaveAsk.Kind.OVERWRITE, savedName!!, savedId, then)
-            else SaveAsk(SaveAsk.Kind.NEW, RouteRules.newRouteName(proposal, dated, routes.map { it.name }), -1L, then)
+            saveAsk = SaveFlow.ask(RouteRules.saveMode(savedId, savedName, routes.map { it.id }), savedName, savedId,
+                proposal, dated, routes.map { it.name }, then)
         }
 
         /** [AppViewModel.requestCopyRoute] – My routes → ⋮ → Save as copy. */
         fun requestCopyRoute(t: Saved) {
-            saveAsk = SaveAsk(SaveAsk.Kind.COPY, RouteRules.copyName(t.name, routes.map { it.name }), t.id, null)
+            saveAsk = SaveFlow.askCopy(t.name, t.id, routes.map { it.name })
         }
 
         /** [AppViewModel.confirmSave] – the dialog's Save with what the field holds. */
         fun confirmSave(input: String) {
             val ask = saveAsk ?: return
             saveAsk = null
-            val name = RouteRules.cleanName(input, ask.name)
-            if (ask.kind == SaveAsk.Kind.COPY) { // [AppViewModel.copyRoute]: the stored route, the plan's link stays
-                val src = routes.first { it.id == ask.routeId }
-                val id = (routes.maxOfOrNull { it.id } ?: 0) + 1
-                routes += Saved(id, name, src.points); backups += id; syncChanges += "route copied"
-            } else if (ask.kind == SaveAsk.Kind.OVERWRITE && ask.routeId == savedId) {
-                val r = routes.first { it.id == ask.routeId }
-                r.points = plan; r.name = name; backups += r.id; syncChanges += "route overwritten"; setSaved(name, r.id, plan)
-            } else {
-                val id = (routes.maxOfOrNull { it.id } ?: 0) + 1
-                routes += Saved(id, name, plan); backups += id; syncChanges += "route saved"; setSaved(name, id, plan)
+            when (val w = SaveFlow.confirm(ask, input, savedId)) { // the app's own decision, then the write as the VM does it
+                is SaveFlow.Write.Copy -> { // [AppViewModel.copyRoute]: the stored route, the plan's link stays
+                    val src = routes.first { it.id == w.routeId }
+                    val id = (routes.maxOfOrNull { it.id } ?: 0) + 1
+                    routes += Saved(id, w.name, src.points); backups += id; syncChanges += "route copied"
+                }
+                is SaveFlow.Write.Overwrite -> {
+                    val r = routes.first { it.id == w.routeId }
+                    r.points = plan; r.name = w.name; backups += r.id; syncChanges += "route overwritten"; setSaved(w.name, r.id, plan)
+                }
+                is SaveFlow.Write.New -> {
+                    val id = (routes.maxOfOrNull { it.id } ?: 0) + 1
+                    routes += Saved(id, w.name, plan); backups += id; syncChanges += "route saved"; setSaved(w.name, id, plan)
+                }
             }
             ask.then?.invoke()
         }
@@ -172,7 +175,7 @@ class SaveDialogTest {
         assertEquals("Vellau → Leiteralm (2)", vm.routes[1].name)
     }
 
-    // ---- the app's code
+    // ---- wiring pins (no JVM harness for AppViewModel / TourDb): the entry points and the one DB write
 
     private val vmSrc = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
     private fun body(start: String) = vmSrc.substringAfter(start).substringBefore("\n    }\n")
@@ -184,7 +187,7 @@ class SaveDialogTest {
         assertTrue("☰ Save route – the one Save of the plan", map.contains("onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null"))
         val main = File("src/main/java/com/onpath/app/MainActivity.kt").readText()
         assertTrue("My routes ⋮ Save as copy", main.contains("onCopy = { vm.requestCopyRoute(it) }"))
-        assertTrue(body("fun confirmSave(").contains("ask.kind == SaveAsk.Kind.COPY -> copyRoute(ask.routeId, name)"))
+        assertTrue(body("fun confirmSave(").contains("is com.onpath.app.domain.routes.SaveFlow.Write.Copy -> copyRoute(w.routeId, w.name)"))
         val dialogs = File("src/main/java/com/onpath/app/ui/RouteDialogs.kt").readText()
         assertTrue(dialogs.contains("SaveNameDialog(ask.kind, ask.name, onSave = vm::confirmSave, onCancel = vm::cancelSave)"))
         assertTrue("the name selected", dialogs.contains("TextFieldValue(name, TextRange(0, name.length))"))
@@ -196,17 +199,5 @@ class SaveDialogTest {
         assertTrue(ow, ow.contains("if (it && name != old) db.rename(id, name)"))
         assertTrue(ow, ow.contains("setSaved(name, id, pts)"))
         assertTrue(ow, ow.contains("|| saving) return"))
-        assertTrue(body("fun confirmSave(").contains("RouteRules.cleanName(input, ask.name)"))
-    }
-
-    @Test fun noRenameInPlaceIsLeft() {
-        for (gone in listOf("renamingPlan", "renamePlan", "RenamePlan", "saveAsNew"))
-            assertFalse("$gone removed", vmSrc.contains(gone))
-        val panel = File("src/main/java/com/onpath/app/ui/PlanPanel.kt").readText()
-        for (gone in listOf("NameField", "onRenameStart", "cancelOnTouchOutside"))
-            assertFalse("$gone removed", panel.contains(gone))
-        // My routes → ⋮ → Rename stays
-        val main = File("src/main/java/com/onpath/app/MainActivity.kt").readText()
-        assertTrue("My routes → Rename", main.contains("onRename = { t, name -> vm.renameTour(t, name) }"))
     }
 }

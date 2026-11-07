@@ -496,6 +496,14 @@ fun LongRouteDialog(seconds: Double, activity: com.onpath.app.routing.Activity, 
         text = { DialogText(longRouteText(seconds, activity)) },
         confirmButton = { TextButton(colors = ActionButtons.editText(), onClick = onPlan) { Text(str(Res.string.nav_plan_anyway)) } },
         dismissButton = { TextButton(onClick = onCancel) { Text(str(Res.string.common_cancel)) } },
-        properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+        properties = LongRouteDialogRules.properties,
     )
+}
+
+/**
+ * Problem 9: a tap outside "This route is very long" or Back must not undo – the question stays until a button
+ * (Plan anyway / Cancel) answers it.
+ */
+internal object LongRouteDialogRules {
+    val properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
 }

@@ -274,7 +274,7 @@ fun MapScreen(
     if (vm.planFromTrackBusy) PlanFromTrackDialog(onCancel = vm::cancelPlanFromTrack)
     // arrival Save goes the End tour way: a bus / car / lift found → the ride summary
     // Plan is silent (owner 2026-11-03): "Du bist angekommen" waits for Navigate
-    if (vm.arrivalAsk && rec != null && vm.mode == AppMode.NAVIGATE) ArrivalDialog(onSave = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
+    if (com.onpath.app.domain.tour.TourEndFlow.arrivalBoxShows(vm.arrivalAsk, rec != null, vm.mode == AppMode.NAVIGATE)) ArrivalDialog(onSave = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
         onKeepGoing = { vm.arrivalAsk = false },
         activity = vm.activity, stats = rec?.let { EndStats(it.distanceM, it.elapsedS, it.ascentM) })
     // Navigate → ⚙ opens Settings "on the way" (owner 2026-11-07) – MainActivity draws it like Plan's Settings
@@ -664,7 +664,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         c.setNavGuide(location?.let { com.onpath.app.routing.GeoPoint(it.latitude, it.longitude) }, guide?.target)
     }
     // no service after a reboot: the interrupted tour's track behind its question (Continue · Delete · Save)
-    val recTrack = rec?.track ?: vm.unfinished?.let { vm.unfinishedTrack } ?: emptyList()
+    val recTrack = com.onpath.app.domain.tour.TourEndFlow.trackShown(rec?.track, vm.unfinished != null, vm.unfinishedTrack)
     LaunchedEffect(c, recTrack.sumOf { it.size }.takeUnless { rest }) { if (!rest) c.setTrack(MapController.SRC_REC, recTrack) }
     LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
     // the spot tapped in the route warnings list: its piece of route amber (Plan only)

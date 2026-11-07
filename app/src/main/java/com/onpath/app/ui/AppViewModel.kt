@@ -826,10 +826,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The plan is left without a route on purpose (Cancel with nothing to take back); the sheet offers to calculate. */
     var notRouted by mutableStateOf<NotRouted?>(null)
         private set
-    /** What the next [recalc] is for (set just before it): Cancel undoes only that. */
-    private var nextCause: PlanStatus.Cause = PlanStatus.Cause.Other
-    /** What the current / last routing run (or long-route question) was started by. */
-    private var runCause: PlanStatus.Cause = PlanStatus.Cause.Other
+    /** What started the routing run: Cancel takes back only that ([com.onpath.app.domain.plan.RunCause]). */
+    private val runCauses = com.onpath.app.domain.plan.RunCause()
 
 
     // --- saved state of the plan (menus / Manage routes) ---
@@ -1367,7 +1365,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun selectActivity(a: Activity, userChange: Boolean = true) {
         noteActivityChange()
-        nextCause = if (userChange) activityCause() else PlanStatus.Cause.Other
+        if (userChange) runCauses.activity(activityCause()) else runCauses.other()
         activity = a; prefs.activity = a; recalc()
         clearShownNote()
     }
@@ -1380,14 +1378,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Cause of an activity / T level change; a change still being calculated keeps the activity from before it. */
     private fun activityCause(): PlanStatus.Cause =
-        (runCause as? PlanStatus.Cause.ActivityChange)?.takeIf { routing || longRouteAsk != null }
-            ?: PlanStatus.Cause.ActivityChange(activity, sac)
+        runCauses.activityChange(PlanStatus.Cause.ActivityChange(activity, sac), previousStillOpen = routing || longRouteAsk != null)
 
     /** T level from the activity picker (Hike): remembered, the route is planned again at once. */
     fun selectSac(level: Int) {
         val l = level.coerceIn(1, 5)
         if (l == sac) return
-        if (activity == Activity.HIKE) { noteActivityChange(); nextCause = activityCause() }
+        if (activity == Activity.HIKE) { noteActivityChange(); runCauses.activity(activityCause()) }
         sac = l; prefs.sac = l; if (activity == Activity.HIKE) recalc()
         clearShownNote()
     }
@@ -1432,7 +1429,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         oneLeftGoesFromHere(before, mayEmpty = true)
         planChanged()
         endGuidanceIfPlanEmpty()
-        nextCause = PlanStatus.Cause.PointEdit
+        runCauses.pointEdit()
         recalc()
     }
 
@@ -2038,7 +2035,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         planEditPending = true
         planChanged()
         endGuidanceIfPlanEmpty()
-        nextCause = if (what == "Undo") PlanStatus.Cause.Undo else PlanStatus.Cause.Redo
+        runCauses.step(undo = what == "Undo")
         recalc()
     }
 
@@ -2068,8 +2065,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // no tour: the followed line goes with the plan – also when it was the way there ("Guide me") or the app restarted
         // meanwhile (followFromPlan lives in memory only; Pixel 2026-11-01: a blue line without points stayed). A shown
         // GPX track keeps its own line.
-        val fromPlan = followFromPlan || (planLine != null && followLine == planLine) || !followIsTrack
-        if (fromPlan && followLine != null && recState.value == null) clearFollow()
+        if (com.onpath.app.domain.plan.ClearRule.dropsFollowWithoutTour(following = followLine != null,
+                recording = recState.value != null, followFromPlan = followFromPlan,
+                followIsPlanLine = planLine != null && followLine == planLine, followIsTrack = followIsTrack)) clearFollow()
         // during a tour (owner 2026-11-05): "Neu planen" ends every guidance – also a followed track, also when the plan was
         // already empty; Navigate shows a free tour, the recording never stops. Undo brings the points (and following them).
         if (PlanGuidance.clearEndsGuidance(recState.value != null, followLine != null)) {
@@ -2085,7 +2083,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (plan) {
             longRouteOk = waypoints.toList()
             deferred?.let { cellsForNewPoints(it, waypoints) } // now the new point's maps load
-            nextCause = runCause; recalc(); return
+            runCauses.again(); recalc(); return
         }
         if (deferred != null) Problems.trace("cells", "Very long plan cancelled: nothing was loaded for it")
         longRouteDeferred = deferred // points kept unrouted: "Plan anyway" later loads them (an undo replaces it)
@@ -2101,8 +2099,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * just stops and leaves the points unrouted.
      */
     private fun cancelRun(why: NotRouted) {
-        val cause = runCause
-        runCause = PlanStatus.Cause.Other
+        val cause = runCauses.takeForCancel()
         val what = PlanStatus.onCancel(cause, canUndo, canRedo)
         Problems.trace("routing", "Cancel ($why) of a run for ${cause::class.simpleName}: ${what.name.lowercase()}")
         leaveUnrouted(why)
@@ -2119,7 +2116,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         activity = c.activity; prefs.activity = c.activity
         sac = c.sac; prefs.sac = c.sac
         routeChangedNotice = null; activityBefore = null; activityRecalc = false
-        nextCause = PlanStatus.Cause.Other
+        runCauses.other()
         recalc()
     }
 
@@ -2131,7 +2128,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.info("routing", "Slow plan: ${answer.name.lowercase()} after $rounds period(s)")
         if (next == null) { planRounds = 1; cancelRun(NotRouted.STOPPED); return }
         planRounds = next; keepRounds = true
-        nextCause = runCause // Cancel later still takes back the change that started this run
+        runCauses.again() // Cancel later still takes back the change that started this run
         recalc()
     }
 
@@ -2175,7 +2172,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun recalc() {
-        runCause = nextCause; nextCause = PlanStatus.Cause.Other
+        runCauses.start()
         // a new run (an edit, an activity change …) starts at one time-limit period and drops an open "Weiter warten?"
         if (!keepRounds) planRounds = 1
         keepRounds = false
@@ -2616,20 +2613,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun requestCopyRoute(t: Tour) {
         if (t.kind != TourKind.PLANNED || saving) return
-        saveAsk = SaveAsk(SaveAsk.Kind.COPY, RouteRules.copyName(t.name, plannedNames()), t.id, null)
+        saveAsk = com.onpath.app.domain.routes.SaveFlow.askCopy(t.name, t.id, plannedNames())
     }
 
     /** Opens Save's dialog; [then] runs after a successful save ("Save first" before loading another route). */
     private fun askSave(then: (() -> Unit)?) {
         val pts = waypoints.toList()
         if (pts.size < 2 || saving) return
-        if (currentSaveMode() == SaveMode.OVERWRITE) {
-            saveAsk = SaveAsk(SaveAsk.Kind.OVERWRITE, savedName!!, savedId, then); return
-        }
         val dated = defaultName(Txt.s(Res.string.msg_name_route))
         val taken = plannedNames()
-        val ask = SaveAsk(SaveAsk.Kind.NEW, RouteRules.newRouteName(null, dated, taken), -1L, then)
+        val ask = com.onpath.app.domain.routes.SaveFlow.ask(currentSaveMode(), savedName, savedId, proposal = null, dated, taken, then)
         saveAsk = ask
+        if (ask.kind == SaveAsk.Kind.OVERWRITE) return
         // the proposal (plan link title / "Vellau → Leiteralm") replaces the date name in the field until the user types
         val r = route
         viewModelScope.launchSafe("app", "askSave") {
@@ -2648,12 +2643,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun confirmSave(input: String) {
         val ask = saveAsk ?: return
         saveAsk = null
-        val name = RouteRules.cleanName(input, ask.name)
         val then = ask.then
-        when {
-            ask.kind == SaveAsk.Kind.COPY -> copyRoute(ask.routeId, name)
-            ask.kind == SaveAsk.Kind.OVERWRITE && ask.routeId == savedId -> overwriteSaved(name, then)
-            else -> saveRoute(name, then)
+        when (val w = com.onpath.app.domain.routes.SaveFlow.confirm(ask, input, savedId)) {
+            is com.onpath.app.domain.routes.SaveFlow.Write.Copy -> copyRoute(w.routeId, w.name)
+            is com.onpath.app.domain.routes.SaveFlow.Write.Overwrite -> overwriteSaved(w.name, then)
+            is com.onpath.app.domain.routes.SaveFlow.Write.New -> saveRoute(w.name, then)
         }
     }
 
@@ -3464,10 +3458,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }.onFailure { Problems.warn("rides", "Ride check at End tour failed – asked without it", it) }.getOrNull()
             }
             if (recState.value?.tourId != id) return@launchSafe // ended meanwhile (notification, arrival)
-            when {
-                s != null -> endAsk = EndAsk.Rides(id, s)
-                saveIfNoRides -> endTour()
-                else -> endAsk = EndAsk.Plain
+            when (com.onpath.app.domain.tour.TourEndFlow.afterRideCheck(s != null, saveIfNoRides)) {
+                com.onpath.app.domain.tour.TourEndFlow.Next.RIDES -> endAsk = EndAsk.Rides(id, s!!)
+                com.onpath.app.domain.tour.TourEndFlow.Next.SAVE_NOW -> endTour()
+                com.onpath.app.domain.tour.TourEndFlow.Next.ASK_PLAIN -> endAsk = EndAsk.Plain
             }
         }
     }
@@ -3750,7 +3744,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     com.onpath.app.rides.RideView.summary(segs, com.onpath.app.rides.RideDetector.detect(segs, a), onFoot = a == Activity.HIKE)
                 }.onFailure { Problems.warn("rides", "Ride check of the unfinished tour failed – saved without it", it) }.getOrNull()
             }
-            if (s != null) unfinishedRides = t to s else saveUnfinished(t)
+            when (com.onpath.app.domain.tour.TourEndFlow.unfinishedSave(s != null)) {
+                com.onpath.app.domain.tour.TourEndFlow.Next.RIDES -> unfinishedRides = t to s!!
+                else -> saveUnfinished(t)
+            }
         }
     }
 

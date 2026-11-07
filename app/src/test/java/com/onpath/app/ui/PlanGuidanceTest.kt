@@ -55,11 +55,7 @@ class PlanGuidanceTest {
 
     /** Sheet ⋯ → Clear route is allowed during a tour (owner) and goes through the same plan change. */
     @Test fun clearRouteDuringATourEndsTheGuidanceToo() {
-        val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        val clear = vm.substringAfter("fun clearPlan() {").substringBefore("\n    }")
-        assertTrue(clear, clear.contains("change { clear() }"))
-        val change = vm.substringAfter("private fun change(").substringBefore("\n    }")
-        assertTrue(change, change.contains("endGuidanceIfPlanEmpty()"))
+        // the view model's path (clear → the empty-plan rule): E2E CoreFieldE2ETest.clearingThePlanDuringATourAsksNothing
         val t = Tour(listOf(a, b))
         t.edit(emptyList())
         assertFalse(t.following)
@@ -86,11 +82,7 @@ class PlanGuidanceTest {
         assertFalse("no plan to follow", PlanGuidance.planReplacesTrack(true, listOf(c), atFollow))
         assertFalse("unknown (app restart): the track stays", PlanGuidance.planReplacesTrack(true, listOf(a, c), null))
         assertFalse("no track followed", PlanGuidance.planReplacesTrack(false, listOf(a, b, c), atFollow))
-        val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        val cont = vm.substringAfter("fun continueNavigation(").substringBefore("\n    }")
-        assertTrue(cont, cont.contains("(!followIsTrack || planReplacesTrack())"))
-        val shown = vm.substringAfter("fun followShown(").substringBefore("\n    }")
-        assertTrue(shown, shown.contains("planAtTrackFollow = waypoints.toList()"))
+        // the view model's path: E2E CoreFieldE2ETest.followingATrackDuringATour…
     }
 
     /** Owner 2026-11-06 (onpath.private#39): one point left during a tour = "Hierhin" (position → that point). */
@@ -151,10 +143,7 @@ class PlanGuidanceTest {
         assertFalse(PlanGuidance.oneLeftGoesFromHere(2, 1, true, true, followIsTrack = true, routeBackAsk = false))
         assertFalse(PlanGuidance.oneLeftGoesFromHere(0, 1, true, true, false, false))
         assertFalse(PlanGuidance.oneLeftGoesFromHere(3, 2, true, true, false, false))
-        // the view model asks after every edit and every Undo / Redo
-        val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        // an edit may empty the plan (field bug 2026-11-06), Undo / Redo never does
-        assertTrue(vm.substringAfter("private fun change(").substringBefore("\n    }\n").contains("oneLeftGoesFromHere(before, mayEmpty = true)"))
-        assertTrue(vm.substringAfter("private fun step(").substringBefore("\n    }\n").contains("oneLeftGoesFromHere(before)"))
+        // the view model asks after every edit and every Undo / Redo: PlanFlowPropertyTest (random edit / undo / redo
+        // sequences against PlanSession) and E2E deletingTheStartDuringATour… / onePointLeftRightHereEmptiesThePlan
     }
 }

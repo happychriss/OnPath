@@ -63,22 +63,16 @@ class QuestionNotificationTest {
         assertTrue(svc.contains("setNavigating(navigatingApplied)"))
         assertTrue("only Continue ends the quiet (owner 2026-11-03)", svc.contains("val now = navigating\n"))
         assertTrue(svc.contains("stopQuiet.set(stopped = !navigating)"))
-        // no voice and no junction vibration while quiet (owner 2026-11-03, ModeQuiet): the voice follows without a word,
-        // the check comes before the spoken step and the vibration
-        val cue = svc.substringAfter("private fun junctionCue(").substringBefore("\n    }\n")
-        val quiet = cue.indexOf("if (!ModeQuiet.allows(planQuiet(), ModeQuiet.Event.TURN_VIBRATION)) { voiceStep(st, nowEl, speak = false); return }")
-        assertTrue(cue, quiet in 0 until cue.indexOf("voiceStep(st, nowEl)\n"))
-        assertTrue(quiet < cue.indexOf("vibrate("))
+        // no voice and no junction vibration while quiet (owner 2026-11-03): GuidanceGate (ModeQuietTest)
+        assertTrue(svc.contains("GuidanceGate.junction(planQuiet()) == GuidanceGate.Junction.FOLLOW_SILENTLY"))
         assertTrue(svc.contains("private fun planQuiet(): Boolean = tourId >= 0 && stopQuiet.quiet"))
     }
 
     /** Review M1: every notification of a tour has its own id – Pause / Resume never cancels "cannot be saved". */
     @Test fun notificationIdsAreDistinct() {
         val ids = listOf(TourChannels.NOTIF_ID, RecordingService.ALERT_ID, RecordingService.PAUSE_ALERT_ID,
-            RecordingService.SAVE_FAIL_ID, 45 /* TourInterruptedReceiver */, 4711 /* MapLoadService */)
+            RecordingService.SAVE_FAIL_ID, TourInterruptedReceiver.INTERRUPTED_ID, com.onpath.app.cells.MapLoadService.NOTE_ID)
         assertEquals(ids.size, ids.toSet().size)
-        val r = File("src/main/java/com/onpath/app/recording/TourInterruptedReceiver.kt").readText()
-        assertTrue(r.contains("INTERRUPTED_ID = 45"))
     }
 
     /** Review M3: no action of the service and no broken session file can kill the process (and with it the tour). */
