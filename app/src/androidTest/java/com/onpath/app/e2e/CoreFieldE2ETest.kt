@@ -16,6 +16,7 @@ import com.onpath.strings.nav_settings_cd
 import com.onpath.strings.settings_group_offroute
 import com.onpath.strings.nav_leave_title
 import com.onpath.strings.plan_go_here
+import com.onpath.strings.plan_locate_far_cd
 import com.onpath.strings.plan_new_during_tour
 import com.onpath.strings.plan_undo
 import com.onpath.strings.nav_profile_hide
@@ -481,6 +482,36 @@ class CoreFieldE2ETest : E2EBase() {
      * plan's fit; the fit must win, the map must not end on the position.
      */
     @Test fun backInPlanWithWalkingDirectionUpTheMapShowsThePlan() = planInFrontAfterNavigate(walkingDirectionUp = true)
+
+    /**
+     * Plan far away, me off the map (owner 2026-11-07, variant 3): the locate button says the distance ("Du bist … km
+     * entfernt") and a tap frames the plan and my position together.
+     */
+    @Test fun locateOffTheMapShowsTheDistanceAndATapShowsPlanAndMe() {
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
+        val far = listOf(GpxWaypoint(lat + 0.22, lon - 0.01, "E2E far start"), GpxWaypoint(lat + 0.24, lon + 0.02, "E2E far goal"))
+        val name = "E2E far locate ${System.currentTimeMillis() % 100_000}"
+        val id = db.insertTour(TourKind.PLANNED, name, Activity.HIKE.name, 2, 3_000.0, 0.0, 0.0, 3600.0,
+            listOf(far.map { TrackPoint(it.lat, it.lon) }), far)
+        try {
+            scenario.onActivity { vm(it).refreshTours(); vm(it).openTour(db.getTour(id)!!) }
+            waitUntil("the far plan is on the map", 10_000) { waypointCount() == 2 }
+            Thread.sleep(3_000) // the plan is framed; my position is ~25 km south, off the map
+            val prefix = Txt.s(Res.string.plan_locate_far_cd, "").substringBefore(" ").ifBlank { "Du" }
+            val label = findFresh(By.desc(java.util.regex.Pattern.compile(
+                java.util.regex.Pattern.quote(prefix) + ".*km.*", java.util.regex.Pattern.DOTALL)), 8_000)
+            assertNotNull("the locate button tells the distance while I am off the map", label)
+            label!!.click()
+            Thread.sleep(2_500) // fit animation
+            var bounds: org.maplibre.android.geometry.LatLngBounds? = null
+            onMap { m -> bounds = m.projection.visibleRegion.latLngBounds }
+            val b = bounds!!
+            assertTrue("my position is in view after the tap", b.contains(org.maplibre.android.geometry.LatLng(lat, lon)))
+            assertTrue("the plan is in view too", b.contains(org.maplibre.android.geometry.LatLng(lat + 0.23, lon + 0.005)))
+        } finally {
+            db.deleteTour(id)
+        }
+    }
 
     private fun planInFrontAfterNavigate(walkingDirectionUp: Boolean) {
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
