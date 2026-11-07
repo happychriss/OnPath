@@ -199,7 +199,7 @@ and the commit history.
   A-019 (donald) – one image set from one app version for website, store, help and video; the store's place image
   still shows the old "Zur Route hinzufügen". (5) **Owner, Cloudflare:** switch off Email Address Obfuscation (it adds
   a script the privacy text says is not active). (6) **Before the public launch:** legal check of imprint / privacy
-  (website `docs/RELEASE.md`), then website `--release` and the planner's `INDEXING = "on"` together; privacy line on
+  (`docs/RELEASE.md` in the website repo `happychriss/onpath.earth`), then website `--release` and the planner's `INDEXING = "on"` together; privacy line on
   the map server ("IP for a few minutes") once A-014 is in production; English store listing; video (idea, owner's notes in `onpath.private`). (7) **Alt text / tab name** „Aufs Handy · Teilen“ → „Teilen“
   (A-021, captain handoff 2026-10-31).
 - **From the external review (A-020 §4) – build only after a small user test by the owner:**

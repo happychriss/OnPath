@@ -509,7 +509,7 @@ estimator (`TripPace`) along the planned route GPX and prints/asserts the metric
 1. Before a tour: save the plan (Manage routes → Export GPX).
 2. Record the tour while navigating (as now). After: My tours → Export GPX.
 3. Put both GPX files (+ one line: activity, pace setting, anything special such as "lunch 40 min", "rain") into the
-   fixture folder (in the repo, ends trimmed), e.g. `app/src/test/resources/tracks/2026-10-25-hirzer/{plan,track}.gpx`.
+   fixture folder (in the repo, ends trimmed), e.g. `app/src/test/resources/tracks/owner-2026-10-22-taser/`.
 4. The replay test runs in CI; each new tour adds one row to the accuracy table.
 5. After ~5 hikes: tune table B (if the owner is consistently off in one gradient group, that is the table, not him),
    the τ / ρ values and the break threshold.
