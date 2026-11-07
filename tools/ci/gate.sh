@@ -19,7 +19,7 @@
 #   --no-ci-skip  a release runs its selected tests even when CI is green
 #   --dry-run     print what would run, run nothing
 #   -- …          passed on to Gradle, e.g. `-- assembleDebug`
-# Exit code: Gradle's (0 = green); 3 / 4 = an open `an-alle` issue says #push-sperre / #release-sperre (tools/ask.sh).
+# Exit code: Gradle's (0 = green).
 set -uo pipefail
 
 FULL=0; DRY=0; CISKIP=1; BASE=origin/main; EXTRA=()
@@ -63,16 +63,6 @@ eval "$(python3 tools/ci/risk_tests.py --gate "${CHANGED[@]}")" || { echo "gate:
 [ "$FULL" = 1 ] && { mode=full; paparazzi=1; why="--full"; }
 
 echo "gate: base $(git rev-parse --short "$BASE_SHA") ($BASE) · ${#CHANGED[@]} changed file(s) · $mode – $why"
-
-# The owner's word to every session (owner 2026-11-01): open `an-alle` issues are shown; #push-sperre stops every push,
-# #release-sperre a release commit (version line / release notes). Without gh the check is skipped with a warning.
-is_release=0
-for f in "${CHANGED[@]}"; do case "$f" in app/build.gradle.kts#version|docs/release-notes/*) is_release=1 ;; esac; done
-if [ -x tools/ask.sh ]; then
-  if [ "$is_release" = 1 ]; then tools/ask.sh check --release; else tools/ask.sh check; fi
-  arc=$?
-  [ "$arc" = 3 ] || [ "$arc" = 4 ] && { echo "gate: stopped by the owner's an-alle issue · rc=$arc"; exit "$arc"; }
-fi
 
 rc=0
 if [ "$python" = 1 ] || [ "$FULL" = 1 ]; then

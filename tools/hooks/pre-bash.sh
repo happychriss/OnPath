@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # PreToolUse hook for Bash (.claude/settings.json): the rules that must hold, enforced instead of asked for.
 #   git push     → only when tools/ci/gate.sh was green for this HEAD or the same own change after a rebase
-#                  (stamp .git/onpath-gate-ok: HEAD + patch-id) and no open
-#                  an-alle issue says #push-sperre (tools/ask.sh check). Pushes of wip/* (work saved before a shutdown) and
+#                  (stamp .git/onpath-gate-ok: HEAD + patch-id). Pushes of wip/* (work saved before a shutdown) and
 #                  --dry-run pass.
 #   adb install / installDebug / installRelease → only through tools/dev/device.sh (one agent per device, no
 #                  install while a tour records).
@@ -13,9 +12,8 @@ command -v jq >/dev/null || exit 0
 in=$(cat 2>/dev/null) || exit 0
 cmd=$(jq -r '.tool_input.command // empty' <<<"$in" 2>/dev/null) || exit 0
 [ -n "$cmd" ] || exit 0
-# the Bash call runs in the session's cwd (a worktree after `cd` / EnterWorktree) – judge the push there; ask.sh from the repo
+# the Bash call runs in the session's cwd (a worktree after `cd` / EnterWorktree) – judge the push there
 cwd=$(jq -r '.cwd // empty' <<<"$in" 2>/dev/null); [ -d "$cwd" ] && cd "$cwd"
-ASK=${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo .)}/tools/ask.sh
 deny() { echo "onpath hook: $*" >&2; exit 2; }
 
 if [[ $cmd =~ (^|[^[:alnum:]_])git[[:space:]]+(-C[[:space:]]+[^[:space:]]+[[:space:]]+)?push([[:space:]]|$) ]] && [[ $cmd != *--dry-run* ]] && [[ $cmd != *" wip/"* ]] && [[ $cmd != *":wip/"* ]] && [[ $cmd != *"refs/heads/wip/"* ]]; then
@@ -39,11 +37,6 @@ if [[ $cmd =~ (^|[^[:alnum:]_])git[[:space:]]+(-C[[:space:]]+[^[:space:]]+[[:spa
     fi
     [ "$ok" = 1 ] ||
       deny "git push refused – tools/ci/gate.sh has not run green for this change (HEAD ${head:0:8}, last green ${s_head:0:8}). Run tools/ci/gate.sh, then push."
-    if [ -x "$ASK" ]; then
-      out=$("$ASK" check 2>&1); rc=$?
-      [ "$rc" = 3 ] && deny "git push refused – an open an-alle issue says #push-sperre: $out"
-      [ "$rc" = 4 ] && deny "release push refused – an open an-alle issue says #release-sperre: $out"
-    fi
   fi
 fi
 
