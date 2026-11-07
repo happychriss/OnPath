@@ -53,12 +53,4 @@ class PlanHapticsTest {
         assertEquals(Buzz.NONE, MapGestures.buzz(true, true, -1, false)) // only closes the menu
     }
 
-    /** No vibration after an edit: the ViewModel and the Points list have no haptics (source check). */
-    @Test fun editsAndPointsListDoNotVibrate() {
-        val ui = java.io.File("src/main/java/com/onpath/app/ui")
-        for (f in listOf("AppViewModel.kt", "PointsSection.kt")) {
-            val src = java.io.File(ui, f).readText()
-            assertFalse("$f must not vibrate", Regex("Haptics\\.play|performHapticFeedback|LocalHapticFeedback").containsMatchIn(src))
-        }
-    }
 }

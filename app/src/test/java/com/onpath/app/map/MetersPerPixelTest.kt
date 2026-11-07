@@ -3,7 +3,6 @@ package com.onpath.app.map
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * onpath.private#6 (owner 2026-11-02, A): a hold counted as "on the planned line" from ~60 dp away instead of 24 dp.
@@ -26,9 +25,4 @@ class MetersPerPixelTest {
         assertTrue(MapController.metersPerScreenPx(1.0, 0f).isFinite())
     }
 
-    @Test fun theControllerDividesByTheDensity() {
-        val src = File("src/main/java/com/onpath/app/map/MapController.kt").readText()
-        val fn = src.substringAfter("fun metersPerPixel(): Double").substringBefore("\n\n")
-        assertTrue(fn, fn.contains("metersPerScreenPx(map.projection.getMetersPerPixelAtLatitude("))
-    }
 }

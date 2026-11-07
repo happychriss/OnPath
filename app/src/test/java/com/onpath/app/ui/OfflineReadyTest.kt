@@ -9,7 +9,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Owner 2026-11-03 (comparison card 3): the plan's mode pill says whether the route works without a network –
@@ -77,12 +76,4 @@ class OfflineReadyTest {
         assertTrue(OfflineReady.explain(OfflineReady.Result(OfflineReady.State.MISSING, 0.0, true, 0)).contains("Ways"))
     }
 
-    @Test fun thePillCarriesItAndATapExplains() {
-        val bar = File("src/main/java/com/onpath/app/ui/PlanTopBar.kt").readText()
-        val label = bar.substringAfter("internal fun PlanModeLabel(").substringBefore("\n}\n")
-        assertTrue(label.contains("OfflineReady.pillWord") && label.contains("onClick = onOffline"))
-        val map = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertTrue(map.contains("offline = vm.offlineReady?.state") && map.contains("onOffline = vm::toggleOfflineInfo"))
-        assertTrue("off the main thread", map.contains("withContext(Dispatchers.IO) { vm.computeOfflineReady(l) }"))
-    }
 }

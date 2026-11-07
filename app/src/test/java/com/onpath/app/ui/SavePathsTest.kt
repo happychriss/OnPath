@@ -38,8 +38,7 @@ class SavePathsTest {
         val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
         val rides = screen.substringAfter("is EndAsk.Rides -> RideSummaryDialog(").substringBefore("null -> {}")
         assertFalse(rides, rides.contains("routeLabel") || rides.contains("saveRouteAtEnd"))
-        val ask = body("fun askEndTour(saveIfNoRides: Boolean = false) {")
-        assertTrue(ask.contains("s != null -> endAsk = EndAsk.Rides(id, s)"))
+        // rides found → the summary (and nothing about the plan): TourEndPathsTest.endTourAndArrivalRunTheRideCheck
     }
 
     /**
@@ -78,14 +77,6 @@ class SavePathsTest {
         assertTrue(backups.contains("(db.listTours() + db.listDeleted()).filter { !it.draft }"))
         val sync = File("src/main/java/com/onpath/app/plansync/DbTourStore.kt").readText()
         assertTrue(sync.contains("&& !it.draft }"))
-    }
-
-    /** GPX import always makes an imported track; a plan GPX becomes a plan again only via "Als Plan nutzen". */
-    @Test fun todayEveryImportIsATrack() {
-        val imp = body("fun importGpx(uri: Uri) {")
-        assertTrue(imp.contains("db.insertTour(TourKind.IMPORTED,"))
-        assertFalse(imp.contains("TourKind.PLANNED"))
-        assertTrue(body("private fun planFromShownNow() {").contains("PlanGpx.stopsOf(track, sh.waypoints)"))
     }
 
     /**

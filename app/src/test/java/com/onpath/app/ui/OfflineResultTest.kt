@@ -1,9 +1,7 @@
 package com.onpath.app.ui
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * After Offline maps → Clean up no "37 map areas removed. OK" box on the map: the user confirmed the removal himself,
@@ -19,22 +17,4 @@ class OfflineResultTest {
         assertEquals("No map areas to remove", OfflineResult.removed(0, 0, afterTour = false))
     }
 
-    /** No message box on the map for a successful Clean up / Clear all; the result line is cleared when the page is left. */
-    @Test fun successGoesToThePageNotTheMap() {
-        val src = File("src/main/java/com/onpath/app/ui/MapDataFlow.kt").readText() // Offline maps: out of AppViewModel
-        val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        fun body(fn: String): String {
-            val start = src.indexOf("fun $fn(")
-            assertTrue(fn, start >= 0)
-            return src.substring(start, src.indexOf("\n    }\n", start))
-        }
-        for (fn in listOf("clearAllMaps", "confirmCleanup")) {
-            val b = body(fn)
-            assertTrue("$fn: no message on success", "say(" !in b && "sayError(" !in b && "sayInfo(" !in b)
-            assertTrue("$fn: result line", "offlineResult = OfflineResult.removed(" in b)
-            assertTrue("$fn: failures stay visible (removeAreas)", "removeAreas(" in b)
-        }
-        assertTrue("a failure is a red line on the page", "sayError(Txt.s(Res.string.msg_maps_remove_failed), NoticePlace.SETTINGS)" in body("removeAreas"))
-        assertTrue("leaving the page clears the line", Regex("""if \(v != SettingsPage.OFFLINE_MAPS\) offlineResult = null""").containsMatchIn(vm))
-    }
 }

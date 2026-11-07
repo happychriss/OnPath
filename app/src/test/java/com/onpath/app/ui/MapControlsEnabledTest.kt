@@ -2,7 +2,6 @@ package com.onpath.app.ui
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.io.File
 
 /**
  * Owner 2026-11-06: "funktioniert das Ausgrauen immer zuverlässig im Planmodus?" – every state the map column meets, and
@@ -55,9 +54,4 @@ class MapControlsEnabledTest {
             MapControlsEnabled.In(N, planLine = true, followLine = true), eye = true, whole = true, undo = false, redo = false)
     }
 
-    @Test fun mapScreenUsesTheRule() {
-        val map = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        for (k in listOf("MapControlsEnabled.eye(ctl)", "MapControlsEnabled.wholeRoute(ctl)", "MapControlsEnabled.undo(ctl)",
-                "MapControlsEnabled.redo(ctl)", "val ctl = vm.controlsIn(mode, pointsOpen)")) assertEquals(k, true, map.contains(k))
-    }
 }

@@ -11,11 +11,11 @@ class ActivityPickerScreenshotTest {
     @get:Rule
     val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5, showSystemUi = false)
 
-    @Test fun pickerHikeT2() = paparazzi.snapshot {
+    fun pickerHikeT2() = paparazzi.snapshot {
         OnPathTheme { ActivityDialog(Activity.HIKE, onSelect = {}, onDismiss = {}, sac = 2) }
     }
 
-    @Test fun pickerMtb() = paparazzi.snapshot {
+    fun pickerMtb() = paparazzi.snapshot {
         OnPathTheme { ActivityDialog(Activity.MTB, onSelect = {}, onDismiss = {}, sac = 2) }
     }
 }

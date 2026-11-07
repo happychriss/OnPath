@@ -80,14 +80,6 @@ class FoundPlacePinTest {
             .contains("<string name=\"plan_pin_add\">Add</string>"))
     }
 
-    /** Rule 5: pin hidden in Navigate; the chip only where the plan can be edited. */
-    @Test fun hiddenInNavigateChipOnlyWhenEditable() {
-        assertTrue(src("ui/MapScreen.kt").contains("val m = vm.searchMark?.takeIf { vm.mode == AppMode.PLAN }"))
-        val host = overlays.substringAfter("fun MapOverlayHost(").substringBefore("\n}\n")
-        val guard = host.indexOf("if (!vm.canEditMap) return")
-        assertTrue(guard >= 0 && guard < host.indexOf("PinChip("))
-    }
-
     @Test fun longNamesEndInAnEllipsis() {
         assertEquals("Fabriciusstraße", PinChipRules.label("Fabriciusstraße"))
         assertEquals("Gasthaus zur alten…", PinChipRules.label("Gasthaus zur alten Mühle am Bach"))

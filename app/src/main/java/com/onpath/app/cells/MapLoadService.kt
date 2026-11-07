@@ -115,7 +115,7 @@ class MapLoadService : Service() {
 
     companion object {
         private const val CHANNEL = "maps"
-        private const val NOTE_ID = 4711
+        internal const val NOTE_ID = 4711
         /** At most this long in one go (a big area on a slow line). */
         const val MAX_MS = 45 * 60_000L
         private const val TICK_MS = 3_000L

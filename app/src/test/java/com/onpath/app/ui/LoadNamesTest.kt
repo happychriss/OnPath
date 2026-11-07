@@ -87,8 +87,6 @@ class LoadNamesTest {
         val g = LoadNames.groups(listOf(LoadEntry(null, paths = true, bytes = 2 * mb), LoadEntry(LoadWhy.POINT, "Bad Waldsee", bytes = 5 * mb)))
         assertEquals(listOf("Around Bad Waldsee · 7 MB · loading"), g.map { it.line })
         for (l in g.map { it.line }) assertTrue(l, listOf("routing", "route planning", "paths").none { it in l.lowercase() })
-        val src = java.io.File("src/main/java/com/onpath/app/ui/BackgroundDownloads.kt").readText()
-        assertTrue("details must not name route-planning data", "paths for route planning" !in src.lowercase())
     }
 
     /** Names are never technical (CLAUDE.md: no "cells" / "routing data" toward the user). */

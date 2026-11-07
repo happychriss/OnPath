@@ -25,3 +25,35 @@ object EndSheetGuard {
 
     fun accepts(shownAtMs: Long, pressedAtMs: Long): Boolean = pressedAtMs - shownAtMs >= GUARD_MS
 }
+
+/**
+ * The three ways to end a tour – End tour, "You have arrived" → Save, and the "Interrupted tour" question after a restart
+ * – all run the ride check first (core feature C12): rides found → the bus / car / lift summary; none → arrival's Save
+ * saves at once, End tour asks plainly (Save · Weiter · Löschen); an interrupted tour's Save saves at once.
+ */
+object TourEndFlow {
+    enum class Next { RIDES, SAVE_NOW, ASK_PLAIN }
+
+    /** End tour ([saveIfNoRides] = false) or "You have arrived" → Save ([saveIfNoRides] = true). */
+    fun afterRideCheck(ridesFound: Boolean, saveIfNoRides: Boolean): Next = when {
+        ridesFound -> Next.RIDES
+        saveIfNoRides -> Next.SAVE_NOW
+        else -> Next.ASK_PLAIN
+    }
+
+    /**
+     * "You have arrived" shows only in Navigate while the tour records: an arrival box from Navigate waits for Navigate,
+     * Plan does not show it (owner 2026-11-03: Plan is silent) – it stays pending.
+     */
+    fun arrivalBoxShows(asked: Boolean, recording: Boolean, navigate: Boolean): Boolean = asked && recording && navigate
+
+    /** "Interrupted tour" → Save. */
+    fun unfinishedSave(ridesFound: Boolean): Next = if (ridesFound) Next.RIDES else Next.SAVE_NOW
+
+    /**
+     * The track drawn under the map: the running recording's; without one (no service after a reboot) the interrupted
+     * tour's behind its question (field bug 2026-10-31: the map behind "Interrupted tour" was empty); else nothing.
+     */
+    fun <T> trackShown(recording: List<T>?, unfinishedOpen: Boolean, unfinishedTrack: List<T>?): List<T> =
+        recording ?: unfinishedTrack?.takeIf { unfinishedOpen } ?: emptyList()
+}

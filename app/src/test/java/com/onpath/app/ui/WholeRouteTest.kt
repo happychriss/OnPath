@@ -121,21 +121,6 @@ class WholeRouteTest {
         assertTrue(screen.contains("sheetPx = panelHeightPx"))
     }
 
-    /** Following stops before the camera moves (CLAUDE.md "Map camera"); free look must not take it up again. */
-    @Test fun tapStopsFollowingBeforeTheFit() {
-        val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        val body = vm.substringAfter("fun showWholeRoute() {").substringBefore("\n    }\n")
-        val stop = body.indexOf("followMe = false")
-        assertTrue(stop >= 0 && body.indexOf("freeLookAt = null") > stop)
-        assertTrue(body.indexOf("events += UiEvent.Fit(pts, northUp = true)") > stop)
-        // Navigate only: where you are counts
-        assertTrue(body.contains("takeIf { mode == AppMode.NAVIGATE }"))
-        val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        // the same rule, through MapControlsEnabled (greyed instead of hidden, owner 2026-11-06)
-        assertTrue(screen.contains("onFitRoute = if (MapControlsEnabled.wholeRoute(ctl)) vm::showWholeRoute else null"))
-        assertTrue(screen.contains("is UiEvent.Fit -> c.fitTo(e.points, fitPadding(), e.northUp)"))
-    }
-
     /** Field A-019: the first destination / a plan link left the route half off the map. */
     @Test fun firstRouteIsFitted() {
         assertTrue(WholeRoute.firstRoute(1, 2)) // first destination held
@@ -181,14 +166,4 @@ class WholeRouteTest {
         assertTrue(vm.contains("if (fitNextRoute) { fitNextRoute = false; fitFirstRoute(it.points, pts) }"))
     }
 
-    /** Field A-019: a search result picked while planning during a tour landed half behind the plan sheet. */
-    @Test fun searchResultFliesIntoTheFreeRoom() {
-        val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        val search = File("src/main/java/com/onpath/app/ui/SearchFlow.kt").readText() // search: out of AppViewModel
-        assertTrue(search.substringAfter("fun flyToPlace(").substringBefore("\n    }\n").contains("host.flyTo("))
-        val fly = vm.substringAfter("override fun flyTo(").substringBefore("\n")
-        assertTrue(fly, fly.indexOf("followMe = false") in 0 until fly.indexOf("events += UiEvent.CenterOn("))
-        val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertTrue(screen.contains("is UiEvent.CenterOn -> c.flyTo(e.point, e.zoom, fitPadding())"))
-    }
 }

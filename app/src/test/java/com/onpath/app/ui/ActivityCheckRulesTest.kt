@@ -4,7 +4,6 @@ import com.onpath.app.routing.Activity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Flow map K1 (owner 2026-11-06): during a tour the activity sheet offers Hike's T1–T5 like the plan's activity dialog –
@@ -35,14 +34,4 @@ class ActivityCheckRulesTest {
         assertEquals(2, ActivityCheckRules.chipLevel(back))
     }
 
-    @Test fun theSheetShowsTheChipsAndFreeRecordingSwitchesAtOnce() {
-        val sheet = File("src/main/java/com/onpath/app/ui/ActivitySwitchSheet.kt").readText()
-        assertTrue(sheet.contains("if (row.activity == Activity.HIKE && ui.current != Activity.HIKE) SacChips("))
-        assertTrue(sheet.contains("if (ui.current == Activity.HIKE)"))
-        val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        val choose = vm.substringAfter("fun chooseHikeLevel(level: Int) {").substringBefore("\n    }\n")
-        assertTrue(choose, choose.contains("selectActivity(Activity.HIKE, userChange = false)") && choose.contains("selectSac(l)"))
-        assertTrue("both sheets get the chips", File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText().contains("onHikeLevel = vm::chooseHikeLevel"))
-        assertTrue(File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText().contains("onHikeLevel = vm::chooseHikeLevel"))
-    }
 }

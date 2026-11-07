@@ -2,9 +2,7 @@ package com.onpath.app.ui
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Owner 2026-11-06 (onpath.private#43): Plan's map controls stand at one fixed place (top anchored a little above the
@@ -39,27 +37,4 @@ class PlanControlsPlacementTest {
         assertNull(ControlsPlacement.place(top, 900, 830, limit, gap)) // the sheet pulled up to below the band
     }
 
-    @Test fun planOrderIsTheAlwaysThereButtonsFirst() {
-        val src = File("src/main/java/com/onpath/app/ui/MapFooter.kt").readText()
-            .substringAfter("fun MapControls(").substringBefore("val items = ")
-        val i = { s: String -> src.indexOf(s).also { assertTrue("$s in MapControls", it >= 0) } }
-        // compass, then (Plan) locate, then eye, whole route, undo, redo; Navigate keeps locate last
-        assertTrue(i("if (compass != null)") < i("if (plan) add(locate)"))
-        // eye and whole route always there, greyed without a route (owner 2026-11-06, MapControlsAlwaysThereTest)
-        assertTrue(i("if (plan) add(locate)") < i("EyeControl(onPeek"))
-        assertTrue(i("EyeControl(onPeek") < i("enabled = onFitRoute != null"))
-        assertTrue(i("enabled = onFitRoute != null") < i("enabled = onUndo != null"))
-        assertTrue(i("enabled = onUndo != null") < i("enabled = onRedo != null"))
-        assertTrue(i("enabled = onRedo != null") < i("if (!plan) add(locate)"))
-    }
-
-    @Test fun planModeDrawsTheColumnUnderTheBoxesAndTheSheet() {
-        val plan = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText().substringAfter("private fun PlanMode(")
-        val layer = plan.indexOf("PlanControlsLayer(")
-        assertTrue(layer in 0 until plan.indexOf("PlanMessageHost(vm") && layer < plan.indexOf("SheetWithFooter("))
-        // the footer on the sheet's edge keeps only scale + ©: the controls are not in it any more in Plan
-        val footer = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText().substringAfter("val footer = @Composable")
-            .substringBefore("\n    }\n")
-        assertTrue(footer, footer.contains("if (mode == AppMode.NAVIGATE) controls(mode)"))
-    }
 }

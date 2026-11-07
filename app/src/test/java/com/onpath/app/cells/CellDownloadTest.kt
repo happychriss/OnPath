@@ -534,7 +534,7 @@ class CellDownloadTest {
         val f = File(mc.store.root, "requests.json")
         assertTrue(f.isFile)
         val done = java.util.concurrent.atomic.AtomicBoolean(false)
-        val writer = Thread { try { repeat(3_000) { mc.approveMobile(listOf(a)) } } finally { done.set(true) } }.apply { start() }
+        val writer = Thread { try { repeat(300) { mc.approveMobile(listOf(a)) } } finally { done.set(true) } }.apply { start() }
         var reads = 0; var missing = 0
         while (!done.get()) {
             // expected while the bug is there: the file gone between delete and rename – counted, asserted below

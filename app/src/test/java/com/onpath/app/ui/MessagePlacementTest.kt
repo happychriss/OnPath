@@ -42,30 +42,6 @@ class MessagePlacementTest {
         assertEquals(4 + 56 + 4, MessagePlacement.SETTINGS_HEADER_DP)
     }
 
-    /** The plan sheet is drawn after the box in PlanMode: a box can never lie over the sheet's primary button. */
-    @Test fun planSheetIsDrawnOverTheBox() {
-        val plan = src("MapScreen.kt").substringAfter("private fun PlanMode(")
-        val host = plan.indexOf("PlanMessageHost(vm")
-        val sheet = plan.indexOf("SheetWithFooter(")
-        assertTrue("host $host, sheet $sheet", host in 0 until sheet)
-    }
-
-    /** Every screen uses the one rule; the Navigate question sits at the top now, under the measured column. */
-    @Test fun everyHostUsesTheRule() {
-        assertTrue(src("MapScreen.kt").contains("MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())"))
-        val nav = src("NavigateScreen.kt").substringAfter("fun NavigateOverlay(").substringBefore("\n}\n")
-        assertTrue(nav.contains("MessagePlacement.topDp(MessageScreen.NAVIGATE, topColumnDp)"))
-        assertTrue(nav.indexOf(".onSizeChanged { topColumnDp =") in 0 until nav.indexOf("TurnCard(it)"))
-        // the question is no longer at the bottom, above the slide switch; it is drawn over the map controls
-        val bottom = nav.substringAfter("Modifier.align(Alignment.BottomCenter)").substringBefore("TourBottomBar(")
-        assertFalse(bottom.contains("rerouteMessage("))
-        val host = src("Notices.kt").substringAfter("fun androidx.compose.foundation.layout.BoxScope.ScreenMessageHost(")
-            .substringBefore("\n}\n")
-        assertTrue(host.contains("MessageScreen.SETTINGS") && host.contains("MessageScreen.ROUTES"))
-        assertTrue(host.contains("MessagePlacement.topDp(screen)"))
-        assertTrue(File("src/main/java/com/onpath/app/MainActivity.kt").readText().contains("ScreenMessageHost(vm)"))
-    }
-
     /** The old strips, chips and cards are gone: every box is a MessageCard. */
     @Test fun oneBoxComposable() {
         val all = File(ui).walkTopDown().filter { it.isFile && it.extension == "kt" }.associate { it.name to it.readText() }

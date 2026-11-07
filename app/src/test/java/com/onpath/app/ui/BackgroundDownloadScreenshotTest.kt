@@ -23,7 +23,8 @@ import java.util.Locale
  * Background downloads, visible and stoppable: the light blue chip with its progress ring (Plan, Navigate; spinning while
  * areas are still prepared), the details sheet, the Settings line. German + largest font: the subclasses below.
  */
-open class BackgroundDownloadScreenshotTest {
+/** English frames dropped (test audit 2026-11-07: the German twin at the same font size is the check); the subclasses draw. */
+abstract class BackgroundDownloadScreenshotTest {
 
     @get:Rule
     open val paparazzi = Paparazzi(

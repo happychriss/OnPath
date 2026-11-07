@@ -16,7 +16,8 @@ import java.util.Locale
  * The six search chips (owner 2026-10-31: Orte · Essen · Sehenswert · Wasser · Bahn · Parken), "Food" chosen, in English
  * and German, normal and at the phone's largest font (2.0): the row scrolls sideways, no chip is ever cut.
  */
-open class SearchChipsScreenshotTest {
+/** English frames dropped (test audit 2026-11-07: the German twin at the same font size is the check); the subclasses draw. */
+abstract class SearchChipsScreenshotTest {
     protected open val fontScale: Float get() = 1.0f
 
     @get:Rule
@@ -38,9 +39,6 @@ class SearchChipsGermanScreenshotTest : SearchChipsScreenshotTest() {
     @After fun back() = Locale.setDefault(before)
 }
 
-class SearchChipsLargeFontTest : SearchChipsScreenshotTest() {
-    override val fontScale: Float get() = 2.0f
-}
 
 class SearchChipsLargeFontGermanTest : SearchChipsScreenshotTest() {
     override val fontScale: Float get() = 2.0f

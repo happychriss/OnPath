@@ -13,7 +13,8 @@ import java.util.Locale
  * is never cut – beside the name while the name keeps a fair share of the row, else under it. Same picture as
  * [ScreenshotTest.toursFromBrowser], drawn with this class's Paparazzi.
  */
-open class RouteTagLargeFontTest {
+/** English frames dropped (test audit 2026-11-07: the German twin at the same font size is the check); the subclasses draw. */
+abstract class RouteTagLargeFontTest {
     @get:Rule
     val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5.copy(fontScale = 2.0f, screenHeight = 3600), showSystemUi = false)
 

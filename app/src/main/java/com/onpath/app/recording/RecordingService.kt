@@ -275,7 +275,7 @@ class RecordingService : Service() {
                     else -> null
                 }
                 // Plan is silent (owner 2026-11-03): "kein Ziel mehr" after an edit in Plan is not said
-                if (phrase != null && voiceOn() && ModeQuiet.allows(planQuiet(), ModeQuiet.Event.APP_EVENT_VOICE)) {
+                if (phrase != null && GuidanceGate.appEventVoice(hasPhrase = true, voiceOn(), planQuiet())) {
                     voice.event(phrase, SystemClock.elapsedRealtime())?.let { voiceSpeaker()?.say(com.onpath.app.navigation.VoiceText.of(it)) }
                     saveVoice()
                 }
@@ -571,13 +571,13 @@ class RecordingService : Service() {
 
         // navigation must never cost the track: a failure here is reported, the point below is still stored (R-07).
         // Standing still (owner 2026-11-01): no new off-route state, no reminder – the detector waits as without GPS
-        try { if (moveWatch.moving(nowEl) && !arrived) checkOffRoute(p, loc.accuracy.toDouble(), nowEl) else navigator?.onGpsLost() } catch (e: Exception) {
+        try { if (GuidanceGate.offRouteCheck(moveWatch.moving(nowEl), arrived)) checkOffRoute(p, loc.accuracy.toDouble(), nowEl) else navigator?.onGpsLost() } catch (e: Exception) {
             Problems.error("navigation", "Off-route check failed on a GPS fix; the track is still recorded", e)
         }
         try { checkArrived(p.toGeo(), loc.accuracy.toDouble()) } catch (e: Exception) {
             Problems.warn("navigation", "Arrival check failed on a GPS fix; asked again with the next one", e)
         }
-        if (!arrived) try { junctionCue(loc, nowEl) } catch (e: Exception) {
+        if (GuidanceGate.junctionCue(arrived)) try { junctionCue(loc, nowEl) } catch (e: Exception) {
             Problems.warn("navigation", "Junction check failed on a GPS fix; no junction vibration this time", e)
         }
         try { mapsAhead(p.toGeo()) } catch (e: Exception) {
@@ -659,9 +659,8 @@ class RecordingService : Service() {
 
     private fun checkArrived(pos: GeoPoint, accuracyM: Double) {
         val nav = navigator ?: return
-        if (arrived || paused) return
         // Plan is silent (owner 2026-11-03): not checked there – the next fix after "Navigation fortsetzen" checks again
-        if (!ModeQuiet.allows(planQuiet(), ModeQuiet.Event.ARRIVAL)) return
+        if (!GuidanceGate.arrivalCheck(arrived, paused, planQuiet())) return
         val st = nav.state
         if (st.line.size < 2) return
         val len = lineLength?.takeIf { it.first == st.version }?.second
@@ -890,7 +889,7 @@ class RecordingService : Service() {
         // turn hints are either / or for every activity (owner 2026-11-01): with the voice on, the off-route warning is
         // spoken, not vibrated too (the vibration stays while the voice was never heard – the phone setup check)
         // a re-route that finishes while in Plan does not vibrate (owner 2026-11-03: Plan is silent)
-        if (step.vibrate && ModeQuiet.allows(planQuiet(), ModeQuiet.Event.OFF_ROUTE_QUESTION) &&
+        if (GuidanceGate.rerouteVibrates(step.vibrate, planQuiet()) &&
             (settings ?: Prefs(this).settings).offRouteVibrate && !voiceOn()) vibrate()
         if (step.cancelJob) cancelReroute()
         step.job?.let { startReroute(it) }
@@ -979,7 +978,7 @@ class RecordingService : Service() {
         junctions.bike = navigator?.session?.activity != com.onpath.app.routing.Activity.HIKE
         // Plan is silent (owner 2026-11-03), also with the screen off: the voice follows without a word (stops passed,
         // off route, no GPS) so nothing is said late after "Navigation fortsetzen"; no junction vibration
-        if (!ModeQuiet.allows(planQuiet(), ModeQuiet.Event.TURN_VIBRATION)) { voiceStep(st, nowEl, speak = false); return }
+        if (GuidanceGate.junction(planQuiet()) == GuidanceGate.Junction.FOLLOW_SILENTLY) { voiceStep(st, nowEl, speak = false); return }
         voiceStep(st, nowEl)
         if (st.version != junctionsTracedVersion) {
             junctionsTracedVersion = st.version
@@ -1015,8 +1014,8 @@ class RecordingService : Service() {
     }
 
     /** One step of the spoken directions ([com.onpath.app.navigation.VoiceGuide]) for this fix / tick. */
-    private fun voiceStep(st: NavState, nowEl: Long, speak: Boolean = ModeQuiet.allows(planQuiet(), ModeQuiet.Event.VOICE)) {
-        if (!voiceOn() || arrived) return
+    private fun voiceStep(st: NavState, nowEl: Long, speak: Boolean = GuidanceGate.voiceSpeaks(planQuiet())) {
+        if (!GuidanceGate.voiceSteps(voiceOn(), arrived)) return
         try {
             val s = navigator?.session
             val phrase = voice.update(com.onpath.app.navigation.VoiceGuide.Input(
@@ -1093,7 +1092,7 @@ class RecordingService : Service() {
     private fun updateAlert() {
         val nav = navigator
         // Plan is silent (owner 2026-11-03): an open question has no notification there; Navigate asks again
-        val pr = nav?.prompt?.takeIf { ModeQuiet.allows(planQuiet(), ModeQuiet.Event.OFF_ROUTE_NOTIFICATION) }
+        val pr = nav?.prompt?.takeIf { GuidanceGate.offRouteNotification(planQuiet()) }
         if (pr == null) {
             if (alertKey != null) { alertKey = null; nm().cancel(ALERT_ID) }
             return
