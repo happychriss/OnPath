@@ -553,6 +553,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onResize = { vm.planSize = it },
             onPause = vm::pauseRecording, onEndTour = onEndTour,
             onMovePoint = vm::movePointInList, onDeletePoint = vm::deletePointFromList, onShowPoint = vm::showPointFromList,
+            onSearch = vm::openSearch, onMyRoutes = vm::openRoutes,
         ),
     )
     if (vm.spotsOpen) {

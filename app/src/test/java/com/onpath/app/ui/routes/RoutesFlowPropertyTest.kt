@@ -72,6 +72,7 @@ class RoutesFlowPropertyTest {
         /** Tours the flow sent to the bin: they must be in the bin, not gone. */
         val binned = mutableSetOf<Long>()
         var draftsMax = 0
+        var overwrites = 0
 
         init { routes.onClosed = { closedCalls++ } }
 
@@ -117,7 +118,21 @@ class RoutesFlowPropertyTest {
                     assertEquals(rows, store.rows.toMap()); assertEquals(tab, routes.tab)
                     assertEquals(open, routes.open); assertEquals(mark, routes.justSavedId)
                 }
-                Op.TOUR -> recording = !recording
+                Op.TOUR -> {
+                    recording = !recording
+                    // "Los geht's" with a loaded saved route changed since (owner 2026-11-07): the route is updated in
+                    // place, its version before goes under Zuletzt – no "Name (2)"
+                    val saved = store.rows[linkedId]
+                    if (recording && saved != null && !saved.draft && saved.deletedMs == null && live.size >= 2 && unsaved) {
+                        val old = RoutesState.keyOf(saved)
+                        store.rows[linkedId] = saved.copy(waypoints = live.map { GpxWaypoint(it.first, it.second, null) })
+                        routes.afterSaved(-1L, live) // overwriteSaved: no draft keeps the route's new points
+                        routes.keepReplaced(old) { store.insert(TourKind.PLANNED, old, draft = true) }
+                        assertTrue("the version before is under Zuletzt",
+                            store.listTours().any { RoutesState.keyOf(it) == old })
+                        linkedKey = live; overwrites++
+                    }
+                }
                 Op.OPEN_CLOSE -> if (routes.open) {
                     val calls = closedCalls
                     routes.open = false
@@ -158,7 +173,7 @@ class RoutesFlowPropertyTest {
 
     @Test fun myRoutesHoldsItsRulesInRandomFlows() {
         val t0 = System.nanoTime()
-        var maxDrafts = 0; var saves = 0; var loadsDuringTour = 0
+        var maxDrafts = 0; var saves = 0; var loadsDuringTour = 0; var overwrites = 0
         repeat(300) { seed ->
             val m = Model(seed)
             repeat(150) { i ->
@@ -168,7 +183,7 @@ class RoutesFlowPropertyTest {
                 m.step(op)
                 m.check("seed $seed step $i $op")
             }
-            maxDrafts = maxOf(maxDrafts, m.draftsMax)
+            maxDrafts = maxOf(maxDrafts, m.draftsMax); overwrites += m.overwrites
         }
         // plans made and cleared over and over: Zuletzt fills up to its limit and stays there
         repeat(20) { seed ->
@@ -182,6 +197,7 @@ class RoutesFlowPropertyTest {
         // the flows really reach the cases: the draft limit, saving from Zuletzt, loading during a tour
         assertEquals("the draft limit is reached", Drafts.MAX, maxDrafts)
         assertTrue(saves > 100); assertTrue(loadsDuringTour > 100)
+        assertTrue("a changed saved route is started and updated in place ($overwrites)", overwrites > 50)
         val ms = (System.nanoTime() - t0) / 1_000_000
         assertTrue("fast ($ms ms)", ms < 5_000)
     }
@@ -205,6 +221,20 @@ class RoutesFlowPropertyTest {
         store.insert(TourKind.PLANNED, key, draft = false)
         assertNull(r.keepDraft(key, unsaved = true) { store.insert(TourKind.PLANNED, key, draft = true) })
         assertEquals(1, store.listTours().size)
+    }
+
+    /** Owner 2026-11-07: "Los geht's" with a changed saved route updates it; the version before is kept under Zuletzt. */
+    @Test fun aChangedSavedRouteStartedKeepsItsVersionBeforeUnderZuletzt() {
+        val store = FakeStore(); val r = RoutesState(store)
+        val old = listOf(0.0 to 0.0, 0.01 to 0.01); val new = old + (0.02 to 0.02)
+        val id = store.insert(TourKind.PLANNED, old, draft = false)
+        assertNull("before the update the old points are the route's: no draft", r.keepReplaced(old) { error("no insert") })
+        store.rows[id] = store.rows.getValue(id).copy(waypoints = new.map { GpxWaypoint(it.first, it.second, null) })
+        r.afterSaved(-1L, new)
+        assertTrue(r.keepReplaced(old) { store.insert(TourKind.PLANNED, old, draft = true) } != null)
+        val list = store.listTours()
+        assertEquals("one route, updated in place", listOf(new), list.filter { !it.draft }.map(RoutesState::keyOf))
+        assertEquals("its version before under Zuletzt", listOf(old), list.filter { it.draft }.map(RoutesState::keyOf))
     }
 
     @Test fun theSamePointsTwiceMakeOneDraft() {

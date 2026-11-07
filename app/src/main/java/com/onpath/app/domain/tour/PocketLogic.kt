@@ -37,6 +37,16 @@ class PocketLogic(private val armMs: Long, private val sleepMs: Long = POCKET_SL
         return Out(lock = armed && !asleep, keepOn = !asleep)
     }
 
+    /**
+     * The phone is in the pocket / bag now: covered long enough that the proximity sensor turns the screen off (on foot at
+     * once, on the bike after [armMs]). The activity is not stopped by that – Navigate's unlock window listens to this
+     * (owner 2026-11-07 10:45: "Pause drücken, dann in die Tasche – danach soll wieder gesperrt sein").
+     */
+    fun inPocket(nowMs: Long): Boolean {
+        val since = coveredSince ?: return false
+        return armMs <= 0 || nowMs - since >= armMs
+    }
+
     /** When [at] changes by time alone: ms from [nowMs]; null = nothing pending (uncovered, or already asleep). */
     fun nextChangeInMs(nowMs: Long): Long? {
         val since = coveredSince ?: return null
