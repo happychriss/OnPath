@@ -134,7 +134,9 @@ class Rd5PartStore(
     private fun staging() = File(dir, ".rd5parts")
 
     /** [stateOnDisk] for the files as they were (length + modification time of the rd5 and its parts list). */
-    private class Cached(val key: List<Long>, val state: State?, @Volatile var index: Rd5Parts.Index? = null)
+    private class Cached(val key: List<Long>, val state: State?, @Volatile var index: Rd5Parts.Index? = null,
+                         /** A whole rd5 without parts list: its own creation time, read once ([partVersion]). */
+                         @Volatile var created: String? = null)
 
     /**
      * Tile → its last read state. [has] is asked per part after every route, so it costs four file stats instead of
@@ -193,6 +195,26 @@ class Rd5PartStore(
         }
         // a whole rd5 (old download, adb push): complete
         return State((0 until Rd5Parts.PARTS).toSet(), null, 0, f.lastModified(), null, null, f.length(), legacy = true)
+    }
+
+    /**
+     * The version of the routing data the phone has for [part] (a stored leg records it, data/LegFiles): "-" = not on
+     * the phone, else the creation time of its tile's rd5 (brouter.de writes it into the file's tail; a newer build of
+     * the data has another one), "?" = not readable (a stored leg on it is never taken as fresh).
+     */
+    fun partVersion(part: Part): String {
+        val st = state(part.tile) ?: return "-"
+        if (part.index !in st.parts) return "-"
+        st.tail?.let { t -> return Rd5Parts.creationTime(t)?.toString() ?: "?" }
+        val c = cached(part.tile)
+        c.created?.let { return it }
+        return try {
+            val f = rd5(part.tile)
+            (Rd5Parts.readIndex(f)?.let { Rd5Parts.creationTime(Rd5Parts.readTail(f, it)) }?.toString() ?: "?").also { c.created = it }
+        } catch (e: java.io.IOException) {
+            com.onpath.app.debug.Problems.info("routing", "Date of routing data ${part.tile} not read – stored legs there are routed again", e)
+            "?"
+        }
     }
 
     /** The phone has [part] (with data, or known to be empty on the server). */

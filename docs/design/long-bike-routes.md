@@ -138,3 +138,41 @@ Hilden → Nordkirchen, 75 km straight; A ≈ Essen-Kupferdreh, B ≈ Dortmund-H
   estimate (seconds per km learned per device): it is the router's own state, needs no learning and is right on the
   first run. **Web:** no thread in the shared code – the planner can call `searchProgress` the same way only where its
   engine runs off the page's thread (a Web Worker that answers a poll); else it shows legs done (cloud-plan decides).
+
+## Saved routes (owner 2026-11-07: "saved routes load without routing again", for 0.17.4)
+The S10 took 67 s for a 723 km bike plan, and every load of a saved route routed it again: the `LegCache` lived only in
+memory, and a plan's points are moved onto the line after its first run (`WaypointSnap`), so the saved points never
+matched the cached legs – even in the same process.
+
+- **Leg store on the phone** (`data/LegFiles.kt`, `files/legs/`, one small text file per leg, LRU, ≤ 3 000 legs / 40 MB):
+  `LegCache(store = …)` writes every routed leg through and reads a missing one from there (`LegCache.lookup`). A file
+  keeps everything the plan uses: the line with way attributes, junction cues and shapes, the router's numbers, the
+  breakdown and the matched ends – read back bit for bit. 108 km Ruhr plan: 4 files, 198 KB.
+- **Moved points keep their legs** (`LegCache.alias`, `AppViewModel.aliasSnappedLegs`): after the points moved onto the
+  line, the run's legs are kept under the moved points too – the plan as saved finds the legs it shows (the join keeps
+  its cut: a moved point lies where the run's join put it). The first edit after a snap no longer routes every leg.
+- **The rule – when a stored leg is reused** (`LegFiles.get` → `fresh`): exactly its two points (1e-6°), its activity
+  and (Hike) its T level – the file name is the key; the same routing fingerprint (BRouter, profiles, PLANNER_VERSION);
+  and the same routing data under it – the leg records the version of every 1° routing part within 2 km of its line and
+  of its straight line (`Rd5PartStore.partVersion`: the rd5's creation time, "-" = not on the phone); a part now newer,
+  newly loaded or gone, or a version that cannot be read ("?"), makes it stale. Routing data arriving for other areas no
+  longer re-routes a plan's untouched legs (the memory cache is still cleared with the engine; the store answers).
+- **Loading** (`AppViewModel.loadStoredLine` in `openTour` – My routes, Zuletzt drafts, a done tour's plan copy, browser
+  plans – not during a tour): every leg fresh → the plan run takes them, **no router run, the same line**; the trace
+  says "Loading "…": all N legs stored – no routing" and the run "N legs from the cache (N stored)". Else a **stand-in**
+  (`routing/StoredLine.kt`): per leg the stored leg even if stale, else the saved line's piece between the two points
+  (old saves, a plan copy, legs the store let go; the line cut where each point is nearest, in order, every point
+  ≤ 500 m from it; a "line" that is only the points is none). The stand-in is on the map at once while the run routes
+  the other legs (`StandIn` → `recalc`), then replaced; when the new line differs (`RoutingDataCheck.differs`) the plan
+  sheet shows the grey "Plan mit neueren Kartendaten neu berechnet – bitte prüfe die Route." line. The stand-in is never
+  taken as the route (a saved line has no way attributes) – old saves are routed once on load and load from the store
+  after that ("unknown version": shown, routed again, kept). The saved line counts only when the tour's activity and T
+  level are the plan's. A route that was routed before is no "very long plan" question again (`longRouteOk`).
+- **Edit** after a load: the existing leg-cache path – only the changed legs are routed (`LegFilesTest`).
+- **Not built**: the owner's invisible shape points (a hint with tolerance when the data is newer) – a later fallback.
+- **Tests**: `LegFilesTest` (restart → zero calls, the same line and attributes; one point changed → its two legs;
+  another activity / T level → all; newer / newly loaded data → stand-in, then only that leg; other fingerprint; damaged
+  file; limit), `StoredLineTest` (cutting, round trip, there and back, old save, Zuletzt draft, plan copy, browser plan,
+  moved points), emulator `CorePlanE2ETest.aSavedRouteLoadsFromMyRoutesWithoutRoutingAgain`, JVM
+  `tools/routing/jvm-test/StoredLegsTest.kt` (108 km Ruhr bike plan, desktop JVM: **3 790 ms routed → 20 ms from the
+  store**, the same line, no router run).
