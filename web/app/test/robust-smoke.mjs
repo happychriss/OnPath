@@ -85,7 +85,8 @@ await again.waitForFunction(() => ![...document.querySelectorAll('[data-act]')].
   await again.mouse.move(x, y); await again.mouse.down(); await again.mouse.move(x + 40, y + 20, { steps: 5 }); await again.mouse.up(); }
 // a fixed close view: the reopened route is fitted whole, where p1 and p2 (~450 m past the goal) lie close to the goal;
 // no padding left by an earlier camera move (it shifts where the centre is drawn)
-await again.evaluate(() => window.__map.jumpTo({ center: [11.141, 46.7075], zoom: 14, bearing: 0, pitch: 0, padding: { top: 0, bottom: 0, left: 0, right: 0 } }));
+// (the centre a bit south: on a wide screen the elevation profile lies along the map's bottom edge – plan sheet A)
+await again.evaluate(() => window.__map.jumpTo({ center: [11.141, 46.7025], zoom: 14, bearing: 0, pitch: 0, padding: { top: 0, bottom: 0, left: 0, right: 0 } }));
 await again.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 10_000 }).catch(() => {});
 // projected only now: the camera may still move while the activity menu closes (CI: both clicks landed beside p1 / p2)
 // project() gives canvas pixels; the mouse clicks page pixels – the canvas starts below the top bar (was off by 56 px)

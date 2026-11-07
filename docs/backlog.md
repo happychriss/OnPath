@@ -16,6 +16,9 @@ and the commit history.
 - → [cloud-web] (donald 2026-11-03): pairing-help pictures app part done – `onpath.private/marketing/bilder/2026-11-03-donald/`
   (`app-a1…a4-de|en.png` + `Ergebnis.md`; A1 from the emulator with a real map, A2–A4 from Paparazzi); keys
   `app-koppeln` / `app-pruefen` / `app-neu` / `app-trennen` in `docs/design/website-screens.md`.
+- → [donald] (captain 2026-11-07): two owner questions are yours once answered – onpath.private #44 (map taps
+  "on the line": `metersPerPixel` density fix) and #45 (round-trip offline margin 10 vs 5 km). Check `tools/ask.sh offen
+  --von captain`; after the answer build it (test first), close the issue, delete this line.
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
@@ -26,23 +29,13 @@ and the commit history.
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 - [donald] The owner's Pixel points of 2026-11-07 morning (pause band, unlock 20 s, Weiter always held, pause = quiet, Meine Touren rows + ⤢, overview line, Los geht's wide, plan blue #335A85, "Nur aufzeichnen", browser item, sync file race, Los geht's updates the saved route) – since 2026-11-07
-- [laptop] Web planner parity (17 mirrors, wip/laptop-2026-11-07-parity-colours) → then plan sheet A + profile along the bottom – since 2026-11-07
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
-- **[laptop] Next laptop session – start here (2026-11-07, laptop shut mid-work):** (1) **"Web planner" is red** (parity): 12
-  mirrored app files changed by donald's colour rule b873458a / paper 02c98980 / 50adb466 and later (Screens, MapOverlays,
-  PlaceCard, RouteRules, MapFooter, SettingsScreen, TourBar, AppViewModel, Panels, Theme, Prefs, CellCard). Two unpushed-to-main
-  commits adopt most of it: branch **`wip/laptop-2026-11-07-parity-colours`** (e8e9997d walnut / plan blue / paper colour rule,
-  'Zuletzt', delete to the phone's bin without a question; c9d59a96 paper over the map, GPX track without a line) – NOT
-  smoke-tested, based on 402f4520: rebase on main, `node web/parity/check.mjs` (Prefs.kt pace keys etc. may be new), run the
-  affected smokes, push, deploy (test phase: deploy+quick after green local smokes). `wip/laptop-2026-11-07-parity` is an
-  empty mistake (= main) – the owner can delete it. (2) Then **the plan sheet: A (points first) + profile along the bottom**
-  (owner 2026-11-07; proposals page https://claude.ai/artifact/F1rCK7xXXmUhWcQRj3o1mR, section „Aus der App übernehmen“):
-  wide = stops list on top with handles and „+ Ziel hinzufügen“, facts, the elevation profile permanently wide along the map's
-  bottom (cursor, steepness, range, stops), no steps; phone = two steps, „⤢ Höhenprofil groß“ row under the small profile;
-  app look (walnut, paper, light blue plan row, facts row with difficulty, 'Nicht gespeichert ›' blue, height kept while
-  recalculating). Not started. Add the „Gebaut“ section with shots to that page. (3) Then „gekoppelt = eine Liste“ (item below).
+- **[laptop] Web: Meine Touren like the app's (app 01b38ffa / cb791053 / ce27c111 / e570e467, 2026-11-07)** – the plan on the
+  map first under Zuletzt with „In Bearbeitung“, a small route preview per row, a row tap opens the large overview (route
+  picture + Planen), rows as tile + name + facts + › with every action in ⋮ (Zuletzt keeps Speichern · Löschen); the route
+  drawing itself in 0.5 s (RouteReveal). Parity recorded, web not built yet (web-planner.md §23).
 - **[donald] Navigation neu – the rest of the owner's field day 2026-11-01** (tours 61–63, data in
   `~/onpath-cells-work/field/2026-11-01-wanderungen/` on donald): round trip "Ziel erreicht" too early, re-route with a
   word / sign to turn round and where, the new voice – concept and what is built: `docs/design/navigation-v2.md`; build

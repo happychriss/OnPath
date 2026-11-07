@@ -65,7 +65,7 @@ const entry = (P) => P.evaluate(() => { const b = document.getElementById('syncB
     more: !!document.getElementById('phoneMore')?.getClientRects().length }; });
 /** The header's Save (§14.6): its state (dark / done / empty / full), label, whether it is filled, and that no hint is beside it. */
 const saveBtn = (P) => P.evaluate(() => { const b = document.getElementById('menuSavePlan');
-  return { state: b.dataset.state, label: b.textContent.trim(), phone: !!b.querySelector('.savephone'), unsaved: b.classList.contains('unsaved'), filled: getComputedStyle(b).backgroundColor === 'rgb(43, 76, 111)',
+  return { state: b.dataset.state, label: b.textContent.trim(), phone: !!b.querySelector('.savephone'), unsaved: b.classList.contains('unsaved'), filled: getComputedStyle(b).backgroundColor === 'rgb(51, 90, 133)',
     disabled: b.disabled, title: b.title, hint: !!document.getElementById('saveHint') || /Not saved on the phone/.test(document.getElementById('header').textContent) }; });
 /** Pair from the Phone window: a new code each time; returns the code (the part after #pair=) and the check digits. */
 async function showCode(P, other = false) {
@@ -343,7 +343,7 @@ row = await listRow(A, 'Vom Handy');
 check(row?.where === PHONE && !row.bold && !/from the phone|on the phone/i.test(row.sub) && row.tag === 'New',
   `new from the phone: 📱, not bold, the tag "New" after the name (the app's RouteTag) (${JSON.stringify(row)})`);
 const tagLook = await A.evaluate(() => { const g = getComputedStyle(document.querySelector('#planList .tag')); return [g.backgroundColor, g.color, g.borderRadius]; });
-check(tagLook[0] === 'rgb(220, 227, 236)' && tagLook[1] === 'rgb(27, 47, 69)', `the tag's look = the app's TagContainer / TagInk (${tagLook})`);
+check(tagLook[0] === 'rgb(221, 229, 238)' && tagLook[1] === 'rgb(30, 53, 80)', `the tag's look = the app's TagContainer / TagInk (${tagLook})`);
 row = await listRow(A, 'Handweg neu');
 check(row?.where === PHONE && row.tag === 'Changed' && !/Changed on the phone/.test(row.text), `renamed on the phone: 📱, the tag "Changed" (${JSON.stringify(row)})`);
 A.once('dialog', (d) => d.accept('Handweg hier'));

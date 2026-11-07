@@ -24,6 +24,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
 import androidx.test.platform.app.InstrumentationRegistry
+import com.onpath.app.domain.tour.UnlockWindow
 import com.onpath.app.data.TourDb
 import com.onpath.app.data.TourKind
 import com.onpath.app.gpx.GpxWaypoint
@@ -276,6 +277,51 @@ class CoreFieldE2ETest : E2EBase() {
         TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).deleteTour(planId)
     }
 
+    /**
+     * Owner 2026-11-07: a saved plan changed and started again with "Los geht's" updates THAT route (like ☰ Plan
+     * speichern) – no "Name (2)" copy; the version before is kept under Zuletzt.
+     */
+    @Test fun losGehtsWithAChangedSavedPlanUpdatesItAndKeepsTheOldUnderZuletzt() {
+        val planId = startOnANewPlan()
+        val old = waypointList()
+        scenario.onActivity { vm(it).endTour() }
+        waitUntil("the tour has ended", 20_000) { !recording() }
+        Thread.sleep(1_500)
+        // change the saved plan: one more point beyond the goal
+        val goal = old.last()
+        scenario.onActivity { vm(it).addPoint(GeoPoint(goal.lat + 0.004, goal.lon + 0.004)) }
+        waitUntil("the plan has three points", 10_000) { waypointList().size == 3 }
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        val changed = waypointList()
+        scenario.onActivity { assertTrue("the changed saved plan counts as unsaved", vm(it).planUnsaved) }
+        val idsBefore = plannedIds()
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
+        fun key(points: List<GeoPoint>) = points.map { it.lat to it.lon }
+        waitUntil("the saved route holds the changed plan", 15_000) {
+            db.getTour(planId)?.waypoints?.map { it.lat to it.lon } == key(changed)
+        }
+        // under Zuletzt – or, when another saved route already has exactly these points (an earlier test's), there: the
+        // draft rules never duplicate a saved route, and the version is not lost either way
+        waitUntil("the version before is still in My routes (Zuletzt)", 15_000) {
+            var others: List<List<Pair<Double, Double>>> = emptyList()
+            scenario.onActivity {
+                others = vm(it).tours.filter { t -> t.kind == TourKind.PLANNED && t.id != planId }
+                    .map { t -> t.waypoints.map { w -> w.lat to w.lon } }
+            }
+            key(old) in others
+        }
+        var saved: List<Long> = emptyList()
+        scenario.onActivity { saved = vm(it).tours.filter { t -> t.kind == TourKind.PLANNED && !t.draft }.map { t -> t.id } }
+        assertEquals("no new saved route – no \"Name (2)\"", idsBefore.filter { it in saved }.toSet(), saved.toSet())
+        scenario.onActivity { assertFalse("the plan counts as saved now", vm(it).planUnsaved) }
+        scenario.onActivity { vm(it).endTour() }
+        waitUntil("the tour has ended", 20_000) { !recording() }
+        scenario.onActivity { vm(it).tours.filter { t -> t.draft && t.waypoints.map { w -> w.lat to w.lon } == key(old) }.forEach { t -> db.deleteTour(t.id) } }
+        db.deleteTour(planId)
+    }
+
     /** The same for "Löschen" (flow map H2): only the tour goes to the bin, the plan stays – on the map and in My routes. */
     @Test fun endTourDeleteBinsOnlyTheTour() {
         val planId = startOnANewPlan()
@@ -470,6 +516,57 @@ class CoreFieldE2ETest : E2EBase() {
 
 
     /**
+     * Owner 2026-11-07: one map orientation for the session ("bleibt immer in der eingestellten Richtung"). North up:
+     * whole route, Navigate, back in Plan and locate all end north up, also after a hand rotation. Walking direction:
+     * the map is never snapped north by a fit or by leaving Navigate.
+     */
+    @Test fun oneOrientationNorthStaysNorthAndTravelKeepsTheBearing() {
+        var before: com.onpath.app.data.AppSettings? = null
+        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHeadingUp = false)) }
+        fun bearing(): Double { var b = -1.0; onMap { m -> b = m.cameraPosition.bearing }; return b }
+        fun turnByHand() = onMap { m ->
+            m.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.newCameraPosition(
+                org.maplibre.android.camera.CameraPosition.Builder(m.cameraPosition).bearing(137.0).build()))
+        }
+        fun near(want: Double, got: Double) = kotlin.math.abs(((got - want + 540) % 360) - 180) < 2.0
+        try {
+            startPlanWithTwoPoints()
+            Thread.sleep(if (realRouting) 3_000 else 1_000)
+            // NORTH: a hand rotation, then "whole route" → north up
+            turnByHand(); Thread.sleep(500)
+            scenario.onActivity { vm(it).showWholeRoute() }
+            Thread.sleep(1_500)
+            assertTrue("north: whole route turns north (${bearing()})", near(0.0, bearing()))
+            scenario.onActivity { vm(it).startNavigation(force = true) }
+            waitUntil("Navigate", 20_000) { mode() == AppMode.NAVIGATE }
+            Thread.sleep(2_000)
+            assertTrue("north: Navigate north up (${bearing()})", near(0.0, bearing()))
+            scenario.onActivity { vm(it).switchToPlan() }
+            waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+            Thread.sleep(2_000)
+            assertTrue("north: back in Plan north up (${bearing()})", near(0.0, bearing()))
+            scenario.onActivity { vm(it).locate() }
+            Thread.sleep(1_500)
+            assertTrue("north: locate in Plan north up (${bearing()})", near(0.0, bearing()))
+            // TRAVEL: Navigate, looked around by hand, back in Plan – the bearing stays; a fit keeps it too
+            scenario.onActivity { vm(it).updateSettings(vm(it).settings.copy(navHeadingUp = true)) }
+            scenario.onActivity { vm(it).continueNavigation(force = true) }
+            waitUntil("Navigate again", 20_000) { mode() == AppMode.NAVIGATE }
+            Thread.sleep(2_000)
+            turnByHand(); Thread.sleep(800)
+            scenario.onActivity { vm(it).switchToPlan() }
+            waitUntil("back in Plan again", 10_000) { mode() == AppMode.PLAN }
+            Thread.sleep(2_000)
+            assertTrue("travel: leaving Navigate keeps the bearing (${bearing()})", near(137.0, bearing()))
+            scenario.onActivity { vm(it).showWholeRoute() }
+            Thread.sleep(1_500)
+            assertTrue("travel: whole route keeps the bearing (${bearing()})", near(137.0, bearing()))
+        } finally {
+            scenario.onActivity { if (vm(it).recState.value != null) vm(it).stopRecording(); before?.let { s -> vm(it).updateSettings(s) } }
+        }
+    }
+
+    /**
      * Owner 2026-11-06 ("Ich bin in Hilden, Plan in Köln – im Planmodus steht mein Standort, wo ist mein Plan?"): with
      * a plan, Navigate → Plan shows the whole plan, not the own position (PlanCamera).
      */
@@ -616,6 +713,7 @@ class CoreFieldE2ETest : E2EBase() {
         // the longest hold (2 s): on a loaded CI emulator the main thread blocks 0.5–0.8 s, a "short" tap's up event came
         // late and the 1 s hold fired (GitHub 2026-11-07 04:14, "First held button fired" on the tap) – 2 s keeps a tap a tap
         val holdMs = com.onpath.app.data.HoldSetting.MAX_MS
+        UnlockWindow.openMsForTests = 1_500 // the 20 s unlock window, short – no test waits 20 s
         scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
         try {
             startPlanWithTwoPoints()
@@ -634,7 +732,7 @@ class CoreFieldE2ETest : E2EBase() {
                 // the bar can be redrawn between the find and the click: find it again each time, never `!!`
                 val button = findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 5_000)
                 assertNotNull("Pause on the locked bar (short tap $attempt)", button)
-                runCatching { button!!.click() } // expected: a stale node right after a redraw – the next attempt finds it again
+                quickTap(button) // a real short tap – UiAutomator's click() became a hold on a loaded CI emulator
                 hintSeen = findFresh(By.text(Txt.s(Res.string.nav_hold_hint)), 3_000)
                 if (hintSeen != null) break
             }
@@ -643,9 +741,55 @@ class CoreFieldE2ETest : E2EBase() {
             assertTrue("a short tap does not pause", com.onpath.app.recording.RecordingService.state.value?.paused != true)
             holdButton(Txt.s(Res.string.nav_action_pause), ms = holdMs + 1_000)
             waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
-            assertNotNull("the pause band over the locked bar", findFresh(By.text(Txt.s(Res.string.nav_pause_band_line)), 5_000))
+            assertNotNull("the pause band over the bar", findFresh(By.text(Txt.s(Res.string.nav_pause_band_line)), 5_000))
+            // the unlock window (owner 2026-11-07, 20 s; here 1.5 s) is over: the bar is locked again. Checked by its look,
+            // not by another tap: a held button carries its word as a description, an open one as plain text – Beenden
+            // (Weiter is held in the window too, so it tells nothing here)
+            val end = Txt.s(Res.string.nav_end_short)
+            waitUntil("locked again after the window: Beenden is a held button", UnlockWindow.openMs + 10_000) {
+                findFresh(By.desc(end), 500) != null && findFresh(By.text(end), 500) == null
+            }
+            assertTrue("still paused", com.onpath.app.recording.RecordingService.state.value?.paused == true)
             holdButton(Txt.s(Res.string.nav_end_short), ms = holdMs + 1_000)
             assertNotNull("the end sheet", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
+            assertTrue("asking does not end the tour", recording())
+        } finally {
+            UnlockWindow.openMsForTests = null
+            scenario.onActivity { vm(it).updateSettings(before!!) }
+        }
+    }
+
+    /**
+     * Owner 2026-11-07 09:05 ("nur einmal entriegeln"): one held Pause unlocks the bar – Beenden then acts on a plain
+     * tap (no second hold) and opens the end sheet, which still asks.
+     */
+    @Test fun lockOnOneHoldUnlocksTheBarForAPlainTapOnBeenden() {
+        var before: com.onpath.app.data.AppSettings? = null
+        val holdMs = com.onpath.app.data.HoldSetting.MAX_MS // see lockOnHoldPauseThenHoldEnd: 2 s keeps a CI tap a tap
+        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
+        try {
+            startPlanWithTwoPoints()
+            Thread.sleep(if (realRouting) 3_000 else 1_000)
+            scenario.onActivity { vm(it).startNavigation(force = true) }
+            waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+            assertNotNull("locked: Pause at the bottom", findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 10_000))
+            holdButton(Txt.s(Res.string.nav_action_pause), ms = holdMs + 1_000)
+            waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
+            // the bar is open now – but "Weiter" still wants a hold (owner 10:15): a short tap shows the hint, no resume
+            var hint: androidx.test.uiautomator.UiObject2? = null
+            for (attempt in 1..3) {
+                val resume = findFresh(By.desc(Txt.s(Res.string.common_resume)), 5_000)
+                assertNotNull("Weiter is still a held button in the window (short tap $attempt)", resume)
+                quickTap(resume) // a real short tap – UiAutomator's click() became a hold on a loaded CI emulator
+                hint = findFresh(By.text(Txt.s(Res.string.nav_hold_hint)), 3_000)
+                if (hint != null) break
+            }
+            assertNotNull("a short tap on Weiter shows the hint", hint)
+            Thread.sleep(1_000)
+            assertTrue("a short tap on Weiter never resumes", com.onpath.app.recording.RecordingService.state.value?.paused == true)
+            // Beenden is a plain button with its text in the window – a tap, no hold
+            clickText(Txt.s(Res.string.nav_end_short))
+            assertNotNull("the end sheet after a plain tap", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())
         } finally {
             scenario.onActivity { vm(it).updateSettings(before!!) }

@@ -222,6 +222,16 @@ class ScreenshotTest {
         Frame(route = false, gps = GpsStatus.SEARCHING) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
     }
 
+    /** The empty plan rolled up (owner 2026-11-07): as small as before the guide – the title only. */
+    fun planEmptyCollapsed() = paparazzi.snapshot {
+        Frame(route = false, gps = GpsStatus.GOOD) { PlanPanel(planUi(n = 0, r = null, size = PlanSize.COLLAPSED), PlanCallbacks()) }
+    }
+
+    /** The empty plan pulled up (owner 2026-11-07, guide A): the three steps and "Meine Touren öffnen". */
+    fun planEmptyFull() = paparazzi.snapshot {
+        Frame(route = false, gps = GpsStatus.GOOD) { PlanPanel(planUi(n = 0, r = null, size = PlanSize.FULL), PlanCallbacks()) }
+    }
+
     /** Only a start point (owner 2026-10-30): no line to follow, no "Start navigation" (free recording = the green start button, ☰ has no Start recording since 2026-11-02). */
     fun planOnePoint() = paparazzi.snapshot {
         Frame(route = false) { PlanPanel(planUi(n = 1, r = null), PlanCallbacks()) }
@@ -731,7 +741,11 @@ class ScreenshotTest {
     /** Unlocked (owner 2026-11-05, Navigate C): Pause / Tour beenden in the status card, "Plan ändern" where the slider was. */
     fun navigateActionsOpen() = paparazzi.snapshot { NavFrame(navUi, actions = true) }
 
-    /** Unlocked and paused: "Fortsetzen" in the card, "Sperren | Plan" at the bottom as without a pause (owner 2026-11-06). */
+    /**
+     * Paused inside the unlock window (owner 2026-11-07: one held Pause opens the bar for 20 s): the pause band, Beenden
+     * and ✎ in full colour on a plain tap, "▶ Weiter" stays a light held button (10:15 – a stray tap never resumes;
+     * [com.onpath.app.domain.tour.UnlockWindow.needsHold]).
+     */
     fun navigatePausedOpen() = paparazzi.snapshot { NavFrame(pausedUi, actions = true) }
 
     /**

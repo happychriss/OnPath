@@ -95,6 +95,13 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
     }
 
     /**
+     * "Los geht's" updated a saved route in place (owner 2026-11-07: no "Name (2)" copies): its version before, with the
+     * points [oldKey], is kept under Zuletzt so nothing is lost. Call it AFTER the update – before it, [oldKey] is still
+     * the route's own points and the draft rules refuse it (never a draft with a saved route's points). Blocking.
+     */
+    fun keepReplaced(oldKey: List<Pair<Double, Double>>, insert: () -> Long): Long? = keepDraft(oldKey, unsaved = true, insert)
+
+    /**
      * A plan was saved as a new route with the points [key]: it takes the place of the draft it came from
      * ([fromDraftId], -1 = none) and of any draft with the same points – never a second entry (blocking). Returns how
      * many drafts went.

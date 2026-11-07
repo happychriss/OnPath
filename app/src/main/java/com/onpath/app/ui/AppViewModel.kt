@@ -109,8 +109,11 @@ sealed interface EndAsk {
 /** One-off things the UI must do with an Activity context. */
 sealed interface UiEvent {
     data class Share(val intent: Intent) : UiEvent
-    /** Show all [points] (MapController.fitTo); [northUp] = north up and flat ("Show whole route"). */
-    data class Fit(val points: List<GeoPoint>, val northUp: Boolean = false) : UiEvent
+    /**
+     * Show all [points] (MapController.fitTo). North up or at the current bearing by the session's one orientation
+     * ([com.onpath.app.domain.map.MapOrientation.moveNorthUp]) – never decided per fit (owner 2026-11-07).
+     */
+    data class Fit(val points: List<GeoPoint>) : UiEvent
     /** Fly to one place at [zoom] (search results), in the free room of the fit padding (FitPaddingRule). */
     data class CenterOn(val point: GeoPoint, val zoom: Double) : UiEvent
     /** Move the map to [point] at once, same zoom (profile scrubbing in Navigate). */
@@ -336,7 +339,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Navigate: heading-up (walking direction up) or north-up; persisted in settings. */
     val navHeadingUp: Boolean get() = settings.navHeadingUp
 
-    /** Walking direction up – one persisted setting for Plan and Navigate (owner: switching modes keeps the compass choice). */
+    /**
+     * The session's one map orientation (owner 2026-11-07, domain/map/MapOrientation): walking direction up or north up,
+     * the same in Plan and Navigate; only the compass tap / the setting change it.
+     */
     val headingUp: Boolean get() = navHeadingUp
     /** Bumped to turn the map north (MapScreen → MapController.northUp). */
     var northTick by mutableIntStateOf(0)
@@ -359,10 +365,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (settings.navHeadingUp != on) { settings = settings.copy(navHeadingUp = on); prefs.settings = settings }
     }
 
-    /**
-     * Compass button, same in both modes (owner): map turned by hand → north up; north up → walking direction up
-     * (follows the position); walking direction up → north up. Without a position fix the third state is skipped.
-     */
     /** Plan's neutral GPS note after a tap of the user's ([PlanGps]); null = none. [planGpsNoteTick] restarts its time. */
     var planGpsNote by mutableStateOf<PlanGps.Note?>(null)
     var planGpsNoteTick by mutableStateOf(0)
@@ -382,22 +384,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun onCompass(mapTurned: Boolean) {
-        val turningWithMe = headingUp && followMe
+        // one orientation for the session (owner 2026-11-07, MapOrientation): only this tap changes it
+        val o = com.onpath.app.domain.map.MapOrientation.of(headingUp)
         val hasFix = tracker.location.value != null
-        when {
-            // Navigate, looked around by hand (free look) with walking direction chosen: back to it, not to north
-            mode == AppMode.NAVIGATE && headingUp && !followMe && hasFix -> { followMe = true; recentreTick++ }
-            turningWithMe || mapTurned -> {
-                setHeadingUp(false)
-                // Following north up turns the map to north itself; an extra north-up camera move from the app would
-                // make MapLibre drop the following again (it ends tracking on every app camera move).
-                if (mode == AppMode.NAVIGATE && hasFix) followMe = true else northTick++
-            }
+        val tap = com.onpath.app.domain.map.MapOrientation.tap(o, mapTurned, followMe, hasFix)
+        Problems.trace("map", "Compass tap: $o → ${tap.orientation}" + (if (mapTurned) " (map was turned)" else ""))
+        if (tap.noFix) {
             // a tap must not do nothing; Plan says it neutrally, no red box (owner 2026-11-06 23:35 – PlanGps)
-            !hasFix -> PlanGps.compassWithoutFix(mode == AppMode.PLAN)?.let { showPlanGpsNote(it) }
+            PlanGps.compassWithoutFix(mode == AppMode.PLAN)?.let { showPlanGpsNote(it) }
                 ?: sayError(Txt.s(Res.string.msg_no_position_turn), NoticePlace.MAP)
-            else -> { setHeadingUp(true); followMe = true; recentreTick++ }
+            return
         }
+        setHeadingUp(tap.orientation == com.onpath.app.domain.map.Orientation.TRAVEL)
+        // following north up turns the map to north itself; an extra camera move from the app would make MapLibre drop
+        // the tracking (it ends tracking on every app camera move) – so either follow again or turn north, never both
+        if (tap.follow == true) { followMe = true; recentreTick++ }
+        if (tap.turnNorth) northTick++
     }
 
     private var scrubWasFollowing = false
@@ -2549,7 +2551,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         } ?: return
         followMe = false
         freeLookAt = null
-        events += UiEvent.Fit(pts, northUp = true)
+        events += UiEvent.Fit(pts)
     }
 
     /**
@@ -2571,7 +2573,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             followMe = false
             freeLookAt = null
             events += if (what == PlanCamera.Show.ONE_POINT) UiEvent.CenterOn(pts[0], PlanCamera.ONE_POINT_ZOOM)
-                else UiEvent.Fit(WholeRoute.bounds(listOfNotNull(route?.points), pts, null), northUp = true)
+                else UiEvent.Fit(WholeRoute.bounds(listOfNotNull(route?.points), pts, null))
             Problems.trace("map", "Plan shown whole (${moment.name.lowercase()}, ${pts.size} points)")
         }
     }
@@ -2597,7 +2599,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             followMe = false
             freeLookAt = null
-            events += UiEvent.Fit(WholeRoute.bounds(listOf(line), pts, null), northUp = true)
+            events += UiEvent.Fit(WholeRoute.bounds(listOf(line), pts, null))
         }
     }
 
@@ -2910,6 +2912,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         ).also {
                             if (it) { plannedTimes.remove(id); storePlanTimes(id, r, act) }
                             if (it && name != old) db.rename(id, name)
+                            // a draft with the route's new points goes (RoutesState: never a draft with a saved route's points)
+                            if (it) routes.afterSaved(-1L, pts.map { p -> p.lat to p.lon })
                         }
                     }
                 }
@@ -3149,31 +3153,65 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * "Los geht's" with a plan that was never saved (owner 2026-11-06: the tour and the plan are two things – like Komoot,
      * the plan is in My routes → Planned from the start, so the end of the tour never has to ask about it): saved at once
-     * under the name the Save dialog would propose, no dialog. A saved plan changed since is NOT overwritten silently –
-     * "Nicht gespeichert ›" shows it, the user saves. Renaming / deleting: My routes.
+     * under the name the Save dialog would propose, no dialog. A saved plan changed since updates that route in place, like
+     * ☰ Plan speichern (owner 2026-11-07: no "Name (2)" copies) – its version before goes under Zuletzt
+     * ([updateSavedAtStart]). Renaming / deleting: My routes.
      */
     private fun saveNewPlanAtStart() {
         val pts = waypoints.toList()
         val draft = linkedDraft
         val how = PlanAutoSave.atStart(pts.size, planUnsaved, currentSaveMode() == SaveMode.OVERWRITE, draft != null)
         if (how == PlanAutoSave.AtStart.NOTHING || saving) return
+        if (how == PlanAutoSave.AtStart.SAVE_OVERWRITE) { updateSavedAtStart(pts); return }
         saving = true
         val r = route
         val dated = defaultName(Txt.s(Res.string.msg_name_route))
         val taken = plannedNames()
-        val copyOf = savedName
         viewModelScope.launchSafe("app", "saveNewPlanAtStart") {
             try {
-                val name = when (how) {
-                    // a saved plan changed before the start is never overwritten silently: the ridden version is "Name (2)"
-                    PlanAutoSave.AtStart.SAVE_COPY -> RouteRules.copyName(copyOf ?: dated, taken)
-                    // a plan from Zuletzt keeps its name
-                    else -> draft?.name?.let { RouteRules.newRouteName(it, dated, taken) }
-                        ?: RouteRules.newRouteName(withTimeoutOrNull(NAME_WAIT_MS) { proposeName(pts, r) }, dated, taken)
-                }
+                // a plan from Zuletzt keeps its name
+                val name = draft?.name?.let { RouteRules.newRouteName(it, dated, taken) }
+                    ?: RouteRules.newRouteName(withTimeoutOrNull(NAME_WAIT_MS) { proposeName(pts, r) }, dated, taken)
                 Problems.trace("plan", "Plan saved at the tour start as \"$name\" (${how.name.lowercase()}, ${pts.size} points)")
                 insertPlanned(name, pts, r, null)
             } finally { saving = false }
+        }
+    }
+
+    /**
+     * "Los geht's" with a loaded saved route changed since (owner 2026-11-07): the route is updated in place under its
+     * name ([overwriteSaved], the same write as ☰ Plan speichern), then its version before – read first – is kept under
+     * Zuletzt ([com.onpath.app.ui.routes.RoutesState.keepReplaced]), so nothing is lost and no "Name (2)" appears.
+     */
+    private fun updateSavedAtStart(pts: List<GeoPoint>) {
+        val id = savedId
+        val name = savedName ?: return
+        viewModelScope.launchSafe("app", "updateSavedAtStart") {
+            val before = withContext(Dispatchers.IO) {
+                runCatching { db.getTour(id)?.let { it to db.loadSegments(id) } }
+                    .onFailure { Problems.warn("db", "The saved route's version before the tour start not read – not kept under Zuletzt", it) }
+                    .getOrNull()
+            }
+            Problems.trace("plan", "Plan saved at the tour start as \"$name\" (save_overwrite, ${pts.size} points)")
+            overwriteSaved(name) { before?.let { (old, segments) -> keepReplacedVersion(old, segments) } }
+        }
+    }
+
+    /** The version of a saved route that a tour start just replaced: under Zuletzt with its name, line and points. */
+    private fun keepReplacedVersion(old: Tour, segments: List<List<TrackPoint>>) {
+        val key = com.onpath.app.ui.routes.RoutesState.keyOf(old)
+        viewModelScope.launchSafe("app", "keepReplacedVersion") {
+            val id = withContext(Dispatchers.IO) {
+                runCatching {
+                    routes.keepReplaced(key) {
+                        db.insertTour(TourKind.PLANNED, old.name, old.activity, old.sac, old.distanceM, old.ascentM, old.descentM,
+                            old.durationS, segments, old.waypoints, pinned = old.pinned, draft = true)
+                    }
+                }.onFailure { Problems.error("db", "The saved route's version before the tour start could not be kept under Zuletzt", it) }
+                    .getOrNull()
+            }
+            if (id != null) { Problems.trace("plan", "Version before the tour start kept under Zuletzt: \"${old.name}\", ${key.size} points"); refreshTours() }
+            else Problems.trace("plan", "Version before the tour start not added to Zuletzt: these points are there already (a saved route or a draft)")
         }
     }
 
@@ -3733,7 +3771,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.trace("tour", "Tour start (${activity.name}, plan ${waypoints.size} points, " +
             (if (followLine != null) "following ${followName ?: "a route"}" else "nothing followed") + ")")
         tour.start(activity.name, sac)
-        followMe = true
+        // no followMe here: in Plan it briefly turned the map with the compass before Navigate took over (owner
+        // 2026-11-07: the map never turns by itself) – entering Navigate starts the following
     }
 
     fun continueRecording(t: Tour) {
@@ -4183,7 +4222,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         followMe = false
         freeLookAt = null
         fitNextRoute = true
-        events += UiEvent.Fit(load.points, northUp = true)
+        events += UiEvent.Fit(load.points)
     }
 
     /**
