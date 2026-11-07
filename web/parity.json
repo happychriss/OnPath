@@ -7,7 +7,7 @@
       "web": [
         "web/app/src/activity.ts"
       ],
-      "blob": "d54de5f32b9350a1882b4273d08bd17fd7e91207"
+      "blob": "e5d05ed6d1ce71ae6b836f43f86af4a4e8da2cdd"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
@@ -278,7 +278,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "0fc9aadd044d55e321beb362abce9dc911b296fe"
+      "blob": "c57eea88bfc4e65164827d7c2ac3645597a53124"
     }
   ],
   "watch": [

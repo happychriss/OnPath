@@ -116,6 +116,43 @@ class CorePlanE2ETest : E2EBase() {
     }
 
     /**
+     * E2E 2026-11-07 (CoreFieldE2ETest.aSavedRouteTapped… red on GitHub now and then, "E2E saved route" not shown while the
+     * list held it): My routes opens with the list read before, the fresh read puts a new route on top – it must show
+     * there, not above the screen (a LazyColumn keeps its first visible row by key when rows come before it; only a list
+     * longer than the screen can scroll, so more rows than fit: the class run had ten plans, a single run two).
+     */
+    @Test fun aRouteAddedWhileMyRoutesIsOpenShowsAtTheTop() {
+        val db = com.onpath.app.data.TourDb.get(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext)
+        val now = System.currentTimeMillis()
+        fun insert(name: String, dLat: Double, createdMs: Long): Long {
+            val pts = listOf(com.onpath.app.gpx.GpxWaypoint(MERAN_LAT + dLat, MERAN_LON, null),
+                com.onpath.app.gpx.GpxWaypoint(MERAN_LAT + dLat + 0.002, MERAN_LON + 0.003, null))
+            return db.insertTour(com.onpath.app.data.TourKind.PLANNED, name, com.onpath.app.routing.Activity.HIKE.name, 2, 420.0,
+                0.0, 0.0, 300.0, listOf(pts.map { com.onpath.app.gpx.TrackPoint(it.lat, it.lon) }), pts, createdMs = createdMs)
+        }
+        // more rows than the screen holds, the "older route" the newest of them
+        val fillers = (1..10).map { insert("E2E filler $it", 0.001 * it, now - 60_000L * (11 - it)) }
+        val older = insert("E2E older route", 0.003, now)
+        var newer = -1L
+        try {
+            scenario.onActivity { a -> vm(a).routesTab = com.onpath.app.ui.RoutesTab.PLANNED; vm(a).openRoutes() }
+            assertNotNull("the older route in My routes", findFresh(By.text("E2E older route"), 8_000))
+            newer = insert("E2E newer route", 0.006, now + 1_000)
+            scenario.onActivity { a -> vm(a).refreshTours() }
+            waitUntil("the list holds the newer route", 10_000) {
+                var listed = false; scenario.onActivity { a -> listed = vm(a).tours.any { it.id == newer } }; listed
+            }
+            val row = findFresh(By.text("E2E newer route"), 5_000)
+            if (row == null) shot("newer-route-missing")
+            assertNotNull("the newer route shows on top of My routes – ${state()}", row)
+        } finally {
+            scenario.onActivity { a -> vm(a).routesOpen = false }
+            (fillers + older).forEach { db.deleteTour(it) }
+            if (newer >= 0) db.deleteTour(newer)
+        }
+    }
+
+    /**
      * My routes (owner 2026-11-07): every row has its small route preview; a row tap opens the large overview first –
      * "Abbrechen" changes nothing, "Planen" puts the route on the map in Plan.
      */

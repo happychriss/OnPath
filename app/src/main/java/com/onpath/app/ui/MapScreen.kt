@@ -31,6 +31,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -68,6 +70,8 @@ fun MapScreen(
     val navCover = remember { intArrayOf(0, 0) }
     /** Plan: size of the map button column (px, width + height) – a route fit keeps beside or above it (FitPaddingRule). */
     val planFab = remember { intArrayOf(0, 0) }
+    /** Plan: the activity button's right and bottom edge (px in the window; 0 = not laid out) – a fit keeps clear of it. */
+    val planActivity = remember { intArrayOf(0, 0) }
     var scale by remember { mutableStateOf<Pair<String, Dp>?>(null) }
     var cameraTick by remember { mutableIntStateOf(0) }
     var bearing by remember { mutableFloatStateOf(0f) }
@@ -184,7 +188,10 @@ fun MapScreen(
                 navTopDp = navCover[0], navBottomDp = navCover[1], fabWidthPx = planFab[0],
                 // the column stands at a fixed place above the middle (onpath.private#43), not on the sheet: the fit keeps
                 // beside it; the old "above the column" room (fabHeightPx) no longer exists
-                fabHeightPx = 0)
+                fabHeightPx = 0,
+                // the activity button top left (hidden over a shown track): beside or below it, never a point under it
+                activityRightPx = if (vm.shown == null) planActivity[0] else 0,
+                activityBottomPx = if (vm.shown == null) planActivity[1] else 0)
         }
         MapSync(vm, controller, rec, location, fitPadding)
         // hike: keep-on + pocket logic; bike: Settings → "Screen while cycling", pocket after 5 s covered (ScreenPolicy,
@@ -200,7 +207,8 @@ fun MapScreen(
                 PlanMode(vm, rec, { footer(AppMode.PLAN) }, { controls(AppMode.PLAN) }, onStartNavigation, onRequestLocation, pairCamera,
                     // during a tour the same check-and-switch sheet as Navigate: Take new route / Keep
                     onActivity = { if (rec != null) vm.openActivityCheck() else showActivity = true }, onEndTour = { vm.askEndTour() },
-                    onPanelHeight = { panelHeightPx = it })
+                    onPanelHeight = { panelHeightPx = it },
+                    onActivityBox = { r, b -> planActivity[0] = r; planActivity[1] = b })
             },
             navigate = { NavigateMode(vm, rec, location, bearing, onCover = { t, b -> navCover[0] = t; navCover[1] = b }) { footer(AppMode.NAVIGATE) } },
         )
@@ -307,7 +315,7 @@ fun MapScreen(
 private fun PlanMode(
     vm: AppViewModel, rec: RecState?, footer: @Composable () -> Unit, controls: @Composable () -> Unit, onStartNavigation: () -> Unit,
     onRequestLocation: () -> Unit, pairCamera: (String) -> Unit, onActivity: () -> Unit, onEndTour: () -> Unit,
-    onPanelHeight: (Int) -> Unit,
+    onPanelHeight: (Int) -> Unit, onActivityBox: (right: Int, bottom: Int) -> Unit = { _, _ -> },
 ) {
     Box(Modifier.fillMaxSize()) {
         // the paper band behind the search pill and ☰ (owner 2026-11-05 b; paper since 2026-11-06 variant C – no blue
@@ -352,7 +360,9 @@ private fun PlanMode(
         // sheet has no activity chip any more; not over a shown track / place card (their own panels)
         if (vm.shown == null) ActivityMapButton(vm.activity, vm.sac, onActivity,
             Modifier.align(Alignment.TopStart).modeEdge(ModeEdge.TOP).statusBarsPadding()
-                .padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = topBar).dp, start = 12.dp))
+                .padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = topBar).dp, start = 12.dp)
+                // where it really is (badge and font size included): route fits keep clear of it (FitPaddingRule)
+                .onGloballyPositioned { val b = it.boundsInRoot(); onActivityBox(b.right.toInt(), b.bottom.toInt()) })
         // "Ohne Netz ✓ / ⟳ / ⚠" (owner 2026-11-03): recomputed off the main thread when the route changes, every 3 s
         // while loading, else every 20 s (a map region joined, the network back) – file checks only, no downloads
         val offlineLine = vm.route?.points
