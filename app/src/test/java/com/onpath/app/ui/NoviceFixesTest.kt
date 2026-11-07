@@ -30,9 +30,6 @@ class NoviceFixesTest {
     }
 
     @Test fun secondaryLinesOnTheWayAreReadable() {
-        assertTrue("slider line on green", contrast(OnPathColors.OnGreenMuted, OnPathColors.Green) >= 4.5)
-        // owner 2026-11-06 (flow map N2): the slider's small second line is back – in the readable muted white on green
-        assertTrue(src("ui/SlideToUnlock.kt").contains("if (showSub) Text(sub, color = OnPathColors.OnGreenMuted"))
         assertTrue("grey info on the blue plan sheet", contrast(OnPathColors.Grey, OnPathColors.PlanTint) >= 4.5)
         assertTrue("detail lines on the blue plan sheet", contrast(OnPathColors.InkMuted, OnPathColors.PlanTint) >= 4.5)
     }

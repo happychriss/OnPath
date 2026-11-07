@@ -102,64 +102,6 @@ fun SaveNameDialog(kind: SaveAsk.Kind, name: String, onSave: (String) -> Unit, o
     )
 }
 
-/**
- * The Material 3 basic dialog (owner 2026-11-05): 24 dp inner padding, 280–560 dp wide (16 dp from the screen's edges), headline + supporting text, the
- * actions in ONE row – the destructive one apart on the left (error text), the way back (text) and the main action
- * (filled, plan blue) on the right. Only when they do not fit (a large font): M3's stacked layout, full-width buttons of
- * equal width – main, way back, destructive – never ragged right-aligned text.
- */
-@Composable
-fun DecisionDialog(
-    title: String, text: String?, onDismiss: () -> Unit,
-    dismiss: Pair<String, () -> Unit>, confirm: Pair<String, () -> Unit>?, destructive: Pair<String, () -> Unit>? = null,
-) {
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss,
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
-        androidx.compose.material3.Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = 6.dp, modifier = Modifier.padding(horizontal = 16.dp).widthIn(min = 280.dp, max = 560.dp)) {
-            androidx.compose.foundation.layout.Column(Modifier.padding(24.dp)) {
-                Text(title, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
-                text?.let {
-                    Spacer(Modifier.height(16.dp))
-                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Spacer(Modifier.height(24.dp))
-                DecisionActions(dismiss, confirm, destructive)
-            }
-        }
-    }
-}
-
-@Composable
-private fun DecisionActions(dismiss: Pair<String, () -> Unit>, confirm: Pair<String, () -> Unit>?, destructive: Pair<String, () -> Unit>?) {
-    val blue = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionEdit, contentColor = OnPathColors.CardWhite)
-    val red = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-    val tm = androidx.compose.ui.text.rememberTextMeasurer()
-    val style = MaterialTheme.typography.labelLarge
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
-        // each button: its word + 8 dp (text) / 16 dp (filled) padding each side; 8 dp between
-        val words = listOfNotNull(destructive?.first?.let { it to 16 }, dismiss.first to 16, confirm?.first?.let { it to 32 })
-        val textPad = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
-        val need = with(density) { words.sumOf { (w, pad) -> tm.measure(w, style).size.width.toDp().value.toDouble() + pad } }.toFloat() +
-            8f * (words.size - 1)
-        if (DecisionLayout.oneRow(need, maxWidth.value)) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            destructive?.let { (w, f) -> TextButton(onClick = f, colors = red, contentPadding = textPad, modifier = Modifier.heightIn(min = 48.dp)) { Text(w, maxLines = 1, softWrap = false) } }
-            Spacer(Modifier.weight(1f))
-            TextButton(onClick = dismiss.second, contentPadding = textPad, modifier = Modifier.heightIn(min = 48.dp)) { Text(dismiss.first, maxLines = 1, softWrap = false) }
-            confirm?.let { (w, f) ->
-                Spacer(Modifier.width(8.dp))
-                androidx.compose.material3.Button(onClick = f, colors = blue, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
-                    modifier = Modifier.heightIn(min = 48.dp)) { Text(w, maxLines = 1, softWrap = false) }
-            }
-        } else androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth(), verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
-            confirm?.let { (w, f) -> androidx.compose.material3.Button(onClick = f, colors = blue, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(w) } }
-            androidx.compose.material3.OutlinedButton(onClick = dismiss.second, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(dismiss.first) }
-            destructive?.let { (w, f) -> TextButton(onClick = f, colors = red, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(w) } }
-        }
-    }
-}
-
 /** When the dialog's actions fit in one row (dp). */
 object DecisionLayout {
     fun oneRow(needDp: Float, widthDp: Float): Boolean = needDp <= widthDp

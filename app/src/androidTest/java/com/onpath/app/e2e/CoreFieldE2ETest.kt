@@ -608,7 +608,10 @@ class CoreFieldE2ETest : E2EBase() {
             // tap never acts, so a second one is harmless
             var hintSeen: androidx.test.uiautomator.UiObject2? = null
             for (attempt in 1..3) {
-                findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 5_000)!!.click()
+                // the bar can be redrawn between the find and the click: find it again each time, never `!!`
+                val button = findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 5_000)
+                assertNotNull("Pause on the locked bar (short tap $attempt)", button)
+                runCatching { button!!.click() } // expected: a stale node right after a redraw – the next attempt finds it again
                 hintSeen = findFresh(By.text(Txt.s(Res.string.nav_hold_hint)), 3_000)
                 if (hintSeen != null) break
             }

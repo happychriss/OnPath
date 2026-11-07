@@ -89,8 +89,6 @@ class SavePathsTest {
     @Test fun aTrackTappedDuringATourOnlyAsksToFollow() {
         assertEquals(OpenAsk.FOLLOW_DURING_TOUR, RouteRules.openAsk(TourKind.RECORDED, 0, navigating = true, listOf(a, b), null))
         assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.RECORDED, 0, navigating = false, listOf(a, b), null))
-        val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertFalse(screen.contains("TourRunningBar("))
         val panel = File("src/main/java/com/onpath/app/ui/Panels.kt").readText().substringAfter("fun TrackPanel(")
             .substringBefore("internal fun trackFollowLabel")
         assertTrue(panel.contains("OutlinedButton(onClick = onPlan") && panel.contains("Button(colors = ActionButtons.go(), onClick = onFollow"))

@@ -499,7 +499,6 @@ class ScreenshotTest {
     /** ☰ while a tour runs (looked at from Plan): Start recording greyed. */
     @Test fun planMenuNavigating() = paparazzi.snapshot {
         TopMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = true, recording = true), record = false) {
-            TourRunningBar(6_400.0, 5025, paused = false, onEnd = {}, activity = Activity.BIKE_TREKKING)
             PlanPanel(planUi(tourRunning = true), PlanCallbacks())
         }
     }

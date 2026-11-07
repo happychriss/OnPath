@@ -98,14 +98,6 @@ object RouteRules {
      */
     fun copyName(name: String, taken: Collection<String>): String = com.onpath.app.routing.PlanNames.copyName(name, taken)
 
-    /**
-     * Unsaved changes worth a hint (owner 2026-10-31): while the plan is new or changed since the last save / load
-     * ([unsaved] = [isUnsaved]) the ☰ button shows a small green dot – Save route is its top item ([saveInMenu]). Saved:
-     * no dot (the sheet says "Saved as …"). Save can be used once a route line exists ([RouteMenuState.save]), also
-     * during a tour.
-     */
-    fun saveAtHand(pointCount: Int, unsaved: Boolean): Boolean = unsaved && pointCount >= 2
-
     /** ☰ → "Save route" as the top item (owner 2026-10-31, the sheet has no Save any more): whenever there is a plan. */
     fun saveInMenu(pointCount: Int): Boolean = pointCount >= 2
 

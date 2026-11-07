@@ -65,24 +65,6 @@ import androidx.compose.ui.unit.Constraints
 import com.onpath.app.data.Format
 import com.onpath.app.domain.tour.EndSheetGuard
 
-/**
- * The tour card in Plan mode while a tour records: the three answers to "what now with my
- * tour?" together in one row – Continue navigation (filled, most used), Pause / Resume (tonal), End tour (outlined
- * red, asks first). Continue also resumes a paused tour (back to navigating = walking again).
- */
-@Composable
-fun TourRunningBar(
-    distanceM: Double, elapsedS: Long, paused: Boolean, onEnd: () -> Unit, modifier: Modifier = Modifier,
-    onPause: (Boolean) -> Unit = {}, onContinue: () -> Unit = {}, activity: com.onpath.app.routing.Activity? = null,
-) {
-    Surface(modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).warmShadow(OnPathShadow.LOW, MaterialTheme.shapes.large), shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-        Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp)) {
-            TourControls(distanceM, elapsedS, paused, onPause, onContinue, onEnd, activity)
-        }
-    }
-}
-
 /** Recording state dot: orange while recording, grey while paused. */
 @Composable
 fun RecDot(paused: Boolean, modifier: Modifier = Modifier) {
@@ -92,15 +74,13 @@ fun RecDot(paused: Boolean, modifier: Modifier = Modifier) {
 /** What the end sheet shows of the tour: distance, moving time, ascent (from the running recording). */
 data class EndStats(val distanceM: Double, val elapsedS: Long, val ascentM: Double)
 
-/** "Weiterwandern" on foot, "Weiterfahren" on any bike (owner 2026-11-05: the way back names what you do). */
-internal fun keepGoingLabel(@Suppress("UNUSED_PARAMETER") activity: com.onpath.app.routing.Activity?): String =
-    Txt.s(Res.string.nav_continue) // owner 2026-11-06: one word for going on after a pause / at the end – "Weiter"
+/** The way back from the end sheet: "Weiter" (owner 2026-11-06, one word after a pause / at the end). */
+internal fun keepGoingLabel(): String = Txt.s(Res.string.nav_continue) // owner 2026-11-06: one word – "Weiter"
 
 /**
- * "Tour beenden?" (owner 2026-11-05: V2 – "am besten, mal sehen, ob der Klick nervt"): a sheet from the bottom in
- * sections – header (activity sign, title, activity, ✕); TOUR (green dot): distance · time · ascent and the big green
- * "Tour speichern" where the thumb is – nothing about the plan (owner 2026-11-06: the tour and the plan are two things;
- * a plan never saved was saved at "Los geht's", changes made on the way show "Nicht gespeichert ›" in Plan); then outlined "Weiterwandern" / "Weiterfahren" and the quiet red "Tour löschen"
+ * "Tour beenden?": a sheet from the bottom – header (activity sign, title, activity, ✕); distance · time · ascent and the
+ * big green "Tour speichern" where the thumb is – nothing about the plan (owner 2026-11-06: the tour and the plan are two
+ * things; the plan was saved at "Los geht's", drafts live under Zuletzt); then "Weiter" and the quiet red "Tour löschen"
  * with the bin note – no second question (owner 2026-11-01: "ist ja sowieso alles im Papierkorb"). Large font: it scrolls.
  * [keepLabel]: the way back (arrival: the same activity word).
  */
@@ -111,7 +91,7 @@ fun EndTourDialog(
     title: String = str(Res.string.nav_end_tour_title),
     activity: com.onpath.app.routing.Activity? = null,
     stats: EndStats? = null,
-    keepLabel: String = keepGoingLabel(activity),
+    keepLabel: String = keepGoingLabel(),
     /** Screenshot tests: the sheet drawn at the bottom of the screen itself (Paparazzi draws no sheet window). */
     inline: Boolean = false,
 ) {
@@ -138,7 +118,7 @@ fun EndTourDialog(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow) { content() }
 }
 
-/** The end sheet's inside: title, numbers, plan option, Save, Weiterfahren | Löschen, bin note. */
+/** The end sheet's inside: title, numbers, Save, Weiter | Löschen, bin note. */
 @Composable
 private fun EndTourContent(
     onSave: () -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit, title: String,
@@ -309,156 +289,6 @@ fun ArrivalDialog(onSave: () -> Unit, onDelete: () -> Unit, onKeepGoing: () -> U
         inline = inline)
 
 
-/** "Continue · Gravel bike" (owner rule: the way back to Navigate names the activity). */
-internal fun continueLabel(activity: com.onpath.app.routing.Activity?): String =
-    if (activity == null) Txt.s(Res.string.nav_continue) else Txt.s(Res.string.nav_continue_as, activity.navName)
-
-/**
- * Status line + the three tour buttons: Continue (filled, full width, names the activity; also resumes), then Pause /
- * Resume (tonal) and End (outlined red, asks first) side by side. Used in the stand-alone tour card (over a shown track
- * or a place card); the plan sheet splits it into [TourStatusRow] and [TourPauseEnd].
- */
-@Composable
-fun TourControls(
-    distanceM: Double, elapsedS: Long, paused: Boolean,
-    onPause: (Boolean) -> Unit, onContinue: () -> Unit, onEnd: () -> Unit,
-    activity: com.onpath.app.routing.Activity? = null,
-    recordOnly: Boolean = false,
-) {
-    TourStatus(tourStatusText(distanceM, elapsedS, paused, recordOnly), paused)
-    Spacer(Modifier.height(8.dp))
-    Button(colors = ActionButtons.go(), onClick = { if (paused) onPause(false); onContinue() }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-        contentPadding = PaddingValues(horizontal = 8.dp)) {
-        Icon(Icons.Filled.Navigation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
-        Text(continueLabel(activity), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-    }
-    Spacer(Modifier.height(8.dp))
-    TourPauseEnd(paused, onPause, onEnd)
-}
-
-/** "Tour running · 6.4 km · 1:23:45" (paused / "Recording only" after the guidance ended). */
-@Composable
-internal fun tourStatusText(distanceM: Double, elapsedS: Long, paused: Boolean, recordOnly: Boolean): String {
-    val res = when { paused -> Res.string.nav_tour_paused; recordOnly -> Res.string.nav_tour_record_only; else -> Res.string.nav_tour_running }
-    return str(res, Format.distance(distanceM), Format.clock(elapsedS))
-}
-
-/**
- * The orange (paused: grey) dot + the status; wraps rather than cuts at a large font (owner: numbers in full), and only
- * after a "·" – never between a number and its unit ("1,7 / km").
- */
-@Composable
-private fun TourStatus(status: String, paused: Boolean, modifier: Modifier = Modifier) {
-    Row(modifier.semantics { contentDescription = status }, verticalAlignment = Alignment.CenterVertically) {
-        RecDot(paused)
-        Spacer(Modifier.width(10.dp))
-        Text(breakOnlyAtDots(status), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-    }
-}
-
-/** "Tour running · 1.7 km · 0:14:38" with no-break spaces except after each "·" (the only places a line may break). */
-internal fun breakOnlyAtDots(s: String): String = s.replace(' ', '\u00A0').replace("\u00A0·\u00A0", "\u00A0· ")
-
-/**
- * The plan sheet's first step during a tour (owner 2026-10-31): ONE row – the status on the left, a compact green
- * [Continue] (≥ 48 dp, also resumes a paused tour) on the right. Pause / End tour come with the next step
- * ([TourPauseEnd]); TalkBack hears the activity on the button ("Continue · Hike"). At a large font, when the status
- * beside the button would be taller than status + button stacked, the button goes under the status (right-aligned).
- * [onEnd] (the row alone, field 2026-11-01 / UX B2): "Beenden" (red edge, owner 2026-11-01: a word, not a ■) left of
- * "Navigation weiter" opens the same "End this tour?" question as End tour – no drag needed to stop.
- */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-@Composable
-fun TourStatusRow(
-    distanceM: Double, elapsedS: Long, paused: Boolean, onPause: (Boolean) -> Unit, onContinue: () -> Unit,
-    activity: com.onpath.app.routing.Activity? = null, recordOnly: Boolean = false, onEnd: (() -> Unit)? = null,
-) {
-    val status = tourStatusText(distanceM, elapsedS, paused, recordOnly)
-    val described = continueLabel(activity)
-    val endLabel = str(Res.string.nav_end_tour)
-    Layout(content = {
-        TourStatus(status, paused)
-        // the two buttons side by side; at a large font they wrap (never cut to "▲ N")
-        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.End,
-            verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (onEnd != null) {
-                // the word, not a ■ (owner 2026-11-01: "kryptisch – was macht dieses Stopp?"): it ends the recording
-                OutlinedButton(onClick = onEnd, modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = endLabel },
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error), contentPadding = PaddingValues(horizontal = 12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
-                    Text(str(Res.string.nav_end_tour), maxLines = 1)
-                }
-                Spacer(Modifier.width(8.dp))
-            }
-            Button(colors = ActionButtons.go(), onClick = { if (paused) onPause(false); onContinue() },
-                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = described },
-                contentPadding = PaddingValues(start = 14.dp, end = 18.dp)) {
-                Icon(Icons.Filled.Navigation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
-                Text(str(Res.string.nav_continue), maxLines = 1)
-            }
-        }
-    }, modifier = Modifier.fillMaxWidth()) { ms, c ->
-        val gap = 8.dp.roundToPx()
-        val max = c.maxWidth
-        val b = ms[1].measure(c.copy(minWidth = 0, minHeight = 0))
-        val besideW = (max - b.width - gap).coerceAtLeast(0)
-        val beside = TourRowFit.beside(ms[0].minIntrinsicHeight(besideW), ms[0].minIntrinsicHeight(max), b.height)
-        val t = ms[0].measure(Constraints(maxWidth = if (beside) besideW else max))
-        if (beside) {
-            val h = maxOf(t.height, b.height)
-            layout(max, h) {
-                t.placeRelative(0, (h - t.height) / 2)
-                b.placeRelative(max - b.width, (h - b.height) / 2)
-            }
-        } else layout(max, t.height + gap + b.height) {
-            t.placeRelative(0, 0)
-            b.placeRelative(max - b.width, t.height + gap)
-        }
-    }
-}
-
-/** Layout rules of the tour row and the Pause / End pair (pure, for tests). */
-internal object TourRowFit {
-    /** The status goes beside Continue unless that makes it taller than status (full width) + button stacked. */
-    fun beside(statusBesideH: Int, statusFullH: Int, buttonH: Int): Boolean = statusBesideH <= maxOf(statusFullH, buttonH)
-
-    /** Pause and End tour side by side when both labels fit their half; else one under the other – never cut. */
-    fun sideBySide(pauseW: Int, endW: Int, width: Int, gap: Int): Boolean = maxOf(pauseW, endW) * 2 + gap <= width
-}
-
-/**
- * Pause / Resume (tonal) and End tour (outlined red, asks first) side by side, equal width; at a large font (a label
- * would be cut, e.g. „Tour beenden“) one under the other, full width.
- */
-@Composable
-fun TourPauseEnd(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Unit, modifier: Modifier = Modifier) {
-    Layout(content = {
-        FilledTonalButton(colors = ActionButtons.goTonal(), onClick = { onPause(!paused) }, modifier = Modifier.heightIn(min = 48.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp)) {
-            Icon(if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
-            Text(str(if (paused) Res.string.common_resume else Res.string.nav_pause), maxLines = 1)
-        }
-        // Tour beenden is navigation: green, no red at the stop (owner 2026-11-05, onpath.private#27)
-        OutlinedButton(onClick = onEnd, modifier = Modifier.heightIn(min = 48.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp), border = BorderStroke(1.5.dp, OnPathColors.ActionGo)) {
-            Icon(Icons.Filled.Stop, null, Modifier.size(18.dp), tint = OnPathColors.ActionGo); Spacer(Modifier.width(6.dp))
-            Text(str(Res.string.nav_end_tour), color = OnPathColors.ActionGo, maxLines = 1)
-        }
-    }, modifier = modifier.fillMaxWidth()) { ms, c ->
-        val gap = 8.dp.roundToPx()
-        val max = c.maxWidth
-        val side = TourRowFit.sideBySide(ms[0].maxIntrinsicWidth(Constraints.Infinity), ms[1].maxIntrinsicWidth(Constraints.Infinity), max, gap)
-        val w = if (side) (max - gap) / 2 else max
-        val p = ms[0].measure(Constraints.fixedWidth(w))
-        val e = ms[1].measure(Constraints.fixedWidth(w))
-        if (side) {
-            val h = maxOf(p.height, e.height)
-            layout(max, h) { p.placeRelative(0, (h - p.height) / 2); e.placeRelative(max - e.width, (h - e.height) / 2) }
-        } else layout(max, p.height + gap + e.height) { p.placeRelative(0, 0); e.placeRelative(0, p.height + gap) }
-    }
-}
-
-
 /**
  * [RouteBack]: the goal of a start → goal plan was deleted during a tour. Stays until answered (no outside tap / back
  * dismiss – never self-dismissing). Verb buttons.
@@ -476,12 +306,6 @@ fun RouteBackDialog(onYes: () -> Unit, onNo: () -> Unit) {
     )
 }
 
-/** "About 29 days on foot. Calculating and loading its maps takes long." */
-internal fun longRouteText(seconds: Double, activity: com.onpath.app.routing.Activity): String {
-    val how = if (activity == com.onpath.app.routing.Activity.HIKE) Res.string.nav_long_route_foot else Res.string.nav_long_route_bike
-    return Txt.s(how, com.onpath.app.routing.LongRoute.describe(seconds)).replaceFirstChar { it.uppercase() }
-}
-
 /**
  * A plan far longer than a day (e.g. a point in another country by mistake). Asked before anything is routed or
  * loaded. Cancel takes back the change that made it so long (AppViewModel.cancelRun). Stays until a button is tapped:
@@ -493,7 +317,7 @@ fun LongRouteDialog(seconds: Double, activity: com.onpath.app.routing.Activity, 
         onDismissRequest = {},
         icon = { Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Warn) },
         title = { Text(str(Res.string.nav_long_route_title)) },
-        text = { DialogText(longRouteText(seconds, activity)) },
+        text = { DialogText(com.onpath.app.routing.LongRoute.text(seconds, activity)) },
         confirmButton = { TextButton(colors = ActionButtons.editText(), onClick = onPlan) { Text(str(Res.string.nav_plan_anyway)) } },
         dismissButton = { TextButton(onClick = onCancel) { Text(str(Res.string.common_cancel)) } },
         properties = LongRouteDialogRules.properties,

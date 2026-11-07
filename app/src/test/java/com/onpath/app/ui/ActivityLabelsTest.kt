@@ -28,13 +28,6 @@ class ActivityLabelsTest {
         val loop = listOf(row(0, start, "Café", loop = true), row(1, com.onpath.app.routing.PointRole.STOP, "Stop 2"))
         assertEquals("Let’s go · Hike", primaryLabel(ui(Activity.HIKE, false).copy(points = loop)))
     }
-
-    /** The tour's Continue names the activity, like the primary button. */
-    @Test fun tourContinueNamesTheActivity() {
-        assertEquals("Continue · Gravelbike", continueLabel(Activity.BIKE_TREKKING))
-        assertEquals("Continue · Hike", continueLabel(Activity.HIKE))
-    }
-
     /** Problem 5: the track panel's button names the activity it navigates with. */
     @Test fun trackButtonNamesTheActivity() {
         assertEquals("Let’s go · Hike", trackFollowLabel(recording = false, Activity.HIKE))

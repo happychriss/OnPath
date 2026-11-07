@@ -2533,13 +2533,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun closeSpots() { spotsOpen = false }
 
-    /**
-     * The "Show whole route" button shows (WholeRoute.shows) – [layer] = the mode of the control layer it sits in (the
-     * leaving layer keeps its look while it animates out), [pointsOpen] = the Points step (MapScreen).
-     */
-    fun wholeRouteShown(layer: AppMode, pointsOpen: Boolean): Boolean =
-        WholeRoute.shows(layer, pointsOpen, hasPlanLine(), hasShownLine(), hasFollowLine())
-
     /** What the map column's greyed buttons need to know ([MapControlsEnabled]). */
     internal fun controlsIn(layer: AppMode, pointsOpen: Boolean) = MapControlsEnabled.In(layer, pointsOpen,
         planLine = hasPlanLine(), shownLine = hasShownLine(), shownOpen = shown != null, followLine = hasFollowLine(),
@@ -4374,9 +4367,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** "Some parts of the file were skipped." – a line in the imported track's panel (the parser's warnings are in Diagnostics). */
-    internal fun importedNote(warnings: List<String>): String? = if (warnings.isEmpty()) null else Txt.s(Res.string.msg_gpx_parts_skipped)
-
     /** "Export all": one ZIP with every tour and plan as GPX, handed to the share sheet (Files, Drive, mail …). */
     fun exportAll() {
         busy = Busy.EXPORT
@@ -4595,7 +4585,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 // something odd in the file: a grey line in the track panel, never a message (owner)
                 showTrack(ShownTrack(id, name, geo, data.waypoints, st.distanceM, st.ascentM, st.descentM, st.durationS, note = choice.note,
-                    skippedNote = importedNote(data.warnings)))
+                    skippedNote = data.skippedNote))
                 if (geo.isEmpty()) events += UiEvent.Fit(pts)
                 // Diagnostics: the type is the file's own text – cut short, and say when it was not one we know
                 data.type?.let { t ->

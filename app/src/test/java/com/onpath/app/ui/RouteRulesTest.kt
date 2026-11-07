@@ -39,18 +39,8 @@ class RouteRulesTest {
         assertFalse(free.startRecording); assertFalse(free.load)
     }
 
-    /** Owner 2026-10-30: Save beside ⋯ and on top of ☰ while the plan is new or changed; saved → neither. */
-    @Test fun saveAtHandWhileUnsaved() {
-        // a new route (never saved) is unsaved
-        assertTrue(RouteRules.saveAtHand(2, RouteRules.isUnsaved(listOf(a, b), null)))
-        // saved / loaded and untouched: quiet
-        assertFalse(RouteRules.saveAtHand(2, RouteRules.isUnsaved(listOf(a, b), listOf(a, b))))
-        // changed since the save: at hand again
-        assertTrue(RouteRules.saveAtHand(3, RouteRules.isUnsaved(listOf(a, b, c), listOf(a, b))))
-        // one point or none: no route to keep
-        assertFalse(RouteRules.saveAtHand(1, RouteRules.isUnsaved(listOf(a), null)))
-        assertFalse(RouteRules.saveAtHand(0, true))
-        // during a tour saving is allowed like ⋯ → Save route: the button is enabled once a route line exists
+    /** ☰ → Plan speichern: enabled once a route line exists, also during a tour. */
+    @Test fun saveInTheMenuOnceThereIsARoute() {
         val tour = RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 1, navigating = true, recording = true)
         assertTrue(tour.save)
         assertFalse(RouteRules.menu(hasRoute = false, pointCount = 3, savedCount = 1, navigating = false, recording = false).save)

@@ -1067,16 +1067,6 @@ class RecordingService : Service() {
         return SeaLevel.height(ell, msl, geoid, loc.latitude, loc.longitude, nowEl - firstFixElapsed)
     }
 
-    /** Screen off or the lock screen showing (junction vibration "only when locked"). */
-    private fun screenLocked(): Boolean = try {
-        val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
-        val km = getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
-        val off = !pm.isInteractive
-        off || km.isKeyguardLocked
-    } catch (e: Exception) {
-        Problems.warn("sensor", "Screen lock state not readable; taken as locked (junction vibration plays)", e)
-        true
-    }
 
     /** Plays [pattern] through [Cues]; false when the phone has no vibrator or it failed (reported). */
     private fun vibrate(pattern: LongArray = OFF_ROUTE_VIBRATION, what: String = "alert"): Boolean = Cues.vibrate(this, pattern, what)

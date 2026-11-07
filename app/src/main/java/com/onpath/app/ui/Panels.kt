@@ -189,10 +189,3 @@ internal fun trackFollowLabel(recording: Boolean, activity: com.onpath.app.routi
     if (!line && !recording) Txt.s(Res.string.plan_start_recording_for)
     else Txt.s(if (recording) Res.string.plan_navigate_track_for else Res.string.plan_start_navigation_for, activity.navName)
 
-/** Placeholder for previews/screenshot tests where MapLibre cannot render. */
-@Composable
-fun MapPlaceholder(modifier: Modifier = Modifier) {
-    Box(modifier.background(Color(0xFFE8EEDC)), contentAlignment = Alignment.Center) {
-        Text("map", color = Color(0x55000000), textAlign = TextAlign.Center)
-    }
-}

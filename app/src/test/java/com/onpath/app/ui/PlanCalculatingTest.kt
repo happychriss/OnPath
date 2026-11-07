@@ -17,8 +17,4 @@ class PlanCalculatingTest {
         assertFalse(PlanCalculating.barInHairline(routing = false, slow = false))
     }
 
-    @Test fun whatShowsDoesNotDependOnTheCalculation() {
-        for (has in listOf(true, false)) assertTrue(PlanCalculating.shows(has, true) == PlanCalculating.shows(has, false))
-    }
-
 }

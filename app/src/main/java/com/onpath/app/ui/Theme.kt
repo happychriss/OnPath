@@ -77,11 +77,6 @@ object OnPathColors {
      * ≥ 5:1 on the track even over a white map.
      */
     val OnDarkMuted = RestInk
-    /**
-     * Small secondary text on the green slider (was "Pause · Route ändern · Beenden", owner 2026-11-03 novice fix): a pale
-     * green-white, ≥ 5.5:1 on [Green] – [OnDarkMuted] was made for the old dark track and reads only 3.6:1 on green.
-     */
-    val OnGreenMuted = Color(0xFFDCE8E1)
 
     // ---- Actions: one colour = one kind of action (owner 2026-11-02, docs/design/ui-style.md "Colour rule") ----
     /**
@@ -114,8 +109,6 @@ object OnPathColors {
     val CompassSouth = Color(0xFF8C827A)
     /** Light walnut container (selected rows, chips): [Walnut] ink on it ≥ 8:1. */
     val WalnutLight = Color(0xFFEDE6DF)
-    /** Stop: end the process you are in (white 5.6:1) – the same red as [Error]. */
-    val ActionStop = Color(0xFFC62828)
 
     // ---- Plan mode (owner 2026-11-06 23:00, variant C): recognised by signs, not by tinted surfaces – the PLANEN pill,
     // the sheet's blue top edge and handle, blue icons and blue buttons; no light blue surfaces, no blue glow round the
@@ -323,20 +316,6 @@ val Activity.icon: ImageVector
         Activity.EMTB -> Icons.Filled.ElectricBike
         Activity.HIKE -> Icons.Filled.Hiking
     }
-
-/**
- * Name on buttons: "Start navigation · Gravel bike". German uses the short MTB / E-MTB there (the long name gets cut);
- * the picker keeps the full names ([Activity.label]).
- */
-val Activity.navName: String
-    get() = Txt.s(when (this) {
-        Activity.BIKE_TOURING -> Res.string.activity_bike_touring_button
-        Activity.BIKE_TREKKING -> Res.string.activity_bike_trekking_button
-        Activity.EBIKE -> Res.string.activity_ebike_button
-        Activity.MTB -> Res.string.activity_mtb_button
-        Activity.EMTB -> Res.string.activity_emtb_button
-        Activity.HIKE -> Res.string.activity_hike_button
-    })
 
 /**
  * One corner family (owner 2026-11-06, polish 6 "Ecken aus einem Guss"): pills and buttons fully round, cards and boxes

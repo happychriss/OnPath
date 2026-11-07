@@ -475,8 +475,6 @@ object PlanCalculating {
     const val FADED = 0.4f
     /** The bar sits in the hairline's place – unless the slow line (with its own bar) shows. */
     fun barInHairline(routing: Boolean, slow: Boolean): Boolean = routing && !slow
-    /** Lines and profile stay while calculating (never hidden by it): what shows is the same in both states. */
-    fun shows(hasThing: Boolean, @Suppress("UNUSED_PARAMETER") routing: Boolean): Boolean = hasThing
 }
 
 /** Faded and not touchable while a route is calculated ([PlanCalculating]); the layout stays the same. */
