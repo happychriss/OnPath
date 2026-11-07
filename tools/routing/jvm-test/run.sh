@@ -17,6 +17,9 @@
 #      HildenVoiceTest.kt = the owner's Hilden park tour: no cue on the crossing step, no "track" in the park (needs E5_N50.rd5), pass/fail;
 #      JogHildenTest.kt = the owner's Hilden bike plan 2026-11-07: the right onto a road 19 m before a left is said, the 18 m
 #      crossing piece stays quiet (needs E5_N50.rd5, DUMP=1 also the hike), pass/fail;
+#      VoiceTimingTest.kt = five Hilden bike routes ridden at 15 / 20 / 25 km/h with a phone's delays (fix age, speech start):
+#      every turn's own "now" heard ≥ 2 s before it (closer turns named as "danach"), none swallowed (needs E5_N50.rd5,
+#      DUMP=1 every sentence, CASE=<name prefix>, SPEEDS=15,20), pass/fail;
 #      ItterPathTest.kt = bike routes stay on a compacted foot / cycle path (Hilden Itter, needs E5_N50.rd5), pass/fail;
 #      FerryTest.kt = no route over a ferry that does not take bikes / people on foot (RAW_TAP=1, FERRY_CASES=<file>);
 #      FerryHintTest.kt = routes over a Rhine ferry show the amber ferry hint (needs E5_N50.rd5), pass/fail;
@@ -76,7 +79,7 @@ EXTRA+=("$W/StringsStub.kt" "$W/StringsStubRes.kt")
 for f in ${EXTRA_KT:-}; do EXTRA+=("$f"); done
 java -cp "$KCP" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler -no-stdlib -no-reflect -jvm-target 17 \
   -cp "$STD:$W/stub:$LIBS" -d "$W/kt" "$R/RoutingContract.kt" "$R/Rd5Parts.kt" "$R/BRouterWayStats.kt" "$R/WaypointSnap.kt" "$W/BRouterEngine.kt" \
-  "$R/StraightLineEngine.kt" "$R/RouteTimeLimit.kt" "$R/SlowPlan.kt" "$R/TrackToPlan.kt" "$R/TurnDetector.kt" "$R/Junctions.kt" "$N/JunctionCues.kt" "$N/CueRule.kt" "$N/JogRule.kt" "$N/SpeedWindow.kt" "$N/VoiceGuide.kt" "$N/VoiceText.kt" "$N/ScreenTurns.kt" "$D/Geo.kt" "$D/Format.kt" "$R/OfflineCorridor.kt" "$ROOT/app/src/main/java/com/onpath/app/time/PaceModel.kt" "$ROOT/app/src/main/java/com/onpath/app/time/RouteTimes.kt" "$N/NavLine.kt" "$N/StopSkip.kt" "$N/RerouteTargets.kt" "$N/Rerouter.kt" "$N/VisitRadius.kt" \
+  "$R/StraightLineEngine.kt" "$R/RouteTimeLimit.kt" "$R/SlowPlan.kt" "$R/TrackToPlan.kt" "$R/TurnDetector.kt" "$R/Junctions.kt" "$N/JunctionCues.kt" "$N/CueRule.kt" "$N/JogRule.kt" "$N/SpeedWindow.kt" "$N/VoiceGuide.kt" "$N/GoalSide.kt" "$N/VoiceText.kt" "$N/ScreenTurns.kt" "$D/Geo.kt" "$D/Format.kt" "$R/OfflineCorridor.kt" "$ROOT/app/src/main/java/com/onpath/app/time/PaceModel.kt" "$ROOT/app/src/main/java/com/onpath/app/time/RouteTimes.kt" "$N/NavLine.kt" "$N/StopSkip.kt" "$N/RerouteTargets.kt" "$N/Rerouter.kt" "$N/VisitRadius.kt" \
   "$R/Planner.kt" "$R/LegCache.kt" "$R/RouteSummary.kt" "$ROOT/app/src/main/java/com/onpath/app/ui/RouteWarnings.kt" "$D/LastActivity.kt" \
   "$HERE/ProblemsStub.kt" "$HERE/TimeEstimateStub.kt" ${EXTRA[@]+"${EXTRA[@]}"} "$W/$TN.kt"
 java -Xmx${JAVA_XMX:-192m} -cp "$STD:$W/stub:$LIBS:$W/kt" "${TN}Kt"

@@ -48,6 +48,22 @@ class VoiceTextTest {
         assertEquals("Ziel erreicht.", VoiceText.of(Phrase.Arrived))
     }
 
+    /** Where the goal is (owner 2026-11-07: "Das Ziel ist rechts von dir", "Ziel in 50 m, schräg rechts"). */
+    @Test fun theGoalsSide() {
+        assertEquals("You have arrived. The destination is on your right.", VoiceText.of(Phrase.ArrivedSide(GoalSide.RIGHT)))
+        assertEquals("You have arrived. The destination is ahead on your left.", VoiceText.of(Phrase.ArrivedSide(GoalSide.HALF_LEFT)))
+        assertEquals("Destination in 50 meters, half right.", VoiceText.of(Phrase.GoalAhead(60.0, GoalSide.HALF_RIGHT)))
+        assertEquals("Destination in 100 meters.", VoiceText.of(Phrase.GoalAhead(110.0, null)))
+        de {
+            assertEquals("Ziel erreicht. Das Ziel ist rechts von dir.", VoiceText.of(Phrase.ArrivedSide(GoalSide.RIGHT)))
+            assertEquals("Ziel erreicht. Das Ziel ist links von dir.", VoiceText.of(Phrase.ArrivedSide(GoalSide.LEFT)))
+            assertEquals("Ziel erreicht. Das Ziel ist schräg rechts vor dir.", VoiceText.of(Phrase.ArrivedSide(GoalSide.HALF_RIGHT)))
+            assertEquals("Ziel erreicht. Das Ziel ist hinter dir.", VoiceText.of(Phrase.ArrivedSide(GoalSide.BEHIND)))
+            assertEquals("Ziel in 50 Metern, schräg rechts.", VoiceText.of(Phrase.GoalAhead(60.0, GoalSide.HALF_RIGHT)))
+            assertEquals("Ziel in 100 Metern, links.", VoiceText.of(Phrase.GoalAhead(100.0, GoalSide.LEFT)))
+        }
+    }
+
     @Test fun roundedDistancesOneCanPicture() {
         assertEquals(listOf(50, 50, 100, 150, 200, 300, 500, 800),
             listOf(30.0, 70.0, 110.0, 160.0, 240.0, 330.0, 600.0, 820.0).map { VoiceText.roundAhead(it) })

@@ -39,6 +39,11 @@ object VoiceText {
             listOfNotNull(reached, if (p.turnRound) Txt.s(Res.string.voice_turn_round) else null, next).joinToString(" ")
         }
         Phrase.Arrived -> Txt.s(Res.string.voice_arrived)
+        is Phrase.ArrivedSide -> Txt.s(Res.string.voice_arrived_side, sideAt(p.side))
+        is Phrase.GoalAhead -> {
+            val goal = Txt.s(Res.string.voice_goal_in_m, roundAhead(p.inM).toString())
+            Txt.s(Res.string.voice_sentence, p.side?.takeIf { it != GoalSide.AHEAD }?.let { Txt.s(Res.string.voice_goal_side, goal, side(it)) } ?: goal)
+        }
         Phrase.NoGps -> Txt.s(Res.string.voice_no_gps)
         Phrase.NoDestination -> Txt.s(Res.string.voice_no_destination)
     }
@@ -71,6 +76,30 @@ object VoiceText {
         Turn.KEEP_RIGHT -> Txt.s(Res.string.voice_keep_right)
         Turn.U_TURN -> Txt.s(Res.string.voice_u_turn)
         Turn.ROUNDABOUT -> ordinal(exit)?.let { Txt.s(Res.string.voice_roundabout_exit, it) } ?: Txt.s(Res.string.voice_roundabout)
+    }
+
+    /** The goal's side, short – after "Ziel in 50 Metern, …" ("schräg rechts" / "half right"). */
+    private fun side(s: GoalSide): String = when (s) {
+        GoalSide.AHEAD -> Txt.s(Res.string.voice_side_ahead)
+        GoalSide.HALF_RIGHT -> Txt.s(Res.string.voice_side_half_right)
+        GoalSide.RIGHT -> Txt.s(Res.string.voice_side_right)
+        GoalSide.BACK_RIGHT -> Txt.s(Res.string.voice_side_back_right)
+        GoalSide.BEHIND -> Txt.s(Res.string.voice_side_behind)
+        GoalSide.BACK_LEFT -> Txt.s(Res.string.voice_side_back_left)
+        GoalSide.LEFT -> Txt.s(Res.string.voice_side_left)
+        GoalSide.HALF_LEFT -> Txt.s(Res.string.voice_side_half_left)
+    }
+
+    /** The goal's side, where it is from the rider – after "Das Ziel ist …" ("rechts von dir" / "on your right"). */
+    private fun sideAt(s: GoalSide): String = when (s) {
+        GoalSide.AHEAD -> Txt.s(Res.string.voice_at_ahead)
+        GoalSide.HALF_RIGHT -> Txt.s(Res.string.voice_at_half_right)
+        GoalSide.RIGHT -> Txt.s(Res.string.voice_at_right)
+        GoalSide.BACK_RIGHT -> Txt.s(Res.string.voice_at_back_right)
+        GoalSide.BEHIND -> Txt.s(Res.string.voice_at_behind)
+        GoalSide.BACK_LEFT -> Txt.s(Res.string.voice_at_back_left)
+        GoalSide.LEFT -> Txt.s(Res.string.voice_at_left)
+        GoalSide.HALF_LEFT -> Txt.s(Res.string.voice_at_half_left)
     }
 
     private fun ordinal(exit: Int): String? = when (exit) {

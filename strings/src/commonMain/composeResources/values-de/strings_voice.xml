@@ -70,4 +70,24 @@
         <item quantity="other">%1$s Stunden</item>
     </plurals>
     <string name="voice_turn_round">Bitte umdrehen.</string>
+    <!-- Wo das Ziel liegt, zur Fahrtrichtung (Owner 2026-11-07): bei der Ankunft und wenn es näher kommt. -->
+    <string name="voice_arrived_side">Ziel erreicht. Das Ziel ist %1$s.</string>
+    <string name="voice_at_ahead">vor dir</string>
+    <string name="voice_at_half_right">schräg rechts vor dir</string>
+    <string name="voice_at_right">rechts von dir</string>
+    <string name="voice_at_back_right">schräg rechts hinter dir</string>
+    <string name="voice_at_behind">hinter dir</string>
+    <string name="voice_at_back_left">schräg links hinter dir</string>
+    <string name="voice_at_left">links von dir</string>
+    <string name="voice_at_half_left">schräg links vor dir</string>
+    <string name="voice_goal_in_m">Ziel in %1$s Metern</string>
+    <string name="voice_goal_side">%1$s, %2$s</string>
+    <string name="voice_side_ahead">geradeaus</string>
+    <string name="voice_side_half_right">schräg rechts</string>
+    <string name="voice_side_right">rechts</string>
+    <string name="voice_side_back_right">schräg rechts hinter dir</string>
+    <string name="voice_side_behind">hinter dir</string>
+    <string name="voice_side_back_left">schräg links hinter dir</string>
+    <string name="voice_side_left">links</string>
+    <string name="voice_side_half_left">schräg links</string>
 </resources>
