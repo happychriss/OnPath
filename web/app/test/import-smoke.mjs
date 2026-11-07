@@ -163,8 +163,12 @@ await page.click('#lrPlan');
 await page.waitForFunction(() => !document.querySelector('dialog.longroute') && (/failed|Planning|Calculating/.test(document.getElementById('status').textContent) || !!document.querySelector('#summary .big')), null, { timeout: 120_000 }).catch(() => {});
 check(!(await page.$('dialog.longroute')) && await pins() === 3, 'Add to the route: three points, planned without asking again');
 // (d) + New in the plan bar (owner 2026-11-06: the one way – the plan row has no ✕ any more): no question any more (the
-// app's Zuletzt, owner 2026-11-06) – the unsaved plan goes under Meine Touren → Recent; undo brings it back
-await page.goto(url + 'index.html#p=' + CODE);
+// app's Zuletzt, owner 2026-11-06) – the unsaved plan goes under Meine Touren → Recent; undo brings it back.
+// On a freshly loaded page (a new engine worker): (c)'s Meran → Hilden plan may still be running in the engine's one
+// worker – it cannot be stopped mid-way, and with routing data up north (a laptop with NRW) it runs for minutes – and
+// a mere hash change keeps that worker, so + New's engine call waited behind it past the 10 s below (local, 2026-11-07:
+// red in 8 of 10 runs, the same without 3f6f23c0; GitHub has no data up north, the plan fails at once there)
+await page.goto(url + 'index.html?fresh=d#p=' + CODE); // another address (a query): a real load, not a hash change
 await planned();
 check(await page.locator('#planActions #clear').count() === 0 && await page.isEnabled('#newPlan'), 'plan row without ✕ New plan; the plan bar\'s + New is active');
 const recentN = () => page.evaluate(() => JSON.parse(localStorage.getItem('onpath.recent') ?? '[]').length);
