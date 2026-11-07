@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.material.icons.outlined.LocationSearching
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -125,6 +126,8 @@ fun MapScreen(
         vm.planGpsNote?.let { delay(PlanGps.noteMs(it)); vm.planGpsNote = null }
     }
     LaunchedEffect(gps, hasFix) { if (PlanGps.noteGone(vm.planGpsNote, gps, hasFix)) vm.planGpsNote = null }
+    // the map's quiet INFO line goes by itself (MapNote.MS), counted from when it was said
+    LaunchedEffect(vm.mapNoteTick) { vm.mapNote?.let { delay(MapNote.MS); vm.mapNote = null } }
     // One grouped control: compass (always, both modes: the session's one orientation – MapOrientation.tap), locate (always,
     // with the GPS dot), eye and whole route (always – grey without something route-like on the map, owner 2026-11-06).
     // [mode] = the layer the footer sits in (not vm.mode: the leaving layer keeps its look while it animates out)
@@ -268,6 +271,16 @@ fun MapScreen(
                 Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                     top = PlanGps.noteTopDp(rowTop, if (vm.backgroundStripShown) vm.backgroundStripBottomDp else null).dp,
                     start = OverviewPillPlace.EDGE_DP.dp, end = OverviewPillPlace.EDGE_DP.dp))
+        }
+        // A short INFO for the map (vm.say → NoticeSurface.MAP_LINE, e.g. "Relief off – the map runs smoother"): the quiet
+        // pill at the GPS note's height but beside the activity button (clear of its T badge), after the GPS note (a tap
+        // of the user's) – goes by itself after MapNote.MS
+        vm.mapNote?.takeIf { vm.mode == AppMode.PLAN && !vm.searchOpen && vm.planGpsNote == null }?.let { note ->
+            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+            QuietPill(note.text, androidx.compose.material.icons.Icons.Outlined.Info,
+                Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
+                    top = PlanGps.noteTopDp(rowTop, if (vm.backgroundStripShown) vm.backgroundStripBottomDp else null).dp,
+                    start = OverviewPillPlace.startDp(activityButtonShown = vm.shown == null).dp, end = OverviewPillPlace.EDGE_DP.dp))
         }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, cameraTick,

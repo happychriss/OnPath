@@ -63,6 +63,19 @@ class NoticesTest {
         }
     }
 
+    @Test fun anInfoForTheMapIsAQuietLineWhileThePlanMapShows() {
+        // "Relief off – the map runs smoother" (ReliefAuto): a line on the map, no box
+        assertEquals(NoticeSurface.MAP_LINE, NoticeRouting.surface(NoticeKind.INFO, NoticePlace.MAP, false, false, mapShown = true))
+        // My routes / Settings over the map, or the map not shown (Navigate, search): not shown
+        assertEquals(NoticeSurface.LOG_ONLY, NoticeRouting.surface(NoticeKind.INFO, NoticePlace.MAP, true, false, mapShown = true))
+        assertEquals(NoticeSurface.LOG_ONLY, NoticeRouting.surface(NoticeKind.INFO, NoticePlace.MAP, false, true, mapShown = true))
+        assertEquals(NoticeSurface.LOG_ONLY, NoticeRouting.surface(NoticeKind.INFO, NoticePlace.MAP, false, false, mapShown = false))
+        // an error stays the box; other places keep their lines
+        assertEquals(NoticeSurface.ERROR_CARD, NoticeRouting.surface(NoticeKind.ERROR, NoticePlace.MAP, false, false, mapShown = true))
+        assertEquals(NoticeSurface.LOG_ONLY, NoticeRouting.surface(NoticeKind.INFO, NoticePlace.BACKGROUND, false, false, mapShown = true))
+        assertEquals(NoticeSurface.LOG_ONLY, NoticeRouting.surface(NoticeKind.INFO, NoticePlace.ROUTES, false, false, mapShown = true))
+    }
+
     /** The wiring (the view model needs Android): the old bar is gone, every message goes through say / sayError / sayInfo. */
     @Test fun noDarkBarAnyMore() {
         val main = File("src/main/java/com/onpath/app")

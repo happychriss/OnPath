@@ -35,6 +35,7 @@ class GermanScreenshotTest {
     @Test fun plan() = shots.plan()
     @Test fun planLocateFar() = shots.planLocateFar()
     @Test fun overviewHint() = shots.overviewHint()
+    @Test fun planReliefOffNote() = shots.planReliefOffNote()
     @Test fun navigateLeaveAsk() = shots.navigateLeaveAsk()
     @Test fun navigatePausedLocked() = shots.navigatePausedLocked()
     @Test fun navigateLockedHint() = shots.navigateLockedHint()

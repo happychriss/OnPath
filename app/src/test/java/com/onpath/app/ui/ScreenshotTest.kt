@@ -2,6 +2,7 @@ package com.onpath.app.ui
 
 import com.onpath.strings.*
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -1632,6 +1633,24 @@ class ScreenshotTest {
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     OverviewPill({}, Modifier.padding(top = OverviewPillPlace.topDp(rowTop, null).dp,
                         start = OverviewPillPlace.startDp(activityButtonShown = true).dp, end = OverviewPillPlace.EDGE_DP.dp))
+                }
+            }
+        }
+    }
+
+    /**
+     * The app switched relief off on a slow phone (map/ReliefAuto, owner 2026-11-07): the quiet line on the map
+     * (vm.say → NoticeSurface.MAP_LINE), where Plan's GPS note stands – no box, goes by itself.
+     */
+    @Test fun planReliefOffNote() = paparazzi.snapshot {
+        Box {
+            Frame { PlanPanel(planUi(), PlanCallbacks()) }
+            OnPathTheme {
+                val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+                Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
+                    QuietPill(str(Res.string.maps_relief_auto_off), androidx.compose.material.icons.Icons.Outlined.Info,
+                        Modifier.padding(top = PlanGps.noteTopDp(rowTop, null).dp,
+                            start = OverviewPillPlace.startDp(activityButtonShown = true).dp, end = OverviewPillPlace.EDGE_DP.dp))
                 }
             }
         }
