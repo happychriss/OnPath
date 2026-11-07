@@ -643,9 +643,12 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
                     if (d.showMarkers) d.passed else emptySet())
             }
     }
-    LaunchedEffect(c, vm.shown, vm.followLine) {
-        c.setTrack(MapController.SRC_GPX, vm.shown?.segments ?: listOfNotNull(vm.followLine))
-        val rides = vm.shown?.rides.orEmpty()
+    // Navigate draws the followed line, never a track only shown (field bug 2026-11-07: a 0 m done tour opened during the
+    // tour left Navigate with the plan's points and no route – gpxLine)
+    val gpx = gpxLine(vm.mode == AppMode.NAVIGATE, vm.shown?.segments, vm.followLine)
+    LaunchedEffect(c, gpx) {
+        c.setTrack(MapController.SRC_GPX, gpx.lines)
+        val rides = if (gpx.track) vm.shown?.rides.orEmpty() else emptyList()
         c.setTrack(MapController.SRC_RIDES, rides.filter { it.second == com.onpath.app.rides.RideKind.VEHICLE }.map { it.first })
         c.setTrack(MapController.SRC_LIFTS, rides.filter { it.second == com.onpath.app.rides.RideKind.LIFT }.map { it.first })
     }
@@ -796,6 +799,25 @@ private const val ROUTE_UP_MAX_OFF_M = 30.0
  */
 internal fun paleLines(plan: Boolean, navOriginal: List<com.onpath.app.routing.GeoPoint>?): List<List<com.onpath.app.routing.GeoPoint>> =
     if (plan) emptyList() else listOfNotNull(navOriginal)
+
+/** What the [MapController.SRC_GPX] line draws ([gpxLine]); [track] = a shown track (its rides go with it). */
+internal data class GpxLine(
+    val lines: List<List<com.onpath.app.routing.GeoPoint>>,
+    val look: MapController.TrackLook,
+    val track: Boolean,
+)
+
+/**
+ * The one map line for a followed route or a shown track. A shown track (a done tour opened from My routes, a GPX
+ * import) takes the line in Plan, where its sheet is open, and wherever nothing is followed; in Navigate the followed
+ * line always stays. Field bug 2026-11-07 (owner's S10, "Wir haben Punkte ohne Route"): during the tour a 0 m done tour
+ * opened from My routes (no line to follow – only shown) replaced the followed line; back in Navigate the plan's points
+ * showed and no route, while the guidance ran on along it.
+ */
+internal fun gpxLine(navigate: Boolean, shown: List<List<com.onpath.app.routing.GeoPoint>>?,
+                     follow: List<com.onpath.app.routing.GeoPoint>?): GpxLine =
+    if (shown != null && !(navigate && follow != null)) GpxLine(shown, MapController.TrackLook.TRACK, true)
+    else GpxLine(listOfNotNull(follow), MapController.TrackLook.FOLLOW, false)
 
 /**
  * Which parts of the plan the map draws: (planned line, numbered point markers) – both whenever the plan can be edited

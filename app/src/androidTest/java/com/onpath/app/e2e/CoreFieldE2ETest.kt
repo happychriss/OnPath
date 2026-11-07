@@ -778,6 +778,52 @@ class CoreFieldE2ETest : E2EBase() {
     }
 
     /**
+     * Field bug 2026-11-07 (owner's S10, Play 0.17.3, "Wir haben Punkte ohne Route"): during a tour on a plan he opened a
+     * done tour of 0 m in My routes – no line, so it is only shown, not followed – and went back to Navigate. Navigate drew
+     * the plan's points and no route (the map line showed that empty track), while the guidance ran on. Navigate keeps
+     * the followed line on the map whatever is shown.
+     */
+    @Test fun anEmptyDoneTourOpenedDuringATourKeepsTheFollowedLineInNavigate() {
+        startPlanWithTwoPoints()
+        routeSettled()
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the route is followed", 20_000) { guided() }
+        waitUntil("Navigate draws the followed line", 15_000) { followedLineDrawn() }
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
+        val name = "E2E 0 m tour ${System.currentTimeMillis() % 100_000}"
+        val id = db.insertTour(TourKind.RECORDED, name, Activity.BIKE_TOURING.name, 2, 0.0, 0.0, 0.0, 0.0, emptyList(), emptyList())
+        try {
+            scenario.onActivity { vm(it).switchToPlan() }
+            waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+            scenario.onActivity { vm(it).requestOpen(tourWith(id)) }
+            waitUntil("the 0 m tour is shown (nothing to follow)", 10_000) {
+                var s = false; scenario.onActivity { s = vm(it).shown?.tourId == id }; s
+            }
+            scenario.onActivity { vm(it).continueNavigation(force = true) }
+            waitUntil("Navigate again", 10_000) { mode() == AppMode.NAVIGATE }
+            assertTrue("the plan is still followed", guided())
+            waitUntil("Navigate draws the followed line, not the shown empty tour", 15_000) { followedLineDrawn() }
+            scenario.onActivity {
+                assertEquals("the followed line is route blue", com.onpath.app.map.MapController.TrackLook.FOLLOW, vm(it).trackLook())
+            }
+        } finally {
+            scenario.onActivity { vm(it).closeShown() }
+            db.deleteTour(id)
+        }
+    }
+
+    /** The followed line's source holds a line on the map (features in the rendered tiles). */
+    private fun followedLineDrawn(): Boolean {
+        var n = 0
+        onMap { m ->
+            n = m.style?.getSourceAs<org.maplibre.android.style.sources.GeoJsonSource>(com.onpath.app.map.MapController.SRC_GPX)
+                ?.querySourceFeatures(null)?.size ?: 0
+        }
+        return n > 0
+    }
+
+    /**
      * Owner 2026-11-06 ("Zuletzt" in My routes): a new plan cleared → kept under Zuletzt, no question; Speichern there makes
      * it a saved plan; Löschen moves another one to the recycle bin; "Los geht's" saves the plan it starts with.
      */
