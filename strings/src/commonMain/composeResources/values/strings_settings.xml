@@ -57,7 +57,7 @@
     <string name="settings_map_style">Map style</string>
     <string name="settings_map_contours">Contour lines</string>
     <string name="settings_map_hillshade">Hill shading</string>
-    <string name="settings_map_direction">Map direction (Plan and Navigate)</string>
+    <string name="settings_map_direction">Map direction</string>
     <string name="settings_map_travel">Direction of travel</string>
     <string name="settings_map_north">North up</string>
     <string name="settings_map_planning">Planning</string>

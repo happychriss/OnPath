@@ -106,7 +106,7 @@ fun MapScreen(
         vm.planGpsNote?.let { delay(PlanGps.noteMs(it)); vm.planGpsNote = null }
     }
     LaunchedEffect(gps, hasFix) { if (PlanGps.noteGone(vm.planGpsNote, gps, hasFix)) vm.planGpsNote = null }
-    // One grouped control: compass (always: Plan = needle, tap north up; Navigate = orientation toggle), locate (always,
+    // One grouped control: compass (always, both modes: the session's one orientation – MapOrientation.tap), locate (always,
     // with the GPS dot), eye and whole route (always – grey without something route-like on the map, owner 2026-11-06).
     // [mode] = the layer the footer sits in (not vm.mode: the leaving layer keeps its look while it animates out)
     val controls = @Composable { mode: AppMode ->
@@ -116,7 +116,7 @@ fun MapScreen(
             val ctl = vm.controlsIn(mode, pointsOpen)
             Box(if (mode == AppMode.PLAN) Modifier.onSizeChanged { planFab[0] = it.width; planFab[1] = it.height } else Modifier) {
                 MapControls(
-                    // same cycle in both modes: turned by hand → north up → walking direction up → north up (AppViewModel.onCompass)
+                    // same in both modes (MapOrientation.tap): north + turned by hand → north; north → walking direction; walking direction → north
                     compass = if (pointsOpen) null
                         else CompassSpec(vm.headingUp && vm.followMe, bearing) { vm.onCompass(kotlin.math.abs(bearing) > 1f) },
                     // eye, whole route, undo, redo: always there, greyed when they cannot act (MapControlsEnabled)
@@ -741,7 +741,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         vm.events.clear()
         pending.forEach { e ->
             when (e) {
-                is UiEvent.Fit -> c.fitTo(e.points, fitPadding(), e.northUp)
+                is UiEvent.Fit -> c.fitTo(e.points, fitPadding())
                 is UiEvent.CenterOn -> c.flyTo(e.point, e.zoom, fitPadding())
                 is UiEvent.PanTo -> c.panTo(e.point)
                 is UiEvent.Share -> runCatching { context.startActivity(e.intent) }
