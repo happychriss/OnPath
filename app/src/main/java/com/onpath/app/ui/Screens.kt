@@ -363,6 +363,9 @@ fun RoutesScreen(
     // the search box (owner 2026-11-06): kept across the tabs, filters the list of the tab shown
     var query by remember { mutableStateOf(initialQuery) }
     val shown = remember(tours, tab, query) { RoutesTab.search(RoutesTab.filter(tours, tab), query) }
+    // the list at its top stays there when a row comes before its first (ListTop, E2E 2026-11-07)
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val listFirstKey = remember { arrayOfNulls<Any>(1) }
     var rename by remember { mutableStateOf(initialRename) }
     var allRecent by remember { mutableStateOf(initialAllRecent) }
     Box(Modifier.fillMaxSize()) {
@@ -424,7 +427,20 @@ fun RoutesScreen(
                 // right on its card
                 val drafts = shown.filter { it.draft && it.id !in liveRows.hiddenDraftIds }
                 val saved = shown.filter { !it.draft }
-                LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
+                // a route saved / synced / read fresh lands on top: a LazyColumn would keep the old first row at the top
+                // and the new one above the screen (E2E 2026-11-07) – at the top, the list shows it; scrolled, it stays
+                val firstKey: Any? = if (drafts.isNotEmpty() || liveTour != null) "h-recent" else saved.firstOrNull()?.id
+                val scrollTop = remember(firstKey) {
+                    val before = listFirstKey[0]
+                    listFirstKey[0] = firstKey
+                    // the position of the last layout, before this list is measured
+                    androidx.compose.runtime.snapshots.Snapshot.withoutReadObservation {
+                        com.onpath.app.ui.routes.ListTop.scrollTo(before, firstKey,
+                            com.onpath.app.ui.routes.ListTop.atTop(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset))
+                    }
+                }
+                androidx.compose.runtime.LaunchedEffect(firstKey) { scrollTop?.let { listState.scrollToItem(it) } }
+                LazyColumn(state = listState, contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (drafts.isNotEmpty() || liveTour != null) {
                         item(key = "h-recent") { SectionHeader(str(Res.string.routes_section_recent)) }
