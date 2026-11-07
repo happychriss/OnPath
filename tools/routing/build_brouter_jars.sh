@@ -8,7 +8,7 @@
 # OnPath's one change to BRouter (MIT; the jar names say it: <version>-onpath1): brouter-core's
 # RoutingEngine.islandNodePairs is made package-private by tools/routing/patch_brouter_jar.py (access flag only, no
 # byte code changes), so btools.router.OnPathHints reaches the island list without reflection – the web planner (TeaVM)
-# then snaps an island point to the next way like the app (docs/handoff-web-island.md). Raise the label when the patch
+# then snaps an island point to the next way like the app (docs/design/web-planner.md "Lessons"). Raise the label when the patch
 # changes; RoutingFingerprint.BROUTER_VERSION must match the jar names (RoutingFingerprintTest).
 # Usage: tools/routing/build_brouter_jars.sh [BROUTER_SRC_DIR]
 set -euo pipefail
