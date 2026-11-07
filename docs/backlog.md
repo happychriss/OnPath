@@ -23,6 +23,14 @@ and the commit history.
   app 501db30d, shared `routing/OfflineCorridor.kt`). `WebApi.partsNeeded` still calls `Rd5Parts.forCorridor(points)`
   without an activity, so the browser now loads routing parts in 20 km for every plan: pass
   `OfflineCorridor.marginM(activity)` there to match the phone.
+- → [laptop] (donald 2026-11-07): a stop the route does not reach now says what does (owner, "Meran → Mutkopf" at
+  T1): new shared `routing/PlanReach.kt` (in `app/web-shared-files.txt`; `web/parity.json` needs `--update` for it) +
+  `PlanGaps.reachText` → "② erst ab T2 erreichbar" / "② nur mit Gravelbike erreichbar" / "② nicht erreichbar". For the
+  same line in the planner: after the plan route, when `PlanResult.gaps` has a first gap, call
+  `PlanReach.find(engine, gap, activity, sac)` (only the missing piece, ~40 ms a try) and show `reachText` instead of
+  `PlanGaps.text`; a tap shows `PlanReach.way` like a steep spot. The grey band's red "T3" label
+  (`routes-hike-over-label`) comes with the f2 style; its filter is in `ActivityLayers.hikeRouteFilters` (the planner
+  sets it already – it guards with `getLayer`). MapController / AppViewModel changes do not touch their mirrored parts.
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
