@@ -24,8 +24,28 @@ class InterruptedLogTest {
         }
     }
 
+    /** Meran pictures bug 2: after "Weiter" on "Unterbrochene Tour" the "Tour interrupted" notification stayed. */
+    @Test fun everyAnswerClearsTheInterruptedNotification() {
+        for (c in InterruptedLog.Choice.values()) {
+            var cleared = 0
+            InterruptedLog.chose("Vellau", c) { cleared++ }
+            assertEquals(c.name, 1, cleared)
+        }
+        // the system restarting the service (background location) also ends it
+        val svc = java.io.File("src/main/java/com/onpath/app/recording/RecordingService.kt").readText()
+        assertTrue(svc.substringAfter("if (existing != null) {").substringBefore("} else {")
+            .contains("TourInterruptedReceiver.cancelNote(this)"))
+        val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        assertEquals(3, Regex("InterruptedLog\\.Choice\\.[A-Z]+, ::clearInterruptedNote\\)").findAll(vm).count())
+    }
+
+    @Test fun aFailingClearIsReportedNotThrown() {
+        InterruptedLog.chose("Vellau", InterruptedLog.Choice.CONTINUE) { throw SecurityException("no") }
+        assertTrue(Problems.snapshot().any { it.level == Problems.Level.WARN && it.message.contains("Tour interrupted") })
+    }
+
     @Test fun deleteIsLoggedAsDelete() {
-        InterruptedLog.chose("Vellau", InterruptedLog.Choice.DELETE)
+        InterruptedLog.chose("Vellau", InterruptedLog.Choice.DELETE) {}
         val e = Problems.snapshot().single()
         assertEquals("recording", e.area)
         assertEquals(Problems.Level.INFO, e.level)

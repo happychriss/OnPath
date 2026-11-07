@@ -54,5 +54,10 @@ class TourInterruptedReceiver : BroadcastReceiver() {
         Problems.warn("recording", InterruptedLog.interruptedLine(tour.name, boot))
     }
 
-    companion object { internal const val INTERRUPTED_ID = 45 }
+    companion object {
+        internal const val INTERRUPTED_ID = 45
+
+        /** The tour goes on or was saved / deleted: the notification has done its job (Meran pictures bug 2). */
+        fun cancelNote(context: Context) = NotificationManagerCompat.from(context).cancel(INTERRUPTED_ID)
+    }
 }

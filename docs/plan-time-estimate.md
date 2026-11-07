@@ -99,7 +99,10 @@ Owner decision: "learning per tour only". What the code does (`time/TripPace`, `
 estimate on the old line at that moment) is kept as an offset and blended out linearly over 10 min
 (`OFFSET_BLEND_MS`). When the shown arrival moves by more than 5 min because of a new line (`NOTE_MIN_MS`),
 `TripTime.lineNote` carries "New route: arrival 12:45, was 13:15"; the Navigate card shows it as a line under the
-status until the next line change (the same line sent again keeps it; not persisted across a service restart).
+status until the next line change (the same line sent again keeps it; not persisted across a service restart) or
+the last 5 min to the goal. The calm display and the offset never hold the arrival off the estimate by more than 1 min
+or half the time to go (`NEAR_SHARE`) – near the goal they give way (Meran pictures H01: "4 min · Ankunft 11:15" at 11:03,
+49 m before the goal).
 
 Tests: `TripPaceTest` (start from the setting, warm-up, gradual blend per class, breaks excluded in the warm-up,
 setting change mid-tour, no carry-over, offset after a line change – without the offset the arrival jumps 15 min –,

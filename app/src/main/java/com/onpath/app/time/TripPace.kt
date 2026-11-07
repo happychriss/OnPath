@@ -222,10 +222,10 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
             // walking back along the route is no estimate noise – the time to go grows at once (owner rule 2).
             // After a line change the estimate carries what the display still held back, blended out (no jump).
             val goal = target + offsetAt(wallMs)
-            val next = if (resetCalm || shown == null || back) goal else {
+            val next = bounded(if (resetCalm || shown == null || back) goal else {
                 val lim = ((CALM_S + CALM_SHARE * raw) * 1000).roundToLong()
                 shown + (goal - shown).coerceIn(-lim, lim)
-            }
+            }, target, raw)
             lagMs = next - target
             noteWasMs?.let { was ->
                 if (abs(next - was) > NOTE_MIN_MS) lineNote = LineNote(was, next) else noteFrom = null
@@ -241,10 +241,24 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
             // later while walking as shown
             val base = showToGoS ?: shownToGoS ?: return
             val toGo = if (matched && showRawS > 0) base * (raw / showRawS).coerceIn(0.0, 1.0) else shownToGoS ?: base
-            shownToGoS = toGo
-            shownArrivalMs = max(shown ?: 0L, TimeEstimate.arrivalMs(wallMs, toGo, allowance))
+            val arrival = max(shown ?: 0L, TimeEstimate.arrivalMs(wallMs, toGo, allowance))
+            val kept = if (matched) bounded(arrival, target, raw) else arrival
+            shownArrivalMs = kept
+            shownToGoS = if (kept == arrival) toGo else max(0.0, (kept - wallMs) / 1000.0 / (1 + allowance))
             lastShowWall = wallMs
         }
+        // the last minutes: "New route · was 14:25" has nothing left to explain (Meran pictures H01)
+        if (matched && raw * 1000 < NOTE_MIN_MS) lineNote = null
+    }
+
+    /**
+     * The calm display and a line change's offset may hold the arrival off the estimate by at most 1 min or half the
+     * time to go – near the goal they give way to the estimate (Meran pictures H01: "4 min" and an arrival 12 min away
+     * 49 m before the goal, after the plan's end moved close while the display lagged a fast walker by minutes).
+     */
+    private fun bounded(arrivalMs: Long, targetMs: Long, rawS: Double): Long {
+        val lim = (max(CALM_S, NEAR_SHARE * rawS) * 1000).roundToLong()
+        return arrivalMs.coerceIn(targetMs - lim, targetMs + lim)
     }
 
     /** Unrounded "to go" on the screen (s); replay metrics. */
@@ -330,6 +344,8 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
         const val SHOW_EVERY_M = 100.0
         const val CALM_S = 60.0
         const val CALM_SHARE = 0.02
+        /** The shown arrival stays within this share of the time to go (at least [CALM_S]) of the estimate. */
+        const val NEAR_SHARE = 0.5
         /** Progress changing by more than this between two fixes is a jump (other part of the line): shown at once. */
         const val JUMP_RESET_M = 300.0
         /** No fix / no progress while moving for this long (active s): "estimate paused" (owner rule 8). */
