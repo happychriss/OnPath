@@ -20,7 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.FilledIconButton
@@ -38,6 +38,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -72,31 +79,43 @@ fun ChangePlanButton(onClick: () -> Unit, modifier: Modifier = Modifier, hold: B
 }
 
 /**
- * The locked bar's frame: the small line over the buttons – at rest "🔒 Gesperrt · Knopf gedrückt halten" only until the
- * user has fired one held button (owner 2026-11-07, [HoldRule.pillShows]; the light buttons say "locked" by themselves),
- * after a release before the end "Gedrückt halten" in walnut for [HoldRule.HINT_MS] (a short tap is never silent).
+ * The locked bar's frame (owner 2026-11-07, 09:30): nothing over the buttons at rest – the light buttons say "locked" by
+ * themselves. A release before the end shows "Gedrückt halten" for [HoldRule.HINT_MS] right above the tapped button
+ * (walnut pill, white words, 16 sp; [HoldRule.hintLeft]) – [HoldButton] adds a short tick. The hint takes its own line
+ * over the buttons while it shows, so it never covers the pause band or a button (the bottom column grows upwards).
  */
 @Composable
-private fun HoldBar(modifier: Modifier, bar: @Composable (onEarly: () -> Unit) -> Unit) {
-    var strongAt by remember { mutableLongStateOf(0L) }
-    val strong = strongAt != 0L
-    LaunchedEffect(strongAt) { if (strongAt != 0L) { kotlinx.coroutines.delay(HoldRule.HINT_MS); strongAt = 0L } }
-    Column(modifier.fillMaxWidth()) {
-        if (HoldRule.pillShows(LocalHoldLearned.current, strong)) Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.Center) {
-            Surface(shape = OnPathShapes.Pill, color = if (strong) OnPathColors.Walnut else OnPathColors.Paper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Pill)) {
-                Row(Modifier.padding(horizontal = 14.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(if (strong) Icons.Filled.TouchApp else Icons.Filled.Lock, null, Modifier.size(18.dp),
-                        tint = if (strong) OnPathColors.CardWhite else OnPathColors.Walnut)
-                    Spacer(Modifier.width(6.dp))
-                    Text(str(if (strong) Res.string.nav_hold_hint else Res.string.nav_hold_hint_rest),
-                        style = MaterialTheme.typography.bodyMedium, fontWeight = if (strong) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (strong) OnPathColors.CardWhite else OnPathColors.Walnut)
+private fun HoldBar(modifier: Modifier, bar: @Composable (onEarly: (Float) -> Unit) -> Unit) {
+    var hintAt by remember { mutableLongStateOf(0L) }
+    var tappedX by remember { mutableFloatStateOf(0f) } // the tapped button's centre, window px
+    var barLeft by remember { mutableFloatStateOf(0f) }
+    var barWidth by remember { mutableFloatStateOf(0f) }
+    var hintWidth by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(hintAt) { if (hintAt != 0L) { kotlinx.coroutines.delay(HoldRule.HINT_MS); hintAt = 0L } }
+    Column(modifier.fillMaxWidth().onGloballyPositioned { barLeft = it.boundsInWindow().left; barWidth = it.size.width.toFloat() }) {
+        if (hintAt != 0L || LocalHoldHintShown.current) {
+            val left = HoldRule.hintLeft(tappedX - barLeft, hintWidth, barWidth)
+            Box(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                Surface(shape = OnPathShapes.Pill, color = OnPathColors.Walnut,
+                    modifier = Modifier.onSizeChanged { hintWidth = it.width.toFloat() }
+                        .offset { androidx.compose.ui.unit.IntOffset(left.toInt(), 0) }
+                        .warmShadow(OnPathShadow.HIGH, OnPathShapes.Pill)
+                        .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }) {
+                    Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.TouchApp, null, Modifier.size(20.dp), tint = OnPathColors.CardWhite)
+                        Spacer(Modifier.width(8.dp))
+                        Text(str(Res.string.nav_hold_hint), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
+                            color = OnPathColors.CardWhite)
+                    }
                 }
             }
         }
-        bar { strongAt = System.nanoTime() }
+        bar { x -> tappedX = x; hintAt = System.nanoTime() }
     }
 }
+
+/** Screenshot tests: draw the "Gedrückt halten" hint as right after a short tap (over the bar's first button). */
+val LocalHoldHintShown = androidx.compose.runtime.staticCompositionLocalOf { false }
 
 @Composable
 private fun HoldLabel(icon: ImageVector?, text: String?, color: Color) {
@@ -119,15 +138,67 @@ private fun HoldLabel(icon: ImageVector?, text: String?, color: Color) {
  */
 @Composable
 fun TourBottomBar(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Unit, onPlan: () -> Unit, modifier: Modifier = Modifier,
-                  hold: Boolean = false) {
-    if (hold) HoldBar(modifier) { hint -> TourBottomBarRow(paused, onPause, onEnd, onPlan, Modifier, hint) }
-    else TourBottomBarRow(paused, onPause, onEnd, onPlan, modifier, null)
+                  hold: Boolean = false, pausedSinceMs: Long? = null, free: Boolean = false) {
+    // Paused (owner 2026-11-07, variant C of https://claude.ai/artifact/24XVQ4goVZixT53fnQDn7H): a calm paper band over
+    // the buttons says what stands still and since when – one column, so the band, the lock line and the buttons stack
+    // and never overlap (the "Neuer Plan" card sits above the measured column)
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (paused) PauseBand(pausedSinceMs, free)
+        if (hold) HoldBar(Modifier) { hint -> TourBottomBarRow(paused, onPause, onEnd, onPlan, Modifier, hint) }
+        else TourBottomBarRow(paused, onPause, onEnd, onPlan, Modifier, null)
+    }
+}
+
+/** Screenshot tests: a fixed "now" for the pause band (null = the real clock, ticking every second). */
+val LocalPauseClock = androidx.compose.runtime.staticCompositionLocalOf<Long?> { null }
+
+/**
+ * The pause band (owner 2026-11-07, variant C): "⏸ Pause · 12:04" with the pause time running, and what stands still –
+ * "Aufnahme und Navigation angehalten", on a free tour "Aufnahme angehalten" ([PauseBandText]). Paper, walnut words,
+ * no button of its own (Weiter is right under it).
+ */
+@Composable
+private fun PauseBand(sinceMs: Long?, free: Boolean) {
+    val fixed = LocalPauseClock.current
+    var now by remember { mutableLongStateOf(fixed ?: System.currentTimeMillis()) }
+    if (fixed == null && sinceMs != null) LaunchedEffect(sinceMs) {
+        while (true) { now = System.currentTimeMillis(); kotlinx.coroutines.delay(1_000L - (now - sinceMs).mod(1_000L)) }
+    }
+    val title = sinceMs?.let { str(Res.string.nav_pause_band, PauseBandText.elapsed(now - it)) } ?: str(Res.string.nav_action_pause)
+    Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper,
+        border = BorderStroke(1.dp, OnPathColors.Walnut.copy(alpha = 0.3f)),
+        modifier = Modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, OnPathShapes.Card)
+            .semantics(mergeDescendants = true) {}) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Pause, null, tint = OnPathColors.Walnut, modifier = Modifier.size(28.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                // the running time in equal-width digits: nothing jiggles while it counts
+                Text(title, style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"), fontWeight = FontWeight.SemiBold,
+                    color = OnPathColors.Walnut)
+                Text(str(if (PauseBandText.freeLine(free)) Res.string.nav_pause_band_line_free else Res.string.nav_pause_band_line),
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+/** The pause band's words (pure, unit-tested). */
+object PauseBandText {
+    /** How long the pause lasts: "0:07", "12:04", after an hour "1:02:30" (never negative – a clock set back shows 0:00). */
+    fun elapsed(ms: Long): String {
+        val s = (ms / 1000).coerceAtLeast(0)
+        val h = s / 3600; val m = (s % 3600) / 60; val sec = s % 60
+        return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
+    }
+    /** A free tour (no route followed) pauses only the recording; with a route the guidance stands still too. */
+    fun freeLine(free: Boolean): Boolean = free
 }
 
 /** [TourBottomBar]'s buttons; [holdHint] non-null = locked (held buttons, the hint on an early release). */
 @Composable
 private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Unit, onPlan: () -> Unit, modifier: Modifier,
-                             holdHint: (() -> Unit)?) {
+                             holdHint: ((Float) -> Unit)?) {
     val pauseWord = str(Res.string.nav_action_pause)
     val resumeWord = str(Res.string.common_resume)
     val endWord = str(Res.string.nav_end_short)
@@ -165,8 +236,10 @@ private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd:
             if (row) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { pause(Modifier.weight(1f)); plan(Modifier.weight(1f)) }
             else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) { pause(Modifier.fillMaxWidth()); plan(Modifier.fillMaxWidth()) }
         } else {
-            val oneRow = TourBottomBarRules.pausedInOneRow(w(resumeWord), w(endWord), width)
-            val resume = @Composable { m: Modifier -> go(resumeWord, null, m) { onPause(false) } }
+            // "▶ Weiter" (owner 2026-11-07): the play sign says what the green button does; dropped only when it would not fit
+            val playFits = TourBottomBarRules.pausedInOneRow(w(resumeWord) + TourBottomBarRules.ICON, w(endWord), width)
+            val oneRow = playFits || TourBottomBarRules.pausedInOneRow(w(resumeWord), w(endWord), width)
+            val resume = @Composable { m: Modifier -> go(resumeWord, if (playFits || !oneRow) Icons.Filled.PlayArrow else null, m) { onPause(false) } }
             val end = @Composable { m: Modifier ->
                 if (holdHint != null) HoldButton(endWord, OnPathColors.ActionGo, OnPathColors.Paper, OnPathColors.ActionGo, onEnd, holdHint,
                     m.height(56.dp), outline = OnPathColors.ActionGo) { c -> HoldLabel(null, endWord, c) }
@@ -196,7 +269,7 @@ private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd:
 object TourBottomBarRules {
     private const val GAP = 8f
     private const val PAD = 24f // Button's side padding
-    private const val ICON = 30f // icon + its spacer
+    const val ICON = 30f // icon + its spacer
     /** Both running buttons with their icons fit side by side (each half wide). */
     fun runningWithIcons(pauseW: Float, planW: Float, width: Float): Boolean =
         maxOf(pauseW, planW) + ICON + 2 * PAD <= (width - GAP) / 2

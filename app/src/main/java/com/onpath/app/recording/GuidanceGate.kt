@@ -36,6 +36,11 @@ object GuidanceGate {
     fun rerouteVibrates(stepVibrates: Boolean, planQuiet: Boolean): Boolean =
         stepVibrates && ModeQuiet.allows(planQuiet, ModeQuiet.Event.OFF_ROUTE_QUESTION)
 
-    /** A pending off-route question gets no notification in Plan (it stays in the navigator; Navigate asks again). */
-    fun offRouteNotification(planQuiet: Boolean): Boolean = ModeQuiet.allows(planQuiet, ModeQuiet.Event.OFF_ROUTE_NOTIFICATION)
+    /**
+     * A pending navigation question (off route, far start, mid route, lead failed) gets no notification in Plan and none
+     * during a pause (owner 2026-11-07 "Pause heißt Ruhe"): it stays in the navigator, unanswered, and is asked again
+     * after Weiter / in Navigate.
+     */
+    fun offRouteNotification(planQuiet: Boolean, paused: Boolean = false): Boolean =
+        !paused && ModeQuiet.allows(planQuiet, ModeQuiet.Event.OFF_ROUTE_NOTIFICATION)
 }

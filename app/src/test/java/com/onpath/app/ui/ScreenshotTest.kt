@@ -123,7 +123,8 @@ class ScreenshotTest {
     @Composable
     private fun NavFrame(ui: NavUi, slide: Float = 0f, fit: Boolean = false, actions: Boolean = false, lock: Boolean = true,
                          newPlan: NewPlanNote? = null) {
-        OnPathTheme {
+        // the pause band counts from a fixed "now" (a running clock would make every frame differ)
+        OnPathTheme { androidx.compose.runtime.CompositionLocalProvider(LocalPauseClock provides PAUSE_NOW) {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
@@ -133,8 +134,12 @@ class ScreenshotTest {
                         onSlideToPlan = {}, slideStartFraction = slide, actionsOpen = actions, lock = lock, newPlan = newPlan)
                 }
             }
-        }
+        } }
     }
+
+    /** The paused frames: "Pause · 12:04" (the pause began 12 min 4 s before [PAUSE_NOW]). */
+    private val PAUSE_NOW = 1_794_000_000_000L
+    private val pausedUi get() = navUi.copy(paused = true, pausedSinceMs = PAUSE_NOW - 724_000L)
 
     private val navUi = NavUi(toGo = ToGo(7_420.0, 512.0, 2.9 * 3600, 12.0, descentM = 310.0, profile = routePts),
         recordedM = 5_320.0, elapsedS = 5025, activity = Activity.HIKE)
@@ -727,17 +732,20 @@ class ScreenshotTest {
     fun navigateActionsOpen() = paparazzi.snapshot { NavFrame(navUi, actions = true) }
 
     /** Unlocked and paused: "Fortsetzen" in the card, "Sperren | Plan" at the bottom as without a pause (owner 2026-11-06). */
-    fun navigatePausedOpen() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true), actions = true) }
-
-    /** Locked and paused (owner 2026-11-06): the slider, its small line "Fortsetzen · Beenden · Plan". */
-    fun navigatePausedLocked() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true)) }
+    fun navigatePausedOpen() = paparazzi.snapshot { NavFrame(pausedUi, actions = true) }
 
     /**
-     * Locked after the first fired hold (owner 2026-11-07): no "Gesperrt · Knopf gedrückt halten" line at rest – the light
-     * buttons say "locked"; a short tap still shows "Gedrückt halten". (The other locked frames show the first-use line.)
+     * Locked and paused (owner 2026-11-07, variant C): the pause band "⏸ Pause · 12:04 – Aufnahme und Navigation
+     * angehalten" over the light held buttons "▶ Weiter · Beenden · ✎".
      */
-    fun navigateLockedLearned() = paparazzi.snapshot {
-        androidx.compose.runtime.CompositionLocalProvider(LocalHoldLearned provides true) { NavFrame(navUi) }
+    fun navigatePausedLocked() = paparazzi.snapshot { NavFrame(pausedUi) }
+
+    /**
+     * Locked, right after a short tap on "Pause" (owner 2026-11-07, 09:30): "Gedrückt halten" in a strong walnut pill
+     * right above the tapped button (+ a tick on the phone). At rest nothing is over the light buttons (the other frames).
+     */
+    fun navigateLockedHint() = paparazzi.snapshot {
+        androidx.compose.runtime.CompositionLocalProvider(LocalHoldHintShown provides true) { NavFrame(navUi) }
     }
 
     /** Without a recording, unlocked: only "Plan ändern". */
@@ -747,9 +755,12 @@ class ScreenshotTest {
     /** The lock off (owner 2026-11-06, variant 2): no buttons in the card, "⏸ Pause | ✎ Planen" at the bottom. */
     fun navigateLockOff() = paparazzi.snapshot { NavFrame(navUi, lock = false) }
     /** The lock off, paused: "Weiter · Beenden · round Planen" – ending only out of a pause. */
-    fun navigateLockOffPaused() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true), lock = false) }
+    fun navigateLockOffPaused() = paparazzi.snapshot { NavFrame(pausedUi, lock = false) }
 
-    fun navigateFreePaused() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true)) }
+    /** A free tour paused: the band says only "Aufnahme angehalten" (no route to stand still). */
+    fun navigateFreePaused() = paparazzi.snapshot {
+        NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true, pausedSinceMs = PAUSE_NOW - 724_000L))
+    }
 
     /** A tour without a route (owner 2026-11-05): "Freie Tour · nur Aufnahme" instead of an empty route line. */
     fun navigateFreeTour() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = false)) }

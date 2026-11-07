@@ -51,11 +51,11 @@ class HoldRuleTest {
         assertEquals(0, HoldRule.remainingMs(0f, holdMs = 0))
     }
 
-    @Test fun theLockLineAtRestOnlyUntilTheFirstFiredHold() {
-        // owner 2026-11-07: "nur beim ersten Mal oder wenn man den Knopf kurz antippt – nicht andauernd"
-        assertTrue("first tours: the rest line explains the lock", HoldRule.pillShows(learned = false, strong = false))
-        assertFalse("learned: no line at rest", HoldRule.pillShows(learned = true, strong = false))
-        assertTrue("a short tap always says 'Gedrückt halten'", HoldRule.pillShows(learned = true, strong = true))
-        assertTrue(HoldRule.pillShows(learned = false, strong = true))
+    @Test fun theHintSitsRightAboveTheTappedButtonAndInsideTheBar() {
+        // owner 2026-11-07 09:30: nothing at rest, "Gedrückt halten" only after a short tap, right above that button
+        assertEquals("centred over a button in the middle", 400f, HoldRule.hintLeft(buttonCenter = 500f, hintWidth = 200f, barWidth = 1000f), 0.01f)
+        assertEquals("a button at the left edge: the hint starts at the bar's edge", 0f, HoldRule.hintLeft(50f, 200f, 1000f), 0.01f)
+        assertEquals("a button at the right edge: the hint ends at the bar's edge", 800f, HoldRule.hintLeft(990f, 200f, 1000f), 0.01f)
+        assertEquals("a hint wider than the bar starts at its edge", 0f, HoldRule.hintLeft(500f, 1200f, 1000f), 0.01f)
     }
 }

@@ -107,6 +107,8 @@ data class NavUi(
     val recordedM: Double? = null,
     val elapsedS: Long = 0,
     val paused: Boolean = false,
+    /** When the pause began (wall clock ms, [com.onpath.app.recording.RecState.pausedSinceMs]) – the pause band's clock. */
+    val pausedSinceMs: Long? = null,
     val waitingGps: Boolean = false,
     /** No GPS while standing still or only briefly (owner 2026-11-01): a quiet grey state, not the amber ⚠ warning. */
     val quietGps: Boolean = false,
@@ -150,7 +152,22 @@ data class NavUi(
     val approx: String? = null,
     /** OnPath's notifications are off during this tour: the amber box under the status card ([notificationsOffMessage]). */
     val notificationsOff: Boolean = false,
+    /** Paused and calm ([PauseQuiet.calm]): the status card says only what the pause band does not – no "not on the route". */
+    val calm: Boolean = false,
 )
+
+/**
+ * "Pause heißt Ruhe" (owner 2026-11-07, Pixel: paused, yet "Route beginnt 58 km entfernt – Hinführen" on top and "Kein GPS"
+ * in the card): while a tour is paused Navigate asks nothing and warns about nothing. The navigation questions (off
+ * route, far start, mid route, lead failed, searching) are hidden – not answered, not dropped: they stay in the
+ * navigator and show again after Weiter if still valid; no turn card, no GPS line, no Wi-Fi-position line. The pause
+ * band over the buttons explains the rest. Pure.
+ */
+object PauseQuiet {
+    fun calm(ui: NavUi): NavUi =
+        if (!ui.paused || ui.recordedM == null) ui
+        else ui.copy(offRoute = null, turn = null, waitingGps = false, approx = null, calm = true)
+}
 
 /** [roundabout]: non-null = the turn is a roundabout, with the exit to take (0 = unknown). */
 data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: Int? = null,
@@ -208,7 +225,7 @@ data class ToGo(
  */
 @Composable
 fun NavigateOverlay(
-    ui: NavUi,
+    shown: NavUi,
     footer: @Composable () -> Unit,
     onSlideToPlan: () -> Unit,
     onResume: () -> Unit = {},
@@ -264,6 +281,9 @@ fun NavigateOverlay(
     onNewPlanUndo: () -> Unit = {},
     onNewPlanGone: () -> Unit = {},
 ) {
+    // "Pause heißt Ruhe" (owner 2026-11-07): while paused no navigation question, no turn card, no GPS warning – the
+    // pause band says what stands still; the questions come back after Weiter ([PauseQuiet])
+    val ui = PauseQuiet.calm(shown)
     val density = androidx.compose.ui.platform.LocalDensity.current
     // the top column's height (turn card, status, chips) below the status bar: the one box goes 12 dp below it
     var topColumnDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
@@ -308,8 +328,10 @@ fun NavigateOverlay(
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
             val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            // a tour: Pause | Planen (paused Weiter · Beenden · ✎); no tour: one big blue Planen – held while locked
-            if (ui.recordedM != null) TourBottomBar(ui.paused, onPause, onEnd = onEnd, onPlan = onSlideToPlan, bottom, hold = hold)
+            // a tour: Pause | Planen (paused: the pause band over ▶ Weiter · Beenden · ✎); no tour: one big blue Planen –
+            // held while locked
+            if (ui.recordedM != null) TourBottomBar(ui.paused, onPause, onEnd = onEnd, onPlan = onSlideToPlan, bottom, hold = hold,
+                pausedSinceMs = ui.pausedSinceMs, free = ui.toGo == null)
             else ChangePlanButton(onSlideToPlan, bottom, hold = hold)
         }
         // "Neuer Plan – deine Aufnahme läuft weiter" just above the bottom bar, over the map (nothing moves under it), left
@@ -547,8 +569,9 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 ui.toGo?.let { g ->
                     if (g.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE) {
                         // never a stale time (owner rule 6): what is left counts again once back on the route. While the
-                        // amber off-route card shows, it says it (one place, one distance).
-                        if (!offCard) {
+                        // amber off-route card shows, it says it (one place, one distance). Paused (calm): nothing –
+                        // the card's line says "Pausiert", the pause band the rest (owner 2026-11-07 "Pause heißt Ruhe")
+                        if (!offCard && !ui.calm) {
                             // never reached: "Not on the route yet · Start 31 km away" (the far-start box's number)
                             val (title, line2) = NavText.notOnRoute(g.startM, g.offM)
                             Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
@@ -991,6 +1014,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
                 state = tt?.state ?: com.onpath.app.time.EstimateState.OK, pausedBecause = tt?.pausedBecause?.text, target = target)
         },
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,
+        pausedSinceMs = rec?.pausedSinceMs?.takeIf { rec.paused },
         waitingGps = rec?.gpsLost == true && prov == null,
         quietGps = rec?.gpsQuiet == true,
         stillGps = rec?.gpsStill == true,
@@ -1060,8 +1084,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     LaunchedEffect(rest) { vm.screenRest = rest }
     DisposableEffect(Unit) { onDispose { vm.screenRest = false } }
     // the hold time of the locked bar (Settings → Navigation, owner 2026-11-06 22:50: 0–2 s in 0,5 s steps)
-    Box(Modifier.fillMaxSize()) { androidx.compose.runtime.CompositionLocalProvider(LocalHoldMs provides vm.settings.navHoldMs,
-        LocalHoldLearned provides vm.holdLearned, LocalOnHoldFired provides vm::holdFired) {
+    Box(Modifier.fillMaxSize()) { androidx.compose.runtime.CompositionLocalProvider(LocalHoldMs provides vm.settings.navHoldMs) {
         NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
             onLeaveApp = { com.onpath.app.debug.Problems.trace("app", "Back in Navigate: left the app, the tour records on"); activity?.moveTaskToBack(true) },
             newPlan = vm.newPlanNote, onNewPlanUndo = vm::undoNewPlan, onNewPlanGone = vm::dropNewPlanNote,
