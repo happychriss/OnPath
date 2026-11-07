@@ -87,13 +87,14 @@ object OnPathColors {
     val ActionGo = Color(0xFF245F46)
     /**
      * Edit / plan: change the route – ink blue (owner 2026-11-06 23:00, variant C of the blue page: "das Blau sieht
-     * verspielt aus"; like the trail marks on a printed map; white on it 8.9:1, it on paper 8.5:1), told apart from
-     * [ActionGo]'s forest green by hue. Calmer than the route line's [Route].
+     * verspielt aus"; like the trail marks on a printed map), a tick lighter since 2026-11-07 09:50 (owner: #2B4C6F "sieht
+     * auf dem Handy fast aus wie schwarz" → #335A85; white on it 7.1:1, it on paper 6.8:1), told apart from [ActionGo]'s
+     * forest green by hue. Calmer than the route line's [Route].
      */
-    val ActionEdit = Color(0xFF2B4C6F)
-    /** The light ink blue of a plan button that is not the main one (Planen while locked, Speichern of a draft): ink ≥ 7:1. */
-    val EditTonal = Color(0xFFDCE3EC)
-    val OnEditTonal = Color(0xFF1B2F45)
+    val ActionEdit = Color(0xFF335A85)
+    /** The light ink blue of a plan button that is not the main one (Planen while locked, Speichern of a draft): ink 9.8:1. */
+    val EditTonal = Color(0xFFDDE5EE)
+    val OnEditTonal = Color(0xFF1E3550)
     /**
      * Neutral, the theme's primary (owner 2026-11-06, onpath.private#36 "Wir nehmen erstmal Walnuss"): every button
      * without a meaning of its own – Cancel, OK, Close, settings – a dark earth tone, so green means only "to the
@@ -102,7 +103,7 @@ object OnPathColors {
     val Walnut = Color(0xFF4A3F37)
     /**
      * The map compass's needle (owner 2026-11-07 00:50: "die rote Nadel ist unstylisch – ein blauer Kompass"): north half ink
-     * blue ([ActionEdit], 8.5:1 on paper), south half a walnut-tinted grey (3.6:1 on paper, ≥ 3:1 for a graphic) – no red
+     * blue ([ActionEdit], 6.8:1 on paper), south half a walnut-tinted grey (3.6:1 on paper, ≥ 3:1 for a graphic) – no red
      * (red only deletes). The "N" above it in [Walnut], the calmer of the two.
      */
     val CompassNorth = ActionEdit

@@ -12,7 +12,7 @@ class RouteSnapshotTest {
 
     @Test fun theLineAndItsEndsGoOnTopOfTheStyle() {
         val seg = listOf(GeoPoint(46.6, 11.1), GeoPoint(46.61, 11.12))
-        val o = JSONObject(RouteSnapshot.withLine(style, listOf(seg), seg, 0xFF2B4C6F.toInt()))
+        val o = JSONObject(RouteSnapshot.withLine(style, listOf(seg), seg, 0xFF335A85.toInt()))
         val sources = o.getJSONObject("sources")
         assertTrue("the style's own sources stay", sources.has("base"))
         val line = sources.getJSONObject("overview-line").getJSONObject("data").getJSONObject("geometry")
@@ -21,7 +21,7 @@ class RouteSnapshotTest {
         val layers = o.getJSONArray("layers")
         assertEquals("bg first, the route on top", "bg", layers.getJSONObject(0).getString("id"))
         assertEquals("overview-ends", layers.getJSONObject(layers.length() - 1).getString("id"))
-        assertEquals("#2B4C6F", layers.getJSONObject(layers.length() - 2).getJSONObject("paint").getString("line-color"))
+        assertEquals("#335A85", layers.getJSONObject(layers.length() - 2).getJSONObject("paint").getString("line-color"))
     }
 
     @Test fun aOnePointSegmentIsLeftOut() {

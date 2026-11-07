@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Plan's colours (owner 2026-11-06 23:00, variant C of the blue page): ink blue #2B4C6F for everything that plans, no light
+ * Plan's colours (owner 2026-11-06 23:00, variant C of the blue page): ink blue #335A85 (a tick lighter than #2B4C6F, owner 2026-11-07) for everything that plans, no light
  * blue surfaces and no blue glow – Plan is told by its signs (PLANEN pill, the sheet's blue edge, blue buttons). Values
  * only; where the tokens are used shows the screenshot tests.
  */
@@ -18,7 +18,7 @@ class PlanColourTest {
     }
 
     @Test fun inkBlueIsThePlanColour() {
-        assertEquals(Color(0xFF2B4C6F), OnPathColors.ActionEdit)
+        assertEquals(Color(0xFF335A85), OnPathColors.ActionEdit)
         assertEquals(OnPathColors.ActionEdit, OnPathColors.PlanAccent)
         assertEquals("the FRAGE edge is the same ink blue", OnPathColors.ActionEdit, OnPathColors.InfoBlue)
     }
