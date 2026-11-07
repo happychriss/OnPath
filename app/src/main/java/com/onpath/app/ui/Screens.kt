@@ -355,6 +355,14 @@ fun RoutesScreen(
      * tour started by the plan sheet's own start path (AppViewModel.goFromRoutes). Not offered during a tour.
      */
     onGo: (Tour) -> Unit = {},
+    /**
+     * A recorded tour that followed a plan (owner 2026-11-07): "Planen" / "Los geht's" load that plan (its last version) –
+     * AppViewModel.planFollowedPlan / goFollowedPlan. Not during a tour.
+     */
+    onPlanFollowed: (Tour) -> Unit = {},
+    onGoFollowed: (Tour) -> Unit = {},
+    /** The line of the plan a recorded tour followed, drawn thin under its track in the overview; empty = none. */
+    loadPlanLine: suspend (Tour) -> List<com.onpath.app.routing.GeoPoint> = { emptyList() },
 ) {
     var tab by remember { mutableStateOf(initialTab) }
     // a row tap opens the large overview first (owner 2026-11-07 00:30) – "Planen" / "Folgen" there opens it as before
@@ -473,7 +481,7 @@ fun RoutesScreen(
                         val row = RouteRowActions.of(RouteRowActions.Section.SAVED, t.kind, recording = t.id == recordingId,
                             hasRides = !t.rides?.rides.isNullOrEmpty(), hasDistance = TrackLine.hasDistance(t.distanceM),
                             waypoints = t.waypoints.size, liveMarked = isLive, canSaveLive = live?.unsaved == true && live.canSave,
-                            touring = touring)
+                            touring = touring, hasPlan = t.hasPlan)
                         fun has(a: RouteRowActions.Action) = a in row.menu
                         TourCard(t, tag = if (isLive) RouteTag.LIVE else RouteTag.of(t, marks), row = row,
                             onOpen = if (isLive) onLiveOpen else ({ overview = t }), justSaved = t.id == justSavedId, line = line(t),
@@ -486,8 +494,9 @@ fun RoutesScreen(
                             onDelete = if (has(RouteRowActions.Action.DELETE)) ({ onDelete(t) }) else null,
                             onEditRides = if (has(RouteRowActions.Action.EDIT_RIDES)) ({ onEditRides(t) }) else null,
                             onPlanFrom = if (has(RouteRowActions.Action.PLAN_FROM)) ({ onPlanFrom(t) }) else null,
-                            onPlan = if (has(RouteRowActions.Action.PLAN)) ({ onOpen(t) }) else null,
-                            onGo = if (has(RouteRowActions.Action.GO)) ({ onGo(t) }) else null)
+                            // a recorded tour's Planen / Los geht's load the plan it followed (owner 2026-11-07)
+                            onPlan = if (has(RouteRowActions.Action.PLAN)) ({ if (t.kind == TourKind.RECORDED) onPlanFollowed(t) else onOpen(t) }) else null,
+                            onGo = if (has(RouteRowActions.Action.GO)) ({ if (t.kind == TourKind.RECORDED) onGoFollowed(t) else onGo(t) }) else null)
                     }
                 }
             }
@@ -498,10 +507,20 @@ fun RoutesScreen(
     overview?.let { t ->
         androidx.activity.compose.BackHandler { overview = null }
         val segs = rememberRouteLine(t, loadLine)
+        // a recorded tour that followed a plan (owner 2026-11-07): the same foot, both load the plan it followed, and that
+        // plan's line drawn thin under the track
+        val followed = t.kind == TourKind.RECORDED && t.hasPlan && !touring && t.id != recordingId
+        var planLine by remember(t.id) { mutableStateOf<List<com.onpath.app.routing.GeoPoint>?>(null) }
+        if (t.kind == TourKind.RECORDED && t.hasPlan) androidx.compose.runtime.LaunchedEffect(t.id) { planLine = loadPlanLine(t) }
         // a planned route (no tour): Abbrechen · Los geht's · Planen (owner 2026-11-07)
         RouteOverview(t, segs, touring, snapshot,
-            onPrimary = { overview = null; onOpen(t) }, onCancel = { overview = null },
-            onGo = if (t.kind == TourKind.PLANNED && !touring && t.waypoints.size >= 2) ({ overview = null; onGo(t) }) else null)
+            onPrimary = { overview = null; if (followed) onPlanFollowed(t) else onOpen(t) }, onCancel = { overview = null },
+            onGo = when {
+                followed -> ({ overview = null; onGoFollowed(t) })
+                t.kind == TourKind.PLANNED && !touring && t.waypoints.size >= 2 -> ({ overview = null; onGo(t) })
+                else -> null
+            },
+            planLine = planLine)
     }
     }
     rename?.let { t ->

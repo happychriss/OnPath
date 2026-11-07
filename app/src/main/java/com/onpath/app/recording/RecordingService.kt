@@ -921,6 +921,8 @@ class RecordingService : Service() {
             try { db.updateActivity(tourId, nav.session.activity.name, nav.session.sac) } catch (e: Exception) {
                 Problems.error("db", "Activity switch could not be saved to the recorded tour", e)
             }
+            // the copy of the followed plan (TourPlan, owner 2026-11-07) is for the new activity now
+            safeDb("plan activity") { db.setTourPlanActivity(tourId, nav.session.activity.name, nav.session.sac) }
             Prefs(this).activity = nav.session.activity
         }
         updateAlert()
