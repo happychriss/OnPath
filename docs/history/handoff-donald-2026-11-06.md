@@ -99,6 +99,39 @@ Rundgang → release v0.17.2. Not in the release: spike/3d-webview.
 - Kept for the owner: 11 old worktrees with unmerged WIP (2026-11-03 night saves, proposals) – listed by
   `git worktree list`; ci/donald-* refs to prune after 12 h (n-*, a1-*, a2-*, a4-*, mid-*, p3-*, m2-*, merge-1106*).
 
+## MORNING 2026-11-07 – what the night did (read this first, owner)
+
+**Release v0.17.2** pushed at ~07:45 (7dd730f5; notes docs/release-notes/v0.17.2.md). Before it, on 5df742b0: gate --full
+green (2608 app tests + screenshots), GitHub E2E CoreField 20/20 · CorePlan 8/8 · CorePlanLink 5/5 · Rundgang 16/16,
+StartSmoke 3/3 locally, unit.yml green. **Planner not deployed**: web.yml is red since 2026-11-06 22:39 only on parity
+(17 planner mirrors of the new app look – the laptop's catch-up, branch wip/laptop-2026-11-07-parity-colours); the release's
+planner job leaves plan.onpath.earth as it is → after the laptop's catch-up: Actions → Web planner → Run workflow → deploy.
+
+**On main tonight (all with the GitHub E2E classes green):** 819389c4 "mitten auf der Route" once · 96cd7f0e night
+integration (ink blue C, value rows, In Bearbeitung, polish 2/3/6/7/8, tap/drag to expand, quiet GPS in Plan, sim starts
+where the tour is, blue compass, logo/splash/menu/About, route previews + row tap = overview, Navigate ⚙ new look, lock
+line until learned) · audit 1 25574e9c (launchSafe – no swallowed errors, no crash from background work) · audit 2
+852ab3f5 (geo math in one place) · audit 4 47affd99 / 8a23b4c0 / 00e7ff43 (PlanSession, TourController, RoutesState out of
+AppViewModel, each with a random-flow property test) · audit 5 2624de70 / ca888475 (tests: 2840 → ~2610, screenshots
+547 → 373, source-text pins → behaviour tests) · 3bd53b70 Undo during a tour back to one point here · audit 3 + the
+captain's code list 5df742b0 (dead tour card, slider, DecisionDialog, 37 strings, shared LongRoute/navName/skippedNote,
+one sha256).
+
+**Decided without the owner (please look):** the captain never wrote "Aufräumen fertig" (no commit after 22:49) → donald did
+the captain's CODE list at 05:00 anyway, docs/tools/hooks/.claude untouched except this file and the release notes;
+release with the planner not deployed (above); RoutesState: no draft with a saved route's points, saving replaces all equal
+drafts; far-start info line in Plan dropped (owner 00:45); GPX import has no summary screen, so no preview there.
+
+**Left for later:** :core module / KMP for an iPhone (audit report P2/P3: /tmp/…/scratchpad/code-audit-2026-11-07.md –
+copy into docs/design when docs are free); ~110 pure + ~90 mixed source-text tests (wiring without a JVM harness);
+docs/core-features.md C17/C18 test names (SetupGuideTest does not exist → PhoneCheckTest + SettingsSummaryTest +
+PhoneSetupE2ETest; C18 PlanActionsTest → SaveDialogTest + RouteRulesTest + PlanLinkTest; CandidateMarkerTest/NavSimChipTest
+gone); e2e.yml runs only the FIRST class of a comma list (needs a PR – workflows); the main thread blocked 0.5–0.8 s on the
+GitHub emulator (a short tap became a hold – watch on the Pixel); 3D spike (spike/3d-webview 58caf954, planner camera,
+fps on the Pixel unknown after round 5) – your word; round trip with the same street out and back ridden twice (navigation
+gap, see Fragenregister 51); ci/donald-* refs (≈40) to prune after 12 h with prune_branches.sh (owner yes given); 11 old
+worktrees with unmerged WIP kept for you.
+
 ## After the merge – open items (owner decided, not built yet)
 
 - Remove dead `TourRunningBar` / `TourControls` (TourBar.kt) and redraw the screenshot tests that still show the old
