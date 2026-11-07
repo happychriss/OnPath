@@ -65,5 +65,5 @@ export function activityIcon(key: string, size = 24): string {
 export function needle(bearing: number): string {
   return `<svg class="needle" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true" style="transform:rotate(${-bearing}deg)">
     <text x="17" y="9" text-anchor="middle" font-size="9" font-weight="700" fill="currentColor">N</text>
-    <path d="M17 11 L21 21 L13 21 Z" fill="#2B4C6F"/><path d="M17 31 L21 21 L13 21 Z" fill="#8C827A"/></svg>`;
+    <path d="M17 11 L21 21 L13 21 Z" fill="#335A85"/><path d="M17 31 L21 21 L13 21 Z" fill="#8C827A"/></svg>`;
 }

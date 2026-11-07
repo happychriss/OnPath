@@ -93,8 +93,8 @@ check((await page.textContent('#points')) !== loopBefore, 'Start & finish here r
 await page.screenshot({ path: shot });
 
 // way types & surfaces (the app's RouteBreakdown, rules from routing/BreakdownRules): one line, a click → two bars
-// (in the sheet's profile step – the Points step stays the list)
-for (let i = 0; i < 3 && await page.evaluate(() => document.getElementById('sheet').dataset.step) !== 'profile'; i++) await page.click('#sheetStep');
+// (wide: the panel shows everything, no steps – plan sheet A, owner 2026-11-07; phone: the open step)
+for (let i = 0; i < 2 && await page.isVisible('#sheetStep') && await page.evaluate(() => document.getElementById('sheet').dataset.step) !== 'points'; i++) await page.click('#sheetStep');
 const bd = await page.evaluate(() => { const b = document.getElementById('breakdown'); return { shown: !b.hidden, title: b.querySelector('.bdhead .muted')?.textContent, line: b.querySelector('.bdline')?.textContent ?? '' }; });
 check(bd.shown && bd.title === 'Way types & surfaces' && /^[A-Z][\w ]+ \d+ % · [A-Z][\w ]+ \d+ %$/.test(bd.line), `"Way types & surfaces": "${bd.line}" (the app's summary line)`);
 await page.click('#breakdown .bdhead');
@@ -118,7 +118,7 @@ await page.mouse.click(640, 500);
 
 // Points list ✕ on the loop's start (the app's PlanPoints.deleteAt): the start goes, the loop closes at the next point –
 // still a round trip with ↺, one marker less (the web used to drop start and end: the loop opened)
-for (let i = 0; i < 3 && await page.evaluate(() => document.getElementById('sheet').dataset.step) !== 'points'; i++) await page.click('#sheetStep');
+for (let i = 0; i < 2 && await page.isVisible('#sheetStep') && await page.evaluate(() => document.getElementById('sheet').dataset.step) !== 'points'; i++) await page.click('#sheetStep');
 const pinsBefore = await page.evaluate(() => document.querySelectorAll('.pin').length);
 const hashBefore = await page.evaluate(() => location.hash);
 await page.click('#points li:first-child .del');
