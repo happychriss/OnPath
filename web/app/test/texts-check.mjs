@@ -51,7 +51,8 @@ const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })
 } };
 walk(src);
 // words that are not user texts: names, units, symbols
-const OK = /^(OnPath|OpenStreetMap|© OpenStreetMap|Google|GPX|T\d|km|m|ms|MB|SIL Open Font License 1\.1|Edge|Firefox|Chrome|Safari|Android|iOS|Windows|macOS|Linux|EN|DE)$/;
+// "© OpenStreetMap · OpenMapTiles" = the app's MAP_CREDIT: names, the same in every language (MapFooter.kt)
+const OK = /^(OnPath|OpenStreetMap|© OpenStreetMap|© OpenStreetMap · OpenMapTiles|Google|GPX|T\d|km|m|ms|MB|SIL Open Font License 1\.1|Edge|Firefox|Chrome|Safari|Android|iOS|Windows|macOS|Linux|EN|DE)$/;
 /** [s] without its ${…} parts (nested braces too) and entities. */
 function words(s) {
   let out = '', depth = 0;

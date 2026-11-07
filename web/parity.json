@@ -66,7 +66,7 @@
         "web/app/src/position.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "9bb86fa3ece29c0ba1f48f18c933aad39eb21673"
+      "blob": "b733155ed4bd2aace4fca145b039c396d24e010b"
     },
     {
       "app": "app/src/main/java/com/onpath/app/recording/LocationTracker.kt",
@@ -92,7 +92,7 @@
         "web/app/src/main.ts",
         "web/app/src/gpximport.ts"
       ],
-      "blob": "a9397a4de6f6a85794464c4e4c94095b14111037"
+      "blob": "e0dfdf210f56502f23543463c6066ef0f00ce72c"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/SettingsScreen.kt",
@@ -100,7 +100,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "076c5be0783cdd0e44d0a324d21327582d5fb026"
+      "blob": "b299c6ba1531067c56a7c074539f3425d299e618"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/OptionalSources.kt",
@@ -154,7 +154,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "d21f80573a558aed02494ba629d33d371983099b"
+      "blob": "22fe4fcd13f9d2a8c1e680dd7af38f5da56000e7"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",

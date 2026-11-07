@@ -58,6 +58,17 @@ export function dropRecent(id: string) { write(read().filter((r) => r.id !== id)
 
 export function recentById(id: string): RecentPlan | null { return read().find((r) => r.id === id) ?? null; }
 
+/**
+ * The place name for an entry kept under its date name (the app's RoutesState.renameDraft, 21b4a7b1): only while the
+ * entry is still there under [from] – never over a user rename, a save (the entry is gone) or a delete meanwhile.
+ */
+export function renameRecentIf(id: string, from: string, to: string): boolean {
+  const list = read(), e = list.find((r) => r.id === id);
+  if (!e || e.title !== from) return false;
+  write(list.map((r) => (r.id === id ? { ...r, title: to } : r)));
+  return true;
+}
+
 /** Zuletzt → ⋮ → Umbenennen: the entry keeps its place, only its name changes. */
 export function renameRecent(id: string, title: string) {
   write(read().map((r) => (r.id === id ? { ...r, title } : r)));

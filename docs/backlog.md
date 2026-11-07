@@ -44,9 +44,6 @@ and the commit history.
   `settings_privacy_sync_text` "alles sofort" – the empty mailbox stays 12 months, deleted routes stay as encrypted
   markers; brouter.de (direct from the phone) and Photon (sent automatically while typing, ~1 km position) should be
   named; online search has no off switch (consider one). DE + EN.
-- **[laptop] Planner: privacy link + outdated Access comments (cloud-web privacy check 2026-11-07)** – the planner has no
-  link to https://onpath.earth/datenschutz/ (add one, e.g. in Help / footer); `web/host/src/index.js` and the
-  `wrangler.toml` comments still say Cloudflare Access guards the planner (off per `docs/design/web-planner.md` §18.5).
 - **[donald] Pictures as flows, round "Meran 0.17" (owner 2026-11-07, via cloud-web)** – every app picture new from
   0.17.3, all in Meran, **flow by flow in step order**: `docs/design/website-screens.md` flows A, C (app steps), D–L,
   file names as listed (`D05-handy-route-fertig-los-gehts-de.png` …), DE + EN, `tools/dev/website_shot.sh`, the Meran
