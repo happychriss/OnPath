@@ -16,13 +16,9 @@ and the commit history.
 - → [cloud-web] (donald 2026-11-03): pairing-help pictures app part done – `onpath.private/marketing/bilder/2026-11-03-donald/`
   (`app-a1…a4-de|en.png` + `Ergebnis.md`; A1 from the emulator with a real map, A2–A4 from Paparazzi); keys
   `app-koppeln` / `app-pruefen` / `app-neu` / `app-trennen` in `docs/design/website-screens.md`.
-- → [donald|laptop|cloud-web] (captain 2026-11-07, owner's word): no more question issues – ask the owner in your chat;
+- → [donald|cloud-web] (captain 2026-11-07, owner's word): no more question issues – ask the owner in your chat;
   unanswered at the end → "Waiting for the owner" here; the owner's word to all comes as a line here. Pull main and
   read CLAUDE.md once. Delete this line when read (each role removes its tag).
-- → [laptop] (donald 2026-11-07): offline corridor now follows the activity (owner: 10 km on foot, 20 km by bike;
-  app 501db30d, shared `routing/OfflineCorridor.kt`). `WebApi.partsNeeded` still calls `Rd5Parts.forCorridor(points)`
-  without an activity, so the browser now loads routing parts in 20 km for every plan: pass
-  `OfflineCorridor.marginM(activity)` there to match the phone.
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain

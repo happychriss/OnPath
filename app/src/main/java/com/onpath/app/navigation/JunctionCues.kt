@@ -40,6 +40,8 @@ class JunctionCues {
     private var needed = BooleanArray(0)
     private var prevNeeded = DoubleArray(0)
     private var next = 0
+    /** The progress of the last [update] with one (a jump back of more than [REWIND_M] cues the junctions again). */
+    private var lastAlong = Double.NEGATIVE_INFINITY
 
     /**
      * The cue to play now, or null. [alongM] = progress on [line] (null = not matched); [speedMps] = the speed to plan
@@ -48,6 +50,10 @@ class JunctionCues {
     fun update(line: List<GeoPoint>, version: Int, alongM: Double?, onRoute: Boolean, speedMps: Double? = null): JunctionCue? {
         load(line, version)
         if (alongM == null) return null
+        // the progress jumped back (a round trip ridden a second time, a rejoin well behind): the junctions ahead again
+        // cue again – field bug owner 2026-11-06, Fragenregister donald-20261106-51 (lap 2 stayed silent)
+        if (lastAlong - alongM > REWIND_M) next = alongs.indexOfFirst { it >= alongM - PASSED_M }.let { if (it < 0) alongs.size else it }
+        lastAlong = alongM
         // passed junctions never cue (also the ones passed while off route)
         while (next < alongs.size && alongs[next] < alongM - PASSED_M) next++
         if (!onRoute || next >= alongs.size) return null
@@ -123,12 +129,18 @@ class JunctionCues {
         var prev = Double.NEGATIVE_INFINITY
         prevNeeded = DoubleArray(idx.size) { k -> prev.also { if (needed[k]) prev = alongs[k] } }
         next = 0
+        lastAlong = Double.NEGATIVE_INFINITY
     }
 
     companion object {
         /** Close junctions: at least this far apart to get a cue each (a chain of hairpins is one cue). */
         const val MERGE_M = 50.0
         const val PASSED_M = 5.0
+        /**
+         * The progress going back this far from one fix to the next is a jump (a round trip's second lap, a rejoin well
+         * behind), not a few steps back: the junctions ahead of it are new again ([update], [VoiceGuide]).
+         */
+        const val REWIND_M = 100.0
 
         /** Bike: the cue comes this many seconds before the junction at the current speed … */
         const val LEAD_S = 8.0

@@ -693,3 +693,9 @@ dialog.plans > .row.spread { margin-top: 16px; }
   #sheet[data-step="points"] .profbig { width: 100%; justify-content: center; margin: 6px 0 0; } /* „⤢ Höhenprofil groß“ as a full row */
 }
 @media (max-width: 700px) { #sheet .profhead { flex-wrap: wrap; gap: 4px; } #sheet .profhead .profbig { order: 2; } }
+
+/* Locate while I am off the map (the app's LocateDistance, owner 2026-11-07): the icon steps up, the distance under it */
+#locate.far { position: relative; }
+#locate.far svg { width: 19px; height: 19px; transform: translateY(-6px); }
+#locate .locdist { position: absolute; left: 0; right: 0; bottom: 3px; font-size: 10px; line-height: 1; text-align: center;
+  color: var(--walnut, #4A3F37); white-space: nowrap; pointer-events: none; }
