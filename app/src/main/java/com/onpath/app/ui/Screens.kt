@@ -339,7 +339,7 @@ fun RoutesScreen(
     /** A row's line for its small preview and the overview (owner 2026-11-07); empty = the kind's sign. */
     loadLine: suspend (Tour) -> List<List<com.onpath.app.routing.GeoPoint>> = { emptyList() },
     /** The overview's map picture (MapLibre snapshot); null = the drawn shape only (screenshots). */
-    snapshot: (suspend (List<List<com.onpath.app.routing.GeoPoint>>, RouteShape.Tint, Int, Int) -> androidx.compose.ui.graphics.ImageBitmap?)? = null,
+    snapshot: OverviewSnapshot? = null,
     /** A tour records: the overview's primary is "Folgen" (follows at once, the recording goes on – owner 22:05). */
     touring: Boolean = false,
     /** The overview open at the start (screenshots). */

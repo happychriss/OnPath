@@ -1,6 +1,6 @@
 # OnPath – UI smoothness & polish audit (read-only, 2026-10-20)
 
-Status: audit of app 0.7.11 (line numbers as of that code). **Done:** A1 (hold ring fades in after ⅓ of the hold), A2 (padding re-applied after the follow transition), A3 (Navigate cards glide in/out), A6 (profile scrub: eased first move, gesture survives new fixes), A7 (dark status-bar icons), B1 (heading turned at display rate with ease-out, MapLibre compass animation off, deadband 2°). Open: A4, A5, A8–A18, B2–B6 – owner picks.
+Status: audit of app 0.7.11 (line numbers as of that code – check before acting). **Done and removed here:** A1 (hold ring fades in after ⅓ of the hold), A2 (padding re-applied after the follow transition), A3 (Navigate cards glide in/out), A6 (profile scrub: eased first move, gesture survives new fixes), A7 (dark status-bar icons), B1 (heading turned at display rate with ease-out, MapLibre compass animation off, deadband 2°). Open below: A4, A5, A8–A18, B2–B6, C – owner picks.
 
 I read the code and checked MapLibre 13.7.1's own behaviour in the bytecode of the cached AAR
 (`LocationComponentConstants`, `LocationAnimatorCoordinator`, `LocationComponent`, `LocationCameraController`).
@@ -19,46 +19,6 @@ jerkiness comes from four other things:
 ---
 
 ## A. Quick wins (S effort, low risk)
-
-### A1 · HIGH – Hold ring flashes at the start of every pan and every quick tap (Plan)
-- **Where:** `ui/MapHost.kt:162-173` (ring armed on `ACTION_DOWN`), `:241-260` (`HoldRing`), `ui/MapGestures.kt:75-81`
-  (`buzz` = ONE for any press on the editable map).
-- **What the user sees:** every finger-down on the Plan map shows the blue ring at once. A pan cancels it after 8 dp
-  (1–3 frames, a flicker). A quick tap shows it about ⅓ full, then it vanishes. Release always cuts it off hard.
-- **Why:** `holdAt` is set on `ACTION_DOWN` and cleared when the finger moves past the slop or is released. There is
-  no delay and no fade.
-- **Fix:** show the ring only after about 100–120 ms of stillness and fade it in over 80 ms. Keep the fill ending
-  exactly at `HOLD_MS`, so the vibration timing does not change. Fade it out over 120 ms instead of removing it.
-- **Effort:** S · **Risk:** low (gesture rules unchanged).
-
-### A2 · HIGH – Heading-up padding is ignored when following starts → the dot is sometimes centred, sometimes 30 % lower **[verified]**
-- **Where:** `map/MapController.kt:349-351`. `setCameraMode(mode, 750 …)` is followed straight away by
-  `paddingWhileTracking(..., 750)`.
-- **Why:** in MapLibre 13.7.1, `LocationComponent.paddingWhileTracking` returns early with "call is ignored because
-  the camera mode is transitioning". `LocationCameraController.transitionToCurrentLocation` sets `isTransitioning`
-  whenever tracking starts from NONE with a known location. That is the case for Plan → Navigate, locate tap, back
-  from free look, after a profile scrub, and back to the app after a gesture. The padding is applied only when
-  `setCamera` runs while the camera is already tracking (orientation toggle, `onReturnToApp` while following).
-- **What the user sees:** after "Start navigation" the position stays centred (padding 0 is left over from
-  `resetNorth`). Later, after an orientation toggle, the map slides 750 ms to put the dot 30 % lower. The layout is
-  inconsistent and moves when you don't expect it.
-- **Fix:** pass an `OnLocationCameraTransitionListener` to `setCameraMode`, and call `paddingWhileTracking` in
-  `onLocationCameraTransitionFinished` (and in `onLocationCameraTransitionCanceled`). Better still, ease the camera
-  padding together with the transition, so the dot glides once to its final place.
-- **Check on the phone:** logcat should show the "ignored because … transitioning" line after Start navigation.
-- **Effort:** S · **Risk:** low.
-
-### A3 · HIGH – Navigate cards pop in and push each other (turn card, off-route banner, re-route question, update banner)
-- **Where:** `ui/NavigateScreen.kt:169-176` (TurnCard and OffRouteBanner above the status card, in a `Column`
-  with `spacedBy`), `:180-183` (re-route question above the map controls), `ui/MapScreen.kt:160-163` (UpdateBanner
-  above the footer).
-- **What the user sees:** about 500 m before a turn, an 86 dp card appears in one frame and the status card jumps
-  down. It jumps up again after the turn. When the question card appears, the map buttons jump up by the card's
-  height.
-- **Fix:** wrap each one in `AnimatedVisibility(expandVertically + fadeIn, ~220 ms, FastOutSlowIn)` with the
-  matching exit. The owner rule "no message disappears by itself" is untouched: this only changes how they appear
-  and leave.
-- **Effort:** S · **Risk:** low.
 
 ### A4 · HIGH – Plan sheet "breathes" on every edit; the old line stays on the map unchanged while routing
 - **Where:** `ui/PlanPanel.kt:167-169` (mini profile and full profile hidden while `ui.routing`, progress bar
@@ -91,29 +51,6 @@ jerkiness comes from four other things:
   - Read `cameraTick` only inside `MapOverlayHost` / `Anchored`, and only when a menu is open.
   - Decimate the profile to about one point per pixel and cache the Path.
 - **Effort:** S–M · **Risk:** low.
-
-### A6 · MEDIUM-HIGH – Profile scrub in Navigate: the first touch jumps the map; a new GPS fix can break the scrub
-- **Where:** `map/MapController.kt:574-576` (`panTo` = `moveCamera`, instant), `ui/AppViewModel.kt:187-201`.
-  Scrub loss: `ui/NavigateScreen.kt:499` (a new `subList` each time the start index moves), `ui/ElevationProfile.kt:57,66,82,93`
-  (`pointerInput(data)` and `remember(points)` are keyed on the data).
-- **What the user sees:** touching the profile moves the map, possibly several km, in one frame.
-  **[guess, strong]** While walking, the remaining profile changes with the next fix. That restarts `pointerInput`
-  in the middle of the drag, so the gesture goes dead until the finger is lifted. `onDragEnd` / `onRelease` never
-  fire, so `navScrubEnd` is never called: the dot stays and the map does not go back to following after 4 s.
-- **Fix:**
-  - Ease the first `PanTo` (250–300 ms), then use instant moves while dragging.
-  - Use `pointerInput(Unit)` with `rememberUpdatedState(data)`, and freeze the profile list while a finger is down.
-  - Add a fallback timeout for `navScrubEnd`.
-- **Effort:** S · **Risk:** low.
-
-### A7 · MEDIUM – Status-bar icons turn white over the light map when the phone is in dark mode **[guess, high confidence]**
-- **Where:** `MainActivity.kt:77` (`enableEdgeToEdge()` with the default `SystemBarStyle.auto`), `ui/Theme.kt:28-68`
-  (light colour scheme only), `res/values/themes.xml` (Material.Light parent).
-- **Why:** `auto` picks icon colour from the *system* dark mode, not from the app. The app is always light, so in
-  dark mode the clock and battery icons are light on the light map and search bar.
-- **Fix:** `enableEdgeToEdge(SystemBarStyle.light(TRANSPARENT, TRANSPARENT), SystemBarStyle.light(TRANSPARENT, TRANSPARENT))`.
-  A real dark theme is a separate product decision.
-- **Effort:** S · **Risk:** low.
 
 ### A8 · MEDIUM – Slide-to-plan finishes with a snap and no feedback
 - **Where:** `ui/SlideToUnlock.kt:99-101` (on success `offset = 0f` and then `slid()` in the same frame),
@@ -212,25 +149,6 @@ jerkiness comes from four other things:
 
 ## B. Bigger work
 
-### B1 · HIGH – Heading-up turns the map in steps instead of continuously **[verified mechanism]**
-- **Where:** `map/HeadingEngine.kt:38-41` (`DEADBAND_DEG = 3`, alphas 0.85 for the route / 0.8 for GPS / 0.12 for
-  the compass), `:136-143` (step + deadband), `:210-213` (route bearing emitted once per fix). MapLibre animates each
-  compass value over a fixed `COMPASS_UPDATE_RATE_MS = 500` **[verified]**, while the position animates over about
-  1.1 s per 1 Hz fix.
-- **What the user sees:**
-  - At a bend in route-up mode, the map turns for 0.5 s, stops for 0.5 s, and turns again. Rotation and sliding are
-    out of step ("turn, then slide").
-  - Standing on the compass, the map ticks in jumps of 3° or more.
-  - `setRouteHeading` can run twice per fix (`MapScreen.kt:257`, keyed on both `shownAlongM` and `location`), so
-    the smoothing step is applied twice.
-- **Fix:**
-  - HeadingEngine produces its own smooth heading at display rate (Choreographer), with a critically damped spring
-    towards the target, about 0.8–1 s for route/GPS and faster for the compass.
-  - Set `LocationComponentOptions.compassAnimationEnabled(false)`, so MapLibre does not animate a second time.
-  - Use the deadband only as a start threshold: begin turning after 3°, then follow smoothly until within 0.5°.
-  - Emit once per fix.
-- **Effort:** M · **Risk:** medium (navigation-critical; `HeadingFilter` already has unit tests to extend).
-
 ### B2 · MEDIUM – Plan ⇄ Navigate switch: no transition for the UI
 - **Where:** `ui/MapScreen.kt:108-113`, `ui/AppViewModel.kt:1327-1334`.
 - **What the user sees:** top bar, sheet, button size (48 → 56 dp, `MapFooter.kt:117`) and cards all change in one
@@ -311,7 +229,6 @@ jerkiness comes from four other things:
 - The routes list has stable keys.
 
 ## Suggested order
-1. A2, A1, A3, A4, A5 (one small batch, all S) – the most visible gain.
-2. B1 (smooth heading) – the biggest "Apple feel" item in Navigate.
-3. A6–A12 and B2 (transitions everywhere).
-4. B3–B5, then C.
+1. A4, A5 (small, S) – the most visible gain left.
+2. A8–A12 and B2 (transitions everywhere).
+3. B3–B6, then C.

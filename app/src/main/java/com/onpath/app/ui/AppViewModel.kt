@@ -2794,7 +2794,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * keeps the drawn shape.
      */
     suspend fun routeSnapshot(segments: List<List<GeoPoint>>, tint: RouteShape.Tint, widthPx: Int, heightPx: Int,
-                              paddingPx: Int): android.graphics.Bitmap? {
+                              paddingPx: Int): com.onpath.app.map.RouteSnapshot.Shot? {
         val app = getApplication<Application>()
         val dataDir = dataFiles.dir; val theme = settings.mapTheme; val mapDir = dataFiles.mapDir()
         val cover = detailedAreas(); val dev = devToolsShown; val packages = packageAreas()
@@ -2805,7 +2805,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         } ?: return null
         val color = android.graphics.Color.argb(255, (tint.color().red * 255).toInt(), (tint.color().green * 255).toInt(),
             (tint.color().blue * 255).toInt())
-        return com.onpath.app.map.RouteSnapshot.make(app, json, segments, color, widthPx, heightPx, paddingPx)
+        return com.onpath.app.map.RouteSnapshot.make(app, json, segments, color, widthPx, heightPx, paddingPx,
+            app.resources.displayMetrics.density)
     }
 
     /** My routes → the plan "In Bearbeitung" tapped: back to it on the map – nothing is loaded again. */

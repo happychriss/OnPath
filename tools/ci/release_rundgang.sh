@@ -71,8 +71,8 @@ A=("$ADB" -s "$SERIAL")
 
 # ---- build (meanwhile the emulator boots) ----
 if [ $BUILD = 1 ]; then
-  echo "Building (Gradle lock, --max-workers=2)…"
-  (cd "$ROOT" && flock "$WORK/gradle.lock" nice -n 19 ionice -c3 ./gradlew --max-workers=2 -Ponpath.e2e=true -q \
+  echo "Building (Gradle slot, --max-workers=2)…"
+  (cd "$ROOT" && WORK="$WORK" tools/dev/gradle_slot.sh -- nice -n 19 ionice -c3 ./gradlew --max-workers=2 -Ponpath.e2e=true -q \
     assembleDebug assembleDebugAndroidTest) > "$OUT/build.log" 2>&1 || { tail -30 "$OUT/build.log"; exit 3; }
 fi
 

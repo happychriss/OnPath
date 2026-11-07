@@ -31,14 +31,14 @@ an item said to the wrong session goes into the backlog for the right one.
 5. Next item this unit can do and nobody claims → claim under "In progress", push.
 6. Work: small green commits, `tools/ci/gate.sh`, push. Gradle only in a slot (`gate.sh` / `tools/dev/gradle_slot.sh`),
    devices only via `tools/dev/device.sh`, phone rules in `docs/owner-preferences.md`.
-7. Done: remove the claim, one handoff line in "Last session" (`docs/project-status.md`), push.
+7. Done: remove the claim, one handoff line in "Last session" (`docs/project-status.md`), push (`docs/working-agreement.md` §1).
 
 **Before switching the computer off / when asked to stop:** push everything; half-done work on a `wip/<name>-<date>-<topic>`
 branch.
 
 ## Questions to the owner
 Only as an issue (`tools/ask.sh frage --von <name> …`). Blocking → `--blockiert`, push first, then the same question as
-a question box in the chat. Not urgent → only the issue, go on. Details: `CLAUDE.md`.
+a question box in the chat. Not urgent → only the issue, go on. Rules: `docs/owner-preferences.md`.
 
 ## Never
 Delete branches other than through `tools/dev/prune_branches.sh` after the owner's yes to the list (round, step 4); change `.github/workflows/`, signing or secrets without a PR to the owner; release without the

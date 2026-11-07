@@ -46,11 +46,11 @@ with an `Ergebnis.md` (what each shows, what it replaces). cloud-web turns them 
 `plan-wandern`, `plan-ebike`, `ankunft`, `ruheanzeige`, `fahrt`, `ort-google-maps` – the same screens as the help keys
 `plan`, `ebike`, `ankunft`, `ruhe`, `fahrt`, `ort` above. `web-wandern`, `web-qr` – the browser planner (cloud-plan): the same pictures as the help keys `web-plan`, `web-teilen` (section "Browser planner" below).
 
-## Browser planner (cloud-plan) – `web/app/test/pair-shots.mjs` on `web-spike`
+## Browser planner (laptop) – `web/app/test/pair-shots.mjs` on `main`
 
 One script takes every planner picture of the site, DE + EN, on the laptop (no phone, no live site): the A-019 plan link
 (Vellau Korblift → Leiteralm, Hike T2), the map from a format-1 map folder, a real pairing with the fake phone "Pixel 8"
-against a local test mailbox (the pairing code is blurred anyway). Run it on `web-spike`:
+against a local test mailbox (the pairing code is blurred anyway). Run it on `main`:
 `cd web/app && npm run build && node test/pair-shots.mjs <segmentsDir> <mapFolder> <outDir>` – then the PNGs go to
 `onpath.private/marketing/bilder/<date>-hp/` with an `Ergebnis.md`, as above. File names = `<script name>-de|en.png`.
 

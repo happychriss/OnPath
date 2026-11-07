@@ -20,7 +20,7 @@ else
   git ls-tree --name-only "$ref" web/host/migrations/ | while read -r f; do git show "$ref:$f" > "$out/migrations/$(basename "$f")"; done
 fi
 echo "mailbox: $(wc -l < "$out/src/sync.js") lines of sync.js, $(ls "$out/migrations" | wc -l) migration(s); node $(node --version)"
-./gradlew :app:testDebugUnitTest --tests 'com.onpath.app.plansync.SyncMailboxE2ETest' --rerun
+tools/dev/gradle_slot.sh -- ./gradlew :app:testDebugUnitTest --tests 'com.onpath.app.plansync.SyncMailboxE2ETest' --rerun
 python3 - <<'EOF'
 import xml.etree.ElementTree as ET
 t = ET.parse("app/build/test-results/testDebugUnitTest/TEST-com.onpath.app.plansync.SyncMailboxE2ETest.xml").getroot()
