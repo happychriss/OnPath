@@ -152,7 +152,22 @@ data class NavUi(
     val approx: String? = null,
     /** OnPath's notifications are off during this tour: the amber box under the status card ([notificationsOffMessage]). */
     val notificationsOff: Boolean = false,
+    /** Paused and calm ([PauseQuiet.calm]): the status card says only what the pause band does not – no "not on the route". */
+    val calm: Boolean = false,
 )
+
+/**
+ * "Pause heißt Ruhe" (owner 2026-11-07, Pixel: paused, yet "Route beginnt 58 km entfernt – Hinführen" on top and "Kein GPS"
+ * in the card): while a tour is paused Navigate asks nothing and warns about nothing. The navigation questions (off
+ * route, far start, mid route, lead failed, searching) are hidden – not answered, not dropped: they stay in the
+ * navigator and show again after Weiter if still valid; no turn card, no GPS line, no Wi-Fi-position line. The pause
+ * band over the buttons explains the rest. Pure.
+ */
+object PauseQuiet {
+    fun calm(ui: NavUi): NavUi =
+        if (!ui.paused || ui.recordedM == null) ui
+        else ui.copy(offRoute = null, turn = null, waitingGps = false, approx = null, calm = true)
+}
 
 /** [roundabout]: non-null = the turn is a roundabout, with the exit to take (0 = unknown). */
 data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: Int? = null,
@@ -210,7 +225,7 @@ data class ToGo(
  */
 @Composable
 fun NavigateOverlay(
-    ui: NavUi,
+    shown: NavUi,
     footer: @Composable () -> Unit,
     onSlideToPlan: () -> Unit,
     onResume: () -> Unit = {},
@@ -266,6 +281,9 @@ fun NavigateOverlay(
     onNewPlanUndo: () -> Unit = {},
     onNewPlanGone: () -> Unit = {},
 ) {
+    // "Pause heißt Ruhe" (owner 2026-11-07): while paused no navigation question, no turn card, no GPS warning – the
+    // pause band says what stands still; the questions come back after Weiter ([PauseQuiet])
+    val ui = PauseQuiet.calm(shown)
     val density = androidx.compose.ui.platform.LocalDensity.current
     // the top column's height (turn card, status, chips) below the status bar: the one box goes 12 dp below it
     var topColumnDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
@@ -551,8 +569,9 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 ui.toGo?.let { g ->
                     if (g.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE) {
                         // never a stale time (owner rule 6): what is left counts again once back on the route. While the
-                        // amber off-route card shows, it says it (one place, one distance).
-                        if (!offCard) {
+                        // amber off-route card shows, it says it (one place, one distance). Paused (calm): nothing –
+                        // the card's line says "Pausiert", the pause band the rest (owner 2026-11-07 "Pause heißt Ruhe")
+                        if (!offCard && !ui.calm) {
                             // never reached: "Not on the route yet · Start 31 km away" (the far-start box's number)
                             val (title, line2) = NavText.notOnRoute(g.startM, g.offM)
                             Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)

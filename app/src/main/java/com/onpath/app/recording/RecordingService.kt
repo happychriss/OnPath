@@ -1090,7 +1090,7 @@ class RecordingService : Service() {
     private fun updateAlert() {
         val nav = navigator
         // Plan is silent (owner 2026-11-03): an open question has no notification there; Navigate asks again
-        val pr = nav?.prompt?.takeIf { GuidanceGate.offRouteNotification(planQuiet()) }
+        val pr = nav?.prompt?.takeIf { GuidanceGate.offRouteNotification(planQuiet(), paused) }
         if (pr == null) {
             if (alertKey != null) { alertKey = null; nm().cancel(ALERT_ID) }
             return
@@ -1199,6 +1199,7 @@ class RecordingService : Service() {
         trip.onPause() // a pause is not a break (its time is not in elapsedS anyway)
         saveTrip()
         navigator?.onGpsLost() // no fixes while paused: timers start from zero again
+        updateAlert() // "Pause heißt Ruhe": an open navigation question's notification goes now and comes back after Weiter
         safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
         publish(force = true)
     }
