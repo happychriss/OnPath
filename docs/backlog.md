@@ -475,6 +475,7 @@ the git log.
   but the doorman rebuilds only on a CELL_SCHEMA bump or OSM age – a profile change still needs that bump. Later
   (captain): a doorman `WAYCLASS` value (wrangler.toml, = `wayclass.jar --hash` of the job image) so a published cell
   with another hash counts as stale and is rebuilt when asked.
+- **[cloud-plan] Planner security headers (CSP etc.)** – the one open point of the pre-release review 2026-11-01 (Web §7): the host sends no Content-Security-Policy; a change to the headers goes to the owner as a pull request.
 - **CI follow-ups:** lint reports only (known findings in `app/lint-baseline.xml`) – work the baseline down, then let
   lint fail the run; `gradle/actions` stays on v5 (MIT): v6 moves its caching into a closed component under Gradle's
   Terms of Use – owner to decide before upgrading.
