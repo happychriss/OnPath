@@ -5,6 +5,22 @@ on `main` yet**. Nothing below is lost: every branch is in a local worktree on d
 Owner's word for the evening: "mach alles fertig, entscheide selber, push auf main, aufs Handy nur zum Testen (kein
 Release)". Owner wants new builds **on the Pixel first** (before the long checks), then main.
 
+## 2026-11-07 ~16:50 – v0.17.3 released and on the Pixel (read this first)
+- **Released** v0.17.3 (https://github.com/happychriss/OnPath/releases/tag/v0.17.3, main dc93139b) on the owner's word
+  ("Release mit allen Schikanen und aufs Pixel"): gate --full 2871, all 12 GitHub E2E classes green
+  (RoutingDataFreshInstall skipped – needs a flag), Rundgang 17/17. Pixel: debug APK of dc93139b installed 16:40.
+- **In it since 0.17.2:** one map orientation; locate distance; one app window; hold menu Als Zwischenstopp / neues Ziel;
+  activity switch far from the route; "② erst ab T2 erreichbar" + red T in the grey band; fit off the activity button;
+  Meine Touren Planen / Los geht's; done tour keeps its plan (DB 6, `tour_plan`); arrival box Weiter aufzeichnen / Tour
+  beenden → empty start; off-route two steps shown + said; bike voice timing (6 s, nothing swallowed, goal side); jog cue;
+  round trip twice; hold lock by the clock; prefs off main; recording tick lighter; watchdog; bike corridor 20 km; My
+  routes list top; reroute fits the walker; TourRun.
+- **Open owner questions** (backlog "Waiting for the owner"): 6 s turn cue OK?; Undo in the full points sheet.
+- **Follow-ups:** backlog Next "[donald] Follow-ups from v0.17.3"; ▶ Sim restart progress; prune ci/donald-* refs (the
+  classifier refuses agents' deletes – only `tools/dev/prune_branches.sh` after the owner's yes to the list).
+- **Pages for the owner:** reach hint round https://claude.ai/artifact/XbgyccgVnzANV1KDAWu9GU, Meine Touren
+  https://claude.ai/artifact/HGDEpf4pdubLAiEoFZ9TmD.
+
 ## On main today (all gated, most with E2E)
 
 Plan kept at tour end (894ab407, H2 844c8401) · end sheet = bottom sheet (6d742b95) · Sperren fill · glyphs all 256

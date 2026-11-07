@@ -28,10 +28,15 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
-- [donald] The owner's Pixel points of 2026-11-07 morning (pause band, unlock 20 s, Weiter always held, pause = quiet, Meine Touren rows + ⤢, overview line, Los geht's wide, plan blue #335A85, "Nur aufzeichnen", browser item, sync file race, Los geht's updates the saved route) – since 2026-11-07
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
+- **[donald] Follow-ups from v0.17.3 (2026-11-07)** – (1) `release_rundgang.sh`: switch airplane mode off after boot
+  (the Rundgang AVD booted with it on → flow 9 red); (2) `RoutingDataFreshInstallE2ETest` needs `routingDownload=true`,
+  which `e2e_github.sh` can't pass – add the flag or run it by hand; (3) Pixel WARN "Arrival estimate paused: moving for
+  2 min but the progress along the route did not change" (4×, last 12:37) – find why progress stood still; (4)
+  `RecordingService.finish()` `stopSelf()` → `stopSelf(startId)` so an End + Los geht's within ms can't stop the new
+  tour's GPS (TourRun, cfe0d6f2); (5) `e2e.yml` runs only the first class / method of a comma list (needs a PR).
 - **[donald] ▶ Sim restarted on the same line: progress stays put (field 2026-11-07 12:06)** – in the 3rd demo run
   (from 3 m) neither voice nor vibration fired; the events log has no "Junction cue:" and the shown progress did not
   move. VoiceGuide's memory is ruled out (`VoiceGuideTest.aSimulationRestartedOnTheSameLineSaysItsTurnsAgain` green).
