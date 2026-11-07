@@ -37,9 +37,22 @@ check(near(await centre(), [46.675, 11.165]), 'following: a new fix moves the ma
 await page.evaluate(() => window.__map.flyTo({ center: [11.20, 46.70], zoom: 14, duration: 0 })); await settle();
 await page.evaluate(() => window.__fix(46.6760, 11.1660)); await settle();
 check(near(await centre(), [46.70, 11.20]), 'after a search-like fly, the next fix does not pull the map back');
+// my position off the map: the locate button names the distance and a tap frames plan and me together, no following
+await page.waitForFunction(() => !!document.getElementById('locate').dataset.far, null, { timeout: 10_000 }).catch(() => {});
+const far = await page.evaluate(() => document.getElementById('locate').dataset.far || '');
+await page.click(locate); await settle();
+const inView = await page.evaluate(() => window.__map.getBounds().contains([11.1660, 46.6760]));
+check(!!far && inView && !(await page.evaluate(() => document.getElementById('locate').classList.contains('on'))),
+  `position off the map: "${far}" under locate, a tap shows me, no following`);
 // compass north keeps following
 await page.evaluate(() => window.__map.rotateTo(30, { duration: 0 })); await settle(); // turned map (by hand, before)
+// the position back in view first: after the search-like fly it lies off the map, and there the locate tap frames the
+// plan and me together instead of following (the app's LocateDistance, 1c96f5b5) – whether its far label was already
+// drawn when the test clicked decided this step (red on GitHub f3beb21d / a603febc, red locally once the label won)
+await page.evaluate(() => window.__map.jumpTo({ center: [11.1670, 46.6770] })); await settle();
+await page.waitForFunction(() => !document.getElementById('locate').dataset.far, null, { timeout: 10_000 }).catch(() => {});
 await page.click(locate); await page.evaluate(() => window.__fix(46.6770, 11.1670)); await settle();
+check(await page.evaluate(() => document.getElementById('locate').classList.contains('on')), 'locate with the position in view: following');
 await page.click('#compass').catch(() => {}); await settle();
 await page.evaluate(() => window.__fix(46.6780, 11.1680)); await settle();
 check(near(await centre(), [46.678, 11.168]), 'compass "north up" keeps following');
