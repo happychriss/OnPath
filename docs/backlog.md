@@ -41,20 +41,18 @@ and the commit history.
 - **[laptop] Planner: privacy link + outdated Access comments (cloud-web privacy check 2026-11-07)** – the planner has no
   link to https://onpath.earth/datenschutz/ (add one, e.g. in Help / footer); `web/host/src/index.js` and the
   `wrangler.toml` comments still say Cloudflare Access guards the planner (off per `docs/design/web-planner.md` §18.5).
-- **[donald] Website pictures, round "Meran 0.17" (owner 2026-11-07, via cloud-web)** – every app picture new from 0.17.3,
-  all in Meran: `docs/design/website-screens.md`, table "App pictures", every row except **gone**, DE + EN, with
-  `tools/dev/website_shot.sh` and the scenario there (Meran, flight mode on the way, no DEMO, never the owner's position).
-  First fix the hike (Wandern T2 from Meran, 2–3 h, one or two steep parts, an inn on the way) and put its **plan link**
-  as the first line of `onpath.private/marketing/bilder/aktuell/liste.md` – every picture and the planner use that one
-  plan; plus the bike route Meran → Etschradweg → Algund / Naturns. PNGs `<key>-de|en.png` into `bilder/aktuell/`, one
-  line each (key · app version · date). Plausible numbers. Then the film recordings `film-handy`, `film-unterwegs`,
-  `film-umplanen`, `film-ankunft` (section "Film") as MP4 – not into a repo (R2 / donald), only their place in `liste.md`.
-- **[laptop] Planner pictures, round "Meran 0.17" (owner 2026-11-07, via cloud-web)** – `docs/design/website-screens.md`,
-  table "Browser planner", DE + EN, 1440 × 900, with the Meran plan link from the first line of
-  `onpath.private/marketing/bilder/aktuell/liste.md` (wait for donald's line). New: `web-3d` (the route in 3D, "▶ Abfliegen"
-  visible), `web-profil` ("⤢ Großes Profil"), `web-touren` (Meine Touren with route pictures); pairing code blurred. For
-  the film `web-film-plan` (2560 × 1440): open the link, the route draws itself, then 3D + Abfliegen 8–10 s. Same drop as
-  above.
+- **[donald] Pictures as flows, round "Meran 0.17" (owner 2026-11-07, via cloud-web)** – every app picture new from
+  0.17.3, all in Meran, **flow by flow in step order**: `docs/design/website-screens.md` flows A, C (app steps), D–L,
+  file names as listed (`D05-handy-route-fertig-los-gehts-de.png` …), DE + EN, `tools/dev/website_shot.sh`, the Meran
+  scenario there (flight mode on the way, no DEMO, never the owner's position). First fix the hike (Wandern T2 from
+  Meran, 2–3 h, one or two steep parts, an inn on the way) and put its **plan link** as the first line of
+  `onpath.private/marketing/bilder/aktuell/liste.md` – every flow uses that one plan; plus the bike route Meran →
+  Etschradweg → Algund / Naturns. PNGs into `bilder/aktuell/`, one line each (file · app version · date). Plausible
+  numbers. Then the film recordings of scenes 2–5 (section "Film") as MP4 – not into a repo, only their place in `liste.md`.
+- **[laptop] Planner pictures as flows, round "Meran 0.17" (owner 2026-11-07, via cloud-web)** –
+  `docs/design/website-screens.md` flow B and the planner steps of C (C01, C02, C06), file names as listed, DE + EN,
+  1440 × 900, with the Meran plan link from the first line of `onpath.private/marketing/bilder/aktuell/liste.md` (wait for
+  donald's line); pairing codes blurred. Film scene 1 (`film-1-browser-planen`, 2560 × 1440). Same drop as above.
 - **[donald] Follow-ups from v0.17.3 (2026-11-07)** – (2) `RoutingDataFreshInstallE2ETest` needs `routingDownload=true`,
   which `e2e_github.sh` can't pass – add the flag or run it by hand; (5) `e2e.yml` runs only the first class / method
   of a comma list (needs a PR).

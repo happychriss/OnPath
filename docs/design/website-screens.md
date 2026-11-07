@@ -1,122 +1,186 @@
-# Website screens – every picture on onpath.earth, in the store and in the film, and which screen it shows
+# Picture list – every screen of OnPath as flows (website, help, store, film, other uses)
 
-Owner 2026-11-01: after a UI change only the pictures of the changed screens are taken again, not whole sets. This list
-says which picture shows which screen: a role that changes a file in the right-hand column takes the pictures of that
-row again (`tools/dev/website_shot.sh`, below) and drops the PNGs into `onpath.private/marketing/bilder/aktuell/` with
-one line each in its `liste.md` (key · app / planner version · date). cloud-web turns them into the site's WebP files
-(`scripts/help_shots.py` in `happychriss/onpath.earth`; the keys are the names there).
+**One list for every use** (owner 2026-11-07): the pictures are sorted into **flows** – short stories in Meran, step
+by step, the way a person uses OnPath. Taken in order, each flow is easy to reproduce and easy to understand; the same
+pictures serve the website, the help, Google Play, the film and anything later. Steps the website does not use yet are
+in the list on purpose (marked "–" under "Used on"): they are important moments of the app.
 
-**Round "Meran 0.17" (owner 2026-11-07):** every picture new from app 0.17.3 and today's planner, **all in Meran**
-(scenario below). Rows marked **new** are not on the site yet; cloud-web builds them in when they arrive. Rows marked
-**gone** show a screen that no longer exists – don't take them. Old sets (Vellau / Partschins, 0.13–0.16) stay in
-`bilder/` as history.
+**File names say what the picture shows:** `<flow><step>-<what you see>-de.png` / `-en.png`, e.g.
+`D05-handy-route-fertig-los-gehts-de.png`. The letter + number keep the order; never reuse a name for another content.
+"Key" is the short name the website uses (`help_shots.py` in `happychriss/onpath.earth` maps key → file).
 
-## The Meran scenario (same for app, planner, store and film)
+**After a UI change** only the steps of the changed screens are taken again (right-hand column). New PNGs go to
+`onpath.private/marketing/bilder/aktuell/`, one line each in its `liste.md` (file · app / planner version · date);
+cloud-web builds them into the website.
 
-- **Emulator** as before: AVD `OnPath_Play36` (1080 × 2400, density 356, Android 16), status bar demo mode (09:30,
-  Wi-Fi, full battery), app language DE then EN. Map areas around Meran on the phone (Meran town, Dorf Tirol, Algund).
-  Flight mode on for every "on the way" picture (the ✈ shows it). No DEMO mark, no Sim chip, never the owner's position.
-- **Hike (Wandern T2), the main plan:** start in Meran town, about 2–3 h, one or two steep sections (so the notes and the
-  profile have something to show), a hut or inn on the way that can be added as a stop. Suggestion: Meran (Pulverturm /
-  Tappeinerweg) → Dorf Tirol → up towards Schloss Tirol / Hochmuth. The unit picks what the offline map routes well, and
-  writes the **plan link** into `bilder/aktuell/liste.md` – every later picture and the planner use that one link.
-- **The new idea on the way:** an inn or café near the route, found with the search offline, added "Als Zwischenstopp".
-- **Bike (E-Bike / Fahrrad):** Meran → Etschradweg → Algund / Naturns, for the bike pictures, the rest view and the voice.
-- **T band:** a plan whose area has trails above T2 nearby (Meraner Höhenweg / Ifinger side), so the grey band with its
-  red "T3" label shows.
-- **Shared from Google Maps:** a place in Meran (an inn of the hike), Google Maps → Teilen → OnPath.
+## The Meran scenario (the same for every flow)
 
-## App pictures (donald, `tools/dev/website_shot.sh`)
+- **App:** emulator AVD `OnPath_Play36` (1080 × 2400, density 356, Android 16), `tools/dev/website_shot.sh`, status bar
+  demo mode (09:30, Wi-Fi, full battery), DE then EN. Map areas of Meran, Dorf Tirol and Algund on the phone. Flight
+  mode on for everything "on the way" (✈ visible). No DEMO mark, no Sim chip, never the owner's real position.
+- **Planner:** 1440 × 900 (film 2560 × 1440), `web/app/test/pair-shots.mjs`, DE then EN; pairing codes blurred.
+- **The hike (Wandern T2):** from Meran town, 2–3 h, one or two steep parts, an inn on the way. Suggestion: Meran
+  (Pulverturm / Tappeinerweg) → Dorf Tirol → towards Schloss Tirol / Hochmuth. Whoever takes the first picture fixes it
+  and writes its **plan link** as the first line of `bilder/aktuell/liste.md` – every flow uses that one plan.
+- **The inn on the way:** a café / inn near the route, found offline, added "Als Zwischenstopp".
+- **The bike route (E-Bike):** Meran → Etschradweg → Algund / Naturns.
+- **Plausible numbers** (no 19-minute tour with 710 hm). Every picture DE + EN.
 
-Each key DE + EN: `<key>-de.png` · `<key>-en.png`. "Where" = help page (`hilfe/<slug>`) or home (`/`) or store (S1–S6).
+## A – First start and setup (app)
 
-| Key | What it shows (0.17.3) | Where | App screen (change here → new picture) |
-| --- | --- | --- | --- |
-| leer | empty start sheet: "Ziel finden › · Route anpassen · Los geht's", "Meine Touren öffnen", map of Meran | erste-schritte | `ui/PlanPanel.kt`, `ui/MapScreen.kt` |
-| halten | hold the map: first-point menu | erste-schritte | `ui/MapOverlays.kt` |
-| punkt1 | start set, waiting for the goal | route-planen | `ui/PlanPanel.kt`, `ui/MapHost.kt` |
-| ziel | hold a place → "Als Zwischenstopp" / "Als neues Ziel" · Mehr | erste-schritte, route-planen | `ui/MapOverlays.kt` (POI / point menu) |
-| fertig | route ready: PLANEN · Ohne Netz ✓, length · ↑ · ↓, profile, big green "Los geht's" | erste-schritte, home, S1 | `ui/PlanPanel.kt`, `ui/ElevationProfile.kt` |
-| punkteliste | plan sheet fully up: profile + all points | route-planen | `ui/PlanPanel.kt`, `ui/PointsSection.kt` |
-| plan | the hike, Wandern T2: map, steep parts, profile (hero picture of the home page) | home (hero, Wandern), route-planen | `ui/PlanPanel.kt`, `ui/RouteWarnings.kt`, map style |
-| ebike | the bike route by E-Bike (surface, push) | home (E-Bike), route-planen | as `plan` |
-| hinweise | the route notes open (steep sections) | route-planen | `ui/RouteWarnings.kt`, `ui/PlanPanel.kt` |
-| aktivitaet **new** | the activity button opened: activities + T1–T5 row | route-planen | activity sheet (`ui/…Activity…`), `ui/PlanPanel.kt` |
-| t-band **new** | Wandern T2 with the grey band "T3" beside the route | route-planen | `map/ActivityLayers.kt`, map style |
-| erreichbar **new** | a stop the route does not reach: "② erst ab T2 erreichbar" | route-planen | `ui/PlanPanel.kt` (reach line) |
-| ohne-netz **new** | a tap on "Ohne Netz ✓": what is on the phone | offline | `ui/PlanTopBar.kt` / the PLANEN pill |
-| navi | Navigate, locked: turn card, status card, bar **Pause \| Planen** | erste-schritte, navigation | `ui/NavigateScreen.kt`, `ui/TourActionBar.kt` |
-| entsperren **new** | a button filling while held ("Gedrückt halten") | navigation | `ui/TourActionBar.kt`, `domain/tour/UnlockWindow.kt` |
-| pause **new** | paused: band "⏸ Pause · 12:04", Weiter · Beenden · ✎ | navigation | `ui/TourActionBar.kt`, `ui/NavigateScreen.kt` |
-| ankunft | Navigate: next turn, time left, "Ankunft 13:55" | home, navigation, S3 | `ui/NavigateScreen.kt` |
-| ruhe | rest view on the bike | home, navigation | `ui/RestView.kt`, `ui/SmartScreen.kt` |
-| abseits **new** | amber card "Abseits der Route", then the question Neue Route \| Original behalten (two pictures: `abseits`, `abseits-frage`) | navigation | `ui/NavigateScreen.kt` (reroute card) |
-| tourmenue **gone** | (the slider's tour menu – replaced by `pause`) | – | – |
-| suche | during the tour: Planen → search the inn offline | unterwegs-aendern, orte | `ui/search/SearchScreen.kt` |
-| ort | the found inn: pin card "+ Zur Route" / Hinzufügen · Mehr (→ "In Google Maps öffnen") | unterwegs-aendern, orte, home | `ui/MapOverlays.kt`, `map/CandidateMarker.kt` |
-| neue-route | the new route with the inn as stop, recording on, ✈ | unterwegs-aendern, offline, S2 | `ui/PlanPanel.kt` (plan during a tour) |
-| zurueck | "Weiter geht's" – back in Navigate, new arrival | unterwegs-aendern | `ui/NavigateScreen.kt` |
-| g-uebernommen | a place shared from Google Maps in OnPath | orte | `map/CandidateMarker.kt`, `ui/MapOverlays.kt` |
-| g-route | after "Hierhin": the route there | orte | `ui/PlanPanel.kt` |
-| angekommen **new** | arrival box: "Du bist angekommen." · Weiter aufzeichnen \| Tour beenden | navigation | `ui/TourBar.kt` |
-| beenden | "Tour beenden?": numbers, green "Tour speichern", Weiter \| Löschen | navigation | `ui/TourBar.kt` |
-| fahrt | the ride check after a lift / bus | home, navigation | `ui/RideSummary.kt` |
-| meine-touren (was meine-routen) | Meine Touren → Geplant: Zuletzt / Gespeichert, small route pictures, "In Bearbeitung" | gpx, home | `ui/Screens.kt`, `ui/RoutesTab.kt`, `ui/RoutePreview.kt` |
-| uebersicht **new** | a route's large overview: map picture, "▶ Los geht's", Abbrechen \| Planen | gpx | `ui/Screens.kt` (overview) |
-| gemacht (was gespeichert) | Meine Touren → Gemacht with today's tour marked ("✓ Gerade gespeichert") – plausible numbers, no 19-min 710 hm | gpx | `ui/Screens.kt` |
-| gpx-plan **new** | an imported GPX track opened, "Als Plan übernehmen" | gpx | `ui/Panels.kt` |
-| hinweise-stimme **new** | Einstellungen → Navigation: "Hinweise an Abzweigungen" Aus · Vibration · Stimme, "Stimme testen" | navigation | `ui/SettingsScreen.kt` (Navigation page) |
-| handy-einrichten **new** | Einstellungen → Handy einrichten (battery etc.) | akku-sicherung | `ui/setup/SetupGuideScreen.kt` |
-| sicherung **new** | Einstellungen → Sicherung (backup folder) | akku-sicherung | `ui/SettingsScreen.kt` (Sicherung) |
-| neustart-hinweis | after a restart: the recording is saved | probleme | `ui/NavigateScreen.kt`, `ui/Screens.kt` |
-| neustart | "Unterbrochene Tour": continue / delete / save | probleme | `ui/Screens.kt` |
-| app-koppeln | ☰ open: "Mit Browser koppeln" | route-planen (koppeln) | `ui/PlanTopBar.kt` (☰ menu) |
-| app-verbunden (was app-pruefen) | paired: what you save in the browser comes to the phone | route-planen (koppeln) | `ui/SyncSettings.kt`, plan note |
-| app-routen (was app-neu) | Meine Touren with a plan from the browser ("Neu") – top part | route-planen (koppeln) | `ui/Screens.kt`, `ui/RouteTag.kt` |
-| app-trennen | Einstellungen → Browser-Abgleich paired, "Trennen" – top part | route-planen (koppeln) | `ui/SyncSettings.kt` |
+| Step | File | What you see | Key · used on | Change here → new picture |
+| --- | --- | --- | --- | --- |
+| A01 | `A01-start-bildschirm` | start screen: paper, icon, wordmark | – | start screen / theme |
+| A02 | `A02-handy-einrichten` | Einstellungen → Handy einrichten: Standort, Vibration, Akku with what is missing | handy-einrichten · help akku-sicherung | `ui/setup/SetupGuideScreen.kt` |
+| A03 | `A03-sprachansagen-testen` | setup step voice: "Stimme testen" | – (voice help later) | `ui/setup/SetupGuideScreen.kt` |
+| A04 | `A04-offline-karten` | Einstellungen → Offline-Karten: Meran area ready | – (help offline) | `ui/SettingsScreen.kt` (Offline-Karten) |
 
-The pairing pictures may stay Paparazzi snapshots (`GermanScreenshotTest_planPairHint`, `_planPairedNote`,
-`_toursFromBrowser`, `_settingsSyncPaired`, English `ScreenshotTest_…`) – they need no real browser.
+## B – At home: plan in the browser (planner)
 
-## Browser planner (laptop / cloud-plan) – `web/app/test/pair-shots.mjs` on `main`
+| Step | File | What you see | Key · used on | Planner file |
+| --- | --- | --- | --- | --- |
+| B01 | `B01-web-start-leer` | plan.onpath.earth opened, map of Meran, empty plan | – | `main.ts`, `style.css` |
+| B02 | `B02-web-route-fertig` | the hike: route, length · ↑ · ↓, points, profile along the bottom | web-plan (help), web-wandern (home) · home, route-planen, film 1 | `main.ts`, `sheetstep.ts`, `profile.ts` |
+| B03 | `B03-web-grosses-profil` | "⤢ Großes Profil": big profile, steepness colours, cursor linked to the map | web-profil · route-planen | `profile.ts`, `terrainview.ts` |
+| B04 | `B04-web-3d-gelaende` | the route in 3D over the terrain, "▶ Abfliegen" beside it | web-3d · home, route-planen, store S6, film 1 | `terrainview.ts` |
+| B05 | `B05-web-3d-abfliegen` | during the flyover: camera along the route, Pause / Stopp, 1× / 2× | – (film 1) | `flyover.ts` |
+| B06 | `B06-web-teilen-qr` | "Teilen" with the plan's QR code | web-teilen (help), web-qr (home) · home, route-planen | `share.ts` |
+| B07 | `B07-web-meine-touren` | Meine Touren with route pictures, "In Bearbeitung", the large overview | web-touren · route-planen | `plans.ts` |
 
-Same Meran plan link as the app. 1440 × 900, DE + EN (`<key>-de|en.png`); the pairing code blurred.
+## C – Pair browser and phone (planner + app)
 
-| Key | What it shows | Where | Planner file |
-| --- | --- | --- | --- |
-| web-plan (home: web-wandern) | the hike: route, length · ↑ · ↓, points, profile along the bottom | home, route-planen | `web/app/src/main.ts`, `sheetstep.ts`, `profile.ts`, `style.css` |
-| web-3d **new** | the same route in **3D** (terrain tilted, steepness colours), "▶ Abfliegen" beside it | home, route-planen | `web/app/src/terrainview.ts`, `flyover.ts` |
-| web-profil **new** | "⤢ Großes Profil": big profile linked to the map | route-planen | `web/app/src/profile.ts` |
-| web-touren **new** | Meine Touren with route pictures, "In Bearbeitung", the large overview | route-planen | `web/app/src/plans.ts` |
-| web-teilen (home: web-qr) | "Teilen" with the plan's QR code | home, route-planen | `web/app/src/share.ts` |
-| web-handy | the Phone window, not paired, "Wie funktioniert das?" open | route-planen (koppeln) | `web/app/src/plans.ts` (`phoneDialog`) |
-| web-koppeln (`web-w2`) | "Handy verbinden": QR (blurred), the way in the app, check digits | route-planen (koppeln) | `web/app/src/plans.ts` (`pairDialog`) |
-| web-w3 · web-w4 · web-w6 | paired: "Aufs Handy sichern" → "✓ Auf dem Handy"; the Phone window with "Trennen" | route-planen (koppeln) | `main.ts` (header), `plans.ts` |
+| Step | File | What you see | Key · used on | File |
+| --- | --- | --- | --- | --- |
+| C01 | `C01-web-handy-fenster` | the Phone window, not paired, "Wie funktioniert das?" open | web-handy · route-planen (koppeln) | `plans.ts` (`phoneDialog`) |
+| C02 | `C02-web-koppel-code` | "Handy verbinden": QR (blurred), the way in the app, check digits | web-koppeln · route-planen (koppeln) | `plans.ts` (`pairDialog`) |
+| C03 | `C03-handy-menue-koppeln` | app ☰ open: "Mit Browser koppeln" | app-koppeln · route-planen (koppeln) | `ui/PlanTopBar.kt` |
+| C04 | `C04-handy-pruefziffern` | "Mit diesem Browser verbinden? Prüfe: …" · Verbinden | – | `ui/SyncSettings.kt` |
+| C05 | `C05-handy-verbunden` | paired: what you save in the browser comes to the phone | app-verbunden · route-planen (koppeln) | `ui/SyncSettings.kt`, plan note |
+| C06 | `C06-web-aufs-handy-sichern` | browser paired: phone name + dot, "Aufs Handy sichern" → "✓ Auf dem Handy" | – | `main.ts` (header), `plans.ts` |
+| C07 | `C07-handy-plan-aus-browser` | Meine Touren with the plan from the browser, "Neu" (top part) | app-routen · route-planen (koppeln) | `ui/Screens.kt`, `ui/RouteTag.kt` |
+| C08 | `C08-handy-trennen` | Einstellungen → Browser-Abgleich paired, "Trennen" (top part) | app-trennen · route-planen (koppeln) | `ui/SyncSettings.kt` |
 
-Texts the engine writes (time, distance, notes, points, "Neu planen" …) come from the app's shared strings – a change in
-`strings/…/strings_plan.xml` that the planner shows also means new web pictures.
+C04, C05, C07, C08 may stay Paparazzi snapshots (`GermanScreenshotTest_settingsSyncAsk`, `_planPairedNote`,
+`_toursFromBrowser`, `_settingsSyncPaired`; English `ScreenshotTest_…`) – they need no real browser.
 
-## Google Play (store) – S1–S6, the owner's headlines (backlog "For the roles")
+## D – Plan the hike on the phone (app)
 
-S1 "Plane in Ruhe – auch ohne Netz" → `fertig` · S2 "Unterwegs umplanen – ganz einfach" → `neue-route` · S3 "Klare
-Ansagen an jeder Abzweigung" → `ankunft` (+ `hinweise-stimme`) · S4 "Deine Daten bleiben bei dir" → `meine-touren` ·
-S5 "Ohne Werbung. Ohne Konto. Ohne Tracking." → `plan` · S6 "Am PC planen, auf dem Handy losgehen" → `web-3d` + `fertig`.
-cloud-web builds the store pictures from these keys; no extra shots.
+| Step | File | What you see | Key · used on | Change here → new picture |
+| --- | --- | --- | --- | --- |
+| D01 | `D01-handy-leerer-plan` | empty start sheet "Ziel finden › · Route anpassen · Los geht's", map of Meran | leer · erste-schritte | `ui/PlanPanel.kt`, `ui/MapScreen.kt` |
+| D02 | `D02-handy-aktivitaet-waehlen` | activity button open: activities, T1–T5 under Wandern | aktivitaet · route-planen | activity sheet, `ui/PlanPanel.kt` |
+| D03 | `D03-handy-karte-halten-hierhin` | map held: "Hier starten" · "Hierhin" | halten · erste-schritte, home (step 1) | `ui/MapOverlays.kt` |
+| D04 | `D04-handy-start-gesetzt` | start set, waiting for the goal | punkt1 · route-planen | `ui/PlanPanel.kt`, `ui/MapHost.kt` |
+| D05 | `D05-handy-route-fertig-los-gehts` | route ready: "PLANEN · Ohne Netz ✓", length · ↑ · ↓, profile, big green "Los geht's" | fertig · erste-schritte, home, store S1 | `ui/PlanPanel.kt`, `ui/ElevationProfile.kt` |
+| D06 | `D06-handy-plan-wandern-t2` | the whole hike on the map, steep parts marked (hero picture) | plan (help), plan-wandern (home) · home hero, route-planen, store S5 | `ui/PlanPanel.kt`, `ui/RouteWarnings.kt`, map style |
+| D07 | `D07-handy-hinweise-steil` | the route notes open: where it gets steep | hinweise · route-planen | `ui/RouteWarnings.kt` |
+| D08 | `D08-handy-t-band-t3` | grey band with red "T3" beside the T2 route | t-band · route-planen | `map/ActivityLayers.kt`, map style |
+| D09 | `D09-handy-ort-halten-als-zwischenstopp` | a place held near the route: "Als Zwischenstopp" / "Als neues Ziel" · Mehr | ziel · erste-schritte, route-planen | `ui/MapOverlays.kt` |
+| D10 | `D10-handy-erreichbar-ab-t2` | a stop the route does not reach: "② erst ab T2 erreichbar" | erreichbar · route-planen | `ui/PlanPanel.kt` |
+| D11 | `D11-handy-punkteliste` | plan sheet fully up: profile + all points | punkteliste · route-planen | `ui/PlanPanel.kt`, `ui/PointsSection.kt` |
+| D12 | `D12-handy-ohne-netz-erklaert` | a tap on "Ohne Netz ✓": what is on the phone | ohne-netz · offline | `ui/PlanTopBar.kt` |
+| D13 | `D13-handy-rundtour-umkehren` | the light blue row: ✕ Neu planen · ⇅ Umkehren · ↻ Rundtour | – | `ui/PlanPanel.kt` |
 
-## Film (about 48 s; story and old material: `onpath.private/marketing/video-aufnahmen-uebergabe.md`)
+## E – On the way: navigate (app, flight mode)
 
-The same Meran story, as screen recordings (MP4, 1080 × 2400 app, 2560 × 1440 planner) plus a still per scene:
+| Step | File | What you see | Key · used on | Change here → new picture |
+| --- | --- | --- | --- | --- |
+| E01 | `E01-handy-navigation-gesperrt` | Navigate: turn card, status card, bar **Pause \| Planen** (locked) | navi · erste-schritte, home (step 3), navigation | `ui/NavigateScreen.kt`, `ui/TourActionBar.kt` |
+| E02 | `E02-handy-gedrueckt-halten` | a button filling while held, "Gedrückt halten" | entsperren · navigation | `ui/TourActionBar.kt`, `domain/tour/UnlockWindow.kt` |
+| E03 | `E03-handy-abzweigung-ankunft` | next turn close up, time left, "Ankunft 13:55" with the goal | ankunft · home, navigation, store S3 | `ui/NavigateScreen.kt` |
+| E04 | `E04-handy-statuskarte-offen` | status card opened: moving time, profile, next stop "an 14:20" | – | `ui/NavigateScreen.kt` |
+| E05 | `E05-sperrbildschirm` | lock screen: "Links in 300 m · Ankunft 13:00" | – (help navigation) | notification (`recording/`) |
+| E06 | `E06-handy-pause` | paused: band "⏸ Pause · 12:04", Weiter · Beenden · ✎ | pause · navigation | `ui/TourActionBar.kt` |
+| E07 | `E07-einstellungen-hinweise-stimme` | Einstellungen → Navigation: "Hinweise an Abzweigungen" Aus · Vibration · Stimme, "Stimme testen" | hinweise-stimme · navigation, store S3 | `ui/SettingsScreen.kt` (Navigation) |
 
-| Scene | Recording |
-| --- | --- |
-| 1 At home: plan in the browser | `web-film-plan`: the plan link opens, the route draws itself, then **3D + ▶ Abfliegen** for 8–10 s |
-| 2 The same plan on the phone | `film-handy`: Meine Touren → the plan → overview → "▶ Los geht's" |
-| 3 On the way | `film-unterwegs`: Navigate locked, a turn is said (voice on) |
-| 4 A new idea | `film-umplanen`: hold Planen → search the inn offline (✈) → pin card → "Als Zwischenstopp" → the new route → "Weiter geht's" |
-| 5 Arrive | `film-ankunft`: arrival box "Du bist angekommen." → Tour beenden → Tour speichern |
+## F – On the way: a new idea – stop at the inn (app, flight mode)
 
-## Taking a picture (`tools/dev/website_shot.sh`, donald)
+| Step | File | What you see | Key · used on | Change here → new picture |
+| --- | --- | --- | --- | --- |
+| F01 | `F01-handy-planen-waehrend-tour` | after holding Planen: plan with the light blue band, recording on | – | `ui/PlanPanel.kt` (during a tour) |
+| F02 | `F02-handy-suche-einkehr-offline` | search for the inn, ✈, results from the phone | suche · unterwegs-aendern, orte | `ui/search/SearchScreen.kt` |
+| F03 | `F03-handy-pin-karte-einkehr` | the inn found: pin card "+ Zur Route" · Mehr (→ "In Google Maps öffnen") | ort (help), ort-google-maps (home) · home, unterwegs-aendern, orte | `ui/MapOverlays.kt`, `map/CandidateMarker.kt` |
+| F04 | `F04-handy-neue-route-mit-einkehr` | the new route with the inn as stop, ✈, recording on | neue-route · unterwegs-aendern, offline, store S2 | `ui/PlanPanel.kt` |
+| F05 | `F05-handy-weiter-gehts` | "Weiter geht's" – back in Navigate, new arrival | zurueck · unterwegs-aendern | `ui/NavigateScreen.kt` |
 
-`website_shot.sh start` → `setup de|en` → `gps <lon> <lat>` (Meran, e.g. 11.1600 46.6700) → drive the app (adb input /
-by hand) → `shot <file.png>` → `stop`. Older sets: `bilder/a019*` (Vellau, 0.13), `2026-11-01-donald`, `2026-11-03-donald`
-(pairing), `2026-11-02-hp` / `2026-11-03-hp` (planner W1–W6).
+## G – Off the route (app)
+
+| Step | File | What you see | Key · used on | Change here → new picture |
+| --- | --- | --- | --- | --- |
+| G01 | `G01-handy-abseits-der-route` | amber card "Abseits der Route – Rückweg wird gesucht…" | abseits · unterwegs-aendern | `ui/NavigateScreen.kt` |
+| G02 | `G02-handy-neue-route-frage` | the question: "Neue Route" \| "Original behalten" | abseits-frage · unterwegs-aendern | `ui/NavigateScreen.kt` |
+| G03 | `G03-handy-alte-route-grau` | after "Neue Route": the original as thin grey line | – | `ui/MapScreen.kt` |
+| G04 | `G04-handy-stopp-auslassen` | "Über ③" or "③ auslassen" | – | `ui/NavigateScreen.kt` |
+
+## H – Arrive, end and keep the tour (app)
+
+| Step | File | What you see | Key · used on | Change here → new picture |
+| --- | --- | --- | --- | --- |
+| H01 | `H01-handy-angekommen` | "Du bist angekommen." · Weiter aufzeichnen \| Tour beenden | angekommen · navigation, film 5 | `ui/TourBar.kt` |
+| H02 | `H02-handy-tour-beenden` | "Tour beenden?": numbers, green "Tour speichern", Weiter \| Löschen | beenden · navigation | `ui/TourBar.kt` |
+| H03 | `H03-handy-liftfahrt-erkannt` | the ride check after the cable car: what should count | fahrt · home, navigation | `ui/RideSummary.kt` |
+| H04 | `H04-handy-gemacht-gerade-gespeichert` | Meine Touren → Gemacht, today's tour "✓ Gerade gespeichert" | gemacht · gpx | `ui/Screens.kt` |
+
+## I – Meine Touren and GPX (app)
+
+| Step | File | What you see | Key · used on | Change here → new picture |
+| --- | --- | --- | --- | --- |
+| I01 | `I01-handy-meine-touren-geplant` | Geplant: Zuletzt / Gespeichert, route pictures, "In Bearbeitung" | meine-touren · gpx, store S4 | `ui/Screens.kt`, `ui/RoutesTab.kt`, `ui/RoutePreview.kt` |
+| I02 | `I02-handy-uebersicht-los-gehts` | a route's large overview: map picture, "▶ Los geht's", Abbrechen \| Planen | uebersicht · gpx, film 2 | `ui/Screens.kt` |
+| I03 | `I03-handy-touren-menue` | ⋮ on a row: Planen, Los geht's, Umbenennen, Als Kopie speichern, GPX exportieren, Plan teilen, Löschen | – | `ui/Screens.kt` |
+| I04 | `I04-handy-gpx-als-plan` | an imported GPX track opened: "Als Plan übernehmen" | gpx-plan · gpx | `ui/Panels.kt` |
+| I05 | `I05-handy-papierkorb` | Papierkorb with a deleted tour (30 days) | – (help akku-sicherung) | `ui/Screens.kt` |
+
+## J – A place from Google Maps (app)
+
+| Step | File | What you see | Key · used on | Change here → new picture |
+| --- | --- | --- | --- | --- |
+| J01 | `J01-google-maps-teilen-onpath` | Google Maps: the inn → Teilen → OnPath in the share sheet (no private contacts) | – | – (Android) |
+| J02 | `J02-handy-ort-aus-google` | the shared place in OnPath | g-uebernommen · orte | `map/CandidateMarker.kt`, `ui/MapOverlays.kt` |
+| J03 | `J03-handy-route-zum-ort` | after "Hierhin": the route there | g-route · orte | `ui/PlanPanel.kt` |
+
+## K – By bike (app, E-Bike)
+
+| Step | File | What you see | Key · used on | Change here → new picture |
+| --- | --- | --- | --- | --- |
+| K01 | `K01-handy-plan-ebike` | the bike route by E-Bike: surface, push section | ebike (help), plan-ebike (home) · home, route-planen | `ui/PlanPanel.kt`, `ui/RouteWarnings.kt` |
+| K02 | `K02-handy-ruheanzeige` | rest view on the handlebar: arrow, distance, arrival | ruhe (help), ruheanzeige (home) · home, navigation | `ui/RestView.kt`, `ui/SmartScreen.kt` |
+| K03 | `K03-handy-rad-abzweigung` | the map back shortly before the turn | – | `ui/SmartScreen.kt` |
+
+## L – Safe: restart and backup (app)
+
+| Step | File | What you see | Key · used on | Change here → new picture |
+| --- | --- | --- | --- | --- |
+| L01 | `L01-handy-neustart-hinweis` | after a restart: the recording is saved | neustart-hinweis · probleme | `ui/NavigateScreen.kt`, `ui/Screens.kt` |
+| L02 | `L02-handy-unterbrochene-tour` | "Unterbrochene Tour": continue / delete / save | neustart · probleme | `ui/Screens.kt` |
+| L03 | `L03-einstellungen-sicherung` | Einstellungen → Sicherung: the backup folder | sicherung · akku-sicherung | `ui/SettingsScreen.kt` |
+| L04 | `L04-einstellungen-datenschutz` | Einstellungen → Datenschutz: what leaves the phone | – | `ui/SettingsScreen.kt` |
+
+## Store (Google Play) – made from the flows, no extra shots
+
+S1 "Plane in Ruhe – auch ohne Netz" → D05 · S2 "Unterwegs umplanen – ganz einfach" → F04 · S3 "Klare Ansagen an jeder
+Abzweigung" → E03 (+ E07) · S4 "Deine Daten bleiben bei dir" → I01 · S5 "Ohne Werbung. Ohne Konto. Ohne Tracking." → D06 ·
+S6 "Am PC planen, auf dem Handy losgehen" → B04 + D05. (Proposal from the privacy check, owner to decide: S4 / S5 say a
+little more than the code does – e.g. "Deine Touren auf deinem Handy" and "Ohne Werbung. Ohne Konto. Ohne Analyse.")
+
+## Film (about 48 s) – recordings along the flows
+
+Screen recordings (MP4; app 1080 × 2400, planner 2560 × 1440) – not into a repo (R2 / donald), only their place in
+`liste.md`. One still per scene comes from the flow pictures.
+
+| Scene | Recording | Flow steps |
+| --- | --- | --- |
+| 1 At home | `film-1-browser-planen`: plan link opens, route draws itself, 3D + Abfliegen 8–10 s | B02, B04, B05 |
+| 2 The same plan on the phone | `film-2-handy-los-gehts`: Meine Touren → overview → "▶ Los geht's" | I01, I02 |
+| 3 On the way | `film-3-unterwegs`: Navigate locked, a turn is said (voice on) | E01, E03 |
+| 4 A new idea | `film-4-einkehr`: hold Planen → search offline → pin card → Als Zwischenstopp → new route → Weiter geht's | F01–F05 |
+| 5 Arrive | `film-5-ankommen`: "Du bist angekommen." → Tour beenden → Tour speichern | H01, H02, H04 |
+
+## Old names (until the website is switched over)
+
+`meine-routen` → I01 (`meine-touren`) · `gespeichert` → H04 (`gemacht`) · `tourmenue` → gone (slider) · `app-pruefen` →
+C04 · `app-neu` → C07. Older sets stay in `onpath.private/marketing/bilder/` as history (`a019*` Vellau 0.13,
+`2026-11-01-donald`, `2026-11-03-donald`, `2026-11-02-hp`, `2026-11-03-hp`).
+
+Texts the planner shows (time, distance, notes, points …) come from the app's shared strings – a change in
+`strings/…/strings_plan.xml` that the planner shows also means new B pictures.
