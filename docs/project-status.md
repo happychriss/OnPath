@@ -20,6 +20,11 @@ release's notes) and the git history – this file keeps only the current state 
   open items: `docs/backlog.md`; questions: issues `frage` in `onpath.private` + the Fragenregister.
 
 ## Last session
+- **laptop, 2026-11-07 – planner parity + plan sheet A (both live):** "Web planner" green again – the app's colour rule,
+  blue #335A85, paper B, warm shadows, corner family, blue compass, goal flag, quiet locate (d5aace4c, 8ca0d359). Plan sheet A
+  (a239a275): wide = points first with „+ Ziel hinzufügen“, facts in one row, no steps, the profile along the map's bottom
+  for good; phone = two steps („2 Punkte ⌃“, „⤢ Höhenprofil groß“). Shots on https://claude.ai/artifact/F1rCK7xXXmUhWcQRj3o1mR
+  („Gebaut“). Open: Meine Touren like the app's (backlog), „gekoppelt = eine Liste“.
 <!-- Newest first; keep the newest 2–3 entries – older ones go (git history has them). Who (donald / laptop / captain / cloud-web), date, what changed, what's half done, next. -->
 - **donald, 2026-11-06 evening → 2026-11-07 morning – READ `docs/history/handoff-donald-2026-11-06.md`** (section
   "MORNING 2026-11-07" first): the six evening branches merged, code audit (launchSafe, geo math in one place,
