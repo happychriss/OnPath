@@ -74,6 +74,7 @@ import com.onpath.app.domain.plan.LivePlan
 import com.onpath.app.domain.plan.LivePlanRows
 import com.onpath.app.domain.plan.RouteBack
 import com.onpath.app.domain.plan.RoutingSpot
+import com.onpath.app.domain.plan.PlanSession
 import com.onpath.app.domain.tour.QuietGate
 
 /** A track shown on the map (imported GPX, recorded or saved tour). */
@@ -672,13 +673,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- planning ---
     val waypoints = mutableStateListOf<GeoPoint>().apply { addAll(prefs.planWaypoints) }
-    /**
-     * Points added by tapping a POI (hut, viewpoint …), kept by value so reorder/reverse/undo keep
-     * them; a dragged point is a new value and so no longer pinned. Routed exactly (Planner).
-     */
-    private val pinned = prefs.planPinned.toMutableSet()
-    fun pinnedIndices(): Set<Int> = waypoints.indices.filter { waypoints[it] in pinned }.toSet()
-    private val history = PlanHistory()
+    /** The plan being edited: points, Undo / Redo, pinned points, the one-point rule's start ([PlanSession]). */
+    private val plan = PlanSession(waypoints, prefs.planPinned)
+    /** Pinned (POI) points, kept by value ([PlanSession.pinned]). */
+    private val pinned: MutableSet<GeoPoint> get() = plan.pinned
+    fun pinnedIndices(): Set<Int> = plan.pinnedIndices()
     /** Followed routes replaced by plan edits during the tour (Undo takes them back exactly, Bug 02). */
     private val followHistory = FollowHistory()
     var canUndo by mutableStateOf(false)
@@ -1090,7 +1089,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override val showSettings: Boolean get() = this@AppViewModel.showSettings
             override val loadModalOpen: Boolean get() = this@AppViewModel.loadModalOpen
             override val waypoints: List<GeoPoint> get() = this@AppViewModel.waypoints
-            override fun historyPoints(): Set<GeoPoint> = history.allPoints()
+            override fun historyPoints(): Set<GeoPoint> = plan.historyPoints()
             override fun enter(m: AppMode) = this@AppViewModel.enter(m)
             override fun closeMapOverlays(why: String) = this@AppViewModel.closeMapOverlays(why)
             override fun backToMap() {
@@ -1410,24 +1409,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun change(block: MutableList<GeoPoint>.() -> Unit) {
         // editing on a map that keeps turning is confusing: stop following, the map stays at its angle (owner)
         if (mode == AppMode.PLAN && headingUp && followMe) followMe = false
-        history.record(waypoints)
-        val before = waypoints.toList()
-        waypoints.block()
+        val before = plan.edit(block)
         if (WholeRoute.firstRoute(before.size, waypoints.size)) fitNextRoute = true
         routingSpot = RoutingSpot.of(before, waypoints)
         cellsForNewPoints(before, waypoints)
-        canUndo = history.canUndo; canRedo = history.canRedo
+        canUndo = plan.canUndo; canRedo = plan.canRedo
         prefs.planWaypoints = waypoints.toList()
         prunePinned()
         planEditPending = true
         val split = splitOf(before, waypoints.toList())
-        val left = waypoints.singleOrNull()
         val pos = myPosition()
         // the one point left is where I stand (or only the start the one-point rule put in): nothing to ask about – the
         // plan empties in oneLeftGoesFromHere (field bug 2026-11-06; standing on point 1 also counts it as passed, so the
         // split says NothingAhead)
-        val leftIsHere = left != null && PlanGuidance.leftIsHere(left == oneLeftStart,
-            if (pos != null) com.onpath.app.data.Geo.distance(pos, left) else null)
+        val leftIsHere = plan.leftIsHere(pos)
         routeBackAsk = !leftIsHere && (split == TourSplit.Outcome.NothingAhead ||
             RouteBack.asks(before, waypoints, recState.value != null, followLine != null, followIsTrack, pos))
         if (routeBackAsk) {
@@ -1557,17 +1552,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun oneLeftGoesFromHere(before: List<GeoPoint>, mayEmpty: Boolean = false) {
         val left = waypoints.singleOrNull()
         val pos = myPosition()
-        val auto = left != null && left == oneLeftStart
-        val outcome = PlanGuidance.oneLeft(before.size, waypoints.size, recState.value != null, followLine != null,
-            followIsTrack, routeBackAsk, auto, if (left != null && pos != null) com.onpath.app.data.Geo.distance(pos, left) else null)
+        val auto = left != null && left == plan.oneLeftStart
+        val outcome = plan.oneLeft(before.size, recState.value != null, followLine != null, followIsTrack, routeBackAsk, pos)
         if (outcome == PlanGuidance.OneLeft.NONE) return
         if (outcome == PlanGuidance.OneLeft.EMPTY) {
             if (!mayEmpty) return // Undo / Redo brings a plan back – it never empties it
             Problems.trace("plan", "One point left during the tour, " +
                 (if (auto) "only the start this rule put in" else "right where I stand") + ": the plan empties (field bug 2026-11-06)")
             routeBackAsk = false
-            oneLeftStart = null
-            waypoints.clear()
+            plan.empty()
             prefs.planWaypoints = emptyList()
             return // endGuidanceIfPlanEmpty: the guidance ends, the recording goes on
         }
@@ -1581,24 +1574,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         pendingSplit = null // a whole new plan from here, nothing of it passed
-        oneLeftStart = pos
-        waypoints.clear(); waypoints.addAll(listOf(pos, goal))
+        plan.fromHere(pos, goal)
         cellsForNewPoints(before, waypoints)
         prefs.planWaypoints = waypoints.toList()
         Problems.trace("plan", "One point left during the tour: plan = position → that point (like Hierhin)")
     }
 
-    /**
-     * The start [oneLeftGoesFromHere] put in (my position then): no point of the user's – deleting the goal of that
-     * plan empties it instead of building "position → that start" again or asking "Route back to the start?".
-     */
-    private var oneLeftStart: GeoPoint? = null
-
-    /** Forget pinned points that are neither planned nor reachable by undo/redo. */
+    /** Forget pinned points that are neither planned nor reachable by undo/redo ([PlanSession.prunePinned]). */
     private fun prunePinned() {
-        if (pinned.isEmpty()) return
-        val alive = HashSet(waypoints).apply { addAll(history.allPoints()) }
-        if (pinned.retainAll(alive)) prefs.planPinned = pinned
+        if (plan.prunePinned()) prefs.planPinned = pinned
     }
 
     private fun set(list: List<GeoPoint>) = change { clear(); addAll(list) }
@@ -2036,8 +2020,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         set(w)
     }
 
-    fun undoStep() = step(history.undo(waypoints), "Undo")
-    fun redoStep() = step(history.redo(waypoints), "Redo")
+    fun undoStep() = step(plan.undo(), "Undo")
+    fun redoStep() = step(plan.redo(), "Redo")
 
     private fun step(prev: List<GeoPoint>?, what: String) {
         if (prev == null) { Problems.trace("plan", "$what: nothing to ${what.lowercase()}"); return }
@@ -2045,8 +2029,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val before = waypoints.toList()
         routingSpot = RoutingSpot.of(before, prev)
         val split = splitOf(before, prev)
-        waypoints.clear(); waypoints.addAll(prev)
-        canUndo = history.canUndo; canRedo = history.canRedo
+        plan.replace(prev)
+        canUndo = plan.canUndo; canRedo = plan.canRedo
         routeBackAsk = split == TourSplit.Outcome.NothingAhead // the plan an open question was about is gone
         oneLeftGoesFromHere(before)
         closePointMenu("undo / redo"); firstPointMenu = null
@@ -2442,7 +2426,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         linkTitle?.let { (title, at) -> if (at == routed) linkTitle = title to snapped }
         linkPoints?.let { at -> if (at.map { it.lat to it.lon } == routed.map { it.lat to it.lon }) linkPoints = snapped }
         val moves = WaypointSnap.moves(routed, snapped)
-        history.replacePoints(moves)
+        plan.snapped(moves)
         // an open menu follows its point to the snapped position (it must still find it for Delete)
         pointMenuTarget = pointMenuTarget?.afterSnap(moves)
         prefs.planWaypoints = waypoints.toList()
