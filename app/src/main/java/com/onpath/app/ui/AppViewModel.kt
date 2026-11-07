@@ -203,13 +203,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun holdFired() = tour.holdFired()
     /** The line at the top of the open Settings page; goes when the page changes or Settings closes. */
     var settingsNote by mutableStateOf<Notice?>(null)
-    private var routesShown by mutableStateOf(false)
+    /**
+     * My routes' state and decisions ([com.onpath.app.ui.routes.RoutesState], audit package 4 stage 3): open, tab, the
+     * list, Zuletzt, the "✓ Gerade gespeichert" mark; the database behind a small store. The names below forward to it.
+     */
+    private val routes = com.onpath.app.ui.routes.RoutesState(object : com.onpath.app.ui.routes.RoutesStore {
+        override fun listTours() = db.listTours()
+        override fun setDraft(id: Long, draft: Boolean) = db.setDraft(id, draft)
+        override fun setDeleted(id: Long, deletedMs: Long?) = db.setDeleted(id, deletedMs)
+        override fun pruneDrafts(max: Int) = db.pruneDrafts(max)
+        override fun loadSegments(id: Long) = db.loadSegments(id)
+        override fun deleteForGood(id: Long) { db.deleteTour(id) }
+    }).also { it.onClosed = { routesNote = null } } // the line at the top lasts until My routes is left
     /** My routes list (☰ → My routes) is open. */
     var routesOpen: Boolean
-        get() = routesShown
-        set(v) { if (!v) { routesNote = null; justSavedId = -1L }; routesShown = v } // line / box last until My routes is left
+        get() = routes.open
+        set(v) { routes.open = v }
     /** My routes' last chosen tab (Planned / Done); kept while the app runs, Planned after a restart. */
-    var routesTab by mutableStateOf(RoutesTab.PLANNED)
+    var routesTab: RoutesTab
+        get() = routes.tab
+        set(v) { routes.tab = v }
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
     var mode by mutableStateOf(AppMode.PLAN)
         private set
@@ -1000,17 +1013,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openSavedTour() {
         val t = tour.closeFinished() ?: return
         Problems.trace("tour", "Saved box: In Meine Touren → My routes → Gemacht, tour ${t.id} marked")
-        routesTab = RoutesTab.DONE
-        openRoutes()
-        justSavedId = t.id // after openRoutes: opening clears nothing, closing My routes clears it
+        refreshTours()
+        routes.showSaved(t.id)
     }
 
     /** The box "Tour gespeichert" → OK. */
     fun closeSavedTour() {
         tour.closeFinished()?.let { Problems.trace("tour", "Saved box: OK (tour ${it.id})") }
     }
-    var tours by mutableStateOf<List<Tour>>(emptyList())
-        private set
+    /** The tours My routes shows ([com.onpath.app.ui.routes.RoutesState.tours]). */
+    val tours: List<Tour> get() = routes.tours
     var events = mutableStateListOf<UiEvent>()
         private set
 
@@ -2720,7 +2732,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun keepAsDraft(why: String) {
         val pts = waypoints.toList()
-        if (!Drafts.keeps(pts.size, planUnsaved)) return
+        val unsaved = planUnsaved
+        if (!Drafts.keeps(pts.size, unsaved)) return
         val r = route
         val act = activity; val level = sac
         val stops = savedStops(pts); val pins = pinnedIndices()
@@ -2730,11 +2743,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val name = withTimeoutOrNull(NAME_WAIT_MS) { proposeName(pts, r) } ?: dated
             val id = withContext(Dispatchers.IO) {
                 runCatching {
-                    if (db.listTours().any { it.draft && it.waypoints.map { w -> w.lat to w.lon } == key }) return@runCatching null
-                    db.insertTour(TourKind.PLANNED, name, act.name, level,
-                        r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
-                        listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }), stops, pinned = pins, draft = true,
-                    ).also { storePlanTimes(it, r, act); db.pruneDrafts(Drafts.MAX) }
+                    // not twice: no second draft with these points, none for a saved route with them (RoutesState)
+                    routes.keepDraft(key, unsaved) {
+                        db.insertTour(TourKind.PLANNED, name, act.name, level,
+                            r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
+                            listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }), stops, pinned = pins, draft = true,
+                        ).also { storePlanTimes(it, r, act) }
+                    }
                 }.onFailure { Problems.error("db", "The plan could not be kept under Zuletzt", it) }.getOrNull()
             }
             if (id != null) { Problems.trace("plan", "Plan kept under Zuletzt ($why): \"$name\", ${pts.size} points"); refreshTours() }
@@ -2745,11 +2760,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun saveDraft(t: Tour) {
         viewModelScope.launchSafe("app", "saveDraft") {
             val ok = withContext(Dispatchers.IO) {
-                runCatching { db.setDraft(t.id, false) }.onFailure { Problems.error("db", "A plan under Zuletzt could not be saved", it) }.getOrDefault(false)
+                runCatching { routes.saveDraft(t.id) }.onFailure { Problems.error("db", "A plan under Zuletzt could not be saved", it) }.getOrDefault(false)
             }
             if (!ok) { routesProblem = Txt.s(Res.string.msg_route_save_failed); return@launchSafe }
             Problems.trace("plan", "Zuletzt → saved: \"${t.name}\"")
-            justSavedId = t.id
+            routes.markSaved(t.id)
             Backups.tourChanged(getApplication(), t.id)
             sync.changed("plan saved from Zuletzt")
             refreshTours()
@@ -2760,7 +2775,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun deleteDraft(t: Tour) {
         viewModelScope.launchSafe("app", "deleteDraft") {
             val ok = withContext(Dispatchers.IO) {
-                runCatching { db.setDeleted(t.id, System.currentTimeMillis()) }
+                runCatching { routes.toBin(t.id) }
                     .onFailure { Problems.error("db", "A plan under Zuletzt could not be moved to the recycle bin", it) }.getOrDefault(false)
             }
             if (ok) { Problems.trace("plan", "Zuletzt → recycle bin: \"${t.name}\""); refreshTours() }
@@ -2784,13 +2799,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * The line of a tour in My routes for its preview and overview (owner 2026-11-07): the stored points (a plan's route,
      * a recorded track, an imported GPX), else its via points / GPX waypoints. Empty when nothing can be read (reported).
      */
-    suspend fun tourLine(t: Tour): List<List<GeoPoint>> = withContext(Dispatchers.IO) {
-        if (t.id == LivePlanRows.LIVE_ID) return@withContext listOf(route?.points ?: waypoints.toList())
-        val segs = runCatching { db.loadSegments(t.id) }
-            .onFailure { Problems.warn("routes", "The line of tour ${t.id} for its preview could not be read", it) }
-            .getOrDefault(emptyList())
-            .map { s -> s.map { GeoPoint(it.lat, it.lon) } }.filter { it.isNotEmpty() }
-        segs.ifEmpty { listOf(t.waypoints.map { GeoPoint(it.lat, it.lon) }) }
+    suspend fun tourLine(t: Tour): List<List<GeoPoint>> {
+        val live = route?.points ?: waypoints.toList() // read on the main thread
+        return withContext(Dispatchers.IO) { routes.line(t) { live } }
     }
 
     /**
@@ -2826,7 +2837,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** The plan just moved from Zuletzt to saved: "✓ Gerade gespeichert" on it until My routes closes. */
-    var justSavedId by mutableStateOf(-1L)
+    var justSavedId: Long
+        get() = routes.justSavedId
+        set(v) { routes.justSavedId = v }
 
     /**
      * Saves the plan as a new planned route named [name]. The sheet then shows "Saved as …" (no message). Without a
@@ -2858,9 +2871,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }.onFailure { Problems.error("db", "Saving a planned route failed", it) }.getOrNull()
         }
         if (id == null) { routesProblem = Txt.s(Res.string.msg_route_save_failed); return }
-        fromDraft?.let { d -> withContext(Dispatchers.IO) {
-            runCatching { db.deleteTour(d.id) }.onFailure { Problems.warn("db", "The plan under Zuletzt stays after it was saved", it) }
-        } }
+        // the saved route takes the place of its draft and of any draft with the same points (never a second entry)
+        withContext(Dispatchers.IO) {
+            runCatching { routes.afterSaved(fromDraft?.id ?: -1L, pts.map { it.lat to it.lon }) }
+                .onFailure { Problems.warn("db", "The plan under Zuletzt stays after it was saved", it) }
+        }
         Backups.tourChanged(getApplication(), id)
         sync.changed("route saved")
         setSaved(title, id, pts)
@@ -2968,8 +2983,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun requestOpen(t: Tour, why: String = "My routes tapped") {
         Problems.trace("routes", "Open tour ${t.id} \"${t.name}\" (${t.kind}, ${t.distanceM.toInt()} m): $why")
-        val ask = RouteRules.openAsk(t.kind, t.waypoints.size, navigating(recState.value != null), waypoints, savedPoints,
-            hasLine = t.distanceM > 0.0)
+        val ask = routes.openAsk(t, navigating(recState.value != null), waypoints, savedPoints)
         val hadPlan = waypoints.isNotEmpty()
         when (ask) {
             OpenAsk.FOLLOW_PLAN_DURING_TOUR -> {
@@ -3830,8 +3844,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refreshTours() {
         viewModelScope.launchSafe("app", "refreshTours", Dispatchers.IO) {
-            val list = db.listTours().filter { it.state == "done" }.map { withModelTime(it) }
-            withContext(Dispatchers.Main) { tours = list }
+            val list = routes.load { withModelTime(it) }
+            withContext(Dispatchers.Main) { routes.show(list) }
         }
     }
 
@@ -4311,7 +4325,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (recState.value?.tourId == t.id) { sayError(Txt.s(Res.string.msg_track_recording_now), NoticePlace.ROUTES); return }
         viewModelScope.launchSafe("app", "deleteTour", Dispatchers.IO) {
             // into the recycle bin (30 days, My routes → ⋮ → Recycle bin); its backup file moves to Deleted/
-            val ok = runCatching { db.setDeleted(t.id, System.currentTimeMillis()) }
+            val ok = runCatching { routes.toBin(t.id) }
                 .onFailure { Problems.error("db", "Moving a tour to the recycle bin failed", it) }.getOrDefault(false)
             if (ok) { Backups.tourChanged(getApplication(), t.id); sync.files.marks.remove(t.uuid); sync.changed("moved to the recycle bin") }
             withContext(Dispatchers.Main) {
