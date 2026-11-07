@@ -184,6 +184,8 @@ object Diagnostics {
     private fun iso(ms: Long): String =
         SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.ROOT).format(Date(ms))
 
+    // expected: the diagnostics export records every part's error in the export itself (this and the runCatching /
+    // catch spots above: layer visibility, rendered counts, package json, logcat) – the export is the report
     private inline fun safe(block: () -> JSONObject): JSONObject = try { block() } catch (e: Throwable) {
         JSONObject().put("error", e.toString())
     }

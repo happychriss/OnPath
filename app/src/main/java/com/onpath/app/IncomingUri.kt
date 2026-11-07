@@ -1,5 +1,6 @@
 package com.onpath.app
 
+import com.onpath.app.debug.Problems
 import java.io.File
 
 /**
@@ -11,10 +12,13 @@ object IncomingUri {
     fun importable(scheme: String?, path: String?, privateDirs: List<File>): Boolean = when (scheme?.lowercase()) {
         "content" -> true
         "file" -> {
-            val p = path?.let { runCatching { File(it).canonicalPath }.getOrNull() }
+            // a path that cannot be resolved is refused (safe side) and reported (audit 2026-11-07)
+            val p = path?.let { runCatching { File(it).canonicalPath }
+                .onFailure { e -> Problems.warn("intent", "Shared file path could not be resolved – not imported", e) }.getOrNull() }
             p != null && privateDirs.none { d ->
-                val dir = runCatching { d.canonicalPath }.getOrDefault(d.path)
-                p == dir || p.startsWith(dir + File.separator)
+                val dir = runCatching { d.canonicalPath }.getOrElse { e ->
+                    Problems.warn("intent", "Own folder path could not be resolved – file not imported", e); null }
+                dir == null || p == dir || p.startsWith(dir + File.separator)
             }
         }
         else -> false

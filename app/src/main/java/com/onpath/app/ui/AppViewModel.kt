@@ -12,6 +12,8 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.onpath.app.debug.launchSafe
+import com.onpath.app.debug.reported
 import com.onpath.app.cells.label
 import com.onpath.app.data.AppSettings
 import com.onpath.app.data.DataFiles
@@ -112,6 +114,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val dataFiles = DataFiles(app)
     val prefs = Prefs(app)
+    /**
+     * viewModelScope for the helper classes (map data, search, updates, pairing): same job, plus a handler that reports
+     * an unexpected error to the problem log instead of ending the app (owner 2026-11-07). The view model's own
+     * launches use [launchSafe] with their function's name.
+     */
+    private val helperScope by lazy { viewModelScope.reported("app") }
     private val db = TourDb.get(app)
     // time estimate state, declared before init {} uses it (recalc / refreshTours)
     init {
@@ -129,7 +137,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
 
     init {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launchSafe("app", "start-up work", Dispatchers.IO) {
             val note = packageNote()
             val p = dataFiles.packageCheck()
             withContext(Dispatchers.Main) { packageCheck = p; if (note.isNotEmpty() && errorCard == null) sayError(note.trim(), NoticePlace.BACKGROUND) }
@@ -244,7 +252,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun loadRoutingInfo() {
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "loadRoutingInfo") {
             routingInfo = withContext(Dispatchers.IO) {
                 try {
                     val rd5 = dataFiles.segmentsDir.listFiles { f -> f.name.endsWith(".rd5") }.orEmpty().map { f ->
@@ -380,7 +388,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun navScrubEnd() {
         scrubEndJob?.cancel()
-        scrubEndJob = viewModelScope.launch {
+        scrubEndJob = viewModelScope.launchSafe("app", "navScrubEnd") {
             kotlinx.coroutines.delay(SCRUB_HOLD_MS)
             highlight = null
             if (scrubWasFollowing && mode == AppMode.NAVIGATE) { followMe = true; recentreTick++ }
@@ -456,13 +464,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Rides recorded tour [t] again along its track at its own times (debugging a field tour, owner 2026-11-01). */
     fun startDemoTour(t: Tour) {
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "startDemoTour") {
             val pts = withContext(Dispatchers.IO) {
                 runCatching { db.loadSegments(t.id).flatten() }.onFailure { Problems.warn("demo", "Recorded tour not read for the demo", it) }
                     .getOrDefault(emptyList())
             }
             val path = com.onpath.app.recording.DemoPath.recorded(pts.map { GeoPoint(it.lat, it.lon, it.ele) }, pts.map { it.timeMs })
-                ?: run { sayError("This tour has no track with times to ride.", NoticePlace.SETTINGS); return@launch }
+                ?: run { sayError("This tour has no track with times to ride.", NoticePlace.SETTINGS); return@launchSafe }
             navSimLine = null // a recorded tour is ridden as it was – never moved onto a changed line
             Problems.trace("demo", "Riding recorded tour ${t.id} \"${t.name}\" again at its recorded times (${pts.size} points)")
             com.onpath.app.recording.DemoLocation.startRide(path, "recorded tour \"${t.name}\"")
@@ -503,7 +511,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Map cells + routing data on the phone: [MapDataFlow], forwarded member by member (the UI and the E2E tests use these). */
     private val mapData by lazy {
-        MapDataFlow(getApplication(), db, viewModelScope, { cells }, object : MapDataFlow.Host {
+        MapDataFlow(getApplication(), db, helperScope, { cells }, object : MapDataFlow.Host {
             override val mode: AppMode get() = this@AppViewModel.mode
             override val recState: StateFlow<RecState?> get() = this@AppViewModel.recState
             override val waypoints: List<GeoPoint> get() = this@AppViewModel.waypoints
@@ -629,7 +637,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun gated(gate: QuietGate, running: kotlinx.coroutines.Job?, busy: () -> Boolean, action: () -> Unit): kotlinx.coroutines.Job {
         gate.changed(android.os.SystemClock.elapsedRealtime())
         if (running?.isActive == true) return running
-        return viewModelScope.launch {
+        return viewModelScope.launchSafe("app", "gated") {
             while (true) {
                 val w = try { gate.waitMs(android.os.SystemClock.elapsedRealtime(), busy()) } catch (e: Exception) {
                     Problems.warn("ui", "Busy check failed; acting now", e); 0L
@@ -1052,7 +1060,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
     private val searchStore by lazy { com.onpath.app.search.SearchStore(getApplication()) }
     val search by lazy {
-        com.onpath.app.ui.search.SearchSession(viewModelScope, dataFiles.dir, getApplication<Application>().filesDir, searchStore,
+        com.onpath.app.ui.search.SearchSession(helperScope, dataFiles.dir, getApplication<Application>().filesDir, searchStore,
             com.onpath.app.search.PhotonProvider(com.onpath.app.search.PhotonProvider.userAgent(com.onpath.app.BuildConfig.VERSION_NAME)),
             areaPlan = { com.onpath.app.search.AreaPlan.of(dataFiles.dir) },
             geocoder = com.onpath.app.search.AndroidPlaceGeocoder(getApplication())) {
@@ -1067,7 +1075,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Search + shared places: [SearchFlow], forwarded member by member below
      * (the UI and the E2E tests use these); declared above the init that calls recalc() (stopName). */
     private val searchFlow by lazy {
-        SearchFlow(viewModelScope, { search }, { searchStore }, object : SearchFlow.Host {
+        SearchFlow(helperScope, { search }, { searchStore }, object : SearchFlow.Host {
             override val mode: AppMode get() = this@AppViewModel.mode
             override val startModeKnown: Boolean get() = this@AppViewModel.startModeKnown
             override val canEditMap: Boolean get() = this@AppViewModel.canEditMap
@@ -1101,7 +1109,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshTours() // "Load route" is enabled only when something is saved
         // an empty plan with a followed line left and no tour in the database (Pixel 2026-11-01: a blue line without points
         // that nothing could remove): the line goes – never while a tour is recording (the service may come back)
-        if (waypoints.isEmpty() && followLine != null && !followIsTrack) viewModelScope.launch {
+        if (waypoints.isEmpty() && followLine != null && !followIsTrack) viewModelScope.launchSafe("app", "start-up work") {
             val active = withContext(Dispatchers.IO) {
                 runCatching { db.findActiveRecording() != null }
                     .onFailure { Problems.warn("db", "Active tour not checked at start; the followed line stays", it) }.getOrDefault(true)
@@ -1114,7 +1122,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Set directly (enter() touches properties declared below); the check after the DB read
         // calls enter() and so also tells a running service which mode we are in.
         if (RecordingService.state.value != null) mode = AppMode.NAVIGATE
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launchSafe("app", "start-up work", Dispatchers.IO) {
             val active = db.findActiveRecording()
             val start = AppMode.onStart(RecordingService.state.value != null, active != null)
             withContext(Dispatchers.Main) { enter(start); startModeKnown = true }
@@ -1130,13 +1138,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         // The service stopped by itself (permission gone, foreground refused, database broken): say why, in the app too.
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "start-up work") {
             RecordingService.startFailed.collect { why ->
                 if (why != null) { RecordingService.startFailed.value = null; sayError(why, NoticePlace.BACKGROUND); if (mode == AppMode.NAVIGATE) enter(AppMode.PLAN) }
             }
         }
         // Re-routing (service): follow the line the service navigates now (new route taken / original again).
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "start-up work") {
             var saveFailedShown = false
             var recordingSeen: Long? = null
             RecordingService.state.collect { st ->
@@ -1157,7 +1165,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 syncNavActivity(n.session)
             }
         }
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "start-up work") {
             RecordingService.finished.collect { id ->
                 if (id != null) {
                     RecordingService.finished.value = null
@@ -1258,7 +1266,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** App updates (F-OFF-06): [AppUpdates] – created on first use (nothing in the start-up reaches it). */
     private val updates by lazy {
-        AppUpdates(getApplication(), viewModelScope, prefs, recording = { recState.value != null },
+        AppUpdates(getApplication(), helperScope, prefs, recording = { recState.value != null },
             say = { text, kind -> say(text, kind, updatePlace()) })
     }
     val update: UpdateState get() = updates.update
@@ -1304,7 +1312,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (dataBusy != null) return
         val app = getApplication<Application>()
         dataBusy = Txt.s(Res.string.msg_import_busy)
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launchSafe("app", "importData", Dispatchers.IO) {
             val msg: Pair<String, Boolean> = try {
                 val name = displayName(uri) ?: "import.zip"
                 val input = app.contentResolver.openInputStream(uri) ?: error("Cannot open the file.")
@@ -1360,7 +1368,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** A stored activity name; null for none or an unknown / old one (expected: the caller falls back). */
-    private fun activityOrNull(name: String?): Activity? = name?.let { runCatching { Activity.valueOf(it) }.getOrNull() }
+    private fun activityOrNull(name: String?): Activity? = com.onpath.app.debug.enumOrNull<Activity>(name, "app")
 
     /** "Activity set to … from the file" is over once the activity / T level changes again. */
     private fun clearShownNote() { shown?.let { if (it.note != null) shown = it.copy(note = null) } }
@@ -1821,11 +1829,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun refreshPointNames() {
         val todo = waypoints.toList().filter { it !in nearbyNames && stopName(it) == null }.distinct()
         if (todo.isEmpty() || namesJob?.isActive == true) return
-        namesJob = viewModelScope.launch {
+        namesJob = viewModelScope.launchSafe("app", "refreshPointNames") {
             // only the places near each point are read from the index file (off the main thread)
             val index = try { search.offlineIndex() }
                 catch (e: kotlinx.coroutines.CancellationException) { throw e }
-                catch (e: Exception) { Problems.info("plan", "No place index for point names; \"Point N\" shown", e); return@launch }
+                catch (e: Exception) { Problems.info("plan", "No place index for point names; \"Point N\" shown", e); return@launchSafe }
             val names = withContext(Dispatchers.IO) {
                 todo.mapNotNull { p ->
                     com.onpath.app.search.RouteNamer.label(p, com.onpath.app.search.RouteNamer.placesNear(index, listOf(p)))?.let { p to it }
@@ -1864,7 +1872,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         planSize = PlanSize.COMPACT
         highlight = p
         events += UiEvent.PanTo(p)
-        viewModelScope.launch { delay(3_000); if (highlight == p) highlight = null }
+        viewModelScope.launchSafe("app", "showPointFromList") { delay(3_000); if (highlight == p) highlight = null }
     }
 
     /** Point menu → "Delete" (Undo brings it back). */
@@ -2173,7 +2181,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * the run [gen] is the current one.
      */
     private fun showProgress(gen: Int, done: Int, total: Int) {
-        viewModelScope.launch(Dispatchers.Main) { if (requests.isCurrent(gen) && routing) routeProgress = done to total }
+        viewModelScope.launchSafe("app", "showProgress", Dispatchers.Main) { if (requests.isCurrent(gen) && routing) routeProgress = done to total }
     }
 
     private fun recalc() {
@@ -2216,7 +2224,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val started = android.os.SystemClock.elapsedRealtime()
         val cancel = com.onpath.app.routing.RouteCancel().also { routeCancel = it }
         val askAtLimit = mode == AppMode.PLAN
-        routeJob = viewModelScope.launch {
+        routeJob = viewModelScope.launchSafe("app", "recalc") {
             delay(150) // debounce quick taps
             // the Cancel button appears only when it takes a while (no flicker for normal routes)
             val slow = launch { delay(ROUTING_SLOW_MS); if (requests.isCurrent(gen)) routingSlow = true }
@@ -2250,7 +2258,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (requests.isCurrent(gen)) { routingSlow = false; routeProgress = null; routeShare = null }
             if (!requests.isCurrent(gen) || !isActive) { // superseded or cleared
                 Problems.trace("routing", "Route #$gen for ${pts.size} points superseded – result ignored")
-                return@launch
+                return@launchSafe
             }
             // one line per route: distance, size, profile, each try's time and outcome
             val done = result.getOrNull()?.route
@@ -2293,7 +2301,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         Problems.info("routing", "Plan reached its time limit after ${it.rounds} period(s) – asking to wait on")
                         slowPlanAsk = it.rounds
                         routing = false
-                        return@launch
+                        return@launchSafe
                     }
                     fitNextRoute = false // the points were fitted when they came (link) or are where the user held
                     Problems.error("routing", "Route calculation failed", it)
@@ -2542,14 +2550,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun showPlanWhole(moment: PlanCamera.Moment) {
         val asked = android.os.SystemClock.uptimeMillis()
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "showPlanWhole") {
             delay(WholeRoute.SETTLE_MS)
             val pts = waypoints.toList()
             val what = if (mode != AppMode.PLAN) PlanCamera.Show.NOTHING
                 else PlanCamera.show(pts.size, touchedSince = lastMapTouchMs > asked, trackShown = shown != null)
             if (what == PlanCamera.Show.NOTHING) {
                 Problems.trace("map", "Plan not shown whole (${moment.name.lowercase()}): the map was touched, Plan left or nothing to show")
-                return@launch
+                return@launchSafe
             }
             followMe = false
             freeLookAt = null
@@ -2572,11 +2580,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun fitFirstRoute(line: List<GeoPoint>, pts: List<GeoPoint>) {
         val asked = android.os.SystemClock.uptimeMillis()
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "fitFirstRoute") {
             delay(WholeRoute.SETTLE_MS)
             if (lastMapTouchMs > asked || mode != AppMode.PLAN || shown != null || route?.points != line) {
                 Problems.trace("map", "First route not fitted: the map was touched or the plan moved on")
-                return@launch
+                return@launchSafe
             }
             followMe = false
             freeLookAt = null
@@ -2634,8 +2642,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         saveAsk = ask
         // the proposal (plan link title / "Vellau → Leiteralm") replaces the date name in the field until the user types
         val r = route
-        viewModelScope.launch {
-            val proposed = withTimeoutOrNull(NAME_WAIT_MS) { proposeName(pts, r) } ?: return@launch
+        viewModelScope.launchSafe("app", "askSave") {
+            val proposed = withTimeoutOrNull(NAME_WAIT_MS) { proposeName(pts, r) } ?: return@launchSafe
             if (saveAsk === ask) saveAsk = ask.copy(name = RouteRules.newRouteName(proposed, dated, taken))
         }
     }
@@ -2663,7 +2671,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun copyRoute(id: Long, name: String) {
         if (saving) return
         saving = true
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "copyRoute") {
             try {
                 val newId = withContext(Dispatchers.IO) {
                     runCatching {
@@ -2673,7 +2681,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                             .also { n -> planTimes.get(id, t.distanceM)?.let { planTimes.put(n, t.distanceM, it) } }
                     }.onFailure { Problems.error("db", "Copying a planned route failed", it) }.getOrNull()
                 }
-                if (newId == null) { routesProblem = Txt.s(Res.string.msg_route_save_failed); return@launch }
+                if (newId == null) { routesProblem = Txt.s(Res.string.msg_route_save_failed); return@launchSafe }
                 Backups.tourChanged(getApplication(), newId)
                 sync.changed("route copied")
                 refreshTours()
@@ -2708,7 +2716,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val stops = savedStops(pts); val pins = pinnedIndices()
         val dated = defaultName(Txt.s(Res.string.msg_name_route))
         val key = pts.map { it.lat to it.lon }
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "keepAsDraft") {
             val name = withTimeoutOrNull(NAME_WAIT_MS) { proposeName(pts, r) } ?: dated
             val id = withContext(Dispatchers.IO) {
                 runCatching {
@@ -2725,11 +2733,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** My routes → Zuletzt → Speichern: the plan becomes saved (backup, browser sync); it shows "✓ Gerade gespeichert". */
     fun saveDraft(t: Tour) {
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "saveDraft") {
             val ok = withContext(Dispatchers.IO) {
                 runCatching { db.setDraft(t.id, false) }.onFailure { Problems.error("db", "A plan under Zuletzt could not be saved", it) }.getOrDefault(false)
             }
-            if (!ok) { routesProblem = Txt.s(Res.string.msg_route_save_failed); return@launch }
+            if (!ok) { routesProblem = Txt.s(Res.string.msg_route_save_failed); return@launchSafe }
             Problems.trace("plan", "Zuletzt → saved: \"${t.name}\"")
             justSavedId = t.id
             Backups.tourChanged(getApplication(), t.id)
@@ -2740,7 +2748,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** My routes → Zuletzt → Löschen: to the recycle bin at once, no question (owner 2026-11-06). */
     fun deleteDraft(t: Tour) {
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "deleteDraft") {
             val ok = withContext(Dispatchers.IO) {
                 runCatching { db.setDeleted(t.id, System.currentTimeMillis()) }
                     .onFailure { Problems.error("db", "A plan under Zuletzt could not be moved to the recycle bin", it) }.getOrDefault(false)
@@ -2820,7 +2828,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (pts.size < 2 || saving) return
         saving = true
         val r = route
-        viewModelScope.launch { try { insertPlanned(name, pts, r, then) } finally { saving = false } }
+        viewModelScope.launchSafe("app", "saveRoute") { try { insertPlanned(name, pts, r, then) } finally { saving = false } }
     }
 
     private suspend fun insertPlanned(name: String, pts: List<GeoPoint>, r: PlannedRoute?, then: (() -> Unit)?) {
@@ -2868,7 +2876,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val act = activity; val level = sac
         val stops = savedStops(pts); val pins = pinnedIndices()
         val opened = savedPoints?.let { p -> com.onpath.app.sync.SaveRule.pointsKey(p.map { it.lat to it.lon }) }
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "overwriteSaved") {
             try {
                 // changed by sync since it was opened here (review sync H3): save as a copy, the other edit stays
                 val stored = withContext(Dispatchers.IO) {
@@ -2880,7 +2888,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     Problems.trace("plan", "Save over \"$old\": changed elsewhere since opened (browser sync) – saved as \"$copy\"")
                     sayInfo(Txt.s(Res.string.msg_route_changed_elsewhere, copy), NoticePlace.MAP)
                     insertPlanned(copy, pts, r, then)
-                    return@launch
+                    return@launchSafe
                 }
                 val ok = withContext(Dispatchers.IO) {
                     runCatching {
@@ -2898,7 +2906,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val replaced = ok.getOrElse {
                     Problems.error("db", "Overwriting a saved route failed", it)
                     routesProblem = Txt.s(Res.string.msg_route_save_failed)
-                    return@launch
+                    return@launchSafe
                 }
                 if (replaced) {
                     Backups.tourChanged(getApplication(), id); sync.changed("route overwritten")
@@ -2914,10 +2922,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun renameTour(t: Tour, input: String) {
         val name = RouteRules.cleanName(input, t.name)
         if (name == t.name) return
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "renameTour") {
             val ok = withContext(Dispatchers.IO) { runCatching { db.rename(t.id, name) }
                 .onFailure { Problems.error("db", "Renaming a route failed", it) }.isSuccess }
-            if (!ok) { routesProblem = Txt.s(Res.string.msg_route_rename_failed); return@launch }
+            if (!ok) { routesProblem = Txt.s(Res.string.msg_route_rename_failed); return@launchSafe }
             Backups.tourChanged(getApplication(), t.id)
             sync.changed("renamed")
             if (linkId == t.id) setSaved(name, linkId, savedPoints)
@@ -3046,7 +3054,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val demo = t.name.startsWith(com.onpath.app.recording.DemoLocation.TOUR_PREFIX)
         val dateName = t.name.removePrefix(com.onpath.app.recording.DemoLocation.TOUR_PREFIX)
         if (!dateName.startsWith("Tour ") && !dateName.startsWith(datePrefix)) return
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "nameRecordedTour") {
             val name = try {
                 val index = search.offlineIndex()
                 withContext(Dispatchers.IO) {
@@ -3056,11 +3064,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }?.let { if (demo) com.onpath.app.recording.DemoLocation.TOUR_PREFIX + it else it }
             } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
                 Problems.warn("search", "No name proposed for the recorded tour; it keeps its date name", e); null
-            } ?: return@launch
+            } ?: return@launchSafe
             val ok = withContext(Dispatchers.IO) {
                 runCatching { db.rename(t.id, name) }.onFailure { Problems.warn("db", "Naming the recorded tour failed; it keeps its date name", it) }.isSuccess
             }
-            if (!ok) return@launch
+            if (!ok) return@launchSafe
             Backups.tourChanged(getApplication(), t.id) // the file follows the new name
             finishedTour?.let { if (it.id == t.id) finishedTour = it.copy(name = name) }
             refreshTours()
@@ -3121,7 +3129,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Navigate only once the service really records (R-01): a refused foreground service, a missing
         // permission or a broken database must not leave the user in Navigate with nothing being recorded.
         startJob?.cancel()
-        startJob = viewModelScope.launch {
+        startJob = viewModelScope.launchSafe("app", "startNavigation") {
             val started = withTimeoutOrNull(START_TIMEOUT_MS) { RecordingService.state.filterNotNull().first() } != null
             if (started) enter(AppMode.NAVIGATE)
             else if (errorCard == null) sayError(Txt.s(Res.string.msg_recording_not_started), NoticePlace.MAP)
@@ -3146,7 +3154,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val dated = defaultName(Txt.s(Res.string.msg_name_route))
         val taken = plannedNames()
         val copyOf = savedName
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "saveNewPlanAtStart") {
             try {
                 val name = when (how) {
                     // a saved plan changed before the start is never overwritten silently: the ridden version is "Name (2)"
@@ -3297,7 +3305,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             note = if (tracker.location.value == null) Txt.s(Res.string.msg_check_waiting_gps) else null)
         val cancel = com.onpath.app.routing.RouteCancel()
         checkCancel = cancel
-        checkJob = viewModelScope.launch {
+        checkJob = viewModelScope.launchSafe("app", "openActivityCheck") {
             val loc = tracker.location.value ?: tracker.location.filterNotNull().first()
             val pos = GeoPoint(loc.latitude, loc.longitude, if (loc.hasAltitude()) loc.altitude else null)
             val progress = recState.value?.nav?.progressM ?: nav.progressM
@@ -3308,13 +3316,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             checkRest = rest
             if (rest == null) {
                 updateCheck(null) { ActivityRowState.Failed(Txt.s(Res.string.msg_check_nothing_left)) }
-                return@launch
+                return@launchSafe
             }
             updateCheck(null) { it }
             for (a in others) {
-                if (!isActive || cancel.isCancelled) return@launch
+                if (!isActive || cancel.isCancelled) return@launchSafe
                 val st = checkRow(rest, a, sacFor(a), cancel)
-                if (!isActive || cancel.isCancelled) return@launch
+                if (!isActive || cancel.isCancelled) return@launchSafe
                 updateCheck(a) { st }
             }
         }
@@ -3356,7 +3364,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             closeActivityCheck()
             selectActivity(Activity.HIKE, userChange = false)
             selectSac(l)
-            recState.value?.tourId?.let { id -> viewModelScope.launch(Dispatchers.IO) {
+            recState.value?.tourId?.let { id -> viewModelScope.launchSafe("app", "chooseHikeLevel", Dispatchers.IO) {
                 runCatching { db.updateActivity(id, Activity.HIKE.name, l) }
                     .onFailure { Problems.error("db", "Activity of the recorded tour not updated in the database", it) }
             } }
@@ -3367,9 +3375,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (activityCheck?.rows?.none { it.activity == Activity.HIKE } == true) return // hiking at that level already
         val rest = checkRest ?: return
         val cancel = checkCancel ?: return
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "chooseHikeLevel") {
             val st = checkRow(rest, Activity.HIKE, l, cancel)
-            if (cancel.isCancelled || checkHikeSac != l) return@launch
+            if (cancel.isCancelled || checkHikeSac != l) return@launchSafe
             updateCheck(Activity.HIKE) { st }
         }
     }
@@ -3393,7 +3401,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         closeActivityCheck()
         if (st == ActivityRowState.Plain || session == null) {
             selectActivity(a, userChange = false)
-            recState.value?.tourId?.let { id -> viewModelScope.launch(Dispatchers.IO) {
+            recState.value?.tourId?.let { id -> viewModelScope.launchSafe("app", "chooseActivity", Dispatchers.IO) {
                 runCatching { db.updateActivity(id, a.name, sacFor(a)) }
                     .onFailure { Problems.error("db", "Activity of the recorded tour not updated in the database", it) }
             } }
@@ -3457,7 +3465,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         arrivalAsk = false
         val id = recState.value?.tourId ?: run { if (saveIfNoRides) endTour() else endAsk = EndAsk.Plain; return }
         val navActivity = recState.value?.nav?.session?.activity
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "askEndTour") {
             val s = withContext(Dispatchers.IO) {
                 runCatching {
                     val segs = db.loadSegments(id)
@@ -3465,7 +3473,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     com.onpath.app.rides.RideView.summary(segs, com.onpath.app.rides.RideDetector.detect(segs, a), onFoot = a == Activity.HIKE)
                 }.onFailure { Problems.warn("rides", "Ride check at End tour failed – asked without it", it) }.getOrNull()
             }
-            if (recState.value?.tourId != id) return@launch // ended meanwhile (notification, arrival)
+            if (recState.value?.tourId != id) return@launchSafe // ended meanwhile (notification, arrival)
             when {
                 s != null -> endAsk = EndAsk.Rides(id, s)
                 saveIfNoRides -> endTour()
@@ -3477,7 +3485,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Save from the ride summary: the choice is stored on the tour first, the recording service applies it at the end. */
     fun endTourWith(a: EndAsk.Rides, choice: com.onpath.app.rides.RideChoice) {
         endAsk = null
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "endTourWith") {
             withContext(Dispatchers.IO) {
                 runCatching { com.onpath.app.rides.RideApply.choose(com.onpath.app.rides.TourDbRides(db), a.tourId, a.summary.rides, choice) }
                     .onFailure { Problems.error("rides", "The choice for the ride could not be stored – the tour is saved as recorded", it) }
@@ -3491,21 +3499,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openEditRides(t: Tour) {
         val rec = t.rides ?: return
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "openEditRides") {
             val s = withContext(Dispatchers.IO) {
                 runCatching {
                     val onFoot = (t.activity ?: Activity.HIKE.name) == Activity.HIKE.name
                     com.onpath.app.rides.RideView.summary(db.loadSegments(t.id), rec.rides, onFoot, allowSplit = false)
                 }.onFailure { Problems.warn("rides", "Rides of a tour could not be shown", it) }.getOrNull()
             }
-            if (s == null) { sayError(Txt.s(Res.string.msg_rides_read_failed), NoticePlace.ROUTES); return@launch }
+            if (s == null) { sayError(Txt.s(Res.string.msg_rides_read_failed), NoticePlace.ROUTES); return@launchSafe }
             editRides = t to s
         }
     }
 
     fun applyEditRides(t: Tour, choice: com.onpath.app.rides.RideChoice) {
         editRides = null
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "applyEditRides") {
             val ok = withContext(Dispatchers.IO) {
                 runCatching { com.onpath.app.rides.RideApply.edit(com.onpath.app.rides.TourDbRides(db), t.id, choice) }
                     .onFailure { Problems.error("rides", "Changing the rides of a tour failed; it stays as it was", it) }.isSuccess
@@ -3635,7 +3643,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // position → first point ahead is new
         followCancel?.cancel()
         val cancel = com.onpath.app.routing.RouteCancel().also { followCancel = it }
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "followAhead") {
             val res = withContext(routingDispatcher) {
                 exceptions {
                     com.onpath.app.routing.PlanResult.plan(Planner(routingEngine(), cancel, legs = legCache), pts, act, level,
@@ -3645,15 +3653,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (followCancel === cancel) followCancel = null
             if (cancel.isCancelled) {
                 Problems.trace("tour", "Follow line to the ${ahead.size} points ahead stopped – a newer edit came")
-                return@launch
+                return@launchSafe
             }
-            if (!splitRequests.isCurrent(gen, waypoints.toList()) || recState.value == null) return@launch
+            if (!splitRequests.isCurrent(gen, waypoints.toList()) || recState.value == null) return@launchSafe
             val line = res.getOrNull()?.route?.takeIf { it.error == null && it.points.size >= 2 }?.points
             if (line == null) {
                 Problems.warn("tour", "No route from the position to the ${ahead.size} points ahead; the guidance so far stays",
                     res.exceptionOrNull())
                 sayError(Txt.s(Res.string.nav_no_route_ahead, firstAhead), NoticePlace.MAP)
-                return@launch
+                return@launchSafe
             }
             setFollow(name, line, isTrack = false, checkNow = true, stops = ahead, names = ahead.map { stopName(it) },
                 pinned = ahead.indices.filter { ahead[it] in pinned }.toSet(), firstNumber = firstAhead)
@@ -3744,7 +3752,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun askSaveUnfinished(t: Tour) {
         unfinished = null
         if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "askSaveUnfinished") {
             val s = withContext(Dispatchers.IO) {
                 runCatching {
                     val segs = db.loadSegments(t.id)
@@ -3770,7 +3778,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // the sticky service came back meanwhile and records this tour: it is not unfinished, leave it alone
         if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
         enter(AppMode.PLAN)
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launchSafe("app", "saveUnfinished", Dispatchers.IO) {
             db.updateStats(t.id, t.distanceM, t.ascentM, t.descentM, t.durationS, "done")
             val store = com.onpath.app.rides.TourDbRides(db)
             if (choice != null && rides != null) runCatching { com.onpath.app.rides.RideApply.choose(store, t.id, rides, choice) }
@@ -3792,7 +3800,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
         Problems.trace("tour", "Unfinished tour ${t.id} deleted (recycle bin)")
         enter(AppMode.PLAN)
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launchSafe("app", "deleteUnfinished", Dispatchers.IO) {
             val ok = runCatching {
                 // "done" first: restored from the recycle bin it is a normal tour, never "unfinished" again
                 db.updateStats(t.id, t.distanceM, t.ascentM, t.descentM, t.durationS, "done")
@@ -3819,7 +3827,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- tours ----------------
 
     fun refreshTours() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launchSafe("app", "refreshTours", Dispatchers.IO) {
             val list = db.listTours().filter { it.state == "done" }.map { withModelTime(it) }
             withContext(Dispatchers.Main) { tours = list }
         }
@@ -3832,7 +3840,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openTour(t: Tour, duringTour: Boolean = false, trackThen: TrackThen = TrackThen.SHOW) {
         Problems.trace("routes", "Tour ${t.id} on the map (${if (duringTour) "during the tour, " else ""}then $trackThen)")
         syncMarkSeen(t)
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "openTour") {
             val segs = withContext(Dispatchers.IO) { db.loadSegments(t.id) }
             routesOpen = false
             if (RouteRules.replacesPlan(t.kind, t.waypoints.size)) {
@@ -3900,22 +3908,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Opened (load as plan / open the track): the route's "New from / Changed in the browser" mark goes. */
     private fun syncMarkSeen(t: Tour) {
         if (t.uuid.isEmpty() || t.uuid !in syncMarks.value) return
-        viewModelScope.launch(Dispatchers.IO) { sync.files.marks.remove(t.uuid) }
+        viewModelScope.launchSafe("app", "syncMarkSeen", Dispatchers.IO) { sync.files.marks.remove(t.uuid) }
     }
 
     /** Sync while the app stays open (owner: automatic like WhatsApp Web): every minute, back-off when offline. */
     private val syncPoll = com.onpath.app.plansync.SyncPoll()
 
     init {
-        viewModelScope.launch(Dispatchers.IO) { sync.files.marks.all() } // marks.txt → syncMarks (small file, never throws)
+        viewModelScope.launchSafe("app", "start-up work", Dispatchers.IO) { sync.files.marks.all() } // marks.txt → syncMarks (small file, never throws)
         sync.start()
         // a tour ended: what waited for it comes now
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "start-up work") {
             var was = recState.value != null
             recState.collect { s -> if (was && s == null) sync.request("tour ended"); was = s != null }
         }
         // on screen, paired, no tour, My routes / Browser sync shown (not the Plan map): a pass about every minute (SyncPoll)
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "start-up work") {
             val screen = androidx.compose.runtime.snapshotFlow {
                 appOnScreen to com.onpath.app.plansync.SyncPoll.routesScreen(routesOpen, showSettings,
                     settingsPage == SettingsPage.SYNC)
@@ -3935,7 +3943,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         // My routes / its Planned tab / Settings → Browser sync opened: pull right away (owner 2026-10-30), debounced
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "start-up work") {
             var before = com.onpath.app.plansync.SyncPoll.Shown.OTHER
             androidx.compose.runtime.snapshotFlow {
                 com.onpath.app.plansync.SyncPoll.shown(appOnScreen, routesOpen, routesTab == RoutesTab.PLANNED, showSettings,
@@ -3954,7 +3962,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Pairing with a browser: [PairingFlow] (the pairing half of the sync), forwarded member by member. */
     private val pairing by lazy {
-        PairingFlow(sync, prefs, viewModelScope, object : PairingFlow.Screens {
+        PairingFlow(sync, prefs, helperScope, object : PairingFlow.Screens {
             override var showSettings: Boolean
                 get() = this@AppViewModel.showSettings
                 set(v) { this@AppViewModel.showSettings = v }
@@ -4014,13 +4022,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun syncRoutingCheck(t: Tour, pts: List<GeoPoint>) {
         syncRoutingNote = null
         if (t.uuid.isEmpty()) return
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "syncRoutingCheck") {
             val o = withContext(Dispatchers.IO) {
                 try { sync.opened(t.uuid, pts) } catch (e: Exception) {
                     Problems.warn("sync", "Routing of the opened synced plan not compared", e); null
                 }
-            } ?: return@launch
-            if (linkId != t.id || waypoints.toList() != pts) return@launch // another plan or edited meanwhile
+            } ?: return@launchSafe
+            if (linkId != t.id || waypoints.toList() != pts) return@launchSafe // another plan or edited meanwhile
             if (o.otherRouting) {
                 Problems.info("sync", "Opened plan was routed in the browser with another routing fingerprint – grey line shown")
                 syncRoutingNote = Txt.s(Res.string.sync_routing_other)
@@ -4032,11 +4040,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The open plan's saved route was renamed or deleted from the browser: "Saved as …" follows (like Rename / Delete). */
     private fun followSyncedSavedPlan() {
         val id = linkId.takeIf { it >= 0 } ?: return
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "followSyncedSavedPlan") {
             // a database error is not "deleted": the plan stays linked (review Arch 9)
             val read = withContext(Dispatchers.IO) { runCatching { db.getTour(id) } }
-            val t = read.getOrElse { Problems.warn("db", "Saved route not read after a browser change; the plan stays linked", it); return@launch }
-            if (linkId != id) return@launch
+            val t = read.getOrElse { Problems.warn("db", "Saved route not read after a browser change; the plan stays linked", it); return@launchSafe }
+            if (linkId != id) return@launchSafe
             if (t == null || t.deletedMs != null) setSaved(null, -1, null) else if (t.name != linkName) setSaved(t.name, id, savedPoints)
         }
     }
@@ -4057,7 +4065,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun routeSyncedPlans(ids: List<Long>) {
         if (ids.isEmpty()) return
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "routeSyncedPlans") {
             for (id in ids.distinct()) {
                 val t = withContext(Dispatchers.IO) {
                     runCatching { db.getTour(id) }.onFailure { Problems.warn("db", "A route from the browser not read; routed when opened", it) }.getOrNull()
@@ -4129,7 +4137,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 return
             }
         }
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "receivePlanLink") {
             // Cold start: the start mode (Plan / Navigate, an unfinished tour) is decided after a database check
             if (!startModeKnown) androidx.compose.runtime.snapshotFlow { startModeKnown }.first { it }
             when (RouteRules.linkOpen(navigating(recState.value != null), waypoints.toList(), savedPoints, plan.points, linkPoints)) {
@@ -4272,7 +4280,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         planFromTrackBusy = true
         val cancel = com.onpath.app.routing.RouteCancel().also { planFromTrackCancel = it }
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "planFromShownNow") {
             val t0 = android.os.SystemClock.elapsedRealtime()
             val r = withContext(backgroundRouting) {
                 try {
@@ -4284,9 +4292,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             if (planFromTrackCancel === cancel) planFromTrackCancel = null
-            if (cancel.isCancelled) return@launch // the user cancelled: nothing changes
+            if (cancel.isCancelled) return@launchSafe // the user cancelled: nothing changes
             planFromTrackBusy = false
-            if (r == null || r.points.size < 2) { sayError(Txt.s(Res.string.plan_from_track_failed), NoticePlace.MAP); return@launch }
+            if (r == null || r.points.size < 2) { sayError(Txt.s(Res.string.plan_from_track_failed), NoticePlace.MAP); return@launchSafe }
             Problems.trace("plan", "Track → plan: ${track.size} track points → ${r.points.size} route points, follows " +
                 "${(r.follows * 100).toInt()} %, ${r.calls} routing calls, ${r.failedLegs} legs without a route, " +
                 "${android.os.SystemClock.elapsedRealtime() - t0} ms")
@@ -4299,7 +4307,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun deleteTour(t: Tour) {
         // never the tour being recorded: the service keeps writing into it (the list hides Delete for it too)
         if (recState.value?.tourId == t.id) { sayError(Txt.s(Res.string.msg_track_recording_now), NoticePlace.ROUTES); return }
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launchSafe("app", "deleteTour", Dispatchers.IO) {
             // into the recycle bin (30 days, My routes → ⋮ → Recycle bin); its backup file moves to Deleted/
             val ok = runCatching { db.setDeleted(t.id, System.currentTimeMillis()) }
                 .onFailure { Problems.error("db", "Moving a tour to the recycle bin failed", it) }.getOrDefault(false)
@@ -4320,7 +4328,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var recycleBin by mutableStateOf<List<Tour>?>(null)
 
     fun openRecycleBin() {
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "openRecycleBin") {
             recycleBin = withContext(Dispatchers.IO) {
                 runCatching { db.listDeleted() }.onFailure { Problems.error("db", "Recycle bin could not be read", it) }.getOrDefault(emptyList())
             }
@@ -4329,7 +4337,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Recycle bin → Restore: back into My routes (and its file out of Deleted/). */
     fun restoreFromBin(t: Tour) {
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "restoreFromBin") {
             val ok = withContext(Dispatchers.IO) {
                 runCatching { db.setDeleted(t.id, null) }.onFailure { Problems.error("db", "Restoring from the recycle bin failed", it) }.getOrDefault(false)
             }
@@ -4341,7 +4349,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Recycle bin → Delete now (asked first): gone for good, its backup file too. */
     fun deleteForever(t: Tour) {
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "deleteForever") {
             val ok = withContext(Dispatchers.IO) {
                 runCatching { db.deleteTour(t.id) }.onFailure { Problems.error("db", "Deleting a tour for good failed", it) }.isSuccess
             }
@@ -4356,7 +4364,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** "Export all": one ZIP with every tour and plan as GPX, handed to the share sheet (Files, Drive, mail …). */
     fun exportAll() {
         busy = Busy.EXPORT
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "exportAll") {
             try {
                 val app = getApplication<Application>()
                 val uri = withContext(Dispatchers.IO) {
@@ -4441,7 +4449,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
 
     private fun checkRestoreOffer() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launchSafe("app", "checkRestoreOffer", Dispatchers.IO) {
             val app = getApplication<Application>()
             val offer = try { !Backups.restoreOffered(app) && db.countAll() == 0 } catch (e: Exception) {
                 Problems.warn("backup", "Restore offer not checked", e); false
@@ -4455,7 +4463,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Backups.purgeAndSync(app) // 30-day recycle bin, files for tours that have none yet
         checkRestoreOffer()
         // a failed backup is said until OK is tapped (no silent loss); then it counts as seen
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "start-up work") {
             Backups.failure.collect { text ->
                 if (text == null) return@collect
                 while (errorCard != null) delay(500) // after the current error box
@@ -4471,10 +4479,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun restoreFrom(tree: Uri) {
         if (restoreProgress != null) return
         restoreProgress = Txt.s(Res.string.msg_restore_looking)
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "restoreFrom") {
             val app = getApplication<Application>()
             val r = withContext(Dispatchers.IO) {
-                try { Backups.restore(app, tree) { line -> viewModelScope.launch(Dispatchers.Main) { if (restoreProgress != null) restoreProgress = line } } }
+                try { Backups.restore(app, tree) { line -> viewModelScope.launchSafe("app", "restoreFrom", Dispatchers.Main) { if (restoreProgress != null) restoreProgress = line } } }
                 catch (e: Exception) { Problems.error("backup", "Restore from the backup folder failed", e); null }
             }
             restoreProgress = null
@@ -4489,7 +4497,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun exportTour(t: Tour) {
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "exportTour") {
             // as chosen at End tour: rides not counted are their own segments, a dropped ride is not exported
             val segs = withContext(Dispatchers.IO) { com.onpath.app.rides.RideView.layout(db.loadSegments(t.id), t.rides).trk.map { it.first } }
             share(t.name) {
@@ -4532,7 +4540,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun importGpx(uri: Uri) {
         busy = Busy.IMPORT
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "importGpx") {
             try {
                 val app = getApplication<Application>()
                 val (data, fileName) = withContext(Dispatchers.IO) {
@@ -4645,7 +4653,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun refreshRd5(names: List<String>) {
         routingDataBusy = true
         val due = names.map { java.io.File(dataFiles.segmentsDir, it) }
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launchSafe("app", "refreshRd5", Dispatchers.IO) {
             var got = 0
             for (f in due) {
                 try {
@@ -4679,7 +4687,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     init {
         // a new cell store generation (cell added / replaced / deleted, region re-joined) → reload the map style
         // (new file paths; MapLibre keeps no stale PMTiles index) and recheck the data. The search index notices by itself.
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "start-up work") {
             // what THIS ViewModel's map was asked to show (start: the data now – its map's first load takes it). Not the
             // process-wide StyleLoader.lastMapDir: with two activities alive the other one's map may have loaded the new
             // data, and this one would never ask its own map to reload (MapReload, StyleReloadRule).
@@ -4703,13 +4711,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         // a joined / removed map area → the offline search index follows in the background (only changed areas are read;
         // not at start – an unchanged index needs nothing), so the next search or route name does not wait for it
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "start-up work") {
             cells.generation.drop(1).collectLatest { delay(5_000); search.prepare() }
         }
         // map cells (map-cells.md §9): Wi-Fi setting, relevance, cells still loading from the last run, T3 on fixes
         mapData.start()
         // a tour started indoors (owner): the fused position until its first GPS fix – off with that fix, a pause, the end
-        viewModelScope.launch {
+        viewModelScope.launchSafe("app", "start-up work") {
             var asked = false
             recState.collect { r ->
                 val ask = com.onpath.app.navigation.Provisional.asksPosition(r != null, r?.paused == true, r?.hadGpsFix == true)

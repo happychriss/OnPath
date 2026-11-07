@@ -64,6 +64,8 @@ object EventLog {
         if (queued.incrementAndGet() > MAX_QUEUE) { queued.decrementAndGet(); dropped.incrementAndGet(); return }
         queue.add("$time\t\u0000\t${esc(area)}\t${esc(message)}") // \u0000 = local time, filled by the writer
         if (drainScheduled.compareAndSet(false, true)) {
+            // expected: the writer refuses only while the process shuts down – the event stays queued; never into
+            // Problems (Problems writes events here: that would loop)
             try { writer.execute { drainScheduled.set(false); drain() } } catch (_: Throwable) { drainScheduled.set(false) }
         }
     }
@@ -101,7 +103,7 @@ object EventLog {
                         if (t == null || now - t <= MAX_AGE_MS) { os.write(l.toByteArray()); os.write('\n'.code) }
                     }
                 }
-            } catch (e: Exception) { os.write("(${f.name} unreadable: $e)\n".toByteArray()) }
+            } catch (e: Exception) { os.write("(${f.name} unreadable: $e)\n".toByteArray()) } // expected: the error goes into the export
         }
     }
 

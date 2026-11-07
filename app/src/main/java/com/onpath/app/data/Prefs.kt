@@ -197,19 +197,19 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
     // ---- Phone setup (docs/design/onboarding-phone-check.md) ----
     /** Phone setup: the voice's test sentence was heard (spoken directions start only then). */
     var voiceHeard: com.onpath.app.setup.Felt
-        get() = sp.getString("voiceHeard", null)?.let { runCatching { com.onpath.app.setup.Felt.valueOf(it) }.getOrNull() }
+        get() = com.onpath.app.debug.enumOrNull<com.onpath.app.setup.Felt>(sp.getString("voiceHeard", null), "settings")
             ?: com.onpath.app.setup.Felt.UNKNOWN
         set(v) = sp.edit().putString("voiceHeard", v.name).apply()
 
     /** The speech output for the app language as last found (recording/Speaker). */
     var voiceStatus: com.onpath.app.setup.VoiceStatus
-        get() = sp.getString("voiceStatus", null)?.let { runCatching { com.onpath.app.setup.VoiceStatus.valueOf(it) }.getOrNull() }
+        get() = com.onpath.app.debug.enumOrNull<com.onpath.app.setup.VoiceStatus>(sp.getString("voiceStatus", null), "settings")
             ?: com.onpath.app.setup.VoiceStatus.UNKNOWN
         set(v) = sp.edit().putString("voiceStatus", v.name).apply()
 
     /** The user's answer to the vibration test ("Did you feel it?"). */
     var vibrationFelt: com.onpath.app.setup.Felt
-        get() = sp.getString("vibrationFelt", null)?.let { runCatching { com.onpath.app.setup.Felt.valueOf(it) }.getOrNull() }
+        get() = com.onpath.app.debug.enumOrNull<com.onpath.app.setup.Felt>(sp.getString("vibrationFelt", null), "settings")
             ?: com.onpath.app.setup.Felt.UNKNOWN
         set(v) = sp.edit().putString("vibrationFelt", v.name).apply()
 
@@ -237,8 +237,8 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
     var lastSeen: com.onpath.app.setup.LastSeen?
         get() {
             val at = sp.getLong("lastSeenAt", 0L).takeIf { it > 0 } ?: return null
-            val ok = sp.getString("lastSeenOk", "").orEmpty().split(',').mapNotNull { n ->
-                runCatching { com.onpath.app.setup.CheckId.valueOf(n) }.getOrNull() }.toSet()
+            val ok = sp.getString("lastSeenOk", "").orEmpty().split(',').filter { it.isNotEmpty() }.mapNotNull { n ->
+                com.onpath.app.debug.enumOrNull<com.onpath.app.setup.CheckId>(n, "settings") }.toSet()
             return com.onpath.app.setup.LastSeen(ok, at)
         }
         set(v) { if (v != null) sp.edit().putLong("lastSeenAt", v.atMs).putString("lastSeenOk", v.ok.joinToString(",") { it.name }).apply() }
