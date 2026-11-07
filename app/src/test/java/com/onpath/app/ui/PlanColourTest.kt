@@ -31,8 +31,9 @@ class PlanColourTest {
 
     @Test fun readable() {
         assertTrue("white on the ink blue", contrast(OnPathColors.CardWhite, OnPathColors.ActionEdit) >= 7.0)
-        assertTrue("ink blue on paper", contrast(OnPathColors.ActionEdit, OnPathColors.Paper) >= 7.0)
-        assertTrue("pill words", contrast(PillBlueInk, PillBlueLight) >= 7.0)
+        // owner 2026-11-07 chose #335A85 (6.8:1) over the 8.5:1 that looked almost black on the phone – still well above 4.5
+        assertTrue("ink blue on paper", contrast(OnPathColors.ActionEdit, OnPathColors.Paper) >= 6.5)
+        assertTrue("pill words", contrast(PillBlueInk, PillBlueLight) >= 6.0) // 6.2:1 with #335A85 on PaperDim
         assertTrue("tonal plan button", contrast(OnPathColors.OnEditTonal, OnPathColors.EditTonal) >= 7.0)
         assertTrue("tags", contrast(OnPathColors.TagInk, OnPathColors.TagContainer) >= 7.0)
         assertTrue("Ohne Netz ✓ on the pill", contrast(OnPathColors.OnPlanGood, OnPathColors.PlanAccent) >= 4.5)
