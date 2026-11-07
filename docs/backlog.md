@@ -45,6 +45,10 @@ and the commit history.
   instead of live hillshade from the DEM, fewer path / trail layers below z13, MapLibre pixel ratio / max FPS, Compose
   recompositions on every camera move, route pictures in Meine Touren drawn once and cached. If one setting makes the
   big difference, offer it as "Leichte Karte (ältere Handys)" in Einstellungen → Karte, or switch it by itself.
+  **Device (owner 2026-11-07):** the owner can plug his Galaxy S10 into donald's USB instead of the Pixel – it takes the
+  `pixel` slot of `tools/dev/device.sh` (`adb -d`, only one phone on USB). It runs the **release** build: a debug APK
+  has the same package id but another signature, so `adb install` fails and uninstalling would delete his tours – never
+  uninstall; measure with the installed release, or install only a release-signed APK.
 - **[donald] Handy einrichten: "Links vom Planer in OnPath öffnen" as a check (owner field 2026-11-07, Galaxy S10, via
   cloud-web)** – pairing / plan links from plan.onpath.earth opened in the browser on the S10; the owner fixed it by hand
   (Einstellungen → Apps → OnPath → Standardmäßig öffnen → "Unterstützte Links öffnen"). Owner asks to build it into the
