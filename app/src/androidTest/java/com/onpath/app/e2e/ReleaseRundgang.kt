@@ -36,6 +36,7 @@ import com.onpath.strings.Txt
 import com.onpath.strings.common_delete
 import com.onpath.strings.routes_overview_follow
 import com.onpath.strings.common_ok
+import com.onpath.strings.nav_pause_band_line
 import com.onpath.strings.nav_arrived_title
 import com.onpath.strings.nav_action_pause
 import com.onpath.strings.nav_end_short
@@ -576,6 +577,31 @@ class ReleaseRundgang : E2EBase() {
         assertTrue("the way to ① is still followed", nav()?.session?.rerouted == true)
         assertEquals("the followed line did not change", led, nav()!!.version)
         shot("3-still-led")
+    }
+
+    /**
+     * 16 · "Pause heißt Ruhe" (owner 2026-11-07, Pixel: paused, yet "Route beginnt 58 km entfernt – Hinführen" on top):
+     * a far start asks; Pause hides the question (not answered, not dropped) and shows the pause band; Weiter brings the
+     * same question back.
+     */
+    @Test fun flow16_pauseHidesTheFarStartQuestionWeiterBringsItBack() {
+        planned(THEATRE, STATION, at = FAR)
+        startTour()
+        waitUntil("far-start question", 60_000) { nav()?.prompt is NavPrompt.FarStart }
+        assertNotNull("\"Hinführen\" in the box", findFresh(By.text(NavText.LEAD), 10_000))
+        val asked = (nav()!!.prompt as NavPrompt.FarStart).id
+        shot("1-far-start")
+        scenario.onActivity { vm(it).pauseRecording(true) }
+        waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
+        assertNotNull("the pause band", findFresh(By.text(Txt.s(Res.string.nav_pause_band_line)), 10_000))
+        assertTrue("paused: the question is hidden", goneFresh(By.text(NavText.LEAD), 5_000))
+        assertTrue("…but not answered or dropped", (nav()?.prompt as? NavPrompt.FarStart)?.id == asked)
+        shot("2-paused-calm")
+        scenario.onActivity { vm(it).pauseRecording(false) }
+        waitUntil("recording again", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == false }
+        assertNotNull("Weiter: the question is back", findFresh(By.text(NavText.LEAD), 10_000))
+        assertTrue("the band is gone", goneFresh(By.text(Txt.s(Res.string.nav_pause_band_line)), 5_000))
+        shot("3-asked-again")
     }
 
     private fun share(text: String) {

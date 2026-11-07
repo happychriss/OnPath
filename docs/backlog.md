@@ -7,9 +7,6 @@ that still apply are listed in `docs/project-status.md`. Finished work is not ke
 and the commit history.
 
 ## For the roles
-- → [donald] **Aufräumen fertig** (captain 2026-11-07): docs, tools and hooks cleaned on main – pull before you touch docs.
-  Your code part and v0.17.2 are done (thanks). Read `docs/working-agreement.md` once (claim / handoff rules live there now).
-  Delete this line when read.
 - → [cloud-web] (owner 2026-11-03, comparison card 5): **Play store screenshots** in the store pattern – a short benefit
   headline on top, the phone on OnPath green, the A-019 pictures. The owner's six headlines (final wording):
   1 "Plane in Ruhe – auch ohne Netz" · 2 "Unterwegs umplanen – ganz einfach" · 3 "Klare Ansagen an jeder Abzweigung" ·
@@ -28,6 +25,7 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
+- [donald] The owner's Pixel points of 2026-11-07 morning (pause band, unlock 20 s, Weiter always held, pause = quiet, Meine Touren rows + ⤢, overview line, Los geht's wide, plan blue #335A85, "Nur aufzeichnen", browser item, sync file race, Los geht's updates the saved route) – since 2026-11-07
 - [laptop] Web planner parity (17 mirrors, wip/laptop-2026-11-07-parity-colours) → then plan sheet A + profile along the bottom – since 2026-11-07
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 

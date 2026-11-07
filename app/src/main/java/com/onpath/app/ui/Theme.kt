@@ -36,8 +36,15 @@ object OnPathColors {
     val InkMuted = Color(0xFF4A4F4A)
     /** White: fields one types into, rings around point signs and text / icons on a coloured button – no surfaces. */
     val CardWhite = Color(0xFFFFFFFF)
-    /** Page background (website `#FAFAF6`). */
-    val Paper = Color(0xFFFAFAF6)
+    /**
+     * The paper of every surface – menus, dialogs, sheets and what floats over the map (owner 2026-11-07 11:20, tone B of
+     * the paper page: a touch warmer than the website's #FAFAF6, so a menu or sheet reads as paper and not as white).
+     */
+    val Paper = Color(0xFFF5F3EB)
+    /** Cards in lists (Settings, Meine Touren): one step lighter than [Paper] (the website's #FAFAF6), so they still lift. */
+    val CardPaper = Color(0xFFFAFAF6)
+    /** One step below [Paper] for groups inside a paper surface (the plan sheet's pill row): 1.1:1 against it. */
+    val PaperDeep = Color(0xFFEAE9E1)
     /**
      * Paper one shade darker (owner 2026-11-06: "überall den Papierton"): the page behind paper cards (Settings, My
      * routes) and boxes inside a paper surface – so the cards and the facts box still stand out without any white.
@@ -87,13 +94,14 @@ object OnPathColors {
     val ActionGo = Color(0xFF245F46)
     /**
      * Edit / plan: change the route – ink blue (owner 2026-11-06 23:00, variant C of the blue page: "das Blau sieht
-     * verspielt aus"; like the trail marks on a printed map; white on it 8.9:1, it on paper 8.5:1), told apart from
-     * [ActionGo]'s forest green by hue. Calmer than the route line's [Route].
+     * verspielt aus"; like the trail marks on a printed map), a tick lighter since 2026-11-07 09:50 (owner: #2B4C6F "sieht
+     * auf dem Handy fast aus wie schwarz" → #335A85; white on it 7.1:1, it on paper 6.8:1), told apart from [ActionGo]'s
+     * forest green by hue. Calmer than the route line's [Route].
      */
-    val ActionEdit = Color(0xFF2B4C6F)
-    /** The light ink blue of a plan button that is not the main one (Planen while locked, Speichern of a draft): ink ≥ 7:1. */
-    val EditTonal = Color(0xFFDCE3EC)
-    val OnEditTonal = Color(0xFF1B2F45)
+    val ActionEdit = Color(0xFF335A85)
+    /** The light ink blue of a plan button that is not the main one (Planen while locked, Speichern of a draft): ink 9.8:1. */
+    val EditTonal = Color(0xFFDDE5EE)
+    val OnEditTonal = Color(0xFF1E3550)
     /**
      * Neutral, the theme's primary (owner 2026-11-06, onpath.private#36 "Wir nehmen erstmal Walnuss"): every button
      * without a meaning of its own – Cancel, OK, Close, settings – a dark earth tone, so green means only "to the
@@ -102,7 +110,7 @@ object OnPathColors {
     val Walnut = Color(0xFF4A3F37)
     /**
      * The map compass's needle (owner 2026-11-07 00:50: "die rote Nadel ist unstylisch – ein blauer Kompass"): north half ink
-     * blue ([ActionEdit], 8.5:1 on paper), south half a walnut-tinted grey (3.6:1 on paper, ≥ 3:1 for a graphic) – no red
+     * blue ([ActionEdit], 6.8:1 on paper), south half a walnut-tinted grey (3.6:1 on paper, ≥ 3:1 for a graphic) – no red
      * (red only deletes). The "N" above it in [Walnut], the calmer of the two.
      */
     val CompassNorth = ActionEdit
@@ -249,11 +257,11 @@ object Instrument {
             // a sign right before the number ("↑ 82", "↑82", "+1,2"): belongs to it
             if (c == '↑' || c == '↓' || c == '+' || c == '−') {
                 var j = i + 1
-                while (j < text.length && text[j] == ' ') j++
+                while (j < text.length && (text[j] == ' ' || text[j] == '\u00A0')) j++
                 return j < text.length && digit(text[j])
             }
             // the space between a sign and its digits
-            if (c == ' ' && i > 0 && text[i - 1] in "↑↓" && i + 1 < text.length && digit(text[i + 1])) return true
+            if ((c == ' ' || c == '\u00A0') && i > 0 && text[i - 1] in "↑↓" && i + 1 < text.length && digit(text[i + 1])) return true
             return false
         }
         val out = mutableListOf<Run>()

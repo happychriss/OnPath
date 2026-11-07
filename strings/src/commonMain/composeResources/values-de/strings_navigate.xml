@@ -263,6 +263,8 @@
     <string name="nav_delete_tour">Tour löschen</string>
     <string name="nav_free_tour">Freie Tour · nur Aufnahme</string>
     <string name="nav_stop_arrive">an %1$s</string>
-    <string name="nav_hold_hint_rest">Gesperrt · Knopf gedrückt halten</string>
     <string name="nav_hold_hint">Gedrückt halten</string>
+    <string name="nav_pause_band">Pause · %1$s</string>
+    <string name="nav_pause_band_line">Aufnahme und Navigation angehalten</string>
+    <string name="nav_pause_band_line_free">Aufnahme angehalten</string>
 </resources>

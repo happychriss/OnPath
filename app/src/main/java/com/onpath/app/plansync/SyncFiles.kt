@@ -135,15 +135,34 @@ class SyncFiles(val dir: File) {
         Problems.warn("sync", "Sync file ${f.name} unreadable", e); null
     }
 
-    /** Temp file → flushed to disk → moved over the old one in one step. Throws on failure (disk full): the caller reports it. */
+    /**
+     * Temp file (one per write) → flushed to disk → moved over the old one in one step. Throws on failure (disk full):
+     * the caller reports it. The folder check tolerates another writer creating it at the same moment (field bug
+     * 2026-11-07: "sync folder not created" when two writers raced).
+     */
     private fun write(f: File, text: String) {
-        if (!dir.isDirectory && !dir.mkdirs()) throw java.io.IOException("sync folder not created")
-        AtomicFiles.writeText(f, text, File(dir, f.name + TMP))
+        if (!dir.isDirectory && !dir.mkdirs() && !dir.isDirectory) throw java.io.IOException("sync folder not created")
+        AtomicFiles.writeText(f, text)
+    }
+
+    /**
+     * Runs [block] alone among all users of this sync folder in the process: a whole pass reads the ledger and links,
+     * changes them and writes them back, so two passes at once (two app screens = two view models = two PlanSync
+     * workers, field bug 2026-11-07) would lose one pass's changes. Reentrant.
+     */
+    fun <T> exclusive(block: () -> T): T = synchronized(lockOf(dir)) { block() }
+
+    init {
+        // temp files a crash or kill left behind (ours only, older than an hour) – quiet
+        try { if (dir.isDirectory) AtomicFiles.cleanStaleTemps(dir) } catch (e: Exception) {
+            Problems.warn("sync", "Old temp files in the sync folder not checked", e)
+        }
     }
 
     companion object {
         const val DIR = "sync"
-        const val TMP = ".tmp"
         private const val PAIR_HEADER = "onpath-pair 1"
+        private val locks = java.util.concurrent.ConcurrentHashMap<String, Any>()
+        private fun lockOf(dir: File): Any = locks.getOrPut(dir.absoluteFile.normalize().path) { Any() }
     }
 }

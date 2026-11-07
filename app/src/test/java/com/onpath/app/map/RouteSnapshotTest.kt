@@ -13,7 +13,7 @@ class RouteSnapshotTest {
 
     @Test fun theLineGoesOnTopOfTheStyleAsWideAsTheMapsRoute() {
         val seg = listOf(GeoPoint(46.6, 11.1), GeoPoint(46.61, 11.12))
-        val o = JSONObject(RouteSnapshot.withLine(style, listOf(seg), 0xFF2B4C6F.toInt()))
+        val o = JSONObject(RouteSnapshot.withLine(style, listOf(seg), 0xFF335A85.toInt()))
         val sources = o.getJSONObject("sources")
         assertTrue("the style's own sources stay", sources.has("base"))
         val line = sources.getJSONObject("overview-line").getJSONObject("data").getJSONObject("geometry")
@@ -23,7 +23,7 @@ class RouteSnapshotTest {
         assertEquals("bg first, the route on top", "bg", layers.getJSONObject(0).getString("id"))
         val top = layers.getJSONObject(layers.length() - 1).getJSONObject("paint")
         val casing = layers.getJSONObject(layers.length() - 2).getJSONObject("paint")
-        assertEquals("#2B4C6F", top.getString("line-color"))
+        assertEquals("#335A85", top.getString("line-color"))
         // in dp like the map's planned route – the snapshot's pixel ratio makes them pixels
         assertEquals(RouteLook.LINE_DP.toDouble(), top.getDouble("line-width"), 1e-9)
         assertEquals("#FFFFFF", casing.getString("line-color"))

@@ -3,6 +3,7 @@ package com.onpath.app.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +44,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -95,17 +98,37 @@ internal val PREVIEW_TILE = 52.dp
  */
 @Composable
 internal fun RoutePreviewTile(segments: List<List<GeoPoint>>?, tint: RouteShape.Tint, pale: Boolean,
-                              placeholder: @Composable () -> Unit, modifier: Modifier = Modifier) {
-    val label = str(Res.string.routes_overview_show)
-    Box(modifier.size(PREVIEW_TILE).clip(OnPathShapes.Small).background(OnPathColors.PaperDim)
-        .semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
-        val density = LocalDensity.current
-        val px = with(density) { PREVIEW_TILE.toPx() }
-        val shape = remember(segments, px) { segments?.let { RouteShape.of(it, px, px, with(density) { 8.dp.toPx() }) } }
-        if (shape == null) placeholder()
-        else RouteCanvas(shape, tint.color().copy(alpha = if (pale) 0.45f else 1f), 2.5.dp, 3.dp, Modifier.size(PREVIEW_TILE))
+                              placeholder: @Composable () -> Unit, modifier: Modifier = Modifier,
+                              /** A tap on the tile: the large overview; non-null = the ⤢ badge (owner 2026-11-07 09:40). */
+                              onEnlarge: (() -> Unit)? = null) {
+    val label = str(if (onEnlarge != null) Res.string.routes_overview_enlarge else Res.string.routes_overview_show)
+    // the badge sits on the tile's corner, a little outside it: the outer box is that much larger
+    Box(modifier.size(PREVIEW_TILE + ENLARGE_OUT).let { m ->
+            if (onEnlarge != null) m.clickable(onClickLabel = label, role = Role.Button) { onEnlarge() } else m
+        }.semantics { contentDescription = label }) {
+        Box(Modifier.size(PREVIEW_TILE).clip(OnPathShapes.Small).background(OnPathColors.PaperDim), contentAlignment = Alignment.Center) {
+            val density = LocalDensity.current
+            val px = with(density) { PREVIEW_TILE.toPx() }
+            // with the ⤢ badge: nothing is drawn under it (the line, start or goal fitted beside / above its corner)
+            val corner = if (onEnlarge == null) 0f
+                else with(density) { RouteShape.cornerFor((ENLARGE_BADGE - ENLARGE_OUT).toPx(), (3.dp * 1.6f).toPx()) }
+            val shape = remember(segments, px, corner) { segments?.let { RouteShape.of(it, px, px, with(density) { 8.dp.toPx() }, corner = corner) } }
+            if (shape == null) placeholder()
+            else RouteCanvas(shape, tint.color().copy(alpha = if (pale) 0.45f else 1f), 2.5.dp, 3.dp, Modifier.size(PREVIEW_TILE))
+        }
+        // ⤢ "vergrößern": a paper ring round an ink-blue disc with a 16 dp paper sign – plain on paper, and on the line
+        if (onEnlarge != null) Box(Modifier.align(Alignment.BottomEnd).size(ENLARGE_BADGE).clip(CircleShape)
+            .background(OnPathColors.Paper).padding(2.dp).clip(CircleShape).background(OnPathColors.ActionEdit),
+            contentAlignment = Alignment.Center) {
+            Icon(Icons.Filled.OpenInFull, null, tint = OnPathColors.Paper, modifier = Modifier.size(ENLARGE_ICON))
+        }
     }
 }
+
+/** The ⤢ badge on a preview tile: its size, its sign (≥ 16 dp, owner 2026-11-07), how far it reaches out of the tile. */
+internal val ENLARGE_BADGE = 26.dp
+internal val ENLARGE_ICON = 16.dp
+internal val ENLARGE_OUT = 6.dp
 
 @Composable
 private fun RouteCanvas(shape: RouteShape.Shape, color: Color, width: Dp, dot: Dp, modifier: Modifier) {

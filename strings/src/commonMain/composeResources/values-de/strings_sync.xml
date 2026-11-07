@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="sync_menu_pair">Mit Browser verbinden</string>
-    <string name="sync_menu_paired">Mit Browser verbunden</string>
+    <string name="sync_menu_pair">Mit Browser koppeln</string>
+    <string name="sync_menu_paired">Browser-Kopplung</string>
     <string name="sync_menu_browser">Browser</string>
     <string name="sync_menu_full">Browser-Abgleich ist voll</string>
     <string name="sync_menu_refused">Der Sync-Server lehnt die Pläne ab</string>
@@ -22,8 +22,6 @@
     <string name="sync_paired_plan">Verbunden. Was du im Browser speicherst, kommt auf dein Handy – dort bleibt alles gespeichert.</string>
     <string name="sync_paired_with">Verbunden mit %1$s</string>
     <string name="sync_paired_browser">Mit einem Browser verbunden</string>
-    <string name="sync_last">Zuletzt abgeglichen: %1$s</string>
-    <string name="sync_never">Noch nicht abgeglichen</string>
     <string name="sync_ago_now">gerade eben</string>
     <string name="sync_ago_min">vor %1$d min</string>
     <string name="sync_unpair">Trennen</string>
@@ -60,4 +58,14 @@
     <string name="sync_untitled_track">Track</string>
     <string name="sync_sum_off">Nicht verbunden · deine Pläne auch im Web-Planer</string>
     <string name="sync_routing_other">Im Browser mit einer anderen OnPath-Version geplant – Route kann leicht abweichen</string>
+    <string name="sync_menu_attention">Browser-Kopplung – %1$s</string>
+    <string name="sync_since_today">Verbunden seit heute %1$s</string>
+    <string name="sync_since_yesterday">Verbunden seit gestern %1$s</string>
+    <plurals name="sync_since_days">
+        <item quantity="one">Verbunden seit %1$d Tag</item>
+        <item quantity="other">Verbunden seit %1$d Tagen</item>
+    </plurals>
+    <string name="sync_last_label">Zuletzt abgeglichen</string>
+    <string name="sync_last_never">noch nie</string>
+    <string name="sync_planner_label">Planer</string>
 </resources>

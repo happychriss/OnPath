@@ -1288,5 +1288,26 @@
     "context": "Screen reader state of the top status card when it is closed",
     "priority": 3,
     "confidence": "sicher"
+  },
+  "nav_pause_band": {
+    "area": "Navigate (paused)",
+    "context": "Title of the calm paper band over the bottom bar while a tour is paused (owner 2026-11-07, variant C). %1$s = how long the pause lasts, ticking: '12:04' (mm:ss) or '1:02:30' (h:mm:ss).",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 24
+  },
+  "nav_pause_band_line": {
+    "area": "Navigate (paused)",
+    "context": "Second line of the pause band when a route is followed: both the track recording and the route guidance stand still until 'Weiter'.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 40
+  },
+  "nav_pause_band_line_free": {
+    "area": "Navigate (paused)",
+    "context": "Second line of the pause band on a free tour (no route followed): only the recording stands still.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 40
   }
 }
