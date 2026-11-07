@@ -7,6 +7,7 @@ import com.onpath.strings.routes_overview_follow
 import com.onpath.strings.routes_overview_plan
 import com.onpath.strings.routes_options_desc
 import com.onpath.strings.plan_bar_go
+import com.onpath.strings.common_ok
 import com.onpath.strings.common_resume
 import com.onpath.strings.nav_action_pause
 import com.onpath.strings.nav_end_short
@@ -397,6 +398,8 @@ class CoreFieldE2ETest : E2EBase() {
         }
         val name = "E2E tour with its plan"
         db.rename(tourId, name)
+        // the "Tour saved" box: OK
+        device.wait(Until.findObject(By.text(Txt.s(Res.string.common_ok))), 5_000)?.click()
         // the copy outlives the planned route and the plan on the map
         db.deleteTour(planId)
         scenario.onActivity { vm(it).clearPlan() }
@@ -407,7 +410,8 @@ class CoreFieldE2ETest : E2EBase() {
                 var listed = false; scenario.onActivity { listed = vm(it).tours.any { t -> t.id == tourId && t.name == name && t.hasPlan } }; listed
             }
             val more = findFresh(By.desc(Txt.s(Res.string.routes_options_desc, name)), 8_000)
-            assertNotNull("the row's ⋮ – ${state()}", more)
+            if (more == null) shot("0-no-row-menu")
+            assertNotNull("the row's ⋮ – seen: ${seenDescriptions()} – ${state()}", more)
             more!!.click()
             assertNotNull("\"Los geht's\" in ⋮", device.wait(Until.findObject(By.text(Txt.s(Res.string.plan_bar_go))), 5_000))
             shot("1-gemacht-menu-plan-go")
