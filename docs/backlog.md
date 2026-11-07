@@ -31,6 +31,16 @@ and the commit history.
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
+- **[donald] In-app privacy texts say more than the code does (cloud-web privacy check 2026-11-07)** – website fixed in
+  happychriss/onpath.earth#17; the app's own texts: `settings_privacy_lead` / `settings_sum_privacy` "Nichts wird verfolgt"
+  overreaches (services see the IP, map requests show the region) → e.g. "Kein Konto, keine Analyse, keine Werbung, kein
+  Tracking-Dienst."; `settings_privacy_maps_what` "nicht deine Position" – the loaded areas show the region;
+  `settings_privacy_sync_text` "alles sofort" – the empty mailbox stays 12 months, deleted routes stay as encrypted
+  markers; brouter.de (direct from the phone) and Photon (sent automatically while typing, ~1 km position) should be
+  named; online search has no off switch (consider one). DE + EN.
+- **[laptop] Planner: privacy link + outdated Access comments (cloud-web privacy check 2026-11-07)** – the planner has no
+  link to https://onpath.earth/datenschutz/ (add one, e.g. in Help / footer); `web/host/src/index.js` and the
+  `wrangler.toml` comments still say Cloudflare Access guards the planner (off per `docs/design/web-planner.md` §18.5).
 - **[donald] Website pictures, round "Meran 0.17" (owner 2026-11-07, via cloud-web)** – every app picture new from 0.17.3,
   all in Meran: `docs/design/website-screens.md`, table "App pictures", every row except **gone**, DE + EN, with
   `tools/dev/website_shot.sh` and the scenario there (Meran, flight mode on the way, no DEMO, never the owner's position).
