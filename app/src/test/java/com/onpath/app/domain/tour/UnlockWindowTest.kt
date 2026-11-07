@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.onpath.app.domain.tour.UnlockWindow.BarButton as B
 
 /** One hold unlocks the bar for 20 s (owner 2026-11-07 09:05) – [UnlockWindow]. */
 class UnlockWindowTest {
@@ -41,6 +42,19 @@ class UnlockWindowTest {
 
     @Test fun holdTimeAusHasNothingToUnlock() {
         assertFalse("Aus: never held buttons", UnlockWindow.locked(lockOn = false, until = UnlockWindow.LOCKED, now = t0))
+    }
+
+    @Test fun weiterAlwaysNeedsAHoldTheOthersOnlyWhileShut() {
+        // shut: every button is held
+        for (b in B.entries) assertTrue("$b held while shut", UnlockWindow.needsHold(b, lockOn = true, windowOpen = false))
+        // open (one hold fired): Pause, Planen, Beenden on a tap – Weiter still held (owner 2026-11-07 10:15)
+        assertFalse(UnlockWindow.needsHold(B.PAUSE, lockOn = true, windowOpen = true))
+        assertFalse(UnlockWindow.needsHold(B.PLAN, lockOn = true, windowOpen = true))
+        assertFalse(UnlockWindow.needsHold(B.END, lockOn = true, windowOpen = true))
+        assertTrue("a stray tap never resumes", UnlockWindow.needsHold(B.RESUME, lockOn = true, windowOpen = true))
+        // Aus: nothing is held
+        for (b in B.entries) for (open in listOf(false, true))
+            assertFalse("$b with the lock off", UnlockWindow.needsHold(b, lockOn = false, windowOpen = open))
     }
 
     @Test fun testsCanShortenTheWindow() {

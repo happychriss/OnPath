@@ -256,7 +256,7 @@ class ReleaseRundgang : E2EBase() {
     }
 
     /**
-     * 7 · End the recording the Navigate way (owner 2026-11-01; 2026-11-06 one bottom bar, hold lock): hold "Pause" → hold "Beenden"
+     * 7 · End the recording the Navigate way (owner 2026-11-01; 2026-11-06 one bottom bar, hold lock; 2026-11-07 one hold opens the bar): hold "Pause" → tap "Beenden"
      * (ending only out of a pause) → "Tour beenden?" → Tour speichern → it is listed in My routes → Touren.
      */
     @Test fun flow07_endTourSaveListedInDone() {
@@ -264,11 +264,12 @@ class ReleaseRundgang : E2EBase() {
         val tourId = startTour()
         rideRoute(factor = 5)
         waitUntil("some metres recorded", 60_000) { (com.onpath.app.recording.RecordingService.state.value?.distanceM ?: 0.0) > 100 }
-        // locked (owner 2026-11-06, the hold lock): hold Pause, then hold Beenden
+        // locked (owner 2026-11-06, the hold lock): hold Pause – that one hold opens the bar for 20 s (owner 2026-11-07),
+        // so Beenden is then a plain tap
         shot("0-bar-locked")
         holdButton(Txt.s(Res.string.nav_action_pause))
-        assertNotNull("paused: Beenden at the bottom", findFresh(By.desc(Txt.s(Res.string.nav_end_short)), 5_000))
-        holdButton(Txt.s(Res.string.nav_end_short))
+        assertNotNull("paused: Beenden at the bottom, open", findFresh(By.text(Txt.s(Res.string.nav_end_short)), 5_000))
+        clickText(Txt.s(Res.string.nav_end_short))
         assertNotNull("\"End recording?\"", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
         shot("1-end-tour")
         // the sheet ignores a press in its first half second (field bug 2026-11-06 22:30, EndSheetGuard): a person looks first

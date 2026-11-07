@@ -727,10 +727,15 @@ class ScreenshotTest {
     fun navigateActionsOpen() = paparazzi.snapshot { NavFrame(navUi, actions = true) }
 
     /**
-     * Paused inside the unlock window (owner 2026-11-07 09:05: one held Pause unlocks the bar for 20 s): "Weiter · Beenden
-     * · ✎" in full colour, plain taps – the light locked look comes back after 20 s idle ([com.onpath.app.domain.tour.UnlockWindow]).
+     * Paused inside the unlock window (owner 2026-11-07: one held Pause opens the bar for 20 s): Beenden and ✎ in full
+     * colour on a plain tap, "Weiter" stays a light held button (10:15 – a stray tap never resumes); the window opens only
+     * after a fired hold, so no rest line ([com.onpath.app.domain.tour.UnlockWindow.needsHold]).
      */
-    fun navigatePausedOpen() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true), actions = true) }
+    fun navigatePausedOpen() = paparazzi.snapshot {
+        androidx.compose.runtime.CompositionLocalProvider(LocalHoldLearned provides true) {
+            NavFrame(navUi.copy(paused = true), actions = true)
+        }
+    }
 
     /** Locked and paused (owner 2026-11-06): the slider, its small line "Fortsetzen · Beenden · Plan". */
     fun navigatePausedLocked() = paparazzi.snapshot { NavFrame(navUi.copy(paused = true)) }

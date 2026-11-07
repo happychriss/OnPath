@@ -33,4 +33,15 @@ object UnlockWindow {
 
     /** The bar wants held buttons: the lock is on ([lockOn] – hold time not Aus) and the window is not open. */
     fun locked(lockOn: Boolean, until: Long, now: Long): Boolean = lockOn && !isOpen(until, now)
+
+    /** The buttons of the tour's bottom bar: running Pause | Planen, paused Weiter · Beenden · ✎ (= [PLAN]). */
+    enum class BarButton { PAUSE, PLAN, RESUME, END }
+
+    /**
+     * One button wants a hold (owner 2026-11-07 10:15): with the lock on, [BarButton.RESUME] ("Weiter" out of a pause)
+     * ALWAYS – also inside the window, so a stray tap never starts the recording again; every other button only while
+     * the window is shut. The lock off ([lockOn] false, hold time Aus): never.
+     */
+    fun needsHold(button: BarButton, lockOn: Boolean, windowOpen: Boolean): Boolean =
+        lockOn && (button == BarButton.RESUME || !windowOpen)
 }

@@ -625,19 +625,14 @@ class CoreFieldE2ETest : E2EBase() {
             assertTrue("a short tap does not pause", com.onpath.app.recording.RecordingService.state.value?.paused != true)
             holdButton(Txt.s(Res.string.nav_action_pause), ms = holdMs + 1_000)
             waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
-            // the unlock window (owner 2026-11-07, 20 s; here 1.5 s) is over: the bar is locked again – a short tap on
-            // Weiter only shows the hint, the tour stays paused
-            Thread.sleep(UnlockWindow.openMs + 1_000)
-            var hintAgain: androidx.test.uiautomator.UiObject2? = null
-            for (attempt in 1..3) {
-                val resume = findFresh(By.desc(Txt.s(Res.string.common_resume)), 5_000)
-                assertNotNull("Weiter on the locked bar again (short tap $attempt)", resume)
-                runCatching { resume!!.click() } // expected: a stale node right after a redraw – the next attempt finds it again
-                hintAgain = findFresh(By.text(Txt.s(Res.string.nav_hold_hint)), 3_000)
-                if (hintAgain != null) break
+            // the unlock window (owner 2026-11-07, 20 s; here 1.5 s) is over: the bar is locked again. Checked by its look,
+            // not by another tap (a loaded CI emulator can turn a tap into a hold, GitHub 2026-11-07 08:49): a held button
+            // carries its word as a description; an open bar's Weiter is a plain button with the word as text
+            val resume = Txt.s(Res.string.common_resume)
+            waitUntil("locked again after the window: Weiter is a held button", UnlockWindow.openMs + 10_000) {
+                findFresh(By.desc(resume), 500) != null && findFresh(By.text(resume), 500) == null
             }
-            assertNotNull("locked again after the window: a short tap shows the hint", hintAgain)
-            assertTrue("… and does not resume", com.onpath.app.recording.RecordingService.state.value?.paused == true)
+            assertTrue("still paused", com.onpath.app.recording.RecordingService.state.value?.paused == true)
             holdButton(Txt.s(Res.string.nav_end_short), ms = holdMs + 1_000)
             assertNotNull("the end sheet", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())
@@ -663,7 +658,19 @@ class CoreFieldE2ETest : E2EBase() {
             assertNotNull("locked: Pause at the bottom", findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 10_000))
             holdButton(Txt.s(Res.string.nav_action_pause), ms = holdMs + 1_000)
             waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
-            // the bar is open now: Beenden is a plain button with its text – a tap, no hold
+            // the bar is open now – but "Weiter" still wants a hold (owner 10:15): a short tap shows the hint, no resume
+            var hint: androidx.test.uiautomator.UiObject2? = null
+            for (attempt in 1..3) {
+                val resume = findFresh(By.desc(Txt.s(Res.string.common_resume)), 5_000)
+                assertNotNull("Weiter is still a held button in the window (short tap $attempt)", resume)
+                runCatching { resume!!.click() } // expected: a stale node right after a redraw – the next attempt finds it again
+                hint = findFresh(By.text(Txt.s(Res.string.nav_hold_hint)), 3_000)
+                if (hint != null) break
+            }
+            assertNotNull("a short tap on Weiter shows the hint", hint)
+            Thread.sleep(1_000)
+            assertTrue("a short tap on Weiter never resumes", com.onpath.app.recording.RecordingService.state.value?.paused == true)
+            // Beenden is a plain button with its text in the window – a tap, no hold
             clickText(Txt.s(Res.string.nav_end_short))
             assertNotNull("the end sheet after a plain tap", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())
