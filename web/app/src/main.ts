@@ -524,6 +524,9 @@ let hidden = false; // the eye is held
 function stopLabel(i: number, count: number, name?: string | null) {
   return name?.trim() ? name : i === 0 ? t('plan_point_start') : i === count - 1 && count > 1 ? t('plan_point_destination') : t('plan_point_stop', i + 1);
 }
+/** A stop's sign: ↺ for a loop's start, a white flag for the goal (the app's GoalFlag, owner 2026-11-06 polish 7), else its number. */
+const FLAG = '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M14.4 6 14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>';
+const stopSign = (i: number, count: number, loop: boolean) => (loop ? '↺' : count > 1 && i === count - 1 ? FLAG : String(i + 1));
 const stopColor = (i: number, count: number) => (i === 0 ? COLORS.start : i === count - 1 && count > 1 ? COLORS.end : COLORS.via);
 
 /** Markers + the Points list (the app's PlanPoints rows: names, leg distances, a round trip shown once with ↺). */
@@ -538,7 +541,7 @@ async function drawPoints() {
     const el = document.createElement('div');
     el.className = 'pin';
     el.style.background = state.roundTrip && i === 0 ? COLORS.start : stopColor(i, n);
-    el.textContent = state.roundTrip && i === 0 ? '↺' : String(i + 1);
+    el.innerHTML = stopSign(i, n, state.roundTrip && i === 0);
     el.title = t('web_marker_title', stopLabel(i, n, state.meta[i]?.name));
     el.style.visibility = hidden ? 'hidden' : '';
     const m = new maplibregl.Marker({ element: el, draggable: !terrain3d.on }).setLngLat([lon, lat]).addTo(map); // 3D: view only
@@ -569,7 +572,7 @@ async function drawPoints() {
     const color = row.loop ? COLORS.start : stopColor(row.i, n);
     return `<li data-i="${row.i}">
       <button class="grip" title="${escapeHtml(t('web_grip_title'))}" aria-label="${escapeHtml(t('web_grip_move', row.name))}">${icon('drag', 20)}</button>
-      <span class="num" style="background:${color}">${row.loop ? '↺' : row.i + 1}</span>
+      <span class="num" style="background:${color}">${stopSign(row.i, n, row.loop)}</span>
       <span class="txt"><span>${escapeHtml(row.name)}</span>${row.roleText ? `<span class="muted small">${escapeHtml(row.roleText)}</span>` : ''}</span>
       ${row.legText ? `<span class="leg muted">${escapeHtml(row.legText)}</span>` : '<span class="leg"></span>'}
       <button class="del iconbtn" aria-label="${escapeHtml(t('web_delete_point', row.name))}">${icon('close', 20)}</button></li>`;
@@ -755,7 +758,7 @@ async function pointMenu(i: number) {
   });
   const color = state.roundTrip && i === 0 ? COLORS.start : stopColor(i, n);
   openMenu(new maplibregl.LngLat(lon, lat), items,
-    `<span class="num" style="background:${color}">${state.roundTrip && i === 0 ? '↺' : i + 1}</span><b>${escapeHtml(stopLabel(i, n, name))}</b>`);
+    `<span class="num" style="background:${color}">${stopSign(i, n, state.roundTrip && i === 0)}</span><b>${escapeHtml(stopLabel(i, n, name))}</b>`);
 }
 
 /**
@@ -1386,8 +1389,11 @@ function renderFabs() {
   $<HTMLButtonElement>('undo').disabled = !state.canUndo;
   $<HTMLButtonElement>('redo').disabled = !state.canRedo;
   const l = $('locate');
-  l.innerHTML = icon(position.following ? 'gpsFixed' : 'gpsNotFixed') + `<span class="gpsdot ${position.dotClass}"></span>`;
+  // Plan is quiet about GPS (the app's PlanGps, owner 2026-11-06 23:35): no colour dot; greyed without a position, still
+  // clickable – it follows the position when one comes
+  l.innerHTML = icon(position.following ? 'gpsFixed' : 'gpsNotFixed');
   l.classList.toggle('on', position.following);
+  l.classList.toggle('greyed', !position.fix);
   const lw = position.status === 'OFF' ? t('web_locate_off_title') : position.status === 'NO_PERMISSION'
     ? t('web_locate_denied_title') : t('web_locate_title');
   l.title = lw; l.setAttribute('aria-label', lw);
