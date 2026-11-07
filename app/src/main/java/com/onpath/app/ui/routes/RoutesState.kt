@@ -58,10 +58,28 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
     var justSavedId by mutableStateOf(-1L)
 
     /** Reads the list from the store (blocking – call it off the main thread); [map] adds the model times. */
-    fun load(map: (Tour) -> Tour = { it }): List<Tour> = store.listTours().filter { it.state == "done" }.map(map)
+    fun load(map: (Tour) -> Tour = { it }): Loaded {
+        val seq = loads.incrementAndGet() // before the read: a higher number saw every write made before it was asked
+        return Loaded(store.listTours().filter { it.state == "done" }.map(map), seq)
+    }
 
-    /** Shows a list read by [load]. */
-    fun show(list: List<Tour>) { tours = list }
+    /**
+     * Shows a list read by [load] – unless a list read later is shown already (false). The loads run in parallel on the
+     * IO threads and finish in any order: a slow one read before a save must never put its older list over the newer
+     * one (E2E 2026-11-07: a route saved during a tour missing from My routes).
+     */
+    fun show(loaded: Loaded): Boolean {
+        if (loaded.seq < shownSeq) return false
+        shownSeq = loaded.seq
+        tours = loaded.tours
+        return true
+    }
+
+    /** A list of My routes read by [load], numbered in the order the reads began. */
+    class Loaded(val tours: List<Tour>, val seq: Long)
+
+    private val loads = java.util.concurrent.atomic.AtomicLong()
+    private var shownSeq = 0L
 
     /** The saved box → "In Meine Touren ›": My routes on Gemacht with that tour marked (owner 2026-11-06 22:30). */
     fun showSaved(tourId: Long) {

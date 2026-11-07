@@ -210,6 +210,11 @@ class CoreFieldE2ETest : E2EBase() {
             scenario.onActivity { vm(it).switchToPlan() }
             waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
             scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED; vm(it).openRoutes() }
+            // the list is read on the IO threads (slow on GitHub's emulator); an older read must never hide the route
+            // (RoutesState.show – E2E 2026-11-07: the list read at the tour start came back last)
+            waitUntil("My routes lists \"$name\"", 20_000) {
+                var listed = false; scenario.onActivity { listed = vm(it).tours.any { t -> t.id == savedId } }; listed
+            }
             clickText(name)
             // a row opens its overview first (owner 2026-11-07); during the tour its primary is "Folgen"
             clickText(Txt.s(Res.string.routes_overview_follow))

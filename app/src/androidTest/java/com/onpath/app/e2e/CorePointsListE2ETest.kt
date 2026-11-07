@@ -1,6 +1,11 @@
 package com.onpath.app.e2e
 
 import android.graphics.Point
+import com.onpath.strings.Res
+import com.onpath.strings.Txt
+import com.onpath.strings.plan_sheet_bigger
+import com.onpath.strings.plan_sheet_smaller
+import java.util.regex.Pattern
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
 import com.onpath.app.routing.GeoPoint
@@ -45,7 +50,7 @@ class CorePointsListE2ETest : E2EBase() {
         // the grab handle: summary → profile → full
         for (i in 0 until 4) {
             if (size() == PlanSize.FULL) break
-            desc("Resize panel").click(); Thread.sleep(500)
+            sheetHandle().click(); Thread.sleep(500)
         }
         waitUntil("full sheet") { size() == PlanSize.FULL }
         // the rows' ✕ (content descriptions), looked for afresh each time: UiAutomator's cache can keep the tree
@@ -78,6 +83,16 @@ class CorePointsListE2ETest : E2EBase() {
 
     private fun desc(text: String) = findFresh(By.desc(text), 5_000)
         ?: run { shot("missing-${text.filter { it.isLetterOrDigit() }}"); throw AssertionError("\"$text\" not shown – ${state()}") }
+
+    /**
+     * The sheet's grab handle: it says what its tap does (owner 2026-11-06 23:42, `PlanPanel` handleLabel) – "Make the
+     * panel bigger", on the largest step "… smaller" – read from the string resources, either one.
+     */
+    private fun sheetHandle(): androidx.test.uiautomator.UiObject2 {
+        val labels = listOf(Txt.s(Res.string.plan_sheet_bigger), Txt.s(Res.string.plan_sheet_smaller))
+        return findFresh(By.desc(Pattern.compile(labels.joinToString("|") { Pattern.quote(it) })), 5_000)
+            ?: run { shot("missing-sheet-handle"); throw AssertionError("sheet handle ($labels) not shown – ${state()}") }
+    }
 
     @Test fun deleteTheSecondPointWithX() {
         threePointsAndFullSheet()
@@ -132,7 +147,7 @@ class CorePointsListE2ETest : E2EBase() {
         settle()
         waitUntil("summary step") { size() == PlanSize.MINI }
         val (_, h) = mapSize()
-        fun handle() = desc("Resize panel").visibleCenter
+        fun handle() = sheetHandle().visibleCenter
         fun dragHandle(dy: Int) {
             val c = handle()
             val path = ArrayList<Point>()

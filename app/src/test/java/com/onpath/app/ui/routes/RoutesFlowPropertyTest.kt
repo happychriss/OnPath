@@ -11,6 +11,7 @@ import com.onpath.app.ui.Drafts
 import com.onpath.app.ui.OpenAsk
 import com.onpath.app.ui.RoutesTab
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -264,6 +265,27 @@ class RoutesFlowPropertyTest {
         assertEquals(listOf(live), r.line(liveTour) { live })
         val t = Tour(5, TourKind.PLANNED, "", 0, null, 2, 0.0, 0.0, 0.0, 0.0, "done", listOf(GpxWaypoint(3.0, 4.0, null)))
         assertEquals(listOf(listOf(GeoPoint(3.0, 4.0))), r.line(t) { live })
+    }
+
+    /**
+     * E2E 2026-11-07 (CoreFieldE2ETest, runs 42368551191 / 42368675666 / 42367635099): a route saved during a tour was
+     * missing from My routes. The view model reads the list on the IO threads, every read in parallel: a slow read begun
+     * before the save finished after the read begun after it and put the older list back. The newest read wins.
+     */
+    @Test fun aSlowOlderReadNeverHidesARouteSavedAfterIt() {
+        val store = FakeStore()
+        val r = RoutesState(store, clock = { 1_000L })
+        val plan = store.insert(TourKind.PLANNED, listOf(0.0 to 0.0, 0.01 to 0.01), draft = false)
+        val slow = r.load() // the tour start's read – still busy …
+        val saved = store.insert(TourKind.PLANNED, listOf(0.02 to 0.02, 0.03 to 0.03), draft = false)
+        val fresh = r.load() // … while My routes opens and reads again
+        assertTrue(r.show(fresh))
+        assertFalse("the older read is dropped", r.show(slow))
+        assertEquals(listOf(saved, plan), r.tours.map { it.id })
+        // in order they both show
+        val next = r.load()
+        assertTrue(r.show(next))
+        assertEquals(listOf(saved, plan), r.tours.map { it.id })
     }
 
     private companion object { val LiveRowsNone = com.onpath.app.domain.plan.LiveRows.NONE }

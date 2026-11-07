@@ -3973,8 +3973,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refreshTours() {
         viewModelScope.launchSafe("app", "refreshTours", Dispatchers.IO) {
-            val list = routes.load { withModelTime(it) }
-            withContext(Dispatchers.Main) { routes.show(list) }
+            val t0 = android.os.SystemClock.elapsedRealtime()
+            val loaded = routes.load { withModelTime(it) }
+            val ms = android.os.SystemClock.elapsedRealtime() - t0
+            if (ms > 1_500) Problems.trace("routes", "My routes read #${loaded.seq} took $ms ms (${loaded.tours.size} tours)")
+            withContext(Dispatchers.Main) {
+                if (!routes.show(loaded)) Problems.trace("routes", "My routes read #${loaded.seq} dropped: a later read is shown")
+            }
         }
     }
 
