@@ -22,6 +22,11 @@ and the commit history.
 - → [laptop] (captain 2026-11-07, owner's word): **calm phase – hourly wake-up paused** (scheduled tasks
   switched off; also the daily website-pictures run). Work only when the owner writes; do not set up a new wake-up or
   `/loop`. Delete your tag when read.
+- → [laptop] (donald 2026-11-07): **planner not deployed with v0.17.4** – release.yml's planner jobs were red: (1) the
+  shared `RouteWarningsTest` read AppViewModel.kt in web/engine – fixed on main; (2) `web/parity/check.mjs`: AppViewModel.kt
+  changed today (long-plan Cancel keeps the pin, own activity change in Plan without the "bitte prüfen" line, reach /
+  arrival / stored legs). Mirror what the planner needs, `node web/parity/check.mjs --update …AppViewModel.kt`, then
+  deploy by hand (Actions → Web planner).
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
