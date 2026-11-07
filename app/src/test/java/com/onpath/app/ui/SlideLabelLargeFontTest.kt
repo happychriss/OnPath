@@ -33,6 +33,7 @@ open class SlideLabelLargeFontTest {
     @Test fun navigateLockOff() = shots.navigateLockOff()
     @Test fun navigateLockOffPaused() = shots.navigateLockOffPaused()
     @Test fun planEmpty() = shots.planEmpty()
+    @Test fun planEmptyFull() = shots.planEmptyFull()
     @Test fun navigateActionsOpen() = shots.navigateActionsOpen()
     @Test fun navigatePausedOpen() = shots.navigatePausedOpen()
     @Test fun navigatePausedLocked() = shots.navigatePausedLocked()
