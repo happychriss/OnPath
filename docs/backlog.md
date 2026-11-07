@@ -24,6 +24,9 @@ and the commit history.
   **email of the domain runs over Cloudflare** ("E-Mail-Domain geht auf cloudflare.de" – donald reads it as Cloudflare
   Email Routing for info@onpath.earth; confirm with the owner). The section "E-Mail und freiwillige Rückmeldungen" says
   only "email providers may participate" – name Cloudflare Email Routing (forwarding, no mailbox) there, DE + EN.
+- → [donald|laptop] (captain 2026-11-07, owner's word): **calm phase – hourly wake-up paused** (scheduled tasks
+  switched off; also the daily website-pictures run). Work only when the owner writes; do not set up a new wake-up or
+  `/loop`. Delete your tag when read.
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
