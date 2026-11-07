@@ -356,10 +356,12 @@ class CoreFieldE2ETest : E2EBase() {
         val mid = GeoPoint((plan[0].lat + plan[1].lat) / 2 + 0.0003, (plan[0].lon + plan[1].lon) / 2)
         val poi = com.onpath.app.poi.Poi("e2e-shelter", "shelter", "Unterstand E2E", mid.lat, mid.lon)
         var label = ""
-        scenario.onActivity { label = vm(it).poiAddLabel(poi) }
+        var menu: com.onpath.app.ui.PlaceAddMenu.Menu? = null
+        scenario.onActivity { label = vm(it).poiAddLabel(poi); menu = vm(it).placeMenu(poi) }
         assertFalse("never a new start during a tour: \"$label\"", label == Txt.s(Res.string.search_card_set_start))
-        assertTrue("the menu promises stop 2: \"$label\"", label.contains("2"))
-        scenario.onActivity { vm(it).addPoiPoint(poi) }
+        // beside the middle: a clear stop – the menu offers "Als Zwischenstopp" (owner 2026-11-07), no start
+        assertEquals("the menu: $menu", listOf(com.onpath.app.ui.PlaceAddMenu.Item.ADD_STOP), menu?.main)
+        scenario.onActivity { vm(it).addPoiAsStop(poi) }
         waitUntil("3 points, the place between start and goal", 10_000) {
             val w = waypointList()
             w.size == 3 && w[0] == plan[0] && w[2] == plan[1] &&
@@ -371,6 +373,39 @@ class CoreFieldE2ETest : E2EBase() {
             ok
         }
         assertTrue("the recording goes on", recording())
+    }
+
+    /**
+     * Owner 2026-11-07 11:20: during a tour, a place past the goal → its menu says "Als neues Ziel" first; tapped, the plan
+     * ends there (the old goal is dropped), one Undo brings the old goal back. The recording goes on throughout.
+     */
+    @Test fun aPlaceMadeTheDestinationDuringATourEndsThePlanThereUndoBringsTheGoalBack() {
+        startPlanWithTwoPoints()
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the route is followed", 20_000) { guided() }
+        var plan: List<GeoPoint> = emptyList()
+        scenario.onActivity { plan = vm(it).waypoints.toList() }
+        scenario.onActivity { vm(it).switchToPlan() }
+        waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+        // half the route again beyond the goal, in its direction
+        val past = GeoPoint(plan[1].lat + (plan[1].lat - plan[0].lat) / 2, plan[1].lon + (plan[1].lon - plan[0].lon) / 2)
+        val poi = com.onpath.app.poi.Poi("e2e-church", "place_of_worship", "Kirche E2E", past.lat, past.lon)
+        var menu: com.onpath.app.ui.PlaceAddMenu.Menu? = null
+        scenario.onActivity { menu = vm(it).placeMenu(poi) }
+        assertEquals("the menu: $menu", com.onpath.app.ui.PlaceAddMenu.Item.NEW_DESTINATION, menu?.main?.firstOrNull())
+        assertTrue("the stop stays reachable: $menu",
+            com.onpath.app.ui.PlaceAddMenu.Item.ADD_STOP in menu!!.main + menu!!.more)
+        scenario.onActivity { vm(it).poiAsNewDestination(poi) }
+        waitUntil("the plan ends at the place, the old goal dropped", 10_000) {
+            val w = waypointList()
+            w.size == 2 && w[0] == plan[0] && com.onpath.app.data.Geo.distance(w[1], past) < 5.0
+        }
+        assertTrue("the recording goes on", recording())
+        scenario.onActivity { vm(it).undoStep() }
+        waitUntil("Undo: the old goal is back", 10_000) { waypointList() == plan }
+        assertTrue("the recording goes on after Undo", recording())
     }
 
     /** A done tour (a recorded line) near the walker, for the follow-a-track cases below. */

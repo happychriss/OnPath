@@ -1306,5 +1306,19 @@
     "context": "Screen reader action of the sheet handle: on the largest step a tap makes it smaller",
     "priority": 3,
     "confidence": "sicher"
+  },
+  "plan_add_as_stop": {
+    "area": "Plan place menu",
+    "context": "Menu entry of a held place (POI / found pin) with a plan of 2+ points: insert it at the best place on the route ahead, the goal stays. No number (owner 2026-11-07).",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "plan_make_destination": {
+    "area": "Plan place menu",
+    "context": "Menu entry of a held place with a plan of 2+ points: the route ends there, the old goal is dropped (Undo brings it back). Owner 2026-11-07.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 28
   }
 }

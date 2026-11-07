@@ -1632,7 +1632,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private class Insertion(val points: List<GeoPoint>, val line: List<GeoPoint>?, val decision: WaypointInsertion.Decision,
                             val index: Int, val inTour: Boolean)
 
-    private fun insertionFor(p: GeoPoint, lineSnapM: Double): Insertion {
+    private fun insertionFor(p: GeoPoint, lineSnapM: Double, stopOnly: Boolean = false): Insertion {
         val before = waypoints.toList()
         // during a tour a new point goes only among the points ahead, never behind the user (TourSplit)
         val passed = tourPassed(before)
@@ -1641,13 +1641,58 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val ahead = listOf(pos) + TourSplit.ahead(before, passed)
             // the followed line fits these points only once it runs from the position (else best fit by geometry)
             val line = followLine?.takeIf { it.isNotEmpty() && com.onpath.app.data.Geo.distance(it.first(), pos) < 50.0 }
-            val d = WaypointInsertion.decide(ahead, p, line, lineSnapM)
+            val d = WaypointInsertion.decide(ahead, p, line, lineSnapM, stopOnly = stopOnly)
             return Insertion(ahead, line, d, TourSplit.insertIndex(passed, d.index), inTour = true)
         }
         // While a reroute runs, the shown line belongs to older waypoints: use best-fit only.
         val line = if (routing) null else route?.points
-        val d = WaypointInsertion.decide(before, p, line, lineSnapM, wayThereFrom())
+        val d = WaypointInsertion.decide(before, p, line, lineSnapM, wayThereFrom(), stopOnly = stopOnly)
         return Insertion(before, line, d, d.index, inTour = false)
+    }
+
+    /**
+     * The add entries of a held place's menu ([PlaceAddMenu], owner 2026-11-07): with 2+ points "Als Zwischenstopp"
+     * and/or "Als neues Ziel" by how clear the case is – measured on the route still to go (during a tour from my position).
+     */
+    fun placeMenu(poi: com.onpath.app.poi.Poi): PlaceAddMenu.Menu {
+        val p = GeoPoint(poi.lat, poi.lon)
+        val n = waypoints.size
+        val touring = recState.value != null
+        if (n < 2) return PlaceAddMenu.menu(n, touring, zone = null)
+        val ins = insertionFor(p, 30.0)
+        val pos = myPosition()
+        // during a tour the route to go starts here (TourSplit's ahead list already does; else put my position first)
+        val ahead = if (ins.inTour || !touring || pos == null) ins.points else listOf(pos) + ins.points
+        return PlaceAddMenu.menu(n, touring, PlaceAddMenu.zone(ahead, p, loop = isRoundTrip()))
+    }
+
+    /** Place menu → "Als Zwischenstopp": where it fits best on the route ahead, never behind the goal (the goal stays). */
+    fun addPoiAsStop(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) = addPoiWith(poi, "as a stop") { p ->
+        val ins = insertionFor(p, lineSnapM, stopOnly = true)
+        change { add(ins.index.coerceIn(0, size), p) }
+    }
+
+    /**
+     * Place menu → "Als neues Ziel": the route ends there, the old goal is dropped (one Undo step brings it back). During a
+     * tour the guidance follows the new plan as after any edit.
+     */
+    fun poiAsNewDestination(poi: com.onpath.app.poi.Poi) = addPoiWith(poi, "as the new destination") { p ->
+        change { if (isEmpty()) add(p) else set(lastIndex, p) }
+    }
+
+    /** The bookkeeping of a place taken from its menu (name, pin, candidate fit), then [edit] with its point. */
+    private fun addPoiWith(poi: com.onpath.app.poi.Poi, how: String, edit: (GeoPoint) -> Unit) {
+        val candidate = isCandidate(poi)
+        closeMapOverlays()
+        val idx = waypoints.indexOfFirst { sameSpot(it, poi.lat, poi.lon) }
+        if (idx >= 0) { openPointMenu(idx, via = "POI that is a stop"); return }
+        val p = GeoPoint(poi.lat, poi.lon)
+        rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
+        clearSearchMarkAt(poi.lat, poi.lon)
+        pinned += p; prefs.planPinned = pinned
+        val before = waypoints.size
+        if (candidate) fittingPlaceAdd { edit(p) } else edit(p)
+        Problems.trace("plan", "Place menu: \"${poi.name ?: poi.kind}\" $how (plan $before → ${waypoints.size} points)")
     }
 
     /**
