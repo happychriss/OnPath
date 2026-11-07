@@ -2042,7 +2042,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val split = splitOf(before, prev)
         plan.replace(prev)
         canUndo = plan.canUndo; canRedo = plan.canRedo
-        routeBackAsk = split == TourSplit.Outcome.NothingAhead // the plan an open question was about is gone
+        // the plan an open question was about is gone; one point left where I stand asks nothing (standing on it counts it
+        // as passed, so the split says NothingAhead – GitHub run 2026-11-07, as for edits in change())
+        routeBackAsk = split == TourSplit.Outcome.NothingAhead && !plan.leftIsHere(myPosition())
         oneLeftGoesFromHere(before)
         closePointMenu("undo / redo"); firstPointMenu = null
         prefs.planWaypoints = waypoints.toList()
