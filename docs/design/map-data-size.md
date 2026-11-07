@@ -233,7 +233,7 @@ east of 7°E).
 
 - `routing/Rd5Parts.kt` (pure, JVM-tested in `Rd5PartsTest`): `Part(lon, lat)` with `tile` / `index` / `key`
   (`"E10_N45.rd5:E11_N46"`); which parts a point (`forPoint`, 2 km margin), a box (`forBox`, map regions) or a line
-  (`forCorridor`, 10 km around the route or the straight legs) needs; index / tail parsing, checksum, `write` (temp
+  (`forCorridor`, 10 km (hike) / 20 km (bike, unknown) around the route or the straight legs) needs; index / tail parsing, checksum, `write` (temp
   file, sync, size check, rename – never a broken file in place; BRouter keeps reading the old inode); `hasData` for
   the engine.
 - `data/Rd5PartStore.kt` (JVM-tested in `Rd5PartStoreTest` with a fake server: ranges, broken connection, version

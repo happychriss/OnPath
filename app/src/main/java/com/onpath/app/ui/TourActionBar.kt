@@ -55,6 +55,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
+import com.onpath.app.domain.tour.UnlockWindow
 
 /**
  * Navigate without a recording: ONE big blue "Planen" (56 dp, full width) – opens the plan. Locked ([hold]): held ~1 s
@@ -138,14 +139,19 @@ private fun HoldLabel(icon: ImageVector?, text: String?, color: Color) {
  */
 @Composable
 fun TourBottomBar(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Unit, onPlan: () -> Unit, modifier: Modifier = Modifier,
-                  hold: Boolean = false, pausedSinceMs: Long? = null, free: Boolean = false) {
+                  hold: Boolean = false, pausedSinceMs: Long? = null, free: Boolean = false, windowOpen: Boolean = false) {
+    // per button ([UnlockWindow.needsHold], owner 2026-11-07): inside the 20 s window after a fired hold everything is a
+    // tap but "Weiter" – resuming always wants a hold while the lock is on ([hold])
+    val held = { b: UnlockWindow.BarButton -> UnlockWindow.needsHold(b, hold, windowOpen) }
+    val shown = if (paused) listOf(UnlockWindow.BarButton.RESUME, UnlockWindow.BarButton.END, UnlockWindow.BarButton.PLAN)
+        else listOf(UnlockWindow.BarButton.PAUSE, UnlockWindow.BarButton.PLAN)
     // Paused (owner 2026-11-07, variant C of https://claude.ai/artifact/24XVQ4goVZixT53fnQDn7H): a calm paper band over
     // the buttons says what stands still and since when – one column, so the band, the lock line and the buttons stack
     // and never overlap (the "Neuer Plan" card sits above the measured column)
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (paused) PauseBand(pausedSinceMs, free)
-        if (hold) HoldBar(Modifier) { hint -> TourBottomBarRow(paused, onPause, onEnd, onPlan, Modifier, hint) }
-        else TourBottomBarRow(paused, onPause, onEnd, onPlan, Modifier, null)
+        if (shown.any(held)) HoldBar(Modifier) { hint -> TourBottomBarRow(paused, onPause, onEnd, onPlan, Modifier, hint, held) }
+        else TourBottomBarRow(paused, onPause, onEnd, onPlan, Modifier, null, held)
     }
 }
 
@@ -195,10 +201,11 @@ object PauseBandText {
     fun freeLine(free: Boolean): Boolean = free
 }
 
-/** [TourBottomBar]'s buttons; [holdHint] non-null = locked (held buttons, the hint on an early release). */
+/** [TourBottomBar]'s buttons; [held] = this button wants a hold ([holdHint]: the hint on an early release). */
 @Composable
 private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Unit, onPlan: () -> Unit, modifier: Modifier,
-                             holdHint: ((Float) -> Unit)?) {
+                             holdHint: ((Float) -> Unit)?, held: (UnlockWindow.BarButton) -> Boolean) {
+    val hintOr: (Float) -> Unit = holdHint ?: {}
     val pauseWord = str(Res.string.nav_action_pause)
     val resumeWord = str(Res.string.common_resume)
     val endWord = str(Res.string.nav_end_short)
@@ -208,8 +215,8 @@ private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd:
     val density = LocalDensity.current
     val green = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionGo, contentColor = OnPathColors.CardWhite)
     val blue = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionEdit, contentColor = OnPathColors.CardWhite)
-    val go = @Composable { word: String, icon: ImageVector?, m: Modifier, act: () -> Unit ->
-        if (holdHint != null) HoldButton(word, OnPathColors.ActionGo, TourActions.GoTonal, TourActions.OnGoTonal, act, holdHint,
+    val go = @Composable { word: String, icon: ImageVector?, m: Modifier, hold: Boolean, act: () -> Unit ->
+        if (hold) HoldButton(word, OnPathColors.ActionGo, TourActions.GoTonal, TourActions.OnGoTonal, act, hintOr,
             m.height(56.dp)) { c -> HoldLabel(icon, word, c) }
         else Button(onClick = act, colors = green, contentPadding = if (icon == null) PaddingValues(horizontal = 16.dp) else ButtonDefaults.ContentPadding,
             modifier = m.heightIn(min = 56.dp)) {
@@ -217,8 +224,9 @@ private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd:
             Text(word, style = style, maxLines = 1, softWrap = false)
         }
     }
+    val planHeld = held(UnlockWindow.BarButton.PLAN)
     val edit = @Composable { icons: Boolean, m: Modifier ->
-        if (holdHint != null) HoldButton(planWord, OnPathColors.ActionEdit, TourActions.EditTonal, TourActions.OnEditTonal, onPlan, holdHint,
+        if (planHeld) HoldButton(planWord, OnPathColors.ActionEdit, TourActions.EditTonal, TourActions.OnEditTonal, onPlan, hintOr,
             m.height(56.dp)) { c -> HoldLabel(if (icons) Icons.Filled.Edit else null, planWord, c) }
         else Button(onClick = onPlan, colors = blue, modifier = m.heightIn(min = 56.dp)) {
             if (icons) { Icon(Icons.Filled.Edit, null, modifier = Modifier.size(22.dp)); Spacer(Modifier.width(8.dp)) }
@@ -231,7 +239,7 @@ private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd:
         if (!paused) {
             val icons = TourBottomBarRules.runningWithIcons(w(pauseWord), w(planWord), width)
             val row = TourBottomBarRules.runningInOneRow(w(pauseWord), w(planWord), width)
-            val pause = @Composable { m: Modifier -> go(pauseWord, if (icons) Icons.Filled.Pause else null, m) { onPause(true) } }
+            val pause = @Composable { m: Modifier -> go(pauseWord, if (icons) Icons.Filled.Pause else null, m, held(UnlockWindow.BarButton.PAUSE)) { onPause(true) } }
             val plan = @Composable { m: Modifier -> edit(icons, m) }
             if (row) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { pause(Modifier.weight(1f)); plan(Modifier.weight(1f)) }
             else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) { pause(Modifier.fillMaxWidth()); plan(Modifier.fillMaxWidth()) }
@@ -239,9 +247,9 @@ private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd:
             // "▶ Weiter" (owner 2026-11-07): the play sign says what the green button does; dropped only when it would not fit
             val playFits = TourBottomBarRules.pausedInOneRow(w(resumeWord) + TourBottomBarRules.ICON, w(endWord), width)
             val oneRow = playFits || TourBottomBarRules.pausedInOneRow(w(resumeWord), w(endWord), width)
-            val resume = @Composable { m: Modifier -> go(resumeWord, if (playFits || !oneRow) Icons.Filled.PlayArrow else null, m) { onPause(false) } }
+            val resume = @Composable { m: Modifier -> go(resumeWord, if (playFits || !oneRow) Icons.Filled.PlayArrow else null, m, held(UnlockWindow.BarButton.RESUME)) { onPause(false) } }
             val end = @Composable { m: Modifier ->
-                if (holdHint != null) HoldButton(endWord, OnPathColors.ActionGo, OnPathColors.Paper, OnPathColors.ActionGo, onEnd, holdHint,
+                if (held(UnlockWindow.BarButton.END)) HoldButton(endWord, OnPathColors.ActionGo, OnPathColors.Paper, OnPathColors.ActionGo, onEnd, hintOr,
                     m.height(56.dp), outline = OnPathColors.ActionGo) { c -> HoldLabel(null, endWord, c) }
                 else OutlinedButton(onClick = onEnd, border = BorderStroke(1.5.dp, OnPathColors.ActionGo),
                     colors = ButtonDefaults.outlinedButtonColors(containerColor = OnPathColors.Paper, contentColor = OnPathColors.ActionGo),
@@ -251,7 +259,7 @@ private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd:
             }
             if (oneRow) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 resume(Modifier.weight(1f)); end(Modifier.weight(1f))
-                if (holdHint != null) HoldButton(planWord, OnPathColors.ActionEdit, TourActions.EditTonal, TourActions.OnEditTonal, onPlan, holdHint,
+                if (planHeld) HoldButton(planWord, OnPathColors.ActionEdit, TourActions.EditTonal, TourActions.OnEditTonal, onPlan, hintOr,
                     Modifier.size(56.dp), shape = CircleShape) { c -> HoldLabel(Icons.Filled.Edit, null, c) }
                 else FilledIconButton(onClick = onPlan, modifier = Modifier.size(56.dp).semantics { contentDescription = planWord },
                     colors = IconButtonDefaults.filledIconButtonColors(containerColor = OnPathColors.ActionEdit, contentColor = OnPathColors.CardWhite)) {
@@ -281,10 +289,8 @@ object TourBottomBarRules {
         maxOf(resumeW, endW) + 2 * 16f <= (width - 56f - 2 * GAP) / 2
 }
 
-/** Rules of the unlocked state (pure). */
+/** The tour bar's tonal colours (the unlock window's rule: [com.onpath.app.domain.tour.UnlockWindow]). */
 object TourActions {
-    /** The unlocked state locks again by itself after this long without a tap (phone back in the pocket). */
-    const val OPEN_MS = 30_000L
     /** Pause's light green and its dark green words (≥ 7:1). */
     val GoTonal = Color(0xFFD5EADF)
     val OnGoTonal = Color(0xFF0D3A27)

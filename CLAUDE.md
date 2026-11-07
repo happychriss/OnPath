@@ -27,8 +27,8 @@ the phone → simple. Requirements with stable IDs: `docs/requirements.md` (new 
 - Git: push straight to `main` (app and planner), no pull request, ignore the session's `claude/…` branch. A pull
   request only for `.github/workflows/`, signing / build config, keys, privacy / licence texts. Never commit map data,
   APKs or `local.properties`.
-- Questions to the owner only as a `frage` issue via `tools/ask.sh` (see `--help`; rules: `docs/owner-preferences.md`); the
-  owner's word to all = `an-alle`.
+- Ask the owner in your own chat (rules: `docs/owner-preferences.md`); still open when you stop → `docs/backlog.md`
+  "Waiting for the owner". The owner's word to all = a line in the backlog's "For the roles".
 - Every question the owner asks you in the chat goes into his Fragenregister page, with your answer under it
   (how: `docs/owner-preferences.md` "Fragenregister").
 - Sub-agents that edit files work in their own git worktree; the main session merges, pushes and holds the claim.

@@ -192,10 +192,11 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <button id="handle" aria-label="${escapeHtml(t('plan_resize_panel'))}" title="${escapeHtml(t('plan_resize_panel'))}" aria-controls="sheet"><span></span></button>
     <div class="sheethead">
       <button id="activityChip" class="chip" aria-haspopup="menu" aria-expanded="false"></button>
-      <div id="summary"><div class="headline"></div><div class="subline muted"></div></div>
       <button id="share" class="sharebtn" aria-label="${escapeHtml(t('web_share_needs_two'))}" title="${escapeHtml(t('web_share_needs_two'))}" disabled>${icon('share', 18)}<span>${escapeHtml(t('web_share'))}</span></button>
       <button id="sheetStep" class="iconbtn" aria-controls="sheet"></button>
     </div>
+    <!-- the facts first, like the phone (owner 2026-11-07): the app's facts row: time · distance · ↑ ↓ · difficulty -->
+    <div id="summary"><div class="headline"></div><div class="subline muted"></div></div>
     <!-- the app's PlanActions (owner 2026-10-31, no ⋯): icon + word side by side; Save is the header's, GPX is in Share -->
     <div id="planActions" class="planactions" role="group" hidden>
       <!-- no ✕ Neu planen here (owner 2026-11-06): the plan bar's + Neu is the one way – a deliberate difference to the app -->
@@ -208,14 +209,16 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div id="offmap" class="offmap" hidden></div>
     <button id="warning" class="notice warnline" aria-expanded="false" hidden></button>
     <ul id="spots" class="spots" hidden></ul>
+    <!-- the points after facts, plan row and lines (owner 2026-11-07, the phone's order; Google Maps' list): handles, + Ziel hinzufügen -->
+    <div id="pointsSection" hidden>
+      <div class="pointshead"><b>${escapeHtml(t('plan_points'))}</b></div>
+      <ol id="points"></ol>
+      <button id="addDest" class="adddest">${icon('add', 18)}<span>${escapeHtml(t('web_add_destination'))}</span></button>
+    </div>
     <div id="profile"></div>
     <div id="infoline" class="infoline" hidden></div>
     <button id="changedLine" class="infoline changedline" hidden></button>
     <div id="breakdown" class="breakdown" hidden></div>
-    <div id="pointsSection" hidden>
-      <div class="pointshead"><b>${escapeHtml(t('plan_points'))}</b></div>
-      <ol id="points"></ol>
-    </div>
     <div id="status" class="status muted" role="status"></div>
     <div id="apphint"></div>
   </section>
@@ -227,7 +230,7 @@ const phoneWidth = () => matchMedia('(max-width: 700px)').matches;
 let syncRef: PlanSync | null = null;
 saveEntry('empty'); // the header's Save: greyed until a route exists (renderSaved keeps it current)
 // the plan sheet's three steps (sheetstep.ts – the app's PlanSize): handle, chevron, a click on the summary; remembered
-const sheetSteps = setupSheetSteps($('sheet'), $('handle'), $<HTMLButtonElement>('sheetStep'), document.querySelector<HTMLElement>('.sheethead')!, () => {});
+const sheetSteps = setupSheetSteps($('sheet'), $('handle'), $<HTMLButtonElement>('sheetStep'), $('summary'), () => {}, () => state.points.length);
 
 // ---- map ----
 maplibregl.setWorkerUrl(maplibreWorkerUrl); // the bundle moves maplibre's module worker; tell it where
@@ -257,10 +260,14 @@ $('footer').prepend(new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 90 }
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right'); // zoom ± (wide screens; the compass is in the toolbar)
 if (useCells) map.on('moveend', () => cells.loadPois(map));
 // the terrain view (terrainview.ts, owner 2026-11-05): the profile linked to the map, 3D on demand
-const routeProfile = new RouteProfile(map, ROUTE, $('profile'), $('bigProfile'), (open) => {
+const routeProfile = new RouteProfile(map, ROUTE, $('profile'), $('bigProfile'), (open, auto) => {
   document.body.classList.toggle('bigprofile-open', open);
-  if (open) fitRoute(); // the whole route above the big profile
+  if (open && !auto) fitRoute(); // opened by hand: the whole route above the big profile
 });
+// wide screens: the profile lies along the map's bottom edge for good (owner 2026-11-07, A + B's profile); phone: on demand
+const pinProfile = () => { routeProfile.pinned = !phoneWidth(); };
+pinProfile();
+matchMedia('(max-width: 700px)').addEventListener('change', pinProfile);
 // the big profile's marked range: length · time · climb from the engine (the plan's own time model, WebPace.rangeStats)
 routeProfile.rangeStats = async (a, b) => JSON.parse((await engine.call('rangeStats', enc(state.points), state.activity, state.sac, a, b)) || 'null');
 const terrain3d = new Terrain3D(map, $<HTMLButtonElement>('terrain3d'), $('threeDNote'), () => markers.forEach((m) => m.setDraggable(!terrain3d.on)),
@@ -587,6 +594,7 @@ async function drawPoints() {
   loop.innerHTML = `${icon(state.roundTrip ? 'check' : 'loop', 18)}${escapeHtml(t('plan_round_trip'))}`;
   $<HTMLButtonElement>('reverse').disabled = n < 2 || !(r.canReverse ?? true);
   $('pointsSection').hidden = n === 0;
+  sheetSteps.refresh(); // the phone's chevron says „3 Punkte“
   $('planActions').hidden = n === 0; // the app's RouteRules.canClear: something to close
   $<HTMLButtonElement>('newPlan').disabled = n === 0; // New plan: the same rule as ✕ Neu planen
   // Speichern ▾ → Save as / Export GPX: need a route (two points; GPX the planned line)
@@ -602,7 +610,7 @@ $('points').addEventListener('click', (e) => {
   if ((e.target as HTMLElement).closest('.del')) { deletePoint(i); return; }
   const p = state.points[i];
   // phone: the sheet goes to the profile step so list and map are both visible (the app's showPointFromList)
-  if (p && phoneWidth()) sheetSteps.set('profile');
+  if (p && phoneWidth()) sheetSteps.set('small');
   if (p) map.easeTo({ center: [p[1], p[0]], zoom: Math.max(map.getZoom(), 14) });
 });
 sortable($('points'), (from, to) => applyEdit('move', from, to));
@@ -1568,6 +1576,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 $('reverse').onclick = () => applyEdit('reverse');
+// „+ Ziel hinzufügen“ (proposal A): the search, whose place card adds the place (Hinzufügen) – as Google Maps' „Add stop“
+$('addDest').onclick = () => { const q = document.getElementById('q') as HTMLInputElement | null; q?.focus(); q?.select(); };
 $('roundTrip').onclick = () => applyEdit('roundTrip');
 /** ✕ Neu planen in the plan row and the header's New plan (owner 2026-11-06): unsaved changes ask first, then empty. */
 async function newPlan() { await keepAsRecent('new plan'); clearRoute(); placeCard.removePin(); }

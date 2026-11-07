@@ -107,7 +107,7 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
   await page.evaluate(() => { delete window.__sync.list; });
   await fake('none');
   // the sheet's three steps (sheetstep.ts): the chevron goes one step more until Points, then back to small
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 2 && await page.isVisible('#sheetStep'); i++) { // the phone's two steps (wide: none)
     await page.click('#sheetStep');
     await page.waitForTimeout(400);
     await page.screenshot({ path: path.join(out, `${name}-step-${await page.getAttribute('#sheet', 'data-step')}.png`) });

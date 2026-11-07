@@ -126,6 +126,10 @@ class PlanCallbacks(
     /** Tour controls at the top of the sheet (only while a tour records). */
     val onPause: (Boolean) -> Unit = {},
     val onEndTour: () -> Unit = {},
+    /** The empty sheet's guide, step 1 "Ziel finden ›": opens the search ([EmptyGuide]). */
+    val onSearch: () -> Unit = {},
+    /** The empty sheet's guide, "Meine Touren öffnen". */
+    val onMyRoutes: () -> Unit = {},
 )
 
 /** Recording status shown at the top of the plan sheet during a tour. */
@@ -316,11 +320,12 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         // the rolled-up row lies over the summary's first line and fades with the bar sliding in (one body, no rebuild)
         CollapsedRow(ui, cb, barShown, with(sheet) { Modifier.stepEnd(PlanSize.COLLAPSED.step) })
     }
-    // the empty plan's hint belongs to the summary step: the sheet opens at it, so a first start sees how to begin
-    // (owner 2026-11-02: "beim ersten Öffnen … sieht man es gar nicht")
+    // the empty plan's first step belongs to the summary step: the sheet opens at it, so a first start sees how to begin
+    // (owner 2026-11-02: "beim ersten Öffnen … sieht man es gar nicht"; 2026-11-07: the 3-step guide, EmptyGuide)
+    val guide = EmptyGuide.shows(ui.pointCount, ui.tour != null || ui.tourRunning)
     if (ui.pointCount == 0) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) {
         // during a tour (owner 2026-11-05): the tour goes on – new points, or back to it
-        if (ui.tour != null || ui.tourRunning) TourGoesOnHint() else FirstPointHint()
+        if (guide) EmptyGuideFirst(cb.onSearch) else TourGoesOnHint()
     }
     // a tap on the open map (hold-only): the same hand says how to set a point – in the step the sheet opens at
     else if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { TapHoldHint() }
@@ -332,6 +337,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     Column(Modifier.fillMaxWidth().weight(1f).onGloballyPositioned { viewport = it }.then(belowStep)
         .verticalScroll(scroll, enabled = full)) {
         SubLine(ui, route)
+        if (guide) EmptyGuideRest(cb.onMyRoutes)
         if (route != null) SavedLine(ui)
         // while a route is calculated the old profile stays where it is, faded and still (owner 2026-11-06: the sheet
         // went down and up on Reverse / Round trip – the profile, the badge and the lines vanished and came back)
@@ -354,7 +360,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         }
         Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COMPACT.step) { scroll.value.toFloat() } })
         // below the profile step the list is hidden behind the button: not for touch, not for TalkBack / tests
-        Box(if (full) Modifier else Modifier.clearAndSetSemantics { }) {
+        if (!guide) Box(if (full) Modifier else Modifier.clearAndSetSemantics { }) {
             PointsSection(
                 ui.points,
                 onMove = cb.onMovePoint, onDelete = cb.onDeletePoint, onShow = cb.onShowPoint,
@@ -774,21 +780,6 @@ internal object EmptyPlanTitle {
     fun asks(pointCount: Int, touring: Boolean): Boolean = pointCount == 0 && !touring
     fun of(ui: PlanUi) = if (asks(ui.pointCount, ui.tour != null || ui.tourRunning)) Res.string.plan_hint_first_point_question
         else Res.string.plan_plan_a_route
-}
-
-/**
- * The empty plan (owner 2026-11-02, for a first start; 2026-11-06 the question moved up into the title): ✋ "Halte dein
- * Ziel auf der Karte gedrückt – oder such es oben in der Suchleiste." – both ways in one sentence. The hand is the one
- * sign for "hold the map".
- */
-@Composable
-private fun FirstPointHint() {
-    Row(verticalAlignment = Alignment.Top) {
-        Icon(Icons.Filled.TouchApp, null, tint = OnPathColors.PlanAccent, modifier = Modifier.padding(top = 1.dp).size(24.dp))
-        Spacer(Modifier.width(10.dp))
-        Text(str(Res.string.plan_hint_first_point), style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
 }
 
 /** The empty plan during a tour: "Tour läuft weiter – setz neue Punkte oder tippe unten auf Weiter geht’s." */

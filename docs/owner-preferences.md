@@ -7,12 +7,13 @@ Shared by every session (donald, laptop, captain, cloud-web). Product rules (UX,
 ## Talking with the owner
 - **One question at a time**, with a short table of options and a recommendation first; the owner answers tersely.
   Owner 2026-11-01, the general motto: open questions always as a **question box with answer options, one after the
-  other**, each with 2–3 lines of background – never a list of questions in prose. Every question also goes to the
-  dashboard (issues `frage` in `onpath.private`, `tools/ask.sh`); a blocking one is asked in the chat too (yellow
-  "waiting" dot), the owner answers where he is, the session keeps the issue up to date and closes it.
+  other**, each with 2–3 lines of background – never a list of questions in prose. Ask in your own chat (owner
+  2026-11-07: no more question issues – he always answered in the chat). Not answered when the session stops → one line
+  under "Waiting for the owner" in `docs/backlog.md` (who, date, question, recommendation); whoever acts on the answer
+  deletes it. "Nie warten": take the recommendation, note it, go on.
 - **No numbers toward the owner** (owner 2026-11-02: "sowas wie #19 kann ich mir nicht merken"): in the chat and in
-  push messages name a question, issue, commit or item by a short description ("die Frage zum Startknopf"), never by
-  its number alone. Numbers stay in issues, the backlog and commit messages for the sessions; the owner may answer
+  push messages name a question, commit or item by a short description ("die Frage zum Startknopf"), never by
+  its number alone. Numbers stay in the backlog and commit messages for the sessions; the owner may answer
   with a word ("Startknopf: A").
 - **Planner deploys in the test phase** (owner 2026-11-06): the planner goes online right after the affected local tests – GitHub's full run continues behind it; a red run is fixed and deployed again (`docs/roles/cloud-plan.md`).
 - **Fragenregister** (owner 2026-11-06): every question the owner asks a session in its chat goes onto the page
@@ -31,9 +32,9 @@ gestures, re-routing only after asking, core-feature bugs test first, public tex
 `happychriss/onpath.private`).
 
 ## How sessions work
-- **The owner must notice when a session waits** (owner 2026-11-02): every question also goes to the dashboard
-  (`tools/ask.sh`), and on donald / the laptop the Claude push is on (`/config`: "Push when actions required" + "Push
-  when Claude decides" – `docs/roles/multi-agent-lernen.md` §2). A question asked only in the chat is a bug.
+- **The owner must notice when a session waits** (owner 2026-11-02): on donald / the laptop the Claude push is on
+  (`/config`: "Push when actions required" + "Push when Claude decides" – `docs/roles/multi-agent-lernen.md` §2); an
+  open question outlives the session only as a line under "Waiting for the owner" in `docs/backlog.md`.
 - **Main session talks and distributes; work runs in background agents** (builds, checks, merges, installs). The
   main session keeps the overview of all agents (task → state → next step), stops stuck ones, and reports without
   being asked. **The chat stays responsive** (owner 2026-11-01): a request that takes longer than ~2 minutes and stands

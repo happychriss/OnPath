@@ -56,7 +56,7 @@
     <string name="settings_map_style">Kartenstil</string>
     <string name="settings_map_contours">Höhenlinien</string>
     <string name="settings_map_hillshade">Relief</string>
-    <string name="settings_map_direction">Kartenausrichtung (Planen und Navigation)</string>
+    <string name="settings_map_direction">Kartenausrichtung</string>
     <string name="settings_map_travel">In Bewegungsrichtung</string>
     <string name="settings_map_north">Norden oben</string>
     <string name="settings_map_planning">Planen</string>

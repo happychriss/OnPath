@@ -11,7 +11,7 @@
 #trackPanel #planFromTrack { background: none; color: var(--plan); border: 1.5px solid var(--plan); }
 #trackPanel #planFromTrack.busy svg { display: none; } /* the spinner takes the sign's place, as in the app */
 #trackPanel #planFromTrack:disabled { color: rgba(46,106,158,.38); border-color: rgba(46,106,158,.38); }
-#trackPanel button.primary.busy::before { content: ""; width: 16px; height: 16px; border: 2px solid rgba(43,76,111,.3); border-top-color: var(--plan);
+#trackPanel button.primary.busy::before { content: ""; width: 16px; height: 16px; border: 2px solid rgba(51,90,133,.3); border-top-color: var(--plan);
   border-radius: 50%; animation: gpxspin 0.8s linear infinite; }
 @keyframes gpxspin { to { transform: rotate(360deg); } }
 #map.gpxdrop { outline: 4px dashed #8E24AA; outline-offset: -8px; }

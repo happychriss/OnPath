@@ -53,6 +53,14 @@ fun KeepScreenOn(on: Boolean, pocketAfterMs: Long? = 0L) {
     }
 }
 
+/**
+ * The phone is in the pocket now ([PocketLogic.inPocket]): the proximity sensor has the screen off although the activity
+ * keeps running – Navigate shuts its unlock window on it ([com.onpath.app.domain.tour.UnlockWindow]). Main thread only.
+ */
+object PocketState {
+    val inPocket = kotlinx.coroutines.flow.MutableStateFlow(false)
+}
+
 /** Drives [PocketLogic] with the proximity sensor and the main looper's clock; applies its answer. */
 private class PocketGuard(app: Context, private val armMs: Long, private val keepOn: (Boolean) -> Unit) : SensorEventListener {
     private val pm = app.getSystemService(Context.POWER_SERVICE) as? PowerManager
@@ -83,6 +91,7 @@ private class PocketGuard(app: Context, private val armMs: Long, private val kee
     }
 
     fun stop() {
+        PocketState.inPocket.value = false
         handler.removeCallbacks(tick)
         try { sm?.unregisterListener(this) } catch (e: Exception) { Problems.warn("sensor", "Proximity sensor not released", e) }
         try { lock?.let { if (it.isHeld) it.release() } } catch (e: Exception) { Problems.warn("sensor", "Pocket wake lock not released", e) }
@@ -100,6 +109,7 @@ private class PocketGuard(app: Context, private val armMs: Long, private val kee
      * (the screen stays off until then, then times out normally); uncovered on the bike: let go at once (screen on).
      */
     private fun apply(o: PocketLogic.Out) {
+        PocketState.inPocket.value = logic.inPocket(SystemClock.uptimeMillis())
         if (o.keepOn != kept) { kept = o.keepOn; keepOn(o.keepOn) }
         val l = lock
         if (l != null && o.lock != l.isHeld) {

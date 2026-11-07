@@ -33,6 +33,7 @@ class GermanScreenshotTest {
     private val shots get() = borrow(ScreenshotTest())
 
     @Test fun plan() = shots.plan()
+    @Test fun planLocateFar() = shots.planLocateFar()
     @Test fun overviewHint() = shots.overviewHint()
     @Test fun navigateLeaveAsk() = shots.navigateLeaveAsk()
     @Test fun navigatePausedLocked() = shots.navigatePausedLocked()
@@ -57,6 +58,8 @@ class GermanScreenshotTest {
     @Test fun navigateLockOff() = shots.navigateLockOff()
     @Test fun navigateLockOffPaused() = shots.navigateLockOffPaused()
     @Test fun planEmpty() = shots.planEmpty()
+    @Test fun planEmptyCollapsed() = shots.planEmptyCollapsed()
+    @Test fun planEmptyFull() = shots.planEmptyFull()
     @Test fun planOnePoint() = shots.planOnePoint()
     @Test fun trackWithoutLine() = shots.trackWithoutLine()
     @Test fun planPointsFull() = shots.planPointsFull()

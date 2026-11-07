@@ -2,6 +2,7 @@ package com.onpath.app.domain.plan
 
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanEdits
+import com.onpath.app.ui.PlanAutoSave
 import com.onpath.app.ui.PlanGuidance
 import com.onpath.app.ui.RouteRequests
 import org.junit.Assert.assertEquals
@@ -16,7 +17,8 @@ import kotlin.random.Random
  * save, start / end a tour, the router snapping points – in any order, and after every step the rules that must always
  * hold:
  * 1. the plan can always be emptied (and one Undo brings it back);
- * 2. a saved plan is never lost or changed by editing;
+ * 2. a saved plan is never lost or changed by editing – only "Los geht's" with a loaded saved plan changed since
+ *    updates it in place (owner 2026-11-07), and then its version before is kept under Zuletzt;
  * 3. Undo right after an edit brings back exactly the points before it (and Redo the points after it);
  * 4. a tour never follows a plan other than the one shown (the guidance rules of [PlanGuidance]);
  * 5. nothing calculates forever: the newest route request always resolves, an older result is never applied.
@@ -32,6 +34,11 @@ class PlanFlowPropertyTest {
         val session = PlanSession(mutableListOf())
         val store = LinkedHashMap<String, List<GeoPoint>>()
         val storeShadow = LinkedHashMap<String, List<GeoPoint>>()
+        /** The saved route the plan on the map belongs to (loaded or saved), null = none. */
+        var linked: String? = null
+        /** Zuletzt: versions a tour start replaced (never lost). */
+        val drafts = ArrayList<List<GeoPoint>>()
+        var overwrites = 0
         var recording = false
         var followed: List<GeoPoint>? = null
         var endedByEmpty = false
@@ -141,10 +148,23 @@ class PlanFlowPropertyTest {
                 }
                 Op.UNDO -> session.undo()?.let { undoRedo("undo", it) }
                 Op.REDO -> session.redo()?.let { undoRedo("redo", it) }
-                Op.CLEAR -> if (n > 0) edit("clear") { clear() }
-                Op.LOAD -> store.entries.randomOrNull(rnd)?.let { (k, v) -> edit("load $k") { clear(); addAll(v) } }
-                Op.SAVE -> if (n >= 2) { val k = "Plan ${store.size + 1}"; store[k] = points.toList(); storeShadow[k] = points.toList(); steps += "save $k" }
+                Op.CLEAR -> if (n > 0) { edit("clear") { clear() }; linked = null }
+                Op.LOAD -> store.entries.randomOrNull(rnd)?.let { (k, v) -> edit("load $k") { clear(); addAll(v) }; linked = k }
+                Op.SAVE -> if (n >= 2) {
+                    val k = "Plan ${store.size + 1}"; store[k] = points.toList(); storeShadow[k] = points.toList(); linked = k
+                    steps += "save $k"
+                }
                 Op.TOUR_START -> if (!recording) {
+                    // "Los geht's" with a loaded saved plan changed since: the route is updated in place, its version
+                    // before goes under Zuletzt (owner 2026-11-07 – no "Name (2)")
+                    val k = linked
+                    val stored = k?.let { store[it] }
+                    if (k != null && stored != null && n >= 2 && stored != points.toList() &&
+                        PlanAutoSave.atStart(n, unsaved = true, changesASavedPlan = true) == PlanAutoSave.AtStart.SAVE_OVERWRITE) {
+                        drafts += stored
+                        store[k] = points.toList(); storeShadow[k] = points.toList(); overwrites++
+                        steps += "tour start: \"$k\" updated, its version before under Zuletzt"
+                    }
                     recording = true; endedByEmpty = false
                     followed = if (n >= 2) points.toList() else null
                     steps += "tour start"
@@ -177,7 +197,8 @@ class PlanFlowPropertyTest {
             session.oneLeftStart?.let {
                 assertTrue("the plan is not only the start the one-point rule put in", points.toList() != listOf(it))
             }
-            // rule 2: a saved plan is never lost or changed by editing
+            // rule 2: a saved plan is never lost or changed by editing (only a tour start updates it, the version before
+            // then waits under Zuletzt)
             assertEquals("saved plans unchanged", storeShadow, store)
         }
 
@@ -200,6 +221,7 @@ class PlanFlowPropertyTest {
         var flows = 0
         var fromHere = 0
         var emptied = 0
+        var overwrites = 0
         for (seed in 1..300) {
             val f = Flow(seed)
             try {
@@ -211,7 +233,8 @@ class PlanFlowPropertyTest {
                 throw AssertionError("seed $seed after: ${f.steps.takeLast(12).joinToString(" · ")}", e)
             }
             flows++
-            fromHere += f.fromHere; emptied += f.emptied
+            fromHere += f.fromHere; emptied += f.emptied; overwrites += f.overwrites
+            assertEquals("every version a tour start replaced is under Zuletzt", f.overwrites, f.drafts.size)
         }
         val ms = (System.nanoTime() - t0) / 1_000_000
         assertTrue("300 flows of 120 steps in under 2 s (took $ms ms)", ms < 2_000)
@@ -219,6 +242,8 @@ class PlanFlowPropertyTest {
         // the flows really reach the one-point rule (both ways), not only plain edits
         assertTrue("one point left → position → point happened ($fromHere×)", fromHere > 0)
         assertTrue("one point left → the plan emptied happened ($emptied×)", emptied > 0)
+        // and the tour start with a changed saved plan (owner 2026-11-07: update in place)
+        assertTrue("a changed saved plan updated at the tour start ($overwrites×)", overwrites > 0)
     }
 
     @Test

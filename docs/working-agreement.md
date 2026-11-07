@@ -72,8 +72,9 @@ If a rebase gets messy: `git rebase --abort`, push your work to `feat/<topic>` i
   GitHub. A cloud session cannot push tags or create releases – always the push-to-`main` flow.
 
 ## 5. Roles and channels
-Who works where: `docs/roles/README.md`. Channels: the repo (backlog, handoffs, code) and the issues in
-`happychriss/onpath.private` (questions to the owner, the owner's word to all – `tools/ask.sh`). **Sessions do not
+Who works where: `docs/roles/README.md`. Channel: the repo (backlog, handoffs, code). Questions to the owner go in
+the session's own chat; open ones under "Waiting for the owner" in the backlog; the owner's word to all is a line under
+"For the roles" (owner 2026-11-07: no more issues for this). **Sessions do not
 message each other**; only the captain can, with the owner's tap per call, for something urgent the owner asked for
 (`docs/roles/captain.md`). A role's word to the captain goes under "For the captain" in the backlog, the captain's word
 to a role under "For the roles". Shared code between app and planner (`app/web-shared-files.txt`): a change is announced

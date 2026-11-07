@@ -36,6 +36,9 @@
     <string name="web_plan_sheet">Plan</string>
     <string name="web_sheet_more">Show more</string>
     <string name="web_sheet_less">Show less</string>
+    <string name="web_sheet_points">%1$s points</string>
+    <string name="web_add_destination">Add destination</string>
+    <string name="web_profile_big_row">Large elevation profile</string>
     <string name="web_share">Share</string>
     <string name="web_share_needs_two">Set a start and destination first</string>
     <string name="web_hint_first_point">Click the map where you want to start or go.</string>
