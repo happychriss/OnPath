@@ -24,7 +24,8 @@ import org.junit.Test
 import java.util.Locale
 
 /** Phone setup (docs/design/onboarding-phone-check.md): the welcome, guide steps and Settings → Phone setup. */
-open class SetupScreenshotTest {
+/** English frames dropped (test audit 2026-11-07: the German twin at the same font size is the check); the subclasses draw. */
+abstract class SetupScreenshotTest {
     @get:Rule open val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5)
 
     private val fresh = PhoneState(sdk = 35, manufacturer = "Google")

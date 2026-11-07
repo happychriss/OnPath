@@ -14,7 +14,8 @@ import java.util.Locale
  * time and distance (and the Save button while unsaved); Plan during a tour (one row + Continue, then Pause / End). Same pictures as the English tests of the same name, drawn
  * with this class's Paparazzi.
  */
-open class PlanChipLargeFontTest {
+/** English frames dropped (test audit 2026-11-07: the German twin at the same font size is the check); the subclasses draw. */
+abstract class PlanChipLargeFontTest {
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(

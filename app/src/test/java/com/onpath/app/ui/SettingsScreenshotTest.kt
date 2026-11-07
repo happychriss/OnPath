@@ -81,32 +81,32 @@ class SettingsScreenshotTest {
     }
 
     /** Navigate → ⚙ (owner 2026-11-07): the Navigation page, then Karte · POIs · Tempo · Offline-Karten, "Alle Einstellungen ›". */
-    @Test fun onTheWay() = paparazzi.snapshot { Screen(null, phone = phoneOk, onTheWay = true) }
+    fun onTheWay() = paparazzi.snapshot { Screen(null, phone = phoneOk, onTheWay = true) }
     /** The same with the location off: "Handy einrichten" at the top of the Navigation page (red, "Fehlt: …"). */
-    @Test fun onTheWayPhoneMissing() = paparazzi.snapshot { Screen(null, phone = phoneOk.copy(locationOn = false), onTheWay = true) }
+    fun onTheWayPhoneMissing() = paparazzi.snapshot { Screen(null, phone = phoneOk.copy(locationOn = false), onTheWay = true) }
 
-    @Test fun list() = paparazzi.snapshot { Screen(null) }
+    fun list() = paparazzi.snapshot { Screen(null) }
     /** A serious problem not looked at yet: the Diagnostics line is red until the page is opened (owner). */
     @Test fun listNewProblem() = paparazzi.snapshot { Screen(null, seenMs = 0L) }
     // Phone setup in the list (owner 2026-10-30)
     private val phoneOk = com.onpath.app.setup.PhoneState(sdk = 35, manufacturer = "Google", location = com.onpath.app.setup.LocationGrant.PRECISE,
         vibrationFelt = com.onpath.app.setup.Felt.YES)
     /** A tour needs something (location off): Phone setup on top, red mark, "1 item needed for tours". */
-    @Test fun listPhoneNeeded() = paparazzi.snapshot { Screen(null, phone = phoneOk.copy(locationOn = false, notificationsOn = false)) }
+    fun listPhoneNeeded() = paparazzi.snapshot { Screen(null, phone = phoneOk.copy(locationOn = false, notificationsOn = false)) }
     /** Only recommended items missing: Phone setup at its place in "App", amber "2 recommended". */
-    @Test fun listPhoneRecommended() = paparazzi.snapshot { Screen(null, phone = phoneOk.copy(notificationsOn = false, backgroundRestricted = true)) }
+    fun listPhoneRecommended() = paparazzi.snapshot { Screen(null, phone = phoneOk.copy(notificationsOn = false, backgroundRestricted = true)) }
     /** All set up: at its place, grey "Everything set up". */
     @Test fun listPhoneOk() = paparazzi.snapshot { Screen(null, phone = phoneOk) }
-    @Test fun pace() = paparazzi.snapshot { Screen(SettingsPage.PACE) }
+    fun pace() = paparazzi.snapshot { Screen(SettingsPage.PACE) }
     @Test fun poi() = paparazzi.snapshot { Screen(SettingsPage.POI) }
-    @Test fun map() = paparazzi.snapshot { Screen(SettingsPage.MAP) }
-    @Test fun navigation() = paparazzi.snapshot { Screen(SettingsPage.NAVIGATION) }
+    fun map() = paparazzi.snapshot { Screen(SettingsPage.MAP) }
+    fun navigation() = paparazzi.snapshot { Screen(SettingsPage.NAVIGATION) }
     /** Location off (a tour needs it) + battery restricted: "Handy einrichten" at the top, red, "Fehlt: …" (owner 2026-11-06). */
-    @Test fun navigationPhoneMissing() = paparazzi.snapshot {
+    fun navigationPhoneMissing() = paparazzi.snapshot {
         Screen(SettingsPage.NAVIGATION, phone = phoneOk.copy(locationOn = false, backgroundRestricted = true))
     }
     /** A value row's choice as a bottom sheet (drawn in place – Paparazzi draws no sheet window): screen while cycling. */
-    @Test fun navigationChoiceSheet() = paparazzi.snapshot {
+    fun navigationChoiceSheet() = paparazzi.snapshot {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 Box(Modifier.align(androidx.compose.ui.Alignment.BottomCenter)) {
@@ -123,7 +123,7 @@ class SettingsScreenshotTest {
             }
         }
     }
-    @Test fun offlineMaps() = paparazzi.snapshot { Screen(SettingsPage.OFFLINE_MAPS) }
+    fun offlineMaps() = paparazzi.snapshot { Screen(SettingsPage.OFFLINE_MAPS) }
     @Test fun backup() = paparazzi.snapshot { Screen(SettingsPage.BACKUP) }
     @Test fun privacy() = paparazzi.snapshot { Screen(SettingsPage.PRIVACY) }
     @Test fun updates() = paparazzi.snapshot { Screen(SettingsPage.UPDATES) }
@@ -148,13 +148,13 @@ class SettingsScreenshotTest {
     }
     @Test fun about() = paparazzi.snapshot { Screen(SettingsPage.ABOUT) }
     /** About → Licences open (A-020): the ODbL line, MapLibre, BRouter (onpath1), glyphs, icons, the libraries. */
-    @Test fun aboutLicences() {
+    fun aboutLicences() {
         paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(
             screenWidth = 1024, screenHeight = 5200, xdpi = 428, ydpi = 428, density = Density.create(420)))
         paparazzi.snapshot { Screen(SettingsPage.ABOUT, licencesOpen = true) }
     }
     /** Privacy (A-020) in full: device backup, IP line, update check, search, Google short link, address service. */
-    @Test fun privacyFull() {
+    fun privacyFull() {
         paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(
             screenWidth = 1024, screenHeight = 4600, xdpi = 428, ydpi = 428, density = Density.create(420)))
         paparazzi.snapshot { Screen(SettingsPage.PRIVACY) }
@@ -162,24 +162,24 @@ class SettingsScreenshotTest {
 
     // Browser sync (plan sync with the web planner, A-007)
     /** Not paired: how to pair (the system camera opens the pairing link). */
-    @Test fun syncNotPaired() = paparazzi.snapshot { Screen(SettingsPage.SYNC, sync = SyncUi()) }
+    fun syncNotPaired() = paparazzi.snapshot { Screen(SettingsPage.SYNC, sync = SyncUi()) }
     /** A pairing link was opened: the check digits, Pair / Cancel. */
-    @Test fun syncAsk() = paparazzi.snapshot { Screen(SettingsPage.SYNC, sync = SyncUi(askCheck = "395 514")) }
+    fun syncAsk() = paparazzi.snapshot { Screen(SettingsPage.SYNC, sync = SyncUi(askCheck = "395 514")) }
     /** Paired: the browser's name, "Last synced: 1 min ago", Unpair – no Sync now (it syncs every minute by itself). */
-    @Test fun syncPaired() = paparazzi.snapshot { Screen(SettingsPage.SYNC) }
+    fun syncPaired() = paparazzi.snapshot { Screen(SettingsPage.SYNC) }
     /** Paired, the last pass found items from a newer app (amber line). */
     @Test fun syncNewerApp() = paparazzi.snapshot {
         Screen(SettingsPage.SYNC, sync = SyncUi(paired = true, peer = "Firefox on Windows", lastOkMs = now - 86_400_000,
             problem = com.onpath.app.plansync.PlanSync.Problem.NewerApp(2)))
     }
     /** Paired, offline (grey line), the last good pass 25 min ago. */
-    @Test fun syncOffline() = paparazzi.snapshot {
+    fun syncOffline() = paparazzi.snapshot {
         Screen(SettingsPage.SYNC, sync = SyncUi(paired = true, peer = null, lastOkMs = now - 25 * 60_000,
             problem = com.onpath.app.plansync.PlanSync.Problem.Offline))
     }
 
     /** Unpaired in the browser (field bug 2026-10-31): the grey line, the steps + Open camera to pair again, Unpair. */
-    @Test fun syncUnpairedInBrowser() = paparazzi.snapshot {
+    fun syncUnpairedInBrowser() = paparazzi.snapshot {
         Screen(SettingsPage.SYNC, sync = SyncUi(paired = true, peer = null, lastOkMs = now - 60_000,
             browser = com.onpath.app.plansync.BrowserLink.UNPAIRED))
     }

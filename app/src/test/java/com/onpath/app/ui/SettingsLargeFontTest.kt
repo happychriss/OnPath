@@ -14,7 +14,8 @@ import java.util.Locale
  * word and the title wrap instead of being cut, the indented rows stay readable. Same pictures as [SettingsScreenshotTest],
  * drawn with this class's Paparazzi.
  */
-open class SettingsLargeFontTest {
+/** English frames dropped (test audit 2026-11-07: the German twin at the same font size is the check); the subclasses draw. */
+abstract class SettingsLargeFontTest {
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1024, screenHeight = 2400, xdpi = 428, ydpi = 428,

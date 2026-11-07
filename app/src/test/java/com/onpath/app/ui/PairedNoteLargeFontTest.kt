@@ -13,7 +13,8 @@ import java.util.Locale
  * sentence wraps, OK stays a 48 dp target. Same picture as [ScreenshotTest.planPairedNote], drawn with this class's
  * Paparazzi.
  */
-open class PairedNoteLargeFontTest {
+/** English frames dropped (test audit 2026-11-07: the German twin at the same font size is the check); the subclasses draw. */
+abstract class PairedNoteLargeFontTest {
     @get:Rule
     val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5.copy(fontScale = 2.0f), showSystemUi = false)
 
