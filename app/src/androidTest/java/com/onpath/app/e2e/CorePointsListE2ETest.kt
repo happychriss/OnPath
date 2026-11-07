@@ -1,6 +1,11 @@
 package com.onpath.app.e2e
 
 import android.graphics.Point
+import com.onpath.strings.Res
+import com.onpath.strings.Txt
+import com.onpath.strings.plan_sheet_bigger
+import com.onpath.strings.plan_sheet_smaller
+import java.util.regex.Pattern
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
 import com.onpath.app.routing.GeoPoint
@@ -45,7 +50,7 @@ class CorePointsListE2ETest : E2EBase() {
         // the grab handle: summary → profile → full
         for (i in 0 until 4) {
             if (size() == PlanSize.FULL) break
-            desc("Resize panel").click(); Thread.sleep(500)
+            sheetHandle().click(); Thread.sleep(500)
         }
         waitUntil("full sheet") { size() == PlanSize.FULL }
         // the rows' ✕ (content descriptions), looked for afresh each time: UiAutomator's cache can keep the tree
@@ -79,6 +84,28 @@ class CorePointsListE2ETest : E2EBase() {
     private fun desc(text: String) = findFresh(By.desc(text), 5_000)
         ?: run { shot("missing-${text.filter { it.isLetterOrDigit() }}"); throw AssertionError("\"$text\" not shown – ${state()}") }
 
+    /**
+     * The sheet's grab handle: it says what its tap does (owner 2026-11-06 23:42, `PlanPanel` handleLabel) – "Make the
+     * panel bigger", on the largest step "… smaller" – read from the string resources, either one.
+     */
+    private fun sheetHandle(): androidx.test.uiautomator.UiObject2 {
+        val labels = listOf(Txt.s(Res.string.plan_sheet_bigger), Txt.s(Res.string.plan_sheet_smaller))
+        return findFresh(By.desc(Pattern.compile(labels.joinToString("|") { Pattern.quote(it) })), 5_000)
+            ?: run { shot("missing-sheet-handle"); throw AssertionError("sheet handle ($labels) not shown – ${state()}") }
+    }
+
+    /**
+     * Undo in the map's column. At the full sheet the column has no room and steps back (owner 2026-11-06, `ControlsPlacement`
+     * – since then the points step shows no map buttons): one step smaller first, as a user would.
+     */
+    private fun undoOnTheMap() {
+        if (size() == PlanSize.FULL) {
+            sheetHandle().click()
+            waitUntil("the sheet a step smaller") { size() != PlanSize.FULL }
+        }
+        desc("Undo").click()
+    }
+
     @Test fun deleteTheSecondPointWithX() {
         threePointsAndFullSheet()
         val before = points()
@@ -86,7 +113,7 @@ class CorePointsListE2ETest : E2EBase() {
         waitUntil("point 2 deleted from the list") { waypointCount() == 2 }
         assertFalse(points().contains(before[1]))
         // Undo on the map brings it back, in its place (no dialog)
-        desc("Undo").click()
+        undoOnTheMap()
         waitUntil("undo restored point 2") { waypointCount() == 3 }
         assertEquals(before, points())
     }
@@ -113,7 +140,7 @@ class CorePointsListE2ETest : E2EBase() {
         assertEquals("no point lost or added", 3, points().size)
         assertTrue("the dragged point is the new start: ${points()} vs $before",
             com.onpath.app.data.Geo.distance(points()[0], before[2]) < 1_000)
-        desc("Undo").click()
+        undoOnTheMap()
         waitUntil("undo restored the order") { points().size == 3 &&
             com.onpath.app.data.Geo.distance(points()[0], before[0]) < 1_000 }
     }
@@ -132,7 +159,7 @@ class CorePointsListE2ETest : E2EBase() {
         settle()
         waitUntil("summary step") { size() == PlanSize.MINI }
         val (_, h) = mapSize()
-        fun handle() = desc("Resize panel").visibleCenter
+        fun handle() = sheetHandle().visibleCenter
         fun dragHandle(dy: Int) {
             val c = handle()
             val path = ArrayList<Point>()
