@@ -195,26 +195,26 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <button id="share" class="sharebtn" aria-label="${escapeHtml(t('web_share_needs_two'))}" title="${escapeHtml(t('web_share_needs_two'))}" disabled>${icon('share', 18)}<span>${escapeHtml(t('web_share'))}</span></button>
       <button id="sheetStep" class="iconbtn" aria-controls="sheet"></button>
     </div>
+    <!-- the facts first, like the phone (owner 2026-11-07): the app's facts row: time · distance · ↑ ↓ · difficulty -->
+    <div id="summary"><div class="headline"></div><div class="subline muted"></div></div>
     <!-- the app's PlanActions (owner 2026-10-31, no ⋯): icon + word side by side; Save is the header's, GPX is in Share -->
     <div id="planActions" class="planactions" role="group" hidden>
       <!-- no ✕ Neu planen here (owner 2026-11-06): the plan bar's + Neu is the one way – a deliberate difference to the app -->
       <button id="reverse" class="textbtn">${icon('swap', 18)}${escapeHtml(t('plan_reverse'))}</button>
       <button id="roundTrip" class="textbtn">${icon('loop', 18)}${escapeHtml(t('plan_round_trip'))}</button>
     </div>
-    <!-- points first (owner 2026-11-07, proposal A „Punkte zuerst“, like Google Maps' route panel): handles, + Ziel hinzufügen -->
-    <div id="pointsSection" hidden>
-      <div class="pointshead"><b>${escapeHtml(t('plan_points'))}</b></div>
-      <ol id="points"></ol>
-      <button id="addDest" class="adddest">${icon('add', 18)}<span>${escapeHtml(t('web_add_destination'))}</span></button>
-    </div>
-    <!-- the facts in one line (the app's facts row): time · distance · ↑ ↓ · difficulty -->
-    <div id="summary"><div class="headline"></div><div class="subline muted"></div></div>
     <div id="savedLine" class="savedline muted small" hidden></div>
     <div id="routingNote" class="muted small" hidden></div>
     <div id="notice" class="notice" hidden></div>
     <div id="offmap" class="offmap" hidden></div>
     <button id="warning" class="notice warnline" aria-expanded="false" hidden></button>
     <ul id="spots" class="spots" hidden></ul>
+    <!-- the points after facts, plan row and lines (owner 2026-11-07, the phone's order; Google Maps' list): handles, + Ziel hinzufügen -->
+    <div id="pointsSection" hidden>
+      <div class="pointshead"><b>${escapeHtml(t('plan_points'))}</b></div>
+      <ol id="points"></ol>
+      <button id="addDest" class="adddest">${icon('add', 18)}<span>${escapeHtml(t('web_add_destination'))}</span></button>
+    </div>
     <div id="profile"></div>
     <div id="infoline" class="infoline" hidden></div>
     <button id="changedLine" class="infoline changedline" hidden></button>

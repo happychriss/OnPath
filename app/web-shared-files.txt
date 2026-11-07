@@ -8,6 +8,8 @@
 [files]
 routing/RoutingContract.kt
 routing/Rd5Parts.kt
+# the offline corridor per activity (owner 2026-11-07: hike 10 km, bike 20 km) – Rd5Parts.forCorridor's default
+routing/OfflineCorridor.kt
 routing/BRouterWayStats.kt
 routing/WaypointSnap.kt
 routing/BRouterEngine.kt
@@ -100,6 +102,7 @@ sync/SaveRule.kt
 sync/SyncLimits.kt
 
 [tests]
+routing/OfflineCorridorTest.kt
 routing/PlanCodeTest.kt
 ui/PlanStateTest.kt
 ui/MapGesturesTest.kt

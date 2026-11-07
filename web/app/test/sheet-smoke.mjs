@@ -116,9 +116,9 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   if (!phone) {
     s = await shown(page);
     const order = await page.evaluate(() => { const top = (id) => document.getElementById(id).getBoundingClientRect().top;
-      return [top('planActions'), top('points'), top('addDest'), top('summary')]; });
+      return [top('summary'), top('planActions'), top('points'), top('addDest')]; });
     check(s['#points'] && await page.isVisible('#addDest') && order.every((v, i) => i === 0 || v > order[i - 1]),
-      `${P} points first: plan row, the points, „+ Add destination“, then the facts (${order.map(Math.round)})`);
+      `${P} the phone's order: facts, plan row, then the points and „+ Add destination“ (${order.map(Math.round)})`);
     check(!s['#profile svg'] && await page.isVisible('#bigProfile .bpplot svg') && !(await page.isVisible('#bigProfile .bpclose')),
       `${P} the profile lies along the map's bottom edge for good (no ✕), not in the panel`);
     const route = await page.evaluate(() => window.__map.getLayoutProperty('profile-steep', 'visibility') ?? 'none');

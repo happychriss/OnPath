@@ -14,7 +14,7 @@ donald, Laptop und in der Cloud (die Konzept- und Audit-Dateien selbst sind gel�
 - **Ein Captain** in der Cloud: Überblick (Builds, App ⇄ Planer, CI, Fragen), ordnet das Backlog. Schreibt keinen Code.
   Er hat seit 11-03 die Freigabe-Karte: darf Rechner-Sitzungen erreichen (jeder Aufruf braucht den Tipp des Owners),
   weckt sich aber nicht selbst.
-- **Das Repo ist das Gedächtnis**, nicht der Chat. **GitHub-Issues** sind der Kanal zum Owner (Fragen, „an alle“).
+- **Das Repo ist das Gedächtnis**, nicht der Chat. Fragen an den Owner im Chat der Sitzung, offene und das Wort an alle im Backlog (bis 11-07: GitHub-Issues).
 - **Regeln werden erzwungen**, nicht erbeten: Hooks, Deny-Regeln, Skripte.
 Verworfen bzw. entfernt (Audit 2026-11-05): Leitstand-Sitzung je Rechner; 10-Minuten-Schleife; `[sofort]` mit
 Wecker-Hook (nie benutzt); Autostart- und Sichern-Dienst (nie installiert); Rollen je Aufgabe statt je Rechner;
@@ -45,9 +45,9 @@ Backlog als Nachrichtenkanal.
 | Eine Sitzung darf **ihre eigenen Berechtigungen nicht ändern** (Auto-Modus-Prüfung) | 11-02 | Deny-Regeln als Vorschlag + Skript, der Owner wendet an |
 | **Deny-Regeln** greifen in jedem Modus, auch `bypassPermissions` | Doku | harte Grenzen (Force-Push, `reset --hard`, Handy leeren) |
 | `.claude/rules/*.md` mit `paths:` laden **nur**, wenn die Sitzung passende Dateien anfasst; `@import` spart nichts | Doku, 11-02 eingeführt | `CLAUDE.md` klein halten |
-| **Push aufs Handy**: Remote-Control-Sitzungen ja (`/config`: „Push when actions required“, „Push when Claude decides“ – standardmäßig aus); **Cloud-Sitzungen nein** | Doku 11-02 | Schalter auf jedem Rechner; Cloud-Fragen im Gespräch + Dashboard |
+| **Push aufs Handy**: Remote-Control-Sitzungen ja (`/config`: „Push when actions required“, „Push when Claude decides“ – standardmäßig aus); **Cloud-Sitzungen nein** | Doku 11-02 | Schalter auf jedem Rechner; Cloud-Fragen im Gespräch |
 | **GitHub meldet eigene Issues nicht** (Sitzungen schreiben unter dem Owner-Konto) | Doku/Annahme | Dashboard allein reicht nicht, der Push muss von Claude kommen |
-| `gh issue …` (GraphQL) ist in Cloud-Sitzungen **gesperrt**, REST (`gh api`) geht | 11-01 | `ask.sh` nur über REST |
+| `gh issue …` (GraphQL) ist in Cloud-Sitzungen **gesperrt**, REST (`gh api`) geht | 11-01 | GitHub-Skripte nur über REST |
 | GitHub listet ein neues Issue erst nach einigen Sekunden | 11-01 | in Skripten nicht sofort zurücklesen |
 | Cloud-Container: Android-SDK ladbar (12 s), **Maven Central drosselt** (HTTP 429) bis der Gradle-Cache warm ist; **kein KVM** (kein Emulator) | 11-01 | Cloud baut nur mit Cache; Emulator auf dem Rechner |
 
@@ -65,11 +65,12 @@ Backlog als Nachrichtenkanal.
 5. **Namen nach Rechner, Arbeit nach Kürzeln.** `[pixel]`/`[emu]` → donald, `[karten]`/`[ram]` → laptop, ohne Kürzel →
    wer frei ist; Eiliges sagt der Owner der Sitzung direkt. **Der Owner verteilt nie selbst**: Er sagt es dem Captain (oder der
    Sitzung, mit der er spricht), es landet im Backlog, der passende Rechner nimmt es.
-6. **Fragen an den Owner: ein Ort + ein Push.** Jede Frage als Issue (`tools/ask.sh`, festes Format: wer, Hintergrund,
-   Optionen, Empfehlung); blockierende zusätzlich als Fragebox im Chat (gelber Punkt + Push). Eine Frage nur im Chat
-   ist ein Fehler. Der Owner schließt nie ein Issue. Eine Frage nach der anderen.
-7. **Wort an alle über ein Issue**, nicht über Nachrichten (`an-alle`, `#push-sperre`, `#release-sperre`) – wirkt beim
-   nächsten Pull und vor jedem Push, auch bei Sitzungen, die nichts davon wissen.
+6. **Fragen an den Owner im Chat der Sitzung**, als Fragebox (wer, Hintergrund, Optionen, Empfehlung), eine nach der
+   anderen; offen beim Ende → eine Zeile „Waiting for the owner“ im Backlog. **Gelernt:** Issues als Fragenliste
+   (01.–07.11) – der Owner hat jedes Mal im Chat geantwortet (1 von über 100 Kommentaren von ihm), die Liste war nur
+   Buchführung → am 2026-11-07 abgeschafft (Issues, Push-Sperre, `/fragen`).
+7. **Wort an alle über das Backlog** („For the roles“), nicht über Nachrichten – wirkt beim nächsten Pull, auch bei
+   Sitzungen, die nichts davon wissen (der Start-Hook zeigt die Zeilen).
 8. **Chat bleibt ansprechbar – maßvoll.** Lange, abgeschlossene Arbeit in Hintergrund-Forks (die den Chat-Kontext
    behalten); Gespräch, Entscheidungen, Kleinkram direkt. „Alles in den Hintergrund“ kostet Kontext und macht
    Kleinkram langsamer. Ein freier Chat ist außerdem Voraussetzung, dass Schleifen und Weckrufe überhaupt ankommen.
@@ -116,7 +117,7 @@ Ein „Agent-Distro“: man redet mit einem **First Mate**, der eine Crew in Wor
 - **Docker für uns:** schlecht passend (Pixel per USB, Emulator mit KVM, Android-SDK müssten durchgereicht werden);
   wir sichern stattdessen mit Auto-Modus + Deny-Regeln + Push-Hook. Leichter Zusatzschritt, falls gewünscht: eigener
   Linux-Benutzer für Claude auf donald (eigener `gh`-Zugang nur für OnPath, keine SSH-Schlüssel des Owners).
-- **Übernommen:** `/fragen` (wie `/ahoy`). Der Wecker-Hook (`asyncRewake`) wurde gebaut und am 11-05 wieder
+- **Übernommen:** eine Fragen-Runde wie `/ahoy` (bis 11-07, dann mit den Issues abgeschafft). Der Wecker-Hook (`asyncRewake`) wurde gebaut und am 11-05 wieder
   entfernt – er wartete nach jeder Antwort, aber es gab nie etwas zu wecken. **Nicht übernehmen:** das Gesamtsystem.
 
 ## 5c. Irgendwann vielleicht: eigener Linux-Benutzer für Claude (owner 2026-11-02: „ganz weit in die Zukunft“)
@@ -145,5 +146,5 @@ geplant; heute schützen Auto-Modus, Deny-Regeln und der Push-Hook.
 | Zusammenarbeit (Claim, Übergabe, Konflikte, E2E) | `docs/working-agreement.md` |
 | Arbeitsweise der Rechner-Sitzungen | `docs/roles/start.md` |
 | Captain | `docs/roles/captain.md` |
-| Skripte | `tools/ask.sh`, `tools/ci/gate.sh`, `tools/ci/release_check.sh`, `tools/dev/{unit,device,gradle_slot}.sh`, `tools/hooks/` |
+| Skripte | `tools/ci/gate.sh`, `tools/ci/release_check.sh`, `tools/dev/{unit,device,gradle_slot}.sh`, `tools/hooks/` |
 | Erzwungene Regeln | `.claude/settings.json` (Hooks, Deny), `.claude/rules/` |
