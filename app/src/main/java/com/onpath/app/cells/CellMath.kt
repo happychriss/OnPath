@@ -155,7 +155,7 @@ data class CellId(val x: Int, val y: Int, val z: Int = Z) : Comparable<CellId> {
          * Cells within [corridorM] of the line (route corridor, F-OFF-02 / T4), in line order (cells near the start
          * first). Samples the line every ~1 km and takes every cell within the corridor of a sample.
          */
-        fun alongLine(line: List<GeoPoint>, corridorM: Double = 10_000.0, max: Int = 200): List<CellId> {
+        fun alongLine(line: List<GeoPoint>, corridorM: Double, max: Int = 200): List<CellId> {
             if (line.isEmpty()) return emptyList()
             val out = LinkedHashSet<CellId>()
             fun addAround(p: GeoPoint) {

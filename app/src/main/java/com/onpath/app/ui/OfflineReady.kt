@@ -14,7 +14,7 @@ import com.onpath.strings.*
  * - The **map** along the route: every map region within [ROUTE_M] of the line is on the phone (an installed cell, a
  *   region package, or one downloaded during a tour and waiting to be joined).
  * - The **ways** (routing data) in the route's corridor: the same parts the app loads for a computed route
- *   (`RoutingTiles.forLine`, ~10 km either side) are on the phone.
+ *   (`RoutingTiles.forLine` for the plan's activity: 10 km either side on foot, 20 km by bike) are on the phone.
  * - READY when both hold; LOADING when everything missing is on its way (a cell requested / building / downloading, a
  *   routing part in the loader's running list); MISSING when something is missing and not loading (no network, Wi-Fi
  *   only, failed, outside the regions loaded for a long route).
