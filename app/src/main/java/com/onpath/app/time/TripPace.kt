@@ -55,7 +55,7 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
     /** The last fix was matched to the line ([along] is where the user is). */
     private var matched = true
     private var lastFixS = 0.0
-    /** Recent fixes (active s, lat, lon, along or NaN) over [STALE_S]: "moving but the estimate cannot follow". */
+    /** Recent fixes (active s, lat, lon, along or NaN = not on the line / not matched to this fix) over [STALE_S]: "moving but the estimate cannot follow". */
     private val history = ArrayDeque<DoubleArray>()
     /** Progress compared so far (m), for the warm-up. */
     private var obsM = 0.0
@@ -124,9 +124,12 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
 
     /**
      * One good fix. [activeS] = recording time without pauses; [alongM] = position on the followed line (null = not on
-     * it / not known), [onRoute] = progress may be learned (on the line, walking it forwards).
+     * it / not known), [onRoute] = progress may be learned (on the line, walking it forwards). [fresh] false = [alongM]
+     * was not matched to this fix (the service skipped the off-route check: arrived or standing still, the detector keeps
+     * its last progress) – such a fix never speaks for "moving but the progress stays" (field tour 217, 2026-11-07:
+     * riding on 110 m past "Ziel erreicht" paused the estimate).
      */
-    fun onFix(activeS: Double, wallMs: Long, lat: Double, lon: Double, alongM: Double?, onRoute: Boolean) {
+    fun onFix(activeS: Double, wallMs: Long, lat: Double, lon: Double, alongM: Double?, onRoute: Boolean, fresh: Boolean = true) {
         this.activeS = max(this.activeS, activeS)
         lastFixS = this.activeS
         breaks.onFix(this.activeS, lat, lon, alongM.takeIf { onRoute && times != null })
@@ -142,7 +145,7 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
             matched = false
             baseAlong = Double.NaN
         }
-        history.addLast(doubleArrayOf(this.activeS, lat, lon, if (t != null && alongM != null) along else Double.NaN))
+        history.addLast(doubleArrayOf(this.activeS, lat, lon, if (t != null && alongM != null && fresh) along else Double.NaN))
         while (history.size > 2 && this.activeS - history[1][0] >= STALE_S) history.removeFirst()
         refresh(wallMs)
     }

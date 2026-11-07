@@ -638,7 +638,8 @@ class RecordingService : Service() {
 
         // navigation must never cost the track: a failure here is reported, the point below is still stored (R-07).
         // Standing still (owner 2026-11-01): no new off-route state, no reminder – the detector waits as without GPS
-        try { if (GuidanceGate.offRouteCheck(moveWatch.moving(nowEl), arrived)) checkOffRoute(p, loc.accuracy.toDouble(), nowEl) else navigator?.onGpsLost() } catch (e: Exception) {
+        val routeChecked = GuidanceGate.offRouteCheck(moveWatch.moving(nowEl), arrived)
+        try { if (routeChecked) checkOffRoute(p, loc.accuracy.toDouble(), nowEl) else navigator?.onGpsLost() } catch (e: Exception) {
             Problems.error("navigation", "Off-route check failed on a GPS fix; the track is still recorded", e)
         }
         try { voiceFix(loc, p.toGeo()) } catch (e: Exception) {
@@ -661,9 +662,11 @@ class RecordingService : Service() {
             Problems.warn("cells", "Map ahead not requested on a GPS fix; asked again further on", e)
         }
         try {
-            // position on the line (null = not on the route) and whether it may be learned (forwards, on the line)
+            // position on the line (null = not on the route), whether it may be learned (forwards, on the line) and
+            // whether the detector matched it to this fix (not after the arrival / standing still: its last progress)
             val det = navigator?.detector
-            trip.onFix(elapsedS.toDouble(), System.currentTimeMillis(), p.lat, p.lon, det?.shownAlongM, det?.learnable == true)
+            trip.onFix(elapsedS.toDouble(), System.currentTimeMillis(), p.lat, p.lon, det?.shownAlongM, det?.learnable == true,
+                fresh = routeChecked)
         } catch (e: Exception) { Problems.error("time", "Trip pace update on a GPS fix failed; times shown may be wrong", e) }
 
         val prev = last

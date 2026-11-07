@@ -182,6 +182,36 @@ class TripPaceTest {
     }
 
     /**
+     * Field 2026-11-07 12:37, bike tour 217 (Pixel WARN "moving for 2 min but the progress along the route did not
+     * change"): "Ziel erreicht" at 12:32, then the rider went on 110 m past the end. After the arrival the service no
+     * longer runs the off-route check (`GuidanceGate.offRouteCheck`) – the detector is told "no fix" and keeps its last
+     * progress, so that progress is not this fix's. The trip time must not read it as "moving, progress stands still".
+     */
+    @Test fun afterTheArrivalRidingOnIsNotMovingWithoutProgress() {
+        val trip = TripPace(); trip.setLine(times, 0.0)
+        val det = com.onpath.app.navigation.OffRouteDetector(40.0)
+        det.setLine(line, 0.0, assumeOnRoute = true)
+        var arrived = false
+        fun fix(s: Double, lat: Double, lon: Double) {
+            val checked = com.onpath.app.recording.GuidanceGate.offRouteCheck(moving = true, arrived = arrived)
+            if (checked) det.onFix(com.onpath.app.navigation.OffRouteDetector.Fix(lat, lon, 5.0, (s * 1000).toLong()))
+            else det.gpsLost()
+            trip.onFix(s, 1_000_000L + (s * 1000).toLong(), lat, lon, det.shownAlongM, det.learnable, fresh = checked)
+        }
+        // ride 700 m at 5 m/s, one fix a second, on the line
+        var s = 0.0
+        while (s * 5 < 700) { s += 1; val p = line.pointAt(s * 5); fix(s, p.lat, p.lon) }
+        assertEquals(EstimateState.OK, trip.snapshot().state)
+        // arrived (the end of a plan here): ride on 1 m/s away from the line for 4 min
+        arrived = true
+        val p = line.pointAt(s * 5)
+        for (k in 1..240) {
+            fix(s + k, p.lat + k / 111_000.0, p.lon)
+            assertTrue("fix $k: ${trip.snapshot().pausedBecause}", trip.snapshot().pausedBecause != PauseReason.NO_PROGRESS)
+        }
+    }
+
+    /**
      * Standing at a lift top station (stored points 0.03–0.1 m/s) must not read as "moving for 2 min but no progress".
      * GPS jitter (and one wild fix) is not movement: the positions around the start and the
      * end of the window are compared, not two single fixes.
