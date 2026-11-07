@@ -15,15 +15,14 @@ release's notes) and the git history – this file keeps only the current state 
   the new app look; the laptop's catch-up is on branch `wip/laptop-2026-11-07-parity-colours` (backlog "Next laptop
   session – start here"), then Actions → Web planner → Run workflow → deploy.
 - **Pixel:** not checked after v0.17.2 – ask the owner / check About.
-- **Owner decisions still open:** `metersPerPixel` density fix (taps count "on the line" within ~60 dp instead of 24 dp;
-  the fix changes hold behaviour); Rundgang margin for offline (10 km kept; 5 km would save ~25 % download). Smaller
-  open items: `docs/backlog.md`; open questions: backlog "Waiting for the owner"; the owner's own questions: the Fragenregister.
+- **Owner decisions 2026-11-07:** "on the line" = 24 dp (the `metersPerPixel` fix has been on main since 46e93b09);
+  offline corridor 10 km on foot, 20 km for bike activities (donald). Smaller open items: `docs/backlog.md`; open questions: backlog "Waiting for the owner"; the owner's own questions: the Fragenregister.
 
 ## Last session
 - **laptop, 2026-11-07 – planner parity + plan sheet A (both live):** "Web planner" green again – the app's colour rule,
   blue #335A85, paper B, warm shadows, corner family, blue compass, goal flag, quiet locate (d5aace4c, 8ca0d359). Plan sheet A
-  (a239a275): wide = points first with „+ Ziel hinzufügen“, facts in one row, no steps, the profile along the map's bottom
-  for good; phone = two steps („2 Punkte ⌃“, „⤢ Höhenprofil groß“). Shots on https://claude.ai/artifact/F1rCK7xXXmUhWcQRj3o1mR
+  (a239a275, order like the phone 480b646d): wide = facts, plan row, lines, then the points with „+ Ziel hinzufügen“, no
+  steps, the profile along the map's bottom for good; phone = two steps („2 Punkte ⌃“, „⤢ Höhenprofil groß“). Shots on https://claude.ai/artifact/F1rCK7xXXmUhWcQRj3o1mR
   („Gebaut“). Open: Meine Touren like the app's (backlog), „gekoppelt = eine Liste“.
 <!-- Newest first; keep the newest 2–3 entries – older ones go (git history has them). Who (donald / laptop / captain / cloud-web), date, what changed, what's half done, next. -->
 - **donald, 2026-11-06 evening → 2026-11-07 morning – READ `docs/history/handoff-donald-2026-11-06.md`** (section
