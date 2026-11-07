@@ -259,6 +259,20 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     checkAnchored(g, vp, `${P} far result (Hilden):`);
     check(g.ring.x > g.sheet.x + g.sheet.w && g.ring.y > g.bar.y + g.bar.h && g.ring.y < vp.height - 40, `${P} far result: the point is in the free map room (${JSON.stringify(g.ring)})`);
     await page.screenshot({ path: path.join(shots, `${name}-card-far.png`) });
+    // the far place added, then Cancel at "very long" (the app's TakenPin, field 2026-11-07 S10): the add is taken
+    // back and the place stays as its pin – never forgotten
+    {
+      const before = await page.locator('.pin').count();
+      await page.click('#cadd');
+      const asked = await page.waitForSelector('dialog.longroute', { timeout: 30_000 }).then(() => true).catch(() => false);
+      if (asked) {
+        await page.click('#lrCancel');
+        await page.waitForFunction((n) => document.querySelectorAll('.pin').length === n && !!document.querySelector('.candidate'), before, { timeout: 30_000 }).catch(() => {});
+      }
+      check(asked && await page.locator('.pin').count() === before && await page.locator('.candidate').count() === 1 && await page.isVisible('.pinchip'),
+        `${P} far place added, Cancel at "very long": the add is taken back, its pin is shown again (asked ${asked})`);
+      if (await page.locator('.candidate').count()) { await page.click('.pinchip .pinmore'); await page.waitForSelector('#placecard:not([hidden]) #cunpin', { timeout: 20_000 }).catch(() => {}); await page.click('#cunpin').catch(() => {}); }
+    }
     await page.keyboard.press('Escape');
     await pick('Ifinger');
   }

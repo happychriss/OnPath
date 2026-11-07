@@ -462,7 +462,15 @@ const namesText = () => state.meta.map((m, i) => (m.name ? `${i}\t${m.name.repla
 // ---- plan changes: every change of the points is one undo step (the app's PlanHistory, in the engine) ----
 
 /** Replaces the points (one undo step); names and pins follow their points by value. */
+/**
+ * The found place the last edit added (the app's TakenPin, field 2026-11-07 S10 – a far destination "forgotten"): its pin
+ * went into the plan; when Cancel (long-route question or the wait) takes that add back, the pin comes back so the place
+ * is never lost. [plan] = the points right after the add – only a Cancel of exactly that plan brings the pin back.
+ */
+let pinTaken: { hit: Hit; at: LatLon; plan: string | null } | null = null;
 async function commit(points: LatLon[], meta?: Meta[]) {
+  // the add of a found place (TakenPin): the first commit after it is that add's plan; any later commit drops it
+  if (pinTaken) { if (pinTaken.plan == null) pinTaken.plan = enc(points); else pinTaken = null; }
   runCause = nextCause ?? 'edit'; nextCause = null;
   if (runCause === 'edit') state.otherRouting = false; // edited here: the route is the page's own now
   editBefore = runCause === 'edit' ? { points: state.points, names: state.meta.map((m) => m.name) } : null;
@@ -511,6 +519,7 @@ function applyEdit(op: 'reverse' | 'roundTrip' | 'startHere' | 'delete' | 'move'
 
 function step(op: 'undo' | 'redo') {
   closeMenu();
+  pinTaken = null; // the user's own Undo / Redo: a later Cancel brings no pin back (cancelLongRoute reads it first)
   return queueEdit(async () => {
     const t = await engine.call('historyStep', op, enc(state.points));
     runCause = op;
@@ -622,7 +631,7 @@ sortable($('points'), (from, to) => applyEdit('move', from, to));
 
 // ---- presses on the map: a click is the app's hold (MapGestures.decide, in the engine) ----
 let menu: maplibregl.Popup | null = null;
-let placeCard: PlaceCard = { close: () => {}, isOpen: () => false, removePin: () => {}, planChanged: () => {} }; // the search's place card (set up below)
+let placeCard: PlaceCard = { close: () => {}, isOpen: () => false, removePin: () => {}, planChanged: () => {}, showPin: () => {}, hasPin: () => false }; // the search's place card (set up below)
 function closeMenu() { menu?.remove(); menu = null; }
 function openMenu(at: maplibregl.LngLat, items: MenuItem[], head: string) {
   closeMenu();
@@ -1213,8 +1222,14 @@ let activityBefore: { a: Activity; sac: number } | null = null;
 async function cancelLongRoute() {
   const what = await engine.call('planCancel', runCause, state.canUndo, state.canRedo);
   state.latest++; state.plan = null; setPlanning(false);
-  if (what === 'UNDO') return step('undo');
-  if (what === 'REDO') return step('redo');
+  const taken = pinTaken?.plan === enc(state.points) ? pinTaken : null; pinTaken = null;
+  const pinBack = () => { // TakenPin.back: the place is no point of the plan any more and no other pin is shown
+    if (!taken || placeCard.hasPin()) return;
+    if (state.points.some(([la, lo]) => Math.abs(la - taken.at[0]) < 1e-6 && Math.abs(lo - taken.at[1]) < 1e-6)) return;
+    placeCard.showPin(taken.hit);
+  };
+  if (what === 'UNDO') { await step('undo'); pinBack(); return; }
+  if (what === 'REDO') { await step('redo'); pinBack(); return; }
   if (what === 'RESTORE_ACTIVITY' && activityBefore) return setActivity(activityBefore.a, activityBefore.sac, true);
   state.notRouted = true;
   render();
@@ -1583,8 +1598,13 @@ placeCard = setupSearch({
   areas: async () => (useCells ? cells.searchAreas(map) : [{ key: 'map', dir: mapFolder }]),
   points: () => state.points,
   route: () => state.plan?.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon)) ?? [],
-  add: (h, role) => addPlace(h, role, true),
-  goHere: (h) => { placeFit = true; void fromMe([Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))], { pinned: true, name: h.title }); },
+  add: (h, role) => { pinTaken = { hit: h, at: [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))], plan: null }; void addPlace(h, role, true); },
+  goHere: (h) => {
+    placeFit = true;
+    const at: LatLon = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
+    pinTaken = { hit: h, at, plan: null };
+    void fromMe(at, { pinned: true, name: h.title });
+  },
   google: (h) => google(h.name ?? '', h.lat, h.lon, h.name ? '' : h.title),
   cardShown: (open) => document.body.classList.toggle('card-open', open),
   placeShown: (lat, lon) => areas?.wantPoint(lat, lon, 'searched'), // T2
