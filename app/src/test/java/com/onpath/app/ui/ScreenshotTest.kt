@@ -438,7 +438,7 @@ class ScreenshotTest {
             // Save route is the top item whenever there is a plan; [unsaved] = the "Nicht gespeichert ›" sign
             val menu = PlanMenu(state, onUpdates = {}, onPairBrowser = {}, onPhoneSetup = if (phoneSetup) ({}) else null,
                 sync = sync?.invoke() ?: SyncMenuUi(), onSaveRoute = if (state.save) ({}) else null,
-                // owner 2026-11-06: "Neu planen" with a plan, "Ohne Plan aufzeichnen" while no tour runs
+                // owner 2026-11-06: "Neu planen" with a plan, "Nur aufzeichnen" while no tour runs
                 onNewPlan = if (newPlan) ({}) else null, onRecordWithoutPlan = if (record) ({}) else null)
             Frame(menu = menu) { bottom() }
             OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 92.dp, end = 12.dp)) {

@@ -28,7 +28,7 @@ class MapControlsAlwaysThereTest {
     }
 
     @Test fun aDisabledControlIsGreyNotGone() {
-        val t = Color(0xFF2B4C6F)
+        val t = OnPathColors.ActionEdit
         assertEquals(t, MapControlState.tint(t, true))
         assertEquals(MapControlState.DISABLED_ALPHA, MapControlState.tint(t, false).alpha, 0.001f)
         assertTrue(footer.contains("if (!enabled) disabled()"))

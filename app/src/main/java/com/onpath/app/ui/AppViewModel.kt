@@ -3118,7 +3118,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * route, else nothing (free recording – the button then reads "Start recording · …", [PlanStart]), and starts recording.
      */
     /**
-     * [recordOnly]: ☰ → "Ohne Plan aufzeichnen" (owner 2026-11-06, flow map H1): a plain recording whatever the plan holds –
+     * [recordOnly]: ☰ → "Nur aufzeichnen" (owner 2026-11-06, flow map H1): a plain recording whatever the plan holds –
      * nothing is followed, the plan stays as it is.
      */
     fun startNavigation(force: Boolean = false, recordOnly: Boolean = false) {
