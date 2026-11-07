@@ -205,6 +205,15 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         return true
     }
 
+    /**
+     * Relief switched off by the app on a slow phone (map/ReliefAuto) – kept apart from the setting itself: "reliefAutoOff"
+     * = the app did it once (never twice), "reliefByUser" = the user set Relief by hand in Settings → Map (always wins).
+     */
+    var reliefAuto: com.onpath.app.map.ReliefAuto.State
+        get() = com.onpath.app.map.ReliefAuto.State(autoOff = sp.getBoolean("reliefAutoOff", false),
+            byUser = sp.getBoolean("reliefByUser", false))
+        set(v) = sp.edit().putBoolean("reliefAutoOff", v.autoOff).putBoolean("reliefByUser", v.byUser).apply()
+
     // ---- Phone setup (docs/design/onboarding-phone-check.md) ----
     /** Phone setup: the voice's test sentence was heard (spoken directions start only then). */
     var voiceHeard: com.onpath.app.setup.Felt

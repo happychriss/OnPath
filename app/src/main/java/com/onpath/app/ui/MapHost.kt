@@ -109,6 +109,8 @@ fun MapHost(
     }
 
     DisposableEffect(mapView) {
+        // frame times of each map gesture → events log, problem report, the relief rule (ReliefAuto, owner 2026-11-07)
+        val gestureFrames = context.findActivity()?.window?.let { w -> MapGestureFrames(w, vm::mapGestureMeasured) }
         mapView.getMapAsync { map ->
             val (lat, lon, zoom) = vm.initialCamera()
             map.cameraPosition = CameraPosition.Builder().target(LatLng(lat, lon)).zoom(zoom).build()
@@ -180,14 +182,23 @@ fun MapHost(
                 val c = map.cameraPosition
                 c.target?.let { vm.saveCamera(it.latitude, it.longitude, c.zoom) }
                 vm.mapGesture(false)
+                gestureFrames?.idle()
                 vm.cameraIdle()
                 onCamera(map)
             }
             map.addOnCameraMoveListener { onCamera(map) }
             // The user moved the map: the start camera (StartCamera) must not jump to the position any more.
             map.addOnCameraMoveStartedListener { reason ->
-                if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) { vm.userMovedMap = true; vm.mapGesture(true) }
+                if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
+                    vm.userMovedMap = true; vm.mapGesture(true); gestureFrames?.started()
+                }
             }
+            // a pinch makes the gesture a zoom (else a pan – moving / turning the map)
+            map.addOnScaleListener(object : MapLibreMap.OnScaleListener {
+                override fun onScaleBegin(detector: org.maplibre.android.gestures.StandardScaleGestureDetector) { gestureFrames?.zoomed() }
+                override fun onScale(detector: org.maplibre.android.gestures.StandardScaleGestureDetector) {}
+                override fun onScaleEnd(detector: org.maplibre.android.gestures.StandardScaleGestureDetector) {}
+            })
             // One rule table for every press (MapGestures, hold only): marker > POI > route line / empty map.
             // The route point under the finger, decided at finger-down (what the user aimed at, before anything can
             // move the map – else holding a point can add a new one instead of opening its menu).
@@ -290,6 +301,7 @@ fun MapHost(
         onDispose {
             host.disposed()
             ctrlRef.clear(host)
+            gestureFrames?.cancel()
         }
     }
 
@@ -369,6 +381,41 @@ private fun HoldRing(at: Offset?, onArmed: () -> Unit) {
         drawArc(color, -90f, 360f * progress.value, useCenter = false,
             topLeft = Offset(at.x - r, at.y - r), size = Size(2 * r, 2 * r), style = Stroke(4.dp.toPx(), cap = StrokeCap.Round))
     }
+}
+
+/**
+ * Frame times of one map gesture – from the first move of the finger until the map is at rest again (a fling included) –
+ * with the window's FrameMetrics ([FrameJankMeter]); [done] gets the gesture kind and the numbers (the relief rule,
+ * [com.onpath.app.map.ReliefAuto]). Main thread only; never throws.
+ */
+private class MapGestureFrames(window: android.view.Window,
+                               private val done: (com.onpath.app.map.ReliefAuto.Kind, com.onpath.app.debug.FrameStats) -> Unit) {
+    private val meter = com.onpath.app.debug.FrameJankMeter(window)
+    private var running = false
+    private var kind = com.onpath.app.map.ReliefAuto.Kind.PAN
+
+    fun started() {
+        if (running) return
+        running = true; kind = com.onpath.app.map.ReliefAuto.Kind.PAN
+        meter.start()
+    }
+
+    fun zoomed() { if (running) kind = com.onpath.app.map.ReliefAuto.Kind.ZOOM }
+
+    fun idle() {
+        if (!running) return
+        running = false
+        meter.stop()?.let { done(kind, it) }
+    }
+
+    /** The map goes away mid-gesture: stop listening, report nothing. */
+    fun cancel() { running = false; meter.stop() }
+}
+
+private tailrec fun android.content.Context.findActivity(): android.app.Activity? = when (this) {
+    is android.app.Activity -> this
+    is android.content.ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 /** Style loads in this process (for the event log). */
