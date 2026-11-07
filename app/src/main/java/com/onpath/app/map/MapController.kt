@@ -143,7 +143,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     private val density = context.resources.displayMetrics.density
     private var locationReady = false
     private var markerImages = 0
-    /** Compass + GPS bearing for heading-up; the sensor runs only while MapLibre listens (Navigate). */
+    /** Compass + GPS bearing for the walking-direction orientation; the sensor runs only while MapLibre listens. */
     private val heading = HeadingEngine(context)
     private var onTrackingDismissed: (() -> Unit)? = null
     /** Camera mode we asked for while following (to notice when a gesture changed it). */
@@ -489,19 +489,25 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         try { heading.quiet = on } catch (e: Exception) { Problems.warn("map", "Map not paused / resumed for the rest view", e) }
     }
 
-    /** Plan mode follow (north stays where the user left it). */
-    fun setFollow(follow: Boolean, onDismissed: () -> Unit) { setCamera(follow, navigating = false, headingUp = false, onDismissed = onDismissed) }
+    /**
+     * The session's one orientation is north up ([com.onpath.app.domain.map.Orientation.NORTH]): every app camera move
+     * (fit, fly, centre) ends north up and flat. With the walking direction it keeps the current bearing (owner
+     * 2026-11-07: the map never turns by itself). MapScreen sets it with [setCamera]'s headingUp.
+     */
+    var northLocked = false
 
     /**
-     * Camera and puck for both modes. Following: the camera tracks the position – walking direction up
-     * ([headingUp], map turns with [HeadingEngine]; both modes, compass cycle) or north up (Navigate) / as the user
-     * left it (Plan).
+     * Camera and puck for both modes. Following: the camera tracks the position by the session's one orientation
+     * ([com.onpath.app.domain.map.MapOrientation.follow], owner 2026-11-07): walking direction up ([headingUp], map
+     * turns with [HeadingEngine]) or north up – the same in Plan and Navigate.
      * MapLibre ends following when the user pans ([onDismissed]); "centre on me" calls this again.
      * The puck is always the small dot with a direction triangle ([PUCK_MODE]); the compass sensor runs while
      * the map is visible (MapLibre releases it when the map stops).
      */
     fun setCamera(follow: Boolean, navigating: Boolean, headingUp: Boolean, startZoom: Double? = null,
                   onDismissed: () -> Unit): Boolean {
+        // fits and flies ask it even before the location layer is ready
+        northLocked = com.onpath.app.domain.map.MapOrientation.moveNorthUp(com.onpath.app.domain.map.MapOrientation.of(headingUp))
         if (!locationReady) return false
         var zoomed = false
         try {
@@ -511,12 +517,11 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             map.uiSettings.isCompassEnabled = false
             val leavingNav = wasNavigating && !navigating
             wasNavigating = navigating
+            val o = com.onpath.app.domain.map.MapOrientation.of(headingUp)
             if (follow) {
-                val (mode, tilt, bearing) = when {
-                    // walking direction up – Navigate and (owner, compass cycle) Plan
-                    headingUp -> Triple(CameraMode.TRACKING_COMPASS, NAV_TILT_DEG, null)
-                    navigating -> Triple(CameraMode.TRACKING_GPS_NORTH, 0.0, 0.0)
-                    else -> Triple(CameraMode.TRACKING, if (leavingNav) 0.0 else null, if (leavingNav) 0.0 else null)
+                val (mode, tilt, bearing) = when (com.onpath.app.domain.map.MapOrientation.follow(o)) {
+                    com.onpath.app.domain.map.MapOrientation.Follow.TRAVEL -> Triple(CameraMode.TRACKING_COMPASS, NAV_TILT_DEG, null)
+                    com.onpath.app.domain.map.MapOrientation.Follow.NORTH -> Triple(CameraMode.TRACKING_GPS_NORTH, 0.0, 0.0)
                 }
                 // heading-up: MapLibre turns camera + puck with the map direction, so its own arrow would show the
                 // route; the dot gets no arrow and the app draws the "where I face" arrow (ui/FacingArrow)
@@ -554,7 +559,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 wantedCameraMode = CameraMode.NONE
                 if (lc.cameraMode != CameraMode.NONE) lc.cameraMode = CameraMode.NONE
                 lc.renderMode = PUCK_MODE
-                if (leavingNav && !headingUp) resetNorth() // the compass choice is kept across modes (owner)
+                // the orientation is kept across modes (owner 2026-11-07): only north up is turned back to north
+                if (leavingNav && com.onpath.app.domain.map.MapOrientation.northOnLeavingNavigate(o, following = false)) resetNorth()
             }
             onTrackingDismissed = onDismissed
         } catch (e: Exception) {
@@ -609,10 +615,13 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
      */
     fun centreOn(lat: Double, lon: Double) = runCatching {
         val zoom = map.cameraPosition.zoom.let { if (it < 13.0) 15.0 else it }
-        map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), zoom), 600)
+        val update = if (northLocked) CameraUpdateFactory.newCameraPosition(
+            CameraPosition.Builder().target(LatLng(lat, lon)).zoom(zoom).bearing(0.0).tilt(0.0).build())
+            else CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), zoom)
+        map.animateCamera(update, 600)
     }.onFailure { Problems.warn("map", "Map not centred on the position", it) }
 
-    /** Compass button in Plan: turn the map back to north up. */
+    /** Compass tap (both modes): turn the map back to north up when it does not follow. */
     fun northUp() = runCatching { resetNorth() }.onFailure { Problems.warn("map", "Map not turned north up", it) }
 
     /** Back in Plan: north up, flat, no tracking padding (editing on a turned map is confusing). */
@@ -999,14 +1008,15 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     /** [p] at [zoom] in the middle of the room [pad] leaves (the camera keeps that padding, like a route fit). */
     private fun centred(p: GeoPoint, zoom: Double, pad: com.onpath.app.ui.FitPadding): CameraPosition =
         CameraPosition.Builder().target(LatLng(p.lat, p.lon)).zoom(zoom)
-            .padding(pad.left.toDouble(), pad.top.toDouble(), pad.right.toDouble(), pad.bottom.toDouble()).build()
+            .padding(pad.left.toDouble(), pad.top.toDouble(), pad.right.toDouble(), pad.bottom.toDouble())
+            .apply { if (northLocked) bearing(0.0).tilt(0.0) }.build()
 
     /**
-     * Show all [points] in the free room [pad] leaves (ui/FitPaddingRule: clear of the top and bottom elements).
-     * [northUp]: the overview north up and flat ("Show whole route", also from Navigate's turned, tilted camera);
-     * else the current bearing / tilt stay. Following must be off before (CLAUDE.md "Map camera"). Never throws.
+     * Show all [points] in the free room [pad] leaves (ui/FitPaddingRule: clear of the top and bottom elements), always
+     * flat. North up when the session's orientation is north ([northLocked]), else at the current bearing – a fit never
+     * turns the map (owner 2026-11-07). Following must be off before (CLAUDE.md "Map camera"). Never throws.
      */
-    fun fitTo(points: List<GeoPoint>, room: com.onpath.app.ui.FitPadding, northUp: Boolean = false) {
+    fun fitTo(points: List<GeoPoint>, room: com.onpath.app.ui.FitPadding) {
         if (points.isEmpty()) return
         try {
             if (points.size == 1) {
@@ -1016,17 +1026,15 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             }
             val b = LatLngBounds.Builder().apply { points.forEach { include(LatLng(it.lat, it.lon)) } }.build()
             // beside the map buttons or above them: the room that shows the route bigger (FitPaddingRule.pick)
-            val bearing = if (northUp) 0.0 else map.cameraPosition.bearing
-            val tilt = if (northUp) 0.0 else map.cameraPosition.tilt
+            val bearing = if (northLocked) 0.0 else map.cameraPosition.bearing
+            val tilt = 0.0
             val pad = com.onpath.app.ui.FitPaddingRule.pick(room) { p ->
                 map.getCameraForLatLngBounds(b, intArrayOf(p.left, p.top, p.right, p.bottom), bearing, tilt)?.zoom
             }
-            val update = if (northUp) {
-                // a short route not closer than z16 (the browser planner's maxZoom)
-                val cp = map.getCameraForLatLngBounds(b, intArrayOf(pad.left, pad.top, pad.right, pad.bottom), 0.0, 0.0)
-                if (cp != null) CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(cp).zoom(minOf(cp.zoom, FIT_MAX_ZOOM)).build())
-                else CameraUpdateFactory.newLatLngBounds(b, 0.0, 0.0, pad.left, pad.top, pad.right, pad.bottom)
-            } else CameraUpdateFactory.newLatLngBounds(b, pad.left, pad.top, pad.right, pad.bottom)
+            // a short route not closer than z16 (the browser planner's maxZoom)
+            val cp = map.getCameraForLatLngBounds(b, intArrayOf(pad.left, pad.top, pad.right, pad.bottom), bearing, tilt)
+            val update = if (cp != null) CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(cp).zoom(minOf(cp.zoom, FIT_MAX_ZOOM)).build())
+                else CameraUpdateFactory.newLatLngBounds(b, bearing, tilt, pad.left, pad.top, pad.right, pad.bottom)
             map.animateCamera(update, 800)
         } catch (e: Exception) {
             Problems.warn("map", "Map not zoomed to fit the route / places", e)

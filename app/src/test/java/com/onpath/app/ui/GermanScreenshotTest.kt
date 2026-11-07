@@ -58,6 +58,8 @@ class GermanScreenshotTest {
     @Test fun navigateLockOff() = shots.navigateLockOff()
     @Test fun navigateLockOffPaused() = shots.navigateLockOffPaused()
     @Test fun planEmpty() = shots.planEmpty()
+    @Test fun planEmptyCollapsed() = shots.planEmptyCollapsed()
+    @Test fun planEmptyFull() = shots.planEmptyFull()
     @Test fun planOnePoint() = shots.planOnePoint()
     @Test fun trackWithoutLine() = shots.trackWithoutLine()
     @Test fun planPointsFull() = shots.planPointsFull()

@@ -104,86 +104,83 @@ const shown = async (page) => Object.fromEntries(await Promise.all(['#summary .b
 for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false], ['phone', { width: 390, height: 844 }, true]]) {
   const { ctx, page } = await open(vp, phone);
   const P = `${name}:`;
-  // nothing remembered: the side panel shows everything (as before), the bottom sheet the profile (the app's default)
-  check(await step(page) === (phone ? 'profile' : 'points'), `${P} first step without storage = ${phone ? 'profile' : 'points'}`);
-  check(await page.isVisible('#handle') && await page.isVisible('#sheetStep'), `${P} grab handle and chevron visible`);
+  // plan sheet A (owner 2026-11-07, „Punkte zuerst“): wide = no steps (points on top, + Ziel hinzufügen, facts, the
+  // profile along the map's bottom edge); phone = two steps, small first, the chevron says „2 Punkte“
+  check(await step(page) === (phone ? 'small' : 'points'), `${P} first step without storage = ${phone ? 'small' : 'everything (wide)'}`);
+  check(phone ? await page.isVisible('#handle') && await page.isVisible('#sheetStep') : !(await page.isVisible('#handle')) && !(await page.isVisible('#sheetStep')),
+    `${P} ${phone ? 'grab handle and chevron visible' : 'no handle, no chevron – no steps on a wide screen'}`);
   const header = await page.textContent('#header');
   check(!/Send to phone/.test(header) && /Import GPX/.test(await page.textContent('#mainMenu')) && /To phone/.test(header),
     `${P} header without Send to phone, with "To phone" (owner 2026-11-06)`);
-
-  // the three steps, every control
-  if (await step(page) !== 'small') { // reach small with the chevron (Show more … until Points, then Show less → small)
-    for (let i = 0; i < 3 && await step(page) !== 'small'; i++) await page.click('#sheetStep');
+  let s;
+  if (!phone) {
+    s = await shown(page);
+    const order = await page.evaluate(() => { const top = (id) => document.getElementById(id).getBoundingClientRect().top;
+      return [top('planActions'), top('points'), top('addDest'), top('summary')]; });
+    check(s['#points'] && await page.isVisible('#addDest') && order.every((v, i) => i === 0 || v > order[i - 1]),
+      `${P} points first: plan row, the points, „+ Add destination“, then the facts (${order.map(Math.round)})`);
+    check(!s['#profile svg'] && await page.isVisible('#bigProfile .bpplot svg') && !(await page.isVisible('#bigProfile .bpclose')),
+      `${P} the profile lies along the map's bottom edge for good (no ✕), not in the panel`);
+    const route = await page.evaluate(() => window.__map.getLayoutProperty('profile-steep', 'visibility') ?? 'none');
+    check(route !== 'visible', `${P} the route stays plan blue while the bottom profile is there (${route})`);
+    await page.click('#addDest');
+    check(await page.evaluate(() => document.activeElement?.id === 'q'), `${P} „+ Add destination“ puts the cursor in the search`);
+    await page.screenshot({ path: path.join(shots, `${name}-sheet-a.png`) });
+  } else {
+    s = await shown(page);
+    check(await step(page) === 'small' && s['#summary .big'] && s['#sheet .subline'] && !s['#profile svg'] && !s['#points'],
+      `${P} small: time, distance, ↑/↓ + badge; no profile, no Points`);
+    check(s['#share'] && !(await page.isDisabled('#share')) && await page.getAttribute('#share', 'aria-label') === 'Share' && !(await page.$('#sheet button.primary')),
+      `${P} small: Share active with two points, no big green button`);
+    const sh = await page.locator('#sheet').boundingBox();
+    check(sh.height < 230, `${P} small step is compact (${Math.round(sh.height)} px)`);
+    check(/2 points/.test(await page.textContent('#sheetStep')) && await page.getAttribute('#sheetStep', 'aria-label') === '2 points',
+      `${P} the chevron says „2 points“ (label + text)`);
+    await page.screenshot({ path: path.join(shots, `${name}-small.png`) });
+    await page.click('#handle');
+    s = await shown(page);
+    check(await step(page) === 'points' && s['#points'] && s['#profile svg'] && await page.isVisible('#addDest') && await page.isVisible('#profileBig'),
+      `${P} handle → everything: points, + Add destination, profile with „Large elevation profile“`);
+    check(await page.getAttribute('#sheetStep', 'aria-label') === 'Show less', `${P} chevron says "Show less" when open`);
+    await page.screenshot({ path: path.join(shots, `${name}-points.png`) });
+    await page.click('#handle');
+    check(await step(page) === 'small', `${P} handle again → small (two steps)`);
+    await page.click('#summary .big');
+    check(await step(page) === 'points', `${P} a click on the facts → open`);
+    await page.click('#activityChip');
+    check(await step(page) === 'points' && await page.isVisible('#activityMenu'), `${P} the chip opens its list, the step stays`);
+    await page.keyboard.press('Escape');
+    if (await page.isVisible('#activityMenu')) await page.click('body', { position: { x: 5, y: vp.height / 3 } }).catch(() => {});
+    await page.focus('#handle');
+    await page.keyboard.press('ArrowDown');
+    check(await step(page) === 'small', `${P} Arrow down on the handle → small`);
+    await page.keyboard.press('ArrowUp');
+    check(await step(page) === 'points', `${P} Arrow up → open`);
+    await page.focus('#sheetStep');
+    await page.keyboard.press('Enter');
+    check(await step(page) === 'small', `${P} Enter on the chevron → the other step`);
   }
-  let s = await shown(page);
-  check(await step(page) === 'small' && s['#summary .big'] && s['#sheet .subline'] && !s['#profile svg'] && !s['#points'],
-    `${P} small: time, distance, ↑/↓ + badge; no profile, no Points`);
-  check(s['#share'] && !(await page.isDisabled('#share')) && await page.getAttribute('#share', 'aria-label') === 'Share' &&await page.getAttribute('#share', 'title') === 'Share' && !(await page.$('#sheet button.primary')),
-    `${P} small: Share is the icon next to the chevron, active with two points (label + tooltip), no big green button`);
-  const sh = await page.locator('#sheet').boundingBox();
-  // the app's summary step holds the action row ⇅ Reverse · ↻ Round trip too (owner 2026-10-31; ✕ left it 2026-11-06)
-  check(sh.height < 230, `${P} small step is compact (${Math.round(sh.height)} px)`);
-  check(await page.getAttribute('#sheetStep', 'aria-label') === 'Show more' && await page.getAttribute('#sheetStep', 'title') === 'Show more', `${P} chevron says "Show more" (label + tooltip)`);
-  await page.screenshot({ path: path.join(shots, `${name}-small.png`) });
 
-  await page.click('#handle');
-  s = await shown(page);
-  check(await step(page) === 'profile' && s['#profile svg'] && !s['#points'] && s['#share'], `${P} handle → profile step (profile, Share icon, no Points)`);
-  await page.screenshot({ path: path.join(shots, `${name}-profile.png`) });
-  await page.click('#summary .big');
-  s = await shown(page);
-  check(await step(page) === 'points' && s['#points'] && s['#profile svg'], `${P} a click on the summary → Points step`);
-  check(await page.getAttribute('#sheetStep', 'aria-label') === 'Show less', `${P} chevron says "Show less" on the Points step`);
-  await page.screenshot({ path: path.join(shots, `${name}-points.png`) });
-  await page.click('#handle');
-  check(await step(page) === 'profile', `${P} handle on Points → back to the profile (the app's tapped())`);
-  await page.click('#activityChip');
-  check(await step(page) === 'profile' && await page.isVisible('#activityMenu'), `${P} the chip opens its list, the step stays`);
-  await page.keyboard.press('Escape');
-  // only when Escape left the list open: a click at the map's edge with the list already closed adds a route point
-  // (seen under load: a third point, a taller sheet, the later fit checks fail)
-  if (await page.isVisible('#activityMenu')) await page.click('body', { position: { x: 5, y: vp.height / 2 } }).catch(() => {});
-
-  // keyboard: Arrow towards the open edge = more (desktop: down, phone: up), Enter on the chevron
-  await page.focus('#handle');
-  await page.keyboard.press(phone ? 'ArrowUp' : 'ArrowDown');
-  check(await step(page) === 'points', `${P} ${phone ? 'Arrow up' : 'Arrow down'} on the handle → more`);
-  await page.keyboard.press(phone ? 'ArrowDown' : 'ArrowUp');
-  await page.keyboard.press(phone ? 'ArrowDown' : 'ArrowUp');
-  check(await step(page) === 'small', `${P} the other arrow → less, down to small`);
-  await page.focus('#sheetStep');
-  await page.keyboard.press('Enter');
-  check(await step(page) === 'profile', `${P} Enter on the chevron → one step more`);
-  await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
-  check(await step(page) === 'small', `${P} chevron on Points → small`);
-
-  // remembered after a reload; the camera fit keeps the route clear of the small sheet
+  // remembered after a reload (phone); the camera fit keeps the route clear of the sheet
   await page.reload();
   await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
-  // the first-route fit comes WholeRoute.SETTLE_MS (500 ms) after the route, then the camera eases – wait for both
   await page.waitForTimeout(900); await page.waitForFunction(() => window.__map.isMoving(), null, { timeout: 1_000 }).catch(() => {}); await settle(page);
-  check(await step(page) === 'small' && await page.evaluate(() => localStorage.getItem('onpath.sheetStep')) === 'small', `${P} small step remembered after a reload`);
+  if (phone) check(await step(page) === 'small' && await page.evaluate(() => localStorage.getItem('onpath.sheetStep')) === 'small', `${P} small step remembered after a reload`);
   const clear = await page.evaluate(() => { const r = document.getElementById('sheet').getBoundingClientRect();
     return [...document.querySelectorAll('.pin')].every((p) => { const b = p.getBoundingClientRect(); return b.right < r.left || b.left > r.right || b.bottom < r.top || b.top > r.bottom; }); });
   check(clear, `${P} after the fit both points are clear of the sheet`);
 
-  // the toolbar's "Show whole route" (owner 2026-10-30): next to locate, a normal button, the whole route in the free room
   check(!(await page.isDisabled('#fitRoute')) && await page.getAttribute('#fitRoute', 'aria-label') === 'Show whole route' && await page.getAttribute('#fitRoute', 'title') === 'Show whole route'
     && await page.evaluate(() => document.getElementById('fitRoute').previousElementSibling?.id === 'locate'), `${P} "Show whole route" active next to locate (label + tooltip)`);
-  await checkFit(page, `${P} small step:`);
+  await checkFit(page, `${P} ${phone ? 'small step' : 'panel + bottom profile'}:`);
   if (!phone) {
-    await checkFit(page, `${P} small step:`, 'enter');
-    // a padding left behind by an older move (route-warning spot / gap "Show") must not shrink or shift the room
+    await checkFit(page, `${P} panel:`, 'enter');
     await page.evaluate(() => window.__map.easeTo({ padding: { top: 300, bottom: 50, left: 446, right: 90 }, duration: 0 }));
     await checkFit(page, `${P} after a left-over padding:`);
+  } else {
+    // the open sheet holds points, facts and profile – the map's fit is checked in the small step (above)
+    await page.screenshot({ path: path.join(shots, `${name}-fit-route.png`) });
   }
-  await page.click('#handle'); await page.click('#summary .big');
-  check(await step(page) === 'points', `${P} Points step for the fit`);
-  await checkFit(page, `${P} Points step:`);
-  await page.screenshot({ path: path.join(shots, `${name}-fit-route.png`) });
-  await page.focus('#handle');
-  await page.keyboard.press(phone ? 'ArrowDown' : 'ArrowUp'); await page.keyboard.press(phone ? 'ArrowDown' : 'ArrowUp');
-  check(await step(page) === 'small', `${P} back to the small step`);
 
   // a new error line shows in the small step (the app keeps route lines above its MINI step end)
   await page.evaluate(() => { const n = document.getElementById('notice'); n.hidden = false; n.textContent = '⚠ test'; });
@@ -220,7 +217,7 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     checkAnchored(g3, vp, `${P} flipped:`);
     // a map click beside the card closes it and adds nothing; Escape closes it too
     const pins = await page.locator('.pin').count();
-    await page.mouse.click(vp.width - 120, vp.height - 200);
+    await page.mouse.click(vp.width - 120, Math.round(vp.height * 0.35)); // the map, not the profile along the bottom
     await page.waitForTimeout(400);
     check(await page.isHidden('#placecard') && await page.locator('.pin').count() === pins, `${P} a map click beside the card closes it (nothing added)`);
     await pick('Ifinger');
@@ -249,7 +246,7 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     return { add: document.querySelector('.pinchip .pinadd')?.textContent, more: document.querySelector('.pinchip .pinmore')?.textContent,
       h: Math.min(r('.pinchip .pinadd')?.height ?? 0, r('.pinchip .pinmore')?.height ?? 0),
       blue: getComputedStyle(document.querySelector('.pinchip .pinadd'), '::after').backgroundColor }; });
-  check(pc.add === 'Add' && pc.more === 'More' && pc.h >= 48 && pc.blue === 'rgb(43, 76, 111)',
+  check(pc.add === 'Add' && pc.more === 'More' && pc.h >= 48 && pc.blue === 'rgb(51, 90, 133)',
     `${P} the pin card: "+ Add" (blue) · "⋯ More", touch targets ≥ 48 px (${JSON.stringify(pc)})`);
   // closing the card keeps the pin (the app 2026-11-02); its chip opens the card again; "Remove pin" takes it away
   await page.click('#cclose');
@@ -274,7 +271,7 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   await page.click('#cdest');
   check(await page.isHidden('#placecard') && await page.isVisible('#sheet') && await joinCount() === 0 && await page.locator('.candidate').count() === 0, `${P} the card closes after its action, the sheet is back, pin and preview line gone`);
   await page.waitForFunction(() => document.querySelectorAll('.pin').length === 3, null, { timeout: 20_000 }).catch(() => {});
-  check(await step(page) === 'small', `${P} the step is kept`);
+  check(await step(page) === (phone ? 'small' : 'points'), `${P} the step is kept`);
   // a place added from the card: the new route is fitted once it is there (the app's WholeRoute.fitAfterPlace, add-on 2)
   // wait for the NEW plan (three points) – the old two-point plan is still in state.plan while the new one is routed;
   // then the fit (WholeRoute.SETTLE_MS = 500 ms after the route) and the camera's ease
@@ -291,7 +288,7 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   check(await page.isVisible('#trackPanel .trackname') && await page.isVisible('#trackPanel #planFromTrack'), `${P} GPX track panel complete in the small step`);
   await checkFit(page, `${P} with the GPX track:`); // the track is in the room too (the panel stands in for the sheet)
   await page.click('#closeTrack').catch(() => {});
-  check(!(await page.$('#trackPanel')) && await step(page) === 'small' && await page.isVisible('#summary'), `${P} Close track: the small sheet is back`);
+  check(!(await page.$('#trackPanel')) && await step(page) === (phone ? 'small' : 'points') && await page.isVisible('#summary'), `${P} Close track: the sheet is back`);
 
   if (name === 'desktop') {
     // Share opens the dialog: "Scan with the OnPath app" above the QR code

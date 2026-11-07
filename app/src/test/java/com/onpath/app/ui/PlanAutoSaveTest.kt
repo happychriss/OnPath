@@ -12,15 +12,18 @@ import java.io.File
  */
 class PlanAutoSaveTest {
     private val NEW = PlanAutoSave.AtStart.SAVE_NEW
-    private val COPY = PlanAutoSave.AtStart.SAVE_COPY
+    private val OVERWRITE = PlanAutoSave.AtStart.SAVE_OVERWRITE
     private val NOTHING = PlanAutoSave.AtStart.NOTHING
 
     @Test fun aPlanNeverSavedIsSavedAtTheStart() =
         assertEquals(NEW, PlanAutoSave.atStart(points = 3, unsaved = true, changesASavedPlan = false))
 
-    /** Owner 2026-11-06 (Zuletzt): never overwritten silently – the ridden version is a new plan "Name (2)". */
-    @Test fun aSavedPlanChangedSinceIsSavedAsACopy() =
-        assertEquals(COPY, PlanAutoSave.atStart(points = 3, unsaved = true, changesASavedPlan = true))
+    /**
+     * Owner 2026-11-07: a loaded saved plan changed and started with "Los geht's" updates the ORIGINAL route (like
+     * ☰ Plan speichern) – no "Name (2)" copies; the version before goes under Zuletzt.
+     */
+    @Test fun aSavedPlanChangedSinceUpdatesTheOriginal() =
+        assertEquals(OVERWRITE, PlanAutoSave.atStart(points = 3, unsaved = true, changesASavedPlan = true))
 
     @Test fun aSavedUnchangedPlanIsLeftAlone() =
         assertEquals(NOTHING, PlanAutoSave.atStart(points = 3, unsaved = false, changesASavedPlan = true))

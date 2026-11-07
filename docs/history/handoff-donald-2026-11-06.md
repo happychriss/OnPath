@@ -99,6 +99,33 @@ Rundgang → release v0.17.2. Not in the release: spike/3d-webview.
 - Kept for the owner: 11 old worktrees with unmerged WIP (2026-11-03 night saves, proposals) – listed by
   `git worktree list`; ci/donald-* refs to prune after 12 h (n-*, a1-*, a2-*, a4-*, mid-*, p3-*, m2-*, merge-1106*).
 
+## 2026-11-07 ~11:20 – state before the compact (READ FIRST after a compact)
+
+**v0.17.2 released** (7dd730f5). Since then on main (each with its GitHub E2E classes green): overview line 6 dp + menu head
+out (430083fe), Meine Touren rows A/Zuletzt inline + ⤢ badge (5ca552b1, 687d9968), sync file race fixed (d65fb8f2),
+Los geht's full-width foot (b3481fc1), browser item one line (826e02a1), plan blue #335A85 + paper B #F5F3EB +
+"Nur aufzeichnen" (80d01162…), pause band + lock hint only on short tap + "Pause heißt Ruhe" (c454e16e), plan-in-front
+E2E (cce2b29a), empty-sheet guide A (f5830e9d), Los geht's updates the saved route – old version under Zuletzt (0dfc0246),
+unlock window 20 s / Weiter always held / screen off relocks (8a78e87c). Pixel test APK of 8a78e87c built – installs when
+the owner's tour ends (background wait).
+
+**Agents still running (worktrees under .claude/worktrees; an interrupt stops them – check with ListAgents and resume):**
+- donald-prefs-off-main (agent-a49caf3e…): frequent Prefs writes off the main thread (stall at onStop) – CoreField rerun.
+- donald-one-activity (agent-a94b01d9…): only ONE MainActivity (log "Screen #2 got a new intent") – root cause of double
+  sync workers; repro + singleTask/PendingIntent fix.
+- donald-one-orientation (agent-afc18c36…): owner 12:00 "die eingestellte Richtung gilt die ganze Sitzung" – one
+  orientation (Gehrichtung / Norden oben) for Plan + Navigate, never changes by itself, compass button is the only switch.
+- donald-locate-distance (agent-a31ed6ef…): owner chose variant 3 – distance label under the locate button when I am off
+  screen, tap = plan + me.
+- donald-hold-during-tour (agent-a2909345…): hold during a tour offers adding to the route, never "Hier starten"; menu
+  wording "Als Zwischenstopp" / "Als neues Ziel" (no numbers; owner 11:20), ordered by geometry (detour > 50 % or beyond the
+  goal → "Als neues Ziel" first; field case goal W, church NE).
+**Next:** when these land → one more Pixel APK; prune ci/donald-* refs older than 12 h (owner yes); the owner's open
+pages: none waiting. Kept artifacts: Fragenregister, Pixel-Review 6.11., Papierton im Vergleich, Bildschirme Walnuss,
+Plan-Karte (laptop), older reference pages. Main-thread stall "Matrix.translate 575 ms" needs a trace on the Pixel (perf
+agent adds timing). 3D spike waits for the owner's word (spike/3d-webview). e2e.yml runs only the first class of a list
+(needs a PR). Round trip ridden twice on the same street (navigation gap, Fragenregister 51).
+
 ## MORNING 2026-11-07 – what the night did (read this first, owner)
 
 **Release v0.17.2** pushed at ~07:45 (7dd730f5; notes docs/release-notes/v0.17.2.md). Before it, on 5df742b0: gate --full

@@ -37,8 +37,14 @@ export class RouteProfile {
   private pendingRange: [number, number] | null | undefined = undefined;
   private rangeTimer = 0;
 
+  /**
+   * Wide screens (owner 2026-11-07, plan sheet A + the profile along the bottom): the big profile is always there while a
+   * plan has heights – no ✕, no „⤢ Großes Profil“ (main.ts sets it with the width).
+   */
+  private pinnedOn = false;
+
   constructor(private map: maplibregl.Map, private routeColour: string, private sheetHost: HTMLElement,
-    private panel: HTMLElement, private onOpenChange: (open: boolean) => void) {
+    private panel: HTMLElement, private onOpenChange: (open: boolean, auto: boolean) => void) {
     panel.querySelector<HTMLButtonElement>('.bpclose')!.onclick = () => this.setOpen(false);
     // the range's numbers in the big profile's head, beside the title
     const head = panel.querySelector<HTMLElement>('.bphead')!;
@@ -99,17 +105,28 @@ export class RouteProfile {
     plot.addEventListener('click', () => { if (!this.open) this.setOpen(true); });
     this.bigButton();
     if (this.open) this.drawBig();
+    else if (this.pinnedOn) this.setOpen(true, true);
   }
 
-  setOpen(open: boolean) {
+  /** Pinned (wide) or not (phone): pinned opens the big profile whenever a plan has heights. */
+  set pinned(on: boolean) {
+    if (on === this.pinnedOn) return;
+    this.pinnedOn = on;
+    this.panel.classList.toggle('pinned', on);
+    if (on) this.setOpen(true, true); else this.setOpen(false, true);
+  }
+  get pinned(): boolean { return this.pinnedOn; }
+
+  setOpen(open: boolean, auto = false) {
     if (open && !this.profile) open = false;
+    if (!open && this.pinnedOn && this.profile) return; // pinned: stays while there are heights
     if (open === this.open && (!open || this.big)) return;
     this.open = open;
     this.panel.hidden = !open;
     this.bigButton();
     if (open) this.drawBig(); else { this.mark(null); this.big = null; this.panel.querySelector('.bpplot')!.innerHTML = ''; }
     this.steepLine();
-    this.onOpenChange(open);
+    this.onOpenChange(open, auto);
   }
 
   /** The sheet's button: „⤢ Großes Profil“, while open „Profil schließen“. */
@@ -117,7 +134,9 @@ export class RouteProfile {
     const b = document.getElementById('profileBig');
     if (!b) return;
     b.setAttribute('aria-pressed', String(this.open));
-    b.querySelector('span')!.textContent = t(this.open ? 'web_profile_big_close' : 'web_profile_big_open');
+    // the phone's full row says what it is (owner 2026-11-07): „⤢ Höhenprofil groß“
+    const row = matchMedia('(max-width: 700px)').matches;
+    b.querySelector('span')!.textContent = t(this.open ? 'web_profile_big_close' : row ? 'web_profile_big_row' : 'web_profile_big_open');
     b.title = this.open ? t('web_profile_big_close') : t('web_profile_big');
   }
 
@@ -167,7 +186,8 @@ export class RouteProfile {
   private steepLine() {
     const src = this.map.getSource(STEEP) as GeoJSONSource | undefined;
     if (!src || !this.map.getLayer(STEEP)) return;
-    const on = this.open && this.profile != null;
+    // pinned (wide): the route stays plan blue – the steepness is read in the profile below the map (owner 2026-11-07)
+    const on = this.open && this.profile != null && !this.pinnedOn;
     try {
       src.setData(on ? { type: 'FeatureCollection', features: steepRuns(this.line, this.profile!).map((r) => ({ type: 'Feature',
         properties: { colour: STEEP_COLOURS[r.cls] ?? STEEP_COLOURS[0] },
