@@ -58,8 +58,9 @@ internal object WholeRoute {
 }
 
 /**
- * Room the camera leaves free when it fits a route (pixels; MapController.fitTo). [above] = a second room the fit may
- * take instead (Plan: the whole width above the map buttons, [FitPaddingRule]) – the one that shows the route bigger wins.
+ * Room the camera leaves free when it fits a route (pixels; MapController.fitTo). [above] = another room the fit may
+ * take instead, which may name another one in turn (Plan: below the activity button instead of beside it, the whole
+ * width above the map buttons – [FitPaddingRule]); the one that shows the route biggest wins ([FitPaddingRule.pick]).
  */
 data class FitPadding(val left: Int, val top: Int, val right: Int, val bottom: Int, val above: FitPadding? = null)
 
@@ -71,7 +72,10 @@ data class FitPadding(val left: Int, val top: Int, val right: Int, val bottom: I
  *   bar); above the plan sheet at its CURRENT height ([sheetPx]). The map buttons stand in a column on the right above
  *   the sheet ([fabWidthPx] × [fabHeightPx], measured): the route fits either beside them (right edge = the column) or
  *   above them over the whole width (bottom edge = the column's top) – [FitPadding.above], the bigger route wins
- *   ([pick]). Every edge keeps [AIR_DP] for a route point marker's radius.
+ *   ([pick]). The activity button in the top left (measured: its right / bottom edge, `activityRightPx` /
+ *   `activityBottomPx`) gives each room two forms – beside it (left edge right of the button) or below it (top edge
+ *   under it): a point is never drawn under it (owner's Pixel 2026-11-07, ② under the button). Every edge keeps
+ *   [AIR_DP] for a route point marker's radius.
  * - Navigate: below the turn / status column or the message box under it ([navTopDp]); above the slider
  *   ([navBottomDp]); clear of the big map buttons on the right.
  */
@@ -90,17 +94,25 @@ internal object FitPaddingRule {
     const val FOOTER_DP = 48
 
     fun of(mode: AppMode, density: Float, statusBarPx: Int, planTopDp: Int, sheetPx: Int, navTopDp: Int, navBottomDp: Int,
-           fabWidthPx: Int = 0, fabHeightPx: Int = 0): FitPadding {
+           fabWidthPx: Int = 0, fabHeightPx: Int = 0, activityRightPx: Int = 0, activityBottomPx: Int = 0): FitPadding {
         fun px(dp: Int) = (dp * density).toInt()
         return when (mode) {
             AppMode.PLAN -> {
-                val top = statusBarPx + px(maxOf(planTopDp, TOP_BAR_DP) + GAP_DP)
+                // a marker's radius under the search pill (a 12 dp gap cut the top of a point there – Pixel 2026-11-07)
+                val top = statusBarPx + px(maxOf(planTopDp, TOP_BAR_DP) + AIR_DP)
                 val fabW = if (fabWidthPx > 0) fabWidthPx else (MAP_FAB.value * density).toInt()
                 // over the whole width, above the button column (only once its height is known)
                 val above = if (fabHeightPx <= 0) null
                     else FitPadding(px(PLAN_SIDE_DP), top, px(PLAN_SIDE_DP), sheetPx + px(FAB_BOTTOM_DP + AIR_DP) + fabHeightPx)
                 // beside the button column, down to the scale bar / © above the sheet
-                FitPadding(px(PLAN_SIDE_DP), top, fabW + px(FAB_END_DP + AIR_DP), sheetPx + px(FOOTER_DP), above)
+                val beside = FitPadding(px(PLAN_SIDE_DP), top, fabW + px(FAB_END_DP + AIR_DP), sheetPx + px(FOOTER_DP))
+                val rooms = listOfNotNull(beside, above)
+                // the activity button (top left, measured; 0 = not shown): each room beside it or below it
+                val clearLeft = activityRightPx + px(AIR_DP)
+                val clearTop = activityBottomPx + px(AIR_DP)
+                val all = if (activityRightPx <= 0 || clearTop <= top) rooms
+                    else rooms.flatMap { r -> listOf(r.copy(left = maxOf(r.left, clearLeft)), r.copy(top = maxOf(r.top, clearTop))) }
+                all.foldRight(null as FitPadding?) { r, next -> r.copy(above = next) }!!
             }
             AppMode.NAVIGATE -> FitPadding(px(SIDE_DP), statusBarPx + px(navTopDp + GAP_DP), px(NAV_RIGHT_DP),
                 px(navBottomDp + 2 * GAP_DP))
@@ -108,14 +120,23 @@ internal object FitPaddingRule {
     }
 
     /**
-     * The room that shows the route bigger: [zoomFor] = the camera zoom a fit into that room gives (null = unknown).
-     * A tie keeps the first (beside the buttons).
+     * The room that shows the route biggest of [pad] and the rooms it names ([FitPadding.above], in turn): [zoomFor] =
+     * the camera zoom a fit into that room gives (null = unknown: that room is not taken; the first unknown → [pad]).
+     * A tie keeps the earlier one (beside the buttons first).
      */
     fun pick(pad: FitPadding, zoomFor: (FitPadding) -> Double?): FitPadding {
-        val alt = pad.above ?: return pad
-        val a = zoomFor(pad.copy(above = null)) ?: return pad
-        val b = zoomFor(alt) ?: return pad
-        return if (b > a + 1e-6) alt else pad
+        if (pad.above == null) return pad
+        val first = zoomFor(pad.copy(above = null)) ?: return pad
+        var best = pad
+        var bestZoom = first
+        var alt = pad.above
+        while (alt != null) {
+            val room = alt.copy(above = null)
+            val z = zoomFor(room)
+            if (z != null && z > bestZoom + 1e-6) { best = room; bestZoom = z }
+            alt = alt.above
+        }
+        return best
     }
 
     /** [TOP_BAR_BOTTOM] in dp (search pill + ☰ below the status bar). */
