@@ -14,6 +14,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 import java.util.Locale
+import com.onpath.app.domain.tour.MinuteClock
+import com.onpath.app.domain.tour.NextStop
+import com.onpath.app.domain.tour.StopAhead
 
 /**
  * The next stop on the turn card (owner 2026-11-03, comparison card 1): "1,2 km · Stopp 2 · Leiteralm" when the stop

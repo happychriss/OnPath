@@ -65,6 +65,7 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.search.Place
 import com.onpath.app.search.SearchKinds
 import com.onpath.app.ui.MapGestures.PointAction
+import com.onpath.app.domain.plan.RoutingSpot
 
 /** "Meraner Hütte", else "Start" / "Stop 2" / "Destination". */
 fun stopLabel(i: Int, count: Int, name: String?): String = name?.takeIf { it.isNotBlank() } ?: when {

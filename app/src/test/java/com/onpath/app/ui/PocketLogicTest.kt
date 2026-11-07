@@ -3,6 +3,7 @@ package com.onpath.app.ui
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import com.onpath.app.domain.tour.PocketLogic
 
 /**
  * When the proximity sensor turns the screen off while navigating (owner 2026-10-30): on foot at once, on the bike only

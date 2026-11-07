@@ -91,6 +91,13 @@ import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.TurnDetector
 import com.onpath.app.routing.TurnKind
+import com.onpath.app.domain.tour.MinuteClock
+import com.onpath.app.domain.tour.NextStop
+import com.onpath.app.domain.tour.RestEvents
+import com.onpath.app.domain.tour.ScreenPolicy
+import com.onpath.app.domain.tour.SmartScreen
+import com.onpath.app.domain.tour.StopAhead
+import com.onpath.app.domain.tour.StopRow
 
 /** What the Navigate screen shows (stateless, so screenshot tests can build it). */
 data class NavUi(

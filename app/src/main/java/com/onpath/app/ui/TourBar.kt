@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Constraints
 import com.onpath.app.data.Format
+import com.onpath.app.domain.tour.EndSheetGuard
 
 /**
  * The tour card in Plan mode while a tour records: the three answers to "what now with my

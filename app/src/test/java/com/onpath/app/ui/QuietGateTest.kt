@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.onpath.app.domain.tour.QuietGate
 
 /** One style reload / one recalc per burst of changes, never while the user drags. */
 class QuietGateTest {

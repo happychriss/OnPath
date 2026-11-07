@@ -36,6 +36,10 @@ import org.junit.Rule
 import org.junit.Test
 import androidx.compose.ui.graphics.asImageBitmap
 import kotlin.math.sin
+import com.onpath.app.domain.plan.LivePlan
+import com.onpath.app.domain.plan.LivePlanRows
+import com.onpath.app.domain.tour.StopAhead
+import com.onpath.app.domain.tour.StopRow
 
 /** JVM screenshots of the non-map UI at 390 dp width (map replaced by a placeholder). */
 class ScreenshotTest {

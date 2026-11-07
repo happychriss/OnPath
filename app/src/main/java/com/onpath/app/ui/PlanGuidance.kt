@@ -1,5 +1,7 @@
 package com.onpath.app.ui
 
+import com.onpath.app.domain.plan.RouteBack
+
 /**
  * Owner rule: what Plan shows = what Navigate follows; an empty plan = nothing followed. AppViewModel applies it after
  * every change of the planned points (edit, Clear, Undo, Redo).

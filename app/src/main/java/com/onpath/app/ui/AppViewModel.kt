@@ -69,6 +69,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
+import com.onpath.app.domain.plan.FollowHistory
+import com.onpath.app.domain.plan.LivePlan
+import com.onpath.app.domain.plan.LivePlanRows
+import com.onpath.app.domain.plan.RouteBack
+import com.onpath.app.domain.plan.RoutingSpot
+import com.onpath.app.domain.tour.QuietGate
 
 /** A track shown on the map (imported GPX, recorded or saved tour). */
 data class ShownTrack(

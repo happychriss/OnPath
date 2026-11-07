@@ -9,6 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Test
+import com.onpath.app.domain.plan.FollowHistory
 
 /**
  * Bug 02 (field 2026-10-31): led ("Guide me") 60 km to a 4-point plan, a hold added point 5, Undo – the tour then

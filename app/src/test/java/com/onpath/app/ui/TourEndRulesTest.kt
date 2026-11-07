@@ -3,6 +3,8 @@ package com.onpath.app.ui
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.onpath.app.domain.tour.EndSheetGuard
+import com.onpath.app.domain.tour.TrackLine
 
 /** Field bug 2026-11-06 22:30 (Pixel, tour 169: started 22:29:41, end sheet 22:30:17, saved 22:30:18, 0 m). */
 class TourEndRulesTest {

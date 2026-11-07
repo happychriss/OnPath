@@ -7,6 +7,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.onpath.app.domain.plan.LivePlan
+import com.onpath.app.domain.plan.LivePlanRows
+import com.onpath.app.domain.plan.LiveRows
 
 /**
  * The plan on the map in My routes (owner 2026-11-06 23:00: "unter Zuletzt ‚gerade in Bearbeitung'"): first under Zuletzt

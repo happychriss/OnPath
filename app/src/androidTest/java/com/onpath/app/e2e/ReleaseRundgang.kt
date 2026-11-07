@@ -122,7 +122,7 @@ class ReleaseRundgang : E2EBase() {
         waitUntil("the arrival question", 180_000) { read { it.arrivalAsk } }
         assertNotNull("\"You have arrived\" shown", findFresh(By.text(Txt.s(Res.string.nav_arrived_title)), 10_000))
         shot("3-arrived")
-        Thread.sleep(com.onpath.app.ui.EndSheetGuard.GUARD_MS) // the sheet ignores a press in its first half second
+        Thread.sleep(com.onpath.app.domain.tour.EndSheetGuard.GUARD_MS) // the sheet ignores a press in its first half second
         clickText(Txt.s(Res.string.nav_save_recording))
         waitUntil("tour saved", 30_000) { RecordingServiceState.idle() && db.getTour(tourId)?.state == "done" }
         shot("4-saved")
@@ -272,7 +272,7 @@ class ReleaseRundgang : E2EBase() {
         assertNotNull("\"End recording?\"", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
         shot("1-end-tour")
         // the sheet ignores a press in its first half second (field bug 2026-11-06 22:30, EndSheetGuard): a person looks first
-        Thread.sleep(com.onpath.app.ui.EndSheetGuard.GUARD_MS)
+        Thread.sleep(com.onpath.app.domain.tour.EndSheetGuard.GUARD_MS)
         clickText(Txt.s(Res.string.nav_save_recording))
         waitUntil("tour saved", 30_000) { RecordingServiceState.idle() && db.getTour(tourId)?.state == "done" }
         assertNotNull("the box \"Tour gespeichert\"", findFresh(By.text(Txt.s(Res.string.routes_track_saved)), 10_000))

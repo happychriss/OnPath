@@ -8,6 +8,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import java.util.Locale
+import com.onpath.app.domain.tour.RestEvent
 
 /**
  * The rest view while cycling (Smart screen, owner 2026-10-30): black, the next turn's sign large, distance, direction,

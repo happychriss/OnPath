@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import androidx.compose.runtime.rememberUpdatedState
+import com.onpath.app.domain.tour.ScreenPolicy
 
 /** The main screen: full-screen map with the Plan or Navigate controls on top (AppMode). */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)

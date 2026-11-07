@@ -1,4 +1,4 @@
-package com.onpath.app.ui
+package com.onpath.app.domain.plan
 
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint

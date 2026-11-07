@@ -8,6 +8,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import com.onpath.app.domain.tour.StopAhead
 
 /**
  * Owner 2026-11-03: the map's numbered circle instead of the word "Stopp" in buttons and the turn card; a re-route that

@@ -21,6 +21,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.onpath.app.debug.Problems
+import com.onpath.app.domain.tour.PocketLogic
 
 /**
  * "Keep screen on while navigating", pocket-aware (docs/design/battery-audit.md, docs/design/navigation-cues.md):

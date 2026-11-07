@@ -1,4 +1,4 @@
-package com.onpath.app.ui
+package com.onpath.app.domain.tour
 
 /**
  * Turns a burst of changes into one action, e.g. one map style reload for many map store generations, one plan

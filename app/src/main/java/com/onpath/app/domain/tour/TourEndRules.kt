@@ -1,4 +1,4 @@
-package com.onpath.app.ui
+package com.onpath.app.domain.tour
 
 /**
  * Whether a done tour / track has a line one can plan from or follow (field bug 2026-11-06 22:30: a 0 m tour opened on

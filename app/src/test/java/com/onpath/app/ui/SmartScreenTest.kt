@@ -13,6 +13,12 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.onpath.app.domain.tour.PocketLogic
+import com.onpath.app.domain.tour.RestEvent
+import com.onpath.app.domain.tour.RestEvents
+import com.onpath.app.domain.tour.RestTarget
+import com.onpath.app.domain.tour.ScreenPolicy
+import com.onpath.app.domain.tour.SmartScreen
 
 /**
  * Smart screen while cycling (owner 2026-10-30): when the rest view shows instead of the map, and that a hike never gets

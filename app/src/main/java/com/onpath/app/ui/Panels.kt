@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.onpath.app.data.Format
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.domain.tour.TrackLine
 
 // ------------------------------------------------------------------ shared pieces
 

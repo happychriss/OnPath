@@ -1,4 +1,4 @@
-package com.onpath.app.ui
+package com.onpath.app.domain.tour
 
 /** In the pocket this long: let the phone go to sleep normally (screen stays off until the power button). */
 const val POCKET_SLEEP_MS = 60_000L
