@@ -176,8 +176,7 @@ const off3d = await page.evaluate(() => ({ terrain: window.__map.getTerrain(), p
 tcheck(!off3d.terrain && off3d.pitch === 0 && off3d.max === 0 && !off3d.note, `3D off: flat again ${JSON.stringify(off3d)}`);
 tcheck(await page.evaluate(() => window.__fly.status.state) === 'idle' && await page.locator('#flyBar').isHidden(), 'flyover: leaving 3D stops it and hides its buttons');
 if (terrainFails.length) errors.push('terrain view: ' + terrainFails.join('; '));
-// one green (owner 2026-10-29): header, buttons and icons use the app's green (OnPathColors.Green, #245F46 since 0.13),
-// and green text keeps WCAG AA (4.5:1; icons 3:1) on its background in light and dark
+// colours (owner 2026-10-29, colour rule 2026-11-06): see below; text keeps WCAG AA (4.5:1; icons 3:1) on its background in light and dark
 const greens = () => page.evaluate(() => {
   const rgb = (c) => (c.match(/[\d.]+/g) ?? []).map(Number);
   const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
@@ -194,19 +193,21 @@ const greens = () => page.evaluate(() => {
 });
 const contrastFails = [];
 const light = await greens();
-const appGreen = 'rgb(36, 95, 70)';
-for (const sel of ['.product', '#menuPlans .ic', '.chip .ic']) {
+// the app's colour rule (b873458a, owner 2026-11-06): the brand's word stays the navigation green, plain buttons and icons
+// are walnut (the theme's primary)
+const appGreen = 'rgb(36, 95, 70)', walnut = 'rgb(74, 63, 55)';
+for (const [sel, want] of [['.product', appGreen], ['#menuPlans .ic', walnut], ['.chip .ic', walnut]]) {
   const g = light.find((x) => x.sel === sel);
-  if (g && g.color !== appGreen) contrastFails.push(`${sel} is ${g.color}, not the app's green`);
+  if (g && g.color !== want) contrastFails.push(`${sel} is ${g.color}, not ${want}`);
 }
 const prim = light.find((x) => x.sel === 'button.primary');
-if (prim && prim.fill !== appGreen) contrastFails.push(`button.primary fill ${prim.fill}, not the app's green`);
+if (prim && prim.fill !== walnut) contrastFails.push(`button.primary fill ${prim.fill}, not walnut`);
 for (const x of light) if (x.ratio < x.min) contrastFails.push(`${x.sel} ${x.color} contrast ${x.ratio.toFixed(2)} < ${x.min}`);
 // always light like the app (owner 2026-10-30): a dark system setting changes nothing
 await page.emulateMedia({ colorScheme: 'dark' });
 const dark = await greens();
 const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-if (bg !== 'rgb(255, 255, 255)') contrastFails.push(`dark system setting: page background ${bg}, not light`);
+if (bg !== 'rgb(250, 250, 246)') contrastFails.push(`dark system setting: page background ${bg}, not the light paper`);
 for (const x of dark) { const l = light.find((y) => y.sel === x.sel); if (l && l.color !== x.color) contrastFails.push(`dark system setting changed ${x.sel}: ${x.color}`); }
 console.log('greens:', light.map((x) => `${x.sel} ${x.ratio.toFixed(1)}`).join(' · '));
 if (contrastFails.length) errors.push('one green / contrast: ' + contrastFails.join('; '));

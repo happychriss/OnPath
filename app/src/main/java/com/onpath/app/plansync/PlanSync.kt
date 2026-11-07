@@ -157,9 +157,16 @@ class PlanSync(
     private fun mailbox(keys: SyncKeys): Mailbox = mailboxForTests?.invoke(keys) ?: HttpMailbox(server, keys)
     private fun randomBytes(n: Int) = ByteArray(n).also { rnd.nextBytes(it) }
 
+    /**
+     * Every task of the worker runs alone among all users of the sync folder in this process ([SyncFiles.exclusive]):
+     * two app screens have two view models, so two PlanSync workers – their passes read, change and write the same
+     * ledger and links (field bug 2026-11-07).
+     */
+    private inline fun exclusive(crossinline block: () -> Unit) = Runnable { files.exclusive { block() } }
+
     /** Reads the stored pairing (background) – the state for Settings; then a first pass. */
     fun start() {
-        worker.execute { safely("start") { refreshState() } }
+        worker.execute(exclusive { safely("start") { refreshState() } })
         listenForNetwork()
         request("app start")
     }
@@ -182,7 +189,7 @@ class PlanSync(
     fun request(why: String, manual: Boolean = false, delayMs: Long = 0, quiet: Boolean = false) {
         if (manual) manualWaiting = true
         pendingRun?.cancel(false)
-        pendingRun = try { worker.schedule({ run(why, quiet) }, delayMs, TimeUnit.MILLISECONDS) } catch (e: Exception) {
+        pendingRun = try { worker.schedule(exclusive { run(why, quiet) }, delayMs, TimeUnit.MILLISECONDS) } catch (e: Exception) {
             Problems.warn("sync", "Sync not scheduled ($why)", e); null
         }
     }
@@ -226,7 +233,7 @@ class PlanSync(
      */
     fun pair(secret: ByteArray, stored: (Boolean) -> Unit = {}) {
         manualWaiting = true
-        worker.execute {
+        worker.execute(exclusive {
             try {
                 // a ledger from an earlier pairing: its plans upload again, nothing else of the old mailbox stays
                 val l = files.ledger(); l.forget(); files.saveLedger(l)
@@ -241,13 +248,13 @@ class PlanSync(
                 _state.value = _state.value.copy(problem = Problem.Storage)
                 report(Report(true, null, error = true))
                 main.post { stored(false) }
-                return@execute
+                return@exclusive
             }
             refreshState()
             main.post { stored(true) }
             gate.arm() // the browser waits for this phone's hello – also during a tour
             request("paired", manual = true)
-        }
+        })
     }
 
     /**
@@ -256,7 +263,7 @@ class PlanSync(
      * (null = not paired any more – the caller pairs the normal way). One small write, also during a tour (no sync).
      */
     fun join(browserSecret: ByteArray, done: (SyncRound.Outcome?) -> Unit) {
-        worker.execute {
+        worker.execute(exclusive {
             // the browser hellos known at the scan: an old one is no sign of the scanned browser (owner 2026-10-31)
             val scan = try { PairScan.of(files.ledger(), files.device(::randomBytes), System.currentTimeMillis()) } catch (e: Exception) {
                 Problems.warn("sync", "Browser hellos at the scan not read – any new hello counts", e); PairScan(System.currentTimeMillis())
@@ -280,25 +287,25 @@ class PlanSync(
                 if (!busy()) request("joined", delayMs = JOIN_PULL_DELAY_MS)
             }
             main.post { done(o) }
-        }
+        })
     }
 
     /** Settings → Unpair (asked first): the mailbox ends for every device, the pairing is forgotten here. */
     fun unpair(done: (status: Int) -> Unit) {
-        worker.execute {
+        worker.execute(exclusive {
             val status = try { pass().unpair() } catch (e: Exception) {
                 Problems.error("sync", "Unpairing failed", e); -2
             }
             if (status >= -1) Problems.info("sync", "Unpaired (server answer $status)")
             refreshState()
             main.post { done(status) }
-        }
+        })
     }
 
     /** Settings → Browser sync was opened: an "ended in the browser" was seen – the ☰ item is no longer amber. */
     fun endedSeen() {
         if (!_state.value.ended) return
-        worker.execute { safely("ended note") { files.clearEnded() }; safely("state") { refreshState() } }
+        worker.execute(exclusive { safely("ended note") { files.clearEnded() }; safely("state") { refreshState() } })
     }
 
     /**

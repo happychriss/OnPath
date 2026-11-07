@@ -86,7 +86,7 @@ internal class FileOps(private val resolver: ContentResolver) {
 
     companion object {
         fun writeFile(f: File, bytes: ByteArray) {
-            AtomicFiles.writeBytes(f, bytes, File(f.parentFile, ".${f.name}.tmp"))
+            AtomicFiles.writeBytes(f, bytes)
         }
     }
 }

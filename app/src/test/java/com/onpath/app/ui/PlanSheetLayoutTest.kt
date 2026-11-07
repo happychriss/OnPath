@@ -31,17 +31,17 @@ class PlanSheetLayoutTest {
     }
 
     /**
-     * From two points on; during a tour none here – the green "Navigation ›" in the foot leads back (C). A plain recording
-     * without a plan is ☰ → "Nur aufzeichnen" (owner 2026-11-06: "Los geht's ohne Route" in the sheet was confusing).
+     * ONE full-width green button in the sheet's foot, in every step – also rolled up (owner 2026-11-07, A): "Los geht's"
+     * from two points, during a tour "Weiter geht's" back to Navigate; a plain recording without a plan is ☰ → "Nur
+     * aufzeichnen" (owner 2026-11-06: "Los geht's ohne Route" in the sheet was confusing).
      */
-    @Test fun theButtonShowsFromTwoPointsAndNeverDuringATour() {
-        assertFalse(PlanBarRow.shown(ui(0, running = false)))
-        assertFalse(PlanBarRow.shown(ui(1, running = false)))
-        assertTrue(PlanBarRow.shown(ui(2, running = false)))
-        assertFalse(PlanBarRow.shown(ui(0, running = true)))
-        assertFalse(PlanBarRow.shown(ui(3, running = true)))
-        // the rolled-up row: no button below two points, none during a tour
-        assertTrue(panel.contains("if (ui.pointCount >= 2 && ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)"))
+    @Test fun theFootCarriesTheOneGreenButton() {
+        assertEquals(PlanFoot.Kind.NONE, PlanFoot.of(ui(0, running = false)))
+        assertEquals(PlanFoot.Kind.NONE, PlanFoot.of(ui(1, running = false)))
+        assertEquals(PlanFoot.Kind.GO, PlanFoot.of(ui(2, running = false)))
+        assertEquals(PlanFoot.Kind.BACK, PlanFoot.of(ui(0, running = true)))
+        assertEquals(PlanFoot.Kind.BACK, PlanFoot.of(ui(3, running = true)))
+        assertEquals(56f, PlanFoot.HEIGHT.value)
     }
 
     /** The plan row keeps its words while they fit, else three signs (a large font) – a word is never cut. */
@@ -57,16 +57,15 @@ class PlanSheetLayoutTest {
         assertTrue(panel.contains("if (factsOneLine(route)) Box {"))
     }
 
-    /** The rolled-up row: ↑ ↓ go first, then the button moves under the time – never cut. */
-    @Test fun rolledUpRowDropsTheElevationFirst() {
-        assertEquals("↑842 ↓310", CollapsedFacts.elevation(842.4, 309.6))
-        assertEquals(CollapsedFacts.Fit.ALL, CollapsedFacts.fit(150, 80, 110, 8, 358))
-        assertEquals(CollapsedFacts.Fit.NO_ELEVATION, CollapsedFacts.fit(150, 120, 110, 8, 358))
-        assertEquals(CollapsedFacts.Fit.WRAP, CollapsedFacts.fit(260, 120, 150, 8, 358))
-        // during a tour too – without the button (owner 2026-11-05)
-        val row = panel.substringAfter("private fun CollapsedRow(").substringBefore("\n}\n")
-        assertTrue(row, row.contains("if (ui.pointCount >= 2 && ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)"))
-        assertFalse("no activity sign in the row (it is on the map)", row.contains("ui.activity.icon"))
+    /** The rolled-up row (owner 2026-11-07, A): centred facts in whole pieces – a large font wraps between them, never inside. */
+    @Test fun rolledUpFactsWrapOnlyBetweenValues() {
+        assertEquals("↑842\u00A0↓310", CollapsedFacts.elevation(842.4, 309.6))
+        val p = CollapsedFacts.pieces(16_560.0, 12_500.0, 842.0, 310.0)
+        assertEquals(3, p.size)
+        // no ordinary space inside a piece: a line can only break between the pieces
+        p.forEach { assertFalse(it, it.contains(' ')) }
+        assertTrue(p[1], p[1].startsWith("\u00A0·\u00A0"))
+        assertTrue(p[2], p[2].endsWith("↑842\u00A0↓310"))
     }
 
     /** No Save in the sheet; ✕ never asks (owner 2026-11-06) – a plan not saved goes under My routes → Zuletzt. */
