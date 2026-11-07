@@ -162,7 +162,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val blockingMissing: List<DataFiles.Check> get() = DataFiles.blocking(missing, overviewBundled, cells.downloadsAvailable)
 
     // --- the tour's lifecycle state (audit package 4 stage 2: a focused state holder, the VM forwards) ---
-    /** End sheet, arrival box, saved box, interrupted tour, "Neuer Plan" line, hold lock – see [TourController]. */
+    /** End sheet, arrival box, saved box, interrupted tour, "Neuer Plan" line – see [TourController]. */
     val tour = com.onpath.app.ui.tour.TourController(
         object : com.onpath.app.ui.tour.TourRecorder {
             override fun start(activity: String, sac: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_START) {
@@ -175,11 +175,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override fun pause(pause: Boolean) =
                 RecordingService.send(getApplication(), if (pause) RecordingService.ACTION_PAUSE else RecordingService.ACTION_RESUME)
             override fun stop() = RecordingService.send(getApplication(), RecordingService.ACTION_STOP)
-        },
-        object : com.onpath.app.ui.tour.HoldStore {
-            override var holdLearned: Boolean
-                get() = prefs.holdLearned
-                set(v) { prefs.holdLearned = v }
         },
     )
 
@@ -197,10 +192,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val newPlanNote: NewPlanNote? get() = tour.newPlanNote
     fun dropNewPlanNote() = tour.dropNewPlanNote()
 
-    /** The locked bar's rest line shows until one held button fired ([HoldRule.pillShows], owner 2026-11-07). */
-    val holdLearned: Boolean get() = tour.holdLearned
-    /** A held button of the locked bar fired: from now on its rest line is gone (a short tap still says "Gedrückt halten"). */
-    fun holdFired() = tour.holdFired()
     /** The line at the top of the open Settings page; goes when the page changes or Settings closes. */
     var settingsNote by mutableStateOf<Notice?>(null)
     /**
@@ -3127,7 +3118,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * route, else nothing (free recording – the button then reads "Start recording · …", [PlanStart]), and starts recording.
      */
     /**
-     * [recordOnly]: ☰ → "Ohne Plan aufzeichnen" (owner 2026-11-06, flow map H1): a plain recording whatever the plan holds –
+     * [recordOnly]: ☰ → "Nur aufzeichnen" (owner 2026-11-06, flow map H1): a plain recording whatever the plan holds –
      * nothing is followed, the plan stays as it is.
      */
     fun startNavigation(force: Boolean = false, recordOnly: Boolean = false) {

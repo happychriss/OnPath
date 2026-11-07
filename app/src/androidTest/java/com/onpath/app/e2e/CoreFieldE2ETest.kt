@@ -9,6 +9,7 @@ import com.onpath.strings.nav_action_pause
 import com.onpath.strings.nav_end_short
 import com.onpath.strings.nav_end_tour_title
 import com.onpath.strings.nav_hold_hint
+import com.onpath.strings.nav_pause_band_line
 import com.onpath.strings.nav_leave_go
 import com.onpath.strings.nav_leave_stay
 import com.onpath.strings.nav_settings_cd
@@ -472,7 +473,16 @@ class CoreFieldE2ETest : E2EBase() {
      * Owner 2026-11-06 ("Ich bin in Hilden, Plan in Köln – im Planmodus steht mein Standort, wo ist mein Plan?"): with
      * a plan, Navigate → Plan shows the whole plan, not the own position (PlanCamera).
      */
-    @Test fun backInPlanTheMapShowsThePlanNotThePosition() {
+    @Test fun backInPlanTheMapShowsThePlanNotThePosition() = planInFrontAfterNavigate(walkingDirectionUp = false)
+
+    /**
+     * Owner 2026-11-07 ("Plan in Meran, ich in Hilden – Navigation, zurück in Plan, ich sehe meinen Standort"): the same
+     * with the walking direction up in Navigate (the compass cycle) – Plan keeps following the position there until the
+     * plan's fit; the fit must win, the map must not end on the position.
+     */
+    @Test fun backInPlanWithWalkingDirectionUpTheMapShowsThePlan() = planInFrontAfterNavigate(walkingDirectionUp = true)
+
+    private fun planInFrontAfterNavigate(walkingDirectionUp: Boolean) {
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         // a saved plan about 25 km north of the walker
         val far = listOf(GpxWaypoint(lat + 0.22, lon - 0.01, "E2E far start"), GpxWaypoint(lat + 0.24, lon + 0.02, "E2E far goal"))
@@ -486,10 +496,15 @@ class CoreFieldE2ETest : E2EBase() {
             // Navigate follows the own position
             scenario.onActivity { vm(it).startNavigation(force = true) }
             waitUntil("Navigate", 20_000) { mode() == AppMode.NAVIGATE }
+            if (walkingDirectionUp) {
+                scenario.onActivity { if (!vm(it).headingUp) vm(it).onCompass(false) }
+                waitUntil("walking direction up", 5_000) { var h = false; scenario.onActivity { a -> h = vm(a).headingUp }; h }
+            }
             Thread.sleep(2_500)
             scenario.onActivity { vm(it).switchToPlan() }
             waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
             Thread.sleep(3_000) // settle + fit animation
+            Thread.sleep(3_000) // a following camera would have pulled the map back to the position by now
             var at: org.maplibre.android.geometry.LatLng? = null
             onMap { m -> at = m.cameraPosition.target }
             val c = at!!
@@ -498,6 +513,7 @@ class CoreFieldE2ETest : E2EBase() {
             assertTrue("the map shows the plan (${toPlan.toInt()} m from it), not the position (${toMe.toInt()} m)", toPlan < toMe && toPlan < 5_000)
         } finally {
             scenario.onActivity { if (vm(it).recState.value != null) vm(it).stopRecording() }
+            if (walkingDirectionUp) scenario.onActivity { if (vm(it).headingUp) vm(it).onCompass(true) }
             db.deleteTour(id)
         }
     }
@@ -581,6 +597,8 @@ class CoreFieldE2ETest : E2EBase() {
             clickText(Txt.s(Res.string.nav_action_pause))
             waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
             assertNotNull("Weiter at the bottom", findFresh(By.text(Txt.s(Res.string.common_resume)), 5_000))
+            // the pause band (owner 2026-11-07, variant C): what stands still, over the buttons
+            assertNotNull("the pause band says what stands still", findFresh(By.text(Txt.s(Res.string.nav_pause_band_line)), 5_000))
             clickText(Txt.s(Res.string.nav_end_short))
             assertNotNull("the end sheet", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())
@@ -606,6 +624,8 @@ class CoreFieldE2ETest : E2EBase() {
             waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
             val pause = findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 10_000)
             assertNotNull("locked: Pause at the bottom, no slider", pause)
+            // owner 2026-11-07 09:30: nothing over the light buttons at rest – the hint only after a short tap
+            assertTrue("no hint at rest", goneFresh(By.text(Txt.s(Res.string.nav_hold_hint)), 2_000))
             // a short tap: the band starts and falls back. Right after the switch to Navigate (a janky first frame on the
             // emulator, GitHub run 2026-11-06 22:46) a tap can land before the bar takes touches – tap again then; a short
             // tap never acts, so a second one is harmless
@@ -623,6 +643,7 @@ class CoreFieldE2ETest : E2EBase() {
             assertTrue("a short tap does not pause", com.onpath.app.recording.RecordingService.state.value?.paused != true)
             holdButton(Txt.s(Res.string.nav_action_pause), ms = holdMs + 1_000)
             waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
+            assertNotNull("the pause band over the locked bar", findFresh(By.text(Txt.s(Res.string.nav_pause_band_line)), 5_000))
             holdButton(Txt.s(Res.string.nav_end_short), ms = holdMs + 1_000)
             assertNotNull("the end sheet", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())

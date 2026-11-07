@@ -18,20 +18,19 @@ import kotlin.random.Random
  * Random but seeded tour flows against [TourController] (audit package 4 stage 2): start, pause, resume, plan edits
  * during the tour ([PlanSession]), Undo / Redo, the end sheet with presses at random moments after it appeared
  * ([EndSheetGuard]), end-save, end-delete, arrival, the app killed and restarted (the service sticky or gone → the
- * "interrupted tour" question), the hold lock – and after every step the rules that must always hold:
+ * "interrupted tour" question) – and after every step the rules that must always hold:
  * 1. a recording is never lost without an explicit delete (every tour started is in the store, in the bin only when
  *    the user chose Löschen; a tour still marked as recording with no service running is shown as interrupted);
  * 2. ending always leaves no running recording, and no end sheet, arrival box or "Neuer Plan" line of the old tour;
  * 3. the tour follows the plan shown or nothing (the stand-in follows what the view model would: the plan at the start
  *    and after every edit during the tour; nothing after the end);
  * 4. the end sheet never saves or deletes from a press within [EndSheetGuard.GUARD_MS] of appearing;
- * 5. pause / resume never changes the plan;
- * 6. the hold lock, once learned, stays learned (also after a restart).
+ * 5. pause / resume never changes the plan.
  * A failing flow prints its seed and steps, so it can be replayed.
  */
 class TourFlowPropertyTest {
 
-    private enum class Op { START, PAUSE, RESUME, EDIT, UNDO, REDO, ASK_END, PRESS, ARRIVE, ARRIVAL_KEEP, LEAVE_ARRIVAL, RESTART, UNFINISHED, HOLD, NEW_PLAN }
+    private enum class Op { START, PAUSE, RESUME, EDIT, UNDO, REDO, ASK_END, PRESS, ARRIVE, ARRIVAL_KEEP, LEAVE_ARRIVAL, RESTART, UNFINISHED, NEW_PLAN }
     private enum class Press { SAVE, DELETE, KEEP }
 
     /** The recording service and the database as the controller sees them. */
@@ -50,20 +49,17 @@ class TourFlowPropertyTest {
         override fun stop() { val id = running ?: return; db[id] = "done"; running = null; paused = false; finished = id }
     }
 
-    private class Holds : HoldStore { override var holdLearned = false }
 
     private class Flow(seed: Int) {
         val rnd = Random(seed)
         val service = FakeService()
-        val holds = Holds()
-        var c = TourController(service, holds)
+        var c = TourController(service)
         val session = PlanSession(mutableListOf())
         var followed: List<GeoPoint>? = null
         val explicitDeletes = HashSet<Long>()
         var shownAt = 0L
         var now = 0L
         var earlyActions = 0
-        var learnedOnce = false
         val log = ArrayList<String>()
 
         fun tour(id: Long) = Tour(id, TourKind.RECORDED, "Tour $id", 0L, "HIKE", 2, 0.0, 0.0, 0.0, 0.0, "active", emptyList())
@@ -110,7 +106,7 @@ class TourFlowPropertyTest {
                 Op.RESTART -> {
                     // the app process dies; the service is sticky (keeps recording) or was killed with it
                     if (rnd.nextBoolean()) { service.running = null; service.paused = false }
-                    c = TourController(service, holds)
+                    c = TourController(service)
                     val active = service.db.entries.firstOrNull { it.value == "active" }?.key
                     if (active != null && service.running == null) c.showUnfinished(tour(active), emptyList())
                     if (service.running == null) followed = null
@@ -122,7 +118,6 @@ class TourFlowPropertyTest {
                         else -> { c.closeUnfinished(); service.db[t.id] = "bin"; explicitDeletes += t.id }
                     }
                 }
-                Op.HOLD -> if (service.running != null) { c.holdFired(); learnedOnce = true }
                 Op.NEW_PLAN -> if (service.running != null) {
                     c.noteNewPlan(undo = session.points.isNotEmpty())
                     session.replace(listOf(GeoPoint(51.2, 7.0), GeoPoint(51.3, 7.1))); followed = session.points.toList()
@@ -148,8 +143,6 @@ class TourFlowPropertyTest {
             if (service.running != null && followed != null) assertEquals("$where: tour follows another plan", session.points.toList(), followed)
             // 4 – no early save / delete
             assertEquals("$where: end sheet acted on a press within ${EndSheetGuard.GUARD_MS} ms", 0, earlyActions)
-            // 6 – the hold lock stays learned
-            if (learnedOnce) assertTrue("$where: hold lock forgot it was learned", c.holdLearned)
         }
     }
 
@@ -193,7 +186,7 @@ class TourFlowPropertyTest {
     }
 
     @Test fun endingClearsTheSheetTheArrivalAndTheNewPlanLine() {
-        val s = FakeService(); val c = TourController(s, Holds())
+        val s = FakeService(); val c = TourController(s)
         c.start("HIKE", 2); c.onArrived(true); c.noteNewPlan(undo = true); c.endAsk = EndAsk.Plain
         assertTrue(c.arrivalAsk); assertNotNull(c.newPlanNote)
         c.end(delete = true); s.stop()
@@ -203,20 +196,14 @@ class TourFlowPropertyTest {
     }
 
     @Test fun theArrivalBoxComesOncePerArrival() {
-        val c = TourController(FakeService(), Holds())
+        val c = TourController(FakeService())
         c.onArrived(true); assertTrue(c.arrivalAsk)
         c.arrivalAsk = false; c.onArrived(true); assertFalse("same arrival: no second box", c.arrivalAsk)
         c.onArrived(false); c.onArrived(true); assertTrue("a new arrival asks again", c.arrivalAsk)
     }
 
-    @Test fun theHoldLockIsLearnedOnceAndRemembered() {
-        val h = Holds(); val c = TourController(FakeService(), h)
-        assertFalse(c.holdLearned); c.holdFired(); assertTrue(c.holdLearned); assertTrue(h.holdLearned)
-        assertTrue("a new controller reads it back", TourController(FakeService(), h).holdLearned)
-    }
-
     @Test fun backToTheInterruptedQuestionFromItsRideSummary() {
-        val c = TourController(FakeService(), Holds())
+        val c = TourController(FakeService())
         val t = Tour(7, TourKind.RECORDED, "T", 0L, "HIKE", 2, 0.0, 0.0, 0.0, 0.0, "active", emptyList())
         c.showUnfinished(t, emptyList()); c.unfinished = null
         c.unfinishedRides = t to com.onpath.app.rides.RideView.Summary(emptyList(), emptyList(), emptyList(),

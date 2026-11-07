@@ -249,14 +249,18 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
         handleLabel = str(if (ExpandGesture.handleGrows(size)) Res.string.plan_sheet_bigger else Res.string.plan_sheet_smaller),
         state = state,
         onDragging = cb.onSheetDrag,
-        // the rolled-up row has its own small green button
+        // the green button is in the foot (every step); the bar below the body is only air
         barFrom = PlanSize.MINI.step,
         // Plan is blue (owner 2026-11-03): a light blue sheet with a blue handle and top edge – also during a tour
         surfaceColor = OnPathColors.PlanTint, accent = OnPathColors.PlanAccent,
-        // during a tour (owner 2026-11-06, C): the green way back to Navigate sits where "Los geht's" sits without one,
-        // in every step – the sheet rests on it
-        foot = if (ui.tour != null || ui.tourRunning) ({ BackToNavigationButton({ goClick(ui, cb) }) }) else null,
-        bottomBar = { PlanBar(ui, cb) },
+        // the ONE green button in the sheet's foot, full width, in every step – also rolled up (owner 2026-11-07, A: "Los
+        // geht's" was small at the edge): "▶ Los geht's" from two points, during a tour "▲ Weiter geht's" (2026-11-06, C)
+        foot = when (PlanFoot.of(ui)) {
+            PlanFoot.Kind.BACK -> ({ BackToNavigationButton({ goClick(ui, cb) }) })
+            PlanFoot.Kind.GO -> ({ GoButton(ui, cb) })
+            PlanFoot.Kind.NONE -> null
+        },
+        bottomBar = { PlanBar() },
     ) {
         // the pulled-up sheet has ONE fixed height (owner): deleting / adding / moving points (or the routing
         // bar) never makes its top edge jump; the scrolling area takes what is left
@@ -267,7 +271,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
 }
 
 /** The plan row's pills: one paper shade darker, ink blue words (owner 2026-11-06 variant C – no light blue; ≥ 7:1). */
-internal val PillBlueLight = OnPathColors.PaperDim
+internal val PillBlueLight = OnPathColors.PaperDeep
 internal val PillBlueInk = OnPathColors.ActionEdit
 
 @Composable
@@ -496,11 +500,12 @@ object PlanRow {
 }
 
 /**
- * The rolled-up sheet (owner 2026-11-05, R5): ONE row `4 h 36 min · 12,5 km · ↑842 ↓310  ⚠2 [▶ Los geht's]` – no
- * activity sign (it is on the map), the hints' ⚠ count, a compact green button ("▶ Weiter geht's" during a tour; TalkBack:
- * the full label). Never cut: when it does not fit, ↑ ↓ go first, then the button moves under the time. A tap on the row
- * opens the summary step; laid over the summary and faded by [barShown] (1 = the summary's bar is fully in → gone).
+ * The rolled-up sheet (owner 2026-11-07, variant A): the facts centred `4 h 36 min · 12,5 km · ↑842 ↓310  ⚠2` – the
+ * hints' ⚠ count at their end – over the full-width green button in the sheet's foot ([PlanFoot]). No activity sign (it
+ * is on the map). A large font wraps between the values, never inside one. A tap on the row opens the summary step;
+ * laid over the summary and faded by [barShown] (1 = the summary's bar is fully in → gone).
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun CollapsedRow(ui: PlanUi, cb: PlanCallbacks, barShown: () -> Float, stop: Modifier) {
     val on = ui.collapsed
@@ -511,101 +516,47 @@ private fun CollapsedRow(ui: PlanUi, cb: PlanCallbacks, barShown: () -> Float, s
         .then(if (on) Modifier.clickable(role = Role.Button, onClickLabel = str(Res.string.plan_sheet_expand)) {
             cb.onResize(PlanSize.MINI)
         } else Modifier.clearAndSetSemantics { })) {
-        Layout(content = {
-            // 1: time · km, one piece
+        androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            horizontalArrangement = Arrangement.Center, verticalArrangement = Arrangement.Center) {
+            val mid = Modifier.align(Alignment.CenterVertically)
             when {
-                route != null -> Text(androidx.compose.ui.text.buildAnnotatedString {
-                    val st = MaterialTheme.typography.titleMedium
-                    append(instrument(Format.duration(route.durationS).replace(' ', '\u00A0'), st))
-                    withStyle(androidx.compose.ui.text.SpanStyle(color = variant)) {
-                        append(Instrument.styled(" · " + Format.distance(route.distanceM).replace(' ', '\u00A0'), st,
-                            numberWeight = FontWeight.Normal))
+                route != null -> CollapsedFacts.pieces(route.durationS, route.distanceM, route.ascentM, route.descentM)
+                    .forEachIndexed { i, piece ->
+                        val st = if (i == 0) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge
+                        // one value never breaks (no-break spaces inside, one line each); the line wraps between them
+                        Text(if (i == 0) instrument(piece, st) else Instrument.styled(piece, st, numberWeight = FontWeight.Normal),
+                            style = st, color = if (i == 0) Color.Unspecified else variant, maxLines = 1, softWrap = false,
+                            modifier = mid)
                     }
-                }, style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false)
-                ui.routing -> Text(PlanStatus.CALCULATING, style = MaterialTheme.typography.bodyMedium, color = variant)
-                else -> Text(str(EmptyPlanTitle.of(ui)), style = MaterialTheme.typography.titleMedium)
+                ui.routing -> Text(PlanStatus.CALCULATING, style = MaterialTheme.typography.bodyMedium, color = variant, modifier = mid)
+                else -> Text(str(EmptyPlanTitle.of(ui)), style = MaterialTheme.typography.titleMedium, modifier = mid)
             }
-            // 2: ↑ ↓ (the first to go)
-            if (route != null) Text(Instrument.styled(" · " + CollapsedFacts.elevation(route.ascentM, route.descentM),
-                MaterialTheme.typography.bodyMedium, numberWeight = FontWeight.Normal),
-                style = MaterialTheme.typography.bodyMedium, color = variant, maxLines = 1, softWrap = false)
-            else Box {}
-            // 3: ⚠ count + the green button
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (!ui.routing && ui.warnText != null && ui.warnCount > 0) {
-                    Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Amber, modifier = Modifier.size(20.dp))
-                    Text("${ui.warnCount}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
-                        color = OnPathColors.Amber, modifier = Modifier.padding(start = 2.dp, end = 6.dp))
-                }
-                // during a tour no button (owner 2026-11-05/06: the green "Navigation ›" in the foot leads back); from two points
-                // (a plain recording is in ☰ – owner 2026-11-06: "Los geht's ohne Route" in the sheet was confusing)
-                if (ui.pointCount >= 2 && ui.tour == null && !ui.tourRunning) CompactGo(ui, cb, on)
-            }
-        }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { ms, c ->
-            val gap = 8.dp.roundToPx()
-            val max = c.maxWidth
-            val e = ms[2].measure(Constraints(maxWidth = max))
-            val tw = ms[0].maxIntrinsicWidth(Constraints.Infinity)
-            val uw = ms[1].maxIntrinsicWidth(Constraints.Infinity)
-            val fit = CollapsedFacts.fit(tw, uw, e.width, gap, max)
-            val withUp = fit == CollapsedFacts.Fit.ALL
-            val beside = fit != CollapsedFacts.Fit.WRAP
-            val t = ms[0].measure(Constraints(maxWidth = if (beside) max - e.width - gap else max))
-            val u = if (withUp) ms[1].measure(Constraints(maxWidth = max)) else null
-            val minH = c.minHeight
-            if (beside) {
-                val h = maxOf(t.height, e.height, minH)
-                layout(max, h) {
-                    t.placeRelative(0, (h - t.height) / 2)
-                    u?.placeRelative(t.width, (h - u.height) / 2)
-                    e.placeRelative(max - e.width, (h - e.height) / 2)
-                }
-            } else {
-                val h = maxOf(t.height + e.height, minH)
-                layout(max, h) { t.placeRelative(0, 0); e.placeRelative(max - e.width, t.height) }
+            if (!ui.routing && ui.warnText != null && ui.warnCount > 0) Row(mid.padding(start = 8.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Amber, modifier = Modifier.size(20.dp))
+                Text("${ui.warnCount}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
+                    color = OnPathColors.Amber, modifier = Modifier.padding(start = 2.dp))
             }
         }
         Spacer(stop)
     }
 }
 
-/** The rolled-up row's short forms (pure). */
+/** The rolled-up row's pieces (pure). */
 object CollapsedFacts {
-    /** How the rolled-up row fits: all in one line; without ↑ ↓ (the first to go); the button under the time. */
-    enum class Fit { ALL, NO_ELEVATION, WRAP }
-
-    /** Widths in px: time · km, ↑ ↓, the button (+ ⚠); nothing is ever cut. */
-    fun fit(timeKm: Int, elevation: Int, end: Int, gap: Int, max: Int): Fit = when {
-        timeKm + elevation + gap + end <= max -> Fit.ALL
-        timeKm + gap + end <= max -> Fit.NO_ELEVATION
-        else -> Fit.WRAP
-    }
+    /**
+     * "4 h 36 min", " · 12,5 km", " · ↑842 ↓310" – each piece whole (no-break spaces inside), so a large font wraps the
+     * line between the values only, never inside one.
+     */
+    fun pieces(durationS: Double, distanceM: Double, ascentM: Double, descentM: Double): List<String> = listOf(
+        Format.duration(durationS).replace(' ', '\u00A0'),
+        "\u00A0·\u00A0" + Format.distance(distanceM).replace(' ', '\u00A0'),
+        "\u00A0·\u00A0" + elevation(ascentM, descentM),
+    )
 
     /** "↑842 ↓310" – metres without the unit, the short form the owner chose for the rolled-up row (2026-11-05). */
     fun elevation(ascentM: Double, descentM: Double): String =
         "↑${Math.round(ascentM)}\u00A0↓${Math.round(descentM)}"
-}
-
-/** The rolled-up row's compact green button, 48 dp; outside the rolled-up step only drawn (no touch target). */
-@Composable
-private fun CompactGo(ui: PlanUi, cb: PlanCallbacks, active: Boolean) {
-    val content: @Composable () -> Unit = {
-        Icon(goIcon(ui), null, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(4.dp))
-        Text(goLabel(ui), style = MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false)
-    }
-    val desc = primaryLabel(ui)
-    if (active) {
-        Button(colors = ActionButtons.go(), onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 12.dp, end = 16.dp),
-            modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = desc }) { content() }
-    } else {
-        Row(Modifier.heightIn(min = 48.dp).clip(CircleShape).background(OnPathColors.ActionGo)
-            .padding(start = 12.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            androidx.compose.runtime.CompositionLocalProvider(
-                androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onPrimary) { content() }
-        }
-    }
 }
 
 /**
@@ -652,7 +603,7 @@ private fun PlanIconPill(icon: androidx.compose.ui.graphics.vector.ImageVector, 
 private fun GoButton(ui: PlanUi, cb: PlanCallbacks) {
     val full = primaryLabel(ui)
     Button(colors = ActionButtons.go(), onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics { contentDescription = full }) {
+        modifier = Modifier.fillMaxWidth().heightIn(min = PlanFoot.HEIGHT).semantics { contentDescription = full }) {
         Icon(goIcon(ui), null, Modifier.size(22.dp))
         Spacer(Modifier.width(8.dp))
         Text(goLabel(ui), style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false,
@@ -678,18 +629,10 @@ private fun RoutingBar(progress: Pair<Int, Int>?, share: Float?, modifier: Modif
 /** The large profile of the profile step. */
 private val PROFILE_HEIGHT = 120.dp
 
-/**
- * Bottom of the sheet (owner 2026-11-05, R5): ONE full-width green button "▶ Los geht's" ([GoButton]) from two points on
- * (the rolled-up row has its own); during a tour none here – the sheet's foot carries the green "Navigation ›"
- * ([BackToNavigationButton], owner 2026-11-06, C) in every step.
- */
+/** Below the body: only air – the ONE green button is in the sheet's foot ([PlanFoot], every step). */
 @Composable
-private fun ColumnScope.PlanBar(ui: PlanUi, cb: PlanCallbacks) {
-    if (PlanBarRow.shown(ui)) {
-        Spacer(Modifier.height(PlanBarRow.GAP))
-        // rolled up, the bar lies below the screen's edge: the row's own button is the one for TalkBack / tests
-        Box(if (ui.collapsed) Modifier.clearAndSetSemantics { } else Modifier) { GoButton(ui, cb) }
-    } else Spacer(Modifier.height(8.dp))
+private fun ColumnScope.PlanBar() {
+    Spacer(Modifier.height(8.dp))
 }
 
 /** Start, or back to the navigation during a tour (also resumes a paused recording). */
@@ -699,17 +642,23 @@ private fun goClick(ui: PlanUi, cb: PlanCallbacks) {
     else if (ui.tourRunning) cb.onContinue() else cb.onStartNavigation()
 }
 
-/** Rules of the sheet's bottom row (pure). */
-object PlanBarRow {
-    /** Above the button (the sheet's foot gives the air below). */
-    val GAP = 4.dp
+/** What the sheet's foot carries – ONE full-width green button, in every step (pure). */
+object PlanFoot {
+    enum class Kind { NONE, GO, BACK }
 
     /**
-     * Without a tour the button starts at two points; a plain recording without a plan is ☰ → "Ohne Plan aufzeichnen"
-     * (flow map H1, owner 2026-11-06: "Los geht's ohne Route" in the sheet was confusing – hidden in the menu, rarely
-     * needed). During a tour none: the green "Navigation ›" in the sheet's foot leads back (owner 2026-11-06, C).
+     * During a tour "▲ Weiter geht's" back to Navigate (owner 2026-11-06, C); without one "▶ Los geht's" from two points
+     * (owner 2026-11-07, A: big and centred, also rolled up); else nothing – a plain recording without a plan is ☰ →
+     * "Nur aufzeichnen" (owner 2026-11-06: "Los geht's ohne Route" in the sheet was confusing).
      */
-    fun shown(ui: PlanUi): Boolean = ui.tour == null && !ui.tourRunning && ui.pointCount >= 2
+    fun of(ui: PlanUi): Kind = when {
+        ui.tour != null || ui.tourRunning -> Kind.BACK
+        ui.pointCount >= 2 -> Kind.GO
+        else -> Kind.NONE
+    }
+
+    /** The button's height – the one primary action of the sheet. */
+    val HEIGHT = 56.dp
 }
 
 /** The plan has no route on purpose: says why, and calculates it on request (stays until then – no timeout). */

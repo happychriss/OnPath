@@ -56,7 +56,7 @@ fun PhoneSetupSection(checks: List<Check>, phone: PhoneState, onFix: (CheckId) -
             if (group.isEmpty()) continue
             Text(str(label), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 6.dp))
-            Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
+            Surface(shape = OnPathShapes.Card, color = OnPathColors.CardPaper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
                 Column {
                     group.forEachIndexed { i, c ->
                         if (i > 0) HorizontalDivider(Modifier.padding(start = 56.dp))

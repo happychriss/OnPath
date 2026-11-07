@@ -2,7 +2,7 @@
 <!-- Plan sync with the web planner (plansync/, ui/SyncSettings). Context: tools/i18n/meta/strings_sync.json -->
 <resources>
     <string name="sync_menu_pair">Pair with browser</string>
-    <string name="sync_menu_paired">Paired with browser</string>
+    <string name="sync_menu_paired">Browser pairing</string>
     <string name="sync_menu_browser">browser</string>
     <string name="sync_menu_full">Browser sync is full</string>
     <string name="sync_menu_refused">The sync server refuses the plans</string>
@@ -23,8 +23,6 @@
     <string name="sync_paired_plan">Paired. What you save in the browser comes to your phone – everything is kept there.</string>
     <string name="sync_paired_with">Paired with %1$s</string>
     <string name="sync_paired_browser">Paired with a browser</string>
-    <string name="sync_last">Last synced: %1$s</string>
-    <string name="sync_never">Not synced yet</string>
     <string name="sync_ago_now">just now</string>
     <string name="sync_ago_min">%1$d min ago</string>
     <string name="sync_unpair">Unpair</string>
@@ -61,4 +59,14 @@
     <string name="sync_untitled_track">Track</string>
     <string name="sync_sum_off">Not paired · your plans in the web planner too</string>
     <string name="sync_routing_other">Planned in the browser with another OnPath version – the route may differ slightly</string>
+    <string name="sync_menu_attention">Browser pairing – %1$s</string>
+    <string name="sync_since_today">Paired since today %1$s</string>
+    <string name="sync_since_yesterday">Paired since yesterday %1$s</string>
+    <plurals name="sync_since_days">
+        <item quantity="one">Paired for %1$d day</item>
+        <item quantity="other">Paired for %1$d days</item>
+    </plurals>
+    <string name="sync_last_label">Last synced</string>
+    <string name="sync_last_never">never</string>
+    <string name="sync_planner_label">Planner</string>
 </resources>
