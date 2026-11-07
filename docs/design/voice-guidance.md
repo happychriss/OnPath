@@ -51,7 +51,10 @@ same voice; "smart, clever sentences, not too much". Built after the feature sto
    (owner 2026-11-07, §9): it cuts what is being said, a waiting sentence waits for it, a turn said as "danach" gets its
    own "now", and only a turn really passed (its word could not be heard 1 s before it) stays quiet.
 8. **Questions stay on the screen:** the voice never asks; it says "bitte aufs Handy schauen" once.
-9. **Quiet** while paused, during a phone call, while the user is off the route and the question is open (said once),
+9. **Quiet** while paused, during a phone call, while the user is off the route and the question is open (said once;
+   again only where the phone would vibrate – the first reminder, a way found after none, asked again after Keep –
+   and a question after one answered with a new route is news: said, not held back by the 2-minute guard – owner
+   2026-11-07, field log tour 221: four questions in 2½ minutes, two silent),
    and when no offline voice is there (then vibration + screen as today).
 10. **Plan is silent** (owner 2026-11-03: "im Planmodus soll die Stimme auf jeden Fall schweigen zu allem … Plan only"):
    while the app is in Plan during a tour – also with the screen off – nothing is said and nothing vibrates (turns,

@@ -167,7 +167,10 @@
     <!-- tour card, end tour, arrival -->
     <string name="nav_end_tour_title">Tour beenden?</string>
     <string name="nav_recycle_bin_note">Kommt für %1$d Tage in den Papierkorb.</string>
-    <string name="nav_arrived_title">Du bist angekommen – Tour beenden?</string>
+    <string name="nav_arrived_title">Du bist angekommen.</string>
+    <string name="nav_keep_recording">Weiter aufzeichnen</string>
+    <string name="nav_end_tour">Tour beenden</string>
+    <string name="nav_notif_arrived">Aufnahme läuft · Tour beenden in der App</string>
     <string name="nav_continue">Weiter</string>
     <string name="nav_end_short">Beenden</string>
     <string name="nav_leave_title">App verlassen?</string>

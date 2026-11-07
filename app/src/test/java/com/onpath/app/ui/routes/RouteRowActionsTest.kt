@@ -15,10 +15,10 @@ class RouteRowActionsTest {
         for (kind in TourKind.entries) for (rec in listOf(false, true)) for (rides in listOf(false, true))
             for (dist in listOf(false, true)) for (wp in listOf(0, 1, 2, 5)) for (marked in listOf(false, true))
                 for (canSave in listOf(false, true)) {
-                    for (touring in listOf(false, true)) {
-                        add(RouteRowActions.of(Section.SAVED, kind, rec, rides, dist, wp, marked, canSave, touring))
-                        add(RouteRowActions.of(Section.DRAFT, kind, rec, rides, dist, wp, marked, canSave, touring))
-                        add(RouteRowActions.of(Section.LIVE, kind, rec, rides, dist, wp, marked, canSave, touring))
+                    for (touring in listOf(false, true)) for (hasPlan in listOf(false, true)) {
+                        add(RouteRowActions.of(Section.SAVED, kind, rec, rides, dist, wp, marked, canSave, touring, hasPlan))
+                        add(RouteRowActions.of(Section.DRAFT, kind, rec, rides, dist, wp, marked, canSave, touring, hasPlan))
+                        add(RouteRowActions.of(Section.LIVE, kind, rec, rides, dist, wp, marked, canSave, touring, hasPlan))
                     }
                 }
     }
@@ -88,6 +88,35 @@ class RouteRowActionsTest {
         assertTrue(RouteRowActions.of(Section.LIVE, TourKind.PLANNED, canSaveLive = false).inline.isEmpty())
         val tagged = RouteRowActions.of(Section.SAVED, TourKind.PLANNED, waypoints = 3, liveMarked = true, canSaveLive = true)
         assertEquals(listOf(Action.SAVE), tagged.inline); assertFalse(tagged.chevron); assertFalse(tagged.opensOverview)
+    }
+
+    /**
+     * Owner 2026-11-07: from a recorded tour under Gemacht back to the plan it followed – "Planen" (blue) and "Los geht's"
+     * (green) on top of its ⋮, as for a saved planned route; "Als Plan übernehmen" is then left out.
+     */
+    @Test fun aDoneTourWithItsFollowedPlanOffersPlanenAndLosGehtsFirst() {
+        val r = RouteRowActions.of(Section.SAVED, TourKind.RECORDED, hasRides = true, hasPlan = true)
+        assertEquals(listOf(Action.PLAN, Action.GO, Action.RENAME, Action.EXPORT_GPX, Action.EDIT_RIDES, Action.DELETE), r.menu)
+        assertTrue(r.inline.isEmpty()); assertTrue(r.opensOverview)
+    }
+
+    /** Old tours and "Nur aufzeichnen" have no plan: "Als Plan übernehmen" (a plan from the track) stays the way back. */
+    @Test fun aDoneTourWithoutAPlanKeepsMakeAPlanFromTheTrack() {
+        val r = RouteRowActions.of(Section.SAVED, TourKind.RECORDED, hasPlan = false)
+        assertFalse(Action.PLAN in r.menu); assertFalse(Action.GO in r.menu)
+        assertEquals(Action.PLAN_FROM, r.menu.first())
+    }
+
+    /** No Planen / Los geht's during a tour, and never on the tour being recorded (the planned routes' rule). */
+    @Test fun theFollowedPlanIsNotOfferedDuringATourOrOnTheRecordingTour() {
+        for (r in listOf(RouteRowActions.of(Section.SAVED, TourKind.RECORDED, hasPlan = true, touring = true),
+                RouteRowActions.of(Section.SAVED, TourKind.RECORDED, hasPlan = true, recording = true, touring = true),
+                RouteRowActions.of(Section.SAVED, TourKind.RECORDED, hasPlan = true, recording = true))) {
+            assertFalse(Action.PLAN in r.menu); assertFalse(Action.GO in r.menu)
+        }
+        assertTrue("during a tour the track → plan item stays as before",
+            Action.PLAN_FROM in RouteRowActions.of(Section.SAVED, TourKind.RECORDED, hasPlan = true, touring = true).menu)
+        assertFalse("an imported track has no followed plan", Action.GO in RouteRowActions.of(Section.SAVED, TourKind.IMPORTED, hasPlan = true).menu)
     }
 
     @Test fun aValueNeverBreaksInside() {

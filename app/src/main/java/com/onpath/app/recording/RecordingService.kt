@@ -1,6 +1,5 @@
 package com.onpath.app.recording
 
-import com.onpath.app.data.AtomicFiles
 import com.onpath.strings.*
 
 import android.app.Notification
@@ -160,11 +159,9 @@ class RecordingService : Service() {
     private var lastGoodFixElapsed = 0L
     /** Fixes dropped for accuracy since the last good one: says why a GPS gap had no usable fix. */
     private val gapWatch = PointFilter.GapWatch()
-    private val track = mutableListOf<MutableList<GeoPoint>>()
+    /** Append-only; its snapshot for [RecState] costs O(pieces), not a copy of every point ([GrowingTrack]). */
+    private val track = GrowingTrack()
     private var trackSeg = -1
-    /** Immutable copy of [track] for [RecState], rebuilt only when a point was added (not twice a second). */
-    private var trackSnapshot: List<List<GeoPoint>> = emptyList()
-    private var snapshotDirty = true
     /** A database write failed; cleared by the next successful point write. */
     private var saveFailed = false
 
@@ -291,7 +288,7 @@ class RecordingService : Service() {
                 }
                 // Plan is silent (owner 2026-11-03): "kein Ziel mehr" after an edit in Plan is not said
                 if (phrase != null && GuidanceGate.appEventVoice(hasPhrase = true, voiceOn(), planQuiet())) {
-                    voice.event(phrase, SystemClock.elapsedRealtime())?.let { voiceSpeaker()?.say(com.onpath.app.navigation.VoiceText.of(it)) }
+                    voice.event(phrase, SystemClock.elapsedRealtime())?.let { say(it) }
                     saveVoice()
                 }
                 return START_STICKY
@@ -300,15 +297,18 @@ class RecordingService : Service() {
                 settings = null; applySettings(); trip.setPrior(priorFor(timeActivity())); updateAlert(); publish(); return START_STICKY
             }
             ACTION_TAKE_ROUTE -> {
+                Problems.trace("navigation", "Off-route question ${intent.getIntExtra(EXTRA_QUESTION, -1)} answered: new route")
                 navigator?.let { handle(it.take(intent.getIntExtra(EXTRA_QUESTION, -1))) }
                 return START_STICKY
             }
             ACTION_TAKE_VIA -> {
                 // "Off route – re-plan?" – Yes: the new route via the stop in question
+                Problems.trace("navigation", "Off-route question ${intent.getIntExtra(EXTRA_QUESTION, -1)} answered: new route via the stop")
                 navigator?.let { handle(it.takeVia(intent.getIntExtra(EXTRA_QUESTION, -1))) }
                 return START_STICKY
             }
             ACTION_KEEP_ROUTE -> {
+                Problems.trace("navigation", "Off-route question ${intent.getIntExtra(EXTRA_QUESTION, -1)} answered: keep original")
                 navigator?.let { handle(it.keep(intent.getIntExtra(EXTRA_QUESTION, -1))) }
                 return START_STICKY
             }
@@ -372,7 +372,7 @@ class RecordingService : Service() {
                 val (nextSeq, lastSeg) = db.recordingCursor(tourId)
                 seq = nextSeq; seg = lastSeg + 1 // resume in a new segment, no straight jump
                 val segs = db.loadSegments(tourId)
-                segs.forEach { s -> track += s.map { it.toGeo() }.toMutableList() }
+                segs.forEach { s -> track.newSegment(); s.forEach { track.add(it.toGeo()) } }
                 trackSeg = lastSeg
                 climb.restart()
                 last = null
@@ -406,7 +406,6 @@ class RecordingService : Service() {
             failLoud(Txt.s(Res.string.nav_rec_fail_storage), "Recording could not start: the track cannot be saved (phone storage full or damaged).", e)
             return START_NOT_STICKY
         }
-        snapshotDirty = true
         safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
         safeDb("close older") { db.finishOtherActive(tourId) }
         loadFollow()
@@ -639,9 +638,8 @@ class RecordingService : Service() {
             if (saveFailed) { saveFailed = false; nm().cancel(SAVE_FAIL_ID) }
         }
         last = p
-        if (track.isEmpty() || trackSeg != seg) { track += mutableListOf<GeoPoint>(); trackSeg = seg }
-        track.last() += p.toGeo()
-        snapshotDirty = true
+        if (track.isEmpty() || trackSeg != seg) { track.newSegment(); trackSeg = seg }
+        track.add(p.toGeo())
         publish()
     }
 
@@ -738,7 +736,7 @@ class RecordingService : Service() {
         if (!gone || tourId < 0) return
         val (name, created, sac) = tourMeta ?: Triple(com.onpath.app.rides.RideApply.dateName(System.currentTimeMillis()),
             System.currentTimeMillis(), Prefs(this).sac)
-        val segments = track.map { seg -> seg.map { TrackPoint(it.lat, it.lon, it.ele, null) } }
+        val segments = track.snapshot().map { seg -> seg.map { TrackPoint(it.lat, it.lon, it.ele, null) } }
         if (safeDb("rescue") {
                 seq = db.rescueRecording(tourId, name, recActivity.name, sac, created, segments, distance, ascent, descent,
                     elapsedS.toDouble())
@@ -916,8 +914,11 @@ class RecordingService : Service() {
         // turn hints are either / or for every activity (owner 2026-11-01): with the voice on, the off-route warning is
         // spoken, not vibrated too (the vibration stays while the voice was never heard – the phone setup check)
         // a re-route that finishes while in Plan does not vibrate (owner 2026-11-03: Plan is silent)
-        if (GuidanceGate.rerouteVibrates(step.vibrate, planQuiet()) &&
-            (settings ?: Prefs(this).settings).offRouteVibrate && !voiceOn()) vibrate()
+        if (GuidanceGate.rerouteVibrates(step.vibrate, planQuiet())) {
+            // the question asks again (reminder, a way found after none, after Keep): said instead (owner 2026-11-07)
+            if (voiceOn()) voiceQuestionAgain()
+            else if ((settings ?: Prefs(this).settings).offRouteVibrate) vibrate()
+        }
         if (step.cancelJob) cancelReroute()
         step.job?.let { startReroute(it) }
         // the app chose a new line meanwhile (its FOLLOW_CHANGED is on the way): this result belongs to the old session
@@ -940,10 +941,74 @@ class RecordingService : Service() {
             try { db.updateActivity(tourId, nav.session.activity.name, nav.session.sac) } catch (e: Exception) {
                 Problems.error("db", "Activity switch could not be saved to the recorded tour", e)
             }
+            // the copy of the followed plan (TourPlan, owner 2026-11-07) is for the new activity now
+            safeDb("plan activity") { db.setTourPlanActivity(tourId, nav.session.activity.name, nav.session.sac) }
             Prefs(this).activity = nav.session.activity
         }
         updateAlert()
-        if (publishNow || step.lineChanged) publish(force = step.lineChanged)
+        // step 1 of leaving the route (owner 2026-11-07): the lock screen's status line "Abseits der Route" comes and goes
+        // at once, not with the next 10 s notification update
+        val offNow = nav.prompt?.offRoute == true
+        val offChanged = offNow != offRouteShown
+        offRouteShown = offNow
+        traceStep(nav.prompt)
+        if (publishNow || step.lineChanged || offChanged) publish(force = step.lineChanged || offChanged)
+    }
+
+    /** The off-route state the tour notification shows now ([handle]). */
+    private var offRouteShown = false
+
+    /** The navigation box last traced ([traceStep]). */
+    private var tracedStep: String? = null
+
+    /**
+     * What Navigate shows about the route now goes to the event log when it changes (field log owner 2026-11-07, tour 221:
+     * the voice said "Abseits der Route", the log could not say what the screen showed): step 1 "off route" + step 2 the
+     * question, no way, kept, back on the route; the far start / mid start / activity switch boxes.
+     */
+    private fun traceStep(p: NavPrompt?) {
+        val key = when (p) {
+            null -> null
+            is NavPrompt.Question -> "q${p.id}"
+            is NavPrompt.FarStart -> "f${p.id}${p.searching}"
+            is NavPrompt.MidStart -> "m${p.id}${p.searching}"
+            is NavPrompt.LeadFailed -> "e${p.id}"
+            NavPrompt.Searching -> "searching"
+            NavPrompt.Kept -> "kept"
+            is NavPrompt.NoWay -> "noway${p.reason}"
+        }
+        if (key == tracedStep) return
+        val was = tracedStep
+        tracedStep = key
+        try {
+            Problems.trace("navigation", when {
+                p == null -> if (was != null) "Navigate: no navigation box any more (back on the route or answered)" else return
+                com.onpath.app.navigation.OffRouteSteps.question(p) ->
+                    "Navigate: off the route (step 1) + question \"${NavText.title(p)}\" (step 2)" + ((p as? NavPrompt.Question)?.let { " q${it.id}" } ?: "")
+                com.onpath.app.navigation.OffRouteSteps.card(p) -> "Navigate: off the route (step 1), ${NavText.state(p)}"
+                else -> "Navigate: \"${NavText.title(p)}\""
+            })
+        } catch (e: Exception) {
+            Problems.warn("navigation", "Navigation box not traced", e)
+        }
+    }
+
+    /** [com.onpath.app.navigation.VoiceGuide.questionAgain]: the open off-route question asks again – said, not vibrated. */
+    private fun voiceQuestionAgain() {
+        if (!GuidanceGate.voiceSteps(voiceOn(), arrived) || paused) return
+        try {
+            voice.questionAgain(SystemClock.elapsedRealtime(), standingStill())?.let { say(it) }
+            saveVoice()
+        } catch (e: Exception) {
+            Problems.warn("voice", "Off-route question not said again", e)
+        }
+    }
+
+    /** Says [phrase] (traced: the problem log shows what the voice was asked to say, also without an offline voice). */
+    private fun say(phrase: com.onpath.app.navigation.Phrase) {
+        val text = com.onpath.app.navigation.VoiceText.of(phrase)
+        Problems.trace("voice", "To say: $text")
+        voiceSpeaker()?.say(text)
     }
 
     private fun startReroute(job: Navigator.Job) {
@@ -1046,7 +1111,7 @@ class RecordingService : Service() {
         try {
             val phrase = voice.update(voiceInput(st, nowEl))
             saveVoice()
-            if (phrase != null && speak) voiceSpeaker()?.say(com.onpath.app.navigation.VoiceText.of(phrase))
+            if (phrase != null && speak) say(phrase)
         } catch (e: Exception) {
             Problems.warn("voice", "Spoken direction skipped", e)
         }
@@ -1078,7 +1143,7 @@ class RecordingService : Service() {
         val fixNs = loc.elapsedRealtimeNanos
         voiceFixAgeMs = if (fixNs > 0) ((SystemClock.elapsedRealtimeNanos() - fixNs) / 1_000_000L).coerceAtLeast(0) else 0
         voiceHere = here
-        voiceHeading = com.onpath.app.navigation.GoalSide.heading(track.lastOrNull().orEmpty(), here,
+        voiceHeading = com.onpath.app.navigation.GoalSide.heading(track.snapshot().lastOrNull().orEmpty(), here,
             if (loc.hasSpeed()) loc.speed.toDouble() else null)
     }
 
@@ -1263,8 +1328,8 @@ class RecordingService : Service() {
             try {
                 com.onpath.app.time.TourTimesStore(File(filesDir, com.onpath.app.time.TourTimesStore.FILE))
                     .put(tourId, tourTimes().copy(startMs = tourMeta?.second, endMs = System.currentTimeMillis()))
-                // learning per tour only (owner): this tour's pace ends with it
-                File(filesDir, TRIP_FILE).delete()
+                // learning per tour only (owner): this tour's pace ends with it (after the writes still waiting)
+                tripWriter.delete()
             } catch (e: Exception) { Problems.error("time", "Tour times could not be saved at tour end", e) }
             _finished.value = tourId
         }
@@ -1300,18 +1365,18 @@ class RecordingService : Service() {
         if (tourId >= 0) {
             if (pointQueue.size > 0) writePoints()
             safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
-            saveTrip()
+            saveTrip(wait = true)
         }
+        tripExec.shutdown() // the waiting writes still run
         _state.value = null
         super.onDestroy()
     }
 
     private fun publish(force: Boolean = false) {
         if (tourId < 0) return
-        if (snapshotDirty) { trackSnapshot = track.map { it.toList() }; snapshotDirty = false }
         _state.value = RecState(
             tourId, paused, distance, ascent, descent, elapsedS, gpsLost(),
-            navigator?.state?.offM, navigator?.prompt != null, follow?.first, trackSnapshot,
+            navigator?.state?.offM, navigator?.prompt != null, follow?.first, track.snapshot(),
             navigator?.state, tripTime(), saveFailed, hadGpsFix = lastGoodFixElapsed > 0, gpsQuiet = gpsQuiet(),
             gpsStill = gpsLost() && noGpsLine() == NoGpsShow.Line.NONE,
             arrived = arrived, pausedSinceMs = pausedSinceMs,
@@ -1386,8 +1451,19 @@ class RecordingService : Service() {
         } catch (e: Exception) { Problems.error("time", "Trip times could not be set for the navigated line", e) }
     }
 
-    /** Trip state of the running tour, written atomically (crash / restart keeps the break time). */
-    private fun saveTrip() {
+    /** The trip file's disk work (an fsync) on its own thread, not in the main-thread tick (field 2026-11-07, 695 ms). */
+    private val tripExec by lazy { Executors.newSingleThreadExecutor { r -> Thread(r, "onpath-trip-file") } }
+    private val tripWriter by lazy {
+        LatestFileWriter(File(filesDir, TRIP_FILE), tripExec) { e ->
+            Problems.error("time", "Trip pace file could not be saved (break time may be lost on restart)", e)
+        }
+    }
+
+    /**
+     * Trip state of the running tour, written atomically (crash / restart keeps the break time). Built here, written on
+     * [tripExec] ([LatestFileWriter]); [wait] = the service is going away: on disk before this returns.
+     */
+    private fun saveTrip(wait: Boolean = false) {
         if (tourId < 0) return
         tripSaved = SystemClock.elapsedRealtime()
         try {
@@ -1396,8 +1472,7 @@ class RecordingService : Service() {
                 .put("voice", org.json.JSONObject()
                 .put("started", m.started).putOpt("offRoute", m.offRouteSaidMs).putOpt("noGps", m.noGpsSaidMs)
                 .putOpt("arrived", m.arrivedSaidMs))
-            val f = File(filesDir, TRIP_FILE)
-            AtomicFiles.writeText(f, o.toString())
+            if (wait) tripWriter.writeAndWait(o.toString()) else tripWriter.write(o.toString())
             voiceSaved = m
         } catch (e: Exception) { Problems.error("time", "Trip pace file could not be saved (break time may be lost on restart)", e) }
     }
@@ -1443,7 +1518,8 @@ class RecordingService : Service() {
 
     private fun navNotification(): com.onpath.app.navigation.NavNotification.Text? = try {
         val st = navigator?.state
-        if (st == null || st.line.size < 2) null else {
+        if (arrived && st != null) com.onpath.app.navigation.NavNotification.arrived()
+        else if (st == null || st.line.size < 2) null else {
             val along = st.shownAlongM
             val toGo = along?.let { (com.onpath.app.data.Geo.length(st.line) - it).coerceAtLeast(0.0) }
             val t = _state.value?.time

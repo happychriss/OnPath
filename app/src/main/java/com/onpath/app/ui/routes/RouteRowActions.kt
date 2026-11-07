@@ -14,7 +14,11 @@ import com.onpath.app.data.TourKind
  * Edit or follow (owner 2026-11-07): a planned route offers "Planen" (blue, load it to edit) and "Los geht's" (green, load
  * it and start the tour – [RoutesGo]) – the plan sheet's words and colours: in a saved row's ⋮ both on top; under
  * Zuletzt "Planen" on the row before Speichern · Löschen, "Los geht's" in its ⋮. Not during a tour (a tap / the overview's
- * "Folgen" follows at once) and not for the plan on the map (a tap goes back to it). Pure.
+ * "Folgen" follows at once) and not for the plan on the map (a tap goes back to it).
+ * A recorded tour that followed a plan (owner 2026-11-07, [com.onpath.app.data.TourPlan]) offers the same "Planen" /
+ * "Los geht's" on top of its ⋮ – they load the plan it followed (its last version); "Als Plan übernehmen" (a plan from
+ * the track) is then left out – the plan itself is there. Without a stored plan (old tours, "Nur aufzeichnen") "Als Plan
+ * übernehmen" stays the way back. Never for the tour being recorded, never during a tour. Pure.
  */
 object RouteRowActions {
     enum class Section { LIVE, DRAFT, SAVED }
@@ -34,20 +38,22 @@ object RouteRowActions {
      * [liveMarked] = a saved route that is the plan on the map ("In Bearbeitung" tag); [canSaveLive] = that plan can be
      * saved now (top row: ≥ 2 points; tagged saved route: changed since saving). [recording] = the tour being recorded
      * (never deleted from here – that would lose the track). [touring] = a tour runs: no Planen / Los geht's.
+     * [hasPlan] = a recorded tour carries the plan it followed.
      */
     fun of(
         section: Section, kind: TourKind, recording: Boolean = false, hasRides: Boolean = false,
         hasDistance: Boolean = true, waypoints: Int = 0, liveMarked: Boolean = false, canSaveLive: Boolean = false,
-        touring: Boolean = false,
+        touring: Boolean = false, hasPlan: Boolean = false,
     ): Row {
-        val plans = kind == TourKind.PLANNED && !touring && !liveMarked
-        val goes = plans && waypoints >= 2
-        return of(section, kind, recording, hasRides, hasDistance, waypoints, liveMarked, canSaveLive, plans, goes)
+        val followedPlan = kind == TourKind.RECORDED && hasPlan && !recording && !touring
+        val plans = (kind == TourKind.PLANNED && !touring && !liveMarked) || followedPlan
+        val goes = plans && (waypoints >= 2 || followedPlan)
+        return of(section, kind, recording, hasRides, hasDistance, waypoints, liveMarked, canSaveLive, plans, goes, followedPlan)
     }
 
     private fun of(
         section: Section, kind: TourKind, recording: Boolean, hasRides: Boolean, hasDistance: Boolean, waypoints: Int,
-        liveMarked: Boolean, canSaveLive: Boolean, plans: Boolean, goes: Boolean,
+        liveMarked: Boolean, canSaveLive: Boolean, plans: Boolean, goes: Boolean, followedPlan: Boolean,
     ): Row = when (section) {
         Section.LIVE -> Row(inline = if (canSaveLive) listOf(Action.SAVE) else emptyList(), menu = emptyList(),
             chevron = false, opensOverview = false)
@@ -59,7 +65,7 @@ object RouteRowActions {
             menu = buildList {
                 if (plans) add(Action.PLAN)
                 if (goes) add(Action.GO)
-                if (kind != TourKind.PLANNED && hasDistance && !recording) add(Action.PLAN_FROM)
+                if (kind != TourKind.PLANNED && hasDistance && !recording && !followedPlan) add(Action.PLAN_FROM)
                 add(Action.RENAME)
                 if (kind == TourKind.PLANNED) add(Action.COPY)
                 add(Action.EXPORT_GPX)

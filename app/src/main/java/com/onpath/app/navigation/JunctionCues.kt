@@ -219,6 +219,13 @@ object NavNotification {
         return Text(title, parts.joinToString(" · "))
     }
 
+    /**
+     * At the destination (owner 2026-11-07): the lock screen says it too – "You have arrived." · "Still recording · end
+     * the tour in the app" – instead of "0 m to go"; a tap opens the app at the arrival box (it waits there until
+     * answered). True after "Weiter aufzeichnen" as well: the recording goes on, ending stays in the app.
+     */
+    fun arrived(): Text = Text(Txt.s(Res.string.nav_arrived_title), Txt.s(Res.string.nav_notif_arrived))
+
     /** "120 m" not "117 m": steps of 10 m (50 m above 500 m), so the notification changes calmly. */
     fun roundDist(m: Double): Double = if (m < 500) Math.round(m / 10.0) * 10.0 else Math.round(m / 50.0) * 50.0
 

@@ -51,12 +51,15 @@ object RouteSnapshot {
         }
     }
 
+    /** [under] + [underColor]: a recorded tour's followed plan, thin under the track (owner 2026-11-07); empty = none. */
     suspend fun make(context: Context, styleJson: String, segments: List<List<GeoPoint>>, color: Int,
-                     widthPx: Int, heightPx: Int, paddingPx: Int, density: Float): Shot? {
+                     widthPx: Int, heightPx: Int, paddingPx: Int, density: Float,
+                     under: List<GeoPoint> = emptyList(), underColor: Int = 0): Shot? {
         val all = segments.flatten()
-        val b = OverviewRegion.of(all) ?: return null
+        if (all.isEmpty()) return null
+        val b = OverviewRegion.of(all + under) ?: return null
         val scale = Scale.of(widthPx, heightPx, paddingPx, density) ?: return null
-        val json = try { withLine(styleJson, segments, color) } catch (e: Exception) {
+        val json = try { withLine(styleJson, segments, color, under, underColor) } catch (e: Exception) {
             Problems.warn("routes", "Overview: the route could not be added to the map style – the shape is shown alone", e)
             return null
         }
@@ -100,17 +103,28 @@ object RouteSnapshot {
      * [styleJson] with the route on top: a white casing and the line's colour, as wide as the map's planned route
      * ([RouteLook], in dp – the snapshot's pixel ratio turns them into pixels). Pure JSON work.
      */
-    internal fun withLine(styleJson: String, segments: List<List<GeoPoint>>, color: Int): String {
+    internal fun withLine(styleJson: String, segments: List<List<GeoPoint>>, color: Int,
+                          under: List<GeoPoint> = emptyList(), underColor: Int = 0): String {
         fun coords(s: List<GeoPoint>) = JSONArray().apply { s.forEach { put(JSONArray().put(it.lon).put(it.lat)) } }
         val lines = JSONArray().apply { segments.filter { it.size >= 2 }.forEach { put(coords(it)) } }
         val o = JSONObject(styleJson)
         val sources = o.optJSONObject("sources") ?: JSONObject().also { o.put("sources", it) }
+        val layers = o.optJSONArray("layers") ?: JSONArray().also { o.put("layers", it) }
+        if (under.size >= 2) {
+            // the followed plan first: thin, plan blue, faint – the track is drawn over it
+            sources.put(SRC_UNDER, JSONObject().put("type", "geojson").put("data", JSONObject().put("type", "Feature")
+                .put("properties", JSONObject())
+                .put("geometry", JSONObject().put("type", "LineString").put("coordinates", coords(under)))))
+            layers.put(JSONObject().put("id", LAYER_UNDER).put("type", "line").put("source", SRC_UNDER)
+                .put("layout", JSONObject().put("line-cap", "round").put("line-join", "round"))
+                .put("paint", JSONObject().put("line-color", String.format("#%06X", 0xFFFFFF and underColor))
+                    .put("line-width", RouteLook.PLAN_UNDER_DP.toDouble()).put("line-opacity", RouteLook.PLAN_UNDER_OPACITY.toDouble())))
+        }
         sources.put(SRC_LINE, JSONObject().put("type", "geojson").put("data", JSONObject().put("type", "Feature")
             .put("properties", JSONObject())
             .put("geometry", JSONObject().put("type", "MultiLineString").put("coordinates", lines))))
         val hex = String.format("#%06X", 0xFFFFFF and color)
         fun round() = JSONObject().put("line-cap", "round").put("line-join", "round")
-        val layers = o.optJSONArray("layers") ?: JSONArray().also { o.put("layers", it) }
         layers.put(JSONObject().put("id", LAYER_CASE).put("type", "line").put("source", SRC_LINE).put("layout", round())
             .put("paint", JSONObject().put("line-color", "#FFFFFF").put("line-width", RouteLook.CASING_DP.toDouble())))
         layers.put(JSONObject().put("id", LAYER_LINE).put("type", "line").put("source", SRC_LINE).put("layout", round())
@@ -119,6 +133,8 @@ object RouteSnapshot {
     }
 
     private const val SRC_LINE = "overview-line"
+    private const val SRC_UNDER = "overview-plan"
+    private const val LAYER_UNDER = "overview-plan"
     private const val LAYER_CASE = "overview-line-case"
     private const val LAYER_LINE = "overview-line"
 }

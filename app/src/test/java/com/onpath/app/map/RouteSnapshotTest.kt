@@ -30,6 +30,25 @@ class RouteSnapshotTest {
         assertEquals(RouteLook.CASING_DP.toDouble(), casing.getDouble("line-width"), 1e-9)
     }
 
+    /** A recorded tour's followed plan: thin, plan blue, faint, beneath the track's casing and line (owner 2026-11-07). */
+    @Test fun theFollowedPlanGoesUnderTheTrack() {
+        val seg = listOf(GeoPoint(46.6, 11.1), GeoPoint(46.61, 11.12))
+        val plan = listOf(GeoPoint(46.6, 11.1), GeoPoint(46.605, 11.13), GeoPoint(46.61, 11.12))
+        val o = JSONObject(RouteSnapshot.withLine(style, listOf(seg), 0xFF245F46.toInt(), plan, 0xFF335A85.toInt()))
+        assertEquals(3, o.getJSONObject("sources").getJSONObject("overview-plan").getJSONObject("data").getJSONObject("geometry")
+            .getJSONArray("coordinates").length())
+        val layers = o.getJSONArray("layers")
+        val ids = (0 until layers.length()).map { layers.getJSONObject(it).getString("id") }
+        assertEquals(listOf("bg", "overview-plan", "overview-line-case", "overview-line"), ids)
+        val paint = layers.getJSONObject(1).getJSONObject("paint")
+        assertEquals("#335A85", paint.getString("line-color"))
+        assertEquals(RouteLook.PLAN_UNDER_DP.toDouble(), paint.getDouble("line-width"), 1e-9)
+        assertTrue(paint.getDouble("line-width") < RouteLook.LINE_DP)
+        assertEquals(RouteLook.PLAN_UNDER_OPACITY.toDouble(), paint.getDouble("line-opacity"), 1e-6)
+        // without a plan nothing is added
+        assertTrue(!JSONObject(RouteSnapshot.withLine(style, listOf(seg), 0)).getJSONObject("sources").has("overview-plan"))
+    }
+
     @Test fun aOnePointSegmentIsLeftOut() {
         val o = JSONObject(RouteSnapshot.withLine(style, listOf(listOf(GeoPoint(46.6, 11.1)), listOf(GeoPoint(46.6, 11.1), GeoPoint(46.7, 11.2))), 0))
         assertEquals(1, o.getJSONObject("sources").getJSONObject("overview-line").getJSONObject("data").getJSONObject("geometry")
