@@ -317,6 +317,10 @@ and the commit history.
   id for GitHub and Play (never both on one phone) or a separate id for the GitHub build; automatic upload to the Play
   Console later (service account). After the merge: docs mention `bundlePlay`, the result note in onpath.private.
 <!-- Owner 2026-11-07: open questions to the owner live here (who, date, question, recommendation first); asked in the session's chat; whoever acts on the answer deletes the line. -->
+- **[donald] Undo in the full points sheet? (donald 2026-11-07)** – with the plan sheet at full height the map column
+  is not drawn (ControlsPlacement, 2de9218f), so after deleting a point in the list there is no Undo on screen until
+  the sheet is made smaller; C9 says "Undo on the map". Recommendation: show Undo in the sheet's points step while
+  the map controls are hidden. Other option: keep it, the sheet one step smaller brings Undo back.
 - **Role setup leftovers (captain 2026-10-31)** – (1) does the Germany pre-build stay on donald (item "[donald] Germany
   pre-built") or move to the laptop?; (2) git on the laptop: `gh auth setup-git` + `user.name` / `user.email` (check
   whether still needed). Old branches go only through `tools/dev/prune_branches.sh` after the owner's yes to the list.
