@@ -60,4 +60,15 @@ class SettingRowsTest {
         assertEquals("25 m", SettingRows.valueOf(options, 33))
         assertEquals("", SettingRows.valueOf(emptyList<Pair<Int, String>>(), 1))
     }
+
+    @Test fun aLongValueGoesUnderTheTitleInsteadOfBreakingAWord() {
+        // normal font: "Kartenausrichtung" + "In Bewegungsrichtung" just fit side by side on a phone row (~320 dp)
+        assertEquals(false, SettingRows.valueStacked(contentW = 320f, valueW = 140f, titleLongestWordW = 130f, gap = 12f))
+        // large font: the value takes more than 45 % → under the title
+        assertEquals(true, SettingRows.valueStacked(contentW = 320f, valueW = 190f, titleLongestWordW = 170f, gap = 12f))
+        // a short value but a title word that would not fit beside it → stacked as well
+        assertEquals(true, SettingRows.valueStacked(contentW = 320f, valueW = 120f, titleLongestWordW = 200f, gap = 12f))
+        // short title, short value ("Warnen nach · 40 m") → side by side
+        assertEquals(false, SettingRows.valueStacked(contentW = 320f, valueW = 40f, titleLongestWordW = 70f, gap = 12f))
+    }
 }

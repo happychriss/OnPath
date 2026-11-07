@@ -47,6 +47,14 @@ import com.onpath.strings.*
  * hiking T1–T5 choice (owner: those stay buttons, wherever they appear).
  */
 object SettingRows {
+    /**
+     * A value row side by side or stacked (value under the title): side by side only when the value fits in ~45 % of the
+     * row ([contentW] without paddings and chevron) and the title's longest word still fits beside it – else a word
+     * would break in the middle ("Kartenausrich-tung", large font). Widths in the same unit (px or dp).
+     */
+    fun valueStacked(contentW: Float, valueW: Float, titleLongestWordW: Float, gap: Float): Boolean =
+        valueW > contentW * 0.45f || titleLongestWordW > contentW - valueW - gap
+
     /** Where "Handy einrichten" sits on the Navigation page. */
     enum class PhoneRow {
         /** Something a tour needs is missing: at the top, red ⚠. */
@@ -112,17 +120,32 @@ internal fun <T> ChoiceRow(title: String, sub: String?, options: List<Choice<T>>
     var open by remember { mutableStateOf(false) }
     val value = SettingRows.valueOf(options.map { it.value to it.label }, selected)
     val a = if (enabled) 1f else 0.38f
+    val titleStyle = MaterialTheme.typography.bodyLarge
+    val valueStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+    val measure = androidx.compose.ui.text.rememberTextMeasurer()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+    val start = if (indent) 32.dp else 16.dp
+    // the room for title + value: the row minus its paddings and the chevron
+    val contentW = with(density) { (maxWidth - start - 12.dp - 24.dp).toPx() }
+    val valueW = measure.measure(value, valueStyle).size.width.toFloat()
+    val longestWord = title.split(' ').maxOfOrNull { measure.measure(it, titleStyle).size.width.toFloat() } ?: 0f
+    val stacked = SettingRows.valueStacked(contentW, valueW, longestWord, with(density) { 12.dp.toPx() })
     Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(enabled = enabled, role = Role.Button) { open = true }
-        .padding(start = if (indent) 32.dp else 16.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        .padding(start = start, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface.copy(alpha = a))
+            Text(title, style = titleStyle, color = MaterialTheme.colorScheme.onSurface.copy(alpha = a))
             if (sub != null) Text(sub, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = a))
+            // too long beside the title (large font, long words): the value under it, never a word broken in two
+            if (stacked) Text(value, style = valueStyle, color = OnPathColors.Walnut.copy(alpha = a))
         }
-        Spacer(Modifier.width(12.dp))
-        Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold,
-            color = OnPathColors.Walnut.copy(alpha = a), maxLines = 2)
+        if (!stacked) {
+            Spacer(Modifier.width(12.dp))
+            Text(value, style = valueStyle, color = OnPathColors.Walnut.copy(alpha = a), maxLines = 1)
+        }
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = a))
+    }
     }
     if (open) ChoiceSheet(title, options, selected, onPick = { open = false; if (it != selected) onPick(it) }, onDismiss = { open = false })
 }
