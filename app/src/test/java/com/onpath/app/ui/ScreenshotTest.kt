@@ -1237,7 +1237,7 @@ class ScreenshotTest {
      * "Plan · date", Speichern / Löschen on the card – "Alle 4 anzeigen ›", then "Gespeichert" with one just saved; on top
      * the plan on the map, "Aktueller Plan · In Bearbeitung" with Speichern (owner 2026-11-06 23:00).
      */
-    fun toursRecent() = paparazzi.snapshot {
+    @Test fun toursRecent() = paparazzi.snapshot {
         val t0 = 1_761_000_000_000L
         val drafts = listOf("Algund → Meran", "Plan 6. Nov., 14:34", "In Lana", "Vellau → Leiteralm").mapIndexed { i, n ->
             Tour(100L + i, TourKind.PLANNED, n, t0 - i * 3_600_000L, "HIKE", 2, 2_000.0 + 900 * i, 40.0 * i, 30.0 * i, 1800.0 + 600 * i,
@@ -1259,11 +1259,12 @@ class ScreenshotTest {
 
     /**
      * A row tapped in My routes (owner 2026-11-07 00:30): the large overview first – name, facts, the route fitted (here
-     * the drawn shape; on the phone the map picture under it) – "Abbrechen" | "Planen".
+     * the drawn shape; on the phone the map picture under it) – a planned route (owner 2026-11-07): "▶ Los geht's" full
+     * width green, under it "Abbrechen" | "Planen".
      */
-    fun routesOverview() = paparazzi.snapshot {
+    @Test fun routesOverview() = paparazzi.snapshot {
         OnPathTheme { RouteOverview(tourList[0], listOf(sampleLine(1)), touring = false, snapshot = null, onPrimary = {},
-            onCancel = {}) }
+            onCancel = {}, onGo = {}) }
     }
 
     /** The same during a tour: "Folgen" (green) – followed at once, the recording goes on (owner 2026-11-06 22:05). */
@@ -1398,13 +1399,17 @@ class ScreenshotTest {
         }
     }
 
-    /** My routes → ⋮ of a planned route (owner 2026-10-31): Rename, Save as copy, Export GPX, Share plan, Delete. */
-    fun routesItemMenuPlanned() = paparazzi.snapshot {
+    /**
+     * My routes → ⋮ of a planned route (owner 2026-10-31): "Planen" (blue) and "Los geht's" (green) on top (owner
+     * 2026-11-07), then Rename, Save as copy, Export GPX, Share plan, Delete.
+     */
+    @Test fun routesItemMenuPlanned() = paparazzi.snapshot {
         Box(Modifier.fillMaxSize()) {
             previewLines(tourList)
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}) }
             OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 200.dp, end = 12.dp)) {
-                TourMenuItems(tourList.first { it.kind == com.onpath.app.data.TourKind.PLANNED }, {}, {}, {}, null, {}, {}) {}
+                TourMenuItems(tourList.first { it.kind == com.onpath.app.data.TourKind.PLANNED }, {}, {}, {}, null, {}, {},
+                    onPlan = {}, onGo = {}) {}
             } }
         }
     }

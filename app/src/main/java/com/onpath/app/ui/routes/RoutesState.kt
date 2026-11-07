@@ -58,28 +58,19 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
     var justSavedId by mutableStateOf(-1L)
 
     /** Reads the list from the store (blocking – call it off the main thread); [map] adds the model times. */
-    fun load(map: (Tour) -> Tour = { it }): Loaded {
-        val seq = loads.incrementAndGet() // before the read: a higher number saw every write made before it was asked
-        return Loaded(store.listTours().filter { it.state == "done" }.map(map), seq)
-    }
+    fun load(map: (Tour) -> Tour = { it }): List<Tour> = store.listTours().filter { it.state == "done" }.map(map)
+
+    private val loads = java.util.concurrent.atomic.AtomicInteger()
+
+    /** A read of the list starts: its number for [show]. */
+    fun beginLoad(): Int = loads.incrementAndGet()
 
     /**
-     * Shows a list read by [load] – unless a list read later is shown already (false). The loads run in parallel on the
-     * IO threads and finish in any order: a slow one read before a save must never put its older list over the newer
-     * one (E2E 2026-11-07: a route saved during a tour missing from My routes).
+     * Shows a list read by [load] – unless a later read started meanwhile ([beginLoad]): two reads overlap (the tour
+     * start's save, then My routes opened after a new row – E2E 2026-11-07) and the older one ending last must not hide
+     * the newer rows.
      */
-    fun show(loaded: Loaded): Boolean {
-        if (loaded.seq < shownSeq) return false
-        shownSeq = loaded.seq
-        tours = loaded.tours
-        return true
-    }
-
-    /** A list of My routes read by [load], numbered in the order the reads began. */
-    class Loaded(val tours: List<Tour>, val seq: Long)
-
-    private val loads = java.util.concurrent.atomic.AtomicLong()
-    private var shownSeq = 0L
+    fun show(list: List<Tour>, load: Int = loads.get()) { if (load == loads.get()) tours = list }
 
     /** The saved box → "In Meine Touren ›": My routes on Gemacht with that tour marked (owner 2026-11-06 22:30). */
     fun showSaved(tourId: Long) {

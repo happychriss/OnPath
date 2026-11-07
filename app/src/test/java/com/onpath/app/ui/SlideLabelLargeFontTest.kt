@@ -46,6 +46,7 @@ open class SlideLabelLargeFontTest {
     /** My routes with Zuletzt: the draft's Speichern · Löschen stay whole with a large font. */
     @Test fun toursRecent() = shots.toursRecent()
     @Test fun routesOverview() = shots.routesOverview()
+    @Test fun routesItemMenuPlanned() = shots.routesItemMenuPlanned()
     /** The green "Navigation ›" at a large font: the numbers go, the word stays whole (owner 2026-11-06, C). */
     @Test fun planTourRunningCollapsed() = shots.planTourRunningCollapsed()
     /** "Neuer Plan – deine Aufnahme läuft weiter" · Rückgängig (owner 2026-11-06) and the slim "Tour gespeichert" box at a large font. */

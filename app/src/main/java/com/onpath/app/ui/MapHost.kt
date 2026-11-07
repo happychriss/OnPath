@@ -73,10 +73,12 @@ fun MapHost(
         var resumed = false
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> { mapView.onStart(); started = true; vm.onReturnToApp() }
-                Lifecycle.Event.ON_RESUME -> { mapView.onResume(); resumed = true }
-                Lifecycle.Event.ON_PAUSE -> { mapView.onPause(); resumed = false }
-                Lifecycle.Event.ON_STOP -> { mapView.onStop(); started = false; vm.onLeaveApp() }
+                // timed (2026-11-07: 0.5–0.8 s main-thread stalls at onStop / on return; MapLibre's GL thread is waited for
+                // here) – a slow call says so in the log, with how long it took
+                Lifecycle.Event.ON_START -> { MapLifecycleTiming.timed("onStart") { mapView.onStart() }; started = true; vm.onReturnToApp() }
+                Lifecycle.Event.ON_RESUME -> { MapLifecycleTiming.timed("onResume") { mapView.onResume() }; resumed = true }
+                Lifecycle.Event.ON_PAUSE -> { MapLifecycleTiming.timed("onPause") { mapView.onPause() }; resumed = false }
+                Lifecycle.Event.ON_STOP -> { MapLifecycleTiming.timed("onStop") { mapView.onStop() }; started = false; vm.onLeaveApp() }
                 else -> {}
             }
         }
@@ -374,3 +376,18 @@ private var styleLoads = 0
 
 /** Latest host's controller (Diagnostics export); cleared only by the host that set it ([OwnedRef]). */
 internal val ctrlRef = OwnedRef<MapController>()
+
+/** The map's lifecycle calls on the main thread, timed: one over [SLOW_MS] is traced (which call, how long). */
+internal object MapLifecycleTiming {
+    const val SLOW_MS = 100L
+
+    /** Pure: is a call of [ms] worth a trace line. */
+    fun slow(ms: Long): Boolean = ms >= SLOW_MS
+
+    inline fun timed(what: String, block: () -> Unit) {
+        val t0 = android.os.SystemClock.uptimeMillis()
+        block()
+        val ms = android.os.SystemClock.uptimeMillis() - t0
+        if (slow(ms)) com.onpath.app.debug.Problems.trace("perf", "MapView.$what took $ms ms on the main thread")
+    }
+}
