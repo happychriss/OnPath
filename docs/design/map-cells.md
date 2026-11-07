@@ -485,9 +485,17 @@ clustered archives with leaf directories when the root would exceed 16 KiB.
   source. Phone (Pixel 8, 19 cells + packages, Plan, cold start 60 s): PSS 1.49 → 0.45 GB, native heap 1.21 → 0.10 GB;
   the one-time rewrite took 21 s (294 MB).
 - **Generations:** number = highest folder + 1; current = highest complete one with a readable `store.json`
-  (`.tmp` / `.bad` / unreadable folders are ignored and cleaned). After the map loaded a generation
-  (`confirmLoaded`), older ones are deleted; if MapLibre fails to load it, `rollback` sets it aside and the previous
+  (`.tmp` / `.bad` / `.del` / unreadable folders are ignored and cleaned). After the map loaded a generation
+  (`confirmLoaded`), older ones are deleted – each first renamed to `gNNNNNN.del` (atomic), so a reader that listed it a
+  moment before finds it gone (skipped quietly, a trace), never half deleted; a folder that is there without a
+  readable `store.json` stays an ERROR. If MapLibre fails to load it, `rollback` sets it aside and the previous
   becomes current (R-16) – its newly added cells must then be loaded again.
+- **Reading is cheap and never waits** (`current()` / `DataFiles.mapDir()`, also on the main thread): not synchronized
+  with a write in progress; the generations are kept in memory per store folder for the process – each call lists the
+  folder names only, a new name's `store.json` is read once (the worker does it in `publish`, before `generation`
+  changes). `apply` and `rollback` start a fresh count (a rolled-back number is used again). Field 2026-11-07 (Galaxy
+  S10, 0.17.3): the map read on the main thread while the clean-up deleted g000013 → false "unreadable" ERROR + red
+  notice (`CellStoreTest.generationDeletedWhileReadingRaisesNoError`).
 - **Space (R-11):** before a download: free ≥ 2 × cell size + 32 MB; before writing a generation: free ≥ sum of its
   inputs + 32 MB. Otherwise nothing is written and the cell shows "Not enough space (needs N MB) …".
 - The region package's files exist twice while cells are installed (data folder + store) – accepted, region packages
@@ -542,7 +550,8 @@ region join + re-join, format-1 not joined, rollback, search index on a generati
 socket-based fake doorman (request / status / manifest, 401, offline, Range resume, sha256 damage, request → poll →
 download → join, mobile-data rule, Wi-Fi only, offline → online, server failure, refresh, restart resume, delete).
 Optional: `RealCellsTest` with `ONPATH_CELLS_DIR=…/cells-data/cells/f2` (+ `ONPATH_REGION_DIR=…/out-f2/onpath-data`)
-joins the two real cells (+ region); `ONPATH_LIVE=1` downloads 10-543-361 from the test doorman (key from
+joins the two real cells (+ region); `StoreWriteCostTest` with `ONPATH_STORE_BENCH=1` measures the write time per
+store size (§19.9); `ONPATH_LIVE=1` downloads 10-543-361 from the test doorman (key from
 `~/.gradle/gradle.properties`, never printed). Gradle caches test results: add `--rerun`.
 
 ### 19.6 To check on the phone
@@ -597,6 +606,40 @@ The user never sees "routing data" as a separate thing. BRouter's data loads as 
   the first in the list – approximate); **Delete** removes the parts no other installed region needs (parts loaded for a
   point or a route outside every region stay; not during a tour). "Clear all" removes the parts under all regions;
 - "Download routing data" is only in Settings → Diagnostics (parts at the map centre).
+
+### 19.9 The cost of a generation (measured 2026-11-07) and how to lower it
+
+Every generation rewrites the whole store. Field (owner's Galaxy S10, 0.17.3, planning, no tour): 5 generations in
+13 min – 314 MB 11.5 s, 471 MB 19.8 s, 472 MB 19.9 s, 493 MB 20.8 s, 495 MB 19.4 s (≈ 40 ms per MB, linear). Two of
+them (g13, g15) only added one **region package** that was ready on the server when the cells' join started – downloaded
+0.5 s after it, then a full rewrite of its own. During a tour nothing is written (`holdUpdates`: joined once after it).
+
+`StoreWriteCostTest` (optional, `ONPATH_STORE_BENCH=1`; synthetic cells of real size, ~10 MB each in the store), laptop
+(NVMe, warm page cache – the S10 is ≈ 20× slower):
+
+| Store | +1 cell | | Store | +1 cell |
+| --- | --- | --- | --- | --- |
+| 1 cell, 10 MB | 136 ms | | 16 cells, 161 MB | 393 ms |
+| 4 cells, 40 MB | 169 ms | | 32 cells, 321 MB | 623 ms |
+| 8 cells, 80 MB | 252 ms | | 44 cells, 441 MB | 1 087 ms |
+
+- Linear in the store size (≈ 2.2 ms/MB + 0.1 s), so a session that adds cells one at a time costs O(N²).
+- Same 4 cells at 44: one generation 1.3 s, one by one 4.0 s (3×). Removing 4: 0.9 s. Rewrite with nothing new: 1.0 s.
+- Where it goes (48 cells): the tile layers 424 MB copied in ~0.5 s (`transferTo`, ~850 MB/s); **`pois.geojson` 47 MB
+  in 0.42 s** (every POI parsed, ownership-checked and written again) – ~40 % of the time for ~10 % of the bytes;
+  `pois.pmtiles` 11 MB 43 ms; encoding the POI tiles of one added cell 43 ms; `verify` ~0.
+
+Options (S10 estimates scaled from the field and the laptop ratios):
+
+| Option | Saves | Cost / risk | Verdict |
+| --- | --- | --- | --- |
+| **Ready packages join the cells' generation** (`joinIfDue`: a package ready on the server, or not asked yet – one status call, ≤ 5 s – is waited for) | the field session: 5 → 3 generations, 91 → 52 s, 2.2 → 1.3 GB written | small; capped by `MAX_BATCH_MS` | **built** (`CellDownloadTest.readyPackagesJoinTheCellsGeneration`) |
+| Batch joins (10 s quiet / 60 s max) | corridor cells already come in one generation (g12: +14) | – | exists since §19.3 |
+| Copy the kept cells' POIs as raw bytes: `pois.geojson` grouped by owner cell, `store.json` keeps each cell's byte range, kept ranges `transferTo`, only added cells parsed | ~30–40 % of every generation (S10 ≈ 6–8 s of 20 s) | medium-small: `GeoJsonMerge` writer + ranges; readers (search index, style fallback) unchanged | **next** |
+| Hard-link files a change does not touch (package-only join: terrain, contours, POIs; `Files.createLink`, copy when the volume refuses) | package / region-only joins ~30 % | small; `/storage/emulated` (FUSE) may refuse links → only a fallback path | maybe, after the POI copy |
+| Base + delta archive per layer (new cells in a small second source, compacted when it grows) | a join writes ~10 MB instead of 500 | large: 2× sources and layers in the style (the S10 is already janky), a replaced cell is drawn twice | only if the field still shows many generations after the two above |
+| One PMTiles per cell, a MapLibre source per cell | no rewrite | 46 cells × 5 layers = 230 sources, each with its style layers – far too many layers (§9) | no |
+| Downloads go on while a generation is written (second coroutine) | cells finishing during the 20 s write join together next | medium: the worker is single-threaded by design (§19.3) | no – batching covers it |
 
 ## 20. Region packages: the region view at z7–9 (owner)
 

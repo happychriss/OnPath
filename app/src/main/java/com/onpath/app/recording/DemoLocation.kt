@@ -102,14 +102,17 @@ object DemoLocation {
     /**
      * A running ride goes on along [p] from the point nearest to where it is now (the followed line changed: a plan
      * edit, a new route – owner 2026-11-01, Hilden: the Sim rode the old line and every sentence seemed left / right
-     * swapped). Speed factor, pause and clock stay. Nothing when no ride runs.
+     * swapped); where the new line passes here twice, the pass at about the share of the line ridden so far
+     * ([DemoPath.timeNearest]). Speed factor, pause and clock stay. Nothing when no ride runs.
      */
     fun switchLine(p: DemoPath, label: String) {
         val st = _state.value ?: return
         if (st.kind != Kind.RIDE) return
         val here = last?.first
         path = p
-        simS = here?.let { p.timeNearest(it.lat, it.lon) } ?: 0.0
+        // a line passing here twice (a loop's end by its start): the pass at about the share ridden so far (field S10)
+        val share = if (st.lengthM > 0) (st.alongM / st.lengthM).coerceIn(0.0, 1.0) else null
+        simS = here?.let { p.timeNearest(it.lat, it.lon, share) } ?: 0.0
         val f = p.at(simS)
         _state.value = st.copy(label = label, alongM = f.alongM, lengthM = p.lengthM, ended = f.ended)
         Problems.info("demo", "Demo ride goes on along the new $label from ${f.alongM.toInt()} m of ${p.lengthM.toInt()} m")

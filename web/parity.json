@@ -154,7 +154,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "9b2159149af7d6a7bc7f085ee7f3378853b6c301"
+      "blob": "be6b3ce7e5c662b90f64cd3fe575738a97d40484"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -229,7 +229,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "56d3ca316b5054c78aa2474e1c8451c1cc7b33fb"
+      "blob": "174e8c4a5a451e7903bb30a1746fdd36bf938345"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/Overview.kt",
@@ -245,7 +245,7 @@
       "web": [
         "web/app/src/cells.ts"
       ],
-      "blob": "2277c97ed6fa8bdce6e5ce65e17789b1ba55c3bd"
+      "blob": "5f860055dfa48d2bb6e713bc8814adba3791eece"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/CellCard.kt",
@@ -253,7 +253,7 @@
       "web": [
         "web/app/src/areas.ts"
       ],
-      "blob": "654112b731ad22b6dea0a660c596810c202143b5"
+      "blob": "f59a6e4b5b755b6a8da8dd43d87a154101ac89cb"
     },
     {
       "app": "app/src/main/java/com/onpath/app/cells/CellTriggers.kt",

@@ -1326,7 +1326,8 @@ class CoreFieldE2ETest : E2EBase() {
      * Owner field 2026-11-07 (tour 221, on foot, voice on: "Abseits der Route" was said, no message on the phone; four
      * questions in 2½ minutes, two of them silent): leaving the route is two steps, both on screen and said.
      * Walk the plan's line, then away from it: step 1 – the amber "Off route" card on Navigate and the voice sentence
-     * ("To say: …" in the event log, also where the emulator has no offline voice); step 2 – the question with "New
+     * ("To say: …" in the event log), or – the phone has no voice, as GitHub's emulator – the off-route vibration
+     * ("Off route told by vibration", never silent: GuidanceGate.offRouteCue); step 2 – the question with "New
      * route" under the card, which stays; back on the line the card goes.
      */
     @Test fun leavingTheRouteShowsAndSaysBothStepsAndTheCardGoesBackOnTheRoute() {
@@ -1371,8 +1372,18 @@ class CoreFieldE2ETest : E2EBase() {
             waitUntil("off the route confirmed", 150_000) { com.onpath.app.navigation.OffRouteSteps.card(navState()?.prompt) }
             // step 1: the amber card and the voice sentence
             assertNotNull("step 1: the \"$offRoute\" card on Navigate", findFresh(card, 10_000))
+            // told either – or: said with a voice, vibrated without one (GitHub's emulator has no voice – 2d06b5e6: a
+            // voiceless tour vibrates; E2E 2026-11-07 waited for a sentence that is never said there)
             val said = "To say: " + com.onpath.app.navigation.VoiceText.of(com.onpath.app.navigation.Phrase.OffRoute)
-            waitUntil("step 1 said ($said)", 10_000) { com.onpath.app.debug.Problems.events().any { it.area == "voice" && it.message == said } }
+            val buzz = com.onpath.app.recording.GuidanceGate.OFF_ROUTE_VIBRATED
+            fun saidNow() = com.onpath.app.debug.Problems.events().any { it.area == "voice" && it.message == said }
+            fun vibratedNow() = com.onpath.app.debug.Problems.events().firstOrNull { it.area == "navigation" && it.message.startsWith(buzz) }
+            waitUntil("step 1 told: \"$said\" with a voice, \"$buzz\" without", 10_000) { saidNow() || vibratedNow() != null }
+            val vibrated = vibratedNow()
+            if (vibrated != null) {
+                assertFalse("vibrated only when the phone has no voice: ${vibrated.message}", vibrated.message.contains("voice READY"))
+                assertFalse("not said and vibrated: ${vibrated.message}", saidNow())
+            }
             // step 2: the question under the card, which stays
             waitUntil("step 2: the question", 60_000) { navState()?.prompt is com.onpath.app.navigation.NavPrompt.Question }
             assertNotNull("\"${com.onpath.app.navigation.NavText.TAKE}\" in the box",
