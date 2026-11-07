@@ -57,7 +57,7 @@ class FoundPlacePinTest {
         val remove = body(vm, "fun removePin(")
         assertTrue(remove, remove.contains("searchMark = null"))
         // adding the place and a new search pick replace it on their own
-        assertTrue(body(vm, "fun addPoiPoint(").contains("clearSearchMarkAt(poi.lat, poi.lon)"))
+        assertTrue(body(vm, "fun addPoiPoint(").contains("takePin(poi.lat, poi.lon)"))
         assertTrue(src("ui/SearchFlow.kt").substringAfter("fun pickSearchResult(").substringBefore("\n    }\n").contains("searchMark = p"))
     }
 

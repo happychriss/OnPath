@@ -79,6 +79,50 @@ class CorePlanE2ETest : E2EBase() {
         assertPositionDotOnTop("with a highlight")
     }
 
+    /**
+     * Field 2026-11-07 (owner, S10: "a destination outside my map region … loads the new map but then forgets the
+     * destination"): the found place's pin is drawn again after the map style reloads (new map regions joined), and
+     * when Cancel at the very-long-plan question takes its add back, the place comes back as its pin.
+     */
+    @Test fun aFoundPlaceSurvivesAMapReloadAndALongPlanCancel() {
+        startPlanWithTwoPoints()
+        scenario.onActivity { vm(it).selectActivity(com.onpath.app.routing.Activity.HIKE) }
+        var centre: LatLng? = null
+        onMap { m -> centre = m.cameraPosition.target }
+        val near = com.onpath.app.search.Place("e2e:near", "Near place", "place", centre!!.latitude, centre!!.longitude, sub = "village")
+        scenario.onActivity { vm(it).searchMark = near }
+        waitUntil("pin drawn") { pinsDrawn() == 1 }
+        scenario.onActivity { vm(it).reloadMapStyleForTest() }
+        waitForMap(reloaded = true)
+        waitUntil("pin drawn again after a style reload") { pinsDrawn() == 1 }
+        var mark: com.onpath.app.search.Place? = null
+        scenario.onActivity { mark = vm(it).searchMark }
+        assertTrue("the pin stays after a style reload", mark == near)
+
+        // a place far beyond a day on foot (~130 km north): adding it asks first; Cancel takes the add back
+        val far = com.onpath.app.search.Place("e2e:far", "Far place", "place", MERAN_LAT + 1.2, MERAN_LON, sub = "town")
+        scenario.onActivity { vm(it).searchMark = far; vm(it).addPoiPoint(far.toPoi()) }
+        waitUntil("the very-long-plan question") { var a: Double? = null; scenario.onActivity { a = vm(it).longRouteAsk }; a != null }
+        scenario.onActivity { mark = vm(it).searchMark }
+        assertTrue("the pin went into the plan", mark == null)
+        scenario.onActivity { vm(it).answerLongRoute(false) }
+        waitUntil("the add taken back") { waypointCount() == 2 }
+        scenario.onActivity { mark = vm(it).searchMark }
+        assertTrue("the far place is a pin again, not forgotten (mark $mark)", mark == far)
+    }
+
+    /** Features in the found place's map source (the pin). */
+    private fun pinsDrawn(): Int {
+        var n = -1
+        onMap { m ->
+            n = try {
+                m.style?.getSourceAs<org.maplibre.android.style.sources.GeoJsonSource>(com.onpath.app.map.MapController.SRC_MARK)
+                    ?.querySourceFeatures(null)?.size ?: 0
+            } catch (e: Exception) { 0 } // expected: the style is being replaced – asked again
+        }
+        return n
+    }
+
     /** C1 on a turned map (compass, hand rotation). */
     @Test fun holdOnAPointWorksOnATurnedMap() {
         startPlanWithTwoPoints()

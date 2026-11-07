@@ -1171,7 +1171,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 offlineResult = null; timeDetails = null; routeDetailsOpen = false
             }
             override fun closeShownTrack() { if (shown != null) closeShown() }
-            override fun flyTo(at: GeoPoint, zoom: Double) { followMe = false; freeLookAt = null; events += UiEvent.CenterOn(at, zoom) }
+            override fun flyTo(at: GeoPoint, zoom: Double) {
+                followMe = false; freeLookAt = null
+                // an intended fly to a found place: the start camera must not jump back to a late first fix afterwards
+                // (field 2026-11-07, S10: the far destination left the screen once its map had loaded)
+                startCameraDone = true; userMovedMap = true
+                events += UiEvent.CenterOn(at, zoom)
+            }
             override fun loadMapsFor(at: GeoPoint, name: String) = mapData.placeSearched(at, name)
             override fun stopFollowing() { followMe = false }
             override fun holdStartCamera() { startCameraDone = true; userMovedMap = true }
@@ -1478,6 +1484,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * (PlanHaptics, owner), never after an edit.
      */
     private fun change(block: MutableList<GeoPoint>.() -> Unit) {
+        pinTaken = null // a newer edit: only the add itself can bring its pin back (the add sets it after this)
         // editing on a map that keeps turning is confusing: stop following, the map stays at its angle (owner)
         if (mode == AppMode.PLAN && headingUp && followMe) followMe = false
         val before = plan.edit(block)
@@ -1746,10 +1753,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (idx >= 0) { openPointMenu(idx, via = "POI that is a stop"); return }
         val p = GeoPoint(poi.lat, poi.lon)
         rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
-        clearSearchMarkAt(poi.lat, poi.lon)
+        val pin = takePin(poi.lat, poi.lon)
         pinned += p; prefs.planPinned = pinned
         val before = waypoints.size
         if (candidate) fittingPlaceAdd { edit(p) } else edit(p)
+        pinTaken = pin?.let { TakenPin(it, p) }
         Problems.trace("plan", "Place menu: \"${poi.name ?: poi.kind}\" $how (plan $before → ${waypoints.size} points)")
     }
 
@@ -1855,9 +1863,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (waypoints.isNotEmpty()) { addPoiPoint(poi); return }
         val p = GeoPoint(poi.lat, poi.lon)
         rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
-        clearSearchMarkAt(poi.lat, poi.lon)
+        val pin = takePin(poi.lat, poi.lon)
         pinned += p; prefs.planPinned = pinned
         change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
+        pinTaken = pin?.let { TakenPin(it, p) }
+        Problems.trace("plan", "Go here from my location: \"${poi.name ?: poi.kind}\" (plan 0 → ${waypoints.size} points)")
     }
     /**
      * Opens the menu of route point [index]; [distDp] = finger distance from the marker, [via] = what opened it
@@ -1892,9 +1902,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (idx >= 0) { openPointMenu(idx, via = "POI that is a stop"); return }
         val p = GeoPoint(poi.lat, poi.lon)
         rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
-        clearSearchMarkAt(poi.lat, poi.lon)
+        val pin = takePin(poi.lat, poi.lon)
         val before = waypoints.size
         if (candidate) fittingPlaceAdd { addPoint(p, lineSnapM, onPoi = true) } else addPoint(p, lineSnapM, onPoi = true)
+        pinTaken = pin?.let { TakenPin(it, p) }
         Problems.trace("plan", "POI menu: \"${poi.name ?: poi.kind}\" added to the route (plan $before → ${waypoints.size} points)")
     }
 
@@ -2042,6 +2053,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** [poi] is the found place's pin (its menu then ends with "Nadel entfernen"). */
     fun isCandidate(poi: com.onpath.app.poi.Poi): Boolean = searchFlow.isCandidate(poi)
     private fun clearSearchMarkAt(lat: Double, lon: Double) = searchFlow.clearSearchMarkAt(lat, lon)
+
+    /** The found place at ([lat], [lon]) goes into the plan: its pin goes; returns that place (null = no pin there). */
+    private fun takePin(lat: Double, lon: Double): com.onpath.app.search.Place? {
+        val m = searchMark?.takeIf { sameSpot(GeoPoint(it.lat, it.lon), lat, lon) }
+        clearSearchMarkAt(lat, lon)
+        if (m != null) Problems.trace("plan", "Pin taken into the plan: \"${m.title()}\"")
+        return m
+    }
+
+    /** The found place the last edit added ([TakenPin]): a Cancel that undoes that edit shows its pin again. */
+    private var pinTaken: TakenPin? = null
     /**
      * [block] adds a place from the place card or the candidate marker's menu: the new route is fitted once computed
      * ([WholeRoute.fitAfterPlace], the same fit as the first route).
@@ -2087,7 +2109,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         closePlaceCard()
         rememberPlaceName(p, name)
         // taken: the candidate marker goes (the numbered route point shows the place now)
-        clearSearchMarkAt(place.lat, place.lon)
+        val pin = takePin(place.lat, place.lon)
         if (idx != null) {
             // "As start" = the point menu's "Start here" (owner); "As destination" moves it to the end
             when (role) { PlaceRole.START -> startAtPoint(idx); PlaceRole.DESTINATION -> makeDestination(idx); PlaceRole.SMART -> Unit }
@@ -2104,6 +2126,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 else change { add(p) }
             }
         }
+        pinTaken = pin?.let { TakenPin(it, p) }
+        Problems.trace("plan", "Place card: \"$name\" added (${role.name.lowercase()}, plan now ${waypoints.size} points)")
     }
 
     fun removePlace(place: com.onpath.app.search.Place) { routeIndexOf(place)?.let { removePoint(it) }; closePlaceCard() }
@@ -2160,6 +2184,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun step(prev: List<GeoPoint>?, what: String) {
         if (prev == null) { Problems.trace("plan", "$what: nothing to ${what.lowercase()}"); return }
         Problems.trace("plan", "$what: plan ${waypoints.size} → ${prev.size} points")
+        pinTaken = null // the user's own Undo / Redo: a later Cancel does not bring a pin back
         val before = waypoints.toList()
         routingSpot = RoutingSpot.of(before, prev)
         val split = splitOf(before, prev)
@@ -2241,12 +2266,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val cause = runCauses.takeForCancel()
         val what = PlanStatus.onCancel(cause, canUndo, canRedo)
         Problems.trace("routing", "Cancel ($why) of a run for ${cause::class.simpleName}: ${what.name.lowercase()}")
+        val taken = pinTaken; pinTaken = null
         leaveUnrouted(why)
         when (what) {
             PlanStatus.OnCancel.UNDO -> undoStep()
             PlanStatus.OnCancel.REDO -> redoStep()
             PlanStatus.OnCancel.RESTORE_ACTIVITY -> (cause as? PlanStatus.Cause.ActivityChange)?.let { restoreActivity(it) }
             PlanStatus.OnCancel.KEEP_POINTS -> Unit
+        }
+        // the add of a found place taken back: the place stays as its pin (field 2026-11-07, S10 – never forgotten)
+        TakenPin.back(taken, waypoints.toList(), searchMark)?.let { p ->
+            searchMark = p
+            Problems.trace("plan", "Cancel took back the add of \"${p.title()}\": its pin is shown again")
         }
     }
 

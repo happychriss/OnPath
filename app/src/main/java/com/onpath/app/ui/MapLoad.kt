@@ -212,7 +212,8 @@ object MapLoads {
 /**
  * Modal → Cancel: **Cancel = stop** (owner). The regions the modal waited for stop loading (installed ones stay; the
  * server may finish its build – the next request is then quick), no card follows for that job, the searched place's
- * ring goes when a search / shared place started it, a point the user set stays in the plan, the map stays where it is.
+ * ring goes when a search / shared place started it and its map is still missing (map there = the ring stays), a point
+ * the user set stays in the plan, the map stays where it is.
  * Setting a point or searching there again loads anew. Pure, unit-tested.
  */
 object MapLoadCancel {
@@ -236,7 +237,11 @@ object MapLoadCancel {
         val closeCard = job != null && jobWaited
         val all = LinkedHashSet<CellId>(waitedFor)
         if (closeCard) all += job!!.cells
-        return Outcome(all.filter { it !in installed }, bySearch, closeCard)
+        // the ring goes only when Cancel really stops the searched place's map (field 2026-11-07, S10: the map for the
+        // place was there, the window still showed – Cancel then took the destination too). The map is there / only
+        // routing data was waited for: the found place stays until the user acts on it.
+        val stopsItsMap = waitedFor.any { it !in installed }
+        return Outcome(all.filter { it !in installed }, bySearch && stopsItsMap, closeCard)
     }
 }
 

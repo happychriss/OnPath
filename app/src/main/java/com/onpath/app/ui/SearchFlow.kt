@@ -94,6 +94,8 @@ class SearchFlow(
         closeMapOverlays()
         searchPlace = p
         searchMark = p
+        // every pick in the event log: a later "the destination was forgotten" shows what happened to its pin
+        Problems.trace("search", "Search pick: \"${p.title()}\" – pin set (plan ${waypoints.size} points, ${mode.name.lowercase()})")
         flyToPlace(p)
     }
 
