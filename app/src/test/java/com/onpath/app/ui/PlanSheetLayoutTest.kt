@@ -32,7 +32,7 @@ class PlanSheetLayoutTest {
 
     /**
      * ONE full-width green button in the sheet's foot, in every step – also rolled up (owner 2026-11-07, A): "Los geht's"
-     * from two points, during a tour "Weiter geht's" back to Navigate; a plain recording without a plan is ☰ → "Ohne Plan
+     * from two points, during a tour "Weiter geht's" back to Navigate; a plain recording without a plan is ☰ → "Nur
      * aufzeichnen" (owner 2026-11-06: "Los geht's ohne Route" in the sheet was confusing).
      */
     @Test fun theFootCarriesTheOneGreenButton() {

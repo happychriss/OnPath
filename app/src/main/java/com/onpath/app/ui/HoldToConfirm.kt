@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -33,12 +34,16 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
 
 /**
  * The lock as "hold to confirm" (owner 2026-11-06 22:20, variant A of https://claude.ai/artifact/3noAFaW5cjWVYBDHReLUrN,
  * replaces the slider): while Navigate is locked the bottom bar's buttons are light; a finger held on one fills it with
  * its full colour from the left in the chosen time ([LocalHoldMs], default [HoldRule.HOLD_MS]) – only when full it fires (+ a short buzz). Let go earlier: the band runs
- * back and nothing happens; the line "Gedrückt halten" shows for [HINT_MS] so a short tap is never silent. Pure rules
+ * back and nothing happens; "Gedrückt halten" shows for [HINT_MS] right above the tapped button, with a short tick, so a
+ * short tap is never silent (owner 2026-11-07: nothing at rest, only after a short tap). Pure rules
  * here (`HoldRuleTest`); the drawing and the finger in [HoldButton].
  */
 object HoldRule {
@@ -73,20 +78,18 @@ object HoldRule {
     fun backMs(progress: Float): Int = (BACK_MS * progress.coerceIn(0f, 1f)).toInt()
 
     /**
-     * Whether the small line over the locked bar shows (owner 2026-11-07: "nur beim ersten Mal oder wenn man den Knopf
-     * kurz antippt – nicht andauernd, das irritiert"): always right after a release before the end ([strong], the hint
-     * "Gedrückt halten" for [HINT_MS]); at rest only until the user has fired one held button ([learned]).
+     * Where the hint "Gedrückt halten" sits over the locked bar (owner 2026-11-07, 09:30: never at rest – only after a
+     * short tap, right above the tapped button): its left edge in the bar, centred over the button's centre
+     * [buttonCenter] (both in the bar's own px) and kept inside the bar ([barWidth]) – a button at the edge pushes it in.
      */
-    fun pillShows(learned: Boolean, strong: Boolean): Boolean = strong || !learned
+    fun hintLeft(buttonCenter: Float, hintWidth: Float, barWidth: Float): Float =
+        (buttonCenter - hintWidth / 2f).coerceIn(0f, (barWidth - hintWidth).coerceAtLeast(0f))
 }
 
 /** The hold time the bar's [HoldButton]s use (Settings → Navigation, provided by Navigate; screenshot tests: the default). */
 val LocalHoldMs = androidx.compose.runtime.compositionLocalOf { HoldRule.HOLD_MS }
 
-/** The user has fired a held button before ([HoldRule.pillShows]; provided by Navigate; screenshot tests: not yet). */
-val LocalHoldLearned = androidx.compose.runtime.compositionLocalOf { false }
-
-/** Told when a held button fired (Navigate remembers it for [LocalHoldLearned]); nothing by default. */
+/** Told when a held button fired; nothing by default. */
 val LocalOnHoldFired = androidx.compose.runtime.staticCompositionLocalOf<() -> Unit> { {} }
 
 /**
@@ -101,7 +104,8 @@ fun HoldButton(
     light: Color,
     onLight: Color,
     onFire: () -> Unit,
-    onEarlyRelease: () -> Unit,
+    /** A release before the end; gets the button's centre x in the window (px) so the hint can sit right above it. */
+    onEarlyRelease: (centerX: Float) -> Unit,
     modifier: Modifier = Modifier,
     shape: Shape = OnPathShapes.Pill,
     outline: Color? = null,
@@ -114,8 +118,10 @@ fun HoldButton(
     val early by rememberUpdatedState(onEarlyRelease)
     val holdMs by rememberUpdatedState(LocalHoldMs.current)
     val learnt by rememberUpdatedState(LocalOnHoldFired.current)
+    var centerX by remember { mutableFloatStateOf(0f) }
     Box(
-        modifier.clip(shape).background(light)
+        modifier.onGloballyPositioned { centerX = it.boundsInWindow().center.x }
+            .clip(shape).background(light)
             .then(if (outline != null) Modifier.border(BorderStroke(1.5.dp, outline), shape) else Modifier)
             .clearAndSetSemantics {
                 role = Role.Button
@@ -138,7 +144,8 @@ fun HoldButton(
                     waitForUpOrCancellation()
                     if (!fired && HoldRule.release(band.value) == HoldRule.Release.BACK_WITH_HINT) {
                         run.cancel()
-                        early()
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) // a short tick: "not yet"
+                        early(centerX)
                         scope.launch { band.animateTo(0f, tween(HoldRule.backMs(band.value), easing = LinearEasing)) }
                     } else scope.launch { band.snapTo(0f) }
                 }

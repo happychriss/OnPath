@@ -38,6 +38,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Surface
@@ -93,7 +94,7 @@ class PlanMenu(
      */
     val onNewPlan: (() -> Unit)? = null,
     /**
-     * "Ohne Plan aufzeichnen" (owner 2026-11-06, flow map H1: "Los geht's ohne Route" in the sheet was confusing – in ☰,
+     * "Nur aufzeichnen" (owner 2026-11-06, flow map H1: "Los geht's ohne Route" in the sheet was confusing – in ☰,
      * rarely needed): a plain recording; null hides it (a tour runs).
      */
     val onRecordWithoutPlan: (() -> Unit)? = null,
@@ -269,7 +270,7 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     menu.onSaveRoute?.let { save ->
         MenuItem(Icons.Outlined.Save, str(Res.string.plan_save_route), enabled = st.save) { close(); save() }
     }
-    // owner 2026-11-06: Meine Touren · Plan speichern · Neu planen · Ohne Plan aufzeichnen, then the rest
+    // owner 2026-11-06: Meine Touren · Plan speichern · Neu planen · Nur aufzeichnen, then the rest
     menu.onNewPlan?.let { n -> MenuItem(Icons.Filled.Close, str(Res.string.plan_close_plan)) { close(); n() } }
     menu.onRecordWithoutPlan?.let { r -> MenuItem(Icons.Outlined.RadioButtonChecked, str(Res.string.plan_menu_record_without_plan)) { close(); r() } }
     HorizontalDivider()
@@ -279,26 +280,21 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
 }
 
 /**
- * "Pair with browser" (unpaired in the browser: + grey "Unpaired in the browser"); paired: "Paired with browser ✓" + grey
- * "<device> ↔ <browser> · synced 1 min ago"; the browser not seen yet: no ✓ + grey "Waiting for the browser …"; a
- * problem: amber ⚠ + why.
+ * One plain menu line (owner 2026-11-07: "einfach ein Menüeintrag"): "Mit Browser koppeln" / "Browser-Kopplung"
+ * ([SyncMenuUi.labelPaired]), no subtitle, no ✓. The state shows only in the leading icon: a problem worth a look makes
+ * the same sync icon amber (and the ☰ dot) – the screen reader hears the reason. A tap opens the pairing / Browser sync,
+ * where the status stands ("Verbunden seit …", "Zuletzt abgeglichen", Trennen).
  */
 @Composable
 private fun SyncMenuItem(ui: SyncMenuUi, enabled: Boolean, onClick: () -> Unit) {
     val warn = ui.warning != null
-    val label = if (!ui.paired) str(Res.string.sync_menu_pair) else str(Res.string.sync_menu_paired) + if (warn || ui.waiting) "" else " ✓"
+    val label = str(if (ui.labelPaired) Res.string.sync_menu_paired else Res.string.sync_menu_pair)
+    val said = if (warn && ui.line != null) str(Res.string.sync_menu_attention, ui.line) else label
     DropdownMenuItem(
-        text = {
-            Column {
-                Text(label)
-                ui.line?.let { Text(it, style = MaterialTheme.typography.bodySmall,
-                    color = if (warn) OnPathColors.Warn else MaterialTheme.colorScheme.onSurfaceVariant) }
-            }
-        },
+        text = { Text(label) },
         enabled = enabled, onClick = onClick,
-        leadingIcon = { Icon(if (warn) Icons.Outlined.WarningAmber else Icons.Outlined.Sync, contentDescription = null) },
-        colors = if (!warn) MenuDefaults.itemColors() else MenuDefaults.itemColors(textColor = OnPathColors.Warn, leadingIconColor = OnPathColors.Warn),
-        modifier = Modifier.heightIn(min = 48.dp),
+        leadingIcon = { Icon(Icons.Outlined.Sync, contentDescription = null, tint = if (warn) OnPathColors.Warn else LocalContentColor.current) },
+        modifier = Modifier.heightIn(min = 48.dp).semantics(mergeDescendants = true) { contentDescription = said },
     )
 }
 

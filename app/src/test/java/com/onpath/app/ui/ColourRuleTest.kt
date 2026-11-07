@@ -18,7 +18,7 @@ class ColourRuleTest {
     @Test fun primaryIsWalnutAndTheTwoActionColoursStay() {
         assertEquals(Color(0xFF4A3F37), OnPathColors.Walnut)
         assertEquals(Color(0xFF245F46), OnPathColors.ActionGo)
-        assertEquals(Color(0xFF2B4C6F), OnPathColors.ActionEdit) // ink blue, owner 2026-11-06 variant C
+        assertEquals(Color(0xFF335A85), OnPathColors.ActionEdit) // ink blue, owner 2026-11-06 variant C, lighter 2026-11-07
         val theme = src("ui/Theme.kt")
         assertTrue(theme.contains("primary = OnPathColors.Walnut,"))
         assertTrue(theme.contains("surfaceTint = OnPathColors.Walnut,"))
