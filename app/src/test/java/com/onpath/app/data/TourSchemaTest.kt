@@ -156,6 +156,6 @@ class TourSchemaTest {
         val svc = java.io.File("src/main/java/com/onpath/app/recording/RecordingService.kt").readText()
         assertTrue(svc.contains("gone = db.updateStats(") && svc.contains("db.rescueRecording(tourId"))
         assertTrue(svc.substringAfter("private fun tick()").substringBefore("\n    }\n").contains("saveStats(\"active\")"))
-        assertTrue(svc.substringAfter("private fun finish()").substringBefore("\n    }\n").contains("saveStats(\"done\")"))
+        assertTrue(svc.substringAfter("private fun finish(").substringBefore("\n    }\n").contains("saveStats(\"done\")"))
     }
 }
