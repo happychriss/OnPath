@@ -37,7 +37,7 @@ class SyncFilesTest {
         val back = f.ledger()
         assertEquals(l.entries, back.entries)
         assertEquals(l.write(), back.write())
-        assertFalse(File(tmp.root, "sync/ledger.txt" + SyncFiles.TMP).exists())
+        assertEquals("no temp file left", listOf("ledger.txt"), File(tmp.root, "sync").list()!!.sorted())
     }
 
     @Test fun aCrashWhileWritingLeavesTheOldFile() {
@@ -45,9 +45,9 @@ class SyncFilesTest {
         val l = SyncLedger.empty().apply { save(id(1), SyncTrackTest.PLAN, "Old", 10, dev) }
         f.saveLedger(l)
         // a crash after half of the temp file: the rename never happened
-        File(tmp.root, "sync/ledger.txt" + SyncFiles.TMP).writeText("onpath-sync 1 0\n0 d AQEB")
+        File(tmp.root, "sync/.ledger.txt.123.tmp").writeText("onpath-sync 1 0\n0 d AQEB")
         assertEquals(listOf("Old"), f.ledger().plans().map { it.title })
-        // the next write replaces the stale temp file
+        // the next write uses its own temp file; the stale one goes with the clean-up of old temps
         f.saveLedger(SyncLedger.empty().apply { save(id(2), SyncTrackTest.PLAN, "New", 10, dev) })
         assertEquals(listOf("New"), f.ledger().plans().map { it.title })
     }
