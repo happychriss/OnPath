@@ -3968,7 +3968,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun copyFollowedPlan(act: Activity, level: Int) {
         val p = tourPlanNow(act, level) ?: return
-        planCopy { followed(p) }
+        val id = savedId
+        planCopy {
+            // the saved route it is (read here: a route saved at the tour start is not in My routes' list yet)
+            val source = if (id < 0) null else runCatching { db.getTour(id)?.uuid?.takeIf { it.isNotEmpty() } }
+                .onFailure { Problems.warn("db", "The followed plan's saved route not read – the copy is kept without it", it) }.getOrNull()
+            followed(p.copy(sourceUuid = source))
+        }
     }
 
     /** The plan on the map as the tour's copy: points with names, pins, the line, its numbers; null below two points. */
@@ -3976,11 +3982,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val pts = waypoints.toList()
         if (pts.size < 2) return null
         val r = route
-        val source = savedId.takeIf { it >= 0 }?.let { id -> tours.firstOrNull { it.id == id }?.uuid?.takeIf { u -> u.isNotEmpty() } }
         return com.onpath.app.data.TourPlan(name = savedName, activity = act.name, sac = level, waypoints = savedStops(pts),
             pinned = pinnedIndices(), line = (r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) },
             distanceM = r?.distanceM ?: 0.0, ascentM = r?.ascentM ?: 0.0, descentM = r?.descentM ?: 0.0,
-            durationS = r?.durationS ?: 0.0, sourceUuid = source)
+            durationS = r?.durationS ?: 0.0)
     }
 
     /**
