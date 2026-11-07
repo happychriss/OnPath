@@ -39,14 +39,5 @@ class PlanAutoSaveTest {
     @Test fun losGehtsSavesTheNewPlan() =
         assertTrue(vm.contains("PlanStart.NAVIGATE_PLAN -> { followPlanned(); secureTourCorridor(); saveNewPlanAtStart() }"))
 
-    @Test fun theEndOfATourLeavesThePlanAlone() {
-        for (f in listOf("fun endTour() {", "fun endTourAndDelete() {")) {
-            val b = body(f)
-            assertFalse("$f must not open Save's dialog: $b", b.contains("requestSave") || b.contains("askSave"))
-        }
-        val finished = vm.substringAfter("RecordingService.finished.collect { id ->").substringBefore("fun initialCamera()")
-        assertFalse("the plan stays on the map after the tour", finished.contains("clearPlan()"))
-        val sheet = File("src/main/java/com/onpath/app/ui/TourBar.kt").readText()
-        assertFalse("the end sheet asks nothing about the plan", sheet.contains("EndPlanOption") || sheet.contains("routeLabel"))
-    }
+    // the end of a tour leaves the plan alone: E2E CoreFieldE2ETest.endTourKeepsThePlanSavedAtTheStart / endTourDeleteBinsOnlyTheTour
 }

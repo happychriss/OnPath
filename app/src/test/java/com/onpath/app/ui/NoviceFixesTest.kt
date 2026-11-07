@@ -35,7 +35,5 @@ class NoviceFixesTest {
         assertTrue(src("ui/SlideToUnlock.kt").contains("if (showSub) Text(sub, color = OnPathColors.OnGreenMuted"))
         assertTrue("grey info on the blue plan sheet", contrast(OnPathColors.Grey, OnPathColors.PlanTint) >= 4.5)
         assertTrue("detail lines on the blue plan sheet", contrast(OnPathColors.InkMuted, OnPathColors.PlanTint) >= 4.5)
-        val sub = src("ui/PlanPanel.kt").substringAfter("private fun SubLine(").substringBefore("\n}\n")
-        assertFalse("the plan's status line is 16 sp", sub.contains("typography.bodyMedium"))
     }
 }

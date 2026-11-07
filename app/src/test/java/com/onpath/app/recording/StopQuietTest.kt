@@ -3,7 +3,6 @@ package com.onpath.app.recording
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Owner 2026-11-01: "Navigation Stopp" (restaurant) = the phone is quiet. Owner 2026-11-03: Plan stays quiet – walking
@@ -19,11 +18,5 @@ class StopQuietTest {
         assertFalse(q.quiet)
     }
 
-    @Test fun noWalkOffBackToNavigate() {
-        val svc = File("src/main/java/com/onpath/app/recording/RecordingService.kt").readText()
-        assertFalse("no auto resume by walking off", svc.contains("stopQuiet.onFix") || svc.contains("stopQuiet.resumed"))
-        assertFalse(svc.contains("guidanceBack"))
-        val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        assertFalse("the app never switches Plan → Navigate by itself", vm.contains("guidanceBack"))
-    }
+    // no auto resume by walking off: StopQuiet has no fix input – only Continue ends the quiet (tests above)
 }

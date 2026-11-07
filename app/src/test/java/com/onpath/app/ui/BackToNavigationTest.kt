@@ -2,7 +2,6 @@ package com.onpath.app.ui
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.io.File
 
 /**
  * Core feature (owner 2026-11-06, C – replaces the round "←" of 2026-11-05, R1): during a tour the way from the plan back
@@ -11,8 +10,6 @@ import java.io.File
  * does the same. The tour goes on, the plan's points stay, a paused recording goes on.
  */
 class BackToNavigationTest {
-    private fun src(f: String) = File("src/main/java/com/onpath/app/$f").readText()
-
     /** The band is one row; at a large font the mode label gets its own line (no overlap). */
     @Test fun bandHeights() {
         assertEquals(76f, PlanTopBand.bottom(fontScale = 1f).value)

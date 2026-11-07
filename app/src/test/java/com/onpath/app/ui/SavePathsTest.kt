@@ -38,8 +38,7 @@ class SavePathsTest {
         val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
         val rides = screen.substringAfter("is EndAsk.Rides -> RideSummaryDialog(").substringBefore("null -> {}")
         assertFalse(rides, rides.contains("routeLabel") || rides.contains("saveRouteAtEnd"))
-        val ask = body("fun askEndTour(saveIfNoRides: Boolean = false) {")
-        assertTrue(ask.contains("s != null -> endAsk = EndAsk.Rides(id, s)"))
+        // rides found → the summary (and nothing about the plan): TourEndPathsTest.endTourAndArrivalRunTheRideCheck
     }
 
     /**
