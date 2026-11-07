@@ -126,6 +126,8 @@ class VoiceGuide {
     /** Bike: junctions whose early sentence ("In 200 Metern links.") was said. */
     private val early = HashSet<Int>()
     private var lineLength = 0.0
+    /** The progress of the last fix with one ([rewind]). */
+    private var lastAlong = Double.NEGATIVE_INFINITY
     /** Where the line goes back the way it came (metres along it, [Reversals]). */
     private var reversals = DoubleArray(0)
 
@@ -182,6 +184,7 @@ class VoiceGuide {
     fun update(i: Input): Phrase? {
         if (i.paused) { gpsLostSince = null; return null }
         val newLine = load(i.line, i.version, i.bike)
+        rewind(i.alongM)
         // the off-route question: said once when it opens (at most every OFF_ROUTE_EVERY_MS – jumping fixes open and
         // close it again and again); closed by riding back → "back on the route" when it was said a while ago
         if (i.offRoute && !lastOffRoute) {
@@ -318,6 +321,19 @@ class VoiceGuide {
         return Phrase.Junction(inM, turns[k], exits[k], onto[k], j?.let { turns[it] }, j?.let { exits[it] } ?: 0, straight)
     }
 
+    /**
+     * The progress jumped back ([JunctionCues.REWIND_M]: a round trip ridden a second time, a rejoin well behind): the
+     * turns ahead are said again – field bug owner 2026-11-06, Fragenregister donald-20261106-51 (lap 2 stayed silent).
+     */
+    private fun rewind(along: Double?) {
+        if (along == null) return
+        if (lastAlong - along > JunctionCues.REWIND_M) {
+            val ahead = { k: Int -> alongs[k] >= along - JunctionCues.PASSED_M }
+            said.removeAll(ahead); early.removeAll(ahead)
+        }
+        lastAlong = along
+    }
+
     private fun queue(p: Phrase, nowMs: Long) { if (waiting.size < 3) waiting.addLast(p to nowMs) }
 
     private fun speak(p: Phrase, nowMs: Long): Phrase { lastSpokenMs = nowMs; return p }
@@ -337,7 +353,7 @@ class VoiceGuide {
         onto = Array(idx.size) { ontoAt(line, cum, idx[it], isBike) }
         needed = JogRule.needed(line, cum, idx, hike = !isBike)
         reversals = if (line.size >= 3) Reversals.of(line, cum).map { cum[it] }.toDoubleArray() else DoubleArray(0)
-        said.clear(); early.clear()
+        said.clear(); early.clear(); lastAlong = Double.NEGATIVE_INFINITY
         return !first
     }
 
