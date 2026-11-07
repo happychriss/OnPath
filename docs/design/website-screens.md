@@ -48,6 +48,9 @@ cloud-web builds them into the website.
 | B05 | `B05-web-3d-abfliegen` | during the flyover: camera along the route, Pause / Stopp, 1× / 2× | – (film 1) | `flyover.ts` |
 | B06 | `B06-web-teilen-qr` | "Teilen" with the plan's QR code | web-teilen (help), web-qr (home) · home, route-planen | `share.ts` |
 | B07 | `B07-web-meine-touren` | Meine Touren with route pictures, "In Bearbeitung", the large overview | web-touren · route-planen | `plans.ts` |
+| B08 | `B08-web-3d-route-ueber-meran` | 3D showcase: a hike route above Algund, Meran, Dorf Tirol and Schenna behind (owner's example) | – · home hero / store S6 candidate, film 1 | `terrainview.ts` |
+| B09 | `B09-web-3d-partschins-grosses-profil` | 3D with the big profile and its steepness colours | – · route-planen candidate | `terrainview.ts`, `profile.ts` |
+| B10 | `B10-web-3d-abfliegen-partschins` | during the flyover: Pause · Stopp · 1×, the dot on the route and in the profile | – · film 1 | `flyover.ts` |
 
 ## C – Pair browser and phone (planner + app)
 

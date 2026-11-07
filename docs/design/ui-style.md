@@ -148,13 +148,14 @@ MessageSlot(Messages.pick(listOf(question, m)), MessagePlacement.topDp(MessageSc
 | Downloads in the background | ANZEIGE | the small chip "◔ Bozen · 34 %" in the tag look (`TagContainer` / `TagInk` pill, a progress ring – spinning while areas are still prepared and no percent is known yet; ≥ 48 dp tap target); tap → its details as a bottom sheet; offline / waiting for GPS → the quiet grey pill |
 | The result of an action in My routes / Settings | ANZEIGE | `NoticeLine`: grey INFO / red ERROR line at the top, gone when the screen is left |
 | Work the user started | ANZEIGE | a spinner where it was started (`Busy`) |
+| A short INFO for the map, e.g. the app switched Relief off on a slow phone (owner 2026-11-07, `map/ReliefAuto`) | ANZEIGE | `vm.say(…, INFO, MAP)` → `NoticeSurface.MAP_LINE`: the quiet pill ⓘ "Relief off – the map runs smoother" beside the activity button at the GPS note's height (Plan, no search / My routes / Settings over the map); goes by itself after 8 s (`MapNote.MS`) |
 
 ### Common rules
 - **One box at a time:** a FRAGE wins over a HINWEIS; the others wait in their state and come next
   (`Messages.pick`, unit-tested).
 - **No dark message bar.** A result goes where the user acted: `vm.say(text, NoticeKind, NoticePlace)` →
   `NoticeRouting`: a grey / red line at the top of My routes or the open Settings page (gone when that screen is left);
-  an ERROR without such a place → the HINWEIS_ERROR box (`vm.errorCard`); an INFO without a place → problem log only
+  an ERROR without such a place → the HINWEIS_ERROR box (`vm.errorCard`); an INFO for the map while the Plan map shows → the quiet pill on the map (`MAP_LINE`, 8 s); an INFO without a place → problem log only
   (`NoticesTest`). A result visible anyway is not said (no "Track saved to My routes").
 - **No double question:** while the app is on screen, the off-route / re-route question is not posted as a heads-up
   notification – it goes on the quiet navigation channel (lock screen keeps it); heads-up only when the app is not on

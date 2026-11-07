@@ -61,6 +61,16 @@ class PlanGpsTest {
         assertTrue("under the download strip too", PlanGps.noteTopDp(row, stripBottomDp = 200) > 200)
     }
 
+    @Test fun theNoteStandsBesideTheActivityButtonClearOfItsBadge() {
+        // the T badge under the button grew (2026-11-07): a note under the row started at the edge and covered it
+        assertEquals(OverviewPillPlace.BESIDE_ACTIVITY_DP, PlanGps.noteStartDp(activityButtonShown = true))
+        assertEquals(OverviewPillPlace.EDGE_DP, PlanGps.noteStartDp(activityButtonShown = false))
+        // the GPS note and the map's INFO line use the one rule (MapScreen) – one at a time, never stacked
+        val screen = java.io.File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
+        assertEquals(2, Regex("""start = PlanGps\.noteStartDp\(""").findAll(screen).count())
+        assertTrue(screen.contains("vm.mapNote?.takeIf { vm.mode == AppMode.PLAN && !vm.searchOpen && vm.planGpsNote == null }"))
+    }
+
     @Test fun anEditWithoutAPositionIsANeutralNoteThatStaysLongerThanATapNote() {
         // were red boxes during a tour (route back / one point left without a position) – Plan is quiet about GPS
         for (n in listOf(PlanGps.Note.ROUTE_BACK_NO_POSITION, PlanGps.Note.ONE_POINT_NO_POSITION)) {

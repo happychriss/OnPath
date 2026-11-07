@@ -2,6 +2,8 @@ package com.onpath.app.ui
 
 import com.onpath.strings.*
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LocationSearching
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -1636,6 +1638,37 @@ class ScreenshotTest {
             }
         }
     }
+
+    /**
+     * The app switched relief off on a slow phone (map/ReliefAuto, owner 2026-11-07): the quiet line on the map
+     * (vm.say → NoticeSurface.MAP_LINE), where Plan's GPS note stands – no box, goes by itself.
+     */
+    @Test fun planReliefOffNote() = planNote(Res.string.maps_relief_auto_off, androidx.compose.material.icons.Icons.Outlined.Info)
+
+    /**
+     * Plan's GPS note after a tap on locate without a position (PlanGps): beside the activity button, clear of its T badge
+     * (it stood under the row and covered the badge once that grew, 2026-11-07) – the same place as the map's INFO line.
+     */
+    @Test fun planGpsNote() = planNote(Res.string.plan_searching_gps, androidx.compose.material.icons.Icons.Outlined.LocationSearching)
+
+    /** The longest GPS note (two sentences, an edit during a tour without a position) at the same place. */
+    @Test fun planGpsNoteLong() =
+        planNote(Res.string.msg_route_back_no_position, androidx.compose.material.icons.Icons.Outlined.LocationSearching)
+
+    /** A quiet note on the Plan map where MapScreen puts it (PlanGps.noteTopDp / noteStartDp), over a Hike T2 plan. */
+    private fun planNote(text: org.jetbrains.compose.resources.StringResource, icon: androidx.compose.ui.graphics.vector.ImageVector) =
+        paparazzi.snapshot {
+            Box {
+                Frame { PlanPanel(planUi(), PlanCallbacks()) }
+                OnPathTheme {
+                    val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+                    Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
+                        QuietPill(str(text), icon, Modifier.padding(top = PlanGps.noteTopDp(rowTop, null).dp,
+                            start = PlanGps.noteStartDp(activityButtonShown = true).dp, end = OverviewPillPlace.EDGE_DP.dp))
+                    }
+                }
+            }
+        }
 
     /** Settings → Offline maps: areas with size + date, one asking "Delete?", total, Wi-Fi only, Update now. */
     @Test fun settingsOfflineMaps() = paparazzi.snapshot {

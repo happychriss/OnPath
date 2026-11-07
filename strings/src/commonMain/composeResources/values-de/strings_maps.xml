@@ -248,4 +248,5 @@
     <string name="maps_import_no_space">Nicht genug freier Speicher für %1$s (benötigt %2$d MB).</string>
     <string name="maps_import_empty">%1$s ist leer.</string>
     <string name="maps_import_cant_save">%1$s konnte nicht gespeichert werden.</string>
+    <string name="maps_relief_auto_off">Relief aus – die Karte läuft so flüssiger</string>
 </resources>

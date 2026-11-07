@@ -280,9 +280,11 @@ object OverviewPillPlace {
  */
 @Composable
 fun QuietPill(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
-    Surface(shape = OnPathShapes.Pill,
+    // the card corners (20 dp): on one line they are clamped to half the height – a pill; a text that wraps (large
+    // font, a two-sentence note) gets a rounded box instead of an oval that cut off the first and last letters
+    Surface(shape = OnPathShapes.Card,
         color = OnPathColors.Paper.copy(alpha = 0.94f), // over the map: paper (owner 2026-11-06)
-        modifier = modifier.androidxSemantics(text).warmShadow(OnPathShadow.LOW, OnPathShapes.Pill)) {
+        modifier = modifier.androidxSemantics(text).warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
