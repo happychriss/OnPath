@@ -11,5 +11,5 @@ from the repo – never from another session's chat.
 | **captain** | cloud only | all, mostly read-only | [captain.md](captain.md) |
 
 Rules: one session per computer folder; two sessions never share a checkout (helpers use their own worktrees).
-Backlog tags = session names (`[donald]`, `[cloud-plan]`, `[cloud-web]`, `[captain]`).
+Backlog tags = session names (`[donald]`, `[laptop]` / `[cloud-plan]`, `[cloud-web]`, `[captain]`; the old `[cloud-app]` = donald).
 Why it is set up this way, what was tested and what went wrong: [multi-agent-lernen.md](multi-agent-lernen.md).

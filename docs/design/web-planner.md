@@ -416,7 +416,7 @@ page could link onpath.earth/help).
 ## 14. App logic on the web – inventory and keeping it in sync (cloud, 2026-10-29)
 
 Owner items 5 + 13: "cross-check the planning logic and keep the web in sync automatically – also with the memory
-work in the app". The engine generates the app's string resources (web-sync.md §0); every file below "shared" is
+work in the app". The engine generates the app's string resources (web-sync.md "Status"); every file below "shared" is
 compiled from `app/` as it is.
 
 ### 14.1 Inventory (app source → web)
