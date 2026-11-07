@@ -5,7 +5,7 @@ import org.jetbrains.compose.resources.StringResource
 
 /**
  * Plain notice on the plan while routing data is missing (never a file name or path – those go to Problems). Pure,
- * unit-tested; shared with the web planner (`SharedCoreRuleTest.files` / `webShared`, docs/handoff-web-notice-breakdown.md).
+ * unit-tested; shared with the web planner (`SharedCoreRuleTest.files` / `webShared`, docs/design/web-planner.md §22).
  * The I/O (which parts are on the phone, the download) stays in [RoutingDataLoader].
  */
 object RoutingDataNotice {

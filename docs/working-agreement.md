@@ -1,129 +1,91 @@
-# Working agreement: laptop / desktop Claude ⇄ cloud Claude
+# Working agreement: how the sessions work together
 
-OnPath is developed by Claude Code sessions on several machines that the owner uses in a mixed way:
+OnPath is built by several Claude Code sessions: **donald** (desktop, Pixel + emulator), **laptop** (planner and map
+cells, `[laptop]` / `[cloud-plan]`), the **captain** (cloud, overview) and **cloud-web** (website, marketing) – who
+works where: `docs/roles/README.md`. **GitHub `main` is the single source of truth**; anything that must last goes
+through the repository, never through another session's chat. Sessions do not message each other – the channels are
+the repo and the issues in `happychriss/onpath.private` (§5).
 
-| | **Laptop Claude** (owner's PC, Android Studio) | **Cloud Claude** (claude.ai/code, remote container) |
-| --- | --- | --- |
-| Strength | Real device: build → install via USB/Wi-Fi adb, feel the UI, logcat | Long unattended work, parallel agents, data pipeline, releases |
-| Device | Pixel 8 connected | none (no emulator) – uses unit tests, Paparazzi screenshots, headless map renders |
-| Gets the app to the phone by | `./gradlew installDebug` / `adb install -r` | GitHub Release → in-app update (Settings → Updates) |
-| Map data | `adb push` or zip import | builds packages with `tools/build_region.sh` |
+Home of other rules (not repeated here): push / pull-request policy → `CLAUDE.md`; questions to the owner →
+`docs/owner-preferences.md`; release flow → `.claude/rules/release.md`; a session's round → `docs/roles/start.md`.
 
-The owner also works from the desktop PC **donald** (local network): a session there follows the
-laptop column (no phone attached unless the owner says so) and claims with **`[desktop]`** (laptop `[laptop]`, cloud
-`[cloud]`). Every session reads this file, `CLAUDE.md`, **`docs/owner-preferences.md`** (how the owner likes to
-work) and `docs/project-status.md` at the start. **GitHub `main` is the single source of truth**; anything that must
-last goes through the repository. Since 2026-10-31 the sessions have fixed **roles** (`docs/roles/`) and may also
-message each other directly for things that must be known now – see §8.
+## 1. Claim and handoff (the home of these rules)
 
-## 1. The five rules
+1. **Start fresh:** `git pull --rebase origin main` before touching anything. Read "Where things are" and "Last
+   session" in `docs/project-status.md` and `docs/backlog.md`.
+2. **Claim before you work:** one line under "In progress" in `docs/backlog.md` with your tag
+   (`- [donald] plan panel drag – since 2026-11-07`; tags `[donald]`, `[laptop]` / `[cloud-plan]`, `[captain]`,
+   `[cloud-web]`), push it at once, remove it when done. An area another session claimed is not edited – pick something
+   else or write your request into the backlog.
+3. **Small, green, pushed:** small commits; before every push `git pull --rebase origin main`, then `tools/ci/gate.sh`
+   (the tests the change can break; `--full` = everything). Push right away – never keep unpushed work longer than
+   ~30 minutes. `main` is always buildable and installable; risky or long work goes to a pushed `feat/<topic>` branch
+   and is rebased into `main` when green.
+4. **Hand off:** at the end, one entry at the top of "Last session" in `docs/project-status.md` (who, date, what
+   changed, what is half done, what is next; keep the newest 2–3 entries), remove your claim, push, `git status` clean.
+   Before switching a computer off: half-done work on a `wip/<name>-<date>-<topic>` branch.
+5. **Branches:** never force-push, never rewrite or delete a shared branch (a GitHub ruleset blocks it on `main`; the
+   frozen `web-spike` too). Old branches go only through `tools/dev/prune_branches.sh` after the owner's yes to the list
+   (`docs/roles/start.md` round step 4); every deletion is logged in `docs/history/deleted-branches.md`.
 
-1. **Start fresh:** `git pull --rebase origin main` before touching anything. Read the "Last session" note in
-   `docs/project-status.md` and `docs/backlog.md`.
-2. **Small, green, pushed:** commit in small steps; before every push run `git pull --rebase origin main`,
-   then `tools/ci/gate.sh` (the tests the change can break, screenshots when ui changed; `--full` = everything; plain
-   `./gradlew testDebugUnitTest assembleDebug` where the script cannot run). Push right away.
-   Never keep unpushed work for more than ~30 minutes – another session may start any time.
-3. **`main` is always buildable and installable.** Work that takes longer than one sitting or is risky goes to a
-   branch `feat/<topic>` (pushed regularly); merge it into `main` with a rebase when green.
-4. **Claim before you work:** add one line under "In progress" in `docs/backlog.md` (`- [laptop] plan panel drag`)
-   and push that immediately; remove it when done. If another session has claimed an area, don't edit it –
-   pick something else or note your request in the backlog.
-5. **Leave a handoff:** at the end of a session (or when the owner switches), update "Last session" in
-   `docs/project-status.md`: who, what changed, what's half done, what's next. Push. No uncommitted files left.
-
-### Where to push
-**Push straight to the role's branch** (owner 2026-10-31, standing permission): `main` (app and planner – one branch since 2026-11-06,
-website: its own repo's `main`) – after `tools/ci/gate.sh`, no pull request. The `claude/…` branch a cloud session is
-given at start is not used; don't ask before pushing. **Pull request to the owner only** for: `.github/workflows/`,
-signing / build config (`app/build.gradle.kts` signing, `gradle/`, `settings.gradle.kts`), anything with keys or
-secrets, privacy / licence texts (`assets/licences/`, `data/Licences.kt`, the website's privacy page). Never force-push,
-never rewrite or delete a shared branch (owner: GitHub ruleset blocks force pushes and deletions on `main` / `web-spike`; `web-spike` is frozen since the one-branch merge – nobody pushes to it).
-Old branches whose work is in `main` / `web-spike` go only through `tools/dev/prune_branches.sh`, after the owner said yes
-to the listed branches in one question box (owner 2026-11-06); every deletion is logged in `docs/history/deleted-branches.md`
-and can be restored.
-
-## 2. Ownership by default (to avoid stepping on each other)
-
-When sessions are active at the same time, split like this (laptop = laptop or desktop) unless the backlog says otherwise:
+## 2. Ownership by default
 
 | Area | Default owner |
 | --- | --- |
-| On-device feel: plan panel, gestures, map style fine-tuning (`tools/themes/*.json`, `tools/make_style.py`) | **laptop** |
-| Releases (`app/build.gradle.kts` version, `docs/release-notes/`, `.github/workflows/`) | **cloud** (laptop may release too, see §4) |
-| Data pipeline (`tools/build_region.sh`, `tools/extract_*`, `tools/build_*`), regions, map server (`tools/cells/`, `tools/cloud/`) | **cloud** |
-| Routing engine (`routing/BRouter*`, `app/libs`, `assets/brouter`) | **cloud** |
+| App UI, on-device feel, map style fine-tuning (`tools/themes/*.json`, `tools/make_style.py`), Pixel / emulator work | **donald** |
+| Browser planner `web/`, data pipeline (`tools/build_*`, `tools/extract_*`), map cells and server (`tools/cells/`, `tools/cloud/`) | **laptop** (`docs/roles/cloud-plan.md`) |
+| Releases (version, `docs/release-notes/`) | a unit after the owner's word and the captain's GO (`.claude/rules/release.md`) |
+| `.github/workflows/`, signing, secrets | the owner – a pull request only |
+| Website onpath.earth, marketing (`happychriss/onpath.earth`, `onpath.private`) | **cloud-web** |
+| Routing engine (`routing/BRouter*`, `app/libs`, `assets/brouter`), shared code (`app/web-shared-files.txt`) | whoever claims it; a change is announced to the other side in the backlog |
 | New features, bug fixes | whoever claims them in the backlog |
-| `docs/requirements.md` (copy of the shared Claude doc) | cloud syncs it; laptop adds requests to the backlog |
+| `docs/requirements.md` | edited in the repo by any session (new IDs at the end of a section); the owner checks |
 
 ## 3. Conflict hot spots and how to resolve them
 
 | File | Rule |
 | --- | --- |
 | `app/src/main/assets/style/onpath*.json` | **Generated.** Never hand-edit. On conflict: take either side, then `python3 tools/make_style.py --all` and commit. |
-| `app/src/test/snapshots/images/*.png` | **Generated.** On conflict: `./gradlew :app:recordPaparazziDebug`, look at the changed images, commit. |
+| `app/src/test/snapshots/images/*.png` | **Generated.** On conflict: `tools/dev/gradle_slot.sh -- ./gradlew :app:recordPaparazziDebug`, look at the changed images, commit. |
 | `app/src/main/assets/sprites/*` | Generated by `tools/make_sprite.py`; regenerate on conflict. |
-| `app/build.gradle.kts` version line | Only changed in a release commit (§4). |
+| `app/build.gradle.kts` version line | Only changed in a release commit. |
+| `web/parity.json` | After adopting a mirrored app change in the web: `node web/parity/check.mjs --update <app file>`. |
 | `docs/project-status.md`, `docs/backlog.md` | Append-only style edits; on conflict keep both sides' lines. |
 | Kotlin / Python code | Normal rebase; re-run tests after resolving. |
 
 If a rebase gets messy: `git rebase --abort`, push your work to `feat/<topic>` instead, and note it in the backlog.
 
-## 4. Builds, versions and releases
+## 4. Builds and device testing
 
-- **Version** lives in one place: the default `appVersion` in `app/build.gradle.kts`
-  (versionCode = major·10000 + minor·100 + patch). It is changed **only** in a release commit.
-- **Release** (either session): bump the version, add `docs/release-notes/vX.Y.Z.md`, pull --rebase, test, push to
-  `main`. `.github/workflows/release.yml` builds, runs the short emulator start test, creates tag + GitHub Release with
-  the APK. Check the Actions run. A release made on **donald** runs the Release-Rundgang locally first
-  (`tools/ci/release_rundgang.sh`, `docs/release-rundgang.md`; red = no release); from elsewhere it goes out without it.
-  Announce it in "Last session".
-- **Laptop dev builds** (`./gradlew installDebug`) use the same fixed test key (`keystore/`), so dev builds and
-  release builds update each other in place – no uninstall, tours are kept. A dev build carries the last
-  released version number; the in-app updater will offer the next release normally.
-- Cloud sessions cannot push tags or create releases directly – always go through the push-to-`main` flow.
+- **Gradle** only through `tools/ci/gate.sh` or `tools/dev/gradle_slot.sh -- ./gradlew …`: three builds per computer side
+  by side, one while the emulator runs; `gate.sh` uses `--max-workers=2`. Never `./gradlew --stop` (kills other
+  sessions' daemons).
+- **Dev builds** use the same fixed test key (`keystore/`) as releases, so dev and release builds update each other in
+  place – no uninstall, tours are kept. A dev build carries the last released version number.
+- **Pixel / emulator** only through `tools/dev/device.sh pixel|emulator -- <command>` (one agent per device). Phone rules
+  (no wipe, no install during a recording, no driving the phone while the owner uses it): `docs/owner-preferences.md`.
+  Install: `tools/dev/device.sh pixel -- adb install -r app/build/outputs/apk/debug/app-debug.apk`. Logs:
+  `adb logcat -d | grep -i onpath`. Map data: `adb push onpath-data/. /sdcard/Android/data/com.onpath.app/files/onpath/`
+  (fix permissions afterwards). Findings from the phone go into `docs/backlog.md`.
+- **Cloud session** (no emulator, no KVM): `tools/cloud/session_setup.sh` once, then `tools/ci/gate.sh`, headless map
+  renders (`docs/map-pipeline.md`, `docs/map-style-notes.md`), JVM routing tests (`tools/routing/jvm-test`), E2E on
+  GitHub. A cloud session cannot push tags or create releases – always the push-to-`main` flow.
 
-## 5. Device testing
+## 5. Roles and channels
+Who works where: `docs/roles/README.md`. Channels: the repo (backlog, handoffs, code) and the issues in
+`happychriss/onpath.private` (questions to the owner, the owner's word to all – `tools/ask.sh`). **Sessions do not
+message each other**; only the captain can, with the owner's tap per call, for something urgent the owner asked for
+(`docs/roles/captain.md`). A role's word to the captain goes under "For the captain" in the backlog, the captain's word
+to a role under "For the roles". Shared code between app and planner (`app/web-shared-files.txt`): a change is announced
+to the other side in the backlog, and a release / planner deploy that touches it needs `tools/ci/release_check.sh` GO.
+The tested platform facts behind this: `docs/roles/multi-agent-lernen.md` §2.
 
-- **Laptop:** `./gradlew installDebug` (USB) or Wi-Fi: `adb pair` / `adb connect` (Developer options → Wireless
-  debugging), then `adb install -r app/build/outputs/apk/debug/app-debug.apk`. Logs:
-  `adb logcat -d | grep -i onpath`. Map data: `adb push onpath-data/. /sdcard/Android/data/com.onpath.app/files/onpath/`.
-  Findings from the phone go into `docs/backlog.md` (with screenshot paths if useful) so the cloud can act on them.
-- **Cloud:** `./gradlew testDebugUnitTest verifyPaparazziDebug`, headless map renders (see `docs/map-pipeline.md`
-  and `docs/map-style-notes.md`), JVM routing tests (`tools/routing/jvm-test`). Delivers to the phone via a release.
+Where things live: current state + last session → `docs/project-status.md`; to-dos, claims, requests → `docs/backlog.md`;
+requirements (IDs like F-PLAN-04) → `docs/requirements.md`; map look and pipeline → `docs/map-style-notes.md`,
+`docs/map-pipeline.md`; why something was done → commit messages (say *why*); private material (marketing, ideas, Google
+Play texts) → `happychriss/onpath.private`, never copied into a public repo.
 
-## 6. Shared memory
-
-| What | Where |
-| --- | --- |
-| How to work in this repo | `CLAUDE.md`, this file |
-| Current state, last session, next steps | `docs/project-status.md` |
-| To-dos, claims, requests between sessions | `docs/backlog.md` |
-| Requirements (IDs like F-PLAN-04) | `docs/requirements.md` |
-| Map look and pipeline | `docs/map-style-notes.md`, `docs/map-pipeline.md` |
-| Why something was done | commit messages (say *why*, not only *what*) |
-| Website onpath.earth (public pages, Cloudflare Pages) | its own repo `happychriss/onpath.earth` – not this repo |
-| Roles: who owns what, which computer and folder | `docs/roles/` (§8) |
-| Non-code work (marketing, ideas, Google Play, website texts) | private repo `happychriss/onpath.private` (role cloud-web) – never copied into a public repo. Until it exists the old private Google Drive folder **OnPath / 01 Aufträge** stays valid (rules inside, read **LIESMICH – privat** first; documents are never edited – new version, old one copied to **Archiv** and trashed; the connector cannot rename or move files: `copy_file` + `trash_file`, never `update_file`). After the move Drive is read-only history |
-
-Never rely on chat history of another session – if it matters, it must be in the repo.
-
-## 7. Session start / end checklist
-
-**Start:** `git pull --rebase origin main` → read "Last session" + backlog → (cloud-web / captain: open items in
-`onpath.private`) → claim your item → push the claim.
-
-**End:** tests green → push → remove your claim → write "Last session" → push → `git status` is clean.
-
-## 8. Roles and channels
-Who works where and how: `docs/roles/README.md` (donald → `docs/roles/start.md`, captain → `docs/roles/captain.md`).
-Channels: the repo (backlog, handoffs, code) and the issues in `happychriss/onpath.private` (questions to the owner,
-the owner's word to all – `tools/ask.sh`). Sessions do not message each other; the captain can, with the owner's tap per
-call, for something urgent only. Shared code between app and planner (`app/web-shared-files.txt`): a change is
-announced to the other side in the backlog, and a release / planner deploy that touches it needs
-`tools/ci/release_check.sh` GO. The tested platform facts behind this: `docs/roles/multi-agent-lernen.md` §2.
-
-## E2E: local probe, big runs on GitHub (owner 2026-11-06, "mehr rausholen")
+## 6. E2E: local probe, big runs on GitHub (owner 2026-11-06, "mehr rausholen")
 
 donald has one emulator and every agent queued on it. Since 2026-11-06: **agents run only the test(s) their change is
 about** on the local emulator (`FLOWS=Class#method tools/dev/device.sh emulator -- tools/ci/release_rundgang.sh`, the
@@ -132,6 +94,5 @@ GitHub's free runners: the merging session pushes the combined state to a short-
 runs `tools/ci/e2e_github.sh --ref ci/<unit>-<topic> --tests … --wait` in the background (one queue per ref, so
 several refs run in parallel) and meanwhile installs the test APK on the Pixel; it pushes to `main` when the run is
 green and removes the `ci/` branch with `tools/dev/prune_branches.sh` (no owner question needed for `ci/` branches the
-session created itself – they are in `main` by then). Gradle: up to three builds per computer while no emulator runs
-(`tools/dev/gradle_slot.sh`).
-
+session created itself – they are in `main` by then). The Release-Rundgang itself is **optional**
+(`.claude/rules/release.md`: only on the owner's request or for navigation / recording core changes).

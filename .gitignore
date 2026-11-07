@@ -1,6 +1,5 @@
 .gradle/
 build/
-app/build/
 local.properties
 *.apk
 .idea/
@@ -14,3 +13,5 @@ __pycache__/
 # Claude Code helper worktrees (temporary)
 .claude/worktrees/
 /external-docs/
+.DS_Store
+.claude/settings.local.json

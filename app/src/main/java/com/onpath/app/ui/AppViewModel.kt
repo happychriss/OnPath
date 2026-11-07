@@ -162,7 +162,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val blockingMissing: List<DataFiles.Check> get() = DataFiles.blocking(missing, overviewBundled, cells.downloadsAvailable)
 
     // --- the tour's lifecycle state (audit package 4 stage 2: a focused state holder, the VM forwards) ---
-    /** End sheet, arrival box, saved box, interrupted tour, "Neuer Plan" line, hold lock – see [TourController]. */
+    /** End sheet, arrival box, saved box, interrupted tour, "Neuer Plan" line – see [TourController]. */
     val tour = com.onpath.app.ui.tour.TourController(
         object : com.onpath.app.ui.tour.TourRecorder {
             override fun start(activity: String, sac: Int) = RecordingService.send(getApplication(), RecordingService.ACTION_START) {
@@ -175,11 +175,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override fun pause(pause: Boolean) =
                 RecordingService.send(getApplication(), if (pause) RecordingService.ACTION_PAUSE else RecordingService.ACTION_RESUME)
             override fun stop() = RecordingService.send(getApplication(), RecordingService.ACTION_STOP)
-        },
-        object : com.onpath.app.ui.tour.HoldStore {
-            override var holdLearned: Boolean
-                get() = prefs.holdLearned
-                set(v) { prefs.holdLearned = v }
         },
     )
 
@@ -197,10 +192,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val newPlanNote: NewPlanNote? get() = tour.newPlanNote
     fun dropNewPlanNote() = tour.dropNewPlanNote()
 
-    /** The locked bar's rest line shows until one held button fired ([HoldRule.pillShows], owner 2026-11-07). */
-    val holdLearned: Boolean get() = tour.holdLearned
-    /** A held button of the locked bar fired: from now on its rest line is gone (a short tap still says "Gedrückt halten"). */
-    fun holdFired() = tour.holdFired()
     /** The line at the top of the open Settings page; goes when the page changes or Settings closes. */
     var settingsNote by mutableStateOf<Notice?>(null)
     /**
@@ -2803,7 +2794,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * keeps the drawn shape.
      */
     suspend fun routeSnapshot(segments: List<List<GeoPoint>>, tint: RouteShape.Tint, widthPx: Int, heightPx: Int,
-                              paddingPx: Int): android.graphics.Bitmap? {
+                              paddingPx: Int): com.onpath.app.map.RouteSnapshot.Shot? {
         val app = getApplication<Application>()
         val dataDir = dataFiles.dir; val theme = settings.mapTheme; val mapDir = dataFiles.mapDir()
         val cover = detailedAreas(); val dev = devToolsShown; val packages = packageAreas()
@@ -2814,7 +2805,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         } ?: return null
         val color = android.graphics.Color.argb(255, (tint.color().red * 255).toInt(), (tint.color().green * 255).toInt(),
             (tint.color().blue * 255).toInt())
-        return com.onpath.app.map.RouteSnapshot.make(app, json, segments, color, widthPx, heightPx, paddingPx)
+        return com.onpath.app.map.RouteSnapshot.make(app, json, segments, color, widthPx, heightPx, paddingPx,
+            app.resources.displayMetrics.density)
     }
 
     /** My routes → the plan "In Bearbeitung" tapped: back to it on the map – nothing is loaded again. */

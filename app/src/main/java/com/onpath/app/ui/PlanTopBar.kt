@@ -38,6 +38,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Surface
@@ -258,9 +259,8 @@ private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
 @Composable
 internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     val st = menu.state
-    // the menu head: logo + name, no line under it (owner 2026-11-07 – "sonst weiß keiner, womit er arbeitet")
-    OnPathWordmark(28.dp, MaterialTheme.typography.titleLarge,
-        Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 14.dp))
+    // no logo head (owner 2026-11-07 morning: in a drop-down every row is a button – "man drückt drauf und wundert
+    // sich, dass nichts passiert"); the name is on the start surface and on Über OnPath
     menu.onPhoneSetup?.let { p ->
         MenuItem(Icons.Outlined.WarningAmber, str(Res.string.settings_page_phone), enabled = st.settings, tint = OnPathColors.Error) { close(); p() }
         HorizontalDivider()
@@ -280,26 +280,21 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
 }
 
 /**
- * "Pair with browser" (unpaired in the browser: + grey "Unpaired in the browser"); paired: "Paired with browser ✓" + grey
- * "<device> ↔ <browser> · synced 1 min ago"; the browser not seen yet: no ✓ + grey "Waiting for the browser …"; a
- * problem: amber ⚠ + why.
+ * One plain menu line (owner 2026-11-07: "einfach ein Menüeintrag"): "Mit Browser koppeln" / "Browser-Kopplung"
+ * ([SyncMenuUi.labelPaired]), no subtitle, no ✓. The state shows only in the leading icon: a problem worth a look makes
+ * the same sync icon amber (and the ☰ dot) – the screen reader hears the reason. A tap opens the pairing / Browser sync,
+ * where the status stands ("Verbunden seit …", "Zuletzt abgeglichen", Trennen).
  */
 @Composable
 private fun SyncMenuItem(ui: SyncMenuUi, enabled: Boolean, onClick: () -> Unit) {
     val warn = ui.warning != null
-    val label = if (!ui.paired) str(Res.string.sync_menu_pair) else str(Res.string.sync_menu_paired) + if (warn || ui.waiting) "" else " ✓"
+    val label = str(if (ui.labelPaired) Res.string.sync_menu_paired else Res.string.sync_menu_pair)
+    val said = if (warn && ui.line != null) str(Res.string.sync_menu_attention, ui.line) else label
     DropdownMenuItem(
-        text = {
-            Column {
-                Text(label)
-                ui.line?.let { Text(it, style = MaterialTheme.typography.bodySmall,
-                    color = if (warn) OnPathColors.Warn else MaterialTheme.colorScheme.onSurfaceVariant) }
-            }
-        },
+        text = { Text(label) },
         enabled = enabled, onClick = onClick,
-        leadingIcon = { Icon(if (warn) Icons.Outlined.WarningAmber else Icons.Outlined.Sync, contentDescription = null) },
-        colors = if (!warn) MenuDefaults.itemColors() else MenuDefaults.itemColors(textColor = OnPathColors.Warn, leadingIconColor = OnPathColors.Warn),
-        modifier = Modifier.heightIn(min = 48.dp),
+        leadingIcon = { Icon(Icons.Outlined.Sync, contentDescription = null, tint = if (warn) OnPathColors.Warn else LocalContentColor.current) },
+        modifier = Modifier.heightIn(min = 48.dp).semantics(mergeDescendants = true) { contentDescription = said },
     )
 }
 

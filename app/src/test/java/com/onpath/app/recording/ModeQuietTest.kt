@@ -47,6 +47,9 @@ class ModeQuietTest {
     @Test fun noOffRouteNotificationOrVibrationInPlan() {
         assertFalse(GuidanceGate.offRouteNotification(planQuiet = true))
         assertTrue(GuidanceGate.offRouteNotification(planQuiet = false))
+        // owner 2026-11-07 "Pause heißt Ruhe": no question notification during a pause, also in Navigate
+        assertFalse(GuidanceGate.offRouteNotification(planQuiet = false, paused = true))
+        assertFalse(GuidanceGate.offRouteNotification(planQuiet = true, paused = true))
         assertFalse(GuidanceGate.rerouteVibrates(stepVibrates = true, planQuiet = true))
         assertTrue(GuidanceGate.rerouteVibrates(stepVibrates = true, planQuiet = false))
         assertFalse(GuidanceGate.rerouteVibrates(stepVibrates = false, planQuiet = false))

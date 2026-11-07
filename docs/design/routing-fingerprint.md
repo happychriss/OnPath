@@ -15,7 +15,7 @@ them weekly). This note says how they are made visible.
   (`lookups.dat`, `hiking-mountain.brf`, `mtb.brf`, `touring.brf`, `trekking.brf`), `"<name>\n<length>\n"` + its bytes
   without `\r` (a CRLF checkout is the same profile). Comments count (a profile with other comments is another version
   – simpler and safer than `RouterClassHash`'s normalising, which follows WayClass.java for another purpose).
-- `BROUTER_VERSION = "1.7.11-beta-onpath1"` (BRouter 1.7.11-beta with OnPath's one jar patch, `docs/handoff-web-island.md`)
+- `BROUTER_VERSION = "1.7.11-beta-onpath1"` (BRouter 1.7.11-beta with OnPath's one jar patch, `docs/design/web-planner.md` §22)
   – `RoutingFingerprintTest` fails when the jars in `app/libs` are another version.
 - `PLANNER_VERSION = 2` (2 = the short-trip detour retry, 2026-10-31) – raised by hand with every change that can give another route for the same points, activity
   and data: Planner passes / splits, `WaypointSnap` rules, the profile parameters and via handling in `BRouterEngine`.
@@ -27,7 +27,7 @@ them weekly). This note says how they are made visible.
   day), "–" for a file without a tail.
 
 Settings → Diagnostics shows the line (English, read on a background thread when the page opens). The web planner can
-show the same line from the same code (`docs/handoff-web-parity-b.md`). Same fingerprint + same data dates for the
+show the same line from the same code (`docs/design/web-planner.md` §22). Same fingerprint + same data dates for the
 plan's tiles = the same route.
 
 ## 2. Sync fields (built, owner-approved 2026-10-31)
@@ -82,7 +82,7 @@ Whoever saves the plan (the device whose route the user looked at when saving):
   tails in `segments/`): field 7 = its fingerprint, field 8 = `SyncRouting.dataFor(plan points)` – the phone's tiles
   under the points with their dates (`SyncLedger.save(…, routing, routingData)`);
 - the web: the same call with its own engine's fingerprint and the dates of the rd5 it routed with
-  (`docs/handoff-web-sync-fingerprint.md`).
+  (`docs/design/web-sync.md` §5.2).
 
 A rename keeps the fields (the plan was not routed again). The phone does **not** re-save a plan from the browser only
 because its own routing differs (`RouteItems.samePlan`) – the item keeps the browser's fields.

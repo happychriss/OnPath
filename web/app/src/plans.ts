@@ -7,6 +7,7 @@ import { icon } from './icons';
 import { t, locale } from './i18n';
 import { problem } from './diag';
 import { planKey, trackKey, statsOf, statsText } from './planstats';
+import { recentPlans, dropRecent, SHOWN as RECENT_SHOWN, type RecentPlan } from './recent';
 
 export interface PlanHost {
   /** The current plan as a plan code + its title, or null when there is nothing to save. */
@@ -35,6 +36,11 @@ export interface PlanHost {
   share(p: SavedPlan): void;
   /** Öffnen → GPX importieren: the file picker (gpximport.ts). */
   importGpx(): void;
+  /** Meine Touren → Zuletzt → a click: that plan on the map (recent.ts). */
+  openRecent(r: RecentPlan): void;
+  /** The saved plan just made from Zuletzt (shown „✓ Gerade gespeichert“ once), null = none. */
+  justSaved(): string | null;
+  setJustSaved(id: string): void;
 }
 
 let openDialog: HTMLDialogElement | null = null;
@@ -179,15 +185,55 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
   search.addEventListener('input', () => { query = search.value; $('planSearchClear').hidden = !query; render(); });
   $('planSearchClear').onclick = (e) => { e.preventDefault(); search.value = ''; query = ''; $('planSearchClear').hidden = true; search.focus(); render(); };
   $('plansImportGpx').onclick = () => { d.close(); host.importGpx(); };
+  let allRecent = false;
+  const justSaved = host.justSaved();
+  const sectionHead = (text: string) => Object.assign(document.createElement('li'), { className: 'sectionhead', role: 'heading', textContent: text.toUpperCase() });
+  /** A plan under Zuletzt: the route sign pale (only a draft), the words as a saved one's; Speichern (blue) · Löschen (red, no question) on it. */
+  const recentRow = (r: RecentPlan) => {
+    const li = document.createElement('li');
+    li.className = 'recent'; li.dataset.id = r.id;
+    const s = statsOf(planKey(r.code));
+    li.innerHTML = `<button class="open" title="${esc(t('web_plans_open'))}"><span class="kindic pale">${icon('route', 22)}</span>
+      <span class="txt"><span class="nameline"><span class="name">${esc(r.title)}</span></span>${s ? `<span class="stats">${esc(statsText(s))}</span>` : ''}<span class="muted small sub">${esc(t('web_kind_route') + ' · ' + appDate(r.at))}</span></span></button>
+      <div class="recentacts"><button class="rsave">${icon('save', 18)}${esc(t('common_save'))}</button><button class="rdel">${icon('delete', 18)}${esc(t('common_delete'))}</button></div>`;
+    li.querySelector<HTMLButtonElement>('.open')!.onclick = () => { d.close(); host.openRecent(r); };
+    li.querySelector<HTMLButtonElement>('.rsave')!.onclick = async () => {
+      const into = sync.open;
+      if (!(await roomFor(sync, host, into))) return;
+      let id: string;
+      try { id = await sync.save(r.code, storedTitle(r.title), undefined, into); } catch (e) { failLine(d, t('web_save_failed'), e); return; }
+      askPersist();
+      dropRecent(r.id);
+      host.setJustSaved(id);
+      await myPlansDialog(sync, host);
+    };
+    li.querySelector<HTMLButtonElement>('.rdel')!.onclick = () => { dropRecent(r.id); render(); };
+    return li;
+  };
   const render = async () => {
     const folder = sync.open, paired = sync.status.paired;
     const all = await sync.list(folder);
     const plans = searchPlans(all, query);
+    // Zuletzt (the app's drafts, owner 2026-11-06): the plans kept by themselves on top – the newest three, the rest on
+    // demand – then the saved ones under „Gespeichert“; searched like the rest (the app's RoutesTab.search)
+    const recentAll = recentPlans();
+    const recent = searchPlans(recentAll, query);
     const ul = $('planList');
     if (ul.querySelector('.confirm')) return; // a delete question is open: keep the list as it is
-    search.closest<HTMLElement>('.plansearch')!.hidden = !all.length;
-    ul.innerHTML = plans.length ? '' : `<li class="muted">${esc(all.length && query.trim() ? t('routes_search_none', query.trim()) : t('web_plans_none'))}</li>`;
-    if (!all.length) await oldPhoneLine(ul);
+    search.closest<HTMLElement>('.plansearch')!.hidden = !all.length && !recentAll.length;
+    ul.innerHTML = plans.length || recent.length ? '' : `<li class="muted">${esc((all.length || recentAll.length) && query.trim() ? t('routes_search_none', query.trim()) : t('web_plans_none'))}</li>`;
+    if (!all.length && !recentAll.length) await oldPhoneLine(ul);
+    if (recent.length) {
+      ul.append(sectionHead(t('routes_section_recent')));
+      for (const r of allRecent ? recent : recent.slice(0, RECENT_SHOWN)) ul.append(recentRow(r));
+      if (!allRecent && recent.length > RECENT_SHOWN) {
+        const li = document.createElement('li'); li.className = 'allrecent';
+        li.innerHTML = `<button class="textbtn">${esc(t('routes_recent_all', recent.length))}</button>`;
+        li.querySelector('button')!.onclick = () => { allRecent = true; render(); };
+        ul.append(li);
+      }
+      if (plans.length) ul.append(sectionHead(t('routes_section_saved')));
+    }
     for (const p of plans) {
       const li = document.createElement('li');
       li.dataset.id = p.id;
@@ -197,12 +243,13 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       li.dataset.where = [here ? 'browser' : '', phone ? 'phone' : ''].filter(Boolean).join('+');
       if (paired && p.dirty) li.classList.add('waiting');
       if (p.id === host.openId() && folder === host.openFolder()) li.classList.add('current');
+      if (p.id === justSaved) li.classList.add('justsaved');
       const kind = p.kind === 'track' ? t('web_kind_gpx') : t('web_kind_route');
       const kindName = p.kind === 'track' ? t('routes_kind_imported') : t('routes_kind_planned');
       const where = (cls: string, key: string, ic: 'monitor' | 'phone') =>
         `<span class="w ${cls}" role="img" title="${esc(t(key))}" aria-label="${esc(t(key))}">${icon(ic, 18)}</span>`;
       li.innerHTML = `<button class="open" title="${esc(t('web_plans_open'))}"><span class="kindic" title="${esc(kindName)}">${icon(p.kind === 'track' ? 'fileOpen' : 'route', 22)}</span>
-        <span class="txt"><span class="nameline"><span class="name">${esc(titleOf(p))}</span>${tagOf(p)}</span>${statsLine(p)}<span class="muted small sub">${esc(kind + ' · ' + appDate(p.updatedAt))}</span></span></button>
+        <span class="txt"><span class="nameline"><span class="name">${esc(titleOf(p))}</span>${tagOf(p)}</span>${statsLine(p)}<span class="muted small sub">${esc(kind + ' · ' + appDate(p.updatedAt))}</span>${p.id === justSaved ? `<span class="justsavedline">${esc(t('routes_just_saved'))}</span>` : ''}</span></button>
         <span class="where">${here ? where('browser', 'web_where_browser', 'monitor') : ''}${phone ? where('phone', 'web_where_phone', 'phone') : ''}</span>
         <button class="more iconbtn" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(t('web_route_options'))}" title="${esc(t('web_route_options'))}">${icon('moreVert', 22)}</button>
         <div class="menu rowmenu" role="menu" hidden><button class="rename" role="menuitem">${esc(t('common_rename'))}</button>${p.kind === 'plan' ? `<button class="copy" role="menuitem">${esc(t('plan_save_as_copy'))}</button>` : ''}<button class="export" role="menuitem">${esc(t('common_export_gpx'))}</button>${p.kind === 'plan' ? `<button class="sharerow" role="menuitem">${esc(t('plan_share_plan'))}</button>` : ''}<button class="del" role="menuitem">${esc(t('common_delete'))}</button></div>`;
@@ -239,9 +286,13 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       });
       q('.export').onclick = () => { closeMenus(); d.close(); host.exportGpx(p, folder); };
       li.querySelector<HTMLButtonElement>('.sharerow')?.addEventListener('click', () => { closeMenus(); d.close(); host.share(p); });
-      q('.del').onclick = () => {
+      q('.del').onclick = async () => {
         closeMenus();
-        askInPlace(li, folder === NONE ? t('web_delete_q_local', titleOf(p)) : t('web_delete_q', titleOf(p)),
+        if (folder !== NONE) { // on the phone: its recycle bin is the net – no question, as the app (owner 2026-11-06)
+          try { await sync.remove(p.id, folder); } catch (e) { await render(); failLine(d, t('web_delete_failed'), e); return; }
+          await render(); $('closePlans').focus(); return;
+        }
+        askInPlace(li, t('web_delete_q_local', titleOf(p)),
           t('common_delete'), () => li.querySelector('.more'), async () => {
             try { await sync.remove(p.id, folder); } catch (e) { await render(); failLine(d, t('web_delete_failed'), e); return; }
             await render(); $('closePlans').focus();
@@ -369,7 +420,7 @@ export function phoneDialog(sync: PlanSync, page: string) {
 }
 
 /**
- * The phone's mark as the app's tag (ui/RouteTag, ui-style.md "Tags", docs/handoff-web-route-tags.md): "New" / "Changed"
+ * The phone's mark as the app's tag (ui/RouteTag, ui-style.md "Tags", web-sync.md §14.6): "New" / "Changed"
  * after the name – came from the phone, not opened here yet; gone when opened (sync.seen). Never cut: the name gives way.
  */
 /** Length and climb when this browser knows them (planstats.ts), else nothing – the list never waits for a route. */
@@ -432,37 +483,6 @@ function nameDialog(kind: boolean | 'as', name: string, later?: MaybeName): Mayb
     d.querySelector<HTMLButtonElement>('#saveOk')!.onclick = ok;
     d.querySelector<HTMLButtonElement>('#saveCancel')!.onclick = () => d.close();
     d.addEventListener('close', () => resolve(answer));
-  });
-}
-
-/** Where "Speichern" in [askDiscard] saves (main.ts: the header's Save; resolves true once saved) and the plan's name. */
-let discardSave: { save: () => Promise<boolean>; name: () => string | null } | null = null;
-export function setDiscardSave(save: () => Promise<boolean>, name: () => string | null) { discardSave = { save, name }; }
-
-/**
- * ✕ Neu planen / Neuer Plan while the plan has unsaved changes – the app's DiscardPlanDialog with Save (owner 2026-11-05,
- * ClearAsk / discardSaveFirst): "Plan speichern?" + "… has changes that are not saved yet."; Verwerfen apart on the left
- * (red), Abbrechen · Speichern (plan blue) on the right. Resolves true when the plan may go: Discard, or Save that saved;
- * Cancel – or a Save whose name dialog is cancelled – keeps it.
- */
-export function askDiscard(): Promise<boolean> {
-  return new Promise((resolve) => {
-    const name = discardSave?.name()?.trim();
-    const text = name ? t('plan_save_ask_text_named', name) : t('plan_save_ask_text');
-    const d = dialog('discard', `<h2>${esc(t(discardSave ? 'plan_save_ask_title' : 'plan_discard_title'))}</h2>
-      <p class="muted">${esc(text)}</p>
-      <div class="row end"><button id="discardOk" class="danger">${esc(t('plan_discard'))}</button><button id="discardCancel">${esc(t('common_cancel'))}</button>${
-        discardSave ? `<button id="discardSave" class="primary">${esc(t('plan_bar_save'))}</button>` : ''}</div>`);
-    let answer: 'discard' | 'save' | null = null;
-    d.querySelector<HTMLButtonElement>('#discardCancel')!.onclick = () => d.close();
-    d.querySelector<HTMLButtonElement>('#discardOk')!.onclick = () => { answer = 'discard'; d.close(); };
-    const save = d.querySelector<HTMLButtonElement>('#discardSave');
-    if (save) save.onclick = () => { answer = 'save'; d.close(); };
-    (save ?? d.querySelector<HTMLButtonElement>('#discardCancel')!).focus();
-    d.addEventListener('close', () => {
-      if (answer !== 'save' || !discardSave) { resolve(answer === 'discard'); return; }
-      discardSave.save().then(resolve, () => resolve(false));
-    });
   });
 }
 

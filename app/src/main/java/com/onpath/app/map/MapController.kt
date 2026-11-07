@@ -294,11 +294,11 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         val routed = Expression.eq(Expression.get("straight"), Expression.literal(false))
         val straight = Expression.eq(Expression.get("straight"), Expression.literal(true))
         addBelowPosition(LineLayer("planned-route-casing", SRC_PLANNED).withFilter(routed).withProperties(
-            PF.lineColor("#FFFFFF"), PF.lineWidth(10f),
+            PF.lineColor("#FFFFFF"), PF.lineWidth(RouteLook.CASING_DP),
             PF.lineJoin(Property.LINE_JOIN_ROUND), PF.lineCap(Property.LINE_CAP_ROUND),
         ))
         addBelowPosition(LineLayer("planned-route", SRC_PLANNED).withFilter(routed).withProperties(
-            PF.lineColor(ROUTE_COLOR), PF.lineWidth(6f),
+            PF.lineColor(ROUTE_COLOR), PF.lineWidth(RouteLook.LINE_DP),
             PF.lineJoin(Property.LINE_JOIN_ROUND), PF.lineCap(Property.LINE_CAP_ROUND),
         ))
         addBelowPosition(LineLayer("planned-straight-casing", SRC_PLANNED).withFilter(straight).withProperties(

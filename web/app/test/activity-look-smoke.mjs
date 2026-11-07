@@ -1,4 +1,4 @@
-// The map look per activity (the app's map/ActivityLayers, docs/handoff-web-activity-layers.md): the shipped style has
+// The map look per activity (the app's map/ActivityLayers, docs/design/web-planner.md §22): the shipped style has
 // the Hike look; the page switches it with the engine call activityLayers on load and on every activity / T change –
 // the same layers as the phone. Hike T2 → Bike (bike map, loose surfaces, cycle band, no hiking green ways) → Hike T4
 // (the hiking band's filter at T4), then a reload with the remembered Bike gets the bike look straight away.

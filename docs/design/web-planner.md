@@ -1,115 +1,29 @@
-# Web planner – handover laptop → cloud (2026-10-23)
+# Web planner (plan.onpath.earth)
 
-Status: **idea + proposal, nothing built.** Owner hands this to the cloud session (start 2026-10-24).
-Owner's wish: a web version for planning a route online, built **with as much of one codebase as possible**.
-Purpose: asked 2026-10-23, owner had no preference → **A** (plan at home, send to phone), built so B can grow.
-**Architecture rethought 2026-10-23 (owner: "rethink – consistency, low risk, low complexity, elegance, modern") → §6.**
+Status: **live** on plan.onpath.earth (public, no login; `noindex` until the launch, §18.4). Code: `web/` on `main`
+(one branch since 2026-11-06; `web-spike` is frozen). CI and deploy: "Web planner" (`.github/workflows/web.yml`, §9);
+it goes online with an app release (release.yml job "planner") or by hand (Actions → Web planner → Run workflow →
+deploy). Owner: `docs/roles/cloud-plan.md` (the laptop). Plan sync phone ⇄ browser: `docs/design/web-sync.md`.
+Sections 1–5 (the first KMP proposal of 2026-10-23) were dropped; the section numbers stay because code cites them.
 
-## 1. Why one codebase is realistic
+## 6. Architecture – the same bytecode in the browser (decided 2026-10-23)
 
-The app already separates "what to do" from "how the phone does it":
-- **Pure Kotlin logic**, tested on the JVM: planning (`routing/Planner`, `WaypointInsertion`, `PlanEdits`), route
-  summary / warnings (`RouteSummary`, `ui/RouteWarnings`, `ui/PlanGaps`), time estimate (`time/…`), GPX
-  (`gpx/…`), route names (`search/RouteNamer`), settings summaries.
-- **Routing behind an interface** (`routing/RoutingContract.kt`, `RoutingEngine`).
-- **The map is a style + PMTiles files.** maplibre-gl JS reads the same style JSON and the same area files (we
-  already render the style with maplibre-gl JS in headless Chrome for checks). Keep one style valid for both
-  (lesson 2026-10-22: Native rejected zoom-interpolated hillshade colours – `StyleFormatTest` guards Native).
+**Key idea:** routing runs in the browser – no routing server, no compute cost, nothing to abuse; the server only sees
+which map areas are needed. Same privacy story as the app ("everything on your device"). Browser → phone without an
+account: the plan's points in a link / QR code (§8), later pairing (§12).
 
-So: **Kotlin Multiplatform** – the same Kotlin compiled for Android and for the browser (Kotlin/Wasm).
+**What must be identical in phone and web:** routes (engine + profiles + data), distance / ascent / time / warnings,
+the plan link format. **What need not be identical:** the UI – a desktop side panel is a different layout.
 
-| Part | Android | Web | Shared |
-|---|---|---|---|
-| Planning logic, warnings, time, GPX, names | Kotlin | same Kotlin → Wasm | yes |
-| UI (plan sheet, points, profile, settings) | Jetpack Compose | Compose Multiplatform for Web (wasmJs) | largely; desktop layout differs |
-| Map | MapLibre Native | maplibre-gl JS | same style + files, small adapter each |
-| Map data | areas from R2 via Worker | same (needs a web path: CORS, ideally z/x/y tiles served from the area files) | yes |
-| **Routing** | BRouter (Java) on the phone | **BRouter compiled to Wasm with TeaVM, running in the browser**, rd5 1° parts via HTTP range (as the phone does: `routing/Rd5Parts.kt`) | same engine + same profiles = identical routes |
-| Storage | SQLite | IndexedDB / OPFS | adapter |
-| GPS, recording, vibration | phone | – (web = planning) | phone only |
+**Chosen (owner, option 2 of three):** TeaVM compiles the existing JVM classes – the BRouter jars + the app's
+Android-free Kotlin, unchanged, read straight from `app/src/main/java` – into one Wasm GC module in a Web Worker. A small
+TypeScript page + maplibre-gl JS on top (same style, same PMTiles). One toolchain (TeaVM + Vite), no change to the app.
+Dropped: KMP + Compose for Web (large refactor, young UI stack) and a BRouter server (cost, abuse, not offline).
+GraalVM Web Image is the newer JVM → Wasm route – watch, not use. A KMP module (e.g. for iOS) stays possible later.
+Not in the browser on purpose: navigation and recording (weak GPS, stops in the background, no vibration).
 
-**Key idea:** routing in the browser means **no routing server** – no compute cost, nothing to abuse, the route is
-computed on the user's computer, the server only sees which areas are needed. Same privacy story as the app
-("everything on your device"); the web can even keep areas in OPFS and work offline.
+## 7. What exists (built from the spike of 2026-10-23)
 
-**Browser → phone without an account:** the plan's points in a link / QR code; scanning or tapping it opens the plan
-in OnPath. Nothing stored on a server.
-
-## 2. Purpose – to decide with the owner first
-
-- **A. Plan at home on a big screen, send to the phone** (laptop recommendation; what Komoot users know). Map,
-  points, route, profile, warnings, activity + T level, link/QR to the phone.
-- **B. Full planner for people without Android** (iPhone / desktop): plus saving routes in the browser, GPX
-  import/export. Build A so B can grow from it.
-- C. Navigation/recording in the browser: not sensible (weak GPS in browsers, stops in background, no vibration).
-
-## 3. Risks
-
-1. **BRouter → Wasm (TeaVM, Apache-2.0):** BRouter reads files via `RandomAccessFile` → adapter to an HTTP range
-   reader. Biggest unknown. (Alternative: a BRouter server on Cloud Run – proven, but costs compute and needs abuse
-   protection; BRouter-Web at brouter.de works this way.)
-2. **Compose for Web** is younger than Android Compose: text, accessibility, first download (several MB). The map
-   must sit underneath as a DOM element with Compose on top. If it feels wrong: TypeScript UI on top of shared
-   Kotlin logic + Wasm BRouter (still most of the value).
-3. **Big screen ≠ phone:** side panel instead of the sheet – design work.
-4. **Style differences Native vs JS:** one style for both, guarded by tests.
-5. **Map server access:** a browser app exposes the app key completely → see `docs/design/map-access.md`
-   (anonymous quota, supporter code). Decide together.
-6. Side effect: shared logic/UI would also carry an iOS app later (routing on iOS stays the hard part; no Java).
-
-## 4. Proposed steps
-
-0. Ask the owner the purpose (§2), one question at a time.
-1. **Two spikes in parallel, 1–2 days each, on a separate branch (nothing in main, app unchanged):**
-   - **Spike 1 – BRouter in the browser:** TeaVM → Wasm, range-reader adapter for rd5 1° parts, run 10–20 real
-     routes from `tools/routing/jvm-test` in the browser and compare with the JVM/phone result (same line, same
-     length); measure Wasm size, load time, route time.
-   - **Spike 2 – shared UI on the web:** Compose Multiplatform wasmJs mini page with maplibre-gl JS underneath:
-     set points (click), call the shared planning logic, draw route + elevation profile. Judge feel, size, speed.
-2. Short report to the owner with numbers and a recommendation (full Compose web vs TypeScript UI + shared logic).
-3. If yes: move the pure logic into a KMP `shared` module first (worth it anyway; no user-visible change), then a
-   minimal web planner for purpose A.
-
-## 5. Owner context to keep
-
-- Owner principles: robust first, offline by design, everything on the device, simple; no account, no tracking.
-- Public texts factual (see laptop memory "public text tone": like telling a friend, no marketing).
-- Ask the owner one question at a time (AskUserQuestion), with a recommendation.
-- Laptop load / builds: cloud session builds in its own environment.
-
-## 6. Rethink (cloud, 2026-10-23) – "same bytecode" instead of KMP + Compose web
-
-Owner asked, before anything is built: is there a way with more code consistency, less risk, less complexity?
-
-**Facts found:** the app's Android-free Kotlin is large already – routing 16 of 18 files, time 9/9, gpx 3/3,
-navigation 9/9 have no Android import (~7,000 lines). BRouter touches files in only 3 classes
-(`OsmFile`, `PhysicalFile`, `NodesCache` – `RandomAccessFile`), threads in 2, reflection in 2. The phone already
-builds its own rd5 from 1° parts (`Rd5Parts`).
-
-**What must be identical between phone and web:** routes (engine + profiles + data), distance / ascent / time /
-warnings, the plan link format. **What need not be identical:** the UI – a desktop side panel is a different layout
-from the phone sheet anyway.
-
-| | 1. Handover plan: KMP + Compose web + TeaVM BRouter | **2. Same bytecode (new proposal)** | 3. BRouter server |
-|---|---|---|---|
-| How | Move logic + UI into a KMP module (Kotlin/Wasm), BRouter via TeaVM | **TeaVM compiles the existing JVM classes – BRouter jars + the app's Android-free Kotlin, unchanged – into one Wasm module in a Web Worker.** Small TypeScript page + maplibre-gl JS on top (same style, same PMTiles). | Routing on Cloud Run, page asks it |
-| Consistency | high (same source) | **highest: the very same compiled classes from the same commit; CI compares golden routes JVM ⇄ browser** | routes yes, logic duplicated in JS |
-| Change to the app | large (KMP refactor of main, Compose UI split) | **none** (web build reads `app/src/main/java/...` files; app untouched) | none |
-| Toolchains | Kotlin/Wasm + Compose web + TeaVM (two Wasm compilers) | **one: TeaVM** (+ plain TS / Vite) | server + JS |
-| Risk | Compose web young (canvas UI: text, accessibility, several MB), KMP move | TeaVM support of the JDK / Kotlin-stdlib calls used → found in a 1-day spike; gaps get small shims | cost, abuse protection, no offline, not "on your device" |
-| Modern | yes | yes: Wasm GC, Web Worker, OPFS cache, PWA offline | – |
-
-**Recommendation: 2.** One spike instead of two: (a) TeaVM → Wasm for BRouter + `Planner` / `RouteSummary` /
-time / GPX / plan link, a range-reader that fills an in-memory rd5 like `Rd5Parts`; (b) 15–20 routes of
-`tools/routing/jvm-test` in headless Chromium vs the JVM (same line, same length); (c) measure Wasm size, load time,
-route time; (d) a tiny TS + maplibre-gl page (click points → route + profile). Fallback if TeaVM cannot take the
-Kotlin parts: BRouter via TeaVM only, logic via KMP later (option 1's logic half). Option 1's KMP module stays
-possible later (e.g. for iOS) – nothing in option 2 blocks it. GraalVM Web Image (JVM → Wasm) is the newer
-alternative to TeaVM but still experimental – watch, not use.
-
-## 7. Spike result (cloud, 2026-10-23) – owner approved option 2, built on `web-spike`
-
-**What exists** (`web/`, nothing in `app/` changed):
 - `web/engine/` – separate Gradle build. Compiles, straight from `app/src/main/java` (no copy): `BRouterEngine`,
   `Rd5Parts`, `Planner`, `WaypointInsertion`, `PlanEdits`, `RouteSummary`, `RouteTimes`, `PaceModel`, `Geo`,
   turn/junction helpers + the BRouter jars of `app/libs`. TeaVM 0.16 → one Wasm GC module. `WebApi.kt` is the
@@ -130,7 +44,7 @@ alternative to TeaVM but still experimental – watch, not use.
   (headless Chromium, partial rd5 by range).
   An island point (Köln Dom → Neumarkt, `tools/routing/jvm-test/IslandTest.kt`) routes like in the app since main's
   BRouter jars `1.7.11-beta-onpath1` (`islandNodePairs` package-private, `OnPathHints.islandRetries` / `skipOnSnap`,
-  no reflection – docs/handoff-web-island.md).
+  no reflection – "Lessons" below).
 - **Plan parity app ⇄ web** (owner 2026-10-31: routes and plans identical, shared Kotlin, parity tests – no checks by
   hand): `web/test/plans.json` – each case planned by the app's own path on the JVM (`./gradlew -p web/engine
   parityJvm`: `BRouterEngine` on the full rd5, `PlanPoints` for edits, `PlanResult.plan` with the app's default pace =
@@ -138,13 +52,13 @@ alternative to TeaVM but still experimental – watch, not use.
   in parts like the browser). Same line and plan points (1 m), distance (1 m), time (1 s), climb, gaps, warnings,
   difficulty, profile – a gate in the jvm job; a case with `"knownDiff"` is listed, not gated (Köln island point).
   2026-10-31 evening: all 12 the same – Köln Dom 1334 m (island retry without reflection), Hilden short trip 1099 m
-  (the Planner's midpoint retry, docs/handoff-web-short-detour.md); no knownDiff left.
-  Since `Engine.plan` calls `routing/PlanResult` (docs/handoff-web-planresult.md) the page also takes the snapped plan
+  (the Planner's midpoint retry, "Lessons" below); no knownDiff left.
+  Since `Engine.plan` calls `routing/PlanResult` (one plan computation for both) the page also takes the snapped plan
   points (`snap-smoke.mjs`), exports the app's plan GPX (`PlanGpx`, `<wpt>` stops, re-import exact) and deletes / drags
   with `PlanPoints.deleteAt` / `move` (a round trip stays closed).
-  `web/app/test/ui-smoke.mjs` clicks two points. `.github/workflows/web-spike.yml` runs all on the branch.
+  `web/app/test/ui-smoke.mjs` clicks two points. `.github/workflows/web.yml` runs all (§9).
 
-**Numbers** (cloud container; CI green):
+**Numbers** (spike, cloud container, 2026-10-23):
 
 | | |
 |---|---|
@@ -155,44 +69,18 @@ alternative to TeaVM but still experimental – watch, not use.
 | Route time | like the JVM: 30 km bike 0.2–0.9 s, hikes 30–50 ms |
 | Routing data | per 1° part 5–13 MB, once per area (Meran part 9.7 MB, ~0.15 s locally) |
 
-**Findings / open points**
-1. brouter.de sends no CORS header → the web needs our own copy of the rd5 files (R2 via the Worker, with CORS +
-   Range) – fits map-hosting; access without the app key: map-access.md (decide with the owner before public).
-2. `BRouterEngine.matchedPoints` reads BRouter's protected field by reflection – not available in TeaVM, so the web
-   gets "no snapped points" (route itself identical). Small app change later: read it in `OnPathHints.java`
-   (package `btools.router`) like the turn hints – no reflection on the phone either.
-3. Small pure helpers live in UI files (e.g. `ui/ElevationProfile.profileData`) – the web mirrors 8 lines. When
-   the web planner is built for real, move such helpers to pure files so both use them.
-4. Not done in the spike: plan link / QR to the phone (needs a link format the app opens), search, POIs, saving.
-5. Compose for web was not tried (option 1 dropped by the owner's choice) – the TS page is ~250 lines.
-
-**Preview (private claude.ai artifact, 2026-10-23):** https://claude.ai/artifact/QTG6zEiwfTpA5BRpP4beKm – Meran cell
-10/543/361 (format 2, built in the cloud container with `tools/cells/build_cell.sh`) + the E11_N46 rd5 part only
-(Meran, Algund, Schenna, Lana; Bozen is outside the map cell but routable). The preview host serves only common web
-types, so binaries are published as base64 text and decoded in the browser (`VITE_PACKED=1` build, `src/packed.ts`);
-the normal build reads the files directly. Not tested inside the claude.ai frame by the cloud (only headless).
-
-**Status 2026-10-24: paused by the owner after the spike report.** Restarted 2026-10-26 with phase 1 – see §8.
-
-**Owner TODO (2026-10-24):** delete the GitHub branch `marketing` (GitHub → Branches → trash icon); it holds
-nothing any more – marketing stays in the chat, not on GitHub.
-
-**Next (if the owner says yes):** move the pure helpers out of UI files, the reflection-free matched points
-(finding 2), a plan link / QR the app opens, rd5 + areas for the web on R2 with CORS (needs the map-access decision),
-then a minimal planner for purpose A.
+**Findings that still hold**
+1. brouter.de sends no CORS header → the host passes `/segments/` through (§9).
+2. Small pure helpers that live in Android / Compose files are mirrored in TS and guarded by `web/parity.json` (§14.2);
+   move them to pure files when touched.
 
 ## 8. Phase 1 – plan per QR code and link (owner decision 2026-10-26)
 
-The owner restarted the web planner with two phases (details and why: private notes, not in this repo):
-**Phase 1** – plan in the browser, bring the plan to the phone by QR code, share it as a link.
-**Phase 2** – pair phone and browser once (QR, like WhatsApp Web); then plans sync both ways by themselves, end-to-end
-encrypted through a small mailbox (Worker + D1/R2). No login. Built 2026-10-27 – see §12.
+**Phase 1** – plan in the browser, bring the plan to the phone by QR code, share it as a link (built; app part =
+core feature C15). **Phase 2** – pair phone and browser once (QR, like WhatsApp Web); then plans sync both ways,
+end-to-end encrypted through a small mailbox, no login (§12, `docs/design/web-sync.md`).
 
-Split agreed with the owner: **cloud** builds the plan format, the web part and the test page; **the desktop session
-(donald, phone on USB)** builds the app part – many short tries with the camera are seconds with adb, ~20 min per
-round through the update channel.
-
-### Plan code (done, branch `feat/plan-code`, merged into `web-spike`)
+### Plan code
 `app/src/main/java/com/onpath/app/routing/PlanCode.kt` – `SharedPlan` (points, activity, SAC, pinned points, names,
 title) ⇄ compact URL-safe text. Pure Kotlin (SharedCoreRuleTest), no platform Base64; the web engine compiles the same
 file to Wasm, so app and browser can never disagree. Tests: `PlanCodeTest` (14, incl. a frozen version-1 code that the
@@ -205,7 +93,7 @@ test on the plain JVM (web CI does).
   zigzag varint deltas; pinned bitset; optional tagged fields (1 title, 2 point name) – unknown tags are skipped, so
   newer codes still open in older apps. Limits 500 points, 100 chars per name. 20 points ≈ 110 characters.
 
-### Web (done on `web-spike`)
+### Web
 - "Send to phone · Share" (from 2 points): dialog with QR code of the link (`qrcode-generator`, MIT), Copy link,
   system Share where the browser has it.
 - The address bar always holds the current plan (`#p=…`, `history.replaceState`): reload / bookmark keep it.
@@ -214,23 +102,12 @@ test on the plain JVM (web CI does).
 - Test: `web/app/test/share-smoke.mjs` (CI) – opens the frozen code, checks the browser writes the identical code back,
   the QR dialog, edit + reload, broken link. The QR image was decoded once with jsQR: it holds the link.
 
-### App part (to do – desktop session with the phone)
-1. Open plan links: intent filter for the planner's https links (`#p=`) → `PlanCode.parse` → load as the current
-   plan, "Save first?" like opening a saved route when the plan has unsaved changes. Until App Links are verified
-   (`/.well-known/assetlinks.json` on the planner host with the signing key's SHA-256), the web page on a phone can
-   offer "Open in OnPath" with an `intent://…;package=com.onpath.app;end` link.
-2. Scanning: the phone's own camera already reads the QR code and opens the link (1). An in-app scanner (☰ → Scan
-   plan) only if the owner wants it – then ZXing (Apache-2.0) without Google Play Services, and the CAMERA permission
-   asked only on that tap.
-3. "Share plan" in the app writes the same link (`PlanCode.link`) – the web opens it.
-4. Core-feature style tests: link → plan (incl. round trip, pinned, names), broken link → plain message.
+### App part
+Plan links (`#p=`) open as the plan in the app (core feature C15, App Links via `/.well-known/assetlinks.json` on the
+planner host, §9); the phone's own camera reads the QR code; "Share plan" in the app writes the same link
+(`PlanCode.link`).
 
-### Test page (to do, needs the owner once)
-Cloudflare Pages for the page; rd5 parts and map areas from the existing R2 bucket through the Worker with CORS
-(brouter.de has no CORS); access during the test by Cloudflare Access (e-mail code, free up to 50) – no app key in the
-browser (map-access.md). The planner host name is also the App Link host above.
-
-## 9. Test page host (cloud, 2026-10-26) – built, not deployed
+## 9. Host and CI (cloud, 2026-10-26)
 
 Owner 2026-10-26: own domain **onpath.earth** (bought at all-inkl, DNS at Cloudflare; .earth is not sold by
 Cloudflare). Proposed: `onpath.earth` home + help (own repo happychriss/onpath.earth, marketing), `plan.onpath.earth` the planner (owner 2026-10-27: working assumption, to be confirmed), later `maps.onpath.earth`.
@@ -253,10 +130,10 @@ in the browser.
   redirect, no login, so plan links (`#p=`) and pairing links (`#pair=`) open OnPath. A Play Store signing key later
   becomes a second fingerprint in the same list (`ASSET_LINKS` in `web/host/src/index.js`).
 - everything else → the built page.
-- `workers_dev` and preview URLs off: the only address is the custom domain, which **Cloudflare Access** guards
-  (e-mail one-time code, free up to 50 users). Tests: `web/host/test` (CI); `wrangler deploy --dry-run` bundles 4 KiB.
+- `workers_dev` and preview URLs off: the only address is the custom domain (Cloudflare Access guarded it during the
+  test; off since the planner went public, 18.5). Tests: `web/host/test` (CI); `wrangler deploy --dry-run` bundles 4 KiB.
 
-**Owner setup, once (in this order):**
+**Owner setup, once (done; kept for a rebuild):**
 1. onpath.earth active in Cloudflare (nameservers at all-inkl → Cloudflare).
 2. Zero Trust → Access → Applications → Add → *Self-hosted*: domain `plan.onpath.earth`; policy *Allow*, include the
    testers' e-mail addresses; login method *One-time PIN*. (First visit: choose a team name and the Free plan.)
@@ -295,8 +172,7 @@ itself (deliberately wider than `appFiles`; a miss only costs ~2 min). The Gradl
 they run in `jvm` on every run.
 **Agents:** locally run only the smokes your change touches; CI runs all.
 
-Open: the home / help pages (drafts live in WordPress on 44-2.de, marketing session) – `onpath.earth` can redirect
-there first. Requesting new cells from the web: §17 (the host holds the key, the browser does not).
+Requesting new cells from the web: §17 (the host holds the key, the browser does not).
 
 ## 10. Plan edits and search with the app's code (cloud, 2026-10-26)
 
@@ -467,7 +343,7 @@ browser's cache storage (IndexedDB) across visits.
 4. Prefetch: the 1° part under the map centre from zoom 9 (2–10 MB per area) – fine for a public page, or only after
    the first click?
 
-## 12. Phase 2 – plan sync phone ⇄ browser (cloud, 2026-10-27) – built, not deployed
+## 12. Phase 2 – plan sync phone ⇄ browser (cloud, 2026-10-27)
 
 Pair once (the browser shows a QR code, the app scans it), then saved plans sync both ways by themselves, end-to-end
 encrypted (AES-256-GCM; key from the pairing secret, which never reaches a server) through a small mailbox in this
@@ -540,8 +416,8 @@ page could link onpath.earth/help).
 ## 14. App logic on the web – inventory and keeping it in sync (cloud, 2026-10-29)
 
 Owner items 5 + 13: "cross-check the planning logic and keep the web in sync automatically – also with the memory
-work in the app". Since 2026-10-29 web-spike carries main's app code again (the engine generates the app's string
-resources, web-sync.md §0); every file below "shared" is compiled from `app/` as it is.
+work in the app". The engine generates the app's string resources (web-sync.md "Status"); every file below "shared" is
+compiled from `app/` as it is.
 
 ### 14.1 Inventory (app source → web)
 
@@ -582,8 +458,7 @@ resources, web-sync.md §0); every file below "shared" is compiled from `app/` a
    → Run workflow → deploy – phone and browser always come from one commit. **The app leads** (owner 2026-10-30): when a
    mirrored app file changed (texts, buttons, menus, colours, plan behaviour), the laptop (or a scheduled task) adopts
    the change in the web itself, tests, `--update`s and pushes – it does not wait for the owner. Only a change with no
-   web counterpart yet (a new screen, phone-only hardware) goes to the owner as a proposal. (Until 2026-11-06 the
-   planner lived on `web-spike` and a daily task merged `main` into it – `web-spike` is frozen since.)
+   web counterpart yet (a new screen, phone-only hardware) goes to the owner as a proposal.
 2. **Mirrors cannot drift silently:** `web/parity.json` stores, per mirrored app file, the git blob hash it was last
    checked at. `web/parity/check.mjs` (first step of the web CI) **fails** when such a file changed – look at the
    change, adjust the web, then `node web/parity/check.mjs --update <app file>`.
@@ -719,7 +594,7 @@ without an app counterpart (locate on the web, not available on the web) are the
   (`onpath-doorman-test`, same account – the doorman also sees the browser's IP for its own per-IP limit), else
   `https://$MAPS_HOST/v1/…`. Limits: `MAPS_RATE` 20 per minute per IP, `MAPS_RATE_ALL` 120 per minute for all browsers
   (Workers rate-limit bindings), on top of the doorman's 30 per minute and its build caps. A key the doorman refuses →
-  "not available" (+ Worker log). The site stays behind Access (only `/sync/*` bypasses it).
+  "not available" (+ Worker log).
 - Owner step: §9 step 5 (repository secret `ONPATH_MAP_KEY_TEST`).
 
 Tests: `web/host/test/maps.test.js` (key added and not answered back, bodies rebuilt, only two calls, limits, no key,
@@ -746,8 +621,8 @@ to load the detailed map".
 
 ## 18. Public planner – German first, the quiet path to the app, cost protection (cloud, 2026-10-30, A-011)
 
-Owner decision 2026-10-30: the planner goes public (no login), with a quiet path to the app. Done on `web-spike`;
-Cloudflare Access stays on until the owner switches it off (steps below).
+Owner decision 2026-10-30: the planner goes public (no login), with a quiet path to the app. Cloudflare Access is off
+(owner, 2026-10-31); the site stays `noindex` until the launch (18.4).
 
 ### 18.1 Languages
 - **One engine, every language.** `generateStrings` (web/engine) reads `strings/…/values/` (English) and every
@@ -819,7 +694,7 @@ Until launch every answer of the host carries `X-Robots-Tag: noindex, nofollow` 
 `<meta name="robots" content="noindex, nofollow">`. **The one switch:** `INDEXING = "on"` in
 `web/host/wrangler.toml` `[env.test.vars]` – the header goes and the host removes the meta tag (HTMLRewriter).
 
-### 18.5 Owner steps to go public (in this order)
+### 18.5 Owner steps to go public (step 3 done – Access is off; check the others before the launch)
 1. Spending alert (18.3) – before anything else.
 2. Optional: `ONPATH_MAP_KEY_TEST` (§9 step 5) so map areas can be built from the web; without it the page shows the
    overview where no detailed map exists.
@@ -987,3 +862,83 @@ zusammen"; chosen layout A. The header is now: brand · **plan bar** · (hint �
   plan arrives; second visit → Open → search → open → change → Save sends; Save ▾ → Save as), sheet-smoke (bar order,
   labels, widths, Plan ▾), parity-smoke (Plan ▾ entries), import-smoke (Open → Import GPX), lang-smoke (German bar),
   ui-shots (`*-myroutes-search.png`, `desktop-savemenu.png`, `phone-menu.png`).
+
+## 22. Lessons (app ⇄ web, TeaVM / Wasm)
+
+Problems found while making the browser plan exactly like the phone, and the special solutions. They replace the old
+`docs/handoff-web-*.md` notes (git history has the full texts).
+
+- **Shared code must be pure.** A file the engine compiles (`app/web-shared-files.txt`) uses no Android, no reflection,
+  no `java.security` – `SharedCoreRuleTest.webShared` / `SharedFilesRuleTest` enforce it. Rules that sat inside
+  Android / Compose files were moved into their own pure files and the app only draws them (e.g.
+  `data/RoutingDataNotice.kt` out of `RoutingDataLoader`, `routing/BreakdownRules.kt` out of `ui/RouteBreakdown.kt`,
+  `routing/PlanResult.kt` = one plan computation for sheet and browser, `gpx/PlanGpx`, `map/ActivityLayers`). Tests
+  proved "no behaviour change" against a frozen copy of the old code. A test that reads `app/` assets by path
+  (`RoutingFingerprintTest`) cannot run in the web engine – the app's CI runs it.
+- **Island retry without reflection (Köln Dom).** A point snapped onto an "island" way is snapped again by
+  `BRouterEngine.search`; that needs BRouter's `private` field `RoutingEngine.islandNodePairs`. The app read it by
+  reflection; **TeaVM has no reflection**, so the browser drew a straight line (959 m vs the app's 1334 m). Fix: one
+  byte in the jar – `tools/routing/patch_brouter_jar.py` clears the field's `private` flag in brouter-core's
+  `RoutingEngine.class` (access_flags 0x0002 → 0x0000, nothing else changes; `build_brouter_jars.sh` runs it and
+  `--check`s), the jars are named `brouter-*-1.7.11-beta-onpath1.jar` (a modified BRouter says so; MIT), and
+  `btools/router/OnPathHints.java` (BRouter's package) gives `islandRetries` / `skipOnSnap`. App routes were diffed
+  unchanged; `btools/router/OnPathHintsTest.islandListWithoutReflection` guards it.
+- **Bug-01 splice only around the cut stop (owner "Option 1", 2026-10-31; PLANNER_VERSION 3).** Adding a point to the
+  owner's 70.6 km hike took ~5 s in the browser: when BRouter's via correction cut a stop, the Bug-01 pass routed the
+  whole chunk again. The fix routed only A → cut stop(s) → B (A / B up to 1 km before / after the stop on the first
+  line) and spliced it in, with the old pass as fallback: JVM 2.7 → 1.3 s, browser 5 s → 2.5 s (live 2.2 s), length
+  +1 m. **Superseded 2026-11-05** by leg-by-leg planning with a leg cache (`Planner`, PLANNER_VERSION 4): every leg is
+  its own request, spurs at leg joins are trimmed the way BRouter's via correction did, a point on a spur stays visited.
+  The lesson stays: route only what changed, and same points still give the same route (`SpurSpliceJvmTest.kt`,
+  `SpurStopJvmTest.kt`).
+- **Short-trip detour retry (Hilden, owner option B).** A leg under 2 km straight that BRouter rode more than twice as
+  long is retried once via the midpoint of the straight line and taken when ≥ 30 % shorter (`Planner.retryShortDetour`)
+  – no profile change, so no router-class hash change. Hilden 2054 → 1099 m. `PlannerShortDetourTest`, `ShortDetourTest.kt`.
+- **Fingerprint bumps are expected.** Every `PLANNER_VERSION` / `BROUTER_VERSION` change changes all `r1-…` fingerprints
+  once, so plans saved before may show the quiet "planned with other routing" line once (`docs/design/routing-fingerprint.md`).
+- **TeaVM gaps and their web-only stand-ins** (the app is unchanged): `java.text.Normalizer` (NFD table), the `\p{N}`
+  regex class (TeaVM's `TAbstractCharClass` shadowed), Gson `Streams`, `AtomicIntegerArray`, no XML parser
+  (`javax.xml` / SAX mapped to a small stand-in, `WebImportTest`), java.time via ThreeTen backport, only `en_US` /
+  `de_DE` number data, single-thread `ReentrantLock`, `java.lang.Package` getters, no-op BRouter `StackSampler` (§7, §10,
+  §15, §18.1).
+- **Node never exits after loading the TeaVM Wasm engine** – run engine tests in a child process.
+- **Engine loaded twice** on early calls lost rd5 parts stored in the other copy – the worker keeps one loading promise
+  (§11.2).
+- **pmtiles / maplibre keep a failure for good** – one 429 cost a cell's streets for the whole visit; the page drops the
+  archive and retries with backoff (§17).
+- **Flaky web smokes were test-side camera races** (the whole-route fit moved the map between the test's projection and
+  its clicks): drag the map first like a person, jump without padding, log the camera when a click goes astray.
+
+## 23. The app's colour rule, paper and „Zuletzt“ (laptop, 2026-11-07 – parity with main's 2026-11-06 app)
+- **Colours** (`style.css` `:root`, the app's `Theme.kt` / `ActionButtons`, onpath.private#36): walnut `#4A3F37` for every
+  button without a meaning of its own (the old `--green*` tokens point to it), plan blue `#2E6A9E` for plan actions (Save,
+  the place card's Add / As start / As destination, Plan anyway, the wait for a plan, „⤢ Großes Profil“, the plan row's
+  switches, spinners while a route is calculated – `Message.tone: 'edit'` = the app's `ButtonTone.EDIT`), the navigation
+  green only for the brand's word (the web never navigates). Every surface is paper `#FAFAF6`, also what floats over the
+  map (`--card`: search pill, results, place / pin card, message boxes, the map strip, the fly buttons – the shadow lifts
+  them off the map; app 2026-11-06 evening); white only for fields one types into. A lifted point row is `#EAE9E1`.
+- A GPX track without a line (< 2 points or < 20 m, the app's `TrackLine.has`): one quiet line „plan_no_track_recorded“
+  instead of the profile, no „Plan aus dem Track“.
+- **„Zuletzt“** (`recent.ts`, the app's drafts – `RouteRules.kt Drafts`, `AppViewModel.keepAsDraft`): no „Plan speichern?“
+  any more. A plan with ≥ 2 points that leaves the map not saved as it is (+ Neu, another plan / link / GPX opened, „Plan
+  aus dem Track“) is kept under Meine Touren → ZULETZT, named like the Save proposal; same points twice = one entry; the
+  newest 25; this browser only (the app's drafts are not synced either). ZULETZT shows the newest 3 + „Alle N anzeigen ›“,
+  a pale route sign, Speichern (blue) · Löschen (red, no question) on the card; GESPEICHERT below. A plan opened from
+  Zuletzt still belongs to its entry; saved, it leaves Zuletzt and shows „✓ Gerade gespeichert“.
+- **Delete** in Meine Touren: in a phone's folder at once (the phone's recycle bin is the net – the app asks nothing);
+  without a phone it still asks, since this browser has no recycle bin.
+- Phone-only in the same app round (nothing to do here): plan auto-saved at „Los geht's“ (`PlanAutoSave`), the end
+  sheet without the plan switch, „Weiter“ wording, the tour's T1–T5 sheet, „Ohne Plan aufzeichnen“, Plan in front after
+  the app start (the web fits a restored plan anyway), the map column always 6 high (the web's toolbar was already
+  greyed-not-hidden); the second app round of the evening: a plan / tour tapped during a tour is followed without a
+  question, the hold-time slider instead of the lock switch, the end sheet's tap guard, the overview pill with „Detailkarte
+  laden“ (the web loads map areas by itself, §17; its strip keeps its own overview line).
+- **Second app round (2026-11-07, parity of 17 mirrors):** ink blue `#2B4C6F` for plan actions (variant C: no light blue
+  surfaces; tonal `#DCE3EC` / ink `#1B2F45` also for tags), warm walnut shadows (`--shadow-low` / `--shadow-high`), one corner
+  family (cards 20 px, small 12 px, pills round), the compass ink blue / walnut grey (no red), the goal as a white flag on the
+  map, in the points list and the point menu, locate without the GPS dot and greyed without a position (the app's PlanGps),
+  the pin card's „Mehr“ on PaperDim. Not yet (backlog): Meine Touren's „In Bearbeitung“ row, the small route preview per row
+  and the large overview, rows as tile + name + facts + › with every action in ⋮ (app 01b38ffa / cb791053 / ce27c111 / e570e467), the route drawing itself in 0.5 s (RouteReveal), the
+  profile's fill (ProfileFill) – the last comes with the plan sheet rebuild. Phone-only: Navigate's ⚙ settings, lock line,
+  tour controller / RoutesState refactors, accuracy circle only in Navigate, Prefs.
+

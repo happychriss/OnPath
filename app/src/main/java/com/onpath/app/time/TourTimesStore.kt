@@ -26,7 +26,7 @@ class TourTimesStore(private val file: File) {
             // keep the file small: the newest [MAX] tours
             val keys = o.keys().asSequence().mapNotNull { it.toLongOrNull() }.sorted().toList()
             keys.take((keys.size - MAX).coerceAtLeast(0)).forEach { o.remove(it.toString()) }
-            AtomicFiles.writeText(file, o.toString(), File(file.path + ".tmp"))
+            AtomicFiles.writeText(file, o.toString())
         } catch (e: Exception) {
             Problems.error("time", "Tour times file (tour-times.json) could not be saved", e)
         }

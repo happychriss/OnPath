@@ -426,6 +426,18 @@
     "priority": 2,
     "confidence": "sicher"
   },
+  "routes_overview_enlarge": {
+    "area": "My routes",
+    "context": "TalkBack label and click label of the small route preview tile with the ⤢ badge at the start of a row: a tap opens the large overview of the route (map fitted to it).",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_open_row": {
+    "area": "My routes",
+    "context": "TalkBack click label of a whole row in My routes; %1$s = the route's name. A tap opens the large overview (or, for the plan on the map, goes back to it).",
+    "priority": 2,
+    "confidence": "sicher"
+  },
   "routes_overview_plan": {
     "area": "My routes – route overview",
     "context": "Primary button of the large route overview (map fitted to the route): open this route in Plan mode.",

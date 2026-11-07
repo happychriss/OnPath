@@ -9,7 +9,7 @@
 # Gradle at all. A release (only the version line + notes) runs nothing when unit.yml is green on the base on GitHub
 # (release.yml tests again before it publishes). The full suite + screenshots still run in CI after every push (unit.yml).
 #
-# Gradle runs in a machine-wide slot (tools/dev/gradle_slot.sh: two builds side by side, one while the emulator runs)
+# Gradle runs in a machine-wide slot (tools/dev/gradle_slot.sh: up to three builds side by side, one while the emulator runs)
 # with --max-workers=2, nice + ionice. The daemon stays warm and ends itself after 10 idle minutes (gradle.properties) –
 # no `./gradlew --stop` afterwards.
 #
@@ -137,7 +137,7 @@ WRAP=()
 command -v nice >/dev/null && WRAP+=(nice -n 19)
 command -v ionice >/dev/null && WRAP+=(ionice -c3)
 CMD=("${WRAP[@]}" ./gradlew --max-workers=2 "${TASKS[@]}")
-# Gradle slots (tools/dev/gradle_slot.sh): two builds side by side per computer, one while the emulator runs
+# Gradle slots (tools/dev/gradle_slot.sh): up to three builds side by side per computer, one while the emulator runs
 WORK=${WORK:-$HOME/onpath-cells-work}
 [ -n "${ONPATH_GRADLE_LOCK:-}" ] && WORK=$(dirname "$ONPATH_GRADLE_LOCK")
 # shellcheck source=../dev/gradle_slot.sh

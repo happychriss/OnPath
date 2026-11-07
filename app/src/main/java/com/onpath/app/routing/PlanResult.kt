@@ -10,7 +10,7 @@ import com.onpath.app.ui.RouteWarnings
 
 /**
  * Everything the plan sheet shows for one set of plan points, worked out in ONE place (owner rule: routes, stops,
- * numbers and warnings identical in the app and the browser planner – both call [PlanResult.plan]; docs/handoff-web-planresult.md).
+ * numbers and warnings identical in the app and the browser planner – both call [PlanResult.plan]; docs/design/web-planner.md §22).
  * Pure Kotlin, no Android (SharedCoreRuleTest; the web engine compiles it with TeaVM). Blocking: call it off the main
  * thread. Threading, cancelling and "a newer request supersedes" stay with the caller (AppViewModel / the web page).
  *

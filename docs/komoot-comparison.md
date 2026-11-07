@@ -1,4 +1,4 @@
-# Komoot vs OnPath – what to copy, what to skip
+# Komoot vs OnPath – what to copy, what to skip (2026-10-17, design review 2026-11-01)
 
 Research note, 2026-10-17. Based on Komoot help pages, reviews and forum threads (sources at the end), compared with
 OnPath's first test build. Requirement IDs refer to `docs/requirements.md`.
@@ -78,9 +78,22 @@ since: no dragging of points or the route line – Plan uses hold-only gestures 
 | Reordering all points automatically when you add one (Komoot's default "include on route" anywhere) | Confusing to users; nearest-leg insert near the line is enough | M |
 | Community Highlights, photos, tips, ratings | Needs a server and moderation; the Google Maps link-out covers it | L |
 | Heatmaps, Trail View, satellite imagery | Online-only and licensing heavy; against offline-by-design | L |
-| 3D map | Komoot keeps it web-only; costly on the GPU and battery, with little value for planning | M |
-| Turn-by-turn voice (F-NAV-05) | Already decided: an off-route vibration is enough for v1 | M |
+| 3D map in the app | Komoot keeps it web-only; costly on the GPU and battery. OnPath's browser planner has 3D + flyover (web-planner.md §19); the app only as a spike | M |
+| ~~Turn-by-turn voice (F-NAV-05)~~ | Reversed by the owner 2026-10-31: voice built (v0.14.0, `docs/design/voice-guidance.md`) | – |
 | Social feed, collections, device sync (Garmin/Wahoo) | Not core; GPX export covers devices | L |
+
+## 4. Design review 2026-11-01 – OnPath vs Komoot / Organic Maps / OsmAnd (the lasting points)
+Asked by the owner on the night draft of 2026-11-01 (saved from a chat that is gone).
+- **Clear at Komoot level or better:** a calm Navigate that frames the map (turn card always on top, nothing jumps –
+  the owner: "dann bleibt das wesentlich stabil"); **words, not signs** on buttons (Pause, Beenden, Neu planen,
+  Hierhin – before, "Stopp", ■ and "Weiter" had three meanings); a lock against pocket taps (Komoot has none – then a
+  slider, since v0.17.2 hold to unlock); green / black / red map colours and numbered points like Komoot; voice close
+  to Organic Maps and OsmAnd (two steps on the bike, "Gleich links" on foot, "Bitte umdrehen"), Komoot says less.
+- **What caught:** naming – Komoot separates "Geplant" and "Unterwegs"; OnPath mixed Route / Tour / Aufnahme →
+  decided by the owner as A-022 (Plan · Tour · Route, 2026-11-03); changing the route on the way looked like planning
+  at home (since then the light blue band and the plan / tour split); the dense status card (time, km, ↑↓, arrival,
+  goal) – check on a real ride.
+- Verdict then: route, guidance and recording became visibly three things; consistent naming was missing.
 
 ## Sources
 - Komoot route planner help: https://www.komoot.com/help/routeplanner

@@ -161,36 +161,35 @@ check(/Your route near Vellau is about \d+ (hours|days) on foot from here\./.tes
 await page.click('#lrPlan');
 await page.waitForFunction(() => !document.querySelector('dialog.longroute') && (/failed|Planning|Calculating/.test(document.getElementById('status').textContent) || !!document.querySelector('#summary .big')), null, { timeout: 120_000 }).catch(() => {});
 check(!(await page.$('dialog.longroute')) && await pins() === 3, 'Add to the route: three points, planned without asking again');
-// (d) + New in the plan bar (owner 2026-11-06: the one way – the plan row has no ✕ any more): an unsaved plan asks
-// "Save plan?" first; Discard closes it, undo brings it back
+// (d) + New in the plan bar (owner 2026-11-06: the one way – the plan row has no ✕ any more): no question any more (the
+// app's Zuletzt, owner 2026-11-06) – the unsaved plan goes under Meine Touren → Recent; undo brings it back
 await page.goto(url + 'index.html#p=' + CODE);
 await planned();
 check(await page.locator('#planActions #clear').count() === 0 && await page.isEnabled('#newPlan'), 'plan row without ✕ New plan; the plan bar\'s + New is active');
+const recentN = () => page.evaluate(() => JSON.parse(localStorage.getItem('onpath.recent') ?? '[]').length);
+await page.evaluate(() => localStorage.removeItem('onpath.recent')); // the same link plan went under Recent in 1. already (same points = one entry)
+const recent0 = await recentN();
 await page.click('#newPlan');
-check(await page.locator('dialog.discard[open]').count() === 1, 'an unsaved plan: Close asks "Discard changes?"');
-{ // the app's DiscardPlanDialog with Save (owner 2026-11-05): "Save plan?", Discard apart on the left, Cancel · Save on the right
-  const d = await page.evaluate(() => {
-    const dlg = document.querySelector('dialog.discard[open]'), bs = [...dlg.querySelectorAll('.row button')];
-    return { title: dlg.querySelector('h2').textContent, buttons: bs.map((b) => b.textContent.trim()),
-      apart: bs[0].getBoundingClientRect().right < bs[1].getBoundingClientRect().left - 24 };
-  });
-  check(d.title === 'Save plan?' && d.buttons.join('|') === 'Discard|Cancel|Save' && d.apart,
-    `+ New asks "Save plan?" – Discard apart · Cancel · Save (${JSON.stringify(d)})`);
-}
-await page.click('#discardOk');
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 }).catch(() => {});
-check(await pins() === 0 && !(await page.$('dialog[open]')), 'Discard: the route is gone');
+check(await pins() === 0 && !(await page.$('dialog[open]')) && await recentN() === recent0 + 1, '+ New: no question, the route is gone and kept under Recent');
 await page.click('#undo');
 await planned().catch(() => {});
 check(await pins() === 2 && !!(await page.$('#summary .big')), 'undo: the route is back');
-// "Save" in that question: the name dialog, then the plan is saved and the map is empty (the app's discardSaveFirst)
 await page.click('#newPlan');
-await page.click('dialog.discard[open] #discardSave');
-await page.waitForSelector('dialog.savename[open]', { timeout: 10_000 });
-await page.click('#saveOk');
-await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 }).catch(() => {});
-const savedN = await page.evaluate(async () => (await window.__sync.list()).filter((p) => p.kind === 'plan').length);
-check(await pins() === 0 && savedN >= 1 && !(await page.$('dialog[open]')), `Save in "Save plan?": saved (${savedN}), then a new plan`);
+check(await recentN() === recent0 + 1, 'the same points again: no second Recent entry');
+// Meine Touren: RECENT on top (pale sign, Save · Delete on the card) – Save makes it a saved plan, "✓ Just saved" on it
+await page.click('#menuPlans');
+await page.waitForSelector('dialog.plans[open] li.recent');
+const rec = await page.evaluate(() => ({ head: document.querySelector('dialog.plans li.sectionhead')?.textContent,
+  pale: !!document.querySelector('dialog.plans li.recent .kindic.pale'), btns: [...document.querySelectorAll('dialog.plans li.recent .recentacts button')].map((b) => b.textContent.trim()) }));
+check(rec.head === 'RECENT' && rec.pale && rec.btns[0] === 'Save' && rec.btns[1] === 'Delete', `My tours: RECENT, a pale sign, Save · Delete (${JSON.stringify(rec)})`);
+const savedBefore = await page.evaluate(async () => (await window.__sync.list()).filter((p) => p.kind === 'plan').length);
+await page.click('dialog.plans li.recent .rsave');
+await page.waitForSelector('dialog.plans[open] .justsavedline', { timeout: 10_000 });
+const savedAfter = await page.evaluate(async () => (await window.__sync.list()).filter((p) => p.kind === 'plan').length);
+check(savedAfter === savedBefore + 1 && await recentN() === recent0 && (await page.textContent('dialog.plans .justsavedline')) === '✓ Just saved',
+  `Recent → Save: a saved plan (${savedBefore} → ${savedAfter}), out of Recent, "✓ Just saved"`);
+await page.click('#closePlans');
 
 // 2. ☰ → Import GPX (Komoot hike) while the activity is Bike
 await page.evaluate(() => { localStorage.setItem('onpath.activity', 'BIKE_TOURING'); });
@@ -266,18 +265,13 @@ await page.evaluate(async (text) => {
 await page.waitForSelector('#trackPanel');
 const tp2 = await page.textContent('#trackPanel');
 check(tp2.includes(planDist) && !tp2.includes('Activity set to'), `re-import of the export: same ${planDist}, activity unchanged (no grey line)`);
-// over the plan made from the track (not saved), "Plan a route from it" asks "Save plan?" first (the app's planFromShown
-// → unlessUnsaved, save paths P3, 2026-11-06); Cancel changes nothing, Discard goes on
-const pinsUnsaved = await pins();
-await page.click('#planFromTrack');
-const ask = await page.waitForSelector('dialog.discard[open]', { timeout: 5_000 }).catch(() => null);
-check(!!ask && (await ask.textContent()).includes('Save plan?'), 'Plan a route from it over an unsaved plan: "Save plan?" first (save paths P3)');
-if (ask) await page.click('dialog.discard #discardCancel');
-check(!!(await page.$('#trackPanel')) && await pins() === pinsUnsaved && await page.evaluate(() => location.hash) === planHash,
-  'Save plan? → Cancel: the track panel and the plan stay');
-// "Plan a route from it" on an OnPath plan GPX: its <wpt> come back as the plan, exactly (PlanGpx.stopsOf) – no fitting
+// over the plan made from the track (not saved), "Plan a route from it" asks nothing any more (the app, owner 2026-11-06):
+// the plan goes under Recent and the track becomes the plan
+const recentT = await recentN();
 await planFrom();
 await page.waitForFunction(() => !document.getElementById('trackPanel'), null, { timeout: 60_000 });
+check(await recentN() === recentT + 1, 'Plan a route from it over an unsaved plan: no question, the plan is kept under Recent');
+// "Plan a route from it" on an OnPath plan GPX: its <wpt> come back as the plan, exactly (PlanGpx.stopsOf) – no fitting
 await planned();
 check(await pins() === n && await page.evaluate(() => location.hash) === planHash, `re-import → plan: the same ${n} route points (the plan GPX's <wpt>, no fitting)`);
 // pinned points (a POI / place, passed exactly) go out as <wpt><type>pinned</type> and come back pinned (PlanGpx, 23f64bc3)

@@ -16,8 +16,8 @@ Owner 2026-10-31: a fixed list of real user flows played automatically in the em
 ## Run it (donald)
 
 - `tools/ci/release_rundgang.sh` – takes a running emulator (`emulator-*` only, never a phone), else starts its own
-  headless 4 GB one and kills it after; builds app + test APK with `-Ponpath.e2e=true` inside the Gradle lock
-  (`flock ~/onpath-cells-work/gradle.lock`, `--max-workers=2`); installs both and **runs `pm clear com.onpath.app` on
+  headless 4 GB one and kills it after; builds app + test APK with `-Ponpath.e2e=true` in Gradle slot 1
+  (`~/onpath-cells-work/gradle.lock`, one of the slots of `tools/dev/gradle_slot.sh`; `--max-workers=2`); installs both and **runs `pm clear com.onpath.app` on
   the emulator first** (a clean app like CI's fresh emulator); pushes the real routing data; runs only
   `ReleaseRundgang`; screenshots + `instrument.txt` + logcat into `~/onpath-cells-work/rundgang/<date-time>/`; prints
   a pass / fail table, exit 1 when a flow failed or the run did not finish.

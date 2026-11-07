@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -54,6 +55,8 @@ data class SyncUi(
     val browser: BrowserLink = BrowserLink.CONNECTED,
     /** A tour is recording: the routes sync after it (grey line; the pairing handshake ran). */
     val afterTour: Boolean = false,
+    /** When the pairing was made (ms; 0 = unknown): "Verbunden seit 3 Tagen" ([SyncStatusText.since]). */
+    val sinceMs: Long = 0,
 ) {
     /** Paired here, but the browser unpaired itself (owner 2026-10-31): not "connected", a grey line, the camera again. */
     val unpairedInBrowser: Boolean get() = paired && browser == BrowserLink.UNPAIRED
@@ -64,7 +67,7 @@ data class SyncUi(
     companion object {
         fun of(s: PlanSync.State, askCheck: String?, joining: Boolean = false) =
             SyncUi(s.paired, s.peer, s.lastOkMs, s.problem, askCheck, joining = joining && askCheck != null, browser = s.browser,
-                afterTour = s.paired && s.afterTour)
+                afterTour = s.paired && s.afterTour, sinceMs = if (s.paired) s.sinceMs else 0)
     }
 }
 
@@ -204,6 +207,12 @@ data class SyncMenuUi(
     /** Paired, the browser not seen yet: "Paired with browser" without ✓ (never "connected" before its hello). */
     val waiting: Boolean = false,
 ) {
+    /**
+     * The ☰ item's one line (owner 2026-11-07): "Browser-Kopplung" while paired here (a browser seen, waiting for its
+     * hello, or a problem), else "Mit Browser koppeln" – also after the browser unpaired itself (pair again).
+     */
+    val labelPaired: Boolean get() = paired
+
     companion object {
         /** Paired and online, passes run, but none ended well for this long: worth a look. */
         const val STALE_MS = 6 * 3_600_000L
@@ -294,6 +303,52 @@ fun syncAgo(lastMs: Long, now: Long): String {
 }
 
 /**
+ * The paired status block on Browser sync (owner 2026-11-07: "wie lange man mit dem Browser verbunden ist"): since when
+ * ("seit heute 09:12", "seit gestern 09:12", "seit 3 Tagen") and the last good pass as a clock time ("10:12",
+ * "gestern 09:12", "21. Okt. 18:40"). Calendar days in [zone]. Pure, unit-tested.
+ */
+object SyncStatusText {
+    sealed interface Since {
+        data class Today(val time: String) : Since
+        data class Yesterday(val time: String) : Since
+        data class Days(val days: Int) : Since
+    }
+
+    /** Null = unknown (0) or not paired. A pairing time after [now] (clock moved) counts as today. */
+    fun since(sinceMs: Long, now: Long, zone: java.util.TimeZone = java.util.TimeZone.getDefault()): Since? {
+        if (sinceMs <= 0) return null
+        val z = zone.toZoneId()
+        val then = java.time.Instant.ofEpochMilli(sinceMs).atZone(z)
+        val days = java.time.temporal.ChronoUnit.DAYS.between(then.toLocalDate(), java.time.Instant.ofEpochMilli(now).atZone(z).toLocalDate())
+        val time = "%02d:%02d".format(java.util.Locale.ROOT, then.hour, then.minute)
+        return when {
+            days <= 0 -> Since.Today(time)
+            days == 1L -> Since.Yesterday(time)
+            else -> Since.Days(days.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+        }
+    }
+
+    fun sinceText(s: Since): String = when (s) {
+        is Since.Today -> Txt.s(Res.string.sync_since_today, s.time)
+        is Since.Yesterday -> Txt.s(Res.string.sync_since_yesterday, s.time)
+        is Since.Days -> Txt.p(Res.plurals.sync_since_days, s.days, s.days)
+    }
+
+    /** "10:12" today, else "gestern 09:12" / "21. Okt. 18:40" ([SettingsSummary.whenText]); "noch nie" before the first pass. */
+    fun last(lastOkMs: Long, now: Long, zone: java.util.TimeZone = java.util.TimeZone.getDefault()): String {
+        if (lastOkMs <= 0) return Txt.s(Res.string.sync_last_never)
+        val z = zone.toZoneId()
+        val then = java.time.Instant.ofEpochMilli(lastOkMs).atZone(z)
+        val sameDay = then.toLocalDate() == java.time.Instant.ofEpochMilli(now).atZone(z).toLocalDate()
+        return if (sameDay) "%02d:%02d".format(java.util.Locale.ROOT, then.hour, then.minute)
+        else SettingsSummary.whenText(lastOkMs, now, zone)
+    }
+
+    /** The planner's address as people type it ("plan.onpath.earth"). */
+    val plannerHost: String get() = com.onpath.app.routing.PlanLinks.HOST
+}
+
+/**
  * Settings → Browser sync. No "Sync now" (owner 2026-10-30: automatic like WhatsApp Web – the app syncs about every
  * minute while it is open, plansync/SyncPoll); the status line "Last synced: 1 min ago" moves on by itself.
  */
@@ -334,19 +389,27 @@ fun SyncSection(ui: SyncUi, cb: SyncCallbacks, now: Long = System.currentTimeMil
                     Text(str(Res.string.sync_steps), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedButton(onClick = cb.onOpenCamera, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(str(Res.string.sync_open_camera)) }
                     ui.problem?.takeIf { it != PlanSync.Problem.Offline }?.let { p -> SyncStatusLine(syncProblemText(p)) }
-                    TextButton(onClick = { askUnpair = true }, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.sync_unpair)) }
+                    UnpairButton { askUnpair = true }
                 }
                 else -> {
+                    // the status block (owner 2026-11-07): with whom, since when, last pass, the planner – then Trennen
                     Text(peerLine(ui), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                    Text(if (ui.lastOkMs > 0) str(Res.string.sync_last, syncAgo(ui.lastOkMs, shownNow)) else str(Res.string.sync_never),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    SyncStatusText.since(ui.sinceMs, shownNow)?.let {
+                        Text(SyncStatusText.sinceText(it), style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     // ANZEIGE lines while the state holds (field bug 2026-10-31): the browser not seen yet; a tour defers the routes
                     if (ui.waiting) SyncStatusLine(str(Res.string.sync_waiting_browser) to NoticeKind.INFO)
                     if (ui.afterTour) SyncStatusLine(str(Res.string.sync_during_tour) to NoticeKind.INFO)
                     ui.problem?.let { p -> SyncStatusLine(syncProblemText(p)) }
-                    TextButton(onClick = { askUnpair = true }, Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.sync_unpair)) }
                 }
             }
+        }
+        if (ui.askCheck == null && ui.paired && !ui.unpairedInBrowser) {
+            HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            SyncInfoRow(str(Res.string.sync_last_label), SyncStatusText.last(ui.lastOkMs, shownNow))
+            SyncInfoRow(str(Res.string.sync_planner_label), SyncStatusText.plannerHost)
+            Box(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) { UnpairButton { askUnpair = true } }
         }
     }
     if (askUnpair) AlertDialog(
@@ -359,6 +422,25 @@ fun SyncSection(ui: SyncUi, cb: SyncCallbacks, now: Long = System.currentTimeMil
 }
 
 private const val AGO_TICK_MS = 20_000L
+
+/** A value row like the settings pages' (title left, the value in Walnuss right) – information only, no tap. */
+@Composable
+private fun SyncInfoRow(title: String, value: String) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f).padding(vertical = 6.dp))
+        Spacer(Modifier.width(12.dp))
+        Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = OnPathColors.Walnut)
+    }
+}
+
+/** "Trennen": neutral (owner 2026-11-07 – no red, it loses nothing: the plans stay), outlined Walnuss; asks first. */
+@Composable
+private fun UnpairButton(onClick: () -> Unit) =
+    OutlinedButton(onClick = onClick, Modifier.heightIn(min = 48.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, OnPathColors.Walnut),
+        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = OnPathColors.Walnut)) {
+        Text(str(Res.string.sync_unpair))
+    }
 
 /** Grey ⓘ (INFO), amber ⚠ (null = WARNING) or red ⚠ (ERROR) – the Messages rules (CLAUDE.md). */
 @Composable
