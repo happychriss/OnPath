@@ -142,8 +142,14 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 #handle:hover span, #handle:focus-visible span { opacity: .8; }
 #sheet > * { flex: none; }
 /* the three steps (the app's PlanSize): small = summary row + route lines, profile = + profile, points = + Points */
+/* the steps (sheetstep.ts, owner 2026-11-07 proposal A): wide = everything, phone = small or points */
 #sheet[data-step="small"] > #profile, #sheet[data-step="small"] > #savedLine, #sheet[data-step="small"] > #breakdown, #sheet[data-step="small"] > #routingNote,
-#sheet:not([data-step="points"]) > #pointsSection { display: none; }
+#sheet[data-step="small"] > #planActions, #sheet:not([data-step="points"]) > #pointsSection { display: none; }
+@media (min-width: 701px) {
+  #handle, #sheet #sheetStep, #sheet #sheetStep.withlabel { display: none; }
+  #sheet > #profile { display: none; } /* the profile lies along the map's bottom edge (.bigprofile.pinned) */
+  .bigprofile.pinned .bpclose { display: none; }
+}
 .sheethead #summary > * { cursor: pointer; }
 #sheet[data-step="small"] > #status:not(.error):not(.busy) { display: none; } /* "Planned in … ms" only in the bigger steps */
 /* long plans: the Points list scrolls inside the sheet; the summary and the profile stay in view */
@@ -553,7 +559,7 @@ dialog.phone .unpairline .textbtn.danger { color: var(--error); }
 .infoline { color: var(--muted); font-size: 13px; padding: 6px 2px; display: flex; align-items: center; gap: 8px; }
 .infoline[hidden], .breakdown[hidden] { display: none; }
 /* way types & surfaces in the profile step only (the app keeps them in Route details): the Points step stays the list */
-#sheet:not([data-step="profile"]) > #breakdown { display: none; }
+#sheet[data-step="small"] > #breakdown { display: none; }
 .infoline .spin { width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--plan); border-radius: 50%; animation: spin 1s linear infinite; flex: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 /* way types & surfaces (the app's RouteBreakdown): one line, a click shows two bars with their legend */
@@ -671,3 +677,19 @@ dialog.plans > .row.spread { margin-top: 16px; }
 .planlist .recentacts .rdel { background: none; color: var(--error); }
 .planlist li.allrecent { border-top: none; padding: 0 0 4px 4px; }
 .planlist .justsavedline { color: var(--plan); font-weight: 600; font-size: 13px; }
+
+/* ---- plan sheet A (owner 2026-11-07, „Punkte zuerst“): the points list on top, + Ziel hinzufügen, the facts in one row ---- */
+#pointsSection .pointshead { display: none; } /* the numbered rows say it – like Google Maps' route panel */
+.adddest { display: flex; align-items: center; gap: 10px; border: 0; background: none; color: var(--plan); font: inherit; font-weight: 600;
+  padding: 8px 2px; min-height: 40px; cursor: pointer; border-radius: var(--r-small); text-align: left; }
+.adddest .ic { width: 26px; height: 26px; box-sizing: border-box; padding: 3px; border: 1.5px dashed var(--plan); border-radius: 50%; fill: currentColor; flex: none; }
+.adddest:hover { background: var(--plan-light); }
+#points li:hover { background: var(--plan-light); }
+#summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; font-variant-numeric: tabular-nums; }
+#summary .headline, #summary .subline { margin: 0; }
+#sheetStep.withlabel { width: auto; padding: 0 6px 0 12px; gap: 2px; border-radius: 20px; color: var(--plan); font-weight: 600; display: inline-flex; align-items: center; }
+#sheetStep.withlabel .lbl { white-space: nowrap; }
+@media (max-width: 700px) {
+  #sheet[data-step="points"] .profbig { width: 100%; justify-content: center; margin: 6px 0 0; } /* „⤢ Höhenprofil groß“ as a full row */
+}
+@media (max-width: 700px) { #sheet .profhead { flex-wrap: wrap; gap: 4px; } #sheet .profhead .profbig { order: 2; } }

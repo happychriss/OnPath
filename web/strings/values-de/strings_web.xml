@@ -31,6 +31,9 @@
     <string name="web_plan_sheet">Plan</string>
     <string name="web_sheet_more">Mehr anzeigen</string>
     <string name="web_sheet_less">Weniger anzeigen</string>
+    <string name="web_sheet_points">%1$s Punkte</string>
+    <string name="web_add_destination">Ziel hinzufügen</string>
+    <string name="web_profile_big_row">Höhenprofil groß</string>
     <string name="web_share">Teilen</string>
     <string name="web_share_needs_two">Erst Start und Ziel setzen</string>
     <string name="web_hint_first_point">Klicke in die Karte, wo du starten oder hin willst.</string>

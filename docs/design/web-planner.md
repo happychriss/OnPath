@@ -942,3 +942,20 @@ Problems found while making the browser plan exactly like the phone, and the spe
   profile's fill (ProfileFill) – the last comes with the plan sheet rebuild. Phone-only: Navigate's ⚙ settings, lock line,
   tour controller / RoutesState refactors, accuracy circle only in Navigate, Prefs.
 
+
+## 24. Plan sheet A – points first, the profile along the bottom (laptop, 2026-11-07, owner: A + B's profile)
+Proposals page https://claude.ai/artifact/F1rCK7xXXmUhWcQRj3o1mR (today's sheet, three proposals, „Aus der App übernehmen“;
+section „Gebaut“ with the shots). The owner chose A („Punkte zuerst“, like Google Maps' route panel) with B's profile.
+- **Wide (> 700 px): no steps.** The side panel always shows: activity chip · Teilen; the plan row ⇅ Umkehren · ↻ Rundtour;
+  the points with ⋮⋮ handles (hover = plan tonal), the goal as a flag; **„+ Ziel hinzufügen“** (puts the cursor in the
+  search – the place card's „Hinzufügen“ adds it); the facts in one row (time · km · ↑ ↓ · max · difficulty, tabular
+  digits); the route's lines; Wegtypen & Untergrund (folded). No handle, no chevron (`sheetstep.ts`).
+- **The elevation profile lies along the map's bottom edge for good** (`RouteProfile.pinned`): cursor ⇄ dot, steepness
+  colours, the marked range („1,6 km · 30 min · ↑ 59 m“) – no ✕, no „⤢ Großes Profil“. The route on the map stays plan blue
+  while pinned (the steepness is read in the profile). The camera fit keeps the route above it (`fitPadding`).
+- **Phone: two steps.** small = head + facts + lines, the chevron says „2 Punkte ⌃“; open = everything, the small profile
+  with a full-width „⤢ Höhenprofil groß“ (the big one as before). The step is remembered (`onpath.sheetStep`, an old
+  'profile' = open). A click on a point row on the phone folds the sheet (map and point visible).
+- Tests: sheet-smoke (wide order points → + Ziel → facts, pinned profile, blue route, + Ziel → search; phone two steps,
+  label „2 points“, keys), ui-smoke (the bottom profile's cursor and range), edit / import / pair / ui shots without steps
+  on wide. Shots: `test/sheet-a-shots.mjs <segments> <cellStore> <outDir>`.

@@ -27,7 +27,7 @@ const quiet = async () => {
   await page.waitForTimeout(1500);
 };
 await quiet();
-await page.click('#profileBig');
+if (await page.isVisible('#profileBig')) await page.click('#profileBig'); // wide: the profile is pinned below the map (plan sheet A)
 await quiet();
 // the cursor at about 60 % of the big profile
 const box = await page.locator('#bigProfile .bpplot svg').boundingBox();
