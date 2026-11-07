@@ -98,7 +98,8 @@ internal object FitPaddingRule {
         fun px(dp: Int) = (dp * density).toInt()
         return when (mode) {
             AppMode.PLAN -> {
-                val top = statusBarPx + px(maxOf(planTopDp, TOP_BAR_DP) + GAP_DP)
+                // a marker's radius under the search pill (a 12 dp gap cut the top of a point there – Pixel 2026-11-07)
+                val top = statusBarPx + px(maxOf(planTopDp, TOP_BAR_DP) + AIR_DP)
                 val fabW = if (fabWidthPx > 0) fabWidthPx else (MAP_FAB.value * density).toInt()
                 // over the whole width, above the button column (only once its height is known)
                 val above = if (fabHeightPx <= 0) null

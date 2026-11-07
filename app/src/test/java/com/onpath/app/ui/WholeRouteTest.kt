@@ -57,9 +57,9 @@ class WholeRouteTest {
         // Plan: below the search pill (76 dp) or the strip / box under it, above the sheet
         // map button column not measured yet: a MAP_FAB column (56 dp, owner 2026-11-03) beside, no room above it
         val p = FitPaddingRule.of(plan, d, status, planTopDp = 0, sheetPx = 800, navTopDp = 0, navBottomDp = 0)
-        assertEquals(FitPadding(60, status + 220, (MAP_FAB.value * d).toInt() + 80, 800 + 120), p)
+        assertEquals(FitPadding(60, status + 230, (MAP_FAB.value * d).toInt() + 80, 800 + 120), p)
         val withBox = FitPaddingRule.of(plan, d, status, planTopDp = 180, sheetPx = 800, navTopDp = 0, navBottomDp = 0)
-        assertEquals(status + ((180 + 12) * d).toInt(), withBox.top)
+        assertEquals(status + ((180 + 16) * d).toInt(), withBox.top)
         // Navigate: below the turn / status column (or the box under it), above the slider, clear of the big buttons
         val n = FitPaddingRule.of(nav, d, status, planTopDp = 0, sheetPx = 800, navTopDp = 200, navBottomDp = 90)
         assertEquals(FitPadding(120, status + 530, 200, 285), n)
