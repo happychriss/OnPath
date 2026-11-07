@@ -33,10 +33,15 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
-- [laptop] Planner parity (4 mirrors) + privacy link / Access comments; planner pictures flow B + C01/C02/C06 + film 1 (Meran 0.17) – since 2026-11-07 · ✓ pictures done 2026-11-07 (onpath.private 754d5f0, `web/app/test/flows-shots.mjs`; film as WebM on the laptop – no ffmpeg)
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
+- **[laptop] Pairing from a phone camera ends in the browser (owner field 2026-11-07, Galaxy S10, via cloud-web)** – the
+  owner scanned the pairing QR with the phone's own camera: Samsung's camera opens the link in the browser, not in OnPath
+  (App Link and `assetlinks.json` are fine – checked live). Two fixes: (1) `web_pair_menu_path` still says "☰ → Mit Browser
+  verbinden", the app's menu says **"Mit Browser koppeln"** (EN "Pair with browser") – the dialog should say plainly
+  "Scan with OnPath, not with the camera app"; (2) when a `#pair=` link opens in a **phone** browser, don't start the
+  browser join – show "Open in OnPath" (an `intent://…#Intent;package=com.onpath.app;…` link) and the in-app way.
 - **[donald] In-app privacy texts say more than the code does (cloud-web privacy check 2026-11-07)** – website fixed in
   happychriss/onpath.earth#17; the app's own texts: `settings_privacy_lead` / `settings_sum_privacy` "Nichts wird verfolgt"
   overreaches (services see the IP, map requests show the region) → e.g. "Kein Konto, keine Analyse, keine Werbung, kein

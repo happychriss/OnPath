@@ -684,6 +684,16 @@ await ownerPhone.round();
 check((await ownerPhone.titles()).includes('Meine Runde') && await O.locator('dialog[open]').count() === 0, 'scenario 1: To phone paired the phone and "Meine Runde" arrived on it, no extra question ' + JSON.stringify(await ownerPhone.titles()));
 const e2 = await entry(O);
 check(e2.dot && e2.phone === 'Owner phone', `paired: the 📱 status with the dot and the phone's name (${JSON.stringify(e2)})`);
+// the saved, unchanged plan on the map is its own saved row („In Bearbeitung“) – no extra „Current plan“ row and no
+// Save on it after the pairing moved it into the phone's folder (screenshot round 2026-11-07)
+await O.click('#menuPlans');
+await O.waitForSelector('#planList li[data-id]', { timeout: 10_000 }).catch(() => {});
+const liveRows = await O.evaluate(() => ({ live: document.querySelectorAll('#planList li[data-live]').length,
+  current: [...document.querySelectorAll('#planList li.current .name')].map((n) => n.textContent),
+  save: [...document.querySelectorAll('#planList li.current button')].filter((b) => /^(Save|Speichern)$/.test(b.textContent.trim())).length }));
+check(liveRows.live === 0 && liveRows.current.join() === 'Meine Runde' && liveRows.save === 0,
+  `paired, saved and unchanged: the plan on the map is the "Meine Runde" row, no "Current plan" row, no Save (${JSON.stringify(liveRows)})`);
+await O.click('#closePlans');
 // (2) second visit
 await O.close();
 O = await open(ctxO);

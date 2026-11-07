@@ -1306,14 +1306,24 @@ function savedUntitled(code: string): Promise<string | null> {
 }
 
 /** "Saved as …" under the summary while the plan is a saved one (the app's sheet line after Save). */
+/** The saved plan on the map changed since its Save (the name is in the code too, but naming it is not a change). */
+async function savedPlanChanged(): Promise<boolean> {
+  return state.savedCode != null && (await ready) && (await untitled(sharedPlan())) !== (await savedUntitled(state.savedCode));
+}
+/** The plan on the map differs from its saved version (or was never saved) – Meine Touren's „Speichern“ on its row. */
+let planUnsaved = false;
 async function renderSaved() {
   const line = $('savedLine');
-  line.hidden = !state.savedId || !state.savedTitle || state.points.length < 2;
-  if (line.hidden) { saveEntry(state.points.length >= 2 ? 'save' : 'empty'); return; }
-  // the name is in the code too, but naming it on Save (or a rename) is not a change of the route
-  const changed = state.savedCode != null && (await ready) && (await untitled(sharedPlan())) !== (await savedUntitled(state.savedCode));
-  // a plain line (owner 2026-10-31): a new name comes with the next Save (its dialog) or My routes → ⋮ → Rename
-  line.innerHTML = `${icon('check', 16)}<span class="savedname">${t(changed ? 'web_saved_as_changed' : 'web_saved_as', `<b>${escapeHtml(shownTitle(state.savedTitle, ''))}</b>`)}</span>`;
+  if (!state.savedId || state.points.length < 2) {
+    line.hidden = true; planUnsaved = state.points.length >= 2;
+    saveEntry(state.points.length >= 2 ? 'save' : 'empty'); return;
+  }
+  const changed = await savedPlanChanged();
+  planUnsaved = changed;
+  // a plain line (owner 2026-10-31): a new name comes with the next Save (its dialog) or My routes → ⋮ → Rename;
+  // a saved plan without a name keeps its saved state, only the line has nothing to name
+  line.hidden = !state.savedTitle;
+  if (!line.hidden) line.innerHTML = `${icon('check', 16)}<span class="savedname">${t(changed ? 'web_saved_as_changed' : 'web_saved_as', `<b>${escapeHtml(shownTitle(state.savedTitle, ''))}</b>`)}</span>`;
   saveEntry(changed ? 'save' : 'saved');
 }
 /**
@@ -1676,7 +1686,9 @@ async function newPlan() { await keepAsRecent('new plan'); clearRoute(); placeCa
 async function keepAsRecent(why: string) {
   const fromRecent = state.recentId;
   state.recentId = null;
-  if (state.points.length < 2 || saveState !== 'save' || !(await ready)) return;
+  // the plan itself unsaved (never saved, or changed since) – not Save's dark state, which also counts routes waiting for the phone
+  // (read at once, like Save's state was: renderSaved keeps planUnsaved current; no await before the plan is read)
+  if (state.points.length < 2 || (state.savedId && !planUnsaved) || !(await ready)) return;
   const pts = enc(state.points), code = await engine.encode(sharedPlan());
   const own = state.title || plansHost.linkTitle();
   const dated = datedName();
@@ -1750,7 +1762,7 @@ const plansHost = {
     const p = state.plan, routed = !!p && !state.planning && planFor === enc(state.points) && !p.error && !p.failed;
     return {
       title: state.title || null, points: state.points.length, savedId: state.savedId, savedFolder: state.savedFolder,
-      recentId: state.recentId, pointsKey: enc(state.points), unsaved: saveState === 'save', canSave: state.points.length >= 2,
+      recentId: state.recentId, pointsKey: enc(state.points), unsaved: state.savedId ? planUnsaved : state.points.length >= 2, canSave: state.points.length >= 2,
       stats: routed ? { m: p!.distanceM, up: p!.ascentM, down: p!.descentM } : null,
       segs: routed ? p!.legs.map((l) => l.points.map(([la, lo]) => [la, lo] as [number, number])) : null,
     };
