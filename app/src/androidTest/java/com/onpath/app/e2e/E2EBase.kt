@@ -269,13 +269,35 @@ abstract class E2EBase {
         val b = findFresh(By.desc(word), 5_000)
         org.junit.Assert.assertNotNull("no button \"$word\" to hold – ${seenDescriptions()}", b)
         val r = b!!.visibleBounds
-        hold(r.exactCenterX(), r.exactCenterY(), ms)
+        dismissSystemDialogs()
+        press(r.exactCenterX(), r.exactCenterY(), ms)
+    }
+
+    /**
+     * A finger down for [ms] by the clock: DOWN, wait, UP injected directly. [hold]'s device.swipe moves in steps that
+     * took ~22 ms each instead of 5 on a loaded GitHub emulator – a "3 s" hold lasted 13 s (run 42363890364) and ate
+     * most of the bar's unlock window before the test went on.
+     */
+    protected fun press(x: Float, y: Float, ms: Int) {
+        val ua = InstrumentationRegistry.getInstrumentation().uiAutomation
+        fun send(action: Int, downAt: Long, at: Long) {
+            val e = android.view.MotionEvent.obtain(downAt, at, action, x, y, 0)
+            e.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+            ua.injectInputEvent(e, true)
+            e.recycle()
+        }
+        val down = android.os.SystemClock.uptimeMillis()
+        send(android.view.MotionEvent.ACTION_DOWN, down, down)
+        Thread.sleep(ms.toLong())
+        send(android.view.MotionEvent.ACTION_UP, down, android.os.SystemClock.uptimeMillis())
+        Thread.sleep(400)
     }
 
     /**
      * A really short tap on [o]'s centre: down and up injected together with one timestamp, so a busy main thread cannot
      * stretch it into a hold. UiObject2.click() sends the up after a pause – on a loaded GitHub emulator it arrived > 2 s
-     * late and a "short tap" fired the hold lock's 2 s hold (runs 2026-11-07 04:14, 08:49, 09:19). Null [o]: nothing.
+     * late and a "short tap" fired the hold lock's 2 s hold (runs 2026-11-07 04:14, 08:49, 09:19 – the main cause there
+     * was the app's: its band was a tween, full on the first frame with CI's animations off; `HoldFillTest`). Null [o]: nothing.
      */
     protected fun quickTap(o: androidx.test.uiautomator.UiObject2?) {
         val r = runCatching { o?.visibleBounds }.getOrNull() ?: return // expected: a stale node – the caller finds it again
