@@ -26,7 +26,8 @@ import { ActivityPicker, type ActivityRow, type PaceChoices } from './activity';
 import { holdMenu, type MenuItem } from './menus';
 import { Position } from './position';
 import { PlanSync, shownTitle, type SavedPlan } from './sync';
-import { myPlansDialog, joinDialog, saveRoute, saveRouteAs, askDiscard, setDiscardSave, phoneDialog, pairDialog, phonePill, appDate } from './plans';
+import { myPlansDialog, joinDialog, saveRoute, saveRouteAs, phoneDialog, pairDialog, phonePill, appDate, datedName } from './plans';
+import { keepRecent, dropRecent, type RecentPlan } from './recent';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
 import { longRouteOk, allowLongRoute, notRoutedTexts, setNotRouted, type Before } from './longroute';
@@ -70,6 +71,8 @@ const state = {
   title: null as string | null,
   /** The saved plan (My plans) the page shows, so "Save" writes a new version of it. */
   savedId: null as string | null,
+  /** The plan was opened from Meine Touren → Zuletzt (recent.ts) and still belongs to that entry. */
+  recentId: null as string | null,
   /** Its name and plan code as saved (the sheet says "Saved as …", and whether the plan changed since). */
   savedTitle: null as string | null,
   savedCode: null as string | null,
@@ -521,6 +524,9 @@ let hidden = false; // the eye is held
 function stopLabel(i: number, count: number, name?: string | null) {
   return name?.trim() ? name : i === 0 ? t('plan_point_start') : i === count - 1 && count > 1 ? t('plan_point_destination') : t('plan_point_stop', i + 1);
 }
+/** A stop's sign: ↺ for a loop's start, a white flag for the goal (the app's GoalFlag, owner 2026-11-06 polish 7), else its number. */
+const FLAG = '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M14.4 6 14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>';
+const stopSign = (i: number, count: number, loop: boolean) => (loop ? '↺' : count > 1 && i === count - 1 ? FLAG : String(i + 1));
 const stopColor = (i: number, count: number) => (i === 0 ? COLORS.start : i === count - 1 && count > 1 ? COLORS.end : COLORS.via);
 
 /** Markers + the Points list (the app's PlanPoints rows: names, leg distances, a round trip shown once with ↺). */
@@ -535,7 +541,7 @@ async function drawPoints() {
     const el = document.createElement('div');
     el.className = 'pin';
     el.style.background = state.roundTrip && i === 0 ? COLORS.start : stopColor(i, n);
-    el.textContent = state.roundTrip && i === 0 ? '↺' : String(i + 1);
+    el.innerHTML = stopSign(i, n, state.roundTrip && i === 0);
     el.title = t('web_marker_title', stopLabel(i, n, state.meta[i]?.name));
     el.style.visibility = hidden ? 'hidden' : '';
     const m = new maplibregl.Marker({ element: el, draggable: !terrain3d.on }).setLngLat([lon, lat]).addTo(map); // 3D: view only
@@ -566,7 +572,7 @@ async function drawPoints() {
     const color = row.loop ? COLORS.start : stopColor(row.i, n);
     return `<li data-i="${row.i}">
       <button class="grip" title="${escapeHtml(t('web_grip_title'))}" aria-label="${escapeHtml(t('web_grip_move', row.name))}">${icon('drag', 20)}</button>
-      <span class="num" style="background:${color}">${row.loop ? '↺' : row.i + 1}</span>
+      <span class="num" style="background:${color}">${stopSign(row.i, n, row.loop)}</span>
       <span class="txt"><span>${escapeHtml(row.name)}</span>${row.roleText ? `<span class="muted small">${escapeHtml(row.roleText)}</span>` : ''}</span>
       ${row.legText ? `<span class="leg muted">${escapeHtml(row.legText)}</span>` : '<span class="leg"></span>'}
       <button class="del iconbtn" aria-label="${escapeHtml(t('web_delete_point', row.name))}">${icon('close', 20)}</button></li>`;
@@ -752,7 +758,7 @@ async function pointMenu(i: number) {
   });
   const color = state.roundTrip && i === 0 ? COLORS.start : stopColor(i, n);
   openMenu(new maplibregl.LngLat(lon, lat), items,
-    `<span class="num" style="background:${color}">${state.roundTrip && i === 0 ? '↺' : i + 1}</span><b>${escapeHtml(stopLabel(i, n, name))}</b>`);
+    `<span class="num" style="background:${color}">${stopSign(i, n, state.roundTrip && i === 0)}</span><b>${escapeHtml(stopLabel(i, n, name))}</b>`);
 }
 
 /**
@@ -800,6 +806,7 @@ async function openFromLink() {
   const shared = await engine.parse(location.href);
   if (!shared) { status(t('msg_plan_link_unreadable'), 'error'); return; }
   if (shared.points.map(key).join(';') === state.points.map(key).join(';') && shared.activity === state.activity && shared.sac === state.sac) return; // our own address update
+  if (state.points.length) await keepAsRecent('plan link opened');
   forgetSaved();
   // a shared plan opened in the browser: the one calm line about the app, in the sheet (never over the route – it is
   // there before the camera fits the plan beside the sheet)
@@ -934,7 +941,7 @@ function setPlanning(on: boolean) {
 }
 /** The wait box in the middle of the free map (beside / above the sheet), with Cancel – the app's onCancelRouting. */
 function waitCard(text: string) {
-  post({ id: 'routing', kind: 'hinweis', busy: true, title: text, buttons: [{ label: t('common_cancel'), act: cancelRouting }], at: mapMiddle });
+  post({ id: 'routing', kind: 'hinweis', busy: true, tone: 'edit', title: text, buttons: [{ label: t('common_cancel'), act: cancelRouting }], at: mapMiddle });
 }
 function mapMiddle() {
   const st = $('stage').getBoundingClientRect(), sh = $('sheet').getBoundingClientRect(), bar = $('topbar').getBoundingClientRect();
@@ -999,7 +1006,7 @@ async function changed() {
  * routed pieces come from the engine's cache), Abbrechen = like Cancel of the wait (PlanStatus.onCancel).
  */
 function askSlowPlan(rounds: number) {
-  post({ id: 'slowplan', kind: 'frage', title: t('plan_slow_title'), detail: t('plan_slow_text'), at: mapMiddle, buttons: [
+  post({ id: 'slowplan', kind: 'frage', tone: 'edit', title: t('plan_slow_title'), detail: t('plan_slow_text'), at: mapMiddle, buttons: [
     { label: t('common_cancel'), act: () => { dismiss('slowplan'); problem('routing', `slow plan: cancel after ${rounds} period(s)`); setNotRouted(t('plan_not_routed_stopped'), t('plan_calculate')); cancelLongRoute(); } },
     { label: t('plan_slow_wait'), act: () => { dismiss('slowplan'); problem('routing', `slow plan: keep waiting after ${rounds} period(s)`); planRun(rounds + 1); } },
   ] });
@@ -1294,14 +1301,6 @@ function saveEntry(st: 'empty' | 'save' | 'saved') {
   b.classList.toggle('tophone', paired);
   b.innerHTML = `<span class="saveic">${icon(shown === 'done' ? 'check' : 'save', 20)}${paired ? `<span class="savephone" aria-hidden="true">${icon('phone', 12)}</span>` : ''}</span><span class="lbl">${escapeHtml(label)}</span>`;
 }
-// "Speichern" in "Plan speichern?" (✕ Neu planen with unsaved changes): the header's Save; true once the plan is saved
-setDiscardSave(async () => {
-  if (!(await syncReady)) return false;
-  let saved = false;
-  try { await saveRoute(sync, plansHost, () => { saved = true; if (sync.status.paired) sync.sendAll(); }); }
-  catch (e) { problem('sync', 'route not saved', e, 'error'); status(t('web_save_failed'), 'error'); }
-  return saved;
-}, () => state.title);
 /**
  * A click on Save (the app's Save since 2026-10-31, "wie Word"; web-sync.md §14.6 rule 5 now): the shown route new or
  * changed – or saved, with nothing waiting – is saved at once (plans.ts saveRoute: overwrite the open saved route, else
@@ -1390,8 +1389,11 @@ function renderFabs() {
   $<HTMLButtonElement>('undo').disabled = !state.canUndo;
   $<HTMLButtonElement>('redo').disabled = !state.canRedo;
   const l = $('locate');
-  l.innerHTML = icon(position.following ? 'gpsFixed' : 'gpsNotFixed') + `<span class="gpsdot ${position.dotClass}"></span>`;
+  // Plan is quiet about GPS (the app's PlanGps, owner 2026-11-06 23:35): no colour dot; greyed without a position, still
+  // clickable – it follows the position when one comes
+  l.innerHTML = icon(position.following ? 'gpsFixed' : 'gpsNotFixed');
   l.classList.toggle('on', position.following);
+  l.classList.toggle('greyed', !position.fix);
   const lw = position.status === 'OFF' ? t('web_locate_off_title') : position.status === 'NO_PERMISSION'
     ? t('web_locate_denied_title') : t('web_locate_title');
   l.title = lw; l.setAttribute('aria-label', lw);
@@ -1568,7 +1570,28 @@ document.addEventListener('keydown', (e) => {
 $('reverse').onclick = () => applyEdit('reverse');
 $('roundTrip').onclick = () => applyEdit('roundTrip');
 /** ✕ Neu planen in the plan row and the header's New plan (owner 2026-11-06): unsaved changes ask first, then empty. */
-async function newPlan() { if (saveState === 'save' && !(await askDiscard())) return; clearRoute(); placeCard.removePin(); }
+async function newPlan() { await keepAsRecent('new plan'); clearRoute(); placeCard.removePin(); }
+/**
+ * The plan leaves the map (Neu, another plan / link / GPX opened): not saved as it is, it goes under Meine Touren →
+ * Zuletzt – no question (the app's keepAsDraft, owner 2026-11-06). The name: the plan's own, else the Save dialog's
+ * proposal (waited for in the background), else the date name.
+ */
+async function keepAsRecent(why: string) {
+  const fromRecent = state.recentId;
+  state.recentId = null;
+  if (state.points.length < 2 || saveState !== 'save' || !(await ready)) return;
+  const pts = enc(state.points), code = await engine.encode(sharedPlan());
+  const own = state.title || plansHost.linkTitle();
+  const id = keepRecent(code, own || datedName(), pts, fromRecent);
+  if (!id) return;
+  console.info(`[Problems] TRACE plan: kept under Zuletzt (${why}), ${state.points.length} points`);
+  if (own) return;
+  void Promise.race([suggestName(), new Promise<string>((r) => setTimeout(() => r(''), 5_000))]).then((name) => {
+    if (name) keepRecent(code, name, pts, id);
+  }).catch((e) => problem('routes', 'no name for the plan under Zuletzt', e));
+}
+/** The saved plan just made from a Zuletzt entry: Meine Touren shows „✓ Gerade gespeichert“ on it. */
+let justSavedFromRecent: string | null = null;
 function forgetSaved() { state.savedId = null; state.savedTitle = null; state.savedCode = null; state.savedFolder = null; state.storedCode = null; }
 const plansHost = {
   current: async () => (state.points.length >= 2 && (await ready) ? { code: await engine.encode(sharedPlan()), title: state.title } : null),
@@ -1588,6 +1611,8 @@ const plansHost = {
     }
     const shared = await engine.parse('p=' + p.plan);
     if (!shared) { status(t('web_plan_unreadable'), 'error'); return; }
+    if (shared.points.map(key).join(';') !== state.points.map(key).join(';')) await keepAsRecent('another plan opened');
+    state.recentId = null;
     state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.savedFolder = folder; state.storedCode = p.plan;
     if (state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';')) {
       state.title = p.title; state.otherRouting = !!p.otherRouting; render(); rememberInAddress(); keepPlanStats(p.plan); return;
@@ -1598,12 +1623,27 @@ const plansHost = {
     keepPlanStats(p.plan); // routed by now (loadShared waits for the plan) – My routes shows its numbers from now on
   },
   saved: (p: SavedPlan, folder: string) => {
+    if (state.recentId) { dropRecent(state.recentId); justSavedFromRecent = p.id; state.recentId = null; } // saved: it leaves Zuletzt
     state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.title = p.title; state.savedFolder = folder; state.storedCode = p.plan;
     keepPlanStats(p.plan);
     rememberInAddress();
     render(); // the sheet says "Saved as …" – no message (the app's saveRoute)
   },
   suggestName,
+  /** Meine Touren → Zuletzt → a click: the plan comes back, still belonging to its entry (saving it moves it). */
+  openRecent: async (r: RecentPlan) => {
+    const shared = await engine.parse('p=' + r.code);
+    if (!shared) { status(t('web_plan_unreadable'), 'error'); return; }
+    if (shared.points.map(key).join(';') !== state.points.map(key).join(';')) await keepAsRecent('a plan from Zuletzt opened');
+    forgetSaved();
+    await loadShared({ ...shared, title: r.title });
+    state.recentId = r.id;
+    rememberInAddress();
+    keepPlanStats(r.code);
+  },
+  /** „✓ Gerade gespeichert“: the plan just saved from Zuletzt (its id), shown once in Meine Touren. */
+  justSaved: () => { const id = justSavedFromRecent; justSavedFromRecent = null; return id; },
+  setJustSaved: (id: string) => { justSavedFromRecent = id; },
   importGpx: () => gpxImport.pick(),
   share: async (p: SavedPlan) => {
     // the stored code carries the name it was saved with; a later rename is the name now
@@ -1724,7 +1764,7 @@ const gpxImport = setupGpxImport({
     state.title = title; forgetSaved();
     await commit(points, names ? points.map((_, i) => ({ pinned: !!pinned?.[i], name: names[i] ?? undefined })) : undefined);
   },
-  mayReplacePlan: async () => state.points.length === 0 || saveState !== 'save' || await askDiscard(), // the app's unlessUnsaved (save paths P3)
+  mayReplacePlan: async () => { await keepAsRecent('GPX opened'); return true; }, // the app: the replaced plan goes under Zuletzt, no question
   // A-017 rule 14: an imported track is kept in the open folder and goes to the phone with Save
   imported: (tr) => {
     syncReady.then(async (ok) => {
