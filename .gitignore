@@ -15,3 +15,7 @@ __pycache__/
 /external-docs/
 .DS_Store
 .claude/settings.local.json
+
+# Play upload key – only on this machine, never in git (owner 2026-11-07, like have-i-been-here)
+.secrets/
+dist/
