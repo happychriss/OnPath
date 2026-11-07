@@ -146,9 +146,10 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 #sheet[data-step="small"] > #profile, #sheet[data-step="small"] > #savedLine, #sheet[data-step="small"] > #breakdown, #sheet[data-step="small"] > #routingNote,
 #sheet[data-step="small"] > #planActions, #sheet:not([data-step="points"]) > #pointsSection { display: none; }
 @media (min-width: 701px) {
-  #handle, #sheet #sheetStep, #sheet #sheetStep.withlabel { display: none; }
-  #sheet > #profile { display: none; } /* the profile lies along the map's bottom edge (.bigprofile.pinned) */
-  .bigprofile.pinned .bpclose { display: none; }
+  /* the side panel collapses with the chevron (owner 2026-11-07: „einfach zuklappen“); the handle is the phone's */
+  #handle { display: none; }
+  /* the profile lies along the map's bottom edge (.bigprofile.pinned); hidden by the user → the small one with „⤢ Großes Profil“ */
+  body.bigprofile-open #sheet > #profile { display: none; }
 }
 .sheethead #summary > * { cursor: pointer; }
 #sheet[data-step="small"] > #status:not(.error):not(.busy) { display: none; } /* "Planned in … ms" only in the bigger steps */
@@ -600,8 +601,8 @@ kbd { display: inline-block; min-width: 1.4em; padding: 1px 6px; border: 1px sol
   font-size: 12px; white-space: nowrap; pointer-events: none; color: #555A55; }
 .profhead { display: flex; align-items: center; justify-content: space-between; min-height: 18px; font-size: 11px; margin-bottom: 4px; }
 /* „⤢ Großes Profil“ (owner 2026-11-06: the ⤢ alone was not seen) – outlined plan blue, top right of the small profile */
-.profbig { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; margin: -6px -4px -2px 8px;
-  border: 1.5px solid var(--plan); border-radius: 20px; background: none; color: var(--plan); font: inherit; font-size: 13px; font-weight: 600;
+.profbig { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; margin: -6px -4px -2px 8px;
+  border: 1.5px solid var(--plan); border-radius: 22px; background: none; color: var(--plan); font: inherit; font-size: 14px; font-weight: 600;
   white-space: nowrap; cursor: pointer; }
 .profbig:hover { background: var(--plan-light); }
 .profbig .ic { fill: currentColor; }
@@ -685,8 +686,11 @@ dialog.plans > .row.spread { margin-top: 16px; }
 .adddest .ic { width: 26px; height: 26px; box-sizing: border-box; padding: 3px; border: 1.5px dashed var(--plan); border-radius: 50%; fill: currentColor; flex: none; }
 .adddest:hover { background: var(--plan-light); }
 #points li:hover { background: var(--plan-light); }
-#summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; font-variant-numeric: tabular-nums; }
+#summary { display: flex; flex-direction: column; gap: 4px; font-variant-numeric: tabular-nums; cursor: pointer; }
 #summary .headline, #summary .subline { margin: 0; }
+/* the facts first (owner 2026-11-07): length · ↑ ↓ big, the time beside max and the difficulty */
+#summary .headline { gap: 4px 16px; } #summary .headline .big { font-size: 24px; font-weight: 700; color: var(--fg); }
+#summary .subline .time { font-size: 16px; font-weight: 600; color: var(--fg); }
 #sheetStep.withlabel { width: auto; padding: 0 6px 0 12px; gap: 2px; border-radius: 20px; color: var(--plan); font-weight: 600; display: inline-flex; align-items: center; }
 #sheetStep.withlabel .lbl { white-space: nowrap; }
 @media (max-width: 700px) {

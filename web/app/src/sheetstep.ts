@@ -1,10 +1,10 @@
-// The plan sheet's steps (owner 2026-11-07, proposal A „Punkte zuerst“, web-planner.md §24):
-//   wide screens: no steps – the side panel always shows everything (points first, facts, lines, way types); the
-//                 elevation profile lies along the map's bottom edge (terrainview.ts, pinned), not in the panel
-//   phone:        two steps – small = the head (activity, Share) + the facts + the route's lines, with the chevron
-//                 „3 Punkte ⌃“; points = everything (points, + Ziel hinzufügen, facts, profile with „⤢ Höhenprofil groß“)
-// Controls on the phone: the grab handle and the chevron toggle, a click on the facts opens, Arrow up / down on the
-// handle and the chevron. The phone's step is remembered in localStorage (onpath.sheetStep; an old 'profile' = points).
+// The plan sheet's steps (owner 2026-11-07, proposal A „Punkte zuerst“, web-planner.md §24), at every width:
+//   points = everything (facts first, plan row, lines, points with + Ziel hinzufügen, profile / „⤢ Großes Profil“, way
+//            types) – the start state (owner 2026-11-07: „beim Start Punkte und Profil zeigen, man kann ihn zuklappen“);
+//   small  = collapsed to the facts and the head (activity, Share) + the route's lines, with the chevron „3 Punkte ⌃“.
+// Wide screens: the elevation profile lies along the map's bottom edge (terrainview.ts, pinned) unless hidden.
+// Controls: the grab handle and the chevron toggle, a click on the facts opens, Arrow up / down on the handle and the
+// chevron. The step is remembered in localStorage (onpath.sheetStep; an old 'profile' = points); nothing remembered = points.
 import { icon } from './icons';
 import { t } from './i18n';
 
@@ -27,21 +27,22 @@ export function setupSheetSteps(sheet: HTMLElement, handle: HTMLElement, chev: H
   points: () => number = () => 0) {
   let stored: string | null = null;
   try { stored = localStorage.getItem(KEY); } catch { /* expected: storage blocked – the default step */ }
-  // the phone's step: remembered, an old 'profile' counts as the full sheet; nothing remembered → small (the map first)
-  let step: SheetStep = stored === 'small' ? 'small' : stored === 'points' || stored === 'profile' ? 'points' : 'small';
+  // remembered; an old 'profile' counts as the full sheet; nothing remembered → points (open: points and profile)
+  let step: SheetStep = stored === 'small' ? 'small' : 'points';
 
   function render() {
-    // wide: always everything (the CSS hides handle and chevron); phone: the chosen step
-    sheet.dataset.step = phone() ? step : 'points';
+    sheet.dataset.step = step;
     const more = step === 'small';
     const n = points();
     const label = more ? (n >= 2 ? t('web_sheet_points', String(n)) : t('web_sheet_more')) : t('web_sheet_less');
-    chev.innerHTML = (more && n >= 2 ? `<span class="lbl">${t('web_sheet_points', String(n))}</span>` : '') + icon(more ? 'expandLess' : 'expandMore');
+    // the phone's sheet opens upwards, the wide side panel downwards
+    const up = phone() ? more : !more;
+    chev.innerHTML = (more && n >= 2 ? `<span class="lbl">${t('web_sheet_points', String(n))}</span>` : '') + icon(up ? 'expandLess' : 'expandMore');
     chev.classList.toggle('withlabel', more && n >= 2);
     chev.title = label; chev.setAttribute('aria-label', label);
   }
   function set(s: SheetStep, remember = true) {
-    if (s === step || !phone()) return;
+    if (s === step) return;
     step = s;
     if (remember) { try { localStorage.setItem(KEY, s); } catch { /* expected: storage blocked – kept for this page only */ } }
     render();
@@ -50,13 +51,14 @@ export function setupSheetSteps(sheet: HTMLElement, handle: HTMLElement, chev: H
   const keys = (e: KeyboardEvent) => {
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     e.preventDefault();
-    set(by(step, e.key === 'ArrowUp' ? 1 : -1)); // the bottom sheet opens upwards
+    const d = e.key === 'ArrowUp' ? 1 : -1;
+    set(by(step, phone() ? d : (-d as 1 | -1))); // the bottom sheet opens upwards, the side panel downwards
   };
   handle.onclick = () => set(tapped(step));
   handle.addEventListener('keydown', keys);
   chev.onclick = (e) => { e.stopPropagation(); set(chevron(step)); };
   chev.addEventListener('keydown', keys);
-  // the facts open the full sheet on the phone (not their buttons)
+  // the facts open the full sheet (not their buttons)
   summary.addEventListener('click', (e) => {
     if ((e.target as HTMLElement).closest('button, a, .menu, input')) return;
     if (step === 'small') set('points');
@@ -64,7 +66,7 @@ export function setupSheetSteps(sheet: HTMLElement, handle: HTMLElement, chev: H
   matchMedia('(max-width: 700px)').addEventListener('change', () => { render(); changed(); });
   render();
   return {
-    get step(): SheetStep { return phone() ? step : 'points'; },
+    get step(): SheetStep { return step; },
     set,
     /** Re-draw the chevron's label (the number of points changed). */
     refresh: render,
