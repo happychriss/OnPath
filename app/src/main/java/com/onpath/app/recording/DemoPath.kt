@@ -54,16 +54,37 @@ class DemoPath private constructor(val line: List<GeoPoint>, private val cumM: D
     /**
      * The ride time at the point of the line nearest to [lat] / [lon] (the Navigate "Sim" goes on along a new followed
      * line from where it is, owner 2026-11-01). Flat projection per span – metres around one place.
+     *
+     * A line passing here more than once (a loop whose end comes back by its start, an out-and-back): each pass within
+     * [SAME_PLACE_M] of the nearest counts, and the one whose share of the line is closest to [nearFraction] (the share
+     * ridden of the line before) wins. Field S10 2026-11-07: 4 km along a 589 km plan, the plan edited – the Sim went on
+     * 166 m before the end of the new 726 km line (its last point lies by the start), skipping nine route points.
      */
-    fun timeNearest(lat: Double, lon: Double): Double {
+    fun timeNearest(lat: Double, lon: Double, nearFraction: Double? = null): Double {
         val p = GeoPoint(lat, lon); val f = Geo.Flat(lat)
-        var best = Double.MAX_VALUE; var bestS = 0.0
-        for (i in 0 until line.size - 1) {
-            val t = f.t(p, line[i], line[i + 1])
-            val d = f.distanceAt(p, line[i], line[i + 1], t)
-            if (d < best) { best = d; bestS = cumS[i] + t * (cumS[i + 1] - cumS[i]) }
+        val n = line.size - 1
+        if (n < 1) return 0.0
+        val d = DoubleArray(n); val ts = DoubleArray(n)
+        var best = Double.MAX_VALUE; var bestI = 0
+        for (i in 0 until n) {
+            ts[i] = f.t(p, line[i], line[i + 1])
+            d[i] = f.distanceAt(p, line[i], line[i + 1], ts[i])
+            if (d[i] < best) { best = d[i]; bestI = i }
         }
-        return bestS
+        fun timeOf(i: Int) = cumS[i] + ts[i] * (cumS[i + 1] - cumS[i])
+        if (nearFraction == null || lengthM <= 0.0) return timeOf(bestI)
+        // the passes: runs of spans within SAME_PLACE_M of the nearest, each by its own nearest span
+        var pick = bestI; var pickDiff = Double.MAX_VALUE
+        var i = 0
+        while (i < n) {
+            if (d[i] > best + SAME_PLACE_M) { i++; continue }
+            var runBest = i
+            while (i < n && d[i] <= best + SAME_PLACE_M) { if (d[i] < d[runBest]) runBest = i; i++ }
+            val along = cumM[runBest] + ts[runBest] * (cumM[runBest + 1] - cumM[runBest])
+            val diff = kotlin.math.abs(along / lengthM - nearFraction)
+            if (diff < pickDiff) { pickDiff = diff; pick = runBest }
+        }
+        return timeOf(pick)
     }
 
     /** The point at [i] + [t] of the span to the next point, moving along it. */
@@ -92,6 +113,8 @@ class DemoPath private constructor(val line: List<GeoPoint>, private val cumM: D
     companion object {
         /** Slowest speed a span is ridden at: a line without times still moves. */
         const val MIN_SPEED_MS = 0.3
+        /** Passes of a line within this of its nearest one count as "here" too ([timeNearest]). */
+        const val SAME_PLACE_M = 30.0
 
         /** At a fixed speed (m/s); null = no line (fewer than two distinct points) or no speed. */
         fun constant(line: List<GeoPoint>, speedMs: Double): DemoPath? {

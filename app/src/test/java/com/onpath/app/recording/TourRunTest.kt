@@ -121,4 +121,27 @@ class TourRunTest {
         assertFalse(svc.contains("= GrowingTrack()"))
         assertFalse(svc.contains("= AscentCounter()"))
     }
+
+    /**
+     * Field S10 2026-11-07 20:37:47 (bike, ▶ Sim): "The tour follows position → 10 points ahead" ~75 m before the goal –
+     * the service loaded the new line and the arrival gate started over, "been away" forgotten: no "Arrived at the end",
+     * no "Ziel erreicht", no end sheet. The followed line loaded again keeps it; a re-route (same token) keeps the arrival.
+     */
+    @Test fun aNewFollowedLineNearTheGoalStillArrives() {
+        val run = TourRun()
+        val goal = GeoPoint(51.0, 6.9)
+        fun east(m: Double) = GeoPoint(51.0, 6.9 + m / 70_000.0)
+        run.followLoaded(token = 1L)
+        assertFalse(run.arrivalGate.onFix(east(2_000.0), goal, remainingAlongM = 2_000.0, accuracyM = 5.0))
+        run.followLoaded(token = 2L) // the plan edited 75 m before the goal
+        assertFalse(run.arrived)
+        assertFalse(run.arrivalGate.onFix(east(75.0), goal, remainingAlongM = 75.0, accuracyM = 5.0))
+        assertTrue("arrives (the service then says \"Ziel erreicht\" and the app shows the end sheet)",
+            run.arrivalGate.onFix(east(30.0), goal, remainingAlongM = 30.0, accuracyM = 5.0))
+        run.arrived = true; run.arrivedToken = 2L
+        run.followLoaded(token = 2L) // a re-route of the same session
+        assertTrue("a re-route keeps the arrival", run.arrived)
+        run.followLoaded(token = 3L)
+        assertFalse("the app's new line clears it", run.arrived)
+    }
 }

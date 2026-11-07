@@ -7,6 +7,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * The local cell store (docs/design/map-cells.md §19): all installed cells – plus a format-2 region package, if one is
@@ -41,6 +42,8 @@ class CellStore(
     /** Free bytes on the data folder's volume (replaced in tests). */
     private val freeSpace: (File) -> Long = { it.usableSpace },
 ) {
+    /** Tests only: runs after the generation folders were listed and before they are read (a clean-up racing a reader). */
+    internal var afterList: ((List<String>) -> Unit)? = null
     val root = File(dataDir, "cells")
     val storeDir = File(root, "store")
     val downloadDir = File(root, "download")
@@ -87,8 +90,12 @@ class CellStore(
 
     // ------------------------------------------------------------------------------------------- reading
 
-    /** The current generation, null when none (no cells ever installed). Never throws. */
-    @Synchronized fun current(): Generation? = generations().lastOrNull()
+    /**
+     * The current generation, null when none (no cells ever installed). Never throws, never waits for a write in
+     * progress (not synchronized: the map asks on the main thread while [apply] may run for 20 s). Cheap: one folder
+     * listing; each generation's store.json is read once per process ([generations]).
+     */
+    fun current(): Generation? = generations().lastOrNull()
 
     /**
      * Folder the map, POI tap and search read from: the current generation when it holds at least one cell, else null
@@ -100,13 +107,34 @@ class CellStore(
 
     /**
      * Complete generations, oldest first; unreadable ones are skipped (and reported). Only `gNNNNNN` folders: a `.tmp`
-     * may be half written by [apply] right now, a `.bad` was set aside.
+     * may be half written by [apply] right now, a `.bad` was set aside, a `.del` is being deleted ([prune]).
      * [GEN] (with the suffixes) is only for numbering.
+     *
+     * Kept in memory per store folder for the whole process ([cache]): a complete generation never changes after its
+     * rename, so only the folder names are listed each time (a generation removed by anyone is noticed at once) and
+     * only a new name is read. A number comes back only after [rollback] – which, like [apply], starts a new [epochs]
+     * count, so nothing read before is reused.
      */
-    private fun generations(): List<Generation> =
-        storeDir.listFiles { f -> f.isDirectory && GEN.matchEntire(f.name)?.groupValues?.get(2)?.isEmpty() == true }.orEmpty()
-            .sortedBy { it.name }
-            .mapNotNull { dir -> read(dir) }
+    private fun generations(): List<Generation> {
+        val key = storeDir.absolutePath
+        val epoch = epochs.computeIfAbsent(key) { AtomicInteger() }
+        val e0 = epoch.get()
+        val names = storeDir.list().orEmpty().filter { GEN.matchEntire(it)?.groupValues?.get(2)?.isEmpty() == true }.sorted()
+        val snap = cache[key]?.takeIf { it.epoch == e0 }
+        if (snap != null && snap.names == names) return snap.gens
+        afterList?.invoke(names)
+        val byName = LinkedHashMap<String, Generation?>()
+        for (n in names) byName[n] = if (snap != null && snap.byName.containsKey(n)) snap.byName[n] else read(File(storeDir, n))
+        val fresh = Snapshot(e0, names, byName.values.filterNotNull(), byName)
+        if (epoch.get() == e0) cache[key] = fresh // changed meanwhile: the next call lists and reads again
+        return fresh.gens
+    }
+
+    /** The generations of a store folder as last listed ([generations]); a null entry = unreadable or gone. */
+    private class Snapshot(val epoch: Int, val names: List<String>, val gens: List<Generation>, val byName: Map<String, Generation?>)
+
+    /** This process changed the store's generations: the next read lists and reads them again. */
+    private fun changed() { epochs.computeIfAbsent(storeDir.absolutePath) { AtomicInteger() }.incrementAndGet() }
 
     private fun read(dir: File): Generation? = try {
         val o = JSONObject(File(dir, STORE_JSON).readText())
@@ -127,7 +155,11 @@ class CellStore(
             o.optBoolean("poiTilesFailed"),
         )
     } catch (e: Exception) {
-        Problems.error("cells", "Map store generation ${dir.name} unreadable; skipped (older one used)", e)
+        if (!dir.exists()) {
+            // expected: the clean-up ([prune], on the worker) removed this older generation after it was listed here –
+            // the newer one is read anyway (field, Galaxy S10 0.17.3: was a false ERROR with the red notice)
+            Problems.trace("cells", "Map store ${dir.name} removed while reading; skipped")
+        } else Problems.error("cells", "Map store generation ${dir.name} unreadable; skipped (older one used)", e)
         null
     }
 
@@ -248,6 +280,7 @@ class CellStore(
             val gen = Generation(number, final, cells.sortedBy { it.id }, region, files, now, poiTilesFailed)
             File(tmp, STORE_JSON).writeText(toJson(gen).toString(1))
             if (!tmp.renameTo(final)) throw StoreException(Txt.s(Res.string.maps_err_store_failed), IOException("rename ${tmp.name} failed"))
+            changed()
             // the cells' addresses go where the search reads them; only after the generation is active
             for (d in add) installAddresses(d)
             for (c in remove - addIds) deleteAddresses(c)
@@ -338,24 +371,31 @@ class CellStore(
         val aside = File(storeDir, bad.dir.name + ".bad")
         aside.deleteRecursively()
         if (!bad.dir.renameTo(aside)) { Problems.error("cells", "Broken map store ${bad.dir.name} could not be set aside"); return false }
+        changed() // its number is used again by the next generation
         Problems.error("cells", "Map store ${bad.dir.name} did not load; went back to the previous one " +
             "(cells ${bad.cellIds - gens[gens.size - 2].cellIds} must be loaded again)")
         aside.deleteRecursively()
         return true
     }
 
-    /** Deletes unfinished generations (crash leftovers) and generations not in [keep]. */
+    /**
+     * Deletes unfinished generations (crash leftovers) and generations not in [keep]. A complete generation is first
+     * renamed to `.del` – one atomic step – so a reader that listed it a moment ago finds it gone, never half deleted
+     * (a folder that is still there without its store.json is a broken generation and reported).
+     */
     @Synchronized fun prune(keep: Set<Int>) {
         storeDir.listFiles().orEmpty().forEach { f ->
-            val n = GEN.matchEntire(f.name)?.groupValues?.get(1)?.toIntOrNull()
-            val stale = f.name.endsWith(".tmp") || f.name.endsWith(".bad") || (n != null && n !in keep)
-            if (stale && !f.deleteRecursively()) Problems.warn("cells", "Old map store ${f.name} could not be deleted (storage stays used)")
+            val m = GEN.matchEntire(f.name) ?: return@forEach
+            val complete = m.groupValues[2].isEmpty()
+            if (complete && m.groupValues[1].toInt() in keep) return@forEach
+            val gone = if (complete) File(storeDir, f.name + ".del").takeIf { d -> d.deleteRecursively() && f.renameTo(d) } ?: f else f
+            if (!gone.deleteRecursively()) Problems.warn("cells", "Old map store ${f.name} could not be deleted (storage stays used)")
         }
     }
 
     /** Startup clean-up: unfinished generations go; every complete one stays until the map confirms one. */
     @Synchronized fun cleanTemp() {
-        storeDir.listFiles { f -> f.name.endsWith(".tmp") || f.name.endsWith(".bad") }.orEmpty().forEach { it.deleteRecursively() }
+        storeDir.listFiles { f -> TEMP.any { f.name.endsWith(it) } }.orEmpty().forEach { it.deleteRecursively() }
     }
 
     // ------------------------------------------------------------------------------------------- downloads on disk
@@ -441,7 +481,14 @@ class CellStore(
          * packages' pre-rendered relief z7–9, map-cells.md §20).
          */
         val LAYERS = listOf("base.pmtiles", "overlays.pmtiles", "terrain.pmtiles", "contours.pmtiles", "hillshade.pmtiles")
-        private val GEN = Regex("""^g(\d{6})(\.tmp|\.bad)?$""")
+        private val GEN = Regex("""^g(\d{6})(\.tmp|\.bad|\.del)?$""")
+        private val TEMP = listOf(".tmp", ".bad", ".del")
+        /** [generations] per store folder (absolute path), for the whole process – every instance on a folder shares it. */
+        private val cache = java.util.concurrent.ConcurrentHashMap<String, Snapshot>()
+        private val epochs = java.util.concurrent.ConcurrentHashMap<String, AtomicInteger>()
+
+        /** Tests: forget what is known about [storeDir] (the next read lists and reads it again). */
+        internal fun forget(storeDir: File) { cache.remove(storeDir.absolutePath) }
         private const val MB = 1_048_576L
         /** Kept free besides the new generation (the phone needs room to work). */
         const val MARGIN = 32L * MB

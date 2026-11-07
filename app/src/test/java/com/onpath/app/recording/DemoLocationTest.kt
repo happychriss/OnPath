@@ -157,6 +157,30 @@ class DemoLocationTest {
         assertEquals(newLine.last().lat, a.fixes.last().first.lat, 1e-6)
     }
 
+    /**
+     * Field S10 2026-11-07 20:37:32 (▶ Sim, bike): ~4 km along the followed line the plan was edited; the new line (the
+     * whole plan, 726 km) ends where the rider was – its last point by its start. The Sim went on "from 725358 m of
+     * 725524 m", skipping nine route points, and reached the line's end 27 s later: no arrival (points open), and the owner
+     * heard none. Where a new line passes here twice, the Sim goes on along the pass at about the share ridden so far.
+     */
+    @Test fun aNewLinePassingHereTwiceIsRiddenOnWhereTheRideWas() {
+        val a = sink()
+        DemoLocation.startRide(DemoPath.constant(line, 10.0)!!, "followed route", nowMs = t0, autoTick = false)
+        repeat(40) { DemoLocation.tick(1000) } // ~400 m along the 3 km line
+        val here = a.fixes.last().first
+        // the new line: the old one 5 m further west, 1 km on east, then straight back to end exactly where the rider is
+        val west = line.map { GeoPoint(it.lat, it.lon - 5 / 76_400.0) }
+        val farEast = GeoPoint(line.last().lat, line.last().lon + 1_000 / 76_400.0)
+        val loop = west + farEast + GeoPoint(here.lat, here.lon)
+        val path = DemoPath.constant(loop, 10.0)!!
+        assertEquals("the nearest point is the line's end", path.durationS, path.timeNearest(here.lat, here.lon), 1.0)
+        DemoLocation.switchLine(path, "followed route")
+        val st = DemoLocation.state.value!!
+        assertEquals("on the first pass, not at the end: ${st.alongM.toInt()} of ${path.lengthM.toInt()} m", here.alongM, st.alongM, 20.0)
+        assertFalse(st.ended)
+        assertEquals("ridden near the end before: the end", path.durationS, path.timeNearest(here.lat, here.lon, 0.98), 1.0)
+    }
+
     @Test fun placeStandsStill() {
         val a = sink()
         DemoLocation.jumpTo(46.5, 11.3, null, "map centre", nowMs = t0, autoTick = false)

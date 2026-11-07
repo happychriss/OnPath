@@ -495,6 +495,19 @@ class CellDownloadTest {
         assertEquals(emptyList<CellId>(), mc.ensurePackages())
     }
 
+    /**
+     * Every generation rewrites the whole store (field, Galaxy S10: 495 MB, 20 s): packages that are ready on the server
+     * when the cell finishes join the cell's generation – not one more generation right after it.
+     */
+    @Test fun readyPackagesJoinTheCellsGeneration() {
+        server.publish(a, "v1"); server.publishPackage(pa, "p1"); server.publishPackage(pe, "p1"); server.buildPolls = 0
+        val mc = cells(Net(), packages = true)
+        mc.request(listOf(a), CellReason.POINT)
+        waitFor("cell + packages joined") { mc.state(a) is CellState.Ready && mc.packages.value.size == 2 }
+        assertEquals("one store generation for the cell and its packages", 1, mc.generation.value)
+        assertEquals(setOf(a, pa, pe), mc.store.current()!!.cellIds)
+    }
+
     /** A doorman without packages (400 for z7 ids) must not hold up the cells; the packages are dropped quietly. */
     @Test fun serverWithoutPackagesStillDeliversTheCells() {
         server.publish(a, "v1"); server.buildPolls = 1; server.rejectPackages = true

@@ -21,11 +21,27 @@ class ArrivalGate(
         const val END_M = 50.0
     }
 
-    private var away = false
+    /**
+     * The user has been [awayM] from a destination of this tour. Survives a new followed line ([newLine]) and a service
+     * restart (the trip file): field S10 2026-11-07 – the plan edited ~75 m before the goal gave a new line, the old
+     * [reset] forgot "away", and as the rider never got 150 m from the goal again no arrival came at all.
+     */
+    var away = false
+        private set
     private var asked = false
 
-    /** New followed line or no line: start over. */
+    /** Start over (a new tour). */
     fun reset() { away = false; asked = false }
+
+    /**
+     * A new followed line during the tour (plan edit, position → points ahead, Guide me, Undo): asked again for it, but
+     * "been away" stays – the rider did not teleport to the goal; the line's own rules (every point reached, the progress
+     * at its end) still hold.
+     */
+    fun newLine() { asked = false }
+
+    /** [away] as the trip file kept it (service restart during the tour). */
+    fun restoreAway(wasAway: Boolean) { if (wasAway) away = true }
 
     /** True exactly when the arrival question should be shown now. */
     fun onFix(position: GeoPoint?, destination: GeoPoint?, remainingAlongM: Double?, accuracyM: Double?, openStops: Int = 0): Boolean {

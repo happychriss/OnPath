@@ -1,6 +1,7 @@
 package com.onpath.app.recording
 
 import com.onpath.app.gpx.TrackPoint
+import com.onpath.app.routing.ArrivalGate
 import com.onpath.app.routing.GeoPoint
 
 /**
@@ -56,11 +57,21 @@ internal class TourRun {
     val pauseWatch = PauseWatch()
 
     /** Arrival at the end of the followed line (review H2). */
-    val arrivalGate = com.onpath.app.routing.ArrivalGate()
+    val arrivalGate = ArrivalGate()
     var arrived = false
     /** The session token the arrival belongs to. */
     var arrivedToken: Long? = null
     var lineLength: Pair<Int, Double>? = null
+
+    /**
+     * The followed line was (re)loaded with session [token]: the arrival belongs to one followed line (a re-route keeps
+     * the token, the app's new line clears it); a new line keeps the gate's "been away" ([ArrivalGate.newLine], field
+     * S10 2026-11-07: a plan edit 75 m before the goal, then no arrival at all).
+     */
+    fun followLoaded(token: Long?) {
+        arrived = arrivedToken != null && token == arrivedToken
+        if (!arrived) arrivalGate.newLine()
+    }
 
     /** Vibration before junctions of the followed line + the next junction for the lock screen. */
     val junctions = com.onpath.app.navigation.JunctionCues()
