@@ -272,6 +272,24 @@ abstract class E2EBase {
         hold(r.exactCenterX(), r.exactCenterY(), ms)
     }
 
+    /**
+     * A really short tap on [o]'s centre: down and up injected together with one timestamp, so a busy main thread cannot
+     * stretch it into a hold. UiObject2.click() sends the up after a pause – on a loaded GitHub emulator it arrived > 2 s
+     * late and a "short tap" fired the hold lock's 2 s hold (runs 2026-11-07 04:14, 08:49, 09:19). Null [o]: nothing.
+     */
+    protected fun quickTap(o: androidx.test.uiautomator.UiObject2?) {
+        val r = runCatching { o?.visibleBounds }.getOrNull() ?: return // expected: a stale node – the caller finds it again
+        val ua = InstrumentationRegistry.getInstrumentation().uiAutomation
+        val t = android.os.SystemClock.uptimeMillis()
+        for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
+            val e = android.view.MotionEvent.obtain(t, t, action, r.exactCenterX(), r.exactCenterY(), 0)
+            e.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+            ua.injectInputEvent(e, false)
+            e.recycle()
+        }
+        Thread.sleep(300)
+    }
+
     /** A finger resting [ms] at a screen point (the app's hold is 0.3 s; MapLibre's long press ~0.5 s). */
     protected fun hold(x: Float, y: Float, ms: Int = 900) {
         dismissSystemDialogs()

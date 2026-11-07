@@ -616,7 +616,7 @@ class CoreFieldE2ETest : E2EBase() {
                 // the bar can be redrawn between the find and the click: find it again each time, never `!!`
                 val button = findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 5_000)
                 assertNotNull("Pause on the locked bar (short tap $attempt)", button)
-                runCatching { button!!.click() } // expected: a stale node right after a redraw – the next attempt finds it again
+                quickTap(button) // a real short tap – UiAutomator's click() became a hold on a loaded CI emulator
                 hintSeen = findFresh(By.text(Txt.s(Res.string.nav_hold_hint)), 3_000)
                 if (hintSeen != null) break
             }
@@ -663,7 +663,7 @@ class CoreFieldE2ETest : E2EBase() {
             for (attempt in 1..3) {
                 val resume = findFresh(By.desc(Txt.s(Res.string.common_resume)), 5_000)
                 assertNotNull("Weiter is still a held button in the window (short tap $attempt)", resume)
-                runCatching { resume!!.click() } // expected: a stale node right after a redraw – the next attempt finds it again
+                quickTap(resume) // a real short tap – UiAutomator's click() became a hold on a loaded CI emulator
                 hint = findFresh(By.text(Txt.s(Res.string.nav_hold_hint)), 3_000)
                 if (hint != null) break
             }
