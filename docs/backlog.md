@@ -329,12 +329,6 @@ and the commit history.
   7.2 km – expectation or gap?); zip import checks only sizes (cell downloads check sha256).
 
 ## Waiting for the owner
-- **A-003 Play build – pull request https://github.com/happychriss/OnPath/pull/2** (donald 2026-11-03, updated 2026-11-07):
-  build type `play` (all debug task names unchanged), no self-update / install permission / GitHub line, targetSdk +
-  compileSdk 36 (Play minimum since 2026-08-31, for every build), signed on the owner's machine with the upload key in
-  `.secrets/` (owner 2026-11-07: like "Have I been here", no GitHub secrets, no AAB in release.yml) –
-  `tools/dev/play_bundle.sh` → `dist/onpath-<version>.aab`, upload by hand (`docs/play-build.md`). Open: same app id for
-  GitHub and Play (never both on one phone; GitHub → Play needs an uninstall).
 <!-- Owner 2026-11-07: open questions to the owner live here (who, date, question, recommendation first); asked in the session's chat; whoever acts on the answer deletes the line. -->
 - **[donald] Bike turn cue: heard 6 s before the turn – OK? (donald 2026-11-07)** – the owner asked for 2–3 s. His ride
   (tour 217) shows the normal "Gleich …" was already heard 4–5 s before; what felt late were swallowed / held turns
@@ -356,8 +350,6 @@ and the commit history.
   Owner decides limit, supporter platform, timing. Production is not deployed yet (all released APKs use test); when it
   is, it carries everything already on test (e.g. A-014 no plain IPs / no invocation logs, 2e851ef) – the first
   production deploy is part of the launch together with Google Play.
-- **Google Play internal test track** – create the app, secret release key + `PLAY_SERVICE_ACCOUNT_JSON` in GitHub
-  secrets, upload from `release.yml` (today: fixed test key). Removes Play Protect warnings.
 - **AGP 9.4.1 upgrade** – later, when the owner says so.
 
 ## Later
