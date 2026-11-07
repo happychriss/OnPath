@@ -39,12 +39,13 @@ and the commit history.
 ## Next
 - **[donald] Bugs seen while taking the Meran 0.17 pictures (2026-11-07, emulator, 0.17.3)** – (1) G02: with a stop
   (Gasthof Hochmuth) the off-route box offered only "Neue Route bis zum Ziel: 3,8 km" – the new route silently drops
-  the stop; StopSkip should ask "Über ②" / "② auslassen"; (2) after "Weiter" on "Unterbrochene Tour" the "Tour
-  interrupted" notification stays; (3) H01: stale "Neue Route · vorher 14:25" after the stop was removed, and "Ankunft
-  11:15" at 11:03 with 4 min / 30 m left; (4) D04: "Halte die Karte gedrückt …" hidden behind the navigation bar at
-  the low sheet; (5) EN starts lowercase: "ford · 5 steep sections"; (6) after an activity change in Plan a "New route
-  for Hike T2 – check it" line appears; (7) D10: T1 + Mutkopf gives a 30 km detour (text right, numbers odd); (8) the
-  ride summary keeps German rows after a live language switch. Pictures: onpath.private/marketing/bilder/aktuell/.
+  the stop; StopSkip should ask "Über ②" / "② auslassen"; (6) after an activity change in Plan a "New route
+  for Hike T2 – check it" line appears – this is the owner's safety-audit feature B (2026-10-22, commit 2f6eb937: after
+  an activity / T change the route is compared, grey INFO until tapped); not removed – needs the owner's word; (7) D10:
+  T1 + Mutkopf (② only from T2) gives 30,3 km · 10 h 55 · ↑ 1950 m and "1 Abschnitt über T1" – the line runs east via
+  Dorf Tirol towards the nearest T1 way under Mutkopf and back (out-and-back), and a T1 route should have no section
+  above T1; not looked into. (2) (3) (4) (5) (8) fixed 2026-11-07 (donald-picture-bugs). Shared code: (5) changed
+  `ui/RouteWarnings.text` (first word capital) – the planner gets it by merging. Pictures: onpath.private/marketing/bilder/aktuell/.
 - **[donald] (low) Vellau → Leiteralm routes over the Gamplweg (website pictures 2026-11-07)** – Wandern T2 takes the
   bow east instead of the path along the Korblift (seen by A-019 and again in 0.17.3). Owner: "merkt eh keiner" – the
   pictures stay. Later: is the lift path above T2, cut in the data, or a profile cost? JVM harness, no new pictures.
