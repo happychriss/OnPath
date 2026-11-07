@@ -37,40 +37,27 @@ await page.screenshot({ path: shot });
 const terrainFails = [];
 const tcheck = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (!ok) terrainFails.push(what); };
 const cursorNow = () => page.evaluate(() => window.__profileCursor);
-const small = await page.locator('#profile .profplot > svg').boundingBox();
+// wide screens (plan sheet A, owner 2026-11-07): the profile lies along the map's bottom edge for good – no ⤢, no ✕;
+// the route stays plan blue (the steepness is read in the profile)
+tcheck(await page.locator('#bigProfile').isVisible() && !(await page.locator('#bigProfile .bpclose').isVisible()) && !(await page.locator('#profile .profplot').isVisible()),
+  'the profile lies along the bottom of the map for good (no ✕), not in the panel');
+const small = await page.locator('#bigProfile .profplot > svg').boundingBox();
 await page.mouse.move(small.x + small.width * 0.5, small.y + small.height * 0.5);
 await page.waitForTimeout(200);
 const c1 = await cursorNow();
-const label1 = await page.locator('#profile .proflabel').textContent();
-tcheck(c1 && c1.at && c1.m > 0, `sheet profile: pointer → cursor on the route (${JSON.stringify(c1)})`);
-tcheck(/\d+ m · .+ · -?\d+ %/.test(label1 ?? '') && await page.locator('#profile .proflabel').isVisible(), `sheet profile label "${label1}"`);
+const label1 = await page.locator('#bigProfile .proflabel').textContent();
+tcheck(c1 && c1.at && c1.m > 0, `bottom profile: pointer → cursor on the route (${JSON.stringify(c1)})`);
+tcheck(/\d+ m · .+ · -?\d+ %/.test(label1 ?? '') && await page.locator('#bigProfile .proflabel').isVisible(), `bottom profile label "${label1}"`);
 // the dot is a DOM marker on the map (no map redraw per move – 3D + big profile were slow, owner 2026-11-06)
 const dot = () => page.evaluate(() => { const d = document.querySelector('.profdot'); return !!d && !d.hidden && d.getBoundingClientRect().width > 0; });
 tcheck(await dot(), 'the dot on the map follows the profile');
 await page.mouse.move(5, 400);
 await page.waitForTimeout(200);
 tcheck(await cursorNow() == null && !(await dot()), 'pointer off the profile: cursor and dot gone');
-// ⤢ sits beside the heights, never on the drawing (owner review 2026-11-05); the total distance at the axis' right end
-const bigBtn = await page.locator('#profileBig').boundingBox();
-tcheck(bigBtn && (bigBtn.y + bigBtn.height <= small.y + 1 || bigBtn.x >= small.x + small.width), `⤢ clear of the profile drawing (${JSON.stringify(bigBtn)} vs ${JSON.stringify(small)})`);
-const axis = await page.locator('#profile .axis span').allTextContents();
+const axis = await page.locator('#bigProfile .axis span').allTextContents();
 tcheck(axis.length === 2 && /km$/.test(axis[1]), `profile axis "0 … total km" (${JSON.stringify(axis)})`);
-// „⤢ Großes Profil“: a labelled button (owner 2026-11-06), ≥ 40 px high; a click on the small profile opens the big one too
-const bigLook = await page.evaluate(() => { const b = document.getElementById('profileBig'); return { text: b.textContent.trim(), h: b.getBoundingClientRect().height }; });
-tcheck(/Large profile|Großes Profil/.test(bigLook.text) && bigLook.h >= 40, `the big-profile button has a word and is ≥ 40 px (${JSON.stringify(bigLook)})`);
-await page.mouse.click(small.x + small.width * 0.3, small.y + small.height * 0.5);
-await page.waitForTimeout(300);
-tcheck(await page.locator('#bigProfile').isVisible(), 'a click on the small profile opens the big one');
-tcheck(/Close profile|Profil schließen/.test(await page.locator('#profileBig').textContent()), 'while open the button reads "Close profile"');
-await page.click('#bigProfile .bpclose');
-await page.waitForTimeout(200);
-await page.click('#profileBig');
-await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 30_000 });
-await page.waitForTimeout(400);
-tcheck(await page.locator('#bigProfile').isVisible(), 'big profile opens below the map');
-const steep = await page.evaluate(async () => ({ vis: window.__map.getLayoutProperty('profile-steep', 'visibility'),
-  n: (await window.__map.getSource('profile-steep').getData())?.features?.length ?? 0 }));
-tcheck(steep.vis === 'visible' && steep.n > 0, `route coloured by steepness while open (${JSON.stringify(steep)})`);
+const steep = await page.evaluate(() => window.__map.getLayoutProperty('profile-steep', 'visibility') ?? 'none');
+tcheck(steep !== 'visible', `the route stays plan blue beside the bottom profile (${steep})`);
 // the app's steepness colours everywhere – green for flat, never the route's blue (owner review 2026-11-05)
 const colours = await page.evaluate(async () => ({
   legend: [...document.querySelectorAll('#bigProfile .bplegend i')].map((i) => getComputedStyle(i).backgroundColor),
@@ -113,10 +100,6 @@ await page.waitForTimeout(300);
 const c2 = await cursorNow();
 tcheck(c2 && c2.m > 0 && await page.locator('#bigProfile .proflabel').isVisible(), `pointer on the route → cursor in the big profile (${JSON.stringify(c2)})`);
 await page.mouse.move(5, 400);
-await page.click('#bigProfile .bpclose');
-await page.waitForTimeout(200);
-tcheck(!(await page.locator('#bigProfile').isVisible()) &&
-  await page.evaluate(() => window.__map.getLayoutProperty('profile-steep', 'visibility')) === 'none', 'big profile closes, plain route again');
 // ---- C – 3D: terrain on demand, tilted, view only; off = flat again ----
 tcheck(!(await page.locator('#terrain3d').isDisabled()), '3D button enabled (the cells\' terrain source is there)');
 await page.click('#terrain3d');
@@ -207,7 +190,7 @@ for (const x of light) if (x.ratio < x.min) contrastFails.push(`${x.sel} ${x.col
 await page.emulateMedia({ colorScheme: 'dark' });
 const dark = await greens();
 const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-if (bg !== 'rgb(250, 250, 246)') contrastFails.push(`dark system setting: page background ${bg}, not the light paper`);
+if (bg !== 'rgb(245, 243, 235)') contrastFails.push(`dark system setting: page background ${bg}, not the light paper`);
 for (const x of dark) { const l = light.find((y) => y.sel === x.sel); if (l && l.color !== x.color) contrastFails.push(`dark system setting changed ${x.sel}: ${x.color}`); }
 console.log('greens:', light.map((x) => `${x.sel} ${x.ratio.toFixed(1)}`).join(' · '));
 if (contrastFails.length) errors.push('one green / contrast: ' + contrastFails.join('; '));

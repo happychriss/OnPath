@@ -60,6 +60,13 @@
     <string name="plan_calculating_leg">Abschnitt %1$d von %2$d wird berechnet…</string>
     <string name="plan_hint_first_point_question">Wohin soll’s gehen?</string>
     <string name="plan_hint_first_point">Halte dein Ziel auf der Karte gedrückt – oder such es oben in der Suchleiste.</string>
+    <string name="plan_guide_find_title">Ziel finden</string>
+    <string name="plan_guide_find_line">Suchen oder auf der Karte gedrückt halten</string>
+    <string name="plan_guide_adjust_title">Route anpassen</string>
+    <string name="plan_guide_adjust_line">Punkte dazu, Rundtour, Höhenprofil</string>
+    <string name="plan_guide_go_title">Los geht’s</string>
+    <string name="plan_guide_go_line">Die Navigation führt dich – auch ohne Netz</string>
+    <string name="plan_guide_my_routes">Meine Touren öffnen</string>
     <string name="plan_hint_tap_hold">Gedrückt halten, um hier einen Punkt zu setzen.</string>
     <string name="plan_offline_pill">Ohne Netz</string>
     <string name="plan_offline_ready">Karte und Wege für diese Route sind auf dem Handy – es geht auch ohne Netz.</string>

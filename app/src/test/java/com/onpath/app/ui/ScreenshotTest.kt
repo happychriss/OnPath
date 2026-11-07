@@ -222,6 +222,16 @@ class ScreenshotTest {
         Frame(route = false, gps = GpsStatus.SEARCHING) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
     }
 
+    /** The empty plan rolled up (owner 2026-11-07): as small as before the guide – the title only. */
+    fun planEmptyCollapsed() = paparazzi.snapshot {
+        Frame(route = false, gps = GpsStatus.GOOD) { PlanPanel(planUi(n = 0, r = null, size = PlanSize.COLLAPSED), PlanCallbacks()) }
+    }
+
+    /** The empty plan pulled up (owner 2026-11-07, guide A): the three steps and "Meine Touren öffnen". */
+    fun planEmptyFull() = paparazzi.snapshot {
+        Frame(route = false, gps = GpsStatus.GOOD) { PlanPanel(planUi(n = 0, r = null, size = PlanSize.FULL), PlanCallbacks()) }
+    }
+
     /** Only a start point (owner 2026-10-30): no line to follow, no "Start navigation" (free recording = the green start button, ☰ has no Start recording since 2026-11-02). */
     fun planOnePoint() = paparazzi.snapshot {
         Frame(route = false) { PlanPanel(planUi(n = 1, r = null), PlanCallbacks()) }
