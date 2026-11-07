@@ -6,7 +6,6 @@
       "mcp__claude-code-remote__get_session",
       "mcp__claude-code-remote__list_events",
       "mcp__claude-code-remote__get_event",
-      "Bash(tools/ask.sh *)",
       "Bash(tools/ci/gate.sh)",
       "Bash(tools/ci/gate.sh *)",
       "Bash(tools/ci/release_check.sh *)",
