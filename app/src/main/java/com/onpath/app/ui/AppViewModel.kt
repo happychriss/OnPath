@@ -1556,7 +1556,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val outcome = plan.oneLeft(before.size, recState.value != null, followLine != null, followIsTrack, routeBackAsk, pos)
         if (outcome == PlanGuidance.OneLeft.NONE) return
         if (outcome == PlanGuidance.OneLeft.EMPTY) {
-            if (!mayEmpty) return // Undo / Redo brings a plan back – it never empties it
+            if (!mayEmpty) {
+                // Undo / Redo brings a plan back – it never empties it; but one point right here has no route of its
+                // own, so the tour must not keep following the old line (audit 2026-11-07, PlanFlowPropertyTest rule 4):
+                // the guidance ends as for an empty plan, the recording goes on, Redo / a new point bring it back
+                Problems.trace("plan", "Undo / Redo left one point " +
+                    (if (auto) "(the start the one-point rule put in)" else "right where I stand") +
+                    " during the tour: route guidance ended, recording continues")
+                pendingSplit = null
+                clearFollow()
+                guidanceEndedByEmptyPlan = true
+                return
+            }
             Problems.trace("plan", "One point left during the tour, " +
                 (if (auto) "only the start this rule put in" else "right where I stand") + ": the plan empties (field bug 2026-11-06)")
             routeBackAsk = false

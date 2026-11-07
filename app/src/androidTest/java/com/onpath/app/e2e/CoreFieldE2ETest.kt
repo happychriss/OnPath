@@ -668,6 +668,32 @@ class CoreFieldE2ETest : E2EBase() {
     }
 
     /**
+     * Found by PlanFlowPropertyTest (audit 2026-11-07): Undo during a tour back to one point right where I stand left the
+     * old 2-point line followed. Undo never empties the plan – the point stays – but the guidance ends (the recording
+     * goes on); Redo brings the goal back and the tour follows it again.
+     */
+    @Test fun undoDuringATourBackToOnePointHereEndsTheGuidance() {
+        val near = GeoPoint(lat + 0.0001, lon)             // ~11 m away
+        val goal = GeoPoint(lat + 0.0050, lon + 0.0030)    // ~640 m away
+        scenario.onActivity { vm(it).addPoint(near); vm(it).addPoint(goal) }
+        waitUntil("two points", 10_000) { waypointCount() == 2 }
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the route is followed", 20_000) { guided() }
+        scenario.onActivity { vm(it).switchToPlan() }
+        waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+        val plan = waypointList()
+        scenario.onActivity { vm(it).undoStep() }
+        waitUntil("Undo: the one point stays (Undo never empties)", 10_000) { waypointCount() == 1 }
+        waitUntil("no route followed any more (not the old line)", 15_000) { !guided() }
+        assertTrue("the recording goes on", recording())
+        scenario.onActivity { vm(it).redoStep() }
+        waitUntil("Redo: both points back", 10_000) { waypointList() == plan }
+        waitUntil("the tour follows the plan again", 20_000) { guided() }
+    }
+
+    /**
      * Owner 2026-11-06 23:42: Navigate's top card keeps its chevron but opens / closes like the plan sheet – a tap
      * anywhere on the card (not the chevron) toggles it, pushing it up closes it, pulling it down opens it.
      */

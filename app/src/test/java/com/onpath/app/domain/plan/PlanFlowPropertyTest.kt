@@ -24,7 +24,7 @@ import kotlin.random.Random
  */
 class PlanFlowPropertyTest {
 
-    private enum class Op { ADD, INSERT, DELETE, MOVE, REVERSE, ROUND_TRIP, UNDO, REDO, CLEAR, LOAD, SAVE, TOUR_START, TOUR_END, SNAP }
+    private enum class Op { ADD, ADD_HERE, INSERT, DELETE, MOVE, REVERSE, ROUND_TRIP, UNDO, REDO, CLEAR, LOAD, SAVE, TOUR_START, TOUR_END, SNAP }
 
     /** A tiny stand-in for the view model: the plan, its stored routes, the tour's followed plan and the router. */
     private class Flow(seed: Int) {
@@ -104,13 +104,19 @@ class PlanFlowPropertyTest {
             }
         }
 
-        /** Undo / Redo as the view model's step(): the one-point rule may build "position → point", never empties. */
+        /**
+         * Undo / Redo as the view model's step(): the one-point rule may build "position → point"; it never empties –
+         * one point right here stays, and the guidance ends as for an empty plan (the old line is not followed).
+         */
         fun undoRedo(what: String, prev: List<GeoPoint>) {
             val before = points.toList()
             session.replace(prev)
-            if (recording && followed != null && points.size == 1 &&
-                session.oneLeft(before.size, recording, true, false, false, position) == PlanGuidance.OneLeft.FROM_HERE)
-                session.fromHere(position, points.single())
+            if (recording && followed != null && points.size == 1)
+                when (session.oneLeft(before.size, recording, true, false, false, position)) {
+                    PlanGuidance.OneLeft.FROM_HERE -> session.fromHere(position, points.single())
+                    PlanGuidance.OneLeft.EMPTY -> { followed = null; endedByEmpty = true }
+                    PlanGuidance.OneLeft.NONE -> Unit
+                }
             afterChange()
             steps += "$what (${before.size} → ${points.size})"
         }
@@ -119,6 +125,8 @@ class PlanFlowPropertyTest {
             val n = points.size
             when (op) {
                 Op.ADD -> edit("add") { add(point()) }
+                // a point right where I stand (≤ 50 m, never [position] itself): the one-point rule's "here" case
+                Op.ADD_HERE -> edit("add here") { add(GeoPoint(position.lat + 0.0001 + rnd.nextDouble() * 0.0002, position.lon + 0.0001)) }
                 Op.INSERT -> if (n >= 2) { val p = point(); edit("insert") { add(PlanEdits.bestViaIndex(this, p), p) } }
                 Op.DELETE -> if (n >= 1) { val i = rnd.nextInt(n); edit("delete $i") { removeAt(i) } }
                 Op.MOVE -> if (n >= 2) {
@@ -160,12 +168,15 @@ class PlanFlowPropertyTest {
             // rule 5: nothing calculates forever – the newest request resolved
             assertNull("a route request never resolved after ${steps.lastOrNull()}", pending)
             if (points.size >= 2) assertEquals("the line belongs to the plan shown", points.toList(), line)
-            // rule 4: a tour follows the plan shown, or nothing (a 1-point plan has no route of its own: not checked)
+            // rule 4: a tour follows the plan shown, or nothing – a 1-point plan has no route of its own, so nothing
             if (points.size >= 2) followed?.let { assertEquals("the tour follows the plan shown", points.toList(), it) }
+            if (points.size == 1) assertNull("a 1-point plan is followed by nothing (old line after ${steps.lastOrNull()})", followed)
             if (points.isEmpty()) assertNull("an empty plan is followed by nothing", followed)
             // the one-point rule never leaves only the start it put in (field bug 2026-11-06 21:18: "kein Punkt 1 mehr")
-            // (the flow's points never fall on [position] by themselves: only the rule puts it in)
-            assertTrue("the plan is not only the start the one-point rule put in", points.toList() != listOf(position))
+            // (only while the rule's start is known: a plan saved with that start and loaded after the tour is the user's)
+            session.oneLeftStart?.let {
+                assertTrue("the plan is not only the start the one-point rule put in", points.toList() != listOf(it))
+            }
             // rule 2: a saved plan is never lost or changed by editing
             assertEquals("saved plans unchanged", storeShadow, store)
         }
@@ -208,6 +219,25 @@ class PlanFlowPropertyTest {
         // the flows really reach the one-point rule (both ways), not only plain edits
         assertTrue("one point left → position → point happened ($fromHere×)", fromHere > 0)
         assertTrue("one point left → the plan emptied happened ($emptied×)", emptied > 0)
+    }
+
+    @Test
+    fun undoDuringATourBackToOnePointWhereIStandEndsTheGuidance() {
+        // found by this test (audit package 4, 2026-11-07): plan [a point where I stand], add a far goal, start the tour,
+        // Undo → one point left right here. Undo never empties a plan, so the point stays – but the tour must not keep
+        // following the old 2-point line: it follows the plan shown or nothing (rule 4)
+        val f = Flow(11)
+        val here = GeoPoint(f.position.lat + 0.0002, f.position.lon + 0.0001)
+        val goal = GeoPoint(51.18, 6.95)
+        f.session.replace(listOf(here)); f.afterChange(); f.route()
+        f.edit("add goal") { add(goal) }; f.route()
+        f.step(Op.TOUR_START)
+        assertEquals(listOf(here, goal), f.followed)
+        f.step(Op.UNDO)
+        assertEquals("Undo keeps the one point (never empties)", listOf(here), f.points.toList())
+        assertNull("the tour no longer follows the old line", f.followed)
+        f.step(Op.REDO)
+        assertEquals("Redo brings the goal back and the tour follows it again", f.points.toList(), f.followed)
     }
 
     @Test
