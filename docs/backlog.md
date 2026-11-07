@@ -33,7 +33,7 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
-- [laptop] Planner parity (4 mirrors) + privacy link / Access comments; planner pictures flow B + C01/C02/C06 + film 1 (Meran 0.17) – since 2026-11-07
+- [laptop] Planner parity (4 mirrors) + privacy link / Access comments; planner pictures flow B + C01/C02/C06 + film 1 (Meran 0.17) – since 2026-11-07 · ✓ pictures done 2026-11-07 (onpath.private 754d5f0, `web/app/test/flows-shots.mjs`; film as WebM on the laptop – no ffmpeg)
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
@@ -52,9 +52,6 @@ and the commit history.
   well (A-019 saw a detour over the Gamplweg); plus the bike route Meran →
   Etschradweg → Algund / Naturns. PNGs into `bilder/aktuell/`, one line each (file · app version · date). Plausible
   numbers. Then the film recordings of scenes 2–5 (section "Film") as MP4 – not into a repo, only their place in `liste.md`.
-- **[laptop] Planner pictures as flows, round "Meran 0.17" (owner 2026-11-07, via cloud-web)** –
-  `docs/design/website-screens.md` flow B and the planner steps of C (C01, C02, C06), file names as listed, DE + EN,
-  1440 × 900, with the A-019 plan link Vellau → Leiteralm (`onpath.private/marketing/bilder/a019/Ergebnis.md`); pairing codes blurred. Film scene 1 (`film-1-browser-planen`, 2560 × 1440). Same drop as above.
 - **[donald] Follow-ups from v0.17.3 (2026-11-07)** – (2) `RoutingDataFreshInstallE2ETest` needs `routingDownload=true`,
   which `e2e_github.sh` can't pass – add the flag or run it by hand; (5) `e2e.yml` runs only the first class / method
   of a comma list (needs a PR).
