@@ -271,7 +271,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
 }
 
 /** The plan row's pills: one paper shade darker, ink blue words (owner 2026-11-06 variant C – no light blue; ≥ 7:1). */
-internal val PillBlueLight = OnPathColors.PaperDim
+internal val PillBlueLight = OnPathColors.PaperDeep
 internal val PillBlueInk = OnPathColors.ActionEdit
 
 @Composable
@@ -649,7 +649,7 @@ object PlanFoot {
     /**
      * During a tour "▲ Weiter geht's" back to Navigate (owner 2026-11-06, C); without one "▶ Los geht's" from two points
      * (owner 2026-11-07, A: big and centred, also rolled up); else nothing – a plain recording without a plan is ☰ →
-     * "Ohne Plan aufzeichnen" (owner 2026-11-06: "Los geht's ohne Route" in the sheet was confusing).
+     * "Nur aufzeichnen" (owner 2026-11-06: "Los geht's ohne Route" in the sheet was confusing).
      */
     fun of(ui: PlanUi): Kind = when {
         ui.tour != null || ui.tourRunning -> Kind.BACK

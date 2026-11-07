@@ -1290,7 +1290,7 @@
   },
   "plan_menu_record_without_plan": {
     "area": "Plan menu",
-    "context": "☰ menu item (owner 2026-11-06): start a plain recording without following any plan; shown only while no tour runs",
+    "context": "☰ menu item (owner 2026-11-06; words owner 2026-11-07: Nur aufzeichnen / Just record): start a plain recording without following any plan; shown only while no tour runs",
     "priority": 2,
     "confidence": "sicher",
     "max": 30

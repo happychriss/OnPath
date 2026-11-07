@@ -474,7 +474,16 @@ class CoreFieldE2ETest : E2EBase() {
      * Owner 2026-11-06 ("Ich bin in Hilden, Plan in Köln – im Planmodus steht mein Standort, wo ist mein Plan?"): with
      * a plan, Navigate → Plan shows the whole plan, not the own position (PlanCamera).
      */
-    @Test fun backInPlanTheMapShowsThePlanNotThePosition() {
+    @Test fun backInPlanTheMapShowsThePlanNotThePosition() = planInFrontAfterNavigate(walkingDirectionUp = false)
+
+    /**
+     * Owner 2026-11-07 ("Plan in Meran, ich in Hilden – Navigation, zurück in Plan, ich sehe meinen Standort"): the same
+     * with the walking direction up in Navigate (the compass cycle) – Plan keeps following the position there until the
+     * plan's fit; the fit must win, the map must not end on the position.
+     */
+    @Test fun backInPlanWithWalkingDirectionUpTheMapShowsThePlan() = planInFrontAfterNavigate(walkingDirectionUp = true)
+
+    private fun planInFrontAfterNavigate(walkingDirectionUp: Boolean) {
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         // a saved plan about 25 km north of the walker
         val far = listOf(GpxWaypoint(lat + 0.22, lon - 0.01, "E2E far start"), GpxWaypoint(lat + 0.24, lon + 0.02, "E2E far goal"))
@@ -488,10 +497,15 @@ class CoreFieldE2ETest : E2EBase() {
             // Navigate follows the own position
             scenario.onActivity { vm(it).startNavigation(force = true) }
             waitUntil("Navigate", 20_000) { mode() == AppMode.NAVIGATE }
+            if (walkingDirectionUp) {
+                scenario.onActivity { if (!vm(it).headingUp) vm(it).onCompass(false) }
+                waitUntil("walking direction up", 5_000) { var h = false; scenario.onActivity { a -> h = vm(a).headingUp }; h }
+            }
             Thread.sleep(2_500)
             scenario.onActivity { vm(it).switchToPlan() }
             waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
             Thread.sleep(3_000) // settle + fit animation
+            Thread.sleep(3_000) // a following camera would have pulled the map back to the position by now
             var at: org.maplibre.android.geometry.LatLng? = null
             onMap { m -> at = m.cameraPosition.target }
             val c = at!!
@@ -500,6 +514,7 @@ class CoreFieldE2ETest : E2EBase() {
             assertTrue("the map shows the plan (${toPlan.toInt()} m from it), not the position (${toMe.toInt()} m)", toPlan < toMe && toPlan < 5_000)
         } finally {
             scenario.onActivity { if (vm(it).recState.value != null) vm(it).stopRecording() }
+            if (walkingDirectionUp) scenario.onActivity { if (vm(it).headingUp) vm(it).onCompass(true) }
             db.deleteTour(id)
         }
     }

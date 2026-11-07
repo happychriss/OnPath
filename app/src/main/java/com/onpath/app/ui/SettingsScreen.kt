@@ -242,7 +242,7 @@ fun SettingsScreen(
                                 modifier = Modifier.padding(start = 16.dp, top = if (gi > 0) 20.dp else 4.dp, bottom = 6.dp))
                         } else item { Spacer(Modifier.height(4.dp)) }
                         item {
-                            Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
+                            Surface(shape = OnPathShapes.Card, color = OnPathColors.CardPaper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
                                 Column {
                                     group.forEachIndexed { i, t ->
                                         if (i > 0) HorizontalDivider(Modifier.padding(start = 64.dp))
@@ -617,7 +617,7 @@ private fun DeveloperTools(
     demo: DemoUi? = null,
 ) {
     var open by remember { mutableStateOf(initiallyOpen) }
-    Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
+    Surface(shape = OnPathShapes.Card, color = OnPathColors.CardPaper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
         Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
             Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = Role.Button) { open = !open }.padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically) {
@@ -979,7 +979,7 @@ internal val LocalSectionTitle = compositionLocalOf { true }
 
 @Composable
 internal fun Section(title: String, content: @Composable () -> Unit) {
-    Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
+    Surface(shape = OnPathShapes.Card, color = OnPathColors.CardPaper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
         Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
             if (LocalSectionTitle.current) Text(title, style = MaterialTheme.typography.titleSmall, color = OnPathColors.Green,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
