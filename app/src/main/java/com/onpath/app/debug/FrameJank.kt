@@ -9,7 +9,7 @@ import android.view.Window
  * Frame times while something moves (the plan sheet on a 120 Hz phone). [start] listens to the window's FrameMetrics
  * (API 24+, no extra library), [stop] returns the summary of the frames since. The plan sheet writes it into the
  * Problems events trace ("Sheet drag: N frames, J janky (p95 X ms)"), so a swipe gives numbers in the diagnostics
- * export. Never throws.
+ * export. The map host measures each map gesture with it too (pan / zoom → map/ReliefAuto, "Map pan: …"). Never throws.
  */
 class FrameJankMeter(private val window: Window) {
     private val durationsNs = ArrayList<Long>()
@@ -26,7 +26,7 @@ class FrameJankMeter(private val window: Window) {
             window.addOnFrameMetricsAvailableListener(l, handler)
             listener = l
         } catch (e: Exception) {
-            Problems.warn("ui", "Frame timing not available; no sheet drag numbers", e)
+            Problems.warn("ui", "Frame timing not available; no frame numbers for sheet moves or map gestures", e)
         }
     }
 
