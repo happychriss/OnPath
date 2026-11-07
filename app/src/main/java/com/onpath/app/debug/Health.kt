@@ -227,7 +227,7 @@ object Health {
         )
         val message = MainStall.message(kind, early, last)
         Problems.report("perf", message, level = MainStall.level(kind))
-        Problems.trace("perf", message.replaceFirst("Main thread blocked", "Main thread blocked ${end - posted} ms"))
+        Problems.trace("perf", MainStall.traceLine(kind, end - posted, early, last)) // the full 12 frames: event log only
     }
 
     /** The main thread's stack while it is blocked (empty = not readable). */

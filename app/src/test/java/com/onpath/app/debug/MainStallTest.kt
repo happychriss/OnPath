@@ -76,6 +76,18 @@ class MainStallTest {
         assertEquals(listOf("Frame1.m:1"), MainStall.frames(st, max = 1))
     }
 
+    @Test fun eventLogLineHasTimeKindAndTwelveFrames() {
+        val st = (1..15).map { f("android.view.Frame$it", "m$it", it) }
+        val early = listOf(f("com.onpath.app.data.Prefs", "save", 7))
+        assertEquals("Main thread blocked 812 ms while leaving the app – stack: " +
+            (1..12).joinToString(" ← ") { "Frame$it.m$it" } + "; at 250 ms in: Prefs.save:7",
+            MainStall.traceLine(Kind.LEAVING, 812, early, st))
+        assertEquals("Main thread blocked 640 ms at the first frame after the screen was created – stack: ?",
+            MainStall.traceLine(Kind.FIRST_FRAME, 640, emptyList(), emptyList()))
+        assertEquals("Main thread blocked 700 ms – stack: Frame1.m1 ← Frame2.m2",
+            MainStall.traceLine(Kind.OTHER, 700, emptyList(), st.take(2)))
+    }
+
     @Test fun nativeFrameWithoutLine() {
         assertEquals("MessageQueue.nativePollOnce", MainStall.short(StackTraceElement("android.os.MessageQueue", "nativePollOnce", null, -2)))
     }

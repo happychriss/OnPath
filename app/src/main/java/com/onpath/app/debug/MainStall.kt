@@ -39,20 +39,43 @@ object MainStall {
      * [Health.STALL_MS] (empty = not readable); the early one is named only where it differs.
      */
     fun message(kind: Kind, early: List<StackTraceElement>, last: List<StackTraceElement>): String {
-        val head = when (kind) {
-            Kind.FIRST_FRAME -> "Main thread blocked at the first frame after the screen was created"
-            Kind.LEAVING -> "Main thread blocked while leaving the app"
-            Kind.OTHER -> "Main thread blocked"
-        }
         val lastText = frames(last).ifEmpty { listOf("?") }.joinToString(" ← ")
-        val earlyText = frames(early, max = 2).joinToString(" ← ")
-        val lastTop = frames(last, max = 2).joinToString(" ← ")
-        val earlyPart = when {
-            earlyText.isEmpty() -> ""
-            earlyText == lastTop -> ""
-            else -> "; at ${EARLY_SAMPLE_MS} ms in: $earlyText"
+        return "${head(kind, null)} (in: $lastText${earlyPart(early, last)})"
+    }
+
+    /**
+     * The event-log line (the full evidence; Problems keeps the short [message]): "Main thread blocked 812 ms while
+     * leaving the app – stack: Object.wait ← GLThread.onPause ← MapView.onStop … (first [STACK_FRAMES] frames of the
+     * last sample); at 250 ms in: …".
+     */
+    fun traceLine(kind: Kind, blockedMs: Long, early: List<StackTraceElement>, last: List<StackTraceElement>): String =
+        "${head(kind, blockedMs)} – stack: ${stackLine(last)}${earlyPart(early, last)}"
+
+    /**
+     * The first [max] frames, top first ("Object.wait ← GLThread.onPause ← MapView.onStop …"): the frame that waits is
+     * often Android's or MapLibre's, below our own code (2026-11-07: stalls "in Object.wait" / "Matrix.translate" at
+     * onStop and on return to the screen without an app frame to blame). Empty stack = "?".
+     */
+    fun stackLine(stack: List<StackTraceElement>, max: Int = STACK_FRAMES): String =
+        stack.take(max).joinToString(" ← ") { "${it.className.substringAfterLast('.')}.${it.methodName}" }.ifEmpty { "?" }
+
+    /** Frames of the last sample in the event-log line. */
+    const val STACK_FRAMES = 12
+
+    private fun head(kind: Kind, blockedMs: Long?): String {
+        val base = if (blockedMs == null) "Main thread blocked" else "Main thread blocked $blockedMs ms"
+        return when (kind) {
+            Kind.FIRST_FRAME -> "$base at the first frame after the screen was created"
+            Kind.LEAVING -> "$base while leaving the app"
+            Kind.OTHER -> base
         }
-        return "$head (in: $lastText$earlyPart)"
+    }
+
+    /** "; at 250 ms in: Style.load:88 ← MapStyle.apply:12" – only where the early sample differs from the last. */
+    private fun earlyPart(early: List<StackTraceElement>, last: List<StackTraceElement>): String {
+        val earlyText = frames(early, max = 2).joinToString(" ← ")
+        return if (earlyText.isEmpty() || earlyText == frames(last, max = 2).joinToString(" ← ")) ""
+        else "; at $EARLY_SAMPLE_MS ms in: $earlyText"
     }
 
     /**
