@@ -22,6 +22,8 @@ import com.onpath.strings.routes_overview_plan
 import com.onpath.strings.routes_overview_show
 import com.onpath.strings.routes_overview_loading
 import com.onpath.strings.common_cancel
+import com.onpath.strings.plan_bar_go
+import com.onpath.strings.plan_navigate_anyway
 import org.maplibre.android.geometry.LatLng
 
 /**
@@ -156,6 +158,63 @@ class CorePlanE2ETest : E2EBase() {
                 var w = emptyList<com.onpath.app.routing.GeoPoint>(); scenario.onActivity { a -> w = vm(a).waypoints.toList() }; w == loaded
             }
         } finally {
+            db.deleteTour(id)
+        }
+    }
+
+    /**
+     * Owner 2026-11-07: "Los geht's" in My routes – a row tap opens the overview (Abbrechen · Los geht's · Planen); Los
+     * geht's loads the route as the plan (the unsaved plan on the map goes under Zuletzt, no question) and starts the tour
+     * on it by the plan sheet's own start path: recording, Navigate, the loaded route followed.
+     */
+    @Test fun losGehtsInMyRoutesStartsTheTourOnThatRoute() {
+        startPlanWithTwoPoints()
+        var centre = LatLng(0.0, 0.0)
+        scenario.onActivity { a -> val w = vm(a).waypoints; centre = LatLng(w[0].lat, w[0].lon) }
+        val db = com.onpath.app.data.TourDb.get(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext)
+        val pts = listOf(com.onpath.app.gpx.GpxWaypoint(centre.latitude + 0.002, centre.longitude - 0.001, "E2E go A"),
+            com.onpath.app.gpx.GpxWaypoint(centre.latitude + 0.004, centre.longitude + 0.002, "E2E go B"))
+        val name = "E2E Los geht's route"
+        val id = db.insertTour(com.onpath.app.data.TourKind.PLANNED, name, com.onpath.app.routing.Activity.HIKE.name, 2, 380.0, 0.0, 0.0,
+            300.0, listOf(pts.map { com.onpath.app.gpx.TrackPoint(it.lat, it.lon) }), pts)
+        try {
+            scenario.onActivity { a -> vm(a).routesTab = com.onpath.app.ui.RoutesTab.PLANNED; vm(a).openRoutes() }
+            findFresh(By.text(name), 8_000)!!.click()
+            val go = findFresh(By.text(Txt.s(Res.string.plan_bar_go)), 8_000)
+            assertNotNull("the overview offers \"Los geht's\" – ${state()}", go)
+            assertNotNull("… beside \"Planen\"", device.findObject(By.text(Txt.s(Res.string.routes_overview_plan))))
+            shot("1-overview-three-actions")
+            go!!.click()
+            // the normal start: the phone check may ask (Later goes on), the tiny map's straight lines ask "Navigate anyway?"
+            val deadline = System.currentTimeMillis() + 40_000
+            while (System.currentTimeMillis() < deadline) {
+                var rec = false; var guide = false
+                scenario.onActivity { a -> rec = vm(a).recState.value != null; guide = vm(a).setupGuide != null }
+                if (rec) break
+                if (guide) device.findObject(By.text(java.util.regex.Pattern.compile("Later|Continue|Später|Weiter")))?.click()
+                device.findObject(By.text(Txt.s(Res.string.plan_navigate_anyway)))?.click()
+                Thread.sleep(500)
+            }
+            waitUntil("a tour records – ${state()}", 5_000) { var r = false; scenario.onActivity { a -> r = vm(a).recState.value != null }; r }
+            val loaded = pts.map { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }
+            waitUntil("Navigate follows the route from My routes", 20_000) {
+                var ok = false
+                scenario.onActivity { a ->
+                    val v = vm(a)
+                    ok = v.mode == com.onpath.app.ui.AppMode.NAVIGATE && v.waypoints.toList() == loaded && !v.routesOpen &&
+                        v.followLine != null && v.recState.value?.nav != null
+                }
+                ok
+            }
+            shot("2-navigate-on-the-route")
+            val trace = com.onpath.app.debug.Problems.events().map { it.message }
+            for (step in listOf("Los geht's on \"$name\" in My routes", "Plan kept under Zuletzt",
+                    "Los geht's from My routes: the line of \"$name\" is there")) {
+                assertTrue("\"$step\" traced: ${trace.takeLast(30)}", trace.any { it.contains(step) })
+            }
+        } finally {
+            try { scenario.onActivity { a -> vm(a).endTourAndDelete() } } catch (_: Exception) {} // expected: no tour / app closed
+            waitUntil("no tour", 20_000) { var r = true; scenario.onActivity { a -> r = vm(a).recState.value != null }; !r }
             db.deleteTour(id)
         }
     }

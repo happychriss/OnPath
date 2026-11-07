@@ -15,9 +15,11 @@ class RouteRowActionsTest {
         for (kind in TourKind.entries) for (rec in listOf(false, true)) for (rides in listOf(false, true))
             for (dist in listOf(false, true)) for (wp in listOf(0, 1, 2, 5)) for (marked in listOf(false, true))
                 for (canSave in listOf(false, true)) {
-                    add(RouteRowActions.of(Section.SAVED, kind, rec, rides, dist, wp, marked, canSave))
-                    add(RouteRowActions.of(Section.DRAFT, kind, rec, rides, dist, wp, marked, canSave))
-                    add(RouteRowActions.of(Section.LIVE, kind, rec, rides, dist, wp, marked, canSave))
+                    for (touring in listOf(false, true)) {
+                        add(RouteRowActions.of(Section.SAVED, kind, rec, rides, dist, wp, marked, canSave, touring))
+                        add(RouteRowActions.of(Section.DRAFT, kind, rec, rides, dist, wp, marked, canSave, touring))
+                        add(RouteRowActions.of(Section.LIVE, kind, rec, rides, dist, wp, marked, canSave, touring))
+                    }
                 }
     }
 
@@ -29,17 +31,42 @@ class RouteRowActionsTest {
     }
 
     @Test fun zuletztKeepsSaveAndDeleteOnTheRowAndNotInTheMenu() {
-        val r = RouteRowActions.of(Section.DRAFT, TourKind.PLANNED)
-        assertEquals(listOf(Action.SAVE, Action.DELETE), r.inline)
+        val r = RouteRowActions.of(Section.DRAFT, TourKind.PLANNED, waypoints = 3)
+        // owner 2026-11-07: "es muss klar sein, dass man diese Routen bearbeiten kann" – Planen first on the row
+        assertEquals(listOf(Action.PLAN, Action.SAVE, Action.DELETE), r.inline)
         assertFalse(Action.SAVE in r.menu); assertFalse(Action.DELETE in r.menu)
-        assertTrue(Action.RENAME in r.menu); assertTrue(Action.EXPORT_GPX in r.menu)
+        assertEquals(listOf(Action.GO, Action.RENAME, Action.EXPORT_GPX), r.menu)
         assertTrue("a tap opens the overview", r.opensOverview)
+    }
+
+    @Test fun savedPlannedRoutesOfferPlanenAndLosGehtsFirstInTheMenu() {
+        val plan = RouteRowActions.of(Section.SAVED, TourKind.PLANNED, waypoints = 3)
+        assertEquals(listOf(Action.PLAN, Action.GO), plan.menu.take(2))
+        assertFalse("a route without two points has nothing to follow",
+            Action.GO in RouteRowActions.of(Section.SAVED, TourKind.PLANNED, waypoints = 1).menu)
+        assertFalse("done tours stay as they were", Action.GO in RouteRowActions.of(Section.SAVED, TourKind.RECORDED).menu)
+        assertFalse(Action.PLAN in RouteRowActions.of(Section.SAVED, TourKind.IMPORTED).menu)
+    }
+
+    @Test fun duringATourNeitherPlanenNorLosGehtsIsOffered() {
+        // a tap / the overview's "Folgen" follows at once (owner 2026-11-06 22:05) – Planen would load it as the followed plan
+        for (s in listOf(Section.SAVED, Section.DRAFT)) {
+            val r = RouteRowActions.of(s, TourKind.PLANNED, waypoints = 3, touring = true)
+            assertFalse(Action.PLAN in r.inline + r.menu); assertFalse(Action.GO in r.inline + r.menu)
+        }
+        assertEquals(listOf(Action.SAVE, Action.DELETE), RouteRowActions.of(Section.DRAFT, TourKind.PLANNED, waypoints = 3, touring = true).inline)
+    }
+
+    @Test fun thePlanOnTheMapGetsNoPlanenOrLosGehts() {
+        // a tap goes back to the plan; its sheet has Los geht's
+        val tagged = RouteRowActions.of(Section.SAVED, TourKind.PLANNED, waypoints = 3, liveMarked = true)
+        assertFalse(Action.PLAN in tagged.menu); assertFalse(Action.GO in tagged.menu)
     }
 
     @Test fun savedAndDoneAreTheCleanListWithAChevronAndEverythingInTheMenu() {
         val plan = RouteRowActions.of(Section.SAVED, TourKind.PLANNED, waypoints = 3)
         assertTrue(plan.inline.isEmpty()); assertTrue(plan.chevron); assertTrue(plan.opensOverview)
-        assertEquals(listOf(Action.RENAME, Action.COPY, Action.EXPORT_GPX, Action.SHARE, Action.DELETE), plan.menu)
+        assertEquals(listOf(Action.PLAN, Action.GO, Action.RENAME, Action.COPY, Action.EXPORT_GPX, Action.SHARE, Action.DELETE), plan.menu)
         val done = RouteRowActions.of(Section.SAVED, TourKind.RECORDED, hasRides = true)
         assertTrue(done.inline.isEmpty()); assertTrue(done.chevron)
         assertEquals(listOf(Action.PLAN_FROM, Action.RENAME, Action.EXPORT_GPX, Action.EDIT_RIDES, Action.DELETE), done.menu)

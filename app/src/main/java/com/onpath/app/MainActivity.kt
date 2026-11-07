@@ -181,6 +181,10 @@ class MainActivity : ComponentActivity() {
                                 onBack = { vm.routesOpen = false },
                                 onImport = { launchImport() },
                                 onOpen = { vm.requestOpen(it) },
+                                // Los geht's (owner 2026-11-07): loaded as the plan, then the plan sheet's own start (phone check first)
+                                onGo = { t -> vm.goFromRoutes(t) {
+                                    vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.startNavigation() }
+                                } },
                                 onExport = { vm.exportTour(it) },
                                 onDelete = { vm.deleteTour(it) },
                                 onRename = { t, name -> vm.renameTour(t, name) },

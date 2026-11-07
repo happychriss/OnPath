@@ -3071,6 +3071,35 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (followIsTrack && recState.value != null) continueNavigation()
     }
 
+    /**
+     * "Los geht's" in My routes (owner 2026-11-07, [com.onpath.app.ui.routes.RoutesGo]): [t] is loaded as the plan like
+     * "Planen" (an unsaved plan on the map goes under Zuletzt – no question), then, once its line is calculated, [start]
+     * runs – the plan sheet's own Los geht's (phone check → [startNavigation]: the plan is followed, Hinführen when the
+     * start is far). During a tour it is "Folgen" ([requestOpen]).
+     */
+    fun goFromRoutes(t: Tour, start: () -> Unit) {
+        if (recState.value != null) { requestOpen(t, "Los geht's in My routes during a tour"); return }
+        Problems.trace("routes", "Los geht's on \"${t.name}\" in My routes: loaded as the plan, the tour starts once its line is there")
+        goJob?.cancel()
+        openTour(t) {
+            val loaded = waypoints.toList()
+            goJob = viewModelScope.launchSafe("app", "goFromRoutes") {
+                val step = withTimeoutOrNull(com.onpath.app.ui.routes.RoutesGo.MAX_WAIT_MS) {
+                    androidx.compose.runtime.snapshotFlow {
+                        com.onpath.app.ui.routes.RoutesGo.step(loaded, waypoints.toList(), routing, route != null, recState.value != null)
+                    }.first { it != com.onpath.app.ui.routes.RoutesGo.Step.WAIT }
+                } ?: com.onpath.app.ui.routes.RoutesGo.Step.DROP
+                if (step == com.onpath.app.ui.routes.RoutesGo.Step.START) {
+                    Problems.trace("routes", "Los geht's from My routes: the line of \"${t.name}\" is there – the normal start")
+                    start()
+                } else Problems.trace("routes", "Los geht's from My routes: no tour started for \"${t.name}\" (changed meanwhile, " +
+                    "no line, or waited too long) – the plan sheet's Los geht's stays")
+            }
+        }
+    }
+
+    private var goJob: Job? = null
+
     /** My routes ⋮ → "Als Plan übernehmen" (a done tour / track, owner 2026-11-06 F1): opened, then made a plan of it. */
     fun planFromTour(t: Tour) = unlessUnsaved("\"${t.name}\" as the plan") { openTour(t, trackThen = TrackThen.PLAN) }
 
@@ -3946,7 +3975,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * [duringTour] (a plan tapped in My routes during a tour, owner 2026-11-03 / 2026-11-06 without a question): the running tour follows the loaded route – its
      * activity stays, the plan is replaced like an edit during the tour (followEditedPlan), and the app goes to Navigate.
      */
-    fun openTour(t: Tour, duringTour: Boolean = false, trackThen: TrackThen = TrackThen.SHOW) {
+    fun openTour(t: Tour, duringTour: Boolean = false, trackThen: TrackThen = TrackThen.SHOW, planned: (() -> Unit)? = null) {
         Problems.trace("routes", "Tour ${t.id} on the map (${if (duringTour) "during the tour, " else ""}then $trackThen)")
         syncMarkSeen(t)
         viewModelScope.launchSafe("app", "openTour") {
@@ -3972,6 +4001,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 events += UiEvent.Fit(segs.flatten().map { it.toGeo() })
                 syncRoutingCheck(t, pts)
                 if (duringTour && recState.value != null) enter(AppMode.NAVIGATE)
+                planned?.invoke()
             } else {
                 // a recorded or imported tour brings its activity, like the import: the T level stays inside the
                 // tour's band, not during a tour (the followed route keeps its activity), a change is said in the
