@@ -7,17 +7,9 @@ that still apply are listed in `docs/project-status.md`. Finished work is not ke
 and the commit history.
 
 ## For the roles
-- → [donald] (owner 2026-11-06 night): **after the captain's cleanup** (wait for "Aufräumen fertig" here; pull first) – the code part
-  of the cleanup audit, then build everything (`tools/ci/gate.sh --full`, GitHub E2E) and, when green, **release v0.17.2**:
-  (1) `ui/TourBar.kt` dead tour-card UI (`TourRunningBar`, `TourControls`, `tourStatusText`, `TourStatus`, `TourStatusRow`,
-  `TourPauseEnd`, `continueLabel`) + the tests/screenshots that only keep it alive (`planMenuNavigating`, `ActivityLabelsTest`);
-  (2) `RouteDialogs.kt` `DecisionDialog` (no caller – delete unless you need it), `AppViewModel.wholeRouteShown()`,
-  `DiskIndex.inMemory`, `MapCells.packageStates`; `Panels.MapPlaceholder` → test code; (3) ignored parameters:
-  `keepGoingLabel(activity)`, `PlanCalculating.shows(…, routing)`, `german` in `Poi.title` / `Place.label` / `PoiKinds.label`;
-  (4) shared instead of copied in the planner: `longRouteText` (→ `routing/LongRoute.kt`), `Activity.navName`, `importedNote`
-  – drop the web copies + parity mirrors; (5) one `sha256` (`HttpDownload.sha256Of` = `CellApi.sha256`); (6) the 8 orphan
-  screenshots (`*_planClearDuringTour`, `*_planDiscardAskTour`, `*_routesTourBlocked`) – confirm with a record run;
-  (7) unused strings (your claim) incl. `tools/i18n/meta` entries for gone strings and `web_save_to_phone` / `web_saved_on_phone`.
+- → [donald] **Aufräumen fertig** (captain 2026-11-07): docs, tools and hooks cleaned on main – pull before you touch docs.
+  Your code part and v0.17.2 are done (thanks). Read `docs/working-agreement.md` once (claim / handoff rules live there now).
+  Delete this line when read.
 - → [cloud-web] (owner 2026-11-03, comparison card 5): **Play store screenshots** in the store pattern – a short benefit
   headline on top, the phone on OnPath green, the A-019 pictures. The owner's six headlines (final wording):
   1 "Plane in Ruhe – auch ohne Netz" · 2 "Unterwegs umplanen – ganz einfach" · 3 "Klare Ansagen an jeder Abzweigung" ·
@@ -36,8 +28,6 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
-- [captain] **Big cleanup (owner 2026-11-06 night)** – docs, tools, hooks, release notes, tracked junk; no app code. Until the line
-  "Aufräumen fertig" in "For the roles" appears: donald, leave `docs/` (except your handoff file), `tools/hooks/`, `.claude/` alone – since 2026-11-06
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
