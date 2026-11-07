@@ -16,7 +16,8 @@ import java.util.Locale
  *   GeoJSON files (MapLibre's native index grows with them) and the search entries, style loads since start (a reload
  *   must not leave the old map data behind), CPU used since the last line, janky frames while the app was on screen, map
  *   store generation, waiting downloads;
- * - a main-thread watchdog while the app is on screen: a stall over [STALL_MS] → Problems.warn with where it was.
+ * - a main-thread watchdog while the app is on screen: a stall over [STALL_MS] → Problems with where it was (WARN; INFO
+ *   at a screen's first frame – [MainStall]).
  *
  * Overhead: one sample every 10 min; one tiny message to the main thread per second while on screen; a counter per
  * drawn frame. Never throws.
@@ -155,6 +156,7 @@ object Health {
         } catch (e: Exception) {
             Problems.warn("perf", "Frame counter not available; health line without janky frames", e)
         }
+        leavingAt = 0L
         watchdogOn = true
         if (watchdog == null) startWatchdog()
     }
@@ -174,6 +176,15 @@ object Health {
     @Volatile private var watchdogOn = false
     private var watchdog: Thread? = null
     @Volatile private var answered = 0L
+    /** uptimeMillis when the newest screen was created (0 = none yet) and when the app began to be left (0 = not). */
+    @Volatile private var screenCreatedAt = 0L
+    @Volatile private var leavingAt = 0L
+
+    /** A screen (MainActivity) was created: a stall in the next [MainStall.FIRST_FRAME_MS] is its first frame. */
+    fun noteScreenCreated() { screenCreatedAt = SystemClock.uptimeMillis() }
+
+    /** The app is being left (start of onStop): a stall now is named "while leaving the app". Cleared by [attach]. */
+    fun noteLeaving() { leavingAt = SystemClock.uptimeMillis() }
 
     private fun startWatchdog() {
         val main = Handler(Looper.getMainLooper())
@@ -184,17 +195,16 @@ object Health {
                     val posted = SystemClock.uptimeMillis()
                     answered = 0L
                     main.post { answered = SystemClock.uptimeMillis() }
-                    Thread.sleep(STALL_MS)
+                    Thread.sleep(MainStall.EARLY_SAMPLE_MS)
+                    val early = if (answered == 0L) mainThreadStack() else emptyList()
+                    Thread.sleep(STALL_MS - MainStall.EARLY_SAMPLE_MS)
                     if (answered == 0L) {
-                        val where = mainThreadTop()
+                        val last = mainThreadStack()
                         // wait for the answer (at most 30 s) to know how long it was blocked
                         var waited = 0
                         while (answered == 0L && waited < 30_000) { Thread.sleep(50); waited += 50 }
-                        val blocked = (if (answered != 0L) answered else SystemClock.uptimeMillis()) - posted
-                        if (blocked > STALL_MS) {
-                            Problems.warn("perf", "Main thread blocked (in: $where)")
-                            Problems.trace("perf", "Main thread blocked $blocked ms (in: $where)")
-                        }
+                        val end = if (answered != 0L) answered else SystemClock.uptimeMillis()
+                        if (end - posted > STALL_MS) reportStall(posted, end, early, last)
                     }
                     Thread.sleep(PING_MS - STALL_MS)
                 } catch (e: InterruptedException) {
@@ -207,14 +217,23 @@ object Health {
         }, "onpath-watchdog").apply { isDaemon = true; priority = Thread.MIN_PRIORITY; start() }
     }
 
-    /** The main thread's top app frame (else its top frame) while it is blocked. */
-    private fun mainThreadTop(): String = try {
-        val st = Looper.getMainLooper().thread.stackTrace
-        (st.firstOrNull { it.className.startsWith("com.onpath.") } ?: st.firstOrNull())?.let {
-            "${it.className.substringAfterLast('.')}.${it.methodName}(${it.fileName}:${it.lineNumber})" +
-                (st.firstOrNull()?.takeIf { top -> top != it }?.let { top -> " ← ${top.className.substringAfterLast('.')}.${top.methodName}" } ?: "")
-        } ?: "?"
+    /** One stall from [posted] to [end]: first frame → INFO, leaving / other → WARN ([MainStall]); always a trace. */
+    private fun reportStall(posted: Long, end: Long, early: List<StackTraceElement>, last: List<StackTraceElement>) {
+        val created = screenCreatedAt
+        val left = leavingAt
+        val kind = MainStall.kind(
+            sinceCreatedMs = if (created == 0L) null else posted - created,
+            leaving = left != 0L && left <= end,
+        )
+        val message = MainStall.message(kind, early, last)
+        Problems.report("perf", message, level = MainStall.level(kind))
+        Problems.trace("perf", message.replaceFirst("Main thread blocked", "Main thread blocked ${end - posted} ms"))
+    }
+
+    /** The main thread's stack while it is blocked (empty = not readable). */
+    private fun mainThreadStack(): List<StackTraceElement> = try {
+        Looper.getMainLooper().thread.stackTrace.toList()
     } catch (e: Exception) {
-        Problems.info("perf", "Main thread stack not readable", e); "?"
+        Problems.info("perf", "Main thread stack not readable", e); emptyList()
     }
 }
