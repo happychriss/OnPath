@@ -209,6 +209,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun pruneDrafts(max: Int) = db.pruneDrafts(max)
         override fun loadSegments(id: Long) = db.loadSegments(id)
         override fun deleteForGood(id: Long) { db.deleteTour(id) }
+        override fun rename(id: Long, name: String) = db.rename(id, name)
     }).also { it.onClosed = { routesNote = null } } // the line at the top lasts until My routes is left
     /** My routes list (☰ → My routes) is open. */
     var routesOpen: Boolean
@@ -2859,20 +2860,29 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val stops = savedStops(pts); val pins = pinnedIndices()
         val dated = defaultName(Txt.s(Res.string.msg_name_route))
         val key = pts.map { it.lat to it.lon }
-        viewModelScope.launchSafe("app", "keepAsDraft") {
-            val name = withTimeoutOrNull(NAME_WAIT_MS) { proposeName(pts, r) } ?: dated
-            val id = withContext(Dispatchers.IO) {
-                runCatching {
-                    // not twice: no second draft with these points, none for a saved route with them (RoutesState)
-                    routes.keepDraft(key, unsaved) {
-                        db.insertTour(TourKind.PLANNED, name, act.name, level,
-                            r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
-                            listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }), stops, pinned = pins, draft = true,
-                        ).also { storePlanTimes(it, r, act) }
-                    }
-                }.onFailure { Problems.error("db", "The plan could not be kept under Zuletzt", it) }.getOrNull()
+        // written NOW, under the date name, before the plan leaves the map (tester review 2026-11-07: it waited up to 5 s
+        // for a place name in the background, and a kill in that window lost the plan). One row on the calling thread –
+        // the plan points in the prefs go with the clear right after this, so the database must hold them first.
+        val id = runCatching {
+            // not twice: no second draft with these points, none for a saved route with them (RoutesState)
+            routes.keepDraft(key, unsaved) {
+                db.insertTour(TourKind.PLANNED, dated, act.name, level,
+                    r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
+                    listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }), stops, pinned = pins, draft = true,
+                )
             }
-            if (id != null) { Problems.trace("plan", "Plan kept under Zuletzt ($why): \"$name\", ${pts.size} points"); refreshTours() }
+        }.onFailure { Problems.error("db", "The plan could not be kept under Zuletzt", it) }.getOrNull() ?: return
+        Problems.trace("plan", "Plan kept under Zuletzt ($why): \"$dated\", ${pts.size} points")
+        refreshTours()
+        // then the model times and the place name ("Algund → Meran"); nothing fits in time → the date name stays
+        viewModelScope.launchSafe("app", "nameDraft") {
+            withContext(Dispatchers.IO) { storePlanTimes(id, r, act) }
+            val proposed = withTimeoutOrNull(NAME_WAIT_MS) { proposeName(pts, r) }
+            val renamed = withContext(Dispatchers.IO) {
+                runCatching { routes.renameDraft(id, dated, proposed) }
+                    .onFailure { Problems.warn("db", "The plan under Zuletzt keeps its date name (rename failed)", it) }.getOrDefault(false)
+            }
+            if (renamed) { Problems.trace("plan", "Zuletzt: \"$dated\" → \"$proposed\""); refreshTours() }
         }
     }
 

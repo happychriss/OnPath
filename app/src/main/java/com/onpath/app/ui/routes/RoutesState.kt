@@ -26,6 +26,7 @@ interface RoutesStore {
     fun loadSegments(id: Long): List<List<TrackPoint>>
     /** Removes a tour for good (only drafts a saved route replaced – never a saved route, never the recycle bin). */
     fun deleteForGood(id: Long)
+    fun rename(id: Long, name: String)
 }
 
 /**
@@ -101,6 +102,18 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
         val gone = store.pruneDrafts(Drafts.MAX)
         if (gone > 0) Problems.trace("routes", "Zuletzt: $gone oldest plan(s) over ${Drafts.MAX} removed")
         return id
+    }
+
+    /**
+     * The place name of a draft kept under its date name [dated] came ([proposed], null = none in time): the draft takes
+     * it – unless the user renamed, saved or deleted it meanwhile (the list holds only rows outside the bin). True when
+     * renamed (blocking).
+     */
+    fun renameDraft(id: Long, dated: String, proposed: String?): Boolean {
+        val name = proposed?.trim()?.takeIf { it.isNotEmpty() && it != dated } ?: return false
+        if (store.listTours().none { it.id == id && it.draft && it.name == dated }) return false
+        store.rename(id, name)
+        return true
     }
 
     /**

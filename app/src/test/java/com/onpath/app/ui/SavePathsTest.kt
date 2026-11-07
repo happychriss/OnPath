@@ -45,6 +45,20 @@ class SavePathsTest {
         assertTrue("a mode switch still closes Save's dialog", vm.contains("if (saveAsk != null) cancelSave()"))
     }
 
+    /**
+     * Tester review 2026-11-07: the draft is written BEFORE the plan leaves the map – not after a wait of up to 5 s for a
+     * place name in the background (a kill in that window lost the plan). The name follows (RoutesFlowPropertyTest
+     * .theDraftIsWrittenBeforeTheNameAndANameThatNeverComesLosesNothing).
+     */
+    @Test fun theDraftIsWrittenBeforeThePlanLeavesTheMap() {
+        val keep = body("private fun keepAsDraft(why: String) {")
+        val write = keep.indexOf("routes.keepDraft(")
+        assertTrue(keep, write >= 0)
+        assertTrue("written before any background work", keep.indexOf("launchSafe") < 0 || write < keep.indexOf("launchSafe"))
+        assertTrue("written before the name wait", write < keep.indexOf("NAME_WAIT_MS"))
+        assertTrue("the place name follows as a rename", keep.contains("routes.renameDraft("))
+    }
+
     /** Way 2: the ride summary has no plan part – nor does any end sheet now. */
     @Test fun theRideSummaryOffersNoPlanSave() {
         val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()

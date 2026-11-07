@@ -11,6 +11,7 @@ import com.onpath.app.ui.Drafts
 import com.onpath.app.ui.OpenAsk
 import com.onpath.app.ui.RoutesTab
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -31,9 +32,9 @@ class RoutesFlowPropertyTest {
         val rows = linkedMapOf<Long, Tour>()
         val removedForGood = mutableSetOf<Long>()
         private var next = 1L
-        fun insert(kind: TourKind, key: List<Pair<Double, Double>>, draft: Boolean): Long {
+        fun insert(kind: TourKind, key: List<Pair<Double, Double>>, draft: Boolean, name: String? = null): Long {
             val id = next++
-            rows[id] = Tour(id, kind, "t$id", createdMs = id, activity = "HIKE", sac = 2, distanceM = 100.0 * key.size,
+            rows[id] = Tour(id, kind, name ?: "t$id", createdMs = id, activity = "HIKE", sac = 2, distanceM = 100.0 * key.size,
                 ascentM = 0.0, descentM = 0.0, durationS = 0.0, state = "done",
                 waypoints = key.map { GpxWaypoint(it.first, it.second, null) }, draft = draft)
             return id
@@ -54,6 +55,7 @@ class RoutesFlowPropertyTest {
         override fun loadSegments(id: Long): List<List<TrackPoint>> =
             listOf(rows[id]?.waypoints?.map { TrackPoint(it.lat, it.lon, null) } ?: emptyList())
         override fun deleteForGood(id: Long) = removeForGood(id)
+        override fun rename(id: Long, name: String) { rows[id]?.let { rows[id] = it.copy(name = name) } }
     }
 
     private enum class Op { EDIT, SAVE_PLAN, CLEAR, LOAD, SAVE_DRAFT, DELETE, OVERVIEW_CANCEL, TOUR, OPEN_CLOSE, RESTART }
@@ -260,6 +262,48 @@ class RoutesFlowPropertyTest {
         assertNull(r.keepDraft(key, unsaved = true) { store.insert(TourKind.PLANNED, key, draft = true) })
         assertNull("one point is no plan", r.keepDraft(listOf(0.0 to 0.0), unsaved = true) { error("no insert") })
         assertNull("a saved plan unchanged is no draft", r.keepDraft(listOf(0.02 to 0.0, 0.03 to 0.0), unsaved = false) { error("no insert") })
+    }
+
+    /**
+     * Tester review 2026-11-07: "✕ Neu planen" / the tour end waited up to 5 s for a place name before the draft was
+     * written – a kill in that window lost the plan. Now the row is written at once under the date name; the place name
+     * follows ([RoutesState.renameDraft]) – and a lookup that never returns leaves the draft as it is.
+     */
+    @Test fun theDraftIsWrittenBeforeTheNameAndANameThatNeverComesLosesNothing() {
+        val store = FakeStore(); val r = RoutesState(store)
+        val key = listOf(0.0 to 0.0, 0.01 to 0.01)
+        val dated = "Route 7 Nov 2026, 10:12"
+        val id = r.keepDraft(key, unsaved = true) { store.insert(TourKind.PLANNED, key, draft = true, name = dated) }!!
+        // the row is there now – before any name lookup started (the map is cleared after this call)
+        assertEquals(listOf(dated), store.listTours().filter { it.draft }.map { it.name })
+        // the lookup never returns: the wait ends, nothing is renamed, the draft stays
+        val proposed = kotlinx.coroutines.runBlocking {
+            kotlinx.coroutines.withTimeoutOrNull<String>(50) { kotlinx.coroutines.awaitCancellation() }
+        }
+        assertFalse(r.renameDraft(id, dated, proposed))
+        assertEquals(dated, store.rows[id]!!.name); assertTrue(store.rows[id]!!.draft)
+        // a name that comes: the draft takes it
+        assertTrue(r.renameDraft(id, dated, "Algund → Meran"))
+        assertEquals("Algund → Meran", store.rows[id]!!.name)
+    }
+
+    /** The place name comes late: a draft the user renamed, saved or deleted meanwhile keeps what the user did. */
+    @Test fun aLateNameNeverOverwritesWhatTheUserDid() {
+        val store = FakeStore(); val r = RoutesState(store)
+        val dated = "Route 7 Nov 2026, 10:12"
+        val a = r.keepDraft(listOf(0.0 to 0.0, 0.01 to 0.01), unsaved = true) {
+            store.insert(TourKind.PLANNED, listOf(0.0 to 0.0, 0.01 to 0.01), draft = true, name = dated) }!!
+        store.rename(a, "Mine")
+        assertFalse(r.renameDraft(a, dated, "Algund → Meran")); assertEquals("Mine", store.rows[a]!!.name)
+        val b = r.keepDraft(listOf(0.02 to 0.0, 0.03 to 0.0), unsaved = true) {
+            store.insert(TourKind.PLANNED, listOf(0.02 to 0.0, 0.03 to 0.0), draft = true, name = dated) }!!
+        r.saveDraft(b)
+        assertFalse("saved meanwhile: the user's route now", r.renameDraft(b, dated, "Algund → Meran"))
+        val c = r.keepDraft(listOf(0.04 to 0.0, 0.05 to 0.0), unsaved = true) {
+            store.insert(TourKind.PLANNED, listOf(0.04 to 0.0, 0.05 to 0.0), draft = true, name = dated) }!!
+        r.toBin(c)
+        assertFalse("in the bin: not touched", r.renameDraft(c, dated, "Algund → Meran"))
+        assertFalse("blank / same name: nothing to do", r.renameDraft(a, "Mine", " "))
     }
 
     @Test fun theSavedBoxOpensDoneWithTheTourMarkedAndClosingClearsIt() {
