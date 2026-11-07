@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 fun BackToNavigationButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val desc = Txt.s(Res.string.plan_back_nav_desc)
     Button(colors = ActionButtons.go(), onClick = onClick,
-        modifier = modifier.fillMaxWidth().heightIn(min = 48.dp).semantics { contentDescription = desc }) {
+        modifier = modifier.fillMaxWidth().heightIn(min = PlanFoot.HEIGHT).semantics { contentDescription = desc }) {
         Icon(Icons.Filled.Navigation, null, Modifier.size(22.dp))
         Spacer(Modifier.width(8.dp))
         Text(Txt.s(Res.string.plan_back_nav), style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false,
