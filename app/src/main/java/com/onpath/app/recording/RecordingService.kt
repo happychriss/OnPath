@@ -1322,8 +1322,9 @@ class RecordingService : Service() {
 
     private fun tourTimes(): com.onpath.app.time.TourTimes = trip.tourTimes(elapsedS.toDouble())
 
+    /** The tour's stored activity; nothing stored → Hike, an unknown name → Hike with a warning (audit 2026-11-07). */
     private fun activityOf(name: String?) =
-        runCatching { com.onpath.app.routing.Activity.valueOf(name!!) }.getOrDefault(com.onpath.app.routing.Activity.HIKE)
+        com.onpath.app.debug.enumOr(name, com.onpath.app.routing.Activity.HIKE, "recording")
 
     /** Activity the times are computed for: the navigated session's, else the recording's. */
     private fun timeActivity() = navigator?.session?.activity ?: recActivity

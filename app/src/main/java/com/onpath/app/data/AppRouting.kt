@@ -19,7 +19,8 @@ object AppRouting {
     }
 
     private val listeners = CopyOnWriteArraySet<Listener>()
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO +
+        com.onpath.app.debug.problemsHandler("routing", "Unexpected error while loading routing data"))
     @Volatile private var instance: RoutingDataLoader? = null
 
     /** The loader when it was created already (health line), else null – never creates it. */

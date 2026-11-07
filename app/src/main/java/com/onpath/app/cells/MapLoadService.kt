@@ -35,7 +35,8 @@ import kotlinx.coroutines.launch
  * the progress. It ends by itself when nothing is loading any more, after [MAX_MS], or when a tour starts.
  */
 class MapLoadService : Service() {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default +
+        com.onpath.app.debug.problemsHandler("cells", "Unexpected error in the map loading service"))
     private var wakeLock: PowerManager.WakeLock? = null
     private var started = false
 

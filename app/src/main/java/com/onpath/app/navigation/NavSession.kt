@@ -182,10 +182,10 @@ class NavSessionStore(private val file: File) {
             }?.takeIf { it.size >= 2 }
             val visited = o.optJSONArray("visited")?.let { a -> (0 until a.length()).map { a.getInt(it) }.toSet() }.orEmpty()
             return NavSession(
-                // expected: missing / unknown enum names (older files) fall back to defaults
-                kind = runCatching { NavKind.valueOf(o.getString("kind")) }.getOrDefault(NavKind.TRACK),
+                // missing / unknown enum names (older files) fall back to defaults – warned once (audit 2026-11-07)
+                kind = com.onpath.app.debug.enumOr(o.optString("kind").ifEmpty { null }, NavKind.TRACK, "navigation"),
                 name = o.optString("name", "Route"),
-                activity = runCatching { Activity.valueOf(o.getString("activity")) }.getOrDefault(Activity.HIKE),
+                activity = com.onpath.app.debug.enumOr(o.optString("activity").ifEmpty { null }, Activity.HIKE, "navigation"),
                 sac = o.optInt("sac", 3),
                 original = original, stops = stops, current = current,
                 spliceAtM = o.optDouble("spliceAt", 0.0), resumeAlongM = o.optDouble("resumeAlong", 0.0),
