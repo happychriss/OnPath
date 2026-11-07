@@ -360,6 +360,12 @@ and the commit history.
 
 ## Waiting for the owner
 <!-- Owner 2026-11-07: open questions to the owner live here (who, date, question, recommendation first); asked in the session's chat; whoever acts on the answer deletes the line. -->
+- **[donald] Only our signed apps on the map server? (owner 2026-11-07, chat)** – App Links need no per-phone step
+  (one fingerprint per signing key: GitHub test key + Play App Signing key, both in `web/host` assetlinks). Server
+  access cannot be tied to our signature without Google Play Integrity (needs Play Services – against the "no Google
+  Play Services" rule – and locks out GitHub / F-Droid builds); a key in the APK or an in-app signature check is easy to
+  strip from a rebuild. Recommendation: per-phone / per-IP quotas, rotatable key, supporter code
+  (`docs/design/map-access.md`); Play Integrity only for building new cells if abuse shows up. Owner decides.
 - **[donald] Bike turn cue: heard 6 s before the turn – OK? (donald 2026-11-07)** – the owner asked for 2–3 s. His ride
   (tour 217) shows the normal "Gleich …" was already heard 4–5 s before; what felt late were swallowed / held turns
   ("danach" turns never said on their own, a turn waiting 3 s behind "Stopp 2 erreicht", arrival before the last turn) –
