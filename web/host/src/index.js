@@ -22,7 +22,8 @@ import { handleMaps, purgeQuota, ipHash } from "./maps.js";
 export const ASSET_LINKS = JSON.stringify([{
   relation: ["delegate_permission/common.handle_all_urls"],
   target: { namespace: "android_app", package_name: "com.onpath.app",
-    sha256_cert_fingerprints: ["21:F8:7F:27:34:AA:30:2E:9F:82:C5:8E:56:F3:B0:17:5E:20:D1:01:E2:FA:29:2A:D1:D3:31:DD:77:16:6D:C7"] },
+    sha256_cert_fingerprints: ["21:F8:7F:27:34:AA:30:2E:9F:82:C5:8E:56:F3:B0:17:5E:20:D1:01:E2:FA:29:2A:D1:D3:31:DD:77:16:6D:C7",
+      "D9:16:09:F5:65:60:CC:F9:3A:D5:A2:9B:97:41:8E:49:6E:35:DC:67:86:63:C1:80:56:16:52:D6:10:2A:D8:C3"] },
 }]);
 
 const RD5 = /^\/segments\/([EW]\d{1,3}_[NS]\d{1,2}\.rd5)$/;
