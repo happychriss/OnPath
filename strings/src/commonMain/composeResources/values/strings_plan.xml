@@ -91,7 +91,6 @@
     <string name="plan_show_route_details">Show route details</string>
     <string name="plan_elevation_profile">Elevation profile</string>
     <string name="plan_start_navigation_for">Let’s go · %1$s</string>
-    <string name="plan_continue_navigation_for">Continue · %1$s</string>
     <string name="plan_start_recording_for">Let’s go · no route</string>
     <string name="plan_save_route">Save plan</string>
     <string name="plan_time_details">Time details</string>
@@ -100,13 +99,7 @@
     <string name="plan_bar_carry_on">Carry on</string>
     <string name="plan_carry_on_for">Carry on · %1$s</string>
     <string name="plan_bar_save">Save</string>
-    <string name="plan_clear_desc">Clear plan</string>
-    <string name="plan_start_short">Start</string>
     <string name="plan_sheet_expand">Show route summary</string>
-    <plurals name="plan_hint_count">
-        <item quantity="one">%1$d route hint</item>
-        <item quantity="other">%1$d route hints</item>
-    </plurals>
     <string name="plan_discard_title">Discard changes?</string>
     <string name="plan_discard">Discard</string>
     <string name="plan_activity_chip_desc">Activity: %1$s. Tap to change</string>
@@ -202,13 +195,11 @@
     <string name="plan_resize_panel">Resize panel</string>
     <string name="plan_sheet_bigger">Make the panel bigger</string>
     <string name="plan_sheet_smaller">Make the panel smaller</string>
-    <string name="plan_slide_change_route">Change plan</string>
     <!-- the green way back to Navigate during a tour, at the bottom of the plan (owner 2026-11-06, C) -->
     <string name="plan_back_nav">Let’s go on</string>
     <string name="plan_back_nav_desc">Let’s go on – back to navigation</string>
     <!-- after "Save tour": a line instead of the box "Tour saved" (owner 2026-11-06, onpath.private#35) -->
     <string name="plan_mode_label">Plan</string>
-    <string name="plan_switch_to_plan">Switch to plan mode</string>
     <string name="plan_stat_distance">Distance</string>
     <string name="plan_stat_ascent">Ascent</string>
     <string name="plan_stat_descent">Descent</string>
@@ -265,13 +256,9 @@
     <string name="plan_slow_title">This route is long and takes a while.</string>
     <string name="plan_slow_text">Keep waiting?</string>
     <string name="plan_slow_wait">Keep waiting</string>
-    <string name="plan_clear_tour_title">Clear plan?</string>
-    <string name="plan_clear_tour_text">Your tour goes on and keeps recording.</string>
-    <string name="plan_clear_tour_confirm">Clear plan</string>
     <string name="plan_hint_tour_goes_on">Tour goes on – set new points or tap Let’s go on below.</string>
     <string name="plan_save_ask_title">Save plan?</string>
     <string name="plan_save_ask_text_named">“%1$s” has changes that are not saved yet.</string>
     <string name="plan_save_ask_text">Your plan is not saved yet.</string>
-    <string name="plan_tour_goes_on">Your tour goes on.</string>
     <string name="plan_menu_record_without_plan">Record without a plan</string>
 </resources>

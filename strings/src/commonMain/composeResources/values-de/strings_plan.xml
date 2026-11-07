@@ -90,7 +90,6 @@
     <string name="plan_show_route_details">Routendetails anzeigen</string>
     <string name="plan_elevation_profile">Höhenprofil</string>
     <string name="plan_start_navigation_for">Los geht’s · %1$s</string>
-    <string name="plan_continue_navigation_for">Weiter · %1$s</string>
     <string name="plan_start_recording_for">Los geht’s · ohne Route</string>
     <string name="plan_save_route">Plan speichern</string>
     <string name="plan_time_details">Zeitdetails</string>
@@ -99,13 +98,7 @@
     <string name="plan_bar_carry_on">Weiter geht’s</string>
     <string name="plan_carry_on_for">Weiter geht’s · %1$s</string>
     <string name="plan_bar_save">Speichern</string>
-    <string name="plan_clear_desc">Plan löschen</string>
-    <string name="plan_start_short">Start</string>
     <string name="plan_sheet_expand">Routenübersicht zeigen</string>
-    <plurals name="plan_hint_count">
-        <item quantity="one">%1$d Hinweis zur Route</item>
-        <item quantity="other">%1$d Hinweise zur Route</item>
-    </plurals>
     <string name="plan_discard_title">Änderungen verwerfen?</string>
     <string name="plan_discard">Verwerfen</string>
     <string name="plan_activity_chip_desc">Aktivität: %1$s. Tippen zum Ändern</string>
@@ -201,13 +194,11 @@
     <string name="plan_resize_panel">Größe ändern</string>
     <string name="plan_sheet_bigger">Blatt vergrößern</string>
     <string name="plan_sheet_smaller">Blatt verkleinern</string>
-    <string name="plan_slide_change_route">Plan ändern</string>
     <!-- the green way back to Navigate during a tour, at the bottom of the plan (owner 2026-11-06, C) -->
     <string name="plan_back_nav">Weiter geht’s</string>
     <string name="plan_back_nav_desc">Weiter geht’s – zurück zur Navigation</string>
     <!-- after "Tour speichern": a line instead of the box "Tour gespeichert" (owner 2026-11-06, onpath.private#35) -->
     <string name="plan_mode_label">Planen</string>
-    <string name="plan_switch_to_plan">Zum Planen wechseln</string>
     <string name="plan_stat_distance">Strecke</string>
     <string name="plan_stat_ascent">Aufstieg</string>
     <string name="plan_stat_descent">Abstieg</string>
@@ -264,13 +255,9 @@
     <string name="plan_slow_title">Die Route ist lang, die Berechnung dauert.</string>
     <string name="plan_slow_text">Weiter warten?</string>
     <string name="plan_slow_wait">Weiter warten</string>
-    <string name="plan_clear_tour_title">Plan leeren?</string>
-    <string name="plan_clear_tour_text">Deine Tour läuft weiter und wird weiter aufgezeichnet.</string>
-    <string name="plan_clear_tour_confirm">Plan leeren</string>
     <string name="plan_hint_tour_goes_on">Tour läuft weiter – setz neue Punkte oder tippe unten auf Weiter geht’s.</string>
     <string name="plan_save_ask_title">Plan speichern?</string>
     <string name="plan_save_ask_text_named">„%1$s“ hat Änderungen, die noch nicht gespeichert sind.</string>
     <string name="plan_save_ask_text">Dein Plan ist noch nicht gespeichert.</string>
-    <string name="plan_tour_goes_on">Deine Tour läuft weiter.</string>
     <string name="plan_menu_record_without_plan">Ohne Plan aufzeichnen</string>
 </resources>

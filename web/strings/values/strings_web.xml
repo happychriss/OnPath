@@ -224,8 +224,6 @@
     <string name="web_phone_fill_use">Mailbox: %1$d of %2$d entries (deleted ones count too)</string>
     <string name="web_pair_other">Pair another phone</string>
     <!-- Save, Phone, My routes as the owner wants them shown (docs/design/web-sync.md §14.6) -->
-    <string name="web_save_to_phone">Save to phone</string>
-    <string name="web_saved_on_phone">On the phone</string>
     <string name="web_saved_title_here">Everything is saved in this browser</string>
     <string name="web_saved_title_phone">Everything is on %1$s</string>
     <string name="web_phone_synced_ago">synced %1$s</string>

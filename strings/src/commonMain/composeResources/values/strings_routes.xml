@@ -16,7 +16,6 @@
     <string name="routes_activity_title">Activity</string>
     <string name="routes_sac_title">Hiking difficulty (SAC)</string>
     <string name="routes_sac_button_desc">T%1$d · %2$s</string>
-    <string name="routes_sac_line">T%1$d · %2$s – %3$s</string>
     <string name="routes_sac_1_name">Hiking</string>
     <string name="routes_sac_1_text">Well-built path, flat or slightly steep. No fall risk. Trainers are enough.</string>
     <string name="routes_sac_2_name">Mountain hiking</string>
@@ -47,10 +46,6 @@
     <string name="routes_export_all">Export all (ZIP)</string>
     <string name="routes_options_desc">Options for “%1$s”</string>
     <string name="routes_edit_rides">Edit rides</string>
-    <string name="routes_delete_title">Delete “%1$s”?</string>
-    <string name="routes_replace_title">Replace current plan?</string>
-    <string name="routes_replace_text">Your current plan is not saved. Save it first, or replace it with the plan you picked.</string>
-    <string name="routes_save_first">Save first</string>
     <string name="routes_name_label">Name</string>
 
     <string name="routes_unfinished_title">Interrupted tour</string>
@@ -62,7 +57,6 @@
     <string name="routes_gpx_empty">The file is empty or not a GPX file.</string>
     <string name="routes_gpx_nothing">No track, route or waypoint found in this file.</string>
     <string name="routes_gpx_too_large">The file is larger than %1$d MB.</string>
-    <string name="routes_replace_text_link">Your current plan is not saved. Save it first, or replace it with the plan from the link.</string>
     <string name="routes_tag_new">New</string>
     <string name="routes_tag_changed">Changed</string>
     <string name="routes_tag_live">In progress</string>

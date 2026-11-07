@@ -776,49 +776,12 @@
     "priority": 1,
     "confidence": "sicher"
   },
-  "nav_keep_going": {
-    "area": "Navigate",
-    "context": "Button in the arrival dialog: do not end the tour",
-    "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "'Weitermachen' – alternative 'Nicht beenden'",
-    "max": 16
-  },
   "nav_continue": {
     "area": "Tour card (Plan)",
     "context": "Main button of the tour card: back to navigation",
     "priority": 1,
     "confidence": "sicher",
     "max": 16
-  },
-  "nav_continue_as": {
-    "area": "Tour card (Plan)",
-    "context": "Main button of the tour card: %1$s = activity ('Continue · Gravel bike')",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 30,
-    "decided": "Owner 2026-10-26: short MTB / E-MTB on buttons"
-  },
-  "nav_tour_running": {
-    "area": "Tour card (Plan)",
-    "context": "Status line of the tour card: %1$s = distance, %2$s = elapsed clock",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 40
-  },
-  "nav_tour_paused": {
-    "area": "Tour card (Plan)",
-    "context": "Status line of the tour card while paused",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 40
-  },
-  "nav_end_tour": {
-    "area": "Tour card (Plan)",
-    "context": "Red button on the tour card (asks first)",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 14
   },
   "nav_route_back_title": {
     "area": "Tour card (Plan)",
@@ -1242,52 +1205,6 @@
     "priority": 3,
     "confidence": "sicher"
   },
-  "nav_tour_record_only": {
-    "area": "Tour card (Plan)",
-    "context": "Status line of a running tour after the route guidance was ended (all points deleted / Just record); %1$s distance, %2$s time",
-    "priority": 3,
-    "confidence": "sicher"
-  },
-  "nav_slide_unlock": {
-    "area": "Navigate",
-    "context": "Navigate's slider (owner 2026-11-05): it only unlocks the screen for changes; shown after a '»' sign",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 16
-  },
-  "nav_slide_unlock_desc": {
-    "area": "Navigate",
-    "context": "TalkBack name of the slider during a recording: what the slide unlocks",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "nav_slide_unlock_desc_plan": {
-    "area": "Navigate",
-    "context": "TalkBack name of the slider without a recording (only Change plan behind it)",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "nav_slide_unlock_sub": {
-    "area": "Navigate",
-    "context": "Navigate's slider, small second line under 'Entsperren' (owner 2026-11-06, flow map N2): what the slider unlocks while a tour records; dropped when it does not fit",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 28
-  },
-  "nav_slide_unlock_sub_plan": {
-    "area": "Navigate",
-    "context": "Navigate's slider without a recording, small second line under 'Entsperren': only the plan is behind it",
-    "priority": 2,
-    "confidence": "sicher",
-    "max": 16
-  },
-  "nav_slide_unlock_sub_paused": {
-    "area": "Navigate",
-    "context": "Navigate's slider while the tour is paused and the screen locked (owner 2026-11-06): small second line under 'Entsperren' – what the slider unlocks",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 30
-  },
   "nav_leave_title": {
     "area": "Navigate",
     "context": "Question box in Navigate when Android's back is pressed while a tour records (owner 2026-11-06, flow map N4): title",
@@ -1329,18 +1246,6 @@
     "confidence": "sicher",
     "max": 20
   },
-  "nav_keep_hiking": {
-    "area": "Navigate",
-    "context": "The way back from the end-of-tour sheet on foot (owner 2026-11-05: names what you do)",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "nav_keep_riding": {
-    "area": "Navigate",
-    "context": "The way back from the end-of-tour sheet on any bike",
-    "priority": 1,
-    "confidence": "sicher"
-  },
   "nav_delete_tour": {
     "area": "Navigate",
     "context": "Quiet red text button in the end sheet: the tour goes to the recycle bin, no second question",
@@ -1356,24 +1261,6 @@
   "nav_end_section_plan": {
     "area": "Navigate",
     "context": "Section caption (blue dot) in the end sheet: the changed plan",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "nav_end_stat_distance": {
-    "area": "Navigate",
-    "context": "Small label under the distance in the end sheet",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "nav_end_stat_time": {
-    "area": "Navigate",
-    "context": "Small label under the time in the end sheet",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "nav_end_stat_ascent": {
-    "area": "Navigate",
-    "context": "Small label under the ascent in the end sheet",
     "priority": 1,
     "confidence": "sicher"
   },

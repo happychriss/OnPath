@@ -357,14 +357,6 @@
     "max": 34,
     "decided": "Owner 2026-10-26: short MTB / E-MTB on buttons"
   },
-  "plan_continue_navigation_for": {
-    "area": "Plan sheet",
-    "context": "Main button while a tour records. %1$s = activity name",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 34,
-    "decided": "Owner 2026-10-26: short MTB / E-MTB on buttons"
-  },
   "plan_start_recording_for": {
     "area": "Plan sheet",
     "context": "Main button (plan sheet / track panel) when there is nothing to follow: starts a plain recording, no navigation. %1$s = activity name",
@@ -417,13 +409,6 @@
     "priority": 1,
     "confidence": "sicher",
     "max": 12
-  },
-  "plan_clear_desc": {
-    "area": "Plan sheet",
-    "context": "TalkBack name of the icon-only ✕ in the plan sheet (no visible text): empties the plan; an unsaved plan asks first, a saved route stays in My routes",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 24
   },
   "plan_discard_title": {
     "area": "Plan sheet",
@@ -939,20 +924,6 @@
     "priority": 3,
     "confidence": "sicher"
   },
-  "plan_slide_change_route": {
-    "area": "Navigate",
-    "context": "The Navigate slider's only line while no recording runs (Pause / End make no sense then)",
-    "priority": 2,
-    "confidence": "sicher",
-    "max": 16,
-    "decided": "Owner 2026-10-31: \"Change route\" / \"Route ändern\""
-  },
-  "plan_switch_to_plan": {
-    "area": "Navigate",
-    "context": "Accessibility action of the slider",
-    "priority": 3,
-    "confidence": "sicher"
-  },
   "plan_stat_distance": {
     "area": "Dialogs",
     "context": "Stat label (tour summary)",
@@ -1287,24 +1258,6 @@
     "priority": 1,
     "confidence": "sicher"
   },
-  "plan_clear_tour_title": {
-    "area": "Plan",
-    "context": "Question title when ✕ Neu planen is tapped during a running tour",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "plan_clear_tour_text": {
-    "area": "Plan",
-    "context": "Body of the clear-plan question during a tour",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "plan_clear_tour_confirm": {
-    "area": "Plan",
-    "context": "The answer that clears the plan during a tour (no unsaved changes)",
-    "priority": 1,
-    "confidence": "sicher"
-  },
   "plan_hint_tour_goes_on": {
     "area": "Plan",
     "context": "The empty plan sheet during a tour: set new points, or tap the green \"Navigation\" button at the bottom",
@@ -1326,12 +1279,6 @@
   "plan_save_ask_text": {
     "area": "Plan",
     "context": "Text of \"Save plan?\" for a new plan",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "plan_tour_goes_on": {
-    "area": "Plan",
-    "context": "Added line in \"Save plan?\" during a running tour",
     "priority": 1,
     "confidence": "sicher"
   },

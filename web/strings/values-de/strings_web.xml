@@ -208,8 +208,6 @@
     <string name="web_phone_fill_use">Postfach: %1$d von %2$d Einträgen (gelöschte zählen mit)</string>
     <string name="web_pair_other">Anderes Handy verbinden</string>
     <!-- Save, Phone, My routes as the owner wants them shown (docs/design/web-sync.md §14.6) -->
-    <string name="web_save_to_phone">Aufs Handy sichern</string>
-    <string name="web_saved_on_phone">Auf dem Handy</string>
     <string name="web_saved_title_here">Alles ist in diesem Browser gespeichert</string>
     <string name="web_saved_title_phone">Alles ist auf %1$s gesichert</string>
     <string name="web_phone_synced_ago">abgeglichen %1$s</string>
