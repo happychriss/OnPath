@@ -938,7 +938,7 @@ Problems found while making the browser plan exactly like the phone, and the spe
   family (cards 20 px, small 12 px, pills round), the compass ink blue / walnut grey (no red), the goal as a white flag on the
   map, in the points list and the point menu, locate without the GPS dot and greyed without a position (the app's PlanGps),
   the pin card's „Mehr“ on PaperDim. Not yet (backlog): Meine Touren's „In Bearbeitung“ row, the small route preview per row
-  and the large overview (app 01b38ffa / cb791053 / ce27c111), the route drawing itself in 0.5 s (RouteReveal), the
+  and the large overview, rows as tile + name + facts + › with every action in ⋮ (app 01b38ffa / cb791053 / ce27c111 / e570e467), the route drawing itself in 0.5 s (RouteReveal), the
   profile's fill (ProfileFill) – the last comes with the plan sheet rebuild. Phone-only: Navigate's ⚙ settings, lock line,
   tour controller / RoutesState refactors, accuracy circle only in Navigate, Prefs.
 

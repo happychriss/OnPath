@@ -7,7 +7,7 @@
       "web": [
         "web/app/src/activity.ts"
       ],
-      "blob": "49cba664588a5d32f314e7b6743c824020ebb11c"
+      "blob": "3852cf639e7398c4ce892bf74bdb6e67e73f5cee"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
