@@ -57,7 +57,7 @@
       "web": [
         "web/app/src/plans.ts"
       ],
-      "blob": "94ce1ead8517b38dd420d609077f21228282a0b3"
+      "blob": "b517fe93c91ee4855569673b38e1c0ba7e25d9e7"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapFooter.kt",
@@ -154,7 +154,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "fd6e37d3e1d77b9c6ca0322c92acf94260055d9c"
+      "blob": "ef4e528658032cf3095dd4753fe489054d76380a"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
