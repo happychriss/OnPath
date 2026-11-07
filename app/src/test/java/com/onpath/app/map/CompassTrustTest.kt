@@ -1,5 +1,6 @@
 package com.onpath.app.map
 
+import com.onpath.app.data.Geo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -104,7 +105,7 @@ class CompassTrustTest {
         var last: Double? = null
         repeat(60) { f.onUntrustedSensor(20_000L + it * 60)?.let { h -> last = h } }
         assertNotNull(last)
-        assertTrue(kotlin.math.abs(HeadingFilter.diff(f.heading!!, 0.0)) < HeadingFilter.DEADBAND_DEG + 0.1)
+        assertTrue(kotlin.math.abs(Geo.angleDiff(f.heading!!, 0.0)) < HeadingFilter.DEADBAND_DEG + 0.1)
         // that direction is old after MOVE_VALID_MS: held again
         val held = f.heading
         assertNull(f.onUntrustedSensor(20_000L + HeadingFilter.MOVE_VALID_MS + 1))

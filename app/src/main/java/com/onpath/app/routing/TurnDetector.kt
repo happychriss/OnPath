@@ -4,9 +4,6 @@ import com.onpath.strings.*
 
 import com.onpath.app.data.Geo
 import kotlin.math.abs
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
 
 /** A direction change on a followed line (Navigate: "next turn" arrow and hint). */
 data class Turn(
@@ -78,9 +75,9 @@ object TurnDetector {
             val before = pointAt(points, cum, cum[i] - back)
             val after = pointAt(points, cum, cum[i] + ahead)
             if (Geo.distance(before, points[i]) < 1.0 || Geo.distance(points[i], after) < 1.0) continue
-            val bIn = bearing(before, points[i])
-            val bOut = bearing(points[i], after)
-            val a = diff(bIn, bOut)
+            val bIn = Geo.bearing(before, points[i])
+            val bOut = Geo.bearing(points[i], after)
+            val a = Geo.angleDiff(bIn, bOut)
             if (abs(a) >= MIN_ANGLE) cands += Cand(i, bIn, bOut, a)
         }
         if (cands.isEmpty()) return emptyList()
@@ -96,7 +93,7 @@ object TurnDetector {
             val run = cands.subList(start, k)
             val peak = run.maxBy { abs(it.angle) }
             val first = run.first(); val last = run.last()
-            var net = diff(first.bIn, last.bOut)
+            var net = Geo.angleDiff(first.bIn, last.bOut)
             // same side all along: more than 180° in total wraps to the other side – keep the side, cap at 180
             if (run.size > 1 && (net > 0) != (peak.angle > 0)) net = if (peak.angle > 0) 180.0 else -180.0
             if (abs(net) < abs(peak.angle)) net = peak.angle   // a bend that partly unwinds: the peak tells more
@@ -122,22 +119,6 @@ object TurnDetector {
         return if (d <= maxAheadM) t to d else null
     }
 
-    /** Compass bearing a → b in degrees [0, 360). */
-    fun bearing(a: GeoPoint, b: GeoPoint): Double {
-        val la1 = Math.toRadians(a.lat); val la2 = Math.toRadians(b.lat)
-        val dLon = Math.toRadians(b.lon - a.lon)
-        val y = sin(dLon) * cos(la2)
-        val x = cos(la1) * sin(la2) - sin(la1) * cos(la2) * cos(dLon)
-        return (Math.toDegrees(atan2(y, x)) + 360.0) % 360.0
-    }
-
-    /** Signed difference to − from in (-180, 180]. */
-    fun diff(from: Double, to: Double): Double {
-        var d = (to - from) % 360.0
-        if (d > 180) d -= 360.0
-        if (d <= -180) d += 360.0
-        return d
-    }
 
     private fun pointAt(points: List<GeoPoint>, cum: DoubleArray, d: Double): GeoPoint {
         if (d <= 0) return points.first()

@@ -362,7 +362,7 @@ class OffRouteDetector(
     }
 
     /** Walking direction (degrees from north) over the last [HEADING_M]; null = not moving. */
-    fun heading(): Double? = move()?.let { m -> recent.lastOrNull()?.let { TurnDetector.bearing(m.from, it.point) } }
+    fun heading(): Double? = move()?.let { m -> recent.lastOrNull()?.let { Geo.bearing(m.from, it.point) } }
 
     companion object {
         /**

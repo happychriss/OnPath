@@ -1,5 +1,6 @@
 package com.onpath.app.routing
 
+import com.onpath.app.data.Geo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -39,7 +40,7 @@ class TurnDetectorTest {
         assertEquals(TurnKind.RIGHT, turn.kind)
         assertEquals(200.0, turn.distanceFromStart, 6.0)
         assertEquals(90.0, turn.bearingOut, 5.0)
-        assertEquals(0.0, abs(TurnDetector.diff(0.0, turn.bearingIn)), 5.0)
+        assertEquals(0.0, abs(Geo.angleDiff(0.0, turn.bearingIn)), 5.0)
     }
 
     @Test fun sparseVerticesLeftTurn() {
@@ -122,8 +123,8 @@ class TurnDetectorTest {
     }
 
     @Test fun diffWraps() {
-        assertEquals(20.0, TurnDetector.diff(350.0, 10.0), 1e-9)
-        assertEquals(-20.0, TurnDetector.diff(10.0, 350.0), 1e-9)
-        assertEquals(180.0, TurnDetector.diff(0.0, 180.0), 1e-9)
+        assertEquals(20.0, Geo.angleDiff(350.0, 10.0), 1e-9)
+        assertEquals(-20.0, Geo.angleDiff(10.0, 350.0), 1e-9)
+        assertEquals(180.0, Geo.angleDiff(0.0, 180.0), 1e-9)
     }
 }

@@ -274,12 +274,12 @@
       "blob": "e8d4077e94cd4d5d0219adebcca33f8e01d00524"
     },
     {
-      "app": "app/src/main/java/com/onpath/app/data/Geo.kt",
+      "app": "app/src/main/java/com/onpath/app/data/Format.kt",
       "what": "Format.number / Format.distance – numbers the page writes itself (leg distances, profile axis): decimal comma in German",
       "web": [
         "web/app/src/i18n.ts"
       ],
-      "blob": "2e165becec8ffb7fe7b73f0b3e4cb525f2aee44a"
+      "blob": "aa590937851fe361f89c1d15951e621121a1146d"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/WholeRoute.kt",
@@ -575,9 +575,18 @@
         "const val WINDOW_MS = 10_000L"
       ]
     },
+    "app/src/main/java/com/onpath/app/data/Format.kt": {
+      "blob": "aa590937851fe361f89c1d15951e621121a1146d",
+      "perf": []
+    },
+    "app/src/main/java/com/onpath/app/data/HoldSetting.kt": {
+      "blob": "cfe0fde808fa366ee70021cba419f619f983124c",
+      "perf": []
+    },
     "app/src/main/java/com/onpath/app/data/Geo.kt": {
-      "blob": "2e165becec8ffb7fe7b73f0b3e4cb525f2aee44a",
+      "blob": "7c6d06a651f334fa025981c201f7c6a3fc674000",
       "perf": [
+        "var best = line[0]; var bestD = Double.MAX_VALUE",
         "if (line.isEmpty()) return Double.MAX_VALUE",
         "var best = Double.MAX_VALUE"
       ]

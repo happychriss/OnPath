@@ -426,7 +426,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (onOriginal(f)) return Step()
         val start = original.points.first()
         val d = Geo.distance(f.point, start)
-        val b = TurnDetector.bearing(f.point, start)
+        val b = Geo.bearing(f.point, start)
         prompt = NavPrompt.FarStart(++questionId, d, b, searching = true)
         toRoute = RouteHint(d, b, start)
         return Step(job = leadJob(f))
@@ -475,7 +475,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         farFixes = if (away) farFixes + 1 else 0
         val start = original.points.first()
         val d = Geo.distance(f.point, start)
-        val b = TurnDetector.bearing(f.point, start)
+        val b = Geo.bearing(f.point, start)
         when (val pr = prompt) {
             is NavPrompt.FarStart -> {
                 toRoute = RouteHint(d, b, start)
@@ -492,7 +492,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private fun showFarStart(p: GeoPoint) {
         val start = original.points.first()
         val d = Geo.distance(p, start)
-        val b = TurnDetector.bearing(p, start)
+        val b = Geo.bearing(p, start)
         prompt = NavPrompt.FarStart(++questionId, d, b)
         toRoute = RouteHint(d, b, start)
     }
@@ -694,7 +694,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             active.match(p, detector.leftAtM, detector.leftAtM + HINT_AHEAD_M)
         else original.match(p, leftAtM, leftAtM + HINT_AHEAD_M)
         m ?: return null
-        return RouteHint(m.distanceM, TurnDetector.bearing(p, m.point), m.point)
+        return RouteHint(m.distanceM, Geo.bearing(p, m.point), m.point)
     }
 
     companion object {

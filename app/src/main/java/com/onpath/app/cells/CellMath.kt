@@ -159,8 +159,8 @@ data class CellId(val x: Int, val y: Int, val z: Int = Z) : Comparable<CellId> {
             if (line.isEmpty()) return emptyList()
             val out = LinkedHashSet<CellId>()
             fun addAround(p: GeoPoint) {
-                val dLat = corridorM / 111_320.0
-                val dLon = corridorM / (111_320.0 * cos(Math.toRadians(p.lat)).coerceAtLeast(0.01))
+                val dLat = Geo.degLat(corridorM)
+                val dLon = Geo.degLon(corridorM, p.lat)
                 at(p)?.let { out += it }
                 for (c in inBbox(p.lat - dLat, p.lon - dLon, p.lat + dLat, p.lon + dLon, 64)) {
                     if (c !in out && distanceToCell(p, c) <= corridorM) out += c

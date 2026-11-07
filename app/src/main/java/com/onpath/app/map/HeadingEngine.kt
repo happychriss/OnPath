@@ -1,5 +1,6 @@
 package com.onpath.app.map
 
+import com.onpath.app.data.Geo
 import android.content.Context
 import android.hardware.GeomagneticField
 import android.hardware.Sensor
@@ -49,13 +50,6 @@ class HeadingFilter {
         /** Positions worse than this do not count for the movement direction. */
         const val MOVE_MAX_ACCURACY_M = 20.0
 
-        fun diff(from: Double, to: Double): Double {
-            var d = (to - from) % 360.0
-            if (d > 180) d -= 360.0
-            if (d <= -180) d += 360.0
-            return d
-        }
-        fun norm(d: Double) = ((d % 360.0) + 360.0) % 360.0
     }
 
     private var smooth: Double? = null
@@ -79,19 +73,19 @@ class HeadingFilter {
     fun onPosition(lat: Double, lon: Double, accuracyM: Double, nowMs: Long) {
         if (accuracyM.isNaN() || accuracyM > MOVE_MAX_ACCURACY_M) return
         if (anchorLat.isNaN()) { anchorLat = lat; anchorLon = lon; return }
-        val kx = Math.cos(Math.toRadians(lat)) * 111_320.0
-        val dx = (lon - anchorLon) * kx
-        val dy = (lat - anchorLat) * 110_540.0
+        val f = Geo.Flat(lat)
+        val dx = (lon - anchorLon) * f.kx
+        val dy = (lat - anchorLat) * f.ky
         if (hypot(dx, dy) < MOVE_STEP_M) return
-        moveBearing = norm(Math.toDegrees(atan2(dx, dy)))
+        moveBearing = Geo.normDeg(Math.toDegrees(atan2(dx, dy)))
         moveAt = nowMs
         anchorLat = lat; anchorLon = lon
     }
 
     private fun movingAgainst(r: Double, nowMs: Long): Boolean {
-        if (usingGps(nowMs) && abs(diff(r, gpsBearing)) > OPPOSED_DEG) return true
+        if (usingGps(nowMs) && abs(Geo.angleDiff(r, gpsBearing)) > OPPOSED_DEG) return true
         val m = moveBearing ?: return false
-        return nowMs - moveAt <= MOVE_VALID_MS && abs(diff(r, m)) > OPPOSED_DEG
+        return nowMs - moveAt <= MOVE_VALID_MS && abs(Geo.angleDiff(r, m)) > OPPOSED_DEG
     }
 
     /** True while the GPS bearing is used (moving). */
@@ -110,7 +104,7 @@ class HeadingFilter {
      */
     fun onRoute(bearingDeg: Double?, nowMs: Long): Double? {
         if (bearingDeg == null || bearingDeg.isNaN()) { route = null; return null }
-        route = norm(bearingDeg); routeAt = nowMs
+        route = Geo.normDeg(bearingDeg); routeAt = nowMs
         if (!usingRoute(nowMs)) return null
         return step(route!!, ROUTE_ALPHA)
     }
@@ -145,10 +139,10 @@ class HeadingFilter {
     }
 
     private fun step(target: Double, alpha: Double): Double? {
-        val s = smooth?.let { norm(it + alpha * diff(it, target)) } ?: norm(target)
+        val s = smooth?.let { Geo.normDeg(it + alpha * Geo.angleDiff(it, target)) } ?: Geo.normDeg(target)
         smooth = s
         val last = heading
-        if (last != null && abs(diff(last, s)) < DEADBAND_DEG) return null
+        if (last != null && abs(Geo.angleDiff(last, s)) < DEADBAND_DEG) return null
         heading = s
         return s
     }
@@ -195,7 +189,7 @@ class CompassTrust {
         }
         if (headingDeg.isNaN()) return
         if (!lastDeg.isNaN() && nowMs - lastAt in 0..JUMP_WITHIN_MS &&
-            abs(HeadingFilter.diff(lastDeg, headingDeg)) >= JUMP_DEG) jumpAt = nowMs
+            abs(Geo.angleDiff(lastDeg, headingDeg)) >= JUMP_DEG) jumpAt = nowMs
         lastDeg = headingDeg; lastAt = nowMs
     }
 
@@ -265,9 +259,9 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
         /** Next frame; true while still moving. */
         fun step(dt: Double): Boolean {
             val s = shown ?: return false; val t = target ?: return false
-            val d = HeadingFilter.diff(s, t)
+            val d = Geo.angleDiff(s, t)
             if (abs(d) < 0.05) { if (s != t) { shown = t; out(t) }; return false }
-            val next = HeadingFilter.norm(s + d * (1 - Math.exp(-dt / TURN_TAU_S)))
+            val next = Geo.normDeg(s + d * (1 - Math.exp(-dt / TURN_TAU_S)))
             shown = next; out(next)
             return true
         }
@@ -414,7 +408,7 @@ class HeadingEngine(context: Context) : CompassEngine, SensorEventListener {
             val bx = -r[2]; val by = -r[5]               // device −Z (back) in world east/north
             val ex = ux + bx; val ny = uy + by
             if (hypot(ex, ny) < 0.2f) return
-            val true_ = HeadingFilter.norm(Math.toDegrees(atan2(ex.toDouble(), ny.toDouble())) + declination)
+            val true_ = Geo.normDeg(Math.toDegrees(atan2(ex.toDouble(), ny.toDouble())) + declination)
             // rotation vector: values[4] = estimated heading accuracy in radians (-1 = none; not on every phone)
             val accDeg = if (event.values.size > 4 && event.values[4] >= 0f) Math.toDegrees(event.values[4].toDouble()) else null
             trust.onStatus(event.accuracy)

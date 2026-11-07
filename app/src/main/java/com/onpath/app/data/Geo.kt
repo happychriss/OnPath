@@ -2,15 +2,118 @@ package com.onpath.app.data
 
 import com.onpath.app.routing.GeoPoint
 import kotlin.math.asin
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/** Small geo helpers (pure Kotlin, unit-testable). */
+/**
+ * Small geo helpers (pure Kotlin, unit-testable) – the ONE copy of the app's geo math (code audit 2026-11-07: point-to-line
+ * distance, flat projections and bearings were pasted into ten files with three different metre-per-degree values).
+ * Everything works on one sphere ([R]): the flat frame ([Flat]) uses the same metres per degree as [distance], so a
+ * projected distance and a great-circle distance of the same short span agree.
+ */
 object Geo {
-    private const val R = 6_371_000.0
+    /** Earth radius of every distance in the app (metres). */
+    const val R = 6_371_000.0
+
+    /** Metres per degree of latitude on [R] – also per degree of longitude at the equator (≈ 111 195 m). */
+    const val M_PER_DEG = R * Math.PI / 180.0
+
+    /** Metres per degree of longitude at [lat]. */
+    fun mPerDegLon(lat: Double): Double = M_PER_DEG * cos(Math.toRadians(lat))
+
+    /** Degrees of latitude for [m] metres. */
+    fun degLat(m: Double): Double = m / M_PER_DEG
+
+    /** Degrees of longitude for [m] metres at [lat] (never more than at ~89.4°, so boxes near a pole stay finite). */
+    fun degLon(m: Double, lat: Double): Double = m / (M_PER_DEG * cos(Math.toRadians(lat)).coerceAtLeast(0.01))
+
+    /**
+     * A local flat (equirectangular) frame at latitude [lat]: x east, y north, metres. Accurate to well under a metre over
+     * the few kilometres where the app compares points (snapping, off-route, matching on a line). Build it once per
+     * question and use it for every segment.
+     */
+    class Flat(lat: Double) {
+        val kx: Double = mPerDegLon(lat)
+        val ky: Double = M_PER_DEG
+
+        /**
+         * Where on segment [a]–[b] the point nearest to [p] lies: 0 = at a, 1 = at b (clamped). A segment of length 0
+         * gives 0.
+         */
+        fun t(p: GeoPoint, a: GeoPoint, b: GeoPoint): Double {
+            val ax = (a.lon - p.lon) * kx; val ay = (a.lat - p.lat) * ky
+            val dx = (b.lon - a.lon) * kx; val dy = (b.lat - a.lat) * ky
+            val len2 = dx * dx + dy * dy
+            return if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
+        }
+
+        /** Metres from [p] to the point at [t] of segment [a]–[b]. */
+        fun distanceAt(p: GeoPoint, a: GeoPoint, b: GeoPoint, t: Double): Double {
+            val x = ((a.lon - p.lon) + t * (b.lon - a.lon)) * kx
+            val y = ((a.lat - p.lat) + t * (b.lat - a.lat)) * ky
+            return sqrt(x * x + y * y)
+        }
+
+        /** Metres from [p] to segment [a]–[b]. */
+        fun distanceToSegment(p: GeoPoint, a: GeoPoint, b: GeoPoint): Double = distanceAt(p, a, b, t(p, a, b))
+
+        /** Metres between two points in this frame. */
+        fun distance(a: GeoPoint, b: GeoPoint): Double {
+            val x = (b.lon - a.lon) * kx; val y = (b.lat - a.lat) * ky
+            return sqrt(x * x + y * y)
+        }
+    }
+
+    /** The point at [t] of segment [a]–[b] (elevation interpolated when both ends have one). */
+    fun along(a: GeoPoint, b: GeoPoint, t: Double): GeoPoint = when (t) {
+        0.0 -> a
+        1.0 -> b
+        else -> GeoPoint(a.lat + t * (b.lat - a.lat), a.lon + t * (b.lon - a.lon),
+            if (a.ele != null && b.ele != null) a.ele + t * (b.ele - a.ele) else null)
+    }
+
+    /** The point of segment [a]–[b] nearest to [p] (flat frame at [p]). */
+    fun closestOnSegment(p: GeoPoint, a: GeoPoint, b: GeoPoint): GeoPoint = along(a, b, Flat(p.lat).t(p, a, b))
+
+    /** Metres from [p] to segment [a]–[b] (flat frame at [p]). */
+    fun distanceToSegment(p: GeoPoint, a: GeoPoint, b: GeoPoint): Double = Flat(p.lat).distanceToSegment(p, a, b)
+
+    /** The point of the polyline nearest to [p] (flat frame at [p]); a one-point line is that point. */
+    fun closestOnLine(p: GeoPoint, line: List<GeoPoint>): GeoPoint {
+        if (line.size == 1) return line[0]
+        val f = Flat(p.lat)
+        var best = line[0]; var bestD = Double.MAX_VALUE
+        for (i in 1 until line.size) {
+            val t = f.t(p, line[i - 1], line[i])
+            val d = f.distanceAt(p, line[i - 1], line[i], t)
+            if (d < bestD) { bestD = d; best = along(line[i - 1], line[i], t) }
+        }
+        return best
+    }
+
+    /** Compass bearing [a] → [b] in degrees [0, 360) (great circle). */
+    fun bearing(a: GeoPoint, b: GeoPoint): Double {
+        val la1 = Math.toRadians(a.lat); val la2 = Math.toRadians(b.lat)
+        val dLon = Math.toRadians(b.lon - a.lon)
+        val y = sin(dLon) * cos(la2)
+        val x = cos(la1) * sin(la2) - sin(la1) * cos(la2) * cos(dLon)
+        return normDeg(Math.toDegrees(atan2(y, x)))
+    }
+
+    /** Signed turn from heading [from] to heading [to], in (-180, 180] (> 0 = right). */
+    fun angleDiff(from: Double, to: Double): Double {
+        var d = (to - from) % 360.0
+        if (d > 180) d -= 360.0
+        if (d <= -180) d += 360.0
+        return d
+    }
+
+    /** A heading in [0, 360). */
+    fun normDeg(d: Double): Double = ((d % 360.0) + 360.0) % 360.0
 
     fun distance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
         val dLat = Math.toRadians(lat2 - lat1)
@@ -26,11 +129,7 @@ object Geo {
      * Quick flat distance (equirectangular, metres) for nearby points – where many distances are compared (snapping,
      * BRouter's matched spots). The one copy (review Arch 8: it was pasted into WaypointSnap and BRouterEngine).
      */
-    fun fastDistance(a: GeoPoint, b: GeoPoint): Double {
-        val x = Math.toRadians(b.lon - a.lon) * kotlin.math.cos(Math.toRadians((a.lat + b.lat) / 2.0))
-        val y = Math.toRadians(b.lat - a.lat)
-        return kotlin.math.sqrt(x * x + y * y) * 6_371_000.0
-    }
+    fun fastDistance(a: GeoPoint, b: GeoPoint): Double = Flat((a.lat + b.lat) / 2.0).distance(a, b)
 
     fun length(points: List<GeoPoint>): Double {
         var d = 0.0
@@ -88,21 +187,15 @@ object Geo {
     fun distanceToLine(lat: Double, lon: Double, line: List<GeoPoint>): Double {
         if (line.isEmpty()) return Double.MAX_VALUE
         if (line.size == 1) return distance(lat, lon, line[0].lat, line[0].lon)
-        val kx = cos(Math.toRadians(lat)) * 111_320.0
-        val ky = 110_540.0
+        val p = GeoPoint(lat, lon)
+        val f = Flat(lat)
         var best = Double.MAX_VALUE
-        for (i in 1 until line.size) {
-            val ax = (line[i - 1].lon - lon) * kx; val ay = (line[i - 1].lat - lat) * ky
-            val bx = (line[i].lon - lon) * kx; val by = (line[i].lat - lat) * ky
-            val dx = bx - ax; val dy = by - ay
-            val len2 = dx * dx + dy * dy
-            val t = if (len2 == 0.0) 0.0 else max(0.0, min(1.0, -(ax * dx + ay * dy) / len2))
-            val px = ax + t * dx; val py = ay + t * dy
-            val d = sqrt(px * px + py * py)
-            if (d < best) best = d
-        }
+        for (i in 1 until line.size) best = min(best, f.distanceToSegment(p, line[i - 1], line[i]))
         return best
     }
+
+    /** Metres from [p] to the polyline (flat frame at [p]). */
+    fun distanceToLine(p: GeoPoint, line: List<GeoPoint>): Double = distanceToLine(p.lat, p.lon, line)
 
     fun bounds(points: List<GeoPoint>): DoubleArray? {
         if (points.isEmpty()) return null
@@ -110,46 +203,4 @@ object Geo {
         for (p in points) { s = min(s, p.lat); n = max(n, p.lat); w = min(w, p.lon); e = max(e, p.lon) }
         return doubleArrayOf(s, w, n, e)
     }
-}
-
-/**
- * Numbers and units as the user reads them. Decimals follow the text language: "12.5 km" in English, "12,5 km" in
- * German. Units stay the same in both (km, m, h, min – as on Alpine signposts:
- * "1 h 05 min"). Machine formats (GPX, file names, logs) never use these.
- */
-object Format {
-    /** Locale of shown numbers: the phone's German variant when the texts are German, else US English. */
-    fun locale(): java.util.Locale =
-        if (com.onpath.strings.Txt.language() == "de") java.util.Locale.getDefault() else java.util.Locale.US
-
-    /** A decimal number for the user: number(12.46, 1) = "12.5" / "12,5". */
-    fun number(v: Double, decimals: Int): String = String.format(locale(), "%.${decimals}f", v)
-
-    fun distance(m: Double): String = when {
-        m < 1000 -> "${m.toInt()} m"
-        m < 100_000 -> String.format(locale(), "%.1f km", m / 1000)
-        else -> "${(m / 1000).toInt()} km"
-    }
-
-    fun duration(s: Double): String {
-        val total = (s / 60).toLong()
-        val h = total / 60
-        val m = total % 60
-        return if (h > 0) "${h} h ${m.toString().padStart(2, '0')} min" else "$m min"
-    }
-
-    /** Short time to go for the Navigate strip (owner): "2:50 h", under an hour "25 min". */
-    fun durationShort(s: Double): String {
-        val total = (s / 60).toLong()
-        val h = total / 60
-        val m = total % 60
-        return if (h > 0) "$h:${m.toString().padStart(2, '0')} h" else "$m min"
-    }
-
-    fun clock(s: Long): String {
-        val h = s / 3600; val m = (s % 3600) / 60; val sec = s % 60
-        return "%d:%02d:%02d".format(h, m, sec)
-    }
-
-    fun meters(m: Double) = "${m.toInt()} m"
 }

@@ -86,23 +86,11 @@ object WaypointInsertion {
         var best = route[from]
         var bestD = Double.MAX_VALUE
         for (i in from until to) {
-            val c = closestOnSegment(p, route[i], route[i + 1])
+            val c = Geo.closestOnSegment(p, route[i], route[i + 1])
             val dist = Geo.distance(p, c)
             if (dist < bestD) { bestD = dist; best = c }
         }
         return best
-    }
-
-    /** The point of segment a–b nearest to [p] (local equirectangular projection, as [distanceToSegment]). */
-    fun closestOnSegment(p: GeoPoint, a: GeoPoint, b: GeoPoint): GeoPoint {
-        val mPerDegLat = 111_320.0
-        val mPerDegLon = 111_320.0 * Math.cos(Math.toRadians(p.lat))
-        val ax = (a.lon - p.lon) * mPerDegLon; val ay = (a.lat - p.lat) * mPerDegLat
-        val bx = (b.lon - p.lon) * mPerDegLon; val by = (b.lat - p.lat) * mPerDegLat
-        val dx = bx - ax; val dy = by - ay
-        val len2 = dx * dx + dy * dy
-        val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
-        return GeoPoint(a.lat + t * (b.lat - a.lat), a.lon + t * (b.lon - a.lon))
     }
 
     /** Index of the route vertex nearest to [p] (segment-projected) and the distance in metres. */
@@ -111,7 +99,7 @@ object WaypointInsertion {
         var bestI = -1
         var bestD = Double.MAX_VALUE
         for (i in 0 until route.size - 1) {
-            val d = distanceToSegment(p, route[i], route[i + 1])
+            val d = Geo.distanceToSegment(p, route[i], route[i + 1])
             if (d < bestD) { bestD = d; bestI = i }
         }
         return bestI to bestD
@@ -151,18 +139,5 @@ object WaypointInsertion {
             from = best
         }
         return wpIdx
-    }
-
-    /** Approximate distance (m) from [p] to segment a–b, using a local equirectangular projection. */
-    fun distanceToSegment(p: GeoPoint, a: GeoPoint, b: GeoPoint): Double {
-        val mPerDegLat = 111_320.0
-        val mPerDegLon = 111_320.0 * Math.cos(Math.toRadians(p.lat))
-        val ax = (a.lon - p.lon) * mPerDegLon; val ay = (a.lat - p.lat) * mPerDegLat
-        val bx = (b.lon - p.lon) * mPerDegLon; val by = (b.lat - p.lat) * mPerDegLat
-        val dx = bx - ax; val dy = by - ay
-        val len2 = dx * dx + dy * dy
-        val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
-        val cx = ax + t * dx; val cy = ay + t * dy
-        return Math.sqrt(cx * cx + cy * cy)
     }
 }

@@ -2,10 +2,8 @@ package com.onpath.app.navigation
 
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint
-import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.sqrt
 
 /**
  * A followed line with cumulative distances, for matching a position to "how far along" (pure, unit-tested).
@@ -29,8 +27,7 @@ class NavLine(val points: List<GeoPoint>) {
         if (!isUsable) return null
         val lo = max(0.0, fromM); val hi = min(lengthM, toM)
         if (hi < lo) return null
-        val kx = cos(Math.toRadians(p.lat)) * 111_320.0
-        val ky = 110_540.0
+        val f = Geo.Flat(p.lat)
         val n = points.size - 1
         val segD = DoubleArray(n) { Double.MAX_VALUE }
         val segT = DoubleArray(n)
@@ -38,10 +35,7 @@ class NavLine(val points: List<GeoPoint>) {
         val first = segmentAt(lo); val last = segmentAt(hi)
         for (i in first..last) {
             val a = points[i]; val b = points[i + 1]
-            val ax = (a.lon - p.lon) * kx; val ay = (a.lat - p.lat) * ky
-            val dx = (b.lon - a.lon) * kx; val dy = (b.lat - a.lat) * ky
-            val len2 = dx * dx + dy * dy
-            var t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
+            var t = f.t(p, a, b)
             // clamp to the window inside the first / last segment
             val segLen = cum[i + 1] - cum[i]
             if (segLen > 0) {
@@ -49,8 +43,7 @@ class NavLine(val points: List<GeoPoint>) {
                 val tHi = ((hi - cum[i]) / segLen).coerceIn(0.0, 1.0)
                 t = t.coerceIn(tLo, tHi)
             }
-            val px = ax + t * dx; val py = ay + t * dy
-            val d = sqrt(px * px + py * py)
+            val d = f.distanceAt(p, a, b, t)
             segD[i] = d; segT[i] = t
             if (d < best) best = d
         }
@@ -87,8 +80,7 @@ class NavLine(val points: List<GeoPoint>) {
         if (!isUsable) return emptyList()
         val lo = max(0.0, fromM); val hi = min(lengthM, toM)
         if (hi < lo) return emptyList()
-        val kx = cos(Math.toRadians(p.lat)) * 111_320.0
-        val ky = 110_540.0
+        val f = Geo.Flat(p.lat)
         val out = ArrayList<Match>()
         val first = segmentAt(lo); val last = segmentAt(hi)
         // current part: its best segment so far, and the highest distance since then (a rise = a new part)
@@ -96,13 +88,10 @@ class NavLine(val points: List<GeoPoint>) {
         fun emit() { if (bestI >= 0) { val al = cum[bestI] + bestT * (cum[bestI + 1] - cum[bestI]); out += Match(al, bestD, bestI, pointAt(al)) }; bestI = -1 }
         for (i in first..last) {
             val a = points[i]; val b = points[i + 1]
-            val ax = (a.lon - p.lon) * kx; val ay = (a.lat - p.lat) * ky
-            val dx = (b.lon - a.lon) * kx; val dy = (b.lat - a.lat) * ky
-            val len2 = dx * dx + dy * dy
-            var t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
+            var t = f.t(p, a, b)
             val segLen = cum[i + 1] - cum[i]
             if (segLen > 0) t = t.coerceIn(((lo - cum[i]) / segLen).coerceIn(0.0, 1.0), ((hi - cum[i]) / segLen).coerceIn(0.0, 1.0))
-            val d = sqrt((ax + t * dx) * (ax + t * dx) + (ay + t * dy) * (ay + t * dy))
+            val d = f.distanceAt(p, a, b, t)
             if (d > maxM) { emit(); continue }
             when {
                 bestI < 0 -> { bestI = i; bestD = d; bestT = t; peak = d }
@@ -127,7 +116,7 @@ class NavLine(val points: List<GeoPoint>) {
         val a = alongM.coerceIn(0.0, lengthM)
         val b = min(lengthM, a + aheadM)
         if (b - a < 10.0) return null
-        return com.onpath.app.routing.TurnDetector.bearing(pointAt(a), pointAt(b))
+        return Geo.bearing(pointAt(a), pointAt(b))
     }
 
     /** Earliest part of the line within [toleranceM] of the nearest one (start of a round trip, not its end). */

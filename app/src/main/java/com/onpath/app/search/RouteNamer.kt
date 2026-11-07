@@ -46,9 +46,9 @@ object RouteNamer {
      */
     fun placesNear(index: PlaceIndex, points: List<GeoPoint>): List<Place> {
         val b = Geo.bounds(points) ?: return emptyList()
-        val pad = 1.5 * NEAR_M / 111_000.0
+        val pad = Geo.degLat(1.5 * NEAR_M)
         val far = maxOf(kotlin.math.abs(b[0]), kotlin.math.abs(b[2])) + pad
-        val padLon = pad / kotlin.math.cos(Math.toRadians(far.coerceAtMost(80.0)))
+        val padLon = Geo.degLon(1.5 * NEAR_M, far.coerceAtMost(80.0))
         return index.placesIn(b[0] - pad, b[1] - padLon, b[2] + pad, b[3] + padLon, KINDS)
     }
 
@@ -91,8 +91,8 @@ object RouteNamer {
     /** Named places in the route's box plus [NEAR_M] (keeps the per-point scans small). */
     private fun candidates(line: List<GeoPoint>, places: List<Place>): List<Place> {
         val b = Geo.bounds(line) ?: return emptyList()
-        val dLat = NEAR_M / 111_000.0
-        val dLon = dLat / kotlin.math.cos(Math.toRadians(((b[0] + b[2]) / 2).coerceIn(-80.0, 80.0)))
+        val dLat = Geo.degLat(NEAR_M)
+        val dLon = Geo.degLon(NEAR_M, ((b[0] + b[2]) / 2).coerceIn(-80.0, 80.0))
         return places.filter {
             !it.name.isNullOrBlank() && it.lat in (b[0] - dLat)..(b[2] + dLat) && it.lon in (b[1] - dLon)..(b[3] + dLon)
         }

@@ -1,5 +1,6 @@
 package com.onpath.app.routing
 
+import com.onpath.app.data.Geo
 import com.onpath.app.routing.WaypointInsertion.Kind
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -57,7 +58,7 @@ class WaypointInsertionTest {
     }
 
     @Test fun segmentDistanceIsMetres() {
-        val d = WaypointInsertion.distanceToSegment(GeoPoint(46.671, 11.165), a, b)
+        val d = Geo.distanceToSegment(GeoPoint(46.671, 11.165), a, b)
         assertEquals(111.0, d, 3.0)
     }
 
