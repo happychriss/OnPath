@@ -9,4 +9,10 @@ object RouteLook {
     const val LINE_DP = 6f
     /** The white casing under it. */
     const val CASING_DP = 10f
+    /**
+     * A recorded tour's followed plan under its track in the overview (owner 2026-11-07: "thin, plan blue, low weight"):
+     * width in dp and opacity.
+     */
+    const val PLAN_UNDER_DP = 3f
+    const val PLAN_UNDER_OPACITY = 0.6f
 }

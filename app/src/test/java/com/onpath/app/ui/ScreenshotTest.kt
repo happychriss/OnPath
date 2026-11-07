@@ -1271,6 +1271,18 @@ class ScreenshotTest {
             onCancel = {}, onGo = {}) }
     }
 
+    /**
+     * A recorded tour that followed a plan (owner 2026-11-07): the same foot as a planned route – "▶ Los geht's", under it
+     * "Abbrechen" | "Planen" (both load the plan it followed) – and that plan's line thin in plan blue under the green track.
+     */
+    @Test fun routesOverviewDoneWithPlan() = paparazzi.snapshot {
+        val track = sampleLine(2)
+        // the plan: the same loop, a detour left out where the track went its own way
+        val plan = track.mapIndexed { i, p -> if (i in 30..45) com.onpath.app.routing.GeoPoint(p.lat - 0.004, p.lon + 0.002) else p }
+        OnPathTheme { RouteOverview(tourList[1].copy(hasPlan = true), listOf(track), touring = false, snapshot = null, onPrimary = {},
+            onCancel = {}, onGo = {}, planLine = plan) }
+    }
+
     /** The same during a tour: "Folgen" (green) – followed at once, the recording goes on (owner 2026-11-06 22:05). */
     fun routesOverviewTouring() = paparazzi.snapshot {
         OnPathTheme { RouteOverview(tourList[2], listOf(sampleLine(3)), touring = true, snapshot = null, onPrimary = {},
@@ -1413,6 +1425,21 @@ class ScreenshotTest {
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}) }
             OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 200.dp, end = 12.dp)) {
                 TourMenuItems(tourList.first { it.kind == com.onpath.app.data.TourKind.PLANNED }, {}, {}, {}, null, {}, {},
+                    onPlan = {}, onGo = {}) {}
+            } }
+        }
+    }
+
+    /**
+     * Gemacht → ⋮ of a recorded tour that followed a plan (owner 2026-11-07): "Planen" (blue) and "Los geht's" (green) on
+     * top as for a saved planned route, then Rename, Export GPX, Edit rides, Delete – no "Als Plan übernehmen".
+     */
+    @Test fun routesItemMenuDoneWithPlan() = paparazzi.snapshot {
+        Box(Modifier.fillMaxSize()) {
+            previewLines(tourList)
+            OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialTab = RoutesTab.DONE) }
+            OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 200.dp, end = 12.dp)) {
+                TourMenuItems(tourList[1].copy(hasPlan = true), {}, {}, {}, onEditRides = {}, onCopy = null, onShare = null,
                     onPlan = {}, onGo = {}) {}
             } }
         }

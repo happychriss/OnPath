@@ -77,7 +77,8 @@ enum class WayKind { PATH, TRACK, ROAD, CYCLEWAY, WAY }
  *   is dropped after [STALE_MS]; a junction is simply said at the next fix (with its distance then).
  * - Quiet while paused; "No GPS" once after [GPS_LOST_MS] without a fix while moving (owner 2026-11-01: a short gap is no
  *   news, standing still in a shop never), only after the start, at most every [NO_GPS_EVERY_MS].
- * - State sentences have a minimum interval (field 2026-11-01): "off the route" every [OFF_ROUTE_EVERY_MS], "back on the
+ * - State sentences have a minimum interval (field 2026-11-01): "off the route" every [OFF_ROUTE_EVERY_MS] (not after a
+ *   question answered with a new route – the next one is news), "back on the
  *   route" only after [BACK_ON_AFTER_MS] (15 s) of the question that was said, "arrived" every [ARRIVED_EVERY_MS].
  * - The tour's voice memory ([Memory]) is kept with the tour, not with the service: a recording service recreated
  *   mid-tour (sticky restart after the process died) continues with [continueTour] and never says "Los geht's" again
@@ -198,6 +199,9 @@ class VoiceGuide {
             if (offRouteSpoken && !(newLine && i.rerouted) && since(offRouteSaidMs, i.nowMs) >= BACK_ON_AFTER_MS) {
                 queue(Phrase.BackOnRoute, i.nowMs)
             }
+            // answered with a new route: no flapping – the next question is news and said (field log owner 2026-11-07,
+            // tour 221: four questions in 2½ minutes, the 2nd and 3rd silent)
+            if (newLine && i.rerouted) offRouteSaidMs = null
             offRouteSpoken = false
         }
         // before the start sentence a new line is no news – the start sentence tells its length (field 2026-11-01:
@@ -272,6 +276,19 @@ class VoiceGuide {
             arrivedSaidMs = nowMs
         }
         waiting.clear(); return speak(p, nowMs)
+    }
+
+    /**
+     * The open off-route question asks again – where the phone would vibrate ([Navigator.Step.vibrate]: the first
+     * reminder, a way found after none, asked again after "Keep original"). With the voice on nothing vibrates, so it is
+     * said (owner 2026-11-07: both steps of leaving the route are said, [OffRouteSteps]): "Abseits der Route. Bitte aufs
+     * Handy schauen." Only inside an open question (its opening is said by [update]), not within [GAP_MS] of the last
+     * time it was said, not while [quiet] (standing still).
+     */
+    fun questionAgain(nowMs: Long, quiet: Boolean): Phrase? {
+        if (!lastOffRoute || quiet || since(offRouteSaidMs, nowMs) < GAP_MS) return null
+        offRouteSaidMs = nowMs; offRouteSpoken = true
+        waiting.clear(); return speak(Phrase.OffRoute, nowMs)
     }
 
     /** Time since [last]; "long ago" when never, or when the clock went back (a reboot restarts the elapsed clock). */

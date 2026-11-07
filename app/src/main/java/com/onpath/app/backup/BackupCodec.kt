@@ -45,6 +45,12 @@ data class BackupMeta(
     val savedMs: Long = 0L,
     /** Recorded tour: rides found and the choice (rides/RideRecord); the file's track follows the choice. */
     val rides: RideRecord? = null,
+    /**
+     * Recorded tour: the copy of the plan it followed ([com.onpath.app.data.TourPlan], owner 2026-11-07) – only in the
+     * record (key "plan"), never as a second track: GPX readers (OnPath's too) would take its line for part of the tour.
+     * Added to record version 1: older apps ignore the key, a record without it has no plan.
+     */
+    val plan: com.onpath.app.data.TourPlan? = null,
 ) {
     /** "tour" (recorded), "plan" (saved planned route) or "imported" – readable in the file. */
     val type: String get() = typeOf(kind)
@@ -53,10 +59,12 @@ data class BackupMeta(
         fun typeOf(k: TourKind) = when (k) { TourKind.RECORDED -> "tour"; TourKind.PLANNED -> "plan"; TourKind.IMPORTED -> "imported" }
         fun kindOf(type: String): TourKind? = when (type) { "tour" -> TourKind.RECORDED; "plan" -> TourKind.PLANNED; "imported" -> TourKind.IMPORTED; else -> null }
 
-        fun of(t: Tour, segments: List<List<TrackPoint>>, savedMs: Long = System.currentTimeMillis()): BackupMeta {
+        fun of(t: Tour, segments: List<List<TrackPoint>>, savedMs: Long = System.currentTimeMillis(),
+               plan: com.onpath.app.data.TourPlan? = null): BackupMeta {
             val times = segments.flatten().mapNotNull { it.timeMs }
             return BackupMeta(t.uuid, t.kind, t.name, t.createdMs, t.activity, t.sac, t.distanceM, t.ascentM, t.descentM,
-                t.durationS, t.waypoints, t.pinned, times.minOrNull(), times.maxOrNull(), t.deletedMs, savedMs, t.rides)
+                t.durationS, t.waypoints, t.pinned, times.minOrNull(), times.maxOrNull(), t.deletedMs, savedMs, t.rides,
+                plan?.takeIf { t.kind == TourKind.RECORDED })
         }
     }
 }
@@ -156,6 +164,7 @@ object BackupCodec {
         m.deletedMs?.let { put("deleted", it) }
         put("saved", m.savedMs)
         m.rides?.let { put("rides", it.toJson()) }
+        m.plan?.let { put("plan", it.toJson()) }
     }
 
     fun fromJson(o: JSONObject): BackupMeta? {
@@ -183,6 +192,8 @@ object BackupCodec {
                     Problems.warn("backup", "Backup record: rides unreadable – the tour is restored as recorded", e); null
                 }
             },
+            // unreadable → the tour without its plan (reported in TourPlan.fromJson)
+            plan = if (kind == TourKind.RECORDED) com.onpath.app.data.TourPlan.fromJson(o.optJSONObject("plan")) else null,
         )
     }
 

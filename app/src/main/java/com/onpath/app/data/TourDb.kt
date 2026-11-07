@@ -49,6 +49,8 @@ data class Tour(
     val rides: com.onpath.app.rides.RideRecord? = null,
     /** Planned: kept automatically under "Zuletzt" when it left the map (owner 2026-11-06), not saved by the user. */
     val draft: Boolean = false,
+    /** Recorded: a copy of the plan it followed is stored ([TourPlan], `tour_plan`) – Gemacht offers Planen / Los geht's. */
+    val hasPlan: Boolean = false,
 )
 
 /**
@@ -98,6 +100,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
      * 3 → 4 (vehicle detection): `tours.rides` (JSON, [com.onpath.app.rides.RideRecord]); points untouched.
      * 4 → 5 (owner 2026-11-06, "Zuletzt"): `tours.draft` – 1 = a plan kept automatically when it left the map (My routes →
      * Zuletzt), 0 = saved; every existing tour stays saved.
+     * 5 → 6 (owner 2026-11-07): the table `tour_plan` – the frozen copy of the plan a recorded tour followed ([TourPlan]).
      */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
@@ -115,6 +118,9 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
             if (step.column in have) { Problems.info("db", "Column ${step.column} already there"); continue }
             try { db.execSQL(step.sql) } catch (e: Exception) { Problems.error("db", "Column ${step.column} could not be added", e) }
         }
+        for (sql in TourSchema.tablesFrom(oldVersion)) {
+            try { db.execSQL(sql) } catch (e: Exception) { Problems.error("db", "Table could not be added: ${sql.take(40)}", e) }
+        }
         assignMissingUuids(db)
     }
 
@@ -122,6 +128,8 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         super.onOpen(db)
         // an older build (after a downgrade) may have added tours without uuid
         if (!db.isReadOnly) try { assignMissingUuids(db) } catch (e: Exception) { Problems.warn("db", "Tour ids for the backup not assigned", e) }
+        // the plan copies' table (schema 6) must exist before My routes reads `has_plan` – also when the upgrade could not add it
+        if (!db.isReadOnly) try { db.execSQL(TourSchema.CREATE_PLAN) } catch (e: Exception) { Problems.error("db", "Table of the followed plans not there", e) }
     }
 
     private fun assignMissingUuids(db: SQLiteDatabase) {
@@ -169,12 +177,12 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
 
     /** My routes: everything not in the recycle bin. */
     fun listTours(): List<Tour> = readableDatabase.rawQuery(
-        "SELECT * FROM tours WHERE deleted_at IS NULL ORDER BY created DESC", null
+        "SELECT *, ${TourSchema.HAS_PLAN} FROM tours WHERE deleted_at IS NULL ORDER BY created DESC", null
     ).use { c -> buildList { while (c.moveToNext()) add(readTour(c)) } }
 
     /** The recycle bin, most recently deleted first. */
     fun listDeleted(): List<Tour> = readableDatabase.rawQuery(
-        "SELECT * FROM tours WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC", null
+        "SELECT *, ${TourSchema.HAS_PLAN} FROM tours WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC", null
     ).use { c -> buildList { while (c.moveToNext()) add(readTour(c)) } }
 
     /** Number of tours including the recycle bin (restore offer on an empty database). */
@@ -215,7 +223,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
     }
 
     fun getTour(id: Long): Tour? = readableDatabase.rawQuery(
-        "SELECT * FROM tours WHERE id=?", arrayOf(id.toString())
+        "SELECT *, ${TourSchema.HAS_PLAN} FROM tours WHERE id=?", arrayOf(id.toString())
     ).use { c -> if (c.moveToFirst()) readTour(c) else null }
 
     fun findActiveRecording(): Tour? = readableDatabase.rawQuery(
@@ -297,6 +305,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         try {
             db.delete("points", "tour_id=?", arrayOf(id.toString()))
             db.delete("tours", "id=?", arrayOf(id.toString()))
+            db.execSQL(TourSchema.PLAN_DELETE, arrayOf(id))
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
@@ -319,6 +328,40 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         }
         return out
     }
+
+    // ---- the plan a recorded tour followed (schema 6) ----
+
+    /**
+     * Stores [plan] as the plan tour [tourId] followed – the newest version replaces the one before (replanned during the
+     * tour: the last version counts). Throws on failure (the caller reports it, like every recording write).
+     */
+    fun setTourPlan(tourId: Long, plan: TourPlan) {
+        writableDatabase.execSQL(TourSchema.PLAN_UPSERT, TourSchema.planArgs(tourId, plan))
+    }
+
+    /** The plan tour [tourId] followed; null = none (old tour, "Nur aufzeichnen") or unreadable (reported). */
+    fun getTourPlan(tourId: Long): TourPlan? = readableDatabase.rawQuery(
+        "SELECT * FROM tour_plan WHERE tour_id=?", arrayOf(tourId.toString())
+    ).use { c ->
+        if (!c.moveToFirst()) return null
+        fun s(n: String) = c.getColumnIndex(n).takeIf { it >= 0 && !c.isNull(it) }?.let { c.getString(it) }
+        fun d(n: String) = c.getColumnIndex(n).takeIf { it >= 0 && !c.isNull(it) }?.let { c.getDouble(it) } ?: 0.0
+        try {
+            TourPlan(name = s("name"), activity = s("activity") ?: "HIKE", sac = d("sac").toInt(),
+                waypoints = jsonToWaypoints(s("waypoints")), pinned = jsonToPinned(s("pinned")),
+                line = TourPlan.lineFromJson(s("line")), distanceM = d("distance"), ascentM = d("ascent"),
+                descentM = d("descent"), durationS = d("duration"), sourceUuid = s("source_uuid"),
+                updatedMs = d("updated").toLong()).takeIf { it.usable }
+        } catch (e: Exception) { Problems.warn("db", "The followed plan of tour $tourId is unreadable – the tour stays without it", e); null }
+    }
+
+    /**
+     * The activity was switched during the tour on the route (the service took the proposal): the stored plan copy is
+     * for that activity now. Rows changed (0 = the tour followed no plan).
+     */
+    fun setTourPlanActivity(tourId: Long, activity: String, sac: Int): Int = writableDatabase.update("tour_plan",
+        ContentValues().apply { put("activity", activity); put("sac", sac); put("updated", System.currentTimeMillis()) },
+        "tour_id=?", arrayOf(tourId.toString()))
 
     // ---- recording ----
 
@@ -417,6 +460,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
             deletedMs = opt(c, "deleted_at")?.let { c.getLong(it) },
             rides = opt(c, "rides")?.let { com.onpath.app.rides.RideRecord.fromJson(c.getString(it)) },
             draft = opt(c, "draft")?.let { c.getInt(it) == 1 } ?: false,
+            hasPlan = opt(c, "has_plan")?.let { c.getInt(it) == 1 } ?: false,
         )
     }
 
@@ -469,8 +513,11 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
 
 /** The tour database's tables (kept apart so the migration is JVM tested: TourSchemaTest with sqlite-jdbc). */
 object TourSchema {
-    /** 1, 2 = backup columns; 3 = `points.acc` (GPS accuracy); 4 = `tours.rides` (vehicle detection); 5 = `tours.draft` (Zuletzt). */
-    const val VERSION = 5
+    /**
+     * 1, 2 = backup columns; 3 = `points.acc` (GPS accuracy); 4 = `tours.rides` (vehicle detection); 5 = `tours.draft`
+     * (Zuletzt); 6 = the table `tour_plan` (the plan a recorded tour followed, [TourPlan]).
+     */
+    const val VERSION = 6
 
     val CREATE = listOf(
         """CREATE TABLE tours(
@@ -486,6 +533,7 @@ object TourSchema {
             tour_id INTEGER NOT NULL, seq INTEGER NOT NULL, seg INTEGER NOT NULL,
             lat REAL NOT NULL, lon REAL NOT NULL, ele REAL, time INTEGER, acc REAL)""",
         "CREATE INDEX points_tour ON points(tour_id, seq)",
+        CREATE_PLAN,
     )
 
     /** 2 → 3: GPS accuracy per recorded point (metres, null = unknown / imported). */
@@ -496,6 +544,34 @@ object TourSchema {
 
     /** 4 → 5: plans kept under "Zuletzt" (owner 2026-11-06); every existing tour is saved (0). */
     const val ADD_DRAFT = "ALTER TABLE tours ADD COLUMN draft INTEGER NOT NULL DEFAULT 0"
+
+    /**
+     * 5 → 6 (owner 2026-11-07): the plan a recorded tour followed, one row per tour – a table of its own, because the line
+     * can hold thousands of points and the tours list must stay light. A copy, not a reference: deleting or changing the
+     * planned route never touches it; it goes with its tour ([PLAN_DELETE]).
+     */
+    const val CREATE_PLAN = """CREATE TABLE IF NOT EXISTS tour_plan(
+            tour_id INTEGER PRIMARY KEY, name TEXT, activity TEXT NOT NULL, sac INTEGER NOT NULL,
+            waypoints TEXT NOT NULL, pinned TEXT, line TEXT,
+            distance REAL NOT NULL DEFAULT 0, ascent REAL NOT NULL DEFAULT 0, descent REAL NOT NULL DEFAULT 0,
+            duration REAL NOT NULL DEFAULT 0, source_uuid TEXT, updated INTEGER NOT NULL)"""
+
+    /** The newest version of a tour's plan replaces the one before. Arguments: [planArgs]. */
+    const val PLAN_UPSERT = """INSERT OR REPLACE INTO tour_plan(tour_id, name, activity, sac, waypoints, pinned, line,
+            distance, ascent, descent, duration, source_uuid, updated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+
+    /** A tour removed for good: its plan copy goes too. Argument: the tour id. */
+    const val PLAN_DELETE = "DELETE FROM tour_plan WHERE tour_id=?"
+
+    /** `has_plan` (1 / 0) beside a tour row: My routes shows Planen / Los geht's on a recorded tour with a plan copy. */
+    const val HAS_PLAN = "EXISTS(SELECT 1 FROM tour_plan p WHERE p.tour_id = tours.id) AS has_plan"
+
+    fun planArgs(tourId: Long, p: TourPlan): Array<Any?> = arrayOf(tourId, p.name, p.activity, p.sac,
+        TourDb.waypointsToJson(p.waypoints), TourDb.pinnedToJson(p.pinned), TourPlan.lineToJson(p.line),
+        p.distanceM, p.ascentM, p.descentM, p.durationS, p.sourceUuid, p.updatedMs)
+
+    /** Tables to add for an upgrade from [old] (each `IF NOT EXISTS`). */
+    fun tablesFrom(old: Int): List<String> = buildList { if (old < 6) add(CREATE_PLAN) }
 
     class Step(val table: String, val column: String, val sql: String)
 

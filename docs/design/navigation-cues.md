@@ -43,7 +43,7 @@ instead of at the second of them.
 
 | What | When | Pattern | Setting |
 | --- | --- | --- | --- |
-| Off route | confirmed off the route (setting distance + GPS margin, 15 s and 25 m moved), and when a new way back arrives after a retry – **only after the route was reached once this tour** | long: 400 – 200 – 400 – 200 – 600 ms | *Off-route warning* (default on, 40 m) + *Vibrate when off route* (default on); hike and bike alike |
+| Off route | confirmed off the route (setting distance + GPS margin, 15 s and 25 m moved; bike by direction from 20 m, then back only within 15 m – field 2026-11-07), and when a new way back arrives after a retry – **only after the route was reached once this tour**; with the voice on it is said instead (`VoiceGuide.questionAgain`) | long: 400 – 200 – 400 – 200 – 600 ms | *Off-route warning* (default on, 40 m) + *Vibrate when off route* (default on); hike and bike alike |
 | Route not reached yet (far start, owner 2026-10-31) | never – "Route starts 31 km away" is a calm question (screen + silent notification) | none | – |
 | Paused but moving | moved 150 m while paused | the same long pattern | always |
 | Recording stopped / not saved | the tour could not be written | the same long pattern | always |

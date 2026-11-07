@@ -4,6 +4,10 @@ import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.common_cancel
 import com.onpath.strings.routes_overview_follow
+import com.onpath.strings.routes_overview_plan
+import com.onpath.strings.routes_options_desc
+import com.onpath.strings.plan_bar_go
+import com.onpath.strings.common_ok
 import com.onpath.strings.common_resume
 import com.onpath.strings.nav_action_pause
 import com.onpath.strings.nav_end_short
@@ -19,6 +23,7 @@ import com.onpath.strings.nav_leave_stay
 import com.onpath.strings.nav_settings_cd
 import com.onpath.strings.settings_group_offroute
 import com.onpath.strings.nav_leave_title
+import com.onpath.strings.nav_off_route
 import com.onpath.strings.plan_go_here
 import com.onpath.strings.plan_locate_far_cd
 import com.onpath.strings.plan_new_during_tour
@@ -432,6 +437,68 @@ class CoreFieldE2ETest : E2EBase() {
         } finally {
             InstrumentationRegistry.getInstrumentation().runOnMainSync { com.onpath.app.recording.DemoLocation.stop("E2E arrival done") }
             db.deleteTour(planId)
+        }
+    }
+
+    /**
+     * Owner 2026-11-07: from a recorded tour under Gemacht back to the plan it followed, to ride it again. Plan → Los geht's
+     * → walk (GPS mock) → End tour; the saved route is then deleted and the map cleared – the tour's copy is a copy: the
+     * row's ⋮ → "Planen" loads the same plan points on the map ("Los geht's" beside it, both on top).
+     */
+    @Test fun aDoneTourBringsBackThePlanItFollowed() {
+        val planId = startOnANewPlan()
+        waitUntil("the route is followed", 20_000) { guided() }
+        val followed = waypointList()
+        var tourId = -1L
+        scenario.onActivity { tourId = vm(it).recState.value!!.tourId }
+        Thread.sleep(4_000) // walking along (the GPS mock moves every 0.5 s)
+        scenario.onActivity { vm(it).endTour() }
+        waitUntil("the tour has ended", 20_000) { !recording() }
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
+        waitUntil("the tour carries the plan it followed", 10_000) { db.getTour(tourId)?.hasPlan == true }
+        val copied = db.getTourPlan(tourId)!!.waypoints.map { GeoPoint(it.lat, it.lon) }
+        assertTrue("the copy holds the plan's points: $copied vs $followed", copied.size == followed.size &&
+            copied.zip(followed).all { (a, b) -> com.onpath.app.data.Geo.distance(a, b) < 5.0 })
+        // the place name for the tour comes by itself: once it has settled, a name of our own to find the row
+        var last = ""; var stableSince = System.currentTimeMillis()
+        waitUntil("the tour's name settled", 20_000) {
+            val n = db.getTour(tourId)?.name ?: ""
+            if (n != last) { last = n; stableSince = System.currentTimeMillis() }
+            System.currentTimeMillis() - stableSince > 3_000
+        }
+        val name = "E2E tour with its plan"
+        db.rename(tourId, name)
+        // the "Tour saved" box: OK
+        device.wait(Until.findObject(By.text(Txt.s(Res.string.common_ok))), 5_000)?.click()
+        // the copy outlives the planned route and the plan on the map
+        db.deleteTour(planId)
+        scenario.onActivity { vm(it).clearPlan() }
+        waitUntil("the map is empty", 10_000) { waypointCount() == 0 }
+        try {
+            scenario.onActivity { vm(it).routesTab = RoutesTab.DONE; vm(it).openRoutes() }
+            waitUntil("My routes lists \"$name\"", 20_000) {
+                var listed = false; scenario.onActivity { listed = vm(it).tours.any { t -> t.id == tourId && t.name == name && t.hasPlan } }; listed
+            }
+            val more = findFresh(By.desc(Txt.s(Res.string.routes_options_desc, name)), 8_000)
+            if (more == null) shot("0-no-row-menu")
+            assertNotNull("the row's ⋮ – seen: ${seenDescriptions()} – ${state()}", more)
+            more!!.click()
+            assertNotNull("\"Los geht's\" in ⋮", device.wait(Until.findObject(By.text(Txt.s(Res.string.plan_bar_go))), 5_000))
+            shot("1-gemacht-menu-plan-go")
+            clickText(Txt.s(Res.string.routes_overview_plan))
+            waitUntil("the plan it followed is on the map again", 15_000) {
+                val w = waypointList()
+                w.size == followed.size && w.zip(followed).all { (a, b) -> com.onpath.app.data.Geo.distance(a, b) < 5.0 }
+            }
+            scenario.onActivity {
+                assertFalse("My routes closed", vm(it).routesOpen)
+                assertFalse("nothing records", vm(it).recState.value != null)
+            }
+            val trace = com.onpath.app.debug.Problems.events().map { it.message }
+            assertTrue("traced: ${trace.takeLast(20)}", trace.any { it.startsWith("Planen on tour \"$name\": its followed plan from the tour's copy") })
+        } finally {
+            scenario.onActivity { vm(it).routesOpen = false }
+            db.deleteTour(tourId)
         }
     }
 
@@ -1174,6 +1241,96 @@ class CoreFieldE2ETest : E2EBase() {
         device.swipe(x, y, x, y + b.height() * 4, 25)
         assertNotNull("pulling it down opens it", findFresh(By.desc(Txt.s(Res.string.nav_profile_hide)), 5_000))
         assertEquals("a drag on the card is no map gesture: still Navigate", AppMode.NAVIGATE, mode())
+    }
+
+    /**
+     * Owner field 2026-11-07 (tour 221, on foot, voice on: "Abseits der Route" was said, no message on the phone; four
+     * questions in 2½ minutes, two of them silent): leaving the route is two steps, both on screen and said.
+     * Walk the plan's line, then away from it: step 1 – the amber "Off route" card on Navigate and the voice sentence
+     * ("To say: …" in the event log, also where the emulator has no offline voice); step 2 – the question with "New
+     * route" under the card, which stays; back on the line the card goes.
+     */
+    @Test fun leavingTheRouteShowsAndSaysBothStepsAndTheCardGoesBackOnTheRoute() {
+        walking = false
+        Thread.sleep(800)
+        val ctx = InstrumentationRegistry.getInstrumentation().targetContext
+        com.onpath.app.data.Prefs(ctx).voiceHeard = com.onpath.app.setup.Felt.YES
+        scenario.onActivity {
+            vm(it).updateSettings(vm(it).settings.copy(junctionGuide = com.onpath.app.data.JunctionGuide.VOICE,
+                offRouteWarning = true, offRouteM = 40))
+            vm(it).selectActivity(Activity.HIKE)
+        }
+        val a = GeoPoint(lat, lon)
+        scenario.onActivity { vm(it).addPoint(a); vm(it).addPoint(GeoPoint(lat + 0.0005, lon + 0.009)) }
+        waitUntil("two points", 10_000) { waypointCount() == 2 }
+        waitUntil("the plan routed", 60_000) { var ok = false; scenario.onActivity { ok = !vm(it).routing && vm(it).route != null }; ok }
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the route is followed", 20_000) { guided() }
+        val line = navState()!!.line
+        val cum = com.onpath.app.data.Geo.cumulative(line)
+        val along = line.filterIndexed { i, _ -> cum[i] <= 150.0 }
+        val turnAt = along.last()
+        // a walker (2.5 m per half second) along the first 150 m, then 400 m straight north, away from the line
+        path = densify(listOf(GeoPoint(lat, lon)) + along + GeoPoint(turnAt.lat + 0.0036, turnAt.lon), 2.5)
+        driving = true
+        val driver = thread(isDaemon = true) {
+            var i = 0
+            var mine = path
+            while (driving) {
+                if (path !== mine) { mine = path; i = 0 }
+                if (i < mine.size) { lat = mine[i].lat; lon = mine[i].lon; i++ }
+                fix(); Thread.sleep(500)
+            }
+        }
+        val offRoute = Txt.s(Res.string.nav_off_route)
+        // the card is one node for a screen reader: "Off route. 120 m north (direct)"
+        val card = By.desc(java.util.regex.Pattern.compile("^" + java.util.regex.Pattern.quote(offRoute) + "(\\. .*)?$",
+            java.util.regex.Pattern.DOTALL))
+        try {
+            waitUntil("on the route", 30_000) { navState()?.shownAlongM != null }
+            waitUntil("off the route confirmed", 150_000) { com.onpath.app.navigation.OffRouteSteps.card(navState()?.prompt) }
+            // step 1: the amber card and the voice sentence
+            assertNotNull("step 1: the \"$offRoute\" card on Navigate", findFresh(card, 10_000))
+            val said = "To say: " + com.onpath.app.navigation.VoiceText.of(com.onpath.app.navigation.Phrase.OffRoute)
+            waitUntil("step 1 said ($said)", 10_000) { com.onpath.app.debug.Problems.events().any { it.area == "voice" && it.message == said } }
+            // step 2: the question under the card, which stays
+            waitUntil("step 2: the question", 60_000) { navState()?.prompt is com.onpath.app.navigation.NavPrompt.Question }
+            assertNotNull("\"${com.onpath.app.navigation.NavText.TAKE}\" in the box",
+                findFresh(By.text(com.onpath.app.navigation.NavText.TAKE), 10_000))
+            assertNotNull("the card stays with the question", findFresh(card, 5_000))
+            shot("off-route-two-steps")
+            val trace = com.onpath.app.debug.Problems.events().map { it.message }
+            assertTrue("both steps traced: ${trace.take(20)}", trace.any { it.startsWith("Navigate: off the route (step 1) + question") })
+            // back onto the line and along it: the card goes
+            path = densify(listOf(GeoPoint(lat, lon), turnAt) + line.filterIndexed { i, _ -> cum[i] in 150.0..450.0 }, 2.5)
+            waitUntil("back on the route: nothing open", 240_000) { navState()?.prompt == null }
+            assertTrue("the card is gone", device.wait(Until.gone(card), 10_000))
+        } finally {
+            driving = false
+            driver.join(2_000)
+        }
+    }
+
+    @Volatile private var path: List<GeoPoint> = emptyList()
+    @Volatile private var driving = false
+
+    private fun navState(): com.onpath.app.navigation.NavState? {
+        var n: com.onpath.app.navigation.NavState? = null
+        scenario.onActivity { n = vm(it).recState.value?.nav }
+        return n
+    }
+
+    /** [pts] with a point every [stepM] metres (the walker's half-second steps). */
+    private fun densify(pts: List<GeoPoint>, stepM: Double): List<GeoPoint> {
+        val out = ArrayList<GeoPoint>()
+        for (k in 0 until pts.size - 1) {
+            val a = pts[k]; val b = pts[k + 1]
+            val n = maxOf(1, (com.onpath.app.data.Geo.distance(a, b) / stepM).toInt())
+            for (j in 0 until n) out += GeoPoint(a.lat + (b.lat - a.lat) * j / n, a.lon + (b.lon - a.lon) * j / n)
+        }
+        out += pts.last()
+        return out
     }
 
     private fun waypointList(): List<GeoPoint> { var l: List<GeoPoint> = emptyList(); scenario.onActivity { l = vm(it).waypoints.toList() }; return l }

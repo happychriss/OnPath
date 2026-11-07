@@ -144,7 +144,7 @@ MessageSlot(Messages.pick(listOf(question, m)), MessagePlacement.topDp(MessageSc
 | A shared place found only as a namesake elsewhere (no coordinate, not in the shared town) | HINWEIS_WARN | "Place not clear" + "No sure match – search for “Olive Hilden” in OnPath." – Search (opens the search, text typed in); no ring |
 | An error without a screen of its own (background, link / share into the app) | HINWEIS_ERROR | "Couldn't find this place." – OK |
 | Route state | ANZEIGE | plan sheet lines (red ERROR, amber WARNING, grey INFO), "Saved as …" (a plain line; the name is changed in Save's dialog), "New route · was 13:15" |
-| Off route, finding the way back | ANZEIGE | the amber off-route card with the arrow (Navigate) |
+| Off route (step 1 of 2, owner 2026-11-07) | ANZEIGE | the amber off-route card with the arrow (Navigate) – for the whole off-route state, also while the question (step 2) is open below it; its small state line only where no box says it (no way, kept); gone when back on the route (`navigation/OffRouteSteps`) |
 | Downloads in the background | ANZEIGE | the small chip "◔ Bozen · 34 %" in the tag look (`TagContainer` / `TagInk` pill, a progress ring – spinning while areas are still prepared and no percent is known yet; ≥ 48 dp tap target); tap → its details as a bottom sheet; offline / waiting for GPS → the quiet grey pill |
 | The result of an action in My routes / Settings | ANZEIGE | `NoticeLine`: grey INFO / red ERROR line at the top, gone when the screen is left |
 | Work the user started | ANZEIGE | a spinner where it was started (`Busy`) |
