@@ -159,7 +159,7 @@ matched the cached legs – even in the same process.
   longer re-routes a plan's untouched legs (the memory cache is still cleared with the engine; the store answers).
 - **Loading** (`AppViewModel.loadStoredLine` in `openTour` – My routes, Zuletzt drafts, a done tour's plan copy, browser
   plans – not during a tour): every leg fresh → the plan run takes them, **no router run, the same line**; the trace
-  says "Loading "…": all N legs stored – no routing" and the run "N legs from the cache (N stored)". Else a **stand-in**
+  says "Loading "…": all N legs stored – no routing" and the run "tries: N legs from the cache" (no router try; "(N stored)" is added when the run itself read them from the store, e.g. a plan restored at start). Else a **stand-in**
   (`routing/StoredLine.kt`): per leg the stored leg even if stale, else the saved line's piece between the two points
   (old saves, a plan copy, legs the store let go; the line cut where each point is nearest, in order, every point
   ≤ 500 m from it; a "line" that is only the points is none). The stand-in is on the map at once while the run routes
@@ -175,4 +175,4 @@ matched the cached legs – even in the same process.
   file; limit), `StoredLineTest` (cutting, round trip, there and back, old save, Zuletzt draft, plan copy, browser plan,
   moved points), emulator `CorePlanE2ETest.aSavedRouteLoadsFromMyRoutesWithoutRoutingAgain`, JVM
   `tools/routing/jvm-test/StoredLegsTest.kt` (108 km Ruhr bike plan, desktop JVM: **3 790 ms routed → 20 ms from the
-  store**, the same line, no router run).
+  store**, the same line, no router run). GitHub emulator, 2.9 km bike plan (E2E): the run 2 579 ms routed → 832 ms from the store (with the 150 ms debounce and the plan result; the load read 0.3 s).

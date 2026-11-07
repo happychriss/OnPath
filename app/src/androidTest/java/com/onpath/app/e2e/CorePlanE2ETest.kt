@@ -437,7 +437,8 @@ class CorePlanE2ETest : E2EBase() {
             assertTrue("every leg from the store: ${trace[load]}", trace[load].contains("all 2 legs stored – no routing"))
             val run = trace.drop(load).firstOrNull { it.startsWith("Route #") && it.contains("ready") }
             assertNotNull("the plan run after the load: ${trace.takeLast(20)}", run)
-            assertTrue("no router run, both legs stored: $run", run!!.contains("2 legs from the cache (2 stored)") && !run.contains(" pts "))
+            // the load read both legs from the store into the cache (above); the run takes them from there – no router try
+            assertTrue("no router run, both legs from the cache: $run", run!!.contains("tries: 2 legs from the cache") && !run.contains(" pts "))
             android.util.Log.i("OnPath", "E2E stored line: loaded in $ms ms")
         } finally {
             scenario.onActivity { vm(it).tours.filter { t -> t.name == name }.forEach { t -> db.deleteTour(t.id) } }
