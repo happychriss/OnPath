@@ -246,7 +246,8 @@ object RouteWarnings {
 
     /** The amber line, or null when there is nothing to know: at most [MAX_ITEMS] items, then " +N". */
     fun text(spots: List<RouteSpot>, sac: Int): String? {
-        val items = items(spots, sac)
+        // the line starts with a capital: "Ford · 5 steep sections", not "ford · …" (Meran pictures D / F04)
+        val items = items(spots, sac).mapIndexed { i, s -> if (i == 0) s.replaceFirstChar { it.uppercaseChar() } else s }
         if (items.isEmpty()) return null
         val more = items.size - MAX_ITEMS
         return items.take(MAX_ITEMS).joinToString(" · ") + if (more > 0) " +$more" else ""

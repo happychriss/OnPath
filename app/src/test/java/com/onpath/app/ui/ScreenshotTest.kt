@@ -241,6 +241,11 @@ class ScreenshotTest {
         Frame(route = false) { PlanPanel(planUi(n = 1, r = null), PlanCallbacks()) }
     }
 
+    /** Meran pictures D04: at the low (summary) step "Halte die Karte gedrückt, um das Ziel zu setzen." lay behind the foot. */
+    fun planOnePointLow() = paparazzi.snapshot {
+        Frame(route = false) { PlanPanel(planUi(n = 1, r = null, size = PlanSize.MINI), PlanCallbacks()) }
+    }
+
     fun plan() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(), PlanCallbacks()) }
     }

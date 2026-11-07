@@ -85,7 +85,8 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
         if (engine is StraightLineEngine) return Failed(Reason.UNAVAILABLE, "Offline router not available", 0)
         if (!req.original.isUsable) return Failed(Reason.NO_WAY, "Nothing to rejoin", 0)
         if (req.toStart) return leadThere(req, t0, cancel)
-        val base =RerouteTargets.base(req.original, req.position, req.progressM)
+        // never past a stop not reached yet: abeam of the line beyond it is no reason to leave it out (bug G02)
+        val base = RerouteTargets.base(req.original, req.position, req.progressM, req.stops, req.visited)
         val skipped = RerouteTargets.passed(req.stops, base, req.visited)
         val deadline = t0 + req.totalMs
         if (req.stops.size >= 2) fresh(req, base, skipped, t0, deadline, cancel)?.let { return it }

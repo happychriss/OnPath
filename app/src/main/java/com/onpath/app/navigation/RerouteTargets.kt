@@ -49,12 +49,29 @@ object RerouteTargets {
     /**
      * Where the user is along the original line for re-routing: the progress when they left it, or further when they
      * are abeam of a later part within [ABEAM_MAX_M] (took a shortcut). Never behind the progress.
+     *
+     * Never past a stop of [stops] not yet reached ([visited]): being abeam of the line beyond a stop does not pass it.
+     * Bug G02 (2026-11-07, Vellau → Gasthof Hochmuth → Leiteralm): the plan comes back above the way out, the walker
+     * beside the way out was "abeam" of the way back and the inn counted as passed – the new route left it out without
+     * the question (C5: a stop is left out only after asking, [StopSkip]; `RerouteKeepsStopTest`, `RerouteStopJvmTest`).
+     * The base then stays just before that stop, so the re-route goes via it or asks about it.
      */
-    fun base(line: NavLine, position: GeoPoint, progressM: Double): Double {
+    fun base(
+        line: NavLine, position: GeoPoint, progressM: Double,
+        stops: List<NavStop> = emptyList(), visited: Set<Int> = emptySet(),
+    ): Double {
         val m = line.match(position, progressM, progressM + PROJECT_AHEAD_M) ?: return progressM
         if (m.distanceM > ABEAM_MAX_M) return progressM
-        return max(progressM, m.alongM)
+        val ahead = max(progressM, m.alongM)
+        // the first stop ahead of the progress not reached yet (the destination is never counted passed anyway)
+        val next = stops.indices.firstOrNull { i ->
+            i < stops.lastIndex && i !in visited && stops[i].alongM > progressM + PASSED_SLACK_M
+        } ?: return ahead
+        return minOf(ahead, max(progressM, stops[next].alongM - PASSED_SLACK_M - HOLD_BEFORE_M))
     }
+
+    /** How far before a stop not yet reached [base] stays (so that [passed] does not count it). */
+    private const val HOLD_BEFORE_M = 1.0
 
     /** Stops behind [baseM] or visited during the tour (the destination only when really reached). */
     fun passed(stops: List<NavStop>, baseM: Double, visited: Set<Int>): Set<Int> =

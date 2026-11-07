@@ -437,4 +437,52 @@ class TripPaceTest {
         trip.onFix(s3 + 1, wall(s3 + 1), q.lat, q.lon, times.lengthM * 0.4, true)
         assertNotNull(trip.snapshot().lineNote)
     }
+
+    @Test fun nearTheEndTheArrivalIsTheEstimateNotTheCalmLag() {
+        // Meran pictures H01 (2026-11-07): at 11:03, 49 m before the goal, the card said "4 min" and "Ankunft 11:15" –
+        // a walker faster than the setting (the calm display lags the estimate by minutes), then the plan ends close
+        // ahead (the stop taken out): the lag rides on as the new line's offset, blended out over 10 min only at the
+        // 100 m updates, and between updates the arrival never moves earlier – so it reached the goal
+        val fast = Factors(0.4, 0.4, 0.4)
+        val trip = TripPace(); trip.setLine(times, 0.0)
+        val a0 = 4000.0
+        val s0 = walk(trip, fast, a0 / times.lengthM)
+        assertTrue("precondition: the display lags by ${lagMin(trip, s0)} min", lagMin(trip, s0) > 4)
+        val near = RouteTimes.of(pts.take(86), Activity.HIKE) // ends ~250 m ahead
+        trip.setLine(near, a0)
+        var checked = 0
+        walk(trip, fast, near.lengthM / times.lengthM, startS = s0, startAlong = a0) { s, a ->
+            val left = near.lengthM - a
+            if (left in 1.0..60.0) {
+                val snap = trip.snapshot()
+                val toGo = snap.toGoS!!
+                val ahead = (snap.arrivalMs!! - wall(s)) / 60_000.0
+                // 60 m at this pace is well under a minute: never "4 min", the arrival not 12 min away
+                assertTrue("to go ${toGo / 60} min with ${left.toInt()} m left", toGo <= 120.0)
+                assertTrue("arrival in $ahead min with ${left.toInt()} m left", ahead <= 2.5)
+                checked++
+            }
+        }
+        assertTrue(checked > 0)
+    }
+
+    @Test fun theNewRouteNoteGoesForTheLastMinutes() {
+        // Meran pictures H01: "Neue Route · vorher 14:25" (a stop taken out hours ago) still under "Ankunft" at the goal
+        val trip = TripPace(); trip.setLine(times, 0.0)
+        val s = walk(trip, Factors.ONE, 0.3)
+        val a = times.lengthM * 0.3
+        // the plan ends earlier (the stop taken out): said once
+        val shorter = RouteTimes.of(pts.take(101), Activity.HIKE)
+        trip.setLine(shorter, a)
+        val p = line.pointAt(a)
+        trip.onFix(s + 1, wall(s + 1), p.lat, p.lon, a, true)
+        val note = trip.snapshot().lineNote!!
+        var nearEnd = 0
+        walk(trip, Factors.ONE, shorter.lengthM / times.lengthM, startS = s + 1, startAlong = a) { _, _ ->
+            val raw = trip.rawToGoS()!!
+            if (raw > TripPace.NOTE_MIN_MS / 1000.0 + 60) assertEquals(note, trip.snapshot().lineNote)
+            else if (raw < TripPace.NOTE_MIN_MS / 1000.0) { assertNull(trip.snapshot().lineNote); nearEnd++ }
+        }
+        assertTrue(nearEnd > 0)
+    }
 }

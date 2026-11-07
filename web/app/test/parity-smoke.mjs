@@ -333,7 +333,8 @@ await page.waitForFunction(() => !document.getElementById('warning').hidden, nul
 const wl = await page.textContent('#warning');
 console.log('warning:', wl);
 // MTB: no 'steep' line any more (app's RouteWarnings.isMtb, main 2026-10-27); the ford there stays
-check(await page.isVisible('#warning') && /ford/.test(wl) && !/steep/.test(wl), 'route warning line (ford, no steep for MTB) shown');
+// (case-blind: the line starts with a capital since 2026-11-07, "Ford · …")
+check(await page.isVisible('#warning') && /ford/i.test(wl) && !/steep/i.test(wl),'route warning line (ford, no steep for MTB) shown');
 await page.click('#warning');
 check(await page.locator('#spots li').count() > 0, 'click → the spots on this route');
 

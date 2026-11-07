@@ -17,6 +17,14 @@ object InterruptedLog {
     fun choiceLine(tourName: String, choice: Choice): String =
         "Interrupted recording of '$tourName': user chose ${choice.word}"
 
-    /** The user's answer in the "Unfinished tour" dialog. INFO: an expected situation, not a fault. */
-    fun chose(tourName: String, choice: Choice) = Problems.info("recording", choiceLine(tourName, choice))
+    /**
+     * The user's answer in the "Unfinished tour" dialog. INFO: an expected situation, not a fault. Every answer ends
+     * the "Tour interrupted" notification ([clearNote]) – it stayed after Continue (Meran pictures 2026-11-07, bug 2).
+     */
+    fun chose(tourName: String, choice: Choice, clearNote: () -> Unit) {
+        Problems.info("recording", choiceLine(tourName, choice))
+        try { clearNote() } catch (e: Exception) {
+            Problems.warn("recording", "The 'Tour interrupted' notification could not be removed", e)
+        }
+    }
 }

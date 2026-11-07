@@ -440,6 +440,10 @@ class RecordingService : Service() {
                 demoMarked = existing.name.startsWith(DemoLocation.TOUR_PREFIX)
                 voice.newTour()
                 loadTrip() // also the tour's voice memory: a sticky restart never says "Los geht's" again
+                // the tour goes on (Continue, or the system restarted the service): "Tour interrupted" is over
+                try { TourInterruptedReceiver.cancelNote(this) } catch (e: Exception) {
+                    Problems.warn("recording", "The 'Tour interrupted' notification could not be removed", e)
+                }
             } else {
                 // a tour started during a demo is marked as such (easy to find and delete)
                 demoMarked = DemoLocation.active

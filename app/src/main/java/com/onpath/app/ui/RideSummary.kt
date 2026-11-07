@@ -109,8 +109,9 @@ fun RideSummaryDialog(
                             RadioButton(selected = choice == o.choice, onClick = null)
                             Spacer(Modifier.width(8.dp))
                             Column {
-                                Text(o.title, fontWeight = FontWeight.Medium)
-                                Text(o.detail, style = MaterialTheme.typography.bodySmall,
+                                // read here, not when the summary was made: a live language switch reaches it (H03)
+                                Text(words(o.titleWords), fontWeight = FontWeight.Medium)
+                                Text(words(o.detailWords), style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
@@ -126,6 +127,9 @@ fun RideSummaryDialog(
 }
 
 @Composable
+private fun words(w: RideView.Words): String = str(w.res, *w.args.toTypedArray())
+
+@Composable
 private fun TimelineRow(r: RideView.Row, zone: ZoneId) {
     val fmt = remember(zone) { DateTimeFormatter.ofPattern("HH:mm").withZone(zone) }
     fun t(ms: Long?) = ms?.let { fmt.format(Instant.ofEpochMilli(it)) } ?: "–"
@@ -138,7 +142,7 @@ private fun TimelineRow(r: RideView.Row, zone: ZoneId) {
         Box(Modifier.size(10.dp).background(color, RoundedCornerShape(2.dp)))
         Spacer(Modifier.width(8.dp))
         Column {
-            Text("${r.kind.label} · ${t(r.startMs)}–${t(r.endMs)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            Text("${str(r.kind.res)} · ${t(r.startMs)}–${t(r.endMs)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             val parts = buildList {
                 add(Format.distance(r.distanceM))
                 if (r.ascentM >= 1) add("↑ ${r.ascentM.toInt()} m")

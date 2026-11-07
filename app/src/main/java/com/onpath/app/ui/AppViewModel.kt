@@ -4247,8 +4247,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // 2026-11-07: the map never turns by itself) – entering Navigate starts the following
     }
 
+    /** Any answer in "Unfinished tour" ends the "Tour interrupted" notification (Meran pictures bug 2). */
+    private fun clearInterruptedNote() = com.onpath.app.recording.TourInterruptedReceiver.cancelNote(getApplication())
+
     fun continueRecording(t: Tour) {
-        com.onpath.app.recording.InterruptedLog.chose(t.name, com.onpath.app.recording.InterruptedLog.Choice.CONTINUE)
+        com.onpath.app.recording.InterruptedLog.chose(t.name, com.onpath.app.recording.InterruptedLog.Choice.CONTINUE, ::clearInterruptedNote)
         tour.continueTour(t)
     }
 
@@ -4286,7 +4289,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun saveUnfinished(t: Tour, choice: com.onpath.app.rides.RideChoice? = null) {
         val rides = tour.unfinishedRides?.second?.rides
-        com.onpath.app.recording.InterruptedLog.chose(t.name, com.onpath.app.recording.InterruptedLog.Choice.SAVE)
+        com.onpath.app.recording.InterruptedLog.chose(t.name, com.onpath.app.recording.InterruptedLog.Choice.SAVE, ::clearInterruptedNote)
         tour.closeUnfinished()
         // the sticky service came back meanwhile and records this tour: it is not unfinished, leave it alone
         if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
@@ -4308,7 +4311,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** "Unfinished tour" → Delete (asked again in the dialog): saved as done, then into the recycle bin (30 days). */
     fun deleteUnfinished(t: Tour) {
-        com.onpath.app.recording.InterruptedLog.chose(t.name, com.onpath.app.recording.InterruptedLog.Choice.DELETE)
+        com.onpath.app.recording.InterruptedLog.chose(t.name, com.onpath.app.recording.InterruptedLog.Choice.DELETE, ::clearInterruptedNote)
         tour.closeUnfinished()
         if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }
         Problems.trace("tour", "Unfinished tour ${t.id} deleted (recycle bin)")

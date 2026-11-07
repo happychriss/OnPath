@@ -227,7 +227,7 @@ object RideView {
 
     // ------------------------------------------------------------------------------------------------ summary
 
-    enum class RowKind(private val res: org.jetbrains.compose.resources.StringResource) {
+    enum class RowKind(val res: org.jetbrains.compose.resources.StringResource) {
         ON_FOOT(Res.string.nav_row_on_foot), BY_BIKE(Res.string.nav_row_by_bike), VEHICLE(Res.string.nav_row_vehicle),
         LIFT(Res.string.nav_row_lift);
 
@@ -238,7 +238,18 @@ object RideView {
     data class Row(val kind: RowKind, val startMs: Long?, val endMs: Long?, val distanceM: Double, val ascentM: Double,
                    val speedKmh: Double?, val descentM: Double = 0.0)
 
-    data class Option(val choice: RideChoice, val title: String, val detail: String)
+    /**
+     * A text kept as its key + arguments and read when shown: the summary lives in the view model, so a text read at
+     * creation stayed German after a live switch to English (Meran pictures H03).
+     */
+    data class Words(val res: org.jetbrains.compose.resources.StringResource, val args: List<Any> = emptyList()) {
+        val text: String get() = Txt.s(res, *args.toTypedArray())
+    }
+
+    data class Option(val choice: RideChoice, val titleWords: Words, val detailWords: Words) {
+        val title: String get() = titleWords.text
+        val detail: String get() = detailWords.text
+    }
 
     /** Everything the end-of-tour summary shows: timeline, the choices (preselected one first in [preselected]), map lines. */
     data class Summary(
@@ -284,14 +295,14 @@ object RideView {
         val parts = 1 + splitParts(segments, rides).size
         val options = buildList {
             if (last.from >= 1) add(Option(RideChoice.UNTIL,
-                if (untilTime != null) Txt.s(Res.string.nav_ride_until_time, untilTime) else Txt.s(Res.string.nav_ride_until_ride),
-                if (rides.size > 1) Txt.s(Res.string.nav_ride_until_last_detail)
-                else Txt.s(Res.string.nav_ride_until_detail)))
-            add(Option(RideChoice.NOT_COUNTED, Txt.s(Res.string.nav_ride_not_counted), Txt.s(Res.string.nav_ride_not_counted_detail)))
+                if (untilTime != null) Words(Res.string.nav_ride_until_time, listOf(untilTime)) else Words(Res.string.nav_ride_until_ride),
+                if (rides.size > 1) Words(Res.string.nav_ride_until_last_detail)
+                else Words(Res.string.nav_ride_until_detail)))
+            add(Option(RideChoice.NOT_COUNTED, Words(Res.string.nav_ride_not_counted), Words(Res.string.nav_ride_not_counted_detail)))
             if (allowSplit && parts >= 2 && rides.first().from >= 1) add(Option(RideChoice.SPLIT,
-                if (parts == 2) Txt.s(Res.string.nav_ride_split_two) else Txt.s(Res.string.nav_ride_split_n, parts),
-                if (parts == 2) Txt.s(Res.string.nav_ride_split_two_detail) else Txt.s(Res.string.nav_ride_split_n_detail)))
-            add(Option(RideChoice.AS_RECORDED, Txt.s(Res.string.nav_ride_as_recorded), Txt.s(Res.string.nav_ride_as_recorded_detail)))
+                if (parts == 2) Words(Res.string.nav_ride_split_two) else Words(Res.string.nav_ride_split_n, listOf(parts)),
+                if (parts == 2) Words(Res.string.nav_ride_split_two_detail) else Words(Res.string.nav_ride_split_n_detail)))
+            add(Option(RideChoice.AS_RECORDED, Words(Res.string.nav_ride_as_recorded), Words(Res.string.nav_ride_as_recorded_detail)))
         }
         var after = 0.0
         for (i in last.to until f.size - 1) after += f.d(i, i + 1)

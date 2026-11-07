@@ -329,6 +329,9 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     }
     // a tap on the open map (hold-only): the same hand says how to set a point – in the step the sheet opens at
     else if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { TapHoldHint() }
+    // without a route, what to do next ("Halte die Karte gedrückt, um das Ziel zu setzen.") belongs to the summary step
+    // too – below it, the low sheet hid it behind its foot (the navigation bar; Meran pictures D04)
+    if (route == null) Box(Modifier.fillMaxWidth().then(belowStep)) { SubLine(ui, route) }
     if (ui.offlineInfo != null && ui.pointCount > 0)
         Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { OfflineInfoLine(ui.offlineInfo) }
     // the summary step ends under the summary lines
@@ -336,7 +339,6 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     Column(Modifier.fillMaxWidth().weight(1f).onGloballyPositioned { viewport = it }.then(belowStep)
         .verticalScroll(scroll, enabled = full)) {
-        SubLine(ui, route)
         if (guide) EmptyGuideRest(cb.onMyRoutes)
         if (route != null) SavedLine(ui)
         // while a route is calculated the old profile stays where it is, faded and still (owner 2026-11-06: the sheet

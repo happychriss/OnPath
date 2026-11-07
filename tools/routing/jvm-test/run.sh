@@ -5,6 +5,8 @@
 # Env: KTTEST=<file.kt> runs another test main (default KtTest.kt; ViaTest.kt = via-point tests;
 #      SnapTest.kt = plan points moved onto the way; TimeP4Test.kt = route times without / with way attributes; RerouterJvmTest.kt = re-routing while navigating, pass/fail;
 #      StopSkipJvmTest.kt = re-routing and the next stop (Hilden bike ride 2026-10-28, needs E5_N50.rd5): via / skip / ask, pass/fail);
+#      RerouteStopJvmTest.kt = a re-route never drops a stop without the question (bug G02: Hike Vellau → Gasthof Hochmuth →
+#      Leiteralm, 138 walk-offs on the way to the inn, needs E10_N45.rd5, DUMP=1 every case), pass/fail;
 #      IslandTest.kt = a point on a way without a connection (Köln Dom, needs E5_N50.rd5) still gets a route, pass/fail;
 #      ShortDetourTest.kt = a short trip with a long detour is retried via the midpoint (Hilden bike 0.73 km straight, BRouter
 #      2.05 km → ≤ 1.3 km, needs E5_N50.rd5; AB_N=100 JAVA_XMX=1g = A/B on random 0.4–2 km trips, also needs E10_N45.rd5), pass/fail;

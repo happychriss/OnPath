@@ -46,6 +46,17 @@ class RouteWarningsTest {
         assertEquals("300 m footway – you may have to push · steps · 1 steep section", RouteWarnings.text(spots, 3))
     }
 
+    @Test fun theLineStartsWithACapital() {
+        // Meran pictures D / F04: "ford · 5 steep sections"
+        val spots = listOf(RouteSpot(SpotKind.FORD, 10, 11, 100.0, 110.0)) +
+            (1..5).map { RouteSpot(SpotKind.STEEP, it * 20, it * 20 + 5, it * 200.0, it * 200.0 + 50, 25) }
+        assertEquals("Ford · 5 steep sections", RouteWarnings.text(spots, 2))
+        assertEquals("Steps", RouteWarnings.text(listOf(RouteSpot(SpotKind.STEPS, 1, 2, 10.0, 20.0)), 2))
+        // only the first word: the others stay as they are
+        assertEquals("Construction site · steps",
+            RouteWarnings.text(listOf(RouteSpot(SpotKind.CONSTRUCTION, 1, 2, 10.0, 20.0), RouteSpot(SpotKind.STEPS, 3, 4, 30.0, 40.0)), 2))
+    }
+
     @Test fun pushingOnHardPathsDependsOnTheBike() {
         val r = route(p(road, 500), p(path(sac = 2), 400), p(path(sac = 4), 200), p(road, 500))
         val trek = RouteWarnings.detect(r, Activity.BIKE_TREKKING, 3)
@@ -364,7 +375,7 @@ class RouteWarningsTest {
         assertEquals(3, piece.size)
         assertEquals(r[s.from], piece[1])
         RouteWarnings.centerFor(r, s)!!.let { (c, zoom) -> assertEquals(r[s.from].lat, c.lat, 1e-9); assertEquals(17.0, zoom, 0.0) }
-        assertEquals("ford", RouteWarnings.text(listOf(s), 3))
+        assertEquals("Ford", RouteWarnings.text(listOf(s), 3))
     }
 
     @Test fun stileOrTurnstileOnlyForBikes() {
@@ -372,7 +383,7 @@ class RouteWarningsTest {
         for (a in Activity.entries.filter { it != Activity.HIKE }) {
             val s = RouteWarnings.detect(r, a, 3).single()
             assertEquals("$a", SpotKind.BARRIER, s.kind)
-            assertEquals("stile", RouteWarnings.text(listOf(s), 3))
+            assertEquals("Stile", RouteWarnings.text(listOf(s), 3))
             assertEquals("Stile – lift the bike over", RouteWarnings.rowTitle(s, 3))
             assertEquals("After 500 m", RouteWarnings.rowDetail(s))
         }
@@ -394,7 +405,7 @@ class RouteWarningsTest {
         for (a in Activity.entries) {
             val s = RouteWarnings.detect(r, a, 3).single()
             assertEquals("$a", SpotKind.CONSTRUCTION, s.kind)
-            assertEquals("construction site", RouteWarnings.text(listOf(s), 3))
+            assertEquals("Construction site", RouteWarnings.text(listOf(s), 3))
             assertEquals("Construction – may be closed", RouteWarnings.rowTitle(s, 3))
         }
     }
