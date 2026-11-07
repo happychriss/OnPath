@@ -107,3 +107,17 @@ it decides *which part* of the plan is followed, never *how* a plan is computed 
 ## 7. Tests first
 Every row of §3 gets a unit test (pure rule: plan points + passed set + edit → ahead points / question), the field case
 first. Core features C1 / C5 rows and `docs/release-rundgang.md` get the field case as a flow.
+
+## 8. Field bug 2026-11-01: plan lines vanished when editing during a tour (fixed)
+During a tour, Plan hides the plan line when the followed line is the plan, and shows the plan only as the pale line.
+Four causes took it off the map:
+1. **"Passed" was computed again from scratch** from the current NavSession; after an edit the new session held only
+   the ahead stops, so passed points fell out, the pale line (gated on a non-empty passed set) went and the next edit
+   followed the whole plan from point 1. Fix: passed points are sticky per tour, matched by coordinate
+   (`TourSplit.passed(…, known)`).
+2. **A service re-route replaced the pale plan** (`nav.original` took its place). Fix: draw both.
+3. **A slow earlier edit landed after a later one** (no supersede check). Fix: `SplitRequests` gate – a new edit,
+   clear or undo invalidates the running one.
+4. **A re-route of the old line overwrote the app's new session files.** Fix: a session token in the file and the
+   intent; a re-route result with another token is dropped.
+Rule: in Plan during a tour the plan is never invisible – if its line is hidden, it is drawn pale.

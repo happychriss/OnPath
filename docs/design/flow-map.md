@@ -3,7 +3,7 @@
 Owner 2026-11-06: "alle Abläufe durchspielen … ob wir noch ähnliche Sackgassen oder unlogische Sachen haben". Read from
 the code of main 7259f41e (AppViewModel, MapScreen, NavigateScreen, PlanPanel, TourBar, TourActionBar, PlanTopBar,
 MapOverlays, MapHost, Panels, RouteDialogs, search/PlaceCard). Unsure findings were probed on the emulator
-(`FlowMapProbeE2ETest`, kept off main – each probe passes when the suspected behaviour is there; all three passed again on
+(`FlowMapProbeE2ETest`, a throw-away file never committed – each probe passes when the suspected behaviour is there; all three passed again on
 7259f41e, 2026-11-06 17:20). Data-loss paths are in
 `docs/design/save-paths.md` and are only referenced here; the Pixel review of 2026-11-06 (backlog "Pixel review
 2026-11-06 – open bugs") likewise.
@@ -257,7 +257,7 @@ N3 / M3 – "Neues Ziel" in the hold menu during a tour.
 
 ## How the probes ran
 
-`app/src/androidTest/java/com/onpath/app/e2e/FlowMapProbeE2ETest.kt` on the donald emulator via
+`FlowMapProbeE2ETest` (a throw-away file, not in the repo) on the donald emulator via
 `FLOWS=com.onpath.app.e2e.FlowMapProbeE2ETest tools/dev/device.sh emulator -- tools/ci/release_rundgang.sh`: `probeNoWayToRecordWithoutARoute` (H1),
 `probeDeleteTourDropsTheUnsavedPlanDespiteTheSwitch` (H2), `probeTrackFollowKeepsOldPlanAndAnEditTakesOver` (M1). Not on
 main: a probe asserts the faulty behaviour and would turn red once it is fixed – each finding's fix gets a real test.

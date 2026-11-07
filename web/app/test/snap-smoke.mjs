@@ -1,4 +1,4 @@
-// The plan points after routing = the app's (routing/PlanResult, docs/handoff-web-planresult.md): a point clicked in a
+// The plan points after routing = the app's (routing/PlanResult, docs/design/web-planner.md §22): a point clicked in a
 // meadow near Algund moves onto the path the route uses (owner: no off-road guidance) – no undo step, the address
 // holds the moved point; planning the moved points again moves nothing (stable); undo / redo show the moved points
 // (PlanHistory.replacePoints); a named + pinned stop (a POI) keeps its exact place.

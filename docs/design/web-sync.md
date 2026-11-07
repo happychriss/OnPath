@@ -6,22 +6,17 @@ encrypted on the device and pass through a small **mailbox** (Cloudflare Worker 
 content, no names, no e-mail; an offline phone syncs when it is back; **the newer version wins, the older stays as a
 copy**; unpair on both sides. Not in phase 2: login, payment, quotas, recorded tracks, multi-day plans.
 
-Status: **built and tested in the cloud (branch `web-spike`; the shared Kotlin on `feat/plan-sync`), not deployed.
-The app part is still to do** (§11, desktop session with the phone).
-
-**Branches:** `feat/plan-sync` = one commit with only new files (`app/.../sync/` + tests) on top of main `cf181ae` –
-it can be merged into main (or cherry-picked) as it is. Merging it into `web-spike` also brought main's newer app
-code, which the web engine could not compile then (main's string resources `Txt` / `Res`); commit `72a84218` on
-`web-spike` took that part out again. **Done 2026-10-29:** the engine now generates `Res.string.*` / `Res.plurals.*`
-from the same English `strings/…/values/*.xml` (`generateStrings` in `web/engine/build.gradle.kts`, stand-ins
-`com/onpath/strings/Txt.kt` + `org/jetbrains/compose/resources/StringResource.kt`); `72a84218` was reverted and
-origin/main merged – web-spike carries main's app code again and merges main regularly (web-planner.md §14).
+Status: **live** – the mailbox runs in the planner host (`plan.onpath.earth/sync/v1`), the phone side is in the app
+(`plansync/`, Settings → Browser sync, §11), the shared code in `app/.../sync/` (compiled by the web engine,
+`app/web-shared-files.txt`). The web engine generates the app's `Res.string.*` / `Res.plurals.*` from the same
+`strings/…/values/*.xml` (`generateStrings` in `web/engine/build.gradle.kts`), so shared files that use texts compile
+on both sides.
 
 ## 1. Pieces
 
 | Where | What |
 | --- | --- |
-| `app/src/main/java/com/onpath/app/sync/` (pure Kotlin, branch `feat/plan-sync`) | `SyncCrypto.kt` (SHA-256, HMAC, HKDF, AES-256-GCM, `Aead`), `PairCode.kt` (pairing code, `SyncKeys`), `SyncItem.kt` (item + blob format), `SyncMerge.kt` (conflict rule), `SyncLedger.kt` (one device's local side). Compiled into the web engine like `PlanCode` – app and browser run the same code. |
+| `app/src/main/java/com/onpath/app/sync/` (pure Kotlin, shared with the web) | `SyncCrypto.kt` (SHA-256, HMAC, HKDF, AES-256-GCM, `Aead`), `PairCode.kt` (pairing code, `SyncKeys`), `SyncItem.kt` (item + blob format), `SyncMerge.kt` (conflict rule), `SyncLedger.kt` (one device's local side). Compiled into the web engine like `PlanCode` – app and browser run the same code. |
 | `app/src/test/java/com/onpath/app/sync/` | `SyncCryptoTest` (FIPS 180-4, RFC 4231, RFC 5869, FIPS 197, GCM spec vectors; byte-equal to javax.crypto on 200 random inputs), `PlanSyncTest` (formats, frozen v1 values, merge, ledger, two ledgers through a fake mailbox). Run by `./gradlew -p web/engine test`. |
 | `web/engine/.../WebSync.kt` | string calls for the page (`syncKeys`, `syncApply`, `syncOutbox`, …; exports in `WebApi.kt`) |
 | `web/host/src/sync.js`, `web/host/migrations/0001_sync.sql` | the mailbox (Worker route `/sync/v1/…`, D1) |
@@ -235,7 +230,7 @@ Header `Authorization: Bearer <token>` on every call.
   browser: before the name is asked – Save amber, its tooltip „250 Touren auf dem Handy – lösche erst welche.“);
   changes, renames and deletes always work; room again after a delete (here or on the phone). Tours of Without phone
   joining at a pairing are taken even above 250 (nothing is lost) – only new ones are refused then. The browser's Phone
-  window shows „N von 250 Touren“ with a thin bar (amber from 200); the app's Settings → Browser sync line is [cloud-app].
+  window shows „N von 250 Touren“ with a thin bar (amber from 200); the app's Settings → Browser sync line is [donald] (backlog).
   The pull's answer carries the mailbox's `use` ({items, bytes, maxItems} – all items incl. tombstones), shown as the
   bar's tooltip; old clients ignore it.
 - **Host limits** (a safety net above the 250 tours, room for tombstones which are never purged): item 32 KiB,
@@ -307,49 +302,19 @@ open the page in two browser windows (one private). The claude.ai preview cannot
    domain `plan.onpath.earth`, **path `sync/`**; policy action **Bypass**, include **Everyone**. (The more specific
    path wins over the planner's Allow app; the phone app cannot log in to Access – the mailbox token is the lock.)
    Check: `curl -i https://plan.onpath.earth/sync/v1/x` → 404 JSON from the Worker, not the Access login page.
-5. Actions → Web spike → Run workflow → tick *deploy* (applies `migrations/` to D1, then deploys; the cron and the
+5. Actions → Web planner → Run workflow → tick *deploy* (applies `migrations/` to D1, then deploys; the cron and the
    rate limit come with the deploy).
 6. Later, for production: a separate database (`onpath-sync`), the privacy notice extended (§12).
 
-## 11. App side – task list for the desktop session (donald, phone on USB)
+## 11. App side (built)
 
-Merge `feat/plan-sync` (or main once it is in) – the shared code is ready and tested; the app adds only platform parts.
-
-1. **SharedCoreRuleTest:** add `"sync"` to `packages` (the sync package is pure; keep it that way).
-2. **Storage:** one private file (e.g. `filesDir/sync/ledger.txt`, written atomically: temp + rename) for
-   `SyncLedger.write()`, and `filesDir/sync/pair.txt` for the pairing code + device id (`SyncFormat.newDevice` from
-   `SecureRandom`, once per install). App-private storage is enough (no Play Services, no EncryptedSharedPreferences:
-   a key next to the data adds nothing; Android's file-based encryption covers the device). Exclude `sync/` from
-   Android backup (`dataExtractionRules` / `fullBackupContent`) so a restored phone does not reuse an old mailbox.
-3. **Saved routes ⇄ sync items:** sync only *plans* (saved routes made in Plan mode), not recordings. Keep a small
-   table route id ⇄ item id. Saving / renaming / deleting a saved route → `ledger.save / rename / delete`
-   (`plan` = `PlanCode.encode(SharedPlan(...))` of that route, title = route name). A new or changed item from the
-   mailbox → create / update the saved route (route it again with the Planner like an opened plan link);
-   a tombstone → move the route to the recycle bin (C11), never hard-delete. A "… (copy)" item is a normal saved route.
-4. **Pairing:** ☰ → "Pair with browser" → in-app QR scanner (ZXing core, Apache-2.0; CAMERA permission asked only on
-   this tap) – **or** the system camera opens the `#pair=` link and the app's link filter (A-005) catches it.
-   The app's plan-link filter (`PlanLinks`, host `plan.onpath.earth`, A-005) already receives these links: send
-   `#pair=` to pairing (`PairCode.parse`), `#p=` stays a plan (the two never mix, tested).
-   `PairCode.parse` → show `SyncKeys.check` ("Check: 395 514 – the browser shows the same digits") → Pair / Cancel →
-   store the code, `hello(device, Build.MODEL, now)`, sync at once. Already paired → "Unpair first".
-5. **Sync round** (§7) in a `SyncWorker`-like class on a background thread: `HttpURLConnection` to
-   `https://plan.onpath.earth/sync/v1/…`, 15 s timeouts; JSON with the app's own small parser (no org.json in shared
-   code; the app layer may use org.json). Use `SyncFormat.fromText/toText` for blobs. `Aead`: javax.crypto
-   (`AES/GCM/NoPadding`, 128-bit tag) or `AesGcm` – both proven equal.
-6. **Triggers:** after a save / rename / delete, at app start and when the app comes to the foreground, when the
-   network comes back (ConnectivityManager callback), at most every few minutes while open. No background sync when the
-   app is closed (not needed for phase 2; WorkManager later if the owner wants it). Never during recording (robust
-   first) – or only after the tour ends.
-7. **Settings → Plan sync** (or under Privacy): "Paired with Chrome on Linux · synced 14:05", "Sync now", **Unpair**
-   (question: "Plans stop syncing; they stay on this phone and in the browser." → `DELETE`, then `ledger.forget()`).
-   410 / 403 from the server → "The pairing was ended in the browser. Your plans stay on this phone."
-8. **Messages:** offline → INFO grey "Plans sync when you are online"; server refused → WARNING with "Try again";
-   unreadable items → WARNING "n synced plans come from a newer app – update OnPath". Every catch → `Problems`.
-9. **Tests (core-feature style):** `PlanSyncTest` already covers formats + merge; add: ledger file round trip and
-   crash safety (temp file), route ⇄ item mapping (save, rename, delete → recycle bin, remote update replans), pairing
-   link from the scanner and from the link filter, unpair, an end-to-end test against a local mailbox
-   (`web/host/src/sync.js` runs in Node; or a MockWebServer copy of its rules).
-10. **Privacy:** Settings → Privacy list gains the line in §12; the website privacy notice needs the same (marketing).
+`plansync/` (rules: `.claude/rules/sync-web.md`): `PlanSync` (background thread, never during a recording; `SyncPoll`
+about every 60 s while My routes / Browser sync is shown), `PlanSyncPass` (saved routes and imported GPX tracks ⇄
+items; a delete from outside → recycle bin, never a hard delete), `HttpMailbox`, `SyncFiles` (`files/sync/`, atomic,
+excluded from Android backup so a restored phone does not reuse an old mailbox). Pairing: ☰ → Pair with browser opens
+the camera; the `#pair=` link reaches the app's plan-link filter (`#p=` stays a plan), `SyncKeys.check` digits, Pair /
+Cancel. Settings → Browser sync: state, Sync now, Unpair. Tests: `CorePlanSyncTest`, `SyncFilesTest`, `SyncTrackTest`,
+and against the real `sync.js` in Node (`tools/sync/e2e.sh`).
 
 ## 12. Privacy text (proposal, for Settings → Privacy and the website)
 
@@ -363,8 +328,7 @@ Merge `feat/plan-sync` (or main once it is in) – the shared code is ready and 
 
 ## 13. Open decisions (owner)
 
-1. **Scope of "plans" on the phone:** all saved routes made in Plan mode (recommended) or only those the user marks
-   "sync"? Imported GPX routes – sync (as plan points) or not (recommended: not in phase 2; they are tracks, not plans)?
+1. *Decided:* all saved routes and imported GPX tracks sync (`TrackCode`); recorded tours stay phone-only.
 2. **More than one browser / a second phone:** works already (every holder of the code joins the same mailbox);
    show "Show code again" in the app too? Recommended: yes, later.
 3. **Tombstone clean-up and item limit** (1000 per mailbox): fine for phase 2; revisit with real numbers.
@@ -519,7 +483,7 @@ entfernen" (closed folders).
 `.current` = the open route; ⋮ menu placed fixed at its button), `phoneDialog`, `phonePill`, `savePopover` (rule 5),
 `appDate` (the app's `common_date` pattern, "30. Okt 2026"); `sync.ts` `adoptNone` (rule 2); engine `syncList` +
 `dirty`, `onPhone` (`WebSyncJoinTest`). Light green of the open route `--current`, GPX purple `--gpx` (the app's
-`OnPathColors.Gpx`). The marks (`fach:<key>:marks`) are shown again since 2026-10-31 as the app's tags – "New" / "Changed" ("Neu" / "Geändert", app keys `routes_tag_*`) after the name, light blue pill (`--tag-bg` / `--tag-fg` = `TagContainer` / `TagInk`), gone when the route is opened (docs/handoff-web-route-tags.md); bold still means "waiting". Delete in the ⋮ menu is
+`OnPathColors.Gpx`). The marks (`fach:<key>:marks`) are shown again since 2026-10-31 as the app's tags – "New" / "Changed" ("Neu" / "Geändert", app keys `routes_tag_*`) after the name, light blue pill (`--tag-bg` / `--tag-fg` = `TagContainer` / `TagInk`), gone when the route is opened; bold still means "waiting". Delete in the ⋮ menu is
 not red (red only for errors). Two choices not in the rules: the light ✓ Save opens the field too when nothing waits (a
 "Save as" of an unchanged route); the ⋮ → Export GPX of a route opens it and exports once it is planned (a track
 downloads at once, named as the app's `GpxWriter.fileName`).

@@ -15,8 +15,11 @@ paths:
 ## Map data (not in git – too big)
 Map data pipeline: see `docs/map-pipeline.md` and `tools/build_region.sh`.
 
-Built per region by the pipeline, copied to the phone into
-`/sdcard/Android/data/com.onpath.app/files/onpath/` (`adb push onpath-data/. <that dir>`):
+The phone normally gets **map cells** (format 2) from the map server (`docs/design/map-cells.md`). The table below is
+the **region package** of `tools/build_region.sh` – the older full-region path, still `--format 1` by default and still
+read by the app (`DataFiles.formatOf`); it reaches the phone by zip import or `adb push onpath-data/. <dir>` into
+`/sdcard/Android/data/com.onpath.app/files/onpath/` (dev only; fix permissions afterwards). Format-1 rows are the
+overlay `.geojson` files; format 2 replaces them with `overlays.pmtiles`:
 
 | File | Built by | Required |
 | --- | --- | --- |
