@@ -961,10 +961,17 @@ class RecordingService : Service() {
         // turn hints are either / or for every activity (owner 2026-11-01): with the voice on, the off-route warning is
         // spoken, not vibrated too (the vibration stays while the voice was never heard – the phone setup check)
         // a re-route that finishes while in Plan does not vibrate (owner 2026-11-03: Plan is silent)
-        if (GuidanceGate.rerouteVibrates(step.vibrate, planQuiet())) {
+        // without a voice (none on the phone, or the voice off) leaving the route is vibrated – never silent (GuidanceGate)
+        val cue = if (!step.vibrate) GuidanceGate.OffRouteCue.NONE // most fixes: nothing to tell, no settings read
+            else GuidanceGate.offRouteCue(true, planQuiet(), voiceOn(), (settings ?: Prefs(this).settings).offRouteVibrate)
+        when (cue) {
             // the question asks again (reminder, a way found after none, after Keep): said instead (owner 2026-11-07)
-            if (voiceOn()) voiceQuestionAgain()
-            else if ((settings ?: Prefs(this).settings).offRouteVibrate) vibrate()
+            GuidanceGate.OffRouteCue.SAY -> voiceQuestionAgain()
+            GuidanceGate.OffRouteCue.VIBRATE -> {
+                val ok = vibrate()
+                Problems.trace("navigation", "${GuidanceGate.OFF_ROUTE_VIBRATED}: vibrated=$ok (voice ${speaker?.state ?: "not started"})")
+            }
+            GuidanceGate.OffRouteCue.NONE -> Unit
         }
         if (step.cancelJob) cancelReroute()
         step.job?.let { startReroute(it) }

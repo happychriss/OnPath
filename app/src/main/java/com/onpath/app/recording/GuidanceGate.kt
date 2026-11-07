@@ -36,6 +36,23 @@ object GuidanceGate {
     fun rerouteVibrates(stepVibrates: Boolean, planQuiet: Boolean): Boolean =
         stepVibrates && ModeQuiet.allows(planQuiet, ModeQuiet.Event.OFF_ROUTE_QUESTION)
 
+    enum class OffRouteCue { SAY, VIBRATE, NONE }
+
+    /**
+     * How a re-route step that wants attention (leaving the route confirmed – step 1 –, a reminder, a way found after
+     * none) is told: outside Plan, said with the voice on, else vibrated (the voice off, or the phone has no voice –
+     * never a silent off-route, 2d06b5e6), nothing when the off-route vibration is switched off in Settings.
+     */
+    fun offRouteCue(stepVibrates: Boolean, planQuiet: Boolean, voiceOn: Boolean, vibrateSetting: Boolean): OffRouteCue = when {
+        !rerouteVibrates(stepVibrates, planQuiet) -> OffRouteCue.NONE
+        voiceOn -> OffRouteCue.SAY
+        vibrateSetting -> OffRouteCue.VIBRATE
+        else -> OffRouteCue.NONE
+    }
+
+    /** The event-log line of an off-route vibration ([OffRouteCue.VIBRATE]); the E2E tests read it. */
+    const val OFF_ROUTE_VIBRATED = "Off route told by vibration"
+
     /**
      * A pending navigation question (off route, far start, mid route, lead failed) gets no notification in Plan and none
      * during a pause (owner 2026-11-07 "Pause heißt Ruhe"): it stays in the navigator, unanswered, and is asked again
