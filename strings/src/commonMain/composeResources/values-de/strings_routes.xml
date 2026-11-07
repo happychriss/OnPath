@@ -67,6 +67,8 @@
     <string name="routes_recent_all">Alle %1$d anzeigen ›</string>
     <string name="routes_just_saved">✓ Gerade gespeichert</string>
     <string name="routes_overview_show">Übersicht anzeigen</string>
+    <string name="routes_overview_enlarge">Übersicht vergrößern</string>
+    <string name="routes_open_row">%1$s öffnen</string>
     <string name="routes_overview_plan">Planen</string>
     <string name="routes_overview_follow">Folgen</string>
     <string name="routes_overview_loading">Karte wird gezeichnet …</string>

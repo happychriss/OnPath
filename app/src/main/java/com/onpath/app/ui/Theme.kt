@@ -249,11 +249,11 @@ object Instrument {
             // a sign right before the number ("↑ 82", "↑82", "+1,2"): belongs to it
             if (c == '↑' || c == '↓' || c == '+' || c == '−') {
                 var j = i + 1
-                while (j < text.length && text[j] == ' ') j++
+                while (j < text.length && (text[j] == ' ' || text[j] == '\u00A0')) j++
                 return j < text.length && digit(text[j])
             }
             // the space between a sign and its digits
-            if (c == ' ' && i > 0 && text[i - 1] in "↑↓" && i + 1 < text.length && digit(text[i + 1])) return true
+            if ((c == ' ' || c == '\u00A0') && i > 0 && text[i - 1] in "↑↓" && i + 1 < text.length && digit(text[i + 1])) return true
             return false
         }
         val out = mutableListOf<Run>()
