@@ -317,6 +317,11 @@ and the commit history.
   id for GitHub and Play (never both on one phone) or a separate id for the GitHub build; automatic upload to the Play
   Console later (service account). After the merge: docs mention `bundlePlay`, the result note in onpath.private.
 <!-- Owner 2026-11-07: open questions to the owner live here (who, date, question, recommendation first); asked in the session's chat; whoever acts on the answer deletes the line. -->
+- **[donald] Bike turn cue: heard 6 s before the turn – OK? (donald 2026-11-07)** – the owner asked for 2–3 s. His ride
+  (tour 217) shows the normal "Gleich …" was already heard 4–5 s before; what felt late were swallowed / held turns
+  ("danach" turns never said on their own, a turn waiting 3 s behind "Stopp 2 erreicht", arrival before the last turn) –
+  all fixed (bd430119). The "now" is now heard 6 s before at every speed (`VoiceGuide.BIKE_NOW_S`, one constant).
+  Recommendation: keep 6 s and try it; other option: 3 s as he said (at 15 km/h ≈ 12 m before the turn).
 - **[donald] Undo in the full points sheet? (donald 2026-11-07)** – with the plan sheet at full height the map column
   is not drawn (ControlsPlacement, 2de9218f), so after deleting a point in the list there is no Undo on screen until
   the sheet is made smaller; C9 says "Undo on the map". Recommendation: show Undo in the sheet's points step while
