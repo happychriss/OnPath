@@ -28,7 +28,6 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
-- [laptop] Web: Meine Touren like the app's (then „gekoppelt = eine Liste“) – since 2026-11-07
 - [donald] The owner's Pixel points of 2026-11-07 morning (pause band, unlock 20 s, Weiter always held, pause = quiet, Meine Touren rows + ⤢, overview line, Los geht's wide, plan blue #335A85, "Nur aufzeichnen", browser item, sync file race, Los geht's updates the saved route) – since 2026-11-07
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
@@ -37,10 +36,6 @@ and the commit history.
   (from 3 m) neither voice nor vibration fired; the events log has no "Junction cue:" and the shown progress did not
   move. VoiceGuide's memory is ruled out (`VoiceGuideTest.aSimulationRestartedOnTheSameLineSaysItsTurnsAgain` green).
   Suspect: OffRouteDetector / `shownAlongM` when switching demo ↔ real GPS (`NavSimStart`). Test first.
-- **[laptop] Web: Meine Touren like the app's (app 01b38ffa / cb791053 / ce27c111 / e570e467, 2026-11-07)** – the plan on the
-  map first under Zuletzt with „In Bearbeitung“, a small route preview per row, a row tap opens the large overview (route
-  picture + Planen), rows as tile + name + facts + › with every action in ⋮ (Zuletzt keeps Speichern · Löschen); the route
-  drawing itself in 0.5 s (RouteReveal). Parity recorded, web not built yet (web-planner.md §23). Also (app, recorded 2026-11-07): a row's inline „Planen“ for drafts and ⋮ / overview „Los geht's“ (phone only – the web has no tour start), `RouteRowActions.of(…, waypoints, touring)`. And (app ddc8d59b / 4cf68bd7): „Planen“ in a saved row's ⋮ and in the overview (Abbrechen · Planen; „Los geht's“ phone only), Planen on Zuletzt rows; a route added on top scrolls into view.
 - **[donald] Navigation neu – the rest of the owner's field day 2026-11-01** (tours 61–63, data in
   `~/onpath-cells-work/field/2026-11-01-wanderungen/` on donald): round trip "Ziel erreicht" too early, re-route with a
   word / sign to turn round and where, the new voice – concept and what is built: `docs/design/navigation-v2.md`; build
