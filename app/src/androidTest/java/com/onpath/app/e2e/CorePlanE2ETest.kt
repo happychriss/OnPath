@@ -20,6 +20,7 @@ import com.onpath.strings.plan_sheet_smaller
 import com.onpath.app.ui.PlanSize
 import com.onpath.strings.routes_overview_plan
 import com.onpath.strings.routes_overview_show
+import com.onpath.strings.routes_overview_loading
 import com.onpath.strings.common_cancel
 import org.maplibre.android.geometry.LatLng
 
@@ -135,6 +136,8 @@ class CorePlanE2ETest : E2EBase() {
             shot("1-routes-with-previews")
             row!!.click()
             val plan = findFresh(By.text(Txt.s(Res.string.routes_overview_plan)), 8_000)
+            // the map picture comes a moment later: the shot shows it (the line's width is checked by eye – 2026-11-07)
+            device.wait(Until.gone(By.text(Txt.s(Res.string.routes_overview_loading))), 15_000)
             shot("2-overview")
             assertNotNull("the overview with \"Planen\" – ${state()}", plan)
             findFresh(By.text(Txt.s(Res.string.common_cancel)), 3_000)!!.click()

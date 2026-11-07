@@ -16,7 +16,8 @@ tools/build_region.sh --help                            # all options / env over
 tools/build_region.sh --format 2 south-tyrol            # format 2 (docs/design/map-data-size.md), see below
 ```
 
-**Format 2** (`--format 2`, one switch for every file; format 1 stays the default until map cells are live):
+**Format 2** (`--format 2`, one switch for every file; the map server's cells are format 2 only, `build_region.sh` still
+defaults to format 1 for region packages, which the app still reads):
 terrain as WebP lossless, heights rounded to 0.25 m, max zoom 12 (test region 54.6 → 6.6 MB, Meran cell
 10.8 → 1.0 MB); contours built from the original AWS z12/z13 tiles (cached in `$WORK/terrarium`), so they stay
 identical to format 1; overlays as `overlays.pmtiles` and a trimmed base map (below).
@@ -46,8 +47,8 @@ region (name, bbox, OSM URL)
 **Format 2** (`--format 2`, design: `docs/design/map-data-size.md`): the six overlay GeoJSON files become ONE vector
 tile file `overlays.pmtiles` (`extract_overlays.py --tiles --smooth` → `tools/build_overlays.sh`, tippecanoe), and
 the base map is trimmed (`--exclude_layers=housenumber,poi,aeroway,aerodrome_label --languages=de`, then
-`tools/trim_base.sh` drops path / track and small-street lines at z13–14). Details: section 5b. Format 1 stays the default until map
-cells are live (owner Q9); the app reads both.
+`tools/trim_base.sh` drops path / track and small-street lines at z13–14). Details: section 5b. Map cells are live and format 2 only; `build_region.sh`
+still defaults to format 1 (owner Q9), and the app reads both.
 
 "Required" = the app's missing-data screen (`data/DataFiles.kt`) asks for it. Optional files may be
 missing: `map/OptionalSources.kt` removes every style source whose local file is absent, together with

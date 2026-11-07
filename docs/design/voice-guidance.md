@@ -135,3 +135,15 @@ code knows a language:
 3. Nothing else: `Speaker` picks the best offline voice for that language; a phone without one gets the setup step's
    "Load voice".
 `VoiceTextTest` shows every sentence in EN and DE – add the new language there.
+
+## 8. Field bug 2026-11-01: "Los geht's" 3–4 times in the first 3 km (fixed)
+**Root cause:** the start sentence was guarded only by an in-memory flag in `VoiceGuide`, a field of the
+`RecordingService` instance. When the process died (an uncaught exception on `Dispatchers.Main` – the scope had a
+`SupervisorJob` but no exception handler – or an OEM kill), START_STICKY brought the service back, it continued the
+same tour from disk with a **fresh** guide, and the first matched fix said "Los geht's" again; Android's restart
+back-off (1 s, 4 s, 16 s, 64 s) fits "3–4 times in ~3 km".
+**Fix and rule:** the tour's voice memory lives with the tour, not with the service – `VoiceGuide.Memory` saved in the
+tour's `trip-pace.json` and restored with `continueTour` after a sticky restart; a new tour starts a fresh guide. Every
+"state" sentence has a minimum interval (no GPS, off route, arrived once per tour). The service scope reports
+uncaught errors to `Problems` instead of killing the process. Test first: `VoiceGuideTest` (the restarted guide never
+says Start again).

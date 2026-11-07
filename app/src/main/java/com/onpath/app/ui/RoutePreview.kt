@@ -57,6 +57,15 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.strings.*
 
 /**
+ * The overview's map picture and where the route's start and goal lie on it (pixels): the overview draws the start dot
+ * and the goal flag over it, the same signs as over the drawn shape.
+ */
+class OverviewPicture(val image: ImageBitmap, val start: Offset, val goal: Offset)
+
+/** Makes the overview's map picture for (segments, colour, width px, height px); null = none (the shape stays). */
+typealias OverviewSnapshot = suspend (List<List<GeoPoint>>, RouteShape.Tint, Int, Int) -> OverviewPicture?
+
+/**
  * The lines of My routes' rows, kept while the app runs (scrolling back must not read the database again). Keyed by the
  * tour and what changes its line ([key]); the plan on the map has its own changing key (points, distance).
  */
@@ -123,6 +132,12 @@ private fun RouteCanvas(shape: RouteShape.Shape, color: Color, width: Dp, dot: D
     Canvas(modifier) { drawShape(shape, color, width.toPx(), dot.toPx()) }
 }
 
+/** The route's start: a dot in the line's colour on a paper ring (preview, drawn shape, map picture alike). */
+private fun DrawScope.drawStart(at: Offset, color: Color, dot: Float) {
+    drawCircle(OnPathColors.Paper, dot * 1.6f, at)
+    drawCircle(color, dot, at)
+}
+
 private fun DrawScope.drawShape(shape: RouteShape.Shape, color: Color, width: Float, dot: Float) {
     val stroke = Stroke(width = width, cap = StrokeCap.Round, join = StrokeJoin.Round)
     for (l in shape.lines) {
@@ -134,8 +149,7 @@ private fun DrawScope.drawShape(shape: RouteShape.Shape, color: Color, width: Fl
         drawPath(path, color, style = stroke)
     }
     // start: a dot in the line's colour; goal: dark red (the map's goal colour) – the flag is drawn by the caller in large
-    drawCircle(OnPathColors.Paper, dot * 1.6f, Offset(shape.startX, shape.startY))
-    drawCircle(color, dot, Offset(shape.startX, shape.startY))
+    drawStart(Offset(shape.startX, shape.startY), color, dot)
     drawCircle(OnPathColors.Paper, dot * 1.6f, Offset(shape.endX, shape.endY))
     drawCircle(OnPathColors.PointGoal, dot, Offset(shape.endX, shape.endY))
 }
@@ -151,7 +165,7 @@ private fun DrawScope.drawShape(shape: RouteShape.Shape, color: Color, width: Fl
 @Composable
 internal fun RouteOverview(
     t: Tour, segments: List<List<GeoPoint>>?, touring: Boolean,
-    snapshot: (suspend (List<List<GeoPoint>>, RouteShape.Tint, Int, Int) -> ImageBitmap?)?,
+    snapshot: OverviewSnapshot?,
     onPrimary: () -> Unit, onCancel: () -> Unit,
 ) {
     val tint = RouteShape.tint(t.kind)
@@ -168,7 +182,7 @@ internal fun RouteOverview(
                     .background(OnPathColors.PaperDim), contentAlignment = Alignment.Center) {
                     val density = LocalDensity.current
                     val wPx = with(density) { maxWidth.roundToPx() }; val hPx = with(density) { maxHeight.roundToPx() }
-                    var image by remember(segments) { mutableStateOf<ImageBitmap?>(null) }
+                    var image by remember(segments) { mutableStateOf<OverviewPicture?>(null) }
                     var loading by remember(segments) { mutableStateOf(snapshot != null) }
                     if (segments != null && snapshot != null) LaunchedEffect(segments, wPx, hPx) {
                         image = snapshot(segments, tint, wPx, hPx); loading = false
@@ -176,11 +190,15 @@ internal fun RouteOverview(
                     val shape = remember(segments, wPx, hPx) {
                         segments?.let { RouteShape.of(it, wPx.toFloat(), hPx.toFloat(), with(density) { FitPaddingRule.SIDE_DP.dp.toPx() }) }
                     }
-                    image?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
-                        ?: shape?.let { s ->
-                            RouteCanvas(s, tint.color(), 4.dp, 6.dp, Modifier.fillMaxSize())
-                            GoalFlag(s, density)
-                        }
+                    image?.let { pic ->
+                        Image(pic.image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        // the same signs as over the drawn shape: start dot, goal flag (the map picture has no markers)
+                        Canvas(Modifier.fillMaxSize()) { drawStart(pic.start, tint.color(), 6.dp.toPx()) }
+                        GoalFlag(pic.goal.x, pic.goal.y, density)
+                    } ?: shape?.let { s ->
+                        RouteCanvas(s, tint.color(), 4.dp, 6.dp, Modifier.fillMaxSize())
+                        GoalFlag(s.endX, s.endY, density)
+                    }
                     if (image == null && loading) Text(str(Res.string.routes_overview_loading), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.BottomCenter).padding(8.dp))
                     if (shape == null && image == null && !loading) Text(str(Res.string.plan_no_track_recorded),
@@ -193,14 +211,14 @@ internal fun RouteOverview(
     }
 }
 
-/** The goal flag over the drawn shape's last point (the map's goal sign: white flag on dark red). */
+/** The goal flag at ([x], [y]) px – the route's last point (the map's goal sign: white flag on dark red). */
 @Composable
-private fun GoalFlag(s: RouteShape.Shape, density: androidx.compose.ui.unit.Density) {
+private fun GoalFlag(x: Float, y: Float, density: androidx.compose.ui.unit.Density) {
     val size = 24.dp
     val half = with(density) { (size / 2).roundToPx() }
     Box(Modifier.fillMaxSize()) {
-        Box(Modifier.padding(start = with(density) { (s.endX.toInt() - half).coerceAtLeast(0).toDp() },
-            top = with(density) { (s.endY.toInt() - half).coerceAtLeast(0).toDp() })
+        Box(Modifier.padding(start = with(density) { (x.toInt() - half).coerceAtLeast(0).toDp() },
+            top = with(density) { (y.toInt() - half).coerceAtLeast(0).toDp() })
             .size(size).clip(CircleShape).background(OnPathColors.PointGoal), contentAlignment = Alignment.Center) {
             Icon(Icons.Filled.Flag, null, tint = Color.White, modifier = Modifier.size(15.dp))
         }

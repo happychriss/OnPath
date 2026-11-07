@@ -1,8 +1,14 @@
 # Test audit – app and planner (2026-11-06)
 
 Owner order 2026-11-06: review and audit the tests of the app and the browser planner, then throw out what does not
-earn its keep. **Step 1 (this file): analysis only – nothing is deleted yet.** Six branches change test files right
-now; the clean-out runs after their merge, one commit per block below, `tools/ci/gate.sh --full` after each.
+earn its keep.
+
+**Status 2026-11-07:** app steps (a)–(d) of §5 done by donald in the night – unit tests 2,840 → ≈ 2,610, screenshots
+547 → 373, source-text pins → behaviour tests; `PlanSession`, `TourController`, `RoutesState` out of AppViewModel, each
+with a random-flow property test (`PlanFlowPropertyTest`, `TourFlowPropertyTest`, `RoutesFlowPropertyTest`).
+**Open:** ≈ 110 pure + ≈ 90 mixed source-text tests (wiring without a JVM harness); (e) `SafeAreaE2ETest` and the E2E
+merges; the planner part (§6 "For the laptop" – `robust-smoke` still not in `web.yml`, `node-smoke.mjs` still there).
+The tables below are the analysis of 2026-11-06 (method and verdicts); counts are of that day.
 
 Measured on `main` @ 3881dc07 (unit-test reports of the last full run, snapshot folder, `git log --since=7.days`).
 Scripts: kept outside the repo; the counting rule is "a test is SOURCE when it reads `src/main`, `../strings`, `../web`

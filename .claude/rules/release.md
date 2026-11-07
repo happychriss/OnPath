@@ -11,6 +11,8 @@ paths:
 ## Releases (updates on the phone)
 - Version: default `appVersion` in `app/build.gradle.kts` (versionCode = major*10000+minor*100+patch).
 - To release: bump that version, add `docs/release-notes/vX.Y.Z.md`, push to `main`.
+  `docs/release-notes/` holds only the current release's notes (release.yml reads `v$VERSION.md`); delete the previous
+  one at each release – older notes are on GitHub Releases.
   `.github/workflows/release.yml` then tests, builds, signs (test key), creates tag `vX.Y.Z` and the
   GitHub Release with the APK – once per version (re-runs skip existing releases). The release runs
   **risk-based unit tests** (`tools/ci/risk_tests.py`: core-feature packages always + packages changed since the last
@@ -29,7 +31,8 @@ paths:
 - **Agents gate a push with `tools/ci/gate.sh`** (not the full suite): tests picked from the files changed vs origin/main
   (`risk_tests.py --gate`: core packages + changed ones + rule tests; build files → all), screenshots only when ui /
   texts / snapshots changed, docs-only → no Gradle; a release (version line + notes) skips it when `unit.yml` is green.
-  It takes the Gradle lock and `--max-workers=2` itself; `--full` runs everything. No `./gradlew --stop` afterwards –
+  It takes a Gradle slot (`tools/dev/gradle_slot.sh`: three builds per computer, one while the emulator runs) and
+  `--max-workers=2` itself; `--full` runs everything. No `./gradlew --stop` afterwards –
   the daemon ends itself after 10 idle minutes. The full suite + screenshots still run in CI (`unit.yml`) on every push.
 - **Cloud session (no computer):** `tools/cloud/session_setup.sh` once (Android SDK, local.properties, Maven Central mirror –
   the environment's setup script runs it at start), then `tools/ci/gate.sh` as usual; E2E on GitHub's emulator:
