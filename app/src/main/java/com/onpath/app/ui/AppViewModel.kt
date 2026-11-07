@@ -3218,6 +3218,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     .getOrNull()
             }
             if (id != null) { Problems.trace("plan", "Version before the tour start kept under Zuletzt: \"${old.name}\", ${key.size} points"); refreshTours() }
+            else Problems.trace("plan", "Version before the tour start not added to Zuletzt: these points are there already (a saved route or a draft)")
         }
     }
 

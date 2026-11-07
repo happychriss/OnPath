@@ -300,10 +300,15 @@ class CoreFieldE2ETest : E2EBase() {
         waitUntil("the saved route holds the changed plan", 15_000) {
             db.getTour(planId)?.waypoints?.map { it.lat to it.lon } == key(changed)
         }
-        waitUntil("the version before is under Zuletzt", 15_000) {
-            var drafts: List<List<Pair<Double, Double>>> = emptyList()
-            scenario.onActivity { drafts = vm(it).tours.filter { t -> t.draft }.map { t -> t.waypoints.map { w -> w.lat to w.lon } } }
-            key(old) in drafts
+        // under Zuletzt – or, when another saved route already has exactly these points (an earlier test's), there: the
+        // draft rules never duplicate a saved route, and the version is not lost either way
+        waitUntil("the version before is still in My routes (Zuletzt)", 15_000) {
+            var others: List<List<Pair<Double, Double>>> = emptyList()
+            scenario.onActivity {
+                others = vm(it).tours.filter { t -> t.kind == TourKind.PLANNED && t.id != planId }
+                    .map { t -> t.waypoints.map { w -> w.lat to w.lon } }
+            }
+            key(old) in others
         }
         var saved: List<Long> = emptyList()
         scenario.onActivity { saved = vm(it).tours.filter { t -> t.kind == TourKind.PLANNED && !t.draft }.map { t -> t.id } }
