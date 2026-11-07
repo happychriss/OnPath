@@ -44,6 +44,11 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
          * points → the destination ([leadThere]); nothing counts as passed.
          */
         val toStart: Boolean = false,
+        /**
+         * The user's latest positions, oldest first (the last half minute): a fresh route that leads back over the metres
+         * just walked is tried on the way one is going too ([Onward], field tour 221). Empty = no direction known.
+         */
+        val recent: List<GeoPoint> = emptyList(),
     )
 
     enum class Reason { NO_DATA, NO_WAY, TIMEOUT, CANCELLED, UNAVAILABLE }
@@ -181,7 +186,7 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
     private fun fresh(req: Request, base: Double, skipped: Set<Int>, t0: Long, deadline: Long, cancel: RouteCancel?): Found? {
         val ahead = req.stops.indices.filter { it !in skipped && it > 0 }
         if (ahead.isEmpty()) return null
-        val r = freshRoute(req, ahead, deadline, cancel) ?: return null
+        val r = freshRoute(req, ahead, deadline, cancel, onward = true) ?: return null
         var tried = 1
         fun found(route: RouteResult, skip: Int?, ask: Found? = null): Found {
             val len = Geo.length(route.points)
@@ -204,7 +209,7 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
         // the destination is never left out; a deliberate stop only after asking
         if (ahead.size < 2) return found(r, null)
         val m = ahead[1]
-        val past = freshRoute(req, ahead.drop(1), deadline, cancel) ?: return found(r, null)
+        val past = freshRoute(req, ahead.drop(1), deadline, cancel, onward = true) ?: return found(r, null)
         tried++
         val pos = req.position
         val viaS = secondsTo(r.points, listOf(pos, req.stops[n].point, req.stops[m].point), req.activity)
@@ -279,8 +284,11 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
         return at2 < 0 || at1 <= at2
     }
 
-    /** One fresh route request position → [stops]; null = none (logged; the caller falls back). */
-    private fun freshRoute(req: Request, stops: List<Int>, deadline: Long, cancel: RouteCancel?): RouteResult? {
+    /**
+     * One fresh route request position → [stops]; null = none (logged; the caller falls back). [onward]: when it leads
+     * back over the metres just walked, the way on ([Onward]) is taken instead when it is not much longer.
+     */
+    private fun freshRoute(req: Request, stops: List<Int>, deadline: Long, cancel: RouteCancel?, onward: Boolean = false): RouteResult? {
         val left = deadline - clock()
         if (left < MIN_LEFT_MS) return null
         val r = try {
@@ -292,7 +300,40 @@ class Rerouter(private val engine: RoutingEngine, private val clock: () -> Long 
             else Problems.info("routing", "No fresh route to the remaining stops (${e.message}); trying the way back to the route")
             return null
         }
-        return r.takeIf { it.points.size >= 2 }
+        if (r.points.size < 2) return null
+        return if (onward) onwardOf(req, stops, r, deadline, cancel) ?: r else r
+    }
+
+    /**
+     * [shortest] leads back over where the user just walked ([Onward.goesBack]): a route on through a point ahead in the
+     * walking direction, when it really goes on and costs at most [Onward.worthIt] more; null = keep [shortest].
+     */
+    private fun onwardOf(req: Request, stops: List<Int>, shortest: RouteResult, deadline: Long, cancel: RouteCancel?): RouteResult? {
+        if (!Onward.goesBack(req.recent, shortest.points)) return null
+        val heading = TurnRound.heading(req.recent) ?: return null
+        val shortestS = com.onpath.app.time.RouteTimes.of(shortest.points, req.activity).total()
+        for (m in Onward.aheadM(req.activity)) {
+            if (cancel?.isCancelled == true) return null
+            val left = deadline - clock()
+            if (left < MIN_LEFT_MS) return null
+            val via = Onward.viaAhead(req.position, heading, m)
+            val r = try {
+                engine.route(listOf(req.position, via) + stops.map { req.stops[it].point }, req.activity, req.sac,
+                    RouteLimits(minOf(req.perRequestMs, left), cancel))
+            } catch (e: Exception) {
+                // expected: RoutingException = no way through the point ahead (no way there) – the shortest route stays
+                if (e !is RoutingException) Problems.error("routing", "Onward re-route request threw unexpectedly", e)
+                continue
+            }
+            if (r.points.size < 2 || Onward.goesBack(req.recent, r.points) ||
+                Onward.thereAndBack(r.points, m + Onward.CHECK_M)) continue
+            val onS = com.onpath.app.time.RouteTimes.of(r.points, req.activity).total()
+            if (!Onward.worthIt(shortestS, onS)) continue
+            Problems.trace("routing", "Fresh route: the shortest leads back the way just walked – going on instead " +
+                "(${onS.toInt()} s vs ${shortestS.toInt()} s, through a point ${m.toInt()} m ahead)")
+            return r
+        }
+        return null
     }
 
     /** Seconds along [line] from its start to the last of [stops] (matched in order), same time model as the plan sheet. */
