@@ -166,6 +166,28 @@ class JunctionCuesTest {
         assertEquals(JunctionCue.SHARP_RIGHT, (100..200 step 5).firstNotNullOf { c.update(l2, 2, it.toDouble(), true) })
     }
 
+    /**
+     * Field bug (owner 2026-11-06, Fragenregister donald-20261106-51): a round trip ridden a second time – the progress
+     * starts at the beginning of the same line again, and its junctions vibrate again (they were "passed" on lap 1).
+     */
+    @Test fun aRoundTripRiddenTwiceCuesItsJunctionsAgain() {
+        val l = line(1000, mapOf(200 to JunctionCue.LEFT, 600 to JunctionCue.RIGHT))
+        val c = JunctionCues()
+        val lap1 = walk(c, l, to = 1000)
+        val lap2 = walk(c, l, to = 1000)
+        assertEquals(listOf(JunctionCue.LEFT, JunctionCue.RIGHT), lap1.map { it.second })
+        assertEquals(listOf(JunctionCue.LEFT, JunctionCue.RIGHT), lap2.map { it.second })
+    }
+
+    /** A few steps back past a junction (GPS jitter, a lost glove) do not cue it again. */
+    @Test fun aFewStepsBackDoNotCueAgain() {
+        val l = line(1000, mapOf(200 to JunctionCue.LEFT, 600 to JunctionCue.RIGHT))
+        val c = JunctionCues()
+        val cues = walk(c, l, to = 260) + (260 downTo 170 step 5).mapNotNull { m -> c.update(l, 1, m.toDouble(), true)?.let { m to it } } +
+            walk(c, l, from = 170, to = 1000)
+        assertEquals(listOf(JunctionCue.LEFT, JunctionCue.RIGHT), cues.map { it.second })
+    }
+
     @Test fun nextAheadForTheLockScreen() {
         val l = line(2000, mapOf(300 to JunctionCue.LEFT, 1800 to JunctionCue.RIGHT))
         val c = JunctionCues()

@@ -15,6 +15,8 @@ import kotlin.math.min
  *   [AHEAD_M] ahead). Where the line uses a path twice (out-and-back, round trip on the same path) the **walking
  *   direction** decides: when the part you are on runs against the way you walk and another part runs with it, progress
  *   moves there – also far ahead (you turned around before the turnaround point: the way back counts down).
+ * - **A round trip ridden again**: back at its start and riding out once more (the same street out and back, or a
+ *   plain loop), the second lap counts from the start ([nextLap]) – not the first lap's way back walked backwards.
  * - **Walking backwards** along the route (no part runs your way): progress goes back with you, so the time to go
  *   grows. After [BACKWARD_M] backwards this counts as leaving the route (the normal off-route question follows).
  * - **Start anywhere** (mid-route start, new line during a tour): the first fixes search the whole line; with a known
@@ -303,21 +305,52 @@ class OffRouteDetector(
         val hi = progressM + if (off || gap) AHEAD_OFF_M else AHEAD_M
         val near = l.parts(p, dOff, lo, hi)
         if (near.isEmpty()) {
-            jumpFrom = null
-            return l.match(p, lo, hi, preferAlongM = progressM)?.let { Pick(it) } // off the line: distance for the state machine
+            // off the line in the window: distance for the state machine – unless a round trip is ridden again (past its
+            // plain end, no shared street: the end is out of reach after a few metres)
+            val away = l.match(p, lo, hi, preferAlongM = progressM) ?: return null
+            val lap = h?.let { nextLap(l, p, dOff, it, progressM, lo) }
+            return switchAfterWalk(p, away, lap)
         }
         val cont = near.minBy { abs(it.alongM - progressM) }
-        if (h == null || dir(l, cont.alongM, h) > -DIR_MIN) { jumpFrom = null; return Pick(cont) }
+        val contDir = if (h == null) 0.0 else dir(l, cont.alongM, h)
         // the part you are on runs against your walking direction: a part that runs clearly with it (way back of an
         // out-and-back, rest of a round trip) wins – also far ahead; none = walking backwards along the route.
-        // A switch needs clear evidence over [JUMP_WALK_M] of walking (a short spur walked out and back is no reason).
-        val fwd = l.parts(p, dOff, lo, l.lengthM).filter { dir(l, it.alongM, h) > JUMP_DIR }.minByOrNull { abs(it.alongM - progressM) }
-        if (fwd == null) { jumpFrom = null; return Pick(cont) }
+        // A round trip ridden again from its start ([nextLap]) counts from the start, also when the part you are on
+        // has no clear direction – or is the line's very end (walking on past it reads as "with the line" there).
+        val fwd = when {
+            h == null -> null
+            contDir > -DIR_MIN ->
+                if (contDir <= JUMP_DIR || cont.alongM >= l.lengthM - 1.0) nextLap(l, p, dOff, h, cont.alongM, lo) else null
+            else -> l.parts(p, dOff, lo, l.lengthM).filter { dir(l, it.alongM, h) > JUMP_DIR }.minByOrNull { abs(it.alongM - progressM) }
+                ?: nextLap(l, p, dOff, h, cont.alongM, lo)
+        }
+        return switchAfterWalk(p, cont, fwd)
+    }
+
+    /**
+     * [cont] until [other] (another part of the line running your way) was spoken for over [JUMP_WALK_M] of walking –
+     * clear evidence (a short spur walked out and back is no reason); null [other] = [cont].
+     */
+    private fun switchAfterWalk(p: GeoPoint, cont: NavLine.Match, other: NavLine.Match?): Pick {
+        if (other == null) { jumpFrom = null; return Pick(cont) }
         val from = jumpFrom ?: p.also { jumpFrom = it }
         if (Geo.distance(from, p) < JUMP_WALK_M) return Pick(cont)
         jumpFrom = null
         provisional = false
-        return Pick(fwd, jumped = true)
+        return Pick(other, jumped = true)
+    }
+
+    /**
+     * A round trip ridden a second time (field bug owner 2026-11-06, Fragenregister donald-20261106-51: the first and
+     * last 100 m on the same street – riding out again counted as the first lap's way back walked backwards, the start
+     * lay far behind the window: "80 m Geradeaus", silence, then "off route"). On the second half of a round trip, near
+     * its start: the first half's part running clearly your way, behind the window – null when there is none.
+     */
+    private fun nextLap(l: NavLine, p: GeoPoint, dOff: Double, h: Move, atM: Double, lo: Double): NavLine.Match? {
+        if (atM < l.lengthM / 2 || !nearRoundTripStart(l, p)) return null
+        val hi = min(lo, l.lengthM / 2)
+        if (hi <= 0.0) return null
+        return l.parts(p, dOff, 0.0, hi).filter { dir(l, it.alongM, h) > JUMP_DIR }.minByOrNull { it.alongM }
     }
 
     /** A round trip (end within [ROUND_TRIP_M] of the start) and [p] within [NEAR_START_M] of its start. */
