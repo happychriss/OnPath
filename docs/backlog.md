@@ -49,6 +49,9 @@ and the commit history.
   `pixel` slot of `tools/dev/device.sh` (`adb -d`, only one phone on USB). It runs the **release** build: a debug APK
   has the same package id but another signature, so `adb install` fails and uninstalling would delete his tours – never
   uninstall; measure with the installed release, or install only a release-signed APK.
+  Start without a new build: `adb -d shell dumpsys gfxinfo com.onpath.app reset`, then map pan / zoom, Navigate, Meine
+  Touren, then `dumpsys gfxinfo com.onpath.app` (janky frames, percentiles) – once with Relief + Höhenlinien on, once off.
+  Save tokens (owner's weekly limit): numbers, not screenshots; result as a short table in the handoff.
 - **[donald] Handy einrichten: "Links vom Planer in OnPath öffnen" as a check (owner field 2026-11-07, Galaxy S10, via
   cloud-web)** – pairing / plan links from plan.onpath.earth opened in the browser on the S10; the owner fixed it by hand
   (Einstellungen → Apps → OnPath → Standardmäßig öffnen → "Unterstützte Links öffnen"). Owner asks to build it into the
