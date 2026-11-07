@@ -37,6 +37,10 @@ and the commit history.
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
+- **[laptop] Idea: saved plans open without routing again in the browser too (app 365c7fbc LegFiles, 2026-11-07)** – the phone
+  keeps a saved route's legs in files (stand-in line on newer routing data); the planner re-routes a plan from Meine Touren
+  each time (in-memory LegCache only). Web analog: keep a saved plan's legs in IndexedDB (try/catch, size cap), drawn at once,
+  re-routed only when the routing fingerprint changed. Not urgent – planner routes are fast on a PC.
 - **[donald] Bugs seen while taking the Meran 0.17 pictures (2026-11-07, emulator, 0.17.3)** – (1) G02: with a stop
   (Gasthof Hochmuth) the off-route box offered only "Neue Route bis zum Ziel: 3,8 km" – the new route silently drops
   the stop; StopSkip should ask "Über ②" / "② auslassen"; (2) after "Weiter" on "Unterbrochene Tour" the "Tour
@@ -45,11 +49,6 @@ and the commit history.
   the low sheet; (5) EN starts lowercase: "ford · 5 steep sections"; (6) after an activity change in Plan a "New route
   for Hike T2 – check it" line appears; (7) D10: T1 + Mutkopf gives a 30 km detour (text right, numbers odd); (8) the
   ride summary keeps German rows after a live language switch. Pictures: onpath.private/marketing/bilder/aktuell/.
-- **[donald] Saved long routes load without routing again (owner idea 2026-11-07, chat)** – the S10 took 67 s for a
-  723 km plan, and loading a saved route routes it again. Proposal: reuse the stored line per leg on load; route again
-  only edited legs or legs whose routing data is newer (the app already knows "routed with newer data"). The owner's
-  idea – invisible shape points as keys to the planned route, read once on load – as a later fallback when data is
-  newer: a hint with tolerance, never forced (a closed way must not force a detour). Waiting for the owner's yes.
 - **[donald] (low) Vellau → Leiteralm routes over the Gamplweg (website pictures 2026-11-07)** – Wandern T2 takes the
   bow east instead of the path along the Korblift (seen by A-019 and again in 0.17.3). Owner: "merkt eh keiner" – the
   pictures stay. Later: is the lift path above T2, cut in the data, or a profile cost? JVM harness, no new pictures.

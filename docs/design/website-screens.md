@@ -114,8 +114,8 @@ C04, C05, C07, C08 may stay Paparazzi snapshots (`GermanScreenshotTest_settingsS
 | --- | --- | --- | --- | --- |
 | G01 | `G01-handy-abseits-der-route` | amber card "Abseits der Route – Rückweg wird gesucht…" | abseits · unterwegs-aendern | `ui/NavigateScreen.kt` |
 | G02 | `G02-handy-neue-route-frage` | the question: "Neue Route" \| "Original behalten" | abseits-frage · unterwegs-aendern | `ui/NavigateScreen.kt` |
-| G03 | `G03-handy-alte-route-grau` | after "Neue Route": the original as thin grey line | – | `ui/MapScreen.kt` |
-| G04 | `G04-handy-stopp-auslassen` | "Über ③" or "③ auslassen" | – | `ui/NavigateScreen.kt` |
+| G03 | `G03-handy-alte-route-grau` | after "Neue Route": the original as thin grey line – **not possible in 0.17.3:** no grey original line is drawn (owner: the route stays blue) – take it if that comes | – | `ui/MapScreen.kt` |
+| G04 | `G04-handy-stopp-auslassen` | "Über ③" or "③ auslassen" – **not seen in 0.17.3:** with the inn as stop the question offered only "Original behalten \| Neue Route" – suspected bug, donald | – | `ui/NavigateScreen.kt` |
 
 ## H – Arrive, end and keep the tour (app)
 

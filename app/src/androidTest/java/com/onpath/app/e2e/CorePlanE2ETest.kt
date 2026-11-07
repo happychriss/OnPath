@@ -389,4 +389,59 @@ class CorePlanE2ETest : E2EBase() {
         assertTrue("the map shows the section (centre ${c.lat}, ${c.lon})", piece.any { com.onpath.app.data.Geo.distance(it, c) < 1_500 })
         shot("reach-section")
     }
+
+    /**
+     * Owner 2026-11-07 ("saved routes load without routing again" – the S10 took 67 s for a 723 km plan, and every load
+     * routed it again): a route is planned, saved and cleared; the legs routed in this process are forgotten as after an
+     * app restart; loaded from My routes, its line is there at once from the phone's leg store – no router run, the same
+     * line. Real routing data.
+     */
+    @Test fun aSavedRouteLoadsFromMyRoutesWithoutRoutingAgain() {
+        org.junit.Assume.assumeTrue("real routing data needed (E10_N45.rd5 in /data/local/tmp)", realRouting)
+        val pts = listOf(com.onpath.app.routing.GeoPoint(46.67135, 11.16464), com.onpath.app.routing.GeoPoint(46.67500, 11.15000),
+            com.onpath.app.routing.GeoPoint(46.68000, 11.14000))
+        scenario.onActivity { vm(it).selectActivity(com.onpath.app.routing.Activity.BIKE_TOURING) }
+        scenario.onActivity { a -> pts.forEach { vm(a).addPoint(it) } }
+        waitUntil("the plan is routed – ${state()}", 120_000) {
+            var ok = false
+            scenario.onActivity { val v = vm(it); ok = !v.routing && v.waypoints.size == 3 && v.route?.legs?.none { l -> l.straight } == true }
+            ok
+        }
+        val name = "E2E stored line ${System.currentTimeMillis() % 100_000}"
+        var line = emptyList<com.onpath.app.routing.GeoPoint>()
+        scenario.onActivity { line = vm(it).route!!.points; vm(it).saveRoute(name) }
+        waitUntil("the plan is saved", 10_000) { var s = true; scenario.onActivity { s = vm(it).planUnsaved }; !s }
+        Thread.sleep(1_500) // the legs under the points moved onto the line are written (one small file each)
+        scenario.onActivity { vm(it).clearPlan(); vm(it).forgetLegsInMemoryForTest() }
+        waitUntil("the map is empty", 10_000) { waypointCount() == 0 }
+        val db = com.onpath.app.data.TourDb.get(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext)
+        try {
+            scenario.onActivity { a -> vm(a).routesTab = com.onpath.app.ui.RoutesTab.PLANNED; vm(a).openRoutes() }
+            findFresh(By.text(name), 8_000)!!.click()
+            val plan = findFresh(By.text(Txt.s(Res.string.routes_overview_plan)), 8_000)
+            assertNotNull("the overview with \"Planen\" – ${state()}", plan)
+            val t0 = android.os.SystemClock.elapsedRealtime()
+            plan!!.click()
+            var loaded = emptyList<com.onpath.app.routing.GeoPoint>()
+            waitUntil("the line is there at once – ${state()}", 5_000) {
+                var ok = false
+                scenario.onActivity { val v = vm(it); ok = v.waypoints.size == 3 && !v.routing && v.route != null; if (ok) loaded = v.route!!.points }
+                ok
+            }
+            val ms = android.os.SystemClock.elapsedRealtime() - t0
+            shot("stored-line-loaded")
+            org.junit.Assert.assertEquals("the same line as saved", line, loaded)
+            val trace = com.onpath.app.debug.Problems.events().map { it.message }.reversed() // oldest first
+            val load = trace.indexOfLast { it.startsWith("Loading \"$name\"") }
+            assertTrue("the load traced: ${trace.takeLast(20)}", load >= 0)
+            assertTrue("every leg from the store: ${trace[load]}", trace[load].contains("all 2 legs stored – no routing"))
+            val run = trace.drop(load).firstOrNull { it.startsWith("Route #") && it.contains("ready") }
+            assertNotNull("the plan run after the load: ${trace.takeLast(20)}", run)
+            // the load read both legs from the store into the cache (above); the run takes them from there – no router try
+            assertTrue("no router run, both legs from the cache: $run", run!!.contains("tries: 2 legs from the cache") && !run.contains(" pts "))
+            android.util.Log.i("OnPath", "E2E stored line: loaded in $ms ms")
+        } finally {
+            scenario.onActivity { vm(it).tours.filter { t -> t.name == name }.forEach { t -> db.deleteTour(t.id) } }
+        }
+    }
 }
