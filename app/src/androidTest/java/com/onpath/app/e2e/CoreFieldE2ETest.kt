@@ -96,7 +96,7 @@ class CoreFieldE2ETest : E2EBase() {
         waitUntil("route from my location", 20_000) { waypointCount() == 2 }
         hold(w * 0.30f, h * 0.30f)
         waitUntil("a stop added", 20_000) { waypointCount() == 3 }
-        Thread.sleep(if (realRouting) 3_000 else 1_000) // route + snapping
+        routeSettled() // route + snapping
         follow() // the map keeps following while the user edits (camera moves under the finger)
         holdOnWaypoint(1)
         clickText("Delete")
@@ -113,7 +113,7 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun navigateThenBackToPlanStillDeletes() {
         startPlanWithTwoPoints()
-        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        routeSettled()
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; m == AppMode.NAVIGATE }
         Thread.sleep(2_000)
@@ -146,13 +146,34 @@ class CoreFieldE2ETest : E2EBase() {
     private fun recording(): Boolean { var r = false; scenario.onActivity { r = vm(it).recState.value != null }; return r }
 
     /**
+     * The plan's route is computed – a state, not a fixed 3 s: the first real route on a cold GitHub emulator took 18 s
+     * (run 42371488087), the tour then started before it ("nothing followed") and never followed it. Never fails: a plan
+     * that gets no route goes on after [maxMs], as the fixed sleep did.
+     */
+    private fun routeSettled(maxMs: Long = 30_000) {
+        Thread.sleep(300) // the edit's routing starts
+        val end = System.currentTimeMillis() + maxMs
+        while (System.currentTimeMillis() < end) {
+            var done = false
+            scenario.onActivity {
+                val v = vm(it)
+                val r = v.route
+                done = !v.routing && (v.waypoints.size < 2 || (r != null && r.legs.size >= v.waypoints.size - 1))
+            }
+            if (done) break
+            Thread.sleep(100)
+        }
+        Thread.sleep(700) // snapping + camera, as before
+    }
+
+    /**
      * Owner rule: what Plan shows = what Navigate follows (never an old route followed unseen). Navigate → Plan → delete
      * all points (✕ in the list) →
      * Navigate: no route line, no guidance, the recording goes on. Undo → the points and the guidance are back.
      */
     @Test fun deletingAllPointsDuringATourEndsTheGuidanceUndoBringsItBack() {
         startPlanWithTwoPoints()
-        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        routeSettled()
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
@@ -191,7 +212,7 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun aSavedRouteTappedDuringATourIsFollowedAtOnceAndUndoBringsThePlanBack() {
         startPlanWithTwoPoints()
-        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        routeSettled()
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
@@ -211,6 +232,11 @@ class CoreFieldE2ETest : E2EBase() {
             scenario.onActivity { vm(it).switchToPlan() }
             waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
             scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED; vm(it).openRoutes() }
+            // the list is read on the IO threads (slow on GitHub's emulator); an older read must never hide the route
+            // (RoutesState.show – E2E 2026-11-07: the list read at the tour start came back last)
+            waitUntil("My routes lists \"$name\"", 20_000) {
+                var listed = false; scenario.onActivity { listed = vm(it).tours.any { t -> t.id == savedId } }; listed
+            }
             clickText(name)
             // a row opens its overview first (owner 2026-11-07); during the tour its primary is "Folgen"
             clickText(Txt.s(Res.string.routes_overview_follow))
@@ -253,7 +279,7 @@ class CoreFieldE2ETest : E2EBase() {
     /** Starts a tour on a new (never saved) two-point plan; returns the planned route saved at "Los geht's". */
     private fun startOnANewPlan(): Long {
         startPlanWithTwoPoints()
-        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        routeSettled()
         val before = plannedIds()
         scenario.onActivity { assertTrue("a new plan is not saved yet", vm(it).planUnsaved) }
         scenario.onActivity { vm(it).startNavigation(force = true) }
@@ -294,7 +320,7 @@ class CoreFieldE2ETest : E2EBase() {
         val goal = old.last()
         scenario.onActivity { vm(it).addPoint(GeoPoint(goal.lat + 0.004, goal.lon + 0.004)) }
         waitUntil("the plan has three points", 10_000) { waypointList().size == 3 }
-        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        routeSettled()
         val changed = waypointList()
         scenario.onActivity { assertTrue("the changed saved plan counts as unsaved", vm(it).planUnsaved) }
         val idsBefore = plannedIds()
@@ -349,7 +375,7 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun deletingTheStartDuringATourRoutesFromHereToTheOnePointLeft() {
         startPlanWithTwoPoints()
-        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        routeSettled()
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
@@ -454,7 +480,7 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun aPlaceAddedDuringATourIsAStopBetweenNotANewStart() {
         startPlanWithTwoPoints()
-        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        routeSettled()
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
@@ -492,7 +518,7 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun aPlaceMadeTheDestinationDuringATourEndsThePlanThereUndoBringsTheGoalBack() {
         startPlanWithTwoPoints()
-        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        routeSettled()
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
@@ -540,7 +566,7 @@ class CoreFieldE2ETest : E2EBase() {
         val (w, h) = mapSize()
         hold(w * 0.50f, h * 0.62f)
         waitUntil("a third point set on the way", 10_000) { waypointCount() == 3 }
-        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        routeSettled()
         var unsaved = false
         scenario.onActivity { unsaved = vm(it).planUnsaved }
         assertTrue("the plan changed on the way is not saved", unsaved)
@@ -586,7 +612,7 @@ class CoreFieldE2ETest : E2EBase() {
             startPlanWithTwoPoints()
             hold(w * 0.50f, h * 0.30f)
             waitUntil("a third point", 8_000) { waypointCount() == 3 }
-            Thread.sleep(if (realRouting) 3_000 else 1_000)
+            routeSettled()
             scenario.onActivity { vm(it).requestClear() }
             waitUntil("cleared at once, no question", 5_000) { waypointCount() == 0 }
             waitUntil("kept under Zuletzt", 10_000) { drafts().size == 1 }
@@ -598,7 +624,7 @@ class CoreFieldE2ETest : E2EBase() {
             startPlanWithTwoPoints()
             hold(w * 0.45f, h * 0.65f)
             waitUntil("another third point", 8_000) { waypointCount() == 3 }
-            Thread.sleep(if (realRouting) 3_000 else 1_000)
+            routeSettled()
             scenario.onActivity { vm(it).requestClear() }
             waitUntil("the second one under Zuletzt", 10_000) { drafts().size == 1 }
             val second = drafts().single()
@@ -669,7 +695,7 @@ class CoreFieldE2ETest : E2EBase() {
         fun near(want: Double, got: Double) = kotlin.math.abs(((got - want + 540) % 360) - 180) < 2.0
         try {
             startPlanWithTwoPoints()
-            Thread.sleep(if (realRouting) 3_000 else 1_000)
+            routeSettled()
             // NORTH: a hand rotation, then "whole route" → north up
             turnByHand(); Thread.sleep(500)
             scenario.onActivity { vm(it).showWholeRoute() }
@@ -789,7 +815,7 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun backInNavigateDuringATourAsksAndLeavingKeepsTheTour() {
         startPlanWithTwoPoints()
-        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        routeSettled()
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         Thread.sleep(1_000)
@@ -828,7 +854,7 @@ class CoreFieldE2ETest : E2EBase() {
         scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = 0)) }
         try {
             startPlanWithTwoPoints()
-            Thread.sleep(if (realRouting) 3_000 else 1_000)
+            routeSettled()
             scenario.onActivity { vm(it).startNavigation(force = true) }
             waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
             val gear = findFresh(By.desc(Txt.s(Res.string.nav_settings_cd)), 10_000)
@@ -854,7 +880,7 @@ class CoreFieldE2ETest : E2EBase() {
         scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = 0)) }
         try {
             startPlanWithTwoPoints()
-            Thread.sleep(if (realRouting) 3_000 else 1_000)
+            routeSettled()
             scenario.onActivity { vm(it).startNavigation(force = true) }
             waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
             assertNotNull("Pause at the bottom, no slider", findFresh(By.text(Txt.s(Res.string.nav_action_pause)), 10_000))
@@ -887,7 +913,7 @@ class CoreFieldE2ETest : E2EBase() {
         scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
         try {
             startPlanWithTwoPoints()
-            Thread.sleep(if (realRouting) 3_000 else 1_000)
+            routeSettled()
             scenario.onActivity { vm(it).startNavigation(force = true) }
             waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
             val pause = findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 10_000)
@@ -942,7 +968,7 @@ class CoreFieldE2ETest : E2EBase() {
         scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
         try {
             startPlanWithTwoPoints()
-            Thread.sleep(if (realRouting) 3_000 else 1_000)
+            routeSettled()
             scenario.onActivity { vm(it).startNavigation(force = true) }
             waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
             assertNotNull("locked: Pause at the bottom", findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 10_000))
@@ -982,7 +1008,7 @@ class CoreFieldE2ETest : E2EBase() {
         val goal = GeoPoint(lat + 0.0050, lon + 0.0030)    // ~640 m away
         scenario.onActivity { vm(it).addPoint(start); vm(it).addPoint(goal) }
         waitUntil("two points", 10_000) { waypointCount() == 2 }
-        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        routeSettled()
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
@@ -1004,7 +1030,7 @@ class CoreFieldE2ETest : E2EBase() {
         val near = GeoPoint(lat + 0.0001, lon)             // ~11 m away
         scenario.onActivity { vm(it).addPoint(start); vm(it).addPoint(near) }
         waitUntil("two points", 10_000) { waypointCount() == 2 }
-        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        routeSettled()
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
@@ -1029,7 +1055,7 @@ class CoreFieldE2ETest : E2EBase() {
         val goal = GeoPoint(lat + 0.0050, lon + 0.0030)    // ~640 m away
         scenario.onActivity { vm(it).addPoint(near); vm(it).addPoint(goal) }
         waitUntil("two points", 10_000) { waypointCount() == 2 }
-        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        routeSettled()
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
@@ -1051,7 +1077,7 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun theNavigateCardOpensByATapAndClosesByADragUp() {
         startPlanWithTwoPoints()
-        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        routeSettled()
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         val chevron = findFresh(By.desc(Txt.s(Res.string.nav_profile_show)), 10_000)

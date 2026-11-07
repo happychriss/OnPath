@@ -887,6 +887,14 @@ async function loadShared(shared: SharedPlan) {
 }
 
 /** Room for the top bar, the sheet (side panel or bottom sheet) and the map controls when the camera fits a plan. */
+/** A route point marker's radius of air beside every bar or button that borders the map (the app's FitPaddingRule.AIR_DP). */
+const FIT_AIR = 16;
+/** The map's top edge under the search box / tool bar: a stop's sign near the top is never cut (app 9e72c868). */
+function topClear(fallback: number): number {
+  const bar = $('topbar')?.getBoundingClientRect(), stage = $('stage').getBoundingClientRect();
+  return bar && bar.height > 0 ? Math.max(fallback, bar.bottom - stage.top + FIT_AIR) : fallback;
+}
+
 function fitPadding(): maplibregl.PaddingOptions {
   const sheet = $('sheet').getBoundingClientRect();
   // the big elevation profile below the map (terrain view A): the route stays above it
@@ -896,11 +904,12 @@ function fitPadding(): maplibregl.PaddingOptions {
     const card = document.body.classList.contains('card-open') ? $('placecard').getBoundingClientRect().height : 0;
     // never more than the screen allows: at least 120 px of map stay, or fitBounds refuses to move at all
     const mapH = $('stage').getBoundingClientRect().height;
-    return { top: 130, bottom: Math.min(Math.max(sheet.height, card, bpH) + 30, Math.max(0, mapH - 130 - 120)), left: 40, right: 40 };
+    const top = topClear(130);
+    return { top, bottom: Math.min(Math.max(sheet.height, card, bpH) + 30, Math.max(0, mapH - top - 120)), left: 40, right: 40 };
   }
   // wide: the room beside the side panel, or – when the panel is short (small step) – the larger room below it
   const stage = $('stage').getBoundingClientRect(), w = stage.width, h = stage.height;
-  const beside = { top: 90, bottom: Math.max(50, bpH + 30), left: sheet.right - stage.left + 50, right: 90 };
+  const beside = { top: topClear(90), bottom: Math.max(50, bpH + 30), left: sheet.right - stage.left + 50, right: 90 };
   const below = { top: sheet.bottom - stage.top + 40, bottom: Math.max(50, bpH + 30), left: 40, right: 90 };
   const room = (p: typeof beside) => Math.max(0, w - p.left - p.right) * Math.max(0, h - p.top - p.bottom);
   return room(below) > room(beside) ? below : beside;
