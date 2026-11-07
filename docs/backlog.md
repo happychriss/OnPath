@@ -28,6 +28,7 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
+- [laptop] Planner parity (4 mirrors) + privacy link / Access comments; planner pictures flow B + C01/C02/C06 + film 1 (Meran 0.17) – since 2026-11-07
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
