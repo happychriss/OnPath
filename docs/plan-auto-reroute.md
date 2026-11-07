@@ -140,6 +140,10 @@ first turn: a U-turn costs about 2 × `turncost` (trekking / touring 90 → ~180
 In our experiment (on the route, heading backwards) it changed **nothing** (§5.3). For bikes we can still pass the GPS
 heading when moving ≥ 2 m/s – cheap, a small nudge. So U-turns are handled by our candidate choice: a U-turn back to a missed junction wins only when it is really
 the fastest way to the route ahead. That is the right answer for a missed turn (scenario 1).
+**Field tour 221 (2026-11-07, on foot):** a fresh route that leads back over the metres just walked (`Onward.goesBack`)
+is asked once more through a point 40 / 80 m ahead in the walking direction (bike 80 / 160 m) and that way on is taken when
+it really goes on (no way back, no there-and-back) and costs ≤ 25 % (max 3 min, min 30 s) more; "New route" tapped after
+walking ≥ 10 m on, ≥ 10 m beside the shown line, computes the route again from the position and takes it (`Navigator.take`).
 
 ### 5.3 Measurements (JVM, laptop: Ryzen 7 5850U, BRouter 1.7.11, `E10_N45.rd5`)
 

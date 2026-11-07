@@ -174,6 +174,10 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private val recent = ArrayDeque<GeoPoint>()
     /** Where the running routing job was asked from. */
     private var jobFrom: GeoPoint? = null
+    /** Where the open question's route was computed from ([take] computes it again after walking on). */
+    private var questionFrom: GeoPoint? = null
+    /** "Take new route" was tapped after walking on: the route from here is being computed and taken ([onResult]). */
+    private var takeAgain: NavPrompt.Question? = null
     /** The open question's way back ([live]) and its cost from where it was computed. */
     private var liveLine: NavLine? = null
     private var liveWindowM = 0.0
@@ -304,6 +308,16 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val wasRefresh = refreshing; refreshing = false
         val vib = vibrateOnResult; vibrateOnResult = false
         if (prompt == null) return Step() // back on route meanwhile
+        takeAgain?.let { asked ->
+            // "Take new route" after walking on ([take]): the route from here, else the one the user saw
+            if (outcome is Rerouter.Failed && outcome.reason == Rerouter.Reason.CANCELLED) return Step()
+            takeAgain = null
+            if (outcome is Rerouter.Found && outcome.skipStop == null) {
+                return takeLine(outcome.line, outcome.legM, outcome.resumeAlongM, skipStop = null,
+                    turnRound = TurnRound.needed(recent.toList(), outcome.line))
+            }
+            return takeLine(asked.line, asked.legM, asked.resumeAlongM, asked.skipStop, asked.turnRound)
+        }
         if (prompt is NavPrompt.FarStart || prompt is NavPrompt.MidStart) return when (outcome) {
             // "Guide me": the user asked – taken at once; remembered for a plan edited before the route is reached
             is Rerouter.Found -> takeLine(outcome.line, outcome.legM, outcome.resumeAlongM, skipStop = null, turnRound = false)
@@ -317,6 +331,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             is Rerouter.Found -> {
                 val q = question(++questionId, outcome)
                 prompt = q
+                questionFrom = jobFrom
                 startLive(q)
                 failures = 0
                 Step(vibrate = vib)
@@ -349,7 +364,25 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0; refreshes = 0
             return Step(cancelJob = true, lineChanged = true, activityChanged = true)
         }
+        // field tour 221 (owner on foot): the new route was taken 3–9 s after it was computed, 10–40 m on – its first turn
+        // lay behind him, he was on another way. Walked on and not on the new line: the route is computed again from here
+        // (the way on preferred, [Onward]) and taken when found; the line shown is taken when none is found. A question
+        // about a stop stays as it was answered.
+        val f = lastFix
+        if (q.skipStop == null && q.via == null && f != null && walkedOffQuestion(q, f)) {
+            takeAgain = q
+            prompt = NavPrompt.Searching
+            return Step(job = newJob(f, refresh = false, vibrateOnResult = false))
+        }
         return takeLine(q.line, q.legM, q.resumeAlongM, q.skipStop, q.turnRound)
+    }
+
+    /** Since [q] was computed the user walked [TAKE_AGAIN_M] on and is that far beside its line (not following it). */
+    private fun walkedOffQuestion(q: NavPrompt.Question, f: OffRouteDetector.Fix): Boolean {
+        val from = questionFrom ?: return false
+        if (Geo.distance(from, f.point) < TAKE_AGAIN_M) return false
+        val beside = NavLine(q.line).match(f.point)?.distanceM ?: return false
+        return beside >= TAKE_AGAIN_M
     }
 
     /** "Yes" to "Off route – re-plan?" with a stop in question [id]: the new route via that stop. */
@@ -505,7 +538,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (prompt == NavPrompt.Searching) {
             // "Keep original" before the way back was found (the question comes at once now): the search stops
             prompt = NavPrompt.Kept
-            keeps++; refreshes = 0
+            keeps++; refreshes = 0; takeAgain = null
             lastFix?.let { markAsked(it); toRoute = hint(it.point) }
             return Step(cancelJob = true)
         }
@@ -568,7 +601,8 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val id = ++jobId
         runningJob = id; refreshing = refresh; this.vibrateOnResult = vibrateOnResult
         jobFrom = f.point
-        return Job(id, Rerouter.Request(f.point, original, leftAtM, session.stops, session.visited, session.activity, session.sac))
+        return Job(id, Rerouter.Request(f.point, original, leftAtM, session.stops, session.visited, session.activity, session.sac,
+            recent = recent.toList()))
     }
 
     /** A new question: remember its way back and the cost from where it was asked; then catch up with the rider. */
@@ -613,6 +647,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private fun clearPrompt(): Step {
         val had = prompt != null || runningJob >= 0
         prompt = null; toRoute = null; failures = 0; keeps = 0; runningJob = -1; refreshing = false; refreshes = 0
+        takeAgain = null
         return Step(cancelJob = had)
     }
 
@@ -716,6 +751,11 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         /** After "Keep original": ask again only after moving [RETRY_MOVE_M] and 2, 4, 8 min. */
         const val KEEP_WAIT_MS = 120_000L
         const val KEEP_WAIT_MAX_MS = 480_000L
+        /**
+         * "Take new route" this far from where the route was computed: computed again from here and taken ([take]; field
+         * tour 221 – taken 10–40 m on, its first turn behind).
+         */
+        const val TAKE_AGAIN_M = 10.0
         /** On a new route: this far into the untouched rest = back on the original. */
         const val REST_REACHED_M = 30.0
         const val HINT_AHEAD_M = 3_000.0
