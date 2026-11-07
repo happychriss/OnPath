@@ -9,10 +9,11 @@ import org.junit.Test
 import java.util.Locale
 
 /**
- * "Relief aus – die Karte läuft so flüssiger" (map/ReliefAuto) at the phone's largest font (2.0), in German (the longer
- * text): the quiet pill wraps inside the screen. Same picture as [ScreenshotTest.planReliefOffNote].
+ * The quiet notes on the Plan map – "Relief aus – die Karte läuft so flüssiger" (map/ReliefAuto) and the GPS notes
+ * (PlanGps) – at the phone's largest font (2.0), in German (the longer texts): beside the activity button, clear of its T
+ * badge, wrapped inside the screen. Same pictures as [ScreenshotTest.planReliefOffNote] / [ScreenshotTest.planGpsNote].
  */
-class ReliefNoteLargeFontGermanTest {
+class PlanNoteLargeFontGermanTest {
     @get:Rule
     val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5.copy(fontScale = 2.0f), showSystemUi = false)
 
@@ -26,4 +27,6 @@ class ReliefNoteLargeFontGermanTest {
     }
 
     @Test fun planReliefOffNote() = shots.planReliefOffNote()
+    @Test fun planGpsNote() = shots.planGpsNote()
+    @Test fun planGpsNoteLong() = shots.planGpsNoteLong()
 }

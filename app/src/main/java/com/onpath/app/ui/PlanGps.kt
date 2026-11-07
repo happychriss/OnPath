@@ -64,6 +64,13 @@ object PlanGps {
     fun noteTopDp(rowTopDp: Int, stripBottomDp: Int?): Int =
         OverviewPillPlace.topDp(rowTopDp, stripBottomDp) + OverviewPillPlace.HEIGHT_DP + MessagePlacement.GAP_DP
 
+    /**
+     * Where a note on the map starts: beside the activity button (its T badge under it is ≈ 1.5× since 2026-11-07 and a
+     * note under the row covered it), at the screen edge when the button is not shown. One rule for every quiet note on
+     * the Plan map (the GPS note, the map's INFO line `MapNote`) – they show one at a time, so they never stack.
+     */
+    fun noteStartDp(activityButtonShown: Boolean): Int = OverviewPillPlace.startDp(activityButtonShown)
+
     /** The note goes as soon as there is a position. */
     fun noteGone(note: Note?, status: GpsStatus, hasFix: Boolean): Boolean = note != null && located(status, hasFix)
 }

@@ -270,17 +270,17 @@ fun MapScreen(
                 }, androidx.compose.material.icons.Icons.Outlined.LocationSearching,
                 Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                     top = PlanGps.noteTopDp(rowTop, if (vm.backgroundStripShown) vm.backgroundStripBottomDp else null).dp,
-                    start = OverviewPillPlace.EDGE_DP.dp, end = OverviewPillPlace.EDGE_DP.dp))
+                    start = PlanGps.noteStartDp(activityButtonShown = vm.shown == null).dp, end = OverviewPillPlace.EDGE_DP.dp))
         }
         // A short INFO for the map (vm.say → NoticeSurface.MAP_LINE, e.g. "Relief off – the map runs smoother"): the quiet
-        // pill at the GPS note's height but beside the activity button (clear of its T badge), after the GPS note (a tap
-        // of the user's) – goes by itself after MapNote.MS
+        // pill at the GPS note's place (PlanGps.noteTopDp / noteStartDp), after the GPS note (a tap of the user's) – goes
+        // by itself after MapNote.MS
         vm.mapNote?.takeIf { vm.mode == AppMode.PLAN && !vm.searchOpen && vm.planGpsNote == null }?.let { note ->
             val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
             QuietPill(note.text, androidx.compose.material.icons.Icons.Outlined.Info,
                 Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                     top = PlanGps.noteTopDp(rowTop, if (vm.backgroundStripShown) vm.backgroundStripBottomDp else null).dp,
-                    start = OverviewPillPlace.startDp(activityButtonShown = vm.shown == null).dp, end = OverviewPillPlace.EDGE_DP.dp))
+                    start = PlanGps.noteStartDp(activityButtonShown = vm.shown == null).dp, end = OverviewPillPlace.EDGE_DP.dp))
         }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, cameraTick,
