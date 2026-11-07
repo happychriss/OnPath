@@ -245,7 +245,7 @@
       "web": [
         "web/app/src/cells.ts"
       ],
-      "blob": "2277c97ed6fa8bdce6e5ce65e17789b1ba55c3bd"
+      "blob": "5f860055dfa48d2bb6e713bc8814adba3791eece"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/CellCard.kt",
