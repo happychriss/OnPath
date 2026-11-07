@@ -1,5 +1,6 @@
 package com.onpath.app.map
 
+import com.onpath.app.data.Geo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -28,7 +29,7 @@ class HeadingFilterTest {
         val f = HeadingFilter()
         f.onSensor(350.0, 0)
         repeat(100) { f.onSensor(20.0, it * 60L) }
-        assertTrue(abs(HeadingFilter.diff(f.heading!!, 20.0)) < HeadingFilter.DEADBAND_DEG + 0.1)
+        assertTrue(abs(Geo.angleDiff(f.heading!!, 20.0)) < HeadingFilter.DEADBAND_DEG + 0.1)
     }
 
     @Test fun movingUsesGpsBearingAndIgnoresCompass() {
@@ -70,7 +71,7 @@ class HeadingFilterTest {
         assertNull(f.onSensor(80.0, 1_100))
         assertNull(f.onGps(15f, 1.2f, 1_200))
         repeat(20) { f.onRoute(0.0, 2_000L + it * 1_000) }
-        assertTrue(abs(HeadingFilter.diff(f.heading!!, 0.0)) < HeadingFilter.DEADBAND_DEG)
+        assertTrue(abs(Geo.angleDiff(f.heading!!, 0.0)) < HeadingFilter.DEADBAND_DEG)
         assertTrue(f.usingRoute(21_000))
     }
 
@@ -80,7 +81,7 @@ class HeadingFilterTest {
         f.onGps(180f, 1.3f, 500)
         assertFalse(f.usingRoute(600))
         repeat(10) { f.onGps(180f, 1.3f, 1_000L + it * 1_000) }
-        assertTrue(abs(HeadingFilter.diff(f.heading!!, 180.0)) < HeadingFilter.DEADBAND_DEG)
+        assertTrue(abs(Geo.angleDiff(f.heading!!, 180.0)) < HeadingFilter.DEADBAND_DEG)
     }
 
     @Test fun routeDirectionExpiresAndClears() {
@@ -102,7 +103,7 @@ class HeadingFilterTest {
         assertFalse(f.usingRoute(40_000))
         // the compass takes over (phone pointing south)
         repeat(50) { f.onSensor(180.0, 40_000L + it * 60) }
-        assertTrue(abs(HeadingFilter.diff(f.heading!!, 180.0)) < 10)
+        assertTrue(abs(Geo.angleDiff(f.heading!!, 180.0)) < 10)
     }
 
     @Test fun slowWalkWithTheRouteKeepsIt() {

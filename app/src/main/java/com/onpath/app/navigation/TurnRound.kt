@@ -25,8 +25,8 @@ object TurnRound {
         val from = recent.asReversed().firstOrNull { Geo.distance(it, now) >= MOVE_M } ?: return false
         val start = line.first()
         val to = line.firstOrNull { Geo.distance(start, it) >= AHEAD_M } ?: return false
-        val moving = TurnDetector.bearing(from, now)
-        val route = TurnDetector.bearing(start, to)
-        return abs(TurnDetector.diff(moving, route)) > ANGLE_DEG
+        val moving = Geo.bearing(from, now)
+        val route = Geo.bearing(start, to)
+        return abs(Geo.angleDiff(moving, route)) > ANGLE_DEG
     }
 }

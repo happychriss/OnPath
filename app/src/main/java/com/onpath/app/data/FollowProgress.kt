@@ -1,7 +1,6 @@
 package com.onpath.app.data
 
 import com.onpath.app.routing.GeoPoint
-import com.onpath.app.routing.WaypointInsertion
 
 /**
  * What is left of a followed route from the current position (F-NAV-01). Pure, unit-tested. Ascent counted like the plan
@@ -48,7 +47,7 @@ class FollowProgress(private val line: List<GeoPoint>) {
         if (from >= line.size - 1) return null
         var bestI = -1; var bestD = Double.MAX_VALUE
         for (k in from until line.size - 1) {
-            val d = WaypointInsertion.distanceToSegment(p, line[k], line[k + 1])
+            val d = Geo.distanceToSegment(p, line[k], line[k + 1])
             if (d < bestD) { bestD = d; bestI = k }
         }
         return if (bestI < 0) null else bestI to bestD

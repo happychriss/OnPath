@@ -31,13 +31,13 @@ object ScreenTurns {
             val i = idx[k]
             val p = line[i]
             val before = near(line, cum, i, -ARM_M); val after = near(line, cum, i, ARM_M)
-            Turn(i, p, TurnDetector.bearing(before, p), TurnDetector.bearing(p, after), JogRule.angleOf(p).toDouble(), cum[i])
+            Turn(i, p, Geo.bearing(before, p), Geo.bearing(p, after), JogRule.angleOf(p).toDouble(), cum[i])
         }
         // where the route goes back the way it came (no junction, so no hint): "Umdrehen" (owner 2026-11-01)
         val back = Reversals.of(line, cum).filter { r -> hints.none { kotlin.math.abs(it.distanceFromStart - cum[r]) < Reversals.SAME_M } }
             .map { i ->
                 val p = line[i]
-                Turn(i, p, TurnDetector.bearing(near(line, cum, i, -ARM_M), p), TurnDetector.bearing(p, near(line, cum, i, ARM_M)),
+                Turn(i, p, Geo.bearing(near(line, cum, i, -ARM_M), p), Geo.bearing(p, near(line, cum, i, ARM_M)),
                     -180.0, cum[i], turnRound = true)
             }
         return (hints + back).sortedBy { it.distanceFromStart }
@@ -85,7 +85,7 @@ object Reversals {
             if (cum[i] < ARM_M || cum.last() - cum[i] < ARM_M) continue
             val t = line[i].turn
             if (t == JunctionCue.U_TURN_LEFT || t == JunctionCue.U_TURN_RIGHT) continue
-            val a = kotlin.math.abs(diff(TurnDetector.bearing(back(line, cum, i), line[i]), TurnDetector.bearing(line[i], ahead(line, cum, i))))
+            val a = kotlin.math.abs(Geo.angleDiff(Geo.bearing(back(line, cum, i), line[i]), Geo.bearing(line[i], ahead(line, cum, i))))
             if (a < MIN_DEG) continue
             if (first >= 0 && cum[i] - cum[last] < SAME_M) { last = i; continue }
             close()
@@ -101,5 +101,4 @@ object Reversals {
     private fun ahead(line: List<GeoPoint>, cum: DoubleArray, i: Int): GeoPoint {
         var j = i; while (j < line.size - 1 && cum[j] - cum[i] < ARM_M) j++; return line[j]
     }
-    private fun diff(from: Double, to: Double): Double = ((to - from + 540.0) % 360.0) - 180.0
 }

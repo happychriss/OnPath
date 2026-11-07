@@ -98,21 +98,14 @@ object RoutingDataCheck {
      */
     fun differs(a: List<com.onpath.app.routing.GeoPoint>, b: List<com.onpath.app.routing.GeoPoint>, toleranceM: Double = 30.0): Boolean {
         if (a.size < 2 || b.size < 2) return a.size != b.size
-        val la = length(a); val lb = length(b)
+        val la = Geo.length(a); val lb = Geo.length(b)
         if (kotlin.math.abs(la - lb) > 0.02 * maxOf(la, lb)) return true
         fun far(x: List<com.onpath.app.routing.GeoPoint>, y: List<com.onpath.app.routing.GeoPoint>): Boolean {
             val step = maxOf(1, x.size / 200)
-            for (i in x.indices step step) if (y.minOf { metres(x[i], it) } > toleranceM) return true
+            for (i in x.indices step step) if (y.minOf { Geo.fastDistance(x[i], it) } > toleranceM) return true
             return false
         }
         return far(a, b) || far(b, a)
     }
 
-    private fun length(l: List<com.onpath.app.routing.GeoPoint>) = l.zipWithNext { p, q -> metres(p, q) }.sum()
-
-    private fun metres(p: com.onpath.app.routing.GeoPoint, q: com.onpath.app.routing.GeoPoint): Double {
-        val k = Math.cos(Math.toRadians((p.lat + q.lat) / 2))
-        val dx = (q.lon - p.lon) * k * 111_320.0; val dy = (q.lat - p.lat) * 111_320.0
-        return Math.sqrt(dx * dx + dy * dy)
-    }
 }

@@ -1,8 +1,8 @@
 package com.onpath.app.sync
 
+import com.onpath.app.data.Geo
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.PlanCode
-import kotlin.math.cos
 import kotlin.math.roundToLong
 import kotlin.math.sqrt
 
@@ -119,9 +119,9 @@ object TrackCode {
     /** Douglas–Peucker on a local flat projection: keeps first, last and every point further than [tolM] off the line. */
     internal fun simplify(s: List<TrackPt>, tolM: Double): List<TrackPt> {
         if (s.size < 3) return s
-        val k = cos(Math.toRadians(s[0].lat))
-        val x = DoubleArray(s.size) { s[it].lon * 111_320.0 * k }
-        val y = DoubleArray(s.size) { s[it].lat * 110_540.0 }
+        val f = Geo.Flat(s[0].lat)
+        val x = DoubleArray(s.size) { s[it].lon * f.kx }
+        val y = DoubleArray(s.size) { s[it].lat * f.ky }
         val keep = BooleanArray(s.size).also { it[0] = true; it[s.size - 1] = true }
         val stack = ArrayDeque<Pair<Int, Int>>().apply { add(0 to s.size - 1) }
         while (stack.isNotEmpty()) {

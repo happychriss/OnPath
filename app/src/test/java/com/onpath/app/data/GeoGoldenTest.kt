@@ -46,8 +46,8 @@ class GeoGoldenTest {
     @Test fun waypointInsertion() {
         val seg = doubleArrayOf(GOLD_SEG_0, GOLD_SEG_1, GOLD_SEG_2, GOLD_SEG_3, GOLD_SEG_4, GOLD_SEG_5)
         off.forEachIndexed { i, p ->
-            near(seg[i], WaypointInsertion.distanceToSegment(p, line[i], line[i + 1]))
-            val c = WaypointInsertion.closestOnSegment(p, line[i], line[i + 1])
+            near(seg[i], Geo.distanceToSegment(p, line[i], line[i + 1]))
+            val c = Geo.closestOnSegment(p, line[i], line[i + 1])
             near(GOLD_CLOSE_LAT[i], c.lat, 0.0, 2e-6); near(GOLD_CLOSE_LON[i], c.lon, 0.0, 2e-6)
             val (idx, d) = WaypointInsertion.nearestOnRoute(line, p)!!
             assertEquals(GOLD_NEAR_IDX[i], idx); near(GOLD_NEAR_D[i], d)
@@ -72,9 +72,9 @@ class GeoGoldenTest {
     }
 
     @Test fun bearingsAndDiffs() {
-        for (i in 0 until line.size - 1) near(GOLD_BEARING[i], TurnDetector.bearing(line[i], line[i + 1]), 0.0, 1e-6)
-        near(-170.0, TurnDetector.diff(170.0, 0.0), 0.0); near(180.0, TurnDetector.diff(0.0, 180.0), 0.0)
-        near(-10.0, TurnDetector.diff(5.0, 355.0), 0.0)
+        for (i in 0 until line.size - 1) near(GOLD_BEARING[i], Geo.bearing(line[i], line[i + 1]), 0.0, 1e-6)
+        near(-170.0, Geo.angleDiff(170.0, 0.0), 0.0); near(180.0, Geo.angleDiff(0.0, 180.0), 0.0)
+        near(-10.0, Geo.angleDiff(5.0, 355.0), 0.0)
     }
 
     @Test fun jogRuleFlags() {

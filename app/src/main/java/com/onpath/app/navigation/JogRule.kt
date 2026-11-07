@@ -4,8 +4,6 @@ import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.JunctionCue
 import kotlin.math.abs
-import kotlin.math.atan2
-import kotlin.math.cos
 
 /**
  * Close turns are one manoeuvre (owner 2026-11-01, Hilden demo tour: "keine einzige Angabe passte"). Pure, shared with
@@ -73,7 +71,7 @@ object JogRule {
             if (arm < 5.0 || cum[i] - cum[i - 1] >= arm) continue   // the last piece is the approach itself
             val a = angleOf(p).toDouble()
             if (a == 0.0) continue
-            val delta = diff(bearing(at(line, cum, c - arm), p), bearing(line[i - 1], p))
+            val delta = Geo.angleDiff(Geo.bearing(at(line, cum, c - arm), p), Geo.bearing(line[i - 1], p))
             val grown = a + delta
             if (Math.signum(grown) != Math.signum(a) || abs(grown) <= abs(a) + 1.0) continue
             val g = grown.coerceIn(-SHARP_DEG - 20.0, SHARP_DEG + 20.0).toFloat()
@@ -107,8 +105,8 @@ object JogRule {
             val first = cum[idx[k]]; val last = cum[idx[k + 1]]
             val armIn = if (k > 0) minOf(ARM_M, (first - cum[idx[k - 1]]) * 0.9) else ARM_M
             val armOut = if (k + 2 < idx.size) minOf(ARM_M, (cum[idx[k + 2]] - last) * 0.9) else ARM_M
-            val net = diff(bearing(at(line, cum, first - armIn), at(line, cum, first)),
-                bearing(at(line, cum, last), at(line, cum, last + armOut)))
+            val net = Geo.angleDiff(Geo.bearing(at(line, cum, first - armIn), at(line, cum, first)),
+                Geo.bearing(at(line, cum, last), at(line, cum, last + armOut)))
             val any = out[k] || out[k + 1]
             out[k] = false; out[k + 1] = false
             if (abs(net) > STRAIGHT_DEG && any) out[if (Math.signum(angleOf(a).toDouble()) == Math.signum(net)) k else k + 1] = true
@@ -148,9 +146,4 @@ object JogRule {
         return GeoPoint(a.lat + (b.lat - a.lat) * f, a.lon + (b.lon - a.lon) * f)
     }
 
-    private fun bearing(a: GeoPoint, b: GeoPoint): Double =
-        Math.toDegrees(atan2((b.lon - a.lon) * cos(Math.toRadians(a.lat)), b.lat - a.lat))
-
-    /** Signed change from heading [from] to [to] in −180..180 (> 0 = right). */
-    private fun diff(from: Double, to: Double): Double = ((to - from + 540.0) % 360.0) - 180.0
 }
