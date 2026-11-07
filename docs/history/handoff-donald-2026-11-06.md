@@ -87,6 +87,18 @@ Navigate ⚙ in the new settings look, lock line only when needed, captain's dea
 "Neuer Plan", Pixel review leftovers. (B) audit + clean-up + test audit step 2. (C) full GitHub E2E (one class per ref) +
 Rundgang → release v0.17.2. Not in the release: spike/3d-webview.
 
+### Night progress (donald, 2026-11-07)
+- On main: 819389c4 mid-route asked once · 96cd7f0e night integration (theme C, value rows, In Bearbeitung, polish 2/3/6/7/8,
+  expand gestures, quiet GPS in Plan, sim starts where the tour is, blue compass, logo/splash/menu/About, route previews +
+  row tap = overview, Navigate ⚙ new look, lock line until learned) · 25574e9c audit 1 (launchSafe, enumOr, no swallowed
+  errors) · 852ab3f5 audit 2 (geo math in one place, golden test). All GitHub E2E classes green each time.
+- Running: audit 4 (AppViewModel split stage 1, PlanFlowPropertyTest). Waiting: audit 3 + the captain's code list (after
+  "Aufräumen fertig"), then audit 5 (tests), full E2E, release v0.17.2.
+- Decision (no owner, no captain line at 02:00): if "Aufräumen fertig" is still missing at 05:00, donald does the captain's
+  code list anyway (code only – docs/, tools/hooks/, .claude/ stay untouched) so the release is not blocked.
+- Kept for the owner: 11 old worktrees with unmerged WIP (2026-11-03 night saves, proposals) – listed by
+  `git worktree list`; ci/donald-* refs to prune after 12 h (n-*, a1-*, a2-*, a4-*, mid-*, p3-*, m2-*, merge-1106*).
+
 ## After the merge – open items (owner decided, not built yet)
 
 - Remove dead `TourRunningBar` / `TourControls` (TourBar.kt) and redraw the screenshot tests that still show the old
