@@ -1,6 +1,5 @@
 package com.onpath.app.recording
 
-import com.onpath.app.data.AtomicFiles
 import com.onpath.strings.*
 
 import android.app.Notification
@@ -160,11 +159,9 @@ class RecordingService : Service() {
     private var lastGoodFixElapsed = 0L
     /** Fixes dropped for accuracy since the last good one: says why a GPS gap had no usable fix. */
     private val gapWatch = PointFilter.GapWatch()
-    private val track = mutableListOf<MutableList<GeoPoint>>()
+    /** Append-only; its snapshot for [RecState] costs O(pieces), not a copy of every point ([GrowingTrack]). */
+    private val track = GrowingTrack()
     private var trackSeg = -1
-    /** Immutable copy of [track] for [RecState], rebuilt only when a point was added (not twice a second). */
-    private var trackSnapshot: List<List<GeoPoint>> = emptyList()
-    private var snapshotDirty = true
     /** A database write failed; cleared by the next successful point write. */
     private var saveFailed = false
 
@@ -365,7 +362,7 @@ class RecordingService : Service() {
                 val (nextSeq, lastSeg) = db.recordingCursor(tourId)
                 seq = nextSeq; seg = lastSeg + 1 // resume in a new segment, no straight jump
                 val segs = db.loadSegments(tourId)
-                segs.forEach { s -> track += s.map { it.toGeo() }.toMutableList() }
+                segs.forEach { s -> track.newSegment(); s.forEach { track.add(it.toGeo()) } }
                 trackSeg = lastSeg
                 climb.restart()
                 last = null
@@ -399,7 +396,6 @@ class RecordingService : Service() {
             failLoud(Txt.s(Res.string.nav_rec_fail_storage), "Recording could not start: the track cannot be saved (phone storage full or damaged).", e)
             return START_NOT_STICKY
         }
-        snapshotDirty = true
         safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
         safeDb("close older") { db.finishOtherActive(tourId) }
         loadFollow()
@@ -622,9 +618,8 @@ class RecordingService : Service() {
             if (saveFailed) { saveFailed = false; nm().cancel(SAVE_FAIL_ID) }
         }
         last = p
-        if (track.isEmpty() || trackSeg != seg) { track += mutableListOf<GeoPoint>(); trackSeg = seg }
-        track.last() += p.toGeo()
-        snapshotDirty = true
+        if (track.isEmpty() || trackSeg != seg) { track.newSegment(); trackSeg = seg }
+        track.add(p.toGeo())
         publish()
     }
 
@@ -719,7 +714,7 @@ class RecordingService : Service() {
         if (!gone || tourId < 0) return
         val (name, created, sac) = tourMeta ?: Triple(com.onpath.app.rides.RideApply.dateName(System.currentTimeMillis()),
             System.currentTimeMillis(), Prefs(this).sac)
-        val segments = track.map { seg -> seg.map { TrackPoint(it.lat, it.lon, it.ele, null) } }
+        val segments = track.snapshot().map { seg -> seg.map { TrackPoint(it.lat, it.lon, it.ele, null) } }
         if (safeDb("rescue") {
                 seq = db.rescueRecording(tourId, name, recActivity.name, sac, created, segments, distance, ascent, descent,
                     elapsedS.toDouble())
@@ -1224,8 +1219,8 @@ class RecordingService : Service() {
             try {
                 com.onpath.app.time.TourTimesStore(File(filesDir, com.onpath.app.time.TourTimesStore.FILE))
                     .put(tourId, tourTimes().copy(startMs = tourMeta?.second, endMs = System.currentTimeMillis()))
-                // learning per tour only (owner): this tour's pace ends with it
-                File(filesDir, TRIP_FILE).delete()
+                // learning per tour only (owner): this tour's pace ends with it (after the writes still waiting)
+                tripWriter.delete()
             } catch (e: Exception) { Problems.error("time", "Tour times could not be saved at tour end", e) }
             _finished.value = tourId
         }
@@ -1261,18 +1256,18 @@ class RecordingService : Service() {
         if (tourId >= 0) {
             if (pointQueue.size > 0) writePoints()
             safeDb("stats") { db.updateStats(tourId, distance, ascent, descent, elapsedS.toDouble(), "active") }
-            saveTrip()
+            saveTrip(wait = true)
         }
+        tripExec.shutdown() // the waiting writes still run
         _state.value = null
         super.onDestroy()
     }
 
     private fun publish(force: Boolean = false) {
         if (tourId < 0) return
-        if (snapshotDirty) { trackSnapshot = track.map { it.toList() }; snapshotDirty = false }
         _state.value = RecState(
             tourId, paused, distance, ascent, descent, elapsedS, gpsLost(),
-            navigator?.state?.offM, navigator?.prompt != null, follow?.first, trackSnapshot,
+            navigator?.state?.offM, navigator?.prompt != null, follow?.first, track.snapshot(),
             navigator?.state, tripTime(), saveFailed, hadGpsFix = lastGoodFixElapsed > 0, gpsQuiet = gpsQuiet(),
             gpsStill = gpsLost() && noGpsLine() == NoGpsShow.Line.NONE,
             arrived = arrived, pausedSinceMs = pausedSinceMs,
@@ -1347,8 +1342,19 @@ class RecordingService : Service() {
         } catch (e: Exception) { Problems.error("time", "Trip times could not be set for the navigated line", e) }
     }
 
-    /** Trip state of the running tour, written atomically (crash / restart keeps the break time). */
-    private fun saveTrip() {
+    /** The trip file's disk work (an fsync) on its own thread, not in the main-thread tick (field 2026-11-07, 695 ms). */
+    private val tripExec by lazy { Executors.newSingleThreadExecutor { r -> Thread(r, "onpath-trip-file") } }
+    private val tripWriter by lazy {
+        LatestFileWriter(File(filesDir, TRIP_FILE), tripExec) { e ->
+            Problems.error("time", "Trip pace file could not be saved (break time may be lost on restart)", e)
+        }
+    }
+
+    /**
+     * Trip state of the running tour, written atomically (crash / restart keeps the break time). Built here, written on
+     * [tripExec] ([LatestFileWriter]); [wait] = the service is going away: on disk before this returns.
+     */
+    private fun saveTrip(wait: Boolean = false) {
         if (tourId < 0) return
         tripSaved = SystemClock.elapsedRealtime()
         try {
@@ -1357,8 +1363,7 @@ class RecordingService : Service() {
                 .put("voice", org.json.JSONObject()
                 .put("started", m.started).putOpt("offRoute", m.offRouteSaidMs).putOpt("noGps", m.noGpsSaidMs)
                 .putOpt("arrived", m.arrivedSaidMs))
-            val f = File(filesDir, TRIP_FILE)
-            AtomicFiles.writeText(f, o.toString())
+            if (wait) tripWriter.writeAndWait(o.toString()) else tripWriter.write(o.toString())
             voiceSaved = m
         } catch (e: Exception) { Problems.error("time", "Trip pace file could not be saved (break time may be lost on restart)", e) }
     }
