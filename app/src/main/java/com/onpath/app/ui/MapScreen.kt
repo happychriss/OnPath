@@ -288,10 +288,10 @@ fun MapScreen(
         null -> {}
     }
     if (vm.planFromTrackBusy) PlanFromTrackDialog(onCancel = vm::cancelPlanFromTrack)
-    // arrival Save goes the End tour way: a bus / car / lift found → the ride summary
+    // arrival "Tour beenden" goes the End tour way: a bus / car / lift found → the ride summary, else saved at once
     // Plan is silent (owner 2026-11-03): "Du bist angekommen" waits for Navigate
-    if (com.onpath.app.domain.tour.TourEndFlow.arrivalBoxShows(vm.arrivalAsk, rec != null, vm.mode == AppMode.NAVIGATE)) ArrivalDialog(onSave = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
-        onKeepGoing = { vm.arrivalAsk = false },
+    if (com.onpath.app.domain.tour.TourEndFlow.arrivalBoxShows(vm.arrivalAsk, rec != null, vm.mode == AppMode.NAVIGATE)) ArrivalDialog(onEnd = { vm.askEndTour(saveIfNoRides = true) }, onDelete = vm::endTourAndDelete,
+        onKeepRecording = { vm.keepRecordingAfterArrival() },
         activity = vm.activity, stats = rec?.let { EndStats(it.distanceM, it.elapsedS, it.ascentM) })
     // Navigate → ⚙ opens Settings "on the way" (owner 2026-11-07) – MainActivity draws it like Plan's Settings
     vm.selectedPoi?.let { poi ->

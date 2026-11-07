@@ -82,7 +82,7 @@ internal fun keepGoingLabel(): String = Txt.s(Res.string.nav_continue) // owner 
  * big green "Tour speichern" where the thumb is – nothing about the plan (owner 2026-11-06: the tour and the plan are two
  * things; the plan was saved at "Los geht's", drafts live under Zuletzt); then "Weiter" and the quiet red "Tour löschen"
  * with the bin note – no second question (owner 2026-11-01: "ist ja sowieso alles im Papierkorb"). Large font: it scrolls.
- * [keepLabel]: the way back (arrival: the same activity word).
+ * [keepLabel]: the way back. The arrival box is [ArrivalDialog].
  */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
@@ -95,9 +95,17 @@ fun EndTourDialog(
     /** Screenshot tests: the sheet drawn at the bottom of the screen itself (Paparazzi draws no sheet window). */
     inline: Boolean = false,
 ) {
-    val content: @Composable () -> Unit = {
-        EndTourContent(onSave, onDelete, onDismiss, title, activity, stats, keepLabel)
-    }
+    EndSheet(onDismiss, inline) { EndTourContent(onSave, onDelete, onDismiss, title, activity, stats, keepLabel) }
+}
+
+/**
+ * The bottom sheet both end sheets sit in. [answerOnly] (the arrival box, owner 2026-11-07): it stays until a button
+ * is pressed – no swipe down, no tap beside it (a raindrop or a glove on the handlebar phone must not take the question
+ * away unseen; ui-style "nothing disappears by itself"); Back still keeps recording (the safe choice).
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun EndSheet(onDismiss: () -> Unit, inline: Boolean, answerOnly: Boolean = false, content: @Composable () -> Unit) {
     if (inline) {
         Box(Modifier.fillMaxSize()) {
             Surface(Modifier.align(Alignment.BottomCenter).fillMaxWidth(), shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
@@ -114,7 +122,8 @@ fun EndTourDialog(
     // full-screen Dialog window started under the status bar but was laid out a full screen high, so its lowest
     // ~50 dp were below the glass). ModalBottomSheet knows the status and gesture bars; opened fully, never half.
     androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss,
-        sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true,
+            confirmValueChange = { !answerOnly || it != androidx.compose.material3.SheetValue.Hidden }),
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow) { content() }
 }
 
@@ -281,13 +290,90 @@ internal fun DeleteApartButtons(onDelete: (() -> Unit)?, cancelLabel: String, on
 /** Body of every "Delete …?" dialog that moves to the recycle bin. */
 internal val RECYCLE_BIN_NOTE: String get() = Txt.s(Res.string.nav_recycle_bin_note, com.onpath.app.backup.RecycleBin.DAYS)
 
-/** Shown once in Navigate when the destination is reached: the same three choices. */
+/**
+ * "Du bist angekommen." (owner 2026-11-07): shown once in Navigate when the destination is reached – the tour's numbers,
+ * then the two answers in one row, the confirm on the right: "Weiter aufzeichnen" | "Tour beenden" (stacked, "Tour
+ * beenden" on top, when they do not fit side by side – [ArrivalButtons]); under them the quiet red "Tour löschen" with
+ * the bin note, as in the end sheet. Stays until answered ([EndSheet] answerOnly); Back keeps recording.
+ */
 @Composable
-fun ArrivalDialog(onSave: () -> Unit, onDelete: () -> Unit, onKeepGoing: () -> Unit,
+fun ArrivalDialog(onEnd: () -> Unit, onDelete: () -> Unit, onKeepRecording: () -> Unit,
                   activity: com.onpath.app.routing.Activity? = null, stats: EndStats? = null, inline: Boolean = false) =
-    EndTourDialog(onSave, onDelete, onKeepGoing, title = str(Res.string.nav_arrived_title), activity = activity, stats = stats,
-        inline = inline)
+    EndSheet(onKeepRecording, inline, answerOnly = true) { ArrivalContent(onEnd, onDelete, onKeepRecording, activity, stats) }
 
+@Composable
+private fun ArrivalContent(onEnd: () -> Unit, onDelete: () -> Unit, onKeep: () -> Unit,
+                           activity: com.onpath.app.routing.Activity?, stats: EndStats?) {
+    val title = str(Res.string.nav_arrived_title)
+    val shownAt = remember { android.os.SystemClock.uptimeMillis() }
+    androidx.compose.runtime.LaunchedEffect(Unit) { Problems.trace("tour", "Arrival box shown: \"$title\"") }
+    val end = guardedTap("Tour beenden (arrival)", shownAt, onEnd)
+    val keep = guardedTap("Weiter aufzeichnen (arrival)", shownAt, onKeep)
+    val delete = guardedTap("Tour löschen (arrival)", shownAt, onDelete)
+    Column(Modifier.verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, top = 0.dp, bottom = 16.dp)) {
+        Row(verticalAlignment = Alignment.Top) {
+            if (activity != null) {
+                Icon(activity.icon, null, tint = OnPathColors.ActionGo, modifier = Modifier.padding(top = 2.dp).size(28.dp))
+                Spacer(Modifier.width(12.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.headlineSmall)
+                if (activity != null) Text(activity.navName, style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (stats != null) { Spacer(Modifier.height(8.dp)); EndStatsLine(stats) }
+        Spacer(Modifier.height(16.dp))
+        ArrivalAnswers(keep, end)
+        Spacer(Modifier.height(4.dp))
+        EndDeleteArea(delete)
+    }
+}
+
+/**
+ * "Weiter aufzeichnen" (outlined green) | "Tour beenden" (filled green, ✓) – equal halves, 56 dp (on the move, gloves);
+ * when the longer label does not fit its half (large font, a narrow phone) both go full width, "Tour beenden" on top.
+ */
+@Composable
+private fun ArrivalAnswers(keep: GuardedTap, end: GuardedTap) {
+    val pad = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+    val gap = 8.dp
+    val keepButton: @Composable () -> Unit = {
+        OutlinedButton(onClick = keep.onClick, interactionSource = keep.source, modifier = Modifier.heightIn(min = 56.dp),
+            border = BorderStroke(1.dp, OnPathColors.ActionGo), contentPadding = pad) {
+            Text(str(Res.string.nav_keep_recording), color = OnPathColors.ActionGo, style = MaterialTheme.typography.titleMedium,
+                maxLines = 1, softWrap = false)
+        }
+    }
+    val endButton: @Composable () -> Unit = {
+        Button(onClick = end.onClick, interactionSource = end.source, modifier = Modifier.heightIn(min = 56.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionGo), contentPadding = pad) {
+            Icon(Icons.Filled.Check, null); Spacer(Modifier.width(8.dp))
+            Text(str(Res.string.nav_end_tour), style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false)
+        }
+    }
+    Layout(contents = listOf(keepButton, endButton), modifier = Modifier.fillMaxWidth()) { (k, e), c ->
+        val g = gap.roundToPx()
+        val w = c.maxWidth
+        val keepM = k.first(); val endM = e.first()
+        val side = ArrivalButtons.sideBySide(w, keepM.maxIntrinsicWidth(Constraints.Infinity), endM.maxIntrinsicWidth(Constraints.Infinity), g)
+        if (side) {
+            val half = (w - g) / 2
+            val h = maxOf(keepM.minIntrinsicHeight(half), endM.minIntrinsicHeight(half))
+            val kp = keepM.measure(Constraints.fixed(half, h)); val ep = endM.measure(Constraints.fixed(w - g - half, h))
+            layout(w, h) { kp.place(0, 0); ep.place(half + g, 0) }
+        } else {
+            val full = Constraints(minWidth = w, maxWidth = w)
+            val ep = endM.measure(full); val kp = keepM.measure(full)
+            layout(w, ep.height + g + kp.height) { ep.place(0, 0); kp.place(0, ep.height + g) }
+        }
+    }
+}
+
+/** Whether the arrival box's two answers fit side by side (each at least its whole label in an equal half). Pure. */
+internal object ArrivalButtons {
+    fun sideBySide(rowW: Int, keepW: Int, endW: Int, gap: Int): Boolean = maxOf(keepW, endW) <= (rowW - gap) / 2
+}
 
 /**
  * [RouteBack]: the goal of a start → goal plan was deleted during a tour. Stays until answered (no outside tap / back

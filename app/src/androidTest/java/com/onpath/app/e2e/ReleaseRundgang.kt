@@ -38,6 +38,8 @@ import com.onpath.strings.routes_overview_follow
 import com.onpath.strings.common_ok
 import com.onpath.strings.nav_pause_band_line
 import com.onpath.strings.nav_arrived_title
+import com.onpath.strings.nav_end_tour
+import com.onpath.strings.nav_keep_recording
 import com.onpath.strings.nav_action_pause
 import com.onpath.strings.nav_end_short
 import com.onpath.strings.nav_mid_lead
@@ -112,7 +114,7 @@ class ReleaseRundgang : E2EBase() {
         shot("2-difficulty-and-hint")
     }
 
-    /** 2 · Start the tour at the start → a junction cue on the way → "You have arrived" → Save. */
+    /** 2 · Start the tour at the start → a junction cue on the way → "You have arrived." → Tour beenden → the start screen. */
     @Test fun flow02_tourAtTheStartJunctionCueThenArrival() {
         planned(THEATRE, STATION)
         val tourId = startTour()
@@ -124,8 +126,10 @@ class ReleaseRundgang : E2EBase() {
         assertNotNull("\"You have arrived\" shown", findFresh(By.text(Txt.s(Res.string.nav_arrived_title)), 10_000))
         shot("3-arrived")
         Thread.sleep(com.onpath.app.domain.tour.EndSheetGuard.GUARD_MS) // the sheet ignores a press in its first half second
-        clickText(Txt.s(Res.string.nav_save_recording))
+        assertNotNull("Weiter aufzeichnen", findFresh(By.text(Txt.s(Res.string.nav_keep_recording)), 5_000))
+        clickText(Txt.s(Res.string.nav_end_tour))
         waitUntil("tour saved", 30_000) { RecordingServiceState.idle() && db.getTour(tourId)?.state == "done" }
+        waitUntil("back at the start (owner 2026-11-07)", 10_000) { read { it.waypoints.isEmpty() } }
         shot("4-saved")
     }
 

@@ -1239,12 +1239,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     }
                     refreshTours()
                     clearFollow()
-                    // the tour and the plan are two things (owner 2026-11-06, Komoot / Strava): ending, saving or deleting
-                    // the TOUR leaves the plan on the map as it is – a plan never saved was saved at the start ("Los
-                    // geht's"), changes made on the way show "Nicht gespeichert ›" (was: the plan left the map, and the
-                    // end sheet's switch "Plan auch speichern" was easy to miss)
                     enter(AppMode.PLAN)
                     tour.afterFinished() // no arrival box, no "Neuer Plan" line of the old tour
+                    afterTourEnded()
                 }
             }
         }
@@ -3691,7 +3688,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The slide switch in Navigate. Recording continues. */
     fun switchToPlan() = enter(AppMode.PLAN)
 
-    /** "End tour" in Plan (after confirmation) or "End & save" on arrival: stop and save. */
+    /**
+     * The tour has ended – saved or deleted, from the end sheet, the ride summary or the arrival box (owner 2026-11-07:
+     * "Tour beenden" → the track is saved, the plan is saved as always, and the app is back at the start as after
+     * "✕ Neu planen"): the plan goes the one clear way ([clearPlan]) – a plan saved as it is (at "Los geht's" or by
+     * Save) stays in My routes, one changed on the way goes under Zuletzt ([keepAsDraft]), one Undo brings it back on the
+     * map; the empty sheet shows its guide. The tour and the plan stay two things (owner 2026-11-06): nothing about the
+     * plan is asked at the end.
+     */
+    private fun afterTourEnded() {
+        Problems.trace("tour", "Tour ended: back to the start – the plan (${waypoints.size} points) goes the \"Neu planen\" way")
+        clearPlan()
+        guidanceEndedByEmptyPlan = false // nothing of the ended tour is resumed by the next plan
+    }
+
+    /** The arrival box → "Weiter aufzeichnen": the box goes, the recording goes on (the guidance stays quiet). */
+    fun keepRecordingAfterArrival() {
+        Problems.trace("tour", "Arrival: keep recording")
+        arrivalAsk = false
+    }
+
+    /** "End tour" in Plan (after confirmation) or "Tour beenden" on arrival: stop and save. */
     fun endTour() {
         tour.end(delete = false)
         stopRecording() // the plan is not touched (owner 2026-11-06: two things)

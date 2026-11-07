@@ -1404,7 +1404,8 @@ class RecordingService : Service() {
 
     private fun navNotification(): com.onpath.app.navigation.NavNotification.Text? = try {
         val st = navigator?.state
-        if (st == null || st.line.size < 2) null else {
+        if (arrived && st != null) com.onpath.app.navigation.NavNotification.arrived()
+        else if (st == null || st.line.size < 2) null else {
             val along = st.shownAlongM
             val toGo = along?.let { (com.onpath.app.data.Geo.length(st.line) - it).coerceAtLeast(0.0) }
             val t = _state.value?.time

@@ -27,14 +27,15 @@ object EndSheetGuard {
 }
 
 /**
- * The three ways to end a tour – End tour, "You have arrived" → Save, and the "Interrupted tour" question after a restart
- * – all run the ride check first (core feature C12): rides found → the bus / car / lift summary; none → arrival's Save
- * saves at once, End tour asks plainly (Save · Weiter · Löschen); an interrupted tour's Save saves at once.
+ * The three ways to end a tour – End tour, "Du bist angekommen." → Tour beenden, and the "Interrupted tour" question after
+ * a restart – all run the ride check first (core feature C12): rides found → the bus / car / lift summary; none →
+ * arrival's Tour beenden saves at once, End tour asks plainly (Save · Weiter · Löschen); an interrupted tour's Save saves
+ * at once. After a running tour ended the app is back at the start (AppViewModel.afterTourEnded, owner 2026-11-07).
  */
 object TourEndFlow {
     enum class Next { RIDES, SAVE_NOW, ASK_PLAIN }
 
-    /** End tour ([saveIfNoRides] = false) or "You have arrived" → Save ([saveIfNoRides] = true). */
+    /** End tour ([saveIfNoRides] = false) or "Du bist angekommen." → Tour beenden ([saveIfNoRides] = true). */
     fun afterRideCheck(ridesFound: Boolean, saveIfNoRides: Boolean): Next = when {
         ridesFound -> Next.RIDES
         saveIfNoRides -> Next.SAVE_NOW

@@ -857,7 +857,11 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi(r = route.copy(distanceM = 28_740.0, durationS = 10.4 * 3600)).copy(sac = 3), PlanCallbacks()) }
     }
 
-    fun arrival() = paparazzi.snapshot {
+    /**
+     * "Du bist angekommen." (owner 2026-11-07): the numbers, "Weiter aufzeichnen" | "Tour beenden" in one row (confirm
+     * right), the quiet red "Tour löschen" with the bin note under them.
+     */
+    @Test fun arrival() = paparazzi.snapshot {
         OnPathTheme {
             NavFrame(navUi.copy(toGo = ToGo(30.0, 0.0, 60.0, 5.0)))
             ArrivalDialog({}, {}, {}, activity = Activity.HIKE, stats = EndStats(12_480.0, 16_560, 842.0), inline = true)

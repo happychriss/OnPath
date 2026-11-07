@@ -8,6 +8,10 @@ import com.onpath.strings.common_resume
 import com.onpath.strings.nav_action_pause
 import com.onpath.strings.nav_end_short
 import com.onpath.strings.nav_end_tour_title
+import com.onpath.strings.nav_arrived_title
+import com.onpath.strings.nav_end_tour
+import com.onpath.strings.nav_keep_recording
+import com.onpath.strings.plan_guide_find_title
 import com.onpath.strings.nav_hold_hint
 import com.onpath.strings.nav_pause_band_line
 import com.onpath.strings.nav_leave_go
@@ -263,20 +267,25 @@ class CoreFieldE2ETest : E2EBase() {
     }
 
     /**
-     * Owner 2026-11-06 (the tour and the plan are two things, like Komoot – was: a field bug where the end sheet's "Plan
-     * auch speichern" lost the plan, then a Save dialog after the tour that was easy to miss): "Los geht's" saves a new
-     * plan; "Tour speichern" asks nothing about the plan and leaves it on the map – still in My routes.
+     * Owner 2026-11-06 (the tour and the plan are two things, like Komoot) + 2026-11-07 ("Tour beenden" → back to the
+     * start as after "✕ Neu planen"): "Los geht's" saves a new plan; "Tour speichern" asks nothing about the plan, saves
+     * the tour, and the map is empty with the guide – the plan still in My routes, one Undo brings it back.
      */
-    @Test fun endTourKeepsThePlanSavedAtTheStart() {
+    @Test fun endTourSavesTheTourKeepsThePlanAndClearsTheMap() {
         val planId = startOnANewPlan()
         val before = waypointList()
-        scenario.onActivity { vm(it).endTour() }
+        var tourId = -1L
+        scenario.onActivity { tourId = vm(it).recState.value!!.tourId; vm(it).endTour() }
         waitUntil("the tour has ended", 20_000) { !recording() }
-        Thread.sleep(1_500) // the service's "finished" has run
+        waitUntil("back at the start: the map is empty", 10_000) { waypointCount() == 0 }
         scenario.onActivity { assertTrue("no Save dialog after the tour", vm(it).saveAsk == null) }
-        assertEquals("the plan stays on the map", before, waypointList())
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
+        assertEquals("the tour is saved", "done", db.getTour(tourId)?.state)
         assertTrue("the plan is still in My routes", planId in plannedIds())
-        TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).deleteTour(planId)
+        assertEquals(AppMode.PLAN, mode())
+        scenario.onActivity { vm(it).undoStep() }
+        waitUntil("Undo brings the plan back", 10_000) { waypointList() == before }
+        db.deleteTour(planId)
     }
 
     /**
@@ -288,7 +297,10 @@ class CoreFieldE2ETest : E2EBase() {
         val old = waypointList()
         scenario.onActivity { vm(it).endTour() }
         waitUntil("the tour has ended", 20_000) { !recording() }
-        Thread.sleep(1_500)
+        waitUntil("back at the start (owner 2026-11-07)", 10_000) { waypointCount() == 0 }
+        scenario.onActivity { vm(it).undoStep() } // the saved plan back on the map, as it was
+        waitUntil("Undo: the saved plan is back", 10_000) { waypointList() == old }
+        scenario.onActivity { assertFalse("back as saved", vm(it).planUnsaved) }
         // change the saved plan: one more point beyond the goal
         val goal = old.last()
         scenario.onActivity { vm(it).addPoint(GeoPoint(goal.lat + 0.004, goal.lon + 0.004)) }
@@ -324,8 +336,11 @@ class CoreFieldE2ETest : E2EBase() {
         db.deleteTour(planId)
     }
 
-    /** The same for "Löschen" (flow map H2): only the tour goes to the bin, the plan stays – on the map and in My routes. */
-    @Test fun endTourDeleteBinsOnlyTheTour() {
+    /**
+     * The same for "Löschen" (flow map H2): only the tour goes to the bin; the plan stays in My routes, the map is back
+     * at the start (owner 2026-11-07), Undo brings it back.
+     */
+    @Test fun endTourDeleteBinsTheTourAndKeepsThePlan() {
         val planId = startOnANewPlan()
         val before = waypointList()
         var tourId = -1L
@@ -335,9 +350,63 @@ class CoreFieldE2ETest : E2EBase() {
         scenario.onActivity { assertTrue("no Save dialog after Löschen", vm(it).saveAsk == null) }
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         assertTrue("the tour is in the bin", (db.getTour(tourId)?.deletedMs ?: 0L) > 0L)
-        assertEquals("the plan stays on the map", before, waypointList())
+        waitUntil("back at the start: the map is empty", 10_000) { waypointCount() == 0 }
         assertTrue("the plan is still in My routes", planId in plannedIds())
+        scenario.onActivity { vm(it).undoStep() }
+        waitUntil("Undo brings the plan back", 10_000) { waypointList() == before }
         db.deleteTour(planId)
+    }
+
+    /**
+     * Owner 2026-11-07: at the goal "Du bist angekommen." offers "Weiter aufzeichnen" | "Tour beenden"; "Tour beenden"
+     * saves the tour (in My routes → Gemacht), the plan saved at "Los geht's" stays in My routes → Planned, and the map
+     * is back at the start – empty, with the empty sheet's guide.
+     */
+    @Test fun arrivalEndTourBringsTheStartScreen() {
+        walking = false
+        Thread.sleep(800)
+        val start = GeoPoint(lat, lon)
+        val goal = GeoPoint(lat + 0.0035, lon + 0.0020)    // ~430 m away
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
+        val before = plannedIds()
+        scenario.onActivity { vm(it).addPoint(start); vm(it).addPoint(goal) }
+        waitUntil("two points", 10_000) { waypointCount() == 2 }
+        waitUntil("the route", 30_000) { var ok = false; scenario.onActivity { ok = (vm(it).route?.points?.size ?: 0) >= 2 }; ok }
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the route is followed", 20_000) { guided() }
+        waitUntil("Los geht's saved the plan", 15_000) { (plannedIds() - before).size == 1 }
+        val planId = (plannedIds() - before).single()
+        var tourId = -1L
+        scenario.onActivity { tourId = vm(it).recState.value!!.tourId }
+        val line = com.onpath.app.recording.RecordingService.state.value!!.nav!!.line
+        try {
+            // ride to the goal (the demo position feeds the service like GPS – walking pace, × 20)
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                com.onpath.app.recording.DemoLocation.startRide(com.onpath.app.recording.DemoPath.constant(line, 1.4)!!, "E2E arrival", 20)
+            }
+            waitUntil("\"Du bist angekommen.\"", 120_000) { var a = false; scenario.onActivity { a = vm(it).arrivalAsk }; a }
+            assertNotNull("the arrival box", findFresh(By.text(Txt.s(Res.string.nav_arrived_title)), 10_000))
+            assertNotNull("Weiter aufzeichnen", findFresh(By.text(Txt.s(Res.string.nav_keep_recording)), 5_000))
+            assertNotNull("Tour beenden", findFresh(By.text(Txt.s(Res.string.nav_end_tour)), 5_000))
+            shot("arrival-box")
+            Thread.sleep(com.onpath.app.domain.tour.EndSheetGuard.GUARD_MS) // the box ignores a press in its first half second
+            clickText(Txt.s(Res.string.nav_end_tour))
+            waitUntil("the tour has ended", 30_000) { !recording() }
+            waitUntil("the tour is saved", 15_000) { db.getTour(tourId)?.state == "done" }
+            waitUntil("in My routes → Gemacht", 15_000) {
+                var ok = false; scenario.onActivity { ok = vm(it).tours.any { t -> t.id == tourId && t.kind == TourKind.RECORDED } }; ok
+            }
+            assertTrue("the plan in My routes → Planned", planId in plannedIds())
+            waitUntil("the map is empty", 10_000) { waypointCount() == 0 }
+            assertEquals("back in Plan", AppMode.PLAN, mode())
+            scenario.onActivity { vm(it).closeSavedTour() } // the "Tour gespeichert" box
+            assertNotNull("the empty sheet's guide", findFresh(By.text(Txt.s(Res.string.plan_guide_find_title)), 10_000))
+            shot("start-after-arrival")
+        } finally {
+            InstrumentationRegistry.getInstrumentation().runOnMainSync { com.onpath.app.recording.DemoLocation.stop("E2E arrival done") }
+            db.deleteTour(planId)
+        }
     }
 
     /**

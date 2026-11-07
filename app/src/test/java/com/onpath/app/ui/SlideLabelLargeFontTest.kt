@@ -40,6 +40,8 @@ open class SlideLabelLargeFontTest {
     @Test fun navigateNotRecordingOpen() = shots.navigateNotRecordingOpen()
     /** The end sheet (owner 2026-11-05, V2): it scrolls, Save stays reachable. */
     @Test fun endTourConfirm() = shots.endTourConfirm()
+    /** The arrival box (owner 2026-11-07): "Tour beenden" over "Weiter aufzeichnen", full width, nothing cut. */
+    @Test fun arrival() = shots.arrival()
     /** The next stops at a large font: numbers never cut, a long name ends with an ellipsis. */
     @Test fun navigateProfileStops() = shots.navigateProfileStops()
     /** Save plan? at a large font: the stacked full-width buttons. */
