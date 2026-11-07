@@ -19,6 +19,7 @@ for (const [name, vp, phone] of [['breit', { width: 1440, height: 900 }, false],
   await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
   await page.click('#appHintLine .x').catch(() => {});
   await page.waitForTimeout(1500); await settle(page);
+  await page.waitForFunction(() => !document.querySelector('.mapnote:not([hidden])'), null, { timeout: 30_000 }).catch(() => {}); await settle(page);
   await page.screenshot({ path: path.join(out, `plankarte-${name}.png`) });
   if (phone) {
     await page.click('#sheetStep'); await page.waitForTimeout(600); await settle(page);

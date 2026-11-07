@@ -947,10 +947,11 @@ Problems found while making the browser plan exactly like the phone, and the spe
 ## 24. Plan sheet A – points first, the profile along the bottom (laptop, 2026-11-07, owner: A + B's profile)
 Proposals page https://claude.ai/artifact/F1rCK7xXXmUhWcQRj3o1mR (today's sheet, three proposals, „Aus der App übernehmen“;
 section „Gebaut“ with the shots). The owner chose A („Punkte zuerst“, like Google Maps' route panel) with B's profile.
-- **Wide (> 700 px): no steps.** The side panel always shows: activity chip · Teilen; the plan row ⇅ Umkehren · ↻ Rundtour;
-  the points with ⋮⋮ handles (hover = plan tonal), the goal as a flag; **„+ Ziel hinzufügen“** (puts the cursor in the
-  search – the place card's „Hinzufügen“ adds it); the facts in one row (time · km · ↑ ↓ · max · difficulty, tabular
-  digits); the route's lines; Wegtypen & Untergrund (folded). No handle, no chevron (`sheetstep.ts`).
+- **Wide (> 700 px): no steps.** The side panel always shows, in the phone's order (owner after the first look, 2026-11-07:
+  „das Wichtigste zuerst“): activity chip · Teilen; the facts in one row (time · km · ↑ ↓ · max · difficulty, tabular
+  digits); the plan row ⇅ Umkehren · ↻ Rundtour; the route's lines (warnings, notices); then the points with ⋮⋮ handles
+  (hover = plan tonal), the goal as a flag, and **„+ Ziel hinzufügen“** (puts the cursor in the search – the place card's
+  „Hinzufügen“ adds it); Wegtypen & Untergrund (folded). No handle, no chevron (`sheetstep.ts`).
 - **The elevation profile lies along the map's bottom edge for good** (`RouteProfile.pinned`): cursor ⇄ dot, steepness
   colours, the marked range („1,6 km · 30 min · ↑ 59 m“) – no ✕, no „⤢ Großes Profil“. The route on the map stays plan blue
   while pinned (the steepness is read in the profile). The camera fit keeps the route above it (`fitPadding`).
