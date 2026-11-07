@@ -94,6 +94,18 @@ class CorePointsListE2ETest : E2EBase() {
             ?: run { shot("missing-sheet-handle"); throw AssertionError("sheet handle ($labels) not shown – ${state()}") }
     }
 
+    /**
+     * Undo in the map's column. At the full sheet the column has no room and steps back (owner 2026-11-06, `ControlsPlacement`
+     * – since then the points step shows no map buttons): one step smaller first, as a user would.
+     */
+    private fun undoOnTheMap() {
+        if (size() == PlanSize.FULL) {
+            sheetHandle().click()
+            waitUntil("the sheet a step smaller") { size() != PlanSize.FULL }
+        }
+        desc("Undo").click()
+    }
+
     @Test fun deleteTheSecondPointWithX() {
         threePointsAndFullSheet()
         val before = points()
@@ -101,7 +113,7 @@ class CorePointsListE2ETest : E2EBase() {
         waitUntil("point 2 deleted from the list") { waypointCount() == 2 }
         assertFalse(points().contains(before[1]))
         // Undo on the map brings it back, in its place (no dialog)
-        desc("Undo").click()
+        undoOnTheMap()
         waitUntil("undo restored point 2") { waypointCount() == 3 }
         assertEquals(before, points())
     }
@@ -128,7 +140,7 @@ class CorePointsListE2ETest : E2EBase() {
         assertEquals("no point lost or added", 3, points().size)
         assertTrue("the dragged point is the new start: ${points()} vs $before",
             com.onpath.app.data.Geo.distance(points()[0], before[2]) < 1_000)
-        desc("Undo").click()
+        undoOnTheMap()
         waitUntil("undo restored the order") { points().size == 3 &&
             com.onpath.app.data.Geo.distance(points()[0], before[0]) < 1_000 }
     }
