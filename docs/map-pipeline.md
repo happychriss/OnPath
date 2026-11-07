@@ -87,8 +87,10 @@ One-line Python setup: `pip install osmium shapely pmtiles numpy pillow contourp
 | POI pictograms | Maki (Mapbox), Temaki (Rapid) – copied in `tools/icons/` | CC0; `assets/sprites/LICENSE-icons.txt` |
 | Fonts | Noto Sans glyph PBFs in `app/src/main/assets/fonts/` | OFL |
 
-The app shows "© OpenStreetMap contributors, © OpenMapTiles, Terrarium (Mapzen/AWS)" on the map and the
-full list in Settings. Google content is never fetched, stored or drawn (link-out to Google Maps only).
+The app shows "© OpenStreetMap · OpenMapTiles" on the map (`ui/MapFooter.kt` `MAP_CREDIT`; two lines on a narrow
+phone, it grows with the font up to 1.3×); a tap opens Settings → About with the full list – "© OpenStreetMap
+contributors", "© OpenMapTiles", the terrain line (Terrarium: Mapzen / AWS Terrain Tiles; SRTM, Copernicus and others)
+and the rest. Google content is never fetched, stored or drawn (link-out to Google Maps only).
 
 **Blocked hosts:** from the cloud build machines `download.geofabrik.de` and `overpass-api.de` are not
 reachable – use `download.openstreetmap.fr`. Reachable: download.openstreetmap.fr, brouter.de, AWS S3,

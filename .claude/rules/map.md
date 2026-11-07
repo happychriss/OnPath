@@ -31,7 +31,7 @@ paths:
   sprite images (`tools/make_sprite.py`). Layers with metadata `onpath:fallback-for` are drawn only when that source is missing.
   Layer ids the app depends on: `routes-hike`, `routes-bike` (MTB shows the cycle band), `poi-*`; the app's own layers
   (`planned-route`, `gpx-track`, `recorded-track`, `waypoints`, `position`) go on top.
-- **Data/licences**: the map shows a short "© OpenStreetMap"; a tap opens Settings → About with the full credits
+- **Data/licences**: the map shows a short "© OpenStreetMap · OpenMapTiles" (`MapFooter` `MAP_CREDIT`); a tap opens Settings → About with the full credits
   ("© OpenStreetMap contributors, © OpenMapTiles" + terrain attribution) and About → Licences (every bundled library
   with version + licence, texts in `assets/licences/`, list from the build – `data/Licences.kt`, `LicencesTest`). Google
   content is never stored or drawn; only link out to Google Maps. Exception (owner): the coordinate

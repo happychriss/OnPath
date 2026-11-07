@@ -52,7 +52,7 @@ fixes (5 m, bearing, speed, height from the line) go into both `LocationTracker`
 service's – so Navigate, turn cues, arrival, recording, re-routing and the notification run as on a real tour; real GPS
 is ignored meanwhile. Speed = the plan's time model with the user's pace, × 1 / 5 / 20 (the fix time runs on a
 simulated clock, so the track keeps realistic speeds; moving time / pace shown are realistic at 1× only); "Stand still"
-pauses. A small orange DEMO tag sits beside "© OpenStreetMap"; tours recorded meanwhile are named "Demo · …"; the problem
+pauses. A small orange DEMO tag sits beside the scale bar; a demo ride ends with its tour (`DemoLocation.endWithTour` – no DEMO / Sim left after the sim ride), a standing demo stays; tours recorded meanwhile are named "Demo · …"; the problem
 log and diagnostics export say when it ran. Never stuck on: process memory only (an app restart = real GPS), stops by
 itself after 6 h, Stop in Developer tools. Tests: `DemoPathTest` (positions, speed, bearing, end),
 `DemoLocationTest` (demo vs real switch, clock, stop, and the demo ride through `PointFilter` + `NavReplay`).

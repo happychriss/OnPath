@@ -52,6 +52,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.CompositionLocalProvider
 import org.jetbrains.compose.resources.StringResource
 import androidx.compose.ui.unit.dp
 import com.onpath.app.recording.GpsStatus
@@ -65,22 +68,37 @@ fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, demo: Boolea
               fabs: @Composable ColumnScope.() -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.Bottom) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
-            scale?.let { (label, width) -> ScaleBar(label, width) }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // short credit on the map; a tap opens the full credits (Settings → About)
-                Text("© OpenStreetMap", style = MaterialTheme.typography.labelSmall, color = Color(0xFF333333), maxLines = 1,
+                scale?.let { (label, width) -> ScaleBar(label, width) }
+                // simulated GPS (Developer tools → Demo): said honestly, also in screenshots – beside the scale, so the
+                // credit below keeps the whole width
+                if (demo) Text("DEMO", style = MaterialTheme.typography.labelSmall, color = Color.White, maxLines = 1,
+                    modifier = Modifier.padding(start = if (scale != null) 6.dp else 0.dp).clip(OnPathShapes.Small)
+                        .background(OnPathColors.Warn).padding(horizontal = 5.dp, vertical = 3.dp))
+            }
+            // short credit on the map; a tap opens the full credits (Settings → About, terrain included). Map furniture:
+            // it grows with the phone's font up to [CREDIT_MAX_FONT] only, so at the largest font it still reads
+            // "© OpenStreetMap ·" / "OpenMapTiles" on two lines instead of cutting a name in half.
+            val d = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(d.density, minOf(d.fontScale, CREDIT_MAX_FONT))) {
+                Text(MAP_CREDIT, style = MaterialTheme.typography.labelSmall, color = Color(0xFF333333), maxLines = 2,
                     modifier = Modifier.padding(top = 4.dp).clip(OnPathShapes.Small)
                         .clickable(onClickLabel = str(Res.string.plan_map_credits), onClick = onCredits)
                         .background(Color(0xB3FFFFFF)).padding(horizontal = 5.dp, vertical = 3.dp))
-                // simulated GPS (Developer tools → Demo): said honestly, also in screenshots
-                if (demo) Text("DEMO", style = MaterialTheme.typography.labelSmall, color = Color.White, maxLines = 1,
-                    modifier = Modifier.padding(start = 6.dp, top = 4.dp).clip(OnPathShapes.Small)
-                        .background(OnPathColors.Warn).padding(horizontal = 5.dp, vertical = 3.dp))
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.End, content = fabs)
     }
 }
+
+/**
+ * The credit on the map (docs/map-pipeline.md §3): the data (ODbL) and the tile schema (OpenMapTiles, CC-BY) – names,
+ * the same in every language. Non-breaking spaces keep "© OpenStreetMap ·" together; a wrap goes before "OpenMapTiles".
+ */
+const val MAP_CREDIT = "©\u00A0OpenStreetMap\u00A0· OpenMapTiles"
+
+/** The credit line's largest font scale (the phone's own scale up to this; the rest of the screen takes it all). */
+const val CREDIT_MAX_FONT = 1.3f
 
 /** Size of one map control (owner 2026-11-03: "trifft man kaum" – 56 dp in both modes, was 48 in Plan). */
 val MAP_FAB = 56.dp
