@@ -77,6 +77,12 @@ and node tags per span (`BRouterWayStats.perNode` → `WayAttrs.ford / barrier /
 `RouteWarningsTest`, `BRouterWayStatsTest.hintTagsReachTheWayAttributes`, `WayTimesTest.codeRoundTrip`, screenshots
 `ScreenshotTest.planFerryHint` / `routeSpotsListHints`; JVM `tools/routing/jvm-test/FerryHintTest.kt` (Rhine ferries
 Zons ⇄ Urdenbach, Kaiserswerth ⇄ Langst, every activity class). Counts on real routes: `HintInventory.kt`.
+**"New route for Hike T2 – check it"** (safety audit B, owner 2026-10-22): after an activity / T level change the new
+route is compared with the one before (`RouteWarnings.changedNoticeably`) and a noticeable change gets this grey INFO
+line until tapped – **during a tour** (a re-route on the way) and for a change from elsewhere (the service, the switch
+sheet, a browser plan) only; the user's own activity / T choice in Plan with no tour running gets none (owner
+2026-11-07: they changed it themselves; `RouteWarnings.saysChanged`, `RouteWarningsTest.ownChangeInPlanSaysNothingButTourAndNewerDataStillDo`).
+Newer routing data keeps its own grey line "Plan recalculated with newer map data – please check the route."
 
 To add next: recording survives Plan mode, map update with a real cell generation. (Navigate → Plan with a followed
 plan, markers back: `CoreFieldE2ETest.navigateThenBackToPlanStillDeletes`.)

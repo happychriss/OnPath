@@ -1497,7 +1497,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * then only stops.
      */
     fun selectActivity(a: Activity, userChange: Boolean = true) {
-        noteActivityChange()
+        noteActivityChange(own = userChange)
         if (userChange) runCauses.activity(activityCause()) else runCauses.other()
         activity = a; prefs.activity = a; recalc()
         clearShownNote()
@@ -1517,7 +1517,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun selectSac(level: Int) {
         val l = level.coerceIn(1, 5)
         if (l == sac) return
-        if (activity == Activity.HIKE) { noteActivityChange(); runCauses.activity(activityCause()) }
+        if (activity == Activity.HIKE) { noteActivityChange(own = true); runCauses.activity(activityCause()) }
         sac = l; prefs.sac = l; if (activity == Activity.HIKE) recalc()
         clearShownNote()
     }
@@ -2704,8 +2704,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- route warnings ----------------
 
-    private fun noteActivityChange() {
+    /**
+     * An activity / T level change: the route before it is kept for the comparison ("New route for … – check it") –
+     * not for the user's [own] choice in Plan with no tour running (owner 2026-11-07: they changed it themselves).
+     */
+    private fun noteActivityChange(own: Boolean) {
         routeChangedNotice = null
+        if (!RouteWarnings.saysChanged(own, inPlan = mode == AppMode.PLAN, touring = recState.value != null)) {
+            activityBefore = null; activityRecalc = false; return
+        }
         if (activityBefore == null) activityBefore = route?.takeIf { !routing }
         activityRecalc = activityBefore != null
     }
@@ -2735,7 +2742,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** How many hints the amber line sums up: the ⚠ count of the rolled-up sheet. */
     fun warningCount(): Int = RouteWarnings.count(routeSpots)
 
-    /** Grey INFO line "New route for … – check it" (grey: the user changed the activity themselves). */
+    /**
+     * Grey INFO line "New route for … – check it": after an activity / T level change during a tour or from elsewhere
+     * ([RouteWarnings.saysChanged]), or "Plan recalculated with newer map data – …".
+     */
     fun routeChangedLineText(): String? = routeChangedNotice
 
     /** Tap on the "New route for …" line: it goes, the map shows the whole route. */
