@@ -190,7 +190,7 @@ for (const x of light) if (x.ratio < x.min) contrastFails.push(`${x.sel} ${x.col
 await page.emulateMedia({ colorScheme: 'dark' });
 const dark = await greens();
 const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-if (bg !== 'rgb(250, 250, 246)') contrastFails.push(`dark system setting: page background ${bg}, not the light paper`);
+if (bg !== 'rgb(245, 243, 235)') contrastFails.push(`dark system setting: page background ${bg}, not the light paper`);
 for (const x of dark) { const l = light.find((y) => y.sel === x.sel); if (l && l.color !== x.color) contrastFails.push(`dark system setting changed ${x.sel}: ${x.color}`); }
 console.log('greens:', light.map((x) => `${x.sel} ${x.ratio.toFixed(1)}`).join(' · '));
 if (contrastFails.length) errors.push('one green / contrast: ' + contrastFails.join('; '));

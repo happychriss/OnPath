@@ -7,8 +7,8 @@
      navigation green only for what goes to the navigation (the web has none: the logo's word only); paper is the ground
      of every surface, also of what floats over the map (--card: search pill, place / pin card, message boxes, map strip,
      notes – the shadow lifts them off the map); white only for fields one types into (app 2026-11-06 evening) */
-  --paper: #FAFAF6; --paper-dim: #F1F0E9; --card: var(--paper);
-  --walnut: #4A3F37; --walnut-light: #EDE6DF; --plan: #2B4C6F; --plan-dark: #1F3A57; --plan-light: #DCE3EC; --plan-ink: #1B2F45; --plan-edge: #B7C4D3;
+  --paper: #F5F3EB; --card-paper: #FAFAF6; --paper-dim: #F1F0E9; /* the app's Paper (tone B, owner 2026-11-07 11:20) / CardPaper / PaperDim */ --card: var(--paper);
+  --walnut: #4A3F37; --walnut-light: #EDE6DF; --plan: #335A85; --plan-dark: #284A6E; --plan-light: #DDE5EE; --plan-ink: #1E3550; --plan-edge: #B9C7D6;
   /* ink blue (the app's ActionEdit, owner 2026-11-06 23:00 variant C – no light blue surfaces), EditTonal / OnEditTonal */
   --go: #245F46; --lifted: #EAE9E1;
   --bg: var(--paper); --fg: #243C31; --muted: #5f645e; --line: #e2e1da; --surface2: #EFEEE7;
