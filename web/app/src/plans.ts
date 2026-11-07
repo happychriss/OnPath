@@ -6,8 +6,9 @@ import { NONE, shownTitle, type PlanSync, type SavedPlan, type SyncStatus } from
 import { icon } from './icons';
 import { t, locale } from './i18n';
 import { problem } from './diag';
-import { planKey, trackKey, statsOf, statsText } from './planstats';
-import { recentPlans, dropRecent, SHOWN as RECENT_SHOWN, type RecentPlan } from './recent';
+import { planKey, trackKey, statsOf, statsText, type PlanStats } from './planstats';
+import { fitShape, shapeOf, shapeSvg, type Seg } from './routeshape';
+import { recentPlans, dropRecent, renameRecent, SHOWN as RECENT_SHOWN, type RecentPlan } from './recent';
 
 export interface PlanHost {
   /** The current plan as a plan code + its title, or null when there is nothing to save. */
@@ -41,6 +42,19 @@ export interface PlanHost {
   /** The saved plan just made from Zuletzt (shown „✓ Gerade gespeichert“ once), null = none. */
   justSaved(): string | null;
   setJustSaved(id: string): void;
+  /**
+   * The plan on the map for Meine Touren (the app's LivePlan): null = an empty map. [savedId] / [savedFolder] = the saved
+   * route it is, [recentId] = the Zuletzt entry it came from, [pointsKey] = its points (a Zuletzt plan with the same is
+   * this plan), [unsaved] = it differs from its last save, [canSave] = two points at least; its numbers and line when routed.
+   */
+  live(): { title: string | null; points: number; savedId: string | null; savedFolder: string | null; recentId: string | null;
+    pointsKey: string; unsaved: boolean; canSave: boolean; stats: PlanStats | null; segs: Seg[] | null } | null;
+  /** Speichern of the plan on the map (the plan bar's Save). */
+  saveLive(): Promise<void>;
+  /** Zuletzt → ⋮ → GPX exportieren: the plan comes on the map, is planned, and its GPX is saved. */
+  exportRecent(r: RecentPlan): void;
+  /** A saved track → ⋮ → Als Plan übernehmen: the track on the map, then the plan from it. */
+  planFrom(p: SavedPlan, folder: string): void;
 }
 
 let openDialog: HTMLDialogElement | null = null;
@@ -160,11 +174,78 @@ export function searchPlans<T extends { title: string | null }>(plans: T[], quer
 }
 
 /**
- * My routes – one plain list (web-sync.md §14.6): title, the rows, Close. A row: the kind in a circle as in the app
- * (planned route blue, imported GPX purple), the name, "Planned · 30 Oct 2026" / "GPX · …"; on the right where it lies
- * (🖥 this browser, 📱 the phone, both) and ⋮ with Rename, Save as copy, Export GPX, Share plan, Delete (copy and share
- * for planned routes – the app's TourItemMenu). Bold = changed here and not on the phone
- * yet; the open route on a light green. A click on the row opens it. Follows the sync live.
+ * The app's RouteRowActions (owner 2026-11-07 09:40): every action in exactly one place. Zuletzt: Planen · Speichern ·
+ * Löschen on the row, ⋮ only Umbenennen · GPX exportieren. The plan on the map: a tap goes back to it, Speichern on the
+ * row when it can be saved, no ⋮. Gespeichert: the clean list – tile + name + facts + ›, every action in ⋮. A row tap (or
+ * the tile, marked ⤢) opens the large overview – except the plan on the map. „Los geht's“ is the phone's (no tour here).
+ */
+export type RowAction = 'plan' | 'save' | 'delete' | 'planFrom' | 'rename' | 'copy' | 'export' | 'share';
+export interface RowSpec { inline: RowAction[]; menu: RowAction[]; chevron: boolean; opensOverview: boolean }
+export function rowActions(section: 'live' | 'draft' | 'saved', kind: 'plan' | 'track', o: { liveMarked?: boolean; canSaveLive?: boolean; points?: number } = {}): RowSpec {
+  if (section === 'live') return { inline: o.canSaveLive ? ['save'] : [], menu: [], chevron: false, opensOverview: false };
+  if (section === 'draft') return { inline: ['plan', 'save', 'delete'], menu: ['rename', 'export'], chevron: false, opensOverview: true };
+  const menu: RowAction[] = [];
+  if (kind === 'plan' && !o.liveMarked) menu.push('plan');
+  if (kind === 'track') menu.push('planFrom');
+  menu.push('rename');
+  if (kind === 'plan') menu.push('copy');
+  menu.push('export');
+  if (kind === 'plan' && (o.points ?? 2) >= 2) menu.push('share');
+  menu.push('delete');
+  return { inline: o.liveMarked && o.canSaveLive ? ['save'] : [], menu, chevron: !o.liveMarked, opensOverview: !o.liveMarked };
+}
+
+/** The menu items' older class names (the smokes and screenshots address them). */
+const MENU_CLASS: Record<RowAction, string> = { plan: 'planit', save: 'msave', delete: 'del', planFrom: 'planfrom', rename: 'rename', copy: 'copy', export: 'export', share: 'sharerow' };
+/** The tile's size (the app's PREVIEW_TILE 52 dp), the ⤢ badge's (ENLARGE_BADGE 26, reaching 6 out of the tile). */
+const TILE = 52, BADGE = 26, OUT = 6;
+/** A row's preview tile: the route's shape on paper (or the kind's sign while no line is known here), ⤢ when it opens the overview. */
+function tileHtml(segs: Seg[] | null, kind: 'plan' | 'track', pale: boolean, enlarge: boolean): string {
+  const corner = enlarge ? BADGE - OUT + 3 * 1.6 : 0;
+  const s = segs ? fitShape(segs, TILE, TILE, 8, corner) : null;
+  const inner = s ? shapeSvg(s, TILE, TILE, { width: 2.5, dot: 3, pale })
+    : `<span class="kindic${pale ? ' pale' : ''}">${icon(kind === 'track' ? 'fileOpen' : 'route', 22)}</span>`;
+  return `<span class="tileface">${inner}</span>${enlarge ? `<span class="enlarge" aria-hidden="true">${icon('openInFull', 16)}</span>` : ''}`;
+}
+
+/** One thing in the list: a saved route / track, a Zuletzt plan or the plan on the map. */
+interface Item {
+  section: 'live' | 'draft' | 'saved';
+  id: string; kind: 'plan' | 'track'; title: string; at: number;
+  stats: PlanStats | null; segs: Seg[] | null; code: string | null;
+  saved?: SavedPlan; recent?: RecentPlan;
+}
+
+/**
+ * The large overview (the app's RouteOverview, owner 2026-11-07 00:30 / ce27c111): a row tap opens it first – the name,
+ * the facts, the route's shape as large as the window gives (the line as wide as on the map, the start dot, the goal
+ * flag), then Abbrechen · Planen. Nothing on the map changes until Planen. „Los geht's“ is the phone's.
+ */
+export function overviewDialog(item: Item, onPlan: () => void, back: () => void) {
+  const d = dialog('overview', `
+    <h2 class="ovtitle">${esc(item.title)}</h2>
+    ${item.stats ? `<p class="ovfacts">${esc(statsText(item.stats))}</p>` : ''}
+    <div class="ovpic"></div>
+    <div class="row spread ovbuttons"><button class="textbtn ovcancel">${esc(t('common_cancel'))}</button>
+      <button class="tonal ovplan">${icon('route', 20)}${esc(t('routes_overview_plan'))}</button></div>`);
+  const pic = d.querySelector<HTMLElement>('.ovpic')!;
+  const draw = () => {
+    const w = Math.round(pic.clientWidth), h = Math.round(pic.clientHeight);
+    const s = item.segs && w > 40 && h > 40 ? fitShape(item.segs, w, h, 24) : null;
+    pic.innerHTML = s ? shapeSvg(s, w, h, { width: 4, dot: 6, flag: true }) : `<p class="muted">${esc(t('web_overview_no_line'))}</p>`;
+  };
+  requestAnimationFrame(draw);
+  d.querySelector<HTMLButtonElement>('.ovcancel')!.onclick = () => { d.close(); back(); };
+  d.querySelector<HTMLButtonElement>('.ovplan')!.onclick = () => { d.close(); onPlan(); };
+  d.addEventListener('cancel', (e) => { e.preventDefault(); d.close(); back(); });
+}
+
+/**
+ * Meine Touren (the app's My routes, owner 2026-11-07): ZULETZT – the plan on the map first („In Bearbeitung“), then the
+ * plans kept by themselves (newest three, the rest on demand) –, then GESPEICHERT. A row: the route's preview tile
+ * (⤢ = the overview), the name, „Plan · 30. Okt. 2026“, the facts (km · ↑ · ↓ when this browser knows them), on the right
+ * where it lies (🖥 this browser, 📱 the phone) and ⋮ / ›. Actions per [rowActions]. The app's search over everything.
+ * Bold = changed here and not on the phone yet. Follows the sync live.
  */
 export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
   const d = dialog('plans', `
@@ -179,7 +260,6 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
   d.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.rowmenu, .more')) closeMenus(); });
   $('planList').addEventListener('scroll', closeMenus); // the menu stays fixed: it goes when its row moves
 
-  // the app's search box of Meine Touren (RoutesTab.search, owner 2026-11-06): shown once there is anything to search
   let query = '';
   const search = $<HTMLInputElement>('planSearch');
   search.addEventListener('input', () => { query = search.value; $('planSearchClear').hidden = !query; render(); });
@@ -187,45 +267,148 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
   $('plansImportGpx').onclick = () => { d.close(); host.importGpx(); };
   let allRecent = false;
   const justSaved = host.justSaved();
+  /** The first row's id at the last render: a route added on top is scrolled into view (the app's ListTop, 4cf68bd7). */
+  let firstId: string | null = null;
+  const reopen = () => { void myPlansDialog(sync, host); };
   const sectionHead = (text: string) => Object.assign(document.createElement('li'), { className: 'sectionhead', role: 'heading', textContent: text.toUpperCase() });
-  /** A plan under Zuletzt: the route sign pale (only a draft), the words as a saved one's; Speichern (blue) · Löschen (red, no question) on it. */
-  const recentRow = (r: RecentPlan) => {
+  const label: Record<RowAction, string> = {
+    plan: t('routes_overview_plan'), save: t('common_save'), delete: t('common_delete'), planFrom: t('plan_from_track'),
+    rename: t('common_rename'), copy: t('plan_save_as_copy'), export: t('common_export_gpx'), share: t('plan_share_plan'),
+  };
+  const ic: Record<RowAction, Parameters<typeof icon>[0]> = {
+    plan: 'route', save: 'save', delete: 'delete', planFrom: 'edit', rename: 'edit', copy: 'copy', export: 'share', share: 'share',
+  };
+  /** A Zuletzt plan saved from its row: kept in the open folder, it leaves Zuletzt, „✓ Gerade gespeichert“ on it. */
+  const saveRecent = async (r: RecentPlan) => {
+    const into = sync.open;
+    if (!(await roomFor(sync, host, into))) return;
+    let id: string;
+    try { id = await sync.save(r.code, storedTitle(r.title), undefined, into); } catch (e) { failLine(d, t('web_save_failed'), e); return; }
+    askPersist();
+    dropRecent(r.id);
+    host.setJustSaved(id);
+    reopen();
+  };
+  const openItem = (it: Item) => {
+    d.close();
+    if (it.section === 'live') return;
+    if (it.recent) host.openRecent(it.recent);
+    else if (it.saved) { sync.seen(it.saved.id, sync.open); host.open(it.saved, sync.open); }
+  };
+  const showOverview = (it: Item) => { closeMenus(); overviewDialog(it, () => openItem(it), reopen); };
+
+  const row = (it: Item, spec: RowSpec, folder: string, paired: boolean, liveMarked: boolean): HTMLLIElement => {
     const li = document.createElement('li');
-    li.className = 'recent'; li.dataset.id = r.id;
-    const s = statsOf(planKey(r.code));
-    li.innerHTML = `<button class="open" title="${esc(t('web_plans_open'))}"><span class="kindic pale">${icon('route', 22)}</span>
-      <span class="txt"><span class="nameline"><span class="name">${esc(r.title)}</span></span>${s ? `<span class="stats">${esc(statsText(s))}</span>` : ''}<span class="muted small sub">${esc(t('web_kind_route') + ' · ' + appDate(r.at))}</span></span></button>
-      <div class="recentacts"><button class="rsave">${icon('save', 18)}${esc(t('common_save'))}</button><button class="rdel">${icon('delete', 18)}${esc(t('common_delete'))}</button></div>`;
-    li.querySelector<HTMLButtonElement>('.open')!.onclick = () => { d.close(); host.openRecent(r); };
-    li.querySelector<HTMLButtonElement>('.rsave')!.onclick = async () => {
-      const into = sync.open;
-      if (!(await roomFor(sync, host, into))) return;
-      let id: string;
-      try { id = await sync.save(r.code, storedTitle(r.title), undefined, into); } catch (e) { failLine(d, t('web_save_failed'), e); return; }
-      askPersist();
-      dropRecent(r.id);
-      host.setJustSaved(id);
-      await myPlansDialog(sync, host);
+    li.className = 'tourrow ' + it.section; li.dataset.kind = it.kind;
+    if (it.section === 'live') li.dataset.live = '1'; else li.dataset.id = it.id; // the plan on the map is no stored row
+    const p = it.saved;
+    let where = '';
+    if (p) {
+      const here = !paired || p.mine, phone = paired && p.onPhone;
+      li.dataset.where = [here ? 'browser' : '', phone ? 'phone' : ''].filter(Boolean).join('+');
+      if (paired && p.dirty) li.classList.add('waiting');
+      const w = (cls: string, key: string, ic2: 'monitor' | 'phone') => `<span class="w ${cls}" role="img" title="${esc(t(key))}" aria-label="${esc(t(key))}">${icon(ic2, 18)}</span>`;
+      where = `<span class="where">${here ? w('browser', 'web_where_browser', 'monitor') : ''}${phone ? w('phone', 'web_where_phone', 'phone') : ''}</span>`;
+    }
+    if (liveMarked || it.section === 'live') li.classList.add('current');
+    if (p && p.id === justSaved) li.classList.add('justsaved');
+    const tag = liveMarked || it.section === 'live' ? `<span class="tag live">${esc(t('routes_tag_live'))}</span>` : p ? tagOf(p) : '';
+    const kindWord = it.kind === 'track' ? t('routes_kind_imported') : t('routes_kind_planned');
+    const tileLabel = spec.opensOverview ? t('routes_overview_enlarge') : t('routes_overview_show');
+    li.innerHTML = `<div class="rowmain">
+      <button class="tile" ${spec.opensOverview ? '' : 'tabindex="-1"'} title="${esc(tileLabel)}" aria-label="${esc(tileLabel)}">${tileHtml(it.segs, it.kind, it.section === 'draft', spec.opensOverview)}</button>
+      <button class="open" title="${esc(t('routes_open_row', it.title))}"><span class="txt"><span class="nameline"><span class="name">${esc(it.title)}</span>${tag}</span>
+        <span class="muted small sub">${esc(kindWord + ' · ' + appDate(it.at))}</span>${it.stats ? `<span class="stats">${esc(statsText(it.stats))}</span>` : ''}${p && p.id === justSaved ? `<span class="justsavedline">${esc(t('routes_just_saved'))}</span>` : ''}</span></button>
+      ${where}
+      ${spec.menu.length ? `<button class="more iconbtn" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(t('web_route_options'))}" title="${esc(t('web_route_options'))}">${icon('moreVert', 22)}</button>
+        <div class="menu rowmenu" role="menu" hidden>${spec.menu.map((a) => `<button class="m-${a} ${MENU_CLASS[a]}${a === 'plan' ? ' planact' : ''}${a === 'delete' ? ' danger' : ''}" role="menuitem">${icon(ic[a], 20)}${esc(label[a])}</button>`).join('')}</div>` : ''}
+      ${spec.chevron ? `<span class="chev" aria-hidden="true">${icon('chevronRight', 22)}</span>` : ''}
+    </div>${spec.inline.length ? `<div class="rowacts">${spec.inline.map((a) => `<button class="r-${a} ${a === 'plan' ? 'tonal' : a === 'delete' ? 'textbtn danger' : 'textbtn planact'}">${icon(ic[a], 18)}${esc(label[a])}</button>`).join('')}</div>` : ''}`;
+    const q = <T extends HTMLElement>(sel: string) => li.querySelector<T>(sel);
+    const tap = () => (spec.opensOverview ? showOverview(it) : openItem(it));
+    q('.open')!.onclick = tap;
+    q('.tile')!.onclick = tap;
+    const more = q<HTMLButtonElement>('.more');
+    if (more) more.onclick = (e) => {
+      e.stopPropagation();
+      const m = q<HTMLElement>('.rowmenu')!, open = m.hidden;
+      closeMenus();
+      m.hidden = !open;
+      more.setAttribute('aria-expanded', String(open));
+      if (!open) return;
+      // fixed at its ⋮ (below it, or above when there is no room) – the scrolling list never cuts it off
+      const r = more.getBoundingClientRect(), h = m.offsetHeight, w = m.offsetWidth;
+      m.style.left = Math.max(8, r.right - w) + 'px';
+      m.style.top = (r.bottom + 4 + h > innerHeight - 8 ? r.top - 4 - h : r.bottom + 4) + 'px';
+      m.querySelector<HTMLButtonElement>('button')?.focus();
     };
-    li.querySelector<HTMLButtonElement>('.rdel')!.onclick = () => { dropRecent(r.id); render(); };
+    const act = (a: RowAction, fn: () => void | Promise<void>) => {
+      for (const b of li.querySelectorAll<HTMLButtonElement>(`.m-${a}, .r-${a}`)) b.onclick = (e) => { e.stopPropagation(); closeMenus(); void fn(); };
+    };
+    act('plan', () => openItem(it));
+    act('save', async () => {
+      if (it.section === 'draft' && it.recent) return saveRecent(it.recent);
+      d.close(); await host.saveLive(); // the plan on the map (its own row, or the saved route it is)
+    });
+    act('delete', async () => {
+      if (it.recent) { dropRecent(it.recent.id); render(); return; } // a draft: no question, as the app
+      if (!p) return;
+      if (folder !== NONE) { // on the phone: its recycle bin is the net – no question, as the app (owner 2026-11-06)
+        try { await sync.remove(p.id, folder); } catch (e) { await render(); failLine(d, t('web_delete_failed'), e); return; }
+        await render(); $('closePlans').focus(); return;
+      }
+      askInPlace(li, t('web_delete_q_local', it.title), t('common_delete'), () => li.querySelector('.more'), async () => {
+        try { await sync.remove(p.id, folder); } catch (e) { await render(); failLine(d, t('web_delete_failed'), e); return; }
+        await render(); $('closePlans').focus();
+      }, t('web_keep'));
+    });
+    act('rename', async () => {
+      const name = prompt(t('web_plans_new_name'), it.title);
+      if (name == null || !name.trim()) return;
+      if (it.recent) { renameRecent(it.recent.id, name.trim()); render(); return; }
+      if (!p) return;
+      const stored = storedTitle(name);
+      try { await sync.rename(p.id, stored, folder); } catch (e) { failLine(d, t('web_rename_failed'), e); return; }
+      if (p.id === host.openId()) host.saved({ ...p, title: stored }, folder); // "Saved as …" follows the new name
+      render();
+    });
+    act('copy', async () => {
+      if (!p) return;
+      let failed: unknown = null;
+      try { await copyRoute(sync, host, p, folder); } catch (e) { failed = e; } // the name dialog takes My routes' place …
+      await myPlansDialog(sync, host); // … and My routes comes back, with the copy in it
+      if (failed && openDialog) failLine(openDialog, t('web_copy_failed'), failed);
+    });
+    act('export', () => { d.close(); if (it.recent) host.exportRecent(it.recent); else if (p) host.exportGpx(p, folder); });
+    act('share', () => { if (p) { d.close(); host.share(p); } });
+    act('planFrom', () => { if (p) { d.close(); host.planFrom(p, folder); } });
     return li;
   };
+
   const render = async () => {
     const folder = sync.open, paired = sync.status.paired;
     const all = await sync.list(folder);
+    const live = host.live();
+    const liveMarkedId = live && live.savedId && (live.savedFolder ?? folder) === folder && all.some((p) => p.id === live.savedId) ? live.savedId : null;
     const plans = searchPlans(all, query);
-    // Zuletzt (the app's drafts, owner 2026-11-06): the plans kept by themselves on top – the newest three, the rest on
-    // demand – then the saved ones under „Gespeichert“; searched like the rest (the app's RoutesTab.search)
-    const recentAll = recentPlans();
+    const recentAll = recentPlans().filter((r) => !live || (r.id !== live.recentId && r.points !== live.pointsKey));
     const recent = searchPlans(recentAll, query);
+    const liveItem: Item | null = live && !liveMarkedId && searchPlans([{ title: live.title ?? t('routes_live_name') }], query).length
+      ? { section: 'live', id: 'live', kind: 'plan', title: live.title ?? t('routes_live_name'), at: Date.now(), stats: live.stats, segs: live.segs, code: null }
+      : null;
     const ul = $('planList');
     if (ul.querySelector('.confirm')) return; // a delete question is open: keep the list as it is
     search.closest<HTMLElement>('.plansearch')!.hidden = !all.length && !recentAll.length;
-    ul.innerHTML = plans.length || recent.length ? '' : `<li class="muted">${esc((all.length || recentAll.length) && query.trim() ? t('routes_search_none', query.trim()) : t('web_plans_none'))}</li>`;
-    if (!all.length && !recentAll.length) await oldPhoneLine(ul);
-    if (recent.length) {
+    const top = ul.scrollTop;
+    ul.innerHTML = plans.length || recent.length || liveItem ? '' : `<li class="muted">${esc((all.length || recentAll.length) && query.trim() ? t('routes_search_none', query.trim()) : t('web_plans_none'))}</li>`;
+    if (!all.length && !recentAll.length && !liveItem) await oldPhoneLine(ul);
+    if (recent.length || liveItem) {
       ul.append(sectionHead(t('routes_section_recent')));
-      for (const r of allRecent ? recent : recent.slice(0, RECENT_SHOWN)) ul.append(recentRow(r));
+      if (liveItem) ul.append(row(liveItem, rowActions('live', 'plan', { canSaveLive: live!.canSave && live!.unsaved }), folder, paired, false));
+      for (const r of allRecent ? recent : recent.slice(0, RECENT_SHOWN)) {
+        const it: Item = { section: 'draft', id: r.id, kind: 'plan', title: r.title, at: r.at, stats: statsOf(planKey(r.code)), segs: shapeOf(planKey(r.code)), code: r.code, recent: r };
+        ul.append(row(it, rowActions('draft', 'plan'), folder, paired, false));
+      }
       if (!allRecent && recent.length > RECENT_SHOWN) {
         const li = document.createElement('li'); li.className = 'allrecent';
         li.innerHTML = `<button class="textbtn">${esc(t('routes_recent_all', recent.length))}</button>`;
@@ -235,71 +418,18 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       if (plans.length) ul.append(sectionHead(t('routes_section_saved')));
     }
     for (const p of plans) {
-      const li = document.createElement('li');
-      li.dataset.id = p.id;
-      li.dataset.kind = p.kind;
-      // 🖥 = changed last here (all of Without phone), 📱 = a version of it is on the phone (in its mailbox)
-      const here = !paired || p.mine, phone = paired && p.onPhone;
-      li.dataset.where = [here ? 'browser' : '', phone ? 'phone' : ''].filter(Boolean).join('+');
-      if (paired && p.dirty) li.classList.add('waiting');
-      if (p.id === host.openId() && folder === host.openFolder()) li.classList.add('current');
-      if (p.id === justSaved) li.classList.add('justsaved');
-      const kind = p.kind === 'track' ? t('web_kind_gpx') : t('web_kind_route');
-      const kindName = p.kind === 'track' ? t('routes_kind_imported') : t('routes_kind_planned');
-      const where = (cls: string, key: string, ic: 'monitor' | 'phone') =>
-        `<span class="w ${cls}" role="img" title="${esc(t(key))}" aria-label="${esc(t(key))}">${icon(ic, 18)}</span>`;
-      li.innerHTML = `<button class="open" title="${esc(t('web_plans_open'))}"><span class="kindic" title="${esc(kindName)}">${icon(p.kind === 'track' ? 'fileOpen' : 'route', 22)}</span>
-        <span class="txt"><span class="nameline"><span class="name">${esc(titleOf(p))}</span>${tagOf(p)}</span>${statsLine(p)}<span class="muted small sub">${esc(kind + ' · ' + appDate(p.updatedAt))}</span>${p.id === justSaved ? `<span class="justsavedline">${esc(t('routes_just_saved'))}</span>` : ''}</span></button>
-        <span class="where">${here ? where('browser', 'web_where_browser', 'monitor') : ''}${phone ? where('phone', 'web_where_phone', 'phone') : ''}</span>
-        <button class="more iconbtn" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(t('web_route_options'))}" title="${esc(t('web_route_options'))}">${icon('moreVert', 22)}</button>
-        <div class="menu rowmenu" role="menu" hidden><button class="rename" role="menuitem">${esc(t('common_rename'))}</button>${p.kind === 'plan' ? `<button class="copy" role="menuitem">${esc(t('plan_save_as_copy'))}</button>` : ''}<button class="export" role="menuitem">${esc(t('common_export_gpx'))}</button>${p.kind === 'plan' ? `<button class="sharerow" role="menuitem">${esc(t('plan_share_plan'))}</button>` : ''}<button class="del" role="menuitem">${esc(t('common_delete'))}</button></div>`;
-      const q = <T extends HTMLElement>(sel: string) => li.querySelector<T>(sel)!;
-      q('.open').onclick = () => { d.close(); sync.seen(p.id, folder); host.open(p, folder); };
-      q('.more').onclick = (e) => {
-        e.stopPropagation();
-        const m = q('.rowmenu'), open = m.hidden;
-        closeMenus();
-        m.hidden = !open;
-        q('.more').setAttribute('aria-expanded', String(open));
-        if (!open) return;
-        // fixed at its ⋮ (below it, or above when there is no room) – the scrolling list never cuts it off
-        const r = q('.more').getBoundingClientRect(), h = m.offsetHeight, w = m.offsetWidth;
-        m.style.left = Math.max(8, r.right - w) + 'px';
-        m.style.top = (r.bottom + 4 + h > innerHeight - 8 ? r.top - 4 - h : r.bottom + 4) + 'px';
-        q<HTMLButtonElement>('.rowmenu button').focus();
-      };
-      q('.rename').onclick = async () => {
-        closeMenus();
-        const name = prompt(t('web_plans_new_name'), titleOf(p));
-        if (name == null || !name.trim()) return;
-        const stored = storedTitle(name);
-        try { await sync.rename(p.id, stored, folder); } catch (e) { failLine(d, t('web_rename_failed'), e); return; }
-        if (p.id === host.openId()) host.saved({ ...p, title: stored }, folder); // "Saved as …" follows the new name
-        render();
-      };
-      li.querySelector<HTMLButtonElement>('.copy')?.addEventListener('click', async () => {
-        closeMenus();
-        let failed: unknown = null;
-        try { await copyRoute(sync, host, p, folder); } catch (e) { failed = e; } // the name dialog takes My routes' place …
-        await myPlansDialog(sync, host); // … and My routes comes back, with the copy in it
-        if (failed && openDialog) failLine(openDialog, t('web_copy_failed'), failed);
-      });
-      q('.export').onclick = () => { closeMenus(); d.close(); host.exportGpx(p, folder); };
-      li.querySelector<HTMLButtonElement>('.sharerow')?.addEventListener('click', () => { closeMenus(); d.close(); host.share(p); });
-      q('.del').onclick = async () => {
-        closeMenus();
-        if (folder !== NONE) { // on the phone: its recycle bin is the net – no question, as the app (owner 2026-11-06)
-          try { await sync.remove(p.id, folder); } catch (e) { await render(); failLine(d, t('web_delete_failed'), e); return; }
-          await render(); $('closePlans').focus(); return;
-        }
-        askInPlace(li, t('web_delete_q_local', titleOf(p)),
-          t('common_delete'), () => li.querySelector('.more'), async () => {
-            try { await sync.remove(p.id, folder); } catch (e) { await render(); failLine(d, t('web_delete_failed'), e); return; }
-            await render(); $('closePlans').focus();
-          }, t('web_keep'));
-      };
-      ul.append(li);
+      const key = p.kind === 'track' ? trackKey(p.id) : planKey(p.plan);
+      const marked = p.id === liveMarkedId;
+      const it: Item = { section: 'saved', id: p.id, kind: p.kind === 'track' ? 'track' : 'plan', title: titleOf(p), at: p.updatedAt,
+        stats: statsOf(key), segs: shapeOf(key), code: p.plan ?? null, saved: p };
+      if (marked && live) { it.stats = live.stats ?? it.stats; it.segs = live.segs ?? it.segs; }
+      ul.append(row(it, rowActions('saved', it.kind, { liveMarked: marked, canSaveLive: !!live?.unsaved && !!live?.canSave }), folder, paired, marked));
     }
+    // a route added on top is scrolled into view (the app's ListTop); otherwise the list stays where it was
+    const first = ul.querySelector<HTMLElement>('li[data-id], li[data-live]')?.dataset.id ?? (ul.querySelector('li[data-live]') ? 'live' : null);
+    if (firstId !== null && first !== firstId && top < 40) ul.scrollTop = 0; else ul.scrollTop = top;
+    firstId = first;
+    if (justSaved) ul.querySelector<HTMLElement>(`li[data-id="${CSS.escape(justSaved)}"]`)?.scrollIntoView({ block: 'nearest' });
   };
   /**
    * The open folder is empty but closed folders still hold routes (after Unpair / pairing another phone, owner
@@ -423,12 +553,6 @@ export function phoneDialog(sync: PlanSync, page: string) {
  * The phone's mark as the app's tag (ui/RouteTag, ui-style.md "Tags", web-sync.md §14.6): "New" / "Changed"
  * after the name – came from the phone, not opened here yet; gone when opened (sync.seen). Never cut: the name gives way.
  */
-/** Length and climb when this browser knows them (planstats.ts), else nothing – the list never waits for a route. */
-function statsLine(p: SavedPlan): string {
-  const s = statsOf(p.kind === 'track' ? trackKey(p.id) : planKey(p.plan));
-  return s ? `<span class="stats">${esc(statsText(s))}</span>` : '';
-}
-
 function tagOf(p: SavedPlan): string {
   if (!p.mark) return '';
   const word = t(p.mark === 'new' ? 'routes_tag_new' : 'routes_tag_changed');

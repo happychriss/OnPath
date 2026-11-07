@@ -43,6 +43,10 @@ import { setupSheetSteps } from './sheetstep';
 import { installDiag, addDiagSection, problem } from './diag';
 import { watchVersion, BUILD } from './version';
 import { keepStats, planKey, trackKey } from './planstats';
+import { keepShape } from './routeshape';
+import { RouteReveal } from './routereveal';
+/** A track's segments as [lat, lon] lists (Meine Touren's line). */
+const trackSegs = (segs: [number, number, number | null][][]) => segs.map((g) => g.map(([la, lo]) => [la, lo] as [number, number]));
 import './fonts/manrope.css';
 import './style.css';
 import manropeLicence from './fonts/manrope/OFL.txt?url';
@@ -1027,6 +1031,7 @@ function keepPlanStats(code: string) {
   if (!p || state.planning || p.error || p.failed || p.notice || p.gaps.gaps.length || planFor !== enc(state.points)) return;
   if (p.legs.some((l) => l.straight)) return;
   keepStats(planKey(code), { m: p.distanceM, up: p.ascentM, down: p.descentM });
+  keepShape(planKey(code), p.legs.map((l) => l.points.map(([la, lo]) => [la, lo] as [number, number])));
 }
 /** The plan before the point edit that is being planned now (the long-route question's "Far from your route"). */
 let editBefore: Before | null = null;
@@ -1215,14 +1220,15 @@ async function cancelLongRoute() {
   render();
 }
 
+const routeReveal = new RouteReveal((legs) => (map.getSource('planned-route') as GeoJSONSource | undefined)?.setData(legs.length ? {
+  type: 'FeatureCollection',
+  features: legs.map((l) => ({ type: 'Feature', properties: { straight: l.straight }, geometry: { type: 'LineString', coordinates: l.pts } })),
+} : empty()));
 /** The sheet's texts follow the app's PlanStatus.noRouteLine ("Hold" → "Click"; the web does not record). */
 function render() {
   const p = state.points.length >= 2 ? state.plan : null;
-  (map.getSource('planned-route') as GeoJSONSource | undefined)?.setData(p ? {
-    type: 'FeatureCollection',
-    features: p.legs.map((l) => ({ type: 'Feature', properties: { straight: l.straight },
-      geometry: { type: 'LineString', coordinates: l.points.map(([la, lo]) => [lo, la]) } })),
-  } : empty());
+  // a new route draws itself in 0.5 s (routereveal.ts, the app's RouteReveal); the same route again is drawn as it is
+  routeReveal.draw(p, p ? p.legs.map((l) => ({ straight: l.straight, pts: l.points.map(([la, lo]) => [lo, la] as [number, number]) })) : []);
   const head = document.querySelector<HTMLDivElement>('#summary .headline')!;
   const sub = document.querySelector<HTMLDivElement>('#summary .subline')!;
   const notice = $('notice');
@@ -1675,6 +1681,7 @@ async function keepAsRecent(why: string) {
   const own = state.title || plansHost.linkTitle();
   const id = keepRecent(code, own || datedName(), pts, fromRecent);
   if (!id) return;
+  keepPlanStats(code); // Zuletzt's numbers and line (Meine Touren's preview) – the plan is still the routed one here
   console.info(`[Problems] TRACE plan: kept under Zuletzt (${why}), ${state.points.length} points`);
   if (own) return;
   void Promise.race([suggestName(), new Promise<string>((r) => setTimeout(() => r(''), 5_000))]).then((name) => {
@@ -1697,7 +1704,7 @@ const plansHost = {
       const before = gpxImport.shown;
       await gpxImport.showGpx(await sync.trackGpx(p), shownTitle(p.title, t('web_route_default_name')));
       const tr = gpxImport.shown; // a new one = this track read fine (an unreadable one leaves the old one shown)
-      if (tr && tr !== before) keepStats(trackKey(p.id), { m: tr.distanceM, up: tr.ascentM, down: tr.descentM });
+      if (tr && tr !== before) { keepStats(trackKey(p.id), { m: tr.distanceM, up: tr.ascentM, down: tr.descentM }); keepShape(trackKey(p.id), trackSegs(tr.segments)); }
       return;
     }
     const shared = await engine.parse('p=' + p.plan);
@@ -1736,6 +1743,27 @@ const plansHost = {
   justSaved: () => { const id = justSavedFromRecent; justSavedFromRecent = null; return id; },
   setJustSaved: (id: string) => { justSavedFromRecent = id; },
   importGpx: () => gpxImport.pick(),
+  live: () => {
+    if (!state.points.length) return null;
+    const p = state.plan, routed = !!p && !state.planning && planFor === enc(state.points) && !p.error && !p.failed;
+    return {
+      title: state.title || null, points: state.points.length, savedId: state.savedId, savedFolder: state.savedFolder,
+      recentId: state.recentId, pointsKey: enc(state.points), unsaved: saveState === 'save', canSave: state.points.length >= 2,
+      stats: routed ? { m: p!.distanceM, up: p!.ascentM, down: p!.descentM } : null,
+      segs: routed ? p!.legs.map((l) => l.points.map(([la, lo]) => [la, lo] as [number, number])) : null,
+    };
+  },
+  saveLive: () => headerSave(),
+  exportRecent: async (r: RecentPlan) => {
+    await plansHost.openRecent(r);
+    const end = Date.now() + 60_000;
+    while ((state.planning || !state.plan) && Date.now() < end) await new Promise((res) => setTimeout(res, 200));
+    await exportGpx();
+  },
+  planFrom: async (p: SavedPlan, folder: string) => {
+    await plansHost.open(p, folder);
+    document.getElementById('planFromTrack')?.click(); // the track panel's „Als Plan übernehmen“
+  },
   share: async (p: SavedPlan) => {
     // the stored code carries the name it was saved with; a later rename is the name now
     const shared = await engine.parse('p=' + p.plan);
@@ -1863,7 +1891,7 @@ const gpxImport = setupGpxImport({
       // 250 tours per phone (SyncLimits): the track still shows; it is just not kept – the amber Save says why
       if (!(await sync.hasRoom())) { sync.refuseTour(); return; }
       const id = await sync.saveTrack(tr.segments, tr.waypoints, tr.activity, tr.sac, tr.name);
-      if (id) keepStats(trackKey(id), { m: tr.distanceM, up: tr.ascentM, down: tr.descentM }); // My routes' numbers
+      if (id) { keepStats(trackKey(id), { m: tr.distanceM, up: tr.ascentM, down: tr.descentM }); keepShape(trackKey(id), trackSegs(tr.segments)); } // My routes' numbers + line
     }).catch((e) => problem('sync', 'imported track not kept', e));
   },
 });

@@ -176,20 +176,71 @@ check(await pins() === 0 && !(await page.$('dialog[open]')) && await recentN() =
 await page.click('#undo');
 await planned().catch(() => {});
 check(await pins() === 2 && !!(await page.$('#summary .big')), 'undo: the route is back');
+// Meine Touren like the app (owner 2026-11-07): the plan on the map first under RECENT, tagged "In progress", its line
+// on the preview tile, no ⋮ and no ⤢ (a tap goes back to it); the same plan under Recent is not shown twice
+await page.click('#menuPlans');
+await page.waitForSelector('dialog.plans[open] li[data-live]');
+const liveRow = await page.evaluate(() => { const li = document.querySelector('dialog.plans li[data-live]');
+  return { name: li.querySelector('.name').textContent, tag: li.querySelector('.tag')?.textContent, line: !!li.querySelector('.tile svg path'),
+    more: !!li.querySelector('.more'), enlarge: !!li.querySelector('.enlarge'), drafts: document.querySelectorAll('dialog.plans li.draft').length }; });
+check(liveRow.tag === 'In progress' && liveRow.line && !liveRow.more && !liveRow.enlarge && liveRow.drafts === 0,
+  `My tours: the plan on the map first, "In progress", its line on the tile, no ⋮ / ⤢, not twice (${JSON.stringify(liveRow)})`);
+await page.click('dialog.plans li[data-live] .open');
+check(!(await page.$('dialog.plans[open]')) && await pins() === 2, 'a tap on the plan on the map closes My tours, the plan stays');
 await page.click('#newPlan');
 check(await recentN() === recent0 + 1, 'the same points again: no second Recent entry');
-// Meine Touren: RECENT on top (pale sign, Save · Delete on the card) – Save makes it a saved plan, "✓ Just saved" on it
+// Meine Touren: RECENT on top – the draft's line pale on its tile with ⤢, Plan · Save · Delete on the card, ⋮ Rename ·
+// Export GPX (the app's RouteRowActions); a tap opens the large overview (shape, start, goal flag, Cancel · Plan)
 await page.click('#menuPlans');
-await page.waitForSelector('dialog.plans[open] li.recent');
+await page.waitForSelector('dialog.plans[open] li.draft');
 const rec = await page.evaluate(() => ({ head: document.querySelector('dialog.plans li.sectionhead')?.textContent,
-  pale: !!document.querySelector('dialog.plans li.recent .kindic.pale'), btns: [...document.querySelectorAll('dialog.plans li.recent .recentacts button')].map((b) => b.textContent.trim()) }));
-check(rec.head === 'RECENT' && rec.pale && rec.btns[0] === 'Save' && rec.btns[1] === 'Delete', `My tours: RECENT, a pale sign, Save · Delete (${JSON.stringify(rec)})`);
+  pale: !!document.querySelector('dialog.plans li.draft .tile svg path[opacity]'), enlarge: !!document.querySelector('dialog.plans li.draft .enlarge'),
+  btns: [...document.querySelectorAll('dialog.plans li.draft .rowacts button')].map((b) => b.textContent.trim()),
+  menu: [...document.querySelectorAll('dialog.plans li.draft .rowmenu button')].map((b) => b.textContent.trim()) }));
+check(rec.head === 'RECENT' && rec.pale && rec.enlarge && JSON.stringify(rec.btns) === '["Plan","Save","Delete"]' && JSON.stringify(rec.menu) === '["Rename","Export GPX"]',
+  `My tours: RECENT, the draft's pale line with ⤢, Plan · Save · Delete, ⋮ Rename · Export GPX (${JSON.stringify(rec)})`);
+await page.click('dialog.plans li.draft .open');
+await page.waitForSelector('dialog.overview[open] .ovpic svg', { timeout: 10_000 });
+const ov = await page.evaluate(() => ({ title: document.querySelector('dialog.overview .ovtitle').textContent, facts: document.querySelector('dialog.overview .ovfacts')?.textContent ?? '',
+  line: !!document.querySelector('dialog.overview .ovpic svg path'), flag: !!document.querySelector('dialog.overview .ovpic svg g'),
+  btns: [...document.querySelectorAll('dialog.overview .ovbuttons button')].map((b) => b.textContent.trim()), pins: document.querySelectorAll('.pin').length }));
+check(ov.line && ov.flag && /km · ↑ \d+ m ↓ \d+ m/.test(ov.facts) && JSON.stringify(ov.btns) === '["Cancel","Plan"]' && ov.pins === 0,
+  `a draft's tap: the large overview – shape, goal flag, facts, Cancel · Plan, nothing on the map yet (${JSON.stringify(ov)})`);
+await page.click('dialog.overview .ovplan');
+await planned().catch(() => {});
+check(!(await page.$('dialog.overview[open]')) && await pins() === 2, 'overview → Plan: the plan is on the map');
+// a new route draws itself in 0.5 s (the app's RouteReveal): Reverse → the line grows from start to goal, then whole
+{
+  await page.evaluate(() => { window.__reveal = true; });
+  const counts = page.evaluate(() => new Promise((res) => {
+    const out = [], t0 = performance.now();
+    const n = () => { const d = window.__map.getSource('planned-route').serialize().data; return (d.features ?? []).reduce((a, f) => a + f.geometry.coordinates.length, 0); };
+    const tick = () => { out.push(n()); if (performance.now() - t0 < 4000) requestAnimationFrame(tick); else res(out); };
+    tick();
+  }));
+  await page.click('#reverse');
+  const c = await counts;
+  await page.evaluate(() => { window.__reveal = false; });
+  const last = c[c.length - 1], partial = c.some((x) => x > 1 && x < last);
+  check(last > 2 && partial, `Reverse: the new route draws itself (${c.length} frames, a partial line seen, ${last} points at the end)`);
+  await planned().catch(() => {});
+}
+await page.click('#newPlan'); // back under Recent (the same entry)
+await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 }).catch(() => {});
+await page.click('#menuPlans');
+await page.waitForSelector('dialog.plans[open] li.draft');
 const savedBefore = await page.evaluate(async () => (await window.__sync.list()).filter((p) => p.kind === 'plan').length);
-await page.click('dialog.plans li.recent .rsave');
+await page.click('dialog.plans li.draft .r-save');
 await page.waitForSelector('dialog.plans[open] .justsavedline', { timeout: 10_000 });
 const savedAfter = await page.evaluate(async () => (await window.__sync.list()).filter((p) => p.kind === 'plan').length);
 check(savedAfter === savedBefore + 1 && await recentN() === recent0 && (await page.textContent('dialog.plans .justsavedline')) === '✓ Just saved',
   `Recent → Save: a saved plan (${savedBefore} → ${savedAfter}), out of Recent, "✓ Just saved"`);
+// the saved row: the clean list – its line with ⤢, ›, every action in ⋮ with Plan first (the app's RouteRowActions)
+const sv = await page.evaluate(() => { const li = document.querySelector('dialog.plans li.tourrow.saved');
+  return { line: !!li.querySelector('.tile svg path'), chev: !!li.querySelector('.chev'), acts: li.querySelectorAll('.rowacts button').length,
+    menu: [...li.querySelectorAll('.rowmenu button')].map((b) => b.textContent.trim()) }; });
+check(sv.line && sv.chev && sv.acts === 0 && JSON.stringify(sv.menu) === '["Plan","Rename","Save as copy","Export GPX","Share plan","Delete"]',
+  `a saved row: line, ›, no buttons on the row, ⋮ Plan · Rename · Save as copy · Export GPX · Share plan · Delete (${JSON.stringify(sv)})`);
 await page.click('#closePlans');
 
 // 2. ☰ → Import GPX (Komoot hike) while the activity is Bike

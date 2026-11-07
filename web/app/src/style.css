@@ -10,7 +10,7 @@
   --paper: #F5F3EB; --card-paper: #FAFAF6; --paper-dim: #F1F0E9; /* the app's Paper (tone B, owner 2026-11-07 11:20) / CardPaper / PaperDim */ --card: var(--paper);
   --walnut: #4A3F37; --walnut-light: #EDE6DF; --plan: #335A85; --plan-dark: #284A6E; --plan-light: #DDE5EE; --plan-ink: #1E3550; --plan-edge: #B9C7D6;
   /* ink blue (the app's ActionEdit, owner 2026-11-06 23:00 variant C – no light blue surfaces), EditTonal / OnEditTonal */
-  --go: #245F46; --lifted: #EAE9E1;
+  --go: #245F46; --lifted: #EAE9E1; --goal: #A32020; /* the app's PointGoal */
   --bg: var(--paper); --fg: #243C31; --muted: #5f645e; --line: #e2e1da; --surface2: #EFEEE7;
   --green: var(--walnut); --green-fg: var(--walnut); --green-light: var(--walnut-light); --route: #1E3FAE; --chip: #DCE3F6; --chip-fg: #14245e;
   --warn: #9A5B00; --warn-bg: #FFF0D2; --error: #C62828; --error-bg: #FDE0DC;
@@ -669,13 +669,6 @@ dialog.plans > .row.spread { margin-top: 16px; }
    pale, its Speichern (plan blue, tonal) · Löschen (red) on the card, „✓ Gerade gespeichert“ under a plan just saved */
 .planlist li.sectionhead { display: block; border-top: none; padding: 10px 8px 2px; font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--muted); }
 .planlist li.sectionhead + li { border-top: none; }
-.planlist li.recent { flex-wrap: wrap; }
-.planlist li.recent .open { flex-basis: 100%; }
-.planlist .kindic.pale { opacity: .35; }
-.planlist .recentacts { display: flex; gap: 8px; padding: 0 0 6px 46px; }
-.planlist .recentacts button { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 20px; border: 0; font-weight: 600; }
-.planlist .recentacts .rsave { background: var(--plan-light); color: var(--plan-ink); }
-.planlist .recentacts .rdel { background: none; color: var(--error); }
 .planlist li.allrecent { border-top: none; padding: 0 0 4px 4px; }
 .planlist .justsavedline { color: var(--plan); font-weight: 600; font-size: 13px; }
 
@@ -703,3 +696,45 @@ dialog.plans > .row.spread { margin-top: 16px; }
 #locate.far svg { width: 19px; height: 19px; transform: translateY(-6px); }
 #locate .locdist { position: absolute; left: 0; right: 0; bottom: 3px; font-size: 10px; line-height: 1; text-align: center;
   color: var(--walnut, #4A3F37); white-space: nowrap; pointer-events: none; }
+
+/* ---- Meine Touren like the app (owner 2026-11-07; app RoutePreview / RouteRowActions / RouteOverview): cards with the
+   route's preview tile (⤢ = the overview), the name, „Plan · date“, the facts; Zuletzt's Planen · Speichern · Löschen on
+   the card, the saved ones a clean row with › and every action in ⋮; the plan on the map tagged „In Bearbeitung“ ---- */
+.planlist li.tourrow { display: block; border-top: none; margin: 8px 2px; padding: 8px 6px 8px 8px; background: var(--card-paper);
+  border-radius: var(--r-card); box-shadow: var(--shadow-low); }
+.planlist li.tourrow.current { box-shadow: var(--shadow-low), inset 0 0 0 1.5px var(--plan-edge); background: var(--card-paper); }
+.planlist .rowmain { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.planlist .tile { flex: none; position: relative; width: 58px; height: 58px; padding: 0; border: 0; background: none; cursor: pointer; border-radius: var(--r-small); }
+.planlist .tileface { position: absolute; left: 0; top: 0; width: 52px; height: 52px; border-radius: var(--r-small); background: var(--paper-dim);
+  display: grid; place-items: center; overflow: hidden; }
+.planlist .tileface .kindic { width: 40px; height: 40px; }
+.planlist .enlarge { position: absolute; right: 0; bottom: 0; width: 26px; height: 26px; box-sizing: border-box; border-radius: 50%;
+  background: var(--plan); box-shadow: 0 0 0 2px var(--paper); display: grid; place-items: center; }
+.planlist .enlarge .ic { fill: var(--paper); }
+.planlist .tile:hover .tileface { box-shadow: inset 0 0 0 1.5px var(--plan-edge); }
+.planlist .chev { flex: none; display: inline-flex; color: var(--muted); }
+.planlist .chev .ic { fill: currentColor; }
+.planlist .open { padding: 4px 6px; }
+.planlist .rowacts { display: flex; flex-wrap: wrap; gap: 4px 8px; padding: 8px 0 2px 62px; }
+.planlist .rowacts button { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 20px; border: 0;
+  font: inherit; font-weight: 600; cursor: pointer; background: none; }
+.planlist .rowacts .ic { fill: currentColor; }
+.planlist .rowacts .tonal { background: var(--plan-light); color: var(--plan-ink); }
+.planlist .rowacts .planact { color: var(--plan); }
+.planlist .rowacts .danger, .planlist .rowmenu .danger { color: var(--error); }
+.planlist .rowmenu button { display: flex; align-items: center; gap: 12px; }
+.planlist .rowmenu .ic { fill: currentColor; flex: none; }
+.planlist .rowmenu .planact { color: var(--plan); font-weight: 600; }
+.planlist .tag.live { background: var(--plan-light); color: var(--plan-ink); }
+@media (max-width: 700px) { .planlist .rowacts { padding-left: 0; gap: 2px; flex-wrap: nowrap; } .planlist .rowacts button { padding: 0 10px; } }
+/* the large overview (a row tap): name, facts, the route's shape as large as the window, Abbrechen · Planen */
+dialog.share.overview[open] { display: flex; flex-direction: column; width: min(760px, calc(100vw - 32px)); height: min(760px, calc(100vh - 48px)); box-sizing: border-box; }
+dialog.overview .ovtitle { margin: 0; font-size: 22px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+dialog.overview .ovfacts { margin: 4px 0 0; color: var(--muted); font-size: 16px; font-variant-numeric: tabular-nums; }
+dialog.overview .ovpic { flex: 1; min-height: 200px; margin: 12px 0; border-radius: var(--r-card); background: var(--paper-dim);
+  display: grid; place-items: center; overflow: hidden; }
+dialog.overview .ovpic .muted { padding: 24px; text-align: center; }
+dialog.overview .ovbuttons button { min-height: 48px; padding: 0 20px; border-radius: 24px; font: inherit; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px; }
+dialog.overview .ovbuttons .tonal { border: 0; background: var(--plan-light); color: var(--plan-ink); }
+dialog.overview .ovbuttons .tonal .ic { fill: currentColor; }
