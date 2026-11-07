@@ -34,6 +34,13 @@ class ActivityCheckRulesTest {
         assertEquals(2, ActivityCheckRules.chipLevel(back))
     }
 
+    /** Large German font broke the header as "Wechs / eln zu": the grey note goes under the title when both don't fit. */
+    @Test fun theHeaderNoteGoesUnderTheTitleWhenBothDoNotFit() {
+        // dp at a 392 dp wide sheet (360 dp inside): normal font fits side by side, large font does not
+        assertTrue(!ActivityCheckRules.noteStacked(360f, 90f, 140f, 12f))
+        assertTrue(ActivityCheckRules.noteStacked(360f, 140f, 230f, 12f))
+    }
+
     /**
      * Field bug 2026-11-07, tour 207 (owner: "erst dann, wenn ich wirklich eine Routenart ausgewählt habe"): the sheet
      * opened with every row being routed, 15 s each. Rows start plain and choosable; a tap routes that row alone.

@@ -93,6 +93,12 @@ object ActivityCheckRules {
         }
     })
 
+    /**
+     * The header's grey note goes under "Wechseln zu" when title, gap and note do not fit on one line of [rowW] – the
+     * title never breaks inside a word (large German font: "Wechs / eln zu"). Widths in one unit (px or dp).
+     */
+    fun noteStacked(rowW: Float, titleW: Float, noteW: Float, gap: Float): Boolean = titleW + gap + noteW > rowW
+
     /** The T level the chips show as chosen: the Hike row's level, else the current level while hiking, else none. */
     fun chipLevel(ui: ActivityCheckUi): Int =
         ui.rows.firstOrNull { it.activity == Activity.HIKE }?.sac ?: if (ui.current == Activity.HIKE) ui.sac else 0
@@ -133,11 +139,7 @@ fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKee
             }
             // hiking: the T level can change on its own (K1) – the chips under the current activity
             if (ui.current == Activity.HIKE) androidx.compose.foundation.layout.Box(Modifier.padding(top = 8.dp)) { SacChips(ActivityCheckRules.chipLevel(ui), onHikeLevel) }
-            Row(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 4.dp), verticalAlignment = Alignment.Bottom) {
-                Text(str(Res.string.nav_check_switch_to), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                if (!free) Text(str(Res.string.nav_check_rest_of_route), style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            SwitchToHeader(if (free) null else str(Res.string.nav_check_rest_of_route))
             ui.note?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 4.dp))
@@ -152,6 +154,31 @@ fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKee
             Button(colors = ActionButtons.go(), onClick = onKeep, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
                 Text(str(Res.string.nav_check_keep, NavText.activityName(ui.current, ui.sac)), style = MaterialTheme.typography.titleMedium)
             }
+        }
+    }
+}
+
+/**
+ * "Wechseln zu" with the grey "für den Rest der Route" beside it – or under it when both do not fit on one line
+ * ([ActivityCheckRules.noteStacked]; large German font broke the title as "Wechs / eln zu"), like a value row in Settings.
+ */
+@Composable
+private fun SwitchToHeader(note: String?) {
+    val title = str(Res.string.nav_check_switch_to)
+    val titleStyle = MaterialTheme.typography.titleSmall
+    val noteStyle = MaterialTheme.typography.bodySmall
+    val measure = androidx.compose.ui.text.rememberTextMeasurer()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 4.dp)) {
+        val stacked = note != null && ActivityCheckRules.noteStacked(
+            with(density) { maxWidth.toPx() }, measure.measure(title, titleStyle).size.width.toFloat(),
+            measure.measure(note, noteStyle).size.width.toFloat(), with(density) { 12.dp.toPx() })
+        if (stacked) Column {
+            Text(title, style = titleStyle)
+            note?.let { Text(it, style = noteStyle, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        } else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            Text(title, style = titleStyle, modifier = Modifier.weight(1f))
+            if (note != null) Text(note, style = noteStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
