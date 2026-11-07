@@ -37,15 +37,32 @@ and the commit history.
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
-- **[donald] Bugs seen while taking the Meran 0.17 pictures (2026-11-07, emulator, 0.17.3)** – (1) G02: with a stop
-  (Gasthof Hochmuth) the off-route box offered only "Neue Route bis zum Ziel: 3,8 km" – the new route silently drops
-  the stop; StopSkip should ask "Über ②" / "② auslassen"; (6) after an activity change in Plan a "New route
-  for Hike T2 – check it" line appears – this is the owner's safety-audit feature B (2026-10-22, commit 2f6eb937: after
-  an activity / T change the route is compared, grey INFO until tapped); not removed – needs the owner's word; (7) D10:
-  T1 + Mutkopf (② only from T2) gives 30,3 km · 10 h 55 · ↑ 1950 m and "1 Abschnitt über T1" – the line runs east via
-  Dorf Tirol towards the nearest T1 way under Mutkopf and back (out-and-back), and a T1 route should have no section
-  above T1; not looked into. (2) (3) (4) (5) (8) fixed 2026-11-07 (donald-picture-bugs). Shared code: (5) changed
-  `ui/RouteWarnings.text` (first word capital) – the planner gets it by merging. Pictures: onpath.private/marketing/bilder/aktuell/.
+- **[laptop] Planner profile calmer, like the app's (owner 2026-11-07: „mehr wie in der App, nicht ganz so bunt“ – with the next
+  planner change)** – the app (`ui/ElevationProfile.kt`, ProfileFill, owner polish 2026-11-06): the area is filled in the
+  ROUTE colour fading to nothing, steeper stretches only a bit stronger in the same colour (shading, no stripes); steepness
+  colours (amber / orange / red, < 5 % = route colour) only on the thin line; stop signs on the line. The planner's profiles
+  (small, big, bottom) fill the area in green / yellow / orange / red – switch to the app's look, keep the legend only for
+  the line colours (or drop it), the map's steepness line while the big profile is open stays.
+- **[donald] Design round after 0.17.4 (owner 2026-11-07, from an outside design review of the Meran pictures)** – owner
+  picked three: (1) G02 off route = three stacked cards with two distances (70 m air line vs 60 m) and a half-empty
+  status card → one card, one distance, step 1 as its head and the question under it; (2) the right tool column: six
+  icons each with a divider → three groups (orientation: compass + locate · view: eye + fit · undo/redo), dividers only
+  between groups, same icon weight; (3) the collapsed sheet's line "2 h 15 min · 4,6 km · ↑622 ↓0 ⚠1" → time + distance
+  strong, ascent set apart, warning right-aligned. Real screenshots before/after, ≤2 variants each. Not now (owner):
+  profile stripes (his 11-06 choice), pause band, setup/maps pages. Also: retake E05 (lock screen is black – Android
+  forbids screenshots of the keyguard; take it from the pulled-down notification).
+- **[laptop] Idea: saved plans open without routing again in the browser too (app 365c7fbc LegFiles, 2026-11-07)** – the phone
+  keeps a saved route's legs in files (stand-in line on newer routing data); the planner re-routes a plan from Meine Touren
+  each time (in-memory LegCache only). Web analog: keep a saved plan's legs in IndexedDB (try/catch, size cap), drawn at once,
+  re-routed only when the routing fingerprint changed. Not urgent – planner routes are fast on a PC.
+- **[donald] Bugs seen while taking the Meran 0.17 pictures (2026-11-07, emulator, 0.17.3)** – (1) done (8c3e02c3: the shortcut rule never jumps past a stop ahead); (2) (3) (4)
+  (5) (8) done 2026-11-07 (donald-picture-bugs); (6) after an activity change in Plan a "New route for Hike T2 – check
+  it" line appears – this is the owner's safety-audit feature B (2026-10-22, commit 2f6eb937: after an activity / T
+  change the route is compared, grey INFO until tapped); not removed – needs the owner's word; (7) D10: T1 + Mutkopf
+  (② only from T2) gives 30,3 km · 10 h 55 · ↑ 1950 m and "1 Abschnitt über T1" – the line runs east via Dorf Tirol
+  towards the nearest T1 way under Mutkopf and back (out-and-back), and a T1 route should have no section above T1; not
+  looked into. Shared code: (5) changed `ui/RouteWarnings.text` (first word capital) – the planner gets it by merging.
+  Pictures: onpath.private/marketing/bilder/aktuell/.
 - **[donald] (low) Vellau → Leiteralm routes over the Gamplweg (website pictures 2026-11-07)** – Wandern T2 takes the
   bow east instead of the path along the Korblift (seen by A-019 and again in 0.17.3). Owner: "merkt eh keiner" – the
   pictures stay. Later: is the lift path above T2, cut in the data, or a profile cost? JVM harness, no new pictures.
