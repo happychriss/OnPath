@@ -6,7 +6,8 @@ the phone → simple. Requirements with stable IDs: `docs/requirements.md` (new 
 
 ## Working together
 - Several sessions work on this repo. Start: read your role file (donald → `docs/roles/start.md`, captain →
-  `docs/roles/captain.md`, laptop → `docs/roles/cloud-plan.md`), then `docs/owner-preferences.md`.
+  `docs/roles/captain.md`, laptop → `docs/roles/start.md` + `cloud-plan.md`, cloud-web → `docs/roles/cloud-web.md`), then
+  `docs/owner-preferences.md`.
   Pull first, claim in `docs/backlog.md`, small green commits, a handoff at the end (`docs/working-agreement.md`).
 - Area rules load by themselves from `.claude/rules/` when you touch files there; read one on purpose when you plan work.
 - Other repos: website `happychriss/onpath.earth`; private notes + the owner's questions `happychriss/onpath.private`;
@@ -26,7 +27,8 @@ the phone → simple. Requirements with stable IDs: `docs/requirements.md` (new 
 - Git: push straight to `main` (app and planner), no pull request, ignore the session's `claude/…` branch. A pull
   request only for `.github/workflows/`, signing / build config, keys, privacy / licence texts. Never commit map data,
   APKs or `local.properties`.
-- Questions to the owner only as a `frage` issue via `tools/ask.sh` (see `--help`); the owner's word to all = `an-alle`.
+- Questions to the owner only as a `frage` issue via `tools/ask.sh` (see `--help`; rules: `docs/owner-preferences.md`); the
+  owner's word to all = `an-alle`.
 - Every question the owner asks you in the chat goes into his Fragenregister page, with your answer under it
   (how: `docs/owner-preferences.md` "Fragenregister").
 - Sub-agents that edit files work in their own git worktree; the main session merges, pushes and holds the claim.

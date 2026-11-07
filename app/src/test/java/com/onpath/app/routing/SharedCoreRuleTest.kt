@@ -14,9 +14,9 @@ class SharedCoreRuleTest {
     private val packages = listOf("routing", "navigation", "time", "rides", "gpx", "sync", "setup")
     /** Single shared files in packages that also hold platform code (package/name; the web planner compiles them). */
     private val files = listOf("search/PlaceIndex.kt", "map/ActivityLayers.kt",
-        // the plan result of app and web (routing/PlanResult, docs/handoff-web-planresult.md) and the ui/ rules it calls
+        // the plan result of app and web (routing/PlanResult, docs/design/web-planner.md §22) and the ui/ rules it calls
         "routing/PlanResult.kt", "routing/ProfileData.kt", "ui/PlanGaps.kt", "ui/RouteWarnings.kt", "data/Geo.kt",
-        // the plan sheet's routing-data notice and way-type / surface line (docs/handoff-web-notice-breakdown.md)
+        // the plan sheet's routing-data notice and way-type / surface line (docs/design/web-planner.md §22)
         "data/RoutingDataNotice.kt", "routing/BreakdownRules.kt")
     private val platform = Regex("""\b(android|androidx|org\.maplibre|btools|org\.json)\.""")
 
@@ -60,7 +60,7 @@ class SharedCoreRuleTest {
     private val webShared = listOf("gpx/PlanGpx.kt", "gpx/GpxWriter.kt", "gpx/SportType.kt", "routing/PlanPoints.kt",
         "routing/PlanEdits.kt", "routing/RoutingFingerprint.kt", "sync/SyncCrypto.kt", "data/RoutingDataNotice.kt",
         "routing/BreakdownRules.kt", "routing/LegCache.kt",
-        // the BRouter adapter and its helper in BRouter's package (island retry without reflection, docs/handoff-web-island.md)
+        // the BRouter adapter and its helper in BRouter's package (island retry without reflection, docs/design/web-planner.md §22)
         "routing/BRouterEngine.kt", "../../../btools/router/OnPathHints.java")
     private val notInTeaVm = Regex(
         """::class\.java|\.getClass\(\)|Class\.forName|kotlin\.reflect|java\.lang\.reflect|getDeclared|[sg]etAccessible|isAccessible|java\.security""")

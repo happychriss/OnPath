@@ -369,7 +369,7 @@ export function phoneDialog(sync: PlanSync, page: string) {
 }
 
 /**
- * The phone's mark as the app's tag (ui/RouteTag, ui-style.md "Tags", docs/handoff-web-route-tags.md): "New" / "Changed"
+ * The phone's mark as the app's tag (ui/RouteTag, ui-style.md "Tags", web-sync.md §14.6): "New" / "Changed"
  * after the name – came from the phone, not opened here yet; gone when opened (sync.seen). Never cut: the name gives way.
  */
 /** Length and climb when this browser knows them (planstats.ts), else nothing – the list never waits for a route. */

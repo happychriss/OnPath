@@ -316,20 +316,12 @@ Speeds the models assume on a steady slope (horizontal km/h | vertical m/h):
    rolling resistance (`C_r` 0.01) in BRouter, so trail sections are as fast as roads on the flat.
 5. **Breaks, SAC level and surface are ignored** everywhere; the recording time includes breaks.
 
-## 3. Model options (planning and the prior for learning)
+## 3. The model (decided; options compared before: DIN 33466, Tobler, a data-driven GLM)
 
-All options are evaluated **per segment** (~50 m along the route line, DEM gradient smoothed over 150 m) and summed.
-Per segment is what makes "up first, down later" and learning per gradient possible.
-
-| | A. DIN 33466 per segment + factors | **B. Gradient table (recommended)** | C. Tobler (what BRouter does) | D. Data-driven GLM (Wood et al. 2023) |
-| --- | --- | --- | --- | --- |
-| What | 4 km/h, 300 m/h up, 500 m/h down, larger + half of smaller, per segment | Minutes per km by gradient (table below), linear in between, like the Swiss "Wanderzeit" formula (time = distance × polynomial in slope) | `6·exp(−3.5·|s+0.05|)` km/h | `v = exp(a + b·cross-slope + c·s + d·s²)` + path/terrain factors from 88,000 km of GPS tracks |
-| Matches signposts (DAV / AVS / SAC) | climbs yes; descents too slow | yes (anchored on them) | no: climbs ~1.7× too fast | not calibrated for alpine |
-| Gentle descent faster than flat | **no** (slower) | yes | yes (too much: 6 km/h) | yes |
-| Very steep descent slower | partly | yes (beyond −30 %) | yes | yes (critical at −16 to −18°) |
-| Simple to explain / tune | yes | yes (one table, owner can tweak) | yes | no (fit coefficients) |
-| Learning per gradient class | yes | yes | yes | yes |
-| Literature accuracy (no personalisation) | Naismith/DIN-type rules: 13.5–15.5 % error on whole routes, 26 % on 50 m sections | similar | 26 % per section | 23.7 % per section, same 13.5–15.5 % per route |
+Evaluated **per segment** (~50 m along the route line, DEM gradient smoothed over 150 m) and summed – that makes "up
+first, down later" and learning per gradient possible. Chosen for hiking: **a gradient table (B)**, anchored on the
+DAV / AVS / SAC signposts; DIN makes descents too slow, Tobler (what BRouter does) makes climbs ~1.7× too fast, a
+fitted GLM is not calibrated for alpine terrain and hard to explain.
 
 The literature numbers (Wood et al. 2023, 7,636 public GPS tracks) show the key point: **no formula is much better
 than another for an unknown person** (~14 % per route, more in the Alps). Individual pace dominates. So: pick a
@@ -517,7 +509,7 @@ estimator (`TripPace`) along the planned route GPX and prints/asserts the metric
 1. Before a tour: save the plan (Manage routes → Export GPX).
 2. Record the tour while navigating (as now). After: My tours → Export GPX.
 3. Put both GPX files (+ one line: activity, pace setting, anything special such as "lunch 40 min", "rain") into the
-   fixture folder (in the repo, ends trimmed), e.g. `app/src/test/resources/tracks/2026-10-25-hirzer/{plan,track}.gpx`.
+   fixture folder (in the repo, ends trimmed), e.g. `app/src/test/resources/tracks/owner-2026-10-22-taser/`.
 4. The replay test runs in CI; each new tour adds one row to the accuracy table.
 5. After ~5 hikes: tune table B (if the owner is consistently off in one gradient group, that is the table, not him),
    the τ / ρ values and the break threshold.

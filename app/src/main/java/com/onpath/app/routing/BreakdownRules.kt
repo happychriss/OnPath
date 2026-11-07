@@ -7,7 +7,7 @@ import org.jetbrains.compose.resources.StringResource
  * Way types and surfaces of a route ([PlannedRoute.wayTypes] / [PlannedRoute.surfaces], contract keys in
  * RoutingContract.kt): label, colour, legend order, the "Other" fold and the one summary line
  * ("Cycleway 92 % · Asphalt 98 %"). Pure and shared with the web planner (`SharedCoreRuleTest.files` / `webShared`,
- * docs/handoff-web-notice-breakdown.md); `ui/RouteBreakdown.kt` only draws it.
+ * docs/design/web-planner.md §22); `ui/RouteBreakdown.kt` only draws it.
  */
 object BreakdownRules {
     /** One category: [key] from the contract, its label, its colour as plain ARGB (`0xAARRGGBB`; Compose: `Color(argb)`). */
