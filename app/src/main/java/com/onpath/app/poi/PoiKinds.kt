@@ -21,10 +21,6 @@ enum class PoiGroup(val argb: Long) {
 data class PoiKind(val key: String, val group: PoiGroup, val glyph: String, private val res: StringResource?, val raw: String = "") {
     /** Name in the app's language. */
     val label: String get() = res?.let { Txt.s(it) } ?: raw
-
-    /** Same as [label]; [german] is ignored (the app's language decides, [Poi.isGerman] follows it). */
-    @Suppress("UNUSED_PARAMETER")
-    fun label(german: Boolean): String = label
 }
 
 /** Kinds produced by tools/extract_pois.py. Pure Kotlin (unit-testable). */

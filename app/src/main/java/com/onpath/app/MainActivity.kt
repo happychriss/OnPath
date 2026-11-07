@@ -31,10 +31,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
 import com.onpath.app.ui.AppViewModel
-import com.onpath.app.ui.FinishedTourDialogs
 import com.onpath.app.ui.MapScreen
 import com.onpath.app.ui.MissingDataScreen
 import com.onpath.app.ui.AppMode
@@ -120,6 +120,13 @@ class MainActivity : ComponentActivity() {
         com.onpath.app.data.AppLanguage.apply(this) // texts in the chosen language (Developer tools override)
         super.onCreate(savedInstanceState)
         traceCreated(savedInstanceState != null)
+        // only one OnPath screen: a launcher start that landed as a second, non-root screen stands down at once
+        if (ScreenLifecycle.standsDown(isTaskRoot, intent?.action, intent?.categories)) {
+            stoodDown = true
+            com.onpath.app.debug.Problems.trace("app", ScreenLifecycle.stoodDownLine(screenNo))
+            finish()
+            return
+        }
         incoming(intent, if (savedInstanceState == null) IncomingIntent.Delivery.CREATE else IncomingIntent.Delivery.RESTORED)
 
         announceLastCrash()
@@ -174,6 +181,16 @@ class MainActivity : ComponentActivity() {
                                 onBack = { vm.routesOpen = false },
                                 onImport = { launchImport() },
                                 onOpen = { vm.requestOpen(it) },
+                                // Los geht's (owner 2026-11-07): loaded as the plan, then the plan sheet's own start (phone check first)
+                                onGo = { t -> vm.goFromRoutes(t) {
+                                    vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.startNavigation() }
+                                } },
+                                // a recorded tour's followed plan (owner 2026-11-07): Planen / Los geht's load it
+                                onPlanFollowed = { vm.planFollowedPlan(it) },
+                                onGoFollowed = { t -> vm.goFollowedPlan(t) {
+                                    vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.startNavigation() }
+                                } },
+                                loadPlanLine = { vm.followedPlanLine(it) },
                                 onExport = { vm.exportTour(it) },
                                 onDelete = { vm.deleteTour(it) },
                                 onRename = { t, name -> vm.renameTour(t, name) },
@@ -184,9 +201,31 @@ class MainActivity : ComponentActivity() {
                                 note = vm.routesNote,
                                 onRecycleBin = { vm.openRecycleBin() },
                                 onEditRides = { vm.openEditRides(it) },
+                                onPlanFrom = { vm.planFromTour(it) },
                                 initialTab = vm.routesTab,
                                 onTab = { vm.routesTab = it },
                                 marks = vm.syncMarks.collectAsState().value,
+                                onSaveDraft = { vm.saveDraft(it) },
+                                onDeleteDraft = { vm.deleteDraft(it) },
+                                justSavedId = vm.justSavedId,
+                                live = vm.livePlan,
+                                onLiveOpen = { vm.backToLivePlan() },
+                                onLiveSave = { vm.saveLivePlan() },
+                                loadLine = { vm.tourLine(it) },
+                                snapshot = run {
+                                    val pad = with(androidx.compose.ui.platform.LocalDensity.current) {
+                                        com.onpath.app.ui.FitPaddingRule.SIDE_DP.dp.roundToPx()
+                                    }
+                                    val snap: com.onpath.app.ui.OverviewSnapshot = { segs, tint, w, h, under ->
+                                        vm.routeSnapshot(segs, tint, w, h, pad, under)?.let {
+                                            com.onpath.app.ui.OverviewPicture(it.bitmap.asImageBitmap(),
+                                                androidx.compose.ui.geometry.Offset(it.startX, it.startY),
+                                                androidx.compose.ui.geometry.Offset(it.goalX, it.goalY))
+                                        }
+                                    }
+                                    snap
+                                },
+                                touring = recNow != null,
                             )
                         }
                         vm.editRides?.let { (t, s) ->
@@ -215,6 +254,8 @@ class MainActivity : ComponentActivity() {
                         SettingsScreen(
                             page = vm.settingsPage,
                             onPage = { vm.settingsPage = it },
+                            onTheWay = vm.settingsOnTheWay,
+                            onAllSettings = vm::showAllSettings,
                             settings = vm.settings,
                             onChange = vm::updateSettings,
                             activity = vm.activity,
@@ -326,6 +367,12 @@ class MainActivity : ComponentActivity() {
                         BackHandler { vm.timeDetails = null }
                         com.onpath.app.ui.TimeDetailsScreen(td, onBack = { vm.timeDetails = null })
                     }
+                    // Back in Plan during a tour (owner 2026-11-05): the same as "‹ Zur Tour" – back to Navigate. Composed
+                    // first, so a map overlay / shown track (below) and every open screen still close first.
+                    val touring = vm.recState.collectAsState().value != null
+                    BackHandler(enabled = touring && vm.mode == AppMode.PLAN && !vm.routesOpen && !vm.showSettings &&
+                        vm.shown == null && !vm.mapOverlayOpen && !vm.searchOpen && !vm.setupOpen && vm.timeDetails == null &&
+                        !vm.routeDetailsOpen && vm.recycleBin == null) { vm.continueNavigation() }
                     // Back in Plan closes a map overlay / place card or a shown track. Navigate is left only by the slide switch.
                     BackHandler(enabled = !vm.routesOpen && !vm.showSettings && vm.mode == AppMode.PLAN &&
                         (vm.shown != null || vm.mapOverlayOpen)) {
@@ -362,12 +409,10 @@ class MainActivity : ComponentActivity() {
                     com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.saveUnfinished(t, it) }, onDelete = { vm.deleteUnfinished(t) },
                         onDismiss = { vm.backToUnfinished() }, title = str(Res.string.msg_unfinished_save_title))
                 }
+                // "Tour gespeichert" after the end sheet (owner 2026-11-06, onpath.private#35): slim – the numbers,
+                // "In Meine Touren ›" and OK; export and delete are in My routes
                 vm.finishedTour?.let { t ->
-                    FinishedTourDialogs(t,
-                        times = vm.finishedTimes,
-                        onExport = { vm.exportTour(t) },
-                        onDelete = { vm.deleteTour(t); vm.finishedTour = null },
-                        onDone = { vm.finishedTour = null })
+                    com.onpath.app.ui.SavedTourDialog(t, vm.finishedTimes, onOpen = vm::openSavedTour, onOk = vm::closeSavedTour)
                 }
             }
         }
@@ -379,6 +424,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (stoodDown) return
         com.onpath.app.debug.Problems.trace("app", ScreenLifecycle.newIntentLine(screenNo, describe(intent)))
         incoming(intent, IncomingIntent.Delivery.NEW_INTENT)
     }
@@ -393,10 +439,14 @@ class MainActivity : ComponentActivity() {
     /** Number of this screen in the process (event log; two at once can happen at start – [ScreenLifecycle]). */
     private var screenNo = 0
 
+    /** This screen finished at once in onCreate ([ScreenLifecycle.standsDown]): no view model, no lifecycle work. */
+    private var stoodDown = false
+
     private fun traceCreated(restored: Boolean) {
         val (n, others) = ScreenLifecycle.created()
         screenNo = n
-        val line = ScreenLifecycle.createdLine(n, others, taskId, isTaskRoot, restored, describe(intent))
+        com.onpath.app.debug.Health.noteScreenCreated() // a stall in its first frame is start-up noise (MainStall)
+        val line =ScreenLifecycle.createdLine(n, others, taskId, isTaskRoot, restored, describe(intent))
         // a second screen at once is not normal: noted in Diagnostics (WARN is not announced on screen)
         if (others > 0) com.onpath.app.debug.Problems.warn("app", line) else com.onpath.app.debug.Problems.trace("app", line)
     }
@@ -457,6 +507,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         com.onpath.app.data.AppLanguage.apply(this)
         super.onStart()
+        if (stoodDown) return // finishing: no view model, no tracker
         vm.tracker.start()
         vm.recheckData()
         vm.onAppStart() // owner: the app always opens at the current location (when nothing is running)
@@ -465,14 +516,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (stoodDown) return
         refreshPhone() // the user may come back from a settings screen of the guide
         readUnusedReset()
     }
 
     override fun onStop() {
+        if (stoodDown) { super.onStop(); return }
+        com.onpath.app.debug.Health.noteLeaving() // a stall from here on is "while leaving the app" (MainStall)
         if (phoneRead) vm.prefs.lastSeen = com.onpath.app.setup.LastSeen(com.onpath.app.setup.PhoneCheck.okNow(vm.phone),
             System.currentTimeMillis())
         vm.onAppStop()
+        vm.prefs.flushLazy() // camera + last seen to disk now, on a background thread – onStop never waits for it
         com.onpath.app.debug.Health.detach(window)
         vm.tracker.stop()
         super.onStop()

@@ -27,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -78,7 +79,15 @@ data class Message(
     val onTap: (() -> Unit)? = null,
     val tapLabel: String? = null,
     val navigate: Boolean = false,
+    /**
+     * The primary button's colour by what it does (owner 2026-11-06, colour rule): [ButtonTone.GO] green – it goes on to
+     * the navigation (every Navigate question), [ButtonTone.EDIT] blue – it plans, [ButtonTone.NEUTRAL] walnut.
+     */
+    val tone: ButtonTone = if (navigate) ButtonTone.GO else ButtonTone.NEUTRAL,
 )
+
+/** What a box's primary button does: to the navigation (green), plan (blue) or neither (walnut). */
+enum class ButtonTone { GO, EDIT, NEUTRAL }
 
 /** Pure rules of the message boxes, unit-tested (MessagesTest). */
 object Messages {
@@ -130,8 +139,8 @@ object MessagePlacement {
     val planTopRowDp: Int get() = TOP_BAR_BOTTOM.value.toInt()
 
     /** The box's top below the status bar. [navigateColumnDp]: Navigate's measured top column (turn + status cards). */
-    fun topDp(screen: MessageScreen, navigateColumnDp: Int = 0): Int = GAP_DP + when (screen) {
-        MessageScreen.PLAN -> planTopRowDp
+    fun topDp(screen: MessageScreen, navigateColumnDp: Int = 0, planTopDp: Int = planTopRowDp): Int = GAP_DP + when (screen) {
+        MessageScreen.PLAN -> planTopDp
         MessageScreen.NAVIGATE -> navigateColumnDp.coerceAtLeast(0)
         MessageScreen.ROUTES -> ROUTES_HEADER_DP
         MessageScreen.SETTINGS -> SETTINGS_HEADER_DP
@@ -182,8 +191,7 @@ fun MessageCard(message: Message, modifier: Modifier = Modifier) {
     val edge = message.kind.edge()
     val large = LocalDensity.current.fontScale > LARGE_FONT
     val beside = message.buttons.size == 1 && !large && !message.navigate
-    Surface(shape = RoundedCornerShape(16.dp), color = OnPathColors.CardWhite, contentColor = OnPathColors.Ink,
-        shadowElevation = 6.dp, modifier = modifier.fillMaxWidth()) {
+    Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper, contentColor = OnPathColors.Ink, modifier = modifier.fillMaxWidth().warmShadow(OnPathShadow.HIGH, OnPathShapes.Card)) {
         Box(Modifier.drawBehind { drawRect(edge, size = Size(EDGE_DP.dp.toPx(), size.height)) }) {
             Column(Modifier.padding(start = 18.dp, end = 12.dp, top = 12.dp, bottom = if (beside) 12.dp else 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -208,11 +216,11 @@ fun MessageCard(message: Message, modifier: Modifier = Modifier) {
                             }
                         }
                     }
-                    if (beside) MessageButtonView(message.buttons[0], main = true, heightDp = MESSAGE_BUTTON_DP)
+                    if (beside) MessageButtonView(message.buttons[0], main = true, heightDp = MESSAGE_BUTTON_DP, tone = message.tone)
                 }
                 if (!beside && message.buttons.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
-                    MessageButtonRow(message.buttons, navigate = message.navigate, large = large)
+                    MessageButtonRow(message.buttons, navigate = message.navigate, large = large, tone = message.tone)
                 }
             }
         }
@@ -225,44 +233,50 @@ private const val EDGE_DP = 4
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun MessageButtonRow(buttons: List<MessageButton>, navigate: Boolean, large: Boolean) {
+private fun MessageButtonRow(buttons: List<MessageButton>, navigate: Boolean, large: Boolean, tone: ButtonTone) {
     val main = buttons.lastIndex
     when {
         // Navigate, two answers: each half the width, 56 dp – in thumb reach with gloves
         navigate && buttons.size == 2 && !large -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             buttons.forEachIndexed { i, b ->
-                MessageButtonView(b, main = i == main, heightDp = NAVIGATE_BUTTON_DP, modifier = Modifier.weight(1f))
+                MessageButtonView(b, main = i == main, heightDp = NAVIGATE_BUTTON_DP, tone = tone, modifier = Modifier.weight(1f))
             }
         }
         // Navigate, three answers or a large font: full width, the primary first, then the others from the nearest
         navigate -> Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             (listOf(main) + buttons.indices.filter { it != main }.reversed()).forEach { i ->
-                MessageButtonView(buttons[i], main = i == main, heightDp = NAVIGATE_BUTTON_DP, modifier = Modifier.fillMaxWidth())
+                MessageButtonView(buttons[i], main = i == main, heightDp = NAVIGATE_BUTTON_DP, tone = tone, modifier = Modifier.fillMaxWidth())
             }
         }
         else -> FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            buttons.forEachIndexed { i, b -> MessageButtonView(b, main = i == main, heightDp = MESSAGE_BUTTON_DP) }
+            buttons.forEachIndexed { i, b -> MessageButtonView(b, main = i == main, heightDp = MESSAGE_BUTTON_DP, tone = tone) }
         }
     }
 }
 
-/** Primary = filled green, white text; the others = green text buttons. Label 16 sp (`labelLarge`). */
+/**
+ * Primary = filled in the box's [tone] (green: on to the navigation, blue: plan, walnut: neither), white text; the others
+ * = text buttons, green in a Navigate question (every answer there goes on with the tour), else walnut. Label 16 sp.
+ */
 @Composable
-private fun MessageButtonView(b: MessageButton, main: Boolean, heightDp: Int, modifier: Modifier = Modifier) {
+private fun MessageButtonView(b: MessageButton, main: Boolean, heightDp: Int, tone: ButtonTone, modifier: Modifier = Modifier) {
+    val fill = when (tone) { ButtonTone.GO -> OnPathColors.ActionGo; ButtonTone.EDIT -> OnPathColors.ActionEdit; ButtonTone.NEUTRAL -> OnPathColors.Walnut }
+    val ink = if (tone == ButtonTone.GO) OnPathColors.ActionGo else OnPathColors.Walnut
     val size = modifier.heightIn(min = heightDp.dp).widthIn(min = 64.dp)
-    val shape = RoundedCornerShape(16.dp)
+    val shape = OnPathShapes.Card
     val content: @Composable () -> Unit = {
         if (b.busy) {
             androidx.compose.material3.CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = OnPathColors.InkMuted)
             Spacer(Modifier.width(10.dp))
         }
-        Text(b.label, style = MaterialTheme.typography.labelLarge, fontWeight = if (main) FontWeight.Bold else FontWeight.Medium,
-            textAlign = TextAlign.Center, maxLines = 2)
+        // "Über ③" – a stop token is the map's numbered circle (StopText, owner 2026-11-03)
+        StopText(b.label, style = MaterialTheme.typography.labelLarge, color = LocalContentColor.current,
+            fontWeight = if (main) FontWeight.Bold else FontWeight.Medium, textAlign = TextAlign.Center, maxLines = 2)
     }
     if (main) Button(onClick = b.onClick, modifier = size, shape = shape, contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
         enabled = !b.busy,
-        colors = ButtonDefaults.buttonColors(containerColor = OnPathColors.Green, contentColor = OnPathColors.CardWhite)) { content() }
+        colors = ButtonDefaults.buttonColors(containerColor = fill, contentColor = OnPathColors.CardWhite)) { content() }
     else TextButton(onClick = b.onClick, modifier = size, shape = shape, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-        colors = ButtonDefaults.textButtonColors(contentColor = OnPathColors.Green)) { content() }
+        colors = ButtonDefaults.textButtonColors(contentColor = ink)) { content() }
 }

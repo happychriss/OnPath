@@ -104,21 +104,11 @@ fix lat/lon, accuracy, speed, bearing, elapsed time; output: state + distance + 
 
 ## 5. Re-route strategy
 
-### 5.1 Options
-
-| | A. Rejoin ahead (fixed point) | B. To next stop / destination (today's "Continue") | **C. Best rejoin ahead (recommended)** | D. Prompt instead of automatic |
-| --- | --- | --- | --- | --- |
-| What | Route from position to the line point ~1 km ahead, then the original line | `Planner` from position through the remaining stops | Route to 2–4 candidates ahead (next stop if ≤ 5 km along, line points +0.5 / +1.5 / +3 km), pick min. **leg time + original time from that point**; splice | Same routing as A/B/C, but only after the user taps "Reroute" in the banner |
-| Keeps the plan shape | yes | partly (BRouter may choose a different way between stops) | **yes** | – |
-| Works for GPX tracks | yes | **no** (no stops; routing to the track end skips the track) | **yes** | – |
-| Round trip / out-and-back | yes | **danger**: destination = start, near you at the beginning | **yes** (targets along the line) | – |
-| Passed stops | never targeted | `RouteProgress.remainingStops` drops them (works, tested) | never targeted (candidates are ahead of progress) | – |
-| Risk of silly detours | **high**: a point 300 m ahead across a river cost a 3.3 km leg (see §5.3) | low | low (several candidates) | – |
-| Cost on the phone | 1 request (~10 ms JVM) | 1 request per chunk, up to the destination (≤ 200 ms JVM for 65 km) | 2–4 short requests (≤ 30 ms each JVM) | same |
-| UX | automatic | automatic | automatic, with "Original route" | needs a tap with gloves / phone out of the pocket; against "pocket use" |
-
-D is **not** recommended as the default: on a bike or with the phone in a pocket the user cannot tap. It stays as a
-setting ("Only warn").
+### 5.1 Options (compared before the decision)
+A rejoin at a fixed point ahead (risk of silly detours – a point 300 m ahead across a river cost a 3.3 km leg, §5.3),
+B the Planner to the next stop / destination (breaks GPX tracks and round trips), **C the best of 2–4 rejoin candidates
+ahead** (keeps the plan shape, works for tracks and round trips, 2–4 short requests) and D a prompt instead of an
+automatic re-route. The owner's decision (above) takes C's routing but asks first.
 
 ### 5.2 Recommendation: C + automatic, with these defaults
 
@@ -150,6 +140,10 @@ first turn: a U-turn costs about 2 × `turncost` (trekking / touring 90 → ~180
 In our experiment (on the route, heading backwards) it changed **nothing** (§5.3). For bikes we can still pass the GPS
 heading when moving ≥ 2 m/s – cheap, a small nudge. So U-turns are handled by our candidate choice: a U-turn back to a missed junction wins only when it is really
 the fastest way to the route ahead. That is the right answer for a missed turn (scenario 1).
+**Field tour 221 (2026-11-07, on foot):** a fresh route that leads back over the metres just walked (`Onward.goesBack`)
+is asked once more through a point 40 / 80 m ahead in the walking direction (bike 80 / 160 m) and that way on is taken when
+it really goes on (no way back, no there-and-back) and costs ≤ 25 % (max 3 min, min 30 s) more; "New route" tapped after
+walking ≥ 10 m on, ≥ 10 m beside the shown line, computes the route again from the position and takes it (`Navigator.take`).
 
 ### 5.3 Measurements (JVM, laptop: Ryzen 7 5850U, BRouter 1.7.11, `E10_N45.rd5`)
 

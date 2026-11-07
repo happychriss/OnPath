@@ -40,21 +40,27 @@ class DemoPath private constructor(val line: List<GeoPoint>, private val cumM: D
         return moving(lo, t)
     }
 
+    /** The ride time at [alongM] metres along the line (clamped to the line). */
+    fun timeAtAlong(alongM: Double): Double {
+        if (alongM <= 0.0) return 0.0
+        if (alongM >= lengthM) return durationS
+        var lo = 0; var hi = cumM.size - 1
+        while (hi - lo > 1) { val mid = (lo + hi) ushr 1; if (cumM[mid] <= alongM) lo = mid else hi = mid }
+        val span = cumM[hi] - cumM[lo]
+        val t = if (span > 0) (alongM - cumM[lo]) / span else 0.0
+        return cumS[lo] + t * (cumS[hi] - cumS[lo])
+    }
+
     /**
      * The ride time at the point of the line nearest to [lat] / [lon] (the Navigate "Sim" goes on along a new followed
      * line from where it is, owner 2026-11-01). Flat projection per span – metres around one place.
      */
     fun timeNearest(lat: Double, lon: Double): Double {
-        val kx = 111_320.0 * kotlin.math.cos(Math.toRadians(lat)); val ky = 111_320.0
+        val p = GeoPoint(lat, lon); val f = Geo.Flat(lat)
         var best = Double.MAX_VALUE; var bestS = 0.0
         for (i in 0 until line.size - 1) {
-            val a = line[i]; val b = line[i + 1]
-            val bx = (b.lon - a.lon) * kx; val by = (b.lat - a.lat) * ky
-            val px = (lon - a.lon) * kx; val py = (lat - a.lat) * ky
-            val len2 = bx * bx + by * by
-            val t = if (len2 <= 0) 0.0 else ((px * bx + py * by) / len2).coerceIn(0.0, 1.0)
-            val dx = px - t * bx; val dy = py - t * by
-            val d = dx * dx + dy * dy
+            val t = f.t(p, line[i], line[i + 1])
+            val d = f.distanceAt(p, line[i], line[i + 1], t)
             if (d < best) { best = d; bestS = cumS[i] + t * (cumS[i + 1] - cumS[i]) }
         }
         return bestS
@@ -71,7 +77,7 @@ class DemoPath private constructor(val line: List<GeoPoint>, private val cumM: D
         val lenM = cumM[i + 1] - cumM[i]
         val s = cumS[i + 1] - cumS[i]
         return DemoFix(a.lat + (b.lat - a.lat) * t, a.lon + (b.lon - a.lon) * t, ele,
-            if (lenM > 0) TurnDetector.bearing(a, b) else null, if (s > 0) lenM / s else 0.0, cumM[i] + lenM * t, ended = false)
+            if (lenM > 0) Geo.bearing(a, b) else null, if (s > 0) lenM / s else 0.0, cumM[i] + lenM * t, ended = false)
     }
 
     private fun standing(i: Int, ended: Boolean) = line[i].let { DemoFix(it.lat, it.lon, it.ele, null, 0.0, cumM[i], ended) }

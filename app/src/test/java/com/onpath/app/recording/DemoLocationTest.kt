@@ -74,6 +74,24 @@ class DemoLocationTest {
         assertTrue(sink().fixes.isEmpty())
     }
 
+    /**
+     * Pixel review 2026-11-06: "DEMO" / "Sim ×1 · end" stayed on screen after the sim ride. A demo ride ends with its tour
+     * (back to real GPS, the marks go); a demo standing at a place (screenshots) is no ride and stays.
+     */
+    @Test fun aDemoRideEndsWithTheTourAStandingDemoStays() {
+        val a = sink()
+        DemoLocation.startRide(DemoPath.constant(line, 1.2)!!, "followed route", nowMs = t0, autoTick = false)
+        repeat(5_000) { DemoLocation.tick(1000) } // at the end, standing
+        assertTrue(DemoLocation.state.value!!.ended)
+        assertTrue(DemoLocation.endWithTour())
+        assertNull("the ride is over: no DEMO, no Sim chip", DemoLocation.state.value)
+        assertEquals(1, a.ended); assertTrue(DemoLocation.takesRealFix())
+        assertFalse("nothing running: nothing to end", DemoLocation.endWithTour())
+        DemoLocation.jumpTo(46.67, 11.16, null, "map centre", nowMs = t0, autoTick = false)
+        assertFalse(DemoLocation.endWithTour())
+        assertNotNull("a standing demo stays", DemoLocation.state.value)
+    }
+
     @Test fun speedFactorMovesFasterOnASimulatedClock() {
         val a = sink()
         val p = DemoPath.constant(line, 1.0)!!
@@ -206,5 +224,25 @@ class DemoLocationTest {
             assertEquals("$factor×: at the end of the line", path.lengthM, end.alongM!!, 30.0)
             assertEquals(0.0, Geo.distance(end.point, line.last()), 1.0)
         }
+    }
+
+    /**
+     * Field 2026-11-06 23:35 (Pixel, Hilden round trip whose first and last ~100 m are the same street): "▶ Sim" during
+     * a tour 2.7 km along started the ride at ① again – a jump back that the navigator, keeping its progress, read as the
+     * last metres of the loop walked backwards, so the next left turn of the way out was never said. A ride started
+     * during a tour begins where the tour is along the line ([DemoLocation.startRide] startAlongM).
+     */
+    @Test fun aSimStartedDuringATourBeginsWhereTheTourIs() {
+        val a = sink()
+        val path = DemoPath.constant(line, 1.2)!!
+        DemoLocation.startRide(path, "followed route", nowMs = t0, autoTick = false, startAlongM = 2_700.0)
+        val first = a.fixes.first().first
+        assertEquals("the first fix where the tour is, not at the start", 2_700.0, first.alongM, 5.0)
+        assertEquals(2_700.0, DemoLocation.state.value!!.alongM, 5.0)
+        DemoLocation.tick(1_000L)
+        assertTrue("it goes on from there", a.fixes.last().first.alongM > 2_700.0)
+        DemoLocation.stop()
+        DemoLocation.startRide(path, "followed route", nowMs = t0, autoTick = false)
+        assertEquals("without a tour: from the start as before", 0.0, a.fixes.last().first.alongM, 1e-6)
     }
 }

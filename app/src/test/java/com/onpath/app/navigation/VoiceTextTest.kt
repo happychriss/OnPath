@@ -42,11 +42,26 @@ class VoiceTextTest {
         assertEquals("Los geht's. 1,5 Kilometer, etwa eine Stunde 20 Minuten.", VoiceText.of(Phrase.Start(1_500.0, 4_700.0, null)))
         assertEquals("Neue Route. In 200 Metern rechts.", VoiceText.of(Phrase.NewRoute(Phrase.Junction(210.0, Turn.RIGHT))))
         assertEquals("Neue Route. Bitte umdrehen.", VoiceText.of(Phrase.NewRoute(null, turnRound = true)))
-        assertEquals("Navigation läuft wieder.", Txt.s(Res.string.voice_guidance_back))
         assertEquals("Gasthof Hochmuth erreicht. Weiter nach Algund, 4 Kilometer.",
             VoiceText.of(Phrase.StopReached("Gasthof Hochmuth", 2, "Algund", 4_020.0)))
         assertEquals("Kein Ziel mehr vor dir. Bitte aufs Handy schauen.", VoiceText.of(Phrase.NoDestination))
         assertEquals("Ziel erreicht.", VoiceText.of(Phrase.Arrived))
+    }
+
+    /** Where the goal is (owner 2026-11-07: "Das Ziel ist rechts von dir", "Ziel in 50 m, schräg rechts"). */
+    @Test fun theGoalsSide() {
+        assertEquals("You have arrived. The destination is on your right.", VoiceText.of(Phrase.ArrivedSide(GoalSide.RIGHT)))
+        assertEquals("You have arrived. The destination is ahead on your left.", VoiceText.of(Phrase.ArrivedSide(GoalSide.HALF_LEFT)))
+        assertEquals("Destination in 50 meters, half right.", VoiceText.of(Phrase.GoalAhead(60.0, GoalSide.HALF_RIGHT)))
+        assertEquals("Destination in 100 meters.", VoiceText.of(Phrase.GoalAhead(110.0, null)))
+        de {
+            assertEquals("Ziel erreicht. Das Ziel ist rechts von dir.", VoiceText.of(Phrase.ArrivedSide(GoalSide.RIGHT)))
+            assertEquals("Ziel erreicht. Das Ziel ist links von dir.", VoiceText.of(Phrase.ArrivedSide(GoalSide.LEFT)))
+            assertEquals("Ziel erreicht. Das Ziel ist schräg rechts vor dir.", VoiceText.of(Phrase.ArrivedSide(GoalSide.HALF_RIGHT)))
+            assertEquals("Ziel erreicht. Das Ziel ist hinter dir.", VoiceText.of(Phrase.ArrivedSide(GoalSide.BEHIND)))
+            assertEquals("Ziel in 50 Metern, schräg rechts.", VoiceText.of(Phrase.GoalAhead(60.0, GoalSide.HALF_RIGHT)))
+            assertEquals("Ziel in 100 Metern, links.", VoiceText.of(Phrase.GoalAhead(100.0, GoalSide.LEFT)))
+        }
     }
 
     @Test fun roundedDistancesOneCanPicture() {

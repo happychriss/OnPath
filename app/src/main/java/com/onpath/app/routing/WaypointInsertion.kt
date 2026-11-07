@@ -14,14 +14,18 @@ import com.onpath.app.data.Geo
  *    Example: A→B, tap beside the middle → via between A and B; tap beyond B → new destination.
  *
  * 4. Led to a far route that was never reached ("Guide me" during a tour, [here] = the position, Bug 02): the way
- *    there counts as a leg too – a point that fits best between here and the start becomes the new START (a stop on the
- *    way there), not a destination after the route's end.
+ *    there counts as a leg too – a point that fits best between here and the start is a **stop on the way**
+ *    ([Kind.ON_THE_WAY]): it goes before ①, the tour is led via it to ① (a round trip's loop 1 → 2 → 3 → 1 stays
+ *    unchanged, owner 2026-11-03), not a destination after the route's end. It is never offered as "Set as start"
+ *    (field 2026-11-07: during a tour the owner expects a stop on the route he follows, not a new start).
+ * 5. A round trip never gets a point behind its closing point (owner 2026-11-03: "Rundtour bleibt Rundtour"): instead
+ *    of a new destination the point goes into the loop where it fits best. Deleting the closing point opens the loop.
  *
  * The UI shows what happened ("Added as stop 2") with one-tap alternatives, so the user stays in control.
  */
 object WaypointInsertion {
 
-    enum class Kind { START, DESTINATION, VIA_ON_LINE, VIA_BEST_FIT }
+    enum class Kind { START, DESTINATION, VIA_ON_LINE, VIA_BEST_FIT, ON_THE_WAY }
 
     data class Decision(val index: Int, val kind: Kind)
 
@@ -32,8 +36,11 @@ object WaypointInsertion {
      * @param lineSnapM distance to the route line that counts as "tapped on the line"
      *        (callers pass ~ 24 dp converted to metres at the current zoom)
      * @param here the position while a tour is led to this plan and has never reached it (rule 4); else null
+     * @param stopOnly "Als Zwischenstopp" (owner 2026-11-07): never a new destination – the point goes where it fits
+     *        best among the legs (or before ① on the way there), the goal stays
      */
-    fun decide(waypoints: List<GeoPoint>, p: GeoPoint, route: List<GeoPoint>?, lineSnapM: Double, here: GeoPoint? = null): Decision {
+    fun decide(waypoints: List<GeoPoint>, p: GeoPoint, route: List<GeoPoint>?, lineSnapM: Double, here: GeoPoint? = null,
+               stopOnly: Boolean = false): Decision {
         if (waypoints.isEmpty()) return Decision(0, Kind.START)
         if (waypoints.size == 1) return Decision(1, Kind.DESTINATION)
 
@@ -54,11 +61,14 @@ object WaypointInsertion {
             val cost = Geo.distance(a, p) + Geo.distance(p, b) - Geo.distance(a, b)
             if (cost < bestCost) { bestCost = cost; bestLeg = i }
         }
-        val appendCost = Geo.distance(waypoints.last(), p)
-        // Rule 4: on the way there (here → start) – the new start
+        val loop = PlanEdits.isRoundTrip(waypoints)
+        // Rule 5: a round trip stays closed – nothing goes behind its closing point
+        val appendCost = if (loop || stopOnly) Double.MAX_VALUE else Geo.distance(waypoints.last(), p)
+        // Rule 4: on the way there (here → start) – the new start; for a round trip a stop on the way before the loop
         val first = waypoints.first()
         val wayThereCost = here?.let { Geo.distance(it, p) + Geo.distance(p, first) - Geo.distance(it, first) }
-        if (wayThereCost != null && wayThereCost < bestCost && wayThereCost < appendCost) return Decision(0, Kind.START)
+        if (wayThereCost != null && wayThereCost < bestCost && wayThereCost < appendCost)
+            return Decision(0, Kind.ON_THE_WAY)
         return if (bestCost < appendCost) Decision(bestLeg + 1, Kind.VIA_BEST_FIT)
         else Decision(waypoints.size, Kind.DESTINATION)
     }
@@ -80,23 +90,11 @@ object WaypointInsertion {
         var best = route[from]
         var bestD = Double.MAX_VALUE
         for (i in from until to) {
-            val c = closestOnSegment(p, route[i], route[i + 1])
+            val c = Geo.closestOnSegment(p, route[i], route[i + 1])
             val dist = Geo.distance(p, c)
             if (dist < bestD) { bestD = dist; best = c }
         }
         return best
-    }
-
-    /** The point of segment a–b nearest to [p] (local equirectangular projection, as [distanceToSegment]). */
-    fun closestOnSegment(p: GeoPoint, a: GeoPoint, b: GeoPoint): GeoPoint {
-        val mPerDegLat = 111_320.0
-        val mPerDegLon = 111_320.0 * Math.cos(Math.toRadians(p.lat))
-        val ax = (a.lon - p.lon) * mPerDegLon; val ay = (a.lat - p.lat) * mPerDegLat
-        val bx = (b.lon - p.lon) * mPerDegLon; val by = (b.lat - p.lat) * mPerDegLat
-        val dx = bx - ax; val dy = by - ay
-        val len2 = dx * dx + dy * dy
-        val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
-        return GeoPoint(a.lat + t * (b.lat - a.lat), a.lon + t * (b.lon - a.lon))
     }
 
     /** Index of the route vertex nearest to [p] (segment-projected) and the distance in metres. */
@@ -105,7 +103,7 @@ object WaypointInsertion {
         var bestI = -1
         var bestD = Double.MAX_VALUE
         for (i in 0 until route.size - 1) {
-            val d = distanceToSegment(p, route[i], route[i + 1])
+            val d = Geo.distanceToSegment(p, route[i], route[i + 1])
             if (d < bestD) { bestD = d; bestI = i }
         }
         return bestI to bestD
@@ -145,18 +143,5 @@ object WaypointInsertion {
             from = best
         }
         return wpIdx
-    }
-
-    /** Approximate distance (m) from [p] to segment a–b, using a local equirectangular projection. */
-    fun distanceToSegment(p: GeoPoint, a: GeoPoint, b: GeoPoint): Double {
-        val mPerDegLat = 111_320.0
-        val mPerDegLon = 111_320.0 * Math.cos(Math.toRadians(p.lat))
-        val ax = (a.lon - p.lon) * mPerDegLon; val ay = (a.lat - p.lat) * mPerDegLat
-        val bx = (b.lon - p.lon) * mPerDegLon; val by = (b.lat - p.lat) * mPerDegLat
-        val dx = bx - ax; val dy = by - ay
-        val len2 = dx * dx + dy * dy
-        val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
-        val cx = ax + t * dx; val cy = ay + t * dy
-        return Math.sqrt(cx * cx + cy * cy)
     }
 }

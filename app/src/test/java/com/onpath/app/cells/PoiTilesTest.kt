@@ -104,6 +104,8 @@ class PoiTilesTest {
     @Test fun zoomTable() {
         assertEquals(10, PoiTiles.minZoom("train"))
         assertEquals(12, PoiTiles.minZoom("restaurant"))
+        // owner 2026-11-06: shelters vanished while zooming – tier 1 now, placed right after huts
+        assertEquals(12, PoiTiles.minZoom("shelter"))
         assertEquals(14, PoiTiles.minZoom("bus"))
         assertEquals(14, PoiTiles.minZoom("something_new"))
         assertEquals(14, PoiTiles.minZoom(null))

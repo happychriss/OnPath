@@ -84,6 +84,46 @@ class BackupTest {
         assertEquals(4, tour.pointCount)
     }
 
+    // ---------------------------------------------------------------- the plan a tour followed (owner 2026-11-07)
+
+    private val followed = com.onpath.app.data.TourPlan("Waalweg", "MTB", 4, planMeta.waypoints, setOf(2),
+        planLine.single(), 12480.0, 842.0, 310.0, 4.6 * 3600, sourceUuid = "u-plan", updatedMs = 1792573000000L)
+
+    /** A restore on a new phone keeps the plan the tour followed: it travels in the record (key "plan", record version 1). */
+    @Test fun aTourKeepsItsFollowedPlanThroughBackupAndRestore() {
+        val m = tourMeta.copy(plan = followed)
+        val text = BackupCodec.encode(m, track)
+        val back = BackupCodec.decode(text)!!
+        assertEquals(m, back.meta)
+        assertEquals(followed, back.meta.plan)
+        assertEquals("Hütte", back.meta.plan!!.waypoints[2].name)
+        assertEquals(BackupCodec.VERSION, 1)
+        // never a second track: OnPath's restore and other apps read only the recorded points as the tour
+        val g = GpxParser.parse(text)
+        assertEquals(2, g.allSegments.size)
+        assertEquals(4, g.pointCount)
+        assertEquals(0, g.waypoints.size)
+        assertSameLine(track, back.segments)
+    }
+
+    /** Files written before the plan copy (and "Nur aufzeichnen" tours) read back without one. */
+    @Test fun anOlderRecordHasNoPlanAndAPlannedRouteNeverCarriesOne() {
+        assertNull(BackupCodec.decode(BackupCodec.encode(tourMeta, track))!!.meta.plan)
+        val json = BackupCodec.toJson(tourMeta).apply { put("plan", org.json.JSONObject("{\"waypoints\":[]}")) }
+        assertNull("a broken plan keeps the tour, without the plan", BackupCodec.fromJson(json)!!.plan)
+        val t = Tour(8, TourKind.PLANNED, "P", created, "HIKE", 3, 1.0, 2.0, 3.0, 4.0, "done", planMeta.waypoints, "p")
+        assertNull(BackupMeta.of(t, planLine, 1L, followed).plan)
+    }
+
+    @Test fun theBackupQueueWritesTheFollowedPlanWithTheTour() {
+        val (b, store) = backup()
+        val tours = mutableMapOf(1L to tour(1).copy(hasPlan = true), 2L to tour(2))
+        val q = BackupQueue(Source(tours, track, mapOf(1L to followed)), { b }, { it.run() }, Events())
+        q.tourChanged(1); q.tourChanged(2)
+        assertEquals(followed, BackupCodec.decode(store.text("2026-10-21 Tour 1.gpx"))!!.meta.plan)
+        assertNull(BackupCodec.decode(store.text("2026-10-21 Tour 2.gpx"))!!.meta.plan)
+    }
+
     @Test fun foreignGpxIsNoBackup() {
         val other = com.onpath.app.gpx.GpxWriter.write("Komoot", planLine)
         assertFalse(BackupCodec.hasRecord(other))
@@ -134,10 +174,10 @@ class BackupTest {
     }
 
     @Test fun restoreSummary() {
-        assertEquals("23 tours and 5 routes restored.", BackupRestore.summary(BackupRestore.Result(23, 5, 0, 0)))
-        assertEquals("1 tour and 0 routes restored (2 already on this phone, 1 could not be read).",
+        assertEquals("23 tours and 5 plans restored.", BackupRestore.summary(BackupRestore.Result(23, 5, 0, 0)))
+        assertEquals("1 tour and 0 plans restored (2 already on this phone, 1 could not be read).",
             BackupRestore.summary(BackupRestore.Result(1, 0, 2, 1)))
-        assertEquals("No tours or routes restored.", BackupRestore.summary(BackupRestore.Result(0, 0, 0, 0)))
+        assertEquals("No tours or plans restored.", BackupRestore.summary(BackupRestore.Result(0, 0, 0, 0)))
     }
 
     // ---------------------------------------------------------------- recycle bin
@@ -263,10 +303,12 @@ class BackupTest {
 
     // ---------------------------------------------------------------- hooks (when a backup is written)
 
-    private class Source(val tours: MutableMap<Long, Tour>, val segs: List<List<TrackPoint>>) : BackupSource {
+    private class Source(val tours: MutableMap<Long, Tour>, val segs: List<List<TrackPoint>>,
+                         val plans: Map<Long, com.onpath.app.data.TourPlan> = emptyMap()) : BackupSource {
         override fun tour(id: Long) = tours[id]
         override fun segments(id: Long) = segs
         override fun all() = tours.values.toList()
+        override fun plan(id: Long) = plans[id]
     }
 
     private class Events : BackupQueue.Listener {

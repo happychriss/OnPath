@@ -54,27 +54,25 @@ class QuestionNotificationTest {
 
     /**
      * Owner 2026-11-01 (replaces review H1): "Navigation Stopp" = the phone is quiet, also with the screen off; walking off
-     * with the phone pocketed brings the guidance back (H1's worry, StopQuietTest). Wiring in the service.
+     * with the phone pocketed brings the guidance back (H1's worry, StopQuietTest). Owner 2026-11-03: Plan is silent for
+     * everything from movement / navigation ([ModeQuiet], ModeQuietTest). Wiring in the service.
      */
-    @Test fun navigationStoppIsQuietUntilContinueOrWalkingOff() {
+    @Test fun navigationStoppIsQuietUntilContinue() {
         val svc = File("src/main/java/com/onpath/app/recording/RecordingService.kt").readText()
         assertTrue(svc.substringAfter("private fun tick()").substringBefore("\n    }\n").contains("applyNavigating()"))
         assertTrue(svc.contains("setNavigating(navigatingApplied)"))
-        assertTrue(svc.contains("val now = navigating || stopQuiet.resumed"))
+        assertTrue("only Continue ends the quiet (owner 2026-11-03)", svc.contains("val now = navigating\n"))
         assertTrue(svc.contains("stopQuiet.set(stopped = !navigating)"))
-        // no voice and no junction vibration while quiet: the check comes before both
-        val cue = svc.substringAfter("private fun junctionCue(").substringBefore("\n    }\n")
-        assertTrue(cue.indexOf("if (stopQuiet.quiet) return") in 0 until cue.indexOf("voiceStep(st, nowEl)"))
-        assertTrue(cue.indexOf("if (stopQuiet.quiet) return") < cue.indexOf("vibrate("))
+        // no voice and no junction vibration while quiet (owner 2026-11-03): GuidanceGate (ModeQuietTest)
+        assertTrue(svc.contains("GuidanceGate.junction(planQuiet()) == GuidanceGate.Junction.FOLLOW_SILENTLY"))
+        assertTrue(svc.contains("private fun planQuiet(): Boolean = tourId >= 0 && stopQuiet.quiet"))
     }
 
     /** Review M1: every notification of a tour has its own id – Pause / Resume never cancels "cannot be saved". */
     @Test fun notificationIdsAreDistinct() {
         val ids = listOf(TourChannels.NOTIF_ID, RecordingService.ALERT_ID, RecordingService.PAUSE_ALERT_ID,
-            RecordingService.SAVE_FAIL_ID, 45 /* TourInterruptedReceiver */, 4711 /* MapLoadService */)
+            RecordingService.SAVE_FAIL_ID, TourInterruptedReceiver.INTERRUPTED_ID, com.onpath.app.cells.MapLoadService.NOTE_ID)
         assertEquals(ids.size, ids.toSet().size)
-        val r = File("src/main/java/com/onpath/app/recording/TourInterruptedReceiver.kt").readText()
-        assertTrue(r.contains("INTERRUPTED_ID = 45"))
     }
 
     /** Review M3: no action of the service and no broken session file can kill the process (and with it the tour). */

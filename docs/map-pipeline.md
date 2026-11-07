@@ -16,7 +16,8 @@ tools/build_region.sh --help                            # all options / env over
 tools/build_region.sh --format 2 south-tyrol            # format 2 (docs/design/map-data-size.md), see below
 ```
 
-**Format 2** (`--format 2`, one switch for every file; format 1 stays the default until map cells are live):
+**Format 2** (`--format 2`, one switch for every file; the map server's cells are format 2 only, `build_region.sh` still
+defaults to format 1 for region packages, which the app still reads):
 terrain as WebP lossless, heights rounded to 0.25 m, max zoom 12 (test region 54.6 → 6.6 MB, Meran cell
 10.8 → 1.0 MB); contours built from the original AWS z12/z13 tiles (cached in `$WORK/terrarium`), so they stay
 identical to format 1; overlays as `overlays.pmtiles` and a trimmed base map (below).
@@ -46,8 +47,8 @@ region (name, bbox, OSM URL)
 **Format 2** (`--format 2`, design: `docs/design/map-data-size.md`): the six overlay GeoJSON files become ONE vector
 tile file `overlays.pmtiles` (`extract_overlays.py --tiles --smooth` → `tools/build_overlays.sh`, tippecanoe), and
 the base map is trimmed (`--exclude_layers=housenumber,poi,aeroway,aerodrome_label --languages=de`, then
-`tools/trim_base.sh` drops path / track and small-street lines at z13–14). Details: section 5b. Format 1 stays the default until map
-cells are live (owner Q9); the app reads both.
+`tools/trim_base.sh` drops path / track and small-street lines at z13–14). Details: section 5b. Map cells are live and format 2 only; `build_region.sh`
+still defaults to format 1 (owner Q9), and the app reads both.
 
 "Required" = the app's missing-data screen (`data/DataFiles.kt`) asks for it. Optional files may be
 missing: `map/OptionalSources.kt` removes every style source whose local file is absent, together with
@@ -86,8 +87,10 @@ One-line Python setup: `pip install osmium shapely pmtiles numpy pillow contourp
 | POI pictograms | Maki (Mapbox), Temaki (Rapid) – copied in `tools/icons/` | CC0; `assets/sprites/LICENSE-icons.txt` |
 | Fonts | Noto Sans glyph PBFs in `app/src/main/assets/fonts/` | OFL |
 
-The app shows "© OpenStreetMap contributors, © OpenMapTiles, Terrarium (Mapzen/AWS)" on the map and the
-full list in Settings. Google content is never fetched, stored or drawn (link-out to Google Maps only).
+The app shows "© OpenStreetMap · OpenMapTiles" on the map (`ui/MapFooter.kt` `MAP_CREDIT`; two lines on a narrow
+phone, it grows with the font up to 1.3×); a tap opens Settings → About with the full list – "© OpenStreetMap
+contributors", "© OpenMapTiles", the terrain line (Terrarium: Mapzen / AWS Terrain Tiles; SRTM, Copernicus and others)
+and the rest. Google content is never fetched, stored or drawn (link-out to Google Maps only).
 
 **Blocked hosts:** from the cloud build machines `download.geofabrik.de` and `overpass-api.de` are not
 reachable – use `download.openstreetmap.fr`. Reachable: download.openstreetmap.fr, brouter.de, AWS S3,

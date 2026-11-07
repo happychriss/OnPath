@@ -1,41 +1,40 @@
 # How the owner likes to work (for every Claude session)
 
-Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, texts) are in `CLAUDE.md` and the
-`docs/backlog.md` owner decisions; this file is about **how we work together**.
+Shared by every session (donald, laptop, captain, cloud-web). Product rules (UX, texts, what the app does) are in
+`docs/project-status.md` "Decisions"; this file is about **how we work together**. It is the home of the rules for
+**questions to the owner** – other files link here.
 
 ## Talking with the owner
 - **One question at a time**, with a short table of options and a recommendation first; the owner answers tersely.
   Owner 2026-11-01, the general motto: open questions always as a **question box with answer options, one after the
-  other**, each with 2–3 lines of background – never a list of questions in prose. Every question also goes to the
-  dashboard (issues `frage` in `onpath.private`, `tools/ask.sh`); a blocking one is asked in the chat too (yellow
-  "waiting" dot), the owner answers where he is, the session keeps the issue up to date and closes it.
+  other**, each with 2–3 lines of background – never a list of questions in prose. Ask in your own chat (owner
+  2026-11-07: no more question issues – he always answered in the chat). Not answered when the session stops → one line
+  under "Waiting for the owner" in `docs/backlog.md` (who, date, question, recommendation); whoever acts on the answer
+  deletes it. "Nie warten": take the recommendation, note it, go on.
 - **No numbers toward the owner** (owner 2026-11-02: "sowas wie #19 kann ich mir nicht merken"): in the chat and in
-  push messages name a question, issue, commit or item by a short description ("die Frage zum Startknopf"), never by
-  its number alone. Numbers stay in issues, the backlog and commit messages for the sessions; the owner may answer
+  push messages name a question, commit or item by a short description ("die Frage zum Startknopf"), never by
+  its number alone. Numbers stay in the backlog and commit messages for the sessions; the owner may answer
   with a word ("Startknopf: A").
+- **Planner deploys in the test phase** (owner 2026-11-06): the planner goes online right after the affected local tests – GitHub's full run continues behind it; a red run is fixed and deployed again (`docs/roles/cloud-plan.md`).
+- **Fragenregister** (owner 2026-11-06): every question the owner asks a session in its chat goes onto the page
+  https://claude.ai/artifact/MyNqN2MaaxNzrex7wVccwX (`ArtifactData`, collection `fragen`), so no answer gets lost in the
+  scroll. When the question comes: `set` doc `<unit>-<YYYYMMDD>-<n>` with `sitzung` (your unit), `frage` (short, his words),
+  `gefragt_am` (ISO UTC), `status` `in_arbeit` (or `beantwortet` at once), `arbeit` (one line: what you are doing),
+  `gelesen` false. When answered: `update` (pass `if_version`) `status` `beantwortet`, `antwort` (2–5 plain lines, the
+  details stay in the chat), `beantwortet_am`, `arbeit` removed. Small talk and "ok / ja" are not questions.
 - Plain words, short updates, outcome first. No diffs or file dumps in the terminal; quiet tool calls, one-line results.
 - Never name internals toward the owner as product words ("cells", "routing data") – it's "map areas", "the map".
 - Komoot is the UX reference (the owner is a long-time Komoot user).
 
-## Product rules seen again and again (details in CLAUDE.md / backlog)
-- **No messages that disappear by themselves** – everything stays until answered or the situation is gone
-  ("we are a hiking app – it can rain, stress…"). Nothing may flash.
-- **The owner's chosen words stay** (owner 2026-11-01, "Hierhin" had become "Von meinem Standort hierhin" in a UX
-  review): a review or polish pass never rewords a UI text the owner picked – it proposes the change as a question.
-- **Hold-only gestures in Plan**, no quick-tap actions, no dragging points (delete + add).
-- **Re-routing only after asking**; skip passed stops; show the original route grey.
-- **Core features**: a field bug first gets a reproducing test, then the fix.
-- **Public texts** (README, pitch, store): factual and calm, like telling a friend or a magazine review – what
-  happens, no slogans, no superlatives, no exclamation marks, no competitor bashing; Komoot only as dated, sourced
-  facts with credit where it is stronger. Everyday usability first; internals are basic requirements. Show drafts
-  to the owner before anything goes public.
-- **Marketing material is private**: it lives in the owner's local Gitea repo `cneuhaus/Marketing`, folder `OnPath/`
-  (zo.fritz.box:3000) – never in this public GitHub repo.
+## Product rules
+One place: `docs/project-status.md` "Decisions" (no disappearing messages, the owner's chosen words stay, hold-only
+gestures, re-routing only after asking, core-feature bugs test first, public text tone, private material in
+`happychriss/onpath.private`).
 
 ## How sessions work
-- **The owner must notice when a session waits** (owner 2026-11-02): every question also goes to the dashboard
-  (`tools/ask.sh`), and on donald / the laptop the Claude push is on (`/config`: "Push when actions required" + "Push
-  when Claude decides" – `docs/roles/neu/umstellung.md`). A question asked only in the chat is a bug.
+- **The owner must notice when a session waits** (owner 2026-11-02): on donald / the laptop the Claude push is on
+  (`/config`: "Push when actions required" + "Push when Claude decides" – `docs/roles/multi-agent-lernen.md` §2); an
+  open question outlives the session only as a line under "Waiting for the owner" in `docs/backlog.md`.
 - **Main session talks and distributes; work runs in background agents** (builds, checks, merges, installs). The
   main session keeps the overview of all agents (task → state → next step), stops stuck ones, and reports without
   being asked. **The chat stays responsive** (owner 2026-11-01): a request that takes longer than ~2 minutes and stands
@@ -43,9 +42,11 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
   answers at once "läuft: …"; talk, decisions, questions and small changes are done directly (a fresh agent would lose
   the context, and for small things it is slower). A request that needs the same files, Gradle or the same device as a
   running agent waits: "wartet auf X". Not "everything in the background" – that costs context.
-- **Keep the owner's computer usable:** heavy jobs `nice -n 19 ionice -c3`, ≤ 4 workers (`--max-workers=4`,
-  Docker `--cpus=2`, `OMP_NUM_THREADS=1`); prefer the cloud build for big map jobs. Emulator runs locally on donald
-  (owner 2026-11-01: GitHub's E2E is slow – only when no computer is on), one at a time via `tools/dev/device.sh`.
+- **Keep the owner's computer usable:** Gradle only through `tools/ci/gate.sh` or `tools/dev/gradle_slot.sh` (three
+  builds per computer, one while the emulator runs; `gate.sh` uses `--max-workers=2`, nice + ionice); other heavy jobs
+  `nice -n 19 ionice -c3`, Docker `--cpus=2`, `OMP_NUM_THREADS=1`. E2E (owner 2026-11-06): the local emulator on donald
+  only for the test(s) a change is about, one at a time via `tools/dev/device.sh`; whole E2E classes and the
+  Release-Rundgang run on GitHub (`tools/ci/e2e_github.sh`) – `docs/working-agreement.md` "E2E".
 - **Code first for bugs:** when diagnostics exist, find the cause by reading the code and reproduce it in a JVM test.
   Use the phone only briefly to confirm, say how long, say when it is free again, and restore the owner's app state
   before handing it back (a long trial-and-error session on the phone at bedtime was not OK).
@@ -62,10 +63,17 @@ Shared by every machine (laptop, desktop "donald", cloud). Product rules (UX, te
   configuration cache a changed property may be ignored – use `--no-configuration-cache` and check the APK contains
   `assets/overview/*.pmtiles`.
 
+## Setup work (owner 2026-11-05, after the setup audit – lessons in `docs/roles/multi-agent-lernen.md` §4)
+- **Research and check before building**: docs, existing solutions, the sessions' real transcripts; prove platform
+  facts with a small test. Never sell an assumption as a fact.
+- No new mechanism without a real case; unused for a week → removed. Hooks / `gate.sh` / locks hit every session at
+  once → test every combination before the push. Measure before asking the owner. One file per topic. At most one
+  setup change per day.
+
 ## Worktrees and agents
 - Sub-agents (owner 2026-11-01: split work over 3–4 when it costs little overhead): one worktree per editing agent,
-  one agent per device (`tools/dev/device.sh`), builds queue behind the Gradle lock – rules in `CLAUDE.md`.
+  one agent per device (`tools/dev/device.sh`), builds take one of the Gradle slots per computer (`tools/dev/gradle_slot.sh`).
 - Remove an agent's worktree only after its completion notice AND when no message to it is pending (twice a resumed
   agent lost its work).
-- Temporary folders (`/tmp/…/scratchpad`) are wiped on restart – anything worth keeping goes to the repo, the
-  Marketing repo, or a project folder (research files were lost this way).
+- Temporary folders (`/tmp/…/scratchpad`) are wiped on restart – anything worth keeping goes to the repo,
+  `onpath.private`, or a project folder (research files were lost this way).

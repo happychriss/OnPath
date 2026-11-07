@@ -11,12 +11,24 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
@@ -26,10 +38,13 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +60,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.layout
 
 /**
  * App-level actions in the ☰ menu next to the search bar (owner: the search bar only searches; everything about
@@ -72,14 +88,54 @@ class PlanMenu(
      * (RouteRules.saveInMenu); it opens Save's name dialog. Null hides it.
      */
     val onSaveRoute: (() -> Unit)? = null,
-    /** The plan has unsaved changes (RouteRules.saveAtHand): a small green dot on ☰ (an amber sync dot wins). */
-    val unsaved: Boolean = false,
-)
+    /**
+     * "Neu planen" in ☰ (owner 2026-11-06: "habe ich oben im Menü gesucht") – the same way as the sheet's ✕ pill (which
+     * stays); null hides it (no plan points).
+     */
+    val onNewPlan: (() -> Unit)? = null,
+    /**
+     * "Nur aufzeichnen" (owner 2026-11-06, flow map H1: "Los geht's ohne Route" in the sheet was confusing – in ☰,
+     * rarely needed): a plain recording; null hides it (a tour runs).
+     */
+    val onRecordWithoutPlan: (() -> Unit)? = null,
+) {
+    /**
+     * The dot on ☰: only the browser sync's amber warning. Unsaved has no sign any more (owner 2026-11-06: nothing is
+     * lost – a plan leaving the map goes under My routes → Zuletzt).
+     */
+    val dotWarn: Boolean get() = onPairBrowser != null && sync.warning != null
+}
 
 /**
- * Plan mode top area: the search pill (only search) and one round ☰ app-menu button next to it: Save route (with a
- * plan) · My routes · Start recording · Pair with browser · Settings; Phone setup first while a tour needs it. The
- * activity and the route actions (Close plan · Reverse · Round trip) live in the route sheet (PlanPanel); Save is here.
+ * Plan's top band (owner 2026-11-05, band b): a light blue band behind the search pill and ☰, so they do not float over
+ * the map; at a large font the mode label gets its own line above the pill instead of covering its text. During a tour
+ * the way back to Navigate is the green "Navigation ›" at the bottom of the plan (owner 2026-11-06, C).
+ */
+object PlanTopBand {
+    /** The band's colour: paper (owner 2026-11-06 variant C – no light blue surfaces; was the plan pills' light blue). */
+    val Color = OnPathColors.Paper
+    /** The mode label's own line at a large font: its text line (labelSmall, 16 sp line) + 8 dp. */
+    fun labelRow(fontScale: Float): androidx.compose.ui.unit.Dp = (16f * fontScale + 8f).dp
+
+    /** From this font scale on the mode label would cover the search text: it gets its own line. */
+    fun largeLabel(fontScale: Float): Boolean = fontScale >= 1.3f
+
+    /** Bottom of the top bar below the status bar: one row (also during a tour), + the label line at a large font. */
+    fun bottom(fontScale: Float): androidx.compose.ui.unit.Dp =
+        TOP_BAR_BOTTOM + if (largeLabel(fontScale)) labelRow(fontScale) else 0.dp
+
+    /** Where the mode label starts: over the search pill's left part. */
+    val LABEL_START = 28.dp
+}
+
+/** [PlanTopBand.bottom] in dp for the current font. */
+@Composable
+fun planTopBarDp(): Int = PlanTopBand.bottom(androidx.compose.ui.platform.LocalDensity.current.fontScale).value.toInt()
+
+/**
+ * Plan mode top area on the light blue band: the search pill (only search) and one round ☰ app-menu button next to it:
+ * Save route (with a plan) · My routes · Pair with browser · Settings; Phone setup first while a tour needs it. The
+ * activity is a button on the map, the route actions (✕ Neu planen · Umkehren · Rundtour) live in the plan sheet (PlanPanel).
  */
 @Composable
 fun PlanTopBar(
@@ -87,13 +143,79 @@ fun PlanTopBar(
     menu: PlanMenu,
     modifier: Modifier = Modifier,
     menuInitiallyOpen: Boolean = false,
+    /** During a tour ("Plan ändern"): the mode label says so instead of "Planen". */
+    editing: Boolean = false,
+    /** The route's offline state ("Ohne Netz ✓ / ⟳ / ⚠" in the label, owner 2026-11-03); null = no route. */
+    offline: OfflineReady.State? = null,
+    /** A tap on the label: explain the offline state (a line in the plan sheet). */
+    onOffline: () -> Unit = {},
 ) {
-    Row(modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        // also while the route is changed during a tour: search + ☰ as at home (owner 2026-11-01 turned down a green
-        // "Route ändern … Fertig" header)
-        SearchBarPill(onSearch, Modifier.weight(1f))
-        Spacer(Modifier.width(8.dp))
-        AppMenuButton(menu, menuInitiallyOpen)
+    // during a tour the way back to Navigate is the green "Navigation ›" at the bottom (owner 2026-11-06, C) – no "←" here
+    val row = @Composable {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            // also while the plan is changed during a tour: search + ☰ as at home (owner 2026-11-01 turned down a green
+            // "Plan ändern … Fertig" header)
+            SearchBarPill(onSearch, Modifier.weight(1f))
+            Spacer(Modifier.width(8.dp))
+            AppMenuButton(menu, menuInitiallyOpen)
+        }
+    }
+    val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
+    // large font: the label in its own line above the pill (on the pill's edge it covered "Orte oder …")
+    // the mode label (owner 2026-11-06: no "Nicht gespeichert" sign beside it any more – Zuletzt keeps every plan)
+    val labels = @Composable { m: Modifier ->
+        Row(m, verticalAlignment = Alignment.Top) { PlanModeLabel(editing, Modifier, offline, onOffline) }
+    }
+    if (PlanTopBand.largeLabel(fontScale)) {
+        Column(modifier.height(PlanTopBand.bottom(fontScale))) {
+            labels(Modifier.padding(start = PlanTopBand.LABEL_START, top = 6.dp))
+            row()
+        }
+        return
+    }
+    Box(modifier) {
+        row()
+        // Plan is blue (owner 2026-11-03, design §3 version 3): a small blue label on the pill's top edge – "PLANEN",
+        // during a tour "PLAN ÄNDERN"; the word helps in the sun and with colour blindness
+        labels(Modifier.align(Alignment.TopStart).padding(start = PlanTopBand.LABEL_START))
+    }
+}
+
+/**
+ * "PLANEN" / "ROUTE ÄNDERN" in white on [OnPathColors.PlanAccent] (white 5.7:1), over the search pill's top edge. With a
+ * route it also says whether it works without a network (owner 2026-11-03, comparison card 3): "PLANEN · Ohne Netz ✓"
+ * (green), "⟳" (loading), "⚠" (amber: something missing, nothing loading) – a tap explains it ([OfflineReady.explain]).
+ */
+@Composable
+internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier, offline: OfflineReady.State? = null,
+                           onOffline: () -> Unit = {}) {
+    // always "PLANEN", also during a tour (owner 2026-11-06: one word for the plan mode; was "PLAN ÄNDERN")
+    val mode = str(Res.string.plan_mode_label).uppercase()
+    val style = MaterialTheme.typography.labelSmall
+    if (offline == null) {
+        Text(mode, style = style, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite, maxLines = 1,
+            modifier = modifier.clearAndSetSemantics { }.background(OnPathColors.PlanAccent, CircleShape)
+                .padding(horizontal = 8.dp, vertical = 2.dp))
+        return
+    }
+    val desc = str(when (offline) {
+        OfflineReady.State.READY -> Res.string.plan_offline_desc_ready
+        OfflineReady.State.LOADING -> Res.string.plan_offline_desc_loading
+        OfflineReady.State.MISSING -> Res.string.plan_offline_desc_missing
+    })
+    Row(modifier.clip(CircleShape).background(OnPathColors.PlanAccent, CircleShape)
+        .clickable(role = Role.Button, onClick = onOffline)
+        .clearAndSetSemantics { contentDescription = "$mode · $desc"; role = Role.Button }
+        .padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("$mode · ${OfflineReady.pillWord}", style = style, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite,
+            maxLines = 1)
+        Spacer(Modifier.width(3.dp))
+        val (icon, tint) = when (offline) {
+            OfflineReady.State.READY -> Icons.Filled.Check to OnPathColors.OnPlanGood
+            OfflineReady.State.LOADING -> Icons.Filled.Sync to OnPathColors.CardWhite
+            OfflineReady.State.MISSING -> Icons.Filled.Warning to OnPathColors.OnPlanWarn
+        }
+        Icon(icon, null, tint = tint, modifier = Modifier.size(12.dp))
     }
 }
 
@@ -101,13 +223,13 @@ fun PlanTopBar(
 private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
     Surface(
         onClick = onSearch,
-        modifier = modifier.height(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_search_hint); role = Role.Button },
+        modifier = modifier.height(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_search_hint); role = Role.Button }
+            .warmShadow(OnPathShadow.LOW, CircleShape),
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 3.dp,
+        color = OnPathColors.Paper, // paper on the paper band – the warm shadow lifts it (owner 2026-11-06 variant C)
     ) {
         Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Outlined.Search, contentDescription = null, tint = OnPathColors.PlanAccent)
             Spacer(Modifier.width(12.dp))
             Text(str(Res.string.plan_search_hint), style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.weight(1f))
@@ -119,16 +241,14 @@ private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
 private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Box {
-        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = MaterialTheme.colorScheme.surface,
-            shadowElevation = 3.dp, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }) {
-            Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Menu, contentDescription = null) }
+        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = OnPathColors.Paper, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }.warmShadow(OnPathShadow.LOW, CircleShape)) {
+            Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Menu, contentDescription = null, tint = OnPathColors.PlanAccent) }
         }
-        // amber dot: the browser sync needs a look (never for plain offline) – the ☰ item says why; else a green dot while
-        // the plan has unsaved changes (Save route is the top item)
-        val dot = if (menu.onPairBrowser != null && menu.sync.warning != null) OnPathColors.Warn
-            else if (menu.unsaved && menu.onSaveRoute != null) OnPathColors.Green else null
+        // amber dot: the browser sync needs a look (never for plain offline) – the ☰ item says why. Unsaved changes have
+        // their own sign beside the mode label (owner 2026-11-06, #41 B), no dot
+        val dot = if (menu.dotWarn) OnPathColors.Warn else null
         if (dot != null) Box(Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 6.dp)
-            .size(12.dp).background(dot, CircleShape).border(2.dp, MaterialTheme.colorScheme.surface, CircleShape))
+            .size(12.dp).background(dot, CircleShape).border(2.dp, OnPathColors.CardWhite, CircleShape))
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, offset = DpOffset(0.dp, 4.dp)) {
             PlanMenuItems(menu, close = { open = false })
         }
@@ -139,6 +259,8 @@ private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
 @Composable
 internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     val st = menu.state
+    // no logo head (owner 2026-11-07 morning: in a drop-down every row is a button – "man drückt drauf und wundert
+    // sich, dass nichts passiert"); the name is on the start surface and on Über OnPath
     menu.onPhoneSetup?.let { p ->
         MenuItem(Icons.Outlined.WarningAmber, str(Res.string.settings_page_phone), enabled = st.settings, tint = OnPathColors.Error) { close(); p() }
         HorizontalDivider()
@@ -148,8 +270,9 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     menu.onSaveRoute?.let { save ->
         MenuItem(Icons.Outlined.Save, str(Res.string.plan_save_route), enabled = st.save) { close(); save() }
     }
-    // no "Aufzeichnung starten" here (owner 2026-11-02, onpath.private#15): the green start button in Plan records
-    // without a route ("Aufnahme starten · ‹Aktivität›", PlanStart.RECORD_ONLY)
+    // owner 2026-11-06: Meine Touren · Plan speichern · Neu planen · Nur aufzeichnen, then the rest
+    menu.onNewPlan?.let { n -> MenuItem(Icons.Filled.Close, str(Res.string.plan_close_plan)) { close(); n() } }
+    menu.onRecordWithoutPlan?.let { r -> MenuItem(Icons.Outlined.RadioButtonChecked, str(Res.string.plan_menu_record_without_plan)) { close(); r() } }
     HorizontalDivider()
     menu.onPairBrowser?.let { p -> SyncMenuItem(menu.sync, enabled = st.settings) { close(); p() } }
     MenuItem(Icons.Outlined.Settings, str(Res.string.common_settings), enabled = st.settings) { close(); menu.onSettings() }
@@ -157,26 +280,21 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
 }
 
 /**
- * "Pair with browser" (unpaired in the browser: + grey "Unpaired in the browser"); paired: "Paired with browser ✓" + grey
- * "<device> ↔ <browser> · synced 1 min ago"; the browser not seen yet: no ✓ + grey "Waiting for the browser …"; a
- * problem: amber ⚠ + why.
+ * One plain menu line (owner 2026-11-07: "einfach ein Menüeintrag"): "Mit Browser koppeln" / "Browser-Kopplung"
+ * ([SyncMenuUi.labelPaired]), no subtitle, no ✓. The state shows only in the leading icon: a problem worth a look makes
+ * the same sync icon amber (and the ☰ dot) – the screen reader hears the reason. A tap opens the pairing / Browser sync,
+ * where the status stands ("Verbunden seit …", "Zuletzt abgeglichen", Trennen).
  */
 @Composable
 private fun SyncMenuItem(ui: SyncMenuUi, enabled: Boolean, onClick: () -> Unit) {
     val warn = ui.warning != null
-    val label = if (!ui.paired) str(Res.string.sync_menu_pair) else str(Res.string.sync_menu_paired) + if (warn || ui.waiting) "" else " ✓"
+    val label = str(if (ui.labelPaired) Res.string.sync_menu_paired else Res.string.sync_menu_pair)
+    val said = if (warn && ui.line != null) str(Res.string.sync_menu_attention, ui.line) else label
     DropdownMenuItem(
-        text = {
-            Column {
-                Text(label)
-                ui.line?.let { Text(it, style = MaterialTheme.typography.bodySmall,
-                    color = if (warn) OnPathColors.Warn else MaterialTheme.colorScheme.onSurfaceVariant) }
-            }
-        },
+        text = { Text(label) },
         enabled = enabled, onClick = onClick,
-        leadingIcon = { Icon(if (warn) Icons.Outlined.WarningAmber else Icons.Outlined.Sync, contentDescription = null) },
-        colors = if (!warn) MenuDefaults.itemColors() else MenuDefaults.itemColors(textColor = OnPathColors.Warn, leadingIconColor = OnPathColors.Warn),
-        modifier = Modifier.heightIn(min = 48.dp),
+        leadingIcon = { Icon(Icons.Outlined.Sync, contentDescription = null, tint = if (warn) OnPathColors.Warn else LocalContentColor.current) },
+        modifier = Modifier.heightIn(min = 48.dp).semantics(mergeDescendants = true) { contentDescription = said },
     )
 }
 
@@ -189,4 +307,5 @@ internal fun MenuItem(icon: ImageVector, label: String, enabled: Boolean = true,
         modifier = Modifier.heightIn(min = 48.dp),
     )
 }
+
 

@@ -39,18 +39,8 @@ class RouteRulesTest {
         assertFalse(free.startRecording); assertFalse(free.load)
     }
 
-    /** Owner 2026-10-30: Save beside ⋯ and on top of ☰ while the plan is new or changed; saved → neither. */
-    @Test fun saveAtHandWhileUnsaved() {
-        // a new route (never saved) is unsaved
-        assertTrue(RouteRules.saveAtHand(2, RouteRules.isUnsaved(listOf(a, b), null)))
-        // saved / loaded and untouched: quiet
-        assertFalse(RouteRules.saveAtHand(2, RouteRules.isUnsaved(listOf(a, b), listOf(a, b))))
-        // changed since the save: at hand again
-        assertTrue(RouteRules.saveAtHand(3, RouteRules.isUnsaved(listOf(a, b, c), listOf(a, b))))
-        // one point or none: no route to keep
-        assertFalse(RouteRules.saveAtHand(1, RouteRules.isUnsaved(listOf(a), null)))
-        assertFalse(RouteRules.saveAtHand(0, true))
-        // during a tour saving is allowed like ⋯ → Save route: the button is enabled once a route line exists
+    /** ☰ → Plan speichern: enabled once a route line exists, also during a tour. */
+    @Test fun saveInTheMenuOnceThereIsARoute() {
         val tour = RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 1, navigating = true, recording = true)
         assertTrue(tour.save)
         assertFalse(RouteRules.menu(hasRoute = false, pointCount = 3, savedCount = 1, navigating = false, recording = false).save)
@@ -63,15 +53,18 @@ class RouteRulesTest {
         assertTrue(RouteRules.canClear(3))
     }
 
-    @Test fun aPlannedRouteDuringATourIsBlocked() {
-        // owner 2026-10-31: no new route during a tour – "end the running tour first" (too much automation), also over a
-        // saved plan; nothing is loaded
-        assertEquals(OpenAsk.BLOCKED_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 3, navigating = true, listOf(a, b), listOf(a, b)))
-        assertEquals(OpenAsk.BLOCKED_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 2, navigating = true, listOf(a, b), null))
-        assertEquals(OpenAsk.BLOCKED_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 2, navigating = true, emptyList(), null))
-        // tracks open beside the plan as before (shown as a track), also during a tour
-        assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.RECORDED, 0, navigating = true, listOf(a, b), null))
-        assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.IMPORTED, 4, navigating = true, listOf(a, b), null))
+    @Test fun aPlannedRouteDuringATourIsFollowedAtOnce() {
+        // owner 2026-11-06 22:05: a planned route tapped during a tour is followed at once – no question (was "Plan laden?
+        // Du bist gerade unterwegs." with three answers), also over a saved plan
+        assertEquals(OpenAsk.FOLLOW_PLAN_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 3, navigating = true, listOf(a, b), listOf(a, b)))
+        assertEquals(OpenAsk.FOLLOW_PLAN_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 2, navigating = true, listOf(a, b), null))
+        assertEquals(OpenAsk.FOLLOW_PLAN_DURING_TOUR, RouteRules.openAsk(TourKind.PLANNED, 2, navigating = true, emptyList(), null))
+        // a track during a tour is followed at once too (no "Dieser Tour folgen?" any more); without a tour it opens beside the plan;
+        // a track without a line has nothing to follow
+        assertEquals(OpenAsk.FOLLOW_DURING_TOUR, RouteRules.openAsk(TourKind.RECORDED, 0, navigating = true, listOf(a, b), null))
+        assertEquals(OpenAsk.FOLLOW_DURING_TOUR, RouteRules.openAsk(TourKind.IMPORTED, 4, navigating = true, listOf(a, b), null))
+        assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.IMPORTED, 4, navigating = false, listOf(a, b), null))
+        assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.RECORDED, 0, navigating = true, listOf(a, b), null, hasLine = false))
         // a planned route without via points is only shown as a track
         assertEquals(OpenAsk.NONE, RouteRules.openAsk(TourKind.PLANNED, 1, navigating = true, listOf(a, b), null))
     }

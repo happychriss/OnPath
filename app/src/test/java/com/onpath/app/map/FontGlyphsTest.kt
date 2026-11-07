@@ -28,5 +28,26 @@ class FontGlyphsTest {
         assertTrue("missing glyph ranges: $missing", missing.isEmpty())
     }
 
+    /**
+     * Owner 2026-11-06 (Pixel, 17:59: "Failed to load glyph range 8448-8703" near Königswinter): map labels come from
+     * OpenStreetMap and may hold ANY character – an arrow in a name was enough to drop tiles. So every font ships all 256
+     * ranges: real glyphs for what European labels use, a small empty range (the font stack's name + the range, as the
+     * glyph servers send for an empty range) for every other – then at worst one character is missing, never a tile.
+     */
+    @Test fun everyUsedFontHasAll256Ranges() {
+        val missing = fontsUsed().flatMap { font ->
+            (0 until 256).map { "${it * 256}-${it * 256 + 255}.pbf" }.filter { !File(fonts, "$font/$it").isFile }.map { "$font/$it" }
+        }
+        assertTrue("missing glyph ranges (${missing.size}): ${missing.take(10)}", missing.isEmpty())
+    }
+
+    /** The ranges map labels in Europe need carry real glyphs (Latin with accents, Greek, Cyrillic, arrows, ①). */
+    @Test fun europeanRangesHaveRealGlyphs() {
+        val real = listOf("0-255", "256-511", "512-767", "768-1023", "1024-1279", "7680-7935", "8192-8447", "8448-8703",
+            "9216-9471", "9472-9727", "9728-9983")
+        val empty = fontsUsed().flatMap { font -> real.filter { File(fonts, "$font/$it.pbf").length() < 1_000 }.map { "$font/$it" } }
+        assertTrue("ranges without glyphs: $empty", empty.isEmpty())
+    }
+
     @Test fun stylesParse() { styles.forEach { JSONObject(it.readText()) } }
 }

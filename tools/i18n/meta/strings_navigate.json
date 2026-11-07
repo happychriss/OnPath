@@ -531,6 +531,13 @@
     "priority": 1,
     "confidence": "sicher"
   },
+  "nav_notif_paused_in_plan": {
+    "area": "Notification",
+    "context": "Recording notification while the app is in Plan during a tour that follows a route: the guidance is quiet, the recording goes on; a tap opens the app",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 60
+  },
   "nav_notif_following": {
     "area": "Notification",
     "context": "Recording notification text: %1$s = status ('Recording'), %2$s = name of the followed route",
@@ -769,49 +776,12 @@
     "priority": 1,
     "confidence": "sicher"
   },
-  "nav_keep_going": {
-    "area": "Navigate",
-    "context": "Button in the arrival dialog: do not end the tour",
-    "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "'Weitermachen' – alternative 'Nicht beenden'",
-    "max": 16
-  },
   "nav_continue": {
     "area": "Tour card (Plan)",
     "context": "Main button of the tour card: back to navigation",
     "priority": 1,
     "confidence": "sicher",
     "max": 16
-  },
-  "nav_continue_as": {
-    "area": "Tour card (Plan)",
-    "context": "Main button of the tour card: %1$s = activity ('Continue · Gravel bike')",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 30,
-    "decided": "Owner 2026-10-26: short MTB / E-MTB on buttons"
-  },
-  "nav_tour_running": {
-    "area": "Tour card (Plan)",
-    "context": "Status line of the tour card: %1$s = distance, %2$s = elapsed clock",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 40
-  },
-  "nav_tour_paused": {
-    "area": "Tour card (Plan)",
-    "context": "Status line of the tour card while paused",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 40
-  },
-  "nav_end_tour": {
-    "area": "Tour card (Plan)",
-    "context": "Red button on the tour card (asks first)",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 14
   },
   "nav_route_back_title": {
     "area": "Tour card (Plan)",
@@ -1235,10 +1205,109 @@
     "priority": 3,
     "confidence": "sicher"
   },
-  "nav_tour_record_only": {
-    "area": "Tour card (Plan)",
-    "context": "Status line of a running tour after the route guidance was ended (all points deleted / Just record); %1$s distance, %2$s time",
+  "nav_leave_title": {
+    "area": "Navigate",
+    "context": "Question box in Navigate when Android's back is pressed while a tour records (owner 2026-11-06, flow map N4): title",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "nav_leave_text": {
+    "area": "Navigate",
+    "context": "Question box in Navigate when Android's back is pressed while a tour records (owner 2026-11-06, flow map N4): the line under it – the recording goes on in the background",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 60
+  },
+  "nav_leave_stay": {
+    "area": "Navigate",
+    "context": "Question box in Navigate when Android's back is pressed while a tour records (owner 2026-11-06, flow map N4): button, stay in the app",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "nav_leave_go": {
+    "area": "Navigate",
+    "context": "Question box in Navigate when Android's back is pressed while a tour records (owner 2026-11-06, flow map N4): button, the app goes to the background",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "nav_relock": {
+    "area": "Navigate",
+    "context": "TalkBack name of the open-lock button beside the big blue Plan button after unlocking: locks the screen again",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_change_plan": {
+    "area": "Navigate",
+    "context": "Big blue button where the slider was, after unlocking: opens the plan to change it; the tour goes on (owner 2026-11-05: just 'Plan')",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 20
+  },
+  "nav_delete_tour": {
+    "area": "Navigate",
+    "context": "Quiet red text button in the end sheet: the tour goes to the recycle bin, no second question",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_end_section_tour": {
+    "area": "Navigate",
+    "context": "Section caption (green dot) in the end sheet: the recorded tour",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_end_section_plan": {
+    "area": "Navigate",
+    "context": "Section caption (blue dot) in the end sheet: the changed plan",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_free_tour": {
+    "area": "Navigate",
+    "context": "Navigate status card during a tour without a route",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_stop_arrive": {
+    "area": "Navigate",
+    "context": "Arrival clock of a stop ahead under the profile (owner 2026-11-05), e.g. 'an 14:20'",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 12
+  },
+  "nav_card_open": {
+    "area": "Navigate",
+    "context": "Screen reader state of the top status card when it is opened (profile, stops)",
     "priority": 3,
     "confidence": "sicher"
+  },
+  "nav_card_closed": {
+    "area": "Navigate",
+    "context": "Screen reader state of the top status card when it is closed",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "nav_pause_band": {
+    "area": "Navigate (paused)",
+    "context": "Title of the calm paper band over the bottom bar while a tour is paused (owner 2026-11-07, variant C). %1$s = how long the pause lasts, ticking: '12:04' (mm:ss) or '1:02:30' (h:mm:ss).",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 24
+  },
+  "nav_pause_band_line": {
+    "area": "Navigate (paused)",
+    "context": "Second line of the pause band when a route is followed: both the track recording and the route guidance stand still until 'Weiter'.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 40
+  },
+  "nav_pause_band_line_free": {
+    "area": "Navigate (paused)",
+    "context": "Second line of the pause band on a free tour (no route followed): only the recording stands still.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 40
   }
 }

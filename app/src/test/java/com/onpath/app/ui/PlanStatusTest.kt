@@ -7,7 +7,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * App start with a saved ≈ 8-day plan (Bozen → Germany) → "Very long plan – asking first" → Cancel: the sheet must not
@@ -52,30 +51,36 @@ class PlanStatusTest {
         assertEquals(PlanStatus.OnCancel.KEEP_POINTS, PlanStatus.onCancel(PlanStatus.Cause.Other, canUndo = true, canRedo = true))
     }
 
-    /** The ViewModel sets the cause at each trigger and reads it in the one Cancel path. */
-    @Test fun viewModelSetsTheCauseAtEachTrigger() {
-        val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        val change = vm.substringAfter("private fun change(").substringBefore("\n    }")
-        assertTrue(change, change.contains("nextCause = PlanStatus.Cause.PointEdit"))
-        val step = vm.substringAfter("private fun step(").substringBefore("\n    }")
-        assertTrue(step, step.contains("PlanStatus.Cause.Undo") && step.contains("PlanStatus.Cause.Redo"))
-        val select = vm.substringAfter("fun selectActivity(").substringBefore("\n    }")
-        assertTrue(select, select.contains("activityCause()"))
-        val sacSel = vm.substringAfter("fun selectSac(").substringBefore("\n    }")
-        assertTrue(sacSel, sacSel.contains("activityCause()"))
-        val recalc = vm.substringAfter("private fun recalc() {").substringBefore("routeJob?.cancel()")
-        assertTrue(recalc, recalc.contains("runCause = nextCause; nextCause = PlanStatus.Cause.Other"))
-        // the routing-data re-route is no user change: its Cancel only stops
-        val data = vm.substringAfter("routingDataReroute = true; ").substringBefore("\n")
-        assertFalse(data, data.contains("nextCause"))
+    /** Each trigger sets the cause, a run takes it, the one Cancel path reads it once ([com.onpath.app.domain.plan.RunCause]). */
+    @Test fun eachTriggerSetsTheCauseOfTheNextRun() {
+        val c = com.onpath.app.domain.plan.RunCause()
+        c.pointEdit(); c.start()
+        assertEquals(PlanStatus.Cause.PointEdit, c.takeForCancel())
+        assertEquals("Cancel reads it once", PlanStatus.Cause.Other, c.takeForCancel())
+        c.step(undo = true); c.start(); assertEquals(PlanStatus.Cause.Undo, c.run)
+        c.step(undo = false); c.start(); assertEquals(PlanStatus.Cause.Redo, c.run)
+        // a run without a trigger (newer routing data, a restored plan): Cancel only stops
+        c.start(); assertEquals(PlanStatus.Cause.Other, c.takeForCancel())
+        // "Plan anyway" / "Weiter warten": the same run again – a later Cancel still takes back what started it
+        c.pointEdit(); c.start(); c.again(); c.start()
+        assertEquals(PlanStatus.Cause.PointEdit, c.takeForCancel())
+    }
+
+    /** A second activity change while the first still calculates keeps the activity from BEFORE the first. */
+    @Test fun anActivityChangeWhileTheLastOneCalculatesKeepsTheOldActivity() {
+        val c = com.onpath.app.domain.plan.RunCause()
+        val first = PlanStatus.Cause.ActivityChange(Activity.HIKE, 3)
+        c.activity(c.activityChange(first, previousStillOpen = false)); c.start()
+        val second = PlanStatus.Cause.ActivityChange(Activity.MTB, 2)
+        assertEquals(first, c.activityChange(second, previousStillOpen = true))
+        assertEquals("the first run is over: the change from now", second, c.activityChange(second, previousStillOpen = false))
+        c.other(); assertEquals(PlanStatus.Cause.Other, c.next)
     }
 
     /** Problem 9: a tap outside "This route is very long" or Back must not undo – the dialog stays until a button. */
     @Test fun longRouteDialogStaysUntilAnswered() {
-        val bar = File("src/main/java/com/onpath/app/ui/TourBar.kt").readText()
-        val dlg = bar.substringAfter("fun LongRouteDialog(")
-        assertTrue(dlg, dlg.contains("onDismissRequest = {}"))
-        assertTrue(dlg, dlg.contains("dismissOnBackPress = false, dismissOnClickOutside = false"))
+        assertFalse(LongRouteDialogRules.properties.dismissOnBackPress)
+        assertFalse(LongRouteDialogRules.properties.dismissOnClickOutside)
     }
 
     /** Invariant: "Calculating the route…" only while a routing request runs. */
@@ -86,19 +91,30 @@ class PlanStatusTest {
         }
     }
 
-    /** The ViewModel and the sheet use these rules (no own "Calculating" text, no Cancel that leaves nothing running). */
-    @Test fun viewModelAndSheetUseTheRules() {
-        val panel = File("src/main/java/com/onpath/app/ui/PlanPanel.kt").readText()
-        val code = panel.lines().filterNot { it.trim().startsWith("/") || it.trim().startsWith("*") }.joinToString("\n")
-        assertFalse("PlanPanel has no own Calculating text", code.contains("\"Calculating"))
-        val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        val answer = vm.substringAfter("fun answerLongRoute(").substringBefore("\n    fun ")
-        assertTrue(answer, answer.contains("cancelRun(NotRouted.LONG)"))
-        val run = vm.substringAfter("private fun cancelRun(").substringBefore("\n    }")
-        assertTrue(run, run.contains("PlanStatus.onCancel(cause, canUndo, canRedo)") && run.contains("leaveUnrouted(why)"))
-        val cancel = vm.substringAfter("fun cancelRouting(").substringBefore("\n    private fun recalc(")
-        assertTrue(cancel, cancel.contains("cancelRun(NotRouted.STOPPED)"))
-        val leave = vm.substringAfter("private fun leaveUnrouted(").substringBefore("\n    }")
-        assertTrue(leave, leave.contains("routing = false") && leave.contains("requests.invalidate()"))
+    /** The wait card counts the legs routed (owner 2026-11-05): "Calculating section 2 of 4…", a quarter of the bar; one leg = running bar. */
+    @Test fun theWaitCardCountsTheLegsRouted() {
+        assertEquals(PlanStatus.CALCULATING, PlanStatus.calculating(null))
+        assertEquals(PlanStatus.CALCULATING, PlanStatus.calculating(0 to 1))
+        assertFalse(PlanStatus.hasLegs(0 to 1))
+        assertTrue(PlanStatus.hasLegs(0 to 2))
+        assertEquals("Calculating section 2 of 4…", PlanStatus.calculating(1 to 4))
+        assertEquals("the last leg done: still 4 of 4", "Calculating section 4 of 4…", PlanStatus.calculating(4 to 4))
+        assertEquals(0.25f, PlanStatus.share(1 to 4), 0.0001f)
+        assertEquals(1f, PlanStatus.share(5 to 4), 0.0001f)
+    }
+
+    /** The bar moves within one long leg and never goes back (owner 2026-11-05). */
+    @Test fun theWaitBarMovesWithinALegAndNeverBack() {
+        val one = WaitBar()
+        assertEquals(0f, one.next(0, 1, null), 0.0001f)
+        assertEquals(0.4f, one.next(0, 1, 0.4), 0.0001f)
+        assertEquals("a retry inside the leg starts its search again: the bar stays", 0.4f, one.next(0, 1, 0.1), 0.0001f)
+        assertEquals(1f, one.next(1, 1, null), 0.0001f)
+        val four = WaitBar()
+        assertEquals("leg 2 of 4 half done", 0.375f, four.next(1, 4, 0.5), 0.0001f)
+        assertEquals("the next leg starts: no step back", 0.5f, four.next(2, 4, 0.0), 0.0001f)
+        assertEquals(0.5f, four.next(1, 4, null), 0.0001f)
+        assertEquals(1f, four.next(4, 4, 0.7), 0.0001f)
+        assertEquals("no legs to route", 0f, WaitBar().next(0, 0, 0.5), 0.0001f)
     }
 }

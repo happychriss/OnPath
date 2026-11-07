@@ -47,7 +47,7 @@ object CellFixtures {
     }
 
     private fun fileJson(name: String, f: File, cell: CellId, version: String) = JSONObject().put("name", name).put("size", f.length())
-        .put("sha256", CellApi.sha256(f)).put("url", "cells/f2/${cell.path}/$version/$name")
+        .put("sha256", com.onpath.app.net.HttpDownload.sha256Of(f)).put("url", "cells/f2/${cell.path}/$version/$name")
 
     fun geojson(points: List<Pair<Double, Double>>, tag: String) = JSONObject().put("type", "FeatureCollection").put("features",
         JSONArray(points.mapIndexed { i, (lat, lon) ->

@@ -3,6 +3,7 @@ package com.onpath.app.ui
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import com.onpath.app.domain.tour.PocketLogic
 
 /**
  * When the proximity sensor turns the screen off while navigating (owner 2026-10-30): on foot at once, on the bike only
@@ -73,5 +74,23 @@ class PocketLogicTest {
         val p = PocketLogic(PocketLogic.BIKE_ARM_MS)
         p.sensor(true, 0); p.sensor(true, 3_000); p.sensor(true, 4_000)
         assertEquals(off, p.at(5_000))
+    }
+
+    // ---- in the pocket = the screen is off by the sensor (owner 2026-11-07 10:45: the unlock window shuts on it) ----
+
+    @Test fun onFootCoveredIsInThePocketAtOnceUncoveredIsNot() {
+        val p = PocketLogic(0)
+        org.junit.Assert.assertFalse(p.inPocket(0))
+        p.sensor(true, 1_000)
+        org.junit.Assert.assertTrue("Pause pressed, then into the pocket: in the pocket at once", p.inPocket(1_000))
+        p.sensor(false, 4_000)
+        org.junit.Assert.assertFalse("taken out again", p.inPocket(4_000))
+    }
+
+    @Test fun onTheBikeAHandReachingIsNotThePocketFiveSecondsCoveredIs() {
+        val p = PocketLogic(PocketLogic.BIKE_ARM_MS)
+        p.sensor(true, 0)
+        org.junit.Assert.assertFalse("a hand reaching for the handlebar phone", p.inPocket(2_000))
+        org.junit.Assert.assertTrue("5 s covered: pocket / bag", p.inPocket(5_000))
     }
 }

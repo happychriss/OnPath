@@ -20,13 +20,19 @@ object TurnRound {
 
     /** [recent] = the rider's latest positions, oldest first; [line] = the new route from the position on. */
     fun needed(recent: List<GeoPoint>, line: List<GeoPoint>): Boolean {
-        if (recent.size < 2 || line.size < 2) return false
-        val now = recent.last()
-        val from = recent.asReversed().firstOrNull { Geo.distance(it, now) >= MOVE_M } ?: return false
+        if (line.size < 2) return false
+        val moving = heading(recent) ?: return false
         val start = line.first()
         val to = line.firstOrNull { Geo.distance(start, it) >= AHEAD_M } ?: return false
-        val moving = TurnDetector.bearing(from, now)
-        val route = TurnDetector.bearing(start, to)
-        return abs(TurnDetector.diff(moving, route)) > ANGLE_DEG
+        val route = Geo.bearing(start, to)
+        return abs(Geo.angleDiff(moving, route)) > ANGLE_DEG
+    }
+
+    /** The rider's direction over the last [MOVE_M] of [recent] (oldest first); null = not moved that far (unknown). */
+    fun heading(recent: List<GeoPoint>): Double? {
+        if (recent.size < 2) return null
+        val now = recent.last()
+        val from = recent.asReversed().firstOrNull { Geo.distance(it, now) >= MOVE_M } ?: return null
+        return Geo.bearing(from, now)
     }
 }

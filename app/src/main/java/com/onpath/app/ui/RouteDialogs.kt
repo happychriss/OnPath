@@ -3,6 +3,10 @@ package com.onpath.app.ui
 import com.onpath.strings.*
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,11 +41,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 @Composable
 fun RouteDialogs(vm: AppViewModel) {
     vm.saveAsk?.let { ask -> SaveNameDialog(ask.kind, ask.name, onSave = vm::confirmSave, onCancel = vm::cancelSave) }
-    if (vm.discardAsk) DiscardPlanDialog(onDiscard = vm::discardConfirmed, onCancel = { vm.discardAsk = false })
-    vm.replaceAsk?.let { t ->
-        ReplacePlanDialog(onSaveFirst = vm::replaceSaveFirst, onReplace = vm::replaceConfirmed, onCancel = { vm.replaceAsk = null },
-            fromLink = t is PlanToOpen.Shared)
-    }
     if (vm.straightAsk) StraightLegsDialog(onNavigate = vm::straightConfirmed, onCancel = { vm.straightAsk = false })
     vm.routesProblem?.let { msg ->
         AlertDialog(
@@ -64,8 +64,8 @@ fun StraightLegsDialog(onNavigate: () -> Unit, onCancel: () -> Unit) {
         text = {
             DialogText(str(Res.string.plan_straight_text))
         },
-        confirmButton = { TextButton(onClick = onNavigate, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.plan_navigate_anyway)) } },
-        dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.plan_fix_route)) } },
+        confirmButton = { TextButton(colors = ActionButtons.goText(), onClick = onNavigate, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.plan_navigate_anyway)) } },
+        dismissButton = { TextButton(colors = ActionButtons.editText(), onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.plan_fix_route)) } },
     )
 }
 
@@ -97,24 +97,14 @@ fun SaveNameDialog(kind: SaveAsk.Kind, name: String, onSave: (String) -> Unit, o
                 try { focus.requestFocus() } catch (e: IllegalStateException) { com.onpath.app.debug.Problems.trace("ui", "Save dialog: no focus ($e)") }
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(text.text) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_save)) } },
+        confirmButton = { TextButton(colors = ActionButtons.editText(), onClick = { onSave(text.text) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_save)) } },
         dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
     )
 }
 
-/**
- * ✕ Close plan while the plan has unsaved changes (owner 2026-10-31: a decision that can lose something): Cancel ·
- * Discard (red). A saved route itself stays in My routes either way.
- */
-@Composable
-fun DiscardPlanDialog(onDiscard: () -> Unit, onCancel: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onCancel,
-        title = { Text(str(Res.string.plan_discard_title)) },
-        confirmButton = { TextButton(onClick = onDiscard, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text(str(Res.string.plan_discard), color = OnPathColors.Error) } },
-        dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
-    )
+/** When the dialog's actions fit in one row (dp). */
+object DecisionLayout {
+    fun oneRow(needDp: Float, widthDp: Float): Boolean = needDp <= widthDp
 }
 
 /**

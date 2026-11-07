@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.onpath.app.data.Format
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.domain.tour.TrackLine
 
 // ------------------------------------------------------------------ shared pieces
 
@@ -54,11 +55,9 @@ fun BottomPanel(
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().warmShadow(OnPathShadow.HIGH, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 8.dp,
-    ) {
+        color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.animateContentSize().navigationBarsPadding()
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
             // Material drag handle (32 × 4 dp)
@@ -73,7 +72,8 @@ fun BottomPanel(
 @Composable
 fun Stat(value: String, label: String, modifier: Modifier = Modifier, big: Boolean = false) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, style = if (big) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        val st = if (big) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleLarge
+        Text(instrument(value, st), style = st, maxLines = 1)
         Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -116,6 +116,11 @@ fun TrackPanel(
     /** "Plan from it": the track as a plannable route with few points; null = not offered. */
     onPlan: (() -> Unit)? = null,
     planBusy: Boolean = false,
+    /**
+     * During a tour (owner 2026-11-06, F1 + C): the green "Navigation ›" under the two buttons – the way back to Navigate
+     * (no status card with Weiter / Pause / Beenden over the panel any more); null = no tour.
+     */
+    backToNavigation: (@Composable () -> Unit)? = null,
 ) {
     BottomPanel {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -124,23 +129,31 @@ fun TrackPanel(
             ActionButtonSmall(Icons.Filled.Close, str(Res.string.plan_close_track), onClose)
         }
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(Format.distance(track.distanceM), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text(instrument(Format.distance(track.distanceM), MaterialTheme.typography.titleLarge), style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.width(8.dp))
-            Text(Format.duration(track.durationS), style = MaterialTheme.typography.titleMedium,
+            Text(instrument(Format.duration(track.durationS), MaterialTheme.typography.titleMedium), style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 1.dp))
         }
-        Text("↑ ${Format.meters(track.ascentM)}  ↓ ${Format.meters(track.descentM)}", style = MaterialTheme.typography.bodyMedium,
+        Text(instrument("↑ ${Format.meters(track.ascentM)}  ↓ ${Format.meters(track.descentM)}", MaterialTheme.typography.bodyMedium),
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
         // "Activity set to MTB from the file": an import changed the activity – said, never silent
         track.note?.let { InfoLine(it) }
         track.skippedNote?.let { InfoLine(it) }
-        Spacer(Modifier.height(8.dp))
-        ElevationProfile(track.points, color = OnPathColors.Gpx, onHighlight = onHighlight)
+        // a tour without a line (field bug 2026-11-06 22:30: 0 m, "welche Route? Es ist ja gar keine Route da"): one quiet
+        // line instead of the profile, and nothing to make a plan of
+        val line = TrackLine.has(track.points.size, track.distanceM)
+        if (line) {
+            Spacer(Modifier.height(8.dp))
+            ElevationProfile(track.points, color = OnPathColors.Gpx, onHighlight = onHighlight)
+        } else InfoLine(str(Res.string.plan_no_track_recorded))
         Spacer(Modifier.height(12.dp))
-        // no export here, it lives in My routes (owner); the two ways to use a track: follow it as it is, or make a plan
-        // of it to edit
-        if (onPlan != null) {
-            OutlinedButton(onClick = onPlan, enabled = !planBusy, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+        // no export here, it lives in My routes (owner); the two ways to use a track: follow it as it is (green: it goes
+        // to the navigation), or make a plan of it to edit (blue: planning – owner's colour rule, 2026-11-06 F1)
+        if (onPlan != null && line) {
+            OutlinedButton(onClick = onPlan, enabled = !planBusy, modifier = Modifier.fillMaxWidth().height(48.dp),
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, if (planBusy) OnPathColors.ActionEdit.copy(alpha = 0.38f) else OnPathColors.ActionEdit),
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = OnPathColors.ActionEdit)) {
                 if (planBusy) androidx.compose.material3.CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 else Icon(Icons.Filled.Edit, null)
                 Spacer(Modifier.width(8.dp))
@@ -149,15 +162,20 @@ fun TrackPanel(
             Spacer(Modifier.height(8.dp))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // a track without a line (an empty recording, one point) has nothing to follow: Start only records,
-            // during a tour there is nothing to switch to (PlanStart)
-            val line = track.points.size >= 2
-            Button(onClick = onFollow, enabled = (!isFollowed || !recording) && (line || !recording),
+            // a track without a line (an empty recording, one point) has nothing to follow: Start only records
+            // ("Los geht’s · ohne Route", owner 2026-11-03), during a tour there is nothing to switch to (PlanStart –
+            // two points, as the start decides; a few metres can still be followed)
+            val follow = track.points.size >= 2
+            Button(colors = ActionButtons.go(), onClick = onFollow, enabled = (!isFollowed || !recording) && (follow || !recording),
                 modifier = Modifier.weight(1f).height(56.dp)) {
-                Icon(if (line || recording) Icons.Filled.Navigation else Icons.Filled.FiberManualRecord, null)
+                Icon(if (follow || recording) Icons.Filled.Navigation else Icons.Filled.FiberManualRecord, null)
                 Spacer(Modifier.width(8.dp))
-                Text(trackFollowLabel(recording, activity, line), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(trackFollowLabel(recording, activity, follow), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+        }
+        if (backToNavigation != null) {
+            Spacer(Modifier.height(8.dp))
+            backToNavigation()
         }
     }
 }
@@ -167,16 +185,7 @@ fun TrackPanel(
  * without a line ([line] false) only records: "Start recording · Hike".
  */
 internal fun trackFollowLabel(recording: Boolean, activity: com.onpath.app.routing.Activity, line: Boolean = true): String =
-    Txt.s(when {
-        recording -> Res.string.plan_navigate_track_for
-        !line -> Res.string.plan_start_recording_for
-        else -> Res.string.plan_start_navigation_for
-    }, activity.navName)
+    // without a line: "Los geht’s · ohne Route" (owner 2026-11-03, no activity in it)
+    if (!line && !recording) Txt.s(Res.string.plan_start_recording_for)
+    else Txt.s(if (recording) Res.string.plan_navigate_track_for else Res.string.plan_start_navigation_for, activity.navName)
 
-/** Placeholder for previews/screenshot tests where MapLibre cannot render. */
-@Composable
-fun MapPlaceholder(modifier: Modifier = Modifier) {
-    Box(modifier.background(Color(0xFFE8EEDC)), contentAlignment = Alignment.Center) {
-        Text("map", color = Color(0x55000000), textAlign = TextAlign.Center)
-    }
-}

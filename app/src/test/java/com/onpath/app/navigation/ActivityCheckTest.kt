@@ -19,8 +19,13 @@ import org.junit.Test
 class ActivityCheckTest {
     /** East 1 km, then north 1 km; stops at the start, the corner and the end. */
     private val route = line(0.0 to 0.0, 1000.0 to 0.0, 1000.0 to 1000.0)
-    private fun session() = NavSession.start(NavKind.PLAN, "Test", Activity.HIKE, 3, route,
+    /** On the route already (the rest starts at the position). */
+    private fun session() = fresh().copy(reached = true)
+    /** Just started, never on the route yet (NavSession.start: reached = false). */
+    private fun fresh() = NavSession.start(NavKind.PLAN, "Test", Activity.HIKE, 3, route,
         listOf(pt(0.0, 0.0), pt(1000.0, 0.0), pt(1000.0, 1000.0)), names = listOf(null, "Hut", "Peak"))
+    /** Field bug 2026-11-07: at home, ~700 km from the plan. */
+    private val home = GeoPoint(51.16926, 6.92544)
 
     private fun result(points: List<GeoPoint>, ways: List<Share> = emptyList(), surfaces: List<Share> = emptyList()) =
         RouteResult(points, Geo.length(points), 0.0, 0.0, 0.0, ways, surfaces)
@@ -58,11 +63,59 @@ class ActivityCheckTest {
 
     @Test fun aTrackKeepsItsShapeThroughVias() {
         val long = line(0.0 to 0.0, 10_000.0 to 0.0, stepM = 50.0)
-        val s = NavSession.start(NavKind.TRACK, "GPX", Activity.HIKE, 3, long)
+        val s = NavSession.start(NavKind.TRACK, "GPX", Activity.HIKE, 3, long).copy(reached = true)
         val r = ActivityCheck.rest(s, 1000.0, pt(1000.0, 0.0))!!
         // 9 km left: vias every 2 km (3, 5, 7 km – none within 1 km of the end) and the end
         assertEquals(1 + 3 + 1, r.waypoints.size)
         assertTrue(r.stops.isEmpty())
+    }
+
+    // ---- never on the route yet (field bug 2026-11-07, tour 207: Hilden, plan in Meran) ----------------------------
+
+    @Test fun farFromARouteNeverReachedTheRestIsTheWholePlanNotFromThePosition() {
+        // the owner at home 700 km away, Los geht's pressed, then Hike T1 → T5: every row routed Hilden → Meran (15 s
+        // timeout each) – the position must never be the first waypoint while the route was never reached
+        val r = ActivityCheck.rest(fresh(), 0.0, home)!!
+        assertEquals("the plan's start first, not the position", pt(0.0, 0.0), r.waypoints.first())
+        assertFalse(r.waypoints.contains(home))
+        assertEquals(3, r.waypoints.size)
+        assertEquals(listOf(null, "Hut", "Peak"), r.stops.map { it.name })
+        assertEquals(2000.0, Geo.length(r.line), 5.0)
+    }
+
+    @Test fun neverReachedButAStopVisitedStartsAtTheFirstStopNotVisited() {
+        val r = ActivityCheck.rest(fresh().copy(visited = setOf(0)), 0.0, home)!!
+        assertEquals(listOf("Hut", "Peak"), r.stops.map { it.name })
+        assertEquals(pt(1000.0, 0.0), r.waypoints.first())
+        assertEquals(1000.0, Geo.length(r.line), 10.0)
+    }
+
+    @Test fun neverReachedOnlyTheDestinationLeftRoutesFromTheStopBefore() {
+        val r = ActivityCheck.rest(fresh().copy(visited = setOf(0, 1)), 0.0, home)!!
+        assertEquals(listOf(pt(1000.0, 0.0), pt(1000.0, 1000.0)), r.waypoints)
+    }
+
+    @Test fun ledThereTheRestIsThePlansOwnLineNotTheWayThere() {
+        // "Guide me": the followed line is position → start → the plan; the check still routes only the plan
+        val lead = line(-5000.0 to 0.0, 0.0 to 0.0, 1000.0 to 0.0, 1000.0 to 1000.0)
+        val s = fresh().copy(current = lead, lead = true)
+        val r = ActivityCheck.rest(s, 100.0, pt(-4900.0, 0.0))!!
+        assertEquals(pt(0.0, 0.0), r.waypoints.first())
+        assertEquals(2000.0, Geo.length(r.line), 5.0)
+    }
+
+    @Test fun aTrackNeverReachedStartsAtItsStart() {
+        val long = line(0.0 to 0.0, 10_000.0 to 0.0, stepM = 50.0)
+        val r = ActivityCheck.rest(NavSession.start(NavKind.TRACK, "GPX", Activity.HIKE, 3, long), 0.0, home)!!
+        assertEquals(pt(0.0, 0.0), r.waypoints.first())
+        assertEquals(10_000.0, Geo.length(r.line), 20.0)
+    }
+
+    @Test fun onTheRouteFarOffTheRestStillStartsAtThePosition() {
+        // reached once, then far off: the way back from where one is stays the rule (re-route)
+        val off = pt(500.0, 400.0)
+        val r = ActivityCheck.rest(session(), 500.0, off)!!
+        assertEquals(off, r.waypoints.first())
     }
 
     // ---- does it fit -----------------------------------------------------------------------------------------
@@ -126,7 +179,7 @@ class ActivityCheckTest {
     }
 
     @Test fun switchQuestionStaysOnTheRouteUntilAnsweredThenTheTourIsForTheNewActivity() {
-        val nav = Navigator(session())
+        val nav = Navigator(fresh())
         walk(0.0 to 0.0, 600.0 to 0.0).forEach { nav.onFix(it) }
         nav.proposeSwitch(proposal(600.0 to 0.0), 1800.0)
         val q = nav.prompt as NavPrompt.Question
@@ -147,8 +200,26 @@ class ActivityCheckTest {
         assertEquals(q.line, nav.state.line)
     }
 
+    /**
+     * Field bug 2026-11-06 (owner: Bike → Hike during a tour, "Take new route" – the navigation stayed as it was): the
+     * proposal comes from the app without a session token, the service then saw the taken switch as a re-route of an
+     * older line (NavSession.mayOverwrite) and loaded the old session back. The switch keeps the running session's token.
+     */
+    @Test fun aTakenSwitchKeepsTheRunningSessionsTokenSoTheServiceSavesIt() {
+        val running = fresh().copy(token = 1_762_000_000_000L)
+        val nav = Navigator(running)
+        walk(0.0 to 0.0, 600.0 to 0.0).forEach { nav.onFix(it) }
+        nav.proposeSwitch(proposal(600.0 to 0.0), 1800.0)
+        val q = nav.prompt as NavPrompt.Question
+        assertTrue(nav.take(q.id).activityChanged)
+        assertEquals(Activity.BIKE_TREKKING, nav.session.activity)
+        assertEquals(running.token, nav.session.token)
+        // what RecordingService.handle asks before it writes nav-session.json (the file holds the running session)
+        assertTrue(NavSession.mayOverwrite(running.token, nav.session.token))
+    }
+
     @Test fun keepClosesTheSwitchQuestionAndNothingChanges() {
-        val nav = Navigator(session())
+        val nav = Navigator(fresh())
         walk(0.0 to 0.0, 600.0 to 0.0).forEach { nav.onFix(it) }
         nav.proposeSwitch(proposal(600.0 to 0.0), 1800.0)
         val q = nav.prompt as NavPrompt.Question
@@ -159,7 +230,7 @@ class ActivityCheckTest {
     }
 
     @Test fun keepWhileOffRouteGoesBackToTheWayBackQuestion() {
-        val nav = Navigator(session())
+        val nav = Navigator(fresh())
         walk(0.0 to 0.0, 1000.0 to 0.0, 1150.0 to 0.0).forEach { nav.onFix(it) }
         assertEquals(NavPrompt.Searching, nav.prompt)
         nav.proposeSwitch(proposal(1150.0 to 0.0), 1800.0)
@@ -174,7 +245,7 @@ class ActivityCheckTest {
     }
 
     @Test fun switchedSessionSurvivesJson() {
-        val nav = Navigator(session())
+        val nav = Navigator(fresh())
         nav.onFix(fix(0.0, 0.0, 0))
         nav.proposeSwitch(proposal(0.0 to 0.0), 1800.0)
         nav.take((nav.prompt as NavPrompt.Question).id)

@@ -27,8 +27,8 @@
     <string name="maps_cleanup_all_in_use">Every downloaded area is in use.</string>
     <string name="maps_clear_all_title">Clear all map areas?</string>
     <plurals name="maps_clear_all_text">
-        <item quantity="one">All %1$d downloaded area (%2$s) are removed, also those of your current route and saved routes. The world overview stays; areas load again when needed. Tours and routes are kept.</item>
-        <item quantity="other">All %1$d downloaded areas (%2$s) are removed, also those of your current route and saved routes. The world overview stays; areas load again when needed. Tours and routes are kept.</item>
+        <item quantity="one">All %1$d downloaded area (%2$s) are removed, also those of your current plan and saved plans. The world overview stays; areas load again when needed. Tours and plans are kept.</item>
+        <item quantity="other">All %1$d downloaded areas (%2$s) are removed, also those of your current plan and saved plans. The world overview stays; areas load again when needed. Tours and plans are kept.</item>
     </plurals>
     <string name="maps_result_none">No map areas to remove</string>
     <plurals name="maps_result_removed">
@@ -109,7 +109,8 @@
     <string name="maps_row_area_south_west">Area to the south-west</string>
     <string name="maps_row_area_south">Area to the south</string>
     <string name="maps_row_area_south_east">Area to the south-east</string>
-    <string name="maps_overview_hint">Overview only – hold the map here to get the detailed map</string>
+    <string name="maps_overview_only">Overview map only</string>
+    <string name="maps_overview_load">Load detailed map</string>
     <string name="maps_update_loading">Loading the newer map…</string>
     <string name="maps_update_preparing">Newer map for this area being prepared</string>
     <string name="maps_update_preparing_min">Newer map for this area being prepared · about %1$d min</string>

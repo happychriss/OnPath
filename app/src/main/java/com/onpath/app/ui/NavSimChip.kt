@@ -45,10 +45,25 @@ fun NavSimChip(state: DemoLocation.State?, onStart: () -> Unit, onFactor: (Int) 
 private fun SimPill(text: String, label: String, onClick: () -> Unit) {
     Box(Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center) {
-        Surface(shape = RoundedCornerShape(50), color = OnPathColors.TagContainer, contentColor = OnPathColors.TagInk,
-            shadowElevation = 2.dp) {
+        Surface(shape = OnPathShapes.Pill, color = OnPathColors.TagContainer, contentColor = OnPathColors.TagInk, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Pill)) {
             Text(text, Modifier.padding(horizontal = 10.dp, vertical = 5.dp), color = OnPathColors.TagInk,
                 style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1)
         }
+    }
+}
+
+/**
+ * Where Navigate's "▶ Sim" begins on the followed line (field 2026-11-06 23:35, Hilden round trip whose first and last
+ * ~100 m are the same street: the Sim began at ① while the tour was 2.7 km along; the navigator kept its progress and
+ * read the jump as the loop's last metres walked backwards – the way out's next left turn was never said, the turn card
+ * showed the way back's "80 m Geradeaus"). During a tour on that line: where the tour is ([shownAlongM], else the
+ * progress once the route was reached); otherwise the start. Pure.
+ */
+object NavSimStart {
+    fun alongM(sameLine: Boolean, reached: Boolean, shownAlongM: Double?, progressM: Double?): Double = when {
+        !sameLine -> 0.0
+        shownAlongM != null -> shownAlongM.coerceAtLeast(0.0)
+        reached && progressM != null -> progressM.coerceAtLeast(0.0)
+        else -> 0.0
     }
 }

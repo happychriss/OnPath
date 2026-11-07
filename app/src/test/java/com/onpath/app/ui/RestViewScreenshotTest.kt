@@ -8,12 +8,14 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import java.util.Locale
+import com.onpath.app.domain.tour.RestEvent
 
 /**
  * The rest view while cycling (Smart screen, owner 2026-10-30): black, the next turn's sign large, distance, direction,
  * time left and arrival in dim grey, "Tap for the map". English, German and the largest phone font.
  */
-open class RestViewScreenshotTest {
+/** English frames dropped (test audit 2026-11-07: the German twin at the same font size is the check); the subclasses draw. */
+abstract class RestViewScreenshotTest {
     @get:Rule open val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5, showSystemUi = false)
 
     private fun shot(ui: RestUi) = paparazzi.snapshot { OnPathTheme { RestView(ui, onTap = {}) } }

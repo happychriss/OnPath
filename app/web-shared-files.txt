@@ -1,4 +1,4 @@
-# The app files the web planner compiles as they are (web/engine/build.gradle.kts on web-spike, tools/routing/jvm-test)
+# The app files the web planner compiles as they are (web/engine/build.gradle.kts, tools/routing/jvm-test)
 # and the app's unit tests the web build runs for them – ONE list for both builds (review Arch 5, owner 2026-11-01).
 # Paths below app/src/main/java/com/onpath/app/ (files) and app/src/test/java/com/onpath/app/ (tests).
 # The app's SharedFilesRuleTest checks on every gate: each file exists, imports only what the web build provides
@@ -8,6 +8,8 @@
 [files]
 routing/RoutingContract.kt
 routing/Rd5Parts.kt
+# the offline corridor per activity (owner 2026-11-07: hike 10 km, bike 20 km) – Rd5Parts.forCorridor's default
+routing/OfflineCorridor.kt
 routing/BRouterWayStats.kt
 routing/WaypointSnap.kt
 routing/BRouterEngine.kt
@@ -16,6 +18,8 @@ routing/RouteTimeLimit.kt
 routing/TurnDetector.kt
 routing/Junctions.kt
 routing/Planner.kt
+routing/LegCache.kt
+routing/SlowPlan.kt
 routing/WaypointInsertion.kt
 routing/PlanEdits.kt
 routing/RouteSummary.kt
@@ -24,6 +28,7 @@ navigation/CueRule.kt
 navigation/JogRule.kt
 navigation/SpeedWindow.kt
 data/Geo.kt
+data/Format.kt
 time/PaceModel.kt
 time/RouteTimes.kt
 routing/PlanCode.kt
@@ -48,6 +53,9 @@ ui/PlanState.kt
 ui/MapGestures.kt
 poi/GoogleMapsLink.kt
 ui/RouteWarnings.kt
+# a held place's add entries („Als Zwischenstopp“ / „Als neues Ziel“) and the locate distance off the map (owner 2026-11-07)
+ui/PlaceAddMenu.kt
+ui/LocateDistance.kt
 gpx/GpxModel.kt
 gpx/GpxWriter.kt
 gpx/SportType.kt
@@ -65,26 +73,29 @@ sync/SyncRound.kt
 routing/LongRoute.kt
 ui/PlanStatus.kt
 ui/PlanGaps.kt
+# what reaches a stop the route does not reach ("② erst ab T2 erreichbar", owner 2026-11-07) – PlanGaps.reachText reads it
+routing/PlanReach.kt
 # GPX import (web-planner.md §15): the app's tolerant parser (SAX → onpathweb stand-ins in Wasm), track → plan, time
 gpx/GpxParser.kt
 routing/TrackToPlan.kt
 time/TimeEstimate.kt
 data/AppSettings.kt
+data/HoldSetting.kt
 # the world overview below the cells (web-planner.md §16): the app's style merge (org.json, as on Android; run on
 # the JVM at build time – task overviewStyle – so it adds nothing to the Wasm)
 map/Overview.kt
 # the map look per activity (owner 2026-10-31: identical in browser and app): which style layers show, the hiking
 # band's T-level filter – the app's MapController applies the same table
 map/ActivityLayers.kt
-# one plan computation for app and web (docs/handoff-web-planresult.md): route + model time, snapped points, gaps,
+# one plan computation for app and web (docs/design/web-planner.md §22): route + model time, snapped points, gaps,
 # warnings, rating, profile – Engine.plan calls PlanResult.plan like AppViewModel.recalc
 routing/PlanResult.kt
 routing/ProfileData.kt
-# the app's plan GPX (docs/handoff-web-parity-b.md §2): line + route points as <wpt>, "<name> - plan.gpx", re-import
+# the app's plan GPX (docs/design/web-planner.md §22): line + route points as <wpt>, "<name> - plan.gpx", re-import
 gpx/PlanGpx.kt
-# the routing fingerprint (docs/handoff-web-parity-b.md §4, routing-fingerprint.md): diagnostics + sync field 7
+# the routing fingerprint (docs/design/routing-fingerprint.md): diagnostics + sync field 7
 routing/RoutingFingerprint.kt
-# the plan sheet's routing-data notice and way-type / surface line (docs/handoff-web-notice-breakdown.md)
+# the plan sheet's routing-data notice and way-type / surface line (docs/design/web-planner.md §22)
 data/RoutingDataNotice.kt
 routing/BreakdownRules.kt
 # The app's own unit tests for the shared files the web adds (the app's Gradle build needs an Android SDK; these run on
@@ -92,12 +103,17 @@ routing/BreakdownRules.kt
 # new on main 2026-11-01 (cloud-app): pure rules the web mirrored or will use
 routing/PlanNames.kt
 sync/SaveRule.kt
+# tours per phone in sync (owner 2026-11-07: 250)
+sync/SyncLimits.kt
 
 [tests]
+routing/OfflineCorridorTest.kt
 routing/PlanCodeTest.kt
 ui/PlanStateTest.kt
 ui/MapGesturesTest.kt
 ui/RouteWarningsTest.kt
+ui/PlaceAddMenuTest.kt
+ui/LocateDistanceTest.kt
 sync/SyncCryptoTest.kt
 sync/PlanSyncTest.kt
 routing/LongRouteTest.kt
@@ -107,13 +123,15 @@ routing/TrackToPlanTest.kt
 ui/PlanGapsTest.kt
 # plan-sync track items (SyncItem.TRACK, TrackCode frozen bytes) + the fake mailbox it runs against
 sync/SyncTrackTest.kt
+sync/SyncLimitsTest.kt
 sync/MemoryMailbox.kt
-# the shared plan result, plan GPX and loop-aware edits (handoff-web-planresult.md, handoff-web-parity-b.md)
+# the shared plan result, plan GPX and loop-aware edits (docs/design/web-planner.md §22)
 routing/PlanResultTest.kt
 gpx/PlanGpxTest.kt
 routing/PlanPointsTest.kt
 data/RoutingDataNoticeTest.kt
 routing/BreakdownRulesTest.kt
-# the splice and its safety net (review routing H3, 644b416 on main)
-routing/PlannerSpliceTest.kt
+# leg by leg (PLANNER_VERSION 4, owner 2026-11-05): the joins and the leg cache
+routing/PlannerLegsTest.kt
+routing/LegCacheTest.kt
 routing/PlanNamesTest.kt

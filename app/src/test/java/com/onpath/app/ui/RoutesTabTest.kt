@@ -17,6 +17,17 @@ class RoutesTabTest {
     private val imported = tour(3, TourKind.IMPORTED)
     private val demo = tour(4, TourKind.RECORDED, DemoLocation.TOUR_PREFIX + "Algund")
 
+    /** Owner 2026-11-06: a search box in Meine Touren – every word in the name, case and accents ignored. */
+    @Test fun searchFindsByEveryWordIgnoringCaseAndAccents() {
+        val all = listOf(tour(10, TourKind.PLANNED, "Rund um den Kofel"), tour(11, TourKind.RECORDED, "Köln Altstadt"),
+            tour(12, TourKind.PLANNED, "Hauptstraße nach Neuss"))
+        assertEquals(all, RoutesTab.search(all, "  "))
+        assertEquals(listOf(10L), RoutesTab.search(all, "rund KOFEL").map { it.id })
+        assertEquals(listOf(11L), RoutesTab.search(all, "koln").map { it.id })
+        assertEquals(listOf(12L), RoutesTab.search(all, "strasse").map { it.id })
+        assertEquals(emptyList<Long>(), RoutesTab.search(all, "kofel köln").map { it.id })
+    }
+
     @Test fun eachKindHasItsTab() {
         assertEquals(RoutesTab.PLANNED, RoutesTab.of(TourKind.PLANNED))
         assertEquals(RoutesTab.PLANNED, RoutesTab.of(TourKind.IMPORTED))

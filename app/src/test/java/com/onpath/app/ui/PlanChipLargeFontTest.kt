@@ -14,7 +14,8 @@ import java.util.Locale
  * time and distance (and the Save button while unsaved); Plan during a tour (one row + Continue, then Pause / End). Same pictures as the English tests of the same name, drawn
  * with this class's Paparazzi.
  */
-open class PlanChipLargeFontTest {
+/** English frames dropped (test audit 2026-11-07: the German twin at the same font size is the check); the subclasses draw. */
+abstract class PlanChipLargeFontTest {
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(
@@ -36,11 +37,18 @@ open class PlanChipLargeFontTest {
     @Test fun planSaveDialog() = shots.planSaveDialog()
     @Test fun planUnsavedLongHike() = shots.planUnsavedLongHike()
     @Test fun planTourRunning() = shots.planTourRunning()
+    @Test fun planRecalculatingBefore() = shots.planRecalculatingBefore()
+    @Test fun planRecalculating() = shots.planRecalculating()
     @Test fun planTourRunningCollapsed() = shots.planTourRunningCollapsed()
+    @Test fun planTourRolledUp() = shots.planTourRolledUp()
     @Test fun planSummaryBike() = shots.planSummaryBike()
     @Test fun planCollapsed() = shots.planCollapsed()
     @Test fun planCollapsedGap() = shots.planCollapsedGap()
+    @Test fun planReachHike() = shots.planReachHike()
+    @Test fun planReachOnFoot() = shots.planReachOnFoot()
     @Test fun planPointsFull() = shots.planPointsFull()
+    @Test fun planRoundTripOn() = shots.planRoundTripOn()
+    @Test fun planOutAndBack() = shots.planOutAndBack()
 }
 
 /** The same in German. */

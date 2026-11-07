@@ -44,7 +44,32 @@ with an `Ergebnis.md` (what each shows, what it replaces). cloud-web turns them 
 ## Home page (`onpath.earth/`, `assets/app/*-de|en.webp`)
 
 `plan-wandern`, `plan-ebike`, `ankunft`, `ruheanzeige`, `fahrt`, `ort-google-maps` – the same screens as the help keys
-`plan`, `ebike`, `ankunft`, `ruhe`, `fahrt`, `ort` above. `web-wandern`, `web-qr` – the browser planner (cloud-plan).
+`plan`, `ebike`, `ankunft`, `ruhe`, `fahrt`, `ort` above. `web-wandern`, `web-qr` – the browser planner (cloud-plan): the same pictures as the help keys `web-plan`, `web-teilen` (section "Browser planner" below).
+
+## Browser planner (laptop) – `web/app/test/pair-shots.mjs` on `main`
+
+One script takes every planner picture of the site, DE + EN, on the laptop (no phone, no live site): the A-019 plan link
+(Vellau Korblift → Leiteralm, Hike T2), the map from a format-1 map folder, a real pairing with the fake phone "Pixel 8"
+against a local test mailbox (the pairing code is blurred anyway). Run it on `main`:
+`cd web/app && npm run build && node test/pair-shots.mjs <segmentsDir> <mapFolder> <outDir>` – then the PNGs go to
+`onpath.private/marketing/bilder/<date>-hp/` with an `Ergebnis.md`, as above. File names = `<script name>-de|en.png`.
+
+| Site key | Script name (DE · EN) | What it shows | Planner file (change here → new picture) |
+| --- | --- | --- | --- |
+| web-plan (help), web-wandern (home) | `web-plan-de.png` · `-en` | 1440 × 900: the route, time, profile, Points (sheet's Points step) | `web/app/src/main.ts` (sheet, profile, Points rows), `sheetstep.ts`, `style.css`, map style |
+| web-teilen (help), web-qr (home) | `web-teilen-de.png` · `-en` | "Share" with the plan's QR code (public plan link) | `web/app/src/share.ts` |
+| web-handy (help) | `web-handy-de.png` · `-en` | the Phone window, not paired, "How does it work?" open | `web/app/src/plans.ts` (`phoneDialog`) |
+| web-koppeln (help) | `web-w2-de.png` · `-en` | "Pair phone": QR (blurred), the way in the app, check digits | `web/app/src/plans.ts` (`pairDialog`) |
+| (new) W1 | `web-w1-de.png` · `-en` | not paired: header "Save" (dark) + "Pair phone" | `web/app/src/main.ts` (header: `saveEntry`, `syncBadge`), `style.css` |
+| (new) W3 | `web-w3-de.png` · `-en` | paired, route not on the phone: "Save to phone" dark + phone pill "Pixel 8 · synced 2 min ago" | as W1 |
+| (new) W4 | `web-w4-de.png` · `-en` | after the click: "✓ On the phone", "Saved as …" in the sheet | as W1, `plans.ts` (`saveRoute`) |
+| (new) W5 | `web-w5-de.png` · `-en` | My routes paired: 🖥 📱, one waiting (bold), one "New" from the phone | `web/app/src/plans.ts` (`myPlansDialog`) |
+| (new) W6 | `web-w6-de.png` · `-en` | the Phone window paired: name + dot, "Sync now", red "Unpair" | `web/app/src/plans.ts` (`phoneDialog`) |
+| (film) | `web-plan-vellau-leiteralm-de.png` · `-en` | 2560 × 1440, profile step, no dialog (`marketing/video-aufnahmen-uebergabe.md` §2) | as web-plan |
+
+Texts the engine writes (time, distance, notes, Points rows, "Neu planen" …) come from the app's shared strings – a
+change in `strings/…/strings_plan.xml` that the planner shows also means new web pictures. Older sets:
+`bilder/2026-11-01-web/` (cloud-web, live site), `bilder/2026-11-02-hp/` (W1–W6 + film, before "Neu planen").
 
 ## Taking a picture (`tools/dev/website_shot.sh`, donald)
 

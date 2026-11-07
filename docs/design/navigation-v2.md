@@ -90,8 +90,13 @@ Organic Maps / CoMaps source code, komoot / Locus / Garmin help pages, two studi
    circle of ~20 m (bike ~30 m) around the junction against the heading leaving it, and a real other way there. Changing
    the side of the street, a zigzag without a junction, an offset: nothing (generalises JogRule).
 3. **"Navigation Stopp" = the phone is quiet**: no voice, no junction vibration, no off-route warning – also with the
-   screen off (replaces review H1's "Plan off screen = warnings on"). Walking off without "Weiter" (app off screen):
-   after ~150 m the guidance comes back by itself and says so (chosen for the owner; he can object).
+   screen off (replaces review H1's "Plan off screen = warnings on"). Only "Navigation fortsetzen" ends it – walking or
+   riding on never brings the guidance back by itself (owner 2026-11-03: "Plan bleibt still"; the ~150 m walk-off of
+   2026-11-01 is gone).
+   **Owner 2026-11-03: Plan is silent for everything from movement / navigation** (`recording/ModeQuiet`): also no
+   arrival (checked again after "Navigation fortsetzen"), no spoken app events, no notification of an open off-route
+   question, no vibration of a re-route that finishes in Plan, the arrival box waits for Navigate; the voice follows
+   silently so nothing is said late. The recording keeps telling about itself (cannot be saved, walked off while paused).
 4. **"Kein GPS" once**: said again only after GPS was good for a while and one walked on.
 5. **Re-route that starts behind you**: "Neue Route. Bitte umdrehen." + the U sign on the map + the turn card shows
    "Umdrehen" – after an automatic re-route the screen must always show where to go ("sieht man plötzlich gar nichts").

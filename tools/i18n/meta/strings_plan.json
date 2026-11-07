@@ -222,9 +222,16 @@
     "priority": 1,
     "confidence": "sicher"
   },
+  "plan_calculating_leg": {
+    "area": "Plan sheet",
+    "context": "Plan sheet wait card while a route of several legs is calculated, above a progress bar: %1$d = the leg being routed now, %2$d = legs to route (legs already known are not counted)",
+    "priority": 1,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-05 asked for e.g. 'Route wird berechnet · Abschnitt 2 von 4'; shortened so it stays one line beside Abbrechen"
+  },
   "plan_hint_first_point": {
     "area": "Plan sheet",
-    "context": "Plan sheet with no points yet (first use). \"☰ → Start recording\" names the menu path (keep it equal to plan_menu_start_recording)",
+    "context": "Plan sheet with no points yet (first use). \"☰ → Start recording\" names the menu path (keep it equal to plan_menu_start_recording) – since 2026-11-07 no longer shown in the empty sheet (the guide replaced it); still the no-route line text and the web planner mirror",
     "priority": 1,
     "confidence": "sicher",
     "decided": "Owner answer 2026-10-26: kept exactly as the owner wrote it"
@@ -350,14 +357,6 @@
     "max": 34,
     "decided": "Owner 2026-10-26: short MTB / E-MTB on buttons"
   },
-  "plan_continue_navigation_for": {
-    "area": "Plan sheet",
-    "context": "Main button while a tour records. %1$s = activity name",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 34,
-    "decided": "Owner 2026-10-26: short MTB / E-MTB on buttons"
-  },
   "plan_start_recording_for": {
     "area": "Plan sheet",
     "context": "Main button (plan sheet / track panel) when there is nothing to follow: starts a plain recording, no navigation. %1$s = activity name",
@@ -383,6 +382,33 @@
     "context": "Label under ✕ in the plan sheet's action row: the plan leaves the screen (Undo brings it back); a saved route stays in My routes – not a delete",
     "priority": 2,
     "confidence": "sicher"
+  },
+  "plan_bar_go": {
+    "area": "Plan sheet",
+    "context": "Green button at the plan sheet's bottom left, after a ▶ sign: start the tour. Only as wide as its text, one line (TalkBack hears the full 'Let’s go · <destination>')",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "plan_bar_carry_on": {
+    "area": "Plan sheet",
+    "context": "Green button at the plan sheet's bottom during a tour, after a ▶ sign: back to the navigation, the tour goes on (owner 2026-11-05: 'Weiter geht’s')",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "plan_carry_on_for": {
+    "area": "Plan sheet",
+    "context": "TalkBack name of that button: %1$s = the activity ('Hike')",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_bar_save": {
+    "area": "Plan sheet",
+    "context": "Left half of the blue outlined group 'Save | New plan' at the plan sheet's bottom: save the plan as a route (opens the name dialog). One line, short",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 12
   },
   "plan_discard_title": {
     "area": "Plan sheet",
@@ -819,6 +845,12 @@
     "priority": 3,
     "confidence": "sicher"
   },
+  "plan_locate_far_cd": {
+    "area": "Map (Plan)",
+    "context": "Accessibility of the locate button while my position is off the map (owner 2026-11-07). %1$s = distance (\"790 km\")",
+    "priority": 3,
+    "confidence": "sicher"
+  },
   "plan_no_location_permission": {
     "area": "Map (Plan)",
     "context": "Why \"Go here\" is greyed out in the first-point menu",
@@ -895,42 +927,6 @@
   "plan_resize_panel": {
     "area": "Plan sheet",
     "context": "Accessibility of the sheet handle",
-    "priority": 3,
-    "confidence": "sicher"
-  },
-  "plan_slide_to_plan": {
-    "area": "Navigate",
-    "context": "The slider at the bottom of Navigate (main line): the only way back to Plan",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 16,
-    "decided": "Owner 2026-10-31: \"Tour menu\" / \"Tour-Menü\" with a small second line (plan_slide_to_plan_sub); was \"Plan\" / \"Planen\" (2026-10-30), \"Edit route\" / \"Route ändern\" (2026-10-26)"
-  },
-  "plan_slide_to_plan_sub": {
-    "area": "Navigate",
-    "context": "Small second line under the Navigate slider's \"Tour menu\": what is behind it. Dropped when it does not fit (large font)",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 32,
-    "decided": "Owner 2026-10-31: \"Change route · Pause · End\" / \"Route ändern · Pause · Beenden\""
-  },
-  "plan_slide_change_route": {
-    "area": "Navigate",
-    "context": "The Navigate slider's only line while no recording runs (Pause / End make no sense then)",
-    "priority": 2,
-    "confidence": "sicher",
-    "max": 16,
-    "decided": "Owner 2026-10-31: \"Change route\" / \"Route ändern\""
-  },
-  "plan_slide_desc": {
-    "area": "Navigate",
-    "context": "Accessibility of the slider. %1$s = slider text",
-    "priority": 3,
-    "confidence": "sicher"
-  },
-  "plan_switch_to_plan": {
-    "area": "Navigate",
-    "context": "Accessibility action of the slider",
     "priority": 3,
     "confidence": "sicher"
   },
@@ -1225,8 +1221,24 @@
     "priority": 1,
     "confidence": "sicher"
   },
-  "plan_from_track_busy_title": {"area": "Plan from a track", "context": "Modal box title while a track is turned into a route (Cancel only)", "priority": 2, "confidence": "sicher"},
-  "plan_from_track_busy_text": {"area": "Plan from a track", "context": "Line under the spinner in that box", "priority": 2, "confidence": "sicher"},
+  "plan_no_track_recorded": {
+    "area": "Track panel",
+    "context": "Quiet line in place of the elevation profile when a done tour has no line (0 m, under 20 m)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_from_track_busy_title": {
+    "area": "Plan from a track",
+    "context": "Modal box title while a track is turned into a route (Cancel only)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_from_track_busy_text": {
+    "area": "Plan from a track",
+    "context": "Line under the spinner in that box",
+    "priority": 2,
+    "confidence": "sicher"
+  },
   "plan_from_track_failed": {
     "area": "Track panel",
     "context": "Error line: no route could be made from the track",
@@ -1238,5 +1250,130 @@
     "context": "Progress line while the route from the track is calculated",
     "priority": 1,
     "confidence": "sicher"
+  },
+  "plan_back_nav": {
+    "area": "Plan",
+    "context": "Word on the green full-width button at the bottom of the plan during a tour: back to the navigation screen, like \"Los geht’s\" (owner 2026-11-06: \"Weiter geht’s\")",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "plan_back_nav_desc": {
+    "area": "Plan",
+    "context": "Screen reader name of that green button",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_hint_tour_goes_on": {
+    "area": "Plan",
+    "context": "The empty plan sheet during a tour: set new points, or tap the green \"Navigation\" button at the bottom",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_save_ask_title": {
+    "area": "Plan",
+    "context": "Title when ✕ Neu planen is tapped with unsaved changes",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_save_ask_text_named": {
+    "area": "Plan",
+    "context": "Text of \"Save plan?\" for a saved route that was changed",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_save_ask_text": {
+    "area": "Plan",
+    "context": "Text of \"Save plan?\" for a new plan",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_round_trip_on_desc": {
+    "area": "Plan sheet",
+    "context": "Screen reader only: the Round trip button while the plan is a round trip (a switch that is on); a tap takes the way back to the start out again",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "plan_menu_record_without_plan": {
+    "area": "Plan menu",
+    "context": "☰ menu item (owner 2026-11-06; words owner 2026-11-07: Nur aufzeichnen / Just record): start a plain recording without following any plan; shown only while no tour runs",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "plan_sheet_bigger": {
+    "area": "Plan sheet",
+    "context": "Screen reader action of the sheet handle: a tap makes the sheet one step bigger",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_sheet_smaller": {
+    "area": "Plan sheet",
+    "context": "Screen reader action of the sheet handle: on the largest step a tap makes it smaller",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "plan_add_as_stop": {
+    "area": "Plan place menu",
+    "context": "Menu entry of a held place (POI / found pin) with a plan of 2+ points: insert it at the best place on the route ahead, the goal stays. No number (owner 2026-11-07).",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "plan_make_destination": {
+    "area": "Plan place menu",
+    "context": "Menu entry of a held place with a plan of 2+ points: the route ends there, the old goal is dropped (Undo brings it back). Owner 2026-11-07.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "plan_guide_find_title": {
+    "area": "Plan sheet",
+    "context": "Empty start sheet guide, step 1 title (tappable: opens the search)",
+    "priority": 1,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
+  },
+  "plan_guide_find_line": {
+    "area": "Plan sheet",
+    "context": "Empty start sheet guide, step 1 line",
+    "priority": 1,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
+  },
+  "plan_guide_adjust_title": {
+    "area": "Plan sheet",
+    "context": "Empty start sheet guide, step 2 title",
+    "priority": 1,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
+  },
+  "plan_guide_adjust_line": {
+    "area": "Plan sheet",
+    "context": "Empty start sheet guide, step 2 line",
+    "priority": 1,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
+  },
+  "plan_guide_go_title": {
+    "area": "Plan sheet",
+    "context": "Empty start sheet guide, step 3 title (plain text, not a button; same word as the start button)",
+    "priority": 1,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
+  },
+  "plan_guide_go_line": {
+    "area": "Plan sheet",
+    "context": "Empty start sheet guide, step 3 line",
+    "priority": 1,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
+  },
+  "plan_guide_my_routes": {
+    "area": "Plan sheet",
+    "context": "Empty start sheet guide, small link under the steps: opens My tours",
+    "priority": 1,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
   }
 }

@@ -4,8 +4,6 @@ import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.JunctionCue
 import kotlin.math.abs
-import kotlin.math.atan2
-import kotlin.math.cos
 
 /**
  * Close turns are one manoeuvre (owner 2026-11-01, Hilden demo tour: "keine einzige Angabe passte"). Pure, shared with
@@ -16,8 +14,10 @@ import kotlin.math.cos
  * Benrather Straße and 8 m later "left" onto the crossing into the park. A person says "straight on across the road".
  *
  * - Two hints in a row, closer than [BIKE_M] (on foot [HIKE_M]), turning opposite ways (one left, one right) are one
- *   sideways step. Its turn is the heading before the first hint to the heading after the second, each measured over
- *   [ARM_M] but never across the neighbouring hint (Hilden: the bend of Poststraße 18 m before the crossing).
+ *   sideways step. On the bike only across a crossing / footway piece: along a street between the turns the step is
+ *   [HIKE_M] (owner 2026-11-07, Hilden: 19 m along a road are two turns, [reachOf]). Its turn is the heading before
+ *   the first hint to the heading after the second, each measured over [ARM_M] but never across the neighbouring hint
+ *   (Hilden: the bend of Poststraße 18 m before the crossing).
  * - Within [STRAIGHT_DEG] of straight on: neither is worth a cue (no vibration, no voice).
  * - Else the step is one cue: the hint turning the step's way; the other is quiet (an offset crossroads, "left").
  * - A roundabout is never part of a step (its own cue). Two turns the same way stay as they are ([JunctionCues] merges
@@ -31,6 +31,8 @@ object JogRule {
     const val HIKE_M = 12.0
     const val ARM_M = 15.0
     const val STRAIGHT_DEG = 30.0
+    /** Bike: the router's class from which the piece between two turns is a street (CueRule.bikeKind: ≤ 4 path / footway). */
+    const val STREET_PRIO = 5
 
     /** Per hint of [line] (points with a turn, in line order): worth a cue. [hike] = the on-foot rules. */
     fun needed(line: List<GeoPoint>, hike: Boolean): BooleanArray {
@@ -73,7 +75,7 @@ object JogRule {
             if (arm < 5.0 || cum[i] - cum[i - 1] >= arm) continue   // the last piece is the approach itself
             val a = angleOf(p).toDouble()
             if (a == 0.0) continue
-            val delta = diff(bearing(at(line, cum, c - arm), p), bearing(line[i - 1], p))
+            val delta = Geo.angleDiff(Geo.bearing(at(line, cum, c - arm), p), Geo.bearing(line[i - 1], p))
             val grown = a + delta
             if (Math.signum(grown) != Math.signum(a) || abs(grown) <= abs(a) + 1.0) continue
             val g = grown.coerceIn(-SHARP_DEG - 20.0, SHARP_DEG + 20.0).toFloat()
@@ -96,25 +98,36 @@ object JogRule {
     /** [idx] = the line indices of the hints, [cum] = the line's cumulative metres. */
     fun needed(line: List<GeoPoint>, cum: DoubleArray, idx: List<Int>, hike: Boolean): BooleanArray {
         val out = BooleanArray(idx.size) { CueRule.needed(line[idx[it]].turn!!, line[idx[it]].shape, hike) }
-        val reach = if (hike) HIKE_M else BIKE_M
         var k = 0
         while (k + 1 < idx.size) {
             val a = line[idx[k]]; val b = line[idx[k + 1]]
             val gap = cum[idx[k + 1]] - cum[idx[k]]
             val opposite = angleOf(a) * angleOf(b) < 0
-            if (gap >= reach || !opposite || a.turn == JunctionCue.ROUNDABOUT || b.turn == JunctionCue.ROUNDABOUT) { k++; continue }
+            if (gap >= reachOf(a, hike) || !opposite || a.turn == JunctionCue.ROUNDABOUT || b.turn == JunctionCue.ROUNDABOUT) { k++; continue }
             // headings before / after the step, not reaching over the neighbouring hints
             val first = cum[idx[k]]; val last = cum[idx[k + 1]]
             val armIn = if (k > 0) minOf(ARM_M, (first - cum[idx[k - 1]]) * 0.9) else ARM_M
             val armOut = if (k + 2 < idx.size) minOf(ARM_M, (cum[idx[k + 2]] - last) * 0.9) else ARM_M
-            val net = diff(bearing(at(line, cum, first - armIn), at(line, cum, first)),
-                bearing(at(line, cum, last), at(line, cum, last + armOut)))
+            val net = Geo.angleDiff(Geo.bearing(at(line, cum, first - armIn), at(line, cum, first)),
+                Geo.bearing(at(line, cum, last), at(line, cum, last + armOut)))
             val any = out[k] || out[k + 1]
             out[k] = false; out[k + 1] = false
             if (abs(net) > STRAIGHT_DEG && any) out[if (Math.signum(angleOf(a).toDouble()) == Math.signum(net)) k else k + 1] = true
             k += 2
         }
         return out
+    }
+
+    /**
+     * How close the next opposite turn after hint [a] must be to make one step with it. On foot [HIKE_M]. On the bike
+     * [BIKE_M] across a crossing or a footway piece (the router's class ≤ 4 between the turns, or no shape known), but
+     * [HIKE_M] when the piece is a street ridden along (class ≥ [STREET_PRIO]) – field bug owner 2026-11-07, Hilden: right
+     * onto a road, 19 m along it, left onto a footway was set quiet ("warum keine Ansage, ich bin auf einer anderen Straße").
+     */
+    private fun reachOf(a: GeoPoint, hike: Boolean): Double = when {
+        hike -> HIKE_M
+        (a.shape?.outPrio ?: 0) >= STREET_PRIO -> HIKE_M
+        else -> BIKE_M
     }
 
     /**
@@ -148,9 +161,4 @@ object JogRule {
         return GeoPoint(a.lat + (b.lat - a.lat) * f, a.lon + (b.lon - a.lon) * f)
     }
 
-    private fun bearing(a: GeoPoint, b: GeoPoint): Double =
-        Math.toDegrees(atan2((b.lon - a.lon) * cos(Math.toRadians(a.lat)), b.lat - a.lat))
-
-    /** Signed change from heading [from] to [to] in −180..180 (> 0 = right). */
-    private fun diff(from: Double, to: Double): Double = ((to - from + 540.0) % 360.0) - 180.0
 }

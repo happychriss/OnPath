@@ -97,7 +97,7 @@ fun RecycleBinScreen(
 private fun BinCard(t: Tour, nowMs: Long, onRestore: () -> Unit, onDelete: () -> Unit) {
     val pattern = str(Res.string.backup_date)
     val fmt = remember(pattern) { SimpleDateFormat(pattern, Locale.getDefault()) }
-    Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
+    Surface(shape = OnPathShapes.Card, color = OnPathColors.CardPaper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
         Column(Modifier.fillMaxWidth().padding(start = 14.dp, top = 10.dp, end = 4.dp, bottom = 4.dp)) {
             Text(t.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text("${t.kind.label} · ${fmt.format(Date(t.createdMs))} · ${Format.distance(t.distanceM)}", style = MaterialTheme.typography.bodySmall,

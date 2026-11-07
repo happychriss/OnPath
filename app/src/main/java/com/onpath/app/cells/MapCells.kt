@@ -151,7 +151,6 @@ class MapCells(
 
     /** States of region packages (kept apart from [states]: the UI's card / modal never show them). */
     private val _packageStates = MutableStateFlow<Map<CellId, CellState>>(emptyMap())
-    val packageStates: StateFlow<Map<CellId, CellState>> = _packageStates
 
     private val _packages = MutableStateFlow<List<CellStore.InstalledCell>>(emptyList())
     /** Installed region packages (map-cells.md §20) – diagnostics; the map style gets their boxes ([packageAreas]). */
@@ -967,7 +966,7 @@ class MapCells(
             set(c, CellState.Downloading(0, m.totalSize))
             for (f in m.files) {
                 val dest = File(part, f.name)
-                if (!(dest.isFile && dest.length() == f.size && CellApi.sha256(dest) == f.sha256)) {
+                if (!(dest.isFile && dest.length() == f.size && com.onpath.app.net.HttpDownload.sha256Of(dest) == f.sha256)) {
                     dest.delete()
                     val tmp = File(part, f.name + ".part")
                     val base = before
@@ -997,7 +996,7 @@ class MapCells(
             synchronized(finished) { if (finished.isEmpty()) firstFinishedAt = t; finished[c] = CellStore.Download(m, complete) }
             lastFinishedAt = t
             Problems.trace("cells", "Download finished: $c (${p.reason.name.lowercase()}), ${mbOf(m.totalSize)}")
-        } catch (e: Cancelled) {
+        } catch (e: Cancelled) { // expected: the download is no longer wanted – a trace, not a problem
             Problems.trace("cells", "Download stopped: $c (${p.reason.name.lowercase()}) – no longer wanted")
             update { it.remove(c) } // packages too (update keeps both maps)
         } catch (e: CellApi.ChecksumException) {
@@ -1031,16 +1030,20 @@ class MapCells(
             val a = JSONObject(queueFile.readText()).optJSONArray("cells") ?: JSONArray()
             val t = now()
             val stale = ArrayList<CellId>()
+            var unreadable = 0
             for (i in 0 until a.length()) {
                 val o = a.getJSONObject(i)
-                val c = CellId.parse(o.optString("id")) ?: continue
-                val r = runCatching { CellReason.valueOf(o.optString("reason")) }.getOrNull() ?: CellReason.NEAR
+                val c = CellId.parse(o.optString("id"))
+                if (c == null) { unreadable++; continue }
+                // an unknown reason (other app version) is waited for like a nearby cell – warned once (audit 2026-11-07)
+                val r = com.onpath.app.debug.enumOr(o.optString("reason").ifEmpty { null }, CellReason.NEAR, "cells")
                 val at = o.optLong("at")
                 // revalidated at start: a point request from yesterday – nobody waits for it;
                 // a corridor waits until the restored plan's route says it still needs it ([keepCorridor])
                 if ((r == CellReason.POINT || r == CellReason.NEAR) && t - at > STALE_MS) { stale += c; continue }
                 queue[c] = Pending(c, r, o.optBoolean("own"), at, o.optBoolean("mobileOk"), confirmed = r != CellReason.CORRIDOR)
             }
+            if (unreadable > 0) Problems.warn("cells", "Map queue: $unreadable unreadable entr${if (unreadable == 1) "y" else "ies"} dropped")
             if (stale.isNotEmpty()) {
                 saveQueue()
                 Problems.trace("cells", "Dropped ${stale.size} old point region request(s) at start: ${stale.joinToString { it.id }}")

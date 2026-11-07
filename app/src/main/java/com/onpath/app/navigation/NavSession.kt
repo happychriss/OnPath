@@ -70,14 +70,14 @@ data class NavSession(
 
     companion object {
         /** A stop counts as reached this close (owner 2026-11-01: was 40 m; phone GPS outside is good to 3–10 m) … */
-        const val VISITED_HIKE_M = 25.0
-        const val VISITED_BIKE_M = 40.0
+        const val VISITED_HIKE_M = VisitRadius.HIKE_M
+        const val VISITED_BIKE_M = VisitRadius.BIKE_M
         /** … and only from a fix at least this good (indoor jumps of 50–190 m with "20 m" accuracy stay out). */
         const val VISITED_MAX_ACCURACY_M = 20.0
         /** … and said at the closest approach: within this, or inside the radius and this much farther again. */
         const val VISITED_NOW_M = 10.0
         const val VISITED_AWAY_M = 3.0
-        fun visitedM(a: Activity): Double = if (a == Activity.HIKE) VISITED_HIKE_M else VISITED_BIKE_M
+        fun visitedM(a: Activity): Double = VisitRadius.of(a)
         const val FILE = "nav-session.json"
 
         /**
@@ -103,6 +103,10 @@ data class NavSession(
          */
         fun afterPlanEdit(old: NavSession?, fresh: NavSession): NavSession {
             if (old == null || old.kind != NavKind.PLAN || fresh.kind != NavKind.PLAN || fresh.rerouted) return fresh
+            // a different plan (none of its points was in the old one – a route loaded on the way, owner 2026-11-03):
+            // not an edit – it starts afresh at its point ① (the way there / the mid-route question), nothing carried
+            if (old.stops.isNotEmpty() && fresh.stops.isNotEmpty() &&
+                fresh.stops.none { f -> old.stops.any { o -> com.onpath.app.data.Geo.distance(o.point, f.point) < 1.0 } }) return fresh
             return when {
                 old.reached -> if (fresh.reached) fresh else fresh.copy(reached = true)
                 old.lead && !fresh.reached && !fresh.lead -> fresh.copy(lead = true)
@@ -121,7 +125,7 @@ class NavSessionStore(private val file: File) {
     fun save(s: NavSession?) {
         try {
             if (s == null) { file.delete(); return }
-            AtomicFiles.writeText(file, toJson(s).toString(), File(file.path + ".tmp"))
+            AtomicFiles.writeText(file, toJson(s).toString())
         } catch (e: Exception) {
             Problems.error("navigation", "Navigation session file could not be saved; a restart may lose the route", e)
         }
@@ -178,10 +182,10 @@ class NavSessionStore(private val file: File) {
             }?.takeIf { it.size >= 2 }
             val visited = o.optJSONArray("visited")?.let { a -> (0 until a.length()).map { a.getInt(it) }.toSet() }.orEmpty()
             return NavSession(
-                // expected: missing / unknown enum names (older files) fall back to defaults
-                kind = runCatching { NavKind.valueOf(o.getString("kind")) }.getOrDefault(NavKind.TRACK),
+                // missing / unknown enum names (older files) fall back to defaults – warned once (audit 2026-11-07)
+                kind = com.onpath.app.debug.enumOr(o.optString("kind").ifEmpty { null }, NavKind.TRACK, "navigation"),
                 name = o.optString("name", "Route"),
-                activity = runCatching { Activity.valueOf(o.getString("activity")) }.getOrDefault(Activity.HIKE),
+                activity = com.onpath.app.debug.enumOr(o.optString("activity").ifEmpty { null }, Activity.HIKE, "navigation"),
                 sac = o.optInt("sac", 3),
                 original = original, stops = stops, current = current,
                 spliceAtM = o.optDouble("spliceAt", 0.0), resumeAlongM = o.optDouble("resumeAlong", 0.0),

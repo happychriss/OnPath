@@ -34,12 +34,14 @@ import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Navigation
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.SaveAlt
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
@@ -68,6 +70,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -155,9 +160,9 @@ fun SettingsScreen(
     problemsOpen: Boolean = false,
     /**
      * Developer tools shown in Diagnostics (owner): hidden until the version line in About is tapped 7 times
-     * (remembered; also in debug builds – testers get those).
+     * (remembered; also in debug builds – testers get those). Hidden unless the caller says so.
      */
-    devTools: Boolean = true,
+    devTools: Boolean = false,
     onUnlockDevTools: () -> Unit = {},
     /** Last visit to Diagnostics (ms): a serious problem after it makes the list line red (owner). */
     diagnosticsSeenMs: Long = 0L,
@@ -176,6 +181,12 @@ fun SettingsScreen(
     /** About → Licences open from the start (screenshots). */
     licencesOpen: Boolean = false,
     now: Long = System.currentTimeMillis(),
+    /**
+     * Opened from Navigate's ⚙ (owner 2026-11-07): the list is the Navigation page itself, then only the topics for
+     * the way ([SettingsSummary.onTheWay]) and "Alle Einstellungen ›" ([onAllSettings]); the tour is not touched.
+     */
+    onTheWay: Boolean = false,
+    onAllSettings: () -> Unit = {},
 ) {
     val topics = SettingsPage.entries.filter {
         when (it) {
@@ -197,7 +208,29 @@ fun SettingsScreen(
                 Text(page?.title ?: str(Res.string.common_settings), style = MaterialTheme.typography.titleLarge)
             }
             note?.let { NoticeLine(it, Modifier.padding(horizontal = 24.dp)) }
-            if (page == null) {
+            if (page == null && onTheWay) CompositionLocalProvider(LocalSectionTitle provides false) {
+                LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    item {
+                        NavigationSection(settings, onChange, onPhoneSetup = { onPage(SettingsPage.PHONE) },
+                            onTestVibration = { onPhoneFix(com.onpath.app.setup.CheckId.VIBRATION) },
+                            onTestVoice = { onPhoneFix(com.onpath.app.setup.CheckId.VOICE) },
+                            phoneChecks = phoneChecks, phone = phone)
+                    }
+                    val more = SettingsSummary.onTheWay(topics)
+                    item { SettingsGroupHeader(str(Res.string.settings_group_on_the_way)) }
+                    item {
+                        SettingsCard {
+                            more.forEachIndexed { i, t ->
+                                if (i > 0) HorizontalDivider(Modifier.padding(start = 64.dp))
+                                TopicRow(t, topicSummary(t, settings, activity, offlineMaps)) { onPage(t) }
+                            }
+                            if (more.isNotEmpty()) HorizontalDivider(Modifier.padding(start = 64.dp))
+                            AllSettingsRow(onAllSettings)
+                        }
+                    }
+                }
+            } else if (page == null) {
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp)) {
                     // two groups (owner): what the user sets, then the smaller "App" group; Phone setup on top (no
                     // heading) while a tour needs something from the phone (owner 2026-10-30)
@@ -209,7 +242,7 @@ fun SettingsScreen(
                                 modifier = Modifier.padding(start = 16.dp, top = if (gi > 0) 20.dp else 4.dp, bottom = 6.dp))
                         } else item { Spacer(Modifier.height(4.dp)) }
                         item {
-                            Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
+                            Surface(shape = OnPathShapes.Card, color = OnPathColors.CardPaper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
                                 Column {
                                     group.forEachIndexed { i, t ->
                                         if (i > 0) HorizontalDivider(Modifier.padding(start = 64.dp))
@@ -244,7 +277,8 @@ fun SettingsScreen(
                         SettingsPage.NAVIGATION -> item {
                             NavigationSection(settings, onChange, onPhoneSetup = { onPage(SettingsPage.PHONE) },
                                 onTestVibration = { onPhoneFix(com.onpath.app.setup.CheckId.VIBRATION) },
-                                onTestVoice = { onPhoneFix(com.onpath.app.setup.CheckId.VOICE) })
+                                onTestVoice = { onPhoneFix(com.onpath.app.setup.CheckId.VOICE) },
+                                phoneChecks = phoneChecks, phone = phone)
                         }
                         SettingsPage.PHONE -> if (phoneChecks != null) item {
                             com.onpath.app.ui.setup.PhoneSetupSection(phoneChecks, phone, onPhoneFix,
@@ -272,6 +306,28 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+}
+
+/** The summary line of a topic on the on-the-way list ([SettingsSummary.ON_THE_WAY]). */
+private fun topicSummary(t: SettingsPage, settings: AppSettings, activity: com.onpath.app.routing.Activity, offlineMaps: OfflineMapsUi?): Summary =
+    when (t) {
+        SettingsPage.PACE -> SettingsSummary.pace(settings, activity)
+        SettingsPage.POI -> SettingsSummary.poi(settings.hiddenPoiKinds)
+        SettingsPage.MAP -> SettingsSummary.map(settings)
+        SettingsPage.OFFLINE_MAPS -> offlineMaps?.let { SettingsSummary.offlineMaps(it) } ?: SettingsSummary.navigation(settings)
+        else -> SettingsSummary.navigation(settings)
+    }
+
+/** "Alle Einstellungen ›" at the end of the on-the-way list: the whole topic list. */
+@Composable
+private fun AllSettingsRow(onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClick = onClick)
+        .padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Outlined.Settings, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(24.dp))
+        Text(str(Res.string.settings_all), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -370,28 +426,15 @@ private fun PoiSection(settings: AppSettings, onChange: (AppSettings) -> Unit, i
 @Composable
 private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, themes: List<String>) {
     Section(SettingsPage.MAP.title) {
-        if (themes.size > 1) {
-            Text(str(Res.string.settings_map_style), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
-            androidx.compose.foundation.layout.FlowRow(
-                Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                themes.forEach { t ->
-                    FilterChip(selected = settings.mapTheme == t, onClick = { onChange(settings.copy(mapTheme = t)) },
-                        label = { Text(com.onpath.app.map.StyleLoader.label(t)) },
-                        modifier = Modifier.heightIn(min = 44.dp))
-                }
-            }
-        }
+        // value rows (owner 2026-11-06 23:05): the choice opens as a sheet ([ChoiceRow])
+        if (themes.size > 1) ChoiceRow(str(Res.string.settings_map_style), null,
+            themes.map { Choice(it, com.onpath.app.map.StyleLoader.label(it)) }, settings.mapTheme,
+            onPick = { onChange(settings.copy(mapTheme = it)) })
         SwitchRow(str(Res.string.settings_map_contours), null, settings.contours) { onChange(settings.copy(contours = it)) }
         SwitchRow(str(Res.string.settings_map_hillshade), null, settings.hillshade) { onChange(settings.copy(hillshade = it)) }
-        Text(str(Res.string.settings_map_direction), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(true to str(Res.string.settings_map_travel), false to str(Res.string.settings_map_north)).forEach { (up, label) ->
-                FilterChip(selected = settings.navHeadingUp == up, onClick = { onChange(settings.copy(navHeadingUp = up)) },
-                    label = { Text(label) }, modifier = Modifier.heightIn(min = 44.dp))
-            }
-        }
+        ChoiceRow(str(Res.string.settings_map_direction), null,
+            listOf(Choice(true, str(Res.string.settings_map_travel)), Choice(false, str(Res.string.settings_map_north))),
+            settings.navHeadingUp, onPick = { onChange(settings.copy(navHeadingUp = it)) })
         HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
         Text(str(Res.string.settings_map_planning), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = OnPathColors.Green,
             modifier = Modifier.padding(start = 16.dp, top = 2.dp))
@@ -400,85 +443,119 @@ private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, t
     }
 }
 
-/** Navigation, in the owner's order: warning → distance → vibrations (+ test) → screen → phone setup. */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+/**
+ * Navigation in groups of value rows (owner 2026-11-06 23:05, variant C – "Ich mag Wertezeilen am meisten"): Abseits
+ * der Route (warning → indented distance + vibration, greyed while the warning is off) · Abzweigungen (cue kind + ONE
+ * test of the chosen kind) · Bildschirm und Karte · Sperre während der Tour (the hold slider) · "Handy einrichten" –
+ * at the top with ⚠ and what is missing while something is not set up ([SettingRows.phoneRow]), else the last row.
+ */
 @Composable
 internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) -> Unit, onPhoneSetup: () -> Unit,
-                               onTestVibration: () -> Unit, onTestVoice: () -> Unit = {}) {
-    Section(SettingsPage.NAVIGATION.title) {
-        SwitchRow(str(Res.string.settings_nav_offroute), str(Res.string.settings_nav_offroute_sub),
-            settings.offRouteWarning) { onChange(settings.copy(offRouteWarning = it)) }
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Text(str(Res.string.settings_nav_warn_after), style = MaterialTheme.typography.bodyMedium)
-            AppSettings.OFF_ROUTE_CHOICES.forEach { m ->
-                FilterChip(selected = settings.offRouteM == m, enabled = settings.offRouteWarning,
-                    onClick = { onChange(settings.copy(offRouteM = m)) }, label = { Text(str(Res.string.settings_nav_meters, m)) },
-                    modifier = Modifier.heightIn(min = 44.dp))
+                               onTestVibration: () -> Unit, onTestVoice: () -> Unit = {},
+                               phoneChecks: List<com.onpath.app.setup.Check>? = null,
+                               phone: com.onpath.app.setup.PhoneState = com.onpath.app.setup.PhoneState(sdk = 35)) {
+    val place = SettingRows.phoneRow(phoneChecks)
+    val missing = SettingRows.missing(phoneChecks).map { com.onpath.app.ui.setup.checkTitle(it, phone, row = true) }
+    val warning = settings.offRouteWarning
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (place != SettingRows.PhoneRow.LAST) SettingsCard { PhoneSetupRow(place, missing, onPhoneSetup) }
+        SettingsGroupHeader(str(Res.string.settings_group_offroute))
+        SettingsCard {
+            SwitchRow(str(Res.string.settings_nav_offroute), str(Res.string.settings_nav_offroute_sub), warning) {
+                onChange(settings.copy(offRouteWarning = it))
+            }
+            ChoiceRow(str(Res.string.settings_nav_warn_after), null,
+                AppSettings.OFF_ROUTE_CHOICES.map { Choice(it, str(Res.string.settings_nav_meters, it)) }, settings.offRouteM,
+                onPick = { onChange(settings.copy(offRouteM = it)) }, enabled = warning, indent = true)
+            SwitchRow(str(Res.string.settings_nav_vibrate_off), str(Res.string.settings_nav_vibrate_off_sub),
+                settings.offRouteVibrate && warning, enabled = warning, indent = true) {
+                onChange(settings.copy(offRouteVibrate = it))
             }
         }
-        SwitchRow(str(Res.string.settings_nav_vibrate_off), str(Res.string.settings_nav_vibrate_off_sub),
-            settings.offRouteVibrate && settings.offRouteWarning, enabled = settings.offRouteWarning) {
-            onChange(settings.copy(offRouteVibrate = it))
-        }
-        // how the turns are told – either / or (owner 2026-11-01): off / vibration / voice
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
-            Text(str(Res.string.settings_nav_guide), style = MaterialTheme.typography.bodyLarge)
-            Text(str(Res.string.settings_nav_guide_sub), style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            androidx.compose.foundation.layout.FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(com.onpath.app.data.JunctionGuide.OFF to Res.string.settings_nav_guide_off,
-                    com.onpath.app.data.JunctionGuide.VIBRATION to Res.string.settings_nav_guide_vibration,
-                    com.onpath.app.data.JunctionGuide.VOICE to Res.string.settings_nav_guide_voice).forEach { (v, label) ->
-                    FilterChip(selected = settings.junctionGuide == v, onClick = { onChange(settings.copy(junctionGuide = v)) },
-                        label = { Text(str(label)) }, modifier = Modifier.heightIn(min = 44.dp))
-                }
+        // how the turns are told – either / or (owner 2026-11-01): off / vibration / voice; one test of the chosen kind
+        SettingsGroupHeader(str(Res.string.settings_group_junctions))
+        SettingsCard {
+            ChoiceRow(str(Res.string.settings_nav_guide), str(Res.string.settings_nav_guide_sub),
+                listOf(Choice(com.onpath.app.data.JunctionGuide.OFF, str(Res.string.settings_nav_guide_off)),
+                    Choice(com.onpath.app.data.JunctionGuide.VIBRATION, str(Res.string.settings_nav_guide_vibration)),
+                    Choice(com.onpath.app.data.JunctionGuide.VOICE, str(Res.string.settings_nav_guide_voice))),
+                settings.junctionGuide, onPick = { onChange(settings.copy(junctionGuide = it)) })
+            when (SettingRows.testFor(settings.junctionGuide)) {
+                com.onpath.app.setup.CheckId.VIBRATION -> TestButton(str(Res.string.setup_nav_test_vibration), onTestVibration)
+                com.onpath.app.setup.CheckId.VOICE -> TestButton(str(Res.string.settings_nav_voice_test), onTestVoice)
+                else -> {}
             }
         }
-        if (settings.junctionGuide == com.onpath.app.data.JunctionGuide.VIBRATION || settings.offRouteVibrate)
-            TextButton(onClick = onTestVibration, modifier = Modifier.padding(start = 8.dp).heightIn(min = 48.dp)) {
-                Text(str(Res.string.setup_nav_test_vibration))
+        SettingsGroupHeader(str(Res.string.settings_group_screen))
+        SettingsCard {
+            SwitchRow(str(Res.string.settings_nav_screen_on), str(Res.string.settings_nav_screen_on_sub), settings.keepScreenOn) {
+                onChange(settings.copy(keepScreenOn = it))
             }
-        if (settings.junctionGuide == com.onpath.app.data.JunctionGuide.VOICE)
-            TextButton(onClick = onTestVoice, modifier = Modifier.padding(start = 8.dp).heightIn(min = 48.dp)) {
-                Text(str(Res.string.settings_nav_voice_test))
+            BikeScreenRow(settings, onChange)
+            SwitchRow(str(Res.string.settings_nav_on_route), str(Res.string.settings_nav_on_route_sub), settings.positionOnRoute) {
+                onChange(settings.copy(positionOnRoute = it))
             }
-        SwitchRow(str(Res.string.settings_nav_on_route), str(Res.string.settings_nav_on_route_sub), settings.positionOnRoute) {
-            onChange(settings.copy(positionOnRoute = it))
         }
-        SwitchRow(str(Res.string.settings_nav_screen_on), str(Res.string.settings_nav_screen_on_sub), settings.keepScreenOn) {
-            onChange(settings.copy(keepScreenOn = it))
-        }
-        BikeScreenRow(settings, onChange)
+        SettingsGroupHeader(str(Res.string.settings_group_lock))
+        SettingsCard { HoldTimeRow(settings, onChange) }
         // what the phone must allow (location, notifications, vibration, battery): one row to Phone setup
-        Row(Modifier.fillMaxWidth().clickable(onClick = onPhoneSetup).heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Text(str(Res.string.setup_nav_check), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        if (place == SettingRows.PhoneRow.LAST) SettingsCard { PhoneSetupRow(place, missing, onPhoneSetup) }
     }
 }
 
-/** "Screen while cycling: Always on / Smart / Like the phone" (owner 2026-10-30), the chosen one explained in one line. */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+/** The one test button of the junction cue ("Vibration testen" / "Stimme testen"), Walnuss like every neutral action. */
+@Composable
+private fun TestButton(text: String, onClick: () -> Unit) =
+    TextButton(onClick = onClick, modifier = Modifier.padding(start = 6.dp).heightIn(min = 48.dp)) {
+        Icon(Icons.Filled.PlayArrow, null, tint = OnPathColors.Walnut, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(text, color = OnPathColors.Walnut)
+    }
+
+/**
+ * "Knöpfe während der Tour halten" (owner 2026-11-06 22:50, replaces the lock switch): a slider 0 · 0,5 · 1 · 1,5 · 2 s
+ * ([com.onpath.app.data.HoldSetting]) – how long a button of the tour's bar must be held; "Aus" = a plain tap. The value
+ * beside the title, one line under it.
+ */
+@Composable
+private fun HoldTimeRow(settings: AppSettings, onChange: (AppSettings) -> Unit) {
+    val hs = com.onpath.app.data.HoldSetting
+    val value = hs.seconds(settings.navHoldMs, str(Res.string.settings_nav_lock_decimal).firstOrNull() ?: ',')
+        ?.let { str(Res.string.settings_nav_lock_seconds, it) } ?: str(Res.string.settings_nav_lock_off)
+    val title = str(Res.string.settings_nav_lock)
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = OnPathColors.Walnut)
+        }
+        Text(str(Res.string.settings_nav_lock_sub), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        androidx.compose.material3.Slider(
+            value = settings.navHoldMs.toFloat(),
+            onValueChange = { v -> val ms = hs.snap(v); if (ms != settings.navHoldMs) onChange(settings.copy(navHoldMs = ms)) },
+            valueRange = 0f..hs.MAX_MS.toFloat(), steps = hs.SLIDER_STEPS,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .holdSliderSemantics(title, value))
+    }
+}
+
+/** TalkBack reads the title and the chosen time on the slider ("Knöpfe während der Tour halten, 1 s"). */
+private fun Modifier.holdSliderSemantics(title: String, value: String): Modifier =
+    this.then(Modifier.semantics { contentDescription = title; stateDescription = value })
+
+/**
+ * "Screen while cycling: Always on / Smart / Like the phone" (owner 2026-10-30) as a value row: the chosen one explained
+ * in the line under the title; in the sheet every option with its line.
+ */
 @Composable
 private fun BikeScreenRow(settings: AppSettings, onChange: (AppSettings) -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
-        Text(str(Res.string.settings_nav_bike_screen), style = MaterialTheme.typography.bodyLarge)
-        Text(str(when (settings.bikeScreen) {
-                com.onpath.app.data.BikeScreen.ALWAYS -> Res.string.settings_nav_bike_screen_always_sub
-                com.onpath.app.data.BikeScreen.SMART -> Res.string.settings_nav_bike_screen_smart_sub
-                com.onpath.app.data.BikeScreen.PHONE -> Res.string.settings_nav_bike_screen_phone_sub
-            }), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        androidx.compose.foundation.layout.FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(com.onpath.app.data.BikeScreen.ALWAYS to Res.string.settings_nav_bike_screen_always,
-                com.onpath.app.data.BikeScreen.SMART to Res.string.settings_nav_bike_screen_smart,
-                com.onpath.app.data.BikeScreen.PHONE to Res.string.settings_nav_bike_screen_phone).forEach { (v, label) ->
-                FilterChip(selected = settings.bikeScreen == v, onClick = { onChange(settings.copy(bikeScreen = v)) },
-                    label = { Text(str(label)) }, modifier = Modifier.heightIn(min = 44.dp))
-            }
-        }
-    }
+
+    val options = listOf(
+        Choice(com.onpath.app.data.BikeScreen.ALWAYS, str(Res.string.settings_nav_bike_screen_always), str(Res.string.settings_nav_bike_screen_always_sub)),
+        Choice(com.onpath.app.data.BikeScreen.SMART, str(Res.string.settings_nav_bike_screen_smart), str(Res.string.settings_nav_bike_screen_smart_sub)),
+        Choice(com.onpath.app.data.BikeScreen.PHONE, str(Res.string.settings_nav_bike_screen_phone), str(Res.string.settings_nav_bike_screen_phone_sub)))
+    ChoiceRow(str(Res.string.settings_nav_bike_screen), options.first { it.value == settings.bikeScreen }.line, options,
+        settings.bikeScreen, onPick = { onChange(settings.copy(bikeScreen = it)) })
 }
 
 /** Diagnostics: the problem report button (no switch), then the problem list. */
@@ -540,7 +617,7 @@ private fun DeveloperTools(
     demo: DemoUi? = null,
 ) {
     var open by remember { mutableStateOf(initiallyOpen) }
-    Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
+    Surface(shape = OnPathShapes.Card, color = OnPathColors.CardPaper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
         Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
             Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = Role.Button) { open = !open }.padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically) {
@@ -806,12 +883,20 @@ val PRIVACY_FLOWS: List<PrivacyFlow> get() = listOfNotNull(
 
 /** About: version, licence and the full credits (the map's "© OpenStreetMap" opens this page). */
 @Composable
-private fun AboutSection(version: String, devTools: Boolean = true, onUnlockDevTools: () -> Unit = {}) {
+private fun AboutSection(version: String, devTools: Boolean = false, onUnlockDevTools: () -> Unit = {}) {
     var taps by remember { mutableStateOf(0) }
     Section(SettingsPage.ABOUT.title) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            // big logo + name on top (owner 2026-11-07)
+            Column(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                OnPathLogo(80.dp)
+                Spacer(Modifier.height(12.dp))
+                Text(Brand.NAME, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold,
+                    letterSpacing = Brand.Tracking), color = OnPathColors.Walnut)
+            }
             // tapped 7 times: Developer tools in Diagnostics (the Android convention); remembered
-            Text("OnPath $version", fontWeight = FontWeight.SemiBold,
+            Text("${Brand.NAME} $version", textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).wrapContentHeight(Alignment.CenterVertically)
                     .clickable(enabled = !devTools, indication = null,
                         interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) {
@@ -895,7 +980,7 @@ internal val LocalSectionTitle = compositionLocalOf { true }
 
 @Composable
 internal fun Section(title: String, content: @Composable () -> Unit) {
-    Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
+    Surface(shape = OnPathShapes.Card, color = OnPathColors.CardPaper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
         Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
             if (LocalSectionTitle.current) Text(title, style = MaterialTheme.typography.titleSmall, color = OnPathColors.Green,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
@@ -904,15 +989,20 @@ internal fun Section(title: String, content: @Composable () -> Unit) {
     }
 }
 
+/** A switch row; [indent] = depends on the switch above it, [enabled] false = greyed (38 %) and not tappable. */
 @Composable
-private fun SwitchRow(title: String, subtitle: String?, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
+private fun SwitchRow(title: String, subtitle: String?, checked: Boolean, enabled: Boolean = true, indent: Boolean = false,
+                      onChange: (Boolean) -> Unit) {
+    val a = if (enabled) 1f else 0.38f
     Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onChange)
-        .padding(horizontal = 16.dp),
+        .padding(start = if (indent) 32.dp else 16.dp, end = 16.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface.copy(alpha = a))
+            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = a))
         }
+        Spacer(Modifier.width(12.dp))
         Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
 }

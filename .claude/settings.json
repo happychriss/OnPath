@@ -6,11 +6,11 @@
       "mcp__claude-code-remote__get_session",
       "mcp__claude-code-remote__list_events",
       "mcp__claude-code-remote__get_event",
-      "Bash(tools/ask.sh *)",
       "Bash(tools/ci/gate.sh)",
       "Bash(tools/ci/gate.sh *)",
       "Bash(tools/ci/release_check.sh *)",
       "Bash(tools/dev/device.sh *)",
+      "Bash(tools/dev/prune_branches.sh *)",
       "Bash(git status *)",
       "Bash(git log *)",
       "Bash(git diff *)",
@@ -58,18 +58,6 @@
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/pre-bash.sh",
             "timeout": 15
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/tools/hooks/stop-wake.sh",
-            "asyncRewake": true,
-            "timeout": 3600
           }
         ]
       }

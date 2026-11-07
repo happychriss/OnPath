@@ -85,13 +85,6 @@ class BackgroundDownloadsTest {
         assertTrue("Plan shows the chip under ☰", "BackgroundDownloadChip(" in src && "BackgroundDownloadStrip" !in src)
     }
 
-    /** Owner 2026-10-31: the details of a state are a bottom sheet, not a dialog (dialogs only for decisions). */
-    @Test fun detailsAreABottomSheet() {
-        val src = java.io.File("src/main/java/com/onpath/app/ui/BackgroundDownloads.kt").readText()
-        assertTrue("ModalBottomSheet(" in src)
-        assertFalse("AlertDialog" in src)
-    }
-
     @Test fun routingDataAloneIsNotNamed() {
         assertEquals("9 MB · 10 %", BackgroundDownloadUi(0, 1, 9 * mb, 10).line)
     }

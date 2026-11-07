@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -167,6 +168,20 @@ fun StepSheet(
     onDragging: (Boolean) -> Unit = {},
     /** Steps below this have no [bottomBar] (see StepSheetState.barFrom); 0 = the bar in every step. */
     barFrom: Int = 0,
+    /** The sheet's colour (Plan: [OnPathColors.PlanTint]); null = the theme's surface. */
+    surfaceColor: Color? = null,
+    /** Handle + a top edge in this colour (Plan: [OnPathColors.PlanAccent]); null = the grey handle, no edge. */
+    accent: Color? = null,
+    /**
+     * Content of the sheet's foot (above the navigation bar), shown in EVERY step – also rolled up, the sheet sits on it
+     * (owner 2026-11-06, C: during a tour the green way back to Navigate, where "Los geht's" is without one); null = none.
+     */
+    foot: (@Composable ColumnScope.() -> Unit)? = null,
+    /**
+     * What a tap on the handle does, for TalkBack ("Blatt vergrößern" / "Blatt verkleinern"; owner 2026-11-06 23:42:
+     * tap AND drag); null = "Größe ändern".
+     */
+    handleLabel: String? = null,
     bottomBar: @Composable ColumnScope.() -> Unit,
     body: @Composable StepSheetScope.() -> Unit,
 ) {
@@ -254,24 +269,30 @@ fun StepSheet(
             }
         }
     }
-    val surface = MaterialTheme.colorScheme.surface
+    val surface = surfaceColor ?: MaterialTheme.colorScheme.surface
     Layout(
         contents = listOf(
             {
-                Surface(shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), color = surface,
-                    shadowElevation = 8.dp) {}
+                Surface(shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), color = surface, modifier = Modifier.warmShadow(OnPathShadow.HIGH, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))) {
+                    // Plan's blue top edge (owner 2026-11-03): a stripe along the top, clipped by the rounded shape
+                    if (accent != null) Box(Modifier.fillMaxWidth().height(SHEET_EDGE)) {
+                        Box(Modifier.fillMaxWidth().height(SHEET_EDGE).background(accent))
+                    }
+                }
             },
             {
                 Column(Modifier.fillMaxWidth().onPlaced { state.bodyCoords = it; state.updateStops() }
                     .padding(horizontal = 16.dp)) {
                     // Material drag handle (32 × 4 dp) in a full-width 24 dp tall strip (owner 2026-10-31: less air; the
-                    // whole sheet can be dragged, and the rolled-up row is one big tap target)
+                    // whole sheet can be dragged, and the rolled-up row is one big tap target). A tap steps the sheet
+                    // (owner 2026-11-06 23:42: tap AND drag); TalkBack hears a button with what the tap does.
+                    val handleSays = handleLabel ?: str(Res.string.plan_resize_panel)
                     Box(Modifier.fillMaxWidth().height(HANDLE_HEIGHT)
-                        .clickable(onClickLabel = str(Res.string.plan_resize_panel), onClick = onHandleTap)
-                        .semantics { contentDescription = Txt.s(Res.string.plan_resize_panel) },
+                        .clickable(onClickLabel = handleSays, role = androidx.compose.ui.semantics.Role.Button, onClick = onHandleTap)
+                        .semantics { contentDescription = handleSays },
                         contentAlignment = Alignment.Center) {
                         Box(Modifier.width(32.dp).height(4.dp).clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)))
+                            .background(accent ?: MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)))
                     }
                     sheetScope.body()
                 }
@@ -283,10 +304,12 @@ fun StepSheet(
                     .padding(horizontal = 16.dp), content = bottomBar)
             },
             {
-                // the foot: navigation bar + a little air, opaque in every step (the bar slides out behind it)
-                Box(Modifier.fillMaxWidth().background(surface)
+                // the foot: [foot] + navigation bar + a little air, opaque in every step (the bar slides out behind it)
+                Column(Modifier.fillMaxWidth().background(surface)
                     .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } }
-                    .navigationBarsPadding().padding(bottom = FOOT_AIR))
+                    .navigationBarsPadding().padding(bottom = FOOT_AIR)) {
+                    if (foot != null) Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp), content = foot)
+                }
             },
         ),
         modifier = modifier.fillMaxWidth()
@@ -318,6 +341,9 @@ fun StepSheet(
         }
     }
 }
+
+/** Plan's blue edge along the sheet's top (owner 2026-11-03). */
+private val SHEET_EDGE = 3.dp
 
 /** Height of the grab-handle strip at the sheet's top. */
 internal val HANDLE_HEIGHT = 24.dp

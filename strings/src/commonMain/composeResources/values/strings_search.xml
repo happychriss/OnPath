@@ -40,11 +40,11 @@
     <string name="search_place_quarter">District</string>
     <string name="search_place_isolated_dwelling">Farm / house</string>
     <string name="search_place_locality">Locality</string>
-    <string name="search_card_remove">Remove from route</string>
+    <string name="search_card_remove">Remove from plan</string>
     <string name="search_card_set_start">Set as start</string>
+    <string name="search_card_on_the_way">Add as a stop on the way</string>
     <string name="search_card_set_destination">Set as destination</string>
     <string name="search_card_new_destination">Add as new destination</string>
-    <string name="search_card_add_stop">Add as stop %1$d</string>
     <string name="search_add_on_route">on your route</string>
     <string name="search_add_fits_best">fits best there</string>
     <string name="search_card_as_start">As start</string>
@@ -58,6 +58,7 @@
     <string name="search_route_round_to">Round trip to %1$s</string>
     <string name="search_route_round_from">Round trip from %1$s</string>
     <string name="search_route_from">From %1$s</string>
+    <string name="search_route_in">In %1$s</string>
     <string name="search_route_to">To %1$s</string>
     <string name="search_route_via">%1$s (via %2$s)</string>
 </resources>

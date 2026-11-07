@@ -125,8 +125,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
      * import) MapLibre throws on any access to the old one, and the app's effects can still hold this controller
      * for a moment – every update below is a no-op then instead of a crash (R-01).
      */
-    // expected: the old style throws while a new one loads → "not live", updates skipped
-    private fun live(): Boolean = try { style.isFullyLoaded } catch (_: Exception) { false }
+    private fun live(): Boolean = try { style.isFullyLoaded } catch (_: Exception) {
+        false // expected: the old style throws while a new one loads → "not live", the update is skipped (no report: every
+        // effect asks this on each style change, a report would flood the log with the same harmless line)
+    }
 
     /** GeoJSON source [id], or null when the style is gone or being replaced (the caller then does nothing). */
     private fun source(id: String): GeoJsonSource? =
@@ -143,7 +145,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     private val density = context.resources.displayMetrics.density
     private var locationReady = false
     private var markerImages = 0
-    /** Compass + GPS bearing for heading-up; the sensor runs only while MapLibre listens (Navigate). */
+    /** Compass + GPS bearing for the walking-direction orientation; the sensor runs only while MapLibre listens. */
     private val heading = HeadingEngine(context)
     private var onTrackingDismissed: (() -> Unit)? = null
     /** Camera mode we asked for while following (to notice when a gesture changed it). */
@@ -294,11 +296,11 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         val routed = Expression.eq(Expression.get("straight"), Expression.literal(false))
         val straight = Expression.eq(Expression.get("straight"), Expression.literal(true))
         addBelowPosition(LineLayer("planned-route-casing", SRC_PLANNED).withFilter(routed).withProperties(
-            PF.lineColor("#FFFFFF"), PF.lineWidth(10f),
+            PF.lineColor("#FFFFFF"), PF.lineWidth(RouteLook.CASING_DP),
             PF.lineJoin(Property.LINE_JOIN_ROUND), PF.lineCap(Property.LINE_CAP_ROUND),
         ))
         addBelowPosition(LineLayer("planned-route", SRC_PLANNED).withFilter(routed).withProperties(
-            PF.lineColor(ROUTE_COLOR), PF.lineWidth(6f),
+            PF.lineColor(ROUTE_COLOR), PF.lineWidth(RouteLook.LINE_DP),
             PF.lineJoin(Property.LINE_JOIN_ROUND), PF.lineCap(Property.LINE_CAP_ROUND),
         ))
         addBelowPosition(LineLayer("planned-straight-casing", SRC_PLANNED).withFilter(straight).withProperties(
@@ -377,9 +379,23 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     }
     private var planBadge: android.graphics.Bitmap? = null
 
+    /** Navigate (true) or Plan (false, the start): the GPS accuracy circle shows only in Navigate ([PositionDot.accuracyAlpha]). */
+    private var navigateMode = false
+
+    /** The mode for the position dot's look (accuracy circle only in Navigate). Never throws. */
+    fun setNavigateMode(navigate: Boolean) {
+        if (navigate == navigateMode) return
+        navigateMode = navigate
+        try {
+            if (live() && locationReady) map.locationComponent.applyStyle(puckOptions(heading.arrowGrey))
+        } catch (e: Exception) {
+            Problems.warn("map", "Position dot look (accuracy circle) not changed for the mode", e)
+        }
+    }
+
     /** Position dot look; [grey] = the "where I face" image grey (compass unsure, map/CompassTrust). */
     private fun puckOptions(grey: Boolean): LocationComponentOptions = LocationComponentOptions.builder(context)
-        .accuracyAlpha(if (planBadge != null) 0f else 0.18f)
+        .accuracyAlpha(PositionDot.accuracyAlpha(navigate = navigateMode && planBadge == null))
         .enableStaleState(true)
         .staleStateTimeout(30_000)
         // HeadingEngine turns smoothly at display rate itself
@@ -422,7 +438,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             // No frame cap on the position dot (owner: while you look at the app it must run smooth;
             // power is saved with the screen off / in the pocket, where nothing is drawn).
             lc.isLocationComponentEnabled = true
-            // Both modes: small blue dot with accuracy circle and a small direction triangle at its edge
+            // Both modes: small blue dot (accuracy circle only in Navigate) and a small direction triangle at its edge
             // (owner; not the big white GPS-mode navigation puck). The direction comes from
             // HeadingEngine (compass standing, GPS bearing while moving).
             lc.renderMode = PUCK_MODE
@@ -475,19 +491,25 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         try { heading.quiet = on } catch (e: Exception) { Problems.warn("map", "Map not paused / resumed for the rest view", e) }
     }
 
-    /** Plan mode follow (north stays where the user left it). */
-    fun setFollow(follow: Boolean, onDismissed: () -> Unit) { setCamera(follow, navigating = false, headingUp = false, onDismissed = onDismissed) }
+    /**
+     * The session's one orientation is north up ([com.onpath.app.domain.map.Orientation.NORTH]): every app camera move
+     * (fit, fly, centre) ends north up and flat. With the walking direction it keeps the current bearing (owner
+     * 2026-11-07: the map never turns by itself). MapScreen sets it with [setCamera]'s headingUp.
+     */
+    var northLocked = false
 
     /**
-     * Camera and puck for both modes. Following: the camera tracks the position – walking direction up
-     * ([headingUp], map turns with [HeadingEngine]; both modes, compass cycle) or north up (Navigate) / as the user
-     * left it (Plan).
+     * Camera and puck for both modes. Following: the camera tracks the position by the session's one orientation
+     * ([com.onpath.app.domain.map.MapOrientation.follow], owner 2026-11-07): walking direction up ([headingUp], map
+     * turns with [HeadingEngine]) or north up – the same in Plan and Navigate.
      * MapLibre ends following when the user pans ([onDismissed]); "centre on me" calls this again.
      * The puck is always the small dot with a direction triangle ([PUCK_MODE]); the compass sensor runs while
      * the map is visible (MapLibre releases it when the map stops).
      */
     fun setCamera(follow: Boolean, navigating: Boolean, headingUp: Boolean, startZoom: Double? = null,
                   onDismissed: () -> Unit): Boolean {
+        // fits and flies ask it even before the location layer is ready
+        northLocked = com.onpath.app.domain.map.MapOrientation.moveNorthUp(com.onpath.app.domain.map.MapOrientation.of(headingUp))
         if (!locationReady) return false
         var zoomed = false
         try {
@@ -497,12 +519,11 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             map.uiSettings.isCompassEnabled = false
             val leavingNav = wasNavigating && !navigating
             wasNavigating = navigating
+            val o = com.onpath.app.domain.map.MapOrientation.of(headingUp)
             if (follow) {
-                val (mode, tilt, bearing) = when {
-                    // walking direction up – Navigate and (owner, compass cycle) Plan
-                    headingUp -> Triple(CameraMode.TRACKING_COMPASS, NAV_TILT_DEG, null)
-                    navigating -> Triple(CameraMode.TRACKING_GPS_NORTH, 0.0, 0.0)
-                    else -> Triple(CameraMode.TRACKING, if (leavingNav) 0.0 else null, if (leavingNav) 0.0 else null)
+                val (mode, tilt, bearing) = when (com.onpath.app.domain.map.MapOrientation.follow(o)) {
+                    com.onpath.app.domain.map.MapOrientation.Follow.TRAVEL -> Triple(CameraMode.TRACKING_COMPASS, NAV_TILT_DEG, null)
+                    com.onpath.app.domain.map.MapOrientation.Follow.NORTH -> Triple(CameraMode.TRACKING_GPS_NORTH, 0.0, 0.0)
                 }
                 // heading-up: MapLibre turns camera + puck with the map direction, so its own arrow would show the
                 // route; the dot gets no arrow and the app draws the "where I face" arrow (ui/FacingArrow)
@@ -540,7 +561,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 wantedCameraMode = CameraMode.NONE
                 if (lc.cameraMode != CameraMode.NONE) lc.cameraMode = CameraMode.NONE
                 lc.renderMode = PUCK_MODE
-                if (leavingNav && !headingUp) resetNorth() // the compass choice is kept across modes (owner)
+                // the orientation is kept across modes (owner 2026-11-07): only north up is turned back to north
+                if (leavingNav && com.onpath.app.domain.map.MapOrientation.northOnLeavingNavigate(o, following = false)) resetNorth()
             }
             onTrackingDismissed = onDismissed
         } catch (e: Exception) {
@@ -595,10 +617,13 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
      */
     fun centreOn(lat: Double, lon: Double) = runCatching {
         val zoom = map.cameraPosition.zoom.let { if (it < 13.0) 15.0 else it }
-        map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), zoom), 600)
+        val update = if (northLocked) CameraUpdateFactory.newCameraPosition(
+            CameraPosition.Builder().target(LatLng(lat, lon)).zoom(zoom).bearing(0.0).tilt(0.0).build())
+            else CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), zoom)
+        map.animateCamera(update, 600)
     }.onFailure { Problems.warn("map", "Map not centred on the position", it) }
 
-    /** Compass button in Plan: turn the map back to north up. */
+    /** Compass tap (both modes): turn the map back to north up when it does not follow. */
     fun northUp() = runCatching { resetNorth() }.onFailure { Problems.warn("map", "Map not turned north up", it) }
 
     /** Back in Plan: north up, flat, no tracking padding (editing on a turned map is confusing). */
@@ -747,20 +772,70 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
      */
     fun setSacLimit(limit: Int) {
         for ((id, json) in ActivityLayers.hikeRouteFilters(limit)) {
-            runCatching { (style.getLayer(id) as? LineLayer)?.setFilter(Expression.Converter.convert(json)) }
+            runCatching {
+                val e = Expression.Converter.convert(json)
+                when (val l = style.getLayer(id)) { is LineLayer -> l.setFilter(e); is SymbolLayer -> l.setFilter(e); else -> {} }
+            }
                 .onFailure { if (live()) Problems.warn("map", "Route layer $id not set to T$limit", it) }
         }
     }
 
     fun setPlanned(route: PlannedRoute?) = guarded("planned route") {
+        // the same route redrawn while it draws itself (a marker or gap change in the same moment): let it finish
+        if (route == null || route !== revealRoute || reveal == null) {
+            stopReveal()
+            drawPlanned(route?.legs?.map { it.points }, route?.legs?.map { it.straight })
+        }
+    }
+
+    private fun drawPlanned(legs: List<List<GeoPoint>>?, straight: List<Boolean>?) {
         val src = source(SRC_PLANNED) ?: return
-        if (route == null) { src.setGeoJson(FeatureCollection.fromFeatures(emptyList())); return }
-        val features = route.legs.filter { it.points.size >= 2 }.map { leg ->
-            Feature.fromGeometry(LineString.fromLngLats(leg.points.map { Point.fromLngLat(it.lon, it.lat) })).apply {
-                addBooleanProperty("straight", leg.straight)
+        if (legs == null) { src.setGeoJson(FeatureCollection.fromFeatures(emptyList())); return }
+        val features = legs.indices.filter { legs[it].size >= 2 }.map { i ->
+            Feature.fromGeometry(LineString.fromLngLats(legs[i].map { Point.fromLngLat(it.lon, it.lat) })).apply {
+                addBooleanProperty("straight", straight?.getOrNull(i) ?: false)
             }
         }
         src.setGeoJson(FeatureCollection.fromFeatures(features))
+    }
+
+    private var reveal: android.animation.ValueAnimator? = null
+    private var revealRoute: PlannedRoute? = null
+
+    private fun stopReveal() {
+        reveal?.let { it.removeAllListeners(); it.removeAllUpdateListeners(); it.cancel() }
+        reveal = null
+        revealRoute = null
+    }
+
+    /**
+     * A new route draws itself from start to goal ([RouteReveal], owner 2026-11-06): the source gets the first part of
+     * the legs each frame for [RouteReveal.DURATION_MS], then the whole route; [onDone] after the last frame (the haptic).
+     * Any other [setPlanned] stops it at once (the newer state wins). Never throws.
+     */
+    fun revealPlanned(route: PlannedRoute, onDone: () -> Unit) = guarded("route reveal") {
+        stopReveal()
+        val legs = route.legs.map { it.points }
+        val straight = route.legs.map { it.straight }
+        val line = RouteReveal.Line(legs)
+        drawPlanned(emptyList(), straight)
+        val anim = android.animation.ValueAnimator.ofFloat(0f, 1f).setDuration(RouteReveal.DURATION_MS)
+        anim.addUpdateListener { a ->
+            runCatching { drawPlanned(line.cut(RouteReveal.ease(a.animatedFraction).toDouble()), straight) }
+                .onFailure { e -> if (live()) Problems.warn("map", "Route reveal frame failed – the route is drawn whole", e) }
+        }
+        anim.addListener(object : android.animation.AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: android.animation.Animator) {
+                reveal = null
+                revealRoute = null
+                runCatching { drawPlanned(legs, straight) }
+                    .onFailure { e -> if (live()) Problems.warn("map", "Route not drawn after the reveal", e) }
+                onDone()
+            }
+        })
+        reveal = anim
+        revealRoute = route
+        anim.start()
     }
 
     fun setTrack(sourceId: String, segments: List<List<GeoPoint>>) = guarded("track $sourceId") {
@@ -914,8 +989,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     } catch (e: Exception) { Problems.warn("map", "Marker tap test failed, tap treated as no marker", e); -1 }
 
     /** Screen position of [p] in pixels of the map view, or null (projection not ready). */
-    // expected: the projection is not ready before the first layout
-    fun toScreen(p: GeoPoint): PointF? = try { map.projection.toScreenLocation(LatLng(p.lat, p.lon)) } catch (_: Exception) { null }
+    fun toScreen(p: GeoPoint): PointF? = try { map.projection.toScreenLocation(LatLng(p.lat, p.lon)) } catch (_: Exception) {
+        null // expected: the projection is not ready before the first layout – the caller draws no overlay this frame
+        // (no report: overlays ask this every frame, and null is their normal "not yet")
+    }
 
     private var lastPanMs = 0L
 
@@ -938,14 +1015,15 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     /** [p] at [zoom] in the middle of the room [pad] leaves (the camera keeps that padding, like a route fit). */
     private fun centred(p: GeoPoint, zoom: Double, pad: com.onpath.app.ui.FitPadding): CameraPosition =
         CameraPosition.Builder().target(LatLng(p.lat, p.lon)).zoom(zoom)
-            .padding(pad.left.toDouble(), pad.top.toDouble(), pad.right.toDouble(), pad.bottom.toDouble()).build()
+            .padding(pad.left.toDouble(), pad.top.toDouble(), pad.right.toDouble(), pad.bottom.toDouble())
+            .apply { if (northLocked) bearing(0.0).tilt(0.0) }.build()
 
     /**
-     * Show all [points] in the free room [pad] leaves (ui/FitPaddingRule: clear of the top and bottom elements).
-     * [northUp]: the overview north up and flat ("Show whole route", also from Navigate's turned, tilted camera);
-     * else the current bearing / tilt stay. Following must be off before (CLAUDE.md "Map camera"). Never throws.
+     * Show all [points] in the free room [pad] leaves (ui/FitPaddingRule: clear of the top and bottom elements), always
+     * flat. North up when the session's orientation is north ([northLocked]), else at the current bearing – a fit never
+     * turns the map (owner 2026-11-07). Following must be off before (CLAUDE.md "Map camera"). Never throws.
      */
-    fun fitTo(points: List<GeoPoint>, room: com.onpath.app.ui.FitPadding, northUp: Boolean = false) {
+    fun fitTo(points: List<GeoPoint>, room: com.onpath.app.ui.FitPadding) {
         if (points.isEmpty()) return
         try {
             if (points.size == 1) {
@@ -955,17 +1033,15 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             }
             val b = LatLngBounds.Builder().apply { points.forEach { include(LatLng(it.lat, it.lon)) } }.build()
             // beside the map buttons or above them: the room that shows the route bigger (FitPaddingRule.pick)
-            val bearing = if (northUp) 0.0 else map.cameraPosition.bearing
-            val tilt = if (northUp) 0.0 else map.cameraPosition.tilt
+            val bearing = if (northLocked) 0.0 else map.cameraPosition.bearing
+            val tilt = 0.0
             val pad = com.onpath.app.ui.FitPaddingRule.pick(room) { p ->
                 map.getCameraForLatLngBounds(b, intArrayOf(p.left, p.top, p.right, p.bottom), bearing, tilt)?.zoom
             }
-            val update = if (northUp) {
-                // a short route not closer than z16 (the browser planner's maxZoom)
-                val cp = map.getCameraForLatLngBounds(b, intArrayOf(pad.left, pad.top, pad.right, pad.bottom), 0.0, 0.0)
-                if (cp != null) CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(cp).zoom(minOf(cp.zoom, FIT_MAX_ZOOM)).build())
-                else CameraUpdateFactory.newLatLngBounds(b, 0.0, 0.0, pad.left, pad.top, pad.right, pad.bottom)
-            } else CameraUpdateFactory.newLatLngBounds(b, pad.left, pad.top, pad.right, pad.bottom)
+            // a short route not closer than z16 (the browser planner's maxZoom)
+            val cp = map.getCameraForLatLngBounds(b, intArrayOf(pad.left, pad.top, pad.right, pad.bottom), bearing, tilt)
+            val update = if (cp != null) CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(cp).zoom(minOf(cp.zoom, FIT_MAX_ZOOM)).build())
+                else CameraUpdateFactory.newLatLngBounds(b, bearing, tilt, pad.left, pad.top, pad.right, pad.bottom)
             map.animateCamera(update, 800)
         } catch (e: Exception) {
             Problems.warn("map", "Map not zoomed to fit the route / places", e)
@@ -978,7 +1054,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             val n = markerImages + 1
             style.addImage("wp-s-$n", marker(n, POINT_START_COLOR))
             style.addImage("wp-v-$n", marker(n, POINT_STOP_COLOR))
-            style.addImage("wp-e-$n", marker(n, POINT_GOAL_COLOR))
+            style.addImage("wp-e-$n", marker(n, POINT_GOAL_COLOR, flag = true)) // the goal: a flag (owner 2026-11-06)
             style.addImage("wp-g-$n", marker(n, GAP_COLOR, hollow = true))
             style.addImage("wp-p-$n", marker(n, NAV_ORIGINAL_COLOR)) // passed: grey, no tick (owner 2026-11-01)
             markerImages++
@@ -986,9 +1062,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     }
 
     /**
-     * A numbered route point; [hollow] = white inside, ring and number in [color] (a point the route does not reach).
+     * A numbered route point; [hollow] = white inside, ring and number in [color] (a point the route does not reach);
+     * [flag] = the goal: a white flag instead of the number (owner 2026-11-06, polish 7 – no ring, as decided 2026-11-01).
      */
-    private fun marker(n: Int, color: String, hollow: Boolean = false): Bitmap {
+    private fun marker(n: Int, color: String, hollow: Boolean = false, flag: Boolean = false): Bitmap {
         val sizeDp = 30
         val px = (sizeDp * density).toInt()
         val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
@@ -1004,6 +1081,21 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             c.drawCircle(px / 2f, px / 2f, px / 2f - 6 * density, p)
         }
         p.color = if (hollow) android.graphics.Color.parseColor(color) else android.graphics.Color.WHITE
+        if (flag) {
+            // the same outline as the profile's and Navigate's flag (Material "flag", ui/GoalFlag)
+            val o = com.onpath.app.ui.GoalFlag.OUTLINE
+            val size = 17 * density
+            val k = size / 17f
+            val ox = px / 2f - 12.5f * k; val oy = px / 2f - 12.5f * k
+            val path = android.graphics.Path()
+            for (i in o.indices step 2) {
+                val x = ox + o[i] * k; val y = oy + o[i + 1] * k
+                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            path.close()
+            c.drawPath(path, p)
+            return bmp
+        }
         p.textSize = 14 * density
         p.typeface = Typeface.DEFAULT_BOLD
         p.textAlign = Paint.Align.CENTER

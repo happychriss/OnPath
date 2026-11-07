@@ -34,20 +34,28 @@ import com.onpath.app.ui.RoutesTab
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.common_delete
+import com.onpath.strings.routes_overview_follow
 import com.onpath.strings.common_ok
+import com.onpath.strings.nav_pause_band_line
 import com.onpath.strings.nav_arrived_title
+import com.onpath.strings.nav_end_tour
+import com.onpath.strings.nav_keep_recording
+import com.onpath.strings.nav_action_pause
 import com.onpath.strings.nav_end_short
+import com.onpath.strings.nav_mid_lead
 import com.onpath.strings.nav_end_tour_title
 import com.onpath.strings.nav_save_recording
 import com.onpath.strings.plan_pin_chip_desc
 import com.onpath.strings.plan_remove_pin
-import com.onpath.strings.plan_slide_to_plan
 import com.onpath.strings.nav_route_back
 import com.onpath.strings.nav_route_back_title
 import com.onpath.strings.plan_start_here
 import com.onpath.strings.plan_undo
-import com.onpath.strings.routes_end_tour_first
+import com.onpath.strings.plan_new_during_tour
 import com.onpath.strings.routes_tag_new
+import com.onpath.strings.routes_just_saved
+import com.onpath.strings.routes_saved_open
+import com.onpath.strings.routes_track_saved
 import com.onpath.strings.sync_pair
 import com.onpath.strings.sync_during_tour
 import org.junit.After
@@ -106,7 +114,7 @@ class ReleaseRundgang : E2EBase() {
         shot("2-difficulty-and-hint")
     }
 
-    /** 2 · Start the tour at the start → a junction cue on the way → "You have arrived" → Save. */
+    /** 2 · Start the tour at the start → a junction cue on the way → "You have arrived." → Tour beenden → the start screen. */
     @Test fun flow02_tourAtTheStartJunctionCueThenArrival() {
         planned(THEATRE, STATION)
         val tourId = startTour()
@@ -117,8 +125,11 @@ class ReleaseRundgang : E2EBase() {
         waitUntil("the arrival question", 180_000) { read { it.arrivalAsk } }
         assertNotNull("\"You have arrived\" shown", findFresh(By.text(Txt.s(Res.string.nav_arrived_title)), 10_000))
         shot("3-arrived")
-        clickText(Txt.s(Res.string.nav_save_recording))
+        Thread.sleep(com.onpath.app.domain.tour.EndSheetGuard.GUARD_MS) // the sheet ignores a press in its first half second
+        assertNotNull("Weiter aufzeichnen", findFresh(By.text(Txt.s(Res.string.nav_keep_recording)), 5_000))
+        clickText(Txt.s(Res.string.nav_end_tour))
         waitUntil("tour saved", 30_000) { RecordingServiceState.idle() && db.getTour(tourId)?.state == "done" }
+        waitUntil("back at the start (owner 2026-11-07)", 10_000) { read { it.waypoints.isEmpty() } }
         shot("4-saved")
     }
 
@@ -213,8 +224,12 @@ class ReleaseRundgang : E2EBase() {
         shot("3-still-closed")
     }
 
-    /** 6 · During a tour, tap a saved route in My routes → "End the running tour first …", nothing loaded. */
-    @Test fun flow06_savedRouteDuringATourIsNotLoaded() {
+    /**
+     * 6 · During a tour, tap a saved route in My routes → followed at once, no question (owner 2026-11-06; was "Load route
+     * …? You are on the way."): the same tour records on, it follows the loaded route, back in Navigate with "Neuer Plan –
+     * deine Aufnahme läuft weiter".
+     */
+    @Test fun flow06_savedRouteDuringATourIsFollowedAtOnce() {
         planned(THEATRE, STATION)
         val tourId = startTour()
         val before = read { it.waypoints.toList() }
@@ -228,14 +243,17 @@ class ReleaseRundgang : E2EBase() {
             waitUntil("Plan during the tour", 10_000) { mode() == AppMode.PLAN }
             scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED; vm(it).openRoutes() }
             clickText(name)
-            assertNotNull("the box", findFresh(By.text(Txt.s(Res.string.routes_end_tour_first)), 10_000))
-            shot("1-end-tour-first")
-            assertEquals("the plan stays", before, read { it.waypoints.toList() })
-            assertEquals("the followed line stays", lineBefore, nav()?.line)
-            assertEquals("the activity stays", Activity.BIKE_TOURING, read { it.activity })
+            // a row opens its overview first (owner 2026-11-07); during the tour its primary is "Folgen"
+            clickText(Txt.s(Res.string.routes_overview_follow))
+            waitUntil("the loaded route is the plan", 15_000) { read { it.waypoints.size == 2 && it.waypoints.first().lat == pts.first().lat } }
+            waitUntil("back in Navigate", 10_000) { mode() == AppMode.NAVIGATE }
+            assertNotNull("\"Neuer Plan\" line", findFresh(By.text(Txt.s(Res.string.plan_new_during_tour)), 5_000))
+            shot("1-new-plan-line")
+            assertTrue("the plan from before differs", before != read { it.waypoints.toList() })
+            waitUntil("the tour follows the loaded route", 60_000) { nav()?.line?.let { it != lineBefore } == true }
+            shot("2-following-the-loaded-route")
+            assertEquals("the activity stays the tour's", Activity.BIKE_TOURING, read { it.activity })
             assertEquals("the same tour records on", tourId, com.onpath.app.recording.RecordingService.state.value?.tourId)
-            clickText(Txt.s(Res.string.common_ok))
-            assertTrue("the box goes with OK", goneFresh(By.text(Txt.s(Res.string.routes_end_tour_first)), 5_000))
         } finally {
             scenario.onActivity { vm(it).routesOpen = false }
             db.deleteTour(savedId)
@@ -243,24 +261,46 @@ class ReleaseRundgang : E2EBase() {
     }
 
     /**
-     * 7 · End the recording the Navigate way (owner 2026-11-01): slide → the bar Pause · Route ändern · Beenden →
-     * "Aufnahme beenden?" → Aufnahme speichern → it is listed in My routes → Done.
+     * 7 · End the recording the Navigate way (owner 2026-11-01; 2026-11-06 one bottom bar, hold lock; 2026-11-07 one hold opens the bar): hold "Pause" → tap "Beenden"
+     * (ending only out of a pause) → "Tour beenden?" → Tour speichern → it is listed in My routes → Touren.
      */
     @Test fun flow07_endTourSaveListedInDone() {
         planned(THEATRE, STATION)
         val tourId = startTour()
         rideRoute(factor = 5)
         waitUntil("some metres recorded", 60_000) { (com.onpath.app.recording.RecordingService.state.value?.distanceM ?: 0.0) > 100 }
-        openTourActions()
+        // locked (owner 2026-11-06, the hold lock): hold Pause – that one hold opens the bar for 20 s (owner 2026-11-07),
+        // so Beenden is then a plain tap
+        shot("0-bar-locked")
+        holdButton(Txt.s(Res.string.nav_action_pause))
+        assertNotNull("paused: Beenden at the bottom, open", findFresh(By.text(Txt.s(Res.string.nav_end_short)), 5_000))
         clickText(Txt.s(Res.string.nav_end_short))
         assertNotNull("\"End recording?\"", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
         shot("1-end-tour")
+        // the sheet ignores a press in its first half second (field bug 2026-11-06 22:30, EndSheetGuard): a person looks first
+        Thread.sleep(com.onpath.app.domain.tour.EndSheetGuard.GUARD_MS)
         clickText(Txt.s(Res.string.nav_save_recording))
         waitUntil("tour saved", 30_000) { RecordingServiceState.idle() && db.getTour(tourId)?.state == "done" }
-        Thread.sleep(2_000) // the automatic name
-        val name = db.getTour(tourId)!!.name
-        scenario.onActivity { vm(it).finishedTour = null; vm(it).routesTab = RoutesTab.DONE; vm(it).openRoutes() }
-        assertNotNull("\"$name\" listed in Done", findFresh(By.text(name), 15_000))
+        assertNotNull("the box \"Tour gespeichert\"", findFresh(By.text(Txt.s(Res.string.routes_track_saved)), 10_000))
+        // the automatic place name ("Demo · In Meran", RouteNamer since 3bb6ba43) comes in the background after the date
+        // name: wait until it settled, and look for the name the tour has when the list shows it
+        var name = db.getTour(tourId)!!.name
+        val until = System.currentTimeMillis() + 15_000
+        while (System.currentTimeMillis() < until) {
+            Thread.sleep(1_000)
+            val now = db.getTour(tourId)!!.name
+            if (now == name && !now.removePrefix(DemoLocation.TOUR_PREFIX).startsWith("Tour ")) break
+            name = now
+        }
+        // "In Meine Touren ›" opens My routes on Gemacht with the tour marked – not the tour on the map (field bug
+        // 2026-11-06 22:30: a 0 m tour opened with "Als Plan übernehmen")
+        scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED } // the tab it must switch away from
+        clickText(Txt.s(Res.string.routes_saved_open))
+        waitUntil("My routes open on Gemacht", 10_000) { read { it.routesOpen && it.routesTab == RoutesTab.DONE && it.shown == null } }
+        var listed = findFresh(By.text(name), 10_000)
+        if (listed == null) { name = db.getTour(tourId)!!.name; listed = findFresh(By.text(name), 10_000) }
+        assertNotNull("\"$name\" listed in Done", listed)
+        assertNotNull("marked as just saved", findFresh(By.text(Txt.s(Res.string.routes_just_saved)), 5_000))
         shot("2-listed-in-done")
         scenario.onActivity { vm(it).routesOpen = false }
     }
@@ -324,6 +364,9 @@ class ReleaseRundgang : E2EBase() {
         device.executeShellCommand("input text sissi")
         Thread.sleep(1_500)
         device.executeShellCommand("input text %smer")
+        // the list of "sissi" stays until "sissi mer" is searched (debounce + offline index): read the list of the full
+        // text, not the one before it (donald 2026-11-07: captured the 13 "sissi" rows, then failed on the right list)
+        Thread.sleep(1_500)
         waitUntil("the exact hit on top", 15_000) { top()?.contains("Sissi") == true }
         val first = results()
         shot("1-results")
@@ -488,6 +531,89 @@ class ReleaseRundgang : E2EBase() {
         }
     }
 
+    /**
+     * 14 · Field bug 2026-11-06 (owner: Bike → Hike during a tour, the question came, "New route" – the navigation stayed
+     * as it was): the activity check → Hike → "New route" → the tour is navigated as Hike on the new line, and stays so.
+     * Unit test: ActivityCheckTest.aTakenSwitchKeepsTheRunningSessionsTokenSoTheServiceSavesIt.
+     */
+    @Test fun flow14_activitySwitchDuringATourIsTaken() {
+        planned(THEATRE, STATION)
+        startTour()
+        waitUntil("on the route", 30_000) { nav()?.shownAlongM != null }
+        val before = nav()!!.line
+        scenario.onActivity { vm(it).openActivityCheck() }
+        // owner 2026-11-07: nothing is routed before a row is chosen – every row plain
+        waitUntil("the sheet with plain rows", 10_000) {
+            read { vm -> vm.activityCheck?.rows?.all { it.state == com.onpath.app.ui.ActivityRowState.Idle } } == true
+        }
+        shot("1-check-sheet")
+        // a tap routes Hike alone and, found, asks the switch question
+        scenario.onActivity { vm(it).chooseActivity(Activity.HIKE) }
+        waitUntil("the switch question", 60_000) { (nav()?.prompt as? NavPrompt.Question)?.switch?.activity == Activity.HIKE }
+        assertNotNull("\"${NavText.TAKE}\" in the box", findFresh(By.text(NavText.TAKE), 10_000))
+        shot("2-switch-question")
+        clickText(NavText.TAKE)
+        waitUntil("navigated as Hike", 20_000) { nav()?.let { it.prompt == null && it.session?.activity == Activity.HIKE } == true }
+        Thread.sleep(3_000) // the service must not load the old session back (the bug did at once)
+        assertEquals("still Hike in the service", Activity.HIKE, nav()?.session?.activity)
+        assertEquals("the app follows", Activity.HIKE, read { it.activity })
+        assertFalse("the Bike line is not followed any more", sameLine(before, nav()!!.line))
+        assertFalse("no older-line drop", traced("Re-route result of an older line dropped"))
+        shot("3-hike")
+    }
+
+    /**
+     * 15 · Field bug 2026-11-06 23:26 (owner, round trip, tour started in its middle: "dauernd die Meldung 'Du stehst
+     * mitten auf der Route – zu ① führen' … das darf nur einmal kommen"): the mid-route question → "Zu ① führen" → the
+     * way to ① is followed and stays, although the user stands beside the plan's own line; no second question.
+     * Unit test: MidRouteOnceTest.
+     */
+    @Test fun flow15_midRouteQuestionOnceAndTheWayToOneHolds() {
+        planned(THEATRE, STATION, THEATRE)
+        val line = read { it.route!!.points }
+        val cum = Geo.cumulative(line)
+        val mid = line[cum.indexOfFirst { it >= cum.last() * 0.4 }]
+        demoAt(mid)
+        startTour()
+        waitUntil("the mid-route question", 60_000) { nav()?.prompt is NavPrompt.MidStart }
+        assertNotNull("\"Zu ① führen\" in the box", findFresh(By.text(Txt.s(Res.string.nav_mid_lead)), 10_000))
+        shot("1-mid-route-question")
+        clickText(Txt.s(Res.string.nav_mid_lead))
+        waitUntil("the way to ① followed", 90_000) { nav()?.let { it.session?.lead == true && it.session.rerouted && it.prompt == null } == true }
+        val led = nav()!!.version
+        shot("2-led-to-one")
+        Thread.sleep(20_000) // standing beside the plan's own line: the field flipped back after ~2 s, four times
+        assertFalse("never the question again: ${nav()?.prompt}", nav()?.prompt is NavPrompt.MidStart)
+        assertTrue("the way to ① is still followed", nav()?.session?.rerouted == true)
+        assertEquals("the followed line did not change", led, nav()!!.version)
+        shot("3-still-led")
+    }
+
+    /**
+     * 16 · "Pause heißt Ruhe" (owner 2026-11-07, Pixel: paused, yet "Route beginnt 58 km entfernt – Hinführen" on top):
+     * a far start asks; Pause hides the question (not answered, not dropped) and shows the pause band; Weiter brings the
+     * same question back.
+     */
+    @Test fun flow16_pauseHidesTheFarStartQuestionWeiterBringsItBack() {
+        planned(THEATRE, STATION, at = FAR)
+        startTour()
+        waitUntil("far-start question", 60_000) { nav()?.prompt is NavPrompt.FarStart }
+        assertNotNull("\"Hinführen\" in the box", findFresh(By.text(NavText.LEAD), 10_000))
+        val asked = (nav()!!.prompt as NavPrompt.FarStart).id
+        shot("1-far-start")
+        scenario.onActivity { vm(it).pauseRecording(true) }
+        waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
+        assertNotNull("the pause band", findFresh(By.text(Txt.s(Res.string.nav_pause_band_line)), 10_000))
+        assertTrue("paused: the question is hidden", goneFresh(By.text(NavText.LEAD), 5_000))
+        assertTrue("…but not answered or dropped", (nav()?.prompt as? NavPrompt.FarStart)?.id == asked)
+        shot("2-paused-calm")
+        scenario.onActivity { vm(it).pauseRecording(false) }
+        waitUntil("recording again", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == false }
+        assertNotNull("Weiter: the question is back", findFresh(By.text(NavText.LEAD), 10_000))
+        assertTrue("the band is gone", goneFresh(By.text(Txt.s(Res.string.nav_pause_band_line)), 5_000))
+        shot("3-asked-again")
+    }
+
     private fun share(text: String) {
         scenario.onActivity { a ->
             a.startActivity(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
@@ -577,16 +703,6 @@ class ReleaseRundgang : E2EBase() {
         Thread.sleep(500)
     }
 
-    /** Navigate: drag the slider's thumb across → the bar with Pause · Route ändern · Beenden opens in its place. */
-    private fun openTourActions() {
-        val slider = findFresh(By.descContains(Txt.s(Res.string.plan_slide_to_plan)), 5_000)
-        assertNotNull("no slider in Navigate – ${seenDescriptions()}", slider)
-        val r = slider!!.visibleBounds
-        device.swipe(r.left + r.height() / 2, r.centerY(), r.right - 4, r.centerY(), 40)
-        assertNotNull("the bar after the slide", findFresh(By.text(Txt.s(Res.string.nav_end_short)), 5_000))
-        shot("0-bar-unlocked")
-    }
-
     /** The camera shows [a] and [b] in the open middle of the map (following stopped first – map camera rule). */
     private fun showOnMap(a: GeoPoint, b: GeoPoint) {
         scenario.onActivity { vm(it).followMe = false }
@@ -603,7 +719,12 @@ class ReleaseRundgang : E2EBase() {
             var target: LatLng? = null
             onMap { m ->
                 m.moveCamera(CameraUpdateFactory.newLatLngZoom(mid, zoom))
-                target = m.projection.fromScreenLocation(android.graphics.PointF(w - w * 0.45f, h - h * 0.30f))
+                // shift by where [mid] really shows – the camera target is not the view's centre when the app sets a
+                // camera padding (Plan keeps the sheet out of the map's centre since the plan/tour split)
+                val now = m.projection.toScreenLocation(mid)
+                val centre = m.projection.toScreenLocation(m.cameraPosition.target!!)
+                target = m.projection.fromScreenLocation(android.graphics.PointF(
+                    centre.x + now.x - w * 0.45f, centre.y + now.y - h * 0.30f))
                 m.moveCamera(CameraUpdateFactory.newLatLng(target!!))
             }
             Thread.sleep(1_500)

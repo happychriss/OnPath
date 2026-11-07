@@ -8,7 +8,6 @@
     <string name="common_save">Save</string>
     <string name="common_close">Close</string>
     <string name="common_back">Back</string>
-    <string name="common_done">Done</string>
     <string name="common_not_now">Not now</string>
     <string name="common_try_again">Try again</string>
     <string name="common_more">More</string>
@@ -16,7 +15,6 @@
     <string name="common_show_all">Show all</string>
     <string name="common_rename">Rename</string>
     <string name="common_restore">Restore</string>
-    <string name="common_replace">Replace</string>
     <string name="common_reset">Reset</string>
     <string name="common_resume">Resume</string>
     <string name="common_cancel_all">Cancel all</string>

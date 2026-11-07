@@ -106,6 +106,7 @@ object HttpDownload {
         return part
     }
 
+    /** The one SHA-256 of a file in the app (downloads, map cells), lower-case hex. */
     fun sha256Of(f: File): String {
         val md = MessageDigest.getInstance("SHA-256")
         f.inputStream().use { inp ->

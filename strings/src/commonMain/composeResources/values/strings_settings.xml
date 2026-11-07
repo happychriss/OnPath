@@ -13,6 +13,8 @@
     <string name="settings_page_about">About</string>
     <string name="settings_group_yours">Your settings</string>
     <string name="settings_group_app">App</string>
+    <string name="settings_group_on_the_way">Also on the way</string>
+    <string name="settings_all">All settings</string>
     <string name="settings_sum_pace">%1$s · learns during each tour</string>
     <string name="settings_sum_poi_all_shown">All shown</string>
     <string name="settings_sum_poi_all_hidden">All hidden</string>
@@ -55,20 +57,25 @@
     <string name="settings_map_style">Map style</string>
     <string name="settings_map_contours">Contour lines</string>
     <string name="settings_map_hillshade">Hill shading</string>
-    <string name="settings_map_direction">Map direction (Plan and Navigate)</string>
+    <string name="settings_map_direction">Map direction</string>
     <string name="settings_map_travel">Direction of travel</string>
     <string name="settings_map_north">North up</string>
     <string name="settings_map_planning">Planning</string>
     <string name="settings_map_vibrate">Vibrate when planning</string>
     <string name="settings_map_vibrate_sub">Short buzz when you hold the map, two buzzes on a route point</string>
     <string name="settings_nav_offroute">Off-route warning</string>
-    <string name="settings_nav_offroute_sub">Vibration and notification when you leave the followed route</string>
+    <string name="settings_nav_offroute_sub">A notification when you leave the followed route</string>
     <string name="settings_nav_warn_after">Warn after</string>
     <string name="settings_nav_meters">%1$d m</string>
     <string name="settings_nav_vibrate_off">Vibrate when off route</string>
     <string name="settings_nav_vibrate_off_sub">Felt in the pocket, also with the screen off</string>
     <string name="settings_nav_on_route">Position on the route</string>
     <string name="settings_nav_on_route_sub">While you are close to the route, the dot sits on it</string>
+    <string name="settings_nav_lock">Hold buttons during a tour</string>
+    <string name="settings_nav_lock_sub">Protects against accidental taps, e.g. in a pocket</string>
+    <string name="settings_nav_lock_off">Off</string>
+    <string name="settings_nav_lock_seconds">%1$s s</string>
+    <string name="settings_nav_lock_decimal">.</string>
     <string name="settings_nav_screen_on">Keep screen on while hiking</string>
     <string name="settings_nav_screen_on_sub">Only while following a route; off in your pocket</string>
     <string name="settings_nav_bike_screen">Screen while cycling</string>
@@ -84,7 +91,7 @@
     <string name="settings_pace_learn">During a tour, the arrival time adapts to your pace of the day after about 15 minutes.</string>
     <string name="settings_upd_banner_title">OnPath %1$s is available</string>
     <string name="settings_upd_downloading">Downloading… %1$d %</string>
-    <string name="settings_upd_kept">Your routes, tours and maps are kept.</string>
+    <string name="settings_upd_kept">Your plans, tours and maps are kept.</string>
     <string name="settings_upd_later">Later</string>
     <string name="settings_upd_install">Install</string>
     <string name="settings_upd_installed">Installed: OnPath %1$s</string>
@@ -95,8 +102,8 @@
     <string name="settings_upd_check">Check for updates</string>
     <string name="settings_upd_source">Updates come from the OnPath page on GitHub. Android asks you to confirm every install.</string>
     <string name="settings_privacy_lead">Nothing is tracked. No account, no analytics, no ads.</string>
-    <string name="settings_privacy_tracks">Your tours and routes stay on your phone and in your own backup folder. When you pair your phone with your browser, your saved routes and imported tracks are sent there so you can plan on your computer too. They are encrypted on the phone first: only your phone and your browser can read them – we can't. Recorded tours are never sent.</string>
-    <string name="settings_privacy_device_backup">Depending on your phone's settings, Android may include your tours, routes and settings in the phone's own device backup (for example at Google) – separate from the sync with your browser. Map data and the pairing key are not included.</string>
+    <string name="settings_privacy_tracks">Your tours and plans stay on your phone and in your own backup folder. When you pair your phone with your browser, your saved plans and imported tracks are sent there so you can plan on your computer too. They are encrypted on the phone first: only your phone and your browser can read them – we can't. Recorded tours are never sent.</string>
+    <string name="settings_privacy_device_backup">Depending on your phone's settings, Android may include your tours, plans and settings in the phone's own device backup (for example at Google) – separate from the sync with your browser. Map data and the pairing key are not included.</string>
     <string name="settings_privacy_what">What leaves your phone</string>
     <string name="settings_privacy_ip">Every service below sees your IP address and the time of the request, as with any internet connection. OnPath sends no name and no account.</string>
     <string name="settings_privacy_maps_what">Which map area you need (an area of about 30 × 40 km, not your position)</string>
@@ -147,15 +154,20 @@
     <plurals name="settings_sum_diag_new"><item quantity="one">%1$d new problem</item><item quantity="other">%1$d new problems</item></plurals>
     <plurals name="settings_sum_diag_notes"><item quantity="one">For bug reports · %1$d note</item><item quantity="other">For bug reports · %1$d notes</item></plurals>
     <string name="settings_page_sync">Browser sync</string>
-    <string name="settings_privacy_sync_what">Your saved routes and imported tracks, encrypted on the phone</string>
+    <string name="settings_privacy_sync_what">Your saved plans and imported tracks, encrypted on the phone</string>
     <string name="settings_privacy_sync_to">OnPath sync server (Cloudflare, stored in the EU)</string>
     <string name="settings_privacy_sync_when">only when you pair with a browser: after a change and when the app opens</string>
     <string name="settings_privacy_sync_title">Plan sync with the web planner (only when you pair)</string>
-    <string name="settings_privacy_sync_text">Your saved routes and imported tracks are encrypted on your phone and in your browser before they leave the device. They pass through our sync server (Cloudflare, stored in the EU) as locked data: the server cannot read them and never learns your name, e-mail or where you plan to go. It stores a random mailbox number, the locked routes and when they last changed. Unpairing deletes everything there at once; a mailbox nobody uses for 12 months is deleted automatically. Whoever has your pairing code can see your saved routes – do not share it.</string>
+    <string name="settings_privacy_sync_text">Your saved plans and imported tracks are encrypted on your phone and in your browser before they leave the device. They pass through our sync server (Cloudflare, stored in the EU) as locked data: the server cannot read them and never learns your name, e-mail or where you plan to go. It stores a random mailbox number, the locked plans and when they last changed. Unpairing deletes everything there at once; a mailbox nobody uses for 12 months is deleted automatically. Whoever has your pairing code can see your saved plans – do not share it.</string>
     <string name="settings_nav_voice_test">Test voice</string>
     <string name="settings_nav_guide">Turn hints</string>
     <string name="settings_nav_guide_sub">Shortly before a junction where you could go wrong – vibration: 1× left, 2× right</string>
     <string name="settings_nav_guide_off">Off</string>
     <string name="settings_nav_guide_vibration">Vibration</string>
     <string name="settings_nav_guide_voice">Voice</string>
+    <string name="settings_group_offroute">Off the route</string>
+    <string name="settings_group_junctions">Junctions</string>
+    <string name="settings_group_screen">Screen and map</string>
+    <string name="settings_group_lock">Lock during a tour</string>
+    <string name="settings_phone_missing">Missing: %1$s</string>
 </resources>

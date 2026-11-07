@@ -25,6 +25,21 @@ object ScreenLifecycle {
     @Synchronized
     fun destroyed(n: Int): Int { alive -= n; return alive.size }
 
+    /**
+     * A launcher start that lands as a non-root screen in OnPath's task (Pixel 2026-11-06/07, after each install: the
+     * shell's launch was created on top of the task's old root, then Android re-created that root too – two screens,
+     * two view models, two plan-sync workers at once, which raced on the sync files). The screen is singleTask, so it
+     * is always the task root; a non-root MAIN/LAUNCHER start adds nothing – it finishes at once (before any view
+     * model) and the task's root screen comes up as the one screen. A start that carries something (a link, a GPX, a
+     * share) is never dropped here.
+     */
+    fun standsDown(taskRoot: Boolean, action: String?, categories: Collection<String>?): Boolean =
+        !taskRoot && action == "android.intent.action.MAIN" &&
+            categories?.contains("android.intent.category.LAUNCHER") == true
+
+    fun stoodDownLine(n: Int) =
+        "Screen #$n finished at once: a launcher start that is not the task root – the task's screen comes up instead"
+
     fun createdLine(n: Int, others: Int, task: Int, root: Boolean, restored: Boolean, intent: String) =
         "Screen #$n created (task $task${if (root) "" else ", not task root"}${if (restored) ", restored state" else ""}): " +
             intent + if (others > 0) " – $others other screen(s) still alive" else ""

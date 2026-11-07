@@ -45,13 +45,6 @@
     "priority": 2,
     "confidence": "sicher"
   },
-  "common_done": {
-    "area": "Common",
-    "context": "Button: close a page after finishing",
-    "priority": 2,
-    "confidence": "sicher",
-    "max": 14
-  },
   "common_not_now": {
     "area": "Common",
     "context": "Button in a question strip: decline for now",
@@ -98,13 +91,6 @@
     "priority": 2,
     "confidence": "sicher",
     "max": 18
-  },
-  "common_replace": {
-    "area": "Common",
-    "context": "Button: replace the current plan with another route",
-    "priority": 2,
-    "confidence": "sicher",
-    "max": 14
   },
   "common_reset": {
     "area": "Common",

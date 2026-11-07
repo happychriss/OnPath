@@ -54,5 +54,5 @@ class TourInterruptedReceiver : BroadcastReceiver() {
         Problems.warn("recording", InterruptedLog.interruptedLine(tour.name, boot))
     }
 
-    companion object { private const val INTERRUPTED_ID = 45 }
+    companion object { internal const val INTERRUPTED_ID = 45 }
 }

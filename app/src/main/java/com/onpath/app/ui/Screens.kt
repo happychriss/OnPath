@@ -1,5 +1,11 @@
 package com.onpath.app.ui
 
+import com.onpath.app.ui.routes.RouteRowActions
+
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Save
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +35,9 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.ContentCopy
@@ -38,6 +47,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.AlertDialog
@@ -83,6 +93,10 @@ import org.jetbrains.compose.resources.StringResource
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.onpath.app.domain.plan.LivePlan
+import com.onpath.app.domain.plan.LivePlanRows
+import com.onpath.app.domain.plan.LiveRows
+import com.onpath.app.domain.tour.TrackLine
 
 // ------------------------------------------------------------------ missing data
 
@@ -107,7 +121,7 @@ fun MissingDataScreen(
             Text(str(Res.string.routes_missing_title), style = MaterialTheme.typography.titleLarge)
             Text(str(Res.string.routes_missing_body),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 1.dp) {
+            Surface(shape = OnPathShapes.Card, color = OnPathColors.CardPaper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
                 Column(Modifier.padding(vertical = 6.dp)) {
                     checks.forEach { c ->
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -129,7 +143,7 @@ fun MissingDataScreen(
                 busy = busy, onImport = onImport, onDownloadRouting = onDownloadRouting,
             )
             Text(str(Res.string.routes_missing_adb), style = MaterialTheme.typography.bodyMedium)
-            Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFF1E2421)) {
+            Surface(shape = OnPathShapes.Small, color = Color(0xFF1E2421)) {
                 Row(Modifier.padding(start = 14.dp, top = 6.dp, bottom = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f)) {
                         SelectionContainer {
@@ -143,10 +157,10 @@ fun MissingDataScreen(
             }
             Text(str(Res.string.routes_missing_target, dataDir), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
-            Button(onClick = onRetry, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+            Button(onClick = onRetry, modifier = Modifier.fillMaxWidth().height(56.dp), shape = OnPathShapes.Pill) {
                 Text(str(Res.string.routes_missing_check_again), style = MaterialTheme.typography.bodyLarge)
             }
-            OutlinedButton(onClick = onContinue, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+            OutlinedButton(onClick = onContinue, modifier = Modifier.fillMaxWidth().height(56.dp), shape = OnPathShapes.Pill) {
                 Text(str(Res.string.routes_missing_continue))
             }
         }
@@ -161,12 +175,12 @@ fun MissingDataScreen(
 fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, onDownloadRouting: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Button(onClick = onImport, enabled = busy == null, modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp)) {
+            shape = OnPathShapes.Pill) {
             Text(str(Res.string.routes_data_import), style = MaterialTheme.typography.bodyLarge)
         }
         if (routingMissing) {
             OutlinedButton(onClick = onDownloadRouting, enabled = busy == null,
-                modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
+                modifier = Modifier.fillMaxWidth().height(56.dp), shape = OnPathShapes.Pill) {
                 Text(str(Res.string.routes_data_download_paths))
             }
         }
@@ -183,11 +197,11 @@ fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, on
 // ------------------------------------------------------------------ activity picker
 
 /**
- * Activity picker (plan sheet chip): each row = name + one short line ([Activity.line]). A bike activity applies and
- * closes; Hike applies and stays open with the T1–T5 row (SAC level) and the selected level's description; a level
- * applies at once (the route is planned again) and closes. Both are remembered across sessions.
+ * Activity picker (the activity button on the map, owner 2026-11-05): each row = name + one short line
+ * ([Activity.line]); ONE tap chooses and closes – no confirm. Hike has its T1–T5 chips (SAC level) right under its row:
+ * a chip = Hike with that level, closes; the Hike row itself keeps the last level. Both are remembered across sessions.
  */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun ActivityDialog(
     current: Activity,
@@ -195,20 +209,19 @@ fun ActivityDialog(
     sac: Int = com.onpath.app.data.LastActivity.DEFAULT_SAC,
     onSac: (Int) -> Unit = {},
 ) {
-    val hike = current == Activity.HIKE
     AlertDialog(
         onDismissRequest = onDismiss,
-        // picking a bike activity applies it and closes; with Hike the dialog stays for the T level
-        confirmButton = { if (hike) TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_done)) } },
+        // one tap chooses (owner 2026-11-05): no Done button, only a way out without a change
+        confirmButton = { TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
         title = { Text(str(Res.string.routes_activity_title)) },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
                 Activity.entries.forEach { a ->
                     val sel = a == current
                     Row(
-                        Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(12.dp))
+                        Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(OnPathShapes.Small)
                             .background(if (sel) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                            .clickable { onSelect(a); if (a != Activity.HIKE) onDismiss() }.padding(horizontal = 12.dp),
+                            .clickable { onSelect(a); onDismiss() }.padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(a.icon, null, tint = if (sel) OnPathColors.Green else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -219,30 +232,29 @@ fun ActivityDialog(
                             Text(a.line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                }
-                if (hike) {
-                    val level = SacScale.of(sac)
-                    Spacer(Modifier.height(12.dp))
-                    Text(str(Res.string.routes_sac_title), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
-                    androidx.compose.material3.SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                        SacScale.levels.forEachIndexed { i, l ->
-                            val desc = str(Res.string.routes_sac_button_desc, l.level, l.name)
-                            SegmentedButton(
-                                selected = l.level == level.level,
-                                onClick = { onSac(l.level); onDismiss() },
-                                shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, SacScale.levels.size),
-                                icon = {}, // no check mark: five narrow segments
-                                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = desc },
-                            ) { Text("T${l.level}", style = MaterialTheme.typography.bodyMedium) }
-                        }
-                    }
-                    Text(str(Res.string.routes_sac_line, level.level, level.name, level.text), style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 4.dp, top = 8.dp))
+                    if (a == Activity.HIKE) SacChips(if (sel) sac else 0) { level -> onSelect(Activity.HIKE); onSac(level); onDismiss() }
                 }
             }
         },
     )
+}
+
+/** Hike's T1–T5 under its row: one tap = Hike with that level, closes; [selected] 0 = none marked. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+internal fun SacChips(selected: Int, onPick: (Int) -> Unit) {
+    // one row of five equal chips (never a lone T5 on a second line)
+    Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        SacScale.levels.forEach { l ->
+            val desc = str(Res.string.routes_sac_button_desc, l.level, l.name)
+            androidx.compose.material3.FilterChip(
+                selected = l.level == selected, onClick = { onPick(l.level) },
+                label = { Text("T${l.level}", style = MaterialTheme.typography.bodyMedium, maxLines = 1,
+                    modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
+                modifier = Modifier.weight(1f).semantics { contentDescription = desc },
+            )
+        }
+    }
 }
 
 /**
@@ -270,7 +282,8 @@ internal object SacScale {
 /**
  * My routes (☰ → My routes): two tabs ([RoutesTab]) – Planned (planned routes + imported GPX files, what syncs to the
  * browser; Import GPX lives here) and Done (recorded tours) – each a list, newest first: type icon, name, date,
- * distance. Per item ⋮ Rename / Save as copy + Share plan (planned routes) / Export GPX / Delete (asks first), tap = open. A route from the browser not opened yet
+ * distance. Per item ⋮ Planen + Los geht's (planned routes, owner 2026-11-07) / Rename / Save as copy + Share plan (planned routes) /
+ * Export GPX / Delete (asks first), tap = the large overview (Abbrechen · Los geht's · Planen). A route from the browser not opened yet
  * has a tag after its name: "New" / "Changed" ([marks] → [RouteTag]). ⋮ Export all takes both tabs.
  * During a tour a planned route loads nothing: a tap shows the box "End the running tour first, then this route can be
  * loaded." with OK under the tabs (HINWEIS, ScreenMessageHost – AppViewModel.requestOpen; owner 2026-10-31).
@@ -290,7 +303,6 @@ fun RoutesScreen(
     onCopy: (Tour) -> Unit = {},
     /** ⋮ → Share plan (planned routes): the route as a plan.onpath.earth link (A-005). */
     onShare: (Tour) -> Unit = {},
-    initialConfirmDelete: Tour? = null,
     initialRename: Tour? = null,
     /** ⋮ → Export all (one ZIP of GPX files). */
     onExportAll: () -> Unit = {},
@@ -298,6 +310,11 @@ fun RoutesScreen(
     onRecycleBin: () -> Unit = {},
     /** ⋮ per recorded tour with rides (bus / car / lift) → Edit rides. */
     onEditRides: (Tour) -> Unit = {},
+    /**
+     * ⋮ per done tour / track → "Als Plan übernehmen" (owner 2026-11-06, F1: during a tour a tap only asks "Dieser Tour
+     * folgen?" – making a plan of it lives here).
+     */
+    onPlanFrom: (Tour) -> Unit = {},
     /** Import / Export all running: a spinner on the Import button / a line under the title. */
     busy: Busy? = null,
     /** The result of something done here (restored, export / import failed …): a line under the title. */
@@ -307,11 +324,59 @@ fun RoutesScreen(
     onTab: (RoutesTab) -> Unit = {},
     /** Routes from the browser not opened yet (tour uuid → mark): a "New" / "Changed" tag after the name (plansync/SyncMarks). */
     marks: Map<String, SyncMark> = emptyMap(),
+    /** The search box's text at the start (screenshots). */
+    initialQuery: String = "",
+    /** Zuletzt → Speichern: the plan becomes saved (owner 2026-11-06). */
+    onSaveDraft: (Tour) -> Unit = {},
+    /** Zuletzt → Löschen: to the recycle bin, no question. */
+    onDeleteDraft: (Tour) -> Unit = {},
+    /** The plan just saved from Zuletzt: "✓ Gerade gespeichert" on it. */
+    justSavedId: Long = -1L,
+    /** All plans under Zuletzt shown at the start (screenshots); else the newest [RECENT_SHOWN]. */
+    initialAllRecent: Boolean = false,
+    /** The plan on the map (owner 2026-11-06 23:00): first under Zuletzt with "In Bearbeitung"; null = empty map. */
+    live: LivePlan? = null,
+    /** Its row tapped: back to the plan on the map, nothing reloaded. */
+    onLiveOpen: () -> Unit = {},
+    /** Its Speichern: the same as ☰ Plan speichern. */
+    onLiveSave: () -> Unit = {},
+    /** "Plan · <today>" on its row (screenshots pass a fixed day). */
+    liveNowMs: Long = System.currentTimeMillis(),
+    /** A row's line for its small preview and the overview (owner 2026-11-07); empty = the kind's sign. */
+    loadLine: suspend (Tour) -> List<List<com.onpath.app.routing.GeoPoint>> = { emptyList() },
+    /** The overview's map picture (MapLibre snapshot); null = the drawn shape only (screenshots). */
+    snapshot: OverviewSnapshot? = null,
+    /** A tour records: the overview's primary is "Folgen" (follows at once, the recording goes on – owner 22:05). */
+    touring: Boolean = false,
+    /** The overview open at the start (screenshots). */
+    initialOverview: Tour? = null,
+    /**
+     * "Los geht's" on a planned route (owner 2026-11-07: ⋮, the overview, a Zuletzt row's ⋮): loaded as the plan and the
+     * tour started by the plan sheet's own start path (AppViewModel.goFromRoutes). Not offered during a tour.
+     */
+    onGo: (Tour) -> Unit = {},
+    /**
+     * A recorded tour that followed a plan (owner 2026-11-07): "Planen" / "Los geht's" load that plan (its last version) –
+     * AppViewModel.planFollowedPlan / goFollowedPlan. Not during a tour.
+     */
+    onPlanFollowed: (Tour) -> Unit = {},
+    onGoFollowed: (Tour) -> Unit = {},
+    /** The line of the plan a recorded tour followed, drawn thin under its track in the overview; empty = none. */
+    loadPlanLine: suspend (Tour) -> List<com.onpath.app.routing.GeoPoint> = { emptyList() },
 ) {
-    var confirmDelete by remember { mutableStateOf(initialConfirmDelete) }
     var tab by remember { mutableStateOf(initialTab) }
-    val shown = remember(tours, tab) { RoutesTab.filter(tours, tab) }
+    // a row tap opens the large overview first (owner 2026-11-07 00:30) – "Planen" / "Folgen" there opens it as before
+    var overview by remember { mutableStateOf(initialOverview) }
+    val line: @Composable (Tour) -> List<List<com.onpath.app.routing.GeoPoint>>? = { t -> rememberRouteLine(t, loadLine) }
+    // the search box (owner 2026-11-06): kept across the tabs, filters the list of the tab shown
+    var query by remember { mutableStateOf(initialQuery) }
+    val shown = remember(tours, tab, query) { RoutesTab.search(RoutesTab.filter(tours, tab), query) }
+    // the list at its top stays there when a row comes before its first (ListTop, E2E 2026-11-07)
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val listFirstKey = remember { arrayOfNulls<Any>(1) }
     var rename by remember { mutableStateOf(initialRename) }
+    var allRecent by remember { mutableStateOf(initialAllRecent) }
+    Box(Modifier.fillMaxSize()) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.systemBarsPadding()) {
             // the title never breaks inside a word: at a large font Import GPX becomes its icon (TopBarLayout)
@@ -345,31 +410,118 @@ fun RoutesScreen(
                     ) { Text(str(if (t == RoutesTab.PLANNED) Res.string.routes_tab_planned else Res.string.routes_tab_done)) }
                 }
             }
+            if (tours.isNotEmpty()) RoutesSearchField(query, { query = it }, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
             if (busy == Busy.EXPORT) Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 20.dp),
                 verticalAlignment = Alignment.CenterVertically) { BusyContent(Busy.EXPORT.text) }
             note?.let { NoticeLine(it, Modifier.padding(horizontal = 20.dp)) }
-            if (shown.isEmpty()) {
+            // the plan on the map (owner 2026-11-06 23:00, [LivePlanRows]): first under Zuletzt with "In Bearbeitung", or the
+            // tag on the saved route it is – never twice (a Zuletzt plan with its points is hidden)
+            val tabbed = remember(tours, tab) { RoutesTab.filter(tours, tab) }
+            val liveRows = if (tab == RoutesTab.PLANNED) LivePlanRows.of(live, tabbed.filter { it.draft }, tabbed.filter { !it.draft })
+                else LiveRows.NONE
+            val liveName = live?.name ?: str(Res.string.routes_live_name)
+            val liveTour = if (liveRows.onTop && live != null) Tour(LivePlanRows.LIVE_ID, TourKind.PLANNED, liveName,
+                liveNowMs, null, 0, live.distanceM, live.ascentM, 0.0, live.durationS, "done", emptyList())
+                .takeIf { RoutesTab.search(listOf(it), query).isNotEmpty() } else null
+            if (shown.isEmpty() && liveTour == null) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text(str(if (tab == RoutesTab.PLANNED) Res.string.routes_empty_planned else Res.string.routes_empty_done),
+                    Text(if (query.isNotBlank()) str(Res.string.routes_search_none, query.trim())
+                        else str(if (tab == RoutesTab.PLANNED) Res.string.routes_empty_planned else Res.string.routes_empty_done),
                         color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
             } else {
-                LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
+                // Planned (owner 2026-11-06, "Zuletzt"): the plan on the map first ("In Bearbeitung"), then the plans kept
+                // by themselves – the newest three, the rest on demand – then the saved ones; a draft is saved / deleted
+                // right on its card
+                val drafts = shown.filter { it.draft && it.id !in liveRows.hiddenDraftIds }
+                val saved = shown.filter { !it.draft }
+                // a route saved / synced / read fresh lands on top: a LazyColumn would keep the old first row at the top
+                // and the new one above the screen (E2E 2026-11-07) – at the top, the list shows it; scrolled, it stays
+                val firstKey: Any? = if (drafts.isNotEmpty() || liveTour != null) "h-recent" else saved.firstOrNull()?.id
+                val scrollTop = remember(firstKey) {
+                    val before = listFirstKey[0]
+                    listFirstKey[0] = firstKey
+                    // the position of the last layout, before this list is measured
+                    androidx.compose.runtime.snapshots.Snapshot.withoutReadObservation {
+                        com.onpath.app.ui.routes.ListTop.scrollTo(before, firstKey,
+                            com.onpath.app.ui.routes.ListTop.atTop(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset))
+                    }
+                }
+                androidx.compose.runtime.LaunchedEffect(firstKey) { scrollTop?.let { listState.scrollToItem(it) } }
+                LazyColumn(state = listState, contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(shown, key = { it.id }) { t ->
-                        TourCard(t, tag = RouteTag.of(t, marks), onOpen = { onOpen(t) },
+                    if (drafts.isNotEmpty() || liveTour != null) {
+                        item(key = "h-recent") { SectionHeader(str(Res.string.routes_section_recent)) }
+                        liveTour?.let { lt -> item(key = "live") {
+                            val row = RouteRowActions.of(RouteRowActions.Section.LIVE, lt.kind, canSaveLive = live?.canSave == true)
+                            TourCard(lt, tag = RouteTag.LIVE, row = row, onOpen = onLiveOpen, onRename = {}, onExport = {}, onDelete = null,
+                                menu = false, footer = if (RouteRowActions.Action.SAVE in row.inline) ({ DraftActions(onLiveSave, null) }) else null,
+                                line = line(lt))
+                        } }
+                        items(if (allRecent) drafts else drafts.take(RECENT_SHOWN), key = { it.id }) { t ->
+                            // Zuletzt (owner 2026-11-07 09:40): Speichern · Löschen on the row for a fast clean-up – not again in ⋮
+                            // and "Planen" first (owner 2026-11-07: "es muss klar sein, dass man diese Routen bearbeiten kann"),
+                            // "Los geht's" in ⋮
+                            val row = RouteRowActions.of(RouteRowActions.Section.DRAFT, t.kind, waypoints = t.waypoints.size, touring = touring)
+                            TourCard(t, tag = null, row = row, onOpen = { overview = t }, onRename = { rename = t }, onExport = { onExport(t) },
+                                onDelete = null, footer = { DraftActions({ onSaveDraft(t) }, { onDeleteDraft(t) },
+                                    onPlan = if (RouteRowActions.Action.PLAN in row.inline) ({ onOpen(t) }) else null) },
+                                line = line(t), onGo = if (RouteRowActions.Action.GO in row.menu) ({ onGo(t) }) else null)
+                        }
+                        if (!allRecent && drafts.size > RECENT_SHOWN) item(key = "all-recent") {
+                            TextButton({ allRecent = true }, modifier = Modifier.heightIn(min = 48.dp)) {
+                                Text(str(Res.string.routes_recent_all, drafts.size))
+                            }
+                        }
+                        if (saved.isNotEmpty()) item(key = "h-saved") { SectionHeader(str(Res.string.routes_section_saved)) }
+                    }
+                    items(saved, key = { it.id }) { t ->
+                        val isLive = t.id == liveRows.markedSavedId
+                        // Gespeichert / Gemacht (owner 2026-11-07 09:40, variant A): tile + name + facts + ›, every action in ⋮
+                        val row = RouteRowActions.of(RouteRowActions.Section.SAVED, t.kind, recording = t.id == recordingId,
+                            hasRides = !t.rides?.rides.isNullOrEmpty(), hasDistance = TrackLine.hasDistance(t.distanceM),
+                            waypoints = t.waypoints.size, liveMarked = isLive, canSaveLive = live?.unsaved == true && live.canSave,
+                            touring = touring, hasPlan = t.hasPlan)
+                        fun has(a: RouteRowActions.Action) = a in row.menu
+                        TourCard(t, tag = if (isLive) RouteTag.LIVE else RouteTag.of(t, marks), row = row,
+                            onOpen = if (isLive) onLiveOpen else ({ overview = t }), justSaved = t.id == justSavedId, line = line(t),
+                            footer = if (RouteRowActions.Action.SAVE in row.inline) ({ DraftActions(onLiveSave, null) }) else null,
+                            recording = t.id == recordingId,
                             onRename = { rename = t }, onExport = { onExport(t) },
-                            onCopy = if (t.kind == TourKind.PLANNED) ({ onCopy(t) }) else null,
-                            onShare = if (t.kind == TourKind.PLANNED && t.waypoints.size >= 2) ({ onShare(t) }) else null,
-                            onDelete = if (t.id == recordingId) null else ({ confirmDelete = t }),
-                            onEditRides = if (t.rides?.rides.isNullOrEmpty() || t.id == recordingId) null else ({ onEditRides(t) }))
+                            onCopy = if (has(RouteRowActions.Action.COPY)) ({ onCopy(t) }) else null,
+                            onShare = if (has(RouteRowActions.Action.SHARE)) ({ onShare(t) }) else null,
+                            // straight to the recycle bin, no question (owner 2026-11-06: the bin is the net)
+                            onDelete = if (has(RouteRowActions.Action.DELETE)) ({ onDelete(t) }) else null,
+                            onEditRides = if (has(RouteRowActions.Action.EDIT_RIDES)) ({ onEditRides(t) }) else null,
+                            onPlanFrom = if (has(RouteRowActions.Action.PLAN_FROM)) ({ onPlanFrom(t) }) else null,
+                            // a recorded tour's Planen / Los geht's load the plan it followed (owner 2026-11-07)
+                            onPlan = if (has(RouteRowActions.Action.PLAN)) ({ if (t.kind == TourKind.RECORDED) onPlanFollowed(t) else onOpen(t) }) else null,
+                            onGo = if (has(RouteRowActions.Action.GO)) ({ if (t.kind == TourKind.RECORDED) onGoFollowed(t) else onGo(t) }) else null)
                     }
                 }
             }
         }
     }
-    confirmDelete?.let { t ->
-        DeleteRouteDialog(t, onDelete = { confirmDelete = null; onDelete(t) }, onCancel = { confirmDelete = null })
+    // drawn in place over the list, not in a dialog window (a full-screen Dialog got no navigation-bar inset: its
+    // buttons lay under the gesture bar on the emulator 2026-11-07, as EndTourDialog's once did); Back closes it
+    overview?.let { t ->
+        androidx.activity.compose.BackHandler { overview = null }
+        val segs = rememberRouteLine(t, loadLine)
+        // a recorded tour that followed a plan (owner 2026-11-07): the same foot, both load the plan it followed, and that
+        // plan's line drawn thin under the track
+        val followed = t.kind == TourKind.RECORDED && t.hasPlan && !touring && t.id != recordingId
+        var planLine by remember(t.id) { mutableStateOf<List<com.onpath.app.routing.GeoPoint>?>(null) }
+        if (t.kind == TourKind.RECORDED && t.hasPlan) androidx.compose.runtime.LaunchedEffect(t.id) { planLine = loadPlanLine(t) }
+        // a planned route (no tour): Abbrechen · Los geht's · Planen (owner 2026-11-07)
+        RouteOverview(t, segs, touring, snapshot,
+            onPrimary = { overview = null; if (followed) onPlanFollowed(t) else onOpen(t) }, onCancel = { overview = null },
+            onGo = when {
+                followed -> ({ overview = null; onGoFollowed(t) })
+                t.kind == TourKind.PLANNED && !touring && t.waypoints.size >= 2 -> ({ overview = null; onGo(t) })
+                else -> null
+            },
+            planLine = planLine)
+    }
     }
     rename?.let { t ->
         NameDialog(str(when (t.kind) {
@@ -381,60 +533,153 @@ fun RoutesScreen(
     }
 }
 
-/** Stays until answered: a tap outside does nothing, Back = Cancel. Deletes only on "Delete". */
+/** Meine Touren's search box: one line, a magnifier, ✕ clears (owner 2026-11-06). */
 @Composable
-fun DeleteRouteDialog(t: Tour, onDelete: () -> Unit, onCancel: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onCancel,
-        properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = false),
-        icon = { Icon(Icons.Filled.Delete, null) },
-        title = { Text(str(Res.string.routes_delete_title, t.name)) },
-        text = { DialogText(RECYCLE_BIN_NOTE) },
-        confirmButton = { TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_delete), color = OnPathColors.Bad) } },
-        dismissButton = { TextButton(onClick = onCancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
-    )
+private fun RoutesSearchField(query: String, onQuery: (String) -> Unit, modifier: Modifier = Modifier) {
+    OutlinedTextField(value = query, onValueChange = onQuery, singleLine = true, modifier = modifier.fillMaxWidth(),
+        placeholder = { Text(str(Res.string.routes_search_hint), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        leadingIcon = { Icon(Icons.Filled.Search, null) },
+        trailingIcon = if (query.isNotEmpty()) ({
+            IconButton(onClick = { onQuery("") }, Modifier.size(48.dp)) { Icon(Icons.Filled.Close, str(Res.string.search_clear_query)) }
+        }) else null,
+        shape = OnPathShapes.Pill,
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search))
 }
 
-/** Loading would overwrite a plan that is not saved: stays until answered (tap outside / Back = cancel). */
-@Composable
-fun ReplacePlanDialog(onSaveFirst: () -> Unit, onReplace: () -> Unit, onCancel: () -> Unit, fromLink: Boolean = false) {
-    AlertDialog(
-        onDismissRequest = onCancel,
-        icon = { Icon(Icons.Filled.Route, null) },
-        title = { Text(str(Res.string.routes_replace_title)) },
-        text = { DialogText(str(if (fromLink) Res.string.routes_replace_text_link else Res.string.routes_replace_text)) },
-        confirmButton = { TextButton(onClick = onReplace, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_replace)) } },
-        dismissButton = { TextButton(onClick = onSaveFirst, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.routes_save_first)) } },
-    )
-}
+
 
 @Composable
 private fun TourCard(
-    t: Tour, tag: RouteTag?, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?,
+    t: Tour, tag: RouteTag?, row: RouteRowActions.Row, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit,
+    /** ⋮ → Löschen; null = not in ⋮ (a draft deletes on its row, the tour being recorded never). */
+    onDelete: (() -> Unit)?,
     onEditRides: (() -> Unit)? = null, onCopy: (() -> Unit)? = null, onShare: (() -> Unit)? = null,
+    onPlanFrom: (() -> Unit)? = null,
+    /** Under the card's text, over its full width (a draft's Speichern · Löschen). */
+    footer: (@Composable () -> Unit)? = null,
+    /** "✓ Gerade gespeichert" under the numbers. */
+    justSaved: Boolean = false,
+    /** The ⋮ menu (rename, export …); off for the plan on the map – it is no stored route. */
+    menu: Boolean = true,
+    /** Its line for the small preview (owner 2026-11-07); null / too short = the kind's sign as before. */
+    line: List<List<com.onpath.app.routing.GeoPoint>>? = null,
+    /** The tour being recorded right now: "Wird gerade aufgezeichnet" under the numbers. */
+    recording: Boolean = false,
+    /** ⋮ → "Planen" (blue) / "Los geht's" (green) on top (owner 2026-11-07); null = not in ⋮. */
+    onPlan: (() -> Unit)? = null, onGo: (() -> Unit)? = null,
 ) {
     val (icon, color) = when (t.kind) {
         TourKind.PLANNED -> Icons.Filled.Route to OnPathColors.Route
         TourKind.RECORDED -> Icons.Filled.FiberManualRecord to OnPathColors.Rec
         TourKind.IMPORTED -> Icons.Filled.FileOpen to OnPathColors.Gpx
     }
-    Surface(onClick = { onOpen?.invoke() }, enabled = onOpen != null, shape = RoundedCornerShape(16.dp), color = Color.White,
-        shadowElevation = 1.dp, modifier = Modifier.heightIn(min = 72.dp)) {
+    // a plan under Zuletzt: the route sign pale – only a draft (owner 2026-11-06), the words the same ("Plan · date")
+    val pale = DraftLook.of(t.draft)
+    val openLabel = str(Res.string.routes_open_row, t.name)
+    Surface(onClick = { onOpen?.invoke() }, enabled = onOpen != null, shape = OnPathShapes.Card, color = OnPathColors.CardPaper,
+        modifier = Modifier.heightIn(min = 72.dp).warmShadow(OnPathShadow.LOW, OnPathShapes.Card)
+            .semantics { onClick(label = openLabel) { onOpen?.invoke(); onOpen != null } }) {
+        Column {
         Row(Modifier.fillMaxWidth().padding(start = 14.dp, top = 12.dp, bottom = 10.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).clip(CircleShape).background(color.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = t.kind.label, tint = color)
-            }
+            // the route's shape on paper (owner 2026-11-07); without a line the kind's sign as before. ⤢ on it: a tap there
+            // (like on the row) opens the large overview (owner 2026-11-07 09:40 "deutlich, wo man tippen muss")
+            RoutePreviewTile(line, RouteShape.tint(t.kind), pale = t.draft, placeholder = {
+                Box(Modifier.size(44.dp).clip(CircleShape).background(color.copy(alpha = pale.circle)), contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = t.kind.label, tint = color.copy(alpha = pale.icon))
+                }
+            }, onEnlarge = if (row.opensOverview) onOpen else null)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 // from the browser and not opened yet (owner 2026-10-31): a "New" / "Changed" tag after the name, until opened
                 RouteTitle(t.name, tag)
-                Text("${t.kind.label} · " + SimpleDateFormat(str(Res.string.common_date), Locale.getDefault()).format(Date(t.createdMs)),
+                Text("${t.kind.label} · " + SimpleDateFormat(str(Res.string.common_date), Locale.getDefault()).format(Date(t.createdMs)).replace(' ', '\u00A0'),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("${Format.distance(t.distanceM)} · ↑ ${Format.meters(t.ascentM)} · ${Format.duration(t.durationS)}", style = MaterialTheme.typography.bodySmall)
-                if (onDelete == null) Text(str(Res.string.routes_recording_now), style = MaterialTheme.typography.bodySmall, color = OnPathColors.Rec)
+                Text(instrument(RouteRowActions.facts(Format.distance(t.distanceM), Format.meters(t.ascentM), Format.duration(t.durationS)),
+                    MaterialTheme.typography.bodySmall, MaterialTheme.colorScheme.onSurfaceVariant), style = MaterialTheme.typography.bodySmall)
+                if (recording) Text(str(Res.string.routes_recording_now), style = MaterialTheme.typography.bodySmall, color = OnPathColors.Rec)
+                if (justSaved) Text(str(Res.string.routes_just_saved), style = MaterialTheme.typography.labelLarge,
+                    color = OnPathColors.ActionEdit, modifier = Modifier.padding(top = 2.dp))
             }
-            TourItemMenu(t, onRename, onExport, onDelete, onEditRides, onCopy, onShare)
+            if (row.chevron) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+            if (menu) TourItemMenu(t, onRename, onExport, onDelete, onEditRides, onCopy, onShare, onPlanFrom, onPlan, onGo)
+            else Spacer(Modifier.width(8.dp))
         }
+        // the card's whole width from its tile's edge (Planen · Speichern · Löschen need it in German; at a large font they stack)
+        footer?.let { Box(Modifier.fillMaxWidth().padding(start = 14.dp, end = 12.dp, bottom = 8.dp)) { it() } }
+        }
+    }
+}
+
+/** How many plans Zuletzt shows before "Alle N anzeigen ›". */
+const val RECENT_SHOWN = 3
+
+/** A draft's route sign: pale (owner 2026-11-06 "damit man sieht, dass es nur ein Draft ist"); a saved one as always. */
+data class DraftLook(val icon: Float, val circle: Float) {
+    companion object {
+        /** From this font scale a draft's Speichern · Löschen stack, full width. */
+        const val STACK_FONT_SCALE = 1.3f
+        fun of(draft: Boolean) = if (draft) DraftLook(icon = 0.35f, circle = 0.05f) else DraftLook(icon = 1f, circle = 0.12f)
+    }
+}
+
+/** "ZULETZT" / "GESPEICHERT" over the parts of My routes → Planned. */
+@Composable
+private fun SectionHeader(text: String) = Text(text.uppercase(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold,
+    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp, top = 6.dp).semantics { heading() })
+
+/** A draft's own buttons: blue "💾 Speichern" (plan colour, the ☰ Save sign) and red "🗑 Löschen" (recycle bin, no question). */
+@Composable
+private fun DraftActions(onSave: () -> Unit, onDelete: (() -> Unit)?, onPlan: (() -> Unit)? = null) {
+    if (onPlan != null) { DraftActionsWithPlan(onPlan, onSave, onDelete); return }
+    val save = @Composable { m: Modifier ->
+        androidx.compose.material3.FilledTonalButton(onSave, modifier = m.heightIn(min = 48.dp),
+            colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(containerColor = OnPathColors.EditTonal, contentColor = OnPathColors.OnEditTonal)) {
+            Icon(Icons.Outlined.Save, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(str(Res.string.common_save), maxLines = 1) }
+    }
+    val delete = @Composable { m: Modifier ->
+        if (onDelete != null) TextButton(onDelete, modifier = m.heightIn(min = 48.dp),
+            colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+            Icon(Icons.Outlined.DeleteOutline, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(str(Res.string.common_delete), maxLines = 1) }
+    }
+    // a large font: one under the other, full width (M3: never a word broken into letters)
+    if (androidx.compose.ui.platform.LocalDensity.current.fontScale >= DraftLook.STACK_FONT_SCALE)
+        androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            save(Modifier.fillMaxWidth()); delete(Modifier.fillMaxWidth())
+        }
+    else Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        save(Modifier); delete(Modifier)
+    }
+}
+
+/**
+ * A Zuletzt row's buttons with "Planen" (owner 2026-11-07: "es muss klar sein, dass man diese Routen bearbeiten kann"):
+ * "Planen" tonal blue first (the one filled button), then Speichern (blue text) and Löschen (red text); one under the other,
+ * full width, at a large font (M3: never a word broken into letters).
+ */
+@Composable
+private fun DraftActionsWithPlan(onPlan: () -> Unit, onSave: () -> Unit, onDelete: (() -> Unit)?) {
+    val plan = @Composable { m: Modifier ->
+        androidx.compose.material3.FilledTonalButton(onPlan, modifier = m.heightIn(min = 48.dp),
+            contentPadding = PaddingValues(start = 14.dp, end = 18.dp),
+            colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(containerColor = OnPathColors.EditTonal, contentColor = OnPathColors.OnEditTonal)) {
+            Icon(Icons.Filled.Route, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(str(Res.string.routes_overview_plan), maxLines = 1) }
+    }
+    val save = @Composable { m: Modifier ->
+        TextButton(onSave, modifier = m.heightIn(min = 48.dp), colors = ActionButtons.editText(), contentPadding = PaddingValues(horizontal = 10.dp)) {
+            Icon(Icons.Outlined.Save, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text(str(Res.string.common_save), maxLines = 1) }
+    }
+    val delete = @Composable { m: Modifier ->
+        if (onDelete != null) TextButton(onDelete, modifier = m.heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 10.dp),
+            colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+            Icon(Icons.Outlined.DeleteOutline, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text(str(Res.string.common_delete), maxLines = 1) }
+    }
+    if (androidx.compose.ui.platform.LocalDensity.current.fontScale >= DraftLook.STACK_FONT_SCALE)
+        androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            plan(Modifier.fillMaxWidth()); save(Modifier.fillMaxWidth()); delete(Modifier.fillMaxWidth())
+        }
+    else Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        plan(Modifier); save(Modifier); delete(Modifier)
     }
 }
 
@@ -454,19 +699,20 @@ private fun RoutesMenu(onExportAll: () -> Unit, onRecycleBin: () -> Unit, canExp
 }
 
 /**
- * ⋮ per item in My routes: Rename, Save as copy (planned), Export GPX, Share plan (planned), Delete (asks first; not
- * for the tour being recorded).
+ * ⋮ per item in My routes: Planen + Los geht's (planned, not during a tour), Rename, Save as copy (planned), Export GPX,
+ * Share plan (planned), Delete (asks first; not for the tour being recorded).
  */
 @Composable
 private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?, onEditRides: (() -> Unit)? = null,
-                         onCopy: (() -> Unit)? = null, onShare: (() -> Unit)? = null) {
+                         onCopy: (() -> Unit)? = null, onShare: (() -> Unit)? = null, onPlanFrom: (() -> Unit)? = null,
+                         onPlan: (() -> Unit)? = null, onGo: (() -> Unit)? = null) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }, Modifier.size(48.dp)) {
             Icon(Icons.Filled.MoreVert, str(Res.string.routes_options_desc, t.name), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            TourMenuItems(t, onRename, onExport, onDelete, onEditRides, onCopy, onShare) { open = false }
+            TourMenuItems(t, onRename, onExport, onDelete, onEditRides, onCopy, onShare, onPlanFrom, onPlan, onGo) { open = false }
         }
     }
 }
@@ -474,8 +720,21 @@ private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, on
 /** The items of a My routes ⋮ (also drawn on their own by the screenshot tests). */
 @Composable
 internal fun TourMenuItems(t: Tour, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?, onEditRides: (() -> Unit)?,
-                           onCopy: (() -> Unit)?, onShare: (() -> Unit)?, close: () -> Unit) {
+                           onCopy: (() -> Unit)?, onShare: (() -> Unit)?, onPlanFrom: (() -> Unit)? = null,
+                           onPlan: (() -> Unit)? = null, onGo: (() -> Unit)? = null, close: () -> Unit) {
     fun on(a: () -> Unit): () -> Unit = { close(); a() }
+    // edit or follow (owner 2026-11-07): the plan sheet's words and colours – "Planen" blue, "Los geht's" green – on top
+    if (onPlan != null) DropdownMenuItem(text = { Text(str(Res.string.routes_overview_plan), color = OnPathColors.ActionEdit, fontWeight = FontWeight.SemiBold) },
+        leadingIcon = { Icon(Icons.Filled.Route, null, tint = OnPathColors.ActionEdit) },
+        onClick = on(onPlan), modifier = Modifier.heightIn(min = 48.dp))
+    if (onGo != null) DropdownMenuItem(text = { Text(str(Res.string.plan_bar_go), color = OnPathColors.ActionGo, fontWeight = FontWeight.SemiBold) },
+        leadingIcon = { Icon(Icons.Filled.PlayArrow, null, tint = OnPathColors.ActionGo) },
+        onClick = on(onGo), modifier = Modifier.heightIn(min = 48.dp))
+    if (onPlan != null || onGo != null) androidx.compose.material3.HorizontalDivider(Modifier.padding(vertical = 4.dp))
+    // a done tour / track as a plan to edit (owner 2026-11-06, F1): planning = blue
+    if (onPlanFrom != null) DropdownMenuItem(text = { Text(str(Res.string.plan_from_track), color = OnPathColors.ActionEdit) },
+        leadingIcon = { Icon(Icons.Filled.Route, null, tint = OnPathColors.ActionEdit) },
+        onClick = on(onPlanFrom), modifier = Modifier.heightIn(min = 48.dp))
     DropdownMenuItem(text = { Text(str(Res.string.common_rename)) }, leadingIcon = { Icon(Icons.Filled.Edit, null) },
         onClick = on(onRename), modifier = Modifier.heightIn(min = 48.dp))
     if (onCopy != null) DropdownMenuItem(text = { Text(str(Res.string.plan_save_as_copy)) },
@@ -522,23 +781,16 @@ fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit, onDele
 }
 
 /**
- * "Tour saved" after End tour; its Delete asks first ([DeleteRouteDialog], stays until answered) – Cancel goes
- * back to "Tour saved", nothing is lost by a slip of the finger. The plan has already left the map by then (Undo
- * brings it back), so there is no "Clear route from map" here.
+ * "Tour gespeichert" after "Tour speichern" (owner 2026-11-06, onpath.private#35: the box is clearer than a line in the
+ * plan sheet – slim this time): the name, the numbers, moving time / breaks / planned vs. needed, "In Meine Touren ›"
+ * and ONE button OK. No delete (the end sheet just offered it), no export (My routes ⋮).
  */
 @Composable
-fun FinishedTourDialogs(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: () -> Unit, initialConfirm: Boolean = false,
-                        times: com.onpath.app.time.TourTimes? = null) {
-    var confirm by remember(t.id) { mutableStateOf(initialConfirm) }
-    if (confirm) DeleteRouteDialog(t, onDelete = { confirm = false; onDelete() }, onCancel = { confirm = false })
-    else FinishedDialog(t, onExport, onDelete = { confirm = true }, onDone, times)
-}
-
-@Composable
-fun FinishedDialog(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: () -> Unit,
-                   times: com.onpath.app.time.TourTimes? = null) {
+fun SavedTourDialog(t: Tour, times: com.onpath.app.time.TourTimes?, onOpen: () -> Unit, onOk: () -> Unit) {
+    val neutral = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = OnPathColors.Ink)
     AlertDialog(
-        onDismissRequest = onDone,
+        onDismissRequest = onOk,
+        icon = { Icon(Icons.Filled.CheckCircle, null, tint = OnPathColors.ActionGo) },
         title = { Text(str(Res.string.routes_track_saved)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -547,12 +799,28 @@ fun FinishedDialog(t: Tour, onExport: () -> Unit, onDelete: () -> Unit, onDone: 
                 times?.let { TourTimesText(it) } // moving time, breaks, planned vs. needed (PaceSettings.kt)
             }
         },
-        confirmButton = { TextButton(onClick = onDone) { Text(str(Res.string.common_done)) } },
-        dismissButton = {
-            Row {
-                TextButton(onClick = onDelete) { Text(str(Res.string.common_delete), color = OnPathColors.Bad) }
-                TextButton(onClick = onExport) { Icon(Icons.Filled.Share, null); Spacer(Modifier.width(4.dp)); Text(str(Res.string.common_export_gpx)) }
-            }
-        },
+        // M3: one row ("In Meine Touren ›" · OK); a large font that does not fit: equal full-width buttons, never ragged
+        confirmButton = { SavedTourActions(str(Res.string.routes_saved_open), onOpen, str(Res.string.common_ok), onOk, neutral) },
     )
+}
+
+@Composable
+private fun SavedTourActions(open: String, onOpen: () -> Unit, ok: String, onOk: () -> Unit,
+                             neutral: androidx.compose.material3.ButtonColors) {
+    val tm = androidx.compose.ui.text.rememberTextMeasurer()
+    val style = MaterialTheme.typography.labelLarge
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // each text button: its word + 12 dp padding each side; 8 dp between
+        val need = with(density) { listOf(open, ok).sumOf { tm.measure(it, style).size.width.toDp().value.toDouble() + 24 } }.toFloat() + 8f
+        if (DecisionLayout.oneRow(need, maxWidth.value)) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onOpen, colors = neutral, modifier = Modifier.heightIn(min = 48.dp)) { Text(open, maxLines = 1, softWrap = false) }
+            Spacer(Modifier.width(8.dp))
+            TextButton(onClick = onOk, colors = neutral, modifier = Modifier.heightIn(min = 48.dp)) { Text(ok, maxLines = 1, softWrap = false) }
+        } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.material3.OutlinedButton(onClick = onOk, colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = OnPathColors.Ink),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(ok) }
+            TextButton(onClick = onOpen, colors = neutral, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(open) }
+        }
+    }
 }

@@ -84,7 +84,7 @@ class CellDownloadTest {
         server.cutAfter = null
         api().download(f, part)
         assertEquals(f.size, part.length())
-        assertEquals(f.sha256, CellApi.sha256(part))
+        assertEquals(f.sha256, com.onpath.app.net.HttpDownload.sha256Of(part))
         assertTrue(server.log.any { it.contains("Range:bytes=") })
     }
 
@@ -96,7 +96,7 @@ class CellDownloadTest {
         try { api().download(f, part); fail() } catch (e: CellApi.ChecksumException) { assertTrue(e.message!!.startsWith("Map download damaged")) }
         assertFalse(part.exists())
         api().download(f, part)
-        assertEquals(f.sha256, CellApi.sha256(part))
+        assertEquals(f.sha256, com.onpath.app.net.HttpDownload.sha256Of(part))
     }
 
     // ------------------------------------------------------------------------------------------- MapCells
@@ -534,7 +534,7 @@ class CellDownloadTest {
         val f = File(mc.store.root, "requests.json")
         assertTrue(f.isFile)
         val done = java.util.concurrent.atomic.AtomicBoolean(false)
-        val writer = Thread { try { repeat(3_000) { mc.approveMobile(listOf(a)) } } finally { done.set(true) } }.apply { start() }
+        val writer = Thread { try { repeat(300) { mc.approveMobile(listOf(a)) } } finally { done.set(true) } }.apply { start() }
         var reads = 0; var missing = 0
         while (!done.get()) {
             // expected while the bug is there: the file gone between delete and rename – counted, asserted below

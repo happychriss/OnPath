@@ -38,7 +38,7 @@ object OptionalSources {
     }
 
     /** Logging must never break style loading (and is not available in JVM tests). */
-    private fun log(msg: String) { try { Log.i("OnPath", msg) } catch (_: Throwable) { } }
+    private fun log(msg: String) { try { Log.i("OnPath", msg) } catch (_: Throwable) { /* expected: JVM tests have no android.util.Log */ } }
 
     /**
      * [standIn]: essential sources that may be stripped like optional ones when their file is missing (the app passes

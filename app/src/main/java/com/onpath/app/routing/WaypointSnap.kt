@@ -1,7 +1,7 @@
 package com.onpath.app.routing
 
-import kotlin.math.cos
-import kotlin.math.sqrt
+import com.onpath.app.data.Geo
+
 
 /**
  * Moves free plan points onto the way the router actually used (owner rule: "if a point is not
@@ -97,34 +97,10 @@ object WaypointSnap {
         return m
     }
 
-    /** Nearest point on the polyline (local equirectangular projection; fine at snapping distances). */
-    fun project(p: GeoPoint, line: List<GeoPoint>): GeoPoint {
-        if (line.size == 1) return line[0]
-        val kx = cos(Math.toRadians(p.lat))
-        var best = line[0]; var bestD = Double.MAX_VALUE
-        for (i in 1 until line.size) {
-            val a = line[i - 1]; val b = line[i]
-            val ax = (a.lon - p.lon) * kx; val ay = a.lat - p.lat
-            val bx = (b.lon - p.lon) * kx; val by = b.lat - p.lat
-            val dx = bx - ax; val dy = by - ay
-            val len2 = dx * dx + dy * dy
-            val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
-            val x = ax + t * dx; val y = ay + t * dy
-            val d = x * x + y * y
-            if (d < bestD) {
-                bestD = d
-                best = when (t) {
-                    0.0 -> a
-                    1.0 -> b
-                    else -> GeoPoint(a.lat + t * (b.lat - a.lat), a.lon + t * (b.lon - a.lon),
-                        if (a.ele != null && b.ele != null) a.ele + t * (b.ele - a.ele) else null)
-                }
-            }
-        }
-        return best
-    }
+    /** Nearest point on the polyline ([Geo.closestOnLine]). */
+    fun project(p: GeoPoint, line: List<GeoPoint>): GeoPoint = Geo.closestOnLine(p, line)
 
     fun distToLine(p: GeoPoint, line: List<GeoPoint>): Double = distM(p, project(p, line))
 
-    fun distM(a: GeoPoint, b: GeoPoint): Double = com.onpath.app.data.Geo.fastDistance(a, b)
+    fun distM(a: GeoPoint, b: GeoPoint): Double = Geo.fastDistance(a, b)
 }

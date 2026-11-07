@@ -11,7 +11,6 @@ import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
 import java.net.URL
 import java.net.UnknownHostException
-import java.security.MessageDigest
 import javax.net.ssl.SSLException
 
 /**
@@ -182,15 +181,6 @@ class CellApi(
             }, o.optInt("poll_s", 30).coerceIn(5, 600))
         } catch (e: Exception) {
             throw ApiException(Failure.BAD_ANSWER, Txt.s(Res.string.maps_err_bad_answer), cause = e)
-        }
-
-        fun sha256(f: File): String {
-            val md = MessageDigest.getInstance("SHA-256")
-            f.inputStream().use { inp ->
-                val buf = ByteArray(256 * 1024)
-                while (true) { val n = inp.read(buf); if (n < 0) break; md.update(buf, 0, n) }
-            }
-            return md.digest().joinToString("") { "%02x".format(it) }
         }
     }
 }

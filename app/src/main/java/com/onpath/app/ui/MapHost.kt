@@ -3,8 +3,6 @@ package com.onpath.app.ui
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -75,10 +73,12 @@ fun MapHost(
         var resumed = false
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> { mapView.onStart(); started = true; vm.onReturnToApp() }
-                Lifecycle.Event.ON_RESUME -> { mapView.onResume(); resumed = true }
-                Lifecycle.Event.ON_PAUSE -> { mapView.onPause(); resumed = false }
-                Lifecycle.Event.ON_STOP -> { mapView.onStop(); started = false; vm.onLeaveApp() }
+                // timed (2026-11-07: 0.5–0.8 s main-thread stalls at onStop / on return; MapLibre's GL thread is waited for
+                // here) – a slow call says so in the log, with how long it took
+                Lifecycle.Event.ON_START -> { MapLifecycleTiming.timed("onStart") { mapView.onStart() }; started = true; vm.onReturnToApp() }
+                Lifecycle.Event.ON_RESUME -> { MapLifecycleTiming.timed("onResume") { mapView.onResume() }; resumed = true }
+                Lifecycle.Event.ON_PAUSE -> { MapLifecycleTiming.timed("onPause") { mapView.onPause() }; resumed = false }
+                Lifecycle.Event.ON_STOP -> { MapLifecycleTiming.timed("onStop") { mapView.onStop() }; started = false; vm.onLeaveApp() }
                 else -> {}
             }
         }
@@ -200,7 +200,7 @@ fun MapHost(
                 if (vm.routePeek) return true // peeking at the map: no edits
                 // A hold works on this spot: the start camera must not jump to a late first GPS fix any more – that
                 // would close the menu just opened ("held spot left the visible map").
-                if (press == MapGestures.Press.HOLD) vm.userMovedMap = true
+                if (press == MapGestures.Press.HOLD) { vm.userMovedMap = true; vm.tapHoldHint = false }
                 val edit = vm.canEditMap
                 val pts = vm.waypoints.toList()
                 val toScreen: (GeoPoint) -> Pair<Float, Float>? = { p -> c?.toScreen(p)?.let { it.x to it.y } }
@@ -237,6 +237,8 @@ fun MapHost(
                     MapGestures.Action.CloseMenu -> { vm.closeMapOverlays(if (press == MapGestures.Press.TAP) "tap outside" else "hold outside"); true }
                     MapGestures.Action.PoiDetails -> { vm.selectedPoi = poi; true }
                     MapGestures.Action.None -> {
+                        // a tap on the open map in Plan: "hold to set a point here" in the sheet (owner 2026-11-03)
+                        if (MapGestures.tapShowsHoldHint(edit, press, MapGestures.Action.None, poi != null, marker, pts.isEmpty())) vm.showTapHoldHint()
                         // a short tap on the world map where there is no detailed map: ask to load it
                         if (press == MapGestures.Press.TAP && poi == null) vm.mapTapped(p)
                         edit
@@ -351,7 +353,8 @@ private fun HoldRing(at: Offset?, onArmed: () -> Unit) {
     LaunchedEffect(at) {
         progress.snapTo(0f)
         if (at != null) {
-            progress.animateTo(1f, tween(HOLD_MS.toInt(), easing = LinearEasing))
+            // by the frame clock, not a tween: with animations off a tween ends on its first frame and every pan buzzed
+            HoldRule.fill(0f, HOLD_MS.toInt()) { progress.snapTo(it) }
             onArmed()
         }
     }
@@ -373,3 +376,18 @@ private var styleLoads = 0
 
 /** Latest host's controller (Diagnostics export); cleared only by the host that set it ([OwnedRef]). */
 internal val ctrlRef = OwnedRef<MapController>()
+
+/** The map's lifecycle calls on the main thread, timed: one over [SLOW_MS] is traced (which call, how long). */
+internal object MapLifecycleTiming {
+    const val SLOW_MS = 100L
+
+    /** Pure: is a call of [ms] worth a trace line. */
+    fun slow(ms: Long): Boolean = ms >= SLOW_MS
+
+    inline fun timed(what: String, block: () -> Unit) {
+        val t0 = android.os.SystemClock.uptimeMillis()
+        block()
+        val ms = android.os.SystemClock.uptimeMillis() - t0
+        if (slow(ms)) com.onpath.app.debug.Problems.trace("perf", "MapView.$what took $ms ms on the main thread")
+    }
+}

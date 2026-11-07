@@ -92,6 +92,11 @@ class SettingsSummaryTest {
         assertTrue(DevToolsUnlock.shown(unlocked = true))
         val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
         assertFalse(vm.substringAfter("var devToolsShown").substringBefore("\n").contains("DEBUG"))
+        // tester review 2026-11-07: Settings hides them unless told otherwise (a caller that forgets the flag shows nothing)
+        val screen = java.io.File("src/main/java/com/onpath/app/ui/SettingsScreen.kt").readText()
+        assertTrue(screen.contains("    devTools: Boolean = false,\n"))
+        assertTrue(screen.contains("private fun AboutSection(version: String, devTools: Boolean = false,"))
+        assertTrue(java.io.File("src/main/java/com/onpath/app/MainActivity.kt").readText().contains("devTools = vm.devToolsShown,"))
     }
 
     /** "Your settings" first, then the smaller "App" group. */

@@ -85,6 +85,20 @@
     "confidence": "sicher",
     "max": 30
   },
+  "settings_group_on_the_way": {
+    "area": "Settings on the way (Navigate ⚙)",
+    "context": "Heading under the Navigation settings, above Map, POIs, Pace, Offline maps",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "settings_all": {
+    "area": "Settings on the way (Navigate ⚙)",
+    "context": "Last row: opens the whole list of settings topics",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 30
+  },
   "settings_sum_pace": {
     "area": "Settings list",
     "context": "Summary under \"Your pace\". %1$s = pace level name (e.g. Average)",
@@ -441,7 +455,8 @@
     "context": "Line under the switch",
     "priority": 2,
     "confidence": "sicher",
-    "max": 90
+    "max": 90,
+    "decided": "donald 2026-11-06: no \"Vibration\" here – the vibration has its own switch under it"
   },
   "settings_nav_warn_after": {
     "area": "Settings · Navigation",
@@ -914,5 +929,70 @@
     "context": "Spoken directions (docs/design/voice-guidance.md)",
     "priority": 2,
     "confidence": "bitte prüfen"
+  },
+  "settings_nav_lock": {
+    "area": "Settings",
+    "context": "Settings → Navigation: title of the slider 0–2 s (0.5 s steps) – how long a button of the tour's bottom bar (Pause, Plan, Resume, End) must be held until it fires; 0 = off, a plain tap (owner 2026-11-06).",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_nav_lock_sub": {
+    "area": "Settings",
+    "context": "Line under 'Hold buttons during a tour'",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_nav_lock_off": {
+    "area": "Settings",
+    "context": "Value beside 'Hold buttons during a tour' when the slider is at 0: no holding, a plain tap",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_nav_lock_seconds": {
+    "area": "Settings",
+    "context": "Value beside 'Hold buttons during a tour': the hold time, %1$s = '0,5' / '1' / '1,5' / '2'",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_nav_lock_decimal": {
+    "area": "Settings",
+    "context": "The decimal separator of the hold time ('0,5 s' in German, '0.5 s' in English) – one character",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "settings_group_offroute": {
+    "area": "Settings · Navigation",
+    "context": "Group heading on the Navigation page (owner 2026-11-06 value rows): off-route warning, distance, vibration",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_group_junctions": {
+    "area": "Settings · Navigation",
+    "context": "Group heading on the Navigation page: the cue before junctions + its test",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_group_screen": {
+    "area": "Settings · Navigation",
+    "context": "Group heading on the Navigation page: screen while hiking / cycling, position on the route",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_group_lock": {
+    "area": "Settings · Navigation",
+    "context": "Group heading on the Navigation page: the hold time of the tour buttons",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "settings_phone_missing": {
+    "area": "Settings · Navigation",
+    "context": "Under \"Phone setup\" at the top of the Navigation page while something is missing; %1$s = the missing checks, comma-separated",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 60
   }
 }

@@ -29,9 +29,6 @@ class DiskIndex internal constructor(
 
     @Volatile private var words: WordIndex? = null
 
-    /** Entries held in memory for ranking now (0 = not read yet); for the health line. */
-    val inMemory: Int get() = words?.n ?: 0
-
     private fun fail(what: String, e: Throwable) {
         broken = true
         Problems.warn("search", "Offline search index unreadable ($what); it is built again", e)

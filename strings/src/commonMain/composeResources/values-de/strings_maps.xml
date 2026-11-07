@@ -25,8 +25,8 @@
     <string name="maps_cleanup_all_in_use">Alle heruntergeladenen Gebiete werden gebraucht.</string>
     <string name="maps_clear_all_title">Alle Kartengebiete löschen?</string>
     <plurals name="maps_clear_all_text">
-        <item quantity="one">Das heruntergeladene Gebiet (%2$s) wird entfernt, auch wenn es zu deiner aktuellen oder einer gespeicherten Route gehört. Die Weltübersicht bleibt; Gebiete werden bei Bedarf wieder geladen. Touren und Routen bleiben erhalten.</item>
-        <item quantity="other">Alle %1$d heruntergeladenen Gebiete (%2$s) werden entfernt, auch die deiner aktuellen und gespeicherten Routen. Die Weltübersicht bleibt; Gebiete werden bei Bedarf wieder geladen. Touren und Routen bleiben erhalten.</item>
+        <item quantity="one">Das heruntergeladene Gebiet (%2$s) wird entfernt, auch wenn es zu deinem aktuellen oder einem gespeicherten Plan gehört. Die Weltübersicht bleibt; Gebiete werden bei Bedarf wieder geladen. Touren und Pläne bleiben erhalten.</item>
+        <item quantity="other">Alle %1$d heruntergeladenen Gebiete (%2$s) werden entfernt, auch die deines aktuellen und deiner gespeicherten Pläne. Die Weltübersicht bleibt; Gebiete werden bei Bedarf wieder geladen. Touren und Pläne bleiben erhalten.</item>
     </plurals>
     <string name="maps_result_none">Keine Kartengebiete zum Entfernen</string>
     <plurals name="maps_result_removed">
@@ -107,7 +107,8 @@
     <string name="maps_row_area_south_west">Gebiet im Südwesten</string>
     <string name="maps_row_area_south">Gebiet im Süden</string>
     <string name="maps_row_area_south_east">Gebiet im Südosten</string>
-    <string name="maps_overview_hint">Nur Übersicht – für die Detailkarte hier die Karte gedrückt halten</string>
+    <string name="maps_overview_only">Nur Übersichtskarte</string>
+    <string name="maps_overview_load">Detailkarte laden</string>
     <string name="maps_update_loading">Neuere Karte wird geladen…</string>
     <string name="maps_update_preparing">Neuere Karte für dieses Gebiet wird vorbereitet</string>
     <string name="maps_update_preparing_min">Neuere Karte für dieses Gebiet wird vorbereitet · etwa %1$d min</string>

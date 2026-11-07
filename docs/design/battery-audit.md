@@ -54,16 +54,6 @@ Requirement R-10 (battery saver mode) and the detection part of R-09 ("detect wh
   - With batching, use `loc.elapsedRealtimeNanos` instead of the arrival time in `onFix` (`:312-314`). Otherwise batched fixes look like gaps.
   - Pausing GPS while paused is risk-free for the track.
 
-### A2. Network location requested every 5 s and then discarded — MEDIUM, quick win, zero risk
-- **Now:** `LocationTracker.kt:100-101` also requests `NETWORK_PROVIDER` every 5 s.
-  - In the **service** every network fix is thrown away (`RecordingService.kt:309`, `if (loc.provider != GPS_PROVIDER) return`), and the service tracker's `location` flow is not read by anyone.
-  - In the **UI** tracker, network fixes are ignored after the first GPS fix (`LocationTracker.kt:56`), but the request stays active.
-- **Why it costs:** on a Pixel the network provider is Google's network location provider. A 5 s request means repeated Wi-Fi scans (with "Wi-Fi scanning" on, even when Wi-Fi is off) and cell lookups. These are charged to OnPath, all day, for nothing.
-- **Fix:**
-  - Add a `useNetwork` flag to `LocationTracker`, and set it to false in `RecordingService.onCreate`.
-  - In the UI tracker, call `removeUpdates(netListener)` after the first GPS fix. Optionally request it again if the GPS fix is more than 60 s old.
-- **Risk:** none for recording. The service never used these fixes.
-
 ### A3. Partial wake lock held for the whole tour, plus a 1 s ticker — MEDIUM (becomes HIGH once A1 lowers the GPS rate)
 - **Now:**
   - `RecordingService.kt:269-278` takes `PARTIAL_WAKE_LOCK` for 12 h, and it is renewed every tick (`:290`), so it is held from start to finish, **including while paused**.
@@ -81,15 +71,6 @@ Requirement R-10 (battery saver mode) and the detection part of R-09 ("detect wh
   - Elapsed time already comes from `elapsedRealtime` deltas (`:286-288`, good), **but** each tick is capped by `coerceIn(1, 600)`. Without the wake lock, a CPU asleep for more than 10 min (long GPS loss while standing) would lose time. Raise or remove the cap, or compute `elapsedS` from a base timestamp.
   - Points are written in the fix callback, so they are unaffected.
   - Field-test on Pixel **and** Samsung before step 3.
-
-### A4. Foreground notification redrawn every 5 s — MEDIUM-LOW, quick win
-- **Now:** `publish()` calls `nm.notify(NOTIF_ID, buildNotification())` at most every 5 s (`RecordingService.kt:605-611`). It is called every tick, so in practice that is every 5 s for the whole tour. The title shows `h:mm:ss` (`:732`, `data/Geo.kt:121-123`).
-- **Why it costs:** each notify is a call into system_server plus a re-inflate in SystemUI: about 720 per hour, with the screen off too.
-- **Fix:**
-  - Use `setUsesChronometer(true)` + `setShowWhen(true)` + `setWhen(System.currentTimeMillis() - elapsedS*1000)`, so the system counts the time by itself. Turn the chronometer off and show a fixed time while paused, because the chronometer counts wall time.
-  - Re-post only when something changes: status (Paused / Searching GPS / Off route), distance by ≥ 100 m, or at most once a minute.
-  - While `!PowerManager.isInteractive`, re-post only on status changes.
-- **Risk:** none. Keep `FOREGROUND_SERVICE_IMMEDIATE` and the actions.
 
 ### A5. Unanswered off-route question keeps starting BRouter jobs — LOW-MEDIUM (only in that situation)
 - **Now:** while a `NavPrompt.Question` is open and unanswered, `Navigator.followUp` (`navigation/Navigator.kt` ~258-261) starts a fresh re-route every 150 m and 30 s (`REFRESH_MOVE_M`, `REFRESH_MIN_MS`, `:343-345`). Each job may take up to 12 s of CPU (`navigation/Rerouter.kt:128-129`).
@@ -116,20 +97,6 @@ Requirement R-10 (battery saver mode) and the detection part of R-09 ("detect wh
 ---
 
 ## B. Screen on in Navigate (taken out of the pocket, or never switched off), ranked
-
-### B1. "Keep screen on while navigating" defaults to ON — VERY HIGH when the phone goes into the pocket without pressing power
-- **Now:**
-  - `data/AppSettings.kt:12` has `keepScreenOn = true`, and `data/Prefs.kt:53` defaults it to `true`.
-  - `ui/MapScreen.kt:104` + `:313-319` set `view.keepScreenOn` whenever Navigate is following a line.
-  - If the user puts the phone away without pressing power, the screen stays on at full brightness, the map renders continuously (B2), and pocket touches can change things.
-  - This alone can cost several times more than everything in section A.
-- **Fix (owner decision):**
-  - **(a)** Default it to off and rely on the system screen timeout. Turning the screen back on returns to Navigate (`onReturnToApp` re-centres).
-  - **(b)** Keep it, but only for N minutes after the last touch, turn arrow or off-route question.
-  - **(c)** While it is active, also hold a `PROXIMITY_SCREEN_OFF_WAKE_LOCK` (after checking `pm.isWakeLockLevelSupported`). The screen then goes off in the pocket and comes back when the phone is taken out, like during a phone call. This works on a Pixel 8.
-- **Risk:** none for recording.
-- **Done:** (c) for hikes (`ui/PocketScreen.kt`). Bike activities (owner 2026-10-30): "Screen while cycling" – see
-  "Smart screen while cycling" below.
 
 ### Smart screen while cycling — Done (owner decisions 2026-10-30)
 - **What:** Bike, Gravel, E-bike, MTB, E-MTB; Settings → Navigation → "Screen while cycling: Always on / Smart / Like the
@@ -158,19 +125,6 @@ Requirement R-10 (battery saver mode) and the detection part of R-09 ("detect wh
   vibration's filter is `navigation/CueRule`), roundabouts and the destination; one place within 30 m = one event. No
   fps cap anywhere (owner: "never").
 - **Open:** measure on the Pixel 8 (display / CPU / GPU / GNSS rails, 10-min demo ride Always on vs Smart).
-
-### B2. MapLibre location animation and map redraw have no frame cap — HIGH while the screen is on
-- **Now:**
-  - `map/MapController.kt:269-298` activates the location component without `setMaxAnimationFps`. In 13.7.1 the default is `Integer.MAX_VALUE` (`LocationAnimatorCoordinator.maxAnimationFps`, checked in the bytecode).
-  - Every 1 Hz fix (`MapScreen.kt:271` → `forceLocationUpdate`, `MapController.kt:306-310`) starts a puck/camera animation that lasts about the time between fixes (max 2000 ms). So the map is **redrawn every display frame, all the time**: up to 120 fps on a Pixel 8's 120 Hz panel in TRACKING_COMPASS. This is also true in Plan mode whenever fixes arrive, because the puck animates.
-  - Compass changes add 500 ms animations each (`COMPASS_UPDATE_RATE_MS`).
-  - No `MapView.setMaximumFps` is set (`ui/MapHost.kt:60`).
-- **Why it costs:** a full GL render of the vector map on every frame, and it keeps the LTPO panel at high refresh. This is the biggest cost of a screen-on minute apart from the backlight.
-- **Fix (two lines, quick win):**
-  - `map.locationComponent.setMaxAnimationFps(15)` (try 10–20) after `activateLocationComponent`.
-  - `mapView.setMaximumFps(30)` while Navigate is following. Keep 60 for gestures in Plan, or use 30 everywhere and check how panning feels.
-  - Optional: `LocationComponentOptions.builder(…).accuracyAnimationEnabled(false)`, and `compassAnimationEnabled(false)` in Navigate.
-- **Risk:** none. Movement looks slightly less fluid.
 
 ### B3. Compose recomposes on every rendered frame — MEDIUM
 - **Now:** `ui/MapScreen.kt:100` `onCamera` is attached to `addOnCameraMoveListener` (`ui/MapHost.kt:117`), which fires every frame while tracking. On each call it:
@@ -275,13 +229,12 @@ Requirement R-10 (battery saver mode) and the detection part of R-09 ("detect wh
 
 ## F. Prioritised plan
 
-**Quick wins (small, no risk to the track):**
-1. B2: `locationComponent.setMaxAnimationFps(15)` + `mapView.setMaximumFps(30)` in Navigate.
-2. A2: no network provider in the service; stop network in the UI after the first GPS fix.
-3. A1 / A3 step 1: while paused, stop the service's GPS and release the wake lock (resume restarts both).
-4. B1: owner decision on the keep-screen-on default. Off, a time limit, or a proximity wake lock.
-5. A4: chronometer notification; re-post only on change or once a minute (on status change only while the screen is off).
-6. B3: `onCamera` updates only on real changes. B6: skip the empty `setNavGuide`. A7: `collectAsStateWithLifecycle` and a lifecycle-bound status loop.
+**Done or decided (removed above):** A2 no network provider in the service; A3 step 1 GPS slower + wake lock off while
+paused; A4 chronometer notification re-posted only on change; B1 smart screen + pocket-aware keep-screen-on; B2 frame
+caps **rejected** (owner: on screen the app runs at full speed).
+
+**Quick wins left:** B3: `onCamera` updates only on real changes. B6: skip the empty `setNavGuide`. A7:
+`collectAsStateWithLifecycle` and a lifecycle-bound status loop.
 
 **Bigger changes (need tests and a field test):**
 7. A1: an adaptive GPS policy (standing still → 5–10 s; screen off while hiking → 2 s), with `gpsLost` / `GAP_MS` thresholds tied to the interval. Unit-test the policy like `PointFilter`.

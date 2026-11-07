@@ -16,7 +16,8 @@ import com.onpath.app.data.Geo
  * | --- | --- |
  * | via ≤ [VIA_RATIO] × straight or × plan, or less than [MIN_DETOUR_S] more than either | **via** N, nothing said |
  * | N chosen on purpose ([deliberate]) and more than that | **ask** "Off route – re-plan?" (Yes = via N / Yes, skip stop N) |
- * | via ≥ [SKIP_RATIO] × straight and × plan | **skip** N (the question card says so) |
+ * | via ≥ [SKIP_RATIO] × straight and × plan | **skip** N – since 2026-11-03 asked too: the box offers "Über ③" (primary)
+ *   and "③ auslassen" (owner: a stop is never left out by "Yes" alone; Rerouter attaches the way via it) |
  * | in between | **ask** |
  *
  * Never skipped: the destination, a stop whose skip would cut more than half of the plan up to N+1

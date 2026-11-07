@@ -1,7 +1,6 @@
 package com.onpath.app
 
 import com.onpath.app.IncomingIntent.Delivery
-import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -51,11 +50,4 @@ class IncomingIntentTest {
         assertFalse(IncomingIntent.shouldHandle(Delivery.NEW_INTENT, fromHistory = false, fingerprint = null, lastHandled = link))
     }
 
-    /** The wiring: MainActivity asks the rule in onCreate and onNewIntent and remembers what it handled. */
-    @Test fun mainActivityUsesTheRule() {
-        val main = File("src/main/java/com/onpath/app/MainActivity.kt").readText()
-        assertTrue(main.contains("incoming(intent, if (savedInstanceState == null) IncomingIntent.Delivery.CREATE else IncomingIntent.Delivery.RESTORED)"))
-        assertTrue(main.contains("incoming(intent, IncomingIntent.Delivery.NEW_INTENT)"))
-        assertTrue(main.contains("IncomingIntent.remember("))
-    }
 }

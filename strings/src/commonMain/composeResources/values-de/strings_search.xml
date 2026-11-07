@@ -39,11 +39,11 @@
     <string name="search_place_quarter">Viertel</string>
     <string name="search_place_isolated_dwelling">Hof / Einzelhaus</string>
     <string name="search_place_locality">Flur / Örtlichkeit</string>
-    <string name="search_card_remove">Aus der Route entfernen</string>
+    <string name="search_card_remove">Aus dem Plan entfernen</string>
     <string name="search_card_set_start">Als Start setzen</string>
+    <string name="search_card_on_the_way">Als Halt auf dem Hinweg</string>
     <string name="search_card_set_destination">Als Ziel setzen</string>
     <string name="search_card_new_destination">Als neues Ziel anhängen</string>
-    <string name="search_card_add_stop">Als Stopp %1$d einfügen</string>
     <string name="search_add_on_route">liegt auf deiner Route</string>
     <string name="search_add_fits_best">passt dort am besten</string>
     <string name="search_card_as_start">Als Start</string>
@@ -57,6 +57,7 @@
     <string name="search_route_round_to">Rundtour zu %1$s</string>
     <string name="search_route_round_from">Rundtour ab %1$s</string>
     <string name="search_route_from">Von %1$s</string>
+    <string name="search_route_in">In %1$s</string>
     <string name="search_route_to">Nach %1$s</string>
     <string name="search_route_via">%1$s (über %2$s)</string>
 </resources>

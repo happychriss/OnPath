@@ -21,7 +21,7 @@ class HardCodedTextRuleTest {
         "MapCellsDebugList", "ProblemList")
 
     /** Same in every language: names, attribution, the placeholder of the map in screenshots. */
-    private val sameEverywhere = setOf("OnPath", "Google", "© OpenStreetMap", "map", "DEMO")
+    private val sameEverywhere = setOf("OnPath", "Google", "map", "DEMO")
 
     private fun hits() = sources.flatMap { f ->
         var fn = ""

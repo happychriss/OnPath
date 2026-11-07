@@ -6,6 +6,7 @@ import btools.router.OsmNodeNamed
 import btools.router.OsmTrack
 import btools.router.ProfileCache
 import btools.router.RoutingContext
+import com.onpath.app.data.Geo
 import com.onpath.app.debug.Problems
 import java.io.File
 import java.util.Locale
@@ -43,6 +44,38 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
     @Volatile private var profilesReady = false
 
     /** Small LRU of recent results; guarded by [LOCK]. */
+    /** The BRouter search running now ([searchProgress]); null = none. */
+    private class Running(val engine: BRouter, val goal: GeoPoint, val straightM: Double, val thread: Thread)
+    @Volatile private var running: Running? = null
+
+    /**
+     * How far the search running on [thread] is, 0..1 – null when none runs there (owner 2026-11-05: the wait bar moves
+     * within one long leg, not only from leg to leg). From BRouter's own open set (`getOpenSet()`, public and synced on
+     * the open set – BRouter's app draws its search area from it): the frontier node nearest the goal, against the
+     * straight distance start → goal. BRouter searches twice – a fast guide pass (`airDistanceCostFactor` > 0, ~20 % of
+     * the time on a 98 km bike leg), then the exact pass (~80 %, its frontier closes in on the goal almost linearly) –
+     * so the guide pass maps to 0..[GUIDE_SHARE] and the exact pass to [GUIDE_SHARE]..1. It may go back between two
+     * searches of one request (island retry): the caller keeps the highest value. Cheap (≤ 500 nodes); call it from any
+     * thread except the searching one, a few times a second.
+     */
+    fun searchProgress(thread: Thread): Double? {
+        val r = running?.takeIf { it.thread === thread } ?: return null
+        val open = try { r.engine.openSet } catch (e: Exception) {
+            // expected: the search ended between two calls (BRouter frees its open set) – no value this time
+            return null
+        }
+        if (open.size < 2 || r.straightM <= 0.0) return null
+        var nearest = Double.MAX_VALUE
+        var i = 0
+        while (i + 1 < open.size) {
+            val d = Geo.fastDistance(GeoPoint(open[i + 1] / 1_000_000.0 - 90.0, open[i] / 1_000_000.0 - 180.0), r.goal)
+            if (d < nearest) nearest = d
+            i += 2
+        }
+        val pass = (1.0 - nearest / r.straightM).coerceIn(0.0, 1.0)
+        return if (r.engine.airDistanceCostFactor > 0.0) pass * GUIDE_SHARE else GUIDE_SHARE + pass * (1.0 - GUIDE_SHARE)
+    }
+
     private val cache = object : LinkedHashMap<CacheKey, RouteResult>(CACHE_SIZE + 1, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<CacheKey, RouteResult>?) = size > CACHE_SIZE
     }
@@ -66,7 +99,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
                 val key = cacheKey(waypoints, activity, sacLimit)
                 cache[key] ?: run {
                     val budget = limits?.let { (it.timeoutMs - (System.currentTimeMillis() - start)).coerceAtLeast(MIN_BUDGET_MS) }
-                    routeLocked(waypoints, activity, sacLimit, budget, limits?.cancel)
+                    routeLocked(waypoints, activity, sacLimit, budget, limits?.cancel, limits?.rounds ?: 1)
                 }.also { cache[key] = it }
             } finally {
                 LOCK.unlock()
@@ -101,11 +134,12 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
 
     private fun routeLocked(
         waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, budgetMs: Long? = null, cancel: RouteCancel? = null,
+        rounds: Int = 1,
     ): RouteResult {
         if (waypoints.size < 2) throw RoutingException(Txt.s(Res.string.plan_err_set_start_dest))
         checkSegments(waypoints)
         ensureProfiles()
-        val limit = RouteTimeLimit.forRoute(waypoints, activity)
+        val limit = RouteTimeLimit.forRoute(waypoints, activity, rounds)
         val timeoutMs = budgetMs?.coerceAtMost(limit) ?: limit
         if (cancel?.isCancelled == true) throw RoutingException(CANCELLED)
 
@@ -145,7 +179,8 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             if (skipWays.isNotEmpty()) skipOnSnap(engine, skipWays)
             val left = timeoutMs - (System.currentTimeMillis() - t0)
             cancel?.onCancel { engine.terminate() }
-            try { engine.doRun(left.coerceAtLeast(MIN_BUDGET_MS)) } finally { cancel?.onCancel(null) }
+            running = Running(engine, waypoints.last(), Geo.fastDistance(waypoints.first(), waypoints.last()), Thread.currentThread())
+            try { engine.doRun(left.coerceAtLeast(MIN_BUDGET_MS)) } finally { cancel?.onCancel(null); running = null }
             if (cancel?.isCancelled == true) throw RoutingException(CANCELLED)
             val err = engine.errorMessage
                 ?: return (engine.foundTrack ?: throw RoutingException(describeError(null, activity, sacLimit, timeoutMs))) to nodes
@@ -324,14 +359,6 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         profilesReady = true
     }
 
-    /**
-     * Longest out-and-back spike (one way) BRouter cuts at a via point. Much shorter for hiking, where a
-     * via point on a spur is usually a deliberate goal (summit, viewpoint): 250 m cut off a point 100 m
-     * up a spur. 50 m still trims small snapping spikes.
-     */
-    private fun viaCorrectionM(activity: Activity): Double =
-        if (activity == Activity.HIKE) VIA_CORRECTION_HIKE_M else VIA_CORRECTION_M
-
     /** Profile parameter overrides; BRouter injects these as numeric `assign`s that win over the .brf. */
     private fun keyValues(activity: Activity, sacLimit: Int): MutableMap<String, String> {
         val kv = HashMap<String, String>()
@@ -451,6 +478,8 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         /** An engine bug (details in the problem log): plain text, no exception message. */
         val UNEXPECTED: String get() = Txt.s(Res.string.plan_err_unexpected)
         private const val MIN_BUDGET_MS = 500L
+        /** [searchProgress]: BRouter's fast guide pass is this share of a search, the exact pass the rest. */
+        const val GUIDE_SHARE = 0.2
         /** Isolated ways skipped per request before giving up (each failed try is fast, ~0.1 s). */
         private const val MAX_ISLAND_SKIPS = 3
         /** BRouter retries a start on an island this often (its `freezeCount` limit) before "no track found". */
@@ -471,6 +500,13 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             }
             return if (err.startsWith("no track found") && islandRetries >= BROUTER_ISLAND_RETRIES && points == 2) 0 else null
         }
+        /**
+         * Longest out-and-back spike (one way) BRouter cuts at a via point – and the Planner at a leg join (its
+         * trimSpike, PLANNER_VERSION 4). Much shorter for hiking, where a via point on a spur is usually a deliberate
+         * goal (summit, viewpoint): 250 m cut off a point 100 m up a spur. 50 m still trims small snapping spikes.
+         */
+        internal fun viaCorrectionM(activity: Activity): Double =
+            if (activity == Activity.HIKE) VIA_CORRECTION_HIKE_M else VIA_CORRECTION_M
         private const val VIA_CORRECTION_M = 400.0
         private const val VIA_CORRECTION_HIKE_M = 50.0
         private const val CACHE_SIZE = 8

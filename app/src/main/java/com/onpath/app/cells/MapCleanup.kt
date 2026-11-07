@@ -1,10 +1,14 @@
 package com.onpath.app.cells
 
+import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.OfflineCorridor
 
 /**
  * Settings → Offline maps → "Clean up": which installed map areas stay and which go. Pure, unit-tested (`MapCleanupTest`). Kept: the areas along the current plan (its route, else its points), along every saved route,
  * along a running tour (recorded line + followed route) and around the current position (+ [POSITION_MARGIN_M]).
+ * Along a line the kept corridor is the one that downloads it ([OfflineCorridor]: hike 10 km, bike 20 km) – an unknown
+ * activity keeps the largest, so a bike plan's corridor is never deleted (no download churn).
  * Everything else installed goes – nothing automatic, the user sees [Plan] first.
  */
 object MapCleanup {
@@ -19,6 +23,12 @@ object MapCleanup {
         /** Running tour: the followed route. */
         val followed: List<GeoPoint> = emptyList(),
         val position: GeoPoint? = null,
+        /** The current plan's activity (null = not known → the largest corridor). */
+        val planActivity: Activity? = null,
+        /** Activity of each of [savedRoutes], same order; missing or null = not known (the largest corridor). */
+        val savedActivities: List<Activity?> = emptyList(),
+        /** The running tour's activity, for [tour] and [followed] (null = not known). */
+        val tourActivity: Activity? = null,
     )
 
     data class Plan(
@@ -31,22 +41,21 @@ object MapCleanup {
         val nothingToDo: Boolean get() = remove.isEmpty()
     }
 
-    /** Corridor kept along lines – the same as the route corridor that downloads them (no download churn). */
-    const val CORRIDOR_M = CellTriggers.CORRIDOR_M
     /** Margin kept around the current position. */
     const val POSITION_MARGIN_M = 10_000.0
 
     /** Cells to keep for [inputs] (whether installed or not). Lines of one point keep the area around that point. */
     fun keep(inputs: Inputs): Set<CellId> {
         val out = HashSet<CellId>()
-        fun line(l: List<GeoPoint>) {
+        fun line(l: List<GeoPoint>, activity: Activity?) {
             if (l.isEmpty()) return
-            if (l.size == 1) out += CellId.near(l[0], CORRIDOR_M) else out += CellId.alongLine(l, CORRIDOR_M, max = 2000)
+            val m = OfflineCorridor.marginM(activity)
+            if (l.size == 1) out += CellId.near(l[0], m) else out += CellId.alongLine(l, m, max = 2000)
         }
-        line(inputs.plan)
-        inputs.savedRoutes.forEach(::line)
-        inputs.tour.forEach(::line)
-        line(inputs.followed)
+        line(inputs.plan, inputs.planActivity)
+        inputs.savedRoutes.forEachIndexed { i, l -> line(l, inputs.savedActivities.getOrNull(i)) }
+        inputs.tour.forEach { line(it, inputs.tourActivity) }
+        line(inputs.followed, inputs.tourActivity)
         inputs.position?.let { out += CellId.near(it, POSITION_MARGIN_M) }
         return out
     }

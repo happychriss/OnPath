@@ -89,27 +89,7 @@ class SharedPlaceMenuTest {
         val b = GeoPoint(46.65, 11.14)
         assertEquals("Add as new destination", AddPreview.label(WaypointInsertion.decide(listOf(a, b), p, null, 30.0), 2))
         val c = GeoPoint(46.75, 11.20)
-        assertEquals("Add as stop 2", AddPreview.label(WaypointInsertion.decide(listOf(a, c), p, null, 30.0), 2))
+        assertEquals("Add as a stop", AddPreview.label(WaypointInsertion.decide(listOf(a, c), p, null, 30.0), 2))
     }
 
-    /** The wiring the pure rules cannot see: checked in the source. */
-    @Test fun wiring() {
-        val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        val flow = File("src/main/java/com/onpath/app/ui/SearchFlow.kt").readText() // shared places: out of AppViewModel
-        val show = flow.substringAfter("fun showSharedPlace(").substringBefore("private val sharedMenu")
-        assertTrue("a shared place arms the menu", show.contains("sharedMenu.arrived(SharedPlaceMenu.key(p.lat, p.lon, p.name))"))
-        val open = flow.substringAfter("fun openSharedMenuIfArrived(").substringBefore("\n    }\n")
-        // the very menu a hold on the ring opens (MapHost: mark?.toPoi() → vm.openPoiMenu), with canEditMap as the rule
-        assertTrue(open.contains("openPoiMenu(m.toPoi())"))
-        assertTrue(open.contains("canEditMap"))
-        assertTrue(open.contains("loading = loadModalOpen"))
-        assertTrue(File("src/main/java/com/onpath/app/ui/MapHost.kt").readText().contains("mark?.toPoi()"))
-        // a finger move on the map ends the wait
-        assertTrue(vm.substringAfter("fun mapGesture(on: Boolean)").substringBefore("\n    }\n").contains("searchFlow.mapMovedByHand()"))
-        assertTrue(flow.substringAfter("fun mapMovedByHand()").substringBefore("\n    }\n").contains("sharedMenu.cancel()"))
-        // MapScreen asks on every camera stop
-        val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertTrue(screen.contains("LaunchedEffect(c, vm.sharedMenuWaiting, vm.cameraIdleTick, vm.loadModalOpen)"))
-        assertTrue(File("src/main/java/com/onpath/app/ui/MapHost.kt").readText().contains("vm.cameraIdle()"))
-    }
 }

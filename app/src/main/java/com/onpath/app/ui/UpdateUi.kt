@@ -41,7 +41,7 @@ fun updateMessage(version: String, onInstall: () -> Unit, onLater: () -> Unit): 
 @Composable
 fun UpdateDownloadingCard(state: UpdateState, modifier: Modifier = Modifier) {
     val s = state as? UpdateState.Downloading ?: return
-    Surface(modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), color = OnPathColors.CardWhite, shadowElevation = 3.dp) {
+    Surface(modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, OnPathShapes.Card), shape = OnPathShapes.Card, color = OnPathColors.Paper) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.SystemUpdate, null, tint = OnPathColors.Green, modifier = Modifier.size(22.dp))
@@ -78,7 +78,7 @@ fun UpdateSectionContent(state: UpdateState, currentVersion: String, onCheck: ()
                 if (state is UpdateState.Downloading) {
                     LinearProgressIndicator(progress = { state.percent / 100f }, modifier = Modifier.fillMaxWidth())
                 } else {
-                    Button(onClick = onInstall, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(14.dp)) {
+                    Button(onClick = onInstall, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = OnPathShapes.Pill) {
                         Text(str(Res.string.settings_upd_download_install, rel.version))
                     }
                 }
@@ -86,7 +86,7 @@ fun UpdateSectionContent(state: UpdateState, currentVersion: String, onCheck: ()
         }
         if (state !is UpdateState.Available && state !is UpdateState.Downloading) {
             OutlinedButton(onClick = onCheck, enabled = state != UpdateState.Checking,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(14.dp)) {
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = OnPathShapes.Pill) {
                 Text(str(Res.string.settings_upd_check))
             }
         }

@@ -54,10 +54,11 @@ fun main() {
         check(s != null && WaypointSnap.distM(s, wps[i]) <= 10.0, "stop ${i + 1} stays where it was tapped (%.1f m)".format(s?.let { WaypointSnap.distM(it, wps[i]) } ?: -1.0))
     }
 
-    // the same stops on foot: BRouter goes over the steps by itself – no second pass
+    // the same stops on foot: BRouter goes over the steps by itself – one request per leg, nothing routed twice
+    // (leg by leg since PLANNER_VERSION 4: every stop is a request end)
     val hikePlanner = Planner(eng)
     val h = hikePlanner.plan(wps, Activity.HIKE, 2)
-    check(hikePlanner.tries.size == 1, "on foot one request is enough (${hikePlanner.describeTries()})")
+    check(hikePlanner.tries.size == wps.size - 1, "on foot one request per leg is enough (${hikePlanner.describeTries()})")
     check(WaypointSnap.distToLine(spot, h.legs.flatMap { it.points }) <= 10.0, "on foot the line passes stop 3")
 
     println(if (failures == 0) "SpurStopJvmTest: all OK" else "SpurStopJvmTest: $failures FAILED")

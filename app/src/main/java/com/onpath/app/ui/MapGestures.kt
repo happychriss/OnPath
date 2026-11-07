@@ -56,6 +56,14 @@ object MapGestures {
     enum class PointAction { MAKE_START, LOOP_START, GOOGLE, DELETE }
 
     /**
+     * A quick tap on the open map in Plan sets nothing (hold-only, owner) – it shows the calm line "Gedrückt halten, um
+     * hier einen Punkt zu setzen." in the plan sheet (owner 2026-11-03, novice fix). Not on a POI / route point / the
+     * pin (their own behaviour), not with a menu open (the tap closes it) and not on an empty plan (its hint says it).
+     */
+    fun tapShowsHoldHint(editable: Boolean, press: Press, action: Action, poi: Boolean, marker: Int, planEmpty: Boolean): Boolean =
+        editable && press == Press.TAP && action == Action.None && !poi && marker < 0 && !planEmpty
+
+    /**
      * @param marker index of the marker under the finger (see [nearestMarker]) or -1
      * @param poi a POI is under the finger
      */
@@ -83,6 +91,12 @@ object MapGestures {
         GpsStatus.WEAK, GpsStatus.GOOD -> if (hasFix) null else Txt.s(Res.string.plan_searching_gps)
     }
 
+    /**
+     * Whether the hold menus on an empty plan (first-point menu, POI menu) offer "Hier starten": not during a tour – the
+     * tour already runs from here, a held spot is where to go ("Hierhin"), never a new start (field 2026-11-07).
+     */
+    fun offersStartHere(touring: Boolean): Boolean = !touring
+
     /** How the armed hold feels (decided at finger-down, same targets as [decide]); [Buzz.NONE] = no ring either. */
     fun buzz(editable: Boolean, menuOpen: Boolean, marker: Int, poi: Boolean): Buzz = when {
         !editable -> Buzz.NONE
@@ -95,12 +109,13 @@ object MapGestures {
     /**
      * Sensible options for route point [index] of [count]. Middle points of a normal route: "Start here" (drops the
      * points before). Round trip: "Start & finish here" (rotates the loop) on
-     * every point except the start/finish. "Open in Google Maps" (named place / POI only), "Delete" (always).
-     * Start and destination of a normal route get neither (⋯ → Reverse swaps them).
+     * every loop point except ①; with stops on the way before the loop ([loopStart] > 0, owner 2026-11-03) those and ①
+     * get "Start here" like a normal route's middle points. "Open in Google Maps" (named place / POI only), "Delete"
+     * (always). Start and destination of a normal route get neither (⋯ → Reverse swaps them).
      */
-    fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean = false): List<PointAction> = buildList {
+    fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean = false, loopStart: Int = 0): List<PointAction> = buildList {
         val middle = index in 1 until count - 1
-        if (roundTrip) { if (middle) add(PointAction.LOOP_START) }
+        if (roundTrip) { if (middle) add(if (index > loopStart) PointAction.LOOP_START else PointAction.MAKE_START) }
         else if (middle) add(PointAction.MAKE_START)
         if (isPlace) add(PointAction.GOOGLE)
         add(PointAction.DELETE)

@@ -3,7 +3,9 @@ package com.onpath.app.data
 import com.onpath.app.cells.CellId
 import com.onpath.app.cells.NetworkStatus
 import com.onpath.app.debug.Problems
+import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.OfflineCorridor
 import com.onpath.app.routing.Rd5Parts
 import java.io.File
 
@@ -20,8 +22,14 @@ object RoutingTiles {
     fun forPoints(points: List<GeoPoint>, marginM: Double = Rd5Parts.POINT_MARGIN_M): List<String> =
         points.flatMap { Rd5Parts.forPoint(it, marginM) }.distinct().map { it.key }
 
-    /** Parts in a corridor (~10 km) around a line: a computed route, or the straight legs between planned points. */
-    fun forLine(points: List<GeoPoint>, marginM: Double = Rd5Parts.CORRIDOR_MARGIN_M): List<String> =
+    /**
+     * Parts in the corridor around a line (a computed route, or the straight legs between planned points): as wide as
+     * [activity] needs ([OfflineCorridor], hike 10 km, bike 20 km; null = not known → the largest).
+     */
+    fun forLine(points: List<GeoPoint>, activity: Activity?): List<String> = forLine(points, OfflineCorridor.marginM(activity))
+
+    /** Parts within [marginM] of a line. */
+    fun forLine(points: List<GeoPoint>, marginM: Double): List<String> =
         Rd5Parts.forCorridor(points, marginM).map { it.key }
 
     /** Parts under these map regions: routing data comes with the map. */

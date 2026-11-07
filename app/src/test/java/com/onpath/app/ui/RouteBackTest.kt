@@ -6,6 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.onpath.app.domain.plan.RouteBack
 
 /**
  * Owner rule: during a tour, deleting the GOAL of a 2-point plan (only the start is left) asks a persistent question

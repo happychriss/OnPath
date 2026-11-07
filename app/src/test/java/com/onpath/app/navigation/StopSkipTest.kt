@@ -97,13 +97,16 @@ class StopSkipTest {
         assertNull(r.ask)
     }
 
-    @Test fun ordinaryStopNowBehindIsLeftOutWithoutAsking() {
-        // was: always via it. Now: via 6.2 km to stop 3, straight 4.0 km, plan 4.0 km (×1.55) → left out, not asked
+    @Test fun ordinaryStopNowBehindIsLeftOutOnlyWhenChosen() {
+        // via 6.2 km to stop 3, straight 4.0 km, plan 4.0 km (×1.55): the skip is the proposal, but since 2026-11-03 it is
+        // never taken by "Yes" alone (owner: round trip decision 3) – the way via the stop goes with it ("Über ③" / "③ auslassen")
         val p = Plan(behind = 3.0)
         val eng = p.engine()
         val r = Rerouter(eng).reroute(p.req()) as Rerouter.Found
         assertEquals(1, r.skipStop)
-        assertNull(r.ask)
+        val via = r.ask!!
+        assertNull(via.skipStop)
+        assertTrue(passes(via.line, p.stopPts[1]))
         assertFalse(passes(r.line, p.stopPts[1]))
         assertTrue(passes(r.line, p.stopPts[2]))
         assertEquals(2, r.targetStop)

@@ -109,4 +109,14 @@ class DemoPathTest {
         org.junit.Assert.assertTrue(p.at(720.0).lat > b.lat)
         org.junit.Assert.assertNull("no times", DemoPath.recorded(listOf(a, b), listOf(null, null)))
     }
+
+    @Test fun theTimeAtAPlaceAlongTheLine() {
+        val p = DemoPath.constant(ell, 2.0)!!
+        assertEquals(0.0, p.timeAtAlong(0.0), 1e-9)
+        assertEquals(250.0, p.timeAtAlong(500.0), 1e-6)
+        assertEquals(750.0, p.timeAtAlong(1_500.0), 1e-6)
+        assertEquals("before the start = the start", 0.0, p.timeAtAlong(-10.0), 1e-9)
+        assertEquals("beyond the end = the end", p.durationS, p.timeAtAlong(9_999.0), 1e-9)
+        assertEquals(1_500.0, p.at(p.timeAtAlong(1_500.0)).alongM, 1.0)
+    }
 }

@@ -48,6 +48,9 @@ import androidx.compose.ui.unit.dp
 import com.onpath.app.data.Format
 import com.onpath.app.routing.JunctionCue
 import kotlinx.coroutines.delay
+import com.onpath.app.domain.tour.RestEvent
+import com.onpath.app.domain.tour.RestTarget
+import com.onpath.app.domain.tour.SmartScreen
 
 /** What the rest view shows: the next turn / roundabout / destination, the distance to it, time left and arrival. */
 data class RestUi(
@@ -81,7 +84,7 @@ fun RestView(ui: RestUi, onTap: () -> Unit, modifier: Modifier = Modifier) {
                 RestSign(ui.event, Modifier.size(150.dp))
             }
             Spacer(Modifier.height(12.dp))
-            Text(distance, style = MaterialTheme.typography.headlineMedium, color = OnPathColors.RestInk, maxLines = 1)
+            Text(instrument(distance, MaterialTheme.typography.headlineMedium), style = MaterialTheme.typography.headlineMedium, color = OnPathColors.RestInk, maxLines = 1)
             Text(label, style = MaterialTheme.typography.titleLarge, color = OnPathColors.RestDim, textAlign = TextAlign.Center,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
@@ -90,7 +93,7 @@ fun RestView(ui: RestUi, onTap: () -> Unit, modifier: Modifier = Modifier) {
             val time = ui.toGoS?.let { Format.durationShort(it) }
             val arrive = ui.arriveAt?.let { str(Res.string.nav_arrive) + " " + it }
             if (time != null || arrive != null) Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                time?.let { Text(it, style = MaterialTheme.typography.titleLarge, color = OnPathColors.RestDim, maxLines = 1) }
+                time?.let { Text(instrument(it, MaterialTheme.typography.titleLarge), style = MaterialTheme.typography.titleLarge, color = OnPathColors.RestDim, maxLines = 1) }
                 arrive?.let { Text(it, style = MaterialTheme.typography.titleLarge, color = OnPathColors.RestDim, maxLines = 1) }
             }
             Text(tapLabel, style = MaterialTheme.typography.bodyMedium, color = OnPathColors.RestDim)
@@ -132,7 +135,7 @@ object ScreenTouch {
  * navigation states (off route, arrival question, GPS) are added by NavigateMode.
  */
 internal fun AppViewModel.restBlocked(): Boolean = arrivalAsk || endAsk != null || routeBackAsk || longRouteAsk != null ||
-    navSettingsOpen || selectedPoi != null || activityCheck != null || downloadDetailsOpen || errorCard != null ||
+    selectedPoi != null || activityCheck != null || downloadDetailsOpen || errorCard != null ||
     askUpdateDuringTour || unfinished != null || finishedTour != null || setupOpen || showSettings || routesOpen ||
     timeDetails != null
 

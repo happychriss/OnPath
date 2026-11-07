@@ -47,9 +47,8 @@ data class Place(
 
     val kindInfo: PoiKind get() = SearchKinds.of(kind, sub)
 
-    /** Name, or the kind label (app language) when unnamed; [german] is ignored. */
-    @Suppress("UNUSED_PARAMETER")
-    fun title(german: Boolean = Poi.isGerman()): String = name ?: kindInfo.label
+    /** Name, or the kind label in the app's language when unnamed. */
+    fun title(): String = name ?: kindInfo.label
 
     /** The municipality for line 2 of an address, when it differs from the village in the name; else null. */
     val municipality: String?

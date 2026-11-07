@@ -7,7 +7,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.clickable
 import android.location.Location
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.Canvas
@@ -28,6 +31,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.TurnLeft
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.filled.TurnRight
 import androidx.compose.material.icons.filled.TurnSharpLeft
 import androidx.compose.material.icons.filled.TurnSharpRight
@@ -86,6 +91,14 @@ import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.TurnDetector
 import com.onpath.app.routing.TurnKind
+import com.onpath.app.domain.tour.MinuteClock
+import com.onpath.app.domain.tour.NextStop
+import com.onpath.app.domain.tour.RestEvents
+import com.onpath.app.domain.tour.ScreenPolicy
+import com.onpath.app.domain.tour.SmartScreen
+import com.onpath.app.domain.tour.StopAhead
+import com.onpath.app.domain.tour.StopRow
+import com.onpath.app.domain.tour.UnlockWindow
 
 /** What the Navigate screen shows (stateless, so screenshot tests can build it). */
 data class NavUi(
@@ -95,6 +108,8 @@ data class NavUi(
     val recordedM: Double? = null,
     val elapsedS: Long = 0,
     val paused: Boolean = false,
+    /** When the pause began (wall clock ms, [com.onpath.app.recording.RecState.pausedSinceMs]) – the pause band's clock. */
+    val pausedSinceMs: Long? = null,
     val waitingGps: Boolean = false,
     /** No GPS while standing still or only briefly (owner 2026-11-01): a quiet grey state, not the amber ⚠ warning. */
     val quietGps: Boolean = false,
@@ -123,6 +138,8 @@ data class NavUi(
     val sac: Int = 3,
     /** The check-and-switch sheet is open (stays until a choice is made). */
     val activityCheck: ActivityCheckUi? = null,
+    /** Settings (⚙ on the way) lie over Navigate: Android's back goes to them, not to "App verlassen?". */
+    val settingsOpen: Boolean = false,
     /** "46.54120 N 10.90320 E · ±8 m · 1234 m" (emergency calls) in the opened card; null = no fix yet. */
     val position: String? = null,
     /** "46.54120, 10.90320" – copied when the position line is tapped. */
@@ -136,7 +153,22 @@ data class NavUi(
     val approx: String? = null,
     /** OnPath's notifications are off during this tour: the amber box under the status card ([notificationsOffMessage]). */
     val notificationsOff: Boolean = false,
+    /** Paused and calm ([PauseQuiet.calm]): the status card says only what the pause band does not – no "not on the route". */
+    val calm: Boolean = false,
 )
+
+/**
+ * "Pause heißt Ruhe" (owner 2026-11-07, Pixel: paused, yet "Route beginnt 58 km entfernt – Hinführen" on top and "Kein GPS"
+ * in the card): while a tour is paused Navigate asks nothing and warns about nothing. The navigation questions (off
+ * route, far start, mid route, lead failed, searching) are hidden – not answered, not dropped: they stay in the
+ * navigator and show again after Weiter if still valid; no turn card, no GPS line, no Wi-Fi-position line. The pause
+ * band over the buttons explains the rest. Pure.
+ */
+object PauseQuiet {
+    fun calm(ui: NavUi): NavUi =
+        if (!ui.paused || ui.recordedM == null) ui
+        else ui.copy(offRoute = null, turn = null, waitingGps = false, approx = null, calm = true)
+}
 
 /** [roundabout]: non-null = the turn is a roundabout, with the exit to take (0 = unknown). */
 data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: Int? = null,
@@ -145,9 +177,14 @@ data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: I
                     /** The new route starts behind: "Umdrehen" with the U sign (owner 2026-11-01). */
                     val turnRound: Boolean = false,
                     /** No turn near: "↑ Geradeaus · 2,4 km" to the next one (the card always there, owner 2026-11-01). */
-                    val straight: Boolean = false) {
-    val label: String get() = if (straight) Txt.s(Res.string.nav_straight_on) else if (turnRound) Txt.s(Res.string.nav_turn_round)
-        else roundabout?.let { com.onpath.app.routing.JunctionCue.ROUNDABOUT.text(it) } ?: kind.label
+                    val straight: Boolean = false,
+                    /** The kind of way the turn goes onto, as the voice says it ("Links auf den Radweg"); null = no word. */
+                    val onto: com.onpath.app.navigation.WayKind? = null,
+                    /** The next plan stop comes first: "1,2 km · Stopp 2 · Leiteralm" with the stop's sign ([NextStop]). */
+                    val stop: StopAhead? = null) {
+    val label: String get() = if (stop != null) stop.label else if (straight) Txt.s(Res.string.nav_straight_on) else if (turnRound) Txt.s(Res.string.nav_turn_round)
+        else roundabout?.let { com.onpath.app.routing.JunctionCue.ROUNDABOUT.text(it) }
+            ?: onto?.let { com.onpath.app.navigation.VoiceText.onto(kind.label, it) } ?: kind.label
 }
 
 /**
@@ -155,8 +192,12 @@ data class TurnHint(val kind: TurnKind, val distanceM: Double, val roundabout: I
  * already taken off), null without a direction. Nothing here times out: it stays until answered or back on route.
  */
 data class OffRouteUi(val prompt: NavPrompt, val toRoute: RouteHint? = null, val arrowDeg: Float? = null) {
-    /** The ONE amber off-route card on top (searching, no way, kept) – not the questions below, not the far start. */
-    val amber: Boolean get() = prompt is NavPrompt.NoWay || prompt == NavPrompt.Kept
+    /**
+     * The ONE amber off-route card on top – step 1 of leaving the route ([com.onpath.app.navigation.OffRouteSteps], owner
+     * 2026-11-07): the whole off-route state (searching, the question open below, no way, kept); not the far start, not
+     * the activity switch.
+     */
+    val amber: Boolean get() = com.onpath.app.navigation.OffRouteSteps.card(prompt)
 }
 
 data class ToGo(
@@ -164,6 +205,8 @@ data class ToGo(
     val descentM: Double = 0.0,
     /** The rest of the followed line from the current position (for the elevation profile). */
     val profile: List<GeoPoint> = emptyList(),
+    /** Up to 3 plan stops ahead with their arrival clock, under the profile (owner 2026-11-05); empty = none. */
+    val stops: List<StopRow> = emptyList(),
     /**
      * Can the time be trusted now? NOT_ON_ROUTE: "— not on route" instead of a time; PAUSED: the last time greyed with
      * "estimate paused · [pausedBecause]" (owner rules 6 and 8, docs/plan-time-estimate.md).
@@ -187,7 +230,7 @@ data class ToGo(
  */
 @Composable
 fun NavigateOverlay(
-    ui: NavUi,
+    shown: NavUi,
     footer: @Composable () -> Unit,
     onSlideToPlan: () -> Unit,
     onResume: () -> Unit = {},
@@ -196,6 +239,11 @@ fun NavigateOverlay(
     onEnd: () -> Unit = {},
     /** Screenshot tests: the bar the slider unlocks, open. */
     actionsOpen: Boolean = false,
+    /**
+     * Settings → Navigation "Sperre beim Navigieren" (owner 2026-11-05, default on): the slider unlocks. Off: no slider,
+     * Pause / Tour beenden in the status card and the big blue "Plan ändern" are shown at once and never lock.
+     */
+    lock: Boolean = true,
     slideStartFraction: Float = 0f,
     onTakeRoute: (Int) -> Unit = {},
     onKeepRoute: (Int) -> Unit = {},
@@ -204,10 +252,14 @@ fun NavigateOverlay(
     /** "Route starts 31 km away" (never on the route yet): Guide me / Just record; OK on "no way to the route". */
     onLeadThere: (Int) -> Unit = {},
     onJustRecord: (Int) -> Unit = {},
+    /** "Hier einsteigen" on the mid-route question (owner 2026-11-03); "Zu ① führen" is [onLeadThere]. */
+    onJoinHere: (Int) -> Unit = {},
     onLeadFailedOk: (Int) -> Unit = {},
     onActivity: () -> Unit = {},
     onChooseActivity: (Activity) -> Unit = {},
     onKeepActivity: () -> Unit = {},
+    /** Hike's T chip in the activity sheet (K1). */
+    onHikeLevel: (Int) -> Unit = {},
     /** Finger on the elevation profile: that spot on the route (null never sent) / finger left. */
     onProfileScrub: (GeoPoint) -> Unit = {},
     onProfileRelease: () -> Unit = {},
@@ -227,21 +279,81 @@ fun NavigateOverlay(
     onCover: (topDp: Int, bottomDp: Int) -> Unit = { _, _ -> },
     /** Developer tools unlocked: the "Tour-Sim" chip ([NavSimChip]) under the status; null = none (everyone else). */
     sim: (@Composable () -> Unit)? = null,
+    /** "App verlassen?" answered with Verlassen: the app goes to the background, the recording goes on (N4). */
+    onLeaveApp: () -> Unit = {},
+    /** A plan / done tour tapped in My routes during the tour is followed now ([NewPlanLine]); null = no line. */
+    newPlan: NewPlanNote? = null,
+    onNewPlanUndo: () -> Unit = {},
+    onNewPlanGone: () -> Unit = {},
 ) {
+    // "Pause heißt Ruhe" (owner 2026-11-07): while paused no navigation question, no turn card, no GPS warning – the
+    // pause band says what stands still; the questions come back after Weiter ([PauseQuiet])
+    val ui = PauseQuiet.calm(shown)
     val density = androidx.compose.ui.platform.LocalDensity.current
     // the top column's height (turn card, status, chips) below the status bar: the one box goes 12 dp below it
     var topColumnDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var messageBottomDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var sliderDp by remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    // the slider unlocks Pause · Change route · End (a recording); without one it goes to the plan at once
-    var open by remember { mutableStateOf(actionsOpen) }
-    LaunchedEffect(open) { if (open && !actionsOpen) { kotlinx.coroutines.delay(TourActions.OPEN_MS); open = false } }
-    // closing it without a choice (owner 2026-11-02, no ✕): a tap on the map or Android's back; paused it stays open
-    val closableBar = open && !ui.paused && ui.recordedM != null
-    androidx.activity.compose.BackHandler(enabled = closableBar) { open = false }
+    // ONE bar at the bottom with and without the lock (owner 2026-11-06: "Stopp und Pause an der Stelle ist logischer"):
+    // "⏸ Pause | ✎ Planen", paused "Weiter · Beenden · round ✎" ([TourBottomBar]); the status card has no buttons.
+    // Locked (owner 2026-11-06 22:20, variant A of the hold lock – replaces the slider and its unlocked state): the same
+    // buttons light, each fires only when held ~1 s ([HoldButton]); the lock off in the settings: a plain tap.
+    // One fired hold unlocks the bar for 20 s (owner 2026-11-07 09:05, [UnlockWindow]): plain taps and full colours –
+    // except "Weiter", which always wants a hold while the lock is on (owner 10:15, [UnlockWindow.needsHold]); every tap
+    // starts the window again; shut after 20 s idle, on screen off / background (ON_STOP) and when Aus.
+    // [actionsOpen] (screenshot tests) draws the open window.
+    var unlockedUntil by remember { androidx.compose.runtime.mutableLongStateOf(UnlockWindow.LOCKED) }
+    var windowOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(unlockedUntil) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        windowOpen = UnlockWindow.isOpen(unlockedUntil, now)
+        if (windowOpen) { kotlinx.coroutines.delay(unlockedUntil - now); windowOpen = false }
+    }
+    LaunchedEffect(lock) { if (!lock) unlockedUntil = UnlockWindow.LOCKED }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    androidx.compose.runtime.DisposableEffect(lifecycle) {
+        val shut = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_STOP && unlockedUntil != UnlockWindow.LOCKED) {
+                com.onpath.app.debug.Problems.trace("navigate", "Bar locked again: the screen went off / the app went to the background")
+                unlockedUntil = UnlockWindow.afterScreenOff()
+            }
+        }
+        lifecycle.addObserver(shut)
+        onDispose { lifecycle.removeObserver(shut) }
+    }
+    // in the pocket the proximity sensor turns the screen off without stopping the activity (owner 2026-11-07 10:45:
+    // "Pause drücken, dann in die Tasche – danach soll wieder gesperrt sein")
+    val inPocket by PocketState.inPocket.collectAsState()
+    LaunchedEffect(inPocket) {
+        if (inPocket && unlockedUntil != UnlockWindow.LOCKED) {
+            com.onpath.app.debug.Problems.trace("navigate", "Bar locked again: in the pocket (proximity sensor, screen off)")
+            unlockedUntil = UnlockWindow.afterScreenOff()
+        }
+    }
+    val barOpen = windowOpen || actionsOpen
+    val planHeld = UnlockWindow.needsHold(UnlockWindow.BarButton.PLAN, lock, barOpen)
+    // a tap while the window is open starts it again (a shut window stays shut – a tap never unlocks)
+    val touched = { unlockedUntil = UnlockWindow.afterTap(unlockedUntil, android.os.SystemClock.elapsedRealtime()) }
+    val barPause: (Boolean) -> Unit = { p -> touched(); onPause(p) }
+    val barEnd: () -> Unit = { touched(); onEnd() }
+    val barPlan: () -> Unit = { touched(); onSlideToPlan() }
+    val heldFired = LocalOnHoldFired.current
+    val unlockOnFire: () -> Unit = {
+        heldFired()
+        if (lock) {
+            unlockedUntil = UnlockWindow.afterFire(android.os.SystemClock.elapsedRealtime())
+            com.onpath.app.debug.Problems.trace("navigate", "Held button fired: the bar is open for ${UnlockWindow.openMs / 1000} s")
+        }
+    }
+    val closableBar = false
+    // Android's back while a tour records (owner 2026-11-06, flow map N4): ask instead of leaving the app – a novice took
+    // "app gone" for "tour gone" and might start a second one. A second back closes the question (= Bleiben).
+    var leaveAsk by remember { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = LeaveAppRule.backAsks(recording = ui.recordedM != null,
+        barOpen = closableBar, sheetOpen = ui.activityCheck != null || ui.settingsOpen)) { leaveAsk = !leaveAsk }
+    val recordingNow = ui.recordedM != null
+    LaunchedEffect(recordingNow) { if (!recordingNow) leaveAsk = false }
     Box(Modifier.fillMaxSize()) {
-        if (closableBar) Box(Modifier.fillMaxSize().clearAndSetSemantics { }
-            .pointerInput(Unit) { detectTapGestures { open = false } })
         Column(
             Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding()
                 .onSizeChanged { topColumnDp = with(density) { it.height.toDp().value.toInt() } }
@@ -250,12 +362,15 @@ fun NavigateOverlay(
         ) {
             // cards glide in and out instead of popping and pushing the status card
             Appearing(ui.turn) { TurnCard(it) }
-            // ONE amber card while off route (owner): "Off route", distance + direction, the state
+            // ONE amber card while off route (owner): "Off route", distance + direction, the state; step 1 of leaving the
+            // route – it stays while the question (step 2) is open below it (owner 2026-11-07)
             Appearing(ui.offRoute?.takeIf { it.amber }) { OffRouteCard(it) }
             if (ui.toGo != null || ui.recordedM != null) {
                 var profileOpen by rememberSaveable { mutableStateOf(false) }
                 NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity,
-                    onProfileScrub = onProfileScrub, onProfileRelease = onProfileRelease)
+                    onProfileScrub = onProfileScrub, onProfileRelease = onProfileRelease,
+                    // the lock off (owner 2026-11-06): no buttons in the card – Pause | Planen at the bottom ([TourBottomBar])
+                    actions = null)
             }
             download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
             sim?.let { Box(Modifier.align(Alignment.End)) { it() } }
@@ -264,11 +379,21 @@ fun NavigateOverlay(
             footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
             val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            // paused: the bar stays open – "Fortsetzen" at once, no slider (owner 2026-11-01)
-            if ((open || ui.paused) && ui.recordedM != null) TourActionBar(ui.paused, onPause, onChangeRoute = onSlideToPlan,
-                onEnd = onEnd, onClose = { open = false }, modifier = bottom)
-            else SlideToPlan({ if (ui.recordedM != null) open = true else onSlideToPlan() }, bottom,
-                recording = ui.recordedM != null, startFraction = slideStartFraction)
+            // a tour: Pause | Planen (paused: the pause band over ▶ Weiter · Beenden · ✎); no tour: one big blue Planen –
+            // held while locked, plain inside the unlock window (Weiter always held)
+            androidx.compose.runtime.CompositionLocalProvider(LocalOnHoldFired provides unlockOnFire) {
+                if (ui.recordedM != null) TourBottomBar(ui.paused, barPause, onEnd = barEnd, onPlan = barPlan, bottom, hold = lock,
+                    pausedSinceMs = ui.pausedSinceMs, free = ui.toGo == null, windowOpen = barOpen)
+                else ChangePlanButton(barPlan, bottom, hold = planHeld)
+            }
+        }
+        // "Neuer Plan – deine Aufnahme läuft weiter" just above the bottom bar, over the map (nothing moves under it), left
+        // of the map controls' column (it covered "locate" across the full width – merge review 2026-11-06)
+        newPlan?.let { n ->
+            LaunchedEffect(n.id) { kotlinx.coroutines.delay(NEW_PLAN_LINE_MS); onNewPlanGone() }
+            NewPlanLine(if (n.undo) onNewPlanUndo else null,
+                Modifier.align(Alignment.BottomStart)
+                    .padding(start = 16.dp, end = NEW_PLAN_LINE_END, bottom = (sliderDp + 8).dp))
         }
         // ONE box under the turn / status column (docs/design/ui-style.md, owner 2026-10-31 – the re-route and
         // activity-switch question moved here from the bottom, 56 dp buttons kept); the question wins, the rest wait.
@@ -277,10 +402,14 @@ fun NavigateOverlay(
         // never on the route yet (owner 2026-10-31): the calm far-start question; "Guide me" found nothing → red note
         val far = ui.offRoute?.prompt as? NavPrompt.FarStart
         val leadFailed = ui.offRoute?.prompt as? NavPrompt.LeadFailed
+        // reached beside a later part (owner 2026-11-03): "Du stehst mitten auf der Route" · Hier einsteigen / Zu ① führen
+        val mid = ui.offRoute?.prompt as? NavPrompt.MidStart
         val message = Messages.pick(listOf(
+            if (leaveAsk) leaveAppMessage(onStay = { leaveAsk = false }, onLeave = { leaveAsk = false; onLeaveApp() }) else null,
             question?.let { q -> rerouteMessage(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) }, onVia = { onTakeVia(q.id) }) },
             ui.offRoute?.takeIf { it.prompt == NavPrompt.Searching }?.let { o -> searchingMessage(o, onKeep = { onKeepRoute(-1) }) },
             far?.let { p -> farStartMessage(p, onLead = { onLeadThere(p.id) }, onJustRecord = { onJustRecord(p.id) }) },
+            mid?.let { p -> midStartMessage(p, onLead = { onLeadThere(p.id) }, onJoin = { onJoinHere(p.id) }) },
             leadFailed?.let { e -> errorMessage(NavText.title(e)) { onLeadFailedOk(e.id) } },
             error?.let { errorMessage(it, onErrorOk) },
             if (ui.notificationsOff) notificationsOffMessage(onNotifications, onNotificationsOk) else null,
@@ -292,29 +421,105 @@ fun NavigateOverlay(
         val cover by androidx.compose.runtime.rememberUpdatedState(onCover)
         androidx.compose.runtime.SideEffect { cover(maxOf(topColumnDp, shownMessageBottom), sliderDp) }
         // over the controls: nothing else is touched by accident while choosing; no tap-outside dismiss
-        ui.activityCheck?.let { ActivitySwitchSheet(it, onChooseActivity, onKeepActivity, Modifier.align(Alignment.BottomCenter)) }
+        ui.activityCheck?.let { ActivitySwitchSheet(it, onChooseActivity, onKeepActivity, Modifier.align(Alignment.BottomCenter), onHikeLevel = onHikeLevel) }
+    }
+}
+
+/** How long [NewPlanLine] stays (ms): long enough to read it and reach "Rückgängig" with gloves. */
+internal const val NEW_PLAN_LINE_MS = 8_000L
+
+/** [NewPlanLine]'s right edge: clear of the map controls' column (16 dp margin + one [MAP_FAB] + 8 dp air). */
+internal val NEW_PLAN_LINE_END = 16.dp + MAP_FAB + 8.dp
+
+/**
+ * A plan or a done tour tapped in My routes during a tour is followed at once, without a question (owner 2026-11-06
+ * 22:05): this light card above the bottom bar says "Neuer Plan – deine Aufnahme läuft weiter" for [NEW_PLAN_LINE_MS]
+ * (no dark message bar – owner; paper like every floating card, owner 2026-11-06) and, when a plan was replaced, "Rückgängig" (blue: it
+ * plans) brings that plan back ([AppViewModel.undoNewPlan]; it is also under My routes → Zuletzt).
+ */
+@Composable
+internal fun NewPlanLine(onUndo: (() -> Unit)?, modifier: Modifier = Modifier) {
+    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.Paper, modifier = modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, MaterialTheme.shapes.large)) {
+        Row(Modifier.heightIn(min = 56.dp).padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(str(Res.string.plan_new_during_tour), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f).padding(vertical = 8.dp))
+            onUndo?.let {
+                androidx.compose.material3.TextButton(onClick = it, modifier = Modifier.heightIn(min = 48.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = OnPathColors.ActionEdit)) {
+                    Text(str(Res.string.plan_undo), style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
     }
 }
 
 /** Next turn, the most prominent thing on screen (like Google Maps' green maneuver card): arrow, distance, direction. */
 @Composable
 private fun TurnCard(t: TurnHint) {
-    val text = if (t.distanceM < 15 && !t.straight) str(Res.string.nav_turn_now, t.label)
-        else str(Res.string.nav_turn_in, t.label, turnDistance(t.distanceM))
-    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary, shadowElevation = 4.dp,
-        modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = text }) {
+    val spoken = StopTokens.plain(t.label)
+    val text = if (t.distanceM < 15 && !t.straight && t.stop == null) str(Res.string.nav_turn_now, spoken)
+        else str(Res.string.nav_turn_in, spoken, turnDistance(t.distanceM))
+    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.ActionGo,
+        contentColor = OnPathColors.CardWhite,
+        modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = text }.warmShadow(OnPathShadow.HIGH, MaterialTheme.shapes.large)) {
         Row(Modifier.heightIn(min = 76.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (t.roundabout != null) RoundaboutSign(t.roundabout, t.roundaboutAngle, Modifier.size(48.dp))
+            if (t.stop != null) StopSign(t.stop, Modifier.size(48.dp))
+            else if (t.roundabout != null) RoundaboutSign(t.roundabout, t.roundaboutAngle, Modifier.size(48.dp))
             else Icon(if (t.straight) Icons.Filled.ArrowUpward else turnIcon(t.kind), null, modifier = Modifier.size(48.dp))
             Spacer(Modifier.width(16.dp))
-            Column {
-                Text(turnDistance(t.distanceM), style = MaterialTheme.typography.headlineMedium)
-                Text(t.label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+            // the way word goes on the same line as the direction ("Links auf den Radweg"): the card never grows, a long
+            // label ends in "…" (owner: nothing jumps)
+            Column(Modifier.weight(1f)) {
+                Text(instrument(turnDistance(t.distanceM), MaterialTheme.typography.headlineMedium),
+                    style = MaterialTheme.typography.headlineMedium)
+                StopText(t.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
         }
     }
 }
+/**
+ * The plan point's sign on the turn card, like on the map (owner 2026-11-01: near-black numbered stops, dark red goal),
+ * with a white ring so it reads on the green card.
+ */
+@Composable
+private fun StopSign(s: StopAhead, modifier: Modifier) {
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(40.dp).background(OnPathColors.CardWhite, androidx.compose.foundation.shape.CircleShape)
+            .padding(2.5.dp).background(if (s.goal) OnPathColors.PointGoal else OnPathColors.PointStop,
+                androidx.compose.foundation.shape.CircleShape), contentAlignment = Alignment.Center) {
+            if (s.goal) Icon(Icons.Filled.Flag, null, tint = OnPathColors.CardWhite, modifier = Modifier.size(22.dp))
+            else Text(s.number.toString(), color = OnPathColors.CardWhite, style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+/** One stop ahead under the profile: the map's sign (small), the name ("…"), then distance and "an 14:20" – never cut. */
+@Composable
+private fun StopAheadRow(r: StopRow) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(vertical = 2.dp).semantics(mergeDescendants = true) {},
+        verticalAlignment = Alignment.CenterVertically) {
+        // grows with a large font (the number is never cut): at least 28 dp, round while it fits
+        Box(Modifier.sizeIn(minWidth = 28.dp, minHeight = 28.dp).background(if (r.stop.goal) OnPathColors.PointGoal else OnPathColors.PointStop,
+            androidx.compose.foundation.shape.CircleShape).padding(horizontal = 6.dp, vertical = 2.dp), contentAlignment = Alignment.Center) {
+            if (r.stop.goal) Icon(Icons.Filled.Flag, null, tint = OnPathColors.CardWhite, modifier = Modifier.size(16.dp))
+            else Text(r.stop.number.toString(), color = OnPathColors.CardWhite, style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.width(10.dp))
+        Text(r.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f))
+        Spacer(Modifier.width(8.dp))
+        Column(horizontalAlignment = Alignment.End) {
+            Text(instrument(Format.distance(r.stop.distanceM), MaterialTheme.typography.bodyLarge),
+                style = MaterialTheme.typography.bodyLarge, maxLines = 1, softWrap = false)
+            r.arriveAt?.let { Text(str(Res.string.nav_stop_arrive, it), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false) }
+        }
+    }
+}
+
 /** Rounded like a navigation display: 10 m steps below 200 m, 50 m steps above. */
 internal fun turnDistance(m: Double): String = when {
     m < 15 -> Txt.s(Res.string.nav_turn_distance_now)
@@ -334,16 +539,16 @@ internal fun turnIcon(k: TurnKind): ImageVector = when (k) {
     TurnKind.U_TURN_RIGHT -> Icons.Filled.UTurnRight
 }
 
-/** Compass needle: red half pointing north with an "N" above it, grey half south. */
+/** Compass needle: ink-blue half pointing north with a walnut "N" above it, walnut-grey half south (owner 2026-11-07, no red). */
 @Composable
 internal fun NorthNeedle(modifier: Modifier) {
     val measurer = rememberTextMeasurer()
     Canvas(modifier) {
         val w = size.width; val h = size.height
         val cx = w / 2; val top = h * 0.36f; val bottom = h * 0.98f; val mid = (top + bottom) / 2; val half = w * 0.16f
-        drawPath(Path().apply { moveTo(cx, top); lineTo(cx + half, mid); lineTo(cx - half, mid); close() }, OnPathColors.Bad)
-        drawPath(Path().apply { moveTo(cx, bottom); lineTo(cx + half, mid); lineTo(cx - half, mid); close() }, Color(0xFF9E9E9E))
-        val label = measurer.measure("N", TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF333333)))
+        drawPath(Path().apply { moveTo(cx, top); lineTo(cx + half, mid); lineTo(cx - half, mid); close() }, OnPathColors.CompassNorth)
+        drawPath(Path().apply { moveTo(cx, bottom); lineTo(cx + half, mid); lineTo(cx - half, mid); close() }, OnPathColors.CompassSouth)
+        val label = measurer.measure("N", TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = OnPathColors.Walnut))
         drawText(label, topLeft = Offset(cx - label.size.width / 2f, top - label.size.height + 1f))
     }
 }
@@ -359,15 +564,39 @@ internal fun NorthNeedle(modifier: Modifier) {
 @Composable
 internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean = false, onToggleProfile: () -> Unit = {},
                            onActivity: () -> Unit = {}, onProfileScrub: (GeoPoint) -> Unit = {},
-                           onProfileRelease: () -> Unit = {}) {
+                           onProfileRelease: () -> Unit = {},
+                           /** Extra content under the route info (none since 2026-11-06: the tour's buttons are the bottom bar, [TourBottomBar]). */
+                           actions: (@Composable () -> Unit)? = null) {
     val hasProfile = (ui.toGo?.profile?.size ?: 0) >= 2
     val movingLine = ui.recordedM?.let { movingLine(ui) }
     val canOpen = hasProfile || ui.position != null || (movingLine != null && ui.toGo != null)
     // the amber off-route card says where the route is – not repeated here (the question card at the bottom does not)
     val offCard = ui.offRoute?.amber == true
-    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp,
-        // only the activity icon and the chevron are buttons (gloves: no tap target as big as the card)
-        modifier = Modifier.fillMaxWidth()) {
+    // tap AND drag (owner 2026-11-06 23:42, like the plan sheet's handle): a tap anywhere on the card toggles it, pulling
+    // it down opens, pushing it up closes; the activity icon, the chevron, the profile and the position line keep their
+    // own touches (they consume them first). The card is a Surface: a drag on it never reaches the map below.
+    val toggle by androidx.compose.runtime.rememberUpdatedState(onToggleProfile)
+    val openNow by androidx.compose.runtime.rememberUpdatedState(profileOpen)
+    val dragPx = with(androidx.compose.ui.platform.LocalDensity.current) { ExpandGesture.CARD_DRAG_DP.dp.toPx() }
+    val cardTouch = if (!canOpen) Modifier else Modifier
+        .pointerInput(Unit) {
+            var dy = 0f
+            detectVerticalDragGestures(
+                onDragStart = { dy = 0f },
+                onDragEnd = { if (ExpandGesture.cardAfterDrag(openNow, dy, dragPx) != openNow) toggle() },
+                onDragCancel = { dy = 0f },
+                onVerticalDrag = { change, d -> change.consume(); dy += d },
+            )
+        }
+        .clickable(onClickLabel = str(if (profileOpen) Res.string.nav_profile_hide else Res.string.nav_profile_show),
+            role = androidx.compose.ui.semantics.Role.Button, onClick = onToggleProfile)
+        .semantics {
+            stateDescription = Txt.s(if (profileOpen) Res.string.nav_card_open else Res.string.nav_card_closed)
+        }
+    // over the map: paper like every surface (owner 2026-11-06), the shadow lifts it off the map
+    // only the activity icon and the chevron are own buttons; the whole card toggles by tap and drag (owner 23:42)
+    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.Paper,
+        modifier = Modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, MaterialTheme.shapes.large).then(cardTouch)) {
       Column {
         Row(Modifier.heightIn(min = 56.dp).padding(start = if (ui.activity != null) 8.dp else 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -378,21 +607,24 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         contentDescription = Txt.s(Res.string.nav_activity_cd, NavText.activityName(a, ui.sac))
                     }) {
                     Box(contentAlignment = Alignment.Center) {
-                        val rec = ui.recordedM != null
-                        Icon(a.icon, null, tint = OnPathColors.Green,
-                            modifier = Modifier.size(if (rec) 24.dp else 28.dp).then(if (rec) Modifier.align(Alignment.TopCenter).padding(top = 4.dp) else Modifier))
-                        // recording: a small "● REC" sign on the icon instead of a line (owner 2026-11-01)
-                        if (rec) RecBadge(ui.paused, Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp))
+                        // no "● REC" sign any more (owner 2026-11-06: the running time shows the recording); paused the
+                        // icon is grey and the card's line says "Pausiert"
+                        Icon(a.icon, null, tint = if (ui.paused && ui.recordedM != null) OnPathColors.Grey else OnPathColors.Green,
+                            modifier = Modifier.size(28.dp))
                     }
                 }
                 Spacer(Modifier.width(10.dp))
             }
             Column(Modifier.weight(1f)) {
+                // a tour without a route (owner 2026-11-05): say so plainly instead of an empty route line
+                if (ui.toGo == null && ui.recordedM != null) Text(str(Res.string.nav_free_tour), style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold, maxLines = 2)
                 ui.toGo?.let { g ->
                     if (g.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE) {
                         // never a stale time (owner rule 6): what is left counts again once back on the route. While the
-                        // amber off-route card shows, it says it (one place, one distance).
-                        if (!offCard) {
+                        // amber off-route card shows, it says it (one place, one distance). Paused (calm): nothing –
+                        // the card's line says "Pausiert", the pause band the rest (owner 2026-11-07 "Pause heißt Ruhe")
+                        if (!offCard && !ui.calm) {
                             // never reached: "Not on the route yet · Start 31 km away" (the far-start box's number)
                             val (title, line2) = NavText.notOnRoute(g.startM, g.offM)
                             Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
@@ -406,16 +638,17 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         // (small phone, long values) the distance wraps under the time – same size, never smaller.
                         val dim = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(Format.durationShort(g.timeS), style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false,
+                            // instrument numbers (owner 2026-11-06): equal-width digits, nothing jiggles while counting
+                            Text(instrument(Format.durationShort(g.timeS), MaterialTheme.typography.titleLarge),
+                                style = MaterialTheme.typography.titleLarge, maxLines = 1, softWrap = false,
                                 color = if (paused) dim else Color.Unspecified)
-                            Text(Format.distance(g.distanceM), style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false,
+                            Text(instrument(Format.distance(g.distanceM), MaterialTheme.typography.titleLarge),
+                                style = MaterialTheme.typography.titleLarge, maxLines = 1, softWrap = false,
                                 color = if (paused) dim else Color.Unspecified)
                         }
                         if (paused) Text(timePausedText(g, ui.waitingGps), style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        else Text("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}",
+                        else Text(instrument("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}", MaterialTheme.typography.bodyLarge),
                             style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
@@ -436,14 +669,14 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         Row(Modifier.padding(top = if (ui.toGo != null) 2.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (ui.activity == null) { RecDot(ui.paused, Modifier.size(8.dp)); Spacer(Modifier.width(8.dp)) }
                             Text(line,
-                                style = if (ui.toGo == null || offCard) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+                                style = if (offCard) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
             }
-            if (ui.paused && ui.recordedM != null) TextButton(onClick = onResume, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_resume)) }
-            else if (ui.toGo != null && ui.arriveAt != null && ui.toGo.state != com.onpath.app.time.EstimateState.NOT_ON_ROUTE) Column(
+            // paused: "Fortsetzen" is in the card's action row once unlocked (owner 2026-11-06: locked + paused = the slider)
+            if (ui.toGo != null && ui.arriveAt != null && ui.toGo.state != com.onpath.app.time.EstimateState.NOT_ON_ROUTE) Column(
                 horizontalAlignment = Alignment.End,
                 modifier = Modifier.padding(start = 8.dp).widthIn(min = targetWordWidth(ui.toGo.target))
                     .width(IntrinsicSize.Max).semantics(mergeDescendants = true) {}) {
@@ -462,9 +695,12 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 }
             }
             if (canOpen) androidx.compose.material3.IconButton(onClick = onToggleProfile, modifier = Modifier.size(48.dp)) {
-                Icon(if (profileOpen) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                // the chevron turns with the card (open: it points up)
+                val turn by androidx.compose.animation.core.animateFloatAsState(if (profileOpen) 180f else 0f, label = "chevron")
+                Icon(Icons.Filled.ExpandMore,
                     contentDescription = str(if (profileOpen) Res.string.nav_profile_hide else Res.string.nav_profile_show),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.graphicsLayer { rotationZ = turn })
             }
         }
         if (ui.recordedM != null) ui.approx?.let {
@@ -481,11 +717,18 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
         }
+        // unlocked: Pause / Tour beenden directly under the route info (owner 2026-11-05, Navigate C)
+        actions?.invoke()
         // Chevron: elevation profile of what is left + own position (stays open until tapped again).
         if (profileOpen && canOpen) {
             if (hasProfile) ElevationProfile(ui.toGo!!.profile, height = 84.dp, gradient = true,
                 modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
-                onHighlight = { p -> p?.let(onProfileScrub) }, onRelease = onProfileRelease)
+                onHighlight = { p -> p?.let(onProfileScrub) }, onRelease = onProfileRelease,
+                marks = ui.toGo.stops.map { ProfileMark(it.stop.distanceM, it.stop.number, it.stop.goal) })
+            // the next stops ahead (owner 2026-11-05, like Komoot): sign · name · distance · "an 14:20"
+            ui.toGo?.stops?.takeIf { it.isNotEmpty() }?.let { rows ->
+                Column(Modifier.padding(start = 12.dp, end = 16.dp, bottom = 8.dp)) { rows.forEach { StopAheadRow(it) } }
+            }
             // moving time / breaks live here, then the pace in plain words (owner)
             if (ui.toGo != null) movingLine?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -606,19 +849,20 @@ internal fun timePausedText(g: ToGo, waitingGps: Boolean): String =
 
 /**
  * The ONE off-route card (owner, WARNING look): amber container, big arrow to the route, "Off route"
- * (22 sp bold), "120 m north-east (direct)" (16 sp) and the state in small text ("Looking for a way back…", "No way
- * back found", "Following the original route", "No map here to find a way back").
+ * (22 sp bold), "120 m north-east (direct)" (16 sp) and, when no question box is open below it, the state in small
+ * text ("No way back found", "Following the original route", "No map here to find a way back").
  */
 @Composable
 private fun OffRouteCard(o: OffRouteUi) {
     val hint = NavText.toRoute(o.toRoute)
-    val state = NavText.state(o.prompt)
+    // the state line only where no question box says it (no way found, original kept)
+    val state = NavText.state(o.prompt).takeIf { com.onpath.app.navigation.OffRouteSteps.cardState(o.prompt) }
     val offRoute = str(Res.string.nav_off_route)
     Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.WarnContainer,
-        contentColor = OnPathColors.OnWarnContainer, shadowElevation = 3.dp,
+        contentColor = OnPathColors.OnWarnContainer,
         modifier = Modifier.fillMaxWidth().clearAndSetSemantics {
             contentDescription = listOfNotNull(offRoute, hint, state).joinToString(". ")
-        }) {
+        }.warmShadow(OnPathShadow.LOW, MaterialTheme.shapes.large)) {
         Row(Modifier.heightIn(min = 76.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                 when {
@@ -633,13 +877,7 @@ private fun OffRouteCard(o: OffRouteUi) {
             Column {
                 Text(offRoute, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 hint?.let { Text(it, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium) }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (o.prompt == NavPrompt.Searching && o.arrowDeg != null) {
-                        CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = OnPathColors.OnWarnContainer)
-                        Spacer(Modifier.width(6.dp))
-                    }
-                    Text(state, style = MaterialTheme.typography.bodyMedium)
-                }
+                state?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
             }
         }
     }
@@ -648,8 +886,8 @@ private fun OffRouteCard(o: OffRouteUi) {
 /**
  * The off-route question (owner: ask every time, never re-route silently) as a FRAGE box under the status card: stays
  * until one of the big buttons is pressed or the user is back on the route. Buttons 56 dp – fine with gloves. With a
- * stop in question (StopSkip, owner 2026-11-01: one question shape): "You're 120 m off the route" – Keep original · New
- * route without stop 3 · New route (via it).
+ * stop in question (StopSkip, owner 2026-11-01 / 2026-11-03): "You're 120 m off the route" – Keep original · ③ auslassen ·
+ * Über ③ (primary; ③ = the map's numbered circle, [StopText]).
  * The activity switch ("New route for MTB") is the same question with the activity's icon.
  */
 @Composable
@@ -658,9 +896,14 @@ internal fun rerouteMessage(q: NavPrompt.Question, onTake: () -> Unit, onKeep: (
     val maxName = if (large) NavText.NAME_MAX_LARGE else NavText.NAME_MAX
     // turn round: the U-turn sign, so a way back on the same road is not mistaken for "nothing happened"
     val icon = q.switch?.activity?.icon ?: if (q.turnRound) Icons.Filled.UTurnLeft else Icons.Outlined.AltRoute
-    val buttons = if (q.via != null) listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.skipButton(q, maxName), onTake),
-        MessageButton(NavText.TAKE, onVia))
-        else listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.TAKE, onTake))
+    // a stop in question (owner 2026-11-03): never left out by "Yes" alone – "Über ③" (primary) · "③ auslassen"
+    val buttons = when {
+        q.via != null -> listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.skipButton(q), onTake),
+            MessageButton(NavText.viaButton(q), onVia))
+        // no way via the stop was found: leaving it out is still said on the button, never hidden behind "New route"
+        q.skipStop != null -> listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.skipButton(q), onTake))
+        else -> listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.TAKE, onTake))
+    }
     return Message(MessageKind.FRAGE, NavText.title(q), NavText.question(q, maxName), buttons, icon = icon, navigate = true)
 }
 
@@ -686,6 +929,32 @@ internal fun farStartMessage(p: NavPrompt.FarStart, onLead: () -> Unit, onJustRe
 }
 
 /**
+ * The route reached beside a later part of it, not at point 1 (owner 2026-11-03: "every tour starts at point 1 and skips
+ * nothing"): "Du stehst mitten auf der Route." · "Die Tour beginnt bei ①." · Hier einsteigen / **Zu ① führen** (the
+ * primary). Calm (no vibration); stays until answered or the user is at the start. "Hier einsteigen" = the points before
+ * count as passed (grey, not deleted). While the way to ① is computed only "Hier einsteigen" stays.
+ */
+internal fun midStartMessage(p: NavPrompt.MidStart, onLead: () -> Unit, onJoin: () -> Unit): Message {
+    val buttons = if (p.searching) listOf(MessageButton(NavText.MID_JOIN, onJoin))
+        else listOf(MessageButton(NavText.MID_JOIN, onJoin), MessageButton(NavText.MID_LEAD, onLead))
+    return Message(MessageKind.FRAGE, NavText.title(p), NavText.state(p), buttons, icon = Icons.Outlined.Flag, navigate = true)
+}
+
+/**
+ * Back in Navigate while a tour records (owner 2026-11-06, flow map N4): "App verlassen? Deine Tour wird weiter
+ * aufgezeichnet." · Bleiben / Verlassen. Neither is a navigation or plan action (colour rule: neutral).
+ */
+internal fun leaveAppMessage(onStay: () -> Unit, onLeave: () -> Unit): Message =
+    Message(MessageKind.FRAGE, Txt.s(Res.string.nav_leave_title), Txt.s(Res.string.nav_leave_text),
+        listOf(MessageButton(Txt.s(Res.string.nav_leave_stay), onStay), MessageButton(Txt.s(Res.string.nav_leave_go), onLeave)))
+
+/** When Android's back asks "App verlassen?" in Navigate (N4) – pure, unit-tested. */
+object LeaveAppRule {
+    /** Only while a tour records; the unlocked bar and the activity sheet close first with back. */
+    fun backAsks(recording: Boolean, barOpen: Boolean, sheetOpen: Boolean): Boolean = recording && !barOpen && !sheetOpen
+}
+
+/**
  * A tour runs with OnPath's notifications off ([com.onpath.app.navigation.NotificationsOff]): "⚠ Notifications off / No
  * turns … on the lock screen" + OK (HINWEIS_WARN). Tap on the text → the phone setup step; OK → gone for this tour.
  * Never goes by itself (owner: no self-dismissing messages).
@@ -706,10 +975,17 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val nav = rec?.nav?.takeIf { it.line.size >= 2 }
     val line = nav?.line ?: vm.followLine
     val progress = remember(line) { line?.let { FollowProgress(it) } }
+    // the clock times ("an 16:35", arrival) are "now + time to go": without a new position nothing recomposed, and a
+    // stop's time fell behind the clock (owner's Pixel 2026-11-06: "an 16:35" at 16:36) – recompose at every minute
+    val minute by androidx.compose.runtime.produceState(System.currentTimeMillis()) {
+        while (true) { kotlinx.coroutines.delay(MinuteClock.untilNextMs(System.currentTimeMillis())); value = System.currentTimeMillis() }
+    }
     // turns on the followed line, once per line: the junctions the phone vibrates for and the voice names
     // (ScreenTurns: BRouter's hints + JogRule; a GPX track without hints: the geometry, TurnDetector)
     val hike = (rec?.nav?.session?.activity ?: vm.activity) == com.onpath.app.routing.Activity.HIKE
     val turns = remember(line, hike) { line?.let { com.onpath.app.navigation.ScreenTurns.of(it, hike) } ?: emptyList() }
+    // the way word the voice says at each turn, the same on the card ("Links auf den Radweg", owner idea 2026-11-01)
+    val onto = remember(line, turns, hike) { line?.let { com.onpath.app.navigation.ScreenTurns.onto(it, turns, hike) } ?: emptyMap() }
     val total = remember(line) { line?.let { com.onpath.app.data.Geo.length(it) } ?: 0.0 }
     // same time model as the plan sheet (time/RouteTimes): no jump when navigation starts
     val times = remember(line, vm.activity) { line?.let { com.onpath.app.time.RouteTimes.of(it, vm.activity) } }
@@ -772,9 +1048,21 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         else remaining?.let { r ->
             ToGo(r.distanceM, r.ascentM, toGoS ?: 0.0, r.offM, r.descentM,
                 profile = line?.let { l -> l.subList(r.index.coerceIn(0, l.size - 1), l.size) } ?: emptyList(),
+                // the next 2–3 stops (owner 2026-11-05): the same rules as the turn card's stop, the same time model as the clock
+                stops = nav?.session?.let { sess ->
+                    val now = maxOf(System.currentTimeMillis(), minute)
+                    val f = vm.planFactors()
+                    val plainHere = toGoSeconds(times, r.distanceM, f)
+                    NextStop.aheadList(sess, (total - r.distanceM).coerceAtLeast(0.0)).map { st ->
+                        val mv = NextStop.movingS(toGoS ?: plainHere, plainHere, toGoSeconds(times, (r.distanceM - st.distanceM).coerceAtLeast(0.0), f))
+                        StopRow(st, if (toGoS == null && times == null) null
+                            else com.onpath.app.time.TimeEstimate.clock(com.onpath.app.time.TimeEstimate.arrivalMs(now, mv)))
+                    }
+                } ?: emptyList(),
                 state = tt?.state ?: com.onpath.app.time.EstimateState.OK, pausedBecause = tt?.pausedBecause?.text, target = target)
         },
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,
+        pausedSinceMs = rec?.pausedSinceMs?.takeIf { rec.paused },
         waitingGps = rec?.gpsLost == true && prov == null,
         quietGps = rec?.gpsQuiet == true,
         stillGps = rec?.gpsStill == true,
@@ -783,12 +1071,12 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         },
         // a new route that starts behind: "Umdrehen" first (owner 2026-11-01: after a re-route one saw nothing and did
         // not know where to go) – until the Navigator clears the U sign (walked the new way)
-        turn = nav?.uTurnAt?.let { u -> TurnHint(TurnKind.U_TURN_LEFT, here?.let { com.onpath.app.data.Geo.distance(it, u) } ?: 0.0, turnRound = true) }
+        turn = (nav?.uTurnAt?.let { u -> TurnHint(TurnKind.U_TURN_LEFT, here?.let { com.onpath.app.data.Geo.distance(it, u) } ?: 0.0, turnRound = true) }
             ?: turnHint(next?.let { (t, d) -> t.kind to d }, roundabout)?.let { h ->
                 when {
                     h.roundabout != null -> h.copy(roundaboutAngle = roundaboutAngle)
                     next?.first?.turnRound == true -> h.copy(turnRound = true)   // an out-and-back: "Umdrehen"
-                    else -> h
+                    else -> h.copy(onto = next?.first?.index?.let { onto[it] })
                 }
             }
             // no turn near: the card stays, "↑ Geradeaus" to the next turn / the goal – nothing jumps (owner 2026-11-01)
@@ -796,6 +1084,10 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
                 val along = (total - r.distanceM).coerceAtLeast(0.0)
                 val to = turns.firstOrNull { it.distanceFromStart > along + 5.0 }?.distanceFromStart ?: total
                 TurnHint(TurnKind.SLIGHT_RIGHT, (to - along).coerceAtLeast(0.0), straight = true)
+            })?.let { h ->
+                // the next stop comes before that turn: "1,2 km · Stopp 2 · Leiteralm" (owner 2026-11-03) – "Umdrehen" stays
+                val stop = remaining?.let { r -> nav?.session?.let { NextStop.ahead(it, (total - r.distanceM).coerceAtLeast(0.0)) } }
+                if (!h.turnRound && NextStop.shown(h.distanceM, stop)) TurnHint(TurnKind.SLIGHT_RIGHT, stop!!.distanceM, stop = stop) else h
             },
         headingUp = vm.navHeadingUp,
         arriveAt = arrive,
@@ -806,6 +1098,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         activity = rec?.nav?.session?.activity ?: vm.activity,
         sac = rec?.nav?.session?.sac ?: vm.sac,
         activityCheck = vm.activityCheck,
+        settingsOpen = vm.showSettings,
         position = location?.let { l ->
             NavText.position(l.latitude, l.longitude, l.accuracy.takeIf { l.hasAccuracy() }, l.altitude.takeIf { l.hasAltitude() },
                 com.onpath.app.recording.LocationTracker.ageSeconds(l))
@@ -838,12 +1131,16 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val rest = restWanted && restTarget != null
     LaunchedEffect(rest) { vm.screenRest = rest }
     DisposableEffect(Unit) { onDispose { vm.screenRest = false } }
-    Box(Modifier.fillMaxSize()) {
+    // the hold time of the locked bar (Settings → Navigation, owner 2026-11-06 22:50: 0–2 s in 0,5 s steps)
+    Box(Modifier.fillMaxSize()) { androidx.compose.runtime.CompositionLocalProvider(LocalHoldMs provides vm.settings.navHoldMs) {
         NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
-            onPause = vm::pauseRecording, onEnd = { vm.askEndTour() },
+            onLeaveApp = { com.onpath.app.debug.Problems.trace("app", "Back in Navigate: left the app, the tour records on"); activity?.moveTaskToBack(true) },
+            newPlan = vm.newPlanNote, onNewPlanUndo = vm::undoNewPlan, onNewPlanGone = vm::dropNewPlanNote,
+            onPause = vm::pauseRecording, onEnd = { vm.askEndTour() }, lock = vm.settings.navLock,
             onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute, onTakeVia = vm::takeViaRoute,
-            onLeadThere = vm::leadToStart, onJustRecord = vm::justRecord, onLeadFailedOk = vm::leadFailedOk,
+            onLeadThere = vm::leadToStart, onJustRecord = vm::justRecord, onJoinHere = vm::joinHere, onLeadFailedOk = vm::leadFailedOk,
             onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
+            onHikeLevel = vm::chooseHikeLevel,
             onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,
             download = bg, onDownload = { vm.downloadDetailsOpen = true },
             onNotifications = { vm.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },
@@ -855,6 +1152,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
                     onStop = { com.onpath.app.recording.DemoLocation.stop("stopped on the Navigate page") },
                     onPause = com.onpath.app.recording.DemoLocation::setPaused)
             } })
+        }
         RestLayer(restTarget?.takeIf { rest }?.let { RestUi(it.event, it.distanceM, ui.toGo?.timeS, ui.arriveAt) },
             onTap = ScreenTouch::note)
     }

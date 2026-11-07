@@ -20,6 +20,11 @@ object RouteNamer {
     const val MAX_LEN = 40
     /** End within this distance of the start: a round trip. */
     const val LOOP_M = 200.0
+    /**
+     * A round trip goes somewhere: its farthest point is at least this far from the start (a 300 m test ride that ends
+     * where it began is no "Rundtour", owner's Pixel 2026-11-06).
+     */
+    const val OUT_M = 500.0
     const val LANDMARK_M = 150.0
     const val INN_M = 100.0
     const val NEAR_M = 8000.0
@@ -41,9 +46,9 @@ object RouteNamer {
      */
     fun placesNear(index: PlaceIndex, points: List<GeoPoint>): List<Place> {
         val b = Geo.bounds(points) ?: return emptyList()
-        val pad = 1.5 * NEAR_M / 111_000.0
+        val pad = Geo.degLat(1.5 * NEAR_M)
         val far = maxOf(kotlin.math.abs(b[0]), kotlin.math.abs(b[2])) + pad
-        val padLon = pad / kotlin.math.cos(Math.toRadians(far.coerceAtMost(80.0)))
+        val padLon = Geo.degLon(1.5 * NEAR_M, far.coerceAtMost(80.0))
         return index.placesIn(b[0] - pad, b[1] - padLon, b[2] + pad, b[3] + padLon, KINDS)
     }
 
@@ -60,12 +65,17 @@ object RouteNamer {
         val s = startName?.trim()?.takeIf { it.isNotEmpty() } ?: label(start, near)
         val e = endName?.trim()?.takeIf { it.isNotEmpty() } ?: label(end, near)
         val via = viaNames.map { it.trim() }.firstOrNull { it.isNotEmpty() && it != s && it != e }
-        val loop = Geo.distance(start, end) <= LOOP_M
+        val gap = Geo.distance(start, end)
+        val far = line.maxOf { Geo.distance(start, it) }
+        val loop = gap <= LOOP_M && far >= OUT_M
         if (loop || (s != null && s == e)) {
             val top = via ?: farthestLandmark(line, near)?.takeIf { it != s }
             if (s == null) return top?.let { fit(Txt.s(Res.string.search_route_round_to, it)) }
             if (!loop && top != null) "$s – $top – $s".takeIf { it.length <= MAX_LEN }?.let { return it }
-            return fit(Txt.s(Res.string.search_route_round_from, s))
+            // start and end in the same place but no loop (owner's Pixel 2026-11-06: a 554 m ride across Hilden was
+            // "Rundtour ab Hilden"): a round trip only when it went out and came back – else "In Hilden"
+            if (loop || far >= maxOf(2 * OUT_M, 2 * gap)) return fit(Txt.s(Res.string.search_route_round_from, s))
+            return fit(Txt.s(Res.string.search_route_in, s))
         }
         return when {
             s != null && e != null -> {
@@ -81,8 +91,8 @@ object RouteNamer {
     /** Named places in the route's box plus [NEAR_M] (keeps the per-point scans small). */
     private fun candidates(line: List<GeoPoint>, places: List<Place>): List<Place> {
         val b = Geo.bounds(line) ?: return emptyList()
-        val dLat = NEAR_M / 111_000.0
-        val dLon = dLat / kotlin.math.cos(Math.toRadians(((b[0] + b[2]) / 2).coerceIn(-80.0, 80.0)))
+        val dLat = Geo.degLat(NEAR_M)
+        val dLon = Geo.degLon(NEAR_M, ((b[0] + b[2]) / 2).coerceIn(-80.0, 80.0))
         return places.filter {
             !it.name.isNullOrBlank() && it.lat in (b[0] - dLat)..(b[2] + dLat) && it.lon in (b[1] - dLon)..(b[3] + dLon)
         }

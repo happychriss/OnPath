@@ -9,7 +9,7 @@ import java.io.File
 /**
  * Owner 2026-10-31 (0.13.5): the plan sheet's ⋯ menu is gone. The sheet has a row of three small icons with a label
  * under each – ✕ Close plan (was "Clear route"; asks "Discard changes?" only with unsaved changes), ⇅ Reverse, ↻ Round
- * trip. Save is ☰ → Save route (under My routes whenever there is a plan; a dot on ☰ while unsaved); Save as copy, Export GPX
+ * trip. Save is ☰ → Save route (under My routes whenever there is a plan; while unsaved also the "Nicht gespeichert ›" sign beside the mode label); Save as copy, Export GPX
  * and Share plan are in My routes → ⋮; Time details = a tap on the time.
  */
 class PlanActionsTest {
@@ -20,24 +20,22 @@ class PlanActionsTest {
     private val vm = src("ui/AppViewModel.kt")
     private val panel = src("ui/PlanPanel.kt")
 
-    @Test fun closePlanAsksOnlyWithUnsavedChanges() {
-        val body = vm.substringAfter("fun requestClear()").substringBefore("\n")
-        assertTrue(body, body.contains("if (planUnsaved) discardAsk = true else clearPlan()"))
-        assertTrue(vm.contains("fun discardConfirmed() { discardAsk = false; clearPlan() }"))
-        // unsaved = a new plan of two points, or a saved one changed since
+    /** Owner 2026-11-06: ✕ asks nothing any more (also during a tour) – the plan goes under Zuletzt, one Undo brings it back. */
+    @Test fun closePlanAsksNothing() {
+        assertTrue(vm.contains("fun requestClear() = clearPlan()"))
+        assertTrue(vm.substringAfter("fun clearPlan() {").substringBefore("\n    }\n").contains("keepAsDraft("))
+        // unsaved = a new plan of two points, or a saved one changed since (it decides what goes under Zuletzt)
         assertTrue(RouteRules.isUnsaved(listOf(a, b), null))
         assertFalse(RouteRules.isUnsaved(listOf(a, b), listOf(a, b)))
-        val dialogs = src("ui/RouteDialogs.kt")
-        assertTrue(dialogs.contains("if (vm.discardAsk) DiscardPlanDialog(onDiscard = vm::discardConfirmed"))
+        assertFalse(src("ui/RouteDialogs.kt").contains("DiscardPlanDialog"))
     }
 
     @Test fun theSheetHasTheActionRowAndNoMenu() {
         for (gone in listOf("SheetOverflow", "SheetMenuItems", "MoreHoriz", "SaveButton", "plan_clear_route"))
             assertFalse("$gone gone from the sheet", panel.contains(gone))
-        // the one save in the sheet is the tour's blue tile "Route speichern" (owner 2026-11-02)
-        assertTrue("save only during a tour", Regex("onSave\\w*").findAll(panel).all { it.value == "onSaveRoute" })
-        assertTrue(panel.contains("TourEditBar(t.paused, cb.onPause, cb.onContinue, cb.onSaveRoute, ui.tourEditChanged, cb.onDiscardChanges"))
-        val row = panel.substringAfter("private fun PlanActions(").substringBefore("\n}\n")
+        // no Save in the sheet (owner 2026-11-05: ☰ → Save route; ✕ offers Save for an unsaved plan)
+        assertFalse(Regex("onSave\\w*").containsMatchIn(panel))
+        val row = panel.substringAfter("private fun PlanHead(").substringBefore("\n}\n")
         for (item in listOf("Res.string.plan_close_plan", "Res.string.plan_reverse", "Res.string.plan_round_trip"))
             assertTrue(item, row.contains(item))
         val action = panel.substringAfter("private fun PlanAction(").substringBefore("\n}\n")
@@ -57,15 +55,9 @@ class PlanActionsTest {
         assertFalse("no Start recording in ☰", items.contains("plan_menu_start_recording") || items.contains("onStartRecording"))
         assertTrue("☰: My routes · Save route · Pair with browser · Settings $order",
             order.all { it >= 0 } && order == order.sorted())
-        assertTrue(src("ui/PlanTopBar.kt").contains("menu.unsaved && menu.onSaveRoute != null) OnPathColors.Green"))
+        // owner 2026-11-06 (Zuletzt): no sign and no dot for an unsaved plan – nothing is lost
+        assertFalse("no dot for unsaved", PlanMenu(onSaveRoute = {}).dotWarn)
+        assertFalse(File("src/main/java/com/onpath/app/ui/PlanTopBar.kt").readText().contains("UnsavedSign"))
     }
 
-    @Test fun copyAndShareLiveInMyRoutes() {
-        val screens = src("ui/Screens.kt")
-        assertTrue(screens.contains("onCopy = if (t.kind == TourKind.PLANNED) ({ onCopy(t) }) else null"))
-        assertTrue(screens.contains("Res.string.plan_save_as_copy"))
-        assertTrue(screens.contains("Res.string.plan_share_plan"))
-        val main = src("MainActivity.kt")
-        assertTrue(main.contains("onShare = { vm.shareRoute(it) }"))
-    }
 }

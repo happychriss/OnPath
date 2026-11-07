@@ -76,6 +76,11 @@ data class AppSettings(
     val junctionGuide: JunctionGuide = JunctionGuide.VOICE,
     /** Navigate: the dot sits on the followed route while within ~25 m of it (owner, like Komoot; default on). */
     val positionOnRoute: Boolean = true,
+    /**
+     * Navigate: how long a button of the tour's bottom bar must be held until it fires (owner 2026-11-06 22:50, the
+     * slider 0–2 s in 0,5 s steps, [HoldSetting]; replaces the lock on/off switch): 0 = off, a plain tap; default 1 s.
+     */
+    val navHoldMs: Int = HoldSetting.DEFAULT_MS,
     /** Map theme key, see map/StyleLoader. Only "classic" is bundled; others = adb overrides. */
     val mapTheme: String = "classic",
     /** Navigate: map turns so the walking direction points up (true, default) or stays north-up (false). */
@@ -86,6 +91,9 @@ data class AppSettings(
     /** Settings → Offline maps: map areas download only on Wi-Fi, not even the own area on mobile data (F-OFF-03). */
     val mapsWifiOnly: Boolean = false,
 ) {
+    /** The hold lock is on ([navHoldMs] above 0): the tour's buttons fire only when held. */
+    val navLock: Boolean get() = HoldSetting.locked(navHoldMs)
+
     companion object {
         val OFF_ROUTE_CHOICES = listOf(25, 40, 75)
     }

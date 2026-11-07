@@ -1,5 +1,6 @@
 package com.onpath.app.routing
 
+import com.onpath.app.data.Geo
 import java.io.File
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
@@ -7,7 +8,6 @@ import java.nio.ByteBuffer
 import java.util.zip.CRC32
 import kotlin.math.abs
 import kotlin.math.ceil
-import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
 
@@ -33,8 +33,8 @@ object Rd5Parts {
     /** Margin around a single point (first start, tapped point): a route starting there stays near it. */
     const val POINT_MARGIN_M = 2_000.0
 
-    /** Corridor around a route or a straight leg (owner: "~10 km"). */
-    const val CORRIDOR_MARGIN_M = 10_000.0
+    /** Corridor around a route or a straight leg when the activity is not known – [OfflineCorridor.marginM] per activity. */
+    const val CORRIDOR_MARGIN_M = OfflineCorridor.MAX_M
 
     /** One 1° × 1° part: [lon] / [lat] = its south-west corner in whole degrees. */
     data class Part(val lon: Int, val lat: Int) : Comparable<Part> {
@@ -105,8 +105,8 @@ object Rd5Parts {
     /** Parts within [marginM] of a point. */
     fun forPoint(p: GeoPoint, marginM: Double = POINT_MARGIN_M): Set<Part> {
         if (!valid(p.lat, p.lon)) return emptySet()
-        val dLat = marginM / 111_320.0
-        val dLon = marginM / (111_320.0 * cos(Math.toRadians(p.lat)).coerceAtLeast(0.01))
+        val dLat = Geo.degLat(marginM)
+        val dLon = Geo.degLon(marginM, p.lat)
         val out = sortedSetOf(partOf(p.lat, p.lon))
         out += forBox(p.lat - dLat, p.lon - dLon, p.lat + dLat, p.lon + dLon)
         return out

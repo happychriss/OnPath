@@ -166,6 +166,28 @@ class JunctionCuesTest {
         assertEquals(JunctionCue.SHARP_RIGHT, (100..200 step 5).firstNotNullOf { c.update(l2, 2, it.toDouble(), true) })
     }
 
+    /**
+     * Field bug (owner 2026-11-06, Fragenregister donald-20261106-51): a round trip ridden a second time – the progress
+     * starts at the beginning of the same line again, and its junctions vibrate again (they were "passed" on lap 1).
+     */
+    @Test fun aRoundTripRiddenTwiceCuesItsJunctionsAgain() {
+        val l = line(1000, mapOf(200 to JunctionCue.LEFT, 600 to JunctionCue.RIGHT))
+        val c = JunctionCues()
+        val lap1 = walk(c, l, to = 1000)
+        val lap2 = walk(c, l, to = 1000)
+        assertEquals(listOf(JunctionCue.LEFT, JunctionCue.RIGHT), lap1.map { it.second })
+        assertEquals(listOf(JunctionCue.LEFT, JunctionCue.RIGHT), lap2.map { it.second })
+    }
+
+    /** A few steps back past a junction (GPS jitter, a lost glove) do not cue it again. */
+    @Test fun aFewStepsBackDoNotCueAgain() {
+        val l = line(1000, mapOf(200 to JunctionCue.LEFT, 600 to JunctionCue.RIGHT))
+        val c = JunctionCues()
+        val cues = walk(c, l, to = 260) + (260 downTo 170 step 5).mapNotNull { m -> c.update(l, 1, m.toDouble(), true)?.let { m to it } } +
+            walk(c, l, from = 170, to = 1000)
+        assertEquals(listOf(JunctionCue.LEFT, JunctionCue.RIGHT), cues.map { it.second })
+    }
+
     @Test fun nextAheadForTheLockScreen() {
         val l = line(2000, mapOf(300 to JunctionCue.LEFT, 1800 to JunctionCue.RIGHT))
         val c = JunctionCues()
@@ -250,14 +272,14 @@ class JunctionCuesTest {
             localMs(15, 41),
             distance = { if (it < 1000) "${it.toInt()} m" else "%.1f km".format(java.util.Locale.ROOT, it / 1000) },
             duration = { "1:25 h" })!!
-        assertEquals("Left in 120 m", t("Recording", JunctionCue.LEFT to 117.0).title)
-        assertEquals("4.2 km to go", t("Recording", null).title)
-        assertEquals("distance only once", "1:25 h · arrival 15:40", t("Recording", null).text)
-        assertEquals("1:25 h to go · arrival 15:40 · 4.2 km left", t("Recording", JunctionCue.LEFT to 117.0).text)
+        assertEquals("Left in 120 m", t("On the way", JunctionCue.LEFT to 117.0).title)
+        assertEquals("4.2 km to go", t("On the way", null).title)
+        assertEquals("distance only once", "1:25 h · arrival 15:40", t("On the way", null).text)
+        assertEquals("1:25 h to go · arrival 15:40 · 4.2 km left", t("On the way", JunctionCue.LEFT to 117.0).text)
         assertEquals("1:25 h to go · arrival 15:40 · 4.2 km left", t("Off route", null).text)
-        assertEquals("4.2 km to go", t("Recording", JunctionCue.LEFT to 800.0).title)
+        assertEquals("4.2 km to go", t("On the way", JunctionCue.LEFT to 800.0).title)
         assertEquals("Off route", t("Off route", JunctionCue.LEFT to 50.0).title)
-        assertNull("not on the route: plain notification", NavNotification.of("Recording", null, null, null, null, { "" }, { "" }))
+        assertNull("not on the route: plain notification", NavNotification.of("On the way", null, null, null, null, { "" }, { "" }))
     }
 
     /** Owner 2026-10-30: the lock screen showed "10:22" while the app said "10:20" – one rule (5 minutes) for both. */
@@ -265,7 +287,7 @@ class JunctionCuesTest {
         for ((h, m, shown) in listOf(Triple(10, 22, "10:20"), Triple(10, 23, "10:25"), Triple(9, 3, "9:05"), Triple(23, 58, "0:00"))) {
             val ms = localMs(h, m)
             assertEquals(shown, TimeEstimate.clock(ms))
-            val text = NavNotification.of("Recording", null, 4230.0, 5100.0, ms, { "4.2 km" }, { "1:25 h" })!!.text
+            val text = NavNotification.of("On the way", null, 4230.0, 5100.0, ms, { "4.2 km" }, { "1:25 h" })!!.text
             assertEquals("lock screen = app ($h:$m)", "1:25 h · arrival ${TimeEstimate.clock(ms)}", text)
         }
     }

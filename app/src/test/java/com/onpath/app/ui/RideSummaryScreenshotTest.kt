@@ -28,7 +28,8 @@ private val taser = GpxParser.parse(RideIconTest::class.java.classLoader!!
  * End tour with rides found: the owner's Taser tour (gondola + car), summary with the four choices. The dialog's icon
  * follows the rides (owner 2026-10-30): gondola + car → neutral ride icon, the gondola alone → lift, the car alone → bus.
  */
-open class RideSummaryScreenshotTest {
+/** English frames dropped (test audit 2026-11-07: the German twin at the same font size is the check); the subclasses draw. */
+abstract class RideSummaryScreenshotTest {
     @get:Rule
     open val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(

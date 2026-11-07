@@ -30,7 +30,8 @@ import java.util.Locale
  * Wi-Fi wait, new version, the Navigate question with 56 dp buttons), HINWEIS (paired, end the tour first, no downloads,
  * allow location), ⚠ HINWEIS amber (notifications off, map failed) and ⚠ HINWEIS red (an error).
  */
-open class MessageCardScreenshotTest {
+/** English frames dropped (test audit 2026-11-07: the German twin at the same font size is the check); the subclasses draw. */
+abstract class MessageCardScreenshotTest {
     @get:Rule
     open val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1024, screenHeight = 4600, xdpi = 428, ydpi = 428, density = Density.create(420)),
@@ -52,7 +53,6 @@ open class MessageCardScreenshotTest {
                 val q = com.onpath.app.navigation.NavPrompt.Question(1, 350.0, 600.0, 20.0, emptyList(), 900.0, 2_000.0, offM = 118.0)
                 MessageCard(rerouteMessage(q, {}, {}))
                 MessageCard(syncNoteMessage(SyncNote.PAIRED, onOk = {}))
-                MessageCard(tourBlockedMessage {})
                 mapNoticeMessage(CellCardUi.NotAvailable, CellCardCallbacks())?.let { MessageCard(it) }
                 mapNoticeMessage(CellCardUi.NeedPosition(permission = false), CellCardCallbacks())?.let { MessageCard(it) }
                 MessageCard(notificationsOffMessage(onSetUp = {}, onOk = {}))

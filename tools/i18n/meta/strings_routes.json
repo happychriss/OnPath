@@ -91,12 +91,6 @@
     "priority": 2,
     "confidence": "sicher"
   },
-  "routes_sac_line": {
-    "area": "Activity picker",
-    "context": "Line under the T1–T5 row describing the chosen level: 'T2 · Mountain hiking – Continuous path, …'. %1$d = level, %2$s = level name, %3$s = level description",
-    "priority": 1,
-    "confidence": "sicher"
-  },
   "routes_sac_1_name": {
     "area": "Activity picker",
     "context": "SAC hiking scale T1 name (official SAC wording)",
@@ -281,31 +275,6 @@
     "confidence": "bitte prüfen",
     "doubt": "'Fahrten' for bus/car/lift rides – check against the ride screens"
   },
-  "routes_delete_title": {
-    "area": "My routes",
-    "context": "Delete dialog title. %1$s = route / tour name (German quotes „…“)",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "routes_replace_title": {
-    "area": "Dialogs",
-    "context": "Dialog when opening a route would overwrite an unsaved plan",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "routes_replace_text": {
-    "area": "Dialogs",
-    "context": "Body of the replace dialog",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "routes_save_first": {
-    "area": "Dialogs",
-    "context": "Button in the replace dialog: save the current plan first",
-    "priority": 2,
-    "confidence": "sicher",
-    "max": 18
-  },
   "routes_name_label": {
     "area": "Dialogs",
     "context": "Label of the name field in Save / Rename dialogs",
@@ -337,13 +306,6 @@
     "context": "Confirmation before deleting the interrupted tour (goes to the recycle bin)",
     "priority": 3,
     "confidence": "sicher"
-  },
-  "routes_track_saved": {
-    "area": "Dialogs",
-    "context": "Title of the dialog after End tour (stats, Export GPX, Delete, Done)",
-    "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "'Track gespeichert' – or 'Tour gespeichert' (glossary: recorded trip = Tour)"
   },
   "routes_activity_from_file": {
     "area": "Messages",
@@ -377,12 +339,6 @@
     "priority": 3,
     "confidence": "sicher"
   },
-  "routes_replace_text_link": {
-    "area": "Dialogs",
-    "context": "Text of the 'Replace current route?' dialog when a plan link (QR code, shared link) is opened while the plan has unsaved changes. Buttons: Save first / Replace.",
-    "priority": 1,
-    "confidence": "sicher"
-  },
   "routes_tag_new": {
     "area": "My routes",
     "context": "Small blue tag (one short word) after the name of a route or imported track in My routes → Planned that arrived from the paired browser (Browser sync) and was not opened yet. Gone once the user opens it.",
@@ -393,6 +349,111 @@
     "area": "My routes",
     "context": "Small blue tag (one short word) after the name of a route in My routes → Planned that was changed (or renamed) in the paired browser and not opened since. Gone once the user opens it.",
     "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_tag_live": {
+    "area": "My routes",
+    "context": "Small blue tag after the name of the plan that is on the map right now – the first row under \"Recent\" in My routes → Planned (or on the saved route it belongs to). Shows the plan is always kept while it is being edited.",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_live_name": {
+    "area": "My routes",
+    "context": "Name shown for the plan on the map in My routes when it was never saved and has no name yet.",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_follow_ask_title": {
+    "area": "Messages",
+    "context": "Question box in My routes when a done tour / track is tapped during a running tour (owner 2026-11-06, F1)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "routes_follow_ask_text": {
+    "area": "Messages",
+    "context": "Under 'Follow this tour?': %1$s = the tour's name, %2$s = its length ('3.0 km'); the recording goes on",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "routes_follow": {
+    "area": "Messages",
+    "context": "Primary button of 'Follow this tour?': the running tour follows that tour from now (goes to the navigation)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "routes_track_saved": {
+    "area": "Dialogs",
+    "context": "Title of the slim box after 'Save tour' at the end of a tour (numbers, 'In My tours', OK) – owner 2026-11-06",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "routes_saved_open": {
+    "area": "Dialogs",
+    "context": "Text button in the 'Tour saved' box: opens the tour just saved as from My tours (name the list as its title)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 22
+  },
+  "routes_section_recent": {
+    "area": "My routes",
+    "context": "Section header in My routes → Planned: plans kept by themselves when they left the map (owner 2026-11-06); shown in capitals",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_section_saved": {
+    "area": "My routes",
+    "context": "Section header in My routes → Planned: plans the user saved (or rode); shown in capitals",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_recent_all": {
+    "area": "My routes",
+    "context": "Under the first three recent plans: shows the whole list (%1$d = how many)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_just_saved": {
+    "area": "My routes",
+    "context": "Line on a plan just moved from Recent to Saved, until My routes closes",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_overview_show": {
+    "area": "My routes",
+    "context": "TalkBack label of the small route preview tile at the start of each row; a tap on the row opens the large overview.",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_overview_enlarge": {
+    "area": "My routes",
+    "context": "TalkBack label and click label of the small route preview tile with the ⤢ badge at the start of a row: a tap opens the large overview of the route (map fitted to it).",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_open_row": {
+    "area": "My routes",
+    "context": "TalkBack click label of a whole row in My routes; %1$s = the route's name. A tap opens the large overview (or, for the plan on the map, goes back to it).",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_overview_plan": {
+    "area": "My routes – route overview",
+    "context": "Primary button of the large route overview (map fitted to the route): open this route in Plan mode.",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "routes_overview_follow": {
+    "area": "My routes – route overview",
+    "context": "Primary button of the route overview during a running tour: follow this route at once, the recording goes on.",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "routes_overview_loading": {
+    "area": "My routes – route overview",
+    "context": "Small grey line while the map picture of the overview is drawn (the route shape is already shown).",
+    "priority": 3,
     "confidence": "sicher"
   }
 }

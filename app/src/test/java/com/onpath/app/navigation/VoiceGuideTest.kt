@@ -49,23 +49,42 @@ class VoiceGuideTest {
         assertEquals(350, said[0].first)
         assertEquals(150.0, (said[0].second as Phrase.Junction).inM, 0.5)
         assertEquals(Turn.LEFT, (said[0].second as Phrase.Junction).turn)
-        // 8 s × 6 m/s = 48 m before, no number ("Gleich links.")
-        assertEquals(455, said[1].first)
+        // the turn word heard 6 s × 6 m/s = 36 m before, + the speech start (0.5 s), "Gleich" (0.4 s) and half a fix
+        // interval (0.5 s) ridden meanwhile = 44 m: said at 460 m, no number ("Gleich links.")
+        assertEquals(460, said[1].first)
         assertEquals(0.0, (said[1].second as Phrase.Junction).inM, 0.0)
         // faster: earlier
         val fast = startless(ride(VoiceGuide(), l, bike = true, speed = 12.0))
-        assertEquals(listOf(200, 405), fast.take(2).map { it.first })
+        assertEquals(listOf(200, 415), fast.take(2).map { it.first })
         val veryFast = startless(ride(VoiceGuide(), l, bike = true, speed = 20.0))
-        // (the early one waits for the 10 s after the start sentence: 200 m at 72 km/h)
-        assertEquals(listOf(200, 350), veryFast.take(2).map { it.first })
+        // (the early one waits for the 10 s after the start sentence: 200 m at 72 km/h; the voice plans with at most
+        // 14 m/s – a GPS speed spike is no reason to say a turn far too early)
+        assertEquals(listOf(200, 400), veryFast.take(2).map { it.first })
     }
 
     /** A junction that comes into view too late for the early sentence gets only "Gleich …". */
     @Test fun bikeAJunctionRightAfterAnotherGetsOnlyTheSecondStage() {
         val l = line(2000, mapOf(500 to JunctionCue.LEFT, 590 to JunctionCue.RIGHT))
         val j = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).map { it.second as Phrase.Junction }
-        assertEquals(listOf(Turn.LEFT, Turn.LEFT), j.map { it.turn })
-        assertEquals(Turn.RIGHT, j[1].then)   // 90 m on: "Gleich links, danach rechts."
+        // the right 90 m on: named with the left ("Gleich links, danach rechts.") and its own "now" once the left is
+        // ridden (owner 2026-11-07, never swallowed) – no early sentence for it
+        assertEquals(listOf(Turn.LEFT, Turn.LEFT, Turn.RIGHT), j.map { it.turn })
+        assertEquals(Turn.RIGHT, j[1].then)
+        assertEquals(0.0, j[2].inM, 0.0)
+    }
+
+    /**
+     * Owner 2026-11-06 (demo ride Düsseldorf → Grimlinghausen): bear right, 70 m later left, 60 m later right. "Gleich rechts
+     * halten, danach links" – and then "In 100 Metern rechts" while the left was still 55 m ahead: it sounded as if the
+     * left was skipped. A turn is announced only once the one before it is ridden.
+     */
+    @Test fun aTurnIsAnnouncedOnlyAfterThePreviousOneIsRidden() {
+        val l = line(3200, mapOf(2730 to JunctionCue.RIGHT, 2800 to JunctionCue.LEFT, 2860 to JunctionCue.RIGHT))
+        val said = startless(ride(VoiceGuide(), l, bike = true, speed = 5.0))
+        // the right turn at 2860 (the one at 2730 is said before 2730)
+        val right = said.filter { (m, p) -> m > 2730 && p is Phrase.Junction && p.turn == Turn.RIGHT }
+        assertTrue("$said", right.isNotEmpty())
+        assertTrue("the right turn announced before the left was ridden: $said", right.all { it.first >= 2800 })
     }
 
     /** Rosellen replay: the second turn 80 m after the first must not be lost in the pause between sentences. */
@@ -73,6 +92,23 @@ class VoiceGuideTest {
         val l = line(2000, mapOf(500 to JunctionCue.SHARP_RIGHT, 620 to JunctionCue.LEFT))
         val said = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).map { it.second as Phrase.Junction }
         assertTrue("$said", said.any { it.turn == Turn.LEFT || it.then == Turn.LEFT })
+    }
+
+    /**
+     * Field bug (owner 2026-11-06, Fragenregister donald-20261106-51: "hier biegen wir links ab, aber das Navi sagt
+     * nichts"): a round trip ridden a second time – the same line from its start again – says its turns again.
+     */
+    @Test fun aRoundTripRiddenTwiceSaysItsTurnsAgain() {
+        val l = line(2000, mapOf(500 to JunctionCue.LEFT, 1500 to JunctionCue.RIGHT))
+        for (bike in listOf(false, true)) {
+            val speed = if (bike) 6.0 else 1.4
+            val g = VoiceGuide()
+            val lap1 = startless(ride(g, l, bike = bike, speed = speed)).map { (it.second as Phrase.Junction).turn }
+            val lap2 = startless(ride(g, l, bike = bike, speed = speed) { _, i -> i.copy(nowMs = i.nowMs + 10_000_000L) })
+                .map { (it.second as Phrase.Junction).turn }
+            assertTrue("bike=$bike lap 1: $lap1", lap1.containsAll(listOf(Turn.LEFT, Turn.RIGHT)))
+            assertEquals("bike=$bike lap 2", lap1, lap2)
+        }
     }
 
     /** Owner 2026-11-01: on foot "Gleich links." about 10 m before, no distance ("50 m kann man nicht abschätzen"). */
@@ -96,7 +132,7 @@ class VoiceGuideTest {
 
     @Test fun twoCloseTurnsInOneSentence() {
         val l = line(2000, mapOf(500 to JunctionCue.LEFT, 540 to JunctionCue.RIGHT))
-        val j = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).last().second as Phrase.Junction
+        val j = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0)).map { it.second as Phrase.Junction }.first { it.inM == 0.0 }
         assertEquals(Turn.LEFT, j.turn)
         assertEquals(Turn.RIGHT, j.then)
     }
@@ -172,6 +208,50 @@ class VoiceGuideTest {
         assertNull(g.update(base.copy(nowMs = 20_000, onRoute = false, offRoute = true)))
         // "back on the route" only when the question was open for a while (a flapping fix says nothing twice)
         assertEquals(Phrase.BackOnRoute, g.update(base.copy(nowMs = 70_000)))
+    }
+
+    /**
+     * Two steps, both said (owner 2026-11-07): the opening says "Abseits der Route. Bitte aufs Handy schauen."; when the
+     * question asks again (where the phone would vibrate: the first reminder, a way found after none, asked again after
+     * Keep) it is said again – with the voice on nothing vibrates, so it was silent. Never on the route (no episode),
+     * never twice within the gap, never while quiet; back on the route as before.
+     */
+    @Test fun theQuestionAskingAgainIsSaid() {
+        val g = VoiceGuide()
+        val base = VoiceGuide.Input(0, line(3000, emptyMap()), 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
+        g.update(base)
+        assertNull("no question open: nothing", g.questionAgain(1_000, quiet = false))
+        assertEquals(Phrase.OffRoute, g.update(base.copy(nowMs = 2_000, onRoute = false, offRoute = true)))
+        assertNull("the opening was just said", g.questionAgain(3_000, quiet = false))
+        assertNull(g.update(base.copy(nowMs = 30_000, onRoute = false, offRoute = true)))
+        assertNull("standing still: quiet", g.questionAgain(40_000, quiet = true))
+        assertEquals(Phrase.OffRoute, g.questionAgain(45_000, quiet = false))
+        assertNull(g.update(base.copy(nowMs = 50_000, onRoute = false, offRoute = true)))
+        assertEquals(Phrase.BackOnRoute, g.update(base.copy(nowMs = 70_000)))
+        assertNull("back on the route: nothing", g.questionAgain(90_000, quiet = false))
+    }
+
+    /**
+     * Field log owner 2026-11-07 13:42–13:45 (tour 221, on foot, voice on): four off-route questions in 2½ minutes, each
+     * answered with "Neue Route" (lines v7, v8, v9, v10) – but "Abseits der Route. Bitte aufs Handy schauen." only at
+     * 13:42:43 and 13:45:08: the 2-minute guard against flapping fixes silenced the 2nd and 3rd question, and with the
+     * voice on nothing vibrates. A question answered with a new route is no flapping: the next one is said.
+     */
+    @Test fun aQuestionAfterATakenNewRouteIsSaidAgain() {
+        val g = VoiceGuide()
+        val v1 = line(3000, emptyMap())
+        val base = VoiceGuide.Input(0, v1, 1, 100.0, onRoute = true, speedMps = 1.3, bike = false)
+        g.update(base)
+        assertEquals(Phrase.OffRoute, g.update(base.copy(nowMs = 160_000, onRoute = false, offRoute = true)))
+        // "Neue Route" taken 3 s later: the new line, the question closed
+        val v2 = VoiceGuide.Input(163_000, line(2900, emptyMap()), 2, 0.0, onRoute = true, speedMps = 1.3, bike = false, rerouted = true)
+        assertNull(g.update(v2))
+        assertTrue(g.update(v2.copy(nowMs = 175_000, alongM = 10.0)) is Phrase.NewRoute)
+        // off the new line 24 s after it was taken: said again (was: silent until 2 minutes after the first)
+        assertEquals(Phrase.OffRoute, g.update(v2.copy(nowMs = 187_000, alongM = null, onRoute = false, offRoute = true)))
+        // flapping (back by itself, off again at once) stays said once
+        g.update(v2.copy(nowMs = 190_000, alongM = 12.0))
+        assertNull(g.update(v2.copy(nowMs = 200_000, alongM = null, onRoute = false, offRoute = true)))
     }
 
     @Test fun aTakenNewRouteSaysSoWithItsFirstJunction() {
@@ -435,6 +515,31 @@ class VoiceGuideTest {
         assertTrue("$said", said.none { it == Phrase.BackOnRoute })
     }
 
+    /** Owner 2026-11-06: the plan changed during the tour, the new line ridden – "Weiter geht's" with its length, once. */
+    @Test fun aChangedPlanDuringTheTourSaysCarryOnOnce() {
+        val l = line(3000, emptyMap())
+        val g = VoiceGuide()
+        val base = VoiceGuide.Input(0, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
+        val first = (0..5).mapNotNull { g.update(base.copy(nowMs = it * 1000L)) }
+        assertTrue("$first", first.any { it is Phrase.Start && !it.carryOn })
+        g.lineFromApp()
+        val l2 = line(2000, emptyMap())
+        val after = (1..30).mapNotNull { g.update(base.copy(nowMs = 60_000L + it * 1000L, line = l2, version = 2, alongM = 50.0 + it * 5)) }
+        val carry = after.filterIsInstance<Phrase.Start>()
+        assertEquals("$after", 1, carry.size)
+        assertTrue(carry.single().carryOn)
+        assertEquals(1950.0, carry.single().distanceM, 10.0)
+    }
+
+    /** Before the start sentence a line from the app is the start, not "Weiter geht's". */
+    @Test fun aLineFromTheAppBeforeTheStartIsTheStart() {
+        val l = line(3000, emptyMap())
+        val g = VoiceGuide()
+        g.lineFromApp()
+        val said = (0..5).mapNotNull { g.update(VoiceGuide.Input(it * 1000L, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)) }
+        assertEquals("$said", listOf(false), said.filterIsInstance<Phrase.Start>().map { it.carryOn })
+    }
+
     /** Owner 2026-11-01: on the way, short GPS gaps (a bridge, a few trees) never say anything. */
     @Test fun shortGapsOnTheWaySayNothing() {
         val l = line(3000, emptyMap())
@@ -449,5 +554,184 @@ class VoiceGuideTest {
             t += 92_000L
         }
         assertTrue("$said", said.none { it == Phrase.NoGps })
+    }
+
+    /**
+     * Field bug (owner 2026-11-07, Hilden bike plan: "warum keine Ansage, ich bin auf einer anderen Straße"): right by
+     * 82.5° from a quiet street (class 6) onto a road (class 24), 19 m along it, left by 88.2° onto a footway (class 4).
+     * One sentence for both – and the "onto" belongs to the left: the right turn goes onto the road, not "auf den Weg".
+     */
+    @Test fun anOffsetAlongAStreetIsSaidAsTwoTurns() {
+        val pts = ArrayList<GeoPoint>()
+        var lat = 51.1690; var lon = 6.9250
+        fun leg(deg: Double, m: Int, type: String) {
+            val r = Math.toRadians(deg)
+            repeat(m) {
+                pts[pts.size - 1] = pts.last().copy(way = com.onpath.app.routing.WayAttrs(type, "asphalt"))
+                lat += kotlin.math.cos(r) / 111_320.0
+                lon += kotlin.math.sin(r) / (111_320.0 * kotlin.math.cos(Math.toRadians(lat)))
+                pts += GeoPoint(lat, lon)
+            }
+        }
+        fun hint(cue: JunctionCue, angle: Float, shape: JunctionShape) {
+            pts[pts.size - 1] = pts.last().copy(turn = cue, turnAngle = angle, shape = shape)
+        }
+        pts += GeoPoint(lat, lon)
+        leg(55.0, 400, "quiet_road")
+        hint(JunctionCue.RIGHT, 82.5f, JunctionShape(79f, 6, 24, listOf(JunctionShape.Branch(-103f, 24))))
+        leg(137.5, 19, "road")
+        hint(JunctionCue.LEFT, -88.2f, JunctionShape(-88f, 24, 4, listOf(JunctionShape.Branch(1f, 24), JunctionShape.Branch(84f, 4))))
+        leg(55.0, 300, "footway")
+        val g = VoiceGuide()
+        var t = 0L
+        val said = (0..127).mapNotNull { k -> t += 1000; g.update(VoiceGuide.Input(t, pts, 1, k * 5.5, true, 5.5, true)) }
+            .filterIsInstance<Phrase.Junction>()
+        val now = said.first { it.inM == 0.0 }
+        assertEquals(Turn.RIGHT, now.turn)
+        // and the left, 19 m on, its own "now" once the right is ridden (owner 2026-11-07: never swallowed)
+        assertTrue("$said", said.any { it.inM == 0.0 && it.turn == Turn.LEFT && it.onto == WayKind.WAY })
+        assertEquals(Turn.LEFT, now.then)
+        assertNull("the right turn goes onto the road – not \"auf den Weg\"", now.onto)
+        assertEquals("the left goes onto the footway", WayKind.WAY, now.thenOnto)
+        val saved = java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale.GERMANY)
+            assertEquals("Gleich rechts, danach gleich links auf den Weg.", VoiceText.of(now))
+        } finally { java.util.Locale.setDefault(saved) }
+        // the early sentence names the right only
+        assertTrue("$said", said.any { it.inM > 0 && it.turn == Turn.RIGHT && it.onto == null })
+    }
+
+    /**
+     * Possible field bug (owner 2026-11-07, 3rd demo run on the same line from 3 m: the right at 238 m never said): a
+     * simulation restarted from the start of the same line – after runs that ended part-way, with a few unmatched fixes
+     * between – says its turns again.
+     */
+    @Test fun aSimulationRestartedOnTheSameLineSaysItsTurnsAgain() {
+        val l = line(800, mapOf(240 to JunctionCue.RIGHT, 530 to JunctionCue.LEFT))
+        val g = VoiceGuide()
+        var t = 0L
+        val speed = 7.5
+        fun run(from: Double, to: Double): List<Phrase.Junction> {
+            val out = ArrayList<Phrase.Junction>()
+            var m = from
+            while (m <= to) {
+                t += 1000
+                g.update(VoiceGuide.Input(t, l, 1, m, onRoute = true, speedMps = speed, bike = true))?.let { if (it is Phrase.Junction) out += it }
+                m += speed
+            }
+            // the demo ends: two fixes elsewhere (not matched)
+            repeat(2) { t += 1000; g.update(VoiceGuide.Input(t, l, 1, null, onRoute = false, speedMps = 0.0, bike = true)) }
+            return out
+        }
+        run(0.0, 105.0)   // run 1 ends before the right
+        run(0.0, 50.0)    // run 2: from the start, 7 s
+        val third = run(3.0, 800.0)
+        assertTrue("$third", third.any { it.inM == 0.0 && it.turn == Turn.RIGHT })
+        assertTrue("$third", third.any { it.inM == 0.0 && it.turn == Turn.LEFT })
+        // a run that got past the right before the restart: said again too
+        run(0.0, 300.0)
+        val again = run(0.0, 800.0)
+        assertTrue("$again", again.any { it.inM == 0.0 && it.turn == Turn.RIGHT })
+    }
+
+    // ---- a due "now" is never swallowed (owner field ride 2026-11-07, tour 217; docs/design/voice-guidance.md §9) ----
+
+    private fun nows(said: List<Pair<Int, Phrase>>, turn: Turn) =
+        said.filter { (_, p) -> p is Phrase.Junction && p.inM == 0.0 && p.turn == turn }.map { it.first }
+
+    /**
+     * Tour 217, 12:32:19 "Gleich links, danach gleich rechts." – the right 50 m on was never said again, and 12:29:58
+     * "Gleich rechts, danach gleich leicht rechts." – the bear right 93 m on neither: a turn said as "danach" gets its
+     * own "now" once the one before it is ridden – also one only 20 m on.
+     */
+    @Test fun aTurnSaidAsDanachGetsItsOwnNow() {
+        for ((second, speed) in listOf(550 to 4.1, 590 to 6.0, 530 to 5.0)) {
+            val l = line(2000, mapOf(500 to JunctionCue.LEFT, second to JunctionCue.RIGHT))
+            val said = startless(ride(VoiceGuide(), l, bike = true, speed = speed))
+            val first = said.firstOrNull { (_, p) -> p is Phrase.Junction && p.inM == 0.0 && p.turn == Turn.LEFT }?.second as? Phrase.Junction
+                ?: throw AssertionError("right at $second: no now for the left – $said")
+            assertEquals("right at $second named with the left", Turn.RIGHT, first.then)
+            val right = nows(said, Turn.RIGHT)
+            assertEquals("right at $second: its own now after the left is ridden – $said", 1, right.size)
+            assertTrue("right at $second said after the left (${right[0]} m)", right[0] >= 500)
+            assertTrue("right at $second said before reaching it (${right[0]} m)", right[0] < second)
+        }
+    }
+
+    /**
+     * Tour 217, 12:30:29 "Stopp 2 erreicht. Weiter nach …" came 8 s before a sharp left; "Gleich scharf links" waited the
+     * 3 s pause (12:30:32) and cut the stop sentence: the turn goes first, the stop sentence after it – both said.
+     */
+    @Test fun aTurnDueGoesBeforeAWaitingSentence_andThatOneIsStillSaid() {
+        val l = line(1200, mapOf(390 to JunctionCue.SHARP_LEFT))
+        val stops = listOf(NavStop(l[0], 0.0), NavStop(l[35], 350.0, "Stopp"), NavStop(l.last(), 1200.0))
+        val said = startless(ride(VoiceGuide(), l, bike = true, speed = 4.1) { m, i ->
+            i.copy(stops = stops, visited = if (m >= 352) setOf(0, 1) else setOf(0)) })
+        val turn = said.indexOfFirst { (_, p) -> p is Phrase.Junction && p.inM == 0.0 }
+        val stop = said.indexOfFirst { (_, p) -> p is Phrase.StopReached }
+        assertTrue("$said", turn >= 0 && stop >= 0)
+        assertTrue("the turn's now ≥ 30 m before it (said at ${said[turn].first} m): $said", 390 - said[turn].first >= 30)
+        assertTrue("the turn before the stop sentence: $said", turn < stop)
+    }
+
+    /** A turn due 2 s after "Neue Route." is said at once (the speaker cuts what is being said) – no 3 s pause. */
+    @Test fun aTurnDueRightAfterAnotherSentenceIsNotHeld() {
+        val g = VoiceGuide()
+        g.update(VoiceGuide.Input(0, line(3000, emptyMap()), 1, 100.0, onRoute = true, speedMps = 5.0, bike = true))
+        val l = line(1000, mapOf(50 to JunctionCue.LEFT))
+        val base = VoiceGuide.Input(60_000, l, 2, 5.0, onRoute = true, speedMps = 5.0, bike = true, rerouted = true)
+        assertEquals(Phrase.NewRoute(null), g.update(base))
+        assertNull(g.update(base.copy(nowMs = 61_000, alongM = 10.0)))
+        val p = g.update(base.copy(nowMs = 62_000, alongM = 15.0))
+        assertTrue("$p", p is Phrase.Junction && p.inM == 0.0 && p.turn == Turn.LEFT)
+    }
+
+    /** A single fix jumping right up to the turn neither says it nor uses it up: the next fixes say it in time. */
+    @Test fun aGpsJumpCloseToTheTurnDoesNotSwallowIt() {
+        val l = line(1000, mapOf(500 to JunctionCue.LEFT))
+        val said = startless(ride(VoiceGuide(), l, bike = true, speed = 6.0, from = 300) { m, i -> if (m == 455) i.copy(alongM = 496.0) else i })
+        val left = nows(said, Turn.LEFT)
+        assertEquals("$said", 1, left.size)
+        assertTrue("$said", 500 - left[0] in 30..50)
+    }
+
+    /** No fix for 20 s (a tunnel), the first one again 11 m before the turn: still said – 3 m before it is passed. */
+    @Test fun aFixGapEndingJustBeforeTheTurnStillSaysIt_butNotWhenItIsPassed() {
+        val l = line(1000, mapOf(500 to JunctionCue.RIGHT))
+        for ((resume, expect) in listOf(489 to true, 497 to false)) {
+            val g = VoiceGuide()
+            val base = VoiceGuide.Input(0, l, 1, 300.0, onRoute = true, speedMps = 4.0, bike = true)
+            g.update(base)
+            assertNull(g.update(base.copy(nowMs = 30_000, alongM = 380.0)))
+            val p = g.update(base.copy(nowMs = 52_000, alongM = resume.toDouble()))
+            assertEquals("resumed $resume m: $p", expect, p is Phrase.Junction && p.turn == Turn.RIGHT)
+        }
+    }
+
+    /**
+     * Tour 217, 12:31:06 "Gleich rechts auf die Straße." 37 m before the road, then 55 s waiting there: when riding on the
+     * turn is said once more.
+     */
+    @Test fun aNowSaidBeforeAStopIsSaidAgainWhenRidingOn() {
+        val l = line(1000, mapOf(500 to JunctionCue.RIGHT))
+        val g = VoiceGuide()
+        val base = VoiceGuide.Input(0, l, 1, 300.0, onRoute = true, speedMps = 4.0, bike = true)
+        g.update(base)
+        val first = (0..10).mapNotNull { s -> g.update(base.copy(nowMs = 20_000L + s * 1000, alongM = 455.0 + s * 1.0))?.let { s to it } }
+        assertEquals("$first", 1, first.count { (_, p) -> p is Phrase.Junction && p.inM == 0.0 })
+        // standing 466 m … 50 s
+        val standing = (1..50).mapNotNull { s -> g.update(base.copy(nowMs = 31_000L + s * 1000, alongM = 466.0, speedMps = 0.0, quiet = s > 10)) }
+        assertTrue("nothing while standing: $standing", standing.isEmpty())
+        val on = (1..5).mapNotNull { s -> g.update(base.copy(nowMs = 81_000L + s * 1000, alongM = 466.0 + s * 3, speedMps = 3.0)) }
+        assertEquals("said once more when riding on: $on", 1, on.count { it is Phrase.Junction && (it as Phrase.Junction).turn == Turn.RIGHT })
+    }
+
+    /** A GPS speed spike (40 m/s on one fix) made the "now" come 100 m early: it is said once more at the right time. */
+    @Test fun aSpeedSpikeDoesNotUseUpTheNow() {
+        val l = line(1000, mapOf(500 to JunctionCue.LEFT))
+        val said = startless(ride(VoiceGuide(), l, bike = true, speed = 5.0, from = 300) { m, i -> if (m == 400) i.copy(speedMps = 40.0) else i })
+        val left = nows(said, Turn.LEFT)
+        assertTrue("a now 25–45 m before the turn: $said", left.any { 500 - it in 25..45 })
     }
 }

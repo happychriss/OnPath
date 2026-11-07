@@ -648,6 +648,20 @@ def route_bands():
                   paint={"line-color": T("route.over.color", "#6f6f6f"),
                          "line-opacity": low_fade(T("route.over.opacity", 0.55), T("route.low.opacity", 1)),
                          "line-width": low_to_close("route.low.width", band_w)})
+            # the grey band names its level (owner 2026-11-07, "T3 im grauen Band"): a first-time user does not know
+            # what grey means – the piece's "sac" as "T3" along the line, dark red with a white halo (reads on the grey
+            # band and on forest green); "hx" pieces (no T level at all: via ferrata, no trail) say "×" (the bundled
+            # Noto Sans has no ✕). Its filter follows the T level like the band's (ActivityLayers.hikeRouteFilters,
+            # MapController.setSacLimit).
+            layer(id_="routes-hike-over-label", type="symbol", source="routes", minzoom=14.5,
+                  filter=hike_band_filter(DEFAULT_SAC_LIMIT, over=True),
+                  layout={"symbol-placement": "line", "symbol-spacing": T("route.over.label.spacing", 130),
+                          "text-field": ["case", ["has", "hx"], "×",
+                                         ["concat", "T", ["to-string", ["coalesce", ["get", "sac"], ""]]]],
+                          "text-font": T("font.medium"), "text-size": interp(14.5, 15, 17, 18, base=1),
+                          "text-max-angle": 70, "text-padding": 2, "text-keep-upright": True, "visibility": vis},
+                  paint={"text-color": T("route.over.label.color", "#B3261E"),
+                         "text-halo-color": T("route.over.label.halo", "#FFFFFF"), "text-halo-width": 2.2})
         # Major routes (regional / national / international network, e.g. Via Claudia Augusta, E5, Etschradweg):
         # Komoot-like – the band itself alternates green and soft pink dashes (same width, slightly transparent, so
         # the path inside stays visible), plus the route name along the line.
@@ -1536,9 +1550,11 @@ def labels():
 POI_TIERS = [
     # tier, icon minzoom, label minzoom, kinds
     # restaurants and cafés with huts and lifts from z12 (owner): a hike is planned around where you can eat
-    (1, 12, 14, ["hut", "bivouac", "restaurant", "cafe", "viewpoint", "spring", "waterfall", "lift", "castle"]),
+    # shelters right after huts (owner 2026-11-06: "Unterstände verschwinden zwischendurch beim Zoomen" – in tier 2 they
+    # lost the collision to every tier-1 POI, water, bars and snack bars; a roof in the rain matters on foot and by bike)
+    (1, 12, 14, ["hut", "bivouac", "shelter", "restaurant", "cafe", "viewpoint", "spring", "waterfall", "lift", "castle"]),
     # bars / snack bars and bus stops from z14
-    (2, 14, 15, ["water", "bar", "fast_food", "shelter", "camping", "church", "ruins", "cave", "museum", "chapel"]),
+    (2, 14, 15, ["water", "bar", "fast_food", "camping", "church", "ruins", "cave", "museum", "chapel"]),
     (3, 15, 16, ["picnic", "toilets", "info", "bike_shop", "charging", "shop", "parking"]),
 ]
 # Bus stops have their own two layers (see pois()): zoomed out one symbol per stop name (the pair of stops on both

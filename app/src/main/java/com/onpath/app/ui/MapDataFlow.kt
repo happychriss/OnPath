@@ -51,6 +51,8 @@ class MapDataFlow(
         val missing: List<DataFiles.Check>
         val startModeKnown: Boolean
         val searchMark: com.onpath.app.search.Place?
+        /** The plan's activity – the corridor's width ([com.onpath.app.routing.OfflineCorridor]). */
+        val activity: com.onpath.app.routing.Activity
         var routeError: String?
         var dataBusy: String?
         fun initialCamera(): Triple<Double, Double, Double>
@@ -152,9 +154,38 @@ class MapDataFlow(
     /** Routing data is loading now (the plan's notice says "loading" rather than "not yet"). */
     val routingLoading: Boolean get() = routingData.loading
 
-    /** T4: the plan's route was computed – its corridor's map regions (named after [dest] in the loading chip). */
-    fun routeComputed(line: List<GeoPoint>, corridor: List<com.onpath.app.cells.CellId>?, dest: GeoPoint?) =
-        safeCells("route") { showCellJob(cellTriggers.routeComputed(line, corridor).tagged(LoadTag(LoadWhy.ROUTE, dest))) }
+    /**
+     * Can the route [line] be ridden without a network ("Ohne Netz ✓ / ⟳ / ⚠" in the plan's pill, owner 2026-11-03,
+     * [OfflineReady]): the map regions along it and the corridor's routing parts on the phone, loading, or missing.
+     * Blocking (file checks) – call off the main thread. Null for no route or when it cannot tell (reported).
+     */
+    fun offlineReady(line: List<GeoPoint>, activity: com.onpath.app.routing.Activity?): OfflineReady.Result? {
+        if (line.size < 2) return null
+        return try {
+            val m = cells
+            val states = m.states.value
+            val installed = m.installed.value.map { it.id }.toSet()
+            val along = m.cellsAlong(line, OfflineReady.ROUTE_M)
+            val map = along.associateWith { c -> OfflineReady.cell(states[c], c in installed || m.hasDetailedMap(c.center)) }
+            val parts = com.onpath.app.data.RoutingTiles.forLine(line, activity)
+            val st = routingData.status?.takeIf { it.phase == com.onpath.app.data.RoutingDataLoader.Phase.LOADING }
+            val cellBytes = along.sumOf { c ->
+                (states[c] as? com.onpath.app.cells.CellState.Downloading)?.let { (it.totalBytes - it.doneBytes).coerceAtLeast(0) } ?: 0L
+            }
+            val routingBytes = st?.let { (it.totalBytes - it.doneBytes).coerceAtLeast(0) } ?: 0L
+            OfflineReady.of(line, map, parts, routingData::exists, st?.names?.toSet() ?: emptySet(), cellBytes + routingBytes)
+        } catch (e: Exception) {
+            Problems.warn("cells", "Offline state of the route unknown; the plan's label shows none", e)
+            null
+        }
+    }
+
+    /**
+     * T4: the plan's route was computed for [activity] – its corridor's map regions (named after [dest] in the loading
+     * chip; [corridor] from [postRoute], else computed here for [activity]).
+     */
+    fun routeComputed(line: List<GeoPoint>, corridor: List<com.onpath.app.cells.CellId>?, dest: GeoPoint?, activity: com.onpath.app.routing.Activity?) =
+        safeCells("route") { showCellJob(cellTriggers.routeComputed(line, corridor, activity).tagged(LoadTag(LoadWhy.ROUTE, dest))) }
 
     /** A searched / shared place flown to in Plan: without a detailed map there its regions and routing data load in the modal. */
     fun placeSearched(at: GeoPoint, name: String) {
@@ -169,19 +200,20 @@ class MapDataFlow(
 
     /**
      * A tour starts on the plan's route [line] (F-OFF-02 "started route", owner: "new route – even without signal"): map
-     * areas and routing parts of its corridor (~10 km either side) still missing – loading cancelled, server failed,
-     * waited – are asked for again, quietly (background chip; Wi-Fi-only rule as for the plan). Geometry off the main thread.
+     * areas and routing parts of its corridor ([com.onpath.app.routing.OfflineCorridor] for [activity]: 10 km either
+     * side on foot, 20 km by bike) still missing – loading cancelled, server failed, waited – are asked for again,
+     * quietly (background chip; Wi-Fi-only rule as for the plan). Geometry off the main thread.
      */
-    fun secureTourCorridor(line: List<GeoPoint>, dest: GeoPoint?) {
+    fun secureTourCorridor(line: List<GeoPoint>, dest: GeoPoint?, activity: com.onpath.app.routing.Activity?) {
         scope.launch {
             val pre = withContext(Dispatchers.Default) {
-                runCatching { cellTriggers.corridorOf(line) to com.onpath.app.data.RoutingTiles.forLine(line) }
+                runCatching { cellTriggers.corridorOf(line, activity) to com.onpath.app.data.RoutingTiles.forLine(line, activity) }
             }
             val (corridor, keys) = pre.getOrElse {
                 Problems.error("cells", "Corridor of the started tour unknown; nothing more loads for it", it); return@launch
             }
             safeCells("tour") {
-                val asked = cellTriggers.tourStarted(line, corridor)
+                val asked = cellTriggers.tourStarted(line, corridor, activity)
                 tagLoads(asked, LoadTag(LoadWhy.ROUTE, dest))
                 if (asked.isNotEmpty()) Problems.info("cells", "Tour started: ${asked.size} map area(s) of its corridor were missing; loading them")
             }
@@ -361,15 +393,15 @@ class MapDataFlow(
      */
     class PostRoute(val routingKeys: List<String>?, val tilesMissing: Boolean, val cells: List<com.onpath.app.cells.CellId>?)
 
-    fun postRoute(r: com.onpath.app.routing.PlannedRoute, pts: List<GeoPoint>): PostRoute {
+    fun postRoute(r: com.onpath.app.routing.PlannedRoute, pts: List<GeoPoint>, activity: com.onpath.app.routing.Activity?): PostRoute {
         val line = if (r.points.size >= 2) r.points else pts
-        val keys = try { com.onpath.app.data.RoutingTiles.forLine(line) } catch (e: Exception) {
+        val keys = try { com.onpath.app.data.RoutingTiles.forLine(line, activity) } catch (e: Exception) {
             Problems.error("routing", "Routing data corridor of the route unknown; nothing loads for it", e); null
         }
         val missing = try { routingData.missing(com.onpath.app.data.RoutingTiles.forPoints(pts, 0.0)).isNotEmpty() } catch (e: Exception) {
             Problems.warn("routing", "Routing data check failed; notice not adjusted", e); false
         }
-        val corridor = try { cellTriggers.corridorOf(r.points) } catch (e: Exception) {
+        val corridor = try { cellTriggers.corridorOf(r.points, activity) } catch (e: Exception) {
             Problems.error("cells", "Map corridor of the route unknown; computed on the main thread", e); null
         }
         return PostRoute(keys, missing, corridor)
@@ -379,10 +411,10 @@ class MapDataFlow(
      * The plan's route settled without a corridor ([line] null: cleared, long-route question, Cancel, not routed, routing
      * failed): corridor map regions and routing parts of older routes are dropped, nothing new loads. A computed route does this through T4 ([routingForLine], CellTriggers.routeComputed).
      */
-    fun corridorFollowsPlan(line: List<GeoPoint>?) {
-        safeCells("corridor") { cellTriggers.planRoute(line) }
+    fun corridorFollowsPlan(line: List<GeoPoint>?, activity: com.onpath.app.routing.Activity? = null) {
+        safeCells("corridor") { cellTriggers.planRoute(line, activity) }
         safeRouting("corridor") {
-            routingData.keepCorridor(if (line == null || line.size < 2) emptyList() else com.onpath.app.data.RoutingTiles.forLine(line))
+            routingData.keepCorridor(if (line == null || line.size < 2) emptyList() else com.onpath.app.data.RoutingTiles.forLine(line, activity))
         }
     }
 
@@ -572,6 +604,7 @@ class MapDataFlow(
         val installed = cells.installed.value
         val removing = cells.removing()
         val planLine = route?.points?.takeIf { it.size >= 2 } ?: waypoints.toList()
+        val planActivity = host.activity
         val rec = recState.value
         val tour = rec?.track.orEmpty()
         val followed = rec?.nav?.line.orEmpty()
@@ -580,10 +613,15 @@ class MapDataFlow(
         scope.launch {
             val preview = try {
                 withContext(Dispatchers.IO) {
-                    val saved = db.listTours().filter { it.kind != com.onpath.app.data.TourKind.RECORDED }
-                        .map { t -> db.loadSegments(t.id).flatten().map { GeoPoint(it.lat, it.lon) } }
-                        .filter { it.isNotEmpty() }
-                    val inputs = com.onpath.app.cells.MapCleanup.Inputs(planLine, saved, tour, followed, pos)
+                    // each saved route keeps the corridor of its own activity (unknown / unreadable → the largest)
+                    val savedWithActivity = db.listTours().filter { it.kind != com.onpath.app.data.TourKind.RECORDED }
+                        .map { t -> db.loadSegments(t.id).flatten().map { GeoPoint(it.lat, it.lon) } to
+                            com.onpath.app.debug.enumOrNull<com.onpath.app.routing.Activity>(t.activity, "cells") }
+                        .filter { it.first.isNotEmpty() }
+                    val saved = savedWithActivity.map { it.first }
+                    // the running tour keeps the largest corridor (tourActivity unknown): robust, never less than it loaded
+                    val inputs = com.onpath.app.cells.MapCleanup.Inputs(planLine, saved, tour, followed, pos,
+                        planActivity = planActivity, savedActivities = savedWithActivity.map { it.second })
                     val sizes = installed.filter { it.id !in removing }.map { it.id to it.totalBytes + (routingBytes[it.id] ?: 0L) }
                     val plan = com.onpath.app.cells.MapCleanup.plan(sizes, inputs)
                     CleanupPreview(plan.remove, plan.removeBytes, buildList {
@@ -668,9 +706,9 @@ class MapDataFlow(
      * the app is idle): newer versions of the installed map areas along it (quiet; the map is veiled for
      * the seconds a ready one loads). Newer routing data: the ViewModel's checkRoutingData.
      */
-    fun freshenAlong(line: List<GeoPoint>, corridor: List<com.onpath.app.cells.CellId>?) {
+    fun freshenAlong(line: List<GeoPoint>, corridor: List<com.onpath.app.cells.CellId>?, activity: com.onpath.app.routing.Activity?) {
         safeCells("fresh") {
-            val asked = cellTriggers.freshenAlong(line, corridor)
+            val asked = cellTriggers.freshenAlong(line, corridor, activity)
             tagLoads(asked, LoadTag(LoadWhy.REFRESH))
             if (asked.isNotEmpty()) Problems.info("cells", "Checking ${asked.size} map area(s) along the route for a newer version")
         }

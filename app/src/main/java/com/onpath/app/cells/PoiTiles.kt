@@ -33,7 +33,7 @@ object PoiTiles {
     const val EXTENT = 8192
 
     /** Kinds the style draws from z12 (tools/make_style.py POI_TIERS tier 1). */
-    private val FROM_Z12 = setOf("hut", "bivouac", "restaurant", "cafe", "viewpoint", "spring", "waterfall", "lift", "castle")
+    private val FROM_Z12 = setOf("hut", "bivouac", "shelter", "restaurant", "cafe", "viewpoint", "spring", "waterfall", "lift", "castle")
 
     /** Lowest tile zoom a POI of [kind] is in: train stations from z10, tier 1 from z12, everything else z14. */
     fun minZoom(kind: String?): Int = when (kind) {

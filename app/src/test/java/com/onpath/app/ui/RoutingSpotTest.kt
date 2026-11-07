@@ -4,6 +4,7 @@ import com.onpath.app.navigation.Trace.pt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import com.onpath.app.domain.plan.RoutingSpot
 
 /** Bug 02: "nothing happened" for 13 s after a hold – the spinner turns at the point that was added / moved. */
 class RoutingSpotTest {

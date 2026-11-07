@@ -80,15 +80,22 @@ object DemoLocation {
 
     fun unregister(s: Sink) { sinks.remove(s) }
 
-    /** Rides [p] from its start. [autoTick] false = the caller ticks ([tick], tests). */
-    fun startRide(p: DemoPath, label: String, factor: Int = 1, nowMs: Long = System.currentTimeMillis(), autoTick: Boolean = true) {
+    /**
+     * Rides [p] from its start, or from [startAlongM] metres along it (Navigate's Sim during a tour: where the tour is –
+     * field 2026-11-06, a Sim begun at ① on a round trip 2.7 km along was a jump back the navigator read as the loop's
+     * last metres walked backwards). [autoTick] false = the caller ticks ([tick], tests).
+     */
+    fun startRide(p: DemoPath, label: String, factor: Int = 1, nowMs: Long = System.currentTimeMillis(), autoTick: Boolean = true,
+                  startAlongM: Double = 0.0) {
         begin(nowMs)
         path = p; place = null
-        _state.value = State(Kind.RIDE, label, factor.coerceIn(1, FACTORS.last()), paused = false, alongM = 0.0, lengthM = p.lengthM,
-            ended = false)
+        simS = p.timeAtAlong(startAlongM)
+        val f = p.at(simS)
+        _state.value = State(Kind.RIDE, label, factor.coerceIn(1, FACTORS.last()), paused = false, alongM = f.alongM, lengthM = p.lengthM,
+            ended = f.ended)
         Problems.info("demo", "Demo location ON: riding the $label (${"%.1f".format(java.util.Locale.ROOT, p.lengthM / 1000)} km, " +
-            "${(p.durationS / 60).toInt()} min at 1×) – real GPS ignored")
-        emit(p.at(0.0))
+            "${(p.durationS / 60).toInt()} min at 1×) from ${f.alongM.toInt()} m – real GPS ignored")
+        emit(f)
         if (autoTick) startTicker()
     }
 
@@ -133,6 +140,17 @@ object DemoLocation {
         sinks.forEach { s ->
             try { s.onDemoEnd() } catch (e: Exception) { Problems.error("demo", "Demo end not taken by a location user; it may show the demo position", e) }
         }
+    }
+
+    /**
+     * The tour ended: a demo ride (Navigate's Sim, Developer tools → Demo ride) ends with it – back to real GPS, the
+     * "DEMO" mark and the Sim chip go (Pixel review 2026-11-06: they stayed after the sim ride). A demo standing at a
+     * place (screenshots) is no ride and stays. True when a ride was stopped.
+     */
+    fun endWithTour(): Boolean {
+        if (_state.value?.kind != Kind.RIDE) return false
+        stop("the tour ended")
+        return true
     }
 
     /** One step of [realDtMs] real milliseconds: moves on (×factor unless paused / at the end) and sends the fix. */

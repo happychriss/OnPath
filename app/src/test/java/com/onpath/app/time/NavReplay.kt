@@ -106,6 +106,9 @@ class NavReplay(
         val nav = navigator
         val step = nav.onFix(f)
         step.job?.let { nav.onResult(it.id, Rerouter.Failed(Rerouter.Reason.NO_WAY, "replay: no router", 0)) }
+        // a start beside a later part of the route asks "Du stehst mitten auf der Route" (owner 2026-11-03): the replayed
+        // rider answers "Hier einsteigen" – the tour is recorded from where it began (the time model's rule 9)
+        (nav.prompt as? com.onpath.app.navigation.NavPrompt.MidStart)?.let { nav.joinHere(it.id) }
         if (nav.prompt != null && frames.lastOrNull()?.prompt != true) { confirms++; if (firstPromptWalkedM == null) firstPromptWalkedM = walked }
         val d = nav.detector
         trip.onFix(active, wallMs, p.lat, p.lon, d.shownAlongM, d.learnable)

@@ -278,10 +278,93 @@ class OffRouteDetectorTest {
         assertEquals(State.ON_ROUTE, d.state)
     }
 
+    /**
+     * Field bug (owner 2026-11-07, cycling: "Sie sind von der Route weg" was said, but nothing on the phone): the bike
+     * takes a fork ~35° off the route onto a way 22–35 m beside it. Direction and speed confirm "off route" at ~20 m –
+     * but "back on the route" was within half the off distance ((40 + accuracy) / 2 ≈ 22 m; 75 m setting: ~40 m), so
+     * three fixes later the rider, still on the other way, counted as back: the question box lived 3 s, the voice had
+     * spoken. Back on the route needs to be clearly nearer than where the leaving was told ([OffRouteDetector.EARLY_REJOIN_M]).
+     */
+    @Test fun bikeLeftByDirectionIsNotBackAtTheSameDistance() {
+        for (setting in listOf(40.0, 75.0)) for (acc in listOf(5.0, 10.0)) for (off in listOf(22.0, 28.0, 35.0)) {
+            val d = OffRouteDetector(setting).apply { headingRule = true; setLine(NavLine(corner)) }
+            val s = run(d, walk(0.0 to 0.0, 300.0 to 0.0, 300.0 + off * 1.4 to -off, 900.0 to -off, speed = 6.0, acc = acc))
+            val c = s.indexOfFirst { it.confirmedNow }
+            if (c < 0) continue // not told by direction (a wide setting, a small offset): the plain rule, never confirmed here
+            assertTrue("setting $setting, ±$acc, $off m: rejoined on the other way ${s.drop(c).firstOrNull { it.rejoinedNow }?.distanceM}",
+                s.drop(c).none { it.rejoinedNow })
+            assertEquals("setting $setting, ±$acc, $off m", State.OFF_ROUTE, d.state)
+        }
+        // the 40 m setting: told at 22 m – the case of the field
+        val d = OffRouteDetector(40.0).apply { headingRule = true; setLine(NavLine(corner)) }
+        assertTrue(run(d, walk(0.0 to 0.0, 300.0 to 0.0, 330.8 to -22.0, 900.0 to -22.0, speed = 6.0, acc = 5.0)).any { it.confirmedNow })
+        // riding back onto the route: back on it as before
+        val back = run(d, walk(900.0 to -22.0, 930.0 to 0.0, 1000.0 to 0.0, 1000.0 to 100.0, speed = 6.0, acc = 5.0, t0Ms = 1_000_000))
+        assertTrue(back.any { it.rejoinedNow })
+        assertEquals(State.ON_ROUTE, d.state)
+    }
+
     /** Bike standing / pushing slowly away (below 9 km/h): the old rule. */
     @Test fun bikeSlowIsTheOldRule() {
         val d = OffRouteDetector(40.0).apply { headingRule = true; setLine(NavLine(corner)) }
         val s = run(d, walk(0.0 to 0.0, 1000.0 to 0.0, 1040.0 to 0.0, speed = 1.3))
         assertTrue(s.none { it.state == State.LEAVING })
+    }
+
+    /**
+     * Field bug (owner 2026-11-06, Fragenregister donald-20261106-51): a round trip whose first and last 100 m are the
+     * same street, ridden twice. At the end of the first lap the progress is on the way back to the start; riding out
+     * again the old code took the second lap's way out for the first lap's way back walked *backwards* (the start lies
+     * far behind the window) – "80 m Geradeaus", silence, then "off route". The second lap counts from the start.
+     */
+    private val stemLoop = line(0.0 to 0.0, 100.0 to 0.0, 600.0 to 0.0, 600.0 to 500.0, 100.0 to 500.0, 100.0 to 0.0, 0.0 to 0.0)
+
+    @Test fun roundTripRiddenTwiceCountsTheSecondLapFromTheStart() {
+        for (bike in listOf(false, true)) {
+            val d = OffRouteDetector(40.0).apply { headingRule = bike; setLine(NavLine(stemLoop)) }
+            val speed = if (bike) 5.0 else 1.3
+            val lap1 = run(d, walk(0.0 to 0.0, 100.0 to 0.0, 600.0 to 0.0, 600.0 to 500.0, 100.0 to 500.0, 100.0 to 0.0, 0.0 to 0.0, speed = speed))
+            assertTrue(lap1.none { it.confirmedNow })
+            assertEquals(2200.0, d.progressM, 15.0)
+            // the second lap: out along the same street again, on into the loop
+            val lap2 = run(d, walk(0.0 to 0.0, 100.0 to 0.0, 400.0 to 0.0, speed = speed, t0Ms = 10_000_000))
+            assertTrue("bike=$bike: no off-route warning on the second lap", lap2.none { it.confirmedNow })
+            assertEquals("bike=$bike", State.ON_ROUTE, d.state)
+            assertEquals("bike=$bike: progress of the second lap", 400.0, d.shownAlongM!!, 20.0)
+            assertFalse(d.backward)
+            // the second lap goes on as the first: to the end again
+            run(d, walk(400.0 to 0.0, 600.0 to 0.0, 600.0 to 500.0, 100.0 to 500.0, 100.0 to 0.0, 0.0 to 0.0, speed = speed, t0Ms = 20_000_000))
+            assertEquals("bike=$bike", 2200.0, d.progressM, 15.0)
+        }
+    }
+
+    /** The same on a plain loop (no shared street): riding on past the start is the second lap, not "off route". */
+    @Test fun plainLoopRiddenTwiceCountsTheSecondLapFromTheStart() {
+        val loop = line(0.0 to 0.0, 800.0 to 0.0, 800.0 to 800.0, 0.0 to 800.0, 0.0 to 0.0)
+        val d = detector(loop)
+        run(d, walk(0.0 to 0.0, 800.0 to 0.0, 800.0 to 800.0, 0.0 to 800.0, 0.0 to 0.0))
+        assertEquals(3200.0, d.progressM, 15.0)
+        val lap2 = run(d, walk(0.0 to 0.0, 300.0 to 0.0, t0Ms = 10_000_000))
+        assertTrue(lap2.none { it.confirmedNow })
+        assertEquals(State.ON_ROUTE, d.state)
+        assertEquals(300.0, d.shownAlongM!!, 20.0)
+    }
+
+    /** The end of the first lap: turning round on the shared street for a few metres (a lost glove) is no second lap. */
+    @Test fun aFewStepsBackAtTheEndOfARoundTripAreNoSecondLap() {
+        val d = detector(stemLoop)
+        run(d, walk(0.0 to 0.0, 100.0 to 0.0, 600.0 to 0.0, 600.0 to 500.0, 100.0 to 500.0, 100.0 to 0.0, 50.0 to 0.0))
+        assertEquals(2150.0, d.progressM, 15.0)
+        run(d, walk(50.0 to 0.0, 80.0 to 0.0, 0.0 to 0.0, t0Ms = 10_000_000))
+        assertEquals(State.ON_ROUTE, d.state)
+        assertEquals(2200.0, d.progressM, 15.0)
+    }
+
+    /** On the first lap the way back along the shared street is the way back – never the start of the line. */
+    @Test fun theFirstLapsWayBackStaysTheWayBack() {
+        val d = detector(stemLoop)
+        val s = run(d, walk(0.0 to 0.0, 100.0 to 0.0, 600.0 to 0.0, 600.0 to 500.0, 100.0 to 500.0, 100.0 to 0.0, 20.0 to 0.0))
+        assertTrue(s.none { it.confirmedNow })
+        assertEquals(2180.0, d.progressM, 15.0)
     }
 }

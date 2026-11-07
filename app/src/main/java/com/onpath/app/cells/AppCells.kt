@@ -27,7 +27,8 @@ object AppCells {
     private fun create(app: Context): MapCells {
         val net = AndroidNetworkStatus(app)
         val api = MapServer.appKey.takeIf { it.isNotBlank() }?.let { CellApi(MapServer.apiUrl, it, BuildConfig.VERSION_NAME) }
-        val cells = MapCells(CellStore(DataFiles(app).dir), api, net, CoroutineScope(SupervisorJob() + Dispatchers.IO), BuildConfig.VERSION_NAME,
+        val cells = MapCells(CellStore(DataFiles(app).dir), api, net, CoroutineScope(SupervisorJob() + Dispatchers.IO +
+            com.onpath.app.debug.problemsHandler("cells", "Unexpected error in map loading")), BuildConfig.VERSION_NAME,
             routerClassHash = { profileHash(app) })
         net.listen { cells.networkChanged() }
         cells.start()

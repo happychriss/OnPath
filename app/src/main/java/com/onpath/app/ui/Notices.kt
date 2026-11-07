@@ -102,9 +102,8 @@ object NoticeRouting {
 }
 
 /**
- * My routes and Settings: the one box over the screen (MessageCard, [MessagePlacement]) – My routes: "End the running
- * tour first …" (HINWEIS) or an error without a line of its own (HINWEIS_ERROR, [AppViewModel.errorCard]); Settings:
- * that error. Plan and Navigate have their own hosts (PlanMessageHost, NavigateOverlay) with the same error box.
+ * My routes and Settings: the one box over the screen (MessageCard, [MessagePlacement]) – an error without a line of its
+ * own (HINWEIS_ERROR, [AppViewModel.errorCard]); a tap on a plan during a tour asks nothing (owner 2026-11-06). Plan and Navigate have their own hosts (PlanMessageHost, NavigateOverlay) with the same error box.
  */
 @Composable
 fun androidx.compose.foundation.layout.BoxScope.ScreenMessageHost(vm: AppViewModel) {
@@ -114,14 +113,8 @@ fun androidx.compose.foundation.layout.BoxScope.ScreenMessageHost(vm: AppViewMod
         else -> return
     }
     val error = vm.errorCard?.let { errorMessage(it) { vm.errorCard = null } }
-    val blocked = if (screen == MessageScreen.ROUTES && vm.routesTourBlocked) tourBlockedMessage { vm.routesTourBlocked = false } else null
-    MessageSlot(Messages.pick(listOf(error, blocked)), MessagePlacement.topDp(screen))
+    MessageSlot(Messages.pick(listOf(error)), MessagePlacement.topDp(screen))
 }
-
-/** A planned route tapped during a tour (My routes): the tap is the action, this box the answer – OK. */
-@Composable
-fun tourBlockedMessage(onOk: () -> Unit): Message =
-    Message(MessageKind.HINWEIS, str(Res.string.routes_end_tour_first), buttons = listOf(MessageButton(str(Res.string.common_ok), onOk)))
 
 /**
  * A message in the screen where the user acted (My routes, a Settings page): INFO = grey text with ⓘ, no box; ERROR =

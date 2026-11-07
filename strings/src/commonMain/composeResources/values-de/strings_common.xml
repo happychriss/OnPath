@@ -7,7 +7,6 @@
     <string name="common_save">Speichern</string>
     <string name="common_close">Schließen</string>
     <string name="common_back">Zurück</string>
-    <string name="common_done">Fertig</string>
     <string name="common_not_now">Nicht jetzt</string>
     <string name="common_try_again">Erneut versuchen</string>
     <string name="common_more">Mehr</string>
@@ -15,9 +14,8 @@
     <string name="common_show_all">Alle anzeigen</string>
     <string name="common_rename">Umbenennen</string>
     <string name="common_restore">Wiederherstellen</string>
-    <string name="common_replace">Ersetzen</string>
     <string name="common_reset">Zurücksetzen</string>
-    <string name="common_resume">Fortsetzen</string>
+    <string name="common_resume">Weiter</string>
     <string name="common_cancel_all">Alle abbrechen</string>
     <string name="common_clear_all">Alle löschen</string>
     <string name="common_recycle_bin">Papierkorb</string>

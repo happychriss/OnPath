@@ -17,8 +17,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddLocationAlt
+import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.TripOrigin
@@ -30,6 +33,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,6 +67,7 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.search.Place
 import com.onpath.app.search.SearchKinds
 import com.onpath.app.ui.MapGestures.PointAction
+import com.onpath.app.domain.plan.RoutingSpot
 
 /** "Meraner Hütte", else "Start" / "Stop 2" / "Destination". */
 fun stopLabel(i: Int, count: Int, name: String?): String = name?.takeIf { it.isNotBlank() } ?: when {
@@ -85,6 +90,8 @@ fun MapOverlayHost(
     val c = controller ?: return
     if (!vm.canEditMap) return
     val ctx = LocalContext.current
+    // during a tour a held spot is never a new start ("Hier starten"), only where to go (field 2026-11-07)
+    val startHere = MapGestures.offersStartHere(touring = vm.recState.collectAsState().value != null)
     // the route for the point just added / moved is computed: a spinner around it (Bug 02), after a short delay
     RoutingSpot.shown(vm.routing, vm.routingSpot, vm.waypoints)?.let { p ->
         var late by remember(p) { mutableStateOf(false) }
@@ -95,7 +102,7 @@ fun MapOverlayHost(
     vm.firstPointMenu?.let { p ->
         Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { com.onpath.app.debug.Problems.trace("plan", "First-point menu closed: held spot left the visible map (onGone)"); vm.firstPointMenu = null }) {
             FirstPointMenu(MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
-                onStartHere = { vm.startHere(p) }, onFromMe = { vm.routeFromMyLocation(p) })
+                onStartHere = { vm.startHere(p) }, onFromMe = { vm.routeFromMyLocation(p) }, startHere = startHere)
         }
     }
     // the found place's name chip under its pin (owner 2026-11-02): only where the plan can be edited – this host draws
@@ -103,7 +110,15 @@ fun MapOverlayHost(
     vm.searchMark?.let { m ->
         @Suppress("UNUSED_EXPRESSION") cameraTick // re-read the projection on every camera move
         c.toScreen(GeoPoint(m.lat, m.lon))?.let { s ->
-            PinChipAt(Offset(s.x, s.y), topPx, bottomPx) { PinChip(m.title(), onClick = vm::openPinMenu) }
+            val empty = vm.waypoints.isEmpty()
+            val blocked = MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null)
+            PinChipAt(Offset(s.x, s.y), topPx, bottomPx) {
+                // "+ Hinzufügen" adds the place where it fits; on an empty plan "Hierhin" (from here) – without a position
+                // the menu opens instead, it says why "Hierhin" waits (searching GPS)
+                PinChip(m.title(), str(if (empty) Res.string.plan_go_here else Res.string.plan_pin_add), emptyPlan = empty,
+                    onAction = { if (!empty) vm.addPoiPoint(m.toPoi()) else if (blocked == null) vm.poiFromMyLocation(m.toPoi()) else vm.openPinMenu() },
+                    onMore = vm::openPinMenu)
+            }
         }
     }
     vm.poiMenu?.let { poi ->
@@ -115,10 +130,14 @@ fun MapOverlayHost(
         Anchored(c, GeoPoint(poi.lat, poi.lon), cameraTick, topPx, bottomPx, liftPx = lift, dropPx = drop, onGone = { com.onpath.app.debug.Problems.trace("plan", "POI menu closed: POI left the visible map (onGone)"); vm.poiMenu = null }) {
             PoiMenu(poi,
                 emptyPlan = vm.waypoints.isEmpty(),
+                startHere = startHere,
                 fromMeBlocked = MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
                 onFromMe = { vm.poiFromMyLocation(poi) },
                 onAdd = { vm.addPoiPoint(poi) },
                 addLabel = vm.poiAddLabel(poi),
+                menu = vm.placeMenu(poi),
+                onAddStop = { vm.addPoiAsStop(poi) },
+                onNewDestination = { vm.poiAsNewDestination(poi) },
                 onGoogle = {
                     vm.closeMapOverlays()
                     com.onpath.app.poi.PoiIntents.openInGoogleMaps(ctx, poi)
@@ -133,7 +152,7 @@ fun MapOverlayHost(
         if (i == null || p == null) { LaunchedEffect(t) { vm.closePointMenu("its point is no longer in the plan") }; return@let }
         val name = vm.stopName(p)
         Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { vm.closePointMenu("point left the visible map (onGone)") }) {
-            PointMenu(i, vm.waypoints.size, name, roundTrip = vm.isRoundTrip()) { a ->
+            PointMenu(i, vm.waypoints.size, name, roundTrip = vm.isRoundTrip(), loopStart = vm.loopStart() ?: 0) { a ->
                 when (a) {
                     PointAction.MAKE_START, PointAction.LOOP_START -> vm.makeStartFromMenu()
                     PointAction.GOOGLE -> vm.googleFromMenu()?.let { g ->
@@ -159,7 +178,7 @@ fun RoutingRing(center: Offset, stillProgress: Float? = null) {
         .offset { androidx.compose.ui.unit.IntOffset(center.x.toInt() - r, center.y.toInt() - r) }
         .size(42.dp)
         .semantics { contentDescription = label }
-    val color = MaterialTheme.colorScheme.primary
+    val color = com.onpath.app.ui.OnPathColors.PlanAccent // computing a route is planning: blue
     val track = Color.White.copy(alpha = 0.85f)
     Box(Modifier.fillMaxSize()) {
         // [stillProgress]: a fixed arc for screenshots (the turning ring has no arc in its first frame)
@@ -220,31 +239,52 @@ internal fun PinChipAt(anchor: Offset, topPx: Int, bottomPx: Int, content: @Comp
     }
 }
 
-/** From the pin's tip to below its name chip (gap + the chip's 48 dp touch box): where the menu goes when not above. */
-internal const val PIN_CHIP_BELOW_DP = 54f
+/** From the pin's tip to below its card (gap + the card's height): where the menu goes when not above. */
+internal const val PIN_CHIP_BELOW_DP = 112f
 
-/** Room above and below the visible pill so the touch target is ≥ 48 dp high. */
-private val PIN_CHIP_TOUCH_PAD = 8.dp
+/** Room above and below the visible pill so the touch target is ≥ 48 dp high (the card has no outer pad). */
+private val PIN_CHIP_TOUCH_PAD = 0.dp
 
 /**
- * The found place's name under its pin: "Fabriciusstraße ›" (owner 2026-11-02) – a real button, white pill, the name
- * bold, a blue ›. A tap opens the place's menu (the one a hold on the pin opens: add / start here / Google Maps / remove
- * pin). Long names end in "…" ([PinChipRules.label]).
+ * The found place under its pin (owner 2026-11-04, design B "Kleine Karte mit Aktion"): a small white card – the name,
+ * below it the most common action as a blue button ([action]: "+ Hinzufügen" – owner 2026-11-05, #26; on an empty plan "Hierhin") and "⋯ Mehr"
+ * ([onMore]: the pin's menu – the one a hold on the pin opens: start here / Google Maps / remove pin). One tap does it,
+ * nothing to look for. Both buttons are ≥ 48 dp touch targets; long names end in "…" ([PinChipRules.label]).
  */
 @Composable
-fun PinChip(name: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val desc = str(Res.string.plan_pin_chip_desc, name)
-    // TalkBack hears one button: "Fabriciusstraße: show options" (not the name and the › again)
-    Box(modifier.clickable(role = Role.Button, onClick = onClick)
-        .clearAndSetSemantics { contentDescription = desc; role = Role.Button; onClick { onClick(); true } }
-        .padding(vertical = PIN_CHIP_TOUCH_PAD), contentAlignment = Alignment.Center) {
-        Surface(shape = CircleShape, color = OnPathColors.CardWhite, contentColor = OnPathColors.Ink, shadowElevation = 3.dp) {
-            Row(Modifier.heightIn(min = 32.dp).padding(start = 12.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(PinChipRules.label(name), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
-                    color = OnPathColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Spacer(Modifier.width(4.dp))
-                Text("›", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = OnPathColors.Route)
+fun PinChip(name: String, action: String, onAction: () -> Unit, onMore: () -> Unit, modifier: Modifier = Modifier,
+            emptyPlan: Boolean = false) {
+    Surface(modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card), shape = OnPathShapes.Card, color = OnPathColors.Paper,
+        contentColor = OnPathColors.Ink) {
+        Column(Modifier.widthIn(min = 200.dp).width(IntrinsicSize.Max).padding(start = 10.dp, end = 10.dp, top = 9.dp, bottom = 3.dp)) {
+            Text(PinChipRules.label(name), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
+                color = OnPathColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 2.dp))
+            Row(Modifier.fillMaxWidth()) {
+                PinCardButton(action, if (emptyPlan) Icons.Outlined.MyLocation else Icons.Outlined.Add, OnPathColors.ActionEdit,
+                    OnPathColors.CardWhite, str(Res.string.plan_pin_action_desc, action, name), onAction, Modifier.weight(1f))
+                Spacer(Modifier.width(6.dp))
+                PinCardButton(str(Res.string.plan_pin_more), Icons.Outlined.MoreHoriz, OnPathColors.PaperDim, OnPathColors.Ink,
+                    str(Res.string.plan_pin_chip_desc, name), onMore, Modifier.weight(1f))
             }
+        }
+    }
+}
+
+/** One of the card's two buttons: a 36 dp pill in a 48 dp touch box. */
+@Composable
+private fun PinCardButton(label: String, icon: ImageVector, bg: Color, fg: Color, desc: String, onClick: () -> Unit,
+                          modifier: Modifier = Modifier) {
+    Box(modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onClick)
+        .clearAndSetSemantics { contentDescription = desc; role = Role.Button; onClick { onClick(); true } },
+        contentAlignment = Alignment.Center) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 36.dp).clip(CircleShape).background(bg, CircleShape)
+            .padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center) {
+            Icon(icon, null, tint = fg, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = fg, maxLines = 1,
+                overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -281,47 +321,65 @@ fun AnchoredOverlay(anchor: Offset, topPx: Int, bottomPx: Int, onGone: () -> Uni
  * one is disabled with a short reason ([fromMeBlocked], e.g. "Searching GPS…") while there is no usable position.
  */
 @Composable
-fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: () -> Unit, modifier: Modifier = Modifier) {
+fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: () -> Unit, modifier: Modifier = Modifier,
+                   /** false during a tour ([MapGestures.offersStartHere]): only "Hierhin". */
+                   startHere: Boolean = true) {
     MenuSurface(modifier) {
         Text(str(Res.string.plan_new_route), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere)
+        if (startHere) HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere)
         HoldMenuItem(Icons.Outlined.MyLocation, str(Res.string.plan_go_here), enabled = fromMeBlocked == null,
             supporting = fromMeBlocked, onClick = onFromMe)
     }
 }
 
 /**
- * Menu of a held POI that is not a route point: its name + what adding it does ("Set as destination", "Add as
- * stop 2", …) · "Open in Google Maps". On an empty plan
- * it asks like the first-point menu (owner): "Start here" · "Go here" · "Open in Google Maps".
+ * Menu of a held POI that is not a route point: its name + how to add it · "Open in Google Maps". With 2+ points the
+ * entries of [menu] ([PlaceAddMenu], owner 2026-11-07): "Als Zwischenstopp" and/or "Als neues Ziel" in the order of the
+ * geometry, a clear case's alternative behind "⋯ Mehr". With one point [addLabel] ("Set as destination"). On an empty
+ * plan it asks like the first-point menu (owner): "Start here" · "Go here" · "Open in Google Maps".
  */
 @Composable
 fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifier = Modifier,
             emptyPlan: Boolean = false, fromMeBlocked: String? = null, onFromMe: () -> Unit = {},
+            /** false during a tour ([MapGestures.offersStartHere]): an empty plan offers only "Hierhin". */
+            startHere: Boolean = true,
             addLabel: String = str(Res.string.search_card_set_destination),
             /** The found place's pin: its menu ends with "Nadel entfernen" (owner 2026-11-02); null = a map POI. */
-            onRemovePin: (() -> Unit)? = null) {
+            onRemovePin: (() -> Unit)? = null,
+            menu: PlaceAddMenu.Menu? = null, onAddStop: () -> Unit = {}, onNewDestination: () -> Unit = {}) {
     val place = Place.fromPoi(poi)
-    val de = Poi.isGerman()
+    var more by remember(poi) { mutableStateOf(false) }
+    @Composable fun row(item: PlaceAddMenu.Item) = when (item) {
+        PlaceAddMenu.Item.ADD_STOP -> HoldMenuItem(Icons.Outlined.AddLocationAlt, str(Res.string.plan_add_as_stop), onClick = onAddStop)
+        PlaceAddMenu.Item.NEW_DESTINATION -> HoldMenuItem(Icons.Outlined.Flag, str(Res.string.plan_make_destination), onClick = onNewDestination)
+        else -> HoldMenuItem(Icons.Outlined.AddLocationAlt, addLabel, onClick = onAdd)
+    }
     MenuSurface(modifier) {
         Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)) {
-            Text(place.title(de), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+            Text(place.title(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(place.kindInfo.label(de) + (place.ele?.let { " · $it m" } ?: ""), style = MaterialTheme.typography.bodySmall,
+            Text(place.kindInfo.label + (place.ele?.let { " · $it m" } ?: ""), style = MaterialTheme.typography.bodySmall,
                 color = Color(SearchKinds.argb(place.kind)), maxLines = 1)
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         if (emptyPlan) {
-            HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onAdd)
+            if (startHere) HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onAdd)
             HoldMenuItem(Icons.Outlined.MyLocation, str(Res.string.plan_go_here), enabled = fromMeBlocked == null,
                 supporting = fromMeBlocked, onClick = onFromMe)
-        } else {
+        } else if (menu == null) {
             HoldMenuItem(Icons.Outlined.AddLocationAlt, addLabel, onClick = onAdd)
+        } else {
+            for (item in menu.main) row(item)
         }
         HoldMenuItem(Icons.Outlined.Map, str(Res.string.plan_open_google_maps), onClick = onGoogle)
         onRemovePin?.let { HoldMenuItem(Icons.Outlined.WrongLocation, str(Res.string.plan_remove_pin), onClick = it) }
+        // the alternative a clear case hides is never lost (owner 11:30: "solange wir auf der sicheren Seite sind")
+        if (!emptyPlan && menu != null && menu.more.isNotEmpty()) {
+            if (more) for (item in menu.more) row(item)
+            else HoldMenuItem(Icons.Outlined.MoreHoriz, str(Res.string.common_more), onClick = { more = true })
+        }
     }
 }
 
@@ -331,7 +389,7 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
  */
 @Composable
 fun PointMenu(index: Int, count: Int, name: String?, modifier: Modifier = Modifier, roundTrip: Boolean = false,
-              onAction: (PointAction) -> Unit) {
+              loopStart: Int = 0, onAction: (PointAction) -> Unit) {
     MenuSurface(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp)) {
@@ -343,7 +401,7 @@ fun PointMenu(index: Int, count: Int, name: String?, modifier: Modifier = Modifi
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        for (a in MapGestures.pointMenu(index, count, isPlace = !name.isNullOrBlank(), roundTrip = roundTrip)) when (a) {
+        for (a in MapGestures.pointMenu(index, count, isPlace = !name.isNullOrBlank(), roundTrip = roundTrip, loopStart = loopStart)) when (a) {
             // Say what happens: the dropped points come back with Undo.
             PointAction.MAKE_START -> HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here),
                 supporting = plural(Res.plurals.plan_removes_points, index, index)) { onAction(a) }
@@ -382,10 +440,9 @@ private fun HoldMenuItem(
 @Composable
 private fun MenuSurface(modifier: Modifier, content: @Composable () -> Unit) {
     Surface(
-        modifier.widthIn(min = 220.dp),
+        modifier.widthIn(min = 220.dp).warmShadow(OnPathShadow.HIGH, MaterialTheme.shapes.large),
         shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shadowElevation = 8.dp,
-    ) {
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Column(Modifier.width(IntrinsicSize.Max).padding(bottom = 4.dp)) { content() }
     }
 }

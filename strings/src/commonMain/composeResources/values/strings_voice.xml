@@ -6,6 +6,10 @@
     <string name="voice_start_dest">Off we go. %1$s to %2$s.</string>
     <string name="voice_start_time">Off we go. %1$s, about %2$s.</string>
     <string name="voice_start_dest_time">Off we go. %1$s to %2$s, about %3$s.</string>
+    <string name="voice_carry_on">On we go. %1$s.</string>
+    <string name="voice_carry_on_dest">On we go. %1$s to %2$s.</string>
+    <string name="voice_carry_on_time">On we go. %1$s, about %2$s.</string>
+    <string name="voice_carry_on_dest_time">On we go. %1$s to %2$s, about %3$s.</string>
     <string name="voice_in">%1$s, %2$s</string>
     <string name="voice_soon">Now %1$s</string>
     <string name="voice_in_m">In %1$s meters</string>
@@ -65,6 +69,25 @@
         <item quantity="one">one hour</item>
         <item quantity="other">%1$s hours</item>
     </plurals>
-    <string name="voice_guidance_back">Navigation is on again.</string>
     <string name="voice_turn_round">Please turn round.</string>
+    <!-- The goal's side relative to the way ridden (owner 2026-11-07): on arrival and when it comes into view. -->
+    <string name="voice_arrived_side">You have arrived. The destination is %1$s.</string>
+    <string name="voice_at_ahead">ahead of you</string>
+    <string name="voice_at_half_right">ahead on your right</string>
+    <string name="voice_at_right">on your right</string>
+    <string name="voice_at_back_right">behind you on the right</string>
+    <string name="voice_at_behind">behind you</string>
+    <string name="voice_at_back_left">behind you on the left</string>
+    <string name="voice_at_left">on your left</string>
+    <string name="voice_at_half_left">ahead on your left</string>
+    <string name="voice_goal_in_m">Destination in %1$s meters</string>
+    <string name="voice_goal_side">%1$s, %2$s</string>
+    <string name="voice_side_ahead">straight ahead</string>
+    <string name="voice_side_half_right">half right</string>
+    <string name="voice_side_right">on the right</string>
+    <string name="voice_side_back_right">behind you on the right</string>
+    <string name="voice_side_behind">behind you</string>
+    <string name="voice_side_back_left">behind you on the left</string>
+    <string name="voice_side_left">on the left</string>
+    <string name="voice_side_half_left">half left</string>
 </resources>

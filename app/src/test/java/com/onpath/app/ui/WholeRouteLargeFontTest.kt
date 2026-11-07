@@ -13,7 +13,8 @@ import java.util.Locale
  * Navigate: five big ones) still fit between the top elements and the sheet / slider. Same pictures as the
  * [ScreenshotTest] tests of the same name, drawn with this class's Paparazzi.
  */
-open class WholeRouteLargeFontTest {
+/** English frames dropped (test audit 2026-11-07: the German twin at the same font size is the check); the subclasses draw. */
+abstract class WholeRouteLargeFontTest {
     @get:Rule
     val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5.copy(fontScale = 2.0f), showSystemUi = false)
 

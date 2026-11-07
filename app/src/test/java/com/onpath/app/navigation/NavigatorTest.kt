@@ -49,6 +49,41 @@ class NavigatorTest {
         assertNotNull(r.nav.state.toRoute)
     }
 
+    /**
+     * Field bug (owner 2026-11-07, cycling: the voice said "off the route", the phone showed nothing): a fork 35° off the
+     * route onto a way 22 m beside it. The off-route box opens with the confirmation and stays while the rider is on the
+     * other way – before, it was cleared three fixes later (back "on the route" at the same 22 m) and its way back cancelled.
+     */
+    @Test fun bikeOnAForkBesideTheRouteKeepsTheOffRouteBox() {
+        val r = Run(Navigator(NavSession.start(NavKind.PLAN, "Rad", Activity.BIKE_TOURING, 3, route,
+            listOf(pt(0.0, 0.0), pt(1000.0, 0.0), pt(1000.0, 1000.0)))))
+        val fixes = walk(0.0 to 0.0, 300.0 to 0.0, 330.8 to -22.0, 900.0 to -22.0, speed = 6.0, acc = 5.0)
+        val opened = fixes.indexOfFirst { f -> r.feed(listOf(f)); r.nav.prompt != null }
+        assertTrue("the box opened", opened >= 0)
+        assertEquals(NavPrompt.Searching, r.nav.prompt)
+        r.feed(fixes.drop(opened + 1).take(20))
+        assertEquals("still open 20 s later on the other way", NavPrompt.Searching, r.nav.prompt)
+        assertTrue("its way back was not cancelled", r.steps.none { it.cancelJob })
+        r.nav.onResult(r.jobs.single().id, found(420.0 to -22.0))
+        assertTrue(r.nav.prompt is NavPrompt.Question)
+    }
+
+    /**
+     * Field bug (owner 2026-11-06, Fragenregister donald-20261106-51): a round trip whose first and last 100 m are the
+     * same street, ridden twice – the second lap is followed from its start: no vibration, no question, no way back.
+     */
+    @Test fun aRoundTripRiddenTwiceIsFollowedOnTheSecondLap() {
+        val loop = line(0.0 to 0.0, 100.0 to 0.0, 600.0 to 0.0, 600.0 to 500.0, 100.0 to 500.0, 100.0 to 0.0, 0.0 to 0.0)
+        val r = Run(Navigator(NavSession.start(NavKind.PLAN, "Runde", Activity.BIKE_TOURING, 3, loop,
+            listOf(pt(0.0, 0.0), pt(600.0, 500.0), pt(0.0, 0.0)))))
+        r.feed(walk(0.0 to 0.0, 100.0 to 0.0, 600.0 to 0.0, 600.0 to 500.0, 100.0 to 500.0, 100.0 to 0.0, 0.0 to 0.0, speed = 5.0))
+        r.feed(walk(0.0 to 0.0, 100.0 to 0.0, 600.0 to 0.0, 600.0 to 300.0, speed = 5.0, t0Ms = 10_000_000))
+        assertTrue(r.steps.none { it.vibrate })
+        assertTrue(r.jobs.isEmpty())
+        assertNull(r.nav.prompt)
+        assertEquals(900.0, r.nav.state.shownAlongM!!, 25.0)
+    }
+
     /** Rode past the corner: the way back starts westwards, against the ride – "turn round" + the sign. */
     @Test fun wayBackAgainstTheRideIsATurnRoundWithASign() {
         val r = Run(Navigator(session()))

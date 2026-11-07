@@ -76,15 +76,26 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         Problems.warn("settings", "Setting $key unreadable, using Average pace", e); com.onpath.app.time.Pace.DEFAULT
     }
 
-    /** Last camera: lat, lon, zoom. */
+    /** Writes that may lag (camera, last seen): background, coalesced, never waited for in onStop ([LazyPrefs]). */
+    private val later = LazyPrefs.of(sp)
+
+    /** Writes the lagging values now, on the background thread (the screen stops; the caller does not wait). */
+    fun flushLazy() = later.flush()
+
+    /** Last camera: lat, lon, zoom. Saved at every camera idle – through [later], not apply() (stalls at onStop). */
     var camera: Triple<Double, Double, Double>?
-        get() = if (!sp.contains("camLat")) null else Triple(
-            sp.getFloat("camLat", 0f).toDouble(), sp.getFloat("camLon", 0f).toDouble(), sp.getFloat("camZoom", 12f).toDouble()
-        )
+        get() {
+            @Suppress("UNCHECKED_CAST")
+            (later.peek("camera") as? Triple<Double, Double, Double>)?.let { return it }
+            return if (!sp.contains("camLat")) null else Triple(
+                sp.getFloat("camLat", 0f).toDouble(), sp.getFloat("camLon", 0f).toDouble(), sp.getFloat("camZoom", 12f).toDouble()
+            )
+        }
         set(v) {
             if (v == null) return
-            sp.edit().putFloat("camLat", v.first.toFloat()).putFloat("camLon", v.second.toFloat())
-                .putFloat("camZoom", v.third.toFloat()).apply()
+            later.put("camera", v) { e ->
+                e.putFloat("camLat", v.first.toFloat()).putFloat("camLon", v.second.toFloat()).putFloat("camZoom", v.third.toFloat())
+            }
         }
 
     /** Hidden POI kinds; a set stored under older defaults is upgraded once ([com.onpath.app.poi.PoiKinds.upgradeHidden]). */
@@ -95,6 +106,19 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         val now = kinds.upgradeHidden(stored)
         sp.edit().putStringSet("poiHidden", HashSet(now)).putInt("poiDefaultsVer", kinds.DEFAULTS_VERSION).apply()
         return now
+    }
+
+    /**
+     * The hold time of the tour's bar ([HoldSetting]); without the new key the old lock switch decides (off → 0, on → 1 s).
+     * A value of the wrong type never crashes: the default, reported.
+     */
+    private fun navHoldMs(): Int = try {
+        HoldSetting.fromPrefs(
+            storedMs = if (sp.contains("navHoldMs")) sp.getInt("navHoldMs", HoldSetting.DEFAULT_MS) else null,
+            oldLock = if (sp.contains("navLock")) sp.getBoolean("navLock", true) else null)
+    } catch (e: ClassCastException) {
+        Problems.warn("settings", "Setting navHoldMs / navLock unreadable, using ${HoldSetting.DEFAULT_MS} ms", e)
+        HoldSetting.DEFAULT_MS
     }
 
     var settings: AppSettings
@@ -113,6 +137,7 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
                 voiceOn = sp.getBoolean("voiceBike", true) || sp.getBoolean("voiceHike", true),
                 vibrationOn = JunctionVibration.of(sp.getString("junctionVibration", null), sp.getBoolean("junctionVibrate", true)) != JunctionVibration.OFF),
             positionOnRoute = sp.getBoolean("positionOnRoute", true),
+            navHoldMs = navHoldMs(),
             mapTheme = sp.getString("mapTheme", "classic") ?: "classic",
             navHeadingUp = sp.getBoolean("navHeadingUp", true),
             hikePace = pace("hikePaceLevel", "hikePace"),
@@ -133,6 +158,7 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
             .putString("bikeScreen", v.bikeScreen.name)
             .putString("junctionGuide", v.junctionGuide.name)
             .putBoolean("positionOnRoute", v.positionOnRoute)
+            .putInt("navHoldMs", v.navHoldMs).remove("navLock") // the old on/off switch, migrated by [navHoldMs]
             .putString("mapTheme", v.mapTheme)
             .putBoolean("navHeadingUp", v.navHeadingUp)
             .putString("hikePaceLevel", v.hikePace.name)
@@ -182,19 +208,19 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
     // ---- Phone setup (docs/design/onboarding-phone-check.md) ----
     /** Phone setup: the voice's test sentence was heard (spoken directions start only then). */
     var voiceHeard: com.onpath.app.setup.Felt
-        get() = sp.getString("voiceHeard", null)?.let { runCatching { com.onpath.app.setup.Felt.valueOf(it) }.getOrNull() }
+        get() = com.onpath.app.debug.enumOrNull<com.onpath.app.setup.Felt>(sp.getString("voiceHeard", null), "settings")
             ?: com.onpath.app.setup.Felt.UNKNOWN
         set(v) = sp.edit().putString("voiceHeard", v.name).apply()
 
     /** The speech output for the app language as last found (recording/Speaker). */
     var voiceStatus: com.onpath.app.setup.VoiceStatus
-        get() = sp.getString("voiceStatus", null)?.let { runCatching { com.onpath.app.setup.VoiceStatus.valueOf(it) }.getOrNull() }
+        get() = com.onpath.app.debug.enumOrNull<com.onpath.app.setup.VoiceStatus>(sp.getString("voiceStatus", null), "settings")
             ?: com.onpath.app.setup.VoiceStatus.UNKNOWN
         set(v) = sp.edit().putString("voiceStatus", v.name).apply()
 
     /** The user's answer to the vibration test ("Did you feel it?"). */
     var vibrationFelt: com.onpath.app.setup.Felt
-        get() = sp.getString("vibrationFelt", null)?.let { runCatching { com.onpath.app.setup.Felt.valueOf(it) }.getOrNull() }
+        get() = com.onpath.app.debug.enumOrNull<com.onpath.app.setup.Felt>(sp.getString("vibrationFelt", null), "settings")
             ?: com.onpath.app.setup.Felt.UNKNOWN
         set(v) = sp.edit().putString("vibrationFelt", v.name).apply()
 
@@ -221,17 +247,20 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
     /** What was fine when OnPath was last open, and when (for "your phone removed …"). */
     var lastSeen: com.onpath.app.setup.LastSeen?
         get() {
+            (later.peek("lastSeen") as? com.onpath.app.setup.LastSeen)?.let { return it }
             val at = sp.getLong("lastSeenAt", 0L).takeIf { it > 0 } ?: return null
-            val ok = sp.getString("lastSeenOk", "").orEmpty().split(',').mapNotNull { n ->
-                runCatching { com.onpath.app.setup.CheckId.valueOf(n) }.getOrNull() }.toSet()
+            val ok = sp.getString("lastSeenOk", "").orEmpty().split(',').filter { it.isNotEmpty() }.mapNotNull { n ->
+                com.onpath.app.debug.enumOrNull<com.onpath.app.setup.CheckId>(n, "settings") }.toSet()
             return com.onpath.app.setup.LastSeen(ok, at)
         }
-        set(v) { if (v != null) sp.edit().putLong("lastSeenAt", v.atMs).putString("lastSeenOk", v.ok.joinToString(",") { it.name }).apply() }
+        // written in Activity.onStop – through [later], so onStop never waits for the disk
+        set(v) { if (v != null) later.put("lastSeen", v) { e -> e.putLong("lastSeenAt", v.atMs).putString("lastSeenOk", v.ok.joinToString(",") { it.name }) } }
 
     /** ☰ → Pair with browser opened the camera once: the step line before it is not shown again (PairEntry). */
     var pairHintSeen: Boolean
         get() = sp.getBoolean("pairHintSeen", false)
         set(v) = sp.edit().putBoolean("pairHintSeen", v).apply()
+
 
     /** Developer tools unlocked by 7 taps on the version in Settings → About (owner); stays. */
     var devToolsUnlocked: Boolean

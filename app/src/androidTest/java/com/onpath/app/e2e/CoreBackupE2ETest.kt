@@ -65,7 +65,7 @@ class CoreBackupE2ETest : E2EBase() {
         scenario.onActivity { vm(it).stopRecording() }
         var tourId = -1L
         waitUntil("tour finished", 20_000) { scenario.onActivity { tourId = vm(it).finishedTour?.id ?: -1L }; tourId >= 0 }
-        scenario.onActivity { vm(it).finishedTour = null }
+        scenario.onActivity { vm(it).closeSavedTour() }
         val db = TourDb.get(ctx)
         val tour = db.getTour(tourId)!!
         val points = db.loadSegments(tourId).sumOf { it.size }

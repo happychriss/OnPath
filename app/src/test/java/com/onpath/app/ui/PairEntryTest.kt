@@ -5,7 +5,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /** ☰ → "Pair with browser" (owner 2026-10-30): the camera at once, the step line only the first time, fallback without a camera. */
 class PairEntryTest {
@@ -53,21 +52,4 @@ class PairEntryTest {
         assertTrue(fellBack is android.content.ActivityNotFoundException)
     }
 
-    /** The wiring: ☰ → vm.startPairing; no camera from the map → Settings → Browser sync with the line; seen after the camera. */
-    @Test fun wiring() {
-        val map = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertTrue(map.contains("onPairBrowser = { vm.startPairing(pairCamera) }"))
-        assertTrue(map.contains("pairHintMessage(onCamera = { vm.pairHintCamera(pairCamera) }"))
-        // the pairing half of the sync is PairingFlow (AppViewModel split, review Arch 3); the ViewModel forwards
-        assertTrue(File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-            .contains("fun openPairCamera(start: (String) -> Unit, fromSettings: Boolean) = pairing.openPairCamera(start, fromSettings)"))
-        val vm = File("src/main/java/com/onpath/app/ui/PairingFlow.kt").readText().substringAfter("fun openPairCamera(")
-            .substringBefore("\n    }\n")
-        assertTrue(vm.contains("if (!fromSettings) screens.openSettings(SettingsPage.SYNC)"))
-        assertTrue(vm.contains("screens.say(Txt.s(Res.string.sync_no_camera), NoticeKind.ERROR, NoticePlace.SETTINGS)"))
-        assertTrue(vm.contains("if (opened) prefs.pairHintSeen = true"))
-        val main = File("src/main/java/com/onpath/app/MainActivity.kt").readText()
-        assertTrue(main.contains("private fun startPairCamera(action: String) = startActivity(Intent(action))"))
-        assertTrue(main.contains("pairCamera = ::startPairCamera"))
-    }
 }

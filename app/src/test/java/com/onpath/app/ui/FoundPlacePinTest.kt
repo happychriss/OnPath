@@ -42,7 +42,7 @@ class FoundPlacePinTest {
     /** Rule 1: the chip opens the same menu a hold on the pin opens. */
     @Test fun theChipOpensThePinsMenu() {
         val host = overlays.substringAfter("fun MapOverlayHost(").substringBefore("\n}\n")
-        assertTrue(host.contains("PinChip(m.title(), onClick = vm::openPinMenu)"))
+        assertTrue(host.contains("onMore = vm::openPinMenu"))
         val open = body(vm, "fun openPinMenu(")
         assertTrue(open, open.contains("openPoiMenu(m.toPoi())"))
         // the hold on the pin (its head too) opens the POI menu as before
@@ -61,12 +61,23 @@ class FoundPlacePinTest {
         assertTrue(src("ui/SearchFlow.kt").substringAfter("fun pickSearchResult(").substringBefore("\n    }\n").contains("searchMark = p"))
     }
 
-    /** Rule 5: pin hidden in Navigate; the chip only where the plan can be edited. */
-    @Test fun hiddenInNavigateChipOnlyWhenEditable() {
-        assertTrue(src("ui/MapScreen.kt").contains("val m = vm.searchMark?.takeIf { vm.mode == AppMode.PLAN }"))
+    /**
+     * Owner 2026-11-04 (design B): the card under the pin carries the most common action – "+ Hinzufügen" (owner 2026-11-05, #26: neither route nor plan) adds the place
+     * like the menu's add; on an empty plan "Hierhin" goes there from here (without a position the menu opens, it says
+     * why); "⋯ Mehr" opens the pin's menu.
+     */
+    @Test fun theCardsActionAddsThePlace() {
         val host = overlays.substringAfter("fun MapOverlayHost(").substringBefore("\n}\n")
-        val guard = host.indexOf("if (!vm.canEditMap) return")
-        assertTrue(guard >= 0 && guard < host.indexOf("PinChip("))
+        assertTrue(host, host.contains("str(if (empty) Res.string.plan_go_here else Res.string.plan_pin_add)"))
+        assertTrue(host, host.contains("if (!empty) vm.addPoiPoint(m.toPoi()) else if (blocked == null) vm.poiFromMyLocation(m.toPoi()) else vm.openPinMenu()"))
+        for (dir in listOf("values", "values-de")) {
+            val xml = File("../strings/src/commonMain/composeResources/$dir/strings_plan.xml").readText()
+            for (k in listOf("plan_pin_add", "plan_pin_more", "plan_pin_action_desc")) assertTrue("$dir $k", xml.contains("name=\"$k\""))
+        }
+        assertTrue(File("../strings/src/commonMain/composeResources/values-de/strings_plan.xml").readText()
+            .contains("<string name=\"plan_pin_add\">Hinzufügen</string>"))
+        assertTrue(File("../strings/src/commonMain/composeResources/values/strings_plan.xml").readText()
+            .contains("<string name=\"plan_pin_add\">Add</string>"))
     }
 
     @Test fun longNamesEndInAnEllipsis() {

@@ -98,14 +98,6 @@ object RouteRules {
      */
     fun copyName(name: String, taken: Collection<String>): String = com.onpath.app.routing.PlanNames.copyName(name, taken)
 
-    /**
-     * Unsaved changes worth a hint (owner 2026-10-31): while the plan is new or changed since the last save / load
-     * ([unsaved] = [isUnsaved]) the ☰ button shows a small green dot – Save route is its top item ([saveInMenu]). Saved:
-     * no dot (the sheet says "Saved as …"). Save can be used once a route line exists ([RouteMenuState.save]), also
-     * during a tour.
-     */
-    fun saveAtHand(pointCount: Int, unsaved: Boolean): Boolean = unsaved && pointCount >= 2
-
     /** ☰ → "Save route" as the top item (owner 2026-10-31, the sheet has no Save any more): whenever there is a plan. */
     fun saveInMenu(pointCount: Int): Boolean = pointCount >= 2
 
@@ -122,15 +114,18 @@ object RouteRules {
     fun replacesPlan(kind: TourKind, waypointCount: Int): Boolean = kind == TourKind.PLANNED && waypointCount >= 2
 
     /**
-     * What a tap on an item in My routes does first ([AppViewModel.requestOpen]). While [navigating] (a tour) a planned
-     * route is blocked: nothing loads, a box says "End the running tour first, then this route can be loaded." (owner
-     * 2026-10-31: no new route during a tour – too much automation, a hiker would not trust it). Without a tour an unsaved
-     * plan asks "Replace current route?" ([askBeforeLoading]). Tracks open beside the plan, also during a tour.
+     * What a tap on an item in My routes does ([AppViewModel.requestOpen]). While [navigating] (a tour) a planned route is
+     * followed at once ([OpenAsk.FOLLOW_PLAN_DURING_TOUR]) and so is a done tour / track with a line ([hasLine],
+     * [OpenAsk.FOLLOW_DURING_TOUR]) – no question, the recording goes on (owner 2026-11-06 22:05; was "Plan laden? Du bist
+     * gerade unterwegs." with three answers and "Dieser Tour folgen?"). Without a tour tracks open beside the plan and a
+     * plan opens at once ([OpenAsk.REPLACE_PLAN]: the plan on the map goes under Zuletzt).
      */
-    fun openAsk(kind: TourKind, waypointCount: Int, navigating: Boolean, points: List<GeoPoint>, saved: List<GeoPoint>?): OpenAsk =
+    fun openAsk(kind: TourKind, waypointCount: Int, navigating: Boolean, points: List<GeoPoint>, saved: List<GeoPoint>?,
+                hasLine: Boolean = true): OpenAsk =
         when {
-            !replacesPlan(kind, waypointCount) -> OpenAsk.NONE
-            navigating -> OpenAsk.BLOCKED_DURING_TOUR
+            !replacesPlan(kind, waypointCount) ->
+                if (navigating && kind != TourKind.PLANNED && hasLine) OpenAsk.FOLLOW_DURING_TOUR else OpenAsk.NONE
+            navigating -> OpenAsk.FOLLOW_PLAN_DURING_TOUR
             askBeforeLoading(kind, waypointCount, points, saved) -> OpenAsk.REPLACE_PLAN
             else -> OpenAsk.NONE
         }
@@ -175,8 +170,43 @@ object RouteRules {
         }
 }
 
-/** What comes before an item of My routes opens ([RouteRules.openAsk]); NONE = it opens at once. */
-enum class OpenAsk { NONE, REPLACE_PLAN, BLOCKED_DURING_TOUR }
+/** What a tap on an item of My routes does ([RouteRules.openAsk]); NONE = it opens at once. */
+enum class OpenAsk { NONE, REPLACE_PLAN, FOLLOW_PLAN_DURING_TOUR, FOLLOW_DURING_TOUR }
+
+/** "Neuer Plan – deine Aufnahme läuft weiter" on Navigate ([AppViewModel.newPlanNote]); [undo]: "Rückgängig" is offered. */
+data class NewPlanNote(val undo: Boolean, val id: Long)
 
 /** What happens with a plan from a link ([RouteRules.linkOpen]). */
 enum class LinkOpen { AFTER_TOUR, ASK_FIRST, NOW }
+
+/**
+ * The plan at "Los geht's" (owner 2026-11-06: the tour and the plan are two things – the end of a tour never asks about
+ * the plan; pure). A plan never saved is saved at the start; a saved plan changed since is updated in place.
+ */
+object PlanAutoSave {
+    enum class AtStart { NOTHING, SAVE_NEW, SAVE_OVERWRITE }
+
+    /**
+     * "Los geht's" (owner 2026-11-06, like Komoot: what you ride is under Planned): [points] plan points; [unsaved] the plan
+     * differs from what is stored; [changesASavedPlan] it belongs to a saved route; [fromDraft] it was loaded from
+     * "Zuletzt". A plan from Zuletzt is saved (changed or not); a never-saved plan is saved; a saved plan changed since
+     * updates that route in place like ☰ Plan speichern (owner 2026-11-07: no "Name (2)" copies) – its version before
+     * goes under Zuletzt ([com.onpath.app.ui.routes.RoutesState.keepReplaced]); a saved plan as it is: nothing.
+     */
+    fun atStart(points: Int, unsaved: Boolean, changesASavedPlan: Boolean, fromDraft: Boolean = false): AtStart = when {
+        points < 2 -> AtStart.NOTHING
+        fromDraft -> AtStart.SAVE_NEW
+        !unsaved -> AtStart.NOTHING
+        changesASavedPlan -> AtStart.SAVE_OVERWRITE
+        else -> AtStart.SAVE_NEW
+    }
+}
+
+/**
+ * "Zuletzt" in My routes (owner 2026-11-06: "Nicht gespeichert" goes – nothing is lost, nothing asks): a plan worth
+ * keeping ([points] ≥ 2) that leaves the map and is not saved as it is ([unsaved]) is kept as a draft; the newest [MAX].
+ */
+object Drafts {
+    const val MAX = 25
+    fun keeps(points: Int, unsaved: Boolean): Boolean = points >= 2 && unsaved
+}

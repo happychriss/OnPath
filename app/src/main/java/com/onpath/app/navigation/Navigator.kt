@@ -67,6 +67,14 @@ sealed interface NavPrompt {
 
     /** "Guide me" found no way: "No way to the route found – recording continues" · OK (the red note). */
     data class LeadFailed(val id: Int) : NavPrompt
+
+    /**
+     * The route is reached for the first time beside a later part of it, not at its start (owner 2026-11-03: "every tour
+     * starts at point 1 and skips nothing"): "Du stehst mitten auf der Route." · Hier einsteigen / Zu ① führen. No
+     * vibration, no sound; nothing is guided until the user decides. [alongM] = where on the line the user stood.
+     * [searching]: "Zu ① führen" was tapped, the way to point 1 is being computed.
+     */
+    data class MidStart(val id: Int, val alongM: Double, val searching: Boolean = false) : NavPrompt
 }
 
 /**
@@ -74,7 +82,8 @@ sealed interface NavPrompt {
  * not the activity-switch question (review M4: it said "Off the route" and stopped junction cues on the route).
  */
 val NavPrompt.offRoute: Boolean get() =
-    this !is NavPrompt.FarStart && this !is NavPrompt.LeadFailed && (this as? NavPrompt.Question)?.switch == null
+    this !is NavPrompt.FarStart && this !is NavPrompt.LeadFailed && this !is NavPrompt.MidStart &&
+        (this as? NavPrompt.Question)?.switch == null
 
 /** Straight-line direction to the nearest route point ahead (arrow mode). */
 data class RouteHint(val distanceM: Double, val bearingDeg: Double, val target: GeoPoint)
@@ -165,6 +174,10 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private val recent = ArrayDeque<GeoPoint>()
     /** Where the running routing job was asked from. */
     private var jobFrom: GeoPoint? = null
+    /** Where the open question's route was computed from ([take] computes it again after walking on). */
+    private var questionFrom: GeoPoint? = null
+    /** "Take new route" was tapped after walking on: the route from here is being computed and taken ([onResult]). */
+    private var takeAgain: NavPrompt.Question? = null
     /** The open question's way back ([live]) and its cost from where it was computed. */
     private var liveLine: NavLine? = null
     private var liveWindowM = 0.0
@@ -173,6 +186,11 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private var quiet = false
     /** Fixes in a row away from the line while the route was never reached. */
     private var farFixes = 0
+    /**
+     * The mid-route question was asked for this plan (a new plan = a new Navigator). Field bug 2026-11-06 23:26: it is
+     * asked once – after an answer ("Zu ① führen", OK on a failed way there) it never comes back in the middle.
+     */
+    private var midAsked = false
 
     init {
         // new session or restart (R-07): NO_GPS, the first fixes match the whole line (earliest part: round trips);
@@ -227,9 +245,17 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (!session.reached) {
             // owner 2026-10-31: never on the route yet = always from the START – no off-route question, no vibration
             if (!detector.reached) return step + farStart(f, st, farNow)
+            // owner 2026-11-03: every tour starts at point 1 – reached beside a later part of the line is not "reached":
+            // the question "Du stehst mitten auf der Route" waits for the user (Hier einsteigen / Zu ① führen)
+            // hysteresis (field bug 2026-11-06): an open question ends only well before the 150 m line – a fix 10 m on
+            // either side of it never toggles it
+            val midLimit = if (prompt is NavPrompt.MidStart) MID_START_M - MID_START_HYST_M else MID_START_M
+            if (!session.rerouted && detector.progressM > midLimit) return step + midStart()
+            if (prompt is NavPrompt.MidStart) step += clearPrompt() // walked to the start by oneself
             // reached for the first time: saved (a restart keeps it); a far-start question has nothing left to ask.
-            // Bug 02: on the way there ("Guide me") only the plan's own line counts – the lead is not the route.
-            if (!session.rerouted || onOriginal(f)) {
+            // Bug 02: on the way there ("Guide me") only the plan's own line counts – the lead is not the route; and
+            // only at its start (owner 2026-11-03): crossing a later part of it on the way to point 1 skips nothing.
+            if (!session.rerouted || onOriginalStart(f)) {
                 session = session.copy(reached = true)
                 quiet = false; farFixes = 0
                 step += Step(sessionChanged = true)
@@ -282,7 +308,17 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val wasRefresh = refreshing; refreshing = false
         val vib = vibrateOnResult; vibrateOnResult = false
         if (prompt == null) return Step() // back on route meanwhile
-        if (prompt is NavPrompt.FarStart) return when (outcome) {
+        takeAgain?.let { asked ->
+            // "Take new route" after walking on ([take]): the route from here, else the one the user saw
+            if (outcome is Rerouter.Failed && outcome.reason == Rerouter.Reason.CANCELLED) return Step()
+            takeAgain = null
+            if (outcome is Rerouter.Found && outcome.skipStop == null) {
+                return takeLine(outcome.line, outcome.legM, outcome.resumeAlongM, skipStop = null,
+                    turnRound = TurnRound.needed(recent.toList(), outcome.line))
+            }
+            return takeLine(asked.line, asked.legM, asked.resumeAlongM, asked.skipStop, asked.turnRound)
+        }
+        if (prompt is NavPrompt.FarStart || prompt is NavPrompt.MidStart) return when (outcome) {
             // "Guide me": the user asked – taken at once; remembered for a plan edited before the route is reached
             is Rerouter.Found -> takeLine(outcome.line, outcome.legM, outcome.resumeAlongM, skipStop = null, turnRound = false)
                 .also { session = session.copy(lead = true) }
@@ -295,6 +331,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             is Rerouter.Found -> {
                 val q = question(++questionId, outcome)
                 prompt = q
+                questionFrom = jobFrom
                 startLive(q)
                 failures = 0
                 Step(vibrate = vib)
@@ -316,15 +353,36 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val q = prompt as? NavPrompt.Question ?: return Step()
         if (q.id != id) return Step()
         q.switch?.let { sw ->
-            // a new tour line for the new activity: it becomes the original (the old one was for the wrong activity)
-            session = sw.session.copy(version = session.version + 1, reached = true)
+            // a new tour line for the new activity: it becomes the original (the old one was for the wrong activity).
+            // The running session's token stays: the proposal comes without one, and the service writes a session only
+            // over its own token (NavSession.mayOverwrite) – with the proposal's the switch was dropped as an old
+            // re-route and the old line came back (field bug 2026-11-06)
+            session = sw.session.copy(version = session.version + 1, reached = true, token = session.token)
             original = NavLine(session.original)
             leftAtM = 0.0
             detector.setLine(original, 0.0, assumeOnRoute = true)
             prompt = null; toRoute = null; failures = 0; keeps = 0; origHits = 0; refreshes = 0
             return Step(cancelJob = true, lineChanged = true, activityChanged = true)
         }
+        // field tour 221 (owner on foot): the new route was taken 3–9 s after it was computed, 10–40 m on – its first turn
+        // lay behind him, he was on another way. Walked on and not on the new line: the route is computed again from here
+        // (the way on preferred, [Onward]) and taken when found; the line shown is taken when none is found. A question
+        // about a stop stays as it was answered.
+        val f = lastFix
+        if (q.skipStop == null && q.via == null && f != null && walkedOffQuestion(q, f)) {
+            takeAgain = q
+            prompt = NavPrompt.Searching
+            return Step(job = newJob(f, refresh = false, vibrateOnResult = false))
+        }
         return takeLine(q.line, q.legM, q.resumeAlongM, q.skipStop, q.turnRound)
+    }
+
+    /** Since [q] was computed the user walked [TAKE_AGAIN_M] on and is that far beside its line (not following it). */
+    private fun walkedOffQuestion(q: NavPrompt.Question, f: OffRouteDetector.Fix): Boolean {
+        val from = questionFrom ?: return false
+        if (Geo.distance(from, f.point) < TAKE_AGAIN_M) return false
+        val beside = NavLine(q.line).match(f.point)?.distanceM ?: return false
+        return beside >= TAKE_AGAIN_M
     }
 
     /** "Yes" to "Off route – re-plan?" with a stop in question [id]: the new route via that stop. */
@@ -350,11 +408,42 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
 
     /** "Guide me" for far-start question [id]: here → the start → all points → the destination, taken when found. */
     fun leadThere(id: Int): Step {
-        val pr = prompt as? NavPrompt.FarStart ?: return Step()
-        if (pr.id != id || pr.searching) return Step()
         val f = lastFix ?: return Step()
-        prompt = pr.copy(searching = true)
+        when (val pr = prompt) {
+            is NavPrompt.FarStart -> { if (pr.id != id || pr.searching) return Step(); prompt = pr.copy(searching = true) }
+            // "Zu ① führen" (owner 2026-11-03): the same way there as "Guide me" – to point 1, then the whole plan
+            is NavPrompt.MidStart -> { if (pr.id != id || pr.searching) return Step(); prompt = pr.copy(searching = true) }
+            else -> return Step()
+        }
         return Step(job = leadJob(f))
+    }
+
+    /**
+     * "Hier einsteigen" for mid-route question [id] (owner 2026-11-03): the user chose to start here – the route counts as
+     * reached where they stand; the stops before it count as passed (grey on the map, nothing deleted), the rest – a
+     * round trip's way back to point 1 included – stays ahead.
+     */
+    fun joinHere(id: Int): Step {
+        val pr = prompt as? NavPrompt.MidStart ?: return Step()
+        if (pr.id != id) return Step()
+        val along = detector.progressM
+        val before = session.stops.indices.filter { i -> session.stops[i].alongM < along }.toSet()
+        session = session.copy(reached = true, visited = session.visited + before)
+        quiet = false; farFixes = 0
+        return clearPrompt() + Step(sessionChanged = true)
+    }
+
+    /** The mid-route question (shown once; it stays until answered or the user walks back to the start). */
+    private fun midStart(): Step {
+        if (prompt is NavPrompt.MidStart) return Step()
+        if (prompt != null && prompt !is NavPrompt.FarStart && prompt !is NavPrompt.LeadFailed) return Step()
+        // asked once (field bug 2026-11-06 23:26: four times "Du stehst mitten auf der Route") – answered, the user walks
+        // on: recording only, reached at point 1 as usual
+        if (midAsked) return Step()
+        midAsked = true
+        prompt = NavPrompt.MidStart(++questionId, detector.progressM)
+        toRoute = null
+        return Step()
     }
 
     /**
@@ -370,7 +459,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (onOriginal(f)) return Step()
         val start = original.points.first()
         val d = Geo.distance(f.point, start)
-        val b = TurnDetector.bearing(f.point, start)
+        val b = Geo.bearing(f.point, start)
         prompt = NavPrompt.FarStart(++questionId, d, b, searching = true)
         toRoute = RouteHint(d, b, start)
         return Step(job = leadJob(f))
@@ -385,6 +474,13 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         return Job(jid, Rerouter.Request(f.point, original, 0.0, session.stops, session.visited, session.activity,
             session.sac, perRequestMs = LEAD_REQUEST_MS, totalMs = LEAD_TOTAL_MS, toStart = true))
     }
+
+    /**
+     * [f] is beside the start of the plan's own line (its first [MID_START_M]) – the way there ("Guide me") ends at
+     * point 1 (owner 2026-11-03), not where it happens to cross a later part of the route.
+     */
+    private fun onOriginalStart(f: OffRouteDetector.Fix): Boolean =
+        original.match(f.point, 0.0, minOf(MID_START_M, original.lengthM))?.let { it.distanceM <= detector.offDistance(f.accuracyM) } == true
 
     /** [f] is beside the plan's own line (within the off distance) – not the lead's way there. */
     private fun onOriginal(f: OffRouteDetector.Fix): Boolean =
@@ -412,7 +508,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         farFixes = if (away) farFixes + 1 else 0
         val start = original.points.first()
         val d = Geo.distance(f.point, start)
-        val b = TurnDetector.bearing(f.point, start)
+        val b = Geo.bearing(f.point, start)
         when (val pr = prompt) {
             is NavPrompt.FarStart -> {
                 toRoute = RouteHint(d, b, start)
@@ -429,7 +525,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private fun showFarStart(p: GeoPoint) {
         val start = original.points.first()
         val d = Geo.distance(p, start)
-        val b = TurnDetector.bearing(p, start)
+        val b = Geo.bearing(p, start)
         prompt = NavPrompt.FarStart(++questionId, d, b)
         toRoute = RouteHint(d, b, start)
     }
@@ -442,7 +538,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (prompt == NavPrompt.Searching) {
             // "Keep original" before the way back was found (the question comes at once now): the search stops
             prompt = NavPrompt.Kept
-            keeps++; refreshes = 0
+            keeps++; refreshes = 0; takeAgain = null
             lastFix?.let { markAsked(it); toRoute = hint(it.point) }
             return Step(cancelJob = true)
         }
@@ -505,7 +601,8 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val id = ++jobId
         runningJob = id; refreshing = refresh; this.vibrateOnResult = vibrateOnResult
         jobFrom = f.point
-        return Job(id, Rerouter.Request(f.point, original, leftAtM, session.stops, session.visited, session.activity, session.sac))
+        return Job(id, Rerouter.Request(f.point, original, leftAtM, session.stops, session.visited, session.activity, session.sac,
+            recent = recent.toList()))
     }
 
     /** A new question: remember its way back and the cost from where it was asked; then catch up with the rider. */
@@ -550,6 +647,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
     private fun clearPrompt(): Step {
         val had = prompt != null || runningJob >= 0
         prompt = null; toRoute = null; failures = 0; keeps = 0; runningJob = -1; refreshing = false; refreshes = 0
+        takeAgain = null
         return Step(cancelJob = had)
     }
 
@@ -559,7 +657,11 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (st.state == OffRouteDetector.State.ON_ROUTE && detector.progressM >= session.spliceAtM + REST_REACHED_M) {
             return session.resumeAlongM + (detector.progressM - session.spliceAtM)
         }
-        // walked (back) onto the original near where it was left
+        // walked (back) onto the original near where it was left – only after the route was reached: on the way to ①
+        // ("Guide me" / "Zu ① führen") the user may stand beside a later part of the plan's own line (the middle of a
+        // round trip) – that is not "back on the original" (field bug 2026-11-06 23:26: the way to ① was dropped after
+        // three fixes, the mid-route question came again, four times); the way there ends at point 1 ([onOriginalStart])
+        if (!session.reached) { origHits = 0; return null }
         val m = original.match(f.point, leftAtM - OffRouteDetector.BACK_M, leftAtM + OffRouteDetector.AHEAD_M, preferAlongM = leftAtM)
         if (m != null && m.distanceM <= detector.offDistance(f.accuracyM) / 2) {
             if (++origHits >= OffRouteDetector.REJOIN_FIXES) return m.alongM
@@ -589,6 +691,8 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         var v: MutableSet<Int>? = null
         for (i in s.stops.indices) {
             if (i in s.visited) continue
+            // owner 2026-11-03 ("every tour starts at point 1 and skips nothing"): a stop counts only in plan order
+            if (!inOrder(s, i, v ?: s.visited)) continue
             val d = Geo.distance(p, s.stops[i].point)
             val closest = stopClosest[s.stops[i].point]
             if (d <= radius) stopClosest[s.stops[i].point] = minOf(closest ?: d, d)
@@ -599,6 +703,19 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val nv = v ?: return Step()
         session = s.copy(visited = nv)
         return Step(sessionChanged = true)
+    }
+
+    /**
+     * Stop [i] may count as reached now (owner 2026-11-03): before the route is reached only point 1 (a lead passing a
+     * later point – or a round trip's closing point at the start – reaches nothing); after it, a later stop only when
+     * every stop before it is reached / left out, or the progress along the planned line got there (a stop passed
+     * 40–50 m beside the way stays behind, not ahead). A round trip's way back to point 1 is never reached at the start.
+     */
+    private fun inOrder(s: NavSession, i: Int, visited: Set<Int>): Boolean {
+        if (i == 0) return true
+        if (!s.reached) return false
+        if ((0 until i).all { it in visited || it in s.skipped }) return true
+        return !s.rerouted && detector.progressM >= s.stops[i].alongM - NavSession.visitedM(s.activity)
     }
 
     /** Nearest point of the original ahead of where the user left it (never back to a passed part). */
@@ -612,7 +729,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             active.match(p, detector.leftAtM, detector.leftAtM + HINT_AHEAD_M)
         else original.match(p, leftAtM, leftAtM + HINT_AHEAD_M)
         m ?: return null
-        return RouteHint(m.distanceM, TurnDetector.bearing(p, m.point), m.point)
+        return RouteHint(m.distanceM, Geo.bearing(p, m.point), m.point)
     }
 
     companion object {
@@ -634,11 +751,23 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         /** After "Keep original": ask again only after moving [RETRY_MOVE_M] and 2, 4, 8 min. */
         const val KEEP_WAIT_MS = 120_000L
         const val KEEP_WAIT_MAX_MS = 480_000L
+        /**
+         * "Take new route" this far from where the route was computed: computed again from here and taken ([take]; field
+         * tour 221 – taken 10–40 m on, its first turn behind).
+         */
+        const val TAKE_AGAIN_M = 10.0
         /** On a new route: this far into the untouched rest = back on the original. */
         const val REST_REACHED_M = 30.0
         const val HINT_AHEAD_M = 3_000.0
         /** An open question's numbers follow the rider in steps of this much ([live]). */
         const val LIVE_STEP_M = 20.0
+        /**
+         * The route reached for the first time further than this along it = beside a later part, not at its start: the
+         * mid-route question (owner 2026-11-03, [NavPrompt.MidStart]). A street or two from point 1's snapped spot.
+         */
+        const val MID_START_M = 150.0
+        /** An open mid-route question ends by walking back only closer than [MID_START_M] − this (no toggling at the line). */
+        const val MID_START_HYST_M = 50.0
         /**
          * "Guide me" may route far (30 km to the start and the whole plan): the user asked and waits with a spinner,
          * so more time than a way back ([Rerouter.PER_REQUEST_MS] / [Rerouter.TOTAL_MS]).

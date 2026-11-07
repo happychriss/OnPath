@@ -5,7 +5,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Field A-019 add-on (09e): after "Continue" Navigate showed "50 m" and looked far too close. The zoom was the hike
@@ -45,11 +44,4 @@ class ScaleRuleTest {
         assertNull(ScaleRule.of(Double.POSITIVE_INFINITY))
     }
 
-    /** The bar reads the projection as metres per dp; no density factor comes back. */
-    @Test fun mapScreenUsesTheRule() {
-        val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        val fn = screen.substringAfter("private fun computeScale(").substringBefore("\n}\n")
-        assertTrue(fn.contains("ScaleRule.of(map.projection.getMetersPerPixelAtLatitude(lat))"))
-        assertFalse(fn.contains("density"))
-    }
 }

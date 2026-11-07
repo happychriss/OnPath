@@ -2,8 +2,10 @@ package com.onpath.app.data
 
 import com.onpath.app.cells.CellId
 import com.onpath.app.cells.NetworkStatus
+import com.onpath.app.routing.Activity
 import com.onpath.app.routing.BRouterEngine
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.Rd5Parts
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -39,7 +41,21 @@ class RoutingDataAutoTest {
 
     @Test fun invalidPointsAreSkipped() {
         assertTrue(RoutingTiles.forPoints(listOf(GeoPoint(Double.NaN, 11.0))).isEmpty())
-        assertTrue(RoutingTiles.forLine(listOf(GeoPoint(Double.NaN, 11.0))).isEmpty())
+        assertTrue(RoutingTiles.forLine(listOf(GeoPoint(Double.NaN, 11.0)), null as Activity?).isEmpty())
+    }
+
+    /**
+     * The corridor per activity (owner 2026-11-07, F-OFF-02): a route ~17 km south of the lat 47 part border needs the
+     * part beyond it by bike (20 km), not on foot (10 km); an unknown activity gets the bike's corridor (robust first).
+     */
+    @Test fun corridorPartsFollowTheActivity() {
+        val line = listOf(GeoPoint(46.85, 11.45), GeoPoint(46.85, 11.55))
+        val north = "E10_N45.rd5:E11_N47"
+        assertEquals(listOf("E10_N45.rd5:E11_N46"), RoutingTiles.forLine(line, Activity.HIKE))
+        for (a in listOf(Activity.BIKE_TOURING, Activity.BIKE_TREKKING, Activity.EBIKE, Activity.MTB, Activity.EMTB, null))
+            assertTrue("$a", north in RoutingTiles.forLine(line, a))
+        // the web planner's call without an activity (Rd5Parts.forCorridor's default) gets the largest corridor too
+        assertTrue(Rd5Parts.forCorridor(line).any { it.key == north })
     }
 
     @Test fun cellsNeedThePartsUnderThem() {
@@ -229,7 +245,7 @@ class RoutingDataAutoTest {
         for (online in listOf(false, true)) {
             val l = loader(Net(online = online), calls = calls)
             val keys = RoutingTiles.forCells(listOf(CellId.at(46.67, 11.16)!!, CellId(543, 360))) +
-                RoutingTiles.forLine(listOf(GeoPoint(46.6956, 11.1094), GeoPoint(46.7061, 11.1113)))
+                RoutingTiles.forLine(listOf(GeoPoint(46.6956, 11.1094), GeoPoint(46.7061, 11.1113)), Activity.HIKE)
             assertTrue(l.ensure(keys).isEmpty())
             assertTrue(l.ensure(keys, corridor = true).isEmpty())
             assertNull(l.status)
