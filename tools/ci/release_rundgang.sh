@@ -83,6 +83,28 @@ for _ in $(seq 1 180); do [ "$("${A[@]}" shell getprop sys.boot_completed 2>/dev
 "${A[@]}" shell settings put global transition_animation_scale 0 >/dev/null
 "${A[@]}" shell settings put global animator_duration_scale 0 >/dev/null
 
+# ---- network on: flows 8 / 9 / 13 need it (online search, browser pairing). The Rundgang AVD once booted in airplane
+# mode and flow 9 (search) went red (v0.17.3, 2026-11-07). API 30+: `cmd connectivity airplane-mode`; older images /
+# a refused command: the setting + its broadcast (the broadcast may be refused without root – the setting still counts).
+if [ "$("${A[@]}" shell settings get global airplane_mode_on 2>/dev/null | tr -d '\r')" = 1 ]; then
+  if "${A[@]}" shell cmd connectivity airplane-mode disable >/dev/null 2>&1; then
+    echo "Network: airplane mode was on – switched off (cmd connectivity)"
+  else
+    "${A[@]}" shell settings put global airplane_mode_on 0 >/dev/null 2>&1 || true # expected: checked just below
+    "${A[@]}" shell am broadcast -a android.intent.action.AIRPLANE_MODE --ez state false >/dev/null 2>&1 || true # expected: protected broadcast without root; the setting is set
+    echo "Network: airplane mode was on – switched off (settings fallback)"
+  fi
+fi
+"${A[@]}" shell svc wifi enable >/dev/null 2>&1 || echo "Network: Wi-Fi could not be switched on (svc wifi)"
+"${A[@]}" shell svc data enable >/dev/null 2>&1 || echo "Network: mobile data could not be switched on (svc data)"
+NET="no"
+for _ in $(seq 1 15); do
+  "${A[@]}" shell ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1 && { NET="yes"; break; }
+  sleep 2
+done
+echo "Network: airplane mode $("${A[@]}" shell settings get global airplane_mode_on 2>/dev/null | tr -d '\r'), Wi-Fi $("${A[@]}" shell settings get global wifi_on 2>/dev/null | tr -d '\r'), data $("${A[@]}" shell settings get global mobile_data 2>/dev/null | tr -d '\r'), internet reachable: $NET" | tee "$OUT/network.txt"
+[ "$NET" = yes ] || echo "WARNING: no internet on $SERIAL – the online flows (8, 9, 13) will likely fail"
+
 # ---- APKs + routing data ----
 "${A[@]}" install -r -t "$ROOT/app/build/outputs/apk/debug/app-debug.apk" >/dev/null
 "${A[@]}" install -r -t "$ROOT/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk" >/dev/null

@@ -364,6 +364,9 @@ class ReleaseRundgang : E2EBase() {
         device.executeShellCommand("input text sissi")
         Thread.sleep(1_500)
         device.executeShellCommand("input text %smer")
+        // the list of "sissi" stays until "sissi mer" is searched (debounce + offline index): read the list of the full
+        // text, not the one before it (donald 2026-11-07: captured the 13 "sissi" rows, then failed on the right list)
+        Thread.sleep(1_500)
         waitUntil("the exact hit on top", 15_000) { top()?.contains("Sissi") == true }
         val first = results()
         shot("1-results")
