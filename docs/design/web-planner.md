@@ -437,7 +437,9 @@ compiled from `app/` as it is.
 | GPX export with sport type | `gpx/GpxWriter`, `SportType` | same | shared |
 | Search: index, ranking, Photon, add preview; route name proposal | `search/*`, `search/RouteNamer` | same | shared; Photon URL + debounce mirrored (`search.ts`) |
 | POI kinds and filters | `poi/PoiKinds`, `poi/PoiFilter` | same | shared; visibility rules mirrored (`mapcontent.ts`, `LayerSettings`) |
-| Routing data per corridor (1° parts) | `routing/Rd5Parts` | same | shared; download loop in `worker.ts` (app: `RoutingDataLoader`, `Rd5PartStore`) |
+| Routing data per corridor (1° parts) | `routing/Rd5Parts`, `routing/OfflineCorridor` | same | shared; the plan's activity picks the corridor (10 km on foot, 20 km by bike, 2026-11-07; `partsNeeded(points, activity)`, a prefetch without a plan the largest); download loop in `worker.ts` (app: `RoutingDataLoader`, `Rd5PartStore`) |
+| A held place's add entries („Als Zwischenstopp“ / „Als neues Ziel“, „⋯ Mehr“) | `ui/PlaceAddMenu` | same | shared; engine `placeMenu` (no tour: the route ahead = the plan), `poiMenu` in `main.ts` |
+| Locate off the map: the distance under the icon, a tap frames plan + me | `ui/LocateDistance` | same | shared; engine `locateLabel` on `moveend` / a new fix (`updateLocateLabel` in `main.ts`) |
 | Plan sync | `sync/*` | same | shared |
 | World overview below z10 | `map/Overview.merge` | same (§16) | shared, run at build time; cover + URLs in `overview.ts` |
 | Optional map sources stripped | `map/OptionalSources` | mirrored | `cells.ts` |

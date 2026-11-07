@@ -698,7 +698,7 @@ function addPoint(at: maplibregl.LngLat) {
   });
 }
 
-const position = new Position(map, () => { renderFabs(); locateNotice(); });
+const position = new Position(map, () => { renderFabs(); locateNotice(); void updateLocateLabel(); });
 /** Locate was clicked and its answer is not shown yet: the strip says why the map waits. */
 let locating = false;
 let locateTimer = 0;
@@ -779,14 +779,52 @@ async function poiMenu(f: MapGeoJSONFeature) {
   const info = JSON.parse(await engine.call('poiMenu', String(pr.kind ?? ''), String(pr.name ?? ''), pr.ele != null ? String(pr.ele) : '', lat, lon));
   if (!info) return;
   const hit = { title: info.title, name: pr.name ? String(pr.name) : null, lat, lon } as Hit;
-  const items: MenuItem[] = state.points.length === 0
-    ? [{ icon: 'tripOrigin', label: t('plan_start_here'), act: () => addPlace(hit, 'START') },
-      await goHereItem(() => fromMe([Number(lat.toFixed(6)), Number(lon.toFixed(6))], { pinned: true, name: info.title }))]
-    : [{ icon: 'addLocation', label: (await engine.placePreview(state.points, lat, lon)).label ?? t('search_card_set_destination'),
-      act: () => addPlace(hit, 'SMART') }];
-  items.push({ icon: 'map', label: t('plan_open_google_maps'), act: () => window.open(info.google, '_blank', 'noopener') });
-  openMenu(new maplibregl.LngLat(lon, lat), items,
-    `<span class="txt"><b>${escapeHtml(info.title)}</b><span class="small" style="color:${info.color}">${escapeHtml(info.sub)}</span></span>`);
+  // the add entries – the app's PlaceAddMenu (owner 2026-11-07): with 2+ points „Als Zwischenstopp“ and/or „Als neues
+  // Ziel“ by how clear the case is; a clear case's alternative waits behind „⋯ Mehr“
+  const pm = JSON.parse(await engine.call('placeMenu', enc(state.points), lat, lon, state.roundTrip)) as { main: string[]; more: string[]; stop: number };
+  const p: LatLon = [Number(lat.toFixed(6)), Number(lon.toFixed(6))];
+  const row = async (item: string): Promise<MenuItem> => {
+    if (item === 'START_HERE') return { icon: 'tripOrigin', label: t('plan_start_here'), act: () => addPlace(hit, 'START') };
+    if (item === 'GO_HERE') return goHereItem(() => fromMe(p, { pinned: true, name: info.title }));
+    if (item === 'ADD_STOP') return { icon: 'addLocation', label: t('plan_add_as_stop'), act: () => addPlaceAt(hit, pm.stop) };
+    if (item === 'NEW_DESTINATION') return { icon: 'flag', label: t('plan_make_destination'), act: () => placeAsNewDestination(hit) };
+    return { icon: 'addLocation', label: (await engine.placePreview(state.points, lat, lon)).label ?? t('search_card_set_destination'),
+      act: () => addPlace(hit, 'SMART') };
+  };
+  const at = new maplibregl.LngLat(lon, lat);
+  const head = `<span class="txt"><b>${escapeHtml(info.title)}</b><span class="small" style="color:${info.color}">${escapeHtml(info.sub)}</span></span>`;
+  const google: MenuItem = { icon: 'map', label: t('plan_open_google_maps'), act: () => window.open(info.google, '_blank', 'noopener') };
+  const main = await Promise.all(pm.main.map(row)), more = await Promise.all(pm.more.map(row));
+  const items: MenuItem[] = [...main, google];
+  // the alternative a clear case hides is never lost (the app: "⋯ Mehr" opens it in the same menu)
+  if (more.length) items.push({ icon: 'more', label: t('common_more'), act: () => openMenu(at, [...main, google, ...more], head) });
+  openMenu(at, items, head);
+}
+
+/** Place menu → „Als Zwischenstopp“: at [index] (the engine's stopOnly place – never behind the goal), pinned with its name. */
+async function addPlaceAt(h: Hit, index: number) {
+  const p: LatLon = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
+  const asked = state.points;
+  await queueEdit(async () => {
+    // the points changed while waiting (an edit before this one): where the stop goes, worked out again
+    const stop = state.points === asked ? index
+      : (JSON.parse(await engine.call('placeMenu', enc(state.points), p[0], p[1], state.roundTrip)) as { stop: number }).stop;
+    const pts = state.points.slice(), meta = state.meta.slice();
+    const at = Math.max(0, Math.min(stop, pts.length));
+    pts.splice(at, 0, p); meta.splice(at, 0, { pinned: true, name: h.title });
+    return { planned: commit(pts, meta) };
+  });
+}
+
+/** Place menu → „Als neues Ziel“: the route ends there, the old goal is dropped (one Undo brings it back). */
+async function placeAsNewDestination(h: Hit) {
+  const p: LatLon = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
+  await queueEdit(async () => {
+    const pts = state.points.slice(), meta = state.meta.slice();
+    if (!pts.length) { pts.push(p); meta.push({ pinned: true, name: h.title }); }
+    else { pts[pts.length - 1] = p; meta[meta.length - 1] = { pinned: true, name: h.title }; }
+    return { planned: commit(pts, meta) };
+  });
 }
 
 /** "Open in Google Maps": the app's link (PoiLinks.googleMaps), in a new tab – Google content is never drawn here. */
@@ -1405,6 +1443,12 @@ function renderFabs() {
   const lw = position.status === 'OFF' ? t('web_locate_off_title') : position.status === 'NO_PERMISSION'
     ? t('web_locate_denied_title') : t('web_locate_title');
   l.title = lw; l.setAttribute('aria-label', lw);
+  const far = l.dataset.far ?? ''; // off the map: the distance under the icon (updateLocateLabel)
+  l.classList.toggle('far', !!far);
+  if (far) {
+    const d = document.createElement('span'); d.className = 'locdist'; d.textContent = far; l.append(d);
+    const what = t('plan_locate_far_cd', far); l.title = what; l.setAttribute('aria-label', what);
+  }
   const f = $<HTMLButtonElement>('fitRoute');
   f.disabled = state.points.length < 2;
   f.title = f.disabled ? t('web_share_needs_two') : t('web_fit_route');
@@ -1414,7 +1458,30 @@ map.on('rotate', () => renderFabs());
 $('compass').onclick = () => map.easeTo(terrain3d.on ? { bearing: 0 } : { bearing: 0, pitch: 0 }, { keepFollow: true });
 $('undo').onclick = () => step('undo');
 $('redo').onclick = () => step('redo');
-$('locate').onclick = () => { locating = true; position.locate(); locateNotice(); };
+// Locate while my position is off the map (the app's LocateDistance, owner 2026-11-07): the distance under the icon
+// („790 km“) and a tap frames the plan and me together; in view / without a position the tap does what it did
+async function updateLocateLabel() {
+  const f = position.fix, v = map.getBounds();
+  const label = await engine.call('locateLabel', !!f, f?.[0] ?? 0, f?.[1] ?? 0, v.getSouth(), v.getWest(), v.getNorth(), v.getEast()).catch(() => '');
+  const l = $('locate');
+  if (label === (l.dataset.far ?? '')) return;
+  l.dataset.far = label; // the label lives on the button: renderFabs draws it again after every redraw
+  renderFabs();
+}
+map.on('moveend', () => { void updateLocateLabel(); });
+$('locate').onclick = () => {
+  const f = position.fix;
+  if ($('locate').dataset.far && f) {
+    // the plan (or a shown track) and me together, in the free map room; following stops
+    const b = routeBounds() ?? new maplibregl.LngLatBounds();
+    b.extend([f[1], f[0]]);
+    const p = map.getPadding();
+    if (p.top || p.bottom || p.left || p.right) map.setPadding(NO_PADDING);
+    map.fitBounds(b, { padding: fitPadding(), maxZoom: 16 });
+    return;
+  }
+  locating = true; position.locate(); locateNotice();
+};
 /** "Show whole route" (owner 2026-10-30): the planned line, every point and a shown GPX track in the free map room
  *  (fitPadding: clear of the sheet in any step, the top bar, the place card and the controls). Not keepFollow – it
  *  ends position following, like every camera move made for the user (CLAUDE.md "Map camera"). */
