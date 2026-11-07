@@ -845,6 +845,12 @@
     "priority": 3,
     "confidence": "sicher"
   },
+  "plan_locate_far_cd": {
+    "area": "Map (Plan)",
+    "context": "Accessibility of the locate button while my position is off the map (owner 2026-11-07). %1$s = distance (\"790 km\")",
+    "priority": 3,
+    "confidence": "sicher"
+  },
   "plan_no_location_permission": {
     "area": "Map (Plan)",
     "context": "Why \"Go here\" is greyed out in the first-point menu",

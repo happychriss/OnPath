@@ -2553,6 +2553,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * Locate while I am off the map in Plan ([LocateDistance], owner 2026-11-07): the plan (or the shown track) and my
+     * position together, in the room [FitPaddingRule] leaves. Following stops first (CLAUDE.md "Map camera"); the
+     * orientation stays the user's – north up when that is set, else the current bearing.
+     */
+    fun showPlanAndMe() {
+        val me = tracker.location.value?.let { GeoPoint(it.latitude, it.longitude) } ?: run { locate(); return }
+        val pts = shown?.let { t -> WholeRoute.bounds(t.segments, t.waypoints.map { GeoPoint(it.lat, it.lon) }, me) }
+            ?: WholeRoute.bounds(listOfNotNull(route?.points), waypoints.toList(), me)
+        followMe = false
+        freeLookAt = null
+        events += UiEvent.Fit(pts, northUp = !headingUp)
+        Problems.trace("map", "Locate off the map: plan and position shown together (${pts.size} points)")
+    }
+
+    /**
      * The whole plan in front at a [PlanCamera.Moment] (owner 2026-11-06): once the sheet has settled, the fit of "Show
      * whole route" over the route line and the points (one point: centred) – not when a finger touched the map meanwhile,
      * Plan was left or a track is shown. Following stops first (CLAUDE.md "Map camera").

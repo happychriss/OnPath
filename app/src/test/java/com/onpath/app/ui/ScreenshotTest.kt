@@ -231,6 +231,14 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi(), PlanCallbacks()) }
     }
 
+    /** Plan far away, my position off the map (owner 2026-11-07, variant 3): the distance under the locate icon. */
+    fun planLocateFar() = paparazzi.snapshot {
+        Frame(controls = {
+            MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false, onLocate = {},
+                onFitRoute = {}, onUndo = {}, plan = true, locateLabel = "790 km")
+        }) { PlanPanel(planUi(), PlanCallbacks()) }
+    }
+
     /** A tap on the open map (owner 2026-11-03): "Hold to set a point here." in the summary step the sheet opens at. */
     fun planTapHoldHint() = paparazzi.snapshot {
         Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(tapHint = true), PlanCallbacks()) }
