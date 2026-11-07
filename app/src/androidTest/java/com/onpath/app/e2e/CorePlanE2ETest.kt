@@ -91,10 +91,10 @@ class CorePlanE2ETest : E2EBase() {
         onMap { m -> centre = m.cameraPosition.target }
         val near = com.onpath.app.search.Place("e2e:near", "Near place", "place", centre!!.latitude, centre!!.longitude, sub = "village")
         scenario.onActivity { vm(it).searchMark = near }
-        waitUntil("pin drawn") { pinsDrawn() == 1 }
+        waitUntil("pin drawn") { pinsDrawn() >= 1 }
         scenario.onActivity { vm(it).reloadMapStyleForTest() }
         waitForMap(reloaded = true)
-        waitUntil("pin drawn again after a style reload") { pinsDrawn() == 1 }
+        waitUntil("pin drawn again after a style reload") { pinsDrawn() >= 1 }
         var mark: com.onpath.app.search.Place? = null
         scenario.onActivity { mark = vm(it).searchMark }
         assertTrue("the pin stays after a style reload", mark == near)
@@ -111,14 +111,21 @@ class CorePlanE2ETest : E2EBase() {
         assertTrue("the far place is a pin again, not forgotten (mark $mark)", mark == far)
     }
 
-    /** Features in the found place's map source (the pin). */
+    /**
+     * The found place's pin on the map: features of its layer drawn anywhere on the screen, else in its source (a GeoJSON
+     * point can come once per tile it touches – so "at least one").
+     */
     private fun pinsDrawn(): Int {
         var n = -1
+        val (w, h) = mapSize()
         onMap { m ->
             n = try {
-                m.style?.getSourceAs<org.maplibre.android.style.sources.GeoJsonSource>(com.onpath.app.map.MapController.SRC_MARK)
-                    ?.querySourceFeatures(null)?.size ?: 0
-            } catch (e: Exception) { 0 } // expected: the style is being replaced – asked again
+                val drawn = m.queryRenderedFeatures(android.graphics.RectF(0f, 0f, w, h), com.onpath.app.map.MapController.LAYER_MARK).size
+                drawn.takeIf { it > 0 } ?: (m.style?.getSourceAs<org.maplibre.android.style.sources.GeoJsonSource>(
+                    com.onpath.app.map.MapController.SRC_MARK)?.querySourceFeatures(null)?.size ?: 0)
+            } catch (e: Exception) {
+                android.util.Log.i("OnPathE2E", "pin not readable yet: $e"); 0 // expected: the style is being replaced – asked again
+            }
         }
         return n
     }
