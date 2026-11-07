@@ -160,9 +160,9 @@ fun SettingsScreen(
     problemsOpen: Boolean = false,
     /**
      * Developer tools shown in Diagnostics (owner): hidden until the version line in About is tapped 7 times
-     * (remembered; also in debug builds – testers get those).
+     * (remembered; also in debug builds – testers get those). Hidden unless the caller says so.
      */
-    devTools: Boolean = true,
+    devTools: Boolean = false,
     onUnlockDevTools: () -> Unit = {},
     /** Last visit to Diagnostics (ms): a serious problem after it makes the list line red (owner). */
     diagnosticsSeenMs: Long = 0L,
@@ -882,7 +882,7 @@ val PRIVACY_FLOWS: List<PrivacyFlow> get() = listOf(
 
 /** About: version, licence and the full credits (the map's "© OpenStreetMap" opens this page). */
 @Composable
-private fun AboutSection(version: String, devTools: Boolean = true, onUnlockDevTools: () -> Unit = {}) {
+private fun AboutSection(version: String, devTools: Boolean = false, onUnlockDevTools: () -> Unit = {}) {
     var taps by remember { mutableStateOf(0) }
     Section(SettingsPage.ABOUT.title) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
