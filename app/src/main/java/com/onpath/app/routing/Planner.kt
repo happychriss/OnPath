@@ -88,11 +88,16 @@ class Planner(
     var cachedLegs = 0
         private set
 
+    /** Of [cachedLegs], the legs read from the phone's leg store (a saved route after a restart – no router run). */
+    var storedLegs = 0
+        private set
+
     /** "2 pts 1.2 s ok; 3 pts 0.4 s ok (2 legs from the cache)" – short, for the event log. */
     fun describeTries(): String = tries.joinToString("; ") { t ->
         "${t.points} pts ${String.format(java.util.Locale.ROOT, "%.1f", t.ms / 1000.0)} s ${t.outcome}" +
             if (t.lockWaitMs > 0) " (waited ${t.lockWaitMs} ms for the router)" else ""
-    } + if (cachedLegs > 0) "${if (tries.isEmpty()) "" else "; "}$cachedLegs legs from the cache" else ""
+    } + if (cachedLegs > 0) "${if (tries.isEmpty()) "" else "; "}$cachedLegs legs from the cache" +
+        (if (storedLegs > 0) " ($storedLegs stored)" else "") else ""
 
     /** [limitMs] = this request's own time limit (the short-trip retry, [retryShortDetour]); null = the engine's usual one. */
     private fun route(pts: List<GeoPoint>, activity: Activity, sac: Int, limitMs: Long? = null): RouteResult {
@@ -127,8 +132,10 @@ class Planner(
         }
         val n = waypoints.size - 1
         val results = arrayOfNulls<RouteResult>(n)
-        for (i in 0 until n) results[i] = legs?.get(waypoints[i], waypoints[i + 1], activity, sac)
+        var stored = 0
+        for (i in 0 until n) results[i] = legs?.lookup(waypoints[i], waypoints[i + 1], activity, sac)?.also { if (it.stored) stored++ }?.leg
         cachedLegs = results.count { it != null }
+        storedLegs = stored
         val total = n - cachedLegs
         var done = 0
         if (total > 0) progress?.invoke(0, total)

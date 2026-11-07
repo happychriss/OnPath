@@ -622,7 +622,7 @@ kbd { display: inline-block; min-width: 1.4em; padding: 1px 6px; border: 1px sol
 .bpplot .profplot > svg { width: 100%; height: 150px; display: block; }
 .tool.three { font-weight: 700; font-size: 14px; letter-spacing: .02em; color: var(--fg); }
 .tool.three.on { background: var(--chip); color: var(--route); }
-.threednote { position: absolute; z-index: 2; right: 12px; top: 76px; padding: 6px 14px; border-radius: 16px;
+.threednote { position: absolute; z-index: 2; right: 12px; top: 76px; padding: 6px 14px; border-radius: var(--r-card);
   background: rgba(250,250,246,.94); box-shadow: 0 1px 6px var(--shadow); font-size: 13px; color: var(--muted); white-space: nowrap; pointer-events: none; }
 body.three-d .pin { cursor: default; }
 /* the fly button and its controls right beside the toolbar's 3D (owner 2026-11-07: where the fly button is) */

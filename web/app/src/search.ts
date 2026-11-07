@@ -35,6 +35,8 @@ export interface SearchHost {
 /** What the page can do with the place card: close it (a map click elsewhere, Escape) and ask whether it is open. */
 /** [close] closes the card only – the found place's pin stays (app 2026-11-02); [removePin] takes the pin away too. */
 export interface PlaceCard { close(): void; isOpen(): boolean; removePin(): void;
+  /** The pin of [hit] again, without its card (the app's TakenPin: a Cancel took back the add of this place). */
+  showPin(hit: Hit): void; hasPin(): boolean;
   /** The plan changed: the pin card's action follows ("+ Zur Route", on an empty plan "Hierhin"). */
   planChanged(): void }
 
@@ -140,7 +142,7 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
 
   let picked = 0;
   /** [fly] false: the pin's chip (or the pin) tapped – the card opens again where the map is (the app's openPinMenu). */
-  const pick = async (h: Hit, fly = true) => {
+  const pick = async (h: Hit, fly = true, pinOnly = false) => {
     const my = ++picked;
     gen++; // a search still running (online results after 350 ms) must not open the list again over the card
     if (timer) clearTimeout(timer);
@@ -157,6 +159,7 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     chipHit = h;
     chipAction();
     if (fly) host.placeShown?.(h.lat, h.lon);
+    if (pinOnly) return; // only the pin and its chip (TakenPin) – the card opens on a tap as usual
     const pv = await host.engine.placePreview(host.points(), h.lat, h.lon);
     if (my === picked) setJoin(host.map, pv.join ? [[h.lon, h.lat], [pv.join[1], pv.join[0]]] : null);
     const n = host.points().length;
@@ -233,7 +236,8 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   q.addEventListener('focus', () => { if (!q.value.trim() && !category) run(); }); // the chips to start from
   q.addEventListener('keydown', (e) => { if (e.key === 'Escape') { q.value = ''; run(); } });
   clear.onclick = () => { q.value = ''; run(); q.focus(); };
-  return { close, isOpen: () => !card.hidden, removePin, planChanged: chipAction };
+  return { close, isOpen: () => !card.hidden, removePin, planChanged: chipAction,
+    showPin: (h: Hit) => { void pick(h, false, true); }, hasPin: () => marker != null };
 }
 
 /**

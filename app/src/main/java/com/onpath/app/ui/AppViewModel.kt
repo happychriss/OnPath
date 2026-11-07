@@ -1129,7 +1129,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * Legs of earlier plan runs (owner 2026-11-05, docs/design/long-bike-routes.md): an edit routes only the legs it
      * changed; the plan, the tour's follow line and browser plans share it. Cleared with the engine ([routingEngine]).
      */
-    private val legCache = com.onpath.app.routing.LegCache()
+    private val legCache = com.onpath.app.routing.LegCache(store = com.onpath.app.data.LegFiles(
+        java.io.File(app.filesDir, "legs"), fingerprint = { legFingerprint },
+        partVersion = { mapData.routingData.store.partVersion(it) }))
+
+    /**
+     * The routing fingerprint (BRouter, profiles, PLANNER_VERSION) the phone routes with – stored legs ([legCache]'s
+     * store, data/LegFiles) count only with the same one. Read on a routing thread at the first leg.
+     */
+    private val legFingerprint: String? by lazy {
+        try { routingFingerprint } catch (e: Exception) {
+            Problems.warn("routing", "Routing fingerprint not computed – stored legs are routed again", e); null
+        }
+    }
+
+    /**
+     * A loaded route's stand-in line ([com.onpath.app.routing.StoredLine]), taken by the next [recalc] for exactly these
+     * points, activity and T level: on the map at once while the run routes the legs it could not reuse.
+     */
+    private class StandIn(val points: List<GeoPoint>, val activity: Activity, val sac: Int, val preview: com.onpath.app.routing.StoredLine.Preview)
+    private var standIn: StandIn? = null
     /** The tour's follow line being routed ([followAhead]): a newer edit stops it, so the plan never waits behind it. */
     @Volatile private var followCancel: com.onpath.app.routing.RouteCancel? = null
 
@@ -1408,6 +1427,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Reload the map style as after a map update (emulator test of the core features, CorePlanE2ETest). */
     @androidx.annotation.VisibleForTesting
     fun reloadMapStyleForTest() { styleVersion++ }
+
+    /** E2E: the legs routed in this process are forgotten, as after an app restart – only the phone's leg store keeps them. */
+    fun forgetLegsInMemoryForTest() = legCache.clear()
 
     /** Settings → Diagnostics → Developer tools → "Reload map style" (after tools/dev/push_style.sh). */
     fun reloadMapStyle() {
@@ -2391,6 +2413,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val changeBefore = activityBefore.takeIf { activityRecalc }; activityRecalc = false
         val pts = waypoints.toList()
         val pins = pinnedIndices()
+        val stand = standIn?.takeIf { it.points == pts && it.activity == activity && it.sac == sac }; standIn = null
         routeCancel?.cancel(); routeCancel = null; routingSlow = false // an older request stops at once
         planReach = null
         routeProgress = null; routeShare = null
@@ -2414,6 +2437,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         longRouteAsk = null
         val f = planFactors(act)
         val gen = requests.next()
+        // a loaded route (owner 2026-11-07): its stored line at once while this run routes the legs it could not reuse;
+        // replaced by the run's line (said only when the way differs) – never no line while routing
+        val standBefore = stand?.let { s ->
+            route = withModelTime(s.preview.route, act, f)
+            Problems.trace("routing", "Route #$gen: the stored line shown at once (${s.preview.stale} legs on older routing data, " +
+                "${s.preview.fromLine} from the saved line) – routed again")
+            route?.points
+        }
         routing = true
         val started = android.os.SystemClock.elapsedRealtime()
         val cancel = com.onpath.app.routing.RouteCancel().also { routeCancel = it }
@@ -2490,6 +2521,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 mapData.routeComputed(it.points, post?.cells, dest, act)
                 if (mode == AppMode.PLAN && !followNextRoute && !planEditPending && !viaData) freshenAfterRoute(it.points, post?.cells, act)
                 if (viaData) routingDataRouteChanged(it)
+                else if (standBefore != null && com.onpath.app.data.RoutingDataCheck.differs(standBefore, it.points))
+                    routeChangedNotice = Txt.s(Res.string.msg_route_updated_newer_data)
                 // the plan re-computed for an activity switched while navigating: not an edit (Continue keeps the tour)
                 if (adoptPlanBaseline) { adoptPlanBaseline = false; planBaseline = it.points }
             }
@@ -2631,6 +2664,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (far.isNotEmpty()) Problems.trace("routing", "Route does not reach point(s) ${far.sorted().joinToString { "${it + 1}" }}")
         val snapped = res.points.takeIf { res.moved } ?: return
         for (i in snapped.indices) if (snapped[i] != routed[i]) waypoints[i] = snapped[i]
+        aliasSnappedLegs(routed, snapped, res.activity, res.sac)
         if (routed.size >= 2 && !RouteRules.isUnsaved(routed, savedPoints)) setSaved(linkName, linkId, snapped)
         linkTitle?.let { (title, at) -> if (at == routed) linkTitle = title to snapped }
         linkPoints?.let { at -> if (at.map { it.lat to it.lon } == routed.map { it.lat to it.lon }) linkPoints = snapped }
@@ -2639,6 +2673,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // an open menu follows its point to the snapped position (it must still find it for Delete)
         pointMenuTarget = pointMenuTarget?.afterSnap(moves)
         prefs.planWaypoints = waypoints.toList()
+    }
+
+    /**
+     * The points were moved onto the line ([snapToRoute]): the run's legs under the moved points too
+     * ([com.onpath.app.routing.LegCache.alias]) – the plan as saved now loads its legs, and the next edit routes only its
+     * new legs (before, the first edit after a snap routed every leg again from the moved points).
+     */
+    private fun aliasSnappedLegs(routed: List<GeoPoint>, snapped: List<GeoPoint>, act: Activity, level: Int) {
+        if (routed.size != snapped.size) return
+        val moved = (0 until routed.size - 1).filter { snapped[it] != routed[it] || snapped[it + 1] != routed[it + 1] }
+        if (moved.isEmpty()) return
+        viewModelScope.launchSafe("app", "aliasSnappedLegs", Dispatchers.IO) {
+            val n = moved.count { legCache.alias(routed[it], routed[it + 1], snapped[it], snapped[it + 1], act, level) }
+            Problems.trace("routing", "$n of ${moved.size} legs kept under their points moved onto the line")
+        }
     }
 
     /**
@@ -4323,6 +4372,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 t.pinned.mapNotNull { pts.getOrNull(it) }.takeIf { it.isNotEmpty() }?.let { pinned += it; prefs.planPinned = pinned }
                 // during a tour: the loaded route is followed from its point ① (owner 2026-11-03), not from the position
                 loadedOnTheWay = duringTour && recState.value != null
+                // saved routes load without routing again (owner 2026-11-07): its legs from the leg store, else its line
+                // as a stand-in while the run routes; a route routed before is no "very long plan" question again
+                if (!duringTour) loadStoredLine(t, pts, segs)
                 keepAsDraft("replaced by \"${t.name}\"")
                 change { clear(); addAll(pts) }
                 t.waypoints.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
@@ -4359,6 +4411,37 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
         }
+    }
+
+    /**
+     * Saved routes load without routing again (owner 2026-11-07, [com.onpath.app.routing.StoredLine],
+     * docs/design/long-bike-routes.md "Saved routes"): every leg fresh in the leg store → the plan run takes them (no
+     * router run, the same line); else the stored legs / the saved line [segs] as a stand-in for the next run ([standIn]).
+     * The saved line counts only when [t]'s activity and T level are the ones the plan is routed with. Either way the
+     * route was routed before: no "very long plan" question for it ([longRouteOk]).
+     */
+    private suspend fun loadStoredLine(t: Tour, pts: List<GeoPoint>, segs: List<List<TrackPoint>>) {
+        if (pts.size < 2) return
+        val act = activity; val level = sac
+        val lineFits = activityOrNull(t.activity) == act && (act != Activity.HIKE || t.sac == level)
+        val line = if (lineFits) segs.flatten().map { it.toGeo() } else emptyList()
+        val pins = t.pinned.filter { it in pts.indices }.toSet()
+        val found = withContext(Dispatchers.IO) {
+            try {
+                val fresh = (0 until pts.size - 1).all { legCache.lookup(pts[it], pts[it + 1], act, level) != null }
+                fresh to if (fresh) null else com.onpath.app.routing.StoredLine.preview(pts, act, level, pins, legCache, line)
+            } catch (e: Exception) {
+                Problems.warn("routing", "The stored line of \"${t.name}\" could not be read – the route is calculated", e); false to null
+            }
+        }
+        val (fresh, preview) = found
+        Problems.trace("routes", "Loading \"${t.name}\": " + when {
+            fresh -> "all ${pts.size - 1} legs stored – no routing"
+            preview != null -> "stored line shown at once (${preview.stale} legs on older routing data, ${preview.fromLine} from the saved line), routed again"
+            else -> "no stored line for these points – routed"
+        })
+        if (preview != null) standIn = StandIn(pts, act, level, preview)
+        if (fresh || preview != null) longRouteOk = pts
     }
 
     // ---------------- plan sync with the browser (A-007: plansync/, docs/design/web-sync.md) ----------------
