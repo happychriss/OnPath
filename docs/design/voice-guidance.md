@@ -201,7 +201,10 @@ the rider ~15 km/h):
    marked said when it cannot (a fix jumping back gives it its chance).
 5. A "now" said long before (20 s, or 1.6 × its distance) is said once more when due again and the rider moves.
 6. Arrival on the bike: the gate still fires as before (question, guidance quiet), "Ziel erreicht." waits until within
-   15 m of the goal or the line's end, a stop, the goal passed or 20 s; the turns before it are still said. On foot at once.
+   15 m of the goal or the line's end, a stop, the goal passed or 20 s – the last two also by the service's clock, and
+   5 s without a fix says it from the last position (field S10 2026-11-07: never waiting for fixes that do not come); the
+   turns before it are still said. On foot at once. A new followed line near the goal (a plan edit) keeps the arrival
+   gate's "been away" (S10: it started over 75 m before the goal and never fired).
 7. The goal's side from the heading of the last 12–40 m ridden (never the compass, only while moving, not within 6 m of the
    goal): ahead (nothing said) within 25°, half right to 65°, right to 115°, behind on the right to 155°, behind.
    "Ziel erreicht. Das Ziel ist rechts von dir."; after the last turn, ~12 s before the goal, only when it lies off to a
