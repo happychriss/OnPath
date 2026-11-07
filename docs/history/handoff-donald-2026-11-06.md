@@ -5,6 +5,17 @@ on `main` yet**. Nothing below is lost: every branch is in a local worktree on d
 Owner's word for the evening: "mach alles fertig, entscheide selber, push auf main, aufs Handy nur zum Testen (kein
 Release)". Owner wants new builds **on the Pixel first** (before the long checks), then main.
 
+## 2026-11-08 ~00:50 – state when the owner left (read this first)
+- **Released:** v0.17.4 (main f9b9b5ce; all 12 E2E classes, Rundgang 17/17); in the Play internal test (owner uploaded,
+  versionCode 1704). Planner not deployed with it – laptop's backlog line (parity + manual deploy).
+- **Owner's word for v0.17.5:** release right after the "Anhalten" build (variant 5, page
+  https://claude.ai/artifact/BxrUPCkkheDRPXksZSroHx) lands green – all checks, then `tools/dev/play_bundle.sh` →
+  `dist/onpath-0.17.5.aab` (versionCode 1705) for his Play upload. No phone install (S10 runs Play; the Pixel gets the
+  GitHub release through the in-app updater – same test key as donald's debug builds).
+- **Running:** the Anhalten build (branch donald-anhalten, sketch branch donald-anhalten-sketch with variants 0–5).
+- **Website:** ChatGPT's redesign applied and live (onpath.earth 58a8a5d); hand-over rule in its AGENTS.md (7ce6d0c).
+- **Calm phase:** no self wake-up (trigger off). Open owner questions: backlog "Waiting for the owner".
+
 ## 2026-11-07 ~20:40 – Galaxy S10 measured (release 0.17.3 from Play, `dumpsys gfxinfo`, owner's hands)
 | Run (about 20 s each) | Frames | Janky | p50 | p90 | p99 | Slow draw |
 | --- | --- | --- | --- | --- | --- | --- |

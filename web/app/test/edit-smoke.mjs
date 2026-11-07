@@ -54,15 +54,10 @@ const bike = await summary();
 console.log('bike:', bike);
 check(bike !== hike, 'switching Hike → Bike plans again (summary changed)');
 check((await page.textContent('#activityChip')).includes('Bike'), 'chip shows Bike');
-// the app's "New route for Bike – check it" (RouteWarnings.changedNoticeably: 10 % length / ascent or 10 % of the line
-// moved > 50 m) – a grey line; a click: it goes and the whole route shows
+// the app's "New route for … – check it" only after a change the user did not make (RouteWarnings.saysChanged, owner
+// 2026-11-07): the user's own activity change in Plan says nothing – the planner never shows it
 const changed = await page.evaluate(() => { const c = document.getElementById('changedLine'); return c.hidden ? null : c.textContent; });
-console.log('changed line:', changed);
-if (changed !== null) {
-  check(/^New route for Bike – check it$/.test(changed), `after Hike → Bike: "${changed}" (the app's plan_route_changed)`);
-  await page.click('#changedLine');
-  check(await page.isHidden('#changedLine'), 'a click on the line: it goes (the map shows the whole route)');
-}
+check(changed === null, `after the user's own Hike → Bike: no "New route for …" line (${changed})`);
 
 // round trip: loop shown once with ↺
 await page.click('#roundTrip');

@@ -15,7 +15,9 @@ export type EngineRequest =
   | { id: number; type: 'call'; fn: string; args: (string | number | boolean)[] }
   | { id: number; type: 'insert'; points: string; lat: number; lon: number; lineSnapM: number }
   | { id: number; type: 'gpxRead'; data: Uint8Array; fileName: string; activity: Activity; sac: number }
-  | { id: number; type: 'planFromTrack'; points: string; activity: Activity; sac: number };
+  | { id: number; type: 'planFromTrack'; points: string; activity: Activity; sac: number }
+  /** The page dropped plan [target] (superseded): skip it if it has not started routing yet. No answer. */
+  | { id: number; type: 'drop'; target: number };
 
 /** A plan as it travels in a QR code or link (the app's SharedPlan / PlanCode). */
 export interface SharedPlan {
@@ -68,7 +70,11 @@ export interface EngineReply { id: number; ok: boolean; result?: RouteResult; pl
   /** Sent before the answer while a request waits (worker → page): routing data to download, then routing. */
   progress?: Progress;
   /** config only: the engine cannot run in this browser (no WasmGC / Wasm exceptions – a CompileError / LinkError). */
-  unsupported?: boolean }
+  unsupported?: boolean;
+  /** A plan the page dropped (superseded): never routed, or its worker was stopped (client.ts restart). */
+  cancelled?: boolean;
+  /** After a call that changed the undo / redo history: the history as text (Engine.historyExport), for a fresh worker. */
+  history?: string }
 /** What a plan waits for: the routing data under it ([bytes] still to download), then the router. */
 export type Progress = { phase: 'download'; bytes: number } | { phase: 'route' }
   /** the legs the router works on: the engine's own text ("Leg 2 of 5 is being calculated…", PlanStatus.calculating) */

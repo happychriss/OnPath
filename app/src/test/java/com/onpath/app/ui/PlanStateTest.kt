@@ -64,6 +64,21 @@ class PlanStateTest {
         assertTrue(r.isCurrent(newer))
     }
 
+    /** The browser planner moves the history into a fresh engine (snapshot → restore): undo / redo go on the same. */
+    @Test fun aHistoryRestoredFromItsSnapshotUndoesAndRedoesTheSame() {
+        val a = GeoPoint(51.0, 7.0); val b = GeoPoint(51.01, 7.0); val c = GeoPoint(51.02, 7.0)
+        val h = PlanHistory()
+        h.record(emptyList()); h.record(listOf(a)); h.record(listOf(a, b))
+        assertEquals(listOf(a, b), h.undo(listOf(a, b, c)))
+        val (u, r) = h.snapshot()
+        val fresh = PlanHistory(); fresh.restore(u, r)
+        assertTrue(fresh.canUndo); assertTrue(fresh.canRedo)
+        assertEquals(listOf(a), fresh.undo(listOf(a, b)))
+        assertEquals(emptyList<GeoPoint>(), fresh.undo(listOf(a)))
+        assertFalse(fresh.canUndo)
+        assertEquals(listOf(a), fresh.redo(emptyList()))
+    }
+
     /** fix-tour-edit-line.md cause 3: edit 1's slow position → ahead route must not land after edit 2 / Undo / clear. */
     @Test fun aLaterEditMakesARunningSplitRouteStale() {
         val a = GeoPoint(51.0, 7.0); val b = GeoPoint(51.01, 7.0); val c = GeoPoint(51.02, 7.0)

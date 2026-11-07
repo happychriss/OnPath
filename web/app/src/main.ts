@@ -887,6 +887,7 @@ let linkTitle: { title: string; at: string } | null = null;
 /** Set by My routes just before a plan from the phone opens (its otherRouting); any other load clears the grey line. */
 let openedOtherRouting = false;
 async function loadShared(shared: SharedPlan) {
+  engine.dropPlans(); // another plan replaces the shown one – a long plan still routing must not hold it
   state.title = shared.title;
   state.otherRouting = openedOtherRouting; openedOtherRouting = false;
   setActivity(shared.activity, shared.sac, false);
@@ -1019,8 +1020,8 @@ function mapMiddle() {
   return { x: (left + st.right) / 2, y: (bar.bottom + st.bottom) / 2 };
 }
 /**
- * Cancel of the wait (the app's cancelRouting → cancelRun(NotRouted.STOPPED)): the running plan's result is dropped (the
- * one engine worker cannot stop mid-way – it finishes unseen), then the app's PlanStatus.onCancel: undo the edit, put
+ * Cancel of the wait (the app's cancelRouting → cancelRun(NotRouted.STOPPED)): the running plan is dropped (a long one
+ * stops for real – client.ts dropPlans starts a fresh worker), then the app's PlanStatus.onCancel: undo the edit, put
  * the activity back, or keep the points with "Route not calculated – calculation stopped." + Calculate.
  */
 async function cancelRouting() {
@@ -1045,12 +1046,15 @@ function keepPlanStats(code: string) {
 /** The plan before the point edit that is being planned now (the long-route question's "Far from your route"). */
 let editBefore: Before | null = null;
 async function changed() {
+  // a plan still running for the points before is dropped: the one worker must not hold the next calls behind it
+  // (a long plan routes for minutes – client.ts dropPlans stops it, the app's cancelRun)
+  engine.dropPlans();
   const before = editBefore; editBefore = null; dismiss('slowplan'); // a new edit answers the time-limit question
   placeCard.planChanged(); // the pin card's "+ Zur Route" / "Hierhin" follows the plan
   await drawPoints();
   const few = state.points.length < 2;
-  // fewer than two points (Clear route, a point deleted): no route – shown at once. A plan still running in the engine
-  // (one worker, it cannot be stopped mid-way) is dropped when it ends (state.latest), as the app cancels it.
+  // fewer than two points (Clear route, a point deleted): no route – shown at once; a plan still running in the engine
+  // was dropped above (state.latest ignores its answer, as the app cancels it).
   if (few) { state.latest++; state.plan = null; setPlanning(false); planGaps.clear(); status(''); }
   // Share (icon next to ⋯): always there (owner 2026-10-30), greyed until a start and a destination are set
   const sh = $<HTMLButtonElement>('share'), two = state.points.length >= 2, shw = two ? t('web_share') : t('web_share_needs_two');
@@ -1220,6 +1224,7 @@ let nextCause: string | null = null;
 let activityBefore: { a: Activity; sac: number } | null = null;
 /** Cancel of "This route is very long" (AppViewModel.cancelRun): undo / redo the change, put the activity back, or keep the points. */
 async function cancelLongRoute() {
+  engine.dropPlans(); // the running plan stops for real (client.ts) – planCancel below must not wait behind it
   const what = await engine.call('planCancel', runCause, state.canUndo, state.canRedo);
   state.latest++; state.plan = null; setPlanning(false);
   const taken = pinTaken?.plan === enc(state.points) ? pinTaken : null; pinTaken = null;
@@ -1697,7 +1702,7 @@ $('reverse').onclick = () => applyEdit('reverse');
 $('addDest').onclick = () => { const q = document.getElementById('q') as HTMLInputElement | null; q?.focus(); q?.select(); };
 $('roundTrip').onclick = () => applyEdit('roundTrip');
 /** ✕ Neu planen in the plan row and the header's New plan (owner 2026-11-06): unsaved changes ask first, then empty. */
-async function newPlan() { await keepAsRecent('new plan'); clearRoute(); placeCard.removePin(); }
+async function newPlan() { engine.dropPlans(); await keepAsRecent('new plan'); clearRoute(); placeCard.removePin(); } // a long plan must not hold Neu
 /**
  * The plan leaves the map (Neu, another plan / link / GPX opened): not saved as it is, it goes under Meine Touren →
  * Zuletzt – no question (the app's keepAsDraft, owner 2026-11-06). The name: the plan's own, else the Save dialog's
