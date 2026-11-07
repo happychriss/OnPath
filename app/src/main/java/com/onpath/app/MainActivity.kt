@@ -435,7 +435,8 @@ class MainActivity : ComponentActivity() {
     private fun traceCreated(restored: Boolean) {
         val (n, others) = ScreenLifecycle.created()
         screenNo = n
-        val line = ScreenLifecycle.createdLine(n, others, taskId, isTaskRoot, restored, describe(intent))
+        com.onpath.app.debug.Health.noteScreenCreated() // a stall in its first frame is start-up noise (MainStall)
+        val line =ScreenLifecycle.createdLine(n, others, taskId, isTaskRoot, restored, describe(intent))
         // a second screen at once is not normal: noted in Diagnostics (WARN is not announced on screen)
         if (others > 0) com.onpath.app.debug.Problems.warn("app", line) else com.onpath.app.debug.Problems.trace("app", line)
     }
@@ -512,6 +513,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         if (stoodDown) { super.onStop(); return }
+        com.onpath.app.debug.Health.noteLeaving() // a stall from here on is "while leaving the app" (MainStall)
         if (phoneRead) vm.prefs.lastSeen = com.onpath.app.setup.LastSeen(com.onpath.app.setup.PhoneCheck.okNow(vm.phone),
             System.currentTimeMillis())
         vm.onAppStop()

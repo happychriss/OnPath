@@ -16,8 +16,10 @@ import com.onpath.strings.nav_settings_cd
 import com.onpath.strings.settings_group_offroute
 import com.onpath.strings.nav_leave_title
 import com.onpath.strings.plan_go_here
+import com.onpath.strings.plan_locate_far_cd
 import com.onpath.strings.plan_new_during_tour
 import com.onpath.strings.plan_undo
+import com.onpath.strings.search_card_set_start
 import com.onpath.strings.nav_profile_hide
 import com.onpath.strings.nav_profile_show
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -444,6 +446,78 @@ class CoreFieldE2ETest : E2EBase() {
         assertFalse("never routed from the position", trace.any { it.startsWith("Activity check: routing the rest") && it.endsWith("from the position") })
     }
 
+    /**
+     * Field 2026-11-07 10:45 (Pixel, tour "Gewerbepark Süd → Unterstand"): a held place during a tour offered "Als Start
+     * setzen" instead of joining the route the tour follows. Now: the POI menu says what really happens (the same
+     * insertion as the add), a place beside the route is stop 2 between the points, and the tour follows the new route.
+     */
+    @Test fun aPlaceAddedDuringATourIsAStopBetweenNotANewStart() {
+        startPlanWithTwoPoints()
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the route is followed", 20_000) { guided() }
+        var plan: List<GeoPoint> = emptyList()
+        var oldLine: List<GeoPoint>? = null
+        scenario.onActivity { plan = vm(it).waypoints.toList(); oldLine = vm(it).followLine }
+        scenario.onActivity { vm(it).switchToPlan() }
+        waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+        // a place a little beside the middle of the route (a POI menu adds it this way)
+        val mid = GeoPoint((plan[0].lat + plan[1].lat) / 2 + 0.0003, (plan[0].lon + plan[1].lon) / 2)
+        val poi = com.onpath.app.poi.Poi("e2e-shelter", "shelter", "Unterstand E2E", mid.lat, mid.lon)
+        var label = ""
+        var menu: com.onpath.app.ui.PlaceAddMenu.Menu? = null
+        scenario.onActivity { label = vm(it).poiAddLabel(poi); menu = vm(it).placeMenu(poi) }
+        assertFalse("never a new start during a tour: \"$label\"", label == Txt.s(Res.string.search_card_set_start))
+        // beside the middle: a clear stop – the menu offers "Als Zwischenstopp" (owner 2026-11-07), no start
+        assertEquals("the menu: $menu", listOf(com.onpath.app.ui.PlaceAddMenu.Item.ADD_STOP), menu?.main)
+        scenario.onActivity { vm(it).addPoiAsStop(poi) }
+        waitUntil("3 points, the place between start and goal", 10_000) {
+            val w = waypointList()
+            w.size == 3 && w[0] == plan[0] && w[2] == plan[1] &&
+                com.onpath.app.data.Geo.distance(w[1], mid) < 5.0
+        }
+        waitUntil("the tour follows the new route", 30_000) {
+            var ok = false
+            scenario.onActivity { val l = vm(it).followLine; ok = l != null && l != oldLine }
+            ok
+        }
+        assertTrue("the recording goes on", recording())
+    }
+
+    /**
+     * Owner 2026-11-07 11:20: during a tour, a place past the goal → its menu says "Als neues Ziel" first; tapped, the plan
+     * ends there (the old goal is dropped), one Undo brings the old goal back. The recording goes on throughout.
+     */
+    @Test fun aPlaceMadeTheDestinationDuringATourEndsThePlanThereUndoBringsTheGoalBack() {
+        startPlanWithTwoPoints()
+        Thread.sleep(if (realRouting) 3_000 else 1_000)
+        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
+        waitUntil("the route is followed", 20_000) { guided() }
+        var plan: List<GeoPoint> = emptyList()
+        scenario.onActivity { plan = vm(it).waypoints.toList() }
+        scenario.onActivity { vm(it).switchToPlan() }
+        waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
+        // half the route again beyond the goal, in its direction
+        val past = GeoPoint(plan[1].lat + (plan[1].lat - plan[0].lat) / 2, plan[1].lon + (plan[1].lon - plan[0].lon) / 2)
+        val poi = com.onpath.app.poi.Poi("e2e-church", "place_of_worship", "Kirche E2E", past.lat, past.lon)
+        var menu: com.onpath.app.ui.PlaceAddMenu.Menu? = null
+        scenario.onActivity { menu = vm(it).placeMenu(poi) }
+        assertEquals("the menu: $menu", com.onpath.app.ui.PlaceAddMenu.Item.NEW_DESTINATION, menu?.main?.firstOrNull())
+        assertTrue("the stop stays reachable: $menu",
+            com.onpath.app.ui.PlaceAddMenu.Item.ADD_STOP in menu!!.main + menu!!.more)
+        scenario.onActivity { vm(it).poiAsNewDestination(poi) }
+        waitUntil("the plan ends at the place, the old goal dropped", 10_000) {
+            val w = waypointList()
+            w.size == 2 && w[0] == plan[0] && com.onpath.app.data.Geo.distance(w[1], past) < 5.0
+        }
+        assertTrue("the recording goes on", recording())
+        scenario.onActivity { vm(it).undoStep() }
+        waitUntil("Undo: the old goal is back", 10_000) { waypointList() == plan }
+        assertTrue("the recording goes on after Undo", recording())
+    }
+
     /** A done tour (a recorded line) near the walker, for the follow-a-track cases below. */
     private fun insertDoneTour(name: String): Long {
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
@@ -641,6 +715,36 @@ class CoreFieldE2ETest : E2EBase() {
      * plan's fit; the fit must win, the map must not end on the position.
      */
     @Test fun backInPlanWithWalkingDirectionUpTheMapShowsThePlan() = planInFrontAfterNavigate(walkingDirectionUp = true)
+
+    /**
+     * Plan far away, me off the map (owner 2026-11-07, variant 3): the locate button says the distance ("Du bist … km
+     * entfernt") and a tap frames the plan and my position together.
+     */
+    @Test fun locateOffTheMapShowsTheDistanceAndATapShowsPlanAndMe() {
+        val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
+        val far = listOf(GpxWaypoint(lat + 0.22, lon - 0.01, "E2E far start"), GpxWaypoint(lat + 0.24, lon + 0.02, "E2E far goal"))
+        val name = "E2E far locate ${System.currentTimeMillis() % 100_000}"
+        val id = db.insertTour(TourKind.PLANNED, name, Activity.HIKE.name, 2, 3_000.0, 0.0, 0.0, 3600.0,
+            listOf(far.map { TrackPoint(it.lat, it.lon) }), far)
+        try {
+            scenario.onActivity { vm(it).refreshTours(); vm(it).openTour(db.getTour(id)!!) }
+            waitUntil("the far plan is on the map", 10_000) { waypointCount() == 2 }
+            Thread.sleep(3_000) // the plan is framed; my position is ~25 km south, off the map
+            val prefix = Txt.s(Res.string.plan_locate_far_cd, "").substringBefore(" ").ifBlank { "Du" }
+            val label = findFresh(By.desc(java.util.regex.Pattern.compile(
+                java.util.regex.Pattern.quote(prefix) + ".*km.*", java.util.regex.Pattern.DOTALL)), 8_000)
+            assertNotNull("the locate button tells the distance while I am off the map", label)
+            label!!.click()
+            Thread.sleep(2_500) // fit animation
+            var bounds: org.maplibre.android.geometry.LatLngBounds? = null
+            onMap { m -> bounds = m.projection.visibleRegion.latLngBounds }
+            val b = bounds!!
+            assertTrue("my position is in view after the tap", b.contains(org.maplibre.android.geometry.LatLng(lat, lon)))
+            assertTrue("the plan is in view too", b.contains(org.maplibre.android.geometry.LatLng(lat + 0.23, lon + 0.005)))
+        } finally {
+            db.deleteTour(id)
+        }
+    }
 
     private fun planInFrontAfterNavigate(walkingDirectionUp: Boolean) {
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)

@@ -551,6 +551,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override val missing: List<DataFiles.Check> get() = this@AppViewModel.missing
             override val startModeKnown: Boolean get() = this@AppViewModel.startModeKnown
             override val searchMark: com.onpath.app.search.Place? get() = this@AppViewModel.searchMark
+            override val activity: com.onpath.app.routing.Activity get() = this@AppViewModel.activity
             override var routeError: String?
                 get() = this@AppViewModel.routeError
                 set(v) { this@AppViewModel.routeError = v }
@@ -635,8 +636,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** After a route was computed in Plan: newer map areas along it ([MapDataFlow.freshenAlong]) and newer routing data. */
-    private fun freshenAfterRoute(line: List<GeoPoint>, corridor: List<com.onpath.app.cells.CellId>?) {
-        mapData.freshenAlong(line, corridor)
+    private fun freshenAfterRoute(line: List<GeoPoint>, corridor: List<com.onpath.app.cells.CellId>?, act: com.onpath.app.routing.Activity) {
+        mapData.freshenAlong(line, corridor, act)
         checkRoutingData(line)
     }
 
@@ -739,7 +740,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
     /** Blocking: what [OfflineReady] says for [line] (MapScreen calls it on Dispatchers.IO). */
-    fun computeOfflineReady(line: List<GeoPoint>): OfflineReady.Result? = mapData.offlineReady(line)
+    fun computeOfflineReady(line: List<GeoPoint>): OfflineReady.Result? = mapData.offlineReady(line, activity)
 
     /** The route point whose point menu is open (hold on its marker, MapGestures): index when opened + position. */
     var pointMenuTarget by mutableStateOf<PointMenuTarget?>(null)
@@ -1627,10 +1628,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun addPoint(p: GeoPoint, lineSnapM: Double = 30.0, onPoi: Boolean = false) {
         if (onPoi) { pinned += p; prefs.planPinned = pinned }
         val ins = insertionFor(p, lineSnapM)
-        if (!ins.inTour && ins.decision.kind == WaypointInsertion.Kind.START && ins.points.size >= 2)
-            Problems.trace("plan", "New point on the way there (led to a route never reached): it is the new start")
         if (ins.decision.kind == WaypointInsertion.Kind.ON_THE_WAY)
-            Problems.trace("plan", "New point on the way to a round trip: a stop on the way, the loop stays (owner 2026-11-03)")
+            Problems.trace("plan", "New point on the way there (led to a route never reached): a stop before ①, the tour " +
+                "is led via it (a round trip's loop stays, owner 2026-11-03)")
         change { add(ins.index.coerceIn(0, size), p) }
     }
 
@@ -1641,7 +1641,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private class Insertion(val points: List<GeoPoint>, val line: List<GeoPoint>?, val decision: WaypointInsertion.Decision,
                             val index: Int, val inTour: Boolean)
 
-    private fun insertionFor(p: GeoPoint, lineSnapM: Double): Insertion {
+    private fun insertionFor(p: GeoPoint, lineSnapM: Double, stopOnly: Boolean = false): Insertion {
         val before = waypoints.toList()
         // during a tour a new point goes only among the points ahead, never behind the user (TourSplit)
         val passed = tourPassed(before)
@@ -1650,13 +1650,58 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val ahead = listOf(pos) + TourSplit.ahead(before, passed)
             // the followed line fits these points only once it runs from the position (else best fit by geometry)
             val line = followLine?.takeIf { it.isNotEmpty() && com.onpath.app.data.Geo.distance(it.first(), pos) < 50.0 }
-            val d = WaypointInsertion.decide(ahead, p, line, lineSnapM)
+            val d = WaypointInsertion.decide(ahead, p, line, lineSnapM, stopOnly = stopOnly)
             return Insertion(ahead, line, d, TourSplit.insertIndex(passed, d.index), inTour = true)
         }
         // While a reroute runs, the shown line belongs to older waypoints: use best-fit only.
         val line = if (routing) null else route?.points
-        val d = WaypointInsertion.decide(before, p, line, lineSnapM, wayThereFrom())
+        val d = WaypointInsertion.decide(before, p, line, lineSnapM, wayThereFrom(), stopOnly = stopOnly)
         return Insertion(before, line, d, d.index, inTour = false)
+    }
+
+    /**
+     * The add entries of a held place's menu ([PlaceAddMenu], owner 2026-11-07): with 2+ points "Als Zwischenstopp"
+     * and/or "Als neues Ziel" by how clear the case is – measured on the route still to go (during a tour from my position).
+     */
+    fun placeMenu(poi: com.onpath.app.poi.Poi): PlaceAddMenu.Menu {
+        val p = GeoPoint(poi.lat, poi.lon)
+        val n = waypoints.size
+        val touring = recState.value != null
+        if (n < 2) return PlaceAddMenu.menu(n, touring, zone = null)
+        val ins = insertionFor(p, 30.0)
+        val pos = myPosition()
+        // during a tour the route to go starts here (TourSplit's ahead list already does; else put my position first)
+        val ahead = if (ins.inTour || !touring || pos == null) ins.points else listOf(pos) + ins.points
+        return PlaceAddMenu.menu(n, touring, PlaceAddMenu.zone(ahead, p, loop = isRoundTrip()))
+    }
+
+    /** Place menu → "Als Zwischenstopp": where it fits best on the route ahead, never behind the goal (the goal stays). */
+    fun addPoiAsStop(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) = addPoiWith(poi, "as a stop") { p ->
+        val ins = insertionFor(p, lineSnapM, stopOnly = true)
+        change { add(ins.index.coerceIn(0, size), p) }
+    }
+
+    /**
+     * Place menu → "Als neues Ziel": the route ends there, the old goal is dropped (one Undo step brings it back). During a
+     * tour the guidance follows the new plan as after any edit.
+     */
+    fun poiAsNewDestination(poi: com.onpath.app.poi.Poi) = addPoiWith(poi, "as the new destination") { p ->
+        change { if (isEmpty()) add(p) else set(lastIndex, p) }
+    }
+
+    /** The bookkeeping of a place taken from its menu (name, pin, candidate fit), then [edit] with its point. */
+    private fun addPoiWith(poi: com.onpath.app.poi.Poi, how: String, edit: (GeoPoint) -> Unit) {
+        val candidate = isCandidate(poi)
+        closeMapOverlays()
+        val idx = waypoints.indexOfFirst { sameSpot(it, poi.lat, poi.lon) }
+        if (idx >= 0) { openPointMenu(idx, via = "POI that is a stop"); return }
+        val p = GeoPoint(poi.lat, poi.lon)
+        rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
+        clearSearchMarkAt(poi.lat, poi.lon)
+        pinned += p; prefs.planPinned = pinned
+        val before = waypoints.size
+        if (candidate) fittingPlaceAdd { edit(p) } else edit(p)
+        Problems.trace("plan", "Place menu: \"${poi.name ?: poi.kind}\" $how (plan $before → ${waypoints.size} points)")
     }
 
     /**
@@ -1780,10 +1825,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** POI menu → "Add to route": a pinned, named route point; when it already is a stop, its point menu opens. */
     /** The POI menu's add item, saying what it does ("Set as destination", "Add as stop 2", …) – same rule as [addPoint]. */
+    /**
+     * What the POI menu's add action says – the SAME decision [addPoint] then takes ([insertionFor]: during a tour only
+     * the points ahead count, from the position), so the label never promises something else (field 2026-11-07: the
+     * label was decided on the whole plan and read "Als Start setzen" while the tour ran).
+     */
     fun poiAddLabel(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0): String {
-        val w = waypoints.toList()
-        return com.onpath.app.search.AddPreview.label(
-            WaypointInsertion.decide(w, GeoPoint(poi.lat, poi.lon), if (routing) null else route?.points, lineSnapM, wayThereFrom()), w.size)
+        val ins = insertionFor(GeoPoint(poi.lat, poi.lon), lineSnapM)
+        return com.onpath.app.search.AddPreview.label(WaypointInsertion.Decision(ins.index, ins.decision.kind), waypoints.size)
     }
 
     fun addPoiPoint(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) {
@@ -1971,8 +2020,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             com.onpath.app.search.AddPreview.existingRole(idx, waypoints.size))
         val pv = com.onpath.app.search.AddPreview.of(waypoints.toList(), GeoPoint(place.lat, place.lon), if (routing) null else r?.points,
             r?.takeIf { it.durationS > 0 }?.let { it.distanceM / it.durationS }, here = wayThereFrom())
-        val k = pv.decision.kind
-        return com.onpath.app.ui.search.PlaceCardUi(place, null, waypoints.size, pv.subtitle, pv.label,
+        // during a tour the add goes among the points ahead ([insertionFor]) – say what really happens
+        val ins = insertionFor(GeoPoint(place.lat, place.lon), 30.0)
+        val k = ins.decision.kind
+        val label = if (ins.inTour) com.onpath.app.search.AddPreview.label(WaypointInsertion.Decision(ins.index, k), waypoints.size)
+            else pv.label
+        return com.onpath.app.ui.search.PlaceCardUi(place, null, waypoints.size, if (ins.inTour) "" else pv.subtitle, label,
             addIsStart = k == WaypointInsertion.Kind.START,
             addIsDestination = k == WaypointInsertion.Kind.DESTINATION && waypoints.size <= 1)
     }
@@ -2278,7 +2331,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             slow.cancel(); poll.cancel()
             // the corridor work of a result off the main thread
-            val post = result.getOrNull()?.let { r -> withContext(Dispatchers.Default) { mapData.postRoute(r.route, pts) } }
+            val post = result.getOrNull()?.let { r -> withContext(Dispatchers.Default) { mapData.postRoute(r.route, pts, act) } }
             if (requests.isCurrent(gen)) { routingSlow = false; routeProgress = null; routeShare = null }
             if (!requests.isCurrent(gen) || !isActive) { // superseded or cleared
                 Problems.trace("routing", "Route #$gen for ${pts.size} points superseded – result ignored")
@@ -2305,15 +2358,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     if (RouteWarnings.changedNoticeably(changeBefore.points, changeBefore.distanceM, changeBefore.ascentM,
                             it.points, it.distanceM, it.ascentM)) routeChangedNotice = RouteWarnings.changedText(act, level)
                 }
-                // routing data missing in the route's corridor (~10 km): it loads now; the notice (plain words, no path)
+                // routing data missing in the route's corridor (hike 10 km, bike 20 km – OfflineCorridor): it loads now; the notice (plain words, no path)
                 // only when a part under a planned point is missing – those make the straight line
                 post?.routingKeys?.let { k -> mapData.routingForLine(k) }
                 routeError = RoutingDataNotice.forRoute(it.error, post?.tilesMissing == true, mapData.routingLoading)
                 // T4: the corridor – named after the plan's destination (round trip: its start) in the loading chip
                 // the last point: a round trip closes at its ① (also with stops on the way before the loop)
                 val dest = pts.lastOrNull()
-                mapData.routeComputed(it.points, post?.cells, dest)
-                if (mode == AppMode.PLAN && !followNextRoute && !planEditPending && !viaData) freshenAfterRoute(it.points, post?.cells)
+                mapData.routeComputed(it.points, post?.cells, dest, act)
+                if (mode == AppMode.PLAN && !followNextRoute && !planEditPending && !viaData) freshenAfterRoute(it.points, post?.cells, act)
                 if (viaData) routingDataRouteChanged(it)
                 // the plan re-computed for an activity switched while navigating: not an edit (Continue keeps the tour)
                 if (adoptPlanBaseline) { adoptPlanBaseline = false; planBaseline = it.points }
@@ -2558,6 +2611,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         followMe = false
         freeLookAt = null
         events += UiEvent.Fit(pts)
+    }
+
+    /**
+     * Locate while I am off the map in Plan ([LocateDistance], owner 2026-11-07): the plan (or the shown track) and my
+     * position together, in the room [FitPaddingRule] leaves. Following stops first; the bearing follows the session's one
+     * orientation (owner 2026-11-07: north up when that is set, else the current bearing – MapController.northLocked).
+     */
+    fun showPlanAndMe() {
+        val me = tracker.location.value?.let { GeoPoint(it.latitude, it.longitude) } ?: run { locate(); return }
+        val pts = shown?.let { t -> WholeRoute.bounds(t.segments, t.waypoints.map { GeoPoint(it.lat, it.lon) }, me) }
+            ?: WholeRoute.bounds(listOfNotNull(route?.points), waypoints.toList(), me)
+        followMe = false
+        freeLookAt = null
+        events += UiEvent.Fit(pts) // the session's orientation decides the bearing (MapController.northLocked)
+        Problems.trace("map", "Locate off the map: plan and position shown together (${pts.size} points)")
     }
 
     /**
@@ -3223,13 +3291,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * A tour starts on the plan's route (F-OFF-02 "started route", owner: "new route – even without signal"): map areas
-     * and routing parts of its corridor (~10 km either side) still missing – loading cancelled, server failed, waited –
-     * are asked for again, quietly (background chip; Wi-Fi-only rule as for the plan). Geometry off the main thread.
+     * and routing parts of its corridor (hike 10 km, bike 20 km either side – OfflineCorridor) still missing – loading
+     * cancelled, server failed, waited – are asked for again, quietly (background chip; Wi-Fi-only rule as for the plan).
+     * Geometry off the main thread.
      */
     private fun secureTourCorridor() {
         val line = route?.points?.takeIf { it.size >= 2 } ?: return
         val pts = waypoints.toList()
-        mapData.secureTourCorridor(line, pts.lastOrNull()) // a round trip closes at its ①
+        mapData.secureTourCorridor(line, pts.lastOrNull(), activity) // a round trip closes at its ①
     }
 
     /** How long Start waits for the service's first state before saying that recording did not start. */
@@ -4376,7 +4445,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         val act = activity; val level = sac
         // routing data along the track first: without it every leg fails
-        val missing = try { mapData.routingData.ensure(com.onpath.app.data.RoutingTiles.forLine(track)) } catch (e: Exception) {
+        val missing = try { mapData.routingData.ensure(com.onpath.app.data.RoutingTiles.forLine(track, act)) } catch (e: Exception) {
             Problems.warn("routing", "Routing data along the track not checked; planning from the track anyway", e); emptyList()
         }
         if (missing.isNotEmpty()) {

@@ -845,6 +845,12 @@
     "priority": 3,
     "confidence": "sicher"
   },
+  "plan_locate_far_cd": {
+    "area": "Map (Plan)",
+    "context": "Accessibility of the locate button while my position is off the map (owner 2026-11-07). %1$s = distance (\"790 km\")",
+    "priority": 3,
+    "confidence": "sicher"
+  },
   "plan_no_location_permission": {
     "area": "Map (Plan)",
     "context": "Why \"Go here\" is greyed out in the first-point menu",
@@ -1306,6 +1312,20 @@
     "context": "Screen reader action of the sheet handle: on the largest step a tap makes it smaller",
     "priority": 3,
     "confidence": "sicher"
+  },
+  "plan_add_as_stop": {
+    "area": "Plan place menu",
+    "context": "Menu entry of a held place (POI / found pin) with a plan of 2+ points: insert it at the best place on the route ahead, the goal stays. No number (owner 2026-11-07).",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 28
+  },
+  "plan_make_destination": {
+    "area": "Plan place menu",
+    "context": "Menu entry of a held place with a plan of 2+ points: the route ends there, the old goal is dropped (Undo brings it back). Owner 2026-11-07.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 28
   },
   "plan_guide_find_title": {
     "area": "Plan sheet",

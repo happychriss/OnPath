@@ -128,7 +128,7 @@ These six profiles aim to cover about 70% of use cases. Road bike and gravel are
 | ID | Requirement | Priority |
 | --- | --- | --- |
 | F-OFF-01 | Download a region (country or sub-region, e.g. "Bavaria", "Tyrol") containing map, hillshade, contours, routing data and search index as one package. | Must |
-| F-OFF-02 | Always secure the area around every saved, imported or started route: the app automatically downloads a corridor (default 10 km) of map, routing and elevation data when online, so the route works offline without the user thinking about it. Shows "Ready offline" or "Waiting for connection" on each route. | Must |
+| F-OFF-02 | Always secure the area around every saved, imported or started route: the app automatically downloads a corridor of map, routing and elevation data when online – 10 km either side for a hike, 20 km for every bike activity (owner 2026-11-07; activity not known → 20 km) – so the route works offline without the user thinking about it. Shows "Ready offline" or "Waiting for connection" on each route. | Must |
 | F-OFF-03 | Show size before download; downloads pause and resume over unstable connections; Wi-Fi only option. | Must |
 | F-OFF-04 | Monthly map updates, optional; old data keeps working until the new package is fully verified. | Must |
 | F-OFF-05 | List of regions with size, date and delete button; total storage used. | Must |

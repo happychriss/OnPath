@@ -24,7 +24,7 @@ class AddPreviewAndDataTest {
         val mid = GeoPoint(46.605, 11.15)
         val v = AddPreview.of(listOf(a, b), mid, null)
         assertEquals(WaypointInsertion.Kind.VIA_BEST_FIT, v.decision.kind)
-        assertEquals("Add as stop 2", v.label)
+        assertEquals("Add as a stop", v.label)
         assertTrue(v.subtitle, v.subtitle.startsWith("fits best there · about +"))
         // Beyond B: new destination, distance about straight line × 1.3.
         val beyond = GeoPoint(46.60, 11.30)
@@ -35,7 +35,7 @@ class AddPreviewAndDataTest {
         assertTrue(d.subtitle, d.subtitle.startsWith("about +9.9 km, +2 h"))
         // On the line.
         val on = AddPreview.of(listOf(a, b), GeoPoint(46.60, 11.15), listOf(a, b))
-        assertEquals("Add as stop 2", on.label)
+        assertEquals("Add as a stop", on.label)
         assertEquals("on your route", on.subtitle)
         assertNull(on.extraM)
     }

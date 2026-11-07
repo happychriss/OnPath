@@ -37,9 +37,10 @@ class RoundTripOnTheWayTest {
         assertEquals("the loop starts behind the stop on the way", 1, PlanEdits.loopStart(after))
     }
 
-    @Test fun aNormalRouteStillGetsANewStart() {
+    /** A normal route led to: the same stop on the way before ① (field 2026-11-07 – no "Set as start" during a tour). */
+    @Test fun aNormalRouteGetsAStopOnTheWayToo() {
         val route = listOf(p1, p2, p3)
-        assertEquals(WaypointInsertion.Decision(0, Kind.START), WaypointInsertion.decide(route, bakery, null, 30.0, here = here))
+        assertEquals(WaypointInsertion.Decision(0, Kind.ON_THE_WAY), WaypointInsertion.decide(route, bakery, null, 30.0, here = here))
     }
 
     @Test fun aRoundTripNeverGetsAPointBehindItsClosingPoint() {
