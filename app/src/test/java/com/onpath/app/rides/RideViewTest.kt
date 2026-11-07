@@ -84,6 +84,23 @@ class RideViewTest {
         assertEquals(segs, RideView.keptSegments(segs, null))
     }
 
+    @Test fun summaryTextsFollowALiveLanguageSwitch() {
+        // Meran pictures H03: the summary is made once (view model); after a switch to English it still said German
+        val was = java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale.GERMAN)
+            val s = RideView.summary(segs, listOf(ride), onFoot = true, zone = java.time.ZoneOffset.UTC)!!
+            val notCounted = s.options.first { it.choice == RideChoice.NOT_COUNTED }
+            assertEquals("Alles speichern, Fahrten nicht zählen", notCounted.title)
+            java.util.Locale.setDefault(java.util.Locale.ENGLISH)
+            assertEquals("Save all, rides not counted", notCounted.title)
+            assertEquals("Save only until 08:10", s.options.first { it.choice == RideChoice.UNTIL }.title)
+            // the dialog reads them in composition, not the strings made with the summary
+            val dialog = java.io.File("src/main/java/com/onpath/app/ui/RideSummary.kt").readText()
+            assertTrue(dialog.contains("Text(words(o.titleWords)") && dialog.contains("str(r.kind.res)"))
+        } finally { java.util.Locale.setDefault(was) }
+    }
+
     @Test fun summaryTimelineAndChoices() {
         val s = RideView.summary(segs, listOf(ride), onFoot = true, zone = java.time.ZoneOffset.UTC)!!
         assertEquals(listOf(RideView.RowKind.ON_FOOT, RideView.RowKind.VEHICLE, RideView.RowKind.ON_FOOT), s.rows.map { it.kind })
