@@ -37,6 +37,14 @@ and the commit history.
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
+- **[donald] Smoother on older phones (owner field 2026-11-07, Galaxy S10, via cloud-web)** – "runs well, a little
+  hackelig". The S10 has a fixed 60 Hz screen, so it is not the refresh rate. Measure first: `FrameJankMeter` today only
+  covers the plan-sheet drag – add map pan / zoom, Navigate (route following) and the Meine Touren list with route
+  pictures; numbers from the S10-class device (or the Pixel with the GPU slowed) into the handoff. Then try what helps
+  most, one at a time with numbers: Relief and Höhenlinien off while the map moves, the pre-rendered relief raster
+  instead of live hillshade from the DEM, fewer path / trail layers below z13, MapLibre pixel ratio / max FPS, Compose
+  recompositions on every camera move, route pictures in Meine Touren drawn once and cached. If one setting makes the
+  big difference, offer it as "Leichte Karte (ältere Handys)" in Einstellungen → Karte, or switch it by itself.
 - **[donald] Handy einrichten: "Links vom Planer in OnPath öffnen" as a check (owner field 2026-11-07, Galaxy S10, via
   cloud-web)** – pairing / plan links from plan.onpath.earth opened in the browser on the S10; the owner fixed it by hand
   (Einstellungen → Apps → OnPath → Standardmäßig öffnen → "Unterstützte Links öffnen"). Owner asks to build it into the
