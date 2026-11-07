@@ -7,8 +7,9 @@
 # push tags or create releases). It can also be started by hand: Actions → Release → Run workflow.
 #
 # Release notes: docs/release-notes/vX.Y.Z.md if present.
-# Signing: the fixed test key in keystore/ (updates install in place). A secret Play release key
-# will come later via repository secrets.
+# Signing: the fixed test key in keystore/ (updates install in place). The Google Play bundle (build type "play", A-003)
+# is not built here: the owner makes it on his machine with the upload key there (tools/dev/play_bundle.sh,
+# docs/play-build.md) and uploads it by hand.
 # Map key: the APK talks to the TEST map server (Cloudflare doorman + Cloud Run builder). Its app key is the
 # newest entry of the GitHub environment "test" secret ONPATH_APP_KEYS ("old,new" during rotation) – the same
 # secret maps-deploy.yml gives the doorman. Masked in logs; never written to the repository.
@@ -80,7 +81,7 @@ jobs:
       - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         if: steps.ver.outputs.skip != 'true'
         with:
-          packages: "platforms;android-35 build-tools;35.0.0 platform-tools"
+          packages: "platforms;android-36 build-tools;35.0.0 platform-tools"
 
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
         if: steps.ver.outputs.skip != 'true'

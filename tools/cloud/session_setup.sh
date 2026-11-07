@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Make a fresh Claude cloud session ready to build OnPath and run tools/ci/gate.sh (no emulator there: no KVM –
 # E2E runs on GitHub, tools/ci/e2e_github.sh). Idempotent and quiet when everything is already there.
-#   1. Android SDK (cmdline-tools from dl.google.com, platforms;android-35, build-tools;35.0.0 + 36.0.0, platform-tools) in
+#   1. Android SDK (cmdline-tools from dl.google.com, platforms;android-36, build-tools;35.0.0 + 36.0.0, platform-tools) in
 #      $ANDROID_SDK (default /opt/android-sdk); licences accepted
 #   2. local.properties sdk.dir (git-ignored)
 #   3. ~/.gradle/init.d/onpath-mirror.gradle: Google's Maven Central mirror first (Maven Central answers 429 to cloud
@@ -15,7 +15,7 @@ here=$(cd "$(dirname "$0")/../.." && pwd)
 [ -f "$here/settings.gradle.kts" ] && grep -q 'rootProject.name = "OnPath"' "$here/settings.gradle.kts" || exit 0
 SDK=${ANDROID_SDK:-/opt/android-sdk}
 TOOLS_ZIP=commandlinetools-linux-13114758_latest.zip   # cmdline-tools 19.0
-PKGS=("platforms;android-35" "build-tools;35.0.0" "build-tools;36.0.0" "platform-tools")   # AGP fetches 36 itself otherwise
+PKGS=("platforms;android-36" "build-tools;35.0.0" "build-tools;36.0.0" "platform-tools")   # AGP fetches 36 itself otherwise
 log() { echo "session_setup: $*"; }
 t0=$(date +%s)
 
@@ -30,7 +30,7 @@ if [ ! -x "$sm" ]; then
   rm -rf "$tmp"
 fi
 missing=()
-[ -d "$SDK/platforms/android-35" ] || missing+=("${PKGS[0]}")
+[ -d "$SDK/platforms/android-36" ] || missing+=("${PKGS[0]}")
 [ -d "$SDK/build-tools/35.0.0" ] || missing+=("${PKGS[1]}")
 [ -d "$SDK/build-tools/36.0.0" ] || missing+=("${PKGS[2]}")
 [ -x "$SDK/platform-tools/adb" ] || missing+=("${PKGS[3]}")

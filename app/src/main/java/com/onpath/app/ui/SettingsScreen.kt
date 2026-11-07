@@ -857,14 +857,15 @@ private fun PrivacySection() {
 data class PrivacyFlow(val what: String, val to: String, val whenText: String)
 
 /** In the app's language (strings_settings.xml); service names stay as they are. */
-val PRIVACY_FLOWS: List<PrivacyFlow> get() = listOf(
+val PRIVACY_FLOWS: List<PrivacyFlow> get() = listOfNotNull(
     PrivacyFlow(Txt.s(Res.string.settings_privacy_maps_what), Txt.s(Res.string.settings_privacy_maps_to),
         Txt.s(Res.string.settings_privacy_when_maps)),
     PrivacyFlow(Txt.s(Res.string.settings_privacy_routing_what), "brouter.de", Txt.s(Res.string.settings_privacy_when_maps)),
     PrivacyFlow(Txt.s(Res.string.settings_privacy_search_what), Txt.s(Res.string.settings_privacy_search_to, "komoot"),
         Txt.s(Res.string.settings_privacy_search_when)),
-    // update/AppUpdater – the Play build (A-003) has no own updater: drop this row there
-    PrivacyFlow(Txt.s(Res.string.settings_privacy_update_what), "GitHub", Txt.s(Res.string.settings_privacy_update_when)),
+    // update/AppUpdater – the Play build (A-003) has no own updater: no row there
+    PrivacyFlow(Txt.s(Res.string.settings_privacy_update_what), "GitHub", Txt.s(Res.string.settings_privacy_update_when))
+        .takeIf { com.onpath.app.BuildConfig.SELF_UPDATE },
     // search/ShortLinkResolver: redirects only, the Google page is never loaded (A-020)
     PrivacyFlow(Txt.s(Res.string.settings_privacy_link_what), "Google", Txt.s(Res.string.settings_privacy_link_when)),
     // search/AndroidPlaceGeocoder: last step for a shared place (A-020)
