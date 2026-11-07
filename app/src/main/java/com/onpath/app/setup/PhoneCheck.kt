@@ -36,7 +36,19 @@ enum class Felt { UNKNOWN, YES, NO }
 enum class ResetStatus { ON, OFF, NOT_AVAILABLE, UNKNOWN }
 
 /** The phone's speech output for the app language, as last found (recording/Speaker): stored, read on every return. */
-enum class VoiceStatus { UNKNOWN, READY, MISSING, NO_ENGINE }
+enum class VoiceStatus {
+    UNKNOWN, READY,
+    /** An engine knows the language but has no offline voice for it yet: load one ([VoiceSetup.advice]). */
+    MISSING,
+    NO_ENGINE,
+    /** The phone's engines do not speak the language at all (field report 2026-11-07, Samsung): install Google's. */
+    NO_LANGUAGE,
+    /**
+     * Only a voice that needs the internet (no offline one on the phone): OnPath speaks with it rather than not at all,
+     * the step keeps asking for an offline voice, and without a network the tour vibrates instead (owner 2026-11-07).
+     */
+    ONLINE,
+}
 
 /** Who took something away that was there at the last use: Android's unused-app reset, or someone else. */
 enum class Taken { BY_PHONE, OFF }
@@ -86,6 +98,8 @@ data class PhoneState(
     val vibrationFelt: Felt = Felt.UNKNOWN,
     val voice: VoiceStatus = VoiceStatus.UNKNOWN,
     val voiceHeard: Felt = Felt.UNKNOWN,
+    /** Which engine lacks the voice and whether Google's is there – what the voice step says ([VoiceSetup.advice]). */
+    val voiceFix: VoiceSetup.Fix? = null,
     val backgroundRestricted: Boolean = false,
     /** UsageStatsManager standby bucket (45 = restricted); null below API 28. */
     val standbyBucket: Int? = null,
@@ -119,7 +133,8 @@ object PhoneCheck {
         CheckId.LOCATION_ON -> s.locationOn
         CheckId.NOTIFICATIONS -> s.notificationsOn && !s.channelOff
         CheckId.VIBRATION -> !s.hasVibrator || s.vibrationFelt == Felt.YES
-        CheckId.VOICE -> s.voiceHeard == Felt.YES && s.voice != VoiceStatus.MISSING
+        CheckId.VOICE -> s.voiceHeard == Felt.YES &&
+            s.voice != VoiceStatus.MISSING && s.voice != VoiceStatus.NO_LANGUAGE && s.voice != VoiceStatus.ONLINE
         CheckId.BATTERY -> !s.backgroundRestricted && s.standbyBucket != BUCKET_RESTRICTED
         CheckId.BRAND -> s.brand == null || s.brandDone
         CheckId.BATTERY_SAVER -> !(s.powerSave && LocationSaverMode.stopsGps(s.locationSaverMode))
@@ -192,6 +207,10 @@ object PhoneCheck {
         append(", notifications ${if (s.notificationsOn) "on" else "off"}${if (s.channelOff) " (a channel off)" else ""}")
         append(", vibration ${if (s.hasVibrator) "felt ${s.vibrationFelt}" else "none"}")
         append(", voice ${s.voice} heard ${s.voiceHeard}")
+        s.voiceFix?.let {
+            append(" (engine ${it.enginePkg} \"${it.engine}\", default \"${it.default ?: "?"}\", ")
+            append("google speech ${if (it.googleInstalled) "installed" else "not installed"})")
+        }
         append(", battery ${if (s.backgroundRestricted) "restricted" else "ok"}, bucket ${s.standbyBucket ?: "?"}")
         append(", saver ${if (s.powerSave) "on (location mode ${s.locationSaverMode ?: "?"})" else "off"}")
         append(", unused reset ${s.unusedReset}")

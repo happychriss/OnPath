@@ -27,16 +27,46 @@ and the commit history.
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
+- ← [laptop] (2026-11-07) for cloud-web: the planner links privacy at https://onpath.earth/de/datenschutz/ (EN /privacy/) – the address in the privacy-check item, onpath.earth/datenschutz/, answers 404; maybe a redirect on the site. Access comments in web/host fixed (02a16286).
 - ← [laptop] (2026-11-06) **One branch – what app sessions see:** an app push that changes a file the planner mirrors (`web/parity.json`, e.g. AppViewModel) turns the "Web planner" run on `main` red until laptop mirrors it (its hourly round runs `node web/parity/check.mjs` first). Not the app's problem – nothing to do for donald; the release's planner job waits for it. First case: #39 (b584efa3, tour only).
 <!-- A role's word to the captain (roles cannot message the captain): - ← [donald|laptop|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
 - ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route = only the calculated way, Track = only GPX; list "Meine Touren" with tabs "Geplant | Gemacht". Every sentence written out, plus the list of texts that stay "Route": `onpath.private/auftraege/a-022-plan-tour-route.md`. No search-and-replace (der Plan / ihn). Before the release, because of the screenshots; cloud-web then does website, help and store text – 2026-11-03
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
-- [laptop] Planner parity (4 mirrors) + privacy link / Access comments; planner pictures flow B + C01/C02/C06 + film 1 (Meran 0.17) – since 2026-11-07 · ✓ pictures done 2026-11-07 (onpath.private 754d5f0, `web/app/test/flows-shots.mjs`; film as WebM on the laptop – no ffmpeg)
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
+- **[donald] Smoother on older phones (owner field 2026-11-07, Galaxy S10, via cloud-web)** – "runs well, a little
+  hackelig". The S10 has a fixed 60 Hz screen, so it is not the refresh rate. Measure first: `FrameJankMeter` today only
+  covers the plan-sheet drag – add map pan / zoom, Navigate (route following) and the Meine Touren list with route
+  pictures; numbers from the S10-class device (or the Pixel with the GPU slowed) into the handoff. Then try what helps
+  most, one at a time with numbers: Relief and Höhenlinien off while the map moves, the pre-rendered relief raster
+  instead of live hillshade from the DEM, fewer path / trail layers below z13, MapLibre pixel ratio / max FPS, Compose
+  recompositions on every camera move, route pictures in Meine Touren drawn once and cached. If one setting makes the
+  big difference, offer it as "Leichte Karte (ältere Handys)" in Einstellungen → Karte, or switch it by itself.
+  **Device (owner 2026-11-07):** the owner can plug his Galaxy S10 into donald's USB instead of the Pixel – it takes the
+  `pixel` slot of `tools/dev/device.sh` (`adb -d`, only one phone on USB). It runs the **release** build: a debug APK
+  has the same package id but another signature, so `adb install` fails and uninstalling would delete his tours – never
+  uninstall; measure with the installed release, or install only a release-signed APK.
+  Start without a new build: `adb -d shell dumpsys gfxinfo com.onpath.app reset`, then map pan / zoom, Navigate, Meine
+  Touren, then `dumpsys gfxinfo com.onpath.app` (janky frames, percentiles) – once with Relief + Höhenlinien on, once off.
+  Save tokens (owner's weekly limit): numbers, not screenshots; result as a short table in the handoff.
+- **[donald] Handy einrichten: "Links vom Planer in OnPath öffnen" as a check (owner field 2026-11-07, Galaxy S10, via
+  cloud-web)** – pairing / plan links from plan.onpath.earth opened in the browser on the S10; the owner fixed it by hand
+  (Einstellungen → Apps → OnPath → Standardmäßig öffnen → "Unterstützte Links öffnen"). Owner asks to build it into the
+  setup. A new `CheckId` (e.g. `LINKS`, RECOMMENDED, `docs/design/onboarding-phone-check.md`): Android 12+ –
+  `DomainVerificationManager.getDomainVerificationUserState(packageName)`: plan.onpath.earth VERIFIED or SELECTED → ✓;
+  else a short line ("Links vom Planer öffnen sich sonst im Browser") and a button that opens
+  `Settings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS` (`package:com.onpath.app`); back in the app the check is read again.
+  Below 12: no check (verified at install). Server side checked live: `assetlinks.json` matches the release key – so also
+  find out why the S10 was not verified (other signature? no network at install?), say in the handoff.
+- **[laptop] Pairing from a phone camera ends in the browser (owner field 2026-11-07, Galaxy S10, via cloud-web)** – the
+  owner scanned the pairing QR with the phone's own camera: Samsung's camera opens the link in the browser, not in OnPath
+  (App Link and `assetlinks.json` are fine – checked live). Two fixes: (1) `web_pair_menu_path` still says "☰ → Mit Browser
+  verbinden", the app's menu says **"Mit Browser koppeln"** (EN "Pair with browser") – the dialog should say plainly
+  "Scan with OnPath, not with the camera app"; (2) when a `#pair=` link opens in a **phone** browser, don't start the
+  browser join – show "Open in OnPath" (an `intent://…#Intent;package=com.onpath.app;…` link) and the in-app way.
 - **[donald] In-app privacy texts say more than the code does (cloud-web privacy check 2026-11-07)** – website fixed in
   happychriss/onpath.earth#17; the app's own texts: `settings_privacy_lead` / `settings_sum_privacy` "Nichts wird verfolgt"
   overreaches (services see the IP, map requests show the region) → e.g. "Kein Konto, keine Analyse, keine Werbung, kein
@@ -330,6 +360,12 @@ and the commit history.
 
 ## Waiting for the owner
 <!-- Owner 2026-11-07: open questions to the owner live here (who, date, question, recommendation first); asked in the session's chat; whoever acts on the answer deletes the line. -->
+- **[donald] Only our signed apps on the map server? (owner 2026-11-07, chat)** – App Links need no per-phone step
+  (one fingerprint per signing key: GitHub test key + Play App Signing key, both in `web/host` assetlinks). Server
+  access cannot be tied to our signature without Google Play Integrity (needs Play Services – against the "no Google
+  Play Services" rule – and locks out GitHub / F-Droid builds); a key in the APK or an in-app signature check is easy to
+  strip from a rebuild. Recommendation: per-phone / per-IP quotas, rotatable key, supporter code
+  (`docs/design/map-access.md`); Play Integrity only for building new cells if abuse shows up. Owner decides.
 - **[donald] Bike turn cue: heard 6 s before the turn – OK? (donald 2026-11-07)** – the owner asked for 2–3 s. His ride
   (tour 217) shows the normal "Gleich …" was already heard 4–5 s before; what felt late were swallowed / held turns
   ("danach" turns never said on their own, a turn waiting 3 s behind "Stopp 2 erreicht", arrival before the last turn) –

@@ -97,7 +97,7 @@ ride with ~40 cues today → ~40 sentences in 3 h, about one every 4–5 min.
   "In 100 Metern links." → **Gehört?** Ja / Nein. No offline voice for the app language → "Stimme laden" opens the
   phone's speech settings (`ACTION_INSTALL_TTS_DATA`, else the TTS settings page); Nein → "Lautstärke prüfen" hint.
   Settings → Phone setup shows the row like the others; the check runs again on every return (a voice can be removed).
-- Diagnostics: engine, voice name, offline yes / no, last error.
+- Diagnostics: engine, voice name, offline yes / no, last error; since 2026-11-07 all engines with versions and voice counts (`VoiceSetup.describe`). Any engine, not only Google's, and an online voice as the last resort: `docs/design/onboarding-phone-check.md` addendum 2026-11-07.
 
 ## 5. How it is built
 - **Pure, unit-tested `navigation/VoiceRules`** (app only, never in the web's shared code): fixes + followed line +

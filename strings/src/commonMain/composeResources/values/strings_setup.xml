@@ -94,4 +94,17 @@
     <string name="setup_voice_missing">Your phone has no offline voice for this language yet. Tap Load voice, choose the language and download it – after that it works without the internet.</string>
     <string name="setup_voice_load">Load voice</string>
     <string name="setup_voice_none">This phone has no speech output. OnPath guides you by vibration and on the screen.</string>
+    <string name="setup_voice_in_google">Your phone’s speech output (“%1$s”) has no voice for %2$s. So OnPath uses Speech Services by Google – load the voice there.</string>
+    <string name="setup_voice_or_google">Your phone speaks with “%1$s”. If loading the voice there does not work, the easiest way is to install Speech Services by Google – OnPath then uses it by itself.</string>
+    <string name="setup_voice_install_google">Your phone’s speech output (“%1$s”) has no voice for %2$s. The easiest way: install Speech Services by Google – OnPath then uses it by itself, also without the internet.</string>
+    <string name="setup_voice_no_language">No speech output on your phone has a voice for %1$s yet. In the speech output settings you can choose an engine and load a voice.</string>
+    <string name="setup_voice_online">Your phone has a voice for %1$s only with the internet. OnPath speaks with it for now – without a network the turns vibrate instead. For tours without a network, load an offline voice.</string>
+    <string name="setup_voice_google">Speech Services by Google</string>
+    <string name="setup_voice_tts_settings">Speech output settings</string>
+    <string name="setup_voice_checking">Checking the speech output …</string>
+    <string name="setup_voice_test_none">Tested just now: still no voice for %1$s on this phone. See above what helps.</string>
+    <string name="setup_voice_test_muted">The sentence is playing, but the media volume is at zero. Press the volume up button and test again.</string>
+    <string name="setup_voice_test_call">During a phone call the voice stays quiet. Test again after the call.</string>
+    <string name="setup_voice_test_failed">The speech output did not play the sentence (error %1$s). Test again – if it stays quiet, choose another engine in the speech output settings.</string>
+    <string name="setup_voice_test_silent">The speech output took the sentence but did not start speaking. Test again – if it stays quiet, choose another engine in the speech output settings.</string>
 </resources>

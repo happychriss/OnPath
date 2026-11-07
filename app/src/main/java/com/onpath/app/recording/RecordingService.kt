@@ -1132,16 +1132,23 @@ class RecordingService : Service() {
         } else Problems.trace("navigation", "Junction cue: ${cue.name} – not vibrated (turn hints $guide)")
     }
 
-    /** Spoken directions on for this tour's activity, and the setup's test sentence was heard. */
+    /**
+     * Spoken directions on for this tour's activity, the setup's test sentence was heard, and the phone's voice can speak
+     * (no voice found, or an online voice without a network → the turns are vibrated instead: never a silent tour).
+     */
     private fun voiceOn(): Boolean {
         val cfg = settings ?: Prefs(this).settings
-        return cfg.junctionGuide == com.onpath.app.data.JunctionGuide.VOICE && Prefs(this).voiceHeard == com.onpath.app.setup.Felt.YES
+        return cfg.junctionGuide == com.onpath.app.data.JunctionGuide.VOICE && Prefs(this).voiceHeard == com.onpath.app.setup.Felt.YES &&
+            speaker?.canSpeak != false
     }
 
     /** The speaker, started on first use (then the first sentence comes without delay); what it finds goes to the phone check. */
     private fun voiceSpeaker(): Speaker? = speaker ?: Speaker(this).also { s ->
         speaker = s
-        s.onState = { st -> Prefs(this).voiceStatus = Speaker.status(st) }
+        s.onState = { st ->
+            Speaker.remember(Prefs(this), s)
+            if (st != Speaker.State.READY) Problems.warn("voice", "No voice for this tour ($st): turns are vibrated instead")
+        }
         s.start()
     }
 

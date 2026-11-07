@@ -105,7 +105,8 @@ test("Android App Links: assetlinks.json, 200, JSON, no redirect (A-016)", async
   const j = await r.json();
   assert.equal(j[0].target.package_name, "com.onpath.app");
   assert.deepEqual(j[0].relation, ["delegate_permission/common.handle_all_urls"]);
-  assert.deepEqual(j[0].target.sha256_cert_fingerprints, ["21:F8:7F:27:34:AA:30:2E:9F:82:C5:8E:56:F3:B0:17:5E:20:D1:01:E2:FA:29:2A:D1:D3:31:DD:77:16:6D:C7"]);
+  assert.deepEqual(j[0].target.sha256_cert_fingerprints, ["21:F8:7F:27:34:AA:30:2E:9F:82:C5:8E:56:F3:B0:17:5E:20:D1:01:E2:FA:29:2A:D1:D3:31:DD:77:16:6D:C7",
+      "D9:16:09:F5:65:60:CC:F9:3A:D5:A2:9B:97:41:8E:49:6E:35:DC:67:86:63:C1:80:56:16:52:D6:10:2A:D8:C3"]);
   assert.equal((await handle(new Request(H + "/.well-known/other"), env)).status, 404);
 });
 

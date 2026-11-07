@@ -1302,6 +1302,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 .put("toGoS", it.time?.toGoS).put("arrivalMs", it.time?.arrivalMs) } ?: org.json.JSONObject.NULL)
             .put("gps", tracker.status().name)
             .put("phone", com.onpath.app.setup.PhoneCheck.describe(phone))
+            .put("voice", prefs.voiceDetail)
             .put("demo", com.onpath.app.recording.DemoLocation.state.value?.let { d -> org.json.JSONObject().put("kind", d.kind.name)
                 .put("label", d.label).put("factor", d.factor).put("paused", d.paused).put("alongM", d.alongM.toInt())
                 .put("lengthM", d.lengthM.toInt()).put("ended", d.ended) } ?: org.json.JSONObject.NULL)
@@ -4866,7 +4867,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setupVibrationPlayed() = setup.setupVibrationPlayed()
     fun setupVibrationAnswer(f: com.onpath.app.setup.Felt) = setup.setupVibrationAnswer(f)
     /** The voice test found the phone's speech output in this [status] (recording/Speaker). */
-    fun setupVoiceStatus(status: com.onpath.app.setup.VoiceStatus) = setup.setupVoiceStatus(status)
+    fun setupVoiceStatus(status: com.onpath.app.setup.VoiceStatus, fix: com.onpath.app.setup.VoiceSetup.Fix?) =
+        setup.setupVoiceStatus(status, fix)
+    /** What the last tap on the voice step's Test did (shown under the step); null = not tapped. */
+    val voiceTest: com.onpath.app.setup.VoiceSetup.VoiceTest? get() = setup.voiceTest
+    fun setupVoiceTest(t: com.onpath.app.setup.VoiceSetup.VoiceTest?) = setup.setupVoiceTest(t)
     fun setupBrandDone() = setup.setupBrandDone()
     /** Closes the welcome / guide (Back, Close, Later on the welcome). */
     fun closeSetup() = setup.closeSetup()

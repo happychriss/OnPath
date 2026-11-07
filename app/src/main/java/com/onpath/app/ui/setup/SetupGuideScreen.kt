@@ -52,6 +52,7 @@ import com.onpath.app.setup.PhoneCheck
 import com.onpath.app.setup.PhoneState
 import com.onpath.app.setup.SetupGuide
 import com.onpath.app.setup.Taken
+import com.onpath.app.setup.VoiceSetup
 import com.onpath.app.ui.OnPathColors
 import com.onpath.strings.*
 
@@ -65,6 +66,9 @@ data class SetupCallbacks(
     /** The voice step: say the test sentence; open the phone's voice download. */
     val onTestVoice: () -> Unit = {},
     val onLoadVoice: () -> Unit = {},
+    /** The phone's speech output settings; "Speech Services by Google" in the Play Store (field report 2026-11-07). */
+    val onTtsSettings: () -> Unit = {},
+    val onGoogleSpeech: () -> Unit = {},
     val onSoundSettings: () -> Unit = {},
     val onAppSettings: () -> Unit = {},
     val onMoreHelp: (Brand) -> Unit = {},
@@ -143,7 +147,7 @@ fun checkDo(id: CheckId, phone: PhoneState, denied: Boolean): String = when (id)
     CheckId.VIBRATION -> str0(Res.string.setup_vib_do)
     CheckId.VOICE -> when (phone.voice) {
         com.onpath.app.setup.VoiceStatus.MISSING -> str0(Res.string.setup_voice_missing)
-        com.onpath.app.setup.VoiceStatus.NO_ENGINE -> ""
+        com.onpath.app.setup.VoiceStatus.NO_ENGINE, com.onpath.app.setup.VoiceStatus.NO_LANGUAGE -> ""
         else -> str0(Res.string.setup_voice_do)
     }
     CheckId.BATTERY -> str0(Res.string.setup_bat_do)
@@ -158,12 +162,44 @@ fun checkDo(id: CheckId, phone: PhoneState, denied: Boolean): String = when (id)
     CheckId.UNUSED_RESET -> str0(Res.string.setup_unused_do)
 }
 
+/** The app language's name in itself ("Deutsch", "English") – the voice the step talks about. */
+fun voiceLanguageName(): String = java.util.Locale.forLanguageTag(Txt.language()).let { it.getDisplayLanguage(it) }
+
+/**
+ * What the voice step adds about the phone's engines ([VoiceSetup.advice]: which engine lacks the voice, Google's speech
+ * services, a voice that needs the internet); null = nothing (field report 2026-11-07, Samsung S10).
+ */
+fun voiceAdvice(phone: PhoneState): String? {
+    val f = phone.voiceFix
+    val engine = f?.default ?: f?.engine ?: ""
+    return when (VoiceSetup.advice(phone.voice, f)) {
+        VoiceSetup.Advice.NONE, VoiceSetup.Advice.DOWNLOAD -> null
+        VoiceSetup.Advice.DOWNLOAD_IN_GOOGLE -> Txt.s(Res.string.setup_voice_in_google, engine, voiceLanguageName())
+        VoiceSetup.Advice.DOWNLOAD_OR_GOOGLE -> Txt.s(Res.string.setup_voice_or_google, f?.engine ?: "")
+        VoiceSetup.Advice.INSTALL_GOOGLE -> Txt.s(Res.string.setup_voice_install_google, engine, voiceLanguageName())
+        VoiceSetup.Advice.NO_LANGUAGE_ANYWHERE -> Txt.s(Res.string.setup_voice_no_language, voiceLanguageName())
+        VoiceSetup.Advice.ONLINE_ONLY -> Txt.s(Res.string.setup_voice_online, voiceLanguageName())
+    }
+}
+
+/** The note under the voice step after a tap on Test; null = none (the sentence played: the question follows). */
+fun voiceTestNote(t: VoiceSetup.VoiceTest?): String? = when (t?.outcome) {
+    null, VoiceSetup.Outcome.SPOKEN -> null
+    VoiceSetup.Outcome.CHECKING -> str0(Res.string.setup_voice_checking)
+    VoiceSetup.Outcome.MUTED -> str0(Res.string.setup_voice_test_muted)
+    VoiceSetup.Outcome.NO_VOICE -> Txt.s(Res.string.setup_voice_test_none, voiceLanguageName())
+    VoiceSetup.Outcome.IN_CALL -> str0(Res.string.setup_voice_test_call)
+    VoiceSetup.Outcome.FAILED -> Txt.s(Res.string.setup_voice_test_failed, t.code?.toString() ?: "?")
+    VoiceSetup.Outcome.SILENT -> str0(Res.string.setup_voice_test_silent)
+}
+
 /**
  * The welcome page (first start) or the guide: one step per page – large icon, "Step 2 of 3", title, why, what to do,
  * one main button and "Later" (docs/design/onboarding-phone-check.md §4.2). Full screen, scrolls at large font sizes.
  */
 @Composable
-fun SetupGuideScreen(guide: SetupGuide?, welcome: Boolean, phone: PhoneState, taken: Map<CheckId, Taken>, cb: SetupCallbacks) {
+fun SetupGuideScreen(guide: SetupGuide?, welcome: Boolean, phone: PhoneState, taken: Map<CheckId, Taken>, cb: SetupCallbacks,
+                     voiceTest: VoiceSetup.VoiceTest? = null) {
     // at a large font size (older users) the buttons scroll with the text, so neither squeezes the other
     val large = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -194,13 +230,18 @@ fun SetupGuideScreen(guide: SetupGuide?, welcome: Boolean, phone: PhoneState, ta
                         if (id == CheckId.VIBRATION && guide.vibrationPlayed && guide.vibrationAnswer == Felt.NO) {
                             NoteBox(str(Res.string.setup_vib_not_felt))
                         }
+                        if (id == CheckId.VOICE) {
+                            voiceAdvice(phone)?.let {
+                                Text(it, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 12.dp))
+                            }
+                        }
                         if (id == CheckId.VOICE && guide.vibrationPlayed && guide.vibrationAnswer == Felt.NO) {
                             NoteBox(str(Res.string.setup_voice_not_heard))
                         }
                     }
                 }
             }
-            Buttons(guide, welcome, phone, cb)
+            Buttons(guide, welcome, phone, cb, voiceTest)
         }
     }
 }
@@ -232,14 +273,14 @@ private fun DoneLine(what: String) {
 }
 
 @Composable
-private fun NoteBox(text: String) {
-    Surface(shape = com.onpath.app.ui.OnPathShapes.Small, color = OnPathColors.WarnContainer, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+private fun NoteBox(text: String, top: androidx.compose.ui.unit.Dp = 12.dp) {
+    Surface(shape = com.onpath.app.ui.OnPathShapes.Small, color = OnPathColors.WarnContainer, modifier = Modifier.fillMaxWidth().padding(top = top)) {
         Text(text, style = MaterialTheme.typography.bodyMedium, color = OnPathColors.Ink, modifier = Modifier.padding(12.dp))
     }
 }
 
 @Composable
-private fun Buttons(guide: SetupGuide?, welcome: Boolean, phone: PhoneState, cb: SetupCallbacks) {
+private fun Buttons(guide: SetupGuide?, welcome: Boolean, phone: PhoneState, cb: SetupCallbacks, voiceTest: VoiceSetup.VoiceTest?) {
     val big = Modifier.fillMaxWidth().heightIn(min = 56.dp)
     Column(Modifier.fillMaxWidth().padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         when {
@@ -267,22 +308,51 @@ private fun Buttons(guide: SetupGuide?, welcome: Boolean, phone: PhoneState, cb:
                         TextButton(onClick = cb.onLater, modifier = big) { Text(str(Res.string.setup_later)) }
                     }
                 }
-                CheckId.VOICE -> when {
-                    phone.voice == com.onpath.app.setup.VoiceStatus.NO_ENGINE ->
-                        Button(onClick = cb.onLater, modifier = big) { Text(str(Res.string.setup_continue)) }
-                    phone.voice == com.onpath.app.setup.VoiceStatus.MISSING -> {
-                        Button(onClick = cb.onLoadVoice, modifier = big) { Text(str(Res.string.setup_voice_load)) }
-                        OutlinedButton(onClick = cb.onTestVoice, modifier = big) { Text(str(Res.string.setup_vib_test)) }
-                        TextButton(onClick = cb.onLater, modifier = big) { Text(str(Res.string.setup_later)) }
+                CheckId.VOICE -> {
+                    // one filled button; the ways out of a missing voice (Google's speech services, the speech settings)
+                    // as outlined / text buttons (field report 2026-11-07)
+                    val google = VoiceSetup.offerGoogle(VoiceSetup.advice(phone.voice, phone.voiceFix), phone.voiceFix)
+                    // what the last tap on Test did, right above the buttons (never scrolled away: no silent test)
+                    voiceTestNote(voiceTest)?.let {
+                        if (voiceTest?.outcome == VoiceSetup.Outcome.CHECKING) Text(it, style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        else NoteBox(it, top = 0.dp)
                     }
-                    guide.vibrationPlayed && guide.vibrationAnswer == Felt.UNKNOWN -> {
-                        Text(str(Res.string.setup_voice_question), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                        Button(onClick = { cb.onVibrationAnswer(Felt.YES) }, modifier = big) { Text(str(Res.string.setup_voice_yes)) }
-                        OutlinedButton(onClick = { cb.onVibrationAnswer(Felt.NO) }, modifier = big) { Text(str(Res.string.setup_vib_no)) }
-                    }
-                    else -> {
-                        Button(onClick = cb.onTestVoice, modifier = big) { Text(str(Res.string.setup_vib_test)) }
-                        TextButton(onClick = cb.onLater, modifier = big) { Text(str(Res.string.setup_later)) }
+                    when {
+                        phone.voice == com.onpath.app.setup.VoiceStatus.NO_ENGINE ->
+                            Button(onClick = cb.onLater, modifier = big) { Text(str(Res.string.setup_continue)) }
+                        phone.voice == com.onpath.app.setup.VoiceStatus.MISSING -> {
+                            Button(onClick = cb.onLoadVoice, modifier = big) { Text(str(Res.string.setup_voice_load)) }
+                            OutlinedButton(onClick = cb.onTestVoice, modifier = big) { Text(str(Res.string.setup_vib_test)) }
+                            if (google) TextButton(onClick = cb.onGoogleSpeech, modifier = big) { Text(str(Res.string.setup_voice_google)) }
+                            TextButton(onClick = cb.onLater, modifier = big) { Text(str(Res.string.setup_later)) }
+                        }
+                        phone.voice == com.onpath.app.setup.VoiceStatus.NO_LANGUAGE -> {
+                            if (google) {
+                                Button(onClick = cb.onGoogleSpeech, modifier = big) { Text(str(Res.string.setup_voice_google)) }
+                                OutlinedButton(onClick = cb.onTestVoice, modifier = big) { Text(str(Res.string.setup_vib_test)) }
+                                TextButton(onClick = cb.onTtsSettings, modifier = big) { Text(str(Res.string.setup_voice_tts_settings)) }
+                            } else {
+                                Button(onClick = cb.onTtsSettings, modifier = big) { Text(str(Res.string.setup_voice_tts_settings)) }
+                                OutlinedButton(onClick = cb.onTestVoice, modifier = big) { Text(str(Res.string.setup_vib_test)) }
+                            }
+                            TextButton(onClick = cb.onLater, modifier = big) { Text(str(Res.string.setup_later)) }
+                        }
+                        guide.vibrationPlayed && guide.vibrationAnswer == Felt.UNKNOWN -> {
+                            Text(str(Res.string.setup_voice_question), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                            Button(onClick = { cb.onVibrationAnswer(Felt.YES) }, modifier = big) { Text(str(Res.string.setup_voice_yes)) }
+                            OutlinedButton(onClick = { cb.onVibrationAnswer(Felt.NO) }, modifier = big) { Text(str(Res.string.setup_vib_no)) }
+                        }
+                        else -> {
+                            Button(onClick = cb.onTestVoice, modifier = big) { Text(str(Res.string.setup_vib_test)) }
+                            if (phone.voice == com.onpath.app.setup.VoiceStatus.ONLINE) {
+                                OutlinedButton(onClick = cb.onLoadVoice, modifier = big) { Text(str(Res.string.setup_voice_load)) }
+                                if (google) TextButton(onClick = cb.onGoogleSpeech, modifier = big) { Text(str(Res.string.setup_voice_google)) }
+                            }
+                            if (voiceTest?.outcome == VoiceSetup.Outcome.FAILED || voiceTest?.outcome == VoiceSetup.Outcome.SILENT)
+                                TextButton(onClick = cb.onTtsSettings, modifier = big) { Text(str(Res.string.setup_voice_tts_settings)) }
+                            TextButton(onClick = cb.onLater, modifier = big) { Text(str(Res.string.setup_later)) }
+                        }
                     }
                 }
                 CheckId.BRAND -> {
