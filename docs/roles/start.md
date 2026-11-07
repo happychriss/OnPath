@@ -12,8 +12,9 @@ it owns) and cloud-web works as before (`cloud-web.md`). The captain: `captain.m
   worktree, permission mode auto). A restart of the host reconnects its sessions.
 - In it lives **one standing session** that does the work itself and splits long steps over background agents in their
   own worktrees (`CLAUDE.md` "Sub-agents", "Responsive chat").
-- **Wake-up:** once, the session sets itself an hourly scheduled task (`create_trigger`, `persistent_session_id` =
-  itself, prompt „Runde – docs/roles/start.md“). It survives a restart; `/loop` does not.
+- **Wake-up: off** (owner 2026-11-07, calm phase, saves tokens): the session works when the owner writes to it. Do not
+  create a scheduled task or `/loop` yourself. The paused task (`create_trigger`, `persistent_session_id` = the session,
+  prompt „Runde – docs/roles/start.md“) is switched on again only on the owner's word.
 - When the chat gets long: handoff, archive, start a new session with the same sentence – the repo is the memory.
 
 ## Who takes what (tags in `docs/backlog.md` "Next")

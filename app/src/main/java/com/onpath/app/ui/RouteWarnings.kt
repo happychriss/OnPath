@@ -306,6 +306,14 @@ object RouteWarnings {
 
     // ---------------- "route changed" ----------------
 
+    /**
+     * Whether an activity / T level change may end in the grey "New route for … – check it" line. The user's [own]
+     * choice in Plan with no tour running: no – they changed it themselves (owner 2026-11-07, Meran pictures). During a
+     * tour (a re-route on the way) or a change from elsewhere (the service, the switch sheet, a browser plan): yes.
+     * Newer routing data says its own line (msg_route_updated_newer_data), not asked here.
+     */
+    fun saysChanged(own: Boolean, inPlan: Boolean, touring: Boolean): Boolean = !own || !inPlan || touring
+
     const val CHANGE_SHARE = 0.10
     const val MOVED_M = 50.0
     const val ASCENT_MIN_DIFF_M = 30.0

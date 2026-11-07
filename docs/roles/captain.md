@@ -12,8 +12,8 @@ questions, tells the owner what is new. It writes no product code and decides no
 - The current captain session has the **trust card** (owner 2026-11-03): it may start sessions on donald / the laptop,
   message them and read them – but **every such call needs the owner's tap** („Einmal erlauben“). Use it only for
   something urgent the owner asked for now; normal work goes through the backlog.
-- With the card it **cannot wake itself**: it works when the owner writes. The computers go on by themselves (their
-  hourly wake-up) and push to the owner's phone when they need him.
+- With the card it **cannot wake itself**: it works when the owner writes. The computers work when the owner writes to them
+  (their hourly wake-up is paused since 2026-11-07, owner: calm phase, saves tokens).
 - A captain session **without** the card can wake itself but cannot reach the computers at all. A new captain session
   is one or the other – ask the owner which.
 

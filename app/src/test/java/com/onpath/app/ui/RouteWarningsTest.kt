@@ -301,9 +301,28 @@ class RouteWarningsTest {
         assertEquals(61, RouteWarnings.showPoints(r, spots[1]).size)
     }
 
+    /** Audit item B (2026-10-22): the line after a change during a tour or from elsewhere names the activity. */
     @Test fun changedTextNamesTheActivity() {
         assertEquals("New route for Gravelbike – check it", RouteWarnings.changedText(Activity.BIKE_TREKKING, 3))
         assertEquals("New route for Hike T4 – check it", RouteWarnings.changedText(Activity.HIKE, 4))
+    }
+
+    /**
+     * Owner 2026-11-07: the user's own activity / T level change in Plan gets no "New route for … – check it" line
+     * (they changed it themselves); the same change during a tour still does, so does one from elsewhere, and newer
+     * routing data still says "updated for newer routing data".
+     */
+    @Test fun ownChangeInPlanSaysNothingButTourAndNewerDataStillDo() {
+        assertFalse("own change in Plan", RouteWarnings.saysChanged(own = true, inPlan = true, touring = false))
+        assertTrue("own change in Plan during a tour", RouteWarnings.saysChanged(own = true, inPlan = true, touring = true))
+        assertTrue("own change while navigating", RouteWarnings.saysChanged(own = true, inPlan = false, touring = true))
+        assertTrue("change from elsewhere in Plan", RouteWarnings.saysChanged(own = false, inPlan = true, touring = false))
+        // the wiring: both activity and T level ask the rule; the newer-data lines do not (they always say a changed way)
+        val vm = java.io.File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        assertTrue(vm.contains("noteActivityChange(own = userChange)") && vm.contains("noteActivityChange(own = true)"))
+        assertTrue(vm.contains("if (!RouteWarnings.saysChanged(own, inPlan = mode == AppMode.PLAN, touring = recState.value != null))"))
+        assertEquals(2, Regex("""differs\([^)]*\)\)\s*routeChangedNotice = Txt\.s\(Res\.string\.msg_route_updated_newer_data\)""")
+            .findAll(vm).count())
     }
 
     // ---------------- "route changed" ----------------
