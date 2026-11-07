@@ -37,6 +37,14 @@ and the commit history.
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
+- **[donald] Bugs seen while taking the Meran 0.17 pictures (2026-11-07, emulator, 0.17.3)** – (1) G02: with a stop
+  (Gasthof Hochmuth) the off-route box offered only "Neue Route bis zum Ziel: 3,8 km" – the new route silently drops
+  the stop; StopSkip should ask "Über ②" / "② auslassen"; (2) after "Weiter" on "Unterbrochene Tour" the "Tour
+  interrupted" notification stays; (3) H01: stale "Neue Route · vorher 14:25" after the stop was removed, and "Ankunft
+  11:15" at 11:03 with 4 min / 30 m left; (4) D04: "Halte die Karte gedrückt …" hidden behind the navigation bar at
+  the low sheet; (5) EN starts lowercase: "ford · 5 steep sections"; (6) after an activity change in Plan a "New route
+  for Hike T2 – check it" line appears; (7) D10: T1 + Mutkopf gives a 30 km detour (text right, numbers odd); (8) the
+  ride summary keeps German rows after a live language switch. Pictures: onpath.private/marketing/bilder/aktuell/.
 - **[donald] Saved long routes load without routing again (owner idea 2026-11-07, chat)** – the S10 took 67 s for a
   723 km plan, and loading a saved route routes it again. Proposal: reuse the stored line per leg on load; route again
   only edited legs or legs whose routing data is newer (the app already knows "routed with newer data"). The owner's
@@ -82,14 +90,6 @@ and the commit history.
   `settings_privacy_sync_text` "alles sofort" – the empty mailbox stays 12 months, deleted routes stay as encrypted
   markers; brouter.de (direct from the phone) and Photon (sent automatically while typing, ~1 km position) should be
   named; online search has no off switch (consider one). DE + EN.
-- **[donald] Pictures as flows, round "Meran 0.17" (owner 2026-11-07, via cloud-web)** – every app picture new from
-  0.17.3, all in Meran, **flow by flow in step order**: `docs/design/website-screens.md` flows A, C (app steps), D–L,
-  file names as listed (`D05-handy-route-fertig-los-gehts-de.png` …), DE + EN, `tools/dev/website_shot.sh`, the Meran
-  scenario there (flight mode on the way, no DEMO, never the owner's position). The hike is fixed (owner): **Vellau (Korblift) → Leiteralm, Wandern T2**, the A-019 plan link
-  (`onpath.private/marketing/bilder/a019/Ergebnis.md`), inn on the way Gasthof Hochmuth – check first that 0.17 routes it
-  well (A-019 saw a detour over the Gamplweg); plus the bike route Meran →
-  Etschradweg → Algund / Naturns. PNGs into `bilder/aktuell/`, one line each (file · app version · date). Plausible
-  numbers. Then the film recordings of scenes 2–5 (section "Film") as MP4 – not into a repo, only their place in `liste.md`.
 - **[donald] Follow-ups from v0.17.3 (2026-11-07)** – (2) `RoutingDataFreshInstallE2ETest` needs `routingDownload=true`,
   which `e2e_github.sh` can't pass – add the flag or run it by hand; (5) `e2e.yml` runs only the first class / method
   of a comma list (needs a PR).
