@@ -3965,9 +3965,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- tours ----------------
 
     fun refreshTours() {
+        // the newest read wins: an older one ending late must not hide a row added since (RoutesState.show)
+        val load = routes.beginLoad()
         viewModelScope.launchSafe("app", "refreshTours", Dispatchers.IO) {
             val list = routes.load { withModelTime(it) }
-            withContext(Dispatchers.Main) { routes.show(list) }
+            withContext(Dispatchers.Main) { routes.show(list, load) }
         }
     }
 

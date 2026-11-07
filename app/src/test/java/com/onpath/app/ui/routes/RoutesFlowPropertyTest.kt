@@ -215,6 +215,22 @@ class RoutesFlowPropertyTest {
         else -> Op.RESTART
     }
 
+    /**
+     * E2E 2026-11-07 (CoreFieldE2ETest on GitHub: "E2E saved route" not in My routes): two reads of the list overlap –
+     * the tour start's save refreshes, then My routes opens after a new row; the older read finishing last must not
+     * hide the newer row.
+     */
+    @Test fun anOlderReadFinishingLateNeverHidesANewerRow() {
+        val store = FakeStore(); val r = RoutesState(store)
+        store.insert(TourKind.PLANNED, listOf(0.0 to 0.0, 0.01 to 0.01), draft = false)
+        val first = r.beginLoad(); val before = r.load()
+        store.insert(TourKind.PLANNED, listOf(0.1 to 0.1, 0.11 to 0.11), draft = false)
+        val second = r.beginLoad(); val after = r.load()
+        r.show(after, second)
+        r.show(before, first) // the older read ends last
+        assertEquals("the newer read stays", 2, r.tours.size)
+    }
+
     @Test fun aPlanWithASavedRoutesPointsIsNoDraft() {
         val store = FakeStore(); val r = RoutesState(store)
         val key = listOf(0.0 to 0.0, 0.01 to 0.01)
