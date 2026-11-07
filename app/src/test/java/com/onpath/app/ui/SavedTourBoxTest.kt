@@ -24,8 +24,9 @@ class SavedTourBoxTest {
         assertFalse("no delete, no export in it", box.contains("common_delete") || box.contains("export"))
         // the tour still gets its place name and is still the one just saved (backups / E2E read it)
         val finished = vm.substringAfter("RecordingService.finished.collect { id ->").substringBefore("fun initialCamera()")
-        assertTrue(finished.contains("finishedTour = withContext(Dispatchers.IO) { db.getTour(id) }"))
-        assertTrue(finished.contains("finishedTour?.let { nameRecordedTour(it) }"))
+        assertTrue(finished.contains("val done = withContext(Dispatchers.IO) { db.getTour(id) }"))
+        assertTrue(finished.contains("tour.showFinished(done,"))
+        assertTrue(finished.contains("done?.let { nameRecordedTour(it) }"))
         assertTrue(finished.contains("parts.forEach { p -> withContext(Dispatchers.IO) { db.getTour(p) }?.let { nameRecordedTour(it) } }"))
     }
 
