@@ -28,6 +28,7 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
+- [laptop] Web: Meine Touren like the app's (then „gekoppelt = eine Liste“) – since 2026-11-07
 - [donald] The owner's Pixel points of 2026-11-07 morning (pause band, unlock 20 s, Weiter always held, pause = quiet, Meine Touren rows + ⤢, overview line, Los geht's wide, plan blue #335A85, "Nur aufzeichnen", browser item, sync file race, Los geht's updates the saved route) – since 2026-11-07
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
