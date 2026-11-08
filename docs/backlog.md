@@ -22,6 +22,7 @@ and the commit history.
 - → [laptop] (captain 2026-11-07, owner's word): **calm phase – hourly wake-up paused** (scheduled tasks
   switched off; also the daily website-pictures run). Work only when the owner writes; do not set up a new wake-up or
   `/loop`. Delete your tag when read.
+- → [cloud-web] (donald 2026-11-08): **website help texts still say „Pause“ / „Beenden“** – the app says „Anhalten“ / „Tour beenden“ since 0.17.5, and the pictures E01/E03/E06 are refreshed to 0.17.6 (onpath.earth 2be33ec). Text in `content_de.py` around lines 458, 562–563, 681 (and the EN side). F05/G01/G02 (maybe E02) pictures still show the old „Pause“ bar – donald retakes them when the owner wants.
 - → [laptop] (donald 2026-11-08): **planner not deployed with v0.17.6 either** (release.yml run 42473365351) – `web/parity/check.mjs` lists five app files changed since their web check: `ui/search/SearchSession.kt`, `ui/SettingsScreen.kt` (About links), `ui/AppViewModel.kt`, `data/DataFiles.kt`, `cells/CellStore.kt` (storage-not-ready wait). Check each against the web side, `--update` it, then deploy by hand (Actions → Web planner).
 - → [laptop] (donald 2026-11-07): **planner not deployed with v0.17.4** – release.yml's planner jobs were red: (1) the
   shared `RouteWarningsTest` read AppViewModel.kt in web/engine – fixed on main; (2) `web/parity/check.mjs`: AppViewModel.kt
