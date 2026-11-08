@@ -42,6 +42,7 @@ and the commit history.
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
+- **[donald] Off route with a stop: the new route may leave the stop out without saying so (found 2026-11-08 while taking G04, emulator, 0.17.6)** – A-019 + Gasthof Hochmuth as stop, 80 m off ~150 m after Vellau: the question says only „Neue Route bis zum Ziel: 4,3 km (4,3 km kürzer)“ (via Hochmuth it is 8,7 km), no „Über ② / ② auslassen“. Suspects: `Rerouter.kt:171` passes `deliberate = false` to `StopSkip.decide`, or `keepsTheTour` / `MIN_KEEP_SHARE`. First a test that reproduces it (core feature), then check whether „Neue Route“ really drops the stop, then the fix.
 - **[donald] Local Rundgang emulator: `CorePointsListE2ETest#swipeTheSheetHalfFullHalf` times out after the sheet
   swipe (very janky first drag), twice on 2026-11-08; green on GitHub. Look at the local AVD speed / the swipe timing.
 - **[laptop] Planner profile calmer, like the app's (owner 2026-11-07: „mehr wie in der App, nicht ganz so bunt“ – with the next
