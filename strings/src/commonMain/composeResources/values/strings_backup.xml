@@ -38,6 +38,7 @@
     <string name="backup_err_android10">needs Android 10</string>
     <string name="backup_err_documents">the Documents folder cannot be written</string>
     <string name="backup_err_documents_storage">the Documents folder cannot be written (storage not available)</string>
+    <string name="backup_err_documents_not_ready">the phone's storage has not been ready for a while – OnPath keeps trying; if this stays, restart the phone</string>
     <string name="backup_err_storage_full">storage full</string>
     <string name="backup_err_file_storage">the file could not be written – the phone's storage may be full</string>
     <string name="backup_err_no_access">storage access not allowed – Settings → Backup → Allow</string>

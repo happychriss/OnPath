@@ -5,18 +5,34 @@ import android.content.Context
 import com.onpath.app.debug.Problems
 import java.io.File
 
-/** Location and presence check of the big offline data files (pushed via adb). */
-class DataFiles(context: Context) {
+/**
+ * Location and presence check of the big offline data files. The folder comes from [DataStorage] (one per process):
+ * right after a phone restart the shared storage may not be ready for a minute – then [ready] is false and [missing]
+ * reports nothing (never "maps missing" / a download offer for data that is only not readable yet).
+ */
+class DataFiles internal constructor(private val storage: DataStorage) {
+
+    constructor(context: Context) : this(DataStorage.get(context))
 
     /** = /sdcard/Android/data/com.onpath.app/files/onpath */
-    val dir: File = File(context.getExternalFilesDir(null) ?: context.filesDir, "onpath")
+    val dir: File get() = storage.dir
     val segmentsDir: File get() = File(dir, "segments")
+
+    /** The storage holding [dir] can be read now (false for about a minute after a phone restart on some phones). */
+    fun ready(): Boolean = storage.ready()
+
+    /**
+     * Required files that are really missing: none while the storage is not ready (they are not missing, only not
+     * readable yet – the app re-checks when it is, [DataStorage.whenReady]).
+     */
+    fun missing(): List<Check> = if (!ready()) emptyList() else check().filter { !it.present }
 
     data class Check(val name: String, val present: Boolean, val hint: String)
 
     init {
         // Create the folder so `adb push` has a target and the user can see where it is.
-        try { dir.mkdirs() } catch (e: Exception) { Problems.warn("data", "Map data folder could not be created", e) }
+        // not while the storage is not ready: the folder Android gives then may be a placeholder (it is made once ready)
+        try { if (storage.ready()) dir.mkdirs() } catch (e: Exception) { Problems.warn("data", "Map data folder could not be created", e) }
     }
 
     /**

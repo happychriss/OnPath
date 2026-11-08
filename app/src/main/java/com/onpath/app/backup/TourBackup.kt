@@ -7,8 +7,11 @@ import org.json.JSONObject
 import java.io.File
 import java.time.ZoneId
 
-/** A backup failed in a way the user must hear about ("Backup to Documents/OnPath failed – <reason>"). */
-class BackupException(val reason: String, cause: Throwable? = null) : Exception(reason, cause)
+/**
+ * A backup failed in a way the user must hear about ("Backup to Documents/OnPath failed – <reason>") – unless
+ * [notReady]: the phone's storage is not there yet (just restarted), then [BackupQueue] retries quietly first.
+ */
+class BackupException(val reason: String, cause: Throwable? = null, val notReady: Boolean = false) : Exception(reason, cause)
 
 /**
  * Where backup files go: Documents/OnPath (MediaStore / legacy folder) or a folder the user picked (SAF tree).
@@ -128,6 +131,9 @@ class TourBackup(private val store: BackupStore, private val index: BackupIndex,
 
     /** Has a current file in this folder. */
     fun has(uuid: String) = index.get(uuid)?.store == store.key
+
+    /** Has a file in this folder in the right place: in Deleted/ when [deleted] (a missed move counts as missing). */
+    fun has(uuid: String, deleted: Boolean) = index.get(uuid)?.let { it.store == store.key && it.deleted == deleted } == true
 
     /** Restored from this folder: remember the files, so the next save overwrites them instead of writing a copy. */
     fun adopt(uuid: String, handle: String, fileName: String) {

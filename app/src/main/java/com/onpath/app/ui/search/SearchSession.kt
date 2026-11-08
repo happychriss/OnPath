@@ -92,6 +92,11 @@ class SearchSession(
     private val openIndex: (File) -> SearchDb = { AndroidSearchDb(it) },
     /** The phone's address service – only for a shared place, after offline + online (A-020); replaced in tests. */
     private val geocoder: com.onpath.app.search.PlaceGeocoder = com.onpath.app.search.PlaceGeocoder.NONE,
+    /**
+     * The data folder's storage can be read (field 2026-11-08: not for about a minute after a phone restart). Until
+     * then the index is not built: the folder looks empty, and a build would drop every area from the index file.
+     */
+    private val storageReady: () -> Boolean = { true },
     private val context: () -> SearchContext,
 ) {
     @Volatile private var addresses: AddressIndex? = null
@@ -201,6 +206,10 @@ class SearchSession(
     /** Builds the index for the current areas when it changed (only changed areas are read); swaps it in when ready. */
     private suspend fun rebuild(): PlaceIndex = indexLock.withLock {
         val cur = (index ?: areas.latest)?.takeIf { !it.broken }
+        if (!withContext(Dispatchers.IO) { storageReady() }) {
+            Problems.info("search", "Offline search index not built: storage not ready yet (built when it is)")
+            return cur ?: com.onpath.app.search.OfflineIndex(emptyList(), "")
+        }
         if (cur == null) ui = ui.copy(indexing = true)
         try {
             val plan = withContext(Dispatchers.IO) { areaPlan() }

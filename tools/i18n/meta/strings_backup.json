@@ -36,6 +36,7 @@
   "backup_err_android10": {"area": "Backup message", "context": "Reason (after \"–\")", "priority": 3, "confidence": "sicher"},
   "backup_err_documents": {"area": "Backup message", "context": "Reason (after \"–\")", "priority": 3, "confidence": "sicher"},
   "backup_err_documents_storage": {"area": "Backup message", "context": "Reason (after \"–\")", "priority": 3, "confidence": "sicher"},
+  "backup_err_documents_not_ready": {"area": "Backup message", "context": "Reason (after \"–\") when the phone's shared storage stayed unavailable (after a restart) for more than 10 minutes and across a second app start / backup; OnPath retries by itself", "priority": 3, "confidence": "bitte prüfen", "doubt": "Says what to do: restart the phone"},
   "backup_err_storage_full": {"area": "Backup message", "context": "Reason (after \"–\")", "priority": 3, "confidence": "sicher"},
   "backup_err_file_storage": {"area": "Backup message", "context": "Reason (after \"–\")", "priority": 3, "confidence": "sicher"},
   "backup_err_no_access": {"area": "Backup message", "context": "Reason (after \"–\"), Android 8–9", "priority": 3, "confidence": "sicher"},

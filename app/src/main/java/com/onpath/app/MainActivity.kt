@@ -583,7 +583,9 @@ class MainActivity : ComponentActivity() {
         if (uri != null) {
             vm.dataScreenDismissed = true
             // never OnPath's own private files through a file: URI, nothing but content: / file: (review Arch 12)
-            val private = listOfNotNull(filesDir.parentFile, filesDir, cacheDir, getExternalFilesDir(null)?.parentFile)
+            // the data folder too: getExternalFilesDir is null while the storage is not ready after a restart (DataStorage)
+            val private = listOfNotNull(filesDir.parentFile, filesDir, cacheDir, getExternalFilesDir(null)?.parentFile,
+                vm.dataFiles.dir.parentFile?.parentFile)
             if (IncomingUri.importable(uri.scheme, uri.path, private)) vm.importGpx(uri)
             else {
                 com.onpath.app.debug.Problems.warn("gpx", "Import refused: ${uri.scheme} URI to an app-private path or not a file")
