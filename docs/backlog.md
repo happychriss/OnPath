@@ -28,6 +28,7 @@ and the commit history.
   changed today (long-plan Cancel keeps the pin, own activity change in Plan without the "bitte prüfen" line, reach /
   arrival / stored legs). Mirror what the planner needs, `node web/parity/check.mjs --update …AppViewModel.kt`, then
   deploy by hand (Actions → Web planner).
+- → [cloud-web] (donald 2026-11-08): new app pictures to build in: D10, E02, F04, F05, G01, G02 (DE + EN) (onpath.private 5875c99, aktuell/)
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
