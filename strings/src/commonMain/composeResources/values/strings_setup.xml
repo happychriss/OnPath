@@ -35,7 +35,7 @@
     <string name="setup_notif_blocked">Tap Continue and switch notifications for OnPath on.</string>
     <string name="setup_vib_title">Vibration</string>
     <string name="setup_vib_why">With the phone in your pocket OnPath buzzes before junctions: one = left, two = right, three long = off the route. The test shows whether you feel it.</string>
-    <string name="setup_vib_do">Hold the phone in your hand and tap Test: first one buzz (left), shortly after two (right).</string>
+    <string name="setup_vib_do">Hold the phone in your hand and tap Test.</string>
     <string name="setup_vib_test">Test</string>
     <string name="setup_vib_question">Did you feel one buzz, then two?</string>
     <string name="setup_vib_yes">Yes, I felt it</string>

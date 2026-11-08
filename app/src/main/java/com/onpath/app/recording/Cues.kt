@@ -41,10 +41,7 @@ object Cues {
         }
     }
 
-    /** The test: "left" (1 pulse), a pause, "right" (2 pulses) – the real junction cues one after the other. */
-    val TEST_PATTERN: LongArray = run {
-        val p = com.onpath.app.navigation.JunctionCues.PULSE_MS
-        val g = com.onpath.app.navigation.JunctionCues.GAP_MS
-        longArrayOf(0, p, 1200, p, g, p)
-    }
+    /** The test: one pulse (owner 2026-11-08). */
+    // owner 2026-11-08: one buzz is enough for the test (the old "once, then twice" felt like a second test after Weiter)
+    val TEST_PATTERN: LongArray = longArrayOf(0, com.onpath.app.navigation.JunctionCues.PULSE_MS)
 }

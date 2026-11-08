@@ -35,7 +35,7 @@
     <string name="setup_notif_blocked">Tippe auf Weiter und schalte die Benachrichtigungen für OnPath ein.</string>
     <string name="setup_vib_title">Vibration</string>
     <string name="setup_vib_why">Mit dem Handy in der Tasche vibriert OnPath vor Abzweigungen: einmal = links, zweimal = rechts, dreimal lang = Route verlassen. Der Test zeigt, ob du es spürst.</string>
-    <string name="setup_vib_do">Halte das Handy in der Hand und tippe auf Testen: erst einmal (links), kurz danach zweimal (rechts).</string>
+    <string name="setup_vib_do">Halte das Handy in der Hand und tippe auf Testen.</string>
     <string name="setup_vib_test">Testen</string>
     <string name="setup_vib_question">Hast du einmal und dann zweimal Vibrieren gespürt?</string>
     <string name="setup_vib_yes">Ja, gespürt</string>
