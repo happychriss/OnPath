@@ -773,6 +773,10 @@ class ScreenshotTest {
      * pale held buttons "▶ Weiter" (pale green too, owner 2026-11-08) over "■ Tour beenden | ✎ Planen" (EN in one row).
      */
     @Test fun navigatePausedLocked() = paparazzi.snapshot { NavFrame(pausedUi) }
+    /** Stopped as on a phone – with the arrival clock ([StatusCardPhoneScreenshotTest]). */
+    fun navigatePausedLockedArrive() = paparazzi.snapshot { NavFrame(pausedUi.copy(arriveAt = "16:40")) }
+    /** Moving, with the arrival clock ([StatusCardPhoneScreenshotTest]). */
+    fun navigateArrive() = paparazzi.snapshot { NavFrame(navUi.copy(arriveAt = "16:40")) }
 
     /**
      * Locked, right after a short tap on "Anhalten" (owner 2026-11-07, 09:30): "Gedrückt halten" in a strong walnut pill

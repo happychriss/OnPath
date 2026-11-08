@@ -600,7 +600,12 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
     // only the activity icon and the chevron are own buttons; the whole card toggles by tap and drag (owner 23:42)
     Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.Paper,
         modifier = Modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, MaterialTheme.shapes.large).then(cardTouch)) {
+      androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+      // a large font (owner 2026-11-08, v7): the arrival would squeeze the numbers – it goes under them ([CardFit])
+      val tight = CardFit.tight(ui, maxWidth, canOpen)
       Column {
+        // stopped (owner 2026-11-08, v6): the stopped block over the whole card width – the calm line never hidden
+        if (ui.paused && ui.recordedM != null) StoppedHead(ui.pausedSinceMs, free = ui.toGo == null)
         Row(Modifier.heightIn(min = 56.dp).padding(start = if (ui.activity != null) 8.dp else 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
             // the activity first (owner: a wrong activity is a disaster); its own 48 dp target opens the check sheet
@@ -619,8 +624,6 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 Spacer(Modifier.width(10.dp))
             }
             Column(Modifier.weight(1f)) {
-                // stopped (owner 2026-11-07, "Anhalten" variant 5): no band at the bottom – the card's head says it
-                if (ui.paused && ui.recordedM != null) StoppedHead(ui.pausedSinceMs, free = ui.toGo == null)
                 // a tour without a route (owner 2026-11-05): say so plainly instead of an empty route line
                 if (ui.toGo == null && ui.recordedM != null) Text(str(Res.string.nav_free_tour), style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold, maxLines = 2)
@@ -653,8 +656,26 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         }
                         if (paused) Text(timePausedText(g, ui.waitingGps), style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        else if (tight) androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            // tight: ↑ and ↓ wrap as two pieces – never "↓…"
+                            Text(instrument("↑ ${Format.meters(g.ascentM)}", MaterialTheme.typography.bodyLarge), style = MaterialTheme.typography.bodyLarge, maxLines = 1, softWrap = false)
+                            Text(instrument("↓ ${Format.meters(g.descentM)}", MaterialTheme.typography.bodyLarge), style = MaterialTheme.typography.bodyLarge, maxLines = 1, softWrap = false)
+                        }
                         else Text(instrument("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}", MaterialTheme.typography.bodyLarge),
                             style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        // tight: the arrival under the numbers – "Ankunft 16:40", the target under it
+                        if (tight && ui.arriveAt != null) {
+                            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.padding(top = 2.dp).semantics(mergeDescendants = true) {}) {
+                                Text(str(Res.string.nav_arrive), style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false,
+                                    modifier = Modifier.alignByBaseline())
+                                Text(ui.arriveAt, style = MaterialTheme.typography.titleLarge, maxLines = 1, softWrap = false,
+                                    color = if (paused) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else Color.Unspecified,
+                                    modifier = Modifier.alignByBaseline())
+                            }
+                            g.target?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        }
                     }
                 }
                 // (the provisional-position line has its own full-width row under this one)
@@ -669,7 +690,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         Text(noGpsLine(ui.fixAgeS), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium,
                             color = if (ui.quietGps) MaterialTheme.colorScheme.onSurfaceVariant else OnPathColors.Warn, maxLines = 2)
                     }
-                } else ui.recordedM?.let { d ->
+                } else if (!tight) ui.recordedM?.let { d ->
                     recordingLine(ui, d, offCard)?.let { line ->
                         Row(Modifier.padding(top = if (ui.toGo != null) 2.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (ui.activity == null) { RecDot(ui.paused, Modifier.size(8.dp)); Spacer(Modifier.width(8.dp)) }
@@ -682,7 +703,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 }
             }
             // paused: "Fortsetzen" is in the card's action row once unlocked (owner 2026-11-06: locked + paused = the slider)
-            if (ui.toGo != null && ui.arriveAt != null && ui.toGo.state != com.onpath.app.time.EstimateState.NOT_ON_ROUTE) Column(
+            if (!tight && ui.toGo != null && ui.arriveAt != null && ui.toGo.state != com.onpath.app.time.EstimateState.NOT_ON_ROUTE) Column(
                 horizontalAlignment = Alignment.End,
                 modifier = Modifier.padding(start = 8.dp).widthIn(min = targetWordWidth(ui.toGo.target))
                     .width(IntrinsicSize.Max).semantics(mergeDescendants = true) {}) {
@@ -707,6 +728,14 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                     contentDescription = str(if (profileOpen) Res.string.nav_profile_hide else Res.string.nav_profile_show),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.graphicsLayer { rotationZ = turn })
+            }
+        }
+        // tight: the recording line ("Bisher 5,3 km · in Bewegung 1:12") across the card's full width, never "…"
+        if (tight && !(ui.recordedM != null && ui.waitingGps && !ui.stillGps && ui.approx == null)) ui.recordedM?.let { d ->
+            recordingLine(ui, d, offCard)?.let { line ->
+                Box(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
+                    SplitLine(line, MaterialTheme.typography.bodyMedium, cut = false)
+                }
             }
         }
         if (ui.recordedM != null) ui.approx?.let {
@@ -746,6 +775,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
             }
             ui.position?.let { PositionLine(it, ui.positionCopy) }
         }
+      }
       }
     }
 }
@@ -1235,11 +1265,24 @@ fun <T : Any> Appearing(value: T?, content: @Composable (T) -> Unit) {
     ) { last?.let { content(it) } }
 }
 
+/** A " · " line that, too long for one line (large font), breaks at its " · " – never inside a phrase. */
+@Composable
+private fun SplitLine(line: String, style: androidx.compose.ui.text.TextStyle, cut: Boolean = true) {
+    val tm = rememberTextMeasurer()
+    androidx.compose.foundation.layout.BoxWithConstraints {
+        val fits = tm.measure(line, style, maxLines = 1, softWrap = false).size.width <= constraints.maxWidth
+        Text(if (fits) line else line.replace(" · ", "\n"), style = style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = if (cut) 2 else Int.MAX_VALUE,
+            overflow = if (cut) TextOverflow.Ellipsis else TextOverflow.Clip)
+    }
+}
+
 /**
- * The status card's head while a tour is stopped (owner 2026-11-07, "Anhalten" variant 5 – replaces the bottom pause
- * band): a walnut ⏸ beside the (grey) activity, "Angehalten seit 14:32" (the clock time the stop began, [StoppedText]),
- * the calm line "Aufzeichnung und Navigation ruhen" (free tour: "Aufzeichnung ruht") only where it fits on one line,
- * then a thin line over the tour numbers. Too long for one line (large font): "Angehalten" over "seit 14:32".
+ * The status card's head while a tour is stopped (owner 2026-11-07, "Anhalten"; 2026-11-08 v6: "Aufzeichnung und
+ * Navigation ruhen" never showed on a 1080 px phone – beside the activity and the arrival clock it never fitted on one
+ * line): over the card's full width on top – a walnut ⏸ and "Angehalten seit 14:32" (the clock time the stop began,
+ * [StoppedText]; too long for one line: "Angehalten" over "seit 14:32"), under it the calm line (free tour: "Aufzeichnung
+ * ruht"; may wrap, never hidden), a thin line, then the card's usual row.
  */
 @Composable
 private fun StoppedHead(sinceMs: Long?, free: Boolean) {
@@ -1249,35 +1292,55 @@ private fun StoppedHead(sinceMs: Long?, free: Boolean) {
     val head = clock?.let { str(Res.string.nav_stopped_since_head, it) } ?: word
     val since = clock?.let { str(Res.string.nav_stopped_since, it) }
     val line = str(if (StoppedText.freeLine(free)) Res.string.nav_stopped_line_free else Res.string.nav_stopped_line)
-    val lineStyle = MaterialTheme.typography.bodyMedium
     val tm = rememberTextMeasurer()
-    val iconPx = with(androidx.compose.ui.platform.LocalDensity.current) { 28.dp.roundToPx() } // the icon + its gap
-    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
-        fun fits(t: String, st: androidx.compose.ui.text.TextStyle, extra: Int = 0) =
-            tm.measure(t, st, maxLines = 1, softWrap = false).size.width + extra <= constraints.maxWidth
-        val oneLine = fits(head, headStyle, iconPx)
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Pause, null, tint = OnPathColors.Walnut, modifier = Modifier.size(22.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(if (oneLine) head else word, style = headStyle, color = OnPathColors.Walnut, maxLines = 1)
+    val iconPx = with(androidx.compose.ui.platform.LocalDensity.current) { 28.dp.roundToPx() }
+    Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 10.dp)) {
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val oneLine = tm.measure(head, headStyle, maxLines = 1, softWrap = false).size.width + iconPx <= constraints.maxWidth
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Pause, null, tint = OnPathColors.Walnut, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (oneLine) head else word, style = headStyle, color = OnPathColors.Walnut, maxLines = 1)
+                }
+                if (!oneLine && since != null) Text(since, style = headStyle, color = OnPathColors.Walnut, maxLines = 1,
+                    modifier = Modifier.padding(start = 28.dp))
             }
-            if (!oneLine && since != null) Text(since, style = headStyle, color = OnPathColors.Walnut, maxLines = 1,
-                modifier = Modifier.padding(start = 28.dp))
-            if (fits(line, lineStyle)) Text(line, style = lineStyle, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-            androidx.compose.material3.HorizontalDivider(Modifier.padding(vertical = 6.dp), thickness = 1.dp,
-                color = OnPathColors.Walnut.copy(alpha = 0.15f))
         }
+        Text(line, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2,
+            modifier = Modifier.padding(start = 28.dp))
+        androidx.compose.material3.HorizontalDivider(Modifier.padding(top = 8.dp), thickness = 1.dp,
+            color = OnPathColors.Walnut.copy(alpha = 0.15f))
     }
 }
 
-/** A " · " line that, too long for one line (large font), breaks at its " · " – never inside a phrase. */
-@Composable
-private fun SplitLine(line: String, style: androidx.compose.ui.text.TextStyle) {
-    val tm = rememberTextMeasurer()
-    androidx.compose.foundation.layout.BoxWithConstraints {
-        val fits = tm.measure(line, style, maxLines = 1, softWrap = false).size.width <= constraints.maxWidth
-        Text(if (fits) line else line.replace(" · ", "\n"), style = style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+/**
+ * When the status card is tight (owner 2026-11-08, v7 – large fonts, his father's phone: "↓…" and "km…" are not
+ * acceptable): "↑ 512 m  ↓ 310 m", the numbers or a piece of the recording line do not fit beside the arrival column.
+ * Then the arrival goes under the numbers ("Ankunft 16:40"), ↑ and ↓ wrap as pieces and the recording line runs across
+ * the card's full width – nothing is cut with "…".
+ */
+internal object CardFit {
+    /** The activity box (8 + 48 + 10 dp) or the plain start (16 dp), the end padding (8 dp) and the chevron (48 dp). */
+    fun sides(activity: Boolean, chevron: Boolean): Float = (if (activity) 66f else 16f) + 8f + (if (chevron) 48f else 0f)
+
+    /** Pure rule (dp): the widest left piece + the arrival column (+ 8 dp) + [sides] beyond the card's [width]. */
+    fun tight(numbers: Float, upDown: Float, linePiece: Float, arrival: Float, sides: Float, width: Float): Boolean =
+        maxOf(numbers, upDown, linePiece) + arrival + 8f + sides > width
+
+    /** The card's own measure: no arrival clock shown → never tight. */
+    @Composable
+    fun tight(ui: NavUi, width: androidx.compose.ui.unit.Dp, chevron: Boolean): Boolean {
+        val g = ui.toGo ?: return false
+        if (ui.arriveAt == null || g.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE) return false
+        val tm = rememberTextMeasurer()
+        val ty = MaterialTheme.typography
+        val d = androidx.compose.ui.platform.LocalDensity.current
+        fun w(t: String, st: androidx.compose.ui.text.TextStyle) = with(d) { tm.measure(t, st, maxLines = 1, softWrap = false).size.width.toDp() }
+        val arrival = maxOf(w(ui.arriveAt, ty.headlineMedium), w(str(Res.string.nav_arrive), ty.labelMedium))
+        val upDown = w("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}", ty.bodyLarge)
+        val numbers = w(Format.durationShort(g.timeS), ty.titleLarge) + 10.dp + w(Format.distance(g.distanceM), ty.titleLarge)
+        val line = ui.recordedM?.let { recordingLine(ui, it) }?.split(" · ")?.maxOfOrNull { w(it, ty.bodyMedium) } ?: 0.dp
+        return tight(numbers.value, upDown.value, line.value, arrival.value, sides(ui.activity != null, chevron), width.value)
     }
 }
