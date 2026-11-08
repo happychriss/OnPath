@@ -18,7 +18,7 @@
     <string name="setup_taken_off">This was switched off since you last used OnPath.</string>
     <string name="setup_loc_title">Your location</string>
     <string name="setup_loc_why">For the dot on the map and your track. Your location and tours stay on your phone.</string>
-    <string name="setup_loc_do">On the next screen: choose “While using the app”.</string>
+    <string name="setup_loc_do">On the next screen: choose “Precise” and “While using the app”.</string>
     <string name="setup_loc_denied">No problem – the map and planning work without it. Only the dot on the map and tours need your location.</string>
     <string name="setup_loc_blocked">Android does not ask again. Tap Continue → Permissions → Location and allow it while using the app, precise.</string>
     <string name="setup_precise_title">Precise location</string>
@@ -35,7 +35,7 @@
     <string name="setup_notif_blocked">Tap Continue and switch notifications for OnPath on.</string>
     <string name="setup_vib_title">Vibration</string>
     <string name="setup_vib_why">With the phone in your pocket OnPath buzzes before junctions: one = left, two = right, three long = off the route. The test shows whether you feel it.</string>
-    <string name="setup_vib_do">Hold the phone in your hand and tap Test.</string>
+    <string name="setup_vib_do">Hold the phone in your hand and tap Test: first one buzz (left), shortly after two (right).</string>
     <string name="setup_vib_test">Test</string>
     <string name="setup_vib_question">Did you feel one buzz, then two?</string>
     <string name="setup_vib_yes">Yes, I felt it</string>

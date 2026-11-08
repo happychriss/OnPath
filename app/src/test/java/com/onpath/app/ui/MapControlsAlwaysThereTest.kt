@@ -26,13 +26,14 @@ class MapControlsAlwaysThereTest {
         assertFalse(controls, controls.contains("plan_redo"))
     }
 
-    /** Owner 2026-11-08: undo / redo in their own pill with words; both halves there, the one that cannot act greyed. */
-    @Test fun undoPillHasWordsAndGreysAHalf() {
+    /** Owner 2026-11-08 late: undo / redo as two plain round buttons in their own group (no words – too wide); both
+     *  there while one can act, the one that cannot act greyed. */
+    @Test fun undoGroupIsTwoRoundButtonsAndGreysOne() {
         val pill = footer.substringAfter("fun UndoPill(").substringBefore("\n}\n")
         assertTrue(pill, pill.contains("Res.string.plan_undo") && pill.contains("Res.string.plan_redo"))
         assertTrue(pill, pill.contains("if (onUndo == null && onRedo == null) return"))
-        val half = footer.substringAfter("private fun UndoHalf(").substringBefore("\n}\n")
-        assertTrue(half, half.contains("Text(label") && half.contains("MapControlState.tint(OnPathColors.PlanAccent, onClick != null)"))
+        assertTrue(pill, pill.contains("enabled = onUndo != null") && pill.contains("enabled = onRedo != null"))
+        assertTrue(pill, !pill.contains("Text("))
     }
 
     @Test fun aDisabledControlIsGreyNotGone() {

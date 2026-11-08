@@ -200,35 +200,15 @@ private fun iconSize(size: Dp): Dp = 28.dp
 @Composable
 fun UndoPill(onUndo: (() -> Unit)?, onRedo: (() -> Unit)?) {
     if (onUndo == null && onRedo == null) return
+    // owner 2026-11-08 late: the worded pill took too much room – two plain round buttons side by side, same look as
+    // the map column, still only while something can be undone or redone (the one that cannot act is greyed)
     val shape = RoundedCornerShape(MAP_FAB / 2)
     Surface(shape = shape, color = OnPathColors.PlanTint, modifier = Modifier.warmShadow(OnPathShadow.LOW, shape)) {
-        androidx.compose.ui.layout.Layout(content = {
-            UndoHalf(Icons.AutoMirrored.Filled.Undo, str(Res.string.plan_undo), onUndo)
-            UndoHalf(Icons.AutoMirrored.Filled.Undo, str(Res.string.plan_undo), onUndo, word = false)
-            Box(Modifier.background(MaterialTheme.colorScheme.outlineVariant))
-            UndoHalf(Icons.AutoMirrored.Filled.Redo, str(Res.string.plan_redo), onRedo)
-            UndoHalf(Icons.AutoMirrored.Filled.Redo, str(Res.string.plan_redo), onRedo, word = false)
-        }) { m, c ->
-            val loose = androidx.compose.ui.unit.Constraints(maxHeight = c.maxHeight)
-            val line = 1.dp.roundToPx()
-            val inset = 12.dp.roundToPx()
-            // only the halves that are placed draw and take touches; the others are measured and left out
-            val undoWord = m[0].measure(loose)
-            val redoWord = m[3].measure(loose)
-            val undoSign = m[1].measure(loose)
-            val redoSign = m[4].measure(loose)
-            val (undo, redo) = when (UndoPillShape.words(undoWord.width, undoSign.width, redoWord.width, redoSign.width, line, c.maxWidth)) {
-                UndoPillShape.Words.BOTH -> undoWord to redoWord
-                UndoPillShape.Words.UNDO -> undoWord to redoSign
-                UndoPillShape.Words.NONE -> undoSign to redoSign
-            }
-            val h = maxOf(undo.height, redo.height)
-            val div = m[2].measure(androidx.compose.ui.unit.Constraints.fixed(line, (h - 2 * inset).coerceAtLeast(0)))
-            layout(undo.width + line + redo.width, h) {
-                undo.place(0, (h - undo.height) / 2)
-                div.place(undo.width, inset)
-                redo.place(undo.width + line, (h - redo.height) / 2)
-            }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo ?: {}, MAP_FAB,
+                tint = OnPathColors.PlanAccent, enabled = onUndo != null)
+            IconControl(Icons.AutoMirrored.Filled.Redo, Res.string.plan_redo, onRedo ?: {}, MAP_FAB,
+                tint = OnPathColors.PlanAccent, enabled = onRedo != null)
         }
     }
 }
@@ -247,19 +227,6 @@ object UndoPillShape {
     }
 }
 
-@Composable
-private fun UndoHalf(icon: ImageVector, label: String, onClick: (() -> Unit)?, word: Boolean = true) {
-    val tint = MapControlState.tint(OnPathColors.PlanAccent, onClick != null)
-    Row(Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(MAP_FAB / 2))
-        .clickable(enabled = onClick != null, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick ?: {})
-        // the name as the button's description, as the column's ↶ had it (TalkBack, the E2E tests' By.desc("Undo"))
-        .semantics { contentDescription = label }
-        .padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
-        if (word) Text(label, style = MaterialTheme.typography.labelMedium, color = tint, maxLines = 1, softWrap = false,
-            modifier = Modifier.padding(start = 6.dp).clearAndSetSemantics { })
-    }
-}
 
 /**
  * A map control's name on a long press (Material 3 plain tooltip, owner 2026-11-03): the signs alone (eye, ⛶, ↶ ↷)

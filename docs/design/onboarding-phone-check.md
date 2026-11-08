@@ -112,7 +112,7 @@ object PhoneCheck {
 
 A full-screen sheet with one step per screen:
 - **Header**: "Step 1 of 3" + a large icon (location pin, bell, vibrating phone, battery).
-- **Why** (2 short sentences) + **what to do** ("On the next screen: choose “While using the app”.") – our words; the
+- **Why** (2 short sentences) + **what to do** ("On the next screen: choose “Precise” and “While using the app”.") – our words; the
   location step names Android's choice (owner 2026-11-08 evening, principle 3's exception).
 - **One primary button** ("Continue" → system dialog or settings screen) and **"Later"**.
 - Coming back (`onResume`) re-reads `PhoneState`: done → a green check "✓ Location allowed" for 1 s, next step; not

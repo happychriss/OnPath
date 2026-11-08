@@ -18,7 +18,7 @@
     <string name="setup_taken_off">Das wurde seit deiner letzten Nutzung von OnPath ausgeschaltet.</string>
     <string name="setup_loc_title">Dein Standort</string>
     <string name="setup_loc_why">Für den Punkt auf der Karte und deine Spur. Standort und Touren bleiben auf deinem Handy.</string>
-    <string name="setup_loc_do">Auf der nächsten Seite: „Bei Nutzung der App“ wählen.</string>
+    <string name="setup_loc_do">Auf der nächsten Seite: „Genau“ und „Bei Nutzung der App“ wählen.</string>
     <string name="setup_loc_denied">Kein Problem – Karte und Planen gehen auch ohne. Nur der Punkt auf der Karte und Touren brauchen den Standort.</string>
     <string name="setup_loc_blocked">Android fragt nicht noch einmal. Tippe auf Weiter → Berechtigungen → Standort und erlaube ihn während der Nutzung, genau.</string>
     <string name="setup_precise_title">Genauer Standort</string>
@@ -35,7 +35,7 @@
     <string name="setup_notif_blocked">Tippe auf Weiter und schalte die Benachrichtigungen für OnPath ein.</string>
     <string name="setup_vib_title">Vibration</string>
     <string name="setup_vib_why">Mit dem Handy in der Tasche vibriert OnPath vor Abzweigungen: einmal = links, zweimal = rechts, dreimal lang = Route verlassen. Der Test zeigt, ob du es spürst.</string>
-    <string name="setup_vib_do">Halte das Handy in der Hand und tippe auf Testen.</string>
+    <string name="setup_vib_do">Halte das Handy in der Hand und tippe auf Testen: erst einmal (links), kurz danach zweimal (rechts).</string>
     <string name="setup_vib_test">Testen</string>
     <string name="setup_vib_question">Hast du einmal und dann zweimal Vibrieren gespürt?</string>
     <string name="setup_vib_yes">Ja, gespürt</string>
