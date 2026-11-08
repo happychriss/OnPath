@@ -157,12 +157,8 @@ class CorePointsListE2ETest : E2EBase() {
     @Test fun swipeTheSheetHalfFullHalf() {
         startPlanWithTwoPoints()
         settle()
-        // the plan's first route raises the sheet once to the profile step (owner 2026-11-08, SheetRise) – then the
-        // swipes start from the summary step as before
-        waitUntil("the first route raised the sheet") { size() == PlanSize.COMPACT }
-        scenario.onActivity { vm(it).planSize = PlanSize.MINI }
+        // the first route leaves the sheet at the summary step, the plan row in view (owner 2026-11-08 evening, SheetRise)
         waitUntil("summary step") { size() == PlanSize.MINI }
-        Thread.sleep(600)
         val (_, h) = mapSize()
         fun handle() = sheetHandle().visibleCenter
         fun dragHandle(dy: Int) {

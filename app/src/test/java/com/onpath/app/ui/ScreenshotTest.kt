@@ -323,7 +323,9 @@ class ScreenshotTest {
         planUi(n = rows.size, r = r, routing = routing, size = size).copy(points = rows, roundTrip = roundTrip)
 
     /** The summary line only (+ the primary button). */
-    @Test fun planPointsSmall() = paparazzi.snapshot { Frame { PlanPanel(planWithPoints(PlanSize.MINI), PlanCallbacks()) } }
+    @Test fun planPointsSmall() = planPointsSmallShot()
+    /** The summary step – where the plan's first route leaves the sheet (owner 2026-11-08 evening, SheetRise). */
+    fun planPointsSmallShot() = paparazzi.snapshot { Frame { PlanPanel(planWithPoints(PlanSize.MINI), PlanCallbacks()) } }
 
     /** Step 1: summary + the large elevation profile (finger ruler); details via the difficulty badge. */
     @Test fun planPointsHalf() = paparazzi.snapshot { Frame { PlanPanel(planWithPoints(PlanSize.COMPACT), PlanCallbacks()) } }

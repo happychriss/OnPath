@@ -193,52 +193,62 @@ private fun iconSize(size: Dp): Dp = 28.dp
  * Plan's undo / redo in their own small pill (owner 2026-11-08, father's feedback: ↶ ↷ in the map column read as "turn
  * the map"): "↶ Rückgängig | ↷ Wiederholen" – sign and word together, in the plan blue like the column. Shown only while
  * there is something to undo or redo ([MapControlsEnabled.undoPill]); then both halves are there, the one that cannot act
- * greyed. It stands under the map column ([PlanControlsLayer] places it), so the column itself never moves.
+ * greyed. It stands right above the map column, right-aligned with it ([PlanControlsLayer], owner 2026-11-08 evening:
+ * not "mitten im Bild"); always one row – where the room is short (360 dp, a large font) "↷" goes without its word
+ * first, then "↶" ([UndoPillShape]); TalkBack hears both names in every case.
  */
 @Composable
 fun UndoPill(onUndo: (() -> Unit)?, onRedo: (() -> Unit)?) {
     if (onUndo == null && onRedo == null) return
     val shape = RoundedCornerShape(MAP_FAB / 2)
     Surface(shape = shape, color = OnPathColors.PlanTint, modifier = Modifier.warmShadow(OnPathShadow.LOW, shape)) {
-        // side by side when the room allows it, else one above the other (a 360 dp phone, a large font) – never cut
         androidx.compose.ui.layout.Layout(content = {
             UndoHalf(Icons.AutoMirrored.Filled.Undo, str(Res.string.plan_undo), onUndo)
+            UndoHalf(Icons.AutoMirrored.Filled.Undo, str(Res.string.plan_undo), onUndo, word = false)
             Box(Modifier.background(MaterialTheme.colorScheme.outlineVariant))
             UndoHalf(Icons.AutoMirrored.Filled.Redo, str(Res.string.plan_redo), onRedo)
+            UndoHalf(Icons.AutoMirrored.Filled.Redo, str(Res.string.plan_redo), onRedo, word = false)
         }) { m, c ->
             val loose = androidx.compose.ui.unit.Constraints(maxHeight = c.maxHeight)
-            val undo = m[0].measure(loose)
-            val redo = m[2].measure(loose)
             val line = 1.dp.roundToPx()
             val inset = 12.dp.roundToPx()
-            if (UndoPillShape.sideBySide(undo.width, redo.width, line, c.maxWidth)) {
-                val h = maxOf(undo.height, redo.height)
-                val div = m[1].measure(androidx.compose.ui.unit.Constraints.fixed(line, (h - 2 * inset).coerceAtLeast(0)))
-                layout(undo.width + line + redo.width, h) {
-                    undo.place(0, (h - undo.height) / 2)
-                    div.place(undo.width, inset)
-                    redo.place(undo.width + line, (h - redo.height) / 2)
-                }
-            } else {
-                val w = maxOf(undo.width, redo.width)
-                val div = m[1].measure(androidx.compose.ui.unit.Constraints.fixed((w - 2 * inset).coerceAtLeast(0), line))
-                layout(w, undo.height + line + redo.height) {
-                    undo.place(0, 0)
-                    div.place(inset, undo.height)
-                    redo.place(0, undo.height + line)
-                }
+            // only the halves that are placed draw and take touches; the others are measured and left out
+            val undoWord = m[0].measure(loose)
+            val redoWord = m[3].measure(loose)
+            val undoSign = m[1].measure(loose)
+            val redoSign = m[4].measure(loose)
+            val (undo, redo) = when (UndoPillShape.words(undoWord.width, undoSign.width, redoWord.width, redoSign.width, line, c.maxWidth)) {
+                UndoPillShape.Words.BOTH -> undoWord to redoWord
+                UndoPillShape.Words.UNDO -> undoWord to redoSign
+                UndoPillShape.Words.NONE -> undoSign to redoSign
+            }
+            val h = maxOf(undo.height, redo.height)
+            val div = m[2].measure(androidx.compose.ui.unit.Constraints.fixed(line, (h - 2 * inset).coerceAtLeast(0)))
+            layout(undo.width + line + redo.width, h) {
+                undo.place(0, (h - undo.height) / 2)
+                div.place(undo.width, inset)
+                redo.place(undo.width + line, (h - redo.height) / 2)
             }
         }
     }
 }
 
-/** The undo pill's shape: its two halves side by side when they fit [maxWidth], else one above the other. */
+/**
+ * The undo pill's words for the room it has: both ("↶ Rückgängig | ↷ Wiederholen"), only Undo's ("↶ Rückgängig | ↷"),
+ * or signs only – Undo keeps its word longest (the father read the signs alone as "turn the map").
+ */
 object UndoPillShape {
-    fun sideBySide(undoWidth: Int, redoWidth: Int, line: Int, maxWidth: Int): Boolean = undoWidth + line + redoWidth <= maxWidth
+    enum class Words { BOTH, UNDO, NONE }
+
+    fun words(undoWord: Int, undoSign: Int, redoWord: Int, redoSign: Int, line: Int, maxWidth: Int): Words = when {
+        undoWord + line + redoWord <= maxWidth -> Words.BOTH
+        undoWord + line + redoSign <= maxWidth -> Words.UNDO
+        else -> Words.NONE
+    }
 }
 
 @Composable
-private fun UndoHalf(icon: ImageVector, label: String, onClick: (() -> Unit)?) {
+private fun UndoHalf(icon: ImageVector, label: String, onClick: (() -> Unit)?, word: Boolean = true) {
     val tint = MapControlState.tint(OnPathColors.PlanAccent, onClick != null)
     Row(Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(MAP_FAB / 2))
         .clickable(enabled = onClick != null, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick ?: {})
@@ -246,7 +256,7 @@ private fun UndoHalf(icon: ImageVector, label: String, onClick: (() -> Unit)?) {
         .semantics { contentDescription = label }
         .padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
-        Text(label, style = MaterialTheme.typography.labelMedium, color = tint, maxLines = 1, softWrap = false,
+        if (word) Text(label, style = MaterialTheme.typography.labelMedium, color = tint, maxLines = 1, softWrap = false,
             modifier = Modifier.padding(start = 6.dp).clearAndSetSemantics { })
     }
 }

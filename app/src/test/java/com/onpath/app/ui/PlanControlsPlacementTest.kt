@@ -37,40 +37,27 @@ class PlanControlsPlacementTest {
         assertNull(ControlsPlacement.place(top, 900, 830, limit, gap)) // the sheet pulled up to below the band
     }
 
-    /** Owner 2026-11-08: the undo pill never moves the column; under it when it fits, else beside its last button. */
-    @Test fun theUndoPillGoesUnderTheColumnElseBesideIt() {
-        val width = 1080; val end = 42; val colW = 147; val colH = 588; val pillW = 600; val pillH = 126
-        val top = ControlsPlacement.fixedTop(screen, limit)
-        val left = width - end - colW
-        // room above the sheet: right-aligned under the column
-        assertEquals((width - end - pillW) to (top + colH + gap),
-            ControlsPlacement.pill(top, colH, left, pillW, pillH, sheetTopPx = 1900, screenWidthPx = width, gapPx = gap, endPx = end, startPx = end))
-        // a half sheet close under the column: beside it, level with its last button
-        assertEquals((left - gap - pillW) to (top + colH - pillH),
-            ControlsPlacement.pill(top, colH, left, pillW, pillH, sheetTopPx = top + colH + 100, screenWidthPx = width, gapPx = gap, endPx = end, startPx = end))
-        // neither fits (a very wide pill at a large font): not placed
-        assertNull(ControlsPlacement.pill(top, colH, left, 1000, pillH, sheetTopPx = top + colH + 100, screenWidthPx = width,
-            gapPx = gap, endPx = end, startPx = end))
-        // the scale bar and © on the sheet's edge are kept free: under the column only with room above them too
-        val footer = 168
-        assertEquals((width - end - pillW) to (top + colH + gap),
-            ControlsPlacement.pill(top, colH, left, pillW, pillH, sheetTopPx = top + colH + gap + pillH + gap + footer + 10,
-                screenWidthPx = width, gapPx = gap, endPx = end, startPx = end, footerPx = footer))
-        // beside, but the column's bottom is close to the sheet: the pill rises so the scale bar and © stay free
-        val sheetTop = top + colH + 40
-        assertEquals((left - gap - pillW) to (sheetTop - footer - gap - pillH),
-            ControlsPlacement.pill(top, colH, left, pillW, pillH, sheetTopPx = sheetTop, screenWidthPx = width, gapPx = gap,
-                endPx = end, startPx = end, footerPx = footer))
-        // no room even so (below the top band): not placed
-        assertNull(ControlsPlacement.pill(top, colH, left, pillW, pillH, sheetTopPx = sheetTop, screenWidthPx = width, gapPx = gap,
-            endPx = end, startPx = end, footerPx = footer, limitPx = sheetTop))
-        // the column's own place does not depend on the pill
-        assertEquals(top, ControlsPlacement.place(top, colH, 1570, limit, gap))
+    /**
+     * Owner 2026-11-08 evening (Pixel: the pill sat "mitten im Bild"): the undo pill right above the column,
+     * right-aligned with it; its slot is kept whether it shows or not, so nothing moves when it comes or goes.
+     */
+    @Test fun theUndoPillStandsAboveTheColumnInAKeptSlot() {
+        val gap = 30; val slot = 126; val width = 1080; val end = 42
+        // the slot fits between the band and 26 %: the column keeps its usual top
+        assertEquals(ControlsPlacement.fixedTop(screen, limit), ControlsPlacement.fixedTopWithPill(screen, limit, slot, gap))
+        // a deep band (large font, short screen): the column goes down by the slot – the same with and without a pill
+        assertEquals(500 + slot + gap, ControlsPlacement.fixedTopWithPill(1500, 500, slot, gap))
+        // the pill: right edge = the column's right edge, bottom = a gap above the column's top
+        val top = 624
+        assertEquals((width - end - 600) to (top - gap - slot), ControlsPlacement.pill(top, width - end, 600, slot, gap))
+        // never wider than the room right of the activity button
+        assertEquals(width - end - 189, ControlsPlacement.pillMaxWidth(width, end, 189))
     }
 
-    /** The pill's halves side by side when they fit the room beside the column, else stacked – never cut. */
-    @Test fun theUndoPillStacksWhenNarrow() {
-        assertEquals(true, UndoPillShape.sideBySide(330, 360, 3, 800))
-        assertEquals(false, UndoPillShape.sideBySide(330, 360, 3, 690))
+    /** Short room: "↷" loses its word first, then "↶" – always one row of 48 dp. */
+    @Test fun theUndoPillDropsWordsWhenNarrow() {
+        assertEquals(UndoPillShape.Words.BOTH, UndoPillShape.words(330, 150, 360, 150, 3, 800))
+        assertEquals(UndoPillShape.Words.UNDO, UndoPillShape.words(330, 150, 360, 150, 3, 690))
+        assertEquals(UndoPillShape.Words.NONE, UndoPillShape.words(330, 150, 360, 150, 3, 400))
     }
 }

@@ -28,11 +28,22 @@ object ControlsPlacement {
     /** Right margin, as on the old footer (MapFooter: 16 dp). */
     const val END_DP = 16
 
-    /** The scale bar and © on the sheet's edge (MapFooter): the undo pill keeps above them, never over them. */
-    const val FOOTER_DP = 64
+    /**
+     * The undo pill's slot above the column (owner 2026-11-08 evening, on the Pixel: the pill sat "mitten im Bild"): it
+     * stands right above the compass, right-aligned with the column. The slot is kept free whether the pill shows or
+     * not, so nothing moves when it comes or goes.
+     */
+    const val PILL_SLOT_DP = 48
+
+    /** Left of the pill: the activity button (12 dp margin + 48 dp + air) – the pill never reaches into it. */
+    const val ACTIVITY_ZONE_DP = 72
 
     /** The fixed top: [SCREEN_FRACTION] of [screenPx], never above [minTopPx] (the band's bottom + air). */
     fun fixedTop(screenPx: Int, minTopPx: Int): Int = maxOf((screenPx * SCREEN_FRACTION).toInt(), minTopPx)
+
+    /** The column's fixed top with the pill's slot above it: never closer to the band ([limitPx]) than slot + gap. */
+    fun fixedTopWithPill(screenPx: Int, limitPx: Int, slotPx: Int, gapPx: Int): Int =
+        fixedTop(screenPx, limitPx + slotPx + gapPx)
 
     /**
      * The column's top (px): [fixedTopPx] – or higher only when the sheet's top edge [sheetTopPx] would come closer than
@@ -44,24 +55,16 @@ object ControlsPlacement {
     }
 
     /**
-     * The undo pill (owner 2026-11-08, [UndoPill]): it never moves the column – the column is placed by its own height.
-     * Under the column, right-aligned, when it fits above the sheet's scale bar and © ([sheetTopPx] − [footerPx] −
-     * [gapPx]); else beside the column, level with its last button – higher when the scale bar and © would be under it
-     * – when it fits on the screen ([startPx] = the left margin – PlanControlsLayer measures the pill for exactly that
-     * room, so it does) and stays below the top band ([limitPx]); else not placed (null).
-     * Returns the pill's left and top (px).
+     * The undo pill (owner 2026-11-08 evening): right above the column ([columnTopPx]), right-aligned with it. The column
+     * stands at its fixed top on the S10 and the Pixel at every sheet step but the points step – so the pill does too;
+     * only on a small phone, where a high sheet pushes the column up, it goes up with it (it is never covered: the
+     * column steps back first). Returns the pill's left and top (px).
      */
-    fun pill(columnTopPx: Int, columnHeightPx: Int, columnLeftPx: Int, pillWidthPx: Int, pillHeightPx: Int,
-             sheetTopPx: Int, screenWidthPx: Int, gapPx: Int, endPx: Int, startPx: Int, footerPx: Int = 0,
-             limitPx: Int = 0): Pair<Int, Int>? {
-        val clearOfFooter = sheetTopPx - footerPx - gapPx
-        val below = columnTopPx + columnHeightPx + gapPx
-        if (below + pillHeightPx <= clearOfFooter) return (screenWidthPx - endPx - pillWidthPx) to below
-        val beside = columnLeftPx - gapPx - pillWidthPx
-        val y = minOf(columnTopPx + columnHeightPx, clearOfFooter) - pillHeightPx
-        if (beside >= startPx && y >= limitPx) return beside to y
-        return null
-    }
+    fun pill(columnTopPx: Int, columnRightPx: Int, pillWidthPx: Int, pillHeightPx: Int, gapPx: Int): Pair<Int, Int> =
+        (columnRightPx - pillWidthPx) to (columnTopPx - gapPx - pillHeightPx)
+
+    /** The widest the pill may be: from the screen's right margin to the activity button. */
+    fun pillMaxWidth(screenWidthPx: Int, endPx: Int, activityZonePx: Int): Int = (screenWidthPx - endPx - activityZonePx).coerceAtLeast(0)
 }
 
 /**
@@ -71,27 +74,28 @@ object ControlsPlacement {
  */
 @Composable
 fun PlanControlsLayer(sheetHeightPx: () -> Int, limit: Dp, modifier: Modifier = Modifier, controls: @Composable () -> Unit) {
-    // the first child is the column, a second one the undo pill ([UndoPill], only while there is something to undo)
+    // the first child is the column, a second one the undo pill ([UndoPill], only while there is something to undo):
+    // the pill's slot above the column is kept in every case, so the column never moves when the pill comes or goes
     Layout(content = controls, modifier = modifier.fillMaxSize()) { measurables, c ->
         val loose = c.copy(minWidth = 0, minHeight = 0)
         val gap = ControlsPlacement.GAP_DP.dp.roundToPx()
         val end = ControlsPlacement.END_DP.dp.roundToPx()
         val column = measurables.firstOrNull()?.measure(loose)
-        // the pill gets the room beside the column: there it always fits (its halves stack when narrow, [UndoPill])
-        val besideRoom = (c.maxWidth - end - (column?.width ?: 0) - gap - end).coerceAtLeast(0)
-        val placeables = listOfNotNull(column) + measurables.drop(1).map { it.measure(loose.copy(maxWidth = besideRoom)) }
+        val pillMax = ControlsPlacement.pillMaxWidth(c.maxWidth, end, ControlsPlacement.ACTIVITY_ZONE_DP.dp.roundToPx())
+        val pills = measurables.drop(1).map { it.measure(loose.copy(maxWidth = pillMax)) }
         layout(c.maxWidth, c.maxHeight) {
             if (column == null) return@layout
             val limitPx = limit.roundToPx() + gap
+            val slot = ControlsPlacement.PILL_SLOT_DP.dp.roundToPx()
+            val fixed = ControlsPlacement.fixedTopWithPill(c.maxHeight, limitPx, slot, gap)
             val sheetTop = c.maxHeight - sheetHeightPx()
-            val top = ControlsPlacement.place(ControlsPlacement.fixedTop(c.maxHeight, limitPx), column.height,
-                sheetTop, limitPx, gap) ?: return@layout
-            val left = c.maxWidth - column.width - end
-            column.place(left, top)
-            placeables.drop(1).forEach { p ->
-                ControlsPlacement.pill(top, column.height, left, p.width, p.height, sheetTop, c.maxWidth, gap, end, end,
-                    footerPx = ControlsPlacement.FOOTER_DP.dp.roundToPx(), limitPx = limitPx)
-                    ?.let { (x, y) -> p.place(x, y) }
+            // a sheet that reaches the column pushes it up – never into the pill's slot under the band
+            val top = ControlsPlacement.place(fixed, column.height, sheetTop, limitPx + slot + gap, gap) ?: return@layout
+            val right = c.maxWidth - end
+            column.place(right - column.width, top)
+            pills.forEach { p ->
+                val (x, y) = ControlsPlacement.pill(top, right, p.width, p.height, gap)
+                p.place(x, maxOf(y, limitPx))
             }
         }
     }
