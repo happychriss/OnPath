@@ -54,6 +54,12 @@ class SharedPlaceMenu {
         /** Wait after a camera stop before checking: a follow-up move (fly after the cell modal) may start. */
         const val SETTLE_MS = 150L
 
+        /**
+         * A camera stop matters only while the menu waits for the flight to arrive. MapLibre reports a stop on every frame
+         * while the map follows the position: counting those recomposed the map's layer sync every frame.
+         */
+        fun idleCounts(menuWaiting: Boolean): Boolean = menuWaiting
+
         /** One shared place: position (~1 m) + name. */
         fun key(lat: Double, lon: Double, name: String?): String =
             String.format(Locale.ROOT, "%.5f,%.5f|%s", lat, lon, name ?: "")

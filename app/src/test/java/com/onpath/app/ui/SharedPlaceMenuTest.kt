@@ -92,4 +92,10 @@ class SharedPlaceMenuTest {
         assertEquals("Add as a stop", AddPreview.label(WaypointInsertion.decide(listOf(a, c), p, null, 30.0), 2))
     }
 
+
+    @Test fun `a camera stop counts only while the menu waits`() {
+        // following reports a camera stop on every frame – without a waiting menu they must not tick (smooth map 2026-11-08)
+        assertTrue(SharedPlaceMenu.idleCounts(menuWaiting = true))
+        assertFalse(SharedPlaceMenu.idleCounts(menuWaiting = false))
+    }
 }
