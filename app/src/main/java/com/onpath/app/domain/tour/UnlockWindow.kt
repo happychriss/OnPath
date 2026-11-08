@@ -10,13 +10,13 @@ package com.onpath.app.domain.tour
  * The window is one number – the moment it ends ([LOCKED] = shut); clock = any monotonic milliseconds. Pure.
  */
 object UnlockWindow {
-    /** How long one hold unlocks the bar (owner 2026-11-07: 20 s). */
-    const val OPEN_MS = 20_000L
+    /** How long one hold unlocks the bar (owner 2026-11-08: 10 s; was 20 s). */
+    const val OPEN_MS = 10_000L
 
     /** The shut window. */
     const val LOCKED = 0L
 
-    /** End-to-end tests only: a short window instead of [OPEN_MS] (no test waits 20 s); null = the real one. */
+    /** End-to-end tests only: a short window instead of [OPEN_MS] (no test waits 10 s); null = the real one. */
     @Volatile var openMsForTests: Long? = null
 
     /** The window's length in use. */
@@ -45,10 +45,13 @@ object UnlockWindow {
     enum class BarButton { PAUSE, PLAN, RESUME, END }
 
     /**
-     * One button wants a hold (owner 2026-11-07 10:15): with the lock on, [BarButton.RESUME] ("Weiter" out of a pause)
-     * ALWAYS – also inside the window, so a stray tap never starts the recording again; every other button only while
-     * the window is shut. The lock off ([lockOn] false, hold time Aus): never.
+     * One button wants a hold (owner 2026-11-08: one rule everywhere – pale = hold, strong = tap): with the lock on, every
+     * button ([BarButton.RESUME] "Weiter" too) only while the window is shut; inside the window a plain tap. The lock off
+     * ([lockOn] false, hold time Aus): never. ([button] stays so a later per-button rule has its place.)
      */
-    fun needsHold(button: BarButton, lockOn: Boolean, windowOpen: Boolean): Boolean =
-        lockOn && (button == BarButton.RESUME || !windowOpen)
+    @Suppress("UNUSED_PARAMETER")
+    fun needsHold(button: BarButton, lockOn: Boolean, windowOpen: Boolean): Boolean = lockOn && !windowOpen
+
+    /** "▶ Weiter" shuts the window at once (owner 2026-11-08): the moving bar is locked again right away. */
+    fun afterResume(): Long = LOCKED
 }

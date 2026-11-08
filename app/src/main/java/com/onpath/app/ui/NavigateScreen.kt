@@ -299,9 +299,11 @@ fun NavigateOverlay(
     // "⏸ Anhalten | ✎ Planen", stopped "▶ Weiter · ■ Tour beenden · ✎ Planen" ([TourBottomBar]); the status card has no buttons.
     // Locked (owner 2026-11-06 22:20, variant A of the hold lock – replaces the slider and its unlocked state): the same
     // buttons light, each fires only when held ~1 s ([HoldButton]); the lock off in the settings: a plain tap.
-    // One fired hold unlocks the bar for 20 s (owner 2026-11-07 09:05, [UnlockWindow]): plain taps and full colours –
-    // except "Weiter", which always wants a hold while the lock is on (owner 10:15, [UnlockWindow.needsHold]); every tap
-    // starts the window again; shut after 20 s idle, on screen off / background (ON_STOP) and when Aus.
+    // One fired hold unlocks the bar for 10 s (owner 2026-11-07 09:05, 10 s since 2026-11-08, [UnlockWindow]): plain taps
+    // and strong colours – one rule everywhere, pale = hold, strong = tap ("Weiter" too, [UnlockWindow.needsHold]); every
+    // tap starts the window again; shut after 10 s idle, on screen off / background (ON_STOP), in the pocket and when Aus.
+    // "▶ Weiter" shuts it at once (the moving bar locked again), and so does "Planen": back from Plan ("Weiter geht's")
+    // the bar starts locked.
     // [actionsOpen] (screenshot tests) draws the open window.
     var unlockedUntil by remember { androidx.compose.runtime.mutableLongStateOf(UnlockWindow.LOCKED) }
     var windowOpen by remember { mutableStateOf(false) }
@@ -335,9 +337,9 @@ fun NavigateOverlay(
     val planHeld = UnlockWindow.needsHold(UnlockWindow.BarButton.PLAN, lock, barOpen)
     // a tap while the window is open starts it again (a shut window stays shut – a tap never unlocks)
     val touched = { unlockedUntil = UnlockWindow.afterTap(unlockedUntil, android.os.SystemClock.elapsedRealtime()) }
-    val barPause: (Boolean) -> Unit = { p -> touched(); onPause(p) }
+    val barPause: (Boolean) -> Unit = { p -> if (p) touched() else { unlockedUntil = UnlockWindow.afterResume() }; onPause(p) }
     val barEnd: () -> Unit = { touched(); onEnd() }
-    val barPlan: () -> Unit = { touched(); onSlideToPlan() }
+    val barPlan: () -> Unit = { unlockedUntil = UnlockWindow.LOCKED; onSlideToPlan() }
     val heldFired = LocalOnHoldFired.current
     val unlockOnFire: () -> Unit = {
         heldFired()
@@ -381,7 +383,7 @@ fun NavigateOverlay(
             val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
             // a tour: Pause | Planen (paused: the pause band over ▶ Weiter · Beenden · ✎); no tour: one big blue Planen –
-            // held while locked, plain inside the unlock window (Weiter always held)
+            // held while locked, plain inside the unlock window
             androidx.compose.runtime.CompositionLocalProvider(LocalOnHoldFired provides unlockOnFire) {
                 if (ui.recordedM != null) TourBottomBar(ui.paused, barPause, onEnd = barEnd, onPlan = barPlan, bottom, hold = lock,
                     windowOpen = barOpen)
