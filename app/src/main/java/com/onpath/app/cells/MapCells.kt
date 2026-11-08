@@ -136,6 +136,11 @@ class MapCells(
      * whose router classes come from other profiles are reported and refreshed ([RouterClassCheck]). Null = no check.
      */
     routerClassHash: (() -> String?)? = null,
+    /**
+     * The storage of the data folder (field 2026-11-08: not readable for about a minute after a phone restart). Until it
+     * is ready the store is not read, nothing is joined, removed or downloaded and requests wait in memory ([closed]).
+     */
+    private val storage: com.onpath.app.data.StorageGate = com.onpath.app.data.StorageGate.ALWAYS,
 ) : CellSource {
     private val routerClasses = routerClassHash?.let { RouterClassCheck(it) }
 
@@ -256,6 +261,8 @@ class MapCells(
 
     /** Of [cells]: those neither installed nor already asked for (what a trigger should request). */
     override fun missing(cells: List<CellId>): List<CellId> {
+        // storage not ready: nothing is known to be missing (no offer, no request for areas that may be on the phone)
+        if (closed) return emptyList()
         val inst = _installed.value.map { it.id }.toSet()
         return cells.filter { it !in inst && !queued(it) && !isFinished(it) }
     }
@@ -285,6 +292,8 @@ class MapCells(
      * [ownPoint]: the mobile-data rule's "own cell" (loads on mobile data without asking). Returns the cells added.
      */
     override fun request(cells: List<CellId>, reason: CellReason, ownPoint: Boolean): List<CellId> {
+        // storage not ready: the request waits in memory and is asked again once the store is read ([start])
+        synchronized(held) { if (closed) { held += Held(cells, reason, ownPoint); return emptyList() } }
         val inst = _installed.value.map { it.id }.toSet()
         val added = ArrayList<CellId>()
         synchronized(queue) {
@@ -412,6 +421,7 @@ class MapCells(
 
     /** Drops cells from the queue (the user closed the card / does not want them). Installed cells stay. */
     fun cancel(cells: Collection<CellId>) {
+        synchronized(held) { if (closed) { held.removeAll { h -> h.cells.all { it in cells } }; return } }
         synchronized(queue) { cells.forEach { queue.remove(it) }; saveQueue() }
         update { m -> cells.forEach { c -> if (m[c] !is CellState.Ready) m.remove(c) } }
     }
@@ -424,6 +434,7 @@ class MapCells(
      */
     fun delete(cells: Collection<CellId>, why: String = "deleted in Settings") {
         if (cells.isEmpty()) return
+        if (closed) { Problems.info("cells", "Removing ${cells.size} region(s) refused: storage not ready yet ($why)"); return }
         // region packages no remaining cell needs go with them (Settings never lists packages)
         @Suppress("NAME_SHADOWING")
         val cells = cells + orphanPackages(cells.toSet())
@@ -440,6 +451,7 @@ class MapCells(
      * (the world overview in the APK stays); areas load again when needed. Returns the removed areas.
      */
     fun clearAll(): List<CellId> {
+        if (closed) { Problems.info("cells", "Clear all refused: storage not ready yet"); return emptyList() }
         val all = _installed.value.map { it.id }
         cancel(synchronized(queue) { queue.keys.toList() } + _states.value.keys)
         delete(all, "Clear all in Settings")
@@ -492,8 +504,21 @@ class MapCells(
      */
     fun start() {
         if (worker?.isActive == true) return
+        if (!storage.ready()) {
+            synchronized(held) { if (closed) return; closed = true }
+            Problems.info("cells", "Map store waits for the storage (not ready yet); nothing is loaded or removed meanwhile")
+            storage.whenReady { start() }
+            return
+        }
         loadQueue(); loadUsage()
         refreshInstalled()
+        // the store is read: requests made while the storage was not ready are asked now (installed ones are skipped)
+        val waited = synchronized(held) { val w = held.toList(); held.clear(); closed = false; w }
+        if (waited.isNotEmpty()) {
+            Problems.info("cells", "Map store read after the storage became ready (${_installed.value.size} areas); " +
+                "${waited.size} request(s) asked now")
+            waited.forEach { request(it.cells, it.reason, it.ownPoint) }
+        }
         ensurePackages()
         worker = scope.launch {
             work.withLock { recover() }
@@ -504,6 +529,7 @@ class MapCells(
 
     /** The region package in the data folder changed (import): join it again with the cells. */
     fun regionChanged() {
+        if (closed) return // read with the store once the storage is ready ([recover])
         scope.launch {
             work.withLock {
                 try {
@@ -537,6 +563,12 @@ class MapCells(
     private var lastFinishedAt = 0L
 
     private fun isFinished(c: CellId) = synchronized(finished) { c in finished }
+
+    /** A request made while the storage was not ready ([closed]). */
+    private data class Held(val cells: List<CellId>, val reason: CellReason, val ownPoint: Boolean)
+    private val held = ArrayList<Held>()
+    /** [start] found the storage not ready: the store is not read yet, requests wait in [held]. */
+    @Volatile private var closed = false
 
     private val queue = LinkedHashMap<CellId, Pending>()
     private val usage = HashMap<CellId, Long>()

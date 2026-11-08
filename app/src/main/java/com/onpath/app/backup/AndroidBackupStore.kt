@@ -92,7 +92,7 @@ internal class FileOps(private val resolver: ContentResolver) {
 }
 
 /** Android 10+: Documents/OnPath through MediaStore – no permission needed for the app's own files. */
-internal class MediaStoreBackupStore(context: Context) : BackupStore {
+internal class MediaStoreBackupStore(private val context: Context) : BackupStore {
     private val resolver = context.contentResolver
     private val ops = FileOps(resolver)
     override val key = Backups.KEY_DOCUMENTS
@@ -107,7 +107,17 @@ internal class MediaStoreBackupStore(context: Context) : BackupStore {
             put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS + "/OnPath/" + if (deleted) "Deleted/" else "")
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
-        val uri = try { resolver.insert(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values) } catch (e: Exception) {
+        // the primary volume when MediaStore lists it, else the generic one (field bug 2026-11-08, BackupVolumes)
+        val names = try { MediaStore.getExternalVolumeNames(context) } catch (e: Exception) {
+            Problems.info("backup", "Storage volumes not readable – using the generic one", e); emptySet<String>()
+        }
+        val volume = BackupVolumes.choose(names)
+        val uri = try { resolver.insert(MediaStore.Files.getContentUri(volume), values) } catch (e: Exception) {
+            if (BackupVolumes.isVolumeMissing(e)) {
+                // the phone's storage is not there yet (just restarted): BackupQueue keeps the tour and retries quietly
+                val where = "volume $volume, volumes $names, storage ${Environment.getExternalStorageState()}"
+                throw BackupException(Txt.s(Res.string.backup_err_documents_not_ready), IllegalStateException(where, e), notReady = true)
+            }
             throw BackupException(Txt.s(Res.string.backup_err_documents), e)
         } ?: throw BackupException(Txt.s(Res.string.backup_err_documents_storage))
         try {

@@ -106,6 +106,12 @@ class CellStore(
     fun installed(): List<InstalledCell> = current()?.cells.orEmpty()
 
     /**
+     * The data folder exists and can be listed. False while the shared storage is not ready (right after a phone
+     * restart): then the store only looks empty – nothing may be written or deleted ([apply] refuses).
+     */
+    fun readable(): Boolean = dataDir.isDirectory && dataDir.list() != null
+
+    /**
      * Complete generations, oldest first; unreadable ones are skipped (and reported). Only `gNNNNNN` folders: a `.tmp`
      * may be half written by [apply] right now, a `.bad` was set aside, a `.del` is being deleted ([prune]).
      * [GEN] (with the suffixes) is only for numbering.
@@ -188,6 +194,10 @@ class CellStore(
     @Synchronized
     fun apply(add: List<Download> = emptyList(), remove: Set<CellId> = emptySet(), now: Long = System.currentTimeMillis()): Generation {
         val t0 = System.currentTimeMillis()
+        // the data folder must be readable: unreadable (storage not ready after a phone restart) it looks empty, and a
+        // generation written now would hold only [add] – and the clean-up after it would delete the real ones
+        if (!readable()) throw StoreException(Txt.s(Res.string.maps_err_store_not_writable),
+            IOException("data folder not readable (storage not ready): ${dataDir.path}"))
         val cur = current()
         val addIds = add.map { it.manifest.cell }.toSet()
         val kept = cur?.cells.orEmpty().filter { it.id !in remove && it.id !in addIds }

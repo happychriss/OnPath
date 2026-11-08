@@ -29,7 +29,7 @@ object AppCells {
         val api = MapServer.appKey.takeIf { it.isNotBlank() }?.let { CellApi(MapServer.apiUrl, it, BuildConfig.VERSION_NAME) }
         val cells = MapCells(CellStore(DataFiles(app).dir), api, net, CoroutineScope(SupervisorJob() + Dispatchers.IO +
             com.onpath.app.debug.problemsHandler("cells", "Unexpected error in map loading")), BuildConfig.VERSION_NAME,
-            routerClassHash = { profileHash(app) })
+            routerClassHash = { profileHash(app) }, storage = com.onpath.app.data.DataStorage.get(app))
         net.listen { cells.networkChanged() }
         cells.start()
         return cells

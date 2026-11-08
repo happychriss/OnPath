@@ -37,6 +37,7 @@
     <string name="backup_err_android10">erfordert Android 10</string>
     <string name="backup_err_documents">in den Documents-Ordner kann nicht geschrieben werden</string>
     <string name="backup_err_documents_storage">in den Documents-Ordner kann nicht geschrieben werden (Speicher nicht verfügbar)</string>
+    <string name="backup_err_documents_not_ready">der Speicher des Handys ist seit einer Weile nicht bereit – OnPath versucht es weiter; bleibt es so, das Handy neu starten</string>
     <string name="backup_err_storage_full">Speicher voll</string>
     <string name="backup_err_file_storage">die Datei konnte nicht geschrieben werden – der Speicher des Handys ist vielleicht voll</string>
     <string name="backup_err_no_access">Speicherzugriff nicht erlaubt – Einstellungen → Sicherung → Speicherzugriff erlauben</string>

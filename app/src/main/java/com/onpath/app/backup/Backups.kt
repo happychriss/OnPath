@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.io.File
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import com.onpath.strings.*
@@ -36,7 +37,7 @@ object Backups {
     /** "Backup to Documents/OnPath failed – <reason>": shown until OK (owner: no self-dismissing messages). */
     val failure = MutableStateFlow<String?>(null)
 
-    private val executor = Executors.newSingleThreadExecutor { r -> Thread(r, "onpath-backup").apply { isDaemon = true } }
+    private val executor = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "onpath-backup").apply { isDaemon = true } }
     @Volatile private var app: Context? = null
     @Volatile private var index: BackupIndex? = null
     @Volatile private var queue: BackupQueue? = null
@@ -47,7 +48,8 @@ object Backups {
             index = BackupIndex(File(a.filesDir, INDEX_FILE))
             val p = prefs(a)
             failure.value = p.getString("pendingFailure", null)
-            queue = BackupQueue(DbSource(TourDb.get(a)), { TourBackup(store(a), index!!) }, { executor.execute(it) }, Listener(a))
+            queue = BackupQueue(DbSource(TourDb.get(a)), { TourBackup(store(a), index!!) }, { executor.execute(it) }, Listener(a),
+                later = { ms, r -> executor.schedule(r, ms, TimeUnit.MILLISECONDS) }, store = PrefsPending(a))
             refreshStatus(a)
         }
     }
@@ -125,6 +127,12 @@ object Backups {
             refreshStatus(a)
         }
 
+        override fun waiting(reason: String, e: Throwable?, retryInMs: Long?) {
+            // the phone's storage is not ready yet (just restarted): queued, no notice – the user hears only when it keeps failing
+            val next = retryInMs?.let { "retry in ${it / 1000} s" } ?: "retry at the next backup / app start"
+            Problems.info("backup", "Backup folder not ready yet – tours stay queued, $next ($reason)", e)
+        }
+
         override fun failed(reason: String, e: Throwable?) {
             val folder = try { store(a).label } catch (x: Exception) { Problems.info("backup", "Backup folder name unknown", x); Txt.s(Res.string.backup_folder_unknown) }
             val text = Txt.s(Res.string.backup_failed, folder, reason)
@@ -132,6 +140,28 @@ object Backups {
             prefs(a).edit().putString("lastError", reason).putString("pendingFailure", text).apply()
             failure.value = text
             refreshStatus(a)
+        }
+    }
+
+    /** The tours waiting for the storage ([BackupQueue.Pending]) across restarts – in the backup prefs. */
+    private class PrefsPending(private val a: Context) : BackupQueue.PendingStore {
+        override fun load(): BackupQueue.Pending = try {
+            val p = prefs(a)
+            BackupQueue.Pending(
+                ids = p.getString("pendingIds", "").orEmpty().split(',').mapNotNull { it.trim().toLongOrNull() }.toSet(),
+                sinceMs = p.getLong("notReadySince", 0L).takeIf { it > 0L },
+                occasions = p.getInt("notReadyOccasions", 0),
+                syncAll = p.getBoolean("pendingSyncAll", false),
+                warned = p.getBoolean("notReadyWarned", false))
+        } catch (e: Exception) {
+            // the app-start sync writes every tour without a file anyway
+            Problems.warn("backup", "Queued backups unreadable – the next start writes missing files", e); BackupQueue.Pending()
+        }
+
+        override fun save(p: BackupQueue.Pending) {
+            prefs(a).edit().putString("pendingIds", p.ids.joinToString(",")).putLong("notReadySince", p.sinceMs ?: 0L)
+                .putInt("notReadyOccasions", p.occasions).putBoolean("pendingSyncAll", p.syncAll)
+                .putBoolean("notReadyWarned", p.warned).apply()
         }
     }
 

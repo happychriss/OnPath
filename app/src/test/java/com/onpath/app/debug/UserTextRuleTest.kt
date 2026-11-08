@@ -24,6 +24,7 @@ class UserTextRuleTest {
     private val allowed = listOf(
         "UserText.kt" to "-> e.message", // the helper itself: only for our own exception types
         "AndroidBackupStore.kt" to """e.message?.contains("ENOSPC")""", // only tested, the text is not shown
+        "BackupVolumes.kt" to "t.message?.let { missing.containsMatchIn(it) }", // only tested ("Volume … not found"), not shown
         "RecordingService.kt" to "pr.javaClass.simpleName", // a dedupe key of a navigation prompt, not an exception
     )
 
