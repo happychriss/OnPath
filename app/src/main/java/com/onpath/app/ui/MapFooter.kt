@@ -200,11 +200,11 @@ private fun iconSize(size: Dp): Dp = 28.dp
 @Composable
 fun UndoPill(onUndo: (() -> Unit)?, onRedo: (() -> Unit)?) {
     if (onUndo == null && onRedo == null) return
-    // owner 2026-11-08 late: the worded pill took too much room – two plain round buttons side by side, same look as
-    // the map column, still only while something can be undone or redone (the one that cannot act is greyed)
+    // owner 2026-11-08 late: the worded pill took too much room – two plain round buttons stacked under the map column,
+    // same look as the column, only while something can be undone or redone (the one that cannot act is greyed)
     val shape = RoundedCornerShape(MAP_FAB / 2)
     Surface(shape = shape, color = OnPathColors.PlanTint, modifier = Modifier.warmShadow(OnPathShadow.LOW, shape)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo ?: {}, MAP_FAB,
                 tint = OnPathColors.PlanAccent, enabled = onUndo != null)
             IconControl(Icons.AutoMirrored.Filled.Redo, Res.string.plan_redo, onRedo ?: {}, MAP_FAB,

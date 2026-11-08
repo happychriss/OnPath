@@ -33,7 +33,7 @@ object ControlsPlacement {
      * stands right above the compass, right-aligned with the column. The slot is kept free whether the pill shows or
      * not, so nothing moves when it comes or goes.
      */
-    const val PILL_SLOT_DP = 48
+    const val PILL_SLOT_DP = 112 // owner 2026-11-08 late: undo + redo as two 56 dp round buttons under the column
 
     /** Left of the pill: the activity button (12 dp margin + 48 dp + air) – the pill never reaches into it. */
     const val ACTIVITY_ZONE_DP = 72
@@ -60,8 +60,8 @@ object ControlsPlacement {
      * only on a small phone, where a high sheet pushes the column up, it goes up with it (it is never covered: the
      * column steps back first). Returns the pill's left and top (px).
      */
-    fun pill(columnTopPx: Int, columnRightPx: Int, pillWidthPx: Int, pillHeightPx: Int, gapPx: Int): Pair<Int, Int> =
-        (columnRightPx - pillWidthPx) to (columnTopPx - gapPx - pillHeightPx)
+    fun pill(columnBottomPx: Int, columnRightPx: Int, pillWidthPx: Int, gapPx: Int): Pair<Int, Int> =
+        (columnRightPx - pillWidthPx) to (columnBottomPx + gapPx)
 
     /** The widest the pill may be: from the screen's right margin to the activity button. */
     fun pillMaxWidth(screenWidthPx: Int, endPx: Int, activityZonePx: Int): Int = (screenWidthPx - endPx - activityZonePx).coerceAtLeast(0)
@@ -87,15 +87,16 @@ fun PlanControlsLayer(sheetHeightPx: () -> Int, limit: Dp, modifier: Modifier = 
             if (column == null) return@layout
             val limitPx = limit.roundToPx() + gap
             val slot = ControlsPlacement.PILL_SLOT_DP.dp.roundToPx()
-            val fixed = ControlsPlacement.fixedTopWithPill(c.maxHeight, limitPx, slot, gap)
+            val fixed = ControlsPlacement.fixedTop(c.maxHeight, limitPx)
             val sheetTop = c.maxHeight - sheetHeightPx()
-            // a sheet that reaches the column pushes it up – never into the pill's slot under the band
-            val top = ControlsPlacement.place(fixed, column.height, sheetTop, limitPx + slot + gap, gap) ?: return@layout
+            // owner 2026-11-08 late: undo / redo stand under the column; their slot is kept whether they show or not, so a
+            // sheet pushes column + slot together and never covers them, and nothing moves when they come or go
+            val top = ControlsPlacement.place(fixed, column.height + gap + slot, sheetTop, limitPx, gap) ?: return@layout
             val right = c.maxWidth - end
             column.place(right - column.width, top)
             pills.forEach { p ->
-                val (x, y) = ControlsPlacement.pill(top, right, p.width, p.height, gap)
-                p.place(x, maxOf(y, limitPx))
+                val (x, y) = ControlsPlacement.pill(top + column.height, right, p.width, gap)
+                p.place(x, y)
             }
         }
     }

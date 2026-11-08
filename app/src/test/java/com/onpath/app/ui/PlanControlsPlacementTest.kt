@@ -37,20 +37,11 @@ class PlanControlsPlacementTest {
         assertNull(ControlsPlacement.place(top, 900, 830, limit, gap)) // the sheet pulled up to below the band
     }
 
-    /**
-     * Owner 2026-11-08 evening (Pixel: the pill sat "mitten im Bild"): the undo pill right above the column,
-     * right-aligned with it; its slot is kept whether it shows or not, so nothing moves when it comes or goes.
-     */
-    @Test fun theUndoPillStandsAboveTheColumnInAKeptSlot() {
-        val gap = 30; val slot = 126; val width = 1080; val end = 42
-        // the slot fits between the band and 26 %: the column keeps its usual top
-        assertEquals(ControlsPlacement.fixedTop(screen, limit), ControlsPlacement.fixedTopWithPill(screen, limit, slot, gap))
-        // a deep band (large font, short screen): the column goes down by the slot – the same with and without a pill
-        assertEquals(500 + slot + gap, ControlsPlacement.fixedTopWithPill(1500, 500, slot, gap))
-        // the pill: right edge = the column's right edge, bottom = a gap above the column's top
-        val top = 624
-        assertEquals((width - end - 600) to (top - gap - slot), ControlsPlacement.pill(top, width - end, 600, slot, gap))
-        // never wider than the room right of the activity button
+    /** Owner 2026-11-08 late: undo / redo stacked under the column, right-aligned with it, a gap below its bottom. */
+    @Test fun theUndoButtonsStandUnderTheColumn() {
+        val gap = 30; val width = 1080; val end = 42
+        val bottom = 1100
+        assertEquals((width - end - 168) to (bottom + gap), ControlsPlacement.pill(bottom, width - end, 168, gap))
         assertEquals(width - end - 189, ControlsPlacement.pillMaxWidth(width, end, 189))
     }
 
