@@ -294,7 +294,8 @@ class MapDataFlow(
     private fun showCellJob(j: com.onpath.app.cells.CellJob?) {
         j ?: return
         if (j.cells.isEmpty()) return // only a route's margin: quiet (the background chip shows it), no card
-        routingForCells(j.cells, wait = j.own != null || viewWithoutDetail) // routing data comes with the map
+        val waits = MapLoadWait.waits(j, viewWithoutDetail) // never the map for here (field bug 2026-11-08)
+        routingForCells(j.cells, wait = waits) // routing data comes with the map
         if (!cells.downloadsAvailable) {
             if (notAvailableShown) return
             notAvailableShown = true; cellJob = j; return
@@ -303,9 +304,9 @@ class MapDataFlow(
         val open = cellJob
         cellJob = com.onpath.app.cells.CellTriggers.merge(open, j, done)
         if (open == null || done) { mobileDeclined = false; jobWaited = false }
-        // the user waits for this map (a point / position / search / tap without detailed map, or a route while the
-        // visible map has none): the modal shows (again), over all regions asked for so far
-        if (j.own != null || viewWithoutDetail) {
+        // the user waits for this map (a point / search / tap without detailed map, or a route while the visible map has
+        // none – never the map for here, MapLoadWait): the modal shows (again), over all regions asked for so far
+        if (waits) {
             jobWaited = true
             if (loadModalFor.isEmpty()) { loadProgress.clear(); loadHeld = 0; loadBySearch = false }
             if (j.why == com.onpath.app.cells.CellWhy.SEARCHED) loadBySearch = true

@@ -543,8 +543,8 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
         )
         return
     }
-    // the user waits for the map of their area (first start, a point without detailed map): one plain modal with %,
-    // time left and Cancel; ticks every second so the bar moves smoothly
+    // the user waits for the map of their area (a point / search without detailed map): one plain modal with %,
+    // time left and Cancel; ticks every second so the bar moves smoothly. Never over the phone setup (MapLoadWait).
     val loadUi by produceState<MapLoadUi?>(null, vm.cellJob, vm.mode) {
         vm.cells.states.collectLatest { states ->
             while (true) { value = vm.mapLoadUi(states, android.os.SystemClock.uptimeMillis()); delay(1000) }
@@ -564,7 +564,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     }
     val lastRows = remember { arrayOfNulls<List<com.onpath.app.routing.PlanPointRow>>(1) }
     val rows = lastRows[0]?.takeIf { !legsReady } ?: vm.planPointRows().also { lastRows[0] = it }
-    MapLoadModal(loadUi, MapLoadCallbacks(onCancel = vm::cancelLoadModal, onRetry = vm::cellCardRetry, onClose = vm::hideLoadModal,
+    MapLoadModal(MapLoadWait.shown(loadUi, vm.setupOpen), MapLoadCallbacks(onCancel = vm::cancelLoadModal, onRetry = vm::cellCardRetry, onClose = vm::hideLoadModal,
         onLoadOnMobile = vm::loadModalOnMobile))
     vm.loadAsk?.let { LoadAskDialog(it.regions, it.bytes, onLoad = { vm.answerLoadAsk(true) }, onNotNow = { vm.answerLoadAsk(false) }) }
     // the "hold to set a point" line goes with any plan change (owner 2026-11-03)

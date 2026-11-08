@@ -33,10 +33,11 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * The one modal while the user waits for the map of their area: first start (T3) and a point set where there is no
- * detailed map (T1). Plain words, one bar with %, the time left, one button. Closes by itself only when the map is
- * there; Cancel stops it ([MapLoadCancel]).
- * Background loads (route corridor, on tour, newer versions) never show it.
+ * The one modal while the user waits for the map of their area: a point set / searched / tapped where there is no
+ * detailed map (T1), a route computed while the visible map has none ([MapLoadWait]). Plain words, one bar with %, the
+ * time left, one button. Closes by itself only when the map is there; Cancel stops it ([MapLoadCancel]).
+ * Background loads (the map for here when the app opens – also the first start –, route corridor, on tour, newer
+ * versions) never show it.
  */
 data class MapLoadUi(
     val kind: Kind,
@@ -207,6 +208,26 @@ object MapLoads {
             else -> MapLoadUi(MapLoadUi.Kind.WIFI, pct, null, regions = total, bytes = bytes)
         }
     }
+}
+
+/**
+ * When the user waits for a map job in the modal. Pure, unit-tested.
+ *
+ * Field bug 2026-11-08 (owner, fresh install): the location granted in the phone setup gave the first fix, the map for
+ * here started loading (T3) and – the empty world map counting as "the view has no detailed map" – the modal opened
+ * over the setup guide: the user had to wait inside the onboarding. The map for here (opening the app, the first start
+ * too) loads in the background only; and no modal ever covers the phone setup.
+ */
+object MapLoadWait {
+    /**
+     * [job] opens / joins the modal: the user's own point / search / tap ([CellJob.own]), or a job loaded while the
+     * visible map has no detailed map – but never the map for here ([CellWhy.HERE]: the user only opened the app).
+     */
+    fun waits(job: com.onpath.app.cells.CellJob, viewWithoutDetail: Boolean): Boolean =
+        job.own != null || (viewWithoutDetail && job.why != com.onpath.app.cells.CellWhy.HERE)
+
+    /** The modal to show: none while the phone setup (welcome page / guide) is open – the map loads on behind it. */
+    fun shown(ui: MapLoadUi?, setupOpen: Boolean): MapLoadUi? = if (setupOpen) null else ui
 }
 
 /**
