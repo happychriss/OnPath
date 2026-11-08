@@ -144,7 +144,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val tracker = LocationTracker(app)
 
     // --- data check ---
-    var missing by mutableStateOf(dataFiles.check().filter { !it.present })
+    var missing by mutableStateOf(dataFiles.missing())
         private set
 
     init {
@@ -1191,7 +1191,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         com.onpath.app.ui.search.SearchSession(helperScope, dataFiles.dir, getApplication<Application>().filesDir, searchStore,
             com.onpath.app.search.PhotonProvider(com.onpath.app.search.PhotonProvider.userAgent(com.onpath.app.BuildConfig.VERSION_NAME)),
             areaPlan = { com.onpath.app.search.AreaPlan.of(dataFiles.dir) },
-            geocoder = com.onpath.app.search.AndroidPlaceGeocoder(getApplication())) {
+            geocoder = com.onpath.app.search.AndroidPlaceGeocoder(getApplication()),
+            storageReady = { dataFiles.ready() }) {
             val loc = tracker.location.value
             val (cLat, cLon, _) = initialCamera()
             // Position when known and near what the user looks at, else the map centre.
@@ -1369,7 +1370,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun recheckData() {
-        missing = dataFiles.check().filter { !it.present }
+        missing = dataFiles.missing()
         packageCheck = dataFiles.packageCheck()
     }
 
@@ -5272,6 +5273,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                             recheckData(); styleVersion++
                         }
                     }
+                }
+            }
+        }
+        // storage not ready at start (field 2026-11-08, right after a phone restart): no "maps missing", nothing loaded
+        // or removed (DataStorage); once it is readable the data is checked again and the map style loads the real files
+        // (map cells reload by themselves through their generation)
+        if (!dataFiles.ready()) com.onpath.app.data.DataStorage.get(getApplication()).whenReady {
+            viewModelScope.launchSafe("app", "storage ready") {
+                recheckData()
+                if (com.onpath.app.map.StyleLoader.lastMapDir != null) {
+                    Problems.trace("map", "Map style reload asked: storage ready (version ${styleVersion + 1})")
+                    styleVersion++
                 }
             }
         }

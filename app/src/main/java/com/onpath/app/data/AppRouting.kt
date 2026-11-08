@@ -40,6 +40,7 @@ object AppRouting {
             launch = { block -> scope.launch { block() } },
             onInstalled = { names -> listeners.forEach { it.installed(names) } },
             onChange = { listeners.forEach { it.changed() } },
+            storage = DataStorage.get(app),
         ).also { loader -> net.listen { loader.retry() } }
     }
 }
