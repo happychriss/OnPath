@@ -773,6 +773,60 @@
     "confidence": "bitte prüfen",
     "doubt": "\"Quellen\" vs \"Danksagung\" / \"Mitwirkende\""
   },
+  "settings_links": {
+    "area": "Settings · About",
+    "context": "Heading of the card with links to the website (hidden inside the About page)",
+    "priority": 3,
+    "confidence": "sicher"
+  },
+  "settings_link_help": {
+    "area": "Settings · About",
+    "context": "Link row: the website's help pages",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_link_website": {
+    "area": "Settings · About",
+    "context": "Link row: the website onpath.earth",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_link_contact": {
+    "area": "Settings · About",
+    "context": "Link row: write an email to OnPath (address shown under it)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_link_privacy": {
+    "area": "Settings · About",
+    "context": "Link row: the website's privacy notice",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_link_legal": {
+    "area": "Settings · About",
+    "context": "Link row: the website's legal notice (German 'Impressum')",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_link_copied": {
+    "area": "Settings · About",
+    "context": "Shown instead of the email address when no mail app exists and the address went to the clipboard",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_link_source": {
+    "area": "Settings · About",
+    "context": "Link row: the app's source code on GitHub",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "settings_privacy_full": {
+    "area": "Settings · Privacy",
+    "context": "Last row of the Privacy page: opens the full privacy notice on the website",
+    "priority": 2,
+    "confidence": "sicher"
+  },
   "settings_credit_osm": {
     "area": "Settings · About",
     "context": "Credit line (licence requirement)",

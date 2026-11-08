@@ -131,6 +131,15 @@
     <string name="settings_about_devtools_on">Entwicklertools sind an – Einstellungen → Diagnose.</string>
     <string name="settings_about_licence">Lizenz: Apache-2.0</string>
     <string name="settings_about_credits">Quellen</string>
+    <string name="settings_links">Links</string>
+    <string name="settings_link_help">Hilfe &amp; erste Schritte</string>
+    <string name="settings_link_website">Website</string>
+    <string name="settings_link_contact">Kontakt</string>
+    <string name="settings_link_privacy">Datenschutzerklärung</string>
+    <string name="settings_link_legal">Impressum</string>
+    <string name="settings_link_copied">Adresse kopiert</string>
+    <string name="settings_link_source">Quellcode auf GitHub</string>
+    <string name="settings_privacy_full">Ganze Datenschutzerklärung auf der Website</string>
     <string name="settings_credit_osm">Kartendaten © OpenStreetMap-Mitwirkende (ODbL)</string>
     <string name="settings_credit_omt">Vektorkachel-Schema © OpenMapTiles</string>
     <string name="settings_credit_terrain">Gelände: Terrarium-Kacheln (Mapzen / AWS Terrain Tiles; SRTM, Copernicus und andere)</string>

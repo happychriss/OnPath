@@ -34,6 +34,8 @@ abstract class SettingsLargeFontTest {
     @Test fun navigationChoiceSheet() = shots.navigationChoiceSheet()
     @Test fun pace() = shots.pace()
     @Test fun map() = shots.map()
+    /** About with the website links: the longer addresses wrap, the ↗ stays at the right. */
+    @Test fun about() = shots.aboutTall(4400, 1.3f)
 }
 
 /** The same in German. */

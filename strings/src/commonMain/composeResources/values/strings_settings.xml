@@ -132,6 +132,15 @@
     <string name="settings_about_devtools_on">Developer tools are on – Settings → Diagnostics.</string>
     <string name="settings_about_licence">License: Apache-2.0</string>
     <string name="settings_about_credits">Credits</string>
+    <string name="settings_links">Links</string>
+    <string name="settings_link_help">Help &amp; first steps</string>
+    <string name="settings_link_website">Website</string>
+    <string name="settings_link_contact">Contact</string>
+    <string name="settings_link_privacy">Privacy notice</string>
+    <string name="settings_link_legal">Legal notice</string>
+    <string name="settings_link_copied">Address copied</string>
+    <string name="settings_link_source">Source code on GitHub</string>
+    <string name="settings_privacy_full">Full privacy notice on the website</string>
     <string name="settings_credit_osm">Map data © OpenStreetMap contributors (ODbL)</string>
     <string name="settings_credit_omt">Vector tile schema © OpenMapTiles</string>
     <string name="settings_credit_terrain">Terrain: Terrarium tiles (Mapzen / AWS Terrain Tiles; SRTM, Copernicus and others)</string>
