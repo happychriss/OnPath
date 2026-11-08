@@ -236,3 +236,13 @@ the map · plan and tour are two things (no plan question at tour end) · drafts
 ridden (Komoot), the browser shows only saved · delete always to the bin without a question · "Weiter" for resuming,
 "Weiter geht's" back to Navigate, "Planen" to Plan, "Los geht's" start · Beenden only from the pause · map controls
 fixed, nothing jumps, unavailable = grey not hidden · no red recording dots · 3D: spike first.
+
+## 2026-11-08 ~12:10 – v0.17.6 released
+- In: lock colours (pale = hold, strong = tap, 10 s, Weiter locks, Tour beenden dark green) 26b3a61e · status card v7 at
+  large font 41afe772 · storage not ready at start 7676e1dc · backup quiet retry 54d4276e · updater API fallback 84106dfc ·
+  About links + Impressum + copy address without mail app ca5f0f7b. Release https://github.com/happychriss/OnPath/releases/tag/v0.17.6
+  (main e863ca80); all 12 GitHub classes + Rundgang 17/17 green. AAB `dist/onpath-0.17.6.aab` (1706) for the owner's Play upload.
+- Planner not deployed (parity check, 5 files) → laptop line in "For the roles".
+- 146 old ci/donald branches deleted (owner's yes); 31 younger ones (r174/r175/today) wait for the 12 h rule.
+- Next: refresh the affected website pictures (`pictures_affected.sh v0.17.5..v0.17.6`); owner question on a loop
+  generator answered (only the Komoot-comparison "skip" line exists; offered a sketch after 0.17.6).
