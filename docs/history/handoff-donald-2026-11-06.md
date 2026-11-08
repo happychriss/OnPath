@@ -254,3 +254,13 @@ fixed, nothing jumps, unavailable = grey not hidden · no red recording dots · 
   ci/donald-r177-*), `wip/donald-2026-11-08-smooth-map` (WIP). Details in the backlog's PAUSED item.
 - Website pictures: E01/E03/E06 live; D10, E02, F04, F05, G01, G02 in onpath.private aktuell/ for cloud-web.
 - Open: G04 off-route stop skipped silently (backlog), backup GPX "no track readable" WARN on the fresh install (16:35).
+
+## 2026-11-08 ~22:00 – v0.17.7 and v0.17.8 released
+- v0.17.7 (18:40): setup never waits for the map, first-map card, shorter + bigger setup texts. AAB 1707.
+- v0.17.8 (~22:00): father's feedback – location step names „Genau“ + „Bei Nutzung der App“, one-buzz vibration test,
+  Samsung page once only + „Mehr Infos ›“ → onpath.earth `#samsung` (cloud-web writes the section), Settings „Handy
+  einrichten“ on top while steps are open, T levels readable with their line (own chip row), undo / redo as two round
+  buttons under the map column (kept slot), „Hilfe“ first in ☰. Gate --full, Rundgang 17/17, 12 E2E green. AAB 1708.
+- S10 now runs donald's debug build (owner uninstalled the Play build); the Pixel still has the first feedback test build –
+  it updates itself to 0.17.8.
+- Still open: smooth map (wip/donald-2026-11-08-smooth-map), website pictures for the setup + plan changes, G04.
