@@ -5,6 +5,12 @@ on `main` yet**. Nothing below is lost: every branch is in a local worktree on d
 Owner's word for the evening: "mach alles fertig, entscheide selber, push auf main, aufs Handy nur zum Testen (kein
 Release)". Owner wants new builds **on the Pixel first** (before the long checks), then main.
 
+## 2026-11-08 ~02:00 – v0.17.5 released (Anhalten)
+- https://github.com/happychriss/OnPath/releases/tag/v0.17.5 (main 6b0e2a18; Anhalten 9745ddd5 + E2E fix 93254cb8);
+  all 12 E2E classes + Rundgang 17/17 green; planner deployed with it this time. Play file `dist/onpath-0.17.5.aab`
+  (1705) waits for the owner's upload; German Play text in the chat. Open: the "… ruhen" line hardly ever shows (backlog
+  "Waiting for the owner").
+
 ## 2026-11-08 ~00:50 – state when the owner left (read this first)
 - **Released:** v0.17.4 (main f9b9b5ce; all 12 E2E classes, Rundgang 17/17); in the Play internal test (owner uploaded,
   versionCode 1704). Planner not deployed with it – laptop's backlog line (parity + manual deploy).

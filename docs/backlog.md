@@ -40,6 +40,8 @@ and the commit history.
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
+- **[donald] Local Rundgang emulator: `CorePointsListE2ETest#swipeTheSheetHalfFullHalf` times out after the sheet
+  swipe (very janky first drag), twice on 2026-11-08; green on GitHub. Look at the local AVD speed / the swipe timing.
 - **[laptop] Planner profile calmer, like the app's (owner 2026-11-07: „mehr wie in der App, nicht ganz so bunt“ – with the next
   planner change)** – the app (`ui/ElevationProfile.kt`, ProfileFill, owner polish 2026-11-06): the area is filled in the
   ROUTE colour fading to nothing, steeper stretches only a bit stronger in the same colour (shading, no stripes); steepness
@@ -382,6 +384,10 @@ and the commit history.
 
 ## Waiting for the owner
 <!-- Owner 2026-11-07: open questions to the owner live here (who, date, question, recommendation first); asked in the session's chat; whoever acts on the answer deletes the line. -->
+- **[donald] "Aufzeichnung und Navigation ruhen" hardly ever shows (donald 2026-11-08)** – in 0.17.5 the stopped card's
+  calm line shows only where it fits on one line beside the activity icon and the arrival time; on a 1080 px phone it
+  does not (the approved v5 picture had it). The head "⏸ Angehalten seit …" and the buttons are there. Recommendation:
+  let the line wrap / take the full card width under the head; other option: drop it.
 - **[donald] Only our signed apps on the map server? (owner 2026-11-07, chat)** – App Links need no per-phone step
   (one fingerprint per signing key: GitHub test key + Play App Signing key, both in `web/host` assetlinks). Server
   access cannot be tied to our signature without Google Play Integrity (needs Play Services – against the "no Google
