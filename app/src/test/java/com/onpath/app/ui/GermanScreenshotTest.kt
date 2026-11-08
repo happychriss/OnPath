@@ -155,5 +155,6 @@ class GermanScreenshotTest {
     @Test fun settingsSyncNotPaired() = borrow(SettingsScreenshotTest()).syncNotPaired()
     @Test fun settingsSyncUnpairedInBrowser() = borrow(SettingsScreenshotTest()).syncUnpairedInBrowser()
     @Test fun settingsPrivacyFull() = borrow(SettingsScreenshotTest()).privacyFull()
+    @Test fun settingsAbout() = borrow(SettingsScreenshotTest()).about()
     @Test fun settingsAboutLicences() = borrow(SettingsScreenshotTest()).aboutLicences()
 }

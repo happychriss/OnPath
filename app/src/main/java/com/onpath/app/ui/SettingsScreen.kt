@@ -300,6 +300,8 @@ fun SettingsScreen(
                         SettingsPage.PRIVACY -> item { PrivacySection() }
                         SettingsPage.ABOUT -> {
                             item { AboutSection(version, devTools, onUnlockDevTools) }
+                            item { AboutLinksSection() }
+                            item { CreditsSection() }
                             item { LicencesSection(licences, licencesOpen) }
                         }
                     }
@@ -849,7 +851,9 @@ private fun PrivacySection() {
             HorizontalDivider()
             Text(str(Res.string.settings_privacy_sync_title), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
             Text(str(Res.string.settings_privacy_sync_text), style = MaterialTheme.typography.bodySmall)
+            HorizontalDivider()
         }
+        PrivacyNoticeLink()
     }
 }
 
@@ -881,7 +885,10 @@ val PRIVACY_FLOWS: List<PrivacyFlow> get() = listOfNotNull(
         Txt.s(Res.string.settings_privacy_sync_when)),
 )
 
-/** About: version, licence and the full credits (the map's "© OpenStreetMap" opens this page). */
+/**
+ * About: logo, version, licence; then the links to the website (AboutLinks), the full credits (the map's
+ * "© OpenStreetMap" opens this page) and the licences.
+ */
 @Composable
 private fun AboutSection(version: String, devTools: Boolean = false, onUnlockDevTools: () -> Unit = {}) {
     var taps by remember { mutableStateOf(0) }
@@ -905,8 +912,17 @@ private fun AboutSection(version: String, devTools: Boolean = false, onUnlockDev
                     })
             if (devTools && taps > 0) Text(str(Res.string.settings_about_devtools_on), style = MaterialTheme.typography.bodySmall,
                 color = OnPathColors.Green)
-            Text(str(Res.string.settings_about_licence), style = MaterialTheme.typography.bodySmall)
-            HorizontalDivider(Modifier.padding(vertical = 4.dp))
+            Text(str(Res.string.settings_about_licence), style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(bottom = 4.dp))
+        }
+    }
+}
+
+/** About → the full credits, under the links. */
+@Composable
+private fun CreditsSection() {
+    Section(str(Res.string.settings_about_credits)) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(str(Res.string.settings_about_credits), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
             MAP_CREDITS.forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
