@@ -57,12 +57,12 @@ object OnPathLinks {
     fun legal(lang: String = Txt.language()) = if (de(lang)) "$SITE/de/impressum/" else "$SITE/legal/"
 
     /**
-     * The phone-setup help for the brand page's „Mehr Infos ›“ (owner 2026-11-08): no page of its own yet on
-     * onpath.earth – the help topic "Akku und Sicherung" / "Battery and backup" at its background section
-     * (onpath.earth help_topics.py anchors). Switch to the dedicated page once cloud-web has written it.
+     * The phone-setup help for the brand page's „Mehr Infos ›“ (owner 2026-11-08): the help topic "Akku und Sicherung"
+     * / "Battery and backup" at its Samsung & co section (anchor `#samsung`, asked of cloud-web 2026-11-08; until the
+     * section is live the page opens at its top).
      */
     fun phoneSetupHelp(lang: String = Txt.language()) =
-        if (de(lang)) "$SITE/de/hilfe/akku-sicherung/#hintergrund" else "$SITE/help/battery-backup/#background"
+        if (de(lang)) "$SITE/de/hilfe/akku-sicherung/#samsung" else "$SITE/help/battery-backup/#samsung"
 
     /** What a row shows under its title: the address without "https://" and the last "/". */
     fun shown(url: String) = url.removePrefix("https://").removeSuffix("/")

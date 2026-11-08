@@ -19,6 +19,12 @@ class OnPathLinksTest {
         assertEquals("https://onpath.earth/legal/", OnPathLinks.legal("en"))
     }
 
+    /** The brand page's „Mehr Infos ›“ (owner 2026-11-08): the website's Samsung & co section in the app language. */
+    @Test fun phoneSetupHelpGoesToTheSamsungSection() {
+        assertEquals("https://onpath.earth/de/hilfe/akku-sicherung/#samsung", OnPathLinks.phoneSetupHelp("de"))
+        assertEquals("https://onpath.earth/help/battery-backup/#samsung", OnPathLinks.phoneSetupHelp("en"))
+    }
+
     @Test fun anyOtherLanguageGetsEnglish() = assertEquals("https://onpath.earth/help/", OnPathLinks.help("fr"))
 
     @Test fun shownWithoutSchemeAndLastSlash() {
