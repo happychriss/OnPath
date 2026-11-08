@@ -158,3 +158,5 @@ Written by `tools/dev/prune_branches.sh` (owner said yes in the chat). Bring one
 | 2026-11-08 | `ci/donald-pf3-one` | `cb1dab3abfff5b166abbe31a6fa17f86c753b59a` | main |
 | 2026-11-08 | `ci/donald-pn-field` | `25f1e353bf8c61c250799bc1bea837a172309355` | main |
 | 2026-11-08 | `ci/donald-r173-backup` | `e0f258c156c97cf108ad4d506b938a97d868c1e9` | main |
+| 2026-11-08 | `ci/donald-pf2-a` | `2b1b888365d571484d83dfa55211ba152f16de65` | checked by hand: only TEMP bisect commits of the 2026-11-07 perf hunt; owner said delete 2026-11-08 |
+| 2026-11-08 | `ci/donald-pf2-b` | `fe4e731ffd419c9a8f1a9669cf6d610fb56bc38d` | checked by hand: only TEMP bisect commits of the 2026-11-07 perf hunt; owner said delete 2026-11-08 |
