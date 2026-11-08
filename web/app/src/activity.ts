@@ -34,6 +34,8 @@ export class ActivityPicker {
   private box: HTMLDivElement;
   private act: Activity = 'HIKE';
   private sac = 2;
+  /** A T chip was tapped since the list opened: it stays open and offers „Fertig“. */
+  private levelPicked = false;
   private anchor: HTMLElement | null = null;
 
   private pace: PaceChoices | null = null;
@@ -59,7 +61,8 @@ export class ActivityPicker {
       }
       const s = t.closest<HTMLElement>('[data-sac]')?.dataset.sac;
       const a = t.closest<HTMLElement>('[data-act]')?.dataset.act as Activity | undefined;
-      if (s) this.pick('HIKE', Number(s));
+      if (t.closest('#actDone')) { this.close(); this.anchor?.focus(); return; }
+      if (s) this.pickLevel(Number(s));
       else if (a) this.pick(a, this.sac);
     });
     this.box.addEventListener('keydown', (e) => { if (e.key === 'Escape') { this.close(); this.anchor?.focus(); } });
@@ -76,18 +79,24 @@ export class ActivityPicker {
   toggle(anchor: HTMLElement, a: Activity, sac: number) {
     if (this.isOpen) { this.close(); return; }
     this.anchor = anchor;
-    this.act = a; this.sac = sac;
+    this.act = a; this.sac = sac; this.levelPicked = false;
     this.draw();
     this.loadPace(a);
     document.body.append(this.box);
     this.box.hidden = false;
-    // under the chip; on a phone (sheet at the bottom) above it when there is no room below
-    const r = anchor.getBoundingClientRect(), h = this.box.offsetHeight;
-    const below = innerHeight - r.bottom - 8 >= h || r.top < h + 8;
-    this.box.style.left = Math.max(8, Math.min(r.left, innerWidth - this.box.offsetWidth - 8)) + 'px';
-    this.box.style.top = below ? Math.min(r.bottom + 6, innerHeight - h - 8) + 'px' : Math.max(8, r.top - h - 6) + 'px';
+    this.place();
     anchor.setAttribute('aria-expanded', 'true');
     this.box.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
+  }
+
+  /** Under the chip; on a phone (sheet at the bottom) above it when there is no room below; never past the window. */
+  private place() {
+    const anchor = this.anchor;
+    if (!anchor) return;
+    const r = anchor.getBoundingClientRect(), h = Math.min(this.box.offsetHeight, innerHeight - 16);
+    const below = innerHeight - r.bottom - 8 >= h || r.top < h + 8;
+    this.box.style.left = Math.max(8, Math.min(r.left, innerWidth - this.box.offsetWidth - 8)) + 'px';
+    this.box.style.top = below ? Math.max(8, Math.min(r.bottom + 6, innerHeight - h - 8)) + 'px' : Math.max(8, r.top - h - 6) + 'px';
   }
 
   close() {
@@ -97,6 +106,21 @@ export class ActivityPicker {
 
   private pick(a: Activity, sac: number) { this.close(); this.onPick(a, sac); }
 
+  /**
+   * A T chip (app 2a54f2e4, owner 2026-11-08, father's feedback): Hike with that level at once (the plan routes again),
+   * but the list stays open so the level's line „T2 · Bergwandern: …“ can be read; the way out says „Fertig“.
+   */
+  private pickLevel(level: number) {
+    const was = this.act;
+    this.act = 'HIKE'; this.sac = level; this.levelPicked = true;
+    this.onPick('HIKE', level);
+    const pace = this.pace;
+    this.draw();
+    if (was === 'HIKE' && pace) { this.pace = pace; this.drawPace(); } else this.loadPace('HIKE');
+    this.place(); // the line and „Fertig“ make the list taller
+    this.box.querySelector<HTMLElement>(`[data-sac="${level}"]`)?.focus();
+  }
+
   /** The pace section of the current activity's group (Hiking, or Cycling · <bike>), from the engine. */
   private loadPace(a: Activity) {
     if (!this.paceHost) return;
@@ -104,13 +128,14 @@ export class ActivityPicker {
       if (this.act !== a || this.box.hidden) return;
       this.pace = c;
       this.drawPace();
+      this.place();
     }).catch((err) => console.warn('pace choices not loaded', err));
   }
 
   private drawPace() {
     let sec = this.box.querySelector<HTMLDivElement>('#paceRow');
     if (!this.pace) { sec?.remove(); return; }
-    if (!sec) { sec = document.createElement('div'); sec.id = 'paceRow'; sec.className = 'pacerow'; this.box.append(sec); }
+    if (!sec) { sec = document.createElement('div'); sec.id = 'paceRow'; sec.className = 'pacerow'; this.box.insertBefore(sec, this.box.querySelector('.actdone')); }
     const c = this.pace, on = c.levels.find((l) => l.key === c.selected) ?? c.levels[2];
     sec.innerHTML = `<div class="pacehead"><b>${esc(c.title)}</b> <span class="muted small">${esc(c.groupLabel)}</span></div>
       <div class="seg" role="group" aria-label="${esc(c.title + ' – ' + c.groupLabel)}">${c.levels.map((l) =>
@@ -133,8 +158,8 @@ export class ActivityPicker {
             const sel = this.act === 'HIKE' && n === this.sac;
             return `<button data-sac="${n}" role="menuitemradio" aria-checked="${sel}" class="${sel ? 'on' : ''}" title="T${n} · ${esc(name)} – ${esc(text)}">T${n}</button>`;
           }).join('')}</div>
-          <div class="muted small">T${this.sac} · ${esc(name)} – ${esc(text)}</div></div>`;
-    }).join('');
+          <div class="muted small sacline">${esc(t('routes_sac_line', this.sac, name, text))}</div></div>`;
+    }).join('') + (this.levelPicked ? `<div class="actdone"><button id="actDone" class="textbtn">${esc(t('common_done'))}</button></div>` : '');
   }
 }
 

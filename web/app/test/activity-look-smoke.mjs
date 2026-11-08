@@ -53,6 +53,7 @@ check(bikeview, 'Bike: every "-bikeview" layer visible');
 
 await page.click('#activityChip');
 await page.click('#activityMenu [data-sac="4"]');
+await page.click('#actDone'); // a T chip keeps the list open (app 2a54f2e4) – „Fertig“ closes it
 await looked('HIKE', 4);
 v = await vis(IDS);
 check(v['greenway-foot'] && v['routes-hike'] && !v['greenway-touring'] && !v['bike-oneway-streets'], 'Hike T4: the hiking look again');

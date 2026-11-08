@@ -155,7 +155,13 @@ check(await page.isHidden('#activityMenu') && (await page.textContent('#activity
 await planned();
 await page.click('#activityChip');
 await page.click('#activityMenu [data-sac="4"]');
-check(await page.isHidden('#activityMenu') && (await page.textContent('#activityChip')).replace(/\s+/g, ' ').includes('Hike · T4'), 'a T level picks Hike T4 and closes');
+// app 2a54f2e4 (owner 2026-11-08, father's feedback): a T chip picks Hike T4 at once, the list stays open with the
+// level's line „T4 · …: …“ and the way out says „Done“
+check(await page.isVisible('#activityMenu') && (await page.textContent('#activityChip')).replace(/\s+/g, ' ').includes('Hike · T4')
+  && /^T4 · .+: .+/.test((await page.textContent('#activityMenu .sacline')).trim()) && (await page.textContent('#actDone')).trim() === 'Done',
+  'a T level picks Hike T4 at once, the list stays open with its line and "Done"');
+await page.click('#actDone');
+check(await page.isHidden('#activityMenu'), '"Done" closes the list');
 
 // 6c. pace (the app's Settings → Pace) in the same list: a setting – the list stays open, the sheet's time follows
 // the sheet shows the engine's time for these points + Hike T4 (the plans of the two picks above may still arrive)

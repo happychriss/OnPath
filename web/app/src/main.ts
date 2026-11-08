@@ -1972,6 +1972,22 @@ function keysDialog() {
   d.showModal();
 }
 
+/**
+ * The app's About links (ui/AboutLinks.kt OnPathLinks, app ca5f0f7b, owner 2026-11-08): the website's pages in the page's
+ * language (German under /de/ with German slugs, English at the root), mail and the source – the app's words.
+ */
+function aboutLinks(): [string, string][] {
+  const site = 'https://onpath.earth', de = lang === 'de';
+  return [
+    ['settings_link_help', de ? `${site}/de/hilfe/` : `${site}/help/`],
+    ['settings_link_website', de ? `${site}/de/` : `${site}/`],
+    ['settings_link_contact', 'mailto:info@onpath.earth'],
+    ['settings_link_privacy', de ? `${site}/de/datenschutz/` : `${site}/privacy/`],
+    ['settings_link_legal', de ? `${site}/de/impressum/` : `${site}/legal/`],
+    ['settings_link_source', 'https://github.com/happychriss/OnPath'],
+  ];
+}
+
 function credits() {
   const d = document.createElement('dialog');
   d.className = 'share';
@@ -1983,7 +1999,9 @@ function credits() {
       'settings_credit_ne', 'settings_credit_brouter', 'web_credit_photon', 'settings_credit_icons', 'web_credit_maplibre'].map(li).join('')}
       <li>${escapeHtml(t('web_credit_font'))} <a href="${manropeLicence}" target="_blank" rel="noopener">SIL Open Font License 1.1</a></li></ul>
     ${matchMedia('(pointer: fine)').matches ? `<p class="small"><button class="textbtn" id="openKeys">${escapeHtml(t('web_keys_title'))}</button> <span class="muted">(<kbd>?</kbd>)</span></p>` : ''}
-    <p class="muted small">${escapeHtml(t('settings_about_licence'))} · ${siteLink('web_url_privacy', t('web_link_privacy'))} · ${siteLink('web_url_legal', t('web_link_legal'))}</p>
+    <b>${escapeHtml(t('settings_links'))}</b><ul class="credits aboutlinks">${aboutLinks().map(([k, href]) =>
+      `<li><a href="${href}" target="_blank" rel="noopener">${escapeHtml(t(k))}</a></li>`).join('')}</ul>
+    <p class="muted small">${escapeHtml(t('settings_about_licence'))}</p>
     <div class="row"><button class="primary" id="closeCredits">${escapeHtml(t('common_close'))}</button></div>`;
   document.body.append(d);
   d.querySelector<HTMLButtonElement>('#closeCredits')!.onclick = () => d.close();

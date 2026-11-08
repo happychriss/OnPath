@@ -53,8 +53,8 @@ check(await page.evaluate(() => location.hash) === h1, 'redo: the moved points a
 await settled();
 
 // planned again (another T level and back): the moved points stay where they are
-await page.click('#activityChip'); await page.click('#activityMenu [data-sac="4"]'); await settled();
-await page.click('#activityChip'); await page.click('#activityMenu [data-sac="3"]');
+await page.click('#activityChip'); await page.click('#activityMenu [data-sac="4"]'); await page.click('#actDone'); await settled();
+await page.click('#activityChip'); await page.click('#activityMenu [data-sac="3"]'); await page.click('#actDone');
 const h2 = await settled();
 const p2 = await planOf();
 const again = Math.max(...p2.points.map((q, i) => metres(q, p1.points[i])));

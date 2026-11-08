@@ -7,7 +7,7 @@
       "web": [
         "web/app/src/activity.ts"
       ],
-      "blob": "de26622d200b873511055b3c7a1fc104b7d3ecb1"
+      "blob": "2e5dd0d2104bf0a3a37beb04a447cac05466d31a"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
@@ -32,7 +32,7 @@
       "web": [
         "web/app/src/search.ts"
       ],
-      "blob": "f321e71a1901bb42072f265427d7b24727b09dcb"
+      "blob": "c599331abfff25c7df95f7942836251db725b675"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/search/PlaceCard.kt",
@@ -66,7 +66,7 @@
         "web/app/src/position.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "b733155ed4bd2aace4fca145b039c396d24e010b"
+      "blob": "5a70379f2140e076d63d45f29b004dd256a61c21"
     },
     {
       "app": "app/src/main/java/com/onpath/app/recording/LocationTracker.kt",
@@ -100,7 +100,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "677543eb9e8f6270978a87d03194d435075c1db9"
+      "blob": "2ea2b54e9b036653f2e16589fe7277af551f7274"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/OptionalSources.kt",
@@ -154,7 +154,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "8160795a1bb189cd99ffbe6565dc378513085592"
+      "blob": "fc44ecc2e62ac824b98faf4761f6b80ff77ec77b"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -195,7 +195,7 @@
       "web": [
         "web/engine/src/main/kotlin/com/onpath/app/data/DataFiles.kt"
       ],
-      "blob": "b9fae124f43bac90df5cb8960eb708978bbb08e7"
+      "blob": "5d288e57c4e17049d41c557bffab8e2c059eecbf"
     },
     {
       "app": "strings/src/androidMain/kotlin/com/onpath/strings/Txt.kt",
@@ -229,7 +229,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "174e8c4a5a451e7903bb30a1746fdd36bf938345"
+      "blob": "8b392b66aa126c4e92780ca8d0fcfa8b25cce0d0"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/Overview.kt",
@@ -245,7 +245,7 @@
       "web": [
         "web/app/src/cells.ts"
       ],
-      "blob": "5f860055dfa48d2bb6e713bc8814adba3791eece"
+      "blob": "9ec8c7346f0265eb99b94a1ac38de6ff18c41545"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/CellCard.kt",
