@@ -8,6 +8,9 @@ import com.onpath.app.setup.PhoneCheck
 import com.onpath.app.setup.PhoneState
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
+import com.onpath.strings.setup_bat_do
+import com.onpath.strings.setup_loc_why
+import com.onpath.strings.setup_notif_why
 import com.onpath.strings.setup_saver_ok_why
 import com.onpath.strings.setup_saver_why
 import com.onpath.strings.setup_state_missing
@@ -15,6 +18,8 @@ import com.onpath.strings.setup_state_none
 import com.onpath.strings.setup_state_ok
 import com.onpath.strings.setup_state_untested
 import com.onpath.strings.setup_vib_none
+import com.onpath.strings.setup_vib_not_felt
+import com.onpath.strings.setup_vib_sound_settings
 import com.onpath.strings.setup_vib_why
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -55,5 +60,29 @@ class SetupTextsTest {
         assertEquals(Res.string.setup_state_untested, state(Felt.UNKNOWN))
         assertEquals(Res.string.setup_state_missing, state(Felt.NO))
         assertEquals(Txt.s(Res.string.setup_vib_why), checkWhy(CheckId.VIBRATION, phone))
+    }
+
+    /**
+     * The short onboarding texts the owner approved on 2026-11-08: battery names only "Unrestricted", notifications no
+     * longer mention a full storage, "vibration not felt" points to the button under it, location starts with the dot.
+     */
+    @Test fun approvedShortTextsInBothLanguages() {
+        fun texts() {
+            val bat = Txt.s(Res.string.setup_bat_do)
+            assertFalse(bat, bat.contains("Optimi"))
+            val notif = Txt.s(Res.string.setup_notif_why)
+            assertFalse(notif, notif.contains("Speicher") || notif.contains("storage"))
+            assertTrue(Txt.s(Res.string.setup_vib_not_felt).contains(Txt.s(Res.string.setup_vib_sound_settings)))
+        }
+        texts()
+        assertTrue(Txt.s(Res.string.setup_bat_do).contains("Unrestricted"))
+        assertTrue(Txt.s(Res.string.setup_loc_why).startsWith("For the dot on the map"))
+        val old = java.util.Locale.getDefault()
+        java.util.Locale.setDefault(java.util.Locale.GERMANY)
+        try {
+            texts()
+            assertTrue(Txt.s(Res.string.setup_bat_do).contains("„Uneingeschränkt“"))
+            assertTrue(Txt.s(Res.string.setup_loc_why).startsWith("Für den Punkt auf der Karte"))
+        } finally { java.util.Locale.setDefault(old) }
     }
 }

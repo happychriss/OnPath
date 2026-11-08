@@ -45,4 +45,12 @@ class FontSizeRuleTest {
         assertEquals(30f, t.headlineMedium.fontSize.value)
         assertTrue(t.headlineMedium.fontWeight!!.weight >= 700)
     }
+
+    /** The phone setup reads one step bigger (owner 2026-11-08): body 18, step title 24 – nowhere else. */
+    @Test fun theSetupScale() {
+        assertEquals(18f, OnPathSetupType.body.fontSize.value)
+        assertEquals(24f, OnPathSetupType.title.fontSize.value)
+        val users = sources.filter { it.readText().contains("OnPathSetupType.") && it.name != "Theme.kt" }.map { it.name }
+        assertEquals(listOf("SetupGuideScreen.kt"), users)
+    }
 }

@@ -54,6 +54,7 @@ import com.onpath.app.setup.SetupGuide
 import com.onpath.app.setup.Taken
 import com.onpath.app.setup.VoiceSetup
 import com.onpath.app.ui.OnPathColors
+import com.onpath.app.ui.OnPathSetupType
 import com.onpath.strings.*
 
 /** What the guide's buttons do – MainActivity opens the system dialogs and screens. */
@@ -232,7 +233,7 @@ fun SetupGuideScreen(guide: SetupGuide?, welcome: Boolean, phone: PhoneState, ta
                         }
                         if (id == CheckId.VOICE) {
                             voiceAdvice(phone)?.let {
-                                Text(it, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 12.dp))
+                                Text(it, style = OnPathSetupType.body, modifier = Modifier.padding(top = 12.dp))
                             }
                         }
                         if (id == CheckId.VOICE && guide.vibrationPlayed && guide.vibrationAnswer == Felt.NO) {
@@ -255,11 +256,11 @@ private fun Page(icon: ImageVector, counter: String?, title: String, why: String
     }
     Spacer(Modifier.padding(top = 20.dp))
     counter?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-    Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold,
+    Text(title, style = OnPathSetupType.title, fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(top = 4.dp).semantics { heading() })
-    Text(why, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 12.dp))
+    Text(why, style = OnPathSetupType.body, modifier = Modifier.padding(top = 12.dp))
     todo?.let {
-        Text(it, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 16.dp))
+        Text(it, style = OnPathSetupType.body, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 16.dp))
     }
 }
 
@@ -275,7 +276,7 @@ private fun DoneLine(what: String) {
 @Composable
 private fun NoteBox(text: String, top: androidx.compose.ui.unit.Dp = 12.dp) {
     Surface(shape = com.onpath.app.ui.OnPathShapes.Small, color = OnPathColors.WarnContainer, modifier = Modifier.fillMaxWidth().padding(top = top)) {
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = OnPathColors.Ink, modifier = Modifier.padding(12.dp))
+        Text(text, style = MaterialTheme.typography.bodyLarge, color = OnPathColors.Ink, modifier = Modifier.padding(12.dp))
     }
 }
 
@@ -294,7 +295,7 @@ private fun Buttons(guide: SetupGuide?, welcome: Boolean, phone: PhoneState, cb:
                 CheckId.VIBRATION -> when {
                     !phone.hasVibrator -> Button(onClick = cb.onLater, modifier = big) { Text(str(Res.string.setup_continue)) }
                     guide.vibrationPlayed && guide.vibrationAnswer == Felt.UNKNOWN -> {
-                        Text(str(Res.string.setup_vib_question), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                        Text(str(Res.string.setup_vib_question), style = OnPathSetupType.body, fontWeight = FontWeight.SemiBold)
                         Button(onClick = { cb.onVibrationAnswer(Felt.YES) }, modifier = big) { Text(str(Res.string.setup_vib_yes)) }
                         OutlinedButton(onClick = { cb.onVibrationAnswer(Felt.NO) }, modifier = big) { Text(str(Res.string.setup_vib_no)) }
                     }
@@ -339,7 +340,7 @@ private fun Buttons(guide: SetupGuide?, welcome: Boolean, phone: PhoneState, cb:
                             TextButton(onClick = cb.onLater, modifier = big) { Text(str(Res.string.setup_later)) }
                         }
                         guide.vibrationPlayed && guide.vibrationAnswer == Felt.UNKNOWN -> {
-                            Text(str(Res.string.setup_voice_question), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                            Text(str(Res.string.setup_voice_question), style = OnPathSetupType.body, fontWeight = FontWeight.SemiBold)
                             Button(onClick = { cb.onVibrationAnswer(Felt.YES) }, modifier = big) { Text(str(Res.string.setup_voice_yes)) }
                             OutlinedButton(onClick = { cb.onVibrationAnswer(Felt.NO) }, modifier = big) { Text(str(Res.string.setup_vib_no)) }
                         }

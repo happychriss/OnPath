@@ -235,6 +235,17 @@ val OnPathType: Typography = Typography().let { t ->
 }
 
 /**
+ * The phone setup's reading size (owner 2026-11-08 on his Pixel: "kann ruhig eine Nummer größer sein"): the welcome
+ * page and the guide steps are read once, calmly, on a page of their own – their text sits one step above the app's
+ * body ([body] 16 → 18 sp) and the step title follows so it still stands out ([title] 22 → 24 sp). Only
+ * `ui/setup/SetupGuideScreen` uses it; everything else keeps [OnPathType] (Settings → Phone setup included).
+ */
+object OnPathSetupType {
+    val body: androidx.compose.ui.text.TextStyle = OnPathType.bodyLarge.copy(fontSize = 18.sp, lineHeight = 26.sp)
+    val title: androidx.compose.ui.text.TextStyle = OnPathType.titleLarge.copy(fontSize = 24.sp, lineHeight = 30.sp)
+}
+
+/**
  * Numbers like an instrument (owner 2026-11-06, polish 3): in a value the digits are big and semi-bold, the unit one
  * step of the type scale smaller ([unitSize]), every digit the same width ("tnum") – so Navigate's time and distance
  * never jiggle while they count, and **2,9** km · **↑ 82** m · **50** min reads at a glance. The text itself is not

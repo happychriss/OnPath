@@ -79,6 +79,10 @@ Five steps, all `sp` (the phone's font size applies): **12 / 14 / 16 / 22 / 30**
 
 Nothing a hiker must read is below 14. No hand-set `fontSize =` in `ui/` (`FontSizeRuleTest`); weight may be set.
 
+**Phone setup one step bigger** (owner 2026-11-08, "kann ruhig eine Nummer größer sein"): the welcome page and the guide
+steps (`ui/setup/SetupGuideScreen`) take `OnPathSetupType` – text 18 sp (`body`, instead of 16), step title 24 sp
+(`title`, instead of 22); their note box reads at 16 instead of 14. Nowhere else (Settings → Phone setup keeps the scale).
+
 ## Buttons
 - **48 dp minimum** height and touch target everywhere; **56 dp** for the buttons of a Navigate question (re-route,
   activity switch) – on the move, with gloves.

@@ -7,7 +7,7 @@
   },
   "setup_welcome_text": {
     "area": "Phone setup",
-    "context": "Welcome page text",
+    "context": "Welcome page text: offline map + guidance, a few phone settings, about a minute, or later – short text, owner-approved 2026-11-08",
     "priority": 1,
     "confidence": "sicher"
   },
@@ -97,25 +97,25 @@
   },
   "setup_loc_why": {
     "area": "Phone setup",
-    "context": "Step L1: why",
+    "context": "Step L1: why – starts with the dot on the map (owner) – short text, owner-approved 2026-11-08",
     "priority": 1,
     "confidence": "sicher"
   },
   "setup_loc_do": {
     "area": "Phone setup",
-    "context": "Step L1: what to do in the system dialog (no system button text)",
+    "context": "Step L1: what to do in the system dialog (no system button text) – short text, owner-approved 2026-11-08",
     "priority": 1,
     "confidence": "sicher"
   },
   "setup_loc_denied": {
     "area": "Phone setup",
-    "context": "Step L1 after the user said no",
+    "context": "Step L1 after the user said no – short text, owner-approved 2026-11-08",
     "priority": 1,
     "confidence": "sicher"
   },
   "setup_loc_blocked": {
     "area": "Phone setup",
-    "context": "Step L1 when Android no longer shows the dialog: app settings path",
+    "context": "Step L1 when Android no longer shows the dialog: app settings path – short text, owner-approved 2026-11-08",
     "priority": 1,
     "confidence": "sicher"
   },
@@ -127,7 +127,7 @@
   },
   "setup_precise_why": {
     "area": "Phone setup",
-    "context": "Step L2: why",
+    "context": "Step L2: why – short text, owner-approved 2026-11-08",
     "priority": 1,
     "confidence": "sicher"
   },
@@ -145,7 +145,7 @@
   },
   "setup_locon_why": {
     "area": "Phone setup",
-    "context": "Step L3: why",
+    "context": "Step L3: why – short text, owner-approved 2026-11-08",
     "priority": 1,
     "confidence": "sicher"
   },
@@ -163,7 +163,7 @@
   },
   "setup_notif_why": {
     "area": "Phone setup",
-    "context": "Step N1: why",
+    "context": "Step N1: why – lock screen turn line + off-route at once; no storage-full sentence (owner) – short text, owner-approved 2026-11-08",
     "priority": 1,
     "confidence": "sicher"
   },
@@ -187,7 +187,7 @@
   },
   "setup_vib_why": {
     "area": "Phone setup",
-    "context": "Step V1: why",
+    "context": "Step V1: why – short text, owner-approved 2026-11-08",
     "priority": 1,
     "confidence": "sicher"
   },
@@ -223,7 +223,7 @@
   },
   "setup_vib_not_felt": {
     "area": "Phone setup",
-    "context": "Step V1 when not felt: where the setting is",
+    "context": "Step V1 when not felt: points to the “Open sound settings” button (setup_vib_sound_settings, same words) + the Pixel path in brackets – short text, owner-approved 2026-11-08",
     "priority": 1,
     "confidence": "bitte prüfen",
     "doubt": "Menu names of the phone in German not checked on such a phone"
@@ -248,13 +248,13 @@
   },
   "setup_bat_why": {
     "area": "Phone setup",
-    "context": "Step B1: why",
+    "context": "Step B1: why – short text, owner-approved 2026-11-08",
     "priority": 1,
     "confidence": "sicher"
   },
   "setup_bat_do": {
     "area": "Phone setup",
-    "context": "Step B1: what to do in app settings (labels differ per phone)",
+    "context": "Step B1: what to do in app settings – only “Unrestricted” (owner), Pixel's words – short text, owner-approved 2026-11-08",
     "priority": 1,
     "confidence": "bitte prüfen",
     "doubt": "Menu names of the phone in German not checked on such a phone"
@@ -267,7 +267,7 @@
   },
   "setup_brand_why": {
     "area": "Phone setup",
-    "context": "Step B2: why; %1$s = brand",
+    "context": "Step B2: why; %1$s = brand – short text, owner-approved 2026-11-08",
     "priority": 1,
     "confidence": "bitte prüfen"
   },
@@ -325,7 +325,7 @@
   },
   "setup_saver_why": {
     "area": "Phone setup",
-    "context": "Step B3 + Settings row when battery saver turns GPS off: why",
+    "context": "Step B3 + Settings row when battery saver turns GPS off: why – short text, owner-approved 2026-11-08",
     "priority": 1,
     "confidence": "sicher"
   },
@@ -482,7 +482,7 @@
   },
   "setup_voice_why": {
     "area": "Phone setup → Voice step",
-    "context": "Spoken directions (docs/design/voice-guidance.md)",
+    "context": "Spoken directions (docs/design/voice-guidance.md) – short text, owner-approved 2026-11-08",
     "priority": 2,
     "confidence": "bitte prüfen"
   },
@@ -506,7 +506,7 @@
   },
   "setup_voice_not_heard": {
     "area": "Phone setup → Voice step",
-    "context": "Spoken directions (docs/design/voice-guidance.md)",
+    "context": "Spoken directions (docs/design/voice-guidance.md) – short text, owner-approved 2026-11-08",
     "priority": 2,
     "confidence": "bitte prüfen"
   },

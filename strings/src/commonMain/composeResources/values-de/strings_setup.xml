@@ -2,7 +2,7 @@
 <!-- Phone setup: welcome, step-by-step guide, Settings → Phone setup (ui/setup/). Context: tools/i18n/meta/strings_setup.json -->
 <resources>
     <string name="setup_welcome_title">Willkommen bei OnPath</string>
-    <string name="setup_welcome_text">OnPath zeigt dir die Karte auch ohne Netz, plant deine Route und führt dich unterwegs. Für den Punkt auf der Karte und die Führung braucht OnPath ein paar Dinge von deinem Handy. Das dauert etwa eine Minute – oder später, wenn du eine Tour startest.</string>
+    <string name="setup_welcome_text">OnPath zeigt dir die Karte auch ohne Netz und führt dich unterwegs. Dafür braucht OnPath ein paar Einstellungen am Handy – etwa eine Minute. Oder später, vor der ersten Tour.</string>
     <string name="setup_welcome_now">Jetzt einrichten</string>
     <string name="setup_later">Später</string>
     <string name="setup_step_of">Schritt %1$d von %2$d</string>
@@ -17,37 +17,37 @@
     <string name="setup_taken_phone">Dein Handy hat das entfernt, weil OnPath einige Monate nicht genutzt wurde. Das ist normal – richte es hier wieder ein.</string>
     <string name="setup_taken_off">Das wurde seit deiner letzten Nutzung von OnPath ausgeschaltet.</string>
     <string name="setup_loc_title">Dein Standort</string>
-    <string name="setup_loc_why">Der Punkt auf der Karte zeigt, wo du bist. Auf einer Tour zeichnet OnPath deine Spur auf und führt dich an den Abzweigungen, an denen man falsch gehen kann. Deine genaue Position und deine Touren bleiben auf deinem Handy.</string>
-    <string name="setup_loc_do">Erlaube OnPath auf der nächsten Seite den Zugriff, während du die App nutzt – mit genauem Standort.</string>
-    <string name="setup_loc_denied">Kein Problem – Karte und Planen gehen auch ohne. Für den Punkt auf der Karte und eine Tour braucht OnPath deinen Standort.</string>
-    <string name="setup_loc_blocked">Android fragt nicht noch einmal. Tippe auf Weiter, dann auf Berechtigungen → Standort, und erlaube den Zugriff während der Nutzung, mit genauem Standort.</string>
+    <string name="setup_loc_why">Für den Punkt auf der Karte, deine Spur und die Führung an Abzweigungen. Standort und Touren bleiben auf deinem Handy.</string>
+    <string name="setup_loc_do">Auf der nächsten Seite: Zugriff während der Nutzung erlauben, mit genauem Standort.</string>
+    <string name="setup_loc_denied">Kein Problem – Karte und Planen gehen auch ohne. Nur der Punkt auf der Karte und Touren brauchen den Standort.</string>
+    <string name="setup_loc_blocked">Android fragt nicht noch einmal. Tippe auf Weiter → Berechtigungen → Standort und erlaube ihn während der Nutzung, genau.</string>
     <string name="setup_precise_title">Genauer Standort</string>
-    <string name="setup_precise_why">Nur mit deiner genauen Position zeichnet OnPath eine saubere Spur auf und vibriert an der richtigen Abzweigung. Eine ungefähre Position liegt oft einen Kilometer und mehr daneben – damit kann keine Tour starten.</string>
+    <string name="setup_precise_why">Für eine Tour braucht OnPath den genauen Standort – der ungefähre liegt oft einen Kilometer daneben.</string>
     <string name="setup_precise_do">Wechsle auf der nächsten Seite zu genauem Standort.</string>
     <string name="setup_locon_title">Standort ist aus</string>
     <string name="setup_locon_row">Standort des Handys</string>
     <string name="setup_saver_row">Energiesparmodus</string>
-    <string name="setup_locon_why">Der Schalter „Standort“ an deinem Handy (von oben über den Bildschirm wischen) muss an sein, damit OnPath dich findet – für den Punkt auf der Karte, deine Spur und die Abbiege-Vibration. Ist er aus, weiß keine App, wo du bist.</string>
+    <string name="setup_locon_why">Ist der Standort am Handy aus, weiß keine App, wo du bist – auch OnPath nicht.</string>
     <string name="setup_locon_do">Tippe auf Weiter und schalte den Standort ein.</string>
     <string name="setup_notif_title">Benachrichtigungen</string>
-    <string name="setup_notif_why">Auf dem Sperrbildschirm zeigt OnPath die nächste Abzweigung, die Restzeit und die Ankunft („Links in 300 m · Ankunft 13:00“). Verlässt du bei gesperrtem Handy die Route, fragt OnPath dort „Neue Route?“. Und wenn etwas schiefgeht, etwa Speicher voll, erfährst du es sofort. Abbiege-Vibration und Aufzeichnung laufen auch ohne.</string>
+    <string name="setup_notif_why">Damit siehst du auf dem Sperrbildschirm die nächste Abzweigung („Links in 300 m · Ankunft 13:00“) – und erfährst sofort, wenn du die Route verlässt. Aufzeichnen und Vibration gehen auch ohne.</string>
     <string name="setup_notif_do">Erlaube Benachrichtigungen für OnPath.</string>
     <string name="setup_notif_blocked">Tippe auf Weiter und schalte die Benachrichtigungen für OnPath ein.</string>
     <string name="setup_vib_title">Vibration</string>
-    <string name="setup_vib_why">Mit dem Handy in der Tasche vibriert OnPath vor Abzweigungen, an denen du falsch abbiegen könntest: einmal = links, zweimal = rechts. Dreimal lang heißt: Du hast die Route verlassen. Manche Handys schalten das stumm – der Test zeigt, ob du es spürst.</string>
+    <string name="setup_vib_why">Mit dem Handy in der Tasche vibriert OnPath vor Abzweigungen: einmal = links, zweimal = rechts, dreimal lang = Route verlassen. Der Test zeigt, ob du es spürst.</string>
     <string name="setup_vib_do">Halte das Handy in der Hand und tippe auf Testen.</string>
     <string name="setup_vib_test">Testen</string>
     <string name="setup_vib_question">Hast du einmal und dann zweimal Vibrieren gespürt?</string>
     <string name="setup_vib_yes">Ja, gespürt</string>
     <string name="setup_vib_no">Nein</string>
-    <string name="setup_vib_not_felt">Dann ist die Vibration deines Handys leise oder aus. Auf Pixel-Handys: Einstellungen → Ton und Vibration → Vibration und Haptik → Vibration bei Weckern einschalten. Auf anderen Handys findest du sie unter Ton. Danach nochmal testen.</string>
+    <string name="setup_vib_not_felt">Die Vibration deines Handys ist leise oder aus. Tippe auf „Toneinstellungen öffnen“ und schalte sie ein (Pixel: Vibration und Haptik → Vibration bei Weckern). Dann nochmal testen.</string>
     <string name="setup_vib_sound_settings">Toneinstellungen öffnen</string>
     <string name="setup_vib_none">Dieses Handy kann nicht vibrieren. OnPath zeigt jede Abzweigung stattdessen auf dem Bildschirm und auf dem Sperrbildschirm („Links in 300 m“) – lass dafür die Benachrichtigungen an.</string>
     <string name="setup_bat_title">Akku</string>
-    <string name="setup_bat_why">Mit ausgeschaltetem Bildschirm in der Tasche zeichnet OnPath weiter auf und vibriert an Abzweigungen. Schränkt dein Handy den Akku für OnPath ein, kann es OnPath unterwegs stoppen – deine Spur bekommt Lücken und die Vibration fällt aus.</string>
-    <string name="setup_bat_do">Tippe auf Weiter, dann auf Akku (oder Akkunutzung der App), und wähle „Uneingeschränkt“ oder „Optimiert“ – nicht „Eingeschränkt“.</string>
+    <string name="setup_bat_why">Schränkt dein Handy den Akku für OnPath ein, kann es OnPath unterwegs stoppen – dann fehlt ein Stück deiner Spur und die Vibration fällt aus.</string>
+    <string name="setup_bat_do">Tippe auf Weiter → Akku und wähle „Uneingeschränkt“ – nicht „Eingeschränkt“.</string>
     <string name="setup_brand_title">%1$s-Handys</string>
-    <string name="setup_brand_why">Handys von %1$s schließen Apps im Hintergrund, um Akku zu sparen – manchmal mitten in der Tour, bei ausgeschaltetem Bildschirm. Dann stoppt die Tour, bis du OnPath wieder öffnest, und die Abbiege-Vibration fällt aus. Ein paar Einstellungen am Handy verhindern das.</string>
+    <string name="setup_brand_why">Handys von %1$s schließen Apps im Hintergrund, um Akku zu sparen – manchmal mitten in der Tour. Dann stoppen Aufzeichnen und Vibration. So verhinderst du das:</string>
     <string name="setup_brand_samsung">1. Einstellungen → Akku (auf älteren Handys: Akku und Gerätewartung → Akku) → Grenzen der Hintergrundnutzung: „Standby für nicht verwendete Apps“ ausschalten.\n2. Bei „Apps, die nie im Standby sind“ auf + tippen und OnPath hinzufügen. Unter „Apps im Standby“ oder „Apps im tiefen Standby“ darf OnPath nicht stehen.\n3. Tippe auf „App-Einstellungen öffnen“ → Akku → „Nicht eingeschränkt“.\nDie Namen können auf deinem Handy etwas anders lauten.</string>
     <string name="setup_brand_xiaomi">1. Tippe auf „App-Einstellungen öffnen“ → „Autostart“: an.\n2. Gleich dort: Akku-Sparmodus → „Keine Einschränkungen“.\n3. Öffne die zuletzt genutzten Apps, halte OnPath gedrückt (oder zieh es nach unten) und tippe auf das Schloss 🔒.\nDie Namen können auf deinem Handy etwas anders lauten.</string>
     <string name="setup_brand_huawei">1. Einstellungen → Akku → „App-Start“ → OnPath: „Automatisch verwalten“ ausschalten.\n2. Im Fenster, das sich öffnet, alle drei einschalten: „Automatischer Start“, „Sekundärer Start“, „Im Hintergrund ausführen“.\nDie Namen können auf deinem Handy etwas anders lauten.</string>
@@ -56,7 +56,7 @@
     <string name="setup_more_help">Mehr Hilfe (Webseite)</string>
     <string name="setup_brand_done">Erledigt</string>
     <string name="setup_saver_title">Energiesparmodus ist an</string>
-    <string name="setup_saver_why">Der Energiesparmodus ist an und schaltet auf diesem Handy GPS aus, sobald der Bildschirm ausgeht. Mit dem Handy in der Tasche bekäme deine Spur Lücken, und die Abbiege-Vibration fiele aus.</string>
+    <string name="setup_saver_why">Der Energiesparmodus schaltet auf diesem Handy den Standort aus, sobald der Bildschirm ausgeht – dann fehlt ein Stück deiner Spur.</string>
     <string name="setup_saver_ok_why">Der Energiesparmodus ist an, lässt auf diesem Handy aber GPS bei ausgeschaltetem Bildschirm laufen – deine Spur bleibt vollständig.</string>
     <string name="setup_saver_do">Schalte den Energiesparmodus für die Tour aus – oder lass den Bildschirm an.</string>
     <string name="setup_unused_title">Wenn du OnPath länger nicht nutzt</string>
@@ -86,11 +86,11 @@
         <item quantity="other">%1$d empfohlen</item>
     </plurals>
     <string name="setup_voice_title">Sprachansagen</string>
-    <string name="setup_voice_why">Auf einer Tour kann OnPath ansagen, wo du abbiegen musst – nur dort, wo du dich vertun könntest, und rechtzeitig. Das Handy spricht ohne Internet, mit seiner eigenen Stimme. Der Test zeigt, ob du es hörst.</string>
+    <string name="setup_voice_why">Auf einer Tour sagt OnPath rechtzeitig an, wo du abbiegst – nur wo du dich vertun könntest. Geht auch ohne Internet.</string>
     <string name="setup_voice_do">Stell den Ton laut und tippe auf Testen.</string>
     <string name="setup_voice_question">Hast du den Satz gehört?</string>
     <string name="setup_voice_yes">Ja, gehört</string>
-    <string name="setup_voice_not_heard">Dann ist die Medienlautstärke leise oder aus. Drück die Lauter-Taste, während der Test läuft, und teste nochmal. Mit Kopfhörern kommt der Ton dort.</string>
+    <string name="setup_voice_not_heard">Dann ist der Ton zu leise. Drück die Lauter-Taste, während der Test läuft, und teste nochmal.</string>
     <string name="setup_voice_missing">Auf deinem Handy fehlt noch die Stimme für diese Sprache. Tippe auf Stimme laden, wähle die Sprache und lade sie herunter – danach geht es ohne Internet.</string>
     <string name="setup_voice_load">Stimme laden</string>
     <string name="setup_voice_none">Dieses Handy hat keine Sprachausgabe. OnPath führt dich mit Vibration und auf dem Bildschirm.</string>
