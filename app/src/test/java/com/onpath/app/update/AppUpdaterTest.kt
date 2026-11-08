@@ -31,6 +31,19 @@ class AppUpdaterTest {
         assertNull(AppUpdater.parseRelease(json.replace(""""size":32000000}""", """"size":32000000,"digest":null}"""))!!.apkSha256)
     }
 
+    /** Field bug 2026-11-08: the API asset address (by the asset's id) is the fallback when the browser address fails. */
+    @Test fun apiAssetAddressFromTheAssetId() {
+        val api = "https://api.github.com/repos/happychriss/OnPath/releases/assets/722452382"
+        val withApi = json.replace(""""size":32000000}""", """"size":32000000,"id":722452382,"url":"$api"}""")
+        assertEquals(api, AppUpdater.parseRelease(withApi)!!.apkApiUrl)
+        assertEquals(listOf("api", "browser"), AppUpdater.sources(AppUpdater.parseRelease(withApi)!!).map { it.kind })
+        assertNull(AppUpdater.parseRelease(json)!!.apkApiUrl)
+        // an address that does not belong to the asset's id (or is not the API) is not used
+        assertNull(AppUpdater.parseRelease(withApi.replace("\"id\":722452382", "\"id\":1"))!!.apkApiUrl)
+        assertNull(AppUpdater.parseRelease(withApi.replace("https://api.github.com/", "https://evil.example/"))!!.apkApiUrl)
+        assertEquals(listOf("browser"), AppUpdater.sources(AppUpdater.parseRelease(json)!!).map { it.kind })
+    }
+
     @Test fun releaseWithoutApkIsIgnored() =
         assertNull(AppUpdater.parseRelease("""{"tag_name":"v1.0.0","assets":[{"name":"notes.txt","browser_download_url":"u","size":1}]}"""))
 

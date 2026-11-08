@@ -31,6 +31,12 @@ object AppUpdater {
         val pageUrl: String,
         /** The APK's sha256 from the release asset's `digest` (GitHub), checked before the installer gets it; null = unknown. */
         val apkSha256: String? = null,
+        /**
+         * The same APK through the API asset address (`.../releases/assets/<id>`, asked with `Accept:
+         * application/octet-stream`; it redirects to the file). Field bug 2026-11-08: github.com answered 504 for every
+         * `browser_download_url` while this address worked. Null = unknown, only [apkUrl] is used.
+         */
+        val apkApiUrl: String? = null,
     )
 
     // ------------------------------------------------------------------ pure logic (unit-tested)
@@ -52,6 +58,9 @@ object AppUpdater {
                     apkSize = a.optLong("size", -1),
                     pageUrl = o.optString("html_url"),
                     apkSha256 = a.optString("digest").removePrefix("sha256:").takeIf { it.length == 64 },
+                    apkApiUrl = a.optLong("id", -1).takeIf { it > 0 }?.let { id ->
+                        a.optString("url").takeIf { it.startsWith("https://api.github.com/") && it.endsWith("/releases/assets/$id") }
+                    },
                 )
             }
         }
@@ -98,7 +107,29 @@ object AppUpdater {
     fun download(context: Context, release: Release, onProgress: (Int) -> Unit = {}): File =
         downloadTo(File(context.cacheDir, "updates"), release, onProgress)
 
-    /** [download] into [dir] (unit-tested with a local server; [pauseMs] shortened there). */
+    /** Where the APK is fetched from; [kind] ("api" / "browser") goes into Problems – never a token (the app has none). */
+    internal data class Source(val kind: String, val url: String, val accept: String?)
+
+    /**
+     * The API asset address first, the browser address as fallback (field bug 2026-11-08). The API address goes first
+     * because it is the host the update check has just reached, and it was the one that worked while github.com
+     * answered 504 for every browser address; the fallback costs one quick request either way. It counts against
+     * GitHub's unauthenticated limit (60 an hour per IP) – one check a day plus a few download tries.
+     */
+    internal fun sources(release: Release): List<Source> = listOfNotNull(
+        release.apkApiUrl?.let { Source("api", it, "application/octet-stream") },
+        Source("browser", release.apkUrl, null),
+    )
+
+    /** A source answered with a failed HTTP status. */
+    internal class ServerAnswer(val code: Int, val kind: String) : java.io.IOException("$kind $code")
+
+    /**
+     * [download] into [dir] (unit-tested with a local server; [pauseMs] shortened there). Per source: a 5xx is tried
+     * once more after a short pause, any other failed status goes straight to the next source; a broken connection
+     * resumes up to [ATTEMPTS] times. The part file holds the same bytes for both sources, so the next one resumes it;
+     * the sha256 is checked whichever source delivered.
+     */
     internal fun downloadTo(dir: File, release: Release, onProgress: (Int) -> Unit = {}, pauseMs: Long = 2_000L): File {
         dir.mkdirs()
         val dest = File(dir, "onpath-${release.version}.apk")
@@ -106,16 +137,33 @@ object AppUpdater {
         // keep only this update (and its part file) around
         dir.listFiles()?.forEach { if (it != tmp) it.delete() }
         var lastError: Exception? = null
-        for (attempt in 1..ATTEMPTS) {
-            try {
-                return downloadOnce(release, tmp, dest, onProgress)
-            } catch (e: java.io.IOException) {
-                lastError = e
-                Problems.info("update", "Update download interrupted (try $attempt of $ATTEMPTS, " +
-                    "${tmp.length() / 1_048_576} MB so far); resuming", e)
-                if (attempt < ATTEMPTS) Thread.sleep(pauseMs * attempt)
+        val answers = mutableListOf<String>()
+        for (src in sources(release)) {
+            var retried5xx = false
+            var attempt = 0
+            while (attempt < ATTEMPTS) {
+                attempt++
+                try {
+                    return downloadOnce(src, release, tmp, dest, onProgress)
+                } catch (e: ServerAnswer) {
+                    lastError = e
+                    answers += "${src.kind} ${e.code}"
+                    val retry = e.code in 500..599 && !retried5xx
+                    Problems.warn("update", "Update download: ${src.kind} URL answered HTTP ${e.code}; " +
+                        if (retry) "trying it once more" else "trying the next source")
+                    if (!retry) break
+                    retried5xx = true
+                    Thread.sleep(pauseMs)
+                } catch (e: java.io.IOException) {
+                    lastError = e
+                    Problems.info("update", "Update download interrupted (${src.kind} URL, try $attempt of $ATTEMPTS, " +
+                        "${tmp.length() / 1_048_576} MB so far); resuming", e)
+                    if (attempt < ATTEMPTS) Thread.sleep(pauseMs * attempt)
+                }
             }
         }
+        if (lastError is ServerAnswer)
+            throw java.io.IOException("Download failed – GitHub answered ${answers.joinToString(", ")}. Try again later.", lastError)
         throw java.io.IOException("Download stopped – connection lost. Tap again to continue where it stopped.", lastError)
     }
 
@@ -123,15 +171,16 @@ object AppUpdater {
      * One try ([com.onpath.app.net.HttpDownload]: resume, https-only redirects, fsync, size and – review Arch 6 – the
      * release's sha256, so a damaged or swapped file never reaches the installer).
      */
-    private fun downloadOnce(release: Release, tmp: File, dest: File, onProgress: (Int) -> Unit): File {
+    private fun downloadOnce(src: Source, release: Release, tmp: File, dest: File, onProgress: (Int) -> Unit): File {
         var last = -1
         com.onpath.app.net.HttpDownload.resume(
-            release.apkUrl, tmp, release.apkSize.takeIf { it > 0 }, release.apkSha256,
+            src.url, tmp, release.apkSize.takeIf { it > 0 }, release.apkSha256,
             open = { u -> (u.openConnection() as HttpURLConnection).apply {
                 connectTimeout = 15_000; readTimeout = 30_000
                 setRequestProperty("User-Agent", "OnPath-Android")
+                src.accept?.let { setRequestProperty("Accept", it) }
             } },
-            failure = { code, _ -> IllegalStateException("Download failed ($code)") },
+            failure = { code, _ -> ServerAnswer(code, src.kind) },
             onBytes = { done, total -> if (total > 0) { val p = (done * 100 / total).toInt(); if (p != last) { last = p; onProgress(p) } } },
         )
         try { AtomicFiles.replace(tmp, dest) } catch (e: java.io.IOException) { throw IllegalStateException("Could not save the update.", e) }
