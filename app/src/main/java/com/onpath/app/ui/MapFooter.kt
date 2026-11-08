@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -241,10 +242,12 @@ private fun UndoHalf(icon: ImageVector, label: String, onClick: (() -> Unit)?) {
     val tint = MapControlState.tint(OnPathColors.PlanAccent, onClick != null)
     Row(Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(MAP_FAB / 2))
         .clickable(enabled = onClick != null, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick ?: {})
+        // the name as the button's description, as the column's ↶ had it (TalkBack, the E2E tests' By.desc("Undo"))
+        .semantics { contentDescription = label }
         .padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
         Text(label, style = MaterialTheme.typography.labelMedium, color = tint, maxLines = 1, softWrap = false,
-            modifier = Modifier.padding(start = 6.dp))
+            modifier = Modifier.padding(start = 6.dp).clearAndSetSemantics { })
     }
 }
 
