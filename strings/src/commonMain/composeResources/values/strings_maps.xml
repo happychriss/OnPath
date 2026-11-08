@@ -251,4 +251,8 @@
     <string name="maps_import_empty">%1$s is empty.</string>
     <string name="maps_import_cant_save">Could not save %1$s.</string>
     <string name="maps_relief_auto_off">Relief off – the map runs smoother</string>
+    <string name="maps_first_loading">Loading map</string>
+    <string name="maps_first_progress">%1$d % · about %2$d MB</string>
+    <string name="maps_first_offline">No map yet</string>
+    <string name="maps_first_offline_line">Loads once you're online</string>
 </resources>

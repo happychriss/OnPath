@@ -110,6 +110,9 @@ the safe choice. Everything else is a message box or a line (below).
 | ↳ ⚠ error (`HINWEIS_ERROR`) | something the user asked for failed | **red** edge + red ⚠; what failed + one way out | |
 | **ANZEIGE** (state, nothing to do) | shows how things are | **no box**: a line or card in place | when the state no longer holds |
 
+A map ANZEIGE is a **card** while the map itself is missing and loading (the first-map card: icon, title, bar); short
+state infos (offline, waiting for GPS / Wi-Fi, an INFO for the map) are the **quiet pill** (`QuietPill`).
+
 ### The box: `MessageCard` (style B)
 ![MessageCard kinds](../../app/src/test/snapshots/images/com.onpath.app.ui_MessageCardScreenshotTest_kinds.png)
 
@@ -154,6 +157,7 @@ MessageSlot(Messages.pick(listOf(question, m)), MessagePlacement.topDp(MessageSc
 | The result of an action in My routes / Settings | ANZEIGE | `NoticeLine`: grey INFO / red ERROR line at the top, gone when the screen is left |
 | Work the user started | ANZEIGE | a spinner where it was started (`Busy`) |
 | A short INFO for the map, e.g. the app switched Relief off on a slow phone (owner 2026-11-07, `map/ReliefAuto`) | ANZEIGE | `vm.say(…, INFO, MAP)` → `NoticeSurface.MAP_LINE`: the quiet pill ⓘ "Relief off – the map runs smoother" beside the activity button at the GPS note's height (Plan, no search / My routes / Settings over the map); goes by itself after 8 s (`MapNote.MS`) |
+| The map for here after the setup (owner 2026-11-08, first-map card) | ANZEIGE | `FirstMapCardView`: a paper card on the map beside the activity button (`OverviewPillPlace`) – cloud icon, "Karte wird geladen", thin bar, "34 % · ca. 18 MB"; offline "Noch keine Karte · Lädt, sobald du online bist"; large font: bar and "34 %" on one line, no MB. Only for the map for here, after the setup, while the view has no detailed map; meanwhile the "Overview only" pill, the grey offline pill and the download chip wait (`ui/FirstMapCard`). Goes by itself when the map is there |
 
 ### Common rules
 - **One box at a time:** a FRAGE wins over a HINWEIS; the others wait in their state and come next

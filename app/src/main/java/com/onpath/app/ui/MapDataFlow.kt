@@ -327,8 +327,11 @@ class MapDataFlow(
     private var loadHeld = 0
     /** A search / shared place opened (or joined) the modal: Cancel also removes its ring ([MapLoadCancel]). */
     private var loadBySearch = false
-    /** A large part of the visible map has no detailed map (MapScreen, any zoom) – a route computed now is waited for. */
-    var viewWithoutDetail = false
+    /**
+     * A large part of the visible map has no detailed map (MapScreen, any zoom) – a route computed now is waited for; the
+     * first-map card ([FirstMapCard]) shows while it holds. Compose state: the card follows it.
+     */
+    var viewWithoutDetail by mutableStateOf(false)
 
     /**
      * What the modal shows now ([now]: uptime ms; called about every second): in Plan, while some of the regions the user

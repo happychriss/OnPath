@@ -249,4 +249,8 @@
     <string name="maps_import_empty">%1$s ist leer.</string>
     <string name="maps_import_cant_save">%1$s konnte nicht gespeichert werden.</string>
     <string name="maps_relief_auto_off">Relief aus – die Karte läuft so flüssiger</string>
+    <string name="maps_first_loading">Karte wird geladen</string>
+    <string name="maps_first_progress">%1$d % · ca. %2$d MB</string>
+    <string name="maps_first_offline">Noch keine Karte</string>
+    <string name="maps_first_offline_line">Lädt, sobald du online bist</string>
 </resources>

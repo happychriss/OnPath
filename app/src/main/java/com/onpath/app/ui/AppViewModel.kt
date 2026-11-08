@@ -580,6 +580,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         get() = mapData.viewWithoutDetail
         set(v) { mapData.viewWithoutDetail = v }
     fun mapLoadUi(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>, now: Long): MapLoadUi? = mapData.mapLoadUi(states, now)
+    /** The first-map card on the map (owner 2026-11-08): the map for here still loading / offline after the setup. */
+    fun firstMapCard(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>,
+                     installed: List<com.onpath.app.cells.CellStore.InstalledCell>): FirstMapCard.Ui? =
+        FirstMapCard.of(mapData.cellJob, states, installed.associate { it.id to it.totalBytes }, viewWithoutDetail, setupOpen,
+            plan = mode == AppMode.PLAN, available = cells.downloadsAvailable)
     fun hideLoadModal() = mapData.hideLoadModal()
     fun cancelLoadModal() = mapData.cancelLoadModal()
     val loadAsk: MapDataFlow.LoadAsk? get() = mapData.loadAsk

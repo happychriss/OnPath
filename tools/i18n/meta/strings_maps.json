@@ -1067,5 +1067,33 @@
     "priority": 2,
     "confidence": "sicher",
     "max": 45
+  },
+  "maps_first_loading": {
+    "area": "Map (Plan)",
+    "context": "Title of the first-map card on the map beside the activity button (ANZEIGE, no button): after the phone setup the detailed map for the user's position is still downloading. Owner's wording (2026-11-08)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 22
+  },
+  "maps_first_progress": {
+    "area": "Map (Plan)",
+    "context": "Line under the card's thin progress bar: %1$d = percent loaded, %2$d = size in MB (estimate). Owner's wording (2026-11-08)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 24
+  },
+  "maps_first_offline": {
+    "area": "Map (Plan)",
+    "context": "Title of the same card when there is no network: no detailed map on the phone yet. Owner's wording (2026-11-08)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 22
+  },
+  "maps_first_offline_line": {
+    "area": "Map (Plan)",
+    "context": "Line under that title: the map downloads by itself once the phone is online. Owner's wording (2026-11-08)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 30
   }
 }

@@ -249,9 +249,22 @@ fun MapScreen(
             value = without && k!![4] > 0
         }
         val overviewOnly = rememberNoFlash(if (overviewView) Unit else null, remember { NoFlash<Unit>() }) != null
+        // the first-map card (owner 2026-11-08): the map for here still loading / offline after the setup – at the
+        // overview pill's place, which it replaces (they would say the same); no flash for a map that comes at once
+        val firstCardTarget by rememberDerived(vm.cells.states, vm.cells.installed) { s, i -> vm.firstMapCard(s, i) }
+        val firstCard = rememberNoFlash(firstCardTarget?.takeIf { !vm.searchOpen && !sharedLookup },
+            remember { NoFlash<FirstMapCard.Ui>(stepKey = { it::class }) })
+        if (firstCard != null) {
+            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+            FirstMapCardView(firstCard, Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
+                top = OverviewPillPlace.topDp(rowTop, if (vm.backgroundStripShown) vm.backgroundStripBottomDp else null).dp,
+                start = OverviewPillPlace.startDp(activityButtonShown = vm.shown == null).dp,
+                end = OverviewPillPlace.EDGE_DP.dp))
+        }
         // not while the strip asks "Detailed map for here?" or the load question is open – they say the same.
         // On the activity button's row, beside it (OverviewPillPlace) – covers nothing (owner 2026-11-06).
-        if (overviewOnly && vm.mode == AppMode.PLAN && !vm.searchOpen && !sharedLookup && vm.hereAsk == null && vm.loadAsk == null) {
+        if (overviewOnly && firstCardTarget == null && firstCard == null && vm.mode == AppMode.PLAN && !vm.searchOpen && !sharedLookup &&
+            vm.hereAsk == null && vm.loadAsk == null) {
             val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
             OverviewPill(onLoad = { OverviewHintRule.centre(hintKey)?.let(vm::mapTapped) },
                 Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
@@ -497,9 +510,11 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
         syncNote?.let { syncNoteMessage(it, onOk = vm::syncNoteOk) },
         mapBox?.takeIf { it.kind != MessageKind.FRAGE },
     ))
-    // states (no box) only while no box shows: the quiet pill, else plain progress as a small chip under ☰
-    val pill = notice?.takeIf { message == null && !vm.searchOpen && mapNoticeKind(it) == null }
-    val chipOn = bg != null && !vm.searchOpen && message == null && notice == null
+    // states (no box) only while no box shows: the quiet pill, else plain progress as a small chip under ☰ – neither
+    // while the first-map card says it on the map (owner 2026-11-08)
+    val firstCard by rememberDerived(vm.cells.states, vm.cells.installed) { s, i -> vm.firstMapCard(s, i) }
+    val pill = notice?.takeIf { message == null && !vm.searchOpen && mapNoticeKind(it) == null && firstCard == null }
+    val chipOn = bg != null && !vm.searchOpen && message == null && notice == null && firstCard == null
     LaunchedEffect(chipOn, message != null, pill != null) { vm.backgroundStripShown = chipOn || message != null || pill != null }
     val density = LocalDensity.current
     // the bottom below the status bar: top + measured height (hints under the search bar go below it)
