@@ -276,7 +276,8 @@ fun MapHost(
                     val edit = vm.canEditMap && !vm.routePeek
                     val marker = if (edit) myCtrl[0]?.waypointAt(at, vm.waypoints.toList()) ?: -1 else -1
                     downMarker = marker
-                    val poi = edit && marker < 0 && com.onpath.app.poi.findPoiAt(map, at) != null
+                    // the POI query waits for the render thread: only where the buzz depends on it (MapGestures.buzzNeedsPoi)
+                    val poi = MapGestures.buzzNeedsPoi(edit, vm.mapOverlayOpen, marker) && com.onpath.app.poi.findPoiAt(map, at) != null
                     holdBuzz.value = MapGestures.buzz(edit, vm.mapOverlayOpen, marker, poi)
                     holdAt.value = if (holdBuzz.value != MapGestures.Buzz.NONE) Offset(hold.downX, hold.downY) else null
                 }

@@ -1008,10 +1008,11 @@ internal fun notificationsOffMessage(onSetUp: () -> Unit, onOk: () -> Unit): Mes
 /**
  * Stateful wrapper: remaining distance along the followed line and the arrival check. While the service navigates,
  * its progress is the one truth (the same as the time to go: direction-aware, "not on route" when off it); without
- * it (no tour yet) the nearest point of the line.
+ * it (no tour yet) the nearest point of the line. [mapBearing] is read only while an off-route prompt shows (its arrow):
+ * the map turns on every frame while following, and this screen must not recompose with it (MapCameraState).
  */
 @Composable
-internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?, mapBearing: Float,
+internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?, mapBearing: () -> Float,
                           onCover: (topDp: Int, bottomDp: Int) -> Unit = { _, _ -> }, footer: @Composable () -> Unit) {
     val nav = rec?.nav?.takeIf { it.line.size >= 2 }
     val line = nav?.line ?: vm.followLine
@@ -1108,7 +1109,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         quietGps = rec?.gpsQuiet == true,
         stillGps = rec?.gpsStill == true,
         offRoute = rec?.nav?.let { n ->
-            n.prompt?.let { p -> OffRouteUi(p, n.toRoute, n.toRoute?.let { (it.bearingDeg - mapBearing).toFloat() }) }
+            n.prompt?.let { p -> OffRouteUi(p, n.toRoute, n.toRoute?.let { (it.bearingDeg - mapBearing()).toFloat() }) }
         },
         // a new route that starts behind: "Umdrehen" first (owner 2026-11-01: after a re-route one saw nothing and did
         // not know where to go) – until the Navigator clears the U sign (walked the new way)

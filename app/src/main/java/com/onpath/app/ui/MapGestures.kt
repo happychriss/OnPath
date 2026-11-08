@@ -107,6 +107,14 @@ object MapGestures {
     }
 
     /**
+     * Whether [buzz] depends on a POI under the finger: only with no route point held and a menu open (POI → ONE, empty
+     * map → NONE); every other press feels the same either way. The POI look-up is a query of the drawn map that waits
+     * for MapLibre's render thread – done at every finger-down it held up the first frames of each pan (20–40 ms on the
+     * emulator, smooth map 2026-11-08), so finger-down asks only when it matters.
+     */
+    fun buzzNeedsPoi(editable: Boolean, menuOpen: Boolean, marker: Int): Boolean = editable && marker < 0 && menuOpen
+
+    /**
      * Sensible options for route point [index] of [count]. Middle points of a normal route: "Start here" (drops the
      * points before). Round trip: "Start & finish here" (rotates the loop) on
      * every loop point except ①; with stops on the way before the loop ([loopStart] > 0, owner 2026-11-03) those and ①

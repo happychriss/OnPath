@@ -135,4 +135,15 @@ class MapGesturesTest {
         assertFalse(MapGestures.anchorVisible(-1f, 10f, 100, 100))
         assertFalse(MapGestures.anchorVisible(10f, 101f, 100, 100))
     }
+
+    @Test fun `finger-down asks for a POI only where the buzz depends on it`() {
+        // smooth map 2026-11-08: the POI query waits for the render thread, so a pan must not pay for it at finger-down
+        for (edit in listOf(true, false)) for (menu in listOf(true, false)) for (marker in listOf(-1, 0, 3)) {
+            val needs = MapGestures.buzzNeedsPoi(edit, menu, marker)
+            val differs = MapGestures.buzz(edit, menu, marker, true) != MapGestures.buzz(edit, menu, marker, false)
+            assertEquals("edit $edit menu $menu marker $marker", differs, needs)
+        }
+        assertFalse(MapGestures.buzzNeedsPoi(true, false, -1)) // the usual pan in Plan: no query
+        assertTrue(MapGestures.buzzNeedsPoi(true, true, -1))
+    }
 }

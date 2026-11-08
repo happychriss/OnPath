@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.LocationSearching
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -73,11 +74,8 @@ fun MapScreen(
     val planFab = remember { intArrayOf(0, 0) }
     /** Plan: the activity button's right and bottom edge (px in the window; 0 = not laid out) – a fit keeps clear of it. */
     val planActivity = remember { intArrayOf(0, 0) }
-    var scale by remember { mutableStateOf<Pair<String, Dp>?>(null) }
-    var cameraTick by remember { mutableIntStateOf(0) }
-    var bearing by remember { mutableFloatStateOf(0f) }
-    /** Visible map box (south, west, north, east; rounded ≈ 100 m) + 1 at z ≥ 10 / 0 below – "Overview only" hint, modal rule. */
-    var hintKey by remember { mutableStateOf<List<Double>?>(null) }
+    /** The camera's per-frame values ([MapCameraState]): read only where they are drawn, never in this screen's body. */
+    val cam = remember { MapCameraState() }
     var showActivity by remember { mutableStateOf(false) }
 
     val rec by vm.recState.collectAsState()
@@ -96,16 +94,14 @@ fun MapScreen(
     // position it is made from moves on only after ≥ 50 m / 5 % ([LocateDistance.moved]); the view comes with the camera
     val meNow by vm.tracker.location.collectAsState()
     var labelMe by remember { mutableStateOf<com.onpath.app.routing.GeoPoint?>(null) }
-    var labelMetres by remember { mutableStateOf<Double?>(null) }
+    val farMetres = { LocateDistance.metres(plan = true, located = PlanGps.located(gps, hasFix), me = labelMe,
+        view = LocateDistance.View.of(cam.hintKey)) }
     LaunchedEffect(meNow) {
         val p = meNow?.let { com.onpath.app.routing.GeoPoint(it.latitude, it.longitude) }
-        if (p == null) labelMe = null else if (LocateDistance.moved(labelMe, p, labelMetres)) labelMe = p
+        if (p == null) labelMe = null else if (LocateDistance.moved(labelMe, p, farMetres())) labelMe = p
     }
-    val farMetres = remember(hintKey, labelMe, gps, hasFix) {
-        LocateDistance.metres(plan = true, located = PlanGps.located(gps, hasFix), me = labelMe, view = LocateDistance.View.of(hintKey))
-    }
-    LaunchedEffect(farMetres) { labelMetres = farMetres }
-    val locateLabel = farMetres?.let(LocateDistance::text)
+    // derived: the camera changes the view every frame, the label's text only now and then – only that recomposes
+    val locateLabel by remember(gps, hasFix) { derivedStateOf { farMetres()?.let(LocateDistance::text) } }
     val onLocate = {
         if (vm.mode == AppMode.PLAN && LocateDistance.tap(locateLabel != null) == LocateDistance.Tap.FRAME_BOTH) vm.showPlanAndMe()
         else when (PlanGps.tap(vm.mode == AppMode.PLAN, gps, hasFix)) {
@@ -131,6 +127,8 @@ fun MapScreen(
     // One grouped control: compass (always, both modes: the session's one orientation – MapOrientation.tap), locate (always,
     // with the GPS dot), eye and whole route (always – grey without something route-like on the map, owner 2026-11-06).
     // [mode] = the layer the footer sits in (not vm.mode: the leaving layer keeps its look while it animates out)
+    // derived: following walking-direction-up turns the map every frame, the compass then shows its arrow (no needle)
+    val compassBearing by remember { derivedStateOf { CompassSpec.bearingShown(vm.headingUp && vm.followMe, cam.bearing) } }
     val controls = @Composable { mode: AppMode ->
         // the points step leaves little map: only Undo + locate (the compass would sit over ☰)
         val pointsOpen = mode == AppMode.PLAN && vm.planSize == PlanSize.FULL && vm.shown == null && vm.cardPlace == null
@@ -140,7 +138,7 @@ fun MapScreen(
                 MapControls(
                     // same in both modes (MapOrientation.tap): north + turned by hand → north; north → walking direction; walking direction → north
                     compass = if (pointsOpen) null
-                        else CompassSpec(vm.headingUp && vm.followMe, bearing) { vm.onCompass(kotlin.math.abs(bearing) > 1f) },
+                        else CompassSpec(vm.headingUp && vm.followMe, compassBearing) { vm.onCompass(kotlin.math.abs(cam.bearing) > 1f) },
                     // eye, whole route, undo, redo: always there, greyed when they cannot act (MapControlsEnabled)
                     showEye = MapControlsEnabled.eye(ctl),
                     onPeek = { vm.routePeek = it },
@@ -159,7 +157,7 @@ fun MapScreen(
     // Navigate: scale, © and the controls above the slider as before. Plan (owner 2026-11-06, onpath.private#43): scale
     // and © stay on the sheet's edge, the controls stand at one fixed place (PlanControlsLayer in PlanMode)
     val footer = @Composable { mode: AppMode ->
-        MapFooter(scale, onCredits = { vm.openSettings(SettingsPage.ABOUT) }, demo = demoOn) {
+        MapFooter(cam.scale, onCredits = { vm.openSettings(SettingsPage.ABOUT) }, demo = demoOn) {
             if (mode == AppMode.NAVIGATE) controls(mode)
         }
     }
@@ -170,8 +168,8 @@ fun MapScreen(
             topInsetPx = topInsetPx,
             onReady = { controller = it },
             onCamera = { map ->
-                scale = computeScale(map); cameraTick++; bearing = map.cameraPosition.bearing.toFloat()
-                hintKey = try {
+                cam.scale = computeScale(map); cam.tick++; cam.bearing = map.cameraPosition.bearing.toFloat()
+                cam.hintKey = try {
                     val b = map.projection.visibleRegion.latLngBounds
                     listOf(b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast).map { kotlin.math.round(it * 1000) / 1000 } +
                         (if (map.cameraPosition.zoom >= OverviewHintRule.MIN_ZOOM) 1.0 else 0.0)
@@ -213,11 +211,11 @@ fun MapScreen(
                     onPanelHeight = { panelHeightPx = it },
                     onActivityBox = { r, b -> planActivity[0] = r; planActivity[1] = b })
             },
-            navigate = { NavigateMode(vm, rec, location, bearing, onCover = { t, b -> navCover[0] = t; navCover[1] = b }) { footer(AppMode.NAVIGATE) } },
+            navigate = { NavigateMode(vm, rec, location, { cam.bearing }, onCover = { t, b -> navCover[0] = t; navCover[1] = b }) { footer(AppMode.NAVIGATE) } },
         )
         // "Where I face" arrow at the dot in heading-up following (MapController.Facing)
         // (not over the rest view while cycling)
-        if (!vm.screenRest) controller?.let { ctl -> FacingArrow(ctl.facing) { bearing } }
+        if (!vm.screenRest) controller?.let { ctl -> FacingArrow(ctl.facing) { cam.bearing } }
         // hints below the search bar go below the background-download strip while it shows
         // (measured height: a message box is taller than the progress chip)
         val hintTop = if (vm.backgroundStripShown && vm.mode == AppMode.PLAN)
@@ -239,14 +237,16 @@ fun MapScreen(
         // "Overview only – set a point and the detailed map follows" (Plan, z ≥ 10, a large part of the view without
         // detailed map – OverviewHintRule); persistent while true, no flash while panning (NoFlash)
         val generation by vm.cells.generation.collectAsState()
-        val overviewView by produceState(false, hintKey, generation) {
-            val k = hintKey
-            val without = k != null && kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                vm.overviewOnly(k[0], k[1], k[2], k[3])
+        // the view key is followed here, not read by the screen: a pan changes it many times a second (smooth map, 2026-11-08)
+        val overviewView by produceState(false, generation) {
+            snapshotFlow { cam.hintKey }.collectLatest { k ->
+                val without = k != null && kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    vm.overviewOnly(k[0], k[1], k[2], k[3])
+                }
+                // a route computed while the view has no detailed map is waited for (modal)
+                vm.viewWithoutDetail = without
+                value = without && k!![4] > 0
             }
-            // a route computed while the view has no detailed map is waited for (modal)
-            vm.viewWithoutDetail = without
-            value = without && k!![4] > 0
         }
         val overviewOnly = rememberNoFlash(if (overviewView) Unit else null, remember { NoFlash<Unit>() }) != null
         // the first-map card (owner 2026-11-08): the map for here still loading / offline after the setup – at the
@@ -266,7 +266,7 @@ fun MapScreen(
         if (overviewOnly && firstCardTarget == null && firstCard == null && vm.mode == AppMode.PLAN && !vm.searchOpen && !sharedLookup &&
             vm.hereAsk == null && vm.loadAsk == null) {
             val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
-            OverviewPill(onLoad = { OverviewHintRule.centre(hintKey)?.let(vm::mapTapped) },
+            OverviewPill(onLoad = { OverviewHintRule.centre(cam.hintKey)?.let(vm::mapTapped) },
                 Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                     top = OverviewPillPlace.topDp(rowTop, if (vm.backgroundStripShown) vm.backgroundStripBottomDp else null).dp,
                     start = OverviewPillPlace.startDp(activityButtonShown = vm.shown == null).dp,
@@ -296,7 +296,7 @@ fun MapScreen(
                     start = PlanGps.noteStartDp(activityButtonShown = vm.shown == null).dp, end = OverviewPillPlace.EDGE_DP.dp))
         }
         // Plan: menu of a held POI / route point, following the map.
-        MapOverlayHost(vm, controller, cameraTick,
+        MapOverlayHost(vm, controller, { cam.tick },
             topPx = topInsetPx + with(density) { (hintTop + 4.dp).roundToPx() }, // below the search pill + ☰ row (+ strip)
             bottomPx = panelHeightPx + with(density) { 8.dp.roundToPx() }, gps = gps)
         // Plan during a tour: the activity check-and-switch sheet over the plan sheet (Navigate draws its own)
@@ -807,6 +807,22 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
             }
         }
     }
+}
+
+/**
+ * What the camera changes on every frame of a pan, zoom or follow (MapHost onCamera). Read only where it is shown – the
+ * scale bar, the compass, the menus that follow the map, the "where I face" arrow, the off-route arrow – or through
+ * derived / flow readers, never in the map screen's own body: else every camera frame recomposed the whole screen and
+ * the plan sheet or the Navigate cards with it (owner's Pixel 8, 2026-11-08: "die Karte wackelt").
+ */
+@androidx.compose.runtime.Stable
+internal class MapCameraState {
+    var scale by mutableStateOf<Pair<String, Dp>?>(null)
+    /** Changes on every camera move: overlays anchored to a map point re-read the projection. */
+    var tick by mutableIntStateOf(0)
+    var bearing by mutableFloatStateOf(0f)
+    /** Visible map box (south, west, north, east; rounded ≈ 100 m) + 1 at z ≥ 10 / 0 below – "Overview only" hint, modal rule. */
+    var hintKey by mutableStateOf<List<Double>?>(null)
 }
 
 /** Scale bar ([ScaleRule]): the projection gives metres per dp – never multiplied by the density again. */
