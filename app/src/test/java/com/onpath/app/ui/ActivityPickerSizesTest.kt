@@ -63,6 +63,9 @@ class SacLineRuleTest {
         val src = File("src/main/java/com/onpath/app/ui/Screens.kt").readText()
         val chips = src.substringAfter("internal fun SacChips(").substringBefore("\n}\n")
         assertTrue(chips, chips.contains("SacScale.lineLevel(selected)") && chips.contains("Text(SacScale.line(l)"))
+        // Material's FilterChip cut "T2" to "T" at 360 dp / font 1.3 (its fixed label padding): the row draws its own chips
+        val row = src.substringAfter("private fun SacChipRow(").substringBefore("\n}\n")
+        assertTrue(row, !row.contains("FilterChip(") && row.contains("softWrap = false"))
         val dialog = src.substringAfter("fun ActivityDialog(").substringBefore("\n}\n")
         val chipTap = dialog.substringAfter("SacChips(").substringBefore("\n")
         assertTrue(chipTap, !chipTap.contains("onDismiss()"))

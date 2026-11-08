@@ -199,12 +199,41 @@ fun UndoPill(onUndo: (() -> Unit)?, onRedo: (() -> Unit)?) {
     if (onUndo == null && onRedo == null) return
     val shape = RoundedCornerShape(MAP_FAB / 2)
     Surface(shape = shape, color = OnPathColors.PlanTint, modifier = Modifier.warmShadow(OnPathShadow.LOW, shape)) {
-        Row(Modifier.height(androidx.compose.foundation.layout.IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
+        // side by side when the room allows it, else one above the other (a 360 dp phone, a large font) – never cut
+        androidx.compose.ui.layout.Layout(content = {
             UndoHalf(Icons.AutoMirrored.Filled.Undo, str(Res.string.plan_undo), onUndo)
-            androidx.compose.material3.VerticalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            Box(Modifier.background(MaterialTheme.colorScheme.outlineVariant))
             UndoHalf(Icons.AutoMirrored.Filled.Redo, str(Res.string.plan_redo), onRedo)
+        }) { m, c ->
+            val loose = androidx.compose.ui.unit.Constraints(maxHeight = c.maxHeight)
+            val undo = m[0].measure(loose)
+            val redo = m[2].measure(loose)
+            val line = 1.dp.roundToPx()
+            val inset = 12.dp.roundToPx()
+            if (UndoPillShape.sideBySide(undo.width, redo.width, line, c.maxWidth)) {
+                val h = maxOf(undo.height, redo.height)
+                val div = m[1].measure(androidx.compose.ui.unit.Constraints.fixed(line, (h - 2 * inset).coerceAtLeast(0)))
+                layout(undo.width + line + redo.width, h) {
+                    undo.place(0, (h - undo.height) / 2)
+                    div.place(undo.width, inset)
+                    redo.place(undo.width + line, (h - redo.height) / 2)
+                }
+            } else {
+                val w = maxOf(undo.width, redo.width)
+                val div = m[1].measure(androidx.compose.ui.unit.Constraints.fixed((w - 2 * inset).coerceAtLeast(0), line))
+                layout(w, undo.height + line + redo.height) {
+                    undo.place(0, 0)
+                    div.place(inset, undo.height)
+                    redo.place(0, undo.height + line)
+                }
+            }
         }
     }
+}
+
+/** The undo pill's shape: its two halves side by side when they fit [maxWidth], else one above the other. */
+object UndoPillShape {
+    fun sideBySide(undoWidth: Int, redoWidth: Int, line: Int, maxWidth: Int): Boolean = undoWidth + line + redoWidth <= maxWidth
 }
 
 @Composable

@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -250,30 +251,46 @@ fun ActivityDialog(
  * level's line "T2 · Bergwandern: …" ([SacScale.line], owner 2026-11-08) – always there while a level is chosen, so a
  * "T2" never stands without its word, on every phone width and font size (it wraps, never cut).
  */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 internal fun SacChips(selected: Int, onPick: (Int) -> Unit) {
+    // a T tapped on a small phone / large font: the picker scrolls so its line is in view (not on the first showing)
+    val lineInView = androidx.compose.runtime.remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    var shown by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(selected) }
+    androidx.compose.runtime.LaunchedEffect(selected) {
+        if (selected != shown && SacScale.lineLevel(selected) != null) lineInView.bringIntoView()
+        shown = selected
+    }
     androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth()) {
         SacChipRow(selected, onPick)
         SacScale.lineLevel(selected)?.let { l ->
             Text(SacScale.line(l), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 12.dp, end = 4.dp, bottom = 8.dp))
+                modifier = Modifier.padding(start = 12.dp, end = 4.dp, bottom = 8.dp).bringIntoViewRequester(lineInView))
         }
     }
 }
 
 @Composable
 private fun SacChipRow(selected: Int, onPick: (Int) -> Unit) {
-    // one row of five equal chips (never a lone T5 on a second line)
+    // one row of five equal chips (never a lone T5 on a second line). Not Material's FilterChip: its fixed 8 dp label
+    // padding cut the number on a 360 dp phone at font 1.3 – only "T" was left (owner 2026-11-08, father's S10); the
+    // same chip look (outlined, the chosen one filled) with the whole width for "T2"
     Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         SacScale.levels.forEach { l ->
             val desc = str(Res.string.routes_sac_button_desc, l.level, l.name)
-            androidx.compose.material3.FilterChip(
-                selected = l.level == selected, onClick = { onPick(l.level) },
-                label = { Text("T${l.level}", style = MaterialTheme.typography.bodyMedium, maxLines = 1,
-                    modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
-                modifier = Modifier.weight(1f).semantics { contentDescription = desc },
-            )
+            val sel = l.level == selected
+            androidx.compose.material3.Surface(
+                selected = sel, onClick = { onPick(l.level) }, shape = OnPathShapes.Small,
+                color = if (sel) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+                contentColor = if (sel) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                border = if (sel) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics { contentDescription = desc },
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text("T${l.level}", style = MaterialTheme.typography.bodyMedium, maxLines = 1, softWrap = false,
+                        fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal)
+                }
+            }
         }
     }
 }

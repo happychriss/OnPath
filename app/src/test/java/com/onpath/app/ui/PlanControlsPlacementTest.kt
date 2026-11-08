@@ -51,7 +51,26 @@ class PlanControlsPlacementTest {
         // neither fits (a very wide pill at a large font): not placed
         assertNull(ControlsPlacement.pill(top, colH, left, 1000, pillH, sheetTopPx = top + colH + 100, screenWidthPx = width,
             gapPx = gap, endPx = end, startPx = end))
+        // the scale bar and © on the sheet's edge are kept free: under the column only with room above them too
+        val footer = 168
+        assertEquals((width - end - pillW) to (top + colH + gap),
+            ControlsPlacement.pill(top, colH, left, pillW, pillH, sheetTopPx = top + colH + gap + pillH + gap + footer + 10,
+                screenWidthPx = width, gapPx = gap, endPx = end, startPx = end, footerPx = footer))
+        // beside, but the column's bottom is close to the sheet: the pill rises so the scale bar and © stay free
+        val sheetTop = top + colH + 40
+        assertEquals((left - gap - pillW) to (sheetTop - footer - gap - pillH),
+            ControlsPlacement.pill(top, colH, left, pillW, pillH, sheetTopPx = sheetTop, screenWidthPx = width, gapPx = gap,
+                endPx = end, startPx = end, footerPx = footer))
+        // no room even so (below the top band): not placed
+        assertNull(ControlsPlacement.pill(top, colH, left, pillW, pillH, sheetTopPx = sheetTop, screenWidthPx = width, gapPx = gap,
+            endPx = end, startPx = end, footerPx = footer, limitPx = sheetTop))
         // the column's own place does not depend on the pill
         assertEquals(top, ControlsPlacement.place(top, colH, 1570, limit, gap))
+    }
+
+    /** The pill's halves side by side when they fit the room beside the column, else stacked – never cut. */
+    @Test fun theUndoPillStacksWhenNarrow() {
+        assertEquals(true, UndoPillShape.sideBySide(330, 360, 3, 800))
+        assertEquals(false, UndoPillShape.sideBySide(330, 360, 3, 690))
     }
 }

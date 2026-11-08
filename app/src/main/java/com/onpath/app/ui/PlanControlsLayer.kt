@@ -28,6 +28,9 @@ object ControlsPlacement {
     /** Right margin, as on the old footer (MapFooter: 16 dp). */
     const val END_DP = 16
 
+    /** The scale bar and © on the sheet's edge (MapFooter): the undo pill keeps above them, never over them. */
+    const val FOOTER_DP = 64
+
     /** The fixed top: [SCREEN_FRACTION] of [screenPx], never above [minTopPx] (the band's bottom + air). */
     fun fixedTop(screenPx: Int, minTopPx: Int): Int = maxOf((screenPx * SCREEN_FRACTION).toInt(), minTopPx)
 
@@ -42,16 +45,21 @@ object ControlsPlacement {
 
     /**
      * The undo pill (owner 2026-11-08, [UndoPill]): it never moves the column – the column is placed by its own height.
-     * Under the column, right-aligned, when it fits above the sheet ([sheetTopPx] − [gapPx]); else beside the column,
-     * level with its last button, when it fits on the screen ([startPx] = the left margin); else not placed (null).
+     * Under the column, right-aligned, when it fits above the sheet's scale bar and © ([sheetTopPx] − [footerPx] −
+     * [gapPx]); else beside the column, level with its last button – higher when the scale bar and © would be under it
+     * – when it fits on the screen ([startPx] = the left margin – PlanControlsLayer measures the pill for exactly that
+     * room, so it does) and stays below the top band ([limitPx]); else not placed (null).
      * Returns the pill's left and top (px).
      */
     fun pill(columnTopPx: Int, columnHeightPx: Int, columnLeftPx: Int, pillWidthPx: Int, pillHeightPx: Int,
-             sheetTopPx: Int, screenWidthPx: Int, gapPx: Int, endPx: Int, startPx: Int): Pair<Int, Int>? {
+             sheetTopPx: Int, screenWidthPx: Int, gapPx: Int, endPx: Int, startPx: Int, footerPx: Int = 0,
+             limitPx: Int = 0): Pair<Int, Int>? {
+        val clearOfFooter = sheetTopPx - footerPx - gapPx
         val below = columnTopPx + columnHeightPx + gapPx
-        if (below + pillHeightPx <= sheetTopPx - gapPx) return (screenWidthPx - endPx - pillWidthPx) to below
+        if (below + pillHeightPx <= clearOfFooter) return (screenWidthPx - endPx - pillWidthPx) to below
         val beside = columnLeftPx - gapPx - pillWidthPx
-        if (beside >= startPx) return beside to (columnTopPx + columnHeightPx - pillHeightPx)
+        val y = minOf(columnTopPx + columnHeightPx, clearOfFooter) - pillHeightPx
+        if (beside >= startPx && y >= limitPx) return beside to y
         return null
     }
 }
@@ -66,12 +74,14 @@ fun PlanControlsLayer(sheetHeightPx: () -> Int, limit: Dp, modifier: Modifier = 
     // the first child is the column, a second one the undo pill ([UndoPill], only while there is something to undo)
     Layout(content = controls, modifier = modifier.fillMaxSize()) { measurables, c ->
         val loose = c.copy(minWidth = 0, minHeight = 0)
-        val placeables = measurables.map { it.measure(loose) }
-        val column = placeables.firstOrNull()
+        val gap = ControlsPlacement.GAP_DP.dp.roundToPx()
+        val end = ControlsPlacement.END_DP.dp.roundToPx()
+        val column = measurables.firstOrNull()?.measure(loose)
+        // the pill gets the room beside the column: there it always fits (its halves stack when narrow, [UndoPill])
+        val besideRoom = (c.maxWidth - end - (column?.width ?: 0) - gap - end).coerceAtLeast(0)
+        val placeables = listOfNotNull(column) + measurables.drop(1).map { it.measure(loose.copy(maxWidth = besideRoom)) }
         layout(c.maxWidth, c.maxHeight) {
             if (column == null) return@layout
-            val gap = ControlsPlacement.GAP_DP.dp.roundToPx()
-            val end = ControlsPlacement.END_DP.dp.roundToPx()
             val limitPx = limit.roundToPx() + gap
             val sheetTop = c.maxHeight - sheetHeightPx()
             val top = ControlsPlacement.place(ControlsPlacement.fixedTop(c.maxHeight, limitPx), column.height,
@@ -79,7 +89,8 @@ fun PlanControlsLayer(sheetHeightPx: () -> Int, limit: Dp, modifier: Modifier = 
             val left = c.maxWidth - column.width - end
             column.place(left, top)
             placeables.drop(1).forEach { p ->
-                ControlsPlacement.pill(top, column.height, left, p.width, p.height, sheetTop, c.maxWidth, gap, end, end)
+                ControlsPlacement.pill(top, column.height, left, p.width, p.height, sheetTop, c.maxWidth, gap, end, end,
+                    footerPx = ControlsPlacement.FOOTER_DP.dp.roundToPx(), limitPx = limitPx)
                     ?.let { (x, y) -> p.place(x, y) }
             }
         }

@@ -188,7 +188,7 @@ class WholeRouteTest {
         assertTrue(stop >= 0 && fit.indexOf("events += UiEvent.Fit(WholeRoute.bounds(listOf(line), pts, null))") > stop)
         assertTrue(fit.contains("lastMapTouchMs > asked")) // the user took the map meanwhile: their view stays
         assertTrue(vm.contains("if (WholeRoute.firstRoute(before.size, waypoints.size)) fitNextRoute = true"))
-        assertTrue(vm.contains("if (fitNextRoute) { fitNextRoute = false; fitFirstRoute(it.points, pts) }"))
+        assertTrue(vm.contains("if (fitNextRoute) { fitNextRoute = false; fitFirstRoute(it.points, pts, if (rises) SheetRise.FIT_WAIT_MS else 0L) }"))
         // a plan link: following stops, the start camera keeps away, the route is fitted once computed
         val link = vm.substringAfter("private fun openSharedPlan(").substringBefore("\n    }\n")
         assertTrue(link.contains("holdCameraForSharedPlace()"))
@@ -215,7 +215,7 @@ class WholeRouteTest {
         val add = vm.substringAfter("private inline fun fittingPlaceAdd(").substringBefore("\n    }\n")
         assertTrue(add.contains("if (WholeRoute.fitAfterPlace(before, waypoints.toList())) fitNextRoute = true"))
         // the same fit as the first route: following stopped, the user's touch wins
-        assertTrue(vm.contains("if (fitNextRoute) { fitNextRoute = false; fitFirstRoute(it.points, pts) }"))
+        assertTrue(vm.contains("if (fitNextRoute) { fitNextRoute = false; fitFirstRoute(it.points, pts, if (rises) SheetRise.FIT_WAIT_MS else 0L) }"))
     }
 
 }
