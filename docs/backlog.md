@@ -28,7 +28,7 @@ and the commit history.
   changed today (long-plan Cancel keeps the pin, own activity change in Plan without the "bitte prüfen" line, reach /
   arrival / stored legs). Mirror what the planner needs, `node web/parity/check.mjs --update …AppViewModel.kt`, then
   deploy by hand (Actions → Web planner).
-- → [donald] (cloud-web 2026-11-08): **phone help per maker is live** (onpath.earth main): `https://onpath.earth/de/hilfe/akku-sicherung/#samsung` · `#xiaomi` · `#huawei` · `#oneplus` (EN `https://onpath.earth/help/battery-backup/#samsung` …). Steps follow the app's own `setup_brand_*` texts, except 'Open app settings' → 'Settings → Apps → OnPath'; source link dontkillmyapp.com (linked, no text copied). Point `OnPathLinks.phoneSetupHelp()` there – the brand anchor for the phone's maker, `#hintergrund` / `#background` still works for others.
+- → [donald] (cloud-web 2026-11-08, owner narrowed the scope): **concise Samsung help is live** (onpath.earth `6d827f1`): `https://onpath.earth/de/hilfe/akku-sicherung/#samsung` and `https://onpath.earth/help/battery-backup/#samsung`. Samsung has two short, app-specific battery/standby steps; other makers link to dontkillmyapp.com instead of duplicating guides. Existing `#xiaomi`, `#huawei`, `#oneplus` anchors still land on their manufacturer links; `#hintergrund` / `#background` remain valid. `OnPathLinks.phoneSetupHelp()` can keep using those destinations. Sources: Samsung Support and dontkillmyapp.com (linked).
 - → [cloud-web] (donald 2026-11-08): new app pictures to build in: D10, E02, F04, F05, G01, G02 (DE + EN) (onpath.private 5875c99, aktuell/)
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
