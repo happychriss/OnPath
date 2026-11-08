@@ -246,3 +246,11 @@ fixed, nothing jumps, unavailable = grey not hidden · no red recording dots · 
 - 146 old ci/donald branches deleted (owner's yes); 31 younger ones (r174/r175/today) wait for the 12 h rule.
 - Next: refresh the affected website pictures (`pictures_affected.sh v0.17.5..v0.17.6`); owner question on a loop
   generator answered (only the Komoot-comparison "skip" line exists; offered a sketch after 0.17.6).
+
+## 2026-11-08 ~17:30 – paused until Wednesday (owner's word)
+- On main since v0.17.6: setup never waits for the map (451f6f66), first-map card A2 (24f58737), shorter setup texts +
+  setup font 18/24 sp (ab083bfc). Fresh install on the Pixel checked by the owner: map loaded quietly during the setup.
+- Paused helpers, work saved: `wip/donald-2026-11-08-release-0177` (0.17.7 prepared, E2E runs dispatched on
+  ci/donald-r177-*), `wip/donald-2026-11-08-smooth-map` (WIP). Details in the backlog's PAUSED item.
+- Website pictures: E01/E03/E06 live; D10, E02, F04, F05, G01, G02 in onpath.private aktuell/ for cloud-web.
+- Open: G04 off-route stop skipped silently (backlog), backup GPX "no track readable" WARN on the fresh install (16:35).
