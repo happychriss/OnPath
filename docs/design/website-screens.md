@@ -113,12 +113,12 @@ C04, C05, C07, C08 may stay Paparazzi snapshots (`GermanScreenshotTest_settingsS
 
 | Step | File | What you see | Key · used on | Snapshot (Paparazzi) | Change here → new picture |
 | --- | --- | --- | --- | --- | --- |
-| E01 | `E01-handy-navigation-gesperrt` | Navigate: turn card, status card, bar **Pause \| Planen** (locked) | navi · erste-schritte, home (step 3), navigation | `navigate` `navigateTurn` | `ui/NavigateScreen.kt`, `ui/TourActionBar.kt` |
+| E01 | `E01-handy-navigation-gesperrt` | Navigate: turn card, status card, bar **Anhalten \| Planen** (locked, pale = hold) | navi · erste-schritte, home (step 3), navigation | `navigate` `navigateTurn` | `ui/NavigateScreen.kt`, `ui/TourActionBar.kt` |
 | E02 | `E02-handy-gedrueckt-halten` | a button filling while held, "Gedrückt halten" | entsperren · navigation | `navigateLockedHint` | `ui/TourActionBar.kt`, `domain/tour/UnlockWindow.kt` |
 | E03 | `E03-handy-abzweigung-ankunft` | next turn close up, time left, "Ankunft 13:55" with the goal | ankunft · home, navigation, store S3 | `navigateTurnOnto` `navigateArrival` | `ui/NavigateScreen.kt` |
 | E04 | `E04-handy-statuskarte-offen` | status card opened: moving time, profile, next stop "an 14:20" | – | `navigateProfileStops` `navigateProfile` `navigateNextStop` | `ui/NavigateScreen.kt` |
 | E05 | `E05-sperrbildschirm` | lock screen: "Links in 300 m · Ankunft 13:00" | – (help navigation) | – | notification (`recording/`) |
-| E06 | `E06-handy-pause` | paused: band "⏸ Pause · 12:04", Weiter · Beenden · ✎ | pause · navigation | `navigatePausedLocked` `navigatePausedOpen` | `ui/TourActionBar.kt` |
+| E06 | `E06-handy-pause` | stopped (0.17.5+): card head "⏸ Angehalten seit 12:04", ▶ Weiter · ■ Tour beenden · ✎ Planen | pause · navigation | `navigatePausedLocked` `navigatePausedOpen` | `ui/TourActionBar.kt` |
 | E07 | `E07-einstellungen-hinweise-stimme` | Einstellungen → Navigation: "Hinweise an Abzweigungen" Aus · Vibration · Stimme, "Stimme testen" | hinweise-stimme · navigation, store S3 | `settingsNavigation` | `ui/SettingsScreen.kt` (Navigation) |
 
 ## F – On the way: a new idea – stop at the inn (app, flight mode)
