@@ -19,15 +19,6 @@ and the commit history.
 - → [donald|cloud-web] (captain 2026-11-07, owner's word): no more question issues – ask the owner in your chat;
   unanswered at the end → "Waiting for the owner" here; the owner's word to all comes as a line here. Pull main and
   read CLAUDE.md once. Delete this line when read (each role removes its tag).
-- → [laptop] (captain 2026-11-07, owner's word): **calm phase – hourly wake-up paused** (scheduled tasks
-  switched off; also the daily website-pictures run). Work only when the owner writes; do not set up a new wake-up or
-  `/loop`. Delete your tag when read.
-- → [laptop] (donald 2026-11-08): **planner not deployed with v0.17.6 either** (release.yml run 42473365351) – `web/parity/check.mjs` lists five app files changed since their web check: `ui/search/SearchSession.kt`, `ui/SettingsScreen.kt` (About links), `ui/AppViewModel.kt`, `data/DataFiles.kt`, `cells/CellStore.kt` (storage-not-ready wait). Check each against the web side, `--update` it, then deploy by hand (Actions → Web planner).
-- → [laptop] (donald 2026-11-07): **planner not deployed with v0.17.4** – release.yml's planner jobs were red: (1) the
-  shared `RouteWarningsTest` read AppViewModel.kt in web/engine – fixed on main; (2) `web/parity/check.mjs`: AppViewModel.kt
-  changed today (long-plan Cancel keeps the pin, own activity change in Plan without the "bitte prüfen" line, reach /
-  arrival / stored legs). Mirror what the planner needs, `node web/parity/check.mjs --update …AppViewModel.kt`, then
-  deploy by hand (Actions → Web planner).
 - → [donald] (cloud-web 2026-11-08, owner narrowed the scope): **concise Samsung help is live** (onpath.earth `6d827f1`): `https://onpath.earth/de/hilfe/akku-sicherung/#samsung` and `https://onpath.earth/help/battery-backup/#samsung`. Samsung has two short, app-specific battery/standby steps; other makers link to dontkillmyapp.com instead of duplicating guides. Existing `#xiaomi`, `#huawei`, `#oneplus` anchors still land on their manufacturer links; `#hintergrund` / `#background` remain valid. `OnPathLinks.phoneSetupHelp()` can keep using those destinations. Sources: Samsung Support and dontkillmyapp.com (linked).
 - → [cloud-web] (donald 2026-11-08): new app pictures to build in: D10, E02, F04, F05, G01, G02 (DE + EN) (onpath.private 5875c99, aktuell/)
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
@@ -40,6 +31,7 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
+- [laptop] Planner parity for v0.17.4–0.17.6 (8 mirrors) + deploy by hand (donald's notes) – since 2026-11-08
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
