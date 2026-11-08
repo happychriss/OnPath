@@ -10,6 +10,8 @@ import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.setup_bat_do
 import com.onpath.strings.setup_loc_why
+import com.onpath.strings.setup_welcome_text
+import com.onpath.strings.setup_loc_do
 import com.onpath.strings.setup_notif_why
 import com.onpath.strings.setup_saver_ok_why
 import com.onpath.strings.setup_saver_why
@@ -76,13 +78,19 @@ class SetupTextsTest {
         }
         texts()
         assertTrue(Txt.s(Res.string.setup_bat_do).contains("Unrestricted"))
-        assertTrue(Txt.s(Res.string.setup_loc_why).startsWith("For the dot on the map"))
+        // owner-chosen words (2026-11-08 evening): the location step names Android's choice; the welcome has no "or later"
+        assertEquals("For the dot on the map and your track. Your location and tours stay on your phone.", Txt.s(Res.string.setup_loc_why))
+        assertEquals("On the next screen: choose “While using the app”.", Txt.s(Res.string.setup_loc_do))
+        assertFalse(Txt.s(Res.string.setup_welcome_text).contains("later"))
         val old = java.util.Locale.getDefault()
         java.util.Locale.setDefault(java.util.Locale.GERMANY)
         try {
             texts()
             assertTrue(Txt.s(Res.string.setup_bat_do).contains("„Uneingeschränkt“"))
-            assertTrue(Txt.s(Res.string.setup_loc_why).startsWith("Für den Punkt auf der Karte"))
+            assertEquals("Für den Punkt auf der Karte und deine Spur. Standort und Touren bleiben auf deinem Handy.", Txt.s(Res.string.setup_loc_why))
+            assertEquals("Auf der nächsten Seite: „Bei Nutzung der App“ wählen.", Txt.s(Res.string.setup_loc_do))
+            assertEquals("OnPath zeigt dir die Karte auch ohne Netz und führt dich unterwegs. Dafür braucht OnPath ein paar " +
+                "Einstellungen am Handy – etwa eine Minute.", Txt.s(Res.string.setup_welcome_text))
         } finally { java.util.Locale.setDefault(old) }
     }
 }

@@ -2,7 +2,7 @@
 <!-- Phone setup: welcome, step-by-step guide, Settings → Phone setup (ui/setup/). Context: tools/i18n/meta/strings_setup.json -->
 <resources>
     <string name="setup_welcome_title">Welcome to OnPath</string>
-    <string name="setup_welcome_text">OnPath shows your map offline and guides you on the way. For that OnPath needs a few settings on your phone – about a minute. Or later, before your first tour.</string>
+    <string name="setup_welcome_text">OnPath shows your map offline and guides you on the way. For that OnPath needs a few settings on your phone – about a minute.</string>
     <string name="setup_welcome_now">Set up now</string>
     <string name="setup_later">Later</string>
     <string name="setup_step_of">Step %1$d of %2$d</string>
@@ -17,8 +17,8 @@
     <string name="setup_taken_phone">Your phone removed this because OnPath was not used for some months. That is normal – set it up again here.</string>
     <string name="setup_taken_off">This was switched off since you last used OnPath.</string>
     <string name="setup_loc_title">Your location</string>
-    <string name="setup_loc_why">For the dot on the map, your track and the guidance at junctions. Your location and tours stay on your phone.</string>
-    <string name="setup_loc_do">On the next screen: allow it while using the app, with precise location.</string>
+    <string name="setup_loc_why">For the dot on the map and your track. Your location and tours stay on your phone.</string>
+    <string name="setup_loc_do">On the next screen: choose “While using the app”.</string>
     <string name="setup_loc_denied">No problem – the map and planning work without it. Only the dot on the map and tours need your location.</string>
     <string name="setup_loc_blocked">Android does not ask again. Tap Continue → Permissions → Location and allow it while using the app, precise.</string>
     <string name="setup_precise_title">Precise location</string>

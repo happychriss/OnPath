@@ -7,9 +7,10 @@
   },
   "setup_welcome_text": {
     "area": "Phone setup",
-    "context": "Welcome page text: offline map + guidance, a few phone settings, about a minute, or later – short text, owner-approved 2026-11-08",
+    "context": "Welcome page text: offline map + guidance, a few phone settings, about a minute – OWNER-CHOSEN WORDS 2026-11-08 evening (no 'or later' sentence: the Later button says it); never reword",
     "priority": 1,
-    "confidence": "sicher"
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-08 evening (setup texts, father feedback build)"
   },
   "setup_welcome_now": {
     "area": "Phone setup",
@@ -97,15 +98,17 @@
   },
   "setup_loc_why": {
     "area": "Phone setup",
-    "context": "Step L1: why – starts with the dot on the map (owner) – short text, owner-approved 2026-11-08",
+    "context": "Step L1: why – the dot on the map and the track; location and tours stay on the phone – OWNER-CHOSEN WORDS 2026-11-08 evening; never reword",
     "priority": 1,
-    "confidence": "sicher"
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-08 evening (setup texts, father feedback build)"
   },
   "setup_loc_do": {
     "area": "Phone setup",
-    "context": "Step L1: what to do in the system dialog (no system button text) – short text, owner-approved 2026-11-08",
+    "context": "Step L1: what to do – names the system dialog's choice „Bei Nutzung der App“ / “While using the app” (owner 2026-11-08 evening: his word wins over the 'no system button text' rule); OWNER-CHOSEN WORDS, never reword; the precise switch is the precise step's",
     "priority": 1,
-    "confidence": "sicher"
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-08 evening (setup texts, father feedback build)"
   },
   "setup_loc_denied": {
     "area": "Phone setup",

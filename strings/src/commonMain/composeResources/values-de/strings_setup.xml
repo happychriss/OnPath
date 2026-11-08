@@ -2,7 +2,7 @@
 <!-- Phone setup: welcome, step-by-step guide, Settings → Phone setup (ui/setup/). Context: tools/i18n/meta/strings_setup.json -->
 <resources>
     <string name="setup_welcome_title">Willkommen bei OnPath</string>
-    <string name="setup_welcome_text">OnPath zeigt dir die Karte auch ohne Netz und führt dich unterwegs. Dafür braucht OnPath ein paar Einstellungen am Handy – etwa eine Minute. Oder später, vor der ersten Tour.</string>
+    <string name="setup_welcome_text">OnPath zeigt dir die Karte auch ohne Netz und führt dich unterwegs. Dafür braucht OnPath ein paar Einstellungen am Handy – etwa eine Minute.</string>
     <string name="setup_welcome_now">Jetzt einrichten</string>
     <string name="setup_later">Später</string>
     <string name="setup_step_of">Schritt %1$d von %2$d</string>
@@ -17,8 +17,8 @@
     <string name="setup_taken_phone">Dein Handy hat das entfernt, weil OnPath einige Monate nicht genutzt wurde. Das ist normal – richte es hier wieder ein.</string>
     <string name="setup_taken_off">Das wurde seit deiner letzten Nutzung von OnPath ausgeschaltet.</string>
     <string name="setup_loc_title">Dein Standort</string>
-    <string name="setup_loc_why">Für den Punkt auf der Karte, deine Spur und die Führung an Abzweigungen. Standort und Touren bleiben auf deinem Handy.</string>
-    <string name="setup_loc_do">Auf der nächsten Seite: Zugriff während der Nutzung erlauben, mit genauem Standort.</string>
+    <string name="setup_loc_why">Für den Punkt auf der Karte und deine Spur. Standort und Touren bleiben auf deinem Handy.</string>
+    <string name="setup_loc_do">Auf der nächsten Seite: „Bei Nutzung der App“ wählen.</string>
     <string name="setup_loc_denied">Kein Problem – Karte und Planen gehen auch ohne. Nur der Punkt auf der Karte und Touren brauchen den Standort.</string>
     <string name="setup_loc_blocked">Android fragt nicht noch einmal. Tippe auf Weiter → Berechtigungen → Standort und erlaube ihn während der Nutzung, genau.</string>
     <string name="setup_precise_title">Genauer Standort</string>

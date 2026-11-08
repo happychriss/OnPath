@@ -17,7 +17,9 @@ rule (section 10).
 3. **Explain first, in plain words, then show the system dialog.** Our own screen says what OnPath does with it and
    what the user gains ("So the map shows where you are and the tour is recorded"), and which choice to pick – never
    quoting system button text (it differs per Android version and language). Only where Android gives us the label
-   (`getBackgroundPermissionOptionLabel()`) do we name it.
+   (`getBackgroundPermissionOptionLabel()`) do we name it. **Exception (owner 2026-11-08 evening, his word wins):** the
+   location step names Android's choice „Bei Nutzung der App“ / “While using the app” – picking it is the one thing
+   that matters there.
 4. **One step engine, three entry points:** (a) *Set up at home* after the first start (optional, ~1 minute),
    (b) *Before the tour* when Start is tapped (only what is missing and needed), (c) *Settings → Phone setup*
    (everything, with a traffic light). Same steps, same texts, same tests.
@@ -110,8 +112,8 @@ object PhoneCheck {
 
 A full-screen sheet with one step per screen:
 - **Header**: "Step 1 of 3" + a large icon (location pin, bell, vibrating phone, battery).
-- **Why** (2 short sentences) + **what to do** ("On the next screen choose: allow while using the app, and *precise*
-  on.") – our words, never the system's button text.
+- **Why** (2 short sentences) + **what to do** ("On the next screen: choose “While using the app”.") – our words; the
+  location step names Android's choice (owner 2026-11-08 evening, principle 3's exception).
 - **One primary button** ("Continue" → system dialog or settings screen) and **"Later"**.
 - Coming back (`onResume`) re-reads `PhoneState`: done → a green check "✓ Location allowed" for 1 s, next step; not
   done → the same step again with the *after-denial* text ("No problem. You can allow it later in Settings → Phone
@@ -143,7 +145,7 @@ A full-screen sheet with one step per screen:
 
 | Step | Title | Why | What to do |
 | --- | --- | --- | --- |
-| L1 | Your location | For the dot on the map, your track and the guidance at junctions. Your location and tours stay on your phone. | On the next screen: allow it **while using the app**, with precise location. |
+| L1 | Your location | For the dot on the map and your track. Your location and tours stay on your phone. | On the next screen: choose **“While using the app”**. (owner 2026-11-08 evening; precise location is the L2 step's) |
 | L2 | Precise location | A tour needs your precise location – an approximate one is often a kilometer off. | On the next screen, change to **precise location**. |
 | L3 | Location is off | When location is off on your phone, no app knows where you are – not even OnPath. | Tap Continue and switch location on. |
 | N1 | Notifications | With them your lock screen shows the next turn (“Left in 300 m · arrive 13:00”) – and you know at once when you leave the route. Recording and buzzes work without them too. | Allow notifications. |
