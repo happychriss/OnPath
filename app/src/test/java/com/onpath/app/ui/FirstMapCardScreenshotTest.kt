@@ -53,7 +53,7 @@ abstract class FirstMapCardScreenshotTest(private val locale: Locale, fontScale:
                     val sheetHeight = androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
                     PlanControlsLayer({ sheetHeight.intValue }, planTopBarDp().dp) {
                         MapControls(CompassSpec(null, 0f) {}, showEye = false, onPeek = {}, gps = GpsStatus.GOOD, following = true,
-                            onLocate = {}, onFitRoute = null, onUndo = null, plan = true)
+                            onLocate = {}, onFitRoute = null, plan = true)
                     }
                     SheetWithFooter(planTopBarDp().dp, footer = { Column(Modifier.fillMaxWidth()) { MapFooter("500 m" to 64.dp) {} } },
                         sheet = { Column(Modifier.fillMaxWidth().onSizeChanged { sheetHeight.intValue = it.height }) {

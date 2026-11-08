@@ -39,6 +39,21 @@ object ControlsPlacement {
         val y = minOf(fixedTopPx, sheetTopPx - gapPx - heightPx)
         return if (y < limitPx) null else y
     }
+
+    /**
+     * The undo pill (owner 2026-11-08, [UndoPill]): it never moves the column – the column is placed by its own height.
+     * Under the column, right-aligned, when it fits above the sheet ([sheetTopPx] − [gapPx]); else beside the column,
+     * level with its last button, when it fits on the screen ([startPx] = the left margin); else not placed (null).
+     * Returns the pill's left and top (px).
+     */
+    fun pill(columnTopPx: Int, columnHeightPx: Int, columnLeftPx: Int, pillWidthPx: Int, pillHeightPx: Int,
+             sheetTopPx: Int, screenWidthPx: Int, gapPx: Int, endPx: Int, startPx: Int): Pair<Int, Int>? {
+        val below = columnTopPx + columnHeightPx + gapPx
+        if (below + pillHeightPx <= sheetTopPx - gapPx) return (screenWidthPx - endPx - pillWidthPx) to below
+        val beside = columnLeftPx - gapPx - pillWidthPx
+        if (beside >= startPx) return beside to (columnTopPx + columnHeightPx - pillHeightPx)
+        return null
+    }
 }
 
 /**
@@ -48,19 +63,24 @@ object ControlsPlacement {
  */
 @Composable
 fun PlanControlsLayer(sheetHeightPx: () -> Int, limit: Dp, modifier: Modifier = Modifier, controls: @Composable () -> Unit) {
+    // the first child is the column, a second one the undo pill ([UndoPill], only while there is something to undo)
     Layout(content = controls, modifier = modifier.fillMaxSize()) { measurables, c ->
         val loose = c.copy(minWidth = 0, minHeight = 0)
         val placeables = measurables.map { it.measure(loose) }
-        val height = placeables.sumOf { it.height }
+        val column = placeables.firstOrNull()
         layout(c.maxWidth, c.maxHeight) {
+            if (column == null) return@layout
             val gap = ControlsPlacement.GAP_DP.dp.roundToPx()
+            val end = ControlsPlacement.END_DP.dp.roundToPx()
             val limitPx = limit.roundToPx() + gap
-            val top = ControlsPlacement.place(ControlsPlacement.fixedTop(c.maxHeight, limitPx), height,
-                c.maxHeight - sheetHeightPx(), limitPx, gap) ?: return@layout
-            var y = top
-            placeables.forEach { p ->
-                p.place(c.maxWidth - p.width - ControlsPlacement.END_DP.dp.roundToPx(), y)
-                y += p.height
+            val sheetTop = c.maxHeight - sheetHeightPx()
+            val top = ControlsPlacement.place(ControlsPlacement.fixedTop(c.maxHeight, limitPx), column.height,
+                sheetTop, limitPx, gap) ?: return@layout
+            val left = c.maxWidth - column.width - end
+            column.place(left, top)
+            placeables.drop(1).forEach { p ->
+                ControlsPlacement.pill(top, column.height, left, p.width, p.height, sheetTop, c.maxWidth, gap, end, end)
+                    ?.let { (x, y) -> p.place(x, y) }
             }
         }
     }

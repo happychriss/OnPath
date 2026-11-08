@@ -127,28 +127,39 @@ object SettingsSummary {
 
     /**
      * Phone setup in the list (owner 2026-10-30): something a tour needs → red, "1 item needed for tours"; only
-     * recommended items missing → amber, "2 recommended"; else "Everything set up". Optional items never count.
+     * recommended items missing → amber, "2 steps open" (owner 2026-11-08; with an amber dot on the row); else
+     * "Everything set up". Optional items never count.
      */
     fun phone(checks: List<com.onpath.app.setup.Check>): Summary {
         val needed = checks.count { !it.ok && it.need == com.onpath.app.setup.Need.REQUIRED }
-        val recommended = checks.count { !it.ok && it.need == com.onpath.app.setup.Need.RECOMMENDED }
+        val open = openSteps(checks)
         return when {
             needed > 0 -> Summary(Txt.p(Res.plurals.settings_sum_phone_needed, needed, needed), Summary.Attention.PROBLEM)
-            recommended > 0 -> Summary(Txt.p(Res.plurals.settings_sum_phone_recommended, recommended, recommended), Summary.Attention.WARNING)
+            open > 0 -> Summary(Txt.p(Res.plurals.settings_sum_phone_open, open, open), Summary.Attention.WARNING)
             else -> Summary(Txt.s(Res.string.settings_sum_phone_ok))
         }
     }
+
+    /** The setup steps still open: required or recommended, not done (optional ones never count). */
+    fun openSteps(checks: List<com.onpath.app.setup.Check>?): Int =
+        checks.orEmpty().count { !it.ok && it.need != com.onpath.app.setup.Need.OPTIONAL }
+
+    /**
+     * Phone setup at the top of Settings (owner 2026-11-08, father's feedback): while any step is open – red when a tour
+     * needs it ([phoneNeeded]), else amber "N steps open" – and back at its place in "App" when everything is done.
+     */
+    fun phoneOnTop(checks: List<com.onpath.app.setup.Check>?): Boolean = openSteps(checks) > 0
 
     /** Something a tour needs is missing on the phone: Phone setup goes to the top of Settings and into the ☰ menu. */
     fun phoneNeeded(checks: List<com.onpath.app.setup.Check>?): Boolean =
         checks.orEmpty().any { !it.ok && it.need == com.onpath.app.setup.Need.REQUIRED }
 
     /**
-     * The Settings list in groups, in order: [TopicGroup.URGENT] (only Phone setup, only when [phoneNeeded] – owner:
-     * "at the top, red"), then "Your settings", then "App". Empty groups are left out.
+     * The Settings list in groups, in order: [TopicGroup.URGENT] (only Phone setup, only while steps are open,
+     * [phoneOnTop] – owner: "at the top"), then "Your settings", then "App". Empty groups are left out.
      */
     fun groups(topics: List<SettingsPage>, phoneChecks: List<com.onpath.app.setup.Check>?): List<Pair<TopicGroup, List<SettingsPage>>> {
-        val urgent = if (phoneNeeded(phoneChecks) && SettingsPage.PHONE in topics) listOf(SettingsPage.PHONE) else emptyList()
+        val urgent = if (phoneOnTop(phoneChecks) && SettingsPage.PHONE in topics) listOf(SettingsPage.PHONE) else emptyList()
         val rest = topics - urgent.toSet()
         return listOf(TopicGroup.URGENT to urgent, TopicGroup.YOURS to rest.filter { !it.app }, TopicGroup.APP to rest.filter { it.app })
             .filter { it.second.isNotEmpty() }

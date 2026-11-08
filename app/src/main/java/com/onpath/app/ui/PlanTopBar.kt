@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -98,6 +99,11 @@ class PlanMenu(
      * rarely needed): a plain recording; null hides it (a tour runs).
      */
     val onRecordWithoutPlan: (() -> Unit)? = null,
+    /**
+     * "? Hilfe" as the first item (owner 2026-11-08, father's feedback): the help on onpath.earth in the app language –
+     * the same address as About's "Hilfe & erste Schritte" ([OnPathLinks.help]); null hides it.
+     */
+    val onHelp: (() -> Unit)? = null,
 ) {
     /**
      * The dot on ☰: only the browser sync's amber warning. Unsaved has no sign any more (owner 2026-11-06: nothing is
@@ -261,6 +267,11 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     val st = menu.state
     // no logo head (owner 2026-11-07 morning: in a drop-down every row is a button – "man drückt drauf und wundert
     // sich, dass nichts passiert"); the name is on the start surface and on Über OnPath
+    // help first (owner 2026-11-08: the father looked for a "?"), on its own above a divider
+    menu.onHelp?.let { h ->
+        MenuItem(Icons.AutoMirrored.Outlined.HelpOutline, str(Res.string.plan_menu_help)) { close(); h() }
+        HorizontalDivider()
+    }
     menu.onPhoneSetup?.let { p ->
         MenuItem(Icons.Outlined.WarningAmber, str(Res.string.settings_page_phone), enabled = st.settings, tint = OnPathColors.Error) { close(); p() }
         HorizontalDivider()

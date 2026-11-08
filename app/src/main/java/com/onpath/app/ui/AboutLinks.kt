@@ -56,6 +56,14 @@ object OnPathLinks {
     fun privacy(lang: String = Txt.language()) = if (de(lang)) "$SITE/de/datenschutz/" else "$SITE/privacy/"
     fun legal(lang: String = Txt.language()) = if (de(lang)) "$SITE/de/impressum/" else "$SITE/legal/"
 
+    /**
+     * The phone-setup help for the brand page's „Mehr Infos ›“ (owner 2026-11-08): no page of its own yet on
+     * onpath.earth – the help topic "Akku und Sicherung" / "Battery and backup" at its background section
+     * (onpath.earth help_topics.py anchors). Switch to the dedicated page once cloud-web has written it.
+     */
+    fun phoneSetupHelp(lang: String = Txt.language()) =
+        if (de(lang)) "$SITE/de/hilfe/akku-sicherung/#hintergrund" else "$SITE/help/battery-backup/#background"
+
     /** What a row shows under its title: the address without "https://" and the last "/". */
     fun shown(url: String) = url.removePrefix("https://").removeSuffix("/")
 

@@ -1375,5 +1375,12 @@
     "priority": 1,
     "confidence": "sicher",
     "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
+  },
+  "plan_menu_help": {
+    "area": "Plan menu",
+    "context": "☰ menu, first item (owner 2026-11-08): opens the help on onpath.earth in the app language",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 20
   }
 }

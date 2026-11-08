@@ -167,6 +167,27 @@ enum class PlanSize {
     }
 }
 
+/**
+ * The plan sheet rises by itself once per plan (owner 2026-11-08, father's feedback: nobody found that the sheet pulls
+ * up): when a plan's first route is ready, the sheet moves from its summary step to the middle step ([TO], the profile)
+ * – the movement shows that it moves, and "✕ Neu planen · ⇅ Umkehren · ↻ Rundtour" stand clearly in view. Never on a
+ * re-route of the same plan, never during a tour, never when the user rolled it up or pulled it further. A tap on the
+ * handle steps it up one step ([PlanSize.tapped]). Pure – `SheetRiseTest`.
+ */
+object SheetRise {
+    val TO = PlanSize.COMPACT
+
+    /** The first route's fit waits this much longer while the sheet rises (its height is heard once it rests). */
+    const val FIT_WAIT_MS = 500L
+
+    /** [risen]: this plan already had its first route; [plan]: the Plan screen shows; [tour]: a tour records. */
+    fun rises(risen: Boolean, size: PlanSize, plan: Boolean, tour: Boolean): Boolean =
+        !risen && plan && !tour && size == PlanSize.MINI
+
+    /** A new plan begins (no points any more, or a saved route replaces it): its first route may raise the sheet again. */
+    fun resets(pointCount: Int): Boolean = pointCount == 0
+}
+
 data class PlanUi(
     val pointCount: Int,
     val route: PlannedRoute?,

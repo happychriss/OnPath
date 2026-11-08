@@ -456,12 +456,6 @@
     "priority": 1,
     "confidence": "sicher"
   },
-  "settings_sum_phone_recommended": {
-    "area": "Phone setup",
-    "context": "Settings list: Phone setup summary in amber, %1$d = number of recommended items missing",
-    "priority": 1,
-    "confidence": "sicher"
-  },
   "setup_locon_row": {
     "area": "Phone setup",
     "context": "Settings → Phone setup: row name of the phone's location switch",
@@ -527,5 +521,25 @@
     "context": "Spoken directions (docs/design/voice-guidance.md)",
     "priority": 2,
     "confidence": "bitte prüfen"
+  },
+  "setup_brand_short": {
+    "area": "Phone setup",
+    "context": "Step B2 (brand page, owner 2026-11-08: one short sentence + 'More info'), %1$s = brand name (Samsung, Xiaomi …); also the row's line in Settings → Phone setup",
+    "priority": 1,
+    "confidence": "bitte prüfen",
+    "doubt": "New short text for the father's feedback (test build)"
+  },
+  "setup_more_info": {
+    "area": "Phone setup",
+    "context": "Step B2: link under the short sentence, opens the detailed help on onpath.earth in the app language",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 20
+  },
+  "settings_sum_phone_open": {
+    "area": "Phone setup",
+    "context": "Settings list: Phone setup summary in amber while recommended steps are open (row moved to the top with an amber dot, owner 2026-11-08), %1$d = number of open steps",
+    "priority": 1,
+    "confidence": "sicher"
   }
 }

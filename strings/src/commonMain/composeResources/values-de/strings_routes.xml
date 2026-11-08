@@ -73,4 +73,5 @@
     <string name="routes_overview_follow">Folgen</string>
     <string name="routes_overview_loading">Karte wird gezeichnet …</string>
     <string name="routes_followed_plan_missing">Der Plan dieser Tour konnte nicht gelesen werden.</string>
+    <string name="routes_sac_line">T%1$d · %2$s: %3$s</string>
 </resources>

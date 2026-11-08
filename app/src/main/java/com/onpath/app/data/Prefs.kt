@@ -248,6 +248,14 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         get() = sp.getBoolean("brandStepsDone", false)
         set(v) = sp.edit().putBoolean("brandStepsDone", v).apply()
 
+    /**
+     * The brand page was answered once („Erledigt“ or „Später“, owner 2026-11-08): it never comes before a tour again
+     * (PhoneCheck.ONCE_BEFORE_TOUR) – only Settings → Phone setup keeps it.
+     */
+    var brandAnswered: Boolean
+        get() = sp.getBoolean("brandAnswered", false)
+        set(v) = sp.edit().putBoolean("brandAnswered", v).apply()
+
     /** The welcome ("Set up now / Later") was answered – it is shown once. */
     var setupWelcomeSeen: Boolean
         get() = sp.getBoolean("setupWelcomeSeen", false)

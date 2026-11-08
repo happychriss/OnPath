@@ -72,6 +72,7 @@ data class SetupCallbacks(
     val onGoogleSpeech: () -> Unit = {},
     val onSoundSettings: () -> Unit = {},
     val onAppSettings: () -> Unit = {},
+    /** The brand page's „Mehr Infos ›“: the detailed help on onpath.earth (OnPathLinks.phoneSetupHelp). */
     val onMoreHelp: (Brand) -> Unit = {},
     val onBrandDone: () -> Unit = {},
     /** The end page's button, Back, or "Later" on the welcome. */
@@ -129,7 +130,8 @@ fun checkWhy(id: CheckId, phone: PhoneState): String = when (id) {
     CheckId.VOICE -> if (phone.voice == com.onpath.app.setup.VoiceStatus.NO_ENGINE) str0(Res.string.setup_voice_none)
         else str0(Res.string.setup_voice_why)
     CheckId.BATTERY -> str0(Res.string.setup_bat_why)
-    CheckId.BRAND -> Txt.s(Res.string.setup_brand_why, phone.brand?.let(::brandName) ?: "")
+    // owner 2026-11-08 (father's feedback): one short sentence; the details are on onpath.earth („Mehr Infos ›“)
+    CheckId.BRAND -> Txt.s(Res.string.setup_brand_short, phone.brand?.let(::brandName) ?: "")
     CheckId.BATTERY_SAVER -> if (PhoneCheck.isOk(id, phone)) str0(Res.string.setup_saver_ok_why) else str0(Res.string.setup_saver_why)
     CheckId.UNUSED_RESET -> str0(Res.string.setup_unused_why)
 }
@@ -152,13 +154,8 @@ fun checkDo(id: CheckId, phone: PhoneState, denied: Boolean): String = when (id)
         else -> str0(Res.string.setup_voice_do)
     }
     CheckId.BATTERY -> str0(Res.string.setup_bat_do)
-    CheckId.BRAND -> when (phone.brand) {
-        Brand.SAMSUNG -> str0(Res.string.setup_brand_samsung)
-        Brand.XIAOMI -> str0(Res.string.setup_brand_xiaomi)
-        Brand.HUAWEI -> str0(Res.string.setup_brand_huawei)
-        Brand.ONEPLUS -> str0(Res.string.setup_brand_oneplus)
-        null -> ""
-    }
+    // the brand's steps (setup_brand_samsung …) moved to the website's help: „Mehr Infos ›“ on the page
+    CheckId.BRAND -> ""
     CheckId.BATTERY_SAVER -> str0(Res.string.setup_saver_do)
     CheckId.UNUSED_RESET -> str0(Res.string.setup_unused_do)
 }
@@ -230,6 +227,13 @@ fun SetupGuideScreen(guide: SetupGuide?, welcome: Boolean, phone: PhoneState, ta
                             checkDo(id, phone, id in guide.denied).takeIf { it.isNotEmpty() && (id != CheckId.VIBRATION || phone.hasVibrator) })
                         if (id == CheckId.VIBRATION && guide.vibrationPlayed && guide.vibrationAnswer == Felt.NO) {
                             NoteBox(str(Res.string.setup_vib_not_felt))
+                        }
+                        // the brand page: one sentence + „Mehr Infos ›“ → the detailed help on onpath.earth
+                        if (id == CheckId.BRAND) phone.brand?.let { b ->
+                            TextButton(onClick = { cb.onMoreHelp(b) }, modifier = Modifier.padding(top = 4.dp).heightIn(min = 48.dp),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp)) {
+                                Text(str(Res.string.setup_more_info), style = OnPathSetupType.body, fontWeight = FontWeight.SemiBold)
+                            }
                         }
                         if (id == CheckId.VOICE) {
                             voiceAdvice(phone)?.let {
@@ -359,7 +363,6 @@ private fun Buttons(guide: SetupGuide?, welcome: Boolean, phone: PhoneState, cb:
                 CheckId.BRAND -> {
                     Button(onClick = cb.onAppSettings, modifier = big) { Text(str(Res.string.setup_open_app_settings)) }
                     OutlinedButton(onClick = cb.onBrandDone, modifier = big) { Text(str(Res.string.setup_brand_done)) }
-                    phone.brand?.let { b -> TextButton(onClick = { cb.onMoreHelp(b) }, modifier = big) { Text(str(Res.string.setup_more_help)) } }
                     TextButton(onClick = cb.onLater, modifier = big) { Text(str(Res.string.setup_later)) }
                 }
                 else -> {

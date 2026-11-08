@@ -754,7 +754,8 @@ class MainActivity : ComponentActivity() {
         onGoogleSpeech = ::openGoogleSpeech,
         onSoundSettings = { open(Intent(Settings.ACTION_SOUND_SETTINGS), "sound settings") },
         onAppSettings = ::openAppSettings,
-        onMoreHelp = { b -> open(Intent(Intent.ACTION_VIEW, Uri.parse("https://dontkillmyapp.com/${b.helpPage}")), "brand help page") },
+        // owner 2026-11-08: the detailed brand help is on onpath.earth, in the app language (failures → Problems.warn)
+        onMoreHelp = { _ -> com.onpath.app.ui.OnPathLinks.open(this, com.onpath.app.ui.OnPathLinks.phoneSetupHelp()) },
         onBrandDone = vm::setupBrandDone,
         onClose = vm::closeSetup,
         onWelcomeNow = vm::setupWelcomeNow,

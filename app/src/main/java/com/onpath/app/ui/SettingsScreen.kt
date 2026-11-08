@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -359,9 +361,15 @@ private fun TopicRow(t: SettingsPage, s: Summary, small: Boolean = false, onClic
         .padding(horizontal = 16.dp, vertical = if (small) 6.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
         // a topic that blocks tours (Phone setup): the red ✗-mark of the phone checks instead of its icon
         val blocking = s.attention == Summary.Attention.PROBLEM && t == SettingsPage.PHONE
-        Icon(if (blocking) Icons.Outlined.ErrorOutline else t.icon, null,
-            tint = when { blocking -> OnPathColors.Error; small -> MaterialTheme.colorScheme.onSurfaceVariant; else -> OnPathColors.Green },
-            modifier = Modifier.size(if (small) 22.dp else 24.dp))
+        // steps open (owner 2026-11-08): a small amber dot on the phone icon, the row on top with "N steps open"
+        val open = s.attention == Summary.Attention.WARNING && t == SettingsPage.PHONE
+        Box {
+            Icon(if (blocking) Icons.Outlined.ErrorOutline else t.icon, null,
+                tint = when { blocking -> OnPathColors.Error; open -> OnPathColors.Green; small -> MaterialTheme.colorScheme.onSurfaceVariant; else -> OnPathColors.Green },
+                modifier = Modifier.size(if (small && !open) 22.dp else 24.dp))
+            if (open) Box(Modifier.align(Alignment.TopEnd).offset(x = 3.dp, y = (-3).dp).size(10.dp)
+                .background(OnPathColors.Warn, CircleShape).border(1.5.dp, OnPathColors.CardPaper, CircleShape))
+        }
         Spacer(Modifier.width(24.dp))
         Column(Modifier.weight(1f)) {
             Text(t.title, style = MaterialTheme.typography.bodyLarge)

@@ -54,4 +54,17 @@ class MapControlsEnabledTest {
             MapControlsEnabled.In(N, planLine = true, followLine = true), eye = true, whole = true, undo = false, redo = false)
     }
 
+    /**
+     * Owner 2026-11-08 (father's feedback: ↶ ↷ read as "turn the map"): undo / redo in their own pill, shown only when
+     * there is something to undo or redo – hidden otherwise.
+     */
+    @Test fun theUndoPillShowsOnlyWithSomethingToUndoOrRedo() {
+        fun pill(s: MapControlsEnabled.In) = MapControlsEnabled.undoPill(s)
+        assertEquals("fresh plan: hidden", false, pill(MapControlsEnabled.In(P)))
+        assertEquals("an edit: shown", true, pill(MapControlsEnabled.In(P, canUndo = true)))
+        assertEquals("undone back to empty: Redo – shown", true, pill(MapControlsEnabled.In(P, canRedo = true)))
+        assertEquals("both", true, pill(MapControlsEnabled.In(P, canUndo = true, canRedo = true)))
+        assertEquals("a track sheet open: hidden", false, pill(MapControlsEnabled.In(P, shownLine = true, canUndo = true, canRedo = true)))
+        assertEquals("Navigate: never", false, pill(MapControlsEnabled.In(N, canUndo = true, canRedo = true)))
+    }
 }

@@ -116,9 +116,9 @@ class SettingsSummaryTest {
             vibrationFelt = com.onpath.app.setup.Felt.YES, unusedReset = com.onpath.app.setup.ResetStatus.ON)
         assertEquals(Summary("Everything set up"), SettingsSummary.phone(com.onpath.app.setup.PhoneCheck.all(good)))
         val two = SettingsSummary.phone(com.onpath.app.setup.PhoneCheck.all(good.copy(notificationsOn = false, backgroundRestricted = true)))
-        assertEquals(Summary("2 recommended", Summary.Attention.WARNING), two)
+        assertEquals(Summary("2 steps open", Summary.Attention.WARNING), two)
         val one = SettingsSummary.phone(com.onpath.app.setup.PhoneCheck.all(good.copy(notificationsOn = false)))
-        assertEquals(Summary("1 recommended", Summary.Attention.WARNING), one)
+        assertEquals(Summary("1 step open", Summary.Attention.WARNING), one)
         // location off + a recommended item: only the tour need is counted, red
         val off = SettingsSummary.phone(com.onpath.app.setup.PhoneCheck.all(good.copy(locationOn = false, notificationsOn = false)))
         assertEquals(Summary("1 item needed for tours", Summary.Attention.PROBLEM), off)
@@ -127,7 +127,10 @@ class SettingsSummaryTest {
         assertEquals(Summary("2 items needed for tours", Summary.Attention.PROBLEM), approx)
     }
 
-    /** Settings list order: Phone setup on top only while a tour needs something; otherwise at its place in "App". */
+    /**
+     * Settings list order (owner 2026-11-08): Phone setup on top while any step is open – red for a tour need, amber
+     * "N steps open" for recommended ones; back at its place in "App" when everything is done.
+     */
     @Test fun phoneSetupPlaceInList() {
         val all = SettingsPage.entries.toList()
         val good = com.onpath.app.setup.PhoneState(sdk = 35, location = com.onpath.app.setup.LocationGrant.PRECISE,
@@ -135,11 +138,17 @@ class SettingsSummaryTest {
         fun groups(s: com.onpath.app.setup.PhoneState?) = SettingsSummary.groups(all, s?.let { com.onpath.app.setup.PhoneCheck.all(it) })
         val normal = listOf(TopicGroup.YOURS to all.filter { !it.app }, TopicGroup.APP to all.filter { it.app })
 
-        // all fine / recommended only / no phone checks at all: the usual two groups, Phone setup first in "App"
+        // all fine / no phone checks at all: the usual two groups, Phone setup first in "App"
         assertEquals(normal, groups(good))
-        assertEquals(normal, groups(good.copy(notificationsOn = false, backgroundRestricted = true)))
         assertEquals(normal, groups(null))
         assertEquals(false, SettingsSummary.phoneNeeded(com.onpath.app.setup.PhoneCheck.all(good.copy(notificationsOn = false))))
+        // recommended steps open: on top too (amber), not in "App"
+        val onTop = listOf(TopicGroup.URGENT to listOf(SettingsPage.PHONE), TopicGroup.YOURS to all.filter { !it.app },
+            TopicGroup.APP to all.filter { it.app && it != SettingsPage.PHONE })
+        assertEquals(onTop, groups(good.copy(notificationsOn = false, backgroundRestricted = true)))
+        // a Samsung after „Später“ on the brand page: the one open step keeps it on top – the reminder lives here
+        assertEquals(onTop, groups(good.copy(manufacturer = "samsung")))
+        assertEquals(normal, groups(good.copy(manufacturer = "samsung", brandDone = true)))
 
         // a tour need (no location access): Phone setup alone on top, not in "App" any more
         val noLoc = good.copy(location = com.onpath.app.setup.LocationGrant.NONE)
@@ -149,5 +158,20 @@ class SettingsSummaryTest {
         // the topic hidden (older screens): nothing on top
         assertEquals(listOf(TopicGroup.YOURS to all.filter { !it.app }, TopicGroup.APP to all.filter { it.app && it != SettingsPage.PHONE }),
             SettingsSummary.groups(all - SettingsPage.PHONE, com.onpath.app.setup.PhoneCheck.all(noLoc)))
+    }
+
+    /** The open steps (owner 2026-11-08): required + recommended not done; optional ones never count. */
+    @Test fun openStepsCount() {
+        val good = com.onpath.app.setup.PhoneState(sdk = 35, location = com.onpath.app.setup.LocationGrant.PRECISE,
+            vibrationFelt = com.onpath.app.setup.Felt.YES, unusedReset = com.onpath.app.setup.ResetStatus.ON)
+        fun open(s: com.onpath.app.setup.PhoneState) = SettingsSummary.openSteps(com.onpath.app.setup.PhoneCheck.all(s))
+        assertEquals("only the optional unused-app reset is open", 0, open(good))
+        assertEquals(1, open(good.copy(notificationsOn = false)))
+        assertEquals(2, open(good.copy(notificationsOn = false, backgroundRestricted = true)))
+        assertEquals("required counts too", 3, open(good.copy(locationOn = false, notificationsOn = false, backgroundRestricted = true)))
+        assertEquals(1, open(good.copy(manufacturer = "samsung")))
+        assertEquals(0, SettingsSummary.openSteps(null))
+        assertEquals(false, SettingsSummary.phoneOnTop(com.onpath.app.setup.PhoneCheck.all(good)))
+        assertEquals(true, SettingsSummary.phoneOnTop(com.onpath.app.setup.PhoneCheck.all(good.copy(notificationsOn = false))))
     }
 }

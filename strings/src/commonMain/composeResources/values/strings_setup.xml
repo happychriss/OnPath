@@ -81,10 +81,6 @@
         <item quantity="one">%1$d item needed for tours</item>
         <item quantity="other">%1$d items needed for tours</item>
     </plurals>
-    <plurals name="settings_sum_phone_recommended">
-        <item quantity="one">%1$d recommended</item>
-        <item quantity="other">%1$d recommended</item>
-    </plurals>
     <string name="setup_voice_title">Spoken directions</string>
     <string name="setup_voice_why">On a tour OnPath tells you in good time where to turn – only where you could go wrong. Works without the internet.</string>
     <string name="setup_voice_do">Turn up the volume and tap Test.</string>
@@ -107,4 +103,10 @@
     <string name="setup_voice_test_call">During a phone call the voice stays quiet. Test again after the call.</string>
     <string name="setup_voice_test_failed">The speech output did not play the sentence (error %1$s). Test again – if it stays quiet, choose another engine in the speech output settings.</string>
     <string name="setup_voice_test_silent">The speech output took the sentence but did not start speaking. Test again – if it stays quiet, choose another engine in the speech output settings.</string>
+    <string name="setup_brand_short">So that %1$s doesn’t stop the recording on the way, let OnPath run without battery restrictions in the app settings.</string>
+    <string name="setup_more_info">More info ›</string>
+    <plurals name="settings_sum_phone_open">
+        <item quantity="one">%1$d step open</item>
+        <item quantity="other">%1$d steps open</item>
+    </plurals>
 </resources>

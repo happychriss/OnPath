@@ -7,7 +7,8 @@ package com.onpath.app.ui
  * - **Eye** (hold = hide the route): a line on the map – the plan's route, a shown track or the followed line.
  * - **Whole route**: the same lines as [WholeRoute] (Plan: shown › planned › followed; Navigate: followed only).
  * - **Undo / Redo** (Plan only): the plan's history has a step and no track sheet is open (Undo there would change the
- *   hidden plan behind the track).
+ *   hidden plan behind the track). Since 2026-11-08 they are their own pill, shown only when one of them can act
+ *   ([undoPill]).
  * Not in the Points step ([pointsOpen]): the column has no room there and steps back anyway.
  * While a route is calculated the old line stays ([planLine] true) – nothing flickers grey.
  */
@@ -31,4 +32,10 @@ internal object MapControlsEnabled {
     fun wholeRoute(s: In): Boolean = WholeRoute.shows(s.mode, s.pointsOpen, s.planLine, s.shownLine, s.followLine)
     fun undo(s: In): Boolean = s.mode == AppMode.PLAN && s.canUndo && !s.shownOpen
     fun redo(s: In): Boolean = s.mode == AppMode.PLAN && s.canRedo && !s.shownOpen
+
+    /**
+     * The undo pill (owner 2026-11-08: its own pill, shown only when there is something to undo or redo – hidden
+     * otherwise; [UndoPill]).
+     */
+    fun undoPill(s: In): Boolean = undo(s) || redo(s)
 }

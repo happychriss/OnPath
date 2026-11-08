@@ -749,6 +749,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * (owner 2026-10-31); rolled up by the user it stays rolled up through route updates until opened again.
      */
     var planSize by mutableStateOf(PlanSize.MINI)
+    /** This plan's first route came already – the sheet rises by itself only once per plan ([SheetRise]). */
+    private var sheetRisen = false
 
     /**
      * A tap on the open map in Plan (owner 2026-11-03, novice fix): the plan sheet says "Gedrückt halten, um hier einen
@@ -2418,6 +2420,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // the route before an activity / T level change, compared with this run's result ("Route changed for …")
         val changeBefore = activityBefore.takeIf { activityRecalc }; activityRecalc = false
         val pts = waypoints.toList()
+        if (SheetRise.resets(pts.size)) sheetRisen = false
         val pins = pinnedIndices()
         val stand = standIn?.takeIf { it.points == pts && it.activity == activity && it.sac == sac }; standIn = null
         routeCancel?.cancel(); routeCancel = null; routingSlow = false // an older request stops at once
@@ -2509,7 +2512,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val it = res.route
                 baseline = adoptPlanBaseline
                 route = it; planReach = reach; snapToRoute(pts, res)
-                if (fitNextRoute) { fitNextRoute = false; fitFirstRoute(it.points, pts) }
+                // the plan's first route: the sheet rises once to its middle step (owner 2026-11-08, [SheetRise])
+                val rises = SheetRise.rises(sheetRisen, planSize, mode == AppMode.PLAN, recState.value != null)
+                if (rises) {
+                    planSize = SheetRise.TO
+                    Problems.trace("plan", "First route of the plan: the sheet rises to ${SheetRise.TO}")
+                }
+                sheetRisen = true
+                // a rising sheet: the fit waits until its new height is known (MapScreen hears it once it rests)
+                if (fitNextRoute) { fitNextRoute = false; fitFirstRoute(it.points, pts, if (rises) SheetRise.FIT_WAIT_MS else 0L) }
                 // the route warnings of this result (computed with it, off the main thread): routeSpots reads them
                 spotsMemo = Triple(it.points, act, level) to res.spots
                 if (changeBefore != null) {
@@ -2851,10 +2862,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * [FitPaddingRule] padding), once the sheet has grown to its route size. Not when the user took the map meanwhile,
      * left Plan or the route changed again. Following stops first (CLAUDE.md "Map camera").
      */
-    private fun fitFirstRoute(line: List<GeoPoint>, pts: List<GeoPoint>) {
+    private fun fitFirstRoute(line: List<GeoPoint>, pts: List<GeoPoint>, extraMs: Long = 0L) {
         val asked = android.os.SystemClock.uptimeMillis()
         viewModelScope.launchSafe("app", "fitFirstRoute") {
-            delay(WholeRoute.SETTLE_MS)
+            delay(WholeRoute.SETTLE_MS + extraMs)
             if (lastMapTouchMs > asked || mode != AppMode.PLAN || shown != null || route?.points != line) {
                 Problems.trace("map", "First route not fitted: the map was touched or the plan moved on")
                 return@launchSafe
@@ -4394,6 +4405,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // saved routes load without routing again (owner 2026-11-07): its legs from the leg store, else its line
                 // as a stand-in while the run routes; a route routed before is no "very long plan" question again
                 if (!duringTour) loadStoredLine(t, pts, segs)
+                if (!duringTour) sheetRisen = false // a new plan: its first route may raise the sheet ([SheetRise])
                 keepAsDraft("replaced by \"${t.name}\"")
                 change { clear(); addAll(pts) }
                 t.waypoints.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }

@@ -48,12 +48,25 @@ class PhoneSetupState(private val prefs: Prefs, private val settingsNow: () -> A
      * the locate button [then] runs when the guide ends and what it needs is there.
      */
     fun openSetup(purpose: com.onpath.app.setup.Purpose, then: (() -> Unit)? = null) {
-        val g = com.onpath.app.setup.SetupGuide.of(purpose, phone, vibrationUsed, prefs.snoozed(System.currentTimeMillis()), voiceUsed)
+        val quiet = com.onpath.app.setup.PhoneCheck.quietBeforeTour(prefs.snoozed(System.currentTimeMillis()), answeredOnce())
+        val g = com.onpath.app.setup.SetupGuide.of(purpose, phone, vibrationUsed, quiet, voiceUsed)
             ?.refresh(phone, vibrationUsed, voiceUsed)
         if (g == null || g.finished && then != null && setupReady(purpose)) { then?.invoke(); return }
         Problems.trace("setup", "Phone setup guide ($purpose): ${g.steps.joinToString()}")
         setupThen = then
         setupGuide = g; voiceTest = null
+    }
+
+    /** The once-only steps the user already answered ([com.onpath.app.setup.PhoneCheck.ONCE_BEFORE_TOUR]). */
+    private fun answeredOnce(): Set<com.onpath.app.setup.CheckId> =
+        if (prefs.brandAnswered) setOf(com.onpath.app.setup.CheckId.BRAND) else emptySet()
+
+    /** A once-only step answered with „Erledigt“ or „Später“, in any guide: never again before a tour. */
+    private fun answered(id: com.onpath.app.setup.CheckId?) {
+        if (id == com.onpath.app.setup.CheckId.BRAND && !prefs.brandAnswered) {
+            prefs.brandAnswered = true
+            Problems.trace("setup", "Brand page answered – not asked before tours any more")
+        }
     }
 
     /** Settings → Phone setup → a row: that one step. */
@@ -73,6 +86,7 @@ class PhoneSetupState(private val prefs: Prefs, private val settingsNow: () -> A
         val id = g.current
         if (id != null && g.purpose == com.onpath.app.setup.Purpose.BEFORE_TOUR &&
             com.onpath.app.setup.PhoneCheck.need(id) != com.onpath.app.setup.Need.REQUIRED) prefs.snooze(id, System.currentTimeMillis())
+        answered(id)
         setupGuide = g.putOff().refresh(phone, vibrationUsed, voiceUsed); voiceTest = null
         finishSetupIfDone()
     }
@@ -121,6 +135,7 @@ class PhoneSetupState(private val prefs: Prefs, private val settingsNow: () -> A
     }
 
     fun setupBrandDone() {
+        answered(com.onpath.app.setup.CheckId.BRAND)
         prefs.brandStepsDone = true
         updatePhone(phone.copy(brandDone = true))
     }

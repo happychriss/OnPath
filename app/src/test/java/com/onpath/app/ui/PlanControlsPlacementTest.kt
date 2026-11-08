@@ -37,4 +37,21 @@ class PlanControlsPlacementTest {
         assertNull(ControlsPlacement.place(top, 900, 830, limit, gap)) // the sheet pulled up to below the band
     }
 
+    /** Owner 2026-11-08: the undo pill never moves the column; under it when it fits, else beside its last button. */
+    @Test fun theUndoPillGoesUnderTheColumnElseBesideIt() {
+        val width = 1080; val end = 42; val colW = 147; val colH = 588; val pillW = 600; val pillH = 126
+        val top = ControlsPlacement.fixedTop(screen, limit)
+        val left = width - end - colW
+        // room above the sheet: right-aligned under the column
+        assertEquals((width - end - pillW) to (top + colH + gap),
+            ControlsPlacement.pill(top, colH, left, pillW, pillH, sheetTopPx = 1900, screenWidthPx = width, gapPx = gap, endPx = end, startPx = end))
+        // a half sheet close under the column: beside it, level with its last button
+        assertEquals((left - gap - pillW) to (top + colH - pillH),
+            ControlsPlacement.pill(top, colH, left, pillW, pillH, sheetTopPx = top + colH + 100, screenWidthPx = width, gapPx = gap, endPx = end, startPx = end))
+        // neither fits (a very wide pill at a large font): not placed
+        assertNull(ControlsPlacement.pill(top, colH, left, 1000, pillH, sheetTopPx = top + colH + 100, screenWidthPx = width,
+            gapPx = gap, endPx = end, startPx = end))
+        // the column's own place does not depend on the pill
+        assertEquals(top, ControlsPlacement.place(top, colH, 1570, limit, gap))
+    }
 }

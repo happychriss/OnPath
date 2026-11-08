@@ -198,8 +198,11 @@ fun DataActions(routingMissing: Boolean, busy: String?, onImport: () -> Unit, on
 
 /**
  * Activity picker (the activity button on the map, owner 2026-11-05): each row = name + one short line
- * ([Activity.line]); ONE tap chooses and closes – no confirm. Hike has its T1–T5 chips (SAC level) right under its row:
- * a chip = Hike with that level, closes; the Hike row itself keeps the last level. Both are remembered across sessions.
+ * ([Activity.line]); ONE tap chooses and closes – no confirm. Hike has its T1–T5 chips (SAC level) right under its row,
+ * and under them the chosen level's name and description ("T2 · Bergwandern: …", owner 2026-11-08, father's feedback:
+ * on a small phone the chips showed only "T1 … T5", and a tap on a T closed at once without saying what it means). A
+ * chip = Hike with that level at once (the route is planned again); the picker stays open so its description can be
+ * read, and "Fertig" closes it. The Hike row itself keeps the last level. Both are remembered across sessions.
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -209,10 +212,13 @@ fun ActivityDialog(
     sac: Int = com.onpath.app.data.LastActivity.DEFAULT_SAC,
     onSac: (Int) -> Unit = {},
 ) {
+    // a T chip chose Hike + a level and the picker stayed open for its description: the way out says "Done"
+    var levelPicked by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        // one tap chooses (owner 2026-11-05): no Done button, only a way out without a change
-        confirmButton = { TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
+        // one tap on an activity chooses (owner 2026-11-05): no Done button, only a way out without a change
+        confirmButton = { TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text(str(if (levelPicked) Res.string.common_done else Res.string.common_cancel)) } },
         title = { Text(str(Res.string.routes_activity_title)) },
         text = {
             Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
@@ -232,17 +238,32 @@ fun ActivityDialog(
                             Text(a.line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    if (a == Activity.HIKE) SacChips(if (sel) sac else 0) { level -> onSelect(Activity.HIKE); onSac(level); onDismiss() }
+                    if (a == Activity.HIKE) SacChips(if (sel) sac else 0) { level -> onSelect(Activity.HIKE); onSac(level); levelPicked = true }
                 }
             }
         },
     )
 }
 
-/** Hike's T1–T5 under its row: one tap = Hike with that level, closes; [selected] 0 = none marked. */
+/**
+ * Hike's T1–T5 under its row: one tap = Hike with that level; [selected] 0 = none marked. Under the chips the selected
+ * level's line "T2 · Bergwandern: …" ([SacScale.line], owner 2026-11-08) – always there while a level is chosen, so a
+ * "T2" never stands without its word, on every phone width and font size (it wraps, never cut).
+ */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun SacChips(selected: Int, onPick: (Int) -> Unit) {
+    androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth()) {
+        SacChipRow(selected, onPick)
+        SacScale.lineLevel(selected)?.let { l ->
+            Text(SacScale.line(l), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 12.dp, end = 4.dp, bottom = 8.dp))
+        }
+    }
+}
+
+@Composable
+private fun SacChipRow(selected: Int, onPick: (Int) -> Unit) {
     // one row of five equal chips (never a lone T5 on a second line)
     Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         SacScale.levels.forEach { l ->
@@ -275,6 +296,12 @@ internal object SacScale {
         Level(5, Res.string.routes_sac_5_name, Res.string.routes_sac_5_text),
     )
     fun of(level: Int): Level = levels[level.coerceIn(1, 5) - 1]
+
+    /** The level whose description stands under the chips: the selected one; none while no level is chosen (0). */
+    fun lineLevel(selected: Int): Int? = selected.takeIf { it in 1..5 }
+
+    /** "T2 · Bergwandern: Durchgehender Weg, …" – the level's number, name and SAC description. */
+    fun line(level: Int): String = of(level).let { Txt.s(Res.string.routes_sac_line, it.level, it.name, it.text) }
 }
 
 // ------------------------------------------------------------------ manage routes

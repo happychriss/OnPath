@@ -182,6 +182,17 @@ object PhoneCheck {
         }
     }
 
+    /**
+     * Steps asked before a tour only until the user answered them once (owner 2026-11-08, father's feedback: the
+     * Samsung page popped up at „Los geht's“): after „Erledigt“ or „Später“ the brand page never comes before a tour
+     * again – the reminder stays only in Settings → Phone setup.
+     */
+    val ONCE_BEFORE_TOUR = setOf(CheckId.BRAND)
+
+    /** What a guide before a tour leaves out: the recently snoozed steps plus the once-only steps already answered. */
+    fun quietBeforeTour(snoozed: Set<CheckId>, answered: Set<CheckId>): Set<CheckId> =
+        snoozed + answered.filter { it in ONCE_BEFORE_TOUR }
+
     /** True when a tour can start: nothing required is missing. */
     fun tourReady(s: PhoneState): Boolean = isOk(CheckId.LOCATION, s) && isOk(CheckId.PRECISE, s) && isOk(CheckId.LOCATION_ON, s)
 

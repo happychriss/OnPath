@@ -150,5 +150,12 @@
     "context": "Date-time pattern (Java SimpleDateFormat), e.g. the name of a new recorded tour 'Tour 26 Oct 2026, 10:12'. Letters are the pattern, not text",
     "priority": 2,
     "confidence": "sicher"
+  },
+  "common_done": {
+    "area": "Common",
+    "context": "Closes the activity picker after a T level was chosen there (owner 2026-11-08: the picker stays open to show the level's description)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 16
   }
 }

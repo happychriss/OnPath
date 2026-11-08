@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -133,8 +134,8 @@ data class CompassSpec(val headingUp: Boolean?, val bearing: Float, val onClick:
  * ONE column card with dividers in both modes (owner 2026-11-03, onpath.private#22 B – Navigate had separate round
  * buttons): Navigate ⚙ · compass · eye · ⛶ · locate (white). Plan (owner 2026-11-06, onpath.private#43 – the column
  * stands at one fixed place, [PlanControlsLayer], and only grows downwards, so no button changes its height): what is
- * always there first, compass · locate, then eye · ⛶ (with a route), then ↶ · ↷ (when there is something to undo /
- * redo) – blue tint.
+ * always there first, compass · locate, then eye · ⛶ (with a route) – blue tint. Undo / redo are no longer in the column
+ * (owner 2026-11-08, father's feedback: ↶ ↷ read as "turn the map"): their own pill with words, [UndoPill].
  */
 @Composable
 fun MapControls(
@@ -147,10 +148,6 @@ fun MapControls(
     peeking: Boolean = false,
     /** "Show whole route" (shown only when there is a line to show, [WholeRoute.shows]). */
     onFitRoute: (() -> Unit)? = null,
-    /** Plan: undo the last edit (null = nothing to undo: the button stays, greyed). */
-    onUndo: (() -> Unit)? = null,
-    /** Plan: redo the last undone edit (null = nothing to redo: the button stays, greyed). */
-    onRedo: (() -> Unit)? = null,
     /** Navigate: the navigation settings on the way – a gear on top of the controls. */
     onSettings: (() -> Unit)? = null,
     /** Plan is blue (owner 2026-11-03): light blue pill, blue icons ([OnPathColors.PlanTint] / [OnPathColors.PlanAccent]). */
@@ -176,14 +173,6 @@ fun MapControls(
         add(str(Res.string.plan_hold_hide_route) to { EyeControl(onPeek, peeking, size, tint, enabled = showEye) })
         add(str(Res.string.plan_show_whole_route) to { IconControl(Icons.Filled.FitScreen, Res.string.plan_show_whole_route,
             onFitRoute ?: {}, size, tint, enabled = onFitRoute != null) })
-        // Plan: undo and redo always there, greyed when there is nothing to undo / redo (owner 2026-11-06: "das gibt
-        // Vertrauen, dass man immer alles neu machen und wiederholen kann") – the column always has the same height
-        if (plan) {
-            add(str(Res.string.plan_undo) to { IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo ?: {}, size, tint,
-                enabled = onUndo != null) })
-            add(str(Res.string.plan_redo) to { IconControl(Icons.AutoMirrored.Filled.Redo, Res.string.plan_redo, onRedo ?: {}, size, tint,
-                enabled = onRedo != null) })
-        }
         if (!plan) add(locate) // Navigate: locate at the bottom, as before
     }
     val items = tips.mapIndexed { i, (text, control) -> @Composable { MapTip(text, i == tipShown) { control() } } }
@@ -198,6 +187,37 @@ fun MapControls(
 }
 
 private fun iconSize(size: Dp): Dp = 28.dp
+
+/**
+ * Plan's undo / redo in their own small pill (owner 2026-11-08, father's feedback: ↶ ↷ in the map column read as "turn
+ * the map"): "↶ Rückgängig | ↷ Wiederholen" – sign and word together, in the plan blue like the column. Shown only while
+ * there is something to undo or redo ([MapControlsEnabled.undoPill]); then both halves are there, the one that cannot act
+ * greyed. It stands under the map column ([PlanControlsLayer] places it), so the column itself never moves.
+ */
+@Composable
+fun UndoPill(onUndo: (() -> Unit)?, onRedo: (() -> Unit)?) {
+    if (onUndo == null && onRedo == null) return
+    val shape = RoundedCornerShape(MAP_FAB / 2)
+    Surface(shape = shape, color = OnPathColors.PlanTint, modifier = Modifier.warmShadow(OnPathShadow.LOW, shape)) {
+        Row(Modifier.height(androidx.compose.foundation.layout.IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
+            UndoHalf(Icons.AutoMirrored.Filled.Undo, str(Res.string.plan_undo), onUndo)
+            androidx.compose.material3.VerticalDivider(Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            UndoHalf(Icons.AutoMirrored.Filled.Redo, str(Res.string.plan_redo), onRedo)
+        }
+    }
+}
+
+@Composable
+private fun UndoHalf(icon: ImageVector, label: String, onClick: (() -> Unit)?) {
+    val tint = MapControlState.tint(OnPathColors.PlanAccent, onClick != null)
+    Row(Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(MAP_FAB / 2))
+        .clickable(enabled = onClick != null, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick ?: {})
+        .padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
+        Text(label, style = MaterialTheme.typography.labelMedium, color = tint, maxLines = 1, softWrap = false,
+            modifier = Modifier.padding(start = 6.dp))
+    }
+}
 
 /**
  * A map control's name on a long press (Material 3 plain tooltip, owner 2026-11-03): the signs alone (eye, ⛶, ↶ ↷)

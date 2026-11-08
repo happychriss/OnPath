@@ -90,7 +90,9 @@ class ScreenshotTest {
                       /** Plan's map controls – at their fixed place (onpath.private#43, PlanControlsLayer), not on the sheet's edge. */
                       controls: @Composable () -> Unit = {
                           MapControls(CompassSpec(null, 0f) {}, showEye = route, onPeek = {}, gps = gps, following = false, onLocate = {},
-                              onFitRoute = if (route) ({}) else null, onUndo = if (route) ({}) else null, plan = true)
+                              onFitRoute = if (route) ({}) else null, plan = true)
+                          // undo / redo in their own pill, only while there is something to undo (owner 2026-11-08)
+                          if (route) UndoPill(onUndo = {}, onRedo = null)
                       },
                       menu: PlanMenu = PlanMenu(onUpdates = {}),
                       /** "Plan ändern" during a tour: the mode label and the blue position sign in the map's middle. */
@@ -256,7 +258,8 @@ class ScreenshotTest {
     fun planLocateFar() = paparazzi.snapshot {
         Frame(controls = {
             MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false, onLocate = {},
-                onFitRoute = {}, onUndo = {}, plan = true, locateLabel = "790 km")
+                onFitRoute = {}, plan = true, locateLabel = "790 km")
+            UndoPill(onUndo = {}, onRedo = null)
         }) { PlanPanel(planUi(), PlanCallbacks()) }
     }
 
@@ -288,7 +291,8 @@ class ScreenshotTest {
         Frame(controls = {
             run {
                 MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false, plan = true,
-                    onLocate = {}, onFitRoute = {}, onUndo = {}, tipShown = 2) // Plan order: compass · locate · eye (2) · …
+                    onLocate = {}, onFitRoute = {}, tipShown = 2) // Plan order: compass · locate · eye (2) · …
+                UndoPill(onUndo = {}, onRedo = null)
             }
         }) { PlanPanel(planUi(), PlanCallbacks()) }
     }
@@ -298,7 +302,8 @@ class ScreenshotTest {
         Frame(controls = {
             run {
                 MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false, plan = true,
-                    onLocate = {}, onFitRoute = {}, onUndo = {})
+                    onLocate = {}, onFitRoute = {})
+                UndoPill(onUndo = {}, onRedo = null)
             }
         }) { PlanPanel(planUi(), PlanCallbacks()) }
     }
@@ -334,7 +339,8 @@ class ScreenshotTest {
         Frame(controls = {
             run {
                 MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false, plan = true,
-                    onLocate = {}, onUndo = {})
+                    onLocate = {})
+                UndoPill(onUndo = {}, onRedo = null)
             }
         }) { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) }
     }
@@ -343,7 +349,8 @@ class ScreenshotTest {
     @Test fun planPointsFullCollapsedControls() = paparazzi.snapshot {
         Frame(controls = {
             run {
-                MapControls(null, showEye = false, onPeek = {}, gps = GpsStatus.GOOD, following = false, onLocate = {}, onUndo = {}, onRedo = {}, plan = true)
+                MapControls(null, showEye = false, onPeek = {}, gps = GpsStatus.GOOD, following = false, onLocate = {}, plan = true)
+                UndoPill(onUndo = {}, onRedo = {})
             }
         }) { PlanPanel(planWithPoints(PlanSize.FULL), PlanCallbacks()) }
     }
@@ -465,7 +472,7 @@ class ScreenshotTest {
         Box(Modifier.fillMaxSize()) {
             // [sync] is built inside the composition: its texts follow the test's language
             // Save route is the top item whenever there is a plan; [unsaved] = the "Nicht gespeichert ›" sign
-            val menu = PlanMenu(state, onUpdates = {}, onPairBrowser = {}, onPhoneSetup = if (phoneSetup) ({}) else null,
+            val menu = PlanMenu(state, onUpdates = {}, onPairBrowser = {}, onPhoneSetup = if (phoneSetup) ({}) else null, onHelp = {},
                 sync = sync?.invoke() ?: SyncMenuUi(), onSaveRoute = if (state.save) ({}) else null,
                 // owner 2026-11-06: "Neu planen" with a plan, "Nur aufzeichnen" while no tour runs
                 onNewPlan = if (newPlan) ({}) else null, onRecordWithoutPlan = if (record) ({}) else null)

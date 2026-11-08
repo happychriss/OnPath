@@ -149,12 +149,14 @@ fun MapScreen(
                     gps = gps, following = vm.followMe, onLocate = onLocate,
                     locateGreyed = PlanGps.locateGreyed(mode == AppMode.PLAN, gps, hasFix),
                     locateLabel = if (mode == AppMode.PLAN) locateLabel else null,
-                    onUndo = if (MapControlsEnabled.undo(ctl)) vm::undoStep else null,
-                    onRedo = if (MapControlsEnabled.redo(ctl)) vm::redoStep else null,
                     onSettings = if (mode == AppMode.NAVIGATE) vm::openSettingsOnTheWay else null,
                     plan = mode == AppMode.PLAN, // Plan is blue (owner 2026-11-03), Navigate unchanged
                 )
             }
+            // Plan: undo / redo in their own pill under the column, only while one of them can act (owner 2026-11-08)
+            if (mode == AppMode.PLAN && MapControlsEnabled.undoPill(ctl)) UndoPill(
+                onUndo = if (MapControlsEnabled.undo(ctl)) vm::undoStep else null,
+                onRedo = if (MapControlsEnabled.redo(ctl)) vm::redoStep else null)
     }
     // Navigate: scale, © and the controls above the slider as before. Plan (owner 2026-11-06, onpath.private#43): scale
     // and © stay on the sheet's edge, the controls stand at one fixed place (PlanControlsLayer in PlanMode)
@@ -343,6 +345,7 @@ private fun PlanMode(
     onRequestLocation: () -> Unit, pairCamera: (String) -> Unit, onActivity: () -> Unit, onEndTour: () -> Unit,
     onPanelHeight: (Int) -> Unit, onActivityBox: (right: Int, bottom: Int) -> Unit = { _, _ -> },
 ) {
+    val helpContext = androidx.compose.ui.platform.LocalContext.current
     Box(Modifier.fillMaxSize()) {
         // the paper band behind the search pill and ☰ (owner 2026-11-05 b; paper since 2026-11-06 variant C – no blue
         // surfaces, no blue glow round the screen): from the screen's top edge (status bar) to the bar's bottom; during a
@@ -376,6 +379,8 @@ private fun PlanMode(
                     vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.startNavigation(recordOnly = true) } }) else null,
                 // no "Check for updates" in the ☰ menu – Settings has the Updates section (owner)
                 onUpdates = null,
+                // owner 2026-11-08 (father's feedback): "? Hilfe" first – the website's help in the app language
+                onHelp = { OnPathLinks.open(helpContext, OnPathLinks.help()) },
             ),
             modifier = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding(),
             editing = rec != null,

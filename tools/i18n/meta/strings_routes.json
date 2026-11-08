@@ -455,5 +455,11 @@
     "context": "Small grey line while the map picture of the overview is drawn (the route shape is already shown).",
     "priority": 3,
     "confidence": "sicher"
+  },
+  "routes_sac_line": {
+    "area": "Activity picker",
+    "context": "Under the T1–T5 chips (owner 2026-11-08): the chosen level's name and description; %1$d = level, %2$s = SAC name, %3$s = SAC description",
+    "priority": 1,
+    "confidence": "sicher"
   }
 }

@@ -81,10 +81,6 @@
         <item quantity="one">%1$d Punkt für Touren nötig</item>
         <item quantity="other">%1$d Punkte für Touren nötig</item>
     </plurals>
-    <plurals name="settings_sum_phone_recommended">
-        <item quantity="one">%1$d empfohlen</item>
-        <item quantity="other">%1$d empfohlen</item>
-    </plurals>
     <string name="setup_voice_title">Sprachansagen</string>
     <string name="setup_voice_why">Auf einer Tour sagt OnPath rechtzeitig an, wo du abbiegst – nur wo du dich vertun könntest. Geht auch ohne Internet.</string>
     <string name="setup_voice_do">Stell den Ton laut und tippe auf Testen.</string>
@@ -107,4 +103,10 @@
     <string name="setup_voice_test_call">Während eines Telefonats bleibt die Stimme still. Teste nach dem Gespräch nochmal.</string>
     <string name="setup_voice_test_failed">Die Sprachausgabe hat den Satz nicht abgespielt (Fehler %1$s). Teste nochmal – bleibt sie still, wähle in den Einstellungen der Sprachausgabe eine andere.</string>
     <string name="setup_voice_test_silent">Die Sprachausgabe hat den Satz angenommen, aber nicht gesprochen. Teste nochmal – bleibt sie still, wähle in den Einstellungen der Sprachausgabe eine andere.</string>
+    <string name="setup_brand_short">Damit %1$s die Aufzeichnung unterwegs nicht stoppt, erlaube OnPath in den App-Einstellungen, ohne Akku-Einschränkung zu laufen.</string>
+    <string name="setup_more_info">Mehr Infos ›</string>
+    <plurals name="settings_sum_phone_open">
+        <item quantity="one">%1$d Schritt offen</item>
+        <item quantity="other">%1$d Schritte offen</item>
+    </plurals>
 </resources>
