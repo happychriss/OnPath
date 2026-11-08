@@ -26,6 +26,11 @@ paths:
   emulator; red = no release) only when the owner asks or when a release changes navigation / recording core logic. Nobody
   waits for the push E2E run. Flows: `docs/release-rundgang.md`; every field bug adds one.
 - The app (Settings → Updates, plus a quiet daily check) installs new releases via `update/AppUpdater.kt`.
+- **After every release, donald takes the website pictures** (owner 2026-11-08: donald makes the pictures, the
+  website only builds them in). Run `tools/dev/pictures_affected.sh vPREV..vNEW`, then retake the steps where a viewer
+  sees a change, with `tools/dev/website_shot.sh` (DE + EN). Put the PNGs in `onpath.private/marketing/bilder/aktuell/`
+  with a line each in `liste.md`, then add a "For the roles" line → [cloud-web] naming the steps. Do this unasked.
+  Agreement and history: `docs/design/website-screens.md` "Refresh after an app change".
 
 ## The gate in detail
 - **Agents gate a push with `tools/ci/gate.sh`** (not the full suite): tests picked from the files changed vs origin/main
