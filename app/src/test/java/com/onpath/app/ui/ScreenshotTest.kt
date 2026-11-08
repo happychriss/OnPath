@@ -761,18 +761,22 @@ class ScreenshotTest {
     fun navigateActionsOpen() = paparazzi.snapshot { NavFrame(navUi, actions = true) }
 
     /**
-     * Stopped inside the unlock window (owner 2026-11-07: one held Anhalten opens the bar for 20 s): "■ Tour beenden"
-     * and "✎ Planen" in full colour on a plain tap, "▶ Weiter" stays a light held button (10:15 – a stray tap never resumes;
-     * [com.onpath.app.domain.tour.UnlockWindow.needsHold]).
+     * Stopped inside the unlock window (owner 2026-11-07: one held Anhalten opens the bar, 10 s since 2026-11-08): pale =
+     * hold, strong = tap – green "▶ Weiter", dark green "■ Tour beenden", blue "✎ Planen", all on a plain tap
+     * ([com.onpath.app.domain.tour.UnlockWindow.needsHold]).
      */
     fun navigatePausedOpen() = paparazzi.snapshot { NavFrame(pausedUi, actions = true) }
 
     /**
      * Locked and stopped (owner 2026-11-07, "Anhalten" variant 5): the card's head "⏸ Angehalten seit 14:32 –
      * Aufzeichnung und Navigation ruhen", a thin line, the numbers, "Bisher 5,3 km · in Bewegung 1:12"; at the bottom the
-     * light held buttons "▶ Weiter" over "■ Tour beenden | ✎ Planen" (EN in one row).
+     * pale held buttons "▶ Weiter" (pale green too, owner 2026-11-08) over "■ Tour beenden | ✎ Planen" (EN in one row).
      */
     @Test fun navigatePausedLocked() = paparazzi.snapshot { NavFrame(pausedUi) }
+    /** Stopped as on a phone – with the arrival clock ([StatusCardPhoneScreenshotTest]). */
+    fun navigatePausedLockedArrive() = paparazzi.snapshot { NavFrame(pausedUi.copy(arriveAt = "16:40")) }
+    /** Moving, with the arrival clock ([StatusCardPhoneScreenshotTest]). */
+    fun navigateArrive() = paparazzi.snapshot { NavFrame(navUi.copy(arriveAt = "16:40")) }
 
     /**
      * Locked, right after a short tap on "Anhalten" (owner 2026-11-07, 09:30): "Gedrückt halten" in a strong walnut pill

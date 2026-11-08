@@ -41,8 +41,10 @@ One colour = one kind of action, so the hand finds it the second time by colour:
 - **red = stop** – end the process you are in (end the recording, clear the plan to start anew) (`ActionStop`).
 
 Today (owner 2026-11-07, "Anhalten" variant 5): Navigate's one bottom bar green "⏸ Anhalten" | blue "✎ Planen"; stopped green
-filled "▶ Weiter" (the widest) · light green "■ Tour beenden" · light blue "✎ Planen", icons and words together, 56 dp; the
-stop is said in the status card ("⏸ Angehalten seit 14:32"), not in a band – no red at the stop (#27).
+"▶ Weiter" (the widest) · dark green #0D3A27 "■ Tour beenden" · blue "✎ Planen", icons and words together, 56 dp; the
+stop is said in the status card ("⏸ Angehalten seit 14:32"), not in a band – no red at the stop (#27). The hold lock (owner
+2026-11-08): **pale = hold, strong = tap**, one rule for every button – locked all pale (light green / light blue, dark
+words), held the band fills in the strong colour; inside the 10 s window and with the lock off all strong, white words.
 First user: the bar the Navigate slider unlocks (`ui/TourActionBar.kt`, onpath.private#17 = C compact) – green Pause /
 Resume, blue Change route, red End, white words, the plain signs ⏸ (▶ paused) / ✎ / ■ (owner 2026-11-02: the
 track-line icons did not please), ≈ 1.5× the slider; no ✕ – a tap on the map or Android's back closes it (owner 2026-11-02).

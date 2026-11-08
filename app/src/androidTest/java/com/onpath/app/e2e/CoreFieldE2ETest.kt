@@ -11,6 +11,7 @@ import com.onpath.strings.common_ok
 import com.onpath.strings.common_resume
 import com.onpath.strings.nav_action_pause
 import com.onpath.strings.nav_end_tour
+import com.onpath.strings.nav_change_plan
 import com.onpath.strings.nav_end_tour_title
 import com.onpath.strings.nav_arrived_title
 import com.onpath.strings.nav_keep_recording
@@ -1138,7 +1139,7 @@ class CoreFieldE2ETest : E2EBase() {
         // animations off and the band was a tween, full on its first frame – "Held button fired" 50 ms after a 21 ms tap.
         // The band now fills by the frame clock (HoldRule.fill, HoldFillTest); this test runs with animations off on CI.
         val holdMs = com.onpath.app.data.HoldSetting.MAX_MS
-        UnlockWindow.openMsForTests = 1_500 // the 20 s unlock window, short – no test waits 20 s
+        UnlockWindow.openMsForTests = 1_500 // the 10 s unlock window, short – no test waits 10 s
         scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
         try {
             startPlanWithTwoPoints()
@@ -1168,14 +1169,26 @@ class CoreFieldE2ETest : E2EBase() {
             waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
             assertNotNull("the stopped head in the card",
                 findFresh(By.textStartsWith(Txt.s(Res.string.nav_status_paused)), 5_000))
-            // the unlock window (owner 2026-11-07, 20 s; here 1.5 s) is over: the bar is locked again. Checked by its look,
-            // not by another tap: a held button carries its word as a description, an open one as plain text – Beenden
-            // (Weiter is held in the window too, so it tells nothing here)
+            // the unlock window (owner 2026-11-08, 10 s; here 1.5 s) is over: the bar is locked again. Checked by its look,
+            // not by another tap: a held button carries its word as a description, an open one as plain text
             val end = Txt.s(Res.string.nav_end_tour)
-            waitUntil("locked again after the window: Tour beenden is a held button", UnlockWindow.openMs + 10_000) {
-                findFresh(By.desc(end), 500) != null && findFresh(By.text(end), 500) == null
+            val resumeWord = Txt.s(Res.string.common_resume)
+            waitUntil("locked again after the window: Tour beenden and Weiter are held buttons", UnlockWindow.openMs + 10_000) {
+                findFresh(By.desc(end), 500) != null && findFresh(By.text(end), 500) == null &&
+                    findFresh(By.desc(resumeWord), 500) != null && findFresh(By.text(resumeWord), 500) == null
             }
-            assertTrue("still paused", com.onpath.app.recording.RecordingService.state.value?.paused == true)
+            // outside the window a tap on Weiter does nothing but show the hint (pale = hold)
+            var resumeHint: androidx.test.uiautomator.UiObject2? = null
+            for (attempt in 1..3) {
+                val resume = findFresh(By.desc(resumeWord), 5_000)
+                assertNotNull("Weiter is a held button outside the window (short tap $attempt)", resume)
+                quickTap(resume) // a real short tap – UiAutomator's click() became a hold on a loaded CI emulator
+                resumeHint = findFresh(By.text(Txt.s(Res.string.nav_hold_hint)), 3_000)
+                if (resumeHint != null) break
+            }
+            assertNotNull("a short tap on Weiter outside the window shows the hint", resumeHint)
+            Thread.sleep(1_000)
+            assertTrue("a short tap on Weiter outside the window does not resume", com.onpath.app.recording.RecordingService.state.value?.paused == true)
             holdButton(Txt.s(Res.string.nav_end_tour), ms = holdMs + 1_000)
             assertNotNull("the end sheet", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())
@@ -1186,38 +1199,56 @@ class CoreFieldE2ETest : E2EBase() {
     }
 
     /**
-     * Owner 2026-11-07 09:05 ("nur einmal entriegeln"): one held Pause unlocks the bar – Beenden then acts on a plain
-     * tap (no second hold) and opens the end sheet, which still asks.
+     * Owner 2026-11-07 09:05 ("nur einmal entriegeln") and 2026-11-08 ("pale = hold, strong = tap", one rule everywhere):
+     * one held Anhalten opens the bar – Weiter then resumes on a plain tap and the moving bar is locked at once; Planen on a
+     * tap goes to Plan and "Weiter geht's" comes back locked; a held Weiter resumes and locks too; Beenden on a plain tap in
+     * the window opens the end sheet, which still asks.
      */
-    @Test fun lockOnOneHoldUnlocksTheBarForAPlainTapOnBeenden() {
+    @Test fun lockOnOneHoldOpensTheBarWeiterOnATapLocksAgain() {
         var before: com.onpath.app.data.AppSettings? = null
         val holdMs = com.onpath.app.data.HoldSetting.MAX_MS // see lockOnHoldPauseThenHoldEnd (a short tap on Weiter resumed: HoldFillTest)
-        // the window long: this test checks that ONE hold opens the bar for a plain tap, not the window's length
-        // (UnlockWindowTest) – a loaded GitHub emulator took 13 s from the fired hold to the next step (run 42363890364)
+        // the window long: this test checks what ONE hold opens, not the window's length (UnlockWindowTest) – a loaded
+        // GitHub emulator took 13 s from the fired hold to the next step (run 42363890364)
         UnlockWindow.openMsForTests = 60_000
         scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
+        val pauseWord = Txt.s(Res.string.nav_action_pause)
+        val resumeWord = Txt.s(Res.string.common_resume)
+        val endWord = Txt.s(Res.string.nav_end_tour)
+        val planWord = Txt.s(Res.string.nav_change_plan)
+        fun paused() = com.onpath.app.recording.RecordingService.state.value?.paused == true
+        // a held (pale) button carries its word as a description, a tap (strong) one as plain text
+        fun lockedLook(word: String) = findFresh(By.desc(word), 500) != null && findFresh(By.text(word), 500) == null
         try {
             startPlanWithTwoPoints()
             routeSettled()
             scenario.onActivity { vm(it).startNavigation(force = true) }
             waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
-            assertNotNull("locked: Anhalten at the bottom", findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 10_000))
-            holdButton(Txt.s(Res.string.nav_action_pause), ms = holdMs + 1_000)
-            waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
-            // the bar is open now – but "Weiter" still wants a hold (owner 10:15): a short tap shows the hint, no resume
-            var hint: androidx.test.uiautomator.UiObject2? = null
-            for (attempt in 1..3) {
-                val resume = findFresh(By.desc(Txt.s(Res.string.common_resume)), 5_000)
-                assertNotNull("Weiter is still a held button in the window (short tap $attempt)", resume)
-                quickTap(resume) // a real short tap – UiAutomator's click() became a hold on a loaded CI emulator
-                hint = findFresh(By.text(Txt.s(Res.string.nav_hold_hint)), 3_000)
-                if (hint != null) break
+            assertNotNull("locked: Anhalten at the bottom", findFresh(By.desc(pauseWord), 10_000))
+            // 1 held Anhalten → stopped, the bar open: Weiter is a plain button – a tap resumes
+            holdButton(pauseWord, ms = holdMs + 1_000)
+            waitUntil("paused", 10_000) { paused() }
+            assertNotNull("Weiter is a plain (strong) button in the window", findFresh(By.text(resumeWord), 5_000))
+            clickText(resumeWord)
+            waitUntil("resumed by a tap on Weiter in the window", 10_000) { !paused() }
+            waitUntil("locked at once after Weiter: Anhalten is a held button", 5_000) { lockedLook(pauseWord) }
+            // 2 held Anhalten again → a tap on Planen goes to Plan; back with "Weiter geht's" the bar is locked
+            holdButton(pauseWord, ms = holdMs + 1_000)
+            waitUntil("paused again", 10_000) { paused() }
+            clickText(planWord)
+            waitUntil("Plan", 10_000) { mode() == AppMode.PLAN }
+            scenario.onActivity { vm(it).continueNavigation(force = true) }
+            waitUntil("back in Navigate", 10_000) { mode() == AppMode.NAVIGATE }
+            waitUntil("back from Plan the bar is locked: Weiter and Tour beenden held", 5_000) {
+                lockedLook(resumeWord) && lockedLook(endWord)
             }
-            assertNotNull("a short tap on Weiter shows the hint", hint)
-            Thread.sleep(1_000)
-            assertTrue("a short tap on Weiter never resumes", com.onpath.app.recording.RecordingService.state.value?.paused == true)
-            // Beenden is a plain button with its text in the window – a tap, no hold
-            clickText(Txt.s(Res.string.nav_end_tour))
+            // 3 a held Weiter resumes and leaves the moving bar locked too (no window after it)
+            holdButton(resumeWord, ms = holdMs + 1_000)
+            waitUntil("resumed by a held Weiter", 10_000) { !paused() }
+            waitUntil("locked after a held Weiter: Anhalten is a held button", 5_000) { lockedLook(pauseWord) }
+            // 4 held Anhalten → Beenden is a plain button in the window – a tap, no hold
+            holdButton(pauseWord, ms = holdMs + 1_000)
+            waitUntil("paused once more", 10_000) { paused() }
+            clickText(endWord)
             assertNotNull("the end sheet after a plain tap", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())
         } finally {

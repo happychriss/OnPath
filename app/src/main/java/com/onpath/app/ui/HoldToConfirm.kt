@@ -106,7 +106,7 @@ object HoldRule {
 /** The hold time the bar's [HoldButton]s use (Settings → Navigation, provided by Navigate; screenshot tests: the default). */
 val LocalHoldMs = androidx.compose.runtime.compositionLocalOf { HoldRule.HOLD_MS }
 
-/** Told when a held button fired; nothing by default. */
+/** Told when a held button fired, just before its action runs; nothing by default. */
 val LocalOnHoldFired = androidx.compose.runtime.staticCompositionLocalOf<() -> Unit> { {} }
 
 /**
@@ -153,8 +153,8 @@ fun HoldButton(
                         HoldRule.fill(band.value, holdMs) { band.snapTo(it) }
                         fired = true
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        learnt() // first: the unlock window opens – then the action, which may shut it again ("Weiter")
                         fire()
-                        learnt()
                     }
                     waitForUpOrCancellation()
                     if (!fired && HoldRule.release(band.value) == HoldRule.Release.BACK_WITH_HINT) {

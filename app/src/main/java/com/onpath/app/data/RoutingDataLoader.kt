@@ -83,6 +83,12 @@ class RoutingDataLoader(
         { n, d, p, c -> fetch(store, n, d, p, c) },
     /** Size of [name] on the server (network; null = unknown). Asked once per key before loading. */
     private val remoteSize: (String) -> Long? = { n -> Rd5Parts.Part.parse(n)?.let { store.remoteSize(it) } },
+    /**
+     * The storage of [segmentsDir] (field 2026-11-08: not readable for about a minute after a phone restart – every part
+     * then looks missing). Until it is ready nothing is downloaded; then the parts found on the phone are reported
+     * installed ([onInstalled], the plan is computed again) and only the really missing ones load.
+     */
+    private val storage: StorageGate = StorageGate.ALWAYS,
 ) {
     enum class Phase { LOADING, OFFLINE, WIFI, FAILED }
 
@@ -224,6 +230,7 @@ class RoutingDataLoader(
     }
 
     private fun start() {
+        if (!storage.ready()) { waitForStorage(); return }
         val ph = when {
             !network.connected() -> Phase.OFFLINE
             wifiOnly() && !wifiOverride && !network.unmetered() -> Phase.WIFI
@@ -236,6 +243,27 @@ class RoutingDataLoader(
         }
         onChange()
         if (go) launch { runQueue() }
+    }
+
+    @Volatile private var waitingForStorage = false
+
+    private fun waitForStorage() {
+        synchronized(lock) { if (waitingForStorage) return; waitingForStorage = true }
+        Problems.info("routing", "Routing data waits for the storage (not ready yet); nothing is downloaded meanwhile")
+        storage.whenReady { storageReady() }
+    }
+
+    /** The storage is readable now: parts that were only unreadable are reported, the really missing ones load. */
+    private fun storageReady() {
+        synchronized(lock) { waitingForStorage = false }
+        val here = synchronized(lock) { wanted.toList() }.filter { exists(it) }
+        if (here.isNotEmpty()) {
+            synchronized(lock) { wanted.removeAll(here.toSet()); corridorOnly.removeAll(here.toSet()); if (wanted.isEmpty()) phase = null }
+            Problems.info("routing", "Storage ready: routing data ${here.joinToString()} was on the phone (not loaded again)")
+            onChange()
+            onInstalled(here)
+        }
+        retry(force = true)
     }
 
     /**

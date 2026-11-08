@@ -127,17 +127,19 @@ private fun HoldLabel(icon: ImageVector?, text: String?, color: Color, compact: 
  * https://claude.ai/artifact/VhoxV9qrd4nNfz9FzgAULi): the status card carries no buttons; at the bottom green
  * "⏸ Anhalten" | blue "✎ Planen" (56 dp, equally wide; owner 2026-11-07: "Anhalten" says both – pause and end).
  * Stopped (owner 2026-11-07, variant 3 of the "Anhalten" sketch): no band of its own – the status card says
- * "⏸ Angehalten seit 14:32" ([StoppedText]) – and three same-built buttons with icons: green filled "▶ Weiter" (the
- * widest), light green "■ Tour beenden" (asks first: the end sheet), light blue "✎ Planen"; one row where it fits, else
- * Weiter full width over the other two, a large font stacks all three ([TourBottomBarRules]) – never a cut word. Locked
- * ([hold], owner 2026-11-06 22:20, variant A of https://claude.ai/artifact/3noAFaW5cjWVYBDHReLUrN): the same buttons
- * light, each fires only when held ~1 s ([HoldButton]); the lock off: a plain tap.
+ * "⏸ Angehalten seit 14:32" ([StoppedText]) – and three same-built buttons with icons: green "▶ Weiter" (the widest),
+ * dark green "■ Tour beenden" (asks first: the end sheet; never red – red is only for delete), blue "✎ Planen"; one row
+ * where it fits, else Weiter full width over the other two, a large font stacks all three ([TourBottomBarRules]) – never
+ * a cut word. One rule everywhere (owner 2026-11-08): **pale = hold, strong = tap**. Locked ([hold], owner 2026-11-06
+ * 22:20, variant A of https://claude.ai/artifact/3noAFaW5cjWVYBDHReLUrN): every button pale, each fires only when held
+ * ~1 s ([HoldButton]; the band fills in its strong colour); inside the unlock window ([windowOpen]) and with the lock off
+ * every button strong on a plain tap.
  */
 @Composable
 fun TourBottomBar(paused: Boolean, onPause: (Boolean) -> Unit, onEnd: () -> Unit, onPlan: () -> Unit, modifier: Modifier = Modifier,
                   hold: Boolean = false, windowOpen: Boolean = false) {
-    // per button ([UnlockWindow.needsHold], owner 2026-11-07): inside the 20 s window after a fired hold everything is a
-    // tap but "Weiter" – resuming always wants a hold while the lock is on ([hold])
+    // per button ([UnlockWindow.needsHold], owner 2026-11-08): inside the 10 s window after a fired hold every button is a
+    // tap, "Weiter" too; outside it every button wants a hold while the lock is on ([hold])
     val held = { b: UnlockWindow.BarButton -> UnlockWindow.needsHold(b, hold, windowOpen) }
     val shown = if (paused) listOf(UnlockWindow.BarButton.RESUME, UnlockWindow.BarButton.END, UnlockWindow.BarButton.PLAN)
         else listOf(UnlockWindow.BarButton.PAUSE, UnlockWindow.BarButton.PLAN)
@@ -199,26 +201,25 @@ private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd:
         } else {
             // stopped (owner 2026-11-07, "Anhalten" variant 5): ▶ Weiter · ■ Tour beenden · ✎ Planen, icons and words together,
             // a compact label (20 dp icon, 6 dp gap, 10 dp sides) so more fits in one row; today's 56 dp
-            val one = @Composable { word: String, icon: ImageVector, filled: Color, light: Color, onLight: Color, solid: Boolean,
+            // pale = hold, strong = tap (owner 2026-11-08): held – the light ground, the band fills in the strong colour;
+            // a tap – the strong colour with white words
+            val one = @Composable { word: String, icon: ImageVector, strong: Color, light: Color, onLight: Color,
                                    hold: Boolean, act: () -> Unit, m: Modifier ->
-                // solid (Weiter): green ground, a dark green band while held; tonal: light ground, the full colour while held
-                val ground = if (solid) filled else light
-                val words = if (solid) OnPathColors.CardWhite else onLight
-                if (hold) HoldButton(word, if (solid) TourActions.OnGoTonal else filled, ground, words, act, hintOr, m.height(56.dp)) { c ->
+                if (hold) HoldButton(word, strong, light, onLight, act, hintOr, m.height(56.dp)) { c ->
                     HoldLabel(icon, word, c, compact = true) }
-                else Button(onClick = act, colors = ButtonDefaults.buttonColors(containerColor = ground, contentColor = words),
+                else Button(onClick = act, colors = ButtonDefaults.buttonColors(containerColor = strong, contentColor = OnPathColors.CardWhite),
                     contentPadding = PaddingValues(horizontal = 10.dp), modifier = m.heightIn(min = 56.dp)) {
                     Icon(icon, null, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(6.dp))
                     Text(word, style = style, maxLines = 1, softWrap = false)
                 }
             }
             val resume = @Composable { m: Modifier -> one(resumeWord, Icons.Filled.PlayArrow, OnPathColors.ActionGo, TourActions.GoTonal,
-                TourActions.OnGoTonal, true, held(UnlockWindow.BarButton.RESUME), { onPause(false) }, m) }
+                TourActions.OnGoTonal, held(UnlockWindow.BarButton.RESUME), { onPause(false) }, m) }
             // ■ the square "stop" of every recorder – the flag is the route's destination everywhere in OnPath
-            val end = @Composable { m: Modifier -> one(endWord, Icons.Filled.Stop, OnPathColors.ActionGo, TourActions.GoTonal,
-                TourActions.OnGoTonal, false, held(UnlockWindow.BarButton.END), onEnd, m) }
+            val end = @Composable { m: Modifier -> one(endWord, Icons.Filled.Stop, TourActions.EndStrong, TourActions.GoTonal,
+                TourActions.OnGoTonal, held(UnlockWindow.BarButton.END), onEnd, m) }
             val plan = @Composable { m: Modifier -> one(planWord, Icons.Filled.Edit, OnPathColors.ActionEdit, TourActions.EditTonal,
-                TourActions.OnEditTonal, false, held(UnlockWindow.BarButton.PLAN), onPlan, m) }
+                TourActions.OnEditTonal, held(UnlockWindow.BarButton.PLAN), onPlan, m) }
             val side = TourBottomBarRules.stoppedSide(w(endWord), w(planWord))
             when (TourBottomBarRules.stopped(TourBottomBarRules.stoppedNeed(w(resumeWord)), side, width, density.fontScale)) {
                 TourBottomBarRules.Stopped.ONE_ROW -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -270,6 +271,8 @@ object TourActions {
     /** Anhalten's light green and its dark green words (≥ 7:1). */
     val GoTonal = Color(0xFFD5EADF)
     val OnGoTonal = Color(0xFF0D3A27)
+    /** "Tour beenden"'s strong tone (a tap; owner 2026-11-08, variant 2): the dark green of its pale button's words. */
+    val EndStrong = OnGoTonal
     /** Planen's light blue while locked and its dark blue words (≥ 7:1; owner 2026-11-06, variant A of the hold lock). */
     val EditTonal = OnPathColors.EditTonal
     val OnEditTonal = OnPathColors.OnEditTonal
