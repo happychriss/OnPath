@@ -39,7 +39,8 @@ and the commit history.
   is gone. Wanted: the POI keeps its coloured symbol and gets a blue ring around it – you see it belongs to the route
   and still see what kind of POI it is (owner: a ring in the POI's own colour or another look is fine too). App first,
   the planner follows (parity). Captain's sketches – today + A blue ring · B ring in POI colour · C point with a name
-  tag: https://claude.ai/artifact/JYTg9Dqw9WvboLF2QEeveE – the owner picks one before building.
+  tag: https://claude.ai/artifact/JYTg9Dqw9WvboLF2QEeveE – **owner chose A (2026-11-10):** POI symbol stays, ring in
+  route blue, small numbered badge top right. Ready to build.
 - **[laptop] Planner: undo / redo like the app's (app MapFooter 2026-11-08, father's feedback: ↶ ↷ read as „turn the map“)** – the
   app took them out of the map column: two round buttons under it, only while something can be undone / redone. The planner
   keeps ↶ ↷ in its top toolbar (always, greyed, tooltips „Rückgängig“ / „Wiederholen“) – decide with the owner whether the
