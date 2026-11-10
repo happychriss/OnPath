@@ -34,6 +34,10 @@ and the commit history.
 - [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
+- **[laptop] A POI that becomes a route point stays visible (owner 2026-11-10, chat; for when the laptop is back)** –
+  today marking a POI (e.g. a restaurant) as a point in Plan or Navigate puts the blue point on top and the POI symbol
+  is gone. Wanted: the POI keeps its coloured symbol and gets a blue ring around it – you see it belongs to the route
+  and still see what kind of POI it is. App first, the planner follows (parity). Sketch to the owner before building.
 - **[laptop] Planner: undo / redo like the app's (app MapFooter 2026-11-08, father's feedback: ↶ ↷ read as „turn the map“)** – the
   app took them out of the map column: two round buttons under it, only while something can be undone / redone. The planner
   keeps ↶ ↷ in its top toolbar (always, greyed, tooltips „Rückgängig“ / „Wiederholen“) – decide with the owner whether the
