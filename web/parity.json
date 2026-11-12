@@ -16,7 +16,7 @@
         "web/app/src/main.ts",
         "web/app/src/menus.ts"
       ],
-      "blob": "cc8ed3aaaea5b343477cf5f4363a4eeb9e766b0d"
+      "blob": "67a16842b16401e9d67b3bf8c70c2fb7021de229"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanStatus.kt",
@@ -66,7 +66,7 @@
         "web/app/src/position.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "5a70379f2140e076d63d45f29b004dd256a61c21"
+      "blob": "c73a5ec6463e4ef77d62aa2679b4c95e077c4d3a"
     },
     {
       "app": "app/src/main/java/com/onpath/app/recording/LocationTracker.kt",
