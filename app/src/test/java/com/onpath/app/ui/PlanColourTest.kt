@@ -29,6 +29,12 @@ class PlanColourTest {
         assertEquals(OnPathColors.PaperDeep, PillBlueLight)
     }
 
+    /** "▶ Los geht's" is plan blue while one plans (owner 2026-11-12, variant F), white on it ≥ 7:1 (7.1:1). */
+    @Test fun startButtonIsPlanBlue() {
+        assertEquals(OnPathColors.ActionEdit, PlanFoot.GO_FILL)
+        assertTrue(contrast(OnPathColors.CardWhite, PlanFoot.GO_FILL) >= 7.0)
+    }
+
     /**
      * What floats over the map is the website's light sage (owner 2026-11-12: "nimm das leichte Grün auch für die
      * Planseite"): readable for every word on it, the pill row one step deeper, cards and menus still paper.

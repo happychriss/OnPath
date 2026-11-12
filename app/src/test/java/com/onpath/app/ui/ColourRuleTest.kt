@@ -27,7 +27,10 @@ class ColourRuleTest {
     /** Every button that goes to the navigation names its green – it no longer comes from the theme. */
     @Test fun buttonsToTheNavigationAreGreen() {
         val panel = src("ui/PlanPanel.kt")
-        assertTrue("Los geht's (the sheet's foot, every step)", Regex("Button\\(colors = ActionButtons\\.go\\(\\), onClick = \\{ goClick\\(ui, cb\\) \\}").findAll(panel).count() == 1)
+        // "▶ Los geht's" is plan blue since 2026-11-12 (owner, variant F: one still plans) – the green "Weiter geht's"
+        // back to Navigate stays green
+        assertTrue("Los geht's (the sheet's foot, every step) is blue", Regex("Button\\(colors = ActionButtons\\.edit\\(\\), onClick = \\{ goClick\\(ui, cb\\) \\}").findAll(panel).count() == 1)
+        assertTrue("no green Los geht's", Regex("Button\\(colors = ActionButtons\\.go\\(\\), onClick = \\{ goClick\\(ui, cb\\) \\}").findAll(panel).count() == 0)
         assertTrue(src("ui/BackToNavigation.kt").contains("Button(colors = ActionButtons.go(),"))
         assertTrue("Tour nachfahren", src("ui/Panels.kt").contains("Button(colors = ActionButtons.go(), onClick = onFollow"))
         // Navigate's bottom bar: Anhalten / Weiter green, "■ Tour beenden" light green held, dark green on a tap (owner

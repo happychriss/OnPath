@@ -64,8 +64,10 @@ very light blue (`PlanTint` `#EEF3F7`), their signs, the sheet's handle and a to
 `ActionEdit`), no band at the top (owner 2026-11-03 – removed) and a soft blue edge round the
 screen (`PlanEdge`, only drawn – no touches taken; `ui/PlanTopBar.PlanFrame`), a small label "PLANEN" on the search
 pill ("ROUTE ÄNDERN" during a tour), and the position sign while the route is changed during a tour in blue
-(`ui/PlanPuck`). Kept: the green start button ("Los geht's" – a navigation action), the blue route line, red for stop /
-errors. `PlanColourTest` keeps the plan tokens out of Navigate.
+(`ui/PlanPuck`). Kept: the blue route line, red for stop /
+errors. Since 2026-11-12 (owner, variant F) Plan's start button "▶ Los geht's" is plan ink blue with white words
+(`PlanFoot.GO_FILL`, 7.1:1) – blue = planning, green = on the way; the green "Weiter geht's" back to Navigate and
+Navigate's green stay. `PlanColourTest` keeps the plan tokens out of Navigate.
 
 Add a token when a new meaning is needed (with a comment saying what it is for); `inverseSurface` and Snackbars stay
 out (`NoticesTest.noDarkBarAnyMore`).
