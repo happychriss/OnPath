@@ -58,7 +58,7 @@ class RoutesFlowPropertyTest {
         override fun rename(id: Long, name: String) { rows[id]?.let { rows[id] = it.copy(name = name) } }
     }
 
-    private enum class Op { EDIT, SAVE_PLAN, CLEAR, LOAD, SAVE_DRAFT, DELETE, OVERVIEW_CANCEL, TOUR, OPEN_CLOSE, RESTART }
+    private enum class Op { EDIT, SAVE_PLAN, CLEAR, LOAD, SAVE_DRAFT, DELETE, RESTORE, OVERVIEW_CANCEL, TOUR, OPEN_CLOSE, RESTART }
 
     private class Model(seed: Int) {
         val rnd = Random(seed)
@@ -133,6 +133,31 @@ class RoutesFlowPropertyTest {
                     assertTrue(routes.toBin(t.id)); binned += t.id; keptSaved -= t.id
                     if (linkedId == t.id) { linkedId = -1; linkedKey = null } // setSaved(null): saved nowhere any more
                     if (lastLeft == RoutesState.keyOf(t)) lastLeft = null
+                }
+                Op.RESTORE -> store.listDeleted().filter { t ->
+                    // a draft whose points a saved route took meanwhile stays out here (the user may restore it, the
+                    // rule "never a draft with a saved route's points" is about what the app writes by itself)
+                    !t.draft || store.listTours().none { s -> s.kind == TourKind.PLANNED && !s.draft && RoutesState.keyOf(s) == RoutesState.keyOf(t) }
+                }.randomOrNull(rnd)?.let { t ->
+                    // recycle bin → Restore (review 2026-11-12): a draft becomes the Zuletzt plan, a saved route is back
+                    // under Gespeichert as it was
+                    val held = store.listTours().filter { it.draft }.map { it.id }
+                    val pointer = routes.recentId
+                    assertTrue(routes.restore(t.id)); binned -= t.id
+                    assertNull("back from the bin", store.rows[t.id]!!.deletedMs)
+                    if (t.draft) {
+                        assertEquals("a restored draft is the Zuletzt plan", t.id, routes.recentId)
+                        held.forEach { assertNotNull("the draft that held the place is in the bin", store.rows[it]!!.deletedMs) }
+                        lastLeft = RoutesState.keyOf(t)
+                    } else {
+                        keptSaved += t.id
+                        // a draft with its points goes to the bin; the route takes the place only when that draft held it
+                        val twins = held.filter { RoutesState.keyOf(store.rows[it]!!) == RoutesState.keyOf(t) }
+                        twins.forEach { assertNotNull("a draft with the restored route's points is in the bin", store.rows[it]!!.deletedMs) }
+                        assertEquals("the route takes the place only from its twin", if (pointer in twins) t.id else pointer, routes.recentId)
+                        if (pointer in twins) lastLeft = RoutesState.keyOf(t)
+                        assertEquals("a restored saved route takes no other draft's place", held - twins.toSet(), store.listTours().filter { it.draft }.map { it.id })
+                    }
                 }
                 Op.OVERVIEW_CANCEL -> {
                     // a row tap opens the overview; "Abbrechen" calls nothing: store and My routes stay as they were
@@ -250,7 +275,8 @@ class RoutesFlowPropertyTest {
         in 43..60 -> Op.CLEAR
         in 61..70 -> Op.LOAD
         in 71..75 -> Op.SAVE_DRAFT
-        in 76..80 -> Op.DELETE
+        in 76..79 -> Op.DELETE
+        80 -> Op.RESTORE
         in 81..84 -> Op.OVERVIEW_CANCEL
         in 85..89 -> Op.TOUR
         in 90..96 -> Op.OPEN_CLOSE
@@ -316,6 +342,76 @@ class RoutesFlowPropertyTest {
         store.removeForGood(changed)
         val anew = r.keepDraft(a + (0.02 to 0.02), unsaved = false, savedId = changed) { store.insert(TourKind.PLANNED, a + (0.02 to 0.02), draft = true) }
         assertNotNull(anew)
+    }
+
+    /**
+     * Review 2026-11-12: Recycle bin → Restore of a draft. D1 replaced by D2, D1 restored → D1 is the Zuletzt plan, D2 in
+     * the bin; a saved route holding the place stays saved and under Gespeichert, the restored draft is the row.
+     */
+    @Test fun aRestoredDraftIsTheZuletztPlanAndTheOneThereGoesToTheBin() {
+        val store = FakeStore(); val r = RoutesState(store)
+        val d1 = r.keepDraft(a, unsaved = true) { store.insert(TourKind.PLANNED, a, draft = true) }!!
+        val d2 = r.keepDraft(b, unsaved = true) { store.insert(TourKind.PLANNED, b, draft = true) }!!
+        assertNotNull(store.rows[d1]!!.deletedMs)
+        assertTrue(r.restore(d1))
+        assertEquals(d1, r.recentId)
+        assertNull(store.rows[d1]!!.deletedMs); assertNotNull("D2 waits in the bin now", store.rows[d2]!!.deletedMs)
+        assertEquals(RecentRow(live = false, tourId = d1, saved = false),
+            LivePlanRows.of(null, store.listTours().filter { it.draft }, store.listTours().filter { !it.draft }, r.recentId))
+        // a saved route holds the place
+        val x = store.insert(TourKind.PLANNED, c, draft = false)
+        assertNull(r.keepDraft(c, unsaved = false, savedId = x) { error("no insert") })
+        assertEquals(x, r.recentId); assertNotNull(store.rows[d1]!!.deletedMs)
+        assertTrue(r.restore(d2))
+        assertEquals(d2, r.recentId)
+        assertEquals("the saved route stays as it was", store.rows[x]!!.copy(), store.listTours().single { !it.draft })
+        assertEquals(RecentRow(live = false, tourId = d2, saved = false),
+            LivePlanRows.of(null, store.listTours().filter { it.draft }, store.listTours().filter { !it.draft }, r.recentId))
+        // a restored saved route takes no place
+        assertTrue(r.toBin(x)); assertTrue(r.restore(x))
+        assertEquals(d2, r.recentId); assertNull(store.rows[d2]!!.deletedMs)
+        // unless the draft holding the place has its points (planned again while the route was in the bin): never twice
+        assertTrue(r.toBin(x))
+        val twin = r.keepDraft(c, unsaved = true) { store.insert(TourKind.PLANNED, c, draft = true) }!!
+        assertTrue(r.restore(x))
+        assertNotNull("the twin draft is in the bin", store.rows[twin]!!.deletedMs)
+        assertEquals("the saved route is the Zuletzt plan", x, r.recentId)
+        assertFalse("gone for good: nothing to restore", r.restore(999L))
+    }
+
+    /**
+     * Review 2026-11-12: the app died between a draft's insert and its taking the place – the pointer is stale. The
+     * newest draft outside the bin is the row anyway, and the next plan that takes the place bins it like any other.
+     */
+    @Test fun aDraftLeftBehindByAKillIsTheRowAndTheNextTakePlaceBinsIt() {
+        val store = FakeStore(); val r = RoutesState(store)
+        val x = store.insert(TourKind.PLANNED, c, draft = false)
+        val d1 = r.keepDraft(a, unsaved = true) { store.insert(TourKind.PLANNED, a, draft = true) }!!
+        val orphan = store.insert(TourKind.PLANNED, b, draft = true) // inserted, the kill came before takePlace
+        assertEquals(d1, r.recentId)
+        fun row() = LivePlanRows.of(null, store.listTours().filter { it.draft }, store.listTours().filter { !it.draft }, r.recentId)
+        assertEquals("the newer draft shows, never hidden", RecentRow(live = false, tourId = orphan, saved = false), row())
+        // a saved route holding the place gives way too
+        assertNull(r.keepDraft(c, unsaved = false, savedId = x) { error("no insert") })
+        assertEquals("taking the place bins the orphan", listOf<Long>(), store.listTours().filter { it.draft }.map { it.id })
+        val orphan2 = store.insert(TourKind.PLANNED, b, draft = true)
+        assertEquals(RecentRow(live = false, tourId = orphan2, saved = false), row())
+        val d3 = r.keepDraft(a + (0.1 to 0.1), unsaved = true) { store.insert(TourKind.PLANNED, a + (0.1 to 0.1), draft = true) }!!
+        assertEquals(listOf(d3), store.listTours().filter { it.draft }.map { it.id })
+        assertNotNull(store.rows[orphan2]!!.deletedMs)
+        assertTrue(store.removedForGood.isEmpty())
+    }
+
+    /** The plan's saved route sits in the recycle bin (deleted by the user): nothing is kept twice, the plan is in it. */
+    @Test fun aPlanWhoseSavedRouteIsInTheBinMakesNoDraft() {
+        val store = FakeStore(); val r = RoutesState(store)
+        val x = store.insert(TourKind.PLANNED, c, draft = false)
+        val d = r.keepDraft(a, unsaved = true) { store.insert(TourKind.PLANNED, a, draft = true) }!!
+        assertTrue(r.toBin(x))
+        assertNull(r.keepDraft(c, unsaved = false, savedId = x) { error("no insert") })
+        assertEquals("the place stays where it was", d, r.recentId)
+        assertNotNull("the route stays in the bin", store.rows[x]!!.deletedMs)
+        assertEquals(listOf(d), store.listTours().filter { it.draft }.map { it.id })
     }
 
     @Test fun savedRoutesAreNeverTouchedByTheOnePlanRule() {

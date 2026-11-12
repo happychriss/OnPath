@@ -46,8 +46,9 @@ object LivePlanRows {
      * [recentId] = the tour that took the Zuletzt place last (RoutesState.recentId; -1 = none known). The plan on the map
      * is the row whenever there is one (a point at least; during a tour the same: the plan on the map is the plan
      * followed) – a saved route as it is with the "Gespeichert" mark, a changed one or a draft with Speichern. An empty
-     * map: the tour [recentId] names, if still there; else the newest draft (older installs, a deleted saved route); else
-     * nothing.
+     * map: the tour [recentId] names, if still there – unless a draft outside the bin is newer than it (the app died
+     * between the draft's insert and its taking the place; a restore): a draft never hides, the newest one is the row;
+     * no place known (older installs, a deleted saved route) → the newest draft; else nothing.
      */
     fun of(live: LivePlan?, drafts: List<Tour>, saved: List<Tour>, recentId: Long = -1L): RecentRow {
         if (live != null && live.points > 0) {
@@ -55,7 +56,14 @@ object LivePlanRows {
             val draft = drafts.firstOrNull { it.id == live.linkedId || (live.key.isNotEmpty() && keyOf(it) == live.key) }
             return RecentRow(live = true, tourId = linkedSaved?.id ?: draft?.id ?: -1L, saved = linkedSaved != null && !live.unsaved)
         }
-        val t = (drafts + saved).firstOrNull { it.id == recentId } ?: drafts.firstOrNull() ?: return RecentRow.NONE
+        val pointed = (drafts + saved).firstOrNull { it.id == recentId }
+        val newest = drafts.maxByOrNull { it.createdMs }
+        val t = when {
+            pointed == null -> newest
+            newest == null || newest.id == pointed.id -> pointed
+            !pointed.draft || newest.createdMs > pointed.createdMs -> newest
+            else -> pointed
+        } ?: return RecentRow.NONE
         return RecentRow(live = false, tourId = t.id, saved = !t.draft)
     }
 

@@ -71,6 +71,14 @@ class TourDbMigrationTest {
             tdb.deleteTour(rated)
             assertTrue(tdb.setDraft(2, true))
             assertTrue(tdb.getTour(2)!!.draft)
+            // a draft replaced under Zuletzt goes to the recycle bin and comes back (owner 2026-11-12, RoutesState.takePlace)
+            assertTrue(tdb.setDeleted(2, 1_000L))
+            assertEquals(listOf(2L), tdb.listDeleted().map { it.id })
+            assertTrue("the bin keeps the draft mark", tdb.listDeleted().single().draft)
+            assertTrue(tdb.listTours().none { it.id == 2L })
+            assertTrue(tdb.setDeleted(2, null))
+            assertTrue(tdb.listDeleted().isEmpty())
+            assertTrue(tdb.listTours().single { it.id == 2L }.draft)
             assertEquals("a new draft row inserts on the upgraded schema", true,
                 tdb.getTour(tdb.insertTour(TourKind.PLANNED, "Draft", "HIKE", 2, 1.0, 0.0, 0.0, 1.0, emptyList(), draft = true))!!.draft)
             // 6: the followed plan – an old tour has none; a copy is stored, replaced by a newer version, outlives the planned

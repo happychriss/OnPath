@@ -5015,11 +5015,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Recycle bin → Restore: back into My routes (and its file out of Deleted/). */
+    /** Recycle bin → Restore: back into My routes (and its file out of Deleted/); a draft becomes the Zuletzt plan. */
     fun restoreFromBin(t: Tour) {
         viewModelScope.launchSafe("app", "restoreFromBin") {
             val ok = withContext(Dispatchers.IO) {
-                runCatching { db.setDeleted(t.id, null) }.onFailure { Problems.error("db", "Restoring from the recycle bin failed", it) }.getOrDefault(false)
+                runCatching { routes.restore(t.id) }.onFailure { Problems.error("db", "Restoring from the recycle bin failed", it) }.getOrDefault(false)
             }
             if (ok) { Backups.tourChanged(getApplication(), t.id); sync.changed("restored from the recycle bin") }
             else routesProblem = Txt.s(Res.string.msg_tour_restore_failed, t.name)
