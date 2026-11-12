@@ -118,8 +118,11 @@ class PlanMenu(
  * the way back to Navigate is the green "Navigation ›" at the bottom of the plan (owner 2026-11-06, C).
  */
 object PlanTopBand {
-    /** The band's colour: paper (owner 2026-11-06 variant C – no light blue surfaces; was the plan pills' light blue). */
-    val Color = OnPathColors.Paper
+    /**
+     * The band's colour: the light sage over the map ([OnPathColors.MapGround], owner 2026-11-12; paper before, no light
+     * blue since 2026-11-06 variant C).
+     */
+    val Color = OnPathColors.MapGround
     /** The mode label's own line at a large font: its text line (labelSmall, 16 sp line) + 8 dp. */
     fun labelRow(fontScale: Float): androidx.compose.ui.unit.Dp = (16f * fontScale + 8f).dp
 
@@ -232,7 +235,9 @@ private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
         modifier = modifier.height(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_search_hint); role = Role.Button }
             .warmShadow(OnPathShadow.LOW, CircleShape),
         shape = CircleShape,
-        color = OnPathColors.Paper, // paper on the paper band – the warm shadow lifts it (owner 2026-11-06 variant C)
+        // sage on the sage band (owner 2026-11-12): the warm shadow and a fine line keep it reading as a field
+        color = OnPathColors.MapGround,
+        border = androidx.compose.foundation.BorderStroke(1.dp, OnPathColors.Line),
     ) {
         Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.Search, contentDescription = null, tint = OnPathColors.PlanAccent)
@@ -247,7 +252,7 @@ private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
 private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Box {
-        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = OnPathColors.Paper, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }.warmShadow(OnPathShadow.LOW, CircleShape)) {
+        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = OnPathColors.MapGround, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }.warmShadow(OnPathShadow.LOW, CircleShape)) {
             Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Menu, contentDescription = null, tint = OnPathColors.PlanAccent) }
         }
         // amber dot: the browser sync needs a look (never for plain offline) – the ☰ item says why. Unsaved changes have

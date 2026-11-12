@@ -30,7 +30,7 @@ class NoviceFixesTest {
     }
 
     @Test fun secondaryLinesOnTheWayAreReadable() {
-        assertTrue("grey info on the blue plan sheet", contrast(OnPathColors.Grey, OnPathColors.PlanTint) >= 4.5)
-        assertTrue("detail lines on the blue plan sheet", contrast(OnPathColors.InkMuted, OnPathColors.PlanTint) >= 4.5)
+        assertTrue("grey info on the plan sheet", contrast(OnPathColors.Grey, OnPathColors.PlanTint) >= 4.5)
+        assertTrue("detail lines on the plan sheet", contrast(OnPathColors.InkMuted, OnPathColors.PlanTint) >= 4.5)
     }
 }

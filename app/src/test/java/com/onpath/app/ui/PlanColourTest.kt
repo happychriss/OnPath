@@ -24,9 +24,26 @@ class PlanColourTest {
     }
 
     @Test fun noBlueSurfaces() {
-        assertEquals(OnPathColors.Paper, OnPathColors.PlanTint)
-        assertEquals(OnPathColors.Paper, PlanTopBand.Color)
+        assertEquals(OnPathColors.MapGround, OnPathColors.PlanTint)
+        assertEquals(OnPathColors.MapGround, PlanTopBand.Color)
         assertEquals(OnPathColors.PaperDeep, PillBlueLight)
+    }
+
+    /**
+     * What floats over the map is the website's light sage (owner 2026-11-12: "nimm das leichte Grün auch für die
+     * Planseite"): readable for every word on it, the pill row one step deeper, cards and menus still paper.
+     */
+    @Test fun mapGroundIsTheLightSage() {
+        assertEquals(Color(0xFFEEF0E8), OnPathColors.MapGround)
+        val g = OnPathColors.MapGround
+        assertTrue("ink", contrast(OnPathColors.Ink, g) >= 7.0) // 10.3:1
+        assertTrue("muted", contrast(OnPathColors.InkMuted, g) >= 4.5)
+        assertTrue("plan blue", contrast(OnPathColors.ActionEdit, g) >= 6.0) // 6.2:1
+        assertTrue("amber ⚠ count", contrast(OnPathColors.Amber, g) >= 4.5)
+        assertTrue("grey info", contrast(OnPathColors.Grey, g) >= 4.5)
+        assertTrue("pill row one step deeper", contrast(g, OnPathColors.PaperDeep) >= 1.05)
+        assertTrue("cards in it lift", contrast(OnPathColors.Paper, g) >= 1.05)
+        assertTrue("the search pill's line", contrast(g, OnPathColors.Line) >= 1.1)
     }
 
     @Test fun readable() {

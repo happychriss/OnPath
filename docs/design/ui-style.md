@@ -21,7 +21,8 @@ Colours come only from `OnPathColors` (and the Material scheme built from it in 
 | `GreenLight` | light olive container `#E1EAD5`, `Ink` words: every selection (chips, segments, picker rows, the activity chip – since 2026-11-12, was walnut), "easy" badge |
 | `Ink` | text on light surfaces; message titles |
 | `InkMuted` | secondary text: detail lines, explanations (Material `onSurfaceVariant`) |
-| `Paper`, `CardPaper` | the website's paper `#FAFAF6` (palette D "wie die Webseite", owner 2026-11-12): sheets, menus, dialogs, what floats over the map, list cards |
+| `Paper`, `CardPaper` | the website's paper `#FAFAF6` (palette D "wie die Webseite", owner 2026-11-12): menus, dialogs, message boxes, cards (over the map and in lists, also inside a sage sheet) |
+| `MapGround` | the light sage `#EEF0E8` of what floats over the map in Plan and Navigate (owner 2026-11-12): Plan's top band, search pill (+ a fine `Line` edge) and ☰, the map column + undo, the plan sheet in every step, the activity chip, Navigate's status card |
 | `PaperDim` | the website's sage `#EEF0E8`: the page behind cards (My routes, Settings), boxes inside a paper surface |
 | `PaperDeep` | a deeper sage `#E4E8DD`: the plan sheet's pill row, filled fields, a lifted row |
 | `Line` | fine lines `#D2DACD` (outlineVariant) |
