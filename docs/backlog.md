@@ -58,6 +58,7 @@ and the commit history.
   recording, then a single-thread recording dispatcher; (e) screenshot blast radius: 409ba176 = 158 PNGs for +141 code
   lines, `.git` 562 MB → component-level pictures where a full screen is not the point; (f) E2E: 100 sleeps, 20 commits
   with „flak“; (g) tokens: 344 inline fully-qualified names in the view model, `docs/core-features.md` 51 KB.
+- **[donald] Sort „Meine Touren“ (owner 2026-11-12, chat)** – by length, time, ascent, difficulty, newest / oldest first; „vorher eine gute Bedienung ausdenken – möglichst Google Maps oder andere als Standard“. Sketch round running (≤3 variants as real Paparazzi screenshots, DE + large font); build only after his yes to the exact picture.
 - **[donald] Beta bug button (owner 2026-11-10, chat) – step 1 only, for the owner's own phone:** a small round button
   always on top (bottom left, over every screen, menu, sheet and dialog), can be dragged aside if it is in the way.
   A tap: (1) a screenshot of the current screen *without* the button; (2) the microphone starts and the owner speaks
