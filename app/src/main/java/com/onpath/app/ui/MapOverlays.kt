@@ -78,13 +78,14 @@ fun stopLabel(i: Int, count: Int, name: String?): String = name?.takeIf { it.isN
 
 /**
  * The hold menus of Plan mode (MapGestures): the POI menu of a held POI and the point menu of a held route point.
- * They follow the map while it pans / zooms ([cameraTick] changes on every camera move) and close when their anchor
+ * They follow the map while it pans / zooms ([cameraTick] changes on every camera move; read only where a menu, chip or
+ * ring is anchored – nothing recomposes per camera frame while none shows) and close when their anchor
  * leaves the map, on a tap anywhere else or on Back – never by a timer. Nothing is drawn while the map isn't ready
  * or in Navigate.
  */
 @Composable
 fun MapOverlayHost(
-    vm: AppViewModel, controller: MapController?, cameraTick: Int, topPx: Int, bottomPx: Int,
+    vm: AppViewModel, controller: MapController?, cameraTick: () -> Int, topPx: Int, bottomPx: Int,
     gps: com.onpath.app.recording.GpsStatus,
 ) {
     val c = controller ?: return
@@ -96,8 +97,10 @@ fun MapOverlayHost(
     RoutingSpot.shown(vm.routing, vm.routingSpot, vm.waypoints)?.let { p ->
         var late by remember(p) { mutableStateOf(false) }
         LaunchedEffect(p) { kotlinx.coroutines.delay(RoutingSpot.DELAY_MS); late = true }
-        @Suppress("UNUSED_EXPRESSION") cameraTick // re-read the projection on every camera move
-        if (late) c.toScreen(p)?.let { s -> RoutingRing(Offset(s.x, s.y)) }
+        if (late) {
+            cameraTick() // re-read the projection on every camera move
+            c.toScreen(p)?.let { s -> RoutingRing(Offset(s.x, s.y)) }
+        }
     }
     vm.firstPointMenu?.let { p ->
         Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { com.onpath.app.debug.Problems.trace("plan", "First-point menu closed: held spot left the visible map (onGone)"); vm.firstPointMenu = null }) {
@@ -108,7 +111,7 @@ fun MapOverlayHost(
     // the found place's name chip under its pin (owner 2026-11-02): only where the plan can be edited – this host draws
     // nothing in Navigate or while a track is shown (the pin itself stays there, MapScreen hides it in Navigate)
     vm.searchMark?.let { m ->
-        @Suppress("UNUSED_EXPRESSION") cameraTick // re-read the projection on every camera move
+        cameraTick() // re-read the projection on every camera move
         c.toScreen(GeoPoint(m.lat, m.lon))?.let { s ->
             val empty = vm.waypoints.isEmpty()
             val blocked = MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null)
@@ -190,10 +193,10 @@ fun RoutingRing(center: Offset, stillProgress: Float? = null) {
 
 @Composable
 private fun Anchored(
-    c: MapController, at: GeoPoint, cameraTick: Int, topPx: Int, bottomPx: Int, onGone: () -> Unit, liftPx: Float = 0f,
+    c: MapController, at: GeoPoint, cameraTick: () -> Int, topPx: Int, bottomPx: Int, onGone: () -> Unit, liftPx: Float = 0f,
     dropPx: Float = 0f, content: @Composable () -> Unit,
 ) {
-    @Suppress("UNUSED_EXPRESSION") cameraTick // re-read the projection on every camera move
+    cameraTick() // re-read the projection on every camera move (only this menu recomposes)
     val s = c.toScreen(at) ?: return
     AnchoredOverlay(Offset(s.x, s.y - liftPx), topPx, bottomPx, onGone, belowY = s.y + dropPx, loose = dropPx > 0f, content = content)
 }

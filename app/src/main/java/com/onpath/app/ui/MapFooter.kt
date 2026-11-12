@@ -125,7 +125,15 @@ private fun ScaleBar(label: String, width: Dp) {
  * otherwise the needle shows the map's [bearing]. Tap cycles turned → north up → walking direction up (AppViewModel.onCompass).
  * null is treated like false.
  */
-data class CompassSpec(val headingUp: Boolean?, val bearing: Float, val onClick: () -> Unit)
+data class CompassSpec(val headingUp: Boolean?, val bearing: Float, val onClick: () -> Unit) {
+    companion object {
+        /**
+         * The bearing the button needs: in walking-direction-up it shows the arrow, not the needle, so the map's bearing
+         * (new on every frame while the map turns with you) is not passed then – the controls do not recompose per frame.
+         */
+        fun bearingShown(headingUp: Boolean, bearing: Float): Float = if (headingUp) 0f else bearing
+    }
+}
 
 /**
  * The map controls as one group (owner: "center, eye and compass grouped"):

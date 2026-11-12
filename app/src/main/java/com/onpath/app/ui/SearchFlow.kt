@@ -220,10 +220,14 @@ class SearchFlow(
     /** The shared place's menu waits for the camera to arrive ([openSharedMenuIfArrived], asked by MapScreen). */
     var sharedMenuWaiting by mutableStateOf(false)
         private set
-    /** Bumped on every camera stop (MapHost): MapScreen then asks [openSharedMenuIfArrived]. */
+    /**
+     * Bumped on a camera stop while the shared place's menu waits (MapHost): MapScreen then asks [openSharedMenuIfArrived].
+     * Only then: while following, MapLibre reports a camera stop on every frame, and each bump recomposed the map's
+     * layer sync (smooth map 2026-11-08) – without a waiting menu nobody needs the stop ([SharedPlaceMenu.idleCounts]).
+     */
     var cameraIdleTick by mutableStateOf(0)
         private set
-    fun cameraIdle() { cameraIdleTick++ }
+    fun cameraIdle() { if (SharedPlaceMenu.idleCounts(sharedMenuWaiting)) cameraIdleTick++ }
 
     /**
      * The camera stopped with a shared place's menu waiting: opens the ring's POI menu when the map is there – same
