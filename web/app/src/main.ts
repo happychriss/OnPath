@@ -2024,7 +2024,17 @@ $('langSwitch').addEventListener('click', (e) => {
 });
 
 // phone layout: the map controls and the footer sit above the sheet
-new ResizeObserver(() => document.documentElement.style.setProperty('--sheet-h', $('sheet').offsetHeight + 'px')).observe($('sheet'));
+/** Phone: the bottom sheet pulled up past the undo pill hides the pill (the app's column steps back in the points step). */
+function placeUndoPill() {
+  const bar = $('topbar').getBoundingClientRect(), sheet = $('sheet').getBoundingClientRect();
+  const crowded = matchMedia('(max-width: 700px)').matches && sheet.height > 0 && sheet.top < bar.bottom + 12 + 104 + 8;
+  document.body.classList.toggle('undo-crowded', crowded);
+}
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty('--sheet-h', $('sheet').offsetHeight + 'px');
+  placeUndoPill();
+}).observe($('sheet'));
+addEventListener('resize', placeUndoPill);
 changed();
 
 /** The sheet's status line; 'busy' = a wait the user started (spinner, CLAUDE.md "Messages"). */

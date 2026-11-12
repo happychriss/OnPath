@@ -368,8 +368,10 @@ check((await Promise.all(['#eye', '#compass', '#locate', '#mapContent'].map((s) 
   'phone: all tools visible (none behind a menu)');
 check(await page.evaluate(() => { const p = document.getElementById('undoPill'), b = document.getElementById('topbar').getBoundingClientRect();
   if (p.hidden) return document.getElementById('undo').disabled && document.getElementById('redo').disabled; // nothing to undo → no pill
-  const r = p.getBoundingClientRect(); return r.top >= b.bottom && Math.abs(r.right - b.right) < 2 && r.width === 52; }),
-  'phone: the undo pill under the bar\'s right end (or hidden when there is nothing to undo)');
+  const r = p.getBoundingClientRect(), s = document.getElementById('sheet').getBoundingClientRect();
+  if (document.body.classList.contains('undo-crowded')) return r.width === 0 && s.top < b.bottom + 124; // the sheet is up: the pill steps back
+  return r.top >= b.bottom && Math.abs(r.right - b.right) < 2 && r.width === 52 && r.bottom <= s.top; }),
+  'phone: the undo pill under the bar\'s right end, clear of the sheet (or hidden: nothing to undo / the sheet pulled up)');
 await page.click('#menuBtn');
 const pm = await page.$$eval('#mainMenu .pb', (bs) => bs.filter((b) => b.getClientRects().length > 0).map((b) => b.id || 'link'));
 check(JSON.stringify(pm) === JSON.stringify(['newPlan', 'menuPlans', 'menuImportGpx', 'menuSavePlan', 'menuSaveAs', 'menuExportGpx', 'syncBadge', 'menuPhone', 'menuAboutP', 'link']),
