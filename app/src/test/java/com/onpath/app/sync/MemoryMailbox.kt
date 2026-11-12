@@ -13,8 +13,35 @@ class MemoryServer(private val page: Int = 200) {
     var calls = 0
         private set
 
+    /**
+     * The host's per-IP limit (SYNC_RATE in web/host/wrangler.toml; 0 = off): every device of this server is one IP (a
+     * household). Over [ratePerMinute] calls in the minute of [clock] (a fixed window, as Cloudflare's simple limit) the
+     * answer is 429 with retry-after 60 – the refused call counts too, as on Cloudflare.
+     */
+    var ratePerMinute = 0
+    var clock: () -> Long = { 0L }
+    private var window = Long.MIN_VALUE
+    private var inWindow = 0
+    /** 429 answers given ([ratePerMinute]). */
+    var tooMany = 0
+        private set
+    /** The next [failNext] calls answer this status (e.g. 500 / 503: the host under load) with [failRetryAfterS]. */
+    var failNext = 0
+    var failStatus = 500
+    var failRetryAfterS = 0L
+
     fun box(keys: SyncKeys): Mailbox = object : Mailbox {
-        private fun gate(block: () -> Mailbox.Reply): Mailbox.Reply { calls++; return if (offline) Mailbox.Reply(Mailbox.Reply.OFFLINE) else block() }
+        private fun gate(block: () -> Mailbox.Reply): Mailbox.Reply {
+            calls++
+            if (offline) return Mailbox.Reply(Mailbox.Reply.OFFLINE)
+            if (ratePerMinute > 0) {
+                val w = clock() / 60_000
+                if (w != window) { window = w; inWindow = 0 }
+                if (++inWindow > ratePerMinute) { tooMany++; return Mailbox.Reply(429, error = "too many requests", retryAfterS = 60) }
+            }
+            if (failNext > 0) { failNext--; return Mailbox.Reply(failStatus, error = "server busy", retryAfterS = failRetryAfterS) }
+            return block()
+        }
         private fun mine(): Box? = boxes[keys.mailbox]
 
         override fun claim() = gate {

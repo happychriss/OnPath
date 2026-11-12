@@ -21,7 +21,7 @@ on both sides.
 | `web/engine/.../WebSync.kt` | string calls for the page (`syncKeys`, `syncApply`, `syncOutbox`, …; exports in `WebApi.kt`) |
 | `web/host/src/sync.js`, `web/host/migrations/0001_sync.sql` | the mailbox (Worker route `/sync/v1/…`, D1) |
 | `web/app/src/sync.ts`, `plans.ts` | browser: IndexedDB store with one folder per phone (§14), sync loop (pull by itself, push on Save), My routes, the Phone window (header entry: state dot, pairing, Sync now, Unpair), join dialog |
-| Tests | `web/host/test/sync.test.js` (mailbox on Node's SQLite as fake D1), `web/app/test/sync-engine.mjs` (Wasm = JVM frozen bytes), `web/app/test/sync-smoke.mjs` (two browser contexts, end to end) – all in CI, none needs map data |
+| Tests | `web/host/test/sync.test.js` (mailbox on Node's SQLite as fake D1), `web/app/test/sync-engine.mjs` (Wasm = JVM frozen bytes), `web/app/test/sync-smoke.mjs` (two browser contexts, end to end), `web/app/test/sync-rate-smoke.mjs` (pacing and back-off against a per-IP limit; in `check-web.sh`, not yet in web.yml) – none needs map data |
 
 ## 2. Threat model
 
@@ -240,7 +240,8 @@ Header `Authorization: Bearer <token>` on every call.
 | `DELETE /sync/v1/<mb>` | 200 – all items deleted, the mailbox answers 410 from then on (cannot be claimed again) |
 | `POST` that would create a mailbox, over the daily cap | 429 `{"error": "…", "code": "new-mailbox-cap"}`, `retry-after` = seconds to the next UTC day |
 | `appSeen` in every `POST` / `GET` answer | when the **phone app** last used the mailbox (ms, to the minute; `null` = not yet) – see below |
-| others | 401 no/odd token, 404 unknown mailbox / path, 429 rate limit (plain `{"error"}`, no `code`), 503 no database bound |
+| others | 401 no/odd token, 404 unknown mailbox / path, 429 rate limit (plain `{"error"}`, no `code`, `retry-after: 60`), 503 no database bound |
+| anything that throws (D1 overloaded / timed out under a burst) | 503 `{"error": "the sync server is busy …"}`, `retry-after: 30` – never Cloudflare's bare 500 (the limiter failing lets the request through, logged) |
 
 - **Compare-and-set in one D1 batch** (one transaction): `UPDATE mailbox SET rev = rev + 1 … WHERE` the item is
   still at B, then `INSERT … SELECT … WHERE changes() = 1` – two writers on the same item: exactly one wins, the
@@ -256,7 +257,25 @@ Header `Authorization: Bearer <token>` on every call.
   bar's tooltip; old clients ignore it.
 - **Host limits** (a safety net above the 250 tours, room for tombstones which are never purged): item 32 KiB,
   1000 items and 4 MiB per mailbox (tombstones and copies count), pages of 200;
-  **rate limit** 300 requests / min / IP (Workers rate-limit binding `SYNC_RATE`; a round is 2–5 requests, but the first round after pairing writes every plan one by one – owner 2026-11-12: 120 locked a home network with ~110 plans per side out).
+  **rate limit** 300 requests / min / IP (Workers rate-limit binding `SYNC_RATE`; was 120 until the field bug
+  2026-11-12 – a household, or a mobile carrier's shared address, is one IP; the clients pace themselves, below).
+- **Pacing and back-off (field bug 2026-11-12, both sides, the numbers in the shared `SyncRound`):** after a
+  re-pairing phone and browser pushed ~110 plans each at once from one home IP into the then 120/min limit → 429,
+  an uncaught 500, the phone's red „nicht angenommen“, and the open planner tab kept the IP over the limit (each tick
+  and tab-back started again). Now:
+  - a round writes at most `WRITES_PER_ROUND` = 30 items (the device's hello first); what is left goes in the next
+    round `NEXT_BATCH_MS` = 60 s later, by itself (app: `PlanSync.paceNext`; browser: `SyncPlans.later`, also for
+    Save and the send-after-pairing). A device stays ≤ ~33 requests a minute, phone + browser well below the limit;
+    110 plans take four rounds. A pass that sent something is not "stuck" (`StuckOutbox`).
+  - **busy** = 429 or any 5xx except 507 (`SyncRound.busy`): a quiet retry – no red line in the browser, no
+    `sync_refused` in the app (`PlanSync.shown`), an INFO in the problem log. The next round after the server's
+    `retry-after`, else 30 s doubling per busy round, both at most 10 min. **Nothing asks earlier:** the browser's
+    tick, Sync now and the tab coming back wait (`busyUntil`); the app's triggers wait (`quietUntilMs`). If it lasts,
+    the app's "no good pass for long" rule (STALE) shows it amber.
+  - the browser reads the numbers from the engine (`syncLimits`: writes, batchMs, retryMs, maxRetryMs) – one source.
+  - Tests: `SyncPaceTest` (JVM: two devices, 110 plans each, one IP at 120/min – no 429, all arrive),
+    `web/app/test/sync-rate-smoke.mjs` (the page: batches, a 429 is quiet and not retried early),
+    `web/host/test/sync.test.js` (503 instead of a thrown 500, retry-after).
 - **Expiry:** a daily cron (`17 3 * * *`) deletes mailboxes not used for 365 days, and ended pairings after the same
   time. `seen` is written at most once a day per mailbox.
 - **Phone last synced (`appSeen`, 2026-10-30):** the browser shows "Paired · phone last 3 days ago". Phone and browser
@@ -363,7 +382,7 @@ Copies made before this fix stay (they are linked routes) – they are binned by
    show "Show code again" in the app too? Recommended: yes, later.
 3. **Tombstone clean-up and item limit** (1000 per mailbox): fine for phase 2; revisit with real numbers.
 4. **Production mailbox:** separate D1 database and Access-free host when the planner goes public; the same code.
-5. **Rate limit numbers** (300/min/IP since 2026-11-12, was 120) and idle expiry (12 months) – defaults, adjust after the test.
+5. **Rate limit numbers** (300/min/IP since 2026-11-12, clients paced) and idle expiry (12 months) – defaults, adjust after the test.
 
 ## 14. Folders – one per phone, Save sends to the phone (owner order A-017, 2026-10-30)
 

@@ -7,6 +7,7 @@ import com.onpath.app.sync.SyncKeys
 import com.onpath.app.sync.SyncJoin
 import com.onpath.app.sync.SyncLedger
 import com.onpath.app.sync.SyncLimits
+import com.onpath.app.sync.SyncRound
 import com.onpath.app.sync.SyncTrack
 import com.onpath.app.sync.TrackCode
 import com.onpath.app.sync.TrackMark
@@ -69,7 +70,10 @@ object WebSync {
     }
 
     /** Tours per phone (the shared [SyncLimits]): {"max":250,"warn":200}. */
-    fun limits(): String = "{\"max\":" + SyncLimits.MAX_TOURS + ",\"warn\":" + SyncLimits.WARN_TOURS + "}"
+    /** The tour limits, and the pacing every device keeps (SyncRound: writes per round, next batch, back-off – §8). */
+    fun limits(): String = "{\"max\":" + SyncLimits.MAX_TOURS + ",\"warn\":" + SyncLimits.WARN_TOURS +
+        ",\"writes\":" + SyncRound.WRITES_PER_ROUND + ",\"batchMs\":" + SyncRound.NEXT_BATCH_MS +
+        ",\"retryMs\":" + SyncRound.RETRY_MS + ",\"maxRetryMs\":" + SyncRound.MAX_RETRY_MS + "}"
 
     /**
      * {pending, unsaved, since, unreadable}: [pending] items wait for upload, [unsaved] of them are the user's (plans,
@@ -265,7 +269,9 @@ object WebSync {
         val rnd = b64(random)
         val l = SyncLedger.read(ledger)
         val ids = only.split(',').filter { it.isNotEmpty() }.toSet()
-        return l.outbox().filter { ids.isEmpty() || it.item.id in ids }.take(rnd.size / 12).mapIndexed { i, e ->
+        // the hello first, as in SyncRound: the browser sends a batch per round (pacing, §8) and the phone waits for it
+        return l.outbox().filter { ids.isEmpty() || it.item.id in ids }.sortedBy { it.item.kind != SyncItem.DEVICE }
+            .take(rnd.size / 12).mapIndexed { i, e ->
             val blob = l.seal(keys, e, rnd.copyOfRange(12 * i, 12 * i + 12))
             e.item.id + " " + e.rev + " " + SyncFormat.toText(blob) + " " + SyncFormat.toText(SyncFormat.encode(e.item))
         }.joinToString("\n")

@@ -8,8 +8,11 @@ package com.onpath.app.plansync
 object StuckOutbox {
     const val PASSES = 3
 
-    /** Passes in a row with something left, after a pass that left [left] items. */
-    fun next(passes: Int, left: Int): Int = if (left > 0) passes + 1 else 0
+    /**
+     * Passes in a row with something left, after a pass that left [left] items and sent [pushed]. A pass that sent
+     * something is progress (pacing, SyncRound.WRITES_PER_ROUND: 110 plans take four passes) – it starts the count again.
+     */
+    fun next(passes: Int, left: Int, pushed: Int = 0): Int = if (left > 0 && pushed == 0) passes + 1 else 0
 
     fun stuck(passes: Int): Boolean = passes >= PASSES
 }
