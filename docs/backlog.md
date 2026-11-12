@@ -30,6 +30,7 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
+- [laptop] Sync: four rules fixed in the shared SyncMerge/SyncLedger (version seen decides, never re-stamp on move, delete only on the seen version, pull before push) – owner 2026-11-12 after the Bad Honnef loss, docs/design/sync-research-2026-11-12.md; app release needed after – since 2026-11-12
 - [donald] Night job 1, safety net (owner 2026-11-12): nav-session.json race test, broken-file tests, crash hunt on the emulator – since 2026-11-12
 - [donald] Map smoother when panning/zooming (wip/donald-2026-11-08-smooth-map → main, measured) – since 2026-11-12
 
