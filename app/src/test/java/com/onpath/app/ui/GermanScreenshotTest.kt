@@ -128,6 +128,8 @@ class GermanScreenshotTest {
     @Test fun routesSortedByLength() = shots.routesSortedByLength()
     @Test fun routesSortedShortestFirst() = shots.routesSortedShortestFirst()
     @Test fun toursRecent() = shots.toursRecent()
+    @Test fun toursRecentDraft() = shots.toursRecentDraft()
+    @Test fun toursRecentSaved() = shots.toursRecentSaved()
     @Test fun routesOverview() = shots.routesOverview()
     /** Gemacht: a recorded tour's followed plan (owner 2026-11-07) – its overview and its ⋮. */
     @Test fun routesOverviewDoneWithPlan() = shots.routesOverviewDoneWithPlan()

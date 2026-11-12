@@ -4,6 +4,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -19,7 +20,7 @@ import com.onpath.strings.plan_sheet_bigger
 import com.onpath.strings.plan_sheet_smaller
 import com.onpath.app.ui.PlanSize
 import com.onpath.strings.routes_overview_plan
-import com.onpath.strings.routes_overview_show
+import com.onpath.strings.routes_overview_enlarge
 import com.onpath.strings.routes_overview_loading
 import com.onpath.strings.common_cancel
 import com.onpath.strings.plan_bar_go
@@ -219,18 +220,22 @@ class CorePlanE2ETest : E2EBase() {
         val id = db.insertTour(com.onpath.app.data.TourKind.PLANNED, name, com.onpath.app.routing.Activity.HIKE.name, 2, 420.0, 0.0, 0.0,
             300.0, listOf(pts.map { com.onpath.app.gpx.TrackPoint(it.lat, it.lon) }), pts)
         // a plan under Zuletzt with its own "Planen" on the row (owner 2026-11-07) – as a full run leaves them behind: the
-        // overview's "Planen" and "Abbrechen" must be told apart from it (main red 2026-11-08 … 11-12 on exactly this)
-        val draftPts = listOf(com.onpath.app.gpx.GpxWaypoint(centre.latitude - 0.002, centre.longitude, "E2E Z1"),
-            com.onpath.app.gpx.GpxWaypoint(centre.latitude - 0.004, centre.longitude + 0.002, "E2E Z2"))
-        val draft = db.insertTour(com.onpath.app.data.TourKind.PLANNED, "E2E Zuletzt draft", com.onpath.app.routing.Activity.HIKE.name, 2,
-            200.0, 0.0, 0.0, 150.0, listOf(draftPts.map { com.onpath.app.gpx.TrackPoint(it.lat, it.lon) }), draftPts, draft = true)
+        // overview's "Planen" and "Abbrechen" must be told apart from it (main red 2026-11-08 … 11-12 on exactly this).
+        // Since 2026-11-12 the plan on the map is the one Zuletzt row, so the plan is cleared first: it becomes that
+        // row (the one draft, with "Planen" on it) and the overview opens over an empty map
+        scenario.onActivity { a -> vm(a).requestClear() }
+        waitUntil("cleared at once, no question", 5_000) { var n = -1; scenario.onActivity { a -> n = vm(a).waypoints.size }; n == 0 }
+        before = emptyList()
         try {
             scenario.onActivity { a -> vm(a).routesTab = com.onpath.app.ui.RoutesTab.PLANNED; vm(a).openRoutes() }
             val row = findFresh(By.text(name), 8_000)
             assertNotNull("the saved route in My routes", row)
+            // every row that opens the overview carries the preview tile with its badge ("Übersicht vergrößern");
+            // "Übersicht anzeigen" is the plan on the map's tile alone – and that row is gone with the plan cleared above
+            // (GitHub rc-0179 2026-11-12: the old wait matched only that row)
             assertTrue("rows show their route preview",
-                device.wait(Until.hasObject(By.descContains(Txt.s(Res.string.routes_overview_show))), 5_000))
-            assertNotNull("the Zuletzt row shows its own \"Planen\" (the trap this test guards against)",
+                device.wait(Until.hasObject(By.descContains(Txt.s(Res.string.routes_overview_enlarge))), 5_000))
+            assertNotNull("the Zuletzt row (the cleared plan) shows its own \"Planen\" (the trap this test guards against)",
                 findFresh(By.text(Txt.s(Res.string.routes_overview_plan)), 3_000))
             shot("1-routes-with-previews")
             row!!.click()
@@ -256,7 +261,8 @@ class CorePlanE2ETest : E2EBase() {
                 var w = emptyList<com.onpath.app.routing.GeoPoint>(); scenario.onActivity { a -> w = vm(a).waypoints.toList() }; w == loaded
             }
         } finally {
-            db.deleteTour(id); db.deleteTour(draft)
+            db.deleteTour(id)
+            (db.listTours() + db.listDeleted()).filter { it.draft }.forEach { db.deleteTour(it.id) }
         }
     }
 

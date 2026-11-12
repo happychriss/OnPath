@@ -14,14 +14,21 @@ The one place for how OnPath's screens look and talk. New UI follows it; a chang
 
 ## Colours (`ui/Theme.kt` → `OnPathColors`)
 Colours come only from `OnPathColors` (and the Material scheme built from it in `Theme.kt`); no hex values in screens.
+Shadow (owner 2026-11-12 „leicht“): everything over the map floats on one light shadow, the ☰ menu's family –
+`FloatShadow` in `Theme.kt` (3 dp warm `floatShadow` for pills, ☰, map column, activity chip, Navigate's card and bar
+buttons; a 10 dp walnut `edgeShadow` under Plan's top band and above the sheet). Change the level there, nowhere else.
 
 | Token | For |
 | --- | --- |
 | `Green` | primary buttons (filled, white text), text buttons, selected things; the brand colour of onpath.earth |
-| `GreenLight` | light olive container: selected picker row, "easy" badge |
+| `GreenLight` | light olive container `#E1EAD5`, `Ink` words: every selection (chips, segments, picker rows, the activity chip – since 2026-11-12, was walnut), "easy" badge |
 | `Ink` | text on light surfaces; message titles |
 | `InkMuted` | secondary text: detail lines, explanations (Material `onSurfaceVariant`) |
-| `Paper` | page background (My routes, Settings) |
+| `Paper`, `CardPaper` | the website's paper `#FAFAF6` (palette D "wie die Webseite", owner 2026-11-12): menus, dialogs, message boxes, cards (over the map and in lists, also inside a sage sheet) |
+| `MapGround` | the light sage `#EEF0E8` of what floats over the map in Plan and Navigate (owner 2026-11-12): Plan's top band, search pill (+ a fine `Line` edge) and ☰, the map column + undo, the plan sheet in every step, the activity chip, Navigate's status card |
+| `PaperDim` | the website's sage `#EEF0E8`: the page behind cards (My routes, Settings), boxes inside a paper surface |
+| `PaperDeep` | a deeper sage `#E4E8DD`: the plan sheet's pill row, filled fields, a lifted row |
+| `Line` | fine lines `#D2DACD` (outlineVariant) |
 | `CardWhite` | cards over the map (message boxes, sheets), text on `Green` |
 | `InfoBlue` | the left edge of a **FRAGE** box (a question) – never a status or a failure |
 | `TagContainer`, `TagInk` | a **tag** (light blue pill, dark blue word): the state of an item – "New" / "Changed" in My routes; the same look for the background-download chip |
@@ -60,8 +67,11 @@ very light blue (`PlanTint` `#EEF3F7`), their signs, the sheet's handle and a to
 `ActionEdit`), no band at the top (owner 2026-11-03 – removed) and a soft blue edge round the
 screen (`PlanEdge`, only drawn – no touches taken; `ui/PlanTopBar.PlanFrame`), a small label "PLANEN" on the search
 pill ("ROUTE ÄNDERN" during a tour), and the position sign while the route is changed during a tour in blue
-(`ui/PlanPuck`). Kept: the green start button ("Los geht's" – a navigation action), the blue route line, red for stop /
-errors. `PlanColourTest` keeps the plan tokens out of Navigate.
+(`ui/PlanPuck`). Kept: the blue route line, red for stop /
+errors. Since 2026-11-12 (owner, variant F + "one rule"): **in Plan every big go button is plan ink blue with white
+words** (`OnPathColors.PlanGo` via `ActionButtons.planGo()`, 7.1:1) – "▶ Los geht's", "▲ Weiter geht's" back to
+Navigate, "Tour nachfahren" under a shown tour, the route overview's "Los geht's" / "Folgen"; **in Navigate everything
+stays green** (`ActionButtons.go()`, the bottom bar, the arrival and end sheets). `PlanColourTest` keeps the plan tokens out of Navigate.
 
 Add a token when a new meaning is needed (with a comment saying what it is for); `inverseSurface` and Snackbars stay
 out (`NoticesTest.noDarkBarAnyMore`).

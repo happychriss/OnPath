@@ -279,7 +279,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
         barFrom = PlanSize.MINI.step,
         // Plan is blue (owner 2026-11-03): a light blue sheet with a blue handle and top edge – also during a tour
         surfaceColor = OnPathColors.PlanTint, accent = OnPathColors.PlanAccent,
-        // the ONE green button in the sheet's foot, full width, in every step – also rolled up (owner 2026-11-07, A: "Los
+        // the ONE plan-blue button in the sheet's foot (start / back to Navigate), full width, in every step – also rolled up (owner 2026-11-07, A: "Los
         // geht's" was small at the edge): "▶ Los geht's" from two points, during a tour "▲ Weiter geht's" (2026-11-06, C)
         foot = when (PlanFoot.of(ui)) {
             PlanFoot.Kind.BACK -> ({ BackToNavigationButton({ goClick(ui, cb) }) })
@@ -296,7 +296,10 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
     }
 }
 
-/** The plan row's pills: one paper shade darker, ink blue words (owner 2026-11-06 variant C – no light blue; ≥ 7:1). */
+/**
+ * The plan row's pills: the deeper sage [OnPathColors.PaperDeep] (palette D, owner 2026-11-12), ink blue words (owner
+ * 2026-11-06 variant C – no light blue; 5.7:1).
+ */
 internal val PillBlueLight = OnPathColors.PaperDeep
 internal val PillBlueInk = OnPathColors.ActionEdit
 
@@ -346,8 +349,9 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     // (owner 2026-11-02: "beim ersten Öffnen … sieht man es gar nicht"; 2026-11-07: the 3-step guide, EmptyGuide)
     val guide = EmptyGuide.shows(ui.pointCount, ui.tour != null || ui.tourRunning)
     if (ui.pointCount == 0) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) {
-        // during a tour (owner 2026-11-05): the tour goes on – new points, or back to it
-        if (guide) EmptyGuideFirst(cb.onSearch) else TourGoesOnHint()
+        // during a tour (owner 2026-11-12, TourStillRunning): only a new destination – the search, or hold the map →
+        // Hierhin (every route during a tour starts where you are); "Weiter geht's" below goes back to the tour
+        if (guide) EmptyGuideFirst(cb.onSearch) else TourNewTargetRow(cb.onSearch)
     }
     // a tap on the open map (hold-only): the same hand says how to set a point – in the step the sheet opens at
     else if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { TapHoldHint() }
@@ -600,13 +604,13 @@ fun ActivityMapButton(activity: Activity, sac: Int, onClick: () -> Unit, modifie
     Column(modifier.semantics(mergeDescendants = true) { contentDescription = Txt.s(Res.string.plan_activity_chip_desc, name) },
         horizontalAlignment = Alignment.CenterHorizontally) {
         Surface(onClick = onClick, shape = CircleShape, color = OnPathColors.PlanTint,
-            modifier = Modifier.size(48.dp).warmShadow(OnPathShadow.LOW, CircleShape)) {
+            modifier = Modifier.size(48.dp).floatShadow(CircleShape)) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(activity.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(26.dp))
             }
         }
         if (activity == Activity.HIKE) Surface(shape = CircleShape, color = OnPathColors.PlanTint,
-            modifier = Modifier.padding(top = 3.dp).warmShadow(OnPathShadow.LOW, CircleShape)) {
+            modifier = Modifier.padding(top = 3.dp).floatShadow(CircleShape)) {
             // the T level reads at a glance (owner 2026-11-07: ≈ 1.5×, bold) – it decides which ways the route may take
             Text("T$sac", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = PillBlueInk,
                 modifier = Modifier.padding(horizontal = 9.dp, vertical = 2.dp))
@@ -629,11 +633,15 @@ private fun PlanIconPill(icon: androidx.compose.ui.graphics.vector.ImageVector, 
     }
 }
 
-/** The one full-width green button: "▶ Los geht's" / "▶ Weiter geht's"; TalkBack hears the full label with the activity. */
+/**
+ * The one full-width start button "▶ Los geht's" – in the plan ink blue [OnPathColors.PlanGo], white words (owner 2026-11-12,
+ * variant F: "blue = planning, green = on the way"; like "Weiter geht's" back to Navigate, Navigate's own green stays);
+ * TalkBack hears the full label with the activity.
+ */
 @Composable
 private fun GoButton(ui: PlanUi, cb: PlanCallbacks) {
     val full = primaryLabel(ui)
-    Button(colors = ActionButtons.go(), onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
+    Button(colors = ActionButtons.planGo(), onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
         modifier = Modifier.fillMaxWidth().heightIn(min = PlanFoot.HEIGHT).semantics { contentDescription = full }) {
         Icon(goIcon(ui), null, Modifier.size(22.dp))
         Spacer(Modifier.width(8.dp))
@@ -782,6 +790,10 @@ private fun SavedLine(ui: PlanUi) {
 @Composable
 private fun Title(ui: PlanUi, route: PlannedRoute?, onTimeDetails: () -> Unit) {
     if (route == null) {
+        // an empty plan during a tour: "● Tour läuft noch" instead of "Neuer Plan" (owner 2026-11-12, TourStillRunning)
+        if (TourStillRunning.shows(ui.pointCount, ui.tour != null || ui.tourRunning)) {
+            TourStillRunningTitle(paused = ui.tour?.paused == true); return
+        }
         Text(str(EmptyPlanTitle.of(ui)), style = MaterialTheme.typography.titleLarge, maxLines = 1)
         return
     }
@@ -806,16 +818,6 @@ internal object EmptyPlanTitle {
     fun asks(pointCount: Int, touring: Boolean): Boolean = pointCount == 0 && !touring
     fun of(ui: PlanUi) = if (asks(ui.pointCount, ui.tour != null || ui.tourRunning)) Res.string.plan_hint_first_point_question
         else Res.string.plan_plan_a_route
-}
-
-/** The empty plan during a tour: "Tour läuft weiter – setz neue Punkte oder tippe unten auf Weiter geht’s." */
-@Composable
-private fun TourGoesOnHint() {
-    Row(verticalAlignment = Alignment.Top) {
-        Icon(Icons.Filled.TouchApp, null, tint = OnPathColors.PlanAccent, modifier = Modifier.padding(top = 1.dp).size(24.dp))
-        Spacer(Modifier.width(10.dp))
-        Text(str(Res.string.plan_hint_tour_goes_on), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
 }
 
 /**

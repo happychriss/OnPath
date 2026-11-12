@@ -210,17 +210,6 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         put("draft", if (draft) 1 else 0)
     }, "id=?", arrayOf(id.toString())) > 0
 
-    /**
-     * Keeps the newest [max] plans under "Zuletzt" (not in the recycle bin); older ones are removed for good – they were
-     * never saved, the user saw them under Zuletzt. Returns how many went.
-     */
-    fun pruneDrafts(max: Int): Int {
-        val old = readableDatabase.rawQuery("SELECT id FROM tours WHERE draft=1 AND deleted_at IS NULL ORDER BY created DESC",
-            null).use { c -> buildList { while (c.moveToNext()) add(c.getLong(0)) } }.drop(max)
-        old.forEach { deleteTour(it) }
-        return old.size
-    }
-
     /** Moves a tour to the recycle bin ([deletedMs]) or back (null). False when the tour is gone. */
     fun setDeleted(id: Long, deletedMs: Long?): Boolean = writableDatabase.update("tours", ContentValues().apply {
         if (deletedMs == null) putNull("deleted_at") else put("deleted_at", deletedMs)

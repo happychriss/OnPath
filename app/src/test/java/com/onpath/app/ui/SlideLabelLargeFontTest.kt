@@ -45,8 +45,8 @@ open class SlideLabelLargeFontTest {
     /** The next stops at a large font: numbers never cut, a long name ends with an ellipsis. */
     @Test fun navigateProfileStops() = shots.navigateProfileStops()
     /** Save plan? at a large font: the stacked full-width buttons. */
-    /** My routes with Zuletzt: the draft's Speichern · Löschen stay whole with a large font. */
-    @Test fun toursRecent() = shots.toursRecent()
+    /** My routes with Zuletzt: the draft's Planen · Speichern · Löschen stay whole with a large font. */
+    @Test fun toursRecentDraft() = shots.toursRecentDraft()
     @Test fun routesOverview() = shots.routesOverview()
     @Test fun routesItemMenuPlanned() = shots.routesItemMenuPlanned()
     /** Gemacht: a recorded tour's followed plan (owner 2026-11-07) – the overview's foot and the ⋮ at a large font. */
@@ -54,6 +54,8 @@ open class SlideLabelLargeFontTest {
     @Test fun routesItemMenuDoneWithPlan() = shots.routesItemMenuDoneWithPlan()
     /** The green "Navigation ›" at a large font: the numbers go, the word stays whole (owner 2026-11-06, C). */
     @Test fun planTourRunningCollapsed() = shots.planTourRunningCollapsed()
+    /** The empty plan during a tour (owner 2026-11-12): "● Tour läuft noch" + "Neues Ziel festlegen ›" – nothing cut. */
+    @Test fun planEmptyDuringTour() = shots.planEmptyDuringTour()
     /** "Neuer Plan – deine Aufnahme läuft weiter" · Rückgängig (owner 2026-11-06) and the slim "Tour gespeichert" box at a large font. */
     @Test fun navigateNewPlan() = shots.navigateNewPlan()
     @Test fun savedTourBox() = shots.savedTourBox()

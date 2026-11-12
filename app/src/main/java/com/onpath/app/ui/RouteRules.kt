@@ -204,9 +204,11 @@ object PlanAutoSave {
 
 /**
  * "Zuletzt" in My routes (owner 2026-11-06: "Nicht gespeichert" goes – nothing is lost, nothing asks): a plan worth
- * keeping ([points] ≥ 2) that leaves the map and is not saved as it is ([unsaved]) is kept as a draft; the newest [MAX].
+ * keeping ([points] ≥ 2) that leaves the map and is not saved as it is ([unsaved]) is kept as a draft. Exactly [MAX] = one
+ * plan stays under Zuletzt – the one worked on last, a draft or a saved route (owner 2026-11-12: "füllt sich schnell"); a
+ * draft it replaces goes to the recycle bin (routes/RoutesState.keepDraft, LivePlanRows).
  */
 object Drafts {
-    const val MAX = 25
+    const val MAX = 1
     fun keeps(points: Int, unsaved: Boolean): Boolean = points >= 2 && unsaved
 }

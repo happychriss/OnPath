@@ -148,8 +148,9 @@ fun TrackPanel(
             ElevationProfile(track.points, color = OnPathColors.Gpx, onHighlight = onHighlight)
         } else InfoLine(str(Res.string.plan_no_track_recorded))
         Spacer(Modifier.height(12.dp))
-        // no export here, it lives in My routes (owner); the two ways to use a track: follow it as it is (green: it goes
-        // to the navigation), or make a plan of it to edit (blue: planning – owner's colour rule, 2026-11-06 F1)
+        // no export here, it lives in My routes (owner); the two ways to use a track: follow it as it is (filled plan blue
+        // since 2026-11-12 – every big go button in Plan is blue, ActionButtons.planGo), or make a plan of it to edit
+        // (outlined blue – owner's colour rule, 2026-11-06 F1)
         if (onPlan != null && line) {
             OutlinedButton(onClick = onPlan, enabled = !planBusy, modifier = Modifier.fillMaxWidth().height(48.dp),
                 border = androidx.compose.foundation.BorderStroke(1.5.dp, if (planBusy) OnPathColors.ActionEdit.copy(alpha = 0.38f) else OnPathColors.ActionEdit),
@@ -166,7 +167,7 @@ fun TrackPanel(
             // ("Los geht’s · ohne Route", owner 2026-11-03), during a tour there is nothing to switch to (PlanStart –
             // two points, as the start decides; a few metres can still be followed)
             val follow = track.points.size >= 2
-            Button(colors = ActionButtons.go(), onClick = onFollow, enabled = (!isFollowed || !recording) && (follow || !recording),
+            Button(colors = ActionButtons.planGo(), onClick = onFollow, enabled = (!isFollowed || !recording) && (follow || !recording),
                 modifier = Modifier.weight(1f).height(56.dp)) {
                 Icon(if (follow || recording) Icons.Filled.Navigation else Icons.Filled.FiberManualRecord, null)
                 Spacer(Modifier.width(8.dp))

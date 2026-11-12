@@ -204,14 +204,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     private val routes = com.onpath.app.ui.routes.RoutesState(object : com.onpath.app.ui.routes.RoutesStore {
         override fun listTours() = db.listTours()
+        override fun listDeleted() = db.listDeleted()
         override fun setDraft(id: Long, draft: Boolean) = db.setDraft(id, draft)
         override fun setDeleted(id: Long, deletedMs: Long?) = db.setDeleted(id, deletedMs)
-        override fun pruneDrafts(max: Int) = db.pruneDrafts(max)
         override fun loadSegments(id: Long) = db.loadSegments(id)
         override fun deleteForGood(id: Long) { db.deleteTour(id) }
         override fun rename(id: Long, name: String) = db.rename(id, name)
-    }).also {
+    }, recent = prefs.zuletztId).also {
         it.onClosed = { routesNote = null } // the line at the top lasts until My routes is left
+        it.onRecent = { id -> prefs.zuletztId = id } // the Zuletzt row survives an app start
         it.sort = com.onpath.app.ui.routes.RouteSort.decode(prefs.routesSort) // the order chosen last, across app starts
     }
     /** My routes list (☰ → My routes) is open. */
@@ -3060,12 +3061,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * A plan worth keeping that leaves the map unsaved ([planUnsaved]: never saved, or a saved plan changed – its original
      * stays as it is) goes under My routes → Zuletzt, no question ([Drafts]). The same points twice (Undo, clear again)
-     * make no second entry; only the newest [Drafts.MAX] are kept.
+     * make no second entry; exactly one plan stays under Zuletzt – this one, the one worked on last, the draft before it
+     * goes to the recycle bin; a plan saved as it is takes the place as that saved route (owner 2026-11-12,
+     * [com.onpath.app.ui.routes.RoutesState.keepDraft]).
      */
     private fun keepAsDraft(why: String) {
         val pts = waypoints.toList()
         val unsaved = planUnsaved
-        if (!Drafts.keeps(pts.size, unsaved)) return
+        val saved = savedId
+        if (pts.size < 2) return
         val r = route
         val act = activity; val level = sac
         val stops = savedStops(pts); val pins = pinnedIndices()
@@ -3076,16 +3080,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // the plan points in the prefs go with the clear right after this, so the database must hold them first.
         val id = runCatching {
             // not twice: no second draft with these points, none for a saved route with them (RoutesState)
-            routes.keepDraft(key, unsaved) {
+            routes.keepDraft(key, unsaved, saved) {
                 db.insertTour(TourKind.PLANNED, dated, act.name, level,
                     r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
                     listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }), stops, pinned = pins, draft = true,
                     difficulty = difficultyOf(r, act),
                 )
             }
-        }.onFailure { Problems.error("db", "The plan could not be kept under Zuletzt", it) }.getOrNull() ?: return
+        }.onFailure { Problems.error("db", "The plan could not be kept under Zuletzt", it) }.getOrNull()
+        refreshTours() // the Zuletzt place changed hands either way (a draft replaced, a saved route there now)
+        if (id == null) return
         Problems.trace("plan", "Plan kept under Zuletzt ($why): \"$dated\", ${pts.size} points")
-        refreshTours()
         // then the model times and the place name ("Algund → Meran"); nothing fits in time → the date name stays
         viewModelScope.launchSafe("app", "nameDraft") {
             withContext(Dispatchers.IO) { storePlanTimes(id, r, act) }
@@ -3126,7 +3131,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * The plan on the map for My routes (owner 2026-11-06 23:00: "unter Zuletzt ‚gerade in Bearbeitung', dann weiß ich, dass
-     * immer gespeichert wird"): [LivePlanRows] puts it first under Zuletzt or tags the saved route it is. Null = empty map.
+     * immer gespeichert wird"): [LivePlanRows] makes it the one Zuletzt row ("In Bearbeitung"). Null = empty map.
      */
     val livePlan: LivePlan?
         get() {
@@ -3182,6 +3187,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         requestSave()
     }
 
+    /** The tour under Zuletzt while the map is empty ([com.onpath.app.ui.routes.RoutesState.recentId]). */
+    val zuletztId: Long get() = routes.recentId
+
     /** The plan just moved from Zuletzt to saved: "✓ Gerade gespeichert" on it until My routes closes. */
     var justSavedId: Long
         get() = routes.justSavedId
@@ -3219,7 +3227,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (id == null) { routesProblem = Txt.s(Res.string.msg_route_save_failed); return }
         // the saved route takes the place of its draft and of any draft with the same points (never a second entry)
         withContext(Dispatchers.IO) {
-            runCatching { routes.afterSaved(fromDraft?.id ?: -1L, pts.map { it.lat to it.lon }) }
+            runCatching { routes.afterSaved(id, fromDraft?.id ?: -1L, pts.map { it.lat to it.lon }) }
                 .onFailure { Problems.warn("db", "The plan under Zuletzt stays after it was saved", it) }
         }
         Backups.tourChanged(getApplication(), id)
@@ -3272,7 +3280,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                             if (it) { plannedTimes.remove(id); storePlanTimes(id, r, act) }
                             if (it && name != old) db.rename(id, name)
                             // a draft with the route's new points goes (RoutesState: never a draft with a saved route's points)
-                            if (it) routes.afterSaved(-1L, pts.map { p -> p.lat to p.lon })
+                            if (it) routes.afterSaved(id, -1L, pts.map { p -> p.lat to p.lon })
                         }
                     }
                 }
@@ -4978,6 +4986,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- recycle bin + backup (docs/core-features.md C11) ----------------
 
+    /**
+     * Once after the update to the one-plan rule (owner 2026-11-12): the drafts an older version collected under
+     * Zuletzt go to the recycle bin, all but the newest – nothing is lost for good. Guarded by a pref, idempotent anyway.
+     */
+    private fun trimZuletztOnce() {
+        if (prefs.zuletztTrimmed) return
+        viewModelScope.launchSafe("app", "trimZuletztOnce", Dispatchers.IO) {
+            val gone = runCatching { routes.trimDrafts() }
+                .onFailure { Problems.warn("routes", "Zuletzt: older plans not moved to the recycle bin – tried again at the next start", it) }
+                .getOrNull() ?: return@launchSafe
+            prefs.zuletztTrimmed = true
+            if (gone > 0) {
+                Problems.info("routes", "Zuletzt keeps one plan now (owner 2026-11-12): $gone older plan(s) moved to the recycle bin")
+                refreshTours()
+            } else Problems.trace("routes", "Zuletzt keeps one plan now: nothing older to move")
+        }
+    }
+
     /** Recycle bin list (My routes → ⋮ → Recycle bin); null = closed. */
     var recycleBin by mutableStateOf<List<Tour>?>(null)
 
@@ -4989,11 +5015,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Recycle bin → Restore: back into My routes (and its file out of Deleted/). */
+    /** Recycle bin → Restore: back into My routes (and its file out of Deleted/); a draft becomes the Zuletzt plan. */
     fun restoreFromBin(t: Tour) {
         viewModelScope.launchSafe("app", "restoreFromBin") {
             val ok = withContext(Dispatchers.IO) {
-                runCatching { db.setDeleted(t.id, null) }.onFailure { Problems.error("db", "Restoring from the recycle bin failed", it) }.getOrDefault(false)
+                runCatching { routes.restore(t.id) }.onFailure { Problems.error("db", "Restoring from the recycle bin failed", it) }.getOrDefault(false)
             }
             if (ok) { Backups.tourChanged(getApplication(), t.id); sync.changed("restored from the recycle bin") }
             else routesProblem = Txt.s(Res.string.msg_tour_restore_failed, t.name)
@@ -5117,6 +5143,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Backups.init(app)
         Backups.purgeAndSync(app) // 30-day recycle bin, files for tours that have none yet
         checkRestoreOffer()
+        trimZuletztOnce()
         // a failed backup is said until OK is tapped (no silent loss); then it counts as seen
         viewModelScope.launchSafe("app", "start-up work") {
             Backups.failure.collect { text ->

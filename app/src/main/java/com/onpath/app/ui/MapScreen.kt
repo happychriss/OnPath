@@ -351,7 +351,7 @@ private fun PlanMode(
         // surfaces, no blue glow round the screen): from the screen's top edge (status bar) to the bar's bottom; during a
         // tour one row more ("‹ Zur Tour")
         val topBar = planTopBarDp()
-        Box(Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().background(PlanTopBand.Color)
+        Box(Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().edgeShadow(androidx.compose.ui.graphics.RectangleShape, up = false).background(PlanTopBand.Color)
             .statusBarsPadding().height(topBar.dp))
         PlanTopBar(
             onSearch = vm::openSearch,
@@ -538,7 +538,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     BackgroundDownloadDetails(vm, bg)
 }
 
-/** The green "Weiter geht's" (owner 2026-11-06, C): back to Navigate; a paused recording goes on (as "Weiter" did). */
+/** The plan-blue "Weiter geht's" (owner 2026-11-06, C; blue since 2026-11-12): back to Navigate; a paused recording goes on (as "Weiter" did). */
 private fun backToNavigation(vm: AppViewModel, r: RecState) {
     if (r.paused) vm.pauseRecording(false)
     vm.continueNavigation()

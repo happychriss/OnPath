@@ -24,12 +24,22 @@ class ColourRuleTest {
         assertTrue(theme.contains("surfaceTint = OnPathColors.Walnut,"))
     }
 
-    /** Every button that goes to the navigation names its green – it no longer comes from the theme. */
-    @Test fun buttonsToTheNavigationAreGreen() {
+    /** Every go button names its colour (not the theme): plan blue in Plan (owner 2026-11-12), green in Navigate. */
+    @Test fun goButtonsAreBlueInPlanGreenInNavigate() {
         val panel = src("ui/PlanPanel.kt")
-        assertTrue("Los geht's (the sheet's foot, every step)", Regex("Button\\(colors = ActionButtons\\.go\\(\\), onClick = \\{ goClick\\(ui, cb\\) \\}").findAll(panel).count() == 1)
-        assertTrue(src("ui/BackToNavigation.kt").contains("Button(colors = ActionButtons.go(),"))
-        assertTrue("Tour nachfahren", src("ui/Panels.kt").contains("Button(colors = ActionButtons.go(), onClick = onFollow"))
+        // Plan's foot button is plan blue since 2026-11-12 (owner, variant F: one still plans; "Weiter geht's" back to
+        // Navigate too – "Der ist dann auch blau"); Navigate's own buttons below stay green
+        assertTrue("Los geht's (the sheet's foot, every step) is blue", Regex("Button\\(colors = ActionButtons\\.planGo\\(\\), onClick = \\{ goClick\\(ui, cb\\) \\}").findAll(panel).count() == 1)
+        assertTrue("no green Los geht's", Regex("Button\\(colors = ActionButtons\\.go\\(\\), onClick = \\{ goClick\\(ui, cb\\) \\}").findAll(panel).count() == 0)
+        assertTrue("Weiter geht's in Plan's foot is blue", src("ui/BackToNavigation.kt").contains("Button(colors = ActionButtons.planGo(),"))
+        assertTrue("Tour nachfahren (Plan) is blue", src("ui/Panels.kt").contains("Button(colors = ActionButtons.planGo(), onClick = onFollow"))
+        val overview = src("ui/RoutePreview.kt")
+        assertTrue("the overview's Los geht's is blue", overview.contains("Button(onGo, colors = ActionButtons.planGo(),"))
+        assertTrue("the overview's Folgen is blue", overview.contains("colors = if (go) ActionButtons.planGo() else ActionButtons.edit()"))
+        assertTrue("one blue for every go button in Plan", OnPathColors.PlanGo == OnPathColors.ActionEdit)
+        // the one place: no green filled go button left in Plan's files
+        for (f in listOf("ui/PlanPanel.kt", "ui/BackToNavigation.kt", "ui/Panels.kt", "ui/RoutePreview.kt"))
+            assertTrue("no ActionButtons.go() in $f", !src(f).contains("ActionButtons.go()"))
         // Navigate's bottom bar: Anhalten / Weiter green, "■ Tour beenden" light green held, dark green on a tap (owner
         // 2026-11-08, pale = hold, strong = tap) – no red at the stop (#27)
         val bar = src("ui/TourActionBar.kt")

@@ -108,7 +108,7 @@ class ScreenshotTest {
                 if (editing) androidx.compose.foundation.Image(rememberPlanPuck(Activity.HIKE).asImageBitmap(), null,
                     Modifier.align(Alignment.Center))
                 // the paper band behind the search pill and ☰ (owner 2026-11-05; paper since 2026-11-06 C) – as MapScreen draws it
-                Box(Modifier.fillMaxWidth().background(PlanTopBand.Color).padding(top = 32.dp).height(planTopBarDp().dp))
+                Box(Modifier.fillMaxWidth().edgeShadow(androidx.compose.ui.graphics.RectangleShape, up = false).background(PlanTopBand.Color).padding(top = 32.dp).height(planTopBarDp().dp))
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing, offline = offline)
                     // the activity as a button on the map (owner 2026-11-05, R5) – as MapScreen places it
@@ -812,9 +812,12 @@ class ScreenshotTest {
     /** A tour without a route (owner 2026-11-05): "Freie Tour · nur Aufnahme" instead of an empty route line. */
     fun navigateFreeTour() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = false)) }
 
-    /** The empty plan during a tour: "Tour läuft weiter – setz neue Punkte oder geh ‹ Zur Tour." */
-    fun planEmptyDuringTour() = paparazzi.snapshot {
-        Frame(editing = true) {
+    /**
+     * The empty plan during a tour (owner 2026-11-12, "Tour läuft noch – neues Ziel festlegen"): the title "● Tour läuft
+     * noch", the row "Neues Ziel festlegen ›" (search or hold → Hierhin) and "Weiter geht's" back to the tour.
+     */
+    @Test fun planEmptyDuringTour() = paparazzi.snapshot {
+        Frame(editing = true, route = false) {
             PlanPanel(PlanUi(0, null, false, null, canUndo = true, canRedo = false, activity = Activity.HIKE, tourRunning = true,
                 tour = TourState(1_700.0, 878, paused = false), size = PlanSize.MINI), PlanCallbacks())
         }
@@ -1259,24 +1262,43 @@ class ScreenshotTest {
     }
 
     /** My routes, tab Planned (default): planned routes + imported GPX, Import GPX, per item ⋮ (Rename, Export GPX, Delete). */
+    private val t0Recent = 1_761_000_000_000L
+
+    /** The one plan kept by itself under Zuletzt (owner 2026-11-12: exactly one) – pale route sign, "Plan · date". */
+    private val oneDraft = Tour(100L, TourKind.PLANNED, "Algund → Meran", t0Recent, "HIKE", 2, 2_000.0, 40.0, 30.0, 1800.0,
+        "done", viaPts, draft = true)
+
     /**
-     * My routes → Planned with "Zuletzt" (owner 2026-11-06): the newest three plans kept by themselves – pale route sign,
-     * "Plan · date", Speichern / Löschen on the card – "Alle 4 anzeigen ›", then "Gespeichert" with one just saved; on top
-     * the plan on the map, "Aktueller Plan · In Bearbeitung" with Speichern (owner 2026-11-06 23:00).
+     * My routes → Planned with "Zuletzt" (owner 2026-11-06 / 2026-11-12: exactly one row there): the plan on the map,
+     * "Aktueller Plan · In Bearbeitung" with Speichern (owner 2026-11-06 23:00) – the draft kept before waits behind it,
+     * unseen; then "Gespeichert" with one just saved.
      */
     @Test fun toursRecent() = paparazzi.snapshot {
-        val t0 = 1_761_000_000_000L
-        val drafts = listOf("Algund → Meran", "Plan 6. Nov., 14:34", "In Lana", "Vellau → Leiteralm").mapIndexed { i, n ->
-            Tour(100L + i, TourKind.PLANNED, n, t0 - i * 3_600_000L, "HIKE", 2, 2_000.0 + 900 * i, 40.0 * i, 30.0 * i, 1800.0 + 600 * i,
-                "done", viaPts, draft = true)
-        }
-        // the plan on the map first under Zuletzt with "In Bearbeitung" (owner 2026-11-06 23:00), Speichern only
         val live = LivePlan(name = null, points = 3, distanceM = 4_200.0, ascentM = 180.0, durationS = 4_500.0, linkedId = -1L,
             key = listOf(46.67 to 11.16, 46.68 to 11.15, 46.69 to 11.14), unsaved = true)
-        previewLines(drafts + tourList)
-        RouteLineCache.put(Tour(LivePlanRows.LIVE_ID, TourKind.PLANNED, "", t0, null, 0, 4_200.0, 180.0, 0.0, 4_500.0, "done",
+        previewLines(listOf(oneDraft) + tourList)
+        RouteLineCache.put(Tour(LivePlanRows.LIVE_ID, TourKind.PLANNED, "", t0Recent, null, 0, 4_200.0, 180.0, 0.0, 4_500.0, "done",
             emptyList()), listOf(sampleLine(9)))
-        OnPathTheme { RoutesScreen(drafts + tourList, {}, {}, {}, {}, {}, justSavedId = 1L, live = live, liveNowMs = t0) }
+        OnPathTheme { RoutesScreen(listOf(oneDraft) + tourList, {}, {}, {}, {}, {}, justSavedId = 1L, live = live, liveNowMs = t0Recent,
+            recentId = oneDraft.id) }
+    }
+
+    /**
+     * The map empty: the one plan kept by itself is the Zuletzt row – pale route sign, "Plan · date", Planen · Speichern ·
+     * Löschen on the card (owner 2026-11-07); then "Gespeichert".
+     */
+    @Test fun toursRecentDraft() = paparazzi.snapshot {
+        previewLines(listOf(oneDraft) + tourList)
+        OnPathTheme { RoutesScreen(listOf(oneDraft) + tourList, {}, {}, {}, {}, {}, recentId = oneDraft.id) }
+    }
+
+    /**
+     * The map empty and the plan worked on last a saved route (owner 2026-11-12): it is the Zuletzt row with the small
+     * "Gespeichert" tag and stays under Gespeichert, where "✓ Gerade gespeichert" says it was just saved from Zuletzt.
+     */
+    @Test fun toursRecentSaved() = paparazzi.snapshot {
+        previewLines(tourList)
+        OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, justSavedId = 1L, recentId = 1L) }
     }
 
     fun tours() = paparazzi.snapshot {

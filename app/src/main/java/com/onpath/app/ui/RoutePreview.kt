@@ -257,7 +257,7 @@ private fun GoalFlag(x: Float, y: Float, density: androidx.compose.ui.unit.Densi
 }
 
 /**
- * The overview's foot for a planned route (owner 2026-11-07): "▶ Los geht's" full width green – the plan sheet's foot –
+ * The overview's foot for a planned route (owner 2026-11-07): "▶ Los geht's" full width plan blue (2026-11-12) – the plan sheet's foot –
  * and under it Abbrechen (text) | Planen (tonal blue), equal halves; at a large font all three full width, one under the
  * other (Los geht's, Planen, Abbrechen – M3, never ragged).
  */
@@ -265,7 +265,7 @@ private fun GoalFlag(x: Float, y: Float, density: androidx.compose.ui.unit.Densi
 private fun OverviewFoot(onPlan: () -> Unit, onGo: () -> Unit, onCancel: () -> Unit) {
     val stacked = LocalDensity.current.fontScale >= DraftLook.STACK_FONT_SCALE
     val go = @Composable { m: Modifier ->
-        Button(onGo, colors = ActionButtons.go(), modifier = m.heightIn(min = 56.dp)) {
+        Button(onGo, colors = ActionButtons.planGo(), modifier = m.heightIn(min = 56.dp)) {
             Icon(Icons.Filled.PlayArrow, null, Modifier.size(22.dp)); androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
             Text(str(Res.string.plan_bar_go), style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false)
         }
@@ -300,7 +300,8 @@ private fun OverviewButtons(primary: String, go: Boolean, onPrimary: () -> Unit,
         OutlinedButton(onCancel, modifier = m.heightIn(min = 56.dp)) { Text(str(Res.string.common_cancel), maxLines = 1) }
     }
     val main = @Composable { m: Modifier ->
-        Button(onPrimary, colors = if (go) ActionButtons.go() else ActionButtons.edit(), modifier = m.heightIn(min = 56.dp)) {
+        // "Folgen" during a tour and "Planen": both plan blue (owner 2026-11-12: every big go button reached from Plan)
+        Button(onPrimary, colors = if (go) ActionButtons.planGo() else ActionButtons.edit(), modifier = m.heightIn(min = 56.dp)) {
             Text(primary, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
     }

@@ -137,7 +137,7 @@ fun HoldButton(
     val learnt by rememberUpdatedState(LocalOnHoldFired.current)
     var centerX by remember { mutableFloatStateOf(0f) }
     Box(
-        modifier.onGloballyPositioned { centerX = it.boundsInWindow().center.x }
+        modifier.onGloballyPositioned { centerX = it.boundsInWindow().center.x }.floatShadow(shape)
             .clip(shape).background(light)
             .then(if (outline != null) Modifier.border(BorderStroke(1.5.dp, outline), shape) else Modifier)
             .clearAndSetSemantics {

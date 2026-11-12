@@ -170,7 +170,8 @@ fun MapControls(
 ) {
     val size = MAP_FAB
     val tint = if (plan) OnPathColors.PlanAccent else MaterialTheme.colorScheme.onSurfaceVariant
-    val bg = if (plan) OnPathColors.PlanTint else OnPathColors.Paper // Navigate: paper over the map (owner 2026-11-06)
+    // the light sage over the map in both modes (owner 2026-11-12, [OnPathColors.MapGround]); Plan differs by its blue icons
+    val bg = OnPathColors.MapGround
     // every control says its name on a long press (owner 2026-11-03, novice fix: "what does the eye do?")
     val tips = buildList<Pair<String, @Composable () -> Unit>> {
         val locate: Pair<String, @Composable () -> Unit> = locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint, dot = PlanGps.showDot(plan), greyed = locateGreyed, label = locateLabel) }
@@ -185,7 +186,7 @@ fun MapControls(
         if (!plan) add(locate) // Navigate: locate at the bottom, as before
     }
     val items = tips.mapIndexed { i, (text, control) -> @Composable { MapTip(text, i == tipShown) { control() } } }
-    Surface(shape = RoundedCornerShape(MAP_FAB / 2), color = bg, modifier = Modifier.warmShadow(OnPathShadow.LOW, RoundedCornerShape(MAP_FAB / 2))) {
+    Surface(shape = RoundedCornerShape(MAP_FAB / 2), color = bg, modifier = Modifier.floatShadow(RoundedCornerShape(MAP_FAB / 2))) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             items.forEachIndexed { i, item ->
                 if (i > 0) GroupDivider()
@@ -211,7 +212,7 @@ fun UndoPill(onUndo: (() -> Unit)?, onRedo: (() -> Unit)?) {
     // owner 2026-11-08 late: the worded pill took too much room – two plain round buttons stacked under the map column,
     // same look as the column, only while something can be undone or redone (the one that cannot act is greyed)
     val shape = RoundedCornerShape(MAP_FAB / 2)
-    Surface(shape = shape, color = OnPathColors.PlanTint, modifier = Modifier.warmShadow(OnPathShadow.LOW, shape)) {
+    Surface(shape = shape, color = OnPathColors.PlanTint, modifier = Modifier.floatShadow(shape)) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             IconControl(Icons.AutoMirrored.Filled.Undo, Res.string.plan_undo, onUndo ?: {}, MAP_FAB,
                 tint = OnPathColors.PlanAccent, enabled = onUndo != null)

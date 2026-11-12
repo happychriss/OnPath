@@ -273,7 +273,7 @@ fun StepSheet(
     Layout(
         contents = listOf(
             {
-                Surface(shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), color = surface, modifier = Modifier.warmShadow(OnPathShadow.HIGH, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))) {
+                Surface(shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), color = surface, modifier = Modifier.edgeShadow(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), up = true).warmShadow(OnPathShadow.HIGH, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))) {
                     // Plan's blue top edge (owner 2026-11-03): a stripe along the top, clipped by the rounded shape
                     if (accent != null) Box(Modifier.fillMaxWidth().height(SHEET_EDGE)) {
                         Box(Modifier.fillMaxWidth().height(SHEET_EDGE).background(accent))
