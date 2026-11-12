@@ -35,6 +35,7 @@ and the commit history.
 - [donald] Map smoother when panning/zooming (wip/donald-2026-11-08-smooth-map → main, measured) – since 2026-11-12
 
 ## Next
+- **[donald] Very short recordings go to the recycle bin (owner 2026-11-12, decided):** a recording that ends with < 50 m of track (incl. 0 m / one GPS point) is not shown as „Tour gespeichert“ but moved to the recycle bin at once (`db.setDeleted`, like the end dialog's delete), with a short notice „Kurze Aufzeichnung (2 m) – in den Papierkorb gelegt.“ + Rückgängig; 30 days restorable, nothing lost. Found: owner's „Tour 5. Nov. …“ with the orange dot (date name kept because there was no line to name, RouteShape placeholder). Core feature (recording) → test first. Existing mini tours: owner deletes by hand.
 - **[donald] Code audit 2026-11-12 (owner asked: clean structure, low cost of change?) – verdict: good, one hotspot. Owner 2026-11-12: yes, after the smooth map – robustness first (the `nav-session.json` race as a JVM test, GPS handling during recording measured; fix only what is confirmed), then slice AppViewModel one piece per round.** `ui/AppViewModel.kt` 5,356 lines
   (4,645 on 11-07), 246 public functions, 87 `mutableStateOf`, not JVM-testable; 29 test files pin its source text. Plan, one
   slice per round, forwarders stay, core features green each step: (1) slices after the `TourController` pattern (small
