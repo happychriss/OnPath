@@ -77,6 +77,8 @@ object Licences {
         "org.maplibre.gl:android-sdk-turf" to MAPLIBRE_JAVA,
         "org.maplibre.gl:maplibre-android-gestures" to MAPLIBRE_GESTURES,
         "org.maplibre.gl:android-sdk" to MAPLIBRE,
+        "org.maplibre.gl:android-sdk-opengl" to MAPLIBRE, // the OpenGL ES build of the same library
+        "org.maplibre.gl:android-sdk-vulkan" to MAPLIBRE,
         "androidx." to ANDROIDX,
         "org.jetbrains.compose." to COMPOSE_MP,
         "org.jetbrains.androidx." to COMPOSE_MP,
