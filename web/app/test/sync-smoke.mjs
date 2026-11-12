@@ -223,10 +223,12 @@ check(!/Your planned routes|Save current route|Saved as|Without phone|Remove rou
   'My routes is one plain list: no heading line, no Save box, no folder lines, no ✎ / 🗑 in the row');
 await A.click('#closePlans');
 
-// ---- 2. pairing: the routes planned without a phone join its folder as waiting – bold, Save dark, nothing sent ----
+// ---- 2. pairing: the routes planned without a phone join its folder and go up to it at once – no Save needed
+// (owner field 2026-11-12: "erst Speichern drücken ist keine gute Idee") ----
 const hw = await phone.save('Handweg');
 const p1 = await showCode(A);
 check(/^[A-Za-z0-9_-]{44}$/.test(p1.code) && /^\d{3} \d{3}$/.test(p1.check), 'Pair phone: a new 44-character code and six check digits');
+await sendMark(A);
 await phone.pairDirect(p1.code);
 await A.waitForFunction(() => document.getElementById('pairBody')?.textContent?.includes('Paired with Pixel 8'), null, { timeout: 30_000 }).catch(() => {});
 check((await A.textContent('#pairBody')).includes('Paired with Pixel 8'), 'the browser says "Paired with Pixel 8" (the phone\'s hello, role 1)');
@@ -237,39 +239,25 @@ let st = await status(A);
 check(st.paired && st.folder.key === phone.device && st.phone === 'Pixel 8', `the phone's folder is open (key = its device id) ${JSON.stringify(st.folder)}`);
 check(JSON.stringify(await titles(A)) === '["Altroute","Handweg","Zweitroute"]' && (await titles(A, 'none')).length === 0,
   'the routes planned without a phone joined the phone\'s folder (Without phone is empty) ' + JSON.stringify(await titles(A)));
-await phone.round();
-check(JSON.stringify(await phone.titles()) === '["Handweg"]', 'nothing went to the phone by itself ' + JSON.stringify(await phone.titles()));
 check((await A.textContent('#points')).includes('Vellau'), 'the open route stays open (it joined the phone\'s folder too)');
-await A.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'dark', null, { timeout: 30_000 }).catch(() => {});
-sb = await saveBtn(A);
-check(sb.state === 'dark' && sb.filled && sb.label === 'Save' && st.pending === 2, `paired, two routes waiting: "Save", dark (${JSON.stringify(sb)}, pending ${st.pending})`);
-check(sb.phone && sb.title === 'Save – to the phone too (Pixel 8)', `paired: Save carries a small phone, its tooltip says it goes to the phone too (owner 2026-11-06) (${JSON.stringify(sb)})`);
+await sent(A);
+await phone.round();
+check(JSON.stringify(await phone.titles()) === '["Altroute","Handweg","Zweitroute"]', 'right after the pairing the waiting routes went to the phone by themselves – no Save ' + JSON.stringify(await phone.titles()));
+await A.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'done', null, { timeout: 30_000 }).catch(() => {});
+let sb2 = await saveBtn(A);
+check(sb2.state === 'done' && !sb2.filled && sb2.label === 'Saved' && (await status(A)).pending === 0, `all on the phone: light "✓ Saved", nothing waits (${JSON.stringify(sb2)})`);
+check(sb2.phone && sb2.title === 'Everything is on Pixel 8', `paired: Save carries a small phone, its tooltip says everything is on the phone (owner 2026-11-06) (${JSON.stringify(sb2)})`);
+sb = sb2;
 e = await entry(A);
 check(e.shown && !e.more && e.phone === 'Pixel 8' && /^synced /.test(e.sub) && e.dot && e.kind === 'fresh' && /^Pixel 8 · synced /.test(e.title), `paired: To phone is the phone's status "📱 Pixel 8 🟢 / synced …" (owner 2026-11-07: big enough to see), no ▾ (${JSON.stringify(e)})`);
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
 for (const n of ['Altroute', 'Zweitroute']) {
   row = await listRow(A, n);
-  check(row?.where === HERE && row.bold, `"${n}" waits for the phone: 🖥, bold (${JSON.stringify(row)})`);
+  check(row?.where === BOTH && !row.bold, `"${n}" sent: 🖥 📱, not bold (${JSON.stringify(row)})`);
 }
 row = await listRow(A, 'Handweg');
 check(row?.where === PHONE && !row.bold && !/New from the phone/.test(row.text), `the phone's route: 📱 only, not bold, no "New from the phone" mark (${JSON.stringify(row)})`);
-await A.click('#closePlans');
-await sendMark(A);
-await A.click('#menuSavePlan'); // one click sends everything waiting – no field (nothing new on the shown route)
-check(await A.locator('dialog.savename[open]').count() === 0, 'only waiting routes: Save sends at once, no name dialog');
-await sent(A);
-await phone.round();
-check(JSON.stringify(await phone.titles()) === '["Altroute","Handweg","Zweitroute"]', 'one click on "Save to phone": both routes are on the phone ' + JSON.stringify(await phone.titles()));
-await A.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'done', null, { timeout: 30_000 }).catch(() => {});
-sb = await saveBtn(A);
-check(sb.state === 'done' && !sb.filled && sb.label === 'Saved', `all on the phone: light "✓ Saved" (${JSON.stringify(sb)})`);
-await menu(A, '#menuPlans');
-await A.waitForSelector('#planList li[data-id]');
-for (const n of ['Altroute', 'Zweitroute']) {
-  row = await listRow(A, n);
-  check(row?.where === BOTH && !row.bold, `"${n}" sent: 🖥 📱, not bold (${JSON.stringify(row)})`);
-}
 await A.click('#closePlans');
 
 // ---- 3. the Phone window: state + one sentence, Sync now · Unpair (no question), "How does it work?", small lines ----
@@ -349,6 +337,7 @@ await A.waitForFunction(() => [...document.querySelectorAll('#planList .name')].
 await A.click('#closePlans');
 sb = await saveBtn(A);
 check(sb.unsaved && sb.state === 'dark', `unsaved rename: Save dark (${JSON.stringify(sb)})`);
+check(sb.phone && sb.title === 'Save – to the phone too (Pixel 8)', `paired, something waits: Save's tooltip says it goes to the phone too (owner 2026-11-06) (${JSON.stringify(sb)})`);
 await syncNow(A);
 await phone.round();
 check(!(await phone.titles()).includes('Waalweg'), 'a pull does not send: the phone has no "Waalweg" yet');
@@ -540,8 +529,10 @@ const pL2 = await showCode(L);
 await phone.redirect(pL2.code);
 await L.waitForFunction((d) => window.__sync.status.folder.key === d, phone.device, { timeout: 30_000 }).catch(() => {});
 await L.click('#closePair').catch(() => {});
-await L.waitForFunction(() => document.getElementById('menuSavePlan')?.classList.contains('unsaved'), null, { timeout: 30_000 }).catch(() => {});
-check((await titles(L)).includes('Laptop unsaved') && (await saveBtn(L)).unsaved, 'the same phone paired again: its folder is back with the unsaved change (Save dark)');
+await L.waitForFunction(() => window.__sync.status.pending === 0 && !document.getElementById('menuSavePlan')?.classList.contains('unsaved'), null, { timeout: 30_000 }).catch(() => {});
+await phone.round();
+check((await titles(L)).includes('Laptop unsaved') && !(await saveBtn(L)).unsaved && (await phone.titles()).includes('Laptop unsaved'),
+  'the same phone paired again: its folder is back and the unsaved change went to the phone at once (no Save)');
 
 // ---- 12. mailbox full (507): Save amber (its tooltip says why), nothing lost ----
 LIMITS.items = 1; // the test's limit in the host
@@ -652,7 +643,7 @@ await ctxR.close();
 
 // ---- 14e. "Pair again" with a reinstalled phone (owner field 2026-11-12, robust first): the phone comes back with a NEW
 // device id (no backup of device.txt) – the tours of the folder that "Pair again" closed come along into the new
-// pairing as waiting (like Without phone's), Save sends them; an older closed folder stays where it is ----
+// pairing and go up at once (owner 2026-11-12: no Save needed); an older closed folder stays where it is ----
 const ctxW = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 const W = await open(ctxW);
 const older = await new Phone('Old S10').init();
@@ -684,15 +675,15 @@ check(reinstalled.device !== firstPixel.device, 'the reinstalled phone has a new
 await reinstalled.pairDirect((await W.inputValue('#pairLink')).split('#pair=')[1]);
 await W.waitForFunction((d) => window.__sync.status.folder.key === d, reinstalled.device, { timeout: 30_000 }).catch(() => {});
 await W.click('#closePair').catch(() => {});
+await until(W, async () => window.__sync.status.pending === 0 && (await window.__sync.list()).length === 2);
 const carried = await W.evaluate(async () => (await window.__sync.list()).map((p) => [p.title, p.dirty]).sort());
-check((await status(W)).folder.key === reinstalled.device && JSON.stringify(carried) === '[["Browsertour",true],["Handytour",true]]',
-  `"Pair again" + a new device id: the closed folder's tours came along, waiting for Save (${JSON.stringify(carried)})`);
+check((await status(W)).folder.key === reinstalled.device && JSON.stringify(carried) === '[["Browsertour",false],["Handytour",false]]',
+  `"Pair again" + a new device id: the closed folder's tours came along and were sent at once – no Save (${JSON.stringify(carried)})`);
 const leftW = await W.evaluate(() => window.__sync.status.closed.map((f) => f.name));
 check((await titles(W, firstPixel.device)).length === 0 && (await titles(W, older.device)).includes('S10-Weg') && !(await titles(W)).includes('S10-Weg'),
   `only the folder "Pair again" closed came along; the older S10 folder stays as it was (${JSON.stringify(leftW)})`);
-await W.evaluate(() => window.__sync.sendAll());
 await reinstalled.round();
-check(JSON.stringify(await reinstalled.titles()) === '["Browsertour","Handytour"]', 'Save sends them to the reinstalled phone ' + JSON.stringify(await reinstalled.titles()));
+check(JSON.stringify(await reinstalled.titles()) === '["Browsertour","Handytour"]', 'the reinstalled phone has both tours without any Save ' + JSON.stringify(await reinstalled.titles()));
 await ctxW.close();
 
 // ---- 15. the host's cap on new mailboxes per IP and day ----
